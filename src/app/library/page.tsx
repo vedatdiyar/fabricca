@@ -12,6 +12,7 @@ import {
   Plus,
   Sparkles,
 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   uploadPdfAction,
   getReferencesAction,
@@ -49,10 +50,7 @@ export default function LibraryPage() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
 
-  // Custom mobile tab switcher state
-  const [activeTab, setActiveTab] = useState<"references" | "notes">(
-    "references",
-  );
+  const [mobileTab, setMobileTab] = useState("references");
 
   // Notes States
   const [noteContent, setNoteContent] = useState("");
@@ -134,7 +132,7 @@ export default function LibraryPage() {
         if (result.referenceId) {
           setSelectedRefId(result.referenceId);
           // Auto switch to notes on mobile to show details immediately
-          setActiveTab("notes");
+          setMobileTab("notes");
         }
       } else {
         setUploadError(result.error || "Yükleme sırasında hata oluştu.");
@@ -211,35 +209,23 @@ export default function LibraryPage() {
       </header>
 
       {/* Mobile Tab Switcher */}
-      <div className="flex lg:hidden border border-border rounded-lg bg-card p-1 mb-6">
-        <button
-          onClick={() => setActiveTab("references")}
-          className={`flex-1 py-2.5 text-center text-xs font-semibold rounded-md transition-all ${
-            activeTab === "references"
-              ? "bg-primary text-background"
-              : "text-muted-foreground"
-          }`}
-        >
-          1. Dosya Yükleme & Kaynaklar
-        </button>
-        <button
-          onClick={() => setActiveTab("notes")}
-          className={`flex-1 py-2.5 text-center text-xs font-semibold rounded-md transition-all ${
-            activeTab === "notes"
-              ? "bg-primary text-background"
-              : "text-muted-foreground"
-          }`}
-        >
-          2. Okuma Notları & Atıflar
-        </button>
-      </div>
+      <Tabs value={mobileTab} onValueChange={(v) => setMobileTab(v as string)} className="lg:hidden mb-6">
+        <TabsList className="w-full bg-card border border-border p-1 rounded">
+          <TabsTrigger value="references" className="flex-1">
+            1. Dosya Yükleme & Kaynaklar
+          </TabsTrigger>
+          <TabsTrigger value="notes" className="flex-1">
+            2. Okuma Notları & Atıflar
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Main Workspace Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1">
         {/* Left Column: Dropzone and Uploaded References (Visible on Desktop OR Mobile Active Tab) */}
         <div
           className={`border border-border bg-card p-6 rounded-lg shadow-xl flex flex-col space-y-6 ${
-            activeTab === "references" ? "flex" : "hidden lg:flex"
+            mobileTab === "references" ? "flex" : "hidden lg:flex"
           }`}
         >
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground border-b border-border pb-2">
@@ -335,7 +321,7 @@ export default function LibraryPage() {
                       key={ref.id}
                       onClick={() => {
                         setSelectedRefId(ref.id);
-                        setActiveTab("notes"); // Smoothly switch tab on mobile!
+                        setMobileTab("notes"); // Smoothly switch tab on mobile!
                       }}
                       className={`border p-4 rounded-lg flex flex-col justify-between items-stretch cursor-pointer transition duration-200 ${
                         isSelected
@@ -390,7 +376,7 @@ export default function LibraryPage() {
         {/* Right Column: Reading Notes Textarea & Suggestions (Visible on Desktop OR Mobile Active Tab) */}
         <div
           className={`border border-border bg-card p-6 rounded-lg shadow-xl flex flex-col space-y-6 ${
-            activeTab === "notes" ? "flex" : "hidden lg:flex"
+            mobileTab === "notes" ? "flex" : "hidden lg:flex"
           }`}
         >
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground border-b border-border pb-2">

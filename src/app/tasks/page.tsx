@@ -24,6 +24,7 @@ import {
   Loader2,
   CheckCircle,
 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Popover,
   PopoverContent,
@@ -39,7 +40,6 @@ export default function TasksPage() {
   const [submitting, setSubmitting] = useState(false);
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
-  const [activeTab, setActiveTab] = useState<"todo" | "doing" | "done">("todo");
   const [errorMessage, setErrorMessage] = useState("");
   const mounted = useSyncExternalStore(
     () => () => {},
@@ -425,88 +425,58 @@ export default function TasksPage() {
         </div>
       ) : (
         <>
-          <div className="flex md:hidden border border-border bg-card p-1 rounded mb-6">
-            <button
-              onClick={() => setActiveTab("todo")}
-              className={`flex-1 text-center py-2 text-xs font-semibold rounded transition duration-150 ${
-                activeTab === "todo"
-                  ? "bg-accent text-primary"
-                  : "text-muted-foreground"
-              }`}
-            >
-              Yapılacak ({todoTasks.length})
-            </button>
-            <button
-              onClick={() => setActiveTab("doing")}
-              className={`flex-1 text-center py-2 text-xs font-semibold rounded transition duration-150 ${
-                activeTab === "doing"
-                  ? "bg-accent text-primary"
-                  : "text-muted-foreground"
-              }`}
-            >
-              Çalışılıyor ({doingTasks.length})
-            </button>
-            <button
-              onClick={() => setActiveTab("done")}
-              className={`flex-1 text-center py-2 text-xs font-semibold rounded transition duration-150 ${
-                activeTab === "done"
-                  ? "bg-accent text-primary"
-                  : "text-muted-foreground"
-              }`}
-            >
-              Tamamlandı ({doneTasks.length})
-            </button>
-          </div>
-
-          <div className="block md:hidden">
-            {activeTab === "todo" && (
-              <div className="space-y-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-                  <span className="size-2 rounded-full bg-destructive" />
-                  <span>Yapılacak Hedefler ({todoTasks.length})</span>
-                </h3>
-                {todoTasks.length === 0 ? (
-                  <div className="border border-dashed border-border rounded-lg p-8 text-center text-xs text-muted-foreground bg-card">
-                    Bu sütunda henüz görev bulunmamaktadır.
-                  </div>
-                ) : (
-                  todoTasks.map(renderMobileCard)
-                )}
-              </div>
-            )}
-
-            {activeTab === "doing" && (
-              <div className="space-y-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-                  <span className="size-2 rounded-full bg-primary" />
-                  <span>Üzerinde Çalışılanlar ({doingTasks.length})</span>
-                </h3>
-                {doingTasks.length === 0 ? (
-                  <div className="border border-dashed border-border rounded-lg p-8 text-center text-xs text-muted-foreground bg-card">
-                    Aktif olarak üzerinde çalışılan bir hedef bulunmuyor.
-                  </div>
-                ) : (
-                  doingTasks.map(renderMobileCard)
-                )}
-              </div>
-            )}
-
-            {activeTab === "done" && (
-              <div className="space-y-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-                  <span className="size-2 rounded-full bg-chart-5" />
-                  <span>Tamamlanan Görevler ({doneTasks.length})</span>
-                </h3>
-                {doneTasks.length === 0 ? (
-                  <div className="border border-dashed border-border rounded-lg p-8 text-center text-xs text-muted-foreground bg-card">
-                    Tamamlanmış bir görev henüz yok.
-                  </div>
-                ) : (
-                  doneTasks.map(renderMobileCard)
-                )}
-              </div>
-            )}
-          </div>
+          <Tabs defaultValue="todo" className="md:hidden mb-6">
+            <TabsList className="w-full bg-card border border-border p-1 rounded">
+              <TabsTrigger value="todo" className="flex-1">
+                Yapılacak ({todoTasks.length})
+              </TabsTrigger>
+              <TabsTrigger value="doing" className="flex-1">
+                Çalışılıyor ({doingTasks.length})
+              </TabsTrigger>
+              <TabsTrigger value="done" className="flex-1">
+                Tamamlandı ({doneTasks.length})
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="todo" className="mt-4 space-y-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+                <span className="size-2 rounded-full bg-destructive" />
+                <span>Yapılacak Hedefler ({todoTasks.length})</span>
+              </h3>
+              {todoTasks.length === 0 ? (
+                <div className="border border-dashed border-border rounded-lg p-8 text-center text-xs text-muted-foreground bg-card">
+                  Bu sütunda henüz görev bulunmamaktadır.
+                </div>
+              ) : (
+                todoTasks.map(renderMobileCard)
+              )}
+            </TabsContent>
+            <TabsContent value="doing" className="mt-4 space-y-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+                <span className="size-2 rounded-full bg-primary" />
+                <span>Üzerinde Çalışılanlar ({doingTasks.length})</span>
+              </h3>
+              {doingTasks.length === 0 ? (
+                <div className="border border-dashed border-border rounded-lg p-8 text-center text-xs text-muted-foreground bg-card">
+                  Aktif olarak üzerinde çalışılan bir hedef bulunmuyor.
+                </div>
+              ) : (
+                doingTasks.map(renderMobileCard)
+              )}
+            </TabsContent>
+            <TabsContent value="done" className="mt-4 space-y-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+                <span className="size-2 rounded-full bg-chart-5" />
+                <span>Tamamlanan Görevler ({doneTasks.length})</span>
+              </h3>
+              {doneTasks.length === 0 ? (
+                <div className="border border-dashed border-border rounded-lg p-8 text-center text-xs text-muted-foreground bg-card">
+                  Tamamlanmış bir görev henüz yok.
+                </div>
+              ) : (
+                doneTasks.map(renderMobileCard)
+              )}
+            </TabsContent>
+          </Tabs>
 
           {mounted ? (
             <DragDropContext onDragEnd={handleDragEnd}>

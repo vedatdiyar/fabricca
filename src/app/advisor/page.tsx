@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -19,7 +18,6 @@ import {
   Info,
   Trash2,
   FileText,
-  HelpCircle,
 } from "lucide-react";
 import {
   getLibraryReferencesAction,
@@ -29,6 +27,19 @@ import {
   ChatMessage,
   CitationSource,
 } from "./actions";
+import {
+  Drawer,
+  DrawerTrigger,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerClose,
+} from "@/components/ui/drawer";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
 
 interface ChatMessageWithMetadata {
   role: "user" | "assistant" | "model";
@@ -44,7 +55,6 @@ export default function AdvisorPage() {
   const [inputValue, setInputValue] = useState("");
   const [isPending, setIsPending] = useState(false);
   const [loadingRefs, setLoadingRefs] = useState(true);
-  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
   // Notification / Toast state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -256,7 +266,6 @@ export default function AdvisorPage() {
     }
   };
 
-  // Interactive Inline Citation Popover (hover to open, click to lock)
   function CitationPopover({
     chunkDbId,
     sources,
@@ -264,62 +273,7 @@ export default function AdvisorPage() {
     chunkDbId: number;
     sources?: CitationSource[];
   }) {
-    const [isOpen, setIsOpen] = useState(false);
-    const [isLocked, setIsLocked] = useState(false);
-    const [coords, setCoords] = useState<{
-      top: number;
-      left: number;
-      isNearTop: boolean;
-    } | null>(null);
-    const buttonRef = useRef<HTMLButtonElement>(null);
-    const popoverRef = useRef<HTMLDivElement>(null);
-
     const source = sources?.find((s) => s.id === chunkDbId);
-
-    const updatePosition = () => {
-      if (buttonRef.current) {
-        const rect = buttonRef.current.getBoundingClientRect();
-        const isNearTop = rect.top < 220;
-        setCoords({
-          top: isNearTop ? rect.bottom + 6 : rect.top - 6,
-          left: rect.left + rect.width / 2,
-          isNearTop,
-        });
-      }
-    };
-
-    const handleClose = () => {
-      setIsOpen(false);
-      setIsLocked(false);
-    };
-
-    useEffect(() => {
-      if (isOpen) {
-        updatePosition();
-        window.addEventListener("resize", updatePosition);
-        window.addEventListener("scroll", updatePosition, true);
-      }
-      return () => {
-        window.removeEventListener("resize", updatePosition);
-        window.removeEventListener("scroll", updatePosition, true);
-      };
-    }, [isOpen]);
-
-    useEffect(() => {
-      function handleClickOutside(event: MouseEvent) {
-        if (
-          popoverRef.current &&
-          !popoverRef.current.contains(event.target as Node) &&
-          buttonRef.current &&
-          !buttonRef.current.contains(event.target as Node)
-        ) {
-          handleClose();
-        }
-      }
-      document.addEventListener("mousedown", handleClickOutside);
-      return () =>
-        document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
 
     if (!source) {
       return <span className="text-primary font-bold">[{chunkDbId}]</span>;
@@ -330,90 +284,26 @@ export default function AdvisorPage() {
       : -1;
     const displayIndex = sourceIndex !== -1 ? sourceIndex + 1 : chunkDbId;
 
-    let leftPos = coords ? coords.left : 0;
-    if (coords && typeof window !== "undefined") {
-      const popoverWidth = 320;
-      const padding = 16;
-      const minLeft = popoverWidth / 2 + padding;
-      const maxLeft = window.innerWidth - popoverWidth / 2 - padding;
-      leftPos = Math.max(minLeft, Math.min(leftPos, maxLeft));
-    }
-
     return (
-      <span className="inline-block align-baseline select-none">
-        <button
-          ref={buttonRef}
-          type="button"
-          onMouseEnter={() => {
-            if (!isLocked) setIsOpen(true);
-            updatePosition();
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (isLocked) {
-              handleClose();
-            } else {
-              setIsLocked(true);
-              setIsOpen(true);
-            }
-          }}
-          className="mx-0.5 px-1 py-0.2 bg-muted hover:bg-primary border border-border hover:border-primary text-primary hover:text-primary-foreground font-mono text-[9px] font-bold rounded cursor-pointer transition select-none active:scale-95 duration-100"
-        >
+      <Popover>
+        <PopoverTrigger className="mx-0.5 px-1 py-0.2 bg-muted hover:bg-primary border border-border hover:border-primary text-primary hover:text-primary-foreground font-mono text-[9px] font-bold rounded cursor-pointer transition select-none active:scale-95 duration-100">
           {displayIndex}
-        </button>
-
-        {isOpen &&
-          coords &&
-          typeof window !== "undefined" &&
-          createPortal(
-            <div
-              ref={popoverRef}
-              onMouseLeave={() => {
-                if (!isLocked) handleClose();
-              }}
-              style={{
-                position: "fixed",
-                top: `${coords.top}px`,
-                left: `${leftPos}px`,
-                transform: coords.isNearTop
-                  ? "translate(-50%, 0)"
-                  : "translate(-50%, -100%)",
-                width: "320px",
-                maxWidth: "calc(100vw - 32px)",
-                zIndex: 9999,
-              }}
-              className="bg-card border border-primary p-4 rounded-lg shadow-2xl text-foreground text-left block cursor-default animate-fade-in select-none"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <span className="flex items-center justify-between border-b border-border pb-1.5 mb-2 shrink-0">
-                <span className="font-extrabold text-[10px] uppercase text-primary tracking-wider truncate max-w-[180px] flex items-center gap-1.5 font-sans">
-                  <FileText className="size-3 text-primary shrink-0" />
-                  {source.title}
-                </span>
-                <span className="text-[9px] bg-muted px-2 py-0.5 rounded text-primary font-mono select-none">
-                  {(source.score * 100).toFixed(0)}% Eşleşme
-                </span>
-                {isLocked && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleClose();
-                    }}
-                    className="ml-2 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-border transition-colors"
-                    aria-label="Kapat"
-                  >
-                    <X className="size-3" />
-                  </button>
-                )}
-              </span>
-              <span className="text-[11px] leading-relaxed text-muted-foreground block max-h-40 overflow-y-auto select-text font-sans font-medium pr-1 [&_ul]:pl-6 [&_ul]:my-2 [&_ol]:pl-6 [&_ol]:my-2">
-                {source.content}
-              </span>
-            </div>,
-            document.body,
-          )}
-      </span>
+        </PopoverTrigger>
+        <PopoverContent className="w-[320px] p-4 border border-primary" align="center" side="top">
+          <span className="flex items-center justify-between border-b border-border pb-1.5 mb-2 shrink-0">
+            <span className="font-extrabold text-[10px] uppercase text-primary tracking-wider truncate max-w-[180px] flex items-center gap-1.5 font-sans">
+              <FileText className="size-3 text-primary shrink-0" />
+              {source.title}
+            </span>
+            <span className="text-[9px] bg-muted px-2 py-0.5 rounded text-primary font-mono select-none">
+              {(source.score * 100).toFixed(0)}% Eşleşme
+            </span>
+          </span>
+          <span className="text-[11px] leading-relaxed text-muted-foreground block max-h-40 overflow-y-auto select-text font-sans font-medium pr-1 [&_ul]:pl-6 [&_ul]:my-2 [&_ol]:pl-6 [&_ol]:my-2">
+            {source.content}
+          </span>
+        </PopoverContent>
+      </Popover>
     );
   }
 
@@ -423,6 +313,7 @@ export default function AdvisorPage() {
   };
 
   return (
+    <Drawer>
     <div className="flex flex-1 flex-col bg-background text-foreground p-4 md:p-8 h-screen overflow-hidden relative">
       {/* Toast Notification */}
       {toastMessage && (
@@ -445,14 +336,11 @@ export default function AdvisorPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Mobile Filter Button */}
-          <button
-            onClick={() => setIsMobileDrawerOpen(true)}
-            className="md:hidden flex items-center gap-2 bg-card border border-border px-3 py-1.5 rounded-lg text-xs font-semibold text-foreground hover:bg-accent hover:border-accent-foreground transition"
-          >
-            <Filter className="size-3.5 text-primary" />
-            <span>Kaynaklar ({selectedRefIds.length})</span>
-          </button>
+          {/* Mobile Drawer Trigger */}
+            <DrawerTrigger className="md:hidden flex items-center gap-2 bg-card border border-border px-3 py-1.5 rounded-lg text-xs font-semibold text-foreground hover:bg-accent hover:border-accent-foreground transition cursor-pointer">
+              <Filter className="size-3.5 text-primary" />
+              <span>Kaynaklar ({selectedRefIds.length})</span>
+            </DrawerTrigger>
 
           {/* Clear History Button */}
           {chatHistory.length > 1 && (
@@ -839,122 +727,104 @@ export default function AdvisorPage() {
         </main>
       </div>
 
-      {/* MOBILE DRAWER: Sources slide-over overlay for responsive screens */}
-      {isMobileDrawerOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex justify-end">
-          {/* Backdrop mask */}
-          <div
-            onClick={() => setIsMobileDrawerOpen(false)}
-            className="absolute inset-0 bg-[#000000] opacity-80"
-          />
+      <DrawerContent className="md:hidden">
+        <DrawerHeader>
+          <DrawerTitle>
+            <BookOpen className="size-4 text-primary" />
+            Tartışma Kaynakları
+          </DrawerTitle>
+          <DrawerClose>
+            <X className="size-4" />
+          </DrawerClose>
+        </DrawerHeader>
 
-          {/* Drawer container body */}
-          <div className="relative w-80 max-w-full h-full bg-card border-l border-border p-5 flex flex-col z-10 shadow-2xl animate-slide-in-right">
-            <div className="flex items-center justify-between border-b border-border pb-3 mb-4 shrink-0">
-              <h3 className="text-sm font-black uppercase text-foreground tracking-wider flex items-center gap-2">
-                <BookOpen className="size-4 text-primary" />
-                Tartışma Kaynakları
-              </h3>
-              <button
-                onClick={() => setIsMobileDrawerOpen(false)}
-                className="p-1 rounded bg-muted hover:bg-accent border border-border text-muted-foreground hover:text-foreground transition"
-              >
-                <X className="size-4" />
-              </button>
+        <div className="flex-1 flex flex-col px-5 pb-5 overflow-hidden">
+          {loadingRefs ? (
+            <div className="flex-1 flex flex-col items-center justify-center">
+              <Loader2 className="size-6 text-primary animate-spin mb-2" />
+              <p className="text-xs text-muted-foreground font-sans">Yükleniyor...</p>
             </div>
-
-            {loadingRefs ? (
-              <div className="flex-1 flex flex-col items-center justify-center">
-                <Loader2 className="size-6 text-primary animate-spin mb-2" />
-                <p className="text-xs text-muted-foreground font-sans">
-                  Yükleniyor...
-                </p>
-              </div>
-            ) : references.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-center p-4 border border-dashed border-border rounded-lg bg-background">
-                <Info className="size-5 text-muted-foreground mb-2" />
-                <h3 className="text-xs font-bold text-foreground">
-                  Kütüphane Boş
-                </h3>
-                <p className="text-[10px] text-muted-foreground mt-2 leading-relaxed">
-                  RAG araması için PDF yüklemeniz gerekmektedir.
-                </p>
-                <a
-                  href="/library"
-                  className="mt-4 flex items-center gap-1 bg-muted hover:bg-accent border border-border px-3 py-1.5 rounded text-[10px] font-bold text-foreground transition"
+          ) : references.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-4 border border-dashed border-border rounded-lg bg-background">
+              <Info className="size-5 text-muted-foreground mb-2" />
+              <h3 className="text-xs font-bold text-foreground">Kütüphane Boş</h3>
+              <p className="text-[10px] text-muted-foreground mt-2 leading-relaxed">
+                RAG araması için PDF yüklemeniz gerekmektedir.
+              </p>
+              <a
+                href="/library"
+                className="mt-4 flex items-center gap-1 bg-muted hover:bg-accent border border-border px-3 py-1.5 rounded text-[10px] font-bold text-foreground transition"
+              >
+                Kütüphaneye Git
+                <ArrowRight className="size-3 text-primary" />
+              </a>
+            </div>
+          ) : (
+            <div className="flex flex-col flex-1 min-h-0">
+              <div className="flex gap-2 mb-3 shrink-0">
+                <button
+                  onClick={handleSelectAllRefs}
+                  className="flex-1 bg-muted hover:bg-accent border border-border py-1.5 rounded text-[9px] font-bold text-foreground transition cursor-pointer"
                 >
-                  Kütüphaneye Git
-                  <ArrowRight className="size-3 text-primary" />
-                </a>
+                  Tümünü Seç
+                </button>
+                <button
+                  onClick={handleClearAllRefs}
+                  className="flex-1 bg-muted hover:bg-accent border border-border py-1.5 rounded text-[9px] font-bold text-foreground transition cursor-pointer"
+                >
+                  Seçimi Kaldır
+                </button>
               </div>
-            ) : (
-              <div className="flex flex-col flex-1 min-h-0">
-                <div className="flex gap-2 mb-3 shrink-0">
-                  <button
-                    onClick={handleSelectAllRefs}
-                    className="flex-1 bg-muted hover:bg-accent border border-border py-1.5 rounded text-[9px] font-bold text-foreground transition"
-                  >
-                    Tümünü Seç
-                  </button>
-                  <button
-                    onClick={handleClearAllRefs}
-                    className="flex-1 bg-muted hover:bg-accent border border-border py-1.5 rounded text-[9px] font-bold text-foreground transition"
-                  >
-                    Seçimi Kaldır
-                  </button>
-                </div>
 
-                {/* References list */}
-                <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-                  {references.map((ref) => {
-                    const isChecked = selectedRefIds.includes(ref.id);
-                    return (
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+                {references.map((ref) => {
+                  const isChecked = selectedRefIds.includes(ref.id);
+                  return (
+                    <div
+                      key={ref.id}
+                      onClick={() => handleToggleRef(ref.id)}
+                      className={`flex items-start gap-3 p-2.5 rounded-lg border cursor-pointer select-none transition ${
+                        isChecked
+                          ? "bg-muted border-primary"
+                          : "bg-background border-border hover:border-muted-foreground"
+                      }`}
+                    >
                       <div
-                        key={ref.id}
-                        onClick={() => handleToggleRef(ref.id)}
-                        className={`flex items-start gap-3 p-2.5 rounded-lg border cursor-pointer select-none transition ${
+                        className={`mt-0.5 size-4 rounded border flex items-center justify-center shrink-0 transition ${
                           isChecked
-                            ? "bg-muted border-primary"
-                            : "bg-background border-border hover:border-muted-foreground"
+                            ? "bg-primary border-primary text-primary-foreground"
+                            : "border-border bg-card"
                         }`}
                       >
-                        <div
-                          className={`mt-0.5 size-4 rounded border flex items-center justify-center shrink-0 transition ${
-                            isChecked
-                              ? "bg-primary border-primary text-primary-foreground"
-                              : "border-border bg-card"
-                          }`}
-                        >
-                          {isChecked && <Check className="size-3 stroke-[3]" />}
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-xs font-bold text-foreground truncate">
-                            {ref.title}
-                          </h4>
-                          <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                            {ref.authors || "Bilinmeyen Yazar"}
-                            {ref.year ? ` • ${ref.year}` : ""}
-                          </p>
-                        </div>
+                        {isChecked && <Check className="size-3 stroke-[3]" />}
                       </div>
-                    );
-                  })}
-                </div>
-
-                <div className="border-t border-border pt-4 mt-4 shrink-0">
-                  <button
-                    onClick={() => setIsMobileDrawerOpen(false)}
-                    className="w-full bg-primary hover:bg-primary/95 text-primary-foreground border border-primary py-2.5 rounded-lg text-xs font-extrabold transition"
-                  >
-                    Filtreleri Uygula ({selectedRefIds.length} Kaynak)
-                  </button>
-                </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-xs font-bold text-foreground truncate">
+                          {ref.title}
+                        </h4>
+                        <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                          {ref.authors || "Bilinmeyen Yazar"}
+                          {ref.year ? ` • ${ref.year}` : ""}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            )}
-          </div>
+
+              <div className="border-t border-border pt-4 mt-4 shrink-0">
+                <button
+                  onClick={() => {}} // Drawer auto-closes via Base UI
+                  className="w-full bg-primary hover:bg-primary/95 text-primary-foreground border border-primary py-2.5 rounded-lg text-xs font-extrabold transition cursor-pointer"
+                >
+                  Filtreleri Uygula ({selectedRefIds.length} Kaynak)
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </DrawerContent>
     </div>
+    </Drawer>
   );
 }
