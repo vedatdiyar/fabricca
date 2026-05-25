@@ -2,9 +2,28 @@
 
 import { db } from "@/db";
 import { thesisCore } from "@/db/schema";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { eq } from "drizzle-orm";
 import { XMLParser } from "fast-xml-parser";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
+
+const queryExtractionSchema = z.object({
+  englishQueries: z
+    .array(z.string())
+    .min(3)
+    .max(3)
+    .describe(
+      "Semantic Scholar API araması için en fazla 2-3 kelimeden oluşan, bağlaç (and, in, of) içermeyen parça parça 3 adet İngilizce arama terimi kombinasyonu.",
+    ),
+  turkishKeywords: z
+    .array(z.string())
+    .min(4)
+    .max(4)
+    .describe(
+      "DergiPark OAI-PMH XML verilerini yerelde filtrelemek için kullanılacak, ek almamış, yalın halde 4 adet Türkçe tekil anahtar kelime.",
+    ),
+});
 
 export interface ThesisCoreData {
   title: string;
@@ -149,31 +168,24 @@ export async function getAcademicRecommendationsAction(
     const ai = new GoogleGenAI({ apiKey: geminiKey });
 
     // Extract English short query options and Turkish filtering keywords
-    const extractPrompt = `
-Görev: Kullanıcının tez başlığı, araştırma sorusu, ana argümanı ve metodolojisinden yola çıkarak iki farklı arama terimi grubu üret:
-1. Semantic Scholar API'de arama yapmak için 3 farklı kısa, ampirik bağlamlı İngilizce anahtar kelime kombinasyonu (englishQueries dizisi). Her kombinasyon 2-3 kelimeden oluşmalı ve arama doğruluğunu artırmak için ampirik bağlam (Turkey vb.) içermelidir (Örn: ["neoliberalism Turkey", "precarity Turkey", "class polarization Turkey"]).
-2. DergiPark OAI-PMH metadata havuzundan çekilen gerçek makaleleri in-memory filtrelemek için kullanılacak 3-4 adet Türkçe anahtar kelime (turkishKeywords dizisi) (Örn: ["sermaye", "birikim", "finansallaşma"]).
-
-TEZ ANAYASASI:
+    const extractPrompt = `TEZ ANAYASASI:
 - Başlık: ${title}
 - Araştırma Sorusu: ${researchQuestion}
 - Ana Argüman: ${argument}
-- Metodoloji: ${methodology}
-
-Lütfen yanıtı aşağıdaki JSON formatında döndür:
-{
-  "englishQueries": ["query1", "query2", "query3"],
-  "turkishKeywords": ["kelime1", "kelime2", "kelime3", "kelime4"]
-}
-Yanıt sadece saf JSON formatında olmalıdır. Markdown kod bloğu (\`\`\`json vb.) kullanma.
-`;
+- Metodoloji: ${methodology}`;
 
     const extractResponse = await ai.models.generateContent({
       model: "gemini-3.1-flash-lite",
       contents: extractPrompt,
       config: {
+        systemInstruction:
+          "Sen girdi olarak verilen Tez Başlığı, Araştırma Sorusu ve Ana Argüman metinlerinden en efektif akademik arama terimlerini çıkaran titiz bir Kıdemli Siyaset Bilimi kütüphanecisisin. KATI KURAL: Üreteceğin 3 adet 'englishQueries' ve 4 adet 'turkishKeywords' öğelerinden en az biri mutlaka ana argümanda geçen kuramsal teorisyenlerin isimlerini ('Harvey', 'Bourdieu', 'Standing') içermeli, diğerleri ise doğrudan 'prekarizasyon/precarity', 'kutuplaşma/polarization' ve 'gelir dağılımı/inequality' kavramları ile Türkiye ('Turkey') coğrafyasını harmanlamalıdır. Uzun cümleler veya jenerik, odak dışı kelimeler üretilmesi kesinlikle yasaktır.",
         temperature: 1,
         responseMimeType: "application/json",
+        responseJsonSchema: zodToJsonSchema(queryExtractionSchema as any),
+        thinkingConfig: {
+          thinkingLevel: ThinkingLevel.LOW,
+        },
       },
     });
 
@@ -183,15 +195,30 @@ Yanıt sadece saf JSON formatında olmalıdır. Markdown kod bloğu (\`\`\`json 
     };
     try {
       const cleanExtractText = (extractResponse.text || "").trim();
-      extracted = JSON.parse(cleanExtractText);
+      const parsedJson = JSON.parse(cleanExtractText);
+      const validated = queryExtractionSchema.parse(parsedJson);
+      extracted = {
+        englishQueries: validated.englishQueries,
+        turkishKeywords: validated.turkishKeywords,
+      };
     } catch (err) {
       console.error(
-        "[getAcademicRecommendationsAction] Extract queries parsing error:",
+        "[getAcademicRecommendationsAction] Extract queries parsing error or validation failure:",
         err,
       );
+      const words = title.split(" ").filter(Boolean);
       extracted = {
-        englishQueries: [title.split(" ").slice(0, 2).join(" ") + " Turkey"],
-        turkishKeywords: title.split(" ").slice(0, 3),
+        englishQueries: [
+          (words[0] || "precarity") + " Turkey",
+          "precarity Turkey",
+          "class polarization Turkey",
+        ],
+        turkishKeywords: [
+          words[0] || "prekarizasyon",
+          words[1] || "kutuplaşma",
+          words[2] || "gelir",
+          "prekarizasyon",
+        ],
       };
     }
 
@@ -526,31 +553,24 @@ export async function discoverNewRecommendationsAction(
     const ai = new GoogleGenAI({ apiKey: geminiKey });
 
     // Extract English short query options and Turkish filtering keywords
-    const extractPrompt = `
-Görev: Kullanıcının tez başlığı, araştırma sorusu, ana argümanı ve metodolojisinden yola çıkarak iki farklı arama terimi grubu üret:
-1. Semantic Scholar API'de arama yapmak için 3 farklı kısa, ampirik bağlamlı İngilizce anahtar kelime kombinasyonu (englishQueries dizisi). Her kombinasyon 2-3 kelimeden oluşmalı ve arama doğruluğunu artırmak için ampirik bağlam (Turkey vb.) içermelidir (Örn: ["neoliberalism Turkey", "precarity Turkey", "class polarization Turkey"]).
-2. DergiPark OAI-PMH metadata havuzundan çekilen gerçek makaleleri in-memory filtrelemek için kullanılacak 3-4 adet Türkçe anahtar kelime (turkishKeywords dizisi) (Örn: ["sermaye", "birikim", "finansallaşma"]).
-
-TEZ ANAYASASI:
+    const extractPrompt = `TEZ ANAYASASI:
 - Başlık: ${title}
 - Araştırma Sorusu: ${researchQuestion}
 - Ana Argüman: ${argument}
-- Metodoloji: ${methodology}
-
-Lütfen yanıtı aşağıdaki JSON formatında döndür:
-{
-  "englishQueries": ["query1", "query2", "query3"],
-  "turkishKeywords": ["kelime1", "kelime2", "kelime3", "kelime4"]
-}
-Yanıt sadece saf JSON formatında olmalıdır. Markdown kod bloğu (\`\`\`json vb.) kullanma.
-`;
+- Metodoloji: ${methodology}`;
 
     const extractResponse = await ai.models.generateContent({
       model: "gemini-3.1-flash-lite",
       contents: extractPrompt,
       config: {
+        systemInstruction:
+          "Sen girdi olarak verilen Tez Başlığı, Araştırma Sorusu ve Ana Argüman metinlerinden en efektif akademik arama terimlerini çıkaran titiz bir Kıdemli Siyaset Bilimi kütüphanecisisin. KATI KURAL: Üreteceğin 3 adet 'englishQueries' ve 4 adet 'turkishKeywords' öğelerinden en az biri mutlaka ana argümanda geçen kuramsal teorisyenlerin isimlerini ('Harvey', 'Bourdieu', 'Standing') içermeli, diğerleri ise doğrudan 'prekarizasyon/precarity', 'kutuplaşma/polarization' ve 'gelir dağılımı/inequality' kavramları ile Türkiye ('Turkey') coğrafyasını harmanlamalıdır. Uzun cümleler veya jenerik, odak dışı kelimeler üretilmesi kesinlikle yasaktır.",
         temperature: 1,
         responseMimeType: "application/json",
+        responseJsonSchema: zodToJsonSchema(queryExtractionSchema as any),
+        thinkingConfig: {
+          thinkingLevel: ThinkingLevel.LOW,
+        },
       },
     });
 
@@ -560,15 +580,30 @@ Yanıt sadece saf JSON formatında olmalıdır. Markdown kod bloğu (\`\`\`json 
     };
     try {
       const cleanExtractText = (extractResponse.text || "").trim();
-      extracted = JSON.parse(cleanExtractText);
+      const parsedJson = JSON.parse(cleanExtractText);
+      const validated = queryExtractionSchema.parse(parsedJson);
+      extracted = {
+        englishQueries: validated.englishQueries,
+        turkishKeywords: validated.turkishKeywords,
+      };
     } catch (err) {
       console.error(
-        "[discoverNewRecommendationsAction] Extract queries parsing error:",
+        "[discoverNewRecommendationsAction] Extract queries parsing error or validation failure:",
         err,
       );
+      const words = title.split(" ").filter(Boolean);
       extracted = {
-        englishQueries: [title.split(" ").slice(0, 2).join(" ") + " Turkey"],
-        turkishKeywords: title.split(" ").slice(0, 3),
+        englishQueries: [
+          (words[0] || "precarity") + " Turkey",
+          "precarity Turkey",
+          "class polarization Turkey",
+        ],
+        turkishKeywords: [
+          words[0] || "prekarizasyon",
+          words[1] || "kutuplaşma",
+          words[2] || "gelir",
+          "prekarizasyon",
+        ],
       };
     }
 
