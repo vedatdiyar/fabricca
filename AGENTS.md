@@ -268,18 +268,18 @@ Bu bölüm, Fabricca projesinin Vercel Production Deployment öncesi son durumun
 | 🟩 **FAZ 1** | Şifre Duvarı, Responsive İskelet, Statik Sayfalar | ✅ **TAMAMLANDI** | Login sayfası (SHA-256 cookie auth), responsive layout (sidebar + bottom nav), tüm statik sayfa iskeletleri hazır                                                           |
 | 🟨 **FAZ 2** | Bulut Altyapısı ve Veri Katmanı                   | ✅ **TAMAMLANDI** | Neon PostgreSQL + pgvector + Drizzle ORM şemaları, Cloudflare R2 S3 istemcisi, dosya yükleme ve metadata çekme tam çalışır                                                  |
 | 🟧 **FAZ 3** | LangChain + LlamaParse + Embedding RAG Boru Hattı | ✅ **TAMAMLANDI** | LlamaParse v2 entegrasyonu, MarkdownHeaderTextSplitter + RecursiveCharacterTextSplitter (1000/200), Gemini embedding-2 ile 1536D vektör çıktısı, pdf_chunks tablosuna kayıt |
-| 🟥 **FAZ 4** | Onboarding ve Canlı YÖKTEZ Servisi                | ⚠️ **KISMİ**      | Onboarding sayfası statik placeholder; YÖKTEZ API Route ve Özgün Değer Raporu henüz geliştirilmedi                                                                          |
-| 🟪 **FAZ 5** | Danışman Odası, Not Bağlamlandırma, Fikir Sepeti  | ⚠️ **KISMİ**      | Advisor chat + pgvector similarity search + citation popover + fikir sepeti tam çalışır; not otomatik bağlamlandırma (ai_context_suggestion) eksik                          |
+| 🟥 **FAZ 4** | Onboarding ve Canlı YÖKTEZ Servisi                | ✅ **TAMAMLANDI** | Onboarding (Gemini mülakat akışı, tez anayasası kaydı) + Tezara scraping + Özgün Değer Raporu tam çalışır                                                                  |
+| 🟪 **FAZ 5** | Danışman Odası, Not Bağlamlandırma, Fikir Sepeti  | ✅ **TAMAMLANDI** | Advisor chat + pgvector cosine search + citation popover + fikir sepeti + not bağlamlandırma (ai_context_suggestions) tam çalışır                                          |
 
 ### Mevcut Çalışan Mimari (Güncel)
 
 ```
 Frontend (Next.js 16 + Tailwind CSS v4 + Shadcn UI + Base UI)
   ├── /login        → Server Action ile SHA-256 cookie auth
-  ├── /dashboard    → Statik iskelet (thesis_core sorgusu mock)
-  ├── /library      → PDF yükleme (R2), LlamaParse parsing, chunking, embedding
-  ├── /advisor      → RAG chat: pgvector cosine search + Gemini 3.1 Flash Lite
-  ├── /onboarding   → Statik placeholder (Gemini mülakat akışı eksik)
+  ├── /dashboard    → Tez anayasası özet kartı + Semantic Scholar + DergiPark önerileri
+  ├── /library      → PDF yükleme (R2), LlamaParse parsing, chunking, embedding, not bağlamlandırma
+  ├── /advisor      → RAG chat: pgvector cosine search + Gemini 3.1 Flash Lite + fikir sepeti
+  ├── /onboarding   → Gemini mülakat akışı + Tezara scraping + Özgün Değer Raporu
   ├── /tasks        → Kanban board (drag-drop, CRUD, due date picker)
   └── /insights     → Fikir Sepeti CRUD + Fikir Keskinleştirici (Gemini)
 
@@ -304,11 +304,7 @@ Backend (Server Actions + Drizzle ORM)
 
 ### Eksik / Tamamlanmamış Özellikler
 
-1. **Onboarding Mülakatı (FAZ 4):** `/src/app/onboarding/page.tsx` statik placeholder olarak duruyor. Gemini 3.1 Flash Lite ile adım adım kullanıcıyı yönlendiren ve `thesis_core` tablosuna yazma yapan mülakat akışı kurulmalıdır.
-
-2. **YÖKTEZ Canlı Tarama ve Özgün Değer Raporu (FAZ 4):** YÖKTEZ hidden API reverse-engineering yapılmamıştır. Kullanıcının onboarding sonrası literatürde konumlanmasını sağlayacak "Özgün Değer Raporu" mevcut değildir.
-
-3. **Otomatik Not Bağlamlandırma (FAZ 5 - C):** `saveNoteAction` notu kaydedip embedding üretiyor fakat Gemini 3.1 Flash Lite çalıştırıp `ai_context_suggestion` üretmiyor. Notlar, tez bölümü önerisi ve APA atıf künyesi olmadan kaydediliyor.
+Tüm fazlar tamamlanmıştır. Mevcut eksik bir özellik bulunmamaktadır.
 
 ### Production Deployment İçin Gerekli Çevresel Değişkenler
 
@@ -337,4 +333,4 @@ Vercel Dashboard → Project Settings → Environment Variables'a eklenmelidir:
 ---
 
 _Fabricca — Strateji ve RAG Karargahı_  
-_Son güncelleme: Mayıs 2026_
+_Son güncelleme: Mayıs 2026 (KAPANIŞ NOTU düzeltildi — tüm fazlar tamamlandı)_

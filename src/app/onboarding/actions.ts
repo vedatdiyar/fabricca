@@ -142,7 +142,7 @@ Unutma: Yanıtın her zaman geçerli bir JSON olmalı ve \`responseMimeType: "ap
       contents: contents,
       config: {
         systemInstruction: systemInstruction,
-        temperature: 0.4,
+        temperature: 1,
         responseMimeType: "application/json",
       },
     });
@@ -336,7 +336,7 @@ Kullanıcı Girdisi: ${userInput}
       model: "gemini-3.1-flash-lite",
       contents: keywordPrompt,
       config: {
-        temperature: 0.1,
+        temperature: 1,
       },
     });
 
@@ -484,7 +484,7 @@ ${JSON.stringify(theses, null, 2)}`
       contents: juryPrompt,
       config: {
         systemInstruction: jurySystemInstruction,
-        temperature: 0.3,
+        temperature: 1,
         responseMimeType: "application/json",
       },
     });

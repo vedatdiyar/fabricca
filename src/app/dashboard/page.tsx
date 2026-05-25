@@ -25,9 +25,17 @@ import {
   ArrowLeft,
   Loader2,
   Plus,
-  ChevronRight,
+  Upload,
   ExternalLink,
+  X,
 } from "lucide-react";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerClose,
+} from "@/components/ui/drawer";
 import { format, parse } from "date-fns";
 
 export default function DashboardPage() {
@@ -39,7 +47,10 @@ export default function DashboardPage() {
   const [isLoadingRecs, setIsLoadingRecs] = useState(true);
   const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState("");
+  const [recsError, setRecsError] = useState("");
   const [updatingTaskId, setUpdatingTaskId] = useState<number | null>(null);
+  const [selectedRec, setSelectedRec] =
+    useState<LiteratureRecommendation | null>(null);
 
   // Helper to format task due dates
   const formatTaskDate = (dateStr: string | null) => {
@@ -58,6 +69,7 @@ export default function DashboardPage() {
   ) => {
     try {
       setIsLoadingRecs(true);
+      setRecsError("");
 
       const recsRes = forceRefresh
         ? await discoverNewRecommendationsAction(
@@ -75,9 +87,12 @@ export default function DashboardPage() {
 
       if (recsRes.success && recsRes.recommendations) {
         setRecs(recsRes.recommendations);
+      } else {
+        setRecsError(recsRes.error || "Tavsiyeler yüklenirken hata oluştu.");
       }
     } catch (err) {
       console.error("Failed to fetch recommendations:", err);
+      setRecsError("API_CONNECTION_FAILURE");
     } finally {
       setIsLoadingRecs(false);
     }
@@ -233,9 +248,6 @@ export default function DashboardPage() {
             önerilerle literatürünüzü geliştirin
           </p>
         </div>
-        <span className="text-xs font-sans text-muted-foreground bg-card border border-border px-3 py-1.5 rounded w-fit">
-          Siber-Akademik Merkez
-        </span>
       </header>
 
       {/* TEZ ANAYASASI - Mobil Yatay Kaydırma */}
@@ -525,6 +537,26 @@ export default function DashboardPage() {
               ediliyor...
             </p>
           </div>
+        ) : recsError === "API_CONNECTION_FAILURE" ? (
+          <div className="border border-primary bg-background rounded-lg p-6 text-center space-y-3 max-w-2xl mx-auto">
+            <h4 className="text-xs font-bold font-sans text-primary uppercase tracking-widest">
+              Bağlantı Hatası
+            </h4>
+            <p className="text-xs text-muted-foreground font-sans leading-relaxed">
+              Ulusal ve uluslararası makale servis sağlayıcılarına (DergiPark /
+              Semantic Scholar) şu an erişilemiyor. Lütfen kısa bir süre sonra
+              tekrar deneyin.
+            </p>
+          </div>
+        ) : recsError ? (
+          <div className="border border-destructive bg-background rounded-lg p-6 text-center space-y-3 max-w-2xl mx-auto">
+            <h4 className="text-xs font-bold font-sans text-destructive uppercase tracking-widest">
+              Sistem Hatası
+            </h4>
+            <p className="text-xs text-muted-foreground font-sans leading-relaxed">
+              {recsError}
+            </p>
+          </div>
         ) : recs.length === 0 ? (
           <div className="border border-dashed border-border rounded-lg py-8 text-center text-xs text-muted-foreground">
             Tavsiye üretilemedi. Lütfen tez bilgilerinizi onboarding sayfasından
@@ -538,10 +570,18 @@ export default function DashboardPage() {
                 className="bg-background border border-border p-5 rounded-lg flex flex-col justify-between space-y-4 hover:border-primary transition duration-150"
               >
                 <div className="space-y-3">
-                  <div className="flex justify-between items-start gap-2">
-                    <span className="text-[9px] font-sans font-bold text-primary bg-secondary px-2 py-0.5 rounded border border-border shrink-0">
-                      Öneri #{i + 1}
-                    </span>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[9px] font-sans font-bold text-primary bg-secondary px-2 py-0.5 rounded border border-border shrink-0">
+                        Öneri #{i + 1}
+                      </span>
+                      <span className="text-[9px] font-sans font-bold text-primary bg-secondary px-2 py-0.5 rounded border border-primary shrink-0">
+                        {rec.source || "Semantic Scholar"}
+                      </span>
+                      <span className="text-[9px] font-sans font-bold text-muted-foreground bg-secondary px-1.5 py-0.5 rounded border border-border shrink-0">
+                        {rec.lang || "EN"}
+                      </span>
+                    </div>
                     {typeof rec.citationCount === "number" &&
                       rec.citationCount > 0 && (
                         <span className="text-[9px] font-sans font-bold text-muted-foreground bg-secondary px-2 py-0.5 rounded border border-border shrink-0">
@@ -576,11 +616,11 @@ export default function DashboardPage() {
                     </a>
                   )}
                   <button
-                    onClick={() => router.push("/advisor")}
+                    onClick={() => setSelectedRec(rec)}
                     className="text-[10px] font-bold text-muted-foreground hover:text-primary hover:underline flex items-center gap-1 cursor-pointer group"
                   >
-                    <span>Danışman Odasında Tartış</span>
-                    <ChevronRight className="size-3 transition group-hover:translate-x-0.5" />
+                    <Upload className="size-3.5 transition group-hover:text-primary" />
+                    <span>PDF Yükle</span>
                   </button>
                 </div>
               </div>
@@ -588,6 +628,68 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* PDF Yükleme Slide-over Paneli */}
+      <Drawer
+        open={selectedRec !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedRec(null);
+        }}
+      >
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>
+              <Upload className="size-4 text-primary" />
+              <span>PDF Yükle</span>
+            </DrawerTitle>
+            <DrawerClose>
+              <X className="size-4" />
+            </DrawerClose>
+          </DrawerHeader>
+          <div className="flex flex-col flex-1 p-5 space-y-5 overflow-y-auto">
+            {/* Siber-akademik uyarı */}
+            <div className="bg-background border border-border rounded-lg p-4 space-y-2">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Bu makaleyi Danışman Odası'nda kuramsal tartışmaya açmak için
+                tam metin PDF dosyası gereklidir. Lütfen kaynağın resmi
+                sayfasından indirdiğiniz PDF'i aşağıya yükleyin.
+              </p>
+            </div>
+
+            {/* Seçili kaynak künyesi */}
+            {selectedRec && (
+              <div className="bg-background border-l-2 border-primary pl-3 py-2 space-y-1">
+                <p className="text-xs text-foreground font-bold leading-snug">
+                  {selectedRec.title}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {selectedRec.authors} ({selectedRec.year})
+                </p>
+              </div>
+            )}
+
+            {/* Minimalist Dropzone */}
+            <div className="flex-1 border-2 border-dashed border-border rounded-lg p-8 flex flex-col items-center justify-center gap-3 text-center hover:border-primary transition duration-150 cursor-pointer group">
+              <div className="size-12 rounded-full bg-secondary border border-border flex items-center justify-center group-hover:border-primary transition duration-150">
+                <Upload className="size-5 text-muted-foreground group-hover:text-primary transition duration-150" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-foreground">
+                  PDF Seç veya Sürükle-Bırak
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  .pdf — Maks. 20MB
+                </p>
+              </div>
+            </div>
+
+            {/* Mock upload notu */}
+            <p className="text-[9px] text-muted-foreground text-center">
+              Yükleme lojiği RAG aşamasında eklenecektir.
+            </p>
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

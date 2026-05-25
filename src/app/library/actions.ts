@@ -664,7 +664,7 @@ export async function saveNoteAction(
         contents: userPrompt,
         config: {
           systemInstruction: systemPrompt,
-          temperature: 0.3,
+          temperature: 1,
         },
       });
 

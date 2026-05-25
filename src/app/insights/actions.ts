@@ -166,7 +166,7 @@ export async function sharpenInsightAction(
       contents: prompt,
       config: {
         systemInstruction: systemPrompt,
-        temperature: 0.4,
+        temperature: 1,
       },
     });
 

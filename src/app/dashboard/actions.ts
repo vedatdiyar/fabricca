@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { thesisCore } from "@/db/schema";
 import { GoogleGenAI } from "@google/genai";
 import { eq } from "drizzle-orm";
+import { XMLParser } from "fast-xml-parser";
 
 export interface ThesisCoreData {
   title: string;
@@ -26,6 +27,8 @@ export interface LiteratureRecommendation {
   relevance: string;
   url?: string;
   citationCount?: number;
+  source?: "DergiPark" | "Semantic Scholar";
+  lang?: "TR" | "EN";
 }
 
 export interface RecommendationsResult {
@@ -35,14 +38,33 @@ export interface RecommendationsResult {
 }
 
 /**
+ * Helper to extract raw text content from multi-format OAI-PMH XML fields (strings, objects, or arrays).
+ */
+function extractText(field: any): string {
+  if (!field) return "";
+  if (typeof field === "string") return field;
+  if (Array.isArray(field)) {
+    return field.map(extractText).join(" / ");
+  }
+  if (typeof field === "object") {
+    return field["#text"] || "";
+  }
+  return String(field);
+}
+
+/**
  * Server Action to retrieve the thesis core parameters (Thesis Constitution) from Neon PostgreSQL.
  * Since this is a single-user system, we fetch the first (and only) row. We accept userId to satisfy
  * user requirements, logging it dynamically or utilizing it for future multi-tenant expansions.
  */
-export async function getThesisCoreAction(userId?: string): Promise<GetThesisCoreResult> {
+export async function getThesisCoreAction(
+  userId?: string,
+): Promise<GetThesisCoreResult> {
   try {
     if (userId) {
-      console.log(`[getThesisCoreAction] Fetching thesis core for user: ${userId}`);
+      console.log(
+        `[getThesisCoreAction] Fetching thesis core for user: ${userId}`,
+      );
     }
 
     const [core] = await db.select().from(thesisCore).limit(1);
@@ -73,8 +95,9 @@ export async function getThesisCoreAction(userId?: string): Promise<GetThesisCor
 }
 
 /**
- * Server Action to generate 3 highly tailored academic literature recommendations.
- * Utilizes persistent Neon PostgreSQL database caching before hitting Semantic Scholar or Gemini.
+ * Server Action to generate highly tailored academic literature recommendations.
+ * Utilizes a strict "Fetch & Curate" (Arka Planda Araştır -> İncele -> Sadece Okeylenen Gerçek Veriyi UI'da Göster) mimarisi.
+ * Canlı veriler alınamadığında doğrudan connection failure döner.
  */
 export async function getAcademicRecommendationsAction(
   title: string,
@@ -88,7 +111,8 @@ export async function getAcademicRecommendationsAction(
     if (!core) {
       return {
         success: false,
-        error: "Tez anayasası bulunamadı. Lütfen onboarding işlemini tamamlayın.",
+        error:
+          "Tez anayasası bulunamadı. Lütfen onboarding işlemini tamamlayın.",
       };
     }
 
@@ -96,14 +120,19 @@ export async function getAcademicRecommendationsAction(
       try {
         const parsed = JSON.parse(core.academicRecommendations);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          console.log("[getAcademicRecommendationsAction] Loaded recommendations from Neon PostgreSQL database cache.");
+          console.log(
+            "[getAcademicRecommendationsAction] Loaded recommendations from Neon PostgreSQL database cache.",
+          );
           return {
             success: true,
             recommendations: parsed,
           };
         }
       } catch (parseError) {
-        console.error("[getAcademicRecommendationsAction] Failed to parse recommendations from DB:", parseError);
+        console.error(
+          "[getAcademicRecommendationsAction] Failed to parse recommendations from DB:",
+          parseError,
+        );
       }
     }
 
@@ -112,15 +141,18 @@ export async function getAcademicRecommendationsAction(
     if (!geminiKey) {
       return {
         success: false,
-        error: "Gemini API anahtarı bulunamadı (.env.local içindeki GEMINI_API_KEY).",
+        error:
+          "Gemini API anahtarı bulunamadı (.env.local içindeki GEMINI_API_KEY).",
       };
     }
 
     const ai = new GoogleGenAI({ apiKey: geminiKey });
 
-    // Extract 3-4 most critical English academic keywords
+    // Extract English short query options and Turkish filtering keywords
     const extractPrompt = `
-Görevin, kullanıcının tez başlığı, araştırma sorusu, ana argümanı ve metodolojisinden yola çıkarak, Semantic Scholar API'de arama yapmak için kullanılacak en fazla 3-4 kelimelik, İngilizce temiz bir akademik arama sorgusu (query) üretmendir.
+Görev: Kullanıcının tez başlığı, araştırma sorusu, ana argümanı ve metodolojisinden yola çıkarak iki farklı arama terimi grubu üret:
+1. Semantic Scholar API'de arama yapmak için 3 farklı kısa, ampirik bağlamlı İngilizce anahtar kelime kombinasyonu (englishQueries dizisi). Her kombinasyon 2-3 kelimeden oluşmalı ve arama doğruluğunu artırmak için ampirik bağlam (Turkey vb.) içermelidir (Örn: ["neoliberalism Turkey", "precarity Turkey", "class polarization Turkey"]).
+2. DergiPark OAI-PMH metadata havuzundan çekilen gerçek makaleleri in-memory filtrelemek için kullanılacak 3-4 adet Türkçe anahtar kelime (turkishKeywords dizisi) (Örn: ["sermaye", "birikim", "finansallaşma"]).
 
 TEZ ANAYASASI:
 - Başlık: ${title}
@@ -128,75 +160,263 @@ TEZ ANAYASASI:
 - Ana Argüman: ${argument}
 - Metodoloji: ${methodology}
 
-Yanıt Kuralları:
-- Sadece arama kelimelerini aralarında boşluk bırakarak döndür (Örn: "neoliberalism class structure precariat Turkey").
-- Kesinlikle tırnak işareti, noktalama işareti veya açıklayıcı metin ekleme.
-- Arama kalitesini artırmak için terimlerin İngilizce akademik literatür karşılıklarını seç.
+Lütfen yanıtı aşağıdaki JSON formatında döndür:
+{
+  "englishQueries": ["query1", "query2", "query3"],
+  "turkishKeywords": ["kelime1", "kelime2", "kelime3", "kelime4"]
+}
+Yanıt sadece saf JSON formatında olmalıdır. Markdown kod bloğu (\`\`\`json vb.) kullanma.
 `;
 
     const extractResponse = await ai.models.generateContent({
       model: "gemini-3.1-flash-lite",
       contents: extractPrompt,
       config: {
-        temperature: 0.2,
+        temperature: 1,
+        responseMimeType: "application/json",
       },
     });
 
-    const searchQuery = (extractResponse.text || "").trim().replace(/['"“”]/g, "");
-    console.log(`[getAcademicRecommendationsAction] Extracted search query: "${searchQuery}"`);
-
-    // Query Semantic Scholar Bulk Search endpoint
-    let top5Papers: any[] = [];
+    let extracted: { englishQueries: string[]; turkishKeywords: string[] } = {
+      englishQueries: [],
+      turkishKeywords: [],
+    };
     try {
-      const url = `https://api.semanticscholar.org/graph/v1/paper/search/bulk?query=${encodeURIComponent(searchQuery)}&fields=paperId,title,url,abstract,citationCount,authors,year`;
-      const apiRes = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Accept": "application/json",
-        },
-      });
-
-      if (apiRes.ok) {
-        const data = await apiRes.json();
-        const papers = data.data || [];
-        
-        const sorted = papers
-          .map((p: any) => ({
-            paperId: p.paperId || "",
-            title: p.title || "",
-            url: p.url || "",
-            abstract: p.abstract || "",
-            citationCount: typeof p.citationCount === "number" ? p.citationCount : 0,
-            authors: Array.isArray(p.authors)
-              ? p.authors.map((a: any) => (typeof a === "object" && a?.name ? a.name : String(a))).join(", ")
-              : String(p.authors || ""),
-            year: p.year ? String(p.year) : "",
-          }))
-          .sort((a: any, b: any) => b.citationCount - a.citationCount);
-
-        top5Papers = sorted.slice(0, 5);
-        console.log(`[getAcademicRecommendationsAction] Fetched ${papers.length} papers from Semantic Scholar, top 5 selected.`);
-      } else {
-        console.error(`[getAcademicRecommendationsAction] Semantic Scholar API returned status ${apiRes.status}`);
-      }
-    } catch (apiErr) {
-      console.error("[getAcademicRecommendationsAction] Semantic Scholar fetch error:", apiErr);
+      const cleanExtractText = (extractResponse.text || "").trim();
+      extracted = JSON.parse(cleanExtractText);
+    } catch (err) {
+      console.error(
+        "[getAcademicRecommendationsAction] Extract queries parsing error:",
+        err,
+      );
+      extracted = {
+        englishQueries: [title.split(" ").slice(0, 2).join(" ") + " Turkey"],
+        turkishKeywords: title.split(" ").slice(0, 3),
+      };
     }
 
-    // Gemini Academic Jury validation filter
+    const englishQueries = extracted.englishQueries || [];
+    const turkishKeywords = extracted.turkishKeywords || [];
+    console.log(
+      `[getAcademicRecommendationsAction] Extracted englishQueries: ${JSON.stringify(englishQueries)}, turkishKeywords: ${JSON.stringify(turkishKeywords)}`,
+    );
+
+    // Fetch from DergiPark OAI-PMH official public endpoint
+    let dergiParkPapers: any[] = [];
+    try {
+      const dergiParkUrl = `https://dergipark.org.tr/api/public/oai/?verb=ListRecords&metadataPrefix=oai_dc`;
+      const dpRes = await fetch(dergiParkUrl, {
+        method: "GET",
+      });
+
+      console.log("[Teşhis - DergiPark OAI-PMH Status]:", dpRes.status);
+      const dpXml = await dpRes.text();
+      console.log(
+        "[Teşhis - DergiPark OAI-PMH Response]:",
+        dpXml.slice(0, 200),
+      );
+
+      if (dpRes.ok) {
+        const parser = new XMLParser({ ignoreAttributes: false });
+        const jsonObj = parser.parse(dpXml);
+        const records = jsonObj["OAI-PMH"]?.ListRecords?.record || [];
+
+        if (Array.isArray(records) && records.length > 0) {
+          const parsedRecords = records.map((rec: any) => {
+            const dc = rec.metadata?.["oai_dc:dc"] || {};
+            const titleText = extractText(dc["dc:title"]);
+            const creators = dc["dc:creator"];
+            const authors = Array.isArray(creators)
+              ? creators.map(extractText).join(", ")
+              : extractText(creators) || "Belirtilmemiş";
+
+            const dateVal = extractText(dc["dc:date"]);
+            const year = dateVal
+              ? dateVal.split("-")[0]
+              : new Date().getFullYear().toString();
+
+            const identifiers = dc["dc:identifier"];
+            let url = "";
+            if (Array.isArray(identifiers)) {
+              url =
+                identifiers.find((id: any) => {
+                  const s = extractText(id);
+                  return s.startsWith("http://") || s.startsWith("https://");
+                }) || "";
+            } else {
+              url = extractText(identifiers);
+            }
+            if (!url) {
+              url = `https://dergipark.org.tr/tr/pub/search?q=${encodeURIComponent(turkishKeywords.join(" "))}`;
+            }
+
+            const abstract = extractText(dc["dc:description"]);
+
+            return {
+              paperId: String(
+                rec.header?.identifier ||
+                  Math.random().toString(36).substr(2, 9),
+              ),
+              title: titleText,
+              authors,
+              year,
+              url,
+              abstract,
+              source: "DergiPark" as const,
+              lang: "TR" as const,
+            };
+          });
+
+          // In-memory filter using Turkish keywords
+          const lowerKeywords = turkishKeywords.map((k) =>
+            k.toLowerCase().trim(),
+          );
+          let filtered = parsedRecords.filter((rec: any) => {
+            const titleLower = rec.title.toLowerCase();
+            const abstractLower = rec.abstract.toLowerCase();
+            return lowerKeywords.some(
+              (kw) => titleLower.includes(kw) || abstractLower.includes(kw),
+            );
+          });
+
+          // Fallback if filter leaves 0 records
+          if (filtered.length === 0) {
+            console.log(
+              "[getAcademicRecommendationsAction] OAI-PMH keyword match is empty, loading top 12 general records.",
+            );
+            filtered = parsedRecords.slice(0, 12);
+          }
+
+          dergiParkPapers = filtered;
+          console.log(
+            `[getAcademicRecommendationsAction] Successfully processed ${dergiParkPapers.length} papers from DergiPark OAI-PMH.`,
+          );
+        }
+      } else {
+        console.error(
+          "[Teşhis - DergiPark OAI-PMH Error XML/Text]:",
+          dpXml.slice(0, 200),
+        );
+      }
+    } catch (apiErr: any) {
+      console.error("[Teşhis - DergiPark OAI-PMH Exception]:", apiErr);
+    }
+
+    // Parallel fetch from Semantic Scholar Bulk Search using atomized queries
+    let semanticScholarPapers: any[] = [];
+    if (englishQueries.length > 0) {
+      try {
+        const s2Promises = englishQueries.map(async (query: string) => {
+          try {
+            const s2Url = `https://api.semanticscholar.org/graph/v1/paper/search/bulk?query=${encodeURIComponent(query)}&fields=paperId,title,url,abstract,citationCount,authors,year`;
+            const s2Res = await fetch(s2Url, {
+              method: "GET",
+              headers: { Accept: "application/json" },
+            });
+            console.log(
+              `[Teşhis - Semantic Scholar Status for "${query}"]:`,
+              s2Res.status,
+            );
+            const s2Text = await s2Res.text();
+            if (s2Res.ok) {
+              const s2Data = JSON.parse(s2Text);
+              return s2Data.data || [];
+            } else {
+              console.error(
+                `[Teşhis - Semantic Scholar Error for "${query}"]:`,
+                s2Text.slice(0, 200),
+              );
+              return [];
+            }
+          } catch (err: any) {
+            console.error(
+              `[Teşhis - Semantic Scholar Exception for "${query}"]:`,
+              err,
+            );
+            return [];
+          }
+        });
+
+        const s2ResultsArray = await Promise.all(s2Promises);
+        const s2PapersMap = new Map<string, any>();
+        for (const papers of s2ResultsArray) {
+          for (const p of papers) {
+            if (p.paperId) {
+              s2PapersMap.set(p.paperId, p);
+            }
+          }
+        }
+
+        semanticScholarPapers = Array.from(s2PapersMap.values()).map(
+          (p: any) => ({
+            paperId: p.paperId || Math.random().toString(36).substr(2, 9),
+            title: p.title || "Untitled Paper",
+            url: p.url || "",
+            abstract: p.abstract || "",
+            citationCount:
+              typeof p.citationCount === "number" ? p.citationCount : 0,
+            authors: Array.isArray(p.authors)
+              ? p.authors
+                  .map((a: any) =>
+                    typeof a === "object" && a?.name ? a.name : String(a),
+                  )
+                  .join(", ")
+              : String(p.authors || "Unknown"),
+            year: p.year ? String(p.year) : new Date().getFullYear().toString(),
+            source: "Semantic Scholar" as const,
+            lang: "EN" as const,
+          }),
+        );
+        console.log(
+          `[getAcademicRecommendationsAction] Successfully gathered ${semanticScholarPapers.length} unique papers from Semantic Scholar.`,
+        );
+      } catch (s2Err) {
+        console.error(
+          "[getAcademicRecommendationsAction] Semantic Scholar bulk gathering error:",
+          s2Err,
+        );
+      }
+    }
+
+    // Combine candidate pools
+    const mergedPool = [...dergiParkPapers, ...semanticScholarPapers];
+
+    // If both APIs are down/empty, return connection failure immediately.
+    if (mergedPool.length === 0) {
+      console.log(
+        "[getAcademicRecommendationsAction] Merged candidates list is empty. Returning API_CONNECTION_FAILURE.",
+      );
+      return {
+        success: false,
+        error: "API_CONNECTION_FAILURE",
+      };
+    }
+
+    // Curate using Gemini Academic Jury
     const jurySystemPrompt = `
 Sen Siyaset Bilimi, Politik Sosyoloji ve Uluslararası İlişkiler alanlarında uzman, son derece seçkin ve analitik düşünen bir Akademik Jüri / Danışman Profesörsün.
-Önünde kullanıcının aktif tez anayasası ve Semantic Scholar'dan çekilmiş gerçek makaleler var. Bu gerçek makaleler arasından kullanıcının argümanına ve metodolojisine en radikal, en uyumlu katkıyı sağlayacak EN İYİ 3 TANESİNİ seç, onay ver ve bunları başlık, url, citationCount ve kısa bir entegrasyon gerekçesi içerecek şekilde temiz bir JSON dizisi olarak döndür.
+Önünde kullanıcının aktif tez anayasası ve hem DergiPark (TR) hem de Semantic Scholar (EN) kaynaklarından toplanmış tamamen GERÇEK aday akademik makaleler var.
+
+Görevin, YALNIZCA sana sunulan GERÇEK ADAY MAKALELER HAVUZU içinden, tez anayasasına en uygun, en güçlü ve en uyumlu katkıyı sağlayacak toplam 6 (altı) adet makaleyi seçmek ve küratörlük yapmaktır.
+
+KAFANDAN HİÇBİR YENİ MAKALE, YAZAR, YIL VEYA URL TÜRETMEYECEKSİN/UYDURMAYACAKSIN. Sadece sunulan havuzdaki nesneleri seçeceksin. API veya havuzdan gelen orijinal başlık, yazar, yıl, paperId ve URL bilgilerini ASLA DEĞİŞTİRME, manipüle etme, sahte link/metin türetme.
+
+KRİTİK DENGELİ LİSTELEME KURALI:
+- Seçtiğin 6 makalenin en az 3 tanesi (%50'si) kesinlikle Türkçe ("lang": "TR" ve "source": "DergiPark") kaynaklarından olmalıdır. Geri kalanı İngilizce ("lang": "EN" ve "source": "Semantic Scholar") kaynaklarından olmalıdır. Havuzdaki TR/EN oranının dengesi kusursuz olmalıdır. (Eğer havuzda yeterince Türkçe veya İngilizce makale yoksa, elindeki tüm adaylar içinden tez anayasasına en uygun olanları uydurma yapmadan seç.)
+
+Her seçilen makale için başlık, url, citationCount, source, lang ve Türkçe olarak 2-3 cümlelik çok güçlü bir entegrasyon gerekçesi ("relevance") üret.
 
 Yanıtını kesinlikle aşağıdaki JSON formatında bir liste olarak vermelisin:
 [
   {
-    "paperId": "Makalenin paperId'si",
-    "title": "Makale veya Kitap Başlığı",
-    "authors": "Yazar(lar)",
-    "year": "Yıl",
-    "url": "Makalenin URL'si veya boş string",
-    "citationCount": Atıf sayısı (sayı olarak),
+    "paperId": "Aday listeden aynen kopyalanacak paperId",
+    "title": "Aday listeden aynen kopyalanacak Başlık",
+    "authors": "Aday listeden aynen kopyalanacak Yazar(lar)",
+    "year": "Aday listeden aynen kopyalanacak Yıl",
+    "url": "Aday listeden aynen kopyalanacak URL",
+    "citationCount": Aday listeden aynen kopyalanacak Atıf sayısı veya 0,
+    "source": "DergiPark" veya "Semantic Scholar",
+    "lang": "TR" veya "EN",
     "relevance": "Seçilen makalenin tezin ana argümanına ve metodolojisine nasıl bir radikal ve uyumlu katkı sağlayacağı, tezde nasıl konumlandırılacağı (Türkçe olarak 2-3 cümleyle açıklanmalıdır)"
   }
 ]
@@ -204,38 +424,25 @@ Yanıtını kesinlikle aşağıdaki JSON formatında bir liste olarak vermelisin
 Unutma: Yanıtın her zaman geçerli bir JSON olmalı ve başka hiçbir metin içermemelidir. Markdown kod bloğu (\`\`\`json vb.) kullanma, sadece saf JSON döndür.
 `;
 
-    let juryPrompt = "";
-    if (top5Papers.length > 0) {
-      juryPrompt = `
+    const juryPrompt = `
 TEZ ANAYASASI:
 - Başlık: ${title}
 - Araştırma Sorusu: ${researchQuestion}
 - Ana Argüman: ${argument}
 - Metodoloji: ${methodology}
 
-SEMANTIC SCHOLAR'DAN ÇEKİLEN GERÇEK MAKALELER:
-${JSON.stringify(top5Papers, null, 2)}
+BİRLEŞİK ADAY MAKALELER HAVUZU (Sadece Buradan Seçim Yapabilirsin!):
+${JSON.stringify(mergedPool, null, 2)}
 
-Lütfen bu gerçek makaleler arasından tez anayasasına en uygun, en güçlü ve en uyumlu katkıyı sağlayacak EN İYİ 3 TANESİNİ seç ve istenen JSON formatında döndür.
+Lütfen bu birleşik havuzdan kurallara tam uyarak (en iyi 6 makaleyi) seç ve istenen JSON formatında döndür.
 `;
-    } else {
-      juryPrompt = `
-TEZ ANAYASASI:
-- Başlık: ${title}
-- Araştırma Sorusu: ${researchQuestion}
-- Ana Argüman: ${argument}
-- Metodoloji: ${methodology}
-
-NOT: Semantic Scholar araması sonuç döndürmedi. Lütfen tezin kavramsal çelişkilerini aşmasına ve literatürde sağlam bir temele oturmasına yardımcı olacak en iyi 3 gerçek akademik makale veya kitap önerisini doğrudan kendin üret ve istenen JSON formatında döndür.
-`;
-    }
 
     const response = await ai.models.generateContent({
       model: "gemini-3.1-flash-lite",
       contents: juryPrompt,
       config: {
         systemInstruction: jurySystemPrompt,
-        temperature: 0.5,
+        temperature: 1,
         responseMimeType: "application/json",
       },
     });
@@ -243,13 +450,17 @@ NOT: Semantic Scholar araması sonuç döndürmedi. Lütfen tezin kavramsal çel
     let cleanText = response.text || "";
     cleanText = cleanText.trim();
     if (cleanText.startsWith("```")) {
-      cleanText = cleanText.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
+      cleanText = cleanText
+        .replace(/^```json\s*/i, "")
+        .replace(/```$/, "")
+        .trim();
     }
 
     const recommendations = JSON.parse(cleanText);
 
-    // Save recommendations back to Neon PostgreSQL database for persistence
-    await db.update(thesisCore)
+    // Save recommendations back to Neon PostgreSQL database cache
+    await db
+      .update(thesisCore)
       .set({ academicRecommendations: JSON.stringify(recommendations) })
       .where(eq(thesisCore.id, core.id));
 
@@ -269,7 +480,7 @@ NOT: Semantic Scholar araması sonuç döndürmedi. Lütfen tezin kavramsal çel
 /**
  * Server Action to search and validate NEW literature recommendations,
  * deduplicating them against existing database recommendations by paperId and title,
- * and appending the newly approved 3 papers to the database cache array.
+ * and curating them using Fetch & Curate framework, completely banning hallucinations.
  */
 export async function discoverNewRecommendationsAction(
   title: string,
@@ -282,7 +493,8 @@ export async function discoverNewRecommendationsAction(
     if (!core) {
       return {
         success: false,
-        error: "Tez anayasası bulunamadı. Lütfen onboarding işlemini tamamlayın.",
+        error:
+          "Tez anayasası bulunamadı. Lütfen onboarding işlemini tamamlayın.",
       };
     }
 
@@ -295,7 +507,10 @@ export async function discoverNewRecommendationsAction(
           existingRecs = parsed;
         }
       } catch (parseError) {
-        console.error("[discoverNewRecommendationsAction] Failed to parse existing recommendations:", parseError);
+        console.error(
+          "[discoverNewRecommendationsAction] Failed to parse existing recommendations:",
+          parseError,
+        );
       }
     }
 
@@ -303,15 +518,18 @@ export async function discoverNewRecommendationsAction(
     if (!geminiKey) {
       return {
         success: false,
-        error: "Gemini API anahtarı bulunamadı (.env.local içindeki GEMINI_API_KEY).",
+        error:
+          "Gemini API anahtarı bulunamadı (.env.local içindeki GEMINI_API_KEY).",
       };
     }
 
     const ai = new GoogleGenAI({ apiKey: geminiKey });
 
-    // Step 1: Extract English academic search terms
+    // Extract English short query options and Turkish filtering keywords
     const extractPrompt = `
-Görevin, kullanıcının tez başlığı, araştırma sorusu, ana argümanı ve metodolojisinden yola çıkarak, Semantic Scholar API'de arama yapmak için kullanılacak en fazla 3-4 kelimelik, İngilizce temiz bir akademik arama sorgusu (query) üretmendir.
+Görev: Kullanıcının tez başlığı, araştırma sorusu, ana argümanı ve metodolojisinden yola çıkarak iki farklı arama terimi grubu üret:
+1. Semantic Scholar API'de arama yapmak için 3 farklı kısa, ampirik bağlamlı İngilizce anahtar kelime kombinasyonu (englishQueries dizisi). Her kombinasyon 2-3 kelimeden oluşmalı ve arama doğruluğunu artırmak için ampirik bağlam (Turkey vb.) içermelidir (Örn: ["neoliberalism Turkey", "precarity Turkey", "class polarization Turkey"]).
+2. DergiPark OAI-PMH metadata havuzundan çekilen gerçek makaleleri in-memory filtrelemek için kullanılacak 3-4 adet Türkçe anahtar kelime (turkishKeywords dizisi) (Örn: ["sermaye", "birikim", "finansallaşma"]).
 
 TEZ ANAYASASI:
 - Başlık: ${title}
@@ -319,91 +537,280 @@ TEZ ANAYASASI:
 - Ana Argüman: ${argument}
 - Metodoloji: ${methodology}
 
-Yanıt Kuralları:
-- Sadece arama kelimelerini aralarında boşluk bırakarak döndür (Örn: "neoliberalism class structure precariat Turkey").
-- Kesinlikle tırnak işareti, noktalama işareti veya açıklayıcı metin ekleme.
-- Arama kalitesini artırmak için terimlerin İngilizce akademik literatür karşılıklarını seç.
+Lütfen yanıtı aşağıdaki JSON formatında döndür:
+{
+  "englishQueries": ["query1", "query2", "query3"],
+  "turkishKeywords": ["kelime1", "kelime2", "kelime3", "kelime4"]
+}
+Yanıt sadece saf JSON formatında olmalıdır. Markdown kod bloğu (\`\`\`json vb.) kullanma.
 `;
 
     const extractResponse = await ai.models.generateContent({
       model: "gemini-3.1-flash-lite",
       contents: extractPrompt,
       config: {
-        temperature: 0.2,
+        temperature: 1,
+        responseMimeType: "application/json",
       },
     });
 
-    const searchQuery = (extractResponse.text || "").trim().replace(/['"“”]/g, "");
-    console.log(`[discoverNewRecommendationsAction] Extracted search query: "${searchQuery}"`);
-
-    // Step 2: Query Semantic Scholar Bulk Search endpoint
-    let sortedPapers: any[] = [];
+    let extracted: { englishQueries: string[]; turkishKeywords: string[] } = {
+      englishQueries: [],
+      turkishKeywords: [],
+    };
     try {
-      const url = `https://api.semanticscholar.org/graph/v1/paper/search/bulk?query=${encodeURIComponent(searchQuery)}&fields=paperId,title,url,abstract,citationCount,authors,year`;
-      const apiRes = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Accept": "application/json",
-        },
-      });
-
-      if (apiRes.ok) {
-        const data = await apiRes.json();
-        const papers = data.data || [];
-        
-        sortedPapers = papers
-          .map((p: any) => ({
-            paperId: p.paperId || "",
-            title: p.title || "",
-            url: p.url || "",
-            abstract: p.abstract || "",
-            citationCount: typeof p.citationCount === "number" ? p.citationCount : 0,
-            authors: Array.isArray(p.authors)
-              ? p.authors.map((a: any) => (typeof a === "object" && a?.name ? a.name : String(a))).join(", ")
-              : String(p.authors || ""),
-            year: p.year ? String(p.year) : "",
-          }))
-          .sort((a: any, b: any) => b.citationCount - a.citationCount);
-      } else {
-        console.error(`[discoverNewRecommendationsAction] Semantic Scholar API returned status ${apiRes.status}`);
-      }
-    } catch (apiErr) {
-      console.error("[discoverNewRecommendationsAction] Semantic Scholar fetch error:", apiErr);
+      const cleanExtractText = (extractResponse.text || "").trim();
+      extracted = JSON.parse(cleanExtractText);
+    } catch (err) {
+      console.error(
+        "[discoverNewRecommendationsAction] Extract queries parsing error:",
+        err,
+      );
+      extracted = {
+        englishQueries: [title.split(" ").slice(0, 2).join(" ") + " Turkey"],
+        turkishKeywords: title.split(" ").slice(0, 3),
+      };
     }
 
-    // Step 3: Deduplicate against existing recommendations in the database
+    const englishQueries = extracted.englishQueries || [];
+    const turkishKeywords = extracted.turkishKeywords || [];
+
+    // Fetch from DergiPark OAI-PMH official public endpoint
+    let dergiParkPapers: any[] = [];
+    try {
+      const dergiParkUrl = `https://dergipark.org.tr/api/public/oai/?verb=ListRecords&metadataPrefix=oai_dc`;
+      const dpRes = await fetch(dergiParkUrl, {
+        method: "GET",
+      });
+
+      console.log("[Teşhis - DergiPark OAI-PMH Status]:", dpRes.status);
+      const dpXml = await dpRes.text();
+      console.log(
+        "[Teşhis - DergiPark OAI-PMH Response]:",
+        dpXml.slice(0, 200),
+      );
+
+      if (dpRes.ok) {
+        const parser = new XMLParser({ ignoreAttributes: false });
+        const jsonObj = parser.parse(dpXml);
+        const records = jsonObj["OAI-PMH"]?.ListRecords?.record || [];
+
+        if (Array.isArray(records) && records.length > 0) {
+          const parsedRecords = records.map((rec: any) => {
+            const dc = rec.metadata?.["oai_dc:dc"] || {};
+            const titleText = extractText(dc["dc:title"]);
+            const creators = dc["dc:creator"];
+            const authors = Array.isArray(creators)
+              ? creators.map(extractText).join(", ")
+              : extractText(creators) || "Belirtilmemiş";
+
+            const dateVal = extractText(dc["dc:date"]);
+            const year = dateVal
+              ? dateVal.split("-")[0]
+              : new Date().getFullYear().toString();
+
+            const identifiers = dc["dc:identifier"];
+            let url = "";
+            if (Array.isArray(identifiers)) {
+              url =
+                identifiers.find((id: any) => {
+                  const s = extractText(id);
+                  return s.startsWith("http://") || s.startsWith("https://");
+                }) || "";
+            } else {
+              url = extractText(identifiers);
+            }
+            if (!url) {
+              url = `https://dergipark.org.tr/tr/pub/search?q=${encodeURIComponent(turkishKeywords.join(" "))}`;
+            }
+
+            const abstract = extractText(dc["dc:description"]);
+
+            return {
+              paperId: String(
+                rec.header?.identifier ||
+                  Math.random().toString(36).substr(2, 9),
+              ),
+              title: titleText,
+              authors,
+              year,
+              url,
+              abstract,
+              source: "DergiPark" as const,
+              lang: "TR" as const,
+            };
+          });
+
+          // In-memory filter using Turkish keywords
+          const lowerKeywords = turkishKeywords.map((k) =>
+            k.toLowerCase().trim(),
+          );
+          let filtered = parsedRecords.filter((rec: any) => {
+            const titleLower = rec.title.toLowerCase();
+            const abstractLower = rec.abstract.toLowerCase();
+            return lowerKeywords.some(
+              (kw) => titleLower.includes(kw) || abstractLower.includes(kw),
+            );
+          });
+
+          // Fallback if filter leaves 0 records
+          if (filtered.length === 0) {
+            console.log(
+              "[discoverNewRecommendationsAction] OAI-PMH keyword match is empty, loading top 12 general records.",
+            );
+            filtered = parsedRecords.slice(0, 12);
+          }
+
+          dergiParkPapers = filtered;
+          console.log(
+            `[discoverNewRecommendationsAction] Successfully processed ${dergiParkPapers.length} papers from DergiPark OAI-PMH.`,
+          );
+        }
+      } else {
+        console.error(
+          "[Teşhis - DergiPark OAI-PMH Error XML/Text]:",
+          dpXml.slice(0, 200),
+        );
+      }
+    } catch (apiErr: any) {
+      console.error("[Teşhis - DergiPark OAI-PMH Exception]:", apiErr);
+    }
+
+    // Parallel fetch from Semantic Scholar
+    let semanticScholarPapers: any[] = [];
+    if (englishQueries.length > 0) {
+      try {
+        const s2Promises = englishQueries.map(async (query: string) => {
+          try {
+            const s2Url = `https://api.semanticscholar.org/graph/v1/paper/search/bulk?query=${encodeURIComponent(query)}&fields=paperId,title,url,abstract,citationCount,authors,year`;
+            const s2Res = await fetch(s2Url, {
+              method: "GET",
+              headers: { Accept: "application/json" },
+            });
+            console.log(
+              `[Teşhis - Semantic Scholar Status for "${query}"]:`,
+              s2Res.status,
+            );
+            const s2Text = await s2Res.text();
+            if (s2Res.ok) {
+              const s2Data = JSON.parse(s2Text);
+              return s2Data.data || [];
+            } else {
+              console.error(
+                `[Teşhis - Semantic Scholar Error for "${query}"]:`,
+                s2Text.slice(0, 200),
+              );
+              return [];
+            }
+          } catch (err: any) {
+            console.error(
+              `[Teşhis - Semantic Scholar Exception for "${query}"]:`,
+              err,
+            );
+            return [];
+          }
+        });
+
+        const s2ResultsArray = await Promise.all(s2Promises);
+        const s2PapersMap = new Map<string, any>();
+        for (const papers of s2ResultsArray) {
+          for (const p of papers) {
+            if (p.paperId) {
+              s2PapersMap.set(p.paperId, p);
+            }
+          }
+        }
+
+        semanticScholarPapers = Array.from(s2PapersMap.values()).map(
+          (p: any) => ({
+            paperId: p.paperId || Math.random().toString(36).substr(2, 9),
+            title: p.title || "Untitled Paper",
+            url: p.url || "",
+            abstract: p.abstract || "",
+            citationCount:
+              typeof p.citationCount === "number" ? p.citationCount : 0,
+            authors: Array.isArray(p.authors)
+              ? p.authors
+                  .map((a: any) =>
+                    typeof a === "object" && a?.name ? a.name : String(a),
+                  )
+                  .join(", ")
+              : String(p.authors || "Unknown"),
+            year: p.year ? String(p.year) : new Date().getFullYear().toString(),
+            source: "Semantic Scholar" as const,
+            lang: "EN" as const,
+          }),
+        );
+      } catch (err) {
+        console.error(
+          "[discoverNewRecommendationsAction] Semantic Scholar fetch error:",
+          err,
+        );
+      }
+    }
+
+    // Deduplicate against existing recommendations by title and paperId
     const existingPaperIds = new Set(
       existingRecs
-        .map(r => r.paperId)
-        .filter((id): id is string => typeof id === "string" && id !== "")
+        .map((r) => r.paperId)
+        .filter((id): id is string => typeof id === "string" && id !== ""),
     );
     const existingTitles = new Set(
-      existingRecs.map(r => r.title.toLowerCase().trim())
+      existingRecs.map((r) => r.title.toLowerCase().trim()),
     );
 
-    const unseenPapers = sortedPapers.filter((p: any) => {
+    const unseenDergiPark = dergiParkPapers.filter((p: any) => {
       const hasIdMatch = p.paperId && existingPaperIds.has(p.paperId);
-      const hasTitleMatch = p.title && existingTitles.has(p.title.toLowerCase().trim());
+      const hasTitleMatch =
+        p.title && existingTitles.has(p.title.toLowerCase().trim());
       return !hasIdMatch && !hasTitleMatch;
     });
 
-    const top5Unseen = unseenPapers.slice(0, 5);
-    console.log(`[discoverNewRecommendationsAction] Found ${unseenPapers.length} unseen papers out of ${sortedPapers.length} total fetched. Top 5 selected.`);
+    const unseenSemanticScholar = semanticScholarPapers.filter((p: any) => {
+      const hasIdMatch = p.paperId && existingPaperIds.has(p.paperId);
+      const hasTitleMatch =
+        p.title && existingTitles.has(p.title.toLowerCase().trim());
+      return !hasIdMatch && !hasTitleMatch;
+    });
 
-    // Step 4: Gemini Academic Jury evaluation (filtering and selecting 3 new papers)
+    const mergedUnseen = [
+      ...unseenDergiPark.slice(0, 5),
+      ...unseenSemanticScholar.slice(0, 5),
+    ];
+
+    // If both APIs are down/empty, return connection failure directly.
+    if (mergedUnseen.length === 0) {
+      console.log(
+        "[discoverNewRecommendationsAction] No unseen candidates retrieved. Returning API_CONNECTION_FAILURE.",
+      );
+      return {
+        success: false,
+        error: "API_CONNECTION_FAILURE",
+      };
+    }
+
+    // Select 4 new recommendations purely from candidates pool
     const jurySystemPrompt = `
 Sen Siyaset Bilimi, Politik Sosyoloji ve Uluslararası İlişkiler alanlarında uzman, son derece seçkin ve analitik düşünen bir Akademik Jüri / Danışman Profesörsün.
-Önünde kullanıcının aktif tez anayasası ve Semantic Scholar'dan çekilmiş yepyeni (daha önce eklenmemiş) gerçek makaleler var. Bu gerçek makaleler arasından kullanıcının argümanına ve metodolojisine en radikal, en uyumlu katkıyı sağlayacak EN İYİ 3 TANESİNİ seç, onay ver ve bunları başlık, url, citationCount ve kısa bir entegrasyon gerekçesi içerecek şekilde temiz bir JSON dizisi olarak döndür.
+Önünde kullanıcının aktif tez anayasası ve hem DergiPark (TR) hem de Semantic Scholar (EN) kaynaklarından toplanmış yepyeni (daha önce eklenmemiş) akademik makaleler var.
+
+Görevin, YALNIZCA sana sunulan YENİ ADAY MAKALELER listesi içinden, tez anayasasına en uygun, en güçlü ve en uyumlu katkıyı sağlayacak EN İYİ 4 TANESİNİ (mümkünse 2 Türkçe, 2 İngilizce şeklinde) seçip onaylamak ve gerekçelendirmektir.
+
+KAFANDAN HİÇBİR YENİ MAKALE, YAZAR, YIL VEYA URL TÜRETMEYECEKSİN/UYDURMAYACAKSIN. Sadece sunulan havuzdaki nesneleri seçeceksin. API veya havuzdan gelen orijinal başlık, yazar, yıl, paperId ve URL bilgilerini ASLA DEĞİŞTİRMEYECEKSİN, tahrif etmeyeceksin.
+
+Her seçilen makale için başlık, url, citationCount, source, lang ve Türkçe olarak 2-3 cümlelik çok güçlü bir entegrasyon gerekçesi ("relevance") üret.
 
 Yanıtını kesinlikle aşağıdaki JSON formatında bir liste olarak vermelisin:
 [
   {
-    "paperId": "Makalenin paperId'si",
-    "title": "Makale veya Kitap Başlığı",
-    "authors": "Yazar(lar)",
-    "year": "Yıl",
-    "url": "Makalenin URL'si veya boş string",
-    "citationCount": Atıf sayısı (sayı olarak),
+    "paperId": "Aday listeden aynen kopyalanacak paperId",
+    "title": "Aday listeden aynen kopyalanacak Başlık",
+    "authors": "Aday listeden aynen kopyalanacak Yazar(lar)",
+    "year": "Aday listeden aynen kopyalanacak Yıl",
+    "url": "Aday listeden aynen kopyalanacak URL",
+    "citationCount": Aday listeden aynen kopyalanacak Atıf sayısı veya 0,
+    "source": "DergiPark" veya "Semantic Scholar",
+    "lang": "TR" veya "EN",
     "relevance": "Seçilen makalenin tezin ana argümanına ve metodolojisine nasıl bir radikal ve uyumlu katkı sağlayacağı, tezde nasıl konumlandırılacağı (Türkçe olarak 2-3 cümleyle açıklanmalıdır)"
   }
 ]
@@ -411,44 +818,28 @@ Yanıtını kesinlikle aşağıdaki JSON formatında bir liste olarak vermelisin
 Unutma: Yanıtın her zaman geçerli bir JSON olmalı ve başka hiçbir metin içermemelidir. Markdown kod bloğu (\`\`\`json vb.) kullanma, sadece saf JSON döndür.
 `;
 
-    let juryPrompt = "";
-    if (top5Unseen.length > 0) {
-      juryPrompt = `
+    const juryPrompt = `
 TEZ ANAYASASI:
 - Başlık: ${title}
 - Araştırma Sorusu: ${researchQuestion}
 - Ana Argüman: ${argument}
 - Metodoloji: ${methodology}
 
-YEPYENİ GERÇEK MAKALELER (DAHİL EDİLEBİLECEK ADAYLAR):
-${JSON.stringify(top5Unseen, null, 2)}
+YENİ ADAY MAKALELER (Sadece Buradan Seçebilirsin!):
+${JSON.stringify(mergedUnseen, null, 2)}
 
 Hali Hazırda Ekli Olan Makalelerin Başlıkları (Bunları Tekrar Seçme):
 ${JSON.stringify(Array.from(existingTitles), null, 2)}
 
-Lütfen bu yepyeni aday makaleler arasından tez anayasasına en uygun, en güçlü ve en uyumlu katkıyı sağlayacak EN İYİ 3 TANESİNİ seç ve istenen JSON formatında döndür.
+Lütfen bu yepyeni aday makaleler arasından en uygun 4 yeni makaleyi seç ve istenen JSON formatında döndür.
 `;
-    } else {
-      juryPrompt = `
-TEZ ANAYASASI:
-- Başlık: ${title}
-- Araştırma Sorusu: ${researchQuestion}
-- Ana Argüman: ${argument}
-- Metodoloji: ${methodology}
-
-Hali Hazırda Ekli Olan Makalelerin Başlıkları (Mükerrerlik Oluşmaması İçin Kesinlikle Bunları Önerme):
-${JSON.stringify(Array.from(existingTitles), null, 2)}
-
-NOT: Arama sonuçlarında daha önce eklenmemiş yeni makale bulunamadı. Lütfen daha önce eklenmiş yukarıdaki makalelerden tamamen farklı olan, tezin kavramsal çelişkilerini aşmasına yardımcı olacak en iyi 3 gerçek akademik makale veya kitap önerisini DOĞRUDAN KENDİN üret ve istenen JSON formatında döndür.
-`;
-    }
 
     const response = await ai.models.generateContent({
       model: "gemini-3.1-flash-lite",
       contents: juryPrompt,
       config: {
         systemInstruction: jurySystemPrompt,
-        temperature: 0.5,
+        temperature: 1,
         responseMimeType: "application/json",
       },
     });
@@ -456,23 +847,32 @@ NOT: Arama sonuçlarında daha önce eklenmemiş yeni makale bulunamadı. Lütfe
     let cleanText = response.text || "";
     cleanText = cleanText.trim();
     if (cleanText.startsWith("```")) {
-      cleanText = cleanText.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
+      cleanText = cleanText
+        .replace(/^```json\s*/i, "")
+        .replace(/```$/, "")
+        .trim();
     }
 
     const newRecommendations = JSON.parse(cleanText);
 
-    // Filter out any potential duplicates generated by LLM as a double check
-    const finalizedNewRecommendations = newRecommendations.filter((newRec: any) => {
-      const titleLower = (newRec.title || "").toLowerCase().trim();
-      const isDuplicate = existingTitles.has(titleLower) || (newRec.paperId && existingPaperIds.has(newRec.paperId));
-      return !isDuplicate;
-    });
+    // Filter duplicates
+    const finalizedNewRecommendations = newRecommendations.filter(
+      (newRec: any) => {
+        const titleLower = (newRec.title || "").toLowerCase().trim();
+        const isDuplicate =
+          existingTitles.has(titleLower) ||
+          (newRec.paperId && existingPaperIds.has(newRec.paperId));
+        return !isDuplicate;
+      },
+    );
 
-    // Step 5: Append new recommendations to existing list (array push logic)
-    const updatedRecommendations = [...existingRecs, ...finalizedNewRecommendations];
+    const updatedRecommendations = [
+      ...existingRecs,
+      ...finalizedNewRecommendations,
+    ];
 
-    // Save consolidated list back to Neon PostgreSQL
-    await db.update(thesisCore)
+    await db
+      .update(thesisCore)
       .set({ academicRecommendations: JSON.stringify(updatedRecommendations) })
       .where(eq(thesisCore.id, core.id));
 
@@ -488,4 +888,3 @@ NOT: Arama sonuçlarında daha önce eklenmemiş yeni makale bulunamadı. Lütfe
     };
   }
 }
-

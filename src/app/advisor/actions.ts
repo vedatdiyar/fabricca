@@ -308,7 +308,7 @@ export async function sendMessageAction(
       contents: contents as any,
       config: {
         systemInstruction: systemInstruction,
-        temperature: 0.3, // Lower temperature for high academic precision and adherence to instructions
+        temperature: 1, // Lower temperature for high academic precision and adherence to instructions
       },
     });
 
