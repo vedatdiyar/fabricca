@@ -12,13 +12,157 @@ import {
   ArrowRight,
   BookOpen,
   MessageSquare,
+  Target,
+  Layers,
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import {
   getProfessorOnboardingResponseAction,
   saveThesisCoreAction,
+  checkTezaraOriginalityAction,
   ChatMessage,
 } from "./actions";
+
+function ThesisRow({ thesis }: { thesis: any }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="border border-border bg-secondary/30 rounded-lg overflow-hidden transition-all duration-300">
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        className="p-3 flex items-center justify-between gap-3 cursor-pointer hover:bg-secondary/50 select-none"
+      >
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="text-xs font-semibold text-foreground line-clamp-2 leading-tight">
+            {thesis.title}
+          </p>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground font-mono">
+            <span className="font-semibold text-primary">{thesis.author}</span>
+            <span>•</span>
+            <span>{thesis.university}</span>
+            <span>•</span>
+            <span>{thesis.year}</span>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="text-muted-foreground hover:text-foreground p-1 shrink-0"
+        >
+          {isOpen ? (
+            <span className="text-xs font-mono font-bold text-primary">
+              Gizle ▲
+            </span>
+          ) : (
+            <span className="text-xs font-mono font-bold text-primary">
+              Özet Göster ▼
+            </span>
+          )}
+        </button>
+      </div>
+
+      {isOpen && (
+        <div className="p-3 border-t border-border bg-background/50">
+          {thesis.abstract ? (
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-bold text-primary uppercase font-mono tracking-wider">
+                Tez Özeti (Türkçe)
+              </span>
+              <p className="text-xs text-muted-foreground leading-relaxed font-sans">
+                {thesis.abstract}
+              </p>
+            </div>
+          ) : thesis.abstract_en ? (
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-bold text-primary uppercase font-mono tracking-wider">
+                Thesis Abstract (English)
+              </span>
+              <p className="text-xs text-muted-foreground leading-relaxed font-sans">
+                {thesis.abstract_en}
+              </p>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">
+              Bu tezin özeti bulunmamaktadır.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GapAnalysisSection({ gapAnalysis }: { gapAnalysis: string }) {
+  function parseSections(text: string) {
+    const sectionRegex = /(\d+[.)]\s*[^:]+?:)/g;
+    const parts = text.split(sectionRegex);
+    const intro = parts[0]?.trim() || "";
+    const sections: { heading: string; body: string }[] = [];
+    for (let i = 1; i < parts.length - 1; i += 2) {
+      const heading = parts[i]?.trim() || "";
+      const body = parts[i + 1]?.trim() || "";
+      if (heading && body) {
+        sections.push({ heading, body });
+      }
+    }
+    return { intro, sections };
+  }
+
+  const { intro, sections } = parseSections(gapAnalysis);
+
+  if (sections.length === 0) {
+    return (
+      <div className="bg-card/50 border border-border p-3 rounded-lg shadow-sm text-xs text-foreground leading-relaxed font-sans">
+        {gapAnalysis}
+      </div>
+    );
+  }
+
+  function getIcon(heading: string, index: number) {
+    if (heading.includes("Teorik") || heading.includes("Kavramsallaştırma"))
+      return <Sparkles className="h-4 w-4 text-primary shrink-0" />;
+    if (heading.includes("Stratejik") || heading.includes("Müdahale"))
+      return <Target className="h-4 w-4 text-primary shrink-0" />;
+    if (
+      heading.includes("Metodolojik") ||
+      heading.includes("Mekansal") ||
+      heading.includes("Mekânsal")
+    )
+      return <Layers className="h-4 w-4 text-primary shrink-0" />;
+    const fallbackIcons = [Sparkles, Target, Layers];
+    const Icon = fallbackIcons[index] || Sparkles;
+    return <Icon className="h-4 w-4 text-primary shrink-0" />;
+  }
+
+  return (
+    <div className="space-y-3">
+      {intro && (
+        <p className="border-l-2 border-primary pl-3 text-xs text-muted-foreground leading-relaxed font-sans">
+          {intro}
+        </p>
+      )}
+      <ul className="space-y-3">
+        {sections.map((section, idx) => (
+          <li
+            key={idx}
+            className="bg-card/50 border border-border p-3 rounded-lg shadow-sm"
+          >
+            <div className="flex items-start gap-2.5">
+              {getIcon(section.heading, idx)}
+              <div className="min-w-0 flex-1 space-y-1">
+                <span className="font-semibold text-primary block text-xs">
+                  {section.heading}
+                </span>
+                <p className="text-xs text-foreground leading-relaxed font-sans">
+                  {section.body}
+                </p>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -34,6 +178,8 @@ export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [userResponse, setUserResponse] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isOriginalityLoading, setIsOriginalityLoading] =
+    useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // Synthesis & Confirmation States
@@ -52,7 +198,7 @@ export default function OnboardingPage() {
   // Auto-scroll on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading]);
+  }, [messages, isLoading, isOriginalityLoading]);
 
   // Auto-grow textarea height on input
   useEffect(() => {
@@ -65,7 +211,7 @@ export default function OnboardingPage() {
   // Submit response handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userResponse.trim() || isLoading) return;
+    if (!userResponse.trim() || isLoading || isOriginalityLoading) return;
 
     const responseText = userResponse.trim();
     setUserResponse("");
@@ -83,11 +229,53 @@ export default function OnboardingPage() {
     setMessages(updatedHistory);
 
     try {
-      // Call Server Action to get next question or final synthesis
+      let currentMessages = [...updatedHistory];
+
+      // Call Originality Scanner on steps 1 (topic) and 2 (question) - skip if already checked
+      const hasReport = currentMessages.some(
+        (m) => m.role === "originality_report",
+      );
+      if ((currentStep === 1 || currentStep === 2) && !hasReport) {
+        setIsOriginalityLoading(true);
+        try {
+          const origRes = await checkTezaraOriginalityAction(responseText);
+          if (origRes.success && origRes.report) {
+            const reportMsg: ChatMessage = {
+              role: "originality_report",
+              content: "",
+              reportData: {
+                risk: origRes.report.risk,
+                reasoning: origRes.report.reasoning,
+                gapAnalysis: origRes.report.gapAnalysis,
+                theses: origRes.report.theses,
+              },
+            };
+            currentMessages = [...currentMessages, reportMsg];
+            setMessages(currentMessages);
+          }
+        } catch (origErr) {
+          console.error("Originality Check Error:", origErr);
+        } finally {
+          setIsOriginalityLoading(false);
+        }
+      }
+
+      // Extract report data for risk-aware professor routing
+      const lastReport = currentMessages
+        .filter((m) => m.role === "originality_report")
+        .pop();
+
+      // Call Server Action to get next question, revision discussion, or final synthesis
       const res = await getProfessorOnboardingResponseAction(
-        messages,
+        currentMessages.filter((msg) => msg.role !== "originality_report"),
         currentStep,
         responseText,
+        lastReport?.reportData
+          ? {
+              risk: lastReport.reportData.risk,
+              gapAnalysis: lastReport.reportData.gapAnalysis,
+            }
+          : undefined,
       );
 
       if (!res.success || !res.message) {
@@ -106,6 +294,8 @@ export default function OnboardingPage() {
         // If final step completed, store the synthesized core data
         setStructuredData(res.structuredData);
         setCurrentStep(5); // Go to preview & confirmation stage
+      } else if (res.needsReview) {
+        // Stay on same step for revision discussion - don't increment
       } else {
         // Increment step
         setCurrentStep((prev) => prev + 1);
@@ -240,8 +430,74 @@ export default function OnboardingPage() {
         {currentStep <= 4 && (
           <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 flex flex-col justify-between">
             {/* Scrollable Message Box */}
-            <div className="space-y-6 flex-1 overflow-y-auto max-h-[450px] pr-2">
+            <div className="space-y-6 flex-1 overflow-y-auto max-h-[600px] pr-2">
               {messages.map((msg, index) => {
+                if (msg.role === "originality_report") {
+                  const report = msg.reportData;
+                  if (!report) return null;
+
+                  let riskColor = "text-chart-5 border-chart-5 bg-chart-5/10";
+                  if (report.risk === "Orta") {
+                    riskColor = "text-chart-2 border-chart-2 bg-chart-2/10";
+                  } else if (report.risk === "Yüksek") {
+                    riskColor = "text-chart-4 border-chart-4 bg-chart-4/10";
+                  }
+
+                  return (
+                    <div
+                      key={index}
+                      className="w-full border border-primary/40 bg-card rounded-lg p-5 space-y-4 my-4 relative overflow-hidden shadow-xl"
+                    >
+                      <div className="absolute top-0 left-0 right-0 h-[2px] bg-primary" />
+
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-border">
+                        <div className="flex items-center space-x-2">
+                          <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+                          <h3 className="text-xs font-bold tracking-wider text-foreground uppercase font-mono">
+                            Akademik Özgünlük Değer Raporu (Tezara)
+                          </h3>
+                        </div>
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${riskColor}`}
+                        >
+                          Çakışma Riski: {report.risk}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1">
+                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-primary font-mono">
+                          Jüri Benzerlik Değerlendirmesi
+                        </h4>
+                        <div className="text-xs text-foreground leading-relaxed font-sans prose prose-invert max-w-none">
+                          <ReactMarkdown>{report.reasoning}</ReactMarkdown>
+                        </div>
+                      </div>
+
+                      {report.theses && report.theses.length > 0 && (
+                        <div className="space-y-2">
+                          <h4 className="text-[10px] font-bold uppercase tracking-wider text-primary font-mono flex items-center gap-1.5">
+                            <BookOpen className="h-3.5 w-3.5" />
+                            İlişkili Türkiye Menşeili Tez Eşleşmeleri (
+                            {report.theses.length})
+                          </h4>
+                          <div className="space-y-2">
+                            {report.theses.map((thesis) => (
+                              <ThesisRow key={thesis.id} thesis={thesis} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="space-y-1 pt-2 border-t border-border">
+                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-primary font-mono">
+                          Stratejik Özgün Değer Tavsiyeleri (Gap Analizi)
+                        </h4>
+                        <GapAnalysisSection gapAnalysis={report.gapAnalysis} />
+                      </div>
+                    </div>
+                  );
+                }
+
                 const isModel = msg.role === "model";
                 return (
                   <div
@@ -280,6 +536,27 @@ export default function OnboardingPage() {
                   </div>
                 );
               })}
+
+              {/* Originality Checking Indicator */}
+              {isOriginalityLoading && (
+                <div className="flex items-start gap-3">
+                  <div className="flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-full border bg-secondary text-primary border-primary text-xs font-semibold">
+                    T
+                  </div>
+                  <div className="bg-secondary text-primary border border-primary/30 rounded-lg p-4 flex items-center space-x-3 shadow-md animate-pulse">
+                    <span className="text-xs font-semibold tracking-wider uppercase font-mono text-primary flex items-center gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5 animate-spin" />
+                      Tezara veri tabanı taranıyor ve özgünlük analizi
+                      yapılıyor...
+                    </span>
+                    <div className="flex space-x-1 shrink-0">
+                      <div className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" />
+                      <div className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce delay-75" />
+                      <div className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce delay-150" />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Professor Typing Indicator */}
               {isLoading && (

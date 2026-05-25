@@ -357,8 +357,7 @@ export default function DashboardPage() {
               <span>Aktif Araştırma Planı ve Görevler</span>
             </h2>
             <p className="text-xs text-muted-foreground font-sans mt-0.5">
-              Haftalık çalışma planınızdaki aktif hedefler ve yazım
-              aşamaları
+              Haftalık çalışma planınızdaki aktif hedefler ve yazım aşamaları
             </p>
           </div>
           <button
@@ -379,8 +378,8 @@ export default function DashboardPage() {
                   Aktif Araştırma Görevi Bulunmuyor
                 </p>
                 <p className="text-[11px] mt-1">
-                  Süreci ilerletmek için hemen bir araştırma hedefi veya
-                  makale inceleme görevi ekleyin.
+                  Süreci ilerletmek için hemen bir araştırma hedefi veya makale
+                  inceleme görevi ekleyin.
                 </p>
               </div>
             </div>
@@ -405,9 +404,7 @@ export default function DashboardPage() {
                           : "bg-secondary text-muted-foreground border-border"
                       }`}
                     >
-                      {task.status === "doing"
-                        ? "Çalışılıyor"
-                        : "Yapılacak"}
+                      {task.status === "doing" ? "Çalışılıyor" : "Yapılacak"}
                     </span>
                   </div>
                   <p className="text-xs font-sans text-foreground whitespace-pre-wrap leading-relaxed">
@@ -502,9 +499,8 @@ export default function DashboardPage() {
               <span>Literatür Önerileri</span>
             </h2>
             <p className="text-xs text-muted-foreground font-sans mt-0.5">
-              Tez Anayasanızdaki argüman ve araştırma sorusuna derinlik
-              katacak yapay zeka tarafından önerilen temel akademik
-              kaynaklar
+              Tez Anayasanızdaki argüman ve araştırma sorusuna derinlik katacak
+              yapay zeka tarafından önerilen temel akademik kaynaklar
             </p>
           </div>
           {thesisData && (
@@ -531,8 +527,8 @@ export default function DashboardPage() {
           </div>
         ) : recs.length === 0 ? (
           <div className="border border-dashed border-border rounded-lg py-8 text-center text-xs text-muted-foreground">
-            Tavsiye üretilemedi. Lütfen tez bilgilerinizi onboarding
-            sayfasından güncelleyin.
+            Tavsiye üretilemedi. Lütfen tez bilgilerinizi onboarding sayfasından
+            güncelleyin.
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
