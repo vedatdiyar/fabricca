@@ -35,6 +35,7 @@
   --sidebar-ring: #22d3ee;
 
   --font-sans: Poppins, -apple-system, sans-serif;
+  --font-fredoka: Fredoka, sans-serif;
   --radius: 0.125rem;
 
   --shadow-x: 0px;
@@ -88,6 +89,7 @@
   --color-sidebar-ring: var(--sidebar-ring);
 
   --font-sans: var(--font-sans);
+  --font-fredoka: var(--font-fredoka);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import type { Metadata } from "next";
-import { Poppins } from "next/font/google";
+import { Poppins, Fredoka } from "next/font/google";
 import { getExpectedHash } from "@/lib/auth";
 import Navigation from "@/components/navigation";
 import "./globals.css";
@@ -11,10 +11,28 @@ const poppins = Poppins({
   weight: ["300", "400", "500", "600", "700", "800"],
 });
 
+const fredoka = Fredoka({
+  variable: "--font-fredoka",
+  subsets: ["latin"],
+  weight: ["500"],
+});
+
 export const metadata: Metadata = {
   title: "Fabricca - Tez Stratejisi ve RAG Karargahı",
   description:
     "Siyaset Bilimi Tez Karargahı ve Dijital Akademik Danışman Portali",
+  icons: {
+    icon: [
+      { url: "/icon0.svg", type: "image/svg+xml" },
+      { url: "/icon1.png", type: "image/png" },
+      { url: "/favicon.ico" },
+    ],
+    apple: [{ url: "/apple-icon.png" }],
+  },
+  manifest: "/manifest.json",
+  other: {
+    "apple-mobile-web-app-title": "Fabricca",
+  },
 };
 
 export default async function RootLayout({
@@ -36,7 +54,7 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="tr" className={`${poppins.variable} h-full antialiased`}>
+    <html lang="tr" className={`${poppins.variable} ${fredoka.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {isAuthenticated ? (
           <div className="flex flex-col md:flex-row h-screen w-screen overflow-hidden bg-background text-foreground">
