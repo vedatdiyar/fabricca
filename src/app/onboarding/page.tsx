@@ -172,7 +172,7 @@ export default function OnboardingPage() {
     {
       role: "model",
       content:
-        "Merhaba sevgili meslektaşım, Fabricca'ya hoş geldin. Yüksek lisans tez sürecini planlamak, organize etmek ve seninle çalışmak için sabırsızlanıyorum.\n\nTez anayasamızı birlikte kurmak için 4 adımlı kısa bir akademik mülakat gerçekleştireceğiz. Bu sayede çalışmanın sınırlarını, sorusunu ve teorik zeminini netleştireceğiz.\n\nİlk olarak: **Tezinin başlığı veya üzerinde çalışmak istediğin genel konu nedir?** (Örneğin: *Post-2001 Türkiye finansallaşması* veya *Modernleşme ekseninde biyopolitika*)",
+        "Merhaba Vedat, hoş geldin. Seninle tez sürecini planlamaya başlamak için sabırsızlanıyorum.\n\nTez anayasamızı birlikte kuracağız — çalışmanın sınırlarını, sorusunu ve teorik zeminini adım adım netleştireceğiz.\n\nİlk olarak: **Tezinin başlığı veya üzerinde çalışmak istediğin genel konu nedir?**",
     },
   ]);
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -342,7 +342,7 @@ export default function OnboardingPage() {
       {
         role: "model",
         content:
-          "Merhaba sevgili meslektaşım, Fabricca'ya hoş geldin. Yüksek lisans tez sürecini planlamak, organize etmek ve seninle çalışmak için sabırsızlanıyorum.\n\nTez anayasamızı birlikte kurmak için 4 adımlı kısa bir akademik mülakat gerçekleştireceğiz. Bu sayede çalışmanın sınırlarını, sorusunu ve teorik zeminini netleştireceğiz.\n\nİlk olarak: **Tezinin başlığı veya üzerinde çalışmak istediğin genel konu nedir?** (Örneğin: *Post-2001 Türkiye finansallaşması* veya *Modernleşme ekseninde biyopolitika*)",
+          "Merhaba Vedat, hoş geldin. Seninle tez sürecini planlamaya başlamak için sabırsızlanıyorum.\n\nTez anayasamızı birlikte kuracağız — çalışmanın sınırlarını, sorusunu ve teorik zeminini adım adım netleştireceğiz.\n\nİlk olarak: **Tezinin başlığı veya üzerinde çalışmak istediğin genel konu nedir?** (Örneğin: *Post-2001 Türkiye finansallaşması* veya *Modernleşme ekseninde biyopolitika*)",
       },
     ]);
     setCurrentStep(1);
@@ -401,10 +401,10 @@ export default function OnboardingPage() {
             </div>
             <div>
               <h1 className="text-lg font-bold tracking-tight text-foreground font-sans">
-                Tez Onboarding Mülakatı
+                Tez Anayasası
               </h1>
               <p className="text-xs text-muted-foreground">
-                Prof. Dr. Tez Danışmanı ile Akademik Mülakat
+                Prof. Dr. Verita ile Tez Anayasası&apos;nı oluşturun
               </p>
             </div>
           </div>
@@ -527,7 +527,17 @@ export default function OnboardingPage() {
                     >
                       {isModel ? (
                         <div className="prose prose-invert max-w-none text-foreground font-sans text-sm">
-                          <ReactMarkdown>{msg.content}</ReactMarkdown>
+                          <ReactMarkdown
+                            components={{
+                              p: ({ children }) => (
+                                <p className="text-sm leading-relaxed text-foreground select-text font-sans mb-3 last:mb-0">
+                                  {children}
+                                </p>
+                              ),
+                            }}
+                          >
+                            {msg.content}
+                          </ReactMarkdown>
                         </div>
                       ) : (
                         <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -645,7 +655,7 @@ export default function OnboardingPage() {
               <div className="bg-secondary text-foreground border border-border p-4 rounded-lg text-sm leading-relaxed font-sans">
                 <ReactMarkdown>
                   {messages[messages.length - 1]?.content ||
-                    "Mülakatımız başarıyla tamamlandı sevgili meslektaşım. Tez anayasanızın unsurlarını akademik açıdan rafine ederek aşağıda derledim. Lütfen inceleyin."}
+                    "Mülakatımız başarıyla tamamlandı Vedat. Tez anayasanın unsurlarını akademik açıdan rafine ederek aşağıda derledim. Lütfen incele."}
                 </ReactMarkdown>
               </div>
             </div>

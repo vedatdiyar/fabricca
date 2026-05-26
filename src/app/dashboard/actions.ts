@@ -131,7 +131,7 @@ export async function getAcademicRecommendationsAction(
       return {
         success: false,
         error:
-          "Tez anayasası bulunamadı. Lütfen onboarding işlemini tamamlayın.",
+          "Tez anayasası bulunamadı. Lütfen Tez Anayasası'nı tamamlayın.",
       };
     }
 
@@ -521,7 +521,7 @@ export async function discoverNewRecommendationsAction(
       return {
         success: false,
         error:
-          "Tez anayasası bulunamadı. Lütfen onboarding işlemini tamamlayın.",
+          "Tez anayasası bulunamadı. Lütfen Tez Anayasası'nı tamamlayın.",
       };
     }
 

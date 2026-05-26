@@ -130,7 +130,7 @@ export default function AdvisorPage() {
       {
         role: "assistant",
         content:
-          "Hoş geldiniz sevgili meslektaşım. Burası **Dijital Danışman Odası**.\n\n" +
+          "Hoş geldin Vedat. Burası **Dijital Danışman Odası**.\n\n" +
           "Tez çalışmanızın hangi aşamasındasınız? Kütüphanenizdeki makaleleri sol panelden seçerek doğrudan bu kaynaklara yönelik **RAG destekli semantik sorular** sorabilir ya da genel sosyal teoriler (Marx, Foucault, biopolitika, finansallaşma vb.), araştırma yöntemleri ve tez kurgusu üzerine doğrudan **kuramsal/metodolojik tartışmalar** yürütebiliriz.\n\n" +
           "Size nasıl yardımcı olabilirim?",
         timestamp: new Date().toLocaleTimeString([], {

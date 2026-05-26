@@ -559,7 +559,7 @@ export default function DashboardPage() {
           </div>
         ) : recs.length === 0 ? (
           <div className="border border-dashed border-border rounded-lg py-8 text-center text-xs text-muted-foreground">
-            Tavsiye üretilemedi. Lütfen tez bilgilerinizi onboarding sayfasından
+            Tavsiye üretilemedi. Lütfen tez bilgilerinizi Tez Anayasası sayfasından
             güncelleyin.
           </div>
         ) : (

@@ -21,7 +21,7 @@ export default function Navigation() {
       icon: LayoutDashboard,
     },
     {
-      name: "Kurulum",
+      name: "Tez Anayasası",
       href: "/onboarding",
       icon: Sparkles,
     },
