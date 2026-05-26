@@ -114,7 +114,7 @@ export default function InsightsPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-3">
             <Lightbulb className="size-6 text-primary" />
-            <span>Fikir Sepeti (AI Insights)</span>
+            <span>Fikir Sepeti</span>
           </h1>
           <p className="text-sm text-muted-foreground">
             Okuma notlarınızdan veya anlık ilhamlarınızdan gelen fikirleri
@@ -145,7 +145,7 @@ export default function InsightsPage() {
                 Hipotez, Kavramsal Not veya Anlık Düşünce
               </label>
               <textarea
-                placeholder="Örn: Kürt sol hareketinin 1970'lerdeki hegemonya kurma çabalarını Gramsciyen sivil toplum kavramsallaştırması üzerinden okumak..."
+                placeholder="Örn: Hipoteziniz, kavramsal notunuz veya anlık düşünceniz..."
                 value={ideaText}
                 onChange={(e) => setIdeaText(e.target.value)}
                 required

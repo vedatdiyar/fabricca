@@ -3,6 +3,9 @@ import type { Metadata } from "next";
 import { Poppins, Fredoka } from "next/font/google";
 import { getExpectedHash } from "@/lib/auth";
 import Navigation from "@/components/navigation";
+import { SidebarProvider } from "@/components/sidebar-provider";
+import MainContent from "@/components/main-content";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -20,7 +23,7 @@ const fredoka = Fredoka({
 export const metadata: Metadata = {
   title: "Fabricca - Tez Stratejisi ve RAG Karargahı",
   description:
-    "Siyaset Bilimi Tez Karargahı ve Dijital Akademik Danışman Portali",
+    "Fabricca - Tez Stratejisi ve RAG Karargahı",
   icons: {
     icon: [
       { url: "/icon0.svg", type: "image/svg+xml" },
@@ -54,18 +57,22 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="tr" className={`${poppins.variable} ${fredoka.variable} h-full antialiased`}>
+    <html
+      lang="tr"
+      className={`${poppins.variable} ${fredoka.variable} h-full antialiased`}
+    >
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        <Toaster />
         {isAuthenticated ? (
-          <div className="flex flex-col md:flex-row h-screen w-screen overflow-hidden bg-background text-foreground">
-            {/* Sidebar (Desktop) / Bottom Bar (Mobile) */}
-            <Navigation />
+          <SidebarProvider>
+            <div className="flex flex-col md:flex-row h-screen w-screen overflow-hidden bg-background text-foreground">
+              {/* Sidebar (Desktop) / Bottom Bar (Mobile) */}
+              <Navigation />
 
-            {/* Main Content Area */}
-            <main className="flex-1 overflow-y-auto min-h-0 pb-20 md:pb-0">
-              {children}
-            </main>
-          </div>
+              {/* Main Content Area */}
+              <MainContent>{children}</MainContent>
+            </div>
+          </SidebarProvider>
         ) : (
           children
         )}

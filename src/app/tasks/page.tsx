@@ -23,6 +23,7 @@ import {
   Calendar,
   Loader2,
   CheckCircle,
+  AlertCircle,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -31,6 +32,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { format, parse } from "date-fns";
 import { tr } from "date-fns/locale";
 
@@ -329,7 +333,7 @@ export default function TasksPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-3">
             <ListTodo className="size-6 text-primary" />
-            <span>Görevlerim (Kanban)</span>
+            <span>Görevlerim</span>
           </h1>
           <p className="text-sm text-muted-foreground">
             Haftalık araştırma hedeflerinizi organize edin ve durumlarını takip
@@ -351,19 +355,27 @@ export default function TasksPage() {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="md:col-span-2">
-            <input
+            <Input
               type="text"
-              placeholder="Örn: Kürt Solu literatürünü tamamla ve özet çıkar..."
+              placeholder="Örn: Literatür taramasını tamamla ve özet çıkar..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               required
-              className="w-full bg-background border border-border px-3 py-2 rounded text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary font-sans h-10"
+              className="w-full bg-background border border-border px-3 py-2 rounded text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary font-sans h-10"
             />
           </div>
           <div className="md:col-span-1">
             <Popover>
-              <PopoverTrigger className="w-full bg-background border border-border px-3 py-2 rounded text-sm text-foreground h-10 flex items-center gap-2 cursor-pointer focus:outline-none focus:border-primary data-[open]:border-primary">
-                <Calendar className="size-4 text-primary" />
+              <PopoverTrigger
+                render={
+                  <Button
+                    variant="outline"
+                    type="button"
+                    className="w-full bg-background border border-border px-3 py-2 rounded text-sm text-foreground h-10 flex items-center justify-start gap-2 cursor-pointer focus:outline-none focus:border-primary hover:bg-muted font-normal"
+                  />
+                }
+              >
+                <Calendar className="size-4 text-primary shrink-0" />
                 <span>
                   {dueDate
                     ? format(
@@ -392,10 +404,10 @@ export default function TasksPage() {
             </Popover>
           </div>
           <div className="md:col-span-1">
-            <button
+            <Button
               type="submit"
               disabled={submitting}
-              className="w-full bg-primary text-primary-foreground text-sm font-semibold rounded h-10 hover:opacity-90 active:scale-[0.98] transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="w-full text-sm font-semibold rounded h-10 cursor-pointer disabled:opacity-50"
             >
               {submitting ? (
                 <Loader2 className="size-4 animate-spin" />
@@ -405,14 +417,20 @@ export default function TasksPage() {
                   <span>Görev Ekle</span>
                 </>
               )}
-            </button>
+            </Button>
           </div>
         </div>
 
         {errorMessage && (
-          <p className="text-xs text-destructive bg-card border border-destructive p-3 rounded mt-2">
-            {errorMessage}
-          </p>
+          <Alert
+            variant="destructive"
+            className="border-destructive bg-destructive/10 text-destructive-foreground"
+          >
+            <AlertCircle className="h-4 w-4 shrink-0 text-destructive-foreground" />
+            <AlertDescription className="text-xs font-semibold leading-none">
+              {errorMessage}
+            </AlertDescription>
+          </Alert>
         )}
       </form>
 

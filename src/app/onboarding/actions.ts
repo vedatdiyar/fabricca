@@ -67,7 +67,7 @@ export async function getProfessorOnboardingResponseAction(
       originalityReport?.risk === "Orta";
 
     const systemInstruction = isHighRisk
-      ? `Sen Fabricca projesinin Siyaset Bilimi ve Politik Sosyoloji alanında uzman, kıdemli ve son derece bilge Tez Danışmanısın (Prof. Dr. Tez Danışmanı).
+      ? `Sen sosyal bilimler alanında uzman, kıdemli ve son derece bilge Tez Danışmanısın (Prof. Dr. Tez Danışmanı).
 
 ÖNEMLİ UYARI: Az önce yapılan Akademik Özgünlük Değer Raporu'nda "${originalityReport!.risk}" düzeyinde bir çakışma riski tespit edildi.
 
@@ -91,12 +91,12 @@ Yanıtını kesinlikle aşağıdaki JSON formatında vermelisin:
 }
 
 Unutma: structuredData KESİNLİKLE null olmalı, needsReview KESİNLİKLE true olmalı. Yanıtın her zaman geçerli bir JSON olmalı ve \`responseMimeType: "application/json"\` ayarlarına uygun olarak dönmelidir.`
-      : `Sen Fabricca projesinin Siyaset Bilimi ve Politik Sosyoloji alanında uzman, kıdemli ve son derece bilge Tez Danışmanısın (Prof. Dr. Tez Danışmanı).
+      : `Sen sosyal bilimler alanında uzman, kıdemli ve son derece bilge Tez Danışmanısın (Prof. Dr. Tez Danışmanı).
 Görevin, yüksek lisans öğrencisine tezinin temel direklerini (Tez Anayasası / Thesis Core) belirlemesinde yol göstermektir.
 Mülakat tam olarak 4 adımdan oluşuyor:
-1. Tez Başlığı ve Genel Konu (Örn: Post-2001 Türkiye finansallaşması)
+1. Tez Başlığı ve Genel Konu
 2. Ana Araştırma Sorusu (Research Question)
-3. Temel Teorik Çatı ve Odak Teorisyenler (Örn: Marx, Foucault, Biyopolitika, Mülksüzleştirme)
+3. Temel Teorik Çatı ve Odak Teorisyenler
 4. Tezin İncelediği Tarihsel/Ampirik Dönem Sınırları
 
 ${originalityReport ? "Akademik Özgünlük Değer Raporu'nda alanın temiz olduğu görülüyor, bu güzel bir haber. Kullanıcıya bu olumlu durumu kısaca belirt ve normal akışa devam et.\n\n" : ""}Kullanıcı şu anda ${currentStep}. adımı cevapladı. Verdiği cevap: "${userResponse.trim()}"
@@ -326,8 +326,8 @@ export async function checkTezaraOriginalityAction(
     const keywordPrompt = `Sen bir akademik arama motoru optimizasyon asistanısın. 
 Aşağıdaki tez başlığı/konusu veya araştırma sorusundan, Türkiye'deki tez veri tabanlarında (YÖK/Tezara) arama yapmak için en uygun 1 veya 2 adet akademik anahtar kelimeyi/kavramı ayıkla.
 Sadece anahtar kelimeleri aralarında boşluk bırakarak döndür. Başka hiçbir açıklama, tırnak veya metin ekleme.
-Örnek Giriş: Modernleşme ekseninde biyopolitika
-Örnek Çıkış: biyopolitika modernleşme
+Örnek Giriş: Kullanıcının tez konusu
+Örnek Çıkış: ayıklanan anahtar kelimeler
 
 Kullanıcı Girdisi: ${userInput}
 Çıkış:`;
@@ -454,7 +454,7 @@ Kullanıcı Girdisi: ${userInput}
     }
 
     // Step 3: Run the Jury Filter and Similarity Risk Evaluation via Gemini
-    const jurySystemInstruction = `Sen Siyaset Bilimi ve Politik Sosyoloji alanında çok seçkin bir jüri üyesisin. 
+    const jurySystemInstruction = `Sen sosyal bilimler alanında çok seçkin bir jüri üyesisin. 
 Öğrencinin yeni tez fikri (Başlık/Konu ve Araştırma Sorusu) ile Türkiye akademik literatüründe (Tezara) bulunan tezleri kıyaslayacaksın.
 Benzerlik riskini ("Düşük", "Orta" veya "Yüksek") belirle. Eğer benzer bir tez varsa risk 'Yüksek' veya 'Orta' olmalıdır.
 Tezin özgün değerini kurtarmak ve literatürde yeni bir katkı sağlamak için hâlâ açıkta duran teorik boşlukları (gap) ve öğrenciye tavsiyeleri içeren derinlikli bir gap analizi yap.

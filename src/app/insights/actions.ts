@@ -144,7 +144,7 @@ export async function sharpenInsightAction(
     const ai = new GoogleGenAI({ apiKey: geminiKey });
 
     const systemPrompt =
-      "Sen Siyaset Bilimi, Politik Sosyoloji ve Uluslararası İlişkiler alanlarında uzman, son derece seçkin ve analitik düşünen bir Akademik Tez Danışmanısın. " +
+      "Sen sosyal bilimler alanında uzman, son derece seçkin ve analitik düşünen bir Akademik Tez Danışmanısın. " +
       "Vedat'ın tez yazarken aklına gelen ham fikirleri, hipotezleri veya yapısal notları okuyup bunları tezin anayasasıyla (Başlık, Araştırma Sorusu, Argüman, Yöntem) ilişkilendirerek keskinleştirirsin.\n\n" +
       "Senden isteğimiz, Vedat'ın ham fikrini okuyup, bu fikrin tezin ana argümanına nasıl entegre edilebileceğine, hangi teorik/kavramsal araçlarla desteklenebileceğine veya yöntemsel olarak nasıl işlenebileceğine dair TAM 3 MADDELİK, çok kısa, vurucu ve doğrudan uygulanabilir bir akademik içgörü (insight) kümesi üretmendir.\n\n" +
       "KURALLAR:\n" +

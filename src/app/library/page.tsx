@@ -13,6 +13,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Textarea } from "@/components/ui/textarea";
 import {
   uploadPdfAction,
   getReferencesAction,
@@ -209,7 +211,11 @@ export default function LibraryPage() {
       </header>
 
       {/* Mobile Tab Switcher */}
-      <Tabs value={mobileTab} onValueChange={(v) => setMobileTab(v as string)} className="lg:hidden mb-6">
+      <Tabs
+        value={mobileTab}
+        onValueChange={(v) => setMobileTab(v as string)}
+        className="lg:hidden mb-6"
+      >
         <TabsList className="w-full bg-card border border-border p-1 rounded">
           <TabsTrigger value="references" className="flex-1">
             1. Dosya Yükleme & Kaynaklar
@@ -288,17 +294,24 @@ export default function LibraryPage() {
 
           {/* Feedback Alerts */}
           {uploadError && (
-            <div className="flex items-center space-x-2 border border-border bg-background p-3.5 rounded text-sm text-foreground">
-              <AlertCircle className="h-5 w-5 text-foreground" />
-              <span>{uploadError}</span>
-            </div>
+            <Alert
+              variant="destructive"
+              className="border-destructive bg-destructive/10 text-destructive-foreground"
+            >
+              <AlertCircle className="h-4 w-4 shrink-0 text-destructive-foreground" />
+              <AlertDescription className="text-xs font-semibold leading-none">
+                {uploadError}
+              </AlertDescription>
+            </Alert>
           )}
 
           {uploadSuccess && (
-            <div className="flex items-center space-x-2 border border-border bg-background p-3.5 rounded text-sm text-primary">
-              <Check className="h-5 w-5 text-primary" />
-              <span>{uploadSuccess}</span>
-            </div>
+            <Alert className="border-primary bg-primary/10 text-primary">
+              <Check className="h-4 w-4 shrink-0 text-primary" />
+              <AlertDescription className="text-xs font-semibold leading-none">
+                {uploadSuccess}
+              </AlertDescription>
+            </Alert>
           )}
 
           {/* References List */}
@@ -416,27 +429,34 @@ export default function LibraryPage() {
                 <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Toplu Makale Okuma Notu
                 </label>
-                <textarea
+                <Textarea
                   value={noteContent}
                   onChange={(e) => setNoteContent(e.target.value)}
                   placeholder="Bu makaleden çıkardığınız ana tezleri, metodolojik bulguları veya tezinizde kullanacağınız kritik paragrafları buraya not edin..."
-                  className="min-h-[140px] p-4 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary transition duration-150 resize-none font-sans"
+                  className="min-h-[140px] p-4 bg-background border border-border rounded-lg text-sm text-foreground focus-visible:ring-1 focus-visible:ring-primary transition duration-150 resize-none font-sans"
                 />
               </div>
 
               {/* Feedback Alerts for Note */}
               {noteError && (
-                <div className="flex items-center space-x-2 border border-border bg-background p-3.5 rounded text-sm text-foreground">
-                  <AlertCircle className="h-5 w-5 text-foreground" />
-                  <span>{noteError}</span>
-                </div>
+                <Alert
+                  variant="destructive"
+                  className="border-destructive bg-destructive/10 text-destructive-foreground"
+                >
+                  <AlertCircle className="h-4 w-4 shrink-0 text-destructive-foreground" />
+                  <AlertDescription className="text-xs font-semibold leading-none">
+                    {noteError}
+                  </AlertDescription>
+                </Alert>
               )}
 
               {noteSuccess && (
-                <div className="flex items-center space-x-2 border border-border bg-background p-3.5 rounded text-sm text-primary">
-                  <Check className="h-5 w-5 text-primary" />
-                  <span>{noteSuccess}</span>
-                </div>
+                <Alert className="border-primary bg-primary/10 text-primary">
+                  <Check className="h-4 w-4 shrink-0 text-primary" />
+                  <AlertDescription className="text-xs font-semibold leading-none">
+                    {noteSuccess}
+                  </AlertDescription>
+                </Alert>
               )}
 
               {/* Action Button */}

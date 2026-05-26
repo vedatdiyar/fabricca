@@ -9,10 +9,14 @@ import {
   GraduationCap,
   ListTodo,
   Lightbulb,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
+import { useSidebar } from "./sidebar-provider";
 
 export default function Navigation() {
   const pathname = usePathname();
+  const { isSidebarOpen, toggleSidebar } = useSidebar();
 
   const navItems = [
     {
@@ -50,23 +54,50 @@ export default function Navigation() {
   return (
     <>
       {/* Desktop Sidebar (md breakpoint and up) */}
-      <aside className="hidden md:flex flex-col w-64 h-screen bg-sidebar border-r border-border select-none shrink-0">
+      <aside
+        className={`hidden md:flex flex-col fixed left-0 top-0 z-40 h-screen bg-sidebar border-r border-border select-none shrink-0 transition-all duration-300 ease-in-out ${
+          isSidebarOpen ? "w-64" : "w-16"
+        }`}
+      >
         {/* Brand Header */}
-        <div className="p-6 border-b border-border flex items-center gap-3">
-          <div className="size-8 rounded bg-primary flex items-center justify-center">
-            <GraduationCap className="size-5 text-primary-foreground" />
-          </div>
-          <div>
-            <h1 className="text-sm font-extrabold tracking-wider text-foreground font-sans uppercase">
-              Fabricca
+        <div
+          className={`border-b border-border flex items-center transition-all duration-300 ${
+            isSidebarOpen ? "p-6 justify-start" : "p-3 justify-center"
+          }`}
+        >
+          <div
+            className={`flex items-center transition-all duration-300 ${isSidebarOpen ? "gap-3" : "gap-0"}`}
+          >
+            <div
+              className={`flex items-center justify-center shrink-0 transition-all duration-300 ${
+                isSidebarOpen ? "size-14" : "size-10"
+              }`}
+            >
+              <img
+                src="/logo.svg"
+                alt="Fabricca Logo"
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <h1
+              className={`text-2xl font-medium tracking-wider text-foreground font-fredoka transition-all duration-300 ease-in-out ${
+                isSidebarOpen
+                  ? "opacity-100 max-w-[150px]"
+                  : "opacity-0 max-w-0 pointer-events-none"
+              } whitespace-nowrap overflow-hidden`}
+            >
+              FABRICCA
             </h1>
           </div>
         </div>
 
         {/* Vertical Links List */}
-        <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
+        <nav
+          className={`flex-1 py-6 space-y-1.5 overflow-y-auto transition-all duration-300 ${
+            isSidebarOpen ? "px-4" : "px-2"
+          }`}
+        >
           {navItems.map((item) => {
-            // Check if the current route is strictly active or begins with the same pathname (for subroutes)
             const isActive =
               pathname === item.href || pathname.startsWith(item.href + "/");
             const Icon = item.icon;
@@ -75,38 +106,67 @@ export default function Navigation() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition duration-150 group ${
+                className={`flex items-center rounded-lg text-sm font-medium transition-all duration-300 group ${
+                  isSidebarOpen
+                    ? "px-3 py-2.5 gap-3"
+                    : "px-0 py-2.5 justify-center gap-0"
+                } ${
                   isActive
                     ? "bg-accent text-primary"
                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 }`}
+                title={!isSidebarOpen ? item.name : undefined}
               >
                 <Icon
-                  className={`size-5 transition duration-150 ${
+                  className={`size-5 shrink-0 transition duration-150 ${
                     isActive
                       ? "text-primary"
                       : "text-muted-foreground group-hover:text-accent-foreground"
                   }`}
                 />
-                <span>{item.name}</span>
+                <span
+                  className={`transition-all duration-300 ease-in-out ${
+                    isSidebarOpen
+                      ? "opacity-100 max-w-[200px]"
+                      : "opacity-0 max-w-0 pointer-events-none"
+                  } whitespace-nowrap overflow-hidden`}
+                >
+                  {item.name}
+                </span>
               </Link>
             );
           })}
         </nav>
 
-        {/* Footer/System Status Indicator */}
-        <div className="p-4 border-t border-border">
-          <div className="bg-card p-3 rounded-lg border border-border">
-            <div className="flex items-center gap-2">
-              <div className="size-2 rounded-full bg-primary animate-pulse" />
-              <span className="text-[10px] font-sans tracking-wider text-muted-foreground uppercase">
-                Sistem Aktif
-              </span>
-            </div>
-            <p className="text-[9px] text-muted-foreground font-sans mt-1">
-              Gemini 3.1 Flash Lite
-            </p>
-          </div>
+        {/* Toggle Button at the bottom */}
+        <div
+          className={`p-4 border-t border-border transition-all duration-300 ${isSidebarOpen ? "px-4" : "px-2"}`}
+        >
+          <button
+            onClick={toggleSidebar}
+            className={`w-full flex items-center rounded-lg text-sm font-medium transition-all duration-300 text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer ${
+              isSidebarOpen
+                ? "px-3 py-2.5 gap-3"
+                : "px-0 py-2.5 justify-center gap-0"
+            }`}
+            title={isSidebarOpen ? "Daralt" : "Genişlet"}
+          >
+            {isSidebarOpen ? (
+              <>
+                <ChevronLeft className="size-5 shrink-0 text-muted-foreground" />
+                <span className="opacity-100 max-w-[200px] whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out">
+                  Daralt
+                </span>
+              </>
+            ) : (
+              <>
+                <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
+                <span className="opacity-0 max-w-0 pointer-events-none whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out">
+                  Genişlet
+                </span>
+              </>
+            )}
+          </button>
         </div>
       </aside>
 
