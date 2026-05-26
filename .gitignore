@@ -30,6 +30,16 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# agent / skill files (auto-generated)
+.agents/
+skills-lock.json
+
+# IDE
+.vscode/
+
+# log files
+*.log
+
 # env files (can opt-in for committing if needed)
 .env*
 
