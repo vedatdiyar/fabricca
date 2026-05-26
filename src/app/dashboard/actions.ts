@@ -31,9 +31,42 @@ export interface RecommendationsResult {
   error?: string;
 }
 
-// Re-export actions from modular components
-export { getThesisCoreAction } from "./_actions/thesis";
-export {
-  getAcademicRecommendationsAction,
-  discoverNewRecommendationsAction,
+import { getThesisCoreAction as getThesisCore } from "./_actions/thesis";
+import {
+  getAcademicRecommendationsAction as getAcademicRecommendations,
+  discoverNewRecommendationsAction as discoverNewRecommendations,
 } from "./_actions/recommendations";
+
+export async function getThesisCoreAction(
+  userId?: string,
+): Promise<GetThesisCoreResult> {
+  return getThesisCore(userId);
+}
+
+export async function getAcademicRecommendationsAction(
+  title: string,
+  researchQuestion: string,
+  argument: string,
+  methodology: string,
+): Promise<RecommendationsResult> {
+  return getAcademicRecommendations(
+    title,
+    researchQuestion,
+    argument,
+    methodology,
+  );
+}
+
+export async function discoverNewRecommendationsAction(
+  title: string,
+  researchQuestion: string,
+  argument: string,
+  methodology: string,
+): Promise<RecommendationsResult> {
+  return discoverNewRecommendations(
+    title,
+    researchQuestion,
+    argument,
+    methodology,
+  );
+}
