@@ -33,11 +33,14 @@ export async function getInsightsAction(): Promise<InsightsResult> {
       success: true,
       insights: allInsights,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("getInsightsAction Error:", error);
     return {
       success: false,
-      error: error.message || "Fikir sepeti listelenirken bir hata oluştu.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Fikir sepeti listelenirken bir hata oluştu.",
     };
   }
 }
@@ -66,11 +69,14 @@ export async function createInsightAction(
       success: true,
       insightId: newInsight.id,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("createInsightAction Error:", error);
     return {
       success: false,
-      error: error.message || "Fikir kaydedilirken bir hata oluştu.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Fikir kaydedilirken bir hata oluştu.",
     };
   }
 }
@@ -87,11 +93,14 @@ export async function deleteInsightAction(
     return {
       success: true,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("deleteInsightAction Error:", error);
     return {
       success: false,
-      error: error.message || "Fikir silinirken bir hata oluştu.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Fikir silinirken bir hata oluştu.",
     };
   }
 }
@@ -190,11 +199,14 @@ export async function sharpenInsightAction(
       success: true,
       suggestions,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("sharpenInsightAction Error:", error);
     return {
       success: false,
-      error: error.message || "Fikir keskinleştirilirken bir hata oluştu.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Fikir keskinleştirilirken bir hata oluştu.",
     };
   }
 }

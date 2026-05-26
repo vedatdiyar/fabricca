@@ -15,12 +15,13 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const saved = localStorage.getItem("fabricca_sidebar_open");
-    if (saved !== null) {
-      setIsSidebarOpen(saved === "true");
-    } else {
-      setIsSidebarOpen(true);
-    }
-    setIsMounted(true);
+    const isOpen = saved !== null ? saved === "true" : true;
+
+    const handle = requestAnimationFrame(() => {
+      setIsSidebarOpen(isOpen);
+      setIsMounted(true);
+    });
+    return () => cancelAnimationFrame(handle);
   }, []);
 
   const toggleSidebar = () => {

@@ -32,11 +32,14 @@ export async function getTasksAction(): Promise<TasksResult> {
       success: true,
       tasks: allTasks,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("getTasksAction Error:", error);
     return {
       success: false,
-      error: error.message || "Görevler listesi alınırken bir hata oluştu.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Görevler listesi alınırken bir hata oluştu.",
     };
   }
 }
@@ -66,11 +69,14 @@ export async function createTaskAction(
       success: true,
       taskId: newTask.id,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("createTaskAction Error:", error);
     return {
       success: false,
-      error: error.message || "Görev oluşturulurken bir hata oluştu.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Görev oluşturulurken bir hata oluştu.",
     };
   }
 }
@@ -88,11 +94,14 @@ export async function updateTaskStatusAction(
     return {
       success: true,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("updateTaskStatusAction Error:", error);
     return {
       success: false,
-      error: error.message || "Görev durumu güncellenirken bir hata oluştu.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Görev durumu güncellenirken bir hata oluştu.",
     };
   }
 }
@@ -109,11 +118,14 @@ export async function deleteTaskAction(
     return {
       success: true,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("deleteTaskAction Error:", error);
     return {
       success: false,
-      error: error.message || "Görev silinirken bir hata oluştu.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Görev silinirken bir hata oluştu.",
     };
   }
 }

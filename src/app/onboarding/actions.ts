@@ -172,11 +172,14 @@ Unutma: Yanıtın her zaman geçerli bir JSON olmalı ve \`responseMimeType: "ap
       structuredData: parsed.structuredData || null,
       needsReview: parsed.needsReview ?? false,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("getProfessorOnboardingResponseAction Error:", error);
     return {
       success: false,
-      error: error.message || "Yapay zekadan cevap alınırken hata oluştu.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Yapay zekadan cevap alınırken hata oluştu.",
     };
   }
 }
@@ -212,11 +215,14 @@ export async function saveThesisCoreAction(data: {
     });
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error) {
     console.error("saveThesisCoreAction Error:", error);
     return {
       success: false,
-      error: error.message || "Tez anayasası kaydedilirken hata oluştu.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Tez anayasası kaydedilirken hata oluştu.",
     };
   }
 }
@@ -291,10 +297,10 @@ async function fetchThesisAbstract(
       : "";
 
     return { abstract, abstract_en };
-  } catch (err: any) {
+  } catch (err) {
     console.error(
       `[Tezara Scraper] Failed to fetch abstract for thesis ${id}:`,
-      err.message || err,
+      err instanceof Error ? err.message : err,
     );
     return { abstract: "", abstract_en: "" };
   }
@@ -445,10 +451,10 @@ Kullanıcı Girdisi: ${userInput}
             `[Tezara Scraper] Search request failed with status: ${searchRes.status}`,
           );
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error(
           "[Tezara Scraper] Error scraping search results:",
-          err.message || err,
+          err instanceof Error ? err.message : err,
         );
       }
     }
@@ -512,11 +518,14 @@ ${JSON.stringify(theses, null, 2)}`
         theses: theses,
       },
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("checkTezaraOriginalityAction Error:", error);
     return {
       success: false,
-      error: error.message || "Özgünlük kontrolü yapılırken bir hata oluştu.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Özgünlük kontrolü yapılırken bir hata oluştu.",
     };
   }
 }

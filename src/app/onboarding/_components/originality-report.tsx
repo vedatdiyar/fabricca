@@ -7,12 +7,23 @@ import { Accordion } from "@/components/ui/accordion";
 import { ThesisRow } from "./thesis-row";
 import { GapAnalysisSection } from "./gap-analysis";
 
+interface OriginalityThesis {
+  id: string;
+  title: string;
+  author: string;
+  advisor: string;
+  year: string;
+  university: string;
+  abstract?: string;
+  abstract_en?: string;
+}
+
 interface OriginalityReportProps {
   reportData: {
     risk: string;
     reasoning: string;
     gapAnalysis: string;
-    theses?: any[];
+    theses?: OriginalityThesis[];
   };
 }
 

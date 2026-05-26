@@ -1,5 +1,12 @@
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 
+export interface HeaderMetadata {
+  header_1: string;
+  header_2: string;
+  header_3: string;
+  [key: string]: string;
+}
+
 /**
  * Custom Markdown Header Splitter to group document content hierarchically
  * based on headers (#, ##, ###) and preserve metadata context,
@@ -7,9 +14,9 @@ import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
  */
 export function splitMarkdownByHeaders(
   markdown: string,
-): Array<{ pageContent: string; metadata: any }> {
+): Array<{ pageContent: string; metadata: HeaderMetadata }> {
   const lines = markdown.split("\n");
-  const sections: Array<{ pageContent: string; metadata: any }> = [];
+  const sections: Array<{ pageContent: string; metadata: HeaderMetadata }> = [];
 
   let currentHeader1 = "";
   let currentHeader2 = "";
@@ -76,11 +83,16 @@ export function splitMarkdownByHeaders(
  */
 export async function splitMarkdownIntoChunks(
   markdown: string,
-): Promise<Array<{ pageContent: string; metadata: any }>> {
+): Promise<Array<{ pageContent: string; metadata: HeaderMetadata }>> {
   const headerDividedDocs = splitMarkdownByHeaders(markdown);
   const textSplitter = new RecursiveCharacterTextSplitter({
     chunkSize: 1000,
     chunkOverlap: 200,
   });
-  return await textSplitter.splitDocuments(headerDividedDocs);
+  const results = await textSplitter.splitDocuments(headerDividedDocs);
+  // Ensure returning structured type
+  return results as unknown as Array<{
+    pageContent: string;
+    metadata: HeaderMetadata;
+  }>;
 }

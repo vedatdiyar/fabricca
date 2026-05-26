@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   getInsightsAction,
   createInsightAction,
@@ -30,7 +30,7 @@ export default function InsightsPage() {
   );
   const [errorMessage, setErrorMessage] = useState("");
 
-  const loadInsights = async () => {
+  const loadInsights = useCallback(async () => {
     try {
       setLoading(true);
       const res = await getInsightsAction();
@@ -39,16 +39,25 @@ export default function InsightsPage() {
       } else {
         setErrorMessage(res.error || "Fikir sepeti yüklenemedi.");
       }
-    } catch (err) {
+    } catch {
       setErrorMessage("Bağlantı hatası oluştu.");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadInsights();
-  }, []);
+    let active = true;
+    const handle = requestAnimationFrame(() => {
+      if (active) {
+        loadInsights();
+      }
+    });
+    return () => {
+      active = false;
+      cancelAnimationFrame(handle);
+    };
+  }, [loadInsights]);
 
   const handleCreateInsight = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,7 +73,7 @@ export default function InsightsPage() {
       } else {
         setErrorMessage(res.error || "Fikir kaydedilirken bir hata oluştu.");
       }
-    } catch (err) {
+    } catch {
       setErrorMessage("Beklenmeyen bir hata oluştu.");
     } finally {
       setSubmitting(false);
@@ -79,7 +88,7 @@ export default function InsightsPage() {
       } else {
         setErrorMessage(res.error || "Fikir silinemedi.");
       }
-    } catch (err) {
+    } catch {
       setErrorMessage("Bağlantı hatası.");
     }
   };
@@ -100,7 +109,7 @@ export default function InsightsPage() {
       } else {
         setErrorMessage(res.error || "Fikir keskinleştirilemedi.");
       }
-    } catch (err) {
+    } catch {
       setErrorMessage("Bağlantı hatası.");
     } finally {
       setSharpeningIds((prev) => ({ ...prev, [insightId]: false }));

@@ -4,7 +4,10 @@ import { db } from "@/db";
 import { thesisCore } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { GeminiService } from "../_services/gemini.service";
-import { DergiParkService } from "../_services/dergipark.service";
+import {
+  DergiParkService,
+  CandidatePaper,
+} from "../_services/dergipark.service";
 import { SemanticScholarService } from "../_services/semanticscholar.service";
 import { LiteratureRecommendation, RecommendationsResult } from "../actions";
 
@@ -104,11 +107,14 @@ export async function getAcademicRecommendationsAction(
       success: true,
       recommendations,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("getAcademicRecommendationsAction Error:", error);
     return {
       success: false,
-      error: error.message || "Tavsiyeler üretilirken bir hata oluştu.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Tavsiyeler üretilirken bir hata oluştu.",
     };
   }
 }
@@ -174,19 +180,21 @@ export async function discoverNewRecommendationsAction(
       existingRecs.map((r) => r.title.toLowerCase().trim()),
     );
 
-    const unseenDergiPark = dergiParkPapers.filter((p: any) => {
+    const unseenDergiPark = dergiParkPapers.filter((p: CandidatePaper) => {
       const hasIdMatch = p.paperId && existingPaperIds.has(p.paperId);
       const hasTitleMatch =
         p.title && existingTitles.has(p.title.toLowerCase().trim());
       return !hasIdMatch && !hasTitleMatch;
     });
 
-    const unseenSemanticScholar = semanticScholarPapers.filter((p: any) => {
-      const hasIdMatch = p.paperId && existingPaperIds.has(p.paperId);
-      const hasTitleMatch =
-        p.title && existingTitles.has(p.title.toLowerCase().trim());
-      return !hasIdMatch && !hasTitleMatch;
-    });
+    const unseenSemanticScholar = semanticScholarPapers.filter(
+      (p: CandidatePaper) => {
+        const hasIdMatch = p.paperId && existingPaperIds.has(p.paperId);
+        const hasTitleMatch =
+          p.title && existingTitles.has(p.title.toLowerCase().trim());
+        return !hasIdMatch && !hasTitleMatch;
+      },
+    );
 
     const mergedUnseen = [
       ...unseenDergiPark.slice(0, 5),
@@ -217,7 +225,7 @@ export async function discoverNewRecommendationsAction(
 
     // Filter duplicates
     const finalizedNewRecommendations = newRecommendations.filter(
-      (newRec: any) => {
+      (newRec: LiteratureRecommendation) => {
         const titleLower = (newRec.title || "").toLowerCase().trim();
         const isDuplicate =
           existingTitles.has(titleLower) ||
@@ -240,11 +248,14 @@ export async function discoverNewRecommendationsAction(
       success: true,
       recommendations: updatedRecommendations,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("discoverNewRecommendationsAction Error:", error);
     return {
       success: false,
-      error: error.message || "Yeni tavsiyeler aranırken hata oluştu.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Yeni tavsiyeler aranırken hata oluştu.",
     };
   }
 }

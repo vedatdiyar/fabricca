@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import {
   UploadCloud,
   FileText,
@@ -63,40 +63,24 @@ export default function LibraryPage() {
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Load references from database on mount
-  useEffect(() => {
-    loadReferences();
-  }, []);
-
-  // Load notes whenever selectedRefId changes
-  useEffect(() => {
-    if (selectedRefId !== null) {
-      loadNotes(selectedRefId);
-      // Reset note input states on reference switch
-      setNoteContent("");
-      setNoteError(null);
-      setNoteSuccess(null);
-    } else {
-      setSavedNotes([]);
-    }
-  }, [selectedRefId]);
-
-  const loadReferences = async () => {
+  const loadReferences = useCallback(async () => {
     try {
       const res = await getReferencesAction();
       if (res.success && res.references) {
         setReferences(res.references);
         // Automatically select the first one if none selected
-        if (res.references.length > 0 && selectedRefId === null) {
-          setSelectedRefId(res.references[0].id);
+        if (res.references.length > 0) {
+          setSelectedRefId((prev) =>
+            prev === null ? res.references![0].id : prev,
+          );
         }
       }
     } catch (err) {
       console.error("Failed to load references:", err);
     }
-  };
+  }, []);
 
-  const loadNotes = async (refId: number) => {
+  const loadNotes = useCallback(async (refId: number) => {
     try {
       const res = await getNotesAction(refId);
       if (res.success && res.notes) {
@@ -105,7 +89,42 @@ export default function LibraryPage() {
     } catch (err) {
       console.error("Failed to load notes:", err);
     }
-  };
+  }, []);
+
+  // Load references from database on mount
+  useEffect(() => {
+    let active = true;
+    const handle = requestAnimationFrame(() => {
+      if (active) {
+        loadReferences();
+      }
+    });
+    return () => {
+      active = false;
+      cancelAnimationFrame(handle);
+    };
+  }, [loadReferences]);
+
+  // Load notes whenever selectedRefId changes
+  useEffect(() => {
+    let active = true;
+    const handle = requestAnimationFrame(() => {
+      if (!active) return;
+      if (selectedRefId !== null) {
+        loadNotes(selectedRefId);
+        // Reset note input states on reference switch
+        setNoteContent("");
+        setNoteError(null);
+        setNoteSuccess(null);
+      } else {
+        setSavedNotes([]);
+      }
+    });
+    return () => {
+      active = false;
+      cancelAnimationFrame(handle);
+    };
+  }, [selectedRefId, loadNotes]);
 
   const handleFileUpload = async (file: File) => {
     if (!file) return;
@@ -139,10 +158,12 @@ export default function LibraryPage() {
       } else {
         setUploadError(result.error || "Yükleme sırasında hata oluştu.");
       }
-    } catch (err: any) {
-      setUploadError(
-        err.message || "Dosya yüklenirken ağ veya sunucu hatası oluştu.",
-      );
+    } catch (err) {
+      const errMsg =
+        err instanceof Error
+          ? err.message
+          : "Dosya yüklenirken ağ veya sunucu hatası oluştu.";
+      setUploadError(errMsg);
     } finally {
       setIsUploading(false);
     }
@@ -170,11 +191,12 @@ export default function LibraryPage() {
       } else {
         setNoteError(res.error || "Not kaydedilirken bir hata oluştu.");
       }
-    } catch (err: any) {
-      setNoteError(
-        err.message ||
-          "Not kaydedilirken beklenmeyen bir sunucu hatası oluştu.",
-      );
+    } catch (err) {
+      const errMsg =
+        err instanceof Error
+          ? err.message
+          : "Not kaydedilirken beklenmeyen bir sunucu hatası oluştu.";
+      setNoteError(errMsg);
     } finally {
       setIsSavingNote(false);
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -73,10 +74,13 @@ export default function Navigation() {
                 isSidebarOpen ? "size-14" : "size-10"
               }`}
             >
-              <img
+              <Image
                 src="/logo.svg"
                 alt="Fabricca Logo"
                 className="w-full h-full object-contain"
+                width={56}
+                height={56}
+                unoptimized
               />
             </div>
             <h1

@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { references, pdfChunks, aiInsights } from "@/db/schema";
-import { eq, inArray, sql } from "drizzle-orm";
+import { inArray, sql } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
 
 export interface ReferenceItem {
@@ -44,11 +44,12 @@ export async function getLibraryReferencesAction(): Promise<{
       success: true,
       references: allRefs,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("getLibraryReferencesAction Error:", error);
     return {
       success: false,
-      error: error.message || "Referans listesi çekilemedi.",
+      error:
+        error instanceof Error ? error.message : "Referans listesi çekilemedi.",
     };
   }
 }
@@ -81,11 +82,14 @@ export async function saveInsightAction(
       success: true,
       insightId: newInsight.id,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("saveInsightAction Error:", error);
     return {
       success: false,
-      error: error.message || "Öngörü kaydedilirken hata oluştu.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Öngörü kaydedilirken hata oluştu.",
     };
   }
 }
@@ -143,11 +147,11 @@ export async function sendMessageAction(
         },
       });
       embeddingVector = embedResponse.embeddings?.[0]?.values || [];
-    } catch (embedErr: any) {
+    } catch (embedErr) {
       console.error("Gemini Embedding Generation Error:", embedErr);
       return {
         success: false,
-        error: `Aramada kullanılmak üzere embedding üretilemedi: ${embedErr.message}`,
+        error: `Aramada kullanılmak üzere embedding üretilemedi: ${embedErr instanceof Error ? embedErr.message : "Bilinmeyen hata"}`,
       };
     }
 
@@ -199,7 +203,7 @@ export async function sendMessageAction(
           )
           .limit(5);
       }
-    } catch (dbErr: any) {
+    } catch (dbErr) {
       console.error("Postgres/pgvector similarity query error:", dbErr);
       // We don't stop the process, we fall back to empty chunks
       similarChunks = [];
@@ -305,7 +309,10 @@ export async function sendMessageAction(
     // Step 7: Call Google Gemini 3.1 Flash Lite via official SDK
     const genAIResponse = await ai.models.generateContent({
       model: "gemini-3.1-flash-lite",
-      contents: contents as any,
+      contents: contents as unknown as {
+        role: string;
+        parts: { text: string }[];
+      }[],
       config: {
         systemInstruction: systemInstruction,
         temperature: 1, // Lower temperature for high academic precision and adherence to instructions
@@ -326,13 +333,14 @@ export async function sendMessageAction(
       sources:
         sourceReferenceInfos.length > 0 ? sourceReferenceInfos : undefined,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("sendMessageAction Error:", error);
     return {
       success: false,
       error:
-        error.message ||
-        "Mesaj işlenirken yapay zeka servisinde bir hata oluştu.",
+        error instanceof Error
+          ? error.message
+          : "Mesaj işlenirken yapay zeka servisinde bir hata oluştu.",
     };
   }
 }

@@ -2,6 +2,7 @@ import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { LiteratureRecommendation } from "../actions";
+import { CandidatePaper } from "./dergipark.service";
 
 const queryExtractionSchema = z.object({
   englishQueries: z
@@ -57,7 +58,7 @@ export class GeminiService {
             "Sen girdi olarak verilen Tez Başlığı, Araştırma Sorusu ve Ana Argüman metinlerinden en efektif akademik arama terimlerini çıkaran titiz bir Kıdemli Sosyal Bilimler kütüphanecisisin. KATI KURAL: Üreteceğin 3 adet 'englishQueries' ve 4 adet 'turkishKeywords' öğeleri, ana argümanda geçen temel kavramlar, teorisyen isimleri ve metodolojik terimler etrafında şekillenmelidir. Her sorgu/keline doğrudan tez metnindeki spesifik kavramlara dayanmalı, jenerik veya konu dışı terimler üretilmesi kesinlikle yasaktır. Uzun cümleler veya odak dışı kelimeler üretilmesi kesinlikle yasaktır.",
           temperature: 1,
           responseMimeType: "application/json",
-          responseJsonSchema: zodToJsonSchema(queryExtractionSchema as any),
+          responseJsonSchema: zodToJsonSchema(queryExtractionSchema as unknown as Parameters<typeof zodToJsonSchema>[0]) as unknown as Record<string, unknown>,
           thinkingConfig: {
             thinkingLevel: ThinkingLevel.LOW,
           },
@@ -98,7 +99,7 @@ export class GeminiService {
     researchQuestion: string,
     argument: string,
     methodology: string,
-    candidates: any[],
+    candidates: CandidatePaper[],
     isNewDiscovery: boolean,
     existingTitles: string[] = [],
   ): Promise<LiteratureRecommendation[]> {
@@ -215,6 +216,6 @@ Lütfen bu yepyeni aday makaleler arasından en uygun 4 yeni makaleyi seç ve is
         .trim();
     }
 
-    return JSON.parse(cleanText);
+    return JSON.parse(cleanText) as LiteratureRecommendation[];
   }
 }

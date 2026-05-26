@@ -148,10 +148,10 @@ export async function uploadPdfAction(
           })
           .where(eq(references.id, newRef.id));
       }
-    } catch (pipelineError: any) {
+    } catch (pipelineError) {
       console.error("LlamaParse/LangChain RAG Pipeline Error: ", pipelineError);
       throw new Error(
-        `Dosya yüklendi fakat RAG analizi başarısız oldu: ${pipelineError.message}`,
+        `Dosya yüklendi fakat RAG analizi başarısız oldu: ${pipelineError instanceof Error ? pipelineError.message : "Bilinmeyen hata"}`,
       );
     }
 
@@ -163,11 +163,14 @@ export async function uploadPdfAction(
       fileSize: file.size,
       referenceId: newRef.id,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("R2 Upload Error: ", error);
     return {
       success: false,
-      error: error.message || "Dosya yüklenirken bilinmeyen bir hata oluştu.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Dosya yüklenirken bilinmeyen bir hata oluştu.",
     };
   }
 }
@@ -210,11 +213,14 @@ export async function getReferencesAction(): Promise<GetReferencesResult> {
       success: true,
       references: refsWithUrls,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Failed to get references: ", error);
     return {
       success: false,
-      error: error.message || "Kaynaklar listelenirken bir hata oluştu.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Kaynaklar listelenirken bir hata oluştu.",
     };
   }
 }

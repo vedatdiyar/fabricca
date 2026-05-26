@@ -1,3 +1,5 @@
+import { CandidatePaper } from "./dergipark.service";
+
 export class SemanticScholarService {
   /**
    * Fetches papers from Semantic Scholar API in parallel using English queries,
@@ -5,8 +7,8 @@ export class SemanticScholarService {
    */
   static async fetchSemanticScholarPapers(
     englishQueries: string[],
-  ): Promise<any[]> {
-    let semanticScholarPapers: any[] = [];
+  ): Promise<CandidatePaper[]> {
+    let semanticScholarPapers: CandidatePaper[] = [];
     if (englishQueries.length === 0) {
       return semanticScholarPapers;
     }
@@ -25,7 +27,9 @@ export class SemanticScholarService {
           );
           const s2Text = await s2Res.text();
           if (s2Res.ok) {
-            const s2Data = JSON.parse(s2Text);
+            const s2Data = JSON.parse(s2Text) as {
+              data?: Record<string, unknown>[];
+            };
             return s2Data.data || [];
           } else {
             console.error(
@@ -34,7 +38,7 @@ export class SemanticScholarService {
             );
             return [];
           }
-        } catch (err: any) {
+        } catch (err) {
           console.error(
             `[Teşhis - Semantic Scholar Exception for "${query}"]:`,
             err,
@@ -44,35 +48,54 @@ export class SemanticScholarService {
       });
 
       const s2ResultsArray = await Promise.all(s2Promises);
-      const s2PapersMap = new Map<string, any>();
+      const s2PapersMap = new Map<string, Record<string, unknown>>();
       for (const papers of s2ResultsArray) {
         for (const p of papers) {
-          if (p.paperId) {
-            s2PapersMap.set(p.paperId, p);
+          const paperId = p.paperId as string | undefined;
+          if (paperId) {
+            s2PapersMap.set(paperId, p);
           }
         }
       }
 
-      semanticScholarPapers = Array.from(s2PapersMap.values()).map(
-        (p: any) => ({
-          paperId: p.paperId || Math.random().toString(36).substr(2, 9),
-          title: p.title || "Untitled Paper",
-          url: p.url || "",
-          abstract: p.abstract || "",
+      semanticScholarPapers = Array.from(s2PapersMap.values()).map((p) => {
+        const authorsVal = p.authors;
+        let authorsStr = "Unknown";
+        if (Array.isArray(authorsVal)) {
+          authorsStr = authorsVal
+            .map((a) => {
+              if (typeof a === "object" && a !== null) {
+                const authorObj = a as Record<string, unknown>;
+                return typeof authorObj.name === "string"
+                  ? authorObj.name
+                  : String(a);
+              }
+              return String(a);
+            })
+            .join(", ");
+        } else if (authorsVal) {
+          authorsStr = String(authorsVal);
+        }
+
+        const yearVal = p.year;
+        const yearStr = yearVal
+          ? String(yearVal)
+          : new Date().getFullYear().toString();
+
+        return {
+          paperId:
+            (p.paperId as string) || Math.random().toString(36).substr(2, 9),
+          title: (p.title as string) || "Untitled Paper",
+          url: (p.url as string) || "",
+          abstract: (p.abstract as string) || "",
           citationCount:
             typeof p.citationCount === "number" ? p.citationCount : 0,
-          authors: Array.isArray(p.authors)
-            ? p.authors
-                .map((a: any) =>
-                  typeof a === "object" && a?.name ? a.name : String(a),
-                )
-                .join(", ")
-            : String(p.authors || "Unknown"),
-          year: p.year ? String(p.year) : new Date().getFullYear().toString(),
+          authors: authorsStr,
+          year: yearStr,
           source: "Semantic Scholar" as const,
           lang: "EN" as const,
-        }),
-      );
+        };
+      });
       console.log(
         `[SemanticScholarService] Successfully gathered ${semanticScholarPapers.length} unique papers from Semantic Scholar.`,
       );

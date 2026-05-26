@@ -103,8 +103,8 @@ export async function extractAcademicMetadata(
  */
 export async function generateNoteSuggestions(
   content: string,
-  core: any,
-  ref: any,
+  core: unknown,
+  ref: unknown,
 ): Promise<string | null> {
   const geminiKey = process.env.GEMINI_API_KEY;
   if (!geminiKey) {
@@ -116,26 +116,28 @@ export async function generateNoteSuggestions(
   const ai = new GoogleGenAI({ apiKey: geminiKey });
 
   let thesisContext = "";
-  if (core) {
+  if (core && typeof core === "object") {
+    const c = core as Record<string, unknown>;
     thesisContext =
       `FİKRİ KESKİNLEŞTİRİLECEK ETKİN TEZ ANAYASASI:\n` +
-      `- Başlık: ${core.title}\n` +
-      `- Araştırma Sorusu: ${core.researchQuestion}\n` +
-      `- Ana Argüman/Hipotez: ${core.argument}\n` +
-      `- Yöntem/Teorik Çatı: ${core.methodology}\n\n`;
+      `- Başlık: ${c.title || ""}\n` +
+      `- Araştırma Sorusu: ${c.researchQuestion || ""}\n` +
+      `- Ana Argüman/Hipotez: ${c.argument || ""}\n` +
+      `- Yöntem/Teorik Çatı: ${c.methodology || ""}\n\n`;
   } else {
     thesisContext = `TEZ ANAYASASI: Henüz tanımlanmadı. Genel akademik standartlar ve kuramsal entegrasyon kuralları çerçevesinde analiz yapın.\n\n`;
   }
 
   let sourceMetadata = "";
-  if (ref) {
+  if (ref && typeof ref === "object") {
+    const r = ref as Record<string, unknown>;
     sourceMetadata =
       `KAYNAK DÖKÜMAN BİLGİLERİ (KÜNYE):\n` +
-      `- Başlık (Title): ${ref.title}\n` +
-      `- Yazarlar (Authors): ${ref.authors || "Bilinmiyor"}\n` +
-      `- Yıl (Year): ${ref.year || "Belirtilmemiş"}\n` +
-      `- DOI: ${ref.doi || "Mevcut Değil"}\n` +
-      `- Özet (Abstract): ${ref.abstract || "Mevcut Değil"}\n\n`;
+      `- Başlık (Title): ${r.title || ""}\n` +
+      `- Yazarlar (Authors): ${r.authors || "Bilinmiyor"}\n` +
+      `- Yıl (Year): ${r.year || "Belirtilmemiş"}\n` +
+      `- DOI: ${r.doi || "Mevcut Değil"}\n` +
+      `- Özet (Abstract): ${r.abstract || "Mevcut Değil"}\n\n`;
   } else {
     sourceMetadata = "KAYNAK DÖKÜMAN BİLGİLERİ: Mevcut Değil.\n\n";
   }

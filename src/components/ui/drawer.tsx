@@ -1,21 +1,20 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer"
-import { X } from "lucide-react"
+import * as React from "react";
+import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
 function Drawer({ ...props }: DrawerPrimitive.Root.Props) {
-  return <DrawerPrimitive.Root data-slot="drawer" {...props} />
+  return <DrawerPrimitive.Root data-slot="drawer" {...props} />;
 }
 
 function DrawerTrigger({ ...props }: DrawerPrimitive.Trigger.Props) {
-  return <DrawerPrimitive.Trigger data-slot="drawer-trigger" {...props} />
+  return <DrawerPrimitive.Trigger data-slot="drawer-trigger" {...props} />;
 }
 
 function DrawerPortal({ ...props }: DrawerPrimitive.Portal.Props) {
-  return <DrawerPrimitive.Portal data-slot="drawer-portal" {...props} />
+  return <DrawerPrimitive.Portal data-slot="drawer-portal" {...props} />;
 }
 
 function DrawerBackdrop({
@@ -31,7 +30,7 @@ function DrawerBackdrop({
       )}
       {...props}
     />
-  )
+  );
 }
 
 function DrawerContent({
@@ -53,7 +52,7 @@ function DrawerContent({
         {children}
       </DrawerPrimitive.Popup>
     </DrawerPrimitive.Portal>
-  )
+  );
 }
 
 function DrawerHeader({
@@ -69,13 +68,10 @@ function DrawerHeader({
       )}
       {...props}
     />
-  )
+  );
 }
 
-function DrawerTitle({
-  className,
-  ...props
-}: DrawerPrimitive.Title.Props) {
+function DrawerTitle({ className, ...props }: DrawerPrimitive.Title.Props) {
   return (
     <DrawerPrimitive.Title
       data-slot="drawer-title"
@@ -85,7 +81,7 @@ function DrawerTitle({
       )}
       {...props}
     />
-  )
+  );
 }
 
 function DrawerDescription({
@@ -98,13 +94,10 @@ function DrawerDescription({
       className={cn("text-xs text-muted-foreground", className)}
       {...props}
     />
-  )
+  );
 }
 
-function DrawerClose({
-  className,
-  ...props
-}: DrawerPrimitive.Close.Props) {
+function DrawerClose({ className, ...props }: DrawerPrimitive.Close.Props) {
   return (
     <DrawerPrimitive.Close
       data-slot="drawer-close"
@@ -114,7 +107,7 @@ function DrawerClose({
       )}
       {...props}
     />
-  )
+  );
 }
 
 export {
@@ -127,4 +120,4 @@ export {
   DrawerTitle,
   DrawerDescription,
   DrawerClose,
-}
+};

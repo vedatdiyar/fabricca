@@ -83,11 +83,14 @@ export async function saveNoteAction(
       success: true,
       noteId: newNote.id,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Save Note Error: ", error);
     return {
       success: false,
-      error: error.message || "Not kaydedilirken bir hata oluştu.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Not kaydedilirken bir hata oluştu.",
     };
   }
 }
@@ -124,11 +127,14 @@ export async function getNotesAction(
       success: true,
       notes: notesWithUserFlag,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Get Notes Error: ", error);
     return {
       success: false,
-      error: error.message || "Notlar listelenirken bir hata oluştu.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Notlar listelenirken bir hata oluştu.",
     };
   }
 }

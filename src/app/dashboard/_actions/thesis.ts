@@ -35,11 +35,14 @@ export async function getThesisCoreAction(
         methodology: core.methodology,
       },
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("getThesisCoreAction Error:", error);
     return {
       success: false,
-      error: error.message || "Tez anayasası yüklenirken bir hata oluştu.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Tez anayasası yüklenirken bir hata oluştu.",
     };
   }
 }

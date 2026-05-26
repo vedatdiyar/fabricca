@@ -376,7 +376,7 @@ export function AdvisorSidebar({
   return (
     <Tabs
       value={activeSidebarTab}
-      onValueChange={(v) => setActiveSidebarTab(v as any)}
+      onValueChange={(v) => setActiveSidebarTab(v as "chats" | "sources")}
       className="flex-1 flex flex-col min-h-0"
     >
       <TabsList className="w-full bg-background border border-border p-1 rounded-lg grid grid-cols-2 mb-4 shrink-0">

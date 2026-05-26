@@ -41,6 +41,7 @@ export default function OnboardingPage() {
 
   // Submit response handler
   const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!userResponse.trim() || isLoading || isOriginalityLoading) return;
 
     const responseText = userResponse.trim();
@@ -127,9 +128,13 @@ export default function OnboardingPage() {
         // Increment step
         setCurrentStep((prev) => prev + 1);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Onboarding Error:", err);
-      setError(err.message || "Bir hata oluştu, lütfen tekrar deneyin.");
+      const errMsg =
+        err instanceof Error
+          ? err.message
+          : "Bir hata oluştu, lütfen tekrar deneyin.";
+      setError(errMsg);
       // Rollback last user message if failed so they can edit it
       setMessages((prev) => [...prev.slice(0, -1)]);
       setUserResponse(responseText);
@@ -155,9 +160,11 @@ export default function OnboardingPage() {
       // Force a full router refresh and navigate to dashboard
       router.refresh();
       router.push("/dashboard");
-    } catch (err: any) {
+    } catch (err) {
       console.error("Save Thesis Core Error:", err);
-      setError(err.message || "Kayıt sırasında bir hata oluştu.");
+      const errMsg =
+        err instanceof Error ? err.message : "Kayıt sırasında bir hata oluştu.";
+      setError(errMsg);
     } finally {
       setIsSaving(false);
     }

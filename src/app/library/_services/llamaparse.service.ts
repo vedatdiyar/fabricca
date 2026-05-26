@@ -40,8 +40,12 @@ export async function parsePdfWithLlamaParse(
     );
   }
 
-  const startJson = await startRes.json();
-  const jobId = startJson.id || startJson.job?.id;
+  const startJson = (await startRes.json()) as Record<string, unknown>;
+  const jobId =
+    (startJson.id as string | undefined) ||
+    ((startJson.job as Record<string, unknown> | undefined)?.id as
+      | string
+      | undefined);
   if (!jobId) {
     throw new Error("LlamaParse v2 iş ID'si alınamadı.");
   }
@@ -49,7 +53,7 @@ export async function parsePdfWithLlamaParse(
 
   // 2. GET & POLLING: Durum kontrolü ve markdown_full veri çekme
   let status = "PENDING";
-  let resultJson: any = null;
+  let resultJson: Record<string, unknown> | null = null;
   const maxAttempts = 60; // 5 minutes max with 5s delay
 
   for (let i = 0; i < maxAttempts; i++) {
@@ -63,8 +67,13 @@ export async function parsePdfWithLlamaParse(
     );
 
     if (pollRes.ok) {
-      resultJson = await pollRes.json();
-      status = resultJson.status || resultJson.job?.status || "PENDING";
+      resultJson = (await pollRes.json()) as Record<string, unknown>;
+      status =
+        (resultJson.status as string | undefined) ||
+        ((resultJson.job as Record<string, unknown> | undefined)?.status as
+          | string
+          | undefined) ||
+        "PENDING";
       console.log(`LlamaParse v2 job status at attempt ${i + 1}: ${status}`);
 
       if (status === "COMPLETED") {
@@ -72,8 +81,9 @@ export async function parsePdfWithLlamaParse(
       }
       if (status === "FAILED" || status === "CANCELLED") {
         const errorMsg =
-          resultJson.error_message ||
-          resultJson.job?.error_message ||
+          (resultJson.error_message as string | undefined) ||
+          ((resultJson.job as Record<string, unknown> | undefined)
+            ?.error_message as string | undefined) ||
           "Bilinmeyen hata";
         throw new Error(
           `LlamaParse döküman çözümleme işi başarısız/iptal oldu: ${errorMsg}`,
@@ -87,14 +97,18 @@ export async function parsePdfWithLlamaParse(
     await new Promise((resolve) => setTimeout(resolve, 5000));
   }
 
-  if (status !== "COMPLETED") {
+  if (status !== "COMPLETED" || !resultJson) {
     throw new Error(
       "LlamaParse döküman çözümleme zaman aşımına uğradı (5 dakika).",
     );
   }
 
   const fullMarkdown =
-    resultJson.markdown_full || resultJson.job?.markdown_full || "";
+    (resultJson.markdown_full as string | undefined) ||
+    ((resultJson.job as Record<string, unknown> | undefined)?.markdown_full as
+      | string
+      | undefined) ||
+    "";
   if (!fullMarkdown || !fullMarkdown.trim()) {
     throw new Error("LlamaParse v2 tarafından çözümlenen Markdown metni boş.");
   }

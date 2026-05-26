@@ -408,7 +408,7 @@ export function useAdvisor() {
       } else {
         toast.error(res.error || "Hoca yanıt veremedi, bir sorun oluştu.");
       }
-    } catch (err: any) {
+    } catch {
       toast.error("Sunucu hatası: Mesaj iletilemedi.");
     } finally {
       setIsPending(false);
@@ -443,7 +443,7 @@ export function useAdvisor() {
       } else {
         toast.error(res.error || "Fikir kaydedilemedi.");
       }
-    } catch (err) {
+    } catch {
       toast.error("Bağlantı hatası: Fikir kaydedilemedi.");
     }
   };
