@@ -22,7 +22,7 @@ export const thesisCore = pgTable("thesis_core", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// 1.1. TEZ KUTULARI TABLOSU (Tematik Kartoteks / Fişleme Kutuları)
+// 1.1. TEZ KUTULARI TABLOSU (Tematik Bilgi Fişi / Fişleme Kutuları)
 // Kullanıcının onboarding veya dashboard sürecinde oluşturacağı esnek tematik klasörleri/kutuları tutar.
 export const thesisBoxes = pgTable("thesis_boxes", {
   id: serial("id").primaryKey(),

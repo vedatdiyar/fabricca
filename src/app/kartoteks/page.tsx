@@ -7,7 +7,6 @@ import {
   Sparkles,
   Loader2,
   FolderClosed,
-  Info,
   AlertCircle,
   HelpCircle,
 } from "lucide-react";
@@ -71,7 +70,7 @@ export default function KartoteksPage() {
         throw new Error(notesRes.error || "Okuma notları yüklenemedi.");
       }
     } catch (err) {
-      console.error("Kartoteks load error:", err);
+      console.error("Bilgi Fişi load error:", err);
       setError(
         err instanceof Error
           ? err.message
@@ -122,7 +121,7 @@ export default function KartoteksPage() {
       <div className="flex flex-1 flex-col items-center justify-center min-h-[60vh] bg-background text-foreground">
         <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
         <p className="text-sm font-semibold tracking-wide text-muted-foreground animate-pulse">
-          Kartoteks Laboratuvarı yükleniyor...
+          Bilgi Fişi Laboratuvarı yükleniyor...
         </p>
       </div>
     );
@@ -135,7 +134,7 @@ export default function KartoteksPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <FolderKanban className="h-6 w-6 text-primary" />
-            <span>Kartoteks Laboratuvarı</span>
+            <span>Bilgi Fişi Laboratuvarı</span>
           </h1>
           <p className="text-sm text-muted-foreground mt-1 font-sans">
             Okuma notlarınızı ve atıf fişlerinizi esnek tematik çalışma
@@ -335,7 +334,7 @@ export default function KartoteksPage() {
                         </span>
                       </div>
                       {box.description && (
-                        <p className="text-xs text-muted-foreground leading-normal font-sans italic">
+                        <p className="text-xs text-muted-foreground leading-normal font-sans">
                           {box.description}
                         </p>
                       )}

@@ -21,9 +21,8 @@ const fredoka = Fredoka({
 });
 
 export const metadata: Metadata = {
-  title: "Fabricca - Tez Stratejisi ve RAG Karargahı",
-  description:
-    "Fabricca - Tez Stratejisi ve RAG Karargahı",
+  title: "Fabricca",
+  description: "Fabricca",
   icons: {
     icon: [
       { url: "/icon0.svg", type: "image/svg+xml" },

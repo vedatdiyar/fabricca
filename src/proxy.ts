@@ -20,9 +20,9 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
   } else {
-    // If authenticated and trying to access the login page, redirect instantly to /dashboard
+    // If authenticated and trying to access the login page, redirect instantly to /
     if (isLoginPage) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
+      return NextResponse.redirect(new URL("/", request.url));
     }
   }
 
@@ -32,7 +32,6 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     "/",
-    "/dashboard/:path*",
     "/library/:path*",
     "/advisor/:path*",
     "/onboarding/:path*",

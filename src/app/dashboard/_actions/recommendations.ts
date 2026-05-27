@@ -42,13 +42,20 @@ function deduplicatePapers(
   return finalPool;
 }
 
+interface LoggablePaper {
+  title: string;
+  source?: string;
+  citationCount?: number;
+  relevance?: string;
+}
+
 /**
  * Logs details about academic papers before and after jury evaluation.
  */
 function logCandidatesPool(
   stage: "BEFORE_JURY" | "AFTER_JURY",
   boxName: string,
-  papers: any[],
+  papers: LoggablePaper[],
 ) {
   console.log(`\n==================================================`);
   console.log(`[JURY LOG - ${stage}] Box: "${boxName}"`);

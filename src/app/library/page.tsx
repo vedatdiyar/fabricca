@@ -20,8 +20,6 @@ import {
   getReferencesAction,
   saveNoteAction,
   getNotesAction,
-  getThesisBoxesAction,
-  updateNoteBoxAction,
 } from "./actions";
 import ReactMarkdown from "react-markdown";
 
@@ -35,15 +33,6 @@ interface Reference {
   abstract: string | null;
   createdAt: Date | null;
   downloadUrl: string;
-}
-
-interface ThesisBox {
-  id: number;
-  thesisCoreId: number;
-  name: string;
-  description: string | null;
-  order: number;
-  createdAt: Date | null;
 }
 
 interface Note {
@@ -70,7 +59,6 @@ export default function LibraryPage() {
   const [noteContent, setNoteContent] = useState("");
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [savedNotes, setSavedNotes] = useState<Note[]>([]);
-  const [thesisBoxes, setThesisBoxes] = useState<ThesisBox[]>([]);
   const [noteError, setNoteError] = useState<string | null>(null);
   const [noteSuccess, setNoteSuccess] = useState<string | null>(null);
 
@@ -104,31 +92,19 @@ export default function LibraryPage() {
     }
   }, []);
 
-  const loadThesisBoxes = useCallback(async () => {
-    try {
-      const res = await getThesisBoxesAction();
-      if (res.success && res.boxes) {
-        setThesisBoxes(res.boxes);
-      }
-    } catch (err) {
-      console.error("Failed to load thesis boxes:", err);
-    }
-  }, []);
-
-  // Load references and thesis boxes from database on mount
+  // Load references from database on mount
   useEffect(() => {
     let active = true;
     const handle = requestAnimationFrame(() => {
       if (active) {
         loadReferences();
-        loadThesisBoxes();
       }
     });
     return () => {
       active = false;
       cancelAnimationFrame(handle);
     };
-  }, [loadReferences, loadThesisBoxes]);
+  }, [loadReferences]);
 
   // Load notes whenever selectedRefId changes
   useEffect(() => {
@@ -227,23 +203,6 @@ export default function LibraryPage() {
     }
   };
 
-  const handleToggleNoteBox = async (noteId: number, boxId: number) => {
-    try {
-      setNoteError(null);
-      const res = await updateNoteBoxAction(noteId, boxId);
-      if (res.success) {
-        if (selectedRefId !== null) {
-          await loadNotes(selectedRefId);
-        }
-      } else {
-        setNoteError(res.error || "Not kutusu güncellenirken bir hata oluştu.");
-      }
-    } catch (err) {
-      console.error("Failed to toggle note box:", err);
-      setNoteError("Not kutusu güncellenirken beklenmedik bir hata oluştu.");
-    }
-  };
-
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -291,7 +250,7 @@ export default function LibraryPage() {
       </Tabs>
 
       {/* Main Workspace Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1">
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-8 flex-1">
         {/* Left Column: Dropzone and Uploaded References (Visible on Desktop OR Mobile Active Tab) */}
         <div
           className={`border border-border bg-card p-6 rounded-lg shadow-xl flex flex-col space-y-6 ${
@@ -482,7 +441,7 @@ export default function LibraryPage() {
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                     Özet / Abstract
                   </h4>
-                  <p className="text-xs text-muted-foreground leading-relaxed italic">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
                     {selectedRef.abstract}
                   </p>
                 </div>
@@ -600,35 +559,6 @@ export default function LibraryPage() {
                             ? new Date(note.createdAt).toLocaleString("tr-TR")
                             : ""}
                         </span>
-
-                        {/* Thematic Box Badges (Kartoteks Fişleme) */}
-                        {thesisBoxes.length > 0 && (
-                          <div className="pt-2 border-t border-border mt-2 space-y-1.5">
-                            <span className="text-[9px] uppercase tracking-wider font-mono text-muted-foreground block">
-                              Tematik Fişleme Kutusu
-                            </span>
-                            <div className="flex flex-wrap gap-1.5">
-                              {thesisBoxes.map((box) => {
-                                const isActive = note.boxId === box.id;
-                                return (
-                                  <button
-                                    key={box.id}
-                                    type="button"
-                                    onClick={() => handleToggleNoteBox(note.id, box.id)}
-                                    title={box.description || box.name}
-                                    className={`text-[10px] px-2.5 py-1 rounded transition duration-150 cursor-pointer font-sans font-semibold border ${
-                                      isActive
-                                        ? "bg-primary text-background border-primary shadow-sm"
-                                        : "bg-card text-muted-foreground border-border hover:border-muted-foreground hover:text-foreground"
-                                    }`}
-                                  >
-                                    {box.name}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
 
                         {note.aiContextSuggestions && (
                           <div className="bg-card border border-primary p-4 rounded mt-2 space-y-3 relative overflow-hidden">

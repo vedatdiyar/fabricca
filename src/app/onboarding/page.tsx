@@ -217,7 +217,7 @@ export default function OnboardingPage() {
 
       // Force a full router refresh and navigate to dashboard
       router.refresh();
-      router.push("/dashboard");
+      router.push("/");
     } catch (err) {
       console.error("Save Thesis Core Error:", err);
       const errMsg =

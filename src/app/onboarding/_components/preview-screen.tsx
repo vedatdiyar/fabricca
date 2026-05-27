@@ -115,7 +115,7 @@ export function PreviewScreen({
             <div className="border border-border bg-secondary/40 p-4 rounded-lg space-y-3 relative overflow-hidden md:col-span-2">
               <div className="absolute top-0 left-0 w-[3px] h-full bg-primary" />
               <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                Önerilen Tematik Çalışma Kutuları (Kartoteks Fişleri)
+                Önerilen Tematik Çalışma Kutuları (Bilgi Fişleri)
               </span>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
                 {structuredData.boxes.map((box, index) => (

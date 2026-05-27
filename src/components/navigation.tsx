@@ -28,7 +28,7 @@ export default function Navigation() {
     },
     {
       name: "Tez Karargahı",
-      href: "/dashboard",
+      href: "/",
       icon: LayoutDashboard,
     },
     {
@@ -37,7 +37,7 @@ export default function Navigation() {
       icon: Library,
     },
     {
-      name: "Kartoteks",
+      name: "Bilgi Fişi",
       href: "/kartoteks",
       icon: FolderKanban,
     },
@@ -109,7 +109,9 @@ export default function Navigation() {
         >
           {navItems.map((item) => {
             const isActive =
-              pathname === item.href || pathname.startsWith(item.href + "/");
+              item.href === "/"
+                ? pathname === "/"
+                : pathname === item.href || pathname.startsWith(item.href + "/");
             const Icon = item.icon;
 
             return (
@@ -184,7 +186,9 @@ export default function Navigation() {
       <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-sidebar border-t border-border flex items-center justify-around px-2 z-50 select-none">
         {navItems.map((item) => {
           const isActive =
-            pathname === item.href || pathname.startsWith(item.href + "/");
+            item.href === "/"
+              ? pathname === "/"
+              : pathname === item.href || pathname.startsWith(item.href + "/");
           const Icon = item.icon;
 
           return (
@@ -196,7 +200,7 @@ export default function Navigation() {
               }`}
             >
               <Icon className="size-5 mb-1 transition duration-150" />
-              <span className="text-[9px] font-medium tracking-tight truncate max-w-[80px]">
+              <span className="text-[9px] font-medium tracking-tight truncate max-w-[80px] hidden">
                 {item.name}
               </span>
             </Link>

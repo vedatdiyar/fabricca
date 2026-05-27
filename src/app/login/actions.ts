@@ -35,7 +35,7 @@ export async function loginAction(
       maxAge: 60 * 60 * 24 * 7, // 1 week
     });
 
-    redirect("/dashboard");
+    redirect("/");
   }
 
   return {

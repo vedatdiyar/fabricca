@@ -3,12 +3,11 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  getThesisCoreAction,
   getAcademicRecommendationsAction,
   discoverNewRecommendationsAction,
   ThesisCoreData,
   LiteratureRecommendation,
-} from "./actions";
+} from "../actions";
 import {
   getTasksAction,
   updateTaskStatusAction,
@@ -18,20 +17,23 @@ import { LayoutDashboard, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 // Modular Subcomponents
-import { DashboardLoading } from "./_components/dashboard-loading";
-import { ThesisConstitution } from "./_components/thesis-constitution";
-import { TaskPanel } from "./_components/task-panel";
-import { RecommendationGrid } from "./_components/recommendation-grid";
-import { PdfUploadDrawer } from "./_components/pdf-upload-drawer";
+import { DashboardLoading } from "./dashboard-loading";
+import { ThesisConstitution } from "./thesis-constitution";
+import { TaskPanel } from "./task-panel";
+import { RecommendationGrid } from "./recommendation-grid";
+import { PdfUploadDrawer } from "./pdf-upload-drawer";
 
-export default function DashboardPage() {
+interface DashboardClientProps {
+  initialThesisData: ThesisCoreData | null;
+}
+
+export default function DashboardClient({ initialThesisData }: DashboardClientProps) {
   const router = useRouter();
-  const [thesisData, setThesisData] = useState<ThesisCoreData | null>(null);
+  const thesisData = initialThesisData;
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [recs, setRecs] = useState<LiteratureRecommendation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingRecs, setIsLoadingRecs] = useState(false);
-  const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState("");
   const [recsError, setRecsError] = useState("");
   const [updatingTaskId, setUpdatingTaskId] = useState<number | null>(null);
@@ -88,34 +90,22 @@ export default function DashboardPage() {
         setIsLoading(true);
         setError("");
 
-        // 1. Fetch thesis core parameters
-        const thesisRes = await getThesisCoreAction();
-
-        if (!thesisRes.success) {
-          setError(thesisRes.error || "Tez verileri yüklenemedi.");
-          setIsLoading(false);
-          return;
-        }
-
-        // 2. Fetch active tasks (load even if thesis core is empty)
+        // 1. Fetch active tasks (load even if thesis core is empty)
         const tasksRes = await getTasksAction();
         if (tasksRes.success && tasksRes.tasks) {
           setTasks(tasksRes.tasks);
         }
 
-        if (!thesisRes.data) {
-          // If no thesis setup found, do not redirect, but render a friendly call-to-action
-          setThesisData(null);
-          setIsLoading(false);
+        // 2. Load recommendations if thesis data exists
+        if (initialThesisData) {
+          await fetchRecommendations(initialThesisData);
+        } else {
           setRecs([]);
-          setIsLoadingRecs(false);
           setRecsError(
             "Tavsiye üretilebilmesi için öncelikle Tez Anayasası'nı oluşturmalısınız.",
           );
-          return;
         }
 
-        setThesisData(thesisRes.data);
         setIsLoading(false);
       } catch (err) {
         console.error("Dashboard error:", err);
@@ -125,7 +115,7 @@ export default function DashboardPage() {
     }
 
     loadDashboardData();
-  }, [router]);
+  }, [router, initialThesisData]);
 
   // Handle rapid inline task status transition
   const handleUpdateStatus = async (
@@ -154,11 +144,10 @@ export default function DashboardPage() {
     }
   };
 
-  // If redirecting, loading, or an error occurs, show full-screen message
-  if (redirecting || isLoading || error) {
+  // If loading or an error occurs, show full-screen message
+  if (isLoading || error) {
     return (
       <DashboardLoading
-        redirecting={redirecting}
         isLoading={isLoading}
         error={error}
         onRetry={() => window.location.reload()}
