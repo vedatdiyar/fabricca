@@ -2,7 +2,7 @@ import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { LiteratureRecommendation } from "../actions";
-import { CandidatePaper } from "./dergipark.service";
+import { CandidatePaper } from "./types";
 
 const queryExtractionSchema = z.object({
   englishQueries: z
@@ -12,14 +12,59 @@ const queryExtractionSchema = z.object({
     .describe(
       "Semantic Scholar API araması için en fazla 2-3 kelimeden oluşan, bağlaç (and, in, of) içermeyen parça parça 3 adet İngilizce arama terimi kombinasyonu.",
     ),
-  turkishKeywords: z
-    .array(z.string())
-    .min(4)
-    .max(4)
-    .describe(
-      "DergiPark OAI-PMH XML verilerini yerelde filtrelemek için kullanılacak, ek almamış, yalın halde 4 adet Türkçe tekil anahtar kelime.",
-    ),
 });
+
+const boxQueryExtractionSchema = z.object({
+  boxes: z.array(
+    z.object({
+      boxId: z.number().describe("Verilen kutunun id değeri"),
+      englishQueries: z
+        .array(z.string())
+        .min(2)
+        .max(2)
+        .describe(
+          "Global literatür standartlarında (saf kuramsal metinleri ve emsal vaka analizlerini yakalayacak) en fazla 2-3 kelimeden oluşan 2 adet İngilizce arama terimi kombinasyonu.",
+        ),
+      turkishQueries: z
+        .array(z.string())
+        .min(2)
+        .max(2)
+        .describe(
+          "Türkiye akademisindeki arama indekslerine tam uyumlu, yerel ampirik/tarihsel literatürü yakalayacak rafine en fazla 2-3 kelimeden oluşan 2 adet Türkçe arama terimi kombinasyonu.",
+        ),
+    }),
+  ),
+});
+
+const juryResponseSchema = {
+  type: "ARRAY" as const,
+  description: "Akademik jürinin onayladığı makale önerileri listesi",
+  items: {
+    type: "OBJECT" as const,
+    properties: {
+      paperId: { type: "STRING" as const },
+      title: { type: "STRING" as const },
+      authors: { type: "STRING" as const },
+      year: { type: "STRING" as const },
+      url: { type: "STRING" as const },
+      citationCount: { type: "INTEGER" as const },
+      source: { type: "STRING" as const },
+      lang: { type: "STRING" as const },
+      relevance: { type: "STRING" as const },
+    },
+    required: [
+      "paperId",
+      "title",
+      "authors",
+      "year",
+      "url",
+      "citationCount",
+      "source",
+      "lang",
+      "relevance",
+    ],
+  },
+};
 
 export class GeminiService {
   private static getClient(): GoogleGenAI {
@@ -55,10 +100,14 @@ export class GeminiService {
         contents: extractPrompt,
         config: {
           systemInstruction:
-            "Sen girdi olarak verilen Tez Başlığı, Araştırma Sorusu ve Ana Argüman metinlerinden en efektif akademik arama terimlerini çıkaran titiz bir Kıdemli Sosyal Bilimler kütüphanecisisin. KATI KURAL: Üreteceğin 3 adet 'englishQueries' ve 4 adet 'turkishKeywords' öğeleri, ana argümanda geçen temel kavramlar, teorisyen isimleri ve metodolojik terimler etrafında şekillenmelidir. Her sorgu/keline doğrudan tez metnindeki spesifik kavramlara dayanmalı, jenerik veya konu dışı terimler üretilmesi kesinlikle yasaktır. Uzun cümleler veya odak dışı kelimeler üretilmesi kesinlikle yasaktır.",
+            "Sen girdi olarak verilen Tez Başlığı, Araştırma Sorusu ve Ana Argüman metinlerinden en efektif akademik arama terimlerini çıkaran titiz bir Kıdemli Sosyal Bilimler kütüphanecisisin. KATI KURAL: Üreteceğin 3 adet 'englishQueries' öğesi, ana argümanda geçen temel kavramlar, teorisyen isimleri ve metodolojik terimler etrafında şekillenmelidir. Her sorgu doğrudan tez metnindeki spesifik kavramlara dayanmalı, jenerik veya konu dışı terimler üretilmesi kesinlikle yasaktır. Uzun cümleler veya odak dışı kelimeler üretilmesi kesinlikle yasaktır.",
           temperature: 1,
           responseMimeType: "application/json",
-          responseJsonSchema: zodToJsonSchema(queryExtractionSchema as unknown as Parameters<typeof zodToJsonSchema>[0]) as unknown as Record<string, unknown>,
+          responseSchema: zodToJsonSchema(
+            queryExtractionSchema as unknown as Parameters<
+              typeof zodToJsonSchema
+            >[0],
+          ) as unknown as Record<string, unknown>,
           thinkingConfig: {
             thinkingLevel: ThinkingLevel.LOW,
           },
@@ -71,7 +120,7 @@ export class GeminiService {
 
       return {
         englishQueries: validated.englishQueries,
-        turkishKeywords: validated.turkishKeywords,
+        turkishKeywords: [],
       };
     } catch (err) {
       console.error(
@@ -86,8 +135,177 @@ export class GeminiService {
           words.slice(0, 3).join(" "),
           words.slice(1, 3).join(" "),
         ].filter(Boolean),
-        turkishKeywords: words.slice(0, 4).filter(Boolean),
+        turkishKeywords: [],
       };
+    }
+  }
+
+  /**
+   * Extracts target queries per box specifically matching box name and description.
+   */
+  static async extractAcademicQueriesPerBox(
+    title: string,
+    researchQuestion: string,
+    argument: string,
+    methodology: string,
+    boxes: { id: number; name: string; description: string | null }[],
+  ): Promise<
+    { boxId: number; englishQueries: string[]; turkishQueries: string[] }[]
+  > {
+    try {
+      const ai = this.getClient();
+
+      const extractPrompt = `TEZ ANAYASASI:
+- Başlık: ${title}
+- Araştırma Sorusu: ${researchQuestion}
+- Ana Argüman: ${argument}
+- Metodoloji: ${methodology}
+
+TEMATİK ÇALIŞMA KUTULARI (THESIS BOXES):
+${JSON.stringify(
+  boxes.map((b) => ({ id: b.id, name: b.name, description: b.description })),
+  null,
+  2,
+)}
+
+Lütfen yukarıdaki tezin genel bağlamı altında, her bir "Tematik Çalışma Kutusu" (Thesis Box) için özel, nokta atışı arama terimleri üret. Her kutu için belirlenen sorgular doğrudan kutunun adına ve açıklamasına odaklanmalıdır.`;
+
+      const extractResponse = await ai.models.generateContent({
+        model: "gemini-3.1-flash-lite",
+        contents: extractPrompt,
+        config: {
+          systemInstruction:
+            "Sen girdi olarak verilen Tez Anayasası (Başlık, Soru, Argüman, Metodoloji) ve Tematik Çalışma Kutuları listesinden, her bir kutuya özel akademik arama terimlerini çıkaran titiz bir Kıdemli Sosyal Bilimler kütüphanecisisin.\n\n" +
+            "GÖREVİN VE ANALİZ ADIMLARI:\n" +
+            "1. Girdideki tez anayasasını ve kutuları (kutu aslında tezin bir bölümü/outline'ıdır) titizlikle incele.\n" +
+            "2. Her kutu için üreteceğin arama terimlerini (sorguları) üretirken şu unsurları birbiriyle harmanla: Kutu adı + Kutu Açıklaması + Varsa kutuda geçen kuramsal eşlenikler (Örn: Teorisyen isimleri, metodolojik kavramlar) ve tezin ampirik özneleri / coğrafyası / tarihsel dönemi.\n" +
+            '3. \'englishQueries\' için: Arama motorlarının ham metin eşleşmesi körlüğünü yıkmak ve kurucu \'ağır topları\' ıskalamamak için, her sorgu string\'i, yazar soyadları ve teorik çekirdeğin doğal bir birleşimi olmalıdır (Örn: "Snow Benford collective action framing" veya "Gramsci hegemony political consent"). Asla ["frame bridging"] gibi tekil veya atomik kelimeler üretilmemelidir.\n' +
+            '4. \'turkishQueries\' için: Türkiye akademisindeki tam isabet kesişimleri yakalamak için sorguları doğrudan ÇİFT TIRNAKLI esnek öbekler halinde üretmelisin (Örn: "\\"çerçeveleme kuramı\\" \\"toplumsal hareketler\\"" veya "\\"hegemonya stratejisi\\" \\"rıza üretimi\\"").\n\n' +
+            "KATI KURALLAR:\n" +
+            "- Her sorgu doğrudan kutudaki spesifik kavramlara ve tez bağlamına dayanmalı, jenerik veya konu dışı terimler üretilmesi kesinlikle yasaktır.\n" +
+            "- Uzun cümleler veya odak dışı kelimeler üretilmesi kesinlikle yasaktır.",
+          temperature: 1,
+          responseMimeType: "application/json",
+          responseSchema: zodToJsonSchema(
+            boxQueryExtractionSchema as unknown as Parameters<
+              typeof zodToJsonSchema
+            >[0],
+          ) as unknown as Record<string, unknown>,
+          thinkingConfig: {
+            thinkingLevel: ThinkingLevel.LOW,
+          },
+        },
+      });
+
+      const cleanExtractText = (extractResponse.text || "").trim();
+      const parsedJson = JSON.parse(cleanExtractText);
+
+      const singleBoxSchema = z.object({
+        boxId: z.coerce.number().optional().nullable(),
+        id: z.coerce.number().optional().nullable(),
+        englishQueries: z.array(z.string()).catch([]),
+        turkishQueries: z.array(z.string()).catch([]),
+      });
+
+      let boxesList: {
+        boxId: number;
+        englishQueries: string[];
+        turkishQueries: string[];
+      }[] = [];
+
+      let rawItems: Record<string, unknown>[] = [];
+      try {
+        if (Array.isArray(parsedJson)) {
+          rawItems = parsedJson as Record<string, unknown>[];
+        } else if (parsedJson && typeof parsedJson === "object") {
+          const parsedObj = parsedJson as Record<string, unknown>;
+          if (Array.isArray(parsedObj.boxes)) {
+            rawItems = parsedObj.boxes as Record<string, unknown>[];
+          } else {
+            const validated = boxQueryExtractionSchema.safeParse(parsedJson);
+            if (validated.success) {
+              rawItems = validated.data.boxes as unknown as Record<
+                string,
+                unknown
+              >[];
+            } else {
+              rawItems = [parsedObj];
+            }
+          }
+        }
+      } catch (e) {
+        console.warn(
+          "[GeminiService] Failed to extract raw items, defaulting to empty list:",
+          e,
+        );
+      }
+
+      boxesList = rawItems.map((item, idx) => {
+        const parsed = singleBoxSchema.safeParse(item);
+        const data = parsed.success
+          ? parsed.data
+          : {
+              boxId:
+                item && typeof item === "object"
+                  ? (item.boxId ?? item.id)
+                  : undefined,
+              id:
+                item && typeof item === "object"
+                  ? (item.id ?? item.boxId)
+                  : undefined,
+              englishQueries:
+                item &&
+                typeof item === "object" &&
+                Array.isArray(item.englishQueries)
+                  ? (item.englishQueries as string[])
+                  : [],
+              turkishQueries:
+                item &&
+                typeof item === "object" &&
+                Array.isArray(item.turkishQueries)
+                  ? (item.turkishQueries as string[])
+                  : [],
+            };
+
+        // Determine final boxId using safe fallback mechanism
+        let finalBoxId: number;
+        if (data.boxId !== undefined && data.boxId !== null) {
+          finalBoxId = Number(data.boxId);
+        } else if (data.id !== undefined && data.id !== null) {
+          finalBoxId = Number(data.id);
+        } else {
+          const originalBox = boxes[idx] || boxes[0];
+          finalBoxId = originalBox ? originalBox.id : 0;
+        }
+
+        return {
+          boxId: finalBoxId,
+          englishQueries: data.englishQueries || [],
+          turkishQueries: data.turkishQueries || [],
+        };
+      });
+
+      return boxesList;
+    } catch (err) {
+      console.error(
+        "[GeminiService] extractAcademicQueriesPerBox parsing error or validation failure:",
+        err,
+      );
+      // Fallback
+      return boxes.map((b) => {
+        const words = b.name.split(" ").filter((w) => w.length > 2);
+        return {
+          boxId: b.id,
+          englishQueries: [
+            words.slice(0, 2).join(" "),
+            words.slice(1, 3).join(" "),
+          ].filter(Boolean),
+          turkishQueries: [
+            words.slice(0, 2).join(" "),
+            words.slice(1, 3).join(" "),
+          ].filter(Boolean),
+        };
+      });
     }
   }
 
@@ -102,101 +320,35 @@ export class GeminiService {
     candidates: CandidatePaper[],
     isNewDiscovery: boolean,
     existingTitles: string[] = [],
+    boxName?: string,
   ): Promise<LiteratureRecommendation[]> {
     const ai = this.getClient();
 
-    let jurySystemPrompt = "";
-    let juryPrompt = "";
+    const activeBoxName = boxName || "ilgili";
+    const jurySystemPrompt = `Sen kıdemli bir akademisyensin. Önündeki aday makale listesini, tezin [TITLE, ARGUMENT, METHODOLOGY] verileriyle karşılaştır.
+Makalelerin atıf sayısı senin için kriter değildir. Kriterin, makalenin tezin ilgili [${activeBoxName}] kutusu ile olan metodolojik ve kuramsal uyumudur.
+Hangi kaynaktan gelirse gelsin (SS veya OA), teze en derinlikli katkıyı sunan 2 makaleyi bu kutu için seç.
 
-    if (!isNewDiscovery) {
-      jurySystemPrompt = `
-Sen sosyal bilimler alanında uzman, son derece seçkin ve analitik düşünen bir Akademik Jüri / Danışman Profesörsün.
-Önünde kullanıcının aktif tez anayasası ve hem DergiPark (TR) hem de Semantic Scholar (EN) kaynaklarından toplanmış tamamen GERÇEK aday akademik makaleler var.
+KATI AKADEMİK KURALLAR:
+1. KAFANDAN HİÇBİR YENİ MAKALE, YAZAR, YIL VEYA URL TÜRETMEYECEKSİN/UYDURMAYACAKSIN. Sadece sunulan aday makaleler listesinden seçim yapacaksın.
+2. Aday makalelerin 'paperId', 'title', 'authors', 'year', 'url', 'citationCount', 'source', 'lang' gibi orijinal bilgilerini kesinlikle değiştirme, manipüle etme.
+3. Her seçtiğin makale için Türkçe olarak 2-3 cümlelik çok güçlü bir entegrasyon gerekçesi ("relevance") üret. Bu gerekçede makalenin [${activeBoxName}] kutusuna neden seçildiğini ve metodolojik/kuramsal uyumunu açıkla.
+${isNewDiscovery ? "4. ÖNEMLİ: Hali hazırda ekli olan makaleleri (aşağıda listelenmiştir) kesinlikle tekrar seçme." : ""}`;
 
-Görevin, YALNIZCA sana sunulan GERÇEK ADAY MAKALELER HAVUZU içinden, tez anayasasına en uygun, en güçlü ve en uyumlu katkıyı sağlayacak toplam 6 (altı) adet makaleyi seçmek ve küratörlük yapmaktır.
-
-KAFANDAN HİÇBİR YENİ MAKALE, YAZAR, YIL VEYA URL TÜRETMEYECEKSİN/UYDURMAYACAKSIN. Sadece sunulan havuzdaki nesneleri seçeceksin. API veya havuzdan gelen orijinal başlık, yazar, yıl, paperId ve URL bilgilerini ASLA DEĞİŞTİRME, manipüle etme, sahte link/metin türetme.
-
-KRİTİK DENGELİ LİSTELEME KURALI:
-- Seçtiğin 6 makalenin en az 3 tanesi (%50'si) kesinlikle Türkçe ("lang": "TR" ve "source": "DergiPark") kaynaklarından olmalıdır. Geri kalanı İngilizce ("lang": "EN" ve "source": "Semantic Scholar") kaynaklarından olmalıdır. Havuzdaki TR/EN oranının dengesi kusursuz olmalıdır. (Eğer havuzda yeterince Türkçe veya İngilizce makale yoksa, elindeki tüm adaylar içinden tez anayasasına en uygun olanları uydurma yapmadan seç.)
-
-Her seçilen makale için başlık, url, citationCount, source, lang ve Türkçe olarak 2-3 cümlelik çok güçlü bir entegrasyon gerekçesi ("relevance") üret.
-
-Yanıtını kesinlikle aşağıdaki JSON formatında bir liste olarak vermelisin:
-[
-  {
-    "paperId": "Aday listeden aynen kopyalanacak paperId",
-    "title": "Aday listeden aynen kopyalanacak Başlık",
-    "authors": "Aday listeden aynen kopyalanacak Yazar(lar)",
-    "year": "Aday listeden aynen kopyalanacak Yıl",
-    "url": "Aday listeden aynen kopyalanacak URL",
-    "citationCount": Aday listeden aynen kopyalanacak Atıf sayısı veya 0,
-    "source": "DergiPark" veya "Semantic Scholar",
-    "lang": "TR" veya "EN",
-    "relevance": "Seçilen makalenin tezin ana argümanına ve metodolojisine nasıl bir radikal ve uyumlu katkı sağlayacağı, tezde nasıl konumlandırılacağı (Türkçe olarak 2-3 cümleyle açıklanmalıdır)"
-  }
-]
-
-Unutma: Yanıtın her zaman geçerli bir JSON olmalı ve başka hiçbir metin içermemelidir. Markdown kod bloğu (\`\`\`json vb.) kullanma, sadece saf JSON döndür.
-`;
-
-      juryPrompt = `
-TEZ ANAYASASI:
-- Başlık: ${title}
+    const juryPrompt = `TEZ ANAYASASI:
+- Başlık (TITLE): ${title}
 - Araştırma Sorusu: ${researchQuestion}
-- Ana Argüman: ${argument}
-- Metodoloji: ${methodology}
+- Ana Argüman (ARGUMENT): ${argument}
+- Metodoloji (METHODOLOGY): ${methodology}
 
-BİRLEŞİK ADAY MAKALELER HAVUZU (Sadece Buradan Seçim Yapabilirsin!):
+ÇALIŞMA KUTUSU (BOX_NAME): ${activeBoxName}
+
+ADAY MAKALELER HAVUZU:
 ${JSON.stringify(candidates, null, 2)}
 
-Lütfen bu birleşik havuzdan kurallara tam uyarak (en iyi 6 makaleyi) seç ve istenen JSON formatında döndür.
-`;
-    } else {
-      jurySystemPrompt = `
-Sen sosyal bilimler alanında uzman, son derece seçkin ve analitik düşünen bir Akademik Jüri / Danışman Profesörsün.
-Önünde kullanıcının aktif tez anayasası ve hem DergiPark (TR) hem de Semantic Scholar (EN) kaynaklarından toplanmış yepyeni (daha önce eklenmemiş) akademik makaleler var.
+${isNewDiscovery ? `HALİ HAZIRDA EKİLİ MAKALELER (Bunları tekrar seçme!):\n${JSON.stringify(existingTitles, null, 2)}` : ""}
 
-Görevin, YALNIZCA sana sunulan YENİ ADAY MAKALELER listesi içinden, tez anayasasına en uygun, en güçlü ve en uyumlu katkıyı sağlayacak EN İYİ 4 TANESİNİ (mümkünse 2 Türkçe, 2 İngilizce şeklinde) seçip onaylamak ve gerekçelendirmektir.
-
-KAFANDAN HİÇBİR YENİ MAKALE, YAZAR, YIL VEYA URL TÜRETMEYECEKSİN/UYDURMAYACAKSIN. Sadece sunulan havuzdaki nesneleri seçeceksin. API veya havuzdan gelen orijinal başlık, yazar, yıl, paperId ve URL bilgilerini ASLA DEĞİŞTİRMEYECEKSİN, tahrif etmeyeceksin.
-
-Her seçilen makale için başlık, url, citationCount, source, lang ve Türkçe olarak 2-3 cümlelik çok güçlü bir entegrasyon gerekçesi ("relevance") üret.
-
-Yanıtını kesinlikle aşağıdaki JSON formatında bir liste olarak vermelisin:
-[
-  {
-    "paperId": "Aday listeden aynen kopyalanacak paperId",
-    "title": "Aday listeden aynen kopyalanacak Başlık",
-    "authors": "Aday listeden aynen kopyalanacak Yazar(lar)",
-    "year": "Aday listeden aynen kopyalanacak Yıl",
-    "url": "Aday listeden aynen kopyalanacak URL",
-    "citationCount": Aday listeden aynen kopyalanacak Atıf sayısı veya 0,
-    "source": "DergiPark" veya "Semantic Scholar",
-    "lang": "TR" veya "EN",
-    "relevance": "Seçilen makalenin tezin ana argümanına ve metodolojisine nasıl bir radikal ve uyumlu katkı sağlayacağı, tezde nasıl konumlandırılacağı (Türkçe olarak 2-3 cümleyle açıklanmalıdır)"
-  }
-]
-
-Unutma: Yanıtın her zaman geçerli bir JSON olmalı ve başka hiçbir metin içermemelidir. Markdown kod bloğu (\`\`\`json vb.) kullanma, sadece saf JSON döndür.
-`;
-
-      juryPrompt = `
-TEZ ANAYASASI:
-- Başlık: ${title}
-- Araştırma Sorusu: ${researchQuestion}
-- Ana Argüman: ${argument}
-- Metodoloji: ${methodology}
-
-YENİ ADAY MAKALELER (Sadece Buradan Seçebilirsin!):
-${JSON.stringify(candidates, null, 2)}
-
-Hali Hazırda Ekli Olan Makalelerin Başlıkları (Bunları Tekrar Seçme):
-${JSON.stringify(existingTitles, null, 2)}
-
-Lütfen bu yepyeni aday makaleler arasından en uygun 4 yeni makaleyi seç ve istenen JSON formatında döndür.
-`;
-    }
+Lütfen bu aday makaleler havuzundan, bu kutu için en uygun 2 makaleyi kurallara tam uyarak seç ve döndür.`;
 
     const response = await ai.models.generateContent({
       model: "gemini-3.1-flash-lite",
@@ -205,17 +357,11 @@ Lütfen bu yepyeni aday makaleler arasından en uygun 4 yeni makaleyi seç ve is
         systemInstruction: jurySystemPrompt,
         temperature: 1,
         responseMimeType: "application/json",
+        responseSchema: juryResponseSchema,
       },
     });
 
-    let cleanText = (response.text || "").trim();
-    if (cleanText.startsWith("```")) {
-      cleanText = cleanText
-        .replace(/^```json\s*/i, "")
-        .replace(/```$/, "")
-        .trim();
-    }
-
+    const cleanText = (response.text || "").trim();
     return JSON.parse(cleanText) as LiteratureRecommendation[];
   }
 }

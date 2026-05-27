@@ -1,4 +1,4 @@
-import { CandidatePaper } from "./dergipark.service";
+import { CandidatePaper } from "./types";
 
 export class SemanticScholarService {
   /**
@@ -7,6 +7,8 @@ export class SemanticScholarService {
    */
   static async fetchSemanticScholarPapers(
     englishQueries: string[],
+    limit: number = 5,
+    sort?: "influence" | "citationCount" | "relevance",
   ): Promise<CandidatePaper[]> {
     let semanticScholarPapers: CandidatePaper[] = [];
     if (englishQueries.length === 0) {
@@ -14,12 +16,31 @@ export class SemanticScholarService {
     }
 
     try {
-      const s2Promises = englishQueries.map(async (query: string) => {
+      // Limit queries to at most 2 to reduce redundancy and completely prevent 429 rate limits
+      const targetedQueries = englishQueries.slice(0, 2);
+      const s2ResultsArray: Record<string, unknown>[][] = [];
+
+      for (const query of targetedQueries) {
         try {
-          const s2Url = `https://api.semanticscholar.org/graph/v1/paper/search/bulk?query=${encodeURIComponent(query)}&fields=paperId,title,url,abstract,citationCount,authors,year`;
+          // Introduce a 1-second delay to comply with Semantic Scholar's strict free-tier rate limit
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+
+          let s2Url = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(query)}&limit=${limit}&fields=paperId,title,url,abstract,citationCount,authors,year`;
+          if (sort) {
+            const apiSort = sort === "citationCount" ? "influence" : sort;
+            s2Url += `&sort=${apiSort}`;
+          }
+
+          const headers: Record<string, string> = {
+            Accept: "application/json",
+          };
+          if (process.env.SEMANTIC_SCHOLAR_API_KEY) {
+            headers["x-api-key"] = process.env.SEMANTIC_SCHOLAR_API_KEY;
+          }
+
           const s2Res = await fetch(s2Url, {
             method: "GET",
-            headers: { Accept: "application/json" },
+            headers,
           });
           console.log(
             `[Teşhis - Semantic Scholar Status for "${query}"]:`,
@@ -30,24 +51,20 @@ export class SemanticScholarService {
             const s2Data = JSON.parse(s2Text) as {
               data?: Record<string, unknown>[];
             };
-            return s2Data.data || [];
+            s2ResultsArray.push(s2Data.data || []);
           } else {
             console.error(
               `[Teşhis - Semantic Scholar Error for "${query}"]:`,
               s2Text.slice(0, 200),
             );
-            return [];
           }
         } catch (err) {
           console.error(
             `[Teşhis - Semantic Scholar Exception for "${query}"]:`,
             err,
           );
-          return [];
         }
-      });
-
-      const s2ResultsArray = await Promise.all(s2Promises);
+      }
       const s2PapersMap = new Map<string, Record<string, unknown>>();
       for (const papers of s2ResultsArray) {
         for (const p of papers) {

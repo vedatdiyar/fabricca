@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
-import { Send, Sparkles, AlertCircle } from "lucide-react";
+import { Send, Sparkles, AlertCircle, Copy, Check } from "lucide-react";
 import { ChatMessage } from "../actions";
 import { OriginalityReport } from "./originality-report";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,6 +35,15 @@ export function ChatScreen({
 }: ChatScreenProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [copiedIndex, setCopiedIndex] = React.useState<number | null>(null);
+
+  const handleCopyMessage = (text: string, index: number) => {
+    navigator.clipboard.writeText(text);
+    setCopiedIndex(index);
+    setTimeout(() => {
+      setCopiedIndex(null);
+    }, 2000);
+  };
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -98,31 +107,46 @@ export function ChatScreen({
                 {isModel ? "H" : "S"}
               </div>
 
-              {/* Message Bubble */}
-              <div
-                className={`flex flex-col max-w-[80%] rounded-lg p-4 font-sans text-sm leading-relaxed ${
-                  isModel
-                    ? "bg-secondary text-foreground border border-border shadow-sm"
-                    : "bg-primary text-primary-foreground font-medium shadow-md"
-                }`}
-              >
-                {isModel ? (
-                  <div className="prose prose-invert max-w-none text-foreground font-sans text-sm">
-                    <ReactMarkdown
-                      components={{
-                        p: ({ children }) => (
-                          <p className="text-sm leading-relaxed text-foreground select-text font-sans mb-3 last:mb-0">
-                            {children}
-                          </p>
-                        ),
-                      }}
-                    >
-                      {msg.content}
-                    </ReactMarkdown>
-                  </div>
-                ) : (
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
-                )}
+              {/* Message Bubble Wrapper */}
+              <div className="flex flex-col max-w-[80%] space-y-1.5">
+                <div
+                  className={`rounded-lg p-4 pb-8 pr-10 font-sans text-sm leading-relaxed relative ${
+                    isModel
+                      ? "bg-secondary text-foreground border border-border shadow-sm"
+                      : "bg-primary text-primary-foreground font-medium shadow-md"
+                  }`}
+                >
+                  {isModel ? (
+                    <div className="prose prose-invert max-w-none text-foreground font-sans text-sm">
+                      <ReactMarkdown
+                        components={{
+                          p: ({ children }) => (
+                            <p className="text-sm leading-relaxed text-foreground select-text font-sans mb-3 last:mb-0">
+                              {children}
+                            </p>
+                          ),
+                        }}
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                  )}
+
+                  {/* Copy Button */}
+                  <button
+                    onClick={() => handleCopyMessage(msg.content, index)}
+                    className="absolute bottom-2 right-2 p-1.5 rounded bg-background border border-border text-muted-foreground hover:text-primary hover:border-primary transition cursor-pointer"
+                    title="Metni Kopyala"
+                  >
+                    {copiedIndex === index ? (
+                      <Check className="size-3.5 text-primary animate-in fade-in zoom-in-95 duration-150" />
+                    ) : (
+                      <Copy className="size-3.5" />
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           );

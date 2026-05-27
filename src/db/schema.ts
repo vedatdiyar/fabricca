@@ -22,6 +22,19 @@ export const thesisCore = pgTable("thesis_core", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// 1.1. TEZ KUTULARI TABLOSU (Tematik Kartoteks / Fişleme Kutuları)
+// Kullanıcının onboarding veya dashboard sürecinde oluşturacağı esnek tematik klasörleri/kutuları tutar.
+export const thesisBoxes = pgTable("thesis_boxes", {
+  id: serial("id").primaryKey(),
+  thesisCoreId: integer("thesis_core_id")
+    .references(() => thesisCore.id, { onDelete: "cascade" })
+    .notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  order: integer("order").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // 2. KAYNAKLAR TABLOSU (Kütüphane Künyeleri)
 // Cloudflare R2'ye yüklenen dökümanların ve otomatik çekilen metadata bilgilerinin tutulduğu yerdir.
 export const references = pgTable("references", {
@@ -47,6 +60,9 @@ export const notes = pgTable(
     content: text("content").notNull(), // Ham metin içeriği (Kullanıcı okuma notu)
     embedding: vector("embedding", { dimensions: 1536 }), // gemini-embedding-2 modelinden dönecek 1536 boyutlu vektör çıktısı
     aiContextSuggestions: text("ai_context_suggestions"), // Gemini'dan gelen bağlam/atıf önerileri
+    boxId: integer("box_id").references(() => thesisBoxes.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at").defaultNow(),
   },
   (table) => [
@@ -68,6 +84,9 @@ export const pdfChunks = pgTable(
     }),
     content: text("content").notNull(), // Ham metin içeriği (Makale parçası)
     embedding: vector("embedding", { dimensions: 1536 }), // gemini-embedding-2 modelinden dönecek 1536 boyutlu vektör çıktısı
+    boxId: integer("box_id").references(() => thesisBoxes.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at").defaultNow(),
   },
   (table) => [

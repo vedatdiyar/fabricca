@@ -36,6 +36,10 @@ export default function OnboardingPage() {
     researchQuestion: string;
     argument: string;
     methodology: string;
+    boxes?: {
+      name: string;
+      description: string;
+    }[];
   } | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
@@ -59,36 +63,7 @@ export default function OnboardingPage() {
     try {
       let currentMessages = [...updatedHistory];
 
-      // Call Originality Scanner on steps 1 (topic) and 2 (question) - skip if already checked
-      const hasReport = currentMessages.some(
-        (m) => m.role === "originality_report",
-      );
-      if ((currentStep === 1 || currentStep === 2) && !hasReport) {
-        setIsOriginalityLoading(true);
-        try {
-          const origRes = await checkTezaraOriginalityAction(responseText);
-          if (origRes.success && origRes.report) {
-            const reportMsg: ChatMessage = {
-              role: "originality_report",
-              content: "",
-              reportData: {
-                risk: origRes.report.risk,
-                reasoning: origRes.report.reasoning,
-                gapAnalysis: origRes.report.gapAnalysis,
-                theses: origRes.report.theses,
-              },
-            };
-            currentMessages = [...currentMessages, reportMsg];
-            setMessages(currentMessages);
-          }
-        } catch (origErr) {
-          console.error("Originality Check Error:", origErr);
-        } finally {
-          setIsOriginalityLoading(false);
-        }
-      }
-
-      // Extract report data for risk-aware professor routing
+      // Extract report data for risk-aware professor routing during revision discussions
       const lastReport = currentMessages
         .filter((m) => m.role === "originality_report")
         .pop();
@@ -112,21 +87,104 @@ export default function OnboardingPage() {
         );
       }
 
-      // Append assistant message
-      setMessages((prev) => [
-        ...prev,
-        { role: "model", content: res.message || "" },
-      ]);
-
+      // Check if the final structured thesis core has been synthesized (at any step)
       if (res.structuredData) {
-        // If final step completed, store the synthesized core data
-        setStructuredData(res.structuredData);
-        setCurrentStep(5); // Go to preview & confirmation stage
-      } else if (res.needsReview) {
-        // Stay on same step for revision discussion - don't increment
+        // Find the last originality report in the conversation to see if we are already approved
+        const lastReportInHistory = currentMessages
+          .filter((m) => m.role === "originality_report")
+          .pop();
+        const isAlreadyApproved =
+          lastReportInHistory?.reportData?.risk === "Düşük";
+
+        if (!isAlreadyApproved) {
+          setIsOriginalityLoading(true);
+          try {
+            // Synthesize thesis parameters into a clean summary to check originality
+            const thesisContext = `Başlık: ${res.structuredData.title}\nAraştırma Sorusu: ${res.structuredData.researchQuestion}\nArgüman: ${res.structuredData.argument}\nMetodoloji: ${res.structuredData.methodology}`;
+
+            const origRes = await checkTezaraOriginalityAction(thesisContext);
+            if (origRes.success && origRes.report) {
+              const reportMsg: ChatMessage = {
+                role: "originality_report",
+                content: "",
+                reportData: {
+                  risk: origRes.report.risk,
+                  reasoning: origRes.report.reasoning,
+                  gapAnalysis: origRes.report.gapAnalysis,
+                  theses: origRes.report.theses,
+                },
+              };
+
+              currentMessages = [...currentMessages, reportMsg];
+              setMessages(currentMessages);
+
+              // If risk is Medium or High, block completion and discuss revision
+              if (
+                origRes.report.risk === "Orta" ||
+                origRes.report.risk === "Yüksek"
+              ) {
+                setIsOriginalityLoading(false);
+                setIsLoading(true);
+
+                // Get the professor's high-risk response to warn the user and discuss esnetme
+                const revRes = await getProfessorOnboardingResponseAction(
+                  currentMessages.filter(
+                    (msg) => msg.role !== "originality_report",
+                  ),
+                  currentStep,
+                  responseText,
+                  {
+                    risk: origRes.report.risk,
+                    gapAnalysis: origRes.report.gapAnalysis,
+                  },
+                );
+
+                if (revRes.success && revRes.message) {
+                  setMessages((prev) => [
+                    ...prev,
+                    { role: "model", content: revRes.message || "" },
+                  ]);
+                }
+                return; // End handleSubmit here (STRICTLY KEEPS USER IN CHAT FOR REVISION!)
+              } else {
+                // Low risk! Proceed to Step 5
+                setStructuredData(res.structuredData);
+                setCurrentStep(5);
+              }
+            } else {
+              // Fallback if scanner fails
+              setStructuredData(res.structuredData);
+              setCurrentStep(5);
+            }
+          } catch (origErr) {
+            console.error("Originality Check Error:", origErr);
+            setStructuredData(res.structuredData);
+            setCurrentStep(5);
+          } finally {
+            setIsOriginalityLoading(false);
+          }
+        } else {
+          // Already has an approved low-risk originality report, proceed to Step 5
+          setMessages((prev) => [
+            ...prev,
+            { role: "model", content: res.message || "" },
+          ]);
+          setStructuredData(res.structuredData);
+          setCurrentStep(5);
+        }
       } else {
-        // Increment step
-        setCurrentStep((prev) => prev + 1);
+        // Normal conversation flow (not finalized yet)
+        setMessages((prev) => [
+          ...prev,
+          { role: "model", content: res.message || "" },
+        ]);
+
+        if (res.needsReview) {
+          // Stay on same step
+        } else {
+          // Increment step
+          setCurrentStep((prev) => prev + 1);
+        }
       }
     } catch (err) {
       console.error("Onboarding Error:", err);

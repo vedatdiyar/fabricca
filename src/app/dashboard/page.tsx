@@ -14,7 +14,8 @@ import {
   updateTaskStatusAction,
   TaskItem,
 } from "@/app/tasks/actions";
-import { LayoutDashboard } from "lucide-react";
+import { LayoutDashboard, Sparkles } from "lucide-react";
+import Link from "next/link";
 
 // Modular Subcomponents
 import { DashboardLoading } from "./_components/dashboard-loading";
@@ -29,7 +30,7 @@ export default function DashboardPage() {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [recs, setRecs] = useState<LiteratureRecommendation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingRecs, setIsLoadingRecs] = useState(true);
+  const [isLoadingRecs, setIsLoadingRecs] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState("");
   const [recsError, setRecsError] = useState("");
@@ -39,12 +40,20 @@ export default function DashboardPage() {
 
   // Load recommendations from Neon PostgreSQL cache or fetch fresh ones
   const fetchRecommendations = async (
-    core: ThesisCoreData,
+    core: ThesisCoreData | null,
     forceRefresh = false,
   ) => {
     try {
       setIsLoadingRecs(true);
       setRecsError("");
+
+      if (!core) {
+        setRecs([]);
+        setRecsError(
+          "Tavsiye üretilebilmesi için öncelikle Tez Anayasası'nı oluşturmalısınız.",
+        );
+        return;
+      }
 
       const recsRes = forceRefresh
         ? await discoverNewRecommendationsAction(
@@ -88,27 +97,26 @@ export default function DashboardPage() {
           return;
         }
 
-        if (!thesisRes.data) {
-          // If no thesis setup found, trigger the fallback redirection after a brief preview
-          setRedirecting(true);
-          setIsLoading(false);
-          setTimeout(() => {
-            router.push("/onboarding");
-          }, 2000);
-          return;
-        }
-
-        setThesisData(thesisRes.data);
-        setIsLoading(false);
-
-        // 2. Fetch active tasks
+        // 2. Fetch active tasks (load even if thesis core is empty)
         const tasksRes = await getTasksAction();
         if (tasksRes.success && tasksRes.tasks) {
           setTasks(tasksRes.tasks);
         }
 
-        // 3. Fetch academic literature recommendations using our cache-aware function
-        await fetchRecommendations(thesisRes.data, false);
+        if (!thesisRes.data) {
+          // If no thesis setup found, do not redirect, but render a friendly call-to-action
+          setThesisData(null);
+          setIsLoading(false);
+          setRecs([]);
+          setIsLoadingRecs(false);
+          setRecsError(
+            "Tavsiye üretilebilmesi için öncelikle Tez Anayasası'nı oluşturmalısınız.",
+          );
+          return;
+        }
+
+        setThesisData(thesisRes.data);
+        setIsLoading(false);
       } catch (err) {
         console.error("Dashboard error:", err);
         setError("Tez Karargahı yüklenirken kritik bir hata oluştu.");
@@ -175,7 +183,33 @@ export default function DashboardPage() {
       </header>
 
       {/* TEZ ANAYASASI */}
-      {thesisData && <ThesisConstitution thesisData={thesisData} />}
+      {thesisData ? (
+        <ThesisConstitution thesisData={thesisData} />
+      ) : (
+        <div className="w-full border border-border bg-card p-6 rounded-lg shadow-xl relative overflow-hidden mb-8">
+          <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+            <div className="space-y-2">
+              <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                <Sparkles className="size-5 text-primary animate-pulse" />
+                <span>Tez Anayasası Bulunamadı</span>
+              </h2>
+              <p className="text-sm text-muted-foreground font-sans max-w-2xl leading-relaxed">
+                Fabricca&apos;nın akıllı RAG danışmanı, literatür tavsiyeleri ve
+                yapay zeka entegrasyon özelliklerinden tam verim alabilmek için
+                öncelikle Tez Anayasası&apos;nı oluşturmalısınız. Prof. Dr.
+                Verita ile 4 adımlı sohbet mülakatına hemen başlayın.
+              </p>
+            </div>
+            <Link
+              href="/onboarding"
+              className="inline-flex items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-semibold px-5 py-2.5 hover:opacity-90 transition-all shadow-md shrink-0 cursor-pointer"
+            >
+              Tez Anayasası Oluştur
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* AKTİF GÖREVLER */}
       <TaskPanel

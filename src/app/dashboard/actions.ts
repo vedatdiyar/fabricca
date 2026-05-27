@@ -21,8 +21,10 @@ export interface LiteratureRecommendation {
   relevance: string;
   url?: string;
   citationCount?: number;
-  source?: "DergiPark" | "Semantic Scholar";
+  source?: "OpenAlex" | "Semantic Scholar";
   lang?: "TR" | "EN";
+  boxId?: number;
+  boxName?: string;
 }
 
 export interface RecommendationsResult {

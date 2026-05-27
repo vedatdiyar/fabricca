@@ -14,6 +14,8 @@ import {
   Clock,
   Plus,
   MessageSquare,
+  Copy,
+  Check,
 } from "lucide-react";
 import {
   Drawer,
@@ -58,6 +60,16 @@ export default function AdvisorPage() {
     handleKeyDown,
     handleSaveInsight,
   } = useAdvisor();
+
+  const [copiedIndex, setCopiedIndex] = React.useState<number | null>(null);
+
+  const handleCopyMessage = (text: string, index: number) => {
+    navigator.clipboard.writeText(text);
+    setCopiedIndex(index);
+    setTimeout(() => {
+      setCopiedIndex(null);
+    }, 2000);
+  };
 
   return (
     <Drawer>
@@ -143,7 +155,7 @@ export default function AdvisorPage() {
                     {/* Message Bubble */}
                     <div className="flex flex-col max-w-[85%] space-y-2">
                       <div
-                        className={`p-4 rounded-xl shadow border transition duration-150 ${
+                        className={`p-4 pb-8 pr-10 rounded-xl shadow border transition duration-150 relative ${
                           isAssistant
                             ? "bg-muted border-border rounded-tl-none text-foreground"
                             : "bg-primary border-primary rounded-tr-none text-primary-foreground"
@@ -314,6 +326,19 @@ export default function AdvisorPage() {
                             {msg.content}
                           </p>
                         )}
+
+                        {/* Copy Button */}
+                        <button
+                          onClick={() => handleCopyMessage(msg.content, index)}
+                          className="absolute bottom-2 right-2 p-1.5 rounded bg-background border border-border text-muted-foreground hover:text-primary hover:border-primary transition cursor-pointer"
+                          title="Metni Kopyala"
+                        >
+                          {copiedIndex === index ? (
+                            <Check className="size-3.5 text-primary animate-in fade-in zoom-in-95 duration-150" />
+                          ) : (
+                            <Copy className="size-3.5" />
+                          )}
+                        </button>
                       </div>
 
                       {/* Footer bar with Timestamp, Citation summary popup triggers & Insight triggers for Assistant */}
@@ -346,6 +371,16 @@ export default function AdvisorPage() {
                                   : "Fikir Sepetine Ekle"}
                               </span>
                             </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Footer bar for User */}
+                      {!isAssistant && (
+                        <div className="flex items-center justify-end gap-3 px-1 text-[10px] text-muted-foreground font-sans">
+                          <div className="flex items-center gap-1">
+                            <Clock className="size-3 text-muted-foreground" />
+                            <span>{msg.timestamp}</span>
                           </div>
                         </div>
                       )}

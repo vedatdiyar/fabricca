@@ -5,6 +5,7 @@ import ReactMarkdown from "react-markdown";
 import { Sparkles, RefreshCw, ArrowRight, AlertCircle } from "lucide-react";
 import { ChatMessage } from "../actions";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { OriginalityReport } from "./originality-report";
 
 interface PreviewScreenProps {
   structuredData: {
@@ -12,6 +13,10 @@ interface PreviewScreenProps {
     researchQuestion: string;
     argument: string;
     methodology: string;
+    boxes?: {
+      name: string;
+      description: string;
+    }[];
   } | null;
   isSaving: boolean;
   error: string | null;
@@ -29,6 +34,12 @@ export function PreviewScreen({
   messages,
 }: PreviewScreenProps) {
   if (!structuredData) return null;
+
+  // Extract the latest originality report from the chat history
+  const originalityReportMsg = [...messages]
+    .reverse()
+    .find((m) => m.role === "originality_report");
+  const reportData = originalityReportMsg?.reportData;
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 flex flex-col justify-between">
@@ -98,8 +109,50 @@ export function PreviewScreen({
               {structuredData.methodology}
             </p>
           </div>
+
+          {/* 5. Thematic Study Boxes */}
+          {structuredData.boxes && structuredData.boxes.length > 0 && (
+            <div className="border border-border bg-secondary/40 p-4 rounded-lg space-y-3 relative overflow-hidden md:col-span-2">
+              <div className="absolute top-0 left-0 w-[3px] h-full bg-primary" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Önerilen Tematik Çalışma Kutuları (Kartoteks Fişleri)
+              </span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                {structuredData.boxes.map((box, index) => (
+                  <div
+                    key={index}
+                    className="border border-border bg-background p-3 rounded-md space-y-1 relative overflow-hidden"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <span className="text-[10px] font-mono bg-secondary border border-border px-1.5 py-0.5 rounded text-muted-foreground font-semibold">
+                        Kutu {index + 1}
+                      </span>
+                      <h4 className="text-xs font-bold text-foreground">
+                        {box.name}
+                      </h4>
+                    </div>
+                    {box.description && (
+                      <p className="text-[11px] text-muted-foreground leading-normal font-sans">
+                        {box.description}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Originality Report Section */}
+      {reportData && (
+        <div className="space-y-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Akademik Özgünlük Değer Raporu ve Gap Analizi
+          </h2>
+          <OriginalityReport reportData={reportData} />
+        </div>
+      )}
 
       {/* Error Message */}
       {error && (

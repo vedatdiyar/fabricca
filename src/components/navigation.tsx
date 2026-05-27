@@ -12,6 +12,7 @@ import {
   Lightbulb,
   ChevronLeft,
   ChevronRight,
+  FolderKanban,
 } from "lucide-react";
 import { useSidebar } from "./sidebar-provider";
 
@@ -21,19 +22,24 @@ export default function Navigation() {
 
   const navItems = [
     {
-      name: "Tez Karargahı",
-      href: "/dashboard",
-      icon: LayoutDashboard,
-    },
-    {
       name: "Tez Anayasası",
       href: "/onboarding",
       icon: Sparkles,
     },
     {
+      name: "Tez Karargahı",
+      href: "/dashboard",
+      icon: LayoutDashboard,
+    },
+    {
       name: "Kütüphane",
       href: "/library",
       icon: Library,
+    },
+    {
+      name: "Kartoteks",
+      href: "/kartoteks",
+      icon: FolderKanban,
     },
     {
       name: "Görevlerim",
