@@ -6,6 +6,8 @@ import Navigation from "@/components/navigation";
 import { SidebarProvider } from "@/components/sidebar-provider";
 import MainContent from "@/components/main-content";
 import { Toaster } from "@/components/ui/sonner";
+import { db } from "@/db";
+import { thesisCore } from "@/db/schema";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -55,6 +57,21 @@ export default async function RootLayout({
     isAuthenticated = sessionCookie === expectedHash;
   }
 
+  // Onboarding status check to provide a distraction-free onboarding environment
+  let isThesisCoreEmpty = true;
+  if (isAuthenticated) {
+    try {
+      const coreEntries = await db.select().from(thesisCore).limit(1);
+      isThesisCoreEmpty = coreEntries.length === 0;
+    } catch (error) {
+      console.error("Failed to query thesisCore in layout:", error);
+      isThesisCoreEmpty = true; // Fallback to true (not completed) on failure
+    }
+  }
+
+  // Show navigation bar and sidebar only if authenticated AND onboarding is completed
+  const showSidebar = isAuthenticated && !isThesisCoreEmpty;
+
   return (
     <html
       lang="tr"
@@ -62,7 +79,7 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <Toaster />
-        {isAuthenticated ? (
+        {showSidebar ? (
           <SidebarProvider>
             <div className="flex flex-col md:flex-row h-screen w-screen overflow-hidden bg-background text-foreground">
               {/* Sidebar (Desktop) / Bottom Bar (Mobile) */}

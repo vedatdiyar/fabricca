@@ -69,8 +69,37 @@ export default function LibraryPage() {
       const res = await getReferencesAction();
       if (res.success && res.references) {
         setReferences(res.references);
-        // Automatically select the first one if none selected
-        if (res.references.length > 0) {
+
+        let initialRefId: number | null = null;
+        if (typeof window !== "undefined") {
+          const params = new URLSearchParams(window.location.search);
+          const refIdParam = params.get("refId");
+          const refTitleParam = params.get("refTitle");
+
+          if (refIdParam) {
+            const id = parseInt(refIdParam, 10);
+            if (!isNaN(id)) {
+              initialRefId = id;
+            }
+          } else if (refTitleParam) {
+            const decodedTitle = decodeURIComponent(refTitleParam)
+              .toLowerCase()
+              .trim();
+            const matchedRef = res.references.find(
+              (ref) =>
+                ref.title.toLowerCase().trim() === decodedTitle ||
+                ref.title.toLowerCase().includes(decodedTitle) ||
+                decodedTitle.includes(ref.title.toLowerCase()),
+            );
+            if (matchedRef) {
+              initialRefId = matchedRef.id;
+            }
+          }
+        }
+
+        if (initialRefId !== null) {
+          setSelectedRefId(initialRefId);
+        } else if (res.references.length > 0) {
           setSelectedRefId((prev) =>
             prev === null ? res.references![0].id : prev,
           );
@@ -569,7 +598,7 @@ export default function LibraryPage() {
                               <Sparkles className="size-3.5" />
                               <span>AI Entegrasyon Önerisi & Künye</span>
                             </h4>
-                            <div className="text-xs text-muted-foreground leading-relaxed font-sans space-y-3 prose prose-invert max-w-none">
+                            <div className="text-xs text-muted-foreground leading-relaxed font-sans prose prose-invert max-w-none [&_li]:mb-4">
                               <ReactMarkdown>
                                 {note.aiContextSuggestions}
                               </ReactMarkdown>

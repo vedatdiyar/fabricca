@@ -33,7 +33,10 @@ export interface RecommendationsResult {
   error?: string;
 }
 
-import { getThesisCoreAction as getThesisCore } from "./_actions/thesis";
+import {
+  getThesisCoreAction as getThesisCore,
+  resetThesisCoreAction as resetThesisCore,
+} from "./_actions/thesis";
 import {
   getAcademicRecommendationsAction as getAcademicRecommendations,
   discoverNewRecommendationsAction as discoverNewRecommendations,
@@ -43,6 +46,13 @@ export async function getThesisCoreAction(
   userId?: string,
 ): Promise<GetThesisCoreResult> {
   return getThesisCore(userId);
+}
+
+export async function resetThesisCoreAction(): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  return resetThesisCore();
 }
 
 export async function getAcademicRecommendationsAction(

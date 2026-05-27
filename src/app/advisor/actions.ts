@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { references, pdfChunks, aiInsights } from "@/db/schema";
+import { references, pdfChunks, aiInsights, thesisCore } from "@/db/schema";
 import { inArray, sql } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
 
@@ -124,6 +124,13 @@ export async function sendMessageAction(
     if (!message || !message.trim()) {
       return { success: false, error: "Mesaj boş olamaz." };
     }
+
+    // Fetch active Thesis Core (Thesis constitution) dynamically
+    const [core] = await db.select().from(thesisCore).limit(1);
+    const thesisTitle = core?.title || "Belirtilmemiş";
+    const thesisQuestion = core?.researchQuestion || "Belirtilmemiş";
+    const thesisArgument = core?.argument || "Belirtilmemiş";
+    const thesisMethodology = core?.methodology || "Belirtilmemiş";
 
     const geminiKey = process.env.GEMINI_API_KEY;
     if (!geminiKey) {
@@ -279,7 +286,17 @@ export async function sendMessageAction(
 
     // Step 5: Construct System Instructions (Prompt) for hybrid reasoning, demanding database ID citations [^X]
     const systemInstruction =
-      "Sen sosyal bilimler alanında uzman, kıdemli, son derece bilge ve bilimsel metodolojiye hakim Tez Danışmanısın. Kullanıcı sana teziyle veya kütüphanesindeki kaynaklarla ilgili sorular sorduğunda:\n\n" +
+      "Sen sosyal bilimler alanında uzman, kıdemli, son derece bilge, bilimsel metodolojiye ve sarsılmaz akademik dürüstlük standartlarına sahip bir Tez Danışmanısın (Profesör). " +
+      "Kullanıcı sana teziyle, kütüphanesindeki kaynaklarla veya genel akademik kuramlarla ilgili sorular sorduğunda:\n\n" +
+      "KATI AKADEMİK DÜRÜSTLÜK FİLTRESİ VE DENETİM PROTOKOLÜ:\n" +
+      "1. Kullanıcı tarafından girilen yeni mesaj (Kullanıcı Mesajı) akademi dışı (gündelik/kişisel/gayriakademik) bir konu içeriyorsa,\n" +
+      `2. VEYA girilen mesajın, kullanıcının mevcut tez konusuyla (Tez Başlığı: '${thesisTitle}', Araştırma Sorusu: '${thesisQuestion}', Ana Argüman: '${thesisArgument}', Metodoloji/Yöntem: '${thesisMethodology}') doğrudan/somut ve anlamlı bir bağı bulunmuyorsa (tez anayasasındaki kavramlardan, teorilerden veya odak alanından çıkarılan mantıklı/akademik çıkarımlara dayanarak),\n` +
+      "3. VEYA bu bağ son derece zorlama, yapay ve yüzeysel ise;\n" +
+      "ASLA uydurma akademik yanıtlar, öneriler veya sohbet analizleri üretmeyeceksin! Doğrudan ve KESİNLİKLE sadece şu yapılandırılmış gerekçeli reddi döndüreceksin:\n" +
+      '"Bu girdinin mevcut tez çalışmanızla doğrudan bir ilgisi bulunmamaktadır. Nedeni: [Girdinin tezin ampirik/teorik odak sınırlarının neden dışında kaldığını açıklayan analitik ve yapısal gerekçe.]"\n\n' +
+      "İSTİSNA / GEÇİŞ KOŞULU (SOHBET GEÇMİŞİ):\n" +
+      "- Eğer kullanıcının mesajı geçmiş yazışmalardaki bir gerekçeli reddi çürüten ve tezin sınırlarıyla doğrudan/somut bir akademik ilişki/teorik bağ kuran yeni açıklamalar sunuyorsa, o zaman reddi kaldır ve normal akademik analiz/rehberlik aşamasına geç.\n\n" +
+      "AKADEMİK YAZIM VE YANIT PROTOKOLÜ (FİLTREYİ GEÇEN İLİŞKİLİ MESAJLAR İÇİN):\n" +
       "1. Eğer soru kütüphanedeki dökümanlara veya kütüphane verilerine yönelikse, sana iletilen BAĞLAM (Context) dışına çıkmadan, verileri tahrif etmeden, uydurma yapmadan net, atıflı ve dökümana sadık yanıt ver.\n" +
       "2. Eğer kullanıcı sana genel metodolojik kurallar (Nitel/nicel analiz yöntemleri, vaka seçimi, karşılaştırma modelleri vb.), sosyal teoriler ve kavramsal çerçeveler, akademik yazım teknikleri veya tez kurgusu gibi kuramsal/yöntemsel sorular soruyorsa, RAG bağlamıyla sınırlı kalma! Kendi derin akademik hafızanı, geniş entelektüel birikimini ve uzmanlığını devreye sokarak kullanıcıya son derece yaratıcı, kapsamlı ve yol gösterici entelektüel rehberlik sağla.\n\n" +
       'UYARI: Sana verilen bağlam içindeki her bir akademik metin parçası <chunk id="X"> etiketiyle sarılmıştır. Cevap üretirken bağlamdan aldığın her bilginin, cümlenin veya dönemin hemen sonuna istisnasız bir şekilde tam olarak [^X] formatında atıf ekleyeceksin (Buradaki X, dökümanın gerçek id numarası olmalıdır). Kendi hafından [1], [^1] veya (1) gibi statik atıflar KESİNLİKLE üretmeyeceksin.\n\n' +

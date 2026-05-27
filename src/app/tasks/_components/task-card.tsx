@@ -2,6 +2,7 @@
 
 import React from "react";
 import { TaskItem } from "../actions";
+import Link from "next/link";
 import {
   Calendar,
   Trash2,
@@ -17,11 +18,28 @@ export interface TaskCardProps {
 }
 
 export function TaskCard({ task, onDelete }: TaskCardProps) {
+  const isArticleReading = task.taskDescription.startsWith("Makale Okuma: ");
+  const articleTitle = isArticleReading
+    ? task.taskDescription.replace("Makale Okuma: ", "")
+    : "";
+
   return (
     <div className="bg-card p-4 flex flex-col justify-between space-y-3">
       <div className="space-y-2">
         <p className="text-sm font-sans text-foreground whitespace-pre-wrap leading-relaxed">
-          {task.taskDescription}
+          {isArticleReading ? (
+            <>
+              <span>Makale Okuma: </span>
+              <Link
+                href={`/library?refTitle=${encodeURIComponent(articleTitle)}`}
+                className="text-primary hover:underline font-medium inline cursor-pointer"
+              >
+                {articleTitle}
+              </Link>
+            </>
+          ) : (
+            task.taskDescription
+          )}
         </p>
         {task.dueDate && (
           <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded w-fit border border-border">
@@ -60,11 +78,28 @@ export function MobileTaskCard({
   onDelete,
   onUpdateStatus,
 }: MobileTaskCardProps) {
+  const isArticleReading = task.taskDescription.startsWith("Makale Okuma: ");
+  const articleTitle = isArticleReading
+    ? task.taskDescription.replace("Makale Okuma: ", "")
+    : "";
+
   return (
     <div className="bg-card border border-border p-4 rounded shadow-sm hover:border-primary transition duration-150 flex flex-col justify-between space-y-3">
       <div className="space-y-2">
         <p className="text-sm font-sans text-foreground whitespace-pre-wrap leading-relaxed">
-          {task.taskDescription}
+          {isArticleReading ? (
+            <>
+              <span>Makale Okuma: </span>
+              <Link
+                href={`/library?refTitle=${encodeURIComponent(articleTitle)}`}
+                className="text-primary hover:underline font-medium inline cursor-pointer"
+              >
+                {articleTitle}
+              </Link>
+            </>
+          ) : (
+            task.taskDescription
+          )}
         </p>
         {task.dueDate && (
           <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded w-fit border border-border">

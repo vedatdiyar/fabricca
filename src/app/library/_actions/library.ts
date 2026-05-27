@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { references, pdfChunks } from "@/db/schema";
+import { references, pdfChunks, tasks } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import {
   generateUniqueR2Key,
@@ -74,6 +74,12 @@ export async function uploadPdfAction(
         pdfUrl: key, // Storing R2 unique key as pdfUrl reference pointer
       })
       .returning();
+
+    // Automatically create a reading task for the uploaded PDF in 'todo' status
+    await db.insert(tasks).values({
+      taskDescription: `Makale Okuma: ${newRef.title}`,
+      status: "todo",
+    });
 
     // 5. Generate a secure presigned GET URL for LlamaParse ingestion (valid for 24 hours)
     const presignedUrl = await generatePresignedUrl(key);

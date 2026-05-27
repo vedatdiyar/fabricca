@@ -46,3 +46,27 @@ export async function getThesisCoreAction(
     };
   }
 }
+
+/**
+ * Server Action to reset (delete) the Thesis Constitution from Neon PostgreSQL.
+ * Cascades to automatically delete thesis boxes via DB rules.
+ */
+export async function resetThesisCoreAction(): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    console.log("[resetThesisCoreAction] Resetting thesis core parameters...");
+    await db.delete(thesisCore);
+    return { success: true };
+  } catch (error) {
+    console.error("resetThesisCoreAction Error:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Tez anayasası sıfırlanırken bir hata oluştu.",
+    };
+  }
+}

@@ -227,7 +227,7 @@ export default function InsightsPage() {
             </div>
           ) : (
             <div className="space-y-6">
-              {insights.map((insight) => {
+              {insights.map((insight, index) => {
                 const isSharpening = sharpeningIds[insight.id] || false;
 
                 return (
@@ -239,7 +239,7 @@ export default function InsightsPage() {
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-center gap-2 text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded border border-border">
                         <MessageSquare className="size-3" />
-                        <span>Fikir #{insight.id}</span>
+                        <span>Fikir #{index + 1}</span>
                       </div>
 
                       <button
@@ -298,7 +298,7 @@ export default function InsightsPage() {
                           </span>
                         </h4>
 
-                        <div className="text-sm text-muted-foreground leading-relaxed font-sans space-y-3 prose prose-invert max-w-none">
+                        <div className="text-sm text-muted-foreground leading-relaxed font-sans prose prose-invert max-w-none [&_li]:mb-4">
                           <ReactMarkdown>
                             {insight.aiContextSuggestions}
                           </ReactMarkdown>

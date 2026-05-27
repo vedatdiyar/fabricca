@@ -10,3 +10,11 @@ export interface CandidatePaper {
   citationCount?: number;
   venue?: string;
 }
+
+// Yapay zekanın analiz etmesi gereken ana odak bağlamı:
+export interface ThesisContext {
+  title: string;
+  researchQuestion: string;
+  argument: string;
+  methodology: string;
+}
