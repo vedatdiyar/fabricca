@@ -182,8 +182,8 @@ export default function OnboardingPage() {
         if (res.needsReview) {
           // Stay on same step
         } else {
-          // Increment step
-          setCurrentStep((prev) => prev + 1);
+          // Increment step up to 4 maximum
+          setCurrentStep((prev) => Math.min(prev + 1, 4));
         }
       }
     } catch (err) {
@@ -248,32 +248,34 @@ export default function OnboardingPage() {
     switch (currentStep) {
       case 1:
         return {
-          label: "1. Tez Konusu",
-          percent: 0,
-          placeholder: "Tez konunuzu veya başlığınızı buraya yazın...",
+          label: "Tez Konusu ve Kapsamı",
+          percent: 20,
+          placeholder: "Tez fikrinizi veya çalışmak istediğiniz konuyu yazın...",
         };
       case 2:
         return {
-          label: "2. Araştırma Sorusu",
-          percent: 25,
-          placeholder: "Tezinizin ana araştırma sorusunu buraya yazın...",
+          label: "Araştırma Sorusu Arayışı",
+          percent: 40,
+          placeholder: "Odaklanmak istediğiniz ana soruları veya problemi yazın...",
         };
       case 3:
         return {
-          label: "3. Teorik Odak",
-          percent: 50,
-          placeholder:
-            "Teorik kavramları ve odak teorisyenlerinizi buraya yazın...",
+          label: "Teorik ve Ampirik Zemin",
+          percent: 60,
+          placeholder: "Kullanacağınız kuramları, teorisyenleri veya ampirik vakayı yazın...",
         };
       case 4:
         return {
-          label: "4. Ampirik Alan",
-          percent: 75,
-          placeholder:
-            "Dönemsel sınırları, incelediğiniz yılları/vakaları yazın...",
+          label: "Olgunlaşma ve Sentez Aşaması",
+          percent: 80,
+          placeholder: "Tartışmayı sürdürün, Prof. Dr. Verita tezinizi sentezlemeye yaklaşıyor...",
         };
       default:
-        return { label: "Tez Anayasası", percent: 100, placeholder: "" };
+        return {
+          label: "Açık Uçlu Akademik İstişare",
+          percent: 90,
+          placeholder: "Prof. Dr. Verita ile tartışmaya devam edin...",
+        };
     }
   };
 

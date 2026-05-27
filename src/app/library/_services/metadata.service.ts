@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { generateContentWithRetry } from "@/lib/gemini";
 
 export interface AcademicMetadata {
   title: string;
@@ -37,7 +38,7 @@ export async function extractAcademicMetadata(
     const systemPrompt =
       "Sen kıdemli bir akademik dökümantasyon ve kütüphanecilik uzmanısın. Sana verilen makale başlangıç metnini dikkatle incele. Makalenin resmi tam başlığını (title), yazarlarını (authors), yayınlandığı yılı (year), varsa resmi DOI numarasını (doi) ve makalenin kısa özeti/abstract alanını (abstract) ayıkla. Yanıtı KESİNLİKLE başka hiçbir açıklama, markdown işareti veya kod bloğu enjekte etmeden, sadece ve sadece şu JSON şemasında döndür: { title: string, authors: string, year: number, doi: string, abstract: string }";
 
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry(ai, {
       model: "gemini-3.1-flash-lite",
       contents: startText,
       config: {
@@ -177,7 +178,7 @@ export async function generateNoteSuggestions(
     `"${content.trim()}"\n\n` +
     `Lütfen yukarıdaki kurallara ve tez anayasasına sadık kalarak, bu notu analiz et, entegrasyon önerisini ve atıf künyesini üret.`;
 
-  const geminiResponse = await ai.models.generateContent({
+  const geminiResponse = await generateContentWithRetry(ai, {
     model: "gemini-3.1-flash-lite",
     contents: userPrompt,
     config: {

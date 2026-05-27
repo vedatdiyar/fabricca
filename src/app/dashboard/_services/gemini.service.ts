@@ -3,6 +3,7 @@ import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { LiteratureRecommendation } from "../actions";
 import { CandidatePaper } from "./types";
+import { generateContentWithRetry } from "@/lib/gemini";
 
 const queryExtractionSchema = z.object({
   englishQueries: z
@@ -95,7 +96,7 @@ export class GeminiService {
 - Ana Argüman: ${argument}
 - Metodoloji: ${methodology}`;
 
-      const extractResponse = await ai.models.generateContent({
+      const extractResponse = await generateContentWithRetry(ai, {
         model: "gemini-3.1-flash-lite",
         contents: extractPrompt,
         config: {
@@ -170,7 +171,7 @@ ${JSON.stringify(
 
 Lütfen yukarıdaki tezin genel bağlamı altında, her bir "Tematik Çalışma Kutusu" (Thesis Box) için özel, nokta atışı arama terimleri üret. Her kutu için belirlenen sorgular doğrudan kutunun adına ve açıklamasına odaklanmalıdır.`;
 
-      const extractResponse = await ai.models.generateContent({
+      const extractResponse = await generateContentWithRetry(ai, {
         model: "gemini-3.1-flash-lite",
         contents: extractPrompt,
         config: {
@@ -325,14 +326,19 @@ Lütfen yukarıdaki tezin genel bağlamı altında, her bir "Tematik Çalışma 
     const ai = this.getClient();
 
     const activeBoxName = boxName || "ilgili";
-    const jurySystemPrompt = `Sen kıdemli bir akademisyensin. Önündeki aday makale listesini, tezin [TITLE, ARGUMENT, METHODOLOGY] verileriyle karşılaştır.
-Makalelerin atıf sayısı senin için kriter değildir. Kriterin, makalenin tezin ilgili [${activeBoxName}] kutusu ile olan metodolojik ve kuramsal uyumudur.
+    const jurySystemPrompt = `Sen sosyal bilimler ve siyaset bilimi alanında uzman, son derece titiz ve kıdemli bir akademisyensin. Önündeki aday makale listesini, tezin [TITLE, ARGUMENT, METHODOLOGY] verileriyle karşılaştıracaksın.
+Makalelerin atıf sayısı senin için bir kriter değildir. Kriterin, makalenin tezin ilgili [${activeBoxName}] kutusu ile olan metodolojik, kuramsal ve ampirik uyumudur.
+
+[NER HASSASİYETİ (NAMED ENTITY RECOGNITION)]
+- Girdi olarak aldığın tez anayasası uzun, derinlikli ve edebi paragraflardan oluşur. Paragrafların içindeki spesifik tarihsel kırılmaları/evreleri (Örn: "1991-1995", "1995-1999", "1990-2000" vb.) ve birincil ampirik/tarihsel kaynak isimlerini (Örn: Kürt hareketi yayınları/savunmaları ile Türkiye solunun "Gelenek", "Özgürlük Dünyası" gibi teorik dergilerini) çok yüksek bir Named Entity Recognition (NER) hassasiyeti ile tara ve yakala!
+- Seçtiğin makalelerin bu spesifik tarihsel evrelere ve kaynak karşılaşmalarına kuramsal veya ampirik olarak ne kadar temas ettiğini tam olarak ölç.
+
 Hangi kaynaktan gelirse gelsin (SS veya OA), teze en derinlikli katkıyı sunan 2 makaleyi bu kutu için seç.
 
 KATI AKADEMİK KURALLAR:
 1. KAFANDAN HİÇBİR YENİ MAKALE, YAZAR, YIL VEYA URL TÜRETMEYECEKSİN/UYDURMAYACAKSIN. Sadece sunulan aday makaleler listesinden seçim yapacaksın.
 2. Aday makalelerin 'paperId', 'title', 'authors', 'year', 'url', 'citationCount', 'source', 'lang' gibi orijinal bilgilerini kesinlikle değiştirme, manipüle etme.
-3. Her seçtiğin makale için Türkçe olarak 2-3 cümlelik çok güçlü bir entegrasyon gerekçesi ("relevance") üret. Bu gerekçede makalenin [${activeBoxName}] kutusuna neden seçildiğini ve metodolojik/kuramsal uyumunu açıkla.
+3. Her seçtiğin makale için Türkçe olarak 2-3 cümlelik çok güçlü bir entegrasyon gerekçesi ("relevance") üret. Bu gerekçede makalenin [${activeBoxName}] kutusundaki literatür boşluğuna/çalışmaya nasıl katkı sağladığını, yakaladığın spesifik NER kavramları (tarihler, dergiler, kuramlar) üzerinden detaylandırarak açıkla.
 ${isNewDiscovery ? "4. ÖNEMLİ: Hali hazırda ekli olan makaleleri (aşağıda listelenmiştir) kesinlikle tekrar seçme." : ""}`;
 
     const juryPrompt = `TEZ ANAYASASI:
@@ -350,7 +356,7 @@ ${isNewDiscovery ? `HALİ HAZIRDA EKİLİ MAKALELER (Bunları tekrar seçme!):\n
 
 Lütfen bu aday makaleler havuzundan, bu kutu için en uygun 2 makaleyi kurallara tam uyarak seç ve döndür.`;
 
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry(ai, {
       model: "gemini-3.1-flash-lite",
       contents: juryPrompt,
       config: {

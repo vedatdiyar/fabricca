@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { aiInsights, thesisCore } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
+import { generateContentWithRetry } from "@/lib/gemini";
 
 export interface InsightItem {
   id: number;
@@ -181,7 +182,7 @@ export async function sharpenInsightAction(
       `Lütfen yukarıdaki kurallara ve tez anayasasına sadık kalarak, bu ham fikri keskinleştiren 3 maddelik vurucu akademik içgörüleri üret.`;
 
     // 4. Call Gemini 3.1 Flash Lite
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry(ai, {
       model: "gemini-3.1-flash-lite",
       contents: prompt,
       config: {

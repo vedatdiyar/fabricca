@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { references, pdfChunks, aiInsights, thesisCore } from "@/db/schema";
 import { inArray, sql } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
+import { generateContentWithRetry } from "@/lib/gemini";
 
 export interface ReferenceItem {
   id: number;
@@ -323,8 +324,8 @@ export async function sendMessageAction(
       },
     ];
 
-    // Step 7: Call Google Gemini 3.1 Flash Lite via official SDK
-    const genAIResponse = await ai.models.generateContent({
+    // Step 7: Call Google Gemini 3.1 Flash Lite via official SDK with retry
+    const genAIResponse = await generateContentWithRetry(ai, {
       model: "gemini-3.1-flash-lite",
       contents: contents as unknown as {
         role: string;

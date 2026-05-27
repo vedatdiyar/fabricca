@@ -52,7 +52,8 @@ export function DashboardLoading({
           Tez Karargahı Yükleniyor...
         </p>
         <p className="text-xs font-sans text-muted-foreground mt-2">
-          Veritabanı bağlantısı ve tez anayasası senkronize ediliyor
+          Literatür taranıyor ve ilgili çalışamalar ilk okuma önerileri olarak
+          sentezleniyor...
         </p>
       </div>
     );
