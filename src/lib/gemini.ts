@@ -10,8 +10,8 @@ interface RetryOptions {
 /**
  * Checks if the error thrown by the Gemini API is a transient error that warrants a retry.
  */
-function isTransientError(error: any): boolean {
-  const errMsg = error?.message || String(error);
+function isTransientError(error: unknown): boolean {
+  const errMsg = error instanceof Error ? error.message : String(error);
 
   // Check if it's a JSON string containing the typical API error response
   try {
@@ -28,7 +28,7 @@ function isTransientError(error: any): boolean {
     ) {
       return true;
     }
-  } catch (e) {
+  } catch {
     // Parsing failed, proceed to substring analysis
   }
 
@@ -67,7 +67,7 @@ export async function generateContentWithRetry(
   while (true) {
     try {
       return await ai.models.generateContent(params);
-    } catch (error: any) {
+    } catch (error: unknown) {
       attempt++;
       const isTransient = isTransientError(error);
 
@@ -90,7 +90,7 @@ export async function generateContentWithRetry(
       console.warn(
         `[Gemini Retry] Transient error encountered (Attempt ${attempt}/${maxRetries}). ` +
           `Retrying in ${Math.round(jitteredDelay)}ms... Error: ${
-            error?.message || String(error)
+            error instanceof Error ? error.message : String(error)
           }`,
       );
 

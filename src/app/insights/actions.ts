@@ -3,7 +3,7 @@
 import { db } from "@/db";
 import { aiInsights, thesisCore } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { generateContentWithRetry } from "@/lib/gemini";
 
 export interface InsightItem {
@@ -188,6 +188,9 @@ export async function sharpenInsightAction(
       config: {
         systemInstruction: systemPrompt,
         temperature: 1,
+        thinkingConfig: {
+          thinkingLevel: ThinkingLevel.LOW,
+        },
       },
     });
 

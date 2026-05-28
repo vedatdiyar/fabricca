@@ -364,6 +364,9 @@ Lütfen bu aday makaleler havuzundan, bu kutu için en uygun 2 makaleyi kurallar
         temperature: 1,
         responseMimeType: "application/json",
         responseSchema: juryResponseSchema,
+        thinkingConfig: {
+          thinkingLevel: ThinkingLevel.MEDIUM,
+        },
       },
     });
 

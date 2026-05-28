@@ -150,10 +150,10 @@ async function fetchPapersForBox(
  * Canlı veriler alınamadığında doğrudan connection failure döner.
  */
 export async function getAcademicRecommendationsAction(
-  title: string,
-  researchQuestion: string,
-  argument: string,
-  methodology: string,
+  _title: string,
+  _researchQuestion: string,
+  _argument: string,
+  _methodology: string,
 ): Promise<RecommendationsResult> {
   try {
     // Step 1: Check existing database cache first

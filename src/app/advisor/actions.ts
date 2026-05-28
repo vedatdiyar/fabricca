@@ -3,7 +3,7 @@
 import { db } from "@/db";
 import { references, pdfChunks, aiInsights, thesisCore } from "@/db/schema";
 import { inArray, sql } from "drizzle-orm";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { generateContentWithRetry } from "@/lib/gemini";
 
 export interface ReferenceItem {
@@ -334,6 +334,9 @@ export async function sendMessageAction(
       config: {
         systemInstruction: systemInstruction,
         temperature: 1, // Lower temperature for high academic precision and adherence to instructions
+        thinkingConfig: {
+          thinkingLevel: ThinkingLevel.MEDIUM,
+        },
       },
     });
 

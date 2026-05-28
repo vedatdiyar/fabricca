@@ -41,6 +41,20 @@ export default function OnboardingPage() {
       description: string;
     }[];
   } | null>(null);
+
+  // "Pending" state: hoca onay teklif etti (structuredData dolu, needsReview=true),
+  // ama kullanıcı henüz arayüzdeki butona basmadı.
+  const [pendingStructuredData, setPendingStructuredData] = useState<{
+    title: string;
+    researchQuestion: string;
+    argument: string;
+    methodology: string;
+    boxes?: {
+      name: string;
+      description: string;
+    }[];
+  } | null>(null);
+
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
   // Submit response handler
@@ -145,27 +159,24 @@ export default function OnboardingPage() {
                 }
                 return; // End handleSubmit here (STRICTLY KEEPS USER IN CHAT FOR REVISION!)
               } else {
-                // Low risk — move to preview screen
+                // Low risk — surface professor's offer and pending approve button
                 setMessages((prev) => [
                   ...prev,
                   { role: "model", content: res.message || "" },
                 ]);
-                setStructuredData(res.structuredData);
-                setIsChatActive(false);
+                setPendingStructuredData(res.structuredData);
               }
             } else {
-              // Fallback if scanner fails
+              // Fallback if scanner fails — still surface approve button
               setMessages((prev) => [
                 ...prev,
                 { role: "model", content: res.message || "" },
               ]);
-              setStructuredData(res.structuredData);
-              setIsChatActive(false);
+              setPendingStructuredData(res.structuredData);
             }
           } catch (origErr) {
             console.error("Originality Check Error:", origErr);
-            setStructuredData(res.structuredData);
-            setIsChatActive(false);
+            setPendingStructuredData(res.structuredData);
           } finally {
             setIsOriginalityLoading(false);
           }
@@ -175,11 +186,10 @@ export default function OnboardingPage() {
             ...prev,
             { role: "model", content: res.message || "" },
           ]);
-          setStructuredData(res.structuredData);
-          setIsChatActive(false);
+          setPendingStructuredData(res.structuredData);
         }
       } else {
-        // Normal conversation flow (not finalized yet)
+        // Normal sohbet akışı — structuredData null, devam ediyor
         setMessages((prev) => [
           ...prev,
           { role: "model", content: res.message || "" },
@@ -227,6 +237,15 @@ export default function OnboardingPage() {
     }
   };
 
+  // Kullanıcı "Tez Anayasasını Onayla ve İlerle" butonuna bastığında:
+  // pending synthezi confirmed'e taşı, isChatActive kapat → PreviewScreen gösterilir.
+  const handleApproveConstitution = () => {
+    if (!pendingStructuredData) return;
+    setStructuredData(pendingStructuredData);
+    setPendingStructuredData(null);
+    setIsChatActive(false);
+  };
+
   // Reset to initial state
   const handleReset = () => {
     setMessages([
@@ -239,6 +258,7 @@ export default function OnboardingPage() {
     setIsChatActive(true);
     setUserResponse("");
     setStructuredData(null);
+    setPendingStructuredData(null);
     setError(null);
   };
 
@@ -282,6 +302,8 @@ export default function OnboardingPage() {
             isOriginalityLoading={isOriginalityLoading}
             error={error}
             handleSubmit={handleSubmit}
+            pendingStructuredData={pendingStructuredData}
+            onApproveConstitution={handleApproveConstitution}
           />
         )}
 

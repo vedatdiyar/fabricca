@@ -16,6 +16,14 @@ interface ChatScreenProps {
   isOriginalityLoading: boolean;
   error: string | null;
   handleSubmit: (e: React.FormEvent) => void;
+  pendingStructuredData: {
+    title: string;
+    researchQuestion: string;
+    argument: string;
+    methodology: string;
+    boxes?: { name: string; description: string }[];
+  } | null;
+  onApproveConstitution: () => void;
 }
 
 export function ChatScreen({
@@ -26,6 +34,8 @@ export function ChatScreen({
   isOriginalityLoading,
   error,
   handleSubmit,
+  pendingStructuredData,
+  onApproveConstitution,
 }: ChatScreenProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -199,6 +209,24 @@ export function ChatScreen({
         <div ref={messagesEndRef} />
       </div>
 
+      {/* ===== ONAY TEKLİFİ BUTONU =====
+           Hoca synthezi hazırladı ve önerdi. Kullanıcı ya devam yazar ya da onaylar. */}
+      {pendingStructuredData && !isLoading && !isOriginalityLoading && (
+        <div className="px-4 md:px-6 pb-2 animate-in slide-in-from-bottom-2 fade-in duration-300">
+          <button
+            onClick={onApproveConstitution}
+            className="w-full flex items-center justify-center gap-2.5 bg-primary text-primary-foreground font-semibold text-sm py-3 px-6 rounded-lg border border-primary shadow-lg hover:brightness-110 active:scale-[0.98] transition-all duration-150 cursor-pointer"
+          >
+            <span className="text-base">📜</span>
+            Tez Anayasasını Onayla ve İlerle
+          </button>
+          <p className="text-center text-xs text-muted-foreground mt-1.5 font-sans">
+            Ya da aşağıya yazıp sohbete devam edebilirsin — hoca seni dinlemeye
+            devam eder.
+          </p>
+        </div>
+      )}
+
       {/* Input & Form Box */}
       <form
         onSubmit={handleFormSubmit}
@@ -209,7 +237,7 @@ export function ChatScreen({
             ref={textareaRef}
             value={userResponse}
             onChange={(e) => setUserResponse(e.target.value)}
-            placeholder="Prof. Dr. Verita ile akademik diyaloğunuza devam edin... (Bitirmek için: 'anayasayı basabiliriz')"
+            placeholder="Prof. Dr. Verita ile akademik diyaloğunuza devam edin..."
             rows={2}
             className="flex-1 bg-secondary text-foreground border border-border rounded-lg p-3 font-sans text-sm focus-visible:ring-1 focus-visible:ring-primary placeholder-muted-foreground resize-none overflow-y-auto max-h-32"
             disabled={isLoading}
