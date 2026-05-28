@@ -16,11 +16,6 @@ interface ChatScreenProps {
   isOriginalityLoading: boolean;
   error: string | null;
   handleSubmit: (e: React.FormEvent) => void;
-  stepInfo: {
-    label: string;
-    percent: number;
-    placeholder: string;
-  };
 }
 
 export function ChatScreen({
@@ -31,7 +26,6 @@ export function ChatScreen({
   isOriginalityLoading,
   error,
   handleSubmit,
-  stepInfo,
 }: ChatScreenProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -210,35 +204,29 @@ export function ChatScreen({
         onSubmit={handleFormSubmit}
         className="border-t border-border pt-4 mt-4"
       >
-        <div className="flex flex-col space-y-2">
-          <div className="flex justify-between items-center text-xs text-muted-foreground px-1">
-            <span>{stepInfo.label}</span>
-            <span>{stepInfo.percent}% Tamamlandı</span>
-          </div>
-          <div className="flex gap-2">
-            <Textarea
-              ref={textareaRef}
-              value={userResponse}
-              onChange={(e) => setUserResponse(e.target.value)}
-              placeholder={stepInfo.placeholder}
-              rows={2}
-              className="flex-1 bg-secondary text-foreground border border-border rounded-lg p-3 font-sans text-sm focus-visible:ring-1 focus-visible:ring-primary placeholder-muted-foreground resize-none overflow-y-auto max-h-32"
-              disabled={isLoading}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleFormSubmit(e);
-                }
-              }}
-            />
-            <button
-              type="submit"
-              className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium px-4 rounded-lg flex items-center justify-center transition-colors shrink-0 disabled:opacity-50"
-              disabled={isLoading || !userResponse.trim()}
-            >
-              <Send className="h-4 w-4" />
-            </button>
-          </div>
+        <div className="flex gap-2">
+          <Textarea
+            ref={textareaRef}
+            value={userResponse}
+            onChange={(e) => setUserResponse(e.target.value)}
+            placeholder="Prof. Dr. Verita ile akademik diyaloğunuza devam edin... (Bitirmek için: 'anayasayı basabiliriz')"
+            rows={2}
+            className="flex-1 bg-secondary text-foreground border border-border rounded-lg p-3 font-sans text-sm focus-visible:ring-1 focus-visible:ring-primary placeholder-muted-foreground resize-none overflow-y-auto max-h-32"
+            disabled={isLoading}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleFormSubmit(e);
+              }
+            }}
+          />
+          <button
+            type="submit"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium px-4 rounded-lg flex items-center justify-center transition-colors shrink-0 disabled:opacity-50"
+            disabled={isLoading || !userResponse.trim()}
+          >
+            <Send className="h-4 w-4" />
+          </button>
         </div>
       </form>
     </div>

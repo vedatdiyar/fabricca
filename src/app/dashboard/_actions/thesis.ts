@@ -1,6 +1,7 @@
 import { db } from "@/db";
-import { thesisCore } from "@/db/schema";
+import { thesisCore, thesisBoxes, notes } from "@/db/schema";
 import { GetThesisCoreResult } from "../actions";
+import { eq, sql } from "drizzle-orm";
 
 /**
  * Server Action to retrieve the thesis core parameters (Thesis Constitution) from Neon PostgreSQL.
@@ -26,13 +27,39 @@ export async function getThesisCoreAction(
       };
     }
 
+    // Fetch associated boxes in correct order
+    const boxesList = await db
+      .select()
+      .from(thesisBoxes)
+      .where(eq(thesisBoxes.thesisCoreId, core.id))
+      .orderBy(thesisBoxes.order);
+
+    // Dynamic count fetch for each box's personal reading notes
+    const boxesWithCounts = await Promise.all(
+      boxesList.map(async (box) => {
+        const [noteCountRes] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(notes)
+          .where(eq(notes.boxId, box.id));
+
+        return {
+          id: box.id,
+          name: box.name,
+          description: box.description,
+          noteCount: noteCountRes?.count || 0,
+        };
+      }),
+    );
+
     return {
       success: true,
       data: {
+        id: core.id,
         title: core.title,
         researchQuestion: core.researchQuestion,
         argument: core.argument,
         methodology: core.methodology,
+        boxes: boxesWithCounts,
       },
     };
   } catch (error) {

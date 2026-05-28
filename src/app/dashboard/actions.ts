@@ -1,10 +1,17 @@
 "use server";
 
 export interface ThesisCoreData {
+  id?: number;
   title: string;
   researchQuestion: string;
   argument: string;
   methodology: string;
+  boxes?: {
+    id: number;
+    name: string;
+    description: string | null;
+    noteCount?: number;
+  }[];
 }
 
 export interface GetThesisCoreResult {

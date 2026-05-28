@@ -20,6 +20,7 @@ import {
   getReferencesAction,
   saveNoteAction,
   getNotesAction,
+  getThesisBoxesAction,
 } from "./actions";
 import ReactMarkdown from "react-markdown";
 
@@ -61,6 +62,13 @@ export default function LibraryPage() {
   const [savedNotes, setSavedNotes] = useState<Note[]>([]);
   const [noteError, setNoteError] = useState<string | null>(null);
   const [noteSuccess, setNoteSuccess] = useState<string | null>(null);
+
+  // Thesis Boxes States for classification
+  const [boxes, setBoxes] = useState<
+    Array<{ id: number; name: string; description: string | null }>
+  >([]);
+  const [selectedBoxId, setSelectedBoxId] = useState<number | null>(null);
+  const [filterByBox, setFilterByBox] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -121,12 +129,30 @@ export default function LibraryPage() {
     }
   }, []);
 
-  // Load references from database on mount
+  // Load references and thesis boxes on mount
   useEffect(() => {
     let active = true;
-    const handle = requestAnimationFrame(() => {
-      if (active) {
-        loadReferences();
+    const handle = requestAnimationFrame(async () => {
+      if (!active) return;
+      loadReferences();
+
+      try {
+        const res = await getThesisBoxesAction();
+        if (res.success && res.boxes) {
+          setBoxes(res.boxes);
+
+          const params = new URLSearchParams(window.location.search);
+          const boxIdParam = params.get("boxId");
+          if (boxIdParam) {
+            const bId = parseInt(boxIdParam, 10);
+            if (!isNaN(bId)) {
+              setSelectedBoxId(bId);
+              setFilterByBox(true);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load thesis boxes in library page:", err);
       }
     });
     return () => {
@@ -212,7 +238,11 @@ export default function LibraryPage() {
     setNoteSuccess(null);
 
     try {
-      const res = await saveNoteAction(selectedRefId, noteContent);
+      const res = await saveNoteAction(
+        selectedRefId,
+        noteContent,
+        selectedBoxId,
+      );
       if (res.success) {
         setNoteSuccess("Okuma notunuz veritabanına başarıyla kaydedildi.");
         setNoteContent(""); // Clear textarea
@@ -244,6 +274,11 @@ export default function LibraryPage() {
   };
 
   const selectedRef = getSelectedReference();
+
+  const displayedNotes =
+    filterByBox && selectedBoxId !== null
+      ? savedNotes.filter((note) => note.boxId === selectedBoxId)
+      : savedNotes;
 
   return (
     <div className="flex flex-1 flex-col bg-background text-foreground p-6 md:p-10 font-sans">
@@ -489,6 +524,37 @@ export default function LibraryPage() {
                 />
               </div>
 
+              {/* Tasnif Seçici (Entelektüel Kumbara) */}
+              {boxes.length > 0 && (
+                <div className="flex flex-col space-y-2 bg-background border border-border rounded-lg p-4 transition duration-150">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Sparkles className="size-3.5 text-primary" />
+                    <span>Entelektüel Kumbara (Tasnif)</span>
+                  </label>
+                  <p className="text-[10px] text-muted-foreground leading-normal mb-1">
+                    Notunuzu doğrudan tezinizin ilgili bölümüne (kartoteks
+                    kutusuna) fırlatarak arşivleyin.
+                  </p>
+                  <select
+                    value={selectedBoxId || ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSelectedBoxId(val ? parseInt(val, 10) : null);
+                    }}
+                    className="bg-card border border-border text-xs rounded-md p-2.5 text-foreground font-sans outline-none focus:border-primary/50 transition cursor-pointer"
+                  >
+                    <option value="">
+                      -- Tasnif Dışı (Kumbara Seçilmedi) --
+                    </option>
+                    {boxes.map((box, idx) => (
+                      <option key={box.id} value={box.id}>
+                        Bölüm {idx + 1}: {box.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               {/* Feedback Alerts for Note */}
               {noteError && (
                 <Alert
@@ -535,14 +601,33 @@ export default function LibraryPage() {
               </button>
 
               {/* Saved Notes List Section */}
-              <div className="border-t border-border pt-6 flex flex-col space-y-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
-                  <span>Kayıtlı Okuma Notları ({savedNotes.length})</span>
-                </h3>
+              <div className="border-t border-border pt-6 flex flex-col space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                    <FileText className="size-4 text-primary" />
+                    <span>Kayıtlı Okuma Notları ({displayedNotes.length})</span>
+                  </h3>
 
-                {savedNotes.length === 0 && !isSavingNote ? (
-                  <div className="flex-1 border border-border rounded flex items-center justify-center text-xs text-muted-foreground bg-background p-6 text-center italic">
-                    Bu makaleye ait henüz kayıtlı okuma notu bulunmuyor.
+                  {/* Tasnif Filtreleme */}
+                  {selectedBoxId !== null && (
+                    <button
+                      onClick={() => setFilterByBox(!filterByBox)}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider border transition cursor-pointer ${
+                        filterByBox
+                          ? "bg-primary/15 border-primary/40 text-primary"
+                          : "bg-transparent border-border text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <span>Sadece Seçili Kumbarayı Göster</span>
+                    </button>
+                  )}
+                </div>
+
+                {displayedNotes.length === 0 && !isSavingNote ? (
+                  <div className="border border-border rounded flex items-center justify-center text-xs text-muted-foreground bg-background p-6 text-center italic">
+                    {filterByBox
+                      ? "Seçilen entelektüel kumbaraya ait kayıtlı okuma notu bulunmuyor."
+                      : "Bu makaleye ait henüz kayıtlı okuma notu bulunmuyor."}
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -550,7 +635,7 @@ export default function LibraryPage() {
                     {isSavingNote && (
                       <div className="p-4 bg-background border border-primary rounded-lg text-sm flex flex-col space-y-3 animate-pulse relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
-                        <p className="text-foreground leading-relaxed whitespace-pre-wrap italic opacity-80">
+                        <p className="text-foreground leading-relaxed whitespace-pre-wrap italic opacity-80 font-sans">
                           {noteContent || "Yeni okuma notu..."}
                         </p>
 
@@ -575,7 +660,7 @@ export default function LibraryPage() {
                       </div>
                     )}
 
-                    {savedNotes.map((note) => (
+                    {displayedNotes.map((note) => (
                       <div
                         key={note.id}
                         className="p-4 bg-background border border-border rounded-lg text-sm flex flex-col space-y-2 hover:border-border transition duration-150"
@@ -583,6 +668,17 @@ export default function LibraryPage() {
                         <p className="text-foreground leading-relaxed whitespace-pre-wrap font-sans">
                           {note.content}
                         </p>
+
+                        {note.boxId && (
+                          <div className="flex items-center gap-1.5 self-start">
+                            <span className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded bg-primary/10 border border-primary/20 text-primary">
+                              Kumbara:{" "}
+                              {boxes.find((b) => b.id === note.boxId)?.name ||
+                                "Bilinmeyen Bölüm"}
+                            </span>
+                          </div>
+                        )}
+
                         <span className="text-[10px] text-muted-foreground font-mono self-end">
                           {note.createdAt
                             ? new Date(note.createdAt).toLocaleString("tr-TR")

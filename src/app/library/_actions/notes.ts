@@ -46,6 +46,7 @@ export interface GetThesisBoxesResult {
 export async function saveNoteAction(
   referenceId: number,
   content: string,
+  boxId?: number | null,
 ): Promise<SaveNoteResult> {
   try {
     if (!content || !content.trim()) {
@@ -90,6 +91,7 @@ export async function saveNoteAction(
         content: content.trim(),
         embedding: embeddingVector,
         aiContextSuggestions,
+        boxId: boxId || null,
       })
       .returning();
 

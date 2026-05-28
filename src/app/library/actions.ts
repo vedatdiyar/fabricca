@@ -36,8 +36,9 @@ export async function getReferencesAction(): Promise<GetReferencesResult> {
 export async function saveNoteAction(
   referenceId: number,
   content: string,
+  boxId?: number | null,
 ): Promise<SaveNoteResult> {
-  return saveNote(referenceId, content);
+  return saveNote(referenceId, content, boxId);
 }
 
 export async function getNotesAction(

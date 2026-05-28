@@ -185,126 +185,14 @@ export async function getAcademicRecommendationsAction(
       }
     }
 
-    // Step 2: Database cache is empty. Run box-specific retrieval pipeline
-    const boxes = await db
-      .select()
-      .from(thesisBoxes)
-      .where(eq(thesisBoxes.thesisCoreId, core.id))
-      .orderBy(thesisBoxes.order);
-
-    if (boxes.length === 0) {
-      return {
-        success: false,
-        error:
-          "Tezinize ait henüz hiçbir Tematik Çalışma Kutusu bulunamadı. Lütfen onboarding veya dashboard üzerinden kutuları oluşturun.",
-      };
-    }
-
-    // Extract English queries and Turkish keywords per box
-    const boxQueries = await GeminiService.extractAcademicQueriesPerBox(
-      title,
-      researchQuestion,
-      argument,
-      methodology,
-      boxes,
-    );
-
+    // DO NOT run the automatic literature search when the cache is empty.
+    // Instead, return an empty recommendations array so that the user can trigger it manually.
     console.log(
-      `[getAcademicRecommendationsAction] Extracted boxQueries: ${JSON.stringify(boxQueries)}`,
+      "[getAcademicRecommendationsAction] No recommendations cached in database. Returning empty list to prevent automatic search on dashboard load.",
     );
-
-    const allRecommendations: LiteratureRecommendation[] = [];
-    let totalCandidatesCount = 0;
-
-    // Evaluate candidates and run jury sessions box by box (decoupled)
-    for (const bq of boxQueries) {
-      const box = boxes.find((b) => b.id === bq.boxId);
-      if (!box) continue;
-
-      try {
-        console.log(`\n[getAcademicRecommendationsAction] Fetching papers for box: "${box.name}"...`);
-        const boxPapers = await fetchPapersForBox(box, bq, 10);
-
-        // Tag papers with boxId and boxName
-        const taggedPapers: EnrichedCandidatePaper[] = boxPapers.map((p) => ({
-          ...p,
-          boxId: box.id,
-          boxName: box.name,
-        }));
-
-        // Deduplicate locally without any citation sorting to preserve API relevance
-        const deduplicatedBoxPapers = deduplicatePapers(taggedPapers);
-        totalCandidatesCount += deduplicatedBoxPapers.length;
-
-        if (deduplicatedBoxPapers.length === 0) {
-          console.log(`[getAcademicRecommendationsAction] No candidates found for box "${box.name}". Skipping jury.`);
-          continue;
-        }
-
-        // ADIM 1: Log candidate pool before jury session
-        logCandidatesPool("BEFORE_JURY", box.name, deduplicatedBoxPapers);
-
-        // ADIM 3: Curate using Gemini Academic Jury specifically for this box
-        const boxRecs = await GeminiService.runAcademicJury(
-          title,
-          researchQuestion,
-          argument,
-          methodology,
-          deduplicatedBoxPapers,
-          false,
-          [],
-          box.name,
-        );
-
-        // Enrich recommendation objects with safe mapped fields
-        const enrichedBoxRecs = boxRecs.map((rec) => {
-          const match = deduplicatedBoxPapers.find(
-            (c) =>
-              c.paperId === rec.paperId ||
-              c.title.toLowerCase().trim() === rec.title.toLowerCase().trim(),
-          );
-          return {
-            ...rec,
-            boxId: box.id,
-            boxName: box.name,
-            source: rec.source || match?.source || "OpenAlex",
-            citationCount:
-              typeof rec.citationCount === "number"
-                ? rec.citationCount
-                : (match?.citationCount || 0),
-            lang: rec.lang || match?.lang || "EN",
-          };
-        });
-
-        // ADIM 1: Log recommendations after jury curation
-        logCandidatesPool("AFTER_JURY", box.name, enrichedBoxRecs);
-
-        allRecommendations.push(...enrichedBoxRecs);
-      } catch (err) {
-        console.error(`Error processing box "${box.name}":`, err);
-      }
-    }
-
-    // If no candidate papers are returned at all, return connection failure immediately.
-    if (totalCandidatesCount === 0) {
-      console.log(
-        "[getAcademicRecommendationsAction] All candidate pools are empty. Returning API_CONNECTION_FAILURE.",
-      );
-      return {
-        success: false,
-        error: "API_CONNECTION_FAILURE",
-      };
-    }
-
-    // Save recommendations back to Neon PostgreSQL database cache
-    await db
-      .update(thesisCore)
-      .set({ academicRecommendations: JSON.stringify(allRecommendations) })
-      .where(eq(thesisCore.id, core.id));
-
     return {
       success: true,
-      recommendations: allRecommendations,
+      recommendations: [],
     };
   } catch (error) {
     console.error("getAcademicRecommendationsAction Error:", error);
@@ -313,7 +201,7 @@ export async function getAcademicRecommendationsAction(
       error:
         error instanceof Error
           ? error.message
-          : "Tavsiyeler üretilirken bir hata oluştu.",
+          : "Tavsiyeler yüklenirken bir hata oluştu.",
     };
   }
 }
@@ -396,7 +284,9 @@ export async function discoverNewRecommendationsAction(
       if (!box) continue;
 
       try {
-        console.log(`\n[discoverNewRecommendationsAction] Discovering new papers for box: "${box.name}"...`);
+        console.log(
+          `\n[discoverNewRecommendationsAction] Discovering new papers for box: "${box.name}"...`,
+        );
         const boxPapers = await fetchPapersForBox(box, bq, 10);
 
         // Tag papers with boxId and boxName
@@ -419,7 +309,9 @@ export async function discoverNewRecommendationsAction(
         totalUnseenCandidatesCount += deduplicatedUnseen.length;
 
         if (deduplicatedUnseen.length === 0) {
-          console.log(`[discoverNewRecommendationsAction] No new unseen candidates found for box "${box.name}". Skipping jury.`);
+          console.log(
+            `[discoverNewRecommendationsAction] No new unseen candidates found for box "${box.name}". Skipping jury.`,
+          );
           continue;
         }
 
@@ -461,7 +353,7 @@ export async function discoverNewRecommendationsAction(
               citationCount:
                 typeof rec.citationCount === "number"
                   ? rec.citationCount
-                  : (match?.citationCount || 0),
+                  : match?.citationCount || 0,
               lang: rec.lang || match?.lang || "EN",
             };
           });
@@ -471,7 +363,10 @@ export async function discoverNewRecommendationsAction(
 
         allNewRecommendations.push(...finalizedBoxNewRecs);
       } catch (err) {
-        console.error(`Error processing new discoveries for box "${box.name}":`, err);
+        console.error(
+          `Error processing new discoveries for box "${box.name}":`,
+          err,
+        );
       }
     }
 
@@ -486,10 +381,7 @@ export async function discoverNewRecommendationsAction(
       };
     }
 
-    const updatedRecommendations = [
-      ...existingRecs,
-      ...allNewRecommendations,
-    ];
+    const updatedRecommendations = [...existingRecs, ...allNewRecommendations];
 
     await db
       .update(thesisCore)

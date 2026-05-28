@@ -1,8 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getExpectedHash } from "@/lib/auth";
-import { db } from "@/db";
-import { thesisCore } from "@/db/schema";
+import { getThesisCoreAction } from "@/app/dashboard/actions";
 import DashboardClient from "@/app/dashboard/_components/dashboard-client";
 
 export default async function Home() {
@@ -18,24 +17,16 @@ export default async function Home() {
   const expectedHash = await getExpectedHash(password);
 
   if (sessionCookie === expectedHash) {
-    // Query Neon PostgreSQL to see if thesis_core table is empty.
     let initialThesisData = null;
     let isThesisCoreEmpty = true;
     try {
-      const coreEntries = await db.select().from(thesisCore).limit(1);
-      if (coreEntries.length > 0) {
-        const core = coreEntries[0];
+      const coreRes = await getThesisCoreAction();
+      if (coreRes.success && coreRes.data) {
         isThesisCoreEmpty = false;
-        initialThesisData = {
-          title: core.title,
-          researchQuestion: core.researchQuestion,
-          argument: core.argument,
-          methodology: core.methodology,
-        };
+        initialThesisData = coreRes.data;
       }
     } catch (error) {
       console.error("Failed to query thesisCore in root page:", error);
-      // Fallback to true if there's an error so the user can onboarding
       isThesisCoreEmpty = true;
     }
 
