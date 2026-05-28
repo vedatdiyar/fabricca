@@ -11,17 +11,53 @@ import {
   BookOpen,
   Plus,
   Sparkles,
+  Trash2,
+  Quote,
+  Tags,
+  Link2,
+  Compass,
+  Brain,
+  Pencil,
+  X,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   uploadPdfAction,
   getReferencesAction,
   saveNoteAction,
   getNotesAction,
   getThesisBoxesAction,
+  deleteReferenceAction,
+  updateNoteAction,
 } from "./actions";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import ReactMarkdown from "react-markdown";
 
 interface Reference {
@@ -32,6 +68,7 @@ interface Reference {
   doi: string | null;
   pdfUrl: string;
   abstract: string | null;
+  status: string | null;
   createdAt: Date | null;
   downloadUrl: string;
 }
@@ -43,6 +80,13 @@ interface Note {
   aiContextSuggestions: string | null;
   isUserNote: boolean | null;
   boxId: number | null;
+  mainArgument?: string | null;
+  quotes?: string | null;
+  concepts?: string | null;
+  criticalNotes?: string | null;
+  connections?: string | null;
+  researchNotes?: string | null;
+  memoryAnchors?: string | null;
   createdAt: Date | null;
 }
 
@@ -57,11 +101,21 @@ export default function LibraryPage() {
   const [mobileTab, setMobileTab] = useState("references");
 
   // Notes States
-  const [noteContent, setNoteContent] = useState("");
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [savedNotes, setSavedNotes] = useState<Note[]>([]);
   const [noteError, setNoteError] = useState<string | null>(null);
   const [noteSuccess, setNoteSuccess] = useState<string | null>(null);
+
+  // Structured Notes States
+  const [mainArgument, setMainArgument] = useState("");
+  const [quotes, setQuotes] = useState("");
+  const [concepts, setConcepts] = useState("");
+  const [criticalNotes, setCriticalNotes] = useState("");
+  const [connections, setConnections] = useState("");
+  const [researchNotes, setResearchNotes] = useState("");
+  const [memoryAnchors, setMemoryAnchors] = useState("");
+  const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Thesis Boxes States for classification
   const [boxes, setBoxes] = useState<
@@ -69,6 +123,9 @@ export default function LibraryPage() {
   >([]);
   const [selectedBoxId, setSelectedBoxId] = useState<number | null>(null);
   const [filterByBox, setFilterByBox] = useState(false);
+  const [deleteDialogOpenId, setDeleteDialogOpenId] = useState<number | null>(
+    null,
+  );
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -122,7 +179,7 @@ export default function LibraryPage() {
     try {
       const res = await getNotesAction(refId);
       if (res.success && res.notes) {
-        setSavedNotes(res.notes);
+        setSavedNotes(res.notes as Note[]);
       }
     } catch (err) {
       console.error("Failed to load notes:", err);
@@ -169,7 +226,7 @@ export default function LibraryPage() {
       if (selectedRefId !== null) {
         loadNotes(selectedRefId);
         // Reset note input states on reference switch
-        setNoteContent("");
+        clearNoteForm();
         setNoteError(null);
         setNoteSuccess(null);
       } else {
@@ -225,10 +282,44 @@ export default function LibraryPage() {
     }
   };
 
+  const clearNoteForm = useCallback(() => {
+    setMainArgument("");
+    setQuotes("");
+    setConcepts("");
+    setCriticalNotes("");
+    setConnections("");
+    setResearchNotes("");
+    setMemoryAnchors("");
+    setEditingNoteId(null);
+    setIsDialogOpen(false);
+  }, []);
+
+  const startEditingNote = (note: Note) => {
+    setEditingNoteId(note.id);
+    setSelectedBoxId(note.boxId);
+    setMainArgument(note.mainArgument || "");
+    setQuotes(note.quotes || "");
+    setConcepts(note.concepts || "");
+    setCriticalNotes(note.criticalNotes || "");
+    setConnections(note.connections || "");
+    setResearchNotes(note.researchNotes || "");
+    setMemoryAnchors(note.memoryAnchors || "");
+    setIsDialogOpen(true);
+  };
+
   const handleSaveNote = async () => {
     if (selectedRefId === null) return;
-    if (!noteContent || !noteContent.trim()) {
-      setNoteError("Not içeriği boş olamaz.");
+
+    if (
+      !mainArgument.trim() &&
+      !quotes.trim() &&
+      !concepts.trim() &&
+      !criticalNotes.trim() &&
+      !connections.trim() &&
+      !researchNotes.trim() &&
+      !memoryAnchors.trim()
+    ) {
+      setNoteError("Lütfen en az bir akademik alanı doldurun.");
       setNoteSuccess(null);
       return;
     }
@@ -238,24 +329,54 @@ export default function LibraryPage() {
     setNoteSuccess(null);
 
     try {
-      const res = await saveNoteAction(
-        selectedRefId,
-        noteContent,
-        selectedBoxId,
-      );
-      if (res.success) {
-        setNoteSuccess("Okuma notunuz veritabanına başarıyla kaydedildi.");
-        setNoteContent(""); // Clear textarea
-        // Reload notes list for this reference
-        await loadNotes(selectedRefId);
+      if (editingNoteId !== null) {
+        const res = await updateNoteAction({
+          noteId: editingNoteId,
+          boxId: selectedBoxId,
+          mainArgument: mainArgument.trim(),
+          quotes: quotes.trim(),
+          concepts: concepts.trim(),
+          criticalNotes: criticalNotes.trim(),
+          connections: connections.trim(),
+          researchNotes: researchNotes.trim(),
+          memoryAnchors: memoryAnchors.trim(),
+        });
+
+        if (res.success) {
+          setNoteSuccess("Okuma notunuz başarıyla güncellendi.");
+          clearNoteForm();
+          await loadNotes(selectedRefId);
+        } else {
+          setNoteError(res.error || "Not güncellenirken bir hata oluştu.");
+        }
       } else {
-        setNoteError(res.error || "Not kaydedilirken bir hata oluştu.");
+        const res = await saveNoteAction(
+          selectedRefId,
+          {
+            mainArgument: mainArgument.trim(),
+            quotes: quotes.trim(),
+            concepts: concepts.trim(),
+            criticalNotes: criticalNotes.trim(),
+            connections: connections.trim(),
+            researchNotes: researchNotes.trim(),
+            memoryAnchors: memoryAnchors.trim(),
+          },
+          selectedBoxId,
+        );
+
+        if (res.success) {
+          setNoteSuccess("Okuma notunuz veritabanına başarıyla kaydedildi.");
+          clearNoteForm();
+          await loadNotes(selectedRefId);
+        } else {
+          setNoteError(res.error || "Not kaydedilirken bir hata oluştu.");
+        }
       }
     } catch (err) {
       const errMsg =
         err instanceof Error
           ? err.message
-          : "Not kaydedilirken beklenmeyen bir sunucu hatası oluştu.";
+          : "İşlem sırasında beklenmeyen bir sunucu hatası oluştu.";
       setNoteError(errMsg);
     } finally {
       setIsSavingNote(false);
@@ -266,6 +387,34 @@ export default function LibraryPage() {
     const file = e.target.files?.[0];
     if (file) {
       handleFileUpload(file);
+    }
+  };
+
+  const handleDeleteReference = async (id: number) => {
+    try {
+      const res = await deleteReferenceAction(id);
+      if (res.success) {
+        setUploadSuccess("Makale ve ilişkili tüm verileri başarıyla silindi.");
+        setUploadError(null);
+
+        // If the deleted reference was selected, reset selection
+        if (selectedRefId === id) {
+          setSelectedRefId(null);
+        }
+
+        // Reload references list
+        await loadReferences();
+      } else {
+        setUploadError(res.error || "Makale silinirken bir hata oluştu.");
+        setUploadSuccess(null);
+      }
+    } catch (err) {
+      const errMsg =
+        err instanceof Error
+          ? err.message
+          : "Makale silinirken beklenmeyen bir hata oluştu.";
+      setUploadError(errMsg);
+      setUploadSuccess(null);
     }
   };
 
@@ -445,6 +594,11 @@ export default function LibraryPage() {
                       </div>
 
                       <div className="flex justify-end items-center mt-3 pt-3 border-t border-border space-x-3">
+                        {ref.status === "tamamlandı" && (
+                          <span className="mr-auto text-[10px] uppercase font-mono px-2.5 py-1.5 rounded bg-primary text-background font-bold">
+                            Tamamlandı
+                          </span>
+                        )}
                         <a
                           href={ref.downloadUrl}
                           target="_blank"
@@ -455,6 +609,55 @@ export default function LibraryPage() {
                           <Download className="h-3.5 w-3.5" />
                           <span>PDF İndir</span>
                         </a>
+                        <AlertDialog
+                          open={deleteDialogOpenId === ref.id}
+                          onOpenChange={(open) =>
+                            setDeleteDialogOpenId(open ? ref.id : null)
+                          }
+                        >
+                          <AlertDialogTrigger
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center justify-center p-1.5 rounded border border-border bg-card text-muted-foreground hover:text-destructive hover:border-destructive transition-colors cursor-pointer"
+                            title="Makaleyi Sil"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </AlertDialogTrigger>
+                          <AlertDialogContent
+                            className="border border-border bg-card"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <AlertDialogHeader>
+                              <AlertDialogTitle className="font-sans text-foreground">
+                                Makaleyi Sil
+                              </AlertDialogTitle>
+                              <AlertDialogDescription className="text-xs text-muted-foreground">
+                                "<strong>{ref.title}</strong>" isimli makaleyi
+                                ve bu makaleye ait tüm okuma notlarını, RAG
+                                parçalarını, görevleri ve yapay zeka
+                                analizlerini kalıcı olarak silmek istediğinize
+                                emin misiniz? Bu işlem geri alınamaz.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel
+                                className="border-border text-foreground hover:bg-muted cursor-pointer"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                İptal
+                              </AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteDialogOpenId(null);
+                                  handleDeleteReference(ref.id);
+                                }}
+                                className="bg-destructive text-destructive-foreground hover:opacity-90 cursor-pointer"
+                              >
+                                Evet, Sil
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                         <span
                           className={`text-[10px] uppercase font-mono px-2 py-1.5 rounded transition-all duration-200 ${
                             isSelected
@@ -511,49 +714,189 @@ export default function LibraryPage() {
                 </div>
               )}
 
-              {/* Reading Notes Textarea */}
-              <div className="flex flex-col space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Toplu Makale Okuma Notu
-                </label>
-                <Textarea
-                  value={noteContent}
-                  onChange={(e) => setNoteContent(e.target.value)}
-                  placeholder="Bu makaleden çıkardığınız ana tezleri, metodolojik bulguları veya tezinizde kullanacağınız kritik paragrafları buraya not edin..."
-                  className="min-h-[140px] p-4 bg-background border border-border rounded-lg text-sm text-foreground focus-visible:ring-1 focus-visible:ring-primary transition duration-150 resize-none font-sans"
-                />
-              </div>
+              {/* Kartoteks Fişi Ekleme Butonu */}
+              <button
+                onClick={() => {
+                  clearNoteForm();
+                  setIsDialogOpen(true);
+                }}
+                className="w-full bg-primary text-background font-semibold text-sm py-3 rounded-lg transition duration-200 flex items-center justify-center space-x-2 hover:bg-primary/95 cursor-pointer"
+              >
+                <Plus className="h-4 w-4 text-background" />
+                <span>Makale Notu Ekle</span>
+              </button>
 
-              {/* Tasnif Seçici (Entelektüel Kumbara) */}
-              {boxes.length > 0 && (
-                <div className="flex flex-col space-y-2 bg-background border border-border rounded-lg p-4 transition duration-150">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                    <Sparkles className="size-3.5 text-primary" />
-                    <span>Entelektüel Kumbara (Tasnif)</span>
-                  </label>
-                  <p className="text-[10px] text-muted-foreground leading-normal mb-1">
-                    Notunuzu doğrudan tezinizin ilgili bölümüne (kartoteks
-                    kutusuna) fırlatarak arşivleyin.
-                  </p>
-                  <select
-                    value={selectedBoxId || ""}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setSelectedBoxId(val ? parseInt(val, 10) : null);
-                    }}
-                    className="bg-card border border-border text-xs rounded-md p-2.5 text-foreground font-sans outline-none focus:border-primary/50 transition cursor-pointer"
-                  >
-                    <option value="">
-                      -- Tasnif Dışı (Kumbara Seçilmedi) --
-                    </option>
-                    {boxes.map((box, idx) => (
-                      <option key={box.id} value={box.id}>
-                        Bölüm {idx + 1}: {box.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              {/* Dialog (Modal) for Structured Note Form */}
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent className="max-w-[92vw] sm:max-w-[700px] overflow-hidden flex flex-col max-h-[90vh]">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Sparkles className="size-4.5 text-primary" />
+                      <span>
+                        {editingNoteId !== null
+                          ? "Kartoteks Düzenle"
+                          : "Kartoteks Formu"}
+                      </span>
+                    </DialogTitle>
+                    <DialogDescription>
+                      Makaleden çıkardığınız akademik notları kategorize edilmiş
+                      şekilde girin.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="flex-1 overflow-y-auto pr-1 py-4 space-y-5">
+                    {/* Tasnif Seçici */}
+                    {boxes.length > 0 && (
+                      <div className="flex flex-col space-y-2 bg-muted/40 border border-border rounded-lg p-4 transition duration-150">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                          <Sparkles className="size-3.5 text-primary shrink-0" />
+                          <span>Entelektüel Kumbara (Tasnif)</span>
+                        </label>
+                        <p className="text-[10px] text-muted-foreground leading-normal mb-1">
+                          Notunuzu doğrudan tezinizin ilgili bölümüne fırlatarak
+                          arşivleyin.
+                        </p>
+                        <select
+                          value={selectedBoxId || ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSelectedBoxId(val ? parseInt(val, 10) : null);
+                          }}
+                          className="bg-card border border-border text-xs rounded-md p-2.5 text-foreground font-sans outline-none focus:border-primary/50 transition cursor-pointer"
+                        >
+                          <option value="">
+                            -- Tasnif Dışı (Kumbara Seçilmedi) --
+                          </option>
+                          {boxes.map((box, idx) => (
+                            <option key={box.id} value={box.id}>
+                              Bölüm {idx + 1}: {box.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* 1. Ana Argüman */}
+                    <div className="flex flex-col space-y-1.5">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <FileText className="size-3.5 text-primary shrink-0" />
+                        <span>Ana Argüman (Tez)</span>
+                      </label>
+                      <Textarea
+                        value={mainArgument}
+                        onChange={(e) => setMainArgument(e.target.value)}
+                        placeholder="Metnin temel tezini ve ana savunu buraya yazın..."
+                        className="min-h-[90px] p-3 bg-card border border-border rounded text-xs text-foreground focus-visible:ring-1 focus-visible:ring-primary transition duration-150 resize-none font-sans"
+                      />
+                    </div>
+
+                    {/* 2. Önemli Alıntılar */}
+                    <div className="flex flex-col space-y-1.5">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <Quote className="size-3.5 text-primary shrink-0" />
+                        <span>Önemli Alıntılar (Sayfa No ile)</span>
+                      </label>
+                      <Textarea
+                        value={quotes}
+                        onChange={(e) => setQuotes(e.target.value)}
+                        placeholder="Sayfa numaralarıyla birlikte birebir atıf alıntılarını ekleyin (Örn: Sayfa 24: '...')"
+                        className="min-h-[90px] p-3 bg-card border border-border rounded text-xs text-foreground focus-visible:ring-1 focus-visible:ring-primary transition duration-150 resize-none font-sans"
+                      />
+                    </div>
+
+                    {/* 3. Kavramlar ve Temalar */}
+                    <div className="flex flex-col space-y-1.5">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <Tags className="size-3.5 text-primary shrink-0" />
+                        <span>Kavramlar ve Temalar</span>
+                      </label>
+                      <Input
+                        value={concepts}
+                        onChange={(e) => setConcepts(e.target.value)}
+                        placeholder="Virgülle ayırarak anahtar kavramları girin (Örn: Disiplin, VYŞ, İktidar)"
+                        className="p-3 bg-card border border-border rounded text-xs text-foreground focus-visible:ring-1 focus-visible:ring-primary transition duration-150 font-sans h-9"
+                      />
+                    </div>
+
+                    {/* 4. Eleştirel Not */}
+                    <div className="flex flex-col space-y-1.5">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <AlertCircle className="size-3.5 text-primary shrink-0" />
+                        <span>Eleştirel Not</span>
+                      </label>
+                      <Textarea
+                        value={criticalNotes}
+                        onChange={(e) => setCriticalNotes(e.target.value)}
+                        placeholder="Yazarın argümanına veya teorik çerçevesine dair kendi eleştirileriniz..."
+                        className="min-h-[90px] p-3 bg-card border border-border rounded text-xs text-foreground focus-visible:ring-1 focus-visible:ring-primary transition duration-150 resize-none font-sans"
+                      />
+                    </div>
+
+                    {/* 5. Diğer Metinlerle Bağlantı */}
+                    <div className="flex flex-col space-y-1.5">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <Link2 className="size-3.5 text-primary shrink-0" />
+                        <span>Diğer Metinlerle Bağlantı</span>
+                      </label>
+                      <Textarea
+                        value={connections}
+                        onChange={(e) => setConnections(e.target.value)}
+                        placeholder="Literatürdeki diğer makalelerle veya teorilerle kurduğu organik bağlar..."
+                        className="min-h-[90px] p-3 bg-card border border-border rounded text-xs text-foreground focus-visible:ring-1 focus-visible:ring-primary transition duration-150 resize-none font-sans"
+                      />
+                    </div>
+
+                    {/* 6. Araştırmam İçin Not */}
+                    <div className="flex flex-col space-y-1.5">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <Compass className="size-3.5 text-primary shrink-0" />
+                        <span>Araştırmam İçin Not</span>
+                      </label>
+                      <Textarea
+                        value={researchNotes}
+                        onChange={(e) => setResearchNotes(e.target.value)}
+                        placeholder="Bu notun doğrudan sizin tezinize/araştırmanıza nasıl katkı sunacağı..."
+                        className="min-h-[90px] p-3 bg-card border border-border rounded text-xs text-foreground focus-visible:ring-1 focus-visible:ring-primary transition duration-150 resize-none font-sans"
+                      />
+                    </div>
+
+                    {/* 7. Hafıza Notu */}
+                    <div className="flex flex-col space-y-1.5">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <Brain className="size-3.5 text-primary shrink-0" />
+                        <span>Hafıza Notu</span>
+                      </label>
+                      <Textarea
+                        value={memoryAnchors}
+                        onChange={(e) => setMemoryAnchors(e.target.value)}
+                        placeholder="Metni zihinde tutmayı kolaylaştıracak kişisel ipuçları veya somutlama cümleleri..."
+                        className="min-h-[60px] p-3 bg-card border border-border rounded text-xs text-foreground focus-visible:ring-1 focus-visible:ring-primary transition duration-150 resize-none font-sans"
+                      />
+                    </div>
+                  </div>
+
+                  <DialogFooter className="gap-2 sm:gap-0">
+                    <button
+                      type="button"
+                      onClick={clearNoteForm}
+                      className="px-4 py-2.5 border border-border rounded-lg text-xs font-semibold text-foreground hover:bg-card transition duration-150 cursor-pointer"
+                    >
+                      Vazgeç
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveNote}
+                      disabled={isSavingNote}
+                      className="px-4 py-2.5 bg-primary text-background rounded-lg text-xs font-semibold hover:bg-primary/90 transition duration-150 flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                    >
+                      {isSavingNote && (
+                        <Loader2 className="size-3 animate-spin text-background" />
+                      )}
+                      <span>Değişiklikleri Kaydet</span>
+                    </button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
               {/* Feedback Alerts for Note */}
               {noteError && (
@@ -576,29 +919,6 @@ export default function LibraryPage() {
                   </AlertDescription>
                 </Alert>
               )}
-
-              {/* Action Button */}
-              <button
-                onClick={handleSaveNote}
-                disabled={isSavingNote}
-                className={`w-full bg-primary text-background font-semibold text-sm py-3 rounded-lg transition duration-200 flex items-center justify-center space-x-2 ${
-                  isSavingNote
-                    ? "animate-pulse shadow-lg shadow-primary"
-                    : "hover:bg-primary"
-                }`}
-              >
-                {isSavingNote ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin text-background" />
-                    <span>Kaydediliyor...</span>
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4 text-background" />
-                    <span>Notu Kaydet & Vektörleştir</span>
-                  </>
-                )}
-              </button>
 
               {/* Saved Notes List Section */}
               <div className="border-t border-border pt-6 flex flex-col space-y-4">
@@ -635,8 +955,9 @@ export default function LibraryPage() {
                     {isSavingNote && (
                       <div className="p-4 bg-background border border-primary rounded-lg text-sm flex flex-col space-y-3 animate-pulse relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
-                        <p className="text-foreground leading-relaxed whitespace-pre-wrap italic opacity-80 font-sans">
-                          {noteContent || "Yeni okuma notu..."}
+                        <p className="text-foreground leading-relaxed whitespace-pre-wrap italic opacity-80 font-sans text-xs">
+                          Yeni akademik kartoteks kaydı işleniyor ve vektör
+                          embedding hesaplanıyor...
                         </p>
 
                         <div className="bg-card border border-primary p-4 rounded mt-2 space-y-3 relative">
@@ -663,15 +984,123 @@ export default function LibraryPage() {
                     {displayedNotes.map((note) => (
                       <div
                         key={note.id}
-                        className="p-4 bg-background border border-border rounded-lg text-sm flex flex-col space-y-2 hover:border-border transition duration-150"
+                        className="p-4 bg-background border border-border rounded-lg text-sm flex flex-col space-y-2 hover:border-border/50 transition duration-150"
                       >
-                        <p className="text-foreground leading-relaxed whitespace-pre-wrap font-sans">
+                        {/* Header actions for note */}
+                        <div className="flex justify-between items-center border-b border-border/40 pb-2 mb-1">
+                          <span className="text-[9px] text-muted-foreground font-mono">
+                            Kartoteks Fişi #{note.id}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => startEditingNote(note)}
+                            className="text-muted-foreground hover:text-primary transition-colors cursor-pointer p-1 rounded hover:bg-card border border-transparent hover:border-border"
+                            title="Notu Düzenle"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+
+                        <p className="text-foreground leading-relaxed whitespace-pre-wrap font-sans text-xs">
                           {note.content}
                         </p>
 
+                        {/* Structured Fields Details Accordion */}
+                        <div className="mt-3 pt-3 border-t border-border/40">
+                          <Accordion className="w-full">
+                            <AccordionItem
+                              value="details"
+                              className="border-none"
+                            >
+                              <AccordionTrigger className="text-[10px] text-primary hover:text-primary/80 py-1 font-semibold flex justify-between items-center hover:no-underline">
+                                Yapılandırılmış Kartoteks Detayları
+                              </AccordionTrigger>
+                              <AccordionContent className="pt-2.5 space-y-2 pb-0">
+                                {note.mainArgument && (
+                                  <div className="text-[11px] text-muted-foreground bg-card/50 p-2.5 rounded border border-border/60">
+                                    <span className="text-foreground font-bold flex items-center gap-1 mb-1">
+                                      <FileText className="size-3 text-primary" />
+                                      <span>Ana Argüman (Tez):</span>
+                                    </span>
+                                    <p className="leading-relaxed font-sans">
+                                      {note.mainArgument}
+                                    </p>
+                                  </div>
+                                )}
+                                {note.quotes && (
+                                  <div className="text-[11px] text-muted-foreground bg-card/50 p-2.5 rounded border border-border/60">
+                                    <span className="text-foreground font-bold flex items-center gap-1 mb-1">
+                                      <Quote className="size-3 text-primary" />
+                                      <span>Önemli Alıntılar:</span>
+                                    </span>
+                                    <p className="leading-relaxed font-sans whitespace-pre-wrap">
+                                      {note.quotes}
+                                    </p>
+                                  </div>
+                                )}
+                                {note.concepts && (
+                                  <div className="text-[11px] text-muted-foreground bg-card/50 p-2.5 rounded border border-border/60">
+                                    <span className="text-foreground font-bold flex items-center gap-1 mb-1">
+                                      <Tags className="size-3 text-primary" />
+                                      <span>Kavramlar ve Temalar:</span>
+                                    </span>
+                                    <p className="leading-relaxed font-sans">
+                                      {note.concepts}
+                                    </p>
+                                  </div>
+                                )}
+                                {note.criticalNotes && (
+                                  <div className="text-[11px] text-muted-foreground bg-card/50 p-2.5 rounded border border-border/60">
+                                    <span className="text-foreground font-bold flex items-center gap-1 mb-1">
+                                      <AlertCircle className="size-3 text-primary" />
+                                      <span>Eleştirel Not:</span>
+                                    </span>
+                                    <p className="leading-relaxed font-sans">
+                                      {note.criticalNotes}
+                                    </p>
+                                  </div>
+                                )}
+                                {note.connections && (
+                                  <div className="text-[11px] text-muted-foreground bg-card/50 p-2.5 rounded border border-border/60">
+                                    <span className="text-foreground font-bold flex items-center gap-1 mb-1">
+                                      <Link2 className="size-3 text-primary" />
+                                      <span>Diğer Metinlerle Bağlantı:</span>
+                                    </span>
+                                    <p className="leading-relaxed font-sans">
+                                      {note.connections}
+                                    </p>
+                                  </div>
+                                )}
+                                {note.researchNotes && (
+                                  <div className="text-[11px] text-muted-foreground bg-card/50 p-2.5 rounded border border-border/60">
+                                    <span className="text-foreground font-bold flex items-center gap-1 mb-1">
+                                      <Compass className="size-3 text-primary" />
+                                      <span>Araştırmam İçin Not:</span>
+                                    </span>
+                                    <p className="leading-relaxed font-sans">
+                                      {note.researchNotes}
+                                    </p>
+                                  </div>
+                                )}
+                                {note.memoryAnchors && (
+                                  <div className="text-[11px] text-muted-foreground bg-card/50 p-2.5 rounded border border-border/60">
+                                    <span className="text-foreground font-bold flex items-center gap-1 mb-1">
+                                      <Brain className="size-3 text-primary" />
+                                      <span>Hafıza Notu:</span>
+                                    </span>
+                                    <p className="leading-relaxed font-sans">
+                                      {note.memoryAnchors}
+                                    </p>
+                                  </div>
+                                )}
+                              </AccordionContent>
+                            </AccordionItem>
+                          </Accordion>
+                        </div>
+
                         {note.boxId && (
-                          <div className="flex items-center gap-1.5 self-start">
-                            <span className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded bg-primary/10 border border-primary/20 text-primary">
+                          <div className="flex items-center gap-1.5 self-start pt-1">
+                            <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary">
                               Kumbara:{" "}
                               {boxes.find((b) => b.id === note.boxId)?.name ||
                                 "Bilinmeyen Bölüm"}
@@ -679,7 +1108,7 @@ export default function LibraryPage() {
                           </div>
                         )}
 
-                        <span className="text-[10px] text-muted-foreground font-mono self-end">
+                        <span className="text-[9px] text-muted-foreground font-mono self-end">
                           {note.createdAt
                             ? new Date(note.createdAt).toLocaleString("tr-TR")
                             : ""}

@@ -45,6 +45,7 @@ export const references = pgTable("references", {
   doi: varchar("doi", { length: 100 }),
   pdfUrl: text("pdf_url").notNull(), // Cloudflare R2 üzerindeki kalıcı erişim adresi
   abstract: text("abstract"),
+  status: varchar("status", { length: 50 }).default("okunacak"), // 'okunacak', 'okunuyor', 'tamamlandı'
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -57,12 +58,19 @@ export const notes = pgTable(
     referenceId: integer("reference_id").references(() => references.id, {
       onDelete: "cascade",
     }),
-    content: text("content").notNull(), // Ham metin içeriği (Kullanıcı okuma notu)
+    content: text("content").notNull(), // Ham metin içeriği (Kullanıcı okuma notu veya yapılandırılmış alanların birleşimi)
     embedding: vector("embedding", { dimensions: 1536 }), // gemini-embedding-2 modelinden dönecek 1536 boyutlu vektör çıktısı
     aiContextSuggestions: text("ai_context_suggestions"), // Gemini'dan gelen bağlam/atıf önerileri
     boxId: integer("box_id").references(() => thesisBoxes.id, {
       onDelete: "set null",
     }),
+    mainArgument: text("main_argument"), // Metnin temel tezi
+    quotes: text("quotes"), // Sayfa numarasıyla birlikte birebir alıntılar
+    concepts: text("concepts"), // Etiket veya dizi şeklinde metindeki anahtar teorik kavramlar
+    criticalNotes: text("critical_notes"), // Yazarın argümanına veya teorik çerçevesine dair kendi eleştirileriniz
+    connections: text("connections"), // Literatürdeki diğer makalelerle kurulan bağlar
+    researchNotes: text("research_notes"), // Bu notun doğrudan sizin tezinize/araştırmanıza nasıl katkı sunacağı
+    memoryAnchors: text("memory_anchors"), // Metni zihinde tutmayı kolaylaştıracak kişisel ipuçları veya somutlama cümleleri
     createdAt: timestamp("created_at").defaultNow(),
   },
   (table) => [
@@ -104,6 +112,9 @@ export const tasks = pgTable("tasks", {
   taskDescription: text("task_description").notNull(),
   status: varchar("status", { length: 50 }).default("todo"), // 'todo', 'doing', 'done' durum değerleri
   dueDate: date("due_date"),
+  referenceId: integer("reference_id").references(() => references.id, {
+    onDelete: "cascade",
+  }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

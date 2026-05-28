@@ -1,11 +1,13 @@
 "use server";
 
 import { db } from "@/db";
-import { references, pdfChunks, tasks } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { references, pdfChunks, tasks, notes, aiInsights } from "@/db/schema";
+import { eq, inArray } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import {
   generateUniqueR2Key,
   uploadPdfToR2,
+  deletePdfFromR2,
   generatePresignedUrl,
 } from "../_services/r2.service";
 import { parsePdfWithLlamaParse } from "../_services/llamaparse.service";
@@ -34,6 +36,7 @@ export interface GetReferencesResult {
     doi: string | null;
     pdfUrl: string;
     abstract: string | null;
+    status: string | null;
     createdAt: Date | null;
     downloadUrl: string;
   }>;
@@ -46,6 +49,7 @@ export interface GetReferencesResult {
 export async function uploadPdfAction(
   formData: FormData,
 ): Promise<UploadResult> {
+  let newRefId: number | undefined;
   try {
     const file = formData.get("file") as File | null;
     if (!file) {
@@ -72,13 +76,17 @@ export async function uploadPdfAction(
       .values({
         title: file.name.replace(".pdf", ""),
         pdfUrl: key, // Storing R2 unique key as pdfUrl reference pointer
+        year: new Date().getFullYear(), // Set default to current year so it doesn't show as empty/null in UI
       })
       .returning();
+
+    newRefId = newRef.id;
 
     // Automatically create a reading task for the uploaded PDF in 'todo' status
     await db.insert(tasks).values({
       taskDescription: `Makale Okuma: ${newRef.title}`,
       status: "todo",
+      referenceId: newRef.id,
     });
 
     // 5. Generate a secure presigned GET URL for LlamaParse ingestion (valid for 24 hours)
@@ -133,13 +141,22 @@ export async function uploadPdfAction(
           .set({
             title: metadata.title,
             authors: metadata.authors,
-            year: metadata.year,
+            year: metadata.year || newRef.year, // Keep the default current year if Gemini metadata.year is null
             doi: metadata.doi,
             abstract: metadata.abstract,
           })
           .where(eq(references.id, newRef.id));
+
+        // Update the automatically created reading task with the extracted academic title
+        await db
+          .update(tasks)
+          .set({
+            taskDescription: `Makale Okuma: ${metadata.title}`,
+          })
+          .where(eq(tasks.referenceId, newRef.id));
+
         console.log(
-          `Successfully extracted and updated academic metadata for referenceId: ${newRef.id}`,
+          `Successfully extracted and updated academic metadata for referenceId: ${newRef.id} and updated task title.`,
         );
       } catch (metadataError) {
         console.error(
@@ -178,6 +195,12 @@ export async function uploadPdfAction(
           ? error.message
           : "Dosya yüklenirken bilinmeyen bir hata oluştu.",
     };
+  } finally {
+    if (newRefId) {
+      revalidatePath("/dashboard");
+      revalidatePath("/tasks");
+      revalidatePath("/library");
+    }
   }
 }
 
@@ -209,6 +232,7 @@ export async function getReferencesAction(): Promise<GetReferencesResult> {
           doi: ref.doi,
           pdfUrl: ref.pdfUrl,
           abstract: ref.abstract,
+          status: ref.status,
           createdAt: ref.createdAt,
           downloadUrl: url,
         };
@@ -228,5 +252,69 @@ export async function getReferencesAction(): Promise<GetReferencesResult> {
           ? error.message
           : "Kaynaklar listelenirken bir hata oluştu.",
     };
+  }
+}
+
+/**
+ * Server Action to delete a reference, its R2 PDF file, and all associated data from the database.
+ */
+export async function deleteReferenceAction(
+  referenceId: number,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // 1. Fetch reference details to get R2 pdfUrl key
+    const ref = await db
+      .select()
+      .from(references)
+      .where(eq(references.id, referenceId))
+      .limit(1)
+      .then((rows) => rows[0]);
+
+    if (!ref) {
+      return { success: false, error: "Silinecek makale bulunamadı." };
+    }
+
+    // 2. Find all notes related to this reference to delete associated aiInsights
+    const refNotes = await db
+      .select({ id: notes.id })
+      .from(notes)
+      .where(eq(notes.referenceId, referenceId));
+
+    const noteIds = refNotes.map((n) => n.id);
+
+    // 3. Delete in database sequentially (neon-http does not support transactions)
+    // 3.1. Delete aiInsights first (since they set null on note delete but we want them fully deleted)
+    if (noteIds.length > 0) {
+      await db.delete(aiInsights).where(inArray(aiInsights.noteId, noteIds));
+    }
+
+    // 3.2. Delete the reference itself (cascades to notes, pdf_chunks, and tasks)
+    await db.delete(references).where(eq(references.id, referenceId));
+
+    // 4. Try deleting from Cloudflare R2
+    if (ref.pdfUrl) {
+      try {
+        await deletePdfFromR2(ref.pdfUrl);
+        console.log(`Successfully deleted R2 file: ${ref.pdfUrl}`);
+      } catch (r2Error) {
+        console.error(`Failed to delete R2 file: ${ref.pdfUrl}`, r2Error);
+        // Do not throw or fail the request since database deletion succeeded
+      }
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to delete reference: ", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Makale silinirken bilinmeyen bir hata oluştu.",
+    };
+  } finally {
+    revalidatePath("/dashboard");
+    revalidatePath("/tasks");
+    revalidatePath("/library");
   }
 }

@@ -8,18 +8,12 @@ import {
   ThesisCoreData,
   LiteratureRecommendation,
 } from "../actions";
-import {
-  getTasksAction,
-  updateTaskStatusAction,
-  TaskItem,
-} from "@/app/tasks/actions";
 import { LayoutDashboard, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 // Modular Subcomponents
 import { DashboardLoading } from "./dashboard-loading";
 import { ThesisConstitution } from "./thesis-constitution";
-import { TaskPanel } from "./task-panel";
 import { RecommendationGrid } from "./recommendation-grid";
 import { PdfUploadDrawer } from "./pdf-upload-drawer";
 
@@ -30,13 +24,11 @@ interface DashboardClientProps {
 export default function DashboardClient({ initialThesisData }: DashboardClientProps) {
   const router = useRouter();
   const thesisData = initialThesisData;
-  const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [recs, setRecs] = useState<LiteratureRecommendation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingRecs, setIsLoadingRecs] = useState(false);
   const [error, setError] = useState("");
   const [recsError, setRecsError] = useState("");
-  const [updatingTaskId, setUpdatingTaskId] = useState<number | null>(null);
   const [selectedRec, setSelectedRec] =
     useState<LiteratureRecommendation | null>(null);
 
@@ -90,11 +82,7 @@ export default function DashboardClient({ initialThesisData }: DashboardClientPr
         setIsLoading(true);
         setError("");
 
-        // 1. Fetch active tasks (load even if thesis core is empty)
-        const tasksRes = await getTasksAction();
-        if (tasksRes.success && tasksRes.tasks) {
-          setTasks(tasksRes.tasks);
-        }
+
 
         // 2. Load recommendations if thesis data exists
         if (initialThesisData) {
@@ -117,32 +105,7 @@ export default function DashboardClient({ initialThesisData }: DashboardClientPr
     loadDashboardData();
   }, [router, initialThesisData]);
 
-  // Handle rapid inline task status transition
-  const handleUpdateStatus = async (
-    taskId: number,
-    newStatus: "todo" | "doing" | "done",
-  ) => {
-    try {
-      setUpdatingTaskId(taskId);
-      // Optimistic UI state update
-      setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)),
-      );
 
-      const res = await updateTaskStatusAction(taskId, newStatus);
-      if (!res.success) {
-        // Revert to database state if sync fails
-        const tasksRes = await getTasksAction();
-        if (tasksRes.success && tasksRes.tasks) {
-          setTasks(tasksRes.tasks);
-        }
-      }
-    } catch (err) {
-      console.error("Task status update error:", err);
-    } finally {
-      setUpdatingTaskId(null);
-    }
-  };
 
   // If loading or an error occurs, show full-screen message
   if (isLoading || error) {
@@ -200,12 +163,7 @@ export default function DashboardClient({ initialThesisData }: DashboardClientPr
         </div>
       )}
 
-      {/* AKTİF GÖREVLER */}
-      <TaskPanel
-        tasks={tasks}
-        updatingTaskId={updatingTaskId}
-        onUpdateStatus={handleUpdateStatus}
-      />
+
 
       {/* LİTERATÜR TAVSİYELERİ */}
       <RecommendationGrid

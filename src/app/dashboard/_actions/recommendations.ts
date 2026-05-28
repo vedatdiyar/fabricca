@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { thesisCore, thesisBoxes } from "@/db/schema";
+import { thesisCore, thesisBoxes, references } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { GeminiService } from "../_services/gemini.service";
 import { CandidatePaper } from "../_services/types";
@@ -172,9 +172,27 @@ export async function getAcademicRecommendationsAction(
           console.log(
             "[getAcademicRecommendationsAction] Loaded recommendations from Neon PostgreSQL database cache.",
           );
+
+          // Filter out recommendations that correspond to completed references in references table (status = 'tamamlandı')
+          const completedReferences = await db
+            .select({ title: references.title })
+            .from(references)
+            .where(eq(references.status, "tamamlandı"));
+
+          const completedTitles = new Set(
+            completedReferences.map((ref) => ref.title.toLowerCase().trim()),
+          );
+
+          const filteredRecs = parsed.filter(
+            (rec: LiteratureRecommendation) => {
+              const recTitle = (rec.title || "").toLowerCase().trim();
+              return !completedTitles.has(recTitle);
+            },
+          );
+
           return {
             success: true,
-            recommendations: parsed,
+            recommendations: filteredRecs,
           };
         }
       } catch (parseError) {
@@ -388,9 +406,24 @@ export async function discoverNewRecommendationsAction(
       .set({ academicRecommendations: JSON.stringify(updatedRecommendations) })
       .where(eq(thesisCore.id, core.id));
 
+    // Filter out recommendations that correspond to completed references (status = 'tamamlandı')
+    const completedReferences = await db
+      .select({ title: references.title })
+      .from(references)
+      .where(eq(references.status, "tamamlandı"));
+
+    const completedTitles = new Set(
+      completedReferences.map((ref) => ref.title.toLowerCase().trim()),
+    );
+
+    const filteredRecs = updatedRecommendations.filter((rec) => {
+      const recTitle = (rec.title || "").toLowerCase().trim();
+      return !completedTitles.has(recTitle);
+    });
+
     return {
       success: true,
-      recommendations: updatedRecommendations,
+      recommendations: filteredRecs,
     };
   } catch (error) {
     console.error("discoverNewRecommendationsAction Error:", error);

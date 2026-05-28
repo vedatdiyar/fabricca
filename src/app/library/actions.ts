@@ -3,6 +3,7 @@
 import {
   uploadPdfAction as uploadPdf,
   getReferencesAction as getReferences,
+  deleteReferenceAction as deleteReference,
 } from "./_actions/library";
 import type { UploadResult, GetReferencesResult } from "./_actions/library";
 
@@ -12,12 +13,16 @@ import {
   getThesisBoxesAction as getThesisBoxes,
   updateNoteBoxAction as updateNoteBox,
   getAllNotesWithReferencesAction as getAllNotesWithReferences,
+  updateNoteAction as updateNote,
+  getNotesByFieldAction as getNotesByField,
+  searchNotesByFieldAction as searchNotesByField,
 } from "./_actions/notes";
 import type {
   SaveNoteResult,
   GetNotesResult,
   GetThesisBoxesResult,
   GetAllNotesWithReferencesResult,
+  UpdateNoteParams,
 } from "./_actions/notes";
 
 import { extractAcademicMetadata as extractAcademicMetadataService } from "./_services/metadata.service";
@@ -33,12 +38,29 @@ export async function getReferencesAction(): Promise<GetReferencesResult> {
   return getReferences();
 }
 
+export async function deleteReferenceAction(
+  referenceId: number,
+): Promise<{ success: boolean; error?: string }> {
+  return deleteReference(referenceId);
+}
+
 export async function saveNoteAction(
   referenceId: number,
-  content: string,
+  contentOrParams:
+    | string
+    | {
+        mainArgument?: string;
+        quotes?: string;
+        concepts?: string;
+        criticalNotes?: string;
+        connections?: string;
+        researchNotes?: string;
+        memoryAnchors?: string;
+        content?: string;
+      },
   boxId?: number | null,
 ): Promise<SaveNoteResult> {
-  return saveNote(referenceId, content, boxId);
+  return saveNote(referenceId, contentOrParams, boxId);
 }
 
 export async function getNotesAction(
@@ -60,6 +82,35 @@ export async function updateNoteBoxAction(
 
 export async function getAllNotesWithReferencesAction(): Promise<GetAllNotesWithReferencesResult> {
   return getAllNotesWithReferences();
+}
+
+export async function updateNoteAction(
+  params: UpdateNoteParams,
+): Promise<{ success: boolean; error?: string }> {
+  return updateNote(params);
+}
+
+type AcademicField =
+  | "mainArgument"
+  | "quotes"
+  | "concepts"
+  | "criticalNotes"
+  | "connections"
+  | "researchNotes"
+  | "memoryAnchors";
+
+export async function getNotesByFieldAction(
+  referenceId: number,
+  field: AcademicField,
+): Promise<GetNotesResult> {
+  return getNotesByField(referenceId, field);
+}
+
+export async function searchNotesByFieldAction(
+  query: string,
+  field: AcademicField,
+): Promise<GetNotesResult> {
+  return searchNotesByField(query, field);
 }
 
 export async function extractAcademicMetadata(
