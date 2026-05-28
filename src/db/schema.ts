@@ -122,10 +122,13 @@ export const tasks = pgTable("tasks", {
 // Danışman Odası'nda kullanıcının yıldızlayarak sepetine eklediği hocaya ait parlak fikirleri saklar.
 export const aiInsights = pgTable("ai_insights", {
   id: serial("id").primaryKey(),
+  insightText: text("insight_text").notNull(),
+  aiContextSuggestions: text("ai_context_suggestions"),
   noteId: integer("note_id").references(() => notes.id, {
     onDelete: "set null",
-  }), // Fikrin ilham aldığı kaynak not ile ilişkisi
-  insightText: text("insight_text").notNull(), // Hocanın ürettiği o özgün akademik analiz/öneri metni
-  aiContextSuggestions: text("ai_context_suggestions"), // Fikir Keskinleştirici'den gelen 3 maddelik akademik içgörü
+  }),
+  boxId: integer("box_id").references(() => thesisBoxes.id, {
+    onDelete: "set null",
+  }),
   createdAt: timestamp("created_at").defaultNow(),
 });

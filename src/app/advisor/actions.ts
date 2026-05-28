@@ -4,226 +4,32 @@ import { db } from "@/db";
 import {
   references,
   pdfChunks,
-  aiInsights,
   thesisCore,
   thesisBoxes,
+  notes,
 } from "@/db/schema";
-import { inArray, sql, eq } from "drizzle-orm";
-import { GoogleGenAI, ThinkingLevel, Type } from "@google/genai";
+import { inArray, sql, and } from "drizzle-orm";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { generateContentWithRetry } from "@/lib/gemini";
-import { revalidatePath } from "next/cache";
-
-export interface ReferenceItem {
-  id: number;
-  title: string;
-  authors: string | null;
-  year: number | null;
-  doi: string | null;
-  abstract: string | null;
-}
+import {
+  getAdvisorSystemInstruction,
+  getAdvisorTools,
+} from "./_services/prompt-templates";
 
 export interface ChatMessage {
   role: "user" | "assistant" | "model";
   content: string;
   functionCall?: {
     name: string;
-    args: any;
+    args: unknown;
     id: string;
     thoughtSignature?: string;
   };
   functionResponse?: {
     name: string;
-    response: any;
+    response: unknown;
     id: string;
   };
-}
-
-/**
- * Server Action to fetch all references for the list selection in Dijital Danışman Odası
- */
-export async function getLibraryReferencesAction(): Promise<{
-  success: boolean;
-  references?: ReferenceItem[];
-  error?: string;
-}> {
-  try {
-    const allRefs = await db
-      .select({
-        id: references.id,
-        title: references.title,
-        authors: references.authors,
-        year: references.year,
-        doi: references.doi,
-        abstract: references.abstract,
-      })
-      .from(references)
-      .orderBy(references.createdAt);
-
-    return {
-      success: true,
-      references: allRefs,
-    };
-  } catch (error) {
-    console.error("getLibraryReferencesAction Error:", error);
-    return {
-      success: false,
-      error:
-        error instanceof Error ? error.message : "Referans listesi çekilemedi.",
-    };
-  }
-}
-
-/**
- * Server Action to save a specific brilliant academic insight into the Fikir Sepeti
- */
-export async function saveInsightAction(
-  insightText: string,
-  noteId?: number,
-): Promise<{
-  success: boolean;
-  insightId?: number;
-  error?: string;
-}> {
-  try {
-    if (!insightText || !insightText.trim()) {
-      return { success: false, error: "Öngörü içeriği boş olamaz." };
-    }
-
-    const [newInsight] = await db
-      .insert(aiInsights)
-      .values({
-        insightText: insightText.trim(),
-        noteId: noteId || null,
-      })
-      .returning();
-
-    return {
-      success: true,
-      insightId: newInsight.id,
-    };
-  } catch (error) {
-    console.error("saveInsightAction Error:", error);
-    return {
-      success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Öngörü kaydedilirken hata oluştu.",
-    };
-  }
-}
-
-/**
- * Server Action using Drizzle ORM to update a specific thesis box description content by its ID.
- * Triggered after user approval in Advisor Chat room.
- */
-export async function updateThesisBoxContentAction(
-  boxId: number,
-  content: string,
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    const cleanBoxId = Number(boxId);
-    console.log(
-      `[updateThesisBoxContentAction] Attempting database update for boxId: ${boxId} (parsed as number: ${cleanBoxId})`,
-    );
-
-    if (isNaN(cleanBoxId)) {
-      return { success: false, error: `Geçersiz Kutu ID: ${boxId}` };
-    }
-
-    const updatedRows = await db
-      .update(thesisBoxes)
-      .set({ description: content })
-      .where(eq(thesisBoxes.id, cleanBoxId))
-      .returning();
-
-    console.log(
-      `[updateThesisBoxContentAction] Update query execution complete. Affected row count: ${updatedRows.length}`,
-      updatedRows,
-    );
-
-    if (updatedRows.length === 0) {
-      console.warn(
-        `[updateThesisBoxContentAction] Warning: No row was updated for boxId: ${cleanBoxId}. Row may not exist.`,
-      );
-      return {
-        success: false,
-        error: `Güncellenecek kutu bulunamadı (Kutu ID: ${cleanBoxId}).`,
-      };
-    }
-
-    // Revalidate paths for real-time dashboard and card index room synchronization
-    revalidatePath("/dashboard");
-    revalidatePath("/kartoteks");
-
-    return { success: true };
-  } catch (error) {
-    console.error("updateThesisBoxContentAction Error:", error);
-    return {
-      success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Tez kutusu güncellenirken bir hata oluştu.",
-    };
-  }
-}
-
-/**
- * Server Action using Drizzle ORM to update the methodology and historical framework of the
- * main Thesis Constitution (thesis_core table).
- * Triggered after user approval in Advisor Chat room.
- */
-export async function updateThesisCoreFrameworkAction(
-  methodologyContent: string,
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    console.log(
-      `[updateThesisCoreFrameworkAction] Updating thesis_core methodology with new content...`,
-    );
-
-    // Single tenant system has only one row in thesisCore table. Get the first core row.
-    const [core] = await db.select().from(thesisCore).limit(1);
-    if (!core) {
-      console.warn("[updateThesisCoreFrameworkAction] Error: No thesis_core record found.");
-      return {
-        success: false,
-        error: "Güncellenecek Tez Anayasası (thesis_core) kaydı bulunamadı.",
-      };
-    }
-
-    const updatedRows = await db
-      .update(thesisCore)
-      .set({ methodology: methodologyContent })
-      .where(eq(thesisCore.id, core.id))
-      .returning();
-
-    console.log(
-      `[updateThesisCoreFrameworkAction] Thesis core methodology updated. Affected row count: ${updatedRows.length}`,
-      updatedRows,
-    );
-
-    if (updatedRows.length === 0) {
-      return {
-        success: false,
-        error: "Tez Anayasası güncellenemedi.",
-      };
-    }
-
-    // Revalidate paths for real-time dashboard synchronization
-    revalidatePath("/dashboard");
-
-    return { success: true };
-  } catch (error) {
-    console.error("updateThesisCoreFrameworkAction Error:", error);
-    return {
-      success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Tez anayasası güncellenirken bir hata oluştu.",
-    };
-  }
 }
 
 export interface CitationSource {
@@ -252,7 +58,7 @@ export async function sendMessageAction(
   sources?: CitationSource[];
   functionCall?: {
     name: string;
-    args: any;
+    args: unknown;
     id: string;
     thoughtSignature?: string;
   };
@@ -326,48 +132,103 @@ export async function sendMessageAction(
       similarity: number;
     }> = [];
 
+    let similarNotes: Array<{
+      id: number;
+      criticalNotes: string | null;
+      connections: string | null;
+      referenceId: number | null;
+      similarity: number;
+    }> = [];
+
     if (isNormalMessage && embeddingVector.length === 1536) {
       try {
         const targetEmbeddingStr = JSON.stringify(embeddingVector);
-        const similaritySql = sql<number>`1 - (${pdfChunks.embedding} <=> ${targetEmbeddingStr}::vector)`;
+        const chunkSimilaritySql = sql<number>`1 - (${pdfChunks.embedding} <=> ${targetEmbeddingStr}::vector)`;
+        const notesSimilaritySql = sql<number>`1 - (${notes.embedding} <=> ${targetEmbeddingStr}::vector)`;
 
-        // Perform pgvector similarity search on pdf_chunks using cosine distance
-        if (selectedReferenceIds && selectedReferenceIds.length > 0) {
-          similarChunks = await db
-            .select({
-              id: pdfChunks.id,
-              content: pdfChunks.content,
-              referenceId: pdfChunks.referenceId,
-              similarity: similaritySql,
-            })
-            .from(pdfChunks)
-            .where(inArray(pdfChunks.referenceId, selectedReferenceIds))
-            .orderBy(
-              sql`${pdfChunks.embedding} <=> ${targetEmbeddingStr}::vector`,
-            )
-            .limit(5);
-        } else {
-          similarChunks = await db
-            .select({
-              id: pdfChunks.id,
-              content: pdfChunks.content,
-              referenceId: pdfChunks.referenceId,
-              similarity: similaritySql,
-            })
-            .from(pdfChunks)
-            .orderBy(
-              sql`${pdfChunks.embedding} <=> ${targetEmbeddingStr}::vector`,
-            )
-            .limit(5);
-        }
+        // Perform parallel pgvector cosine similarity search on both tables
+        const hasSelection =
+          selectedReferenceIds && selectedReferenceIds.length > 0;
+
+        const chunksQuery = hasSelection
+          ? db
+              .select({
+                id: pdfChunks.id,
+                content: pdfChunks.content,
+                referenceId: pdfChunks.referenceId,
+                similarity: chunkSimilaritySql,
+              })
+              .from(pdfChunks)
+              .where(inArray(pdfChunks.referenceId, selectedReferenceIds))
+              .orderBy(
+                sql`${pdfChunks.embedding} <=> ${targetEmbeddingStr}::vector`,
+              )
+              .limit(5)
+          : db
+              .select({
+                id: pdfChunks.id,
+                content: pdfChunks.content,
+                referenceId: pdfChunks.referenceId,
+                similarity: chunkSimilaritySql,
+              })
+              .from(pdfChunks)
+              .orderBy(
+                sql`${pdfChunks.embedding} <=> ${targetEmbeddingStr}::vector`,
+              )
+              .limit(5);
+
+        const notesQuery = hasSelection
+          ? db
+              .select({
+                id: notes.id,
+                criticalNotes: notes.criticalNotes,
+                connections: notes.connections,
+                referenceId: notes.referenceId,
+                similarity: notesSimilaritySql,
+              })
+              .from(notes)
+              .where(
+                and(
+                  inArray(notes.referenceId, selectedReferenceIds),
+                  sql`${notes.embedding} IS NOT NULL`,
+                ),
+              )
+              .orderBy(
+                sql`${notes.embedding} <=> ${targetEmbeddingStr}::vector`,
+              )
+              .limit(5)
+          : db
+              .select({
+                id: notes.id,
+                criticalNotes: notes.criticalNotes,
+                connections: notes.connections,
+                referenceId: notes.referenceId,
+                similarity: notesSimilaritySql,
+              })
+              .from(notes)
+              .where(sql`${notes.embedding} IS NOT NULL`)
+              .orderBy(
+                sql`${notes.embedding} <=> ${targetEmbeddingStr}::vector`,
+              )
+              .limit(5);
+
+        const [chunkRes, notesRes] = await Promise.all([
+          chunksQuery,
+          notesQuery,
+        ]);
+        similarChunks = chunkRes;
+        similarNotes = notesRes;
       } catch (dbErr) {
-        console.error("Postgres/pgvector similarity query error:", dbErr);
-        // We don't stop the process, we fall back to empty chunks
+        console.error(
+          "Postgres/pgvector hybrid similarity query error:",
+          dbErr,
+        );
         similarChunks = [];
+        similarNotes = [];
       }
     }
 
-    // Step 3: Filter chunks by a strict relevance threshold of 0.25
+    // Step 3: Filter chunks and notes by a strict relevance threshold of 0.25
     const relevantChunks = similarChunks
       .filter((chunk) => chunk.similarity >= 0.25)
       .map((chunk, idx) => ({
@@ -375,98 +236,133 @@ export async function sendMessageAction(
         index: idx + 1,
       }));
 
+    const relevantNotes = similarNotes
+      .filter(
+        (note) =>
+          note.similarity >= 0.25 &&
+          ((note.criticalNotes && note.criticalNotes.trim().length > 0) ||
+            (note.connections && note.connections.trim().length > 0)),
+      )
+      .map((note, idx) => ({
+        ...note,
+        index: idx + 1,
+      }));
+
     // Get the reference titles for the sources return, including original text content
     let sourceReferenceInfos: CitationSource[] = [];
-    if (relevantChunks.length > 0) {
-      const uniqueRefIds = Array.from(
-        new Set(
-          relevantChunks
-            .map((c) => c.referenceId)
-            .filter((id): id is number => id !== null),
-        ),
-      );
+    const uniqueRefIds = Array.from(
+      new Set(
+        [
+          ...relevantChunks.map((c) => c.referenceId),
+          ...relevantNotes.map((n) => n.referenceId),
+        ].filter((id): id is number => id !== null),
+      ),
+    );
 
-      if (uniqueRefIds.length > 0) {
-        try {
-          const refs = await db
-            .select({ id: references.id, title: references.title })
-            .from(references)
-            .where(inArray(references.id, uniqueRefIds));
+    let refTitleMap = new Map<number, string>();
+    if (uniqueRefIds.length > 0) {
+      try {
+        const refs = await db
+          .select({ id: references.id, title: references.title })
+          .from(references)
+          .where(inArray(references.id, uniqueRefIds));
 
-          const refTitleMap = new Map(refs.map((r) => [r.id, r.title]));
-
-          sourceReferenceInfos = relevantChunks.map((c) => ({
-            id: c.id,
-            index: c.index,
-            referenceId: c.referenceId,
-            title: c.referenceId
-              ? refTitleMap.get(c.referenceId) || "Bilinmeyen Döküman"
-              : "Bilinmeyen Döküman",
-            content: c.content,
-            score: Number(c.similarity.toFixed(4)),
-          }));
-        } catch (refErr) {
-          console.error("Failed to map reference titles for chunks:", refErr);
-          sourceReferenceInfos = relevantChunks.map((c) => ({
-            id: c.id,
-            index: c.index,
-            referenceId: c.referenceId,
-            title: "Döküman Parçası",
-            content: c.content,
-            score: Number(c.similarity.toFixed(4)),
-          }));
-        }
-      } else {
-        sourceReferenceInfos = relevantChunks.map((c) => ({
-          id: c.id,
-          index: c.index,
-          referenceId: c.referenceId,
-          title: "Döküman Parçası",
-          content: c.content,
-          score: Number(c.similarity.toFixed(4)),
-        }));
+        refTitleMap = new Map(refs.map((r) => [r.id, r.title]));
+      } catch (refErr) {
+        console.error(
+          "Failed to map reference titles for hybrid search:",
+          refErr,
+        );
       }
     }
 
-    // Step 4: Build XML Context Text from the relevant chunks using real database chunk IDs
-    const contextText = relevantChunks
-      .map((c) => `<chunk id="${c.id}">${c.content}</chunk>`)
+    // Combine chunks and notes as sources for citation popovers to find by ID
+    const sourceChunks = relevantChunks.map((c) => ({
+      id: c.id,
+      referenceId: c.referenceId,
+      title: c.referenceId
+        ? refTitleMap.get(c.referenceId) || "Bilinmeyen Döküman"
+        : "Bilinmeyen Döküman",
+      content: c.content,
+      score: Number(c.similarity.toFixed(4)),
+    }));
+
+    const sourceNotes = relevantNotes.map((n) => {
+      const docTitle = n.referenceId ? refTitleMap.get(n.referenceId) : null;
+      const titleStr = docTitle
+        ? `Kişisel Not - ${docTitle}`
+        : "Kişisel Okuma Notu";
+
+      const parts = [];
+      if (n.criticalNotes && n.criticalNotes.trim()) {
+        parts.push(`[Eleştirel Şerh]: ${n.criticalNotes.trim()}`);
+      }
+      if (n.connections && n.connections.trim()) {
+        parts.push(`[Bağlantılar]: ${n.connections.trim()}`);
+      }
+
+      return {
+        id: n.id,
+        referenceId: n.referenceId,
+        title: titleStr,
+        content: parts.join("\n"),
+        score: Number(n.similarity.toFixed(4)),
+      };
+    });
+
+    sourceReferenceInfos = [...sourceChunks, ...sourceNotes].map(
+      (item, idx) => ({
+        ...item,
+        index: idx + 1,
+      }),
+    );
+
+    // Step 4: Build XML Context Text from both pdfChunks and personal notes
+    const chunksXml = relevantChunks
+      .map((c) => {
+        const titleStr = c.referenceId
+          ? refTitleMap.get(c.referenceId) || "Bilinmeyen Döküman"
+          : "Bilinmeyen Döküman";
+        return `<chunk id="${c.id}" referenceId="${c.referenceId || "Bilinmiyor"}" documentTitle="${titleStr}">${c.content}</chunk>`;
+      })
       .join("\n\n");
 
+    const notesXml = relevantNotes
+      .map((n) => {
+        const titleStr = n.referenceId
+          ? refTitleMap.get(n.referenceId) || "Bilinmeyen Döküman"
+          : "Bilinmeyen Döküman";
+        const parts = [];
+        if (n.criticalNotes && n.criticalNotes.trim()) {
+          parts.push(
+            `  <critical_note>${n.criticalNotes.trim()}</critical_note>`,
+          );
+        }
+        if (n.connections && n.connections.trim()) {
+          parts.push(`  <connection>${n.connections.trim()}</connection>`);
+        }
+        return `<chunk id="${n.id}" referenceId="${n.referenceId || "Bilinmiyor"}" documentTitle="${titleStr}" type="personal_note">\n${parts.join("\n")}\n</chunk>`;
+      })
+      .filter(Boolean)
+      .join("\n\n");
+
+    const contextText =
+      `<chunks>\n${chunksXml.trim() ? chunksXml : "Eşleşen döküman parçası bulunamadı."}\n</chunks>\n\n` +
+      `<personal_critical_notes>\n${notesXml.trim() ? notesXml : "Kişisel okuma notlarında eşleşen eleştirel şerh/bağlantı bulunamadı."}\n</personal_critical_notes>`;
+
     // Step 5: Construct System Instructions (Prompt) for hybrid reasoning, demanding database ID citations [^X]
-    const systemInstruction =
-      "Sen sosyal bilimler alanında uzman, kıdemli, son derece bilge, bilimsel metodolojiye ve sarsılmaz akademik dürüstlük standartlarına sahip bir Tez Danışmanısın (Profesör). " +
-      "Kullanıcı sana teziyle, kütüphanesindeki kaynaklarla veya genel akademik kuramlarla ilgili sorular sorduğunda:\n\n" +
-      "KATI AKADEMİK DÜRÜSTLÜK FİLTRESİ VE DENETİM PROTOKOLÜ:\n" +
-      "1. Kullanıcı tarafından girilen yeni mesaj (Kullanıcı Mesajı) akademi dışı (gündelik/kişisel/gayriakademik) bir konu içeriyorsa,\n" +
-      `2. VEYA girilen mesajın, kullanıcının mevcut tez konusuyla (Tez Başlığı: '${thesisTitle}', Araştırma Sorusu: '${thesisQuestion}', Ana Argüman: '${thesisArgument}', Metodoloji/Yöntem: '${thesisMethodology}') doğrudan/somut ve anlamlı bir bağı bulunmuyorsa (tez anayasasındaki kavramlardan, teorilerden veya odak alanından çıkarılan mantıklı/akademik çıkarımlara dayanarak),\n` +
-      "3. VEYA bu bağ son derece zorlama, yapay ve yüzeysel ise;\n" +
-      "ASLA uydurma akademik yanıtlar, öneriler veya sohbet analizleri üretmeyeceksin! Doğrudan ve KESİNLİKLE sadece şu yapılandırılmış gerekçeli reddi döndüreceksin:\n" +
-      '"Bu girdinin mevcut tez çalışmanızla doğrudan bir ilgisi bulunmamaktadır. Nedeni: [Girdinin tezin ampirik/teorik odak sınırlarının neden dışında kaldığını açıklayan analitik ve yapısal gerekçe.]"\n\n' +
-      "İSTİSNA / GEÇİŞ KOŞULU (SOHBET GEÇMİŞİ):\n" +
-      "- Eğer kullanıcının mesajı geçmiş yazışmalardaki bir gerekçeli reddi çürüten ve tezin sınırlarıyla doğrudan/somut bir akademik ilişki/teorik bağ kuran yeni açıklamalar sunuyorsa, o zaman reddi kaldır ve normal akademik analiz/rehberlik aşamasına geç.\n\n" +
-      "AKADEMİK YAZIM VE YANIT PROTOKOLÜ (FİLTREYİ GEÇEN İLİŞKİLİ MESAJLAR İÇİN):\n" +
-      "1. Eğer soru kütüphanedeki dökümanlara veya kütüphane verilerine yönelikse, sana iletilen BAĞLAM (Context) dışına çıkmadan, verileri tahrif etmeden, uydurma yapmadan net, atıflı ve dökümana sadık yanıt ver.\n" +
-      "2. Eğer kullanıcı sana genel metodolojik kurallar (Nitel/nicel analiz yöntemleri, vaka seçimi, karşılaştırma modelleri vb.), sosyal teoriler ve kavramsal çerçeveler, akademik yazım teknikleri veya tez kurgusu gibi kuramsal/yöntemsel sorular soruyorsa, RAG bağlamıyla sınırlı kalma! Kendi derin akademik hafızanı, geniş entelektüel birikimini ve uzmanlığını devreye sokarak kullanıcıya son derece yaratıcı, kapsamlı ve yol gösterici entelektüel rehberlik sağla.\n\n" +
-      'UYARI: Sana verilen bağlam içindeki her bir akademik metin parçası <chunk id="X"> etiketiyle sarılmıştır. Cevap üretirken bağlamdan aldığın her bilginin, cümlenin veya dönemin hemen sonuna istisnasız bir şekilde tam olarak [^X] formatında atıf ekleyeceksin (Buradaki X, dökümanın gerçek id numarası olmalıdır). Kendi hafından [1], [^1] veya (1) gibi statik atıflar KESİNLİKLE üretmeyeceksin.\n\n' +
-      "Yanıtlarını her zaman son derece saygın, teşvik edici, yapıcı ve samimi bir akademik üslupla ve temiz Markdown formatında sun. Adını yalnızca karşılamada bir kez kullan, sonraki hiçbir yanıtında kullanıcının adını tekrarlama. Başlıklar, listeler ve vurgulamalar kullanarak okunabilirliği maksimize et.\n\n" +
-      "TEZ BÖLÜMLERİ VE KUTULARI (GÜNCELLEME İÇİN GEÇERLİ ID LİSTESİ):\n" +
-      (boxesInfoText.trim()
-        ? boxesInfoText
-        : "Tanımlı tez kutusu bulunmamaktadır.") +
-      "\n\nTEZ ANAYASASINI VE BÖLÜM KUTULARINI GÜNCELLEME ARACI KULLANIM KURALI (GÖRÜNMEZ SEKRETER/ASİSTAN PROTOKOLÜ):\n" +
-      "Sen kıdemli, son derece bilge bir Profesörsün (Tez Danışmanı). Sen asla doğrudan veritabanına veri yazan bir kâtip değilsin. Ancak sohbet esnasında kullanıcıyla akademik bir mutabakata vardığında veya kullanıcı bir revizyon talep ettiğinde, senin arkanda hazır bekleyen, sohbeti dinleyen ve veritabanı kâtipliğini yapan görünmez bir 'Tez Asistanı' olduğunu varsay.\n" +
-      "1. Kullanıcıyla ortak karar aldığınız veya kullanıcının talebini haklı bulduğun an, bu asistanın veritabanına işleyebileceği rafine, akademik taslak metni hazırlaması için `update_thesis_box` veya `update_thesis_core_framework` araçlarını arka planda tetikle.\n" +
-      "2. Eğer kullanıcı tezin genel yöntem tanımını, metodolojik yaklaşımını veya tarihsel kapsamını değiştirmek veya zenginleştirmek isterse, doğrudan `update_thesis_core_framework` aracını çağırarak en üstteki ana 'Tez Anayasası & Stratejik Çatı' (thesis_core.methodology) alanını `updatedMethodology` parametresine yazacağın yeni bütünsel akademik özet ile güncelle.\n" +
-      "3. Eğer belirli bir alt bölümü (Giriş, Teori, Metodoloji vb.) güncellemek veya yeniden yazmak üzerine anlaşılırsa, `update_thesis_box` aracını çağır. Doğru `boxId` değerini yukarıdaki listeden tespit edip `updatedContent` parametresine yazacağın rafine, akademik taslak paragrafıyla aracı tetikle.\n" +
-      "4. GEREKTİĞİNDE tek bir turn içinde HEM genel metodoloji çerçevesini (update_thesis_core_framework) HEM DE ilişkili bir alt bölümü (update_thesis_box) ardışık/zincirleme olarak asistanına tetikletebilirsin.\n" +
-      "5. Yanıtlarında asla 'kutuya işledim' veya 'veritabanını güncelledim' deme. Bunun yerine 'Asistanıma talimat verdim, taslağı hazırladı, ekranınızdaki panelden onaylayabilirsiniz' şeklinde bir duruş sergileyerek asistanının hazırladığı taslağı onaylamasını iste.\n" +
-      "6. Kullanıcı bir öneriyi reddettiğinde ve 'user_feedback' gönderdiğinde, bu gerekçeyi çok sıkı analiz et. Kullanıcının eleştirilerini dikkate alarak, asistanının hazırlaması için kuramsal ağırlığı revize edilmiş YENİ VE DAHA RAFİNE bir fonksiyon çağrısı (tool call) üreterek kullanıcının karşısına tekrar çık.";
+    const systemInstruction = getAdvisorSystemInstruction({
+      thesisTitle,
+      thesisQuestion,
+      thesisArgument,
+      thesisMethodology,
+      boxesInfoText,
+    });
 
     // Step 6: Format Gemini API payload (contents array)
     const contents = chatHistory.map((item) => {
       const role = item.role === "assistant" ? "model" : item.role;
-      const parts: any[] = [];
+      const parts: Record<string, unknown>[] = [];
 
       if (item.functionCall) {
         parts.push({
@@ -542,53 +438,22 @@ export async function sendMessageAction(
         thinkingConfig: {
           thinkingLevel: thinkingLevel,
         },
-        tools: [
-          {
-            functionDeclarations: [
-              {
-                name: "update_thesis_box",
-                description:
-                  "Akademik danışman sohbeti esnasında varılan ortak karar doğrultusunda, tezin belirli bir bölümünün (Giriş, Teori, Metodoloji vb.) içeriğini yeni rafine akademik metin ile günceller.",
-                parameters: {
-                  type: Type.OBJECT,
-                  properties: {
-                    boxId: {
-                      type: Type.INTEGER,
-                      description: "Güncellenecek kutunun benzersiz ID'si",
-                    },
-                    updatedContent: {
-                      type: Type.STRING,
-                      description:
-                        "Modelin sohbet bağlamından damıtarak ürettiği, kutunun içine yazılacak yeni rafine akademik paragraf.",
-                    },
-                  },
-                  required: ["boxId", "updatedContent"],
-                },
-              },
-              {
-                name: "update_thesis_core_framework",
-                description:
-                  "Dashboard'un en üstünde yer alan 'Tez Anayasası & Stratejik Çatı' panelindeki 'Metodoloji & Tarihsel Kapsam' (thesis_core.methodology) alanını yeni bütünsel akademik özet ile günceller.",
-                parameters: {
-                  type: Type.OBJECT,
-                  properties: {
-                    updatedMethodology: {
-                      type: Type.STRING,
-                      description:
-                        "Modelin sohbet bağlamından damıtarak ürettiği, en üstteki ana tez metodolojisi alanına yazılacak yeni rafine bütünsel akademik özet.",
-                    },
-                  },
-                  required: ["updatedMethodology"],
-                },
-              },
-            ],
-          },
-        ],
+        tools: getAdvisorTools(),
       },
     });
 
     // Systematically extract both the full text parts and functionCall in a single turn
-    let extractedFunctionCall: any = null;
+    let extractedFunctionCall: {
+      name: string;
+      args: {
+        boxId?: number;
+        updatedContent?: string;
+        updatedMethodology?: string;
+        [key: string]: unknown;
+      };
+      id: string;
+      thoughtSignature?: string;
+    } | null = null;
     let thoughtSignature: string | undefined = undefined;
 
     const candidateParts = genAIResponse.candidates?.[0]?.content?.parts;
@@ -596,10 +461,10 @@ export async function sendMessageAction(
       const fcPart = candidateParts.find((p) => !!p.functionCall);
       if (fcPart && fcPart.functionCall) {
         thoughtSignature =
-          fcPart.thoughtSignature || (fcPart as any).thought_signature;
+          fcPart.thoughtSignature || (fcPart as Record<string, unknown>).thought_signature as string | undefined;
         extractedFunctionCall = {
-          name: fcPart.functionCall.name,
-          args: fcPart.functionCall.args,
+          name: fcPart.functionCall.name || "update_thesis_box",
+          args: (fcPart.functionCall.args || {}) as { boxId?: number; updatedContent?: string; updatedMethodology?: string },
           id: fcPart.functionCall.id || `call_${Date.now()}`,
           thoughtSignature: thoughtSignature,
         };
@@ -615,7 +480,7 @@ export async function sendMessageAction(
       const call = genAIResponse.functionCalls[0];
       extractedFunctionCall = {
         name: call.name || "update_thesis_box",
-        args: call.args || {},
+        args: (call.args || {}) as { boxId?: number; updatedContent?: string; updatedMethodology?: string },
         id: call.id || `call_${Date.now()}`,
       };
     }

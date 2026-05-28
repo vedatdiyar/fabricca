@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useReducer } from "react";
 import { useRouter } from "next/navigation";
 import {
   getAcademicRecommendationsAction,
@@ -21,18 +21,102 @@ interface DashboardClientProps {
   initialThesisData: ThesisCoreData | null;
 }
 
+interface DashboardState {
+  recs: LiteratureRecommendation[];
+  isLoading: boolean;
+  isLoadingRecs: boolean;
+  error: string;
+  recsError: string;
+  selectedRec: LiteratureRecommendation | null;
+}
+
+const initialState: DashboardState = {
+  recs: [],
+  isLoading: true,
+  isLoadingRecs: false,
+  error: "",
+  recsError: "",
+  selectedRec: null,
+};
+
+type DashboardAction =
+  | { type: "FETCH_START" }
+  | {
+      type: "FETCH_SUCCESS";
+      payload: {
+        recs: LiteratureRecommendation[];
+        recsError: string;
+      };
+    }
+  | { type: "FETCH_FAILURE"; payload: string }
+  | { type: "FETCH_RECS_START" }
+  | {
+      type: "FETCH_RECS_SUCCESS";
+      payload: {
+        recs: LiteratureRecommendation[];
+        recsError: string;
+      };
+    }
+  | { type: "SET_SELECTED_REC"; payload: LiteratureRecommendation | null };
+
+function dashboardReducer(
+  state: DashboardState,
+  action: DashboardAction,
+): DashboardState {
+  switch (action.type) {
+    case "FETCH_START":
+      return {
+        ...state,
+        isLoading: true,
+        error: "",
+      };
+    case "FETCH_SUCCESS":
+      return {
+        ...state,
+        isLoading: false,
+        recs: action.payload.recs,
+        recsError: action.payload.recsError,
+        error: "",
+      };
+    case "FETCH_FAILURE":
+      return {
+        ...state,
+        isLoading: false,
+        error: action.payload,
+      };
+    case "FETCH_RECS_START":
+      return {
+        ...state,
+        isLoadingRecs: true,
+        recsError: "",
+      };
+    case "FETCH_RECS_SUCCESS":
+      return {
+        ...state,
+        isLoadingRecs: false,
+        recs: action.payload.recs,
+        recsError: action.payload.recsError,
+      };
+    case "SET_SELECTED_REC":
+      return {
+        ...state,
+        selectedRec: action.payload,
+      };
+    default:
+      return state;
+  }
+}
+
 export default function DashboardClient({
   initialThesisData,
 }: DashboardClientProps) {
   const router = useRouter();
   const thesisData = initialThesisData;
-  const [recs, setRecs] = useState<LiteratureRecommendation[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingRecs, setIsLoadingRecs] = useState(false);
-  const [error, setError] = useState("");
-  const [recsError, setRecsError] = useState("");
-  const [selectedRec, setSelectedRec] =
-    useState<LiteratureRecommendation | null>(null);
+
+  const [state, dispatch] = useReducer(dashboardReducer, initialState);
+
+  const { recs, isLoading, isLoadingRecs, error, recsError, selectedRec } =
+    state;
 
   // Load recommendations from Neon PostgreSQL cache or fetch fresh ones
   const fetchRecommendations = async (
@@ -41,14 +125,17 @@ export default function DashboardClient({
     boxId?: number,
   ) => {
     try {
-      setIsLoadingRecs(true);
-      setRecsError("");
+      dispatch({ type: "FETCH_RECS_START" });
 
       if (!core) {
-        setRecs([]);
-        setRecsError(
-          "Tavsiye üretilebilmesi için öncelikle Tez Anayasası'nı oluşturmalısınız.",
-        );
+        dispatch({
+          type: "FETCH_RECS_SUCCESS",
+          payload: {
+            recs: [],
+            recsError:
+              "Tavsiye üretilebilmesi için öncelikle Tez Anayasası'nı oluşturmalısınız.",
+          },
+        });
         return;
       }
 
@@ -68,39 +155,82 @@ export default function DashboardClient({
           );
 
       if (recsRes.success && recsRes.recommendations) {
-        setRecs(recsRes.recommendations);
+        dispatch({
+          type: "FETCH_RECS_SUCCESS",
+          payload: {
+            recs: recsRes.recommendations,
+            recsError: "",
+          },
+        });
       } else {
-        setRecsError(recsRes.error || "Tavsiyeler yüklenirken hata oluştu.");
+        dispatch({
+          type: "FETCH_RECS_SUCCESS",
+          payload: {
+            recs: [],
+            recsError: recsRes.error || "Tavsiyeler yüklenirken hata oluştu.",
+          },
+        });
       }
     } catch (err) {
       console.error("Failed to fetch recommendations:", err);
-      setRecsError("API_CONNECTION_FAILURE");
-    } finally {
-      setIsLoadingRecs(false);
+      dispatch({
+        type: "FETCH_RECS_SUCCESS",
+        payload: {
+          recs: [],
+          recsError: "API_CONNECTION_FAILURE",
+        },
+      });
     }
   };
 
   useEffect(() => {
     async function loadDashboardData() {
       try {
-        setIsLoading(true);
-        setError("");
+        dispatch({ type: "FETCH_START" });
 
         // 2. Load recommendations if thesis data exists
         if (initialThesisData) {
-          await fetchRecommendations(initialThesisData);
-        } else {
-          setRecs([]);
-          setRecsError(
-            "Tavsiye üretilebilmesi için öncelikle Tez Anayasası'nı oluşturmalısınız.",
+          const recsRes = await getAcademicRecommendationsAction(
+            initialThesisData.title,
+            initialThesisData.researchQuestion,
+            initialThesisData.argument,
+            initialThesisData.methodology,
           );
-        }
 
-        setIsLoading(false);
+          if (recsRes.success && recsRes.recommendations) {
+            dispatch({
+              type: "FETCH_SUCCESS",
+              payload: {
+                recs: recsRes.recommendations,
+                recsError: "",
+              },
+            });
+          } else {
+            dispatch({
+              type: "FETCH_SUCCESS",
+              payload: {
+                recs: [],
+                recsError:
+                  recsRes.error || "Tavsiyeler yüklenirken hata oluştu.",
+              },
+            });
+          }
+        } else {
+          dispatch({
+            type: "FETCH_SUCCESS",
+            payload: {
+              recs: [],
+              recsError:
+                "Tavsiye üretilebilmesi için öncelikle Tez Anayasası'nı oluşturmalısınız.",
+            },
+          });
+        }
       } catch (err) {
         console.error("Dashboard error:", err);
-        setError("Tez Karargahı yüklenirken kritik bir hata oluştu.");
-        setIsLoading(false);
+        dispatch({
+          type: "FETCH_FAILURE",
+          payload: "Tez Karargahı yüklenirken kritik bir hata oluştu.",
+        });
       }
     }
 
@@ -172,13 +302,15 @@ export default function DashboardClient({
         onRefresh={(boxId) =>
           thesisData && fetchRecommendations(thesisData, true, boxId)
         }
-        onSelectRec={setSelectedRec}
+        onSelectRec={(rec) =>
+          dispatch({ type: "SET_SELECTED_REC", payload: rec })
+        }
       />
 
       {/* PDF YÜKLEME PANELİ */}
       <PdfUploadDrawer
         selectedRec={selectedRec}
-        onClose={() => setSelectedRec(null)}
+        onClose={() => dispatch({ type: "SET_SELECTED_REC", payload: null })}
       />
     </div>
   );

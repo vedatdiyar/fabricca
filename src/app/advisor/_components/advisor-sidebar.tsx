@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ReferenceItem } from "../actions";
+import { ReferenceItem } from "../_services/db-actions";
 import { ChatSession } from "../_hooks/use-advisor";
 
 interface ChatListProps {
@@ -90,7 +90,15 @@ function ChatList({
           return (
             <div
               key={sess.id}
+              role="button"
+              tabIndex={0}
               onClick={() => handleSwitchSession(sess.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleSwitchSession(sess.id);
+                }
+              }}
               className={`group flex items-center justify-between p-3 rounded-lg border cursor-pointer select-none transition duration-100 ${
                 isActive
                   ? "bg-muted border-primary"
@@ -259,7 +267,15 @@ function SourceList({
           return (
             <div
               key={ref.id}
+              role="button"
+              tabIndex={0}
               onClick={() => handleToggleRef(ref.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleToggleRef(ref.id);
+                }
+              }}
               className={`flex items-start gap-3 p-2.5 rounded-lg border cursor-pointer select-none transition duration-100 ${
                 isChecked
                   ? "bg-muted border-primary"

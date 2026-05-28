@@ -59,7 +59,7 @@ export function GapAnalysisSection({ gapAnalysis }: GapAnalysisSectionProps) {
       <ul className="space-y-3">
         {sections.map((section, idx) => (
           <li
-            key={idx}
+            key={`gap_${idx}`}
             className="bg-card/50 border border-border p-3 rounded-lg shadow-sm"
           >
             <div className="flex items-start gap-2.5">

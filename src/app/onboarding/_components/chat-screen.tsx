@@ -81,7 +81,7 @@ export function ChatScreen({
 
             return (
               <OriginalityReport
-                key={index}
+                key={`onb_report_${index}`}
                 reportData={{
                   risk: report.risk,
                   reasoning: report.reasoning,
@@ -95,7 +95,7 @@ export function ChatScreen({
           const isModel = msg.role === "model";
           return (
             <div
-              key={index}
+              key={`onb_msg_${index}`}
               className={`flex items-start gap-3 ${
                 isModel ? "" : "flex-row-reverse"
               }`}

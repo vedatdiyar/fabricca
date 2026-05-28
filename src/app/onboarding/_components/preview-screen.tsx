@@ -120,7 +120,7 @@ export function PreviewScreen({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
                 {structuredData.boxes.map((box, index) => (
                   <div
-                    key={index}
+                    key={`box_${index}`}
                     className="border border-border bg-background p-3 rounded-md space-y-1 relative overflow-hidden"
                   >
                     <div className="flex items-center space-x-2">

@@ -68,6 +68,7 @@ export default function LoginPage() {
                   placeholder="••••••••••••"
                   required
                   disabled={isPending || state?.success}
+                  aria-label="Erişim Şifresi"
                   className="w-full bg-background border border-border focus:border-ring text-foreground rounded-lg py-2.5 pl-9 pr-10 focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground transition text-sm font-sans"
                 />
 

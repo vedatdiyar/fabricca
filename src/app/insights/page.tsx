@@ -20,29 +20,193 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
-export default function InsightsPage() {
-  const [insights, setInsights] = useState<InsightItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [ideaText, setIdeaText] = useState("");
-  const [sharpeningIds, setSharpeningIds] = useState<Record<number, boolean>>(
-    {},
+interface InsightsState {
+  insights: InsightItem[];
+  isLoading: boolean;
+  isSubmitting: boolean;
+  ideaText: string;
+  sharpeningIds: Record<number, boolean>;
+  errorMessage: string;
+}
+
+const INITIAL_STATE: InsightsState = {
+  insights: [],
+  isLoading: true,
+  isSubmitting: false,
+  ideaText: "",
+  sharpeningIds: {},
+  errorMessage: "",
+};
+
+interface InsightFormProps {
+  ideaText: string;
+  isSubmitting: boolean;
+  onChangeText: (text: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+}
+
+function InsightForm({
+  ideaText,
+  isSubmitting,
+  onChangeText,
+  onSubmit,
+}: InsightFormProps) {
+  return (
+    <form
+      onSubmit={onSubmit}
+      className="bg-card border border-border p-6 rounded-lg space-y-4 relative overflow-hidden"
+    >
+      <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
+      <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+        <Plus className="size-4" />
+        <span>Yeni Fikir Ekle</span>
+      </h2>
+
+      <div className="space-y-1">
+        <label className="text-xs text-muted-foreground font-sans">
+          Hipotez, Kavramsal Not veya Anlık Düşünce
+        </label>
+        <textarea
+          placeholder="Örn: Hipoteziniz, kavramsal notunuz veya anlık düşünceniz..."
+          value={ideaText}
+          onChange={(e) => onChangeText(e.target.value)}
+          required
+          rows={5}
+          aria-label="Hipotez veya kavramsal not girişi"
+          className="w-full bg-background border border-border px-3 py-2 rounded text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary font-sans leading-relaxed resize-none"
+        />
+      </div>
+
+      <button
+        type="submit"
+        disabled={isSubmitting}
+        className="w-full bg-primary text-primary-foreground text-sm font-semibold rounded h-10 hover:opacity-90 active:scale-[0.98] transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+      >
+        {isSubmitting ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <>
+            <Lightbulb className="size-4" />
+            <span>Fikri Sepete Ekle</span>
+          </>
+        )}
+      </button>
+    </form>
   );
-  const [errorMessage, setErrorMessage] = useState("");
+}
+
+interface InsightCardProps {
+  insight: InsightItem;
+  index: number;
+  isSharpening: boolean;
+  onDelete: (id: number) => void;
+  onSharpen: (id: number) => void;
+}
+
+function InsightCard({
+  insight,
+  index,
+  isSharpening,
+  onDelete,
+  onSharpen,
+}: InsightCardProps) {
+  return (
+    <div className="bg-card border border-border rounded-lg p-6 space-y-4 hover:border-border transition duration-150 relative">
+      {/* Top Action Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-2 text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded border border-border">
+          <MessageSquare className="size-3" />
+          <span>Fikir #{index + 1}</span>
+        </div>
+
+        <button
+          onClick={() => onDelete(insight.id)}
+          className="text-muted-foreground hover:text-destructive p-1 rounded transition duration-150"
+          title="Fikri Sil"
+        >
+          <Trash2 className="size-4" />
+        </button>
+      </div>
+
+      {/* Raw User Idea */}
+      <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-sans">
+        {insight.insightText}
+      </p>
+
+      {/* Action Panel for AI sharpening */}
+      <div className="flex items-center justify-between pt-2 border-t border-border">
+        <span className="text-[10px] text-muted-foreground">
+          {insight.createdAt
+            ? new Date(insight.createdAt).toLocaleDateString("tr-TR")
+            : ""}
+        </span>
+
+        <button
+          onClick={() => onSharpen(insight.id)}
+          disabled={isSharpening}
+          className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded transition duration-150 border border-border bg-background cursor-pointer text-primary hover:bg-accent disabled:opacity-50"
+        >
+          {isSharpening ? (
+            <>
+              <Loader2 className="size-3.5 animate-spin" />
+              <span>Keskinleştiriliyor...</span>
+            </>
+          ) : (
+            <>
+              <Sparkles className="size-3.5 text-primary" />
+              <span>Fikir Keskinleştirici (AI)</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* AI Suggestions Box (If exists) */}
+      {insight.aiContextSuggestions && (
+        <div className="bg-background border border-primary p-5 rounded mt-4 space-y-3 relative overflow-hidden">
+          <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[8px] tracking-widest uppercase font-bold px-2 py-0.5 rounded-bl">
+            Akademik İçgörü
+          </div>
+          <h4 className="text-xs font-bold text-primary flex items-center gap-2">
+            <Sparkles className="size-3.5" />
+            <span>Hoca Yönlendirmesi & Entegrasyon Önerileri</span>
+          </h4>
+
+          <div className="text-sm text-muted-foreground leading-relaxed font-sans prose prose-invert max-w-none [&_li]:mb-4">
+            <ReactMarkdown>{insight.aiContextSuggestions}</ReactMarkdown>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function InsightsPage() {
+  const [insightsState, setInsightsState] =
+    useState<InsightsState>(INITIAL_STATE);
 
   const loadInsights = useCallback(async () => {
     try {
-      setLoading(true);
+      setInsightsState((prev) => ({ ...prev, isLoading: true }));
       const res = await getInsightsAction();
       if (res.success && res.insights) {
-        setInsights(res.insights);
+        setInsightsState((prev) => ({
+          ...prev,
+          insights: res.insights!,
+          errorMessage: "",
+        }));
       } else {
-        setErrorMessage(res.error || "Fikir sepeti yüklenemedi.");
+        setInsightsState((prev) => ({
+          ...prev,
+          errorMessage: res.error || "Fikir sepeti yüklenemedi.",
+        }));
       }
     } catch {
-      setErrorMessage("Bağlantı hatası oluştu.");
+      setInsightsState((prev) => ({
+        ...prev,
+        errorMessage: "Bağlantı hatası oluştu.",
+      }));
     } finally {
-      setLoading(false);
+      setInsightsState((prev) => ({ ...prev, isLoading: false }));
     }
   }, []);
 
@@ -61,22 +225,32 @@ export default function InsightsPage() {
 
   const handleCreateInsight = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!ideaText.trim()) return;
+    const ideaTextTrimmed = insightsState.ideaText.trim();
+    if (!ideaTextTrimmed) return;
 
     try {
-      setSubmitting(true);
-      setErrorMessage("");
-      const res = await createInsightAction(ideaText);
+      setInsightsState((prev) => ({
+        ...prev,
+        isSubmitting: true,
+        errorMessage: "",
+      }));
+      const res = await createInsightAction(ideaTextTrimmed);
       if (res.success) {
-        setIdeaText("");
+        setInsightsState((prev) => ({ ...prev, ideaText: "" }));
         await loadInsights();
       } else {
-        setErrorMessage(res.error || "Fikir kaydedilirken bir hata oluştu.");
+        setInsightsState((prev) => ({
+          ...prev,
+          errorMessage: res.error || "Fikir kaydedilirken bir hata oluştu.",
+        }));
       }
     } catch {
-      setErrorMessage("Beklenmeyen bir hata oluştu.");
+      setInsightsState((prev) => ({
+        ...prev,
+        errorMessage: "Beklenmeyen bir hata oluştu.",
+      }));
     } finally {
-      setSubmitting(false);
+      setInsightsState((prev) => ({ ...prev, isSubmitting: false }));
     }
   };
 
@@ -84,35 +258,57 @@ export default function InsightsPage() {
     try {
       const res = await deleteInsightAction(insightId);
       if (res.success) {
-        setInsights((prev) => prev.filter((item) => item.id !== insightId));
+        setInsightsState((prev) => ({
+          ...prev,
+          insights: prev.insights.filter((item) => item.id !== insightId),
+        }));
       } else {
-        setErrorMessage(res.error || "Fikir silinemedi.");
+        setInsightsState((prev) => ({
+          ...prev,
+          errorMessage: res.error || "Fikir silinemedi.",
+        }));
       }
     } catch {
-      setErrorMessage("Bağlantı hatası.");
+      setInsightsState((prev) => ({
+        ...prev,
+        errorMessage: "Bağlantı hatası.",
+      }));
     }
   };
 
   const handleSharpenInsight = async (insightId: number) => {
     try {
-      setSharpeningIds((prev) => ({ ...prev, [insightId]: true }));
-      setErrorMessage("");
+      setInsightsState((prev) => ({
+        ...prev,
+        sharpeningIds: { ...prev.sharpeningIds, [insightId]: true },
+        errorMessage: "",
+      }));
       const res = await sharpenInsightAction(insightId);
       if (res.success && res.suggestions) {
-        setInsights((prev) =>
-          prev.map((item) =>
+        setInsightsState((prev) => ({
+          ...prev,
+          insights: prev.insights.map((item) =>
             item.id === insightId
               ? { ...item, aiContextSuggestions: res.suggestions! }
               : item,
           ),
-        );
+        }));
       } else {
-        setErrorMessage(res.error || "Fikir keskinleştirilemedi.");
+        setInsightsState((prev) => ({
+          ...prev,
+          errorMessage: res.error || "Fikir keskinleştirilemedi.",
+        }));
       }
     } catch {
-      setErrorMessage("Bağlantı hatası.");
+      setInsightsState((prev) => ({
+        ...prev,
+        errorMessage: "Bağlantı hatası.",
+      }));
     } finally {
-      setSharpeningIds((prev) => ({ ...prev, [insightId]: false }));
+      setInsightsState((prev) => ({
+        ...prev,
+        sharpeningIds: { ...prev.sharpeningIds, [insightId]: false },
+      }));
     }
   };
 
@@ -139,45 +335,14 @@ export default function InsightsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Side: Idea Form & Information */}
         <div className="lg:col-span-1 space-y-6 h-fit">
-          <form
+          <InsightForm
+            ideaText={insightsState.ideaText}
+            isSubmitting={insightsState.isSubmitting}
+            onChangeText={(text) =>
+              setInsightsState((prev) => ({ ...prev, ideaText: text }))
+            }
             onSubmit={handleCreateInsight}
-            className="bg-card border border-border p-6 rounded-lg space-y-4 relative overflow-hidden"
-          >
-            <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <Plus className="size-4" />
-              <span>Yeni Fikir Ekle</span>
-            </h2>
-
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground font-sans">
-                Hipotez, Kavramsal Not veya Anlık Düşünce
-              </label>
-              <textarea
-                placeholder="Örn: Hipoteziniz, kavramsal notunuz veya anlık düşünceniz..."
-                value={ideaText}
-                onChange={(e) => setIdeaText(e.target.value)}
-                required
-                rows={5}
-                className="w-full bg-background border border-border px-3 py-2 rounded text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary font-sans leading-relaxed resize-none"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full bg-primary text-primary-foreground text-sm font-semibold rounded h-10 hover:opacity-90 active:scale-[0.98] transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              {submitting ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <>
-                  <Lightbulb className="size-4" />
-                  <span>Fikri Sepete Ekle</span>
-                </>
-              )}
-            </button>
-          </form>
+          />
 
           {/* Quick Info Box */}
           <div className="bg-card border border-border p-6 rounded-lg space-y-3">
@@ -199,10 +364,10 @@ export default function InsightsPage() {
             </p>
           </div>
 
-          {errorMessage && (
+          {insightsState.errorMessage && (
             <div className="text-xs text-destructive bg-card border border-destructive p-4 rounded flex items-start gap-2">
               <AlertCircle className="size-4 shrink-0 mt-0.5" />
-              <span>{errorMessage}</span>
+              <span>{insightsState.errorMessage}</span>
             </div>
           )}
         </div>
@@ -210,104 +375,35 @@ export default function InsightsPage() {
         {/* Right Side: Ideas Stack */}
         <div className="lg:col-span-2 space-y-6">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            Fikir Sepetim ({insights.length})
+            Fikir Sepetim ({insightsState.insights.length})
           </h2>
 
-          {loading ? (
+          {insightsState.isLoading ? (
             <div className="border border-border bg-card rounded-lg p-12 text-center flex flex-col items-center justify-center">
               <Loader2 className="size-8 text-primary animate-spin" />
               <p className="text-sm text-muted-foreground mt-4 font-sans">
                 Fikirler yükleniyor...
               </p>
             </div>
-          ) : insights.length === 0 ? (
+          ) : insightsState.insights.length === 0 ? (
             <div className="border border-dashed border-border bg-card rounded-lg p-12 text-center text-sm text-muted-foreground">
               Sepetiniz henüz boş. Aklınıza gelen ilk parlak fikri soldaki
               panelden ekleyebilirsiniz!
             </div>
           ) : (
             <div className="space-y-6">
-              {insights.map((insight, index) => {
-                const isSharpening = sharpeningIds[insight.id] || false;
-
-                return (
-                  <div
-                    key={insight.id}
-                    className="bg-card border border-border rounded-lg p-6 space-y-4 hover:border-border transition duration-150 relative"
-                  >
-                    {/* Top Action Header */}
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded border border-border">
-                        <MessageSquare className="size-3" />
-                        <span>Fikir #{index + 1}</span>
-                      </div>
-
-                      <button
-                        onClick={() => handleDeleteInsight(insight.id)}
-                        className="text-muted-foreground hover:text-destructive p-1 rounded transition duration-150"
-                        title="Fikri Sil"
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
-                    </div>
-
-                    {/* Raw User Idea */}
-                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-sans">
-                      {insight.insightText}
-                    </p>
-
-                    {/* Action Panel for AI sharpening */}
-                    <div className="flex items-center justify-between pt-2 border-t border-border">
-                      <span className="text-[10px] text-muted-foreground">
-                        {insight.createdAt
-                          ? new Date(insight.createdAt).toLocaleDateString(
-                              "tr-TR",
-                            )
-                          : ""}
-                      </span>
-
-                      <button
-                        onClick={() => handleSharpenInsight(insight.id)}
-                        disabled={isSharpening}
-                        className={`flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded transition duration-150 border border-border bg-background cursor-pointer text-primary hover:bg-accent disabled:opacity-50`}
-                      >
-                        {isSharpening ? (
-                          <>
-                            <Loader2 className="size-3.5 animate-spin" />
-                            <span>Keskinleştiriliyor...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="size-3.5 text-primary" />
-                            <span>Fikir Keskinleştirici (AI)</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    {/* AI Suggestions Box (If exists) */}
-                    {insight.aiContextSuggestions && (
-                      <div className="bg-background border border-primary p-5 rounded mt-4 space-y-3 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[8px] tracking-widest uppercase font-bold px-2 py-0.5 rounded-bl">
-                          Akademik İçgörü
-                        </div>
-                        <h4 className="text-xs font-bold text-primary flex items-center gap-2">
-                          <Sparkles className="size-3.5" />
-                          <span>
-                            Hoca Yönlendirmesi & Entegrasyon Önerileri
-                          </span>
-                        </h4>
-
-                        <div className="text-sm text-muted-foreground leading-relaxed font-sans prose prose-invert max-w-none [&_li]:mb-4">
-                          <ReactMarkdown>
-                            {insight.aiContextSuggestions}
-                          </ReactMarkdown>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {insightsState.insights.map((insight, index) => (
+                <InsightCard
+                  key={insight.id}
+                  insight={insight}
+                  index={index}
+                  isSharpening={
+                    insightsState.sharpeningIds[insight.id] || false
+                  }
+                  onDelete={handleDeleteInsight}
+                  onSharpen={handleSharpenInsight}
+                />
+              ))}
             </div>
           )}
         </div>

@@ -1,75 +1,118 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
+import { sendMessageAction, ChatMessage } from "../actions";
 import {
   getLibraryReferencesAction,
-  sendMessageAction,
   saveInsightAction,
-  updateThesisBoxContentAction,
-  updateThesisCoreFrameworkAction,
   ReferenceItem,
-  ChatMessage,
-  CitationSource,
-} from "../actions";
+} from "../_services/db-actions";
+import {
+  useChatSessions,
+  ChatMessageWithMetadata,
+  ChatSession,
+} from "./use-chat-sessions";
+import { useThesisUpdates, PendingFunctionCall } from "./use-thesis-updates";
 
-export interface ChatMessageWithMetadata {
-  role: "user" | "assistant" | "model";
-  content: string;
-  sources?: CitationSource[];
-  timestamp: string;
-  functionCall?: {
-    name: string;
-    args: any;
-    id: string;
-    thoughtSignature?: string;
-  };
-  functionResponse?: {
-    name: string;
-    response: any;
-    id: string;
-  };
-}
+export type { ChatMessageWithMetadata, ChatSession, PendingFunctionCall };
 
-export interface PendingFunctionCall {
-  name: string;
-  args: {
-    boxId?: number;
-    updatedContent?: string;
-    updatedMethodology?: string;
-  };
-  id: string;
-  thoughtSignature?: string;
-}
-
-export interface ChatSession {
-  id: string;
-  title: string;
-  messages: ChatMessageWithMetadata[];
+interface AdvisorState {
+  references: ReferenceItem[];
   selectedRefIds: number[];
-  createdAt: string;
+  chatHistory: ChatMessageWithMetadata[];
+  inputValue: string;
+  isPending: boolean;
+  loadingRefs: boolean;
+  activeSidebarTab: "chats" | "sources";
+  savedInsightIds: Set<number>;
 }
+
+const INITIAL_STATE: AdvisorState = {
+  references: [],
+  selectedRefIds: [],
+  chatHistory: [],
+  inputValue: "",
+  isPending: false,
+  loadingRefs: true,
+  activeSidebarTab: "chats",
+  savedInsightIds: new Set(),
+};
 
 export function useAdvisor() {
-  const [references, setReferences] = useState<ReferenceItem[]>([]);
-  const [selectedRefIds, setSelectedRefIds] = useState<number[]>([]);
-  const [chatHistory, setChatHistory] = useState<ChatMessageWithMetadata[]>([]);
-  const [inputValue, setInputValue] = useState("");
-  const [isPending, setIsPending] = useState(false);
-  const [loadingRefs, setLoadingRefs] = useState(true);
-  const [pendingFunctionCall, setPendingFunctionCall] =
-    useState<PendingFunctionCall | null>(null);
+  const [state, setState] = useState<AdvisorState>(INITIAL_STATE);
 
-  // Multi-session chat history states
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string>("");
-  const [activeSidebarTab, setActiveSidebarTab] = useState<"chats" | "sources">(
-    "chats",
-  );
+  const setChatHistory = useCallback((value: React.SetStateAction<ChatMessageWithMetadata[]>) => {
+    setState((prev) => ({
+      ...prev,
+      chatHistory: typeof value === "function" ? value(prev.chatHistory) : value,
+    }));
+  }, []);
 
-  const [savedInsightIds, setSavedInsightIds] = useState<Set<number>>(
-    new Set(),
-  );
+  const setSelectedRefIds = useCallback((value: React.SetStateAction<number[]>) => {
+    setState((prev) => ({
+      ...prev,
+      selectedRefIds: typeof value === "function" ? value(prev.selectedRefIds) : value,
+    }));
+  }, []);
+
+  const setSavedInsightIds = useCallback((value: React.SetStateAction<Set<number>>) => {
+    setState((prev) => ({
+      ...prev,
+      savedInsightIds: typeof value === "function" ? value(prev.savedInsightIds) : value,
+    }));
+  }, []);
+
+  const setIsPending = useCallback((value: React.SetStateAction<boolean>) => {
+    setState((prev) => ({
+      ...prev,
+      isPending: typeof value === "function" ? value(prev.isPending) : value,
+    }));
+  }, []);
+
+  const setInputValue = useCallback((value: React.SetStateAction<string>) => {
+    setState((prev) => ({
+      ...prev,
+      inputValue: typeof value === "function" ? value(prev.inputValue) : value,
+    }));
+  }, []);
+
+  const setActiveSidebarTab = useCallback((value: React.SetStateAction<"chats" | "sources">) => {
+    setState((prev) => ({
+      ...prev,
+      activeSidebarTab: typeof value === "function" ? value(prev.activeSidebarTab) : value,
+    }));
+  }, []);
+
+  // Initialize the new chat sessions hook
+  const {
+    sessions,
+    currentSessionId,
+    updateActiveSession,
+    handleSwitchSession,
+    handleCreateNewSession,
+    executeDeleteSession,
+    executeClearAllChatHistory,
+  } = useChatSessions({
+    chatHistory: state.chatHistory,
+    setChatHistory,
+    selectedRefIds: state.selectedRefIds,
+    setSelectedRefIds,
+    setSavedInsightIds,
+  });
+
+  // Initialize the thesis updates hook
+  const {
+    pendingFunctionCall,
+    setPendingFunctionCall,
+    handleApproveUpdate,
+    handleRejectUpdate,
+  } = useThesisUpdates({
+    chatHistory: state.chatHistory,
+    selectedRefIds: state.selectedRefIds,
+    setIsPending,
+    updateActiveSession,
+  });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -81,83 +124,25 @@ export function useAdvisor() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [chatHistory, isPending]);
+  }, [state.chatHistory, state.isPending]);
 
-  // Load references and localStorage on mount
+  // Load references on mount
   useEffect(() => {
-    async function initPage() {
-      // 1. Load references
+    async function loadRefs() {
       try {
-        setLoadingRefs(true);
+        setState((prev) => ({ ...prev, loadingRefs: true }));
         const res = await getLibraryReferencesAction();
         if (res.success && res.references) {
-          setReferences(res.references);
+          setState((prev) => ({ ...prev, references: res.references || [] }));
         }
       } catch (err) {
         console.error("Failed to load references:", err);
       } finally {
-        setLoadingRefs(false);
-      }
-
-      // 2. Load persistent chat sessions from localStorage
-      const savedSessions = localStorage.getItem("fabricca_chat_sessions");
-      const savedCurrentId = localStorage.getItem(
-        "fabricca_current_session_id",
-      );
-
-      let loadedSessions: ChatSession[] = [];
-      let activeId = "";
-
-      if (savedSessions) {
-        try {
-          loadedSessions = JSON.parse(savedSessions);
-        } catch (e) {
-          console.error("Failed to parse chat sessions:", e);
-        }
-      }
-
-      // If no saved sessions, create a default one
-      if (loadedSessions.length === 0) {
-        const welcomeMessage: ChatMessageWithMetadata = {
-          role: "assistant",
-          content:
-            "Hoş geldin Vedat. Burası **Dijital Danışman Odası**.\n\n" +
-            "Tez çalışmanızın hangi aşamasındasınız? Kütüphanenizdeki makaleleri sol panelden seçerek doğrudan bu kaynaklara yönelik **RAG destekli semantik sorular** sorabilir ya da genel sosyal teoriler ve kavramsal çerçeveler, araştırma yöntemleri ve tez kurgusu üzerine doğrudan **kuramsal/metodolojik tartışmalar** yürütebiliriz.\n\n" +
-            "Size nasıl yardımcı olabilirim?",
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        };
-
-        const defaultSession: ChatSession = {
-          id: "default_" + Date.now(),
-          title: "Yeni Sohbet",
-          messages: [welcomeMessage],
-          selectedRefIds: [],
-          createdAt: new Date().toLocaleString(),
-        };
-
-        loadedSessions = [defaultSession];
-        activeId = defaultSession.id;
-      } else {
-        activeId = savedCurrentId || loadedSessions[0].id;
-        if (!loadedSessions.some((s) => s.id === activeId)) {
-          activeId = loadedSessions[0].id;
-        }
-      }
-
-      setSessions(loadedSessions);
-      setCurrentSessionId(activeId);
-
-      const activeSession = loadedSessions.find((s) => s.id === activeId);
-      if (activeSession) {
-        setChatHistory(activeSession.messages);
-        setSelectedRefIds(activeSession.selectedRefIds || []);
+        setState((prev) => ({ ...prev, loadingRefs: false }));
       }
     }
 
-    initPage();
+    loadRefs();
   }, []);
 
   // Dynamically adjust textarea height based on typing
@@ -166,226 +151,30 @@ export function useAdvisor() {
       textareaRef.current.style.height = "auto";
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`;
     }
-  }, [inputValue]);
-
-  // Helper to save active session's message logs and selections in one central spot
-  const updateActiveSession = (
-    newMessages: ChatMessageWithMetadata[],
-    newRefIds?: number[],
-  ) => {
-    const refIdsToSave = newRefIds !== undefined ? newRefIds : selectedRefIds;
-
-    let sessionTitle = "Yeni Sohbet";
-    const activeSess = sessions.find((s) => s.id === currentSessionId);
-    if (activeSess) {
-      sessionTitle = activeSess.title;
-    }
-
-    // Rename chat automatically on first user question
-    if (sessionTitle === "Yeni Sohbet") {
-      const firstUserMsg = newMessages.find((m) => m.role === "user");
-      if (firstUserMsg) {
-        sessionTitle =
-          firstUserMsg.content.substring(0, 30) +
-          (firstUserMsg.content.length > 30 ? "..." : "");
-      }
-    }
-
-    const updatedSessions = sessions.map((s) => {
-      if (s.id === currentSessionId) {
-        return {
-          ...s,
-          title: sessionTitle,
-          messages: newMessages,
-          selectedRefIds: refIdsToSave,
-        };
-      }
-      return s;
-    });
-
-    setSessions(updatedSessions);
-    setChatHistory(newMessages);
-    if (newRefIds !== undefined) {
-      setSelectedRefIds(newRefIds);
-    }
-
-    localStorage.setItem(
-      "fabricca_chat_sessions",
-      JSON.stringify(updatedSessions),
-    );
-  };
+  }, [state.inputValue]);
 
   // Toggle selected reference IDs
   const handleToggleRef = (id: number) => {
-    const nextRefs = selectedRefIds.includes(id)
-      ? selectedRefIds.filter((refId) => refId !== id)
-      : [...selectedRefIds, id];
-    updateActiveSession(chatHistory, nextRefs);
+    const nextRefs = state.selectedRefIds.includes(id)
+      ? state.selectedRefIds.filter((refId) => refId !== id)
+      : [...state.selectedRefIds, id];
+    updateActiveSession(state.chatHistory, nextRefs);
   };
 
   const handleSelectAllRefs = () => {
-    const nextRefs = references.map((r) => r.id);
-    updateActiveSession(chatHistory, nextRefs);
+    const nextRefs = state.references.map((r) => r.id);
+    updateActiveSession(state.chatHistory, nextRefs);
   };
 
   const handleClearAllRefs = () => {
-    updateActiveSession(chatHistory, []);
-  };
-
-  // Switch between existing chat sessions
-  const handleSwitchSession = (sessionId: string) => {
-    const targetSession = sessions.find((s) => s.id === sessionId);
-    if (!targetSession) return;
-
-    // Save current active session data to sessions array before switching
-    const updatedSessions = sessions.map((s) => {
-      if (s.id === currentSessionId) {
-        return {
-          ...s,
-          messages: chatHistory,
-          selectedRefIds: selectedRefIds,
-        };
-      }
-      return s;
-    });
-
-    setSessions(updatedSessions);
-    setCurrentSessionId(sessionId);
-    setChatHistory(targetSession.messages);
-    setSelectedRefIds(targetSession.selectedRefIds || []);
-    localStorage.setItem("fabricca_current_session_id", sessionId);
-    localStorage.setItem(
-      "fabricca_chat_sessions",
-      JSON.stringify(updatedSessions),
-    );
-  };
-
-  // Create a brand new empty chat session
-  const handleCreateNewSession = () => {
-    const newSessionId = "session_" + Date.now();
-    const welcomeMessage: ChatMessageWithMetadata = {
-      role: "assistant",
-      content:
-        "Hoş geldin Vedat. Burası **Dijital Danışman Odası**.\n\n" +
-        "Tez çalışmanızın hangi aşamasındasınız? Kütüphanenizdeki makaleleri sol panelden seçerek doğrudan bu kaynaklara yönelik **RAG destekli semantik sorular** sorabilir ya da genel sosyal teoriler (Marx, Foucault, biopolitika, finansallaşma vb.), araştırma yöntemleri ve tez kurgusu üzerine doğrudan **kuramsal/metodolojik tartışmalar** yürütebiliriz.\n\n" +
-        "Size nasıl yardımcı olabilirim?",
-      timestamp: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    };
-
-    const newSession: ChatSession = {
-      id: newSessionId,
-      title: "Yeni Sohbet",
-      messages: [welcomeMessage],
-      selectedRefIds: [],
-      createdAt: new Date().toLocaleString(),
-    };
-
-    const updatedSessions = [newSession, ...sessions];
-    setSessions(updatedSessions);
-    setCurrentSessionId(newSessionId);
-    setChatHistory([welcomeMessage]);
-    setSelectedRefIds([]);
-
-    localStorage.setItem("fabricca_current_session_id", newSessionId);
-    localStorage.setItem(
-      "fabricca_chat_sessions",
-      JSON.stringify(updatedSessions),
-    );
-    toast.success("Yeni sohbet oluşturuldu.");
-  };
-
-  // Delete a specific chat session
-  const executeDeleteSession = (sessionId: string) => {
-    if (sessions.length === 1) {
-      const welcomeMessage: ChatMessageWithMetadata = {
-        role: "assistant",
-        content:
-          "Hoş geldin Vedat. Burası **Dijital Danışman Odası**.\n\n" +
-          "Tez çalışmanızın hangi aşamasındasınız? Kütüphanenizdeki makaleleri sol panelden seçerek doğrudan bu kaynaklara yönelik **RAG destekli semantik sorular** sorabilir ya da genel sosyal teoriler (Marx, Foucault, biopolitika, finansallaşma vb.), araştırma yöntemleri ve tez kurgusu üzerine doğrudan **kuramsal/metodolojik tartışmalar** yürütebiliriz.\n\n" +
-          "Size nasıl yardımcı olabilirim?",
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      };
-
-      const updatedSession = {
-        ...sessions[0],
-        title: "Yeni Sohbet",
-        messages: [welcomeMessage],
-        selectedRefIds: [],
-      };
-
-      setSessions([updatedSession]);
-      setChatHistory([welcomeMessage]);
-      setSelectedRefIds([]);
-      localStorage.setItem(
-        "fabricca_chat_sessions",
-        JSON.stringify([updatedSession]),
-      );
-      toast.success("Sohbet temizlendi.");
-      return;
-    }
-
-    const updatedSessions = sessions.filter((s) => s.id !== sessionId);
-    setSessions(updatedSessions);
-
-    if (sessionId === currentSessionId) {
-      const remainingSession = updatedSessions[0];
-      setCurrentSessionId(remainingSession.id);
-      setChatHistory(remainingSession.messages);
-      setSelectedRefIds(remainingSession.selectedRefIds || []);
-      localStorage.setItem("fabricca_current_session_id", remainingSession.id);
-    }
-
-    localStorage.setItem(
-      "fabricca_chat_sessions",
-      JSON.stringify(updatedSessions),
-    );
-    toast.success("Sohbet silindi.");
-  };
-
-  // Clear ALL chat history sessions
-  const executeClearAllChatHistory = () => {
-    localStorage.removeItem("fabricca_chat_sessions");
-    localStorage.removeItem("fabricca_current_session_id");
-    setSavedInsightIds(new Set());
-
-    const welcomeMessage: ChatMessageWithMetadata = {
-      role: "assistant",
-      content:
-        "Hoş geldin Vedat. Burası **Dijital Danışman Odası**.\n\n" +
-        "Tez çalışmanızın hangi aşamasındasınız? Kütüphanenizdeki makaleleri sol panelden seçerek doğrudan bu kaynaklara yönelik **RAG destekli semantik sorular** sorabilir ya da genel sosyal teoriler (Marx, Foucault, biopolitika, finansallaşma vb.), araştırma yöntemleri ve tez kurgusu üzerine doğrudan **kuramsal/metodolojik tartışmalar** yürütebiliriz.\n\n" +
-        "Size nasıl yardımcı olabilirim?",
-      timestamp: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    };
-
-    const defaultSession: ChatSession = {
-      id: "default_" + Date.now(),
-      title: "Yeni Sohbet",
-      messages: [welcomeMessage],
-      selectedRefIds: [],
-      createdAt: new Date().toLocaleString(),
-    };
-
-    setSessions([defaultSession]);
-    setCurrentSessionId(defaultSession.id);
-    setChatHistory([welcomeMessage]);
-    setSelectedRefIds([]);
-    toast.success("Tüm sohbet geçmişi temizlendi.");
+    updateActiveSession(state.chatHistory, []);
   };
 
   // Send message handler
   const handleSendMessage = async () => {
-    if (!inputValue.trim() || isPending) return;
+    if (!state.inputValue.trim() || state.isPending) return;
 
-    const userMessageText = inputValue.trim();
+    const userMessageText = state.inputValue.trim();
     const currentTime = new Date().toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
@@ -393,16 +182,25 @@ export function useAdvisor() {
 
     // 1. Add user message locally
     const updatedHistory = [
-      ...chatHistory,
+      ...state.chatHistory,
       {
+        id:
+          "msg_" +
+          Date.now() +
+          "_" +
+          Math.random().toString(36).substring(2, 7) +
+          "_user",
         role: "user" as const,
         content: userMessageText,
         timestamp: currentTime,
       },
     ];
     updateActiveSession(updatedHistory);
-    setInputValue("");
-    setIsPending(true);
+    setState((prev) => ({
+      ...prev,
+      inputValue: "",
+      isPending: true,
+    }));
 
     // 2. Map history to server action format (without local frontend metadata like timestamp)
     const serverHistory: ChatMessage[] = updatedHistory.map((msg) => ({
@@ -417,7 +215,7 @@ export function useAdvisor() {
       const res = await sendMessageAction(
         userMessageText,
         serverHistory,
-        selectedRefIds,
+        state.selectedRefIds,
       );
       if (res.success && res.functionCall) {
         setPendingFunctionCall({
@@ -430,6 +228,12 @@ export function useAdvisor() {
         const finalHistory: ChatMessageWithMetadata[] = [
           ...updatedHistory,
           {
+            id:
+              "msg_" +
+              Date.now() +
+              "_" +
+              Math.random().toString(36).substring(2, 7) +
+              "_assistant",
             role: "assistant",
             content:
               res.response ||
@@ -451,6 +255,12 @@ export function useAdvisor() {
         const finalHistory: ChatMessageWithMetadata[] = [
           ...updatedHistory,
           {
+            id:
+              "msg_" +
+              Date.now() +
+              "_" +
+              Math.random().toString(36).substring(2, 7) +
+              "_assistant",
             role: "assistant",
             content: res.response!,
             sources: res.sources,
@@ -467,225 +277,7 @@ export function useAdvisor() {
     } catch {
       toast.error("Sunucu hatası: Mesaj iletilemedi.");
     } finally {
-      setIsPending(false);
-    }
-  };
-
-  /**
-   * Action handler triggered when the user clicks 'Değişikliği Onayla'
-   */
-  const handleApproveUpdate = async () => {
-    if (!pendingFunctionCall) return;
-
-    setIsPending(true);
-    try {
-      let dbRes: { success: boolean; error?: string };
-      let successMessage = "Tez bölümü başarıyla güncellendi! 📝";
-      let localLogContent = "";
-
-      if (pendingFunctionCall.name === "update_thesis_core_framework") {
-        const coreContent = pendingFunctionCall.args.updatedMethodology || "";
-        dbRes = await updateThesisCoreFrameworkAction(coreContent);
-        successMessage = "Tez Anayasası Metodolojisi başarıyla güncellendi! 📜";
-        localLogContent = "Tez anayasası metodoloji güncellemesi onaylandı.";
-      } else {
-        dbRes = await updateThesisBoxContentAction(
-          pendingFunctionCall.args.boxId!,
-          pendingFunctionCall.args.updatedContent!,
-        );
-        successMessage = "Tez bölümü başarıyla güncellendi! 📝";
-        localLogContent = `Bölüm güncellemesi onaylandı. (Kutu ID: ${pendingFunctionCall.args.boxId})`;
-      }
-
-      if (dbRes.success) {
-        toast.success(successMessage);
-
-        // Construct function response message log locally
-        const functionResponseMsg: ChatMessageWithMetadata = {
-          role: "user",
-          content: localLogContent,
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          functionResponse: {
-            name: pendingFunctionCall.name,
-            response: { status: "success" },
-            id: pendingFunctionCall.id,
-          },
-        };
-
-        const nextHistory = [...chatHistory, functionResponseMsg];
-        updateActiveSession(nextHistory);
-        setPendingFunctionCall(null);
-
-        // Fetch AI's follow-up response acknowledging the successful update
-        const serverHistory: ChatMessage[] = nextHistory.map((msg) => ({
-          role: msg.role,
-          content: msg.content,
-          functionCall: msg.functionCall,
-          functionResponse: msg.functionResponse,
-        }));
-
-        const followUpRes = await sendMessageAction(
-          "", // Empty because it's a follow-up to function call
-          serverHistory,
-          selectedRefIds,
-        );
-
-        if (followUpRes.success && followUpRes.functionCall) {
-          // If Gemini chained another function call
-          setPendingFunctionCall({
-            name: followUpRes.functionCall.name,
-            args: followUpRes.functionCall.args as PendingFunctionCall["args"],
-            id: followUpRes.functionCall.id,
-            thoughtSignature: followUpRes.functionCall.thoughtSignature,
-          });
-          const finalHistory = [
-            ...nextHistory,
-            {
-              role: "assistant" as const,
-              content:
-                followUpRes.response ||
-                "Başka bir güncelleme önerisi daha hazırladım.",
-              sources: followUpRes.sources,
-              timestamp: new Date().toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-              functionCall: {
-                name: followUpRes.functionCall.name,
-                args: followUpRes.functionCall.args,
-                id: followUpRes.functionCall.id,
-                thoughtSignature: followUpRes.functionCall.thoughtSignature,
-              },
-            },
-          ];
-          updateActiveSession(finalHistory);
-        } else if (followUpRes.success && followUpRes.response) {
-          const finalHistory = [
-            ...nextHistory,
-            {
-              role: "assistant" as const,
-              content: followUpRes.response,
-              sources: followUpRes.sources,
-              timestamp: new Date().toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            },
-          ];
-          updateActiveSession(finalHistory);
-        }
-      } else {
-        toast.error(dbRes.error || "Bölüm güncellenirken hata oluştu.");
-      }
-    } catch {
-      toast.error("Bağlantı hatası: Bölüm güncellenemedi.");
-    } finally {
-      setIsPending(false);
-    }
-  };
-
-  /**
-   * Action handler triggered when the user clicks 'Vazgeç / Reddet'
-   */
-  const handleRejectUpdate = async (feedbackText?: string) => {
-    if (!pendingFunctionCall) return;
-
-    const cleanFeedback = feedbackText?.trim() || "";
-    const feedbackStr = cleanFeedback
-      ? `Kullanıcının reddetme gerekçesi: ${cleanFeedback}`
-      : "Kullanıcının reddetme gerekçesi: Belirtilmedi.";
-
-    // Construct rejection response so model context understands it was cancelled
-    const functionResponseMsg: ChatMessageWithMetadata = {
-      role: "user",
-      content: cleanFeedback
-        ? `Bölüm güncellemesi reddedildi. Gerekçe: ${cleanFeedback}`
-        : `Bölüm güncellemesi reddedildi.`,
-      timestamp: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      functionResponse: {
-        name: pendingFunctionCall.name,
-        response: {
-          status: "rejected_by_user",
-          user_feedback: feedbackStr,
-        },
-        id: pendingFunctionCall.id,
-      },
-    };
-
-    const nextHistory = [...chatHistory, functionResponseMsg];
-    updateActiveSession(nextHistory);
-    setPendingFunctionCall(null);
-
-    // Call follow-up to model so it adjusts dialogue
-    setIsPending(true);
-    try {
-      const serverHistory: ChatMessage[] = nextHistory.map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-        functionCall: msg.functionCall,
-        functionResponse: msg.functionResponse,
-      }));
-
-      const followUpRes = await sendMessageAction(
-        "",
-        serverHistory,
-        selectedRefIds,
-      );
-
-      if (followUpRes.success && followUpRes.functionCall) {
-        // If Gemini chained another function call (e.g. revised proposal based on feedback)
-        setPendingFunctionCall({
-          name: followUpRes.functionCall.name,
-          args: followUpRes.functionCall.args as PendingFunctionCall["args"],
-          id: followUpRes.functionCall.id,
-          thoughtSignature: followUpRes.functionCall.thoughtSignature,
-        });
-        const finalHistory = [
-          ...nextHistory,
-          {
-            role: "assistant" as const,
-            content:
-              followUpRes.response ||
-              "Eleştirileriniz doğrultusunda revize edilmiş yeni bir güncelleme önerisi daha hazırladım.",
-            sources: followUpRes.sources,
-            timestamp: new Date().toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-            functionCall: {
-              name: followUpRes.functionCall.name,
-              args: followUpRes.functionCall.args,
-              id: followUpRes.functionCall.id,
-              thoughtSignature: followUpRes.functionCall.thoughtSignature,
-            },
-          },
-        ];
-        updateActiveSession(finalHistory);
-      } else if (followUpRes.success && followUpRes.response) {
-        const finalHistory = [
-          ...nextHistory,
-          {
-            role: "assistant" as const,
-            content: followUpRes.response,
-            sources: followUpRes.sources,
-            timestamp: new Date().toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-          },
-        ];
-        updateActiveSession(finalHistory);
-      }
-    } catch {
-      // Fail silently for rejection followup
-    } finally {
-      setIsPending(false);
+      setState((prev) => ({ ...prev, isPending: false }));
     }
   };
 
@@ -698,7 +290,7 @@ export function useAdvisor() {
 
   // Save brilliant insight into Fikir Sepeti
   const handleSaveInsight = async (text: string, messageIndex: number) => {
-    if (savedInsightIds.has(messageIndex)) {
+    if (state.savedInsightIds.has(messageIndex)) {
       toast.warning("Bu öngörü zaten fikir sepetinizde bulunuyor.");
       return;
     }
@@ -706,10 +298,13 @@ export function useAdvisor() {
     try {
       const res = await saveInsightAction(text);
       if (res.success) {
-        setSavedInsightIds((prev) => {
-          const next = new Set(prev);
+        setState((prev) => {
+          const next = new Set(prev.savedInsightIds);
           next.add(messageIndex);
-          return next;
+          return {
+            ...prev,
+            savedInsightIds: next,
+          };
         });
         toast.success(
           "Parlak fikir başarıyla fikir sepetine (Insights) eklendi! ✨",
@@ -723,18 +318,18 @@ export function useAdvisor() {
   };
 
   return {
-    references,
-    selectedRefIds,
-    chatHistory,
-    inputValue,
+    references: state.references,
+    selectedRefIds: state.selectedRefIds,
+    chatHistory: state.chatHistory,
+    inputValue: state.inputValue,
     setInputValue,
-    isPending,
-    loadingRefs,
+    isPending: state.isPending,
+    loadingRefs: state.loadingRefs,
     sessions,
     currentSessionId,
-    activeSidebarTab,
+    activeSidebarTab: state.activeSidebarTab,
     setActiveSidebarTab,
-    savedInsightIds,
+    savedInsightIds: state.savedInsightIds,
     messagesEndRef,
     textareaRef,
     pendingFunctionCall,

@@ -9,21 +9,23 @@ import type { UploadResult, GetReferencesResult } from "./_actions/library";
 
 import {
   saveNoteAction as saveNote,
+  updateNoteAction as updateNote,
+} from "./_actions/notes";
+import type { SaveNoteResult, UpdateNoteParams } from "./_actions/notes";
+
+import {
   getNotesAction as getNotes,
   getThesisBoxesAction as getThesisBoxes,
   updateNoteBoxAction as updateNoteBox,
   getAllNotesWithReferencesAction as getAllNotesWithReferences,
-  updateNoteAction as updateNote,
   getNotesByFieldAction as getNotesByField,
   searchNotesByFieldAction as searchNotesByField,
-} from "./_actions/notes";
+} from "./_services/db-notes";
 import type {
-  SaveNoteResult,
   GetNotesResult,
   GetThesisBoxesResult,
   GetAllNotesWithReferencesResult,
-  UpdateNoteParams,
-} from "./_actions/notes";
+} from "./_services/db-notes";
 
 import { extractAcademicMetadata as extractAcademicMetadataService } from "./_services/metadata.service";
 import type { AcademicMetadata } from "./_services/metadata.service";
