@@ -1,24 +1,40 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Sparkles, Loader2, ExternalLink, Upload } from "lucide-react";
 import { LiteratureRecommendation } from "../actions";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface RecommendationGridProps {
   recs: LiteratureRecommendation[];
+  boxes: {
+    id: number;
+    name: string;
+    description: string | null;
+  }[];
   isLoadingRecs: boolean;
   recsError: string;
-  onRefresh: () => void;
+  onRefresh: (boxId?: number) => void;
   onSelectRec: (rec: LiteratureRecommendation) => void;
 }
 
 export function RecommendationGrid({
   recs,
+  boxes,
   isLoadingRecs,
   recsError,
   onRefresh,
   onSelectRec,
 }: RecommendationGridProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
   const groupedRecs = recs.reduce<
     Record<number, { boxName: string; items: LiteratureRecommendation[] }>
   >((acc, rec) => {
@@ -46,14 +62,82 @@ export function RecommendationGrid({
             yapay zeka tarafından önerilen temel akademik kaynaklar
           </p>
         </div>
-        <button
-          disabled={isLoadingRecs}
-          onClick={onRefresh}
-          className="text-xs font-semibold border border-primary text-primary bg-background hover:bg-primary hover:text-primary-foreground transition duration-150 rounded px-3.5 py-2 cursor-pointer flex items-center gap-1.5 self-start sm:self-auto disabled:opacity-50 shrink-0 whitespace-nowrap"
-        >
-          <Sparkles className="size-3.5" />
-          <span>{isLoadingRecs ? "Taranıyor..." : "Literatürü Tara"}</span>
-        </button>
+
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+          <DialogTrigger
+            disabled={isLoadingRecs}
+            className="text-xs font-semibold border border-primary text-primary bg-background hover:bg-primary hover:text-primary-foreground transition duration-150 rounded px-3.5 py-2 cursor-pointer flex items-center gap-1.5 self-start sm:self-auto disabled:opacity-50 shrink-0 whitespace-nowrap"
+          >
+            <Sparkles className="size-3.5" />
+            <span>{isLoadingRecs ? "Taranıyor..." : "Literatürü Tara"}</span>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[550px] bg-card border border-border text-foreground rounded-xl">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+                <Sparkles className="size-5 text-primary" />
+                <span>Akıllı Bölüm Bazlı Literatür Taraması</span>
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground font-sans">
+                Tez Anayasanızın genel makro bağlamını koruyarak, seçtiğiniz bölüme özel mikro odaklı ve kademeli soyutlama filtreli literatür araması başlatın.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="py-4 space-y-3">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider font-sans">
+                Taramak İstediğiniz Bölümü Seçin:
+              </p>
+              
+              <div className="grid grid-cols-1 gap-2.5 max-h-[350px] overflow-y-auto pr-1">
+                {/* Tüm Tez Seçeneği */}
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    onRefresh();
+                  }}
+                  className="w-full text-left p-3.5 rounded-lg border border-border bg-background hover:border-primary transition group flex items-start gap-3 cursor-pointer"
+                >
+                  <div className="size-5 rounded-full border border-border group-hover:border-primary flex items-center justify-center shrink-0 mt-0.5">
+                    <div className="size-2.5 rounded-full bg-transparent group-hover:bg-primary transition" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-bold text-foreground font-sans group-hover:text-primary transition">
+                      Tüm Tez Bölümleri (Toplu Tarama)
+                    </h4>
+                    <p className="text-xs text-muted-foreground font-sans leading-relaxed">
+                      Tezin tüm çalışma kutuları için sırayla küresel ve yerel indeks araması gerçekleştirir.
+                    </p>
+                  </div>
+                </button>
+
+                {/* Bölüm Bazlı Seçenekler */}
+                {boxes.map((box) => (
+                  <button
+                    key={box.id}
+                    onClick={() => {
+                      setIsOpen(false);
+                      onRefresh(box.id);
+                    }}
+                    className="w-full text-left p-3.5 rounded-lg border border-border bg-background hover:border-primary transition group flex items-start gap-3 cursor-pointer"
+                  >
+                    <div className="size-5 rounded-full border border-border group-hover:border-primary flex items-center justify-center shrink-0 mt-0.5">
+                      <div className="size-2.5 rounded-full bg-transparent group-hover:bg-primary transition" />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-bold text-foreground font-sans group-hover:text-primary transition">
+                        {box.name}
+                      </h4>
+                      {box.description && (
+                        <p className="text-xs text-muted-foreground font-sans leading-relaxed line-clamp-2">
+                          {box.description}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {isLoadingRecs ? (

@@ -6,6 +6,8 @@ import {
   getLibraryReferencesAction,
   sendMessageAction,
   saveInsightAction,
+  updateThesisBoxContentAction,
+  updateThesisCoreFrameworkAction,
   ReferenceItem,
   ChatMessage,
   CitationSource,
@@ -16,6 +18,28 @@ export interface ChatMessageWithMetadata {
   content: string;
   sources?: CitationSource[];
   timestamp: string;
+  functionCall?: {
+    name: string;
+    args: any;
+    id: string;
+    thoughtSignature?: string;
+  };
+  functionResponse?: {
+    name: string;
+    response: any;
+    id: string;
+  };
+}
+
+export interface PendingFunctionCall {
+  name: string;
+  args: {
+    boxId?: number;
+    updatedContent?: string;
+    updatedMethodology?: string;
+  };
+  id: string;
+  thoughtSignature?: string;
 }
 
 export interface ChatSession {
@@ -33,6 +57,8 @@ export function useAdvisor() {
   const [inputValue, setInputValue] = useState("");
   const [isPending, setIsPending] = useState(false);
   const [loadingRefs, setLoadingRefs] = useState(true);
+  const [pendingFunctionCall, setPendingFunctionCall] =
+    useState<PendingFunctionCall | null>(null);
 
   // Multi-session chat history states
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -382,6 +408,8 @@ export function useAdvisor() {
     const serverHistory: ChatMessage[] = updatedHistory.map((msg) => ({
       role: msg.role,
       content: msg.content,
+      functionCall: msg.functionCall,
+      functionResponse: msg.functionResponse,
     }));
 
     // 3. Trigger Server Action
@@ -391,7 +419,35 @@ export function useAdvisor() {
         serverHistory,
         selectedRefIds,
       );
-      if (res.success && res.response) {
+      if (res.success && res.functionCall) {
+        setPendingFunctionCall({
+          name: res.functionCall.name,
+          args: res.functionCall.args as PendingFunctionCall["args"],
+          id: res.functionCall.id,
+          thoughtSignature: res.functionCall.thoughtSignature,
+        });
+
+        const finalHistory: ChatMessageWithMetadata[] = [
+          ...updatedHistory,
+          {
+            role: "assistant",
+            content:
+              res.response ||
+              "Tezinizin ilgili bölümünü güncellemek için bir öneri hazırladım. Aşağıdaki panelden onaylayabilir veya reddedebilirsiniz.",
+            timestamp: new Date().toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            functionCall: {
+              name: res.functionCall.name,
+              args: res.functionCall.args,
+              id: res.functionCall.id,
+              thoughtSignature: res.functionCall.thoughtSignature,
+            },
+          },
+        ];
+        updateActiveSession(finalHistory);
+      } else if (res.success && res.response) {
         const finalHistory: ChatMessageWithMetadata[] = [
           ...updatedHistory,
           {
@@ -410,6 +466,224 @@ export function useAdvisor() {
       }
     } catch {
       toast.error("Sunucu hatası: Mesaj iletilemedi.");
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  /**
+   * Action handler triggered when the user clicks 'Değişikliği Onayla'
+   */
+  const handleApproveUpdate = async () => {
+    if (!pendingFunctionCall) return;
+
+    setIsPending(true);
+    try {
+      let dbRes: { success: boolean; error?: string };
+      let successMessage = "Tez bölümü başarıyla güncellendi! 📝";
+      let localLogContent = "";
+
+      if (pendingFunctionCall.name === "update_thesis_core_framework") {
+        const coreContent = pendingFunctionCall.args.updatedMethodology || "";
+        dbRes = await updateThesisCoreFrameworkAction(coreContent);
+        successMessage = "Tez Anayasası Metodolojisi başarıyla güncellendi! 📜";
+        localLogContent = "Tez anayasası metodoloji güncellemesi onaylandı.";
+      } else {
+        dbRes = await updateThesisBoxContentAction(
+          pendingFunctionCall.args.boxId!,
+          pendingFunctionCall.args.updatedContent!,
+        );
+        successMessage = "Tez bölümü başarıyla güncellendi! 📝";
+        localLogContent = `Bölüm güncellemesi onaylandı. (Kutu ID: ${pendingFunctionCall.args.boxId})`;
+      }
+
+      if (dbRes.success) {
+        toast.success(successMessage);
+
+        // Construct function response message log locally
+        const functionResponseMsg: ChatMessageWithMetadata = {
+          role: "user",
+          content: localLogContent,
+          timestamp: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          functionResponse: {
+            name: pendingFunctionCall.name,
+            response: { status: "success" },
+            id: pendingFunctionCall.id,
+          },
+        };
+
+        const nextHistory = [...chatHistory, functionResponseMsg];
+        updateActiveSession(nextHistory);
+        setPendingFunctionCall(null);
+
+        // Fetch AI's follow-up response acknowledging the successful update
+        const serverHistory: ChatMessage[] = nextHistory.map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+          functionCall: msg.functionCall,
+          functionResponse: msg.functionResponse,
+        }));
+
+        const followUpRes = await sendMessageAction(
+          "", // Empty because it's a follow-up to function call
+          serverHistory,
+          selectedRefIds,
+        );
+
+        if (followUpRes.success && followUpRes.functionCall) {
+          // If Gemini chained another function call
+          setPendingFunctionCall({
+            name: followUpRes.functionCall.name,
+            args: followUpRes.functionCall.args as PendingFunctionCall["args"],
+            id: followUpRes.functionCall.id,
+            thoughtSignature: followUpRes.functionCall.thoughtSignature,
+          });
+          const finalHistory = [
+            ...nextHistory,
+            {
+              role: "assistant" as const,
+              content:
+                followUpRes.response ||
+                "Başka bir güncelleme önerisi daha hazırladım.",
+              sources: followUpRes.sources,
+              timestamp: new Date().toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              functionCall: {
+                name: followUpRes.functionCall.name,
+                args: followUpRes.functionCall.args,
+                id: followUpRes.functionCall.id,
+                thoughtSignature: followUpRes.functionCall.thoughtSignature,
+              },
+            },
+          ];
+          updateActiveSession(finalHistory);
+        } else if (followUpRes.success && followUpRes.response) {
+          const finalHistory = [
+            ...nextHistory,
+            {
+              role: "assistant" as const,
+              content: followUpRes.response,
+              sources: followUpRes.sources,
+              timestamp: new Date().toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            },
+          ];
+          updateActiveSession(finalHistory);
+        }
+      } else {
+        toast.error(dbRes.error || "Bölüm güncellenirken hata oluştu.");
+      }
+    } catch {
+      toast.error("Bağlantı hatası: Bölüm güncellenemedi.");
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  /**
+   * Action handler triggered when the user clicks 'Vazgeç / Reddet'
+   */
+  const handleRejectUpdate = async (feedbackText?: string) => {
+    if (!pendingFunctionCall) return;
+
+    const cleanFeedback = feedbackText?.trim() || "";
+    const feedbackStr = cleanFeedback
+      ? `Kullanıcının reddetme gerekçesi: ${cleanFeedback}`
+      : "Kullanıcının reddetme gerekçesi: Belirtilmedi.";
+
+    // Construct rejection response so model context understands it was cancelled
+    const functionResponseMsg: ChatMessageWithMetadata = {
+      role: "user",
+      content: cleanFeedback
+        ? `Bölüm güncellemesi reddedildi. Gerekçe: ${cleanFeedback}`
+        : `Bölüm güncellemesi reddedildi.`,
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      functionResponse: {
+        name: pendingFunctionCall.name,
+        response: {
+          status: "rejected_by_user",
+          user_feedback: feedbackStr,
+        },
+        id: pendingFunctionCall.id,
+      },
+    };
+
+    const nextHistory = [...chatHistory, functionResponseMsg];
+    updateActiveSession(nextHistory);
+    setPendingFunctionCall(null);
+
+    // Call follow-up to model so it adjusts dialogue
+    setIsPending(true);
+    try {
+      const serverHistory: ChatMessage[] = nextHistory.map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+        functionCall: msg.functionCall,
+        functionResponse: msg.functionResponse,
+      }));
+
+      const followUpRes = await sendMessageAction(
+        "",
+        serverHistory,
+        selectedRefIds,
+      );
+
+      if (followUpRes.success && followUpRes.functionCall) {
+        // If Gemini chained another function call (e.g. revised proposal based on feedback)
+        setPendingFunctionCall({
+          name: followUpRes.functionCall.name,
+          args: followUpRes.functionCall.args as PendingFunctionCall["args"],
+          id: followUpRes.functionCall.id,
+          thoughtSignature: followUpRes.functionCall.thoughtSignature,
+        });
+        const finalHistory = [
+          ...nextHistory,
+          {
+            role: "assistant" as const,
+            content:
+              followUpRes.response ||
+              "Eleştirileriniz doğrultusunda revize edilmiş yeni bir güncelleme önerisi daha hazırladım.",
+            sources: followUpRes.sources,
+            timestamp: new Date().toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            functionCall: {
+              name: followUpRes.functionCall.name,
+              args: followUpRes.functionCall.args,
+              id: followUpRes.functionCall.id,
+              thoughtSignature: followUpRes.functionCall.thoughtSignature,
+            },
+          },
+        ];
+        updateActiveSession(finalHistory);
+      } else if (followUpRes.success && followUpRes.response) {
+        const finalHistory = [
+          ...nextHistory,
+          {
+            role: "assistant" as const,
+            content: followUpRes.response,
+            sources: followUpRes.sources,
+            timestamp: new Date().toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          },
+        ];
+        updateActiveSession(finalHistory);
+      }
+    } catch {
+      // Fail silently for rejection followup
     } finally {
       setIsPending(false);
     }
@@ -463,6 +737,7 @@ export function useAdvisor() {
     savedInsightIds,
     messagesEndRef,
     textareaRef,
+    pendingFunctionCall,
     handleToggleRef,
     handleSelectAllRefs,
     handleClearAllRefs,
@@ -473,5 +748,7 @@ export function useAdvisor() {
     handleSendMessage,
     handleKeyDown,
     handleSaveInsight,
+    handleApproveUpdate,
+    handleRejectUpdate,
   };
 }

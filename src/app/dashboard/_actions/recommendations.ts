@@ -234,6 +234,7 @@ export async function discoverNewRecommendationsAction(
   researchQuestion: string,
   argument: string,
   methodology: string,
+  boxId?: number,
 ): Promise<RecommendationsResult> {
   try {
     const [core] = await db.select().from(thesisCore).limit(1);
@@ -261,17 +262,22 @@ export async function discoverNewRecommendationsAction(
     }
 
     // Fetch thesis_boxes from Neon PostgreSQL
-    const boxes = await db
+    let boxes = await db
       .select()
       .from(thesisBoxes)
       .where(eq(thesisBoxes.thesisCoreId, core.id))
       .orderBy(thesisBoxes.order);
 
+    if (boxId) {
+      boxes = boxes.filter((b) => b.id === boxId);
+    }
+
     if (boxes.length === 0) {
       return {
         success: false,
-        error:
-          "Tezinize ait henüz hiçbir Tematik Çalışma Kutusu bulunamadı. Lütfen onboarding veya dashboard üzerinden kutuları oluşturun.",
+        error: boxId
+          ? "Seçilen Tematik Çalışma Kutusu bulunamadı."
+          : "Tezinize ait henüz hiçbir Tematik Çalışma Kutusu bulunamadı. Lütfen onboarding veya dashboard üzerinden kutuları oluşturun.",
       };
     }
 
@@ -286,11 +292,14 @@ export async function discoverNewRecommendationsAction(
 
     const existingPaperIds = new Set(
       existingRecs
+        .filter((r) => !boxId || r.boxId !== boxId)
         .map((r) => r.paperId)
         .filter((id): id is string => typeof id === "string" && id !== ""),
     );
     const existingTitles = new Set(
-      existingRecs.map((r) => r.title.toLowerCase().trim()),
+      existingRecs
+        .filter((r) => !boxId || r.boxId !== boxId)
+        .map((r) => r.title.toLowerCase().trim()),
     );
 
     const allNewRecommendations: LiteratureRecommendation[] = [];
@@ -399,7 +408,14 @@ export async function discoverNewRecommendationsAction(
       };
     }
 
-    const updatedRecommendations = [...existingRecs, ...allNewRecommendations];
+    let updatedRecommendations: LiteratureRecommendation[] = [];
+    if (boxId) {
+      // Filter out old recommendations for this specific boxId to prevent stale data
+      const otherRecs = existingRecs.filter((r) => r.boxId !== boxId);
+      updatedRecommendations = [...otherRecs, ...allNewRecommendations];
+    } else {
+      updatedRecommendations = [...existingRecs, ...allNewRecommendations];
+    }
 
     await db
       .update(thesisCore)

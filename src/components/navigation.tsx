@@ -22,11 +22,6 @@ export default function Navigation() {
 
   const navItems = [
     {
-      name: "Tez Anayasası",
-      href: "/onboarding",
-      icon: Sparkles,
-    },
-    {
       name: "Tez Karargahı",
       href: "/",
       icon: LayoutDashboard,

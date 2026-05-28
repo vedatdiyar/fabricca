@@ -21,7 +21,9 @@ interface DashboardClientProps {
   initialThesisData: ThesisCoreData | null;
 }
 
-export default function DashboardClient({ initialThesisData }: DashboardClientProps) {
+export default function DashboardClient({
+  initialThesisData,
+}: DashboardClientProps) {
   const router = useRouter();
   const thesisData = initialThesisData;
   const [recs, setRecs] = useState<LiteratureRecommendation[]>([]);
@@ -36,6 +38,7 @@ export default function DashboardClient({ initialThesisData }: DashboardClientPr
   const fetchRecommendations = async (
     core: ThesisCoreData | null,
     forceRefresh = false,
+    boxId?: number,
   ) => {
     try {
       setIsLoadingRecs(true);
@@ -55,6 +58,7 @@ export default function DashboardClient({ initialThesisData }: DashboardClientPr
             core.researchQuestion,
             core.argument,
             core.methodology,
+            boxId,
           )
         : await getAcademicRecommendationsAction(
             core.title,
@@ -82,8 +86,6 @@ export default function DashboardClient({ initialThesisData }: DashboardClientPr
         setIsLoading(true);
         setError("");
 
-
-
         // 2. Load recommendations if thesis data exists
         if (initialThesisData) {
           await fetchRecommendations(initialThesisData);
@@ -104,8 +106,6 @@ export default function DashboardClient({ initialThesisData }: DashboardClientPr
 
     loadDashboardData();
   }, [router, initialThesisData]);
-
-
 
   // If loading or an error occurs, show full-screen message
   if (isLoading || error) {
@@ -163,14 +163,15 @@ export default function DashboardClient({ initialThesisData }: DashboardClientPr
         </div>
       )}
 
-
-
       {/* LİTERATÜR TAVSİYELERİ */}
       <RecommendationGrid
         recs={recs}
+        boxes={thesisData?.boxes || []}
         isLoadingRecs={isLoadingRecs}
         recsError={recsError}
-        onRefresh={() => thesisData && fetchRecommendations(thesisData, true)}
+        onRefresh={(boxId) =>
+          thesisData && fetchRecommendations(thesisData, true, boxId)
+        }
         onSelectRec={setSelectedRec}
       />
 

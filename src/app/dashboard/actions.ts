@@ -81,11 +81,13 @@ export async function discoverNewRecommendationsAction(
   researchQuestion: string,
   argument: string,
   methodology: string,
+  boxId?: number,
 ): Promise<RecommendationsResult> {
   return discoverNewRecommendations(
     title,
     researchQuestion,
     argument,
     methodology,
+    boxId,
   );
 }

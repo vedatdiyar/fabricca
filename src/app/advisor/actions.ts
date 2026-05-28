@@ -1,10 +1,17 @@
 "use server";
 
 import { db } from "@/db";
-import { references, pdfChunks, aiInsights, thesisCore } from "@/db/schema";
-import { inArray, sql } from "drizzle-orm";
-import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import {
+  references,
+  pdfChunks,
+  aiInsights,
+  thesisCore,
+  thesisBoxes,
+} from "@/db/schema";
+import { inArray, sql, eq } from "drizzle-orm";
+import { GoogleGenAI, ThinkingLevel, Type } from "@google/genai";
 import { generateContentWithRetry } from "@/lib/gemini";
+import { revalidatePath } from "next/cache";
 
 export interface ReferenceItem {
   id: number;
@@ -18,6 +25,17 @@ export interface ReferenceItem {
 export interface ChatMessage {
   role: "user" | "assistant" | "model";
   content: string;
+  functionCall?: {
+    name: string;
+    args: any;
+    id: string;
+    thoughtSignature?: string;
+  };
+  functionResponse?: {
+    name: string;
+    response: any;
+    id: string;
+  };
 }
 
 /**
@@ -95,6 +113,119 @@ export async function saveInsightAction(
   }
 }
 
+/**
+ * Server Action using Drizzle ORM to update a specific thesis box description content by its ID.
+ * Triggered after user approval in Advisor Chat room.
+ */
+export async function updateThesisBoxContentAction(
+  boxId: number,
+  content: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const cleanBoxId = Number(boxId);
+    console.log(
+      `[updateThesisBoxContentAction] Attempting database update for boxId: ${boxId} (parsed as number: ${cleanBoxId})`,
+    );
+
+    if (isNaN(cleanBoxId)) {
+      return { success: false, error: `Geçersiz Kutu ID: ${boxId}` };
+    }
+
+    const updatedRows = await db
+      .update(thesisBoxes)
+      .set({ description: content })
+      .where(eq(thesisBoxes.id, cleanBoxId))
+      .returning();
+
+    console.log(
+      `[updateThesisBoxContentAction] Update query execution complete. Affected row count: ${updatedRows.length}`,
+      updatedRows,
+    );
+
+    if (updatedRows.length === 0) {
+      console.warn(
+        `[updateThesisBoxContentAction] Warning: No row was updated for boxId: ${cleanBoxId}. Row may not exist.`,
+      );
+      return {
+        success: false,
+        error: `Güncellenecek kutu bulunamadı (Kutu ID: ${cleanBoxId}).`,
+      };
+    }
+
+    // Revalidate paths for real-time dashboard and card index room synchronization
+    revalidatePath("/dashboard");
+    revalidatePath("/kartoteks");
+
+    return { success: true };
+  } catch (error) {
+    console.error("updateThesisBoxContentAction Error:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Tez kutusu güncellenirken bir hata oluştu.",
+    };
+  }
+}
+
+/**
+ * Server Action using Drizzle ORM to update the methodology and historical framework of the
+ * main Thesis Constitution (thesis_core table).
+ * Triggered after user approval in Advisor Chat room.
+ */
+export async function updateThesisCoreFrameworkAction(
+  methodologyContent: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log(
+      `[updateThesisCoreFrameworkAction] Updating thesis_core methodology with new content...`,
+    );
+
+    // Single tenant system has only one row in thesisCore table. Get the first core row.
+    const [core] = await db.select().from(thesisCore).limit(1);
+    if (!core) {
+      console.warn("[updateThesisCoreFrameworkAction] Error: No thesis_core record found.");
+      return {
+        success: false,
+        error: "Güncellenecek Tez Anayasası (thesis_core) kaydı bulunamadı.",
+      };
+    }
+
+    const updatedRows = await db
+      .update(thesisCore)
+      .set({ methodology: methodologyContent })
+      .where(eq(thesisCore.id, core.id))
+      .returning();
+
+    console.log(
+      `[updateThesisCoreFrameworkAction] Thesis core methodology updated. Affected row count: ${updatedRows.length}`,
+      updatedRows,
+    );
+
+    if (updatedRows.length === 0) {
+      return {
+        success: false,
+        error: "Tez Anayasası güncellenemedi.",
+      };
+    }
+
+    // Revalidate paths for real-time dashboard synchronization
+    revalidatePath("/dashboard");
+
+    return { success: true };
+  } catch (error) {
+    console.error("updateThesisCoreFrameworkAction Error:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Tez anayasası güncellenirken bir hata oluştu.",
+    };
+  }
+}
+
 export interface CitationSource {
   id: number;
   index: number;
@@ -119,12 +250,17 @@ export async function sendMessageAction(
   success: boolean;
   response?: string;
   sources?: CitationSource[];
+  functionCall?: {
+    name: string;
+    args: any;
+    id: string;
+    thoughtSignature?: string;
+  };
   error?: string;
 }> {
   try {
-    if (!message || !message.trim()) {
-      return { success: false, error: "Mesaj boş olamaz." };
-    }
+    // message can be empty if we are sending a functionResponse follow-up
+    const isNormalMessage = message && message.trim().length > 0;
 
     // Fetch active Thesis Core (Thesis constitution) dynamically
     const [core] = await db.select().from(thesisCore).limit(1);
@@ -132,6 +268,23 @@ export async function sendMessageAction(
     const thesisQuestion = core?.researchQuestion || "Belirtilmemiş";
     const thesisArgument = core?.argument || "Belirtilmemiş";
     const thesisMethodology = core?.methodology || "Belirtilmemiş";
+
+    // Fetch active thesis boxes to inject valid IDs and descriptions into the system prompt
+    const boxesList = await db
+      .select({
+        id: thesisBoxes.id,
+        name: thesisBoxes.name,
+        description: thesisBoxes.description,
+      })
+      .from(thesisBoxes)
+      .orderBy(thesisBoxes.order);
+
+    const boxesInfoText = boxesList
+      .map(
+        (b) =>
+          `- Kutu ID: ${b.id}, Bölüm Adı: "${b.name}", Mevcut İçerik/Açıklama: "${b.description || "Boş"}"`,
+      )
+      .join("\n");
 
     const geminiKey = process.env.GEMINI_API_KEY;
     if (!geminiKey) {
@@ -144,33 +297,28 @@ export async function sendMessageAction(
 
     const ai = new GoogleGenAI({ apiKey: geminiKey });
 
-    // Step 1: Generate actual 1536-dimensional embedding of the user's message
+    // Step 1: Generate actual 1536-dimensional embedding of the user's message (only if normal query)
     let embeddingVector: number[] = [];
-    try {
-      const embedResponse = await ai.models.embedContent({
-        model: "gemini-embedding-2",
-        contents: message.trim(),
-        config: {
-          outputDimensionality: 1536,
-        },
-      });
-      embeddingVector = embedResponse.embeddings?.[0]?.values || [];
-    } catch (embedErr) {
-      console.error("Gemini Embedding Generation Error:", embedErr);
-      return {
-        success: false,
-        error: `Aramada kullanılmak üzere embedding üretilemedi: ${embedErr instanceof Error ? embedErr.message : "Bilinmeyen hata"}`,
-      };
+    if (isNormalMessage) {
+      try {
+        const embedResponse = await ai.models.embedContent({
+          model: "gemini-embedding-2",
+          contents: message.trim(),
+          config: {
+            outputDimensionality: 1536,
+          },
+        });
+        embeddingVector = embedResponse.embeddings?.[0]?.values || [];
+      } catch (embedErr) {
+        console.error("Gemini Embedding Generation Error:", embedErr);
+        return {
+          success: false,
+          error: `Aramada kullanılmak üzere embedding üretilemedi: ${embedErr instanceof Error ? embedErr.message : "Bilinmeyen hata"}`,
+        };
+      }
     }
 
-    if (embeddingVector.length !== 1536) {
-      return {
-        success: false,
-        error: "Geçerli 1536 boyutlu embedding vektörü alınamadı.",
-      };
-    }
-
-    // Step 2: Drizzle ORM similarity search using cosine similarity
+    // Step 2: Drizzle ORM similarity search using cosine similarity (only for normal queries with embedding)
     let similarChunks: Array<{
       id: number;
       content: string;
@@ -178,47 +326,48 @@ export async function sendMessageAction(
       similarity: number;
     }> = [];
 
-    try {
-      const targetEmbeddingStr = JSON.stringify(embeddingVector);
-      const similaritySql = sql<number>`1 - (${pdfChunks.embedding} <=> ${targetEmbeddingStr}::vector)`;
+    if (isNormalMessage && embeddingVector.length === 1536) {
+      try {
+        const targetEmbeddingStr = JSON.stringify(embeddingVector);
+        const similaritySql = sql<number>`1 - (${pdfChunks.embedding} <=> ${targetEmbeddingStr}::vector)`;
 
-      // Perform pgvector similarity search on pdf_chunks using cosine distance
-      if (selectedReferenceIds && selectedReferenceIds.length > 0) {
-        similarChunks = await db
-          .select({
-            id: pdfChunks.id,
-            content: pdfChunks.content,
-            referenceId: pdfChunks.referenceId,
-            similarity: similaritySql,
-          })
-          .from(pdfChunks)
-          .where(inArray(pdfChunks.referenceId, selectedReferenceIds))
-          .orderBy(
-            sql`${pdfChunks.embedding} <=> ${targetEmbeddingStr}::vector`,
-          )
-          .limit(5);
-      } else {
-        similarChunks = await db
-          .select({
-            id: pdfChunks.id,
-            content: pdfChunks.content,
-            referenceId: pdfChunks.referenceId,
-            similarity: similaritySql,
-          })
-          .from(pdfChunks)
-          .orderBy(
-            sql`${pdfChunks.embedding} <=> ${targetEmbeddingStr}::vector`,
-          )
-          .limit(5);
+        // Perform pgvector similarity search on pdf_chunks using cosine distance
+        if (selectedReferenceIds && selectedReferenceIds.length > 0) {
+          similarChunks = await db
+            .select({
+              id: pdfChunks.id,
+              content: pdfChunks.content,
+              referenceId: pdfChunks.referenceId,
+              similarity: similaritySql,
+            })
+            .from(pdfChunks)
+            .where(inArray(pdfChunks.referenceId, selectedReferenceIds))
+            .orderBy(
+              sql`${pdfChunks.embedding} <=> ${targetEmbeddingStr}::vector`,
+            )
+            .limit(5);
+        } else {
+          similarChunks = await db
+            .select({
+              id: pdfChunks.id,
+              content: pdfChunks.content,
+              referenceId: pdfChunks.referenceId,
+              similarity: similaritySql,
+            })
+            .from(pdfChunks)
+            .orderBy(
+              sql`${pdfChunks.embedding} <=> ${targetEmbeddingStr}::vector`,
+            )
+            .limit(5);
+        }
+      } catch (dbErr) {
+        console.error("Postgres/pgvector similarity query error:", dbErr);
+        // We don't stop the process, we fall back to empty chunks
+        similarChunks = [];
       }
-    } catch (dbErr) {
-      console.error("Postgres/pgvector similarity query error:", dbErr);
-      // We don't stop the process, we fall back to empty chunks
-      similarChunks = [];
     }
 
     // Step 3: Filter chunks by a strict relevance threshold of 0.25
-    // Map with a 1-based index (1 to 5) for citation referencing
     const relevantChunks = similarChunks
       .filter((chunk) => chunk.similarity >= 0.25)
       .map((chunk, idx) => ({
@@ -229,7 +378,6 @@ export async function sendMessageAction(
     // Get the reference titles for the sources return, including original text content
     let sourceReferenceInfos: CitationSource[] = [];
     if (relevantChunks.length > 0) {
-      // Find all unique reference IDs
       const uniqueRefIds = Array.from(
         new Set(
           relevantChunks
@@ -301,15 +449,52 @@ export async function sendMessageAction(
       "1. Eğer soru kütüphanedeki dökümanlara veya kütüphane verilerine yönelikse, sana iletilen BAĞLAM (Context) dışına çıkmadan, verileri tahrif etmeden, uydurma yapmadan net, atıflı ve dökümana sadık yanıt ver.\n" +
       "2. Eğer kullanıcı sana genel metodolojik kurallar (Nitel/nicel analiz yöntemleri, vaka seçimi, karşılaştırma modelleri vb.), sosyal teoriler ve kavramsal çerçeveler, akademik yazım teknikleri veya tez kurgusu gibi kuramsal/yöntemsel sorular soruyorsa, RAG bağlamıyla sınırlı kalma! Kendi derin akademik hafızanı, geniş entelektüel birikimini ve uzmanlığını devreye sokarak kullanıcıya son derece yaratıcı, kapsamlı ve yol gösterici entelektüel rehberlik sağla.\n\n" +
       'UYARI: Sana verilen bağlam içindeki her bir akademik metin parçası <chunk id="X"> etiketiyle sarılmıştır. Cevap üretirken bağlamdan aldığın her bilginin, cümlenin veya dönemin hemen sonuna istisnasız bir şekilde tam olarak [^X] formatında atıf ekleyeceksin (Buradaki X, dökümanın gerçek id numarası olmalıdır). Kendi hafından [1], [^1] veya (1) gibi statik atıflar KESİNLİKLE üretmeyeceksin.\n\n' +
-      "Yanıtlarını her zaman son derece saygın, teşvik edici, yapıcı ve samimi bir akademik üslupla ve temiz Markdown formatında sun. Adını yalnızca karşılamada bir kez kullan, sonraki hiçbir yanıtında kullanıcının adını tekrarlama. Başlıklar, listeler ve vurgulamalar kullanarak okunabilirliği maksimize et.";
+      "Yanıtlarını her zaman son derece saygın, teşvik edici, yapıcı ve samimi bir akademik üslupla ve temiz Markdown formatında sun. Adını yalnızca karşılamada bir kez kullan, sonraki hiçbir yanıtında kullanıcının adını tekrarlama. Başlıklar, listeler ve vurgulamalar kullanarak okunabilirliği maksimize et.\n\n" +
+      "TEZ BÖLÜMLERİ VE KUTULARI (GÜNCELLEME İÇİN GEÇERLİ ID LİSTESİ):\n" +
+      (boxesInfoText.trim()
+        ? boxesInfoText
+        : "Tanımlı tez kutusu bulunmamaktadır.") +
+      "\n\nTEZ ANAYASASINI VE BÖLÜM KUTULARINI GÜNCELLEME ARACI KULLANIM KURALI (GÖRÜNMEZ SEKRETER/ASİSTAN PROTOKOLÜ):\n" +
+      "Sen kıdemli, son derece bilge bir Profesörsün (Tez Danışmanı). Sen asla doğrudan veritabanına veri yazan bir kâtip değilsin. Ancak sohbet esnasında kullanıcıyla akademik bir mutabakata vardığında veya kullanıcı bir revizyon talep ettiğinde, senin arkanda hazır bekleyen, sohbeti dinleyen ve veritabanı kâtipliğini yapan görünmez bir 'Tez Asistanı' olduğunu varsay.\n" +
+      "1. Kullanıcıyla ortak karar aldığınız veya kullanıcının talebini haklı bulduğun an, bu asistanın veritabanına işleyebileceği rafine, akademik taslak metni hazırlaması için `update_thesis_box` veya `update_thesis_core_framework` araçlarını arka planda tetikle.\n" +
+      "2. Eğer kullanıcı tezin genel yöntem tanımını, metodolojik yaklaşımını veya tarihsel kapsamını değiştirmek veya zenginleştirmek isterse, doğrudan `update_thesis_core_framework` aracını çağırarak en üstteki ana 'Tez Anayasası & Stratejik Çatı' (thesis_core.methodology) alanını `updatedMethodology` parametresine yazacağın yeni bütünsel akademik özet ile güncelle.\n" +
+      "3. Eğer belirli bir alt bölümü (Giriş, Teori, Metodoloji vb.) güncellemek veya yeniden yazmak üzerine anlaşılırsa, `update_thesis_box` aracını çağır. Doğru `boxId` değerini yukarıdaki listeden tespit edip `updatedContent` parametresine yazacağın rafine, akademik taslak paragrafıyla aracı tetikle.\n" +
+      "4. GEREKTİĞİNDE tek bir turn içinde HEM genel metodoloji çerçevesini (update_thesis_core_framework) HEM DE ilişkili bir alt bölümü (update_thesis_box) ardışık/zincirleme olarak asistanına tetikletebilirsin.\n" +
+      "5. Yanıtlarında asla 'kutuya işledim' veya 'veritabanını güncelledim' deme. Bunun yerine 'Asistanıma talimat verdim, taslağı hazırladı, ekranınızdaki panelden onaylayabilirsiniz' şeklinde bir duruş sergileyerek asistanının hazırladığı taslağı onaylamasını iste.\n" +
+      "6. Kullanıcı bir öneriyi reddettiğinde ve 'user_feedback' gönderdiğinde, bu gerekçeyi çok sıkı analiz et. Kullanıcının eleştirilerini dikkate alarak, asistanının hazırlaması için kuramsal ağırlığı revize edilmiş YENİ VE DAHA RAFİNE bir fonksiyon çağrısı (tool call) üreterek kullanıcının karşısına tekrar çık.";
 
     // Step 6: Format Gemini API payload (contents array)
-    const contents = [
-      ...chatHistory.map((item) => ({
-        role: item.role === "assistant" ? "model" : item.role,
-        parts: [{ text: item.content }],
-      })),
-      {
+    const contents = chatHistory.map((item) => {
+      const role = item.role === "assistant" ? "model" : item.role;
+      const parts: any[] = [];
+
+      if (item.functionCall) {
+        parts.push({
+          functionCall: {
+            name: item.functionCall.name,
+            args: item.functionCall.args,
+            id: item.functionCall.id,
+          },
+          thoughtSignature: item.functionCall.thoughtSignature,
+        });
+      } else if (item.functionResponse) {
+        parts.push({
+          functionResponse: {
+            name: item.functionResponse.name,
+            response: item.functionResponse.response,
+            id: item.functionResponse.id,
+          },
+        });
+      } else {
+        parts.push({ text: item.content });
+      }
+
+      return { role, parts };
+    });
+
+    // If it's a normal new message (and not a function response reply), append it formatted with RAG context
+    if (isNormalMessage) {
+      contents.push({
         role: "user",
         parts: [
           {
@@ -321,10 +506,30 @@ export async function sendMessageAction(
                 : "Erişilebilir veya eşleşen bir kütüphane bağlamı bulunmamaktadır. Kendi genel akademik bilginizle melez akıl yürütme yaparak yanıtlayın."),
           },
         ],
-      },
-    ];
+      });
+    }
 
-    // Step 7: Call Google Gemini 3.1 Flash Lite via official SDK with retry
+    // Step 7: Suspect box updates to dynamically elevate thinking level
+    const userQueryStr = (message || "").toLowerCase();
+    const isUpdateSuspected =
+      userQueryStr.includes("güncelle") ||
+      userQueryStr.includes("değiştir") ||
+      userQueryStr.includes("düzelt") ||
+      userQueryStr.includes("yaz") ||
+      userQueryStr.includes("anayasa") ||
+      userQueryStr.includes("kutu") ||
+      userQueryStr.includes("bölüm") ||
+      userQueryStr.includes("update") ||
+      userQueryStr.includes("change") ||
+      userQueryStr.includes("modify") ||
+      userQueryStr.includes("edit") ||
+      userQueryStr.includes("outline");
+
+    const thinkingLevel = isUpdateSuspected
+      ? ThinkingLevel.HIGH
+      : ThinkingLevel.LOW;
+
+    // Step 8: Call Google Gemini 3.1 Flash Lite via official SDK with retry
     const genAIResponse = await generateContentWithRetry(ai, {
       model: "gemini-3.1-flash-lite",
       contents: contents as unknown as {
@@ -333,14 +538,121 @@ export async function sendMessageAction(
       }[],
       config: {
         systemInstruction: systemInstruction,
-        temperature: 1, // Lower temperature for high academic precision and adherence to instructions
+        temperature: 1, // Default stable temperature requested
         thinkingConfig: {
-          thinkingLevel: ThinkingLevel.MEDIUM,
+          thinkingLevel: thinkingLevel,
         },
+        tools: [
+          {
+            functionDeclarations: [
+              {
+                name: "update_thesis_box",
+                description:
+                  "Akademik danışman sohbeti esnasında varılan ortak karar doğrultusunda, tezin belirli bir bölümünün (Giriş, Teori, Metodoloji vb.) içeriğini yeni rafine akademik metin ile günceller.",
+                parameters: {
+                  type: Type.OBJECT,
+                  properties: {
+                    boxId: {
+                      type: Type.INTEGER,
+                      description: "Güncellenecek kutunun benzersiz ID'si",
+                    },
+                    updatedContent: {
+                      type: Type.STRING,
+                      description:
+                        "Modelin sohbet bağlamından damıtarak ürettiği, kutunun içine yazılacak yeni rafine akademik paragraf.",
+                    },
+                  },
+                  required: ["boxId", "updatedContent"],
+                },
+              },
+              {
+                name: "update_thesis_core_framework",
+                description:
+                  "Dashboard'un en üstünde yer alan 'Tez Anayasası & Stratejik Çatı' panelindeki 'Metodoloji & Tarihsel Kapsam' (thesis_core.methodology) alanını yeni bütünsel akademik özet ile günceller.",
+                parameters: {
+                  type: Type.OBJECT,
+                  properties: {
+                    updatedMethodology: {
+                      type: Type.STRING,
+                      description:
+                        "Modelin sohbet bağlamından damıtarak ürettiği, en üstteki ana tez metodolojisi alanına yazılacak yeni rafine bütünsel akademik özet.",
+                    },
+                  },
+                  required: ["updatedMethodology"],
+                },
+              },
+            ],
+          },
+        ],
       },
     });
 
-    const responseText = genAIResponse.text;
+    // Systematically extract both the full text parts and functionCall in a single turn
+    let extractedFunctionCall: any = null;
+    let thoughtSignature: string | undefined = undefined;
+
+    const candidateParts = genAIResponse.candidates?.[0]?.content?.parts;
+    if (candidateParts && candidateParts.length > 0) {
+      const fcPart = candidateParts.find((p) => !!p.functionCall);
+      if (fcPart && fcPart.functionCall) {
+        thoughtSignature =
+          fcPart.thoughtSignature || (fcPart as any).thought_signature;
+        extractedFunctionCall = {
+          name: fcPart.functionCall.name,
+          args: fcPart.functionCall.args,
+          id: fcPart.functionCall.id || `call_${Date.now()}`,
+          thoughtSignature: thoughtSignature,
+        };
+      }
+    }
+
+    // Fallback to SDK helper functionCalls if parts extraction didn't capture it
+    if (
+      !extractedFunctionCall &&
+      genAIResponse.functionCalls &&
+      genAIResponse.functionCalls.length > 0
+    ) {
+      const call = genAIResponse.functionCalls[0];
+      extractedFunctionCall = {
+        name: call.name || "update_thesis_box",
+        args: call.args || {},
+        id: call.id || `call_${Date.now()}`,
+      };
+    }
+
+    // Concatenate all text parts to form the clean response text
+    let responseText = "";
+    if (candidateParts) {
+      responseText = candidateParts
+        .filter((p) => p.text !== undefined && p.text !== null)
+        .map((p) => p.text)
+        .join("")
+        .trim();
+    }
+    // Fallback to genAIResponse.text if responseText is still empty
+    if (!responseText) {
+      responseText = genAIResponse.text || "";
+    }
+
+    console.log("[Gemini Response Extracted]", {
+      hasText: !!responseText,
+      hasFunctionCall: !!extractedFunctionCall,
+      fcName: extractedFunctionCall?.name,
+    });
+
+    if (extractedFunctionCall) {
+      console.log(
+        `[Gemini Tool Call] update_thesis_box triggered for boxId: ${extractedFunctionCall.args?.boxId}`,
+      );
+      return {
+        success: true,
+        response: responseText,
+        functionCall: extractedFunctionCall,
+        sources:
+          sourceReferenceInfos.length > 0 ? sourceReferenceInfos : undefined,
+      };
+    }
+
     if (!responseText) {
       return {
         success: false,

@@ -390,7 +390,7 @@ export function AdvisorSidebar({
           value="sources"
           className="data-[state=active]:bg-muted data-[state=active]:text-primary text-[10px] font-black uppercase tracking-wider cursor-pointer"
         >
-          Kaynaklar ({selectedRefIds.length})
+          Kaynaklar ({references.length})
         </TabsTrigger>
       </TabsList>
 

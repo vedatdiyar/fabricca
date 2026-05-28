@@ -18,7 +18,6 @@ import {
   Compass,
   Brain,
   Pencil,
-  X,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -129,6 +128,18 @@ export default function LibraryPage() {
 
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const clearNoteForm = useCallback(() => {
+    setMainArgument("");
+    setQuotes("");
+    setConcepts("");
+    setCriticalNotes("");
+    setConnections("");
+    setResearchNotes("");
+    setMemoryAnchors("");
+    setEditingNoteId(null);
+    setIsDialogOpen(false);
+  }, []);
+
   const loadReferences = useCallback(async () => {
     try {
       const res = await getReferencesAction();
@@ -237,7 +248,7 @@ export default function LibraryPage() {
       active = false;
       cancelAnimationFrame(handle);
     };
-  }, [selectedRefId, loadNotes]);
+  }, [selectedRefId, loadNotes, clearNoteForm]);
 
   const handleFileUpload = async (file: File) => {
     if (!file) return;
@@ -281,18 +292,6 @@ export default function LibraryPage() {
       setIsUploading(false);
     }
   };
-
-  const clearNoteForm = useCallback(() => {
-    setMainArgument("");
-    setQuotes("");
-    setConcepts("");
-    setCriticalNotes("");
-    setConnections("");
-    setResearchNotes("");
-    setMemoryAnchors("");
-    setEditingNoteId(null);
-    setIsDialogOpen(false);
-  }, []);
 
   const startEditingNote = (note: Note) => {
     setEditingNoteId(note.id);
@@ -631,11 +630,12 @@ export default function LibraryPage() {
                                 Makaleyi Sil
                               </AlertDialogTitle>
                               <AlertDialogDescription className="text-xs text-muted-foreground">
-                                "<strong>{ref.title}</strong>" isimli makaleyi
-                                ve bu makaleye ait tüm okuma notlarını, RAG
-                                parçalarını, görevleri ve yapay zeka
-                                analizlerini kalıcı olarak silmek istediğinize
-                                emin misiniz? Bu işlem geri alınamaz.
+                                &ldquo;<strong>{ref.title}</strong>&rdquo;
+                                isimli makaleyi ve bu makaleye ait tüm okuma
+                                notlarını, RAG parçalarını, görevleri ve yapay
+                                zeka analizlerini kalıcı olarak silmek
+                                istediğinize emin misiniz? Bu işlem geri
+                                alınamaz.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
