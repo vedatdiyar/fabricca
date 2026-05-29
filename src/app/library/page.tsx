@@ -69,9 +69,6 @@ function HeaderSection() {
           PDF yükleyin, R2 deposunda arşivleyin ve okuma notları alın
         </p>
       </div>
-      <span className="text-xs font-mono text-primary bg-card border border-border px-3 py-1 rounded">
-        Phase 2 - Active
-      </span>
     </header>
   );
 }
@@ -139,7 +136,7 @@ function RightColumn({
             <span className="text-[10px] uppercase tracking-wider font-mono text-primary bg-background border border-border px-2 py-1 rounded">
               Aktif Çalışma Odası
             </span>
-            <h3 className="text-lg font-bold text-foreground mt-2 truncate">
+            <h3 className="text-lg font-bold text-foreground mt-2">
               {selectedRef.title}
             </h3>
             <p className="text-xs text-muted-foreground mt-1">
@@ -173,7 +170,6 @@ function RightColumn({
             <span>Makale Notu Ekle</span>
           </button>
 
-          {/* Dialog (Modal) for Structured Note Form */}
           <NoteDialog
             isOpen={state.isDialogOpen}
             onOpenChange={(open) => {
@@ -183,6 +179,7 @@ function RightColumn({
               }
             }}
             selectedRefId={state.selectedRefId}
+            selectedRef={selectedRef || null}
             editingNoteId={state.editingNoteId}
             savedNotes={state.savedNotes}
             boxes={state.boxes}
@@ -200,19 +197,19 @@ function RightColumn({
           {state.noteError && (
             <Alert
               variant="destructive"
-              className="border-destructive bg-destructive/10 text-destructive-foreground"
+              className="border-destructive bg-destructive/10 text-destructive-foreground items-center"
             >
               <AlertCircle className="h-4 w-4 shrink-0 text-destructive-foreground" />
-              <AlertDescription className="text-xs font-semibold leading-none">
+              <AlertDescription className="text-xs font-semibold leading-normal">
                 {state.noteError}
               </AlertDescription>
             </Alert>
           )}
 
           {state.noteSuccess && (
-            <Alert className="border-primary bg-primary/10 text-primary">
+            <Alert className="border-primary bg-primary/10 text-primary items-center">
               <Check className="h-4 w-4 shrink-0 text-primary" />
-              <AlertDescription className="text-xs font-semibold leading-none">
+              <AlertDescription className="text-xs font-semibold leading-normal">
                 {state.noteSuccess}
               </AlertDescription>
             </Alert>
@@ -226,6 +223,11 @@ function RightColumn({
             selectedBoxId={state.selectedBoxId}
             boxes={state.boxes}
             startEditingNote={startEditingNote}
+            onNoteSaved={async () => {
+              if (state.selectedRefId !== null) {
+                await loadNotes(state.selectedRefId);
+              }
+            }}
           />
         </div>
       ) : (
@@ -413,7 +415,7 @@ export default function LibraryPage() {
       />
 
       {/* Main Workspace Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-8 flex-1">
+      <div className="grid grid-cols-1 lg:grid-cols-[420px_650px] gap-8 flex-1">
         <ReferencesSidebar
           references={state.references}
           selectedRefId={state.selectedRefId}

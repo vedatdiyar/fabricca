@@ -10,6 +10,7 @@ import type { UploadResult, GetReferencesResult } from "./_actions/library";
 import {
   saveNoteAction as saveNote,
   updateNoteAction as updateNote,
+  retriggerAiAnalysisAction as retriggerAiAnalysis,
 } from "./_actions/notes";
 import type { SaveNoteResult, UpdateNoteParams } from "./_actions/notes";
 
@@ -90,6 +91,12 @@ export async function updateNoteAction(
   params: UpdateNoteParams,
 ): Promise<{ success: boolean; error?: string }> {
   return updateNote(params);
+}
+
+export async function retriggerAiAnalysisAction(
+  noteId: number,
+): Promise<{ success: boolean; aiContextSuggestions?: string | null; error?: string }> {
+  return retriggerAiAnalysis(noteId);
 }
 
 type AcademicField =

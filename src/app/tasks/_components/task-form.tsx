@@ -113,10 +113,10 @@ export function TaskForm({
       {errorMessage && (
         <Alert
           variant="destructive"
-          className="border-destructive bg-destructive/10 text-destructive-foreground"
+          className="border-destructive bg-destructive/10 text-destructive-foreground items-center"
         >
           <AlertCircle className="h-4 w-4 shrink-0 text-destructive-foreground" />
-          <AlertDescription className="text-xs font-semibold leading-none">
+          <AlertDescription className="text-xs font-semibold leading-normal">
             {errorMessage}
           </AlertDescription>
         </Alert>

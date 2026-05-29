@@ -229,19 +229,19 @@ export function ReferencesSidebar({
       {uploadError && (
         <Alert
           variant="destructive"
-          className="border-destructive bg-destructive/10 text-destructive-foreground"
+          className="border-destructive bg-destructive/10 text-destructive-foreground items-center"
         >
           <AlertCircle className="h-4 w-4 shrink-0 text-destructive-foreground" />
-          <AlertDescription className="text-xs font-semibold leading-none">
+          <AlertDescription className="text-xs font-semibold leading-normal">
             {uploadError}
           </AlertDescription>
         </Alert>
       )}
 
       {uploadSuccess && (
-        <Alert className="border-primary bg-primary/10 text-primary">
+        <Alert className="border-primary bg-primary/10 text-primary items-center">
           <Check className="h-4 w-4 shrink-0 text-primary" />
-          <AlertDescription className="text-xs font-semibold leading-none">
+          <AlertDescription className="text-xs font-semibold leading-normal">
             {uploadSuccess}
           </AlertDescription>
         </Alert>

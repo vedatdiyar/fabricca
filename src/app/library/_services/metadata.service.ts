@@ -106,6 +106,12 @@ export async function generateNoteSuggestions(
   content: string,
   core: unknown,
   ref: unknown,
+  semanticSources?: {
+    authors: string | null;
+    year: number | null;
+    title: string;
+    shortContent: string;
+  }[],
 ): Promise<string | null> {
   const geminiKey = process.env.GEMINI_API_KEY;
   if (!geminiKey) {
@@ -152,6 +158,18 @@ export async function generateNoteSuggestions(
   const thesisArgument = c.argument || "Belirtilmemiş";
   const thesisMethodology = c.methodology || "Belirtilmemiş";
 
+  let semanticContext = "";
+  if (semanticSources && semanticSources.length > 0) {
+    semanticContext = `KULLANICININ KÜTÜPHANESİNDEKİ DİĞER İLİŞKİLİ KAYNAKLAR (SEMANTİK BAĞLAM):\n`;
+    semanticSources.forEach((src, idx) => {
+      semanticContext += `Kaynak ${idx + 1}:\n`;
+      semanticContext += `- Yazar(lar): ${src.authors || "Bilinmeyen Yazar"}\n`;
+      semanticContext += `- Yayın Yılı: ${src.year || "Belirtilmemiş"}\n`;
+      semanticContext += `- Başlık: ${src.title || "Başlıksız Kaynak"}\n`;
+      semanticContext += `- Kısa İçerik (Semantik Eşleşme): ${src.shortContent.substring(0, 800).trim()}...\n\n`;
+    });
+  }
+
   const systemPrompt =
     "Sen sosyal bilimler alanında uzman, son derece seçkin, eleştirel, yöntemsel hassasiyete ve sarsılmaz bir akademik ahlaka sahip bir Akademik Tez Danışmanısın (Profesör).\n" +
     "Görevin, kullanıcının kütüphanesindeki bir makaleden aldığı ham okuma notunu, onun aktif tez konusu ve teorik/ampirik odak alanlarıyla ilişkilendirerek yapılandırılmış bir entegrasyon önerisi ve atıf künyesi üretmektir.\n\n" +
@@ -160,20 +178,22 @@ export async function generateNoteSuggestions(
     `2. VEYA girilen notun, kullanıcının mevcut tez konusuyla (Tez Başlığı: '${thesisTitle}', Araştırma Sorusu: '${thesisQuestion}', Ana Argüman: '${thesisArgument}', Metodoloji/Yöntem: '${thesisMethodology}') doğrudan/somut ve anlamlı bir bağı bulunmuyorsa (tez anayasasındaki kavramlardan, teorilerden veya odak alanından çıkarılan mantıklı/akademik çıkarımlara dayanarak),\n` +
     "3. VEYA bu bağ son derece zorlama, yapay ve yüzeysel ise;\n" +
     "ASLA uydurma akademik öneriler veya entegrasyon bağlamları üretmeyeceksin! Doğrudan ve KESİNLİKLE sadece şu yapılandırılmış gerekçeli reddi döndüreceksin:\n" +
-    '"Bu girdinin mevcut tez çalışmanızla doğrudan bir ilgisi bulunmamaktadır. Nedeni: [Girdinin tezin ampirik/teorik odak sınırlarının neden dışında kaldığını açıklayan analitik ve yapısal gerekçe.]"\n\n' +
+    `"Bu girdinin mevcut tez çalışmanızla doğrudan bir ilgisi bulunmamaktadır. Nedeni: [Girdinin tezin ampirik/teorik odak sınırlarının neden dışında kaldığını açıklayan analitik ve yapısal gerekçe.]"\n\n` +
     "Eğer girdi bu filtreyi başarıyla geçerse (yani yukarıdaki tez konusu, kavramlar veya ampirik odakla doğrudan ve somut bir bağı bulunuyorsa/akademik olarak alakalı ise), o zaman KESİNLİKLE şu iki bölümü içerecek şekilde Markdown formatında yanıt üret:\n\n" +
     "### Entegrasyon Önerisi\n" +
     "[Bu notun, aktif tezin hangi kavramsal katmanına veya hangi bölümüne nasıl entegre edilebileceğine dair pratik, keskin ve 2-3 cümlelik somut bir taktiksel akademik öneri yazın.]\n\n" +
     "### Akademik Atıf\n" +
     "[Döküman verilerine dayanarak temiz bir APA formatında akademik atıf künyesi oluşturun.]\n\n" +
     "UYUM KURAL VE KISITLAMALARI:\n" +
+    "- KESİNLİKLE UYULMASI ZORUNLU ÇAPRAZ ATIF KURALI: Eğer sana 'KULLANICININ KÜTÜPHANESİNDEKİ DİĞER İLİŞKİLİ KAYNAKLAR (SEMANTİK BAĞLAM)' başlığı altında kaynaklar beslenmişse, üreteceğin 'Entegrasyon Önerisi' metninin içinde bu kaynaklara (Yazar Soyadı, Yayın Yılı) belirterek somut, görünür akademik atıflar yapmak ZORUNDASIN. Örnek: 'Bu durum kütüphanenizdeki Whitaker & Müller (2024) çalışmasının siyah kutu argümanıyla örtüşmektedir...' veya 'Chen vd. (2024) tarafından öne sürülen rasyonel verimlilik düğüm noktasının aksine...' şeklinde kütüphanede halihazırda var olan kaynakların metadatalarını metne açıkça enjekte et, asla soyut geçiştirme.\n" +
     "- Türkçe dilinde, son derece yapıcı, samimi ve doğrudan bir akademik üslup kullan. Kullanıcının adını yalnızca ilk cümlede bir kez kullan, sonra tekrarlama.\n" +
     "- Entegrasyon önerisini 2-3 cümle ile sınırla, lafı uzatma, doğrudan stratejik katma değere odaklan.\n" +
-    "- Çıktıda başka hiçbir ek metin, giriş veya kapanış ifadesi barındırma.";
+    "- Üretilen olumlu yanıt KESİNLİKLE VE SADECE '### Entegrasyon Önerisi' ve '### Akademik Atıf' başlıklarından oluşmalıdır. Başka hiçbir ek metin, giriş veya kapanış ifadesi barındırma.";
 
   const userPrompt =
     `${thesisContext}` +
     `${sourceMetadata}` +
+    `${semanticContext}` +
     `KULLANICININ YENİ EKLEDİĞİ HAM NOT METNİ:\n` +
     `"${content.trim()}"\n\n` +
     `Lütfen yukarıdaki kurallara ve tez anayasasına sadık kalarak, bu notu analiz et, entegrasyon önerisini ve atıf künyesini üret.`;
