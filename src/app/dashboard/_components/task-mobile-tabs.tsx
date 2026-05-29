@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { TaskItem } from "../actions";
+import { TaskItem } from "../_actions/tasks";
 import { MobileTaskCard } from "./task-card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 

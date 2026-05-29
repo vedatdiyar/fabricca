@@ -53,7 +53,7 @@ export function ThesisConstitution({ thesisData }: ThesisConstitutionProps) {
   };
 
   return (
-    <div className="w-full border border-border bg-card rounded-lg overflow-hidden transition-all duration-300 mb-8 select-none">
+    <div className="w-full border border-border bg-card rounded-lg overflow-hidden transition-all duration-300 mb-8">
       {/* Panel Header */}
       <div className="p-5 border-b border-border flex justify-between items-center bg-card">
         <div className="flex items-center gap-3">

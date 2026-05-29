@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { TaskItem } from "../actions";
+import { TaskItem } from "../_actions/tasks";
 import Link from "next/link";
 import {
   Calendar,

@@ -7,8 +7,6 @@ import {
   LayoutDashboard,
   Library,
   GraduationCap,
-  ListTodo,
-  Lightbulb,
   ChevronLeft,
   ChevronRight,
   FolderKanban,
@@ -34,16 +32,6 @@ export default function Navigation() {
       name: "Bilgi Fişi",
       href: "/kartoteks",
       icon: FolderKanban,
-    },
-    {
-      name: "Görevlerim",
-      href: "/tasks",
-      icon: ListTodo,
-    },
-    {
-      name: "Fikir Sepeti",
-      href: "/insights",
-      icon: Lightbulb,
     },
     {
       name: "Danışman Odası",
@@ -105,7 +93,8 @@ export default function Navigation() {
             const isActive =
               item.href === "/"
                 ? pathname === "/"
-                : pathname === item.href || pathname.startsWith(item.href + "/");
+                : pathname === item.href ||
+                  pathname.startsWith(item.href + "/");
             const Icon = item.icon;
 
             return (

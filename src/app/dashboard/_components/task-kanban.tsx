@@ -7,7 +7,7 @@ import {
   Draggable,
   type DropResult,
 } from "@hello-pangea/dnd";
-import { TaskItem } from "../actions";
+import { TaskItem } from "../_actions/tasks";
 import { TaskCard } from "./task-card";
 
 export interface TaskKanbanProps {

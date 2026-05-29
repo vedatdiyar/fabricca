@@ -157,8 +157,8 @@ export async function updateTaskStatusAction(
     await syncAcademicStatus(taskId, status);
 
     // Instantly revalidate page cache to reflect UI changes across all views
+    revalidatePath("/");
     revalidatePath("/dashboard");
-    revalidatePath("/tasks");
     revalidatePath("/library");
 
     return {
@@ -184,6 +184,10 @@ export async function deleteTaskAction(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     await db.delete(tasks).where(eq(tasks.id, taskId));
+
+    // Instantly revalidate page cache to reflect UI changes
+    revalidatePath("/");
+    revalidatePath("/dashboard");
 
     return {
       success: true,
