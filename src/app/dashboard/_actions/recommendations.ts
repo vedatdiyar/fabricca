@@ -303,7 +303,8 @@ export async function getAcademicRecommendationsAction(
             book.pdfUrl === "recommended-onboarding" ||
             book.status === "recommended";
           const source = isOnboardingBook ? "Temel Kaynak" : "Semantic Scholar";
-          const lang = (book as any).language || detectLanguage(book.title);
+          const lang = ((book as unknown as { language?: string }).language ||
+            detectLanguage(book.title)) as "TR" | "EN" | undefined;
 
           return {
             paperId: String(book.id),

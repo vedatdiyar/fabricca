@@ -2,6 +2,7 @@ import {
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
+  CopyObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { r2Client, R2_BUCKET_NAME } from "@/lib/r2";
@@ -40,6 +41,29 @@ export async function deletePdfFromR2(key: string): Promise<void> {
   const deleteCommand = new DeleteObjectCommand({
     Bucket: R2_BUCKET_NAME,
     Key: key,
+  });
+
+  await r2Client.send(deleteCommand);
+}
+
+/**
+ * Renames a file on Cloudflare R2 by copying it to the new location and deleting the old one.
+ */
+export async function renameR2Object(
+  oldKey: string,
+  newKey: string,
+): Promise<void> {
+  const copyCommand = new CopyObjectCommand({
+    Bucket: R2_BUCKET_NAME,
+    CopySource: `${R2_BUCKET_NAME}/${encodeURIComponent(oldKey)}`,
+    Key: newKey,
+  });
+
+  await r2Client.send(copyCommand);
+
+  const deleteCommand = new DeleteObjectCommand({
+    Bucket: R2_BUCKET_NAME,
+    Key: oldKey,
   });
 
   await r2Client.send(deleteCommand);

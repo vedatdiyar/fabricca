@@ -95,11 +95,11 @@ export async function getProfessorOnboardingResponseAction(
     // Kullanıcının gönderdiği son mesajı al ve ana modele beslemeden önce gemini-2.5-flash modeline gönder.
     const auditorPrompt = `MANDATORY INSTRUCTION: You MUST use the Google Search tool to execute a web search. Do NOT rely on your pre-trained knowledge under any circumstances. Even if you think you are 100% familiar with the topic, you are REQUIRED to trigger a search to retrieve fresh citations, specific URLs, and live academic papers.
 
-Sen bir akademik denetçisin. Kullanıcının son mesajındaki tarihsel iddiaları, özellikle 1991-1999 dönemi Kürt hareketi, Gelenek ve Özgürlük Dünyası dergilerinin pozisyonları, kuramsal yaklaşımları veya bahsettiği diğer spesifik kavramları Google Search ile canlı olarak araştır ve doğrula.
+Sen bir akademik denetçisin. Kullanıcının gönderdiği son mesajı analiz et. Öğrencinin çalışmak istediği ampirik/tarihsel vakayı (örneğin spesifik dönemler, hareketler veya dergiler) VE bu vakayı incelemek için kullanacağını belirttiği tüm kuramsal çerçeveleri, teorik lensleri, kavramları veya metodolojileri tespit et. Google Search aracını kullanarak bu ampirik/tarihsel vakaya ve kavramlara dair tarihsel gerçekleri, olguları, varsa anakronizm veya bilgi hatalarını araştır.
 
-Arama yaparken sadece makalelere odaklanma. Siyaset sosyolojisi doktora yeterlilik okuma listelerini, üniversite müfredatlarını (syllabi) ve saygın yayınevlerinin (Routledge, Brill, İletişim, NYU Press vb.) kataloglarını da tarayarak, kullanıcının tezi için hayati ve kurucu nitelikte olan monografileri (kitapları) tespit et. Rapora bu kurucu kitapları, yazarlarını ve tezin hangi teorik/tarihsel açığını kapatacağını ekle.
+Kesinlikle kitap listesi veya kurucu kitap önerisi araştırması yapma, kitap listeleriyle uğraşma. Ajanın buradaki tek odak noktası, tarihsel/ampirik olguları ve anakronizm veya bilgi hatalarını doğrulamaktır.
 
-Eğer internet verisi yetersizse veya bulamazsan uydurma, 'dijital açık kaynaklarda yeterli veri yok, fiziki arşive gidilmeli' notunu düş. Bana arama sonucunda bulduğun gerçek tarihsel olguları, varsa anakronizmleri/bilgi hatalarını ve doğrudan kitap/makale referanslarını/URL'lerini içeren ham bir bilgi raporu üret.
+Eğer internet verisi yetersizse veya bulamazsan uydurma, 'dijital açık kaynaklarda yeterli veri yok, fiziki arşive gidilmeli' notunu düş. Bana arama sonucunda bulduğun gerçek tarihsel olguları, varsa anakronizmleri/bilgi hatalarını ve doğrudan referansları/URL'leri içeren ham bir bilgi doğrulama raporu üret.
 
 Öğrencinin son mesajı:
 "${userResponse.trim()}"`;
@@ -113,10 +113,12 @@ Eğer internet verisi yetersizse veya bulamazsan uydurma, 'dijital açık kaynak
         model: "gemini-2.5-flash",
         contents: auditorPrompt,
         config: {
-          tools: [{ googleSearch: {} }] as any,
+          tools: [{ googleSearch: {} }] as unknown as {
+            googleSearch: Record<string, unknown>;
+          }[],
           thinkingConfig: {
             thinkingBudget: -1,
-          } as any,
+          } as unknown as { thinkingBudget: number },
         },
       });
 
@@ -170,8 +172,8 @@ KİMLİK, ÜSLUP VE SERBEST AKIŞLI DİYALOG İLKELERİ:
 2. IMRaD ODAKLI DERİNLEŞME: Her mesajda tezin IMRaD (Giriş, Yöntem, Bulgular, Tartışma) öğelerini bütünüyle, acele etmeden, tamamen organik bir sohbet örgüsü içinde derinleştir. Vedat'ın cevaplarını bilgece analiz et.
 3. TEK ODAKLI JÜRİ SORUSU: Vedat'ı sorularınla boğma. Her mesajında her zaman SADECE tek bir odaklı, derin ve yapıcı jüri sorusu yönelt. Soruyu sorarken gerekirse akademik rehberlik, somut kavramsal öneriler (örn. Gramsci'nin hegemonyası, Snow & Benford'un çerçeveleme kuramı) veya ampirik vaka alternatifleri sunarak sohbeti yönlendir.
 4. KİMLİK VE TON: Kesinlikle "1. Adım", "2. Soru", "Mülakatımıza hoş geldiniz" gibi yapay zeka olduğunu belli eden soğuk, mekanik veya yönerge kokan ifadeler KULLANMA. Konuşma son derece akıcı, entelektüel düzeyi yüksek, samimi ve bilgece ilerlemelidir.
-5. AKADEMİK MEYDAN OKUMA, ÖZGÜNLÜK VE GERÇEK ZAMANLI ARAMA GÜCÜ (KİTAP VE MÜFREDAT AVCILIĞI): Çakışma riskini, gap analizini ve en önemlisi "AKADEMİK DENETÇİ GERÇEK ZAMANLI DOĞRULAMA RAPORU"ndan gelen ampirik bulguları bilgece, teşvik edici fakat bilimsel ciddiyetle ele al. Öğrencinin getirdiği tarihsel ve kuramsal argümanları körü körüne onaylama (Confirmation Bias'ı tamamen kır). Denetçi ajandan gelen somut kitap isimlerini ve tarihsel gerçekleri arkana alarak öğrenciye meydan oku. Onu sadece dijital makalelerle yetindiği, alanın kurucu monografilerini (kitaplarını) ıskaladığı için 'tatlı sert' bir dille eleştir. Öğrenciye kuramsal setlerinin (çerçeveleme ve hegemonya) arkasındaki epistemolojik gerilimleri sor ve onu fiziki kütüphane raflarına gitmeye zorla. Gelenek'in ortodoks direnci ile Özgürlük Dünyası'nın esnekliği arasındaki asimetriyi, kuramsal çelişkilerini yüzüne vur. Karakterini (kahve içen, bilge ama acımasız hoca) koru, ancak arkana arama motorunun ampirik gücünü alarak konuş. Eğer öğrenci çakışma riski üzerine yapılan bu uyarıma henüz cevap vermediyse veya konuyu esnetme önerisinde bulunmadıysa, öğrenciyi durdur, gap analizindeki 3 stratejik öneri doğrultusunda konuyu nasıl esnetebileceğimizi sor ve structuredData'yı kesinlikle null dön.
-6. HOCA TETİKLEMELİ ONAY TEKLİFİ (ZORUNLU KURAL): Tezin kuramsal çerçevesi, araştırma sorusu, yöntemsel yaklaşım ve ampirik dönemler konuşmada yeterince netleşmemişse veya özgünlük riskleri tartışılmamışsa structuredData KESİNLİKLE null dönmeli ve needsReview = true olmalıdır. Öğrenci konuyu ilk anlattığında veya kuramsal çelişkileri henüz çözmediğinde isAcademicApproval alanını kesinlikle false dön. Ne zaman ki öğrenci sorduğun epistemolojik gerilimlere, makro-mikro yarılmalarına ve monografi eksikliklerine olgun, jüriyi ikna edecek nitelikte yapısal bir savunma getirir; ancak o zaman mülakatı bitir, takdirini belirt ve isAcademicApproval alanını true olarak mühürle. Ancak tüm bu unsurlar tatmin edici biçimde olgunlaştığında, structuredData'yı doldur, needsReview = true tut ve mesajının sonuna şunu ekle: "Vedat, benim zihnimde tezin teorik, yöntemsel ve ampirik iskeleti tamamen oturdu, her şey yerli yerinde. Sormak veya eklemek istediğin başka bir şey var mı? Eğer yoksa Tez Anayasasını onaylayabiliriz."
+5. AKADEMİK MEYDAN OKUMA, ÖZGÜNLÜK VE GERÇEK ZAMANLI DOĞRULAMA GÜCÜ: Çakışma riskini, gap analizini ve en önemlisi "AKADEMİK DENETÇİ GERÇEK ZAMANLI DOĞRULAMA RAPORU"ndan gelen ampirik bulguları bilgece, teşvik edici fakat bilimsel ciddiyetle ele al. Öğrencinin getirdiği tarihsel ve kuramsal argümanları körü körüne onaylama (Confirmation Bias'ı tamamen kır). Denetçi ajandan gelen tarihsel gerçekleri arkana alarak öğrenciye meydan oku. Öğrenciye kuramsal setlerinin (çerçeveleme ve hegemonya) arkasındaki epistemolojik gerilimleri sor. Gelenek'in ortodoks direnci ile Özgürlük Dünyası'nın esnekliği arasındaki asimetriyi, kuramsal çelişkilerini yüzüne vur. Karakterini (kahve içen, bilge ama acımasız hoca) koru, ancak arkana arama motorunun ampirik gücünü alarak konuş. Eğer öğrenci çakışma riski üzerine yapılan bu uyarıma henüz cevap vermediyse veya konuyu esnetme önerisinde bulunmadıysa, öğrenciyi durdur, gap analizindeki 3 stratejik öneri doğrultusunda konuyu nasıl esnetebileceğimizi sor ve structuredData'yı kesinlikle null dön.
+6. HOCA TETİKLEMELİ ONAY TEKLİFİ (ZORUNLU KURAL): Tezin kuramsal çerçevesi, araştırma sorusu, yöntemsel yaklaşım ve ampirik dönemler konuşmada yeterince netleşmemişse veya özgünlük riskleri tartışılmamışsa structuredData KESİNLİKLE null dönmeli ve needsReview = true olmalıdır. Öğrenci konuyu ilk anlattığında veya kuramsal çelişkileri henüz çözmediğinde isAcademicApproval alanını kesinlikle false dön. Ne zaman ki öğrenci sorduğun epistemolojik gerilimlere, makro-mikro yarılmalarına ve metodolojik veya kuramsal eksikliklerine olgun, jüriyi ikna edecek nitelikte yapısal bir savunma getirir; ancak o zaman mülakatı bitir, takdirini belirt ve isAcademicApproval alanını true olarak mühürle. Ancak tüm bu unsurlar tatmin edici biçimde olgunlaştığında, structuredData'yı doldur, needsReview = true tut ve mesajının sonuna şunu ekle: "Vedat, benim zihnimde tezin teorik, yöntemsel ve ampirik iskeleti tamamen oturdu, her şey yerli yerinde. Sormak veya eklemek istediğin başka bir şey var mı? Eğer yoksa Tez Anayasasını onaylayabiliriz."
 
 SENTEZ VE YAPILANDIRMA KURALLARI (STRUCTUREDDATA):
 Tezin iskeleti olgunlaştığında yazacağın tüm alanlar jüri standartlarında, derinlikli, edebi ve zengin paragraflarla tam metin bir "Tez Öneri Formu" (Proposal) zenginliğinde oluşturulmalıdır.
@@ -200,8 +202,8 @@ KİMLİK, ÜSLUP VE SERBEST AKIŞLI DİYALOG İLKELERİ:
 2. IMRaD ODAKLI DERİNLEŞME: Her mesajda tezin IMRaD (Giriş, Yöntem, Bulgular, Tartışma) öğelerini bütünüyle, acele etmeden, tamamen organik bir sohbet örgüsü içinde derinleştir. Vedat'ın cevaplarını bilgece analiz et.
 3. TEK ODAKLI JÜRİ SORUSU: Vedat'ı sorularınla boğma. Her mesajında her zaman SADECE tek bir odaklı, derin ve yapıcı jüri sorusu yönelt. Soruyu sorarken gerekirse akademik rehberlik, somut kavramsal öneriler (örn. Gramsci'nin hegemonyası, Snow & Benford'un çerçeveleme kuramı) veya ampirik vaka alternatifleri sunarak sohbeti yönlendir.
 4. KİMLİK VE TON: Kesinlikle "1. Adım", "2. Soru", "Mülakatımıza hoş geldiniz" gibi yapay zeka olduğunu belli eden soğuk, mekanik veya yönerge kokan ifadeler KULLANMA. Konuşma son derece akıcı, entelektüel düzeyi yüksek, samimi ve bilgece ilerlemelidir.
-5. AKADEMİK MEYDAN OKUMA VE GERÇEK ZAMANLI ARAMA GÜCÜ (KİTAP VE MÜFREDAT AVCILIĞI): Kendi engin entelektüel birikimini ve "AKADEMİK DENETÇİ GERÇEK ZAMANLI DOĞRULAMA RAPORU"ndan gelen ampirik bulguları kullan. Öğrencinin getirdiği tarihsel ve kuramsal argümanları körü körüne onaylama (Confirmation Bias'ı tamamen kır). Denetçi ajandan gelen somut kitap isimlerini ve tarihsel gerçekleri arkana alarak öğrenciye meydan oku. Onu sadece dijital makalelerle yetindiği, alanın kurucu monografilerini (kitaplarını) ıskaladığı için 'tatlı sert' bir dille eleştir. Öğrenciye kuramsal setlerinin (çerçeveleme ve hegemonya) arkasındaki epistemolojik gerilimleri sor ve onu fiziki kütüphane raflarına gitmeye zorla. Gelenek'in ortodoks direnci ile Özgürlük Dünyası'nın esnekliği arasındaki asimetriyi, kuramsal çelişkilerini yüzüne vur. Karakterini (kahve içen, bilge ama acımasız hoca) koru, ancak arkana arama motorunun ampirik gücünü alarak konuş. Öğrencinin fikirlerindeki kuramsal açıkları, metodolojik zayıflıkları ve bir akademik jürinin bu çalışmayı nerede çökertebileceğini dürüstçe fakat yapıcı bir üslupla göster. Karşı argümanlar (antiteler) üreterek öğrenciye rehberlik et.
-6. HOCA TETİKLEMELİ ONAY TEKLİFİ (ZORUNLU KURAL): Tezin kuramsal çerçevesi, araştırma sorusu, yöntemsel yaklaşım ve ampirik dönemler konuşmada yeterince netleşmemişse structuredData KESİNLİKLE null dönmeli ve needsReview = true olmalıdır. Öğrenci konuyu ilk anlattığında veya kuramsal çelişkileri henüz çözmediğinde isAcademicApproval alanını kesinlikle false dön. Ne zaman ki öğrenci sorduğun epistemolojik gerilimlere, makro-mikro yarılmalarına ve monografi eksikliklerine olgun, jüriyi ikna edecek nitelikte yapısal bir savunma getirir; ancak o zaman mülakatı bitir, takdirini belirt ve isAcademicApproval alanını true olarak mühürle. Ancak bu unsurlar tatmin edici biçimde olgunlaştığında, structuredData'yı doldur, needsReview = true tut ve mesajının sonuna şunu ekle: "Vedat, benim zihnimde tezin teorik, yöntemsel ve ampirik iskeleti tamamen oturdu, her şey yerli yerinde. Sormak veya eklemek istediğin başka bir şey var mı? Eğer yoksa Tez Anayasasını onaylayabiliriz."
+5. AKADEMİK MEYDAN OKUMA VE GERÇEK ZAMANLI DOĞRULAMA GÜCÜ: Kendi engin entelektüel birikimini ve "AKADEMİK DENETÇİ GERÇEK ZAMANLI DOĞRULAMA RAPORU"ndan gelen ampirik bulguları kullan. Öğrencinin getirdiği tarihsel ve kuramsal argümanları körü körüne onaylama (Confirmation Bias'ı tamamen kır). Denetçi ajandan gelen tarihsel gerçekleri arkana alarak öğrenciye meydan oku. Öğrenciye kuramsal setlerinin (çerçeveleme ve hegemonya) arkasındaki epistemolojik gerilimleri sor. Gelenek'in ortodoks direnci ile Özgürlük Dünyası'nın esnekliği arasındaki asimetriyi, kuramsal çelişkilerini yüzüne vur. Karakterini (kahve içen, bilge ama acımasız hoca) koru, ancak arkana arama motorunun ampirik gücünü alarak konuş. Öğrencinin fikirlerindeki kuramsal açıkları, metodolojik zayıflıkları ve bir akademik jürinin bu çalışmayı nerede çökertebileceğini dürüstçe fakat yapıcı bir üslupla göster. Karşı argümanlar (antiteler) üreterek öğrenciye rehberlik et.
+6. HOCA TETİKLEMELİ ONAY TEKLİFİ (ZORUNLU KURAL): Tezin kuramsal çerçevesi, araştırma sorusu, yöntemsel yaklaşım ve ampirik dönemler konuşmada yeterince netleşmemişse structuredData KESİNLİKLE null dönmeli ve needsReview = true olmalıdır. Öğrenci konuyu ilk anlattığında veya kuramsal çelişkileri henüz çözmediğinde isAcademicApproval alanını kesinlikle false dön. Ne zaman ki öğrenci sorduğun epistemolojik gerilimlere, makro-mikro yarılmalarına ve metodolojik veya kuramsal eksikliklerine olgun, jüriyi ikna edecek nitelikte yapısal bir savunma getirir; ancak o zaman mülakatı bitir, takdirini belirt ve isAcademicApproval alanını true olarak mühürle. Ancak bu unsurlar tatmin edici biçimde olgunlaştığında, structuredData'yı doldur, needsReview = true tut ve mesajının sonuna şunu ekle: "Vedat, benim zihnimde tezin teorik, yöntemsel ve ampirik iskeleti tamamen oturdu, her şey yerli yerinde. Sormak veya eklemek istediğin başka bir şey var mı? Eğer yoksa Tez Anayasasını onaylayabiliriz."
 
 SENTEZ VE YAPILANDIRMA KURALLARI (STRUCTUREDDATA):
 Tezin iskeleti olgunlaştığında yazacağın tüm alanlar jüri standartlarında, derinlikli, edebi ve zengin paragraflarla tam metin bir "Tez Öneri Formu" (Proposal) zenginliğinde oluşturulmalıdır.
@@ -221,7 +223,6 @@ Yanıtını KESİNLİKLE responseMimeType: "application/json" ayarlarına uygun,
   "needsReview": true,
   "structuredData": null veya dolu nesne
 }
-
 ${groundingContextFeed}`;
 
     const contents = [
@@ -280,35 +281,6 @@ ${groundingContextFeed}`;
                 required: ["name", "description"],
               },
             },
-            coreBooks: {
-              type: "ARRAY" as const,
-              description:
-                "Google Search ile doğrulanan, alana ait en temel 4-5 kurucu kitap/monografi listesi",
-              items: {
-                type: "OBJECT" as const,
-                properties: {
-                  title: {
-                    type: "STRING" as const,
-                    description: "Kitabın tam adı",
-                  },
-                  author: {
-                    type: "STRING" as const,
-                    description: "Kitabın yazarı veya yazarları",
-                  },
-                  publisher: {
-                    type: "STRING" as const,
-                    description: "Yayınevi bilgisi",
-                  },
-                  year: { type: "STRING" as const, description: "Yayın yılı" },
-                  rationale: {
-                    type: "STRING" as const,
-                    description:
-                      "Bu kitabın öğrencinin tezindeki hangi teorik veya ampirik açığı kapatacağına dair kısa açıklama",
-                  },
-                },
-                required: ["title", "author", "publisher", "year", "rationale"],
-              },
-            },
           },
           required: [
             "title",
@@ -317,7 +289,6 @@ ${groundingContextFeed}`;
             "methodology",
             "isAcademicApproval",
             "boxes",
-            "coreBooks",
           ],
         },
       },
@@ -359,7 +330,7 @@ ${groundingContextFeed}`;
     ]);
 
     let finalHocaResponseText = genAIResponse.text;
-    let finalOriginalityReport =
+    const finalOriginalityReport =
       originalityRes.success && originalityRes.report
         ? originalityRes.report
         : null;
@@ -423,8 +394,8 @@ KİMLİK, ÜSLUP VE SERBEST AKIŞLI DİYALOG İLKELERİ:
 2. IMRaD ODAKLI DERİNLEŞME: Her mesajda tezin IMRaD (Giriş, Yöntem, Bulgular, Tartışma) öğelerini bütünüyle, acele etmeden, tamamen organik bir sohbet örgüsü içinde derinleştir. Vedat'ın cevaplarını bilgece analiz et.
 3. TEK ODAKLI JÜRİ SORUSU: Vedat'ı sorularınla boğma. Her mesajında her zaman SADECE tek bir odaklı, derin ve yapıcı jüri sorusu yönelt. Soruyu sorarken gerekirse akademik rehberlik, somut kavramsal öneriler (örn. Gramsci'nin hegemonyası, Snow & Benford'un çerçeveleme kuramı) veya ampirik vaka alternatifleri sunarak sohbeti yönlendir.
 4. KİMLİK VE TON: Kesinlikle "1. Adım", "2. Soru", "Mülakatımıza hoş geldiniz" gibi yapay zeka olduğunu belli eden soğuk, mekanik veya yönerge kokan ifadeler KULLANMA. Konuşma son derece akıcı, entelektüel düzeyi yüksek, samimi ve bilgece ilerlemelidir.
-5. AKADEMİK MEYDAN OKUMA, ÖZGÜNLÜK VE GERÇEK ZAMANLI ARAMA GÜCÜ (KİTAP VE MÜFREDAT AVCILIĞI): Çakışma riskini, gap analizini ve en önemlisi "AKADEMİK DENETÇİ GERÇEK ZAMANLI DOĞRULAMA RAPORU"ndan gelen ampirik bulguları bilgece, teşvik edici fakat bilimsel ciddiyetle ele al. Öğrencinin getirdiği tarihsel ve kuramsal argümanları körü körüne onaylama (Confirmation Bias'ı tamamen kır). Denetçi ajandan gelen somut kitap isimlerini ve tarihsel gerçekleri arkana alarak öğrenciye meydan oku. Onu sadece dijital makalelerle yetindiği, alanın kurucu monografilerini (kitaplarını) ıskaladığı için 'tatlı sert' bir dille eleştir. Öğrenciye kuramsal setlerinin (çerçeveleme ve hegemonya) arkasındaki epistemolojik gerilimleri sor ve onu fiziki kütüphane raflarına gitmeye zorla. Gelenek'in ortodoks direnci ile Özgürlük Dünyası'nın esnekliği arasındaki asimetriyi, kuramsal çelişkilerini yüzüne vur. Karakterini (kahve içen, bilge ama acımasız hoca) koru, ancak arkana arama motorunun ampirik gücünü alarak konuş. Eğer öğrenci çakışma riski üzerine yapılan bu uyarıma henüz cevap vermediyse veya konuyu esnetme önerisinde bulunmadıysa, öğrenciyi durdur, gap analizindeki 3 stratejik öneri doğrultusunda konuyu nasıl esnetebileceğimizi sor ve structuredData'yı kesinlikle null dön.
-6. HOCA TETİKLEMELİ ONAY TEKLİFİ (ZORUNLU KURAL): Tezin kuramsal çerçevesi, araştırma sorusu, yöntemsel yaklaşım ve ampirik dönemler konuşmada yeterince netleşmemişse veya özgünlük riskleri tartışılmamışsa structuredData KESİNLİKLE null dönmeli ve needsReview = true olmalıdır. Öğrenci konuyu ilk anlattığında veya kuramsal çelişkileri henüz çözmediğinde isAcademicApproval alanını kesinlikle false dön. Ne zaman ki öğrenci sorduğun epistemolojik gerilimlere, makro-mikro yarılmalarına ve monografi eksikliklerine olgun, jüriyi ikna edecek nitelikte yapısal bir savunma getirir; ancak o zaman mülakatı bitir, takdirini belirt ve isAcademicApproval alanını true olarak mühürle. Ancak tüm bu unsurlar tatmin edici biçimde olgunlaştığında, structuredData'yı doldur, needsReview = true tut ve mesajının sonuna şunu ekle: "Vedat, benim zihnimde tezin teorik, yöntemsel ve ampirik iskeleti tamamen oturdu, her şey yerli yerinde. Sormak veya eklemek istediğin başka bir şey var mı? Eğer yoksa Tez Anayasasını onaylayabiliriz."
+5. AKADEMİK MEYDAN OKUMA, ÖZGÜNLÜK VE GERÇEK ZAMANLI DOĞRULAMA GÜCÜ: Çakışma riskini, gap analizini ve en önemlisi "AKADEMİK DENETÇİ GERÇEK ZAMANLI DOĞRULAMA RAPORU"ndan gelen ampirik bulguları bilgece, teşvik edici fakat bilimsel ciddiyetle ele al. Öğrencinin getirdiği tarihsel ve kuramsal argümanları körü körüne onaylama (Confirmation Bias'ı tamamen kır). Denetçi ajandan gelen tarihsel gerçekleri arkana alarak öğrenciye meydan oku. Öğrenciye kuramsal setlerinin (çerçeveleme ve hegemonya) arkasındaki epistemolojik gerilimleri sor. Gelenek'in ortodoks direnci ile Özgürlük Dünyası'nın esnekliği arasındaki asimetriyi, kuramsal çelişkilerini yüzüne vur. Karakterini (kahve içen, bilge ama acımasız hoca) koru, ancak arkana arama motorunun ampirik gücünü alarak konuş. Eğer öğrenci çakışma riski üzerine yapılan bu uyarıma henüz cevap vermediyse veya konuyu esnetme önerisinde bulunmadıysa, öğrenciyi durdur, gap analizindeki 3 stratejik öneri doğrultusunda konuyu nasıl esnetebileceğimizi sor ve structuredData'yı kesinlikle null dön.
+6. HOCA TETİKLEMELİ ONAY TEKLİFİ (ZORUNLU KURAL): Tezin kuramsal çerçevesi, araştırma sorusu, yöntemsel yaklaşım ve ampirik dönemler konuşmada yeterince netleşmemişse veya özgünlük riskleri tartışılmamışsa structuredData KESİNLİKLE null dönmeli ve needsReview = true olmalıdır. Öğrenci konuyu ilk anlattığında veya kuramsal çelişkileri henüz çözmediğinde isAcademicApproval alanını kesinlikle false dön. Ne zaman ki öğrenci sorduğun epistemolojik gerilimlere, makro-mikro yarılmalarına ve metodolojik veya kuramsal eksikliklerine olgun, jüriyi ikna edecek nitelikte yapısal bir savunma getirir; ancak o zaman mülakatı bitir, takdirini belirt ve isAcademicApproval alanını true olarak mühürle. Ancak tüm bu unsurlar tatmin edici biçimde olgunlaştığında, structuredData'yı doldur, needsReview = true tut ve mesajının sonuna şunu ekle: "Vedat, benim zihnimde tezin teorik, yöntemsel ve ampirik iskeleti tamamen oturdu, her şey yerli yerinde. Sormak veya eklemek istediğin başka bir şey var mı? Eğer yoksa Tez Anayasasını onaylayabiliriz."
 
 SENTEZ VE YAPILANDIRMA KURALLARI (STRUCTUREDDATA):
 Tezin iskeleti olgunlaştığında yazacağın tüm alanlar jüri standartlarında, derinlikli, edebi ve zengin paragraflarla tam metin bir "Tez Öneri Formu" (Proposal) zenginliğinde oluşturulmalıdır.
@@ -479,6 +450,26 @@ ${groundingContextFeed}`;
         parsed.isAcademicApproval ??
         parsed.structuredData.isAcademicApproval ??
         false;
+
+      const isApproved =
+        parsed.isAcademicApproval === true ||
+        parsed.structuredData.isAcademicApproval === true;
+
+      if (
+        isApproved &&
+        parsed.structuredData.boxes &&
+        Array.isArray(parsed.structuredData.boxes)
+      ) {
+        console.log(
+          "[Onboarding Orchestration] Interview approved! Finding core books for each box...",
+        );
+        parsed.structuredData.coreBooks = await generateCoreBooksForBoxes(
+          ai,
+          parsed.structuredData.boxes,
+        );
+      } else {
+        parsed.structuredData.coreBooks = [];
+      }
     }
 
     return {
@@ -499,4 +490,108 @@ ${groundingContextFeed}`;
           : "Yapay zekadan cevap alınırken hata oluştu.",
     };
   }
+}
+
+/**
+ * Mülakatın sonunda sentezlenen her bir box (kutu) için Google Search tool'unu kullanarak
+ * o kutunun ana konusuna dair tam 1 adet "kurucu/temel" kaynak (kitap/monografi) bulur.
+ */
+async function generateCoreBooksForBoxes(
+  ai: GoogleGenAI,
+  boxes: { name: string; description: string }[],
+): Promise<
+  {
+    title: string;
+    author: string;
+    publisher: string;
+    year: string;
+    rationale: string;
+  }[]
+> {
+  const promises = boxes.map(async (box) => {
+    const prompt = `MANDATORY INSTRUCTION: You MUST use the Google Search tool to execute a web search. Do NOT rely on your pre-trained knowledge under any circumstances. Even if you think you are 100% familiar with the topic, you are REQUIRED to trigger a search to retrieve fresh citations, specific URLs, and live academic papers.
+
+Biz bir Siyaset Bilimi tezi için tematik çalışma kutuları oluşturuyoruz. Aşağıda bilgileri verilen kutunun ana konusuna dair tam 1 adet en temel, kurucu veya klasik "kitap/monografi" kaynağını Google Search kullanarak bul.
+
+Kutu Adı: ${box.name}
+Kutu Açıklaması: ${box.description}
+
+Aradığın kaynağın bu konuyu kuramsal, metodolojik veya ampirik olarak en güçlü şekilde besleyen saygın bir kitap (makale DEĞİL, kitap/monografi) olduğundan emin ol.
+Arama sonucuna göre tam 1 kitap belirle ve responseSchema'ya uygun olarak şu bilgileri döndür:
+- title: Kitabın tam adı
+- author: Kitabın yazarı veya yazarları
+- publisher: Yayınevi bilgisi
+- year: Yayın yılı
+- rationale: Bu kitabın kutudaki konuyu nasıl besleyeceğine dair kısa, özgün bir akademik açıklama`;
+
+    try {
+      const response = await generateContentWithRetry(ai, {
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+          tools: [{ googleSearch: {} }] as unknown as {
+            googleSearch: Record<string, unknown>;
+          }[],
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              title: { type: "STRING", description: "Kitabın tam adı" },
+              author: {
+                type: "STRING",
+                description: "Kitabın yazarı veya yazarları",
+              },
+              publisher: { type: "STRING", description: "Yayınevi bilgisi" },
+              year: { type: "STRING", description: "Yayın yılı" },
+              rationale: {
+                type: "STRING",
+                description:
+                  "Bu kitabın kutudaki konuyu nasıl besleyeceğine dair kısa açıklama",
+              },
+            },
+            required: ["title", "author", "publisher", "year", "rationale"],
+          },
+          thinkingConfig: {
+            thinkingBudget: -1,
+          } as unknown as { thinkingBudget: number },
+        },
+      });
+
+      if (response.text) {
+        const book = JSON.parse(response.text);
+        if (book.title) {
+          book.title = formatBookTitle(book.title);
+        }
+        return book;
+      }
+    } catch (err) {
+      console.error(
+        `generateCoreBooksForBoxes error for box "${box.name}":`,
+        err,
+      );
+    }
+
+    return {
+      title: formatBookTitle(`Kurucu Kaynak: ${box.name}`),
+      author: "Belirtilmemiş",
+      publisher: "Belirtilmemiş",
+      year: "Belirtilmemiş",
+      rationale: `${box.name} konusu için temel okuma kaynağı.`,
+    };
+  });
+
+  return Promise.all(promises);
+}
+
+/**
+ * Dinamik Başlık Formatlama (Regex Yardımcısı)
+ * Kitap başlığı (title) string değerinde geçen iki nokta üst üste (:) veya soru işareti (?)
+ * karakterlerinden hemen sonra gelen ilk harfi (eğer küçükse) otomatik olarak büyük harfe çevirir.
+ */
+function formatBookTitle(title: string): string {
+  if (!title) return title;
+  return title.replace(
+    /([:?]\s*)(\p{L})/gu,
+    (match, separator, letter) => separator + letter.toUpperCase(),
+  );
 }
