@@ -21,6 +21,7 @@ interface ChatScreenProps {
     researchQuestion: string;
     argument: string;
     methodology: string;
+    isAcademicApproval?: boolean;
     boxes?: { name: string; description: string }[];
   } | null;
   onApproveConstitution: () => void;
@@ -211,21 +212,24 @@ export function ChatScreen({
 
       {/* ===== ONAY TEKLİFİ BUTONU =====
            Hoca synthezi hazırladı ve önerdi. Kullanıcı ya devam yazar ya da onaylar. */}
-      {pendingStructuredData && !isLoading && !isOriginalityLoading && (
-        <div className="px-4 md:px-6 pb-2 animate-in slide-in-from-bottom-2 fade-in duration-300">
-          <button
-            onClick={onApproveConstitution}
-            className="w-full flex items-center justify-center gap-2.5 bg-primary text-primary-foreground font-semibold text-sm py-3 px-6 rounded-lg border border-primary shadow-lg hover:brightness-110 active:scale-[0.98] transition-all duration-150 cursor-pointer"
-          >
-            <span className="text-base">📜</span>
-            Tez Anayasasını Onayla ve İlerle
-          </button>
-          <p className="text-center text-xs text-muted-foreground mt-1.5 font-sans">
-            Ya da aşağıya yazıp sohbete devam edebilirsin — hoca seni dinlemeye
-            devam eder.
-          </p>
-        </div>
-      )}
+      {pendingStructuredData &&
+        pendingStructuredData.isAcademicApproval === true &&
+        !isLoading &&
+        !isOriginalityLoading && (
+          <div className="px-4 md:px-6 pb-2 animate-in slide-in-from-bottom-2 fade-in duration-300">
+            <button
+              onClick={onApproveConstitution}
+              className="w-full flex items-center justify-center gap-2.5 bg-primary text-primary-foreground font-semibold text-sm py-3 px-6 rounded-lg border border-primary shadow-lg hover:brightness-110 active:scale-[0.98] transition-all duration-150 cursor-pointer"
+            >
+              <span className="text-base">📜</span>
+              Tez Anayasasını Onayla ve İlerle
+            </button>
+            <p className="text-center text-xs text-muted-foreground mt-1.5 font-sans">
+              Ya da aşağıya yazıp sohbete devam edebilirsin — hoca seni
+              dinlemeye devam eder.
+            </p>
+          </div>
+        )}
 
       {/* Input & Form Box */}
       <form

@@ -28,7 +28,7 @@ export interface LiteratureRecommendation {
   relevance: string;
   url?: string;
   citationCount?: number;
-  source?: "OpenAlex" | "Semantic Scholar";
+  source?: string;
   lang?: "TR" | "EN";
   boxId?: number;
   boxName?: string;

@@ -11,9 +11,17 @@ export interface OnboardingThesisData {
   researchQuestion: string;
   argument: string;
   methodology: string;
+  isAcademicApproval?: boolean;
   boxes?: {
     name: string;
     description: string;
+  }[];
+  coreBooks?: {
+    title: string;
+    author: string;
+    publisher: string;
+    year: string;
+    rationale: string;
   }[];
 }
 
@@ -58,7 +66,12 @@ export function useOnboardingLogic(router: ReturnType<typeof useRouter>) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!state.userResponse.trim() || state.isLoading || state.isOriginalityLoading) return;
+    if (
+      !state.userResponse.trim() ||
+      state.isLoading ||
+      state.isOriginalityLoading
+    )
+      return;
 
     const responseText = state.userResponse.trim();
     const updatedHistory: ChatMessage[] = [
@@ -106,57 +119,95 @@ export function useOnboardingLogic(router: ReturnType<typeof useRouter>) {
           lastReportInHistory?.reportData?.risk === "Düşük";
 
         if (!isAlreadyApproved) {
-          setOnboardingState((prev) => ({ ...prev, isOriginalityLoading: true }));
-          try {
-            const thesisContext = `Başlık: ${res.structuredData.title}\nAraştırma Sorusu: ${res.structuredData.researchQuestion}\nArgüman: ${res.structuredData.argument}\nMetodoloji: ${res.structuredData.methodology}`;
+          // If the Server Action already returned the pre-computed originality report, use it immediately!
+          if (res.originalityReport) {
+            const reportMsg: ChatMessage = {
+              role: "originality_report",
+              content: "",
+              reportData: {
+                risk: res.originalityReport.risk,
+                reasoning: res.originalityReport.reasoning,
+                gapAnalysis: res.originalityReport.gapAnalysis,
+                theses: res.originalityReport.theses,
+              },
+            };
 
-            const origRes = await checkTezaraOriginalityAction(thesisContext);
-            if (origRes.success && origRes.report) {
-              const reportMsg: ChatMessage = {
-                role: "originality_report",
-                content: "",
-                reportData: {
-                  risk: origRes.report.risk,
-                  reasoning: origRes.report.reasoning,
-                  gapAnalysis: origRes.report.gapAnalysis,
-                  theses: origRes.report.theses,
-                },
-              };
+            currentMessages = [...currentMessages, reportMsg];
 
-              currentMessages = [...currentMessages, reportMsg];
+            setOnboardingState((prev) => ({
+              ...prev,
+              messages: [
+                ...currentMessages,
+                { role: "model", content: res.message || "" },
+              ],
+              pendingStructuredData: res.structuredData || null,
+            }));
+          } else {
+            // Safe client-side fallback just in case
+            setOnboardingState((prev) => ({
+              ...prev,
+              isOriginalityLoading: true,
+            }));
+            try {
+              const thesisContext = `Başlık: ${res.structuredData.title}\nAraştırma Sorusu: ${res.structuredData.researchQuestion}\nArgüman: ${res.structuredData.argument}\nMetodoloji: ${res.structuredData.methodology}`;
 
-              if (
-                origRes.report.risk === "Orta" ||
-                origRes.report.risk === "Yüksek"
-              ) {
-                setOnboardingState((prev) => ({
-                  ...prev,
-                  isOriginalityLoading: false,
-                  isLoading: true,
-                  messages: currentMessages,
-                }));
-
-                const revRes = await getProfessorOnboardingResponseAction(
-                  currentMessages.filter(
-                    (msg) => msg.role !== "originality_report",
-                  ),
-                  responseText,
-                  {
+              const origRes = await checkTezaraOriginalityAction(thesisContext);
+              if (origRes.success && origRes.report) {
+                const reportMsg: ChatMessage = {
+                  role: "originality_report",
+                  content: "",
+                  reportData: {
                     risk: origRes.report.risk,
+                    reasoning: origRes.report.reasoning,
                     gapAnalysis: origRes.report.gapAnalysis,
+                    theses: origRes.report.theses,
                   },
-                );
+                };
 
-                if (revRes.success && revRes.message) {
+                currentMessages = [...currentMessages, reportMsg];
+
+                if (
+                  origRes.report.risk === "Orta" ||
+                  origRes.report.risk === "Yüksek"
+                ) {
+                  setOnboardingState((prev) => ({
+                    ...prev,
+                    isOriginalityLoading: false,
+                    isLoading: true,
+                    messages: currentMessages,
+                  }));
+
+                  const revRes = await getProfessorOnboardingResponseAction(
+                    currentMessages.filter(
+                      (msg) => msg.role !== "originality_report",
+                    ),
+                    responseText,
+                    {
+                      risk: origRes.report.risk,
+                      gapAnalysis: origRes.report.gapAnalysis,
+                    },
+                  );
+
+                  if (revRes.success && revRes.message) {
+                    setOnboardingState((prev) => ({
+                      ...prev,
+                      messages: [
+                        ...prev.messages,
+                        { role: "model", content: revRes.message || "" },
+                      ],
+                    }));
+                  }
+                  return;
+                } else {
                   setOnboardingState((prev) => ({
                     ...prev,
                     messages: [
-                      ...prev.messages,
-                      { role: "model", content: revRes.message || "" },
+                      ...currentMessages,
+                      { role: "model", content: res.message || "" },
                     ],
+                    pendingStructuredData: res.structuredData || null,
                   }));
                 }
-                return;
               } else {
                 setOnboardingState((prev) => ({
                   ...prev,
@@ -167,24 +218,18 @@ export function useOnboardingLogic(router: ReturnType<typeof useRouter>) {
                   pendingStructuredData: res.structuredData || null,
                 }));
               }
-            } else {
+            } catch (origErr) {
+              console.error("Originality Check Error:", origErr);
               setOnboardingState((prev) => ({
                 ...prev,
-                messages: [
-                  ...currentMessages,
-                  { role: "model", content: res.message || "" },
-                ],
                 pendingStructuredData: res.structuredData || null,
               }));
+            } finally {
+              setOnboardingState((prev) => ({
+                ...prev,
+                isOriginalityLoading: false,
+              }));
             }
-          } catch (origErr) {
-            console.error("Originality Check Error:", origErr);
-            setOnboardingState((prev) => ({
-              ...prev,
-              pendingStructuredData: res.structuredData || null,
-            }));
-          } finally {
-            setOnboardingState((prev) => ({ ...prev, isOriginalityLoading: false }));
           }
         } else {
           setOnboardingState((prev) => ({

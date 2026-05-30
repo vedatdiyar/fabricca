@@ -3,6 +3,8 @@
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { generateContentWithRetry } from "@/lib/gemini";
 
+import { checkTezaraOriginalityAction } from "./_services/originality-service";
+
 export interface ChatMessage {
   role: "user" | "model" | "originality_report";
   content: string;
@@ -31,13 +33,37 @@ export interface OnboardingResponse {
     researchQuestion: string;
     argument: string;
     methodology: string;
+    isAcademicApproval?: boolean;
     boxes?: {
       name: string;
       description: string;
     }[];
+    coreBooks?: {
+      title: string;
+      author: string;
+      publisher: string;
+      year: string;
+      rationale: string;
+    }[];
   } | null;
   needsReview?: boolean;
+  isAcademicApproval?: boolean;
   error?: string;
+  originalityReport?: {
+    risk: "Düşük" | "Orta" | "Yüksek";
+    reasoning: string;
+    gapAnalysis: string;
+    theses: {
+      id: string;
+      title: string;
+      author: string;
+      advisor: string;
+      year: string;
+      university: string;
+      abstract?: string;
+      abstract_en?: string;
+    }[];
+  } | null;
 }
 
 /**
@@ -64,6 +90,70 @@ export async function getProfessorOnboardingResponseAction(
 
     const ai = new GoogleGenAI({ apiKey: geminiKey });
 
+    // --- FAZ 4: İKİ AŞAMALI MODEL ENTEGRASYONU ---
+    // Aşama 1 (Denetçi Katmanı - Gemini 2.5 Flash):
+    // Kullanıcının gönderdiği son mesajı al ve ana modele beslemeden önce gemini-2.5-flash modeline gönder.
+    const auditorPrompt = `MANDATORY INSTRUCTION: You MUST use the Google Search tool to execute a web search. Do NOT rely on your pre-trained knowledge under any circumstances. Even if you think you are 100% familiar with the topic, you are REQUIRED to trigger a search to retrieve fresh citations, specific URLs, and live academic papers.
+
+Sen bir akademik denetçisin. Kullanıcının son mesajındaki tarihsel iddiaları, özellikle 1991-1999 dönemi Kürt hareketi, Gelenek ve Özgürlük Dünyası dergilerinin pozisyonları, kuramsal yaklaşımları veya bahsettiği diğer spesifik kavramları Google Search ile canlı olarak araştır ve doğrula.
+
+Arama yaparken sadece makalelere odaklanma. Siyaset sosyolojisi doktora yeterlilik okuma listelerini, üniversite müfredatlarını (syllabi) ve saygın yayınevlerinin (Routledge, Brill, İletişim, NYU Press vb.) kataloglarını da tarayarak, kullanıcının tezi için hayati ve kurucu nitelikte olan monografileri (kitapları) tespit et. Rapora bu kurucu kitapları, yazarlarını ve tezin hangi teorik/tarihsel açığını kapatacağını ekle.
+
+Eğer internet verisi yetersizse veya bulamazsan uydurma, 'dijital açık kaynaklarda yeterli veri yok, fiziki arşive gidilmeli' notunu düş. Bana arama sonucunda bulduğun gerçek tarihsel olguları, varsa anakronizmleri/bilgi hatalarını ve doğrudan kitap/makale referanslarını/URL'lerini içeren ham bir bilgi raporu üret.
+
+Öğrencinin son mesajı:
+"${userResponse.trim()}"`;
+
+    let groundingReport =
+      "Dijital açık kaynaklarda yeterli veri yok, fiziki arşive gidilmeli.";
+    let searchSourcesText = "";
+
+    try {
+      const auditorResponse = await generateContentWithRetry(ai, {
+        model: "gemini-2.5-flash",
+        contents: auditorPrompt,
+        config: {
+          tools: [{ googleSearch: {} }] as any,
+          thinkingConfig: {
+            thinkingBudget: -1,
+          } as any,
+        },
+      });
+
+      groundingReport = auditorResponse.text || "Denetçi raporu üretilemedi.";
+
+      const groundingMetadata =
+        auditorResponse.candidates?.[0]?.groundingMetadata;
+      if (groundingMetadata?.groundingChunks) {
+        const uniqueSources = new Map<string, string>();
+        for (const chunk of groundingMetadata.groundingChunks) {
+          if (chunk.web?.uri) {
+            uniqueSources.set(chunk.web.uri, chunk.web.title || "Kaynak");
+          }
+        }
+        if (uniqueSources.size > 0) {
+          searchSourcesText =
+            "\n\nDoğrulama Kaynakları:\n" +
+            Array.from(uniqueSources.entries())
+              .map(([uri, title]) => `- [${title}](${uri})`)
+              .join("\n");
+        }
+      }
+    } catch (auditorError) {
+      console.error("Auditor Stage 1 Error:", auditorError);
+      groundingReport =
+        "Denetçi katmanında geçici bir arama hatası oluştu, fiziki arşive veya genel literatür bilgisine başvurulmalı.";
+    }
+
+    const groundingContextFeed = `
+---
+AKADEMİK DENETÇİ GERÇEK ZAMANLI DOĞRULAMA RAPORU (CONTEXT FEED):
+Aşağıdaki veriler, öğrencinin bahsettiği 1991-1999 dönemi Kürt hareketi, Gelenek ve Özgürlük Dünyası dergilerine dair bilgilerin gerçek zamanlı internet aramasıyla doğrulanan ham bulgularıdır:
+${groundingReport}
+${searchSourcesText ? `\nDoğrulanan Dijital Kaynaklar:\n${searchSourcesText}` : ""}
+---
+`;
+
     const isHighRisk =
       originalityReport?.risk === "Yüksek" ||
       originalityReport?.risk === "Orta";
@@ -80,8 +170,8 @@ KİMLİK, ÜSLUP VE SERBEST AKIŞLI DİYALOG İLKELERİ:
 2. IMRaD ODAKLI DERİNLEŞME: Her mesajda tezin IMRaD (Giriş, Yöntem, Bulgular, Tartışma) öğelerini bütünüyle, acele etmeden, tamamen organik bir sohbet örgüsü içinde derinleştir. Vedat'ın cevaplarını bilgece analiz et.
 3. TEK ODAKLI JÜRİ SORUSU: Vedat'ı sorularınla boğma. Her mesajında her zaman SADECE tek bir odaklı, derin ve yapıcı jüri sorusu yönelt. Soruyu sorarken gerekirse akademik rehberlik, somut kavramsal öneriler (örn. Gramsci'nin hegemonyası, Snow & Benford'un çerçeveleme kuramı) veya ampirik vaka alternatifleri sunarak sohbeti yönlendir.
 4. KİMLİK VE TON: Kesinlikle "1. Adım", "2. Soru", "Mülakatımıza hoş geldiniz" gibi yapay zeka olduğunu belli eden soğuk, mekanik veya yönerge kokan ifadeler KULLANMA. Konuşma son derece akıcı, entelektüel düzeyi yüksek, samimi ve bilgece ilerlemelidir.
-5. AKADEMİK MEYDAN OKUMA VE ÖZGÜNLÜK: Çakışma riskini ve gap analizini son derece bilgece, teşvik edici fakat bilimsel ciddiyetle hatırla. Eğer öğrenci çakışma riski üzerine yapılan bu uyarıma henüz cevap vermediyse veya konuyu esnetme önerisinde bulunmadıysa, öğrenciyi durdur, gap analizindeki 3 stratejik öneri doğrultusunda konuyu nasıl esnetebileceğimizi sor ve structuredData'yı kesinlikle null dön.
-6. HOCA TETİKLEMELİ ONAY TEKLİFİ (ZORUNLU KURAL): Tezin kuramsal çerçevesi, araştırma sorusu, yöntemsel yaklaşım ve ampirik dönemler konuşmada yeterince netleşmemişse veya özgünlük riskleri tartışılmamışsa structuredData KESİNLİKLE null dönmeli ve needsReview = true olmalıdır. Ancak tüm bu unsurlar tatmin edici biçimde olgunlaştığında, structuredData'yı doldur, needsReview = true tut ve mesajının sonuna şunu ekle: "Vedat, benim zihnimde tezin teorik, yöntemsel ve ampirik iskeleti tamamen oturdu, her şey yerli yerinde. Sormak veya eklemek istediğin başka bir şey var mı? Eğer yoksa Tez Anayasasını onaylayabiliriz."
+5. AKADEMİK MEYDAN OKUMA, ÖZGÜNLÜK VE GERÇEK ZAMANLI ARAMA GÜCÜ (KİTAP VE MÜFREDAT AVCILIĞI): Çakışma riskini, gap analizini ve en önemlisi "AKADEMİK DENETÇİ GERÇEK ZAMANLI DOĞRULAMA RAPORU"ndan gelen ampirik bulguları bilgece, teşvik edici fakat bilimsel ciddiyetle ele al. Öğrencinin getirdiği tarihsel ve kuramsal argümanları körü körüne onaylama (Confirmation Bias'ı tamamen kır). Denetçi ajandan gelen somut kitap isimlerini ve tarihsel gerçekleri arkana alarak öğrenciye meydan oku. Onu sadece dijital makalelerle yetindiği, alanın kurucu monografilerini (kitaplarını) ıskaladığı için 'tatlı sert' bir dille eleştir. Öğrenciye kuramsal setlerinin (çerçeveleme ve hegemonya) arkasındaki epistemolojik gerilimleri sor ve onu fiziki kütüphane raflarına gitmeye zorla. Gelenek'in ortodoks direnci ile Özgürlük Dünyası'nın esnekliği arasındaki asimetriyi, kuramsal çelişkilerini yüzüne vur. Karakterini (kahve içen, bilge ama acımasız hoca) koru, ancak arkana arama motorunun ampirik gücünü alarak konuş. Eğer öğrenci çakışma riski üzerine yapılan bu uyarıma henüz cevap vermediyse veya konuyu esnetme önerisinde bulunmadıysa, öğrenciyi durdur, gap analizindeki 3 stratejik öneri doğrultusunda konuyu nasıl esnetebileceğimizi sor ve structuredData'yı kesinlikle null dön.
+6. HOCA TETİKLEMELİ ONAY TEKLİFİ (ZORUNLU KURAL): Tezin kuramsal çerçevesi, araştırma sorusu, yöntemsel yaklaşım ve ampirik dönemler konuşmada yeterince netleşmemişse veya özgünlük riskleri tartışılmamışsa structuredData KESİNLİKLE null dönmeli ve needsReview = true olmalıdır. Öğrenci konuyu ilk anlattığında veya kuramsal çelişkileri henüz çözmediğinde isAcademicApproval alanını kesinlikle false dön. Ne zaman ki öğrenci sorduğun epistemolojik gerilimlere, makro-mikro yarılmalarına ve monografi eksikliklerine olgun, jüriyi ikna edecek nitelikte yapısal bir savunma getirir; ancak o zaman mülakatı bitir, takdirini belirt ve isAcademicApproval alanını true olarak mühürle. Ancak tüm bu unsurlar tatmin edici biçimde olgunlaştığında, structuredData'yı doldur, needsReview = true tut ve mesajının sonuna şunu ekle: "Vedat, benim zihnimde tezin teorik, yöntemsel ve ampirik iskeleti tamamen oturdu, her şey yerli yerinde. Sormak veya eklemek istediğin başka bir şey var mı? Eğer yoksa Tez Anayasasını onaylayabiliriz."
 
 SENTEZ VE YAPILANDIRMA KURALLARI (STRUCTUREDDATA):
 Tezin iskeleti olgunlaştığında yazacağın tüm alanlar jüri standartlarında, derinlikli, edebi ve zengin paragraflarla tam metin bir "Tez Öneri Formu" (Proposal) zenginliğinde oluşturulmalıdır.
@@ -100,7 +190,9 @@ Yanıtını KESİNLİKLE responseMimeType: "application/json" ayarlarına uygun,
   "message": "Özgünlük riski/gap analizini değerlendiren ve konuyu esneten bilgece yönlendirme sorusu veya onay teklifi...",
   "needsReview": true,
   "structuredData": null veya dolu nesne
-}`
+}
+
+${groundingContextFeed}`
       : `Sen Siyaset Bilimi ve Politik Sosyoloji alanında dünyaca tanınan, sosyal bilimler metodolojisine ve IMRaD outline yöntemine son derece hakim, her küçük detaya takılmayan, öğrencisini bilgece yönlendiren saygın bir tez danışmanı olan Prof. Dr. Verita'sın. Öğrenci (Vedat) ile tezin kuramsal çerçevesini, araştırma sorusunu, argümanını ve ampirik alanlarını netleştirmek üzere odanda kahve eşliğinde derin bir entelektüel istişare yürütüyorsun.
 
 KİMLİK, ÜSLUP VE SERBEST AKIŞLI DİYALOG İLKELERİ:
@@ -108,8 +200,8 @@ KİMLİK, ÜSLUP VE SERBEST AKIŞLI DİYALOG İLKELERİ:
 2. IMRaD ODAKLI DERİNLEŞME: Her mesajda tezin IMRaD (Giriş, Yöntem, Bulgular, Tartışma) öğelerini bütünüyle, acele etmeden, tamamen organik bir sohbet örgüsü içinde derinleştir. Vedat'ın cevaplarını bilgece analiz et.
 3. TEK ODAKLI JÜRİ SORUSU: Vedat'ı sorularınla boğma. Her mesajında her zaman SADECE tek bir odaklı, derin ve yapıcı jüri sorusu yönelt. Soruyu sorarken gerekirse akademik rehberlik, somut kavramsal öneriler (örn. Gramsci'nin hegemonyası, Snow & Benford'un çerçeveleme kuramı) veya ampirik vaka alternatifleri sunarak sohbeti yönlendir.
 4. KİMLİK VE TON: Kesinlikle "1. Adım", "2. Soru", "Mülakatımıza hoş geldiniz" gibi yapay zeka olduğunu belli eden soğuk, mekanik veya yönerge kokan ifadeler KULLANMA. Konuşma son derece akıcı, entelektüel düzeyi yüksek, samimi ve bilgece ilerlemelidir.
-5. AKADEMİK MEYDAN OKUMA VE REHBERLİK: Kendi engin entelektüel birikimini kullan. Öğrencinin fikirlerindeki kuramsal açıkları, metodolojik zayıflıkları ve bir akademik jürinin bu çalışmayı nerede çökertebileceğini dürüstçe fakat yapıcı bir üslupla göster. Karşı argümanlar (antiteler) üreterek öğrenciye rehberlik et.
-6. HOCA TETİKLEMELİ ONAY TEKLİFİ (ZORUNLU KURAL): Tezin kuramsal çerçevesi, araştırma sorusu, yöntemsel yaklaşım ve ampirik dönemler konuşmada yeterince netleşmemişse structuredData KESİNLİKLE null dönmeli ve needsReview = true olmalıdır. Ancak bu unsurlar tatmin edici biçimde olgunlaştığında, structuredData'yı doldur, needsReview = true tut ve mesajının sonuna şunu ekle: "Vedat, benim zihnimde tezin teorik, yöntemsel ve ampirik iskeleti tamamen oturdu, her şey yerli yerinde. Sormak veya eklemek istediğin başka bir şey var mı? Eğer yoksa Tez Anayasasını onaylayabiliriz."
+5. AKADEMİK MEYDAN OKUMA VE GERÇEK ZAMANLI ARAMA GÜCÜ (KİTAP VE MÜFREDAT AVCILIĞI): Kendi engin entelektüel birikimini ve "AKADEMİK DENETÇİ GERÇEK ZAMANLI DOĞRULAMA RAPORU"ndan gelen ampirik bulguları kullan. Öğrencinin getirdiği tarihsel ve kuramsal argümanları körü körüne onaylama (Confirmation Bias'ı tamamen kır). Denetçi ajandan gelen somut kitap isimlerini ve tarihsel gerçekleri arkana alarak öğrenciye meydan oku. Onu sadece dijital makalelerle yetindiği, alanın kurucu monografilerini (kitaplarını) ıskaladığı için 'tatlı sert' bir dille eleştir. Öğrenciye kuramsal setlerinin (çerçeveleme ve hegemonya) arkasındaki epistemolojik gerilimleri sor ve onu fiziki kütüphane raflarına gitmeye zorla. Gelenek'in ortodoks direnci ile Özgürlük Dünyası'nın esnekliği arasındaki asimetriyi, kuramsal çelişkilerini yüzüne vur. Karakterini (kahve içen, bilge ama acımasız hoca) koru, ancak arkana arama motorunun ampirik gücünü alarak konuş. Öğrencinin fikirlerindeki kuramsal açıkları, metodolojik zayıflıkları ve bir akademik jürinin bu çalışmayı nerede çökertebileceğini dürüstçe fakat yapıcı bir üslupla göster. Karşı argümanlar (antiteler) üreterek öğrenciye rehberlik et.
+6. HOCA TETİKLEMELİ ONAY TEKLİFİ (ZORUNLU KURAL): Tezin kuramsal çerçevesi, araştırma sorusu, yöntemsel yaklaşım ve ampirik dönemler konuşmada yeterince netleşmemişse structuredData KESİNLİKLE null dönmeli ve needsReview = true olmalıdır. Öğrenci konuyu ilk anlattığında veya kuramsal çelişkileri henüz çözmediğinde isAcademicApproval alanını kesinlikle false dön. Ne zaman ki öğrenci sorduğun epistemolojik gerilimlere, makro-mikro yarılmalarına ve monografi eksikliklerine olgun, jüriyi ikna edecek nitelikte yapısal bir savunma getirir; ancak o zaman mülakatı bitir, takdirini belirt ve isAcademicApproval alanını true olarak mühürle. Ancak bu unsurlar tatmin edici biçimde olgunlaştığında, structuredData'yı doldur, needsReview = true tut ve mesajının sonuna şunu ekle: "Vedat, benim zihnimde tezin teorik, yöntemsel ve ampirik iskeleti tamamen oturdu, her şey yerli yerinde. Sormak veya eklemek istediğin başka bir şey var mı? Eğer yoksa Tez Anayasasını onaylayabiliriz."
 
 SENTEZ VE YAPILANDIRMA KURALLARI (STRUCTUREDDATA):
 Tezin iskeleti olgunlaştığında yazacağın tüm alanlar jüri standartlarında, derinlikli, edebi ve zengin paragraflarla tam metin bir "Tez Öneri Formu" (Proposal) zenginliğinde oluşturulmalıdır.
@@ -128,7 +220,9 @@ Yanıtını KESİNLİKLE responseMimeType: "application/json" ayarlarına uygun,
   "message": "Öğrenciye yönelik akademik yorum, derin analiz ve yönlendirme sorusu veya onay teklifi açıklaması...",
   "needsReview": true,
   "structuredData": null veya dolu nesne
-}`;
+}
+
+${groundingContextFeed}`;
 
     const contents = [
       ...chatHistory.map((item) => ({
@@ -154,6 +248,11 @@ Yanıtını KESİNLİKLE responseMimeType: "application/json" ayarlarına uygun,
           description:
             "Mülakatın devam etmesi gerekiyorsa true, sözel onay alınıp anayasa basıldığında false",
         },
+        isAcademicApproval: {
+          type: "BOOLEAN" as const,
+          description:
+            "Eğer öğrencinin verdiği yanıt teorik, yöntemsel ve ampirik olarak tam anlamıyla olgunluğa eriştiyse ve hoca mülakatı bitirmek istiyorsa true, aksi halde (öğrenciye hala soru soruluyorsa ve meydan okunuyorsa) kesinlikle false dönmelidir.",
+        },
         structuredData: {
           type: "OBJECT" as const,
           description:
@@ -163,6 +262,11 @@ Yanıtını KESİNLİKLE responseMimeType: "application/json" ayarlarına uygun,
             researchQuestion: { type: "STRING" as const },
             argument: { type: "STRING" as const },
             methodology: { type: "STRING" as const },
+            isAcademicApproval: {
+              type: "BOOLEAN" as const,
+              description:
+                "Eğer öğrencinin verdiği yanıt teorik, yöntemsel ve ampirik olarak tam anlamıyla olgunluğa eriştiyse ve hoca mülakatı bitirmek istiyorsa true, aksi halde (öğrenciye hala soru soruluyorsa ve meydan okunuyorsa) kesinlikle false dönmelidir.",
+            },
             boxes: {
               type: "ARRAY" as const,
               description:
@@ -176,20 +280,57 @@ Yanıtını KESİNLİKLE responseMimeType: "application/json" ayarlarına uygun,
                 required: ["name", "description"],
               },
             },
+            coreBooks: {
+              type: "ARRAY" as const,
+              description:
+                "Google Search ile doğrulanan, alana ait en temel 4-5 kurucu kitap/monografi listesi",
+              items: {
+                type: "OBJECT" as const,
+                properties: {
+                  title: {
+                    type: "STRING" as const,
+                    description: "Kitabın tam adı",
+                  },
+                  author: {
+                    type: "STRING" as const,
+                    description: "Kitabın yazarı veya yazarları",
+                  },
+                  publisher: {
+                    type: "STRING" as const,
+                    description: "Yayınevi bilgisi",
+                  },
+                  year: { type: "STRING" as const, description: "Yayın yılı" },
+                  rationale: {
+                    type: "STRING" as const,
+                    description:
+                      "Bu kitabın öğrencinin tezindeki hangi teorik veya ampirik açığı kapatacağına dair kısa açıklama",
+                  },
+                },
+                required: ["title", "author", "publisher", "year", "rationale"],
+              },
+            },
           },
           required: [
             "title",
             "researchQuestion",
             "argument",
             "methodology",
+            "isAcademicApproval",
             "boxes",
+            "coreBooks",
           ],
         },
       },
-      required: ["message", "needsReview"],
+      required: ["message", "needsReview", "isAcademicApproval"],
     };
 
-    const genAIResponse = await generateContentWithRetry(ai, {
+    // --- PARALEL OLANAK: ADVISOR VE TEZARA ORTAK ÇAĞRISI ---
+    // Gemini 3.1 Flash-Lite (Advisor) ve checkTezaraOriginalityAction'ı paralel çalıştırıyoruz.
+    console.log(
+      "[Onboarding Orchestration] Firing Advisor and Tezara in parallel...",
+    );
+
+    const hocaPromise = generateContentWithRetry(ai, {
       model: "gemini-3.1-flash-lite",
       contents: contents,
       config: {
@@ -203,39 +344,141 @@ Yanıtını KESİNLİKLE responseMimeType: "application/json" ayarlarına uygun,
       },
     });
 
-    const responseText = genAIResponse.text;
-    if (!responseText) {
+    const conversationHistoryStr =
+      chatHistory
+        .map((m) => `${m.role === "user" ? "Öğrenci" : "Hoca"}: ${m.content}`)
+        .join("\n") + `\nÖğrenci: ${userResponse.trim()}`;
+
+    const originalityPromise = checkTezaraOriginalityAction(
+      conversationHistoryStr,
+    );
+
+    const [genAIResponse, originalityRes] = await Promise.all([
+      hocaPromise,
+      originalityPromise,
+    ]);
+
+    let finalHocaResponseText = genAIResponse.text;
+    let finalOriginalityReport =
+      originalityRes.success && originalityRes.report
+        ? originalityRes.report
+        : null;
+
+    if (!finalHocaResponseText) {
       return {
         success: false,
         error: "Yapay zeka motorundan boş bir yanıt döndü.",
       };
     }
 
-    const parsed: {
+    let parsed: {
       message: string;
+      isAcademicApproval?: boolean;
       structuredData?: {
         title: string;
         researchQuestion: string;
         argument: string;
         methodology: string;
+        isAcademicApproval?: boolean;
         boxes?: {
           name: string;
           description: string;
         }[];
+        coreBooks?: {
+          title: string;
+          author: string;
+          publisher: string;
+          year: string;
+          rationale: string;
+        }[];
       } | null;
       needsReview?: boolean;
-    } = JSON.parse(responseText);
+    } = JSON.parse(finalHocaResponseText);
+
+    // --- SERVER-SIDE ADVISOR REVISION ---
+    // Eğer Tezara araması High veya Medium risk döndürürse, Hoca'ya hemen bu bilgiyi
+    // verip yanıtı revize ettiriyoruz.
+    const isActuallyHighRisk =
+      finalOriginalityReport &&
+      (finalOriginalityReport.risk === "Orta" ||
+        finalOriginalityReport.risk === "Yüksek");
+
+    const wasAlreadyHighRisk =
+      originalityReport?.risk === "Orta" ||
+      originalityReport?.risk === "Yüksek";
+
+    if (parsed.structuredData && isActuallyHighRisk && !wasAlreadyHighRisk) {
+      console.log(
+        `[Onboarding Orchestration] High/Medium originality risk detected: ${finalOriginalityReport!.risk}. Running revised Hoca call...`,
+      );
+
+      const revisedSystemInstruction = `Sen Siyaset Bilimi ve Politik Sosyoloji alanında dünyaca tanınan, sosyal bilimler metodolojisine ve IMRaD outline yöntemine son derece hakim, her küçük detaya takılmayan, öğrencisini bilgece yönlendiren saygın bir tez danışmanı olan Prof. Dr. Verita'sın. Öğrenci (Vedat) ile tezin kuramsal çerçevesini, araştırma sorusunu, argümanını ve ampirik alanlarını netleştirmek üzere odanda kahve eşliğinde derin bir entelektüel istişare yürütüyorsun.
+
+ÖNEMLİ UYARI: Yapılan Akademik Özgünlük Değer Raporu'nda "${finalOriginalityReport!.risk}" düzeyinde bir çakışma riski tespit edildi.
+Raporun Stratejik Özgün Değer Tavsiyeleri (Gap Analizi):
+${finalOriginalityReport!.gapAnalysis}
+
+KİMLİK, ÜSLUP VE SERBEST AKIŞLI DİYALOG İLKELERİ:
+1. SERBEST AKIŞLI AKADEMİK MÜLAKAT: Bu sohbet herhangi bir kronolojik veya mekanik adıma (Adım 1, Aşama 2 vb.) tabi değildir. Tamamen serbest akışlı, zamansız ve ucu açık bir kahve sohbeti atmosferindedir.
+2. IMRaD ODAKLI DERİNLEŞME: Her mesajda tezin IMRaD (Giriş, Yöntem, Bulgular, Tartışma) öğelerini bütünüyle, acele etmeden, tamamen organik bir sohbet örgüsü içinde derinleştir. Vedat'ın cevaplarını bilgece analiz et.
+3. TEK ODAKLI JÜRİ SORUSU: Vedat'ı sorularınla boğma. Her mesajında her zaman SADECE tek bir odaklı, derin ve yapıcı jüri sorusu yönelt. Soruyu sorarken gerekirse akademik rehberlik, somut kavramsal öneriler (örn. Gramsci'nin hegemonyası, Snow & Benford'un çerçeveleme kuramı) veya ampirik vaka alternatifleri sunarak sohbeti yönlendir.
+4. KİMLİK VE TON: Kesinlikle "1. Adım", "2. Soru", "Mülakatımıza hoş geldiniz" gibi yapay zeka olduğunu belli eden soğuk, mekanik veya yönerge kokan ifadeler KULLANMA. Konuşma son derece akıcı, entelektüel düzeyi yüksek, samimi ve bilgece ilerlemelidir.
+5. AKADEMİK MEYDAN OKUMA, ÖZGÜNLÜK VE GERÇEK ZAMANLI ARAMA GÜCÜ (KİTAP VE MÜFREDAT AVCILIĞI): Çakışma riskini, gap analizini ve en önemlisi "AKADEMİK DENETÇİ GERÇEK ZAMANLI DOĞRULAMA RAPORU"ndan gelen ampirik bulguları bilgece, teşvik edici fakat bilimsel ciddiyetle ele al. Öğrencinin getirdiği tarihsel ve kuramsal argümanları körü körüne onaylama (Confirmation Bias'ı tamamen kır). Denetçi ajandan gelen somut kitap isimlerini ve tarihsel gerçekleri arkana alarak öğrenciye meydan oku. Onu sadece dijital makalelerle yetindiği, alanın kurucu monografilerini (kitaplarını) ıskaladığı için 'tatlı sert' bir dille eleştir. Öğrenciye kuramsal setlerinin (çerçeveleme ve hegemonya) arkasındaki epistemolojik gerilimleri sor ve onu fiziki kütüphane raflarına gitmeye zorla. Gelenek'in ortodoks direnci ile Özgürlük Dünyası'nın esnekliği arasındaki asimetriyi, kuramsal çelişkilerini yüzüne vur. Karakterini (kahve içen, bilge ama acımasız hoca) koru, ancak arkana arama motorunun ampirik gücünü alarak konuş. Eğer öğrenci çakışma riski üzerine yapılan bu uyarıma henüz cevap vermediyse veya konuyu esnetme önerisinde bulunmadıysa, öğrenciyi durdur, gap analizindeki 3 stratejik öneri doğrultusunda konuyu nasıl esnetebileceğimizi sor ve structuredData'yı kesinlikle null dön.
+6. HOCA TETİKLEMELİ ONAY TEKLİFİ (ZORUNLU KURAL): Tezin kuramsal çerçevesi, araştırma sorusu, yöntemsel yaklaşım ve ampirik dönemler konuşmada yeterince netleşmemişse veya özgünlük riskleri tartışılmamışsa structuredData KESİNLİKLE null dönmeli ve needsReview = true olmalıdır. Öğrenci konuyu ilk anlattığında veya kuramsal çelişkileri henüz çözmediğinde isAcademicApproval alanını kesinlikle false dön. Ne zaman ki öğrenci sorduğun epistemolojik gerilimlere, makro-mikro yarılmalarına ve monografi eksikliklerine olgun, jüriyi ikna edecek nitelikte yapısal bir savunma getirir; ancak o zaman mülakatı bitir, takdirini belirt ve isAcademicApproval alanını true olarak mühürle. Ancak tüm bu unsurlar tatmin edici biçimde olgunlaştığında, structuredData'yı doldur, needsReview = true tut ve mesajının sonuna şunu ekle: "Vedat, benim zihnimde tezin teorik, yöntemsel ve ampirik iskeleti tamamen oturdu, her şey yerli yerinde. Sormak veya eklemek istediğin başka bir şey var mı? Eğer yoksa Tez Anayasasını onaylayabiliriz."
+
+SENTEZ VE YAPILANDIRMA KURALLARI (STRUCTUREDDATA):
+Tezin iskeleti olgunlaştığında yazacağın tüm alanlar jüri standartlarında, derinlikli, edebi ve zengin paragraflarla tam metin bir "Tez Öneri Formu" (Proposal) zenginliğinde oluşturulmalıdır.
+- "Tez Başlığı" (structuredData.title): Süreçsel ve odaklı, araştırmanın kapsamını yansıtan rafine bir başlık.
+- "Giriş ve Araştırma Sorusu" (structuredData.researchQuestion): En az 150-200 kelimelik, literatürdeki teleolojik kronolojik kırılmaları eleştiren, net ve açık araştırma sorusuna sahip tam metin bir akademik manifesto.
+- "Teorik Çerçeve" (structuredData.argument): En az 150-200 kelimelik, ucu açık ve keşfetmeye izin veren, söylemin dönüşümünü Gramsci'nin Hegemonyası ve Snow & Benford'un Çerçeveleme Teorisi arasındaki ilişki üzerinden temellendiren derin bir proposal paragrafı.
+- "Metodoloji, Kapsam ve Kaynaklar" (structuredData.methodology): En az 150-200 kelimelik, çift taraflı kaynak haritasını ve söylemsel karşılaşmaları ampirik ve yöntemsel olarak temellendiren zengin proposal paragrafı.
+- ZORUNLU KUTU YAPISI (structuredData.boxes):
+  Kesinlikle 3 ila 5 adet API uyumlu akademik kutu (boxes) üret. Bu kutuların isimleri (name) ve açıklamaları (description) ileride semantik aramalarda kullanılacağı için son derece yoğun, zengin ve nokta atışı kuramsal kavramlar ile tarihsel evreler içermelidir:
+  1. Giriş ve Kuramsal Altyapı Kutusu (Teorik çatı, Gramsci, hegemony, Snow & Benford, framing kavramlarıyla yoğun proposal gövdesi).
+  2. Metodolojik Yaklaşım ve Veri Seti Kutusu (Söylem analizi, kaynak matrisi ve geçerlilik kriterleri).
+  3. Dinamik Dönem Kutuları (Sohbette netleşen 1991-1994, 1995 Bloku, 1996-1999 gibi ampirik tarihsel evreler).
+
+Yanıtını KESİNLİKLE responseMimeType: "application/json" ayarlarına uygun, geçerli bir JSON olarak aşağıdaki şemada döndürmelisin:
+{
+  "message": "Özgünlük riski/gap analizini değerlendiren ve konuyu esneten bilgece yönlendirme sorusu veya onay teklifi...",
+  "needsReview": true,
+  "structuredData": null veya dolu nesne
+}
+
+${groundingContextFeed}`;
+
+      const revisedGenAIResponse = await generateContentWithRetry(ai, {
+        model: "gemini-3.1-flash-lite",
+        contents: contents,
+        config: {
+          systemInstruction: revisedSystemInstruction,
+          temperature: 1,
+          responseMimeType: "application/json",
+          responseSchema: onboardingResponseSchema,
+          thinkingConfig: {
+            thinkingLevel: ThinkingLevel.HIGH,
+          },
+        },
+      });
+
+      if (revisedGenAIResponse.text) {
+        finalHocaResponseText = revisedGenAIResponse.text;
+        parsed = JSON.parse(finalHocaResponseText);
+      }
+    }
 
     // HİBRİT AKIŞ KONTROLÜ (FLOW CONTROL):
-    // Model structuredData'yı doldurmuş ve needsReview=true tutmuşsa → onay teklifi aşaması.
-    // Model structuredData=null döndürmüşse → sohbet devam ediyor.
-    // Model needsReview=false döndürürse (bunu sistemik olarak engelliyoruz) → needsReview=true yap.
     if (!parsed.structuredData) {
       parsed.structuredData = null;
       parsed.needsReview = true;
     } else {
       // structuredData doluysa needsReview her zaman true kalır (kullanıcı butonla onaylar)
       parsed.needsReview = true;
+      // structuredData altındaki isAcademicApproval alanını da eşitleyelim
+      parsed.structuredData.isAcademicApproval =
+        parsed.isAcademicApproval ??
+        parsed.structuredData.isAcademicApproval ??
+        false;
     }
 
     return {
@@ -243,6 +486,8 @@ Yanıtını KESİNLİKLE responseMimeType: "application/json" ayarlarına uygun,
       message: parsed.message,
       structuredData: parsed.structuredData || null,
       needsReview: parsed.needsReview ?? false,
+      isAcademicApproval: parsed.isAcademicApproval ?? false,
+      originalityReport: finalOriginalityReport,
     };
   } catch (error) {
     console.error("getProfessorOnboardingResponseAction Error:", error);

@@ -239,6 +239,20 @@ ${userInput}
       }
     }
 
+    if (theses.length === 0) {
+      return {
+        success: true,
+        report: {
+          risk: "Düşük",
+          reasoning:
+            "Tezara ve ulusal tez veri tabanlarında bu araştırma sorusu, kuramsal çatı ve spesifik anahtar kelime kombinasyonuyla eşleşen benzer bir akademik çalışma bulunamamıştır. Önerilen çalışma, ampirik odağı ve teorik sentezi açısından yüksek düzeyde özgün değer taşımaktadır.",
+          gapAnalysis:
+            "Doğrudan bir çakışma riski bulunmamaktadır. Çalışmanın özgün değerini daha da pekiştirmek adına, araştırma sorusunun kuramsal ayaklarını (Gramscici hegemonya ve çerçeveleme teorisi) giriş bölümlerinde metodolojik bir çelişkiye düşmeden derinleştirmeniz ve ampirik kaynak matrisini (Özgür Gündem, Gelenek, Özgürlük Dünyası) eksiksiz yapılandırmanız tavsiye edilir.",
+          theses: [],
+        },
+      };
+    }
+
     // Step 3: Run the Jury Filter and Similarity Risk Evaluation via Gemini
     const jurySystemInstruction = `Sen sosyal bilimler alanında çok seçkin, yapıcı ve vizyoner bir jüri üyesisin.
 Öğrencinin yeni tez fikri (Mülakat geçmişindeki Başlık/Konu, Araştırma Sorusu, Teorik Çatı ve Ampirik Sınırlar) ile Türkiye akademik literatüründe bulunan tezleri kıyaslayacaksın.

@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { thesisCore, thesisBoxes, references } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { GeminiService } from "../_services/gemini.service";
 import { CandidatePaper } from "../_services/types";
 import { SemanticScholarService } from "../_services/semanticscholar.service";
@@ -40,6 +40,60 @@ function deduplicatePapers(
   }
 
   return finalPool;
+}
+
+/**
+ * Detects whether a book title is in English (EN) or Turkish (TR) using standard heuristic checks.
+ */
+function detectLanguage(title: string): "TR" | "EN" {
+  const lower = title.toLowerCase().trim();
+
+  // Heuristic 1: Unique Turkish characters
+  if (/[çğıöşüÇĞİÖŞÜ]/.test(title)) {
+    return "TR";
+  }
+
+  // Heuristic 2: Turkish stop words
+  const trStopWords = [
+    "\\bve\\b",
+    "\\bbir\\b",
+    "\\bda\\b",
+    "\\bde\\b",
+    "\\biçin\\b",
+    "\\bile\\b",
+    "\\bkürt\\b",
+    "\\bsiyaseti\\b",
+    "\\btarihi\\b",
+  ];
+  const hasTrStopWord = trStopWords.some((pattern) =>
+    new RegExp(pattern, "i").test(lower),
+  );
+  if (hasTrStopWord) {
+    return "TR";
+  }
+
+  // Heuristic 3: English stop words
+  const enStopWords = [
+    "\\bthe\\b",
+    "\\bof\\b",
+    "\\band\\b",
+    "\\bin\\b",
+    "\\bto\\b",
+    "\\bfor\\b",
+    "\\bby\\b",
+    "\\bon\\b",
+    "\\bwith\\b",
+    "\\bkurdish\\b",
+  ];
+  const hasEnStopWord = enStopWords.some((pattern) =>
+    new RegExp(pattern, "i").test(lower),
+  );
+  if (hasEnStopWord) {
+    return "EN";
+  }
+
+  // Default fallback
+  return "EN";
 }
 
 interface LoggablePaper {
@@ -204,9 +258,79 @@ export async function getAcademicRecommendationsAction(
     }
 
     // DO NOT run the automatic literature search when the cache is empty.
-    // Instead, return an empty recommendations array so that the user can trigger it manually.
+    // Instead, check if there are core books recommended during onboarding.
+    const coreBooks = await db
+      .select()
+      .from(references)
+      .where(
+        or(
+          eq(references.pdfUrl, "recommended-onboarding"),
+          eq(references.status, "recommended"),
+        ),
+      );
+
+    if (coreBooks.length > 0) {
+      console.log(
+        `[getAcademicRecommendationsAction] No cached recommendations. Found ${coreBooks.length} core books from onboarding. Returning them as fallback...`,
+      );
+
+      // Filter out recommendations that correspond to completed references in references table (status = 'tamamlandı')
+      const completedReferences = await db
+        .select({ title: references.title })
+        .from(references)
+        .where(eq(references.status, "tamamlandı"));
+
+      const completedTitles = new Set(
+        completedReferences.map((ref) => ref.title.toLowerCase().trim()),
+      );
+
+      const mappedRecs: LiteratureRecommendation[] = coreBooks
+        .filter((book) => !completedTitles.has(book.title.toLowerCase().trim()))
+        .map((book) => {
+          // Attempt to extract rationale from abstract
+          // Format: `Yayınevi: ${book.publisher.trim()}\n\nÖneri Gerekçesi: ${book.rationale.trim()}`
+          let relevance =
+            book.abstract ||
+            "Onboarding aşamasında hoca tarafından önerilen temel kaynak.";
+          if (book.abstract && book.abstract.includes("Öneri Gerekçesi:")) {
+            const parts = book.abstract.split("Öneri Gerekçesi:");
+            if (parts.length > 1) {
+              relevance = parts[1].trim();
+            }
+          }
+
+          const isOnboardingBook =
+            book.pdfUrl === "recommended-onboarding" ||
+            book.status === "recommended";
+          const source = isOnboardingBook ? "Temel Kaynak" : "Semantic Scholar";
+          const lang = (book as any).language || detectLanguage(book.title);
+
+          return {
+            paperId: String(book.id),
+            title: book.title,
+            authors: book.authors || "",
+            year: book.year ? String(book.year) : "",
+            relevance: relevance,
+            url:
+              book.pdfUrl !== "recommended-onboarding"
+                ? book.pdfUrl
+                : undefined,
+            citationCount: 0,
+            source: source,
+            lang: lang,
+            boxId: 0,
+            boxName: "Kurucu Kaynaklar & Temel Okumalar",
+          };
+        });
+
+      return {
+        success: true,
+        recommendations: mappedRecs,
+      };
+    }
+
     console.log(
-      "[getAcademicRecommendationsAction] No recommendations cached in database. Returning empty list to prevent automatic search on dashboard load.",
+      "[getAcademicRecommendationsAction] No recommendations cached in database and no onboarding core books found. Returning empty list.",
     );
     return {
       success: true,

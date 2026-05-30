@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { thesisCore, thesisBoxes } from "@/db/schema";
+import { thesisCore, thesisBoxes, references } from "@/db/schema";
 
 /**
  * Server Action to finalize and save the structured "Tez Anayasası" (Thesis Core) into Neon PostgreSQL via Drizzle ORM.
@@ -14,6 +14,13 @@ export async function saveThesisCoreAction(data: {
   boxes?: {
     name: string;
     description: string;
+  }[];
+  coreBooks?: {
+    title: string;
+    author: string;
+    publisher: string;
+    year: string;
+    rationale: string;
   }[];
 }): Promise<{ success: boolean; error?: string }> {
   try {
@@ -48,6 +55,20 @@ export async function saveThesisCoreAction(data: {
           name: box.name.trim(),
           description: box.description?.trim() || null,
           order: index,
+        })),
+      );
+    }
+
+    // Insert coreBooks as references with status = 'recommended'
+    if (data.coreBooks && data.coreBooks.length > 0) {
+      await db.insert(references).values(
+        data.coreBooks.map((book) => ({
+          title: book.title.trim(),
+          authors: book.author.trim(),
+          year: parseInt(book.year) || null,
+          pdfUrl: "recommended-onboarding",
+          abstract: `Yayınevi: ${book.publisher.trim()}\n\nÖneri Gerekçesi: ${book.rationale.trim()}`,
+          status: "recommended",
         })),
       );
     }
