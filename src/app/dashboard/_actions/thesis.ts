@@ -4,8 +4,6 @@ import {
   thesisBoxes,
   notes,
   references,
-  pdfChunks,
-  tasks,
   aiInsights,
 } from "@/db/schema";
 import { GetThesisCoreResult } from "../actions";

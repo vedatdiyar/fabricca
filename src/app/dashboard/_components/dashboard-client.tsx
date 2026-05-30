@@ -80,6 +80,18 @@ export default function DashboardClient({
         <MissingThesisConstitution />
       )}
 
+      {/* LİTERATÜR TAVSİYELERİ */}
+      <RecommendationGrid
+        recs={recs}
+        boxes={thesisData?.boxes || []}
+        isLoadingRecs={isLoadingRecs}
+        recsError={recsError}
+        onRefresh={(boxId) =>
+          thesisData && fetchRecommendations(thesisData, true, boxId)
+        }
+        onSelectRec={(rec) => setSelectedRec(rec)}
+      />
+
       {/* GÖREVLER KANBAN PANOSU */}
       <div className="w-full mb-8 border border-border bg-card rounded-lg overflow-hidden transition-all duration-300">
         {/* Panel Header */}
@@ -162,18 +174,6 @@ export default function DashboardClient({
           </div>
         </div>
       </div>
-
-      {/* LİTERATÜR TAVSİYELERİ */}
-      <RecommendationGrid
-        recs={recs}
-        boxes={thesisData?.boxes || []}
-        isLoadingRecs={isLoadingRecs}
-        recsError={recsError}
-        onRefresh={(boxId) =>
-          thesisData && fetchRecommendations(thesisData, true, boxId)
-        }
-        onSelectRec={(rec) => setSelectedRec(rec)}
-      />
 
       {/* PDF YÜKLEME PANELİ */}
       <PdfUploadDrawer

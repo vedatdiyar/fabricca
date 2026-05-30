@@ -178,21 +178,7 @@ export function ChatScreen({
         )}
 
         {/* Professor Typing Indicator */}
-        {isLoading && (
-          <div className="flex items-start gap-3">
-            <div className="flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-full border bg-secondary text-primary border-primary text-xs font-semibold">
-              H
-            </div>
-            <div className="bg-secondary text-muted-foreground border border-border rounded-lg p-4 flex items-center space-x-2">
-              <span className="text-xs">Hoca düşünüyor</span>
-              <div className="flex space-x-1">
-                <div className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" />
-                <div className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce delay-75" />
-                <div className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce delay-150" />
-              </div>
-            </div>
-          </div>
-        )}
+        {isLoading && <TypingIndicator phrases={STATUS_PHRASES} />}
 
         {/* Error Box */}
         {error && (
@@ -261,6 +247,51 @@ export function ChatScreen({
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+const STATUS_PHRASES = [
+  "Prof. Dr. Verita tarihsel olguları ve birincil kaynakları tarıyor...",
+  "Hoca kuramsal çerçeveyi ve mantıksal kurguyu tartıyor...",
+  "Prof. Dr. Verita jüri sorusunu ve anti-tezleri şekillendiriyor...",
+];
+
+interface TypingIndicatorProps {
+  phrases: string[];
+}
+
+function TypingIndicator({ phrases }: TypingIndicatorProps) {
+  const [step, setStep] = React.useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setStep((prev) => {
+        if (prev < phrases.length - 1) {
+          return prev + 1;
+        }
+        return prev;
+      });
+    }, 2500);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [phrases]);
+
+  return (
+    <div className="flex items-start gap-3">
+      <div className="flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-full border bg-secondary text-primary border-primary text-xs font-semibold">
+        H
+      </div>
+      <div className="bg-secondary text-muted-foreground border border-border rounded-lg p-4 flex items-center space-x-2">
+        <span className="text-xs">{phrases[step]}</span>
+        <div className="flex space-x-1">
+          <div className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" />
+          <div className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce delay-75" />
+          <div className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce delay-150" />
+        </div>
+      </div>
     </div>
   );
 }

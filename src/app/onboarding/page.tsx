@@ -7,7 +7,6 @@ import { useOnboardingLogic } from "./_hooks/use-onboarding-logic";
 import { ChatScreen } from "./_components/chat-screen";
 import { PreviewScreen } from "./_components/preview-screen";
 
-
 function OnboardingHeader() {
   return (
     <div className="border-b border-border p-4 md:p-5 bg-card flex items-center justify-between shrink-0">
@@ -70,7 +69,7 @@ export default function OnboardingPage() {
         )}
 
         {/* 2. STRUCTURED PREVIEW & CONFIRMATION SCREEN */}
-        {!state.isChatActive && (
+        {!state.isChatActive && state.structuredData && (
           <PreviewScreen
             structuredData={state.structuredData}
             isSaving={state.isSaving}

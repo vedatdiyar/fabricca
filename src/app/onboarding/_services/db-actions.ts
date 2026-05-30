@@ -77,14 +77,19 @@ export async function saveThesisCoreAction(data: {
 
       if (filteredBooks.length > 0) {
         await db.insert(references).values(
-          filteredBooks.map((book) => ({
-            title: book.title.trim(),
-            authors: book.author.trim(),
-            year: parseInt(book.year) || null,
-            pdfUrl: "recommended-onboarding",
-            abstract: `Yayınevi: ${book.publisher.trim()}\n\nÖneri Gerekçesi: ${book.rationale.trim()}`,
-            status: "recommended",
-          })),
+          filteredBooks.map((book) => {
+            const parsedYear = book.year
+              ? parseInt(book.year.replace(/\D/g, ""), 10)
+              : NaN;
+            return {
+              title: book.title.trim(),
+              authors: book.author.trim(),
+              year: isNaN(parsedYear) ? null : parsedYear,
+              pdfUrl: "recommended-onboarding",
+              abstract: `Yayınevi: ${book.publisher.trim()}\n\nÖneri Gerekçesi: ${book.rationale.trim()}`,
+              status: "recommended",
+            };
+          }),
         );
       }
     }

@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getProfessorOnboardingResponseAction, ChatMessage } from "../actions";
-import { checkTezaraOriginalityAction } from "../_services/originality-service";
 import { saveThesisCoreAction } from "../_services/db-actions";
 
 export interface OnboardingThesisData {
@@ -90,19 +89,9 @@ export function useOnboardingLogic(router: ReturnType<typeof useRouter>) {
     try {
       let currentMessages = [...updatedHistory];
 
-      const lastReport = currentMessages
-        .filter((m) => m.role === "originality_report")
-        .pop();
-
       const res = await getProfessorOnboardingResponseAction(
-        currentMessages.filter((msg) => msg.role !== "originality_report"),
+        currentMessages,
         responseText,
-        lastReport?.reportData
-          ? {
-              risk: lastReport.reportData.risk,
-              gapAnalysis: lastReport.reportData.gapAnalysis,
-            }
-          : undefined,
       );
 
       if (!res.success || !res.message) {
@@ -111,145 +100,28 @@ export function useOnboardingLogic(router: ReturnType<typeof useRouter>) {
         );
       }
 
-      if (res.structuredData) {
-        const lastReportInHistory = currentMessages
-          .filter((m) => m.role === "originality_report")
-          .pop();
-        const isAlreadyApproved =
-          lastReportInHistory?.reportData?.risk === "Düşük";
-
-        if (!isAlreadyApproved) {
-          // If the Server Action already returned the pre-computed originality report, use it immediately!
-          if (res.originalityReport) {
-            const reportMsg: ChatMessage = {
-              role: "originality_report",
-              content: "",
-              reportData: {
-                risk: res.originalityReport.risk,
-                reasoning: res.originalityReport.reasoning,
-                gapAnalysis: res.originalityReport.gapAnalysis,
-                theses: res.originalityReport.theses,
-              },
-            };
-
-            currentMessages = [...currentMessages, reportMsg];
-
-            setOnboardingState((prev) => ({
-              ...prev,
-              messages: [
-                ...currentMessages,
-                { role: "model", content: res.message || "" },
-              ],
-              pendingStructuredData: res.structuredData || null,
-            }));
-          } else {
-            // Safe client-side fallback just in case
-            setOnboardingState((prev) => ({
-              ...prev,
-              isOriginalityLoading: true,
-            }));
-            try {
-              const thesisContext = `Başlık: ${res.structuredData.title}\nAraştırma Sorusu: ${res.structuredData.researchQuestion}\nArgüman: ${res.structuredData.argument}\nMetodoloji: ${res.structuredData.methodology}`;
-
-              const origRes = await checkTezaraOriginalityAction(thesisContext);
-              if (origRes.success && origRes.report) {
-                const reportMsg: ChatMessage = {
-                  role: "originality_report",
-                  content: "",
-                  reportData: {
-                    risk: origRes.report.risk,
-                    reasoning: origRes.report.reasoning,
-                    gapAnalysis: origRes.report.gapAnalysis,
-                    theses: origRes.report.theses,
-                  },
-                };
-
-                currentMessages = [...currentMessages, reportMsg];
-
-                if (
-                  origRes.report.risk === "Orta" ||
-                  origRes.report.risk === "Yüksek"
-                ) {
-                  setOnboardingState((prev) => ({
-                    ...prev,
-                    isOriginalityLoading: false,
-                    isLoading: true,
-                    messages: currentMessages,
-                  }));
-
-                  const revRes = await getProfessorOnboardingResponseAction(
-                    currentMessages.filter(
-                      (msg) => msg.role !== "originality_report",
-                    ),
-                    responseText,
-                    {
-                      risk: origRes.report.risk,
-                      gapAnalysis: origRes.report.gapAnalysis,
-                    },
-                  );
-
-                  if (revRes.success && revRes.message) {
-                    setOnboardingState((prev) => ({
-                      ...prev,
-                      messages: [
-                        ...prev.messages,
-                        { role: "model", content: revRes.message || "" },
-                      ],
-                    }));
-                  }
-                  return;
-                } else {
-                  setOnboardingState((prev) => ({
-                    ...prev,
-                    messages: [
-                      ...currentMessages,
-                      { role: "model", content: res.message || "" },
-                    ],
-                    pendingStructuredData: res.structuredData || null,
-                  }));
-                }
-              } else {
-                setOnboardingState((prev) => ({
-                  ...prev,
-                  messages: [
-                    ...currentMessages,
-                    { role: "model", content: res.message || "" },
-                  ],
-                  pendingStructuredData: res.structuredData || null,
-                }));
-              }
-            } catch (origErr) {
-              console.error("Originality Check Error:", origErr);
-              setOnboardingState((prev) => ({
-                ...prev,
-                pendingStructuredData: res.structuredData || null,
-              }));
-            } finally {
-              setOnboardingState((prev) => ({
-                ...prev,
-                isOriginalityLoading: false,
-              }));
-            }
-          }
-        } else {
-          setOnboardingState((prev) => ({
-            ...prev,
-            messages: [
-              ...prev.messages,
-              { role: "model", content: res.message || "" },
-            ],
-            pendingStructuredData: res.structuredData || null,
-          }));
-        }
-      } else {
-        setOnboardingState((prev) => ({
-          ...prev,
-          messages: [
-            ...prev.messages,
-            { role: "model", content: res.message || "" },
-          ],
-        }));
+      if (res.originalityReport) {
+        const reportMsg: ChatMessage = {
+          role: "originality_report",
+          content: "",
+          reportData: {
+            risk: res.originalityReport.risk,
+            reasoning: res.originalityReport.reasoning,
+            gapAnalysis: res.originalityReport.gapAnalysis,
+            theses: res.originalityReport.theses,
+          },
+        };
+        currentMessages = [...currentMessages, reportMsg];
       }
+
+      setOnboardingState((prev) => ({
+        ...prev,
+        messages: [
+          ...currentMessages,
+          { role: "model", content: res.message || "" },
+        ],
+        pendingStructuredData: res.structuredData || null,
+      }));
     } catch (err) {
       console.error("Onboarding Error:", err);
       const errMsg =
