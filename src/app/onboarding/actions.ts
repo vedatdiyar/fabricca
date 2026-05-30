@@ -508,8 +508,17 @@ async function generateCoreBooksForBoxes(
     rationale: string;
   }[]
 > {
-  const promises = boxes.map(async (box) => {
-    const prompt = `MANDATORY INSTRUCTION: You MUST use the Google Search tool to execute a web search. Do NOT rely on your pre-trained knowledge under any circumstances. Even if you think you are 100% familiar with the topic, you are REQUIRED to trigger a search to retrieve fresh citations, specific URLs, and live academic papers.
+  const promises = boxes.map(
+    async (
+      box,
+    ): Promise<{
+      title: string;
+      author: string;
+      publisher: string;
+      year: string;
+      rationale: string;
+    } | null> => {
+      const prompt = `MANDATORY INSTRUCTION: You MUST use the Google Search tool to execute a web search. Do NOT rely on your pre-trained knowledge under any circumstances. Even if you think you are 100% familiar with the topic, you are REQUIRED to trigger a search to retrieve fresh citations, specific URLs, and live academic papers.
 
 Biz bir Siyaset Bilimi tezi için tematik çalışma kutuları oluşturuyoruz. Aşağıda bilgileri verilen kutunun ana konusuna dair tam 1 adet en temel, kurucu veya klasik "kitap/monografi" kaynağını Google Search kullanarak bul.
 
@@ -524,63 +533,68 @@ Arama sonucuna göre tam 1 kitap belirle ve responseSchema'ya uygun olarak şu b
 - year: Yayın yılı
 - rationale: Bu kitabın kutudaki konuyu nasıl besleyeceğine dair kısa, özgün bir akademik açıklama`;
 
-    try {
-      const response = await generateContentWithRetry(ai, {
-        model: "gemini-2.5-flash",
-        contents: prompt,
-        config: {
-          tools: [{ googleSearch: {} }] as unknown as {
-            googleSearch: Record<string, unknown>;
-          }[],
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              title: { type: "STRING", description: "Kitabın tam adı" },
-              author: {
-                type: "STRING",
-                description: "Kitabın yazarı veya yazarları",
+      try {
+        const response = await generateContentWithRetry(ai, {
+          model: "gemini-2.5-flash",
+          contents: prompt,
+          config: {
+            tools: [{ googleSearch: {} }] as unknown as {
+              googleSearch: Record<string, unknown>;
+            }[],
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                title: { type: "STRING", description: "Kitabın tam adı" },
+                author: {
+                  type: "STRING",
+                  description: "Kitabın yazarı veya yazarları",
+                },
+                publisher: { type: "STRING", description: "Yayınevi bilgisi" },
+                year: { type: "STRING", description: "Yayın yılı" },
+                rationale: {
+                  type: "STRING",
+                  description:
+                    "Bu kitabın kutudaki konuyu nasıl besleyeceğine dair kısa açıklama",
+                },
               },
-              publisher: { type: "STRING", description: "Yayınevi bilgisi" },
-              year: { type: "STRING", description: "Yayın yılı" },
-              rationale: {
-                type: "STRING",
-                description:
-                  "Bu kitabın kutudaki konuyu nasıl besleyeceğine dair kısa açıklama",
-              },
+              required: ["title", "author", "publisher", "year", "rationale"],
             },
-            required: ["title", "author", "publisher", "year", "rationale"],
+            thinkingConfig: {
+              thinkingBudget: -1,
+            } as unknown as { thinkingBudget: number },
           },
-          thinkingConfig: {
-            thinkingBudget: -1,
-          } as unknown as { thinkingBudget: number },
-        },
-      });
+        });
 
-      if (response.text) {
-        const book = JSON.parse(response.text);
-        if (book.title) {
-          book.title = formatBookTitle(book.title);
+        if (response.text) {
+          try {
+            const book = JSON.parse(response.text);
+            if (book.title) {
+              book.title = formatBookTitle(book.title);
+            }
+            return book;
+          } catch (parseErr) {
+            console.error(
+              `generateCoreBooksForBoxes JSON parse error for box "${box.name}":`,
+              parseErr,
+            );
+          }
         }
-        return book;
+      } catch (err) {
+        console.error(
+          `generateCoreBooksForBoxes error for box "${box.name}":`,
+          err,
+        );
       }
-    } catch (err) {
-      console.error(
-        `generateCoreBooksForBoxes error for box "${box.name}":`,
-        err,
-      );
-    }
 
-    return {
-      title: formatBookTitle(`Kurucu Kaynak: ${box.name}`),
-      author: "Belirtilmemiş",
-      publisher: "Belirtilmemiş",
-      year: "Belirtilmemiş",
-      rationale: `${box.name} konusu için temel okuma kaynağı.`,
-    };
-  });
+      return null;
+    },
+  );
 
-  return Promise.all(promises);
+  const results = await Promise.all(promises);
+  return results.filter(
+    (book): book is NonNullable<typeof book> => book !== null,
+  );
 }
 
 /**

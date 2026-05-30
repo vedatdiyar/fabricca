@@ -61,16 +61,32 @@ export async function saveThesisCoreAction(data: {
 
     // Insert coreBooks as references with status = 'recommended'
     if (data.coreBooks && data.coreBooks.length > 0) {
-      await db.insert(references).values(
-        data.coreBooks.map((book) => ({
-          title: book.title.trim(),
-          authors: book.author.trim(),
-          year: parseInt(book.year) || null,
-          pdfUrl: "recommended-onboarding",
-          abstract: `Yayınevi: ${book.publisher.trim()}\n\nÖneri Gerekçesi: ${book.rationale.trim()}`,
-          status: "recommended",
-        })),
-      );
+      const filteredBooks = data.coreBooks.filter((book) => {
+        const author = book.author?.trim();
+        const year = book.year?.trim();
+        const title = book.title?.trim();
+
+        if (author === "Belirtilmemiş" || year === "Belirtilmemiş") {
+          return false;
+        }
+        if (title && title.includes("Kurucu Kaynak:")) {
+          return false;
+        }
+        return true;
+      });
+
+      if (filteredBooks.length > 0) {
+        await db.insert(references).values(
+          filteredBooks.map((book) => ({
+            title: book.title.trim(),
+            authors: book.author.trim(),
+            year: parseInt(book.year) || null,
+            pdfUrl: "recommended-onboarding",
+            abstract: `Yayınevi: ${book.publisher.trim()}\n\nÖneri Gerekçesi: ${book.rationale.trim()}`,
+            status: "recommended",
+          })),
+        );
+      }
     }
 
     return { success: true };

@@ -91,11 +91,11 @@ export function ThesisConstitution({ thesisData }: ThesisConstitutionProps) {
                   Tez Anayasası Sıfırlansın Mı?
                 </AlertDialogTitle>
                 <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
-                  Tez anayasasını ve tanımlanmış olan tüm Tematik Çalışma
-                  Kutularını sıfırlamak istediğinize emin misiniz? Kütüphanedeki
-                  PDF makaleleriniz ve okuma notlarınız silinmeyecektir, ancak
-                  tematik çalışma kutusu ilişkileri temizlenecektir. Bu işlem
-                  geri alınamaz.
+                  Tez anayasasını, tüm tematik çalışma kutularını, kütüphanedeki
+                  tüm PDF makalelerinizi, okuma notlarınızı, görevleri ve yapay
+                  zeka öngörülerini tamamen silmek istediğinize emin misiniz? Bu
+                  işlem geri alınamaz ve tüm verileriniz kalıcı olarak
+                  temizlenecektir.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

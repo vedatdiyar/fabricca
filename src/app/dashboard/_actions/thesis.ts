@@ -1,7 +1,17 @@
 import { db } from "@/db";
-import { thesisCore, thesisBoxes, notes } from "@/db/schema";
+import {
+  thesisCore,
+  thesisBoxes,
+  notes,
+  references,
+  pdfChunks,
+  tasks,
+  aiInsights,
+} from "@/db/schema";
 import { GetThesisCoreResult } from "../actions";
 import { eq, sql } from "drizzle-orm";
+import { deletePdfFromR2 } from "@/app/library/_services/r2.service";
+import { revalidatePath } from "next/cache";
 
 /**
  * Server Action to retrieve the thesis core parameters (Thesis Constitution) from Neon PostgreSQL.
@@ -75,16 +85,49 @@ export async function getThesisCoreAction(
 }
 
 /**
- * Server Action to reset (delete) the Thesis Constitution from Neon PostgreSQL.
- * Cascades to automatically delete thesis boxes via DB rules.
+ * Server Action to reset (delete) the entire thesis, all references, notes, chunks, tasks, and insights.
+ * Also cleans up all uploaded PDF files from Cloudflare R2 securely.
  */
 export async function resetThesisCoreAction(): Promise<{
   success: boolean;
   error?: string;
 }> {
   try {
-    console.log("[resetThesisCoreAction] Resetting thesis core parameters...");
-    await db.delete(thesisCore);
+    console.log(
+      "[resetThesisCoreAction] Resetting all thesis-related data (complete database and storage clear)...",
+    );
+
+    // 1. Fetch all references to clean up physical PDF files in Cloudflare R2
+    const allRefs = await db.select().from(references);
+
+    // 2. Iterate and delete objects from R2
+    for (const ref of allRefs) {
+      if (ref.pdfUrl && ref.pdfUrl !== "recommended-onboarding") {
+        try {
+          await deletePdfFromR2(ref.pdfUrl);
+          console.log(
+            `Successfully deleted R2 file during reset: ${ref.pdfUrl}`,
+          );
+        } catch (r2Error) {
+          console.error(
+            `Failed to delete R2 file during reset: ${ref.pdfUrl}`,
+            r2Error,
+          );
+        }
+      }
+    }
+
+    // 3. Clear database tables sequentially
+    await db.delete(aiInsights);
+    await db.delete(references); // Cascades to notes, pdf_chunks, and tasks
+    await db.delete(thesisCore); // Cascades to thesisBoxes
+
+    // 4. Revalidate all major paths
+    revalidatePath("/dashboard");
+    revalidatePath("/tasks");
+    revalidatePath("/library");
+    revalidatePath("/advisor");
+
     return { success: true };
   } catch (error) {
     console.error("resetThesisCoreAction Error:", error);
@@ -93,7 +136,7 @@ export async function resetThesisCoreAction(): Promise<{
       error:
         error instanceof Error
           ? error.message
-          : "Tez anayasası sıfırlanırken bir hata oluştu.",
+          : "Tez ve ilişkili tüm veriler sıfırlanırken bir hata oluştu.",
     };
   }
 }

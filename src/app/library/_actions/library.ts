@@ -50,6 +50,7 @@ export interface GetReferencesResult {
  */
 export async function uploadPdfAction(
   formData: FormData,
+  recommendationData?: { title: string; authors: string; year: number },
 ): Promise<UploadResult> {
   let newRefId: number | undefined;
   try {
@@ -76,9 +77,14 @@ export async function uploadPdfAction(
     const [newRef] = await db
       .insert(references)
       .values({
-        title: file.name.replace(".pdf", ""),
+        title: recommendationData
+          ? recommendationData.title
+          : file.name.replace(".pdf", ""),
+        authors: recommendationData ? recommendationData.authors : null,
         pdfUrl: key, // Storing R2 unique key as pdfUrl reference pointer
-        year: new Date().getFullYear(), // Set default to current year so it doesn't show as empty/null in UI
+        year: recommendationData
+          ? recommendationData.year
+          : new Date().getFullYear(), // Set default to current year so it doesn't show as empty/null in UI
         status: "processing", // Ingestion pipeline is running
       })
       .returning();
@@ -134,15 +140,43 @@ export async function uploadPdfAction(
           );
         }
 
-        // 7. Academic Metadata Extraction via Metadata Service
+        // 7. Academic Metadata Extraction via Metadata Service OR Recommendation Data Bypass
         try {
-          console.log(
-            `Extracting academic metadata for referenceId: ${newRef.id}...`,
-          );
-          const metadata = await extractAcademicMetadata(
-            fullMarkdown,
-            file.name.replace(".pdf", ""),
-          );
+          let metadata: {
+            title: string;
+            authors: string | null;
+            year: number | null;
+            doi?: string | null;
+            abstract?: string | null;
+          };
+
+          if (recommendationData) {
+            console.log(
+              `Bypassing academic metadata extraction and using provided recommendationData for referenceId: ${newRef.id}...`,
+            );
+            metadata = {
+              title: recommendationData.title,
+              authors: recommendationData.authors,
+              year: recommendationData.year,
+              doi: null,
+              abstract: null,
+            };
+          } else {
+            console.log(
+              `Extracting academic metadata for referenceId: ${newRef.id}...`,
+            );
+            const extracted = await extractAcademicMetadata(
+              fullMarkdown,
+              file.name.replace(".pdf", ""),
+            );
+            metadata = {
+              title: extracted.title,
+              authors: extracted.authors,
+              year: extracted.year,
+              doi: extracted.doi,
+              abstract: extracted.abstract,
+            };
+          }
 
           await db
             .update(references)
@@ -150,8 +184,8 @@ export async function uploadPdfAction(
               title: metadata.title,
               authors: metadata.authors,
               year: metadata.year || newRef.year, // Keep the default current year if Gemini metadata.year is null
-              doi: metadata.doi,
-              abstract: metadata.abstract,
+              doi: metadata.doi || null,
+              abstract: metadata.abstract || null,
             })
             .where(eq(references.id, newRef.id));
 

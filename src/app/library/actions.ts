@@ -33,8 +33,9 @@ import type { AcademicMetadata } from "./_services/metadata.service";
 
 export async function uploadPdfAction(
   formData: FormData,
+  recommendationData?: { title: string; authors: string; year: number },
 ): Promise<UploadResult> {
-  return uploadPdf(formData);
+  return uploadPdf(formData, recommendationData);
 }
 
 export async function getReferencesAction(): Promise<GetReferencesResult> {
@@ -95,7 +96,11 @@ export async function updateNoteAction(
 
 export async function retriggerAiAnalysisAction(
   noteId: number,
-): Promise<{ success: boolean; aiContextSuggestions?: string | null; error?: string }> {
+): Promise<{
+  success: boolean;
+  aiContextSuggestions?: string | null;
+  error?: string;
+}> {
   return retriggerAiAnalysis(noteId);
 }
 
