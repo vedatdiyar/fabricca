@@ -84,7 +84,9 @@ export function ReferencesSidebar({
       const result = await uploadPdfAction(formData);
 
       if (result.success) {
-        setUploadSuccess(`"${file.name}" başarıyla kütüphaneye eklendi.`);
+        setUploadSuccess(
+          "Dosya kütüphaneye eklendi, metin analizi ve indeksleme arka planda başlatıldı.",
+        );
         // Reload library references from Neon DB
         await loadReferences();
         // Select the newly uploaded reference if ID is returned
@@ -297,25 +299,33 @@ function ReferenceItem({
   setDeleteDialogOpenId,
   handleDeleteReference,
 }: ReferenceItemProps) {
+  const isProcessing =
+    refItem.status?.toLowerCase() === "processing" ||
+    refItem.status?.toLowerCase() === "running";
+
   return (
     <div
       role="button"
-      tabIndex={0}
+      tabIndex={isProcessing ? -1 : 0}
       onClick={() => {
+        if (isProcessing) return;
         setSelectedRefId(refItem.id);
         setMobileTab("notes"); // Smoothly switch tab on mobile!
       }}
       onKeyDown={(e) => {
+        if (isProcessing) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           setSelectedRefId(refItem.id);
           setMobileTab("notes");
         }
       }}
-      className={`border p-4 rounded-lg flex flex-col justify-between items-stretch cursor-pointer transition duration-200 ${
-        isSelected
-          ? "border-primary bg-background shadow-md"
-          : "border-border bg-background hover:border-border hover:bg-card"
+      className={`border p-4 rounded-lg flex flex-col justify-between items-stretch transition duration-200 ${
+        isProcessing
+          ? "opacity-50 pointer-events-none border-border bg-background cursor-not-allowed"
+          : isSelected
+            ? "border-primary bg-background shadow-md cursor-pointer"
+            : "border-border bg-background hover:border-border hover:bg-card cursor-pointer"
       }`}
     >
       <div className="flex items-start space-x-3">
@@ -325,9 +335,17 @@ function ReferenceItem({
           }`}
         />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold truncate text-foreground transition-colors">
-            {refItem.title}
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-semibold truncate text-foreground transition-colors flex-1">
+              {refItem.title}
+            </p>
+            {isProcessing && (
+              <span className="animate-pulse bg-[#eab308] text-[#121212] text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border border-[#d97706] inline-flex items-center gap-1 shrink-0">
+                <Loader2 className="h-2.5 w-2.5 animate-spin text-[#121212]" />
+                <span>Analiz Ediliyor...</span>
+              </span>
+            )}
+          </div>
           <p className="text-xs text-muted-foreground mt-1">
             {refItem.authors || "Bilinmeyen Yazar"} •{" "}
             {refItem.year || "Yıl Belirtilmemiş"}

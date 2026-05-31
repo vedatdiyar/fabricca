@@ -48,15 +48,19 @@ export function PdfUploadDrawer({
 
       const result = await uploadPdfAction(
         formData,
-        selectedRec ? {
-          title: selectedRec.title,
-          authors: selectedRec.authors || "Bilinmeyen Yazar",
-          year: Number(selectedRec.year) || new Date().getFullYear()
-        } : undefined
+        selectedRec
+          ? {
+              title: selectedRec.title,
+              authors: selectedRec.authors || "Bilinmeyen Yazar",
+              year: Number(selectedRec.year) || new Date().getFullYear(),
+            }
+          : undefined,
       );
 
       if (result.success) {
-        setUploadSuccess(`"${file.name}" başarıyla kütüphaneye eklendi.`);
+        setUploadSuccess(
+          "Dosya kütüphaneye eklendi, metin analizi ve indeksleme arka planda başlatıldı.",
+        );
         // Automatically close the drawer after 1.5 seconds on successful upload
         setTimeout(() => {
           onClose();
@@ -111,16 +115,26 @@ export function PdfUploadDrawer({
 
     return (
       <>
-        <div className={`size-12 rounded-full bg-secondary border border-border flex items-center justify-center transition duration-150 ${
-          isDragging ? "border-primary text-primary" : "group-hover:border-primary"
-        }`}>
-          <Upload className={`size-5 transition duration-150 ${
-            isDragging ? "text-primary" : "text-muted-foreground group-hover:text-primary"
-          }`} />
+        <div
+          className={`size-12 rounded-full bg-secondary border border-border flex items-center justify-center transition duration-150 ${
+            isDragging
+              ? "border-primary text-primary"
+              : "group-hover:border-primary"
+          }`}
+        >
+          <Upload
+            className={`size-5 transition duration-150 ${
+              isDragging
+                ? "text-primary"
+                : "text-muted-foreground group-hover:text-primary"
+            }`}
+          />
         </div>
         <div>
           <p className="text-xs font-bold text-foreground">
-            {isDragging ? "PDF Dosyasını Bırakın" : "PDF Seç veya Sürükle-Bırak"}
+            {isDragging
+              ? "PDF Dosyasını Bırakın"
+              : "PDF Seç veya Sürükle-Bırak"}
           </p>
           <p className="text-[10px] text-muted-foreground mt-1">
             .pdf — Maks. 20MB
@@ -131,10 +145,7 @@ export function PdfUploadDrawer({
   };
 
   return (
-    <Drawer
-      open={selectedRec !== null}
-      onOpenChange={handleOpenChange}
-    >
+    <Drawer open={selectedRec !== null} onOpenChange={handleOpenChange}>
       <DrawerContent>
         <DrawerHeader>
           <DrawerTitle>
@@ -233,11 +244,11 @@ export function PdfUploadDrawer({
 
           {/* Ingestion Info */}
           <p className="text-[9px] text-muted-foreground text-center">
-            Yüklenen dosya LlamaParse ile ayrıştırılıp LangChain & Gemini ile RAG kütüphanenize dahil edilir.
+            Yüklenen dosya LlamaParse ile ayrıştırılıp LangChain & Gemini ile
+            RAG kütüphanenize dahil edilir.
           </p>
         </div>
       </DrawerContent>
     </Drawer>
   );
 }
-

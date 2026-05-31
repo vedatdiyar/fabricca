@@ -399,6 +399,23 @@ export default function LibraryPage() {
     };
   }, [state.selectedRefId, loadNotes, updateState]);
 
+  // Poll references if any of them is in processing/running status
+  useEffect(() => {
+    const hasProcessing = state.references.some(
+      (ref) =>
+        ref.status?.toLowerCase() === "processing" ||
+        ref.status?.toLowerCase() === "running",
+    );
+
+    if (!hasProcessing) return;
+
+    const interval = setInterval(() => {
+      loadReferences();
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [state.references, loadReferences]);
+
   const startEditingNote = useCallback(
     (note: Note) => {
       updateState({ editingNoteId: note.id, isDialogOpen: true });

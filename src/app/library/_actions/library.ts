@@ -14,7 +14,7 @@ import {
 } from "../_services/r2.service";
 import { parsePdfWithLlamaParse } from "../_services/llamaparse.service";
 import { splitMarkdownIntoChunks } from "../_utils/text-splitters";
-import { generateEmbedding } from "../_services/embedding.service";
+import { generateEmbeddingsBatch } from "../_services/embedding.service";
 import { extractAcademicMetadata } from "../_services/metadata.service";
 
 export interface UploadResult {
@@ -114,24 +114,26 @@ export async function uploadPdfAction(
         // 2. LangChain splitting via Utility helper
         const finalChunks = await splitMarkdownIntoChunks(fullMarkdown);
 
-        // 3. Generate embeddings in parallel and store them to prevent request timeouts
+        // 3. Generate embeddings using generateEmbeddingsBatch to group in batches of 10 and handle rate limits
         const validChunks = finalChunks.filter(
           (chunk) => chunk.pageContent && chunk.pageContent.trim(),
         );
 
-        const insertValues = await Promise.all(
-          validChunks.map(async (chunk) => {
-            const chunkText = chunk.pageContent;
-            const formattedText = `title: none | text: ${chunkText}`;
-            const embeddingVector = await generateEmbedding(formattedText);
-
-            return {
-              referenceId: newRef.id,
-              content: chunkText,
-              embedding: embeddingVector,
-            };
-          }),
+        const chunkTexts = validChunks.map((chunk) => chunk.pageContent);
+        // Leverage the newly created batching service and pass the actual document title for premium asymmetric RAG!
+        const documentTitle = newRef.title;
+        const embeddingVectors = await generateEmbeddingsBatch(
+          chunkTexts,
+          documentTitle,
         );
+
+        const insertValues = validChunks.map((chunk, index) => {
+          return {
+            referenceId: newRef.id,
+            content: chunk.pageContent,
+            embedding: embeddingVectors[index],
+          };
+        });
 
         if (insertValues.length > 0) {
           await db.insert(pdfChunks).values(insertValues);
