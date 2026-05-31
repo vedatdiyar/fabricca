@@ -15,8 +15,6 @@
     "@base-ui/react": "^1.5.0",
     "@google/genai": "^2.6.0",
     "@hello-pangea/dnd": "^18.0.1",
-    "@langchain/core": "^1.1.48",
-    "@langchain/textsplitters": "^1.0.1",
     "@neondatabase/serverless": "^1.1.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

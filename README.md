@@ -28,7 +28,7 @@
 | Framework        | Next.js 16 (App Router, Server Actions)                        |
 | Dil              | TypeScript (strict mod)                                        |
 | Stil             | Tailwind CSS v4 + Shadcn UI (pure dark tema, akromatik)        |
-| AI Orkestrasyonu | LangChain (text splitters)                                     |
+| AI Orkestrasyonu | Vanilla TypeScript (Sıfır ekosistem bağımlılığı)               |
 | LLM              | Google Gemini 3.1 Flash Lite (Google AI Studio API)            |
 | Embedding        | Google Gemini Embedding 2 (1536 boyut)                         |
 | Veritabanı       | Neon PostgreSQL + pgvector                                     |
@@ -47,8 +47,8 @@
 ```
 Kullanıcı PDF yükler → Cloudflare R2'ye kaydedilir
   → LlamaParse API'ye gönderilir (PDF → Markdown)
-  → LangChain MarkdownHeaderTextSplitter (başlıklara göre böl)
-  → LangChain RecursiveCharacterTextSplitter (chunkSize: 1000, overlap: 200)
+  → Custom splitMarkdownByHeaders (başlıklara göre böl)
+  → Custom splitTextToChunks (chunkSize: 1000, overlap: 200)
   → Gemini Embedding 2 ile vektörleştir (1536D)
   → pdf_chunks tablosuna kaydedilir (HNSW indeksli)
 ```
@@ -153,13 +153,13 @@ npm run check:full   # tsc --noEmit + lint
 
 ## Proje Durumu
 
-| Faz | Açıklama                                          | Durum |
-| --- | ------------------------------------------------- | ----- |
-| 🟩  | Şifre duvarı, responsive iskelet, statik sayfalar | ✅    |
-| 🟨  | Bulut altyapısı ve veri katmanı                   | ✅    |
-| 🟧  | LangChain + LlamaParse + Embedding RAG boru hattı | ✅    |
-| 🟥  | Onboarding ve YÖKTEZ servisi                      | ✅    |
-| 🟪  | Danışman odası, not bağlamlandırma, fikir sepeti  | ✅    |
+| Faz | Açıklama                                           | Durum |
+| --- | -------------------------------------------------- | ----- |
+| 🟩  | Şifre duvarı, responsive iskelet, statik sayfalar  | ✅    |
+| 🟨  | Bulut altyapısı ve veri katmanı                    | ✅    |
+| 🟧  | Vanilla TS + LlamaParse + Embedding RAG boru hattı | ✅    |
+| 🟥  | Onboarding ve YÖKTEZ servisi                       | ✅    |
+| 🟪  | Danışman odası, not bağlamlandırma, fikir sepeti   | ✅    |
 
 ---
 

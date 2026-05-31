@@ -244,7 +244,7 @@ export function PdfUploadDrawer({
 
           {/* Ingestion Info */}
           <p className="text-[9px] text-muted-foreground text-center">
-            Yüklenen dosya LlamaParse ile ayrıştırılıp LangChain & Gemini ile
+            Yüklenen dosya LlamaParse ile ayrıştırılıp Gemini & pgvector ile
             RAG kütüphanenize dahil edilir.
           </p>
         </div>
