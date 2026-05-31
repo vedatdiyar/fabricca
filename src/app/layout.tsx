@@ -25,18 +25,6 @@ const fredoka = Fredoka({
 export const metadata: Metadata = {
   title: "Fabricca",
   description: "Fabricca",
-  icons: {
-    icon: [
-      { url: "/icon0.svg", type: "image/svg+xml" },
-      { url: "/icon1.png", type: "image/png" },
-      { url: "/favicon.ico" },
-    ],
-    apple: [{ url: "/apple-icon.png" }],
-  },
-  manifest: "/manifest.json",
-  other: {
-    "apple-mobile-web-app-title": "Fabricca",
-  },
 };
 
 export default async function RootLayout({
@@ -77,6 +65,23 @@ export default async function RootLayout({
       lang="tr"
       className={`${poppins.variable} ${fredoka.variable} h-full antialiased`}
     >
+      <head>
+        <link
+          rel="icon"
+          type="image/png"
+          href="/favicon-96x96.png"
+          sizes="96x96"
+        />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="shortcut icon" href="/favicon.ico" />
+        <link
+          rel="apple-touch-icon"
+          sizes="180x180"
+          href="/apple-touch-icon.png"
+        />
+        <meta name="apple-mobile-web-app-title" content="Fabricca" />
+        <link rel="manifest" href="/site.webmanifest" />
+      </head>
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <Toaster />
         {showSidebar ? (

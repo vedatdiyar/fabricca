@@ -104,140 +104,191 @@ export async function checkTezaraOriginalityAction(
 
     const ai = new GoogleGenAI({ apiKey: geminiKey });
 
-    // Step 1: Extract keywords for searching on Tezara
-    const keywordPrompt = `Sen sosyal bilimler alanında uzman bir akademik arama motoru optimizasyon asistanısın.
-Aşağıdaki yüksek lisans tez onboarding mülakatı konuşma geçmişinden, tezin genel konusunu, araştırma sorusunu, kuramsal odağını ve ampirik/tarihsel sınırlarını analiz et.
-Türkiye'deki ulusal tez veri tabanlarında (YÖK/Tezara) arama yapmak üzere en uygun, çakışmaları yakalayabilecek ve tezin kesişim kümesini temsil eden 1 veya 2 adet BİRLEŞİK (compound / multi-concept) akademik arama terimi üreterek bunları boşlukla birleştirerek döndür.
+    // Step 1: Multi-Tier Query Generation — Tarihsel Bağlam Odaklı Dinamik Sorgulama
+    const queryGenPrompt = `Sen sosyal bilimler alanında uzman bir akademik arşiv tarama uzmanısın.
+Aşağıda sana JSON olarak verilen tez önerisinin başlığını, araştırma sorusunu, argümanını ve metodolojisini analiz et.
+Bu tezin çakışabileceği muhtemel diğer çalışmaları Tezara/YÖK Tez'de bulabilmek için ÜÇ farklı, kısa ve net arama sorgusu üret.
+
+ÖNEMLİ AYRIM:
+- Bir tez 2024 yılında yayınlanmış olabilir ama 1991-1999 dönemini konu alıyor olabilir.
+- Arama yaparken tezin YAYIM YILINA değil, tezin incelediği TARİHSEL DÖNEME odaklan.
+- Tarihsel ifadeleri ("1990'lar", "erken Cumhuriyet", "1985-2000 arası" vb.) tespit ederek sorgulara dönemsel kapsayıcılık terimi olarak ekle.
+
+Üç sorgu kümesini şu kurallara göre üret:
+A) KAVRAMSAL SORGU: Tezin ana kuramsal odağını ve ampirik alanını birleştiren 2-3 kelimelik bileşik bir akademik tamlama. (Örn: "hegemonya söylem dönüşümü")
+B) BAĞLAMSAL SORGU: Tezin incelediği tarihsel dönem + temel aktörler/olgular. Tespit ettiğin tarihsel aralığı mutlaka dahil et. (Örn: "Kürt siyasi hareketi 1990'lar Türkiye")
+C) EYLEM/SÜREÇ SORGUSU: Tezde incelenen süreç veya dönüşüm + coğrafi/kurumsal bağlam. (Örn: "sınıf kimliği çözülme neoliberal Türkiye")
 
 Kurallar:
-1. "sosyalizm", "kapitalizm", "kürt hareketi" gibi tek başına aratıldığında binlerce alakasız sonuç döndürecek aşırı genel kelimeler yerine, tezin teorik odağını ve ampirik alanını/vakasını birleştiren 2 veya 3 kelimelik anlamlı akademik tamlamalar üret. (Örn: "kürt hareketi sınıf analizi", "finansallaşma emek süreci", "biyopolitika göç yönetimi").
-2. Sadece arama terimlerini tek bir satırda döndür. Başka hiçbir açıklama, tırnak, noktalama işareti veya metin ekleme.
+1. Sorguları virgülle ayır. Her sorgu 2-4 kelimeden oluşsun.
+2. Yalnızca A, B ve C sorgularını virgülle ayrılmış tek satırda döndür. Başka hiçbir açıklama ekleme.
+3. Tarihsel bağlam tespit edemezsen B sorgusuna "Türkiye modern dönem" ekle.
 
-Konuşma Geçmişi:
+Tez Özeti (JSON):
 ${userInput}
 
-Çıkış:`;
+Çıkış (sadece A, B, C sorguları virgülle ayrılmış):`;
 
-    const keywordResponse = await generateContentWithRetry(ai, {
+    const queryGenResponse = await generateContentWithRetry(ai, {
       model: "gemini-3.1-flash-lite",
-      contents: keywordPrompt,
-      config: {
-        temperature: 1,
-      },
+      contents: queryGenPrompt,
+      config: { temperature: 1 },
     });
 
-    const keywords = (keywordResponse.text || "").trim();
+    const rawQueries = (queryGenResponse.text || "").trim();
+    const queryList = rawQueries
+      .split(",")
+      .map((q) => q.trim())
+      .filter(Boolean)
+      .slice(0, 3); // En fazla 3 sorgu
+
     console.log(
-      `[Tezara Scraper] Extracted keywords: "${keywords}" for input: "${userInput}"`,
+      `[Tezara Scraper] Multi-Tier Query Set generated: [${queryList.map((q, i) => `${["A", "B", "C"][i]}="${q}"`).join(" | ")}]`,
     );
 
     let theses: OriginalityThesis[] = [];
+    const seenIds = new Set<string>();
 
-    // Step 2: Scrape tezara.org/search
-    if (keywords) {
+    // Step 2: UNION Scrape — Her sorguyu sırayla çalıştır, sonuçları birleştir
+    for (let qi = 0; qi < queryList.length; qi++) {
+      const query = queryList[qi];
+      const queryLabel = ["A (Kavramsal)", "B (Bağlamsal)", "C (Eylem/Süreç)"][
+        qi
+      ];
+
       try {
-        const searchRes = await fetch(
-          `https://tezara.org/search?q=${encodeURIComponent(keywords)}`,
+        const searchUrl = `https://tezara.org/search?q=${encodeURIComponent(query)}`;
+        console.log(
+          `[Tezara Scraper] Firing Query ${queryLabel}: "${query}" → ${searchUrl}`,
         );
-        if (searchRes.ok) {
-          const html = await searchRes.text();
-          const thesisBlocks = html.split('<li id="thesis-');
-          const maxResults = Math.min(thesisBlocks.length - 1, 5); // Scrape up to 4-5 theses
 
-          const parsedTheses: OriginalityThesis[] = [];
+        const searchRes = await fetch(searchUrl);
+        if (!searchRes.ok) {
+          console.warn(
+            `[Tezara Scraper] Query ${queryLabel} failed with status: ${searchRes.status}`,
+          );
+          continue;
+        }
 
-          for (let i = 1; i <= maxResults; i++) {
-            const block = thesisBlocks[i];
-            const idMatch = block.match(/^(\d+)"/);
-            if (!idMatch) continue;
-            const thesisId = idMatch[1];
+        const html = await searchRes.text();
+        const thesisBlocks = html.split('<li id="thesis-');
+        const maxResults = Math.min(thesisBlocks.length - 1, 3); // Her sorgudan max 3 sonuç
 
-            let title = "";
-            const allTitleMatches = [
-              ...block.matchAll(
-                new RegExp(
-                  `href="\\/theses\\/${thesisId}"[^>]*>([\\s\\S]*?)<\\/a>`,
-                  "gi",
-                ),
+        console.log(
+          `[Tezara Scraper] Query ${queryLabel} → ${thesisBlocks.length - 1} raw result(s) found, processing top ${maxResults}`,
+        );
+
+        const parsedTheses: OriginalityThesis[] = [];
+
+        for (let i = 1; i <= maxResults; i++) {
+          const block = thesisBlocks[i];
+          const idMatch = block.match(/^(\d+)"/);
+          if (!idMatch) continue;
+          const thesisId = idMatch[1];
+
+          // Daha önce eklenen tezi atla (UNION deduplication)
+          if (seenIds.has(thesisId)) continue;
+          seenIds.add(thesisId);
+
+          let title = "";
+          const allTitleMatches = [
+            ...block.matchAll(
+              new RegExp(
+                `href="\\/theses\\/${thesisId}"[^>]*>([\\s\\S]*?)<\\/a>`,
+                "gi",
               ),
-            ];
-            for (const m of allTitleMatches) {
-              const fullTag = m[0];
-              const text = m[1].replace(/<[^>]*>/g, "").trim();
-              if (
-                text &&
-                !text.includes("Tez No") &&
-                text !== thesisId &&
-                !fullTag.includes("font-mono")
-              ) {
-                title = decodeHtml(text);
-                break;
-              }
+            ),
+          ];
+          for (const m of allTitleMatches) {
+            const fullTag = m[0];
+            const text = m[1].replace(/<[^>]*>/g, "").trim();
+            if (
+              text &&
+              !text.includes("Tez No") &&
+              text !== thesisId &&
+              !fullTag.includes("font-mono")
+            ) {
+              title = decodeHtml(text);
+              break;
             }
-
-            const yearMatch =
-              block.match(/icon-calendar[^>]*><\/span>\s*(\d{4})/i) ||
-              block.match(/icon-calendar[^>]*>([\s\S]*?)<\/p>/i);
-            let year = "";
-            if (yearMatch) {
-              year = yearMatch[1].replace(/<[^>]*>/g, "").trim();
-            }
-
-            const uniMatch = block.match(/href="\/universities\/([^"]+)"/i);
-            let university = "";
-            if (uniMatch) {
-              university = decodeURIComponent(uniMatch[1]);
-            }
-
-            const authorMatch = block.match(
-              /icon-pen-tool[^>]*><\/span>([\s\S]*?)<\/p>/i,
-            );
-            let author = "";
-            if (authorMatch) {
-              author = decodeHtml(
-                authorMatch[1].replace(/<[^>]*>/g, "").trim(),
-              );
-            }
-
-            const advisorMatch = block.match(
-              /icon-user-pen[^>]*><\/span>([\s\S]*?)<\/p>/i,
-            );
-            let advisor = "";
-            if (advisorMatch) {
-              advisor = decodeHtml(
-                advisorMatch[1].replace(/<[^>]*>/g, "").trim(),
-              );
-            }
-
-            parsedTheses.push({
-              id: thesisId,
-              title,
-              author,
-              advisor,
-              year,
-              university,
-            });
           }
 
-          // Fetch abstracts in parallel
+          const yearMatch =
+            block.match(/icon-calendar[^>]*><\/span>\s*(\d{4})/i) ||
+            block.match(/icon-calendar[^>]*>([\s\S]*?)<\/p>/i);
+          let year = "";
+          if (yearMatch) {
+            year = yearMatch[1].replace(/<[^>]*>/g, "").trim();
+          }
+
+          const uniMatch = block.match(/href="\/universities\/([^"]+)"/i);
+          let university = "";
+          if (uniMatch) {
+            university = decodeURIComponent(uniMatch[1]);
+          }
+
+          const authorMatch = block.match(
+            /icon-pen-tool[^>]*><\/span>([\s\S]*?)<\/p>/i,
+          );
+          let author = "";
+          if (authorMatch) {
+            author = decodeHtml(authorMatch[1].replace(/<[^>]*>/g, "").trim());
+          }
+
+          const advisorMatch = block.match(
+            /icon-user-pen[^>]*><\/span>([\s\S]*?)<\/p>/i,
+          );
+          let advisor = "";
+          if (advisorMatch) {
+            advisor = decodeHtml(
+              advisorMatch[1].replace(/<[^>]*>/g, "").trim(),
+            );
+          }
+
+          parsedTheses.push({
+            id: thesisId,
+            title,
+            author,
+            advisor,
+            year,
+            university,
+          });
+        }
+
+        // Abstracts for this query's results
+        if (parsedTheses.length > 0) {
           const detailPromises = parsedTheses.map(async (t) => {
             const abstracts = await fetchThesisAbstract(t.id);
             return { ...t, ...abstracts };
           });
+          const batchResults = await Promise.all(detailPromises);
+          theses.push(...batchResults);
 
-          theses = await Promise.all(detailPromises);
-        } else {
-          console.warn(
-            `[Tezara Scraper] Search request failed with status: ${searchRes.status}`,
+          console.log(
+            `[Tezara Scraper] Query ${queryLabel} → Added ${batchResults.length} unique thesis(es). Running total: ${theses.length}`,
           );
+        }
+
+        // UNION kümesine 5 benzersiz tez yeterliyse erken çık
+        if (theses.length >= 5) {
+          console.log(
+            `[Tezara Scraper] UNION cap reached (${theses.length} theses). Stopping early.`,
+          );
+          break;
         }
       } catch (err) {
         console.error(
-          "[Tezara Scraper] Error scraping search results:",
+          `[Tezara Scraper] Error on Query ${queryLabel}:`,
           err instanceof Error ? err.message : err,
         );
       }
     }
+
+    // Final UNION kümesini 5 ile sınırla
+    theses = theses.slice(0, 5);
+    console.log(
+      `[Tezara Scraper] Final UNION thesis pool: ${theses.length} unique thesis(es) → IDs: [${theses.map((t) => t.id).join(", ")}]`,
+    );
 
     if (theses.length === 0) {
       return {
