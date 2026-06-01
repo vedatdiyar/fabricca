@@ -27,6 +27,13 @@ export interface OriginalityResponse {
   error?: string;
 }
 
+export interface RawTezaraPoolResult {
+  success: boolean;
+  theses?: OriginalityThesis[];
+  queryList?: string[];
+  error?: string;
+}
+
 /**
  * Helper to decode HTML entities in search results and abstracts.
  */
@@ -83,11 +90,26 @@ async function fetchThesisAbstract(
 }
 
 /**
- * Server Action to check originality of a thesis topic/question against tezara.org using Gemini 3.1 Flash Lite
+ * Defensive upper bound for per-query pagination. Tezara rarely returns more than
+ * a few hundred results for a focused social-science query; 20 pages × ~10 results
+ * per page is a safe academic ceiling while preventing infinite loops.
  */
-export async function checkTezaraOriginalityAction(
+const SAFETY_PAGE_CAP = 20;
+
+/**
+ * Step 0 helper (extracted from checkTezaraOriginalityAction):
+ *   1. Generates a Multi-Tier query set (A: conceptual, B: contextual, C: process)
+ *      via Gemini 3.1 Flash Lite — dönemsel ve kök analizi yapan prompt AYNIEN.
+ *   2. For each query, dynamically paginates Tezara search results (no fixed page
+ *      cap) until an empty page is encountered, the server stops responding OK,
+ *      or the SAFETY_PAGE_CAP safety bound is hit.
+ *   3. Deduplicates theses across queries/pages via a shared seenIds Set (UNION).
+ *   4. Returns ONLY light metadata (id, title, author, advisor, year, university).
+ *      No abstract scraping is performed at this stage.
+ */
+export async function fetchTezaraRawPool(
   userInput: string,
-): Promise<OriginalityResponse> {
+): Promise<RawTezaraPoolResult> {
   try {
     if (!userInput || !userInput.trim()) {
       return { success: false, error: "Girdi boş olamaz." };
@@ -140,53 +162,51 @@ ${userInput}
       .split(",")
       .map((q) => q.trim())
       .filter(Boolean)
-      .slice(0, 3); // En fazla 3 sorgu
+      .slice(0, 3);
 
     console.log(
       `[Tezara Scraper] Multi-Tier Query Set generated: [${queryList.map((q, i) => `${["A", "B", "C"][i]}="${q}"`).join(" | ")}]`,
     );
 
-    let theses: OriginalityThesis[] = [];
+    // Step 2: Dynamic pagination + UNION dedup — only LIGHT metadata collected.
+    const allRawTheses: OriginalityThesis[] = [];
     const seenIds = new Set<string>();
 
-    // Step 2: UNION Scrape — Her sorguyu sırayla çalıştır, sonuçları birleştir
     for (let qi = 0; qi < queryList.length; qi++) {
       const query = queryList[qi];
-      const queryLabel = ["A (Kavramsal)", "B (Bağlamsal)", "C (Eylem/Süreç)"][
-        qi
-      ];
+      const queryLabel = ["A (Kavramsal)", "B (Bağlamsal)", "C (Eylem/Süreç)"][qi];
 
-      try {
-        const searchUrl = `https://tezara.org/search?q=${encodeURIComponent(query)}`;
-        console.log(
-          `[Tezara Scraper] Firing Query ${queryLabel}: "${query}" → ${searchUrl}`,
-        );
-
+      let page = 1;
+      while (page <= SAFETY_PAGE_CAP) {
+        const searchUrl = `https://tezara.org/search?q=${encodeURIComponent(query)}&page=${page}`;
         const searchRes = await fetch(searchUrl);
+
         if (!searchRes.ok) {
           console.warn(
-            `[Tezara Scraper] Query ${queryLabel} failed with status: ${searchRes.status}`,
+            `[Tezara Scraper] Query ${queryLabel} | Page ${page} HTTP ${searchRes.status} → ending pagination for this query.`,
           );
-          continue;
+          break;
         }
 
         const html = await searchRes.text();
         const thesisBlocks = html.split('<li id="thesis-');
-        const maxResults = Math.min(thesisBlocks.length - 1, 3); // Her sorgudan max 3 sonuç
+        const blockCount = thesisBlocks.length - 1;
 
-        console.log(
-          `[Tezara Scraper] Query ${queryLabel} → ${thesisBlocks.length - 1} raw result(s) found, processing top ${maxResults}`,
-        );
+        if (blockCount === 0) {
+          console.log(
+            `[Tezara Scraper] Query ${queryLabel} | Page ${page} returned no thesis blocks → end of pagination.`,
+          );
+          break;
+        }
 
-        const parsedTheses: OriginalityThesis[] = [];
+        const newOnesThisPage: OriginalityThesis[] = [];
 
-        for (let i = 1; i <= maxResults; i++) {
+        for (let i = 1; i < thesisBlocks.length; i++) {
           const block = thesisBlocks[i];
           const idMatch = block.match(/^(\d+)"/);
           if (!idMatch) continue;
           const thesisId = idMatch[1];
 
-          // Daha önce eklenen tezi atla (UNION deduplication)
           if (seenIds.has(thesisId)) continue;
           seenIds.add(thesisId);
 
@@ -245,7 +265,7 @@ ${userInput}
             );
           }
 
-          parsedTheses.push({
+          newOnesThisPage.push({
             id: thesisId,
             title,
             author,
@@ -255,56 +275,182 @@ ${userInput}
           });
         }
 
-        // Abstracts for this query's results
-        if (parsedTheses.length > 0) {
-          const detailPromises = parsedTheses.map(async (t) => {
-            const abstracts = await fetchThesisAbstract(t.id);
-            return { ...t, ...abstracts };
-          });
-          const batchResults = await Promise.all(detailPromises);
-          theses.push(...batchResults);
-
-          console.log(
-            `[Tezara Scraper] Query ${queryLabel} → Added ${batchResults.length} unique thesis(es). Running total: ${theses.length}`,
-          );
-        }
-
-        // UNION kümesine 5 benzersiz tez yeterliyse erken çık
-        if (theses.length >= 5) {
-          console.log(
-            `[Tezara Scraper] UNION cap reached (${theses.length} theses). Stopping early.`,
-          );
-          break;
-        }
-      } catch (err) {
-        console.error(
-          `[Tezara Scraper] Error on Query ${queryLabel}:`,
-          err instanceof Error ? err.message : err,
+        allRawTheses.push(...newOnesThisPage);
+        console.log(
+          `[Tezara Scraper] Query ${queryLabel} | Page ${page} → ${blockCount} raw block(s), ${newOnesThisPage.length} new (running total: ${allRawTheses.length})`,
         );
+        page++;
       }
     }
 
-    // Final UNION kümesini 5 ile sınırla
-    theses = theses.slice(0, 5);
     console.log(
-      `[Tezara Scraper] Final UNION thesis pool: ${theses.length} unique thesis(es) → IDs: [${theses.map((t) => t.id).join(", ")}]`,
+      `[Tezara Scraper] Raw UNION pool size: ${allRawTheses.length} unique thesis(es) across ${queryList.length} query × up to ${SAFETY_PAGE_CAP} page(s).`,
     );
 
-    if (theses.length === 0) {
+    return { success: true, theses: allRawTheses, queryList };
+  } catch (error) {
+    console.error("fetchTezaraRawPool Error:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Tezara ham havuz toplanırken bir hata oluştu.",
+    };
+  }
+}
+
+/**
+ * Server Action to check originality of a thesis topic/question against tezara.org using Gemini 3.1 Flash Lite
+ *
+ * Two-stage semantic filtering pipeline:
+ *   - Step 0 (Raw pool): fetchTezaraRawPool — Multi-Tier query gen + dynamic pagination
+ *     + UNION dedup, returns light metadata only.
+ *   - AŞAMA 1 (Light LLM Filter, temp=0.2): Compares the raw Tezara pool (titles +
+ *     institutions only) against the user's thesis proposal. Returns ONLY the IDs
+ *     of theses that are genuinely suspicious (real risk of overlap).
+ *   - GEÇİŞ (Targeted Scrape): Fetches abstracts (via fetchThesisAbstract) ONLY
+ *     for the refined suspicious ID set. Drastically cuts network load.
+ *   - AŞAMA 2 (Deep Jury): Feeds the enriched suspicious theses into the existing
+ *     Jüri prompt + originalityResponseSchema for the final risk verdict and gap
+ *     analysis.
+ */
+export async function checkTezaraOriginalityAction(
+  userInput: string,
+): Promise<OriginalityResponse> {
+  const noMatchFallback: OriginalityReport = {
+    risk: "Düşük",
+    reasoning:
+      "Tezara ve ulusal tez veri tabanlarında bu araştırma sorusu, kuramsal çatı ve spesifik anahtar kelime kombinasyonuyla eşleşen benzer bir akademik çalışma bulunamamıştır. Önerilen çalışma, ampirik odağı ve teorik sentezi açısından yüksek düzeyde özgün değer taşımaktadır.",
+    gapAnalysis:
+      "Doğrudan bir çakışma riski bulunmamaktadır. Çalışmanın özgün değerini daha da pekiştirmek adına, araştırma sorusunun kuramsal ayaklarını (Gramscici hegemonya ve çerçeveleme teorisi) giriş bölümlerinde metodolojik bir çelişkiye düşmeden derinleştirmeniz ve ampirik kaynak matrisini (Özgür Gündem, Gelenek, Özgürlük Dünyası) eksiksiz yapılandırmanız tavsiye edilir.",
+    theses: [],
+  };
+
+  try {
+    if (!userInput || !userInput.trim()) {
+      return { success: false, error: "Girdi boş olamaz." };
+    }
+
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (!geminiKey) {
       return {
-        success: true,
-        report: {
-          risk: "Düşük",
-          reasoning:
-            "Tezara ve ulusal tez veri tabanlarında bu araştırma sorusu, kuramsal çatı ve spesifik anahtar kelime kombinasyonuyla eşleşen benzer bir akademik çalışma bulunamamıştır. Önerilen çalışma, ampirik odağı ve teorik sentezi açısından yüksek düzeyde özgün değer taşımaktadır.",
-          gapAnalysis:
-            "Doğrudan bir çakışma riski bulunmamaktadır. Çalışmanın özgün değerini daha da pekiştirmek adına, araştırma sorusunun kuramsal ayaklarını (Gramscici hegemonya ve çerçeveleme teorisi) giriş bölümlerinde metodolojik bir çelişkiye düşmeden derinleştirmeniz ve ampirik kaynak matrisini (Özgür Gündem, Gelenek, Özgürlük Dünyası) eksiksiz yapılandırmanız tavsiye edilir.",
-          theses: [],
-        },
+        success: false,
+        error:
+          "Gemini API anahtarı bulunamadı (.env.local içindeki GEMINI_API_KEY).",
       };
     }
 
-    // Step 3: Run the Jury Filter and Similarity Risk Evaluation via Gemini
+    const ai = new GoogleGenAI({ apiKey: geminiKey });
+
+    // Step 0: Raw pool collection
+    const pool = await fetchTezaraRawPool(userInput);
+    if (!pool.success || !pool.theses || pool.theses.length === 0) {
+      console.log(
+        "[Tezara Scraper] Raw pool empty → returning Düşük risk fallback.",
+      );
+      return { success: true, report: noMatchFallback };
+    }
+
+    // ====== AŞAMA 1 — Hafif LLM Filtresi (Özet Öncesi) ======
+    const stage1SystemInstruction = `Sen sosyal bilimler alanında uzman bir jüri üyesisin.
+Görevin: Öğrencinin tez anayasası (Başlık, Araştırma Sorusu, Argüman, Metodoloji) ile aşağıda listelenen tezlerin sadece başlık ve üniversite bilgilerini semantik olarak kıyaslamak.
+
+Hangi tezlerin kuramsal, dönemsel veya ampirik olarak öğrencinin çalışmasıyla GERÇEKTEN çakışma ihtimali barındırdığını, yakından incelenmesi gerektiğini belirle.
+
+Kriterler:
+1. Sırf aynı anahtar kelime geçiyor diye bir tezi şüpheli listesine ekleme. Sosyal bilimlerde binlerce çalışmada aynı kavram geçer.
+2. Çakışma için: araştırma sorusunun, kuramsal yaklaşımın VE ampirik/tarihsel sınırların çoğunluğunun örtüşmesi gerekir.
+3. Emin değilsen "şüpheli listesine" DAHİL ETME. Yanlış pozitif, yanlış negatiften daha kötüdür; sadece özetleri gerçekten çekilip ikinci aşamada jüri tarafından incelenmeye değer olan tezleri işaretle.
+4. Hiçbir tez gerçek anlamda şüpheli değilse boş dizi [] döndür.`;
+
+    const stage1Schema = {
+      type: "OBJECT" as const,
+      properties: {
+        suspiciousIds: {
+          type: "ARRAY" as const,
+          items: { type: "STRING" as const },
+          description:
+            "Yalnızca gerçek anlamda çakışma ihtimali olan tezlerin ID listesi. Hiçbiri yoksa boş dizi [] döndür.",
+        },
+      },
+      required: ["suspiciousIds"],
+    };
+
+    const stage1Prompt = `Öğrencinin Tez Anayasası (JSON):
+${userInput}
+
+Ham Tez Havuzu (Tezara — yalnızca hafif metadata):
+${JSON.stringify(pool.theses, null, 2)}
+
+Lütfen bu listeyi semantik olarak değerlendir ve sadece gerçekten şüpheli olanların ID'lerini döndür.`;
+
+    const stage1Response = await generateContentWithRetry(ai, {
+      model: "gemini-3.1-flash-lite",
+      contents: stage1Prompt,
+      config: {
+        systemInstruction: stage1SystemInstruction,
+        temperature: 0.2,
+        responseMimeType: "application/json",
+        responseSchema: stage1Schema,
+      },
+    });
+
+    const stage1Text = stage1Response.text;
+    if (!stage1Text) {
+      console.warn(
+        "[Tezara Scraper] AŞAMA 1 returned empty text → returning Düşük risk fallback.",
+      );
+      return { success: true, report: noMatchFallback };
+    }
+
+    let stage1Parsed: { suspiciousIds: string[] };
+    try {
+      stage1Parsed = JSON.parse(stage1Text);
+    } catch (parseErr) {
+      console.error(
+        "[Tezara Scraper] AŞAMA 1 JSON parse failed:",
+        parseErr instanceof Error ? parseErr.message : parseErr,
+      );
+      return {
+        success: false,
+        error: "Aşama 1 süzgeci beklenen formatta yanıt veremedi.",
+      };
+    }
+
+    const suspiciousIds = Array.isArray(stage1Parsed.suspiciousIds)
+      ? stage1Parsed.suspiciousIds.filter(
+          (id) => typeof id === "string" && id.length > 0,
+        )
+      : [];
+
+    console.log(
+      `[Tezara Scraper] AŞAMA 1 → suspiciousIds count: ${suspiciousIds.length}`,
+    );
+
+    // Maliyet optimizasyonu: Şüpheli tez yoksa AŞAMA 2 (Jüri) atlanır.
+    if (suspiciousIds.length === 0) {
+      console.log(
+        "[Tezara Scraper] AŞAMA 1 yielded no suspicious IDs → returning Düşük risk, skipping AŞAMA 2.",
+      );
+      return { success: true, report: noMatchFallback };
+    }
+
+    // ====== GEÇİŞ FAZI — Nokta Atışı Abstract Scrape ======
+    const suspiciousSet = new Set(suspiciousIds);
+    const suspiciousTheses = pool.theses.filter((t) => suspiciousSet.has(t.id));
+    const enrichedTheses = await Promise.all(
+      suspiciousTheses.map(async (t) => ({
+        ...t,
+        ...(await fetchThesisAbstract(t.id)),
+      })),
+    );
+
+    console.log(
+      `[Tezara Scraper] Targeted scrape → ${enrichedTheses.length} enriched suspicious thesis(es) → IDs: [${enrichedTheses.map((t) => t.id).join(", ")}]`,
+    );
+
+    // ====== AŞAMA 2 — Derinlemesine Jüri Analizi ======
     const jurySystemInstruction = `Sen sosyal bilimler alanında çok seçkin, yapıcı ve vizyoner bir jüri üyesisin.
 Öğrencinin yeni tez fikri (Mülakat geçmişindeki Başlık/Konu, Araştırma Sorusu, Teorik Çatı ve Ampirik Sınırlar) ile Türkiye akademik literatüründe bulunan tezleri kıyaslayacaksın.
 Benzerlik riskini ("Düşük", "Orta" veya "Yüksek") belirlerken şunlara dikkat et:
@@ -315,7 +461,7 @@ Benzerlik riskini ("Düşük", "Orta" veya "Yüksek") belirlerken şunlara dikka
 Yanıtını KESİNLİKLE aşağıdaki JSON formatında vermelisin:
 {
   "risk": "Düşük" | "Orta" | "Yüksek",
-  "reasoning": "Benzerlik riski gerekçelendirmesi ve çalışılmış alanların özeti...",
+  "reasoning": "Benzerlik riski gerekçelendirilmesi ve çalışılmış alanların özeti...",
   "gapAnalysis": "Tezin özgün değerini kurtarmak için teorik boşluklar ve stratejik öneriler..."
 }
 
@@ -324,11 +470,8 @@ Unutma: Yanıtın her zaman geçerli bir JSON olmalı ve \`responseMimeType: "ap
     const studentInput = `Öğrencinin Tez Fikri Konuşma Geçmişi:
 ${userInput}`;
 
-    const searchContext =
-      theses.length > 0
-        ? `Bulunan Türkiye Menşeili Tezlerin Listesi (Tezara verileri):
-${JSON.stringify(theses, null, 2)}`
-        : `Türkiye Menşeili Tez Veri Tabanında doğrudan eşleşen benzer bir tez bulunamadı. Lütfen öğrencinin konusunu genel literatür ve teorik özgünlük çerçevesinde değerlendir.`;
+    const searchContext = `Aşama 1 süzgecinden geçen, özetleri çekilmiş şüpheli tezler (Tezara verileri):
+${JSON.stringify(enrichedTheses, null, 2)}`;
 
     const juryPrompt = `${studentInput}\n\n${searchContext}`;
 
@@ -339,7 +482,7 @@ ${JSON.stringify(theses, null, 2)}`
         reasoning: {
           type: "STRING" as const,
           description:
-            "Benzerlik riski gerekçelendirmesi ve çalışılmış alanların özeti",
+            "Benzerlik riski gerekçelendirilmesi ve çalışılmış alanların özeti",
         },
         gapAnalysis: {
           type: "STRING" as const,
@@ -384,7 +527,7 @@ ${JSON.stringify(theses, null, 2)}`
         risk: parsed.risk,
         reasoning: parsed.reasoning,
         gapAnalysis: parsed.gapAnalysis,
-        theses: theses,
+        theses: enrichedTheses,
       },
     };
   } catch (error) {
