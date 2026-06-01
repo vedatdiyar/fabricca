@@ -21,11 +21,13 @@ import { thesisCore } from "@/db/schema";
  *   - src/app/page.tsx     same, for redirect decision
  */
 
-const HEADER = "x-thesis-state";
+const AUTH_HEADER = "x-auth-authenticated";
+const THESIS_HEADER = "x-thesis-state";
 type ThesisState = "present" | "empty" | "unknown";
 
 declare global {
   var __fabriccaWarmupPromise: Promise<void> | undefined;
+  var __fabriccaThesisCache: ThesisState | undefined;
 }
 
 async function warmNeon(): Promise<void> {
@@ -81,6 +83,7 @@ async function checkThesisState(): Promise<ThesisState> {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isLoginPage = pathname === "/login";
+  const isOnboardingPage = pathname === "/onboarding";
 
   // 1. Auth check (memoized — SHA-256 runs once per server boot)
   const sessionCookie = request.cookies.get("academialab_session")?.value;
@@ -88,12 +91,10 @@ export async function proxy(request: NextRequest) {
   const expectedHash = password ? await getCachedExpectedHash(password) : "";
   const isAuthenticated = !password || sessionCookie === expectedHash;
 
-  // Build the response we'll return at the end. We need to inject the
-  // `x-thesis-state` header into the *request* scope so downstream
-  // server components can read it via `headers()`.
+  // Inject auth header so downstream components avoid re-checking cookies/hash
   const requestHeaders = new Headers(request.headers);
-  // Default to unknown; the real check below will overwrite.
-  requestHeaders.set(HEADER, "unknown");
+  requestHeaders.set(AUTH_HEADER, isAuthenticated ? "true" : "false");
+  requestHeaders.set(THESIS_HEADER, "unknown");
 
   if (!isAuthenticated) {
     if (!isLoginPage) {
@@ -107,24 +108,26 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  // 2. Onboarding state — single DB check, propagate via header
-  const state = await checkThesisState();
-  requestHeaders.set(HEADER, state);
+  // 2. Onboarding state — only check on routes that need it (root and /onboarding)
+  if (pathname === "/" || isOnboardingPage) {
+    // Use cached state if available (thesis_core is immutable after onboarding)
+    const state = globalThis.__fabriccaThesisCache ?? (await checkThesisState());
+    requestHeaders.set(THESIS_HEADER, state);
 
-  const isOnboardingPage = pathname === "/onboarding";
+    // Cache "present" state — it never changes after onboarding
+    if (state === "present") {
+      globalThis.__fabriccaThesisCache = state;
+    }
 
-  if (state === "empty") {
-    if (!isOnboardingPage) {
-      // `x-thesis-state` is not forwarded on redirects — the browser will
-      // issue a fresh GET to /onboarding and the proxy will re-evaluate,
-      // setting the header for that new request scope. So no `request`
-      // field is needed (and not supported) on `NextResponse.redirect`.
+    if (state === "empty" && !isOnboardingPage) {
       return NextResponse.redirect(new URL("/onboarding", request.url));
     }
-  } else {
-    if (isOnboardingPage) {
+    if (state !== "empty" && isOnboardingPage) {
       return NextResponse.redirect(new URL("/", request.url));
     }
+  } else {
+    // Other authenticated routes (library, advisor, kartoteks) use cached state
+    requestHeaders.set(THESIS_HEADER, globalThis.__fabriccaThesisCache ?? "present");
   }
 
   return NextResponse.next({ request: { headers: requestHeaders } });
@@ -136,6 +139,8 @@ export const config = {
     "/library/:path*",
     "/advisor/:path*",
     "/onboarding/:path*",
+    "/kartoteks/:path*",
+    "/insights/:path*",
     "/login",
   ],
 };

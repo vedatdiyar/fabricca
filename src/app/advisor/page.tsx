@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import dynamic from "next/dynamic";
 import {
   Send,
   BookOpen,
@@ -21,8 +22,13 @@ import {
 
 import { useAdvisor } from "./_hooks/use-advisor";
 import { AdvisorSidebar } from "./_components/advisor-sidebar";
-import { ChatMessages } from "./_components/chat-messages";
 import { ApprovalCard } from "./_components/approval-card";
+
+// ChatMessages uses react-markdown + remark-gfm (heavy) — load on demand
+const ChatMessages = dynamic(
+  () => import("./_components/chat-messages").then((mod) => mod.ChatMessages),
+  { ssr: false },
+);
 
 export default function AdvisorPage() {
   const {

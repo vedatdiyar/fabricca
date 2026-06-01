@@ -1,7 +1,6 @@
-import { cookies, headers } from "next/headers";
+import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { Poppins, Fredoka } from "next/font/google";
-import { getCachedExpectedHash } from "@/lib/auth-cache";
 import Navigation from "@/components/navigation";
 import { SidebarProvider } from "@/components/sidebar-provider";
 import MainContent from "@/components/main-content";
@@ -11,7 +10,7 @@ import "./globals.css";
 const poppins = Poppins({
   variable: "--font-sans",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
+  weight: ["400", "500", "700"],
 });
 
 const fredoka = Fredoka({
@@ -25,6 +24,7 @@ export const metadata: Metadata = {
   description: "Fabricca",
 };
 
+const AUTH_HEADER = "x-auth-authenticated";
 const THESIS_STATE_HEADER = "x-thesis-state";
 
 export default async function RootLayout({
@@ -32,27 +32,14 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = await cookies();
   const headerStore = await headers();
-  const sessionCookie = cookieStore.get("academialab_session")?.value;
-  const password = process.env.APP_PASSWORD;
 
-  let isAuthenticated = false;
-  if (!password) {
-    // Treat as authenticated if password is not configured yet to support developer onboarding
-    isAuthenticated = true;
-  } else {
-    const expectedHash = await getCachedExpectedHash(password);
-    isAuthenticated = sessionCookie === expectedHash;
-  }
-
-  // Onboarding status is set by `src/proxy.ts` (the single source of truth)
-  // via the `x-thesis-state` request header. This eliminates a second DB
-  // round-trip that previously raced the proxy on cold-starts.
+  // Auth & thesis state are pre-computed by proxy.ts — no cookie/hash re-check needed
+  const isAuthenticated = headerStore.get(AUTH_HEADER) === "true"
+    || !process.env.APP_PASSWORD; // developer onboarding
   const thesisState = headerStore.get(THESIS_STATE_HEADER) ?? "unknown";
   const isThesisCoreEmpty = thesisState !== "present";
 
-  // Show navigation bar and sidebar only if authenticated AND onboarding is completed
   const showSidebar = isAuthenticated && !isThesisCoreEmpty;
 
   return (

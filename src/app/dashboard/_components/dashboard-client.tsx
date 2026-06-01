@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import dynamic from "next/dynamic";
 import { ListTodo, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { type ThesisCoreData } from "../actions";
 
@@ -8,13 +9,21 @@ import { type ThesisCoreData } from "../actions";
 import { DashboardLoading } from "./dashboard-loading";
 import { ThesisConstitution } from "./thesis-constitution";
 import { RecommendationGrid } from "./recommendation-grid";
-import { PdfUploadDrawer } from "./pdf-upload-drawer";
 import { TaskForm } from "./task-form";
-import { TaskKanban } from "./task-kanban";
 import { TaskMobileTabs } from "./task-mobile-tabs";
 import { DashboardHeader } from "./dashboard-header";
 import { MissingThesisConstitution } from "./missing-thesis-constitution";
 import { useDashboard } from "../_hooks/use-dashboard";
+
+// Heavy components loaded on demand
+const PdfUploadDrawer = dynamic(() =>
+  import("./pdf-upload-drawer").then((mod) => mod.PdfUploadDrawer),
+  { ssr: false },
+);
+const TaskKanban = dynamic(() =>
+  import("./task-kanban").then((mod) => mod.TaskKanban),
+  { ssr: false },
+);
 
 interface DashboardClientProps {
   initialThesisData: ThesisCoreData | null;

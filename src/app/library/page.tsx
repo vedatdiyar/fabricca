@@ -411,7 +411,7 @@ export default function LibraryPage() {
 
     const interval = setInterval(() => {
       loadReferences();
-    }, 4000);
+    }, 15_000);
 
     return () => clearInterval(interval);
   }, [state.references, loadReferences]);
