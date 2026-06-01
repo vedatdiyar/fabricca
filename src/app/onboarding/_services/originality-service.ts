@@ -94,7 +94,7 @@ async function fetchThesisAbstract(
  * a few hundred results for a focused social-science query; 20 pages × ~10 results
  * per page is a safe academic ceiling while preventing infinite loops.
  */
-const SAFETY_PAGE_CAP = 20;
+const SAFETY_PAGE_CAP = 3;
 
 /**
  * Step 0 helper (extracted from checkTezaraOriginalityAction):
@@ -160,9 +160,23 @@ ${userInput}
     const rawQueries = (queryGenResponse.text || "").trim();
     const queryList = rawQueries
       .split(",")
-      .map((q) => q.trim())
+      .map((q) => {
+        let cleaned = q.trim();
+        // Remove alphabetical or numeric prefixes like "A)", "B:", "1.", "a -" (case-insensitive)
+        cleaned = cleaned.replace(/^[a-zA-Z0-9]\s*[\):\.-]\s*/, "");
+        // Remove common bullet points or hyphens
+        cleaned = cleaned.replace(/^[-–—•*+]\s*/, "");
+        // Strip surrounding quotes
+        cleaned = cleaned.replace(/^['"`]+|['"`]+$/g, "");
+        return cleaned.trim();
+      })
       .filter(Boolean)
       .slice(0, 3);
+
+    console.log(
+      `[Tezara Scraper] Tezara'ya Gönderilen Arama Anahtar Kelimeleri (Keywords):`,
+      queryList,
+    );
 
     console.log(
       `[Tezara Scraper] Multi-Tier Query Set generated: [${queryList.map((q, i) => `${["A", "B", "C"][i]}="${q}"`).join(" | ")}]`,
@@ -174,7 +188,9 @@ ${userInput}
 
     for (let qi = 0; qi < queryList.length; qi++) {
       const query = queryList[qi];
-      const queryLabel = ["A (Kavramsal)", "B (Bağlamsal)", "C (Eylem/Süreç)"][qi];
+      const queryLabel = ["A (Kavramsal)", "B (Bağlamsal)", "C (Eylem/Süreç)"][
+        qi
+      ];
 
       let page = 1;
       while (page <= SAFETY_PAGE_CAP) {
@@ -454,9 +470,10 @@ Lütfen bu listeyi semantik olarak değerlendir ve sadece gerçekten şüpheli o
     const jurySystemInstruction = `Sen sosyal bilimler alanında çok seçkin, yapıcı ve vizyoner bir jüri üyesisin.
 Öğrencinin yeni tez fikri (Mülakat geçmişindeki Başlık/Konu, Araştırma Sorusu, Teorik Çatı ve Ampirik Sınırlar) ile Türkiye akademik literatüründe bulunan tezleri kıyaslayacaksın.
 Benzerlik riskini ("Düşük", "Orta" veya "Yüksek") belirlerken şunlara dikkat et:
-1. Sırf aynı kavramlar (örneğin "sosyalizm", "kürt hareketi") çalışılmış diye risk düzeyini hemen "Orta" veya "Yüksek" yapma. Sosyal bilimlerde bu kavramlar binlerce kez çalışılmıştır.
+1. Sırf aynı kavramlar çalışılmış diye risk düzeyini hemen "Orta" veya "Yüksek" yapma. Sosyal bilimlerde benzer kavramlar binlerce kez çalışılmıştır.
 2. Riski "Yüksek" veya "Orta" belirlemen için, karşılaştırılan tezlerin hem araştırma sorusunun, hem kuramsal yaklaşımının hem de ampirik/tarihsel dönem sınırlarının tamamının veya çoğunluğunun öğrencinin çalışmasıyla birebir çakışıyor olması gerekir. Eğer öğrenci farklı bir dönem, farklı bir kuramsal çatı veya farklı bir özgün araştırma sorusu öneriyorsa benzerlik riski "Düşük" olmalıdır.
 3. Tezin özgün değerini kurtarmak ve literatürde yeni bir katkı sağlamak için hâlâ açıkta duran teorik boşlukları (gap) ve öğrenciye tavsiyeleri içeren derinlikli bir gap analizi yap.
+4. KESİN YASAK - TEZ İSMİ VE YAZAR YASAĞI: Raporda KESİNLİKLE hiçbir tezin ismini (başlığını), yazar adını/soyadını, danışman ismini veya veri tabanı ID numarasını geçirme. Değerlendirmeyi, gerekçelendirmeyi ve gap analizini tamamen kuramsal, kavramsal, metodolojik ve tarihsel boyutlar üzerinden isimsiz olarak yap. Literatürdeki benzerlikleri ve çakışma riskini spesifik çalışmaların adını vermeden, genel akademik eğilimler ve konu örüntüleri üzerinden değerlendir.
 
 Yanıtını KESİNLİKLE aşağıdaki JSON formatında vermelisin:
 {

@@ -49,7 +49,7 @@ export function PreviewScreen({
   const reportData = originalityReportMsg?.reportData;
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 flex flex-col justify-between">
+    <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-8 flex flex-col justify-between">
       {/* Header Greeting */}
       <div className="space-y-3">
         <div className="flex items-center space-x-2 text-primary">
@@ -58,62 +58,89 @@ export function PreviewScreen({
             Tez Anayasası Hazırlandı!
           </span>
         </div>
-        <div className="bg-secondary text-foreground border border-border p-4 rounded-lg text-sm leading-relaxed font-sans">
-          <ReactMarkdown>
-            {messages[messages.length - 1]?.content ||
-              "Mülakatımız başarıyla tamamlandı Vedat. Tez anayasanın unsurlarını akademik açıdan rafine ederek aşağıda derledim. Lütfen incele."}
-          </ReactMarkdown>
+        <div className="border border-border bg-secondary/40 p-5 rounded-lg relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-[3px] h-full bg-primary" />
+          <div className="text-sm text-foreground leading-relaxed font-sans">
+            <ReactMarkdown
+              components={{
+                p: ({ children }) => (
+                  <p className="mb-4 last:mb-0 leading-relaxed">{children}</p>
+                ),
+              }}
+            >
+              {messages[messages.length - 1]?.content ||
+                "Mülakatımız başarıyla tamamlandı Vedat. Tez anayasanın unsurlarını akademik açıdan rafine ederek aşağıda derledim. Lütfen incele."}
+            </ReactMarkdown>
+          </div>
         </div>
       </div>
 
+      {/* Originality Report Section */}
+      {reportData && (
+        <div className="space-y-4">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-foreground border-b border-border pb-2">
+            Akademik Özgünlük Değer Raporu ve Gap Analizi
+          </h2>
+          <OriginalityReport reportData={reportData} />
+        </div>
+      )}
+
       {/* Structured Card Grid */}
       <div className="space-y-4">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Tez Anayasası Ögeleri (Core Elements)
-        </h2>
+          <h2 className="text-sm font-bold uppercase tracking-wider text-foreground border-b border-border pb-2">
+            Tez Anayasası Ögeleri
+          </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* 1. Title */}
-          <div className="border border-border bg-secondary/40 p-4 rounded-lg space-y-2 relative overflow-hidden">
+          <div className="border border-border bg-secondary/40 p-4 rounded-lg space-y-2 relative overflow-hidden md:col-span-2">
             <div className="absolute top-0 left-0 w-[3px] h-full bg-primary" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            <span className="text-sm font-bold uppercase tracking-wider text-foreground">
               Tez Başlığı & Konusu
             </span>
-            <p className="text-sm text-foreground font-semibold leading-snug">
-              {structuredData.title}
+            <p className="text-sm text-foreground leading-snug">
+              <ReactMarkdown components={{ p: ({ children }) => <>{children}</> }}>
+                {structuredData.title}
+              </ReactMarkdown>
             </p>
           </div>
 
           {/* 2. Research Question */}
-          <div className="border border-border bg-secondary/40 p-4 rounded-lg space-y-2 relative overflow-hidden">
+          <div className="border border-border bg-secondary/40 p-4 rounded-lg space-y-2 relative overflow-hidden md:col-span-2">
             <div className="absolute top-0 left-0 w-[3px] h-full bg-primary" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Araştırma Sorusu (Research Question)
+            <span className="text-sm font-bold uppercase tracking-wider text-foreground">
+              Araştırma Sorusu
             </span>
-            <p className="text-sm text-foreground font-semibold leading-relaxed">
-              {structuredData.researchQuestion}
+            <p className="text-sm text-foreground leading-relaxed">
+              <ReactMarkdown components={{ p: ({ children }) => <>{children}</> }}>
+                {structuredData.researchQuestion}
+              </ReactMarkdown>
             </p>
           </div>
 
           {/* 3. Argument */}
-          <div className="border border-border bg-secondary/40 p-4 rounded-lg space-y-2 relative overflow-hidden md:col-span-2">
+          <div className="border border-border bg-secondary/40 p-4 rounded-lg space-y-2 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-[3px] h-full bg-primary" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            <span className="text-sm font-bold uppercase tracking-wider text-foreground">
               Temel Teorik Çatı & Argüman
             </span>
             <p className="text-sm text-foreground font-sans leading-relaxed">
-              {structuredData.argument}
+              <ReactMarkdown components={{ p: ({ children }) => <>{children}</> }}>
+                {structuredData.argument}
+              </ReactMarkdown>
             </p>
           </div>
 
           {/* 4. Methodology */}
-          <div className="border border-border bg-secondary/40 p-4 rounded-lg space-y-2 relative overflow-hidden md:col-span-2">
+          <div className="border border-border bg-secondary/40 p-4 rounded-lg space-y-2 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-[3px] h-full bg-primary" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            <span className="text-sm font-bold uppercase tracking-wider text-foreground">
               Tarihsel Sınırlar & Yöntem
             </span>
             <p className="text-sm text-foreground font-sans leading-relaxed">
-              {structuredData.methodology}
+              <ReactMarkdown components={{ p: ({ children }) => <>{children}</> }}>
+                {structuredData.methodology}
+              </ReactMarkdown>
             </p>
           </div>
 
@@ -121,9 +148,9 @@ export function PreviewScreen({
           {structuredData.boxes && structuredData.boxes.length > 0 && (
             <div className="border border-border bg-secondary/40 p-4 rounded-lg space-y-3 relative overflow-hidden md:col-span-2">
               <div className="absolute top-0 left-0 w-[3px] h-full bg-primary" />
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                Önerilen Tematik Çalışma Kutuları (Bilgi Fişleri)
-              </span>
+            <span className="text-sm font-bold uppercase tracking-wider text-foreground">
+              Önerilen Tematik Çalışma Kutuları
+            </span>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
                 {structuredData.boxes.map((box, index) => (
                   <div
@@ -131,16 +158,20 @@ export function PreviewScreen({
                     className="border border-border bg-background p-3 rounded-md space-y-1 relative overflow-hidden"
                   >
                     <div className="flex items-center space-x-2">
-                      <span className="text-[10px] font-mono bg-secondary border border-border px-1.5 py-0.5 rounded text-muted-foreground font-semibold">
+                      <span className="text-xs font-mono bg-secondary border border-border px-1.5 py-0.5 rounded text-muted-foreground font-semibold">
                         Kutu {index + 1}
                       </span>
-                      <h4 className="text-xs font-bold text-foreground">
-                        {box.name}
+                      <h4 className="text-sm font-bold text-foreground">
+                        <ReactMarkdown components={{ p: ({ children }) => <>{children}</> }}>
+                          {box.name}
+                        </ReactMarkdown>
                       </h4>
                     </div>
                     {box.description && (
-                      <p className="text-[11px] text-muted-foreground leading-normal font-sans">
-                        {box.description}
+                      <p className="text-xs text-muted-foreground leading-relaxed font-sans">
+                        <ReactMarkdown components={{ p: ({ children }) => <>{children}</> }}>
+                          {box.description}
+                        </ReactMarkdown>
                       </p>
                     )}
                   </div>
@@ -153,30 +184,30 @@ export function PreviewScreen({
           {structuredData.coreBooks && structuredData.coreBooks.length > 0 && (
             <div className="border border-border bg-secondary/40 p-4 rounded-lg space-y-3 relative overflow-hidden md:col-span-2">
               <div className="absolute top-0 left-0 w-[3px] h-full bg-primary" />
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                Kurucu Akademik Kaynaklar (Her Kutu İçin)
-              </span>
+            <span className="text-sm font-bold uppercase tracking-wider text-foreground">
+              Kurucu Akademik Kaynaklar
+            </span>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
                 {structuredData.coreBooks.map((book, index) => (
                   <div
                     key={`book_${index}`}
-                    className="border border-border bg-background p-3 rounded-md space-y-1.5"
+                    className="border border-border bg-background p-3 rounded-md space-y-1"
                   >
-                    <p className="text-xs font-bold text-foreground leading-snug">
-                      {book.title}
+                    <p className="text-sm font-bold text-foreground">
+                      <ReactMarkdown components={{ p: ({ children }) => <>{children}</> }}>
+                        {book.title}
+                      </ReactMarkdown>
                     </p>
-                    <p className="text-[11px] text-muted-foreground font-sans">
-                      {book.author}
-                      {book.year ? ` — ${book.year}` : ""}
+                    <p className="text-[13px] text-foreground leading-relaxed font-sans">
+                      <ReactMarkdown components={{ p: ({ children }) => <>{children}</> }}>
+                        {`${book.author}${book.year ? ` (${book.year})` : ""}${book.publisher ? ` — ${book.publisher}` : ""}`}
+                      </ReactMarkdown>
                     </p>
-                    {book.publisher && (
-                      <p className="text-[10px] text-muted-foreground font-mono">
-                        {book.publisher}
-                      </p>
-                    )}
                     {book.rationale && (
-                      <p className="text-[11px] text-foreground/80 leading-relaxed font-sans border-t border-border pt-1.5 mt-1">
-                        {book.rationale}
+                      <p className="text-xs text-muted-foreground leading-relaxed font-sans">
+                        <ReactMarkdown components={{ p: ({ children }) => <>{children}</> }}>
+                          {book.rationale}
+                        </ReactMarkdown>
                       </p>
                     )}
                   </div>
@@ -186,16 +217,6 @@ export function PreviewScreen({
           )}
         </div>
       </div>
-
-      {/* Originality Report Section */}
-      {reportData && (
-        <div className="space-y-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Akademik Özgünlük Değer Raporu ve Gap Analizi
-          </h2>
-          <OriginalityReport reportData={reportData} />
-        </div>
-      )}
 
       {/* Error Message */}
       {error && (
@@ -211,7 +232,7 @@ export function PreviewScreen({
       )}
 
       {/* Action Buttons */}
-      <div className="border-t border-border pt-6 mt-4 flex flex-col md:flex-row md:justify-end gap-3">
+      <div className="border-t border-border pt-8 mt-6 flex flex-col md:flex-row md:justify-end gap-3">
         <button
           type="button"
           onClick={handleReset}

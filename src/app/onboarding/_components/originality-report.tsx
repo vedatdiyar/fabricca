@@ -61,40 +61,40 @@ export function OriginalityReport({ reportData }: OriginalityReportProps) {
         </div>
       </DialogTrigger>
 
-      <DialogContent className="max-w-2xl bg-card border border-border p-6 text-foreground shadow-2xl rounded-xl">
-        <DialogHeader className="border-b border-border pb-4">
+      <DialogContent className="max-w-[95vw] sm:max-w-[800px] max-h-[90vh] bg-card border border-border p-8 text-foreground shadow-2xl rounded-xl">
+        <DialogHeader className="border-b border-border pb-5">
           <div className="flex flex-row items-center justify-between gap-4">
-            <div className="flex items-center space-x-2">
-              <Sparkles className="h-4 w-4 text-primary animate-pulse" />
-              <DialogTitle className="text-sm font-bold tracking-wider uppercase font-mono">
+            <div className="flex items-center space-x-3">
+              <Sparkles className="h-5 w-5 text-primary animate-pulse" />
+              <DialogTitle className="text-base font-bold tracking-wider uppercase font-mono">
                 Akademik Özgünlük Raporu
               </DialogTitle>
             </div>
             <span
-              className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${riskColor}`}
+              className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold ${riskColor}`}
             >
               Çakışma Riski: {reportData.risk}
             </span>
           </div>
-          <DialogDescription className="text-[11px] text-muted-foreground font-sans mt-1">
+          <DialogDescription className="text-xs text-muted-foreground font-sans mt-1.5">
             Gemini 3.1 Flash Lite ve Tezara veri tabanı entegrasyonu ile üretilen literatür analiz raporudur.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4 max-h-[60vh] overflow-y-auto pr-1">
+        <div className="space-y-6 py-5 max-h-[65vh] overflow-y-auto pr-1">
           {/* Jüri Benzerlik Değerlendirmesi */}
-          <div className="space-y-2">
-            <h4 className="text-[10px] font-bold uppercase tracking-wider text-primary font-mono border-b border-border/50 pb-1">
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-primary font-mono border-b border-border/50 pb-1.5">
               Jüri Benzerlik Değerlendirmesi (Neden Orijinal?)
             </h4>
-            <div className="text-xs text-foreground leading-relaxed font-sans prose prose-invert max-w-none">
+            <div className="bg-card/50 border border-border p-4 rounded-lg shadow-sm text-sm text-foreground leading-relaxed font-sans prose prose-invert max-w-none">
               <ReactMarkdown>{reportData.reasoning}</ReactMarkdown>
             </div>
           </div>
 
           {/* Stratejik Özgün Değer Tavsiyeleri (Gap Analizi) */}
-          <div className="space-y-2">
-            <h4 className="text-[10px] font-bold uppercase tracking-wider text-primary font-mono border-b border-border/50 pb-1">
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-primary font-mono border-b border-border/50 pb-1.5">
               Stratejik Özgün Değer Tavsiyeleri (Gap Analizi)
             </h4>
             <GapAnalysisSection gapAnalysis={reportData.gapAnalysis} />

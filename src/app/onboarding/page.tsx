@@ -48,7 +48,7 @@ export default function OnboardingPage() {
   return (
     <div className="flex flex-col bg-background px-4 py-4 items-center justify-center h-screen w-full overflow-hidden">
       <div className="w-full max-w-5xl border border-border bg-card rounded-lg shadow-2xl relative overflow-hidden flex flex-col h-[90vh]">
-        {/* Top Decorative Line */}
+        {/* Bottom decorative bar is top line */}
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-primary to-transparent" />
 
         <OnboardingHeader />

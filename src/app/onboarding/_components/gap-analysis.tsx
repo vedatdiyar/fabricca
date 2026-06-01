@@ -27,7 +27,7 @@ export function GapAnalysisSection({ gapAnalysis }: GapAnalysisSectionProps) {
 
   if (sections.length === 0) {
     return (
-      <div className="bg-card/50 border border-border p-3 rounded-lg shadow-sm text-xs text-foreground leading-relaxed font-sans">
+      <div className="bg-card/50 border border-border p-4 rounded-lg shadow-sm text-sm text-foreground leading-relaxed font-sans">
         {gapAnalysis}
       </div>
     );
@@ -52,7 +52,7 @@ export function GapAnalysisSection({ gapAnalysis }: GapAnalysisSectionProps) {
   return (
     <div className="space-y-3">
       {intro && (
-        <p className="border-l-2 border-primary pl-3 text-xs text-muted-foreground leading-relaxed font-sans">
+        <p className="border-l-2 border-primary pl-3 text-sm text-muted-foreground leading-relaxed font-sans">
           {intro}
         </p>
       )}
@@ -65,10 +65,10 @@ export function GapAnalysisSection({ gapAnalysis }: GapAnalysisSectionProps) {
             <div className="flex items-start gap-2.5">
               {getIcon(section.heading, idx)}
               <div className="min-w-0 flex-1 space-y-1">
-                <span className="font-semibold text-primary block text-xs">
+                <span className="font-semibold text-primary block text-sm">
                   {section.heading}
                 </span>
-                <p className="text-xs text-foreground leading-relaxed font-sans">
+                <p className="text-sm text-foreground leading-relaxed font-sans">
                   {section.body}
                 </p>
               </div>

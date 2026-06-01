@@ -57,8 +57,8 @@ export async function generateContentWithRetry(
   options: RetryOptions = {},
 ): Promise<ReturnType<GoogleGenAI["models"]["generateContent"]>> {
   const {
-    maxRetries = 4,
-    initialDelayMs = 1000,
+    maxRetries = 3,
+    initialDelayMs = 2500,
     maxDelayMs = 8000,
     backoffFactor = 2,
   } = options;

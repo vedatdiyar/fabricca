@@ -165,7 +165,8 @@ export function ChatScreen({
             <div className="bg-secondary text-primary border border-primary/30 rounded-lg p-4 flex items-center space-x-3 shadow-md animate-pulse">
               <span className="text-xs font-semibold tracking-wider uppercase font-mono text-primary flex items-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5 animate-spin" />
-                Tezara veri tabanı taranıyor ve özgünlük analizi yapılıyor...
+                Özgünlük analizi yapılıyor ve uygun kaynakların önerisi için
+                araştırma yapılıyor...
               </span>
               <div className="flex space-x-1 shrink-0">
                 <div className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" />
@@ -254,6 +255,8 @@ const STATUS_PHRASES = [
   "Prof. Dr. Verita tarihsel olguları ve birincil kaynakları tarıyor...",
   "Hoca kuramsal çerçeveyi ve mantıksal kurguyu tartıyor...",
   "Prof. Dr. Verita jüri sorusunu ve anti-tezleri şekillendiriyor...",
+  "Prof. Dr. Verita çalışmanızı ulusal arşivde (Tezara/YÖK Tez) taratarak özgünlük analizini gerçekleştiriyor...",
+  "Hoca onay aşamasında literatürle olan ilişkiyi ve kaynak kitapları doğruluyor...",
 ];
 
 interface TypingIndicatorProps {

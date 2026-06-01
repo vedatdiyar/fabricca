@@ -43,7 +43,10 @@ function detectRetryableBody(body: unknown): boolean {
   return false;
 }
 
-function computeBackoffDelay(attempt: number, retryAfterMs: number | null): number {
+function computeBackoffDelay(
+  attempt: number,
+  retryAfterMs: number | null,
+): number {
   if (retryAfterMs !== null) return retryAfterMs;
   // Exponential: 1s, 2s, 4s, 8s, 8s
   const exp = Math.min(BASE_DELAY_MS * 2 ** (attempt - 1), MAX_DELAY_MS);
@@ -64,8 +67,15 @@ export async function neonFetchRetry(
   let lastError: unknown = null;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 seconds query timeout
+
     try {
-      const response = await fetch(input, init);
+      const response = await fetch(input, {
+        ...init,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
       lastResponse = response;
 
       if (response.ok) return response;
@@ -104,10 +114,11 @@ export async function neonFetchRetry(
       );
       await sleep(delay);
     } catch (error) {
+      clearTimeout(timeoutId);
       lastError = error;
       if (attempt >= MAX_ATTEMPTS) {
         console.error(
-          `[Neon DB Retry] Exhausted ${MAX_ATTEMPTS} attempts (network/throw). Giving up.`,
+          `[Neon DB Retry] Exhausted ${MAX_ATTEMPTS} attempts (network/throw/timeout). Giving up.`,
           error,
         );
         throw error;
