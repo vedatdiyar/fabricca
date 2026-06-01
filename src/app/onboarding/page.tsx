@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { BookOpen, Coffee } from "lucide-react";
+import { BookOpen, Feather } from "lucide-react";
 import { useOnboardingLogic } from "./_hooks/use-onboarding-logic";
 import { ChatScreen } from "./_components/chat-screen";
 import { PreviewScreen } from "./_components/preview-screen";
@@ -25,7 +25,7 @@ function OnboardingHeader() {
       </div>
 
       <div className="flex items-center gap-2 text-muted-foreground">
-        <Coffee className="h-4 w-4 text-primary" />
+        <Feather className="h-4 w-4 text-primary" />
         <span className="text-xs font-sans hidden md:block">
           Sözel onay verdiğinde anayasa basılır
         </span>

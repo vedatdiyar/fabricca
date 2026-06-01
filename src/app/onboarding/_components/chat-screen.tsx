@@ -266,12 +266,7 @@ function TypingIndicator({ phrases }: TypingIndicatorProps) {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setStep((prev) => {
-        if (prev < phrases.length - 1) {
-          return prev + 1;
-        }
-        return prev;
-      });
+      setStep((prev) => (prev < phrases.length - 1 ? prev + 1 : 0));
     }, 2500);
 
     return () => {

@@ -2,7 +2,11 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { getProfessorOnboardingResponseAction, ChatMessage } from "../actions";
+import {
+  getProfessorOnboardingResponseAction,
+  runOriginalityAndBooksPipelineAction,
+  ChatMessage,
+} from "../actions";
 import { saveThesisCoreAction } from "../_services/db-actions";
 
 export interface OnboardingThesisData {
@@ -40,7 +44,7 @@ export const INITIAL_MESSAGES: ChatMessage[] = [
   {
     role: "model",
     content:
-      "Merhaba Vedat. Kahvemi yeni koydum, seni bekliyordum.\n\nTez anayasanı birlikte inşa edeceğiz — ama bunu sıkıcı bir form doldurma seansı gibi yapmayacağız. Seninle gerçek bir akademik tartışma yürüteceğiz: konunun sınırlarını, araştırma sorusunu, teorik zeminini ve yöntemini organik bir sohbet içinde netleştireceğiz.\n\nHazır olduğunda mülakata başlayabiliriz. Bana anlat: üzerinde çalışmak istediğin konu nedir?",
+      "Merhaba Vedat.\n\nTez anayasanı birlikte inşa edeceğiz — ama bunu sıkıcı bir form doldurma seansı gibi yapmayacağız. Seninle gerçek bir akademik tartışma yürüteceğiz: konunun sınırlarını, araştırma sorusunu, teorik zeminini ve yöntemini organik bir sohbet içinde netleştireceğiz.\n\nHazır olduğunda mülakata başlayabiliriz. Bana anlat: üzerinde çalışmak istediğin konu nedir?",
   },
 ];
 
@@ -100,28 +104,99 @@ export function useOnboardingLogic(router: ReturnType<typeof useRouter>) {
         );
       }
 
-      if (res.originalityReport) {
-        const reportMsg: ChatMessage = {
-          role: "originality_report",
-          content: "",
-          reportData: {
-            risk: res.originalityReport.risk,
-            reasoning: res.originalityReport.reasoning,
-            gapAnalysis: res.originalityReport.gapAnalysis,
-            theses: res.originalityReport.theses,
-          },
-        };
-        currentMessages = [...currentMessages, reportMsg];
-      }
+      if (res.needsOriginalityCheck && res.structuredData) {
+        // Set state for Professor response, and toggle originality loading
+        setOnboardingState((prev) => ({
+          ...prev,
+          messages: [
+            ...currentMessages,
+            { role: "model" as const, content: res.message || "" },
+          ],
+          isOriginalityLoading: true,
+          isLoading: false, // Turn off Professor typing indicator
+        }));
 
-      setOnboardingState((prev) => ({
-        ...prev,
-        messages: [
+        const updatedHistoryWithProf: ChatMessage[] = [
           ...currentMessages,
-          { role: "model", content: res.message || "" },
-        ],
-        pendingStructuredData: res.structuredData || null,
-      }));
+          { role: "model" as const, content: res.message || "" },
+        ];
+
+        // Call Step 2 Server Action: Check originality and generate books
+        const originalityRes = await runOriginalityAndBooksPipelineAction(
+          updatedHistoryWithProf,
+          responseText,
+          res.structuredData,
+        );
+
+        if (!originalityRes.success) {
+          throw new Error(
+            originalityRes.error ||
+              "Özgünlük kontrolü veya kitap araması sırasında hata oluştu.",
+          );
+        }
+
+        if (originalityRes.riskDetected) {
+          // If risk is detected, append originality report, append revised Prof message,
+          // clear pendingStructuredData, and turn off originality loading
+          let nextHistory: ChatMessage[] = [...updatedHistoryWithProf];
+          if (originalityRes.originalityReport) {
+            const reportMsg: ChatMessage = {
+              role: "originality_report",
+              content: "",
+              reportData: {
+                risk: originalityRes.originalityReport.risk,
+                reasoning: originalityRes.originalityReport.reasoning,
+                gapAnalysis: originalityRes.originalityReport.gapAnalysis,
+                theses: originalityRes.originalityReport.theses,
+              },
+            };
+            nextHistory = [...nextHistory, reportMsg];
+          }
+
+          setOnboardingState((prev) => ({
+            ...prev,
+            isOriginalityLoading: false,
+            messages: [
+              ...nextHistory,
+              { role: "model" as const, content: originalityRes.message || "" },
+            ],
+            pendingStructuredData: null,
+          }));
+        } else {
+          // No risk detected! Append originality report (low risk), update structuredData with books
+          let nextHistory: ChatMessage[] = [...updatedHistoryWithProf];
+          if (originalityRes.originalityReport) {
+            const reportMsg: ChatMessage = {
+              role: "originality_report",
+              content: "",
+              reportData: {
+                risk: originalityRes.originalityReport.risk,
+                reasoning: originalityRes.originalityReport.reasoning,
+                gapAnalysis: originalityRes.originalityReport.gapAnalysis,
+                theses: originalityRes.originalityReport.theses,
+              },
+            };
+            nextHistory = [...nextHistory, reportMsg];
+          }
+
+          setOnboardingState((prev) => ({
+            ...prev,
+            isOriginalityLoading: false,
+            messages: nextHistory,
+            pendingStructuredData: originalityRes.structuredData || null,
+          }));
+        }
+      } else {
+        // Standard normal response
+        setOnboardingState((prev) => ({
+          ...prev,
+          messages: [
+            ...currentMessages,
+            { role: "model" as const, content: res.message || "" },
+          ],
+          pendingStructuredData: null,
+        }));
+      }
     } catch (err) {
       console.error("Onboarding Error:", err);
       const errMsg =
@@ -133,6 +208,7 @@ export function useOnboardingLogic(router: ReturnType<typeof useRouter>) {
         error: errMsg,
         messages: prev.messages.slice(0, -1),
         userResponse: responseText,
+        isOriginalityLoading: false,
       }));
     } finally {
       setOnboardingState((prev) => ({ ...prev, isLoading: false }));

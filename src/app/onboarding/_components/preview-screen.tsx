@@ -17,6 +17,13 @@ interface PreviewScreenProps {
       name: string;
       description: string;
     }[];
+    coreBooks?: {
+      title: string;
+      author: string;
+      publisher: string;
+      year: string;
+      rationale: string;
+    }[];
   } | null;
   isSaving: boolean;
   error: string | null;
@@ -134,6 +141,42 @@ export function PreviewScreen({
                     {box.description && (
                       <p className="text-[11px] text-muted-foreground leading-normal font-sans">
                         {box.description}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 6. Core Books (Kurucu Kaynaklar) */}
+          {structuredData.coreBooks && structuredData.coreBooks.length > 0 && (
+            <div className="border border-border bg-secondary/40 p-4 rounded-lg space-y-3 relative overflow-hidden md:col-span-2">
+              <div className="absolute top-0 left-0 w-[3px] h-full bg-primary" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Kurucu Akademik Kaynaklar (Her Kutu İçin)
+              </span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                {structuredData.coreBooks.map((book, index) => (
+                  <div
+                    key={`book_${index}`}
+                    className="border border-border bg-background p-3 rounded-md space-y-1.5"
+                  >
+                    <p className="text-xs font-bold text-foreground leading-snug">
+                      {book.title}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground font-sans">
+                      {book.author}
+                      {book.year ? ` — ${book.year}` : ""}
+                    </p>
+                    {book.publisher && (
+                      <p className="text-[10px] text-muted-foreground font-mono">
+                        {book.publisher}
+                      </p>
+                    )}
+                    {book.rationale && (
+                      <p className="text-[11px] text-foreground/80 leading-relaxed font-sans border-t border-border pt-1.5 mt-1">
+                        {book.rationale}
                       </p>
                     )}
                   </div>
