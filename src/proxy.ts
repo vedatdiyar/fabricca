@@ -1,67 +1,133 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getExpectedHash } from "./lib/auth";
-import { neon } from "@neondatabase/serverless";
+import { getCachedExpectedHash } from "@/lib/auth-cache";
+import { db } from "@/db";
+import { thesisCore } from "@/db/schema";
+
+/**
+ * Next.js Proxy (formerly Middleware).
+ *
+ * Responsibilities (single source of truth):
+ *   1. Cookie-based session auth (memoized hash, no per-request SHA-256)
+ *   2. Onboarding gate — checks `thesis_core` once and propagates the
+ *      result to downstream components via the `x-thesis-state` request
+ *      header, eliminating the 3x concurrent DB race in dev/prod cold-starts
+ *   3. Aggressive warmup — a tiny `SELECT 1` primes the Neon compute
+ *      before the real query, mitigating "Control plane request failed"
+ *      on first request after scale-to-zero
+ *
+ * Downstream consumers:
+ *   - src/app/layout.tsx   reads `x-thesis-state` from request headers
+ *   - src/app/page.tsx     same, for redirect decision
+ */
+
+const HEADER = "x-thesis-state";
+type ThesisState = "present" | "empty" | "unknown";
+
+declare global {
+  var __fabriccaWarmupPromise: Promise<void> | undefined;
+}
+
+async function warmNeon(): Promise<void> {
+  // Reuse a single warmup promise across concurrent requests within the
+  // same server instance. Once warm, the promise is cleared so future
+  // warmups (e.g. after long idle) can fire again.
+  if (globalThis.__fabriccaWarmupPromise) {
+    return globalThis.__fabriccaWarmupPromise;
+  }
+  const p = (async () => {
+    try {
+      // Minimal probe — the retry wrapper + single-flight inside `db` handle
+      // control-plane 500s automatically.
+      await db.execute("SELECT 1");
+    } catch {
+      // Swallow: the real query will retry through neonFetchRetry. We don't
+      // want a warmup failure to block the proxy.
+    } finally {
+      // Clear after a short delay so the *first* request after wake-up
+      // shares its warmup with concurrent siblings, but later requests
+      // re-warm if the compute went back to sleep.
+      setTimeout(() => {
+        globalThis.__fabriccaWarmupPromise = undefined;
+      }, 30_000);
+    }
+  })();
+  globalThis.__fabriccaWarmupPromise = p;
+  return p;
+}
+
+async function checkThesisState(): Promise<ThesisState> {
+  if (!process.env.NEON_DATABASE_URL) {
+    // No DB configured → don't block the user into onboarding. Layout
+    // treats this as "not authenticated" anyway if APP_PASSWORD is also
+    // missing, so it lands on the public tree.
+    return "unknown";
+  }
+  try {
+    // Warmup runs first to mitigate cold-start 500s.
+    await warmNeon();
+    const rows = await db.select().from(thesisCore).limit(1);
+    return rows.length === 0 ? "empty" : "present";
+  } catch (error) {
+    console.error("[proxy] thesis state check failed:", error);
+    // Consistent fallback: treat as "empty" so we route to /onboarding,
+    // which is safe because onboarding auto-redirects back when the table
+    // actually has data (the user will simply re-trigger this proxy and
+    // get the correct state once the DB recovers).
+    return "empty";
+  }
+}
 
 export async function proxy(request: NextRequest) {
-  const sessionCookie = request.cookies.get("academialab_session")?.value;
-  const password = process.env.APP_PASSWORD;
-
   const { pathname } = request.nextUrl;
   const isLoginPage = pathname === "/login";
 
-  // Calculate the expected session hash if password is configured.
-  // If not configured, expectedHash is empty to prevent unauthorized bypass.
-  // We treat it as authenticated if password is not configured yet (for developer ease).
-  const expectedHash = password ? await getExpectedHash(password) : "";
+  // 1. Auth check (memoized — SHA-256 runs once per server boot)
+  const sessionCookie = request.cookies.get("academialab_session")?.value;
+  const password = process.env.APP_PASSWORD;
+  const expectedHash = password ? await getCachedExpectedHash(password) : "";
   const isAuthenticated = !password || sessionCookie === expectedHash;
 
+  // Build the response we'll return at the end. We need to inject the
+  // `x-thesis-state` header into the *request* scope so downstream
+  // server components can read it via `headers()`.
+  const requestHeaders = new Headers(request.headers);
+  // Default to unknown; the real check below will overwrite.
+  requestHeaders.set(HEADER, "unknown");
+
   if (!isAuthenticated) {
-    // If not authenticated and trying to access a protected page, redirect instantly to /login
     if (!isLoginPage) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
+
+  // Authenticated and on /login → bounce to home
+  if (isLoginPage) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  // 2. Onboarding state — single DB check, propagate via header
+  const state = await checkThesisState();
+  requestHeaders.set(HEADER, state);
+
+  const isOnboardingPage = pathname === "/onboarding";
+
+  if (state === "empty") {
+    if (!isOnboardingPage) {
+      // `x-thesis-state` is not forwarded on redirects — the browser will
+      // issue a fresh GET to /onboarding and the proxy will re-evaluate,
+      // setting the header for that new request scope. So no `request`
+      // field is needed (and not supported) on `NextResponse.redirect`.
+      return NextResponse.redirect(new URL("/onboarding", request.url));
+    }
   } else {
-    // If authenticated and trying to access the login page, redirect instantly to /
-    if (isLoginPage) {
+    if (isOnboardingPage) {
       return NextResponse.redirect(new URL("/", request.url));
-    }
-
-    // 2. Onboarding Status Check
-    // We query Neon PostgreSQL to see if thesis_core table is empty.
-    let isThesisCoreEmpty = true;
-    if (process.env.NEON_DATABASE_URL) {
-      try {
-        const sql = neon(process.env.NEON_DATABASE_URL);
-        // Execute a quick, low-overhead SELECT query to check for existence of thesis_core
-        const result = await sql`SELECT id FROM thesis_core LIMIT 1`;
-        isThesisCoreEmpty = result.length === 0;
-      } catch (error) {
-        console.error("Database query failed in proxy:", error);
-        // In case of db connection issues, fallback to allowing request to avoid locking the user
-        isThesisCoreEmpty = false;
-      }
-    } else {
-      // If no db url is configured, assume onboarding is complete to not break initial layout dev
-      isThesisCoreEmpty = false;
-    }
-
-    const isOnboardingPage = pathname === "/onboarding";
-
-    if (isThesisCoreEmpty) {
-      // If onboarding is not completed, force the user to /onboarding
-      if (!isOnboardingPage) {
-        return NextResponse.redirect(new URL("/onboarding", request.url));
-      }
-    } else {
-      // If onboarding is already completed, block direct access to /onboarding and redirect to dashboard
-      if (isOnboardingPage) {
-        return NextResponse.redirect(new URL("/", request.url));
-      }
     }
   }
 
-  return NextResponse.next();
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = {

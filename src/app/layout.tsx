@@ -1,13 +1,11 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import type { Metadata } from "next";
 import { Poppins, Fredoka } from "next/font/google";
-import { getExpectedHash } from "@/lib/auth";
+import { getCachedExpectedHash } from "@/lib/auth-cache";
 import Navigation from "@/components/navigation";
 import { SidebarProvider } from "@/components/sidebar-provider";
 import MainContent from "@/components/main-content";
 import { Toaster } from "@/components/ui/sonner";
-import { db } from "@/db";
-import { thesisCore } from "@/db/schema";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -27,12 +25,15 @@ export const metadata: Metadata = {
   description: "Fabricca",
 };
 
+const THESIS_STATE_HEADER = "x-thesis-state";
+
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   const cookieStore = await cookies();
+  const headerStore = await headers();
   const sessionCookie = cookieStore.get("academialab_session")?.value;
   const password = process.env.APP_PASSWORD;
 
@@ -41,21 +42,15 @@ export default async function RootLayout({
     // Treat as authenticated if password is not configured yet to support developer onboarding
     isAuthenticated = true;
   } else {
-    const expectedHash = await getExpectedHash(password);
+    const expectedHash = await getCachedExpectedHash(password);
     isAuthenticated = sessionCookie === expectedHash;
   }
 
-  // Onboarding status check to provide a distraction-free onboarding environment
-  let isThesisCoreEmpty = true;
-  if (isAuthenticated) {
-    try {
-      const coreEntries = await db.select().from(thesisCore).limit(1);
-      isThesisCoreEmpty = coreEntries.length === 0;
-    } catch (error) {
-      console.error("Failed to query thesisCore in layout:", error);
-      isThesisCoreEmpty = true; // Fallback to true (not completed) on failure
-    }
-  }
+  // Onboarding status is set by `src/proxy.ts` (the single source of truth)
+  // via the `x-thesis-state` request header. This eliminates a second DB
+  // round-trip that previously raced the proxy on cold-starts.
+  const thesisState = headerStore.get(THESIS_STATE_HEADER) ?? "unknown";
+  const isThesisCoreEmpty = thesisState !== "present";
 
   // Show navigation bar and sidebar only if authenticated AND onboarding is completed
   const showSidebar = isAuthenticated && !isThesisCoreEmpty;

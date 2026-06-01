@@ -2,28 +2,22 @@
 
 import React from "react";
 import ReactMarkdown from "react-markdown";
-import { Sparkles, BookOpen } from "lucide-react";
-import { Accordion } from "@/components/ui/accordion";
-import { ThesisRow } from "./thesis-row";
+import { Sparkles, ArrowUpRight } from "lucide-react";
 import { GapAnalysisSection } from "./gap-analysis";
-
-interface OriginalityThesis {
-  id: string;
-  title: string;
-  author: string;
-  advisor: string;
-  year: string;
-  university: string;
-  abstract?: string;
-  abstract_en?: string;
-}
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface OriginalityReportProps {
   reportData: {
     risk: string;
     reasoning: string;
     gapAnalysis: string;
-    theses?: OriginalityThesis[];
   };
 }
 
@@ -36,53 +30,78 @@ export function OriginalityReport({ reportData }: OriginalityReportProps) {
   }
 
   return (
-    <div className="w-full border border-primary/40 bg-card rounded-lg p-5 space-y-4 my-4 relative overflow-hidden shadow-xl">
-      <div className="absolute top-0 left-0 right-0 h-[2px] bg-primary" />
-
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-border">
-        <div className="flex items-center space-x-2">
-          <Sparkles className="h-4 w-4 text-primary animate-pulse" />
-          <h3 className="text-xs font-bold tracking-wider text-foreground uppercase font-mono">
-            Akademik Özgünlük Değer Raporu (Tezara)
-          </h3>
+    <Dialog>
+      <DialogTrigger
+        className="w-full text-left border border-border/80 hover:border-primary/60 bg-secondary/30 hover:bg-secondary/50 p-4 rounded-lg flex items-center justify-between gap-4 transition-all cursor-pointer relative overflow-hidden group shadow-md"
+      >
+        {/* Subtle top indicator border */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-primary/40 group-hover:bg-primary transition-colors" />
+        
+        <div className="flex items-center space-x-3">
+          <div className="bg-primary/10 p-2 rounded-md border border-primary/20">
+            <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+          </div>
+          <div>
+            <h4 className="text-xs font-bold tracking-wider text-foreground uppercase font-mono">
+              Akademik Özgünlük Değer Raporu (Tezara)
+            </h4>
+            <p className="text-[11px] text-muted-foreground font-sans mt-0.5">
+              Tez fikrinin literatür çakışma ve gap analizi detayları için tıklayın.
+            </p>
+          </div>
         </div>
-        <span
-          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${riskColor}`}
-        >
-          Çakışma Riski: {reportData.risk}
-        </span>
-      </div>
-
-      <div className="space-y-1">
-        <h4 className="text-[10px] font-bold uppercase tracking-wider text-primary font-mono">
-          Jüri Benzerlik Değerlendirmesi
-        </h4>
-        <div className="text-xs text-foreground leading-relaxed font-sans prose prose-invert max-w-none">
-          <ReactMarkdown>{reportData.reasoning}</ReactMarkdown>
+        
+        <div className="flex items-center space-x-3 shrink-0">
+          <span
+            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${riskColor}`}
+          >
+            Çakışma Riski: {reportData.risk}
+          </span>
+          <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors animate-in fade-in slide-in-from-right-1 duration-200" />
         </div>
-      </div>
+      </DialogTrigger>
 
-      {reportData.theses && reportData.theses.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-[10px] font-bold uppercase tracking-wider text-primary font-mono flex items-center gap-1.5">
-            <BookOpen className="h-3.5 w-3.5" />
-            İlişkili Türkiye Menşeili Tez Eşleşmeleri (
-            {reportData.theses.length})
-          </h4>
-          <Accordion className="w-full space-y-2">
-            {reportData.theses.map((thesis) => (
-              <ThesisRow key={thesis.id} thesis={thesis} />
-            ))}
-          </Accordion>
+      <DialogContent className="max-w-2xl bg-card border border-border p-6 text-foreground shadow-2xl rounded-xl">
+        <DialogHeader className="border-b border-border pb-4">
+          <div className="flex flex-row items-center justify-between gap-4">
+            <div className="flex items-center space-x-2">
+              <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+              <DialogTitle className="text-sm font-bold tracking-wider uppercase font-mono">
+                Akademik Özgünlük Raporu
+              </DialogTitle>
+            </div>
+            <span
+              className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${riskColor}`}
+            >
+              Çakışma Riski: {reportData.risk}
+            </span>
+          </div>
+          <DialogDescription className="text-[11px] text-muted-foreground font-sans mt-1">
+            Gemini 3.1 Flash Lite ve Tezara veri tabanı entegrasyonu ile üretilen literatür analiz raporudur.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6 py-4 max-h-[60vh] overflow-y-auto pr-1">
+          {/* Jüri Benzerlik Değerlendirmesi */}
+          <div className="space-y-2">
+            <h4 className="text-[10px] font-bold uppercase tracking-wider text-primary font-mono border-b border-border/50 pb-1">
+              Jüri Benzerlik Değerlendirmesi (Neden Orijinal?)
+            </h4>
+            <div className="text-xs text-foreground leading-relaxed font-sans prose prose-invert max-w-none">
+              <ReactMarkdown>{reportData.reasoning}</ReactMarkdown>
+            </div>
+          </div>
+
+          {/* Stratejik Özgün Değer Tavsiyeleri (Gap Analizi) */}
+          <div className="space-y-2">
+            <h4 className="text-[10px] font-bold uppercase tracking-wider text-primary font-mono border-b border-border/50 pb-1">
+              Stratejik Özgün Değer Tavsiyeleri (Gap Analizi)
+            </h4>
+            <GapAnalysisSection gapAnalysis={reportData.gapAnalysis} />
+          </div>
         </div>
-      )}
-
-      <div className="space-y-1 pt-2 border-t border-border">
-        <h4 className="text-[10px] font-bold uppercase tracking-wider text-primary font-mono">
-          Stratejik Özgün Değer Tavsiyeleri (Gap Analizi)
-        </h4>
-        <GapAnalysisSection gapAnalysis={reportData.gapAnalysis} />
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
+

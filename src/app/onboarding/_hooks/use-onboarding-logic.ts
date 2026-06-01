@@ -91,7 +91,7 @@ export function useOnboardingLogic(router: ReturnType<typeof useRouter>) {
     }));
 
     try {
-      let currentMessages = [...updatedHistory];
+      const currentMessages = [...updatedHistory];
 
       const res = await getProfessorOnboardingResponseAction(
         currentMessages,

@@ -353,8 +353,8 @@ ${groundingContextFeed}`;
       `[Stage 2 Professor] [ID: ${correlationId}] Took: ${(professorDuration / 1000).toFixed(2)}s | Model: gemini-3.1-flash-lite | Thinking Level: HIGH`,
     );
 
-    let finalHocaResponseText = genAIResponse.text;
-    let finalOriginalityReport = null;
+    const finalHocaResponseText = genAIResponse.text;
+    const _finalOriginalityReport = null;
 
     if (!finalHocaResponseText) {
       return {
@@ -363,7 +363,7 @@ ${groundingContextFeed}`;
       };
     }
 
-    let parsed: {
+    const parsed: {
       message: string;
       isAcademicApproval?: boolean;
       structuredData?: {
@@ -412,7 +412,7 @@ ${groundingContextFeed}`;
 
     // Dinamik Makro Bağlam: İlk kullanıcı turn'ünden tezin ana konusunu yakala
     const firstUserMessage = chatHistory.find((m) => m.role === "user");
-    const mainTopicSummary = firstUserMessage
+    const _mainTopicSummary = firstUserMessage
       ? firstUserMessage.content.trim()
       : userResponse.trim();
 
@@ -646,9 +646,9 @@ export async function runOriginalityAndBooksPipelineAction(
 
       // 1. Get the dynamic macro topic summary
       const firstUserMessage = chatHistory.find((m) => m.role === "user");
-      const mainTopicSummary = firstUserMessage
-        ? firstUserMessage.content.trim()
-        : userResponse.trim();
+    const _mainTopicSummary = firstUserMessage
+      ? firstUserMessage.content.trim()
+      : userResponse.trim();
 
       // 2. Form context feed
       const searchSourcesText = finalOriginalityReport.theses
@@ -787,7 +787,7 @@ ${groundingContextFeed}`;
         try {
           const parsed = JSON.parse(revisedGenAIResponse.text);
           message = parsed.message;
-        } catch (e) {
+        } catch {
           message = revisedGenAIResponse.text;
         }
       }

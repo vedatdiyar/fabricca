@@ -87,7 +87,6 @@ export function ChatScreen({
                   risk: report.risk,
                   reasoning: report.reasoning,
                   gapAnalysis: report.gapAnalysis,
-                  theses: report.theses,
                 }}
               />
             );
