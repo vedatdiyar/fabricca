@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, startTransition, useEffect, useRef } from "react";
+import { useState, startTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -11,49 +11,12 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   submitThesisMatrixAction,
   checkOnboardingStatus,
-  getEnhancedThesisMatrixAction,
+  getStoredEnhancedDataAction,
   confirmEnhancedThesisAction,
 } from "./actions";
 import type { EnhancedThesisData } from "./actions";
 
 type PageStep = "loading" | "unauthorized" | "form" | "enhanced";
-
-const ENHANCED_FIELDS: {
-  key: keyof EnhancedThesisData;
-  label: string;
-  description: string;
-}[] = [
-  {
-    key: "akademikCalismaBasligi",
-    label: "Akademik Çalışma Başlığı",
-    description:
-      "Ham başlığın bilimsel kavramsallaştırılmış ve teorik terimlerle yeniden ifade edilmiş hali.",
-  },
-  {
-    key: "literaturluArastirmaSorusu",
-    label: "Literatürlü Araştırma Sorusu",
-    description:
-      "Araştırma sorusunun teorik değişkenleri ve literatür bağlamını görünür kılan akademik formu.",
-  },
-  {
-    key: "olgunlastirilmisTezSavi",
-    label: "Olgunlaştırılmış Tez Savı",
-    description:
-      "Temel iddianın bilimsel bir hipoteze/sava dönüştürülmüş, teorik pozisyon almış hali.",
-  },
-  {
-    key: "kavramsalVeKuramsalAltyapi",
-    label: "Kavramsal ve Kuramsal Altyapı",
-    description:
-      "Çalışmanın dayandığı teorik mercekler (Foucault, Bourdieu vb.) ve diyaloga gireceği literatür bağlamı.",
-  },
-  {
-    key: "akademikMetodolojiTasarimi",
-    label: "Akademik Metodoloji Tasarımı",
-    description:
-      "Ham yöntem tanımının bilimsel araştırma deseni ve veri analiz yöntemleriyle zenginleştirilmiş hali.",
-  },
-];
 
 /**
  * Tez Matrisi sayfası.
@@ -76,7 +39,16 @@ export default function OnboardingPage() {
   const [kuramsalCerceve, setKuramsalCerceve] = useState("");
   const [tarihselMekansalSinirlar, setTarihselMekansalSinirlar] = useState("");
 
-  const generationFired = useRef(false);
+  useEffect(() => {
+    if (enhancedData) {
+      setCalismaBasligi(enhancedData.akademikCalismaBasligi ?? "");
+      setArastirmaSorusu(enhancedData.literaturluArastirmaSorusu ?? "");
+      setTemelIddia(enhancedData.olgunlastirilmisTezSavi ?? "");
+      setMetodoloji(enhancedData.akademikMetodolojiTasarimi ?? "");
+      setKuramsalCerceve(enhancedData.kavramsalVeKuramsalAltyapi ?? "");
+      setTarihselMekansalSinirlar(enhancedData.tarihselMekansalSinirlar ?? "");
+    }
+  }, [enhancedData]);
 
   /**
    * Sayfa ilk yüklendiğinde onboarding durumunu kontrol eder
@@ -102,6 +74,17 @@ export default function OnboardingPage() {
       if (status.currentStep === "thesis_matrix_enhanced") {
         console.log("[page] enhanced adımına geçiliyor");
         setPageStep("enhanced");
+        setIsGenerating(true);
+
+        const storedResult = await getStoredEnhancedDataAction();
+        console.log("[page] getStoredEnhancedDataAction sonucu:", JSON.stringify(storedResult).slice(0, 500));
+
+        if (storedResult.success) {
+          setEnhancedData(storedResult.data);
+        } else {
+          toast.error(storedResult.error);
+        }
+        setIsGenerating(false);
         return;
       }
 
@@ -112,43 +95,10 @@ export default function OnboardingPage() {
   }, []);
 
   /**
-   * Gemini'den akademik olgunlaştırılmış tez matrisini alır.
-   * Step 2'de bir kereye mahsus tetiklenir. Eğer matris bulunamazsa
-   * kullanıcı form adımına geri döner.
-   */
-  useEffect(() => {
-    console.log("[page] GenerationEffect çalıştı pageStep:", pageStep, "fired:", generationFired.current);
-
-    if (pageStep !== "enhanced") return;
-    if (generationFired.current) {
-      console.log("[page] generation zaten tetiklenmiş, atlanıyor");
-      return;
-    }
-
-    generationFired.current = true;
-    setIsGenerating(true);
-    console.log("[page] getEnhancedThesisMatrixAction çağrılıyor...");
-
-    startTransition(async () => {
-      const result = await getEnhancedThesisMatrixAction();
-      console.log("[page] getEnhancedThesisMatrixAction sonucu:", JSON.stringify(result).slice(0, 500));
-
-      if (!result.success) {
-        toast.error(result.error);
-        setIsGenerating(false);
-        setPageStep("form");
-        return;
-      }
-
-      setEnhancedData(result.data);
-      setIsGenerating(false);
-    });
-  }, [pageStep]);
-
-  /**
    * Form gönderimini yönetir.
-   * Server action'ı startTransition ile güvenli şekilde tetikler,
-   * sonucu toast bildirimi olarak gösterir.
+   * submitThesisMatrixAction, DB yazma ve Gemini çağrısını tek bir
+   * sunucu aksiyonunda sıralı olarak yürütür. Başarılı yanıtta
+   * doğrudan dönen enhancedData state'e yazılır ve enhanced adımına geçilir.
    *
    * @param e - Form submit olayı
    */
@@ -189,7 +139,12 @@ export default function OnboardingPage() {
         return;
       }
 
-      toast.success("Tez matrisi başarıyla kaydedildi.");
+      toast.success("Tez matrisi başarıyla kaydedildi ve zenginleştiriliyor.");
+
+      if (result.success && result.data) {
+        setEnhancedData(result.data);
+      }
+
       console.log("[page] setPageStep enhanced'a geçiyor");
       setPageStep("enhanced");
     });
@@ -204,7 +159,16 @@ export default function OnboardingPage() {
 
     setIsPending(true);
     startTransition(async () => {
-      const result = await confirmEnhancedThesisAction(enhancedData);
+      const editedData: EnhancedThesisData = {
+        akademikCalismaBasligi: calismaBasligi,
+        literaturluArastirmaSorusu: arastirmaSorusu,
+        olgunlastirilmisTezSavi: temelIddia,
+        kavramsalVeKuramsalAltyapi: kuramsalCerceve,
+        akademikMetodolojiTasarimi: metodoloji,
+        tarihselMekansalSinirlar: tarihselMekansalSinirlar,
+      };
+
+      const result = await confirmEnhancedThesisAction(editedData);
 
       if (result.error) {
         toast.error(result.error);
@@ -384,46 +348,83 @@ export default function OnboardingPage() {
           </div>
         ) : enhancedData ? (
           <>
-            <div className="grid w-full grid-cols-1 gap-8 md:grid-cols-2">
-              {ENHANCED_FIELDS.map((field) => (
-                <div
-                  key={field.key}
-                  className={
-                    field.key === "kavramsalVeKuramsalAltyapi" ||
-                    field.key === "akademikMetodolojiTasarimi"
-                      ? "md:col-span-2"
-                      : ""
-                  }
-                >
-                  <Label className="mb-2 block text-sm font-semibold text-foreground">
-                    {field.label}
-                  </Label>
-                  <p className="text-base leading-relaxed text-muted-foreground">
-                    {enhancedData[field.key]}
-                  </p>
-                </div>
-              ))}
+            <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-foreground">
+                  Akademik Çalışma Başlığı
+                </Label>
+                <Textarea
+                  value={calismaBasligi}
+                  onChange={(e) => setCalismaBasligi(e.target.value)}
+                  className="h-[140px] overflow-y-auto resize-none leading-relaxed scrollbar-theme"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-foreground">
+                  Literatürlü Araştırma Sorusu
+                </Label>
+                <Textarea
+                  value={arastirmaSorusu}
+                  onChange={(e) => setArastirmaSorusu(e.target.value)}
+                  className="h-[140px] overflow-y-auto resize-none leading-relaxed scrollbar-theme"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-foreground">
+                  Olgunlaştırılmış Tez Savı
+                </Label>
+                <Textarea
+                  value={temelIddia}
+                  onChange={(e) => setTemelIddia(e.target.value)}
+                  className="h-[140px] overflow-y-auto resize-none leading-relaxed scrollbar-theme"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-foreground">
+                  Akademik Metodoloji Tasarımı
+                </Label>
+                <Textarea
+                  value={metodoloji}
+                  onChange={(e) => setMetodoloji(e.target.value)}
+                  className="h-[140px] overflow-y-auto resize-none leading-relaxed scrollbar-theme"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-foreground">
+                  Kavramsal ve Kuramsal Altyapı
+                </Label>
+                <Textarea
+                  value={kuramsalCerceve}
+                  onChange={(e) => setKuramsalCerceve(e.target.value)}
+                  className="h-[140px] overflow-y-auto resize-none leading-relaxed scrollbar-theme"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-foreground">
+                  Tarihsel / Mekânsal Sınırlar
+                </Label>
+                <Textarea
+                  value={tarihselMekansalSinirlar}
+                  onChange={(e) => setTarihselMekansalSinirlar(e.target.value)}
+                  className="h-[140px] overflow-y-auto resize-none leading-relaxed scrollbar-theme"
+                />
+              </div>
             </div>
 
             <Button
-              className="w-full max-w-md"
+              className="w-full"
               onClick={handleConfirm}
               disabled={isPending}
             >
               {isPending ? "Kaydediliyor..." : "Onayla ve İlerle"}
             </Button>
           </>
-        ) : (
-          <div className="flex flex-col items-center justify-center space-y-4 py-20">
-            <p className="text-base text-destructive">
-              Akademik olgunlaştırma sırasında bir hata oluştu. Lütfen sayfayı
-              yenileyin.
-            </p>
-            <Button onClick={() => window.location.reload()}>
-              Tekrar Dene
-            </Button>
-          </div>
-        )}
+        ) : null}
       </div>
     </main>
   );

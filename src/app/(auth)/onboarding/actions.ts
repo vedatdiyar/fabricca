@@ -24,6 +24,7 @@ export type EnhancedThesisData = {
   olgunlastirilmisTezSavi: string;
   kavramsalVeKuramsalAltyapi: string;
   akademikMetodolojiTasarimi: string;
+  tarihselMekansalSinirlar: string;
 };
 
 export type OnboardingActionResult =
@@ -43,6 +44,8 @@ export type EnhancedThesisActionResult =
   | { success?: never; error: string };
 
 const MIN_LENGTH = 3;
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 1500;
 
 const enhancedThesisSchema = z.object({
   akademikCalismaBasligi: z.string(),
@@ -50,20 +53,27 @@ const enhancedThesisSchema = z.object({
   olgunlastirilmisTezSavi: z.string(),
   kavramsalVeKuramsalAltyapi: z.string(),
   akademikMetodolojiTasarimi: z.string(),
+  tarihselMekansalSinirlar: z.string(),
 });
 
 /**
- * Tez Matrisi form verilerini doğrular, thesis_matrices tablosuna kaydeder
- * ve onboarding_states tablosundaki current_step değerini
+ * Tez Matrisi form verilerini doğrular, thesis_matrices tablosuna kaydeder,
+ * ardından doğrulanmış verileri doğrudan Gemini API'sine göndererek
+ * akademik olgunlaştırma yapar, sonuçları veri tabanına yazar ve
+ * onboarding_states tablosundaki current_step değerini
  * "thesis_matrix_enhanced" olarak günceller.
- * Kullanıcı kimliği sunucu tarafındaki oturum cookie'sinden alınır.
+ *
+ * Tüm işlemler (DB yazma + Gemini çağrısı) tek bir sunucu aksiyonunda,
+ * sıralı ve senkronize şekilde yürütülür. İkinci bir bağımsız isteğe
+ * gerek kalmadığı için asenkron yarış (race condition) riski yoktur.
  *
  * @param data - Tez Matrisi form verileri
- * @returns Başarılıysa { success: true }, hatalıysa { error: string }
+ * @returns Başarılıysa { success: true, data: EnhancedThesisData },
+ *          hatalıysa { error: string }
  */
 export async function submitThesisMatrixAction(
   data: ThesisMatrixInput,
-): Promise<OnboardingActionResult> {
+): Promise<EnhancedThesisActionResult> {
   try {
     const session = await getSession();
 
@@ -143,6 +153,100 @@ export async function submitThesisMatrixAction(
         },
       });
 
+    const systemInstruction = `
+You are a senior academic advisor and a brilliant social sciences/humanities theorist.
+Your sole task is to translate raw, garden-variety, everyday expressions of a graduate student into fully developed academic, theoretical, and scientific language.
+
+<constraints>
+- Never repeat the raw input verbatim or merely paraphrase/summarize it.
+- Always deploy appropriate theoretical lenses (Foucault, Bourdieu, Butler, Latour, Deleuze, Haraway, etc.) and scholarly concepts.
+- Elevate the language to publishable academic prose.
+- Each output field must read like a passage from a well-structured thesis proposal or academic article.
+- Respond only with valid JSON matching the provided schema.
+</constraints>
+`;
+
+    const prompt = `<context>
+Aşağıda, kullanıcının 1. adımda gündelik dille girdiği ham tez matrisi verileri yer almaktadır. Bu verileri akademik/teorik bir dile tercüme et.
+
+<calismaBasligi>
+${calismaBasligi}
+</calismaBasligi>
+
+<arastirmaSorusu>
+${arastirmaSorusu}
+</arastirmaSorusu>
+
+<temelIddia>
+${temelIddia}
+</temelIddia>
+
+<metodoloji>
+${metodoloji}
+</metodoloji>
+
+<kuramsalCerceve>
+${kuramsalCerceve}
+</kuramsalCerceve>
+
+<tarihselMekansalSinirlar>
+${tarihselMekansalSinirlar}
+</tarihselMekansalSinirlar>
+</context>
+
+<task>
+Yukarıdaki ham verileri kullanarak aşağıdaki 6 alanı doldur:
+
+1. akademikCalismaBasligi: Ham çalışma başlığını, alana uygun kavramsal terimlerle bilimsel bir tez başlığına dönüştür.
+2. literaturluArastirmaSorusu: Araştırma sorusunu, teorik değişkenleri ve literatür bağlamını görünür kılacak şekilde akademik formda yeniden ifade et.
+3. olgunlastirilmisTezSavi: Temel iddiayı, bilimsel bir hipotez/sav haline getir; karşıt argümanlarla diyaloğa girebilecek düzeyde teorik pozisyon al.
+4. kavramsalVeKuramsalAltyapi: Ham kuramsal çerçeve ve sınır bilgilerini kullanarak, çalışmanın hangi teorik merceklerle (Foucault, Bourdieu, Butler vb.) okunacağını ve hangi literatürle diyaloga gireceğini akademik dille açıkla.
+5. akademikMetodolojiTasarimi: Ham metodoloji tanımını, bilimsel araştırma deseni (etnografi, söylem analizi, tarihsel analiz, vb.) ve veri toplama/analiz yöntemleriyle zenginleştirilmiş akademik bir metodoloji bölümüne dönüştür.
+6. tarihselMekansalSinirlar: Ham tarihsel/mekânsal sınır tanımını, çalışmanın kapsamını, bağlamını ve sınırlılıklarını bilimsel bir dille ifade eden akademik bir alana dönüştür. Zaman aralığını, coğrafi/mekânsal sınırları ve bu sınırların araştırma deseni açısından anlamını teorik olarak gerekçelendir.
+</task>`;
+
+    console.log("[submitThesis] Gemini çağrısı yapılıyor...");
+
+    let enhancedData: EnhancedThesisData | undefined;
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        enhancedData = await generateStructuredContent(
+          "gemini-3.1-flash-lite",
+          systemInstruction,
+          prompt,
+          enhancedThesisSchema,
+        );
+        console.log("[submitThesis] Gemini yanıtı alındı.");
+        break;
+      } catch (e) {
+        lastError = e;
+        console.warn(`[submitThesis] ${attempt}. deneme başarısız.`, e);
+        if (attempt < MAX_RETRIES) {
+          console.log(`[submitThesis] ${RETRY_DELAY_MS}ms beklenip tekrar deneniyor...`);
+          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+        }
+      }
+    }
+
+    if (!enhancedData) {
+      throw lastError;
+    }
+
+    await db
+      .update(thesisMatrices)
+      .set({
+        calismaBasligi: enhancedData.akademikCalismaBasligi,
+        arastirmaSorusu: enhancedData.literaturluArastirmaSorusu,
+        temelIddia: enhancedData.olgunlastirilmisTezSavi,
+        metodoloji: enhancedData.akademikMetodolojiTasarimi,
+        kuramsalCerceve: enhancedData.kavramsalVeKuramsalAltyapi,
+        tarihselMekansalSinirlar: enhancedData.tarihselMekansalSinirlar,
+        updatedAt: new Date(),
+      })
+      .where(eq(thesisMatrices.userId, userId));
+
     const [existingState] = await db
       .select()
       .from(onboardingStates)
@@ -170,135 +274,12 @@ export async function submitThesisMatrixAction(
         .where(eq(onboardingStates.userId, userId));
     }
 
-    return { success: true };
+    return { success: true, data: enhancedData };
   } catch (error) {
     console.error("Tez matrisi kaydedilirken hata:", error);
-    return { error: "Tez matrisi kaydedilirken bir hata oluştu." };
-  }
-}
-
-/**
- * Kullanıcının 1. adımda kaydettiği ham tez matrisi verilerini okuyup
- * Gemini 3.1 Flash-Lite modeline göndererek akademik olarak
- * olgunlaştırılmış/tercüme edilmiş 5 alanlı çıktı üretir.
- * Bu action DB'ye yazmaz, sadece Gemini yanıtını döndürür.
- *
- * @returns Başarılıysa { success: true, data: EnhancedThesisData },
- *          hatalıysa { error: string }
- */
-export async function getEnhancedThesisMatrixAction(): Promise<EnhancedThesisActionResult> {
-  try {
-    console.log("[getEnhanced] Action çağrıldı.");
-    const session = await getSession();
-    console.log("[getEnhanced] Session alındı:", !!session);
-
-    if (!session) {
-      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
-    }
-
-    console.log("[getEnhanced] DB'den matris okunuyor. userId:", session.userId);
-    const [matrix] = await db
-      .select()
-      .from(thesisMatrices)
-      .where(eq(thesisMatrices.userId, session.userId));
-
-    console.log("[getEnhanced] Matris bulundu mu:", !!matrix);
-
-    if (!matrix) {
-      return {
-        error:
-          "Henüz bir tez matrisi oluşturulmamış. Lütfen önce 1. adımı tamamlayın.",
-      };
-    }
-
-    const systemInstruction = `
-You are a senior academic advisor and a brilliant social sciences/humanities theorist.
-Your sole task is to translate raw, garden-variety, everyday expressions of a graduate student into fully developed academic, theoretical, and scientific language.
-
-<constraints>
-- Never repeat the raw input verbatim or merely paraphrase/summarize it.
-- Always deploy appropriate theoretical lenses (Foucault, Bourdieu, Butler, Latour, Deleuze, Haraway, etc.) and scholarly concepts.
-- Elevate the language to publishable academic prose.
-- Each output field must read like a passage from a well-structured thesis proposal or academic article.
-- Respond only with valid JSON matching the provided schema.
-</constraints>
-`;
-
-    const prompt = `<context>
-Aşağıda, kullanıcının 1. adımda gündelik dille girdiği ham tez matrisi verileri yer almaktadır. Bu verileri akademik/teorik bir dile tercüme et.
-
-<calismaBasligi>
-${matrix.calismaBasligi}
-</calismaBasligi>
-
-<arastirmaSorusu>
-${matrix.arastirmaSorusu}
-</arastirmaSorusu>
-
-<temelIddia>
-${matrix.temelIddia}
-</temelIddia>
-
-<metodoloji>
-${matrix.metodoloji}
-</metodoloji>
-
-<kuramsalCerceve>
-${matrix.kuramsalCerceve}
-</kuramsalCerceve>
-
-<tarihselMekansalSinirlar>
-${matrix.tarihselMekansalSinirlar}
-</tarihselMekansalSinirlar>
-</context>
-
-<task>
-Yukarıdaki ham verileri kullanarak aşağıdaki 5 alanı doldur:
-
-1. akademikCalismaBasligi: Ham çalışma başlığını, alana uygun kavramsal terimlerle bilimsel bir tez başlığına dönüştür.
-2. literaturluArastirmaSorusu: Araştırma sorusunu, teorik değişkenleri ve literatür bağlamını görünür kılacak şekilde akademik formda yeniden ifade et.
-3. olgunlastirilmisTezSavi: Temel iddiayı, bilimsel bir hipotez/sav haline getir; karşıt argümanlarla diyaloğa girebilecek düzeyde teorik pozisyon al.
-4. kavramsalVeKuramsalAltyapi: Ham kuramsal çerçeve ve sınır bilgilerini kullanarak, çalışmanın hangi teorik merceklerle (Foucault, Bourdieu, Butler vb.) okunacağını ve hangi literatürle diyaloga gireceğini akademik dille açıkla.
-5. akademikMetodolojiTasarimi: Ham metodoloji tanımını, bilimsel araştırma deseni (etnografi, söylem analizi, tarihsel analiz, vb.) ve veri toplama/analiz yöntemleriyle zenginleştirilmiş akademik bir metodoloji bölümüne dönüştür.
-</task>`;
-
-    const MAX_RETRIES = 2;
-    const RETRY_DELAY_MS = 1500;
-
-    let data: EnhancedThesisData | undefined;
-    let lastError: unknown;
-
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        console.log(`[getEnhanced] Gemini çağrısı yapılıyor (deneme ${attempt}/${MAX_RETRIES})...`);
-        data = await generateStructuredContent(
-          "gemini-3.1-flash-lite",
-          systemInstruction,
-          prompt,
-          enhancedThesisSchema,
-        );
-        console.log("[getEnhanced] Gemini yanıtı alındı. data anahtarları:", Object.keys(data));
-        break;
-      } catch (e) {
-        lastError = e;
-        console.warn(`[getEnhanced] ${attempt}. deneme başarısız.`, e);
-        if (attempt < MAX_RETRIES) {
-          console.log(`[getEnhanced] ${RETRY_DELAY_MS}ms beklenip tekrar deneniyor...`);
-          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
-        }
-      }
-    }
-
-    if (!data) {
-      throw lastError;
-    }
-    return { success: true, data };
-  } catch (error) {
-    console.error("[getEnhanced] Beklenmeyen hata:", error);
     if (error instanceof Error) {
-      console.error("[getEnhanced] Hata adı:", error.name);
-      console.error("[getEnhanced] Hata mesajı:", error.message);
-      console.error("[getEnhanced] Stack trace:", error.stack);
+      console.error("Hata adı:", error.name);
+      console.error("Hata mesajı:", error.message);
     }
     const message =
       error instanceof Error ? error.message : "Bilinmeyen hata";
@@ -336,6 +317,7 @@ export async function confirmEnhancedThesisAction(
         temelIddia: data.olgunlastirilmisTezSavi,
         metodoloji: data.akademikMetodolojiTasarimi,
         kuramsalCerceve: data.kavramsalVeKuramsalAltyapi,
+        tarihselMekansalSinirlar: data.tarihselMekansalSinirlar,
         updatedAt: new Date(),
       })
       .where(eq(thesisMatrices.userId, userId));
@@ -366,6 +348,54 @@ export async function confirmEnhancedThesisAction(
   } catch (error) {
     console.error("Tez matrisi onaylanırken hata:", error);
     return { error: "Tez matrisi onaylanırken bir hata oluştu." };
+  }
+}
+
+/**
+ * Kullanıcının daha önce kaydedilmiş akademik olgunlaştırılmış tez matrisi
+ * verilerini thesis_matrices tablosundan okur.
+ *
+ * Bu fonksiyon yalnızca sayfa yenileme (page refresh) senaryosunda,
+ * kullanıcı zaten "enhanced" adımındayken verinin görüntülenmesi için
+ * kullanılır. Gemini API'sini çağırmaz, sadece önceden kaydedilmiş
+ * veriyi döndürür.
+ *
+ * @returns Başarılıysa { success: true, data: EnhancedThesisData },
+ *          hatalıysa { error: string }
+ */
+export async function getStoredEnhancedDataAction(): Promise<EnhancedThesisActionResult> {
+  try {
+    const session = await getSession();
+
+    if (!session) {
+      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+    }
+
+    const [matrix] = await db
+      .select()
+      .from(thesisMatrices)
+      .where(eq(thesisMatrices.userId, session.userId));
+
+    if (!matrix) {
+      return {
+        error: "Henüz bir tez matrisi oluşturulmamış.",
+      };
+    }
+
+    return {
+      success: true,
+      data: {
+        akademikCalismaBasligi: matrix.calismaBasligi,
+        literaturluArastirmaSorusu: matrix.arastirmaSorusu,
+        olgunlastirilmisTezSavi: matrix.temelIddia,
+        kavramsalVeKuramsalAltyapi: matrix.kuramsalCerceve,
+        akademikMetodolojiTasarimi: matrix.metodoloji,
+        tarihselMekansalSinirlar: matrix.tarihselMekansalSinirlar,
+      },
+    };
+  } catch (error) {
+    console.error("Tez matrisi okunurken hata:", error);
+    return { error: "Tez matrisi okunurken bir hata oluştu." };
   }
 }
 
