@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { onboardingStates } from "@/db/schema";
+import { users } from "@/db/schema";
 
 export type SessionUser = {
   userId: number;
@@ -9,7 +9,7 @@ export type SessionUser = {
 };
 
 export type SessionWithOnboarding = SessionUser & {
-  onboardingCompleted: boolean;
+  onboardingStep: string;
 };
 
 /**
@@ -51,9 +51,9 @@ export async function getSession(): Promise<SessionUser | null> {
 }
 
 /**
- * Oturum bilgisiyle birlikte kullanıcının onboarding durumunu döndürür.
- * Eğer kullanıcı için onboarding_states kaydı henüz oluşturulmamışsa
- * onboardingCompleted varsayılan olarak false kabul edilir.
+ * Oturum bilgisiyle birlikte kullanıcının onboarding adımını döndürür.
+ * Eğer kullanıcı kaydı bulunamazsa onboardingStep varsayılan olarak
+ * "thesis_matrix" kabul edilir.
  *
  * Kullanıldığı yerler:
  *  - (app)/layout.tsx (onboarding kontrolü)
@@ -69,19 +69,19 @@ export async function getSessionWithOnboarding(): Promise<SessionWithOnboarding 
   }
 
   try {
-    const [state] = await db
-      .select({ onboardingCompleted: onboardingStates.onboardingCompleted })
-      .from(onboardingStates)
-      .where(eq(onboardingStates.userId, session.userId));
+    const [user] = await db
+      .select({ onboardingStep: users.onboardingStep })
+      .from(users)
+      .where(eq(users.id, session.userId));
 
     return {
       ...session,
-      onboardingCompleted: state?.onboardingCompleted ?? false,
+      onboardingStep: user?.onboardingStep ?? "thesis_matrix",
     };
   } catch {
     return {
       ...session,
-      onboardingCompleted: false,
+      onboardingStep: "thesis_matrix",
     };
   }
 }

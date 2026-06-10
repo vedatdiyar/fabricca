@@ -56,7 +56,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push(status.onboardingCompleted ? "/dashboard" : "/onboarding");
+      router.push(status.onboardingStep === "completed" ? "/dashboard" : "/onboarding");
     });
   }
 

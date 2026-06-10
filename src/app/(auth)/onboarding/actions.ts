@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db";
-import { thesisMatrices, onboardingStates } from "@/db/schema";
+import { thesisMatrices, users } from "@/db/schema";
 import { getSession } from "@/proxy";
 import { generateStructuredContent } from "@/lib/gemini";
 import { revalidatePath } from "next/cache";
@@ -33,11 +33,10 @@ export type OnboardingActionResult =
 
 export type OnboardingStatusResult =
   | {
-      onboardingCompleted: boolean;
-      currentStep: string;
+      onboardingStep: string;
       error?: never;
     }
-  | { onboardingCompleted?: never; currentStep?: never; error: string };
+  | { onboardingStep?: never; error: string };
 
 export type EnhancedThesisActionResult =
   | { success: true; data: EnhancedThesisData; error?: never }
@@ -60,8 +59,8 @@ const enhancedThesisSchema = z.object({
  * Tez Matrisi form verilerini doğrular, thesis_matrices tablosuna kaydeder,
  * ardından doğrulanmış verileri doğrudan Gemini API'sine göndererek
  * akademik olgunlaştırma yapar, sonuçları veri tabanına yazar ve
- * onboarding_states tablosundaki current_step değerini
- * "thesis_matrix_enhanced" olarak günceller.
+ * users tablosundaki onboardingStep değerini "thesis_matrix_enhanced"
+ * olarak günceller.
  *
  * Tüm işlemler (DB yazma + Gemini çağrısı) tek bir sunucu aksiyonunda,
  * sıralı ve senkronize şekilde yürütülür. İkinci bir bağımsız isteğe
@@ -247,32 +246,10 @@ Yukarıdaki ham verileri kullanarak aşağıdaki 6 alanı doldur:
       })
       .where(eq(thesisMatrices.userId, userId));
 
-    const [existingState] = await db
-      .select()
-      .from(onboardingStates)
-      .where(eq(onboardingStates.userId, userId));
-
-    if (!existingState) {
-      await db.insert(onboardingStates).values({
-        userId,
-        currentStep: "thesis_matrix_enhanced",
-        completedSteps: ["thesis_matrix"],
-        onboardingCompleted: false,
-      });
-    } else {
-      const updatedCompletedSteps = [
-        ...new Set([...existingState.completedSteps, "thesis_matrix"]),
-      ];
-
-      await db
-        .update(onboardingStates)
-        .set({
-          currentStep: "thesis_matrix_enhanced",
-          completedSteps: updatedCompletedSteps,
-          updatedAt: new Date(),
-        })
-        .where(eq(onboardingStates.userId, userId));
-    }
+    await db
+      .update(users)
+      .set({ onboardingStep: "thesis_matrix_enhanced" })
+      .where(eq(users.id, userId));
 
     return { success: true, data: enhancedData };
   } catch (error) {
@@ -291,8 +268,8 @@ Yukarıdaki ham verileri kullanarak aşağıdaki 6 alanı doldur:
 
 /**
  * Kullanıcının onayladığı akademik olgunlaştırılmış tez matrisi verilerini
- * thesis_matrices tablosundaki mevcut 6 kolona yazar ve onboarding_states
- * tablosundaki current_step değerini "originality_report" olarak günceller.
+ * thesis_matrices tablosundaki mevcut 6 kolona yazar ve users tablosundaki
+ * onboardingStep değerini "completed" olarak günceller.
  *
  * @param data - Onaylanmış EnhancedThesisData
  * @returns Başarılıysa { success: true }, hatalıysa { error: string }
@@ -322,26 +299,10 @@ export async function confirmEnhancedThesisAction(
       })
       .where(eq(thesisMatrices.userId, userId));
 
-    const [existingState] = await db
-      .select()
-      .from(onboardingStates)
-      .where(eq(onboardingStates.userId, userId));
-
-    const updatedCompletedSteps = [
-      ...new Set([
-        ...(existingState?.completedSteps ?? []),
-        "thesis_matrix_enhanced",
-      ]),
-    ];
-
     await db
-      .update(onboardingStates)
-      .set({
-        currentStep: "originality_report",
-        completedSteps: updatedCompletedSteps,
-        updatedAt: new Date(),
-      })
-      .where(eq(onboardingStates.userId, userId));
+      .update(users)
+      .set({ onboardingStep: "completed" })
+      .where(eq(users.id, userId));
 
     revalidatePath("/onboarding");
     return { success: true };
@@ -400,12 +361,11 @@ export async function getStoredEnhancedDataAction(): Promise<EnhancedThesisActio
 }
 
 /**
- * Mevcut oturumdaki kullanıcının onboarding durumunu ve mevcut adımını sorgular.
+ * Mevcut oturumdaki kullanıcının onboarding adımını sorgular.
  * Login sayfası tarafından, başarılı giriş sonrası yönlendirme
  * kararını vermek için kullanılır.
  *
- * @returns { onboardingCompleted: boolean, currentStep: string }
- *          veya hata durumunda { error: string }
+ * @returns { onboardingStep: string } veya hata durumunda { error: string }
  */
 export async function checkOnboardingStatus(): Promise<OnboardingStatusResult> {
   try {
@@ -415,17 +375,13 @@ export async function checkOnboardingStatus(): Promise<OnboardingStatusResult> {
       return { error: "Oturum bulunamadı." };
     }
 
-    const [state] = await db
-      .select({
-        onboardingCompleted: onboardingStates.onboardingCompleted,
-        currentStep: onboardingStates.currentStep,
-      })
-      .from(onboardingStates)
-      .where(eq(onboardingStates.userId, session.userId));
+    const [user] = await db
+      .select({ onboardingStep: users.onboardingStep })
+      .from(users)
+      .where(eq(users.id, session.userId));
 
     return {
-      onboardingCompleted: state?.onboardingCompleted ?? false,
-      currentStep: state?.currentStep ?? "thesis_matrix",
+      onboardingStep: user?.onboardingStep ?? "thesis_matrix",
     };
   } catch {
     return { error: "Onboarding durumu sorgulanırken bir hata oluştu." };

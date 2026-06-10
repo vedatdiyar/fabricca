@@ -3,7 +3,6 @@ import {
   serial,
   varchar,
   text,
-  boolean,
   integer,
   timestamp,
 } from "drizzle-orm/pg-core";
@@ -12,12 +11,17 @@ import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 /**
  * Kullanıcı tablosu.
  * E-posta benzersizdir ve şifre bcrypt-ts ile hashlenerek saklanır.
+ * onboardingStep alanı, onboarding sürecinin hangi adımda olduğunu
+ * ('thesis_matrix' | 'thesis_matrix_enhanced' | 'completed') tutar.
  */
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: varchar("email", { length: 255 }).notNull().unique(),
   password: varchar("password", { length: 255 }).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
+  onboardingStep: varchar("onboarding_step", { length: 50 })
+    .notNull()
+    .default("thesis_matrix"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -43,27 +47,6 @@ export const thesisMatrices = pgTable("thesis_matrices", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-/**
- * Onboarding Aşama Durumu tablosu.
- * Kullanıcının onboarding sürecinde hangi adımda olduğunu,
- * tamamlanan adımları ve sürecin bitip bitmediğini stateful
- * olarak takip eder.
- */
-export const onboardingStates = pgTable("onboarding_states", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" })
-    .unique(),
-  currentStep: varchar("current_step", { length: 50 })
-    .notNull()
-    .default("thesis_matrix"),
-  completedSteps: text("completed_steps").array().notNull().default([]),
-  onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
 /** Veri tabanından okunan kullanıcı tipi (select). */
 export type User = InferSelectModel<typeof users>;
 
@@ -75,9 +58,3 @@ export type ThesisMatrix = InferSelectModel<typeof thesisMatrices>;
 
 /** Yeni tez matrisi oluşturma tipi (insert). */
 export type NewThesisMatrix = InferInsertModel<typeof thesisMatrices>;
-
-/** Veri tabanından okunan onboarding durumu tipi (select). */
-export type OnboardingState = InferSelectModel<typeof onboardingStates>;
-
-/** Yeni onboarding durumu oluşturma tipi (insert). */
-export type NewOnboardingState = InferInsertModel<typeof onboardingStates>;
