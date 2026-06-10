@@ -56,7 +56,12 @@ export default function LoginPage() {
         return;
       }
 
-      router.push(status.onboardingStep === "completed" ? "/dashboard" : "/onboarding");
+      router.push(
+        status.onboardingStep === "completed" ||
+          status.onboardingStep === "originality_report_completed"
+          ? "/dashboard"
+          : "/onboarding",
+      );
     });
   }
 
