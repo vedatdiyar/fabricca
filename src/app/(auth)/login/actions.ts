@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { compare } from "bcrypt-ts";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { getSession } from "@/proxy";
 
 export type LoginResult =
   | { success: true; error?: never }
@@ -59,4 +60,39 @@ export async function loginAction(
   }
 
   return { success: true };
+}
+
+export type OnboardingStatusResult =
+  | {
+      onboardingStep: string;
+      error?: never;
+    }
+  | { onboardingStep?: never; error: string };
+
+/**
+ * Mevcut oturumdaki kullanıcının onboarding adımını sorgular.
+ * Login sayfası tarafından, başarılı giriş sonrası yönlendirme
+ * kararını vermek için kullanılır.
+ *
+ * @returns { onboardingStep: string } veya hata durumunda { error: string }
+ */
+export async function checkOnboardingStatus(): Promise<OnboardingStatusResult> {
+  try {
+    const session = await getSession();
+
+    if (!session) {
+      return { error: "Oturum bulunamadı." };
+    }
+
+    const [user] = await db
+      .select({ onboardingStep: users.onboardingStep })
+      .from(users)
+      .where(eq(users.id, session.userId));
+
+    return {
+      onboardingStep: user?.onboardingStep ?? "thesis_matrix",
+    };
+  } catch {
+    return { error: "Onboarding durumu sorgulanırken bir hata oluştu." };
+  }
 }

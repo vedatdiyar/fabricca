@@ -82,7 +82,11 @@ export const originalityReports = pgTable("originality_reports", {
     .notNull(),
   tezaraResults: jsonb("tezara_results")
     .$type<{
-      originalityBadge: "YÜKSEK" | "ORTA" | "DÜŞÜK";
+      originalityBadge:
+        | "YÜKSEK RİSK"
+        | "ORTA RİSK"
+        | "DÜŞÜK RİSK"
+        | "SIFIR RİSK";
       overlapTable: {
         id: number;
         title: string;
@@ -92,12 +96,12 @@ export const originalityReports = pgTable("originality_reports", {
         thesisType: string;
         department: string;
         axes: {
-          subject: string;
-          theory: string;
-          methodology: string;
-          context: string;
+          subject: "ÇAKIŞIYOR" | "KISMEN" | "ÖZGÜN";
+          theory: "ÇAKIŞIYOR" | "KISMEN" | "ÖZGÜN";
+          methodology: "ÇAKIŞIYOR" | "KISMEN" | "ÖZGÜN";
+          context: "ÇAKIŞIYOR" | "KISMEN" | "ÖZGÜN";
         };
-        originalityLevel: "YÜKSEK" | "ORTA" | "DÜŞÜK";
+        originalityLevel: "YÜKSEK RİSK" | "ORTA RİSK" | "DÜŞÜK RİSK";
       }[];
       strategicRecommendations: string;
     }>()

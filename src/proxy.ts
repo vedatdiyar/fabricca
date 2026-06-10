@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
@@ -84,4 +85,40 @@ export async function getSessionWithOnboarding(): Promise<SessionWithOnboarding 
       onboardingStep: "thesis_matrix",
     };
   }
+}
+
+/**
+ * Oturum açmış kullanıcının profil bilgilerini (özellikle onboarding adımını) döner.
+ * Oturum yoksa veya kullanıcı bulunamazsa /login sayfasına yönlendirir.
+ *
+ * @returns Kullanıcı profili nesnesi
+ */
+export async function getProfile() {
+  const session = await getSession();
+  if (!session) {
+    redirect("/login");
+  }
+
+  const [user] = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      onboardingStep: users.onboardingStep,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .where(eq(users.id, session.userId));
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    onboarding_step: user.onboardingStep,
+    createdAt: user.createdAt,
+  };
 }
