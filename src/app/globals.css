@@ -135,4 +135,24 @@
   .scrollbar-theme::-webkit-scrollbar-thumb:hover {
     background-color: var(--color-primary); /* Hover'da artık parlayacak */
   }
+
+  /* Textarea scrollbar: ince, minimal, her zaman belli belirsiz görünür */
+  textarea.scrollbar-theme {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+    transition: scrollbar-color 0.2s ease;
+  }
+  textarea.scrollbar-theme::-webkit-scrollbar {
+    width: 4px;
+  }
+  textarea.scrollbar-theme::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  textarea.scrollbar-theme::-webkit-scrollbar-thumb {
+    background-color: var(--color-border);
+    border-radius: 2px;
+  }
+  textarea.scrollbar-theme::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-primary);
+  }
 }

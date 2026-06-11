@@ -19,24 +19,24 @@ export function MatrixForm() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  const [calismaBasligi, setCalismaBasligi] = useState("");
-  const [arastirmaSorusu, setArastirmaSorusu] = useState("");
-  const [temelIddia, setTemelIddia] = useState("");
-  const [metodoloji, setMetodoloji] = useState("");
-  const [kuramsalCerceve, setKuramsalCerceve] = useState("");
-  const [tarihselMekansalSinirlar, setTarihselMekansalSinirlar] = useState("");
+  const [studyTitle, setStudyTitle] = useState("");
+  const [researchQuestion, setResearchQuestion] = useState("");
+  const [mainClaim, setMainClaim] = useState("");
+  const [methodology, setMethodology] = useState("");
+  const [theoreticalFramework, setTheoreticalFramework] = useState("");
+  const [historicalSpatialLimits, setHistoricalSpatialLimits] = useState("");
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     startTransition(async () => {
       const result = await submitThesisMatrixAction({
-        calismaBasligi,
-        arastirmaSorusu,
-        temelIddia,
-        metodoloji,
-        kuramsalCerceve,
-        tarihselMekansalSinirlar,
+        studyTitle,
+        researchQuestion,
+        mainClaim,
+        methodology,
+        theoreticalFramework,
+        historicalSpatialLimits,
       });
 
       if (result.error) {
@@ -50,7 +50,7 @@ export function MatrixForm() {
   };
 
   return (
-    <Card className="w-full pt-10 border-border bg-card">
+    <Card className="w-full pt-6 border-border bg-card">
       <CardContent>
         <form
           onSubmit={handleSubmit}
@@ -66,10 +66,10 @@ export function MatrixForm() {
             <Textarea
               id="calismaBasligi"
               placeholder="Tez veya çalışma başlığınız"
-              value={calismaBasligi}
-              onChange={(e) => setCalismaBasligi(e.target.value)}
+              value={studyTitle}
+              onChange={(e) => setStudyTitle(e.target.value)}
               required
-              className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground"
+              className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground scrollbar-theme"
             />
           </div>
 
@@ -83,10 +83,10 @@ export function MatrixForm() {
             <Textarea
               id="arastirmaSorusu"
               placeholder="Çalışmanızın temel araştırma sorusu"
-              value={arastirmaSorusu}
-              onChange={(e) => setArastirmaSorusu(e.target.value)}
+              value={researchQuestion}
+              onChange={(e) => setResearchQuestion(e.target.value)}
               required
-              className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground"
+              className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground scrollbar-theme"
             />
           </div>
 
@@ -100,8 +100,8 @@ export function MatrixForm() {
             <Textarea
               id="temelIddia"
               placeholder="Çalışmanızın savunduğu temel iddia"
-              value={temelIddia}
-              onChange={(e) => setTemelIddia(e.target.value)}
+              value={mainClaim}
+              onChange={(e) => setMainClaim(e.target.value)}
               required
               className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground"
             />
@@ -117,8 +117,8 @@ export function MatrixForm() {
             <Textarea
               id="metodoloji"
               placeholder="Kullanılan araştırma yöntem ve teknikleri"
-              value={metodoloji}
-              onChange={(e) => setMetodoloji(e.target.value)}
+              value={methodology}
+              onChange={(e) => setMethodology(e.target.value)}
               required
               className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground"
             />
@@ -134,8 +134,8 @@ export function MatrixForm() {
             <Textarea
               id="kuramsalCerceve"
               placeholder="Çalışmanızın dayandığı kuramsal temel"
-              value={kuramsalCerceve}
-              onChange={(e) => setKuramsalCerceve(e.target.value)}
+              value={theoreticalFramework}
+              onChange={(e) => setTheoreticalFramework(e.target.value)}
               required
               className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground"
             />
@@ -150,9 +150,9 @@ export function MatrixForm() {
             </Label>
             <Textarea
               id="tarihselMekansalSinirlar"
-              placeholder="Çalışmanızın kapsadığı tarih aralığı ve mekânsal sınırlar"
-              value={tarihselMekansalSinirlar}
-              onChange={(e) => setTarihselMekansalSinirlar(e.target.value)}
+              placeholder="Çalışmanızın kapsadığı tarih aralığı ve mekânsal sınırırlar"
+              value={historicalSpatialLimits}
+              onChange={(e) => setHistoricalSpatialLimits(e.target.value)}
               required
               className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground"
             />

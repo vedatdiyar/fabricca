@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { confirmEnhancedThesisAction } from "../actions";
-import type { EnhancedThesisData } from "../actions";
+import type { EnhancedThesisData } from "@/lib/types";
 
 interface EnrichmentViewProps {
   initialData: EnhancedThesisData;
@@ -25,23 +25,23 @@ export function EnrichmentView({ initialData }: EnrichmentViewProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  const [calismaBasligi, setCalismaBasligi] = useState(
-    initialData.akademikCalismaBasligi,
+  const [studyTitle, setStudyTitle] = useState(
+    initialData.academicStudyTitle,
   );
-  const [arastirmaSorusu, setArastirmaSorusu] = useState(
-    initialData.literaturluArastirmaSorusu,
+  const [researchQuestion, setResearchQuestion] = useState(
+    initialData.literatureResearchQuestion,
   );
-  const [temelIddia, setTemelIddia] = useState(
-    initialData.olgunlastirilmisTezSavi,
+  const [mainClaim, setMainClaim] = useState(
+    initialData.refinedThesisClaim,
   );
-  const [metodoloji, setMetodoloji] = useState(
-    initialData.akademikMetodolojiTasarimi,
+  const [methodology, setMethodology] = useState(
+    initialData.academicMethodologyDesign,
   );
-  const [kuramsalCerceve, setKuramsalCerceve] = useState(
-    initialData.kavramsalVeKuramsalAltyapi,
+  const [theoreticalFramework, setTheoreticalFramework] = useState(
+    initialData.conceptualTheoreticalInfrastructure,
   );
-  const [tarihselMekansalSinirlar, setTarihselMekansalSinirlar] = useState(
-    initialData.tarihselMekansalSinirlar,
+  const [historicalSpatialLimits, setHistoricalSpatialLimits] = useState(
+    initialData.historicalSpatialLimits,
   );
 
   const handleConfirm = (e: React.FormEvent<HTMLFormElement>) => {
@@ -49,12 +49,12 @@ export function EnrichmentView({ initialData }: EnrichmentViewProps) {
 
     startTransition(async () => {
       const result = await confirmEnhancedThesisAction({
-        akademikCalismaBasligi: calismaBasligi,
-        literaturluArastirmaSorusu: arastirmaSorusu,
-        olgunlastirilmisTezSavi: temelIddia,
-        akademikMetodolojiTasarimi: metodoloji,
-        kavramsalVeKuramsalAltyapi: kuramsalCerceve,
-        tarihselMekansalSinirlar: tarihselMekansalSinirlar,
+        academicStudyTitle: studyTitle,
+        literatureResearchQuestion: researchQuestion,
+        refinedThesisClaim: mainClaim,
+        academicMethodologyDesign: methodology,
+        conceptualTheoreticalInfrastructure: theoreticalFramework,
+        historicalSpatialLimits: historicalSpatialLimits,
       });
 
       if (result.error) {
@@ -68,7 +68,7 @@ export function EnrichmentView({ initialData }: EnrichmentViewProps) {
   };
 
   return (
-    <Card className="w-full pt-10 border-border bg-card">
+    <Card className="w-full pt-6 border-border bg-card">
       <CardContent>
         <form
           onSubmit={handleConfirm}
@@ -83,10 +83,10 @@ export function EnrichmentView({ initialData }: EnrichmentViewProps) {
             </Label>
             <Textarea
               id="calismaBasligi"
-              value={calismaBasligi}
-              onChange={(e) => setCalismaBasligi(e.target.value)}
+              value={studyTitle}
+              onChange={(e) => setStudyTitle(e.target.value)}
               required
-              className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground"
+              className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground scrollbar-theme"
             />
           </div>
 
@@ -99,10 +99,10 @@ export function EnrichmentView({ initialData }: EnrichmentViewProps) {
             </Label>
             <Textarea
               id="arastirmaSorusu"
-              value={arastirmaSorusu}
-              onChange={(e) => setArastirmaSorusu(e.target.value)}
+              value={researchQuestion}
+              onChange={(e) => setResearchQuestion(e.target.value)}
               required
-              className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground"
+              className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground scrollbar-theme"
             />
           </div>
 
@@ -115,8 +115,8 @@ export function EnrichmentView({ initialData }: EnrichmentViewProps) {
             </Label>
             <Textarea
               id="temelIddia"
-              value={temelIddia}
-              onChange={(e) => setTemelIddia(e.target.value)}
+              value={mainClaim}
+              onChange={(e) => setMainClaim(e.target.value)}
               required
               className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground"
             />
@@ -131,8 +131,8 @@ export function EnrichmentView({ initialData }: EnrichmentViewProps) {
             </Label>
             <Textarea
               id="metodoloji"
-              value={metodoloji}
-              onChange={(e) => setMetodoloji(e.target.value)}
+              value={methodology}
+              onChange={(e) => setMethodology(e.target.value)}
               required
               className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground"
             />
@@ -147,8 +147,8 @@ export function EnrichmentView({ initialData }: EnrichmentViewProps) {
             </Label>
             <Textarea
               id="kuramsalCerceve"
-              value={kuramsalCerceve}
-              onChange={(e) => setKuramsalCerceve(e.target.value)}
+              value={theoreticalFramework}
+              onChange={(e) => setTheoreticalFramework(e.target.value)}
               required
               className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground"
             />
@@ -163,8 +163,8 @@ export function EnrichmentView({ initialData }: EnrichmentViewProps) {
             </Label>
             <Textarea
               id="tarihselMekansalSinirlar"
-              value={tarihselMekansalSinirlar}
-              onChange={(e) => setTarihselMekansalSinirlar(e.target.value)}
+              value={historicalSpatialLimits}
+              onChange={(e) => setHistoricalSpatialLimits(e.target.value)}
               required
               className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground"
             />

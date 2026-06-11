@@ -6,6 +6,8 @@ import { compare } from "bcrypt-ts";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { getSession } from "@/proxy";
+import { withDbLogging } from "@/lib/db-helpers";
+import { createFlowId, Logger } from "@/lib/logger";
 
 export type LoginResult =
   | { success: true; error?: never }
@@ -26,20 +28,42 @@ export async function loginAction(
   email: string,
   password: string,
 ): Promise<LoginResult> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
   if (!email || !password) {
+    log.info("login_failed", {
+      service: "auth",
+      data: { reason: "Eksik bilgiler" },
+    });
     return { error: "E-posta ve şifre gereklidir." };
   }
 
   try {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
+    const [user] = await withDbLogging(
+      () => db
+        .select({ id: users.id, name: users.name, password: users.password })
+        .from(users)
+        .where(eq(users.email, email)),
+      "find_user",
+      log,
+    );
 
     if (!user) {
+      log.info("login_failed", {
+        service: "auth",
+        data: { reason: "Kullanıcı bulunamadı" },
+      });
       return { error: "E-posta veya şifre hatalı." };
     }
 
     const passwordMatch = await compare(password, user.password);
 
     if (!passwordMatch) {
+      log.info("login_failed", {
+        service: "auth",
+        data: { reason: "Şifre eşleşmedi" },
+      });
       return { error: "E-posta veya şifre hatalı." };
     }
 
@@ -55,7 +79,16 @@ export async function loginAction(
         maxAge: 60 * 60 * 24 * 7,
       },
     );
+
+    log.info("login_success", {
+      service: "auth",
+      data: { userId: user.id },
+    });
   } catch {
+    log.info("login_failed", {
+      service: "auth",
+      data: { reason: "Sunucu hatası" },
+    });
     return { error: "Bir hata oluştu. Lütfen tekrar deneyin." };
   }
 
@@ -77,22 +110,37 @@ export type OnboardingStatusResult =
  * @returns { onboardingStep: string } veya hata durumunda { error: string }
  */
 export async function checkOnboardingStatus(): Promise<OnboardingStatusResult> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
   try {
     const session = await getSession();
 
     if (!session) {
+      log.info("flow_complete", {
+        service: "auth",
+        data: { reason: "Oturum bulunamadı" },
+      });
       return { error: "Oturum bulunamadı." };
     }
 
-    const [user] = await db
-      .select({ onboardingStep: users.onboardingStep })
-      .from(users)
-      .where(eq(users.id, session.userId));
+    const [user] = await withDbLogging(
+      () => db
+        .select({ onboardingStep: users.onboardingStep })
+        .from(users)
+        .where(eq(users.id, session.userId)),
+      "query_step",
+      log,
+    );
 
     return {
       onboardingStep: user?.onboardingStep ?? "thesis_matrix",
     };
   } catch {
+    log.info("login_failed", {
+      service: "auth",
+      data: { reason: "Onboarding durumu sorgulanamadı" },
+    });
     return { error: "Onboarding durumu sorgulanırken bir hata oluştu." };
   }
 }

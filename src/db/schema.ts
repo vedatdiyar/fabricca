@@ -38,12 +38,12 @@ export const thesisMatrices = pgTable("thesis_matrices", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" })
     .unique(),
-  calismaBasligi: varchar("calisma_basligi", { length: 500 }).notNull(),
-  arastirmaSorusu: text("arastirma_sorusu").notNull(),
-  temelIddia: text("temel_iddia").notNull(),
-  metodoloji: text("metodoloji").notNull(),
-  kuramsalCerceve: text("kuramsal_cerceve").notNull(),
-  tarihselMekansalSinirlar: text("tarihsel_mekansal_sinirlar").notNull(),
+  studyTitle: varchar("study_title", { length: 500 }).notNull(),
+  researchQuestion: text("research_question").notNull(),
+  mainClaim: text("main_claim").notNull(),
+  methodology: text("methodology").notNull(),
+  theoreticalFramework: text("theoretical_framework").notNull(),
+  historicalSpatialLimits: text("historical_spatial_limits").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -82,11 +82,7 @@ export const originalityReports = pgTable("originality_reports", {
     .notNull(),
   tezaraResults: jsonb("tezara_results")
     .$type<{
-      originalityBadge:
-        | "YÜKSEK RİSK"
-        | "ORTA RİSK"
-        | "DÜŞÜK RİSK"
-        | "SIFIR RİSK";
+      originalityBadge: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
       overlapTable: {
         id: number;
         title: string;
@@ -96,12 +92,12 @@ export const originalityReports = pgTable("originality_reports", {
         thesisType: string;
         department: string;
         axes: {
-          subject: "ÇAKIŞIYOR" | "KISMEN" | "ÖZGÜN";
-          theory: "ÇAKIŞIYOR" | "KISMEN" | "ÖZGÜN";
-          methodology: "ÇAKIŞIYOR" | "KISMEN" | "ÖZGÜN";
-          context: "ÇAKIŞIYOR" | "KISMEN" | "ÖZGÜN";
+          subject: "OVERLAPPING" | "PARTIAL" | "ORIGINAL";
+          theory: "OVERLAPPING" | "PARTIAL" | "ORIGINAL";
+          methodology: "OVERLAPPING" | "PARTIAL" | "ORIGINAL";
+          context: "OVERLAPPING" | "PARTIAL" | "ORIGINAL";
         };
-        originalityLevel: "YÜKSEK RİSK" | "ORTA RİSK" | "DÜŞÜK RİSK";
+        originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
       }[];
       strategicRecommendations: string;
     }>()

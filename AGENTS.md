@@ -55,6 +55,8 @@ Proje, Next.js App Router'ın rota gruplama (route groups) özelliğini kullanar
 │ ├── lib/ # Ortak kütüphane yapılandırmaları (Gemini, Utils)
 │ └── proxy.ts # Geleneksel middleware yerine kullanılan yönlendirme ve oturum kontrol katmanı
 
+- **Büyük/Küçük Harf Katılığı (Case Sensitivity):** Next.js App Router altındaki tüm klasör, rota ve sayfa dosya isimleri (page.tsx, layout.tsx, actions.ts) istisnasız tamamen küçük harflerle (lowercase) açılmalıdır. Dosya sisteminde daha sonradan yapılan büyük/küçük harf değişikliklerinde Mac hafızasının (cache) sapıtmaması için Git konfigürasyonu her zaman `git config core.ignorecase false` olarak set edilmeli ve Next.js derleyicisinin hayali manifest yolları araması engellenmelidir.
+
 ## 5. Stil Kuralları (Styling Rules)
 
 Uygulama, uzun süreli okuma ve akademik çalışma odağı düşünülerek en baştan sıkı kurallarla tasarlanmalıdır:
@@ -85,7 +87,9 @@ Yapay zeka, geliştirme süreci boyunca aşağıdaki disiplin kurallarına ve ko
 - **Sıkı Tip Güvenliği (TypeScript):** Kod tabanında `any` tipi kullanmak kesinlikle yasaktır. Tüm veri yapıları, Drizzle şemalarından türetilen tiplerle (`InferSelectModel`, `InferInsertModel`) veya açık arayüzlerle (interface/type) kesin olarak tiplendirilmelidir.
 - **Güvenli Server Actions:** Veri tabanına dokunan tüm Server Action yapıları `try-catch` blokları içine alınmalı, girdi validasyonları sıkı tutulmalı ve işlem sonucu istemciye (frontend) net hata/başarı mesajlarıyla dönmelidir.
 - **Dinamik Veri Tabanı ve Otomatik Senkronizasyon (Migration/Push):** Veri tabanı şeması (`db/schema.ts`) projenin ihtiyaçlarına göre dinamik olarak değişebilir. Ajan, şemada herhangi bir tablo, kolon veya ilişki değişikliği yaptığı an, kod tabanını bırakıp gitmeden önce **mutlaka** Drizzle migration komutlarını (örneğin lokal geliştirme durumuna göre `npx drizzle-kit push` veya `generate/migrate`) çalıştırmak ve veri tabanını kodla %100 senkronize hale getirmekle yükümlüdür.
-- **Dil ve Karakter Disiplini:** Hem kaynak kod içindeki metinlerde (arayüz yazıları, hata mesajları, loglar) hem de yapay zekanın kullanıcıyla girdiği tüm etkileşimlerde (akademik çıktılar, chat yanıtları) **doğal, akıcı bir Türkçe** kullanılacak ve **Türkçe karakterler (ç, ğ, ı, ö, ş, ü, Â, Î, Û) eksiksiz ve düzgün** bir şekilde işlenecektir. UTF-8 uyumluluğuna ve dil bilgisi kurallarına azami özen gösterilecektir.
+- **The Golden Boundary Rule:**
+  - **Backend ve Mantık Katmanı (%100 İngilizce):** Tüm veritabanı kolon isimleri, fonksiyon adları, local değişkenler, Zod şemaları, API payload'ları ve Logger event/step stringleri tamamen profesyonel bilgisayar bilimi İngilizcesi (camelCase veya snake_case) ile yazılacaktır. Türkçe karakter içermesi kesinlikle yasaktır.
+  - **Kullanıcı Arayüzü (UI) ve Çıktılar (%100 Türkçe):** Kullanıcının ekranda gördüğü tüm bileşenler, butonlar, tablo başlıkları, kart açıklamaları ve Gemini'nin ürettiği metinsel akademik analiz/tavsiyeler (strategicRecommendations) tamamen akıcı, elit bir akademik Türkçe ile yazılacak; Türkçe karakterler eksiksiz işlenecektir. Backend'den gelen İngilizce enum'lar (HIGH_RISK, OVERLAPPING) UI katmanında bir local sözlük (statusTranslation) üzerinden Türkçeye çevrilerek render edilecektir.
 
 ### Yapay Zeka Entegrasyon Kuralları (AI Integration Patterns)
 
@@ -95,7 +99,7 @@ Yapay zeka, geliştirme süreci boyunca aşağıdaki disiplin kurallarına ve ko
 
 - **Ajan Akıl Yürütme Gücü (Thinking Config):** Derin akademik muhakeme gerektiren tüm işlemlerde (literatür analizi, özgünlük değerlendirmesi, tez yönlendirmesi), model konfigürasyonuna `thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }` açıkça dikte edilecektir. Basit metin üretimi veya özet çıkarma gibi işlemlerde thinking config kullanılmayabilir, ancak muhakeme gerektiren her durumda eklenmesi zorunludur.
 
-- **Structured Outputs (Zod Entegrasyonu):** Modelden yapılandırılmış JSON çıktısı alınması zorunlu olan senaryolarda; şema tanımı `zod` ile yapılacak ve konfigürasyona `zod-to-json-schema` kütüphanesi aracılığıyla `responseFormat: { text: { mimeType: "application/json", schema: zodToJsonSchema(schema) } }` biçiminde milimetrik olarak gömülecektir. Bu kütüphane projede mevcut değilse kurulumu için kullanıcıdan izin alınmalıdır.
+- **Structured Outputs (Vanilla JSON Schema Entegrasyonu):** Modelden yapılandırılmış JSON çıktısı alınması zorunlu olan senaryolarda; şema tanımı saf vanilla JSON Schema nesnesi olarak doğrudan `response_json_schema` alanına geçirilecektir. `zod-to-json-schema` gibi üçüncü parti kütüphanelerin kullanımı kesinlikle yasaktır.
 
 - **XML Tabanlı Prompt Mimarisi:** Modele gönderilen sistem talimatları ve kullanıcı promptları; `instructions`, `constraints`, `context` ve `task` verilerinin birbirine karışmaması için her zaman tutarlı bir şekilde XML etiketleri (`<role>`, `<context>`, `<task>`, `<constraints>`) kullanılarak kapsüllenecektir. Bu yapı, prompt mühendisliğinde tek düze bir şablon sunar ve modelin talimatları daha doğru yorumlamasını sağlar.
 
@@ -103,6 +107,14 @@ Yapay zeka, geliştirme süreci boyunca aşağıdaki disiplin kurallarına ve ko
 
 - **Yarım Bırakma:** Kod üretirken veya refaktör yaparken asla `// ... eski kodlar buraya gelecek ...` veya `// TODO:` şeklinde geçici/yarım bırakılmış yorum satırları kullanma.
 - **Dosya Yollarını Karıştırma:** Rota grubu olan `(app)` klasörünü linkleme yaparken kullanma. Navigasyon her zaman doğrudan URL rotasına (`/dashboard`, `/card-index`) yapılmalıdır.
+
+## 7. Structured JSON Logging
+
+Projedeki tüm harici API çağrıları (LLM, Arama vb.), asenkron akışlar ve veri tabanı işlemleri `src/lib/logger.ts` içerisindeki kurallara göre izlenmelidir:
+
+- **Zorunluluk:** Ham `console.log`, `console.error` veya sessiz (boş) `catch` blokları kullanmak KESİNLİKLE YASAKTIR.
+- **Kural:** Yeni bir kod, servis veya adım yazılırken, her zaman `src/lib/logger.ts` dosyasındaki mevcut `LogEvent` ve `ServiceName` tiplerine/standartlarına sadık kalınarak loglama yapılmalıdır. Yeni bir event veya servis eklenecekse öncelikle `logger.ts` içindeki tipler genişletilmelidir.
+- **Akış Takibi:** Fonksiyonlar arasında `flowId` takibi için `logger?: Logger` parametresi taşınmalı ve tüm girdiler/çıktılar terminali şişirmemek adına `truncateData()` fonksiyonundan geçirilerek loglanmalıdır.
 
 ### AGENTS.md Güncelleme Protokolü
 

@@ -19,6 +19,7 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
+import { StartOverButton } from "../../_components/start-over-button";
 
 interface OriginalityReportViewProps {
   reportData: {
@@ -31,11 +32,7 @@ interface OriginalityReportViewProps {
       briefingNote: string;
     };
     tezaraResults: {
-      originalityBadge:
-        | "YÜKSEK RİSK"
-        | "ORTA RİSK"
-        | "DÜŞÜK RİSK"
-        | "SIFIR RİSK";
+      originalityBadge: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
       overlapTable: {
         id: number;
         title: string;
@@ -45,17 +42,27 @@ interface OriginalityReportViewProps {
         thesisType: string;
         department: string;
         axes: {
-          subject: "ÇAKIŞIYOR" | "KISMEN" | "ÖZGÜN";
-          theory: "ÇAKIŞIYOR" | "KISMEN" | "ÖZGÜN";
-          methodology: "ÇAKIŞIYOR" | "KISMEN" | "ÖZGÜN";
-          context: "ÇAKIŞIYOR" | "KISMEN" | "ÖZGÜN";
+          subject: "OVERLAPPING" | "PARTIAL" | "ORIGINAL";
+          theory: "OVERLAPPING" | "PARTIAL" | "ORIGINAL";
+          methodology: "OVERLAPPING" | "PARTIAL" | "ORIGINAL";
+          context: "OVERLAPPING" | "PARTIAL" | "ORIGINAL";
         };
-        originalityLevel: "YÜKSEK RİSK" | "ORTA RİSK" | "DÜŞÜK RİSK";
+        originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
       }[];
       strategicRecommendations: string;
     };
   };
 }
+
+const statusTranslation: Record<string, string> = {
+  HIGH_RISK: "YÜKSEK RİSK",
+  MEDIUM_RISK: "ORTA RİSK",
+  LOW_RISK: "DÜŞÜK RİSK",
+  ZERO_RISK: "SIFIR RİSK",
+  OVERLAPPING: "ÇAKIŞIYOR",
+  PARTIAL: "KISMEN",
+  ORIGINAL: "ÖZGÜN",
+};
 
 /**
  * Özgünlük ve Maddi Doğrulama Raporu Görünümü (Client Component).
@@ -71,11 +78,11 @@ export function OriginalityReportView({
   const { tavilyResults, tezaraResults } = reportData;
 
   let badgeColor = "bg-emerald-950 text-emerald-400 border border-emerald-800"; // Düşük Risk
-  if (tezaraResults.originalityBadge === "YÜKSEK RİSK") {
+  if (tezaraResults.originalityBadge === "HIGH_RISK") {
     badgeColor = "bg-red-950 text-red-400 border border-red-800";
-  } else if (tezaraResults.originalityBadge === "ORTA RİSK") {
+  } else if (tezaraResults.originalityBadge === "MEDIUM_RISK") {
     badgeColor = "bg-amber-950 text-amber-400 border border-amber-800";
-  } else if (tezaraResults.originalityBadge === "SIFIR RİSK") {
+  } else if (tezaraResults.originalityBadge === "ZERO_RISK") {
     badgeColor = "bg-emerald-950 text-emerald-300 border-2 border-emerald-600";
   }
 
@@ -88,14 +95,19 @@ export function OriginalityReportView({
   return (
     <div className="max-w-5xl mx-auto space-y-10">
       {/* Header */}
-      <div className="space-y-2 text-center sm:text-left">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground flex flex-col sm:flex-row sm:items-center gap-2">
-          <span>Akademik Risk & Maddi Doğrulama Raporu</span>
-        </h1>
-        <p className="text-muted-foreground leading-relaxed text-sm">
-          Çalışmanızın internet üzerindeki maddi doğruluğu ile Tezara veri
-          tabanındaki literatür çakışma riskleri.
-        </p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
+        <div className="space-y-2 text-left">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground flex flex-col sm:flex-row sm:items-center gap-2">
+            <span>Akademik Risk & Maddi Doğrulama Raporu</span>
+          </h1>
+          <p className="text-muted-foreground leading-relaxed text-sm">
+            Çalışmanızın internet üzerindeki maddi doğruluğu ile Tezara veri
+            tabanındaki literatür çakışma riskleri.
+          </p>
+        </div>
+        <div className="flex items-center self-end sm:self-center">
+          <StartOverButton />
+        </div>
       </div>
 
       {/* Badge & Overall status */}
@@ -113,7 +125,10 @@ export function OriginalityReportView({
           className={`flex items-center gap-2 px-6 py-3 rounded-full text-base font-bold tracking-wider ${badgeColor}`}
         >
           <Award className="w-5 h-5 animate-pulse" />
-          <span>{tezaraResults.originalityBadge}</span>
+          <span>
+            {statusTranslation[tezaraResults.originalityBadge] ||
+              tezaraResults.originalityBadge}
+          </span>
         </div>
       </div>
 
@@ -255,19 +270,19 @@ export function OriginalityReportView({
                 ) : (
                   tezaraResults.overlapTable?.map((item, idx) => {
                     const getAxisBadge = (val: string) => {
-                      if (val === "ÇAKIŞIYOR")
+                      if (val === "OVERLAPPING")
                         return "bg-red-950 text-red-400 border border-red-800";
-                      if (val === "KISMEN")
+                      if (val === "PARTIAL")
                         return "bg-amber-950 text-amber-400 border border-amber-800";
-                      return "bg-emerald-950 text-emerald-400 border border-emerald-800"; // ÖZGÜN
+                      return "bg-emerald-950 text-emerald-400 border border-emerald-800"; // ORIGINAL
                     };
 
                     const getLevelBadge = (val: string) => {
-                      if (val === "YÜKSEK RİSK")
+                      if (val === "HIGH_RISK")
                         return "bg-red-950 text-red-400 border border-red-800";
-                      if (val === "ORTA RİSK")
+                      if (val === "MEDIUM_RISK")
                         return "bg-amber-950 text-amber-400 border border-amber-800";
-                      return "bg-emerald-950 text-emerald-400 border border-emerald-800"; // DÜŞÜK RİSK
+                      return "bg-emerald-950 text-emerald-400 border border-emerald-800"; // LOW_RISK
                     };
 
                     return (
@@ -290,35 +305,40 @@ export function OriginalityReportView({
                           <span
                             className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${getAxisBadge(item.axes.subject)}`}
                           >
-                            {item.axes.subject}
+                            {statusTranslation[item.axes.subject] ||
+                              item.axes.subject}
                           </span>
                         </td>
                         <td className="p-3 text-center">
                           <span
                             className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${getAxisBadge(item.axes.theory)}`}
                           >
-                            {item.axes.theory}
+                            {statusTranslation[item.axes.theory] ||
+                              item.axes.theory}
                           </span>
                         </td>
                         <td className="p-3 text-center">
                           <span
                             className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${getAxisBadge(item.axes.methodology)}`}
                           >
-                            {item.axes.methodology}
+                            {statusTranslation[item.axes.methodology] ||
+                              item.axes.methodology}
                           </span>
                         </td>
                         <td className="p-3 text-center">
                           <span
                             className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${getAxisBadge(item.axes.context)}`}
                           >
-                            {item.axes.context}
+                            {statusTranslation[item.axes.context] ||
+                              item.axes.context}
                           </span>
                         </td>
                         <td className="p-3 text-center">
                           <span
                             className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold ${getLevelBadge(item.originalityLevel)}`}
                           >
-                            {item.originalityLevel}
+                            {statusTranslation[item.originalityLevel] ||
+                              item.originalityLevel}
                           </span>
                         </td>
                       </tr>

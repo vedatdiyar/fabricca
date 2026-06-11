@@ -1,3 +1,5 @@
+import type { Logger } from "./logger";
+
 /**
  * Tavily Arama Sonucu Öğe Arayüzü.
  */
@@ -24,14 +26,30 @@ export interface TavilySearchResponse {
  * ve tam eşleşme (exact_match) aktif olarak yapılandırılmıştır.
  *
  * @param query - İnternet üzerinde aranacak ve maddi doğrulanacak sorgu metni.
+ * @param logger - Opsiyonel Logger instance'ı (search event logları için)
  * @returns Arama sonuçlarını içeren TavilySearchResponse nesnesi.
  * @throws Tavily API anahtarı tanımlanmadığında veya istek başarısız olduğunda hata fırlatır.
  */
 export async function tavilySearch(
   query: string,
+  logger?: Logger,
 ): Promise<TavilySearchResponse> {
+  const startTime = performance.now();
+
+  logger?.info("search_start", {
+    service: "tavily",
+    data: { query },
+  });
+
   const apiKey = process.env.TAVILY_API_KEY;
   if (!apiKey) {
+    const durationMs = performance.now() - startTime;
+    logger?.error("search_filtered", {
+      service: "tavily",
+      durationMs,
+      data: { query, reason: "TAVILY_API_KEY eksik" },
+      error: new Error("TAVILY_API_KEY ortam değişkeni tanımlı değil."),
+    });
     throw new Error("TAVILY_API_KEY ortam değişkeni tanımlı değil.");
   }
 
@@ -46,12 +64,18 @@ export async function tavilySearch(
       search_depth: "advanced",
       chunks_per_source: 3,
       max_results: 5,
-      exact_match: true,
     }),
   });
 
   if (!response.ok) {
+    const durationMs = performance.now() - startTime;
     const errorText = await response.text();
+    logger?.error("search_filtered", {
+      service: "tavily",
+      durationMs,
+      data: { query, status: response.status },
+      error: new Error(`Tavily API hatası (${response.status}): ${errorText}`),
+    });
     throw new Error(`Tavily API hatası (${response.status}): ${errorText}`);
   }
 
@@ -65,6 +89,22 @@ export async function tavilySearch(
     score: Number(item.score || 0),
     rawContent: item.raw_content ? String(item.raw_content) : undefined,
   }));
+
+  const durationMs = performance.now() - startTime;
+
+  if (results.length === 0) {
+    logger?.warn("search_empty", {
+      service: "tavily",
+      durationMs,
+      data: { query },
+    });
+  } else {
+    logger?.info("search_success", {
+      service: "tavily",
+      durationMs,
+      data: { query, resultCount: results.length },
+    });
+  }
 
   return {
     query: String(rawData.query || query),

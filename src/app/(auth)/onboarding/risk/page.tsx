@@ -1,10 +1,9 @@
+import type { OriginalityReportData } from "@/lib/types";
 import { redirect } from "next/navigation";
 import { getProfile } from "@/proxy";
-import {
-  startOriginalityAnalysisAction,
-  getStoredOriginalityReportAction,
-} from "./actions";
+import { getStoredOriginalityReportAction } from "./actions";
 import { OriginalityReportView } from "./_components/originality-report-view";
+import { AnalysisTrigger } from "./_components/analysis-trigger";
 
 /**
  * Onboarding sürecinin 3. adımı: Risk Analizi Sayfası (Server Component).
@@ -21,13 +20,10 @@ export default async function OnboardingRiskPage() {
     redirect("/onboarding");
   }
 
-  // Eğer analiz henüz yapılmadıysa, sayfa render aşamasında sunucu tarafında çalıştırılır.
+  // Eğer analiz henüz yapılmadıysa, sayfa render aşamasında sunucu tarafında çalıştırılması yerine
+  // istemci tarafında tetiklenecek şekilde AnalysisTrigger bileşeni döndürülür.
   if (profile.onboarding_step === "originality_report") {
-    console.log("[OnboardingRiskPage] Analiz sunucuda başlatılıyor...");
-    const res = await startOriginalityAnalysisAction();
-    if (res.error) {
-      throw new Error(res.error);
-    }
+    return <AnalysisTrigger />;
   }
 
   const reportRes = await getStoredOriginalityReportAction();
@@ -35,40 +31,7 @@ export default async function OnboardingRiskPage() {
     throw new Error("Özgünlük raporu yüklenemedi. Lütfen tekrar deneyin.");
   }
 
-  const reportData = reportRes.data as {
-    tavilyResults: {
-      items: {
-        fact: string;
-        result: string;
-        sourceUrl: string;
-      }[];
-      briefingNote: string;
-    };
-    tezaraResults: {
-      originalityBadge:
-        | "YÜKSEK RİSK"
-        | "ORTA RİSK"
-        | "DÜŞÜK RİSK"
-        | "SIFIR RİSK";
-      overlapTable: {
-        id: number;
-        title: string;
-        author: string;
-        university: string;
-        year: number;
-        thesisType: string;
-        department: string;
-        axes: {
-          subject: "ÇAKIŞIYOR" | "KISMEN" | "ÖZGÜN";
-          theory: "ÇAKIŞIYOR" | "KISMEN" | "ÖZGÜN";
-          methodology: "ÇAKIŞIYOR" | "KISMEN" | "ÖZGÜN";
-          context: "ÇAKIŞIYOR" | "KISMEN" | "ÖZGÜN";
-        };
-        originalityLevel: "YÜKSEK RİSK" | "ORTA RİSK" | "DÜŞÜK RİSK";
-      }[];
-      strategicRecommendations: string;
-    };
-  };
+  const reportData = reportRes.data as OriginalityReportData;
 
   return (
     <main className="min-h-screen bg-background py-10 px-4 sm:px-6 lg:px-8">
