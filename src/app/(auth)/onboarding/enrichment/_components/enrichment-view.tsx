@@ -86,7 +86,7 @@ export function EnrichmentView({ initialData }: EnrichmentViewProps) {
               value={studyTitle}
               onChange={(e) => setStudyTitle(e.target.value)}
               required
-              className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground scrollbar-theme"
+              className="textarea-academic scrollbar-theme"
             />
           </div>
 
@@ -102,7 +102,7 @@ export function EnrichmentView({ initialData }: EnrichmentViewProps) {
               value={researchQuestion}
               onChange={(e) => setResearchQuestion(e.target.value)}
               required
-              className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground scrollbar-theme"
+              className="textarea-academic scrollbar-theme"
             />
           </div>
 
@@ -118,7 +118,7 @@ export function EnrichmentView({ initialData }: EnrichmentViewProps) {
               value={mainClaim}
               onChange={(e) => setMainClaim(e.target.value)}
               required
-              className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground"
+              className="textarea-academic"
             />
           </div>
 
@@ -134,7 +134,7 @@ export function EnrichmentView({ initialData }: EnrichmentViewProps) {
               value={methodology}
               onChange={(e) => setMethodology(e.target.value)}
               required
-              className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground"
+              className="textarea-academic"
             />
           </div>
 
@@ -150,7 +150,7 @@ export function EnrichmentView({ initialData }: EnrichmentViewProps) {
               value={theoreticalFramework}
               onChange={(e) => setTheoreticalFramework(e.target.value)}
               required
-              className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground"
+              className="textarea-academic"
             />
           </div>
 
@@ -166,7 +166,7 @@ export function EnrichmentView({ initialData }: EnrichmentViewProps) {
               value={historicalSpatialLimits}
               onChange={(e) => setHistoricalSpatialLimits(e.target.value)}
               required
-              className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground"
+              className="textarea-academic"
             />
           </div>
 

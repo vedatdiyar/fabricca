@@ -18,7 +18,7 @@ export default async function OnboardingCompletePage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
       <div className="flex flex-col items-center space-y-8 text-center max-w-2xl mx-auto">
-        <div className="p-4 bg-emerald-950/20 text-emerald-400 rounded-full border border-emerald-800/30">
+        <div className="p-4 bg-card text-primary rounded-full border border-primary">
           <CheckCircle2 className="w-12 h-12 animate-pulse" />
         </div>
 

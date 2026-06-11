@@ -22,7 +22,7 @@ export default function OnboardingRiskError({
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
       <div className="flex flex-col items-center justify-center space-y-6 max-w-md mx-auto text-center">
-        <div className="p-4 bg-destructive/10 rounded-full border border-destructive/20 text-destructive">
+        <div className="p-4 bg-card rounded-full border border-destructive text-destructive">
           <AlertTriangle className="w-10 h-10" />
         </div>
 

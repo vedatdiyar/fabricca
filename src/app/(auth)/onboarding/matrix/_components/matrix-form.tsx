@@ -69,7 +69,7 @@ export function MatrixForm() {
               value={studyTitle}
               onChange={(e) => setStudyTitle(e.target.value)}
               required
-              className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground scrollbar-theme"
+              className="textarea-academic scrollbar-theme"
             />
           </div>
 
@@ -86,7 +86,7 @@ export function MatrixForm() {
               value={researchQuestion}
               onChange={(e) => setResearchQuestion(e.target.value)}
               required
-              className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground scrollbar-theme"
+              className="textarea-academic scrollbar-theme"
             />
           </div>
 
@@ -103,7 +103,7 @@ export function MatrixForm() {
               value={mainClaim}
               onChange={(e) => setMainClaim(e.target.value)}
               required
-              className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground"
+              className="textarea-academic"
             />
           </div>
 
@@ -120,7 +120,7 @@ export function MatrixForm() {
               value={methodology}
               onChange={(e) => setMethodology(e.target.value)}
               required
-              className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground"
+              className="textarea-academic"
             />
           </div>
 
@@ -137,7 +137,7 @@ export function MatrixForm() {
               value={theoreticalFramework}
               onChange={(e) => setTheoreticalFramework(e.target.value)}
               required
-              className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground"
+              className="textarea-academic"
             />
           </div>
 
@@ -154,7 +154,7 @@ export function MatrixForm() {
               value={historicalSpatialLimits}
               onChange={(e) => setHistoricalSpatialLimits(e.target.value)}
               required
-              className="h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground"
+              className="textarea-academic"
             />
           </div>
 

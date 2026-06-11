@@ -63,7 +63,7 @@ Uygulama, uzun süreli okuma ve akademik çalışma odağı düşünülerek en b
 
 - **Akademik Tipografi ve Düzen:** Tasarımlar her zaman sade, minimal ve göz yormayan bir yapıda olmalıdır. Metin yoğunluklu alanlarda (makale okuma, kartoteks fişleri) geniş satır aralıkları (`leading-relaxed` veya `leading-loose`) ve okumayı kolaylaştıran yazı boyutları seçilmelidir.
 - **Semantik Renk Yönetimi:** Shadcn'in varsayılan `CSS Variables` yapısı kullanılacaktır. Yapay zeka elementlere kafasına göre `bg-red-500` veya `text-blue-600` gibi inline renkler atayamaz; her zaman semantik değişkenleri (`bg-primary`, `text-muted-foreground`, `border-input`) kullanmalıdır.
-- **Opaklık Yasağı:** Tailwind CSS sınıflarında asla `/` (slash) işareti kullanarak anlık opaklık verilemez (Örn: `bg-primary/50` veya `text-foreground/80` **KESİNLİKLE YASAKTIR**). Bir rengin opak varyasyonuna ihtiyaç duyuluyorsa bu mutlaka `global.css` içinde bir token/değişken olarak tanımlanmalı ve oradan çağrılmalıdır.
+- **Opaklık Yasağı:** Tailwind CSS sınıflarında asla `/` (slash) işareti kullanarak anlık opaklık verilemez (Örn: `bg-primary/50` veya `text-foreground/80` **KESİNLİKLE YASAKTIR**). Bir rengin opak varyasyonuna ihtiyaç duyuluyorsa bu mutlaka `global.css` içinde bir token/değişken olarak tanımlanmalı ve oradan çağrılmalıdır. **Shadcn UI bileşenleri (`src/components/ui/`) bu kuralın dışındadır.**
 - **Sık Kullanılan Sınıfların Soyutlanması (CSS Classes):** Proje genelinde veya belirli bir sayfada çok sık tekrar eden ortak bir tasarım düzeni/sınıf kümesi oluşturulacaksa (Örn: Kartoteks fiş kapsayıcıları, chat arayüz elemanları, özel listeleme şablonları), HTML içine devasa Tailwind sınıfları yığılamaz. Bu yapılar `global.css` altında anlamlı bir sınıf adı tanımlanarak `@apply` yönergesiyle temiz birer global sınıfa dönüştürülmeli ve oradan çağrılmalıdır.
 - **Shadcn UI Disiplini:** Yeni bir arayüz elementi gerekirken (Örn: Dialog, Select, Sheet), yapay zeka bunu sıfırdan yazamaz veya harici paket kuramaz. Önce projede olup olmadığına bakar, yoksa `npx shadcn@latest add <component>` komutuyla kurup onu özelleştirir.
 - **Küresel Navigasyon Düzeni (Header):** Uygulama geneli küresel navigasyon, sayfa çalışma alanını maksimize etmek amacıyla sol sidebar yerine üst header (Top Header) olarak konumlandırılır. Sayfa içi bağımlı navigasyonlar (kütüphane klasörleri, chat geçmişleri) ilgili sayfaların kendi sol sidebar'ları olarak ilgili route'un layout/page bileşenlerinde yönetilir. Mobil/tablet (< `md` breakpoint) ekranlarda ana navigasyon alt navigation bar'a (Bottom Nav) taşınır.
@@ -107,14 +107,6 @@ Yapay zeka, geliştirme süreci boyunca aşağıdaki disiplin kurallarına ve ko
 
 - **Yarım Bırakma:** Kod üretirken veya refaktör yaparken asla `// ... eski kodlar buraya gelecek ...` veya `// TODO:` şeklinde geçici/yarım bırakılmış yorum satırları kullanma.
 - **Dosya Yollarını Karıştırma:** Rota grubu olan `(app)` klasörünü linkleme yaparken kullanma. Navigasyon her zaman doğrudan URL rotasına (`/dashboard`, `/card-index`) yapılmalıdır.
-
-## 7. Structured JSON Logging
-
-Projedeki tüm harici API çağrıları (LLM, Arama vb.), asenkron akışlar ve veri tabanı işlemleri `src/lib/logger.ts` içerisindeki kurallara göre izlenmelidir:
-
-- **Zorunluluk:** Ham `console.log`, `console.error` veya sessiz (boş) `catch` blokları kullanmak KESİNLİKLE YASAKTIR.
-- **Kural:** Yeni bir kod, servis veya adım yazılırken, her zaman `src/lib/logger.ts` dosyasındaki mevcut `LogEvent` ve `ServiceName` tiplerine/standartlarına sadık kalınarak loglama yapılmalıdır. Yeni bir event veya servis eklenecekse öncelikle `logger.ts` içindeki tipler genişletilmelidir.
-- **Akış Takibi:** Fonksiyonlar arasında `flowId` takibi için `logger?: Logger` parametresi taşınmalı ve tüm girdiler/çıktılar terminali şişirmemek adına `truncateData()` fonksiyonundan geçirilerek loglanmalıdır.
 
 ### AGENTS.md Güncelleme Protokolü
 

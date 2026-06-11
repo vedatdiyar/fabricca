@@ -205,6 +205,59 @@ export async function startOriginalityAnalysisAction(): Promise<OnboardingAction
 }
 
 /**
+ * Kullanıcının onboarding_step'ini "originality_report_completed" olarak günceller.
+ * Orta ve Düşük risk senaryolarında bir sonraki aşamaya geçmek için kullanılır.
+ *
+ * @returns Başarı durumu veya hata mesajı.
+ */
+export async function completeRiskStageAction(): Promise<OnboardingActionResult> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  try {
+    const session = await getSession();
+    if (!session) {
+      log.info("flow_complete", {
+        service: "originality",
+        data: { reason: "Oturum bulunamadı", action: "completeRiskStage" },
+      });
+      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+    }
+
+    const userId = session.userId;
+    log.info("flow_start", {
+      service: "originality",
+      data: { userId, action: "completeRiskStage" },
+    });
+
+    await withDbLogging(
+      () =>
+        db
+          .update(users)
+          .set({ onboardingStep: "originality_report_completed" })
+          .where(eq(users.id, userId)),
+      "update_user_step",
+      log,
+    );
+
+    revalidatePath("/onboarding");
+    log.info("flow_complete", { service: "originality", step: "risk_completed" });
+    return { success: true };
+  } catch (err) {
+    log.error("flow_complete", {
+      service: "originality",
+      step: "completeRiskStage",
+      error: err,
+    });
+    return {
+      error: `Risk aşaması tamamlanırken bir hata oluştu: ${
+        err instanceof Error ? err.message : "Bilinmeyen hata"
+      }`,
+    };
+  }
+}
+
+/**
  * Retrieves the stored originality report for the current session user.
  *
  * @returns Stored report data or error message.

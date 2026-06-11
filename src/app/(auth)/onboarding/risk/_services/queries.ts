@@ -49,21 +49,67 @@ export async function extractQueries(
     ? extractedQueries.tavilyQueries
     : [];
 
-  const safeTezaraQueries = Array.isArray(extractedQueries?.tezaraQueries)
-    ? extractedQueries.tezaraQueries
+  const rawKeywords = Array.isArray(extractedQueries?.keywords)
+    ? extractedQueries.keywords.map((k) => k.trim()).filter(Boolean)
     : [];
+
+  // Pad keywords to ensure exactly 5 items
+  const keywords = [...rawKeywords];
+  const defaults = ["thesis", "research", "study", "analysis", "framework"];
+  let defaultIdx = 0;
+  while (keywords.length < 5) {
+    const fallbackVal = defaults[defaultIdx % defaults.length];
+    if (!keywords.includes(fallbackVal)) {
+      keywords.push(fallbackVal);
+    } else {
+      keywords.push(`${fallbackVal}${keywords.length}`);
+    }
+    defaultIdx++;
+  }
+  const finalKeywords = keywords.slice(0, 5);
+
+  // Dynamic combinations generator
+  const tezaraQueries: string[] = [];
+  const combos2 = getCombinations(finalKeywords, 2);
+  const combos3 = getCombinations(finalKeywords, 3);
+  tezaraQueries.push(...combos2, ...combos3);
 
   log.info("ai_request_success", {
     service: "gemini",
     step: "extract_queries",
     data: {
       tavilyQueryCount: safeTavilyQueries.length,
-      tezaraQueryCount: safeTezaraQueries.length,
+      extractedKeywordsCount: rawKeywords.length,
+      finalKeywords,
+      generatedTezaraQueryCount: tezaraQueries.length,
     },
   });
 
   return {
     tavilyQueries: safeTavilyQueries,
-    tezaraQueries: safeTezaraQueries,
+    tezaraQueries,
   };
+}
+
+/**
+ * Generates all unique combinations of a given size from an array of strings.
+ * Combines words with spaces.
+ *
+ * @param arr - The string array pool.
+ * @param size - The combination size (e.g. 2 or 3).
+ * @returns Array of space-separated keyword combinations.
+ */
+function getCombinations(arr: string[], size: number): string[] {
+  const result: string[] = [];
+  function helper(start: number, path: string[]) {
+    if (path.length === size) {
+      result.push(path.join(" "));
+      return;
+    }
+    for (let i = start; i < arr.length; i++) {
+      helper(i + 1, [...path, arr[i]]);
+    }
+  }
+  helper(0, []);
+  return result;
 }

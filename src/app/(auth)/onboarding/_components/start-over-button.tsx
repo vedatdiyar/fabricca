@@ -19,12 +19,31 @@ import {
 } from "@/components/ui/alert-dialog";
 import { resetOnboardingAction } from "@/app/(auth)/onboarding/actions";
 
+interface StartOverButtonProps {
+  /** Shadcn Button variant değeri. Varsayılan: "outline" */
+  variant?:
+    | "default"
+    | "destructive"
+    | "outline"
+    | "secondary"
+    | "ghost"
+    | "link";
+  /** Butona eklenecek ek CSS sınıfları */
+  className?: string;
+}
+
 /**
  * Onboarding sürecini baştan başlatmak için kullanılan buton bileşeni (Client Component).
  * Kullanıcıdan onay alan bir Alert Dialog açar ve onay verildiğinde veritabanındaki onboarding
  * ilerlemesini temizleyerek süreci ilk adıma sıfırlar.
+ *
+ * @param variant - Shadcn Button variant değeri (varsayılan: "outline")
+ * @param className - Butona eklenecek ek CSS sınıfları
  */
-export function StartOverButton() {
+export function StartOverButton({
+  variant = "outline",
+  className = "",
+}: StartOverButtonProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -53,9 +72,9 @@ export function StartOverButton() {
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogTrigger asChild>
         <Button
-          variant="outline"
+          variant={variant}
           size="sm"
-          className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground flex items-center gap-2 transition-all duration-200 shadow-sm"
+          className={`border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground flex items-center gap-2 transition-all duration-200 shadow-sm ${className}`}
           disabled={isPending}
         >
           <RotateCcw className="h-4 w-4 shrink-0" />

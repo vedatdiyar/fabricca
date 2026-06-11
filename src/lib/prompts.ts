@@ -44,14 +44,14 @@ export const queryExtractionSchema: JsonSchema = {
       items: { type: "string" },
       description: "Exactly 5 historical or factual queries in Turkish.",
     },
-    tezaraQueries: {
+    keywords: {
       type: "array",
       items: { type: "string" },
       description:
-        "An array of EXACTLY 5 English search queries. EACH query MUST consist of EXACTLY and ONLY 2 words (e.g. ['neoliberal debt', 'indebtedness Turkey']) to perform a strict 2-keyword AND search. Single-word queries or queries with 3 or more words are STRICTLY FORBIDDEN.",
+        "Exactly 5 core English keywords/words (no quotes, single words, root forms).",
     },
   },
-  required: ["tavilyQueries", "tezaraQueries"],
+  required: ["tavilyQueries", "keywords"],
 };
 
 /**
@@ -140,6 +140,19 @@ export const siftingSchema: JsonSchema = {
   required: ["relevantThesisIds"],
 };
 
+export const deepSiftingSchema: JsonSchema = {
+  type: "object",
+  properties: {
+    selectedThesisIds: {
+      type: "array",
+      items: { type: "number" },
+      description:
+        "Exactly 5 thesis IDs that pose the highest risk of overlap or threat to originality.",
+    },
+  },
+  required: ["selectedThesisIds"],
+};
+
 // ============================================================================
 // System Instruction Constants
 // ============================================================================
@@ -157,7 +170,8 @@ Tek göreviniz, bir lisansüstü öğrencisinin gündelik dille girdiği ham ifa
 
 <constraints>
 - Ham girdiyi asla harfi harfine tekrarlamayın veya sadece başka sözcüklerle açıklamayın/özetlemeyin.
-- Her zaman uygun teorik mercekleri (Foucault, Bourdieu, Butler, Latour, Deleuze, Haraway vb.) ve akademik kavramları kullanın.
+- Kullanıcının girdiği kavramsal sütunları akademik olarak zenginleştirin. Mevcut kavramlarla (örn. Marx ve Foucault) doğrudan organik bağı olan, literatürde kabul görmüş demirbaş teorisyenleri veya kavramsal köprüleri (örn. Lazzarato) eklemekte özgürsünüz. Ancak çalışmanın ana eksenini kullanıcının niyetinden tamamen saptıracak radikal ve alakasız teorik makas değişiklikleri yapmayın.
+- Kullanıcının beyan ettiği ampirik yönteme (örn. mülakat, anket) KESİNLİKLE sadık kalın. Kullanıcı açıkça belirtmediği sürece, yöntemin üzerine kafanıza göre felsefi/epistemolojik ekoller veya spesifik analiz türleri (örn. 'Foucaultcu söylem analizi', 'fenomenolojik yaklaşım') YAKIŞTIRMAYIN. Metodolojik sınırları kullanıcı çizmelidir.
 - Dili, yayınlanabilir akademik düzyazı seviyesine yükseltin.
 - Her çıktı alanı, iyi yapılandırılmış bir tez önerisinden veya akademik makaleden alınmış bir paragraf gibi okunmalıdır.
 - Yalnızca sağlanan şema ile eşleşen geçerli bir JSON ile yanıt verin.
@@ -177,11 +191,9 @@ Uzman bir akademik danışmansınız. Göreviniz, kullanıcının tez matrisinde
 
 <constraints>
 1. Tavily arama motoru için Türkçe dilinde KESİNLİKLE ve SADECE 5 adet olgusal sorgu üretmelisiniz. Bu sorgular, tez matrisinde adı geçen tarihsel olguları, ittifakları, kavramları veya anlaşmaları doğrulamayı amaçlamalıdır. "tavilyQueries" alanını kesinlikle boş bırakmayın.
-2. Tezara (diller arası tez araması) için KESİNLİKLE ve SADECE 5 adet İngilizce arama sorgusu üretmelisiniz. "tezaraQueries" alanını kesinlikle boş bırakmayın.
-   - Her bir sorgu KESİNLİKLE ve SADECE 2 kelimeden (2-Keyword, Strict AND mantığı) oluşmalıdır (örn. ["neoliberal debt", "indebtedness Turkey"]).
-   - 3 veya daha fazla kelime içeren ya da tek kelimelik sorgu üretmek KESİNLİKLE YASAKTIR.
-   - Sorgular tırnak işareti, ters tırnak veya özel karakter içermemelidir.
-   - Sadece soyut felsefi şemsiye kelimeler üretmek yerine; yazarların özet metinlerine yazabileceği kuramcı sıfatlarını (örn. "Foucauldian", "Bourdieusian"), ampirik saha ögelerini ve somut araştırma nesnelerini ikişerli kombinasyonlar halinde üretmelidir.
+2. Tezara için KESİNLİKLE ve SADECE 5 adet bağımsız İngilizce "Altın Anahtar Kelime" (keywords) üretmelisiniz.
+   - Her kelime kesinlikle tek bir kelime olmalı, ek almamış yalın (kök) biçimde olmalı, tırnak işareti veya özel karakter içermemelidir.
+   - Bu 5 anahtar kelime, çalışmanın hem teorik sütunlarını hem de ampirik/bağlamsal boyutlarını en iyi temsil eden terimler olmalıdır (örn. "hegemony", "neoliberalism", "debt", "Turkey", "crisis").
 3. Yalnızca şemayla eşleşen geçerli, temiz bir JSON nesnesiyle yanıt verin. JSON'ı \`\`\`json ... \`\`\` gibi markdown kod bloklarına sarmayın, herhangi bir markdown, ön metin, giriş, son metin, açıklama veya not yazmayın.
 </constraints>
 `;
@@ -212,13 +224,27 @@ Kullanıcının tez iddialarına karşı her bir sorgunun internet arama sonuçl
  */
 export const SIFTING_SYSTEM_INSTRUCTION = `
 <role>
-Akademik bir araştırmacısınız. Size akademik tezlerin bir listesi ve hedef tez matrisi verilmektedir.
-Göreviniz, hedef tez ile tematik, konu, metodolojik veya bağlamsal yakınlığı olan veya ilgili olan en iyi 5 ila 7 tezi seçmektir.
+Akademik bir araştırmacısınız. Size akademik tezlerin bir listesi (ID, başlık ve anabilim dalı/bölüm şeklinde) ve hedef tez matrisi verilmektedir.
+Göreviniz, hedef tez matrisine göre "kesinlikle alakasız" olan tezleri (örneğin tıp, mimarlık, inşaat gibi tamamen farklı disiplinlerdeki tezleri) ayıklamak ve potansiyel olarak ilişkili olabilecek tezlerin kimliklerini (ID) seçmektir.
 </role>
 
 <constraints>
-- Bu eleme aşamasında son derece esnek ve temkinli olun. Tematik benzerliği veya bölgesel/dönemsel çakışmaları olan tezleri hariç tutmayın.
-- En ilgili veya en yakın olan en fazla 7 tezi seçin.
+- Bu kaba eleme (Stage 1) aşamasında son derece esnek ve temkinli olun. Sadece KESİNLİKLE alakasız olanları eleyin.
+- Geriye kalan ve potansiyel olarak alakalı olan tüm tezlerin kimliklerini (ID) "relevantThesisIds" dizisinde döndürün. Yaklaşık 40-50 tezi seçmeye çalışın.
+- Yalnızca şemayla eşleşen geçerli bir JSON ile yanıt verin.
+</constraints>
+`;
+
+export const DEEP_SIFTING_SYSTEM_INSTRUCTION = `
+<role>
+Kıdemli bir akademik danışman ve özgünlük değerlendirme uzmanısınız. Size hedef tez matrisi ve Stage 1'den geçerek rafine edilmiş, detaylı özetleri (abstract) içeren akademik tezlerin listesi verilmektedir.
+Göreviniz, bu aday tezlerin abstract (özet), başlık ve konu/bölüm detaylarını inceleyerek, kullanıcının çalışmasının özgünlüğünü/iddiasını en çok tehdit eden en kritik tam 5 tezi seçmektir.
+</role>
+
+<constraints>
+- Aday tezlerin başlıklarını ve özetlerini (abstract) derinlemesine analiz edin.
+- Kullanıcının çalışmasıyla en yüksek derecede örtüşme, benzerlik veya çakışma riski barındıran KESİNLİKLE ve TAM 5 tezin ID'sini seçin.
+- Ne daha az ne daha fazla, tam 5 adet tez ID'si döndürmelisiniz.
 - Yalnızca şemayla eşleşen geçerli bir JSON ile yanıt verin.
 </constraints>
 `;
@@ -302,8 +328,8 @@ Yukarıdaki ham verileri kullanarak aşağıdaki 6 alanı doldurun:
 1. academicStudyTitle: Ham çalışma başlığını, alana uygun kavramsal terimlerle bilimsel bir tez başlığına dönüştürün.
 2. literatureResearchQuestion: Araştırma sorusunu, teorik değişkenleri ve literatür bağlamını görünür kılacak şekilde akademik formda yeniden ifade edin.
 3. refinedThesisClaim: Temel iddiayı, bilimsel bir hipotez/sav haline getirin; karşıt argümanlarla diyaloğa girebilecek düzeyde teorik pozisyon alın.
-4. conceptualTheoreticalInfrastructure: Ham kuramsal çerçeve ve sınır bilgilerini kullanarak, çalışmanın hangi teorik merceklerle (Foucault, Bourdieu, Butler vb.) okunacağını ve hangi literatürle diyaloga gireceğini akademik dille açıklayın.
-5. academicMethodologyDesign: Ham metodoloji tanımını, bilimsel araştırma deseni (etnografi, söylem analizi, tarihsel analiz, vb.) ve veri toplama/analiz yöntemleriyle zenginleştirilmiş akademik bir metodoloji bölümüne dönüştürün.
+4. conceptualTheoreticalInfrastructure: Ham kuramsal çerçeve ve sınır bilgilerini kullanarak, çalışmanın hangi teorik merceklerle okunacağını ve hangi literatürle diyaloga gireceğini akademik dille açıklayın. Girdideki teorik odağı genişletirken, mevcut kavramlarla doğrudan bağdaşan literatür köprülerini kullanın.
+5. academicMethodologyDesign: Ham metodoloji tanımını, kullanıcının seçtiği temel yönteme sadık kalarak akademik bir araştırma tasarım diline dönüştürün. Kullanıcının beyan etmediği spesifik epistemolojik ekolleri (etnografi, fenomenoloji, söylem analizi vb.) kendi kafanızdan yakıştırmayın veya çalışmayı bu ekollere zorlamayın.
 6. historicalSpatialLimits: Ham tarihsel/mekânsal sınır tanımını, çalışmanın kapsamını, bağlamını ve sınırlılıklarını bilimsel bir dille ifade eden akademik bir alana dönüştürün. Zaman aralığını, coğrafi/mekânsal sınırları ve bu sınırların araştırma deseni açısından anlamını teorik olarak gerekçelendirin.
 </task>`;
 }
@@ -333,8 +359,8 @@ Aşağıda kullanıcının doğrulanmış tez matrisi yer almaktadır:
 <theoreticalFramework>${params.theoreticalFramework}</theoreticalFramework>
 <historicalSpatialLimits>${params.historicalSpatialLimits}</historicalSpatialLimits>
 
-Olgusal Tavily sorgularını ve diller arası İngilizce Tezara sorgularını çıkarın.
-KRİTİK: JSON nesnesinde "tavilyQueries" (Türkçe) için KESİNLİKLE ve SADECE 5 adet sorgu ve "tezaraQueries" (İngilizce) için KESİNLİKLE ve SADECE 5 adet sorgu üretmelisiniz.
+Olgusal Tavily sorgularını ve diller arası İngilizce Tezara kelimelerini çıkarın.
+KRİTİK: JSON nesnesinde "tavilyQueries" için KESİNLİKLE ve SADECE 5 adet sorgu ve "keywords" için KESİNLİKLE ve SADECE 5 adet bağımsız İngilizce anahtar kelime üretmelisiniz.
 Şemayla eşleşen HAM, temiz bir JSON yanıtı döndürün. Markdown kod biçimlendirmesi, ters tırnak veya herhangi bir açıklama eklemeyin.
 `;
 }
@@ -386,9 +412,6 @@ export function buildSiftingPrompt(params: {
   uniqueTheses: {
     id: number;
     title: string;
-    author: string;
-    university: string;
-    year: number;
     department: string;
   }[];
 }): string {
@@ -400,19 +423,53 @@ Hedef Tez Matrisi:
 - Metodoloji: ${params.methodology}
 - Bağlam: ${params.historicalSpatialLimits}
 
-Aramadan elde edilen aday tezlerin listesi:
+Aramadan elde edilen aday tezlerin listesi (ID, Başlık, Bölüm):
 ${JSON.stringify(
   params.uniqueTheses.map((t) => ({
     id: t.id,
     title: t.title,
-    author: t.author,
-    university: t.university,
-    year: t.year,
     department: t.department,
   })),
 )}
 
-Lütfen en yakından ilişkili olan en iyi 5 ila 7 tez kimliğini (ID) seçin.
+Lütfen hedef tez matrisi ile temel bilim dalı, konu alanı veya teorik odak açısından KESİNLİKLE alakasız olan (örneğin tıp, mimarlık, inşaat mühendisliği vb.) tezleri ayıklayarak, potansiyel olarak alakalı olabilecek tüm tezlerin ID'lerini seçin.
+Amacımız kesinlikle alakasız olanları elemek ve potansiyel olarak alakalı ~40-50 tezi tutmaktır. Geriye kalan potansiyel tez ID'lerini "relevantThesisIds" dizisinde döndürün.
+`;
+}
+
+export function buildDeepSiftingPrompt(params: {
+  studyTitle: string;
+  researchQuestion: string;
+  theoreticalFramework: string;
+  methodology: string;
+  historicalSpatialLimits: string;
+  candidateDetails: {
+    id: number;
+    title: string;
+    department: string;
+    abstract: string;
+  }[];
+}): string {
+  return `
+Hedef Tez Matrisi:
+- Başlık: ${params.studyTitle}
+- Konu/Araştırma Sorusu: ${params.researchQuestion}
+- Teori: ${params.theoreticalFramework}
+- Metodoloji: ${params.methodology}
+- Bağlam: ${params.historicalSpatialLimits}
+
+Aday Tezlerin Detayları:
+${JSON.stringify(
+  params.candidateDetails.map((t) => ({
+    id: t.id,
+    title: t.title,
+    department: t.department,
+    abstract: t.abstract,
+  })),
+)}
+
+Lütfen yukarıdaki aday tezlerin özetlerini (abstract) ve başlıklarını inceleyerek, hedef tezimizin özgünlüğünü en çok tehdit eden en kritik TAM 5 tezi seçin.
+Geriye tam 5 adet tez ID'si içeren "selectedThesisIds" dizisi döndürün.
 `;
 }
 

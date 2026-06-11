@@ -23,7 +23,11 @@ export type AxesOption = "OVERLAPPING" | "PARTIAL" | "ORIGINAL";
 
 export interface QueryExtractionResponse {
   tavilyQueries: string[];
-  tezaraQueries: string[];
+  keywords: string[];
+}
+
+export interface DeepSiftResponse {
+  selectedThesisIds: number[];
 }
 
 export interface TavilyEvaluationFact {

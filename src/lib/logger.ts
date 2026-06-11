@@ -1,14 +1,17 @@
 /**
  * Merkezi yapılandırılmış JSON log sistemi.
  *
- * Tüm loglar tek satır JSON olarak terminale (stdout/stderr) yazılır.
- * Her log bir flowId ile ilişkilendirilir ve flow bazında izlenebilir.
+ * Production'da tek satır JSON olarak terminale (stdout/stderr) yazılır.
+ * Development'ta aynı JSON yapısı korunur ancak terminale chalk ile
+ * görsel olarak zenginleştirilmiş çıktı basılır.
  *
- * Terminal debug için kullanım:
+ * Terminal debug için production kullanımı:
  *   grep '"flowId":"fl_xxx"'             → flow bazında filtreleme
  *   grep '"level":"error"'                → hata logları
  *   grep '"event":"ai_request_failed"'    → AI başarısızlıkları
  */
+
+import { updateDevStats, renderVisual, clearDevFlow } from "./logger-dev";
 
 export type LogLevel = "info" | "warn" | "error";
 
@@ -78,7 +81,7 @@ function truncateData(
 
   if (maxDepth <= 0) {
     if (Array.isArray(value)) return `[Array(${value.length})]`;
-    return `{Object}`;
+    return "{Object}";
   }
 
   if (Array.isArray(value)) {
@@ -168,6 +171,9 @@ export class Logger {
   }
 
   private write(level: LogLevel, event: LogEvent, params?: LogParams): void {
+    const isDevelopment = process.env.NODE_ENV === "development";
+
+    // --- Build structured JSON entry (always, for production) ---
     const entry: Record<string, unknown> = {
       timestamp: toISOString(),
       level,
@@ -200,16 +206,43 @@ export class Logger {
 
     const line = JSON.stringify(entry);
 
-    switch (level) {
-      case "info":
-        console.log(line);
-        break;
-      case "warn":
-        console.warn(line);
-        break;
-      case "error":
-        console.error(line);
-        break;
+    // --- Production path (Leak Guard: never touch devStats) ---
+    if (!isDevelopment) {
+      switch (level) {
+        case "info":
+          console.log(line);
+          break;
+        case "warn":
+          console.warn(line);
+          break;
+        case "error":
+          console.error(line);
+          break;
+      }
+      return;
+    }
+
+    // --- Development path ---
+    updateDevStats(this.flowId, level, event, params);
+
+    const visual = renderVisual(this.flowId, level, event, params);
+    if (visual) {
+      switch (level) {
+        case "info":
+          console.log(visual);
+          break;
+        case "warn":
+          console.warn(visual);
+          break;
+        case "error":
+          console.error(visual);
+          break;
+      }
+    }
+
+    // --- Memory cleanup on final flow_complete ---
+    if (event === "flow_complete" && !params?.step) {
+      clearDevFlow(this.flowId);
     }
   }
 }
