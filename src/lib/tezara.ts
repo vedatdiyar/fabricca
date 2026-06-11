@@ -382,12 +382,12 @@ export async function searchTezaraPage(
 }
 
 /**
- * Searches Tezara with up to 2 pages of results based on pagination rules.
+ * Searches Tezara with up to 3 pages of results based on pagination rules.
  *
  * @param query - The search query term.
  * @param logger - Optional Logger instance.
  * @param advanced - Whether to use the advanced search query parameter.
- * @returns A list of unique thesis summaries up to 40 items.
+ * @returns A list of unique thesis summaries up to 60 items.
  */
 export async function searchTezara(
   query: string,
@@ -413,8 +413,13 @@ export async function searchTezara(
 
   const page2Results = await searchTezaraPage(query, 2, logger, advanced);
 
+  let page3Results: TezaraThesisSummary[] = [];
+  if (page2Results.length === 20) {
+    page3Results = await searchTezaraPage(query, 3, logger, advanced);
+  }
+
   // Combine and deduplicate by ID just in case
-  const combined = [...page1Results, ...page2Results];
+  const combined = [...page1Results, ...page2Results, ...page3Results];
   const uniqueResults: TezaraThesisSummary[] = [];
   const seenIds = new Set<number>();
 
@@ -425,7 +430,7 @@ export async function searchTezara(
     }
   }
 
-  const allResults = uniqueResults.slice(0, 40);
+  const allResults = uniqueResults.slice(0, 60);
 
   logger?.info("search_success", {
     service: "tezara",

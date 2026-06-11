@@ -145,7 +145,7 @@ export function OriginalityReportView({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="p-4 bg-muted border border-border rounded-lg leading-relaxed text-sm text-muted-foreground whitespace-pre-line">
+          <div className="p-4 bg-muted border border-border rounded-lg leading-relaxed text-sm text-foreground whitespace-pre-line">
             <span className="font-semibold text-foreground mb-2 flex items-center gap-2">
               <FileText className="w-4 h-4 text-primary" />
               Doğrulama Özeti ve Analiz Notu
@@ -298,7 +298,7 @@ export function OriginalityReportView({
                             {item.author} • {item.university} ({item.year})
                           </div>
                           <div className="text-[11px] text-muted-foreground font-mono">
-                            {item.thesisType} • {item.department}
+                            {item.thesisType}
                           </div>
                         </td>
                         <td className="p-3 text-center">
@@ -357,7 +357,7 @@ export function OriginalityReportView({
           <Compass className="w-5 h-5 text-primary" />
           Yol Haritası ve Akademik Tavsiyeler
         </h3>
-        <div className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line bg-muted p-4 border border-border rounded-lg">
+        <div className="text-sm leading-relaxed text-foreground whitespace-pre-line bg-muted p-4 border border-border rounded-lg">
           {tezaraResults.strategicRecommendations}
         </div>
       </div>

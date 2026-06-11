@@ -42,13 +42,13 @@ export const queryExtractionSchema: JsonSchema = {
     tavilyQueries: {
       type: "array",
       items: { type: "string" },
-      description: "2 to 4 historical or factual queries in Turkish.",
+      description: "Exactly 5 historical or factual queries in Turkish.",
     },
     tezaraQueries: {
       type: "array",
       items: { type: "string" },
       description:
-        "2 to 4 English search queries capturing core academic themes.",
+        "An array of EXACTLY 5 English search queries. EACH query MUST consist of EXACTLY and ONLY 2 words (e.g. ['neoliberal debt', 'indebtedness Turkey']) to perform a strict 2-keyword AND search. Single-word queries or queries with 3 or more words are STRICTLY FORBIDDEN.",
     },
   },
   required: ["tavilyQueries", "tezaraQueries"],
@@ -176,8 +176,12 @@ Uzman bir akademik danışmansınız. Göreviniz, kullanıcının tez matrisinde
 </role>
 
 <constraints>
-1. Tavily arama motoru için Türkçe dilinde en az 2 (en fazla 4) adet olgusal sorgu üretmelisiniz. Bu sorgular, tez matrisinde adı geçen tarihsel olguları, ittifakları, kavramları veya anlaşmaları doğrulamayı amaçlamalıdır. "tavilyQueries" alanını kesinlikle boş bırakmayın.
-2. Tezara (diller arası tez araması) için en az 2 (en fazla 4) adet İngilizce arama sorgusu üretmelisiniz. Her bir sorgu, tırnak işareti, ters tırnak veya özel karakter içermeyen, ana temaları, metodolojileri veya teorileri yakalayan 3-4 kelimeden oluşmalıdır. "tezaraQueries" alanını kesinlikle boş bırakmayın.
+1. Tavily arama motoru için Türkçe dilinde KESİNLİKLE ve SADECE 5 adet olgusal sorgu üretmelisiniz. Bu sorgular, tez matrisinde adı geçen tarihsel olguları, ittifakları, kavramları veya anlaşmaları doğrulamayı amaçlamalıdır. "tavilyQueries" alanını kesinlikle boş bırakmayın.
+2. Tezara (diller arası tez araması) için KESİNLİKLE ve SADECE 5 adet İngilizce arama sorgusu üretmelisiniz. "tezaraQueries" alanını kesinlikle boş bırakmayın.
+   - Her bir sorgu KESİNLİKLE ve SADECE 2 kelimeden (2-Keyword, Strict AND mantığı) oluşmalıdır (örn. ["neoliberal debt", "indebtedness Turkey"]).
+   - 3 veya daha fazla kelime içeren ya da tek kelimelik sorgu üretmek KESİNLİKLE YASAKTIR.
+   - Sorgular tırnak işareti, ters tırnak veya özel karakter içermemelidir.
+   - Sadece soyut felsefi şemsiye kelimeler üretmek yerine; yazarların özet metinlerine yazabileceği kuramcı sıfatlarını (örn. "Foucauldian", "Bourdieusian"), ampirik saha ögelerini ve somut araştırma nesnelerini ikişerli kombinasyonlar halinde üretmelidir.
 3. Yalnızca şemayla eşleşen geçerli, temiz bir JSON nesnesiyle yanıt verin. JSON'ı \`\`\`json ... \`\`\` gibi markdown kod bloklarına sarmayın, herhangi bir markdown, ön metin, giriş, son metin, açıklama veya not yazmayın.
 </constraints>
 `;
@@ -330,7 +334,7 @@ Aşağıda kullanıcının doğrulanmış tez matrisi yer almaktadır:
 <historicalSpatialLimits>${params.historicalSpatialLimits}</historicalSpatialLimits>
 
 Olgusal Tavily sorgularını ve diller arası İngilizce Tezara sorgularını çıkarın.
-KRİTİK: JSON nesnesinde "tavilyQueries" (Türkçe) için en az 2 sorgu ve "tezaraQueries" (İngilizce) için en az 2 sorgu üretmelisiniz.
+KRİTİK: JSON nesnesinde "tavilyQueries" (Türkçe) için KESİNLİKLE ve SADECE 5 adet sorgu ve "tezaraQueries" (İngilizce) için KESİNLİKLE ve SADECE 5 adet sorgu üretmelisiniz.
 Şemayla eşleşen HAM, temiz bir JSON yanıtı döndürün. Markdown kod biçimlendirmesi, ters tırnak veya herhangi bir açıklama eklemeyin.
 `;
 }
