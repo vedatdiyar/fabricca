@@ -74,19 +74,19 @@ export function StartOverButton({
         <Button
           variant={variant}
           size="sm"
-          className={`border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground flex items-center gap-2 transition-all duration-200 shadow-sm ${className}`}
+          className={`border-destructive bg-destructive/50 text-destructive-foreground hover:bg-destructive/10 hover:text-destructive shadow-sm ${className}`}
           disabled={isPending}
         >
           <RotateCcw className="h-4 w-4 shrink-0" />
           <span>Baştan Başla</span>
         </Button>
       </AlertDialogTrigger>
-      <AlertDialogContent className="max-w-md border-border bg-card">
+      <AlertDialogContent className="bg-card">
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-foreground font-semibold">
+          <AlertDialogTitle className="text-foreground">
             Onboarding Sürecini Sıfırla
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-muted-foreground leading-relaxed">
+          <AlertDialogDescription className="leading-relaxed">
             Bu işlem, şu ana kadar girdiğiniz tüm tez matrisi bilgilerini,
             yapılan akademik zenginleştirmeleri ve üretilen özgünlük raporlarını
             kalıcı olarak silecektir. Bu işlemi geri alamazsınız. Devam etmek
@@ -94,16 +94,13 @@ export function StartOverButton({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="mt-4 gap-2">
-          <AlertDialogCancel className="border-border text-foreground hover:bg-accent">
-            İptal Et
-          </AlertDialogCancel>
+          <AlertDialogCancel>İptal Et</AlertDialogCancel>
           <AlertDialogAction
             onClick={(e) => {
               e.preventDefault();
               handleReset();
             }}
             disabled={isPending}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             {isPending ? (
               <span className="flex items-center gap-2">

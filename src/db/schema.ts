@@ -6,6 +6,8 @@ import {
   integer,
   timestamp,
   jsonb,
+  pgEnum,
+  AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 
@@ -111,3 +113,52 @@ export type OriginalityReport = InferSelectModel<typeof originalityReports>;
 
 /** Yeni özgünlük raporu oluşturma tipi (insert). */
 export type NewOriginalityReport = InferInsertModel<typeof originalityReports>;
+
+/**
+ * Tez Kutusu Kategorisi enumu.
+ * Tez kutularının hangi akademik alana ait olduğunu kısıtlar.
+ */
+export const thesisBoxCategoryEnum = pgEnum("thesis_box_category", [
+  "intro",
+  "theory",
+  "methodology",
+  "context",
+  "primary_source",
+]);
+
+/**
+ * Tez Kutuları (Outline / Box) tablosu.
+ * Tez matrisine bağlı ana ve alt kutuları outline yapısında saklar.
+ * parentId ile kendi kendine (self-reference) bağlanarak hiyerarşik yapı kurar.
+ */
+export const thesisBoxes = pgTable("thesis_boxes", {
+  id: serial("id").primaryKey(),
+  thesisMatrixId: integer("thesis_matrix_id")
+    .notNull()
+    .references(() => thesisMatrices.id, { onDelete: "cascade" }),
+  parentId: integer("parent_id").references((): AnyPgColumn => thesisBoxes.id, {
+    onDelete: "cascade",
+  }),
+  category: thesisBoxCategoryEnum("category").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  theorists: jsonb("theorists").$type<string[]>().default([]).notNull(),
+  concepts: jsonb("concepts").$type<string[]>().default([]).notNull(),
+  queries: jsonb("queries").$type<string[]>().default([]).notNull(),
+  primaryLiterature: jsonb("primary_literature")
+    .$type<string[]>()
+    .default([])
+    .notNull(),
+  secondaryLiterature: jsonb("secondary_literature")
+    .$type<string[]>()
+    .default([])
+    .notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+/** Veri tabanından okunan tez kutusu tipi (select). */
+export type ThesisBox = InferSelectModel<typeof thesisBoxes>;
+
+/** Yeni tez kutusu oluşturma tipi (insert). */
+export type NewThesisBox = InferInsertModel<typeof thesisBoxes>;

@@ -50,7 +50,7 @@ export function MatrixForm() {
   };
 
   return (
-    <Card className="w-full pt-6 border-border bg-card">
+    <Card className="w-full pt-6">
       <CardContent>
         <form
           onSubmit={handleSubmit}
@@ -59,7 +59,7 @@ export function MatrixForm() {
           <div className="space-y-2">
             <Label
               htmlFor="calismaBasligi"
-              className="mb-4 block text-sm font-semibold text-foreground"
+              className="mb-4 block font-semibold text-foreground"
             >
               Çalışma Başlığı
             </Label>
@@ -69,14 +69,14 @@ export function MatrixForm() {
               value={studyTitle}
               onChange={(e) => setStudyTitle(e.target.value)}
               required
-              className="textarea-academic scrollbar-theme"
+              className="textarea-academic"
             />
           </div>
 
           <div className="space-y-2">
             <Label
               htmlFor="arastirmaSorusu"
-              className="mb-4 block text-sm font-semibold text-foreground"
+              className="mb-4 block font-semibold text-foreground"
             >
               Araştırma Sorusu
             </Label>
@@ -86,14 +86,14 @@ export function MatrixForm() {
               value={researchQuestion}
               onChange={(e) => setResearchQuestion(e.target.value)}
               required
-              className="textarea-academic scrollbar-theme"
+              className="textarea-academic"
             />
           </div>
 
           <div className="space-y-2">
             <Label
               htmlFor="temelIddia"
-              className="mb-4 block text-sm font-semibold text-foreground"
+              className="mb-4 block font-semibold text-foreground"
             >
               Temel İddia
             </Label>
@@ -110,7 +110,7 @@ export function MatrixForm() {
           <div className="space-y-2">
             <Label
               htmlFor="metodoloji"
-              className="mb-4 block text-sm font-semibold text-foreground"
+              className="mb-4 block font-semibold text-foreground"
             >
               Metodoloji
             </Label>
@@ -127,7 +127,7 @@ export function MatrixForm() {
           <div className="space-y-2">
             <Label
               htmlFor="kuramsalCerceve"
-              className="mb-4 block text-sm font-semibold text-foreground"
+              className="mb-4 block font-semibold text-foreground"
             >
               Kuramsal Çerçeve
             </Label>
@@ -144,7 +144,7 @@ export function MatrixForm() {
           <div className="space-y-2">
             <Label
               htmlFor="tarihselMekansalSinirlar"
-              className="mb-4 block text-sm font-semibold text-foreground"
+              className="mb-4 block font-semibold text-foreground"
             >
               Tarihsel / Mekânsal Sınırlar
             </Label>
@@ -161,7 +161,7 @@ export function MatrixForm() {
           <div className="md:col-span-full">
             <Button
               type="submit"
-              className="w-full font-semibold py-6"
+              className="btn-academic-hero w-full"
               disabled={isPending}
             >
               {isPending ? (

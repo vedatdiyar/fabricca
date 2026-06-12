@@ -18,8 +18,8 @@ export default async function OnboardingCompletePage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
       <div className="flex flex-col items-center space-y-8 text-center max-w-2xl mx-auto">
-        <div className="p-4 bg-card text-primary rounded-full border border-primary">
-          <CheckCircle2 className="w-12 h-12 animate-pulse" />
+        <div className="p-4 bg-card rounded-full border border-primary">
+          <CheckCircle2 className="w-12 h-12 text-primary animate-pulse" />
         </div>
 
         <div className="space-y-2">
@@ -33,11 +33,11 @@ export default async function OnboardingCompletePage() {
           </p>
         </div>
 
-        <Card className="w-full bg-card border-border text-left leading-relaxed">
-          <CardContent className="p-6 space-y-6">
+        <Card className="w-full text-left leading-relaxed">
+          <CardContent className="space-y-6">
             <div className="flex gap-4 items-start">
-              <div className="mt-1 p-2 bg-muted rounded-lg border border-border text-primary">
-                <ShieldCheck className="w-5 h-5" />
+              <div className="mt-1 p-2 bg-muted rounded-lg border border-border">
+                <ShieldCheck className="w-5 h-5 text-primary" />
               </div>
               <div>
                 <h3 className="font-semibold text-foreground text-sm">
@@ -51,8 +51,8 @@ export default async function OnboardingCompletePage() {
             </div>
 
             <div className="flex gap-4 items-start">
-              <div className="mt-1 p-2 bg-muted rounded-lg border border-border text-primary">
-                <Compass className="w-5 h-5" />
+              <div className="mt-1 p-2 bg-muted rounded-lg border border-border">
+                <Compass className="w-5 h-5 text-primary" />
               </div>
               <div>
                 <h3 className="font-semibold text-foreground text-sm">

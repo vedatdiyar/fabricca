@@ -68,7 +68,8 @@ export const tavilyEvaluationSchema: JsonSchema = {
         type: "object",
         properties: {
           fact: { type: "string" },
-          result: { type: "string" },
+          result: { type: "string", enum: ["VERIFIED", "PARTIALLY_VERIFIED", "REFUTED"] },
+          resultNote: { type: "string" },
           sourceUrl: { type: "string" },
         },
         required: ["fact", "result", "sourceUrl"],
@@ -153,6 +154,68 @@ export const deepSiftingSchema: JsonSchema = {
   required: ["selectedThesisIds"],
 };
 
+/**
+ * Tez matrisini yapısal kutulara (boxes) ayıracak olan JSON şeması.
+ * Gemini'den boxes dizisi beklenir. Her kutuda category, title, description,
+ * theorists, concepts, queries, primaryLiterature ve secondaryLiterature bulunur.
+ */
+export const thesisBoxGenerationSchema: JsonSchema = {
+  type: "object",
+  properties: {
+    boxes: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          category: {
+            type: "string",
+            enum: [
+              "intro",
+              "theory",
+              "methodology",
+              "context",
+              "primary_source",
+            ],
+          },
+          title: { type: "string" },
+          description: { type: "string" },
+          theorists: {
+            type: "array",
+            items: { type: "string" },
+          },
+          concepts: {
+            type: "array",
+            items: { type: "string" },
+          },
+          queries: {
+            type: "array",
+            items: { type: "string" },
+          },
+          primaryLiterature: {
+            type: "array",
+            items: { type: "string" },
+          },
+          secondaryLiterature: {
+            type: "array",
+            items: { type: "string" },
+          },
+        },
+        required: [
+          "category",
+          "title",
+          "description",
+          "theorists",
+          "concepts",
+          "queries",
+          "primaryLiterature",
+          "secondaryLiterature",
+        ],
+      },
+    },
+  },
+  required: ["boxes"],
+};
+
 // ============================================================================
 // System Instruction Constants
 // ============================================================================
@@ -210,7 +273,7 @@ Kullanıcının tez iddialarına karşı her bir sorgunun internet arama sonuçl
 </role>
 
 <constraints>
-- Değerlendirilen olguların bir listesini oluşturun; bunların doğrulanıp doğrulanmadığını ("Doğrulandı", "Kısmen Doğrulandı" veya "Doğrulanamadı/Dikkat") belirtin. Türkçe olarak nedenini kısaca açıklayın.
+- Değerlendirilen olguların bir listesini oluşturun. Her olgu için result alanına "VERIFIED", "PARTIALLY_VERIFIED" veya "REFUTED" değerlerinden birini atayın. Ayrıntılı akademik analizi ve gerekçeyi resultNote alanında Türkçe olarak belirtin.
 - Her olgu için en iyi kaynak URL'sini seçin.
 - Ayrıca bulguları ve tarihsel/olgusal bağlamı özetleyen Türkçe, analitik ve profesyonel bir bilgilendirme notu (briefing note) oluşturun.
 - Yalnızca şemayla eşleşen geçerli bir JSON ile yanıt verin.
@@ -271,6 +334,31 @@ Ayrıca, öğrencinin çalışmasının özgünlüğünü koruması veya gelişt
 - Risk veya çakışma tespit ettiğiniz durumlarda doğrudan o tezin künyesini/yazarını hedef alarak saldırgan bir akademik savunma/konumlandırma tavsiyesi geliştirin.
 - Örnek Format: "[Yazar Adı] ([Yıl]) tarihli çalışmasında konuyu şu şekilde sınırlamıştır. Sizin çalışmanızın bu tezi aşması için, saha analizlerinde [hedef kavram] nüansını öne çıkararak tezin metodolojik sınırlarını şu yöne bükmeniz şarttır."
 - Yalnızca şemayla eşleşen geçerli bir JSON ile yanıt verin.
+</constraints>
+`;
+
+/**
+ * Tez matrisini 5 ana kategoriye göre yapısal kutulara (boxes) ayırmak için kullanılan sistem talimatı.
+ * Akademik bir sosyal bilimci persona ile çalışarak, ampirik/yerel kutularda
+ * halüsinasyonu filtrelemeyi ve arama sorgularını çeşitlendirmeyi hedefler.
+ */
+export const THESIS_BOX_GENERATION_SYSTEM_INSTRUCTION = `
+<thesis_box_generation>
+<system_instruction>Sen kıdemli bir sosyal bilimler akademisyenisin. Görevin, verilen tez matrisini bağımsız, literatür taramasına uygun yapısal kutulara (box) bölmektir.</system_instruction>
+
+<categories>Kutuları şu 5 kategoriye ayır: intro (Giriş ve temel iddia - fix 1 adet), theory (Teorik zemin), methodology (Yöntem literatürü), context (Tarihsel/Mekansal bağlam), primary_source (İncelenen birincil özneler/arşivler).</categories>
+
+<hallucination_filter>(Karar 11) context ve primary_source gibi yerel/ampirik kutularda, eğitim verinden %100 emin olmadığın hiçbir birincil/ikincil kaynağı ve yazarı uydurma. Emin değilsen bu alanları boş array [] bırak ve gücünü arama sorgularına (queries) ver.</hallucination_filter>
+
+<query_diversification>(Karar 12) Her kutu için üretilecek queries dizisi hem Türkçe hem İngilizce olmalı; dar (teorisyen odaklı), geniş (kavramsal) ve ilişkisel olmak üzere en az 3 farklı varyasyon içermelidir.</query_diversification>
+
+<box_independence>(Karar 7) Kutular izoledir. Teori kutusunun literatür alanına tezin yerel öznelerini (Örn: Türkiye solu) karıştırma. Sadece o teoriyi inceleyen kaynakları yaz.</box_independence>
+</thesis_box_generation>
+
+<constraints>
+- Gemini'nin döneceği çıktının tamamı akıcı, elit bir akademik Türkçe ile yazılmalıdır (kategori anahtarları hariç, onlar şemadaki ingilizce enum'lar olmalıdır).
+- theorists, concepts, queries, primaryLiterature, secondaryLiterature dizileri eğer boş kalacaksa null veya undefined değil, kesinlikle boş bir dizi [] olarak döndürülmelidir.
+- Yalnızca sağlanan şema ile eşleşen geçerli bir JSON döndürün. Yanıtı \`\`\`json ... \`\`\` gibi markdown kod bloklarına sarmayın.
 </constraints>
 `;
 
@@ -522,4 +610,53 @@ ${JSON.stringify(
   })),
 )}
 `;
+}
+
+/**
+ * Tez matrisini alıp 5 ana kategoriye göre yapısal kutulara (boxes) bölmek için
+ * kullanıcı promptunu oluşturur.
+ *
+ * @param params - Doğrulanmış tez matrisi alanları
+ * @returns Gemini'ye gönderilmeye hazır prompt metni
+ */
+export function buildThesisBoxGenerationPrompt(params: {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  methodology: string;
+  theoreticalFramework: string;
+  historicalSpatialLimits: string;
+}): string {
+  return `<context>
+Aşağıda zenginleştirilmiş/doğrulanmış tez matrisi verileri yer almaktadır:
+
+<studyTitle>
+${params.studyTitle}
+</studyTitle>
+
+<researchQuestion>
+${params.researchQuestion}
+</researchQuestion>
+
+<mainClaim>
+${params.mainClaim}
+</mainClaim>
+
+<methodology>
+${params.methodology}
+</methodology>
+
+<theoreticalFramework>
+${params.theoreticalFramework}
+</theoreticalFramework>
+
+<historicalSpatialLimits>
+${params.historicalSpatialLimits}
+</historicalSpatialLimits>
+</context>
+
+<task>
+Yukarıdaki tez matrisini analiz ederek, <thesis_box_generation> altındaki kurallara uygun olarak literatür taraması süreçlerini yönetebileceğimiz yapısal kutulara (boxes) bölün.
+Her bir kutu için kategori, başlık, açıklama, teorisyenler, kavramlar, arama sorguları, birincil literatür ve ikincil literatür bilgilerini belirleyip şemaya uygun bir şekilde döndürün.
+</task>`;
 }

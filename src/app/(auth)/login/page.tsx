@@ -88,7 +88,7 @@ export default function LoginPage() {
 
         <Card className="w-full">
           <CardHeader>
-            <CardTitle className="text-xl">Giriş Yap</CardTitle>
+            <CardTitle>Giriş Yap</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-5">

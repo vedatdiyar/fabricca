@@ -68,7 +68,7 @@ export function Header({ userName }: { userName: string }) {
                     "header-nav-item",
                     isActive
                       ? "bg-accent text-accent-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                      : "text-muted-foreground",
                   )}
                 >
                   <Link href={href}>
@@ -87,7 +87,7 @@ export function Header({ userName }: { userName: string }) {
             <Button
               variant="ghost"
               size="icon"
-              className="text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground"
               onClick={handleLogout}
               title="Çikis Yap"
             >

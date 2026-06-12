@@ -28,7 +28,8 @@ interface OriginalityReportViewProps {
     tavilyResults: {
       items: {
         fact: string;
-        result: string;
+        result: "VERIFIED" | "PARTIALLY_VERIFIED" | "REFUTED";
+        resultNote?: string;
         sourceUrl: string;
       }[];
       briefingNote: string;
@@ -66,6 +67,19 @@ const statusTranslation: Record<string, string> = {
   ORIGINAL: "ÖZGÜN",
 };
 
+const tavilyStatusTranslation: Record<string, string> = {
+  VERIFIED: "Doğrulandı.",
+  PARTIALLY_VERIFIED: "Kısmen Doğrulandı.",
+  REFUTED: "Yanlışlandı.",
+};
+
+const tavilyBadgeColor: Record<string, string> = {
+  VERIFIED: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
+  PARTIALLY_VERIFIED:
+    "bg-amber-500/10 border border-amber-500/20 text-amber-400",
+  REFUTED: "bg-destructive/10 border border-destructive/20 text-destructive",
+};
+
 /**
  * Özgünlük ve Maddi Doğrulama Raporu Görünümü (Client Component).
  * Tavily ve Tezara sonuçlarını, nihai risk düzeyini ve akademik tavsiyeleri
@@ -79,14 +93,12 @@ export function OriginalityReportView({
 
   const { tavilyResults, tezaraResults } = reportData;
 
-  let badgeColor = "bg-primary text-primary-foreground border border-primary";
+  let badgeColor = "bg-success/10 border border-success/20 text-success";
   if (tezaraResults.originalityBadge === "HIGH_RISK") {
     badgeColor =
-      "bg-destructive text-destructive-foreground border border-destructive";
+      "bg-destructive/10 border border-destructive/20 text-destructive";
   } else if (tezaraResults.originalityBadge === "MEDIUM_RISK") {
-    badgeColor = "bg-accent text-accent-foreground border border-accent";
-  } else if (tezaraResults.originalityBadge === "ZERO_RISK") {
-    badgeColor = "bg-primary text-primary-foreground border-2 border-primary";
+    badgeColor = "bg-warning/10 border border-warning/20 text-warning";
   }
 
   const riskLevel: "HIGH" | "MEDIUM" | "LOW" =
@@ -141,9 +153,9 @@ export function OriginalityReportView({
           </p>
         </div>
         <div
-          className={`flex items-center gap-2 px-6 py-3 rounded-full text-base font-semibold tracking-wider ${badgeColor}`}
+          className={`flex items-center gap-2 px-3 py-3 rounded-full text-xs font-semibold tracking-wider ${badgeColor}`}
         >
-          <Award className="w-5 h-5 animate-pulse" />
+          <Award className="w-5 h-5" />
           <span>
             {statusTranslation[tezaraResults.originalityBadge] ||
               tezaraResults.originalityBadge}
@@ -152,19 +164,19 @@ export function OriginalityReportView({
       </div>
 
       {/* Section A: Tavily Fact Checking */}
-      <Card className="bg-card border-border shadow-sm">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2 text-foreground">
+          <CardTitle className="flex items-center gap-2 text-foreground">
             <ShieldCheck className="w-5 h-5 text-primary" />
             Maddi Doğrulama ve Bilgi Güvencesi
           </CardTitle>
-          <CardDescription className="text-xs">
+          <CardDescription>
             Tez matrisindeki olgusal iddialar ve tarihsel verilerin arama motoru
             sonuçlarıyla doğrulanması.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="p-4 bg-muted border border-border rounded-lg leading-relaxed text-sm text-foreground whitespace-pre-line">
+          <div className="p-4 bg-muted border border-border rounded-lg leading-relaxed text-sm text-muted-foreground whitespace-pre-line">
             <span className="font-semibold text-foreground mb-2 flex items-center gap-2">
               <FileText className="w-4 h-4 text-primary" />
               Doğrulama Özeti ve Analiz Notu
@@ -189,27 +201,36 @@ export function OriginalityReportView({
               </thead>
               <tbody className="divide-y divide-border">
                 {tavilyResults.items?.map((item, idx) => {
-                  let tagClass = "text-primary";
-                  if (item.result.toLowerCase().includes("kısmen")) {
-                    tagClass = "text-accent";
-                  } else if (
-                    item.result.toLowerCase().includes("doğrulanamadı") ||
-                    item.result.toLowerCase().includes("dikkat")
-                  ) {
-                    tagClass = "text-destructive";
-                  }
+                  const isKnownEnum = [
+                    "VERIFIED",
+                    "PARTIALLY_VERIFIED",
+                    "REFUTED",
+                  ].includes(item.result);
 
                   return (
                     <tr key={idx} className="hover:bg-muted transition-colors">
                       <td className="p-3 text-sm font-normal text-foreground leading-relaxed">
                         {item.fact}
                       </td>
-                      <td className="p-3 text-center">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-normal ${tagClass}`}
-                        >
-                          {item.result}
-                        </span>
+                      <td className="p-3 text-left max-w-[320px]">
+                        {isKnownEnum ? (
+                          <div className="space-y-2">
+                            <span
+                              className={`inline-flex border px-2 py-0.5 rounded text-[11px] font-medium tracking-wide ${tavilyBadgeColor[item.result] ?? "bg-primary/10 border border-primary/20 text-primary"}`}
+                            >
+                              {tavilyStatusTranslation[item.result]}
+                            </span>
+                            {item.resultNote && (
+                              <p className="text-zinc-300 font-light text-xs leading-relaxed">
+                                {item.resultNote}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground leading-relaxed">
+                            {item.result}
+                          </span>
+                        )}
                       </td>
                       <td className="p-3 text-center">
                         {item.sourceUrl ? (
@@ -237,13 +258,13 @@ export function OriginalityReportView({
       </Card>
 
       {/* Section B: Tezara Cross Literature comparison */}
-      <Card className="bg-card border-border shadow-sm">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2 text-foreground">
+          <CardTitle className="flex items-center gap-2 text-foreground">
             <GitCompare className="w-5 h-5 text-primary" />
             Literatür Çakışma ve Karşılaştırma Matrisi (4 Eksen)
           </CardTitle>
-          <CardDescription className="text-xs">
+          <CardDescription>
             Benzer akademik çalışmaların konu, kuramsal çerçeve, metodoloji ve
             bağlam eksenlerinde incelenmesi.
           </CardDescription>
@@ -288,18 +309,18 @@ export function OriginalityReportView({
                   (() => {
                     const getAxisBadge = (val: string) => {
                       if (val === "OVERLAPPING")
-                        return "bg-destructive text-destructive-foreground border border-destructive";
+                        return "bg-destructive/10 border border-destructive/20 text-destructive";
                       if (val === "PARTIAL")
-                        return "bg-accent text-accent-foreground border border-accent";
-                      return "bg-primary text-primary-foreground border border-primary";
+                        return "bg-warning/10 border border-warning/20 text-warning";
+                      return "bg-success/10 border border-success/20 text-success";
                     };
 
                     const getLevelBadge = (val: string) => {
                       if (val === "HIGH_RISK")
-                        return "bg-destructive text-destructive-foreground border border-destructive";
+                        return "bg-destructive/10 border border-destructive/20 text-destructive";
                       if (val === "MEDIUM_RISK")
-                        return "bg-accent text-accent-foreground border border-accent";
-                      return "bg-primary text-primary-foreground border border-primary";
+                        return "bg-warning/10 border border-warning/20 text-warning";
+                      return "bg-success/10 border border-success/20 text-success";
                     };
 
                     const sorted = useMemo(() => {
@@ -393,7 +414,7 @@ export function OriginalityReportView({
             <Compass className="w-5 h-5 text-primary" />
             Yol Haritası ve Akademik Tavsiyeler
           </h3>
-          <div className="text-sm leading-loose text-foreground font-light whitespace-pre-line bg-muted p-4 border border-border rounded-lg">
+          <div className="text-sm leading-loose text-muted-foreground font-light whitespace-pre-line bg-muted p-4 border border-border rounded-lg">
             {tezaraResults.strategicRecommendations}
           </div>
         </div>
@@ -401,16 +422,16 @@ export function OriginalityReportView({
 
       {/* Action Footer */}
       {riskLevel === "HIGH" ? (
-        <div className="flex justify-center pt-4">
+        <div className="flex justify-center">
           <StartOverButton variant="default" className="w-full md:w-auto" />
         </div>
       ) : riskLevel === "MEDIUM" ? (
-        <div className="flex justify-end gap-3 pt-4">
+        <div className="flex justify-end gap-3">
           <StartOverButton variant="outline" />
           <Button
             onClick={handleProceed}
             disabled={isPending}
-            className="px-8 py-6 text-base font-semibold"
+            className="btn-academic-hero"
           >
             {isPending ? (
               <span className="flex items-center gap-2">
@@ -423,11 +444,11 @@ export function OriginalityReportView({
           </Button>
         </div>
       ) : (
-        <div className="flex justify-end pt-4">
+        <div className="flex justify-end">
           <Button
             onClick={handleProceed}
             disabled={isPending}
-            className="px-8 py-6 text-base font-semibold"
+            className="btn-academic-hero"
           >
             {isPending ? (
               <span className="flex items-center gap-2">

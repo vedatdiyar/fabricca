@@ -19,59 +19,53 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
-
   --radius: 0.5rem;
 }
 
 :root {
-  --background: #171a1c;
-  --foreground: #eff1f4;
-  --card: #22262e;
-  --card-foreground: #eff1f4;
-  --popover: #22262e;
-  --popover-foreground: #eff1f4;
-  --primary: #1cb9b9;
-  --primary-foreground: #f5faf7;
-  --secondary: #0e6092;
-  --secondary-foreground: #16c47f;
-  --muted: #1e2127;
-  --muted-foreground: #838c9c;
-  --accent: #096ab4;
-  --accent-foreground: #eff1f4;
-  --destructive: #d61c1c;
+  --background: #0f141c;
+  --foreground: #d8dee9;
+
+  --card: #161d29;
+  --card-foreground: #e5e9f0;
+
+  --popover: #121822;
+  --popover-foreground: #d8dee9;
+
+  --primary: #88c0d0;
+  --primary-foreground: #0f141c;
+
+  --secondary: #222d3e;
+  --secondary-foreground: #cbd5e1;
+
+  --accent: #222d3e;
+  --accent-foreground: #8fbcbb;
+
+  --muted: #1a2332;
+  --muted-foreground: #cbd5e1;
+
+  --destructive: #bf616a;
   --destructive-foreground: #ffffff;
-  --border: #2f3540;
-  --input: #262b34;
-  --ring: #0fa363;
-  --chart-1: #ffc107;
-  --chart-2: #2196f3;
-  --chart-3: #e91e63;
-  --chart-4: #9c27b0;
-  --chart-5: #10b981;
-  --sidebar: #16191e;
-  --sidebar-foreground: #eff1f4;
-  --sidebar-primary: #0fa363;
-  --sidebar-primary-foreground: #f5faf7;
-  --sidebar-accent: #2f3540;
-  --sidebar-accent-foreground: #eff1f4;
-  --sidebar-border: #2f3540;
-  --sidebar-ring: #0fa363;
+
+  --success: #34d399;
+  --success-foreground: #ffffff;
+  --warning: #fbbf24;
+  --warning-foreground: #1a2332;
+  --info: #60a5fa;
+  --info-foreground: #ffffff;
+
+  --border: #263347;
+  --input: #1a2332;
+  --ring: #88c0d0;
 }
 
 @layer base {
@@ -103,52 +97,37 @@
     @apply text-base leading-relaxed tracking-normal;
   }
   .header-nav-item {
-    @apply flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors;
+    @apply flex items-center px-3 py-2 cursor-pointer;
   }
   .bottom-nav-item {
-    @apply flex flex-col items-center gap-0.5 rounded-md px-3 py-1 text-xs font-medium transition-colors;
+    @apply flex flex-col items-center gap-0.5 px-3 py-1 text-xs font-medium transition-colors cursor-pointer;
   }
 
-  /* Scrollbar rengini de siber temaya uydurduk */
-  .scrollbar-theme {
+  .btn-academic-hero {
+    @apply px-8 py-5 text-base font-semibold tracking-wide transition-all duration-200 active:scale-[0.98] cursor-pointer;
+  }
+
+  /* Küresel Modern Scrollbar (Siber Tema) */
+  * {
     scrollbar-width: thin;
     scrollbar-color: var(--color-border) transparent;
   }
-  .scrollbar-theme::-webkit-scrollbar {
+  ::-webkit-scrollbar {
     width: 6px;
+    height: 6px;
   }
-  .scrollbar-theme::-webkit-scrollbar-track {
+  ::-webkit-scrollbar-track {
     background: transparent;
   }
-  .scrollbar-theme::-webkit-scrollbar-thumb {
+  ::-webkit-scrollbar-thumb {
     background-color: var(--color-border);
-    border-radius: 3px;
+    border-radius: 9999px;
   }
-  .scrollbar-theme::-webkit-scrollbar-thumb:hover {
-    background-color: var(--color-primary); /* Hover'da artık parlayacak */
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-primary);
   }
 
   .textarea-academic {
-    @apply h-[120px] overflow-y-auto resize-none leading-relaxed bg-input border-border text-foreground font-light;
-  }
-
-  /* Textarea scrollbar: ince, minimal, her zaman belli belirsiz görünür */
-  textarea.scrollbar-theme {
-    scrollbar-width: thin;
-    scrollbar-color: var(--color-border) transparent;
-    transition: scrollbar-color 0.2s ease;
-  }
-  textarea.scrollbar-theme::-webkit-scrollbar {
-    width: 4px;
-  }
-  textarea.scrollbar-theme::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  textarea.scrollbar-theme::-webkit-scrollbar-thumb {
-    background-color: var(--color-border);
-    border-radius: 2px;
-  }
-  textarea.scrollbar-theme::-webkit-scrollbar-thumb:hover {
-    background-color: var(--color-primary);
+    @apply h-[120px] overflow-y-auto resize-none leading-relaxed text-foreground font-light;
   }
 }

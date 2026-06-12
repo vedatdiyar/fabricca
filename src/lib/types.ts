@@ -32,7 +32,8 @@ export interface DeepSiftResponse {
 
 export interface TavilyEvaluationFact {
   fact: string;
-  result: string;
+  result: "VERIFIED" | "PARTIALLY_VERIFIED" | "REFUTED";
+  resultNote?: string;
   sourceUrl: string;
 }
 

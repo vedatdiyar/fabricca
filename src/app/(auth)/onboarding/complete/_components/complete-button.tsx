@@ -31,7 +31,7 @@ export function CompleteButton() {
     <Button
       onClick={handleComplete}
       disabled={isPending}
-      className="px-8 py-6 text-base font-semibold w-full sm:w-auto"
+      className="btn-academic-hero w-full sm:w-auto"
     >
       {isPending ? (
         <span className="flex items-center justify-center gap-2">

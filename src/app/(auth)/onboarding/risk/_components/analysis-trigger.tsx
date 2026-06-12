@@ -72,8 +72,8 @@ export function AnalysisTrigger() {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
         <div className="flex flex-col items-center justify-center space-y-6 max-w-md mx-auto text-center">
-          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-card border border-destructive text-destructive">
-            <AlertCircle className="w-6 h-6" />
+          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-card border border-destructive">
+            <AlertCircle className="w-6 h-6 text-destructive" />
           </div>
 
           <div className="space-y-2">
@@ -85,7 +85,7 @@ export function AnalysisTrigger() {
             </p>
           </div>
 
-          <Button onClick={runAnalysis} disabled={isPending} className="gap-2">
+          <Button onClick={runAnalysis} disabled={isPending}>
             <RefreshCw
               className={`w-4 h-4 ${isPending ? "animate-spin" : ""}`}
             />
