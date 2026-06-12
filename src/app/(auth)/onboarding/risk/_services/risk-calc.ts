@@ -58,13 +58,6 @@ export function calculateOriginalityRisk(
     return defaultResult;
   }
 
-  // Kod Seviyesinde Risk Hesaplama
-  const scoreMap: Record<"OVERLAPPING" | "PARTIAL" | "ORIGINAL", number> = {
-    OVERLAPPING: 0,
-    PARTIAL: 1,
-    ORIGINAL: 2,
-  };
-
   const overlapTable = geminiResult.overlapTable.map((item) => {
     const detail = validDetails.find((d) => d.id === item.id);
     if (!detail) {
@@ -74,34 +67,28 @@ export function calculateOriginalityRisk(
     const { subject, theory, methodology, context } = item.axes;
     let originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
 
-    // Teori Kuralı: Teori ekseni = Özgün ise diğer eksenler çakışsa bile doğrudan DÜŞÜK RİSK.
-    if (theory === "ORIGINAL") {
+    // Mantıksal Kurallar (Matematiksel Puanlama Olmaksızın)
+    // 1. Düşük Risk Koşulları: Teori veya Konu tamamen özgünse
+    if (theory === "ORIGINAL" || subject === "ORIGINAL") {
       originalityLevel = "LOW_RISK";
     }
-    // Bağlam İstisnası: Sadece Bağlam Özgün ise doğrudan ORTA RİSK.
+    // 2. Yüksek Risk Koşulları:
+    // - Konu, Teori ve Bağlam aynı anda çakışıyorsa
+    // - Veya Konu, Teori ve Metodoloji çakışıyorsa (Bağlam tamamen özgün olmadığı sürece)
     else if (
-      context === "ORIGINAL" &&
-      subject === "OVERLAPPING" &&
-      theory === "OVERLAPPING" &&
-      methodology === "OVERLAPPING"
+      (subject === "OVERLAPPING" &&
+        theory === "OVERLAPPING" &&
+        context === "OVERLAPPING") ||
+      (subject === "OVERLAPPING" &&
+        theory === "OVERLAPPING" &&
+        methodology === "OVERLAPPING" &&
+        context !== "ORIGINAL")
     ) {
-      originalityLevel = "MEDIUM_RISK";
+      originalityLevel = "HIGH_RISK";
     }
-    // Skorlama Skalası (Toplam Puan)
+    // 3. Orta Risk Koşulları: Diğer tüm kısmi benzerlik durumları
     else {
-      const totalScore =
-        scoreMap[subject] +
-        scoreMap[theory] +
-        scoreMap[methodology] +
-        scoreMap[context];
-
-      if (totalScore <= 2) {
-        originalityLevel = "HIGH_RISK";
-      } else if (totalScore <= 5) {
-        originalityLevel = "MEDIUM_RISK";
-      } else {
-        originalityLevel = "LOW_RISK";
-      }
+      originalityLevel = "MEDIUM_RISK";
     }
 
     return {

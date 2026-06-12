@@ -180,7 +180,7 @@ export async function siftAndFetchDetails(
   let final5Ids: number[] = [];
   try {
     const deepSiftResult = await generateStructuredContent<DeepSiftResponse>(
-      "gemini-3.5-flash",
+      "gemini-3.1-flash-lite",
       DEEP_SIFTING_SYSTEM_INSTRUCTION,
       buildDeepSiftingPrompt({
         ...params,
