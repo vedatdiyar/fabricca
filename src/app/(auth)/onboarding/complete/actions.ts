@@ -113,6 +113,7 @@ export async function generateThesisBoxesAction(
       geminiPrompt,
       thesisBoxGenerationSchema,
       log,
+      { temperature: 0.3 },
     );
 
     const draftBoxes = generationResult.boxes || [];
