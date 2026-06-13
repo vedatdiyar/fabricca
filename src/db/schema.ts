@@ -98,7 +98,7 @@ export const originalityReports = pgTable("originality_reports", {
           subject: "OVERLAPPING" | "ORIGINAL";
           theory: "OVERLAPPING" | "ORIGINAL";
           methodology: "OVERLAPPING" | "ORIGINAL";
-          context: "OVERLAPPING" | "ORIGINAL";
+          context?: "OVERLAPPING" | "ORIGINAL";
         };
         originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
         comparisonNote?: string;

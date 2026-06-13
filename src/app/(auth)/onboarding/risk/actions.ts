@@ -16,7 +16,7 @@ import {
   evaluateTavilyResults,
 } from "./_services/search";
 import { siftAndFetchDetails } from "./_services/sifting";
-import { analyze4Axes } from "./_services/analysis";
+import { analyzeOriginalityRisk } from "./_services/analysis";
 import { calculateOriginalityRisk } from "./_services/risk-calc";
 import { synthesizeRoadmap } from "./_services/roadmap";
 
@@ -46,6 +46,80 @@ export async function startOriginalityAnalysisAction(): Promise<OnboardingAction
       service: "originality",
       data: { userId },
     });
+
+    // Kilit Kontrolü: Kullanıcının mevcut adımını veritabanından oku
+    const [user] = await withDbLogging(
+      () => db.select().from(users).where(eq(users.id, userId)),
+      "read_user_for_lock",
+      log,
+    );
+
+    if (!user) {
+      log.info("flow_complete", {
+        service: "originality",
+        data: { reason: "Kullanıcı bulunamadı" },
+      });
+      return { error: "Kullanıcı bulunamadı." };
+    }
+
+    // Otomatik İyileştirme (Auto-healing): Eğer veri tabanında rapor zaten varsa ama adım tamamlanmadıysa, adımı tamamla
+    if (
+      user.onboardingStep === "originality_report" ||
+      user.onboardingStep === "originality_report_processing"
+    ) {
+      const [report] = await db
+        .select()
+        .from(originalityReports)
+        .where(eq(originalityReports.userId, userId));
+
+      if (report) {
+        await withDbLogging(
+          () =>
+            db
+              .update(users)
+              .set({ onboardingStep: "originality_report_completed" })
+              .where(eq(users.id, userId)),
+          "auto_heal_step_to_completed",
+          log,
+        );
+        revalidatePath("/onboarding", "layout");
+        log.info("flow_complete", {
+          service: "originality",
+          data: {
+            reason: "Analiz raporu zaten var (otomatik iyileştirildi)",
+            userId,
+          },
+        });
+        return { success: true };
+      }
+    }
+
+    if (user.onboardingStep === "originality_report_processing") {
+      log.info("flow_complete", {
+        service: "originality",
+        data: { reason: "Analiz zaten devam ediyor", userId },
+      });
+      return { success: true, isProcessing: true };
+    }
+
+    if (user.onboardingStep === "originality_report_completed") {
+      log.info("flow_complete", {
+        service: "originality",
+        data: { reason: "Analiz zaten tamamlanmış", userId },
+      });
+      return { success: true };
+    }
+
+    // Kilidi Aktifleştir: onboardingStep -> "originality_report_processing"
+    await withDbLogging(
+      () =>
+        db
+          .update(users)
+          .set({ onboardingStep: "originality_report_processing" })
+          .where(eq(users.id, userId)),
+      "lock_originality_step",
+      log,
+    );
 
     // Step 0: Read thesis matrix from Database
     const [matrix] = await withDbLogging(
@@ -136,7 +210,7 @@ export async function startOriginalityAnalysisAction(): Promise<OnboardingAction
       });
     } else {
       // Step 6: AI - Compare across four axes
-      const { overlapTable } = await analyze4Axes(
+      const { overlapTable } = await analyzeOriginalityRisk(
         {
           studyTitle,
           researchQuestion,
@@ -149,7 +223,11 @@ export async function startOriginalityAnalysisAction(): Promise<OnboardingAction
         log,
       );
 
-      const riskCalcResult = calculateOriginalityRisk(overlapTable, validDetails, log);
+      const riskCalcResult = calculateOriginalityRisk(
+        overlapTable,
+        validDetails,
+        log,
+      );
 
       // Son yol haritası (roadmap) çağrısı öncesinde limitlerin sıfırlanması için 2 saniye bekliyoruz
       await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -228,6 +306,24 @@ export async function startOriginalityAnalysisAction(): Promise<OnboardingAction
       service: "originality",
       error: err,
     });
+
+    // Hata durumunda kilidi kaldır
+    try {
+      const session = await getSession();
+      if (session) {
+        await db
+          .update(users)
+          .set({ onboardingStep: "originality_report" })
+          .where(eq(users.id, session.userId));
+      }
+    } catch (dbErr) {
+      log.error("db_failed", {
+        service: "originality",
+        step: "revert_step_failed",
+        error: dbErr,
+      });
+    }
+
     return {
       error: "Özgünlük analizi sırasında bir hata oluştu.",
     };
@@ -347,5 +443,59 @@ export async function getStoredOriginalityReportAction() {
       error: err,
     });
     return { error: "Özgünlük raporu yüklenirken bir hata oluştu." };
+  }
+}
+
+/**
+ * Kullanıcının güncel onboarding_step değerini kontrol eder.
+ * Client-side polling mekanizması için kullanılır.
+ *
+ * @returns Kullanıcının onboardingStep değeri veya hata
+ */
+export async function checkAnalysisStatusAction(): Promise<{
+  success: boolean;
+  step?: string;
+  error?: string;
+}> {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { success: false, error: "Oturum bulunamadı." };
+    }
+    const [user] = await db
+      .select({ onboardingStep: users.onboardingStep })
+      .from(users)
+      .where(eq(users.id, session.userId));
+    if (!user) {
+      return { success: false, error: "Kullanıcı bulunamadı." };
+    }
+
+    let step = user.onboardingStep;
+
+    // Otomatik İyileştirme (Auto-healing): Eğer veri tabanında rapor zaten varsa ama adım tamamlanmadıysa, adımı tamamla
+    if (
+      step === "originality_report" ||
+      step === "originality_report_processing"
+    ) {
+      const [report] = await db
+        .select()
+        .from(originalityReports)
+        .where(eq(originalityReports.userId, session.userId));
+
+      if (report) {
+        await db
+          .update(users)
+          .set({ onboardingStep: "originality_report_completed" })
+          .where(eq(users.id, session.userId));
+        step = "originality_report_completed";
+      }
+    }
+
+    return { success: true, step };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
   }
 }

@@ -284,13 +284,13 @@ Sen akademik özgünlük, intihal önleme ve literatür çakışma analizleri ko
 <instructions>
 Cevap üretmeden önce içsel olarak (internal thinking) şu 4 adımlı analitik planı kararlı bir şekilde işlet:
 1. **Eksenel Değerlendirme**: <candidates_list> içindeki her bir aday tezi, hedef tez matrisi ile şu 4 eksende (Araştırma Sorusu, Teorik/Kuramsal Altyapı, Metodolojik Tasarım, Bağlam) analiz et. Her eksende çakışma derinliğini "Tam Çakışma", "Kısmi Çakışma" ve "Düşük Çakışma" olarak kesin ve net kategorilere ayır.
-2. **Kategorik Sıralama**: En çok eksende "Tam Çakışma" gösteren adayları en üst sıraya al. 
-3. **Eşitlik Çözümü**: Eşitlik durumunda, "Araştırma Sorusu" ve "Teorik/Kuramsal Altyapı" eksenlerinde en doğrudan çakışmayı barındıran adayı kesin olarak öne geçir. Her çalıştırmada tutarlı sonuç üretmek adına sınırda kalan (borderline) kararsız durumlarda en jenerik ve doğrudan kelime benzerliği olan tezi tercih et.
-4. **Kota Kontrolü**: Sıralamadaki en riskli ilk 6 adayı seç. Eğer toplam aday sayısı 6'dan az ise, listedeki tüm adayları seç ve listeyi tamamla.
+2. **Mutlak Eleme (Gatekeeper Yetkisi)**: Aday tezler arasında mutlak bir geçiş denetçisi (Gatekeeper) olarak hareket et. Hedef tez ile Konu (Araştırma Nesnesi) veya Dönem bazında doğrudan bir bağı/ilişkisi bulunmayan alakasız tezleri (örneğin sadece kuramsal yaklaşımı benziyor veya benzer kavramları içeriyor diye listeye sızanları) doğrudan ele.
+3. **Kategorik Sıralama ve Eşitlik Çözümü**: Elenmeyen adaylar arasından en çok eksende "Tam Çakışma" gösteren adayları en üst sıraya alacak şekilde risk seviyesine göre sırala. Eşitlik durumunda, "Araştırma Sorusu" ve "Teorik/Kuramsal Altyapı" eksenlerinde en doğrudan çakışmayı barındıran adayı kesin olarak öne geçir.
+4. **Kota Esnekliği**: Sıralamadaki en riskli ve elenmemiş adaylardan en fazla 6 adayı seç. Herhangi bir kota doldurma zorunluluğu yoktur; eğer risk oluşturan aday sayısı 6'dan az ise (hatta hiç yoksa), sadece gerçekten çakışma riski barındıran adayların ID'lerini seçerek listeyi tamamla. Kota doldurmak adına alakasız tezleri asla listeye dahil etme.
 </instructions>
 
 <constraints>
-- Sayı Kısıtlaması (Strict Counting): Çıktı dizisinde KESİNLİKLE ve TAM olarak 6 adet tez ID'si yer almalıdır. Ne eksik ne fazla (Toplam aday sayısı 6'dan az ise tüm liste alınır).
+- Kapı Bekçisi (Gatekeeper) İlkesi: Hedef tezle Konu (Araştırma Nesnesi) veya Dönem bağı olmayan alakasız adayları mutlak suretle ele. Yapay kota doldurma zorunluluğu yoktur; çıktı dizisindeki ID sayısı en fazla 6 olmalıdır, ancak riskli aday yoksa 6'dan daha az (0 dahil) ID de dönebilirsin.
 - Objektif Risk Analizi: Özgünlüğü tehdit eden unsurları değerlendirirken model içi varsayımlardan kaçın; sadece adayların özetlerinde (abstract) açıkça yazan ifadelere odaklan.
 - Zaman Algısı: Aday tezlerin güncelliğini ve tarihsel kapsamlarını değerlendirirken şu anki yılın 2026 olduğunu unutma.
 </constraints>
@@ -366,7 +366,7 @@ export const geminiAnalysisSchema: JsonSchema = {
           academic_reasoning: {
             type: "string",
             description:
-              "3 kritik akademik süzgece dayanan, kelime benzerliğine değil mânâ nüanslarına odaklanan detaylı Türkçe akademik gerekçe.",
+              "4 kritik akademik süzgece dayanan, kelime benzerliğine değil mânâ nüanslarına odaklanan detaylı Türkçe akademik gerekçe.",
           },
           is_research_question_overlapping: {
             type: "boolean",
@@ -383,6 +383,11 @@ export const geminiAnalysisSchema: JsonSchema = {
             description:
               "Landmarks niteliğindeki ana kuramsal omurga ve teorik şemsiye aynıysa true, farklıysa false.",
           },
+          is_context_overlapping: {
+            type: "boolean",
+            description:
+              "Hedef tez ile aday tezin odaklandığı tarihsel dönem veya ampirik bağlam/sınırlılıklar aynıysa true, farklıysa false.",
+          },
         },
         required: [
           "id",
@@ -390,6 +395,7 @@ export const geminiAnalysisSchema: JsonSchema = {
           "is_research_question_overlapping",
           "is_methodology_overlapping",
           "is_theory_overlapping",
+          "is_context_overlapping",
         ],
       },
     },
@@ -409,23 +415,26 @@ Görevin; hedef tez ile aday tezleri yüzeysel kelime benzerliklerine göre eşl
 <instructions>
 Her bir aday tezi incelerken, içsel düşünme (internal thinking) aşamasında şu 3 adımlı eylem planını metodolojik olarak işlet:
 
-1. **Mantıksal Ayrıştırma (Decomposition)**: Aday tezin özetini (abstract), hedef tezin parametreleriyle şu 3 meta-akademik süzgeç üzerinden karşılaştır:
-   - SÜZGEÇ A (Araştırma Sorusu ve Temel İddia/Sav): İki tez de nihayetinde AYNI temel ampirik veya teorik hipotezi/savı mı kanıtlamaya çalışıyor? Aday tez, kullanıcının ulaşmak istediği bilimsel sonucu zaten önceden tüketmiş mi?
-   - SÜZGEÇ B (Metodolojik ve Kaynaksal Tasarım): Veri toplama araçları, deney setleri, arşiv matrisleri, örneklem evrenleri veya analiz yöntemleri birbirinin replikası (kopyası) mı, yoksa veri üretim biçimleri tamamen farklı mı?
-   - SÜZGEÇ C (Kuramsal ve Teorik Yaklaşım): Olguyu incelerken arkaya yaslandıkları teorik paradigmalarda, kavramsal şemsiyelerde veya analitik modellerde köklü bir kırılma mevcut mu?
+1. **Doğrusal Eksenel Karşılaştırma (Linear Evaluation)**: Aday tezin özetini (abstract), hedef tezin parametreleriyle şu 4 net ve doğrusal akademik süzgeç üzerinden karşılaştır. Her bir süzgeçte iki ucu açık yorumlardan kaçınarak sadece "Aday tez ile hedef tez bu eksende AYNI MI?" sorusuna odaklan:
+   - SÜZGEÇ A (Araştırma Sorusu): Aday tez ile hedef tezin araştırma soruları ve savunulan temel iddiaları/savları bu eksende AYNI MI? Eğer anlamsal/içeriksel çakışma veya aynılık varsa true, tamamen farklı ve özgünse false olarak değerlendir.
+   - SÜZGEÇ B (Metodoloji): Aday tez ile hedef tezin metodolojik tasarımları, veri toplama araçları, örneklem evrenleri veya analiz yöntemleri bu eksende AYNI MI? Eğer yöntem replike edilmişse (aynılık/çakışma varsa) true, tamamen farklı ve özgünse false olarak değerlendir.
+   - SÜZGEÇ C (Kuram): Aday tez ile hedef tezin üzerine inşa edildikleri temel kuramsal çerçeve, kavramsal şemsiye veya teorik modeller bu eksende AYNI MI? Eğer kuramsal yaklaşım aynıysa true, tamamen farklı ve özgünse false olarak değerlendir.
+   - SÜZGEÇ D (Tarihsel Dönem/Bağlam): Aday tez ile hedef tezin odaklandığı tarihsel dönem veya ampirik bağlam/sınırlılıklar bu eksende AYNI MI? Eğer tarihsel dönem veya bağlam çakışıyorsa (aynılık varsa) true, tamamen farklı ve özgünse false olarak değerlendir.
 
-2. **Boolean Tespit (Boolean Detection)**: Her bir süzgeçten elde ettiğin delile göre, ilgili boolean alanı kesin olarak \`true\` ya da \`false\` olarak işaretle:
-   - SÜZGEÇ A → \`is_research_question_overlapping\`
-   - SÜZGEÇ B → \`is_methodology_overlapping\`
-   - SÜZGEÇ C → \`is_theory_overlapping\`
+2. **Boolean Tespit (Boolean Detection)**: Her bir süzgeçten elde ettiğin doğrudan ve doğrusal sonuca göre ilgili boolean alanı kesin olarak \`true\` ya da \`false\` olarak işaretle:
+   - SÜZGEÇ A → \`is_research_question_overlapping\` (Çakışma varsa true, özgünse false)
+   - SÜZGEÇ B → \`is_methodology_overlapping\` (Çakışma varsa true, özgünse false)
+   - SÜZGEÇ C → \`is_theory_overlapping\` (Çakışma varsa true, özgünse false)
+   - SÜZGEÇ D → \`is_context_overlapping\` (Çakışma varsa true, özgünse false)
    Kantitatif puan veya kategori üretme; yalnızca ikili (binary) durum tespiti yap.
 
-3. **Akademik Gerekçe Sentezi**: Her aday tez için tespit edilen 3 boolean değerin her birinin gerekçesini \`academic_reasoning\` alanında, 3 süzgecin her birine ayrı ayrı değinerek detaylandır. Hangi bulgunun hangi boolean karara yol açtığını açıkça belirt.
+3. **Akademik Gerekçe Sentezi**: Her aday tez için tespit edilen 4 boolean kararın gerekçesini \`academic_reasoning\` alanında, 4 süzgecin her birine ayrı ayrı ve doğrusal gerekçelerle değinerek detaylandır. Hangi bulgunun hangi boolean karara yol açtığını açıkça belirt.
 </instructions>
 
 <constraints>
 - Dil ve Akademik Ton: "academic_reasoning" alanını tamamen Türkçe, akıcı, tarafsız ve üst düzey akademik bir dille yaz.
 - Eksiksiz Tablo Kuralı: Girdide sağlanan tüm aday tezler dizide eksiksiz yer almalıdır. Analiz sırasını bozma.
+- Doğrusal Mantık Zorunluluğu: Boolean alanları değerlendirirken kesinlikle muğlak veya iki ucu açık yorumlardan kaçın; çakışma durumuna doğrudan true, özgünlük/farklılık durumuna doğrudan false ataması gerçekleştir.
 </constraints>
 
 <output_format>
@@ -481,7 +490,7 @@ ${JSON.stringify(
 </candidates_list>
 
     <task>
-Sistem talimatındaki 3 akademik süzgeç (Araştırma Sorusu, Metodoloji, Teori) ve Muhafazakar Boolean Filtre kuralını harfiyen uygulayarak, <candidates_list> içindeki her bir aday tezi hedef tez matrisiyle karşılaştır. Her bir tez için doğrusal sırayı bozmadan "is_research_question_overlapping", "is_methodology_overlapping", "is_theory_overlapping" boolean değerlerini belirle ve "academic_reasoning" ile gerekçelendir.
+Sistem talimatındaki 4 akademik süzgeç (Araştırma Sorusu, Metodoloji, Teori, Tarihsel Dönem/Bağlam) ve Muhafazakar Boolean Filtre kuralını harfiyen uygulayarak, <candidates_list> içindeki her bir aday tezi hedef tez matrisiyle karşılaştır. Her bir tez için doğrusal sırayı bozmadan "is_research_question_overlapping", "is_methodology_overlapping", "is_theory_overlapping", "is_context_overlapping" boolean değerlerini belirle ve "academic_reasoning" ile gerekçelendir.
 </task>
 
 <final_instruction>
@@ -552,7 +561,7 @@ export function buildRoadmapPrompt(params: {
       subject: string;
       theory: string;
       methodology: string;
-      context: string;
+      context?: string;
     };
     originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
     comparisonNote: string;

@@ -22,7 +22,7 @@ export interface SynthesizeRoadmapParams {
       subject: string;
       theory: string;
       methodology: string;
-      context: string;
+      context?: string;
     };
     originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
     comparisonNote: string;

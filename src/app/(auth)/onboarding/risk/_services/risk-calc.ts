@@ -9,12 +9,15 @@ export interface CalculatedOverlapItem {
   year: number;
   thesisType: string;
   department: string;
-  academic_reasoning: string;
-  is_research_question_overlapping: boolean;
-  is_methodology_overlapping: boolean;
-  is_theory_overlapping: boolean;
+  comparisonNote: string;
+  axes: {
+    subject: "OVERLAPPING" | "ORIGINAL";
+    theory: "OVERLAPPING" | "ORIGINAL";
+    methodology: "OVERLAPPING" | "ORIGINAL";
+    context?: "OVERLAPPING" | "ORIGINAL";
+  };
+  originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
   calculated_score: number;
-  badge: "LOW" | "MEDIUM" | "HIGH";
 }
 
 export interface CalculatedOriginalityRiskResult {
@@ -40,6 +43,7 @@ export function calculateOriginalityRisk(
     is_research_question_overlapping: boolean;
     is_methodology_overlapping: boolean;
     is_theory_overlapping: boolean;
+    is_context_overlapping: boolean;
   }>,
   validDetails: TezaraThesisDetails[],
   log: Logger,
@@ -72,32 +76,27 @@ export function calculateOriginalityRisk(
       is_research_question_overlapping,
       is_methodology_overlapping,
       is_theory_overlapping,
+      is_context_overlapping = false,
     } = item;
-    const trueCount = [
-      is_research_question_overlapping,
-      is_methodology_overlapping,
-      is_theory_overlapping,
-    ].filter(Boolean).length;
 
-    let calculated_score: number;
-    let badge: "LOW" | "MEDIUM" | "HIGH";
+    // Ağırlıklı Puanlama:
+    // - Araştırma Nesnesi/Konu Kesişmesi = 40 puan
+    // - Tarihsel Dönem Kesişmesi = 30 puan
+    // - Metodoloji/Arşiv Kesişmesi = 20 puan
+    // - Kuramsal Çerçeve Ortaklığı = 10 puan
+    let calculated_score = 0;
+    if (is_research_question_overlapping) calculated_score += 40;
+    if (is_context_overlapping) calculated_score += 30;
+    if (is_methodology_overlapping) calculated_score += 20;
+    if (is_theory_overlapping) calculated_score += 10;
 
-    if (
-      is_research_question_overlapping &&
-      is_methodology_overlapping &&
-      is_theory_overlapping
-    ) {
-      calculated_score = 100;
-      badge = "HIGH";
-    } else if (
-      (is_research_question_overlapping && is_methodology_overlapping) ||
-      trueCount >= 2
-    ) {
-      calculated_score = 50;
-      badge = "MEDIUM";
+    let originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
+    if (calculated_score >= 70) {
+      originalityLevel = "HIGH_RISK";
+    } else if (calculated_score <= 30) {
+      originalityLevel = "LOW_RISK";
     } else {
-      calculated_score = 15;
-      badge = "LOW";
+      originalityLevel = "MEDIUM_RISK";
     }
 
     return {
@@ -108,12 +107,23 @@ export function calculateOriginalityRisk(
       year: detail.year,
       thesisType: detail.thesisType,
       department: detail.department,
-      academic_reasoning: item.academic_reasoning,
-      is_research_question_overlapping,
-      is_methodology_overlapping,
-      is_theory_overlapping,
+      comparisonNote: item.academic_reasoning,
+      axes: {
+        subject: (is_research_question_overlapping
+          ? "OVERLAPPING"
+          : "ORIGINAL") as "OVERLAPPING" | "ORIGINAL",
+        theory: (is_theory_overlapping ? "OVERLAPPING" : "ORIGINAL") as
+          | "OVERLAPPING"
+          | "ORIGINAL",
+        methodology: (is_methodology_overlapping
+          ? "OVERLAPPING"
+          : "ORIGINAL") as "OVERLAPPING" | "ORIGINAL",
+        context: (is_context_overlapping ? "OVERLAPPING" : "ORIGINAL") as
+          | "OVERLAPPING"
+          | "ORIGINAL",
+      },
+      originalityLevel,
       calculated_score,
-      badge,
     };
   });
 
@@ -123,11 +133,11 @@ export function calculateOriginalityRisk(
   const riskPercentage = maxScore;
 
   let originalityBadge: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
-  if (riskPercentage === 100) {
+  if (riskPercentage >= 70) {
     originalityBadge = "HIGH_RISK";
-  } else if (riskPercentage === 50) {
+  } else if (riskPercentage > 30) {
     originalityBadge = "MEDIUM_RISK";
-  } else if (riskPercentage === 15) {
+  } else if (riskPercentage > 0) {
     originalityBadge = "LOW_RISK";
   } else {
     originalityBadge = "ZERO_RISK";

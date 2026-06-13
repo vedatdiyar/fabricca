@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState, useTransition, useRef } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
-import { startOriginalityAnalysisAction } from "../actions";
+import {
+  startOriginalityAnalysisAction,
+  checkAnalysisStatusAction,
+} from "../actions";
 import { ErrorDisplay } from "@/components/error-display";
 
 /**
@@ -18,41 +21,94 @@ const STEPS = [
   "Nihai risk seviyesi ve tavsiyeler hazırlanıyor...",
 ];
 
-export function AnalysisTrigger() {
+export interface AnalysisTriggerProps {
+  initialStep: string;
+}
+
+export function AnalysisTrigger({ initialStep }: AnalysisTriggerProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const hasCalledRef = useRef(false);
+  const [isPolling, setIsPolling] = useState(
+    initialStep === "originality_report_processing",
+  );
   const [error, setError] = useState<unknown>(null);
   const [secondsPassed, setSecondsPassed] = useState(0);
 
-  const runAnalysis = (force = false) => {
-    if (!force && hasCalledRef.current) {
-      return;
-    }
-    hasCalledRef.current = true;
+  const isLoading = isPending || isPolling;
 
+  const triggerAnalysis = () => {
     setError(null);
+    setIsPolling(false);
     startTransition(async () => {
       try {
         const result = await startOriginalityAnalysisAction();
         if (result.error) {
           setError(result.error);
+          sessionStorage.removeItem("originality_analysis_triggered");
         } else if (result.success) {
-          router.refresh();
+          if (result.isProcessing) {
+            setIsPolling(true);
+          } else {
+            sessionStorage.removeItem("originality_analysis_triggered");
+            router.refresh();
+          }
         }
       } catch (err) {
         setError(err);
+        sessionStorage.removeItem("originality_analysis_triggered");
       }
     });
   };
 
   useEffect(() => {
-    runAnalysis(false);
+    if (initialStep === "originality_report_processing") {
+      setIsPolling(true);
+      return;
+    }
+
+    const alreadyTriggered = sessionStorage.getItem(
+      "originality_analysis_triggered",
+    );
+    if (alreadyTriggered) {
+      setIsPolling(true);
+      return;
+    }
+
+    sessionStorage.setItem("originality_analysis_triggered", "true");
+    triggerAnalysis();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialStep]);
 
   useEffect(() => {
-    if (!isPending) {
+    if (!isPolling) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await checkAnalysisStatusAction();
+        if (res.success && res.step) {
+          if (res.step === "originality_report_completed") {
+            clearInterval(pollInterval);
+            setIsPolling(false);
+            sessionStorage.removeItem("originality_analysis_triggered");
+            router.refresh();
+          } else if (res.step === "originality_report") {
+            // Analiz başarısız olmuş ve geri alınmış demektir
+            clearInterval(pollInterval);
+            setIsPolling(false);
+            sessionStorage.removeItem("originality_analysis_triggered");
+            setError("Özgünlük analizi sunucu tarafında başarısız oldu.");
+          }
+        }
+      } catch (err) {
+        console.error("Polling error:", err);
+      }
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [isPolling, router]);
+
+  useEffect(() => {
+    if (!isLoading) {
       setSecondsPassed(0);
       return;
     }
@@ -60,7 +116,7 @@ export function AnalysisTrigger() {
       setSecondsPassed((prev) => prev + 1);
     }, 1000);
     return () => clearInterval(interval);
-  }, [isPending]);
+  }, [isLoading]);
 
   const activeStep =
     secondsPassed <= 3
@@ -72,7 +128,7 @@ export function AnalysisTrigger() {
           : 3;
 
   if (error) {
-    return <ErrorDisplay error={error} onRetry={() => runAnalysis(true)} />;
+    return <ErrorDisplay error={error} onRetry={triggerAnalysis} />;
   }
 
   return (

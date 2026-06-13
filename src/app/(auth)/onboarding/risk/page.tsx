@@ -4,6 +4,9 @@ import { getProfile } from "@/proxy";
 import { getStoredOriginalityReportAction } from "./actions";
 import { OriginalityReportView } from "./_components/originality-report-view";
 import { AnalysisTrigger } from "./_components/analysis-trigger";
+import { db } from "@/db";
+import { originalityReports, users } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 /**
  * Onboarding sürecinin 3. adımı: Risk Analizi Sayfası (Server Component).
@@ -15,15 +18,40 @@ export default async function OnboardingRiskPage() {
 
   if (
     profile.onboarding_step !== "originality_report" &&
+    profile.onboarding_step !== "originality_report_processing" &&
     profile.onboarding_step !== "originality_report_completed"
   ) {
     redirect("/onboarding");
   }
 
-  // Eğer analiz henüz yapılmadıysa, sayfa render aşamasında sunucu tarafında çalıştırılması yerine
-  // istemci tarafında tetiklenecek şekilde AnalysisTrigger bileşeni döndürülür.
-  if (profile.onboarding_step === "originality_report") {
-    return <AnalysisTrigger />;
+  let onboardingStep = profile.onboarding_step;
+
+  // Otomatik İyileştirme (Auto-healing): Eğer veri tabanında rapor zaten varsa ama adım tamamlanmadıysa, adımı tamamla
+  if (
+    onboardingStep === "originality_report" ||
+    onboardingStep === "originality_report_processing"
+  ) {
+    const [report] = await db
+      .select()
+      .from(originalityReports)
+      .where(eq(originalityReports.userId, profile.id));
+
+    if (report) {
+      await db
+        .update(users)
+        .set({ onboardingStep: "originality_report_completed" })
+        .where(eq(users.id, profile.id));
+      onboardingStep = "originality_report_completed";
+    }
+  }
+
+  // Eğer analiz henüz yapılmadıysa veya devam ediyorsa, sayfa render aşamasında sunucu tarafında çalıştırılması yerine
+  // istemci tarafında tetiklenecek/sorgulanacak şekilde AnalysisTrigger bileşeni döndürülür.
+  if (
+    onboardingStep === "originality_report" ||
+    onboardingStep === "originality_report_processing"
+  ) {
+    return <AnalysisTrigger initialStep={onboardingStep} />;
   }
 
   const reportRes = await getStoredOriginalityReportAction();

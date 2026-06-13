@@ -1,5 +1,9 @@
 import { ThinkingLevel } from "@google/genai";
-import { generateStructuredContent, generateEmbeddings, cosineSimilarity } from "@/lib/gemini";
+import {
+  generateStructuredContent,
+  generateEmbeddings,
+  cosineSimilarity,
+} from "@/lib/gemini";
 import { fetchThesisDetails } from "@/lib/tezara";
 import type { Logger } from "@/lib/logger";
 import type {
@@ -43,7 +47,10 @@ export async function siftAndFetchDetails(
   params: SiftAndFetchDetailsParams,
   tezaraSearchResults: TezaraThesisSummary[][],
   log: Logger,
-): Promise<{ finalTheses: TezaraThesisDetails[]; diagnostic: SiftingDiagnostic }> {
+): Promise<{
+  finalTheses: TezaraThesisDetails[];
+  diagnostic: SiftingDiagnostic;
+}> {
   // 1. Deduplication
   const uniqueThesesMap = new Map<number, TezaraThesisSummary>();
   let rawCount = 0;
@@ -59,7 +66,9 @@ export async function siftAndFetchDetails(
     }
   }
 
-  const uniqueTheses = Array.from(uniqueThesesMap.values()).sort((a, b) => a.id - b.id);
+  const uniqueTheses = Array.from(uniqueThesesMap.values()).sort(
+    (a, b) => a.id - b.id,
+  );
 
   log.info("search_success", {
     service: "tezara",
@@ -71,7 +80,17 @@ export async function siftAndFetchDetails(
   });
 
   if (uniqueTheses.length === 0) {
-    return { finalTheses: [], diagnostic: { uniqueAfterDedup: 0, topSimilarities: [], stage1Count: 0, fetchRequested: 0, fetchSuccess: 0, fetchFailed: 0 } };
+    return {
+      finalTheses: [],
+      diagnostic: {
+        uniqueAfterDedup: 0,
+        topSimilarities: [],
+        stage1Count: 0,
+        fetchRequested: 0,
+        fetchSuccess: 0,
+        fetchFailed: 0,
+      },
+    };
   }
 
   // Diagnostic tracking
@@ -91,10 +110,10 @@ export async function siftAndFetchDetails(
     const queryText = `task: search result | query: ${params.studyTitle}`;
     const docTexts = uniqueTheses.map((t) => `title: ${t.title} | text: none`);
     const textsToEmbed = [queryText, ...docTexts];
-    
+
     // generateEmbeddings fonksiyonunu çağır (tam olarak 1 adet API isteği harcanır)
     const embeddings = await generateEmbeddings(textsToEmbed, log);
-    
+
     const targetVector = embeddings[0];
     const candidateVectors = embeddings.slice(1);
 
@@ -106,10 +125,13 @@ export async function siftAndFetchDetails(
 
     // Benzerliğe göre azalan sırada sırala ve en yüksek skora sahip ilk 15 tezi seç
     candidatesWithSimilarity.sort((a, b) => b.similarity - a.similarity);
-    
+
     const topCandidates = candidatesWithSimilarity.slice(0, 15);
     passedStage1 = topCandidates.map((c) => c.thesis);
-    topSimilarities = topCandidates.map((c) => ({ id: c.thesis.id, score: c.similarity }));
+    topSimilarities = topCandidates.map((c) => ({
+      id: c.thesis.id,
+      score: c.similarity,
+    }));
 
     log.info("flow_complete", {
       service: "originality",
@@ -160,7 +182,17 @@ export async function siftAndFetchDetails(
   });
 
   if (validDetails.length === 0) {
-    return { finalTheses: [], diagnostic: { uniqueAfterDedup: uniqueTheses.length, topSimilarities, stage1Count: passedStage1.length, fetchRequested: passedStage1.length, fetchSuccess: 0, fetchFailed } };
+    return {
+      finalTheses: [],
+      diagnostic: {
+        uniqueAfterDedup: uniqueTheses.length,
+        topSimilarities,
+        stage1Count: passedStage1.length,
+        fetchRequested: passedStage1.length,
+        fetchSuccess: 0,
+        fetchFailed,
+      },
+    };
   }
 
   // 5. Stage 2 (Deep Sifting with Abstract)
@@ -214,7 +246,9 @@ export async function siftAndFetchDetails(
   }
 
   // Respect the LLM's selection — no artificial padding or capping
-  const finalSelectedTheses = validDetails.filter((t) => finalIds.includes(t.id));
+  const finalSelectedTheses = validDetails.filter((t) =>
+    finalIds.includes(t.id),
+  );
 
   log.info("flow_complete", {
     service: "originality",

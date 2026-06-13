@@ -36,6 +36,7 @@ export async function analyzeOriginalityRisk(
     is_research_question_overlapping: boolean;
     is_methodology_overlapping: boolean;
     is_theory_overlapping: boolean;
+    is_context_overlapping: boolean;
   }[];
 }> {
   log.info("ai_request_start", {
@@ -52,6 +53,7 @@ export async function analyzeOriginalityRisk(
         is_research_question_overlapping: boolean;
         is_methodology_overlapping: boolean;
         is_theory_overlapping: boolean;
+        is_context_overlapping: boolean;
       }[];
     }>(
       "gemini-3.1-flash-lite",

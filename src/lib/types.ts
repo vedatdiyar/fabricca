@@ -3,7 +3,7 @@ import type { TezaraThesisSummary, TezaraThesisDetails } from "./tezara";
 export type { TezaraThesisSummary, TezaraThesisDetails };
 
 export type OnboardingActionResult =
-  | { success: true; error?: never }
+  | { success: true; isProcessing?: boolean; error?: never }
   | { success?: never; error: string };
 
 export type EnhancedThesisData = {
@@ -58,7 +58,7 @@ export interface OverlapItem {
     subject: AxesOption;
     theory: AxesOption;
     methodology: AxesOption;
-    context: AxesOption;
+    context?: AxesOption;
   };
   comparisonNote?: string;
 }

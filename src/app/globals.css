@@ -135,4 +135,17 @@
   .textarea-academic {
     @apply h-[120px] overflow-y-auto resize-none leading-relaxed text-foreground font-light;
   }
+
+  /* Global Error Display Styles */
+  .error-display-container {
+    @apply flex min-h-screen w-full flex-col items-center justify-center bg-background p-6;
+  }
+
+  .error-display-content {
+    @apply flex flex-col items-center justify-center text-center space-y-6 max-w-md w-full;
+  }
+
+  .error-display-icon-wrapper {
+    @apply flex items-center justify-center w-12 h-12 rounded-full border;
+  }
 }

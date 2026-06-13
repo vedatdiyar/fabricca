@@ -50,7 +50,7 @@ interface OriginalityReportViewProps {
           subject: "OVERLAPPING" | "ORIGINAL";
           theory: "OVERLAPPING" | "ORIGINAL";
           methodology: "OVERLAPPING" | "ORIGINAL";
-          context: "OVERLAPPING" | "ORIGINAL";
+          context?: "OVERLAPPING" | "ORIGINAL";
         };
         originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
         comparisonNote?: string;
@@ -61,12 +61,19 @@ interface OriginalityReportViewProps {
 }
 
 const statusTranslation: Record<string, string> = {
-  HIGH_RISK: "YÜKSEK RİSK",
-  MEDIUM_RISK: "ORTA RİSK",
-  LOW_RISK: "DÜŞÜK RİSK",
-  ZERO_RISK: "SIFIR RİSK",
-  OVERLAPPING: "ÇAKIŞIYOR",
-  ORIGINAL: "ÖZGÜN",
+  HIGH_RISK: "Yüksek Risk",
+  MEDIUM_RISK: "Orta Risk",
+  LOW_RISK: "Düşük Risk",
+  ZERO_RISK: "Sıfır Risk",
+  OVERLAPPING: "Çakışma Var",
+  ORIGINAL: "Özgün",
+};
+
+const detailedStatusTranslation: Record<string, string> = {
+  HIGH_RISK: "Orijinallik Riski / Yakın Literatür Komşusu",
+  MEDIUM_RISK: "Ortak Odaklı Çalışma / Orta Risk",
+  LOW_RISK: "Uyumlu / Özgün Literatür",
+  ZERO_RISK: "Özgün Çalışma / Sıfır Risk",
 };
 
 const tavilyStatusTranslation: Record<string, string> = {
@@ -86,39 +93,25 @@ const getThesisPriority = (axes: {
   subject: string;
   theory: string;
   methodology: string;
-  context: string;
 }) => {
-  const { subject: s, theory: t, methodology: m, context: c } = axes;
-
-  // 4 overlaps
-  if (s === "OVERLAPPING" && t === "OVERLAPPING" && m === "OVERLAPPING" && c === "OVERLAPPING") return 1; // Durum 16
+  const { subject: s, theory: t, methodology: m } = axes;
 
   // 3 overlaps
-  if (s === "OVERLAPPING" && t === "OVERLAPPING" && m === "OVERLAPPING" && c === "ORIGINAL") return 2;    // Durum 15
-  if (s === "OVERLAPPING" && t === "OVERLAPPING" && m === "ORIGINAL" && c === "OVERLAPPING") return 3;    // Durum 14
-  if (s === "OVERLAPPING" && t === "ORIGINAL" && m === "OVERLAPPING" && c === "OVERLAPPING") return 4;    // Durum 13
-  if (s === "ORIGINAL" && t === "OVERLAPPING" && m === "OVERLAPPING" && c === "OVERLAPPING") return 5;    // Durum 12
+  if (s === "OVERLAPPING" && t === "OVERLAPPING" && m === "OVERLAPPING")
+    return 1;
 
-  // 2 overlaps (subject overlapping)
-  if (s === "OVERLAPPING" && t === "OVERLAPPING" && m === "ORIGINAL" && c === "ORIGINAL") return 6;       // Durum 11
-  if (s === "OVERLAPPING" && t === "ORIGINAL" && m === "ORIGINAL" && c === "OVERLAPPING") return 7;       // Durum 9
-  if (s === "OVERLAPPING" && t === "ORIGINAL" && m === "OVERLAPPING" && c === "ORIGINAL") return 8;       // Durum 10
+  // 2 overlaps
+  if (s === "OVERLAPPING" && t === "OVERLAPPING") return 2;
+  if (s === "OVERLAPPING" && m === "OVERLAPPING") return 3;
+  if (t === "OVERLAPPING" && m === "OVERLAPPING") return 4;
 
-  // 1 overlap (subject overlapping)
-  if (s === "OVERLAPPING" && t === "ORIGINAL" && m === "ORIGINAL" && c === "ORIGINAL") return 9;          // Durum 5
-
-  // 2 overlaps (subject original)
-  if (s === "ORIGINAL" && t === "ORIGINAL" && m === "OVERLAPPING" && c === "OVERLAPPING") return 10;      // Durum 6
-  if (s === "ORIGINAL" && t === "OVERLAPPING" && m === "ORIGINAL" && c === "OVERLAPPING") return 11;      // Durum 7
-  if (s === "ORIGINAL" && t === "OVERLAPPING" && m === "OVERLAPPING" && c === "ORIGINAL") return 12;      // Durum 8
-
-  // 1 overlap (subject original)
-  if (s === "ORIGINAL" && t === "ORIGINAL" && m === "ORIGINAL" && c === "OVERLAPPING") return 13;         // Durum 2
-  if (s === "ORIGINAL" && t === "ORIGINAL" && m === "OVERLAPPING" && c === "ORIGINAL") return 14;         // Durum 3
-  if (s === "ORIGINAL" && t === "OVERLAPPING" && m === "ORIGINAL" && c === "ORIGINAL") return 15;         // Durum 4
+  // 1 overlap
+  if (s === "OVERLAPPING") return 5;
+  if (t === "OVERLAPPING") return 6;
+  if (m === "OVERLAPPING") return 7;
 
   // 0 overlaps
-  return 16; // Durum 1
+  return 8;
 };
 
 /**
@@ -208,6 +201,8 @@ export function OriginalityReportView({
       "bg-destructive/10 border border-destructive/20 text-destructive";
   } else if (tezaraResults.originalityBadge === "MEDIUM_RISK") {
     badgeColor = "bg-warning/10 border border-warning/20 text-warning";
+  } else if (tezaraResults.originalityBadge === "LOW_RISK") {
+    badgeColor = "bg-sky-500/10 border border-sky-500/20 text-sky-400";
   }
 
   const riskLevel: "HIGH" | "MEDIUM" | "LOW" =
@@ -266,7 +261,7 @@ export function OriginalityReportView({
         >
           <Award className="w-5 h-5" />
           <span>
-            {statusTranslation[tezaraResults.originalityBadge] ||
+            {detailedStatusTranslation[tezaraResults.originalityBadge] ||
               tezaraResults.originalityBadge}
           </span>
         </div>
@@ -371,11 +366,11 @@ export function OriginalityReportView({
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-foreground">
             <GitCompare className="w-5 h-5 text-primary" />
-            Literatür Çakışma ve Karşılaştırma Matrisi (4 Eksen)
+            Literatür Çakışma ve Karşılaştırma Matrisi (3 Eksen)
           </CardTitle>
           <CardDescription>
-            Benzer akademik çalışmaların konu, kuramsal çerçeve, metodoloji ve
-            bağlam eksenlerinde incelenmesi.
+            Benzer akademik çalışmaların soru/sav, kuramsal çerçeve ve
+            metodoloji eksenlerinde incelenmesi.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -386,17 +381,14 @@ export function OriginalityReportView({
                   <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase min-w-[240px]">
                     Karşılaştırılan Tez Bilgileri
                   </th>
-                  <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[100px]">
-                    Konu
+                  <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[110px]">
+                    Soru / Sav
                   </th>
-                  <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[100px]">
-                    Teori
+                  <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[110px]">
+                    Kuram
                   </th>
-                  <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[100px]">
+                  <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[110px]">
                     Metodoloji
-                  </th>
-                  <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[100px]">
-                    Bağlam
                   </th>
                   <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[150px]">
                     Risk Seviyesi
@@ -407,7 +399,7 @@ export function OriginalityReportView({
                 {tezaraResults.overlapTable?.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={5}
                       className="p-8 text-center text-muted-foreground leading-relaxed text-sm"
                     >
                       Doğrudan çakışan veya yakın ilişki kuran herhangi bir tez
@@ -416,10 +408,56 @@ export function OriginalityReportView({
                   </tr>
                 ) : (
                   (() => {
-                    const getAxisBadge = (val: string) => {
-                      if (val === "OVERLAPPING")
-                        return "bg-destructive/10 border border-destructive/20 text-destructive";
-                      return "bg-success/10 border border-success/20 text-success";
+                    const getSubjectBadge = (val: string, level: string) => {
+                      if (val === "OVERLAPPING") {
+                        if (level === "HIGH_RISK") {
+                          return {
+                            className:
+                              "bg-destructive/10 border border-destructive/20 text-destructive",
+                            label: "Konu Kesişmesi",
+                          };
+                        }
+                        return {
+                          className:
+                            "bg-warning/10 border border-warning/20 text-warning",
+                          label: "Benzer Araştırma Odağı",
+                        };
+                      }
+                      return {
+                        className:
+                          "bg-success/10 border border-success/20 text-success",
+                        label: "Özgün Soru/Sav",
+                      };
+                    };
+
+                    const getTheoryBadge = (val: string) => {
+                      if (val === "OVERLAPPING") {
+                        return {
+                          className:
+                            "bg-sky-500/10 border border-sky-500/20 text-sky-400",
+                          label: "Ortak Kuramsal Perspektif",
+                        };
+                      }
+                      return {
+                        className:
+                          "bg-success/10 border border-success/20 text-success",
+                        label: "Özgün Kuram",
+                      };
+                    };
+
+                    const getMethodologyBadge = (val: string) => {
+                      if (val === "OVERLAPPING") {
+                        return {
+                          className:
+                            "bg-sky-500/10 border border-sky-500/20 text-sky-400",
+                          label: "Paralel Literatür",
+                        };
+                      }
+                      return {
+                        className:
+                          "bg-success/10 border border-success/20 text-success",
+                        label: "Özgün Metodoloji",
+                      };
                     };
 
                     const getLevelBadge = (val: string) => {
@@ -427,116 +465,110 @@ export function OriginalityReportView({
                         return "bg-destructive/10 border border-destructive/20 text-destructive";
                       if (val === "MEDIUM_RISK")
                         return "bg-warning/10 border border-warning/20 text-warning";
-                      return "bg-success/10 border border-success/20 text-success";
+                      return "bg-sky-500/10 border border-sky-500/20 text-sky-400";
                     };
 
                     return (
                       <>
-                        {sortedTheses.map((item, idx) => (
-                          <Fragment key={item.id || idx}>
-                            <tr
-                              className={`hover:bg-muted/40 cursor-pointer transition-colors ${
-                                expandedThesisId === item.id
-                                  ? "bg-muted/20"
-                                  : ""
-                              }`}
-                              onClick={() =>
-                                setExpandedThesisId(
-                                  expandedThesisId === item.id ? null : item.id,
-                                )
-                              }
-                            >
-                              <td className="p-3 space-y-1">
-                                <div className="font-semibold text-foreground text-sm leading-relaxed flex items-start gap-2 select-none">
-                                  <span className="mt-1 text-muted-foreground shrink-0 transition-transform duration-200">
-                                    {expandedThesisId === item.id ? (
-                                      <ChevronDown className="w-4 h-4" />
-                                    ) : (
-                                      <ChevronRight className="w-4 h-4" />
-                                    )}
-                                  </span>
-                                  <span>{item.title}</span>
-                                </div>
-                                <div className="pl-6 text-xs text-muted-foreground leading-relaxed">
-                                  {item.author} • {item.university} ({item.year}
+                        {sortedTheses.map((item, idx) => {
+                          const subjectBadge = getSubjectBadge(
+                            item.axes.subject,
+                            item.originalityLevel,
+                          );
+                          const theoryBadge = getTheoryBadge(item.axes.theory);
+                          const methodologyBadge = getMethodologyBadge(
+                            item.axes.methodology,
+                          );
+
+                          return (
+                            <Fragment key={item.id || idx}>
+                              <tr
+                                className={`hover:bg-muted/40 cursor-pointer transition-colors ${
+                                  expandedThesisId === item.id
+                                    ? "bg-muted/20"
+                                    : ""
+                                }`}
+                                onClick={() =>
+                                  setExpandedThesisId(
+                                    expandedThesisId === item.id
+                                      ? null
+                                      : item.id,
                                   )
-                                </div>
-                                <div className="pl-6 text-[11px] text-muted-foreground font-mono">
-                                  {item.thesisType}
-                                </div>
-                              </td>
-                              <td className="p-3 text-center">
-                                <span
-                                  className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${getAxisBadge(
-                                    item.axes.subject,
-                                  )}`}
-                                >
-                                  {statusTranslation[item.axes.subject] ||
-                                    item.axes.subject}
-                                </span>
-                              </td>
-                              <td className="p-3 text-center">
-                                <span
-                                  className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${getAxisBadge(
-                                    item.axes.theory,
-                                  )}`}
-                                >
-                                  {statusTranslation[item.axes.theory] ||
-                                    item.axes.theory}
-                                </span>
-                              </td>
-                              <td className="p-3 text-center">
-                                <span
-                                  className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${getAxisBadge(
-                                    item.axes.methodology,
-                                  )}`}
-                                >
-                                  {statusTranslation[item.axes.methodology] ||
-                                    item.axes.methodology}
-                                </span>
-                              </td>
-                              <td className="p-3 text-center">
-                                <span
-                                  className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${getAxisBadge(
-                                    item.axes.context,
-                                  )}`}
-                                >
-                                  {statusTranslation[item.axes.context] ||
-                                    item.axes.context}
-                                </span>
-                              </td>
-                              <td className="p-3 text-center">
-                                <span
-                                  className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold ${getLevelBadge(
-                                    item.originalityLevel,
-                                  )}`}
-                                >
-                                  {statusTranslation[item.originalityLevel] ||
-                                    item.originalityLevel}
-                                </span>
-                              </td>
-                            </tr>
-                            {expandedThesisId === item.id &&
-                              item.comparisonNote && (
-                                <tr className="bg-muted/10">
-                                  <td
-                                    colSpan={6}
-                                    className="p-4 border-t border-border"
+                                }
+                              >
+                                <td className="p-3 space-y-1">
+                                  <div className="font-semibold text-foreground text-sm leading-relaxed flex items-start gap-2 select-none">
+                                    <span className="mt-1 text-muted-foreground shrink-0 transition-transform duration-200">
+                                      {expandedThesisId === item.id ? (
+                                        <ChevronDown className="w-4 h-4" />
+                                      ) : (
+                                        <ChevronRight className="w-4 h-4" />
+                                      )}
+                                    </span>
+                                    <span>{item.title}</span>
+                                  </div>
+                                  <div className="pl-6 text-xs text-muted-foreground leading-relaxed">
+                                    {item.author} • {item.university} (
+                                    {item.year})
+                                  </div>
+                                  <div className="pl-6 text-[11px] text-muted-foreground font-mono">
+                                    {item.thesisType}
+                                  </div>
+                                </td>
+                                <td className="p-3 text-center">
+                                  <span
+                                    className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${subjectBadge.className}`}
                                   >
-                                    <div className="p-6 space-y-2 bg-background rounded-lg">
-                                      <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5 select-none">
-                                        <GitCompare className="w-3.5 h-3.5 text-primary" />
-                                        Detaylı Karşılaştırma Analizi
-                                      </h4>
-                                      <p className="text-sm leading-relaxed text-foreground font-light whitespace-pre-line">
-                                        {item.comparisonNote}
-                                      </p>
-                                    </div>
-                                  </td>
-                                </tr>
-                              )}
-                          </Fragment>
-                        ))}
+                                    {subjectBadge.label}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-center">
+                                  <span
+                                    className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${theoryBadge.className}`}
+                                  >
+                                    {theoryBadge.label}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-center">
+                                  <span
+                                    className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${methodologyBadge.className}`}
+                                  >
+                                    {methodologyBadge.label}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-center">
+                                  <span
+                                    className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold ${getLevelBadge(
+                                      item.originalityLevel,
+                                    )}`}
+                                  >
+                                    {statusTranslation[item.originalityLevel] ||
+                                      item.originalityLevel}
+                                  </span>
+                                </td>
+                              </tr>
+                              {expandedThesisId === item.id &&
+                                item.comparisonNote && (
+                                  <tr className="bg-muted/10">
+                                    <td
+                                      colSpan={5}
+                                      className="p-4 border-t border-border"
+                                    >
+                                      <div className="p-6 space-y-2 bg-background rounded-lg">
+                                        <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5 select-none">
+                                          <GitCompare className="w-3.5 h-3.5 text-primary" />
+                                          Detaylı Karşılaştırma Analizi
+                                        </h4>
+                                        <p className="text-sm leading-relaxed text-foreground font-light whitespace-pre-line">
+                                          {item.comparisonNote}
+                                        </p>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                            </Fragment>
+                          );
+                        })}
                       </>
                     );
                   })()

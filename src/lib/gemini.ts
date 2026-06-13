@@ -32,6 +32,61 @@ if (!apiKey) {
 const ai = new GoogleGenAI({ apiKey });
 
 /**
+ * Bir asenkron fonksiyonu 503 (UNAVAILABLE) veya sunucu yoğunluğu hatalarına karşı
+ * üssel olarak geri çekilerek (exponential backoff) ve jitter ekleyerek yeniden dener.
+ *
+ * @param fn - Çalıştırılacak ve hata durumunda yeniden denenecek asenkron işlem
+ * @param maxRetries - Maksimum deneme sayısı (varsayılan: 3)
+ * @param baseDelayMs - Başlangıç gecikme süresi milisaniye (varsayılan: 1000ms)
+ * @param logger - Loglama için Logger instance'ı
+ */
+async function retryOn503<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  baseDelayMs = 1000,
+  logger?: Logger,
+): Promise<T> {
+  let attempt = 0;
+  while (true) {
+    attempt++;
+    try {
+      return await fn();
+    } catch (error: any) {
+      const is503 =
+        error?.status === "UNAVAILABLE" ||
+        error?.code === 503 ||
+        (error?.message &&
+          (error.message.includes("high demand") ||
+            error.message.includes("503") ||
+            error.message.includes("UNAVAILABLE")));
+
+      if (!is503 || attempt > maxRetries) {
+        throw error;
+      }
+
+      const exponent = attempt - 1;
+      const backoffDelay = baseDelayMs * Math.pow(2, exponent);
+      const jitter = Math.random() * backoffDelay * 0.3; // %30 max jitter
+      const totalDelay = backoffDelay + jitter;
+
+      logger?.warn("ai_retry_attempt", {
+        service: "gemini",
+        step: `retry_attempt_${attempt}`,
+        durationMs: totalDelay,
+        data: {
+          attempt,
+          maxRetries,
+          delayMs: Math.round(totalDelay),
+          errorMessage: error?.message || String(error),
+        },
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, totalDelay));
+    }
+  }
+}
+
+/**
  * Gemini modelinden yapılandırılmış JSON çıktısı almak için generic yardımcı.
  * Yanıt, verilen JSON şemasına göre JSON olarak parse edilir.
  *
@@ -68,23 +123,29 @@ export async function generateStructuredContent<T>(
   });
 
   try {
-    const response = await ai.models.generateContent({
-      model: modelName,
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: {
-        systemInstruction,
-        temperature:
-          options?.temperature !== undefined ? options.temperature : 1.0,
-        responseMimeType: "application/json",
-        responseJsonSchema: schema,
-        thinkingConfig:
-          options?.thinkingConfig === null
-            ? undefined
-            : options?.thinkingConfig || {
-                thinkingLevel: ThinkingLevel.HIGH,
-              },
-      },
-    });
+    const response = await retryOn503(
+      () =>
+        ai.models.generateContent({
+          model: modelName,
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          config: {
+            systemInstruction,
+            temperature:
+              options?.temperature !== undefined ? options.temperature : 1.0,
+            responseMimeType: "application/json",
+            responseJsonSchema: schema,
+            thinkingConfig:
+              options?.thinkingConfig === null
+                ? undefined
+                : options?.thinkingConfig || {
+                    thinkingLevel: ThinkingLevel.HIGH,
+                  },
+          },
+        }),
+      3,
+      1000,
+      logger,
+    );
 
     const text = response.text;
     if (!text) {
@@ -164,17 +225,39 @@ export async function generateEmbeddings(
   });
 
   try {
-    const chunkSize = 30;
+    const chunkSize = 100;
     const allEmbeddings: number[][] = [];
     let i = 0;
 
     while (i < texts.length) {
+      if (i > 0) {
+        // limitlerin sıfırlanması için 61 saniye bekliyoruz
+        logger?.warn("ai_retry_attempt", {
+          service: "gemini",
+          step: "rate_limit_cooldown",
+          durationMs: 61000,
+          data: {
+            reason:
+              "Embedding 100 RPM limitini korumak için 61 saniye bekleniyor",
+            i,
+            total: texts.length,
+          },
+        });
+        await new Promise((resolve) => setTimeout(resolve, 61000));
+      }
+
       const chunk = texts.slice(i, i + chunkSize);
-      const response = await ai.models.embedContent({
-        model: "gemini-embedding-2",
-        contents: chunk.map((text) => ({ role: "user", parts: [{ text }] })),
-        config: { outputDimensionality: 768 },
-      });
+      const response = await retryOn503(
+        () =>
+          ai.models.embedContent({
+            model: "gemini-embedding-2",
+            contents: chunk.map((text) => ({ parts: [{ text }] })),
+            config: { outputDimensionality: 768 },
+          }),
+        3,
+        1000,
+        logger,
+      );
 
       if (response.embeddings && Array.isArray(response.embeddings)) {
         response.embeddings.forEach((e) => {
