@@ -1,9 +1,9 @@
 import { ThinkingLevel } from "@google/genai";
 import {
   generateStructuredContent,
-  generateEmbeddings,
   cosineSimilarity,
 } from "@/lib/gemini";
+import { generateEmbeddings } from "@/lib/cloudflare";
 import { fetchThesisDetails } from "@/lib/tezara";
 import type { Logger } from "@/lib/logger";
 import type {

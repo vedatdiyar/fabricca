@@ -25,6 +25,7 @@ export interface TezaraThesisDetails {
   thesisType: string;
   department: string;
   abstract: string;
+  yokPdfUrl?: string;
 }
 
 /**
@@ -503,6 +504,12 @@ export async function fetchThesisDetails(
     const text = await response.text();
     const refMap = extractRscTexts(text);
 
+    // Extract YÖK PDF direct link key URL if present in response
+    const pdfMatch = text.match(
+      /https:\/\/tez\.yok\.gov\.tr\/UlusalTezMerkezi\/TezGoster\?key=[a-zA-Z0-9_\-]+/,
+    );
+    const yokPdfUrl = pdfMatch ? pdfMatch[0] : undefined;
+
     let thesisObj: Record<string, any> | null = null;
     const lines = text.split("\n");
 
@@ -579,6 +586,7 @@ export async function fetchThesisDetails(
       thesisType: String(thesisObj.thesis_type ?? thesisObj.thesisType ?? ""),
       department: String(thesisObj.department ?? ""),
       abstract,
+      yokPdfUrl,
     };
   } catch (err) {
     const durationMs = performance.now() - startTime;

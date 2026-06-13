@@ -61,6 +61,7 @@ export interface OverlapItem {
     context?: AxesOption;
   };
   comparisonNote?: string;
+  yokPdfUrl?: string;
 }
 
 export interface SingleThesisAnalysisResponse {

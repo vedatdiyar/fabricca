@@ -102,6 +102,7 @@ export const originalityReports = pgTable("originality_reports", {
         };
         originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
         comparisonNote?: string;
+        yokPdfUrl?: string;
       }[];
       strategicRecommendations: string;
       riskPercentage?: number;

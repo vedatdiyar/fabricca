@@ -1,0 +1,757 @@
+[
+  {
+    "durationMs": 39485.534333,
+    "success": true,
+    "output": [
+      {
+        "title": "Giriş ve Temel İddia",
+        "category": "intro",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Teorik Zemin",
+        "category": "theory",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Yöntem Literatürü",
+        "category": "methodology",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Tarihsel ve Mekânsal Bağlam",
+        "category": "context",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Birincil Özneler ve Arşivler",
+        "category": "primary_source",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Neoliberal Borçlandırma ve İşçi-Borçlu Öznesi",
+        "category": "intro",
+        "theorists": [
+          "Maurizio Lazzarato",
+          "Michel Foucault"
+        ],
+        "concepts": [
+          "İşçi-Borçlu",
+          "Neoliberal Yönetimsellik",
+          "Özneleşme",
+          "Sınıfsal İlişki"
+        ],
+        "primaryLiteratureCount": 1,
+        "secondaryLiteratureCount": 1
+      },
+      {
+        "title": "Foucaultcu Yönetimsellik ve İktidar Teknolojileri",
+        "category": "theory",
+        "theorists": [
+          "Michel Foucault"
+        ],
+        "concepts": [
+          "Biyopolitika",
+          "Yönetimsellik (Governmentality)",
+          "Disiplin",
+          "Özneleşme Pratikleri"
+        ],
+        "primaryLiteratureCount": 1,
+        "secondaryLiteratureCount": 1
+      },
+      {
+        "title": "Marksist Ekonomi-Politik ve Borçluluk",
+        "category": "theory",
+        "theorists": [
+          "Karl Marx",
+          "David Harvey"
+        ],
+        "concepts": [
+          "Sermaye Birikimi",
+          "Finansallaşma",
+          "Artı-Değer",
+          "Borç Ekonomisi"
+        ],
+        "primaryLiteratureCount": 1,
+        "secondaryLiteratureCount": 1
+      },
+      {
+        "title": "Fenomenolojik Nitel Araştırma Deseni",
+        "category": "methodology",
+        "theorists": [
+          "Edmund Husserl",
+          "Max van Manen"
+        ],
+        "concepts": [
+          "Fenomenoloji",
+          "Derinlemesine Mülakat",
+          "Öznellik",
+          "Deneyim Analizi"
+        ],
+        "primaryLiteratureCount": 1,
+        "secondaryLiteratureCount": 1
+      },
+      {
+        "title": "Tematik İçerik Analizi ve Söylem Kodlaması",
+        "category": "methodology",
+        "theorists": [],
+        "concepts": [
+          "Tematik İçerik Analizi",
+          "Kodlama Matrisi",
+          "Söylem Analizi",
+          "Veri İndirgeme"
+        ],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 1
+      },
+      {
+        "title": "1980 Sonrası Türkiye'de Neoliberal Dönüşüm",
+        "category": "context",
+        "theorists": [
+          "Korkut Boratav"
+        ],
+        "concepts": [
+          "24 Ocak Kararları",
+          "Yapısal Uyum Politikaları",
+          "Türkiye İktisat Tarihi",
+          "Neoliberalleşme"
+        ],
+        "primaryLiteratureCount": 1,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Son 20 Yıl: Finansallaşma ve Tüketim Kültürü",
+        "category": "context",
+        "theorists": [],
+        "concepts": [
+          "Hanehalkı Borçluluğu",
+          "Tüketim Kültürü",
+          "Kredi Kartı Borçluluğu",
+          "Gündelik Yaşamda Finansallaşma"
+        ],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 1
+      },
+      {
+        "title": "İşçi-Borçlu Birey Mülakatları",
+        "category": "primary_source",
+        "theorists": [],
+        "concepts": [
+          "Mülakat Dökümleri",
+          "Bireysel Borç Deneyimleri",
+          "Saha Verisi",
+          "Öznel Söylem"
+        ],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      }
+    ]
+  },
+  {
+    "durationMs": 36682.200375,
+    "success": true,
+    "output": [
+      {
+        "title": "Giriş ve Temel İddia",
+        "category": "intro",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Teorik Zemin",
+        "category": "theory",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Yöntem Literatürü",
+        "category": "methodology",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Tarihsel ve Mekânsal Bağlam",
+        "category": "context",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Birincil Özneler ve Arşivler",
+        "category": "primary_source",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Neoliberal Borçlandırma ve İşçi-Borçlu Öznelliği",
+        "category": "intro",
+        "theorists": [],
+        "concepts": [
+          "Neoliberalizm",
+          "Borçlandırma",
+          "İşçi-Borçlu",
+          "Öznellik İnşası",
+          "Tahakküm Stratejileri"
+        ],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Foucaultcu Yönetimsellik ve İktidar Teknolojisi",
+        "category": "theory",
+        "theorists": [
+          "Foucault, M."
+        ],
+        "concepts": [
+          "Yönetimsellik",
+          "İktidar Teknolojisi",
+          "Özneleşme",
+          "Disiplin"
+        ],
+        "primaryLiteratureCount": 1,
+        "secondaryLiteratureCount": 1
+      },
+      {
+        "title": "Marksist Ekonomi-Politik ve Borçluluk",
+        "category": "theory",
+        "theorists": [
+          "Lazzarato, M.",
+          "Marx, K."
+        ],
+        "concepts": [
+          "Sermaye Birikimi",
+          "Finansallaşma",
+          "Emek Süreci",
+          "Sınıfsal İlişki"
+        ],
+        "primaryLiteratureCount": 1,
+        "secondaryLiteratureCount": 1
+      },
+      {
+        "title": "Fenomenolojik Niteliksel Desen",
+        "category": "methodology",
+        "theorists": [],
+        "concepts": [
+          "Niteliksel Metodoloji",
+          "Fenomenoloji",
+          "Derinlemesine Mülakat",
+          "Tematik İçerik Analizi"
+        ],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Türkiye'de Neoliberalizm ve Finansallaşma",
+        "category": "context",
+        "theorists": [
+          "Boratav, K."
+        ],
+        "concepts": [
+          "1980 Sonrası Türkiye Ekonomisi",
+          "Finansallaşma",
+          "Tüketim Kültürü",
+          "Yapısal Dönüşüm"
+        ],
+        "primaryLiteratureCount": 1,
+        "secondaryLiteratureCount": 1
+      },
+      {
+        "title": "Borçlu Öznelere Dair Saha Verileri",
+        "category": "primary_source",
+        "theorists": [],
+        "concepts": [
+          "Borçlanma Pratikleri",
+          "Borç Yönetim Stratejileri",
+          "Gündelik Yaşam Pratikleri",
+          "Sistemik Tepkisel Tutumlar"
+        ],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      }
+    ]
+  },
+  {
+    "durationMs": 24129.197667,
+    "success": true,
+    "output": [
+      {
+        "title": "Giriş ve Temel İddia",
+        "category": "intro",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Teorik Zemin",
+        "category": "theory",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Yöntem Literatürü",
+        "category": "methodology",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Tarihsel ve Mekânsal Bağlam",
+        "category": "context",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Birincil Özneler ve Arşivler",
+        "category": "primary_source",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Neoliberal Borçlandırma ve İşçi-Borçlu Öznesi",
+        "category": "intro",
+        "theorists": [],
+        "concepts": [
+          "Neoliberalizm",
+          "İşçi-Borçlu Öznesi",
+          "İktidar Teknolojisi",
+          "Sınıfsal İlişkiler"
+        ],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Foucaultcu Yönetimsellik ve Borçluluk",
+        "category": "theory",
+        "theorists": [
+          "Michel Foucault"
+        ],
+        "concepts": [
+          "Yönetimsellik",
+          "Biyo-politika",
+          "Disiplin Toplumu",
+          "Borçlu Öznenin İnşası"
+        ],
+        "primaryLiteratureCount": 1,
+        "secondaryLiteratureCount": 1
+      },
+      {
+        "title": "Marksist Ekonomi-Politik ve Finansallaşma",
+        "category": "theory",
+        "theorists": [
+          "David Harvey"
+        ],
+        "concepts": [
+          "Sermaye Birikimi",
+          "Finansallaşma",
+          "Sınıfsal Denetim",
+          "Artı-değerin Borç Üzerinden Transferi"
+        ],
+        "primaryLiteratureCount": 1,
+        "secondaryLiteratureCount": 1
+      },
+      {
+        "title": "Fenomenolojik Niteliksel Yaklaşım",
+        "category": "methodology",
+        "theorists": [],
+        "concepts": [
+          "Fenomenoloji",
+          "Nitel Araştırma",
+          "Derinlemesine Mülakat",
+          "Deneyim Anlatıları"
+        ],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Tematik İçerik Analizi ve Diyalektik Yöntem",
+        "category": "methodology",
+        "theorists": [],
+        "concepts": [
+          "Tematik Analiz",
+          "Makro-Mikro Diyalektiği",
+          "Söylemsel Analiz",
+          "Veri Kategorizasyonu"
+        ],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "1980 Sonrası Türkiye'de Neoliberal Dönüşüm",
+        "category": "context",
+        "theorists": [
+          "Korkut Boratav"
+        ],
+        "concepts": [
+          "Neoliberalleşme",
+          "İthal İkamesinden İhracata Geçiş",
+          "Yapısal Uyum Programları",
+          "Sermaye Birikimi"
+        ],
+        "primaryLiteratureCount": 1,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Türkiye'de Finansallaşma ve Tüketim Kültürü (2000-2025)",
+        "category": "context",
+        "theorists": [
+          "Ayşe Buğra"
+        ],
+        "concepts": [
+          "Finansallaşma",
+          "Tüketim Kültürü",
+          "Borçluluk Kültürü",
+          "Orta Sınıfın Borçlanması"
+        ],
+        "primaryLiteratureCount": 1,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "İşçi-Borçlu Deneyim Arşivi",
+        "category": "primary_source",
+        "theorists": [],
+        "concepts": [
+          "Borçluluk Pratikleri",
+          "Gri Pratikler",
+          "Direnç ve Uyum Stratejileri",
+          "Borç Yönetimi"
+        ],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      }
+    ]
+  },
+  {
+    "durationMs": 43312.045958,
+    "success": true,
+    "output": [
+      {
+        "title": "Giriş ve Temel İddia",
+        "category": "intro",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Teorik Zemin",
+        "category": "theory",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Yöntem Literatürü",
+        "category": "methodology",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Tarihsel ve Mekânsal Bağlam",
+        "category": "context",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Birincil Özneler ve Arşivler",
+        "category": "primary_source",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Neoliberal İktidarın Borçlandırma Rejimi ve Özneleşme",
+        "category": "intro",
+        "theorists": [
+          "Foucault, M.",
+          "Marx, K."
+        ],
+        "concepts": [
+          "İşçi-borçlu figürü",
+          "Neoliberal iktidar teknolojisi",
+          "Sınıfsal ilişki",
+          "Tahakküm stratejisi"
+        ],
+        "primaryLiteratureCount": 2,
+        "secondaryLiteratureCount": 1
+      },
+      {
+        "title": "Foucaultcu Yönetimsellik Perspektifi",
+        "category": "theory",
+        "theorists": [
+          "Foucault, M."
+        ],
+        "concepts": [
+          "Yönetimsellik",
+          "Biyopolitika",
+          "Disiplin",
+          "Özneleşme"
+        ],
+        "primaryLiteratureCount": 1,
+        "secondaryLiteratureCount": 1
+      },
+      {
+        "title": "Marksist Ekonomi-Politik ve Borç Analizi",
+        "category": "theory",
+        "theorists": [
+          "Lazzarato, M.",
+          "Harvey, D."
+        ],
+        "concepts": [
+          "Finansallaşma",
+          "Sermaye birikimi",
+          "Borçlu özne",
+          "Neoliberal sermaye"
+        ],
+        "primaryLiteratureCount": 2,
+        "secondaryLiteratureCount": 1
+      },
+      {
+        "title": "Fenomenolojik Nitel Araştırma Deseni",
+        "category": "methodology",
+        "theorists": [
+          "Denzin, N. K."
+        ],
+        "concepts": [
+          "Fenomenolojik düzlem",
+          "Derinlemesine mülakat",
+          "Öznel deneyim",
+          "Nitel metodoloji"
+        ],
+        "primaryLiteratureCount": 1,
+        "secondaryLiteratureCount": 1
+      },
+      {
+        "title": "Tematik İçerik Analizi Aşamaları",
+        "category": "methodology",
+        "theorists": [
+          "Braun, V.",
+          "Clarke, V."
+        ],
+        "concepts": [
+          "Tematik içerik analizi",
+          "Kodlama",
+          "Sistematik analiz",
+          "Veri yönetimi"
+        ],
+        "primaryLiteratureCount": 1,
+        "secondaryLiteratureCount": 1
+      },
+      {
+        "title": "Türkiye'de Neoliberal Dönüşüm ve Finansallaşma (1980-2026)",
+        "category": "context",
+        "theorists": [
+          "Boratav, K."
+        ],
+        "concepts": [
+          "1980 sonrası Türkiye ekonomisi",
+          "Finansallaşma",
+          "Tüketim kültürü",
+          "Yapısal dönüşüm"
+        ],
+        "primaryLiteratureCount": 1,
+        "secondaryLiteratureCount": 1
+      },
+      {
+        "title": "Borçlandırılmış Öznelerin Mikro Deneyim Verileri",
+        "category": "primary_source",
+        "theorists": [],
+        "concepts": [
+          "Bireysel borçlanma pratikleri",
+          "Borç yönetme stratejileri",
+          "Sistemik tepkisel tutumlar",
+          "Gri pratikler"
+        ],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      }
+    ]
+  },
+  {
+    "durationMs": 46207.16654200002,
+    "success": true,
+    "output": [
+      {
+        "title": "Giriş ve Temel İddia",
+        "category": "intro",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Teorik Zemin",
+        "category": "theory",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Yöntem Literatürü",
+        "category": "methodology",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Tarihsel ve Mekânsal Bağlam",
+        "category": "context",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Birincil Özneler ve Arşivler",
+        "category": "primary_source",
+        "theorists": [],
+        "concepts": [],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      },
+      {
+        "title": "Neoliberal İktidarın Borçlandırma Rejimi ve İşçi-Borçlu Öznelliği",
+        "category": "intro",
+        "theorists": [],
+        "concepts": [
+          "Neoliberal Borçlandırma",
+          "İşçi-Borçlu",
+          "Özneleşme",
+          "Tahakküm Stratejileri",
+          "Gündelik Pratikler"
+        ],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 2
+      },
+      {
+        "title": "Yönetimsellik ve Biyo-Politik Kuram",
+        "category": "theory",
+        "theorists": [
+          "Foucault, M."
+        ],
+        "concepts": [
+          "Yönetimsellik",
+          "Biyo-Politika",
+          "İktidar Teknolojileri",
+          "Disiplin",
+          "Öznellik"
+        ],
+        "primaryLiteratureCount": 1,
+        "secondaryLiteratureCount": 2
+      },
+      {
+        "title": "Marksist Ekonomi-Politik ve Finansallaşma",
+        "category": "theory",
+        "theorists": [
+          "Marx, K.",
+          "Lazzarato, M.",
+          "Harvey, D."
+        ],
+        "concepts": [
+          "Sermaye Birikimi",
+          "Finansallaşma",
+          "Sınıfsal İlişkiler",
+          "İşgücü Disiplini",
+          "Kredi Sistemi"
+        ],
+        "primaryLiteratureCount": 1,
+        "secondaryLiteratureCount": 2
+      },
+      {
+        "title": "Fenomenolojik Araştırma Deseni",
+        "category": "methodology",
+        "theorists": [],
+        "concepts": [
+          "Fenomenoloji",
+          "Derinlemesine Mülakat",
+          "Niteliksel Araştırma",
+          "Deneyimsel Analiz",
+          "Öznel Deneyim"
+        ],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 2
+      },
+      {
+        "title": "Tematik İçerik Analizi",
+        "category": "methodology",
+        "theorists": [],
+        "concepts": [
+          "Tematik İçerik Analizi",
+          "Kodlama",
+          "Veri Kategorizasyonu",
+          "Sistemik Tepkisel Tutumlar",
+          "Gri Pratikler"
+        ],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 2
+      },
+      {
+        "title": "Türkiye'de Neoliberalleşme ve Finansallaşma Tarihi",
+        "category": "context",
+        "theorists": [],
+        "concepts": [
+          "1980 Sonrası Türkiye",
+          "Neoliberal Dönüşüm",
+          "Finansallaşma",
+          "Tüketim Kültürü",
+          "Yapısal Dönüşüm"
+        ],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 2
+      },
+      {
+        "title": "İşçi-Borçlu Saha Verileri",
+        "category": "primary_source",
+        "theorists": [],
+        "concepts": [
+          "Gündelik Hayat",
+          "Borç Yönetimi",
+          "Direniş Stratejileri",
+          "Borçlu İşçi Pratikleri",
+          "Sınıfsal İlişkiler"
+        ],
+        "primaryLiteratureCount": 0,
+        "secondaryLiteratureCount": 0
+      }
+    ]
+  }
+]
