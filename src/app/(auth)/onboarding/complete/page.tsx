@@ -11,8 +11,9 @@ import {
   Archive,
   Tag,
   BookOpen,
-  Search,
   BookMarked,
+  UserRound,
+  WholeWord,
 } from "lucide-react";
 import {
   Card,
@@ -23,7 +24,7 @@ import {
 } from "@/components/ui/card";
 import { db } from "@/db";
 import { thesisMatrices, thesisBoxes } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 const categoryMeta: Record<
   string,
@@ -78,12 +79,39 @@ export default async function OnboardingCompletePage() {
     .from(thesisMatrices)
     .where(eq(thesisMatrices.userId, profile.id));
 
-  const boxesList = matrix
+  let boxesList = matrix
     ? await db
         .select()
         .from(thesisBoxes)
         .where(eq(thesisBoxes.thesisMatrixId, matrix.id))
     : [];
+
+  // Auto-heal: Eğer tekrarlı ebeveyn kutuları varsa, fazlalıkları veri tabanından temizle
+  if (matrix && boxesList.length > 0) {
+    const tempParentBoxes = boxesList.filter((b) => b.parentId === null);
+    const seenCategories = new Set<string>();
+    const parentIdsToDelete: number[] = [];
+
+    for (const p of tempParentBoxes) {
+      if (!seenCategories.has(p.category)) {
+        seenCategories.add(p.category);
+      } else {
+        parentIdsToDelete.push(p.id);
+      }
+    }
+
+    if (parentIdsToDelete.length > 0) {
+      await db
+        .delete(thesisBoxes)
+        .where(inArray(thesisBoxes.id, parentIdsToDelete));
+
+      // Veri tabanından temiz veri setini tekrar çek
+      boxesList = await db
+        .select()
+        .from(thesisBoxes)
+        .where(eq(thesisBoxes.thesisMatrixId, matrix.id));
+    }
+  }
 
   // Ebeveyn kutuları ve alt kutuları ayır
   const parentBoxes = boxesList.filter((b) => b.parentId === null);
@@ -140,10 +168,10 @@ export default async function OnboardingCompletePage() {
                     <IconComponent className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-semibold text-foreground">
+                    <h2 className="text-xl font-bold text-foreground">
                       {meta.label}
                     </h2>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm text-muted-foreground">
                       {parent.description}
                     </p>
                   </div>
@@ -162,29 +190,30 @@ export default async function OnboardingCompletePage() {
                         className="bg-card/40 border border-border hover:border-primary/30 transition-all"
                       >
                         <CardHeader className="pb-3">
-                          <CardTitle className="text-sm font-semibold text-foreground">
+                          <CardTitle className="text-base font-bold text-foreground">
                             {box.title}
                           </CardTitle>
                           {box.description && (
-                            <CardDescription className="text-xs text-muted-foreground leading-relaxed">
+                            <CardDescription className="text-sm text-muted-foreground leading-relaxed">
                               {box.description}
                             </CardDescription>
                           )}
                         </CardHeader>
                         <CardContent className="space-y-4">
                           {/* Teorisyenler & Kavramlar */}
-                          <div className="flex flex-wrap gap-4 text-xs">
+                          <div className="flex flex-wrap gap-4 text-sm">
                             {box.theorists && box.theorists.length > 0 && (
                               <div className="space-y-1">
-                                <span className="font-medium text-foreground block">
+                                <span className="font-semibold text-foreground block">
                                   Teorisyenler:
                                 </span>
-                                <div className="flex flex-wrap gap-1">
+                                <div className="flex flex-wrap gap-1.5">
                                   {box.theorists.map((t, i) => (
                                     <span
                                       key={i}
-                                      className="inline-flex items-center px-2 py-0.5 rounded text-[10px] bg-blue-500/10 border border-blue-500/20 text-blue-400 font-medium"
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs bg-blue-500/10 border border-blue-500/20 text-blue-400 font-medium"
                                     >
+                                      <UserRound className="w-3.5 h-3.5" />
                                       {t}
                                     </span>
                                   ))}
@@ -194,15 +223,16 @@ export default async function OnboardingCompletePage() {
 
                             {box.concepts && box.concepts.length > 0 && (
                               <div className="space-y-1">
-                                <span className="font-medium text-foreground block">
+                                <span className="font-semibold text-foreground block">
                                   Kavramlar:
                                 </span>
-                                <div className="flex flex-wrap gap-1">
+                                <div className="flex flex-wrap gap-1.5">
                                   {box.concepts.map((c, i) => (
                                     <span
                                       key={i}
-                                      className="inline-flex items-center px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-medium"
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-medium"
                                     >
+                                      <WholeWord className="w-3.5 h-3.5" />
                                       {c}
                                     </span>
                                   ))}
@@ -211,31 +241,16 @@ export default async function OnboardingCompletePage() {
                             )}
                           </div>
 
-                          {/* Arama Sorguları */}
-                          {box.queries && box.queries.length > 0 && (
-                            <div className="space-y-1.5 bg-muted/30 border border-border/40 p-3 rounded-lg">
-                              <span className="text-[11px] font-semibold text-foreground flex items-center gap-1">
-                                <Search className="w-3.5 h-3.5 text-primary" />
-                                Literatür Arama Sorguları
-                              </span>
-                              <ul className="text-xs text-muted-foreground space-y-1 list-disc pl-4 leading-relaxed">
-                                {box.queries.map((q, i) => (
-                                  <li key={i}>{q}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-
                           {/* Birincil ve İkincil Kaynaklar */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 text-sm">
                             {box.primaryLiterature &&
                               box.primaryLiterature.length > 0 && (
-                                <div className="space-y-1 p-2.5 bg-muted/20 border border-border/40 rounded-lg">
-                                  <span className="font-medium text-foreground flex items-center gap-1">
-                                    <BookMarked className="w-3.5 h-3.5 text-primary" />
-                                    Örnek Birincil Kaynaklar:
+                                <div className="space-y-1.5 p-3 bg-muted/20 border border-border/40 rounded-lg">
+                                  <span className="font-semibold text-foreground flex items-center gap-1.5">
+                                    <BookMarked className="w-4 h-4 text-primary" />
+                                    Birincil Kaynaklar:
                                   </span>
-                                  <ul className="text-muted-foreground list-inside list-disc space-y-0.5 text-[11px] leading-relaxed">
+                                  <ul className="text-muted-foreground list-inside list-disc space-y-1 text-xs leading-relaxed">
                                     {box.primaryLiterature.map((lit, i) => (
                                       <li key={i}>{lit}</li>
                                     ))}
@@ -245,12 +260,12 @@ export default async function OnboardingCompletePage() {
 
                             {box.secondaryLiterature &&
                               box.secondaryLiterature.length > 0 && (
-                                <div className="space-y-1 p-2.5 bg-muted/20 border border-border/40 rounded-lg">
-                                  <span className="font-medium text-foreground flex items-center gap-1">
-                                    <BookOpen className="w-3.5 h-3.5 text-primary" />
-                                    Örnek İkincil Kaynaklar:
+                                <div className="space-y-1.5 p-3 bg-muted/20 border border-border/40 rounded-lg">
+                                  <span className="font-semibold text-foreground flex items-center gap-1.5">
+                                    <BookOpen className="w-4 h-4 text-primary" />
+                                    İkincil Kaynaklar:
                                   </span>
-                                  <ul className="text-muted-foreground list-inside list-disc space-y-0.5 text-[11px] leading-relaxed">
+                                  <ul className="text-muted-foreground list-inside list-disc space-y-1 text-xs leading-relaxed">
                                     {box.secondaryLiterature.map((lit, i) => (
                                       <li key={i}>{lit}</li>
                                     ))}
@@ -270,7 +285,7 @@ export default async function OnboardingCompletePage() {
 
         {/* Onaylama Alanı */}
         <div className="pt-6 border-t border-border flex flex-col items-center justify-center space-y-4">
-          <p className="text-xs text-muted-foreground text-center max-w-md leading-relaxed">
+          <p className="text-sm text-muted-foreground text-center max-w-md leading-relaxed">
             Kutuları onayladığınızda, çalışma yapınız kalıcı olarak
             kütüphanenize ve kartoteks sisteminize işlenecek ve akademik veri
             tabanlarında otomatik literatür tarama adımı başlatılacaktır.

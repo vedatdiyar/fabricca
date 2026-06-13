@@ -218,6 +218,11 @@ export async function generateThesisBoxesAction(
     // Step 4: Write to database for parent-child hierarchy
     await withDbLogging(
       async () => {
+        // Clear existing boxes for this matrix to prevent duplication
+        await db
+          .delete(thesisBoxes)
+          .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
+
         // 4a. Insert parent boxes
         const parentValues = [
           {

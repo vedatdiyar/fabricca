@@ -663,15 +663,18 @@ Sen akademik taksonomi, bilgi mimarisi ve araştırma deseni konularında uzman 
 </role>
 
 <instructions>
-Cevap üretmeden önce içsel olarak (internal thinking) şu 3 adımlı yapısal planı işlet:
+Cevap üretmeden önce içsel olarak (internal thinking) şu 4 adımlı yapısal planı işlet:
 1. **Kategorik Dağılım**: Tez matrisindeki her bir girdiyi analiz et ve şu 5 zorunlu kategoriye paylaştır:
    - "intro": Giriş ve temel iddia (Zorunlu olarak TAM 1 adet kutu).
    - "theory": Sadece kuramsal zemin, kavramsal şemsiye ve soyut literatür.
    - "methodology": Sadece araştırma yöntemi, örneklem tasarımı ve metot literatürü.
    - "context": Sadece ampirik alan, tarihsel ve mekansal arka plan literatürü.
    - "primary_source": Sadece incelenen birincil özneler, arşiv belgeleri, ham veri kaynakları.
-2. **Sızıntı Kontrolü (Isolation Audit)**: Her kutunun kendi içinde izole olduğunu doğrula. Örneğin; "theory" kutusunun literatür listesine tezin yerel/ampirik öznelerini karıştırma, sadece o teorinin kendi saf literatürünü yaz.
-3. **Sorgu Varyasyonu Üretimi**: Her kutunun "queries" alanı için dar (aktör/teorisyen odaklı), geniş (kavramsal) ve ilişkisel (değişkenler arası) olmak üzere hem Türkçe hem İngilizce en az 3 farklı arama sorgusu kurgula.
+2. **Çoklu Alt Kutu Ayırımı (Granularity Rule)**: Her bir kategori altında (özellikle "theory", "methodology", "context", "primary_source" için), eğer matris içinde birden fazla bağımsız, farklı veya kendine has odak noktası, kuramsal yaklaşım, metodolojik araç/aşama, tarihsel/mekansal bağlam ya da veri/kaynak grubu varsa, bunları tek bir genel kutuda birleştirmek yerine her bir bağımsız bileşen, yaklaşım, aşama veya odak için ayrı birer alt kutu (box) üret. 
+   - Örneğin: "theory" altında birbirine indirgenemez farklı teorik/kavramsal mercekler ayrı kutular olmalı; "methodology" altında araştırmanın birbirinden farklı metodolojik aşamaları, deney grupları veya veri toplama araçları ayrı kutular olmalı; "primary_source" veya "context" altında ise farklı zaman dilimleri, farklı coğrafi/ampirik sahalar veya farklı türdeki veri setleri/arşiv grupları ayrı kutular olarak yapılandırılmalıdır.
+   - Her alt kutu kendi içinde tutarlı, spesifik ve izole olmalıdır. Bir kategoride birden fazla alt kutu üretilmesi kesinlikle teşvik edilir.
+3. **Sızıntı Kontrolü (Isolation Audit)**: Her kutunun kendi içinde izole olduğunu doğrula. Örneğin; "theory" kutusunun literatür listesine tezin yerel/ampirik öznelerini karıştırma, sadece o teorinin kendi saf literatürünü yaz.
+4. **Sorgu Varyasyonu Üretimi**: Her kutunun "queries" alanı için dar (aktör/teorisyen odaklı), geniş (kavramsal) ve ilişkisel (değişkenler arası) olmak üzere hem Türkçe hem İngilizce en az 3 farklı arama sorgusu kurgula.
 </instructions>
 
 <constraints>
