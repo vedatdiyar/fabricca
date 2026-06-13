@@ -419,7 +419,7 @@ Her bir aday tezi incelerken, içsel düşünme (internal thinking) aşamasında
    - SÜZGEÇ A (Araştırma Sorusu): Aday tez ile hedef tezin araştırma soruları ve savunulan temel iddiaları/savları bu eksende AYNI MI? Eğer anlamsal/içeriksel çakışma veya aynılık varsa true, tamamen farklı ve özgünse false olarak değerlendir.
    - SÜZGEÇ B (Metodoloji): Aday tez ile hedef tezin metodolojik tasarımları, veri toplama araçları, örneklem evrenleri veya analiz yöntemleri bu eksende AYNI MI? Eğer yöntem replike edilmişse (aynılık/çakışma varsa) true, tamamen farklı ve özgünse false olarak değerlendir.
    - SÜZGEÇ C (Kuram): Aday tez ile hedef tezin üzerine inşa edildikleri temel kuramsal çerçeve, kavramsal şemsiye veya teorik modeller bu eksende AYNI MI? Eğer kuramsal yaklaşım aynıysa true, tamamen farklı ve özgünse false olarak değerlendir.
-   - SÜZGEÇ D (Tarihsel Dönem/Bağlam): Aday tez ile hedef tezin odaklandığı tarihsel dönem veya ampirik bağlam/sınırlılıklar bu eksende AYNI MI? Eğer tarihsel dönem veya bağlam çakışıyorsa (aynılık varsa) true, tamamen farklı ve özgünse false olarak değerlendir.
+   - SÜZGEÇ D (Tarihsel Dönem/Bağlam): Aday tez ile hedef tezin ampirik sınırları, örneklem evreni veya dönemsel/bağlamsal kapsamları arasında anlamsal bir kapsama (kapsanma, alt küme olma veya yutulma) durumu var mı? Metinsel veya rakamsal birebirlik aramaksızın anlamsal bir kapsama analizi gerçekleştir. Hedef çalışmanın ampirik sınırlarının, örneklem evreninin veya dönemsel kapsamının, aday çalışmanın kapsamı tarafından yutulması, kapsanması veya onun bir alt kümesi olması durumlarını kronolojik ve bağlamsal bir kesişme (aynılık) olarak kabul et. Eğer bu şekilde bir kapsama veya kesişme varsa true, tamamen farklı ve özgünse false olarak değerlendir.
 
 2. **Boolean Tespit (Boolean Detection)**: Her bir süzgeçten elde ettiğin doğrudan ve doğrusal sonuca göre ilgili boolean alanı kesin olarak \`true\` ya da \`false\` olarak işaretle:
    - SÜZGEÇ A → \`is_research_question_overlapping\` (Çakışma varsa true, özgünse false)
@@ -675,6 +675,7 @@ Cevap üretmeden önce içsel olarak (internal thinking) şu 3 adımlı yapısal
 </instructions>
 
 <constraints>
+- Teorisyen ve Eser İlişkisi (Theorist Publications): Ürettiğin her teorisyen için, o teorisyenin bu tez konusuyla doğrudan ilişkili olan en önemli 1 adet başyapıtını (kendi yazdığı kitap veya makale) mutlaka "primaryLiterature" listesine ekle. Eser ismi olarak "[Teorisyen Soyadı], [Baş Harf]. ([Yıl]). [Eser Adı]" formatını kullan. Eğer teorisyene veya teorisine dayanan diğer araştırmacıların çalışmalarını önereceksen, bunları "secondaryLiterature" listesine ekle. Teorisyenin kendi eseri her zaman birincil literatürdür!
 - Kesin Doğruluk İlkesi (Anti-Hallucination Clause): Özellikle "context" ve "primary_source" kutularında, kendi eğitim verilerinden mutlak emin olmadığın hiçbir yapay kaynak, yazar veya kitap ismi UYDURMA. Doğruluğundan emin olmadığın kaynaklar yerine ilgili array alanını kesinlikle boş dizi [] olarak bırak ve arama sorgularına ("queries") yüklen.
 - Boş Array Güvencesi: Eğer bir kutuda ilgili alan için veri üretilmeyecekse (örn. teorisyen yoksa), o alan null veya undefined değil, kesinlikle [] (boş array) olarak set edilmelidir.
 - Dil ve Ton: Alan anahtarları ve enum değerleri hariç, tüm başlık, açıklama ve içerikleri elit, duru ve seçkin bir akademik Türkçe ile yaz.

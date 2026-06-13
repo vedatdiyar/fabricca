@@ -39,7 +39,7 @@ export function CompleteButton() {
           Tamamlanıyor...
         </span>
       ) : (
-        "Süreci Tamamla ve Panel'e Geç"
+        "Kutuları Onayla ve Literatür Taramasını Başlat"
       )}
     </Button>
   );

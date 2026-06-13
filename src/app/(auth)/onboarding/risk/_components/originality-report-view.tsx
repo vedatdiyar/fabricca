@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition, useMemo, useState, Fragment } from "react";
+import { useTransition, useMemo, useState, Fragment, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   ShieldCheck,
@@ -23,7 +23,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { StartOverButton } from "../../_components/start-over-button";
-import { completeRiskStageAction } from "../actions";
+import { generateBoxesForCurrentMatrixAction } from "../actions";
 
 interface OriginalityReportViewProps {
   reportData: {
@@ -61,19 +61,12 @@ interface OriginalityReportViewProps {
 }
 
 const statusTranslation: Record<string, string> = {
-  HIGH_RISK: "Yüksek Risk",
-  MEDIUM_RISK: "Orta Risk",
-  LOW_RISK: "Düşük Risk",
-  ZERO_RISK: "Sıfır Risk",
-  OVERLAPPING: "Çakışma Var",
-  ORIGINAL: "Özgün",
-};
-
-const detailedStatusTranslation: Record<string, string> = {
-  HIGH_RISK: "Orijinallik Riski / Yakın Literatür Komşusu",
-  MEDIUM_RISK: "Ortak Odaklı Çalışma / Orta Risk",
-  LOW_RISK: "Uyumlu / Özgün Literatür",
-  ZERO_RISK: "Özgün Çalışma / Sıfır Risk",
+  HIGH_RISK: "YÜKSEK",
+  MEDIUM_RISK: "ORTA",
+  LOW_RISK: "DÜŞÜK",
+  ZERO_RISK: "ORİJİNAL",
+  OVERLAPPING: "ORTAK",
+  ORIGINAL: "ÖZGÜN",
 };
 
 const tavilyStatusTranslation: Record<string, string> = {
@@ -93,25 +86,134 @@ const getThesisPriority = (axes: {
   subject: string;
   theory: string;
   methodology: string;
+  context?: string;
 }) => {
-  const { subject: s, theory: t, methodology: m } = axes;
+  const {
+    subject: s,
+    theory: t,
+    methodology: m,
+    context: c = "ORIGINAL",
+  } = axes;
 
-  // 3 overlaps
-  if (s === "OVERLAPPING" && t === "OVERLAPPING" && m === "OVERLAPPING")
+  // 4 overlaps
+  if (
+    s === "OVERLAPPING" &&
+    t === "OVERLAPPING" &&
+    m === "OVERLAPPING" &&
+    c === "OVERLAPPING"
+  )
     return 1;
 
-  // 2 overlaps
-  if (s === "OVERLAPPING" && t === "OVERLAPPING") return 2;
-  if (s === "OVERLAPPING" && m === "OVERLAPPING") return 3;
-  if (t === "OVERLAPPING" && m === "OVERLAPPING") return 4;
+  // 3 overlaps
+  if (
+    s === "OVERLAPPING" &&
+    t === "OVERLAPPING" &&
+    m === "OVERLAPPING" &&
+    c === "ORIGINAL"
+  )
+    return 2;
+  if (
+    s === "OVERLAPPING" &&
+    t === "OVERLAPPING" &&
+    m === "ORIGINAL" &&
+    c === "OVERLAPPING"
+  )
+    return 3;
+  if (
+    s === "OVERLAPPING" &&
+    t === "ORIGINAL" &&
+    m === "OVERLAPPING" &&
+    c === "OVERLAPPING"
+  )
+    return 4;
+  if (
+    s === "ORIGINAL" &&
+    t === "OVERLAPPING" &&
+    m === "OVERLAPPING" &&
+    c === "OVERLAPPING"
+  )
+    return 5;
 
-  // 1 overlap
-  if (s === "OVERLAPPING") return 5;
-  if (t === "OVERLAPPING") return 6;
-  if (m === "OVERLAPPING") return 7;
+  // 2 overlaps (subject overlapping)
+  if (
+    s === "OVERLAPPING" &&
+    t === "OVERLAPPING" &&
+    m === "ORIGINAL" &&
+    c === "ORIGINAL"
+  )
+    return 6;
+  if (
+    s === "OVERLAPPING" &&
+    t === "ORIGINAL" &&
+    m === "ORIGINAL" &&
+    c === "OVERLAPPING"
+  )
+    return 7;
+  if (
+    s === "OVERLAPPING" &&
+    t === "ORIGINAL" &&
+    m === "OVERLAPPING" &&
+    c === "ORIGINAL"
+  )
+    return 8;
+
+  // 1 overlap (subject overlapping)
+  if (
+    s === "OVERLAPPING" &&
+    t === "ORIGINAL" &&
+    m === "ORIGINAL" &&
+    c === "ORIGINAL"
+  )
+    return 9;
+
+  // 2 overlaps (subject original)
+  if (
+    s === "ORIGINAL" &&
+    t === "ORIGINAL" &&
+    m === "OVERLAPPING" &&
+    c === "OVERLAPPING"
+  )
+    return 10;
+  if (
+    s === "ORIGINAL" &&
+    t === "OVERLAPPING" &&
+    m === "ORIGINAL" &&
+    c === "OVERLAPPING"
+  )
+    return 11;
+  if (
+    s === "ORIGINAL" &&
+    t === "OVERLAPPING" &&
+    m === "OVERLAPPING" &&
+    c === "ORIGINAL"
+  )
+    return 12;
+
+  // 1 overlap (subject original)
+  if (
+    s === "ORIGINAL" &&
+    t === "ORIGINAL" &&
+    m === "ORIGINAL" &&
+    c === "OVERLAPPING"
+  )
+    return 13;
+  if (
+    s === "ORIGINAL" &&
+    t === "ORIGINAL" &&
+    m === "OVERLAPPING" &&
+    c === "ORIGINAL"
+  )
+    return 14;
+  if (
+    s === "ORIGINAL" &&
+    t === "OVERLAPPING" &&
+    m === "ORIGINAL" &&
+    c === "ORIGINAL"
+  )
+    return 15;
 
   // 0 overlaps
-  return 8;
+  return 16;
 };
 
 /**
@@ -125,6 +227,27 @@ export function OriginalityReportView({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [expandedThesisId, setExpandedThesisId] = useState<number | null>(null);
+
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
+
+  const loadingMessages = [
+    "Tez matrisi ve araştırma tasarımı çözümleniyor...",
+    "Akademik konu kutuları yapılandırılıyor...",
+    "Kavramlar ve teorisyenler Wikipedia üzerinden doğrulanıyor...",
+    "Hiyerarşik düzen ve alt kutular oluşturuluyor...",
+    "Son düzenlemeler yapılıyor ve kaydediliyor...",
+  ];
+
+  useEffect(() => {
+    if (!isGenerating) return;
+    const interval = setInterval(() => {
+      setCurrentStep((prev) =>
+        prev < loadingMessages.length - 1 ? prev + 1 : prev,
+      );
+    }, 2800);
+    return () => clearInterval(interval);
+  }, [isGenerating]);
 
   const { tavilyResults, tezaraResults } = reportData;
 
@@ -161,12 +284,6 @@ export function OriginalityReportView({
         }
       });
     }
-
-    const riskWeights = {
-      HIGH_RISK: 3,
-      MEDIUM_RISK: 2,
-      LOW_RISK: 1,
-    };
 
     return items.sort((a, b) => {
       // 1. Sort by custom academic priority (1 is highest/top of the page)
@@ -213,16 +330,21 @@ export function OriginalityReportView({
         : "LOW";
 
   const handleProceed = () => {
+    setIsGenerating(true);
     startTransition(async () => {
       try {
-        const result = await completeRiskStageAction();
+        const result = await generateBoxesForCurrentMatrixAction();
         if ("error" in result && result.error) {
           toast.error(result.error);
+          setIsGenerating(false);
         } else {
           router.push("/onboarding/complete");
         }
       } catch {
-        toast.error("Risk aşaması tamamlanırken beklenmeyen bir hata oluştu.");
+        toast.error(
+          "Konu kutuları oluşturulurken beklenmeyen bir hata oluştu.",
+        );
+        setIsGenerating(false);
       }
     });
   };
@@ -261,7 +383,7 @@ export function OriginalityReportView({
         >
           <Award className="w-5 h-5" />
           <span>
-            {detailedStatusTranslation[tezaraResults.originalityBadge] ||
+            {statusTranslation[tezaraResults.originalityBadge] ||
               tezaraResults.originalityBadge}
           </span>
         </div>
@@ -366,11 +488,11 @@ export function OriginalityReportView({
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-foreground">
             <GitCompare className="w-5 h-5 text-primary" />
-            Literatür Çakışma ve Karşılaştırma Matrisi (3 Eksen)
+            Literatür Çakışma ve Karşılaştırma Matrisi (4 Eksen)
           </CardTitle>
           <CardDescription>
-            Benzer akademik çalışmaların soru/sav, kuramsal çerçeve ve
-            metodoloji eksenlerinde incelenmesi.
+            Benzer akademik çalışmaların konu, kuramsal çerçeve, metodoloji ve
+            bağlam eksenlerinde incelenmesi.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -378,20 +500,23 @@ export function OriginalityReportView({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-muted border-b border-border">
-                  <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase min-w-[240px]">
+                  <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase min-w-[320px]">
                     Karşılaştırılan Tez Bilgileri
                   </th>
-                  <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[110px]">
-                    Soru / Sav
+                  <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[80px]">
+                    Konu
                   </th>
-                  <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[110px]">
-                    Kuram
+                  <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[80px]">
+                    Teori
                   </th>
-                  <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[110px]">
-                    Metodoloji
+                  <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[80px]">
+                    YÖNTEM
                   </th>
-                  <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[150px]">
-                    Risk Seviyesi
+                  <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[80px]">
+                    DÖNEM
+                  </th>
+                  <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[90px]">
+                    RİSK SEVİYESİ
                   </th>
                 </tr>
               </thead>
@@ -399,7 +524,7 @@ export function OriginalityReportView({
                 {tezaraResults.overlapTable?.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="p-8 text-center text-muted-foreground leading-relaxed text-sm"
                     >
                       Doğrudan çakışan veya yakın ilişki kuran herhangi bir tez
@@ -408,167 +533,128 @@ export function OriginalityReportView({
                   </tr>
                 ) : (
                   (() => {
-                    const getSubjectBadge = (val: string, level: string) => {
-                      if (val === "OVERLAPPING") {
-                        if (level === "HIGH_RISK") {
-                          return {
-                            className:
-                              "bg-destructive/10 border border-destructive/20 text-destructive",
-                            label: "Konu Kesişmesi",
-                          };
-                        }
-                        return {
-                          className:
-                            "bg-warning/10 border border-warning/20 text-warning",
-                          label: "Benzer Araştırma Odağı",
-                        };
-                      }
-                      return {
-                        className:
-                          "bg-success/10 border border-success/20 text-success",
-                        label: "Özgün Soru/Sav",
-                      };
-                    };
-
-                    const getTheoryBadge = (val: string) => {
-                      if (val === "OVERLAPPING") {
-                        return {
-                          className:
-                            "bg-sky-500/10 border border-sky-500/20 text-sky-400",
-                          label: "Ortak Kuramsal Perspektif",
-                        };
-                      }
-                      return {
-                        className:
-                          "bg-success/10 border border-success/20 text-success",
-                        label: "Özgün Kuram",
-                      };
-                    };
-
-                    const getMethodologyBadge = (val: string) => {
-                      if (val === "OVERLAPPING") {
-                        return {
-                          className:
-                            "bg-sky-500/10 border border-sky-500/20 text-sky-400",
-                          label: "Paralel Literatür",
-                        };
-                      }
-                      return {
-                        className:
-                          "bg-success/10 border border-success/20 text-success",
-                        label: "Özgün Metodoloji",
-                      };
+                    const getAxisBadge = (val: string) => {
+                      if (val === "OVERLAPPING")
+                        return "bg-red-950 text-red-400 border border-red-800";
+                      return "bg-emerald-950 text-emerald-400 border border-emerald-800";
                     };
 
                     const getLevelBadge = (val: string) => {
                       if (val === "HIGH_RISK")
-                        return "bg-destructive/10 border border-destructive/20 text-destructive";
+                        return "bg-red-950 text-red-400 border border-red-800";
                       if (val === "MEDIUM_RISK")
-                        return "bg-warning/10 border border-warning/20 text-warning";
-                      return "bg-sky-500/10 border border-sky-500/20 text-sky-400";
+                        return "bg-amber-950 text-amber-400 border border-amber-800";
+                      return "bg-emerald-950 text-emerald-400 border border-emerald-800";
                     };
 
                     return (
                       <>
-                        {sortedTheses.map((item, idx) => {
-                          const subjectBadge = getSubjectBadge(
-                            item.axes.subject,
-                            item.originalityLevel,
-                          );
-                          const theoryBadge = getTheoryBadge(item.axes.theory);
-                          const methodologyBadge = getMethodologyBadge(
-                            item.axes.methodology,
-                          );
-
-                          return (
-                            <Fragment key={item.id || idx}>
-                              <tr
-                                className={`hover:bg-muted/40 cursor-pointer transition-colors ${
-                                  expandedThesisId === item.id
-                                    ? "bg-muted/20"
-                                    : ""
-                                }`}
-                                onClick={() =>
-                                  setExpandedThesisId(
-                                    expandedThesisId === item.id
-                                      ? null
-                                      : item.id,
+                        {sortedTheses.map((item, idx) => (
+                          <Fragment key={item.id || idx}>
+                            <tr
+                              className={`hover:bg-muted/40 cursor-pointer transition-colors ${
+                                expandedThesisId === item.id
+                                  ? "bg-muted/20"
+                                  : ""
+                              }`}
+                              onClick={() =>
+                                setExpandedThesisId(
+                                  expandedThesisId === item.id ? null : item.id,
+                                )
+                              }
+                            >
+                              <td className="p-3 space-y-1">
+                                <div className="font-semibold text-foreground text-sm leading-relaxed flex items-start gap-2 select-none">
+                                  <span className="mt-1 text-muted-foreground shrink-0 transition-transform duration-200">
+                                    {expandedThesisId === item.id ? (
+                                      <ChevronDown className="w-4 h-4" />
+                                    ) : (
+                                      <ChevronRight className="w-4 h-4" />
+                                    )}
+                                  </span>
+                                  <span>{item.title}</span>
+                                </div>
+                                <div className="pl-6 text-xs text-muted-foreground leading-relaxed">
+                                  {item.author} • {item.university} ({item.year}
                                   )
-                                }
-                              >
-                                <td className="p-3 space-y-1">
-                                  <div className="font-semibold text-foreground text-sm leading-relaxed flex items-start gap-2 select-none">
-                                    <span className="mt-1 text-muted-foreground shrink-0 transition-transform duration-200">
-                                      {expandedThesisId === item.id ? (
-                                        <ChevronDown className="w-4 h-4" />
-                                      ) : (
-                                        <ChevronRight className="w-4 h-4" />
-                                      )}
-                                    </span>
-                                    <span>{item.title}</span>
-                                  </div>
-                                  <div className="pl-6 text-xs text-muted-foreground leading-relaxed">
-                                    {item.author} • {item.university} (
-                                    {item.year})
-                                  </div>
-                                  <div className="pl-6 text-[11px] text-muted-foreground font-mono">
-                                    {item.thesisType}
-                                  </div>
-                                </td>
-                                <td className="p-3 text-center">
-                                  <span
-                                    className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${subjectBadge.className}`}
+                                </div>
+                                <div className="pl-6 text-[11px] text-muted-foreground font-mono">
+                                  {item.thesisType}
+                                </div>
+                              </td>
+                              <td className="p-3 text-center">
+                                <span
+                                  className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${getAxisBadge(
+                                    item.axes.subject,
+                                  )}`}
+                                >
+                                  {statusTranslation[item.axes.subject] ||
+                                    item.axes.subject}
+                                </span>
+                              </td>
+                              <td className="p-3 text-center">
+                                <span
+                                  className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${getAxisBadge(
+                                    item.axes.theory,
+                                  )}`}
+                                >
+                                  {statusTranslation[item.axes.theory] ||
+                                    item.axes.theory}
+                                </span>
+                              </td>
+                              <td className="p-3 text-center">
+                                <span
+                                  className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${getAxisBadge(
+                                    item.axes.methodology,
+                                  )}`}
+                                >
+                                  {statusTranslation[item.axes.methodology] ||
+                                    item.axes.methodology}
+                                </span>
+                              </td>
+                              <td className="p-3 text-center">
+                                <span
+                                  className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${getAxisBadge(
+                                    item.axes.context || "ORIGINAL",
+                                  )}`}
+                                >
+                                  {statusTranslation[
+                                    item.axes.context || "ORIGINAL"
+                                  ] || item.axes.context}
+                                </span>
+                              </td>
+                              <td className="p-3 text-center">
+                                <span
+                                  className={`inline-flex px-3 py-0.5 rounded-full text-xs font-bold whitespace-nowrap ${getLevelBadge(
+                                    item.originalityLevel,
+                                  )}`}
+                                >
+                                  {statusTranslation[item.originalityLevel] ||
+                                    item.originalityLevel}
+                                </span>
+                              </td>
+                            </tr>
+                            {expandedThesisId === item.id &&
+                              item.comparisonNote && (
+                                <tr className="bg-muted/10">
+                                  <td
+                                    colSpan={6}
+                                    className="p-4 border-t border-border"
                                   >
-                                    {subjectBadge.label}
-                                  </span>
-                                </td>
-                                <td className="p-3 text-center">
-                                  <span
-                                    className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${theoryBadge.className}`}
-                                  >
-                                    {theoryBadge.label}
-                                  </span>
-                                </td>
-                                <td className="p-3 text-center">
-                                  <span
-                                    className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${methodologyBadge.className}`}
-                                  >
-                                    {methodologyBadge.label}
-                                  </span>
-                                </td>
-                                <td className="p-3 text-center">
-                                  <span
-                                    className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold ${getLevelBadge(
-                                      item.originalityLevel,
-                                    )}`}
-                                  >
-                                    {statusTranslation[item.originalityLevel] ||
-                                      item.originalityLevel}
-                                  </span>
-                                </td>
-                              </tr>
-                              {expandedThesisId === item.id &&
-                                item.comparisonNote && (
-                                  <tr className="bg-muted/10">
-                                    <td
-                                      colSpan={5}
-                                      className="p-4 border-t border-border"
-                                    >
-                                      <div className="p-6 space-y-2 bg-background rounded-lg">
-                                        <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5 select-none">
-                                          <GitCompare className="w-3.5 h-3.5 text-primary" />
-                                          Detaylı Karşılaştırma Analizi
-                                        </h4>
-                                        <p className="text-sm leading-relaxed text-foreground font-light whitespace-pre-line">
-                                          {item.comparisonNote}
-                                        </p>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                )}
-                            </Fragment>
-                          );
-                        })}
+                                    <div className="p-6 space-y-2 bg-background rounded-lg">
+                                      <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5 select-none">
+                                        <GitCompare className="w-3.5 h-3.5 text-primary" />
+                                        Detaylı Karşılaştırma Analizi
+                                      </h4>
+                                      <p className="text-sm leading-relaxed text-foreground font-light whitespace-pre-line">
+                                        {item.comparisonNote}
+                                      </p>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                          </Fragment>
+                        ))}
                       </>
                     );
                   })()
@@ -602,16 +688,16 @@ export function OriginalityReportView({
           <StartOverButton variant="outline" size="default" />
           <Button
             onClick={handleProceed}
-            disabled={isPending}
-            className="btn-academic-hero"
+            disabled={isPending || isGenerating}
+            className="btn-academic-herox"
           >
-            {isPending ? (
+            {isPending || isGenerating ? (
               <span className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                İlerleniyor...
+                <Loader2 className="w-4 h-4" />
+                Hazırlanıyor...
               </span>
             ) : (
-              "Riskleri Göz Önünde Bulundurarak Devam Et"
+              "Analizi Onayla ve Konu Kutularını Oluştur"
             )}
           </Button>
         </div>
@@ -619,18 +705,56 @@ export function OriginalityReportView({
         <div className="flex justify-end">
           <Button
             onClick={handleProceed}
-            disabled={isPending}
+            disabled={isPending || isGenerating}
             className="btn-academic-hero"
           >
-            {isPending ? (
+            {isPending || isGenerating ? (
               <span className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                İlerleniyor...
+                <Loader2 className="w-4 h-4" />
+                Hazırlanıyor...
               </span>
             ) : (
-              "Süreci Tamamla ve Sonraki Aşamaya Geç"
+              "Analizi Onayla ve Konu Kutularını Oluştur"
             )}
           </Button>
+        </div>
+      )}
+
+      {/* Box Creation Loading Overlay */}
+      {isGenerating && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/85 backdrop-blur-md transition-all duration-300">
+          <div className="max-w-md w-full px-6 text-center space-y-6">
+            {/* Spinning Indicator */}
+            <div className="relative flex items-center justify-center mx-auto w-16 h-16 bg-primary/10 border border-primary/20 rounded-full">
+              <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            </div>
+
+            {/* Current step text */}
+            <div className="space-y-2">
+              <h3 className="text-xl font-semibold text-foreground tracking-tight">
+                Konu Kutuları Yapılandırılıyor
+              </h3>
+              <p className="text-sm text-muted-foreground min-h-[40px] leading-relaxed transition-all duration-300">
+                {loadingMessages[currentStep]}
+              </p>
+            </div>
+
+            {/* Step Indicators */}
+            <div className="flex justify-center items-center gap-1.5 pt-2">
+              {loadingMessages.map((_, idx) => (
+                <div
+                  key={idx}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    idx === currentStep
+                      ? "w-8 bg-primary"
+                      : idx < currentStep
+                        ? "w-2 bg-primary/40"
+                        : "w-2 bg-border"
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -15,6 +15,7 @@ import {
   thesisBoxGenerationSchema,
 } from "@/lib/prompts";
 import { searchWikipediaTheorist } from "@/lib/wikipedia";
+import { verifyLiterature } from "@/lib/literature";
 
 /**
  * Interface representing a structured thesis box returned by Gemini.
@@ -131,7 +132,7 @@ export async function generateThesisBoxesAction(
           try {
             const wikiResult = await searchWikipediaTheorist(
               theoristName,
-              box.title || box.category,
+              box.category,
             );
             if (wikiResult) {
               return theoristName;
@@ -158,122 +159,185 @@ export async function generateThesisBoxesAction(
       step: "wikipedia_cross_check",
     });
 
-    // Step 4: Write to database using a transaction for parent-child hierarchy
-    await withDbLogging(
-      () =>
-        db.transaction(async (tx) => {
-          // 4a. Insert parent boxes
-          const parentValues = [
-            {
-              thesisMatrixId,
-              parentId: null,
-              category: "intro" as const,
-              title: "Giriş ve Temel İddia",
-              description: "Tezin temel iddiaları ve giriş çerçevesi.",
-              theorists: [],
-              concepts: [],
-              queries: [],
-              primaryLiterature: [],
-              secondaryLiterature: [],
-            },
-            {
-              thesisMatrixId,
-              parentId: null,
-              category: "theory" as const,
-              title: "Teorik Zemin",
-              description: "Kuramsal çerçeve ve teorik altyapı kutuları.",
-              theorists: [],
-              concepts: [],
-              queries: [],
-              primaryLiterature: [],
-              secondaryLiterature: [],
-            },
-            {
-              thesisMatrixId,
-              parentId: null,
-              category: "methodology" as const,
-              title: "Yöntem Literatürü",
-              description: "Metodoloji ve araştırma yöntemi kutuları.",
-              theorists: [],
-              concepts: [],
-              queries: [],
-              primaryLiterature: [],
-              secondaryLiterature: [],
-            },
-            {
-              thesisMatrixId,
-              parentId: null,
-              category: "context" as const,
-              title: "Tarihsel ve Mekânsal Bağlam",
-              description:
-                "Tarihsel sınırlar ve coğrafi/mekânsal bağlam kutuları.",
-              theorists: [],
-              concepts: [],
-              queries: [],
-              primaryLiterature: [],
-              secondaryLiterature: [],
-            },
-            {
-              thesisMatrixId,
-              parentId: null,
-              category: "primary_source" as const,
-              title: "Birincil Özneler ve Arşivler",
-              description: "İncelenen birincil özneler, arşivler ve belgeler.",
-              theorists: [],
-              concepts: [],
-              queries: [],
-              primaryLiterature: [],
-              secondaryLiterature: [],
-            },
-          ];
+    // Step 3.5: Google Books and Wikipedia cross-check for literature to prevent hallucinations
+    log.info("search_start", {
+      service: "enrichment",
+      step: "literature_cross_check",
+    });
 
-          const insertedParents = await tx
-            .insert(thesisBoxes)
-            .values(parentValues)
-            .returning({ id: thesisBoxes.id, category: thesisBoxes.category });
+    await Promise.all(
+      draftBoxes.map(async (box) => {
+        const primLit = box.primaryLiterature || [];
+        const secLit = box.secondaryLiterature || [];
 
-          const parentMap = new Map<string, number>();
-          for (const parent of insertedParents) {
-            parentMap.set(parent.category, parent.id);
-          }
-
-          // 4b. Map and insert child sub-boxes
-          const subBoxValues = draftBoxes.map((box) => {
-            const parentId = parentMap.get(box.category);
-            if (!parentId) {
-              throw new Error(
-                `Ebeveyn kutusu bulunamadı (kategori: ${box.category})`,
-              );
+        const verifyList = async (
+          list: string[],
+          listName: "primaryLiterature" | "secondaryLiterature",
+        ) => {
+          if (list.length === 0) return [];
+          const verificationPromises = list.map(async (lit) => {
+            try {
+              const res = await verifyLiterature(lit);
+              if (res.verified) {
+                return lit;
+              } else {
+                log.info("search_filtered", {
+                  service: "enrichment",
+                  step: `literature_${listName}_rejected`,
+                  data: { citation: lit, method: res.method },
+                });
+              }
+            } catch (err) {
+              log.error("search_filtered", {
+                service: "enrichment",
+                step: `literature_${listName}_check_failed`,
+                error: err,
+              });
             }
-            return {
-              thesisMatrixId,
-              parentId,
-              category: box.category,
-              title: box.title,
-              description: box.description || "",
-              theorists: box.theorists || [],
-              concepts: box.concepts || [],
-              queries: box.queries || [],
-              primaryLiterature: box.primaryLiterature || [],
-              secondaryLiterature: box.secondaryLiterature || [],
-            };
+            return null;
           });
+          const results = await Promise.all(verificationPromises);
+          return results.filter((item): item is string => item !== null);
+        };
 
-          if (subBoxValues.length > 0) {
-            await tx.insert(thesisBoxes).values(subBoxValues);
+        const [verifiedPrim, verifiedSec] = await Promise.all([
+          verifyList(primLit, "primaryLiterature"),
+          verifyList(secLit, "secondaryLiterature"),
+        ]);
+
+        box.primaryLiterature = verifiedPrim;
+        box.secondaryLiterature = verifiedSec;
+      }),
+    );
+
+    log.info("search_success", {
+      service: "enrichment",
+      step: "literature_cross_check",
+    });
+
+    // Step 4: Write to database for parent-child hierarchy
+    await withDbLogging(
+      async () => {
+        // 4a. Insert parent boxes
+        const parentValues = [
+          {
+            thesisMatrixId,
+            parentId: null,
+            category: "intro" as const,
+            title: "Giriş ve Temel İddia",
+            description: "Tezin temel iddiaları ve giriş çerçevesi.",
+            theorists: [],
+            concepts: [],
+            queries: [],
+            primaryLiterature: [],
+            secondaryLiterature: [],
+          },
+          {
+            thesisMatrixId,
+            parentId: null,
+            category: "theory" as const,
+            title: "Teorik Zemin",
+            description: "Kuramsal çerçeve ve teorik altyapı kutuları.",
+            theorists: [],
+            concepts: [],
+            queries: [],
+            primaryLiterature: [],
+            secondaryLiterature: [],
+          },
+          {
+            thesisMatrixId,
+            parentId: null,
+            category: "methodology" as const,
+            title: "Yöntem Literatürü",
+            description: "Metodoloji ve araştırma yöntemi kutuları.",
+            theorists: [],
+            concepts: [],
+            queries: [],
+            primaryLiterature: [],
+            secondaryLiterature: [],
+          },
+          {
+            thesisMatrixId,
+            parentId: null,
+            category: "context" as const,
+            title: "Tarihsel ve Mekânsal Bağlam",
+            description:
+              "Tarihsel sınırlar ve coğrafi/mekânsal bağlam kutuları.",
+            theorists: [],
+            concepts: [],
+            queries: [],
+            primaryLiterature: [],
+            secondaryLiterature: [],
+          },
+          {
+            thesisMatrixId,
+            parentId: null,
+            category: "primary_source" as const,
+            title: "Birincil Özneler ve Arşivler",
+            description: "İncelenen birincil özneler, arşivler ve belgeler.",
+            theorists: [],
+            concepts: [],
+            queries: [],
+            primaryLiterature: [],
+            secondaryLiterature: [],
+          },
+        ];
+
+        const insertedParents = await db
+          .insert(thesisBoxes)
+          .values(parentValues)
+          .returning({ id: thesisBoxes.id, category: thesisBoxes.category });
+
+        const parentMap = new Map<string, number>();
+        for (const parent of insertedParents) {
+          parentMap.set(parent.category, parent.id);
+        }
+
+        // 4b. Map and insert child sub-boxes
+        const subBoxValues = draftBoxes.map((box) => {
+          const parentId = parentMap.get(box.category);
+          if (!parentId) {
+            throw new Error(
+              `Ebeveyn kutusu bulunamadı (kategori: ${box.category})`,
+            );
           }
+          return {
+            thesisMatrixId,
+            parentId,
+            category: box.category,
+            title: box.title,
+            description: box.description || "",
+            theorists: box.theorists || [],
+            concepts: box.concepts || [],
+            queries: box.queries || [],
+            primaryLiterature: box.primaryLiterature || [],
+            secondaryLiterature: box.secondaryLiterature || [],
+          };
+        });
 
-          // 4c. Update user's onboarding step to "completed"
-          await tx
-            .update(users)
-            .set({ onboardingStep: "completed" })
-            .where(eq(users.id, userId));
-        }),
-      "save_hierarchical_boxes_transaction",
+        if (subBoxValues.length > 0) {
+          await db.insert(thesisBoxes).values(subBoxValues);
+        }
+
+        // 4c. Update user's onboarding step to "originality_report_completed"
+        await db
+          .update(users)
+          .set({ onboardingStep: "originality_report_completed" })
+          .where(eq(users.id, userId));
+      },
+      "save_hierarchical_boxes",
       log,
     );
 
-    revalidatePath("/onboarding", "layout");
+    try {
+      revalidatePath("/onboarding", "layout");
+    } catch (e) {
+      log.info("search_filtered", {
+        service: "enrichment",
+        step: "revalidate_path_skipped",
+        error: e,
+      });
+    }
     log.info("flow_complete", { service: "enrichment" });
     return { success: true };
   } catch (err) {
@@ -310,36 +374,32 @@ export async function completeOnboardingAction(): Promise<OnboardingActionResult
       data: { userId },
     });
 
-    // Fetch the user's thesis matrix to get the ID
-    const [matrix] = await withDbLogging(
+    // Update user onboarding step to completed
+    await withDbLogging(
       () =>
         db
-          .select()
-          .from(thesisMatrices)
-          .where(eq(thesisMatrices.userId, userId)),
-      "read_user_matrix",
+          .update(users)
+          .set({ onboardingStep: "completed" })
+          .where(eq(users.id, userId)),
+      "update_user_step_completed",
       log,
     );
 
-    if (!matrix) {
-      log.info("flow_complete", {
+    try {
+      revalidatePath("/onboarding", "layout");
+    } catch (e) {
+      log.info("search_filtered", {
         service: "flow",
-        data: { reason: "Matrix not found for user", userId },
+        step: "revalidate_path_skipped",
+        error: e,
       });
-      return {
-        error: "Tez matrisi bulunamadı. Lütfen önce tez matrisini doldurun.",
-      };
     }
-
-    // Call the thesis box generation and onboarding complete action
-    const generationResult = await generateThesisBoxesAction(matrix.id);
-
     log.info("flow_complete", {
       service: "flow",
-      data: { success: !("error" in generationResult) },
+      data: { success: true },
     });
 
-    return generationResult;
+    return { success: true };
   } catch (err) {
     log.error("flow_complete", { service: "flow", error: err });
     return {

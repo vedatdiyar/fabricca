@@ -3,10 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
-import {
-  startOriginalityAnalysisAction,
-  checkAnalysisStatusAction,
-} from "../actions";
+import { startOriginalityAnalysisAction } from "../actions";
 import { ErrorDisplay } from "@/components/error-display";
 
 /**
@@ -84,7 +81,13 @@ export function AnalysisTrigger({ initialStep }: AnalysisTriggerProps) {
 
     const pollInterval = setInterval(async () => {
       try {
-        const res = await checkAnalysisStatusAction();
+        const response = await fetch("/api/onboarding/risk/status", {
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const res = await response.json();
         if (res.success && res.step) {
           if (res.step === "originality_report_completed") {
             clearInterval(pollInterval);

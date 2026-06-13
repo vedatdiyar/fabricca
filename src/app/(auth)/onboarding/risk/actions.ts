@@ -447,55 +447,52 @@ export async function getStoredOriginalityReportAction() {
 }
 
 /**
- * Kullanıcının güncel onboarding_step değerini kontrol eder.
- * Client-side polling mekanizması için kullanılır.
+ * Mevcut kullanıcının tez matrisini bularak tez kutularını (boxes) oluşturur.
  *
- * @returns Kullanıcının onboardingStep değeri veya hata
+ * @returns Başarı durumu veya hata mesajı.
  */
-export async function checkAnalysisStatusAction(): Promise<{
-  success: boolean;
-  step?: string;
-  error?: string;
-}> {
+export async function generateBoxesForCurrentMatrixAction(): Promise<OnboardingActionResult> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
   try {
     const session = await getSession();
     if (!session) {
-      return { success: false, error: "Oturum bulunamadı." };
-    }
-    const [user] = await db
-      .select({ onboardingStep: users.onboardingStep })
-      .from(users)
-      .where(eq(users.id, session.userId));
-    if (!user) {
-      return { success: false, error: "Kullanıcı bulunamadı." };
+      log.info("flow_complete", {
+        service: "enrichment",
+        data: { reason: "No session found" },
+      });
+      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
     }
 
-    let step = user.onboardingStep;
+    const userId = session.userId;
+    const [matrix] = await withDbLogging(
+      () =>
+        db
+          .select()
+          .from(thesisMatrices)
+          .where(eq(thesisMatrices.userId, userId)),
+      "read_user_matrix_for_generation",
+      log,
+    );
 
-    // Otomatik İyileştirme (Auto-healing): Eğer veri tabanında rapor zaten varsa ama adım tamamlanmadıysa, adımı tamamla
-    if (
-      step === "originality_report" ||
-      step === "originality_report_processing"
-    ) {
-      const [report] = await db
-        .select()
-        .from(originalityReports)
-        .where(eq(originalityReports.userId, session.userId));
-
-      if (report) {
-        await db
-          .update(users)
-          .set({ onboardingStep: "originality_report_completed" })
-          .where(eq(users.id, session.userId));
-        step = "originality_report_completed";
-      }
+    if (!matrix) {
+      log.info("flow_complete", {
+        service: "enrichment",
+        data: { reason: "Matrix not found" },
+      });
+      return {
+        error: "Tez matrisi bulunamadı. Lütfen önce tez matrisini doldurun.",
+      };
     }
 
-    return { success: true, step };
+    // complete/actions altındaki asıl metodu çağırıyoruz
+    const { generateThesisBoxesAction } = await import("../complete/actions");
+    return await generateThesisBoxesAction(matrix.id);
   } catch (err) {
+    log.error("flow_complete", { service: "enrichment", error: err });
     return {
-      success: false,
-      error: err instanceof Error ? err.message : String(err),
+      error: "Konu kutuları oluşturulurken beklenmeyen bir hata oluştu.",
     };
   }
 }

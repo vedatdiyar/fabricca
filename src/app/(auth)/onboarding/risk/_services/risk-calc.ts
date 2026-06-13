@@ -91,9 +91,9 @@ export function calculateOriginalityRisk(
     if (is_theory_overlapping) calculated_score += 10;
 
     let originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
-    if (calculated_score >= 70) {
+    if (calculated_score >= 71) {
       originalityLevel = "HIGH_RISK";
-    } else if (calculated_score <= 30) {
+    } else if (calculated_score <= 31) {
       originalityLevel = "LOW_RISK";
     } else {
       originalityLevel = "MEDIUM_RISK";
@@ -133,11 +133,19 @@ export function calculateOriginalityRisk(
   const riskPercentage = maxScore;
 
   let originalityBadge: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
-  if (riskPercentage >= 70) {
+  if (
+    calculatedOverlapTable.some((item) => item.originalityLevel === "HIGH_RISK")
+  ) {
     originalityBadge = "HIGH_RISK";
-  } else if (riskPercentage > 30) {
+  } else if (
+    calculatedOverlapTable.some(
+      (item) => item.originalityLevel === "MEDIUM_RISK",
+    )
+  ) {
     originalityBadge = "MEDIUM_RISK";
-  } else if (riskPercentage > 0) {
+  } else if (
+    calculatedOverlapTable.some((item) => item.originalityLevel === "LOW_RISK")
+  ) {
     originalityBadge = "LOW_RISK";
   } else {
     originalityBadge = "ZERO_RISK";

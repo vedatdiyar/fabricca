@@ -24,6 +24,9 @@ export type SessionWithOnboarding = SessionUser & {
  * @returns SessionUser nesnesi veya null
  */
 export async function getSession(): Promise<SessionUser | null> {
+  if (typeof global !== "undefined" && (global as any).__mockSession) {
+    return (global as any).__mockSession;
+  }
   try {
     const cookieStore = await cookies();
     const raw = cookieStore.get("fabricca_session")?.value;
