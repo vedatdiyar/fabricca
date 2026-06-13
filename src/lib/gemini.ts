@@ -33,14 +33,14 @@ const ai = new GoogleGenAI({ apiKey });
 
 /**
  * Gemini modelinden yapılandırılmış JSON çıktısı almak için generic yardımcı.
- * Temperature her zaman 1.0 olarak sabitlenir, thinkingConfig high seviyede
- * çalışır ve yanıt, verilen JSON şemasına göre JSON olarak parse edilir.
+ * Yanıt, verilen JSON şemasına göre JSON olarak parse edilir.
  *
  * @param modelName - Kullanılacak Gemini model adı (örn. "gemini-3.1-flash-lite")
  * @param systemInstruction - Sistem talimatı (persona + kurallar)
  * @param prompt - Kullanıcı promptu
  * @param schema - Yanıtın doğrulanacağı JSON şeması
  * @param logger - Opsiyonel Logger instance'ı (AI event logları için)
+ * @param options - Opsiyonel Gemini konfigürasyon seçenekleri
  * @returns Şemaya uygun olarak parse edilmiş tip güvenli nesne
  */
 export async function generateStructuredContent<T>(
@@ -67,112 +67,79 @@ export async function generateStructuredContent<T>(
     },
   });
 
-  const maxAttempts = 5;
-  const baseDelayMs = 3000;
-  let lastError: unknown;
+  try {
+    const response = await ai.models.generateContent({
+      model: modelName,
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      config: {
+        systemInstruction,
+        temperature:
+          options?.temperature !== undefined ? options.temperature : 1.0,
+        responseMimeType: "application/json",
+        responseJsonSchema: schema,
+        thinkingConfig:
+          options?.thinkingConfig === null
+            ? undefined
+            : options?.thinkingConfig || {
+                thinkingLevel: ThinkingLevel.HIGH,
+              },
+      },
+    });
 
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    try {
-      const response = await ai.models.generateContent({
-        model: modelName,
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        config: {
-          systemInstruction,
-          temperature:
-            options?.temperature !== undefined ? options.temperature : 1.0,
-          responseMimeType: "application/json",
-          responseJsonSchema: schema,
-          thinkingConfig:
-            options?.thinkingConfig === null
-              ? undefined
-              : options?.thinkingConfig || {
-                  thinkingLevel: ThinkingLevel.HIGH,
-                },
-        },
-      });
-
-      const text = response.text;
-      if (!text) {
-        throw new Error("Gemini yanıtı boş döndü.");
-      }
-
-      // ===== 🛡️ ROBUST SANITIZATION & TRUNCATION SAFEGUARD =====
-      // 1. Clean markdown code blocks (```json ... ```) if present
-      let cleanedText = text.trim();
-      if (cleanedText.startsWith("```")) {
-        cleanedText = cleanedText
-          .replace(/^```json\s*/i, "")
-          .replace(/^```\s*/, "")
-          .replace(/```$/, "")
-          .trim();
-      }
-
-      // 2. Attempt parsing the cleaned text
-      const parsed = JSON.parse(cleanedText) as T;
-      const durationMs = performance.now() - startTime;
-      const metadata = (
-        response as unknown as {
-          usageMetadata?: {
-            promptTokenCount?: number;
-            candidatesTokenCount?: number;
-            totalTokenCount?: number;
-          };
-        }
-      )?.usageMetadata;
-
-      const tokens = metadata
-        ? {
-            input: metadata.promptTokenCount,
-            output: metadata.candidatesTokenCount,
-            total: metadata.totalTokenCount,
-          }
-        : undefined;
-
-      logger?.info("ai_request_success", {
-        service: "gemini",
-        durationMs,
-        tokens,
-        data: { model: modelName, attempt: attempt + 1 },
-      });
-      return parsed;
-    } catch (error) {
-      lastError = error;
-      const isLastAttempt = attempt === maxAttempts - 1;
-
-      logger?.warn("ai_retry_attempt", {
-        service: "gemini",
-        step: `attempt_${attempt + 1}_failed`,
-        data: { model: modelName, attempt: attempt + 1, isLastAttempt },
-        error: error instanceof Error ? error.message : String(error),
-      });
-
-      if (!isLastAttempt) {
-        // Exponential backoff + jitter (random between 500ms and 1500ms)
-        const jitter = Math.random() * 1000 + 500;
-        const delayMs = baseDelayMs * Math.pow(2, attempt) + jitter;
-        logger?.info("ai_retry_attempt", {
-          service: "gemini",
-          step: "retry_delay",
-          data: { delayMs, nextAttempt: attempt + 2 },
-        });
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-      }
+    const text = response.text;
+    if (!text) {
+      throw new Error("Gemini yanıtı boş döndü.");
     }
+
+    // ===== 🛡️ ROBUST SANITIZATION & TRUNCATION SAFEGUARD =====
+    // 1. Clean markdown code blocks (```json ... ```) if present
+    let cleanedText = text.trim();
+    if (cleanedText.startsWith("```")) {
+      cleanedText = cleanedText
+        .replace(/^```json\s*/i, "")
+        .replace(/^```\s*/, "")
+        .replace(/```$/, "")
+        .trim();
+    }
+
+    // 2. Attempt parsing the cleaned text
+    const parsed = JSON.parse(cleanedText) as T;
+    const durationMs = performance.now() - startTime;
+    const metadata = (
+      response as unknown as {
+        usageMetadata?: {
+          promptTokenCount?: number;
+          candidatesTokenCount?: number;
+          totalTokenCount?: number;
+        };
+      }
+    )?.usageMetadata;
+
+    const tokens = metadata
+      ? {
+          input: metadata.promptTokenCount,
+          output: metadata.candidatesTokenCount,
+          total: metadata.totalTokenCount,
+        }
+      : undefined;
+
+    logger?.info("ai_request_success", {
+      service: "gemini",
+      durationMs,
+      tokens,
+      data: { model: modelName, attempt: 1 },
+    });
+    return parsed;
+  } catch (error) {
+    const durationMs = performance.now() - startTime;
+    logger?.error("ai_request_failed", {
+      service: "gemini",
+      durationMs,
+      data: { model: modelName, attempts: 1 },
+      error,
+    });
+    throw error;
   }
-
-  const durationMs = performance.now() - startTime;
-  logger?.error("ai_request_failed", {
-    service: "gemini",
-    durationMs,
-    data: { model: modelName, attempts: maxAttempts },
-    error: lastError,
-  });
-
-  throw new Error(
-    `Gemini API çağrısı ${maxAttempts} denemeden sonra başarısız oldu: ${
-      lastError instanceof Error ? lastError.message : "Bilinmeyen hata"
-    }`,
-  );
 }
 
 /**
@@ -197,27 +164,31 @@ export async function generateEmbeddings(
   });
 
   try {
-    const chunkSize = 100;
+    const chunkSize = 30;
     const allEmbeddings: number[][] = [];
+    let i = 0;
 
-    for (let i = 0; i < texts.length; i += chunkSize) {
+    while (i < texts.length) {
       const chunk = texts.slice(i, i + chunkSize);
       const response = await ai.models.embedContent({
         model: "gemini-embedding-2",
-        contents: chunk.map((text) => ({ parts: [{ text }] })),
+        contents: chunk.map((text) => ({ role: "user", parts: [{ text }] })),
+        config: { outputDimensionality: 768 },
       });
 
       if (response.embeddings && Array.isArray(response.embeddings)) {
-        for (const e of response.embeddings) {
+        response.embeddings.forEach((e) => {
           if (e.values) {
             allEmbeddings.push(e.values);
           } else {
             throw new Error("Embedding değerleri bulunamadı.");
           }
-        }
+        });
       } else {
         throw new Error("Geçersiz embedding yanıtı.");
       }
+
+      i += chunkSize;
     }
 
     const durationMs = performance.now() - startTime;

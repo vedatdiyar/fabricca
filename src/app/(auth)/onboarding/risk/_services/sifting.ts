@@ -37,7 +37,7 @@ export interface SiftingDiagnostic {
  * @param params - Target thesis matrix parameters.
  * @param tezaraSearchResults - Parallel search results from Tezara containing candidates.
  * @param log - Logger instance.
- * @returns Object containing finalTheses (array of exactly 6 TezaraThesisDetails) and diagnostic info.
+ * @returns Object containing finalTheses (array of TezaraThesisDetails selected by the LLM) and diagnostic info.
  */
 export async function siftAndFetchDetails(
   params: SiftAndFetchDetailsParams,
@@ -213,22 +213,8 @@ export async function siftAndFetchDetails(
     throw err;
   }
 
-  // Extract exactly the final 6 thesis details
-  let finalSelectedTheses = validDetails.filter((t) => finalIds.includes(t.id));
-  if (finalSelectedTheses.length === 0) {
-    finalSelectedTheses = validDetails.slice(0, 6);
-  } else if (finalSelectedTheses.length > 6) {
-    finalSelectedTheses = finalSelectedTheses.slice(0, 6);
-  } else if (
-    finalSelectedTheses.length < 6 &&
-    validDetails.length > finalSelectedTheses.length
-  ) {
-    // Fill up to 6 from other validDetails
-    const extra = validDetails.filter(
-      (t) => !finalSelectedTheses.some((ft) => ft.id === t.id),
-    );
-    finalSelectedTheses.push(...extra.slice(0, 6 - finalSelectedTheses.length));
-  }
+  // Respect the LLM's selection — no artificial padding or capping
+  const finalSelectedTheses = validDetails.filter((t) => finalIds.includes(t.id));
 
   log.info("flow_complete", {
     service: "originality",

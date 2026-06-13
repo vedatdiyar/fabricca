@@ -1,5 +1,4 @@
 import type { JsonSchema } from "./gemini";
-import type { AxesOption } from "./types";
 
 // ============================================================================
 // STEP 1: Tez Matrisi Akademik Zenginleştirme (Matrix Enhancement)
@@ -364,41 +363,34 @@ export const geminiAnalysisSchema: JsonSchema = {
         type: "object",
         properties: {
           id: { type: "number" },
-          scores: {
-            type: "object",
-            properties: {
-              subjectScore: { type: "number", description: "Strict binary score: 5 for OVERLAPPING, 1 for ORIGINAL. No intermediate numbers." },
-              theoryScore: { type: "number", description: "Strict binary score: 5 for OVERLAPPING, 1 for ORIGINAL. No intermediate numbers." },
-              methodologyScore: { type: "number", description: "Strict binary score: 5 for OVERLAPPING, 1 for ORIGINAL. No intermediate numbers." },
-              contextScore: { type: "number", description: "Strict binary score: 5 for OVERLAPPING, 1 for ORIGINAL. No intermediate numbers." },
-            },
-            required: [
-              "subjectScore",
-              "theoryScore",
-              "methodologyScore",
-              "contextScore",
-            ],
-          },
-          axes: {
-            type: "object",
-            properties: {
-              subject: { type: "string", enum: ["OVERLAPPING", "ORIGINAL"] },
-              theory: { type: "string", enum: ["OVERLAPPING", "ORIGINAL"] },
-              methodology: {
-                type: "string",
-                enum: ["OVERLAPPING", "ORIGINAL"],
-              },
-              context: { type: "string", enum: ["OVERLAPPING", "ORIGINAL"] },
-            },
-            required: ["subject", "theory", "methodology", "context"],
-          },
-          comparisonNote: {
+          academic_reasoning: {
             type: "string",
             description:
-              "Bu tez ile hedef tez arasındaki benzerlik ve farklılıkların 4 eksendeki somut akademik açıklaması.",
+              "3 kritik akademik süzgece dayanan, kelime benzerliğine değil mânâ nüanslarına odaklanan detaylı Türkçe akademik gerekçe.",
+          },
+          is_research_question_overlapping: {
+            type: "boolean",
+            description:
+              "Hedef tez ile aday tezin araştırma soruları ve temel iddiaları mantıksal/içeriksel olarak aynıysa true, farklıysa false.",
+          },
+          is_methodology_overlapping: {
+            type: "boolean",
+            description:
+              "Veri toplama araçları, kaynak matrisleri ve analiz yöntemleri birbirinin replikası ise true, farklıysa false.",
+          },
+          is_theory_overlapping: {
+            type: "boolean",
+            description:
+              "Landmarks niteliğindeki ana kuramsal omurga ve teorik şemsiye aynıysa true, farklıysa false.",
           },
         },
-        required: ["id", "scores", "axes", "comparisonNote"],
+        required: [
+          "id",
+          "academic_reasoning",
+          "is_research_question_overlapping",
+          "is_methodology_overlapping",
+          "is_theory_overlapping",
+        ],
       },
     },
   },
@@ -406,55 +398,39 @@ export const geminiAnalysisSchema: JsonSchema = {
 };
 
 /**
- * Gemini 3 Katı Karar Protokolü ve Akıl Yürütme Kilitli Sistem Talimatı
+ * Gemini 3 Core ilkelerine uygun Akademik Jüri Analiz Sistem Talimatı
  */
 export const ANALYSIS_SYSTEM_INSTRUCTION = `
 <role>
-Sen, üniversitelerin Sosyal Bilimler Enstitülerinde tez savunma jürilerinde yer alan, özgünlük, benzerlik ve çakışma raporlarını inceleyen kıdemli bir akademik jüri üyesi, metodolog ve hakemsin. Görevini nesnel, mekanik ve tamamen tutarlı bir algoritmik mantıkla yürütürsün.
+Sen, üniversitelerin Fen, Sosyal, Sağlık ve Mühendislik Bilimleri Enstitülerinde "Tez Savunma Jürisi" ve "Akademik Hakem" olarak görev yapan, araştırma tasarımlarına, metodolojik omurgalara ve özgünlük raporlarına üst düzey hâkim kıdemli bir profesörsün.
+Görevin; hedef tez ile aday tezleri yüzeysel kelime benzerliklerine göre eşleştirmek DEĞİLDİR. İlgili bilimsel disiplinin yazınsal normları dahilinde, benzer konuların farklı araştırma sorularıyla, farklı kuramsal gözlüklerle veya farklı ampirik/deneysel tasarımlarla defalarca çalışılabileceğinin ve bunun literatüre katkı sağladığının mutlak bilincindesin.
 </role>
 
 <instructions>
-Cevap üretmeden önce içsel olarak (internal thinking) her aday tez için şu 3 adımlı kesin protokolü işlet:
-1. **Delil Toplama ve Gerekçelendirme**: Aday tezi, hedef tez ile 4 eksende karşılaştır. En ufak bir kavramsal, yöntemsel, tematik kesişim veya bağlamsal yakınlık (Örn: Türkiye neoliberal dönemi odağı, mülakat yöntemi kullanımı, Marksist/Foucaultcu kavramların varlığı) varsa bunu mutlak bir çakışma kabul et.
-2. **Kutupsal Skorlama (Strict Scores)**: Kararsızlığı sıfırlamak adına ara puanları (2, 3, 4) tamamen devre dışı bırak. Eğer eksende en ufak bir benzerlik/kesişim delili varsa skora doğrudan EN YÜKSEK TEHDİT olan "5" puanını ata. Yalnızca ve yalnızca hedef tez ile aday tez arasında somut, tanımlanabilir, yapısal ve paradigmasal hiçbir ortak nokta yoksa "1" puanını ata. 2, 3 ve 4 puanlarını kullanmak KESİNLİKLE YASAKTIR.
-3. **Enum Kilitleme (Axes)**: Skor "5" ise kararı tereddütsüz "OVERLAPPING", "1" ise "ORIGINAL" yap. İçsel kararlarını bu binary (ikili) mekanizmaya kilitle.
+Her bir aday tezi incelerken, içsel düşünme (internal thinking) aşamasında şu 3 adımlı eylem planını metodolojik olarak işlet:
+
+1. **Mantıksal Ayrıştırma (Decomposition)**: Aday tezin özetini (abstract), hedef tezin parametreleriyle şu 3 meta-akademik süzgeç üzerinden karşılaştır:
+   - SÜZGEÇ A (Araştırma Sorusu ve Temel İddia/Sav): İki tez de nihayetinde AYNI temel ampirik veya teorik hipotezi/savı mı kanıtlamaya çalışıyor? Aday tez, kullanıcının ulaşmak istediği bilimsel sonucu zaten önceden tüketmiş mi?
+   - SÜZGEÇ B (Metodolojik ve Kaynaksal Tasarım): Veri toplama araçları, deney setleri, arşiv matrisleri, örneklem evrenleri veya analiz yöntemleri birbirinin replikası (kopyası) mı, yoksa veri üretim biçimleri tamamen farklı mı?
+   - SÜZGEÇ C (Kuramsal ve Teorik Yaklaşım): Olguyu incelerken arkaya yaslandıkları teorik paradigmalarda, kavramsal şemsiyelerde veya analitik modellerde köklü bir kırılma mevcut mu?
+
+2. **Boolean Tespit (Boolean Detection)**: Her bir süzgeçten elde ettiğin delile göre, ilgili boolean alanı kesin olarak \`true\` ya da \`false\` olarak işaretle:
+   - SÜZGEÇ A → \`is_research_question_overlapping\`
+   - SÜZGEÇ B → \`is_methodology_overlapping\`
+   - SÜZGEÇ C → \`is_theory_overlapping\`
+   Kantitatif puan veya kategori üretme; yalnızca ikili (binary) durum tespiti yap.
+
+3. **Akademik Gerekçe Sentezi**: Her aday tez için tespit edilen 3 boolean değerin her birinin gerekçesini \`academic_reasoning\` alanında, 3 süzgecin her birine ayrı ayrı değinerek detaylandır. Hangi bulgunun hangi boolean karara yol açtığını açıkça belirt.
 </instructions>
 
-<evaluation_fields>
-Aday tezler ile hedef tezi karşılaştırırken gri alan (yorum farkı) oluşmaması için aşağıdaki mutlak tanımları baz al:
-
-1. KONU (Subject) Değerlendirme Alanı:
-   - OVERLAPPING: İki çalışmanın da bağımlı değişkeni (incelenen ana olgu/kurum/aktör) ve bağımsız değişkeni (etki eden faktör) aynı analitik yöne bakıyorsa.
-   - ORIGINAL: Hedef tez, aday teze kıyasla denkleme en az bir yeni analitik değişken, yeni bir nedensellik ilişkisi veya farklı bir aktör grubu ekliyorsa.
-
-2. TEORİ (Theory) Değerlendirme Alanı:
-   - OVERLAPPING: İki tez landmarksı literatürdeki aynı teorik okulu, aynı kavramsal seti veya aynı ana düşünürü (Örn: ikisi de Foucault'nun Biyopolitika kavramını), yapısal bir sentez veya eleştiri getirmeden doğrudan paylaşıyorsa.
-   - ORIGINAL: Hedef tez farklı bir teorik paradigmayı temel alıyorsa, iki farklı teoriyi hibrit/özgün bir şekilde sentezliyorsa veya aday tezin teorik sınırlarına kavramsal bir eleştiri getiriyorsa.
-
-3. METODOLOJİ (Methodology) Değerlendirme Alanı:
-   - OVERLAPPING: Veri toplama araçları (Örn: mülakat, arşiv belgesi, anket) ve bu veriyi analiz etme yöntemi (Örn: içerik analizi, ekonometrik model) birebir aynı cinsten ve aynı tasarımda kurgulanmışsa.
-   - ORIGINAL: Hedef tez; veri setini kodlama biçiminde (coding design), örneklem örneklem stratejisinde veya analiz yönteminde (Örn: aday tez içerik analizi yaparken, hedef tezin nicel ağ analizi yapması gibi) somut bir metodolojik operasyon farkı barındırıyorsa.
-
-4. BAĞLAM (Context) Değerlendirme Alanı:
-   - OVERLAPPING: İnceleme yapılan tarihsel dönem (yıl aralıkları), coğrafi bölge (ülke/şehir) ve kurumsal/toplumsal örneklem %80 ve üzerinde çakışıyorsa.
-   - ORIGINAL: Tarihsel dönemlerden en az biri farklı bir yüzyıla/kesite odaklanıyorsa, coğrafi alan veya incelenen toplumsal katman/kurumsal yapı çakışmıyor ve literatüre yeni bir ampirik alan açılıyorsa.
-
-5. KLON TEZ İSTİSNA:
-   - Hedef tez ile aday tez özetleri neredeyse birebir aynıysa, yukarıdaki kurallara bakılmaksızın tüm eksenler istisnasız OVERLAPPING seçilmeli ve skorlar 5 yapılmalıdır.
-</evaluation_fields>
-
 <constraints>
-- Karar Eşiği Protokolü (Determinizm Garantisi): Bir eksende ORIGINAL kararı verebilmek ve 1 puan atayabilmek için, o eksende aday tez ile hedef tez arasında paradigma veya yüzyıl düzeyinde köklü bir fark olmalıdır. Sınırda kalan tüm kararsız durumlarda, şüpheye yer bırakmaksızın skor mutlak suretle 5 ve enum mutlak suretle OVERLAPPING olmalıdır. Kelime salınımlarını engellemek için kararlarını mühürle.
-- Katı Dil Kuralları (Metin İçi İngilizce Yasaktır): "comparisonNote" metni içinde "OVERLAPPING", "ORIGINAL", "HIGH_RISK" gibi İngilizce teknik/kod terimlerini kullanmak kesinlikle yasaktır. Metin içinde İngilizce terimler yerine "çakışmaktadır / örtüşmektedir", "özgündür / orijinaldir" ifadelerini kullan.
-- Akademik Atıf Kuralı: Aday tezlerine atıfta bulunurken yalnızca "[Yazar Soyadı] ([Yıl])" formatını uygula (Örn: "Yılmaz (2023)").
-- Eksiksiz Tablo Kuralı (Dizi Uzunluğu): "overlapTable" dizisinin uzunluğu, <candidates_list> içinde sağlanan aday tez sayısına tam olarak eşit olmalıdır. Hiçbir tez listesinden veri silinemez, atlanamaz. Analiz sırasını (en küçük ID'den en büyüğe doğru doğrusal akışı) bozma.
-- Zaman ve Kesinti Bilgisi: Analizleri yaparken şu anki yılın 2026 olduğunu ve bilgi kesinti tarihinin Ocak 2025 olduğunu unutma.
+- Dil ve Akademik Ton: "academic_reasoning" alanını tamamen Türkçe, akıcı, tarafsız ve üst düzey akademik bir dille yaz.
+- Eksiksiz Tablo Kuralı: Girdide sağlanan tüm aday tezler dizide eksiksiz yer almalıdır. Analiz sırasını bozma.
 </constraints>
 
 <output_format>
 Sağlanan geminiAnalysisSchema yapısıyla mükemmel şekilde eşleşen, temiz bir JSON nesnesi döndür. Markdown etiketleri (\`\`\`json dahil) veya JSON harici hiçbir açıklama metni ekleme. Cevap sadece ham JSON verisinden oluşmalıdır.
-</output_format>
-`;
+</output_format>`;
 
 /**
  * Long-Context ve Anchor-Context Kurallarına Uygun Kullanıcı Promptu
@@ -504,12 +480,12 @@ ${JSON.stringify(
 )}
 </candidates_list>
 
-<task>
-Sistem talimatındaki "Mekanik Karar Eşikleri" ve "Skorlama Mantığı" kurallarını harfiyen uygulayarak, <candidates_list> içindeki her bir aday tezi, hedef tez matrisiyle karşılaştır. Her biri için doğrusal sırayı bozmadan "scores", "axes" ve "comparisonNote" verilerini içeren eksiksiz bir "overlapTable" üret.
+    <task>
+Sistem talimatındaki 3 akademik süzgeç (Araştırma Sorusu, Metodoloji, Teori) ve Muhafazakar Boolean Filtre kuralını harfiyen uygulayarak, <candidates_list> içindeki her bir aday tezi hedef tez matrisiyle karşılaştır. Her bir tez için doğrusal sırayı bozmadan "is_research_question_overlapping", "is_methodology_overlapping", "is_theory_overlapping" boolean değerlerini belirle ve "academic_reasoning" ile gerekçelendir.
 </task>
 
 <final_instruction>
-Based on the target thesis parameters and detailed candidate list provided above, execute your internal chronological reasoning plan and return the synchronized JSON table now.
+Based on the target thesis parameters and detailed candidate list provided above, execute your internal boolean detection plan and return the synchronized JSON table now.
 </final_instruction>
 `;
 }

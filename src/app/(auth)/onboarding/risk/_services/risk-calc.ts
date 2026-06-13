@@ -1,5 +1,5 @@
 import type { Logger } from "@/lib/logger";
-import type { TezaraThesisDetails, AxesOption, OverlapItem } from "@/lib/types";
+import type { TezaraThesisDetails } from "@/lib/types";
 
 export interface CalculatedOverlapItem {
   id: number;
@@ -9,14 +9,12 @@ export interface CalculatedOverlapItem {
   year: number;
   thesisType: string;
   department: string;
-  axes: {
-    subject: AxesOption;
-    theory: AxesOption;
-    methodology: AxesOption;
-    context: AxesOption;
-  };
-  originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
-  comparisonNote?: string;
+  academic_reasoning: string;
+  is_research_question_overlapping: boolean;
+  is_methodology_overlapping: boolean;
+  is_theory_overlapping: boolean;
+  calculated_score: number;
+  badge: "LOW" | "MEDIUM" | "HIGH";
 }
 
 export interface CalculatedOriginalityRiskResult {
@@ -26,32 +24,42 @@ export interface CalculatedOriginalityRiskResult {
 }
 
 /**
- * Calculates originality risk level and formats the output structure.
+ * Calculates originality risk level using the dominant risk model.
+ * Booleans from Gemini are converted to categorical scores/badges
+ * via a deterministic conservative condition engine.
  *
- * @param overlapTable - The structured overlap table from Gemini analysis.
- * @param validDetails - The retrieved details of compared theses.
+ * @param overlapTable - List of candidate theses with boolean overlap flags.
+ * @param validDetails - Kunye/details of compared theses.
  * @param log - Logger instance.
- * @returns Originality result details including badge, overlapTable, and riskPercentage.
+ * @returns Originality result details including risk badge, mapped overlap table, and risk percentage.
  */
 export function calculateOriginalityRisk(
-  overlapTable: OverlapItem[],
+  overlapTable: Array<{
+    id: number;
+    academic_reasoning: string;
+    is_research_question_overlapping: boolean;
+    is_methodology_overlapping: boolean;
+    is_theory_overlapping: boolean;
+  }>,
   validDetails: TezaraThesisDetails[],
   log: Logger,
 ): CalculatedOriginalityRiskResult {
-  if (validDetails.length === 0) {
-    const defaultResult: CalculatedOriginalityRiskResult = {
-      originalityBadge: "ZERO_RISK" as const,
-      overlapTable: [],
-      riskPercentage: 0,
-    };
-
+  if (validDetails.length === 0 || overlapTable.length === 0) {
     log.info("flow_complete", {
       service: "originality",
       step: "analyze",
-      data: { result: "ZERO_RISK", reason: "Hiçbir tez detayı çekilemedi" },
+      data: {
+        originalityBadge: "ZERO_RISK",
+        riskPercentage: 0,
+        thesisCount: 0,
+      },
     });
 
-    return defaultResult;
+    return {
+      originalityBadge: "ZERO_RISK",
+      overlapTable: [],
+      riskPercentage: 0,
+    };
   }
 
   const calculatedOverlapTable = overlapTable.map((item) => {
@@ -60,34 +68,36 @@ export function calculateOriginalityRisk(
       throw new Error(`Kaba elemeden gelen tez detayı bulunamadı: ${item.id}`);
     }
 
-    const { subject, theory, methodology, context } = item.axes;
-    let originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
-
-    const overlapCount = [
-      subject === "OVERLAPPING",
-      theory === "OVERLAPPING",
-      methodology === "OVERLAPPING",
-      context === "OVERLAPPING",
+    const {
+      is_research_question_overlapping,
+      is_methodology_overlapping,
+      is_theory_overlapping,
+    } = item;
+    const trueCount = [
+      is_research_question_overlapping,
+      is_methodology_overlapping,
+      is_theory_overlapping,
     ].filter(Boolean).length;
 
-    // 1. Yüksek Risk Koşulları: Konu ve Teori çakışırken, metot veya bağlamdan en az biri de çakışıyorsa (Durum 14, 15, 16)
+    let calculated_score: number;
+    let badge: "LOW" | "MEDIUM" | "HIGH";
+
     if (
-      subject === "OVERLAPPING" &&
-      theory === "OVERLAPPING" &&
-      (methodology === "OVERLAPPING" || context === "OVERLAPPING")
+      is_research_question_overlapping &&
+      is_methodology_overlapping &&
+      is_theory_overlapping
     ) {
-      originalityLevel = "HIGH_RISK";
-    }
-    // 2. Orta Risk Koşulları: Tam olarak 3 eksen çakışıyor ve Konu ya da Teori'den biri özgünse (Durum 12, 13)
-    else if (
-      overlapCount === 3 &&
-      (subject === "ORIGINAL" || theory === "ORIGINAL")
+      calculated_score = 100;
+      badge = "HIGH";
+    } else if (
+      (is_research_question_overlapping && is_methodology_overlapping) ||
+      trueCount >= 2
     ) {
-      originalityLevel = "MEDIUM_RISK";
-    }
-    // 3. Düşük Risk Koşulları: Diğer tüm kombinasyonlar (Geri kalan 11 durum)
-    else {
-      originalityLevel = "LOW_RISK";
+      calculated_score = 50;
+      badge = "MEDIUM";
+    } else {
+      calculated_score = 15;
+      badge = "LOW";
     }
 
     return {
@@ -98,47 +108,30 @@ export function calculateOriginalityRisk(
       year: detail.year,
       thesisType: detail.thesisType,
       department: detail.department,
-      axes: item.axes,
-      originalityLevel,
-      comparisonNote: item.comparisonNote,
+      academic_reasoning: item.academic_reasoning,
+      is_research_question_overlapping,
+      is_methodology_overlapping,
+      is_theory_overlapping,
+      calculated_score,
+      badge,
     };
   });
 
-  // AŞAMA 7: Matematiksel Risk Puanı Formülü Entegrasyonu
-  const totalAxesCount = 4 * validDetails.length;
-  const overlappingAxesCount = overlapTable.reduce((sum, item) => {
-    const { subject, theory, methodology, context } = item.axes;
-    const count = [
-      subject === "OVERLAPPING",
-      theory === "OVERLAPPING",
-      methodology === "OVERLAPPING",
-      context === "OVERLAPPING",
-    ].filter(Boolean).length;
-    return sum + count;
-  }, 0);
+  const maxScore = Math.max(
+    ...calculatedOverlapTable.map((item) => item.calculated_score),
+  );
+  const riskPercentage = maxScore;
 
-  const riskPercentage =
-    totalAxesCount > 0
-      ? Math.round((overlappingAxesCount / totalAxesCount) * 100)
-      : 0;
-
-  // Rozet ve UI Karar Matrisi
   let originalityBadge: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
-  if (riskPercentage === 0) {
-    originalityBadge = "ZERO_RISK";
-  } else if (riskPercentage <= 25) {
-    originalityBadge = "LOW_RISK";
-  } else if (riskPercentage <= 50) {
-    originalityBadge = "MEDIUM_RISK";
-  } else {
+  if (riskPercentage === 100) {
     originalityBadge = "HIGH_RISK";
+  } else if (riskPercentage === 50) {
+    originalityBadge = "MEDIUM_RISK";
+  } else if (riskPercentage === 15) {
+    originalityBadge = "LOW_RISK";
+  } else {
+    originalityBadge = "ZERO_RISK";
   }
-
-  const result: CalculatedOriginalityRiskResult = {
-    originalityBadge,
-    overlapTable: calculatedOverlapTable,
-    riskPercentage,
-  };
 
   log.info("flow_complete", {
     service: "originality",
@@ -150,5 +143,9 @@ export function calculateOriginalityRisk(
     },
   });
 
-  return result;
+  return {
+    originalityBadge,
+    overlapTable: calculatedOverlapTable,
+    riskPercentage,
+  };
 }

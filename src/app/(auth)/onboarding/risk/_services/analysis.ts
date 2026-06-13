@@ -1,14 +1,14 @@
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
 import type { Logger } from "@/lib/logger";
-import type { OverlapItem, TezaraThesisDetails, AxesOption } from "@/lib/types";
+import type { TezaraThesisDetails } from "@/lib/types";
 import {
   geminiAnalysisSchema,
   ANALYSIS_SYSTEM_INSTRUCTION,
   buildAnalysisPrompt,
 } from "@/lib/prompts";
 
-export interface Analyze4AxesParams {
+export interface AnalyzeOriginalityRiskParams {
   studyTitle: string;
   researchQuestion: string;
   mainClaim: string;
@@ -20,19 +20,27 @@ export interface Analyze4AxesParams {
 
 /**
  * Performs comparison between target thesis and a list of identified academic theses
- * across four analytical axes (Subject, Theory, Methodology, Context) using Gemini.
+ * using the Academic Jury Analysis model.
  *
  * @param params - Comparison target matrix and candidate details.
  * @param log - Logger instance.
  * @returns Gemini response containing the evaluation overlap table.
  */
-export async function analyze4Axes(
-  params: Analyze4AxesParams,
+export async function analyzeOriginalityRisk(
+  params: AnalyzeOriginalityRiskParams,
   log: Logger,
-): Promise<{ overlapTable: OverlapItem[] }> {
+): Promise<{
+  overlapTable: {
+    id: number;
+    academic_reasoning: string;
+    is_research_question_overlapping: boolean;
+    is_methodology_overlapping: boolean;
+    is_theory_overlapping: boolean;
+  }[];
+}> {
   log.info("ai_request_start", {
     service: "gemini",
-    step: "analyze_4_axes",
+    step: "analyze_originality_risk",
     data: { thesisCount: params.validDetails.length },
   });
 
@@ -40,19 +48,10 @@ export async function analyze4Axes(
     const result = await generateStructuredContent<{
       overlapTable: {
         id: number;
-        scores: {
-          subjectScore: number;
-          theoryScore: number;
-          methodologyScore: number;
-          contextScore: number;
-        };
-        axes: {
-          subject: AxesOption;
-          theory: AxesOption;
-          methodology: AxesOption;
-          context: AxesOption;
-        };
-        comparisonNote: string;
+        academic_reasoning: string;
+        is_research_question_overlapping: boolean;
+        is_methodology_overlapping: boolean;
+        is_theory_overlapping: boolean;
       }[];
     }>(
       "gemini-3.1-flash-lite",
@@ -66,21 +65,19 @@ export async function analyze4Axes(
       },
     );
 
-    const mergedOverlapTable = (result.overlapTable || []).map(
-      ({ scores, ...clean }) => clean,
-    );
+    const overlapTable = result.overlapTable || [];
 
     log.info("ai_request_success", {
       service: "gemini",
-      step: "analyze_4_axes",
-      data: { thesisCount: mergedOverlapTable.length },
+      step: "analyze_originality_risk",
+      data: { thesisCount: overlapTable.length },
     });
 
-    return { overlapTable: mergedOverlapTable };
+    return { overlapTable };
   } catch (err) {
     log.error("ai_request_failed", {
       service: "gemini",
-      step: "analyze_4_axes",
+      step: "analyze_originality_risk",
       error: err,
     });
     throw err;
