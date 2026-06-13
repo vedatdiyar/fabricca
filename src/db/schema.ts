@@ -76,7 +76,8 @@ export const originalityReports = pgTable("originality_reports", {
     .$type<{
       items: {
         fact: string;
-        result: string;
+        result: "VERIFIED" | "PARTIALLY_VERIFIED" | "REFUTED" | string;
+        resultNote?: string;
         sourceUrl: string;
       }[];
       briefingNote: string;
@@ -94,14 +95,16 @@ export const originalityReports = pgTable("originality_reports", {
         thesisType: string;
         department: string;
         axes: {
-          subject: "OVERLAPPING" | "PARTIAL" | "ORIGINAL";
-          theory: "OVERLAPPING" | "PARTIAL" | "ORIGINAL";
-          methodology: "OVERLAPPING" | "PARTIAL" | "ORIGINAL";
-          context: "OVERLAPPING" | "PARTIAL" | "ORIGINAL";
+          subject: "OVERLAPPING" | "ORIGINAL";
+          theory: "OVERLAPPING" | "ORIGINAL";
+          methodology: "OVERLAPPING" | "ORIGINAL";
+          context: "OVERLAPPING" | "ORIGINAL";
         };
         originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
+        comparisonNote?: string;
       }[];
       strategicRecommendations: string;
+      riskPercentage?: number;
     }>()
     .notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

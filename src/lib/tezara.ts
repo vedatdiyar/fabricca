@@ -402,43 +402,13 @@ export async function searchTezara(
 
   const page1Results = await searchTezaraPage(query, 1, logger, advanced);
 
-  if (page1Results.length !== 20) {
-    logger?.info("search_success", {
-      service: "tezara",
-      step: "bulk_search",
-      data: { query, totalResults: page1Results.length },
-    });
-    return page1Results;
-  }
-
-  const page2Results = await searchTezaraPage(query, 2, logger, advanced);
-
-  let page3Results: TezaraThesisSummary[] = [];
-  if (page2Results.length === 20) {
-    page3Results = await searchTezaraPage(query, 3, logger, advanced);
-  }
-
-  // Combine and deduplicate by ID just in case
-  const combined = [...page1Results, ...page2Results, ...page3Results];
-  const uniqueResults: TezaraThesisSummary[] = [];
-  const seenIds = new Set<number>();
-
-  for (const item of combined) {
-    if (!seenIds.has(item.id)) {
-      seenIds.add(item.id);
-      uniqueResults.push(item);
-    }
-  }
-
-  const allResults = uniqueResults.slice(0, 60);
-
   logger?.info("search_success", {
     service: "tezara",
     step: "bulk_search",
-    data: { query, totalResults: allResults.length },
+    data: { query, totalResults: page1Results.length },
   });
 
-  return allResults;
+  return page1Results;
 }
 
 /**

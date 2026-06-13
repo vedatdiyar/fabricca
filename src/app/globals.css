@@ -32,40 +32,45 @@
 }
 
 :root {
-  --background: #0f141c;
-  --foreground: #d8dee9;
+  /* --- Derin Zümrüt Zemin ve Yüksek Kontrastlı Yazı --- */
+  --background: #0b100e; /* Lacivert değil! Çok derin, asil bir zümrüt-siyah. Kontrastı muazzam tutar */
+  --foreground: #eef5f2; /* Temiz, parlayan nane-beyazı ana metin */
 
-  --card: #161d29;
-  --card-foreground: #e5e9f0;
+  /* --- Kart Yapıları (Zeminden yeşil tonuyla bıçak gibi ayrışan kartlar) --- */
+  --card: #121a17; /* Arka planla kontrastı kusursuz kuran koyu zümrüt kart rengi */
+  --card-foreground: #ffffff;
 
-  --popover: #121822;
-  --popover-foreground: #d8dee9;
+  --popover: #0e1412;
+  --popover-foreground: #eef5f2;
 
-  --primary: #88c0d0;
-  --primary-foreground: #0f141c;
+  /* --- Gerçek Zümrüt Yeşili (Primary) --- */
+  --primary: #10b981; /* Ödün vermediğimiz, ekranda aslanlar gibi parlayan net zümrüt yeşili */
+  --primary-foreground: #0b100e; /* Yeşil butonların üzerindeki okunaklı koyu yazı */
 
-  --secondary: #222d3e;
+  --secondary: #1a2622; /* Ara katmanlar için doygun yeşil-gri */
   --secondary-foreground: #cbd5e1;
 
-  --accent: #222d3e;
-  --accent-foreground: #8fbcbb;
+  --accent: #1a2622;
+  --accent-foreground: #34d399; /* Detaylar için daha açık nane yeşili */
 
-  --muted: #1a2332;
-  --muted-foreground: #cbd5e1;
+  --muted: #121a17;
+  --muted-foreground: #8fa39b;
 
-  --destructive: #bf616a;
+  /* --- Durum Renkleri --- */
+  --destructive: #ef4444;
   --destructive-foreground: #ffffff;
 
-  --success: #34d399;
+  --success: #10b981;
   --success-foreground: #ffffff;
   --warning: #fbbf24;
-  --warning-foreground: #1a2332;
-  --info: #60a5fa;
+  --warning-foreground: #0b100e;
+  --info: #3b82f6;
   --info-foreground: #ffffff;
 
-  --border: #263347;
-  --input: #1a2332;
-  --ring: #88c0d0;
+  /* --- Keskin Sınırlar --- */
+  --border: #20302a; /* Yeşilin tonlarında, kartları jilet gibi ayıran ara çizgi */
+  --input: #121a17;
+  --ring: #10b981;
 }
 
 @layer base {
@@ -107,7 +112,7 @@
     @apply px-8 py-5 text-base font-semibold tracking-wide transition-all duration-200 active:scale-[0.98] cursor-pointer;
   }
 
-  /* Küresel Modern Scrollbar (Siber Tema) */
+  /* Küresel Modern Scrollbar */
   * {
     scrollbar-width: thin;
     scrollbar-color: var(--color-border) transparent;

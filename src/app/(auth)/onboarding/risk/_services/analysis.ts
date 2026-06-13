@@ -1,6 +1,7 @@
+import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
 import type { Logger } from "@/lib/logger";
-import type { GeminiAnalysisResponse, TezaraThesisDetails } from "@/lib/types";
+import type { OverlapItem, TezaraThesisDetails, AxesOption } from "@/lib/types";
 import {
   geminiAnalysisSchema,
   ANALYSIS_SYSTEM_INSTRUCTION,
@@ -23,12 +24,12 @@ export interface Analyze4AxesParams {
  *
  * @param params - Comparison target matrix and candidate details.
  * @param log - Logger instance.
- * @returns Gemini response containing the evaluation overlap table and recommendations.
+ * @returns Gemini response containing the evaluation overlap table.
  */
 export async function analyze4Axes(
   params: Analyze4AxesParams,
   log: Logger,
-): Promise<GeminiAnalysisResponse> {
+): Promise<{ overlapTable: OverlapItem[] }> {
   log.info("ai_request_start", {
     service: "gemini",
     step: "analyze_4_axes",
@@ -36,22 +37,46 @@ export async function analyze4Axes(
   });
 
   try {
-    const geminiResult =
-      await generateStructuredContent<GeminiAnalysisResponse>(
-        "gemini-3.1-flash-lite",
-        ANALYSIS_SYSTEM_INSTRUCTION,
-        buildAnalysisPrompt(params),
-        geminiAnalysisSchema,
-        log,
-      );
+    const result = await generateStructuredContent<{
+      overlapTable: {
+        id: number;
+        scores: {
+          subjectScore: number;
+          theoryScore: number;
+          methodologyScore: number;
+          contextScore: number;
+        };
+        axes: {
+          subject: AxesOption;
+          theory: AxesOption;
+          methodology: AxesOption;
+          context: AxesOption;
+        };
+        comparisonNote: string;
+      }[];
+    }>(
+      "gemini-3.1-flash-lite",
+      ANALYSIS_SYSTEM_INSTRUCTION,
+      buildAnalysisPrompt(params),
+      geminiAnalysisSchema,
+      log,
+      {
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        temperature: 0.1,
+      },
+    );
+
+    const mergedOverlapTable = (result.overlapTable || []).map(
+      ({ scores, ...clean }) => clean,
+    );
 
     log.info("ai_request_success", {
       service: "gemini",
       step: "analyze_4_axes",
-      data: { thesisCount: geminiResult.overlapTable.length },
+      data: { thesisCount: mergedOverlapTable.length },
     });
 
-    return geminiResult;
+    return { overlapTable: mergedOverlapTable };
   } catch (err) {
     log.error("ai_request_failed", {
       service: "gemini",

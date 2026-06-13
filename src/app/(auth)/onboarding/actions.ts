@@ -48,24 +48,26 @@ export async function resetOnboardingAction(): Promise<
 
     // 2. DB: Delete originality report
     await withDbLogging(
-      () => db
-        .delete(originalityReports)
-        .where(eq(originalityReports.userId, userId)),
+      () =>
+        db
+          .delete(originalityReports)
+          .where(eq(originalityReports.userId, userId)),
       "delete_report",
       log,
     );
 
     // 3. DB: Update user onboardingStep to 'thesis_matrix'
     await withDbLogging(
-      () => db
-        .update(users)
-        .set({ onboardingStep: "thesis_matrix" })
-        .where(eq(users.id, userId)),
+      () =>
+        db
+          .update(users)
+          .set({ onboardingStep: "thesis_matrix" })
+          .where(eq(users.id, userId)),
       "update_step_to_matrix",
       log,
     );
 
-    revalidatePath("/onboarding");
+    revalidatePath("/onboarding", "layout");
     log.info("flow_complete", { service: "matrix", step: "reset_onboarding" });
     return { success: true };
   } catch (error) {
@@ -74,9 +76,8 @@ export async function resetOnboardingAction(): Promise<
       step: "reset_onboarding",
       error,
     });
-    const message = error instanceof Error ? error.message : "Unknown error";
     return {
-      error: `Sıfırlama işlemi gerçekleştirilirken bir hata oluştu: ${message}`,
+      error: "Sıfırlama işlemi gerçekleştirilirken bir hata oluştu.",
     };
   }
 }

@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, AlertCircle, RefreshCw } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { startOriginalityAnalysisAction } from "../actions";
-import { Button } from "@/components/ui/button";
+import { ErrorDisplay } from "@/components/error-display";
 
 /**
  * Özgünlük ve Risk Analizini istemci tarafında başlatan tetikleyici bileşen.
@@ -21,10 +21,16 @@ const STEPS = [
 export function AnalysisTrigger() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+  const hasCalledRef = useRef(false);
+  const [error, setError] = useState<unknown>(null);
   const [secondsPassed, setSecondsPassed] = useState(0);
 
-  const runAnalysis = () => {
+  const runAnalysis = (force = false) => {
+    if (!force && hasCalledRef.current) {
+      return;
+    }
+    hasCalledRef.current = true;
+
     setError(null);
     startTransition(async () => {
       try {
@@ -32,22 +38,16 @@ export function AnalysisTrigger() {
         if (result.error) {
           setError(result.error);
         } else if (result.success) {
-          // Başarılı olduğunda, revalidatePath server action içinde çağrıldı.
-          // İstemci tarafında router.refresh() tetikleyerek yeni durumun (raporun) yüklenmesini sağlıyoruz.
           router.refresh();
         }
       } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Analiz sırasında beklenmeyen bir hata oluştu.",
-        );
+        setError(err);
       }
     });
   };
 
   useEffect(() => {
-    runAnalysis();
+    runAnalysis(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -63,37 +63,16 @@ export function AnalysisTrigger() {
   }, [isPending]);
 
   const activeStep =
-    secondsPassed <= 3 ? 0 :
-    secondsPassed <= 24 ? 1 :
-    secondsPassed <= 29 ? 2 :
-    3;
+    secondsPassed <= 3
+      ? 0
+      : secondsPassed <= 24
+        ? 1
+        : secondsPassed <= 29
+          ? 2
+          : 3;
 
   if (error) {
-    return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
-        <div className="flex flex-col items-center justify-center space-y-6 max-w-md mx-auto text-center">
-          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-card border border-destructive">
-            <AlertCircle className="w-6 h-6 text-destructive" />
-          </div>
-
-          <div className="space-y-2">
-            <h2 className="text-xl font-semibold text-foreground">
-              Analiz Başlatılamadı
-            </h2>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {error}
-            </p>
-          </div>
-
-          <Button onClick={runAnalysis} disabled={isPending}>
-            <RefreshCw
-              className={`w-4 h-4 ${isPending ? "animate-spin" : ""}`}
-            />
-            Yeniden Dene
-          </Button>
-        </div>
-      </main>
-    );
+    return <ErrorDisplay error={error} onRetry={() => runAnalysis(true)} />;
   }
 
   return (
@@ -123,7 +102,9 @@ export function AnalysisTrigger() {
               <div
                 key={index}
                 className={`flex items-center gap-3 text-sm ${
-                  isActive || isCompleted ? "text-foreground" : "text-muted-foreground"
+                  isActive || isCompleted
+                    ? "text-foreground"
+                    : "text-muted-foreground"
                 }`}
               >
                 <div
@@ -135,9 +116,7 @@ export function AnalysisTrigger() {
                         : "bg-border"
                   }`}
                 ></div>
-                <span className={isActive ? "font-medium" : ""}>
-                  {label}
-                </span>
+                <span className={isActive ? "font-medium" : ""}>{label}</span>
               </div>
             );
           })}

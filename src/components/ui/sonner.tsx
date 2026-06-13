@@ -31,13 +31,13 @@ const Toaster = ({ ...props }: ToasterProps) => {
           toast:
             "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
           error:
-            "group-[.toast]:bg-destructive/10 group-[.toast]:border-destructive/20 group-[.toast]:text-destructive",
+            "bg-destructive/10 border-destructive/20 text-destructive",
           success:
-            "group-[.toast]:bg-success/10 group-[.toast]:border-success/20 group-[.toast]:text-success",
+            "bg-success/10 border-success/20 text-success",
           warning:
-            "group-[.toast]:bg-warning/10 group-[.toast]:border-warning/20 group-[.toast]:text-warning",
+            "bg-warning/10 border-warning/20 text-warning",
           info:
-            "group-[.toast]:bg-info/10 group-[.toast]:border-info/20 group-[.toast]:text-info",
+            "bg-info/10 border-info/20 text-info",
           description: "group-[.toast]:text-muted-foreground",
           actionButton:
             "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",

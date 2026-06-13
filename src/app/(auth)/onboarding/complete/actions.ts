@@ -84,7 +84,11 @@ export async function generateThesisBoxesAction(
     if (matrix.userId !== userId) {
       log.info("flow_complete", {
         service: "enrichment",
-        data: { reason: "Unauthorized access", userId, matrixUserId: matrix.userId },
+        data: {
+          reason: "Unauthorized access",
+          userId,
+          matrixUserId: matrix.userId,
+        },
       });
       return { error: "Yetkisiz işlem: Bu tez matrisi size ait değil." };
     }
@@ -201,7 +205,8 @@ export async function generateThesisBoxesAction(
               parentId: null,
               category: "context" as const,
               title: "Tarihsel ve Mekânsal Bağlam",
-              description: "Tarihsel sınırlar ve coğrafi/mekânsal bağlam kutuları.",
+              description:
+                "Tarihsel sınırlar ve coğrafi/mekânsal bağlam kutuları.",
               theorists: [],
               concepts: [],
               queries: [],
@@ -268,15 +273,13 @@ export async function generateThesisBoxesAction(
       log,
     );
 
-    revalidatePath("/onboarding");
+    revalidatePath("/onboarding", "layout");
     log.info("flow_complete", { service: "enrichment" });
     return { success: true };
   } catch (err) {
     log.error("flow_complete", { service: "enrichment", error: err });
     return {
-      error: `Kutu yapılandırması sırasında bir hata oluştu: ${
-        err instanceof Error ? err.message : "Bilinmeyen hata"
-      }`,
+      error: "Kutu yapılandırması sırasında bir hata oluştu.",
     };
   }
 }
@@ -340,9 +343,7 @@ export async function completeOnboardingAction(): Promise<OnboardingActionResult
   } catch (err) {
     log.error("flow_complete", { service: "flow", error: err });
     return {
-      error: `Onboarding tamamlanırken bir hata oluştu: ${
-        err instanceof Error ? err.message : "Bilinmeyen hata"
-      }`,
+      error: "Onboarding tamamlanırken bir hata oluştu.",
     };
   }
 }

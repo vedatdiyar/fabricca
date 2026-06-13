@@ -10,8 +10,15 @@ import { generateStructuredContent } from "@/lib/gemini";
 import { createFlowId, Logger } from "@/lib/logger";
 import { revalidatePath } from "next/cache";
 
-import { enhancedThesisSchema, MATRIX_ENHANCEMENT_SYSTEM_INSTRUCTION, buildMatrixEnhancementPrompt } from "@/lib/prompts";
-import type { EnhancedThesisData, EnhancedThesisActionResult } from "@/lib/types";
+import {
+  enhancedThesisSchema,
+  MATRIX_ENHANCEMENT_SYSTEM_INSTRUCTION,
+  buildMatrixEnhancementPrompt,
+} from "@/lib/prompts";
+import type {
+  EnhancedThesisData,
+  EnhancedThesisActionResult,
+} from "@/lib/types";
 
 export type ThesisMatrixInput = {
   studyTitle: string;
@@ -64,65 +71,86 @@ export async function submitThesisMatrixAction(
 
     const studyTitle = validateField(data.studyTitle);
     if (!studyTitle) {
-      log.info("flow_complete", { service: "matrix", data: { reason: "Validasyon: çalışma başlığı çok kısa" } });
+      log.info("flow_complete", {
+        service: "matrix",
+        data: { reason: "Validasyon: çalışma başlığı çok kısa" },
+      });
       return { error: "Çalışma başlığı en az 3 karakter olmalıdır." };
     }
 
     const researchQuestion = validateField(data.researchQuestion);
     if (!researchQuestion) {
-      log.info("flow_complete", { service: "matrix", data: { reason: "Validasyon: araştırma sorusu çok kısa" } });
+      log.info("flow_complete", {
+        service: "matrix",
+        data: { reason: "Validasyon: araştırma sorusu çok kısa" },
+      });
       return { error: "Araştırma sorusu en az 3 karakter olmalıdır." };
     }
 
     const mainClaim = validateField(data.mainClaim);
     if (!mainClaim) {
-      log.info("flow_complete", { service: "matrix", data: { reason: "Validasyon: temel iddia çok kısa" } });
+      log.info("flow_complete", {
+        service: "matrix",
+        data: { reason: "Validasyon: temel iddia çok kısa" },
+      });
       return { error: "Temel iddia en az 3 karakter olmalıdır." };
     }
 
     const methodology = validateField(data.methodology);
     if (!methodology) {
-      log.info("flow_complete", { service: "matrix", data: { reason: "Validasyon: metodoloji çok kısa" } });
+      log.info("flow_complete", {
+        service: "matrix",
+        data: { reason: "Validasyon: metodoloji çok kısa" },
+      });
       return { error: "Metodoloji en az 3 karakter olmalıdır." };
     }
 
     const theoreticalFramework = validateField(data.theoreticalFramework);
     if (!theoreticalFramework) {
-      log.info("flow_complete", { service: "matrix", data: { reason: "Validasyon: kuramsal çerçeve çok kısa" } });
+      log.info("flow_complete", {
+        service: "matrix",
+        data: { reason: "Validasyon: kuramsal çerçeve çok kısa" },
+      });
       return { error: "Kuramsal çerçeve en az 3 karakter olmalıdır." };
     }
 
     const historicalSpatialLimits = validateField(data.historicalSpatialLimits);
     if (!historicalSpatialLimits) {
-      log.info("flow_complete", { service: "matrix", data: { reason: "Validasyon: sınırlar çok kısa" } });
-      return { error: "Tarihsel/mekânsal sınırlar en az 3 karakter olmalıdır." };
+      log.info("flow_complete", {
+        service: "matrix",
+        data: { reason: "Validasyon: sınırlar çok kısa" },
+      });
+      return {
+        error: "Tarihsel/mekânsal sınırlar en az 3 karakter olmalıdır.",
+      };
     }
 
     // 1. DB: Ham matrisi kaydet
     await withDbLogging(
-      () => db
-        .insert(thesisMatrices)
-        .values({
-          userId,
-          studyTitle,
-          researchQuestion,
-          mainClaim,
-          methodology,
-          theoreticalFramework,
-          historicalSpatialLimits,
-        })
-        .onConflictDoUpdate({
-          target: thesisMatrices.userId,
-          set: {
+      () =>
+        db
+          .insert(thesisMatrices)
+          .values({
+            userId,
             studyTitle,
             researchQuestion,
             mainClaim,
             methodology,
             theoreticalFramework,
             historicalSpatialLimits,
-            updatedAt: new Date(),
-          },
-        }),
+          })
+          .onConflictDoUpdate({
+            target: thesisMatrices.userId,
+            set: {
+              studyTitle,
+              researchQuestion,
+              mainClaim,
+              methodology,
+              theoreticalFramework,
+              historicalSpatialLimits,
+              updatedAt: new Date(),
+            },
+          }),
       "save_matrix",
       log,
     );
@@ -176,34 +204,36 @@ export async function submitThesisMatrixAction(
 
     // 3. DB: Geliştirilmiş verileri matrise yaz
     await withDbLogging(
-      () => db
-        .update(thesisMatrices)
-        .set({
-          studyTitle: enhancedData.academicStudyTitle,
-          researchQuestion: enhancedData.literatureResearchQuestion,
-          mainClaim: enhancedData.refinedThesisClaim,
-          methodology: enhancedData.academicMethodologyDesign,
-          theoreticalFramework:
-            enhancedData.conceptualTheoreticalInfrastructure,
-          historicalSpatialLimits: enhancedData.historicalSpatialLimits,
-          updatedAt: new Date(),
-        })
-        .where(eq(thesisMatrices.userId, userId)),
+      () =>
+        db
+          .update(thesisMatrices)
+          .set({
+            studyTitle: enhancedData.academicStudyTitle,
+            researchQuestion: enhancedData.literatureResearchQuestion,
+            mainClaim: enhancedData.refinedThesisClaim,
+            methodology: enhancedData.academicMethodologyDesign,
+            theoreticalFramework:
+              enhancedData.conceptualTheoreticalInfrastructure,
+            historicalSpatialLimits: enhancedData.historicalSpatialLimits,
+            updatedAt: new Date(),
+          })
+          .where(eq(thesisMatrices.userId, userId)),
       "update_matrix",
       log,
     );
 
     // 4. DB: Kullanıcı onboarding adımını güncelle
     await withDbLogging(
-      () => db
-        .update(users)
-        .set({ onboardingStep: "thesis_matrix_enhanced" })
-        .where(eq(users.id, userId)),
+      () =>
+        db
+          .update(users)
+          .set({ onboardingStep: "thesis_matrix_enhanced" })
+          .where(eq(users.id, userId)),
       "update_step",
       log,
     );
 
-    revalidatePath("/onboarding");
+    revalidatePath("/onboarding", "layout");
     log.info("flow_complete", { service: "matrix" });
     return { success: true, data: enhancedData };
   } catch (error) {
@@ -211,9 +241,8 @@ export async function submitThesisMatrixAction(
       service: "matrix",
       error,
     });
-    const message = error instanceof Error ? error.message : "Bilinmeyen hata";
     return {
-      error: `Tez matrisi zenginleştirilirken bir hata oluştu: ${message}`,
+      error: "Tez matrisi zenginleştirilirken bir hata oluştu.",
     };
   }
 }

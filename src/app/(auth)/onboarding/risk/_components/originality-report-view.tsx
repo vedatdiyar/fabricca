@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition, useMemo } from "react";
+import { useTransition, useMemo, useState, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import {
   ShieldCheck,
@@ -10,6 +10,8 @@ import {
   GitCompare,
   Compass,
   Loader2,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -45,12 +47,13 @@ interface OriginalityReportViewProps {
         thesisType: string;
         department: string;
         axes: {
-          subject: "OVERLAPPING" | "PARTIAL" | "ORIGINAL";
-          theory: "OVERLAPPING" | "PARTIAL" | "ORIGINAL";
-          methodology: "OVERLAPPING" | "PARTIAL" | "ORIGINAL";
-          context: "OVERLAPPING" | "PARTIAL" | "ORIGINAL";
+          subject: "OVERLAPPING" | "ORIGINAL";
+          theory: "OVERLAPPING" | "ORIGINAL";
+          methodology: "OVERLAPPING" | "ORIGINAL";
+          context: "OVERLAPPING" | "ORIGINAL";
         };
         originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
+        comparisonNote?: string;
       }[];
       strategicRecommendations: string;
     };
@@ -63,7 +66,6 @@ const statusTranslation: Record<string, string> = {
   LOW_RISK: "DÜŞÜK RİSK",
   ZERO_RISK: "SIFIR RİSK",
   OVERLAPPING: "ÇAKIŞIYOR",
-  PARTIAL: "KISMEN",
   ORIGINAL: "ÖZGÜN",
 };
 
@@ -80,6 +82,45 @@ const tavilyBadgeColor: Record<string, string> = {
   REFUTED: "bg-destructive/10 border border-destructive/20 text-destructive",
 };
 
+const getThesisPriority = (axes: {
+  subject: string;
+  theory: string;
+  methodology: string;
+  context: string;
+}) => {
+  const { subject: s, theory: t, methodology: m, context: c } = axes;
+
+  // 4 overlaps
+  if (s === "OVERLAPPING" && t === "OVERLAPPING" && m === "OVERLAPPING" && c === "OVERLAPPING") return 1; // Durum 16
+
+  // 3 overlaps
+  if (s === "OVERLAPPING" && t === "OVERLAPPING" && m === "OVERLAPPING" && c === "ORIGINAL") return 2;    // Durum 15
+  if (s === "OVERLAPPING" && t === "OVERLAPPING" && m === "ORIGINAL" && c === "OVERLAPPING") return 3;    // Durum 14
+  if (s === "OVERLAPPING" && t === "ORIGINAL" && m === "OVERLAPPING" && c === "OVERLAPPING") return 4;    // Durum 13
+  if (s === "ORIGINAL" && t === "OVERLAPPING" && m === "OVERLAPPING" && c === "OVERLAPPING") return 5;    // Durum 12
+
+  // 2 overlaps (subject overlapping)
+  if (s === "OVERLAPPING" && t === "OVERLAPPING" && m === "ORIGINAL" && c === "ORIGINAL") return 6;       // Durum 11
+  if (s === "OVERLAPPING" && t === "ORIGINAL" && m === "ORIGINAL" && c === "OVERLAPPING") return 7;       // Durum 9
+  if (s === "OVERLAPPING" && t === "ORIGINAL" && m === "OVERLAPPING" && c === "ORIGINAL") return 8;       // Durum 10
+
+  // 1 overlap (subject overlapping)
+  if (s === "OVERLAPPING" && t === "ORIGINAL" && m === "ORIGINAL" && c === "ORIGINAL") return 9;          // Durum 5
+
+  // 2 overlaps (subject original)
+  if (s === "ORIGINAL" && t === "ORIGINAL" && m === "OVERLAPPING" && c === "OVERLAPPING") return 10;      // Durum 6
+  if (s === "ORIGINAL" && t === "OVERLAPPING" && m === "ORIGINAL" && c === "OVERLAPPING") return 11;      // Durum 7
+  if (s === "ORIGINAL" && t === "OVERLAPPING" && m === "OVERLAPPING" && c === "ORIGINAL") return 12;      // Durum 8
+
+  // 1 overlap (subject original)
+  if (s === "ORIGINAL" && t === "ORIGINAL" && m === "ORIGINAL" && c === "OVERLAPPING") return 13;         // Durum 2
+  if (s === "ORIGINAL" && t === "ORIGINAL" && m === "OVERLAPPING" && c === "ORIGINAL") return 14;         // Durum 3
+  if (s === "ORIGINAL" && t === "OVERLAPPING" && m === "ORIGINAL" && c === "ORIGINAL") return 15;         // Durum 4
+
+  // 0 overlaps
+  return 16; // Durum 1
+};
+
 /**
  * Özgünlük ve Maddi Doğrulama Raporu Görünümü (Client Component).
  * Tavily ve Tezara sonuçlarını, nihai risk düzeyini ve akademik tavsiyeleri
@@ -90,8 +131,76 @@ export function OriginalityReportView({
 }: OriginalityReportViewProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [expandedThesisId, setExpandedThesisId] = useState<number | null>(null);
 
   const { tavilyResults, tezaraResults } = reportData;
+
+  const hasOriginalComparisonNotes = useMemo(() => {
+    return (
+      tezaraResults.overlapTable?.some((item) => item.comparisonNote) || false
+    );
+  }, [tezaraResults.overlapTable]);
+
+  const sortedTheses = useMemo(() => {
+    if (!tezaraResults.overlapTable) return [];
+
+    // Parse old concatenated strategicRecommendations if comparisonNote is missing
+    const items = tezaraResults.overlapTable.map((item) => ({ ...item }));
+    const hasAnyNote = items.some((item) => item.comparisonNote);
+
+    if (!hasAnyNote && tezaraResults.strategicRecommendations) {
+      // Split the recommendations
+      const parts = tezaraResults.strategicRecommendations.split(/\n+---\n+/);
+      const trimmedParts = parts.map((p) => {
+        let text = p.trim();
+        // Remove "Yol Haritası ve Akademik Tavsiyeler" header if it exists at the start
+        if (text.startsWith("Yol Haritası ve Akademik Tavsiyeler")) {
+          text = text
+            .replace(/^Yol Haritası ve Akademik Tavsiyeler\s*/, "")
+            .trim();
+        }
+        return text;
+      });
+      // The order of elements in overlapTable matches the order in which they were processed.
+      items.forEach((item, index) => {
+        if (trimmedParts[index]) {
+          item.comparisonNote = trimmedParts[index];
+        }
+      });
+    }
+
+    const riskWeights = {
+      HIGH_RISK: 3,
+      MEDIUM_RISK: 2,
+      LOW_RISK: 1,
+    };
+
+    return items.sort((a, b) => {
+      // 1. Sort by custom academic priority (1 is highest/top of the page)
+      const priorityA = getThesisPriority(a.axes);
+      const priorityB = getThesisPriority(b.axes);
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
+      }
+
+      // 2. Fallback: Thesis Type (Doktora/PhD > Yüksek Lisans/Master)
+      const getThesisTypeWeight = (type: string) => {
+        const t = (type || "").toLowerCase();
+        if (t.includes("doktora") || t.includes("phd") || t.includes("ph.d"))
+          return 2;
+        if (t.includes("yüksek lisans") || t.includes("master")) return 1;
+        return 0;
+      };
+      const typeWeightA = getThesisTypeWeight(a.thesisType);
+      const typeWeightB = getThesisTypeWeight(b.thesisType);
+      if (typeWeightB !== typeWeightA) {
+        return typeWeightB - typeWeightA;
+      }
+
+      // 3. Fallback: Year of publication (newer first)
+      return (b.year || 0) - (a.year || 0);
+    });
+  }, [tezaraResults.overlapTable, tezaraResults.strategicRecommendations]);
 
   let badgeColor = "bg-success/10 border border-success/20 text-success";
   if (tezaraResults.originalityBadge === "HIGH_RISK") {
@@ -310,8 +419,6 @@ export function OriginalityReportView({
                     const getAxisBadge = (val: string) => {
                       if (val === "OVERLAPPING")
                         return "bg-destructive/10 border border-destructive/20 text-destructive";
-                      if (val === "PARTIAL")
-                        return "bg-warning/10 border border-warning/20 text-warning";
                       return "bg-success/10 border border-success/20 text-success";
                     };
 
@@ -323,79 +430,112 @@ export function OriginalityReportView({
                       return "bg-success/10 border border-success/20 text-success";
                     };
 
-                    const sorted = useMemo(() => {
-                      if (!tezaraResults.overlapTable) return [];
-                      return [...tezaraResults.overlapTable].sort((a, b) => {
-                        const countOverlap = (item: typeof a) =>
-                          [
-                            item.axes.subject,
-                            item.axes.theory,
-                            item.axes.methodology,
-                            item.axes.context,
-                          ].filter((v) => v === "OVERLAPPING").length;
-                        return countOverlap(b) - countOverlap(a);
-                      });
-                    }, [tezaraResults.overlapTable]);
-
                     return (
                       <>
-                        {sorted.map((item, idx) => (
-                          <tr
-                            key={idx}
-                            className="hover:bg-muted transition-colors"
-                          >
-                            <td className="p-3 space-y-1">
-                              <div className="font-semibold text-foreground text-sm leading-relaxed">
-                                {item.title}
-                              </div>
-                              <div className="text-xs text-muted-foreground leading-relaxed">
-                                {item.author} • {item.university} ({item.year})
-                              </div>
-                              <div className="text-[11px] text-muted-foreground font-mono">
-                                {item.thesisType}
-                              </div>
-                            </td>
-                            <td className="p-3 text-center">
-                              <span
-                                className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${getAxisBadge(item.axes.subject)}`}
-                              >
-                                {statusTranslation[item.axes.subject] ||
-                                  item.axes.subject}
-                              </span>
-                            </td>
-                            <td className="p-3 text-center">
-                              <span
-                                className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${getAxisBadge(item.axes.theory)}`}
-                              >
-                                {statusTranslation[item.axes.theory] ||
-                                  item.axes.theory}
-                              </span>
-                            </td>
-                            <td className="p-3 text-center">
-                              <span
-                                className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${getAxisBadge(item.axes.methodology)}`}
-                              >
-                                {statusTranslation[item.axes.methodology] ||
-                                  item.axes.methodology}
-                              </span>
-                            </td>
-                            <td className="p-3 text-center">
-                              <span
-                                className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${getAxisBadge(item.axes.context)}`}
-                              >
-                                {statusTranslation[item.axes.context] ||
-                                  item.axes.context}
-                              </span>
-                            </td>
-                            <td className="p-3 text-center">
-                              <span
-                                className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold ${getLevelBadge(item.originalityLevel)}`}
-                              >
-                                {statusTranslation[item.originalityLevel] ||
-                                  item.originalityLevel}
-                              </span>
-                            </td>
-                          </tr>
+                        {sortedTheses.map((item, idx) => (
+                          <Fragment key={item.id || idx}>
+                            <tr
+                              className={`hover:bg-muted/40 cursor-pointer transition-colors ${
+                                expandedThesisId === item.id
+                                  ? "bg-muted/20"
+                                  : ""
+                              }`}
+                              onClick={() =>
+                                setExpandedThesisId(
+                                  expandedThesisId === item.id ? null : item.id,
+                                )
+                              }
+                            >
+                              <td className="p-3 space-y-1">
+                                <div className="font-semibold text-foreground text-sm leading-relaxed flex items-start gap-2 select-none">
+                                  <span className="mt-1 text-muted-foreground shrink-0 transition-transform duration-200">
+                                    {expandedThesisId === item.id ? (
+                                      <ChevronDown className="w-4 h-4" />
+                                    ) : (
+                                      <ChevronRight className="w-4 h-4" />
+                                    )}
+                                  </span>
+                                  <span>{item.title}</span>
+                                </div>
+                                <div className="pl-6 text-xs text-muted-foreground leading-relaxed">
+                                  {item.author} • {item.university} ({item.year}
+                                  )
+                                </div>
+                                <div className="pl-6 text-[11px] text-muted-foreground font-mono">
+                                  {item.thesisType}
+                                </div>
+                              </td>
+                              <td className="p-3 text-center">
+                                <span
+                                  className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${getAxisBadge(
+                                    item.axes.subject,
+                                  )}`}
+                                >
+                                  {statusTranslation[item.axes.subject] ||
+                                    item.axes.subject}
+                                </span>
+                              </td>
+                              <td className="p-3 text-center">
+                                <span
+                                  className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${getAxisBadge(
+                                    item.axes.theory,
+                                  )}`}
+                                >
+                                  {statusTranslation[item.axes.theory] ||
+                                    item.axes.theory}
+                                </span>
+                              </td>
+                              <td className="p-3 text-center">
+                                <span
+                                  className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${getAxisBadge(
+                                    item.axes.methodology,
+                                  )}`}
+                                >
+                                  {statusTranslation[item.axes.methodology] ||
+                                    item.axes.methodology}
+                                </span>
+                              </td>
+                              <td className="p-3 text-center">
+                                <span
+                                  className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${getAxisBadge(
+                                    item.axes.context,
+                                  )}`}
+                                >
+                                  {statusTranslation[item.axes.context] ||
+                                    item.axes.context}
+                                </span>
+                              </td>
+                              <td className="p-3 text-center">
+                                <span
+                                  className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold ${getLevelBadge(
+                                    item.originalityLevel,
+                                  )}`}
+                                >
+                                  {statusTranslation[item.originalityLevel] ||
+                                    item.originalityLevel}
+                                </span>
+                              </td>
+                            </tr>
+                            {expandedThesisId === item.id &&
+                              item.comparisonNote && (
+                                <tr className="bg-muted/10">
+                                  <td
+                                    colSpan={6}
+                                    className="p-4 border-t border-border"
+                                  >
+                                    <div className="p-6 space-y-2 bg-background rounded-lg">
+                                      <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5 select-none">
+                                        <GitCompare className="w-3.5 h-3.5 text-primary" />
+                                        Detaylı Karşılaştırma Analizi
+                                      </h4>
+                                      <p className="text-sm leading-relaxed text-foreground font-light whitespace-pre-line">
+                                        {item.comparisonNote}
+                                      </p>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                          </Fragment>
                         ))}
                       </>
                     );
@@ -408,13 +548,13 @@ export function OriginalityReportView({
       </Card>
 
       {/* Strategic Recommendations */}
-      {riskLevel !== "LOW" && (
+      {riskLevel !== "LOW" && hasOriginalComparisonNotes && (
         <div className="p-6 bg-card border border-border rounded-xl space-y-3 shadow-sm">
           <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <Compass className="w-5 h-5 text-primary" />
             Yol Haritası ve Akademik Tavsiyeler
           </h3>
-          <div className="text-sm leading-loose text-muted-foreground font-light whitespace-pre-line bg-muted p-4 border border-border rounded-lg">
+          <div className="text-sm leading-loose text-foreground font-light whitespace-pre-line bg-muted p-4 border border-border rounded-lg">
             {tezaraResults.strategicRecommendations}
           </div>
         </div>
@@ -427,7 +567,7 @@ export function OriginalityReportView({
         </div>
       ) : riskLevel === "MEDIUM" ? (
         <div className="flex justify-end gap-3">
-          <StartOverButton variant="outline" />
+          <StartOverButton variant="outline" size="default" />
           <Button
             onClick={handleProceed}
             disabled={isPending}

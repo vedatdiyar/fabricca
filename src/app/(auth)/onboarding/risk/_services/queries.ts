@@ -1,3 +1,4 @@
+import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
 import type { Logger } from "@/lib/logger";
 import type { QueryExtractionResponse } from "@/lib/types";
@@ -43,6 +44,10 @@ export async function extractQueries(
       buildQueryPrompt(params),
       queryExtractionSchema,
       log,
+      {
+        temperature: 0.1,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      },
     );
 
   const safeTavilyQueries = Array.isArray(extractedQueries?.tavilyQueries)

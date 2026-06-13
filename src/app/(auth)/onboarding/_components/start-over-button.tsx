@@ -28,6 +28,8 @@ interface StartOverButtonProps {
     | "secondary"
     | "ghost"
     | "link";
+  /** Shadcn Button size değeri. Varsayılan: "sm" */
+  size?: "default" | "sm" | "lg" | "icon";
   /** Butona eklenecek ek CSS sınıfları */
   className?: string;
 }
@@ -42,6 +44,7 @@ interface StartOverButtonProps {
  */
 export function StartOverButton({
   variant = "outline",
+  size = "sm",
   className = "",
 }: StartOverButtonProps) {
   const router = useRouter();
@@ -73,7 +76,7 @@ export function StartOverButton({
       <AlertDialogTrigger asChild>
         <Button
           variant={variant}
-          size="sm"
+          size={size}
           className={`border-destructive bg-destructive/50 text-destructive-foreground hover:bg-destructive/10 hover:text-destructive shadow-sm ${className}`}
           disabled={isPending}
         >

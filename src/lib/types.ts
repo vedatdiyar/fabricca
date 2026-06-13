@@ -19,7 +19,7 @@ export type EnhancedThesisActionResult =
   | { success: true; data: EnhancedThesisData; error?: never }
   | { success?: never; error: string };
 
-export type AxesOption = "OVERLAPPING" | "PARTIAL" | "ORIGINAL";
+export type AxesOption = "OVERLAPPING" | "ORIGINAL";
 
 export interface QueryExtractionResponse {
   tavilyQueries: string[];
@@ -48,12 +48,24 @@ export interface SiftResponse {
 
 export interface OverlapItem {
   id: number;
+  scores?: {
+    subjectScore: number;
+    theoryScore: number;
+    methodologyScore: number;
+    contextScore: number;
+  };
   axes: {
     subject: AxesOption;
     theory: AxesOption;
     methodology: AxesOption;
     context: AxesOption;
   };
+  comparisonNote?: string;
+}
+
+export interface SingleThesisAnalysisResponse {
+  overlapTable: OverlapItem[];
+  comparisonAnalysis: string;
 }
 
 export interface GeminiAnalysisResponse {
@@ -78,5 +90,6 @@ export interface OriginalityReportData {
       originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
     })[];
     strategicRecommendations: string;
+    riskPercentage?: number;
   };
 }

@@ -26,8 +26,8 @@ Projede kullanılacak teknolojiler kesin olarak belirlenmiştir. Yapay zeka, gel
 - **Stil & UI Bileşenleri:** Tailwind CSS, Shadcn UI, Lucide React (İkonlar için)
 - **Veri Tabanı & ORM:** Neon Serverless PostgreSQL, Drizzle ORM
 - **Vektör Veri Tabanı (RAG):** Neon DB içinde entegre `pgvector` eklentisi
-- **LLM Modelleri:** Google Gemini 3.1 Flash Lite / Gemini 3.5 Flash (Metin üretimi ve analiz için) - **Tüm Gemini model çağrılarında `temperature` değeri kesinlikle `1.0` olarak ayarlanmalıdır.** Bu değer sabittir, değiştirilemez ve tüm metin üretimi/analiz işlemlerinde aynen kullanılmalıdır.
-- **Embedding Model:** Google Gemini Embedding v2
+- **LLM Modelleri:** Google Gemini 3.1 Flash Lite / Gemini 3.5 Flash (Metin üretimi ve analiz için) - **Gemini model çağrılarında temperature değeri:** Google'ın Gemini 3.0/3.1 ve üzeri modeller için önerdiği doğrultuda, modelin akıl yürütme (reasoning) ve JSON üretme yeteneklerinin en iyi performansı göstermesi ve döngüsel/mantıksal hataların önlenmesi için tüm çağrılarda varsayılan temperature değeri olan `1.0` kullanılmalıdır.
+- **Embedding Model:** Google Gemini Embedding v2 (gemini-embedding-2)
 - **AI Orkestrasyon:** Google Gen AI SDK (@google/genai - Doğrudan entegrasyon)
 - **Kimlik Doğrulama (Auth):** Drizzle tabanlı yerel `users` tablosu, `bcrypt-ts` ile şifreleme ve Next.js Cookies/Middleware tabanlı hafif session yönetimi
 
@@ -99,9 +99,20 @@ Yapay zeka, geliştirme süreci boyunca aşağıdaki disiplin kurallarına ve ko
 
 - **SDK Disiplini:** Projede eski nesil paketler (`@google/generative-ai`) kesinlikle kullanılmayacak; her zaman yeni nesil `@google/genai` kütüphanesi kullanılacaktır. İstemci başlatılırken `import { GoogleGenAI } from "@google/genai";` ve `const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });` standart kalıbı uygulanacaktır.
 
-- **Temperature Sabiti:** Gemini 3 serisi modellerle çalışırken, döngüleri ve performans kayıplarını önlemek adına `temperature` değeri her zaman istisnasız `1.0` olarak sabitlenecektir.
+- **Temperature Stratejisi:** Gemini 3 ve üzeri modellerin mimari optimizasyonu ve akıl yürütme yeteneklerinin tam performansla çalışması için varsayılan temperature değeri `1.0` korunmalıdır. Determinizm ve kelime kökü alma gibi kısıtlar temperature düşürmek yerine prompt mühendisliği (net direktifler ve örnekler) ile şema tanımları üzerinden sağlanmalıdır.
+  - **İstisna — Aşama 1 (Sorgu Çıkarımı):** `extractQueries()` içinde kullanılan `gemini-3.1-flash-lite` model çağrısında, her çalıştırmada birebir aynı `tavilyQueries` ve `keywords` çıktılarını üretebilmek için `temperature: 0.1` ve `thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }` kullanılır. Bu istisna yalnızca bu spesifik sorgu çıkarma adımı için geçerlidir; diğer tüm AI çağrıları (eleme, sınıflandırma, sentez, analiz) varsayılan `1.0` ile çalışmaya devam eder.
 
-- **Ajan Akıl Yürütme Gücü (Thinking Config):** Derin akademik muhakeme gerektiren tüm işlemlerde (literatür analizi, özgünlük değerlendirmesi, tez yönlendirmesi), model konfigürasyonuna `thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }` açıkça dikte edilecektir. Basit metin üretimi veya özet çıkarma gibi işlemlerde thinking config kullanılmayabilir, ancak muhakeme gerektiren her durumda eklenmesi zorunludur.
+- **Ajan Akıl Yürütme Gücü (Thinking Config):** Derin akademik muhakeme gerektiren sentez veya yol haritası analizi gibi işlemlerde model konfigürasyonuna `thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }` (veya MEDIUM) açıkça dikte edilebilir. Ancak basit eleme, sifting ve ikili sınıflandırma (ORIGINAL / OVERLAPPING) adımlarında gereksiz sapma ve yorum genişlemesini önlemek için thinking config kapalı (null veya minimum) tutulmalıdır.
+
+- **Prompt Mühendisliği Standartları:**
+  1. Persona veya rolden ziyade asıl görevi (ne üretileceğini) en net şekilde tanımla.
+  2. Prompt hiyerarşisinde `Context` -> `Task` -> `Constraints` -> `Output format` -> `Examples` sırasını takip et.
+  3. Belirsiz ifadelerden kaçın, çıktının sınırlarını (örn: kelime/karakter limitleri) net olarak belirt.
+  4. Gereksiz "thinking/step-by-step" talimatları verme (sadece derin muhakeme gerektiren sentez aşamasında kullan).
+  5. Kısıtları her zaman pozitif ("Sadece şunu yap" > "Şunu yapma") ifadelerle yaz.
+  6. XML/Markdown etiketlerini süs için değil, sadece net bağlamsal yapı oluşturmak için kullan.
+  7. Tek bir promptta çoklu karmaşık iş yapma, gerektiğinde adımlara böl.
+  8. En az kelimeyle en net niyete odaklan (Daha uzun prompt = daha iyi prompt DEĞİLDİR).
 
 - **Structured Outputs (Vanilla JSON Schema Entegrasyonu):** Modelden yapılandırılmış JSON çıktısı alınması zorunlu olan senaryolarda; şema tanımı saf vanilla JSON Schema nesnesi olarak doğrudan `response_json_schema` alanına geçirilecektir. `zod-to-json-schema` gibi üçüncü parti kütüphanelerin kullanımı kesinlikle yasaktır.
 

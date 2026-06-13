@@ -42,10 +42,11 @@ export async function getStoredEnhancedDataAction(): Promise<EnhancedThesisActio
     });
 
     const [matrix] = await withDbLogging(
-      () => db
-        .select()
-        .from(thesisMatrices)
-        .where(eq(thesisMatrices.userId, session.userId)),
+      () =>
+        db
+          .select()
+          .from(thesisMatrices)
+          .where(eq(thesisMatrices.userId, session.userId)),
       "read_matrix",
       log,
     );
@@ -118,33 +119,35 @@ export async function confirmEnhancedThesisAction(
 
     // 1. DB: Matris güncelle
     await withDbLogging(
-      () => db
-        .update(thesisMatrices)
-        .set({
-          studyTitle: data.academicStudyTitle,
-          researchQuestion: data.literatureResearchQuestion,
-          mainClaim: data.refinedThesisClaim,
-          methodology: data.academicMethodologyDesign,
-          theoreticalFramework: data.conceptualTheoreticalInfrastructure,
-          historicalSpatialLimits: data.historicalSpatialLimits,
-          updatedAt: new Date(),
-        })
-        .where(eq(thesisMatrices.userId, userId)),
+      () =>
+        db
+          .update(thesisMatrices)
+          .set({
+            studyTitle: data.academicStudyTitle,
+            researchQuestion: data.literatureResearchQuestion,
+            mainClaim: data.refinedThesisClaim,
+            methodology: data.academicMethodologyDesign,
+            theoreticalFramework: data.conceptualTheoreticalInfrastructure,
+            historicalSpatialLimits: data.historicalSpatialLimits,
+            updatedAt: new Date(),
+          })
+          .where(eq(thesisMatrices.userId, userId)),
       "confirm_matrix",
       log,
     );
 
     // 2. DB: Adım güncelle
     await withDbLogging(
-      () => db
-        .update(users)
-        .set({ onboardingStep: "originality_report" })
-        .where(eq(users.id, userId)),
+      () =>
+        db
+          .update(users)
+          .set({ onboardingStep: "originality_report" })
+          .where(eq(users.id, userId)),
       "update_step",
       log,
     );
 
-    revalidatePath("/onboarding");
+    revalidatePath("/onboarding", "layout");
     log.info("flow_complete", { service: "enrichment", step: "confirm" });
     return { success: true };
   } catch (error) {

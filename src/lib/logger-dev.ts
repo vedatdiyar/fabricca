@@ -26,6 +26,7 @@ interface DevSearchEntry {
   query: string;
   resultCount: number;
   durationMs: number;
+  page?: number;
 }
 
 /** Development modunda flow başına biriktirilen istatistikler */
@@ -45,6 +46,13 @@ interface DevFlowStats {
   };
   selectedFinalIds?: number[];
   uniqueFilterCount?: number;
+  stepCallCount: Record<string, number>;
+  rawCount?: number;
+  stage1SelectedCount?: number;
+  stage2ValidDetailsCount?: number;
+  stage2FinalCount?: number;
+  reportDbDurationMs?: number;
+  reportDbStatus?: "success" | "failed";
 }
 
 // ============================================================================
@@ -117,10 +125,7 @@ function drawBottomBorder(color: chalk.Chalk): string {
   return color(`╚${"═".repeat(BOX_INNER_WIDTH)}╝`);
 }
 
-function drawContentLine(
-  text: string,
-  clr: chalk.Chalk = chalk.reset,
-): string {
+function drawContentLine(text: string, clr: chalk.Chalk = chalk.reset): string {
   const inner = ` ${text}`;
   const padding = Math.max(0, BOX_INNER_WIDTH - inner.length);
   return clr(`║${inner}${" ".repeat(padding)}║`);
@@ -130,14 +135,31 @@ function drawContentLine(
 // Visual Renderers
 // ============================================================================
 
-function renderErrorBox(message: string, location: string): string {
+function renderErrorBox(
+  message: string,
+  location: string,
+  flowId: string,
+  step?: string,
+  callCount?: number,
+): string {
   const clr = chalk.red;
   const lines: string[] = [];
   lines.push(drawTopBorder(clr));
   lines.push(drawContentLine(chalk.bold.red("💥 ERROR DETECTED"), clr));
   lines.push(drawContentLine("", clr));
   lines.push(
-    drawContentLine(chalk.bold("Message: ") + chalk.red(message), clr),
+    drawContentLine(chalk.bold("Flow ID:  ") + chalk.cyan(flowId), clr),
+  );
+  if (step) {
+    let stepLabel = `Step:     ${step}`;
+    if (callCount !== undefined && callCount > 1) {
+      stepLabel += chalk.gray(`  [Çağrı: ${callCount}]`);
+    }
+    lines.push(drawContentLine(stepLabel, clr));
+  }
+  lines.push(drawContentLine("", clr));
+  lines.push(
+    drawContentLine(chalk.bold("Message:  ") + chalk.red(message), clr),
   );
   lines.push(drawContentLine("", clr));
   lines.push(
@@ -169,42 +191,51 @@ function renderStepTree(flowId: string, stats: DevFlowStats): string | null {
 
   const lines: string[] = [];
   const stepDuration =
-    stats.steps.length > 0
-      ? stats.steps[stats.steps.length - 1].durationMs
-      : 0;
+    stats.steps.length > 0 ? stats.steps[stats.steps.length - 1].durationMs : 0;
 
   lines.push(
     chalk.dim(
       `┌─ sifting_stage_1 ${"─".repeat(55)} ${formatDuration(stepDuration)}`,
     ),
   );
-  lines.push(
-    chalk.dim(`│  ┌─ Tavily Search Outcomes (${tavily.length} queries)`),
-  );
-  for (const entry of tavily) {
+
+  if (tavily.length > 0) {
+    const tavilyTotalFacts = tavily.reduce((sum, e) => sum + e.resultCount, 0);
+    const tavilyAvgMs =
+      tavily.reduce((sum, e) => sum + e.durationMs, 0) / tavily.length;
     lines.push(
       chalk.dim(
-        `│  │  • ${entry.query} ➔ ${entry.resultCount} facts (${formatDuration(entry.durationMs)})`,
-      ),
-    );
-  }
-  lines.push(
-    chalk.dim(
-      `│  └─ Tezara Combination Search Outcomes (${tezara.length} queries)`,
-    ),
-  );
-  for (const entry of tezara) {
-    lines.push(
-      chalk.dim(
-        `│  │  • ${entry.query} ➔ ${entry.resultCount} tez (${formatDuration(entry.durationMs)})`,
+        `│  ├─ Tavily:  ${String(tavily.length).padStart(2)} queries → ${tavilyTotalFacts} facts (avg ${formatDuration(tavilyAvgMs)})`,
       ),
     );
   }
 
-  const filterCount = stats.uniqueFilterCount;
-  if (filterCount !== undefined) {
+  if (tezara.length > 0) {
+    const tezaraAvgMs =
+      tezara.reduce((sum, e) => sum + e.durationMs, 0) / tezara.length;
+    const tezaraTotalRaw =
+      stats.rawCount ??
+      tezara.reduce((sum, e) => sum + e.resultCount, 0);
     lines.push(
-      chalk.dim(`│  └─ Total Filter: ${filterCount} matching rows merged.`),
+      chalk.dim(
+        `│  ├─ Tezara: ${String(tezara.length).padStart(2)} queries → ${tezaraTotalRaw} raw theses (avg ${formatDuration(tezaraAvgMs)})`,
+      ),
+    );
+  }
+
+  const rawCount = stats.rawCount ?? 0;
+  const uniqueCount = stats.uniqueFilterCount ?? 0;
+  if (rawCount > 0 && uniqueCount > 0) {
+    const exactMatchDrop = rawCount - uniqueCount;
+    lines.push(
+      chalk.dim(
+        `│  ├─ Exact Match Drop: ${exactMatchDrop} duplicates`,
+      ),
+    );
+    lines.push(
+      chalk.dim(
+        `│  └─ Unique Pool: ${uniqueCount} theses`,
+      ),
     );
   }
 
@@ -215,27 +246,51 @@ function renderSelectedThreats(
   ids: number[],
   titles: string[],
   service: string,
+  inputPoolSize: number,
 ): string {
   const lines: string[] = [];
   const prevIds = previousFinalIdsMap.get(service) ?? [];
 
-  lines.push(
-    chalk.dim(`├─ sifting_stage_2 ➔ Deep Abstract Analysis Complete`),
-  );
+  lines.push(chalk.dim(`├─ sifting_stage_2 ➔ Deep Abstract Analysis Complete`));
 
   for (let i = 0; i < ids.length; i++) {
     const id = ids[i];
     const title = titles[i] ?? `ID ${id}`;
     const isNew = !prevIds.includes(id);
-    const newTag = isNew ? chalk.green(" [← yeni]") : "";
+    const newTag = isNew ? chalk.green(" [← yeni]") : chalk.gray(" [mevcut]");
     lines.push(
-      chalk.dim(`│    ★ Selected Threat: ID ${id} ➔ ${title}${newTag}`),
+      chalk.dim(
+        `│  ${String(i + 1).padStart(2)}. ID ${String(id).padEnd(6)} ${title}${newTag}`,
+      ),
     );
   }
+
+  const eliminated = inputPoolSize - ids.length;
+  const eliminationRate =
+    inputPoolSize > 0
+      ? ((eliminated / inputPoolSize) * 100).toFixed(2)
+      : "0.00";
+  lines.push(
+    chalk.dim(
+      `└─ Elimination: ${inputPoolSize} → ${ids.length} (${eliminationRate}% elendi)`,
+    ),
+  );
 
   previousFinalIdsMap.set(service, ids);
 
   return lines.join("\n");
+}
+
+function renderArchiveLine(flowId: string, stats: DevFlowStats): string {
+  const dbStatus = stats.reportDbStatus ?? "success";
+  const dbDuration = stats.reportDbDurationMs
+    ? ` (${formatDuration(stats.reportDbDurationMs)})`
+    : "";
+  const statusIcon =
+    dbStatus === "success" ? chalk.green("✓") : chalk.red("✗");
+  return chalk.dim(
+    `  🗂️ ${flowId} ➔ read_report ➔ db_${dbStatus}${dbDuration} ${statusIcon}`,
+  );
 }
 
 function renderSummaryTable(stats: DevFlowStats): string {
@@ -256,9 +311,7 @@ function renderSummaryTable(stats: DevFlowStats): string {
     ),
   );
   lines.push(
-    chalk.dim(
-      ` │ Süre                │ ${totalDuration.padEnd(42)}│`,
-    ),
+    chalk.dim(` │ Süre                │ ${totalDuration.padEnd(42)}│`),
   );
   lines.push(
     chalk.dim(
@@ -285,11 +338,7 @@ function renderSummaryTable(stats: DevFlowStats): string {
       ` │ Düşünce Token       │ ${String(stats.thinkingTokens).padEnd(42)}│`,
     ),
   );
-  lines.push(
-    chalk.dim(
-      ` │ En Yavaş Adım       │ ${slowestName.padEnd(42)}│`,
-    ),
-  );
+  lines.push(chalk.dim(` │ En Yavaş Adım       │ ${slowestName.padEnd(42)}│`));
   lines.push(
     chalk.dim(
       " └─────────────────────┴────────────────────────────────────────────┘",
@@ -310,7 +359,7 @@ function renderMiniStep(
     durationMs !== undefined
       ? chalk.gray(` (${formatDuration(durationMs)})`)
       : "";
-  return chalk.dim(`  ├─ ${stepLabel}➔ ${event}${dur}`);
+  return chalk.dim(`  • ${stepLabel}${event}${dur}`);
 }
 
 // ============================================================================
@@ -336,6 +385,7 @@ function updateDevStats(
       steps: [],
       slowestStep: null,
       searchResults: { tavily: [], tezara: [] },
+      stepCallCount: {},
     };
     devStatsMap.set(flowId, stats);
   }
@@ -349,11 +399,12 @@ function updateDevStats(
       timestamp: Date.now(),
     };
     stats.steps.push(stepRecord);
+    stats.stepCallCount[params.step] =
+      (stats.stepCallCount[params.step] || 0) + 1;
 
     if (
       params.durationMs !== undefined &&
-      (!stats.slowestStep ||
-        params.durationMs > stats.slowestStep.durationMs)
+      (!stats.slowestStep || params.durationMs > stats.slowestStep.durationMs)
     ) {
       stats.slowestStep = stepRecord;
     }
@@ -366,6 +417,7 @@ function updateDevStats(
       (params.data?.resultCount as number) ??
       (params.data?.totalResults as number) ??
       0;
+    const page = (params.data?.page as number) ?? undefined;
 
     if (params.service === "tavily") {
       stats.searchResults.tavily.push({
@@ -382,18 +434,23 @@ function updateDevStats(
           query,
           resultCount,
           durationMs: params.durationMs,
+          page,
         });
       }
     }
   }
 
-  // Record unique filter count from deduplicate step
+  // Record aggregate sifting metrics from deduplicate step
   if (
     event === "search_success" &&
-    params?.step === "deduplicate_and_score" &&
-    params?.data?.uniqueCount !== undefined
+    params?.step === "deduplicate_and_score"
   ) {
-    stats.uniqueFilterCount = params.data.uniqueCount as number;
+    if (params?.data?.uniqueCount !== undefined) {
+      stats.uniqueFilterCount = params.data.uniqueCount as number;
+    }
+    if (params?.data?.rawCount !== undefined) {
+      stats.rawCount = params.data.rawCount as number;
+    }
   }
 
   // Track AI call tokens
@@ -410,7 +467,10 @@ function updateDevStats(
     stats.totalInputTokens += thisCallInput;
     stats.totalOutputTokens += thisCallOutput;
     stats.totalTokens += thisCallInput + thisCallOutput;
-    stats.thinkingTokens += Math.max(0, thisCallRawTotal - thisCallInput - thisCallOutput);
+    stats.thinkingTokens += Math.max(
+      0,
+      thisCallRawTotal - thisCallInput - thisCallOutput,
+    );
   }
 
   // Track AI retry as an AI call attempt
@@ -418,13 +478,45 @@ function updateDevStats(
     stats.aiCalls += 1;
   }
 
-  // Store final selected IDs for diff comparison
+  // Track stage 1 selected count
+  if (
+    event === "ai_request_success" &&
+    params?.step === "sifting_stage_1_end" &&
+    params?.data?.selectedCount !== undefined
+  ) {
+    stats.stage1SelectedCount = params.data.selectedCount as number;
+  }
+
+  // Track valid details count after detail fetch
+  if (
+    event === "search_success" &&
+    params?.step === "fetch_details_stage_2_complete" &&
+    params?.data?.successCount !== undefined
+  ) {
+    stats.stage2ValidDetailsCount = params.data.successCount as number;
+  }
+
+  // Track report DB step status
+  if (event === "db_success" && params?.step === "read_report") {
+    stats.reportDbDurationMs = params.durationMs;
+    stats.reportDbStatus = "success";
+  }
+  if (event === "db_failed" && params?.step === "read_report") {
+    stats.reportDbDurationMs = params.durationMs;
+    stats.reportDbStatus = "failed";
+  }
+
+  // Store final selected IDs and count for diff comparison
   if (
     event === "flow_complete" &&
-    params?.step === "sifting_complete" &&
-    params?.data?.finalIds
+    params?.step === "sifting_complete"
   ) {
-    stats.selectedFinalIds = params.data.finalIds as number[];
+    if (params?.data?.finalIds) {
+      stats.selectedFinalIds = params.data.finalIds as number[];
+    }
+    if (params?.data?.finalCount !== undefined) {
+      stats.stage2FinalCount = params.data.finalCount as number;
+    }
   }
 }
 
@@ -450,7 +542,18 @@ function renderVisual(
           : err != null
             ? String(err)
             : "Unknown error";
-      return renderErrorBox(message, getCallerLocation());
+      const step = params?.step;
+      const callCount =
+        step && stats.stepCallCount[step]
+          ? stats.stepCallCount[step]
+          : undefined;
+      return renderErrorBox(
+        message,
+        getCallerLocation(),
+        flowId,
+        step,
+        callCount,
+      );
     }
     default: {
       // Atomik arama/DB başlangıçlarını ve tekil success'leri gösterme — özetler yeterli
@@ -465,6 +568,7 @@ function renderVisual(
 
       switch (event) {
         case "flow_start":
+          if (params?.step === "read_report") return null;
           return renderFlowStartBox(
             params?.service ?? "flow",
             params?.step,
@@ -481,7 +585,12 @@ function renderVisual(
               ids,
               titles,
               params?.service ?? "originality",
+              stats.uniqueFilterCount ?? 0,
             );
+          }
+
+          if (params?.step === "read_report") {
+            return renderArchiveLine(flowId, stats);
           }
 
           if (params?.step) {
