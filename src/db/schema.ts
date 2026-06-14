@@ -8,23 +8,21 @@ import {
   jsonb,
   pgEnum,
   AnyPgColumn,
+  boolean,
 } from "drizzle-orm/pg-core";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 
 /**
  * Kullanıcı tablosu.
  * E-posta benzersizdir ve şifre bcrypt-ts ile hashlenerek saklanır.
- * onboardingStep alanı, onboarding sürecinin hangi adımda olduğunu
- * ('thesis_matrix' | 'thesis_matrix_enhanced' | 'completed') tutar.
+ * onboardingCompleted alanı, onboarding sürecinin tamamlanıp tamamlanmadığını tutar.
  */
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: varchar("email", { length: 255 }).notNull().unique(),
   password: varchar("password", { length: 255 }).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
-  onboardingStep: varchar("onboarding_step", { length: 50 })
-    .notNull()
-    .default("thesis_matrix"),
+  onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -46,6 +44,7 @@ export const thesisMatrices = pgTable("thesis_matrices", {
   methodology: text("methodology").notNull(),
   theoreticalFramework: text("theoretical_framework").notNull(),
   historicalSpatialLimits: text("historical_spatial_limits").notNull(),
+  keywords: jsonb("keywords").$type<string[]>().default([]).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

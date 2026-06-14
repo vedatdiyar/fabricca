@@ -10,12 +10,12 @@ import { StartOverButton } from "../_components/start-over-button";
 export default async function OnboardingMatrixPage() {
   const profile = await getProfile();
 
-  if (profile.onboarding_step !== "thesis_matrix") {
-    redirect("/onboarding");
+  if (profile.onboarding_completed) {
+    redirect("/dashboard");
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4 py-4">
+    <main className="flex flex-col items-center justify-center p-4 py-4">
       <div className="mx-auto flex w-full max-w-5xl flex-col items-center space-y-4">
         <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
           <div className="flex flex-col space-y-1 text-left">

@@ -32,51 +32,80 @@ export async function executeParallelSearch(
   }[];
   tezaraSearchResults: TezaraThesisSummary[][];
 }> {
-  log.info("flow_start", {
-    service: "originality",
+  const startTime = performance.now();
+  log.info({
     step: "parallel_search",
-    data: {
-      tavilyQueries,
-      tezaraQueries,
-    },
+    status: "START",
+    tavilyQueryCount: tavilyQueries.length,
+    tezaraQueryCount: tezaraQueries.length,
   });
 
-  const tavilyPromises = tavilyQueries.map(async (query) => {
-    try {
-      const res = await tavilySearch(query, log);
-      return { query, results: res.results };
-    } catch (err) {
-      log.error("search_filtered", {
-        service: "tavily",
-        data: { query },
-        error: err,
-      });
-      return { query, results: [] };
-    }
-  });
+  try {
+    const tavilyPromises = tavilyQueries.map(async (query) => {
+      try {
+        const res = await tavilySearch(query, log);
+        return { query, results: res.results };
+      } catch (err) {
+        log.error({
+          step: "tavily_search",
+          status: "FAILED",
+          diagnostics: {
+            errorCode: "TAVILY_SEARCH_ERROR",
+            query,
+            message: err instanceof Error ? err.message : String(err),
+          },
+        });
+        return { query, results: [] };
+      }
+    });
 
-  const tezaraPromises = tezaraQueries.map(async (query) => {
-    try {
-      return await searchTezara(query, log, true);
-    } catch (err) {
-      log.error("search_filtered", {
-        service: "tezara",
-        data: { query },
-        error: err,
-      });
-      return [];
-    }
-  });
+    const tezaraPromises = tezaraQueries.map(async (query) => {
+      try {
+        return await searchTezara(query, log, true);
+      } catch (err) {
+        log.error({
+          step: "tezara_search",
+          status: "FAILED",
+          diagnostics: {
+            errorCode: "TEZARA_SEARCH_ERROR",
+            query,
+            message: err instanceof Error ? err.message : String(err),
+          },
+        });
+        return [];
+      }
+    });
 
-  const [tavilySearchResults, tezaraSearchResults] = await Promise.all([
-    Promise.all(tavilyPromises),
-    Promise.all(tezaraPromises),
-  ]);
+    const [tavilySearchResults, tezaraSearchResults] = await Promise.all([
+      Promise.all(tavilyPromises),
+      Promise.all(tezaraPromises),
+    ]);
 
-  return {
-    tavilySearchResults,
-    tezaraSearchResults,
-  };
+    const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
+    log.info({
+      step: "parallel_search",
+      status: "SUCCESS",
+      metrics: {
+        duration,
+        outputRows: tavilySearchResults.length + tezaraSearchResults.length,
+      },
+    });
+
+    return {
+      tavilySearchResults,
+      tezaraSearchResults,
+    };
+  } catch (err) {
+    log.error({
+      step: "parallel_search",
+      status: "FAILED",
+      diagnostics: {
+        errorCode: "SEARCH_EXECUTION_ERROR",
+        message: err instanceof Error ? err.message : String(err),
+      },
+    });
+    throw err;
+  }
 }
 
 export interface EvaluateTavilyParams {
@@ -102,50 +131,76 @@ export async function evaluateTavilyResults(
   }[],
   log: Logger,
 ): Promise<TavilyEvaluationResponse> {
-  log.info("ai_request_start", {
-    service: "gemini",
+  const startTime = performance.now();
+  log.info({
     step: "evaluate_tavily",
+    status: "START",
+    studyTitle: params.studyTitle,
   });
 
-  const tavilyResultsFormatted = tavilySearchResults
-    .map((item) => {
-      const resultsSnippet = item.results
-        .map(
-          (r) => `- Başlık: ${r.title}\n  URL: ${r.url}\n  Özet: ${r.content}`,
-        )
-        .join("\n");
-      return `Sorgu: "${item.query}"\nBulunan Sonuçlar:\n${resultsSnippet}`;
-    })
-    .join("\n\n");
+  try {
+    const tavilyResultsFormatted = tavilySearchResults
+      .map((item) => {
+        const resultsSnippet = item.results
+          .map(
+            (r) =>
+              `- Başlık: ${r.title}\n  URL: ${r.url}\n  Özet: ${r.content}`,
+          )
+          .join("\n");
+        return `Sorgu: "${item.query}"\nBulunan Sonuçlar:\n${resultsSnippet}`;
+      })
+      .join("\n\n");
 
-  const tavilyEvaluation =
-    await generateStructuredContent<TavilyEvaluationResponse>(
-      "gemini-3.1-flash-lite",
-      TAVILY_EVAL_SYSTEM_INSTRUCTION,
-      buildTavilyEvalPrompt({
-        ...params,
-        tavilyResultsFormatted,
-      }),
-      tavilyEvaluationSchema,
-      log,
-      {
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+    const tavilyEvaluation =
+      await generateStructuredContent<TavilyEvaluationResponse>(
+        "gemini-3.1-flash-lite",
+        TAVILY_EVAL_SYSTEM_INSTRUCTION,
+        buildTavilyEvalPrompt({
+          ...params,
+          tavilyResultsFormatted,
+        }),
+        tavilyEvaluationSchema,
+        log,
+        {
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        },
+      );
+
+    const safeFactItems = Array.isArray(tavilyEvaluation?.items)
+      ? tavilyEvaluation.items
+      : [];
+
+    const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
+    const tokens = log.lastTokens || { input: 0, output: 0 };
+
+    log.info({
+      step: "evaluate_tavily",
+      status: "SUCCESS",
+      metrics: {
+        duration,
+        tokens: {
+          prompt: tokens.input ?? 0,
+          completion: tokens.output ?? 0,
+        },
+        outputRows: safeFactItems.length,
       },
-    );
+    });
 
-  const safeFactItems = Array.isArray(tavilyEvaluation?.items)
-    ? tavilyEvaluation.items
-    : [];
-
-  log.info("ai_request_success", {
-    service: "gemini",
-    step: "evaluate_tavily",
-    data: { factCount: safeFactItems.length },
-  });
-
-  return {
-    items: safeFactItems,
-    briefingNote:
-      tavilyEvaluation?.briefingNote || "Maddi doğrulama analizi tamamlandı.",
-  };
+    return {
+      items: safeFactItems,
+      briefingNote:
+        tavilyEvaluation?.briefingNote || "Maddi doğrulama analizi tamamlandı.",
+    };
+  } catch (err) {
+    log.error({
+      step: "evaluate_tavily",
+      status: "FAILED",
+      diagnostics: {
+        errorCode: "GEMINI_EVALUATION_ERROR",
+        message: err instanceof Error ? err.message : String(err),
+        model: "gemini-3.1-flash-lite",
+      },
+    });
+    throw err;
+  }
 }

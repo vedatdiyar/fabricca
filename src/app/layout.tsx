@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Poppins, Fredoka, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
+import QueryProvider from "@/components/providers/query-provider";
 import { Toaster } from "@/components/ui/sonner";
 
 const fontSans = Poppins({
@@ -53,8 +54,10 @@ export default function RootLayout({
       className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable}`}
     >
       <body>
-        {children}
-        <Toaster />
+        <QueryProvider>
+          {children}
+          <Toaster />
+        </QueryProvider>
       </body>
     </html>
   );

@@ -7,10 +7,11 @@ import { users } from "@/db/schema";
 export type SessionUser = {
   userId: number;
   name: string;
+  onboardingCompleted?: boolean;
 };
 
 export type SessionWithOnboarding = SessionUser & {
-  onboardingStep: string;
+  onboardingCompleted: boolean;
 };
 
 /**
@@ -45,7 +46,22 @@ export async function getSession(): Promise<SessionUser | null> {
       typeof (parsed as Record<string, unknown>).userId === "number" &&
       typeof (parsed as Record<string, unknown>).name === "string"
     ) {
-      return parsed as SessionUser;
+      const data = parsed as {
+        userId: number;
+        name: string;
+        onboardingCompleted?: unknown;
+      };
+      const sessionUser: SessionUser = {
+        userId: data.userId,
+        name: data.name,
+      };
+      if (
+        "onboardingCompleted" in data &&
+        typeof data.onboardingCompleted === "boolean"
+      ) {
+        sessionUser.onboardingCompleted = data.onboardingCompleted;
+      }
+      return sessionUser;
     }
 
     return null;
@@ -72,20 +88,27 @@ export async function getSessionWithOnboarding(): Promise<SessionWithOnboarding 
     return null;
   }
 
+  if (session.onboardingCompleted) {
+    return {
+      ...session,
+      onboardingCompleted: true,
+    };
+  }
+
   try {
     const [user] = await db
-      .select({ onboardingStep: users.onboardingStep })
+      .select({ onboardingCompleted: users.onboardingCompleted })
       .from(users)
       .where(eq(users.id, session.userId));
 
     return {
       ...session,
-      onboardingStep: user?.onboardingStep ?? "thesis_matrix",
+      onboardingCompleted: user?.onboardingCompleted ?? false,
     };
   } catch {
     return {
       ...session,
-      onboardingStep: "thesis_matrix",
+      onboardingCompleted: session.onboardingCompleted ?? false,
     };
   }
 }
@@ -107,7 +130,7 @@ export async function getProfile() {
       id: users.id,
       email: users.email,
       name: users.name,
-      onboardingStep: users.onboardingStep,
+      onboardingCompleted: users.onboardingCompleted,
       createdAt: users.createdAt,
     })
     .from(users)
@@ -121,7 +144,7 @@ export async function getProfile() {
     id: user.id,
     email: user.email,
     name: user.name,
-    onboarding_step: user.onboardingStep,
+    onboarding_completed: user.onboardingCompleted,
     createdAt: user.createdAt,
   };
 }

@@ -100,3 +100,72 @@ export interface OriginalityReportData {
     riskPercentage?: number;
   };
 }
+
+/**
+ * Onboarding adımlarındaki yükleme durumunu temsil eden tip.
+ */
+export type StepStatus = "idle" | "loading" | "error" | "success";
+
+/**
+ * Onboarding sürecindeki aktif adım tipini temsil eden enum benzeri tip.
+ */
+export type OnboardingStep =
+  | "matrix"
+  | "enrichment"
+  | "risk"
+  | "boxes"
+  | "literature-review"
+  | "completed";
+
+/**
+ * Onboarding sürecinin ilk adımındaki tez matrisi form verileri.
+ */
+export interface OnboardingFormData {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  methodology: string;
+  theoreticalFramework: string;
+  historicalSpatialLimits: string;
+}
+
+/**
+ * YÖKTEZ ve sifting sonucunda elenen ve seçilen tez nesneleri.
+ */
+export interface ScrapedTheses {
+  selected: TezaraThesisDetails[];
+  eliminated: TezaraThesisSummary[];
+}
+
+/**
+ * Jüri analizi tablosunda listelenen karşılaştırmalı tez verisi.
+ */
+export interface JuryReportItem {
+  id: number;
+  title: string;
+  author: string;
+  university: string;
+  year: number;
+  thesisType: string;
+  department: string;
+  originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
+  axes: {
+    subject: AxesOption;
+    theory: AxesOption;
+    methodology: AxesOption;
+    context?: AxesOption;
+  };
+  comparisonNote?: string;
+  yokPdfUrl?: string;
+}
+
+export interface GeminiThesisBox {
+  category: "intro" | "theory" | "methodology" | "context" | "primary_source";
+  title: string;
+  description: string;
+  theorists: string[];
+  concepts: string[];
+  queries: string[];
+  primaryLiterature: string[];
+  secondaryLiterature: string[];
+}

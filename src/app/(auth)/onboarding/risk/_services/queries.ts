@@ -31,68 +31,93 @@ export interface ExtractQueriesParams {
 export async function extractQueries(
   params: ExtractQueriesParams,
   log: Logger,
-): Promise<{ tavilyQueries: string[]; tezaraQueries: string[] }> {
-  log.info("ai_request_start", {
-    service: "gemini",
+): Promise<{
+  tavilyQueries: string[];
+  tezaraQueries: string[];
+  keywords: string[];
+}> {
+  const startTime = performance.now();
+  log.info({
     step: "extract_queries",
+    status: "START",
+    studyTitle: params.studyTitle,
   });
 
-  const extractedQueries =
-    await generateStructuredContent<QueryExtractionResponse>(
-      "gemini-3.1-flash-lite",
-      QUERY_EXTRACTION_SYSTEM_INSTRUCTION,
-      buildQueryPrompt(params),
-      queryExtractionSchema,
-      log,
-      {
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      },
-    );
+  try {
+    const extractedQueries =
+      await generateStructuredContent<QueryExtractionResponse>(
+        "gemini-3.1-flash-lite",
+        QUERY_EXTRACTION_SYSTEM_INSTRUCTION,
+        buildQueryPrompt(params),
+        queryExtractionSchema,
+        log,
+        {
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        },
+      );
 
-  const safeTavilyQueries = Array.isArray(extractedQueries?.tavilyQueries)
-    ? extractedQueries.tavilyQueries
-    : [];
+    const safeTavilyQueries = Array.isArray(extractedQueries?.tavilyQueries)
+      ? extractedQueries.tavilyQueries
+      : [];
 
-  const rawKeywords = Array.isArray(extractedQueries?.keywords)
-    ? extractedQueries.keywords.map((k) => k.trim()).filter(Boolean)
-    : [];
+    const rawKeywords = Array.isArray(extractedQueries?.keywords)
+      ? extractedQueries.keywords.map((k) => k.trim()).filter(Boolean)
+      : [];
 
-  // Pad keywords to ensure exactly 5 items
-  const keywords = [...rawKeywords];
-  const defaults = ["thesis", "research", "study", "analysis", "framework"];
-  let defaultIdx = 0;
-  while (keywords.length < 5) {
-    const fallbackVal = defaults[defaultIdx % defaults.length];
-    if (!keywords.includes(fallbackVal)) {
-      keywords.push(fallbackVal);
-    } else {
-      keywords.push(`${fallbackVal}${keywords.length}`);
+    // Pad keywords to ensure exactly 5 items
+    const keywords = [...rawKeywords];
+    const defaults = ["thesis", "research", "study", "analysis", "framework"];
+    let defaultIdx = 0;
+    while (keywords.length < 5) {
+      const fallbackVal = defaults[defaultIdx % defaults.length];
+      if (!keywords.includes(fallbackVal)) {
+        keywords.push(fallbackVal);
+      } else {
+        keywords.push(`${fallbackVal}${keywords.length}`);
+      }
+      defaultIdx++;
     }
-    defaultIdx++;
+    const finalKeywords = keywords.slice(0, 5);
+
+    // Dynamic combinations generator
+    const tezaraQueries: string[] = [];
+    const combos2 = getCombinations(finalKeywords, 2);
+    const combos3 = getCombinations(finalKeywords, 3);
+    tezaraQueries.push(...combos2, ...combos3);
+
+    const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
+    const tokens = (log as any).lastTokens || { input: 0, output: 0 };
+
+    log.info({
+      step: "extract_queries",
+      status: "SUCCESS",
+      metrics: {
+        duration,
+        tokens: {
+          prompt: tokens.input ?? 0,
+          completion: tokens.output ?? 0,
+        },
+        outputRows: safeTavilyQueries.length + tezaraQueries.length,
+      },
+    });
+
+    return {
+      tavilyQueries: safeTavilyQueries,
+      tezaraQueries,
+      keywords: finalKeywords,
+    };
+  } catch (err) {
+    log.error({
+      step: "extract_queries",
+      status: "FAILED",
+      diagnostics: {
+        errorCode: "GEMINI_EXTRACTION_ERROR",
+        message: err instanceof Error ? err.message : String(err),
+        model: "gemini-3.1-flash-lite",
+      },
+    });
+    throw err;
   }
-  const finalKeywords = keywords.slice(0, 5);
-
-  // Dynamic combinations generator
-  const tezaraQueries: string[] = [];
-  const combos2 = getCombinations(finalKeywords, 2);
-  const combos3 = getCombinations(finalKeywords, 3);
-  tezaraQueries.push(...combos2, ...combos3);
-
-  log.info("ai_request_success", {
-    service: "gemini",
-    step: "extract_queries",
-    data: {
-      tavilyQueryCount: safeTavilyQueries.length,
-      extractedKeywordsCount: rawKeywords.length,
-      finalKeywords,
-      generatedTezaraQueryCount: tezaraQueries.length,
-    },
-  });
-
-  return {
-    tavilyQueries: safeTavilyQueries,
-    tezaraQueries,
-  };
 }
 
 /**

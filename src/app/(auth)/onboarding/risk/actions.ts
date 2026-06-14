@@ -1,14 +1,15 @@
 "use server";
 
-import { eq } from "drizzle-orm";
-
-import { db } from "@/db";
-import { thesisMatrices, users, originalityReports } from "@/db/schema";
 import { getSession } from "@/proxy";
 import { createFlowId, Logger } from "@/lib/logger";
 import { revalidatePath } from "next/cache";
-import { withDbLogging } from "@/lib/db-helpers";
-import type { OnboardingActionResult } from "@/lib/types";
+import type {
+  OnboardingActionResult,
+  ScrapedTheses,
+  TavilyEvaluationResponse,
+  OriginalityReportData,
+  GeminiThesisBox,
+} from "@/lib/types";
 
 import { extractQueries } from "./_services/queries";
 import {
@@ -19,219 +20,161 @@ import { siftAndFetchDetails } from "./_services/sifting";
 import { analyzeOriginalityRisk } from "./_services/analysis";
 import { calculateOriginalityRisk } from "./_services/risk-calc";
 import { synthesizeRoadmap } from "./_services/roadmap";
+import { generateStructuredContent } from "@/lib/gemini";
+import {
+  THESIS_BOX_GENERATION_SYSTEM_INSTRUCTION,
+  buildThesisBoxGenerationPrompt,
+  thesisBoxGenerationSchema,
+} from "@/lib/prompts";
+import { searchWikipediaTheorist } from "@/lib/wikipedia";
+import { verifyLiterature } from "@/lib/literature";
+
+interface OnboardingMatrixInput {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  methodology: string;
+  theoreticalFramework: string;
+  historicalSpatialLimits: string;
+}
 
 /**
- * Starts the originality analysis process by executing factual and cross-language academic queries,
- * comparing the results, calculating originality risks, and saving the final report.
- * Updates the user's onboarding step to "originality_report_completed".
+ * Executes parallel searches on Tavily and Tezara, evaluates Tavily findings, sifts Tezara findings
+ * using Gemini, and returns the selected/eliminated theses along with Tavily evaluation summaries.
+ * Bypasses database writes entirely.
  *
- * @returns Success status or error message.
+ * @param matrix - The target thesis matrix fields from the client state.
+ * @returns Success response with scrapedTheses and tavilyResults, or an error.
  */
-export async function startOriginalityAnalysisAction(): Promise<OnboardingActionResult> {
+export async function searchAndSiftThesesAction(
+  matrix: OnboardingMatrixInput,
+): Promise<
+  | {
+      success: true;
+      scrapedTheses: ScrapedTheses;
+      tavilyResults: TavilyEvaluationResponse;
+      keywords: string[];
+    }
+  | { error: string }
+> {
   const flowId = createFlowId();
   const log = new Logger(flowId);
+  const startTime = performance.now();
+
+  log.info({ step: "searchAndSiftTheses", status: "START" });
 
   try {
     const session = await getSession();
     if (!session) {
-      log.info("flow_complete", {
-        service: "originality",
-        data: { reason: "Oturum bulunamadı" },
-      });
+      log.warn({ step: "searchAndSiftTheses", status: "FAILED", diagnostics: { errorCode: "AUTH_ERROR", message: "Oturum bulunamadı. Lütfen tekrar giriş yapın." } });
       return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
     }
 
-    const userId = session.userId;
-    log.info("flow_start", {
-      service: "originality",
-      data: { userId },
-    });
-
-    // Kilit Kontrolü: Kullanıcının mevcut adımını veritabanından oku
-    const [user] = await withDbLogging(
-      () => db.select().from(users).where(eq(users.id, userId)),
-      "read_user_for_lock",
-      log,
-    );
-
-    if (!user) {
-      log.info("flow_complete", {
-        service: "originality",
-        data: { reason: "Kullanıcı bulunamadı" },
-      });
-      return { error: "Kullanıcı bulunamadı." };
-    }
-
-    // Önce: Analiz aktif olarak devam ediyorsa, rapor sorgusu yapmadan hemen dön
-    if (user.onboardingStep === "originality_report_processing") {
-      log.info("flow_complete", {
-        service: "originality",
-        data: { reason: "Analiz zaten devam ediyor", userId },
-      });
-      return { success: true, isProcessing: true };
-    }
-
-    // Otomatik İyileştirme (Auto-healing): Adım "originality_report" iken rapor
-    // veritabanında zaten mevcutsa, adımı tamamlandı olarak işaretle ve dön
-    if (user.onboardingStep === "originality_report") {
-      const [report] = await db
-        .select()
-        .from(originalityReports)
-        .where(eq(originalityReports.userId, userId));
-
-      if (report) {
-        await withDbLogging(
-          () =>
-            db
-              .update(users)
-              .set({ onboardingStep: "originality_report_completed" })
-              .where(eq(users.id, userId)),
-          "auto_heal_step_to_completed",
-          log,
-        );
-        revalidatePath("/onboarding", "layout");
-        log.info("flow_complete", {
-          service: "originality",
-          data: {
-            reason: "Analiz raporu zaten var (otomatik iyileştirildi)",
-            userId,
-          },
-        });
-        return { success: true };
-      }
-    }
-
-    if (user.onboardingStep === "originality_report_completed") {
-      log.info("flow_complete", {
-        service: "originality",
-        data: { reason: "Analiz zaten tamamlanmış", userId },
-      });
-      return { success: true };
-    }
-
-    // Kilidi Aktifleştir: onboardingStep -> "originality_report_processing"
-    await withDbLogging(
-      () =>
-        db
-          .update(users)
-          .set({ onboardingStep: "originality_report_processing" })
-          .where(eq(users.id, userId)),
-      "lock_originality_step",
-      log,
-    );
-
-    // Step 0: Read thesis matrix from Database
-    const [matrix] = await withDbLogging(
-      () =>
-        db
-          .select()
-          .from(thesisMatrices)
-          .where(eq(thesisMatrices.userId, userId)),
-      "read_matrix",
-      log,
-    );
-
     if (!matrix) {
-      log.info("flow_complete", {
-        service: "originality",
-        data: { reason: "Matris bulunamadı" },
-      });
-      return {
-        error: "Tez matrisi bulunamadı. Lütfen önce tez matrisini doldurun.",
-      };
+      log.warn({ step: "searchAndSiftTheses", status: "FAILED", diagnostics: { errorCode: "VALIDATION_ERROR", message: "Tez matrisi bulunamadı. Lütfen önce tez matrisini doldurun." } });
+      return { error: "Tez matrisi bulunamadı. Lütfen önce tez matrisini doldurun." };
     }
 
-    const {
-      studyTitle,
-      researchQuestion,
-      mainClaim,
-      methodology,
-      theoreticalFramework,
-      historicalSpatialLimits,
-    } = matrix;
+    const { studyTitle, researchQuestion, mainClaim, methodology, theoreticalFramework, historicalSpatialLimits } = matrix;
 
     // Step 1: AI - Generate Tavily and Tezara queries
-    const { tavilyQueries, tezaraQueries } = await extractQueries(
-      {
-        studyTitle,
-        researchQuestion,
-        mainClaim,
-        methodology,
-        theoreticalFramework,
-        historicalSpatialLimits,
-      },
+    const { tavilyQueries, tezaraQueries, keywords } = await extractQueries(
+      { studyTitle, researchQuestion, mainClaim, methodology, theoreticalFramework, historicalSpatialLimits },
       log,
     );
 
     // Step 2: Parallel search execution
-    const { tavilySearchResults, tezaraSearchResults } =
-      await executeParallelSearch(tavilyQueries, tezaraQueries, log);
+    const { tavilySearchResults, tezaraSearchResults } = await executeParallelSearch(tavilyQueries, tezaraQueries, log);
 
     // Step 3: AI - Evaluate Tavily fact-check results using Gemini
     const tavilyEvaluation = await evaluateTavilyResults(
-      {
-        studyTitle,
-        researchQuestion,
-        mainClaim,
-        theoreticalFramework,
-      },
+      { studyTitle, researchQuestion, mainClaim, theoreticalFramework },
       tavilySearchResults,
       log,
     );
 
     // Step 4 & 5: Sift candidate theses and fetch full details
-    const { finalTheses: validDetails } = await siftAndFetchDetails(
-      {
-        studyTitle,
-        researchQuestion,
-        theoreticalFramework,
-        methodology,
-        historicalSpatialLimits,
-      },
+    const { finalTheses: validDetails, eliminatedTheses } = await siftAndFetchDetails(
+      { studyTitle, researchQuestion, theoreticalFramework, methodology, historicalSpatialLimits },
       tezaraSearchResults,
       log,
     );
 
-    let tezaraResults;
+    const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
+
+    log.info({ step: "searchAndSiftTheses", status: "SUCCESS", metrics: { duration, outputRows: validDetails.length } });
+
+    return {
+      success: true,
+      scrapedTheses: { selected: validDetails, eliminated: eliminatedTheses },
+      tavilyResults: tavilyEvaluation,
+      keywords,
+    };
+  } catch (err) {
+    log.error({ step: "searchAndSiftTheses", status: "FAILED", diagnostics: { errorCode: "SYSTEM_ERROR", message: err instanceof Error ? err.message : String(err) } });
+    return { error: "YÖKTEZ tarama ve süzme işlemi sırasında bir hata oluştu." };
+  }
+}
+
+/**
+ * Runs the Gemini Jury analysis on the selected theses, calculates the final originality risk profile,
+ * synthesizes the strategic roadmap, and returns the complete OriginalityReportData.
+ * Bypasses database writes entirely.
+ *
+ * @param scrapedTheses - Selected and eliminated theses results from Step 3.
+ * @param tavilyResults - Fact check summaries from Tavily.
+ * @param matrix - The target thesis matrix fields from the client state.
+ * @returns Complete originality report object or error.
+ */
+export async function runJuryAnalysisAction(
+  scrapedTheses: ScrapedTheses,
+  tavilyResults: TavilyEvaluationResponse,
+  matrix: OnboardingMatrixInput,
+): Promise<{ success: true; data: OriginalityReportData } | { error: string }> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+  const startTime = performance.now();
+
+  log.info({ step: "runJuryAnalysis", status: "START" });
+
+  try {
+    const session = await getSession();
+    if (!session) {
+      log.warn({ step: "runJuryAnalysis", status: "FAILED", diagnostics: { errorCode: "AUTH_ERROR", message: "Oturum bulunamadı. Lütfen tekrar giriş yapın." } });
+      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+    }
+
+    if (!matrix) {
+      log.warn({ step: "runJuryAnalysis", status: "FAILED", diagnostics: { errorCode: "VALIDATION_ERROR", message: "Tez matrisi bulunamadı. Lütfen önce tez matrisini doldurun." } });
+      return { error: "Tez matrisi bulunamadı. Lütfen önce tez matrisini doldurun." };
+    }
+
+    const { studyTitle, researchQuestion, mainClaim, methodology, theoreticalFramework, historicalSpatialLimits } = matrix;
+    const validDetails = scrapedTheses.selected;
+
+    let tezaraResults: OriginalityReportData["tezaraResults"];
 
     if (validDetails.length === 0) {
       tezaraResults = {
-        originalityBadge: "ZERO_RISK" as const,
+        originalityBadge: "ZERO_RISK",
         overlapTable: [],
-        strategicRecommendations:
-          "Literatür taramasında doğrudan çakışan veya risk teşkil eden herhangi bir akademik çalışma tespit edilmemiştir. Araştırma tasarımınızın özgünlüğü maksimum seviyenedir.",
+        strategicRecommendations: "Literatür taramasında doğrudan çakışan veya risk teşkil eden herhangi bir akademik çalışma tespit edilmemiştir. Araştırma tasarımınızın özgünlüğü maksimum seviyenedir.",
+        riskPercentage: 0,
       };
-
-      log.info("flow_complete", {
-        service: "originality",
-        step: "analyze",
-        data: { result: "ZERO_RISK", reason: "Hiçbir tez detayı çekilemedi" },
-      });
     } else {
       // Step 6: AI - Compare across four axes
       const { overlapTable } = await analyzeOriginalityRisk(
-        {
-          studyTitle,
-          researchQuestion,
-          mainClaim,
-          methodology,
-          theoreticalFramework,
-          historicalSpatialLimits,
-          validDetails,
-        },
+        { studyTitle, researchQuestion, mainClaim, methodology, theoreticalFramework, historicalSpatialLimits, validDetails },
         log,
       );
 
-      const riskCalcResult = calculateOriginalityRisk(
-        overlapTable,
-        validDetails,
-        log,
-      );
+      // Step 7: Calculate risk scores from boolean overlap flags
+      const riskCalcResult = calculateOriginalityRisk(overlapTable, validDetails, log);
 
-      // Son yol haritası (roadmap) çağrısı öncesinde limitlerin sıfırlanması için 2 saniye bekliyoruz
+      // Rate-limit pause before roadmap synthesis
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      // Step 6b: AI - Synthesize strategic academic roadmap
+      // Step 8: AI - Synthesize strategic academic roadmap
       const strategicRecommendations = await synthesizeRoadmap(
         {
           studyTitle,
@@ -260,78 +203,25 @@ export async function startOriginalityAnalysisAction(): Promise<OnboardingAction
       };
     }
 
-    // Step 7: Save original report payload and update user onboarding step
-    const databaseTavilyPayload = {
-      items: tavilyEvaluation.items,
-      briefingNote: tavilyEvaluation.briefingNote,
-    };
+    const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
 
-    await withDbLogging(
-      () =>
-        db
-          .insert(originalityReports)
-          .values({
-            userId,
-            tavilyResults: databaseTavilyPayload,
-            tezaraResults,
-          })
-          .onConflictDoUpdate({
-            target: originalityReports.userId,
-            set: {
-              tavilyResults: databaseTavilyPayload,
-              tezaraResults,
-              updatedAt: new Date(),
-            },
-          }),
-      "save_report",
-      log,
-    );
-
-    await withDbLogging(
-      () =>
-        db
-          .update(users)
-          .set({ onboardingStep: "originality_report_completed" })
-          .where(eq(users.id, userId)),
-      "update_step",
-      log,
-    );
-
-    revalidatePath("/onboarding", "layout");
-    log.info("flow_complete", { service: "originality" });
-    return { success: true };
-  } catch (err) {
-    log.error("flow_complete", {
-      service: "originality",
-      error: err,
-    });
-
-    // Hata durumunda kilidi kaldır
-    try {
-      const session = await getSession();
-      if (session) {
-        await db
-          .update(users)
-          .set({ onboardingStep: "originality_report" })
-          .where(eq(users.id, session.userId));
-      }
-    } catch (dbErr) {
-      log.error("db_failed", {
-        service: "originality",
-        step: "revert_step_failed",
-        error: dbErr,
-      });
-    }
+    log.info({ step: "runJuryAnalysis", status: "SUCCESS", metrics: { duration, outputRows: tezaraResults.overlapTable.length } });
 
     return {
-      error: "Özgünlük analizi sırasında bir hata oluştu.",
+      success: true,
+      data: {
+        tavilyResults: { items: tavilyResults.items, briefingNote: tavilyResults.briefingNote },
+        tezaraResults,
+      },
     };
+  } catch (err) {
+    log.error({ step: "runJuryAnalysis", status: "FAILED", diagnostics: { errorCode: "SYSTEM_ERROR", message: err instanceof Error ? err.message : String(err) } });
+    return { error: "Gemini jüri analizi veya risk seviyesi belirlenirken hata oluştu." };
   }
 }
 
 /**
- * Kullanıcının onboarding_step'ini "originality_report_completed" olarak günceller.
- * Orta ve Düşük risk senaryolarında bir sonraki aşamaya geçmek için kullanılır.
+ * Kullanıcının risk aşamasını onaylayıp geçmesine olanak tanır.
  *
  * @returns Başarı durumu veya hata mesajı.
  */
@@ -339,52 +229,27 @@ export async function completeRiskStageAction(): Promise<OnboardingActionResult>
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
+  log.info({ step: "completeRiskStage", status: "START" });
+
   try {
     const session = await getSession();
     if (!session) {
-      log.info("flow_complete", {
-        service: "originality",
-        data: { reason: "Oturum bulunamadı", action: "completeRiskStage" },
-      });
+      log.warn({ step: "completeRiskStage", status: "FAILED", diagnostics: { errorCode: "AUTH_ERROR", message: "Oturum bulunamadı. Lütfen tekrar giriş yapın." } });
       return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
     }
 
-    const userId = session.userId;
-    log.info("flow_start", {
-      service: "originality",
-      data: { userId, action: "completeRiskStage" },
-    });
-
-    await withDbLogging(
-      () =>
-        db
-          .update(users)
-          .set({ onboardingStep: "originality_report_completed" })
-          .where(eq(users.id, userId)),
-      "update_user_step",
-      log,
-    );
-
     revalidatePath("/onboarding", "layout");
-    log.info("flow_complete", {
-      service: "originality",
-      step: "risk_completed",
-    });
+    log.info({ step: "completeRiskStage", status: "SUCCESS" });
     return { success: true };
   } catch (err) {
-    log.error("flow_complete", {
-      service: "originality",
-      step: "completeRiskStage",
-      error: err,
-    });
-    return {
-      error: "Risk aşaması tamamlanırken bir hata oluştu.",
-    };
+    log.error({ step: "completeRiskStage", status: "FAILED", diagnostics: { errorCode: "SYSTEM_ERROR", message: err instanceof Error ? err.message : String(err) } });
+    return { error: "Risk aşaması tamamlanırken bir hata oluştu." };
   }
 }
 
 /**
- * Retrieves the stored originality report for the current session user.
+ * Onboarding risk raporunu getirmek için client durumunda saklanan verileri döner.
+ * Bypasses database select entirely.
  *
  * @returns Stored report data or error message.
  */
@@ -392,106 +257,117 @@ export async function getStoredOriginalityReportAction() {
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
-  try {
-    const session = await getSession();
-    if (!session) {
-      log.info("flow_complete", {
-        service: "originality",
-        data: { reason: "Oturum bulunamadı" },
-      });
-      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
-    }
+  log.info({ step: "getStoredOriginalityReport", status: "START" });
+  log.info({ step: "getStoredOriginalityReport", status: "SUCCESS" });
 
-    log.info("flow_start", {
-      service: "originality",
-      step: "read_report",
-      data: { userId: session.userId },
-    });
-
-    const [report] = await withDbLogging(
-      () =>
-        db
-          .select()
-          .from(originalityReports)
-          .where(eq(originalityReports.userId, session.userId)),
-      "read_report",
-      log,
-    );
-
-    if (!report) {
-      log.info("flow_complete", {
-        service: "originality",
-        data: { reason: "Rapor bulunamadı" },
-      });
-      return { error: "Henüz özgünlük raporu oluşturulmamış." };
-    }
-
-    log.info("flow_complete", { service: "originality", step: "read_report" });
-
-    return {
-      success: true,
-      data: {
-        tavilyResults: report.tavilyResults,
-        tezaraResults: report.tezaraResults,
-      },
-    };
-  } catch (err) {
-    log.error("flow_complete", {
-      service: "originality",
-      step: "rapor_oku",
-      error: err,
-    });
-    return { error: "Özgünlük raporu yüklenirken bir hata oluştu." };
-  }
+  return { error: "Özgünlük raporu verisi istemci durumunda saklanmaktadır." };
 }
 
 /**
- * Mevcut kullanıcının tez matrisini bularak tez kutularını (boxes) oluşturur.
+ * Mevcut kullanıcının tez matrisini bularak tez kutularını (boxes) oluşturur ve JSON döner.
+ * Bypasses database operations completely.
  *
- * @returns Başarı durumu veya hata mesajı.
+ * @param matrix - The target thesis matrix fields from the client state.
+ * @returns Başarı durumu ve kutular veya hata mesajı.
  */
-export async function generateBoxesForCurrentMatrixAction(): Promise<OnboardingActionResult> {
+export async function generateBoxesForCurrentMatrixJSONAction(
+  matrix: OnboardingMatrixInput,
+): Promise<{ success: true; boxes: GeminiThesisBox[] } | { error: string }> {
   const flowId = createFlowId();
   const log = new Logger(flowId);
+  const startTime = performance.now();
+
+  log.info({ step: "generateBoxesForCurrentMatrixJSON", status: "START" });
 
   try {
     const session = await getSession();
     if (!session) {
-      log.info("flow_complete", {
-        service: "boxes",
-        data: { reason: "No session found" },
-      });
+      log.warn({ step: "generateBoxesForCurrentMatrixJSON", status: "FAILED", diagnostics: { errorCode: "AUTH_ERROR", message: "Oturum bulunamadı. Lütfen tekrar giriş yapın." } });
       return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
     }
 
-    const userId = session.userId;
-    const [matrix] = await withDbLogging(
-      () =>
-        db
-          .select()
-          .from(thesisMatrices)
-          .where(eq(thesisMatrices.userId, userId)),
-      "read_user_matrix_for_generation",
-      log,
-    );
-
     if (!matrix) {
-      log.info("flow_complete", {
-        service: "boxes",
-        data: { reason: "Matrix not found" },
-      });
-      return {
-        error: "Tez matrisi bulunamadı. Lütfen önce tez matrisini doldurun.",
-      };
+      log.warn({ step: "generateBoxesForCurrentMatrixJSON", status: "FAILED", diagnostics: { errorCode: "VALIDATION_ERROR", message: "Tez matrisi bulunamadı. Lütfen önce tez matrisini doldurun." } });
+      return { error: "Tez matrisi bulunamadı. Lütfen önce tez matrisini doldurun." };
     }
 
-    // boxes/actions altındaki asıl metodu çağırıyoruz
-    const { generateThesisBoxesAction } = await import("../boxes/actions");
-    return await generateThesisBoxesAction(matrix.id);
+    // Step 1: AI - Generate draft boxes via Gemini
+    const geminiPrompt = buildThesisBoxGenerationPrompt({
+      studyTitle: matrix.studyTitle,
+      researchQuestion: matrix.researchQuestion,
+      mainClaim: matrix.mainClaim,
+      methodology: matrix.methodology,
+      theoreticalFramework: matrix.theoreticalFramework,
+      historicalSpatialLimits: matrix.historicalSpatialLimits,
+    });
+
+    const generationResult = await generateStructuredContent<{ boxes: GeminiThesisBox[] }>(
+      "gemini-3.1-flash-lite",
+      THESIS_BOX_GENERATION_SYSTEM_INSTRUCTION,
+      geminiPrompt,
+      thesisBoxGenerationSchema,
+      log,
+      { thinkingConfig: null },
+    );
+
+    const draftBoxes = generationResult.boxes || [];
+
+    // Step 2: Wikipedia concurrent cross-check for theorists
+    log.info({ step: "wikipedia_cross_check", status: "START" });
+
+    await Promise.all(
+      draftBoxes.map(async (box) => {
+        const theorists = box.theorists || [];
+        if (theorists.length === 0) return;
+        const verificationPromises = theorists.map(async (theoristName) => {
+          try {
+            const wikiResult = await searchWikipediaTheorist(theoristName, box.category, log);
+            if (wikiResult) return theoristName;
+          } catch {
+            /* filtered — silently skip unverifiable theorists */
+          }
+          return null;
+        });
+        const verificationResults = await Promise.all(verificationPromises);
+        box.theorists = verificationResults.filter((name): name is string => name !== null);
+      }),
+    );
+
+    log.info({ step: "wikipedia_cross_check", status: "SUCCESS" });
+
+    // Step 3: Google Books + Wikipedia cross-check for literature
+    log.info({ step: "literature_cross_check", status: "START" });
+
+    await Promise.all(
+      draftBoxes.map(async (box) => {
+        const verifyList = async (list: string[]) => {
+          if (list.length === 0) return [];
+          const results = await Promise.all(
+            list.map(async (lit) => {
+              try {
+                const res = await verifyLiterature(lit);
+                return res.verified ? lit : null;
+              } catch {
+                return null;
+              }
+            }),
+          );
+          return results.filter((item): item is string => item !== null);
+        };
+        box.primaryLiterature = await verifyList(box.primaryLiterature || []);
+        box.secondaryLiterature = await verifyList(box.secondaryLiterature || []);
+      }),
+    );
+
+    log.info({ step: "literature_cross_check", status: "SUCCESS" });
+
+    const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
+
+    log.info({ step: "generateBoxesForCurrentMatrixJSON", status: "SUCCESS", metrics: { duration, outputRows: draftBoxes.length } });
+
+    return { success: true, boxes: draftBoxes };
   } catch (err) {
-    log.error("flow_complete", { service: "boxes", error: err });
-    return {
-      error: "Konu kutuları oluşturulurken beklenmeyen bir hata oluştu.",
-    };
+    log.error({ step: "generateBoxesForCurrentMatrixJSON", status: "FAILED", diagnostics: { errorCode: "SYSTEM_ERROR", message: err instanceof Error ? err.message : String(err) } });
+    return { error: "Konu kutuları oluşturulurken beklenmeyen bir hata oluştu." };
   }
 }

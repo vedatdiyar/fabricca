@@ -1,7 +1,9 @@
 "use client";
 
-import { useTransition, useMemo, useState, Fragment, useEffect } from "react";
+import { useMemo, useState, Fragment, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
+import { useOnboardingStore } from "@/store/useOnboardingStore";
 import {
   ShieldCheck,
   Award,
@@ -23,7 +25,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { StartOverButton } from "../../_components/start-over-button";
-import { generateBoxesForCurrentMatrixAction } from "../actions";
+import { generateBoxesForCurrentMatrixJSONAction } from "../actions";
 import { getThesisPriority } from "@/app/(auth)/onboarding/risk/_services/risk-calc";
 
 interface OriginalityReportViewProps {
@@ -92,10 +94,12 @@ export function OriginalityReportView({
   reportData,
 }: OriginalityReportViewProps) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [expandedThesisId, setExpandedThesisId] = useState<number | null>(null);
+  const setStatus = useOnboardingStore((state) => state.setStatus);
+  const statusBoxes = useOnboardingStore((state) => state.status.boxes);
+  const setBoxes = useOnboardingStore((state) => state.setBoxes);
+  const enrichedData = useOnboardingStore((state) => state.enrichedData);
 
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [expandedThesisId, setExpandedThesisId] = useState<number | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
 
   const loadingMessages = [
@@ -105,6 +109,44 @@ export function OriginalityReportView({
     "Hiyerarşik düzen ve alt kutular oluşturuluyor...",
     "Son düzenlemeler yapılıyor ve kaydediliyor...",
   ];
+
+  const mutation = useMutation({
+    mutationFn: (matrix: {
+      studyTitle: string;
+      researchQuestion: string;
+      mainClaim: string;
+      methodology: string;
+      theoreticalFramework: string;
+      historicalSpatialLimits: string;
+    }) => generateBoxesForCurrentMatrixJSONAction(matrix),
+    onMutate: () => {
+      setStatus("boxes", "loading");
+    },
+    onSuccess: (result) => {
+      if ("error" in result && result.error) {
+        setStatus("boxes", "error");
+        toast.error(result.error);
+        return;
+      }
+      if ("success" in result && result.success && result.boxes) {
+        setStatus("boxes", "success");
+        setBoxes(result.boxes);
+        toast.success("Konu kutuları oluşturuldu.");
+        router.push("/onboarding/boxes");
+      }
+    },
+    onError: (err) => {
+      setStatus("boxes", "error");
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Konu kutuları oluşturulurken bir hata oluştu.",
+      );
+    },
+  });
+
+  const isGenerating = statusBoxes === "loading";
+  const isPending = isGenerating;
 
   useEffect(() => {
     if (!isGenerating) return;
@@ -197,23 +239,20 @@ export function OriginalityReportView({
         : "LOW";
 
   const handleProceed = () => {
-    setIsGenerating(true);
-    startTransition(async () => {
-      try {
-        const result = await generateBoxesForCurrentMatrixAction();
-        if ("error" in result && result.error) {
-          toast.error(result.error);
-          setIsGenerating(false);
-        } else {
-          router.push("/onboarding/boxes");
-        }
-      } catch {
-        toast.error(
-          "Konu kutuları oluşturulurken beklenmeyen bir hata oluştu.",
-        );
-        setIsGenerating(false);
-      }
-    });
+    if (enrichedData) {
+      mutation.mutate({
+        studyTitle: enrichedData.academicStudyTitle,
+        researchQuestion: enrichedData.literatureResearchQuestion,
+        mainClaim: enrichedData.refinedThesisClaim,
+        methodology: enrichedData.academicMethodologyDesign,
+        theoreticalFramework: enrichedData.conceptualTheoreticalInfrastructure,
+        historicalSpatialLimits: enrichedData.historicalSpatialLimits,
+      });
+    } else {
+      toast.error(
+        "Tez matrisi bulunamadı. Lütfen önce tez matrisini doldurun.",
+      );
+    }
   };
 
   return (

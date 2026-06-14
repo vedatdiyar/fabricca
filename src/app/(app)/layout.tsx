@@ -20,7 +20,7 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  if (session.onboardingStep !== "completed") {
+  if (!session.onboardingCompleted) {
     redirect("/onboarding");
   }
 

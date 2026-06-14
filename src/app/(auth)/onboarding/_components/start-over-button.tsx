@@ -4,8 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { RotateCcw, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-
 import { Button } from "@/components/ui/button";
+import { useOnboardingStore } from "@/store/useOnboardingStore"; // 1. Ekleme: Store kancası
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,7 +20,6 @@ import {
 import { resetOnboardingAction } from "@/app/(auth)/onboarding/actions";
 
 interface StartOverButtonProps {
-  /** Shadcn Button variant değeri. Varsayılan: "outline" */
   variant?:
     | "default"
     | "destructive"
@@ -28,20 +27,10 @@ interface StartOverButtonProps {
     | "secondary"
     | "ghost"
     | "link";
-  /** Shadcn Button size değeri. Varsayılan: "sm" */
   size?: "default" | "sm" | "lg" | "icon";
-  /** Butona eklenecek ek CSS sınıfları */
   className?: string;
 }
 
-/**
- * Onboarding sürecini baştan başlatmak için kullanılan buton bileşeni (Client Component).
- * Kullanıcıdan onay alan bir Alert Dialog açar ve onay verildiğinde veritabanındaki onboarding
- * ilerlemesini temizleyerek süreci ilk adıma sıfırlar.
- *
- * @param variant - Shadcn Button variant değeri (varsayılan: "outline")
- * @param className - Butona eklenecek ek CSS sınıfları
- */
 export function StartOverButton({
   variant = "outline",
   size = "sm",
@@ -50,6 +39,7 @@ export function StartOverButton({
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const resetStore = useOnboardingStore((s) => s.resetStore); // 2. Ekleme: Sıfırlama aksiyonu
 
   const handleReset = () => {
     startTransition(async () => {
@@ -59,9 +49,14 @@ export function StartOverButton({
         if ("error" in result && result.error) {
           toast.error(result.error);
         } else {
+          // 3. Kritik Hamle: Önce yerel tarayıcı hafızasını tamamen sıfırla
+          resetStore();
+
           toast.success("Onboarding süreci başarıyla sıfırlandı.");
           setIsOpen(false);
-          router.refresh();
+
+          // 4. Kritik Hamle: Kullanıcıyı refresh etmek yerine ilk adıma fırlat
+          router.push("/onboarding/matrix");
         }
       } catch (err) {
         toast.error(

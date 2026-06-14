@@ -17,7 +17,7 @@ export default async function AuthLayout({
   const session = await getSessionWithOnboarding();
 
   if (session) {
-    if (session.onboardingStep === "completed") {
+    if (session.onboardingCompleted) {
       redirect("/dashboard");
     }
 

@@ -2,445 +2,285 @@
 
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { thesisMatrices, thesisBoxes, users } from "@/db/schema";
+import { thesisMatrices, thesisBoxes, users, originalityReports } from "@/db/schema";
 import { getSession } from "@/proxy";
-import { withDbLogging } from "@/lib/db-helpers";
 import { createFlowId, Logger } from "@/lib/logger";
 import { revalidatePath } from "next/cache";
-import type { OnboardingActionResult } from "@/lib/types";
-import { generateStructuredContent } from "@/lib/gemini";
-import {
-  THESIS_BOX_GENERATION_SYSTEM_INSTRUCTION,
-  buildThesisBoxGenerationPrompt,
-  thesisBoxGenerationSchema,
-} from "@/lib/prompts";
-import { searchWikipediaTheorist } from "@/lib/wikipedia";
-import { verifyLiterature } from "@/lib/literature";
+import type { OnboardingActionResult, OnboardingFormData, OriginalityReportData, GeminiThesisBox } from "@/lib/types";
 
 /**
- * Interface representing a structured thesis box returned by Gemini.
- */
-interface GeminiThesisBox {
-  category: "intro" | "theory" | "methodology" | "context" | "primary_source";
-  title: string;
-  description: string;
-  theorists: string[];
-  concepts: string[];
-  queries: string[];
-  primaryLiterature: string[];
-  secondaryLiterature: string[];
-}
-
-/**
- * Validates theorists in all draft boxes concurrently against Wikipedia.
- * Removes any theorist name that cannot be verified, mutating box.theorists in-place.
+ * Persists the generated subject boxes and associated onboarding data:
+ * 1. Inserts/updates the thesis matrix in `thesis_matrices` table.
+ * 2. Inserts/updates the jüri originality report in `originality_reports` table.
+ * 3. Deletes existing and inserts new boxes in `thesis_boxes` table (hierarchically).
  *
- * @param draftBoxes - The array of Gemini-generated thesis boxes to validate.
- * @param log - Logger instance for structured event tracking.
- */
-async function validateBoxTheorists(
-  draftBoxes: GeminiThesisBox[],
-  log: Logger,
-): Promise<void> {
-  log.info("search_start", {
-    service: "boxes",
-    step: "wikipedia_cross_check",
-  });
-
-  await Promise.all(
-    draftBoxes.map(async (box) => {
-      const theorists = box.theorists || [];
-      if (theorists.length === 0) return;
-
-      const verificationPromises = theorists.map(async (theoristName) => {
-        try {
-          const wikiResult = await searchWikipediaTheorist(
-            theoristName,
-            box.category,
-            log,
-          );
-          if (wikiResult) {
-            return theoristName;
-          }
-        } catch (err) {
-          log.error("search_filtered", {
-            service: "boxes",
-            step: "wikipedia_cross_check_failed",
-            error: err,
-          });
-        }
-        return null;
-      });
-
-      const verificationResults = await Promise.all(verificationPromises);
-      box.theorists = verificationResults.filter(
-        (name): name is string => name !== null,
-      );
-    }),
-  );
-
-  log.info("search_success", {
-    service: "boxes",
-    step: "wikipedia_cross_check",
-  });
-}
-
-/**
- * Validates primary and secondary literature in all draft boxes concurrently
- * against Google Books and Wikipedia. Removes unverified citations in-place.
+ * NOTE: `users.onboarding_completed` is NOT set here. The Literature Review
+ * step must be completed first; this flag will be set to `true` in the
+ * final onboarding step (literature-review → finalize).
  *
- * @param draftBoxes - The array of Gemini-generated thesis boxes to validate.
- * @param log - Logger instance for structured event tracking.
- */
-async function validateBoxLiterature(
-  draftBoxes: GeminiThesisBox[],
-  log: Logger,
-): Promise<void> {
-  log.info("search_start", {
-    service: "boxes",
-    step: "literature_cross_check",
-  });
-
-  await Promise.all(
-    draftBoxes.map(async (box) => {
-      const primLit = box.primaryLiterature || [];
-      const secLit = box.secondaryLiterature || [];
-
-      const verifyList = async (
-        list: string[],
-        listName: "primaryLiterature" | "secondaryLiterature",
-      ): Promise<string[]> => {
-        if (list.length === 0) return [];
-        const verificationPromises = list.map(async (lit) => {
-          try {
-            const res = await verifyLiterature(lit);
-            if (res.verified) {
-              return lit;
-            } else {
-              log.info("search_filtered", {
-                service: "boxes",
-                step: `literature_${listName}_rejected`,
-                data: { citation: lit, method: res.method },
-              });
-            }
-          } catch (err) {
-            log.error("search_filtered", {
-              service: "boxes",
-              step: `literature_${listName}_check_failed`,
-              error: err,
-            });
-          }
-          return null;
-        });
-        const results = await Promise.all(verificationPromises);
-        return results.filter((item): item is string => item !== null);
-      };
-
-      const [verifiedPrim, verifiedSec] = await Promise.all([
-        verifyList(primLit, "primaryLiterature"),
-        verifyList(secLit, "secondaryLiterature"),
-      ]);
-
-      box.primaryLiterature = verifiedPrim;
-      box.secondaryLiterature = verifiedSec;
-    }),
-  );
-
-  log.info("search_success", {
-    service: "boxes",
-    step: "literature_cross_check",
-  });
-}
-
-/**
- * Generates thesis outline boxes for the specified thesis matrix ID.
- * Invokes Gemini Flash Lite to partition the matrix into 5 categories,
- * validates theorists against Wikipedia concurrently to avoid hallucinations,
- * and saves parent-child box structures in the database hierarchically.
- * Finally, updates the user's onboarding step to "literature_review".
+ * Done atomically in a single Drizzle transaction.
  *
- * @param thesisMatrixId - The ID of the thesis matrix to generate boxes for.
- * @returns A promise that resolves to an OnboardingActionResult.
+ * @param args - The onboarding data from Zustand store.
+ * @returns Success response or throws error.
  */
-export async function generateThesisBoxesAction(
-  thesisMatrixId: number,
-): Promise<OnboardingActionResult> {
+export async function confirmBoxesAction(args: {
+  formData: OnboardingFormData;
+  approvedKeywords: string[];
+  juryReport: OriginalityReportData;
+  boxes: GeminiThesisBox[];
+}): Promise<OnboardingActionResult> {
   const flowId = createFlowId();
   const log = new Logger(flowId);
+  const startTime = performance.now();
+
+  log.info({
+    step: "confirmBoxes",
+    status: "START",
+  });
 
   try {
     const session = await getSession();
     if (!session) {
-      log.info("flow_complete", {
-        service: "boxes",
-        data: { reason: "No session found" },
-      });
-      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
-    }
-
-    const userId = session.userId;
-    log.info("flow_start", {
-      service: "boxes",
-      data: { userId, thesisMatrixId },
-    });
-
-    // Step 1: Read thesis matrix from Database
-    const [matrix] = await withDbLogging(
-      () =>
-        db
-          .select()
-          .from(thesisMatrices)
-          .where(eq(thesisMatrices.id, thesisMatrixId)),
-      "read_matrix",
-      log,
-    );
-
-    if (!matrix) {
-      log.info("flow_complete", {
-        service: "boxes",
-        data: { reason: "Matrix not found", thesisMatrixId },
-      });
-      return { error: "Tez matrisi bulunamadı." };
-    }
-
-    if (matrix.userId !== userId) {
-      log.info("flow_complete", {
-        service: "boxes",
-        data: {
-          reason: "Unauthorized access",
-          userId,
-          matrixUserId: matrix.userId,
+      log.warn({
+        step: "confirmBoxes",
+        status: "FAILED",
+        diagnostics: {
+          errorCode: "AUTH_ERROR",
+          message: "Oturum bulunamadı. Lütfen tekrar giriş yapın.",
         },
       });
-      return { error: "Yetkisiz işlem: Bu tez matrisi size ait değil." };
-    }
-
-    // Step 2: AI call to generate draft boxes using Gemini Flash Lite
-    // The structured content generation internally logs starting and finishing states.
-    const geminiPrompt = buildThesisBoxGenerationPrompt({
-      studyTitle: matrix.studyTitle,
-      researchQuestion: matrix.researchQuestion,
-      mainClaim: matrix.mainClaim,
-      methodology: matrix.methodology,
-      theoreticalFramework: matrix.theoreticalFramework,
-      historicalSpatialLimits: matrix.historicalSpatialLimits,
-    });
-
-    const generationResult = await generateStructuredContent<{
-      boxes: GeminiThesisBox[];
-    }>(
-      "gemini-3.1-flash-lite",
-      THESIS_BOX_GENERATION_SYSTEM_INSTRUCTION,
-      geminiPrompt,
-      thesisBoxGenerationSchema,
-      log,
-      {
-        thinkingConfig: null,
-      },
-    );
-
-    const draftBoxes = generationResult.boxes || [];
-
-    // Step 3: Wikipedia concurrent cross-check for theorists to prevent hallucinations
-    await validateBoxTheorists(draftBoxes, log);
-
-    // Step 3.5: Google Books and Wikipedia cross-check for literature to prevent hallucinations
-    await validateBoxLiterature(draftBoxes, log);
-
-    // Step 4: Write to database for parent-child hierarchy
-    await withDbLogging(
-      async () => {
-        // Clear existing boxes for this matrix to prevent duplication
-        await db
-          .delete(thesisBoxes)
-          .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
-
-        // 4a. Insert parent boxes
-        const parentValues = [
-          {
-            thesisMatrixId,
-            parentId: null,
-            category: "intro" as const,
-            title: "Giriş ve Temel İddia",
-            description: "Tezin temel iddiaları ve giriş çerçevesi.",
-            theorists: [],
-            concepts: [],
-            queries: [],
-            primaryLiterature: [],
-            secondaryLiterature: [],
-          },
-          {
-            thesisMatrixId,
-            parentId: null,
-            category: "theory" as const,
-            title: "Teorik Zemin",
-            description: "Kuramsal çerçeve ve teorik altyapı kutuları.",
-            theorists: [],
-            concepts: [],
-            queries: [],
-            primaryLiterature: [],
-            secondaryLiterature: [],
-          },
-          {
-            thesisMatrixId,
-            parentId: null,
-            category: "methodology" as const,
-            title: "Yöntem Literatürü",
-            description: "Metodoloji and araştırma yöntemi kutuları.",
-            theorists: [],
-            concepts: [],
-            queries: [],
-            primaryLiterature: [],
-            secondaryLiterature: [],
-          },
-          {
-            thesisMatrixId,
-            parentId: null,
-            category: "context" as const,
-            title: "Tarihsel ve Mekânsal Bağlam",
-            description:
-              "Tarihsel sınırlar ve coğrafi/mekânsal bağlam kutuları.",
-            theorists: [],
-            concepts: [],
-            queries: [],
-            primaryLiterature: [],
-            secondaryLiterature: [],
-          },
-          {
-            thesisMatrixId,
-            parentId: null,
-            category: "primary_source" as const,
-            title: "Birincil Özneler ve Arşivler",
-            description: "İncelenen birincil özneler, arşivler ve belgeler.",
-            theorists: [],
-            concepts: [],
-            queries: [],
-            primaryLiterature: [],
-            secondaryLiterature: [],
-          },
-        ];
-
-        const insertedParents = await db
-          .insert(thesisBoxes)
-          .values(parentValues)
-          .returning({ id: thesisBoxes.id, category: thesisBoxes.category });
-
-        const parentMap = new Map<string, number>();
-        for (const parent of insertedParents) {
-          parentMap.set(parent.category, parent.id);
-        }
-
-        // 4b. Map and insert child sub-boxes
-        const subBoxValues = draftBoxes.map((box) => {
-          const parentId = parentMap.get(box.category);
-          if (!parentId) {
-            throw new Error(
-              `Ebeveyn kutusu bulunamadı (kategori: ${box.category})`,
-            );
-          }
-          return {
-            thesisMatrixId,
-            parentId,
-            category: box.category,
-            title: box.title,
-            description: box.description || "",
-            theorists: box.theorists || [],
-            concepts: box.concepts || [],
-            queries: box.queries || [],
-            primaryLiterature: box.primaryLiterature || [],
-            secondaryLiterature: box.secondaryLiterature || [],
-          };
-        });
-
-        if (subBoxValues.length > 0) {
-          await db.insert(thesisBoxes).values(subBoxValues);
-        }
-
-        // 4c. Update user's onboarding step to "literature_review"
-        await db
-          .update(users)
-          .set({ onboardingStep: "literature_review" })
-          .where(eq(users.id, userId));
-      },
-      "save_hierarchical_boxes",
-      log,
-    );
-
-    try {
-      revalidatePath("/onboarding", "layout");
-    } catch (e) {
-      log.info("search_filtered", {
-        service: "boxes",
-        step: "revalidate_path_skipped",
-        error: e,
-      });
-    }
-    log.info("flow_complete", { service: "boxes" });
-    return { success: true };
-  } catch (err) {
-    log.error("flow_complete", { service: "boxes", error: err });
-    return {
-      error: "Kutu yapılandırması sırasında bir hata oluştu.",
-    };
-  }
-}
-
-/**
- * Confirms the generated subject boxes and completes the onboarding flow,
- * updating the user's onboarding step to "completed".
- *
- * @returns A promise that resolves to an OnboardingActionResult.
- */
-export async function confirmBoxesAction(): Promise<OnboardingActionResult> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  try {
-    const session = await getSession();
-    if (!session) {
-      log.info("flow_complete", {
-        service: "flow",
-        data: { reason: "No session found" },
-      });
       return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
     }
 
     const userId = session.userId;
-    log.info("flow_start", {
-      service: "flow",
-      data: { userId },
-    });
+    const { formData, approvedKeywords, juryReport, boxes } = args;
 
-    // Update user onboarding step to completed
-    await withDbLogging(
-      () =>
-        db
-          .update(users)
-          .set({ onboardingStep: "completed" })
-          .where(eq(users.id, userId)),
-      "update_user_step_completed",
-      log,
-    );
+    if (!formData || !juryReport || !boxes) {
+      log.warn({
+        step: "confirmBoxes",
+        status: "FAILED",
+        diagnostics: {
+          errorCode: "VALIDATION_ERROR",
+          message: "Eksik onboarding verisi.",
+        },
+      });
+      return { error: "Eksik onboarding verisi." };
+    }
+
+    // Execute atomic transaction using Drizzle
+    await db.transaction(async (tx) => {
+      // 1. Write/upsert to thesis_matrices
+      log.info({ step: "transaction_save_matrix", status: "START", service: "db" });
+      const t0 = performance.now();
+      const [matrix] = await tx
+        .insert(thesisMatrices)
+        .values({
+          userId,
+          studyTitle: formData.studyTitle,
+          researchQuestion: formData.researchQuestion,
+          mainClaim: formData.mainClaim,
+          methodology: formData.methodology,
+          theoreticalFramework: formData.theoreticalFramework,
+          historicalSpatialLimits: formData.historicalSpatialLimits,
+          keywords: approvedKeywords,
+          updatedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: thesisMatrices.userId,
+          set: {
+            studyTitle: formData.studyTitle,
+            researchQuestion: formData.researchQuestion,
+            mainClaim: formData.mainClaim,
+            methodology: formData.methodology,
+            theoreticalFramework: formData.theoreticalFramework,
+            historicalSpatialLimits: formData.historicalSpatialLimits,
+            keywords: approvedKeywords,
+            updatedAt: new Date(),
+          },
+        })
+        .returning({ id: thesisMatrices.id });
+      log.info({ step: "transaction_save_matrix", status: "SUCCESS", metrics: { durationMs: performance.now() - t0 }, service: "db" });
+
+      const thesisMatrixId = matrix.id;
+
+      // 2. Write/upsert to originality_reports
+      log.info({ step: "transaction_save_report", status: "START", service: "db" });
+      const t1 = performance.now();
+      await tx
+        .insert(originalityReports)
+        .values({
+          userId,
+          tavilyResults: juryReport.tavilyResults,
+          tezaraResults: juryReport.tezaraResults,
+          updatedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: originalityReports.userId,
+          set: {
+            tavilyResults: juryReport.tavilyResults,
+            tezaraResults: juryReport.tezaraResults,
+            updatedAt: new Date(),
+          },
+        });
+      log.info({ step: "transaction_save_report", status: "SUCCESS", metrics: { durationMs: performance.now() - t1 }, service: "db" });
+
+      // 3. Write/upsert to thesis_boxes
+      // Delete existing boxes first
+      log.info({ step: "transaction_clear_boxes", status: "START", service: "db" });
+      const t2 = performance.now();
+      await tx
+        .delete(thesisBoxes)
+        .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
+      log.info({ step: "transaction_clear_boxes", status: "SUCCESS", metrics: { durationMs: performance.now() - t2 }, service: "db" });
+
+      // 3a. Insert parent boxes
+      const parentValues = [
+        {
+          thesisMatrixId,
+          parentId: null,
+          category: "intro" as const,
+          title: "Giriş ve Temel İddia",
+          description: "Tezin temel iddiaları ve giriş çerçevesi.",
+          theorists: [],
+          concepts: [],
+          queries: [],
+          primaryLiterature: [],
+          secondaryLiterature: [],
+        },
+        {
+          thesisMatrixId,
+          parentId: null,
+          category: "theory" as const,
+          title: "Teorik Zemin",
+          description: "Kuramsal çerçeve ve teorik altyapı kutuları.",
+          theorists: [],
+          concepts: [],
+          queries: [],
+          primaryLiterature: [],
+          secondaryLiterature: [],
+        },
+        {
+          thesisMatrixId,
+          parentId: null,
+          category: "methodology" as const,
+          title: "Yöntem Literatürü",
+          description: "Metodoloji ve araştırma yöntemi kutuları.",
+          theorists: [],
+          concepts: [],
+          queries: [],
+          primaryLiterature: [],
+          secondaryLiterature: [],
+        },
+        {
+          thesisMatrixId,
+          parentId: null,
+          category: "context" as const,
+          title: "Tarihsel ve Mekânsal Bağlam",
+          description: "Tarihsel sınırlar ve coğrafi/mekânsal bağlam kutuları.",
+          theorists: [],
+          concepts: [],
+          queries: [],
+          primaryLiterature: [],
+          secondaryLiterature: [],
+        },
+        {
+          thesisMatrixId,
+          parentId: null,
+          category: "primary_source" as const,
+          title: "Birincil Özneler ve Arşivler",
+          description: "İncelenen birincil özneler, arşivler ve belgeler.",
+          theorists: [],
+          concepts: [],
+          queries: [],
+          primaryLiterature: [],
+          secondaryLiterature: [],
+        },
+      ];
+
+      log.info({ step: "transaction_insert_parent_boxes", status: "START", service: "db" });
+      const t3 = performance.now();
+      const insertedParents = await tx
+        .insert(thesisBoxes)
+        .values(parentValues)
+        .returning({ id: thesisBoxes.id, category: thesisBoxes.category });
+      log.info({ step: "transaction_insert_parent_boxes", status: "SUCCESS", metrics: { durationMs: performance.now() - t3 }, service: "db" });
+
+      const parentMap = new Map<string, number>();
+      for (const parent of insertedParents) {
+        parentMap.set(parent.category, parent.id);
+      }
+
+      // 3b. Map and insert child sub-boxes
+      const subBoxValues = boxes.map((box) => {
+        const parentId = parentMap.get(box.category);
+        if (!parentId) {
+          throw new Error(
+            `Ebeveyn kutusu bulunamadı (kategori: ${box.category})`
+          );
+        }
+        return {
+          thesisMatrixId,
+          parentId,
+          category: box.category,
+          title: box.title,
+          description: box.description || "",
+          theorists: box.theorists || [],
+          concepts: box.concepts || [],
+          queries: box.queries || [],
+          primaryLiterature: box.primaryLiterature || [],
+          secondaryLiterature: box.secondaryLiterature || [],
+        };
+      });
+
+      if (subBoxValues.length > 0) {
+        log.info({ step: "transaction_insert_child_boxes", status: "START", service: "db" });
+        const t4 = performance.now();
+        await tx.insert(thesisBoxes).values(subBoxValues);
+        log.info({ step: "transaction_insert_child_boxes", status: "SUCCESS", metrics: { durationMs: performance.now() - t4 }, service: "db" });
+      }
+
+      // NOTE: `users.onboarding_completed` is NOT updated here.
+      // The Literature Review step must be implemented first.
+      // This flag will be set to `true` in the final step of the
+      // complete onboarding flow (literature-review → finalize).
+    });
 
     try {
       revalidatePath("/onboarding", "layout");
+      revalidatePath("/", "layout");
     } catch (e) {
-      log.info("search_filtered", {
-        service: "flow",
+      log.info({
         step: "revalidate_path_skipped",
-        error: e,
+        status: "SUCCESS",
+        diagnostics: {
+          message: e instanceof Error ? e.message : String(e),
+        },
       });
     }
-    log.info("flow_complete", {
-      service: "flow",
-      data: { success: true },
+
+    const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
+
+    log.info({
+      step: "confirmBoxes",
+      status: "SUCCESS",
+      metrics: {
+        duration,
+        outputRows: boxes.length,
+      },
     });
 
     return { success: true };
   } catch (err) {
-    log.error("flow_complete", { service: "flow", error: err });
-    return {
-      error: "Konu kutuları onaylanırken bir hata oluştu.",
-    };
+    log.error({
+      step: "confirmBoxes",
+      status: "FAILED",
+      diagnostics: {
+        errorCode: "TRANSACTION_ERROR",
+        message: err instanceof Error ? err.message : String(err),
+      },
+    });
+    throw err; // Throw error to ensure Drizzle automatic rollback
   }
 }
+
+

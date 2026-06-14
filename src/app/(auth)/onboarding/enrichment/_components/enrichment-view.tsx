@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
+import { useOnboardingStore } from "@/store/useOnboardingStore";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -12,56 +14,88 @@ import { Textarea } from "@/components/ui/textarea";
 import { confirmEnhancedThesisAction } from "../actions";
 import type { EnhancedThesisData } from "@/lib/types";
 
-interface EnrichmentViewProps {
-  initialData: EnhancedThesisData;
-}
-
 /**
  * Zenginleştirilmiş Tez Matrisi İnceleme/Düzenleme Ekranı (Client Component).
  * Kullanıcının yapay zeka tarafından zenginleştirilmiş metinleri incelemesini
  * ve gerekirse düzenleyerek onaylamasını sağlar.
  */
-export function EnrichmentView({ initialData }: EnrichmentViewProps) {
+export function EnrichmentView() {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const setStatus = useOnboardingStore((state) => state.setStatus);
+  const statusEnrichment = useOnboardingStore(
+    (state) => state.status.enrichment,
+  );
+  const updateEnrichedData = useOnboardingStore(
+    (state) => state.updateEnrichedData,
+  );
+  const enrichedData = useOnboardingStore((state) => state.enrichedData);
 
-  const [studyTitle, setStudyTitle] = useState(initialData.academicStudyTitle);
-  const [researchQuestion, setResearchQuestion] = useState(
-    initialData.literatureResearchQuestion,
-  );
-  const [mainClaim, setMainClaim] = useState(initialData.refinedThesisClaim);
-  const [methodology, setMethodology] = useState(
-    initialData.academicMethodologyDesign,
-  );
-  const [theoreticalFramework, setTheoreticalFramework] = useState(
-    initialData.conceptualTheoreticalInfrastructure,
-  );
-  const [historicalSpatialLimits, setHistoricalSpatialLimits] = useState(
-    initialData.historicalSpatialLimits,
-  );
+  const [studyTitle, setStudyTitle] = useState("");
+  const [researchQuestion, setResearchQuestion] = useState("");
+  const [mainClaim, setMainClaim] = useState("");
+  const [methodology, setMethodology] = useState("");
+  const [theoreticalFramework, setTheoreticalFramework] = useState("");
+  const [historicalSpatialLimits, setHistoricalSpatialLimits] = useState("");
+
+  // Client-side redirect shield if no matrix enrichment is present
+  useEffect(() => {
+    if (!enrichedData) {
+      toast.error(
+        "Zenginleştirilmiş tez matrisi bulunamadı. Lütfen önce formu doldurun.",
+      );
+      router.push("/onboarding/matrix");
+    }
+  }, [enrichedData, router]);
+
+  // Sync state once enrichedData is loaded from client store (hydration guard)
+  useEffect(() => {
+    if (enrichedData) {
+      setStudyTitle(enrichedData.academicStudyTitle);
+      setResearchQuestion(enrichedData.literatureResearchQuestion);
+      setMainClaim(enrichedData.refinedThesisClaim);
+      setMethodology(enrichedData.academicMethodologyDesign);
+      setTheoreticalFramework(enrichedData.conceptualTheoreticalInfrastructure);
+      setHistoricalSpatialLimits(enrichedData.historicalSpatialLimits);
+    }
+  }, [enrichedData]);
+
+  const mutation = useMutation({
+    mutationFn: confirmEnhancedThesisAction,
+    onMutate: () => {
+      setStatus("enrichment", "loading");
+    },
+    onSuccess: (result, variables) => {
+      if (result.success) {
+        setStatus("enrichment", "success");
+        updateEnrichedData(variables);
+        toast.success("Tez matrisiniz kaydedildi. Risk analizine geçiliyor.");
+        router.push("/onboarding/risk");
+      } else {
+        setStatus("enrichment", "error");
+        toast.error(
+          result.error || "Tez matrisi onaylanırken bir hata oluştu.",
+        );
+      }
+    },
+    onError: (err) => {
+      setStatus("enrichment", "error");
+      toast.error(err instanceof Error ? err.message : "Bir hata oluştu.");
+    },
+  });
 
   const handleConfirm = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
-    startTransition(async () => {
-      const result = await confirmEnhancedThesisAction({
-        academicStudyTitle: studyTitle,
-        literatureResearchQuestion: researchQuestion,
-        refinedThesisClaim: mainClaim,
-        academicMethodologyDesign: methodology,
-        conceptualTheoreticalInfrastructure: theoreticalFramework,
-        historicalSpatialLimits: historicalSpatialLimits,
-      });
-
-      if (result.error) {
-        toast.error(result.error);
-        return;
-      }
-
-      toast.success("Tez matrisiniz kaydedildi. Risk analizine geçiliyor.");
-      router.push("/onboarding/risk");
+    mutation.mutate({
+      academicStudyTitle: studyTitle,
+      literatureResearchQuestion: researchQuestion,
+      refinedThesisClaim: mainClaim,
+      academicMethodologyDesign: methodology,
+      conceptualTheoreticalInfrastructure: theoreticalFramework,
+      historicalSpatialLimits: historicalSpatialLimits,
     });
   };
+
+  const isPending = statusEnrichment === "loading";
 
   return (
     <Card className="w-full pt-6">

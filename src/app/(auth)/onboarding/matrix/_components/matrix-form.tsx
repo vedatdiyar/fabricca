@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
+import { useOnboardingStore } from "@/store/useOnboardingStore";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -17,37 +19,73 @@ import { submitThesisMatrixAction } from "../actions";
  */
 export function MatrixForm() {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const setStatus = useOnboardingStore((state) => state.setStatus);
+  const statusMatrix = useOnboardingStore((state) => state.status.matrix);
+  const formData = useOnboardingStore((state) => state.formData);
+  const updateFormData = useOnboardingStore((state) => state.updateFormData);
+  const updateEnrichedData = useOnboardingStore(
+    (state) => state.updateEnrichedData,
+  );
 
-  const [studyTitle, setStudyTitle] = useState("");
-  const [researchQuestion, setResearchQuestion] = useState("");
-  const [mainClaim, setMainClaim] = useState("");
-  const [methodology, setMethodology] = useState("");
-  const [theoreticalFramework, setTheoreticalFramework] = useState("");
-  const [historicalSpatialLimits, setHistoricalSpatialLimits] = useState("");
+  const [studyTitle, setStudyTitle] = useState(formData?.studyTitle || "");
+  const [researchQuestion, setResearchQuestion] = useState(
+    formData?.researchQuestion || "",
+  );
+  const [mainClaim, setMainClaim] = useState(formData?.mainClaim || "");
+  const [methodology, setMethodology] = useState(formData?.methodology || "");
+  const [theoreticalFramework, setTheoreticalFramework] = useState(
+    formData?.theoreticalFramework || "",
+  );
+  const [historicalSpatialLimits, setHistoricalSpatialLimits] = useState(
+    formData?.historicalSpatialLimits || "",
+  );
+
+  const mutation = useMutation({
+    mutationFn: submitThesisMatrixAction,
+    onMutate: () => {
+      setStatus("matrix", "loading");
+    },
+    onSuccess: (result, variables) => {
+      if (result.success) {
+        setStatus("matrix", "success");
+        // Sıfırlama Kalkanını tetiklemek için önce form verisini, sonra zenginleştirilmiş veriyi store'a yazıyoruz
+        updateFormData({
+          studyTitle: variables.studyTitle,
+          researchQuestion: variables.researchQuestion,
+          mainClaim: variables.mainClaim,
+          methodology: variables.methodology,
+          theoreticalFramework: variables.theoreticalFramework,
+          historicalSpatialLimits: variables.historicalSpatialLimits,
+        });
+        updateEnrichedData(result.data);
+        toast.success("Tez matrisi başarıyla zenginleştirildi.");
+        router.push("/onboarding/enrichment");
+      } else {
+        setStatus("matrix", "error");
+        toast.error(
+          result.error || "Zenginleştirme sırasında bir hata oluştu.",
+        );
+      }
+    },
+    onError: (err) => {
+      setStatus("matrix", "error");
+      toast.error(err instanceof Error ? err.message : "Bir hata oluştu.");
+    },
+  });
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
-    startTransition(async () => {
-      const result = await submitThesisMatrixAction({
-        studyTitle,
-        researchQuestion,
-        mainClaim,
-        methodology,
-        theoreticalFramework,
-        historicalSpatialLimits,
-      });
-
-      if (result.error) {
-        toast.error(result.error);
-        return;
-      }
-
-      toast.success("Tez matrisi başarıyla zenginleştirildi.");
-      router.push("/onboarding/enrichment");
+    mutation.mutate({
+      studyTitle,
+      researchQuestion,
+      mainClaim,
+      methodology,
+      theoreticalFramework,
+      historicalSpatialLimits,
     });
   };
+
+  const isPending = statusMatrix === "loading";
 
   return (
     <Card className="w-full pt-6">

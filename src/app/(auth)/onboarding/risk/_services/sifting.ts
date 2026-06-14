@@ -46,9 +46,12 @@ export async function siftAndFetchDetails(
   log: Logger,
 ): Promise<{
   finalTheses: TezaraThesisDetails[];
+  eliminatedTheses: TezaraThesisSummary[];
   diagnostic: SiftingDiagnostic;
 }> {
-  // 1. Deduplication
+  const functionStart = performance.now();
+
+  // Deduplication
   const uniqueThesesMap = new Map<number, TezaraThesisSummary>();
   let rawCount = 0;
   for (const list of tezaraSearchResults) {
@@ -67,18 +70,25 @@ export async function siftAndFetchDetails(
     (a, b) => a.id - b.id,
   );
 
-  log.info("search_success", {
-    service: "tezara",
-    step: "deduplicate_and_score",
-    data: {
-      rawCount,
-      uniqueCount: uniqueTheses.length,
-    },
+  log.info({
+    step: "sift_and_fetch_details",
+    status: "START",
+    candidateCount: rawCount,
+    uniqueCount: uniqueTheses.length,
   });
 
   if (uniqueTheses.length === 0) {
+    log.info({
+      step: "sift_and_fetch_details",
+      status: "SUCCESS",
+      metrics: {
+        duration: "0.0s",
+        outputRows: 0,
+      },
+    });
     return {
       finalTheses: [],
+      eliminatedTheses: [],
       diagnostic: {
         uniqueAfterDedup: 0,
         topSimilarities: [],
@@ -90,180 +100,235 @@ export async function siftAndFetchDetails(
     };
   }
 
-  // Diagnostic tracking
-  let topSimilarities: { id: number; score: number }[] = [];
-  let fetchFailed = 0;
-
-  // 2. Stage 1 (Coarse Sifting via Google Gemini Embedding v2)
-  log.info("flow_start", {
-    service: "originality",
-    step: "embedding_sifting_stage_1_start",
-    data: { candidateCount: uniqueTheses.length },
-  });
-
-  let passedStage1: TezaraThesisSummary[] = [];
   try {
-    // Toplu (batch) olarak targetTitle (query formatında) ve tüm aday tez başlıklarını (document formatında) içeren tek bir arama isteği
-    const queryText = `task: search result | query: ${params.studyTitle}`;
-    const docTexts = uniqueTheses.map((t) => `title: ${t.title} | text: none`);
-    const textsToEmbed = [queryText, ...docTexts];
+    // Diagnostic tracking
+    let topSimilarities: { id: number; score: number }[] = [];
+    let fetchFailed = 0;
 
-    // generateEmbeddings fonksiyonunu çağır (tam olarak 1 adet API isteği harcanır)
-    const embeddings = await generateEmbeddings(textsToEmbed, log);
-
-    const targetVector = embeddings[0];
-    const candidateVectors = embeddings.slice(1);
-
-    // Her bir adayın kosinüs benzerlik skorunu hesapla
-    const candidatesWithSimilarity = uniqueTheses.map((t, idx) => {
-      const similarity = cosineSimilarity(targetVector, candidateVectors[idx]);
-      return { thesis: t, similarity };
+    // 2. Stage 1 (Coarse Sifting via Google Gemini Embedding v2)
+    const stage1Start = performance.now();
+    log.info({
+      step: "embedding_sifting_stage_1",
+      status: "START",
+      candidateCount: uniqueTheses.length,
     });
 
-    // Benzerliğe göre azalan sırada sırala ve en yüksek skora sahip ilk 15 tezi seç
-    candidatesWithSimilarity.sort((a, b) => b.similarity - a.similarity);
+    let passedStage1: TezaraThesisSummary[] = [];
+    try {
+      const queryText = `task: search result | query: ${params.studyTitle}`;
+      const docTexts = uniqueTheses.map(
+        (t) => `title: ${t.title} | text: none`,
+      );
+      const textsToEmbed = [queryText, ...docTexts];
 
-    const topCandidates = candidatesWithSimilarity.slice(0, 15);
-    passedStage1 = topCandidates.map((c) => c.thesis);
-    topSimilarities = topCandidates.map((c) => ({
-      id: c.thesis.id,
-      score: c.similarity,
-    }));
+      const embeddings = await generateEmbeddings(textsToEmbed, log);
 
-    log.info("flow_complete", {
-      service: "originality",
-      step: "embedding_sifting_stage_1_end",
-      data: {
-        candidateCount: uniqueTheses.length,
-        selectedCount: passedStage1.length,
-        topSimilarities,
+      const targetVector = embeddings[0];
+      const candidateVectors = embeddings.slice(1);
+
+      const candidatesWithSimilarity = uniqueTheses.map((t, idx) => {
+        const similarity = cosineSimilarity(
+          targetVector,
+          candidateVectors[idx],
+        );
+        return { thesis: t, similarity };
+      });
+
+      candidatesWithSimilarity.sort((a, b) => b.similarity - a.similarity);
+
+      const topCandidates = candidatesWithSimilarity.slice(0, 15);
+      passedStage1 = topCandidates.map((c) => c.thesis);
+      topSimilarities = topCandidates.map((c) => ({
+        id: c.thesis.id,
+        score: c.similarity,
+      }));
+
+      const stage1Duration =
+        ((performance.now() - stage1Start) / 1000).toFixed(1) + "s";
+      log.info({
+        step: "embedding_sifting_stage_1",
+        status: "SUCCESS",
+        metrics: {
+          duration: stage1Duration,
+          outputRows: passedStage1.length,
+        },
+      });
+    } catch (err) {
+      log.error({
+        step: "embedding_sifting_stage_1",
+        status: "FAILED",
+        diagnostics: {
+          errorCode: "EMBEDDING_SIFTING_ERROR",
+          message: err instanceof Error ? err.message : String(err),
+        },
+      });
+      throw err;
+    }
+
+    // 3. Fetch details (with Abstract) for the passed theses in batches
+    const fetchStart = performance.now();
+    log.info({
+      step: "fetch_details_stage_2",
+      status: "START",
+      thesisCount: passedStage1.length,
+    });
+
+    const batchSize = 10;
+    const detailsList: (TezaraThesisDetails | null)[] = [];
+    for (let i = 0; i < passedStage1.length; i += batchSize) {
+      const batch = passedStage1.slice(i, i + batchSize);
+      const batchResults = await Promise.all(
+        batch.map((t) => fetchThesisDetails(t.id, log)),
+      );
+      detailsList.push(...batchResults);
+    }
+    const validDetails = detailsList.filter(
+      (d): d is TezaraThesisDetails => d !== null,
+    );
+    fetchFailed = passedStage1.length - validDetails.length;
+
+    const fetchDuration =
+      ((performance.now() - fetchStart) / 1000).toFixed(1) + "s";
+    log.info({
+      step: "fetch_details_stage_2",
+      status: "SUCCESS",
+      metrics: {
+        duration: fetchDuration,
+        outputRows: validDetails.length,
       },
     });
-  } catch (err) {
-    log.error("ai_request_failed", {
-      service: "originality",
-      step: "embedding_sifting_stage_1_failed",
-      error: err instanceof Error ? err.message : String(err),
+
+    if (validDetails.length === 0) {
+      const totalDuration =
+        ((performance.now() - functionStart) / 1000).toFixed(1) + "s";
+      log.info({
+        step: "sift_and_fetch_details",
+        status: "SUCCESS",
+        metrics: {
+          duration: totalDuration,
+          outputRows: 0,
+        },
+      });
+      return {
+        finalTheses: [],
+        eliminatedTheses: uniqueTheses,
+        diagnostic: {
+          uniqueAfterDedup: uniqueTheses.length,
+          topSimilarities,
+          stage1Count: passedStage1.length,
+          fetchRequested: passedStage1.length,
+          fetchSuccess: 0,
+          fetchFailed,
+        },
+      };
+    }
+
+    // 4. Stage 2 (Deep Sifting with Abstract)
+    const stage2Start = performance.now();
+    log.info({
+      step: "sifting_stage_2",
+      status: "START",
+      candidateCount: validDetails.length,
     });
-    throw err;
-  }
 
-  // 3. Fetch details (with Abstract) for the passed theses in batches to avoid network bottleneck
-  log.info("flow_start", {
-    service: "originality",
-    step: "fetch_details_stage_2",
-    data: { thesisCount: passedStage1.length },
-  });
+    let finalIds: number[] = [];
+    try {
+      const deepSiftResult = await generateStructuredContent<DeepSiftResponse>(
+        "gemini-3.1-flash-lite",
+        DEEP_SIFTING_SYSTEM_INSTRUCTION,
+        buildDeepSiftingPrompt({
+          ...params,
+          candidateDetails: validDetails.map((t) => ({
+            id: t.id,
+            title: t.title,
+            department: t.department,
+            abstract: t.abstract || "",
+          })),
+        }),
+        deepSiftingSchema,
+        log,
+        {
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        },
+      );
 
-  const batchSize = 10;
-  const detailsList: (TezaraThesisDetails | null)[] = [];
-  for (let i = 0; i < passedStage1.length; i += batchSize) {
-    const batch = passedStage1.slice(i, i + batchSize);
-    const batchResults = await Promise.all(
-      batch.map((t) => fetchThesisDetails(t.id, log)),
+      const targetIds = Array.isArray(deepSiftResult?.selectedThesisIds)
+        ? deepSiftResult.selectedThesisIds
+        : [];
+
+      finalIds = targetIds.filter((id) =>
+        validDetails.some((t) => t.id === id),
+      );
+
+      const stage2Duration =
+        ((performance.now() - stage2Start) / 1000).toFixed(1) + "s";
+      const tokens = log.lastTokens || { input: 0, output: 0 };
+
+      log.info({
+        step: "sifting_stage_2",
+        status: "SUCCESS",
+        metrics: {
+          duration: stage2Duration,
+          tokens: {
+            prompt: tokens.input ?? 0,
+            completion: tokens.output ?? 0,
+          },
+          outputRows: finalIds.length,
+        },
+      });
+    } catch (err) {
+      log.error({
+        step: "sifting_stage_2",
+        status: "FAILED",
+        diagnostics: {
+          errorCode: "GEMINI_SIFTING_ERROR",
+          message: err instanceof Error ? err.message : String(err),
+          model: "gemini-3.1-flash-lite",
+        },
+      });
+      throw err;
+    }
+
+    const finalSelectedTheses = validDetails.filter((t) =>
+      finalIds.includes(t.id),
     );
-    detailsList.push(...batchResults);
-  }
-  const validDetails = detailsList.filter(
-    (d): d is TezaraThesisDetails => d !== null,
-  );
-  fetchFailed = passedStage1.length - validDetails.length;
 
-  log.info("search_success", {
-    service: "tezara",
-    step: "fetch_details_stage_2_complete",
-    data: {
-      requestedCount: passedStage1.length,
-      successCount: validDetails.length,
-    },
-  });
+    const eliminatedTheses = uniqueTheses.filter(
+      (t) => !finalIds.includes(t.id),
+    );
 
-  if (validDetails.length === 0) {
+    const totalDuration =
+      ((performance.now() - functionStart) / 1000).toFixed(1) + "s";
+    log.info({
+      step: "sift_and_fetch_details",
+      status: "SUCCESS",
+      metrics: {
+        duration: totalDuration,
+        outputRows: finalSelectedTheses.length,
+      },
+    });
+
     return {
-      finalTheses: [],
+      finalTheses: finalSelectedTheses,
+      eliminatedTheses,
       diagnostic: {
         uniqueAfterDedup: uniqueTheses.length,
         topSimilarities,
         stage1Count: passedStage1.length,
         fetchRequested: passedStage1.length,
-        fetchSuccess: 0,
+        fetchSuccess: validDetails.length,
         fetchFailed,
       },
     };
-  }
-
-  // 4. Stage 2 (Deep Sifting with Abstract)
-  // LLM'i en kritik 6 tezi seçmeye zorla.
-  log.info("ai_request_start", {
-    service: "gemini",
-    step: "sifting_stage_2_start",
-    data: { candidateCount: validDetails.length },
-  });
-
-  let finalIds: number[] = [];
-  try {
-    const deepSiftResult = await generateStructuredContent<DeepSiftResponse>(
-      "gemini-3.1-flash-lite",
-      DEEP_SIFTING_SYSTEM_INSTRUCTION,
-      buildDeepSiftingPrompt({
-        ...params,
-        candidateDetails: validDetails.map((t) => ({
-          id: t.id,
-          title: t.title,
-          department: t.department,
-          abstract: t.abstract || "",
-        })),
-      }),
-      deepSiftingSchema,
-      log,
-      {
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      },
-    );
-
-    const targetIds = Array.isArray(deepSiftResult?.selectedThesisIds)
-      ? deepSiftResult.selectedThesisIds
-      : [];
-
-    finalIds = targetIds.filter((id) => validDetails.some((t) => t.id === id));
-
-    log.info("ai_request_success", {
-      service: "gemini",
-      step: "sifting_stage_2_end",
-      data: { selectedCount: finalIds.length },
-    });
   } catch (err) {
-    log.error("ai_request_failed", {
-      service: "gemini",
-      step: "sifting_stage_2_failed",
-      error: err,
+    log.error({
+      step: "sift_and_fetch_details",
+      status: "FAILED",
+      diagnostics: {
+        errorCode: "SIFTING_PIPELINE_ERROR",
+        message: err instanceof Error ? err.message : String(err),
+      },
     });
     throw err;
   }
-
-  // Respect the LLM's selection — no artificial padding or capping
-  const finalSelectedTheses = validDetails.filter((t) =>
-    finalIds.includes(t.id),
-  );
-
-  log.info("flow_complete", {
-    service: "originality",
-    step: "sifting_complete",
-    data: {
-      finalCount: finalSelectedTheses.length,
-      finalIds: finalSelectedTheses.map((t) => t.id),
-    },
-  });
-
-  return {
-    finalTheses: finalSelectedTheses,
-    diagnostic: {
-      uniqueAfterDedup: uniqueTheses.length,
-      topSimilarities,
-      stage1Count: passedStage1.length,
-      fetchRequested: passedStage1.length,
-      fetchSuccess: validDetails.length,
-      fetchFailed,
-    },
-  };
 }

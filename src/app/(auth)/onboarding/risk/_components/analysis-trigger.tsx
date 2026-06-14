@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { Sparkles } from "lucide-react";
-import { startOriginalityAnalysisAction } from "../actions";
+import { useEffect, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useOnboardingStore } from "@/store/useOnboardingStore";
+import { Sparkles, Loader2 } from "lucide-react";
+import { searchAndSiftThesesAction, runJuryAnalysisAction } from "../actions";
 import { ErrorDisplay } from "@/components/error-display";
+import type { ScrapedTheses, TavilyEvaluationResponse } from "@/lib/types";
 
 /**
- * Özgünlük ve Risk Analizini istemci tarafında başlatan tetikleyici bileşen.
- * Sayfa yüklendiğinde analizi asenkron olarak tetikler ve Next.js'in revalidatePath
- * render-time hatasını (POST isteği bağlamında çalıştığı için) önler.
+ * Özgünlük ve Risk Analizini başlatan tetikleyici bileşen (Client Component).
+ * TanStack Query useMutation ve cache mekanizması (staleTime: Infinity) ile
+ * YÖKTEZ arama ve Gemini jüri analizi aşamalarını yönetir.
  */
 const STEPS = [
   "Sorgu ve doğrulama parametreleri üretiliyor...",
@@ -18,97 +20,178 @@ const STEPS = [
   "Nihai risk seviyesi ve tavsiyeler hazırlanıyor...",
 ];
 
-export interface AnalysisTriggerProps {
-  initialStep: string;
-}
-
-export function AnalysisTrigger({ initialStep }: AnalysisTriggerProps) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [isPolling, setIsPolling] = useState(
-    initialStep === "originality_report_processing",
+export function AnalysisTrigger() {
+  const queryClient = useQueryClient();
+  const setStatus = useOnboardingStore((state) => state.setStatus);
+  const statusRisk = useOnboardingStore((state) => state.status.risk);
+  const setScrapedTheses = useOnboardingStore(
+    (state) => state.setScrapedTheses,
   );
-  const [error, setError] = useState<unknown>(null);
+  const setJuryReport = useOnboardingStore((state) => state.setJuryReport);
+  const setApprovedKeywords = useOnboardingStore(
+    (state) => state.setApprovedKeywords,
+  );
+  const enrichedData = useOnboardingStore((state) => state.enrichedData);
+
+  const [error, setError] = useState<string | null>(null);
   const [secondsPassed, setSecondsPassed] = useState(0);
 
-  const isLoading = isPending || isPolling;
+  const isLoading = statusRisk === "loading";
 
+  // Step 4: Gemini Jury Analysis Mutation
+  const juryMutation = useMutation({
+    mutationFn: (args: {
+      scrapedTheses: ScrapedTheses;
+      tavilyResults: TavilyEvaluationResponse;
+      matrix: {
+        studyTitle: string;
+        researchQuestion: string;
+        mainClaim: string;
+        methodology: string;
+        theoreticalFramework: string;
+        historicalSpatialLimits: string;
+      };
+    }) =>
+      runJuryAnalysisAction(
+        args.scrapedTheses,
+        args.tavilyResults,
+        args.matrix,
+      ),
+    onMutate: () => {
+      setStatus("risk", "loading");
+    },
+    onSuccess: (result) => {
+      if ("error" in result && result.error) {
+        setStatus("risk", "error");
+        setError(result.error);
+        return;
+      }
+      if ("success" in result && result.success && result.data) {
+        setStatus("risk", "success");
+        setJuryReport(result.data);
+      }
+    },
+    onError: (err) => {
+      setStatus("risk", "error");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Jüri analizi koşturulurken bir hata oluştu.",
+      );
+    },
+  });
+
+  // Step 3: YOKTEZ Search & Sifting Mutation
+  const searchMutation = useMutation({
+    mutationFn: searchAndSiftThesesAction,
+    onMutate: () => {
+      setStatus("risk", "loading");
+    },
+    onSuccess: (result) => {
+      if ("error" in result && result.error) {
+        setStatus("risk", "error");
+        setError(result.error);
+        return;
+      }
+      if (
+        "success" in result &&
+        result.success &&
+        result.scrapedTheses &&
+        result.tavilyResults &&
+        result.keywords
+      ) {
+        // Sonuçları TanStack Query cache'ine mühürle ve staleTime'ı sonsuz yap
+        queryClient.setQueryData(["scrapedTheses"], {
+          scrapedTheses: result.scrapedTheses,
+          tavilyResults: result.tavilyResults,
+          keywords: result.keywords,
+        });
+
+        // Zustand store'a da set et
+        setScrapedTheses(result.scrapedTheses);
+        setApprovedKeywords(result.keywords);
+
+        // Bir sonraki adım olan jüri analizini doğrudan tetikle
+        if (enrichedData) {
+          juryMutation.mutate({
+            scrapedTheses: result.scrapedTheses,
+            tavilyResults: result.tavilyResults,
+            matrix: {
+              studyTitle: enrichedData.academicStudyTitle,
+              researchQuestion: enrichedData.literatureResearchQuestion,
+              mainClaim: enrichedData.refinedThesisClaim,
+              methodology: enrichedData.academicMethodologyDesign,
+              theoreticalFramework: enrichedData.conceptualTheoreticalInfrastructure,
+              historicalSpatialLimits: enrichedData.historicalSpatialLimits,
+            },
+          });
+        }
+      }
+    },
+    onError: (err) => {
+      setStatus("risk", "error");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Arama motorları koşturulurken bir hata oluştu.",
+      );
+    },
+  });
+
+  // Analiz sürecini başlatan ana tetikleyici (Cache kontrolü ile)
   const triggerAnalysis = () => {
     setError(null);
-    setIsPolling(false);
-    startTransition(async () => {
-      try {
-        const result = await startOriginalityAnalysisAction();
-        if (result.error) {
-          setError(result.error);
-          sessionStorage.removeItem("originality_analysis_triggered");
-        } else if (result.success) {
-          if (result.isProcessing) {
-            setIsPolling(true);
-          } else {
-            sessionStorage.removeItem("originality_analysis_triggered");
-            router.refresh();
-          }
-        }
-      } catch (err) {
-        setError(err);
-        sessionStorage.removeItem("originality_analysis_triggered");
+    const cached = queryClient.getQueryData<{
+      scrapedTheses: ScrapedTheses;
+      tavilyResults: TavilyEvaluationResponse;
+      keywords: string[];
+    }>(["scrapedTheses"]);
+
+    if (cached) {
+      // Cache'deki keywords'ü Zustand store'a da aktar
+      setApprovedKeywords(cached.keywords);
+
+      // KRİTİK GÜVENCE: Eğer arama verisi cache'de mühürlü ise directly jüri analizini koştur
+      if (enrichedData) {
+        juryMutation.mutate({
+          scrapedTheses: cached.scrapedTheses,
+          tavilyResults: cached.tavilyResults,
+          matrix: {
+            studyTitle: enrichedData.academicStudyTitle,
+            researchQuestion: enrichedData.literatureResearchQuestion,
+            mainClaim: enrichedData.refinedThesisClaim,
+            methodology: enrichedData.academicMethodologyDesign,
+            theoreticalFramework: enrichedData.conceptualTheoreticalInfrastructure,
+            historicalSpatialLimits: enrichedData.historicalSpatialLimits,
+          },
+        });
+      } else {
+        setError("Tez matrisi bulunamadı. Lütfen önce tez matrisini doldurun.");
       }
-    });
+    } else {
+      // Cache yoksa sıfırdan aramayı başlat
+      if (enrichedData) {
+        searchMutation.mutate({
+          studyTitle: enrichedData.academicStudyTitle,
+          researchQuestion: enrichedData.literatureResearchQuestion,
+          mainClaim: enrichedData.refinedThesisClaim,
+          methodology: enrichedData.academicMethodologyDesign,
+          theoreticalFramework: enrichedData.conceptualTheoreticalInfrastructure,
+          historicalSpatialLimits: enrichedData.historicalSpatialLimits,
+        });
+      } else {
+        setError("Tez matrisi bulunamadı. Lütfen önce tez matrisini doldurun.");
+      }
+    }
   };
 
   useEffect(() => {
-    if (initialStep === "originality_report_processing") {
-      setIsPolling(true);
-      return;
+    // Sayfa yüklendiğinde analizi otomatik tetikle
+    if (enrichedData) {
+      triggerAnalysis();
     }
-
-    const alreadyTriggered = sessionStorage.getItem(
-      "originality_analysis_triggered",
-    );
-    if (alreadyTriggered) {
-      setIsPolling(true);
-      return;
-    }
-
-    sessionStorage.setItem("originality_analysis_triggered", "true");
-    triggerAnalysis();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialStep]);
-
-  useEffect(() => {
-    if (!isPolling) return;
-
-    const pollInterval = setInterval(async () => {
-      try {
-        const response = await fetch("/api/onboarding/risk/status", {
-          cache: "no-store",
-        });
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const res = await response.json();
-        if (res.success && res.step) {
-          if (res.step === "originality_report_completed") {
-            clearInterval(pollInterval);
-            setIsPolling(false);
-            sessionStorage.removeItem("originality_analysis_triggered");
-            router.refresh();
-          } else if (res.step === "originality_report") {
-            // Analiz başarısız olmuş ve geri alınmış demektir
-            clearInterval(pollInterval);
-            setIsPolling(false);
-            sessionStorage.removeItem("originality_analysis_triggered");
-            setError("Özgünlük analizi sunucu tarafında başarısız oldu.");
-          }
-        }
-      } catch (err) {
-        console.error("Polling error:", err);
-      }
-    }, 3000);
-
-    return () => clearInterval(pollInterval);
-  }, [isPolling, router]);
+  }, [enrichedData]);
 
   useEffect(() => {
     if (!isLoading) {

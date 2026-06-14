@@ -40,10 +40,11 @@ export async function synthesizeRoadmap(
   params: SynthesizeRoadmapParams,
   log: Logger,
 ): Promise<string> {
-  log.info("ai_request_start", {
-    service: "gemini",
+  const startTime = performance.now();
+  log.info({
     step: "synthesize_roadmap",
-    data: { comparisonCount: params.comparisonResults.length },
+    status: "START",
+    comparisonCount: params.comparisonResults.length,
   });
 
   try {
@@ -64,14 +65,17 @@ export async function synthesizeRoadmap(
         },
       );
     } catch (roadmapError) {
-      log.warn("ai_retry_attempt", {
-        service: "gemini",
+      log.warn({
         step: "roadmap_thinking_failed_fallback",
-        error:
-          roadmapError instanceof Error
-            ? roadmapError.message
-            : String(roadmapError),
-        data: { fallbackModel: "gemini-3.1-flash-lite-no-thinking" },
+        status: "RETRYING",
+        diagnostics: {
+          errorCode: "ROADMAP_THINKING_ERROR",
+          message:
+            roadmapError instanceof Error
+              ? roadmapError.message
+              : String(roadmapError),
+          fallbackModel: "gemini-3.1-flash-lite-no-thinking",
+        },
       });
 
       roadmapResult = await generateStructuredContent<{
@@ -88,17 +92,32 @@ export async function synthesizeRoadmap(
       );
     }
 
-    log.info("ai_request_success", {
-      service: "gemini",
+    const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
+    const tokens = log.lastTokens || { input: 0, output: 0 };
+
+    log.info({
       step: "synthesize_roadmap",
+      status: "SUCCESS",
+      metrics: {
+        duration,
+        tokens: {
+          prompt: tokens.input ?? 0,
+          completion: tokens.output ?? 0,
+        },
+        outputRows: 1,
+      },
     });
 
     return roadmapResult.strategicRecommendations;
   } catch (err) {
-    log.error("ai_request_failed", {
-      service: "gemini",
+    log.error({
       step: "synthesize_roadmap",
-      error: err,
+      status: "FAILED",
+      diagnostics: {
+        errorCode: "GEMINI_ROADMAP_ERROR",
+        message: err instanceof Error ? err.message : String(err),
+        model: "gemini-3.1-flash-lite",
+      },
     });
     throw err;
   }

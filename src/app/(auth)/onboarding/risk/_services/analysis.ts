@@ -39,10 +39,11 @@ export async function analyzeOriginalityRisk(
     is_context_overlapping: boolean;
   }[];
 }> {
-  log.info("ai_request_start", {
-    service: "gemini",
+  const startTime = performance.now();
+  log.info({
     step: "analyze_originality_risk",
-    data: { thesisCount: params.validDetails.length },
+    status: "START",
+    thesisCount: params.validDetails.length,
   });
 
   try {
@@ -68,18 +69,32 @@ export async function analyzeOriginalityRisk(
 
     const overlapTable = result.overlapTable || [];
 
-    log.info("ai_request_success", {
-      service: "gemini",
+    const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
+    const tokens = log.lastTokens || { input: 0, output: 0 };
+
+    log.info({
       step: "analyze_originality_risk",
-      data: { thesisCount: overlapTable.length },
+      status: "SUCCESS",
+      metrics: {
+        duration,
+        tokens: {
+          prompt: tokens.input ?? 0,
+          completion: tokens.output ?? 0,
+        },
+        outputRows: overlapTable.length,
+      },
     });
 
     return { overlapTable };
   } catch (err) {
-    log.error("ai_request_failed", {
-      service: "gemini",
+    log.error({
       step: "analyze_originality_risk",
-      error: err,
+      status: "FAILED",
+      diagnostics: {
+        errorCode: "GEMINI_ANALYSIS_ERROR",
+        message: err instanceof Error ? err.message : String(err),
+        model: "gemini-3.1-flash-lite",
+      },
     });
     throw err;
   }

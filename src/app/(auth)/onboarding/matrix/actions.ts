@@ -1,14 +1,8 @@
 "use server";
 
-import { eq } from "drizzle-orm";
-
-import { db } from "@/db";
-import { thesisMatrices, users } from "@/db/schema";
 import { getSession } from "@/proxy";
-import { withDbLogging } from "@/lib/db-helpers";
 import { generateStructuredContent } from "@/lib/gemini";
 import { createFlowId, Logger } from "@/lib/logger";
-import { revalidatePath } from "next/cache";
 
 import {
   enhancedThesisSchema,
@@ -39,121 +33,119 @@ function validateField(value: string | undefined): string | null {
 }
 
 /**
- * Tez Matrisi form verilerini doğrular, thesis_matrices tablosuna kaydeder,
- * ardından doğrulanmış verileri doğrudan Gemini API'sine göndererek
- * akademik olgunlaştırma yapar, sonuçları veri tabanına yazar ve
- * users tablosundaki onboardingStep değerini "thesis_matrix_enhanced"
- * olarak günceller.
+ * Validates the raw matrix input and triggers Gemini to produce the academically
+ * enhanced thesis matrix parameters. Returns the raw JSON to the client.
+ * Bypasses database operations completely.
  *
- * @param data - Tez Matrisi form verileri
- * @returns Başarılıysa { success: true, data: EnhancedThesisData },
- *          hatalıysa { error: string }
+ * @param data - The raw thesis matrix input values.
+ * @returns Object with success and enhanced data, or error message.
  */
 export async function submitThesisMatrixAction(
   data: ThesisMatrixInput,
 ): Promise<EnhancedThesisActionResult> {
   const flowId = createFlowId();
   const log = new Logger(flowId);
+  const startTime = performance.now();
+
+  log.info({
+    step: "matrix_enrichment",
+    status: "START",
+  });
 
   try {
     const session = await getSession();
 
     if (!session) {
-      log.info("flow_complete", {
-        service: "matrix",
-        data: { reason: "Oturum bulunamadı" },
+      log.warn({
+        step: "matrix_enrichment",
+        status: "FAILED",
+        diagnostics: {
+          errorCode: "AUTH_ERROR",
+          message: "Oturum bulunamadı. Lütfen tekrar giriş yapın.",
+        },
       });
       return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
     }
 
-    const userId = session.userId;
-    log.info("flow_start", { service: "matrix", data: { userId } });
-
     const studyTitle = validateField(data.studyTitle);
     if (!studyTitle) {
-      log.info("flow_complete", {
-        service: "matrix",
-        data: { reason: "Validasyon: çalışma başlığı çok kısa" },
+      log.warn({
+        step: "matrix_enrichment",
+        status: "FAILED",
+        diagnostics: {
+          errorCode: "VALIDATION_ERROR",
+          message: "Çalışma başlığı en az 3 karakter olmalıdır.",
+        },
       });
       return { error: "Çalışma başlığı en az 3 karakter olmalıdır." };
     }
 
     const researchQuestion = validateField(data.researchQuestion);
     if (!researchQuestion) {
-      log.info("flow_complete", {
-        service: "matrix",
-        data: { reason: "Validasyon: araştırma sorusu çok kısa" },
+      log.warn({
+        step: "matrix_enrichment",
+        status: "FAILED",
+        diagnostics: {
+          errorCode: "VALIDATION_ERROR",
+          message: "Araştırma sorusu en az 3 karakter olmalıdır.",
+        },
       });
       return { error: "Araştırma sorusu en az 3 karakter olmalıdır." };
     }
 
     const mainClaim = validateField(data.mainClaim);
     if (!mainClaim) {
-      log.info("flow_complete", {
-        service: "matrix",
-        data: { reason: "Validasyon: temel iddia çok kısa" },
+      log.warn({
+        step: "matrix_enrichment",
+        status: "FAILED",
+        diagnostics: {
+          errorCode: "VALIDATION_ERROR",
+          message: "Temel iddia en az 3 karakter olmalıdır.",
+        },
       });
       return { error: "Temel iddia en az 3 karakter olmalıdır." };
     }
 
     const methodology = validateField(data.methodology);
     if (!methodology) {
-      log.info("flow_complete", {
-        service: "matrix",
-        data: { reason: "Validasyon: metodoloji çok kısa" },
+      log.warn({
+        step: "matrix_enrichment",
+        status: "FAILED",
+        diagnostics: {
+          errorCode: "VALIDATION_ERROR",
+          message: "Metodoloji en az 3 karakter olmalıdır.",
+        },
       });
       return { error: "Metodoloji en az 3 karakter olmalıdır." };
     }
 
     const theoreticalFramework = validateField(data.theoreticalFramework);
     if (!theoreticalFramework) {
-      log.info("flow_complete", {
-        service: "matrix",
-        data: { reason: "Validasyon: kuramsal çerçeve çok kısa" },
+      log.warn({
+        step: "matrix_enrichment",
+        status: "FAILED",
+        diagnostics: {
+          errorCode: "VALIDATION_ERROR",
+          message: "Kuramsal çerçeve en az 3 karakter olmalıdır.",
+        },
       });
       return { error: "Kuramsal çerçeve en az 3 karakter olmalıdır." };
     }
 
     const historicalSpatialLimits = validateField(data.historicalSpatialLimits);
     if (!historicalSpatialLimits) {
-      log.info("flow_complete", {
-        service: "matrix",
-        data: { reason: "Validasyon: sınırlar çok kısa" },
+      log.warn({
+        step: "matrix_enrichment",
+        status: "FAILED",
+        diagnostics: {
+          errorCode: "VALIDATION_ERROR",
+          message: "Tarihsel/mekânsal sınırlar en az 3 karakter olmalıdır.",
+        },
       });
       return {
         error: "Tarihsel/mekânsal sınırlar en az 3 karakter olmalıdır.",
       };
     }
-
-    // 1. DB: Ham matrisi kaydet
-    await withDbLogging(
-      () =>
-        db
-          .insert(thesisMatrices)
-          .values({
-            userId,
-            studyTitle,
-            researchQuestion,
-            mainClaim,
-            methodology,
-            theoreticalFramework,
-            historicalSpatialLimits,
-          })
-          .onConflictDoUpdate({
-            target: thesisMatrices.userId,
-            set: {
-              studyTitle,
-              researchQuestion,
-              mainClaim,
-              methodology,
-              theoreticalFramework,
-              historicalSpatialLimits,
-              updatedAt: new Date(),
-            },
-          }),
-      "save_matrix",
-      log,
-    );
 
     const matrixEnhancementPrompt = buildMatrixEnhancementPrompt({
       studyTitle,
@@ -164,7 +156,6 @@ export async function submitThesisMatrixAction(
       historicalSpatialLimits,
     });
 
-    // 2. AI: Gemini ile akademik zenginleştirme (retry loop)
     let enhancedData: EnhancedThesisData | undefined;
     let lastError: unknown;
 
@@ -184,18 +175,23 @@ export async function submitThesisMatrixAction(
       } catch (e) {
         lastError = e;
         if (attempt < MAX_RETRIES) {
-          log.warn("ai_retry_attempt", {
-            service: "gemini",
-            step: "akademik_zenginlestirme",
-            data: { attempt, maxRetries: MAX_RETRIES, delayMs: RETRY_DELAY_MS },
+          log.warn({
+            step: "matrix_enrichment",
+            status: "RETRYING",
+            attempt,
+            maxRetries: MAX_RETRIES,
+            delayMs: RETRY_DELAY_MS,
           });
           await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
         } else {
-          log.error("ai_request_failed", {
-            service: "gemini",
-            step: "akademik_zenginlestirme",
-            data: { attempt, maxRetries: MAX_RETRIES },
-            error: e,
+          log.error({
+            step: "matrix_enrichment",
+            status: "FAILED",
+            diagnostics: {
+              errorCode: "GEMINI_ENRICHMENT_ERROR",
+              message: e instanceof Error ? e.message : String(e),
+              model: "gemini-3.1-flash-lite",
+            },
           });
         }
       }
@@ -205,44 +201,31 @@ export async function submitThesisMatrixAction(
       throw lastError;
     }
 
-    // 3. DB: Geliştirilmiş verileri matrise yaz
-    await withDbLogging(
-      () =>
-        db
-          .update(thesisMatrices)
-          .set({
-            studyTitle: enhancedData.academicStudyTitle,
-            researchQuestion: enhancedData.literatureResearchQuestion,
-            mainClaim: enhancedData.refinedThesisClaim,
-            methodology: enhancedData.academicMethodologyDesign,
-            theoreticalFramework:
-              enhancedData.conceptualTheoreticalInfrastructure,
-            historicalSpatialLimits: enhancedData.historicalSpatialLimits,
-            updatedAt: new Date(),
-          })
-          .where(eq(thesisMatrices.userId, userId)),
-      "update_matrix",
-      log,
-    );
+    const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
+    const tokens = log.lastTokens || { input: 0, output: 0 };
 
-    // 4. DB: Kullanıcı onboarding adımını güncelle
-    await withDbLogging(
-      () =>
-        db
-          .update(users)
-          .set({ onboardingStep: "thesis_matrix_enhanced" })
-          .where(eq(users.id, userId)),
-      "update_step",
-      log,
-    );
+    log.info({
+      step: "matrix_enrichment",
+      status: "SUCCESS",
+      metrics: {
+        duration,
+        tokens: {
+          prompt: tokens.input ?? 0,
+          completion: tokens.output ?? 0,
+        },
+        outputRows: 1,
+      },
+    });
 
-    revalidatePath("/onboarding", "layout");
-    log.info("flow_complete", { service: "matrix" });
     return { success: true, data: enhancedData };
   } catch (error) {
-    log.error("flow_complete", {
-      service: "matrix",
-      error,
+    log.error({
+      step: "matrix_enrichment",
+      status: "FAILED",
+      diagnostics: {
+        errorCode: "SYSTEM_ERROR",
+        message: error instanceof Error ? error.message : String(error),
+      },
     });
     return {
       error: "Tez matrisi zenginleştirilirken bir hata oluştu.",

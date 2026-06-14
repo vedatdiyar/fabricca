@@ -6,7 +6,6 @@ import { compare } from "bcrypt-ts";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { getSession } from "@/proxy";
-import { withDbLogging } from "@/lib/db-helpers";
 import { createFlowId, Logger } from "@/lib/logger";
 
 export type LoginResult =
@@ -40,14 +39,18 @@ export async function loginAction(
   }
 
   try {
-    const [user] = await withDbLogging(
-      () => db
-        .select({ id: users.id, name: users.name, password: users.password })
-        .from(users)
-        .where(eq(users.email, email)),
-      "find_user",
-      log,
-    );
+    log.info({ step: "find_user", status: "START", service: "db" });
+    const t0 = performance.now();
+    const [user] = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        password: users.password,
+        onboardingCompleted: users.onboardingCompleted,
+      })
+      .from(users)
+      .where(eq(users.email, email));
+    log.info({ step: "find_user", status: "SUCCESS", metrics: { durationMs: performance.now() - t0 }, service: "db" });
 
     if (!user) {
       log.info("login_failed", {
@@ -70,7 +73,11 @@ export async function loginAction(
     const cookieStore = await cookies();
     cookieStore.set(
       COOKIE_NAME,
-      JSON.stringify({ userId: user.id, name: user.name }),
+      JSON.stringify({
+        userId: user.id,
+        name: user.name,
+        onboardingCompleted: user.onboardingCompleted,
+      }),
       {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -97,17 +104,17 @@ export async function loginAction(
 
 export type OnboardingStatusResult =
   | {
-      onboardingStep: string;
+      onboardingCompleted: boolean;
       error?: never;
     }
-  | { onboardingStep?: never; error: string };
+  | { onboardingCompleted?: never; error: string };
 
 /**
- * Mevcut oturumdaki kullanıcının onboarding adımını sorgular.
+ * Mevcut oturumdaki kullanıcının onboarding tamamlanma durumunu sorgular.
  * Login sayfası tarafından, başarılı giriş sonrası yönlendirme
  * kararını vermek için kullanılır.
  *
- * @returns { onboardingStep: string } veya hata durumunda { error: string }
+ * @returns { onboardingCompleted: boolean } veya hata durumunda { error: string }
  */
 export async function checkOnboardingStatus(): Promise<OnboardingStatusResult> {
   const flowId = createFlowId();
@@ -124,17 +131,16 @@ export async function checkOnboardingStatus(): Promise<OnboardingStatusResult> {
       return { error: "Oturum bulunamadı." };
     }
 
-    const [user] = await withDbLogging(
-      () => db
-        .select({ onboardingStep: users.onboardingStep })
-        .from(users)
-        .where(eq(users.id, session.userId)),
-      "query_step",
-      log,
-    );
+    log.info({ step: "query_step", status: "START", service: "db" });
+    const t0 = performance.now();
+    const [user] = await db
+      .select({ onboardingCompleted: users.onboardingCompleted })
+      .from(users)
+      .where(eq(users.id, session.userId));
+    log.info({ step: "query_step", status: "SUCCESS", metrics: { durationMs: performance.now() - t0 }, service: "db" });
 
     return {
-      onboardingStep: user?.onboardingStep ?? "thesis_matrix",
+      onboardingCompleted: user?.onboardingCompleted ?? false,
     };
   } catch {
     log.info("login_failed", {

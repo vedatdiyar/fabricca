@@ -49,10 +49,14 @@ export function calculateOriginalityRisk(
   log: Logger,
 ): CalculatedOriginalityRiskResult {
   if (validDetails.length === 0 || overlapTable.length === 0) {
-    log.info("flow_complete", {
-      service: "originality",
-      step: "analyze",
-      data: {
+    log.info({
+      step: "calculate_originality_risk",
+      status: "SUCCESS",
+      metrics: {
+        duration: "0.0s",
+        outputRows: 0,
+      },
+      diagnostics: {
         originalityBadge: "ZERO_RISK",
         riskPercentage: 0,
         thesisCount: 0,
@@ -151,10 +155,14 @@ export function calculateOriginalityRisk(
     originalityBadge = "ZERO_RISK";
   }
 
-  log.info("flow_complete", {
-    service: "originality",
-    step: "analyze",
-    data: {
+  log.info({
+    step: "calculate_originality_risk",
+    status: "SUCCESS",
+    metrics: {
+      duration: "0.0s",
+      outputRows: calculatedOverlapTable.length,
+    },
+    diagnostics: {
       originalityBadge,
       riskPercentage,
       thesisCount: calculatedOverlapTable.length,

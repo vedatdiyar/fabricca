@@ -1,26 +1,26 @@
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
+import { Pool } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-serverless";
 import * as schema from "./schema";
 
 /**
- * Neon PostgreSQL bağlantısı (Global Singleton).
+ * Neon PostgreSQL bağlantısı (WebSocket Pool + Global Singleton).
  *
- * Geliştirme ortamında (HMR / Fast Refresh) her modül yeniden
- * yüklendiğinde yeni bir Neon HTTP istemcisi oluşmasını engeller.
- * `globalThis` üzerinde saklanan bağlantı, HMR sırasında bile
- * korunur ve tekrar kullanılır.
- *
- * Production'da (serverless) her istek yeni bir ortamda çalıştığı
- * için her seferinde yeni bağlantı oluşur — bu beklenen davranıştır.
+ * `Pool` (WebSocket tabanlı) kullanarak `db.transaction()` desteği
+ * sağlanır. Geliştirme ortamında (HMR / Fast Refresh) her modül
+ * yeniden yüklendiğinde yeni bir Pool oluşmasını engellemek için
+ * singleton deseni kullanılır.
  *
  * Örnek kullanım:
  *   const result = await db.select().from(...);
+ *   await db.transaction(async (tx) => { ... });
  */
 const globalForDb = globalThis as unknown as {
-  conn: ReturnType<typeof neon> | undefined;
+  pool: Pool | undefined;
 };
 
-const conn = globalForDb.conn ?? neon(process.env.DATABASE_URL!);
-globalForDb.conn = conn;
+const pool =
+  globalForDb.pool ??
+  new Pool({ connectionString: process.env.DATABASE_URL! });
+globalForDb.pool = pool;
 
-export const db = drizzle(conn, { schema });
+export const db = drizzle(pool, { schema });
