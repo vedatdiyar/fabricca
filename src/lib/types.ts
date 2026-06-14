@@ -1,7 +1,3 @@
-import type { TezaraThesisSummary, TezaraThesisDetails } from "./tezara";
-
-export type { TezaraThesisSummary, TezaraThesisDetails };
-
 export type OnboardingActionResult =
   | { success: true; isProcessing?: boolean; error?: never }
   | { success?: never; error: string };
@@ -20,6 +16,36 @@ export type EnhancedThesisActionResult =
   | { success?: never; error: string };
 
 export type AxesOption = "OVERLAPPING" | "ORIGINAL";
+
+/**
+ * Tezara tez arama sonucu özeti.
+ * Listeleme sorgularından dönen kısa tez kaydını temsil eder.
+ */
+export interface TezaraThesisSummary {
+  id: number;
+  title: string;
+  author: string;
+  university: string;
+  year: number;
+  thesisType: string;
+  department: string;
+}
+
+/**
+ * Tezara tez detay kaydı.
+ * Bireysel tez sayfasından çekilen tam içeriği temsil eder.
+ */
+export interface TezaraThesisDetails {
+  id: number;
+  title: string;
+  author: string;
+  university: string;
+  year: number;
+  thesisType: string;
+  department: string;
+  abstract: string;
+  yokPdfUrl?: string;
+}
 
 export interface QueryExtractionResponse {
   tavilyQueries: string[];
@@ -42,18 +68,8 @@ export interface TavilyEvaluationResponse {
   briefingNote: string;
 }
 
-export interface SiftResponse {
-  relevantThesisIds: number[];
-}
-
 export interface OverlapItem {
   id: number;
-  scores?: {
-    subjectScore: number;
-    theoryScore: number;
-    methodologyScore: number;
-    contextScore: number;
-  };
   axes: {
     subject: AxesOption;
     theory: AxesOption;
@@ -62,16 +78,6 @@ export interface OverlapItem {
   };
   comparisonNote?: string;
   yokPdfUrl?: string;
-}
-
-export interface SingleThesisAnalysisResponse {
-  overlapTable: OverlapItem[];
-  comparisonAnalysis: string;
-}
-
-export interface GeminiAnalysisResponse {
-  overlapTable: OverlapItem[];
-  strategicRecommendations: string;
 }
 
 export interface OriginalityReportData {

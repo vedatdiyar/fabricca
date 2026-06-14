@@ -32,11 +32,132 @@ interface GeminiThesisBox {
 }
 
 /**
+ * Validates theorists in all draft boxes concurrently against Wikipedia.
+ * Removes any theorist name that cannot be verified, mutating box.theorists in-place.
+ *
+ * @param draftBoxes - The array of Gemini-generated thesis boxes to validate.
+ * @param log - Logger instance for structured event tracking.
+ */
+async function validateBoxTheorists(
+  draftBoxes: GeminiThesisBox[],
+  log: Logger,
+): Promise<void> {
+  log.info("search_start", {
+    service: "boxes",
+    step: "wikipedia_cross_check",
+  });
+
+  await Promise.all(
+    draftBoxes.map(async (box) => {
+      const theorists = box.theorists || [];
+      if (theorists.length === 0) return;
+
+      const verificationPromises = theorists.map(async (theoristName) => {
+        try {
+          const wikiResult = await searchWikipediaTheorist(
+            theoristName,
+            box.category,
+            log,
+          );
+          if (wikiResult) {
+            return theoristName;
+          }
+        } catch (err) {
+          log.error("search_filtered", {
+            service: "boxes",
+            step: "wikipedia_cross_check_failed",
+            error: err,
+          });
+        }
+        return null;
+      });
+
+      const verificationResults = await Promise.all(verificationPromises);
+      box.theorists = verificationResults.filter(
+        (name): name is string => name !== null,
+      );
+    }),
+  );
+
+  log.info("search_success", {
+    service: "boxes",
+    step: "wikipedia_cross_check",
+  });
+}
+
+/**
+ * Validates primary and secondary literature in all draft boxes concurrently
+ * against Google Books and Wikipedia. Removes unverified citations in-place.
+ *
+ * @param draftBoxes - The array of Gemini-generated thesis boxes to validate.
+ * @param log - Logger instance for structured event tracking.
+ */
+async function validateBoxLiterature(
+  draftBoxes: GeminiThesisBox[],
+  log: Logger,
+): Promise<void> {
+  log.info("search_start", {
+    service: "boxes",
+    step: "literature_cross_check",
+  });
+
+  await Promise.all(
+    draftBoxes.map(async (box) => {
+      const primLit = box.primaryLiterature || [];
+      const secLit = box.secondaryLiterature || [];
+
+      const verifyList = async (
+        list: string[],
+        listName: "primaryLiterature" | "secondaryLiterature",
+      ): Promise<string[]> => {
+        if (list.length === 0) return [];
+        const verificationPromises = list.map(async (lit) => {
+          try {
+            const res = await verifyLiterature(lit);
+            if (res.verified) {
+              return lit;
+            } else {
+              log.info("search_filtered", {
+                service: "boxes",
+                step: `literature_${listName}_rejected`,
+                data: { citation: lit, method: res.method },
+              });
+            }
+          } catch (err) {
+            log.error("search_filtered", {
+              service: "boxes",
+              step: `literature_${listName}_check_failed`,
+              error: err,
+            });
+          }
+          return null;
+        });
+        const results = await Promise.all(verificationPromises);
+        return results.filter((item): item is string => item !== null);
+      };
+
+      const [verifiedPrim, verifiedSec] = await Promise.all([
+        verifyList(primLit, "primaryLiterature"),
+        verifyList(secLit, "secondaryLiterature"),
+      ]);
+
+      box.primaryLiterature = verifiedPrim;
+      box.secondaryLiterature = verifiedSec;
+    }),
+  );
+
+  log.info("search_success", {
+    service: "boxes",
+    step: "literature_cross_check",
+  });
+}
+
+/**
  * Generates thesis outline boxes for the specified thesis matrix ID.
  * Invokes Gemini Flash Lite to partition the matrix into 5 categories,
  * validates theorists against Wikipedia concurrently to avoid hallucinations,
  * and saves parent-child box structures in the database hierarchically.
- * Finally, updates the user's onboarding step to "completed".
+ * Finally, updates the user's onboarding step to "literature_review".
  *
  * @param thesisMatrixId - The ID of the thesis matrix to generate boxes for.
  * @returns A promise that resolves to an OnboardingActionResult.
@@ -51,7 +172,7 @@ export async function generateThesisBoxesAction(
     const session = await getSession();
     if (!session) {
       log.info("flow_complete", {
-        service: "enrichment",
+        service: "boxes",
         data: { reason: "No session found" },
       });
       return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
@@ -59,7 +180,7 @@ export async function generateThesisBoxesAction(
 
     const userId = session.userId;
     log.info("flow_start", {
-      service: "enrichment",
+      service: "boxes",
       data: { userId, thesisMatrixId },
     });
 
@@ -76,7 +197,7 @@ export async function generateThesisBoxesAction(
 
     if (!matrix) {
       log.info("flow_complete", {
-        service: "enrichment",
+        service: "boxes",
         data: { reason: "Matrix not found", thesisMatrixId },
       });
       return { error: "Tez matrisi bulunamadı." };
@@ -84,7 +205,7 @@ export async function generateThesisBoxesAction(
 
     if (matrix.userId !== userId) {
       log.info("flow_complete", {
-        service: "enrichment",
+        service: "boxes",
         data: {
           reason: "Unauthorized access",
           userId,
@@ -113,108 +234,18 @@ export async function generateThesisBoxesAction(
       geminiPrompt,
       thesisBoxGenerationSchema,
       log,
-      { temperature: 0.3 },
+      {
+        thinkingConfig: null,
+      },
     );
 
     const draftBoxes = generationResult.boxes || [];
 
     // Step 3: Wikipedia concurrent cross-check for theorists to prevent hallucinations
-    log.info("search_start", {
-      service: "enrichment",
-      step: "wikipedia_cross_check",
-    });
-
-    await Promise.all(
-      draftBoxes.map(async (box) => {
-        const theorists = box.theorists || [];
-        if (theorists.length === 0) return;
-
-        const verificationPromises = theorists.map(async (theoristName) => {
-          try {
-            const wikiResult = await searchWikipediaTheorist(
-              theoristName,
-              box.category,
-            );
-            if (wikiResult) {
-              return theoristName;
-            }
-          } catch (err) {
-            log.error("search_filtered", {
-              service: "enrichment",
-              step: "wikipedia_cross_check_failed",
-              error: err,
-            });
-          }
-          return null;
-        });
-
-        const verificationResults = await Promise.all(verificationPromises);
-        box.theorists = verificationResults.filter(
-          (name): name is string => name !== null,
-        );
-      }),
-    );
-
-    log.info("search_success", {
-      service: "enrichment",
-      step: "wikipedia_cross_check",
-    });
+    await validateBoxTheorists(draftBoxes, log);
 
     // Step 3.5: Google Books and Wikipedia cross-check for literature to prevent hallucinations
-    log.info("search_start", {
-      service: "enrichment",
-      step: "literature_cross_check",
-    });
-
-    await Promise.all(
-      draftBoxes.map(async (box) => {
-        const primLit = box.primaryLiterature || [];
-        const secLit = box.secondaryLiterature || [];
-
-        const verifyList = async (
-          list: string[],
-          listName: "primaryLiterature" | "secondaryLiterature",
-        ) => {
-          if (list.length === 0) return [];
-          const verificationPromises = list.map(async (lit) => {
-            try {
-              const res = await verifyLiterature(lit);
-              if (res.verified) {
-                return lit;
-              } else {
-                log.info("search_filtered", {
-                  service: "enrichment",
-                  step: `literature_${listName}_rejected`,
-                  data: { citation: lit, method: res.method },
-                });
-              }
-            } catch (err) {
-              log.error("search_filtered", {
-                service: "enrichment",
-                step: `literature_${listName}_check_failed`,
-                error: err,
-              });
-            }
-            return null;
-          });
-          const results = await Promise.all(verificationPromises);
-          return results.filter((item): item is string => item !== null);
-        };
-
-        const [verifiedPrim, verifiedSec] = await Promise.all([
-          verifyList(primLit, "primaryLiterature"),
-          verifyList(secLit, "secondaryLiterature"),
-        ]);
-
-        box.primaryLiterature = verifiedPrim;
-        box.secondaryLiterature = verifiedSec;
-      }),
-    );
-
-    log.info("search_success", {
-      service: "enrichment",
-      step: "literature_cross_check",
-    });
+    await validateBoxLiterature(draftBoxes, log);
 
     // Step 4: Write to database for parent-child hierarchy
     await withDbLogging(
@@ -255,7 +286,7 @@ export async function generateThesisBoxesAction(
             parentId: null,
             category: "methodology" as const,
             title: "Yöntem Literatürü",
-            description: "Metodoloji ve araştırma yöntemi kutuları.",
+            description: "Metodoloji and araştırma yöntemi kutuları.",
             theorists: [],
             concepts: [],
             queries: [],
@@ -325,10 +356,10 @@ export async function generateThesisBoxesAction(
           await db.insert(thesisBoxes).values(subBoxValues);
         }
 
-        // 4c. Update user's onboarding step to "originality_report_completed"
+        // 4c. Update user's onboarding step to "literature_review"
         await db
           .update(users)
-          .set({ onboardingStep: "originality_report_completed" })
+          .set({ onboardingStep: "literature_review" })
           .where(eq(users.id, userId));
       },
       "save_hierarchical_boxes",
@@ -339,15 +370,15 @@ export async function generateThesisBoxesAction(
       revalidatePath("/onboarding", "layout");
     } catch (e) {
       log.info("search_filtered", {
-        service: "enrichment",
+        service: "boxes",
         step: "revalidate_path_skipped",
         error: e,
       });
     }
-    log.info("flow_complete", { service: "enrichment" });
+    log.info("flow_complete", { service: "boxes" });
     return { success: true };
   } catch (err) {
-    log.error("flow_complete", { service: "enrichment", error: err });
+    log.error("flow_complete", { service: "boxes", error: err });
     return {
       error: "Kutu yapılandırması sırasında bir hata oluştu.",
     };
@@ -355,12 +386,12 @@ export async function generateThesisBoxesAction(
 }
 
 /**
- * Completes the onboarding flow by fetching the current user's thesis matrix
- * and triggering the thesis box generation process.
+ * Confirms the generated subject boxes and completes the onboarding flow,
+ * updating the user's onboarding step to "completed".
  *
  * @returns A promise that resolves to an OnboardingActionResult.
  */
-export async function completeOnboardingAction(): Promise<OnboardingActionResult> {
+export async function confirmBoxesAction(): Promise<OnboardingActionResult> {
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
@@ -409,7 +440,7 @@ export async function completeOnboardingAction(): Promise<OnboardingActionResult
   } catch (err) {
     log.error("flow_complete", { service: "flow", error: err });
     return {
-      error: "Onboarding tamamlanırken bir hata oluştu.",
+      error: "Konu kutuları onaylanırken bir hata oluştu.",
     };
   }
 }

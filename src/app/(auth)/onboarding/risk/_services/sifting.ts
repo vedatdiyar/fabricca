@@ -1,8 +1,5 @@
 import { ThinkingLevel } from "@google/genai";
-import {
-  generateStructuredContent,
-  cosineSimilarity,
-} from "@/lib/gemini";
+import { generateStructuredContent, cosineSimilarity } from "@/lib/gemini";
 import { generateEmbeddings } from "@/lib/cloudflare";
 import { fetchThesisDetails } from "@/lib/tezara";
 import type { Logger } from "@/lib/logger";
@@ -151,7 +148,7 @@ export async function siftAndFetchDetails(
     throw err;
   }
 
-  // 4. Fetch details (with Abstract) for the passed theses in batches to avoid network bottleneck
+  // 3. Fetch details (with Abstract) for the passed theses in batches to avoid network bottleneck
   log.info("flow_start", {
     service: "originality",
     step: "fetch_details_stage_2",
@@ -195,7 +192,7 @@ export async function siftAndFetchDetails(
     };
   }
 
-  // 5. Stage 2 (Deep Sifting with Abstract)
+  // 4. Stage 2 (Deep Sifting with Abstract)
   // LLM'i en kritik 6 tezi seçmeye zorla.
   log.info("ai_request_start", {
     service: "gemini",
@@ -221,7 +218,6 @@ export async function siftAndFetchDetails(
       log,
       {
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-        temperature: 0.1, // Low temperature for deterministic selection
       },
     );
 

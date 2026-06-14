@@ -5,38 +5,38 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { completeOnboardingAction } from "../actions";
+import { confirmBoxesAction } from "../actions";
 
 /**
- * Onboarding sürecini tamamlayan ve panele yönlendiren buton (Client Component).
+ * Onboarding sürecindeki konu kutularını onaylayan ve panele yönlendiren buton (Client Component).
  */
-export function CompleteButton() {
+export function ConfirmBoxesButton() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  const handleComplete = () => {
+  const handleConfirm = () => {
     startTransition(async () => {
-      const res = await completeOnboardingAction();
+      const res = await confirmBoxesAction();
       if (res.error) {
         toast.error(res.error);
         return;
       }
 
-      toast.success("Onboarding tamamlandı, yönlendiriliyorsunuz.");
+      toast.success("Konu kutuları onaylandı, yönlendiriliyorsunuz.");
       router.push("/dashboard");
     });
   };
 
   return (
     <Button
-      onClick={handleComplete}
+      onClick={handleConfirm}
       disabled={isPending}
       className="btn-academic-hero w-full sm:w-auto"
     >
       {isPending ? (
         <span className="flex items-center justify-center gap-2">
           <Loader2 className="w-4 h-4 animate-spin" />
-          Tamamlanıyor...
+          Onaylanıyor...
         </span>
       ) : (
         "Kutuları Onayla ve Literatür Taramasını Başlat"

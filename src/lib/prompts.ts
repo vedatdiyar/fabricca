@@ -47,7 +47,7 @@ Sen lisansüstü düzeyde akademik danışmanlık yapan kıdemli bir akademisyen
 </constraints>
 
 <output_format>
-Yalnızca tanımlanan enhancedThesisSchema yapısına tam uyumlu, geçerli bir JSON nesnesi döndür. JSON dışında hiçbir açıklama metni, giriş veya çıkış cümlesi ekleme.
+Yalnızca tanımlanan enhancedThesisSchema yapısına tam uyumlu, geçerli bir JSON nesnesi döndür.
 </output_format>
 `;
 
@@ -134,7 +134,7 @@ Cevap üretmeden önce içsel olarak (internal thinking) şu 3 adımlı ajan pla
 </constraints>
 
 <output_format>
-Yalnızca queryExtractionSchema yapısına tam uyumlu, geçerli ve temiz bir JSON nesnesi döndür. JSON kod bloğu dışında (örneğin \`\`\`json gibi işaretleyiciler de dahil) hiçbir açıklama, giriş veya çıkış metni ekleme.
+Yalnızca queryExtractionSchema yapısına tam uyumlu, geçerli ve temiz bir JSON nesnesi döndür.
 </output_format>
 `;
 
@@ -220,7 +220,7 @@ Cevap üretmeden önce içsel olarak (internal thinking) şu adımları metodolo
 </constraints>
 
 <output_format>
-Yalnızca tavilyEvaluationSchema yapısı ile tam eşleşen temiz bir JSON nesnesi döndür. Markdown etiketleri (\`\`\`json dahil) veya JSON harici hiçbir açıklama metni ekleme.
+Yalnızca tavilyEvaluationSchema yapısı ile tam eşleşen temiz bir JSON nesnesi döndür.
 </output_format>
 `;
 
@@ -298,7 +298,7 @@ Cevap üretmeden önce içsel olarak (internal thinking) şu 4 adımlı analitik
 </constraints>
 
 <output_format>
-Yalnızca deepSiftingSchema yapısına tam uyumlu, seçilen ID'leri içeren geçerli bir JSON nesnesi döndür. Puan tablolarını, içsel hesaplamaları veya Markdown kod bloklarını (\`\`\`json dahil) çıktıya kesinlikle dahil etme.
+Yalnızca deepSiftingSchema yapısına tam uyumlu, seçilen ID'leri içeren geçerli bir JSON nesnesi döndür.
 </output_format>
 `;
 
@@ -440,7 +440,7 @@ Her bir aday tezi incelerken, içsel düşünme (internal thinking) aşamasında
 </constraints>
 
 <output_format>
-Sağlanan geminiAnalysisSchema yapısıyla mükemmel şekilde eşleşen, temiz bir JSON nesnesi döndür. Markdown etiketleri (\`\`\`json dahil) veya JSON harici hiçbir açıklama metni ekleme. Cevap sadece ham JSON verisinden oluşmalıdır.
+Sağlanan geminiAnalysisSchema yapısıyla mükemmel şekilde eşleşen, temiz bir JSON nesnesi döndür.
 </output_format>`;
 
 /**
@@ -541,7 +541,7 @@ Cevap üretmeden önce içsel olarak (internal thinking) şu 3 adımlı sentez v
 </constraints>
 
 <output_format>
-Sağlanan roadmapSchema yapısıyla kusursuz eşleşen temiz bir JSON nesnesi döndür. Markdown kod blokları (\`\`\`json dahil) veya JSON dışı hiçbir giriş/çıkış açıklaması ekleme. Cevap sadece ham JSON verisinden oluşmalıdır.
+Sağlanan roadmapSchema yapısıyla kusursuz eşleşen temiz bir JSON nesnesi döndür.
 </output_format>
 `;
 
@@ -690,7 +690,7 @@ Cevap üretmeden önce içsel olarak (internal thinking) şu 4 adımlı yapısal
 </constraints>
 
 <output_format>
-Yalnızca thesisBoxGenerationSchema yapısıyla mükemmel şekilde eşleşen, temiz bir JSON nesnesi döndür. Markdown kod blokları (\`\`\`json dahil) veya JSON harici hiçbir metinsel açıklama ekleme. Cevap sadece ham JSON verisinden oluşmalıdır.
+Yalnızca thesisBoxGenerationSchema yapısıyla mükemmel şekilde eşleşen, temiz bir JSON nesnesi döndür.
 </output_format>
 `;
 

@@ -1,32 +1,5 @@
 import type { Logger } from "./logger";
-
-/**
- * Tezara Thesis Summary Search Result.
- */
-export interface TezaraThesisSummary {
-  id: number;
-  title: string;
-  author: string;
-  university: string;
-  year: number;
-  thesisType: string;
-  department: string;
-}
-
-/**
- * Tezara Thesis Details Interface.
- */
-export interface TezaraThesisDetails {
-  id: number;
-  title: string;
-  author: string;
-  university: string;
-  year: number;
-  thesisType: string;
-  department: string;
-  abstract: string;
-  yokPdfUrl?: string;
-}
+import type { TezaraThesisSummary, TezaraThesisDetails } from "./types";
 
 /**
  * Safely extracts all JSON objects found within a given string.
@@ -35,8 +8,8 @@ export interface TezaraThesisDetails {
  * @param text - The raw string input to search.
  * @returns An array of parsed JSON objects.
  */
-function extractJsonObjects(text: string): any[] {
-  const jsonObjects: any[] = [];
+function extractJsonObjects(text: string): unknown[] {
+  const jsonObjects: unknown[] = [];
   if (typeof text !== "string") {
     return jsonObjects;
   }
@@ -161,7 +134,7 @@ export function extractRscTexts(text: string): Record<string, string> {
  * @param val - The value to scan.
  * @param results - The accumulator array of thesis summaries.
  */
-function findThesesRecursively(val: any, results: TezaraThesisSummary[]): void {
+function findThesesRecursively(val: unknown, results: TezaraThesisSummary[]): void {
   if (!val || typeof val !== "object") {
     return;
   }
@@ -173,19 +146,21 @@ function findThesesRecursively(val: any, results: TezaraThesisSummary[]): void {
     return;
   }
 
+  const obj = val as Record<string, unknown>;
+
   // If the object looks like a thesis summary (must have title and some identifier or author)
   if (
-    (typeof val.title_original === "string" ||
-      typeof val.title_translated === "string") &&
-    (val.id !== undefined || val.author !== undefined)
+    (typeof obj.title_original === "string" ||
+      typeof obj.title_translated === "string") &&
+    (obj.id !== undefined || obj.author !== undefined)
   ) {
-    const id = Number(val.id ?? 0);
-    const title = String(val.title_original ?? val.title_translated ?? "");
-    const author = String(val.author ?? "");
-    const university = String(val.university ?? "");
-    const year = Number(val.year ?? 0);
-    const thesisType = String(val.thesis_type ?? val.thesisType ?? "");
-    const department = String(val.department ?? "");
+    const id = Number(obj.id ?? 0);
+    const title = String(obj.title_original ?? obj.title_translated ?? "");
+    const author = String(obj.author ?? "");
+    const university = String(obj.university ?? "");
+    const year = Number(obj.year ?? 0);
+    const thesisType = String(obj.thesis_type ?? obj.thesisType ?? "");
+    const department = String(obj.department ?? "");
 
     // Avoid duplicates
     if (!results.some((r) => r.id === id)) {
@@ -202,10 +177,10 @@ function findThesesRecursively(val: any, results: TezaraThesisSummary[]): void {
   }
 
   // Recurse into all properties
-  const keys = Object.keys(val);
+  const keys = Object.keys(obj);
   for (const key of keys) {
     try {
-      findThesesRecursively(val[key], results);
+      findThesesRecursively(obj[key], results);
     } catch (err) {
       void err;
     }
@@ -233,8 +208,10 @@ export function parseRscTheses(text: string): TezaraThesisSummary[] {
           continue;
         }
 
+        const record = obj as Record<string, unknown>;
+
         // Navigate the standard Next.js query cache state structure safely
-        const queries = obj?.state?.queries || obj?.queries || [];
+        const queries = (record?.state as Record<string, unknown>)?.queries || (record?.queries as unknown[]) || [];
         if (Array.isArray(queries)) {
           for (const q of queries) {
             if (
@@ -418,14 +395,16 @@ export async function searchTezara(
  * @param val - The value to scan.
  * @returns The found thesis object or null.
  */
-function findThesisObjRecursively(val: any): Record<string, any> | null {
+function findThesisObjRecursively(val: unknown): Record<string, any> | null {
   if (!val || typeof val !== "object") {
     return null;
   }
 
+  const obj = val as Record<string, unknown>;
+
   // Check if the object contains a nested 'thesis' object with academic fields
-  if (val.thesis && typeof val.thesis === "object") {
-    const nested = val.thesis;
+  if (obj.thesis && typeof obj.thesis === "object") {
+    const nested = obj.thesis as Record<string, unknown>;
     if (
       nested.title_original !== undefined ||
       nested.title_translated !== undefined ||
@@ -437,17 +416,17 @@ function findThesisObjRecursively(val: any): Record<string, any> | null {
 
   // Check if the object itself has title_original / title_translated and author
   if (
-    (val.title_original !== undefined || val.title_translated !== undefined) &&
-    (val.author !== undefined || val.university !== undefined)
+    (obj.title_original !== undefined || obj.title_translated !== undefined) &&
+    (obj.author !== undefined || obj.university !== undefined)
   ) {
-    return val;
+    return obj;
   }
 
   // Recurse into all keys
-  const keys = Object.keys(val);
+  const keys = Object.keys(obj);
   for (const key of keys) {
     try {
-      const result = findThesisObjRecursively(val[key]);
+      const result = findThesisObjRecursively(obj[key]);
       if (result) {
         return result;
       }

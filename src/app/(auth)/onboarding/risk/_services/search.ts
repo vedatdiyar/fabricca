@@ -1,3 +1,4 @@
+import { ThinkingLevel } from "@google/genai";
 import { tavilySearch } from "@/lib/tavily";
 import { searchTezara } from "@/lib/tezara";
 import { generateStructuredContent } from "@/lib/gemini";
@@ -127,6 +128,9 @@ export async function evaluateTavilyResults(
       }),
       tavilyEvaluationSchema,
       log,
+      {
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      },
     );
 
   const safeFactItems = Array.isArray(tavilyEvaluation?.items)

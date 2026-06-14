@@ -35,7 +35,7 @@ export async function generateEmbeddings(
 
   const startTime = performance.now();
   logger?.info("ai_request_start", {
-    service: "gemini",
+    service: "cloudflare",
     step: "generate_embeddings_start",
     data: {
       model: "@cf/qwen/qwen3-embedding-0.6b",
@@ -64,7 +64,7 @@ export async function generateEmbeddings(
       if (logger) {
         const durationMs = performance.now() - startTime;
         logger.error("ai_request_failed", {
-          service: "gemini",
+          service: "cloudflare",
           step: "generate_embeddings_api_error",
           durationMs,
           error: new Error(errorMsg),
@@ -95,7 +95,7 @@ export async function generateEmbeddings(
 
     const durationMs = performance.now() - startTime;
     logger?.info("ai_request_success", {
-      service: "gemini",
+      service: "cloudflare",
       step: "generate_embeddings_success",
       durationMs,
       data: {
@@ -108,7 +108,7 @@ export async function generateEmbeddings(
   } catch (error) {
     const durationMs = performance.now() - startTime;
     logger?.error("ai_request_failed", {
-      service: "gemini",
+      service: "cloudflare",
       step: "generate_embeddings_failed",
       durationMs,
       error,

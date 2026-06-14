@@ -36,6 +36,7 @@ export type LogEvent =
 
 export type ServiceName =
   | "gemini"
+  | "cloudflare"
   | "tavily"
   | "tezara"
   | "db"
@@ -43,7 +44,10 @@ export type ServiceName =
   | "flow"
   | "matrix"
   | "enrichment"
-  | "originality";
+  | "originality"
+  | "complete"
+  | "boxes"
+  | "wikipedia";
 
 export interface TokenUsage {
   input?: number;

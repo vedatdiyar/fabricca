@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getProfile } from "@/proxy";
-import { CompleteButton } from "./_components/complete-button";
+import { ConfirmBoxesButton } from "./_components/confirm-boxes-button";
 import {
   CheckCircle2,
   ShieldCheck,
@@ -66,7 +66,7 @@ const categoryMeta: Record<
  * Onboarding sürecinin final adımı: Bitiş ve Konu Kutuları Onayı (Server Component).
  * Kullanıcının oluşturulan kutularını (boxes) veritabanından çeker ve detaylı olarak onaya sunar.
  */
-export default async function OnboardingCompletePage() {
+export default async function OnboardingBoxesPage() {
   const profile = await getProfile();
 
   if (profile.onboarding_step !== "originality_report_completed") {
@@ -290,7 +290,7 @@ export default async function OnboardingCompletePage() {
             kütüphanenize ve kartoteks sisteminize işlenecek ve akademik veri
             tabanlarında otomatik literatür tarama adımı başlatılacaktır.
           </p>
-          <CompleteButton />
+          <ConfirmBoxesButton />
         </div>
       </div>
     </main>

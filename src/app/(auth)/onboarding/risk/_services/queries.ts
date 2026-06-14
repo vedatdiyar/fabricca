@@ -45,7 +45,6 @@ export async function extractQueries(
       queryExtractionSchema,
       log,
       {
-        temperature: 0.1,
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       },
     );

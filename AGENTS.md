@@ -26,7 +26,8 @@ Projede kullanılacak teknolojiler kesin olarak belirlenmiştir. Yapay zeka, gel
 - **Stil & UI Bileşenleri:** Tailwind CSS, Shadcn UI, Lucide React (İkonlar için)
 - **Veri Tabanı & ORM:** Neon Serverless PostgreSQL, Drizzle ORM
 - **Vektör Veri Tabanı (RAG):** Neon DB içinde entegre `pgvector` eklentisi
-- **LLM Modelleri:** Google Gemini 3.1 Flash Lite / Gemini 3.5 Flash (Metin üretimi ve analiz için) - **Gemini model çağrılarında temperature değeri:** Google'ın Gemini 3.0/3.1 ve üzeri modeller için önerdiği doğrultuda, modelin akıl yürütme (reasoning) ve JSON üretme yeteneklerinin en iyi performansı göstermesi ve döngüsel/mantıksal hataların önlenmesi için tüm çağrılarda (belirlenen istisnalar hariç) varsayılan temperature değeri olan `1.0` kullanılmalıdır.
+- **LLM Modelleri:** Google Gemini 3.1 Flash Lite / Gemini 3.5 Flash (Metin üretimi ve analiz için)
+  - **Temperature Stratejisi:** Google'ın Gemini 3.0/3.1 ve üzeri modeller için önerdiği doğrultuda, modelin akıl yürütme (reasoning) ve JSON üretme yeteneklerinin en iyi performansı göstermesi ve döngüsel/mantıksal hataların önlenmesi için tüm çağrılarda (belirlenen istisnalar hariç) varsayılan temperature değeri olan `1.0` kullanılmalıdır.
 - **Embedding Model:** Google Gemini Embedding v2 (gemini-embedding-2)
 - **AI Orkestrasyon:** Google Gen AI SDK (@google/genai - Doğrudan entegrasyon)
 - **Kimlik Doğrulama (Auth):** Drizzle tabanlı yerel `users` tablosu, `bcrypt-ts` ile şifreleme ve Next.js Cookies/Middleware tabanlı hafif session yönetimi
@@ -35,25 +36,27 @@ Projede kullanılacak teknolojiler kesin olarak belirlenmiştir. Yapay zeka, gel
 
 Proje, Next.js App Router'ın rota gruplama (route groups) özelliğini kullanarak tamamen "Özellik/Sayfa Tabanlı" (Feature-driven) olarak organize edilmiştir. Giriş sonrası sayfalar birbiriyle aynı hiyerarşide, bağımsız rotalardır:
 
+```
 ├── src/
-│ ├── app/
-│ │ ├── (auth)/ # Kimlik doğrulama grubu
-│ │ │ ├── login/ # Giriş sayfası -> /login
-│ │ │ └── onboarding/ # Tez Matrisi oluşturma sayfası -> /onboarding
-│ │ ├── (app)/ # Giriş sonrası ana uygulama grubu (Ortak Layout paylaşırlar)
-│ │ │ ├── dashboard/ # Panel sayfası -> /dashboard
-│ │ │ ├── card-index/ # Kartoteks (Fişleme/Kutu) sayfası -> /card-index
-│ │ │ ├── advisor/ # Danışman Odası (RAG Chat) sayfası -> /advisor
-│ │ │ ├── library/ # Kütüphane (Makale Yükleme/Yönetim) sayfası -> /library
-│ │ │ └── layout.tsx # Ortak üst navigasyon (Header) ve sayfa alanı (Tüm üstteki sayfalarda görünür)
-│ │ ├── api/ # Stream veya harici webhook API'leri
-│ │ ├── layout.tsx # Global HTML ve Root ayarları
-│ │ └── page.tsx # Root yönlendirici (Oturuma göre /login veya /dashboard'a atar)
-│ ├── components/ # Ortak kullanılan yapılar
-│ │ └── ui/ # Shadcn UI bileşenleri (Dokunulmaz)
-│ ├── db/ # Veri tabanı katmanı (Neon / Drizzle)
-│ ├── lib/ # Ortak kütüphane yapılandırmaları (Gemini, Utils)
-│ └── proxy.ts # Geleneksel middleware yerine kullanılan yönlendirme ve oturum kontrol katmanı
+│   ├── app/
+│   │   ├── (auth)/                   # Kimlik doğrulama grubu
+│   │   │   ├── login/                # Giriş sayfası → /login
+│   │   │   └── onboarding/           # Tez Matrisi oluşturma → /onboarding
+│   │   ├── (app)/                    # Giriş sonrası ana uygulama (ortak layout)
+│   │   │   ├── dashboard/            # Panel sayfası → /dashboard
+│   │   │   ├── card-index/           # Kartoteks (Fişleme/Kutu) → /card-index
+│   │   │   ├── advisor/              # Danışman Odası (RAG Chat) → /advisor
+│   │   │   ├── library/              # Kütüphane (Makale Yükleme/Yönetim) → /library
+│   │   │   └── layout.tsx            # Ortak üst navigasyon (Header) ve sayfa alanı
+│   │   ├── api/                      # Stream veya harici webhook API'leri
+│   │   ├── layout.tsx                # Global HTML ve Root ayarları
+│   │   └── page.tsx                  # Root yönlendirici (/login veya /dashboard)
+│   ├── components/                   # Ortak kullanılan yapılar
+│   │   └── ui/                       # Shadcn UI bileşenleri (dokunulmaz)
+│   ├── db/                           # Veri tabanı katmanı (Neon / Drizzle)
+│   ├── lib/                          # Ortak kütüphane yapılandırmaları (Gemini, Utils)
+│   └── proxy.ts                      # Yönlendirme ve oturum kontrol katmanı
+```
 
 - **Büyük/Küçük Harf Katılığı (Case Sensitivity):** Next.js App Router altındaki tüm klasör, rota ve sayfa dosya isimleri (page.tsx, layout.tsx, actions.ts) istisnasız tamamen küçük harflerle (lowercase) açılmalıdır. Dosya sisteminde daha sonradan yapılan büyük/küçük harf değişikliklerinde Mac hafızasının (cache) sapıtmaması için Git konfigürasyonu her zaman `git config core.ignorecase false` olarak set edilmeli ve Next.js derleyicisinin hayali manifest yolları araması engellenmelidir.
 
@@ -64,10 +67,10 @@ Uygulama, uzun süreli okuma ve akademik çalışma odağı düşünülerek en b
 - **Akademik Tipografi ve Düzen:** Tasarımlar her zaman sade, minimal ve göz yormayan bir yapıda olmalıdır. Metin yoğunluklu alanlarda (makale okuma, kartoteks fişleri) geniş satır aralıkları (`leading-relaxed` veya `leading-loose`) ve okumayı kolaylaştıran yazı boyutları seçilmelidir.
 - **Semantik Renk Yönetimi:** Shadcn'in varsayılan `CSS Variables` yapısı kullanılacaktır. Yapay zeka elementlere kafasına göre `bg-red-500` veya `text-blue-600` gibi inline renkler atayamaz; her zaman semantik değişkenleri (`bg-primary`, `text-muted-foreground`, `border-input`) kullanmalıdır.
 - **Koşullu Opaklık İzni (Kontrollü Şeffaflık):**
-  - **Metinlerde (Text) Şeffaflık KESİNLİKLE YASAKTIR:** Yazı renklerinde asla slash (`/`) ile şeffaflık verilemez (Örn: `text-primary/50` veya `text-red-500/40` yasaktır). Yazılar, kontrastın korunması ve okunabilirlik için her zaman `%100` opak kalmalıdır.
-  - **Arka Plan (`bg-*`) ve Kenarlıklarda (`border-*`) Şeffaflık SERBESTTİR:** Durum rozetleri (badge), tablo satırları veya kart arka planlarında, arkadaki rengi hafifçe sızdıran modern bir derinlik (depth) hissi yaratmak için sadece ve sadece `bg-*` ve `border-*` sınıflarında `/10`, `/15` veya `/20` (maksimum %20 şeffaflık) kullanılabilir.
-  - _Doğru Kurumsal Kalıp:_ `bg-destructive/10 border-destructive/20 text-destructive` (Arka plan ve border soft, yazı %100 net ve parlak).
-  - **Shadcn UI bileşenleri (`src/components/ui/`) bu kuralın dışındadır.**
+  - **Metinlerde (Text) Şeffaflık — KESİNLİKLE YASAKTIR:** Yazı renklerinde asla slash (`/`) ile şeffaflık verilemez (Örn: `text-primary/50` veya `text-red-500/40` yasaktır). Yazılar, kontrastın korunması ve okunabilirlik için her zaman `%100` opak kalmalıdır.
+  - **Arka Plan (`bg-*`) ve Kenarlıklarda (`border-*`) Şeffaflık — SERBESTTİR:** Durum rozetleri (badge), tablo satırları veya kart arka planlarında, arkadaki rengi hafifçe sızdıran modern bir derinlik (depth) hissi yaratmak için sadece ve sadece `bg-*` ve `border-*` sınıflarında `/10`, `/15` veya `/20` (maksimum %20 şeffaflık) kullanılabilir.
+  - **Doğru Kurumsal Kalıp:** `bg-destructive/10 border-destructive/20 text-destructive` (Arka plan ve border soft, yazı `%100` net ve parlak).
+  - **Shadcn UI İstisnası:** `src/components/ui/` altındaki Shadcn UI bileşenleri bu kuralın dışındadır.
 - **Sık Kullanılan Sınıfların Soyutlanması (CSS Classes):** Proje genelinde veya belirli bir sayfada çok sık tekrar eden ortak bir tasarım düzeni/sınıf kümesi oluşturulacaksa (Örn: Kartoteks fiş kapsayıcıları, chat arayüz elemanları, özel listeleme şablonları), HTML içine devasa Tailwind sınıfları yığılamaz. Bu yapılar `global.css` altında anlamlı bir sınıf adı tanımlanarak `@apply` yönergesiyle temiz birer global sınıfa dönüştürülmeli ve oradan çağrılmalıdır.
 - **Shadcn UI Disiplini:** Yeni bir arayüz elementi gerekirken (Örn: Dialog, Select, Sheet), yapay zeka bunu sıfırdan yazamaz veya harici paket kuramaz. Önce projede olup olmadığına bakar, yoksa `npx shadcn@latest add <component>` komutuyla kurup onu özelleştirir.
 - **Küresel Navigasyon Düzeni (Header):** Uygulama geneli küresel navigasyon, sayfa çalışma alanını maksimize etmek amacıyla sol sidebar yerine üst header (Top Header) olarak konumlandırılır. Sayfa içi bağımlı navigasyonlar (kütüphane klasörleri, chat geçmişleri) ilgili sayfaların kendi sol sidebar'ları olarak ilgili route'un layout/page bileşenlerinde yönetilir. Mobil/tablet (< `md` breakpoint) ekranlarda ana navigasyon alt navigation bar'a (Bottom Nav) taşınır.
@@ -78,12 +81,12 @@ Uygulama, uzun süreli okuma ve akademik çalışma odağı düşünülerek en b
 
 Yapay zeka, geliştirme süreci boyunca aşağıdaki disiplin kurallarına ve kodlama modellerine uymak zorundadır:
 
-### Dosya Boyutu ve Sorumluluk Kuralları (MİMARİ ANACAN)
+### 6.1. Dosya Boyutu ve Sorumluluk Kuralları (MİMARİ ANACAN)
 
 - **Tek Sorumluluk İlkesi (Single Responsibility):** Her dosya, her bileşen ve her fonksiyon sadece ve sadece tek bir işten sorumlu olmalıdır. Bir chat penceresi bileşeni hem mesajları listeleyip, hem mesaj atma mantığını yönetip, hem de input validasyonu yapamaz. Bunlar alt bileşenlere ve hook'lara bölünmelidir.
 - **Satır Sınırı (350-400 Satır & Esneklik):** Kod dosyaları ideal olarak **350-400 satırı** aşmamalıdır. Ancak, Single Responsibility (Tek Sorumluluk) ilkesi gereği kodun bölünmesi mimariyi bozacaksa veya bölmek anlamsız bir parçalanmaya yol açacaksa, dosya bütünlüğü korunmalı ve bölünmemelidir. Zoraki bölünmelerden kesinlikle kaçınılmalıdır.
 
-### Geliştirme Kuralları (YAP)
+### 6.2. Geliştirme Kuralları (YAP)
 
 - **Daima JSDoc Kullanımı:** Yazılan tüm fonksiyonlar, server action'lar, custom hook'lar ve kritik bileşenler için **eksiksiz JSDoc dökümantasyonu** yazılmalıdır. Fonksiyonun ne işe yaradığı, parametreleri (`@param`) ve dönüş tipi (`@returns`) açıkça belirtilmelidir.
 - **İzin İsteme Kuralı:** Projenin teknoloji yığınında (`3. Teknoloji Yığını`) listelenmeyen yeni bir npm paketi kurmadan önce **her zaman** kullanıcıdan onay al.
@@ -95,20 +98,36 @@ Yapay zeka, geliştirme süreci boyunca aşağıdaki disiplin kurallarına ve ko
   - **Backend ve Mantık Katmanı (%100 İngilizce):** Tüm veritabanı kolon isimleri, fonksiyon adları, local değişkenler, Zod şemaları, API payload'ları ve Logger event/step stringleri tamamen profesyonel bilgisayar bilimi İngilizcesi (camelCase veya snake_case) ile yazılacaktır. Türkçe karakter içermesi kesinlikle yasaktır.
   - **Kullanıcı Arayüzü (UI) ve Çıktılar (%100 Türkçe):** Kullanıcının ekranda gördüğü tüm bileşenler, butonlar, tablo başlıkları, kart açıklamaları ve Gemini'nin ürettiği metinsel akademik analiz/tavsiyeler (strategicRecommendations) tamamen akıcı, elit bir akademik Türkçe ile yazılacak; Türkçe karakterler eksiksiz işlenecektir. Backend'den gelen İngilizce enum'lar (HIGH_RISK, OVERLAPPING) UI katmanında bir local sözlük (statusTranslation) üzerinden Türkçeye çevrilerek render edilecektir.
 
-### Yapay Zeka Entegrasyon Kuralları (AI Integration Patterns)
+### 6.3. Yapay Zeka Entegrasyon Kuralları (AI Integration Patterns)
 
 - **SDK Disiplini:** Projede eski nesil paketler (`@google/generative-ai`) kesinlikle kullanılmayacak; her zaman yeni nesil `@google/genai` kütüphanesi kullanılacaktır. İstemci başlatılırken `import { GoogleGenAI } from "@google/genai";` ve `const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });` standart kalıbı uygulanacaktır.
+- **Temperature Stratejisi:** Gemini 3 ve üzeri modellerin mimari optimizasyonu ve akıl yürütme yeteneklerinin tam performansla çalışması için varsayılan temperature değeri olan `1.0` her zaman korunmalıdır. Sıcaklığı düşürmek (temperature < 1.0) modelin akıl yürütme adımlarında sonsuz döngüye girmesine (looping) veya kalitesiz çıktılar üretmesine yol açtığı için kesinlikle yasaktır. Determinizm ve biçim kontrolü temperature düşürerek değil, prompt mühendisliği (net direktifler ve örnekler) ile schema tanımları (`response_json_schema`) üzerinden sağlanmalıdır. Hiçbir istisna (Aşama 1, Kutu Oluşturma vb.) kabul edilmez; tüm model çağrılarda temperature `1.0` kullanılmalıdır.
 
-- **Temperature Stratejisi:** Gemini 3 ve üzeri modellerin mimari optimizasyonu ve akıl yürütme yeteneklerinin tam performansla çalışması için varsayılan temperature değeri `1.0` korunmalıdır. Determinizm ve kelime kökü alma gibi kısıtlar temperature düşürmek yerine prompt mühendisliği (net direktifler ve örnekler) ile şema tanımları üzerinden sağlanmalıdır.
-  - **İstisna — Aşama 1 (Sorgu Çıkarımı):** `extractQueries()` içinde kullanılan `gemini-3.1-flash-lite` model çağrısında, her çalıştırmada birebir aynı `tavilyQueries` ve `keywords` çıktılarını üretebilmek için `temperature: 0.1` ve `thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }` kullanılır.
-  - **İstisna — Yapısal Zenginleştirme ve Kutu Oluşturma:** Tez matrisi zenginleştirme (submitThesisMatrixAction) ve konu kutusu üretimi (generateThesisBoxesAction) aşamalarında, modelin yapısal akademik şablonları üretirken jenerik varsayımlara sapmasını engellemek ve girdideki saf verilere odaklanmasını sağlamak amacıyla `generateStructuredContent` çağrıları `temperature: 0.3` seçeneği ile çalıştırılır.
-  - Diğer tüm AI çağrıları (eleme, sınıflandırma, sentez, analiz) varsayılan `1.0` ile çalışmaya devam eder.
+- **Ajan Akıl Yürütme Gücü (Thinking Config):** Gemini 3 ve üzeri modellerin mimari optimizasyonu ve akıl yürütme yetenekleri için her fonksiyonun gereksinimine göre özel `thinkingConfig` ayarları uygulanır. Sistem genelinde bu ayarlar aşağıdaki gibidir:
 
-- **Ajan Akıl Yürütme Gücü (Thinking Config):** Derin akademik muhakeme gerektiren sentez veya yol haritası analizi gibi işlemlerde model konfigürasyonuna `thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }` (veya MEDIUM) açıkça dikte edilebilir. Ancak basit eleme, sifting ve ikili sınıflandırma (ORIGINAL / OVERLAPPING) adımlarında gereksiz sapma ve yorum genişlemesini önlemek için thinking config kapalı (null veya minimum) tutulmalıdır.
+  #### 1. `null` (Kapalı) — Yapısal ve Şablonlama Görevleri
+  - **Karakteristiği:** Ham metni akademik üsluba çevirme, verileri JSON şemasına yerleştirme veya hiyerarşik kutulara bölme gibi saf biçimlendirme işleri.
+  - **Kural:** Akıl yürütme tamamen kapatılır (`null`). Model doğrudan çıktı üreterek maksimum hız ve minimum maliyet sağlar.
+  - **Not:** Wikipedia veya Google Books gibi dış API doğrulamaları zaten kod katmanında asenkron yapılıyorsa, yapay zekaya düşünme bütçesi verilmemelidir.
+
+  #### 2. `low` — Kural Takibi ve Doğrulama Görevleri
+  - **Karakteristiği:** Kelimeleri eklerinden ayıklayıp kökünü bulma (lemma), iki metni karşılaştırıp "bilgi var mı/yok mu" testi yapma (fact-checking) veya katı eliminasyon kurallarıyla listeleri süzme.
+  - **Kural:** `thinkingLevel: "low"` olarak ayarlanır.
+  - **Avantajı:** Modele kuralları denetlemesi için minimum bütçe tanır. Modelin yaratıcı yorumlar yapmasını engeller, prompttaki katı sınırlamalara tam itaat etmesini sağlar.
+
+  #### 3. `medium` — Planlama ve İçerik Üretim Görevleri
+  - **Karakteristiği:** Günlük veya haftalık çalışma planlaması yapma, içerik taslakları (outline) çıkarma, beyin fırtınası süreçleri veya esnek e-posta/metin fikirleri üretme.
+  - **Kural:** `thinkingLevel: "medium"` olarak ayarlanır.
+  - **Avantajı:** Google dökümanına göre en dengeli yaratıcılık, mantık ve hız optimizasyonunu bu seviyede sunar. Katı kısıtlamalar yerine akıcı ve esnek tavsiye mekanizmaları kurmak için idealdir.
+
+  #### 4. `high` — Stratejik ve Derin Analiz Görevleri
+  - **Karakteristiği:** Kelime benzerliklerinin ötesine geçerek "anlamsal kapsam/yutulma" tespiti yapan jüri analizleri veya klişelerden uzak, isme özel taktiksel akademik yol haritaları sentezleme.
+  - **Kural:** `thinkingLevel: "high"` olarak ayarlanır.
+  - **Avantajı:** Akıl yürütme derinliğini maksimuma çıkarır. İlk token süresi uzasa bile, yüzeysel kalıpları yıkarak uzman seviyesinde ve yüksek kalitede analiz üretir.
 
 - **Prompt Mühendisliği Standartları:**
   1. Persona veya rolden ziyade asıl görevi (ne üretileceğini) en net şekilde tanımla.
-  2. Prompt hiyerarşisinde `Context` -> `Task` -> `Constraints` -> `Output format` -> `Examples` sırasını takip et.
+  2. Prompt hiyerarşisinde `Context` → `Task` → `Constraints` → `Output format` → `Examples` sırasını takip et.
   3. Belirsiz ifadelerden kaçın, çıktının sınırlarını (örn: kelime/karakter limitleri) net olarak belirt.
   4. Gereksiz "thinking/step-by-step" talimatları verme (sadece derin muhakeme gerektiren sentez aşamasında kullan).
   5. Kısıtları her zaman pozitif ("Sadece şunu yap" > "Şunu yapma") ifadelerle yaz.
@@ -120,11 +139,11 @@ Yapay zeka, geliştirme süreci boyunca aşağıdaki disiplin kurallarına ve ko
 
 - **XML Tabanlı Prompt Mimarisi:** Modele gönderilen sistem talimatları ve kullanıcı promptları; `instructions`, `constraints`, `context` ve `task` verilerinin birbirine karışmaması için her zaman tutarlı bir şekilde XML etiketleri (`<role>`, `<context>`, `<task>`, `<constraints>`) kullanılarak kapsüllenecektir. Bu yapı, prompt mühendisliğinde tek düze bir şablon sunar ve modelin talimatları daha doğru yorumlamasını sağlar.
 
-### Yasaklar (YAPMA)
+### 6.4. Yasaklar (YAPMA)
 
 - **Yarım Bırakma:** Kod üretirken veya refaktör yaparken asla `// ... eski kodlar buraya gelecek ...` veya `// TODO:` şeklinde geçici/yarım bırakılmış yorum satırları kullanma.
 - **Dosya Yollarını Karıştırma:** Rota grubu olan `(app)` klasörünü linkleme yaparken kullanma. Navigasyon her zaman doğrudan URL rotasına (`/dashboard`, `/card-index`) yapılmalıdır.
 
-### AGENTS.md Güncelleme Protokolü
+### 6.5. AGENTS.md Güncelleme Protokolü
 
 - **Kullanıcı Emirleri Üstündür:** Eğer kullanıcı, bu `AGENTS.md` dosyasında yazan kurallarla çelişen bir talimat verirse veya mimari bir değişikliğe gitmek isterse; yapay zeka kodu yazmadan önce **derhal bu `AGENTS.md` dosyasını kullanıcının yeni isteğine göre güncelleyecek** ve ardından kodu bu yeni sözleşmeye uygun olarak üretecektir. Bu dosya statik değildir, dinamik olarak büyüyecektir.

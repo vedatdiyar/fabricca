@@ -176,7 +176,9 @@ export async function submitThesisMatrixAction(
           matrixEnhancementPrompt,
           enhancedThesisSchema,
           log,
-          { temperature: 0.3 },
+          {
+            thinkingConfig: null,
+          },
         );
         break;
       } catch (e) {

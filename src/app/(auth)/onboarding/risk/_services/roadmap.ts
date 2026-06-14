@@ -59,9 +59,8 @@ export async function synthesizeRoadmap(
         log,
         {
           thinkingConfig: {
-            thinkingLevel: ThinkingLevel.LOW,
+            thinkingLevel: ThinkingLevel.HIGH,
           },
-          temperature: 0.1,
         },
       );
     } catch (roadmapError) {
@@ -85,7 +84,6 @@ export async function synthesizeRoadmap(
         log,
         {
           thinkingConfig: null,
-          temperature: 0.1,
         },
       );
     }

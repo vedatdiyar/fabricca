@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/card";
 import { StartOverButton } from "../../_components/start-over-button";
 import { generateBoxesForCurrentMatrixAction } from "../actions";
+import { getThesisPriority } from "@/app/(auth)/onboarding/risk/_services/risk-calc";
 
 interface OriginalityReportViewProps {
   reportData: {
@@ -80,140 +81,6 @@ const tavilyBadgeColor: Record<string, string> = {
   PARTIALLY_VERIFIED:
     "bg-amber-500/10 border border-amber-500/20 text-amber-400",
   REFUTED: "bg-destructive/10 border border-destructive/20 text-destructive",
-};
-
-const getThesisPriority = (axes: {
-  subject: string;
-  theory: string;
-  methodology: string;
-  context?: string;
-}) => {
-  const {
-    subject: s,
-    theory: t,
-    methodology: m,
-    context: c = "ORIGINAL",
-  } = axes;
-
-  // 4 overlaps
-  if (
-    s === "OVERLAPPING" &&
-    t === "OVERLAPPING" &&
-    m === "OVERLAPPING" &&
-    c === "OVERLAPPING"
-  )
-    return 1;
-
-  // 3 overlaps
-  if (
-    s === "OVERLAPPING" &&
-    t === "OVERLAPPING" &&
-    m === "OVERLAPPING" &&
-    c === "ORIGINAL"
-  )
-    return 2;
-  if (
-    s === "OVERLAPPING" &&
-    t === "OVERLAPPING" &&
-    m === "ORIGINAL" &&
-    c === "OVERLAPPING"
-  )
-    return 3;
-  if (
-    s === "OVERLAPPING" &&
-    t === "ORIGINAL" &&
-    m === "OVERLAPPING" &&
-    c === "OVERLAPPING"
-  )
-    return 4;
-  if (
-    s === "ORIGINAL" &&
-    t === "OVERLAPPING" &&
-    m === "OVERLAPPING" &&
-    c === "OVERLAPPING"
-  )
-    return 5;
-
-  // 2 overlaps (subject overlapping)
-  if (
-    s === "OVERLAPPING" &&
-    t === "OVERLAPPING" &&
-    m === "ORIGINAL" &&
-    c === "ORIGINAL"
-  )
-    return 6;
-  if (
-    s === "OVERLAPPING" &&
-    t === "ORIGINAL" &&
-    m === "ORIGINAL" &&
-    c === "OVERLAPPING"
-  )
-    return 7;
-  if (
-    s === "OVERLAPPING" &&
-    t === "ORIGINAL" &&
-    m === "OVERLAPPING" &&
-    c === "ORIGINAL"
-  )
-    return 8;
-
-  // 1 overlap (subject overlapping)
-  if (
-    s === "OVERLAPPING" &&
-    t === "ORIGINAL" &&
-    m === "ORIGINAL" &&
-    c === "ORIGINAL"
-  )
-    return 9;
-
-  // 2 overlaps (subject original)
-  if (
-    s === "ORIGINAL" &&
-    t === "ORIGINAL" &&
-    m === "OVERLAPPING" &&
-    c === "OVERLAPPING"
-  )
-    return 10;
-  if (
-    s === "ORIGINAL" &&
-    t === "OVERLAPPING" &&
-    m === "ORIGINAL" &&
-    c === "OVERLAPPING"
-  )
-    return 11;
-  if (
-    s === "ORIGINAL" &&
-    t === "OVERLAPPING" &&
-    m === "OVERLAPPING" &&
-    c === "ORIGINAL"
-  )
-    return 12;
-
-  // 1 overlap (subject original)
-  if (
-    s === "ORIGINAL" &&
-    t === "ORIGINAL" &&
-    m === "ORIGINAL" &&
-    c === "OVERLAPPING"
-  )
-    return 13;
-  if (
-    s === "ORIGINAL" &&
-    t === "ORIGINAL" &&
-    m === "OVERLAPPING" &&
-    c === "ORIGINAL"
-  )
-    return 14;
-  if (
-    s === "ORIGINAL" &&
-    t === "OVERLAPPING" &&
-    m === "ORIGINAL" &&
-    c === "ORIGINAL"
-  )
-    return 15;
-
-  // 0 overlaps
-  return 16;
 };
 
 /**
@@ -338,7 +205,7 @@ export function OriginalityReportView({
           toast.error(result.error);
           setIsGenerating(false);
         } else {
-          router.push("/onboarding/complete");
+          router.push("/onboarding/boxes");
         }
       } catch {
         toast.error(
@@ -689,7 +556,7 @@ export function OriginalityReportView({
           <Button
             onClick={handleProceed}
             disabled={isPending || isGenerating}
-            className="btn-academic-herox"
+            className="btn-academic-hero"
           >
             {isPending || isGenerating ? (
               <span className="flex items-center gap-2">

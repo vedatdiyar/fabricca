@@ -62,11 +62,18 @@ export async function startOriginalityAnalysisAction(): Promise<OnboardingAction
       return { error: "Kullanıcı bulunamadı." };
     }
 
-    // Otomatik İyileştirme (Auto-healing): Eğer veri tabanında rapor zaten varsa ama adım tamamlanmadıysa, adımı tamamla
-    if (
-      user.onboardingStep === "originality_report" ||
-      user.onboardingStep === "originality_report_processing"
-    ) {
+    // Önce: Analiz aktif olarak devam ediyorsa, rapor sorgusu yapmadan hemen dön
+    if (user.onboardingStep === "originality_report_processing") {
+      log.info("flow_complete", {
+        service: "originality",
+        data: { reason: "Analiz zaten devam ediyor", userId },
+      });
+      return { success: true, isProcessing: true };
+    }
+
+    // Otomatik İyileştirme (Auto-healing): Adım "originality_report" iken rapor
+    // veritabanında zaten mevcutsa, adımı tamamlandı olarak işaretle ve dön
+    if (user.onboardingStep === "originality_report") {
       const [report] = await db
         .select()
         .from(originalityReports)
@@ -92,14 +99,6 @@ export async function startOriginalityAnalysisAction(): Promise<OnboardingAction
         });
         return { success: true };
       }
-    }
-
-    if (user.onboardingStep === "originality_report_processing") {
-      log.info("flow_complete", {
-        service: "originality",
-        data: { reason: "Analiz zaten devam ediyor", userId },
-      });
-      return { success: true, isProcessing: true };
     }
 
     if (user.onboardingStep === "originality_report_completed") {
@@ -459,7 +458,7 @@ export async function generateBoxesForCurrentMatrixAction(): Promise<OnboardingA
     const session = await getSession();
     if (!session) {
       log.info("flow_complete", {
-        service: "enrichment",
+        service: "boxes",
         data: { reason: "No session found" },
       });
       return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
@@ -478,7 +477,7 @@ export async function generateBoxesForCurrentMatrixAction(): Promise<OnboardingA
 
     if (!matrix) {
       log.info("flow_complete", {
-        service: "enrichment",
+        service: "boxes",
         data: { reason: "Matrix not found" },
       });
       return {
@@ -486,11 +485,11 @@ export async function generateBoxesForCurrentMatrixAction(): Promise<OnboardingA
       };
     }
 
-    // complete/actions altındaki asıl metodu çağırıyoruz
-    const { generateThesisBoxesAction } = await import("../complete/actions");
+    // boxes/actions altındaki asıl metodu çağırıyoruz
+    const { generateThesisBoxesAction } = await import("../boxes/actions");
     return await generateThesisBoxesAction(matrix.id);
   } catch (err) {
-    log.error("flow_complete", { service: "enrichment", error: err });
+    log.error("flow_complete", { service: "boxes", error: err });
     return {
       error: "Konu kutuları oluşturulurken beklenmeyen bir hata oluştu.",
     };

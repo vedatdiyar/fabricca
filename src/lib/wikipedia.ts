@@ -1,3 +1,5 @@
+import type { Logger } from "./logger";
+
 /**
  * Wikipedia Arama Sonucu Öğe Arayüzü.
  */
@@ -23,11 +25,13 @@ interface WikipediaSearchResponse {
  *
  * @param name - Arama yapılacak teorisyenin tam adı (Örn: "David Snow").
  * @param context - Teorisyenin ilişkilendirildiği bağlam veya disiplin (Örn: "sociology").
+ * @param logger - Opsiyonel Logger instance'ı (hata logları için).
  * @returns En alakalı sayfanın başlık, açıklama, özet ve anahtar bilgilerini içeren nesne veya null.
  */
 export async function searchWikipediaTheorist(
   name: string,
   context: string,
+  logger?: Logger,
 ): Promise<{
   title: string;
   description: string;
@@ -57,9 +61,14 @@ export async function searchWikipediaTheorist(
     });
 
     if (!response.ok) {
-      console.error(
-        `[Wikipedia Service] API error: ${response.status} ${response.statusText}`,
-      );
+      logger?.error("search_filtered", {
+        service: "wikipedia",
+        step: "theorist_api_error",
+        error: new Error(
+          `Wikipedia API error: ${response.status} ${response.statusText}`,
+        ),
+        data: { name, context },
+      });
       return null;
     }
 
@@ -114,7 +123,12 @@ export async function searchWikipediaTheorist(
       key: bestMatch.key || "",
     };
   } catch (error) {
-    console.error("[Wikipedia Service] Error querying theorist page:", error);
+    logger?.error("search_filtered", {
+      service: "wikipedia",
+      step: "theorist_search_failed",
+      error,
+      data: { name, context },
+    });
     return null;
   }
 }

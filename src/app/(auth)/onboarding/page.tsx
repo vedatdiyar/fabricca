@@ -16,7 +16,7 @@ export default async function OnboardingPage() {
     case "originality_report":
       redirect("/onboarding/risk");
     case "originality_report_completed":
-      redirect("/onboarding/complete");
+      redirect("/onboarding/boxes");
     case "completed":
       redirect("/dashboard");
     default:

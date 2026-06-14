@@ -167,3 +167,148 @@ export function calculateOriginalityRisk(
     riskPercentage,
   };
 }
+
+/**
+ * Computes a sort priority integer for a thesis based on its 4-axis overlap profile.
+ * Lower numbers indicate higher academic risk and should appear first in the UI table.
+ * This is a pure function with no side effects.
+ *
+ * Priority 1 = all 4 axes overlapping (highest risk)
+ * Priority 16 = all 4 axes original (no overlap)
+ *
+ * @param axes - The axis overlap flags for the thesis.
+ * @returns A priority integer between 1 and 16.
+ */
+export function getThesisPriority(axes: {
+  subject: string;
+  theory: string;
+  methodology: string;
+  context?: string;
+}): number {
+  const {
+    subject: s,
+    theory: t,
+    methodology: m,
+    context: c = "ORIGINAL",
+  } = axes;
+
+  // 4 overlaps
+  if (
+    s === "OVERLAPPING" &&
+    t === "OVERLAPPING" &&
+    m === "OVERLAPPING" &&
+    c === "OVERLAPPING"
+  )
+    return 1;
+
+  // 3 overlaps
+  if (
+    s === "OVERLAPPING" &&
+    t === "OVERLAPPING" &&
+    m === "OVERLAPPING" &&
+    c === "ORIGINAL"
+  )
+    return 2;
+  if (
+    s === "OVERLAPPING" &&
+    t === "OVERLAPPING" &&
+    m === "ORIGINAL" &&
+    c === "OVERLAPPING"
+  )
+    return 3;
+  if (
+    s === "OVERLAPPING" &&
+    t === "ORIGINAL" &&
+    m === "OVERLAPPING" &&
+    c === "OVERLAPPING"
+  )
+    return 4;
+  if (
+    s === "ORIGINAL" &&
+    t === "OVERLAPPING" &&
+    m === "OVERLAPPING" &&
+    c === "OVERLAPPING"
+  )
+    return 5;
+
+  // 2 overlaps (subject overlapping)
+  if (
+    s === "OVERLAPPING" &&
+    t === "OVERLAPPING" &&
+    m === "ORIGINAL" &&
+    c === "ORIGINAL"
+  )
+    return 6;
+  if (
+    s === "OVERLAPPING" &&
+    t === "ORIGINAL" &&
+    m === "ORIGINAL" &&
+    c === "OVERLAPPING"
+  )
+    return 7;
+  if (
+    s === "OVERLAPPING" &&
+    t === "ORIGINAL" &&
+    m === "OVERLAPPING" &&
+    c === "ORIGINAL"
+  )
+    return 8;
+
+  // 1 overlap (subject overlapping)
+  if (
+    s === "OVERLAPPING" &&
+    t === "ORIGINAL" &&
+    m === "ORIGINAL" &&
+    c === "ORIGINAL"
+  )
+    return 9;
+
+  // 2 overlaps (subject original)
+  if (
+    s === "ORIGINAL" &&
+    t === "ORIGINAL" &&
+    m === "OVERLAPPING" &&
+    c === "OVERLAPPING"
+  )
+    return 10;
+  if (
+    s === "ORIGINAL" &&
+    t === "OVERLAPPING" &&
+    m === "ORIGINAL" &&
+    c === "OVERLAPPING"
+  )
+    return 11;
+  if (
+    s === "ORIGINAL" &&
+    t === "OVERLAPPING" &&
+    m === "OVERLAPPING" &&
+    c === "ORIGINAL"
+  )
+    return 12;
+
+  // 1 overlap (subject original)
+  if (
+    s === "ORIGINAL" &&
+    t === "ORIGINAL" &&
+    m === "ORIGINAL" &&
+    c === "OVERLAPPING"
+  )
+    return 13;
+  if (
+    s === "ORIGINAL" &&
+    t === "ORIGINAL" &&
+    m === "OVERLAPPING" &&
+    c === "ORIGINAL"
+  )
+    return 14;
+  if (
+    s === "ORIGINAL" &&
+    t === "OVERLAPPING" &&
+    m === "ORIGINAL" &&
+    c === "ORIGINAL"
+  )
+    return 15;
+
+  // 0 overlaps
+  return 16;
+}

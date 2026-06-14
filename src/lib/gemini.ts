@@ -51,14 +51,14 @@ async function retryOn503<T>(
     attempt++;
     try {
       return await fn();
-    } catch (error: any) {
+    } catch (error: unknown) {
       const is503 =
-        error?.status === "UNAVAILABLE" ||
-        error?.code === 503 ||
-        (error?.message &&
-          (error.message.includes("high demand") ||
-            error.message.includes("503") ||
-            error.message.includes("UNAVAILABLE")));
+        error instanceof Error &&
+        (("status" in error && (error as { status: string }).status === "UNAVAILABLE") ||
+          ("code" in error && (error as { code: number }).code === 503) ||
+          error.message.includes("high demand") ||
+          error.message.includes("503") ||
+          error.message.includes("UNAVAILABLE"));
 
       if (!is503 || attempt > maxRetries) {
         throw error;
@@ -108,7 +108,6 @@ export async function generateStructuredContent<T>(
     thinkingConfig?: {
       thinkingLevel?: ThinkingLevel;
     } | null;
-    temperature?: number;
   },
 ): Promise<T> {
   const startTime = performance.now();
@@ -130,8 +129,7 @@ export async function generateStructuredContent<T>(
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           config: {
             systemInstruction,
-            temperature:
-              options?.temperature !== undefined ? options.temperature : 1.0,
+            temperature: 1.0,
             responseMimeType: "application/json",
             responseJsonSchema: schema,
             thinkingConfig:
