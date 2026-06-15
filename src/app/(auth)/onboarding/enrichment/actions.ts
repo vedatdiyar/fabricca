@@ -1,68 +1,120 @@
 "use server";
 
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
 import { getSession } from "@/proxy";
 import { createFlowId, Logger } from "@/lib/logger";
-import type {
-  EnhancedThesisData,
-  OnboardingActionResult,
-} from "@/lib/types";
+import type { EnhancedThesisData, OnboardingActionResult } from "@/lib/types";
 
 /**
- * Kullanıcının onayladığı akademik olgunlaştırılmış tez matrisi verilerini onaylar.
- * Database-free mimari gereğince veritabanına yazma işlemi yapmaz.
- * Session kontrolü yapar ve doğrudan başarı döner.
+ * Updates the enriched thesis matrix in the database and cascades stale data.
+ * Called when user clicks "Onayla ve İlerle" on the enrichment page.
  *
- * @param data - Onaylanmış EnhancedThesisData
- * @returns Başarılıysa { success: true }, hatalıysa { error: string }
+ * If the enriched data changed, it deletes downstream data
+ * (originality_reports, thesis_boxes cascade library_resources)
+ * to maintain consistency.
+ *
+ * @param data - The (possibly edited) enriched thesis data
+ * @param hasChanges - Whether the user actually modified the data
+ * @returns Success response or error
  */
 export async function confirmEnhancedThesisAction(
   data: EnhancedThesisData,
-): Promise<OnboardingActionResult> {
+): Promise<OnboardingActionResult & { needsRedirect?: boolean }> {
   const flowId = createFlowId();
   const log = new Logger(flowId);
-  const startTime = performance.now();
 
-  log.info({
-    step: "confirm_enhanced_thesis",
-    status: "START",
-  });
+  log.info({ step: "confirm_enhanced_thesis", status: "START" });
 
   try {
     const session = await getSession();
-
     if (!session) {
-      log.warn({
-        step: "confirm_enhanced_thesis",
-        status: "FAILED",
-        diagnostics: {
-          errorCode: "AUTH_ERROR",
-          message: "Oturum bulunamadı. Lütfen tekrar giriş yapın.",
-        },
-      });
       return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
     }
 
-    const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
+    const userId = session.userId;
 
-    log.info({
-      step: "confirm_enhanced_thesis",
-      status: "SUCCESS",
-      metrics: {
-        duration,
-        outputRows: 1,
-      },
-    });
+    // Always update thesis_matrices with the latest enriched data
+    await db
+      .insert(thesisMatrices)
+      .values({
+        userId,
+        studyTitle: data.academicStudyTitle,
+        researchQuestion: data.literatureResearchQuestion,
+        mainClaim: data.refinedThesisClaim,
+        methodology: data.academicMethodologyDesign,
+        theoreticalFramework: data.conceptualTheoreticalInfrastructure,
+        historicalSpatialLimits: data.historicalSpatialLimits,
+        keywords: [],
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: thesisMatrices.userId,
+        set: {
+          studyTitle: data.academicStudyTitle,
+          researchQuestion: data.literatureResearchQuestion,
+          mainClaim: data.refinedThesisClaim,
+          methodology: data.academicMethodologyDesign,
+          theoreticalFramework: data.conceptualTheoreticalInfrastructure,
+          historicalSpatialLimits: data.historicalSpatialLimits,
+          updatedAt: new Date(),
+        },
+      });
 
+    // Check if there is downstream stale data
+    const [existingReport] = await db
+      .select({ id: originalityReports.id })
+      .from(originalityReports)
+      .where(eq(originalityReports.userId, userId));
+
+    // Ste stale data exists → signal client to show confirmation dialog
+    if (existingReport) {
+      return {
+        success: true,
+        needsRedirect: true,
+      };
+    }
+
+    log.info({ step: "confirm_enhanced_thesis", status: "SUCCESS" });
     return { success: true };
   } catch (error) {
-    log.error({
-      step: "confirm_enhanced_thesis",
-      status: "FAILED",
-      diagnostics: {
-        errorCode: "CONFIRM_ENRICHED_THESIS_ERROR",
-        message: error instanceof Error ? error.message : String(error),
-      },
-    });
+    log.error({ step: "confirm_enhanced_thesis", status: "FAILED", diagnostics: { errorCode: "CONFIRM_ENRICHED_THESIS_ERROR", message: error instanceof Error ? error.message : String(error) } });
     return { error: "Tez matrisi onaylanırken bir hata oluştu." };
+  }
+}
+
+/**
+ * Clears stale downstream data (originality_reports, thesis_boxes cascade)
+ * after user confirms they want to proceed despite data loss.
+ */
+export async function clearOnboardingStaleDataAction(): Promise<OnboardingActionResult> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: "Oturum bulunamadı." };
+
+    const userId = session.userId;
+
+    await db.delete(originalityReports).where(eq(originalityReports.userId, userId));
+    // thesis_boxes cascade deletes via thesis_matrices → thesis_boxes FK
+    // But thesis_boxes references thesisMatrixId, not userId directly.
+    // We need to find the matrix ID first.
+    const [matrix] = await db
+      .select({ id: thesisMatrices.id })
+      .from(thesisMatrices)
+      .where(eq(thesisMatrices.userId, userId));
+
+    if (matrix) {
+      await db.delete(thesisBoxes).where(eq(thesisBoxes.thesisMatrixId, matrix.id));
+    }
+
+    log.info({ step: "clear_stale_data", status: "SUCCESS" });
+    return { success: true };
+  } catch (error) {
+    log.error({ step: "clear_stale_data", status: "FAILED", error: String(error) });
+    return { error: "Veri temizlenirken bir hata oluştu." };
   }
 }

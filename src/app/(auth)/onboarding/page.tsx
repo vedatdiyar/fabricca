@@ -1,13 +1,17 @@
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { thesisMatrices, originalityReports } from "@/db/schema";
+import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
 import { getProfile } from "@/proxy";
 
 /**
- * Onboarding root router page (Server Component).
- * If the user has existing onboarding data in the DB, skips directly to
- * the literature-review step. Otherwise starts from the matrix form.
+ * Onboarding root router page.
+ * Redirects to the last completed step:
+ * - No matrix → matrix form
+ * - Matrix exists, no report → enrichment review
+ * - Report exists, no boxes → risk report
+ * - Boxes exist, not completed → literature review
+ * - Completed → dashboard
  */
 export default async function OnboardingPage() {
   const profile = await getProfile();
@@ -31,7 +35,17 @@ export default async function OnboardingPage() {
     .where(eq(originalityReports.userId, profile.id));
 
   if (!report) {
-    redirect("/onboarding/matrix");
+    redirect("/onboarding/enrichment");
+  }
+
+  const [box] = await db
+    .select({ id: thesisBoxes.id })
+    .from(thesisBoxes)
+    .where(eq(thesisBoxes.thesisMatrixId, matrix.id))
+    .limit(1);
+
+  if (!box) {
+    redirect("/onboarding/risk");
   }
 
   redirect("/onboarding/literature-review");

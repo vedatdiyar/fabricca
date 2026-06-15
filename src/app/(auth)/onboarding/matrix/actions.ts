@@ -1,5 +1,8 @@
 "use server";
 
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { thesisMatrices } from "@/db/schema";
 import { getSession } from "@/proxy";
 import { generateStructuredContent } from "@/lib/gemini";
 import { createFlowId, Logger } from "@/lib/logger";
@@ -33,12 +36,9 @@ function validateField(value: string | undefined): string | null {
 }
 
 /**
- * Validates the raw matrix input and triggers Gemini to produce the academically
- * enhanced thesis matrix parameters. Returns the raw JSON to the client.
- * Bypasses database operations completely.
- *
- * @param data - The raw thesis matrix input values.
- * @returns Object with success and enhanced data, or error message.
+ * Validates the raw matrix input, triggers Gemini to produce the academically
+ * enhanced thesis matrix, writes the enriched data directly to thesis_matrices,
+ * and returns the enhanced JSON to the client.
  */
 export async function submitThesisMatrixAction(
   data: ThesisMatrixInput,
@@ -47,113 +47,29 @@ export async function submitThesisMatrixAction(
   const log = new Logger(flowId);
   const startTime = performance.now();
 
-  log.info({
-    step: "matrix_enrichment",
-    status: "START",
-  });
+  log.info({ step: "matrix_enrichment", status: "START" });
 
   try {
     const session = await getSession();
-
     if (!session) {
-      log.warn({
-        step: "matrix_enrichment",
-        status: "FAILED",
-        diagnostics: {
-          errorCode: "AUTH_ERROR",
-          message: "Oturum bulunamadı. Lütfen tekrar giriş yapın.",
-        },
-      });
       return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
     }
 
     const studyTitle = validateField(data.studyTitle);
-    if (!studyTitle) {
-      log.warn({
-        step: "matrix_enrichment",
-        status: "FAILED",
-        diagnostics: {
-          errorCode: "VALIDATION_ERROR",
-          message: "Çalışma başlığı en az 3 karakter olmalıdır.",
-        },
-      });
-      return { error: "Çalışma başlığı en az 3 karakter olmalıdır." };
-    }
-
     const researchQuestion = validateField(data.researchQuestion);
-    if (!researchQuestion) {
-      log.warn({
-        step: "matrix_enrichment",
-        status: "FAILED",
-        diagnostics: {
-          errorCode: "VALIDATION_ERROR",
-          message: "Araştırma sorusu en az 3 karakter olmalıdır.",
-        },
-      });
-      return { error: "Araştırma sorusu en az 3 karakter olmalıdır." };
-    }
-
     const mainClaim = validateField(data.mainClaim);
-    if (!mainClaim) {
-      log.warn({
-        step: "matrix_enrichment",
-        status: "FAILED",
-        diagnostics: {
-          errorCode: "VALIDATION_ERROR",
-          message: "Temel iddia en az 3 karakter olmalıdır.",
-        },
-      });
-      return { error: "Temel iddia en az 3 karakter olmalıdır." };
-    }
-
     const methodology = validateField(data.methodology);
-    if (!methodology) {
-      log.warn({
-        step: "matrix_enrichment",
-        status: "FAILED",
-        diagnostics: {
-          errorCode: "VALIDATION_ERROR",
-          message: "Metodoloji en az 3 karakter olmalıdır.",
-        },
-      });
-      return { error: "Metodoloji en az 3 karakter olmalıdır." };
-    }
-
     const theoreticalFramework = validateField(data.theoreticalFramework);
-    if (!theoreticalFramework) {
-      log.warn({
-        step: "matrix_enrichment",
-        status: "FAILED",
-        diagnostics: {
-          errorCode: "VALIDATION_ERROR",
-          message: "Kuramsal çerçeve en az 3 karakter olmalıdır.",
-        },
-      });
-      return { error: "Kuramsal çerçeve en az 3 karakter olmalıdır." };
-    }
-
     const historicalSpatialLimits = validateField(data.historicalSpatialLimits);
-    if (!historicalSpatialLimits) {
-      log.warn({
-        step: "matrix_enrichment",
-        status: "FAILED",
-        diagnostics: {
-          errorCode: "VALIDATION_ERROR",
-          message: "Tarihsel/mekânsal sınırlar en az 3 karakter olmalıdır.",
-        },
-      });
-      return {
-        error: "Tarihsel/mekânsal sınırlar en az 3 karakter olmalıdır.",
-      };
-    }
+    if (!studyTitle) return { error: "Çalışma başlığı en az 3 karakter olmalıdır." };
+    if (!researchQuestion) return { error: "Araştırma sorusu en az 3 karakter olmalıdır." };
+    if (!mainClaim) return { error: "Temel iddia en az 3 karakter olmalıdır." };
+    if (!methodology) return { error: "Metodoloji en az 3 karakter olmalıdır." };
+    if (!theoreticalFramework) return { error: "Kuramsal çerçeve en az 3 karakter olmalıdır." };
+    if (!historicalSpatialLimits) return { error: "Tarihsel/mekânsal sınırlar en az 3 karakter olmalıdır." };
 
     const matrixEnhancementPrompt = buildMatrixEnhancementPrompt({
-      studyTitle,
-      researchQuestion,
-      mainClaim,
-      methodology,
-      theoreticalFramework,
-      historicalSpatialLimits,
+      studyTitle, researchQuestion, mainClaim, methodology, theoreticalFramework, historicalSpatialLimits,
     });
 
     let enhancedData: EnhancedThesisData | undefined;
@@ -167,68 +83,57 @@ export async function submitThesisMatrixAction(
           matrixEnhancementPrompt,
           enhancedThesisSchema,
           log,
-          {
-            thinkingConfig: null,
-          },
+          { thinkingConfig: null },
         );
         break;
       } catch (e) {
         lastError = e;
         if (attempt < MAX_RETRIES) {
-          log.warn({
-            step: "matrix_enrichment",
-            status: "RETRYING",
-            attempt,
-            maxRetries: MAX_RETRIES,
-            delayMs: RETRY_DELAY_MS,
-          });
+          log.warn({ step: "matrix_enrichment", status: "RETRYING", attempt });
           await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
         } else {
-          log.error({
-            step: "matrix_enrichment",
-            status: "FAILED",
-            diagnostics: {
-              errorCode: "GEMINI_ENRICHMENT_ERROR",
-              message: e instanceof Error ? e.message : String(e),
-              model: "gemini-3.1-flash-lite",
-            },
-          });
+          log.error({ step: "matrix_enrichment", status: "FAILED", diagnostics: { errorCode: "GEMINI_ENRICHMENT_ERROR", message: e instanceof Error ? e.message : String(e) } });
         }
       }
     }
 
-    if (!enhancedData) {
-      throw lastError;
-    }
+    if (!enhancedData) throw lastError;
+
+    // Write enriched data directly to thesis_matrices (only enriched version, not raw form)
+    await db
+      .insert(thesisMatrices)
+      .values({
+        userId: session.userId,
+        studyTitle: enhancedData.academicStudyTitle,
+        researchQuestion: enhancedData.literatureResearchQuestion,
+        mainClaim: enhancedData.refinedThesisClaim,
+        methodology: enhancedData.academicMethodologyDesign,
+        theoreticalFramework: enhancedData.conceptualTheoreticalInfrastructure,
+        historicalSpatialLimits: enhancedData.historicalSpatialLimits,
+        keywords: [],
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: thesisMatrices.userId,
+        set: {
+          studyTitle: enhancedData.academicStudyTitle,
+          researchQuestion: enhancedData.literatureResearchQuestion,
+          mainClaim: enhancedData.refinedThesisClaim,
+          methodology: enhancedData.academicMethodologyDesign,
+          theoreticalFramework: enhancedData.conceptualTheoreticalInfrastructure,
+          historicalSpatialLimits: enhancedData.historicalSpatialLimits,
+          keywords: [],
+          updatedAt: new Date(),
+        },
+      });
 
     const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
-    const tokens = log.lastTokens || { input: 0, output: 0 };
 
-    log.info({
-      step: "matrix_enrichment",
-      status: "SUCCESS",
-      metrics: {
-        duration,
-        tokens: {
-          prompt: tokens.input ?? 0,
-          completion: tokens.output ?? 0,
-        },
-        outputRows: 1,
-      },
-    });
+    log.info({ step: "matrix_enrichment", status: "SUCCESS", metrics: { duration, outputRows: 1 } });
 
     return { success: true, data: enhancedData };
   } catch (error) {
-    log.error({
-      step: "matrix_enrichment",
-      status: "FAILED",
-      diagnostics: {
-        errorCode: "SYSTEM_ERROR",
-        message: error instanceof Error ? error.message : String(error),
-      },
-    });
-    return {
-      error: "Tez matrisi zenginleştirilirken bir hata oluştu.",
-    };
+    log.error({ step: "matrix_enrichment", status: "FAILED", diagnostics: { errorCode: "SYSTEM_ERROR", message: error instanceof Error ? error.message : String(error) } });
+    return { error: "Tez matrisi zenginleştirilirken bir hata oluştu." };
   }
 }

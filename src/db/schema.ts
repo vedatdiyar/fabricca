@@ -31,6 +31,7 @@ export const users = pgTable("users", {
  * Her kullanıcının onboarding sürecinin ilk adımında doldurduğu
  * çalışma başlığı, araştırma sorusu, temel iddia, metodoloji,
  * kuramsal çerçeve ve tarihsel/mekânsal sınırlar bilgilerini tutar.
+ * Sadece zenginleştirilmiş (enriched) versiyon kaydedilir; ham form yazılmaz.
  */
 export const thesisMatrices = pgTable("thesis_matrices", {
   id: serial("id").primaryKey(),

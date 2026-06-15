@@ -636,6 +636,8 @@ export const thesisBoxGenerationSchema: JsonSchema = {
           queries: {
             type: "array",
             items: { type: "string" },
+            description:
+              "Exactly 6 query strings per sub-box, organized as 3 symmetric TR+EN twin pairs. Each pair consists of one Turkish academic query immediately followed by its English counterpart. Total length MUST be exactly 6. Shallow, generic, or language-asymmetric queries are STRICTLY FORBIDDEN. Each of the 3 focus points must target a specific depth area: a theorist/work, a conceptual debate, or a relational variable combination relevant to the sub-box scope.",
           },
         },
         required: [
@@ -672,7 +674,11 @@ Cevap üretmeden önce içsel olarak (internal thinking) şu 4 adımlı yapısal
    - Örneğin: "theory" altında birbirine indirgenemez farklı teorik/kavramsal mercekler ayrı kutular olmalı; "methodology" altında araştırmanın birbirinden farklı metodolojik aşamaları, deney grupları veya veri toplama araçları ayrı kutular olmalı; "primary_source" veya "context" altında ise farklı zaman dilimleri, farklı coğrafi/ampirik sahalar veya farklı türdeki veri setleri/arşiv grupları ayrı kutular olarak yapılandırılmalıdır.
    - Her alt kutu kendi içinde tutarlı, spesifik ve izole olmalıdır. Bir kategoride birden fazla alt kutu üretilmesi kesinlikle teşvik edilir.
 3. **Sızıntı Kontrolü (Isolation Audit)**: Her kutunun kendi içinde izole olduğunu doğrula. Örneğin; "theory" kutusunun literatür listesine tezin yerel/ampirik öznelerini karıştırma, sadece o teorinin kendi saf literatürünü yaz.
-4. **Sorgu Varyasyonu Üretimi**: Her kutunun "queries" alanı için dar (aktör/teorisyen odaklı), geniş (kavramsal) ve ilişkisel (değişkenler arası) olmak üzere hem Türkçe hem İngilizce en az 3 farklı arama sorgusu kurgula.
+4. **KESİN TR+EN SİMETRİK İKİZ SORGU ÜRETİMİ (TAM 6 SORGU)**: Her alt kutu (sub-box) için queries dizisine TAM 6 sorgu dizgisi yerleştir. Bu sorgular 3 ayrı ikiz çiftten oluşur. Her ikiz çiftte önce Türkçe akademik sorgu, hemen ardından onun birebir İngilizce karşılığı gelir.
+   - **3 Akademik Odak Konsepti**: Her alt kutu için literatürün derinliklerine inebilecek 3 keskin akademik odak noktası/kombinasyonu belirle. Bu odaklar; belirli bir teorisyen/eser adı (dar/aktör odaklı), belirli bir kavramsal tartışma/ekol (geniş/kavramsal) ve belirli bir değişkenler arası ilişki/kombinasyon (ilişkisel) olmak üzere çeşitlenmelidir.
+   - **Sığ Sorgu YASAĞI**: "X nedir?", "Y hakkında makale", "Z literatürü" gibi herhangi bir lisans öğrencisinin yazabileceği genel, yüzeysel sorgular KESİNLİKLE ÜRETİLMEZ. Her sorgu mutlaka spesifik bir yazar, kavram, dönem veya değişken kesişimini hedeflemelidir.
+   - **Dil Asimetrisi YASAĞI**: Her ikiz çiftin iki dili de (TR ve EN) kendi dilbilgisi ve akademik terminoloji normlarına tam uygun olmalıdır. Bir dilde spesifik olup diğerinde genel kalan asimetrik çiftler KESİNLİKLE KABUL EDİLMEZ.
+   - **Kota Kesinliği**: Üretilecek sorgu sayısı hiçbir istisna tanımaksızın TAM 6 olmalıdır (3 TR + 3 EN). Ne eksik ne fazla.
 </instructions>
 
 <constraints>

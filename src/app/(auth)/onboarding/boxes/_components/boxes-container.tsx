@@ -1,152 +1,183 @@
 "use client";
 
-import { useOnboardingStore } from "@/store/useOnboardingStore";
-import { ConfirmBoxesButton } from "./confirm-boxes-button";
-import { redirect } from "next/navigation";
-import {
-  CheckCircle2,
-  ShieldCheck,
-  Brain,
-  Cpu,
-  MapPin,
-  Archive,
-  BookOpen,
-  UserRound,
-  WholeWord,
-} from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Loader2, CheckCircle2, BookOpen, ShieldCheck, Brain, Cpu, MapPin, Archive, UserRound, WholeWord, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { generateBoxesAction, confirmBoxesAction } from "../actions";
+import type { GeminiThesisBox } from "@/lib/types";
 
-const categoryMeta: Record<
-  string,
-  { label: string; icon: any; bgClass: string; textClass: string }
-> = {
-  intro: {
-    label: "Giriş ve Temel İddia",
-    icon: ShieldCheck,
-    bgClass: "bg-emerald-500/10 border border-emerald-500/20",
-    textClass: "text-emerald-400",
-  },
-  theory: {
-    label: "Teorik Zemin",
-    icon: Brain,
-    bgClass: "bg-blue-500/10 border border-blue-500/20",
-    textClass: "text-blue-400",
-  },
-  methodology: {
-    label: "Yöntem Literatürü",
-    icon: Cpu,
-    bgClass: "bg-amber-500/10 border border-amber-500/20",
-    textClass: "text-amber-400",
-  },
-  context: {
-    label: "Tarihsel ve Mekânsal Bağlam",
-    icon: MapPin,
-    bgClass: "bg-violet-500/10 border border-violet-500/20",
-    textClass: "text-violet-400",
-  },
-  primary_source: {
-    label: "Birincil Özneler ve Arşivler",
-    icon: Archive,
-    bgClass: "bg-rose-500/10 border border-rose-500/20",
-    textClass: "text-rose-400",
-  },
+const categoryMeta: Record<string, { label: string; icon: any; bgClass: string; textClass: string }> = {
+  intro: { label: "Giriş ve Temel İddia", icon: ShieldCheck, bgClass: "bg-emerald-500/10 border border-emerald-500/20", textClass: "text-emerald-400" },
+  theory: { label: "Teorik Zemin", icon: Brain, bgClass: "bg-blue-500/10 border border-blue-500/20", textClass: "text-blue-400" },
+  methodology: { label: "Yöntem Literatürü", icon: Cpu, bgClass: "bg-amber-500/10 border border-amber-500/20", textClass: "text-amber-400" },
+  context: { label: "Tarihsel ve Mekânsal Bağlam", icon: MapPin, bgClass: "bg-violet-500/10 border border-violet-500/20", textClass: "text-violet-400" },
+  primary_source: { label: "Birincil Özneler ve Arşivler", icon: Archive, bgClass: "bg-rose-500/10 border border-rose-500/20", textClass: "text-rose-400" },
 };
 
 const parentBoxes = [
-  {
-    category: "intro",
-    title: "Giriş ve Temel İddia",
-    description: "Tezin temel iddiaları ve giriş çerçevesi.",
-  },
-  {
-    category: "theory",
-    title: "Teorik Zemin",
-    description: "Kuramsal çerçeve ve teorik altyapı kutuları.",
-  },
-  {
-    category: "methodology",
-    title: "Yöntem Literatürü",
-    description: "Metodoloji ve araştırma yöntemi kutuları.",
-  },
-  {
-    category: "context",
-    title: "Tarihsel ve Mekânsal Bağlam",
-    description: "Tarihsel sınırlar ve coğrafi/mekânsal bağlam kutuları.",
-  },
-  {
-    category: "primary_source",
-    title: "Birincil Özneler ve Arşivler",
-    description: "İncelenen birincil özneler, arşivler ve belgeler.",
-  },
+  { category: "intro", title: "Giriş ve Temel İddia", description: "Tezin temel iddiaları ve giriş çerçevesi." },
+  { category: "theory", title: "Teorik Zemin", description: "Kuramsal çerçeve ve teorik altyapı kutuları." },
+  { category: "methodology", title: "Yöntem Literatürü", description: "Metodoloji ve araştırma yöntemi kutuları." },
+  { category: "context", title: "Tarihsel ve Mekânsal Bağlam", description: "Tarihsel sınırlar ve coğrafi/mekânsal bağlam kutuları." },
+  { category: "primary_source", title: "Birincil Özneler ve Arşivler", description: "İncelenen birincil özneler, arşivler ve belgeler." },
 ];
 
-/**
- * Client-side container that renders the generated boxes stored in Zustand.
- * Groups child sub-boxes under the 5 static categories.
- */
+const loadingMessages = [
+  "Tez matrisi ve araştırma tasarımı çözümleniyor...",
+  "Akademik konu kutuları yapılandırılıyor...",
+  "Kavramlar ve teorisyenler Wikipedia üzerinden doğrulanıyor...",
+  "Hiyerarşik düzen ve alt kutular oluşturuluyor...",
+  "Son düzenlemeler yapılıyor...",
+];
+
 export function BoxesContainer() {
-  const boxes = useOnboardingStore((state) => state.boxes);
+  const router = useRouter();
+  const [boxes, setBoxes] = useState<GeminiThesisBox[] | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [hasExisting, setHasExisting] = useState(false);
+
+  // Load existing boxes on mount — never auto-generate
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { fetchBoxes } = await import("../../lib/fetch-actions");
+      const existing = await fetchBoxes();
+      const childBoxes = existing.filter((b) => b.parentId !== null);
+      if (childBoxes.length > 0 && !cancelled) {
+        setBoxes(childBoxes.map((b) => ({
+          category: b.category,
+          title: b.title,
+          description: b.description ?? "",
+          theorists: b.theorists,
+          concepts: b.concepts,
+          queries: b.queries,
+        })));
+        setHasExisting(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!generating) { setCurrentStep(0); return; }
+    const interval = setInterval(() => {
+      setCurrentStep((prev) => (prev < loadingMessages.length - 1 ? prev + 1 : prev));
+    }, 2800);
+    return () => clearInterval(interval);
+  }, [generating]);
+
+  const handleGenerate = useCallback(async () => {
+    setGenerating(true);
+    const result = await generateBoxesAction();
+    if ("error" in result) {
+      toast.error(result.error);
+      setGenerating(false);
+    } else {
+      setBoxes(result.boxes);
+      setGenerating(false);
+    }
+  }, []);
+
+  const handleConfirm = useCallback(async () => {
+    if (!boxes) return;
+    setConfirming(true);
+    const result = await confirmBoxesAction(boxes);
+    if ("error" in result && result.error) {
+      toast.error(result.error);
+      setConfirming(false);
+      return;
+    }
+    toast.success("Konu kutuları kaydedildi. Literatür taramasına geçiliyor.");
+    router.push("/onboarding/literature-review");
+  }, [boxes, router]);
+
+  if (generating) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/85 backdrop-blur-md">
+        <div className="max-w-md w-full px-6 text-center space-y-6">
+          <div className="relative flex items-center justify-center mx-auto w-16 h-16 bg-primary/10 border border-primary/20 rounded-full">
+            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-xl font-semibold text-foreground tracking-tight">Konu Kutuları Yapılandırılıyor</h3>
+            <p className="text-sm text-muted-foreground min-h-[40px] leading-relaxed">{loadingMessages[currentStep]}</p>
+          </div>
+          <div className="flex justify-center items-center gap-1.5 pt-2">
+            {loadingMessages.map((_, idx) => (
+              <div key={idx} className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentStep ? "w-8 bg-primary" : idx < currentStep ? "w-2 bg-primary/40" : "w-2 bg-border"}`} />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!boxes && !hasExisting) {
+    // No boxes yet — show start button
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
+        <div className="p-4 bg-primary/10 border border-primary/20 rounded-full">
+          <Sparkles className="w-12 h-12 text-primary" />
+        </div>
+        <div className="text-center space-y-2 max-w-md">
+          <h2 className="text-2xl font-bold text-foreground">Konu Kutuları</h2>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Risk analizi sonuçları kullanılarak tez yapınıza uygun akademik konu kutuları
+            ve alt başlıklar oluşturulacak.
+          </p>
+        </div>
+        <Button onClick={handleGenerate} className="btn-academic-hero">
+          <Sparkles className="w-4 h-4 mr-2" />
+          Kutuları Oluştur
+        </Button>
+      </div>
+    );
+  }
 
   if (!boxes) {
-    redirect("/onboarding/risk");
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-8 h-8 text-muted-foreground animate-spin mx-auto" />
+          <p className="text-muted-foreground text-sm">Kutular yükleniyor...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="max-w-5xl mx-auto space-y-10">
-      {/* Başlık ve Durum */}
       <div className="flex flex-col items-center text-center space-y-4 max-w-2xl mx-auto">
         <div className="p-4 bg-primary/10 border border-primary/20 rounded-full">
-          <CheckCircle2 className="w-12 h-12 text-primary animate-pulse" />
+          <CheckCircle2 className="w-12 h-12 text-primary" />
         </div>
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            Konu Kutuları Yapılandırıldı!
-          </h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Konu Kutuları Yapılandırıldı!</h1>
           <p className="text-muted-foreground leading-relaxed text-sm">
-            Tez matrisinizin çözümlenmesi tamamlandı ve yapay zeka tarafından
-            5 ana kategori altında çalışmanızın akademik konu kutuları
-            (kartoteks yapısı) hazırlandı. Lütfen kutu içeriklerini inceleyip
-            onaylayın.
+            Tez matrisinizin çözümlenmesi tamamlandı ve yapay zeka tarafından 5 ana kategori altında hazırlandı.
           </p>
         </div>
       </div>
 
-      {/* Kutuların Listesi */}
       <div className="space-y-8">
         {parentBoxes.map((parent) => {
-          const meta = categoryMeta[parent.category] || {
-            label: parent.title,
-            icon: BookOpen,
-            bgClass: "bg-muted border border-border",
-            textClass: "text-foreground",
-          };
+          const meta = categoryMeta[parent.category] || { label: parent.title, icon: BookOpen, bgClass: "bg-muted border border-border", textClass: "text-foreground" };
           const IconComponent = meta.icon;
           const subBoxes = boxes.filter((b) => b.category === parent.category);
-
           return (
             <div key={parent.category} className="space-y-4">
-              {/* Ana Kategori Başlığı */}
               <div className="flex items-center gap-3 pb-2 border-b border-border">
-                <div className={`p-2 rounded-lg ${meta.bgClass}`}>
-                  <IconComponent className="w-5 h-5" />
-                </div>
+                <div className={`p-2 rounded-lg ${meta.bgClass}`}><IconComponent className="w-5 h-5" /></div>
                 <div>
-                  <h2 className="text-xl font-bold text-foreground">
-                    {meta.label}
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    {parent.description}
-                  </p>
+                  <h2 className="text-xl font-bold text-foreground">{meta.label}</h2>
+                  <p className="text-sm text-muted-foreground">{parent.description}</p>
                 </div>
               </div>
-
-              {/* Alt Konu Kutuları */}
               <div className="grid grid-cols-1 gap-4">
                 {subBoxes.length === 0 ? (
                   <div className="p-6 text-center border border-dashed border-border rounded-lg bg-card text-muted-foreground text-sm">
@@ -154,63 +185,38 @@ export function BoxesContainer() {
                   </div>
                 ) : (
                   subBoxes.map((box, idx) => (
-                    <Card
-                      key={idx}
-                      className="bg-card/40 border border-border hover:border-primary/30 transition-all"
-                    >
+                    <Card key={idx} className="bg-card/40 border border-border hover:border-primary/30 transition-all">
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-base font-bold text-foreground">
-                          {box.title}
-                        </CardTitle>
-                        {box.description && (
-                          <CardDescription className="text-sm text-muted-foreground leading-relaxed">
-                            {box.description}
-                          </CardDescription>
-                        )}
+                        <CardTitle className="text-base font-bold text-foreground">{box.title}</CardTitle>
+                        {box.description && <CardDescription className="text-sm text-muted-foreground leading-relaxed">{box.description}</CardDescription>}
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        {/* Teorisyenler & Kavramlar */}
                         <div className="flex flex-wrap gap-4 text-sm">
                           {box.theorists && box.theorists.length > 0 && (
                             <div className="space-y-1">
-                              <span className="font-semibold text-foreground block">
-                                Teorisyenler:
-                              </span>
+                              <span className="font-semibold text-foreground block">Teorisyenler:</span>
                               <div className="flex flex-wrap gap-1.5">
                                 {box.theorists.map((t, i) => (
-                                  <span
-                                    key={i}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs bg-blue-500/10 border border-blue-500/20 text-blue-400 font-medium"
-                                  >
-                                    <UserRound className="w-3.5 h-3.5" />
-                                    {t}
+                                  <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs bg-blue-500/10 border border-blue-500/20 text-blue-400 font-medium">
+                                    <UserRound className="w-3.5 h-3.5" />{t}
                                   </span>
                                 ))}
                               </div>
                             </div>
                           )}
-
                           {box.concepts && box.concepts.length > 0 && (
                             <div className="space-y-1">
-                              <span className="font-semibold text-foreground block">
-                                Kavramlar:
-                              </span>
+                              <span className="font-semibold text-foreground block">Kavramlar:</span>
                               <div className="flex flex-wrap gap-1.5">
                                 {box.concepts.map((c, i) => (
-                                  <span
-                                    key={i}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-medium"
-                                  >
-                                    <WholeWord className="w-3.5 h-3.5" />
-                                    {c}
+                                  <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-medium">
+                                    <WholeWord className="w-3.5 h-3.5" />{c}
                                   </span>
                                 ))}
                               </div>
                             </div>
                           )}
                         </div>
-
-
                       </CardContent>
                     </Card>
                   ))
@@ -221,14 +227,17 @@ export function BoxesContainer() {
         })}
       </div>
 
-      {/* Onaylama Alanı */}
       <div className="pt-6 border-t border-border flex flex-col items-center justify-center space-y-4">
         <p className="text-sm text-muted-foreground text-center max-w-md leading-relaxed">
-          Kutuları onayladığınızda, çalışma yapınız kalıcı olarak kütüphanenize
-          ve kartoteks sisteminize işlenecek ve akademik veri tabanlarında
-          otomatik literatür tarama adımı başlatılacaktır.
+          Kutuları onayladığınızda, çalışma yapınız kalıcı olarak kaydedilecek ve literatür tarama adımı başlatılacaktır.
         </p>
-        <ConfirmBoxesButton />
+        <Button onClick={handleConfirm} disabled={confirming} className="btn-academic-hero w-full sm:w-auto">
+          {confirming ? (
+            <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Kaydediliyor...</span>
+          ) : (
+            "Kutuları Onayla ve Literatür Taramasını Başlat"
+          )}
+        </Button>
       </div>
     </div>
   );

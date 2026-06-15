@@ -34,18 +34,6 @@ import type {
 import type { NewLibraryResource } from "@/db/schema";
 
 // ============================================================================
-// Shared Types (kept from original for hydration)
-// ============================================================================
-
-export interface HydrationData {
-  formData: OnboardingFormData;
-  enrichedData: EnhancedThesisData;
-  juryReport: OriginalityReportData;
-  boxes: GeminiThesisBox[];
-  approvedKeywords: string[];
-}
-
-// ============================================================================
 // Literature Review Action Types
 // ============================================================================
 
@@ -457,7 +445,7 @@ export async function processLiteratureReviewAction(
   try {
     const queries = subBox.queries.filter((q) => q.trim().length > 0);
     if (queries.length === 0) {
-      return { error: "Sorgu listesi boş." };
+      return { data: { starterPack: [], reservedPool: [] } };
     }
 
     // ------------------------------------------------------------------
@@ -489,7 +477,7 @@ export async function processLiteratureReviewAction(
     });
 
     if (allRaw.length === 0) {
-      return { error: "Hiçbir kaynaktan makale bulunamadı." };
+      return { data: { starterPack: [], reservedPool: [] } };
     }
 
     // ------------------------------------------------------------------
@@ -531,7 +519,7 @@ export async function processLiteratureReviewAction(
     });
 
     if (sifted.length === 0) {
-      return { error: "Yapay zeka süzgecinden geçen makale kalmadı." };
+      return { data: { starterPack: [], reservedPool: [] } };
     }
 
     // ------------------------------------------------------------------
@@ -557,99 +545,6 @@ export async function processLiteratureReviewAction(
       error: err,
     });
     return { error: message };
-  }
-}
-
-// ============================================================================
-// Hydration Action (preserved from original implementation)
-// ============================================================================
-
-/**
- * Fetches all onboarding data needed to hydrate the Zustand store
- * on the literature-review page.
- *
- * @returns HydrationData payload or error message
- */
-export async function fetchHydrationData(): Promise<{
-  data?: HydrationData;
-  error?: string;
-}> {
-  try {
-    const session = await getSession();
-    if (!session) {
-      return { error: "Oturum bulunamadi." };
-    }
-
-    const userId = session.userId;
-
-    const [matrix] = await db
-      .select()
-      .from(thesisMatrices)
-      .where(eq(thesisMatrices.userId, userId));
-
-    if (!matrix) {
-      return { error: "Tez matrisi bulunamadi." };
-    }
-
-    const [report] = await db
-      .select()
-      .from(originalityReports)
-      .where(eq(originalityReports.userId, userId));
-
-    if (!report) {
-      return { error: "Ozgunluk raporu bulunamadi." };
-    }
-
-    const allBoxes = await db
-      .select()
-      .from(thesisBoxes)
-      .where(eq(thesisBoxes.thesisMatrixId, matrix.id));
-
-    const childBoxes: GeminiThesisBox[] = allBoxes
-      .filter((b) => b.parentId !== null)
-      .map((b) => ({
-        category: b.category,
-        title: b.title,
-        description: b.description ?? "",
-        theorists: b.theorists,
-        concepts: b.concepts,
-        queries: b.queries,
-      }));
-
-    const formData: OnboardingFormData = {
-      studyTitle: matrix.studyTitle,
-      researchQuestion: matrix.researchQuestion,
-      mainClaim: matrix.mainClaim,
-      methodology: matrix.methodology,
-      theoreticalFramework: matrix.theoreticalFramework,
-      historicalSpatialLimits: matrix.historicalSpatialLimits,
-    };
-
-    const enrichedData: EnhancedThesisData = {
-      academicStudyTitle: matrix.studyTitle,
-      literatureResearchQuestion: matrix.researchQuestion,
-      refinedThesisClaim: matrix.mainClaim,
-      conceptualTheoreticalInfrastructure: matrix.theoreticalFramework,
-      academicMethodologyDesign: matrix.methodology,
-      historicalSpatialLimits: matrix.historicalSpatialLimits,
-    };
-
-    return {
-      data: {
-        formData,
-        enrichedData,
-        juryReport: {
-          tavilyResults: report.tavilyResults as OriginalityReportData["tavilyResults"],
-          tezaraResults: report.tezaraResults as OriginalityReportData["tezaraResults"],
-        },
-        boxes: childBoxes,
-        approvedKeywords: matrix.keywords,
-      },
-    };
-  } catch (err) {
-    return {
-      error: err instanceof Error ? err.message : "Bilinmeyen hata",
-    };
   }
 }
 
