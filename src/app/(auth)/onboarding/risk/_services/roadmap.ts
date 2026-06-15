@@ -87,7 +87,7 @@ export async function synthesizeRoadmap(
         roadmapSchema,
         log,
         {
-          thinkingConfig: null,
+          thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
         },
       );
     }

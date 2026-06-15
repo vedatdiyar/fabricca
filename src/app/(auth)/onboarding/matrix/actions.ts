@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
 import { getSession } from "@/proxy";
 import { generateStructuredContent } from "@/lib/gemini";
+import { ThinkingLevel } from "@google/genai";
 import { createFlowId, Logger } from "@/lib/logger";
 
 import {
@@ -83,7 +84,7 @@ export async function submitThesisMatrixAction(
           matrixEnhancementPrompt,
           enhancedThesisSchema,
           log,
-          { thinkingConfig: null },
+          { thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } },
         );
         break;
       } catch (e) {

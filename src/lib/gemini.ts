@@ -54,7 +54,8 @@ async function retryOn503<T>(
     } catch (error: unknown) {
       const is503 =
         error instanceof Error &&
-        (("status" in error && (error as { status: string }).status === "UNAVAILABLE") ||
+        (("status" in error &&
+          (error as { status: string }).status === "UNAVAILABLE") ||
           ("code" in error && (error as { code: number }).code === 503) ||
           error.message.includes("high demand") ||
           error.message.includes("503") ||

@@ -20,17 +20,25 @@ interface WikipediaSearchResponse {
 }
 
 /**
- * Belirtilen teorisyen adını ve disiplin/bağlam anahtar kelimesini kullanarak
- * Wikipedia REST API üzerinden arama yapar ve en alakalı sayfa detaylarını döner.
+ * Belirtilen teorisyen adını kullanarak İngilizce Wikipedia REST API üzerinden
+ * Hibrit Doğrulama (Hybrid Verification) modeliyle arama yapar.
+ *
+ * Doğrulama 4 aşamalı bir kademe (cascade) ile çalışır:
+ *   1. Katı Başlık Eşleşmesi — title, aranan name ile birebir eşleşirse doğrudan onay.
+ *   2. Akademik Unvan Süzgeci — description/excerpt/title içinde sociologist,
+ *      philosopher, academic, theorist, professor, scholar unvanlarını ara.
+ *   3. Konsept/Atıf Süzgeci — excerpt içinde teorisyenin soyadı/tam adını ara
+ *      (müstakil sayfası olmayıp konsept sayfalarında adı geçenleri yakalar).
+ *   4. Yedek — hiçbir eşleşme bulunamazsa ilk adayı döndür.
  *
  * @param name - Arama yapılacak teorisyenin tam adı (Örn: "David Snow").
- * @param context - Teorisyenin ilişkilendirildiği bağlam veya disiplin (Örn: "sociology").
+ * @param _context - Geriye dönük uyumluluk için korunmuş parametre (kullanılmaz).
  * @param logger - Opsiyonel Logger instance'ı (hata logları için).
  * @returns En alakalı sayfanın başlık, açıklama, özet ve anahtar bilgilerini içeren nesne veya null.
  */
 export async function searchWikipediaTheorist(
   name: string,
-  context: string,
+  _context: string,
   logger?: Logger,
 ): Promise<{
   title: string;
@@ -40,14 +48,13 @@ export async function searchWikipediaTheorist(
 } | null> {
   try {
     const trimmedName = name.trim();
-    const trimmedContext = context.trim();
 
     if (!trimmedName) {
       return null;
     }
 
-    // Arama sorgusu oluşturuluyor (Örn: David Snow sociology)
-    const query = `${trimmedName} ${trimmedContext}`.trim();
+    // Arama sorgusu oluşturuluyor (Örn: "David Snow academic")
+    const query = `${trimmedName} academic`;
     const url = `https://en.wikipedia.org/w/rest.php/v1/search/page?q=${encodeURIComponent(
       query,
     )}&limit=10`;
@@ -67,7 +74,7 @@ export async function searchWikipediaTheorist(
         error: new Error(
           `Wikipedia API error: ${response.status} ${response.statusText}`,
         ),
-        data: { name, context },
+        data: { name },
       });
       return null;
     }
@@ -98,15 +105,56 @@ export async function searchWikipediaTheorist(
       return null;
     }
 
-    // Bağlama en uygun olan sayfayı bul (Açıklama veya özet içinde context kelimesi geçen ilk aday)
-    const lowerContext = trimmedContext.toLowerCase();
+    const normalizedName = trimmedName.toLowerCase();
+
+    // Aşama 1 — Katı Başlık Eşleşmesi: title name ile birebir örtüşüyorsa
+    // unvan süzgecine bakmaksızın doğrudan onaylayıp döndür.
+    const exactTitleMatch = candidates.find(
+      (page) => page.title.toLowerCase() === normalizedName,
+    );
+    if (exactTitleMatch) {
+      const cleanExcerpt = exactTitleMatch.excerpt
+        ? exactTitleMatch.excerpt.replace(/<\/?[^>]+(>|$)/g, "")
+        : "";
+      return {
+        title: exactTitleMatch.title || "",
+        description: exactTitleMatch.description || "",
+        excerpt: cleanExcerpt,
+        key: exactTitleMatch.key || "",
+      };
+    }
+
+    // Aşama 2 — Akademik unvan süzgeci: sociologist, philosopher, academic, theorist, professor, scholar
+    const ACADEMIC_TITLES = [
+      "sociologist", "philosopher", "academic", "theorist",
+      "professor", "scholar",
+    ];
     let bestMatch = candidates.find((page) => {
-      const desc = (page.description || "").toLowerCase();
-      const excerpt = (page.excerpt || "").toLowerCase();
-      return desc.includes(lowerContext) || excerpt.includes(lowerContext);
+      const haystack = [
+        (page.description || "").toLowerCase(),
+        (page.excerpt || "").toLowerCase(),
+        page.title.toLowerCase(),
+      ].join(" ");
+      return ACADEMIC_TITLES.some((title) => haystack.includes(title));
     });
 
-    // Eğer bağlam kelimesiyle doğrudan eşleşen bulunamazsa ilk adayı seç
+    // Aşama 3 — Konsept/Atıf Süzgeci: excerpt içinde teorisyenin soyadı/tam adı
+    // geçen akademik konsept sayfalarını geçerli eşleşme olarak kabul et.
+    if (!bestMatch) {
+      const nameParts = trimmedName.split(" ");
+      const surname = nameParts.length > 1
+        ? nameParts[nameParts.length - 1].toLowerCase()
+        : normalizedName;
+
+      bestMatch = candidates.find((page) => {
+        const cleanExcerpt = (page.excerpt || "")
+          .replace(/<\/?[^>]+(>|$)/g, "")
+          .toLowerCase();
+        return cleanExcerpt.includes(surname) || cleanExcerpt.includes(normalizedName);
+      });
+    }
+
+    // Aşama 4 — Yedek: hiçbir şey bulunamazsa ilk adayı seç
     if (!bestMatch) {
       bestMatch = candidates[0];
     }
@@ -127,7 +175,7 @@ export async function searchWikipediaTheorist(
       service: "wikipedia",
       step: "theorist_search_failed",
       error,
-      data: { name, context },
+      data: { name },
     });
     return null;
   }

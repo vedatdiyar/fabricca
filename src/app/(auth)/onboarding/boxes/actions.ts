@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { thesisBoxes, thesisMatrices } from "@/db/schema";
 import { getSession } from "@/proxy";
 import { generateStructuredContent } from "@/lib/gemini";
+import { ThinkingLevel } from "@google/genai";
 import { createFlowId, Logger } from "@/lib/logger";
 import { revalidatePath } from "next/cache";
 import {
@@ -30,7 +31,8 @@ export async function generateBoxesAction(): Promise<
 
   try {
     const session = await getSession();
-    if (!session) return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+    if (!session)
+      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
 
     const matrix = await fetchThesisMatrix();
     if (!matrix) return { error: "Tez matrisi bulunamadı." };
@@ -44,13 +46,15 @@ export async function generateBoxesAction(): Promise<
       historicalSpatialLimits: matrix.historicalSpatialLimits,
     });
 
-    const generationResult = await generateStructuredContent<{ boxes: GeminiThesisBox[] }>(
+    const generationResult = await generateStructuredContent<{
+      boxes: GeminiThesisBox[];
+    }>(
       "gemini-3.1-flash-lite",
       THESIS_BOX_GENERATION_SYSTEM_INSTRUCTION,
       geminiPrompt,
       thesisBoxGenerationSchema,
       log,
-      { thinkingConfig: null },
+      { thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } },
     );
 
     const draftBoxes = generationResult.boxes || [];
@@ -62,13 +66,21 @@ export async function generateBoxesAction(): Promise<
         if (theorists.length === 0) return;
         const verificationPromises = theorists.map(async (theoristName) => {
           try {
-            const wikiResult = await searchWikipediaTheorist(theoristName, box.category, log);
+            const wikiResult = await searchWikipediaTheorist(
+              theoristName,
+              box.category,
+              log,
+            );
             if (wikiResult) return theoristName;
-          } catch { /* skip unverifiable */ }
+          } catch {
+            /* skip unverifiable */
+          }
           return null;
         });
         const verificationResults = await Promise.all(verificationPromises);
-        box.theorists = verificationResults.filter((name): name is string => name !== null);
+        box.theorists = verificationResults.filter(
+          (name): name is string => name !== null,
+        );
       }),
     );
 
@@ -76,8 +88,17 @@ export async function generateBoxesAction(): Promise<
 
     return { success: true, boxes: draftBoxes };
   } catch (err) {
-    log.error({ step: "generateBoxes", status: "FAILED", diagnostics: { errorCode: "SYSTEM_ERROR", message: err instanceof Error ? err.message : String(err) } });
-    return { error: "Konu kutuları oluşturulurken beklenmeyen bir hata oluştu." };
+    log.error({
+      step: "generateBoxes",
+      status: "FAILED",
+      diagnostics: {
+        errorCode: "SYSTEM_ERROR",
+        message: err instanceof Error ? err.message : String(err),
+      },
+    });
+    return {
+      error: "Konu kutuları oluşturulurken beklenmeyen bir hata oluştu.",
+    };
   }
 }
 
@@ -95,7 +116,8 @@ export async function confirmBoxesAction(
 
   try {
     const session = await getSession();
-    if (!session) return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+    if (!session)
+      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
 
     const matrix = await fetchThesisMatrix();
     if (!matrix) return { error: "Tez matrisi bulunamadı." };
@@ -104,18 +126,68 @@ export async function confirmBoxesAction(
 
     await db.transaction(async (tx) => {
       // Delete existing boxes
-      await tx.delete(thesisBoxes).where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
+      await tx
+        .delete(thesisBoxes)
+        .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
 
       // Insert parent boxes
       const parentValues = [
-        { thesisMatrixId, parentId: null as number | null, category: "intro" as const, title: "Giriş ve Temel İddia", description: "Tezin temel iddiaları ve giriş çerçevesi.", theorists: [], concepts: [], queries: [] },
-        { thesisMatrixId, parentId: null as number | null, category: "theory" as const, title: "Teorik Zemin", description: "Kuramsal çerçeve ve teorik altyapı kutuları.", theorists: [], concepts: [], queries: [] },
-        { thesisMatrixId, parentId: null as number | null, category: "methodology" as const, title: "Yöntem Literatürü", description: "Metodoloji ve araştırma yöntemi kutuları.", theorists: [], concepts: [], queries: [] },
-        { thesisMatrixId, parentId: null as number | null, category: "context" as const, title: "Tarihsel ve Mekânsal Bağlam", description: "Tarihsel sınırlar ve coğrafi/mekânsal bağlam kutuları.", theorists: [], concepts: [], queries: [] },
-        { thesisMatrixId, parentId: null as number | null, category: "primary_source" as const, title: "Birincil Özneler ve Arşivler", description: "İncelenen birincil özneler, arşivler ve belgeler.", theorists: [], concepts: [], queries: [] },
+        {
+          thesisMatrixId,
+          parentId: null as number | null,
+          category: "intro" as const,
+          title: "Giriş ve Temel İddia",
+          description: "Tezin temel iddiaları ve giriş çerçevesi.",
+          theorists: [],
+          concepts: [],
+          queries: [],
+        },
+        {
+          thesisMatrixId,
+          parentId: null as number | null,
+          category: "theory" as const,
+          title: "Teorik Zemin",
+          description: "Kuramsal çerçeve ve teorik altyapı kutuları.",
+          theorists: [],
+          concepts: [],
+          queries: [],
+        },
+        {
+          thesisMatrixId,
+          parentId: null as number | null,
+          category: "methodology" as const,
+          title: "Yöntem Literatürü",
+          description: "Metodoloji ve araştırma yöntemi kutuları.",
+          theorists: [],
+          concepts: [],
+          queries: [],
+        },
+        {
+          thesisMatrixId,
+          parentId: null as number | null,
+          category: "context" as const,
+          title: "Tarihsel ve Mekânsal Bağlam",
+          description: "Tarihsel sınırlar ve coğrafi/mekânsal bağlam kutuları.",
+          theorists: [],
+          concepts: [],
+          queries: [],
+        },
+        {
+          thesisMatrixId,
+          parentId: null as number | null,
+          category: "primary_source" as const,
+          title: "Birincil Özneler ve Arşivler",
+          description: "İncelenen birincil özneler, arşivler ve belgeler.",
+          theorists: [],
+          concepts: [],
+          queries: [],
+        },
       ];
 
-      const insertedParents = await tx.insert(thesisBoxes).values(parentValues).returning({ id: thesisBoxes.id, category: thesisBoxes.category });
+      const insertedParents = await tx
+        .insert(thesisBoxes)
+        .values(parentValues)
+        .returning({ id: thesisBoxes.id, category: thesisBoxes.category });
 
       const parentMap = new Map<string, number>();
       for (const parent of insertedParents) {
@@ -125,7 +197,10 @@ export async function confirmBoxesAction(
       // Insert child sub-boxes
       const subBoxValues = boxes.map((box) => {
         const parentId = parentMap.get(box.category);
-        if (!parentId) throw new Error(`Ebeveyn kutusu bulunamadı (kategori: ${box.category})`);
+        if (!parentId)
+          throw new Error(
+            `Ebeveyn kutusu bulunamadı (kategori: ${box.category})`,
+          );
         return {
           thesisMatrixId,
           parentId,
@@ -149,7 +224,14 @@ export async function confirmBoxesAction(
     log.info({ step: "confirmBoxes", status: "SUCCESS" });
     return { success: true };
   } catch (err) {
-    log.error({ step: "confirmBoxes", status: "FAILED", diagnostics: { errorCode: "TRANSACTION_ERROR", message: err instanceof Error ? err.message : String(err) } });
+    log.error({
+      step: "confirmBoxes",
+      status: "FAILED",
+      diagnostics: {
+        errorCode: "TRANSACTION_ERROR",
+        message: err instanceof Error ? err.message : String(err),
+      },
+    });
     return { error: "Konu kutuları kaydedilirken bir hata oluştu." };
   }
 }

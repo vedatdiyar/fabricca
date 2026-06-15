@@ -13,6 +13,7 @@ import {
 } from "@/db/schema";
 import { getSession } from "@/proxy";
 import { generateStructuredContent } from "@/lib/gemini";
+import { ThinkingLevel } from "@google/genai";
 import {
   buildLiteratureSiftingPrompt,
   buildLiteratureJuryAnalysisPrompt,
@@ -354,7 +355,7 @@ async function runSiftingStage(
     ),
     literatureSiftingSchema,
     logger,
-    { thinkingConfig: null },
+    { thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } },
   );
 
   const keptDois = new Set(
@@ -414,7 +415,7 @@ async function runJuryStage(
     ),
     literatureJuryAnalysisSchema,
     logger,
-    { thinkingConfig: null },
+    { thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } },
   );
 
   return {
