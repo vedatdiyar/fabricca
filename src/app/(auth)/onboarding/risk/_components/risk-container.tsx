@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Sparkles, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ErrorDisplay } from "@/components/error-display";
+import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import { searchAndSiftThesesAction, runJuryAnalysisAction, completeRiskStageAction } from "../actions";
 import { fetchThesisMatrix, fetchOriginalityReport } from "../../lib/fetch-actions";
 import { OriginalityReportView } from "./originality-report-view";
@@ -111,6 +112,8 @@ export function RiskContainer() {
       toast.error(result.error);
       return;
     }
+    // Clear stale Zustand boxes so the next visit re-generates from scratch
+    useOnboardingStore.getState().setBoxes(null);
     router.push("/onboarding/boxes");
   };
 

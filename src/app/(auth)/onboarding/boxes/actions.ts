@@ -54,7 +54,7 @@ export async function generateBoxesAction(): Promise<
       geminiPrompt,
       thesisBoxGenerationSchema,
       log,
-      { thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } },
+      { thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH } },
     );
 
     const draftBoxes = generationResult.boxes || [];

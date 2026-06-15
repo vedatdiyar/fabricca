@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { confirmEnhancedThesisAction } from "../actions";
 import { fetchThesisMatrix } from "../../lib/fetch-actions";
+import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import type { EnhancedThesisData } from "@/lib/types";
 
 export function EnrichmentView() {
@@ -61,6 +62,10 @@ export function EnrichmentView() {
         setIsPending(false);
         return;
       }
+      // Clear stale downstream Zustand state so risk and boxes re-trigger on next visit
+      useOnboardingStore.getState().setBoxes(null);
+      useOnboardingStore.getState().setLiteraturePool([]);
+      setIsPending(false);
       toast.success("Tez matrisiniz kaydedildi. Risk analizine geçiliyor.");
       router.push("/onboarding/risk");
     } catch {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect, useState, useCallback } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, AlertCircle, BookOpen, ShieldCheck, Brain, Cpu, MapPin, Archive, Library } from "lucide-react";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { processLiteratureReviewAction, confirmLiteratureAction } from "../actions";
 import { fetchBoxes } from "../../lib/fetch-actions";
 import { LiteratureArticleCard } from "./literature-article-card";
+import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
 import type { LiteratureReviewResult } from "../actions";
 
@@ -29,47 +30,18 @@ const parentBoxes = [
 
 function SubBoxQuery({
   subBox,
-  started,
-  onResult,
+  status,
+  errorMessage,
 }: {
   subBox: GeminiThesisBox;
-  started: boolean;
-  onResult: (title: string, result: LiteratureReviewResult) => void;
+  status: "idle" | "loading" | "done" | "error";
+  errorMessage?: string;
 }) {
-  const [data, setData] = useState<LiteratureReviewResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const literaturePool = useOnboardingStore((s) => s.literaturePool);
 
-  useEffect(() => {
-    if (!started) return;
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      const result = await processLiteratureReviewAction({
-        title: subBox.title,
-        description: subBox.description,
-        theorists: subBox.theorists,
-        concepts: subBox.concepts,
-        queries: subBox.queries,
-      });
-      if (cancelled) return;
-      if (result.error || !result.data) {
-        setError(result.error ?? "Literatür taraması başarısız oldu.");
-        setLoading(false);
-        return;
-      }
-      setData(result.data);
-      onResult(subBox.title, result.data);
-      setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [started, subBox.title]);
+  if (status === "idle") return null;
 
-  if (!started) return null;
-
-  if (loading) {
+  if (status === "loading") {
     return (
       <div className="space-y-3 animate-pulse">
         <div className="h-5 w-3/4 rounded bg-border" />
@@ -79,17 +51,18 @@ function SubBoxQuery({
     );
   }
 
-  if (error) {
+  if (status === "error") {
     return (
       <div className="p-6 text-center border border-destructive/30 rounded-lg bg-destructive/5">
         <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-2" />
         <p className="text-sm text-destructive font-medium mb-1">Tarama hatası</p>
-        <p className="text-xs text-muted-foreground mb-3">{error}</p>
+        <p className="text-xs text-muted-foreground mb-3">{errorMessage}</p>
       </div>
     );
   }
 
-  if (!data || data.starterPack.length === 0) {
+  const entry = literaturePool.find((e) => e.subBoxTitle === subBox.title);
+  if (!entry || entry.starterPack.length === 0) {
     return (
       <div className="p-6 text-center border border-dashed border-border rounded-lg bg-card/20">
         <p className="text-sm text-muted-foreground">Kaynak bulunamadı.</p>
@@ -100,15 +73,15 @@ function SubBoxQuery({
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-3">
-        {data.starterPack.map((article, idx) => (
+        {entry.starterPack.map((article, idx) => (
           <LiteratureArticleCard key={idx} article={article} />
         ))}
       </div>
-      {data.reservedPool.length > 0 && (
+      {entry.reservedPool.length > 0 && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 border border-border/30">
           <Library className="w-4 h-4 text-muted-foreground shrink-0" />
           <p className="text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">{data.reservedPool.length}</span> ek kaynak daha önerildi.
+            <span className="font-semibold text-foreground">{entry.reservedPool.length}</span> ek kaynak daha önerildi.
           </p>
         </div>
       )}
@@ -116,17 +89,31 @@ function SubBoxQuery({
   );
 }
 
+type BoxStatus = "idle" | "loading" | "done" | "error";
+
 export function LiteratureReviewContent() {
   const router = useRouter();
   const [subBoxes, setSubBoxes] = useState<GeminiThesisBox[]>([]);
   const [loading, setLoading] = useState(true);
-  const [started, setStarted] = useState(false);
-  const [literaturePool, setLiteraturePool] = useState<LiteraturePoolEntry[]>([]);
   const [confirming, setConfirming] = useState(false);
+  const [boxStatuses, setBoxStatuses] = useState<Record<string, BoxStatus>>({});
+  const [boxErrors, setBoxErrors] = useState<Record<string, string>>({});
+  const store = useOnboardingStore();
+  const literaturePool = store.literaturePool ?? [];
+  const addToLiteraturePool = store.addToLiteraturePool;
+  const resetStore = store.resetStore;
 
   useEffect(() => {
     fetchBoxes().then((allBoxes) => {
       const children = allBoxes.filter((b) => b.parentId !== null);
+      const freshTitles = new Set(children.map((b) => b.title));
+      const currentStore = useOnboardingStore.getState();
+      const poolTitles = new Set(currentStore.literaturePool.map((e) => e.subBoxTitle));
+      // If the set of sub-boxes doesn't match literaturePool, reset the pool
+      if (freshTitles.size !== poolTitles.size ||
+          ![...freshTitles].every((t) => poolTitles.has(t))) {
+        useOnboardingStore.getState().setLiteraturePool([]);
+      }
       setSubBoxes(children.map((b) => ({
         category: b.category,
         title: b.title,
@@ -136,19 +123,75 @@ export function LiteratureReviewContent() {
         queries: b.queries,
       })));
       setLoading(false);
-      if (children.length > 0) {
-        setStarted(true);
-      }
     });
   }, []);
 
-  const handleSubBoxResult = useCallback((title: string, result: LiteratureReviewResult) => {
-    setLiteraturePool((prev) => {
-      const existing = prev.find((e) => e.subBoxTitle === title);
-      if (existing) return prev;
-      return [...prev, { subBoxTitle: title, starterPack: result.starterPack, reservedPool: result.reservedPool }];
-    });
-  }, []);
+  // Chunked parallel processing: 2 boxes at a time
+  useEffect(() => {
+    if (subBoxes.length === 0) return;
+
+    const currentStore = useOnboardingStore.getState();
+    const allDone = subBoxes.every((box) =>
+      currentStore.literaturePool.some((e) => e.subBoxTitle === box.title),
+    );
+    if (allDone) return;
+
+    let cancelled = false;
+    const CHUNK_SIZE = 2;
+
+    (async () => {
+      for (let i = 0; i < subBoxes.length && !cancelled; i += CHUNK_SIZE) {
+        const chunk = subBoxes.slice(i, i + CHUNK_SIZE);
+
+        setBoxStatuses((prev) => {
+          const next = { ...prev };
+          for (const box of chunk) next[box.title] = "loading";
+          return next;
+        });
+
+        const results = await Promise.allSettled(
+          chunk.map((box) =>
+            processLiteratureReviewAction({
+              title: box.title,
+              description: box.description,
+              theorists: box.theorists,
+              concepts: box.concepts,
+              queries: box.queries,
+            }),
+          ),
+        );
+
+        if (cancelled) break;
+
+        for (let j = 0; j < chunk.length; j++) {
+          const box = chunk[j];
+          const settled = results[j];
+
+          if (settled.status === "fulfilled" && settled.value.data) {
+            addToLiteraturePool({
+              subBoxTitle: box.title,
+              starterPack: settled.value.data.starterPack,
+              reservedPool: settled.value.data.reservedPool,
+            });
+            setBoxStatuses((prev) => ({ ...prev, [box.title]: "done" }));
+          } else {
+            const msg =
+              settled.status === "rejected"
+                ? settled.reason instanceof Error
+                  ? settled.reason.message
+                  : "Beklenmeyen hata"
+                : settled.value.error ?? "Literatür taraması başarısız oldu.";
+            setBoxErrors((prev) => ({ ...prev, [box.title]: msg }));
+            setBoxStatuses((prev) => ({ ...prev, [box.title]: "error" }));
+          }
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [subBoxes, addToLiteraturePool]);
 
   const groupedBoxes = useMemo(() => {
     return parentBoxes.map((parent) => ({
@@ -176,6 +219,7 @@ export function LiteratureReviewContent() {
       setConfirming(false);
       return;
     }
+    resetStore();
     toast.success("Tebrikler! Onboarding süreciniz tamamlandı.");
     router.push("/dashboard");
   };
@@ -200,7 +244,7 @@ export function LiteratureReviewContent() {
           <BookOpen className="w-12 h-12 text-primary" />
         </div>
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Literatür Taraması</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground">Literatür Taraması</h1>
           <p className="text-muted-foreground leading-relaxed text-sm">
             Her bir alt kutu için akademik veri tabanları taranıyor.
           </p>
@@ -217,23 +261,55 @@ export function LiteratureReviewContent() {
               <div className="flex items-center gap-3 pb-2 border-b border-border">
                 <div className={`p-2 rounded-lg ${meta.bgClass}`}><IconComponent className="w-5 h-5" /></div>
                 <div>
-                  <h2 className="text-xl font-bold text-foreground">{meta.label}</h2>
+                  <h2 className="text-xl font-semibold text-foreground">{meta.label}</h2>
                   <p className="text-sm text-muted-foreground">{parent.description}</p>
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-6">
-                {parent.subBoxes.map((subBox, idx) => (
-                  <div key={idx} className="border border-border rounded-xl bg-card p-5 space-y-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-1.5 h-6 rounded-full bg-primary/60" />
-                      <h3 className="text-base font-semibold text-foreground">{subBox.title}</h3>
+                {parent.subBoxes.map((subBox, idx) => {
+                  const isCompleted = literaturePool.some((e) => e.subBoxTitle === subBox.title);
+                  return (
+                    <div key={idx} className="border border-border rounded-xl bg-card p-5 space-y-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-6 rounded-full bg-primary/60" />
+                        <h3 className="text-base font-semibold text-foreground">{subBox.title}</h3>
+                      </div>
+                      {subBox.description && (
+                        <p className="text-sm text-muted-foreground leading-relaxed -mt-2 ml-3.5">{subBox.description}</p>
+                      )}
+                      {isCompleted ? (
+                        <div className="space-y-4">
+                          {literaturePool
+                            .filter((e) => e.subBoxTitle === subBox.title)
+                            .flatMap((entry) => entry.starterPack)
+                            .map((article, ai) => (
+                              <LiteratureArticleCard key={ai} article={article} />
+                            ))}
+                          {literaturePool
+                            .filter((e) => e.subBoxTitle === subBox.title)
+                            .some((entry) => entry.reservedPool.length > 0) && (
+                            <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 border border-border/30">
+                              <Library className="w-4 h-4 text-muted-foreground shrink-0" />
+                              <p className="text-xs text-muted-foreground">
+                                <span className="font-semibold text-foreground">
+                                  {literaturePool
+                                    .filter((e) => e.subBoxTitle === subBox.title)
+                                    .reduce((sum, e) => sum + e.reservedPool.length, 0)}
+                                </span> ek kaynak daha önerildi.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <SubBoxQuery
+                          subBox={subBox}
+                          status={boxStatuses[subBox.title] ?? "idle"}
+                          errorMessage={boxErrors[subBox.title]}
+                        />
+                      )}
                     </div>
-                    {subBox.description && (
-                      <p className="text-sm text-muted-foreground leading-relaxed -mt-2 ml-3.5">{subBox.description}</p>
-                    )}
-                    <SubBoxQuery subBox={subBox} started={started} onResult={handleSubBoxResult} />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );

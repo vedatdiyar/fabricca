@@ -32,7 +32,8 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.2.0",
     "tailwindcss-animate": "^1.0.7",
-    "zod": "^3.25.28"
+    "zod": "^3.25.28",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",

@@ -50,7 +50,7 @@ async function callWithRetry(prompt: string, attempt = 1): Promise<any> {
         temperature: 1.0,
         responseMimeType: "application/json",
         responseJsonSchema: thesisBoxGenerationSchema,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
+        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
       },
     });
   } catch (err: any) {

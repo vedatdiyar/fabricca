@@ -119,7 +119,7 @@ export function OriginalityReportView({ reportData }: OriginalityReportViewProps
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
         <div className="space-y-2 text-left">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground flex flex-col sm:flex-row sm:items-center gap-2">
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground flex flex-col sm:flex-row sm:items-center gap-2">
             <span>Akademik Risk & Maddi Doğrulama Raporu</span>
           </h1>
           <p className="text-muted-foreground leading-relaxed text-sm">
@@ -259,11 +259,11 @@ export function OriginalityReportView({ reportData }: OriginalityReportViewProps
                           <div className="pl-6 text-xs text-muted-foreground leading-relaxed">{item.author} • {item.university} ({item.year})</div>
                           <div className="pl-6 text-[11px] text-muted-foreground font-mono">{item.thesisType}</div>
                         </td>
-                        <td className="p-3 text-center"><span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${getAxisBadge(item.axes.subject)}`}>{statusTranslation[item.axes.subject] || item.axes.subject}</span></td>
-                        <td className="p-3 text-center"><span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${getAxisBadge(item.axes.theory)}`}>{statusTranslation[item.axes.theory] || item.axes.theory}</span></td>
-                        <td className="p-3 text-center"><span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${getAxisBadge(item.axes.methodology)}`}>{statusTranslation[item.axes.methodology] || item.axes.methodology}</span></td>
-                        <td className="p-3 text-center"><span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${getAxisBadge(item.axes.context || "ORIGINAL")}`}>{statusTranslation[item.axes.context || "ORIGINAL"] || item.axes.context}</span></td>
-                        <td className="p-3 text-center"><span className={`inline-flex px-3 py-0.5 rounded-full text-xs font-bold whitespace-nowrap ${getLevelBadge(item.originalityLevel)}`}>{statusTranslation[item.originalityLevel] || item.originalityLevel}</span></td>
+                        <td className="p-3 text-center"><span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${getAxisBadge(item.axes.subject)}`}>{statusTranslation[item.axes.subject] || item.axes.subject}</span></td>
+                        <td className="p-3 text-center"><span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${getAxisBadge(item.axes.theory)}`}>{statusTranslation[item.axes.theory] || item.axes.theory}</span></td>
+                        <td className="p-3 text-center"><span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${getAxisBadge(item.axes.methodology)}`}>{statusTranslation[item.axes.methodology] || item.axes.methodology}</span></td>
+                        <td className="p-3 text-center"><span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${getAxisBadge(item.axes.context || "ORIGINAL")}`}>{statusTranslation[item.axes.context || "ORIGINAL"] || item.axes.context}</span></td>
+                        <td className="p-3 text-center"><span className={`inline-flex px-3 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${getLevelBadge(item.originalityLevel)}`}>{statusTranslation[item.originalityLevel] || item.originalityLevel}</span></td>
                       </tr>
                       {expandedThesisId === item.id && item.comparisonNote && (
                         <tr className="bg-muted/10">

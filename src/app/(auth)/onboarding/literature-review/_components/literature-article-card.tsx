@@ -20,7 +20,7 @@ export function LiteratureArticleCard({ article }: LiteratureArticleCardProps) {
         {/* Üst Bilgi: Badge + Metadata */}
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1 flex-1 min-w-0">
-            <CardTitle className="text-base font-bold text-foreground leading-snug">
+            <CardTitle className="text-base font-semibold text-foreground leading-snug">
               {article.title}
             </CardTitle>
             <CardDescription className="sr-only">

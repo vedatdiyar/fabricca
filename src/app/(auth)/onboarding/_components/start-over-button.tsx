@@ -16,6 +16,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { resetOnboardingAction } from "@/app/(auth)/onboarding/actions";
+import { useOnboardingStore } from "@/lib/store/onboarding-store";
 
 interface StartOverButtonProps {
   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
@@ -34,6 +35,7 @@ export function StartOverButton({ variant = "outline", size = "sm", className = 
         if ("error" in result && result.error) {
           toast.error(result.error);
         } else {
+          useOnboardingStore.getState().resetStore();
           toast.success("Onboarding süreci başarıyla sıfırlandı.");
           setIsOpen(false);
           window.location.href = "/onboarding/matrix";

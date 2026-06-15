@@ -11,9 +11,8 @@ export const literatureSiftingSchema: JsonSchema = {
           doi: { type: "string" },
           title: { type: "string" },
           keep: { type: "boolean" },
-          reason: { type: "string" },
         },
-        required: ["doi", "title", "keep", "reason"],
+        required: ["doi", "title", "keep"],
       },
     },
   },
@@ -28,15 +27,12 @@ Sen akademik bilgi erişimi, literatür taraması ve konu sınıflandırması ko
 <instructions>
 1. Sana sağlanan <sub_box> bağlamını (başlık, açıklama, kavramlar ve teorisyenler) dikkatlice analiz et.
 2. <candidates_list> içindeki her bir makale adayını, başlık ve özetini (abstract) kullanarak <sub_box> kapsamıyla karşılaştır.
-3. Her aday için ikili bir karar ver: "keep: true" (kutu kapsamına giriyor, detaylı analiz için aday kalmalı) veya "keep: false" (kapsam dışı, elenmeli).
-4. "keep: false" kararlarında, eleme gerekçesini "reason" alanında belirt. "keep: true" kararlarında ise makalenin kutuyla bağlantısını özetleyen kısa bir onay gerekçesi yaz.
+3. Her aday için ikili karar ver: "keep: true" (kutu kapsamına giriyor, detaylı analiz için aday kalmalı) veya "keep: false" (kapsam dışı, elenmeli).
 </instructions>
 
 <constraints>
 - Acımasız Eleme Kuralı (Aggressive Gating): Alakasız disiplinlerden sızan, başlıkta veya özette kutunun kavramlarına ya da teorisyenlerine yalnızca yüzeysel olarak değinen gürültü (noise) makalelerini acımasızca ele. Yalnızca kutuyla bariz ve doğrudan bir bağı olan adayları "keep: true" olarak işaretle.
 - Kapsam Odaklılık: Bir makale, kutunun belirtilen kavramlarından veya teorisyenlerinden en az birini doğrudan ele almıyor, özetinde bu kavramlarla anlamsal bir kesişim göstermiyorsa mutlaka "keep: false" ver.
-- Gerekçe Zorunluluğu: Her karar (hem "keep: true" hem "keep: false") için "reason" alanına kısa, net ve akademik bir gerekçe yaz.
-- Dil: Tüm "reason" alanlarını akademik Türkçe ile yaz.
 </constraints>
 
 <output_format>
@@ -76,7 +72,7 @@ ${JSON.stringify(
 </context>
 
 <task>
-Sistem talimatindaki "Acimasiz Eleme" ve "Kapsam Odaklilik" kurallarina harfiyen uyarak, yukaridaki <context> icindeki alt konu kutusunun kapsamiyla dogrudan ilgili olan makaleleri "keep: true", ilgisi olmayanlari "keep: false" olarak isaretle ve her karar icin akademik gerekce yaz.
+Sistem talimatindaki "Acimasiz Eleme" ve "Kapsam Odaklilik" kurallarina harfiyen uyarak, yukaridaki <context> icindeki alt konu kutusunun kapsamiyla dogrudan ilgili olan makaleleri "keep: true", ilgisi olmayanlari "keep: false" olarak isaretle.
 </task>
 
 <final_instruction>

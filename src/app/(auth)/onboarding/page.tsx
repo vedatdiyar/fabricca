@@ -8,9 +8,9 @@ import { getProfile } from "@/proxy";
  * Onboarding root router page.
  * Always redirects to the last completed step:
  * - No matrix → matrix form (first step)
- * - Matrix exists, no report → matrix (last completed = matrix)
- * - Report exists, no boxes → enrichment (last completed = enrichment)
- * - Boxes exist, not completed → boxes (last completed = boxes)
+ * - Matrix exists, no report → enrichment (review & confirm)
+ * - Report exists, no boxes → boxes (generate subject boxes)
+ * - Boxes exist, not completed → literature-review
  * - Completed → dashboard
  */
 export default async function OnboardingPage() {
@@ -35,7 +35,7 @@ export default async function OnboardingPage() {
     .where(eq(originalityReports.userId, profile.id));
 
   if (!report) {
-    redirect("/onboarding/matrix");
+    redirect("/onboarding/enrichment");
   }
 
   const [box] = await db
@@ -45,8 +45,8 @@ export default async function OnboardingPage() {
     .limit(1);
 
   if (!box) {
-    redirect("/onboarding/enrichment");
+    redirect("/onboarding/boxes");
   }
 
-  redirect("/onboarding/boxes");
+  redirect("/onboarding/literature-review");
 }

@@ -106,8 +106,7 @@ async function searchSemanticScholar(query: string): Promise<RawPaper[]> {
   const headers: Record<string, string> = {};
   if (apiKey) headers["x-api-key"] = apiKey;
 
-  const url =
-    `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(query)}&limit=50&fields=title,abstract,externalIds,url,authors,year,publicationVenue`;
+  const url = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(query)}&limit=50&fields=title,abstract,externalIds,url,authors,year,publicationVenue`;
 
   try {
     const response = await fetch(url, {
@@ -115,12 +114,17 @@ async function searchSemanticScholar(query: string): Promise<RawPaper[]> {
       signal: AbortSignal.timeout(15000),
     });
     if (!response.ok) return [];
-    const data = (await response.json()) as { data?: Record<string, unknown>[] };
+    const data = (await response.json()) as {
+      data?: Record<string, unknown>[];
+    };
     const papers = data.data;
     if (!papers) return [];
 
     return papers.map((p) => {
-      const externalIds = p.externalIds as Record<string, string> | null | undefined;
+      const externalIds = p.externalIds as
+        | Record<string, string>
+        | null
+        | undefined;
       const authorList = p.authors as { name?: string }[] | null | undefined;
       const venue = p.publicationVenue as { name?: string } | null | undefined;
 
@@ -130,8 +134,7 @@ async function searchSemanticScholar(query: string): Promise<RawPaper[]> {
         abstract: (p.abstract as string) ?? null,
         doi: extractCleanDoi(externalIds?.DOI),
         url: (p.url as string) ?? null,
-        authors:
-          authorList?.map((a) => a.name ?? "").filter(Boolean) ?? [],
+        authors: authorList?.map((a) => a.name ?? "").filter(Boolean) ?? [],
         year: (p.year as number) ?? null,
         publisher: venue?.name ?? null,
       };
@@ -150,7 +153,8 @@ async function searchOpenAlex(query: string): Promise<RawPaper[]> {
   const params = new URLSearchParams({
     "search.semantic": query,
     per_page: "50",
-    select: "title,abstract_inverted_index,doi,id,authorships,publication_year,primary_location",
+    select:
+      "title,abstract_inverted_index,doi,id,authorships,publication_year,primary_location",
   });
   if (apiKey) params.set("api_key", apiKey);
 
@@ -162,7 +166,9 @@ async function searchOpenAlex(query: string): Promise<RawPaper[]> {
       signal: AbortSignal.timeout(15000),
     });
     if (!response.ok) return [];
-    const data = (await response.json()) as { results?: Record<string, unknown>[] };
+    const data = (await response.json()) as {
+      results?: Record<string, unknown>[];
+    };
     const results = data.results;
     if (!results) return [];
 
@@ -206,7 +212,10 @@ async function searchOpenAlex(query: string): Promise<RawPaper[]> {
 // Stage 2: DOI Merge & Deduplication
 // ============================================================================
 
-function mergePapers(semantic: RawPaper[], openalex: RawPaper[]): ValidatedPaper[] {
+function mergePapers(
+  semantic: RawPaper[],
+  openalex: RawPaper[],
+): ValidatedPaper[] {
   const doiMap = new Map<string, ValidatedPaper>();
   const noDoiPapers: ValidatedPaper[] = [];
   const seenTitleKeys = new Set<string>();
@@ -250,80 +259,17 @@ function mergePapers(semantic: RawPaper[], openalex: RawPaper[]): ValidatedPaper
 
   for (const raw of semantic) ingest(raw);
   for (const raw of openalex) ingest(raw);
-
   return [...doiMap.values(), ...noDoiPapers];
 }
 
 // ============================================================================
-// Stage 3: CrossRef Noter Doğrulaması (Polite Pool & Fail-Safe)
-// ============================================================================
-
-async function validateWithCrossRef(paper: ValidatedPaper): Promise<ValidatedPaper> {
-  if (!paper.doi) return paper;
-
-  const contactEmail = process.env.CROSSREF_CONTACT_EMAIL;
-  const endpoint = `https://api.crossref.org/works/${encodeURIComponent(paper.doi)}${contactEmail ? `?mailto=${encodeURIComponent(contactEmail)}` : ""}`;
-
-  try {
-    const response = await fetch(endpoint, {
-      headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!response.ok) return paper;
-
-    const body = (await response.json()) as { message?: Record<string, unknown> } | undefined;
-    const message = body?.message;
-    if (!message) return paper;
-
-    const authorList = message.author as
-      | { given?: string; family?: string }[]
-      | undefined;
-    if (authorList && authorList.length > 0) {
-      const resolvedAuthors: string[] = [];
-      for (const a of authorList) {
-        const given = (a.given ?? "").trim();
-        const family = (a.family ?? "").trim();
-        const full = `${given} ${family}`.trim();
-        if (full) resolvedAuthors.push(full);
-      }
-      if (resolvedAuthors.length > 0) {
-        paper.authors = resolvedAuthors;
-      }
-    }
-
-    const crossrefUrl = message.URL as string | undefined;
-    if (crossrefUrl) paper.url = crossrefUrl;
-
-    const publisher = message.publisher as string | undefined;
-    const containerTitle = message["container-title"] as string[] | undefined;
-    if (publisher) paper.publisher = publisher;
-    else if (containerTitle && containerTitle.length > 0) {
-      paper.publisher = containerTitle[0];
-    }
-
-    const published = message.published as
-      | { "date-parts"?: number[][] }
-      | undefined;
-    const dateParts = published?.["date-parts"];
-    if (dateParts && dateParts.length > 0 && dateParts[0].length > 0) {
-      paper.year = dateParts[0][0];
-    }
-
-    return paper;
-  } catch {
-    return paper;
-  }
-}
-
-// ============================================================================
-// Stage 4a: AI Sifting (Step 8)
+// AI Sifting Stage
 // ============================================================================
 
 interface SiftingResultItem {
   doi: string;
   title: string;
   keep: boolean;
-  reason: string;
 }
 
 interface SiftingResponse {
@@ -338,7 +284,7 @@ async function runSiftingStage(
   const siftingInput = candidates.map((c) => ({
     doi: c.doi ?? "",
     title: c.title,
-    abstract: c.abstract ?? "",
+    abstract: "",
   }));
 
   const siftingResult = await generateStructuredContent<SiftingResponse>(
@@ -359,9 +305,7 @@ async function runSiftingStage(
   );
 
   const keptDois = new Set(
-    siftingResult.siftedResults
-      .filter((r) => r.keep)
-      .map((r) => r.doi),
+    siftingResult.siftedResults.filter((r) => r.keep).map((r) => r.doi),
   );
 
   const keptTitles = new Set(
@@ -370,15 +314,17 @@ async function runSiftingStage(
       .map((r) => r.title.toLowerCase().trim()),
   );
 
-  return candidates.filter((c) => {
+  const kept = candidates.filter((c) => {
     if (c.doi && keptDois.has(c.doi)) return true;
     if (c.title && keptTitles.has(c.title.toLowerCase().trim())) return true;
     return false;
   });
+
+  return kept.map((c) => ({ ...c, abstract: null }));
 }
 
 // ============================================================================
-// Stage 4b: AI Jury Analysis (Step 9)
+// AI Jury Analysis Stage
 // ============================================================================
 
 interface JuryResponse {
@@ -429,11 +375,12 @@ async function runJuryStage(
 // ============================================================================
 
 /**
- * Processes a single sub-box through the 4-stage literature review pipeline:
+ * Processes a single sub-box through the 5-stage literature review pipeline:
  * 1. Parallel search (Semantic Scholar + OpenAlex) for each query
- * 2. DOI-based merge and deduplication
- * 3. CrossRef polite-pool validation (fail-safe)
- * 4. AI sifting + jury analysis → starterPack[5] + reservedPool[15]
+ * 2. DOI-based merge and deduplication (saved as rawApiPool)
+ * 3. AI sifting — aggressive gating
+ * 4. AI jury analysis → starter pack + reserved pool
+ * 5. CrossRef polite-pool validation on final jury articles + abstract restore
  *
  * @param subBox - Sub-box metadata including search queries
  * @returns LiteratureReviewResult with starterPack and reservedPool arrays
@@ -485,7 +432,9 @@ export async function processLiteratureReviewAction(
     // Stage 2: DOI dedup & merge overlay
     // ------------------------------------------------------------------
     const mergeStart = performance.now();
-    const semanticPapers = allRaw.filter((r) => r.source === "semantic_scholar");
+    const semanticPapers = allRaw.filter(
+      (r) => r.source === "semantic_scholar",
+    );
     const openalexPapers = allRaw.filter((r) => r.source === "openalex");
     const merged = mergePapers(semanticPapers, openalexPapers);
 
@@ -495,28 +444,18 @@ export async function processLiteratureReviewAction(
       data: { mergedCount: merged.length },
     });
 
-    // ------------------------------------------------------------------
-    // Stage 3: CrossRef polite-pool validation (independent try-catch per DOI)
-    // ------------------------------------------------------------------
-    const crossrefStart = performance.now();
-    const validated = await Promise.all(merged.map((p) => validateWithCrossRef(p)));
-
-    logger.info("literature_crossref_done", {
-      service: "literature",
-      durationMs: performance.now() - crossrefStart,
-      data: { validatedCount: validated.length },
-    });
+    const rawApiPool = merged;
 
     // ------------------------------------------------------------------
-    // Stage 4a: AI Sifting (Step 8) — aggressive gating
+    // Stage 3: AI Sifting — aggressive gating
     // ------------------------------------------------------------------
     const siftStart = performance.now();
-    const sifted = await runSiftingStage(subBox, validated, logger);
+    const sifted = await runSiftingStage(subBox, merged, logger);
 
     logger.info("literature_sifting_done", {
       service: "literature",
       durationMs: performance.now() - siftStart,
-      data: { before: validated.length, after: sifted.length },
+      data: { before: merged.length, after: sifted.length },
     });
 
     if (sifted.length === 0) {
@@ -524,10 +463,40 @@ export async function processLiteratureReviewAction(
     }
 
     // ------------------------------------------------------------------
-    // Stage 4b: AI Jury Analysis (Step 9) — starter pack & reserved pool
+    // Hydration: restore abstracts from rawApiPool (DOI → title fallback)
+    // ------------------------------------------------------------------
+    const hydraStart = performance.now();
+    const normalizedDoiIndex = new Map(
+      rawApiPool.map((p) => [p.doi?.toLowerCase().trim() ?? "", p]),
+    );
+    const hydrated = sifted.map((s) => {
+      if (s.doi) {
+        const match = normalizedDoiIndex.get(s.doi.toLowerCase().trim());
+        if (match?.abstract) return { ...s, abstract: match.abstract };
+      } else {
+        const titleKey = s.title.toLowerCase().trim().slice(0, 80);
+        const match = rawApiPool.find(
+          (p) => p.title?.toLowerCase().trim().slice(0, 80) === titleKey,
+        );
+        if (match?.abstract) return { ...s, abstract: match.abstract };
+      }
+      return s;
+    });
+
+    logger.info("literature_hydration_done", {
+      service: "literature",
+      durationMs: performance.now() - hydraStart,
+      data: {
+        before: sifted.length,
+        restored: hydrated.filter((h) => h.abstract !== null).length,
+      },
+    });
+
+    // ------------------------------------------------------------------
+    // Stage 4: AI Jury Analysis — starter pack & reserved pool
     // ------------------------------------------------------------------
     const juryStart = performance.now();
-    const result = await runJuryStage(subBox, sifted, logger);
+    const result = await runJuryStage(subBox, hydrated, logger);
 
     logger.info("literature_jury_done", {
       service: "literature",
@@ -538,7 +507,37 @@ export async function processLiteratureReviewAction(
       },
     });
 
-    return { data: result };
+    // ------------------------------------------------------------------
+    // Stage 5: CrossRef polite-pool validation on final jury articles
+    // ------------------------------------------------------------------
+    const crossrefStart = performance.now();
+    const [enrichedStarterPack, enrichedReservedPool] = await Promise.all([
+      Promise.all(
+        result.starterPack.map((a) =>
+          enrichJuryArticleWithCrossRef(a, rawApiPool),
+        ),
+      ),
+      Promise.all(
+        result.reservedPool.map((a) =>
+          enrichJuryArticleWithCrossRef(a, rawApiPool),
+        ),
+      ),
+    ]);
+
+    logger.info("literature_crossref_done", {
+      service: "literature",
+      durationMs: performance.now() - crossrefStart,
+      data: {
+        enrichedCount: enrichedStarterPack.length + enrichedReservedPool.length,
+      },
+    });
+
+    return {
+      data: {
+        starterPack: enrichedStarterPack,
+        reservedPool: enrichedReservedPool,
+      },
+    };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Beklenmeyen hata";
     logger.error("literature_review_failed", {
@@ -546,6 +545,112 @@ export async function processLiteratureReviewAction(
       error: err,
     });
     return { error: message };
+  }
+}
+
+// ============================================================================
+// CrossRef & Enrichment Helpers (polite-pool)
+// ============================================================================
+
+async function enrichJuryArticleWithCrossRef(
+  article: JuryArticle,
+  pool: ValidatedPaper[],
+): Promise<JuryArticle> {
+  if (article.doi) {
+    const match = pool.find((p) => p.doi === article.doi);
+    if (match?.abstract) {
+      article.abstract = match.abstract;
+    }
+  } else if (article.title) {
+    const titleKey = article.title.toLowerCase().trim().slice(0, 80);
+    const match = pool.find(
+      (p) => p.title?.toLowerCase().trim().slice(0, 80) === titleKey,
+    );
+    if (match?.abstract) {
+      article.abstract = match.abstract;
+    }
+  }
+
+  if (!article.doi) return article;
+
+  const paper: ValidatedPaper = {
+    title: article.title,
+    abstract: article.abstract,
+    doi: article.doi,
+    url: article.url,
+    authors: [...article.authors],
+    year: article.publicationYear,
+    publisher: article.publisher,
+  };
+
+  const enriched = await validateWithCrossRef(paper);
+
+  article.authors = enriched.authors;
+  article.url = enriched.url ?? article.url;
+  article.publisher = enriched.publisher ?? article.publisher;
+  if (enriched.year) article.publicationYear = enriched.year;
+
+  return article;
+}
+
+async function validateWithCrossRef(
+  paper: ValidatedPaper,
+): Promise<ValidatedPaper> {
+  if (!paper.doi) return paper;
+
+  const contactEmail = process.env.CROSSREF_CONTACT_EMAIL;
+  const endpoint = `https://api.crossref.org/works/${encodeURIComponent(paper.doi)}${contactEmail ? `?mailto=${encodeURIComponent(contactEmail)}` : ""}`;
+
+  try {
+    const response = await fetch(endpoint, {
+      headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) return paper;
+
+    const body = (await response.json()) as
+      | { message?: Record<string, unknown> }
+      | undefined;
+    const message = body?.message;
+    if (!message) return paper;
+
+    const authorList = message.author as
+      | { given?: string; family?: string }[]
+      | undefined;
+    if (authorList && authorList.length > 0) {
+      const resolvedAuthors: string[] = [];
+      for (const a of authorList) {
+        const given = (a.given ?? "").trim();
+        const family = (a.family ?? "").trim();
+        const full = `${given} ${family}`.trim();
+        if (full) resolvedAuthors.push(full);
+      }
+      if (resolvedAuthors.length > 0) {
+        paper.authors = resolvedAuthors;
+      }
+    }
+
+    const crossrefUrl = message.URL as string | undefined;
+    if (crossrefUrl) paper.url = crossrefUrl;
+
+    const publisher = message.publisher as string | undefined;
+    const containerTitle = message["container-title"] as string[] | undefined;
+    if (publisher) paper.publisher = publisher;
+    else if (containerTitle && containerTitle.length > 0) {
+      paper.publisher = containerTitle[0];
+    }
+
+    const published = message.published as
+      | { "date-parts"?: number[][] }
+      | undefined;
+    const dateParts = published?.["date-parts"];
+    if (dateParts && dateParts.length > 0 && dateParts[0].length > 0) {
+      paper.year = dateParts[0][0];
+    }
+
+    return paper;
+  } catch {
+    return paper;
   }
 }
 
@@ -598,7 +703,10 @@ export async function confirmLiteratureAction(args: {
       log.warn({
         step: "confirmLiterature",
         status: "FAILED",
-        diagnostics: { errorCode: "VALIDATION_ERROR", message: "Literatür havuzu boş." },
+        diagnostics: {
+          errorCode: "VALIDATION_ERROR",
+          message: "Literatür havuzu boş.",
+        },
       });
       return { error: "Onaylanacak literatür verisi bulunamadı." };
     }
@@ -769,6 +877,9 @@ export async function confirmLiteratureAction(args: {
         message: err instanceof Error ? err.message : String(err),
       },
     });
-    return { error: err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu." };
+    return {
+      error:
+        err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.",
+    };
   }
 }
