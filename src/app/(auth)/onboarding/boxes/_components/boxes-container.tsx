@@ -11,7 +11,6 @@ import {
   MapPin,
   Archive,
   BookOpen,
-  BookMarked,
   UserRound,
   WholeWord,
 } from "lucide-react";
@@ -211,38 +210,7 @@ export function BoxesContainer() {
                           )}
                         </div>
 
-                        {/* Birincil ve İkincil Kaynaklar */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 text-sm">
-                          {box.primaryLiterature &&
-                            box.primaryLiterature.length > 0 && (
-                              <div className="space-y-1.5 p-3 bg-muted/20 border border-border/40 rounded-lg">
-                                <span className="font-semibold text-foreground flex items-center gap-1.5">
-                                  <BookMarked className="w-4 h-4 text-primary" />
-                                  Birincil Kaynaklar:
-                                </span>
-                                <ul className="text-muted-foreground list-inside list-disc space-y-1 text-xs leading-relaxed">
-                                  {box.primaryLiterature.map((lit, i) => (
-                                    <li key={i}>{lit}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
 
-                          {box.secondaryLiterature &&
-                            box.secondaryLiterature.length > 0 && (
-                              <div className="space-y-1.5 p-3 bg-muted/20 border border-border/40 rounded-lg">
-                                <span className="font-semibold text-foreground flex items-center gap-1.5">
-                                  <BookOpen className="w-4 h-4 text-primary" />
-                                  İkincil Kaynaklar:
-                                </span>
-                                <ul className="text-muted-foreground list-inside list-disc space-y-1 text-xs leading-relaxed">
-                                  {box.secondaryLiterature.map((lit, i) => (
-                                    <li key={i}>{lit}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                        </div>
                       </CardContent>
                     </Card>
                   ))

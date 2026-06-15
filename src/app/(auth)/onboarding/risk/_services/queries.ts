@@ -56,9 +56,15 @@ export async function extractQueries(
         },
       );
 
-    const safeTavilyQueries = Array.isArray(extractedQueries?.tavilyQueries)
+    const rawTavilyQueries = Array.isArray(extractedQueries?.tavilyQueries)
       ? extractedQueries.tavilyQueries
       : [];
+
+    // Fallback: ensure at least 1 Tavily query exists (4th shield against empty sets)
+    const finalTavilyQueries =
+      rawTavilyQueries.length === 0
+        ? [`${params.studyTitle} research verification`]
+        : rawTavilyQueries;
 
     const rawKeywords = Array.isArray(extractedQueries?.keywords)
       ? extractedQueries.keywords.map((k) => k.trim()).filter(Boolean)
@@ -97,12 +103,12 @@ export async function extractQueries(
           prompt: tokens.input ?? 0,
           completion: tokens.output ?? 0,
         },
-        outputRows: safeTavilyQueries.length + tezaraQueries.length,
+        outputRows: finalTavilyQueries.length + tezaraQueries.length,
       },
     });
 
     return {
-      tavilyQueries: safeTavilyQueries,
+      tavilyQueries: finalTavilyQueries,
       tezaraQueries,
       keywords: finalKeywords,
     };

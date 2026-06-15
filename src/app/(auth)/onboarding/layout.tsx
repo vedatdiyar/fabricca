@@ -2,10 +2,10 @@ import { OnboardingStepper } from "./_components/onboarding-stepper";
 
 /**
  * Onboarding sürecinin tüm sayfalarını saran layout.
- * Üst kısımda yatay adım navigasyon barını (stepper) sabitler
- * ve altında sayfa içeriğini gösterir.
+ * Sol tarafta dikey adım navigasyon sidebar'ını (stepper) sabitler
+ * ve sağ tarafta sayfa içeriğini gösterir.
  * min-h-screen ve bg-background burada sağlanır,
- * böylece her sayfa kendi `<main>` etiketinde bu sınıfları tekrar tanımlamaz.
+ * böylece her sayfa kendi içerik div'inde bu sınıfları tekrar tanımlamaz.
  */
 export default function OnboardingLayout({
   children,
@@ -13,9 +13,9 @@ export default function OnboardingLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex min-h-screen bg-background">
       <OnboardingStepper />
-      {children}
+      <main className="flex-1 min-w-0">{children}</main>
     </div>
   );
 }

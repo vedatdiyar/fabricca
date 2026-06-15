@@ -16,8 +16,8 @@ export default async function OnboardingRiskPage() {
   }
 
   return (
-    <main className="py-10 px-4 sm:px-6 lg:px-8">
+    <div className="pt-10 pb-10 px-4 sm:px-6 lg:px-8">
       <RiskContainer />
-    </main>
+    </div>
   );
 }

@@ -144,8 +144,6 @@ export async function confirmBoxesAction(args: {
           theorists: [],
           concepts: [],
           queries: [],
-          primaryLiterature: [],
-          secondaryLiterature: [],
         },
         {
           thesisMatrixId,
@@ -156,8 +154,6 @@ export async function confirmBoxesAction(args: {
           theorists: [],
           concepts: [],
           queries: [],
-          primaryLiterature: [],
-          secondaryLiterature: [],
         },
         {
           thesisMatrixId,
@@ -168,8 +164,6 @@ export async function confirmBoxesAction(args: {
           theorists: [],
           concepts: [],
           queries: [],
-          primaryLiterature: [],
-          secondaryLiterature: [],
         },
         {
           thesisMatrixId,
@@ -180,8 +174,6 @@ export async function confirmBoxesAction(args: {
           theorists: [],
           concepts: [],
           queries: [],
-          primaryLiterature: [],
-          secondaryLiterature: [],
         },
         {
           thesisMatrixId,
@@ -192,8 +184,6 @@ export async function confirmBoxesAction(args: {
           theorists: [],
           concepts: [],
           queries: [],
-          primaryLiterature: [],
-          secondaryLiterature: [],
         },
       ];
 
@@ -227,8 +217,6 @@ export async function confirmBoxesAction(args: {
           theorists: box.theorists || [],
           concepts: box.concepts || [],
           queries: box.queries || [],
-          primaryLiterature: box.primaryLiterature || [],
-          secondaryLiterature: box.secondaryLiterature || [],
         };
       });
 

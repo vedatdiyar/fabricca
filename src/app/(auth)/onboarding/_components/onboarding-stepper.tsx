@@ -55,104 +55,104 @@ export function OnboardingStepper() {
   );
 
   const currentIdx = STEPS.findIndex((s) => s.key === currentStep);
+  const progressHeight =
+    currentIdx > 0
+      ? `${(currentIdx / (STEPS.length - 1)) * 100}%`
+      : "0%";
 
   return (
     <nav
-      className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-md"
+      className="sticky top-0 z-50 h-screen w-14 md:w-56 shrink-0 border-r border-border bg-background/80 backdrop-blur-md overflow-y-auto"
       aria-label="Onboarding adım navigasyonu"
     >
-      <div className="mx-auto max-w-5xl px-6 py-5">
-        <div className="relative flex w-full justify-between items-start">
-          {/* ── ARKA PLAN ÇİZGİSİ (RAY SİSTEMİ) ── */}
+      <div className="relative flex flex-col justify-center h-full">
+        {/* ── ARKA PLAN ÇİZGİSİ (RAY) ── */}
+        <div
+          className="absolute left-[1.75rem] top-0 w-[1px] h-full bg-border/20"
+          aria-hidden="true"
+        >
           <div
-            className="absolute left-0 top-3.5 hidden h-[1px] w-full bg-border/60 md:block"
-            aria-hidden="true"
-          >
-            <div
-              className="h-full bg-primary/50 transition-all duration-500 ease-in-out"
-              style={{ width: `${(currentIdx / (STEPS.length - 1)) * 100}%` }}
-            />
-          </div>
-
-          {/* ── ADIM ELEMANLARI ── */}
-          {STEPS.map((step, index) => {
-            const stepStatus = getStepStatus(step);
-            const isActive = currentStep === step.key;
-            const isCompleted = stepStatus === "success" && !isActive;
-            const isClickable =
-              stepStatus !== "idle" && stepStatus !== "loading" && !isActive;
-            const isError = stepStatus === "error";
-
-            return (
-              <div
-                key={step.key}
-                className="relative flex flex-col items-center flex-1"
-              >
-                {/* Adım Butonu */}
-                <button
-                  type="button"
-                  onClick={() => handleStepClick(step)}
-                  disabled={!isClickable}
-                  className={cn(
-                    "group flex flex-col items-center gap-2.5 rounded-xl transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 p-1",
-                    isClickable &&
-                      "cursor-pointer text-muted-foreground hover:text-foreground",
-                    isActive && "text-primary font-medium",
-                    !isClickable &&
-                      !isActive &&
-                      "text-muted-foreground/40 cursor-default",
-                  )}
-                  tabIndex={isClickable ? 0 : -1}
-                  aria-current={isActive ? "step" : undefined}
-                >
-                  {/* Sayı / İkon Dairesi */}
-                  <span
-                    className={cn(
-                      "relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-all border bg-background shadow-sm",
-                      isActive &&
-                        "bg-primary text-primary-foreground border-primary scale-110 shadow-primary/10 ring-4 ring-primary/10",
-                      isCompleted &&
-                        "border-primary/50 text-primary bg-primary/5 shadow-sm",
-                      isError &&
-                        "bg-destructive/10 border-destructive/30 text-destructive",
-                      !isActive &&
-                        !isCompleted &&
-                        !isError &&
-                        "border-border text-muted-foreground/60",
-                    )}
-                  >
-                    {isCompleted ? (
-                      <Check
-                        className="h-3.5 w-3.5 stroke-[3]"
-                        aria-hidden="true"
-                      />
-                    ) : isError ? (
-                      <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
-                    ) : (
-                      <span>{index + 1}</span>
-                    )}
-                  </span>
-
-                  {/* Adım Metni */}
-                  <span
-                    className={cn(
-                      "hidden md:block text-[11px] tracking-wider uppercase font-medium whitespace-nowrap text-center select-none max-w-[120px] transition-colors",
-                      isActive && "text-foreground font-semibold",
-                      isCompleted && "text-muted-foreground/80 font-medium",
-                      isError && "text-destructive font-medium",
-                      !isActive &&
-                        !isCompleted &&
-                        !isError &&
-                        "text-muted-foreground/40",
-                    )}
-                  >
-                    {step.label}
-                  </span>
-                </button>
-              </div>
-            );
-          })}
+            className="w-full bg-primary/20 transition-all duration-500 ease-in-out"
+            style={{ height: progressHeight }}
+          />
         </div>
+
+        {/* ── ADIM ELEMANLARI ── */}
+        {STEPS.map((step, index) => {
+          const stepStatus = getStepStatus(step);
+          const isActive = currentStep === step.key;
+          const isCompleted = stepStatus === "success" && !isActive;
+          const isClickable = stepStatus === "success" && !isActive;
+          const isError = stepStatus === "error";
+
+          return (
+            <div
+              key={step.key}
+              className="relative flex items-center w-full pl-3.5"
+            >
+              <button
+                type="button"
+                onClick={() => handleStepClick(step)}
+                disabled={!isClickable}
+                className={cn(
+                  "flex items-center gap-4 w-full py-3 rounded-xl transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20",
+                  isClickable &&
+                    "cursor-pointer text-muted-foreground hover:text-foreground",
+                  isActive && "text-primary font-medium",
+                  !isClickable &&
+                    !isActive &&
+                    "text-muted-foreground cursor-default",
+                )}
+                tabIndex={isClickable ? 0 : -1}
+                aria-current={isActive ? "step" : undefined}
+              >
+                {/* Sayı / İkon Dairesi */}
+                <span
+                  className={cn(
+                    "relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-all border bg-background shadow-sm",
+                    isActive &&
+                      "bg-primary text-primary-foreground border-primary scale-110 shadow-primary/10 ring-4 ring-primary/10",
+                    isCompleted &&
+                      "border-primary/20 text-primary bg-primary/5 shadow-sm",
+                    isError &&
+                      "bg-destructive/10 border-destructive/20 text-destructive",
+                    !isActive &&
+                      !isCompleted &&
+                      !isError &&
+                      "border-border text-muted-foreground",
+                  )}
+                >
+                  {isCompleted ? (
+                    <Check
+                      className="h-3.5 w-3.5 stroke-[3]"
+                      aria-hidden="true"
+                    />
+                  ) : isError ? (
+                    <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                  ) : (
+                    <span>{index + 1}</span>
+                  )}
+                </span>
+
+                {/* Adım Metni */}
+                <span
+                  className={cn(
+                    "hidden md:block text-[11px] tracking-wider uppercase font-medium select-none transition-colors",
+                    isActive && "text-foreground font-semibold",
+                    isCompleted && "text-muted-foreground font-medium",
+                    isError && "text-destructive font-medium",
+                    !isActive &&
+                      !isCompleted &&
+                      !isError &&
+                      "text-muted-foreground",
+                  )}
+                >
+                  {step.label}
+                </span>
+              </button>
+            </div>
+          );
+        })}
       </div>
     </nav>
   );

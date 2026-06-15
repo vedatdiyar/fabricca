@@ -21,7 +21,9 @@ export type ServiceName =
   | "originality"
   | "complete"
   | "boxes"
-  | "wikipedia";
+  | "wikipedia"
+  | "literature"
+  | "library";
 
 export interface TokenUsage {
   input?: number;

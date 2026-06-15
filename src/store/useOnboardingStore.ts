@@ -9,6 +9,8 @@ import type {
   JuryReportItem,
   OriginalityReportData,
   GeminiThesisBox,
+  JuryArticle,
+  LiteraturePoolEntry,
 } from "@/lib/types";
 
 /**
@@ -39,6 +41,18 @@ interface OnboardingStoreState {
    * 5. Adım: Yapay zekanın ürettiği ve onay bekleyen konu kutuları (boxes).
    */
   boxes: GeminiThesisBox[] | null;
+  /**
+   * 6. Adım: Literatür tarama adımının durumu.
+   */
+  literatureStatus: "idle" | "loading" | "error" | "success";
+  /**
+   * 6. Adım: Kutu bazında taranan literatür adayları, starter pack ve rezerv pool.
+   */
+  literaturePool: LiteraturePoolEntry[] | null;
+  /**
+   * Kullanıcının literatür tarama adımında onayladığı kaynaklar.
+   */
+  approvedLiterature: JuryArticle[] | null;
   /**
    * Jüri analizinde üretilen ve onaylanan anahtar kelimeler.
    */
@@ -106,6 +120,16 @@ interface OnboardingStoreActions {
     status: StepStatus,
   ) => void;
   /**
+   * Belirtilen alt kutu için literatür tarama sonucunu store'a ekler (append).
+   * @param entry - Alt kutu literatür verisi (starterPack + reservedPool)
+   */
+  setLiteraturePool: (entry: LiteraturePoolEntry) => void;
+  /**
+   * Literatür tarama adımının global durumunu günceller.
+   * @param status - Yeni durum değeri
+   */
+  setLiteratureStatus: (status: "idle" | "loading" | "error" | "success") => void;
+  /**
    * Onboarding store verilerini başlangıç durumuna döndürür ve tarayıcı oturumunu temizler.
    */
   resetStore: () => void;
@@ -139,6 +163,9 @@ export const useOnboardingStore = create<OnboardingStore>()(
       juryReport: null,
       boxes: null,
       approvedKeywords: null,
+      literatureStatus: "idle",
+      literaturePool: null,
+      approvedLiterature: null,
       status: initialStatus,
 
       // Actions
@@ -235,11 +262,36 @@ export const useOnboardingStore = create<OnboardingStore>()(
       },
 
       setBoxes: (boxes) => {
-        set({ boxes });
+        // Sıfırlama Kalkanı: Kutular değiştiğinde literatür verisini geçersiz kıl.
+        set({
+          boxes,
+          literaturePool: null,
+          approvedLiterature: null,
+          literatureStatus: "idle",
+        });
       },
 
       setApprovedKeywords: (keywords) => {
         set({ approvedKeywords: keywords });
+      },
+
+      setLiteraturePool: (entry) => {
+        set((state) => {
+          const existing = state.literaturePool ?? [];
+          const idx = existing.findIndex(
+            (e) => e.subBoxTitle === entry.subBoxTitle,
+          );
+          if (idx >= 0) {
+            const updated = [...existing];
+            updated[idx] = entry;
+            return { literaturePool: updated };
+          }
+          return { literaturePool: [...existing, entry] };
+        });
+      },
+
+      setLiteratureStatus: (status) => {
+        set({ literatureStatus: status });
       },
 
       setStatus: (step, status) => {
@@ -260,6 +312,9 @@ export const useOnboardingStore = create<OnboardingStore>()(
           juryReport: null,
           boxes: null,
           approvedKeywords: null,
+          literatureStatus: "idle",
+          literaturePool: null,
+          approvedLiterature: null,
           status: initialStatus,
         });
         if (typeof window !== "undefined") {

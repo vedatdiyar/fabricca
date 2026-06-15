@@ -129,6 +129,18 @@ export const thesisBoxCategoryEnum = pgEnum("thesis_box_category", [
   "primary_source",
 ]);
 
+export const literatureStatusEnum = pgEnum("literature_status_enum", [
+  "SUGGESTED",
+  "APPROVED",
+  "RESERVED",
+  "REJECTED",
+]);
+
+export const literatureTypeEnum = pgEnum("literature_type_enum", [
+  "PRIMARY",
+  "SECONDARY",
+]);
+
 /**
  * Tez Kutuları (Outline / Box) tablosu.
  * Tez matrisine bağlı ana ve alt kutuları outline yapısında saklar.
@@ -148,14 +160,7 @@ export const thesisBoxes = pgTable("thesis_boxes", {
   theorists: jsonb("theorists").$type<string[]>().default([]).notNull(),
   concepts: jsonb("concepts").$type<string[]>().default([]).notNull(),
   queries: jsonb("queries").$type<string[]>().default([]).notNull(),
-  primaryLiterature: jsonb("primary_literature")
-    .$type<string[]>()
-    .default([])
-    .notNull(),
-  secondaryLiterature: jsonb("secondary_literature")
-    .$type<string[]>()
-    .default([])
-    .notNull(),
+
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -165,3 +170,33 @@ export type ThesisBox = InferSelectModel<typeof thesisBoxes>;
 
 /** Yeni tez kutusu oluşturma tipi (insert). */
 export type NewThesisBox = InferInsertModel<typeof thesisBoxes>;
+
+/**
+ * Kütüphane Kaynakları tablosu.
+ * Her bir tez kutusuna (box'a) önerilen / onaylanan / reddedilen
+ * akademik kaynakları (makale, kitap, tez vb.) saklar.
+ */
+export const libraryResources = pgTable("library_resources", {
+  id: serial("id").primaryKey(),
+  thesisBoxId: integer("thesis_box_id")
+    .notNull()
+    .references(() => thesisBoxes.id, { onDelete: "cascade" }),
+  status: literatureStatusEnum("status").default("SUGGESTED").notNull(),
+  type: literatureTypeEnum("type").notNull(),
+  title: text("title").notNull(),
+  abstract: text("abstract"),
+  url: text("url"),
+  doi: text("doi"),
+  publisher: text("publisher"),
+  publicationYear: integer("publication_year"),
+  authors: jsonb("authors").$type<string[]>(),
+  strategicRecommendations: text("strategic_recommendations"),
+  isRead: boolean("is_read").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+/** Veri tabanından okunan kütüphane kaynağı tipi (select). */
+export type LibraryResource = InferSelectModel<typeof libraryResources>;
+
+/** Yeni kütüphane kaynağı oluşturma tipi (insert). */
+export type NewLibraryResource = InferInsertModel<typeof libraryResources>;

@@ -14,8 +14,8 @@ export default async function OnboardingBoxesPage() {
   }
 
   return (
-    <main className="py-12 px-4 sm:px-6 lg:px-8">
+    <div className="pt-10 pb-12 px-4 sm:px-6 lg:px-8">
       <BoxesContainer />
-    </main>
+    </div>
   );
 }

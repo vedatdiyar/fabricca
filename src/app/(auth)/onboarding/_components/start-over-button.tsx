@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { RotateCcw, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -36,7 +35,6 @@ export function StartOverButton({
   size = "sm",
   className = "",
 }: StartOverButtonProps) {
-  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const resetStore = useOnboardingStore((s) => s.resetStore); // 2. Ekleme: Sıfırlama aksiyonu
@@ -55,8 +53,8 @@ export function StartOverButton({
           toast.success("Onboarding süreci başarıyla sıfırlandı.");
           setIsOpen(false);
 
-          // 4. Kritik Hamle: Kullanıcıyı refresh etmek yerine ilk adıma fırlat
-          router.push("/onboarding/matrix");
+          // 4. Kritik Hamle: Router cache'ini bypass etmek için hard navigation
+          window.location.href = "/onboarding/matrix";
         }
       } catch (err) {
         toast.error(

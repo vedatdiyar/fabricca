@@ -99,7 +99,8 @@ export const queryExtractionSchema: JsonSchema = {
     tavilyQueries: {
       type: "array",
       items: { type: "string" },
-      description: "Exactly 5 factual or historical queries in Turkish.",
+      description:
+        "Variable number of factual verification queries (minimum 1, no upper limit). Language depends on the nature of the fact: Turkish for local/national facts (Turkish domestic politics, local institutions/laws), English or mixed for global/international facts (global events, international standards/lab codes). The number of queries should be proportional to the factual density and verification scope of the thesis. Under no circumstance should this array be empty — if the thesis is purely theoretical, generate at least 1 query targeting its core concept or spatiotemporal scope.",
     },
     keywords: {
       type: "array",
@@ -116,21 +117,24 @@ export const queryExtractionSchema: JsonSchema = {
  */
 export const QUERY_EXTRACTION_SYSTEM_INSTRUCTION = `
 <role>
-Sen akademik bilişim, bilgi erişimi (information retrieval) ve doğal dil işleme alanlarında uzman bir veri mühendisisin. Akademik metinleri tarayarak arama motorları için en optimize sorguları ve morfolojik kök kelimeleri türetirsin.
+Sen disiplinlerüstü çalışan kıdemli bir Akademik Bilgi Erişim Uzmanı ve Olgusal Doğrulama Mühendisisin. Görevin, akademik metinleri analiz ederek tez matrisindeki maddi, tarihsel ve istatistiki iddiaları Tavily arama motoru aracılığıyla doğrulayabilecek sorgular üretmektir. Soyut teorik tartışmalara girmez, yalnızca doğrulanabilir olgulara odaklanırsın.
 </role>
 
 <instructions>
 Cevap üretmeden önce içsel olarak (internal thinking) şu 3 adımlı ajan planını işlet:
 1. **Analiz**: Sağlanan zenginleştirilmiş tez matrisindeki en baskın kavramları, tarihsel dönüm noktalarını ve kurumsal odakları tespit et.
-2. **Üretim**: İnternet doğrulaması için 5 adet Türkçe olgusal arama sorgusu ve literatür taraması için 5 adet İngilizce kök kelime tasarla.
+2. **Üretim**: Tez matrisindeki olgusal yoğunluğa ve doğrulama kapsamına göre değişken sayıda (en az 1) olgu doğrulama arama sorgusu ve literatür taraması için 5 adet İngilizce kök kelime tasarla.
 3. **Doğrulama ve Filtreleme (Self-Validation)**: Ürettiğin kelimeleri morfolojik olarak denetle; ek almış, türetilmiş (-ization, -ism, -ment vb.) veya tırnak içine alınmış kelimeleri eleyerek en ham sözlük köküne (lemma/base form) indirge. Tam olarak 5'er adet olduklarından emin ol.
 </instructions>
 
 <constraints>
-- Sayı Kısıtlaması: "tavilyQueries" ve "keywords" listelerinin her ikisi de istisnasız TAM 5 adet eleman içermelidir. Ne eksik ne fazla.
+- Sayı Kısıtlaması: "keywords" listesi kesinlikle EN FAZLA 5 (tam olarak 5) eleman içermelidir. Ne eksik ne fazla. 5'ten fazla anahtar kelime üretmek, aşağı akıştaki (downstream) kombinasyon motorunu çökertir ve tüm literatür taraması sürecini bloke eder. "tavilyQueries" listesinin eleman sayısı ise tez matrisindeki olgusal yoğunluğa ve doğrulama kapsamına göre dinamik olarak belirlenir; sabit bir üst sınır yoktur, ancak en az 1 (bir) sorgu üretilmesi ZORUNLUDUR.
 - Kesin Kök Kelime Kuralı (Strict Lemma Constraint): İngilizce anahtar kelimeler hiçbir yapım veya çekim eki almamış, türetilmemiş en yalın kök (base/root form) olmak zorundadır. (Örn: "globalization" yerine "global" veya "globe", "privatization" yerine "private", "institutionalism" yerine "institute" veya "institution"). Özel karakter veya tırnak işareti kullanma.
 - Determinizm: Varyasyonlu, yaratıcı veya tezin odağı dışındaki dolaylı kavramlar yerine; matristeki en doğrudan, jenerik ve baskın kavramları seçerek tam tutarlı ve deterministik bir çıktı üret.
 - Zaman Bilgisi: Olgusal veya tarihsel arama sorgularını kurgularken, şu anki yılın 2026 olduğunu ve model bilgi kesinti tarihinin Ocak 2025 olduğunu dikkate al.
+- Maddi Doğrulama Sınırı & Teori Yasağı (Material Verification Only): Tavily sorguları yalnızca tez matrisinde adı geçen somut aktörleri, kurumları, yasaları, tarihsel olayları/kronolojik iddiaları ve istatistiki beyanları (sosyal bilimlerde arşiv/rapor verileri, fen bilimlerinde teknik standartlar/deney kodları) doğrulamaya yönelik olmalıdır. Soyut teorileri, kavramsal çerçeveleri, felsefi yaklaşımları veya genel literatür taramasını Tavily üzerinden aratmak KESİNLİKLE YASAKTIR.
+- Dinamik Dil Seçimi (Dynamic Language Strategy): Tavily sorgularının dili, doğrulanacak olgunun doğasına göre belirlenmelidir. Yerel/ulusal olgular (Türkiye iç siyaseti, yerel bir kurum, ulusal yasa/düzenleme) için Türkçe sorgular; küresel/uluslararası olgular (uluslararası bir anlaşma, küresel laboratuvar standardı, yabancı bir kurum/kuruluş) için kaynak çeşitliliğini artırmak adına İngilizce veya karma (Türkçe-İngilizce) sorgular üretilmelidir.
+- Boş Tavily Kümesi Koruması (Empty Set Safeguard): Tez matrisi tamamen soyut kuramsal bir yapıdaysa ve hiçbir maddi/tarihsel/istatistiki olgu içermiyorsa dahi, tavilyQueries dizisi ASLA boş [] dönmemelidir. Bu durumda tezin temel kavramının, zaman aralığının veya mekansal bağlamının literatürdeki yaygınlığını/varlığını doğrulamaya yönelik en az 1 (bir) sorgu üretilmelidir.
 </constraints>
 
 <output_format>
@@ -161,7 +165,9 @@ Doğrulanmış ve zenginleştirilmiş akademik tez matrisi alanları aşağıdad
 </context>
 
 <task>
-Yukarıda <context> içinde verilen akademik verileri inceleyerek internet kaynakları ve veri tabanları için tam 5 adet Türkçe Tavily sorgusu ve tam 5 adet İngilizce yalın anahtar kelime (keywords) üret.
+Yukarıda <context> içinde verilen akademik verileri inceleyerek:
+(1) Tez matrisindeki somut aktörler, kurumlar, yasalar, tarihsel olaylar ve istatistiki beyanların doğruluğunu test etmek için Tavily arama motoruna yönelik olgusal sorgular (sayısı tezin olgusal yoğunluğuna göre dinamik, en az 1 sorgu zorunludur; yerel olgularda Türkçe, küresel olgularda İngilizce veya karma dillerde; soyut teorileri değil yalnızca maddi olguları hedef alır),
+(2) Uluslararası akademik veri tabanlarında literatür taraması için kullanılmak üzere tam 5 adet İngilizce yalın anahtar kelime (keywords) üret.
 </task>
 
 <final_instruction>
@@ -631,14 +637,6 @@ export const thesisBoxGenerationSchema: JsonSchema = {
             type: "array",
             items: { type: "string" },
           },
-          primaryLiterature: {
-            type: "array",
-            items: { type: "string" },
-          },
-          secondaryLiterature: {
-            type: "array",
-            items: { type: "string" },
-          },
         },
         required: [
           "category",
@@ -647,8 +645,6 @@ export const thesisBoxGenerationSchema: JsonSchema = {
           "theorists",
           "concepts",
           "queries",
-          "primaryLiterature",
-          "secondaryLiterature",
         ],
       },
     },
@@ -680,7 +676,6 @@ Cevap üretmeden önce içsel olarak (internal thinking) şu 4 adımlı yapısal
 </instructions>
 
 <constraints>
-- Teorisyen ve Eser İlişkisi (Theorist Publications): Ürettiğin her teorisyen için, o teorisyenin bu tez konusuyla doğrudan ilişkili olan en önemli 1 adet başyapıtını (kendi yazdığı kitap veya makale) mutlaka "primaryLiterature" listesine ekle. Eser ismi olarak "[Teorisyen Soyadı], [Baş Harf]. ([Yıl]). [Eser Adı]" formatını kullan. Eğer teorisyene veya teorisine dayanan diğer araştırmacıların çalışmalarını önereceksen, bunları "secondaryLiterature" listesine ekle. Teorisyenin kendi eseri her zaman birincil literatürdür!
 - Yerleşik Akademik Terimlerin Korunması İlkesi (Preservation of Established Terms): Girdi formunda yer alan ve halihazırda yerleşik bilimsel/metodolojik geçerliliği olan kavramları ve yöntem adlarını (Örn: "Yarı yapılandırılmış derinlemesine mülakat", "Anket çalışması", "Regresyon analizi", "İçerik analizi" vb.) daha ağır, karmaşık veya felsefi göstermek adına başka ekollerin kavramsal etiketleriyle (Örn: "Fenomenolojik düzlem", "Hermeneutik yaklaşım" vb.) değiştirme. Bu tür olgun ve standart yöntemsel terimleri tezin yöntemsel omurgası olarak olduğu gibi koru; zenginleştirme görevini bu yöntemlerin adını değiştirmek için değil, bu yöntemlerin araştırmanın evreninde nasıl uygulanacağını ve verilerin nasıl tematikleştirileceğini akademik bir düzyazı (academic prose) ile detaylandırarak gerçekleştir.
 - Bütünsel Metodolojik Uyum İlkesi (Holistic Academic Alignment): Üretilen metodoloji tasarımı, tezin kuramsal çerçevesiyle kusursuz bir epistemolojik uyum (golden thread) oluşturmalıdır. Eğer adayın kuramsal altyapısı hazır teorilere, modellere veya kurumsal/yapısal yaklaşımlara dayanıyorsa, metodolojiyi teori ile sahanın karşılıklı etkileşimini ve veri-teori diyalektiğini vurgulayan "Teori Güdümlü Çözümleme" (Theory-driven Analysis) veya "Kaçımsamalı Yaklaşım" (Abductive Approach) gibi bütünsel modellerle açıkla ve temellendir.
 - Kesin Doğruluk İlkesi (Anti-Hallucination Clause): Özellikle "context" ve "primary_source" kutularında, kendi eğitim verilerinden mutlak emin olmadığın hiçbir yapay kaynak, yazar veya kitap ismi UYDURMA. Doğruluğundan emin olmadığın kaynaklar yerine ilgili array alanını kesinlikle boş dizi [] olarak bırak ve arama sorgularına ("queries") yüklen.
@@ -722,6 +717,276 @@ Sistem talimatında belirtilen "Kategorik Dağılım" ve "Sızıntı Kontrolü" 
 
 <final_instruction>
 Based on the structured thesis matrix provided above, execute your internal isolation audit plan and generate the JSON response now.
+</final_instruction>
+`;
+}
+
+// ============================================================================
+// STEP 8: Literature Sifting (Sub-box Scope Filtering)
+// ============================================================================
+// Thinking Level: null (disabled) | Model: gemini-3.1-flash-lite
+// ============================================================================
+
+export const literatureSiftingSchema: JsonSchema = {
+  type: "object",
+  properties: {
+    siftedResults: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          doi: { type: "string" },
+          title: { type: "string" },
+          keep: { type: "boolean" },
+          reason: { type: "string" },
+        },
+        required: ["doi", "title", "keep", "reason"],
+      },
+    },
+  },
+  required: ["siftedResults"],
+};
+
+/**
+ * Literature Sifting system instruction.
+ * Thinking Level: null (disabled) — pure structural filtering, no reasoning budget.
+ * Model: gemini-3.1-flash-lite
+ */
+export const LITERATURE_SIFTING_SYSTEM_INSTRUCTION = `
+<role>
+Sen akademik bilgi erişimi, literatür taraması ve konu sınıflandırması konularında uzman bir araştırma kütüphanecisisin. Görevin, geniş bir makale havuzundan yalnızca belirli bir akademik alt konu kutusuyla (sub-box) doğrudan ilgili olanları hızlıca süzmektir.
+</role>
+
+<instructions>
+1. Sana sağlanan <sub_box> bağlamını (başlık, açıklama, kavramlar ve teorisyenler) dikkatlice analiz et.
+2. <candidates_list> içindeki her bir makale adayını, başlık ve özetini (abstract) kullanarak <sub_box> kapsamıyla karşılaştır.
+3. Her aday için ikili bir karar ver: "keep: true" (kutu kapsamına giriyor, detaylı analiz için aday kalmalı) veya "keep: false" (kapsam dışı, elenmeli).
+4. "keep: false" kararlarında, eleme gerekçesini "reason" alanında belirt. "keep: true" kararlarında ise makalenin kutuyla bağlantısını özetleyen kısa bir onay gerekçesi yaz.
+</instructions>
+
+<constraints>
+- Acımasız Eleme Kuralı (Aggressive Gating): Alakasız disiplinlerden sızan, başlıkta veya özette kutunun kavramlarına ya da teorisyenlerine yalnızca yüzeysel olarak değinen gürültü (noise) makalelerini acımasızca ele. Yalnızca kutuyla bariz ve doğrudan bir bağı olan adayları "keep: true" olarak işaretle.
+- Kapsam Odaklılık: Bir makale, kutunun belirtilen kavramlarından veya teorisyenlerinden en az birini doğrudan ele almıyor, özetinde bu kavramlarla anlamsal bir kesişim göstermiyorsa mutlaka "keep: false" ver.
+- Gerekçe Zorunluluğu: Her karar (hem "keep: true" hem "keep: false") için "reason" alanına kısa, net ve akademik bir gerekçe yaz.
+- Dil: Tüm "reason" alanlarını akademik Türkçe ile yaz.
+</constraints>
+
+<output_format>
+Yalnızca literatureSiftingSchema yapısına tam uyumlu, geçerli ve temiz bir JSON nesnesi döndür.
+</output_format>
+`;
+
+/**
+ * Builds the user prompt for the Literature Sifting step.
+ * Thinking Level: null (disabled) | Model: gemini-3.1-flash-lite
+ *
+ * @param box - Sub-box metadata (title, description, concepts, theorists)
+ * @param candidates - Raw candidate articles from Semantic Scholar / OpenAlex
+ * @returns Formatted prompt string with context, candidate list, and task
+ */
+export function buildLiteratureSiftingPrompt(
+  box: {
+    title: string;
+    description: string;
+    concepts: string[];
+    theorists: string[];
+  },
+  candidates: {
+    doi: string;
+    title: string;
+    abstract: string;
+  }[],
+): string {
+  return `
+<context>
+Alt Konu Kutusu (Sub-box) Detaylari:
+- Baslik: ${box.title}
+- Aciklama: ${box.description}
+- Kavramlar: ${box.concepts.join(", ")}
+- Teorisyenler: ${box.theorists.join(", ")}
+
+Degerlendirilecek Makale Adaylari:
+${JSON.stringify(
+  candidates.map((c) => ({
+    doi: c.doi,
+    title: c.title,
+    abstract: c.abstract,
+  })),
+)}
+</context>
+
+<task>
+Sistem talimatindaki "Acimasiz Eleme" ve "Kapsam Odaklilik" kurallarina harfiyen uyarak, yukaridaki <context> icindeki alt konu kutusunun kapsamiyla dogrudan ilgili olan makaleleri "keep: true", ilgisi olmayanlari "keep: false" olarak isaretle ve her karar icin akademik gerekce yaz.
+</task>
+
+<final_instruction>
+Based on the sub-box context and candidate list provided above, apply the aggressive gating rules and generate the JSON response now.
+</final_instruction>
+`;
+}
+
+// ============================================================================
+// STEP 9: Literature Jury Analysis (Starter Pack & Reserved Pool Selection)
+// ============================================================================
+// Thinking Level: null (disabled) | Model: gemini-3.1-flash-lite
+// ============================================================================
+
+export const literatureJuryAnalysisSchema: JsonSchema = {
+  type: "object",
+  properties: {
+    starterPack: {
+      type: "array",
+      description:
+        "En kritik 5 makale — dogrudan tez silsilesine katki sunacak birincil kaynaklar.",
+      items: {
+        type: "object",
+        properties: {
+          type: {
+            type: "string",
+            enum: ["PRIMARY", "SECONDARY"],
+            description:
+              "PRIMARY: dogrudan kuramsal/ampirik katki. SECONDARY: dolayli/arka plan katkisi.",
+          },
+          title: { type: "string" },
+          abstract: { type: "string" },
+          url: { type: "string" },
+          doi: { type: "string" },
+          publisher: { type: "string" },
+          publicationYear: { type: "integer" },
+          authors: {
+            type: "array",
+            items: { type: "string" },
+          },
+          strategicRecommendations: {
+            type: "string",
+            description:
+              "Bu makalenin bu kutunun tez silsilesine neden ve nasil katki sunacagini aciklayan akademik gerekce.",
+          },
+        },
+        required: [
+          "type",
+          "title",
+          "doi",
+          "authors",
+          "strategicRecommendations",
+        ],
+      },
+    },
+    reservedPool: {
+      type: "array",
+      description:
+        "Sonraki 15 makale — potansiyel katki saglayabilecek yedek havuz.",
+      items: {
+        type: "object",
+        properties: {
+          type: {
+            type: "string",
+            enum: ["PRIMARY", "SECONDARY"],
+          },
+          title: { type: "string" },
+          abstract: { type: "string" },
+          url: { type: "string" },
+          doi: { type: "string" },
+          publisher: { type: "string" },
+          publicationYear: { type: "integer" },
+          authors: {
+            type: "array",
+            items: { type: "string" },
+          },
+          strategicRecommendations: { type: "string" },
+        },
+        required: [
+          "type",
+          "title",
+          "doi",
+          "authors",
+          "strategicRecommendations",
+        ],
+      },
+    },
+  },
+  required: ["starterPack", "reservedPool"],
+};
+
+/**
+ * Literature Jury Analysis system instruction.
+ * Thinking Level: null (disabled) — structural scoring and classification, no deep reasoning.
+ * Model: gemini-3.1-flash-lite
+ *
+ * Enforces the "3 Kati Kurali" (Format/Author/Context) and requires
+ * a strategic rationale for each selected article.
+ */
+export const LITERATURE_JURY_ANALYSIS_SYSTEM_INSTRUCTION = `
+<role>
+Sen akademik literatur degerlendirmesi, semantik puanlama ve arastirma sentezi konularinda uzman kidemli bir juri uyesisin. Gorevin, belirli bir alt konu kutusu (sub-box) icin onceden elenmis makale adaylarini semantik olarak puanlamak, en kritik 5 makaleyi "Starter Pack" ve kalan potansiyellileri "Reserved Pool" olarak secmektir.
+</role>
+
+<instructions>
+Cevap uretmeden once issel olarak su 3 adimli analitik plani islet:
+1. **Eksenel Puanlama**: <sub_box> baglamindaki baslik (title), aciklama (description), kavramlar (concepts) ve teorisyenler (theorists) eksenlerinde her aday makaleyi semantik olarak puanla.
+2. **Siniflandirma**: 3 kati kuralini uygulayarak her makaleyi PRIMARY veya SECONDARY olarak etiketle.
+3. **Kota Yonetimi**: En yuksek puanli 5 makaleyi "starterPack" dizisine, sonraki en yuksek puanli 15 makaleyi "reservedPool" dizisine yerlestir.
+</instructions>
+
+<constraints>
+- 3 Kati Kurali (Triple Filtration):
+  a) Format Kriteri: Makale, kutuyla dogrudan kuramsal/ampirik katki sagliyorsa PRIMARY; dolayli, arka plan veya yontemsel katki sagliyorsa SECONDARY olarak isaretle.
+  b) Yazar Kriteri: Makalenin yazarlari, kutunun teorisyenleri veya kavramsal alaniyla baglantiliysa bu durumu degerlendirmede dikkate al.
+  c) Baglam Kriteri: Makalenin yayin yili, yayincisi ve arastirma baglami, kutunun kapsamina kronolojik ve tematik olarak uyumlu olmalidir.
+- Stratejik Gerekce Zorunlulugu: Her makale icin "strategicRecommendations" alanina su sorunun cevabini mutlaka yaz: "Bu makale bu kutunun tez silsilesine neden ve nasil katki sunacak?"
+- Kota Disiplini: "starterPack" tam 5, "reservedPool" tam 15 makale icermelidir. Eger yeterli aday yoksa mevcut en iyilerle listeyi doldur, eksik birakma.
+- Nesnellik: Makaleleri puanlarken kisisel onyargilardan kacin, yalnizca kutunun akademik kapsamina ve semantik uyuma odaklan.
+- Dil: "strategicRecommendations" alanlarini ve tum metin iceriklerini akici, elit bir akademik Turkce ile yaz.
+</constraints>
+
+<output_format>
+Yalnizca literatureJuryAnalysisSchema yapisina tam uyumlu, gecerli ve temiz bir JSON nesnesi dondur.
+</output_format>
+`;
+
+/**
+ * Builds the user prompt for the Literature Jury Analysis step.
+ * Thinking Level: null (disabled) | Model: gemini-3.1-flash-lite
+ *
+ * @param box - Sub-box metadata (title, description, concepts, theorists)
+ * @param siftedCandidates - Pre-sifted articles that passed the Literature Sifting step (keep: true)
+ * @returns Formatted prompt string with box context, candidate list, and task
+ */
+export function buildLiteratureJuryAnalysisPrompt(
+  box: {
+    title: string;
+    description: string;
+    concepts: string[];
+    theorists: string[];
+  },
+  siftedCandidates: {
+    doi: string;
+    title: string;
+    abstract: string;
+    url?: string;
+    publisher?: string;
+    publicationYear?: number;
+    authors: string[];
+  }[],
+): string {
+  return `
+<context>
+Alt Konu Kutusu (Sub-box) Detaylari:
+- Baslik: ${box.title}
+- Aciklama: ${box.description}
+- Kavramlar: ${box.concepts.join(", ")}
+- Teorisyenler: ${box.theorists.join(", ")}
+
+Surecten Gecmis (Keep: True) Makale Adaylari:
+${JSON.stringify(siftedCandidates)}
+</context>
+
+<task>
+Sistem talimatindaki "3 Kati Kurali" ve "Stratejik Gerekce Zorunlulugu" kurallarina uyarak, yukaridaki makale adaylarini semantik olarak puanla. En kritik 5 makaleyi "starterPack" ve sonraki 15 makaleyi "reservedPool" olarak sec. Her makale icin PRIMARY/SECONDARY turu atamasi yap ve akademik stratejik gerekce yaz.
+</task>
+
+<final_instruction>
+Based on the sub-box context and sifted candidates provided above, execute your internal scoring plan and generate the JSON response now.
 </final_instruction>
 `;
 }

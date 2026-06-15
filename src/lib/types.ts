@@ -166,6 +166,22 @@ export interface GeminiThesisBox {
   theorists: string[];
   concepts: string[];
   queries: string[];
-  primaryLiterature: string[];
-  secondaryLiterature: string[];
+}
+
+export interface JuryArticle {
+  type: "PRIMARY" | "SECONDARY";
+  title: string;
+  abstract: string;
+  url: string;
+  doi: string;
+  publisher: string;
+  publicationYear: number;
+  authors: string[];
+  strategicRecommendations: string;
+}
+
+export interface LiteraturePoolEntry {
+  subBoxTitle: string;
+  starterPack: JuryArticle[];
+  reservedPool: JuryArticle[];
 }

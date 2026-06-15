@@ -27,7 +27,6 @@ import {
   thesisBoxGenerationSchema,
 } from "@/lib/prompts";
 import { searchWikipediaTheorist } from "@/lib/wikipedia";
-import { verifyLiterature } from "@/lib/literature";
 
 interface OnboardingMatrixInput {
   studyTitle: string;
@@ -334,32 +333,6 @@ export async function generateBoxesForCurrentMatrixJSONAction(
     );
 
     log.info({ step: "wikipedia_cross_check", status: "SUCCESS" });
-
-    // Step 3: Google Books + Wikipedia cross-check for literature
-    log.info({ step: "literature_cross_check", status: "START" });
-
-    await Promise.all(
-      draftBoxes.map(async (box) => {
-        const verifyList = async (list: string[]) => {
-          if (list.length === 0) return [];
-          const results = await Promise.all(
-            list.map(async (lit) => {
-              try {
-                const res = await verifyLiterature(lit);
-                return res.verified ? lit : null;
-              } catch {
-                return null;
-              }
-            }),
-          );
-          return results.filter((item): item is string => item !== null);
-        };
-        box.primaryLiterature = await verifyList(box.primaryLiterature || []);
-        box.secondaryLiterature = await verifyList(box.secondaryLiterature || []);
-      }),
-    );
-
-    log.info({ step: "literature_cross_check", status: "SUCCESS" });
 
     const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
 
