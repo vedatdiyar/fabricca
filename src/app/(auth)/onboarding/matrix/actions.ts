@@ -2,7 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { thesisMatrices } from "@/db/schema";
+import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
 import { getSession } from "@/proxy";
 import { generateStructuredContent } from "@/lib/gemini";
 import { createFlowId, Logger } from "@/lib/logger";
@@ -126,6 +126,18 @@ export async function submitThesisMatrixAction(
           updatedAt: new Date(),
         },
       });
+
+    // Clear downstream data (originality_reports + thesis_boxes)
+    await db.delete(originalityReports).where(eq(originalityReports.userId, session.userId));
+
+    const [matrixRow] = await db
+      .select({ id: thesisMatrices.id })
+      .from(thesisMatrices)
+      .where(eq(thesisMatrices.userId, session.userId));
+
+    if (matrixRow) {
+      await db.delete(thesisBoxes).where(eq(thesisBoxes.thesisMatrixId, matrixRow.id));
+    }
 
     const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
 

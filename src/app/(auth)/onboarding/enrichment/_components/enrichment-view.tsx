@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -9,26 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { confirmEnhancedThesisAction, clearOnboardingStaleDataAction } from "../actions";
+import { confirmEnhancedThesisAction } from "../actions";
 import { fetchThesisMatrix } from "../../lib/fetch-actions";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import type { EnhancedThesisData } from "@/lib/types";
 
 export function EnrichmentView() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [isPending, setIsPending] = useState(false);
-  const [showStaleDialog, setShowStaleDialog] = useState(false);
-  const pendingDataRef = useRef<EnhancedThesisData | null>(null);
 
   const [studyTitle, setStudyTitle] = useState("");
   const [researchQuestion, setResearchQuestion] = useState("");
@@ -72,28 +60,6 @@ export function EnrichmentView() {
         toast.error(result.error);
         setIsPending(false);
         return;
-      }
-      if (result.needsRedirect) {
-        pendingDataRef.current = data;
-        setShowStaleDialog(true);
-        setIsPending(false);
-        return;
-      }
-      toast.success("Tez matrisiniz kaydedildi. Risk analizine geçiliyor.");
-      router.push("/onboarding/risk");
-    } catch {
-      toast.error("Bir hata oluştu.");
-      setIsPending(false);
-    }
-  };
-
-  const handleStaleConfirm = async () => {
-    setShowStaleDialog(false);
-    setIsPending(true);
-    try {
-      await clearOnboardingStaleDataAction();
-      if (pendingDataRef.current) {
-        await confirmEnhancedThesisAction(pendingDataRef.current);
       }
       toast.success("Tez matrisiniz kaydedildi. Risk analizine geçiliyor.");
       router.push("/onboarding/risk");
@@ -167,26 +133,6 @@ export function EnrichmentView() {
           </form>
         </CardContent>
       </Card>
-
-      <AlertDialog open={showStaleDialog} onOpenChange={setShowStaleDialog}>
-        <AlertDialogContent className="bg-card">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">
-              Veriler Silinecek
-            </AlertDialogTitle>
-            <AlertDialogDescription className="leading-relaxed">
-              Matris verisini değiştirdiğiniz için önceki risk analizi, konu kutuları
-              ve literatür taraması silinecek. Devam etmek istiyor musunuz?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="mt-4 gap-2">
-            <AlertDialogCancel>İptal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleStaleConfirm}>
-              Evet, Devam Et
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

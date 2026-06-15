@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { submitThesisMatrixAction } from "../actions";
+import { fetchThesisMatrix } from "../../lib/fetch-actions";
 
 export function MatrixForm() {
   const router = useRouter();
@@ -21,6 +22,21 @@ export function MatrixForm() {
   const [theoreticalFramework, setTheoreticalFramework] = useState("");
   const [historicalSpatialLimits, setHistoricalSpatialLimits] = useState("");
   const [isPending, setIsPending] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchThesisMatrix().then((matrix) => {
+      if (matrix) {
+        setStudyTitle(matrix.studyTitle);
+        setResearchQuestion(matrix.researchQuestion);
+        setMainClaim(matrix.mainClaim);
+        setMethodology(matrix.methodology);
+        setTheoreticalFramework(matrix.theoreticalFramework);
+        setHistoricalSpatialLimits(matrix.historicalSpatialLimits);
+      }
+      setLoading(false);
+    });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -46,6 +62,18 @@ export function MatrixForm() {
       setIsPending(false);
     }
   };
+
+  if (loading) {
+    return (
+      <Card className="w-full pt-6">
+        <CardContent>
+          <div className="flex items-center justify-center min-h-[30vh]">
+            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-full pt-6">

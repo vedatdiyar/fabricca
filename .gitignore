@@ -38,3 +38,10 @@ next-env.d.ts
 
 # drizzle
 /drizzle
+
+# vscode
+.vscode
+
+# AI Context Files
+repomix-output.txt
+repomix.config.json

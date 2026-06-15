@@ -6,11 +6,11 @@ import { getProfile } from "@/proxy";
 
 /**
  * Onboarding root router page.
- * Redirects to the last completed step:
- * - No matrix → matrix form
- * - Matrix exists, no report → enrichment review
- * - Report exists, no boxes → risk report
- * - Boxes exist, not completed → literature review
+ * Always redirects to the last completed step:
+ * - No matrix → matrix form (first step)
+ * - Matrix exists, no report → matrix (last completed = matrix)
+ * - Report exists, no boxes → enrichment (last completed = enrichment)
+ * - Boxes exist, not completed → boxes (last completed = boxes)
  * - Completed → dashboard
  */
 export default async function OnboardingPage() {
@@ -35,7 +35,7 @@ export default async function OnboardingPage() {
     .where(eq(originalityReports.userId, profile.id));
 
   if (!report) {
-    redirect("/onboarding/enrichment");
+    redirect("/onboarding/matrix");
   }
 
   const [box] = await db
@@ -45,8 +45,8 @@ export default async function OnboardingPage() {
     .limit(1);
 
   if (!box) {
-    redirect("/onboarding/risk");
+    redirect("/onboarding/enrichment");
   }
 
-  redirect("/onboarding/literature-review");
+  redirect("/onboarding/boxes");
 }

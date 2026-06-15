@@ -2,7 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { originalityReports } from "@/db/schema";
+import { originalityReports, thesisMatrices, thesisBoxes } from "@/db/schema";
 import { getSession } from "@/proxy";
 import { createFlowId, Logger } from "@/lib/logger";
 import { revalidatePath } from "next/cache";
@@ -190,12 +190,23 @@ export async function runJuryAnalysisAction(
 }
 
 /**
- * Marks the risk stage as complete and redirects to boxes.
+ * Marks the risk stage as complete, clears downstream thesis_boxes,
+ * and redirects to boxes.
  */
 export async function completeRiskStageAction(): Promise<OnboardingActionResult> {
   try {
     const session = await getSession();
     if (!session) return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+
+    const [matrix] = await db
+      .select({ id: thesisMatrices.id })
+      .from(thesisMatrices)
+      .where(eq(thesisMatrices.userId, session.userId));
+
+    if (matrix) {
+      await db.delete(thesisBoxes).where(eq(thesisBoxes.thesisMatrixId, matrix.id));
+    }
+
     revalidatePath("/onboarding", "layout");
     return { success: true };
   } catch {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Sparkles, Loader2, AlertCircle } from "lucide-react";
@@ -26,8 +26,9 @@ export function RiskContainer() {
   const [reportData, setReportData] = useState<OriginalityReportData | null>(null);
   const [secondsPassed, setSecondsPassed] = useState(0);
   const [matrixData, setMatrixData] = useState<any>(null);
+  const hasAutoStarted = useRef(false);
 
-  // Load existing report on mount — never auto-start
+  // Load existing report on mount
   useEffect(() => {
     let cancelled = false;
 
@@ -54,15 +55,6 @@ export function RiskContainer() {
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    if (!analysing) {
-      setSecondsPassed(0);
-      return;
-    }
-    const interval = setInterval(() => setSecondsPassed((p) => p + 1), 1000);
-    return () => clearInterval(interval);
-  }, [analysing]);
 
   const startAnalysis = useCallback(async () => {
     setAnalysing(true);
@@ -121,6 +113,23 @@ export function RiskContainer() {
     }
     router.push("/onboarding/boxes");
   };
+
+  // Auto-start analysis when loading completes and no report exists
+  useEffect(() => {
+    if (!loading && !reportData && !analysing && !error && !hasAutoStarted.current) {
+      hasAutoStarted.current = true;
+      startAnalysis();
+    }
+  }, [loading, reportData, analysing, error, startAnalysis]);
+
+  useEffect(() => {
+    if (!analysing) {
+      setSecondsPassed(0);
+      return;
+    }
+    const interval = setInterval(() => setSecondsPassed((p) => p + 1), 1000);
+    return () => clearInterval(interval);
+  }, [analysing]);
 
   const activeStep =
     secondsPassed <= 3 ? 0 : secondsPassed <= 24 ? 1 : secondsPassed <= 29 ? 2 : 3;
@@ -185,23 +194,21 @@ export function RiskContainer() {
     );
   }
 
-  // No report yet — show start button
+  // Auto-starting — show analysing view
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
-      <div className="p-4 bg-primary/10 border border-primary/20 rounded-full">
-        <Sparkles className="w-12 h-12 text-primary" />
+    <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
+      <div className="flex flex-col items-center justify-center space-y-8 max-w-md mx-auto text-center">
+        <div className="relative flex items-center justify-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <Sparkles className="w-6 h-6 text-primary absolute animate-pulse" />
+        </div>
+        <div className="space-y-3">
+          <h2 className="text-xl font-semibold text-foreground">Risk Analiz Motorları Çalışıyor</h2>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Yapay zeka asistanınız tez matrisinizi inceliyor, veri tabanlarını tarıyor ve risk raporunu hazırlıyor.
+          </p>
+        </div>
       </div>
-      <div className="text-center space-y-2 max-w-md">
-        <h2 className="text-2xl font-bold text-foreground">Risk Analizi</h2>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          Tez matrisiniz, yapay zeka tarafından Tavily ve Tezara veri tabanlarında taranarak
-          özgünlük risk seviyeniz ve stratejik tavsiyeleriniz belirlenecek.
-        </p>
-      </div>
-      <Button onClick={startAnalysis} className="btn-academic-hero">
-        <Sparkles className="w-4 h-4 mr-2" />
-        Analizi Başlat
-      </Button>
-    </div>
+    </main>
   );
 }

@@ -3,7 +3,7 @@
 import { useMemo, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, AlertCircle, BookOpen, ShieldCheck, Brain, Cpu, MapPin, Archive, Library, Sparkles } from "lucide-react";
+import { Loader2, AlertCircle, BookOpen, ShieldCheck, Brain, Cpu, MapPin, Archive, Library } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { processLiteratureReviewAction, confirmLiteratureAction } from "../actions";
 import { fetchBoxes } from "../../lib/fetch-actions";
@@ -136,6 +136,9 @@ export function LiteratureReviewContent() {
         queries: b.queries,
       })));
       setLoading(false);
+      if (children.length > 0) {
+        setStarted(true);
+      }
     });
   }, []);
 
@@ -160,10 +163,6 @@ export function LiteratureReviewContent() {
       literaturePool.some((entry) => entry.subBoxTitle === box.title),
     );
   }, [subBoxes, literaturePool]);
-
-  const handleStart = useCallback(() => {
-    setStarted(true);
-  }, []);
 
   const handleFinalize = async () => {
     if (literaturePool.length === 0) {
@@ -190,27 +189,6 @@ export function LiteratureReviewContent() {
           </div>
           <p className="text-muted-foreground text-sm">Konu kutuları yükleniyor...</p>
         </div>
-      </div>
-    );
-  }
-
-  if (!started) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
-        <div className="p-4 bg-primary/10 border border-primary/20 rounded-full">
-          <BookOpen className="w-12 h-12 text-primary" />
-        </div>
-        <div className="text-center space-y-2 max-w-md">
-          <h2 className="text-2xl font-bold text-foreground">Literatür Taraması</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Onayladığınız konu kutuları için akademik veri tabanları taranacak ve her alt başlık
-            için kaynak önerileri hazırlanacak.
-          </p>
-        </div>
-        <Button onClick={handleStart} className="btn-academic-hero">
-          <Sparkles className="w-4 h-4 mr-2" />
-          Taramayı Başlat
-        </Button>
       </div>
     );
   }
