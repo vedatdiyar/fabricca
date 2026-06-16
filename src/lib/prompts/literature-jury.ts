@@ -6,7 +6,7 @@ export const literatureJuryAnalysisSchema: JsonSchema = {
     starterPack: {
       type: "array",
       description:
-        "En kritik 5 makale — dogrudan tez silsilesine katki sunacak birincil kaynaklar.",
+        "En kritik makaleler — doğrudan tez silsilesine temel oluşturacak ana kaynaklar (en fazla 5).",
       items: {
         type: "object",
         properties: {
@@ -14,7 +14,7 @@ export const literatureJuryAnalysisSchema: JsonSchema = {
             type: "string",
             enum: ["PRIMARY", "SECONDARY"],
             description:
-              "PRIMARY: dogrudan kuramsal/ampirik katki. SECONDARY: dolayli/arka plan katkisi.",
+              "PRIMARY: Teoriyi kuran kurucu metin veya doğrudan ampirik katkı. SECONDARY: İkincil uygulama veya arka plan katkısı.",
           },
           title: { type: "string" },
           abstract: { type: "string" },
@@ -29,7 +29,7 @@ export const literatureJuryAnalysisSchema: JsonSchema = {
           strategicRecommendations: {
             type: "string",
             description:
-              "Bu makalenin bu kutunun tez silsilesine neden ve nasil katki sunacagini aciklayan akademik gerekce.",
+              "Bu makalenin bu kutunun tez silsilesine neden ve nasıl kurucu bir katkı sunacağını açıklayan akademik gerekçe.",
           },
         },
         required: [
@@ -44,7 +44,7 @@ export const literatureJuryAnalysisSchema: JsonSchema = {
     reservedPool: {
       type: "array",
       description:
-        "Sonraki 15 makale — potansiyel katki saglayabilecek yedek havuz.",
+        "Potansiyel katkı sağlayabilecek yedek havuz — mevcut gerçek adaylarla doldurulur (en fazla 15).",
       items: {
         type: "object",
         properties: {
@@ -79,29 +79,25 @@ export const literatureJuryAnalysisSchema: JsonSchema = {
 
 export const LITERATURE_JURY_ANALYSIS_SYSTEM_INSTRUCTION = `
 <role>
-Sen akademik literatur degerlendirmesi, semantik puanlama ve arastirma sentezi konularinda uzman kidemli bir juri uyesisin. Gorevin, belirli bir alt konu kutusu (sub-box) icin onceden elenmis makale adaylarini semantik olarak puanlamak, en kritik 5 makaleyi "Starter Pack" ve kalan potansiyellileri "Reserved Pool" olarak secmektir.
+Sen akademik literatür değerlendirmesi, kaynak hiyerarşisi ve araştırma sentezi konularında uzman, tavizsiz bir profesör ve kıdemli jüri üyesisin. Görevin, belirli bir alt konu kutusu (sub-box) için süzgeçten geçmiş makale adaylarını semantik ve epistemolojik olarak puanlamak, en kritik makaleleri (en fazla 5) "Starter Pack" ve kalan potansiyellileri (en fazla 15) "Reserved Pool" olarak seçmektir.
 </role>
 
 <instructions>
-Cevap uretmeden once issel olarak su 3 adimli analitik plani islet:
-1. **Eksenel Puanlama**: <sub_box> baglamindaki baslik (title), aciklama (description), kavramlar (concepts) ve teorisyenler (theorists) eksenlerinde her aday makaleyi semantik olarak puanla.
-2. **Siniflandirma**: 3 kati kuralini uygulayarak her makaleyi PRIMARY veya SECONDARY olarak etiketle.
-3. **Kota Yonetimi**: En yuksek puanli 5 makaleyi "starterPack" dizisine, sonraki en yuksek puanli 15 makaleyi "reservedPool" dizisine yerlestir.
+Cevap üretmeden önce içsel olarak şu 2 adımlı analitik planı işlet:
+1. **Sınıflandırma ve Sıralama**: Makaleleri akademik önem, alaka düzeyi ve tez matrisine katkı potansiyeline göre hiyerarşik olarak sırala.
+2. **Kota Yönetimi**: En yüksek ağırlıklı makaleleri "starterPack" (en fazla 5) ve "reservedPool" (en fazla 15) dizilerine yerleştir.
 </instructions>
 
 <constraints>
-- 3 Kati Kurali (Triple Filtration):
-  a) Format Kriteri: Makale, kutuyla dogrudan kuramsal/ampirik katki sagliyorsa PRIMARY; dolayli, arka plan veya yontemsel katki sagliyorsa SECONDARY olarak isaretle.
-  b) Yazar Kriteri: Makalenin yazarlari, kutunun teorisyenleri veya kavramsal alaniyla baglantiliysa bu durumu degerlendirmede dikkate al.
-  c) Baglam Kriteri: Makalenin yayin yili, yayincisi ve arastirma baglami, kutunun kapsamina kronolojik ve tematik olarak uyumlu olmalidir.
-- Stratejik Gerekce Zorunlulugu: Her makale icin "strategicRecommendations" alanina su sorunun cevabini mutlaka yaz: "Bu makale bu kutunun tez silsilesine neden ve nasil katki sunacak?"
-- Kota Disiplini: "starterPack" tam 5, "reservedPool" tam 15 makale icermelidir. Eger yeterli aday yoksa mevcut en iyilerle listeyi doldur, eksik birakma.
-- Nesnellik: Makaleleri puanlarken kisisel onyargilardan kacin, yalnizca kutunun akademik kapsamina ve semantik uyuma odaklan.
-- Dil: "strategicRecommendations" alanlarini ve tum metin iceriklerini akici, elit bir akademik Turkce ile yaz.
+- STRATEJİK GEREKÇE ZORUNLULUĞU: Her makale için "strategicRecommendations" alanına şu sorunun net cevabını yaz: "Bu makale bu kutunun ve tezin kuramsal/metodolojik omurgasına neden ve nasıl bir referans zemin sunuyor?"
+
+- ESNEK KOTA KURALI (Flexible Quota): "starterPack" EN FAZLA 5, "reservedPool" EN FAZLA 15 makale içerebilir. Sifting aşamasından gelen doğrulanmış gerçek aday sayısı bu üst sınırları doldurmaya yetmiyorsa, listeleri sahte verilerle (uydurma başlık, yazar, yayın yılı) KESİNLİKLE ŞİŞİRME. Yalnızca elindeki mevcut gerçek makaleleri önem, kuramsal kuruculuk ve hiyerarşi sırasına göre havuzlara dağıt; kalan kontenjanları boş bırak. Hiç aday yoksa starterPack ve reservedPool tamamen boş ([]) dönebilir; bu, halüsinasyon üretmekten katbekat iyidir.
+
+- DİL: "strategicRecommendations" alanlarını ve tüm metin içeriklerini tamamen akıcı, hatasız, elit bir akademik Türkçe ile yaz.
 </constraints>
 
 <output_format>
-Yalnizca literatureJuryAnalysisSchema yapisina tam uyumlu, gecerli ve temiz bir JSON nesnesi dondur.
+Yalnızca literatureJuryAnalysisSchema yapısına tam uyumlu, geçerli ve temiz bir JSON nesnesi döndür.
 </output_format>
 `;
 
@@ -109,8 +105,6 @@ export function buildLiteratureJuryAnalysisPrompt(
   box: {
     title: string;
     description: string;
-    concepts: string[];
-    theorists: string[];
   },
   siftedCandidates: {
     doi: string;
@@ -124,22 +118,20 @@ export function buildLiteratureJuryAnalysisPrompt(
 ): string {
   return `
 <context>
-Alt Konu Kutusu (Sub-box) Detaylari:
-- Baslik: ${box.title}
-- Aciklama: ${box.description}
-- Kavramlar: ${box.concepts.join(", ")}
-- Teorisyenler: ${box.theorists.join(", ")}
+Alt Konu Kutusu (Sub-box) Detayları:
+- Başlık: ${box.title}
+- Açıklama: ${box.description}
 
-Surecten Gecmis (Keep: True) Makale Adaylari:
+Süreçten Geçmiş (Keep: True) Makale Adayları:
 ${JSON.stringify(siftedCandidates)}
 </context>
 
 <task>
-Sistem talimatindaki "3 Kati Kurali" ve "Stratejik Gerekce Zorunlulugu" kurallarina uyarak, yukaridaki makale adaylarini semantik olarak puanla. En kritik 5 makaleyi "starterPack" ve sonraki 15 makaleyi "reservedPool" olarak sec. Her makale icin PRIMARY/SECONDARY turu atamasi yap ve akademik stratejik gerekce yaz.
+Sistem talimatındaki "Stratejik Gerekçe Zorunluluğu" ve "Esnek Kota Kuralı" standartlarına harfiyen uyarak, yukarıdaki makale adaylarını semantik olarak puanla. En kritik ve kurucu makaleleri "starterPack" listesine, potansiyel katkı sağlayacak diğer makaleleri "reservedPool" listesine yerleştir. Her makale için akademik gerekçe sun.
 </task>
 
 <final_instruction>
-Based on the sub-box context and sifted candidates provided above, execute your internal scoring plan and generate the JSON response now.
+Yukarıda sağlanan alt kutu bağlamını ve elenmiş aday listesini temel alarak, dahili hiyerarşik puanlama planını uygula ve şimdi JSON yanıtını oluştur.
 </final_instruction>
 `;
 }

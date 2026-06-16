@@ -118,18 +118,6 @@ export type OriginalityReport = InferSelectModel<typeof originalityReports>;
 /** Yeni özgünlük raporu oluşturma tipi (insert). */
 export type NewOriginalityReport = InferInsertModel<typeof originalityReports>;
 
-/**
- * Tez Kutusu Kategorisi enumu.
- * Tez kutularının hangi akademik alana ait olduğunu kısıtlar.
- */
-export const thesisBoxCategoryEnum = pgEnum("thesis_box_category", [
-  "intro",
-  "theory",
-  "methodology",
-  "context",
-  "primary_source",
-]);
-
 export const literatureStatusEnum = pgEnum("literature_status_enum", [
   "SUGGESTED",
   "APPROVED",
@@ -155,12 +143,9 @@ export const thesisBoxes = pgTable("thesis_boxes", {
   parentId: integer("parent_id").references((): AnyPgColumn => thesisBoxes.id, {
     onDelete: "cascade",
   }),
-  category: thesisBoxCategoryEnum("category").notNull(),
   title: text("title").notNull(),
   description: text("description"),
-  theorists: jsonb("theorists").$type<string[]>().default([]).notNull(),
-  concepts: jsonb("concepts").$type<string[]>().default([]).notNull(),
-  queries: jsonb("queries").$type<string[]>().default([]).notNull(),
+  semanticSearchBlock: text("semantic_search_block"),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

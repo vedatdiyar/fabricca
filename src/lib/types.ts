@@ -160,12 +160,9 @@ export interface JuryReportItem {
 }
 
 export interface GeminiThesisBox {
-  category: "intro" | "theory" | "methodology" | "context" | "primary_source";
   title: string;
   description: string;
-  theorists: string[];
-  concepts: string[];
-  queries: string[];
+  semanticSearchBlock: string;
 }
 
 export interface JuryArticle {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Sparkles, Loader2, AlertCircle } from "lucide-react";
@@ -27,7 +27,6 @@ export function RiskContainer() {
   const [reportData, setReportData] = useState<OriginalityReportData | null>(null);
   const [secondsPassed, setSecondsPassed] = useState(0);
   const [matrixData, setMatrixData] = useState<any>(null);
-  const hasAutoStarted = useRef(false);
 
   // Load existing report on mount
   useEffect(() => {
@@ -117,14 +116,6 @@ export function RiskContainer() {
     router.push("/onboarding/boxes");
   };
 
-  // Auto-start analysis when loading completes and no report exists
-  useEffect(() => {
-    if (!loading && !reportData && !analysing && !error && !hasAutoStarted.current) {
-      hasAutoStarted.current = true;
-      startAnalysis();
-    }
-  }, [loading, reportData, analysing, error, startAnalysis]);
-
   useEffect(() => {
     if (!analysing) {
       setSecondsPassed(0);
@@ -197,20 +188,28 @@ export function RiskContainer() {
     );
   }
 
-  // Auto-starting — show analysing view
+  // Idle state — waiting for user to start analysis
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
-      <div className="flex flex-col items-center justify-center space-y-8 max-w-md mx-auto text-center">
-        <div className="relative flex items-center justify-center">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <Sparkles className="w-6 h-6 text-primary absolute animate-pulse" />
+    <main className="flex min-h-[60vh] flex-col items-center justify-center bg-background p-6">
+      <div className="flex flex-col items-center justify-center space-y-6 max-w-lg mx-auto text-center">
+        <div className="p-4 bg-primary/10 border border-primary/20 rounded-full">
+          <Sparkles className="w-12 h-12 text-primary" />
         </div>
-        <div className="space-y-3">
-          <h2 className="text-xl font-semibold text-foreground">Risk Analiz Motorları Çalışıyor</h2>
+        <div className="space-y-2">
+          <h2 className="text-xl font-semibold text-foreground">Özgünlük ve Risk Analizi</h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Yapay zeka asistanınız tez matrisinizi inceliyor, veri tabanlarını tarıyor ve risk raporunu hazırlıyor.
+            Yapay zeka asistanınız tez matrisinizi inceleyerek Tavily ve
+            YÖKTEZ veri tabanlarında paralel tarama yapacak, karşılaştırmalı
+            bir özgünlük ve risk raporu hazırlayacak.
           </p>
         </div>
+        <Button
+          onClick={startAnalysis}
+          className="btn-academic-hero w-full sm:w-auto"
+        >
+          <Sparkles className="w-5 h-5 mr-2" />
+          Özgünlük ve Risk Analizini Başlat
+        </Button>
       </div>
     </main>
   );

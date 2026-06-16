@@ -36,6 +36,8 @@ const ai = new GoogleGenAI({ apiKey });
 /**
  * Bir asenkron fonksiyonu 503 (UNAVAILABLE) veya sunucu yoğunluğu hatalarına karşı
  * üssel olarak geri çekilerek (exponential backoff) ve jitter ekleyerek yeniden dener.
+ * Ayrıca 429 (RESOURCE_EXHAUSTED) kota aşımı hatalarını da daha uzun bekleme süreleriyle
+ * otomatik olarak yeniden dener.
  *
  * @param fn - Çalıştırılacak ve hata durumunda yeniden denenecek asenkron işlem
  * @param maxRetries - Maksimum deneme sayısı (varsayılan: 3)
@@ -54,21 +56,33 @@ async function retryOn503<T>(
     try {
       return await fn();
     } catch (error: unknown) {
-      const is503 =
+      const isRetryable =
         error instanceof Error &&
         (("status" in error &&
-          (error as { status: string }).status === "UNAVAILABLE") ||
-          ("code" in error && (error as { code: number }).code === 503) ||
+          ((error as { status: string }).status === "UNAVAILABLE" ||
+            (error as { status: string }).status === "RESOURCE_EXHAUSTED")) ||
+          ("code" in error &&
+            ((error as { code: number }).code === 503 ||
+              (error as { code: number }).code === 429)) ||
           error.message.includes("high demand") ||
           error.message.includes("503") ||
-          error.message.includes("UNAVAILABLE"));
+          error.message.includes("UNAVAILABLE") ||
+          error.message.includes("429") ||
+          error.message.includes("quota"));
 
-      if (!is503 || attempt > maxRetries) {
+      if (!isRetryable || attempt > maxRetries) {
         throw error;
       }
 
+      const is429 =
+        error.message.includes("429") ||
+        error.message.includes("quota") ||
+        error.message.includes("RESOURCE_EXHAUSTED");
+
       const exponent = attempt - 1;
-      const backoffDelay = baseDelayMs * Math.pow(2, exponent);
+      const backoffDelay = is429
+        ? 30000 + attempt * 15000
+        : baseDelayMs * Math.pow(2, exponent);
       const jitter = Math.random() * backoffDelay * 0.3; // %30 max jitter
       const totalDelay = backoffDelay + jitter;
 
@@ -81,6 +95,7 @@ async function retryOn503<T>(
           maxRetries,
           delayMs: Math.round(totalDelay),
           errorMessage: error?.message || String(error),
+          quotaExceeded: is429,
         },
       });
 

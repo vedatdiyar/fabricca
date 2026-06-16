@@ -6,12 +6,13 @@ import { getProfile } from "@/proxy";
 
 /**
  * Onboarding root router page.
- * Always redirects to the last completed step:
- * - No matrix → matrix form (first step)
- * - Matrix exists, no report → enrichment (review & confirm)
- * - Report exists, no boxes → boxes (generate subject boxes)
- * - Boxes exist, not completed → literature-review
- * - Completed → dashboard
+ * Finds the LAST successfully completed step and redirects there.
+ * Never auto-forwards the user to a step they haven't explicitly started.
+ * - Nothing completed yet → matrix (first step)
+ * - Matrix exists, no report → matrix (last completed)
+ * - Report exists, no boxes → risk (last completed)
+ * - Boxes exist → boxes (last completed)
+ * - Fully completed → dashboard
  */
 export default async function OnboardingPage() {
   const profile = await getProfile();
@@ -20,6 +21,7 @@ export default async function OnboardingPage() {
     redirect("/dashboard");
   }
 
+  // Check matrix first
   const [matrix] = await db
     .select({ id: thesisMatrices.id })
     .from(thesisMatrices)
@@ -29,15 +31,17 @@ export default async function OnboardingPage() {
     redirect("/onboarding/matrix");
   }
 
+  // Check if report (risk analysis) exists
   const [report] = await db
     .select({ id: originalityReports.id })
     .from(originalityReports)
     .where(eq(originalityReports.userId, profile.id));
 
   if (!report) {
-    redirect("/onboarding/enrichment");
+    redirect("/onboarding/matrix");
   }
 
+  // Check if boxes exist
   const [box] = await db
     .select({ id: thesisBoxes.id })
     .from(thesisBoxes)
@@ -45,8 +49,8 @@ export default async function OnboardingPage() {
     .limit(1);
 
   if (!box) {
-    redirect("/onboarding/boxes");
+    redirect("/onboarding/risk");
   }
 
-  redirect("/onboarding/literature-review");
+  redirect("/onboarding/boxes");
 }

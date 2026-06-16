@@ -6,369 +6,32 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import {
   thesisMatrices,
-  originalityReports,
   thesisBoxes,
   libraryResources,
   users,
 } from "@/db/schema";
 import { getSession } from "@/proxy";
-import { generateStructuredContent } from "@/lib/gemini";
-import { ThinkingLevel } from "@google/genai";
-import {
-  buildLiteratureSiftingPrompt,
-  buildLiteratureJuryAnalysisPrompt,
-  literatureSiftingSchema,
-  literatureJuryAnalysisSchema,
-  LITERATURE_SIFTING_SYSTEM_INSTRUCTION,
-  LITERATURE_JURY_ANALYSIS_SYSTEM_INSTRUCTION,
-} from "@/lib/prompts";
 import { Logger, createFlowId } from "@/lib/logger";
 import type {
-  OnboardingFormData,
-  EnhancedThesisData,
-  OriginalityReportData,
-  GeminiThesisBox,
   LiteraturePoolEntry,
-  JuryArticle,
   OnboardingActionResult,
 } from "@/lib/types";
 import type { NewLibraryResource } from "@/db/schema";
+import type { SubBoxInput, RawPaper } from "@/lib/literature-review-papers";
+import { mergePapers } from "@/lib/literature-review-papers";
+import {
+  searchOpenAlex,
+  searchOpenAlexKeyword,
+} from "./_services/search-api";
+import {
+  runSiftingStage,
+  runJuryStage,
+  enrichJuryArticleWithCrossRef,
+  type LiteratureReviewResult,
+} from "./_services/ai-processor";
 
-// ============================================================================
-// Literature Review Action Types
-// ============================================================================
-
-export interface SubBoxInput {
-  title: string;
-  description: string;
-  theorists: string[];
-  concepts: string[];
-  queries: string[];
-}
-
-interface RawPaper {
-  source: "semantic_scholar" | "openalex";
-  title: string | null;
-  abstract: string | null;
-  doi: string | null;
-  url: string | null;
-  authors: string[];
-  year: number | null;
-  publisher: string | null;
-}
-
-interface ValidatedPaper {
-  title: string;
-  abstract: string | null;
-  doi: string | null;
-  url: string | null;
-  authors: string[];
-  year: number | null;
-  publisher: string | null;
-}
-
-export interface LiteratureReviewResult {
-  starterPack: JuryArticle[];
-  reservedPool: JuryArticle[];
-}
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-function extractCleanDoi(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  const trimmed = raw.trim();
-  const match = trimmed.match(/10\.\d{4,}[^\s]*/i);
-  return match ? match[0].replace(/\.$/, "") : null;
-}
-
-function resolveAbstractInvertedIndex(
-  invertedIndex: Record<string, number[]> | null | undefined,
-): string | null {
-  if (!invertedIndex) return null;
-  const entries: [number, string][] = [];
-  for (const [word, positions] of Object.entries(invertedIndex)) {
-    for (const pos of positions) {
-      entries.push([pos, word]);
-    }
-  }
-  entries.sort(([a], [b]) => a - b);
-  return entries.map(([, word]) => word).join(" ");
-}
-
-// ============================================================================
-// Stage 1a: Semantic Scholar Search
-// ============================================================================
-
-async function searchSemanticScholar(query: string): Promise<RawPaper[]> {
-  const apiKey = process.env.SEMANTIC_SCHOLAR_API_KEY;
-  const headers: Record<string, string> = {};
-  if (apiKey) headers["x-api-key"] = apiKey;
-
-  const url = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(query)}&limit=50&fields=title,abstract,externalIds,url,authors,year,publicationVenue`;
-
-  try {
-    const response = await fetch(url, {
-      headers,
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!response.ok) return [];
-    const data = (await response.json()) as {
-      data?: Record<string, unknown>[];
-    };
-    const papers = data.data;
-    if (!papers) return [];
-
-    return papers.map((p) => {
-      const externalIds = p.externalIds as
-        | Record<string, string>
-        | null
-        | undefined;
-      const authorList = p.authors as { name?: string }[] | null | undefined;
-      const venue = p.publicationVenue as { name?: string } | null | undefined;
-
-      return {
-        source: "semantic_scholar" as const,
-        title: (p.title as string) ?? null,
-        abstract: (p.abstract as string) ?? null,
-        doi: extractCleanDoi(externalIds?.DOI),
-        url: (p.url as string) ?? null,
-        authors: authorList?.map((a) => a.name ?? "").filter(Boolean) ?? [],
-        year: (p.year as number) ?? null,
-        publisher: venue?.name ?? null,
-      };
-    });
-  } catch {
-    return [];
-  }
-}
-
-// ============================================================================
-// Stage 1b: OpenAlex Search
-// ============================================================================
-
-async function searchOpenAlex(query: string): Promise<RawPaper[]> {
-  const apiKey = process.env.OPENALEX_API_KEY;
-  const params = new URLSearchParams({
-    "search.semantic": query,
-    per_page: "50",
-    select:
-      "title,abstract_inverted_index,doi,id,authorships,publication_year,primary_location",
-  });
-  if (apiKey) params.set("api_key", apiKey);
-
-  const url = `https://api.openalex.org/works?${params.toString()}`;
-
-  try {
-    const response = await fetch(url, {
-      headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!response.ok) return [];
-    const data = (await response.json()) as {
-      results?: Record<string, unknown>[];
-    };
-    const results = data.results;
-    if (!results) return [];
-
-    return results.map((work) => {
-      const invertedIndex = work.abstract_inverted_index as
-        | Record<string, number[]>
-        | null
-        | undefined;
-      const authorships = work.authorships as
-        | { author?: { display_name?: string } }[]
-        | null
-        | undefined;
-      const primaryLocation = work.primary_location as
-        | {
-            landing_page_url?: string;
-            source?: { display_name?: string };
-          }
-        | null
-        | undefined;
-
-      return {
-        source: "openalex" as const,
-        title: (work.title as string) ?? null,
-        abstract: resolveAbstractInvertedIndex(invertedIndex),
-        doi: extractCleanDoi(work.doi as string | null | undefined),
-        url: primaryLocation?.landing_page_url ?? (work.id as string) ?? null,
-        authors:
-          authorships
-            ?.map((a) => a.author?.display_name ?? "")
-            .filter(Boolean) ?? [],
-        year: (work.publication_year as number) ?? null,
-        publisher: primaryLocation?.source?.display_name ?? null,
-      };
-    });
-  } catch {
-    return [];
-  }
-}
-
-// ============================================================================
-// Stage 2: DOI Merge & Deduplication
-// ============================================================================
-
-function mergePapers(
-  semantic: RawPaper[],
-  openalex: RawPaper[],
-): ValidatedPaper[] {
-  const doiMap = new Map<string, ValidatedPaper>();
-  const noDoiPapers: ValidatedPaper[] = [];
-  const seenTitleKeys = new Set<string>();
-
-  function ingest(raw: RawPaper): void {
-    const paper: ValidatedPaper = {
-      title: raw.title ?? "",
-      abstract: raw.abstract,
-      doi: raw.doi,
-      url: raw.url,
-      authors: [...raw.authors],
-      year: raw.year,
-      publisher: raw.publisher,
-    };
-
-    if (paper.doi) {
-      const existing = doiMap.get(paper.doi);
-      if (existing) {
-        existing.abstract = existing.abstract ?? paper.abstract;
-        existing.url = existing.url ?? paper.url;
-        existing.year = existing.year ?? paper.year;
-        existing.publisher = existing.publisher ?? paper.publisher;
-        const existingSet = new Set(existing.authors);
-        for (const a of paper.authors) {
-          if (!existingSet.has(a)) {
-            existing.authors.push(a);
-            existingSet.add(a);
-          }
-        }
-      } else {
-        doiMap.set(paper.doi, { ...paper });
-      }
-    } else {
-      const titleKey = paper.title.toLowerCase().trim().slice(0, 80);
-      if (paper.title && !seenTitleKeys.has(titleKey)) {
-        seenTitleKeys.add(titleKey);
-        noDoiPapers.push(paper);
-      }
-    }
-  }
-
-  for (const raw of semantic) ingest(raw);
-  for (const raw of openalex) ingest(raw);
-  return [...doiMap.values(), ...noDoiPapers];
-}
-
-// ============================================================================
-// AI Sifting Stage
-// ============================================================================
-
-interface SiftingResultItem {
-  doi: string;
-  title: string;
-  keep: boolean;
-}
-
-interface SiftingResponse {
-  siftedResults: SiftingResultItem[];
-}
-
-async function runSiftingStage(
-  box: SubBoxInput,
-  candidates: ValidatedPaper[],
-  logger: Logger,
-): Promise<ValidatedPaper[]> {
-  const siftingInput = candidates.map((c) => ({
-    doi: c.doi ?? "",
-    title: c.title,
-    abstract: "",
-  }));
-
-  const siftingResult = await generateStructuredContent<SiftingResponse>(
-    "gemini-3.1-flash-lite",
-    LITERATURE_SIFTING_SYSTEM_INSTRUCTION,
-    buildLiteratureSiftingPrompt(
-      {
-        title: box.title,
-        description: box.description,
-        concepts: box.concepts,
-        theorists: box.theorists,
-      },
-      siftingInput,
-    ),
-    literatureSiftingSchema,
-    logger,
-    { thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } },
-  );
-
-  const keptDois = new Set(
-    siftingResult.siftedResults.filter((r) => r.keep).map((r) => r.doi),
-  );
-
-  const keptTitles = new Set(
-    siftingResult.siftedResults
-      .filter((r) => r.keep === true)
-      .map((r) => r.title.toLowerCase().trim()),
-  );
-
-  const kept = candidates.filter((c) => {
-    if (c.doi && keptDois.has(c.doi)) return true;
-    if (c.title && keptTitles.has(c.title.toLowerCase().trim())) return true;
-    return false;
-  });
-
-  return kept.map((c) => ({ ...c, abstract: null }));
-}
-
-// ============================================================================
-// AI Jury Analysis Stage
-// ============================================================================
-
-interface JuryResponse {
-  starterPack: JuryArticle[];
-  reservedPool: JuryArticle[];
-}
-
-async function runJuryStage(
-  box: SubBoxInput,
-  sifted: ValidatedPaper[],
-  logger: Logger,
-): Promise<LiteratureReviewResult> {
-  const juryCandidates = sifted.map((c) => ({
-    doi: c.doi ?? "",
-    title: c.title,
-    abstract: c.abstract ?? "",
-    url: c.url ?? "",
-    publisher: c.publisher ?? "",
-    publicationYear: c.year ?? 0,
-    authors: c.authors,
-  }));
-
-  const juryResult = await generateStructuredContent<JuryResponse>(
-    "gemini-3.1-flash-lite",
-    LITERATURE_JURY_ANALYSIS_SYSTEM_INSTRUCTION,
-    buildLiteratureJuryAnalysisPrompt(
-      {
-        title: box.title,
-        description: box.description,
-        concepts: box.concepts,
-        theorists: box.theorists,
-      },
-      juryCandidates,
-    ),
-    literatureJuryAnalysisSchema,
-    logger,
-    { thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } },
-  );
-
-  return {
-    starterPack: juryResult.starterPack,
-    reservedPool: juryResult.reservedPool,
-  };
-}
+// Re-export for consumer compatibility
+export type { LiteratureReviewResult } from "./_services/ai-processor";
 
 // ============================================================================
 // Main Action: processLiteratureReviewAction
@@ -376,13 +39,13 @@ async function runJuryStage(
 
 /**
  * Processes a single sub-box through the 5-stage literature review pipeline:
- * 1. Parallel search (Semantic Scholar + OpenAlex) for each query
- * 2. DOI-based merge and deduplication (saved as rawApiPool)
+ * 1. OpenAlex search (semantic + keyword fallback)
+ * 2. DOI-based deduplication (saved as rawApiPool)
  * 3. AI sifting — aggressive gating
  * 4. AI jury analysis → starter pack + reserved pool
  * 5. CrossRef polite-pool validation on final jury articles + abstract restore
  *
- * @param subBox - Sub-box metadata including search queries
+ * @param subBox - Sub-box metadata including semanticSearchBlock
  * @returns LiteratureReviewResult with starterPack and reservedPool arrays
  */
 export async function processLiteratureReviewAction(
@@ -391,24 +54,42 @@ export async function processLiteratureReviewAction(
   const logger = new Logger(createFlowId());
 
   try {
-    const queries = subBox.queries.filter((q) => q.trim().length > 0);
-    if (queries.length === 0) {
+    if (!subBox.semanticSearchBlock.trim()) {
       return { data: { starterPack: [], reservedPool: [] } };
     }
 
     // ------------------------------------------------------------------
-    // Stage 1: Equal-weighted parallel search (Semantic Scholar & OpenAlex)
+    // Fetch thesis matrix context for global alignment
+    // ------------------------------------------------------------------
+    const session = await getSession();
+    if (!session) return { error: "Oturum bulunamadı." };
+
+    const [thesisCtx] = await db
+      .select({
+        studyTitle: thesisMatrices.studyTitle,
+        researchQuestion: thesisMatrices.researchQuestion,
+        theoreticalFramework: thesisMatrices.theoreticalFramework,
+        historicalSpatialLimits: thesisMatrices.historicalSpatialLimits,
+      })
+      .from(thesisMatrices)
+      .where(eq(thesisMatrices.userId, session.userId));
+
+    if (!thesisCtx) return { error: "Tez matrisi bulunamadı." };
+
+    // ------------------------------------------------------------------
+    // Stage 1: OpenAlex search (semantic vector + keyword fallback)
     // ------------------------------------------------------------------
     logger.info("literature_search_start", {
       service: "literature",
-      data: { queryCount: queries.length, subBoxTitle: subBox.title },
+      data: { queryCount: 1, subBoxTitle: subBox.title },
     });
 
     const searchStart = performance.now();
-    const searchCalls = queries.flatMap((q) => [
-      searchSemanticScholar(q),
-      searchOpenAlex(q),
-    ]);
+
+    const searchCalls: Promise<RawPaper[]>[] = [
+      searchOpenAlex(subBox.semanticSearchBlock),
+      searchOpenAlexKeyword(subBox.title),
+    ];
     const settled = await Promise.allSettled(searchCalls);
 
     const allRaw: RawPaper[] = [];
@@ -429,14 +110,10 @@ export async function processLiteratureReviewAction(
     }
 
     // ------------------------------------------------------------------
-    // Stage 2: DOI dedup & merge overlay
+    // Stage 2: DOI-based deduplication
     // ------------------------------------------------------------------
     const mergeStart = performance.now();
-    const semanticPapers = allRaw.filter(
-      (r) => r.source === "semantic_scholar",
-    );
-    const openalexPapers = allRaw.filter((r) => r.source === "openalex");
-    const merged = mergePapers(semanticPapers, openalexPapers);
+    const merged = mergePapers(allRaw);
 
     logger.info("literature_merge_done", {
       service: "literature",
@@ -450,7 +127,7 @@ export async function processLiteratureReviewAction(
     // Stage 3: AI Sifting — aggressive gating
     // ------------------------------------------------------------------
     const siftStart = performance.now();
-    const sifted = await runSiftingStage(subBox, merged, logger);
+    const sifted = await runSiftingStage(subBox, merged, logger, thesisCtx);
 
     logger.info("literature_sifting_done", {
       service: "literature",
@@ -463,40 +140,10 @@ export async function processLiteratureReviewAction(
     }
 
     // ------------------------------------------------------------------
-    // Hydration: restore abstracts from rawApiPool (DOI → title fallback)
-    // ------------------------------------------------------------------
-    const hydraStart = performance.now();
-    const normalizedDoiIndex = new Map(
-      rawApiPool.map((p) => [p.doi?.toLowerCase().trim() ?? "", p]),
-    );
-    const hydrated = sifted.map((s) => {
-      if (s.doi) {
-        const match = normalizedDoiIndex.get(s.doi.toLowerCase().trim());
-        if (match?.abstract) return { ...s, abstract: match.abstract };
-      } else {
-        const titleKey = s.title.toLowerCase().trim().slice(0, 80);
-        const match = rawApiPool.find(
-          (p) => p.title?.toLowerCase().trim().slice(0, 80) === titleKey,
-        );
-        if (match?.abstract) return { ...s, abstract: match.abstract };
-      }
-      return s;
-    });
-
-    logger.info("literature_hydration_done", {
-      service: "literature",
-      durationMs: performance.now() - hydraStart,
-      data: {
-        before: sifted.length,
-        restored: hydrated.filter((h) => h.abstract !== null).length,
-      },
-    });
-
-    // ------------------------------------------------------------------
     // Stage 4: AI Jury Analysis — starter pack & reserved pool
     // ------------------------------------------------------------------
     const juryStart = performance.now();
-    const result = await runJuryStage(subBox, hydrated, logger);
+    const result = await runJuryStage(subBox, sifted, logger);
 
     logger.info("literature_jury_done", {
       service: "literature",
@@ -545,112 +192,6 @@ export async function processLiteratureReviewAction(
       error: err,
     });
     return { error: message };
-  }
-}
-
-// ============================================================================
-// CrossRef & Enrichment Helpers (polite-pool)
-// ============================================================================
-
-async function enrichJuryArticleWithCrossRef(
-  article: JuryArticle,
-  pool: ValidatedPaper[],
-): Promise<JuryArticle> {
-  if (article.doi) {
-    const match = pool.find((p) => p.doi === article.doi);
-    if (match?.abstract) {
-      article.abstract = match.abstract;
-    }
-  } else if (article.title) {
-    const titleKey = article.title.toLowerCase().trim().slice(0, 80);
-    const match = pool.find(
-      (p) => p.title?.toLowerCase().trim().slice(0, 80) === titleKey,
-    );
-    if (match?.abstract) {
-      article.abstract = match.abstract;
-    }
-  }
-
-  if (!article.doi) return article;
-
-  const paper: ValidatedPaper = {
-    title: article.title,
-    abstract: article.abstract,
-    doi: article.doi,
-    url: article.url,
-    authors: [...article.authors],
-    year: article.publicationYear,
-    publisher: article.publisher,
-  };
-
-  const enriched = await validateWithCrossRef(paper);
-
-  article.authors = enriched.authors;
-  article.url = enriched.url ?? article.url;
-  article.publisher = enriched.publisher ?? article.publisher;
-  if (enriched.year) article.publicationYear = enriched.year;
-
-  return article;
-}
-
-async function validateWithCrossRef(
-  paper: ValidatedPaper,
-): Promise<ValidatedPaper> {
-  if (!paper.doi) return paper;
-
-  const contactEmail = process.env.CROSSREF_CONTACT_EMAIL;
-  const endpoint = `https://api.crossref.org/works/${encodeURIComponent(paper.doi)}${contactEmail ? `?mailto=${encodeURIComponent(contactEmail)}` : ""}`;
-
-  try {
-    const response = await fetch(endpoint, {
-      headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!response.ok) return paper;
-
-    const body = (await response.json()) as
-      | { message?: Record<string, unknown> }
-      | undefined;
-    const message = body?.message;
-    if (!message) return paper;
-
-    const authorList = message.author as
-      | { given?: string; family?: string }[]
-      | undefined;
-    if (authorList && authorList.length > 0) {
-      const resolvedAuthors: string[] = [];
-      for (const a of authorList) {
-        const given = (a.given ?? "").trim();
-        const family = (a.family ?? "").trim();
-        const full = `${given} ${family}`.trim();
-        if (full) resolvedAuthors.push(full);
-      }
-      if (resolvedAuthors.length > 0) {
-        paper.authors = resolvedAuthors;
-      }
-    }
-
-    const crossrefUrl = message.URL as string | undefined;
-    if (crossrefUrl) paper.url = crossrefUrl;
-
-    const publisher = message.publisher as string | undefined;
-    const containerTitle = message["container-title"] as string[] | undefined;
-    if (publisher) paper.publisher = publisher;
-    else if (containerTitle && containerTitle.length > 0) {
-      paper.publisher = containerTitle[0];
-    }
-
-    const published = message.published as
-      | { "date-parts"?: number[][] }
-      | undefined;
-    const dateParts = published?.["date-parts"];
-    if (dateParts && dateParts.length > 0 && dateParts[0].length > 0) {
-      paper.year = dateParts[0][0];
-    }
-
-    return paper;
-  } catch {
-    return paper;
   }
 }
 

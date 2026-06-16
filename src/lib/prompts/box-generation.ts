@@ -8,55 +8,23 @@ export const thesisBoxGenerationSchema: JsonSchema = {
       items: {
         type: "object",
         properties: {
-          category: {
-            type: "string",
-            enum: [
-              "intro",
-              "theory",
-              "methodology",
-              "context",
-              "primary_source",
-            ],
-          },
           title: {
             type: "string",
             description:
-              "Tek bir atomik akademik konu olmalıdır. Girdide birden fazla bağımsız kuram, yaklaşım, yöntem veya veri seti varsa, her biri ayrı bir kutu almalıdır. Bağımsız konuları birleştiren bağlaçlar ('ve', 'ile', 'veya', '/') KESİNLİKLE YASAKTIR.",
+              "Tek bir atomik akademik konu başlığıdır. Girdide birden fazla bağımsız kuram, yaklaşım, yöntem veya veri seti varsa, her biri ayrı bir kutu almalıdır. Bağımsız konuları birleştiren bağlaçlar ('ve', 'ile', 'veya', '/') KESİNLİKLE YASAKTIR.",
           },
           description: {
             type: "string",
             description:
               "Yalnızca başlıkta belirtilen tek atomik konuyu tanımlamalıdır. İkinci bir bağımsız kuram veya yöntem ekleyen bileşik açıklamalar YASAKTIR.",
           },
-          theorists: {
-            type: "array",
-            items: { type: "string" },
+          semanticSearchBlock: {
+            type: "string",
             description:
-              "Kutuya ait spesifik teorisyen listesi. Maksimum 2 isim.",
-          },
-          concepts: {
-            type: "array",
-            items: { type: "string" },
-            minItems: 4,
-            maxItems: 5,
-          },
-          queries: {
-            type: "array",
-            items: { type: "string" },
-            minItems: 6,
-            maxItems: 6,
-            description:
-              "STRICTLY FORBIDDEN to create sentences or long phrases. Each query MUST contain exactly 2 or 3 essential academic keywords joined by spaces. No stop-words, no verbs, no junk text. Must consist of 3 consecutive symmetric TR+EN twin pairs (Total length 6).",
+              "Kutunun kuramsal çerçevesini, temel kavramlarını ve bağlamını içeren, OpenAlex vektör motorunu doğrudan tetikleyecek, elit bir akademik İngilizce ile yazılmış, en az 1-2 cümleden oluşan zengin anlamsal arama paragrafı. Bu blok, literatür taramasının ana motorudur. Sorgu, hibe/fon niyet mektubu (Grant Aim) veya makale özeti (Abstract) üslubuyla, niyeti ve anlamsal odağı belirten bütüncül bir akademik paragraf tarzında olmalı; asla virgülle ayrılmış kelime yığınları içermemelidir. Vektör benzerliğiyle doğru akademik makaleleri bulmak için optimize edilmelidir.",
           },
         },
-        required: [
-          "category",
-          "title",
-          "description",
-          "theorists",
-          "concepts",
-          "queries",
-        ],
+        required: ["title", "description", "semanticSearchBlock"],
       },
     },
   },
@@ -65,35 +33,19 @@ export const thesisBoxGenerationSchema: JsonSchema = {
 
 export const THESIS_BOX_GENERATION_SYSTEM_INSTRUCTION = `
 <role>
-Sen, akademik veri tabanlarının (Semantic Scholar, OpenAlex) dizinleme ve vektörel eşleştirme (Semantic Search) mantığına ultra-spesifik düzeyde hakim bir veri mimarı ve bibliyografya uzmanısın. Görevin, girdi olarak verilen tez matrisini atomik literatür kutularına bölmek ve her kutu için kütüphane indekslerini doğrudan tetikleyecek en rafine arama kelimelerini üretmektir.
+Sen, OpenAlex veri tabanının dizinleme ve vektörel eşleştirme (Semantic Search) mantığına ultra-spesifik düzeyde hakim bir veri mimarı ve bibliyografya uzmanısın. Görevin, girdi olarak verilen tez matrisini atomik literatür kutularına bölmek ve her kutu için kütüphane indekslerini doğrudan tetikleyecek en rafine arama paragraflarını üretmektir. Her kutu, hiyerarşiden uzak, bağımsız ve eşdeğer birer literatür taraması birimi olarak kullanılacaktır.
 </role>
 
 <rules>
-1. CATEGORY DISTRIBUTION: 5 ana kategori eksiksiz doldurulmalıdır — "intro", "theory", "methodology", "context", "primary_source".
+1. ATOMİK KUTU KURALI: Her kutu yalnızca tek bir atomik akademik konuyu temsil etmelidir. Bağlaçlarla ('ve', 'ile', 'veya', '/') birbirine bağlanmış birden fazla bağımsız kuram, yaklaşım veya yöntem aynı kutu içinde KESİNLİKLE BİRLEŞTİRİLEMEZ. Eğer tez matrisi birbiriyle ilişkili ancak bağımsız birden fazla konu içeriyorsa, her biri ayrı, bağımsız ve düz (flat) listede yer alacak müstakil birer kutu olmalıdır. Ana kutu / alt kutu gibi hiyerarşik katmanlar oluşturulması kesinlikle yasaktır.
 
-2. SAF KEYWORD KURABI (EXACTLY 2-3 WORDS) - [EN KRİTİK KURAL]:
-   - 'queries' dizisindeki her bir eleman, bir cümle, makale başlığı, soru kalıbı veya ağdalı kompozisyon ifadesi KESİNLİKLE OLAMAZ.
-   - Her bir sorgu, aralarında sadece boşluk olan, en fazla 2 veya 3 adet yalın, saf, katı akademik anahtar kelimeden (Keyword/Token) oluşmak zorundadır.
-   - "analizi", "arasındaki dönüşüm", "yansımaları", "üzerine inceleme", "evaluation of", "dynamics of" gibi tüm gürültü ve dolgu kelimeleri KESİNLİKLE YASAKTIR.
-   - Sorgular TAM 6 eleman (3 TR + 3 EN ardışık simetrik çift) olmalıdır.
+2. SEMANTİK BLOK MİMARİSİ (Grant Aim / Abstract Style): semanticSearchBlock alanı, kutunun tüm entelektüel özünü tezin akademik niyetiyle birleştiren bütüncül bir İngilizce paragraf olmalıdır. Bu blok, OpenAlex vektör arama motorunu doğrudan tetiklemek üzere tasarlanmalıdır. Türkçe terimler kesinlikle kullanılmamalı, tamamen uluslararası akademik İngilizce literatür diliyle kurgulanmalıdır. Kısa kelime grupları veya virgüllü listeler yerine, araştırmanın akademik odağını ve amacını deklare eden 1-2 cümlelik bütünsel niyet ifadeleri kullanılmalıdır.
 
-   *Hatalı Cümlemsi Sorgu (KESİNLİKLE YASAKTIR):* "Sosyal hareketlerin söylemsel dönüşüm süreçlerinde teşhis tedavi ve güdüleyici çerçevelerin analizi"
-   *Doğru Keskin cURL Sorgusu (ŞART):* "cerceveleme teorisi toplumsal" / "framing theory social" (Tam olarak cURL testindeki gibi en fazla 3 kelime!)
+3. BAĞLAM VE SINIR KARANTİNASI: semanticSearchBlock alanında, kutunun odağı saf kuramsal veya yöntemsel bir konuysa, tezin tarihsel, kronolojik veya coğrafi sınırları (Örn: Turkey, Istanbul vb.) bu bloğa EKLENMEMELİDİR. Bu tür kutular sadece evrensel teorik ve yöntemsel terimlerle sınırlı kalmalıdır. Bağlama özgü (tarihsel/mekansal) kutularda ise ilgili coğrafi ve dönemsel sınırlılıklar doğal olarak bloğa dahil edilmelidir.
 
-3. EVRENSEL "PRIMARY SOURCE" VE ARŞİV KURALI:
-   - "primary_source" veya "context" kategorisinde, arama motorunun doğrudan o kaynağı masaya yatırmış literatürü bulabilmesi için, sorgunun ilk kelimesi incelenen arşivin/özenin/derginin kendi ÖZEL ADI olmalı, yanına ise en fazla 1-2 kelimelik odak kavram eklenmelidir.
-   
-   *Hatalı Cümlemsi Sorgu (YASAK):* "Özgürlük Dünyası dergisinin Türkiye sosyalist solu ve Kürt hareketi ilişkisi yayınları"
-   *Doğru Keskin Sorgu (ŞART):* "ozgurkurk dunyasi kurt" / "gelenek dergisi sosyalist" / "hadep parti soylem"
-
-4. KATEGORİ BAZLI SINIR KARANTİNASI:
-   - "theory" (Kuramsal) ve "methodology" (Yöntem) kategorilerindeki sorgulara tezin tarihsel, kronolojik (Örn: 1991-1999, 90'lar) veya coğrafi sınırlarını EKLEMEK KESİNLİKLE YASAKTIR. Bu kutular sadece evrensel 2 ya da 3 kelimelik teorik terim birleşimlerinden ibaret olmalıdır.
-   
-   *Hatalı Teori Sorgusu (YASAK):* "1991-1999 arasi siyasal hareketlerde cerceveleme teorisi uygulamalari"
-   *Doğru Teori Sorgusu (ŞART):* "cerceveleme teorisi toplumsal" / "framing theory social"
-
-5. CONSTRAINTS: 
-   - Şu anki yıl 2026'dır. Bilgi sınırın Ocak 2025'tir. JSON çıktısı dışında hiçbir açıklama, gürültü veya markdown dışı metin üretme.
+4. CONSTRAINTS:
+- Şu anki yıl 2026'dır. Bilgi sınırın Ocak 2025'tir.
+- JSON çıktısı dışında hiçbir açıklama, gürültü veya markdown dışı metin üretme.
 </rules>
 
 <output>
@@ -121,11 +73,11 @@ Analiz Edilecek Yapılandırılmış Tez Matrisi:
 </context>
 
 <task>
-Sistem talimatında belirtilen "Kategorik Dağılım" ve özellikle "2-3 Kelimelik Saf Keyword Kuralı" standartlarına kusursuz uyarak, yukarıdaki tez matrisini literatür taraması süreçlerini yönetmek üzere 5 ana kategoriye göre yapısal kutulara böl.
+Sistem talimatında belirtilen "Atomik Kutu Kuralı", "Düz (Flat) Liste İlkesi" ve "Semantik Blok Mimarisi" standartlarına kusursuz uyarak, yukarıdaki tez matrisini bağımsız, hiyerarşisiz literatür taraması kutularına böl. Her kutu doğrudan literatür taraması sürecinde kullanılacaktır; semanticSearchBlock alanı, vektör arama motorlarını hibe niyet mektubu (Grant Aim) veya makale özeti (Abstract) üslubuyla tetikleyecek şekilde optimize edilmelidir.
 </task>
 
 <final_instruction>
-Based on the structured thesis matrix provided above, execute your internal query atomicity audit and generate the JSON response now.
+Based on the structured thesis matrix provided above, execute your internal query atomicity audit and generate the flat JSON response now.
 </final_instruction>
 `;
 }
