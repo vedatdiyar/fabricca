@@ -184,7 +184,7 @@ export async function runJuryStage(
     ),
     literatureJuryAnalysisSchema,
     logger,
-    { thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } },
+    { thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM } },
   );
 
   function backfillIsFoundational(articles: JuryArticle[]): JuryArticle[] {

@@ -1,5 +1,8 @@
 import type { JsonSchema } from "../gemini";
 
+// ============================================================================
+// 1. JSON YANIT ŞEMASI (%100 TÜRKÇE)
+// ============================================================================
 export const literatureJuryAnalysisSchema: JsonSchema = {
   type: "object",
   properties: {
@@ -16,15 +19,22 @@ export const literatureJuryAnalysisSchema: JsonSchema = {
             description:
               "PRIMARY: Teoriyi kuran kurucu metin veya doğrudan ampirik katkı. SECONDARY: İkincil uygulama veya arka plan katkısı.",
           },
-          title: { type: "string" },
-          abstract: { type: "string" },
-          url: { type: "string" },
-          doi: { type: "string" },
-          publisher: { type: "string" },
-          publicationYear: { type: "integer" },
+          title: { type: "string", description: "Makalenin akademik başlığı" },
+          abstract: {
+            type: "string",
+            description: "Makalenin özeti veya anlamsal içeriği",
+          },
+          url: {
+            type: "string",
+            description: "Makalenin tam erişim adresi veya dijital bağlantısı",
+          },
+          doi: { type: "string", description: "Makalenin DOI numarası" },
+          publisher: { type: "string", description: "Yayıncı veya dergi adı" },
+          publicationYear: { type: "integer", description: "Yayınlanma yılı" },
           authors: {
             type: "array",
             items: { type: "string" },
+            description: "Yazar isimlerinin listesi",
           },
         },
         required: ["type", "title", "doi", "authors"],
@@ -37,20 +47,14 @@ export const literatureJuryAnalysisSchema: JsonSchema = {
       items: {
         type: "object",
         properties: {
-          type: {
-            type: "string",
-            enum: ["PRIMARY", "SECONDARY"],
-          },
+          type: { type: "string", enum: ["PRIMARY", "SECONDARY"] },
           title: { type: "string" },
           abstract: { type: "string" },
           url: { type: "string" },
           doi: { type: "string" },
           publisher: { type: "string" },
           publicationYear: { type: "integer" },
-          authors: {
-            type: "array",
-            items: { type: "string" },
-          },
+          authors: { type: "array", items: { type: "string" } },
         },
         required: ["type", "title", "doi", "authors"],
       },
@@ -59,35 +63,80 @@ export const literatureJuryAnalysisSchema: JsonSchema = {
   required: ["starterPack", "reservedPool"],
 };
 
-export const LITERATURE_JURY_ANALYSIS_SYSTEM_INSTRUCTION = `
-<role>
-Sen akademik literatür değerlendirmesi, kaynak hiyerarşisi ve araştırma sentezi konularında uzman, tavizsiz bir profesör ve kıdemli jüri üyesisin. Görevin, belirli bir alt konu kutusu (sub-box) için süzgeçten geçmiş makale adaylarını semantik ve epistemolojik olarak puanlamak, en kritik makaleleri (en fazla 5) "Starter Pack" ve kalan potansiyellileri (en fazla 15) "Reserved Pool" olarak seçmektir.
-</role>
+// ============================================================================
+// 2. SİSTEM TALİMATI (%100 TÜRKÇE)
+// ============================================================================
+export function buildLiteratureJuryAnalysisSystemInstruction(): string {
+  return `# ROL
+Sen akademik literatür değerlendirmesi, kaynak taksonomisi ve bibliyografik hiyerarşi kurma konularında uzman, tavizsiz bir Profesör ve Kıdemli Akademik Jüri Üyesisin. Görevin, süzgeçten geçmiş makale adaylarını semantik ve epistemolojik olarak tartarak, en kurucu metinleri (en fazla 5) "starterPack" listesine, potansiyel yan katkı sunacak diğer makaleleri ise (en fazla 15) "reservedPool" listesine yerleştirmektir.
 
-<instructions>
-Cevap üretmeden önce içsel olarak şu 2 adımlı analitik planı işlet:
-1. **Sınıflandırma ve Sıralama**: Makaleleri akademik önem, alaka düzeyi ve tez matrisine katkı potansiyeline göre hiyerarşik olarak sırala.
-2. **Kota Yönetimi**: En yüksek ağırlıklı makaleleri "starterPack" (en fazla 5) ve "reservedPool" (en fazla 15) dizilerine yerleştir.
-</instructions>
+# BİLGİ VE ZAMAN KISITLAMALARI
+- Bilgi kesim tarihin Ocak 2025'tir.
+- Şu anki yıl 2026'dır. Zaman duyarlı kurgularda veya yayın yılı değerlendirmelerinde bu yılı baz almalısın.
 
-<constraints>
-- ESNEK KOTA KURALI (Flexible Quota): "starterPack" EN FAZLA 5, "reservedPool" EN FAZLA 15 makale içerebilir. Sifting aşamasından gelen doğrulanmış gerçek aday sayısı bu üst sınırları doldurmaya yetmiyorsa, listeleri sahte verilerle (uydurma başlık, yazar, yayın yılı) KESİNLİKLE ŞİŞİRME. Yalnızca elindeki mevcut gerçek makaleleri önem, kuramsal kuruculuk ve hiyerarşi sırasına göre havuzlara dağıt; kalan kontenjanları boş bırak. Hiç aday yoksa starterPack ve reservedPool tamamen boş ([]) dönebilir; bu, halüsinasyon üretmekten katbekat iyidir.
+# OPERASYONEL KISITLAMALAR VE FİLTRELEME KURALLARI
+- Kesinlikle objektif, metodolojik, mesafeli ve elit bir akademik Türkçe kullanacaksın.
+- AKADEMİK BARAJ PUANI VE KATI ELEME: Adayların \`siftingScore\` değerlerini amansız bir baraj filtresi olarak kullan. \`siftingScore\` değeri 85 ve üzerinde olan kurucu, doğrudan odağa hitap eden makaleleri önem sırasına göre "starterPack" listesine yerleştir. \`siftingScore\` değeri 75 ile 84 arasında olan ya da starterPack kotasına sığmayan kaliteli kaynakları "reservedPool" listesine al. \`siftingScore\` değeri 75'in altında olan tüm zayıf veya çeper makaleleri —kotaları doldurmak adına bile olsa— KESİNLİKLE listelere dahil etme, acımasızca dışarıda bırak.
+- ESNEK KOTA KURALI (HALÜSİNASYON ENGELİ): \`starterPack\` en fazla 5, \`reservedPool\` en fazla 15 makale içerebilir. Eğer sifting aşamasından gelen kaliteli aday sayısı bu üst sınırları doldurmaya yetmiyorsa, listeleri sahte/uydurma verilerle KESİNLİKLE ŞİŞİRME. Sadece elindeki ham gerçek verileri dağıt; gerekirse kotaları eksik bırak. Hiç kaliteli aday yoksa listeler boş (\`[]\`) dönebilir.
+- MODEL TEMBELLİĞİ ENGELİ (ANTI-LAZINESS): Çıktılarında asla "...", "vb.", "etc." gibi geçiştirici ifadeler kullanamazsın. Verilen orijinal makale bilgilerini (başlık, doi, yazarlar, özet vb.) eksiksiz ve mutlak bir sadakatle aktaracaksın.
+- ÇIKTI FORMATI: Yanıtın, yukarıda sağlanan \`literatureJuryAnalysisSchema\` ile %100 uyumlu, doğrulanmış ve parse edilebilir bir ham JSON objesi olmalıdır. Markdown \`\`\`json ... \`\`\` sarmalı, ön söz veya açıklama metni kesinlikle yasaktır.
 
-- DİL: Tüm metin içeriklerini tamamen akıcı, hatasız, elit bir akademik Türkçe ile yaz.
+# UZMAN FEW-SHOT ÖRNEĞİ
+<ornek_girdi_kutusu>
+{
+  "title": "Neoliberal Yönetimsellik ve Borç Ekonomisi",
+  "description": "Borçlandırmanın bireyler üzerindeki mikro-iktidar ve özneleşme süreçlerinin incelenmesi."
+}
+</ornek_girdi_kutusu>
 
-- AKADEMİK BARAJ PUANI VE TUTARLILIK (Academic Threshold Mandate): Adayların siftingScore değerlerini katı bir filtre olarak kullan. SiftingScore değeri 85 ve üzerinde olan kurucu makaleleri önem sırasına göre 'starterPack' listesine yerleştir. SiftingScore değeri 75 ile 84 arasında olan ya da starterPack kotasına sığmayan diğer kaliteli kaynakları 'reservedPool' listesine al. SiftingScore değeri 75'in altında olan veya kutunun öz omurgasına doğrudan katkı sunmayan tüm zayıf/çeper makaleleri — kotaları doldurmak adına bile olsa — KESİNLİKLE LİSTELERE DAHİL ETME, acımasızca dışarıda bırak.
-</constraints>
-
-<output_format>
-Yalnızca literatureJuryAnalysisSchema yapısına tam uyumlu, geçerli ve temiz bir JSON nesnesi döndür.
-</output_format>
-`;
-
-export function buildLiteratureJuryAnalysisPrompt(
-  box: {
-    title: string;
-    description: string;
+<ornek_adaylar>
+[
+  {
+    "doi": "10.1080/neolib.112",
+    "title": "Borcun Öznesi: Finansal Kapitalizmde Yönetimsellik",
+    "abstract": "Bu çalışma Foucault'nun yönetimsellik analizi ile finansal borç yapılarını kesiştirerek bireysel özneleşme süreçlerini haritalandırmaktadır...",
+    "authors": ["Ahmet Yılmaz", "Ayşe Demir"],
+    "publicationYear": 2022,
+    "publisher": "Akademik Yayıncılık",
+    "siftingScore": 92
   },
+  {
+    "doi": "10.1016/j.soc.2019",
+    "title": "Avrupa'da Bankacılık Düzenlemelerinin Kısa Tarihi",
+    "abstract": "Avrupa Birliği bölgesindeki kurumsal bankacılık politikaları ve makro düzenleme parametrelerinin 1990-2010 yılları arasındaki genel bir incelemesi...",
+    "authors": ["Mehmet Kaya"],
+    "publicationYear": 2020,
+    "publisher": "Ekin Yayınları",
+    "siftingScore": 64
+  }
+]
+</ornek_adaylar>
+
+<ornek_beklenen_cikti>
+{
+  "starterPack": [
+    {
+      "type": "PRIMARY",
+      "title": "Borcun Öznesi: Finansal Kapitalizmde Yönetimsellik",
+      "abstract": "Bu çalışma Foucault'nun yönetimsellik analizi ile finansal borç yapılarını kesiştirerek bireysel özneleşme süreçlerini haritalandırmaktadır...",
+      "url": "https://doi.org/10.1080/neolib.112",
+      "doi": "10.1080/neolib.112",
+      "publisher": "Akademik Yayıncılık",
+      "publicationYear": 2022,
+      "authors": ["Ahmet Yılmaz", "Ayşe Demir"]
+    }
+  ],
+  "reservedPool": []
+}
+</ornek_beklenen_cikti>
+_Not: 10.1016/j.soc.2019 doi'li makale siftingScore'u 64 olduğu ve barajın altında kaldığı için listeye dahil edilmemiş, sahte veri üretilmemiş, havuzlar esnek şekilde kapatılmıştır._`;
+}
+
+// ============================================================================
+// 3. KULLANICI PROMPT OLUŞTURUCU (%100 TÜRKÇE)
+// ============================================================================
+export function buildLiteratureJuryAnalysisPrompt(
+  box: { title: string; description: string },
   siftedCandidates: {
     doi: string;
     title: string;
@@ -99,22 +148,23 @@ export function buildLiteratureJuryAnalysisPrompt(
     siftingScore?: number;
   }[],
 ): string {
-  return `
-<context>
-Alt Konu Kutusu (Sub-box) Detayları:
-- Başlık: ${box.title}
-- Açıklama: ${box.description}
+  return `<hedef_alt_kutu>
+{
+  "title": "${box.title.replace(/"/g, '\\"')}",
+  "description": "${box.description.replace(/"/g, '\\"')}"
+}
+</hedef_alt_kutu>
 
-Süreçten Geçmiş (Keep: True) Makale Adayları:
+<suzulen_adaylar>
 ${JSON.stringify(siftedCandidates)}
-</context>
+</suzulen_adaylar>
 
-<task>
-Sistem talimatındaki "Esnek Kota Kuralı" ve "Akademik Baraj Puanı" standartlarına harfiyen uyarak, yukarıdaki makale adaylarını semantik olarak puanla. En kritik ve kurucu makaleleri "starterPack" listesine, potansiyel katkı sağlayacak diğer makaleleri "reservedPool" listesine yerleştir.
-</task>
+# TALİMATLAR VE GÖREV
+Sistem talimatında belirtilen "AKADEMİK BARAJ PUANI" ve "ESNEK KOTA KURALI" yönergelerine harfiyen uyarak, <suzulen_adaylar> listesini analiz et. \`siftingScore\` barajlarına göre makaleleri ayıkla, hiyerarşik önem sırasına diz ve <hedef_alt_kutu> omurgasını besleyecek şekilde "starterPack" ve "reservedPool" dizilerine kusursuz bir bibliyografik sadakatle yerleştir.
 
-<final_instruction>
-Yukarıda sağlanan alt kutu bağlamını ve elenmiş aday listesini temel alarak, dahili hiyerarşik puanlama planını uygula ve şimdi JSON yanıtını oluştur.
-</final_instruction>
-`;
+# KRİTİK GÜVENLİK BARIYERI
+- Tamamen sağlanan gerçek veri kümesine bağlı kal (Strictly Grounded). Listeleri şişirmek veya kotayı tamamlamak adına asla sahte makale, uydurma yazar veya uydurma DOI türetme.
+- Orijinal aday verisindeki yazarlar, başlıklar ve özet metinleri üzerinde keyfi değişiklik veya kısaltma yapma. Yanıt dilinin tamamen Türkçe kurallarına uygun, temiz veri formatında olmasını sağla.
+
+Dahili olarak çok derinlemesine düşün (Think extremely hard) ve sadece nihai şemaya uygun ham JSON nesnesini döndür.`;
 }

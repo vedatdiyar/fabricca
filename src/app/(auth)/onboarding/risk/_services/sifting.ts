@@ -248,7 +248,7 @@ export async function siftAndFetchDetails(
         deepSiftingSchema,
         log,
         {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
         },
       );
 

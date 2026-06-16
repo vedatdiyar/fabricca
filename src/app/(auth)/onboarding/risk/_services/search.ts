@@ -162,7 +162,7 @@ export async function evaluateTavilyResults(
         tavilyEvaluationSchema,
         log,
         {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
         },
       );
 

@@ -84,7 +84,7 @@ export async function submitThesisMatrixAction(
           matrixEnhancementPrompt,
           enhancedThesisSchema,
           log,
-          { thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } },
+          { thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM } },
         );
         break;
       } catch (e) {

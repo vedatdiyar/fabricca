@@ -1,14 +1,41 @@
 import type { JsonSchema } from "../gemini";
 
+// ============================================================================
+// 1. JSON YANIT ŞEMASI (%100 TÜRKÇE)
+// ============================================================================
 export const enhancedThesisSchema: JsonSchema = {
   type: "object",
   properties: {
-    academicStudyTitle: { type: "string" },
-    literatureResearchQuestion: { type: "string" },
-    refinedThesisClaim: { type: "string" },
-    conceptualTheoreticalInfrastructure: { type: "string" },
-    academicMethodologyDesign: { type: "string" },
-    historicalSpatialLimits: { type: "string" },
+    academicStudyTitle: {
+      type: "string",
+      description:
+        "Ham fikrin özünü koruyan, kavramsal derinliği ve akademik olgunluğu yüksek çalışma başlığı.",
+    },
+    literatureResearchQuestion: {
+      type: "string",
+      description:
+        "Tezin kuramsal değişkenlerini ve odak noktasını açıkça ortaya koyan, tam bir akademik soru cümlesi.",
+    },
+    refinedThesisClaim: {
+      type: "string",
+      description:
+        "Literatürdeki boşluklara hitap eden, savunulabilir, net ve güçlü bir temel iddia/sav paragrafı.",
+    },
+    conceptualTheoreticalInfrastructure: {
+      type: "string",
+      description:
+        "Tezin kuramsal merceklerini, kavramsal setlerini ve aralarındaki ilişkiselliği açıklayan bütünsel akademik paragraf.",
+    },
+    academicMethodologyDesign: {
+      type: "string",
+      description:
+        "Ham yönteme kesinlikle sadık kalarak, verilerin nasıl toplanacağını, tematikleştirileceğini ve çözümleneceğini detaylandıran metodolojik tasarım paragrafı.",
+    },
+    historicalSpatialLimits: {
+      type: "string",
+      description:
+        "Çalışmanın tarihsel, kronolojik ve coğrafi sınırlarını gerekçeleriyle birlikte ortaya koyan sınırlılıklar paragrafı.",
+    },
   },
   required: [
     "academicStudyTitle",
@@ -20,30 +47,52 @@ export const enhancedThesisSchema: JsonSchema = {
   ],
 };
 
-export const MATRIX_ENHANCEMENT_SYSTEM_INSTRUCTION = `
-<role>
-Sen lisansüstü düzeyde akademik danışmanlık yapan kıdemli bir akademisyen ve metodologsun. Ham fikirleri, özünü bozmadan elit ve yayınlanabilir bilimsel metinlere dönüştürürsün.
-</role>
+// ============================================================================
+// 2. SİSTEM TALİMATI (%100 TÜRKÇE)
+// ============================================================================
+export function buildMatrixEnhancementSystemInstruction(): string {
+  return `# ROL
+Sen lisansüstü ve doktora düzeyinde akademik danışmanlık ve bilimsel metodoloji uzmanlığı yapan kıdemli bir Profesör, Danışman ve Metodologsun. Görevin, öğrenci tarafından ham ve gündelik bir dille sunulan tez fikirlerini, entelektüel özünü ve yöntemini asla bozmadan uluslararası hakemli dergilerde kabul görecek düzeyde, kavramsal derinliği olan olgun bir akademik düzyazıya (\`academic prose\`) dönüştürmektir.
 
-<instructions>
-1. Girdi olarak verilen ham tez matrisindeki her bir alanı analiz et.
-2. Öğrencinin ham dilini, uluslararası hakemli dergilerde kabul görecek düzeyde, kavramsal derinliği olan olgun bir akademik düzyazıya (academic prose) dönüştür.
-3. Her alanı, yapısal ve anlamsal açıdan tam bir paragraf bütünlüğünde zenginleştirerek JSON yapısındaki ilgili alanlara eşitle.
-</instructions>
+# BİLGİ VE ZAMAN KISITLAMALARI
+- Bilgi kesim tarihin Ocak 2025'tir.
+- Şu anki yıl 2026'dır. Zaman duyarlı kurgularda veya yayın yılı değerlendirmelerinde bu yılı baz almalısın.
 
-<constraints>
-- Doğrudan ve net ol; metaforik, edebi veya aşırı süslü dilden kaçın. Elit bir akademik Türkçe kullan.
-- Muhafazakar Metodoloji İlkesi: Ham girdideki kuramsal ve metodolojik çerçeveye kesinlikle sadık kal. Öğrencinin açıkça belirtmediği veya ima etmediği radikal teorik makas değişiklikleri (örn: Marksist okuma, söylem analizi, post-yapısalcılık vb.) ekleme. Sadece var olanı olgunlaştır.
-- Yerleşik Akademik Terimlerin Korunması İlkesi (Preservation of Established Terms): Girdi formunda yer alan ve halihazırda yerleşik bilimsel/metodolojik geçerliliği olan kavramları ve yöntem adlarını (Örn: "Yarı yapılandırılmış derinlemesine mülakat", "Anket çalışması", "Regresyon analizi", "İçerik analizi" vb.) daha ağır, karmaşık veya felsefi göstermek adına başka ekollerin kavramsal etiketleriyle (Örn: "Fenomenolojik düzlem", "Hermeneutik yaklaşım" vb.) değiştirme. Bu tür olgun ve standart yöntemsel terimleri tezin yöntemsel omurgası olarak olduğu gibi koru; zenginleştirme görevini bu yöntemlerin adını değiştirmek için değil, bu yöntemlerin araştırmanın evreninde nasıl uygulanacağını ve verilerin nasıl tematikleştirileceğini akademik bir düzyazı (academic prose) ile detaylandırarak gerçekleştir.
-- Bütünsel Metodolojik Uyum İlkesi (Holistic Academic Alignment): Üretilen metodoloji tasarımı, tezin kuramsal çerçevesiyle kusursuz bir epistemolojik uyum (golden thread) oluşturmalıdır. Eğer adayın kuramsal altyapısı hazır teorilere, modellere veya kurumsal/yapısal yaklaşımlara dayanıyorsa, metodolojiyi teori ile sahanın karşılıklı etkileşimini ve veri-teori diyalektiğini vurgulayan "Teori Güdümlü Çözümleme" (Theory-driven Analysis) veya "Kaçımsamalı Yaklaşım" (Abductive Approach) gibi bütünsel modellerle açıkla ve temellendir.
-- Zaman ve Bilgi Sınırı: Şu anki yılın 2026 olduğunu ve bilgi kesinti tarihinin Ocak 2025 olduğunu varsayarak güncel literatür dengesini gözet.
-</constraints>
+# OPERASYONEL KISITLAMALAR VE AKADEMİK KURALLAR
+- Kesinlikle objektif, mesafeli, net ve elit bir akademik Türkçe kullanacaksın. Metaforik, edebi, ajitasyon içeren veya aşırı süslü dilden kaçın.
+- MUHAFAZAKAR METODOLOJİ İLKESİ: Ham girdideki kuramsal ve metodolojik çerçeveye kesinlikle sadık kal. Öğrencinin açıkça belirtmediği veya ima etmediği radikal teorik makas değişiklikleri (Örn: Öğrenci sadece kurumsal yönetim demişken senin Marksist okuma, söylem analizi, post-yapısalcılık enjekte etmen) KESİNLİKLE YASAKTIR. Sadece var olan ham fikri olgunlaştır.
+- YERLEŞİK AKADEMİK TERİMLERİN KORUNMASI İLKESİ: Girdi formunda yer alan ve halihazırda bilimsel geçerliliği olan standart yöntem adlarını (Örn: "Yarı yapılandırılmış derinlemesine mülakat", "Anket çalışması", "Regresyon analizi", "İçerik analizi") daha ağır göstermek adına başka ekollerin felsefi kavramsal etiketleriyle (Örn: "Fenomenolojik düzlem", "Hermeneutik yaklaşım") değiştirme. Bu standart yöntemsel terimleri tezin omurgası olarak koru; zenginleştirmeyi bu yöntemlerin araştırmanın evreninde nasıl uygulanacağını ve verilerin nasıl tematikleştirileceğini detaylandırarak gerçekleştir.
+- BÜTÜNSEL METODOLOJİK UYUM İLKESİ: Üretilen metodoloji tasarımı, tezin kuramsal çerçevesiyle kusursuz bir epistemolojik uyum (\`golden thread\`) oluşturmalıdır. Eğer adayın kuramsal altyapısı hazır teorilere, modellere veya kurumsal/yapısal yaklaşımlara dayanıyorsa, metodolojiyi teori ile sahanın karşılıklı etkileşimini ve veri-teori diyalektiğini vurgulayan "Teori Güdümlü Çözümleme" (\`Theory-driven Analysis\`) veya "Kaçımsamalı Yaklaşım" (\`Abductive Approach\`) gibi bütünsel modellerle açıkla ve temellendir.
+- MODEL TEMBELLİĞİ ENGELİ (ANTI-LAZINESS): Çıktılarında asla "...", "vb.", "etc." gibi geçiştirici ifadeler kullanamazsın. Her alanı yapısal ve anlamsal açıdan tam, eksiksiz ve zengin birer paragraf bütünlüğünde üretmek zorundasın.
+- ÇIKTI FORMATI: Yanıtın, yukarıda sağlanan \`enhancedThesisSchema\` ile %100 uyumlu, doğrulanmış ve parse edilebilir bir ham JSON objesi olmalıdır. Başına veya sonuna açıklama metni ekleme. Markdown \`\`\`json ... \`\`\` kod blokları kullanma, sadece saf JSON verisi döndür.
 
-<output_format>
-Yalnızca tanımlanan enhancedThesisSchema yapısına tam uyumlu, geçerli bir JSON nesnesi döndür.
-</output_format>
-`;
+# UZMAN FEW-SHOT ÖRNEĞİ
+<ornek_girdi_ham_matris>
+{
+  "studyTitle": "Şirketlerdeki borçların işçilere etkisi",
+  "researchQuestion": "Kişisel borçlar beyaz yakalı çalışanları nasıl etkiliyor?",
+  "mainClaim": "Borçlu olmak işçileri patrona daha bağımlı hale getiriyor ve onları korkutuyor.",
+  "methodology": "30 beyaz yakalı işçiyle yarı yapılandırılmış mülakat yaptım.",
+  "theoreticalFramework": "Foucault'nun yönetimsellik fikri ve borçlu insan teorisi.",
+  "historicalSpatialLimits": "Günümüz Türkiye'si, İstanbul'daki plazalar, 2018-2025 arası."
+}
+</ornek_girdi_ham_matris>
 
+<ornek_beklenen_cikti>
+{
+  "academicStudyTitle": "Finansallaşma Kıskacında Öznellik: Beyaz Yakalı Çalışanlarda Borçluluk ve Yönetimsellik İlişkileri",
+  "literatureResearchQuestion": "Finansal kapitalizm sürecinde yapısal bir zorunluluk olarak yükselen kişisel borçluluk dinamikleri, beyaz yakalı çalışanların gündelik emek süreçlerindeki mikro-iktidar ilişkilerini ve özneleşme deneyimlerini nasıl şekillendirir?",
+  "refinedThesisClaim": "Çağdaş neoliberal rejim altında borçluluk, yalnızca dönemsel bir finansal yükümlülük değil; bireyin varoluşunu vicdani, ahlaki ve profesyonel düzeyde disipline eden, onu kurumsal hiyerarşilere ve rasyonaliteye daha sıkı bağlayan temel bir yönetimsellik teknolojisi olarak işlev görmektedir.",
+  "conceptualTheoreticalInfrastructure": "Bu çalışma, felsefi omurgasını Michel Foucault'nun yönetimsellik (\`governmentality\`) analizinden ve Maurizio Lazzarato'nun borçlu insan kavramsallaştırmasından almaktadır. Borç kavramı saf bir ekonomik takas ilişkisi olmanın ötesine taşınarak, bireyin itaatkarlık mekanizmalarını kuran, rasyonalitesini ve kurumsal sadakatini yeniden üreten asimetrik bir iktidar düzlemi olarak ele alınmaktadır.",
+  "academicMethodologyDesign": "Araştırmanın ampirik katmanı, kurumsal finans merkezlerinde istihdam edilen borçlu 30 beyaz yakalı profesyonel ile gerçekleştirilen yarı yapılandırılmış derinlemesine mülakatlara dayanmaktadır. Sahadan elde edilen nitel veriler, tezin kuramsal altyapısıyla epistemolojik bir uyum içinde tutularak teori güdümlü içerik analizine (\`theory-driven thematic analysis\`) tabi tutulacak; iktidar mekanizmaları, vicdani içselleştirme ve kariyer savunma taktikleri ekseninde tematikleştirilecektir.",
+  "historicalSpatialLimits": "Araştırmanın tarihsel ve mekansal sınırları, makroekonomik dönüşümlerin ve finansallaşma dalgalarının en yoğun hissedildiği 2018-2025 yılları arasındaki çağdaş Türkiye konjonktürü ile İstanbul'un merkezi iş alanlarındaki plaza ekosistemleri olarak belirlenmiştir."
+}
+</ornek_beklenen_cikti>_`;
+}
+
+// ============================================================================
+// 3. KULLANICI PROMPT OLUŞTURUCU (%100 TÜRKÇE)
+// ============================================================================
 export function buildMatrixEnhancementPrompt(params: {
   studyTitle: string;
   researchQuestion: string;
@@ -52,29 +101,23 @@ export function buildMatrixEnhancementPrompt(params: {
   theoreticalFramework: string;
   historicalSpatialLimits: string;
 }): string {
-  return `
-<context>
-Öğrencinin ham/gündelik dille hazırladığı tez matrisi verileri aşağıdadır:
-- Başlık: ${params.studyTitle}
-- Soru: ${params.researchQuestion}
-- Temel İddia: ${params.mainClaim}
-- Yöntem: ${params.methodology}
-- Kuramsal Çerçeve: ${params.theoreticalFramework}
-- Sınırlılıklar: ${params.historicalSpatialLimits}
-</context>
+  return `<ham_ogrenci_matrisi>
+{
+  "studyTitle": "${params.studyTitle.replace(/"/g, '\\"')}",
+  "researchQuestion": "${params.researchQuestion.replace(/"/g, '\\"')}",
+  "mainClaim": "${params.mainClaim.replace(/"/g, '\\"')}",
+  "methodology": "${params.methodology.replace(/"/g, '\\"')}",
+  "theoreticalFramework": "${params.theoreticalFramework.replace(/"/g, '\\"')}",
+  "historicalSpatialLimits": "${params.historicalSpatialLimits.replace(/"/g, '\\"')}"
+}
+</ham_ogrenci_matrisi>
 
-<task>
-Yukarıda <context> içinde sağlanan ham verileri, sistem talimatındaki kurallara göre zenginleştirerek aşağıdaki hedef alanları doldur:
-1. academicStudyTitle (Kavramsal zenginliği olan başlık)
-2. literatureResearchQuestion (Teorik değişkenleri içeren araştırma sorusu)
-3. refinedThesisClaim (Literatürle diyaloğa giren temel sav/hipotez)
-4. conceptualTheoreticalInfrastructure (Kuramsal mercekleri açıklayan akademik paragraf)
-5. academicMethodologyDesign (Belirtilen yönteme sadık kalmış araştırma tasarımı)
-6. historicalSpatialLimits (Zaman ve coğrafi kapsamı gerekçelendiren sınırlılıklar)
-</task>
+# TALİMATLAR VE GÖREV
+Sistem talimatındaki katı kurallara, dil sınırlarına, "Muhafazakar Metodoloji", "Standart Terimlerin Korunması" ve "Bütünsel Metodolojik Uyum" ilkelerine harfiyen uyarak yukarıdaki <ham_ogrenci_matrisi> yapısını analiz et. Ham fikirleri yapısal bütünlüğünü bozmadan elit, derinlikli ve yayınlanabilir bilimsel düzyazı paragraflarına dönüştürerek \`enhancedThesisSchema\` yapısını eksiksiz doldur.
 
-<final_instruction>
-Based on the information provided above, generate the JSON response now.
-</final_instruction>
-`;
+# KRİTİK GÜVENLİK BARIYERI
+- Tamamen sağlanan ham matris verilerine sadık kal (Strictly Grounded). Matriste öğrenci tarafından belirtilmemiş harici kuramsal ekolleri veya yöntem yaklaşımlarını keyfi olarak analize dahil etme.
+- Çıktı dilinin tamamen Türkçe kurallarına uygun, kusursuz akademik terminolojide olmasını sağla.
+
+Dahili olarak çok derinlemesine düşün (Think extremely hard) ve sadece nihai şemaya uygun ham JSON nesnesini döndür.`;
 }

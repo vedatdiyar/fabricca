@@ -1,40 +1,46 @@
 import type { JsonSchema } from "../gemini";
 
+// ============================================================================
+// 1. JSON YANIT ŞEMASI (%100 TÜRKÇE)
+// ============================================================================
 export const geminiAnalysisSchema: JsonSchema = {
   type: "object",
   properties: {
     overlapTable: {
       type: "array",
       description:
-        "Girdideki her aday tez için mutlaka bir satır. Hiçbir tez listeden çıkarılamaz. Dizi uzunluğu aday tez sayısına eşit olmalıdır.",
+        "Girdideki her aday tez için mutlaka bir satır içermelidir. Hiçbir tez listeden çıkarılamaz. Dizi uzunluğu aday tez sayısına tam olarak eşit olmalıdır.",
       items: {
         type: "object",
         properties: {
-          id: { type: "number" },
+          id: {
+            type: "number",
+            description: "Analiz edilen aday tezin benzersiz numarası (ID)",
+          },
           academic_reasoning: {
             type: "string",
             description:
-              "4 kritik akademik süzgece dayanan, kelime benzerliğine değil mânâ nüanslarına odaklanan detaylı Türkçe akademik gerekçe.",
+              "4 kritik akademik süzgece dayanan, kelime benzerliğine değil anlam nüanslarına odaklanan detaylı Türkçe akademik gerekçe paragrafı.",
           },
           is_research_question_overlapping: {
             type: "boolean",
             description:
-              "Hedef tez ile aday tezin araştırma soruları ve temel iddiaları mantıksal/içeriksel olarak aynıysa true, farklıysa false.",
+              "Hedef tez ile aday tezin araştırma soruları ve temel iddiaları anlamsal/içeriksel olarak çakışıyorsa true, farklıysa false.",
           },
           is_methodology_overlapping: {
             type: "boolean",
             description:
-              "Veri toplama araçları, kaynak matrisleri ve analiz yöntemleri birbirinin replikası ise true, farklıysa false.",
+              "Veri toplama araçları, kaynak matrisleri ve analiz yöntemleri büyük ölçüde çakışıyorsa true, farklıysa false.",
           },
           is_theory_overlapping: {
             type: "boolean",
             description:
-              "Landmarks niteliğindeki ana kuramsal omurga ve teorik şemsiye aynıysa true, farklıysa false.",
+              "Ana kuramsal omurga, kuramsal şemsiye veya teorik modeller aynıysa true, farklıysa false.",
           },
           is_context_overlapping: {
             type: "boolean",
             description:
-              "Hedef tez ile aday tezin odaklandığı tarihsel dönem veya ampirik bağlam/sınırlılıklar aynıysa true, farklıysa false.",
+              "Hedef çalışmanın ampirik sınırları veya tarihsel dönemi aday çalışma tarafından kapsanıyor, yutuluyor veya çakışıyorsa true, farklıysa false.",
           },
         },
         required: [
@@ -51,41 +57,72 @@ export const geminiAnalysisSchema: JsonSchema = {
   required: ["overlapTable"],
 };
 
-export const ANALYSIS_SYSTEM_INSTRUCTION = `
-<role>
-Sen, üniversitelerin Fen, Sosyal, Sağlık ve Mühendislik Bilimleri Enstitülerinde "Tez Savunma Jürisi" ve "Akademik Hakem" olarak görev yapan, araştırma tasarımlarına, metodolojik omurgalara ve özgünlük raporlarına üst düzey hâkim kıdemli bir profesörsün.
-Görevin; hedef tez ile aday tezleri yüzeysel kelime benzerliklerine göre eşleştirmek DEĞİLDİR. İlgili bilimsel disiplinin yazınsal normları dahilinde, benzer konuların farklı araştırma sorularıyla, farklı kuramsal gözlüklerle veya farklı ampirik/deneysel tasarımlarla defalarca çalışılabileceğinin ve bunun literatüre katkı sağladığının mutlak bilincindesin.
-</role>
+// ============================================================================
+// 2. SİSTEM TALİMATI (%100 TÜRKÇE)
+// ============================================================================
+export function buildAnalysisSystemInstruction(): string {
+  return `# ROL
+Sen, üniversitelerin Fen, Sosyal, Sağlık ve Mühendislik Bilimleri Enstitülerinde "Tez Savunma Jürisi" ve "Akademik Hakem" olarak görev yapan, araştırma tasarımlarına, metodolojik omurgalara ve özgünlük raporlarına üst düzey hâkim kıdemli bir Profesörsün. Görevin, hedef tez ile aday tezleri yüzeysel kelime benzerliklerine göre değil, kavramsal, yöntemsel ve ampirik eksenlerde derinlemesine çakışma analizine tabi tutmaktır.
 
-<instructions>
-Her bir aday tezi incelerken, içsel düşünme (internal thinking) aşamasında şu 3 adımlı eylem planını metodolojik olarak işlet:
+# BİLGİ VE ZAMAN KISITLAMALARI
+- Bilgi kesim tarihin Ocak 2025'tir.
+- Şu anki yıl 2026'dır. Zaman duyarlı kurgularda veya yayın yılı değerlendirmelerinde bu yılı baz almalısın.
 
-1. **Doğrusal Eksenel Karşılaştırma (Linear Evaluation)**: Aday tezin özetini (abstract), hedef tezin parametreleriyle şu 4 net ve doğrusal akademik süzgeç üzerinden karşılaştır. Her bir süzgeçte iki ucu açık yorumlardan kaçınarak sadece "Aday tez ile hedef tez bu eksende AYNI MI?" sorusuna odaklan:
-   - SÜZGEÇ A (Araştırma Sorusu): Aday tez ile hedef tezin araştırma soruları ve savunulan temel iddiaları/savları bu eksende AYNI MI? Eğer anlamsal/içeriksel çakışma veya aynılık varsa true, tamamen farklı ve özgünse false olarak değerlendir.
-   - SÜZGEÇ B (Metodoloji): Aday tez ile hedef tezin metodolojik tasarımları, veri toplama araçları, örneklem evrenleri veya analiz yöntemleri bu eksende AYNI MI? Eğer yöntem replike edilmişse (aynılık/çakışma varsa) true, tamamen farklı ve özgünse false olarak değerlendir.
-   - SÜZGEÇ C (Kuram): Aday tez ile hedef tezin üzerine inşa edildikleri temel kuramsal çerçeve, kavramsal şemsiye veya teorik modeller bu eksende AYNI MI? Eğer kuramsal yaklaşım aynıysa true, tamamen farklı ve özgünse false olarak değerlendir.
-   - SÜZGEÇ D (Tarihsel Dönem/Bağlam): Aday tez ile hedef tezin ampirik sınırları, örneklem evreni veya dönemsel/bağlamsal kapsamları arasında anlamsal bir kapsama (kapsanma, alt küme olma veya yutulma) durumu var mı? Metinsel veya rakamsal birebirlik aramaksızın anlamsal bir kapsama analizi gerçekleştir. Hedef çalışmanın ampirik sınırlarının, örneklem evreninin veya dönemsel kapsamının, aday çalışmanın kapsamı tarafından yutulması, kapsanması veya onun bir alt kümesi olması durumlarını kronolojik ve bağlamsal bir kesişme (aynılık) olarak kabul et. Eğer bu şekilde bir kapsama veya kesişme varsa true, tamamen farklı ve özgünse false olarak değerlendir.
+# OPERASYONEL KISITLAMALAR VE 4 AKADEMİK SÜZGEÇ
+- Kesinlikle objektif, tarafsız, mesafeli ve üst düzey bir akademik Türkçe kullanacaksın.
+- DOĞRUSAL EKSENEL KARŞILAŞTIRMA: Her bir aday tezi, hedef tezin parametreleriyle şu 4 net akademik süzgeç üzerinden karşılaştır:
+  - SÜZGEÇ A (Araştırma Sorusu): Araştırma soruları ve savunulan temel iddialar/savlar anlamsal olarak çakışıyorsa \`is_research_question_overlapping: true\`, farklı ve özgünse \`false\`.
+  - SÜZGEÇ B (Metodoloji): Veri toplama araçları, örneklem evrenleri veya analiz yöntemleri birbirinin replikası ise \`is_methodology_overlapping: true\`, farklıysa \`false\`.
+  - SÜZGEÇ C (Kuram): Üzerine inşa edildikleri temel kuramsal çerçeve, kavramsal şemsiye veya teorik modeller aynıysa \`is_theory_overlapping: true\`, farklıysa \`false\`.
+  - SÜZGEÇ D (Tarihsel Dönem/Bağlam): Hedef çalışmanın ampirik sınırlarının, örneklem evreninin veya dönemsel kapsamının, aday çalışmanın kapsamı tarafından yutulması, kapsanması veya onun bir alt kümesi olması durumlarını kronolojik ve bağlamsal bir kesişme (aynılık) olarak kabul et. Eğer bu şekilde bir kapsama veya kesişme varsa \`is_context_overlapping: true\`, tamamen farklı ve özgünse \`false\`.
+- EKSİKSİZ TABLO ZORUNLULUĞU: Girdide sağlanan TÜM aday tezler çıktı dizisinde eksiksiz ve aynı doğrusal sırada yer almalıdır. Herhangi bir tezi listeden atlama veya "vb." diyerek geçiştirme (Anti-Laziness).
+- ÇIKTI FORMATI: Yanıtın, yukarıda sağlanan \`geminiAnalysisSchema\` ile %100 uyumlu, doğrulanmış ve parse edilebilir bir ham JSON objesi olmalıdır. Markdown \`\`\`json ... \`\`\` sarmalı kesinlikle yasaktır.
 
-2. **Boolean Tespit (Boolean Detection)**: Her bir süzgeçten elde ettiğin doğrudan ve doğrusal sonuca göre ilgili boolean alanı kesin olarak \`true\` ya da \`false\` olarak işaretle:
-   - SÜZGEÇ A → \`is_research_question_overlapping\` (Çakışma varsa true, özgünse false)
-   - SÜZGEÇ B → \`is_methodology_overlapping\` (Çakışma varsa true, özgünse false)
-   - SÜZGEÇ C → \`is_theory_overlapping\` (Çakışma varsa true, özgünse false)
-   - SÜZGEÇ D → \`is_context_overlapping\` (Çakışma varsa true, özgünse false)
-   Kantitatif puan veya kategori üretme; yalnızca ikili (binary) durum tespiti yap.
+# UZMAN FEW-SHOT ÖRNEĞİ
+<ornek_hedef_matris>
+{
+  "studyTitle": "Dijital Gözetim ve Emek Direnişi",
+  "researchQuestion": "Depo işçileri algoritmik gözetim sistemlerine karşı nasıl karşı-davranış stratejileri geliştiriyor?",
+  "theoreticalFramework": "Foucaultcu yönetimsellik ve otonomist Marksizm.",
+  "methodology": "30 beyaz yakalı çalışanla yarı yapılandırılmış mülakat.",
+  "historicalSpatialLimits": "Pandemi sonrası Türkiye, Kocaeli lojistik üsleri."
+}
+</ornek_hedef_matris>
 
-3. **Akademik Gerekçe Sentezi**: Her aday tez için tespit edilen 4 boolean kararın gerekçesini \`academic_reasoning\` alanında, 4 süzgecin her birine ayrı ayrı ve doğrusal gerekçelerle değinerek detaylandır. Hangi bulgunun hangi boolean karara yol açtığını açıkça belirt.
-</instructions>
+<ornek_aday_tez>
+[
+  {
+    "id": 999,
+    "title": "E-Ticaret Depolarında Algoritmik Kontrol Mekanizmaları",
+    "author": "Ahmet Yılmaz",
+    "university": "Kocaeli Üniversitesi",
+    "year": 2023,
+    "thesisType": "Yüksek Lisans",
+    "department": "Sosyoloji",
+    "abstract": "Bu çalışma Kocaeli'deki e-ticaret lojistik merkezlerinde çalışan işçilerin algoritmik yönetim sistemleri altındaki denetim süreçlerini incelemektedir. Foucaultcu yönetimsellik perspektifinden, dijital gözetimin işçi özerkliğini nasıl kısıtladığı yarı yapılandırılmış mülakatlarla analiz edilmiştir..."
+  }
+]
+</ornek_aday_tez>
 
-<constraints>
-- Dil ve Akademik Ton: "academic_reasoning" alanını tamamen Türkçe, akıcı, tarafsız ve üst düzey akademik bir dille yaz.
-- Eksiksiz Tablo Kuralı: Girdide sağlanan tüm aday tezler dizide eksiksiz yer almalıdır. Analiz sırasını bozma.
-- Doğrusal Mantık Zorunluluğu: Boolean alanları değerlendirirken kesinlikle muğlak veya iki ucu açık yorumlardan kaçın; çakışma durumuna doğrudan true, özgünlük/farklılık durumuna doğrudan false ataması gerçekleştir.
-</constraints>
+<ornek_beklenen_cikti>
+{
+  "overlapTable": [
+    {
+      "id": 999,
+      "academic_reasoning": "Aday çalışma, hedef tezle kuramsal çerçeve (Foucaultcu yönetimsellik) ve bağlamsal sınırlar (Kocaeli lojistik merkezleri) açısından tam bir çakışma göstermektedir. Metodolojik olarak her iki çalışma da yarı yapılandırılmış mülakat yöntemini benimsemiştir. Ancak aday tez işçilerin denetim süreçlerine odaklanırken, hedef tez işçilerin karşı-davranış ve direniş stratejilerini inceleyerek araştırma sorusu bağlamında özgün bir hat açmaktadır.",
+      "is_research_question_overlapping": false,
+      "is_methodology_overlapping": true,
+      "is_theory_overlapping": true,
+      "is_context_overlapping": true
+    }
+  ]
+}
+</ornek_beklenen_cikti>_`;
+}
 
-<output_format>
-Sağlanan geminiAnalysisSchema yapısıyla mükemmel şekilde eşleşen, temiz bir JSON nesnesi döndür.
-</output_format>`;
-
+// ============================================================================
+// 3. KULLANICI PROMPT OLUŞTURUCU (%100 TÜRKÇE)
+// ============================================================================
 export function buildAnalysisPrompt(params: {
   studyTitle: string;
   researchQuestion: string;
@@ -104,19 +141,18 @@ export function buildAnalysisPrompt(params: {
     abstract: string;
   }[];
 }): string {
-  return `
-<context>
-Hedef Tez Özellikleri (Karşılaştırma Noktası):
-  - Başlık: ${params.studyTitle}
-  - Soru: ${params.researchQuestion}
-  - İddia: ${params.mainClaim}
-  - Metot: ${params.methodology}
-  - Teori: ${params.theoreticalFramework}
-  - Bağlam: ${params.historicalSpatialLimits}
-</context>
+  return `<hedef_tez_matrisi>
+{
+  "studyTitle": "${params.studyTitle.replace(/"/g, '\\"')}",
+  "researchQuestion": "${params.researchQuestion.replace(/"/g, '\\"')}",
+  "mainClaim": "${params.mainClaim.replace(/"/g, '\\"')}",
+  "methodology": "${params.methodology.replace(/"/g, '\\"')}",
+  "theoreticalFramework": "${params.theoreticalFramework.replace(/"/g, '\\"')}",
+  "historicalSpatialLimits": "${params.historicalSpatialLimits.replace(/"/g, '\\"')}"
+}
+</hedef_tez_matrisi>
 
-<candidates_list>
-Analiz Edilecek Aday Tezlerin Ayrıntılı Listesi (JSON):
+<aday_tez_listesi>
 ${JSON.stringify(
   params.validDetails.map((t) => ({
     id: t.id,
@@ -129,14 +165,14 @@ ${JSON.stringify(
     abstract: t.abstract,
   })),
 )}
-</candidates_list>
+</aday_tez_listesi>
 
-    <task>
-Sistem talimatındaki 4 akademik süzgeç (Araştırma Sorusu, Metodoloji, Teori, Tarihsel Dönem/Bağlam) ve Muhafazakar Boolean Filtre kuralını harfiyen uygulayarak, <candidates_list> içindeki her bir aday tezi hedef tez matrisiyle karşılaştır. Her bir tez için doğrusal sırayı bozmadan "is_research_question_overlapping", "is_methodology_overlapping", "is_theory_overlapping", "is_context_overlapping" boolean değerlerini belirle ve "academic_reasoning" ile gerekçelendir.
-</task>
+# TALİMATLAR VE GÖREV
+Sistem talimatında tanımlanan 4 akademik süzgeci (Araştırma Sorusu, Metodoloji, Kuram, Dönem/Bağlam) <aday_tez_listesi> içindeki tüm çalışmalara eksiksiz uygula. Girdi listesindeki doğrusal sırayı ve eleman sayısını kesinlikle koruyarak, her bir aday tezin hedef tez matrisiyle olan çakışma durumlarını boolean olarak işaretle ve üst düzey bir jüri üyesi üslubuyla Türkçe olarak gerekçelendir.
 
-<final_instruction>
-Based on the target thesis parameters and detailed candidate list provided above, execute your internal boolean detection plan and return the synchronized JSON table now.
-</final_instruction>
-`;
+# KRİTİK GÜVENLİK BARIYERI
+- Tamamen sağlanan aday tez özetlerine bağlı kal (Strictly Grounded). Metinlerde açıkça belirtilmeyen metodolojik detayları veya bulguları aday çalışmalara atfetme.
+- Dizi uzunluğunun <aday_tez_listesi> eleman sayısı ile tam olarak senkronize olduğundan ve çıktı dilinin saf Türkçe olduğundan emin ol.
+
+Dahili olarak çok derinlemesine düşün (Think extremely hard) ve sadece nihai şemaya uygun ham JSON nesnesini döndür.`;
 }

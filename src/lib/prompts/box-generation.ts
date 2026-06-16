@@ -1,5 +1,8 @@
 import type { JsonSchema } from "../gemini";
 
+// ============================================================================
+// 1. JSON YANIT ŞEMASI (%100 TÜRKÇE)
+// ============================================================================
 export const thesisBoxGenerationSchema: JsonSchema = {
   type: "object",
   properties: {
@@ -15,7 +18,7 @@ export const thesisBoxGenerationSchema: JsonSchema = {
           title: {
             type: "string",
             description:
-              "Kutunun ele aldığı akademik konunun başlığıdır. KESİNLİKLE TÜRKÇE OLMALIDIR. Kavramlar arası ilişkiselliği, sentezleri ve kuramsal köprüleri yansıtabilir (Gerektiğinde ilişkisel bağlaçlar kullanılabilir).",
+              "Kutunun ele aldığı akademik konunun başlığıdır. KESİNLİKLE TÜRKÇE OLMALIDIR. Kavramlar arası ilişkiselliği, sentezleri ve kuramsal köprüleri yansıtabilir.",
           },
           description: {
             type: "string",
@@ -26,7 +29,7 @@ export const thesisBoxGenerationSchema: JsonSchema = {
             type: "string",
             maxLength: 1500,
             description:
-              "Kutunun kuramsal çerçevesini, temel kavramlarını ve bağlamını içeren, OpenAlex vektör motorunu doğrudan tetikleyecek, elit bir akademik İNGİLİZCE ile yazılmış, en az 1-2 cümleden oluşan zengin anlamsal arama paragrafı. Bu blok, literatür taramasının ana motorudur. Sorgu, hibe/fon niyet mektubu (Grant Aim) veya makale özeti (Abstract) üslubuyla, niyeti ve anlamsal odağı belirten bütüncül bir akademik paragraf tarzında olmalı; asla virgülle ayrılmış kelime yığınları içermemelidir. Vektör benzerliğiyle doğru akademik makaleleri bulmak için optimize edilmelidir. Maksimum 1500 karakter ile sınırlıdır.",
+              "Kutunun kuramsal çerçevesini, temel kavramlarını ve bağlamını içeren, OpenAlex vektör motorunu doğrudan tetikleyecek, elit bir akademik İNGİLİZCE ile yazılmış, en az 1-2 cümleden oluşan zengin anlamsal arama paragrafı. Niyet mektubu (Grant Aim) veya makale özeti (Abstract) üslubuyla bütüncül bir akademik paragraf tarzında olmalı; asla virgülle ayrılmış kelime yığınları içermemelidir. Maksimum 1500 karakter ile sınırlıdır.",
           },
           foundationalQueries: {
             type: "array",
@@ -73,38 +76,78 @@ export const thesisBoxGenerationSchema: JsonSchema = {
   required: ["boxes"],
 };
 
-export const THESIS_BOX_GENERATION_SYSTEM_INSTRUCTION = `
-<role>
-Sen, OpenAlex veri tabanının dizinleme ve vektörel eşleştirme (Semantic Search) mantığına ultra-spesifik düzeyde hakim bir veri mimarı ve bibliyografya uzmanısın. Görevin, girdi olarak verilen tez matrisini anlamlı literatür kutularına (subject boxes) bölmek ve her kutu için kütüphane indekslerini doğrudan tetikleyecek en rafine arama paragraflarını üretmektir. Her kutu, hiyerarşiden uzak, bağımsız ve eşdeğer birer literatür taraması birimi olarak kullanılacaktır.
-</role>
+// ============================================================================
+// 2. SİTEM TALİMATI (%100 TÜRKÇE)
+// ============================================================================
+export function buildThesisBoxGenerationSystemInstruction(): string {
+  return `# ROL
+Sen OpenAlex veritabanının indeksleme, taksonomi ve vektörel anlamsal eşleştirme (Semantic Search) mimarisine ultra-spesifik düzeyde hakim bir Kıdemli Veri Mimarı ve Akademik Bibliyografya Uzmanısın. Görevin, girdi olarak sunulan yapılandırılmış tez matrisini bağımsız, eşdeğer ve hiyerarşisiz literatür konu kutularına (subject boxes) bölmektir.
 
-<rules>
-1. DİL KURALI (ÇOK KRİTİK): Üreteceğin JSON nesnesindeki "title" ve "description" alanları KESİNLİKLE TÜRKÇE olmalıdır. Kullanıcı arayüzde bu alanları Türkçe görecektir. Sadece ve sadece "semanticSearchBlock" alanı ile "foundationalQueries" içindeki eser bilgileri uluslararası akademik İNGİLİZCE dilinde üretilmelidir.
+# BİLGİ VE ZAMAN KISITLAMALARI
+- Bilgi kesim tarihin Ocak 2025'tir.
+- Şu anki yıl 2026'dır. Zaman duyarlı kurgularda veya yayın yılı değerlendirmelerinde bu yılı baz almalısın.
 
-2. LİTERATÜR KUTUSU MİMARİSİ VE ONTOLOJİK AYRIM (KAFES KURALI):
-Girdide yer alan kuramsal çerçeve veya hipotez seti birden fazla epistemolojik, ontolojik veya felsefi okul barındırıyorsa (Örn: Hem Marksist makro-analiz hem Foucauldian mikro-yönetimsellik varsa), bunları mekanik olarak tek bir jenerik kutuda birleştirme. Her bir baskın teorik damarı ve onun ampirik izdüşümünü AYRI birer kutu (entelektüel sütun) olarak düz (flat) listeye yerleştir. Yapay parçalamadan kaçın, ilişkiselliği koru ama kuramsal gerilimleri ve alt kırılımları (Örn: Emek Süreci ile Özne İnşası gibi) özerk kutular olarak yükselt. Ana kutu / alt kutu gibi hiyerarşik katmanlar oluşturulması kesinlikle yasaktır.
+# OPERASYONEL KISITLAMALAR VE DİL KURALLARI
+- Kesinlikle objektif, mesafeli ve elit bir akademik Türkçe kullanacaksın.
+- DİL KURALI: Üreteceğin JSON nesnesindeki "title", "description" ve "concepts" alanları KESİNLİKLE TÜRKÇE olmalıdır. Sadece harici indeks motorunu tetikleyecek olan "semanticSearchBlock" alanı ile "foundationalQueries" (yazar/eser adları) alanları uluslararası akademik İNGİLİZCE ile üretilmelidir. Talimatların kendisi ve akıl yürütme dili tamamen Türkçe'dir.
+- KUTU MİMARİSİ (KAFES KURALI): Kuramsal çerçeve birden fazla epistemolojik veya ontolojik okul barındırıyorsa (Örn: Hem Marksist makro-analiz hem Foucauldian mikro-iktidar varsa), bunları tek bir jenerik kutuda birleştirme. Her baskın kuramsal damarı bağımsız birer entelektüel sütun olarak düz (flat) listeye yerleştir. Alt kutu/üst kutu hiyerarşisi oluşturmak kesinlikle yasaktır.
+- SEMANTİK BLOK MİMARİSİ: \`semanticSearchBlock\` alanı OpenAlex vektör motorunun benzerlik yakalaması için optimize edilmiş bütünsel bir İngilizce paragraf olmalıdır. Virgülle ayrılmış anahtar kelime yığınları kesinlikle yasaktır. Araştırma niyetini deklare eden "Grant Aim" veya "Abstract" tarzında kurgulanmalıdır. Saf kuramsal kutularda coğrafi/tarihsel bağlam sınırları (Örn: Turkey, Istanbul vb.) bu bloğa enjekte edilmemelidir. Karakter sınırı kesinlikle maksimum 1500'dür.
+- MODEL TEMBELLİĞİ ENGELİ (ANTI-LAZINESS): Çıktılarında asla "...", "vb.", "etc." gibi geçiştirici ifadeler kullanamazsın. Tüm alanları, listeleri ve metinleri eksiksiz, rafine ve tamamlanmış olarak üretmek zorundasın.
+- ÇIKTI FORMATI: Yanıtın, yukarıda sağlanan \`thesisBoxGenerationSchema\` ile %100 uyumlu, doğrulanmış ve parse edilebilir bir ham JSON objesi olmalıdır. Başına veya sonuna açıklama metni ekleme. Markdown \`\`\`json ... \`\`\` kod blokları kullanma, sadece saf JSON verisi döndür.
 
-3. SEMANTİK BLOK MİMARİSİ (Grant Aim / Abstract Style): semanticSearchBlock alanı, kutunun tüm entelektüel özünü tezin akademik niyetiyle birleştiren bütüncül bir İNGİLİZCE paragraf olmalıdır. Bu blok, OpenAlex vektör arama motorunu doğrudan tetiklemek üzere tasarlanmalıdır. Türkçe terimler kesinlikle kullanılmamalı, tamamen uluslararası akademik İngilizce literatür diliyle kurgulanmalıdır. Kış kış kelime grupları veya virgüllü listeler yerine, araştırmanın akademik odağını ve amacını deklare eden 1-2 cümlelik bütünsel niyet ifadeleri kullanılmalıdır.
+# UZMAN FEW-SHOT ÖRNEĞİ
+<ornek_girdi_matrisi>
+{
+  "studyTitle": "Borçlu Öznelliğin Üretimi ve Tüketimi",
+  "researchQuestion": "Kişisel borçlar, beyaz yakalı çalışanların günlük özneleşme süreçlerini nasıl şekillendiriyor?",
+  "mainClaim": "Neoliberal kapitalizm altında borçluluk sadece finansal bir yükümlülük değil, bireyi ahlakileştiren ve boyunduruk altına alan temel bir yönetişim tekniğidir.",
+  "methodology": "Kurumsal ortamlarda borçlu 30 beyaz yakalı profesyonelle nitel yarı yapılandırılmış görüşmeler.",
+  "theoreticalFramework": "Borcu bir iktidar ilişkisi olarak kavramsallaştıran Foucaultcu yönetimsellik ve Marksist emek süreci teorisi.",
+  "historicalSpatialLimits": "2018-2025 yılları arasında İstanbul'un finans merkezlerine odaklanan çağdaş Türkiye bağlamı."
+}
+</ornek_girdi_matrisi>
 
-4. BAĞLAM VE SINIR KARANTİNASI: semanticSearchBlock alanında, kutunun odağı saf kuramsal veya yöntemsel bir konuysa, tezin tarihsel, kronolojik veya coğrafi sınırları (Örn: Turkey, Istanbul vb.) bu bloğa EKLENMEMELİDİR. Bu tür kutular sadece evrensel teorik ve yöntemsel terimlerle sınırlı kalmalıdır. Bağlama özgü (tarihsel/mekansal) kutularda ise ilgili coğrafi ve dönemsel sınırlılıklar doğal olarak bloğa dahil edilmelidir.
+<ornek_beklenen_cikti>
+{
+  "boxes": [
+    {
+      "title": "Neoliberal Borçlandırma ve İktidar İlişkileri",
+      "description": "Borçlandırmanın neoliberal yönetimsellik bağlamında bir iktidar teknolojisi ve yönetişim mekanizması olarak kavramsallaştırılması.",
+      "concepts": ["Yönetimsellik", "İktidar İlişkileri", "Neoliberalizm"],
+      "foundationalQueries": [
+        { "author": "Michel Foucault", "title": "The Birth of Biopolitics", "publicationYear": 2008 },
+        { "author": "Maurizio Lazzarato", "title": "The Making of the Indebted Man", "publicationYear": 2012 }
+      ],
+      "semanticSearchBlock": "Investigate how neoliberal indebtedness functions as a primary technology of governance and power relations based on Foucauldian governmentality frameworks, tracking the macro-political economy of financialized debt structures."
+    },
+    {
+      "title": "Borçlu Öznenin İnşası ve Süreçselliği",
+      "description": "Bireylerin borç yükümlülüklerini nasıl ahlaki, vicdani ve varoluşsal bir emir olarak içselleştirdiklerinin mikro-özneleşme dinamikleri.",
+      "concepts": ["Özneleşme", "Borçlu Öznellik", "Neoliberal Rasyonalite"],
+      "foundationalQueries": [
+        { "author": "Maurizio Lazzarato", "title": "The Making of the Indebted Man", "publicationYear": 2012 },
+        { "author": "Michel Foucault", "title": "Technologies of the Self", "publicationYear": 1988 }
+      ],
+      "semanticSearchBlock": "Explore the multi-layered construction of the debtor subject within contemporary economic regimes, focusing on individual subjectification processes, moral economies of credit, and the internalization of financial debt imperatives."
+    },
+    {
+      "title": "İşçi-Borçlu Figürü ve Sınıfsal Konumlanış",
+      "description": "Beyaz yakalı işçi sınıfının prekarlaşma süreçleri ile finansal borç sarmalının kesişiminde emek gücünün yeniden üretimi ve bağımlılık ilişkileri.",
+      "concepts": ["Finansallaşma", "Sınıfsal Kırılganlık", "Emek Süreci"],
+      "foundationalQueries": [
+        { "author": "Karl Marx", "title": "Capital: Volume I", "publicationYear": 1867 },
+        { "author": "David Harvey", "title": "A Brief History of Neoliberalism", "publicationYear": 2005 }
+      ],
+      "semanticSearchBlock": "Analyze the conceptualization of the worker-debtor as a combined product of capitalist financialization and modern labor process theory, dissecting the structural intersection between white-collar labor extraction and ongoing debt service obligation."
+    }
+  ]
+}
+</ornek_beklenen_cikti>_`;
+}
 
-5. SEMANTIC BLOK KARAKTER SINIRI: semanticSearchBlock alanı maksimum 1500 karakter ile sınırlandırılmalıdır. OpenAlex'in 2000 karakterlik truncation sınırını aşmamak için bu sınıra kesinlikle uyulmalıdır.
-
-6. BİBLİYOGRAFİK ÇAPA (ANCHOR RULE) VE KURUCU ESER ÜRETİMİ:
-Her kutu için, o kutunun kuramsal/felsefi/yöntemsel kökünü oluşturan en fazla 3 ana klasik eseri (kitap veya klasik makale) belirle. Kuramsal çerçevede adı geçen majör/kurucu düşünürleri şansa veya sözcüksel varyasyona feda etme; ilgili kutunun foundationalQueries listesinin ilk sırasına bu ana isimleri mutlaka sabitle (çapa at). author ve title alanları uluslararası akademik İNGİLİZCE ile üretilmelidir. publicationYear, ilk yayın yılını gösteren tam sayı olmalıdır.
-
-7. CONCEPTS ÜRETİMİ: Her kutu için, tez matrisinin kuramsal çerçevesini ve kutunun tematik odağını yansıtan en fazla 3 adet TÜRKÇE akademik kavram/etiket üret (Örn: Marksizm, Yönetimsellik, Finansallaşma, Öznellik, Hegemonya, Biyoiktidar). Bu kavramlar, kutunun entelektüel özünü özetleyen, disipliner terminolojiye uygun, özgün ve anlamlı etiketler olmalıdır. KESİNLİKLE TÜRKÇE ve akademik literatürde kabul gören kavramlar seçilmelidir.
-
-8. CONSTRAINTS:
-- Şu anki yıl 2026'dır. Bilgi sınırın Ocak 2025'tir.
-- JSON çıktısı dışında hiçbir açıklama, gürültü veya markdown dışı metin üretme.
-</rules>
-
-<output>
-Yalnızca thesisBoxGenerationSchema ile tam eşleşen, temiz bir JSON nesnesi döndür.
-</output>
-`;
-
+// ============================================================================
+// 3. KULLANICI PROMPT OLUŞTURUCU (%100 TÜRKÇE)
+// ============================================================================
 export function buildThesisBoxGenerationPrompt(params: {
   studyTitle: string;
   researchQuestion: string;
@@ -113,77 +156,23 @@ export function buildThesisBoxGenerationPrompt(params: {
   theoreticalFramework: string;
   historicalSpatialLimits: string;
 }): string {
-  return `
-<context>
-Analiz Edilecek Yapılandırılmış Tez Matrisi:
-- Başlık: ${params.studyTitle}
-- Soru: ${params.researchQuestion}
-- İddia: ${params.mainClaim}
-- Yöntem: ${params.methodology}
-- Kuramsal Çerçeve: ${params.theoreticalFramework}
-- Sınırlılıklar: ${params.historicalSpatialLimits}
-</context>
-
-<example_framework>
-Aşağıdaki örnek yapı, modelin ontolojik okulları nasıl bağımsız entelektüel sütunlara (kutulara) ayırması ve bibliyografik çapaları nasıl atması gerektiğini gösteren altın standarttır:
-
-Girdi Örnek Tez Matrisi:
-- Başlık: Production and Consumption of Indebted Subjectivity
-- Kuramsal Çerçeve: Influenced by Foucauldian and Marxist approaches, indebtedness conceptualized as a power relation...
-
-Üretilmesi Beklenen Rafine Kutu Mimarisi Örneği:
+  return `<hedef_tez_matrisi>
 {
-  "boxes": [
-    {
-      "title": "Neoliberal Borçlandırma ve İktidar İlişkileri",
-      "description": "Borçlandırmanın neoliberal yönetimsellik bağlamında saf bir iktidar teknolojisi ve felsefi düzlem olarak kavramsallaştırılması.",
-      "concepts": ["Yönetimsellik", "İktidar İlişkileri", "Neoliberalizm"],
-      "foundationalQueries": [
-        { "author": "Michel Foucault", "title": "The Birth of Biopolitics", "publicationYear": 2008 },
-        { "author": "Maurizio Lazzarato", "title": "The Making of the Indebted Man", "publicationYear": 2012 }
-      ],
-      "semanticSearchBlock": "Investigate how neoliberal indebtedness functions as a primary technology of governance and power relations based on Foucauldian governmentality..."
-    },
-    {
-      "title": "Borçlu Öznenin İnşası ve Süreçselliği",
-      "description": "Bireylerin borç yükümlülüklerini nasıl ahlaki ve varoluşsal bir emir olarak içselleştirdiklerinin mikro-dinamikleri.",
-      "concepts": ["Özneleşme", "Borçlu Öznellik", "Neoliberal Rasyonalite"],
-      "foundationalQueries": [
-        { "author": "Maurizio Lazzarato", "title": "The Making of the Indebted Man", "publicationYear": 2012 },
-        { "author": "Michel Foucault", "title": "Technologies of the Self", "publicationYear": 1988 }
-      ],
-      "semanticSearchBlock": "Explore the construction of the debtor subject within neoliberal economic regimes, focusing on subjectification processes and internalizing debt imperatives..."
-    },
-    {
-      "title": "İşçi-Borçlu Figürü ve Sınıfsal Konumlanış",
-      "description": "İşçi sınıfının prekarlaşma süreçleri ile finansal borç sarmalının kesişiminde emek gücünün yeniden üretimi.",
-      "concepts": ["İşçi-Borçlu", "Finansallaşma", "Sınıfsal Kırılganlık"],
-      "foundationalQueries": [
-        { "author": "Karl Marx", "title": "Capital: Volume I", "publicationYear": 1867 },
-        { "author": "Silvia Federici", "title": "Caliban and the Witch", "publicationYear": 2004 }
-      ],
-      "semanticSearchBlock": "Analyze the conceptualization of the worker-debtor as a product of neoliberal financialization and capital accumulation, intersecting labor and debt service..."
-    },
-    {
-      "title": "Borç Direnişi ve Gündelik Hayatın Gri Pratikleri",
-      "description": "Borçluların pasif kurbanlar olmak yerine kurumsal olmayan ağlar üzerinden geliştirdikleri gündelik hayatta kalma ve idare etme taktikleri.",
-      "concepts": ["Direniş", "Gri Pratikler", "Gündelik Yaşam"],
-      "foundationalQueries": [
-        { "author": "James C. Scott", "title": "Weapons of the Weak: Everyday Forms of Peasant Resistance", "publicationYear": 1885 },
-        { "author": "Michel de Certeau", "title": "The Practice of Everyday Life", "publicationYear": 1984 }
-      ],
-      "semanticSearchBlock": "Examine the agency of debtors and the emergence of grey practices or subtle forms of counter-conduct and infrapolitics against financial subjugation..."
-    }
-  ]
+  "studyTitle": "${params.studyTitle.replace(/"/g, '\\"')}",
+  "researchQuestion": "${params.researchQuestion.replace(/"/g, '\\"')}",
+  "mainClaim": "${params.mainClaim.replace(/"/g, '\\"')}",
+  "methodology": "${params.methodology.replace(/"/g, '\\"')}",
+  "theoreticalFramework": "${params.theoreticalFramework.replace(/"/g, '\\"')}",
+  "historicalSpatialLimits": "${params.historicalSpatialLimits.replace(/"/g, '\\"')}"
 }
-</example_framework>
+</hedef_tez_matrisi>
 
-<task>
-Sistem talimatında belirtilen "DİL KURALI", "Düz (Flat) Liste İlkesi", "KAFES KURALI (Ontolojik Ayrım)", "BİBLİYOGRAFİK ÇAPA (Anchor Rule)" ve "Semantik Blok Mimarisi" standartlarına kusursuz uyarak, yukarıdaki tez matrisini bağımsız, hiyerarşisiz literatür taraması kutularına böl. Örnek mimarideki (minItems: 3) derinliği ve keskin ayrımı klonla. semanticSearchBlock alanı, vektör arama motorlarını hibe niyet mektubu (Grant Aim) veya makale özeti (Abstract) üslubuyla tetikleyecek şekilde İNGİLİZCE optimize edilmelidir.
-</task>
+# TALİMATLAR VE GÖREV
+Sistem talimatında tanımlanan tüm kurallara, dil kısıtlamalarına, "KAFES KURALI" ontolojik ayrım ilkelerine ve "BİBLİYOGRAFİK ÇAPA" standartlarına kusursuz şekilde bağlı kalarak, yukarıdaki <hedef_tez_matrisi> yapısını analiz et. Bu tezin tüm literatür kapsamını kapsayacak şekilde hiyerarşisiz, en az 3, en fazla 5 adet özerk konu kutusu (subject boxes) üret.
 
-<final_instruction>
-Yukarıda paylaşılan yapılandırılmış tez matrisini baz alarak, içsel konu atomizasyonu ve felsefi sütun ayrımı denetimini gerçekleştir; başlığı/açıklaması Türkçe, arama bloğu İngilizce olan düz JSON çıktısını hemen üret.
-</final_instruction>
-`;
+# KRİTİK GÜVENLİK BARIYERI
+- Analizini gerçekleştirirken tamamen sağlanan matris verilerine sadık kal (Strictly Grounded). Kendi genel kültürünü, spekülasyonlarını veya matriste yer almayan harici konuları analize enjekte etme.
+- Üreteceğin \`semanticSearchBlock\` alanlarının her birinin, OpenAlex vektör motorunu tam isabetle tetikleyecek, elit bir akademik İngilizce içeren bütünsel yapıda "Grant Aim" paragrafları olduğundan emin ol. Çıktıdaki başlık, açıklama ve kavram etiketleri ise tamamen Türkçe olmalıdır.
+
+Dahili olarak çok derinlemesine düşün (Think extremely hard) ve sadece nihai şemaya uygun ham JSON nesnesini döndür.`;
 }

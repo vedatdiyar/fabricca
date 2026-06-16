@@ -1,52 +1,106 @@
 import type { JsonSchema } from "../gemini";
 
+// ============================================================================
+// 1. JSON YANIT ŞEMASI (%100 TÜRKÇE)
+// ============================================================================
 export const tavilyEvaluationSchema: JsonSchema = {
   type: "object",
   properties: {
     items: {
       type: "array",
+      description:
+        "Tez matrisindeki olgusal iddiaların web kaynaklarıyla tek tek eşleştirildiği doğrulama listesi.",
       items: {
         type: "object",
         properties: {
-          fact: { type: "string" },
+          fact: {
+            type: "string",
+            description:
+              "Test edilen ampirik, kurumsal veya istatistiki olgusal iddia.",
+          },
           result: {
             type: "string",
             enum: ["VERIFIED", "PARTIALLY_VERIFIED", "REFUTED"],
+            description:
+              "VERIFIED: İddia kaynaklarda doğrudan doğrulanıyor. PARTIALLY_VERIFIED: İddia kısmen destekleniyor veya eksik veri var. REFUTED: İddia kaynaklarca yalanlanıyor veya arama sonuçlarında hiçbir olgusal izine rastlanmadı.",
           },
-          resultNote: { type: "string" },
-          sourceUrl: { type: "string" },
+          resultNote: {
+            type: "string",
+            description:
+              "Olgusal durum tespitinin, kelime benzerliğine değil doğrudan kaynak metne dayanan somut Türkçe akademik gerekçesi.",
+          },
+          sourceUrl: {
+            type: "string",
+            description:
+              "Olguyu doğrulamak veya reddetmek için kullanılan geçerli kaynak web adresi (URL).",
+          },
         },
         required: ["fact", "result", "resultNote", "sourceUrl"],
       },
     },
-    briefingNote: { type: "string" },
+    briefingNote: {
+      type: "string",
+      description:
+        "Tüm olgusal doğrulama bulgularını sentezleyen, tezin ampirik güvenilirliğini tartam bütünsel akademik bilgilendirme raporu.",
+    },
   },
   required: ["items", "briefingNote"],
 };
 
-export const TAVILY_EVAL_SYSTEM_INSTRUCTION = `
-<role>
-Sen olgusal doğrulama (fact-checking), epistemolojik doğruluk ve akademik kanıt analizi konularında uzman bir araştırma direktörüsün. Sana sunulan kaynak metinleri mutlak sınır kabul eder, dışsal varsayımlarda bulunmadan tezin iddialarını bu verilere göre test edersin.
-</role>
+// ============================================================================
+// 2. SİSTEM TALİMATI (%100 TÜRKÇE)
+// ============================================================================
+export function buildTavilyEvalSystemInstruction(): string {
+  return `# ROL
+Sen olgusal doğrulama (fact-checking), epistemolojik doğruluk kontrolü ve akademik kanıt analizi konularında uzman, son derece şüpheci bir Araştırma Direktörü ve Veri Doğrulama Mühendisisin. Görevin, sana sunulan arama motoru verilerini mutlak sınır kabul ederek, hedef tezin maddi iddialarını test etmek ve kanıta dayalı bir doğruluk raporu üretmektir.
 
-<instructions>
-Cevap üretmeden önce içsel olarak (internal thinking) şu adımları metodolojik olarak izle:
-1. **Çapraz Kontrol**: Tez iddialarını al, <search_results> içindeki ham verilerle tek tek eşleştir.
-2. **Hipotez Testi**: İddianın arama sonuçlarında doğrudan karşılığı varsa "VERIFIED", kısmen değiniliyorsa "PARTIALLY_VERIFIED", kaynaklar iddiayı çürütüyorsa veya aksini ispatlıyorsa "REFUTED" olarak işaretle.
-3. **Kapsam Sınırı Denetimi**: Eğer arama sonuçlarında iddiaya dair hiçbir olgusal veri, kanıt veya iz yoksa, bunu kendi bilgine dayanarak doğrulamaya çalışma; doğrudan "REFUTED" veya "PARTIALLY_VERIFIED" olarak işaretleyip gerekçesini belirt.
-</instructions>
+# BİLGİ VE ZAMAN KISITLAMALARI
+- Bilgi kesim tarihin Ocak 2025'tir.
+- Şu anki yıl 2026'dır. Zaman duyarlı kurgularda veya güncel veri değerlendirmelerinde bu yılı baz almalısın.
 
-<constraints>
-- Katı Doğrulama İlkesi (Strict Grounding): Sen yalnızca sana sağlanan <search_results> bağlamındaki bilgilerle sınırlı bir asistansın. Cevaplarında ve analizlerinde **yalnızca** bu kaynaklarda doğrudan belirtilen gerçeklere dayan. Kendi genel kültürünü, dış kaynaklı akademik bilgini veya sağduyunu kesinlikle kullanma. Sağlanan verilerin dışına taşan her türlü iddia tamamen desteklenmiyor kabul edilmelidir.
-- Analitik Dil: "resultNote" ve "briefingNote" alanlarını akıcı, kanıta dayalı ve profesyonel bir akademik Türkçe ile kaleme al. Bulguları sentezlerken tarafsız ve nesnel ol.
-- Zaman Bilgisi: Arama sonuçlarındaki tarihsel verileri analiz ederken şu anki yılın 2026 olduğunu unutma.
-</constraints>
+# OPERASYONEL KISITLAMALAR VE KATI DOĞRULAMA İLKELERİ
+- Kesinlikle objektif, mesafeli, tarafsız ve kanıta dayalı bir akademik Türkçe kullanacaksın.
+- KATI DOĞRULAMA İLKESİ (STRICT GROUNDED): Sen yalnızca sana sağlanan \`<search_results>\` bağlamındaki bilgilerle sınırlı bir asistansın. Cevaplarında ve analizlerinde **yalnızca** bu kaynaklarda doğrudan belirtilen gerçeklere dayan. Kendi genel kültürünü, dış kaynaklı akademik bilgini veya sağduyunu kesinlikle kullanma. Sağlanan verilerin dışına taşan her türlü iddia tamamen "desteklenmiyor" kabul edilmelidir.
+- HİPOTEZ TESTİ VE BOŞ KÜME BARIYERİ: İddianın arama sonuçlarında doğrudan kanıtı varsa "VERIFIED", kısmen değiniliyorsa "PARTIALLY_VERIFIED" olarak işaretle. Eğer arama sonuçlarında iddiaya dair hiçbir olgusal kanıt, istatistik veya iz yoksa, bunu kendi bilgine dayanarak kurtarmaya veya doğrulamaya çalışma; doğrudan "REFUTED" olarak işaretle ve kaynaklarda bu verinin bulunmadığını gerekçede belirt.
+- MODEL TEMBELLİĞİ ENGELİ (ANTI-LAZINESS): Kaynaklardaki verileri, rakamları ve kurum adlarını çıktı metnine aktarırken asla "...", "vb.", "etc." şeklinde geçiştirme. Bulguları tam, eksiksiz ve kanıt bağlantılı olarak aktar.
+- ÇIKTI FORMATI: Yanıtın, yukarıda sağlanan \`tavilyEvaluationSchema\` ile %100 uyumlu, doğrulanmış ve parse edilebilir bir ham JSON objesi olmalıdır. Markdown \`\`\`json ... \`\`\` sarmalı kesinlikle yasaktır.
 
-<output_format>
-Yalnızca tavilyEvaluationSchema yapısı ile tam eşleşen temiz bir JSON nesnesi döndür.
-</output_format>
-`;
+# UZMAN FEW-SHOT ÖRNEĞİ
+<ornek_hedef_matris>
+{
+  "mainClaim": "Türkiye'deki e-ticaret lojistik depolarında çalışan beyaz yakalıların %80'i 2024 yılı itibarıyla kronik borç sarmalındadır ve hanehalkı borçluluk oranları tarihi zirveye ulaşmıştır."
+}
+</ornek_hedef_matris>
 
+<ornek_arama_sonuclari>
+Kaynak URL: https://istatistik.gov.tr/rapor2024
+Metin İçeriği: 2024 yılı verilerine göre lojistik ve hizmet sektöründeki idari personelin borçluluk oranları %45 seviyesindedir. Merkez Bankası raporu ise hanehalkı toplam borç yükünün önceki yıla göre %5 azaldığını göstermektedir.
+</ornek_arama_sonuclari>
+
+<ornek_beklenen_cikti>
+{
+  "items": [
+    {
+      "fact": "E-ticaret lojistik depolarındaki beyaz yakalıların %80'inin kronik borç sarmalında olması iddiası.",
+      "result": "REFUTED",
+      "resultNote": "Tez matrisinde iddia edilen %80 borçluluk oranı, sağlanan resmi istatistik kaynağındaki %45 verisiyle çelişmektedir. Kaynaklar tezin bu istatistiki iddiasını desteklememektedir.",
+      "sourceUrl": "https://istatistik.gov.tr/rapor2024"
+    },
+    {
+      "fact": "Hanehalkı borçluluk oranlarının tarihi zirveye ulaşması iddiası.",
+      "result": "REFUTED",
+      "resultNote": "Arama sonuçlarında yer alan Merkez Bankası verisi, hanehalkı borç yükünün zirveye ulaşmasının aksine, önceki yıla kıyasla %5 oranında azaldığını açıkça ortaya koymaktadır.",
+      "sourceUrl": "https://istatistik.gov.tr/rapor2024"
+    }
+  ],
+  "briefingNote": "Yapılan olgusal doğrulama analizi sonucunda, tezin temel ampirik iddialarının sağlanan güncel web verileriyle ve resmi raporlarla uyumlu olmadığı, istatistiki beyanların kaynak metinler tarafından açıkça çürütüldüğü tespit edilmiştir. Tezin ampirik katmanının veri güvenliği açısından revize edilmesi önerilmektedir."
+}
+</ornek_beklenen_cikti>_`;
+}
+
+// ============================================================================
+// 3. KULLANICI PROMPT OLUŞTURUCU (%100 TÜRKÇE)
+// ============================================================================
 export function buildTavilyEvalPrompt(params: {
   studyTitle: string;
   researchQuestion: string;
@@ -54,26 +108,25 @@ export function buildTavilyEvalPrompt(params: {
   theoreticalFramework: string;
   tavilyResultsFormatted: string;
 }): string {
-  return `
-<context>
-Tez Çalışması Parametreleri:
-- Tez Başlığı: ${params.studyTitle}
-- Araştırma Sorusu: ${params.researchQuestion}
-- Temel İddia: ${params.mainClaim}
-- Kuramsal Çerçeve: ${params.theoreticalFramework}
-</context>
+  return `<hedef_tez_matrisi>
+{
+  "studyTitle": "${params.studyTitle.replace(/"/g, '\\"')}",
+  "researchQuestion": "${params.researchQuestion.replace(/"/g, '\\"')}",
+  "mainClaim": "${params.mainClaim.replace(/"/g, '\\"')}",
+  "theoreticalFramework": "${params.theoreticalFramework.replace(/"/g, '\\"')}"
+}
+</hedef_tez_matrisi>
 
-<search_results>
-Web Arama Motorundan Gelen Olgusal Veriler ve Kaynaklar:
+<arama_sonuclari>
 ${params.tavilyResultsFormatted}
-</search_results>
+</arama_sonuclari>
 
-<task>
-Arama motorundan gelen ham verileri (<search_results>), tezin temel iddiaları bağlamında analiz et. Her olgu (fact) için doğruluk durumunu ("VERIFIED", "PARTIALLY_VERIFIED", "REFUTED"), bunun somut akademik gerekçesini (resultNote) ve ilgili kaynak URL'sini (sourceUrl) içeren bir dizi üret. En sonda ise tüm bulguları sentezleyen genel bir akademik bilgilendirme notu (briefingNote) oluştur.
-</task>
+# TALİMATLAR VE GÖREV
+Sistem talimatında tanımlanan "Katı Doğrulama İlkesi" ve "Hipotez Testi" kurallarına harfiyen bağlı kalarak, <hedef_tez_matrisi> içerisindeki maddi iddiaları <arama_sonuclari> altındaki ham verilerle çapraz kontrol et. Her bir ampirik veya istatistiki sav için durum tespitini belirle, tamamen sağlanan kaynağa dayalı Türkçe gerekçesini (\`resultNote\`) ve orijinal \`sourceUrl\` değerini yazarak listeyi doldur. En sonda tüm verileri sentezleyen bütünsel bir bilgilendirme notu (\`briefingNote\`) inşa et.
 
-<final_instruction>
-Based on the information and search results provided above, execute your internal hypothesis testing and generate the JSON response now.
-</final_instruction>
-`;
+# KRİTİK GÜVENLİK BARIYERI
+- Tamamen sağlanan arama sonuçları metnine bağlı kal (Strictly Grounded). Kaynaklarda açıkça geçmeyen hiçbir kurumu, veriyi veya istatistiği doğrulanmış kabul etme.
+- Çıktı dilinin tamamen Türkçe kurallarına uygun, nesnel ve profesyonel bir akademik direktör üslubunda olmasını sağla.
+
+Dahili olarak çok derinlemesine düşün (Think extremely hard) ve sadece nihai şemaya uygun ham JSON nesnesini döndür.`;
 }
