@@ -4,7 +4,7 @@ import type { Logger } from "@/lib/logger";
 import type { TezaraThesisDetails } from "@/lib/types";
 import {
   geminiAnalysisSchema,
-  ANALYSIS_SYSTEM_INSTRUCTION,
+  buildAnalysisSystemInstruction,
   buildAnalysisPrompt,
 } from "@/lib/prompts";
 
@@ -58,7 +58,7 @@ export async function analyzeOriginalityRisk(
       }[];
     }>(
       "gemini-3.1-flash-lite",
-      ANALYSIS_SYSTEM_INSTRUCTION,
+      buildAnalysisSystemInstruction(),
       buildAnalysisPrompt(params),
       geminiAnalysisSchema,
       log,

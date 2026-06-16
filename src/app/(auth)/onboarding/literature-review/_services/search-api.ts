@@ -1,5 +1,6 @@
-import type { RawPaper, ValidatedPaper } from "@/lib/literature-review-papers";
+import type { RawPaper, ValidatedPaper } from "./literature-review-papers";
 import type { FoundationalQuery } from "@/lib/types";
+import type { Logger } from "@/lib/logger";
 
 // ============================================================================
 // Helper Functions
@@ -27,19 +28,75 @@ function resolveAbstractInvertedIndex(
 }
 
 // ============================================================================
-// Stage 1a: OpenAlex Semantic Search
+// OpenAlex Response Parser
 // ============================================================================
 
-export async function searchOpenAlex(query: string): Promise<RawPaper[]> {
-  const apiKey = process.env.OPENALEX_API_KEY;
-  const params = new URLSearchParams({
-    "search.semantic": query,
-    per_page: "50",
-    select:
-      "title,topics,concepts,doi,id,authorships,publication_year,primary_location",
-  });
-  if (apiKey) params.set("api_key", apiKey);
+function parseOpenAlexResults(results: Record<string, unknown>[]): RawPaper[] {
+  const rawScores = results.map(
+    (work) => (work.relevance_score as number) ?? 0,
+  );
+  const maxScore = Math.max(...rawScores, 0);
+  const safeMax = maxScore > 0 ? maxScore : 1;
 
+  return results.map((work, i) => {
+    const topics = work.topics as { display_name?: string }[] | undefined;
+    const concepts = work.concepts as
+      | { display_name?: string; score?: number; level?: number }[]
+      | undefined;
+    const authorships = work.authorships as
+      | { author?: { display_name?: string } }[]
+      | null
+      | undefined;
+    const primaryLocation = work.primary_location as
+      | {
+          landing_page_url?: string;
+          source?: { display_name?: string };
+        }
+      | null
+      | undefined;
+
+    const topicName = topics?.[0]?.display_name ?? null;
+    const topConcepts =
+      concepts
+        ?.filter(
+          (c) => (c.score ?? 0) > 0.3 && (c.level === 1 || c.level === 2),
+        )
+        .slice(0, 3)
+        .map((c) => c.display_name)
+        .filter(Boolean) ?? [];
+
+    const metadataParts: string[] = [];
+    if (topicName) metadataParts.push(`Topic: ${topicName}`);
+    if (topConcepts.length > 0)
+      metadataParts.push(`Concepts: ${topConcepts.join(", ")}`);
+    const metadata =
+      metadataParts.length > 0 ? metadataParts.join(". ") : null;
+
+    return {
+      source: "openalex" as const,
+      title: (work.title as string) ?? null,
+      abstract: null,
+      metadata,
+      doi: extractCleanDoi(work.doi as string | null | undefined),
+      url: primaryLocation?.landing_page_url ?? (work.id as string) ?? null,
+      authors:
+        authorships
+          ?.map((a) => a.author?.display_name ?? "")
+          .filter(Boolean) ?? [],
+      year: (work.publication_year as number) ?? null,
+      publisher: primaryLocation?.source?.display_name ?? null,
+      openAlexId: (work.id as string) ?? null,
+      isFoundational: false,
+      relevanceScore: (rawScores[i] ?? 0) / safeMax,
+    };
+  });
+}
+
+// ============================================================================
+// OpenAlex Query Executor (shared factory)
+// ============================================================================
+
+async function queryOpenAlexWorks(params: URLSearchParams): Promise<RawPaper[]> {
   const url = `https://api.openalex.org/works?${params.toString()}`;
 
   try {
@@ -53,68 +110,26 @@ export async function searchOpenAlex(query: string): Promise<RawPaper[]> {
     };
     const results = data.results;
     if (!results) return [];
-
-    const rawScores = results.map(
-      (work) => (work.relevance_score as number) ?? 0,
-    );
-    const maxScore = Math.max(...rawScores, 0);
-    const safeMax = maxScore > 0 ? maxScore : 1;
-
-    return results.map((work, i) => {
-      const topics = work.topics as { display_name?: string }[] | undefined;
-      const concepts = work.concepts as
-        | { display_name?: string; score?: number; level?: number }[]
-        | undefined;
-      const authorships = work.authorships as
-        | { author?: { display_name?: string } }[]
-        | null
-        | undefined;
-      const primaryLocation = work.primary_location as
-        | {
-            landing_page_url?: string;
-            source?: { display_name?: string };
-          }
-        | null
-        | undefined;
-
-      const topicName = topics?.[0]?.display_name ?? null;
-      const topConcepts =
-        concepts
-          ?.filter(
-            (c) => (c.score ?? 0) > 0.3 && (c.level === 1 || c.level === 2),
-          )
-          .slice(0, 3)
-          .map((c) => c.display_name)
-          .filter(Boolean) ?? [];
-
-      const metadataParts: string[] = [];
-      if (topicName) metadataParts.push(`Topic: ${topicName}`);
-      if (topConcepts.length > 0)
-        metadataParts.push(`Concepts: ${topConcepts.join(", ")}`);
-      const metadata =
-        metadataParts.length > 0 ? metadataParts.join(". ") : null;
-
-      return {
-        source: "openalex" as const,
-        title: (work.title as string) ?? null,
-        abstract: null,
-        metadata,
-        doi: extractCleanDoi(work.doi as string | null | undefined),
-        url: primaryLocation?.landing_page_url ?? (work.id as string) ?? null,
-        authors:
-          authorships
-            ?.map((a) => a.author?.display_name ?? "")
-            .filter(Boolean) ?? [],
-        year: (work.publication_year as number) ?? null,
-        publisher: primaryLocation?.source?.display_name ?? null,
-        openAlexId: (work.id as string) ?? null,
-        isFoundational: false,
-        relevanceScore: (rawScores[i] ?? 0) / safeMax,
-      };
-    });
+    return parseOpenAlexResults(results);
   } catch {
     return [];
   }
+}
+
+// ============================================================================
+// Stage 1a: OpenAlex Semantic Search
+// ============================================================================
+
+export async function searchOpenAlex(query: string): Promise<RawPaper[]> {
+  const apiKey = process.env.OPENALEX_API_KEY;
+  const params = new URLSearchParams({
+    "search.semantic": query,
+    per_page: "50",
+    select:
+      "title,topics,concepts,doi,id,authorships,publication_year,primary_location",
+  });
+  if (apiKey) params.set("api_key", apiKey);
+  return queryOpenAlexWorks(params);
 }
 
 // ============================================================================
@@ -138,82 +153,7 @@ export async function searchOpenAlexKeyword(
       "title,topics,concepts,doi,id,authorships,publication_year,primary_location",
   });
   if (apiKey) params.set("api_key", apiKey);
-
-  const url = `https://api.openalex.org/works?${params.toString()}`;
-
-  try {
-    const response = await fetch(url, {
-      headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!response.ok) return [];
-    const data = (await response.json()) as {
-      results?: Record<string, unknown>[];
-    };
-    const results = data.results;
-    if (!results) return [];
-
-    const rawScores = results.map(
-      (work) => (work.relevance_score as number) ?? 0,
-    );
-    const maxScore = Math.max(...rawScores, 0);
-    const safeMax = maxScore > 0 ? maxScore : 1;
-
-    return results.map((work, i) => {
-      const topics = work.topics as { display_name?: string }[] | undefined;
-      const concepts = work.concepts as
-        | { display_name?: string; score?: number; level?: number }[]
-        | undefined;
-      const authorships = work.authorships as
-        | { author?: { display_name?: string } }[]
-        | null
-        | undefined;
-      const primaryLocation = work.primary_location as
-        | {
-            landing_page_url?: string;
-            source?: { display_name?: string };
-          }
-        | null
-        | undefined;
-
-      const topicName = topics?.[0]?.display_name ?? null;
-      const topConcepts =
-        concepts
-          ?.filter(
-            (c) => (c.score ?? 0) > 0.3 && (c.level === 1 || c.level === 2),
-          )
-          .slice(0, 3)
-          .map((c) => c.display_name)
-          .filter(Boolean) ?? [];
-
-      const metadataParts: string[] = [];
-      if (topicName) metadataParts.push(`Topic: ${topicName}`);
-      if (topConcepts.length > 0)
-        metadataParts.push(`Concepts: ${topConcepts.join(", ")}`);
-      const metadata =
-        metadataParts.length > 0 ? metadataParts.join(". ") : null;
-
-      return {
-        source: "openalex" as const,
-        title: (work.title as string) ?? null,
-        abstract: null,
-        metadata,
-        doi: extractCleanDoi(work.doi as string | null | undefined),
-        url: primaryLocation?.landing_page_url ?? (work.id as string) ?? null,
-        authors:
-          authorships
-            ?.map((a) => a.author?.display_name ?? "")
-            .filter(Boolean) ?? [],
-        year: (work.publication_year as number) ?? null,
-        publisher: primaryLocation?.source?.display_name ?? null,
-        openAlexId: (work.id as string) ?? null,
-        isFoundational: false,
-        relevanceScore: (rawScores[i] ?? 0) / safeMax,
-      };
-    });
-  } catch {
-    return [];
-  }
+  return queryOpenAlexWorks(params);
 }
 
 // ============================================================================
@@ -307,6 +247,7 @@ export interface FoundationalWorkResult {
  */
 export async function resolveFoundationalWorks(
   queries: FoundationalQuery[],
+  logger?: Logger,
 ): Promise<FoundationalWorkResult[]> {
   if (!queries || queries.length === 0) return [];
 
@@ -345,10 +286,11 @@ export async function resolveFoundationalWorks(
         isFoundational: true,
       } as FoundationalWorkResult;
     } catch (error) {
-      console.error(
-        `Foundational work resolution failed for ${query.title}:`,
+      logger?.error("foundational_work_resolution_failed", {
+        service: "openalex",
         error,
-      );
+        data: { queryTitle: query.title },
+      });
       return null;
     }
   });

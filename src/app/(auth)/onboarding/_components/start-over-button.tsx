@@ -49,7 +49,7 @@ export function StartOverButton({ variant = "outline", size = "sm", className = 
   return (
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant={variant} size={size} className={`border-destructive bg-destructive/50 text-destructive-foreground hover:bg-destructive/10 hover:text-destructive shadow-sm ${className}`} disabled={isPending}>
+        <Button variant={variant} size={size} className={`border-destructive bg-destructive/20 text-destructive-foreground hover:bg-destructive/10 hover:text-destructive shadow-sm ${className}`} disabled={isPending}>
           <RotateCcw className="h-4 w-4 shrink-0" />
           <span>Baştan Başla</span>
         </Button>

@@ -15,7 +15,7 @@ export function LiteratureArticleCard({ article }: LiteratureArticleCardProps) {
   const isPrimary = article.type === "PRIMARY";
 
   return (
-    <Card className="bg-card/40 border border-border hover:border-primary/30 transition-all">
+    <Card className="bg-card border border-border hover:border-primary/20 transition-all">
       <CardHeader className="pb-3">
         {/* Üst Bilgi: Badge + Metadata */}
         <div className="flex items-start justify-between gap-4">

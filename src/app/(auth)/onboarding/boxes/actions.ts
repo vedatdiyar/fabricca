@@ -2,14 +2,14 @@
 
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { thesisBoxes, thesisMatrices } from "@/db/schema";
+import { thesisBoxes } from "@/db/schema";
 import { getSession } from "@/proxy";
 import { generateStructuredContent } from "@/lib/gemini";
 import { ThinkingLevel } from "@google/genai";
 import { createFlowId, Logger } from "@/lib/logger";
 import { revalidatePath } from "next/cache";
 import {
-  THESIS_BOX_GENERATION_SYSTEM_INSTRUCTION,
+  buildThesisBoxGenerationSystemInstruction,
   buildThesisBoxGenerationPrompt,
   thesisBoxGenerationSchema,
 } from "@/lib/prompts";
@@ -19,6 +19,8 @@ import { fetchThesisMatrix } from "../lib/fetch-actions";
 /**
  * Generates subject boxes (boxes) via Gemini for the current user's thesis matrix.
  * Returns the generated boxes as JSON without writing to DB.
+ *
+ * @returns The generated thesis boxes array, or a user-safe error message
  */
 export async function generateBoxesAction(): Promise<
   { success: true; boxes: GeminiThesisBox[] } | { error: string }
@@ -49,7 +51,7 @@ export async function generateBoxesAction(): Promise<
       boxes: GeminiThesisBox[];
     }>(
       "gemini-3.1-flash-lite",
-      THESIS_BOX_GENERATION_SYSTEM_INSTRUCTION,
+      buildThesisBoxGenerationSystemInstruction(),
       geminiPrompt,
       thesisBoxGenerationSchema,
       log,
@@ -79,6 +81,9 @@ export async function generateBoxesAction(): Promise<
 /**
  * Persists the generated (and possibly user-edited) subject boxes to thesis_boxes.
  * Deletes existing boxes for the matrix first, then inserts flat hierarchy.
+ *
+ * @param boxes - Array of GeminiThesisBox to persist
+ * @returns Success or error response
  */
 export async function confirmBoxesAction(
   boxes: GeminiThesisBox[],

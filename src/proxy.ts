@@ -24,9 +24,13 @@ export type SessionWithOnboarding = SessionUser & {
  *
  * @returns SessionUser nesnesi veya null
  */
+declare const global: {
+  __mockSession?: SessionUser | null;
+} & typeof globalThis;
+
 export async function getSession(): Promise<SessionUser | null> {
-  if (typeof global !== "undefined" && (global as any).__mockSession) {
-    return (global as any).__mockSession;
+  if (typeof global !== "undefined" && global.__mockSession) {
+    return global.__mockSession;
   }
   try {
     const cookieStore = await cookies();

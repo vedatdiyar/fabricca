@@ -8,6 +8,7 @@ import {
   jsonb,
   pgEnum,
   boolean,
+  index,
 } from "drizzle-orm/pg-core";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 
@@ -145,7 +146,9 @@ export const thesisBoxes = pgTable("thesis_boxes", {
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_thesis_boxes_matrix_id").on(table.thesisMatrixId),
+]);
 
 /** Veri tabanından okunan tez kutusu tipi (select). */
 export type ThesisBox = InferSelectModel<typeof thesisBoxes>;
@@ -175,7 +178,9 @@ export const libraryResources = pgTable("library_resources", {
   strategicRecommendations: text("strategic_recommendations"),
   isRead: boolean("is_read").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_library_resources_box_status").on(table.thesisBoxId, table.status),
+]);
 
 /** Veri tabanından okunan kütüphane kaynağı tipi (select). */
 export type LibraryResource = InferSelectModel<typeof libraryResources>;

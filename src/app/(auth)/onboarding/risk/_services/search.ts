@@ -9,7 +9,7 @@ import type {
 } from "@/lib/types";
 import {
   tavilyEvaluationSchema,
-  TAVILY_EVAL_SYSTEM_INSTRUCTION,
+  buildTavilyEvalSystemInstruction,
   buildTavilyEvalPrompt,
 } from "@/lib/prompts";
 
@@ -154,7 +154,7 @@ export async function evaluateTavilyResults(
     const tavilyEvaluation =
       await generateStructuredContent<TavilyEvaluationResponse>(
         "gemini-3.1-flash-lite",
-        TAVILY_EVAL_SYSTEM_INSTRUCTION,
+        buildTavilyEvalSystemInstruction(),
         buildTavilyEvalPrompt({
           ...params,
           tavilyResultsFormatted,

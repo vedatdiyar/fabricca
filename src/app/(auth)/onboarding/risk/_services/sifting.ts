@@ -1,5 +1,6 @@
 import { ThinkingLevel } from "@google/genai";
-import { generateStructuredContent, cosineSimilarity } from "@/lib/gemini";
+import { generateStructuredContent } from "@/lib/gemini";
+import { cosineSimilarity } from "@/lib/utils";
 import { generateEmbeddings } from "@/lib/cloudflare";
 import { fetchThesisDetails } from "@/lib/tezara";
 import type { Logger } from "@/lib/logger";
@@ -10,7 +11,7 @@ import type {
 } from "@/lib/types";
 import {
   deepSiftingSchema,
-  DEEP_SIFTING_SYSTEM_INSTRUCTION,
+  buildDeepSiftingSystemInstruction,
   buildDeepSiftingPrompt,
 } from "@/lib/prompts";
 
@@ -235,7 +236,7 @@ export async function siftAndFetchDetails(
     try {
       const deepSiftResult = await generateStructuredContent<DeepSiftResponse>(
         "gemini-3.1-flash-lite",
-        DEEP_SIFTING_SYSTEM_INSTRUCTION,
+        buildDeepSiftingSystemInstruction(),
         buildDeepSiftingPrompt({
           ...params,
           candidateDetails: validDetails.map((t) => ({
@@ -289,12 +290,14 @@ export async function siftAndFetchDetails(
       throw err;
     }
 
+    const finalIdSet = new Set(finalIds);
+
     const finalSelectedTheses = validDetails.filter((t) =>
-      finalIds.includes(t.id),
+      finalIdSet.has(t.id),
     );
 
     const eliminatedTheses = uniqueTheses.filter(
-      (t) => !finalIds.includes(t.id),
+      (t) => !finalIdSet.has(t.id),
     );
 
     const totalDuration =

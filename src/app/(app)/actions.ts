@@ -14,19 +14,27 @@ export async function logoutAction() {
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
-  const cookieStore = await cookies();
-  cookieStore.set(COOKIE_NAME, "", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 0,
-  });
+  try {
+    const cookieStore = await cookies();
+    cookieStore.set(COOKIE_NAME, "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+    });
 
-  log.info("login_failed", {
-    service: "auth",
-    data: { reason: "Kullanıcı çıkış yaptı" },
-  });
+    log.info("logout_success", {
+      service: "auth",
+      data: { reason: "Kullanıcı çıkış yaptı" },
+    });
+  } catch (err) {
+    log.error("logout_failed", {
+      service: "auth",
+      error: err,
+      data: { reason: "Çıkış sırasında hata oluştu" },
+    });
+  }
 
   redirect("/login");
 }

@@ -36,6 +36,9 @@ interface OnboardingMatrixInput {
  * Executes parallel searches on Tavily and Tezara, evaluates Tavily findings,
  * sifts Tezara findings using Gemini, and returns the selected/eliminated theses.
  * Does not write to database.
+ *
+ * @param matrix - The thesis matrix input with study title, research question, main claim, methodology, theoretical framework, and historical/spatial limits
+ * @returns Scraped theses, Tavily evaluation results, and extracted keywords, or an error message
  */
 export async function searchAndSiftThesesAction(
   matrix: OnboardingMatrixInput,
@@ -97,6 +100,11 @@ export async function searchAndSiftThesesAction(
  * Runs the Gemini Jury analysis, calculates the final originality risk profile,
  * synthesizes the strategic roadmap, writes the report to originality_reports,
  * and returns the data to the client.
+ *
+ * @param scrapedTheses - The selected and eliminated theses from the sifting stage
+ * @param tavilyResults - The Tavily evaluation response with briefing note and items
+ * @param matrix - The thesis matrix input for contextual analysis
+ * @returns The full originality report data including Tavily and Tezara results, or an error message
  */
 export async function runJuryAnalysisAction(
   scrapedTheses: ScrapedTheses,
@@ -131,8 +139,6 @@ export async function runJuryAnalysisAction(
       );
 
       const riskCalcResult = calculateOriginalityRisk(overlapTable, validDetails, log);
-
-      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       const strategicRecommendations = await synthesizeRoadmap(
         {
@@ -192,6 +198,8 @@ export async function runJuryAnalysisAction(
 /**
  * Marks the risk stage as complete, clears downstream thesis_boxes,
  * and redirects to boxes.
+ *
+ * @returns Success or error response
  */
 export async function completeRiskStageAction(): Promise<OnboardingActionResult> {
   try {

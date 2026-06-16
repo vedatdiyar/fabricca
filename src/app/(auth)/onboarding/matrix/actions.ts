@@ -10,7 +10,7 @@ import { createFlowId, Logger } from "@/lib/logger";
 
 import {
   enhancedThesisSchema,
-  MATRIX_ENHANCEMENT_SYSTEM_INSTRUCTION,
+  buildMatrixEnhancementSystemInstruction,
   buildMatrixEnhancementPrompt,
 } from "@/lib/prompts";
 import type {
@@ -40,6 +40,9 @@ function validateField(value: string | undefined): string | null {
  * Validates the raw matrix input, triggers Gemini to produce the academically
  * enhanced thesis matrix, writes the enriched data directly to thesis_matrices,
  * and returns the enhanced JSON to the client.
+ *
+ * @param data - The raw thesis matrix input containing study title, research question, main claim, methodology, theoretical framework, and historical/spatial limits
+ * @returns Enhanced thesis data on success, or a validation/Gemini error message
  */
 export async function submitThesisMatrixAction(
   data: ThesisMatrixInput,
@@ -80,7 +83,7 @@ export async function submitThesisMatrixAction(
       try {
         enhancedData = await generateStructuredContent<EnhancedThesisData>(
           "gemini-3.1-flash-lite",
-          MATRIX_ENHANCEMENT_SYSTEM_INSTRUCTION,
+          buildMatrixEnhancementSystemInstruction(),
           matrixEnhancementPrompt,
           enhancedThesisSchema,
           log,

@@ -294,7 +294,7 @@ export function LiteratureReader({ boxId, boxTitle }: LiteratureReaderProps) {
               {resources.map((resource, index) => (
                 <div
                   key={resource.id}
-                  className={`flex items-start gap-4 border-b border-border/10 px-6 py-4 transition-colors hover:bg-muted/30 ${
+                  className={`flex items-start gap-4 border-b border-border/10 px-6 py-4 transition-colors hover:bg-muted/20 ${
                     resource.isRead ? "opacity-70" : ""
                   }`}
                 >

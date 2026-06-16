@@ -103,6 +103,9 @@ export function calculateOriginalityRisk(
       originalityLevel = "MEDIUM_RISK";
     }
 
+    const axisFlag = (v: boolean): "OVERLAPPING" | "ORIGINAL" =>
+      v ? "OVERLAPPING" : "ORIGINAL";
+
     return {
       id: detail.id,
       title: detail.title,
@@ -113,18 +116,10 @@ export function calculateOriginalityRisk(
       department: detail.department,
       comparisonNote: item.academic_reasoning,
       axes: {
-        subject: (is_research_question_overlapping
-          ? "OVERLAPPING"
-          : "ORIGINAL") as "OVERLAPPING" | "ORIGINAL",
-        theory: (is_theory_overlapping ? "OVERLAPPING" : "ORIGINAL") as
-          | "OVERLAPPING"
-          | "ORIGINAL",
-        methodology: (is_methodology_overlapping
-          ? "OVERLAPPING"
-          : "ORIGINAL") as "OVERLAPPING" | "ORIGINAL",
-        context: (is_context_overlapping ? "OVERLAPPING" : "ORIGINAL") as
-          | "OVERLAPPING"
-          | "ORIGINAL",
+        subject: axisFlag(is_research_question_overlapping),
+        theory: axisFlag(is_theory_overlapping),
+        methodology: axisFlag(is_methodology_overlapping),
+        context: axisFlag(is_context_overlapping),
       },
       originalityLevel,
       calculated_score,
@@ -136,24 +131,12 @@ export function calculateOriginalityRisk(
   );
   const riskPercentage = maxScore;
 
-  let originalityBadge: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
-  if (
-    calculatedOverlapTable.some((item) => item.originalityLevel === "HIGH_RISK")
-  ) {
-    originalityBadge = "HIGH_RISK";
-  } else if (
-    calculatedOverlapTable.some(
-      (item) => item.originalityLevel === "MEDIUM_RISK",
-    )
-  ) {
-    originalityBadge = "MEDIUM_RISK";
-  } else if (
-    calculatedOverlapTable.some((item) => item.originalityLevel === "LOW_RISK")
-  ) {
-    originalityBadge = "LOW_RISK";
-  } else {
-    originalityBadge = "ZERO_RISK";
-  }
+  const levels = new Set(calculatedOverlapTable.map((i) => i.originalityLevel));
+  const originalityBadge: CalculatedOriginalityRiskResult["originalityBadge"] =
+    levels.has("HIGH_RISK") ? "HIGH_RISK"
+      : levels.has("MEDIUM_RISK") ? "MEDIUM_RISK"
+        : levels.has("LOW_RISK") ? "LOW_RISK"
+          : "ZERO_RISK";
 
   log.info({
     step: "calculate_originality_risk",
@@ -181,142 +164,34 @@ export function calculateOriginalityRisk(
  * Lower numbers indicate higher academic risk and should appear first in the UI table.
  * This is a pure function with no side effects.
  *
- * Priority 1 = all 4 axes overlapping (highest risk)
- * Priority 16 = all 4 axes original (no overlap)
+ * Priority 1 = all 4 axes overlapping (highest risk).
+ * Priority 16 = all 4 axes original (no overlap).
+ *
+ * Uses bit-mask encoding: subject=8, theory=4, methodology=2, context=1.
  *
  * @param axes - The axis overlap flags for the thesis.
  * @returns A priority integer between 1 and 16.
  */
+const PRIORITY_MAP: Record<number, number> = {
+  0b1111: 1, 0b1110: 2, 0b1101: 3, 0b1011: 4, 0b0111: 5,
+  0b1100: 6, 0b1001: 7, 0b1010: 8,
+  0b1000: 9,
+  0b0011: 10, 0b0101: 11, 0b0110: 12,
+  0b0001: 13, 0b0010: 14, 0b0100: 15,
+  0b0000: 16,
+};
+
 export function getThesisPriority(axes: {
   subject: string;
   theory: string;
   methodology: string;
   context?: string;
 }): number {
-  const {
-    subject: s,
-    theory: t,
-    methodology: m,
-    context: c = "ORIGINAL",
-  } = axes;
+  const bits =
+    (axes.subject === "OVERLAPPING" ? 8 : 0) |
+    (axes.theory === "OVERLAPPING" ? 4 : 0) |
+    (axes.methodology === "OVERLAPPING" ? 2 : 0) |
+    ((axes.context ?? "ORIGINAL") === "OVERLAPPING" ? 1 : 0);
 
-  // 4 overlaps
-  if (
-    s === "OVERLAPPING" &&
-    t === "OVERLAPPING" &&
-    m === "OVERLAPPING" &&
-    c === "OVERLAPPING"
-  )
-    return 1;
-
-  // 3 overlaps
-  if (
-    s === "OVERLAPPING" &&
-    t === "OVERLAPPING" &&
-    m === "OVERLAPPING" &&
-    c === "ORIGINAL"
-  )
-    return 2;
-  if (
-    s === "OVERLAPPING" &&
-    t === "OVERLAPPING" &&
-    m === "ORIGINAL" &&
-    c === "OVERLAPPING"
-  )
-    return 3;
-  if (
-    s === "OVERLAPPING" &&
-    t === "ORIGINAL" &&
-    m === "OVERLAPPING" &&
-    c === "OVERLAPPING"
-  )
-    return 4;
-  if (
-    s === "ORIGINAL" &&
-    t === "OVERLAPPING" &&
-    m === "OVERLAPPING" &&
-    c === "OVERLAPPING"
-  )
-    return 5;
-
-  // 2 overlaps (subject overlapping)
-  if (
-    s === "OVERLAPPING" &&
-    t === "OVERLAPPING" &&
-    m === "ORIGINAL" &&
-    c === "ORIGINAL"
-  )
-    return 6;
-  if (
-    s === "OVERLAPPING" &&
-    t === "ORIGINAL" &&
-    m === "ORIGINAL" &&
-    c === "OVERLAPPING"
-  )
-    return 7;
-  if (
-    s === "OVERLAPPING" &&
-    t === "ORIGINAL" &&
-    m === "OVERLAPPING" &&
-    c === "ORIGINAL"
-  )
-    return 8;
-
-  // 1 overlap (subject overlapping)
-  if (
-    s === "OVERLAPPING" &&
-    t === "ORIGINAL" &&
-    m === "ORIGINAL" &&
-    c === "ORIGINAL"
-  )
-    return 9;
-
-  // 2 overlaps (subject original)
-  if (
-    s === "ORIGINAL" &&
-    t === "ORIGINAL" &&
-    m === "OVERLAPPING" &&
-    c === "OVERLAPPING"
-  )
-    return 10;
-  if (
-    s === "ORIGINAL" &&
-    t === "OVERLAPPING" &&
-    m === "ORIGINAL" &&
-    c === "OVERLAPPING"
-  )
-    return 11;
-  if (
-    s === "ORIGINAL" &&
-    t === "OVERLAPPING" &&
-    m === "OVERLAPPING" &&
-    c === "ORIGINAL"
-  )
-    return 12;
-
-  // 1 overlap (subject original)
-  if (
-    s === "ORIGINAL" &&
-    t === "ORIGINAL" &&
-    m === "ORIGINAL" &&
-    c === "OVERLAPPING"
-  )
-    return 13;
-  if (
-    s === "ORIGINAL" &&
-    t === "ORIGINAL" &&
-    m === "OVERLAPPING" &&
-    c === "ORIGINAL"
-  )
-    return 14;
-  if (
-    s === "ORIGINAL" &&
-    t === "OVERLAPPING" &&
-    m === "ORIGINAL" &&
-    c === "ORIGINAL"
-  )
-    return 15;
-
-  // 0 overlaps
-  return 16;
+  return PRIORITY_MAP[bits] ?? 16;
 }

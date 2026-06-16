@@ -11,6 +11,8 @@ import { createFlowId, Logger } from "@/lib/logger";
  * Resets the onboarding process for the currently authenticated user.
  * Deletes all onboarding data (thesis_matrices cascades to thesis_boxes
  * and library_resources) and sets onboardingCompleted to false.
+ *
+ * @returns Success status or a user-safe error message
  */
 export async function resetOnboardingAction(): Promise<
   { success: boolean } | { error: string }
@@ -26,12 +28,21 @@ export async function resetOnboardingAction(): Promise<
 
     const userId = session.userId;
 
-    // Delete thesis matrix (cascades to thesis_boxes → library_resources)
-    await db.delete(thesisMatrices).where(eq(thesisMatrices.userId, userId));
-    // Delete originality report
-    await db.delete(originalityReports).where(eq(originalityReports.userId, userId));
-    // Reset onboarding flag
-    await db.update(users).set({ onboardingCompleted: false }).where(eq(users.id, userId));
+    // All three destructive operations run inside a single transaction so that
+    // a failure in any step rolls the entire reset back. This prevents leaving
+    // the user in an inconsistent state (e.g. matrix deleted but
+    // onboardingCompleted still flagged as true).
+    await db.transaction(async (tx) => {
+      // Delete thesis matrix (cascades to thesis_boxes → library_resources)
+      await tx.delete(thesisMatrices).where(eq(thesisMatrices.userId, userId));
+      // Delete originality report
+      await tx.delete(originalityReports).where(eq(originalityReports.userId, userId));
+      // Reset onboarding flag
+      await tx
+        .update(users)
+        .set({ onboardingCompleted: false })
+        .where(eq(users.id, userId));
+    });
 
     revalidatePath("/onboarding", "layout");
 

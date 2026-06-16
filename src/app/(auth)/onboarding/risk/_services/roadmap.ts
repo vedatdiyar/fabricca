@@ -3,7 +3,7 @@ import { generateStructuredContent } from "@/lib/gemini";
 import type { Logger } from "@/lib/logger";
 import {
   roadmapSchema,
-  ROADMAP_SYSTEM_INSTRUCTION,
+  buildRoadmapSystemInstruction,
   buildRoadmapPrompt,
 } from "@/lib/prompts";
 
@@ -54,7 +54,7 @@ export async function synthesizeRoadmap(
         strategicRecommendations: string;
       }>(
         "gemini-3.1-flash-lite",
-        ROADMAP_SYSTEM_INSTRUCTION,
+        buildRoadmapSystemInstruction(),
         buildRoadmapPrompt(params),
         roadmapSchema,
         log,
@@ -82,7 +82,7 @@ export async function synthesizeRoadmap(
         strategicRecommendations: string;
       }>(
         "gemini-3.1-flash-lite",
-        ROADMAP_SYSTEM_INSTRUCTION,
+        buildRoadmapSystemInstruction(),
         buildRoadmapPrompt(params),
         roadmapSchema,
         log,

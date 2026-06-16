@@ -1,6 +1,6 @@
 "use server";
 
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
@@ -14,14 +14,13 @@ import { getSession } from "@/proxy";
 import { Logger, createFlowId } from "@/lib/logger";
 import type { LiteraturePoolEntry, OnboardingActionResult } from "@/lib/types";
 import type { NewLibraryResource } from "@/db/schema";
-import type { SubBoxInput, RawPaper } from "@/lib/literature-review-papers";
-import { mergePapers } from "@/lib/literature-review-papers";
+import type { SubBoxInput, RawPaper } from "./_services/literature-review-papers";
+import { mergePapers } from "./_services/literature-review-papers";
 import {
   searchOpenAlex,
   searchOpenAlexKeyword,
   resolveFoundationalWorks,
   fetchFullAbstracts,
-  type FoundationalWorkResult,
 } from "./_services/search-api";
 import {
   runSiftingStage,
@@ -74,6 +73,7 @@ async function processSingleBox(
   if (subBox.foundationalQueries && subBox.foundationalQueries.length > 0) {
     const foundationalPromise = resolveFoundationalWorks(
       subBox.foundationalQueries,
+      logger,
     );
     searchCalls.push(
       foundationalPromise.then((foundational) =>
@@ -232,7 +232,7 @@ async function processSingleBox(
  * → jury analysis → CrossRef validation.
  *
  * @param subBoxes - Array of SubBoxInput to process concurrently
- * @returns LiteratureReviewResult[] in the same order as the input
+ * @returns Array of LiteratureReviewResult in the same order as the input, or an error message
  */
 export async function processLiteratureReviewAction(
   subBoxes: SubBoxInput[],
@@ -293,8 +293,9 @@ const COOKIE_NAME = "fabricca_session";
  * 3. Updates the `fabricca_session` cookie with `onboardingCompleted: true`.
  * 4. Revalidates paths and returns success.
  *
+ * @param args - Object containing the literature pool data
  * @param args.literaturePool - Array of LiteraturePoolEntry from Zustand store
- * @returns OnboardingActionResult
+ * @returns Onboarding action result indicating success or an error message
  */
 export async function confirmLiteratureAction(args: {
   literaturePool: LiteraturePoolEntry[];
@@ -355,26 +356,23 @@ export async function confirmLiteratureAction(args: {
     await db.transaction(async (tx) => {
       const allResources: NewLibraryResource[] = [];
 
-      for (const entry of literaturePool) {
-        // 2a. Find sub-box by thesisMatrixId + title
-        const subBoxTitle = entry.subBoxTitle;
-        const [box] = await tx
-          .select({ id: thesisBoxes.id })
-          .from(thesisBoxes)
-          .where(
-            and(
-              eq(thesisBoxes.thesisMatrixId, thesisMatrixId),
-              eq(thesisBoxes.title, subBoxTitle),
-            ),
-          );
+      // 2a. Bulk-fetch all boxes for this matrix (avoids N+1 queries)
+      const allBoxes = await tx
+        .select({ id: thesisBoxes.id, title: thesisBoxes.title })
+        .from(thesisBoxes)
+        .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
 
-        if (!box) {
+      const boxMap = new Map(allBoxes.map((b) => [b.title, b.id]));
+
+      for (const entry of literaturePool) {
+        const subBoxTitle = entry.subBoxTitle;
+        const thesisBoxId = boxMap.get(subBoxTitle);
+
+        if (!thesisBoxId) {
           throw new Error(
             `Alt kutu bulunamadı: "${subBoxTitle}". Lütfen onboarding sürecini baştan başlatın.`,
           );
         }
-
-        const thesisBoxId = box.id;
 
         // 2b. Map starter pack articles → APPROVED
         for (const article of entry.starterPack) {

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { AlertTriangle, WifiOff, Clock, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { createFlowId, Logger } from "@/lib/logger";
 import {
   getErrorDisplay,
   type ErrorDisplay as ErrorDisplayType,
@@ -12,7 +13,7 @@ interface ErrorDisplayProps {
   /**
    * Maskelenecek orijinal hata.
    * Error, string veya herhangi bir obje olabilir.
-   * console.error ile terminale yazılır ama kullanıcıya sızmaz.
+   * Logger ile terminale yazılır ama kullanıcıya sızmaz.
    */
   error: unknown;
   /**
@@ -73,8 +74,12 @@ export function ErrorDisplay({ error, onRetry }: ErrorDisplayProps) {
   const { Icon } = config;
 
   useEffect(() => {
-    console.error("[ErrorDisplay] Masked error:", error);
-  }, [error]);
+    const log = new Logger(createFlowId());
+    log.error("error_display_masked", {
+      error,
+      data: { scenario: display.scenario },
+    });
+  }, [error, display.scenario]);
 
   return (
     <main className="error-display-container">

@@ -2,7 +2,7 @@
  * Shared types and utilities for literature review paper processing.
  */
 
-import type { FoundationalQuery } from "./types";
+import type { FoundationalQuery } from "@/lib/types";
 
 // ============================================================================
 // Types

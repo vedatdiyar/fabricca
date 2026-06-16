@@ -2,6 +2,11 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
 
+interface PersistedOnboardingState {
+  boxes: GeminiThesisBox[] | null;
+  literaturePool: LiteraturePoolEntry[];
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Loading State Types (transient — not persisted)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -96,12 +101,15 @@ export const useOnboardingStore = create<OnboardingStore>()(
         boxes: state.boxes,
         literaturePool: state.literaturePool,
       }),
-      merge: (persisted, current) => ({
-        ...current,
-        ...(persisted as object),
-        boxes: (persisted as any)?.boxes ?? current.boxes,
-        literaturePool: (persisted as any)?.literaturePool ?? [],
-      }),
+      merge: (persisted, current) => {
+        const p = persisted as Partial<PersistedOnboardingState>;
+        return {
+          ...current,
+          ...p,
+          boxes: p.boxes ?? current.boxes,
+          literaturePool: p.literaturePool ?? [],
+        };
+      },
     },
   ),
 );

@@ -6,8 +6,8 @@
  * birine maskelenerek güvenli ve anlaşılır bir metin çiftine
  * (Başlık + Açıklama) dönüştürülür.
  *
- * Kullanıcı ne görürse görsün, geliştirici terminalde console.error
- * ile orijinal hatayı görmeye devam eder.
+ * Kullanıcı ne görürse görsün, geliştirici Logger ile orijinal hatayı
+ * terminalde görmeye devam eder.
  */
 
 export type ErrorScenario = "quota" | "network" | "system";
@@ -101,8 +101,6 @@ export function classifyError(error: unknown): ErrorScenario {
  *
  * @example
  *   const display = getErrorDisplay(err);
- *   console.log(display.title);       // "Bağlantı Kesildi"
- *   console.log(display.description); // "Akademik veritabanı ile..."
  */
 export function getErrorDisplay(error: unknown): ErrorDisplay {
   const scenario = classifyError(error);

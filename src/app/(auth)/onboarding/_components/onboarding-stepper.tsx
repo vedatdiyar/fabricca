@@ -26,9 +26,6 @@ export function OnboardingStepper() {
 
   const currentIdx = STEPS.findIndex((s) => s.route === pathname);
 
-  const progressHeight =
-    currentIdx > 0 ? `${(currentIdx / (STEPS.length - 1)) * 100}%` : "0%";
-
   return (
     <nav
       className="sticky top-0 z-50 h-screen w-14 md:w-56 shrink-0 border-r border-border bg-background/80 backdrop-blur-md overflow-y-auto"

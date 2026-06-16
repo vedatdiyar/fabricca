@@ -12,7 +12,7 @@ import type { EnhancedThesisData, OnboardingActionResult } from "@/lib/types";
  * (originality_reports, thesis_boxes) so the user can re-run from this step.
  *
  * @param data - The enriched thesis data
- * @returns Success response or error
+ * @returns Onboarding action result indicating success or an error message
  */
 export async function confirmEnhancedThesisAction(
   data: EnhancedThesisData,

@@ -28,7 +28,7 @@ export type ReplenishResult =
  * Intended for TanStack Query with 5-minute staleTime.
  *
  * @param boxId - The thesis sub-box ID
- * @returns Approved resources or a user-safe error message
+ * @returns Approved resources array wrapped in a result object, or a user-safe error message
  */
 export async function getApprovedResourcesAction(
   boxId: number
@@ -68,6 +68,7 @@ export async function getApprovedResourcesAction(
  *
  * @param resourceId - The resource ID to update
  * @param isRead - New boolean read state
+ * @returns Success or error result
  */
 export async function toggleResourceReadStatusAction(
   resourceId: number,
@@ -110,7 +111,7 @@ export async function toggleResourceReadStatusAction(
  * 4. Returns the newly promoted resources.
  *
  * @param boxId - The thesis sub-box ID
- * @returns Newly approved resources or a user-safe error
+ * @returns Newly promoted resources wrapped in a result object, or a user-safe error message
  */
 export async function replenishFromReservedAction(
   boxId: number
@@ -161,7 +162,7 @@ export async function replenishFromReservedAction(
     if (reservedBatch.length === 0) {
       /* ---- 3a. Pool is empty — trigger pipeline, notify user ---- */
       const excludedDois = await collectExistingDois();
-      void triggerResourcePipeline(excludedDois, boxId, log);
+      void triggerResourcePipeline(excludedDois, boxId, log); // TODO: Adım 4 asenkron API motoru pipeline entegrasyonu
 
       return {
         success: false,
@@ -190,15 +191,15 @@ export async function replenishFromReservedAction(
 
     if (remainingCount < 5) {
       const excludedDois = await collectExistingDois();
-      void triggerResourcePipeline(excludedDois, boxId, log);
+      void triggerResourcePipeline(excludedDois, boxId, log); // TODO: Adım 4 asenkron API motoru pipeline entegrasyonu
     }
 
-    /* ---- 5. Return newly promoted resources ---- */
-    const promotedResources = await db
-      .select()
-      .from(libraryResources)
-      .where(inArray(libraryResources.id, batchIds))
-      .orderBy(asc(libraryResources.id));
+    /* ---- 5. Return newly promoted resources (map in-memory, no re-query) ---- */
+    const promotedResources = reservedBatch.map((r) => ({
+      ...r,
+      status: "APPROVED" as const,
+      isRead: false,
+    }));
 
     return { success: true, data: promotedResources };
   } catch (err) {
@@ -231,13 +232,13 @@ async function collectExistingDois(): Promise<string[]> {
 /**
  * Fire-and-forget resource pipeline trigger.
  *
- * STUB — Will be fully implemented in Adım 4 with the asynchronous
- * API motor pipeline. Currently logs the trigger intent.
- *
  * Planned behaviour:
  * 1. Call external academic APIs with excludedDois filter
  * 2. Fetch 20 unique new articles
  * 3. Batch insert them as RESERVED for this box
+ *
+ * Currently logs the trigger intent; full implementation will
+ * be added when external academic API integration is available.
  *
  * @param excludedDois - DOI list to exclude from API results
  * @param boxId - Target thesis box ID for new resources
@@ -253,7 +254,6 @@ async function triggerResourcePipeline(
     data: {
       boxId,
       excludedDoiCount: excludedDois.length,
-      message: "Pipeline stub — will be implemented in Adım 4",
     },
   });
 

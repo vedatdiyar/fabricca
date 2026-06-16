@@ -1,5 +1,5 @@
 import { OnboardingStepper } from "./_components/onboarding-stepper";
-import { OnboardingGlobalLoader } from "@/components/ui/onboarding-global-loader";
+import { OnboardingGlobalLoader } from "@/components/onboarding-global-loader";
 
 /**
  * Onboarding sürecinin tüm sayfalarını saran layout.

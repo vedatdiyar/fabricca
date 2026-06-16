@@ -23,7 +23,9 @@ export type ServiceName =
   | "boxes"
   | "wikipedia"
   | "literature"
-  | "library";
+  | "library"
+  | "openalex"
+  | "crossref";
 
 export interface TokenUsage {
   input?: number;
@@ -75,21 +77,21 @@ export class Logger {
     this.flowId = flowId;
   }
 
-  info(arg1: string | Record<string, any>, params?: LogParams): void {
+  info(arg1: string | Record<string, unknown>, params?: LogParams): void {
     this.write("info", arg1, params);
   }
 
-  warn(arg1: string | Record<string, any>, params?: LogParams): void {
+  warn(arg1: string | Record<string, unknown>, params?: LogParams): void {
     this.write("warn", arg1, params);
   }
 
-  error(arg1: string | Record<string, any>, params?: LogParams): void {
+  error(arg1: string | Record<string, unknown>, params?: LogParams): void {
     this.write("error", arg1, params);
   }
 
   private write(
     level: "info" | "warn" | "error",
-    arg1: string | Record<string, any>,
+    arg1: string | Record<string, unknown>,
     params?: LogParams,
   ): void {
     if (typeof arg1 === "object" && arg1 !== null) {
@@ -102,7 +104,7 @@ export class Logger {
     } else {
       // Event-based logging string (legacy compatibility)
       const event = arg1 as string;
-      const entry: Record<string, any> = {
+      const entry: Record<string, unknown> = {
         event,
         flowId: this.flowId,
         service: params?.service ?? "flow",
@@ -136,7 +138,10 @@ export class Logger {
                 : "Unknown error",
         };
         if (err instanceof Error && err.stack) {
-          entry.error.stack = err.stack;
+          entry.error = {
+            ...(entry.error as Record<string, unknown>),
+            stack: err.stack,
+          };
         }
       }
 

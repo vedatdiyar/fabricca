@@ -53,7 +53,7 @@ export function LibraryContent({ boxes }: LibraryContentProps) {
                   className={`w-full rounded-md px-3 py-2.5 text-left text-sm transition-colors ${
                     box.id === selectedBoxId
                       ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                      : "text-muted-foreground hover:bg-muted/20 hover:text-foreground"
                   }`}
                 >
                   <span className="line-clamp-2 leading-snug">

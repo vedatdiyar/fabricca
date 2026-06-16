@@ -3,16 +3,16 @@ import { generateStructuredContent } from "@/lib/gemini";
 import {
   buildLiteratureSiftingPrompt,
   buildLiteratureJuryAnalysisPrompt,
+  buildLiteratureSiftingSystemInstruction,
+  buildLiteratureJuryAnalysisSystemInstruction,
   literatureSiftingSchema,
   literatureJuryAnalysisSchema,
-  LITERATURE_SIFTING_SYSTEM_INSTRUCTION,
-  LITERATURE_JURY_ANALYSIS_SYSTEM_INSTRUCTION,
 } from "@/lib/prompts";
 import { Logger } from "@/lib/logger";
 import type {
   SubBoxInput,
   ValidatedPaper,
-} from "@/lib/literature-review-papers";
+} from "./literature-review-papers";
 import type { JuryArticle } from "@/lib/types";
 import { validateWithCrossRef } from "./search-api";
 
@@ -69,7 +69,7 @@ export async function runSiftingStage(
 
     const siftingResult = await generateStructuredContent<SiftingResponse>(
       "gemini-3.1-flash-lite",
-      LITERATURE_SIFTING_SYSTEM_INSTRUCTION,
+      buildLiteratureSiftingSystemInstruction(),
       buildLiteratureSiftingPrompt(
         {
           title: box.title,
@@ -174,7 +174,7 @@ export async function runJuryStage(
 
   const juryResult = await generateStructuredContent<JuryResponse>(
     "gemini-3.1-flash-lite",
-    LITERATURE_JURY_ANALYSIS_SYSTEM_INSTRUCTION,
+    buildLiteratureJuryAnalysisSystemInstruction(),
     buildLiteratureJuryAnalysisPrompt(
       {
         title: box.title,

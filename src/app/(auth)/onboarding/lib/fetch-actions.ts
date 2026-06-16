@@ -4,7 +4,6 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
 import { getSession } from "@/proxy";
-import type { EnhancedThesisData } from "@/lib/types";
 
 export async function fetchThesisMatrix() {
   const session = await getSession();

@@ -4,7 +4,7 @@ import type { Logger } from "@/lib/logger";
 import type { QueryExtractionResponse } from "@/lib/types";
 import {
   queryExtractionSchema,
-  QUERY_EXTRACTION_SYSTEM_INSTRUCTION,
+  buildQueryExtractionSystemInstruction,
   buildQueryPrompt,
 } from "@/lib/prompts";
 
@@ -47,7 +47,7 @@ export async function extractQueries(
     const extractedQueries =
       await generateStructuredContent<QueryExtractionResponse>(
         "gemini-3.1-flash-lite",
-        QUERY_EXTRACTION_SYSTEM_INSTRUCTION,
+        buildQueryExtractionSystemInstruction(),
         buildQueryPrompt(params),
         queryExtractionSchema,
         log,
@@ -71,19 +71,17 @@ export async function extractQueries(
       : [];
 
     // Pad keywords to ensure exactly 5 items
+    const DEFAULTS = ["thesis", "research", "study", "analysis", "framework"];
+    const used = new Set(rawKeywords);
     const keywords = [...rawKeywords];
-    const defaults = ["thesis", "research", "study", "analysis", "framework"];
-    let defaultIdx = 0;
-    while (keywords.length < 5) {
-      const fallbackVal = defaults[defaultIdx % defaults.length];
-      if (!keywords.includes(fallbackVal)) {
-        keywords.push(fallbackVal);
-      } else {
-        keywords.push(`${fallbackVal}${keywords.length}`);
+    for (const d of DEFAULTS) {
+      if (keywords.length >= 5) break;
+      if (!used.has(d)) {
+        keywords.push(d);
+        used.add(d);
       }
-      defaultIdx++;
     }
-    const finalKeywords = keywords.slice(0, 5);
+    const finalKeywords = keywords;
 
     // Dynamic combinations generator
     const tezaraQueries: string[] = [];
@@ -92,7 +90,7 @@ export async function extractQueries(
     tezaraQueries.push(...combos2, ...combos3);
 
     const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
-    const tokens = (log as any).lastTokens || { input: 0, output: 0 };
+    const tokens = log.lastTokens ?? { input: 0, output: 0 };
 
     log.info({
       step: "extract_queries",

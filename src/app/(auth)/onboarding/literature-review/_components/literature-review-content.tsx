@@ -1,32 +1,24 @@
 "use client";
 
-import { useMemo, useEffect, useState, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import {
-  Loader2,
-  AlertCircle,
-  BookOpen,
-  Library,
-} from "lucide-react";
+import { Loader2, AlertCircle, BookOpen, Library } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  processLiteratureReviewAction,
-  confirmLiteratureAction,
-} from "../actions";
-import { fetchBoxes } from "../../lib/fetch-actions";
-import { LiteratureArticleCard } from "./literature-article-card";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
-import type { LoadingStep } from "@/lib/store/onboarding-store";
-import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
+import type { GeminiThesisBox } from "@/lib/types";
+import { LiteratureArticleCard } from "./literature-article-card";
+import { useLiteratureReview, type BoxStatus } from "../_hooks/use-literature-review";
 
+/**
+ * Renders a single sub-box's processing state (loading skeleton, error, empty,
+ * or done) while the review pipeline is running. Once a box is completed its
+ * results are rendered inline by the parent grid instead.
+ */
 function SubBoxQuery({
   subBox,
   status,
   errorMessage,
 }: {
   subBox: GeminiThesisBox;
-  status: "idle" | "loading" | "done" | "error";
+  status: BoxStatus;
   errorMessage?: string;
 }) {
   const literaturePool = useOnboardingStore((s) => s.literaturePool);
@@ -36,16 +28,16 @@ function SubBoxQuery({
   if (status === "loading") {
     return (
       <div className="space-y-3 animate-pulse">
-        <div className="h-5 w-3/4 rounded bg-border" />
-        <div className="h-24 w-full rounded-lg bg-border/60" />
-        <div className="h-24 w-full rounded-lg bg-border/60" />
+        <div className="h-5 w-3/4 rounded bg-muted" />
+        <div className="h-24 w-full rounded-lg bg-muted/20" />
+        <div className="h-24 w-full rounded-lg bg-muted/20" />
       </div>
     );
   }
 
   if (status === "error") {
     return (
-      <div className="p-6 text-center border border-destructive/30 rounded-lg bg-destructive/5">
+      <div className="p-6 text-center border border-destructive/20 rounded-lg bg-destructive/5">
         <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-2" />
         <p className="text-sm text-destructive font-medium mb-1">
           Tarama hatası
@@ -72,7 +64,7 @@ function SubBoxQuery({
         ))}
       </div>
       {entry.reservedPool.length > 0 && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 border border-border/30">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/20 border border-border/20">
           <Library className="w-4 h-4 text-muted-foreground shrink-0" />
           <p className="text-xs text-muted-foreground">
             <span className="font-semibold text-foreground">
@@ -86,180 +78,31 @@ function SubBoxQuery({
   );
 }
 
-type BoxStatus = "idle" | "loading" | "done" | "error";
-
+/**
+ * Top-level literature-review container. Delegates all orchestration (box
+ * loading, chunked parallel review pipeline, finalize flow) to the
+ * {@link useLiteratureReview} hook and only renders the grid of sub-boxes and
+ * the action buttons.
+ */
 export function LiteratureReviewContent() {
-  const router = useRouter();
-  const [subBoxes, setSubBoxes] = useState<GeminiThesisBox[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [confirming, setConfirming] = useState(false);
-  const [processing, setProcessing] = useState(false);
-  const processingRef = useRef(false);
-  const [boxStatuses, setBoxStatuses] = useState<Record<string, BoxStatus>>({});
-  const [boxErrors, setBoxErrors] = useState<Record<string, string>>({});
-  const store = useOnboardingStore();
-  const literaturePool = store.literaturePool ?? [];
-  const addToLiteraturePool = store.addToLiteraturePool;
-  const resetStore = store.resetStore;
-  const showLoading = store.showLoading;
-  const hideLoading = store.hideLoading;
-  const updateLoadingStep = store.updateLoadingStep;
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchBoxes().then((allBoxes) => {
-      if (cancelled) return;
-      // With flat hierarchy, all boxes are direct items
-      const freshTitles = new Set(allBoxes.map((b) => b.title));
-      const currentStore = useOnboardingStore.getState();
-      const poolTitles = new Set(
-        currentStore.literaturePool.map((e) => e.subBoxTitle),
-      );
-      // If the set of sub-boxes doesn't match literaturePool, reset the pool
-      if (
-        freshTitles.size !== poolTitles.size ||
-        ![...freshTitles].every((t) => poolTitles.has(t))
-      ) {
-        useOnboardingStore.getState().setLiteraturePool([]);
-      }
-      // Merge foundationalQueries from Zustand store (if exists) into DB boxes
-      const storeBoxMap = new Map(
-        (currentStore.boxes ?? []).map((b) => [b.title, b.foundationalQueries]),
-      );
-      setSubBoxes(
-        allBoxes.map((b) => ({
-          title: b.title,
-          description: b.description ?? "",
-          semanticSearchBlock: b.semanticSearchBlock ?? "",
-          foundationalQueries: storeBoxMap.get(b.title) ?? [],
-          concepts: b.concepts ?? [],
-        })),
-      );
-      setLoading(false);
-    });
-    return () => { cancelled = true; };
-  }, []);
-
-  const startReviewProcess = useCallback(async () => {
-    if (subBoxes.length === 0 || processingRef.current) return;
-
-    processingRef.current = true;
-    setProcessing(true);
-
-    const reviewSteps: LoadingStep[] = subBoxes.map((box) => ({
-      text: `${box.title} taranıyor...`,
-      status: "idle" as const,
-    }));
-
-    showLoading(
-      "Literatür Taraması Devam Ediyor",
-      "Her bir konu kutusu için akademik veri tabanları taranıyor, yapay zeka değerlendirmesi yapılıyor.",
-      reviewSteps,
-    );
-
-    const CHUNK_SIZE = 2;
-    let globalStepIndex = 0;
-
-    for (let i = 0; i < subBoxes.length; i += CHUNK_SIZE) {
-      const chunk = subBoxes.slice(i, i + CHUNK_SIZE);
-
-      // Mark both chunk steps as active
-      for (let k = 0; k < chunk.length; k++) {
-        updateLoadingStep(globalStepIndex + k, "active");
-      }
-
-      setBoxStatuses((prev) => {
-        const next = { ...prev };
-        for (const box of chunk) next[box.title] = "loading";
-        return next;
-      });
-
-      const bulkResult = await processLiteratureReviewAction(
-        chunk.map((box) => ({
-          title: box.title,
-          description: box.description,
-          semanticSearchBlock: box.semanticSearchBlock,
-          foundationalQueries: box.foundationalQueries,
-        })),
-      );
-
-      if (bulkResult.data) {
-        for (let j = 0; j < chunk.length; j++) {
-          const box = chunk[j];
-          const boxResult = bulkResult.data[j];
-          addToLiteraturePool({
-            subBoxTitle: box.title,
-            starterPack: boxResult.starterPack,
-            reservedPool: boxResult.reservedPool,
-          });
-          setBoxStatuses((prev) => ({ ...prev, [box.title]: "done" }));
-          updateLoadingStep(globalStepIndex + j, "completed");
-        }
-      } else {
-        const msg = bulkResult.error ?? "Literatür taraması başarısız oldu.";
-        for (let j = 0; j < chunk.length; j++) {
-          const box = chunk[j];
-          setBoxErrors((prev) => ({ ...prev, [box.title]: msg }));
-          setBoxStatuses((prev) => ({ ...prev, [box.title]: "error" }));
-          updateLoadingStep(globalStepIndex + j, "completed");
-        }
-      }
-
-      globalStepIndex += chunk.length;
-    }
-
-    processingRef.current = false;
-    setProcessing(false);
-    hideLoading();
-  }, [subBoxes, addToLiteraturePool, showLoading, hideLoading, updateLoadingStep]);
-
-  const allProcessed = useMemo(() => {
-    if (subBoxes.length === 0) return false;
-    return subBoxes.every((box) =>
-      literaturePool.some((entry) => entry.subBoxTitle === box.title),
-    );
-  }, [subBoxes, literaturePool]);
-
-  const handleFinalize = async () => {
-    if (literaturePool.length === 0) {
-      toast.error("Henüz işlenmiş literatür verisi bulunamadı.");
-      return;
-    }
-
-    const finalSteps: LoadingStep[] = [
-      { text: "Literatür havuzu veri tabanına yazılıyor...", status: "active" },
-      { text: "Onboarding tamamlanıyor...", status: "idle" },
-    ];
-
-    showLoading(
-      "Onboarding Tamamlanıyor",
-      "Tüm literatür verileri kaydediliyor ve onboarding süreci sonlandırılıyor.",
-      finalSteps,
-    );
-
-    setConfirming(true);
-    const result = await confirmLiteratureAction({ literaturePool });
-    if ("error" in result && result.error) {
-      hideLoading();
-      toast.error(result.error);
-      setConfirming(false);
-      return;
-    }
-    updateLoadingStep(0, "completed");
-    updateLoadingStep(1, "active");
-    await new Promise((r) => setTimeout(r, 400));
-    hideLoading();
-    resetStore();
-    setConfirming(false);
-    toast.success("Tebrikler! Onboarding süreciniz tamamlandı.");
-    router.push("/dashboard");
-  };
+  const {
+    subBoxes,
+    loading,
+    processing,
+    confirming,
+    boxStatuses,
+    boxErrors,
+    allProcessed,
+    literaturePool,
+    startReviewProcess,
+    handleFinalize,
+  } = useLiteratureReview();
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-4 max-w-md">
-          <div className="p-4 bg-muted/50 rounded-full inline-flex mx-auto">
+          <div className="p-4 bg-muted/20 rounded-full inline-flex mx-auto">
             <Loader2 className="w-8 h-8 text-muted-foreground animate-spin" />
           </div>
           <p className="text-muted-foreground text-sm">
@@ -297,7 +140,7 @@ export function LiteratureReviewContent() {
               className="border border-border rounded-xl bg-card p-5 space-y-4"
             >
               <div className="flex items-center gap-2">
-                <div className="w-1.5 h-6 rounded-full bg-primary/60" />
+                <div className="w-1.5 h-6 rounded-full bg-primary/20" />
                 <h3 className="text-base font-semibold text-foreground">
                   {subBox.title}
                 </h3>
@@ -308,32 +151,7 @@ export function LiteratureReviewContent() {
                 </p>
               )}
               {isCompleted ? (
-                <div className="space-y-4">
-                  {literaturePool
-                    .filter((e) => e.subBoxTitle === subBox.title)
-                    .flatMap((entry) => entry.starterPack)
-                    .map((article, ai) => (
-                      <LiteratureArticleCard key={ai} article={article} />
-                    ))}
-                  {literaturePool
-                    .filter((e) => e.subBoxTitle === subBox.title)
-                    .some((entry) => entry.reservedPool.length > 0) && (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 border border-border/30">
-                      <Library className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <p className="text-xs text-muted-foreground">
-                        <span className="font-semibold text-foreground">
-                          {literaturePool
-                            .filter((e) => e.subBoxTitle === subBox.title)
-                            .reduce(
-                              (sum, e) => sum + e.reservedPool.length,
-                              0,
-                            )}
-                        </span>{" "}
-                        ek kaynak daha önerildi.
-                      </p>
-                    </div>
-                  )}
-                </div>
+                <SubBoxQuery subBox={subBox} status="done" />
               ) : (
                 <SubBoxQuery
                   subBox={subBox}
