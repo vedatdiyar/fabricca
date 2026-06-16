@@ -94,6 +94,8 @@ Cevap üretmeden önce içsel olarak şu 2 adımlı analitik planı işlet:
 - ESNEK KOTA KURALI (Flexible Quota): "starterPack" EN FAZLA 5, "reservedPool" EN FAZLA 15 makale içerebilir. Sifting aşamasından gelen doğrulanmış gerçek aday sayısı bu üst sınırları doldurmaya yetmiyorsa, listeleri sahte verilerle (uydurma başlık, yazar, yayın yılı) KESİNLİKLE ŞİŞİRME. Yalnızca elindeki mevcut gerçek makaleleri önem, kuramsal kuruculuk ve hiyerarşi sırasına göre havuzlara dağıt; kalan kontenjanları boş bırak. Hiç aday yoksa starterPack ve reservedPool tamamen boş ([]) dönebilir; bu, halüsinasyon üretmekten katbekat iyidir.
 
 - DİL: "strategicRecommendations" alanlarını ve tüm metin içeriklerini tamamen akıcı, hatasız, elit bir akademik Türkçe ile yaz.
+
+- AKADEMİK BARAJ PUANI VE TUTARLILIK (Academic Threshold Mandate): Adayların siftingScore değerlerini katı bir filtre olarak kullan. SiftingScore değeri 85 ve üzerinde olan kurucu makaleleri önem sırasına göre 'starterPack' listesine yerleştir. SiftingScore değeri 75 ile 84 arasında olan ya da starterPack kotasına sığmayan diğer kaliteli kaynakları 'reservedPool' listesine al. SiftingScore değeri 75'in altında olan veya kutunun öz omurgasına doğrudan katkı sunmayan tüm zayıf/çeper makaleleri — kotaları doldurmak adına bile olsa — KESİNLİKLE LİSTELERE DAHİL ETME, acımasızca dışarıda bırak.
 </constraints>
 
 <output_format>
@@ -114,6 +116,7 @@ export function buildLiteratureJuryAnalysisPrompt(
     publisher?: string;
     publicationYear?: number;
     authors: string[];
+    siftingScore?: number;
   }[],
 ): string {
   return `
@@ -127,7 +130,7 @@ ${JSON.stringify(siftedCandidates)}
 </context>
 
 <task>
-Sistem talimatındaki "Stratejik Gerekçe Zorunluluğu" ve "Esnek Kota Kuralı" standartlarına harfiyen uyarak, yukarıdaki makale adaylarını semantik olarak puanla. En kritik ve kurucu makaleleri "starterPack" listesine, potansiyel katkı sağlayacak diğer makaleleri "reservedPool" listesine yerleştir. Her makale için akademik gerekçe sun.
+Sistem talimatındaki "Stratejik Gerekçe Zorunluluğu", "Esnek Kota Kuralı" ve "Akademik Baraj Puanı" standartlarına harfiyen uyarak, yukarıdaki makale adaylarını semantik olarak puanla. En kritik ve kurucu makaleleri "starterPack" listesine, potansiyel katkı sağlayacak diğer makaleleri "reservedPool" listesine yerleştir. Her makale için akademik gerekçe sun.
 </task>
 
 <final_instruction>

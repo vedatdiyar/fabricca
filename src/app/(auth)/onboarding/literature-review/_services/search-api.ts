@@ -54,7 +54,13 @@ export async function searchOpenAlex(query: string): Promise<RawPaper[]> {
     const results = data.results;
     if (!results) return [];
 
-    return results.map((work) => {
+    const rawScores = results.map(
+      (work) => (work.relevance_score as number) ?? 0,
+    );
+    const maxScore = Math.max(...rawScores, 0);
+    const safeMax = maxScore > 0 ? maxScore : 1;
+
+    return results.map((work, i) => {
       const invertedIndex = work.abstract_inverted_index as
         | Record<string, number[]>
         | null
@@ -85,6 +91,7 @@ export async function searchOpenAlex(query: string): Promise<RawPaper[]> {
         publisher: primaryLocation?.source?.display_name ?? null,
         openAlexId: (work.id as string) ?? null,
         isFoundational: false,
+        relevanceScore: (rawScores[i] ?? 0) / safeMax,
       };
     });
   } catch {
@@ -128,7 +135,13 @@ export async function searchOpenAlexKeyword(
     const results = data.results;
     if (!results) return [];
 
-    return results.map((work) => {
+    const rawScores = results.map(
+      (work) => (work.relevance_score as number) ?? 0,
+    );
+    const maxScore = Math.max(...rawScores, 0);
+    const safeMax = maxScore > 0 ? maxScore : 1;
+
+    return results.map((work, i) => {
       const invertedIndex = work.abstract_inverted_index as
         | Record<string, number[]>
         | null
@@ -159,6 +172,7 @@ export async function searchOpenAlexKeyword(
         publisher: primaryLocation?.source?.display_name ?? null,
         openAlexId: (work.id as string) ?? null,
         isFoundational: false,
+        relevanceScore: (rawScores[i] ?? 0) / safeMax,
       };
     });
   } catch {

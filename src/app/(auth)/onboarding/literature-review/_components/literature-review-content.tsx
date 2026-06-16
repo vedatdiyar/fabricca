@@ -107,7 +107,9 @@ export function LiteratureReviewContent() {
   const updateLoadingStep = store.updateLoadingStep;
 
   useEffect(() => {
+    let cancelled = false;
     fetchBoxes().then((allBoxes) => {
+      if (cancelled) return;
       // With flat hierarchy, all boxes are direct items
       const freshTitles = new Set(allBoxes.map((b) => b.title));
       const currentStore = useOnboardingStore.getState();
@@ -136,6 +138,7 @@ export function LiteratureReviewContent() {
       );
       setLoading(false);
     });
+    return () => { cancelled = true; };
   }, []);
 
   const startReviewProcess = useCallback(async () => {

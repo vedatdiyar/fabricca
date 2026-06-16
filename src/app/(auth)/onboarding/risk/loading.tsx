@@ -1,46 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
-import { OnboardingGlobalLoader } from "@/components/ui/onboarding-global-loader";
-import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import { Loader2 } from "lucide-react";
 
 /**
  * Next.js native page loading fallback (F5 / hard navigation).
- * Forces the global onboarding loader into a visible "initial" state so the
- * user sees a meaningful loading screen while the risk route segment loads.
+ * Shows a minimal local spinner while the risk route segment loads.
+ * RiskContainer manages its own local loading state; this is just the
+ * Suspense fallback during JS chunk loading.
  */
 export default function RiskLoading() {
-  const showLoading = useOnboardingStore((s) => s.showLoading);
-  const hideLoading = useOnboardingStore((s) => s.hideLoading);
-
-  useEffect(() => {
-    showLoading(
-      "Risk Analiz Motorları Çalışıyor",
-      "Tez matrisiniz inceleniyor, veri tabanları taranıyor ve risk raporu hazırlanıyor.",
-      [
-        {
-          text: "Sorgu ve doğrulama parametreleri üretiliyor...",
-          status: "active",
-        },
-        {
-          text: "Tavily ve Tezara paralel motorları koşturuluyor...",
-          status: "idle",
-        },
-        {
-          text: "Karşılaştırmalı literatür matrisi yapılandırılıyor...",
-          status: "idle",
-        },
-        {
-          text: "Nihai risk seviyesi ve tavsiyeler hazırlanıyor...",
-          status: "idle",
-        },
-      ],
-    );
-
-    return () => {
-      hideLoading();
-    };
-  }, [showLoading, hideLoading]);
-
-  return <OnboardingGlobalLoader />;
+  return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <Loader2 className="w-8 h-8 text-primary animate-spin" />
+    </div>
+  );
 }

@@ -31,7 +31,9 @@ export function EnrichmentView() {
   const [historicalSpatialLimits, setHistoricalSpatialLimits] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
     fetchThesisMatrix().then((matrix) => {
+      if (cancelled) return;
       if (!matrix) {
         toast.error("Zenginleştirilmiş tez matrisi bulunamadı.");
         router.push("/onboarding/matrix");
@@ -45,6 +47,7 @@ export function EnrichmentView() {
       setHistoricalSpatialLimits(matrix.historicalSpatialLimits);
       setLoading(false);
     });
+    return () => { cancelled = true; };
   }, [router]);
 
   const handleConfirm = async (e: React.FormEvent<HTMLFormElement>) => {

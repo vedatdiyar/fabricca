@@ -27,9 +27,12 @@ export function MatrixForm() {
   const [loading, setLoading] = useState(true);
   const showLoading = useOnboardingStore((s) => s.showLoading);
   const hideLoading = useOnboardingStore((s) => s.hideLoading);
+  const isLoading = useOnboardingStore((s) => s.isLoading);
 
   useEffect(() => {
+    let cancelled = false;
     fetchThesisMatrix().then((matrix) => {
+      if (cancelled) return;
       if (matrix) {
         setStudyTitle(matrix.studyTitle);
         setResearchQuestion(matrix.researchQuestion);
@@ -40,6 +43,7 @@ export function MatrixForm() {
       }
       setLoading(false);
     });
+    return () => { cancelled = true; };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -179,7 +183,7 @@ export function MatrixForm() {
             />
           </div>
           <div className="md:col-span-full">
-            <Button type="submit" className="btn-academic-hero w-full" disabled={isPending || useOnboardingStore.getState().isLoading}>
+            <Button type="submit" className="btn-academic-hero w-full" disabled={isPending || isLoading}>
               {isPending ? (
                 <span className="flex items-center justify-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />

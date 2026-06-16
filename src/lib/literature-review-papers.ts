@@ -26,6 +26,7 @@ export interface RawPaper {
   publisher: string | null;
   openAlexId: string | null;
   isFoundational: boolean;
+  relevanceScore: number;
 }
 
 export interface ValidatedPaper {
@@ -38,6 +39,7 @@ export interface ValidatedPaper {
   publisher: string | null;
   openAlexId: string | null;
   isFoundational: boolean;
+  relevanceScore: number;
 }
 
 // ============================================================================
@@ -63,6 +65,7 @@ export function mergePapers(
       publisher: raw.publisher,
       openAlexId: raw.openAlexId,
       isFoundational: raw.isFoundational,
+      relevanceScore: raw.relevanceScore,
     };
 
     if (paper.doi) {
@@ -74,6 +77,7 @@ export function mergePapers(
         existing.publisher = existing.publisher ?? paper.publisher;
         existing.openAlexId = existing.openAlexId ?? paper.openAlexId;
         if (paper.isFoundational) existing.isFoundational = true;
+        if (paper.relevanceScore > existing.relevanceScore) existing.relevanceScore = paper.relevanceScore;
         const existingSet = new Set(existing.authors);
         for (const a of paper.authors) {
           if (!existingSet.has(a)) {
@@ -92,6 +96,7 @@ export function mergePapers(
         existing.year = existing.year ?? paper.year;
         existing.publisher = existing.publisher ?? paper.publisher;
         if (paper.isFoundational) existing.isFoundational = true;
+        if (paper.relevanceScore > existing.relevanceScore) existing.relevanceScore = paper.relevanceScore;
       } else {
         openAlexIdMap.set(paper.openAlexId, { ...paper });
       }
@@ -109,7 +114,10 @@ export function mergePapers(
   all.sort((a, b) => {
     if (a.isFoundational && !b.isFoundational) return -1;
     if (!a.isFoundational && b.isFoundational) return 1;
-    return 0;
+    if (b.relevanceScore !== a.relevanceScore) {
+      return b.relevanceScore - a.relevanceScore;
+    }
+    return (a.title || "").localeCompare(b.title || "");
   });
   return all;
 }

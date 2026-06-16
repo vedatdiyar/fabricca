@@ -11,8 +11,9 @@ export const literatureSiftingSchema: JsonSchema = {
           doi: { type: "string" },
           title: { type: "string" },
           keep: { type: "boolean" },
+          score: { type: "integer" },
         },
-        required: ["doi", "title", "keep"],
+        required: ["doi", "title", "keep", "score"],
       },
     },
   },
@@ -26,8 +27,9 @@ Sen akademik bilgi erişimi, literatür taraması ve hızlı konu sınıflandır
 
 <instructions>
 1. Sana sağlanan <global_context> (tez matrisi) ve <sub_box> bağlamını (başlık, açıklama) analiz et.
-2. <candidates_list> içindeki her bir makale adayını, başlık ve özetini (abstract) kullanarak hem <sub_box> kapsamıyla hem de tezin küresel matrisiyle karşılaştır.
-3. Her aday için sadece ve sadece ikili bir karar ver: "keep: true" (tutulmalı) veya "keep: false" (elenmeli).
+2. <candidates_list> içindeki her bir makale adayını, başlık ve özetini (abstract) kullanarak hem <sub_box> kapsamıyla hem de tezin küresel matrisiyle değerlendir.
+3. Aday listesindeki makaleleri birbiriyle KESİNLİKLE kıyaslama. Her makaleyi tek başına, tezin küresel matrisine ve sub-box kriterlerine göre 1-100 arasında mutlak olarak puanla ve bu puanı "score" alanına yaz.
+4. Puan >= 75 ise "keep: true", puan < 75 ise "keep: false" olarak işaretle.
 </instructions>
 
 <constraints>
@@ -45,12 +47,15 @@ Sen akademik bilgi erişimi, literatür taraması ve hızlı konu sınıflandır
 
   Eğer bir makale bu üç boyuttan en az birinde tez matrisine somut katma değer sunuyorsa "keep: true" koridoruna girebilir. Hiçbir boyutta katkısı olmayan makaleler — hangi disiplinden veya alandan gelirse gelsin — ACIMASIZCA ELENİR.
 
+- MUTLAK PUANLAMA ZORUNLULUĞU (Absolute Scoring Mandate):
+  Makaleleri birbiriyle ASLA kıyaslama. Her makale, tez matrisine ve sub-box kriterlerine göre kendi başına, bağımsız olarak 1-100 arasında mutlak bir puan alır. score >= 75 ise keep: true; score < 75 ise keep: false.
+
 - SIFIR GEVEZELİK (No Reasoning):
   Kararların için asla ama asla bir gerekçe, metin veya açıklama üretme. Sadece ham yapısal kararı (true/false) döndür.
 </constraints>
 
 <output_format>
-Yalnızca literatureSiftingSchema yapısına tam uyumlu, içeriklerinde hiçbir metinsel gerekçe/açıklama barındırmayan, geçerli ve temiz bir JSON nesnesi döndür.
+Yalnızca literatureSiftingSchema yapısına (doi, title, keep, score alanları) tam uyumlu, içeriklerinde hiçbir metinsel gerekçe/açıklama barındırmayan, geçerli ve temiz bir JSON nesnesi döndür.
 </output_format>
 `;
 
@@ -98,7 +103,7 @@ Tez Matrisi (Küresel Bağlam):
 </global_context>
 
 <task>
-Sistem talimatındaki "Tez Matrisi Uyumluluk Testi" ve "Üç Boyutlu Katma Değer Filtresi" kurallarına harfiyen uyarak, yukarıdaki aday listesindeki her bir makaleyi "keep: true" veya "keep: false" olarak işaretle. Kesinlikle açıklama veya gerekçe metni üretme.
+Sistem talimatındaki "Tez Matrisi Uyumluluk Testi" ve "Üç Boyutlu Katma Değer Filtresi" kurallarına harfiyen uyarak, yukarıdaki aday listesindeki her bir makaleyi 1-100 arası mutlak puanla (score) ve bu puana göre keep: true/false olarak işaretle. Makaleleri birbiriyle kıyaslama. Kesinlikle açıklama veya gerekçe metni üretme.
 </task>
 
 <final_instruction>

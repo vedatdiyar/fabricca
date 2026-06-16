@@ -9,7 +9,10 @@ import {
   LITERATURE_JURY_ANALYSIS_SYSTEM_INSTRUCTION,
 } from "@/lib/prompts";
 import { Logger } from "@/lib/logger";
-import type { SubBoxInput, ValidatedPaper } from "@/lib/literature-review-papers";
+import type {
+  SubBoxInput,
+  ValidatedPaper,
+} from "@/lib/literature-review-papers";
 import type { JuryArticle } from "@/lib/types";
 import { validateWithCrossRef } from "./search-api";
 
@@ -30,6 +33,7 @@ interface SiftingResultItem {
   doi: string;
   title: string;
   keep: boolean;
+  score: number;
 }
 
 interface SiftingResponse {
@@ -49,6 +53,7 @@ export async function runSiftingStage(
 ): Promise<ValidatedPaper[]> {
   const CHUNK_SIZE = 60;
   const keptDecisions = new Map<string, boolean>();
+  const scoreDecisions = new Map<string, number>();
 
   for (let i = 0; i < candidates.length; i += CHUNK_SIZE) {
     const chunk = candidates.slice(i, i + CHUNK_SIZE);
@@ -80,9 +85,15 @@ export async function runSiftingStage(
 
     for (const r of siftingResult.siftedResults) {
       if (r.keep) {
-        if (r.doi) keptDecisions.set("doi:" + r.doi, true);
-        if (r.title)
-          keptDecisions.set("title:" + r.title.toLowerCase().trim(), true);
+        if (r.doi) {
+          keptDecisions.set("doi:" + r.doi, true);
+          scoreDecisions.set("doi:" + r.doi, r.score);
+        }
+        if (r.title) {
+          const titleKey = "title:" + r.title.toLowerCase().trim();
+          keptDecisions.set(titleKey, true);
+          scoreDecisions.set(titleKey, r.score);
+        }
       }
     }
 
@@ -103,6 +114,20 @@ export async function runSiftingStage(
       return true;
     return false;
   });
+
+  for (const c of kept) {
+    const scoreKey = c.doi
+      ? "doi:" + c.doi
+      : c.title
+        ? "title:" + c.title.toLowerCase().trim()
+        : null;
+    if (scoreKey) {
+      const score = scoreDecisions.get(scoreKey);
+      if (score !== undefined) {
+        (c as unknown as Record<string, unknown>).siftingScore = score;
+      }
+    }
+  }
 
   return kept;
 }
@@ -129,6 +154,8 @@ export async function runJuryStage(
     publisher: c.publisher ?? "",
     publicationYear: c.year ?? 0,
     authors: c.authors,
+    siftingScore:
+      ((c as unknown as Record<string, unknown>).siftingScore as number) ?? 0,
   }));
 
   // Build lookup for isFoundational backfill
@@ -217,6 +244,7 @@ export async function enrichJuryArticleWithCrossRef(
     publisher: article.publisher,
     openAlexId: null,
     isFoundational: article.isFoundational ?? false,
+    relevanceScore: 0,
   };
 
   const enriched = await validateWithCrossRef(paper);

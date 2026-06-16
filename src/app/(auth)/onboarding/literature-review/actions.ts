@@ -12,10 +12,7 @@ import {
 } from "@/db/schema";
 import { getSession } from "@/proxy";
 import { Logger, createFlowId } from "@/lib/logger";
-import type {
-  LiteraturePoolEntry,
-  OnboardingActionResult,
-} from "@/lib/types";
+import type { LiteraturePoolEntry, OnboardingActionResult } from "@/lib/types";
 import type { NewLibraryResource } from "@/db/schema";
 import type { SubBoxInput, RawPaper } from "@/lib/literature-review-papers";
 import { mergePapers } from "@/lib/literature-review-papers";
@@ -31,7 +28,6 @@ import {
   enrichJuryArticleWithCrossRef,
   type LiteratureReviewResult,
 } from "./_services/ai-processor";
-
 
 // ============================================================================
 // Main Action: processLiteratureReviewAction
@@ -92,28 +88,28 @@ export async function processLiteratureReviewAction(
     ];
     let foundationalWorksPromise: Promise<FoundationalWorkResult[]> | null =
       null;
-    if (
-      subBox.foundationalQueries &&
-      subBox.foundationalQueries.length > 0
-    ) {
+    if (subBox.foundationalQueries && subBox.foundationalQueries.length > 0) {
       foundationalWorksPromise = resolveFoundationalWorks(
         subBox.foundationalQueries,
       );
       // Wrap in a promise that resolves to RawPaper[] for Promise.allSettled
       searchCalls.push(
         foundationalWorksPromise.then((foundational) =>
-          foundational.map((fw): RawPaper => ({
-            source: "openalex" as const,
-            title: fw.title,
-            abstract: null,
-            doi: null,
-            url: fw.id,
-            authors: [],
-            year: fw.publicationYear,
-            publisher: null,
-            openAlexId: fw.id,
-            isFoundational: true,
-          })),
+          foundational.map(
+            (fw): RawPaper => ({
+              source: "openalex" as const,
+              title: fw.title,
+              abstract: null,
+              doi: null,
+              url: fw.id,
+              authors: [],
+              year: fw.publicationYear,
+              publisher: null,
+              openAlexId: fw.id,
+              isFoundational: true,
+              relevanceScore: 1.0,
+            }),
+          ),
         ),
       );
     }

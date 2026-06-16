@@ -9,8 +9,8 @@ import {
   Sparkles,
   Rocket,
   Layers,
-  BookOpen,
-  Quote,
+  Library,
+  FileText,
   PlusCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -235,6 +235,10 @@ function BoxCard({
       className={`group/card h-full flex flex-col bg-card border-border/60 rounded-xl transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_0_24px_-6px_#10b981]/20${isLastOdd ? " md:col-span-2" : ""}`}
     >
       <CardHeader className="pb-3 space-y-3">
+        <div className="flex items-center gap-1.5 text-primary/60 text-xs">
+          <PlusCircle className="w-3 h-3" />
+          <span>Kutu {index + 1}</span>
+        </div>
         <div className="flex items-start gap-3">
           <span className="relative mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-primary shadow-[0_0_8px_#10b981]" />
           <CardTitle className="text-base font-semibold text-foreground leading-snug">
@@ -250,8 +254,8 @@ function BoxCard({
 
       <CardContent className="flex-1 flex flex-col gap-4 pt-0">
         {box.concepts && box.concepts.length > 0 && (
-          <div className="space-y-2">
-            <div className="border-t border-border/60" />
+          <div className="space-y-2 py-3">
+            <div className="border-t border-border" />
             <div className="flex flex-wrap gap-1.5">
               {box.concepts.map((concept, i) => (
                 <span
@@ -262,53 +266,40 @@ function BoxCard({
                 </span>
               ))}
             </div>
+            <div className="border-b border-border" />
           </div>
         )}
 
         {box.foundationalQueries && box.foundationalQueries.length > 0 && (
-          <div className="mt-auto space-y-3">
-            <div className="border-t border-border/60" />
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge
-                variant="outline"
-                className="bg-primary/10 text-primary border-primary/20 flex items-center gap-1.5 py-1 px-2.5 rounded-md font-normal text-xs"
-              >
-                <BookOpen className="w-3.5 h-3.5" />
-                {box.foundationalQueries.length} Kurucu Metin
-              </Badge>
-              <span className="text-muted-foreground/60 text-xs italic truncate max-w-[180px]">
-                {box.foundationalQueries
-                  .map((fq) => fq.author.split(" ").pop())
-                  .filter(Boolean)
-                  .join(", ")}{" "}
-                ekolü
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
+          <div className="mt-auto pt-2 space-y-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Library className="w-3.5 h-3.5 text-primary" />
+              Kurucu Literatür Temeli
+            </h4>
+            <ul className="space-y-2 pl-0.5">
               {box.foundationalQueries.slice(0, 3).map((fq, i) => (
-                <span
+                <li
                   key={i}
-                  className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/50 bg-card border border-border/40 rounded-md px-2 py-0.5"
+                  className="flex items-start gap-2 text-xs leading-relaxed text-foreground/90"
                 >
-                  <Quote className="w-2.5 h-2.5" />
-                  {fq.publicationYear}
-                </span>
+                  <FileText className="w-3.5 h-3.5 text-accent-foreground mt-0.5 shrink-0" />
+                  <span>
+                    <strong className="font-medium text-foreground">
+                      {fq.author}
+                    </strong>{" "}
+                    <span className="text-muted-foreground/60 text-[11px]">
+                      ({fq.publicationYear})
+                    </span>{" "}
+                    —{" "}
+                    <span className="italic text-foreground/80">
+                      "{fq.title}"
+                    </span>
+                  </span>
+                </li>
               ))}
-              {box.foundationalQueries.length > 3 && (
-                <span className="text-[11px] text-muted-foreground/40 px-1">
-                  +{box.foundationalQueries.length - 3}
-                </span>
-              )}
-            </div>
+            </ul>
           </div>
         )}
-
-        <div className="mt-auto pt-2">
-          <div className="flex items-center gap-1.5 text-primary/60 text-xs opacity-0 group-hover/card:opacity-100 transition-opacity duration-200">
-            <PlusCircle className="w-3.5 h-3.5" />
-            <span>Kutu {index + 1}</span>
-          </div>
-        </div>
       </CardContent>
     </Card>
   );
