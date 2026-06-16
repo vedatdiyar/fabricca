@@ -9,7 +9,7 @@ import type { OriginalityReportData } from "@/lib/types";
 import type { ThesisMatrix } from "@/db/schema";
 import { searchAndSiftThesesAction, runJuryAnalysisAction, completeRiskStageAction } from "../actions";
 import { generateBoxesAction } from "../../boxes/actions";
-import { fetchThesisMatrix, fetchOriginalityReport } from "../../lib/fetch-actions";
+import { fetchThesisMatrix, fetchOriginalityReport } from "../../_lib/fetch-actions";
 
 /** Loading step labels for the 4-stage risk analysis pipeline. */
 const ANALYSIS_STEPS: LoadingStep[] = [

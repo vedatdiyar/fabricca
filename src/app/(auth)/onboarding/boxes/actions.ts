@@ -14,7 +14,7 @@ import {
   thesisBoxGenerationSchema,
 } from "@/lib/prompts";
 import type { GeminiThesisBox, OnboardingActionResult } from "@/lib/types";
-import { fetchThesisMatrix } from "../lib/fetch-actions";
+import { fetchThesisMatrix } from "../_lib/fetch-actions";
 
 /**
  * Generates subject boxes (boxes) via Gemini for the current user's thesis matrix.

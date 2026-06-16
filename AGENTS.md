@@ -39,22 +39,104 @@ Proje, Next.js App Router'ın rota gruplama (route groups) özelliğini kullanar
 ```
 ├── src/
 │   ├── app/
+│   │   ├── globals.css               # Global stiller
+│   │   ├── layout.tsx                # Root layout (fontlar, QueryProvider, Toaster)
+│   │   ├── page.tsx                  # Root yönlendirici (/login veya /dashboard)
 │   │   ├── (auth)/                   # Kimlik doğrulama grubu
+│   │   │   ├── layout.tsx            # Auth layout (oturum kontrolü)
 │   │   │   ├── login/                # Giriş sayfası → /login
-│   │   │   └── onboarding/           # Tez Matrisi + Zenginleştirme + Risk Analizi + Literatür Tarama + Konu Kutuları → /onboarding
+│   │   │   │   ├── actions.ts        # Giriş server action'ları
+│   │   │   │   └── page.tsx
+│   │   │   └── onboarding/           # Tez Matrisi + Zenginleştirme + Risk + Kutular + Literatür → /onboarding
+│   │   │       ├── layout.tsx        # Onboarding layout (adım container'ı)
+│   │   │       ├── page.tsx          # Ana onboarding stepper sayfası
+│   │   │       ├── actions.ts        # Ortak onboarding server action'ları
+│   │   │       ├── _components/      # Özel onboarding bileşenleri
+│   │   │       │   ├── onboarding-stepper.tsx
+│   │   │       │   └── start-over-button.tsx
+│   │   │       ├── _lib/             # Fetch yardımcı server action'ları
+│   │   │       │   └── fetch-actions.ts
+│   │   │       ├── matrix/           # Adım 1: Tez Matrisi → /onboarding/matrix
+│   │   │       │   ├── actions.ts
+│   │   │       │   ├── page.tsx
+│   │   │       │   └── _components/
+│   │   │       │       └── matrix-form.tsx
+│   │   │       ├── enrichment/       # Adım 2: Zenginleştirme → /onboarding/enrichment
+│   │   │       │   ├── actions.ts
+│   │   │       │   ├── page.tsx
+│   │   │       │   └── _components/
+│   │   │       │       └── enrichment-view.tsx
+│   │   │       ├── risk/             # Adım 3: Risk Analizi → /onboarding/risk
+│   │   │       │   ├── actions.ts
+│   │   │       │   ├── page.tsx
+│   │   │       │   ├── error.tsx
+│   │   │       │   ├── loading.tsx
+│   │   │       │   ├── _components/  # Özgünlük raporu, roadmap, tablolar
+│   │   │       │   ├── _hooks/       # use-risk-analysis.ts
+│   │   │       │   ├── _lib/         # constants.ts
+│   │   │       │   └── _services/    # analysis, queries, risk-calc, roadmap, search, sifting
+│   │   │       ├── boxes/            # Adım 4: Konu Kutuları → /onboarding/boxes
+│   │   │       │   ├── actions.ts
+│   │   │       │   ├── page.tsx
+│   │   │       │   └── _components/
+│   │   │       │       └── boxes-container.tsx
+│   │   │       └── literature-review/ # Adım 5: Literatür Tarama → /onboarding/literature-review
+│   │   │           ├── actions.ts
+│   │   │           ├── page.tsx
+│   │   │           ├── _components/
+│   │   │           ├── _hooks/
+│   │   │           └── _services/    # ai-processor, literature-review-papers, search-api
 │   │   ├── (app)/                    # Giriş sonrası ana uygulama (ortak layout)
+│   │   │   ├── actions.ts            # Ortak uygulama server action'ları
+│   │   │   ├── layout.tsx            # Header + oturum/yönlendirme kontrolü
 │   │   │   ├── dashboard/            # Panel sayfası → /dashboard
+│   │   │   │   └── page.tsx
 │   │   │   ├── card-index/           # Kartoteks (Fişleme/Kutu) → /card-index
+│   │   │   │   └── page.tsx
 │   │   │   ├── advisor/              # Danışman Odası (RAG Chat) → /advisor
-│   │   │   ├── library/              # Kütüphane (Makale Yükleme/Yönetim) → /library
-│   │   │   └── layout.tsx            # Ortak üst navigasyon (Header) ve sayfa alanı
-│   │   ├── api/                      # Stream veya harici webhook API'leri
-│   │   ├── layout.tsx                # Global HTML ve Root ayarları
-│   │   └── page.tsx                  # Root yönlendirici (/login veya /dashboard)
+│   │   │   │   └── page.tsx
+│   │   │   └── library/              # Kütüphane (Makale Yükleme/Yönetim) → /library
+│   │   │       ├── actions.ts
+│   │   │       ├── page.tsx
+│   │   │       └── library-content.tsx
+│   │   └── api/                      # API route'ları
+│   │       ├── route.ts              # Kök API
+│   │       └── onboarding/risk/status/route.ts  # Risk durumu endpoint'i
 │   ├── components/                   # Ortak kullanılan yapılar
+│   │   ├── error-display.tsx         # Hata gösterim bileşeni
+│   │   ├── header.tsx                # Üst navigasyon (Header)
+│   │   ├── literature-reader.tsx     # Literatür okuyucu
+│   │   ├── onboarding-global-loader.tsx
+│   │   ├── providers/
+│   │   │   └── query-provider.tsx    # TanStack Query provider
 │   │   └── ui/                       # Shadcn UI bileşenleri (dokunulmaz)
 │   ├── db/                           # Veri tabanı katmanı (Neon / Drizzle)
-│   ├── lib/                          # Ortak kütüphane yapılandırmaları (Gemini, Utils)
+│   │   ├── index.ts                  # DB bağlantısı
+│   │   ├── schema.ts                 # Tablo şemaları
+│   │   └── seed.ts                   # Seed verisi
+│   ├── lib/                          # Ortak kütüphane yapılandırmaları
+│   │   ├── cloudflare.ts             # Cloudflare Workers AI (embedding)
+│   │   ├── error-utils.ts            # Hata yardımcıları
+│   │   ├── gemini.ts                 # Google Gen AI SDK entegrasyonu
+│   │   ├── logger.ts                 # Loglama
+│   │   ├── tavily.ts                 # Tavily arama API
+│   │   ├── tezara.ts                 # TEZARA API entegrasyonu
+│   │   ├── tezara-parser.ts          # TEZARA veri ayrıştırıcı
+│   │   ├── types.ts                  # Paylaşılan TypeScript tipleri
+│   │   ├── utils.ts                  # Genel yardımcı fonksiyonlar
+│   │   ├── prompts/                  # Gemini prompt şablonları
+│   │   │   ├── index.ts
+│   │   │   ├── box-generation.ts
+│   │   │   ├── deep-sifting.ts
+│   │   │   ├── literature-jury.ts
+│   │   │   ├── literature-sifting.ts
+│   │   │   ├── matrix-enhancement.ts
+│   │   │   ├── originality-analysis.ts
+│   │   │   ├── query-extraction.ts
+│   │   │   ├── roadmap-synthesis.ts
+│   │   │   └── tavily-evaluation.ts
+│   │   └── store/
+│   │       └── onboarding-store.ts   # Zustand onboarding store
 │   └── proxy.ts                      # Yönlendirme ve oturum kontrol katmanı
 ```
 

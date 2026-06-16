@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import { getSessionWithOnboarding } from "@/proxy";
 
 /**
@@ -16,16 +15,8 @@ export default async function AuthLayout({
 }>) {
   const session = await getSessionWithOnboarding();
 
-  if (session) {
-    if (session.onboardingCompleted) {
-      redirect("/dashboard");
-    }
-
-    const headersList = await headers();
-    const pathname = headersList.get("x-invoke-path") ?? "";
-
-    if (!pathname.includes("/onboarding")) {
-    }
+  if (session?.onboardingCompleted) {
+    redirect("/dashboard");
   }
 
   return <>{children}</>;

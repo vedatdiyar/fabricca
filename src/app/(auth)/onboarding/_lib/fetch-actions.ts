@@ -33,5 +33,3 @@ export async function fetchBoxes() {
     .from(thesisBoxes)
     .where(eq(thesisBoxes.thesisMatrixId, matrix.id));
 }
-
-

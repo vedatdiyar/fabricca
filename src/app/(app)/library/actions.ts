@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, inArray, isNotNull, asc, sql } from "drizzle-orm";
+import { and, eq, inArray, asc, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { libraryResources, type LibraryResource } from "@/db/schema";
@@ -106,9 +106,7 @@ export async function toggleResourceReadStatusAction(
  *
  * 1. Verifies that every currently APPROVED resource for this box is read.
  * 2. Promotes the next 5 RESERVED resources (oldest first) to APPROVED + isRead:false.
- * 3. If the remaining RESERVED pool drops below 5, triggers the async resource
- *    pipeline (fire-and-forget) to fetch new articles from external APIs.
- * 4. Returns the newly promoted resources.
+ * 3. Returns the newly promoted resources.
  *
  * @param boxId - The thesis sub-box ID
  * @returns Newly promoted resources wrapped in a result object, or a user-safe error message
@@ -160,10 +158,7 @@ export async function replenishFromReservedAction(
       .limit(5);
 
     if (reservedBatch.length === 0) {
-      /* ---- 3a. Pool is empty — trigger pipeline, notify user ---- */
-      const excludedDois = await collectExistingDois();
-      void triggerResourcePipeline(excludedDois, boxId, log); // TODO: Adım 4 asenkron API motoru pipeline entegrasyonu
-
+      /* ---- 3a. Pool is empty — notify user ---- */
       return {
         success: false,
         error:
@@ -190,8 +185,6 @@ export async function replenishFromReservedAction(
       );
 
     if (remainingCount < 5) {
-      const excludedDois = await collectExistingDois();
-      void triggerResourcePipeline(excludedDois, boxId, log); // TODO: Adım 4 asenkron API motoru pipeline entegrasyonu
     }
 
     /* ---- 5. Return newly promoted resources (map in-memory, no re-query) ---- */
@@ -211,51 +204,4 @@ export async function replenishFromReservedAction(
   }
 }
 
-/* ---------- Pipeline Helpers ---------- */
 
-/**
- * Collects all non-null DOIs from library_resources to serve as an
- * exclusion filter when fetching new articles from external APIs.
- */
-async function collectExistingDois(): Promise<string[]> {
-  const rows = await db
-    .select({ doi: libraryResources.doi })
-    .from(libraryResources)
-    .where(isNotNull(libraryResources.doi));
-
-  return rows.reduce<string[]>((acc, r) => {
-    if (r.doi !== null) acc.push(r.doi);
-    return acc;
-  }, []);
-}
-
-/**
- * Fire-and-forget resource pipeline trigger.
- *
- * Planned behaviour:
- * 1. Call external academic APIs with excludedDois filter
- * 2. Fetch 20 unique new articles
- * 3. Batch insert them as RESERVED for this box
- *
- * Currently logs the trigger intent; full implementation will
- * be added when external academic API integration is available.
- *
- * @param excludedDois - DOI list to exclude from API results
- * @param boxId - Target thesis box ID for new resources
- * @param log - Logger instance
- */
-async function triggerResourcePipeline(
-  excludedDois: string[],
-  boxId: number,
-  log: Logger
-): Promise<void> {
-  log.info("resource_pipeline_triggered", {
-    service: "library",
-    data: {
-      boxId,
-      excludedDoiCount: excludedDois.length,
-    },
-  });
-
-  await new Promise((resolve) => setTimeout(resolve, 100));
-}

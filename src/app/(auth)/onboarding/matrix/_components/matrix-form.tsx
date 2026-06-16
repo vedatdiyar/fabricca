@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import type { LoadingStep } from "@/lib/store/onboarding-store";
 import { submitThesisMatrixAction } from "../actions";
-import { fetchThesisMatrix } from "../../lib/fetch-actions";
+import { fetchThesisMatrix } from "../../_lib/fetch-actions";
 
 export function MatrixForm() {
   const router = useRouter();

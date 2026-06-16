@@ -3,10 +3,7 @@ import pretty from "pino-pretty";
 
 export type LogLevel = "info" | "warn" | "error";
 
-export type LogEvent =
-  | "login_success"
-  | "login_failed"
-  | "flow_complete";
+export type LogEvent = "login_success" | "login_failed" | "flow_complete";
 
 export type ServiceName =
   | "gemini"

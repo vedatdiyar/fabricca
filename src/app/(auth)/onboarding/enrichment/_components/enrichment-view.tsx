@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { confirmEnhancedThesisAction } from "../actions";
-import { fetchThesisMatrix } from "../../lib/fetch-actions";
+import { fetchThesisMatrix } from "../../_lib/fetch-actions";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import type { LoadingStep } from "@/lib/store/onboarding-store";
 import type { EnhancedThesisData } from "@/lib/types";

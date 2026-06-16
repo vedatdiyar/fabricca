@@ -50,7 +50,7 @@ export function BoxesContainer() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { fetchBoxes } = await import("../../lib/fetch-actions");
+      const { fetchBoxes } = await import("../../_lib/fetch-actions");
       const existing = await fetchBoxes();
       if (!cancelled) {
         if (existing.length > 0) {

@@ -10,7 +10,7 @@ import {
   processLiteratureReviewAction,
   confirmLiteratureAction,
 } from "../actions";
-import { fetchBoxes } from "../../lib/fetch-actions";
+import { fetchBoxes } from "../../_lib/fetch-actions";
 
 /** Processing status of a single sub-box within the literature review grid. */
 export type BoxStatus = "idle" | "loading" | "done" | "error";

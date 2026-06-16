@@ -12,13 +12,8 @@ import { useRiskAnalysis } from "../_hooks/use-risk-analysis";
  * {@link useRiskAnalysis} hook and only renders the current state.
  */
 export function RiskContainer() {
-  const {
-    loading,
-    error,
-    reportData,
-    startAnalysis,
-    handleProceed,
-  } = useRiskAnalysis();
+  const { loading, error, reportData, startAnalysis, handleProceed } =
+    useRiskAnalysis();
 
   if (loading) {
     return (
@@ -57,11 +52,13 @@ export function RiskContainer() {
           <Sparkles className="w-12 h-12 text-primary" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-xl font-semibold text-foreground">Özgünlük ve Risk Analizi</h2>
+          <h2 className="text-xl font-semibold text-foreground">
+            Özgünlük ve Risk Analizi
+          </h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Yapay zeka asistanınız tez matrisinizi inceleyerek Tavily ve
-            YÖKTEZ veri tabanlarında paralel tarama yapacak, karşılaştırmalı
-            bir özgünlük ve risk raporu hazırlayacak.
+            Yapay zeka asistanınız tez matrisinizi inceleyerek Tavily ve YÖKTEZ
+            veri tabanlarında paralel tarama yapacak, karşılaştırmalı bir
+            özgünlük ve risk raporu hazırlayacak.
           </p>
         </div>
         <Button

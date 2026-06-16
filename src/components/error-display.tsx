@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { AlertTriangle, WifiOff, Clock, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { createFlowId, Logger } from "@/lib/logger";
 import {
   getErrorDisplay,
   type ErrorDisplay as ErrorDisplayType,
@@ -74,11 +73,7 @@ export function ErrorDisplay({ error, onRetry }: ErrorDisplayProps) {
   const { Icon } = config;
 
   useEffect(() => {
-    const log = new Logger(createFlowId());
-    log.error("error_display_masked", {
-      error,
-      data: { scenario: display.scenario },
-    });
+    console.error("[ErrorDisplay]", display.scenario, error);
   }, [error, display.scenario]);
 
   return (

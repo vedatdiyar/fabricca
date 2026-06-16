@@ -24,7 +24,8 @@ export async function resetOnboardingAction(): Promise<
 
   try {
     const session = await getSession();
-    if (!session) return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+    if (!session)
+      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
 
     const userId = session.userId;
 
@@ -36,7 +37,9 @@ export async function resetOnboardingAction(): Promise<
       // Delete thesis matrix (cascades to thesis_boxes → library_resources)
       await tx.delete(thesisMatrices).where(eq(thesisMatrices.userId, userId));
       // Delete originality report
-      await tx.delete(originalityReports).where(eq(originalityReports.userId, userId));
+      await tx
+        .delete(originalityReports)
+        .where(eq(originalityReports.userId, userId));
       // Reset onboarding flag
       await tx
         .update(users)
@@ -49,7 +52,14 @@ export async function resetOnboardingAction(): Promise<
     log.info({ step: "reset_onboarding", status: "SUCCESS" });
     return { success: true };
   } catch (error) {
-    log.error({ step: "reset_onboarding", status: "FAILED", diagnostics: { errorCode: "SYSTEM_ERROR", message: error instanceof Error ? error.message : String(error) } });
+    log.error({
+      step: "reset_onboarding",
+      status: "FAILED",
+      diagnostics: {
+        errorCode: "SYSTEM_ERROR",
+        message: error instanceof Error ? error.message : String(error),
+      },
+    });
     return { error: "Sıfırlama işlemi gerçekleştirilirken bir hata oluştu." };
   }
 }

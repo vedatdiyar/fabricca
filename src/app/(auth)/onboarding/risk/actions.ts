@@ -58,17 +58,36 @@ export async function searchAndSiftThesesAction(
 
   try {
     const session = await getSession();
-    if (!session) return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
-    if (!matrix) return { error: "Tez matrisi bulunamadı. Lütfen önce tez matrisini doldurun." };
+    if (!session)
+      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+    if (!matrix)
+      return {
+        error: "Tez matrisi bulunamadı. Lütfen önce tez matrisini doldurun.",
+      };
 
-    const { studyTitle, researchQuestion, mainClaim, methodology, theoreticalFramework, historicalSpatialLimits } = matrix;
+    const {
+      studyTitle,
+      researchQuestion,
+      mainClaim,
+      methodology,
+      theoreticalFramework,
+      historicalSpatialLimits,
+    } = matrix;
 
     const { tavilyQueries, tezaraQueries, keywords } = await extractQueries(
-      { studyTitle, researchQuestion, mainClaim, methodology, theoreticalFramework, historicalSpatialLimits },
+      {
+        studyTitle,
+        researchQuestion,
+        mainClaim,
+        methodology,
+        theoreticalFramework,
+        historicalSpatialLimits,
+      },
       log,
     );
 
-    const { tavilySearchResults, tezaraSearchResults } = await executeParallelSearch(tavilyQueries, tezaraQueries, log);
+    const { tavilySearchResults, tezaraSearchResults } =
+      await executeParallelSearch(tavilyQueries, tezaraQueries, log);
 
     const tavilyEvaluation = await evaluateTavilyResults(
       { studyTitle, researchQuestion, mainClaim, theoreticalFramework },
@@ -76,11 +95,18 @@ export async function searchAndSiftThesesAction(
       log,
     );
 
-    const { finalTheses: validDetails, eliminatedTheses } = await siftAndFetchDetails(
-      { studyTitle, researchQuestion, theoreticalFramework, methodology, historicalSpatialLimits },
-      tezaraSearchResults,
-      log,
-    );
+    const { finalTheses: validDetails, eliminatedTheses } =
+      await siftAndFetchDetails(
+        {
+          studyTitle,
+          researchQuestion,
+          theoreticalFramework,
+          methodology,
+          historicalSpatialLimits,
+        },
+        tezaraSearchResults,
+        log,
+      );
 
     log.info({ step: "searchAndSiftTheses", status: "SUCCESS" });
 
@@ -91,8 +117,17 @@ export async function searchAndSiftThesesAction(
       keywords,
     };
   } catch (err) {
-    log.error({ step: "searchAndSiftTheses", status: "FAILED", diagnostics: { errorCode: "SYSTEM_ERROR", message: err instanceof Error ? err.message : String(err) } });
-    return { error: "YÖKTEZ tarama ve süzme işlemi sırasında bir hata oluştu." };
+    log.error({
+      step: "searchAndSiftTheses",
+      status: "FAILED",
+      diagnostics: {
+        errorCode: "SYSTEM_ERROR",
+        message: err instanceof Error ? err.message : String(err),
+      },
+    });
+    return {
+      error: "YÖKTEZ tarama ve süzme işlemi sırasında bir hata oluştu.",
+    };
   }
 }
 
@@ -118,9 +153,17 @@ export async function runJuryAnalysisAction(
 
   try {
     const session = await getSession();
-    if (!session) return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+    if (!session)
+      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
 
-    const { studyTitle, researchQuestion, mainClaim, methodology, theoreticalFramework, historicalSpatialLimits } = matrix;
+    const {
+      studyTitle,
+      researchQuestion,
+      mainClaim,
+      methodology,
+      theoreticalFramework,
+      historicalSpatialLimits,
+    } = matrix;
     const validDetails = scrapedTheses.selected;
 
     let tezaraResults: OriginalityReportData["tezaraResults"];
@@ -129,20 +172,38 @@ export async function runJuryAnalysisAction(
       tezaraResults = {
         originalityBadge: "ZERO_RISK",
         overlapTable: [],
-        strategicRecommendations: "Literatür taramasında doğrudan çakışan veya risk teşkil eden herhangi bir akademik çalışma tespit edilmemiştir.",
+        strategicRecommendations:
+          "Literatür taramasında doğrudan çakışan veya risk teşkil eden herhangi bir akademik çalışma tespit edilmemiştir.",
         riskPercentage: 0,
       };
     } else {
       const { overlapTable } = await analyzeOriginalityRisk(
-        { studyTitle, researchQuestion, mainClaim, methodology, theoreticalFramework, historicalSpatialLimits, validDetails },
+        {
+          studyTitle,
+          researchQuestion,
+          mainClaim,
+          methodology,
+          theoreticalFramework,
+          historicalSpatialLimits,
+          validDetails,
+        },
         log,
       );
 
-      const riskCalcResult = calculateOriginalityRisk(overlapTable, validDetails, log);
+      const riskCalcResult = calculateOriginalityRisk(
+        overlapTable,
+        validDetails,
+        log,
+      );
 
       const strategicRecommendations = await synthesizeRoadmap(
         {
-          studyTitle, researchQuestion, mainClaim, methodology, theoreticalFramework, historicalSpatialLimits,
+          studyTitle,
+          researchQuestion,
+          mainClaim,
+          methodology,
+          theoreticalFramework,
+          historicalSpatialLimits,
           comparisonResults: riskCalcResult.overlapTable.map((item) => ({
             title: item.title,
             author: item.author,
@@ -164,7 +225,10 @@ export async function runJuryAnalysisAction(
     }
 
     const reportData: OriginalityReportData = {
-      tavilyResults: { items: tavilyResults.items, briefingNote: tavilyResults.briefingNote },
+      tavilyResults: {
+        items: tavilyResults.items,
+        briefingNote: tavilyResults.briefingNote,
+      },
       tezaraResults,
     };
 
@@ -190,8 +254,18 @@ export async function runJuryAnalysisAction(
 
     return { success: true, data: reportData };
   } catch (err) {
-    log.error({ step: "runJuryAnalysis", status: "FAILED", diagnostics: { errorCode: "SYSTEM_ERROR", message: err instanceof Error ? err.message : String(err) } });
-    return { error: "Gemini jüri analizi veya risk seviyesi belirlenirken hata oluştu." };
+    log.error({
+      step: "runJuryAnalysis",
+      status: "FAILED",
+      diagnostics: {
+        errorCode: "SYSTEM_ERROR",
+        message: err instanceof Error ? err.message : String(err),
+      },
+    });
+    return {
+      error:
+        "Gemini jüri analizi veya risk seviyesi belirlenirken hata oluştu.",
+    };
   }
 }
 
@@ -204,7 +278,8 @@ export async function runJuryAnalysisAction(
 export async function completeRiskStageAction(): Promise<OnboardingActionResult> {
   try {
     const session = await getSession();
-    if (!session) return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+    if (!session)
+      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
 
     const [matrix] = await db
       .select({ id: thesisMatrices.id })
@@ -212,7 +287,9 @@ export async function completeRiskStageAction(): Promise<OnboardingActionResult>
       .where(eq(thesisMatrices.userId, session.userId));
 
     if (matrix) {
-      await db.delete(thesisBoxes).where(eq(thesisBoxes.thesisMatrixId, matrix.id));
+      await db
+        .delete(thesisBoxes)
+        .where(eq(thesisBoxes.thesisMatrixId, matrix.id));
     }
 
     revalidatePath("/onboarding", "layout");

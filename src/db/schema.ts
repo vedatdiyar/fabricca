@@ -134,21 +134,23 @@ export const literatureTypeEnum = pgEnum("literature_type_enum", [
  * Tez Kutuları (Box) tablosu.
  * Tez matrisine bağlı konu kutularını düz (flat) yapıda saklar.
  */
-export const thesisBoxes = pgTable("thesis_boxes", {
-  id: serial("id").primaryKey(),
-  thesisMatrixId: integer("thesis_matrix_id")
-    .notNull()
-    .references(() => thesisMatrices.id, { onDelete: "cascade" }),
-  title: text("title").notNull(),
-  description: text("description"),
-  semanticSearchBlock: text("semantic_search_block"),
-  concepts: jsonb("concepts").$type<string[]>().default([]).notNull(),
+export const thesisBoxes = pgTable(
+  "thesis_boxes",
+  {
+    id: serial("id").primaryKey(),
+    thesisMatrixId: integer("thesis_matrix_id")
+      .notNull()
+      .references(() => thesisMatrices.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description"),
+    semanticSearchBlock: text("semantic_search_block"),
+    concepts: jsonb("concepts").$type<string[]>().default([]).notNull(),
 
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}, (table) => [
-  index("idx_thesis_boxes_matrix_id").on(table.thesisMatrixId),
-]);
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [index("idx_thesis_boxes_matrix_id").on(table.thesisMatrixId)],
+);
 
 /** Veri tabanından okunan tez kutusu tipi (select). */
 export type ThesisBox = InferSelectModel<typeof thesisBoxes>;
@@ -161,26 +163,33 @@ export type NewThesisBox = InferInsertModel<typeof thesisBoxes>;
  * Her bir tez kutusuna (box'a) önerilen / onaylanan / reddedilen
  * akademik kaynakları (makale, kitap, tez vb.) saklar.
  */
-export const libraryResources = pgTable("library_resources", {
-  id: serial("id").primaryKey(),
-  thesisBoxId: integer("thesis_box_id")
-    .notNull()
-    .references(() => thesisBoxes.id, { onDelete: "cascade" }),
-  status: literatureStatusEnum("status").default("SUGGESTED").notNull(),
-  type: literatureTypeEnum("type").notNull(),
-  title: text("title").notNull(),
-  abstract: text("abstract"),
-  url: text("url"),
-  doi: text("doi"),
-  publisher: text("publisher"),
-  publicationYear: integer("publication_year"),
-  authors: jsonb("authors").$type<string[]>(),
-  strategicRecommendations: text("strategic_recommendations"),
-  isRead: boolean("is_read").default(false),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-}, (table) => [
-  index("idx_library_resources_box_status").on(table.thesisBoxId, table.status),
-]);
+export const libraryResources = pgTable(
+  "library_resources",
+  {
+    id: serial("id").primaryKey(),
+    thesisBoxId: integer("thesis_box_id")
+      .notNull()
+      .references(() => thesisBoxes.id, { onDelete: "cascade" }),
+    status: literatureStatusEnum("status").default("SUGGESTED").notNull(),
+    type: literatureTypeEnum("type").notNull(),
+    title: text("title").notNull(),
+    abstract: text("abstract"),
+    url: text("url"),
+    doi: text("doi"),
+    publisher: text("publisher"),
+    publicationYear: integer("publication_year"),
+    authors: jsonb("authors").$type<string[]>(),
+    strategicRecommendations: text("strategic_recommendations"),
+    isRead: boolean("is_read").default(false),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_library_resources_box_status").on(
+      table.thesisBoxId,
+      table.status,
+    ),
+  ],
+);
 
 /** Veri tabanından okunan kütüphane kaynağı tipi (select). */
 export type LibraryResource = InferSelectModel<typeof libraryResources>;
