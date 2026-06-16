@@ -36,6 +36,11 @@ export function LiteratureArticleCard({ article }: LiteratureArticleCardProps) {
           >
             {isPrimary ? "PRIMARY" : "SECONDARY"}
           </span>
+          {article.isFoundational && (
+            <span className="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-primary/10 border-primary/20 text-primary">
+              KURUCU ESER
+            </span>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-3">

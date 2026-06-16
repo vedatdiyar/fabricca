@@ -22,6 +22,8 @@ import { mergePapers } from "@/lib/literature-review-papers";
 import {
   searchOpenAlex,
   searchOpenAlexKeyword,
+  resolveFoundationalWorks,
+  type FoundationalWorkResult,
 } from "./_services/search-api";
 import {
   runSiftingStage,
@@ -30,8 +32,6 @@ import {
   type LiteratureReviewResult,
 } from "./_services/ai-processor";
 
-// Re-export for consumer compatibility
-export type { LiteratureReviewResult } from "./_services/ai-processor";
 
 // ============================================================================
 // Main Action: processLiteratureReviewAction
@@ -77,7 +77,7 @@ export async function processLiteratureReviewAction(
     if (!thesisCtx) return { error: "Tez matrisi bulunamadı." };
 
     // ------------------------------------------------------------------
-    // Stage 1: OpenAlex search (semantic vector + keyword fallback)
+    // Stage 1: OpenAlex search (semantic vector + keyword fallback + foundational)
     // ------------------------------------------------------------------
     logger.info("literature_search_start", {
       service: "literature",
@@ -90,6 +90,34 @@ export async function processLiteratureReviewAction(
       searchOpenAlex(subBox.semanticSearchBlock),
       searchOpenAlexKeyword(subBox.title),
     ];
+    let foundationalWorksPromise: Promise<FoundationalWorkResult[]> | null =
+      null;
+    if (
+      subBox.foundationalQueries &&
+      subBox.foundationalQueries.length > 0
+    ) {
+      foundationalWorksPromise = resolveFoundationalWorks(
+        subBox.foundationalQueries,
+      );
+      // Wrap in a promise that resolves to RawPaper[] for Promise.allSettled
+      searchCalls.push(
+        foundationalWorksPromise.then((foundational) =>
+          foundational.map((fw): RawPaper => ({
+            source: "openalex" as const,
+            title: fw.title,
+            abstract: null,
+            doi: null,
+            url: fw.id,
+            authors: [],
+            year: fw.publicationYear,
+            publisher: null,
+            openAlexId: fw.id,
+            isFoundational: true,
+          })),
+        ),
+      );
+    }
+
     const settled = await Promise.allSettled(searchCalls);
 
     const allRaw: RawPaper[] = [];
@@ -110,7 +138,7 @@ export async function processLiteratureReviewAction(
     }
 
     // ------------------------------------------------------------------
-    // Stage 2: DOI-based deduplication
+    // Stage 2: Multi-strategy deduplication (DOI + OpenAlex ID + title)
     // ------------------------------------------------------------------
     const mergeStart = performance.now();
     const merged = mergePapers(allRaw);

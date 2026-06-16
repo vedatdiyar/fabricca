@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, asc } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { thesisMatrices, thesisBoxes } from "@/db/schema";
@@ -29,12 +29,7 @@ export default async function LibraryPage() {
   const boxes = await db
     .select()
     .from(thesisBoxes)
-    .where(
-      and(
-        eq(thesisBoxes.thesisMatrixId, matrix.id),
-        isNotNull(thesisBoxes.parentId)
-      )
-    )
+    .where(eq(thesisBoxes.thesisMatrixId, matrix.id))
     .orderBy(asc(thesisBoxes.id));
 
   return <LibraryContent boxes={boxes} />;

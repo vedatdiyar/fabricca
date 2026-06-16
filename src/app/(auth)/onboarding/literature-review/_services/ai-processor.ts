@@ -131,6 +131,20 @@ export async function runJuryStage(
     authors: c.authors,
   }));
 
+  // Build lookup for isFoundational backfill
+  const foundationalLookup = new Map<string, boolean>();
+  for (const p of sifted) {
+    if (p.doi) {
+      foundationalLookup.set("doi:" + p.doi, p.isFoundational);
+    }
+    if (p.title) {
+      foundationalLookup.set(
+        "title:" + p.title.toLowerCase().trim().slice(0, 80),
+        p.isFoundational,
+      );
+    }
+  }
+
   const juryResult = await generateStructuredContent<JuryResponse>(
     "gemini-3.1-flash-lite",
     LITERATURE_JURY_ANALYSIS_SYSTEM_INSTRUCTION,
@@ -146,9 +160,25 @@ export async function runJuryStage(
     { thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } },
   );
 
+  function backfillIsFoundational(articles: JuryArticle[]): JuryArticle[] {
+    return articles.map((a) => {
+      let found = false;
+      if (a.doi) {
+        found = foundationalLookup.get("doi:" + a.doi) ?? false;
+      }
+      if (!found && a.title) {
+        found =
+          foundationalLookup.get(
+            "title:" + a.title.toLowerCase().trim().slice(0, 80),
+          ) ?? false;
+      }
+      return { ...a, isFoundational: found };
+    });
+  }
+
   return {
-    starterPack: juryResult.starterPack,
-    reservedPool: juryResult.reservedPool,
+    starterPack: backfillIsFoundational(juryResult.starterPack),
+    reservedPool: backfillIsFoundational(juryResult.reservedPool),
   };
 }
 
@@ -185,6 +215,8 @@ export async function enrichJuryArticleWithCrossRef(
     authors: [...article.authors],
     year: article.publicationYear,
     publisher: article.publisher,
+    openAlexId: null,
+    isFoundational: article.isFoundational ?? false,
   };
 
   const enriched = await validateWithCrossRef(paper);

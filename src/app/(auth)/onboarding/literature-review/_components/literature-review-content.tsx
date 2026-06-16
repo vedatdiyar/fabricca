@@ -17,8 +17,9 @@ import {
 import { fetchBoxes } from "../../lib/fetch-actions";
 import { LiteratureArticleCard } from "./literature-article-card";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import type { LoadingStep } from "@/lib/store/onboarding-store";
 import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
-import type { LiteratureReviewResult } from "../actions";
+import type { LiteratureReviewResult } from "../_services/ai-processor";
 
 function SubBoxQuery({
   subBox,
@@ -101,6 +102,9 @@ export function LiteratureReviewContent() {
   const literaturePool = store.literaturePool ?? [];
   const addToLiteraturePool = store.addToLiteraturePool;
   const resetStore = store.resetStore;
+  const showLoading = store.showLoading;
+  const hideLoading = store.hideLoading;
+  const updateLoadingStep = store.updateLoadingStep;
 
   useEffect(() => {
     fetchBoxes().then((allBoxes) => {
@@ -117,11 +121,17 @@ export function LiteratureReviewContent() {
       ) {
         useOnboardingStore.getState().setLiteraturePool([]);
       }
+      // Merge foundationalQueries from Zustand store (if exists) into DB boxes
+      const storeBoxMap = new Map(
+        (currentStore.boxes ?? []).map((b) => [b.title, b.foundationalQueries]),
+      );
       setSubBoxes(
         allBoxes.map((b) => ({
           title: b.title,
           description: b.description ?? "",
           semanticSearchBlock: b.semanticSearchBlock ?? "",
+          foundationalQueries: storeBoxMap.get(b.title) ?? [],
+          concepts: b.concepts ?? [],
         })),
       );
       setLoading(false);
@@ -134,10 +144,27 @@ export function LiteratureReviewContent() {
     processingRef.current = true;
     setProcessing(true);
 
+    const reviewSteps: LoadingStep[] = subBoxes.map((box) => ({
+      text: `${box.title} taranıyor...`,
+      status: "idle" as const,
+    }));
+
+    showLoading(
+      "Literatür Taraması Devam Ediyor",
+      "Her bir konu kutusu için akademik veri tabanları taranıyor, yapay zeka değerlendirmesi yapılıyor.",
+      reviewSteps,
+    );
+
     const CHUNK_SIZE = 2;
+    let globalStepIndex = 0;
 
     for (let i = 0; i < subBoxes.length; i += CHUNK_SIZE) {
       const chunk = subBoxes.slice(i, i + CHUNK_SIZE);
+
+      // Mark both chunk steps as active
+      for (let k = 0; k < chunk.length; k++) {
+        updateLoadingStep(globalStepIndex + k, "active");
+      }
 
       setBoxStatuses((prev) => {
         const next = { ...prev };
@@ -151,6 +178,7 @@ export function LiteratureReviewContent() {
             title: box.title,
             description: box.description,
             semanticSearchBlock: box.semanticSearchBlock,
+            foundationalQueries: box.foundationalQueries,
           }),
         ),
       );
@@ -166,6 +194,7 @@ export function LiteratureReviewContent() {
             reservedPool: settled.value.data.reservedPool,
           });
           setBoxStatuses((prev) => ({ ...prev, [box.title]: "done" }));
+          updateLoadingStep(globalStepIndex + j, "completed");
         } else {
           const msg =
             settled.status === "rejected"
@@ -175,13 +204,17 @@ export function LiteratureReviewContent() {
               : (settled.value.error ?? "Literatür taraması başarısız oldu.");
           setBoxErrors((prev) => ({ ...prev, [box.title]: msg }));
           setBoxStatuses((prev) => ({ ...prev, [box.title]: "error" }));
+          updateLoadingStep(globalStepIndex + j, "completed");
         }
       }
+
+      globalStepIndex += chunk.length;
     }
 
     processingRef.current = false;
     setProcessing(false);
-  }, [subBoxes, addToLiteraturePool]);
+    hideLoading();
+  }, [subBoxes, addToLiteraturePool, showLoading, hideLoading, updateLoadingStep]);
 
   const allProcessed = useMemo(() => {
     if (subBoxes.length === 0) return false;
@@ -195,14 +228,32 @@ export function LiteratureReviewContent() {
       toast.error("Henüz işlenmiş literatür verisi bulunamadı.");
       return;
     }
+
+    const finalSteps: LoadingStep[] = [
+      { text: "Literatür havuzu veri tabanına yazılıyor...", status: "active" },
+      { text: "Onboarding tamamlanıyor...", status: "idle" },
+    ];
+
+    showLoading(
+      "Onboarding Tamamlanıyor",
+      "Tüm literatür verileri kaydediliyor ve onboarding süreci sonlandırılıyor.",
+      finalSteps,
+    );
+
     setConfirming(true);
     const result = await confirmLiteratureAction({ literaturePool });
     if ("error" in result && result.error) {
+      hideLoading();
       toast.error(result.error);
       setConfirming(false);
       return;
     }
+    updateLoadingStep(0, "completed");
+    updateLoadingStep(1, "active");
+    await new Promise((r) => setTimeout(r, 400));
+    hideLoading();
     resetStore();
+    setConfirming(false);
     toast.success("Tebrikler! Onboarding süreciniz tamamlandı.");
     router.push("/dashboard");
   };

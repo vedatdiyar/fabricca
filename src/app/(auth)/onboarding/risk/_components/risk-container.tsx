@@ -3,20 +3,22 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Sparkles, Loader2, AlertCircle } from "lucide-react";
+import { Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ErrorDisplay } from "@/components/error-display";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import type { LoadingStep } from "@/lib/store/onboarding-store";
 import { searchAndSiftThesesAction, runJuryAnalysisAction, completeRiskStageAction } from "../actions";
+import { generateBoxesAction } from "../../boxes/actions";
 import { fetchThesisMatrix, fetchOriginalityReport } from "../../lib/fetch-actions";
 import { OriginalityReportView } from "./originality-report-view";
-import type { ScrapedTheses, TavilyEvaluationResponse, OriginalityReportData } from "@/lib/types";
+import type { OriginalityReportData } from "@/lib/types";
 
-const STEPS = [
-  "Sorgu ve doğrulama parametreleri üretiliyor...",
-  "Tavily ve Tezara paralel motorları koşturuluyor...",
-  "Karşılaştırmalı literatür matrisi yapılandırılıyor...",
-  "Nihai risk seviyesi ve tavsiyeler hazırlanıyor...",
+const ANALYSIS_STEPS: LoadingStep[] = [
+  { text: "Sorgu ve doğrulama parametreleri üretiliyor...", status: "idle" },
+  { text: "Tavily ve Tezara paralel motorları koşturuluyor...", status: "idle" },
+  { text: "Karşılaştırmalı literatür matrisi yapılandırılıyor...", status: "idle" },
+  { text: "Nihai risk seviyesi ve tavsiyeler hazırlanıyor...", status: "idle" },
 ];
 
 export function RiskContainer() {
@@ -25,8 +27,10 @@ export function RiskContainer() {
   const [analysing, setAnalysing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reportData, setReportData] = useState<OriginalityReportData | null>(null);
-  const [secondsPassed, setSecondsPassed] = useState(0);
   const [matrixData, setMatrixData] = useState<any>(null);
+  const showLoading = useOnboardingStore((s) => s.showLoading);
+  const hideLoading = useOnboardingStore((s) => s.hideLoading);
+  const updateLoadingStep = useOnboardingStore((s) => s.updateLoadingStep);
 
   // Load existing report on mount
   useEffect(() => {
@@ -60,6 +64,14 @@ export function RiskContainer() {
     setAnalysing(true);
     setError(null);
 
+    const steps = ANALYSIS_STEPS.map((s) => ({ ...s }));
+    steps[0].status = "active";
+    showLoading(
+      "Risk Analiz Motorları Çalışıyor",
+      "Yapay zeka asistanınız tez matrisinizi inceliyor, veri tabanlarını tarıyor ve risk raporunu hazırlıyor.",
+      steps,
+    );
+
     try {
       let matrix = matrixData;
       if (!matrix) {
@@ -67,6 +79,7 @@ export function RiskContainer() {
         if (!matrix) {
           setError("Tez matrisi bulunamadı.");
           setAnalysing(false);
+          hideLoading();
           return;
         }
       }
@@ -80,12 +93,21 @@ export function RiskContainer() {
         historicalSpatialLimits: matrix.historicalSpatialLimits,
       };
 
+      // Step 1 done → Step 2 active
+      updateLoadingStep(0, "completed");
+      updateLoadingStep(1, "active");
+
       const searchResult = await searchAndSiftThesesAction(matrixInput);
       if ("error" in searchResult) {
         setError(searchResult.error);
         setAnalysing(false);
+        hideLoading();
         return;
       }
+
+      // Step 2 done → Step 3 active
+      updateLoadingStep(1, "completed");
+      updateLoadingStep(2, "active");
 
       const juryResult = await runJuryAnalysisAction(
         searchResult.scrapedTheses,
@@ -95,38 +117,65 @@ export function RiskContainer() {
 
       if ("error" in juryResult) {
         setError(juryResult.error);
+        hideLoading();
       } else {
+        // Step 3 done → Step 4 active → complete
+        updateLoadingStep(2, "completed");
+        updateLoadingStep(3, "active");
+        // Brief pause so user sees final step
+        await new Promise((r) => setTimeout(r, 600));
+        updateLoadingStep(3, "completed");
+        await new Promise((r) => setTimeout(r, 400));
         setReportData(juryResult.data);
+        hideLoading();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Analiz sırasında bir hata oluştu.");
+      hideLoading();
     } finally {
       setAnalysing(false);
     }
-  }, [matrixData]);
+  }, [matrixData, showLoading, hideLoading, updateLoadingStep]);
 
   const handleProceed = async () => {
+    const proceedSteps: LoadingStep[] = [
+      { text: "Risk raporu veri tabanına kaydediliyor...", status: "active" },
+      { text: "Konu kutuları oluşturuluyor...", status: "idle" },
+      { text: "Kutular sayfasına yönlendiriliyor...", status: "idle" },
+    ];
+
+    showLoading(
+      "İşlem Tamamlanıyor",
+      "Risk analizi sonuçları kaydediliyor ve konu kutuları yapılandırılıyor.",
+      proceedSteps,
+    );
+
     const result = await completeRiskStageAction();
     if (result.error) {
+      hideLoading();
       toast.error(result.error);
       return;
     }
-    // Clear stale Zustand boxes so the next visit re-generates from scratch
-    useOnboardingStore.getState().setBoxes(null);
-    router.push("/onboarding/boxes");
-  };
 
-  useEffect(() => {
-    if (!analysing) {
-      setSecondsPassed(0);
+    updateLoadingStep(0, "completed");
+    updateLoadingStep(1, "active");
+
+    const boxesResult = await generateBoxesAction();
+    if ("error" in boxesResult) {
+      hideLoading();
+      toast.error(boxesResult.error);
+      router.push("/onboarding/boxes");
       return;
     }
-    const interval = setInterval(() => setSecondsPassed((p) => p + 1), 1000);
-    return () => clearInterval(interval);
-  }, [analysing]);
 
-  const activeStep =
-    secondsPassed <= 3 ? 0 : secondsPassed <= 24 ? 1 : secondsPassed <= 29 ? 2 : 3;
+    updateLoadingStep(1, "completed");
+    updateLoadingStep(2, "active");
+
+    useOnboardingStore.getState().setBoxes(boxesResult.boxes);
+    await new Promise((r) => setTimeout(r, 300));
+    hideLoading();
+    router.push("/onboarding/boxes");
+  };
 
   if (loading) {
     return (
@@ -146,37 +195,6 @@ export function RiskContainer() {
           </Button>
         </div>
       </div>
-    );
-  }
-
-  if (analysing) {
-    return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
-        <div className="flex flex-col items-center justify-center space-y-8 max-w-md mx-auto text-center">
-          <div className="relative flex items-center justify-center">
-            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-            <Sparkles className="w-6 h-6 text-primary absolute animate-pulse" />
-          </div>
-          <div className="space-y-3">
-            <h2 className="text-xl font-semibold text-foreground">Risk Analiz Motorları Çalışıyor</h2>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Yapay zeka asistanınız tez matrisinizi inceliyor, veri tabanlarını tarıyor ve risk raporunu hazırlıyor.
-            </p>
-          </div>
-          <div className="w-full bg-muted border border-border rounded-lg p-5 text-left space-y-4">
-            {STEPS.map((label, index) => {
-              const isActive = activeStep === index;
-              const isCompleted = activeStep > index;
-              return (
-                <div key={index} className={`flex items-center gap-3 text-sm ${isActive || isCompleted ? "text-foreground" : "text-muted-foreground"}`}>
-                  <div className={`w-2.5 h-2.5 rounded-full ${isActive ? "bg-primary animate-ping" : isCompleted ? "bg-primary" : "bg-border"}`} />
-                  <span className={isActive ? "font-medium" : ""}>{label}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </main>
     );
   }
 

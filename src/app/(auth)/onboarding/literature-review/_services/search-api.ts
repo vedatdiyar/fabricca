@@ -1,4 +1,5 @@
 import type { RawPaper, ValidatedPaper } from "@/lib/literature-review-papers";
+import type { FoundationalQuery } from "@/lib/types";
 
 // ============================================================================
 // Helper Functions
@@ -33,7 +34,6 @@ export async function searchOpenAlex(query: string): Promise<RawPaper[]> {
   const apiKey = process.env.OPENALEX_API_KEY;
   const params = new URLSearchParams({
     "search.semantic": query,
-    sort: "cited_by_count:desc",
     per_page: "50",
     select:
       "title,abstract_inverted_index,doi,id,authorships,publication_year,primary_location",
@@ -83,6 +83,8 @@ export async function searchOpenAlex(query: string): Promise<RawPaper[]> {
             .filter(Boolean) ?? [],
         year: (work.publication_year as number) ?? null,
         publisher: primaryLocation?.source?.display_name ?? null,
+        openAlexId: (work.id as string) ?? null,
+        isFoundational: false,
       };
     });
   } catch {
@@ -155,6 +157,8 @@ export async function searchOpenAlexKeyword(
             .filter(Boolean) ?? [],
         year: (work.publication_year as number) ?? null,
         publisher: primaryLocation?.source?.display_name ?? null,
+        openAlexId: (work.id as string) ?? null,
+        isFoundational: false,
       };
     });
   } catch {
@@ -225,4 +229,82 @@ export async function validateWithCrossRef(
   } catch {
     return paper;
   }
+}
+
+// ============================================================================
+// Foundational Works Resolution
+// ============================================================================
+
+export interface FoundationalWorkResult {
+  id: string;
+  title: string;
+  type: string;
+  publicationYear: number;
+  citedByCount: number;
+  isFoundational: boolean;
+}
+
+/**
+ * Resolves a list of foundational (classical/seminal) work queries against the
+ * OpenAlex works endpoint using AND-filtered title + author search. Returns
+ * validated works sorted by citation count (highest first) and deduplicated.
+ *
+ * Each query is resolved independently in a Promise.allSettled parallel batch.
+ * Failed or empty results are silently filtered out.
+ *
+ * @param queries - Array of FoundationalQuery objects (author, title, publicationYear)
+ * @returns Array of FoundationalWorkResult with OpenAlex metadata
+ */
+export async function resolveFoundationalWorks(
+  queries: FoundationalQuery[],
+): Promise<FoundationalWorkResult[]> {
+  if (!queries || queries.length === 0) return [];
+
+  const resolvePromises = queries.map(async (query) => {
+    try {
+      const urlParams = new URLSearchParams({
+        filter: `title.search:${query.title},raw_author_name.search:${query.author}`,
+        sort: "cited_by_count:desc",
+        per_page: "1",
+        select: "id,title,type,publication_year,cited_by_count",
+      });
+
+      const response = await fetch(
+        `https://api.openalex.org/works?${urlParams.toString()}`,
+        {
+          headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
+          signal: AbortSignal.timeout(15000),
+        },
+      );
+
+      if (!response.ok) return null;
+
+      const data = (await response.json()) as {
+        results?: Record<string, unknown>[];
+      };
+      const result = data.results?.[0];
+
+      if (!result) return null;
+
+      return {
+        id: result.id as string,
+        title: (result.title as string) ?? "",
+        type: (result.type as string) ?? "unknown",
+        publicationYear: (result.publication_year as number) ?? 0,
+        citedByCount: (result.cited_by_count as number) ?? 0,
+        isFoundational: true,
+      } as FoundationalWorkResult;
+    } catch (error) {
+      console.error(
+        `Foundational work resolution failed for ${query.title}:`,
+        error,
+      );
+      return null;
+    }
+  });
+
+  const resolvedWorks = await Promise.all(resolvePromises);
+  return resolvedWorks.filter(
+    (work): work is FoundationalWorkResult => work !== null,
+  );
 }

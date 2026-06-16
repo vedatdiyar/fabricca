@@ -12,12 +12,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { confirmEnhancedThesisAction } from "../actions";
 import { fetchThesisMatrix } from "../../lib/fetch-actions";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import type { LoadingStep } from "@/lib/store/onboarding-store";
 import type { EnhancedThesisData } from "@/lib/types";
 
 export function EnrichmentView() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [isPending, setIsPending] = useState(false);
+  const showLoading = useOnboardingStore((s) => s.showLoading);
+  const hideLoading = useOnboardingStore((s) => s.hideLoading);
+  const isLoading = useOnboardingStore((s) => s.isLoading);
 
   const [studyTitle, setStudyTitle] = useState("");
   const [researchQuestion, setResearchQuestion] = useState("");
@@ -46,6 +50,18 @@ export function EnrichmentView() {
   const handleConfirm = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsPending(true);
+
+    const steps: LoadingStep[] = [
+      { text: "Veriler doğrulanıyor...", status: "active" },
+      { text: "Veri tabanına yazılıyor...", status: "idle" },
+    ];
+
+    showLoading(
+      "Tez Matrisi Kaydediliyor",
+      "Zenginleştirilmiş tez matrisiniz veri tabanına kaydediliyor ve bir sonraki adıma hazırlanıyor.",
+      steps,
+    );
+
     const data: EnhancedThesisData = {
       academicStudyTitle: studyTitle,
       literatureResearchQuestion: researchQuestion,
@@ -58,6 +74,7 @@ export function EnrichmentView() {
     try {
       const result = await confirmEnhancedThesisAction(data);
       if (result.error) {
+        hideLoading();
         toast.error(result.error);
         setIsPending(false);
         return;
@@ -65,10 +82,12 @@ export function EnrichmentView() {
       // Clear stale downstream Zustand state so risk and boxes re-trigger on next visit
       useOnboardingStore.getState().setBoxes(null);
       useOnboardingStore.getState().setLiteraturePool([]);
+      hideLoading();
       setIsPending(false);
       toast.success("Tez matrisiniz kaydedildi. Risk analizine geçiliyor.");
       router.push("/onboarding/risk");
     } catch {
+      hideLoading();
       toast.error("Bir hata oluştu.");
       setIsPending(false);
     }
@@ -124,7 +143,7 @@ export function EnrichmentView() {
               <Textarea id="tarihselMekansalSinirlar" value={historicalSpatialLimits} onChange={(e) => setHistoricalSpatialLimits(e.target.value)} required className="textarea-academic" />
             </div>
             <div className="md:col-span-full">
-              <Button type="submit" className="btn-academic-hero w-full" disabled={isPending}>
+              <Button type="submit" className="btn-academic-hero w-full" disabled={isPending || isLoading}>
                 {isPending ? (
                   <span className="flex items-center justify-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin" />

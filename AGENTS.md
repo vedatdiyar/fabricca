@@ -118,9 +118,10 @@ Yapay zeka, geliştirme süreci boyunca aşağıdaki disiplin kurallarına ve ko
 - **Ajan Akıl Yürütme Gücü (Thinking Config):** Gemini 3 ve üzeri modellerin mimari optimizasyonu ve akıl yürütme yetenekleri için her fonksiyonun gereksinimine göre özel `thinkingConfig` ayarları uygulanır. Sistem genelinde bu ayarlar aşağıdaki gibidir:
 
   #### 1. `null` (Kapalı) — Yapısal ve Şablonlama Görevleri
-  - **Karakteristiği:** Ham metni akademik üsluba çevirme, verileri JSON şemasına yerleştirme veya hiyerarşik kutulara bölme gibi saf biçimlendirme işleri.
+  - **Karakteristiği:** Ham metni akademik üsluba çevirme veya verileri JSON şemasına yerleştirme gibi saf biçimlendirme işleri.
   - **Kural:** Akıl yürütme tamamen kapatılır (`null`). Model doğrudan çıktı üreterek maksimum hız ve minimum maliyet sağlar.
   - **Not:** Wikipedia veya Google Books gibi dış API doğrulamaları zaten kod katmanında asenkron yapılıyorsa, yapay zekaya düşünme bütçesi verilmemelidir.
+  - **İstisna (Box Generation):** Konu kutularının atomik flat yapıya bölünmesi ve her kutu için parametrik hafızadan kurucu eser (foundationalQueries) metadata'sının çıkarılması, saf biçimlendirme olmayıp derin alan bilgisi ve disipliner muhakeme gerektirdiğinden `ThinkingLevel.HIGH` kullanılır.
 
   #### 2. `low` — Kural Takibi ve Doğrulama Görevleri
   - **Karakteristiği:** Kelimeleri eklerinden ayıklayıp kökünü bulma (lemma), iki metni karşılaştırıp "bilgi var mı/yok mu" testi yapma (fact-checking) veya katı eliminasyon kurallarıyla listeleri süzme.

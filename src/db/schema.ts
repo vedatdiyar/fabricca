@@ -7,7 +7,6 @@ import {
   timestamp,
   jsonb,
   pgEnum,
-  AnyPgColumn,
   boolean,
 } from "drizzle-orm/pg-core";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
@@ -131,21 +130,18 @@ export const literatureTypeEnum = pgEnum("literature_type_enum", [
 ]);
 
 /**
- * Tez Kutuları (Outline / Box) tablosu.
- * Tez matrisine bağlı ana ve alt kutuları outline yapısında saklar.
- * parentId ile kendi kendine (self-reference) bağlanarak hiyerarşik yapı kurar.
+ * Tez Kutuları (Box) tablosu.
+ * Tez matrisine bağlı konu kutularını düz (flat) yapıda saklar.
  */
 export const thesisBoxes = pgTable("thesis_boxes", {
   id: serial("id").primaryKey(),
   thesisMatrixId: integer("thesis_matrix_id")
     .notNull()
     .references(() => thesisMatrices.id, { onDelete: "cascade" }),
-  parentId: integer("parent_id").references((): AnyPgColumn => thesisBoxes.id, {
-    onDelete: "cascade",
-  }),
   title: text("title").notNull(),
   description: text("description"),
   semanticSearchBlock: text("semantic_search_block"),
+  concepts: jsonb("concepts").$type<string[]>().default([]).notNull(),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

@@ -15,6 +15,8 @@ export interface JsonSchemaProperty {
   required?: string[];
   enum?: string[];
   description?: string;
+  minLength?: number;
+  maxLength?: number;
   minItems?: number;
   maxItems?: number;
 }

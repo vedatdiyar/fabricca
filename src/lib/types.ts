@@ -159,10 +159,18 @@ export interface JuryReportItem {
   yokPdfUrl?: string;
 }
 
+export interface FoundationalQuery {
+  author: string;
+  title: string;
+  publicationYear: number;
+}
+
 export interface GeminiThesisBox {
   title: string;
   description: string;
   semanticSearchBlock: string;
+  foundationalQueries: FoundationalQuery[];
+  concepts: string[];
 }
 
 export interface JuryArticle {
@@ -175,6 +183,7 @@ export interface JuryArticle {
   publicationYear: number;
   authors: string[];
   strategicRecommendations: string;
+  isFoundational?: boolean;
 }
 
 export interface LiteraturePoolEntry {

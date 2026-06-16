@@ -2,6 +2,8 @@
  * Shared types and utilities for literature review paper processing.
  */
 
+import type { FoundationalQuery } from "./types";
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -10,6 +12,7 @@ export interface SubBoxInput {
   title: string;
   description: string;
   semanticSearchBlock: string;
+  foundationalQueries: FoundationalQuery[];
 }
 
 export interface RawPaper {
@@ -21,6 +24,8 @@ export interface RawPaper {
   authors: string[];
   year: number | null;
   publisher: string | null;
+  openAlexId: string | null;
+  isFoundational: boolean;
 }
 
 export interface ValidatedPaper {
@@ -31,6 +36,8 @@ export interface ValidatedPaper {
   authors: string[];
   year: number | null;
   publisher: string | null;
+  openAlexId: string | null;
+  isFoundational: boolean;
 }
 
 // ============================================================================
@@ -41,6 +48,7 @@ export function mergePapers(
   papers: RawPaper[],
 ): ValidatedPaper[] {
   const doiMap = new Map<string, ValidatedPaper>();
+  const openAlexIdMap = new Map<string, ValidatedPaper>();
   const noDoiPapers: ValidatedPaper[] = [];
   const seenTitleKeys = new Set<string>();
 
@@ -53,6 +61,8 @@ export function mergePapers(
       authors: [...raw.authors],
       year: raw.year,
       publisher: raw.publisher,
+      openAlexId: raw.openAlexId,
+      isFoundational: raw.isFoundational,
     };
 
     if (paper.doi) {
@@ -62,6 +72,8 @@ export function mergePapers(
         existing.url = existing.url ?? paper.url;
         existing.year = existing.year ?? paper.year;
         existing.publisher = existing.publisher ?? paper.publisher;
+        existing.openAlexId = existing.openAlexId ?? paper.openAlexId;
+        if (paper.isFoundational) existing.isFoundational = true;
         const existingSet = new Set(existing.authors);
         for (const a of paper.authors) {
           if (!existingSet.has(a)) {
@@ -71,6 +83,17 @@ export function mergePapers(
         }
       } else {
         doiMap.set(paper.doi, { ...paper });
+      }
+    } else if (paper.openAlexId) {
+      const existing = openAlexIdMap.get(paper.openAlexId);
+      if (existing) {
+        existing.abstract = existing.abstract ?? paper.abstract;
+        existing.url = existing.url ?? paper.url;
+        existing.year = existing.year ?? paper.year;
+        existing.publisher = existing.publisher ?? paper.publisher;
+        if (paper.isFoundational) existing.isFoundational = true;
+      } else {
+        openAlexIdMap.set(paper.openAlexId, { ...paper });
       }
     } else {
       const titleKey = paper.title.toLowerCase().trim().slice(0, 80);
@@ -82,5 +105,11 @@ export function mergePapers(
   }
 
   for (const raw of papers) ingest(raw);
-  return [...doiMap.values(), ...noDoiPapers];
+  const all = [...doiMap.values(), ...openAlexIdMap.values(), ...noDoiPapers];
+  all.sort((a, b) => {
+    if (a.isFoundational && !b.isFoundational) return -1;
+    if (!a.isFoundational && b.isFoundational) return 1;
+    return 0;
+  });
+  return all;
 }

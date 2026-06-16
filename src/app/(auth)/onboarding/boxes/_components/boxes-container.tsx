@@ -3,7 +3,16 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, CheckCircle2, BookOpen, Sparkles } from "lucide-react";
+import {
+  Loader2,
+  CheckCircle2,
+  Sparkles,
+  Rocket,
+  Layers,
+  BookOpen,
+  Quote,
+  PlusCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,46 +21,49 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { generateBoxesAction, confirmBoxesAction } from "../actions";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import type { LoadingStep } from "@/lib/store/onboarding-store";
 import type { GeminiThesisBox } from "@/lib/types";
 
-const loadingMessages = [
-  "Tez matrisi ve araştırma tasarımı çözümleniyor...",
-  "Akademik konu kutuları yapılandırılıyor...",
-  "Literatür taraması birimleri oluşturuluyor...",
-  "Semantik arama blokları optimize ediliyor...",
-  "Son düzenlemeler yapılıyor...",
+const GENERATION_STEPS: LoadingStep[] = [
+  { text: "Tez matrisi ve araştırma tasarımı çözümleniyor...", status: "idle" },
+  { text: "Akademik konu kutuları yapılandırılıyor...", status: "idle" },
+  { text: "Semantik arama blokları optimize ediliyor...", status: "idle" },
+  { text: "Son düzenlemeler yapılıyor...", status: "idle" },
+];
+
+const SAVE_STEPS: LoadingStep[] = [
+  { text: "Konu kutuları veri tabanına kaydediliyor...", status: "active" },
+  { text: "Literatür taraması sayfasına yönlendiriliyor...", status: "idle" },
 ];
 
 export function BoxesContainer() {
   const router = useRouter();
-  const [generating, setGenerating] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [confirming, setConfirming] = useState(false);
   const { boxes, setBoxes, resetStore } = useOnboardingStore();
+  const showLoading = useOnboardingStore((s) => s.showLoading);
+  const hideLoading = useOnboardingStore((s) => s.hideLoading);
+  const updateLoadingStep = useOnboardingStore((s) => s.updateLoadingStep);
 
-  // Load existing boxes on mount — always checks DB first
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const { fetchBoxes } = await import("../../lib/fetch-actions");
       const existing = await fetchBoxes();
-      // With flat hierarchy, all boxes are direct children — use all boxes
       if (!cancelled) {
         if (existing.length > 0) {
-          // DB has boxes — overwrite Zustand with fresh data
           setBoxes(
             existing.map((b) => ({
               title: b.title,
               description: b.description ?? "",
               semanticSearchBlock: b.semanticSearchBlock ?? "",
+              foundationalQueries: [],
+              concepts: b.concepts ?? [],
             })),
           );
-        } else if (useOnboardingStore.getState().boxes) {
-          // DB has no boxes but Zustand has stale data — clear so auto-generation fires
-          setBoxes(null);
         }
         setLoading(false);
       }
@@ -62,78 +74,61 @@ export function BoxesContainer() {
   }, [setBoxes]);
 
   const handleGenerate = useCallback(async () => {
-    setGenerating(true);
+    const steps = GENERATION_STEPS.map((s) => ({ ...s }));
+    steps[0].status = "active";
+    showLoading(
+      "Konu Kutuları Yapılandırılıyor",
+      "Tez matrisiniz çözümlenerek bağımsız literatür taraması kutularına dönüştürülüyor.",
+      steps,
+    );
+
     const result = await generateBoxesAction();
     if ("error" in result) {
+      hideLoading();
       toast.error(result.error);
-      setGenerating(false);
     } else {
+      updateLoadingStep(0, "completed");
+      updateLoadingStep(1, "completed");
+      updateLoadingStep(2, "completed");
+      updateLoadingStep(3, "completed");
+      await new Promise((r) => setTimeout(r, 400));
+      hideLoading();
       setBoxes(result.boxes);
-      setGenerating(false);
     }
-  }, [setBoxes]);
-
-  useEffect(() => {
-    if (!generating) {
-      setCurrentStep(0);
-      return;
-    }
-    const interval = setInterval(() => {
-      setCurrentStep((prev) =>
-        prev < loadingMessages.length - 1 ? prev + 1 : prev,
-      );
-    }, 2800);
-    return () => clearInterval(interval);
-  }, [generating]);
+  }, [setBoxes, showLoading, hideLoading, updateLoadingStep]);
 
   const handleConfirm = useCallback(async () => {
     if (!boxes) return;
     setConfirming(true);
+
+    showLoading(
+      "Konu Kutuları Kaydediliyor",
+      "Oluşturulan konu kutuları veri tabanına kaydediliyor.",
+      SAVE_STEPS,
+    );
+
     const result = await confirmBoxesAction(boxes);
     if ("error" in result && result.error) {
+      hideLoading();
       toast.error(result.error);
       setConfirming(false);
       return;
     }
-    // Clear stale literature pool so literature-review re-processes from scratch
-    useOnboardingStore.getState().setLiteraturePool([]);
+
+    updateLoadingStep(0, "completed");
+    updateLoadingStep(1, "active");
+    await new Promise((r) => setTimeout(r, 300));
+    hideLoading();
+    setConfirming(false);
     toast.success("Konu kutuları kaydedildi. Literatür taramasına geçiliyor.");
     router.push("/onboarding/literature-review");
-  }, [boxes, router]);
-
-  if (generating) {
-    return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/85 backdrop-blur-md">
-        <div className="max-w-md w-full px-6 text-center space-y-6">
-          <div className="relative flex items-center justify-center mx-auto w-16 h-16 bg-primary/10 border border-primary/20 rounded-full">
-            <Loader2 className="w-8 h-8 text-primary animate-spin" />
-          </div>
-          <div className="space-y-2">
-            <h3 className="text-xl font-semibold text-foreground tracking-tight">
-              Konu Kutuları Yapılandırılıyor
-            </h3>
-            <p className="text-sm text-muted-foreground min-h-[40px] leading-relaxed">
-              {loadingMessages[currentStep]}
-            </p>
-          </div>
-          <div className="flex justify-center items-center gap-1.5 pt-2">
-            {loadingMessages.map((_, idx) => (
-              <div
-                key={idx}
-                className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentStep ? "w-8 bg-primary" : idx < currentStep ? "w-2 bg-primary/40" : "w-2 bg-border"}`}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  }, [boxes, router, showLoading, hideLoading, updateLoadingStep]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-4">
-          <Loader2 className="w-8 h-8 text-muted-foreground animate-spin mx-auto" />
+          <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto" />
           <p className="text-muted-foreground text-sm">Kutular yükleniyor...</p>
         </div>
       </div>
@@ -143,11 +138,14 @@ export function BoxesContainer() {
   if (!boxes) {
     return (
       <div className="flex items-center justify-center min-h-[60vh] px-4">
-        <div className="text-center space-y-6 max-w-lg mx-auto">
-          <div className="p-4 bg-primary/10 border border-primary/20 rounded-full inline-flex mx-auto">
-            <Sparkles className="w-12 h-12 text-primary" />
+        <div className="text-center space-y-8 max-w-lg mx-auto">
+          <div className="relative inline-flex">
+            <div className="p-5 bg-primary/10 border border-primary/20 rounded-full">
+              <Layers className="w-14 h-14 text-primary" />
+            </div>
+            <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary shadow-[0_0_8px_#10b981] animate-pulse" />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-3">
             <h1 className="text-3xl font-semibold tracking-tight text-foreground">
               Konu Kutuları
             </h1>
@@ -160,7 +158,7 @@ export function BoxesContainer() {
           </div>
           <Button
             onClick={handleGenerate}
-            className="btn-academic-hero w-full sm:w-auto"
+            className="btn-academic-hero w-full sm:w-auto bg-gradient-to-r from-primary to-emerald-400 hover:from-emerald-500 hover:to-emerald-300 text-primary-foreground shadow-lg shadow-primary/20 hover:shadow-emerald-500/30 transition-all duration-300"
           >
             <Sparkles className="w-5 h-5 mr-2" />
             Tez Planını Çıkar ve Kutuları Oluştur
@@ -171,12 +169,14 @@ export function BoxesContainer() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-10">
-      <div className="flex flex-col items-center text-center space-y-4 max-w-2xl mx-auto">
-        <div className="p-4 bg-primary/10 border border-primary/20 rounded-full">
-          <CheckCircle2 className="w-12 h-12 text-primary" />
+    <div className="max-w-7xl mx-auto space-y-12">
+      <div className="flex flex-col items-center text-center space-y-5 max-w-2xl mx-auto">
+        <div className="relative inline-flex">
+          <div className="p-4 bg-primary/10 border border-primary/20 rounded-full">
+            <CheckCircle2 className="w-12 h-12 text-primary" />
+          </div>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-3">
           <h1 className="text-3xl font-semibold tracking-tight text-foreground">
             Konu Kutuları Yapılandırıldı!
           </h1>
@@ -187,52 +187,129 @@ export function BoxesContainer() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {boxes.map((box, idx) => (
-          <Card
-            key={idx}
-            className="bg-card/40 border border-border hover:border-primary/30 transition-all"
-          >
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-primary shrink-0" />
-                <CardTitle className="text-base font-semibold text-foreground">
-                  {box.title}
-                </CardTitle>
-              </div>
-              {box.description && (
-                <CardDescription className="text-sm text-muted-foreground leading-relaxed mt-2">
-                  {box.description}
-                </CardDescription>
-              )}
-            </CardHeader>
-            <CardContent>
-              {box.semanticSearchBlock && (
-                <div className="text-xs text-muted-foreground italic leading-relaxed border-t border-border/40 pt-3">
-                  {box.semanticSearchBlock}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {boxes.map((box, idx) => {
+          const isLastOdd = boxes.length % 2 !== 0 && idx === boxes.length - 1;
+          return (
+            <BoxCard key={idx} box={box} index={idx} isLastOdd={isLastOdd} />
+          );
+        })}
       </div>
 
-      <div className="flex flex-col items-center justify-center space-y-11">
+      <div className="flex flex-col items-center pt-4 pb-8">
         <Button
           onClick={handleConfirm}
           disabled={confirming}
-          className="btn-academic-hero w-full sm:w-auto"
+          className="btn-academic-hero relative overflow-hidden bg-gradient-to-r from-primary to-emerald-400 hover:from-emerald-500 hover:to-emerald-300 text-primary-foreground shadow-lg shadow-primary/20 hover:shadow-emerald-500/30 transition-all duration-300 group"
         >
           {confirming ? (
             <span className="flex items-center justify-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-5 h-5 animate-spin" />
               Kaydediliyor...
             </span>
           ) : (
-            "Kutuları Onayla ve Literatür Taramasını Başlat"
+            <span className="flex items-center justify-center gap-3">
+              <Rocket className="w-5 h-5 transition-transform duration-300 group-hover:-translate-y-1 group-hover:translate-x-0.5" />
+              <span className="tracking-wide">
+                Kutuları Onayla ve Literatür Taramasını Başlat
+              </span>
+            </span>
           )}
         </Button>
       </div>
     </div>
+  );
+}
+
+function BoxCard({
+  box,
+  index,
+  isLastOdd = false,
+}: {
+  box: GeminiThesisBox;
+  index: number;
+  isLastOdd?: boolean;
+}) {
+  return (
+    <Card
+      className={`group/card h-full flex flex-col bg-card border-border/60 rounded-xl transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_0_24px_-6px_#10b981]/20${isLastOdd ? " md:col-span-2" : ""}`}
+    >
+      <CardHeader className="pb-3 space-y-3">
+        <div className="flex items-start gap-3">
+          <span className="relative mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-primary shadow-[0_0_8px_#10b981]" />
+          <CardTitle className="text-base font-semibold text-foreground leading-snug">
+            {box.title}
+          </CardTitle>
+        </div>
+        {box.description && (
+          <CardDescription className="text-sm text-muted-foreground leading-relaxed">
+            {box.description}
+          </CardDescription>
+        )}
+      </CardHeader>
+
+      <CardContent className="flex-1 flex flex-col gap-4 pt-0">
+        {box.concepts && box.concepts.length > 0 && (
+          <div className="space-y-2">
+            <div className="border-t border-border/60" />
+            <div className="flex flex-wrap gap-1.5">
+              {box.concepts.map((concept, i) => (
+                <span
+                  key={i}
+                  className="px-2 py-1 rounded bg-primary/10 text-[10px] text-primary font-semibold"
+                >
+                  {concept}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {box.foundationalQueries && box.foundationalQueries.length > 0 && (
+          <div className="mt-auto space-y-3">
+            <div className="border-t border-border/60" />
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge
+                variant="outline"
+                className="bg-primary/10 text-primary border-primary/20 flex items-center gap-1.5 py-1 px-2.5 rounded-md font-normal text-xs"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                {box.foundationalQueries.length} Kurucu Metin
+              </Badge>
+              <span className="text-muted-foreground/60 text-xs italic truncate max-w-[180px]">
+                {box.foundationalQueries
+                  .map((fq) => fq.author.split(" ").pop())
+                  .filter(Boolean)
+                  .join(", ")}{" "}
+                ekolü
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {box.foundationalQueries.slice(0, 3).map((fq, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/50 bg-card border border-border/40 rounded-md px-2 py-0.5"
+                >
+                  <Quote className="w-2.5 h-2.5" />
+                  {fq.publicationYear}
+                </span>
+              ))}
+              {box.foundationalQueries.length > 3 && (
+                <span className="text-[11px] text-muted-foreground/40 px-1">
+                  +{box.foundationalQueries.length - 3}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-auto pt-2">
+          <div className="flex items-center gap-1.5 text-primary/60 text-xs opacity-0 group-hover/card:opacity-100 transition-opacity duration-200">
+            <PlusCircle className="w-3.5 h-3.5" />
+            <span>Kutu {index + 1}</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

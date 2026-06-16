@@ -104,13 +104,13 @@ export async function confirmBoxesAction(
         .delete(thesisBoxes)
         .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
 
-      // Insert all boxes as flat (no parent hierarchy)
+      // Insert all boxes as flat
       const boxValues = boxes.map((box) => ({
         thesisMatrixId,
-        parentId: null as number | null,
         title: box.title,
         description: box.description || "",
         semanticSearchBlock: box.semanticSearchBlock || "",
+        concepts: box.concepts || [],
       }));
 
       if (boxValues.length > 0) {

@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import type { LoadingStep } from "@/lib/store/onboarding-store";
 import { submitThesisMatrixAction } from "../actions";
 import { fetchThesisMatrix } from "../../lib/fetch-actions";
 
@@ -23,6 +25,8 @@ export function MatrixForm() {
   const [historicalSpatialLimits, setHistoricalSpatialLimits] = useState("");
   const [isPending, setIsPending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const showLoading = useOnboardingStore((s) => s.showLoading);
+  const hideLoading = useOnboardingStore((s) => s.hideLoading);
 
   useEffect(() => {
     fetchThesisMatrix().then((matrix) => {
@@ -41,6 +45,20 @@ export function MatrixForm() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsPending(true);
+
+    const steps: LoadingStep[] = [
+      { text: "Tez anayasası analiz ediliyor...", status: "active" },
+      { text: "Akademik terimler zenginleştiriliyor...", status: "idle" },
+      { text: "Literatür bağlantıları kuruluyor...", status: "idle" },
+      { text: "Veri tabanına kaydediliyor...", status: "idle" },
+    ];
+
+    showLoading(
+      "Tez Matrisi Zenginleştiriliyor",
+      "Yapay zeka asistanınız tez anayasanızı analiz ederek akademik bir yapıya dönüştürüyor.",
+      steps,
+    );
+
     try {
       const result = await submitThesisMatrixAction({
         studyTitle,
@@ -51,12 +69,15 @@ export function MatrixForm() {
         historicalSpatialLimits,
       });
       if (result.success) {
+        hideLoading();
         toast.success("Tez matrisi başarıyla zenginleştirildi.");
         router.push("/onboarding/enrichment");
       } else {
+        hideLoading();
         toast.error(result.error || "Zenginleştirme sırasında bir hata oluştu.");
       }
     } catch {
+      hideLoading();
       toast.error("Bir hata oluştu.");
     } finally {
       setIsPending(false);
@@ -158,7 +179,7 @@ export function MatrixForm() {
             />
           </div>
           <div className="md:col-span-full">
-            <Button type="submit" className="btn-academic-hero w-full" disabled={isPending}>
+            <Button type="submit" className="btn-academic-hero w-full" disabled={isPending || useOnboardingStore.getState().isLoading}>
               {isPending ? (
                 <span className="flex items-center justify-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
