@@ -36,7 +36,7 @@ export async function searchOpenAlex(query: string): Promise<RawPaper[]> {
     "search.semantic": query,
     per_page: "50",
     select:
-      "title,abstract_inverted_index,doi,id,authorships,publication_year,primary_location",
+      "title,topics,concepts,doi,id,authorships,publication_year,primary_location",
   });
   if (apiKey) params.set("api_key", apiKey);
 
@@ -61,9 +61,9 @@ export async function searchOpenAlex(query: string): Promise<RawPaper[]> {
     const safeMax = maxScore > 0 ? maxScore : 1;
 
     return results.map((work, i) => {
-      const invertedIndex = work.abstract_inverted_index as
-        | Record<string, number[]>
-        | null
+      const topics = work.topics as { display_name?: string }[] | undefined;
+      const concepts = work.concepts as
+        | { display_name?: string; score?: number; level?: number }[]
         | undefined;
       const authorships = work.authorships as
         | { author?: { display_name?: string } }[]
@@ -77,10 +77,28 @@ export async function searchOpenAlex(query: string): Promise<RawPaper[]> {
         | null
         | undefined;
 
+      const topicName = topics?.[0]?.display_name ?? null;
+      const topConcepts =
+        concepts
+          ?.filter(
+            (c) => (c.score ?? 0) > 0.3 && (c.level === 1 || c.level === 2),
+          )
+          .slice(0, 3)
+          .map((c) => c.display_name)
+          .filter(Boolean) ?? [];
+
+      const metadataParts: string[] = [];
+      if (topicName) metadataParts.push(`Topic: ${topicName}`);
+      if (topConcepts.length > 0)
+        metadataParts.push(`Concepts: ${topConcepts.join(", ")}`);
+      const metadata =
+        metadataParts.length > 0 ? metadataParts.join(". ") : null;
+
       return {
         source: "openalex" as const,
         title: (work.title as string) ?? null,
-        abstract: resolveAbstractInvertedIndex(invertedIndex),
+        abstract: null,
+        metadata,
         doi: extractCleanDoi(work.doi as string | null | undefined),
         url: primaryLocation?.landing_page_url ?? (work.id as string) ?? null,
         authors:
@@ -117,7 +135,7 @@ export async function searchOpenAlexKeyword(
     sort: "cited_by_count:desc",
     per_page: "50",
     select:
-      "title,abstract_inverted_index,doi,id,authorships,publication_year,primary_location",
+      "title,topics,concepts,doi,id,authorships,publication_year,primary_location",
   });
   if (apiKey) params.set("api_key", apiKey);
 
@@ -142,9 +160,9 @@ export async function searchOpenAlexKeyword(
     const safeMax = maxScore > 0 ? maxScore : 1;
 
     return results.map((work, i) => {
-      const invertedIndex = work.abstract_inverted_index as
-        | Record<string, number[]>
-        | null
+      const topics = work.topics as { display_name?: string }[] | undefined;
+      const concepts = work.concepts as
+        | { display_name?: string; score?: number; level?: number }[]
         | undefined;
       const authorships = work.authorships as
         | { author?: { display_name?: string } }[]
@@ -158,10 +176,28 @@ export async function searchOpenAlexKeyword(
         | null
         | undefined;
 
+      const topicName = topics?.[0]?.display_name ?? null;
+      const topConcepts =
+        concepts
+          ?.filter(
+            (c) => (c.score ?? 0) > 0.3 && (c.level === 1 || c.level === 2),
+          )
+          .slice(0, 3)
+          .map((c) => c.display_name)
+          .filter(Boolean) ?? [];
+
+      const metadataParts: string[] = [];
+      if (topicName) metadataParts.push(`Topic: ${topicName}`);
+      if (topConcepts.length > 0)
+        metadataParts.push(`Concepts: ${topConcepts.join(", ")}`);
+      const metadata =
+        metadataParts.length > 0 ? metadataParts.join(". ") : null;
+
       return {
         source: "openalex" as const,
         title: (work.title as string) ?? null,
-        abstract: resolveAbstractInvertedIndex(invertedIndex),
+        abstract: null,
+        metadata,
         doi: extractCleanDoi(work.doi as string | null | undefined),
         url: primaryLocation?.landing_page_url ?? (work.id as string) ?? null,
         authors:
@@ -321,4 +357,64 @@ export async function resolveFoundationalWorks(
   return resolvedWorks.filter(
     (work): work is FoundationalWorkResult => work !== null,
   );
+}
+
+// ============================================================================
+// Full Abstract Recovery (post-sifting)
+// ============================================================================
+
+/**
+ * Fetches full abstracts for a batch of OpenAlex work IDs after the sifting
+ * stage. Uses a single API call with a pipe-delimited ID filter.
+ *
+ * @param openAlexIds - Array of OpenAlex work URLs (e.g. "https://openalex.org/W...")
+ * @returns Map of openAlexId → full abstract text
+ */
+export async function fetchFullAbstracts(
+  openAlexIds: string[],
+): Promise<Map<string, string>> {
+  if (!openAlexIds || openAlexIds.length === 0) return new Map();
+
+  const apiKey = process.env.OPENALEX_API_KEY;
+  const params = new URLSearchParams({
+    filter: `id:${openAlexIds.join("|")}`,
+    select: "id,abstract_inverted_index",
+    per_page: "200",
+  });
+  if (apiKey) params.set("api_key", apiKey);
+
+  const url = `https://api.openalex.org/works?${params.toString()}`;
+
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) return new Map();
+
+    const data = (await response.json()) as {
+      results?: Record<string, unknown>[];
+    };
+    const results = data.results;
+    if (!results) return new Map();
+
+    const abstractMap = new Map<string, string>();
+    for (const work of results) {
+      const id = work.id as string | undefined;
+      if (!id) continue;
+
+      const invertedIndex = work.abstract_inverted_index as
+        | Record<string, number[]>
+        | null
+        | undefined;
+      const resolved = resolveAbstractInvertedIndex(invertedIndex);
+      if (resolved) {
+        abstractMap.set(id, resolved);
+      }
+    }
+
+    return abstractMap;
+  } catch {
+    return new Map();
+  }
 }

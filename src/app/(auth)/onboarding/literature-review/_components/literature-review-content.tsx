@@ -19,7 +19,6 @@ import { LiteratureArticleCard } from "./literature-article-card";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import type { LoadingStep } from "@/lib/store/onboarding-store";
 import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
-import type { LiteratureReviewResult } from "../_services/ai-processor";
 
 function SubBoxQuery({
   subBox,
@@ -175,36 +174,31 @@ export function LiteratureReviewContent() {
         return next;
       });
 
-      const results = await Promise.allSettled(
-        chunk.map((box) =>
-          processLiteratureReviewAction({
-            title: box.title,
-            description: box.description,
-            semanticSearchBlock: box.semanticSearchBlock,
-            foundationalQueries: box.foundationalQueries,
-          }),
-        ),
+      const bulkResult = await processLiteratureReviewAction(
+        chunk.map((box) => ({
+          title: box.title,
+          description: box.description,
+          semanticSearchBlock: box.semanticSearchBlock,
+          foundationalQueries: box.foundationalQueries,
+        })),
       );
 
-      for (let j = 0; j < chunk.length; j++) {
-        const box = chunk[j];
-        const settled = results[j];
-
-        if (settled.status === "fulfilled" && settled.value.data) {
+      if (bulkResult.data) {
+        for (let j = 0; j < chunk.length; j++) {
+          const box = chunk[j];
+          const boxResult = bulkResult.data[j];
           addToLiteraturePool({
             subBoxTitle: box.title,
-            starterPack: settled.value.data.starterPack,
-            reservedPool: settled.value.data.reservedPool,
+            starterPack: boxResult.starterPack,
+            reservedPool: boxResult.reservedPool,
           });
           setBoxStatuses((prev) => ({ ...prev, [box.title]: "done" }));
           updateLoadingStep(globalStepIndex + j, "completed");
-        } else {
-          const msg =
-            settled.status === "rejected"
-              ? settled.reason instanceof Error
-                ? settled.reason.message
-                : "Beklenmeyen hata"
-              : (settled.value.error ?? "Literatür taraması başarısız oldu.");
+        }
+      } else {
+        const msg = bulkResult.error ?? "Literatür taraması başarısız oldu.";
+        for (let j = 0; j < chunk.length; j++) {
+          const box = chunk[j];
           setBoxErrors((prev) => ({ ...prev, [box.title]: msg }));
           setBoxStatuses((prev) => ({ ...prev, [box.title]: "error" }));
           updateLoadingStep(globalStepIndex + j, "completed");

@@ -20,6 +20,7 @@ import {
   searchOpenAlex,
   searchOpenAlexKeyword,
   resolveFoundationalWorks,
+  fetchFullAbstracts,
   type FoundationalWorkResult,
 } from "./_services/search-api";
 import {
@@ -30,33 +31,219 @@ import {
 } from "./_services/ai-processor";
 
 // ============================================================================
-// Main Action: processLiteratureReviewAction
+// Helper: processSingleBox — processes a single sub-box through the pipeline
 // ============================================================================
 
 /**
- * Processes a single sub-box through the 5-stage literature review pipeline:
- * 1. OpenAlex search (semantic + keyword fallback)
- * 2. DOI-based deduplication (saved as rawApiPool)
- * 3. AI sifting — aggressive gating
- * 4. AI jury analysis → starter pack + reserved pool
- * 5. CrossRef polite-pool validation on final jury articles + abstract restore
+ * Runs the full 6-stage pipeline for a single sub-box:
+ * 1. OpenAlex search (semantic + keyword fallback + foundational)
+ * 2. DOI-based deduplication
+ * 3. AI sifting
+ * 4. Full abstract recovery
+ * 5. AI jury analysis → starter pack + reserved pool
+ * 6. CrossRef polite-pool validation
+ */
+async function processSingleBox(
+  subBox: SubBoxInput,
+  thesisCtx: {
+    studyTitle: string;
+    researchQuestion: string;
+    theoreticalFramework: string;
+    historicalSpatialLimits: string;
+  },
+  logger: Logger,
+): Promise<LiteratureReviewResult> {
+  if (!subBox.semanticSearchBlock.trim()) {
+    return { starterPack: [], reservedPool: [] };
+  }
+
+  // ------------------------------------------------------------------
+  // Stage 1: OpenAlex search (semantic vector + keyword fallback + foundational)
+  // ------------------------------------------------------------------
+  logger.info("literature_search_start", {
+    service: "literature",
+    data: { queryCount: 1, subBoxTitle: subBox.title },
+  });
+
+  const searchStart = performance.now();
+
+  const searchCalls: Promise<RawPaper[]>[] = [
+    searchOpenAlex(subBox.semanticSearchBlock),
+    searchOpenAlexKeyword(subBox.title),
+  ];
+  if (subBox.foundationalQueries && subBox.foundationalQueries.length > 0) {
+    const foundationalPromise = resolveFoundationalWorks(
+      subBox.foundationalQueries,
+    );
+    searchCalls.push(
+      foundationalPromise.then((foundational) =>
+        foundational.map(
+          (fw): RawPaper => ({
+            source: "openalex" as const,
+            title: fw.title,
+            abstract: null,
+            metadata: null,
+            doi: null,
+            url: fw.id,
+            authors: [],
+            year: fw.publicationYear,
+            publisher: null,
+            openAlexId: fw.id,
+            isFoundational: true,
+            relevanceScore: 1.0,
+          }),
+        ),
+      ),
+    );
+  }
+
+  const settled = await Promise.allSettled(searchCalls);
+
+  const allRaw: RawPaper[] = [];
+  for (const result of settled) {
+    if (result.status === "fulfilled") {
+      allRaw.push(...result.value);
+    }
+  }
+
+  logger.info("literature_search_done", {
+    service: "literature",
+    durationMs: performance.now() - searchStart,
+    data: { rawCount: allRaw.length },
+  });
+
+  if (allRaw.length === 0) {
+    return { starterPack: [], reservedPool: [] };
+  }
+
+  // ------------------------------------------------------------------
+  // Stage 2: Multi-strategy deduplication
+  // ------------------------------------------------------------------
+  const mergeStart = performance.now();
+  const merged = mergePapers(allRaw);
+
+  logger.info("literature_merge_done", {
+    service: "literature",
+    durationMs: performance.now() - mergeStart,
+    data: { mergedCount: merged.length },
+  });
+
+  const rawApiPool = merged;
+
+  // ------------------------------------------------------------------
+  // Stage 3: AI Sifting
+  // ------------------------------------------------------------------
+  const siftStart = performance.now();
+  const sifted = await runSiftingStage(subBox, merged, logger, thesisCtx);
+
+  logger.info("literature_sifting_done", {
+    service: "literature",
+    durationMs: performance.now() - siftStart,
+    data: { before: merged.length, after: sifted.length },
+  });
+
+  if (sifted.length === 0) {
+    return { starterPack: [], reservedPool: [] };
+  }
+
+  // ------------------------------------------------------------------
+  // Stage 4: Full Abstract Recovery (post-sifting)
+  // ------------------------------------------------------------------
+  const abstractStart = performance.now();
+  const siftedIds: string[] = [];
+  for (const p of sifted) {
+    if (p.openAlexId) siftedIds.push(p.openAlexId);
+  }
+
+  let abstractMap = new Map<string, string>();
+  if (siftedIds.length > 0) {
+    abstractMap = await fetchFullAbstracts(siftedIds);
+  }
+
+  for (const p of sifted) {
+    if (p.openAlexId) {
+      const resolved = abstractMap.get(p.openAlexId);
+      if (resolved) p.abstract = resolved;
+    }
+  }
+
+  logger.info("literature_abstract_recovery_done", {
+    service: "literature",
+    durationMs: performance.now() - abstractStart,
+    data: {
+      requestedCount: siftedIds.length,
+      resolvedCount: abstractMap.size,
+    },
+  });
+
+  // ------------------------------------------------------------------
+  // Stage 5: AI Jury Analysis
+  // ------------------------------------------------------------------
+  const juryStart = performance.now();
+  const result = await runJuryStage(subBox, sifted, logger);
+
+  logger.info("literature_jury_done", {
+    service: "literature",
+    durationMs: performance.now() - juryStart,
+    data: {
+      starterPackCount: result.starterPack.length,
+      reservedPoolCount: result.reservedPool.length,
+    },
+  });
+
+  // ------------------------------------------------------------------
+  // Stage 6: CrossRef polite-pool validation
+  // ------------------------------------------------------------------
+  const crossrefStart = performance.now();
+  const [enrichedStarterPack, enrichedReservedPool] = await Promise.all([
+    Promise.all(
+      result.starterPack.map((a) =>
+        enrichJuryArticleWithCrossRef(a, rawApiPool),
+      ),
+    ),
+    Promise.all(
+      result.reservedPool.map((a) =>
+        enrichJuryArticleWithCrossRef(a, rawApiPool),
+      ),
+    ),
+  ]);
+
+  logger.info("literature_crossref_done", {
+    service: "literature",
+    durationMs: performance.now() - crossrefStart,
+    data: {
+      enrichedCount: enrichedStarterPack.length + enrichedReservedPool.length,
+    },
+  });
+
+  return {
+    starterPack: enrichedStarterPack,
+    reservedPool: enrichedReservedPool,
+  };
+}
+
+// ============================================================================
+// Main Action: processLiteratureReviewAction (bulk/parallel)
+// ============================================================================
+
+/**
+ * Processes multiple sub-boxes through the literature review pipeline in parallel.
+ * Each box goes through: OpenAlex search → dedup → AI sifting → abstract recovery
+ * → jury analysis → CrossRef validation.
  *
- * @param subBox - Sub-box metadata including semanticSearchBlock
- * @returns LiteratureReviewResult with starterPack and reservedPool arrays
+ * @param subBoxes - Array of SubBoxInput to process concurrently
+ * @returns LiteratureReviewResult[] in the same order as the input
  */
 export async function processLiteratureReviewAction(
-  subBox: SubBoxInput,
-): Promise<{ data?: LiteratureReviewResult; error?: string }> {
+  subBoxes: SubBoxInput[],
+): Promise<{ data?: LiteratureReviewResult[]; error?: string }> {
   const logger = new Logger(createFlowId());
 
   try {
-    if (!subBox.semanticSearchBlock.trim()) {
-      return { data: { starterPack: [], reservedPool: [] } };
+    if (!subBoxes || subBoxes.length === 0) {
+      return { data: [] };
     }
 
-    // ------------------------------------------------------------------
-    // Fetch thesis matrix context for global alignment
-    // ------------------------------------------------------------------
     const session = await getSession();
     if (!session) return { error: "Oturum bulunamadı." };
 
@@ -72,143 +259,11 @@ export async function processLiteratureReviewAction(
 
     if (!thesisCtx) return { error: "Tez matrisi bulunamadı." };
 
-    // ------------------------------------------------------------------
-    // Stage 1: OpenAlex search (semantic vector + keyword fallback + foundational)
-    // ------------------------------------------------------------------
-    logger.info("literature_search_start", {
-      service: "literature",
-      data: { queryCount: 1, subBoxTitle: subBox.title },
-    });
+    const results = await Promise.all(
+      subBoxes.map((box) => processSingleBox(box, thesisCtx, logger)),
+    );
 
-    const searchStart = performance.now();
-
-    const searchCalls: Promise<RawPaper[]>[] = [
-      searchOpenAlex(subBox.semanticSearchBlock),
-      searchOpenAlexKeyword(subBox.title),
-    ];
-    let foundationalWorksPromise: Promise<FoundationalWorkResult[]> | null =
-      null;
-    if (subBox.foundationalQueries && subBox.foundationalQueries.length > 0) {
-      foundationalWorksPromise = resolveFoundationalWorks(
-        subBox.foundationalQueries,
-      );
-      // Wrap in a promise that resolves to RawPaper[] for Promise.allSettled
-      searchCalls.push(
-        foundationalWorksPromise.then((foundational) =>
-          foundational.map(
-            (fw): RawPaper => ({
-              source: "openalex" as const,
-              title: fw.title,
-              abstract: null,
-              doi: null,
-              url: fw.id,
-              authors: [],
-              year: fw.publicationYear,
-              publisher: null,
-              openAlexId: fw.id,
-              isFoundational: true,
-              relevanceScore: 1.0,
-            }),
-          ),
-        ),
-      );
-    }
-
-    const settled = await Promise.allSettled(searchCalls);
-
-    const allRaw: RawPaper[] = [];
-    for (const result of settled) {
-      if (result.status === "fulfilled") {
-        allRaw.push(...result.value);
-      }
-    }
-
-    logger.info("literature_search_done", {
-      service: "literature",
-      durationMs: performance.now() - searchStart,
-      data: { rawCount: allRaw.length },
-    });
-
-    if (allRaw.length === 0) {
-      return { data: { starterPack: [], reservedPool: [] } };
-    }
-
-    // ------------------------------------------------------------------
-    // Stage 2: Multi-strategy deduplication (DOI + OpenAlex ID + title)
-    // ------------------------------------------------------------------
-    const mergeStart = performance.now();
-    const merged = mergePapers(allRaw);
-
-    logger.info("literature_merge_done", {
-      service: "literature",
-      durationMs: performance.now() - mergeStart,
-      data: { mergedCount: merged.length },
-    });
-
-    const rawApiPool = merged;
-
-    // ------------------------------------------------------------------
-    // Stage 3: AI Sifting — aggressive gating
-    // ------------------------------------------------------------------
-    const siftStart = performance.now();
-    const sifted = await runSiftingStage(subBox, merged, logger, thesisCtx);
-
-    logger.info("literature_sifting_done", {
-      service: "literature",
-      durationMs: performance.now() - siftStart,
-      data: { before: merged.length, after: sifted.length },
-    });
-
-    if (sifted.length === 0) {
-      return { data: { starterPack: [], reservedPool: [] } };
-    }
-
-    // ------------------------------------------------------------------
-    // Stage 4: AI Jury Analysis — starter pack & reserved pool
-    // ------------------------------------------------------------------
-    const juryStart = performance.now();
-    const result = await runJuryStage(subBox, sifted, logger);
-
-    logger.info("literature_jury_done", {
-      service: "literature",
-      durationMs: performance.now() - juryStart,
-      data: {
-        starterPackCount: result.starterPack.length,
-        reservedPoolCount: result.reservedPool.length,
-      },
-    });
-
-    // ------------------------------------------------------------------
-    // Stage 5: CrossRef polite-pool validation on final jury articles
-    // ------------------------------------------------------------------
-    const crossrefStart = performance.now();
-    const [enrichedStarterPack, enrichedReservedPool] = await Promise.all([
-      Promise.all(
-        result.starterPack.map((a) =>
-          enrichJuryArticleWithCrossRef(a, rawApiPool),
-        ),
-      ),
-      Promise.all(
-        result.reservedPool.map((a) =>
-          enrichJuryArticleWithCrossRef(a, rawApiPool),
-        ),
-      ),
-    ]);
-
-    logger.info("literature_crossref_done", {
-      service: "literature",
-      durationMs: performance.now() - crossrefStart,
-      data: {
-        enrichedCount: enrichedStarterPack.length + enrichedReservedPool.length,
-      },
-    });
-
-    return {
-      data: {
-        starterPack: enrichedStarterPack,
-        reservedPool: enrichedReservedPool,
-      },
-    };
+    return { data: results };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Beklenmeyen hata";
     logger.error("literature_review_failed", {
@@ -334,7 +389,6 @@ export async function confirmLiteratureAction(args: {
             publisher: article.publisher ?? null,
             publicationYear: article.publicationYear ?? null,
             authors: article.authors ?? null,
-            strategicRecommendations: article.strategicRecommendations ?? null,
             isRead: false,
           });
         }
@@ -352,7 +406,6 @@ export async function confirmLiteratureAction(args: {
             publisher: article.publisher ?? null,
             publicationYear: article.publicationYear ?? null,
             authors: article.authors ?? null,
-            strategicRecommendations: article.strategicRecommendations ?? null,
             isRead: false,
           });
         }

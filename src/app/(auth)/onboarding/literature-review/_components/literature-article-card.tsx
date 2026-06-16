@@ -66,17 +66,6 @@ export function LiteratureArticleCard({ article }: LiteratureArticleCardProps) {
           )}
         </div>
 
-        {/* Akademik Gerekçe & Katkı */}
-        {article.strategicRecommendations && (
-          <div className="bg-muted border-l-2 border-primary p-3 rounded-r-md">
-            <p className="text-xs font-semibold text-foreground mb-1">
-              Akademik Gerekçe & Katkı:
-            </p>
-            <p className="text-sm italic leading-relaxed text-foreground">
-              {article.strategicRecommendations}
-            </p>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

@@ -19,6 +19,7 @@ export interface RawPaper {
   source: "openalex";
   title: string | null;
   abstract: string | null;
+  metadata: string | null;
   doi: string | null;
   url: string | null;
   authors: string[];
@@ -32,6 +33,7 @@ export interface RawPaper {
 export interface ValidatedPaper {
   title: string;
   abstract: string | null;
+  metadata: string | null;
   doi: string | null;
   url: string | null;
   authors: string[];
@@ -58,6 +60,7 @@ export function mergePapers(
     const paper: ValidatedPaper = {
       title: raw.title ?? "",
       abstract: raw.abstract,
+      metadata: raw.metadata,
       doi: raw.doi,
       url: raw.url,
       authors: [...raw.authors],
@@ -72,6 +75,7 @@ export function mergePapers(
       const existing = doiMap.get(paper.doi);
       if (existing) {
         existing.abstract = existing.abstract ?? paper.abstract;
+        existing.metadata = existing.metadata ?? paper.metadata;
         existing.url = existing.url ?? paper.url;
         existing.year = existing.year ?? paper.year;
         existing.publisher = existing.publisher ?? paper.publisher;
@@ -92,6 +96,7 @@ export function mergePapers(
       const existing = openAlexIdMap.get(paper.openAlexId);
       if (existing) {
         existing.abstract = existing.abstract ?? paper.abstract;
+        existing.metadata = existing.metadata ?? paper.metadata;
         existing.url = existing.url ?? paper.url;
         existing.year = existing.year ?? paper.year;
         existing.publisher = existing.publisher ?? paper.publisher;

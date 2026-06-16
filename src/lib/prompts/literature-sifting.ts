@@ -27,7 +27,7 @@ Sen akademik bilgi erişimi, literatür taraması ve hızlı konu sınıflandır
 
 <instructions>
 1. Sana sağlanan <global_context> (tez matrisi) ve <sub_box> bağlamını (başlık, açıklama) analiz et.
-2. <candidates_list> içindeki her bir makale adayını, başlık ve özetini (abstract) kullanarak hem <sub_box> kapsamıyla hem de tezin küresel matrisiyle değerlendir.
+2. <candidates_list> içindeki her bir makale adayını, başlık ve Topic/Concepts etiketlerini (metadata) kullanarak hem <sub_box> kapsamıyla hem de tezin küresel matrisiyle değerlendir. Abstract (özet) metni sağlanmamıştır; kararını yalnızca başlık, metadata etiketleri ve yazar bilgisine dayanarak ver.
 3. Aday listesindeki makaleleri birbiriyle KESİNLİKLE kıyaslama. Her makaleyi tek başına, tezin küresel matrisine ve sub-box kriterlerine göre 1-100 arasında mutlak olarak puanla ve bu puanı "score" alanına yaz.
 4. Puan >= 75 ise "keep: true", puan < 75 ise "keep: false" olarak işaretle.
 </instructions>
@@ -67,7 +67,7 @@ export function buildLiteratureSiftingPrompt(
   candidates: {
     doi: string;
     title: string;
-    abstract: string;
+    metadata: string;
     authors: string[];
   }[],
   thesisCtx: {
@@ -88,7 +88,7 @@ ${JSON.stringify(
   candidates.map((c) => ({
     doi: c.doi,
     title: c.title,
-    abstract: c.abstract,
+    metadata: c.metadata,
     authors: c.authors,
   })),
 )}

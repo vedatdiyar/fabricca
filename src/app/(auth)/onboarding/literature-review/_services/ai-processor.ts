@@ -63,7 +63,7 @@ export async function runSiftingStage(
     const siftingInput = chunk.map((c) => ({
       doi: c.doi ?? "",
       title: c.title,
-      abstract: c.abstract ? c.abstract.slice(0, 300) + "..." : "",
+      metadata: c.metadata ?? "",
       authors: c.authors,
     }));
 
@@ -237,6 +237,7 @@ export async function enrichJuryArticleWithCrossRef(
   const paper: ValidatedPaper = {
     title: article.title,
     abstract: article.abstract,
+    metadata: null,
     doi: article.doi,
     url: article.url,
     authors: [...article.authors],

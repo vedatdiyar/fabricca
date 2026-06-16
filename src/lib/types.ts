@@ -182,7 +182,6 @@ export interface JuryArticle {
   publisher: string;
   publicationYear: number;
   authors: string[];
-  strategicRecommendations: string;
   isFoundational?: boolean;
 }
 
