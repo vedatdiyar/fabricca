@@ -1,14 +1,14 @@
 import type { JsonSchema } from "../gemini";
 
 // ============================================================================
-// 1. JSON YANIT ŞEMASI (%100 TÜRKÇE)
+// 1. JSON YANIT ŞEMASI (%100 TÜRKÇE & ORGANİK ESNEK ARALIK)
 // ============================================================================
 export const thesisBoxGenerationSchema: JsonSchema = {
   type: "object",
   properties: {
     boxes: {
       type: "array",
-      minItems: 3, // Modelin tembellik yapıp her şeyi 2 kutuya sıkıştırmasını engeller
+      minItems: 3, // Sade tezlerde yapay alt başlık üretimini engeller
       maxItems: 5, // Odağın gereksiz dağılmasını engeller
       description:
         "Tez matrisinin entelektüel sütunlarını temsil eden, hiyerarşisiz düz liste kutu seti.",
@@ -29,10 +29,14 @@ export const thesisBoxGenerationSchema: JsonSchema = {
             type: "string",
             maxLength: 1500,
             description:
-              "Kutunun kuramsal çerçevesini, temel kavramlarını ve bağlamını içeren, OpenAlex vektör motorunu doğrudan tetikleyecek, elit bir akademik İNGİLİZCE ile yazılmış, en az 1-2 cümleden oluşan zengin anlamsal arama paragrafı. Niyet mektubu (Grant Aim) veya makale özeti (Abstract) üslubuyla bütüncül bir akademik paragraf tarzında olmalı; asla virgülle ayrılmış kelime yığınları içermemelidir. Maksimum 1500 karakter ile sınırlıdır.",
+              "Kutunun kuramsal çerçevesini, temel kavramlarını ve bağlamını içeren, OpenAlex vektör motorunu doğrudan tetikleyecek, elit bir akademik İNGİLİZCE ile yazılmış zengin anlamsal arama paragrafı. Niyet mektubu (Grant Aim) veya makale özeti (Abstract) üslubuyla bütüncül bir akademik paragraf tarzında olmalı; asla virgülle ayrılmış kelime yığınları içermemelidir.",
           },
           foundationalQueries: {
             type: "array",
+            minItems: 2,
+            maxItems: 2,
+            description:
+              "O kutunun kuramsal/yöntemsel kökünü oluşturan tam 2 adet mikro-analitik kurucu/klasik eserin listesi.",
             items: {
               type: "object",
               properties: {
@@ -42,7 +46,8 @@ export const thesisBoxGenerationSchema: JsonSchema = {
                 },
                 title: {
                   type: "string",
-                  description: "Eserin orijinal tam İngilizce başlığı",
+                  description:
+                    "Eserin orijinal tam İngilizce başlığı veya kitap adı",
                 },
                 publicationYear: {
                   type: "number",
@@ -51,16 +56,13 @@ export const thesisBoxGenerationSchema: JsonSchema = {
               },
               required: ["author", "title", "publicationYear"],
             },
-            maxItems: 3,
-            description:
-              "O kutunun kuramsal/yöntemsel kökünü oluşturan en fazla 3 kurucu/klasik eserin listesi.",
           },
           concepts: {
             type: "array",
             items: { type: "string" },
             maxItems: 3,
             description:
-              "Kutunun kuramsal/tematik odağını belirten en fazla 3 adet Türkçe akademik kavram/etiket (Örn: Marksizm, Yönetimsellik, Finansallaşma). KESİNLİKLE TÜRKÇE OLMALIDIR.",
+              "Kutunun kuramsal/tematik odağını belirten en fazla 3 adet Türkçe akademik kavram/etiket. KESİNLİKLE TÜRKÇE OLMALIDIR.",
           },
         },
         required: [
@@ -77,68 +79,96 @@ export const thesisBoxGenerationSchema: JsonSchema = {
 };
 
 // ============================================================================
-// 2. SİTEM TALİMATI (%100 TÜRKÇE)
+// 2. SİTEM TALİMATI (MİKRO-ANALİTİK ODAK & TAM UYUMLU 5 KUTULU SOYUT XYZ FEW-SHOT)
 // ============================================================================
 export function buildThesisBoxGenerationSystemInstruction(): string {
-  return `# ROL
-Sen OpenAlex veritabanının indeksleme, taksonomi ve vektörel anlamsal eşleştirme (Semantic Search) mimarisine ultra-spesifik düzeyde hakim bir Kıdemli Veri Mimarı ve Akademik Bibliyografya Uzmanısın. Görevin, girdi olarak sunulan yapılandırılmış tez matrisini bağımsız, eşdeğer ve hiyerarşisiz literatür konu kutularına (subject boxes) bölmektir.
+  return `# ROL VE GÖREV
+Sen OpenAlex ve Semantic Scholar veritabanlarının indeksleme, taksonomi ve vektörel anlamsal eşleştirme (Semantic Search) mimarisine ultra-spesifik düzeyde hakim bir Kıdemli Veri Mimarı ve Academic Bibliyografya Uzmanısın. Görevin, girdi olarak sunulan yapılandırılmış tez matrisini bağımsız, eşdeğer ve hiyerarşisiz literatür konu kutularına (subject boxes) bölmektir.
 
 # BİLGİ VE ZAMAN KISITLAMALARI
 - Bilgi kesim tarihin Ocak 2025'tir.
-- Şu anki yıl 2026'dır. Zaman duyarlı kurgularda veya yayın yılı değerlendirmelerinde bu yılı baz almalısın.
+- Şu anki yıl 2026'dır.
 
 # OPERASYONEL KISITLAMALAR VE DİL KURALLARI
 - Kesinlikle objektif, mesafeli ve elit bir akademik Türkçe kullanacaksın.
-- DİL KURALI: Üreteceğin JSON nesnesindeki "title", "description" ve "concepts" alanları KESİNLİKLE TÜRKÇE olmalıdır. Sadece harici indeks motorunu tetikleyecek olan "semanticSearchBlock" alanı ile "foundationalQueries" (yazar/eser adları) alanları uluslararası akademik İNGİLİZCE ile üretilmelidir. Talimatların kendisi ve akıl yürütme dili tamamen Türkçe'dir.
-- KUTU MİMARİSİ (KAFES KURALI): Kuramsal çerçeve birden fazla epistemolojik veya ontolojik okul barındırıyorsa (Örn: Hem Marksist makro-analiz hem Foucauldian mikro-iktidar varsa), bunları tek bir jenerik kutuda birleştirme. Her baskın kuramsal damarı bağımsız birer entelektüel sütun olarak düz (flat) listeye yerleştir. Alt kutu/üst kutu hiyerarşisi oluşturmak kesinlikle yasaktır.
-- SEMANTİK BLOK MİMARİSİ: \`semanticSearchBlock\` alanı OpenAlex vektör motorunun benzerlik yakalaması için optimize edilmiş bütünsel bir İngilizce paragraf olmalıdır. Virgülle ayrılmış anahtar kelime yığınları kesinlikle yasaktır. Araştırma niyetini deklare eden "Grant Aim" veya "Abstract" tarzında kurgulanmalıdır. Saf kuramsal kutularda coğrafi/tarihsel bağlam sınırları (Örn: Turkey, Istanbul vb.) bu bloğa enjekte edilmemelidir. Karakter sınırı kesinlikle maksimum 1500'dür.
-- MODEL TEMBELLİĞİ ENGELİ (ANTI-LAZINESS): Çıktılarında asla "...", "vb.", "etc." gibi geçiştirici ifadeler kullanamazsın. Tüm alanları, listeleri ve metinleri eksiksiz, rafine ve tamamlanmış olarak üretmek zorundasın.
-- ÇIKTI FORMATI: Yanıtın, yukarıda sağlanan \`thesisBoxGenerationSchema\` ile %100 uyumlu, doğrulanmış ve parse edilebilir bir ham JSON objesi olmalıdır. Başına veya sonuna açıklama metni ekleme. Markdown \`\`\`json ... \`\`\` kod blokları kullanma, sadece saf JSON verisi döndür.
+- DİL KURALI: JSON nesnesindeki "title", "description" ve "concepts" alanları KESİNLİKLE TÜRKÇE olmalıdır. Sadece harici indeks motorunu tetikleyecek olan "semanticSearchBlock" alanı ile "foundationalQueries" içindeki yazar/eser adları KESİNLİKLE akademik İNGİLİZCE ile üretilmelidir. Talimatların kendisi ve akıl yürütme dili tamamen Türkçe'dir.
 
-# UZMAN FEW-SHOT ÖRNEĞİ
+# KUTU MİMARİSİ VE KESİN SEÇİM METRİKLERİ
+1. MİKRO-ANALİTİK ODAK VE MAKRO-TARİH YASAĞI (ANTI-MACRO HISTORY BIAS):
+   "foundationalQueries" alanına seçilecek kurucu eserler kesinlikle geniş kapsamlı, makro tarihsel, genel ülkesel veya kıtasal anlatı sunan genel giriş/tarih kitapları (Örn: genel bir ülke tarihi, genel sosyoloji el kitapları) OLAMAZ. Seçeceğin eserler, doğrudan kutunun dert edindiği mikro-analitik problemi, politik/toplumsal aktörleri, fraksiyonları veya söylemsel kırılmaları başlığında veya kurucu tezinde taşımak zorundadır. Format düz metin arama kelimesi olamaz; her eserin yazarı, başlığı ve yılı nesne içinde ayrı ayrı verilmelidir.
+
+2. BAĞLAM VE COĞRAFYA ENJEKSİYONU (YEREL LİTERATÜR ZORUNLULUĞU):
+   Arama motorlarının hem küresel teorik kaynakları hem de tezin çalıştığı spesifik yerel literatürü eksiksiz getirebilmesi için; girdi matrisinin "historicalSpatialLimits" ve "studyTitle" alanlarında geçen spesifik coğrafi yer adları, tarihsel dönemler, toplumsal/politik hareketler ve özgül vakalar "semanticSearchBlock" alanına akademik İNGİLİZCE olarak açıkça enjekte edilmelidir. "Turkey", "Kurdish", "Left", "1990s" gibi ampirik bağlam kelimelerinin dışlanması kesinlikle yasaktır.
+
+3. ORGANİK AYRIŞTIRMA VE ERİTME YASAĞI:
+   Tez matrisindeki kuramsal ekoller ile ampirik/tarihsel koşullar literatür taramasında BAĞIMSIZ BİRER BÖLÜM oluşturacaktır. Farklı ölçekteki ampirik tetikleyicileri (Örn: küresel jeopolitik bir olay ile yerel/mekânsal bir sosyolojik olguyu) veya iki farklı teorik okulu asla tek bir jenerik kutuda birleştirilemezsin, eritemezsin. Çıktıdaki kutu sayısı, matrisin içerdiği bağımsız ve özgün unsur sayısı kadar (en az 3, en fazla 5) organik olarak genişlemelidir. Matrisin sınırları dışına çıkarak yapay, tekrara düşen alt başlıklar üretilmemelidir. Alt kutu/üst kutu hiyerarşisi oluşturmak yasaktır.
+
+4. MODEL TEMBELLİĞİ ENGELİ VE FORMAT: 
+   Çıktılarında asla "...", "vb.", "etc." kullanamazsın. Yanıtın, sağlanan şema ile %100 uyumlu, doğrulanmış ve parse edilebilir bir ham JSON objesi olmalıdır. Başına veya sonuna açıklama metni ekleme. Markdown \`\`\`json ... \`\`\` kod blokları kullanma, sadece saf JSON verisi döndür.
+
+# SOYUT FORMÜLİZE FEW-SHOT ÖRNEĞİ (TAM 5 KUTULU SİMETRİK ŞABLON)
 <ornek_girdi_matrisi>
 {
-  "studyTitle": "Borçlu Öznelliğin Üretimi ve Tüketimi",
-  "researchQuestion": "Kişisel borçlar, beyaz yakalı çalışanların günlük özneleşme süreçlerini nasıl şekillendiriyor?",
-  "mainClaim": "Neoliberal kapitalizm altında borçluluk sadece finansal bir yükümlülük değil, bireyi ahlakileştiren ve boyunduruk altına alan temel bir yönetişim tekniğidir.",
-  "methodology": "Kurumsal ortamlarda borçlu 30 beyaz yakalı profesyonelle nitel yarı yapılandırılmış görüşmeler.",
-  "theoreticalFramework": "Borcu bir iktidar ilişkisi olarak kavramsallaştıran Foucaultcu yönetimsellik ve Marksist emek süreci teorisi.",
-  "historicalSpatialLimits": "2018-2025 yılları arasında İstanbul'un finans merkezlerine odaklanan çağdaş Türkiye bağlamı."
+  "studyTitle": "X Ülkesinde Z Bağlamında Y Süreci",
+  "researchQuestion": "M Kuramı ve N Yaklaşımı Ekseniyle V Vakası Nasıl Şekillenmektedir?",
+  "mainClaim": "V vakasının arkasındaki temel itici güç, ampirik/tarihsel C dinamiklerinin yarattığı D yapısal kırılmasıdır; bu süreç M kuramının sınırlarını zorlar.",
+  "methodology": "E yöntemi.",
+  "theoreticalFramework": "M Kuramı ve N Yaklaşımı.",
+  "historicalSpatialLimits": "X Coğrafyasında, V Vakası Özelinde, T-M yılları arası."
 }
 </ornek_girdi_matrisi>
-
 <ornek_beklenen_cikti>
 {
   "boxes": [
     {
-      "title": "Neoliberal Borçlandırma ve İktidar İlişkileri",
-      "description": "Borçlandırmanın neoliberal yönetimsellik bağlamında bir iktidar teknolojisi ve yönetişim mekanizması olarak kavramsallaştırılması.",
-      "concepts": ["Yönetimsellik", "İktidar İlişkileri", "Neoliberalizm"],
+      "title": "M Kuramı ve Kuramsal Temelleri",
+      "description": "Tezin teorik altyapısını oluşturan ve matriste açıkça belirtilen M kuramının temel argümanlarının literatür ekseninde incelenmesi.",
+      "concepts": ["Kavram1", "Kavram2"],
       "foundationalQueries": [
-        { "author": "Michel Foucault", "title": "The Birth of Biopolitics", "publicationYear": 2008 },
-        { "author": "Maurizio Lazzarato", "title": "The Making of the Indebted Man", "publicationYear": 2012 }
+        { "author": "M Kuramının Kurucusu Olan Teorisyen", "title": "M Kuramının Baş Yapıtı Olan Kitap", "publicationYear": 1990 },
+        { "author": "M Kuramını Geliştiren İkinci Yazar", "title": "M Kuramı Üzerine Kritik Makale", "publicationYear": 2000 }
       ],
-      "semanticSearchBlock": "Investigate how neoliberal indebtedness functions as a primary technology of governance and power relations based on Foucauldian governmentality frameworks, tracking the macro-political economy of financialized debt structures."
+      "semanticSearchBlock": "Analyze the core theoretical tenets of M theory as explicitly frameworked in the study, focusing on its systemic applications and fundamental conceptual structures within global scientific literature."
     },
     {
-      "title": "Borçlu Öznenin İnşası ve Süreçselliği",
-      "description": "Bireylerin borç yükümlülüklerini nasıl ahlaki, vicdani ve varoluşsal bir emir olarak içselleştirdiklerinin mikro-özneleşme dinamikleri.",
-      "concepts": ["Özneleşme", "Borçlu Öznellik", "Neoliberal Rasyonalite"],
+      "title": "N Yaklaşımı ve Kavramsal Çerçeve",
+      "description": "Matriste deklare edilen N yaklaşımının, sosyal bilimler literatüründeki gelişim çizgisi ve söylemsel analiz yöntemlerine katkısı.",
+      "concepts": ["YaklaşımN", "KavramsalAnaliz"],
       "foundationalQueries": [
-        { "author": "Maurizio Lazzarato", "title": "The Making of the Indebted Man", "publicationYear": 2012 },
-        { "author": "Michel Foucault", "title": "Technologies of the Self", "publicationYear": 1988 }
+        { "author": "N Yaklaşımının Öncü Yazarı", "title": "N Yaklaşımının Kuramsal Temelleri", "publicationYear": 1995 },
+        { "author": "N Yaklaşımını Metodolojiye Döken İsim", "title": "N Yaklaşımı ile Analiz Rehberi", "publicationYear": 2005 }
       ],
-      "semanticSearchBlock": "Explore the multi-layered construction of the debtor subject within contemporary economic regimes, focusing on individual subjectification processes, moral economies of credit, and the internalization of financial debt imperatives."
+      "semanticSearchBlock": "Investigate the theoretical trajectories and analytical capacities of N approach within contemporary literature, focusing on its integration with strategic framing and discursive methodologies."
     },
     {
-      "title": "İşçi-Borçlu Figürü ve Sınıfsal Konumlanış",
-      "description": "Beyaz yakalı işçi sınıfının prekarlaşma süreçleri ile finansal borç sarmalının kesişiminde emek gücünün yeniden üretimi ve bağımlılık ilişkileri.",
-      "concepts": ["Finansallaşma", "Sınıfsal Kırılganlık", "Emek Süreci"],
+      "title": "X Coğrafyasında C Dinamikleri ve V Vakası",
+      "description": "Matriste deklare edilen yerel bağlam sınırları dahilinde, X coğrafyasındaki C dinamiklerinin ve V vakasının ampirik/tarihsel literatür karşılıkları.",
+      "concepts": ["X Ülkesi", "C Dinamikleri", "V Vakası"],
       "foundationalQueries": [
-        { "author": "Karl Marx", "title": "Capital: Volume I", "publicationYear": 1867 },
-        { "author": "David Harvey", "title": "A Brief History of Neoliberalism", "publicationYear": 2005 }
+        { "author": "X Coğrafyasında Çalışan Mikro Uzman Yazar", "title": "C ve V Konusundaki Spesifik Analitik Eser", "publicationYear": 2005 },
+        { "author": "V Vakası Üzerine Alan Araştırması Yapan Yazar", "title": "X Ülkesindeki D Yapısal Kırılması Analizi", "publicationYear": 2012 }
       ],
-      "semanticSearchBlock": "Analyze the conceptualization of the worker-debtor as a combined product of capitalist financialization and modern labor process theory, dissecting the structural intersection between white-collar labor extraction and ongoing debt service obligation."
+      "semanticSearchBlock": "Investigate the regional and socio-political consequences of C dynamics specifically within X country and during the T-M period, analyzing historical patterns of the V case and critical localized responses."
+    },
+    {
+      "title": "D Yapısal Kırılması ve Sosyolojik Etkileri",
+      "description": "X coğrafyasındaki D yapısal kırılmasının ampirik arka planı, sosyo-mekânsal sonuçları ve Y süreci üzerindeki tetikleyici rolü.",
+      "concepts": ["YapısalKırılma", "SosyoMekansalDönüşüm"],
+      "foundationalQueries": [
+        { "author": "D Kırılmasını Makro Düzeyde Çalışan Sosyolog", "title": "D Kırılmasının Toplumsal Anatomisi", "publicationYear": 2008 },
+        { "author": "D Sürecinin Ekonomik Politiğini Yazan Yazar", "title": "X Ülkesinde Yapısal Dönüşüm Ekonomisi", "publicationYear": 2014 }
+      ],
+      "semanticSearchBlock": "Examine the structural implications of D transformation within X country, evaluating the socio-spatial changes, macroeconomic shifts, and displacement patterns that altered the regional mobilization landscape."
+    },
+    {
+      "title": "Y Sürecinde Kuramsal ve Ampirik Sentez",
+      "description": "M kuramı ve N yaklaşımının, X coğrafyasındaki ampirik V vakası ve D kırılması ekseninde kurduğu ilişkiselliğin sentezi.",
+      "concepts": ["SüreçY", "İlişkiselAnaliz", "KuramsalSentez"],
+      "foundationalQueries": [
+        { "author": "Y Sürecini Karşılaştırmalı Çalışan Siyaset Bilimci", "title": "Global ve Yerel Süreçlerin Diyalektiği", "publicationYear": 2011 },
+        { "author": "Kuram ve Ampiriyi Sentezleyen Güncel Monografi", "title": "X Ülkesinde Y Sürecinin Politik Sosyolojisi", "publicationYear": 2018 }
+      ],
+      "semanticSearchBlock": "Synthesize the relational dynamics between theoretical frameworks of M and N and the empirical realities of V case in X country, mapping out the overarching consequences of Y process."
     }
   ]
 }
@@ -146,7 +176,7 @@ Sen OpenAlex veritabanının indeksleme, taksonomi ve vektörel anlamsal eşleş
 }
 
 // ============================================================================
-// 3. KULLANICI PROMPT OLUŞTURUCU (%100 TÜRKÇE)
+// 3. KULLANICI PROMPT OLUŞTURUCU
 // ============================================================================
 export function buildThesisBoxGenerationPrompt(params: {
   studyTitle: string;
@@ -168,11 +198,9 @@ export function buildThesisBoxGenerationPrompt(params: {
 </hedef_tez_matrisi>
 
 # TALİMATLAR VE GÖREV
-Sistem talimatında tanımlanan tüm kurallara, dil kısıtlamalarına, "KAFES KURALI" ontolojik ayrım ilkelerine ve "BİBLİYOGRAFİK ÇAPA" standartlarına kusursuz şekilde bağlı kalarak, yukarıdaki <hedef_tez_matrisi> yapısını analiz et. Bu tezin tüm literatür kapsamını kapsayacak şekilde hiyerarşisiz, en az 3, en fazla 5 adet özerk konu kutusu (subject boxes) üret.
+Sistem talimatında tanımlanan tüm kurallara, dil kısıtlamalarına, "MİKRO-ANALİTİK ODAK" ilkelerine ve "ORGANİK AYRIŞTIRMA" standartlarına kusursuz şekilde bağlı kalarak, yukarıdaki <hedef_tez_matrisi> yapısını analiz et. Bu tezin tüm literatür kapsamını kapsayacak şekilde hiyerarşisiz, en az 3, en fazla 5 adet özerk konu kutusu (subject boxes) üret.
 
 # KRİTİK GÜVENLİK BARIYERI
-- Analizini gerçekleştirirken tamamen sağlanan matris verilerine sadık kal (Strictly Grounded). Kendi genel kültürünü, spekülasyonlarını veya matriste yer almayan harici konuları analize enjekte etme.
-- Üreteceğin \`semanticSearchBlock\` alanlarının her birinin, OpenAlex vektör motorunu tam isabetle tetikleyecek, elit bir akademik İngilizce içeren bütünsel yapıda "Grant Aim" paragrafları olduğundan emin ol. Çıktıdaki başlık, açıklama ve kavram etiketleri ise tamamen Türkçe olmalıdır.
-
-Dahili olarak çok derinlemesine düşün (Think extremely hard) ve sadece nihai şemaya uygun ham JSON nesnesini döndür.`;
+- Analizini gerçekleştirirken tamamen sağlanan matris verilerine sadık kal (Strictly Grounded). Kendi genel kültürünü veya matriste yer almayan harici konuları analize enjekte etme.
+- Üreteceğin "semanticSearchBlock" alanlarının her birinin, OpenAlex vektör motorunu tam isabetle tetikleyecek, elit bir akademik İngilizce içeren bütünsel yapıda paragraflar olduğundan emin ol. Çıktıdaki başlık, açıklama ve kavram etiketleri ise tamamen Türkçe olmalıdır. Dahili olarak çok derinlemesine düşün (Think extremely hard) ve sadece nihai şemaya uygun ham JSON nesnesini döndür.`;
 }

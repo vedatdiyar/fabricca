@@ -86,6 +86,10 @@ export interface OverlapItem {
 }
 
 export interface OriginalityReportData {
+  originalityScore?: number;
+  originalityBadge?: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
+  overlapAnalysis?: OverlapItem[];
+  synthesisRoadmap?: string;
   tavilyResults: {
     items: TavilyEvaluationFact[];
     briefingNote: string;

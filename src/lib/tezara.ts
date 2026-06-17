@@ -30,13 +30,6 @@ export async function searchTezaraPage(
   advanced = false,
 ): Promise<TezaraThesisSummary[]> {
   const startTime = performance.now();
-
-  logger?.info("search_start", {
-    service: "tezara",
-    step: "page_search",
-    data: { query, page, advanced },
-  });
-
   try {
     const url = `https://tezara.org/search?q=${encodeURIComponent(query)}&page=${page}${advanced ? "&advanced=true" : ""}&_rsc=vusbg`;
     const response = await fetch(url, { headers: TEZARA_FETCH_HEADERS });
@@ -64,13 +57,6 @@ export async function searchTezaraPage(
         step: "page_search",
         durationMs,
         data: { query, page },
-      });
-    } else {
-      logger?.info("search_success", {
-        service: "tezara",
-        step: "page_search",
-        durationMs,
-        data: { query, page, resultCount: results.length },
       });
     }
 
@@ -102,20 +88,7 @@ export async function searchTezara(
   logger?: Logger,
   advanced = false,
 ): Promise<TezaraThesisSummary[]> {
-  logger?.info("search_start", {
-    service: "tezara",
-    step: "bulk_search",
-    data: { query, advanced },
-  });
-
   const page1Results = await searchTezaraPage(query, 1, logger, advanced);
-
-  logger?.info("search_success", {
-    service: "tezara",
-    step: "bulk_search",
-    data: { query, totalResults: page1Results.length },
-  });
-
   return page1Results;
 }
 
@@ -132,13 +105,6 @@ export async function fetchThesisDetails(
   logger?: Logger,
 ): Promise<TezaraThesisDetails | null> {
   const startTime = performance.now();
-
-  logger?.info("search_start", {
-    service: "tezara",
-    step: "fetch_details",
-    data: { thesisId: id },
-  });
-
   try {
     const url = `https://tezara.org/theses/${id}?_rsc=vusbg`;
     const response = await fetch(url, { headers: TEZARA_FETCH_HEADERS });
@@ -218,17 +184,6 @@ export async function fetchThesisDetails(
         abstract = translatedAbs;
       }
     }
-
-    const durationMs = performance.now() - startTime;
-    logger?.info("search_success", {
-      service: "tezara",
-      step: "fetch_details",
-      durationMs,
-      data: {
-        thesisId: id,
-        title: thesisObj.title_original || thesisObj.title_translated,
-      },
-    });
 
     return {
       id: Number(thesisObj.id ?? id),

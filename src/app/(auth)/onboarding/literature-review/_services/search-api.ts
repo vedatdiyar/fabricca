@@ -125,11 +125,17 @@ async function queryOpenAlexWorks(params: URLSearchParams): Promise<RawPaper[]> 
 export async function searchOpenAlex(query: string): Promise<RawPaper[]> {
   const params = new URLSearchParams({
     "search.semantic": query,
+    filter: "type:journal-article|book|book-chapter",
+    sort: "relevance_score:desc",
     per_page: "50",
     select:
       "title,topics,concepts,doi,id,authorships,publication_year,primary_location",
   });
-  return queryOpenAlexWorks(params);
+  const results = await queryOpenAlexWorks(params);
+  if (results.length === 0) {
+    return searchOpenAlexKeyword(query);
+  }
+  return results;
 }
 
 // ============================================================================
@@ -146,6 +152,7 @@ export async function searchOpenAlexKeyword(
 ): Promise<RawPaper[]> {
   const params = new URLSearchParams({
     search: query,
+    filter: "type:journal-article|book|book-chapter",
     sort: "cited_by_count:desc",
     per_page: "50",
     select:
@@ -252,7 +259,7 @@ export async function resolveFoundationalWorks(
   const resolvePromises = queries.map(async (query) => {
     try {
       const urlParams = new URLSearchParams({
-        filter: `title.search:${query.title},raw_author_name.search:${query.author}`,
+        filter: `title.search:${query.title},raw_author_name.search:${query.author},publication_year:${query.publicationYear}`,
         sort: "cited_by_count:desc",
         per_page: "1",
         select: "id,title,type,publication_year,cited_by_count",

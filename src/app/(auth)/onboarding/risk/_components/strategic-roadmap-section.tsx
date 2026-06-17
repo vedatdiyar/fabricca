@@ -14,14 +14,13 @@ interface StrategicRoadmapSectionProps {
 export function StrategicRoadmapSection({
   strategicRecommendations,
 }: StrategicRoadmapSectionProps) {
-
   return (
     <div className="p-6 bg-card border border-border rounded-xl space-y-3 shadow-sm">
       <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
         <Compass className="w-5 h-5 text-primary" />
         Yol Haritası ve Akademik Tavsiyeler
       </h3>
-      <div className="text-sm leading-loose text-foreground font-light whitespace-pre-line bg-muted p-4 border border-border rounded-lg">
+      <div className="p-4 bg-muted border border-border rounded-lg text-sm/7 text-foreground/90 whitespace-pre-line">
         {strategicRecommendations}
       </div>
     </div>

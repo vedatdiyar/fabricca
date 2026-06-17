@@ -27,13 +27,18 @@ export interface JsonSchema {
   required?: string[];
 }
 
-const apiKey = process.env.GEMINI_API_KEY;
+let aiInstance: GoogleGenAI | null = null;
 
-if (!apiKey) {
-  throw new Error("GEMINI_API_KEY environment variable is not defined");
+function getAi(): GoogleGenAI {
+  if (!aiInstance) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY environment variable is not defined");
+    }
+    aiInstance = new GoogleGenAI({ apiKey });
+  }
+  return aiInstance;
 }
-
-const ai = new GoogleGenAI({ apiKey });
 
 /**
  * Bir asenkron fonksiyonu 503 (UNAVAILABLE) veya sunucu yoğunluğu hatalarına karşı
@@ -146,7 +151,7 @@ export async function generateStructuredContent<T>(
   try {
     const { result: response, attempts: retryAttempts } = await retryOn503(
       () =>
-        ai.models.generateContent({
+        getAi().models.generateContent({
           model: modelName,
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           config: {

@@ -58,8 +58,7 @@ export function OnboardingGlobalLoader() {
                 </span>
                 {isActive && (
                   <span className="text-[10px] text-emerald-300/70 animate-pulse leading-tight">
-                    Yapılandırılmış akıl yürütme motoru çalıştırılıyor (Thinking
-                    Mode)...
+                    Yapılandırılmış akıl yürütme motoru çalıştırılıyor...
                   </span>
                 )}
                 {isCompleted && (

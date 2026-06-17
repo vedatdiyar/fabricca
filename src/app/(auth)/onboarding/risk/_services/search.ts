@@ -82,13 +82,21 @@ export async function executeParallelSearch(
       Promise.all(tezaraPromises),
     ]);
 
+    const tavilyResultCount = tavilySearchResults.reduce(
+      (sum, item) => sum + item.results.length,
+      0,
+    );
+    const tezaraResultCount = tezaraSearchResults.reduce(
+      (sum, list) => sum + list.length,
+      0,
+    );
     const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
     log.info({
       step: "parallel_search",
       status: "SUCCESS",
       metrics: {
         duration,
-        outputRows: tavilySearchResults.length + tezaraSearchResults.length,
+        resultCount: tavilyResultCount + tezaraResultCount,
       },
     });
 

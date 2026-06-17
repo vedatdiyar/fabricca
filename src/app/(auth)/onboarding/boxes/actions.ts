@@ -126,6 +126,7 @@ export async function confirmBoxesAction(
     });
 
     revalidatePath("/onboarding", "layout");
+    revalidatePath("/onboarding/literature-review");
     revalidatePath("/", "layout");
 
     log.info({ step: "confirmBoxes", status: "SUCCESS", service: "boxes" });

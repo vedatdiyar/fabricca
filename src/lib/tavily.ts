@@ -35,12 +35,6 @@ export async function tavilySearch(
   logger?: Logger,
 ): Promise<TavilySearchResponse> {
   const startTime = performance.now();
-
-  logger?.info("search_start", {
-    service: "tavily",
-    data: { query },
-  });
-
   const apiKey = process.env.TAVILY_API_KEY;
   if (!apiKey) {
     const durationMs = performance.now() - startTime;
@@ -100,12 +94,6 @@ export async function tavilySearch(
       filePath: "src/lib/tavily.ts",
       durationMs,
       data: { query },
-    });
-  } else {
-    logger?.info("search_success", {
-      service: "tavily",
-      durationMs,
-      data: { query, resultCount: results.length },
     });
   }
 

@@ -236,6 +236,8 @@ export class Logger {
       if (durMs !== undefined && typeof durMs === "number")
         line += ` | ⏱️ ${Math.round(durMs)}ms`;
       else if (dur) line += ` | ⏱️ ${dur}`;
+      const rc = metrics.resultCount as number | undefined;
+      if (rc !== undefined) line += ` | 📊 ${rc} sonuç`;
     }
 
     const extraData = data.data as Record<string, unknown> | undefined;

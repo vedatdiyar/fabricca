@@ -9,10 +9,7 @@ import {
   literatureJuryAnalysisSchema,
 } from "@/lib/prompts";
 import { Logger } from "@/lib/logger";
-import type {
-  SubBoxInput,
-  ValidatedPaper,
-} from "./literature-review-papers";
+import type { SubBoxInput, ValidatedPaper } from "./literature-review-papers";
 import type { JuryArticle } from "@/lib/types";
 import { validateWithCrossRef } from "./search-api";
 
@@ -136,7 +133,10 @@ export async function runSiftingStage(
     }
   }
 
-  logger.data("Sifting Kept/Total", { kept: kept.length, total: candidates.length });
+  logger.data("Sifting Kept/Total", {
+    kept: kept.length,
+    total: candidates.length,
+  });
 
   return kept;
 }
@@ -183,13 +183,16 @@ export async function runJuryStage(
     }
   }
 
-  logger.prompt("gemini-3.1-flash-lite (MEDIUM thinking)", buildLiteratureJuryAnalysisPrompt(
-    {
-      title: box.title,
-      description: box.description,
-    },
-    juryCandidates,
-  ));
+  logger.prompt(
+    "gemini-3.1-flash-lite (MEDIUM thinking)",
+    buildLiteratureJuryAnalysisPrompt(
+      {
+        title: box.title,
+        description: box.description,
+      },
+      juryCandidates,
+    ),
+  );
 
   const juryResult = await generateStructuredContent<JuryResponse>(
     "gemini-3.1-flash-lite",
@@ -207,8 +210,14 @@ export async function runJuryStage(
   );
 
   const result = {
-    starterPack: backfillIsFoundational(juryResult.starterPack, foundationalLookup),
-    reservedPool: backfillIsFoundational(juryResult.reservedPool, foundationalLookup),
+    starterPack: backfillIsFoundational(
+      juryResult.starterPack,
+      foundationalLookup,
+    ),
+    reservedPool: backfillIsFoundational(
+      juryResult.reservedPool,
+      foundationalLookup,
+    ),
   };
 
   logger.data("Jury Split", {
@@ -233,9 +242,9 @@ function backfillIsFoundational(
       found = lookup.get("doi:" + a.doi) ?? false;
     }
     if (!found && a.title) {
-      found = lookup.get(
-        "title:" + a.title.toLowerCase().trim().slice(0, 80),
-      ) ?? false;
+      found =
+        lookup.get("title:" + a.title.toLowerCase().trim().slice(0, 80)) ??
+        false;
     }
     return { ...a, isFoundational: found };
   });

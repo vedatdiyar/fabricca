@@ -98,12 +98,20 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
 
       const report = await fetchOriginalityReport();
       if (report && !cancelled) {
+        const tezara = report.tezaraResults;
         setReportData({
+          originalityScore: tezara.riskPercentage,
+          originalityBadge: tezara.originalityBadge,
+          overlapAnalysis:
+            tezara.overlapTable as OriginalityReportData["overlapAnalysis"],
+          synthesisRoadmap: tezara.strategicRecommendations,
           tavilyResults:
             report.tavilyResults as OriginalityReportData["tavilyResults"],
-          tezaraResults:
-            report.tezaraResults as OriginalityReportData["tezaraResults"],
+          tezaraResults: tezara as OriginalityReportData["tezaraResults"],
         });
+      } else if (!cancelled) {
+        // DB cleaned (user went back and re-confirmed enrichment) — reset stale Zustand state
+        useOnboardingStore.getState().resetStore();
       }
       if (!cancelled) setLoading(false);
     }
@@ -221,6 +229,13 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
     }
   }, [matrixData, showLoading, hideLoading, updateLoadingStep]);
 
+  // Auto-trigger analysis for first-time visitors (no existing report).
+  useEffect(() => {
+    if (!loading && !reportData && !analysing) {
+      startAnalysis();
+    }
+  }, [loading, reportData, analysing, startAnalysis]);
+
   /**
    * Finalizes the risk stage: persists the report, generates the subject boxes
    * via Gemini, seeds them into the Zustand store and navigates to the boxes
@@ -254,8 +269,7 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
       updateLoadingStep(1, "active");
 
       useOnboardingStore.getState().setBoxes(boxesResult.boxes);
-      await new Promise((r) => setTimeout(r, 300));
-      // SUCCESS: no hideLoading() — loader auto-hides during navigation
+      hideLoading();
       router.push("/onboarding/boxes");
     } catch (err) {
       hideLoading();
