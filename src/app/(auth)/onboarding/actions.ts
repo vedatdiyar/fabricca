@@ -20,7 +20,7 @@ export async function resetOnboardingAction(): Promise<
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
-  log.info({ step: "reset_onboarding", status: "START" });
+  log.info({ step: "reset_onboarding", status: "START", service: "flow" });
 
   try {
     const session = await getSession();
@@ -49,12 +49,13 @@ export async function resetOnboardingAction(): Promise<
 
     revalidatePath("/onboarding", "layout");
 
-    log.info({ step: "reset_onboarding", status: "SUCCESS" });
+    log.info({ step: "reset_onboarding", status: "SUCCESS", service: "flow" });
     return { success: true };
   } catch (error) {
     log.error({
       step: "reset_onboarding",
       status: "FAILED",
+      service: "flow",
       diagnostics: {
         errorCode: "SYSTEM_ERROR",
         message: error instanceof Error ? error.message : String(error),

@@ -51,7 +51,7 @@ export async function submitThesisMatrixAction(
   const log = new Logger(flowId);
   const startTime = performance.now();
 
-  log.info({ step: "matrix_enrichment", status: "START" });
+  log.info({ step: "matrix_enrichment", status: "START", service: "matrix" });
 
   try {
     const session = await getSession();
@@ -93,10 +93,10 @@ export async function submitThesisMatrixAction(
       } catch (e) {
         lastError = e;
         if (attempt < MAX_RETRIES) {
-          log.warn({ step: "matrix_enrichment", status: "RETRYING", attempt });
+          log.warn({ step: "matrix_enrichment", status: "RETRYING", attempt, service: "matrix" });
           await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
         } else {
-          log.error({ step: "matrix_enrichment", status: "FAILED", diagnostics: { errorCode: "GEMINI_ENRICHMENT_ERROR", message: e instanceof Error ? e.message : String(e) } });
+          log.error({ step: "matrix_enrichment", status: "FAILED", service: "matrix", diagnostics: { errorCode: "GEMINI_ENRICHMENT_ERROR", message: e instanceof Error ? e.message : String(e) } });
         }
       }
     }
@@ -145,11 +145,11 @@ export async function submitThesisMatrixAction(
 
     const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
 
-    log.info({ step: "matrix_enrichment", status: "SUCCESS", metrics: { duration, outputRows: 1 } });
+    log.info({ step: "matrix_enrichment", status: "SUCCESS", service: "matrix", metrics: { duration, outputRows: 1 } });
 
     return { success: true, data: enhancedData };
   } catch (error) {
-    log.error({ step: "matrix_enrichment", status: "FAILED", diagnostics: { errorCode: "SYSTEM_ERROR", message: error instanceof Error ? error.message : String(error) } });
+    log.error({ step: "matrix_enrichment", status: "FAILED", service: "matrix", diagnostics: { errorCode: "SYSTEM_ERROR", message: error instanceof Error ? error.message : String(error) } });
     return { error: "Tez matrisi zenginleştirilirken bir hata oluştu." };
   }
 }

@@ -90,6 +90,7 @@ async function retryOn503<T>(
 
       logger?.warn("ai_retry_attempt", {
         service: "gemini",
+        filePath: "src/lib/gemini.ts",
         step: `retry_attempt_${attempt}`,
         durationMs: totalDelay,
         data: {
@@ -211,6 +212,7 @@ export async function generateStructuredContent<T>(
     const durationMs = performance.now() - startTime;
     logger?.error("ai_request_failed", {
       service: "gemini",
+      filePath: "src/lib/gemini.ts",
       durationMs,
       data: { model: modelName, attempts: 1 },
       error,

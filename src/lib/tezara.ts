@@ -45,6 +45,7 @@ export async function searchTezaraPage(
       const durationMs = performance.now() - startTime;
       logger?.warn("search_filtered", {
         service: "tezara",
+        filePath: "src/lib/tezara.ts",
         step: "page_search",
         durationMs,
         data: { query, page, status: response.status },
@@ -59,6 +60,7 @@ export async function searchTezaraPage(
     if (results.length === 0) {
       logger?.warn("search_empty", {
         service: "tezara",
+        filePath: "src/lib/tezara.ts",
         step: "page_search",
         durationMs,
         data: { query, page },
@@ -76,12 +78,13 @@ export async function searchTezaraPage(
   } catch (err) {
     const durationMs = performance.now() - startTime;
     logger?.error("search_filtered", {
-      service: "tezara",
-      step: "page_search",
-      durationMs,
-      data: { query, page },
-      error: err,
-    });
+        service: "tezara",
+        filePath: "src/lib/tezara.ts",
+        step: "page_search",
+        durationMs,
+        data: { query, page },
+        error: err,
+      });
     return [];
   }
 }
@@ -151,6 +154,7 @@ export async function fetchThesisDetails(
       const durationMs = performance.now() - startTime;
       logger?.warn("search_filtered", {
         service: "tezara",
+        filePath: "src/lib/tezara.ts",
         step: "fetch_details",
         durationMs,
         data: { thesisId: id, status: response.status },
@@ -192,6 +196,7 @@ export async function fetchThesisDetails(
       const durationMs = performance.now() - startTime;
       logger?.warn("search_empty", {
         service: "tezara",
+        filePath: "src/lib/tezara.ts",
         step: "fetch_details",
         durationMs,
         data: { thesisId: id, reason: "Thesis metadata not found in response" },
@@ -248,12 +253,13 @@ export async function fetchThesisDetails(
   } catch (err) {
     const durationMs = performance.now() - startTime;
     logger?.error("search_filtered", {
-      service: "tezara",
-      step: "fetch_details",
-      durationMs,
-      data: { thesisId: id },
-      error: err,
-    });
+        service: "tezara",
+        filePath: "src/lib/tezara.ts",
+        step: "fetch_details",
+        durationMs,
+        data: { thesisId: id },
+        error: err,
+      });
     return null;
   }
 }

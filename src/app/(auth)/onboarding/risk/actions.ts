@@ -56,7 +56,7 @@ export async function searchAndSiftThesesAction(
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
-  log.info({ step: "searchAndSiftTheses", status: "START" });
+  log.info({ step: "searchAndSiftTheses", status: "START", service: "originality" });
 
   try {
     const session = await getSession();
@@ -106,7 +106,7 @@ export async function searchAndSiftThesesAction(
         log,
       );
 
-    log.info({ step: "searchAndSiftTheses", status: "SUCCESS" });
+    log.info({ step: "searchAndSiftTheses", status: "SUCCESS", service: "originality" });
 
     return {
       success: true,
@@ -118,6 +118,7 @@ export async function searchAndSiftThesesAction(
     log.error({
       step: "searchAndSiftTheses",
       status: "FAILED",
+      service: "originality",
       diagnostics: {
         errorCode: "SYSTEM_ERROR",
         message: err instanceof Error ? err.message : String(err),
@@ -147,7 +148,7 @@ export async function runJuryAnalysisAction(
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
-  log.info({ step: "runJuryAnalysis", status: "START" });
+  log.info({ step: "runJuryAnalysis", status: "START", service: "originality" });
 
   try {
     const session = await getSession();
@@ -247,13 +248,14 @@ export async function runJuryAnalysisAction(
         },
       });
 
-    log.info({ step: "runJuryAnalysis", status: "SUCCESS" });
+    log.info({ step: "runJuryAnalysis", status: "SUCCESS", service: "originality" });
 
     return { success: true, data: reportData };
   } catch (err) {
     log.error({
       step: "runJuryAnalysis",
       status: "FAILED",
+      service: "originality",
       diagnostics: {
         errorCode: "SYSTEM_ERROR",
         message: err instanceof Error ? err.message : String(err),

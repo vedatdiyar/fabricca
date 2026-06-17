@@ -288,6 +288,7 @@ export async function resolveFoundationalWorks(
     } catch (error) {
       logger?.error("foundational_work_resolution_failed", {
         service: "openalex",
+        filePath: "src/app/(auth)/onboarding/literature-review/_services/search-api.ts",
         error,
         data: { queryTitle: query.title },
       });

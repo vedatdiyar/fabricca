@@ -39,8 +39,6 @@ export async function loginAction(
   }
 
   try {
-    log.info({ step: "find_user", status: "START", service: "db" });
-    const t0 = performance.now();
     const [user] = await db
       .select({
         id: users.id,
@@ -50,7 +48,6 @@ export async function loginAction(
       })
       .from(users)
       .where(eq(users.email, email));
-    log.info({ step: "find_user", status: "SUCCESS", metrics: { durationMs: performance.now() - t0 }, service: "db" });
 
     if (!user) {
       log.info("login_failed", {
@@ -131,13 +128,10 @@ export async function checkOnboardingStatus(): Promise<OnboardingStatusResult> {
       return { error: "Oturum bulunamadı." };
     }
 
-    log.info({ step: "query_step", status: "START", service: "db" });
-    const t0 = performance.now();
     const [user] = await db
       .select({ onboardingCompleted: users.onboardingCompleted })
       .from(users)
       .where(eq(users.id, session.userId));
-    log.info({ step: "query_step", status: "SUCCESS", metrics: { durationMs: performance.now() - t0 }, service: "db" });
 
     return {
       onboardingCompleted: user?.onboardingCompleted ?? false,

@@ -28,7 +28,7 @@ export async function generateBoxesAction(): Promise<
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
-  log.info({ step: "generateBoxes", status: "START" });
+  log.info({ step: "generateBoxes", status: "START", service: "boxes" });
 
   try {
     const session = await getSession();
@@ -60,13 +60,14 @@ export async function generateBoxesAction(): Promise<
 
     const draftBoxes = generationResult.boxes || [];
 
-    log.info({ step: "generateBoxes", status: "SUCCESS" });
+    log.info({ step: "generateBoxes", status: "SUCCESS", service: "boxes" });
 
     return { success: true, boxes: draftBoxes };
   } catch (err) {
     log.error({
       step: "generateBoxes",
       status: "FAILED",
+      service: "boxes",
       diagnostics: {
         errorCode: "SYSTEM_ERROR",
         message: err instanceof Error ? err.message : String(err),
@@ -91,7 +92,7 @@ export async function confirmBoxesAction(
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
-  log.info({ step: "confirmBoxes", status: "START" });
+  log.info({ step: "confirmBoxes", status: "START", service: "boxes" });
 
   try {
     const session = await getSession();
@@ -126,12 +127,13 @@ export async function confirmBoxesAction(
     revalidatePath("/onboarding", "layout");
     revalidatePath("/", "layout");
 
-    log.info({ step: "confirmBoxes", status: "SUCCESS" });
+    log.info({ step: "confirmBoxes", status: "SUCCESS", service: "boxes" });
     return { success: true };
   } catch (err) {
     log.error({
       step: "confirmBoxes",
       status: "FAILED",
+      service: "boxes",
       diagnostics: {
         errorCode: "TRANSACTION_ERROR",
         message: err instanceof Error ? err.message : String(err),

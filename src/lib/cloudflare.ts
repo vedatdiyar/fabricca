@@ -65,6 +65,7 @@ export async function generateEmbeddings(
         const durationMs = performance.now() - startTime;
         logger.error("ai_request_failed", {
           service: "cloudflare",
+          filePath: "src/lib/cloudflare.ts",
           step: "generate_embeddings_api_error",
           durationMs,
           error: new Error(errorMsg),
@@ -109,6 +110,7 @@ export async function generateEmbeddings(
     const durationMs = performance.now() - startTime;
     logger?.error("ai_request_failed", {
       service: "cloudflare",
+      filePath: "src/lib/cloudflare.ts",
       step: "generate_embeddings_failed",
       durationMs,
       error,

@@ -46,6 +46,7 @@ export async function tavilySearch(
     const durationMs = performance.now() - startTime;
     logger?.error("search_filtered", {
       service: "tavily",
+      filePath: "src/lib/tavily.ts",
       durationMs,
       data: { query, reason: "TAVILY_API_KEY eksik" },
       error: new Error("TAVILY_API_KEY ortam değişkeni tanımlı değil."),
@@ -72,6 +73,7 @@ export async function tavilySearch(
     const errorText = await response.text();
     logger?.error("search_filtered", {
       service: "tavily",
+      filePath: "src/lib/tavily.ts",
       durationMs,
       data: { query, status: response.status },
       error: new Error(`Tavily API hatası (${response.status}): ${errorText}`),
@@ -95,6 +97,7 @@ export async function tavilySearch(
   if (results.length === 0) {
     logger?.warn("search_empty", {
       service: "tavily",
+      filePath: "src/lib/tavily.ts",
       durationMs,
       data: { query },
     });

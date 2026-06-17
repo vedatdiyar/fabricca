@@ -20,7 +20,7 @@ export async function confirmEnhancedThesisAction(
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
-  log.info({ step: "confirm_enhanced_thesis", status: "START" });
+  log.info({ step: "confirm_enhanced_thesis", status: "START", service: "enrichment" });
 
   try {
     const session = await getSession();
@@ -70,10 +70,10 @@ export async function confirmEnhancedThesisAction(
       await db.delete(thesisBoxes).where(eq(thesisBoxes.thesisMatrixId, matrix.id));
     }
 
-    log.info({ step: "confirm_enhanced_thesis", status: "SUCCESS" });
+    log.info({ step: "confirm_enhanced_thesis", status: "SUCCESS", service: "enrichment" });
     return { success: true };
   } catch (error) {
-    log.error({ step: "confirm_enhanced_thesis", status: "FAILED", diagnostics: { errorCode: "CONFIRM_ENRICHED_THESIS_ERROR", message: error instanceof Error ? error.message : String(error) } });
+    log.error({ step: "confirm_enhanced_thesis", status: "FAILED", service: "enrichment", diagnostics: { errorCode: "CONFIRM_ENRICHED_THESIS_ERROR", message: error instanceof Error ? error.message : String(error) } });
     return { error: "Tez matrisi onaylanırken bir hata oluştu." };
   }
 }

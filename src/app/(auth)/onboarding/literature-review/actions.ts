@@ -307,7 +307,7 @@ export async function confirmLiteratureAction(args: {
   const log = new Logger(flowId);
   const startTime = performance.now();
 
-  log.info({ step: "confirmLiterature", status: "START" });
+  log.info({ step: "confirmLiterature", status: "START", service: "literature" });
 
   try {
     const session = await getSession();
@@ -315,6 +315,7 @@ export async function confirmLiteratureAction(args: {
       log.warn({
         step: "confirmLiterature",
         status: "FAILED",
+        service: "literature",
         diagnostics: { errorCode: "AUTH_ERROR", message: "Oturum bulunamadi." },
       });
       return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
@@ -327,6 +328,7 @@ export async function confirmLiteratureAction(args: {
       log.warn({
         step: "confirmLiterature",
         status: "FAILED",
+        service: "literature",
         diagnostics: {
           errorCode: "VALIDATION_ERROR",
           message: "Literatür havuzu boş.",
@@ -467,6 +469,7 @@ export async function confirmLiteratureAction(args: {
       log.info({
         step: "session_cookie_update_skipped",
         status: "SUCCESS",
+        service: "literature",
       });
     }
 
@@ -475,7 +478,7 @@ export async function confirmLiteratureAction(args: {
       revalidatePath("/onboarding", "layout");
       revalidatePath("/", "layout");
     } catch {
-      log.info({ step: "revalidate_path_skipped", status: "SUCCESS" });
+      log.info({ step: "revalidate_path_skipped", status: "SUCCESS", service: "literature" });
     }
 
     const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
@@ -483,6 +486,7 @@ export async function confirmLiteratureAction(args: {
     log.info({
       step: "confirmLiterature",
       status: "SUCCESS",
+      service: "literature",
       metrics: { duration, totalEntries: literaturePool.length },
     });
 
@@ -491,6 +495,7 @@ export async function confirmLiteratureAction(args: {
     log.error({
       step: "confirmLiterature",
       status: "FAILED",
+      service: "literature",
       diagnostics: {
         errorCode: "TRANSACTION_ERROR",
         message: err instanceof Error ? err.message : String(err),

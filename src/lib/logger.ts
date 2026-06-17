@@ -1,5 +1,6 @@
 import pino from "pino";
 import pretty from "pino-pretty";
+import { classifyError, getErrorDisplay } from "./error-utils";
 
 export type LogLevel = "info" | "warn" | "error";
 
@@ -37,17 +38,11 @@ export interface LogParams {
   data?: Record<string, unknown>;
   error?: unknown;
   tokens?: TokenUsage;
+  filePath?: string;
+  status?: "PENDING" | "SUCCESS" | "FAILED";
 }
 
 const isDevelopment = process.env.NODE_ENV === "development";
-
-const BOX_W = (() => {
-  try {
-    return Math.min(process.stdout.columns ?? 100, 98);
-  } catch {
-    return 80;
-  }
-})();
 
 const pinoLogger = isDevelopment
   ? pino(
@@ -65,13 +60,62 @@ const pinoLogger = isDevelopment
 /**
  * Benzersiz bir flowId üretir.
  * Base36 timestamp + rastgele 6 karakter.
- *
- * @returns fl_ ile başlayan benzersiz flow tanımlayıcısı
  */
 export function createFlowId(): string {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).substring(2, 8);
   return `fl_${timestamp}_${random}`;
+}
+
+const SERVICE_ICONS: Record<ServiceName, string> = {
+  gemini: "🤖",
+  cloudflare: "☁️",
+  tavily: "🌐",
+  tezara: "🔎",
+  db: "🗄️",
+  auth: "🔐",
+  flow: "📌",
+  matrix: "📋",
+  enrichment: "✨",
+  originality: "⚖️",
+  complete: "✅",
+  boxes: "📦",
+  wikipedia: "📖",
+  literature: "📚",
+  library: "📖",
+  openalex: "🔬",
+  crossref: "🔗",
+};
+
+function getServiceIcon(service: ServiceName): string {
+  return SERVICE_ICONS[service] ?? "📌";
+}
+
+function getStatusTag(status: string): string {
+  switch (status) {
+    case "SUCCESS":
+      return "\x1b[32m🟢 SUCCESS\x1b[0m";
+    case "FAILED":
+      return "\x1b[31m🔴 FAILED\x1b[0m";
+    case "PENDING":
+    case "START":
+    case "RETRYING":
+      return "\x1b[33m🟡 PENDING\x1b[0m";
+    default:
+      return status;
+  }
+}
+
+function deriveStatus(event: string): string {
+  if (event.endsWith("_start") || event.endsWith("_attempt")) return "PENDING";
+  if (event.endsWith("_success")) return "SUCCESS";
+  if (event.endsWith("_failed") || event.endsWith("_filtered") || event.endsWith("_empty"))
+    return "FAILED";
+  return "PENDING";
+}
+
+function truncate(s: string, maxLen: number): string {
+  return s.length <= maxLen ? s : s.slice(0, maxLen - 3) + "...";
 }
 
 export class Logger {
@@ -101,17 +145,15 @@ export class Logger {
   ): void {
     if (typeof arg1 === "object" && arg1 !== null) {
       const entry = { flowId: this.flowId, ...arg1 };
-      if (isDevelopment) {
-        this.renderDevBox(level, entry);
-      } else {
-        pinoLogger[level](entry);
-      }
+      if (isDevelopment) this.renderDevLine(entry);
+      pinoLogger[level](entry);
     } else {
       const event = arg1 as string;
+      const service = params?.service ?? "flow";
       const entry: Record<string, unknown> = {
         event,
         flowId: this.flowId,
-        service: params?.service ?? "flow",
+        service,
       };
 
       if (params?.step) entry.step = params.step;
@@ -148,162 +190,186 @@ export class Logger {
         }
       }
 
+      if (isDevelopment) {
+        const status = params?.status ?? deriveStatus(event);
+        this.renderEventLine(service, event, status, params);
+      }
+
       pinoLogger[level](entry);
     }
   }
 
   // ==========================================================================
-  // Dev-Only Visualization Methods (no-ops in production)
+  // Dev-Only Single-Line Renderers
+  // ==========================================================================
+
+  private renderEventLine(
+    service: ServiceName,
+    event: string,
+    status: string,
+    params?: LogParams,
+  ): void {
+    const icon = getServiceIcon(service);
+    const statusTag = getStatusTag(status);
+    const line = this.buildLine(icon, service, event, statusTag, params);
+    console.log(line);
+  }
+
+  private renderDevLine(data: Record<string, unknown>): void {
+    const step = String(data.step ?? "unknown");
+    const svc = String(data.service ?? "flow");
+    const rawStatus = data.status ? String(data.status) : "";
+    const icon = getServiceIcon(svc as ServiceName);
+    const statusTag = rawStatus ? getStatusTag(rawStatus) : "";
+
+    let line = `${icon} ${this.flowId} [${svc.toUpperCase()}] -> ${step}`;
+    if (statusTag) line += ` | ${statusTag}`;
+
+    const metrics = data.metrics as Record<string, unknown> | undefined;
+    if (metrics) {
+      const durMs = metrics.durationMs as number | undefined;
+      const dur = metrics.duration as string | undefined;
+      if (durMs !== undefined && typeof durMs === "number") line += ` | ⏱️ ${Math.round(durMs)}ms`;
+      else if (dur) line += ` | ⏱️ ${dur}`;
+    }
+
+    const extraData = data.data as Record<string, unknown> | undefined;
+    if (extraData) {
+      const parts: string[] = [];
+      if (extraData.count !== undefined) parts.push(`📊 Sayı: ${extraData.count}`);
+      if (extraData.resultCount !== undefined) parts.push(`📊 ${extraData.resultCount} sonuç`);
+      if (extraData.model) parts.push(`🏷️ Model: ${extraData.model}`);
+      if (extraData.query) parts.push(`🔍 ${truncate(String(extraData.query), 60)}`);
+      if (parts.length > 0) line += ` | ${parts.join(" | ")}`;
+    }
+
+    const diagnostics = data.diagnostics as Record<string, unknown> | undefined;
+    if (diagnostics) {
+      const msg = diagnostics.message ? String(diagnostics.message) : "";
+      if (msg) line += ` | ❌ ${truncate(msg, 120)}`;
+    }
+
+    const err = data.error as { message?: string } | undefined;
+    if (err && err.message && !diagnostics) {
+      line += ` | ❌ ${truncate(err.message, 120)}`;
+    }
+
+    console.log(line);
+  }
+
+  private buildLine(
+    icon: string,
+    service: ServiceName,
+    event: string,
+    statusTag: string,
+    params?: LogParams,
+  ): string {
+    const adim = params?.step && params.step !== event ? `${event} (${params.step})` : event;
+    let line = `${icon} ${this.flowId} [${service.toUpperCase()}] -> ${adim} | ${statusTag}`;
+
+    if (params?.durationMs !== undefined) {
+      line += ` | ⏱️ ${Math.round(params.durationMs)}ms`;
+    }
+
+    if (params?.filePath) {
+      const cleanPath = params.filePath.replace(/^src\//, "");
+      line += ` | 📁 ${cleanPath}`;
+    }
+
+    if (params?.data?.model && params?.tokens) {
+      const t = params.tokens;
+      line += ` | 🏷️ [Model: ${params.data.model} | 📥 In: ${t.input ?? "?"} | 📤 Out: ${t.output ?? "?"}`;
+      if (t.total !== undefined) line += ` | 💭 ${t.total} tkn`;
+      line += `]`;
+    } else {
+      if (params?.data?.model) {
+        line += ` | 🏷️ Model: ${params.data.model}`;
+      }
+      if (params?.tokens) {
+        const t = params.tokens;
+        line += ` | 📥 In: ${t.input ?? "?"} | 📤 Out: ${t.output ?? "?"}`;
+        if (t.total !== undefined) line += ` | 💭 ${t.total} tkn`;
+      }
+    }
+
+    if (params?.data && !params.data.model) {
+      const parts: string[] = [];
+      const d = params.data;
+      if (d.query) parts.push(`🔍 ${truncate(String(d.query), 60)}`);
+      if (d.resultCount !== undefined) parts.push(`📊 ${d.resultCount} sonuç`);
+      if (d.count !== undefined) parts.push(`📊 Sayı: ${d.count}`);
+      if (d.rawCount !== undefined) parts.push(`🔢 Ham: ${d.rawCount}`);
+      if (d.mergedCount !== undefined) parts.push(`🔀 Birleşik: ${d.mergedCount}`);
+      if (d.before !== undefined && d.after !== undefined) parts.push(`${d.before} → ${d.after}`);
+      if (d.totalResults !== undefined) parts.push(`📊 Toplam: ${d.totalResults}`);
+      if (d.reason) parts.push(`📝 ${truncate(String(d.reason), 80)}`);
+      if (d.starterPackCount !== undefined) parts.push(`📦 Starter: ${d.starterPackCount}`);
+      if (d.reservedPoolCount !== undefined) parts.push(`📦 Reserved: ${d.reservedPoolCount}`);
+      if (d.enrichedCount !== undefined) parts.push(`🔗 Zenginleştirilen: ${d.enrichedCount}`);
+      if (d.requestedCount !== undefined) parts.push(`🔢 İstenen: ${d.requestedCount}`);
+      if (d.resolvedCount !== undefined) parts.push(`✅ Çözülen: ${d.resolvedCount}`);
+      if (d.status) parts.push(`🌐 HTTP ${d.status}`);
+      if (d.errorCode) parts.push(`❌ ${d.errorCode}`);
+      if (parts.length > 0) line += ` | ${parts.join(" | ")}`;
+    }
+
+    if (params?.error) {
+      const err = params.error;
+      const display = getErrorDisplay(err);
+      const scenario = classifyError(err);
+      line += ` | ❌ [${scenario.toUpperCase()}] ${display.title}`;
+    }
+
+    return line;
+  }
+
+  // ==========================================================================
+  // Dev-Only Helper Methods (no-ops in production)
   // ==========================================================================
 
   /**
-   * @param stepName - Step name.
-   * @param metadata - Optional key/value data.
+   * Dev modunda adım takibi için tek satır.
    */
   step(stepName: string, metadata?: Record<string, unknown>): void {
     if (!isDevelopment) return;
-    this.renderDevBox("info", {
-      step: stepName,
-      status: metadata ? undefined : "TRACE",
-      flowId: this.flowId,
-      ...metadata,
-    });
+    const meta = metadata ? ` | ${JSON.stringify(metadata)}` : "";
+    console.log(`📌 ${this.flowId} ${stepName}${meta}`);
   }
 
   /**
-   * @param ref - File path with line number (e.g. "queries.ts:42").
+   * Dev modunda dosya referansını tek satırda basar.
    */
   file(ref: string): void {
     if (!isDevelopment) return;
-    this.renderLabelBox("📂 KOD DOSYASI", ref);
+    console.log(`📂 ${this.flowId} ${ref}`);
   }
 
   /**
-   * @param label - Data label.
-   * @param value - Data value to preview.
+   * Dev modunda veriyi tek satırda gösterir.
    */
   data(label: string, value: unknown): void {
     if (!isDevelopment) return;
-    this.renderDataBox(label, value);
+    const formatted =
+      typeof value === "string" ? value : JSON.stringify(value);
+    const truncated =
+      formatted.length > 120 ? formatted.slice(0, 117) + "..." : formatted;
+    console.log(`📊 ${this.flowId} ${label}: ${truncated}`);
   }
 
   /**
-   * @param label - Preview label.
-   * @param value - Value to preview.
+   * data() alias'ı.
    */
   preview(label: string, value: unknown): void {
     this.data(label, value);
   }
 
   /**
-   * @param model - Model name.
-   * @param content - Full prompt text.
+   * Dev modunda prompt içeriğini özet olarak basar.
    */
   prompt(model: string, content: string): void {
     if (!isDevelopment) return;
-    this.renderPromptBox(model, content);
-  }
-
-  // ==========================================================================
-  // Box Renderers (dev only)
-  // ==========================================================================
-
-  private renderDevBox(level: string, data: Record<string, unknown>): void {
-    const step = String(data.step ?? "unknown");
-    const status = data.status ? String(data.status) : "";
-    const flowId = String(data.flowId ?? "");
-
-    let icon = "\u{1F7E6}";
-    if (level === "error" || status === "FAILED") icon = "\u274C";
-    else if (status === "START") icon = "\u{1F680}";
-    else if (level === "warn") icon = "\u26A0\uFE0F";
-    else if (status === "SUCCESS") icon = "\u2705";
-    else if (status === "TRACE") icon = "\u{1F9F1}";
-
-    const title =
-      status && status !== "TRACE" ? `${step} \u203A ${status}` : step;
-
-    const flowTag = flowId ? ` \u{1F517} ${flowId}` : "";
-    const titleLine = `${icon} ${title}${flowTag}`;
-
-    this.printBox([titleLine]);
-
-    if (data.metrics && typeof data.metrics === "object") {
-      const m = data.metrics as Record<string, unknown>;
-      const parts: string[] = [];
-      if (m.duration) parts.push(`\u23F1 ${m.duration}`);
-      if (m.tokens && typeof m.tokens === "object") {
-        const t = m.tokens as Record<string, unknown>;
-        parts.push(
-          `\u{1F538}${t.prompt ?? "?"} \u{1F539}${t.completion ?? "?"}`,
-        );
-      }
-      if (m.outputRows !== undefined) parts.push(`\u{1F4C4} ${m.outputRows}`);
-      if (parts.length > 0) {
-        this.printBox([parts.join("  \u2502  ")]);
-      }
-    }
-
-    if (data.diagnostics && typeof data.diagnostics === "object") {
-      const d = data.diagnostics as Record<string, unknown>;
-      for (const [dk, dv] of Object.entries(d)) {
-        if (dv === undefined || dv === null) continue;
-        this.printBox([`\u{1F4CA} ${dk}: ${this.shorten(String(dv), 60)}`]);
-      }
-    }
-
-    for (const key of Object.keys(data)) {
-      if (["step", "status", "flowId", "metrics", "diagnostics"].includes(key))
-        continue;
-      const value = data[key];
-      if (value === undefined || value === null) continue;
-      this.printBox([
-        `\u{1F4CA} ${key}: ${this.shorten(JSON.stringify(value), 60)}`,
-      ]);
-    }
-  }
-
-  private renderLabelBox(label: string, content: string): void {
-    this.printBox([`${label}  ${content}`]);
-  }
-
-  private renderDataBox(label: string, value: unknown): void {
-    const formatted =
-      typeof value === "string" ? value : JSON.stringify(value, null, 2);
-    const lines = formatted.split("\n").slice(0, 15);
-    if (lines.length < formatted.split("\n").length) {
-      lines.push(`... (${formatted.split("\n").length - 15} more lines)`);
-    }
-    const header = `\u{1F4CA} ${label}`;
-    this.printBox([header, ...lines.map((l) => `  ${l}`)]);
-  }
-
-  private renderPromptBox(model: string, content: string): void {
-    const lines = content.split("\n");
-    const maxLines = 25;
-    const display = lines.slice(0, maxLines);
-    if (lines.length > maxLines) {
-      display.push(`... (${lines.length - maxLines} more lines)`);
-    }
-    const header = `\u{1F9D9} Prompt \u203A ${model}`;
-    this.printBox([header, ...display.map((l) => `  ${l}`)]);
-  }
-
-  private printBox(lines: string[]): void {
-    const innerW = BOX_W - 4;
-    const hRule = "\u2550".repeat(BOX_W - 2);
-    console.log(`\u2554${hRule}\u2557`);
-    for (const line of lines) {
-      const clipped =
-        line.length > innerW ? line.slice(0, innerW - 3) + "..." : line;
-      const pad = innerW - clipped.length;
-      console.log(`\u2551  ${clipped}${" ".repeat(pad < 0 ? 0 : pad)}\u2551`);
-    }
-    console.log(`\u255A${hRule}\u255D`);
-  }
-
-  private shorten(s: string, maxLen: number): string {
-    if (s.length <= maxLen) return s;
-    return s.slice(0, Math.max(0, maxLen - 3)) + "...";
+    const preview = content.slice(0, 100).replace(/\n/g, " ");
+    const suffix = content.length > 100 ? "..." : "";
+    console.log(`🧠 ${this.flowId} Prompt > ${model}: ${preview}${suffix}`);
   }
 }
