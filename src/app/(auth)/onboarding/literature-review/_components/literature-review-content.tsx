@@ -8,21 +8,17 @@ import { LiteratureArticleCard } from "./literature-article-card";
 import { useLiteratureReview, type BoxStatus } from "../_hooks/use-literature-review";
 
 /**
- * Renders a single sub-box's processing state (loading skeleton, error, empty,
- * or done) while the review pipeline is running. Once a box is completed its
- * results are rendered inline by the parent grid instead.
+ * Renders a single sub-box's transient processing states (loading skeleton,
+ * error, idle) while the review pipeline runs. Once a box is completed the
+ * parent grid renders {@link SubBoxDone} instead.
  */
 function SubBoxQuery({
-  subBox,
   status,
   errorMessage,
 }: {
-  subBox: GeminiThesisBox;
   status: BoxStatus;
   errorMessage?: string;
 }) {
-  const literaturePool = useOnboardingStore((s) => s.literaturePool);
-
   if (status === "idle") return null;
 
   if (status === "loading") {
@@ -47,7 +43,17 @@ function SubBoxQuery({
     );
   }
 
+  return null;
+}
+
+/**
+ * Renders the completed results (starter pack + reserved pool) for a sub-box
+ * by looking up its entry in the Zustand literature pool.
+ */
+function SubBoxDone({ subBox }: { subBox: GeminiThesisBox }) {
+  const literaturePool = useOnboardingStore((s) => s.literaturePool);
   const entry = literaturePool.find((e) => e.subBoxTitle === subBox.title);
+
   if (!entry || entry.starterPack.length === 0) {
     return (
       <div className="p-6 text-center border border-dashed border-border rounded-lg bg-card/20">
@@ -151,10 +157,9 @@ export function LiteratureReviewContent() {
                 </p>
               )}
               {isCompleted ? (
-                <SubBoxQuery subBox={subBox} status="done" />
+                <SubBoxDone subBox={subBox} />
               ) : (
                 <SubBoxQuery
-                  subBox={subBox}
                   status={boxStatuses[subBox.title] ?? "idle"}
                   errorMessage={boxErrors[subBox.title]}
                 />

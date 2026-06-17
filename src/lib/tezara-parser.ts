@@ -91,6 +91,12 @@ export function extractJsonObjects(text: string): unknown[] {
     }
   }
 
+  if (braceCount > 0) {
+    console.warn(
+      `[extractJsonObjects] Unclosed JSON object detected: braceCount=${braceCount}`,
+    );
+  }
+
   return jsonObjects;
 }
 

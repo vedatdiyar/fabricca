@@ -1,5 +1,6 @@
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
+import { extractMessage } from "@/lib/error-utils";
 import type { Logger } from "@/lib/logger";
 import {
   factQueryExtractionSchema,
@@ -65,21 +66,18 @@ export async function extractQueries(
       historicalSpatialLimits: params.historicalSpatialLimits,
     };
 
-    log.prompt(
-      "gemini-3.1-flash-lite (fact queries)",
-      buildFactQueryPrompt(geminiInput),
-    );
-    log.prompt(
-      "gemini-3.1-flash-lite (keywords)",
-      buildLitKeywordPrompt(geminiInput),
-    );
+    const factPrompt = buildFactQueryPrompt(geminiInput);
+    const keywordPrompt = buildLitKeywordPrompt(geminiInput);
+
+    log.prompt("gemini-3.1-flash-lite (fact queries)", factPrompt);
+    log.prompt("gemini-3.1-flash-lite (keywords)", keywordPrompt);
 
     // Run both extraction prompts in parallel
     const [factResult, keywordResult] = await Promise.all([
       generateStructuredContent<FactQueryExtractionResponse>(
         "gemini-3.1-flash-lite",
         buildFactQueryExtractionSystemInstruction(),
-        buildFactQueryPrompt(geminiInput),
+        factPrompt,
         factQueryExtractionSchema,
         log,
         {
@@ -89,7 +87,7 @@ export async function extractQueries(
       generateStructuredContent<LitKeywordExtractionResponse>(
         "gemini-3.1-flash-lite",
         buildLitKeywordExtractionSystemInstruction(),
-        buildLitKeywordPrompt(geminiInput),
+        keywordPrompt,
         litKeywordExtractionSchema,
         log,
         {
@@ -113,22 +111,13 @@ export async function extractQueries(
       : [];
 
     // Pad keywords to ensure exactly 5 items
-    const DEFAULTS = ["thesis", "research", "study", "analysis", "framework"];
-    const used = new Set(rawKeywords);
-    const keywords = [...rawKeywords];
-    for (const d of DEFAULTS) {
-      if (keywords.length >= 5) break;
-      if (!used.has(d)) {
-        keywords.push(d);
-        used.add(d);
-      }
-    }
-    const finalKeywords = keywords;
+    const DEFAULT_KEYWORDS = ["thesis", "research", "study", "analysis", "framework"];
+    const keywords = [...new Set([...rawKeywords, ...DEFAULT_KEYWORDS])].slice(0, 5);
 
     // Dynamic combinations generator
     const tezaraQueries: string[] = [];
-    const combos2 = getCombinations(finalKeywords, 2);
-    const combos3 = getCombinations(finalKeywords, 3);
+    const combos2 = getCombinations(keywords, 2);
+    const combos3 = getCombinations(keywords, 3);
     tezaraQueries.push(...combos2, ...combos3);
 
     const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
@@ -152,7 +141,7 @@ export async function extractQueries(
     return {
       tavilyQueries: finalTavilyQueries,
       tezaraQueries,
-      keywords: finalKeywords,
+      keywords,
     };
   } catch (err) {
     log.error({
@@ -160,7 +149,7 @@ export async function extractQueries(
       status: "FAILED",
       diagnostics: {
         errorCode: "GEMINI_EXTRACTION_ERROR",
-        message: err instanceof Error ? err.message : String(err),
+        message: extractMessage(err),
         model: "gemini-3.1-flash-lite",
       },
     });

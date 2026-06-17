@@ -12,11 +12,12 @@ import {
 } from "@/db/schema";
 import { getSession } from "@/proxy";
 import { Logger, createFlowId } from "@/lib/logger";
-import type { LiteraturePoolEntry, OnboardingActionResult } from "@/lib/types";
+import type { LiteraturePoolEntry, OnboardingActionResult, JuryArticle } from "@/lib/types";
 import type { NewLibraryResource } from "@/db/schema";
 import type {
   SubBoxInput,
   RawPaper,
+  ValidatedPaper,
 } from "./_services/literature-review-papers";
 import { mergePapers } from "./_services/literature-review-papers";
 import {
@@ -31,6 +32,27 @@ import {
   enrichJuryArticleWithCrossRef,
   type LiteratureReviewResult,
 } from "./_services/ai-processor";
+
+// ============================================================================
+// Helper: enrichBatch — processes articles in concurrency-limited batches
+// ============================================================================
+
+const CROSSREF_CONCURRENCY = 5;
+
+async function enrichBatch(
+  articles: JuryArticle[],
+  pool: ValidatedPaper[],
+): Promise<JuryArticle[]> {
+  const results: JuryArticle[] = [];
+  for (let i = 0; i < articles.length; i += CROSSREF_CONCURRENCY) {
+    const batch = articles.slice(i, i + CROSSREF_CONCURRENCY);
+    const enriched = await Promise.all(
+      batch.map((a) => enrichJuryArticleWithCrossRef(a, pool)),
+    );
+    results.push(...enriched);
+  }
+  return results;
+}
 
 // ============================================================================
 // Helper: processSingleBox — processes a single sub-box through the pipeline
@@ -206,20 +228,12 @@ async function processSingleBox(
   });
 
   // ------------------------------------------------------------------
-  // Stage 6: CrossRef polite-pool validation
+  // Stage 6: CrossRef polite-pool validation (concurrency-limited)
   // ------------------------------------------------------------------
   const crossrefStart = performance.now();
   const [enrichedStarterPack, enrichedReservedPool] = await Promise.all([
-    Promise.all(
-      result.starterPack.map((a) =>
-        enrichJuryArticleWithCrossRef(a, rawApiPool),
-      ),
-    ),
-    Promise.all(
-      result.reservedPool.map((a) =>
-        enrichJuryArticleWithCrossRef(a, rawApiPool),
-      ),
-    ),
+    enrichBatch(result.starterPack, rawApiPool),
+    enrichBatch(result.reservedPool, rawApiPool),
   ]);
 
   logger.info("literature_crossref_done", {
@@ -275,9 +289,30 @@ export async function processLiteratureReviewAction(
 
     if (!thesisCtx) return { error: "Tez matrisi bulunamadı." };
 
-    const results = await Promise.all(
+    const settled = await Promise.allSettled(
       subBoxes.map((box) => processSingleBox(box, thesisCtx, logger)),
     );
+
+    const results: LiteratureReviewResult[] = [];
+    for (let i = 0; i < settled.length; i++) {
+      const s = settled[i];
+      if (s.status === "fulfilled") {
+        results.push(s.value);
+      } else {
+        const boxTitle = subBoxes[i]?.title ?? `index ${i}`;
+        logger.error("literature_box_failed", {
+          service: "literature",
+          filePath: "onboarding/literature-review/actions.ts",
+          data: { subBoxTitle: boxTitle },
+          error: s.reason,
+        });
+        results.push({
+          starterPack: [],
+          reservedPool: [],
+          error: `Kutu "${boxTitle}" işlenirken hata: ${s.reason?.message ?? "Bilinmeyen hata"}`,
+        });
+      }
+    }
 
     return { data: results };
   } catch (err) {

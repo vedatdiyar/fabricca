@@ -23,6 +23,7 @@ import { validateWithCrossRef } from "./search-api";
 export interface LiteratureReviewResult {
   starterPack: JuryArticle[];
   reservedPool: JuryArticle[];
+  error?: string;
 }
 
 // ============================================================================
@@ -205,25 +206,9 @@ export async function runJuryStage(
     { thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM } },
   );
 
-  function backfillIsFoundational(articles: JuryArticle[]): JuryArticle[] {
-    return articles.map((a) => {
-      let found = false;
-      if (a.doi) {
-        found = foundationalLookup.get("doi:" + a.doi) ?? false;
-      }
-      if (!found && a.title) {
-        found =
-          foundationalLookup.get(
-            "title:" + a.title.toLowerCase().trim().slice(0, 80),
-          ) ?? false;
-      }
-      return { ...a, isFoundational: found };
-    });
-  }
-
   const result = {
-    starterPack: backfillIsFoundational(juryResult.starterPack),
-    reservedPool: backfillIsFoundational(juryResult.reservedPool),
+    starterPack: backfillIsFoundational(juryResult.starterPack, foundationalLookup),
+    reservedPool: backfillIsFoundational(juryResult.reservedPool, foundationalLookup),
   };
 
   logger.data("Jury Split", {
@@ -235,6 +220,28 @@ export async function runJuryStage(
 }
 
 // ============================================================================
+// Backfill isFoundational for Jury Articles
+// ============================================================================
+
+function backfillIsFoundational(
+  articles: JuryArticle[],
+  lookup: Map<string, boolean>,
+): JuryArticle[] {
+  return articles.map((a) => {
+    let found = false;
+    if (a.doi) {
+      found = lookup.get("doi:" + a.doi) ?? false;
+    }
+    if (!found && a.title) {
+      found = lookup.get(
+        "title:" + a.title.toLowerCase().trim().slice(0, 80),
+      ) ?? false;
+    }
+    return { ...a, isFoundational: found };
+  });
+}
+
+// ============================================================================
 // CrossRef & Enrichment Helper (polite-pool)
 // ============================================================================
 
@@ -242,10 +249,12 @@ export async function enrichJuryArticleWithCrossRef(
   article: JuryArticle,
   pool: ValidatedPaper[],
 ): Promise<JuryArticle> {
+  let resolvedAbstract = article.abstract;
+
   if (article.doi) {
     const match = pool.find((p) => p.doi === article.doi);
     if (match?.abstract) {
-      article.abstract = match.abstract;
+      resolvedAbstract = match.abstract;
     }
   } else if (article.title) {
     const titleKey = article.title.toLowerCase().trim().slice(0, 80);
@@ -253,15 +262,17 @@ export async function enrichJuryArticleWithCrossRef(
       (p) => p.title?.toLowerCase().trim().slice(0, 80) === titleKey,
     );
     if (match?.abstract) {
-      article.abstract = match.abstract;
+      resolvedAbstract = match.abstract;
     }
   }
 
-  if (!article.doi) return article;
+  if (!article.doi) {
+    return { ...article, abstract: resolvedAbstract };
+  }
 
   const paper: ValidatedPaper = {
     title: article.title,
-    abstract: article.abstract,
+    abstract: resolvedAbstract,
     metadata: null,
     doi: article.doi,
     url: article.url,
@@ -275,10 +286,12 @@ export async function enrichJuryArticleWithCrossRef(
 
   const enriched = await validateWithCrossRef(paper);
 
-  article.authors = enriched.authors;
-  article.url = enriched.url ?? article.url;
-  article.publisher = enriched.publisher ?? article.publisher;
-  if (enriched.year) article.publicationYear = enriched.year;
-
-  return article;
+  return {
+    ...article,
+    abstract: resolvedAbstract,
+    authors: enriched.authors.length > 0 ? enriched.authors : article.authors,
+    url: enriched.url ?? article.url,
+    publisher: enriched.publisher ?? article.publisher,
+    publicationYear: enriched.year ?? article.publicationYear,
+  };
 }

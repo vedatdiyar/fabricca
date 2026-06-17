@@ -51,12 +51,12 @@ async function retryOn503<T>(
   maxRetries = 3,
   baseDelayMs = 1000,
   logger?: Logger,
-): Promise<T> {
+): Promise<{ result: T; attempts: number }> {
   let attempt = 0;
   while (true) {
     attempt++;
     try {
-      return await fn();
+      return { result: await fn(), attempts: attempt };
     } catch (error: unknown) {
       const isRetryable =
         error instanceof Error &&
@@ -132,6 +132,7 @@ export async function generateStructuredContent<T>(
   },
 ): Promise<T> {
   const startTime = performance.now();
+  let attempts: number | undefined;
 
   logger?.info("ai_request_start", {
     service: "gemini",
@@ -143,7 +144,7 @@ export async function generateStructuredContent<T>(
   });
 
   try {
-    const response = await retryOn503(
+    const { result: response, attempts: retryAttempts } = await retryOn503(
       () =>
         ai.models.generateContent({
           model: modelName,
@@ -153,10 +154,7 @@ export async function generateStructuredContent<T>(
             temperature: 1.0,
             responseMimeType: "application/json",
             responseJsonSchema: schema,
-            thinkingConfig:
-              options?.thinkingConfig === null
-                ? undefined
-                : options?.thinkingConfig,
+            thinkingConfig: options?.thinkingConfig ?? undefined,
           },
         }),
       3,
@@ -201,11 +199,12 @@ export async function generateStructuredContent<T>(
         }
       : undefined;
 
+    attempts = retryAttempts;
     logger?.info("ai_request_success", {
       service: "gemini",
       durationMs,
       tokens,
-      data: { model: modelName, attempt: 1 },
+      data: { model: modelName, attempt: attempts },
     });
     return parsed;
   } catch (error) {
@@ -214,7 +213,7 @@ export async function generateStructuredContent<T>(
       service: "gemini",
       filePath: "src/lib/gemini.ts",
       durationMs,
-      data: { model: modelName, attempts: 1 },
+      data: { model: modelName, attempts },
       error,
     });
     throw error;

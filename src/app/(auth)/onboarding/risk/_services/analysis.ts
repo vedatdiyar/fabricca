@@ -1,5 +1,6 @@
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
+import { extractMessage } from "@/lib/error-utils";
 import type { Logger } from "@/lib/logger";
 import type { AxesOption, TezaraThesisDetails } from "@/lib/types";
 import {
@@ -106,11 +107,8 @@ export function calculateOriginalityRisk(
   });
 
   const levels = new Set(calculatedOverlapTable.map((i) => i.originalityLevel));
-  const originalityBadge =
-    levels.has("HIGH_RISK") ? "HIGH_RISK"
-      : levels.has("MEDIUM_RISK") ? "MEDIUM_RISK"
-        : levels.has("LOW_RISK") ? "LOW_RISK"
-          : "ZERO_RISK";
+  const RISK_PRIORITY = ["HIGH_RISK", "MEDIUM_RISK", "LOW_RISK", "ZERO_RISK"] as const;
+  const originalityBadge = RISK_PRIORITY.find((r) => levels.has(r)) ?? "ZERO_RISK";
 
   return {
     originalityBadge,
@@ -238,7 +236,7 @@ export async function analyzeOriginalityRisk(
       status: "FAILED",
       diagnostics: {
         errorCode: "GEMINI_ANALYSIS_ERROR",
-        message: err instanceof Error ? err.message : String(err),
+        message: extractMessage(err),
         model: "gemini-3.1-flash-lite",
       },
     });

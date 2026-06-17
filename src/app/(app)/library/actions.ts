@@ -144,21 +144,44 @@ export async function replenishFromReservedAction(
       };
     }
 
-    /* ---- 2. Fetch next 5 RESERVED resources (oldest first) ---- */
-    const reservedBatch = await db
-      .select()
-      .from(libraryResources)
-      .where(
-        and(
-          eq(libraryResources.thesisBoxId, boxId),
-          eq(libraryResources.status, "RESERVED")
+    /* ---- 2. Atomically fetch and promote RESERVED batch ---- */
+    const txResult = await db.transaction(async (tx) => {
+      const reservedBatch = await tx
+        .select()
+        .from(libraryResources)
+        .where(
+          and(
+            eq(libraryResources.thesisBoxId, boxId),
+            eq(libraryResources.status, "RESERVED")
+          )
         )
-      )
-      .orderBy(asc(libraryResources.id))
-      .limit(5);
+        .orderBy(asc(libraryResources.id))
+        .limit(5);
 
-    if (reservedBatch.length === 0) {
-      /* ---- 3a. Pool is empty — notify user ---- */
+      if (reservedBatch.length === 0) {
+        return { promoted: null as LibraryResource[] | null, remainingCount: 0 };
+      }
+
+      const batchIds = reservedBatch.map((r) => r.id);
+      await tx
+        .update(libraryResources)
+        .set({ status: "APPROVED", isRead: false })
+        .where(inArray(libraryResources.id, batchIds));
+
+      const [{ count: remainingCount }] = await tx
+        .select({ count: sql<number>`count(*)::int` })
+        .from(libraryResources)
+        .where(
+          and(
+            eq(libraryResources.thesisBoxId, boxId),
+            eq(libraryResources.status, "RESERVED")
+          )
+        );
+
+      return { promoted: reservedBatch, remainingCount };
+    });
+
+    if (!txResult.promoted || txResult.promoted.length === 0) {
       return {
         success: false,
         error:
@@ -166,28 +189,9 @@ export async function replenishFromReservedAction(
       };
     }
 
-    /* ---- 3b. Promote RESERVED → APPROVED ---- */
-    const batchIds = reservedBatch.map((r) => r.id);
-    await db
-      .update(libraryResources)
-      .set({ status: "APPROVED", isRead: false })
-      .where(inArray(libraryResources.id, batchIds));
+    const { promoted: reservedBatch } = txResult;
 
-    /* ---- 4. Check RESERVED pool threshold ---- */
-    const [{ count: remainingCount }] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(libraryResources)
-      .where(
-        and(
-          eq(libraryResources.thesisBoxId, boxId),
-          eq(libraryResources.status, "RESERVED")
-        )
-      );
-
-    if (remainingCount < 5) {
-    }
-
-    /* ---- 5. Return newly promoted resources (map in-memory, no re-query) ---- */
+    /* ---- 3. Return newly promoted resources (map in-memory, no re-query) ---- */
     const promotedResources = reservedBatch.map((r) => ({
       ...r,
       status: "APPROVED" as const,

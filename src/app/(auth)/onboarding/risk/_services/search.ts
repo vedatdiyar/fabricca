@@ -2,6 +2,7 @@ import { ThinkingLevel } from "@google/genai";
 import { tavilySearch } from "@/lib/tavily";
 import { searchTezara } from "@/lib/tezara";
 import { generateStructuredContent } from "@/lib/gemini";
+import { extractMessage } from "@/lib/error-utils";
 import type { Logger } from "@/lib/logger";
 import type {
   TezaraThesisSummary,
@@ -52,7 +53,7 @@ export async function executeParallelSearch(
           diagnostics: {
             errorCode: "TAVILY_SEARCH_ERROR",
             query,
-            message: err instanceof Error ? err.message : String(err),
+            message: extractMessage(err),
           },
         });
         return { query, results: [] };
@@ -69,7 +70,7 @@ export async function executeParallelSearch(
           diagnostics: {
             errorCode: "TEZARA_SEARCH_ERROR",
             query,
-            message: err instanceof Error ? err.message : String(err),
+            message: extractMessage(err),
           },
         });
         return [];
@@ -101,7 +102,7 @@ export async function executeParallelSearch(
       status: "FAILED",
       diagnostics: {
         errorCode: "SEARCH_EXECUTION_ERROR",
-        message: err instanceof Error ? err.message : String(err),
+        message: extractMessage(err),
       },
     });
     throw err;
@@ -194,7 +195,7 @@ export async function evaluateTavilyResults(
       status: "FAILED",
       diagnostics: {
         errorCode: "GEMINI_EVALUATION_ERROR",
-        message: err instanceof Error ? err.message : String(err),
+        message: extractMessage(err),
         model: "gemini-3.1-flash-lite",
       },
     });

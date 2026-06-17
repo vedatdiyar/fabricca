@@ -7,6 +7,13 @@ import {
   findThesisObjRecursively,
 } from "./tezara-parser";
 
+const TEZARA_FETCH_HEADERS = {
+  rsc: "1",
+  accept: "text/x-component",
+  "user-agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+} as const;
+
 /**
  * Executes a search for a single page of thesis results from Tezara.
  *
@@ -32,14 +39,7 @@ export async function searchTezaraPage(
 
   try {
     const url = `https://tezara.org/search?q=${encodeURIComponent(query)}&page=${page}${advanced ? "&advanced=true" : ""}&_rsc=vusbg`;
-    const response = await fetch(url, {
-      headers: {
-        rsc: "1",
-        accept: "text/x-component",
-        "user-agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      },
-    });
+    const response = await fetch(url, { headers: TEZARA_FETCH_HEADERS });
 
     if (!response.ok) {
       const durationMs = performance.now() - startTime;
@@ -141,14 +141,7 @@ export async function fetchThesisDetails(
 
   try {
     const url = `https://tezara.org/theses/${id}?_rsc=vusbg`;
-    const response = await fetch(url, {
-      headers: {
-        rsc: "1",
-        accept: "text/x-component",
-        "user-agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      },
-    });
+    const response = await fetch(url, { headers: TEZARA_FETCH_HEADERS });
 
     if (!response.ok) {
       const durationMs = performance.now() - startTime;

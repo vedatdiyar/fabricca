@@ -1,5 +1,6 @@
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
+import { extractMessage } from "@/lib/error-utils";
 import { cosineSimilarity } from "@/lib/utils";
 import { generateEmbeddings } from "@/lib/cloudflare";
 import { fetchThesisDetails } from "@/lib/tezara";
@@ -164,7 +165,7 @@ export async function siftAndFetchDetails(
         status: "FAILED",
         diagnostics: {
           errorCode: "EMBEDDING_SIFTING_ERROR",
-          message: err instanceof Error ? err.message : String(err),
+          message: extractMessage(err),
         },
       });
       throw err;
@@ -266,9 +267,8 @@ export async function siftAndFetchDetails(
 
       const targetIds = targetEntries.map((e) => e.id);
 
-      finalIds = targetIds.filter((id) =>
-        validDetails.some((t) => t.id === id),
-      );
+      const validIdSet = new Set(validDetails.map((t) => t.id));
+      finalIds = targetIds.filter((id) => validIdSet.has(id));
 
       const stage2Duration =
         ((performance.now() - stage2Start) / 1000).toFixed(1) + "s";
@@ -292,7 +292,7 @@ export async function siftAndFetchDetails(
         status: "FAILED",
         diagnostics: {
           errorCode: "GEMINI_SIFTING_ERROR",
-          message: err instanceof Error ? err.message : String(err),
+          message: extractMessage(err),
           model: "gemini-3.1-flash-lite",
         },
       });
@@ -340,7 +340,7 @@ export async function siftAndFetchDetails(
       status: "FAILED",
       diagnostics: {
         errorCode: "SIFTING_PIPELINE_ERROR",
-        message: err instanceof Error ? err.message : String(err),
+        message: extractMessage(err),
       },
     });
     throw err;

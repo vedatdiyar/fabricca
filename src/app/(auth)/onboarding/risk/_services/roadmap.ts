@@ -1,5 +1,6 @@
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
+import { extractMessage } from "@/lib/error-utils";
 import type { Logger } from "@/lib/logger";
 import {
   roadmapSchema,
@@ -50,15 +51,16 @@ export async function synthesizeRoadmap(
 
   try {
     let roadmapResult;
+    const roadmapPrompt = buildRoadmapPrompt(params);
     try {
-      log.prompt("gemini-3.1-flash-lite (HIGH thinking)", buildRoadmapPrompt(params));
+      log.prompt("gemini-3.1-flash-lite (HIGH thinking)", roadmapPrompt);
 
       roadmapResult = await generateStructuredContent<{
         strategicRecommendations: string;
       }>(
         "gemini-3.1-flash-lite",
         buildRoadmapSystemInstruction(),
-        buildRoadmapPrompt(params),
+        roadmapPrompt,
         roadmapSchema,
         log,
         {
@@ -73,10 +75,7 @@ export async function synthesizeRoadmap(
         status: "RETRYING",
         diagnostics: {
           errorCode: "ROADMAP_THINKING_ERROR",
-          message:
-            roadmapError instanceof Error
-              ? roadmapError.message
-              : String(roadmapError),
+          message: extractMessage(roadmapError),
           fallbackModel: "gemini-3.1-flash-lite-no-thinking",
         },
       });
@@ -86,7 +85,7 @@ export async function synthesizeRoadmap(
       }>(
         "gemini-3.1-flash-lite",
         buildRoadmapSystemInstruction(),
-        buildRoadmapPrompt(params),
+        roadmapPrompt,
         roadmapSchema,
         log,
         {
@@ -120,7 +119,7 @@ export async function synthesizeRoadmap(
       status: "FAILED",
       diagnostics: {
         errorCode: "GEMINI_ROADMAP_ERROR",
-        message: err instanceof Error ? err.message : String(err),
+        message: extractMessage(err),
         model: "gemini-3.1-flash-lite",
       },
     });

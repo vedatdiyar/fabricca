@@ -122,7 +122,7 @@ export function getErrorDisplay(error: unknown): ErrorDisplay {
  * @param error - Herhangi bir hata değeri
  * @returns normalize edilmiş string mesaj veya boş string
  */
-function extractMessage(error: unknown): string {
+export function extractMessage(error: unknown): string {
   if (typeof error === "string") {
     return error;
   }

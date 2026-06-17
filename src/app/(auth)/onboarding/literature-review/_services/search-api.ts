@@ -97,6 +97,8 @@ function parseOpenAlexResults(results: Record<string, unknown>[]): RawPaper[] {
 // ============================================================================
 
 async function queryOpenAlexWorks(params: URLSearchParams): Promise<RawPaper[]> {
+  const apiKey = process.env.OPENALEX_API_KEY;
+  if (apiKey) params.set("api_key", apiKey);
   const url = `https://api.openalex.org/works?${params.toString()}`;
 
   try {
@@ -121,14 +123,12 @@ async function queryOpenAlexWorks(params: URLSearchParams): Promise<RawPaper[]> 
 // ============================================================================
 
 export async function searchOpenAlex(query: string): Promise<RawPaper[]> {
-  const apiKey = process.env.OPENALEX_API_KEY;
   const params = new URLSearchParams({
     "search.semantic": query,
     per_page: "50",
     select:
       "title,topics,concepts,doi,id,authorships,publication_year,primary_location",
   });
-  if (apiKey) params.set("api_key", apiKey);
   return queryOpenAlexWorks(params);
 }
 
@@ -144,7 +144,6 @@ export async function searchOpenAlex(query: string): Promise<RawPaper[]> {
 export async function searchOpenAlexKeyword(
   query: string,
 ): Promise<RawPaper[]> {
-  const apiKey = process.env.OPENALEX_API_KEY;
   const params = new URLSearchParams({
     search: query,
     sort: "cited_by_count:desc",
@@ -152,7 +151,6 @@ export async function searchOpenAlexKeyword(
     select:
       "title,topics,concepts,doi,id,authorships,publication_year,primary_location",
   });
-  if (apiKey) params.set("api_key", apiKey);
   return queryOpenAlexWorks(params);
 }
 
