@@ -10,6 +10,7 @@ import type {
   OnboardingActionResult,
   ScrapedTheses,
   TavilyEvaluationResponse,
+  TezaraThesisSummary,
   OriginalityReportData,
 } from "@/lib/types";
 
@@ -35,120 +36,237 @@ interface OnboardingMatrixInput {
 }
 
 /**
- * Executes parallel searches on Tavily and Tezara, evaluates Tavily findings,
- * sifts Tezara findings using Gemini, and returns the selected/eliminated theses.
- * Does not write to database.
+ * Step 1: Extracts factual Tavily queries, Tezara keyword combinations,
+ * and literature keywords from the thesis matrix using Gemini.
+ * No database writes.
  *
- * @param matrix - The thesis matrix input with study title, research question, main claim, methodology, theoretical framework, and historical/spatial limits
- * @returns Scraped theses, Tavily evaluation results, and extracted keywords, or an error message
+ * @param matrix - The thesis matrix input
+ * @returns Extracted query strings and keywords, or an error message
  */
-export async function searchAndSiftThesesAction(
+export async function extractQueriesAction(
   matrix: OnboardingMatrixInput,
 ): Promise<
   | {
       success: true;
-      scrapedTheses: ScrapedTheses;
-      tavilyResults: TavilyEvaluationResponse;
-      keywords: string[];
+      data: {
+        tavilyQueries: string[];
+        tezaraQueries: string[];
+        keywords: string[];
+      };
     }
   | { error: string }
 > {
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
-  log.info({ step: "searchAndSiftTheses", status: "START", service: "originality" });
+  log.info({
+    step: "extractQueries",
+    status: "PENDING",
+    service: "originality",
+  });
 
   try {
     const session = await getSession();
     if (!session)
       return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
-    if (!matrix)
-      return {
-        error: "Tez matrisi bulunamadı. Lütfen önce tez matrisini doldurun.",
-      };
-
-    const {
-      studyTitle,
-      researchQuestion,
-      methodology,
-      theoreticalFramework,
-      historicalSpatialLimits,
-    } = matrix;
 
     const { tavilyQueries, tezaraQueries, keywords } = await extractQueries(
       {
-        studyTitle,
-        methodology,
-        historicalSpatialLimits,
+        studyTitle: matrix.studyTitle,
+        methodology: matrix.methodology,
+        historicalSpatialLimits: matrix.historicalSpatialLimits,
       },
       log,
     );
 
-    const { tavilySearchResults, tezaraSearchResults } =
-      await executeParallelSearch(tavilyQueries, tezaraQueries, log);
-
-    const tavilyEvaluation = await evaluateTavilyResults(
-      { studyTitle },
-      tavilySearchResults,
-      log,
-    );
-
-    const { finalTheses: validDetails, eliminatedTheses } =
-      await siftAndFetchDetails(
-        {
-          studyTitle,
-          researchQuestion,
-          theoreticalFramework,
-          methodology,
-          historicalSpatialLimits,
-        },
-        tezaraSearchResults,
-        log,
-      );
-
-    log.info({ step: "searchAndSiftTheses", status: "SUCCESS", service: "originality" });
+    log.info({
+      step: "extractQueries",
+      status: "SUCCESS",
+      service: "originality",
+    });
 
     return {
       success: true,
-      scrapedTheses: { selected: validDetails, eliminated: eliminatedTheses },
-      tavilyResults: tavilyEvaluation,
-      keywords,
+      data: { tavilyQueries, tezaraQueries, keywords },
     };
   } catch (err) {
     log.error({
-      step: "searchAndSiftTheses",
+      step: "extractQueries",
       status: "FAILED",
       service: "originality",
       diagnostics: {
-        errorCode: "SYSTEM_ERROR",
+        errorCode: "EXTRACT_QUERIES_ERROR",
         message: err instanceof Error ? err.message : String(err),
       },
     });
     return {
-      error: "YÖKTEZ tarama ve süzme işlemi sırasında bir hata oluştu.",
+      error: "Sorgu ve parametre çıkarma işlemi sırasında bir hata oluştu.",
     };
   }
 }
 
 /**
- * Runs the Gemini Jury analysis, calculates the final originality risk profile,
- * synthesizes the strategic roadmap, writes the report to originality_reports,
- * and returns the data to the client.
+ * Step 2: Executes parallel Tavily and Tezara searches, then evaluates
+ * Tavily fact-checking results via Gemini.
+ * No database writes.
  *
- * @param scrapedTheses - The selected and eliminated theses from the sifting stage
- * @param tavilyResults - The Tavily evaluation response with briefing note and items
- * @param matrix - The thesis matrix input for contextual analysis
- * @returns The full originality report data including Tavily and Tezara results, or an error message
+ * @param params - Study title and query arrays for both search engines
+ * @returns Raw search results from Tezara and evaluated Tavily response, or an error
  */
-export async function runJuryAnalysisAction(
-  scrapedTheses: ScrapedTheses,
-  tavilyResults: TavilyEvaluationResponse,
-  matrix: OnboardingMatrixInput,
-): Promise<{ success: true; data: OriginalityReportData } | { error: string }> {
+export async function executeSearchAction(params: {
+  studyTitle: string;
+  tavilyQueries: string[];
+  tezaraQueries: string[];
+}): Promise<
+  | {
+      success: true;
+      data: {
+        tezaraSearchResults: TezaraThesisSummary[][];
+        tavilyResults: TavilyEvaluationResponse;
+      };
+    }
+  | { error: string }
+> {
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
-  log.info({ step: "runJuryAnalysis", status: "START", service: "originality" });
+  log.info({
+    step: "executeSearch",
+    status: "PENDING",
+    service: "originality",
+  });
+
+  try {
+    const session = await getSession();
+    if (!session)
+      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+
+    const { tavilySearchResults, tezaraSearchResults } =
+      await executeParallelSearch(
+        params.tavilyQueries,
+        params.tezaraQueries,
+        log,
+      );
+
+    const tavilyResults = await evaluateTavilyResults(
+      { studyTitle: params.studyTitle },
+      tavilySearchResults,
+      log,
+    );
+
+    log.info({
+      step: "executeSearch",
+      status: "SUCCESS",
+      service: "originality",
+    });
+
+    return {
+      success: true,
+      data: { tezaraSearchResults, tavilyResults },
+    };
+  } catch (err) {
+    log.error({
+      step: "executeSearch",
+      status: "FAILED",
+      service: "originality",
+      diagnostics: {
+        errorCode: "EXECUTE_SEARCH_ERROR",
+        message: err instanceof Error ? err.message : String(err),
+      },
+    });
+    return {
+      error: "Paralel tarama motorları çalıştırılırken bir hata oluştu.",
+    };
+  }
+}
+
+/**
+ * Step 3: Sifts and fetches details for the Tezara candidates using
+ * embedding similarity and Gemini deep sifting.
+ * No database writes.
+ *
+ * @param params - Thesis matrix and raw Tezara search results
+ * @returns Structured ScrapedTheses object with selected and eliminated theses, or an error
+ */
+export async function siftThesesAction(params: {
+  matrix: OnboardingMatrixInput;
+  tezaraSearchResults: TezaraThesisSummary[][];
+}): Promise<{ success: true; data: ScrapedTheses } | { error: string }> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  log.info({
+    step: "siftTheses",
+    status: "PENDING",
+    service: "originality",
+  });
+
+  try {
+    const session = await getSession();
+    if (!session)
+      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+
+    const { finalTheses, eliminatedTheses } = await siftAndFetchDetails(
+      {
+        studyTitle: params.matrix.studyTitle,
+        researchQuestion: params.matrix.researchQuestion,
+        theoreticalFramework: params.matrix.theoreticalFramework,
+        methodology: params.matrix.methodology,
+        historicalSpatialLimits: params.matrix.historicalSpatialLimits,
+      },
+      params.tezaraSearchResults,
+      log,
+    );
+
+    log.info({
+      step: "siftTheses",
+      status: "SUCCESS",
+      service: "originality",
+    });
+
+    return {
+      success: true,
+      data: { selected: finalTheses, eliminated: eliminatedTheses },
+    };
+  } catch (err) {
+    log.error({
+      step: "siftTheses",
+      status: "FAILED",
+      service: "originality",
+      diagnostics: {
+        errorCode: "SIFT_THESES_ERROR",
+        message: err instanceof Error ? err.message : String(err),
+      },
+    });
+    return {
+      error: "Tez eleme ve detay çekme işlemi sırasında bir hata oluştu.",
+    };
+  }
+}
+
+/**
+ * Step 4: Runs the Gemini Jury analysis, calculates the final originality
+ * risk profile, synthesizes the strategic roadmap, then writes the complete
+ * report to the originality_reports table as a single upsert at the very end.
+ *
+ * @param params - Thesis matrix, scraped theses, and Tavily evaluation results
+ * @returns The complete originality report data, or an error message
+ */
+export async function finalizeJuryAnalysisAction(params: {
+  matrix: OnboardingMatrixInput;
+  scrapedTheses: ScrapedTheses;
+  tavilyResults: TavilyEvaluationResponse;
+}): Promise<
+  { success: true; data: OriginalityReportData } | { error: string }
+> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  log.info({
+    step: "finalizeJuryAnalysis",
+    status: "PENDING",
+    service: "originality",
+  });
 
   try {
     const session = await getSession();
@@ -162,8 +280,8 @@ export async function runJuryAnalysisAction(
       methodology,
       theoreticalFramework,
       historicalSpatialLimits,
-    } = matrix;
-    const validDetails = scrapedTheses.selected;
+    } = params.matrix;
+    const validDetails = params.scrapedTheses.selected;
 
     let tezaraResults: OriginalityReportData["tezaraResults"];
 
@@ -224,13 +342,13 @@ export async function runJuryAnalysisAction(
 
     const reportData: OriginalityReportData = {
       tavilyResults: {
-        items: tavilyResults.items,
-        briefingNote: tavilyResults.briefingNote,
+        items: params.tavilyResults.items,
+        briefingNote: params.tavilyResults.briefingNote,
       },
       tezaraResults,
     };
 
-    // Write to originality_reports
+    // Single database write at the very end of the pipeline
     await db
       .insert(originalityReports)
       .values({
@@ -248,22 +366,25 @@ export async function runJuryAnalysisAction(
         },
       });
 
-    log.info({ step: "runJuryAnalysis", status: "SUCCESS", service: "originality" });
+    log.info({
+      step: "finalizeJuryAnalysis",
+      status: "SUCCESS",
+      service: "originality",
+    });
 
     return { success: true, data: reportData };
   } catch (err) {
     log.error({
-      step: "runJuryAnalysis",
+      step: "finalizeJuryAnalysis",
       status: "FAILED",
       service: "originality",
       diagnostics: {
-        errorCode: "SYSTEM_ERROR",
+        errorCode: "FINALIZE_JURY_ERROR",
         message: err instanceof Error ? err.message : String(err),
       },
     });
     return {
-      error:
-        "Gemini jüri analizi veya risk seviyesi belirlenirken hata oluştu.",
+      error: "Jüri analizi ve risk raporu hazırlanırken bir hata oluştu.",
     };
   }
 }

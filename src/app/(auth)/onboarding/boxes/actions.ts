@@ -116,6 +116,7 @@ export async function confirmBoxesAction(
         title: box.title,
         description: box.description || "",
         semanticSearchBlock: box.semanticSearchBlock || "",
+        foundationalQueries: box.foundationalQueries || [],
         concepts: box.concepts || [],
       }));
 

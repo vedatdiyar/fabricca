@@ -109,7 +109,11 @@ function getStatusTag(status: string): string {
 function deriveStatus(event: string): string {
   if (event.endsWith("_start") || event.endsWith("_attempt")) return "PENDING";
   if (event.endsWith("_success")) return "SUCCESS";
-  if (event.endsWith("_failed") || event.endsWith("_filtered") || event.endsWith("_empty"))
+  if (
+    event.endsWith("_failed") ||
+    event.endsWith("_filtered") ||
+    event.endsWith("_empty")
+  )
     return "FAILED";
   return "PENDING";
 }
@@ -146,7 +150,7 @@ export class Logger {
     if (typeof arg1 === "object" && arg1 !== null) {
       const entry = { flowId: this.flowId, ...arg1 };
       if (isDevelopment) this.renderDevLine(entry);
-      pinoLogger[level](entry);
+      else pinoLogger[level](entry);
     } else {
       const event = arg1 as string;
       const service = params?.service ?? "flow";
@@ -193,9 +197,9 @@ export class Logger {
       if (isDevelopment) {
         const status = params?.status ?? deriveStatus(event);
         this.renderEventLine(service, event, status, params);
+      } else {
+        pinoLogger[level](entry);
       }
-
-      pinoLogger[level](entry);
     }
   }
 
@@ -229,17 +233,21 @@ export class Logger {
     if (metrics) {
       const durMs = metrics.durationMs as number | undefined;
       const dur = metrics.duration as string | undefined;
-      if (durMs !== undefined && typeof durMs === "number") line += ` | ⏱️ ${Math.round(durMs)}ms`;
+      if (durMs !== undefined && typeof durMs === "number")
+        line += ` | ⏱️ ${Math.round(durMs)}ms`;
       else if (dur) line += ` | ⏱️ ${dur}`;
     }
 
     const extraData = data.data as Record<string, unknown> | undefined;
     if (extraData) {
       const parts: string[] = [];
-      if (extraData.count !== undefined) parts.push(`📊 Sayı: ${extraData.count}`);
-      if (extraData.resultCount !== undefined) parts.push(`📊 ${extraData.resultCount} sonuç`);
+      if (extraData.count !== undefined)
+        parts.push(`📊 Sayı: ${extraData.count}`);
+      if (extraData.resultCount !== undefined)
+        parts.push(`📊 ${extraData.resultCount} sonuç`);
       if (extraData.model) parts.push(`🏷️ Model: ${extraData.model}`);
-      if (extraData.query) parts.push(`🔍 ${truncate(String(extraData.query), 60)}`);
+      if (extraData.query)
+        parts.push(`🔍 ${truncate(String(extraData.query), 60)}`);
       if (parts.length > 0) line += ` | ${parts.join(" | ")}`;
     }
 
@@ -264,7 +272,10 @@ export class Logger {
     statusTag: string,
     params?: LogParams,
   ): string {
-    const adim = params?.step && params.step !== event ? `${event} (${params.step})` : event;
+    const adim =
+      params?.step && params.step !== event
+        ? `${event} (${params.step})`
+        : event;
     let line = `${icon} ${this.flowId} [${service.toUpperCase()}] -> ${adim} | ${statusTag}`;
 
     if (params?.durationMs !== undefined) {
@@ -299,15 +310,23 @@ export class Logger {
       if (d.resultCount !== undefined) parts.push(`📊 ${d.resultCount} sonuç`);
       if (d.count !== undefined) parts.push(`📊 Sayı: ${d.count}`);
       if (d.rawCount !== undefined) parts.push(`🔢 Ham: ${d.rawCount}`);
-      if (d.mergedCount !== undefined) parts.push(`🔀 Birleşik: ${d.mergedCount}`);
-      if (d.before !== undefined && d.after !== undefined) parts.push(`${d.before} → ${d.after}`);
-      if (d.totalResults !== undefined) parts.push(`📊 Toplam: ${d.totalResults}`);
+      if (d.mergedCount !== undefined)
+        parts.push(`🔀 Birleşik: ${d.mergedCount}`);
+      if (d.before !== undefined && d.after !== undefined)
+        parts.push(`${d.before} → ${d.after}`);
+      if (d.totalResults !== undefined)
+        parts.push(`📊 Toplam: ${d.totalResults}`);
       if (d.reason) parts.push(`📝 ${truncate(String(d.reason), 80)}`);
-      if (d.starterPackCount !== undefined) parts.push(`📦 Starter: ${d.starterPackCount}`);
-      if (d.reservedPoolCount !== undefined) parts.push(`📦 Reserved: ${d.reservedPoolCount}`);
-      if (d.enrichedCount !== undefined) parts.push(`🔗 Zenginleştirilen: ${d.enrichedCount}`);
-      if (d.requestedCount !== undefined) parts.push(`🔢 İstenen: ${d.requestedCount}`);
-      if (d.resolvedCount !== undefined) parts.push(`✅ Çözülen: ${d.resolvedCount}`);
+      if (d.starterPackCount !== undefined)
+        parts.push(`📦 Starter: ${d.starterPackCount}`);
+      if (d.reservedPoolCount !== undefined)
+        parts.push(`📦 Reserved: ${d.reservedPoolCount}`);
+      if (d.enrichedCount !== undefined)
+        parts.push(`🔗 Zenginleştirilen: ${d.enrichedCount}`);
+      if (d.requestedCount !== undefined)
+        parts.push(`🔢 İstenen: ${d.requestedCount}`);
+      if (d.resolvedCount !== undefined)
+        parts.push(`✅ Çözülen: ${d.resolvedCount}`);
       if (d.status) parts.push(`🌐 HTTP ${d.status}`);
       if (d.errorCode) parts.push(`❌ ${d.errorCode}`);
       if (parts.length > 0) line += ` | ${parts.join(" | ")}`;
@@ -349,8 +368,7 @@ export class Logger {
    */
   data(label: string, value: unknown): void {
     if (!isDevelopment) return;
-    const formatted =
-      typeof value === "string" ? value : JSON.stringify(value);
+    const formatted = typeof value === "string" ? value : JSON.stringify(value);
     const truncated =
       formatted.length > 120 ? formatted.slice(0, 117) + "..." : formatted;
     console.log(`📊 ${this.flowId} ${label}: ${truncated}`);

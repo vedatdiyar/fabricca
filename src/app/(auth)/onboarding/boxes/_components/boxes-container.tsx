@@ -23,15 +23,7 @@ import {
 } from "@/components/ui/card";
 import { generateBoxesAction, confirmBoxesAction } from "../actions";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
-import type { LoadingStep } from "@/lib/store/onboarding-store";
 import type { GeminiThesisBox } from "@/lib/types";
-
-const GENERATION_STEPS: LoadingStep[] = [
-  { text: "Tez matrisi ve araştırma tasarımı çözümleniyor...", status: "idle" },
-  { text: "Akademik konu kutuları yapılandırılıyor...", status: "idle" },
-  { text: "Semantik arama blokları optimize ediliyor...", status: "idle" },
-  { text: "Son düzenlemeler yapılıyor...", status: "idle" },
-];
 
 export function BoxesContainer() {
   const router = useRouter();
@@ -40,7 +32,6 @@ export function BoxesContainer() {
   const { boxes, setBoxes } = useOnboardingStore();
   const showLoading = useOnboardingStore((s) => s.showLoading);
   const hideLoading = useOnboardingStore((s) => s.hideLoading);
-  const updateLoadingStep = useOnboardingStore((s) => s.updateLoadingStep);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,7 +45,7 @@ export function BoxesContainer() {
               title: b.title,
               description: b.description ?? "",
               semanticSearchBlock: b.semanticSearchBlock ?? "",
-              foundationalQueries: [],
+              foundationalQueries: b.foundationalQueries ?? [],
               concepts: b.concepts ?? [],
             })),
           );
@@ -68,12 +59,10 @@ export function BoxesContainer() {
   }, [setBoxes]);
 
   const handleGenerate = useCallback(async () => {
-    const steps = GENERATION_STEPS.map((s) => ({ ...s }));
-    steps[0].status = "active";
     showLoading(
       "Konu Kutuları Yapılandırılıyor",
-      "Tez matrisiniz çözümlenerek bağımsız literatür taraması kutularına dönüştürülüyor.",
-      steps,
+      "Tez matrisiniz çözümlenerek bağımsız literatür taraması kutularına dönüştürülüyor...",
+      [],
     );
 
     const result = await generateBoxesAction();
@@ -81,15 +70,10 @@ export function BoxesContainer() {
       hideLoading();
       toast.error(result.error);
     } else {
-      updateLoadingStep(0, "completed");
-      updateLoadingStep(1, "completed");
-      updateLoadingStep(2, "completed");
-      updateLoadingStep(3, "completed");
-      await new Promise((r) => setTimeout(r, 400));
       hideLoading();
       setBoxes(result.boxes);
     }
-  }, [setBoxes, showLoading, hideLoading, updateLoadingStep]);
+  }, [setBoxes, showLoading, hideLoading]);
 
   const handleConfirm = useCallback(async () => {
     if (!boxes) return;
@@ -104,10 +88,14 @@ export function BoxesContainer() {
       }
 
       setConfirming(false);
-      toast.success("Konu kutuları kaydedildi. Literatür taramasına geçiliyor.");
+      toast.success(
+        "Konu kutuları kaydedildi. Literatür taramasına geçiliyor.",
+      );
       router.push("/onboarding/literature-review");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.");
+      toast.error(
+        err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.",
+      );
       setConfirming(false);
     }
   }, [boxes, router]);
@@ -275,13 +263,10 @@ function BoxCard({
                     <strong className="font-medium text-foreground">
                       {fq.author}
                     </strong>{" "}
-                     <span className="text-muted-foreground text-[11px]">
+                    <span className="text-muted-foreground text-[11px]">
                       ({fq.publicationYear})
                     </span>{" "}
-                    —{" "}
-                     <span className="italic text-foreground">
-                       {fq.title}
-                     </span>
+                    — <span className="italic text-foreground">{fq.title}</span>
                   </span>
                 </li>
               ))}

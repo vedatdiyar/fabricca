@@ -21,15 +21,14 @@ export function OnboardingContent({
       {children}
       {isLoading && (
         <div
-          className="absolute inset-0 z-50 flex items-center justify-center"
+          className="fixed inset-0 z-50 flex items-center justify-center"
           style={{
             background: "#0b100e",
-            opacity: 0.8,
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
           }}
         >
-          <div className="opacity-100">
+          <div className="w-full max-w-5xl px-6">
             <OnboardingGlobalLoader />
           </div>
         </div>

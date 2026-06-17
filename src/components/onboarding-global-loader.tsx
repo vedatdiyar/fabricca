@@ -30,7 +30,10 @@ export function OnboardingGlobalLoader() {
             const isActive = step.status === "active";
             const isCompleted = step.status === "completed";
             return (
-              <div key={index} className="flex-1 flex flex-col items-center gap-3 min-w-0">
+              <div
+                key={index}
+                className="flex-1 flex flex-col items-center gap-3 min-w-0"
+              >
                 <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-700 ease-out ${
@@ -55,8 +58,8 @@ export function OnboardingGlobalLoader() {
                 </span>
                 {isActive && (
                   <span className="text-[10px] text-emerald-300/70 animate-pulse leading-tight">
-                    Yapılandırılmış akıl yürütme motoru çalıştırılıyor
-                    (Thinking Mode)...
+                    Yapılandırılmış akıl yürütme motoru çalıştırılıyor (Thinking
+                    Mode)...
                   </span>
                 )}
                 {isCompleted && (

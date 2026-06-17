@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { confirmEnhancedThesisAction } from "../actions";
-import { searchAndSiftThesesAction, runJuryAnalysisAction } from "../../risk/actions";
+import { extractQueriesAction, executeSearchAction, siftThesesAction, finalizeJuryAnalysisAction } from "../../risk/actions";
 import { fetchThesisMatrix } from "../../_lib/fetch-actions";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import type { LoadingStep } from "@/lib/store/onboarding-store";
@@ -105,44 +105,59 @@ export function EnrichmentView() {
         steps,
       );
 
-      // Stage 1→2: Search and sift
-      await new Promise((r) => setTimeout(r, 500));
-      const searchResult = await searchAndSiftThesesAction(matrixInput);
+      // ── Step 0: Extract queries ──
+      const extractResult = await extractQueriesAction(matrixInput);
+      if ("error" in extractResult) {
+        hideLoading();
+        toast.error(extractResult.error);
+        setIsPending(false);
+        return;
+      }
+      updateLoadingStep(0, "completed");
+      updateLoadingStep(1, "active");
+
+      // ── Step 1: Execute parallel searches ──
+      const searchResult = await executeSearchAction({
+        studyTitle: matrixInput.studyTitle,
+        tavilyQueries: extractResult.data.tavilyQueries,
+        tezaraQueries: extractResult.data.tezaraQueries,
+      });
       if ("error" in searchResult) {
         hideLoading();
         toast.error(searchResult.error);
         setIsPending(false);
         return;
       }
+      updateLoadingStep(1, "completed");
+      updateLoadingStep(2, "active");
 
-      updateLoadingStep(0, "completed");
-      await new Promise((r) => setTimeout(r, 500));
-      updateLoadingStep(1, "active");
+      // ── Step 2: Sift theses ──
+      const siftResult = await siftThesesAction({
+        matrix: matrixInput,
+        tezaraSearchResults: searchResult.data.tezaraSearchResults,
+      });
+      if ("error" in siftResult) {
+        hideLoading();
+        toast.error(siftResult.error);
+        setIsPending(false);
+        return;
+      }
+      updateLoadingStep(2, "completed");
+      updateLoadingStep(3, "active");
 
-      // Stage 2→3→4: Jury analysis (writes report to DB)
-      await new Promise((r) => setTimeout(r, 500));
-      const juryResult = await runJuryAnalysisAction(
-        searchResult.scrapedTheses,
-        searchResult.tavilyResults,
-        matrixInput,
-      );
+      // ── Step 3: Finalize jury analysis ──
+      const juryResult = await finalizeJuryAnalysisAction({
+        matrix: matrixInput,
+        scrapedTheses: siftResult.data,
+        tavilyResults: searchResult.data.tavilyResults,
+      });
       if ("error" in juryResult) {
         hideLoading();
         toast.error(juryResult.error);
         setIsPending(false);
         return;
       }
-
-      updateLoadingStep(1, "completed");
-      await new Promise((r) => setTimeout(r, 500));
-      updateLoadingStep(2, "active");
-      await new Promise((r) => setTimeout(r, 500));
-      updateLoadingStep(2, "completed");
-      await new Promise((r) => setTimeout(r, 500));
-      updateLoadingStep(3, "active");
-      await new Promise((r) => setTimeout(r, 600));
       updateLoadingStep(3, "completed");
-      await new Promise((r) => setTimeout(r, 400));
 
       hideLoading();
       setIsPending(false);

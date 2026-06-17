@@ -63,7 +63,10 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   const [boxErrors, setBoxErrors] = useState<Record<string, string>>({});
 
   const rawLiteraturePool = useOnboardingStore((s) => s.literaturePool);
-  const literaturePool = useMemo(() => rawLiteraturePool ?? [], [rawLiteraturePool]);
+  const literaturePool = useMemo(
+    () => rawLiteraturePool ?? [],
+    [rawLiteraturePool],
+  );
   const addToLiteraturePool = useOnboardingStore((s) => s.addToLiteraturePool);
   const resetStore = useOnboardingStore((s) => s.resetStore);
   const showLoading = useOnboardingStore((s) => s.showLoading);
@@ -186,7 +189,13 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     processingRef.current = false;
     setProcessing(false);
     hideLoading();
-  }, [subBoxes, addToLiteraturePool, showLoading, hideLoading, updateLoadingStep]);
+  }, [
+    subBoxes,
+    addToLiteraturePool,
+    showLoading,
+    hideLoading,
+    updateLoadingStep,
+  ]);
 
   const allProcessed = useMemo(() => {
     if (subBoxes.length === 0) return false;
@@ -221,7 +230,9 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
       toast.success("Tebrikler! Onboarding süreciniz tamamlandı.");
       router.push("/dashboard");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.");
+      toast.error(
+        err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.",
+      );
       setConfirming(false);
     }
   }, [literaturePool, resetStore, router]);

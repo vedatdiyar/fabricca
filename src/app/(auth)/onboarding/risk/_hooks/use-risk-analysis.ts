@@ -7,15 +7,30 @@ import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import type { LoadingStep } from "@/lib/store/onboarding-store";
 import type { OriginalityReportData } from "@/lib/types";
 import type { ThesisMatrix } from "@/db/schema";
-import { searchAndSiftThesesAction, runJuryAnalysisAction, completeRiskStageAction } from "../actions";
+import {
+  extractQueriesAction,
+  executeSearchAction,
+  siftThesesAction,
+  finalizeJuryAnalysisAction,
+  completeRiskStageAction,
+} from "../actions";
 import { generateBoxesAction } from "../../boxes/actions";
-import { fetchThesisMatrix, fetchOriginalityReport } from "../../_lib/fetch-actions";
+import {
+  fetchThesisMatrix,
+  fetchOriginalityReport,
+} from "../../_lib/fetch-actions";
 
 /** Loading step labels for the 4-stage risk analysis pipeline. */
 const ANALYSIS_STEPS: LoadingStep[] = [
   { text: "Sorgu ve doğrulama parametreleri üretiliyor...", status: "idle" },
-  { text: "Tavily ve Tezara paralel motorları koşturuluyor...", status: "idle" },
-  { text: "Karşılaştırmalı literatür matrisi yapılandırılıyor...", status: "idle" },
+  {
+    text: "Tavily ve Tezara paralel motorları koşturuluyor...",
+    status: "idle",
+  },
+  {
+    text: "Karşılaştırmalı literatür matrisi yapılandırılıyor...",
+    status: "idle",
+  },
   { text: "Nihai risk seviyesi ve tavsiyeler hazırlanıyor...", status: "idle" },
 ];
 
@@ -58,7 +73,9 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
   const [loading, setLoading] = useState(true);
   const [analysing, setAnalysing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [reportData, setReportData] = useState<OriginalityReportData | null>(null);
+  const [reportData, setReportData] = useState<OriginalityReportData | null>(
+    null,
+  );
   const [matrixData, setMatrixData] = useState<ThesisMatrix | null>(null);
   const [proceeding, setProceeding] = useState(false);
 
@@ -82,8 +99,10 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
       const report = await fetchOriginalityReport();
       if (report && !cancelled) {
         setReportData({
-          tavilyResults: report.tavilyResults as OriginalityReportData["tavilyResults"],
-          tezaraResults: report.tezaraResults as OriginalityReportData["tezaraResults"],
+          tavilyResults:
+            report.tavilyResults as OriginalityReportData["tavilyResults"],
+          tezaraResults:
+            report.tezaraResults as OriginalityReportData["tezaraResults"],
         });
       }
       if (!cancelled) setLoading(false);
@@ -121,6 +140,8 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
         matrix = await fetchThesisMatrix();
         if (!matrix) {
           setError("Tez matrisi bulunamadı.");
+          hideLoading();
+          setAnalysing(false);
           return;
         }
       }
@@ -134,40 +155,66 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
         historicalSpatialLimits: matrix.historicalSpatialLimits,
       };
 
-      // Step 1 done → Step 2 active
+      // ── Step 0: Extract queries ──
+      const extractResult = await extractQueriesAction(matrixInput);
+      if ("error" in extractResult) {
+        setError(extractResult.error);
+        hideLoading();
+        setAnalysing(false);
+        return;
+      }
       updateLoadingStep(0, "completed");
       updateLoadingStep(1, "active");
 
-      const searchResult = await searchAndSiftThesesAction(matrixInput);
+      // ── Step 1: Execute parallel searches ──
+      const searchResult = await executeSearchAction({
+        studyTitle: matrixInput.studyTitle,
+        tavilyQueries: extractResult.data.tavilyQueries,
+        tezaraQueries: extractResult.data.tezaraQueries,
+      });
       if ("error" in searchResult) {
         setError(searchResult.error);
+        hideLoading();
+        setAnalysing(false);
         return;
       }
-
-      // Step 2 done → Step 3 active
       updateLoadingStep(1, "completed");
       updateLoadingStep(2, "active");
 
-      const juryResult = await runJuryAnalysisAction(
-        searchResult.scrapedTheses,
-        searchResult.tavilyResults,
-        matrixInput,
-      );
+      // ── Step 2: Sift theses ──
+      const siftResult = await siftThesesAction({
+        matrix: matrixInput,
+        tezaraSearchResults: searchResult.data.tezaraSearchResults,
+      });
+      if ("error" in siftResult) {
+        setError(siftResult.error);
+        hideLoading();
+        setAnalysing(false);
+        return;
+      }
+      updateLoadingStep(2, "completed");
+      updateLoadingStep(3, "active");
 
+      // ── Step 3: Finalize jury analysis ──
+      const juryResult = await finalizeJuryAnalysisAction({
+        matrix: matrixInput,
+        scrapedTheses: siftResult.data,
+        tavilyResults: searchResult.data.tavilyResults,
+      });
       if ("error" in juryResult) {
         setError(juryResult.error);
-      } else {
-        // Step 3 done → Step 4 active → complete
-        updateLoadingStep(2, "completed");
-        updateLoadingStep(3, "active");
-        // Brief pause so user sees final step
-        await new Promise((r) => setTimeout(r, 600));
-        updateLoadingStep(3, "completed");
-        await new Promise((r) => setTimeout(r, 400));
-        setReportData(juryResult.data);
+        hideLoading();
+        setAnalysing(false);
+        return;
       }
+      updateLoadingStep(3, "completed");
+      setReportData(juryResult.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Analiz sırasında bir hata oluştu.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Analiz sırasında bir hata oluştu.",
+      );
     } finally {
       hideLoading();
       setAnalysing(false);
@@ -192,11 +239,7 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
     // DB done; now start Gemini box generation with GlobalLoader
     const steps = PROCEED_STEPS.map((s) => ({ ...s }));
     steps[0].status = "active";
-    showLoading(
-      "İşlem Tamamlanıyor",
-      "Konu kutuları yapılandırılıyor.",
-      steps,
-    );
+    showLoading("İşlem Tamamlanıyor", "Konu kutuları yapılandırılıyor.", steps);
 
     try {
       const boxesResult = await generateBoxesAction();
@@ -216,7 +259,9 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
       router.push("/onboarding/boxes");
     } catch (err) {
       hideLoading();
-      toast.error(err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.");
+      toast.error(
+        err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.",
+      );
     }
   }, [router, showLoading, hideLoading, updateLoadingStep]);
 

@@ -64,6 +64,7 @@ async function processSingleBox(
   // ------------------------------------------------------------------
   logger.info("literature_search_start", {
     service: "literature",
+    filePath: "onboarding/literature-review/actions.ts",
     data: { queryCount: 1, subBoxTitle: subBox.title },
   });
 
@@ -112,7 +113,9 @@ async function processSingleBox(
   logger.info("literature_search_done", {
     service: "literature",
     durationMs: performance.now() - searchStart,
-    data: { rawCount: allRaw.length },
+    filePath: "onboarding/literature-review/actions.ts",
+    status: "SUCCESS",
+    data: { resultCount: allRaw.length },
   });
 
   if (allRaw.length === 0) {
@@ -128,6 +131,8 @@ async function processSingleBox(
   logger.info("literature_merge_done", {
     service: "literature",
     durationMs: performance.now() - mergeStart,
+    filePath: "onboarding/literature-review/actions.ts",
+    status: "SUCCESS",
     data: { mergedCount: merged.length },
   });
 
@@ -142,6 +147,8 @@ async function processSingleBox(
   logger.info("literature_sifting_done", {
     service: "literature",
     durationMs: performance.now() - siftStart,
+    filePath: "onboarding/literature-review/actions.ts",
+    status: "SUCCESS",
     data: { before: merged.length, after: sifted.length },
   });
 
@@ -173,6 +180,8 @@ async function processSingleBox(
   logger.info("literature_abstract_recovery_done", {
     service: "literature",
     durationMs: performance.now() - abstractStart,
+    filePath: "onboarding/literature-review/actions.ts",
+    status: "SUCCESS",
     data: {
       requestedCount: siftedIds.length,
       resolvedCount: abstractMap.size,
@@ -188,6 +197,8 @@ async function processSingleBox(
   logger.info("literature_jury_done", {
     service: "literature",
     durationMs: performance.now() - juryStart,
+    filePath: "onboarding/literature-review/actions.ts",
+    status: "SUCCESS",
     data: {
       starterPackCount: result.starterPack.length,
       reservedPoolCount: result.reservedPool.length,
@@ -214,6 +225,8 @@ async function processSingleBox(
   logger.info("literature_crossref_done", {
     service: "literature",
     durationMs: performance.now() - crossrefStart,
+    filePath: "onboarding/literature-review/actions.ts",
+    status: "SUCCESS",
     data: {
       enrichedCount: enrichedStarterPack.length + enrichedReservedPool.length,
     },
@@ -307,7 +320,11 @@ export async function confirmLiteratureAction(args: {
   const log = new Logger(flowId);
   const startTime = performance.now();
 
-  log.info({ step: "confirmLiterature", status: "START", service: "literature" });
+  log.info({
+    step: "confirmLiterature",
+    status: "PENDING",
+    service: "literature",
+  });
 
   try {
     const session = await getSession();
@@ -338,24 +355,23 @@ export async function confirmLiteratureAction(args: {
     }
 
     // 1. Get the user's thesis matrix
-    log.info({ step: "find_matrix", status: "START", service: "db" });
-    const t0 = performance.now();
     const [matrix] = await db
       .select({ id: thesisMatrices.id })
       .from(thesisMatrices)
       .where(eq(thesisMatrices.userId, userId));
-    log.info({
-      step: "find_matrix",
-      status: matrix ? "SUCCESS" : "NOT_FOUND",
-      metrics: { durationMs: performance.now() - t0 },
-      service: "db",
-    });
 
     if (!matrix) {
       return { error: "Tez matrisi bulunamadı." };
     }
 
     const thesisMatrixId = matrix.id;
+
+    // Compute total resource count for the final summary log
+    const totalResourceCount = literaturePool.reduce(
+      (sum, entry) =>
+        sum + entry.starterPack.length + entry.reservedPool.length,
+      0,
+    );
 
     // 2. Atomic transaction
     await db.transaction(async (tx) => {
@@ -416,35 +432,14 @@ export async function confirmLiteratureAction(args: {
 
       // 2d. Bulk insert all literature resources
       if (allResources.length > 0) {
-        log.info({
-          step: "insert_literature_resources",
-          status: "START",
-          service: "db",
-          data: { count: allResources.length },
-        });
-        const t1 = performance.now();
         await tx.insert(libraryResources).values(allResources);
-        log.info({
-          step: "insert_literature_resources",
-          status: "SUCCESS",
-          metrics: { durationMs: performance.now() - t1 },
-          service: "db",
-        });
       }
 
       // 2e. Mark onboarding as completed
-      log.info({ step: "complete_onboarding", status: "START", service: "db" });
-      const t2 = performance.now();
       await tx
         .update(users)
         .set({ onboardingCompleted: true })
         .where(eq(users.id, userId));
-      log.info({
-        step: "complete_onboarding",
-        status: "SUCCESS",
-        metrics: { durationMs: performance.now() - t2 },
-        service: "db",
-      });
     });
 
     // 3. Update session cookie with onboardingCompleted: true
@@ -466,11 +461,7 @@ export async function confirmLiteratureAction(args: {
         },
       );
     } catch {
-      log.info({
-        step: "session_cookie_update_skipped",
-        status: "SUCCESS",
-        service: "literature",
-      });
+      // Session cookie update skipped
     }
 
     // 4. Revalidate paths
@@ -478,7 +469,7 @@ export async function confirmLiteratureAction(args: {
       revalidatePath("/onboarding", "layout");
       revalidatePath("/", "layout");
     } catch {
-      log.info({ step: "revalidate_path_skipped", status: "SUCCESS", service: "literature" });
+      // Revalidation path skipped
     }
 
     const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
@@ -487,7 +478,8 @@ export async function confirmLiteratureAction(args: {
       step: "confirmLiterature",
       status: "SUCCESS",
       service: "literature",
-      metrics: { duration, totalEntries: literaturePool.length },
+      data: { resultCount: totalResourceCount },
+      metrics: { duration },
     });
 
     return { success: true };

@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import type { LoadingStep } from "@/lib/store/onboarding-store";
-import { submitThesisMatrixAction } from "../actions";
+import { enrichThesisMatrixAction, saveEnrichedMatrixAction } from "../actions";
 import { fetchThesisMatrix } from "../../_lib/fetch-actions";
 
 export function MatrixForm() {
@@ -27,6 +27,7 @@ export function MatrixForm() {
   const [loading, setLoading] = useState(true);
   const showLoading = useOnboardingStore((s) => s.showLoading);
   const hideLoading = useOnboardingStore((s) => s.hideLoading);
+  const updateLoadingStep = useOnboardingStore((s) => s.updateLoadingStep);
   const isLoading = useOnboardingStore((s) => s.isLoading);
 
   useEffect(() => {
@@ -43,18 +44,19 @@ export function MatrixForm() {
       }
       setLoading(false);
     });
-    return () => { cancelled = true; };
-  }, []);
+    return () => {
+      cancelled = true;
+      hideLoading();
+    };
+  }, [hideLoading]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsPending(true);
 
     const steps: LoadingStep[] = [
-      { text: "Tez anayasası analiz ediliyor...", status: "active" },
-      { text: "Akademik terimler zenginleştiriliyor...", status: "idle" },
-      { text: "Literatür bağlantıları kuruluyor...", status: "idle" },
-      { text: "Veri tabanına kaydediliyor...", status: "idle" },
+      { text: "Yapay zeka asistanı kavramsal ve kuramsal altyapıyı zenginleştiriyor...", status: "active" },
+      { text: "Zenginleştirilmiş akademik matris veri tabanına işleniyor...", status: "idle" },
     ];
 
     showLoading(
@@ -64,7 +66,7 @@ export function MatrixForm() {
     );
 
     try {
-      const result = await submitThesisMatrixAction({
+      const enrichResult = await enrichThesisMatrixAction({
         studyTitle,
         researchQuestion,
         mainClaim,
@@ -72,13 +74,30 @@ export function MatrixForm() {
         theoreticalFramework,
         historicalSpatialLimits,
       });
-      if (result.success) {
-        toast.success("Tez matrisi başarıyla zenginleştirildi.");
-        router.push("/onboarding/enrichment");
-      } else {
+
+      if ("error" in enrichResult) {
         hideLoading();
-        toast.error(result.error || "Zenginleştirme sırasında bir hata oluştu.");
+        toast.error(enrichResult.error);
+        setIsPending(false);
+        return;
       }
+
+      updateLoadingStep(0, "completed");
+      updateLoadingStep(1, "active");
+
+      const saveResult = await saveEnrichedMatrixAction(enrichResult.data);
+
+      if ("error" in saveResult) {
+        hideLoading();
+        toast.error(saveResult.error);
+        setIsPending(false);
+        return;
+      }
+
+      updateLoadingStep(1, "completed");
+      toast.success("Tez matrisi başarıyla zenginleştirildi.");
+      hideLoading();
+      router.push("/onboarding/enrichment");
     } catch {
       hideLoading();
       toast.error("Bir hata oluştu.");
@@ -102,9 +121,15 @@ export function MatrixForm() {
   return (
     <Card className="w-full pt-6">
       <CardContent>
-        <form onSubmit={handleSubmit} className="grid w-full grid-cols-1 gap-6 md:grid-cols-2">
+        <form
+          onSubmit={handleSubmit}
+          className="grid w-full grid-cols-1 gap-6 md:grid-cols-2"
+        >
           <div className="space-y-2">
-            <Label htmlFor="calismaBasligi" className="mb-4 block font-semibold text-foreground">
+            <Label
+              htmlFor="calismaBasligi"
+              className="mb-4 block font-semibold text-foreground"
+            >
               Çalışma Başlığı
             </Label>
             <Textarea
@@ -117,7 +142,10 @@ export function MatrixForm() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="arastirmaSorusu" className="mb-4 block font-semibold text-foreground">
+            <Label
+              htmlFor="arastirmaSorusu"
+              className="mb-4 block font-semibold text-foreground"
+            >
               Araştırma Sorusu
             </Label>
             <Textarea
@@ -130,7 +158,10 @@ export function MatrixForm() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="temelIddia" className="mb-4 block font-semibold text-foreground">
+            <Label
+              htmlFor="temelIddia"
+              className="mb-4 block font-semibold text-foreground"
+            >
               Temel İddia
             </Label>
             <Textarea
@@ -143,7 +174,10 @@ export function MatrixForm() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="metodoloji" className="mb-4 block font-semibold text-foreground">
+            <Label
+              htmlFor="metodoloji"
+              className="mb-4 block font-semibold text-foreground"
+            >
               Metodoloji
             </Label>
             <Textarea
@@ -156,7 +190,10 @@ export function MatrixForm() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="kuramsalCerceve" className="mb-4 block font-semibold text-foreground">
+            <Label
+              htmlFor="kuramsalCerceve"
+              className="mb-4 block font-semibold text-foreground"
+            >
               Kuramsal Çerçeve
             </Label>
             <Textarea
@@ -169,7 +206,10 @@ export function MatrixForm() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="tarihselMekansalSinirlar" className="mb-4 block font-semibold text-foreground">
+            <Label
+              htmlFor="tarihselMekansalSinirlar"
+              className="mb-4 block font-semibold text-foreground"
+            >
               Tarihsel / Mekânsal Sınırlar
             </Label>
             <Textarea
@@ -182,7 +222,11 @@ export function MatrixForm() {
             />
           </div>
           <div className="md:col-span-full">
-            <Button type="submit" className="btn-academic-hero w-full" disabled={isPending || isLoading}>
+            <Button
+              type="submit"
+              className="btn-academic-hero w-full"
+              disabled={isPending || isLoading}
+            >
               {isPending ? (
                 <span className="flex items-center justify-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
