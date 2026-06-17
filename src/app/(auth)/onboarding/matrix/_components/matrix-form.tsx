@@ -73,7 +73,6 @@ export function MatrixForm() {
         historicalSpatialLimits,
       });
       if (result.success) {
-        hideLoading();
         toast.success("Tez matrisi başarıyla zenginleştirildi.");
         router.push("/onboarding/enrichment");
       } else {

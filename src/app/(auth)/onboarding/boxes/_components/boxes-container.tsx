@@ -33,11 +33,6 @@ const GENERATION_STEPS: LoadingStep[] = [
   { text: "Son düzenlemeler yapılıyor...", status: "idle" },
 ];
 
-const SAVE_STEPS: LoadingStep[] = [
-  { text: "Konu kutuları veri tabanına kaydediliyor...", status: "active" },
-  { text: "Literatür taraması sayfasına yönlendiriliyor...", status: "idle" },
-];
-
 export function BoxesContainer() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -100,28 +95,22 @@ export function BoxesContainer() {
     if (!boxes) return;
     setConfirming(true);
 
-    showLoading(
-      "Konu Kutuları Kaydediliyor",
-      "Oluşturulan konu kutuları veri tabanına kaydediliyor.",
-      SAVE_STEPS,
-    );
+    try {
+      const result = await confirmBoxesAction(boxes);
+      if ("error" in result && result.error) {
+        toast.error(result.error);
+        setConfirming(false);
+        return;
+      }
 
-    const result = await confirmBoxesAction(boxes);
-    if ("error" in result && result.error) {
-      hideLoading();
-      toast.error(result.error);
       setConfirming(false);
-      return;
+      toast.success("Konu kutuları kaydedildi. Literatür taramasına geçiliyor.");
+      router.push("/onboarding/literature-review");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.");
+      setConfirming(false);
     }
-
-    updateLoadingStep(0, "completed");
-    updateLoadingStep(1, "active");
-    await new Promise((r) => setTimeout(r, 300));
-    hideLoading();
-    setConfirming(false);
-    toast.success("Konu kutuları kaydedildi. Literatür taramasına geçiliyor.");
-    router.push("/onboarding/literature-review");
-  }, [boxes, router, showLoading, hideLoading, updateLoadingStep]);
+  }, [boxes, router]);
 
   if (loading) {
     return (

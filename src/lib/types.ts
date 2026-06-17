@@ -15,7 +15,7 @@ export type EnhancedThesisActionResult =
   | { success: true; data: EnhancedThesisData; error?: never }
   | { success?: never; error: string };
 
-export type AxesOption = "OVERLAPPING" | "ORIGINAL";
+export type AxesOption = "HIGH" | "PARTIAL" | "NONE";
 
 /**
  * Tezara tez arama sonucu özeti.
@@ -52,8 +52,13 @@ export interface QueryExtractionResponse {
   keywords: string[];
 }
 
+export interface DeepSiftEntry {
+  id: number;
+  positioning: "HIGH" | "PARTIAL" | "NONE";
+}
+
 export interface DeepSiftResponse {
-  selectedThesisIds: number[];
+  selectedTheses: DeepSiftEntry[];
 }
 
 export interface TavilyEvaluationFact {
@@ -94,7 +99,7 @@ export interface OriginalityReportData {
       year: number;
       thesisType: string;
       department: string;
-      originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
+      originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
     })[];
     strategicRecommendations: string;
     riskPercentage?: number;
@@ -148,7 +153,7 @@ export interface JuryReportItem {
   year: number;
   thesisType: string;
   department: string;
-  originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
+  originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
   axes: {
     subject: AxesOption;
     theory: AxesOption;

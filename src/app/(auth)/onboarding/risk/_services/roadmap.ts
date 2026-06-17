@@ -24,7 +24,7 @@ export interface SynthesizeRoadmapParams {
       methodology: string;
       context?: string;
     };
-    originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
+    originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
     comparisonNote: string;
   }[];
 }
@@ -40,6 +40,7 @@ export async function synthesizeRoadmap(
   params: SynthesizeRoadmapParams,
   log: Logger,
 ): Promise<string> {
+  log.file("roadmap.ts:42");
   const startTime = performance.now();
   log.info({
     step: "synthesize_roadmap",
@@ -50,6 +51,8 @@ export async function synthesizeRoadmap(
   try {
     let roadmapResult;
     try {
+      log.prompt("gemini-3.1-flash-lite (HIGH thinking)", buildRoadmapPrompt(params));
+
       roadmapResult = await generateStructuredContent<{
         strategicRecommendations: string;
       }>(
@@ -94,6 +97,8 @@ export async function synthesizeRoadmap(
 
     const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
     const tokens = log.lastTokens || { input: 0, output: 0 };
+
+    log.preview("Roadmap Result (first 300 chars)", roadmapResult.strategicRecommendations?.slice(0, 300));
 
     log.info({
       step: "synthesize_roadmap",

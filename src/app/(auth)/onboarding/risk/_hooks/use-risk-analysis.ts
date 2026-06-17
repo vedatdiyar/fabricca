@@ -21,8 +21,7 @@ const ANALYSIS_STEPS: LoadingStep[] = [
 
 /** Loading step labels for the proceed-to-boxes orchestration. */
 const PROCEED_STEPS: LoadingStep[] = [
-  { text: "Risk raporu veri tabanına kaydediliyor...", status: "active" },
-  { text: "Konu kutuları oluşturuluyor...", status: "idle" },
+  { text: "Konu kutuları oluşturuluyor...", status: "active" },
   { text: "Kutular sayfasına yönlendiriliyor...", status: "idle" },
 ];
 
@@ -36,6 +35,8 @@ export interface UseRiskAnalysisResult {
   error: string | null;
   /** The latest originality report data, once available. */
   reportData: OriginalityReportData | null;
+  /** True while the proceed flow is writing to DB (before box generation). */
+  proceeding: boolean;
   /** Triggers the full 4-stage Tavily + Tezara + jury analysis pipeline. */
   startAnalysis: () => Promise<void>;
   /** Persists the report, generates boxes and navigates to the boxes step. */
@@ -59,6 +60,7 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
   const [error, setError] = useState<string | null>(null);
   const [reportData, setReportData] = useState<OriginalityReportData | null>(null);
   const [matrixData, setMatrixData] = useState<ThesisMatrix | null>(null);
+  const [proceeding, setProceeding] = useState(false);
 
   const showLoading = useOnboardingStore((s) => s.showLoading);
   const hideLoading = useOnboardingStore((s) => s.hideLoading);
@@ -119,8 +121,6 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
         matrix = await fetchThesisMatrix();
         if (!matrix) {
           setError("Tez matrisi bulunamadı.");
-          setAnalysing(false);
-          hideLoading();
           return;
         }
       }
@@ -141,8 +141,6 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
       const searchResult = await searchAndSiftThesesAction(matrixInput);
       if ("error" in searchResult) {
         setError(searchResult.error);
-        setAnalysing(false);
-        hideLoading();
         return;
       }
 
@@ -158,7 +156,6 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
 
       if ("error" in juryResult) {
         setError(juryResult.error);
-        hideLoading();
       } else {
         // Step 3 done → Step 4 active → complete
         updateLoadingStep(2, "completed");
@@ -168,12 +165,11 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
         updateLoadingStep(3, "completed");
         await new Promise((r) => setTimeout(r, 400));
         setReportData(juryResult.data);
-        hideLoading();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Analiz sırasında bir hata oluştu.");
-      hideLoading();
     } finally {
+      hideLoading();
       setAnalysing(false);
     }
   }, [matrixData, showLoading, hideLoading, updateLoadingStep]);
@@ -184,44 +180,50 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
    * step. Reports any failure via toast and falls back to a direct navigation.
    */
   const handleProceed = useCallback(async () => {
-    const steps = PROCEED_STEPS.map((s) => ({ ...s }));
-
-    showLoading(
-      "İşlem Tamamlanıyor",
-      "Risk analizi sonuçları kaydediliyor ve konu kutuları yapılandırılıyor.",
-      steps,
-    );
+    setProceeding(true);
 
     const result = await completeRiskStageAction();
     if (result.error) {
-      hideLoading();
+      setProceeding(false);
       toast.error(result.error);
       return;
     }
 
-    updateLoadingStep(0, "completed");
-    updateLoadingStep(1, "active");
+    // DB done; now start Gemini box generation with GlobalLoader
+    const steps = PROCEED_STEPS.map((s) => ({ ...s }));
+    steps[0].status = "active";
+    showLoading(
+      "İşlem Tamamlanıyor",
+      "Konu kutuları yapılandırılıyor.",
+      steps,
+    );
 
-    const boxesResult = await generateBoxesAction();
-    if ("error" in boxesResult) {
-      hideLoading();
-      toast.error(boxesResult.error);
+    try {
+      const boxesResult = await generateBoxesAction();
+      if ("error" in boxesResult) {
+        hideLoading();
+        toast.error(boxesResult.error);
+        router.push("/onboarding/boxes");
+        return;
+      }
+
+      updateLoadingStep(0, "completed");
+      updateLoadingStep(1, "active");
+
+      useOnboardingStore.getState().setBoxes(boxesResult.boxes);
+      await new Promise((r) => setTimeout(r, 300));
+      // SUCCESS: no hideLoading() — loader auto-hides during navigation
       router.push("/onboarding/boxes");
-      return;
+    } catch (err) {
+      hideLoading();
+      toast.error(err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.");
     }
-
-    updateLoadingStep(1, "completed");
-    updateLoadingStep(2, "active");
-
-    useOnboardingStore.getState().setBoxes(boxesResult.boxes);
-    await new Promise((r) => setTimeout(r, 300));
-    hideLoading();
-    router.push("/onboarding/boxes");
   }, [router, showLoading, hideLoading, updateLoadingStep]);
 
   return {
     loading,
     analysing,
+    proceeding,
     error,
     reportData,
     startAnalysis,

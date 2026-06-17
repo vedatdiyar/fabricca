@@ -9,12 +9,13 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
-import { getThesisPriority } from "../_services/risk-calc";
+import { getThesisPriority } from "../_services/analysis";
 import { statusTranslation, getBadgeColor } from "../_lib/constants";
 import type { OriginalityReportData } from "@/lib/types";
 
 /** A single overlap-table row after sorting and comparison-note backfill. */
-type OverlapRow = OriginalityReportData["tezaraResults"]["overlapTable"][number];
+type OverlapRow =
+  OriginalityReportData["tezaraResults"]["overlapTable"][number];
 
 interface TezaraOverlapTableProps {
   /** Raw overlap table (unsorted, possibly without comparison notes). */
@@ -49,7 +50,9 @@ export function TezaraOverlapTable({
       const trimmedParts = parts.map((p) => {
         let text = p.trim();
         if (text.startsWith("Yol Haritası ve Akademik Tavsiyeler")) {
-          text = text.replace(/^Yol Haritası ve Akademik Tavsiyeler\s*/, "").trim();
+          text = text
+            .replace(/^Yol Haritası ve Akademik Tavsiyeler\s*/, "")
+            .trim();
         }
         return text;
       });
@@ -66,8 +69,18 @@ export function TezaraOverlapTable({
       if (priorityA !== priorityB) return priorityA - priorityB;
       const tA = (a.thesisType || "").toLowerCase();
       const tB = (b.thesisType || "").toLowerCase();
-      const wA = tA.includes("doktora") || tA.includes("phd") ? 2 : tA.includes("yüksek lisans") ? 1 : 0;
-      const wB = tB.includes("doktora") || tB.includes("phd") ? 2 : tB.includes("yüksek lisans") ? 1 : 0;
+      const wA =
+        tA.includes("doktora") || tA.includes("phd")
+          ? 2
+          : tA.includes("yüksek lisans")
+            ? 1
+            : 0;
+      const wB =
+        tB.includes("doktora") || tB.includes("phd")
+          ? 2
+          : tB.includes("yüksek lisans")
+            ? 1
+            : 0;
       if (wB !== wA) return wB - wA;
       return (b.year || 0) - (a.year || 0);
     });
@@ -78,10 +91,11 @@ export function TezaraOverlapTable({
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-foreground">
           <GitCompare className="w-5 h-5 text-primary" />
-          Literatür Çakışma ve Karşılaştırma Matrisi (4 Eksen)
+          Tez Karşılaştırma ve Pozisyon Matrisi
         </CardTitle>
         <CardDescription>
-          Benzer akademik çalışmaların konu, kuramsal çerçeve, metodoloji ve bağlam eksenlerinde incelenmesi.
+          Benzer akademik çalışmaların konu, kuramsal çerçeve, metodoloji ve
+          bağlam eksenlerinde incelenmesi.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -89,41 +103,106 @@ export function TezaraOverlapTable({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-muted border-b border-border">
-                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase min-w-[320px]">Karşılaştırılan Tez Bilgileri</th>
-                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[80px]">Konu</th>
-                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[80px]">Teori</th>
-                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[80px]">YÖNTEM</th>
-                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[80px]">DÖNEM</th>
-                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[90px]">RİSK SEVİYESİ</th>
+                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase min-w-[320px]">
+                  Karşılaştırılan Tez Bilgileri
+                </th>
+                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[80px]">
+                  Konu
+                </th>
+                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[80px]">
+                  Teori
+                </th>
+                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[80px]">
+                  YÖNTEM
+                </th>
+                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[80px]">
+                  DÖNEM
+                </th>
+                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[90px]">
+                  POZİSYON
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {sortedTheses.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-muted-foreground leading-relaxed text-sm">
-                    Doğrudan çakışan veya yakın ilişki kuran herhangi bir tez tespit edilmemiştir.
+                  <td
+                    colSpan={6}
+                    className="p-8 text-center text-muted-foreground leading-relaxed text-sm"
+                  >
+                    Doğrudan ilişki kuran veya karşılaştırılabilir herhangi bir
+                    akademik çalışma tespit edilmemiştir.
                   </td>
                 </tr>
               ) : (
                 sortedTheses.map((item, idx) => (
                   <Fragment key={item.id || idx}>
-                    <tr className={`hover:bg-muted/20 cursor-pointer transition-colors ${expandedThesisId === item.id ? "bg-muted/20" : ""}`}
-                      onClick={() => setExpandedThesisId(expandedThesisId === item.id ? null : item.id)}>
+                    <tr
+                      className={`hover:bg-muted/20 cursor-pointer transition-colors ${expandedThesisId === item.id ? "bg-muted/20" : ""}`}
+                      onClick={() =>
+                        setExpandedThesisId(
+                          expandedThesisId === item.id ? null : item.id,
+                        )
+                      }
+                    >
                       <td className="p-3 space-y-1">
                         <div className="font-semibold text-foreground text-sm leading-relaxed flex items-start gap-2 select-none">
                           <span className="mt-1 text-muted-foreground shrink-0 transition-transform duration-200">
-                            {expandedThesisId === item.id ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                            {expandedThesisId === item.id ? (
+                              <ChevronDown className="w-4 h-4" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4" />
+                            )}
                           </span>
                           <span>{item.title}</span>
                         </div>
-                        <div className="pl-6 text-xs text-muted-foreground leading-relaxed">{item.author} • {item.university} ({item.year})</div>
-                        <div className="pl-6 text-[11px] text-muted-foreground font-mono">{item.thesisType}</div>
+                        <div className="pl-6 text-xs text-muted-foreground leading-relaxed">
+                          {item.author} • {item.university} ({item.year})
+                        </div>
+                        <div className="pl-6 text-[11px] text-muted-foreground font-mono">
+                          {item.thesisType}
+                        </div>
                       </td>
-                      <td className="p-3 text-center"><span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${getBadgeColor(item.axes.subject)}`}>{statusTranslation[item.axes.subject] || item.axes.subject}</span></td>
-                      <td className="p-3 text-center"><span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${getBadgeColor(item.axes.theory)}`}>{statusTranslation[item.axes.theory] || item.axes.theory}</span></td>
-                      <td className="p-3 text-center"><span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${getBadgeColor(item.axes.methodology)}`}>{statusTranslation[item.axes.methodology] || item.axes.methodology}</span></td>
-                      <td className="p-3 text-center"><span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${getBadgeColor(item.axes.context || "ORIGINAL")}`}>{statusTranslation[item.axes.context || "ORIGINAL"] || item.axes.context}</span></td>
-                      <td className="p-3 text-center"><span className={`inline-flex px-3 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${getBadgeColor(item.originalityLevel)}`}>{statusTranslation[item.originalityLevel] || item.originalityLevel}</span></td>
+                      <td className="p-3 text-center">
+                        <span
+                          className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${getBadgeColor(item.axes.subject)}`}
+                        >
+                          {statusTranslation[item.axes.subject] ||
+                            item.axes.subject}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center">
+                        <span
+                          className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${getBadgeColor(item.axes.theory)}`}
+                        >
+                          {statusTranslation[item.axes.theory] ||
+                            item.axes.theory}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center">
+                        <span
+                          className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${getBadgeColor(item.axes.methodology)}`}
+                        >
+                          {statusTranslation[item.axes.methodology] ||
+                            item.axes.methodology}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center">
+                        <span
+                           className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${getBadgeColor(item.axes.context || "NONE")}`}
+                        >
+                          {statusTranslation[item.axes.context || "NONE"] ||
+                            item.axes.context}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center">
+                        <span
+                          className={`inline-flex px-3 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${getBadgeColor(item.originalityLevel)}`}
+                        >
+                          {statusTranslation[item.originalityLevel] ||
+                            item.originalityLevel}
+                        </span>
+                      </td>
                     </tr>
                     {expandedThesisId === item.id && item.comparisonNote && (
                       <tr className="bg-muted/10">
@@ -133,7 +212,9 @@ export function TezaraOverlapTable({
                               <GitCompare className="w-3.5 h-3.5 text-primary" />
                               Detaylı Karşılaştırma Analizi
                             </h4>
-                            <p className="text-sm leading-relaxed text-foreground font-light whitespace-pre-line">{item.comparisonNote}</p>
+                            <p className="text-sm leading-relaxed text-foreground font-light whitespace-pre-line">
+                              {item.comparisonNote}
+                            </p>
                           </div>
                         </td>
                       </tr>

@@ -1,5 +1,6 @@
 export * from "./matrix-enhancement";
-export * from "./query-extraction";
+export * from "./fact-query-extraction";
+export * from "./lit-keyword-extraction";
 export * from "./tavily-evaluation";
 export * from "./deep-sifting";
 export * from "./originality-analysis";

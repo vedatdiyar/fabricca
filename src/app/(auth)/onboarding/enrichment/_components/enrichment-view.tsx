@@ -10,18 +10,23 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { confirmEnhancedThesisAction } from "../actions";
+import { searchAndSiftThesesAction, runJuryAnalysisAction } from "../../risk/actions";
 import { fetchThesisMatrix } from "../../_lib/fetch-actions";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import type { LoadingStep } from "@/lib/store/onboarding-store";
 import type { EnhancedThesisData } from "@/lib/types";
 
+const ANALYSIS_STEPS: LoadingStep[] = [
+  { text: "Sorgu ve doğrulama parametreleri üretiliyor...", status: "idle" },
+  { text: "Tavily ve Tezara paralel motorları koşturuluyor...", status: "idle" },
+  { text: "Karşılaştırmalı literatür matrisi yapılandırılıyor...", status: "idle" },
+  { text: "Nihai risk seviyesi ve tavsiyeler hazırlanıyor...", status: "idle" },
+];
+
 export function EnrichmentView() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [isPending, setIsPending] = useState(false);
-  const showLoading = useOnboardingStore((s) => s.showLoading);
-  const hideLoading = useOnboardingStore((s) => s.hideLoading);
-  const isLoading = useOnboardingStore((s) => s.isLoading);
 
   const [studyTitle, setStudyTitle] = useState("");
   const [researchQuestion, setResearchQuestion] = useState("");
@@ -29,6 +34,12 @@ export function EnrichmentView() {
   const [methodology, setMethodology] = useState("");
   const [theoreticalFramework, setTheoreticalFramework] = useState("");
   const [historicalSpatialLimits, setHistoricalSpatialLimits] = useState("");
+
+  const showLoading = useOnboardingStore((s) => s.showLoading);
+  const hideLoading = useOnboardingStore((s) => s.hideLoading);
+  const updateLoadingStep = useOnboardingStore((s) => s.updateLoadingStep);
+  const setBoxes = useOnboardingStore((s) => s.setBoxes);
+  const setLiteraturePool = useOnboardingStore((s) => s.setLiteraturePool);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,17 +65,6 @@ export function EnrichmentView() {
     e.preventDefault();
     setIsPending(true);
 
-    const steps: LoadingStep[] = [
-      { text: "Veriler doğrulanıyor...", status: "active" },
-      { text: "Veri tabanına yazılıyor...", status: "idle" },
-    ];
-
-    showLoading(
-      "Tez Matrisi Kaydediliyor",
-      "Zenginleştirilmiş tez matrisiniz veri tabanına kaydediliyor ve bir sonraki adıma hazırlanıyor.",
-      steps,
-    );
-
     const data: EnhancedThesisData = {
       academicStudyTitle: studyTitle,
       literatureResearchQuestion: researchQuestion,
@@ -77,17 +77,76 @@ export function EnrichmentView() {
     try {
       const result = await confirmEnhancedThesisAction(data);
       if (result.error) {
-        hideLoading();
         toast.error(result.error);
         setIsPending(false);
         return;
       }
-      // Clear stale downstream Zustand state so risk and boxes re-trigger on next visit
-      useOnboardingStore.getState().setBoxes(null);
-      useOnboardingStore.getState().setLiteraturePool([]);
+
+      // Clear stale downstream Zustand state
+      setBoxes(null);
+      setLiteraturePool([]);
+
+      // Build matrix input for analysis pipeline
+      const matrixInput = {
+        studyTitle,
+        researchQuestion,
+        mainClaim,
+        methodology,
+        theoreticalFramework,
+        historicalSpatialLimits,
+      };
+
+      // Show 4-stage loader
+      const steps = ANALYSIS_STEPS.map((s) => ({ ...s }));
+      steps[0].status = "active";
+      showLoading(
+        "Risk Analiz Motorları Çalışıyor",
+        "Yapay zeka asistanınız tez matrisinizi inceliyor, veri tabanlarını tarıyor ve risk raporunu hazırlıyor.",
+        steps,
+      );
+
+      // Stage 1→2: Search and sift
+      await new Promise((r) => setTimeout(r, 500));
+      const searchResult = await searchAndSiftThesesAction(matrixInput);
+      if ("error" in searchResult) {
+        hideLoading();
+        toast.error(searchResult.error);
+        setIsPending(false);
+        return;
+      }
+
+      updateLoadingStep(0, "completed");
+      await new Promise((r) => setTimeout(r, 500));
+      updateLoadingStep(1, "active");
+
+      // Stage 2→3→4: Jury analysis (writes report to DB)
+      await new Promise((r) => setTimeout(r, 500));
+      const juryResult = await runJuryAnalysisAction(
+        searchResult.scrapedTheses,
+        searchResult.tavilyResults,
+        matrixInput,
+      );
+      if ("error" in juryResult) {
+        hideLoading();
+        toast.error(juryResult.error);
+        setIsPending(false);
+        return;
+      }
+
+      updateLoadingStep(1, "completed");
+      await new Promise((r) => setTimeout(r, 500));
+      updateLoadingStep(2, "active");
+      await new Promise((r) => setTimeout(r, 500));
+      updateLoadingStep(2, "completed");
+      await new Promise((r) => setTimeout(r, 500));
+      updateLoadingStep(3, "active");
+      await new Promise((r) => setTimeout(r, 600));
+      updateLoadingStep(3, "completed");
+      await new Promise((r) => setTimeout(r, 400));
+
       hideLoading();
       setIsPending(false);
-      toast.success("Tez matrisiniz kaydedildi. Risk analizine geçiliyor.");
+      toast.success("Tez matrisi kaydedildi. Risk analizi tamamlandı.");
       router.push("/onboarding/risk");
     } catch {
       hideLoading();
@@ -146,11 +205,11 @@ export function EnrichmentView() {
               <Textarea id="tarihselMekansalSinirlar" value={historicalSpatialLimits} onChange={(e) => setHistoricalSpatialLimits(e.target.value)} required className="textarea-academic" />
             </div>
             <div className="md:col-span-full">
-              <Button type="submit" className="btn-academic-hero w-full" disabled={isPending || isLoading}>
+              <Button type="submit" className="btn-academic-hero w-full" disabled={isPending}>
                 {isPending ? (
                   <span className="flex items-center justify-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Kaydediliyor...
+                    {loading ? "Yükleniyor..." : "Analiz devam ediyor..."}
                   </span>
                 ) : (
                   "Onayla ve İlerle"

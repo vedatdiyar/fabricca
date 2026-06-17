@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Award } from "lucide-react";
+import { Layers } from "lucide-react";
 import { StartOverButton } from "../../_components/start-over-button";
 import { TavilyFactCheckTable } from "./tavily-fact-check-table";
 import { TezaraOverlapTable } from "./tezara-overlap-table";
@@ -13,23 +13,36 @@ interface OriginalityReportViewProps {
   reportData: OriginalityReportData;
 }
 
+/** Role distribution computed from the overlap table. */
+interface RoleDistribution {
+  label: string;
+  key: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
+  count: number;
+}
+
+const ROLE_KEYS: RoleDistribution["key"][] = ["ZERO_RISK", "LOW_RISK", "MEDIUM_RISK", "HIGH_RISK"];
+
 /**
- * Top-level originality report view. Composes the three sub-sections
- * (Tavily fact-check table, Tezara overlap matrix, strategic roadmap) and
- * renders the overall-risk badge and risk-based actions.
+ * Top-level positioning report view. Composes three sub-sections (Tavily
+ * fact-check, Tezara overlap matrix, strategic roadmap) and a positioning
+ * summary map showing role distribution across compared theses.
  */
 export function OriginalityReportView({ reportData }: OriginalityReportViewProps) {
   const { tavilyResults, tezaraResults } = reportData;
 
-  const hasOriginalComparisonNotes = useMemo(() => {
-    return tezaraResults.overlapTable?.some((item) => item.comparisonNote) || false;
+  const roleDistribution = useMemo<RoleDistribution[]>(() => {
+    const counts: Record<string, number> = { ZERO_RISK: 0, LOW_RISK: 0, MEDIUM_RISK: 0, HIGH_RISK: 0 };
+    for (const item of tezaraResults.overlapTable ?? []) {
+      if (counts[item.originalityLevel] !== undefined) {
+        counts[item.originalityLevel]++;
+      }
+    }
+    return ROLE_KEYS.map((key) => ({
+      key,
+      label: statusTranslation[key] ?? key,
+      count: counts[key],
+    }));
   }, [tezaraResults.overlapTable]);
-
-  const badgeColor = BADGE_COLORS[tezaraResults.originalityBadge] ?? BADGE_COLORS.ZERO_RISK;
-
-  const riskLevel: "HIGH" | "MEDIUM" | "LOW" =
-    tezaraResults.originalityBadge === "HIGH_RISK" ? "HIGH"
-      : tezaraResults.originalityBadge === "MEDIUM_RISK" ? "MEDIUM" : "LOW";
 
   return (
     <div className="space-y-10">
@@ -37,10 +50,10 @@ export function OriginalityReportView({ reportData }: OriginalityReportViewProps
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
         <div className="space-y-2 text-left">
           <h1 className="text-3xl font-semibold tracking-tight text-foreground flex flex-col sm:flex-row sm:items-center gap-2">
-            <span>Akademik Risk & Maddi Doğrulama Raporu</span>
+            <span>Literatür Konumlandırma ve Doğrulama Raporu</span>
           </h1>
           <p className="text-muted-foreground leading-relaxed text-sm">
-            Çalışmanızın internet üzerindeki maddi doğruluğu ile Tezara veri tabanındaki literatür çakışma riskleri.
+            Tez matrisinizin akademik literatür içindeki konumu, karşılaştırmalı pozisyon analizi ve olgusal doğrulaması.
           </p>
         </div>
         <div className="flex items-center self-end sm:self-center">
@@ -48,17 +61,27 @@ export function OriginalityReportView({ reportData }: OriginalityReportViewProps
         </div>
       </div>
 
-      {/* Badge & Overall status */}
-      <div className="flex flex-col md:flex-row items-center justify-between p-6 bg-card border border-border rounded-xl gap-4">
-        <div className="space-y-1 text-center md:text-left">
-          <h3 className="text-lg font-semibold text-foreground">Genel Akademik Risk Seviyesi</h3>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Asistanınızın literatür çakışmaları ve kuramsal yaklaşımlar üzerindeki nihai risk değerlendirmesi.
-          </p>
+      {/* Positioning Map: role distribution summary */}
+      <div className="p-6 bg-card border border-border rounded-xl space-y-4">
+        <div className="flex items-center gap-2">
+          <Layers className="w-5 h-5 text-primary" />
+          <h3 className="text-lg font-semibold text-foreground">
+            Akademik Konumlandırma ve Katkı Haritası
+          </h3>
         </div>
-        <div className={`flex items-center gap-2 px-3 py-3 rounded-full text-xs font-semibold tracking-wider ${badgeColor}`}>
-          <Award className="w-5 h-5" />
-          <span>{statusTranslation[tezaraResults.originalityBadge] || tezaraResults.originalityBadge}</span>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Karşılaştırılan tezlerin çalışmanıza olan katkı türüne göre dağılımı.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          {roleDistribution.map((role) => (
+            <div
+              key={role.key}
+              className={`flex items-center gap-2.5 px-4 py-2.5 rounded-lg border ${BADGE_COLORS[role.key]}`}
+            >
+              <span className="text-lg font-bold tabular-nums leading-none">{role.count}</span>
+              <span className="text-xs font-semibold tracking-wide leading-tight">{role.label}</span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -74,16 +97,7 @@ export function OriginalityReportView({ reportData }: OriginalityReportViewProps
       {/* Section C: Strategic Recommendations */}
       <StrategicRoadmapSection
         strategicRecommendations={tezaraResults.strategicRecommendations}
-        riskLevel={riskLevel}
-        hasOriginalComparisonNotes={hasOriginalComparisonNotes}
       />
-
-      {/* Risk-based actions */}
-      {riskLevel === "HIGH" && (
-        <div className="flex justify-center">
-          <StartOverButton variant="default" className="w-full md:w-auto" />
-        </div>
-      )}
     </div>
   );
 }

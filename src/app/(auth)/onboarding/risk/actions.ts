@@ -19,8 +19,10 @@ import {
   evaluateTavilyResults,
 } from "./_services/search";
 import { siftAndFetchDetails } from "./_services/sifting";
-import { analyzeOriginalityRisk } from "./_services/analysis";
-import { calculateOriginalityRisk } from "./_services/risk-calc";
+import {
+  analyzeOriginalityRisk,
+  calculateOriginalityRisk,
+} from "./_services/analysis";
 import { synthesizeRoadmap } from "./_services/roadmap";
 
 interface OnboardingMatrixInput {
@@ -68,7 +70,6 @@ export async function searchAndSiftThesesAction(
     const {
       studyTitle,
       researchQuestion,
-      mainClaim,
       methodology,
       theoreticalFramework,
       historicalSpatialLimits,
@@ -77,10 +78,7 @@ export async function searchAndSiftThesesAction(
     const { tavilyQueries, tezaraQueries, keywords } = await extractQueries(
       {
         studyTitle,
-        researchQuestion,
-        mainClaim,
         methodology,
-        theoreticalFramework,
         historicalSpatialLimits,
       },
       log,
@@ -90,7 +88,7 @@ export async function searchAndSiftThesesAction(
       await executeParallelSearch(tavilyQueries, tezaraQueries, log);
 
     const tavilyEvaluation = await evaluateTavilyResults(
-      { studyTitle, researchQuestion, mainClaim, theoreticalFramework },
+      { studyTitle },
       tavilySearchResults,
       log,
     );
@@ -193,7 +191,6 @@ export async function runJuryAnalysisAction(
       const riskCalcResult = calculateOriginalityRisk(
         overlapTable,
         validDetails,
-        log,
       );
 
       const strategicRecommendations = await synthesizeRoadmap(

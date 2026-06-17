@@ -1,16 +1,14 @@
 import { OnboardingStepper } from "./_components/onboarding-stepper";
-import { OnboardingGlobalLoader } from "@/components/onboarding-global-loader";
+import { OnboardingContent } from "./_components/onboarding-content";
 
 /**
  * Onboarding sürecinin tüm sayfalarını saran layout.
  * Sol tarafta dikey adım navigasyon sidebar'ını (stepper) sabitler
  * ve sağ tarafta sayfa içeriğini gösterir.
- * min-h-screen ve bg-background burada sağlanır,
- * böylece her sayfa kendi içerik div'inde bu sınıfları tekrar tanımlamaz.
  *
- * OnboardingGlobalLoader, en üst katmanda tüm ekranı kaplayacak şekilde
- * konumlandırılır (fixed inset-0 z-50). isLoading=false iken null döner,
- * böylece normal sayfa akışı hiç etkilenmez.
+ * OnboardingContent, isLoading durumuna göre ya loading ekranını
+ * ya da sayfa içeriğini render eder. Loading ekranı modal değil,
+ * içerik alanının yerine geçer ve yatay+dikey ortalanır.
  */
 export default function OnboardingLayout({
   children,
@@ -19,9 +17,10 @@ export default function OnboardingLayout({
 }>) {
   return (
     <div className="flex min-h-screen bg-background">
-      <OnboardingGlobalLoader />
       <OnboardingStepper />
-      <main className="flex-1 min-w-0">{children}</main>
+      <main className="flex-1 min-w-0">
+        <OnboardingContent>{children}</OnboardingContent>
+      </main>
     </div>
   );
 }

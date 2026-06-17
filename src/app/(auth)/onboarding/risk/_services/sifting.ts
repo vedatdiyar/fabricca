@@ -7,6 +7,7 @@ import type { Logger } from "@/lib/logger";
 import type {
   TezaraThesisSummary,
   TezaraThesisDetails,
+  DeepSiftEntry,
   DeepSiftResponse,
 } from "@/lib/types";
 import {
@@ -50,6 +51,7 @@ export async function siftAndFetchDetails(
   eliminatedTheses: TezaraThesisSummary[];
   diagnostic: SiftingDiagnostic;
 }> {
+  log.file("sifting.ts:53");
   const functionStart = performance.now();
 
   // Deduplication
@@ -70,6 +72,8 @@ export async function siftAndFetchDetails(
   const uniqueTheses = Array.from(uniqueThesesMap.values()).sort(
     (a, b) => a.id - b.id,
   );
+
+  log.data("Raw/Unique Thesis Count", { rawCount, uniqueCount: uniqueTheses.length });
 
   log.info({
     step: "sift_and_fetch_details",
@@ -234,18 +238,21 @@ export async function siftAndFetchDetails(
 
     let finalIds: number[] = [];
     try {
+      const deepSiftPrompt = buildDeepSiftingPrompt({
+        ...params,
+        candidateDetails: validDetails.map((t) => ({
+          id: t.id,
+          title: t.title,
+          department: t.department,
+          abstract: t.abstract || "",
+        })),
+      });
+      log.prompt("gemini-3.1-flash-lite (HIGH thinking)", deepSiftPrompt);
+
       const deepSiftResult = await generateStructuredContent<DeepSiftResponse>(
         "gemini-3.1-flash-lite",
         buildDeepSiftingSystemInstruction(),
-        buildDeepSiftingPrompt({
-          ...params,
-          candidateDetails: validDetails.map((t) => ({
-            id: t.id,
-            title: t.title,
-            department: t.department,
-            abstract: t.abstract || "",
-          })),
-        }),
+        deepSiftPrompt,
         deepSiftingSchema,
         log,
         {
@@ -253,9 +260,11 @@ export async function siftAndFetchDetails(
         },
       );
 
-      const targetIds = Array.isArray(deepSiftResult?.selectedThesisIds)
-        ? deepSiftResult.selectedThesisIds
-        : [];
+      const targetEntries = Array.isArray(deepSiftResult?.selectedTheses)
+        ? deepSiftResult.selectedTheses
+        : ([] as DeepSiftEntry[]);
+
+      const targetIds = targetEntries.map((e) => e.id);
 
       finalIds = targetIds.filter((id) =>
         validDetails.some((t) => t.id === id),
@@ -299,6 +308,8 @@ export async function siftAndFetchDetails(
     const eliminatedTheses = uniqueTheses.filter(
       (t) => !finalIdSet.has(t.id),
     );
+
+    log.preview("Final Selected Thesis IDs", finalSelectedTheses.map((t) => ({ id: t.id, title: t.title })));
 
     const totalDuration =
       ((performance.now() - functionStart) / 1000).toFixed(1) + "s";

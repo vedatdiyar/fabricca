@@ -16,7 +16,7 @@ export const tavilyEvaluationSchema: JsonSchema = {
           fact: {
             type: "string",
             description:
-              "Test edilen ampirik, kurumsal veya istatistiki olgusal iddia.",
+              "Doğrulama süzgecine alınan somut ampirik olgu. Yalnızca resmî kurum/rapor adları, tarihler, yasa/düzenleme isimleri, istatistiki veri noktaları veya arşiv dergi referanslarıdır. Teorik çerçeveler, nedensellik bağları ve felsefi yorumlar KESİNLİKLE bu alana konulamaz.",
           },
           result: {
             type: "string",
@@ -62,13 +62,14 @@ Sen olgusal doğrulama (fact-checking), epistemolojik doğruluk kontrolü ve aka
 - Kesinlikle objektif, mesafeli, tarafsız ve kanıta dayalı bir akademik Türkçe kullanacaksın.
 - KATI DOĞRULAMA İLKESİ (STRICT GROUNDED): Sen yalnızca sana sağlanan \`<search_results>\` bağlamındaki bilgilerle sınırlı bir asistansın. Cevaplarında ve analizlerinde **yalnızca** bu kaynaklarda doğrudan belirtilen gerçeklere dayan. Kendi genel kültürünü, dış kaynaklı akademik bilgini veya sağduyunu kesinlikle kullanma. Sağlanan verilerin dışına taşan her türlü iddia tamamen "desteklenmiyor" kabul edilmelidir.
 - HİPOTEZ TESTİ VE BOŞ KÜME BARIYERİ: İddianın arama sonuçlarında doğrudan kanıtı varsa "VERIFIED", kısmen değiniliyorsa "PARTIALLY_VERIFIED" olarak işaretle. Eğer arama sonuçlarında iddiaya dair hiçbir olgusal kanıt, istatistik veya iz yoksa, bunu kendi bilgine dayanarak kurtarmaya veya doğrulamaya çalışma; doğrudan "REFUTED" olarak işaretle ve kaynaklarda bu verinin bulunmadığını gerekçede belirt.
+- TEORİK DOĞRULAMA YASAĞI (STRICT FACTUAL BOUNDARY): Teorik çerçeveleri, felsefi yaklaşımları, nedensellik bağlarını, kavramsal tartışmaları veya öznel/spekülatif iddiaları doğrulamaya KESİNLİKLE KALKİŞMA. Bu tür öğeler yalnızca somut ampirik çıpaları (resmî kurum adları, tarihler, istatistikler, yasa isimleri, arşiv referansları) üzerinden değerlendirilir. Soyut bir teorik iddia için "VERIFIED" veya "PARTIALLY_VERIFIED" etiketi KESİNLİKLE kullanılamaz; arama sonuçlarında teorik iddiayı destekleyen somut ampirik kanıt yoksa "REFUTED" olarak işaretlenir.
 - MODEL TEMBELLİĞİ ENGELİ (ANTI-LAZINESS): Kaynaklardaki verileri, rakamları ve kurum adlarını çıktı metnine aktarırken asla "...", "vb.", "etc." şeklinde geçiştirme. Bulguları tam, eksiksiz ve kanıt bağlantılı olarak aktar.
 - ÇIKTI FORMATI: Yanıtın, yukarıda sağlanan \`tavilyEvaluationSchema\` ile %100 uyumlu, doğrulanmış ve parse edilebilir bir ham JSON objesi olmalıdır. Markdown \`\`\`json ... \`\`\` sarmalı kesinlikle yasaktır.
 
 # UZMAN FEW-SHOT ÖRNEĞİ
 <ornek_hedef_matris>
 {
-  "mainClaim": "Türkiye'deki e-ticaret lojistik depolarında çalışan beyaz yakalıların %80'i 2024 yılı itibarıyla kronik borç sarmalındadır ve hanehalkı borçluluk oranları tarihi zirveye ulaşmıştır."
+  "studyTitle": "Türkiye'de E-Ticaret Lojistik Sektöründe Borçluluk Dinamikleri"
 }
 </ornek_hedef_matris>
 
@@ -103,17 +104,11 @@ Metin İçeriği: 2024 yılı verilerine göre lojistik ve hizmet sektöründeki
 // ============================================================================
 export function buildTavilyEvalPrompt(params: {
   studyTitle: string;
-  researchQuestion: string;
-  mainClaim: string;
-  theoreticalFramework: string;
   tavilyResultsFormatted: string;
 }): string {
   return `<hedef_tez_matrisi>
 {
-  "studyTitle": "${params.studyTitle.replace(/"/g, '\\"')}",
-  "researchQuestion": "${params.researchQuestion.replace(/"/g, '\\"')}",
-  "mainClaim": "${params.mainClaim.replace(/"/g, '\\"')}",
-  "theoreticalFramework": "${params.theoreticalFramework.replace(/"/g, '\\"')}"
+  "studyTitle": "${params.studyTitle.replace(/"/g, '\\"')}"
 }
 </hedef_tez_matrisi>
 

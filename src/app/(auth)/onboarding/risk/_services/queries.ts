@@ -1,28 +1,43 @@
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
 import type { Logger } from "@/lib/logger";
-import type { QueryExtractionResponse } from "@/lib/types";
 import {
-  queryExtractionSchema,
-  buildQueryExtractionSystemInstruction,
-  buildQueryPrompt,
+  factQueryExtractionSchema,
+  buildFactQueryExtractionSystemInstruction,
+  buildFactQueryPrompt,
+  litKeywordExtractionSchema,
+  buildLitKeywordExtractionSystemInstruction,
+  buildLitKeywordPrompt,
 } from "@/lib/prompts";
+
+/**
+ * Internal response type for the fact-oriented Tavily query extraction prompt.
+ */
+interface FactQueryExtractionResponse {
+  tavilyQueries: string[];
+}
+
+/**
+ * Internal response type for the literature keyword extraction prompt.
+ */
+interface LitKeywordExtractionResponse {
+  keywords: string[];
+}
 
 /**
  * Parameter interface for query extraction function.
  */
 export interface ExtractQueriesParams {
   studyTitle: string;
-  researchQuestion: string;
-  mainClaim: string;
   methodology: string;
-  theoreticalFramework: string;
   historicalSpatialLimits: string;
 }
 
 /**
  * Extracts factual Turkish search queries for Tavily and academic English queries for Tezara
- * using Gemini based on the target thesis matrix.
+ * using Gemini based on the target thesis matrix. Runs two independent prompts in parallel:
+ *   - fact-query-extraction: produces only concrete empirical Tavily queries
+ *   - lit-keyword-extraction: produces only 5 English lemma keywords for the Tezara combination engine
  *
  * @param params - The thesis matrix parameters.
  * @param log - The logger instance.
@@ -36,6 +51,7 @@ export async function extractQueries(
   tezaraQueries: string[];
   keywords: string[];
 }> {
+  log.file("queries.ts:32");
   const startTime = performance.now();
   log.info({
     step: "extract_queries",
@@ -44,20 +60,46 @@ export async function extractQueries(
   });
 
   try {
-    const extractedQueries =
-      await generateStructuredContent<QueryExtractionResponse>(
+    const geminiInput = {
+      studyTitle: params.studyTitle,
+      historicalSpatialLimits: params.historicalSpatialLimits,
+    };
+
+    log.prompt(
+      "gemini-3.1-flash-lite (fact queries)",
+      buildFactQueryPrompt(geminiInput),
+    );
+    log.prompt(
+      "gemini-3.1-flash-lite (keywords)",
+      buildLitKeywordPrompt(geminiInput),
+    );
+
+    // Run both extraction prompts in parallel
+    const [factResult, keywordResult] = await Promise.all([
+      generateStructuredContent<FactQueryExtractionResponse>(
         "gemini-3.1-flash-lite",
-        buildQueryExtractionSystemInstruction(),
-        buildQueryPrompt(params),
-        queryExtractionSchema,
+        buildFactQueryExtractionSystemInstruction(),
+        buildFactQueryPrompt(geminiInput),
+        factQueryExtractionSchema,
         log,
         {
           thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         },
-      );
+      ),
+      generateStructuredContent<LitKeywordExtractionResponse>(
+        "gemini-3.1-flash-lite",
+        buildLitKeywordExtractionSystemInstruction(),
+        buildLitKeywordPrompt(geminiInput),
+        litKeywordExtractionSchema,
+        log,
+        {
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        },
+      ),
+    ]);
 
-    const rawTavilyQueries = Array.isArray(extractedQueries?.tavilyQueries)
-      ? extractedQueries.tavilyQueries
+    const rawTavilyQueries = Array.isArray(factResult?.tavilyQueries)
+      ? factResult.tavilyQueries
       : [];
 
     // Fallback: ensure at least 1 Tavily query exists (4th shield against empty sets)
@@ -66,8 +108,8 @@ export async function extractQueries(
         ? [`${params.studyTitle} research verification`]
         : rawTavilyQueries;
 
-    const rawKeywords = Array.isArray(extractedQueries?.keywords)
-      ? extractedQueries.keywords.map((k) => k.trim()).filter(Boolean)
+    const rawKeywords = Array.isArray(keywordResult?.keywords)
+      ? keywordResult.keywords.map((k) => k.trim()).filter(Boolean)
       : [];
 
     // Pad keywords to ensure exactly 5 items
@@ -91,6 +133,8 @@ export async function extractQueries(
 
     const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
     const tokens = log.lastTokens ?? { input: 0, output: 0 };
+
+    log.preview("Extracted Tavily Queries", finalTavilyQueries);
 
     log.info({
       step: "extract_queries",

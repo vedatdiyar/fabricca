@@ -110,9 +110,6 @@ export async function executeParallelSearch(
 
 export interface EvaluateTavilyParams {
   studyTitle: string;
-  researchQuestion: string;
-  mainClaim: string;
-  theoreticalFramework: string;
 }
 
 /**
@@ -156,7 +153,7 @@ export async function evaluateTavilyResults(
         "gemini-3.1-flash-lite",
         buildTavilyEvalSystemInstruction(),
         buildTavilyEvalPrompt({
-          ...params,
+          studyTitle: params.studyTitle,
           tavilyResultsFormatted,
         }),
         tavilyEvaluationSchema,

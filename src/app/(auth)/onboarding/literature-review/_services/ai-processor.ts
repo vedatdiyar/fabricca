@@ -51,6 +51,7 @@ export async function runSiftingStage(
     historicalSpatialLimits: string;
   },
 ): Promise<ValidatedPaper[]> {
+  logger.file("ai-processor.ts:43");
   const CHUNK_SIZE = 60;
   const keptDecisions = new Map<string, boolean>();
   const scoreDecisions = new Map<string, number>();
@@ -67,17 +68,22 @@ export async function runSiftingStage(
       authors: c.authors,
     }));
 
+    const siftPrompt = buildLiteratureSiftingPrompt(
+      {
+        title: box.title,
+        description: box.description,
+      },
+      siftingInput,
+      thesisCtx,
+    );
+    if (chunkIndex === 1) {
+      logger.prompt("gemini-3.1-flash-lite (MINIMAL thinking)", siftPrompt);
+    }
+
     const siftingResult = await generateStructuredContent<SiftingResponse>(
       "gemini-3.1-flash-lite",
       buildLiteratureSiftingSystemInstruction(),
-      buildLiteratureSiftingPrompt(
-        {
-          title: box.title,
-          description: box.description,
-        },
-        siftingInput,
-        thesisCtx,
-      ),
+      siftPrompt,
       literatureSiftingSchema,
       logger,
       { thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } },
@@ -129,6 +135,8 @@ export async function runSiftingStage(
     }
   }
 
+  logger.data("Sifting Kept/Total", { kept: kept.length, total: candidates.length });
+
   return kept;
 }
 
@@ -146,6 +154,8 @@ export async function runJuryStage(
   sifted: ValidatedPaper[],
   logger: Logger,
 ): Promise<LiteratureReviewResult> {
+  logger.file("ai-processor.ts:144");
+
   const juryCandidates = sifted.map((c) => ({
     doi: c.doi ?? "",
     title: c.title,
@@ -171,6 +181,14 @@ export async function runJuryStage(
       );
     }
   }
+
+  logger.prompt("gemini-3.1-flash-lite (MEDIUM thinking)", buildLiteratureJuryAnalysisPrompt(
+    {
+      title: box.title,
+      description: box.description,
+    },
+    juryCandidates,
+  ));
 
   const juryResult = await generateStructuredContent<JuryResponse>(
     "gemini-3.1-flash-lite",
@@ -203,10 +221,17 @@ export async function runJuryStage(
     });
   }
 
-  return {
+  const result = {
     starterPack: backfillIsFoundational(juryResult.starterPack),
     reservedPool: backfillIsFoundational(juryResult.reservedPool),
   };
+
+  logger.data("Jury Split", {
+    starterPack: result.starterPack.length,
+    reservedPool: result.reservedPool.length,
+  });
+
+  return result;
 }
 
 // ============================================================================

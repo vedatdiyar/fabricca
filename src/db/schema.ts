@@ -95,12 +95,12 @@ export const originalityReports = pgTable("originality_reports", {
         thesisType: string;
         department: string;
         axes: {
-          subject: "OVERLAPPING" | "ORIGINAL";
-          theory: "OVERLAPPING" | "ORIGINAL";
-          methodology: "OVERLAPPING" | "ORIGINAL";
-          context?: "OVERLAPPING" | "ORIGINAL";
+          subject: "HIGH" | "PARTIAL" | "NONE";
+          theory: "HIGH" | "PARTIAL" | "NONE";
+          methodology: "HIGH" | "PARTIAL" | "NONE";
+          context?: "HIGH" | "PARTIAL" | "NONE";
         };
-        originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
+        originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
         comparisonNote?: string;
         yokPdfUrl?: string;
       }[];

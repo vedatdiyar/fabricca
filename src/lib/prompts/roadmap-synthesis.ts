@@ -52,7 +52,7 @@ Sen, üniversitelerin Sosyal Bilimler ve Lisansüstü Eğitim Enstitülerinde do
     "title": "E-Ticaret Depolarında Algoritmik Kontrol Mekanizmaları",
     "author": "Ahmet Yılmaz",
     "year": 2023,
-    "axes": { "subject": "OVERLAPPING", "theory": "OVERLAPPING", "methodology": "OVERLAPPING", "context": "OVERLAPPING" },
+    "axes": { "subject": "HIGH", "theory": "HIGH", "methodology": "HIGH", "context": "HIGH" },
     "originalityLevel": "HIGH_RISK",
     "comparisonNote": "Kuram, mekan, yöntem ve örneklem evreni hedef tezle birebir çakışmaktadır."
   }
@@ -86,7 +86,7 @@ export function buildRoadmapPrompt(params: {
       methodology: string;
       context?: string;
     };
-    originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
+    originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
     comparisonNote: string;
   }[];
 }): string {

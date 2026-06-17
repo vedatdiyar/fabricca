@@ -132,7 +132,8 @@ Proje, Next.js App Router'ın rota gruplama (route groups) özelliğini kullanar
 │   │   │   ├── literature-sifting.ts
 │   │   │   ├── matrix-enhancement.ts
 │   │   │   ├── originality-analysis.ts
-│   │   │   ├── query-extraction.ts
+│   │   │   ├── fact-query-extraction.ts
+│   │   │   ├── lit-keyword-extraction.ts
 │   │   │   ├── roadmap-synthesis.ts
 │   │   │   └── tavily-evaluation.ts
 │   │   └── store/
@@ -188,7 +189,7 @@ Yapay zeka, geliştirme süreci boyunca aşağıdaki disiplin kurallarına ve ko
   - **Zustand & TanStack Query Cache Mühürleme:** Veriler frontend katmanında Zustand global store (`sessionStorage` destekli) ve TanStack Query cache'inde (özellikle YÖKTEZ kazıma/sifting sonuçlarını korumak için `scrapedTheses` anahtarında) kilitlenir. Bu sayede tarayıcı yenilemelerinde veya Gemini API hatalarında veri kaybı yaşanmaz.
   - **Oturum (Session Cookie) Kilitleme:** `confirmLiteratureAction` başarıyla tamamlandığında, `fabricca_session` cookie'si sunucu tarafında anında `onboardingCompleted: true` olarak mühürlenir.
   - **Sıfırlama Kalkanı:** İşlem sonunda Zustand store'un `resetStore()` aksiyonu çağrılarak `sessionStorage` ve tarayıcı hafızası tamamen temizlenir.
-- **Doğrulama (Lint & TypeScript):** Her kod değişikliği sonrası, işi teslim etmeden önce `npm run check:full` komutu çalıştırılarak lint ve TypeScript hataları kontrol edilmelidir. Hata varsa düzeltilmeden iş tamamlanmış sayılmaz.
+- **Doğrulama (Lint & TypeScript):** Her kod değişikliği sonrası, işi teslim etmeden önce `npm run check:full` komutu çalıştırılarak lint ve TypeScript hataları kontrol edilmelidir. Hata varsa düzeltilmeden iş tamamlanmış sayılmaz. Eğer önceki değişimlerdeki hatalar kalmışsa onları da temizleyeceksin!
 - **The Golden Boundary Rule:**
   - **Backend ve Mantık Katmanı (%100 İngilizce):** Tüm veritabanı kolon isimleri, fonksiyon adları, local değişkenler, Zod şemaları, API payload'ları ve Logger event/step stringleri tamamen profesyonel bilgisayar bilimi İngilizcesi (camelCase veya snake_case) ile yazılacaktır. Türkçe karakter içermesi kesinlikle yasaktır.
   - **Kullanıcı Arayüzü (UI) ve Çıktılar (%100 Türkçe):** Kullanıcının ekranda gördüğü tüm bileşenler, butonlar, tablo başlıkları, kart açıklamaları ve Gemini'nin ürettiği metinsel akademik analiz/tavsiyeler (strategicRecommendations) tamamen akıcı, elit bir akademik Türkçe ile yazılacak; Türkçe karakterler eksiksiz işlenecektir. Backend'den gelen İngilizce enum'lar (HIGH_RISK, OVERLAPPING) UI katmanında bir local sözlük (statusTranslation) üzerinden Türkçeye çevrilerek render edilecektir.

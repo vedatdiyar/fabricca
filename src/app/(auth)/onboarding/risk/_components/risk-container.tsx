@@ -12,7 +12,7 @@ import { useRiskAnalysis } from "../_hooks/use-risk-analysis";
  * {@link useRiskAnalysis} hook and only renders the current state.
  */
 export function RiskContainer() {
-  const { loading, error, reportData, startAnalysis, handleProceed } =
+  const { loading, proceeding, error, reportData, startAnalysis, handleProceed } =
     useRiskAnalysis();
 
   if (loading) {
@@ -28,8 +28,15 @@ export function RiskContainer() {
       <div className="max-w-5xl mx-auto">
         <OriginalityReportView reportData={reportData} />
         <div className="flex justify-end mt-8 pb-12">
-          <Button onClick={handleProceed} className="btn-academic-hero">
-            Analizi Onayla ve Kutulara Geç
+          <Button onClick={handleProceed} disabled={proceeding} className="btn-academic-hero">
+            {proceeding ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Kaydediliyor...
+              </span>
+            ) : (
+              "Analizi Onayla ve Kutulara Geç"
+            )}
           </Button>
         </div>
       </div>

@@ -58,6 +58,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   const [confirming, setConfirming] = useState(false);
   const [processing, setProcessing] = useState(false);
   const processingRef = useRef(false);
+  const hasAutoTriggeredRef = useRef(false);
   const [boxStatuses, setBoxStatuses] = useState<Record<string, BoxStatus>>({});
   const [boxErrors, setBoxErrors] = useState<Record<string, string>>({});
 
@@ -205,34 +206,34 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
       return;
     }
 
-    const finalSteps: LoadingStep[] = [
-      { text: "Literatür havuzu veri tabanına yazılıyor...", status: "active" },
-      { text: "Onboarding tamamlanıyor...", status: "idle" },
-    ];
-
-    showLoading(
-      "Onboarding Tamamlanıyor",
-      "Tüm literatür verileri kaydediliyor ve onboarding süreci sonlandırılıyor.",
-      finalSteps,
-    );
-
     setConfirming(true);
-    const result = await confirmLiteratureAction({ literaturePool });
-    if ("error" in result && result.error) {
-      hideLoading();
-      toast.error(result.error);
+
+    try {
+      const result = await confirmLiteratureAction({ literaturePool });
+      if ("error" in result && result.error) {
+        toast.error(result.error);
+        setConfirming(false);
+        return;
+      }
+
+      resetStore();
       setConfirming(false);
-      return;
+      toast.success("Tebrikler! Onboarding süreciniz tamamlandı.");
+      router.push("/dashboard");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.");
+      setConfirming(false);
     }
-    updateLoadingStep(0, "completed");
-    updateLoadingStep(1, "active");
-    await new Promise((r) => setTimeout(r, 400));
-    hideLoading();
-    resetStore();
-    setConfirming(false);
-    toast.success("Tebrikler! Onboarding süreciniz tamamlandı.");
-    router.push("/dashboard");
-  }, [literaturePool, showLoading, hideLoading, updateLoadingStep, resetStore, router]);
+  }, [literaturePool, resetStore, router]);
+
+  // Auto-trigger review process when boxes load and pool is empty.
+  useEffect(() => {
+    if (loading || processing || hasAutoTriggeredRef.current) return;
+    if (subBoxes.length > 0 && !allProcessed) {
+      hasAutoTriggeredRef.current = true;
+      startReviewProcess();
+    }
+  }, [loading, processing, subBoxes, allProcessed, startReviewProcess]);
 
   return {
     subBoxes,
