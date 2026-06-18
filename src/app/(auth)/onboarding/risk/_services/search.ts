@@ -13,6 +13,40 @@ import {
   buildTavilyEvalPrompt,
 } from "@/lib/prompts";
 
+const MAX_TEZARA_CONCURRENCY = 5;
+
+/**
+ * Runs an array of async operations with a concurrency cap.
+ *
+ * @param items - Items to process.
+ * @param fn - Async function to apply on each item.
+ * @param concurrency - Maximum number of concurrent operations.
+ * @returns Array of results in original order.
+ */
+async function runWithConcurrencyLimit<T, R>(
+  items: T[],
+  fn: (item: T, index: number) => Promise<R>,
+  concurrency: number,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+
+  async function worker(): Promise<void> {
+    while (nextIndex < items.length) {
+      const index = nextIndex++;
+      results[index] = await fn(items[index], index);
+    }
+  }
+
+  const workers = Array.from(
+    { length: Math.min(concurrency, items.length) },
+    () => worker(),
+  );
+  await Promise.all(workers);
+
+  return results;
+}
+
 /**
  * Runs Tavily and Tezara queries in parallel.
  *
@@ -57,23 +91,24 @@ export async function executeParallelSearch(
       }
     });
 
-    const tezaraPromises = tezaraQueries.map(async (query) => {
-      try {
-        return await searchTezara(query, log, true);
-      } catch (err) {
-        log.error("originality_search_tezara_failed", {
-          service: "originality",
-          error: err,
-          data: { query, context: `Sorgu: ${query}` },
-        });
-        return [];
-      }
-    });
+    const tezaraSearchResults = await runWithConcurrencyLimit(
+      tezaraQueries,
+      async (query) => {
+        try {
+          return await searchTezara(query, log, true);
+        } catch (err) {
+          log.error("originality_search_tezara_failed", {
+            service: "originality",
+            error: err,
+            data: { query, context: `Sorgu: ${query}` },
+          });
+          return [];
+        }
+      },
+      MAX_TEZARA_CONCURRENCY,
+    );
 
-    const [tavilySearchResults, tezaraSearchResults] = await Promise.all([
-      Promise.all(tavilyPromises),
-      Promise.all(tezaraPromises),
-    ]);
+    const tavilySearchResults = await Promise.all(tavilyPromises);
 
     const tavilyResultCount = tavilySearchResults.reduce(
       (sum, item) => sum + item.results.length,

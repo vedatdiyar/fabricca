@@ -9,6 +9,7 @@ import {
   pgEnum,
   boolean,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 
@@ -39,7 +40,7 @@ export const thesisMatrices = pgTable("thesis_matrices", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" })
     .unique(),
-  studyTitle: varchar("study_title", { length: 500 }).notNull(),
+  studyTitle: text("study_title").notNull(),
   researchQuestion: text("research_question").notNull(),
   mainClaim: text("main_claim").notNull(),
   theoreticalFramework: text("theoretical_framework").notNull(),
@@ -149,6 +150,7 @@ export const thesisBoxes = pgTable(
       .notNull()
       .references(() => thesisMatrices.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
+    boxType: text("box_type"),
     description: text("description"),
     semanticSearchBlock: text("semantic_search_block"),
     concepts: jsonb("concepts").$type<string[]>().default([]).notNull(),
@@ -198,6 +200,14 @@ export const libraryResources = pgTable(
     index("idx_library_resources_box_status").on(
       table.thesisBoxId,
       table.status,
+    ),
+    uniqueIndex("idx_library_resources_box_doi").on(
+      table.thesisBoxId,
+      table.doi,
+    ),
+    uniqueIndex("idx_library_resources_box_title").on(
+      table.thesisBoxId,
+      table.title,
     ),
   ],
 );

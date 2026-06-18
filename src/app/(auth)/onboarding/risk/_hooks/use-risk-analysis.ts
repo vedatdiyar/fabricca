@@ -111,16 +111,19 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
 
       const report = await fetchOriginalityReport();
       if (report && !cancelled) {
-        const tezara = report.tezaraResults;
         setReportData({
-          originalityScore: tezara.riskPercentage,
-          originalityBadge: tezara.originalityBadge,
-          overlapAnalysis:
-            tezara.overlapTable as OriginalityReportData["overlapAnalysis"],
-          synthesisRoadmap: tezara.strategicRecommendations,
-          tavilyResults:
-            report.tavilyResults as OriginalityReportData["tavilyResults"],
-          tezaraResults: tezara as OriginalityReportData["tezaraResults"],
+          tavilyResults: {
+            items: report.tavilyResults
+              .items as OriginalityReportData["tavilyResults"]["items"],
+            briefingNote: report.tavilyResults.briefingNote,
+          },
+          tezaraResults: {
+            originalityBadge: report.tezaraResults.originalityBadge,
+            overlapTable: report.tezaraResults.overlapTable,
+            strategicRecommendations:
+              report.tezaraResults.strategicRecommendations,
+            riskPercentage: report.tezaraResults.riskPercentage,
+          },
         });
       } else if (!cancelled) {
         // DB cleaned (user went back and re-confirmed enrichment) — reset stale Zustand state

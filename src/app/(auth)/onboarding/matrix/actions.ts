@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
 import { getSession } from "@/proxy";
@@ -14,25 +14,39 @@ import {
   buildMatrixEnhancementSystemInstruction,
   buildMatrixEnhancementPrompt,
 } from "@/lib/prompts";
-import type { EnhancedThesisData } from "@/lib/types";
-
-export type ThesisMatrixInput = {
-  studyTitle: string;
-  researchQuestion: string;
-  mainClaim: string;
-  theoreticalFramework: string;
-  methodology: string;
-  dataStrategy: string;
-  historicalLimits: string;
-  spatialLimits: string;
-  analyticalFocus: string;
-};
+import { classifyError } from "@/lib/error-utils";
+import type { ErrorScenario } from "@/lib/error-utils";
+import {
+  EnhancedThesisDataSchema,
+  type EnhancedThesisData,
+  type OnboardingFormData,
+} from "@/lib/types";
 
 const MIN_LENGTH = 3;
+const MAX_LENGTH = 4000;
 
-function validateField(value: string | undefined): string | null {
+type ValidationResult =
+  | { valid: true; value: string }
+  | { valid: false; error: string };
+
+function validateField(
+  value: string | undefined,
+  label: string,
+): ValidationResult {
   const trimmed = value?.trim() ?? "";
-  return trimmed.length >= MIN_LENGTH ? trimmed : null;
+  if (trimmed.length < MIN_LENGTH) {
+    return {
+      valid: false,
+      error: `${label} en az ${MIN_LENGTH} karakter olmalıdır.`,
+    };
+  }
+  if (trimmed.length > MAX_LENGTH) {
+    return {
+      valid: false,
+      error: `${label} en fazla ${MAX_LENGTH} karakter olabilir.`,
+    };
+  }
+  return { valid: true, value: trimmed };
 }
 
 /**
@@ -43,7 +57,7 @@ function validateField(value: string | undefined): string | null {
  * @returns Enhanced thesis data on success, or a validation/Gemini error message
  */
 export async function enrichThesisMatrixAction(
-  data: ThesisMatrixInput,
+  data: OnboardingFormData,
 ): Promise<{ success: true; data: EnhancedThesisData } | { error: string }> {
   const flowId = createFlowId();
   const log = new Logger(flowId);
@@ -55,43 +69,51 @@ export async function enrichThesisMatrixAction(
   });
 
   try {
-    const studyTitle = validateField(data.studyTitle);
-    const researchQuestion = validateField(data.researchQuestion);
-    const mainClaim = validateField(data.mainClaim);
-    const theoreticalFramework = validateField(data.theoreticalFramework);
-    const methodology = validateField(data.methodology);
-    const dataStrategy = validateField(data.dataStrategy);
-    const historicalLimits = validateField(data.historicalLimits);
-    const spatialLimits = validateField(data.spatialLimits);
-    const analyticalFocus = validateField(data.analyticalFocus);
-    if (!studyTitle)
-      return { error: "Çalışma başlığı en az 3 karakter olmalıdır." };
-    if (!researchQuestion)
-      return { error: "Araştırma sorusu en az 3 karakter olmalıdır." };
-    if (!mainClaim) return { error: "Temel iddia en az 3 karakter olmalıdır." };
-    if (!theoreticalFramework)
-      return { error: "Kuramsal çerçeve en az 3 karakter olmalıdır." };
-    if (!methodology)
-      return { error: "Metodoloji en az 3 karakter olmalıdır." };
-    if (!dataStrategy)
-      return { error: "Veri stratejisi en az 3 karakter olmalıdır." };
-    if (!historicalLimits)
-      return { error: "Tarihsel sınırlar en az 3 karakter olmalıdır." };
-    if (!spatialLimits)
-      return { error: "Mekânsal sınırlar en az 3 karakter olmalıdır." };
-    if (!analyticalFocus)
-      return { error: "Analitik odak en az 3 karakter olmalıdır." };
+    const studyTitle = validateField(data.studyTitle, "Çalışma başlığı");
+    if (!studyTitle.valid) return { error: studyTitle.error };
+    const researchQuestion = validateField(
+      data.researchQuestion,
+      "Araştırma sorusu",
+    );
+    if (!researchQuestion.valid) return { error: researchQuestion.error };
+    const mainClaim = validateField(data.mainClaim, "Temel iddia");
+    if (!mainClaim.valid) return { error: mainClaim.error };
+    const theoreticalFramework = validateField(
+      data.theoreticalFramework,
+      "Kuramsal çerçeve",
+    );
+    if (!theoreticalFramework.valid)
+      return { error: theoreticalFramework.error };
+    const methodology = validateField(data.methodology, "Metodoloji");
+    if (!methodology.valid) return { error: methodology.error };
+    const dataStrategy = validateField(data.dataStrategy, "Veri stratejisi");
+    if (!dataStrategy.valid) return { error: dataStrategy.error };
+    const historicalLimits = validateField(
+      data.historicalLimits,
+      "Tarihsel sınırlar",
+    );
+    if (!historicalLimits.valid) return { error: historicalLimits.error };
+    const spatialLimits = validateField(
+      data.spatialLimits,
+      "Mekânsal sınırlar",
+    );
+    if (!spatialLimits.valid) return { error: spatialLimits.error };
+    const analyticalFocus = validateField(
+      data.analyticalFocus,
+      "Analitik odak",
+    );
+    if (!analyticalFocus.valid) return { error: analyticalFocus.error };
 
     const matrixEnhancementPrompt = buildMatrixEnhancementPrompt({
-      studyTitle,
-      researchQuestion,
-      mainClaim,
-      theoreticalFramework,
-      methodology,
-      dataStrategy,
-      historicalLimits,
-      spatialLimits,
-      analyticalFocus,
+      studyTitle: studyTitle.value,
+      researchQuestion: researchQuestion.value,
+      mainClaim: mainClaim.value,
+      theoreticalFramework: theoreticalFramework.value,
+      methodology: methodology.value,
+      dataStrategy: dataStrategy.value,
+      historicalLimits: historicalLimits.value,
+      spatialLimits: spatialLimits.value,
+      analyticalFocus: analyticalFocus.value,
     });
 
     const enhancedData = await generateStructuredContent<EnhancedThesisData>(
@@ -100,7 +122,10 @@ export async function enrichThesisMatrixAction(
       matrixEnhancementPrompt,
       enhancedThesisSchema,
       log,
-      { thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM } },
+      {
+        thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
+        zodSchema: EnhancedThesisDataSchema,
+      },
     );
 
     log.info("matrix_enrichment_success", {
@@ -116,7 +141,17 @@ export async function enrichThesisMatrixAction(
       error,
       data: { context: "Tez matrisi zenginleştirme" },
     });
-    return { error: "Tez matrisi zenginleştirilirken bir hata oluştu." };
+
+    const scenario = classifyError(error);
+    const errorMessages: Record<ErrorScenario, string> = {
+      quota:
+        "Günlük yapay zeka analiz limitine ulaşıldı. Lütfen yarın tekrar deneyin.",
+      network:
+        "Yapay zeka servisine bağlanılamadı. İnternet bağlantınızı kontrol edin ve tekrar deneyin.",
+      system: "Tez matrisi zenginleştirilirken bir hata oluştu.",
+    };
+
+    return { error: errorMessages[scenario] };
   }
 }
 
@@ -160,7 +195,7 @@ export async function saveEnrichedMatrixAction(
         spatialLimits: enhancedData.spatialLimits,
         analyticalFocus: enhancedData.analyticalFocus,
         keywords: [],
-        updatedAt: new Date(),
+        updatedAt: sql`now()`,
       })
       .onConflictDoUpdate({
         target: thesisMatrices.userId,
@@ -176,7 +211,7 @@ export async function saveEnrichedMatrixAction(
           spatialLimits: enhancedData.spatialLimits,
           analyticalFocus: enhancedData.analyticalFocus,
           keywords: [],
-          updatedAt: new Date(),
+          updatedAt: sql`now()`,
         },
       });
 

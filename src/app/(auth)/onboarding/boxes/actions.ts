@@ -13,7 +13,11 @@ import {
   buildThesisBoxGenerationPrompt,
   thesisBoxGenerationSchema,
 } from "@/lib/prompts";
-import type { GeminiThesisBox, OnboardingActionResult } from "@/lib/types";
+import {
+  BoxGenerationResponseSchema,
+  type GeminiThesisBox,
+  type OnboardingActionResult,
+} from "@/lib/types";
 import { fetchThesisMatrix } from "../_lib/fetch-actions";
 
 /**
@@ -62,7 +66,10 @@ export async function generateBoxesAction(): Promise<
       geminiPrompt,
       thesisBoxGenerationSchema,
       log,
-      { thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH } },
+      {
+        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+        zodSchema: BoxGenerationResponseSchema,
+      },
     );
 
     const draftBoxes = generationResult.boxes || [];
@@ -125,6 +132,7 @@ export async function confirmBoxesAction(
       const boxValues = boxes.map((box) => ({
         thesisMatrixId,
         title: box.title,
+        boxType: box.boxType,
         description: box.description || "",
         semanticSearchBlock: box.semanticSearchBlock || "",
         foundationalQueries: box.foundationalQueries || [],

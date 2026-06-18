@@ -47,7 +47,7 @@ export async function searchTezaraPage(
     }
 
     const text = await response.text();
-    const results = parseRscTheses(text);
+    const results = parseRscTheses(text, logger);
     const durationMs = performance.now() - startTime;
 
     if (results.length === 0) {
@@ -122,7 +122,7 @@ export async function fetchThesisDetails(
     }
 
     const text = await response.text();
-    const refMap = extractRscTexts(text);
+    const refMap = extractRscTexts(text, logger);
 
     // Extract YÖK PDF direct link key URL if present in response
     const pdfMatch = text.match(
@@ -135,9 +135,9 @@ export async function fetchThesisDetails(
 
     for (const line of lines) {
       try {
-        const jsonObjects = extractJsonObjects(line);
+        const jsonObjects = extractJsonObjects(line, logger);
         for (const obj of jsonObjects) {
-          const found = findThesisObjRecursively(obj);
+          const found = findThesisObjRecursively(obj, undefined, 0, logger);
           if (found) {
             thesisObj = found;
             break;
@@ -147,7 +147,11 @@ export async function fetchThesisDetails(
           break;
         }
       } catch (err) {
-        void err;
+        logger?.error("parser_detail_fetch_failed", {
+          service: "tezara",
+          data: { thesisId: id, context: "fetchThesisDetails" },
+          error: err,
+        });
       }
     }
 

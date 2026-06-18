@@ -1,4 +1,5 @@
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import { z } from "zod";
 import type { Logger } from "./logger";
 
 export interface JsonSchemaProperty {
@@ -135,6 +136,7 @@ export async function generateStructuredContent<T>(
       thinkingLevel?: ThinkingLevel;
     } | null;
     payloadStage?: string;
+    zodSchema?: z.ZodType<T>;
   },
 ): Promise<T> {
   const startTime = performance.now();
@@ -166,7 +168,7 @@ export async function generateStructuredContent<T>(
             thinkingConfig: options?.thinkingConfig ?? undefined,
           },
         }),
-      3,
+      2,
       1000,
       logger,
     );
@@ -189,6 +191,33 @@ export async function generateStructuredContent<T>(
 
     // 2. Attempt parsing the cleaned text
     const parsed = JSON.parse(cleanedText) as T;
+
+    // 3. Runtime Zod schema validation (if provided)
+    const zodSchema = options?.zodSchema;
+    if (zodSchema) {
+      const validationResult = zodSchema.safeParse(parsed);
+      if (!validationResult.success) {
+        logger?.error("ai_schema_validation_failed", {
+          service: "gemini",
+          filePath: "src/lib/gemini.ts",
+          data: {
+            model: modelName,
+            errorCount: validationResult.error.issues.length,
+            issues: validationResult.error.issues.map((i) => ({
+              path: i.path.join("."),
+              message: i.message,
+            })),
+          },
+          error: new Error(
+            `Zod validation failed: ${validationResult.error.message}`,
+          ),
+        });
+        throw new Error(
+          "AI yanıtı beklenen yapısal şablona uymadı. Lütfen tekrar deneyin.",
+        );
+      }
+    }
+
     const durationMs = performance.now() - startTime;
     const metadata = (
       response as unknown as {

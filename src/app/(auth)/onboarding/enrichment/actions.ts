@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
 import { getSession } from "@/proxy";
@@ -50,7 +50,7 @@ export async function confirmEnhancedThesisAction(
         spatialLimits: data.spatialLimits,
         analyticalFocus: data.analyticalFocus,
         keywords: [],
-        updatedAt: new Date(),
+        updatedAt: sql`now()`,
       })
       .onConflictDoUpdate({
         target: thesisMatrices.userId,
@@ -64,7 +64,7 @@ export async function confirmEnhancedThesisAction(
           historicalLimits: data.historicalLimits,
           spatialLimits: data.spatialLimits,
           analyticalFocus: data.analyticalFocus,
-          updatedAt: new Date(),
+          updatedAt: sql`now()`,
         },
       });
 

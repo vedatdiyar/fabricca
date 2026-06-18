@@ -1,18 +1,26 @@
+import { z } from "zod";
+
 export type OnboardingActionResult =
   | { success: true; isProcessing?: boolean; error?: never }
   | { success?: never; error: string };
 
-export type EnhancedThesisData = {
-  academicStudyTitle: string;
-  literatureResearchQuestion: string;
-  refinedThesisClaim: string;
-  conceptualTheoreticalInfrastructure: string;
-  academicMethodologyDesign: string;
-  dataStrategy: string;
-  historicalLimits: string;
-  spatialLimits: string;
-  analyticalFocus: string;
-};
+export const EnhancedThesisDataSchema = z.object({
+  academicStudyTitle: z.string().min(1, "Çalışma başlığı boş olamaz"),
+  literatureResearchQuestion: z.string().min(1, "Araştırma sorusu boş olamaz"),
+  refinedThesisClaim: z.string().min(1, "Temel iddia boş olamaz"),
+  conceptualTheoreticalInfrastructure: z
+    .string()
+    .min(1, "Kuramsal altyapı boş olamaz"),
+  academicMethodologyDesign: z
+    .string()
+    .min(1, "Metodoloji tasarımı boş olamaz"),
+  dataStrategy: z.string().min(1, "Veri stratejisi boş olamaz"),
+  historicalLimits: z.string().min(1, "Tarihsel sınırlar boş olamaz"),
+  spatialLimits: z.string().min(1, "Mekânsal sınırlar boş olamaz"),
+  analyticalFocus: z.string().min(1, "Analitik odak boş olamaz"),
+});
+
+export type EnhancedThesisData = z.infer<typeof EnhancedThesisDataSchema>;
 
 export type EnhancedThesisActionResult =
   | { success: true; data: EnhancedThesisData; error?: never }
@@ -180,8 +188,52 @@ export interface FoundationalQuery {
   publicationYear: number;
 }
 
+export const GeminiThesisBoxSchema = z.object({
+  title: z.string().min(1, "Kutu başlığı boş olamaz"),
+  boxType: z.enum([
+    "Kuram",
+    "Literatür",
+    "Bağlam",
+    "Yöntem",
+    "Veri",
+    "Analiz",
+    "Katkı",
+  ]),
+  description: z.string().min(1, "Kutu açıklaması boş olamaz"),
+  semanticSearchBlock: z
+    .string()
+    .min(1, "Semantik arama bloğu boş olamaz")
+    .max(2000),
+  foundationalQueries: z
+    .array(
+      z.object({
+        author: z.string().min(1),
+        title: z.string().min(1),
+        publicationYear: z.number().int().positive(),
+      }),
+    )
+    .min(2)
+    .max(2),
+  concepts: z.array(z.string()).max(3),
+  selfCorrectionJustification: z
+    .string()
+    .min(1, "Öz-denetim gerekçesi boş olamaz"),
+});
+
+export const BoxGenerationResponseSchema = z.object({
+  boxes: z.array(GeminiThesisBoxSchema).min(1, "En az bir kutu üretilmelidir"),
+});
+
 export interface GeminiThesisBox {
   title: string;
+  boxType:
+    | "Kuram"
+    | "Literatür"
+    | "Bağlam"
+    | "Yöntem"
+    | "Veri"
+    | "Analiz"
+    | "Katkı";
   description: string;
   semanticSearchBlock: string;
   foundationalQueries: FoundationalQuery[];

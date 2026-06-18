@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
+import { getErrorDisplay } from "@/lib/error-utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -35,21 +36,28 @@ export function MatrixForm() {
 
   useEffect(() => {
     let cancelled = false;
-    fetchThesisMatrix().then((matrix) => {
-      if (cancelled) return;
-      if (matrix) {
-        setStudyTitle(matrix.studyTitle);
-        setResearchQuestion(matrix.researchQuestion);
-        setMainClaim(matrix.mainClaim);
-        setTheoreticalFramework(matrix.theoreticalFramework);
-        setMethodology(matrix.methodology);
-        setDataStrategy(matrix.dataStrategy);
-        setHistoricalLimits(matrix.historicalLimits);
-        setSpatialLimits(matrix.spatialLimits);
-        setAnalyticalFocus(matrix.analyticalFocus);
-      }
-      setLoading(false);
-    });
+    fetchThesisMatrix()
+      .then((matrix) => {
+        if (cancelled) return;
+        if (matrix) {
+          setStudyTitle(matrix.studyTitle);
+          setResearchQuestion(matrix.researchQuestion);
+          setMainClaim(matrix.mainClaim);
+          setTheoreticalFramework(matrix.theoreticalFramework);
+          setMethodology(matrix.methodology);
+          setDataStrategy(matrix.dataStrategy);
+          setHistoricalLimits(matrix.historicalLimits);
+          setSpatialLimits(matrix.spatialLimits);
+          setAnalyticalFocus(matrix.analyticalFocus);
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLoading(false);
+        const display = getErrorDisplay(err);
+        toast.error(`${display.title}: ${display.description}`);
+      });
     return () => {
       cancelled = true;
       hideLoading();
@@ -117,7 +125,6 @@ export function MatrixForm() {
       store.setBoxes(null);
       store.setLiteraturePool([]);
       store.setReportData(null);
-      store.setEnrichmentPool([]);
 
       toast.success("Tez matrisi başarıyla zenginleştirildi.");
       hideLoading();

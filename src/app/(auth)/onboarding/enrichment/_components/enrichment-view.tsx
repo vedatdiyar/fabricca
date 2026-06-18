@@ -19,6 +19,7 @@ import {
 import { fetchThesisMatrix } from "../../_lib/fetch-actions";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import type { LoadingStep } from "@/lib/store/onboarding-store";
+import { getErrorDisplay } from "@/lib/error-utils";
 import type { EnhancedThesisData } from "@/lib/types";
 
 const ANALYSIS_STEPS: LoadingStep[] = [
@@ -193,9 +194,11 @@ export function EnrichmentView() {
       setIsPending(false);
       toast.success("Tez matrisi kaydedildi. Risk analizi tamamlandı.");
       router.push("/onboarding/risk");
-    } catch {
+    } catch (error) {
       hideLoading();
-      toast.error("Bir hata oluştu.");
+      console.error(error);
+      const display = getErrorDisplay(error);
+      toast.error(`${display.title}: ${display.description}`);
       setIsPending(false);
     }
   };

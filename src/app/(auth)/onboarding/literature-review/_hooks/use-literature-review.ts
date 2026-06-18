@@ -115,18 +115,29 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
       if (!titlesMatch || contentChanged) {
         useOnboardingStore.getState().setLiteraturePool([]);
       }
-      // Merge foundationalQueries from Zustand store (if exists) into DB boxes
+      // Merge Zustand store boxes into DB boxes for the full GeminiThesisBox
+      // shape (boxType, foundationalQueries). Fall back to DB stored values
+      // when Zustand is empty so that data is never silently dropped on
+      // page refresh.
       const storeBoxMap = new Map(
-        (currentStore.boxes ?? []).map((b) => [b.title, b.foundationalQueries]),
+        (currentStore.boxes ?? []).map((b) => [b.title, b]),
       );
       setSubBoxes(
-        allBoxes.map((b) => ({
-          title: b.title,
-          description: b.description ?? "",
-          semanticSearchBlock: b.semanticSearchBlock ?? "",
-          foundationalQueries: storeBoxMap.get(b.title) ?? [],
-          concepts: b.concepts ?? [],
-        })),
+        allBoxes.map((b) => {
+          const stored = storeBoxMap.get(b.title);
+          return {
+            title: b.title,
+            boxType:
+              stored?.boxType ??
+              (b.boxType as GeminiThesisBox["boxType"]) ??
+              "Kuram",
+            description: b.description ?? "",
+            semanticSearchBlock: b.semanticSearchBlock ?? "",
+            foundationalQueries:
+              stored?.foundationalQueries ?? b.foundationalQueries ?? [],
+            concepts: b.concepts ?? [],
+          };
+        }),
       );
       setLoading(false);
     });
@@ -249,7 +260,6 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
         return;
       }
 
-      useOnboardingStore.getState().setEnrichmentPool([]);
       resetStore();
       setConfirming(false);
       toast.success("Tebrikler! Onboarding süreciniz tamamlandı.");

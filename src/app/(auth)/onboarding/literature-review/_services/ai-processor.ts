@@ -130,9 +130,21 @@ export async function runSiftingStage(
 // AI Jury Analysis Stage
 // ============================================================================
 
+interface JuryResponseItem {
+  id: string;
+  type: "PRIMARY" | "SECONDARY";
+  title: string;
+  abstract: string;
+  url: string;
+  doi: string;
+  publisher: string;
+  publicationYear: number;
+  authors: string[];
+}
+
 interface JuryResponse {
-  starterPack: JuryArticle[];
-  reservedPool: JuryArticle[];
+  starterPack: JuryResponseItem[];
+  reservedPool: JuryResponseItem[];
 }
 
 export async function runJuryStage(
@@ -142,7 +154,11 @@ export async function runJuryStage(
 ): Promise<LiteratureReviewResult> {
   logger.file("ai-processor.ts:144");
 
+  // Build a stable refId for each candidate so we can match Gemini's output
+  // back to the original data. This is the hallucination firewall: any article
+  // Gemini returns with an id NOT in this set is silently discarded.
   const juryCandidates = sifted.map((c) => ({
+    refId: c.openAlexId ?? c.doi ?? "title:" + c.title,
     doi: c.doi ?? "",
     title: c.title,
     abstract: c.abstract ?? "",
@@ -153,6 +169,8 @@ export async function runJuryStage(
     siftingScore:
       ((c as unknown as Record<string, unknown>).siftingScore as number) ?? 0,
   }));
+
+  const validRefIds = new Set(juryCandidates.map((c) => c.refId));
 
   // Build lookup for isFoundational backfill
   const foundationalLookup = new Map<string, boolean>();
@@ -197,13 +215,58 @@ export async function runJuryStage(
     },
   );
 
+  // ===== HALÜSİNASYON FİLTRESİ =====
+  // Gemini'ın döndürdüğü her makalenin id'si mutlaka girdi listesindeki refId'lerden
+  // biriyle eşleşmelidir. Eşleşmeyen uydurma kayıtlar sessizce atılır.
+  function filterHallucinated(items: JuryResponseItem[]): JuryResponseItem[] {
+    return items.filter((item) => item.id && validRefIds.has(item.id));
+  }
+
+  // id alanını sıyır → JuryArticle tipine dönüştür
+  function toJuryArticle(item: JuryResponseItem): JuryArticle {
+    return {
+      type: item.type,
+      title: item.title,
+      abstract: item.abstract,
+      url: item.url,
+      doi: item.doi,
+      publisher: item.publisher,
+      publicationYear: item.publicationYear,
+      authors: item.authors,
+    };
+  }
+
+  const filteredStarterPack = filterHallucinated(juryResult.starterPack).map(
+    toJuryArticle,
+  );
+  const filteredReservedPool = filterHallucinated(juryResult.reservedPool).map(
+    toJuryArticle,
+  );
+
+  const hallutotal =
+    juryResult.starterPack.length + juryResult.reservedPool.length;
+  const filteredTotal =
+    filteredStarterPack.length + filteredReservedPool.length;
+  const hallucinationCount = hallutotal - filteredTotal;
+
+  if (hallucinationCount > 0) {
+    logger.warn("literature_jury_hallucination_filtered", {
+      service: "literature",
+      filePath: "ai-processor.ts",
+      data: {
+        hallucinationCount,
+        boxTitle: box.title,
+      },
+    });
+  }
+
   const result = {
     starterPack: backfillIsFoundational(
-      juryResult.starterPack,
+      filteredStarterPack,
       foundationalLookup,
     ),
     reservedPool: backfillIsFoundational(
-      juryResult.reservedPool,
+      filteredReservedPool,
       foundationalLookup,
     ),
   };

@@ -44,6 +44,7 @@ export function BoxesContainer() {
           setBoxes(
             existing.map((b) => ({
               title: b.title,
+              boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "Kuram",
               description: b.description ?? "",
               semanticSearchBlock: b.semanticSearchBlock ?? "",
               foundationalQueries: b.foundationalQueries ?? [],
@@ -78,7 +79,6 @@ export function BoxesContainer() {
       const store = useOnboardingStore.getState();
       store.setLiteraturePool([]);
       store.setReportData(null);
-      store.setEnrichmentPool([]);
 
       setConfirming(false);
       toast.success(

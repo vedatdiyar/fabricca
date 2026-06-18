@@ -485,6 +485,7 @@ export async function resolveFoundationalWorks(
  */
 export async function fetchFullAbstracts(
   openAlexIds: string[],
+  logger?: Logger,
 ): Promise<Map<string, string>> {
   if (!openAlexIds || openAlexIds.length === 0) return new Map();
 
@@ -506,7 +507,18 @@ export async function fetchFullAbstracts(
       headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
       signal: AbortSignal.timeout(15000),
     });
-    if (!response.ok) return new Map();
+    if (!response.ok) {
+      logger?.warn("fetch_full_abstracts_failed", {
+        service: "openalex",
+        filePath:
+          "src/app/(auth)/onboarding/literature-review/_services/search-api.ts",
+        data: {
+          status: response.status,
+          idCount: openAlexIds.length,
+        },
+      });
+      return new Map();
+    }
 
     const data = (await response.json()) as {
       results?: Record<string, unknown>[];
@@ -530,7 +542,16 @@ export async function fetchFullAbstracts(
     }
 
     return abstractMap;
-  } catch {
+  } catch (err) {
+    logger?.warn("fetch_full_abstracts_exception", {
+      service: "openalex",
+      filePath:
+        "src/app/(auth)/onboarding/literature-review/_services/search-api.ts",
+      data: {
+        idCount: openAlexIds.length,
+        error: err instanceof Error ? err.message : String(err),
+      },
+    });
     return new Map();
   }
 }

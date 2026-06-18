@@ -1,3 +1,4 @@
+import type { Logger } from "./logger";
 import type { TezaraThesisSummary } from "./types";
 
 /**
@@ -33,9 +34,10 @@ export interface TezaraRawThesisObj {
  * RSC stream emits well-formed JSON so these cases rarely occur.
  *
  * @param text - The raw string input to search.
+ * @param logger - Optional logger instance.
  * @returns An array of parsed JSON objects.
  */
-export function extractJsonObjects(text: string): unknown[] {
+export function extractJsonObjects(text: string, logger?: Logger): unknown[] {
   const jsonObjects: unknown[] = [];
   if (typeof text !== "string") {
     return jsonObjects;
@@ -83,7 +85,14 @@ export function extractJsonObjects(text: string): unknown[] {
                 jsonObjects.push(parsed);
               }
             } catch (err) {
-              void err;
+              logger?.warn("parser_json_parse_failed", {
+                service: "tezara",
+                data: {
+                  context: "extractJsonObjects",
+                  snippet: candidate.slice(0, 80),
+                },
+                error: err,
+              });
             }
           }
         }
@@ -92,9 +101,10 @@ export function extractJsonObjects(text: string): unknown[] {
   }
 
   if (braceCount > 0) {
-    console.warn(
-      `[extractJsonObjects] Unclosed JSON object detected: braceCount=${braceCount}`,
-    );
+    logger?.warn("parser_unclosed_json", {
+      service: "tezara",
+      data: { braceCount },
+    });
   }
 
   return jsonObjects;
@@ -104,9 +114,13 @@ export function extractJsonObjects(text: string): unknown[] {
  * Extracts RSC stream text fragments mapped by their reference key.
  *
  * @param text - The raw RSC response text.
+ * @param logger - Optional logger instance.
  * @returns A mapping of reference IDs to their resolved text contents.
  */
-export function extractRscTexts(text: string): Record<string, string> {
+export function extractRscTexts(
+  text: string,
+  logger?: Logger,
+): Record<string, string> {
   const refMap: Record<string, string> = {};
   if (typeof text !== "string") {
     return refMap;
@@ -147,14 +161,22 @@ export function extractRscTexts(text: string): Record<string, string> {
             continue;
           }
         } catch (err) {
-          void err;
+          logger?.warn("parser_rsc_text_parse_failed", {
+            service: "tezara",
+            data: { context: "extractRscTexts", key },
+            error: err,
+          });
         }
       }
 
       // Fallback: save content as is, trimmed
       refMap[key] = content.trim();
     } catch (err) {
-      void err;
+      logger?.warn("parser_rsc_line_failed", {
+        service: "tezara",
+        data: { context: "extractRscTexts" },
+        error: err,
+      });
     }
   }
 
@@ -185,23 +207,59 @@ function mapToThesisSummary(
   };
 }
 
+const MAX_RECURSION_DEPTH = 10;
+
 /**
  * Recursively searches any value to find and extract objects that match the thesis summary structure.
  *
  * @param val - The value to scan.
  * @param results - The accumulator array of thesis summaries.
+ * @param visited - Set of already-visited objects for circular reference detection.
+ * @param depth - Current recursion depth.
+ * @param logger - Optional logger instance.
  */
 function findThesesRecursively(
   val: unknown,
   results: TezaraThesisSummary[],
+  visited?: Set<unknown>,
+  depth?: number,
+  logger?: Logger,
 ): void {
   if (!val || typeof val !== "object") {
     return;
   }
 
+  const currentDepth = depth ?? 0;
+  if (currentDepth > MAX_RECURSION_DEPTH) {
+    logger?.warn("parser_recursion_depth_exceeded", {
+      service: "tezara",
+      data: { context: "findThesesRecursively", depth: currentDepth },
+    });
+    return;
+  }
+
+  // Circular reference protection
+  if (visited) {
+    if (visited.has(val)) {
+      logger?.warn("parser_circular_reference_detected", {
+        service: "tezara",
+        data: { context: "findThesesRecursively" },
+      });
+      return;
+    }
+    visited.add(val);
+  }
+
   if (Array.isArray(val)) {
+    const nextVisited = visited ?? new Set<unknown>();
     for (const item of val) {
-      findThesesRecursively(item, results);
+      findThesesRecursively(
+        item,
+        results,
+        nextVisited,
+        currentDepth + 1,
+        logger,
+      );
     }
     return;
   }
@@ -222,11 +280,22 @@ function findThesesRecursively(
 
   // Recurse into all properties
   const keys = Object.keys(obj);
+  const nextVisited = visited ?? new Set<unknown>();
   for (const key of keys) {
     try {
-      findThesesRecursively(obj[key], results);
+      findThesesRecursively(
+        obj[key],
+        results,
+        nextVisited,
+        currentDepth + 1,
+        logger,
+      );
     } catch (err) {
-      void err;
+      logger?.error("parser_recursion_error", {
+        service: "tezara",
+        data: { context: "findThesesRecursively", key },
+        error: err,
+      });
     }
   }
 }
@@ -235,9 +304,13 @@ function findThesesRecursively(
  * Parses the thesis search results from raw RSC stream text response.
  *
  * @param text - The raw RSC response text.
+ * @param logger - Optional logger instance.
  * @returns A list of parsed thesis summary objects.
  */
-export function parseRscTheses(text: string): TezaraThesisSummary[] {
+export function parseRscTheses(
+  text: string,
+  logger?: Logger,
+): TezaraThesisSummary[] {
   const results: TezaraThesisSummary[] = [];
   if (typeof text !== "string") {
     return results;
@@ -246,7 +319,7 @@ export function parseRscTheses(text: string): TezaraThesisSummary[] {
   const lines = text.split("\n");
   for (const line of lines) {
     try {
-      const jsonObjects = extractJsonObjects(line);
+      const jsonObjects = extractJsonObjects(line, logger);
       for (const obj of jsonObjects) {
         if (!obj || typeof obj !== "object") {
           continue;
@@ -289,22 +362,47 @@ export function parseRscTheses(text: string): TezaraThesisSummary[] {
         }
       }
     } catch (err) {
-      void err;
+      logger?.error("parser_structure_parse_failed", {
+        service: "tezara",
+        data: { context: "parseRscTheses structured path" },
+        error: err,
+      });
     }
   }
 
   // Fallback: If no results were found via the structured path, search recursively
   if (results.length === 0) {
+    logger?.warn("parser_structured_path_empty", {
+      service: "tezara",
+      data: { context: "parseRscTheses — falling back to recursive search" },
+    });
     for (const line of lines) {
       try {
-        const jsonObjects = extractJsonObjects(line);
+        const jsonObjects = extractJsonObjects(line, logger);
         for (const obj of jsonObjects) {
-          findThesesRecursively(obj, results);
+          findThesesRecursively(obj, results, undefined, 0, logger);
         }
       } catch (err) {
-        void err;
+        logger?.error("parser_recursive_fallback_failed", {
+          service: "tezara",
+          data: { context: "parseRscTheses recursive fallback" },
+          error: err,
+        });
       }
     }
+  }
+
+  // If both paths returned empty, log a critical warning about possible RSC format drift
+  if (results.length === 0) {
+    logger?.error("parser_all_paths_empty", {
+      service: "tezara",
+      data: {
+        context:
+          "parseRscTheses — no theses found. Next.js RSC format may have changed.",
+        textLength: text.length,
+        lineCount: lines.length,
+      },
+    });
   }
 
   return results;
@@ -312,15 +410,43 @@ export function parseRscTheses(text: string): TezaraThesisSummary[] {
 
 /**
  * Recursively searches a JSON structure to find the thesis object details.
+ * Protected against stack overflow via max depth and circular reference detection.
  *
  * @param val - The value to scan.
+ * @param visited - Set of already-visited objects for circular reference detection.
+ * @param depth - Current recursion depth.
+ * @param logger - Optional logger instance.
  * @returns The found raw thesis object or null.
  */
 export function findThesisObjRecursively(
   val: unknown,
+  visited?: Set<unknown>,
+  depth?: number,
+  logger?: Logger,
 ): TezaraRawThesisObj | null {
   if (!val || typeof val !== "object") {
     return null;
+  }
+
+  const currentDepth = depth ?? 0;
+  if (currentDepth > MAX_RECURSION_DEPTH) {
+    logger?.warn("parser_recursion_depth_exceeded", {
+      service: "tezara",
+      data: { context: "findThesisObjRecursively", depth: currentDepth },
+    });
+    return null;
+  }
+
+  // Circular reference protection
+  if (visited) {
+    if (visited.has(val)) {
+      logger?.warn("parser_circular_reference_detected", {
+        service: "tezara",
+        data: { context: "findThesisObjRecursively" },
+      });
+      return null;
+    }
+    visited.add(val);
   }
 
   const obj = val as Record<string, unknown>;
@@ -347,14 +473,24 @@ export function findThesisObjRecursively(
 
   // Recurse into all keys
   const keys = Object.keys(obj);
+  const nextVisited = visited ?? new Set<unknown>();
   for (const key of keys) {
     try {
-      const result = findThesisObjRecursively(obj[key]);
+      const result = findThesisObjRecursively(
+        obj[key],
+        nextVisited,
+        currentDepth + 1,
+        logger,
+      );
       if (result) {
         return result;
       }
     } catch (err) {
-      void err;
+      logger?.error("parser_recursion_error", {
+        service: "tezara",
+        data: { context: "findThesisObjRecursively", key },
+        error: err,
+      });
     }
   }
 

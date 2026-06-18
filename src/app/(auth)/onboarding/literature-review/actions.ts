@@ -1,4 +1,4 @@
-"use server";
+export const maxDuration = 300;
 
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
@@ -216,7 +216,7 @@ async function processSingleBox(
 
   let abstractMap = new Map<string, string>();
   if (siftedIds.length > 0) {
-    abstractMap = await fetchFullAbstracts(siftedIds);
+    abstractMap = await fetchFullAbstracts(siftedIds, logger);
   }
 
   for (const p of sifted) {
@@ -325,6 +325,7 @@ async function processSingleBox(
 export async function processLiteratureReviewAction(
   subBoxes: SubBoxInput[],
 ): Promise<{ data?: LiteratureReviewResult[]; error?: string }> {
+  "use server";
   const logger = new Logger(createFlowId());
 
   try {
@@ -412,6 +413,7 @@ const COOKIE_NAME = "fabricca_session";
 export async function confirmLiteratureAction(args: {
   literaturePool: LiteraturePoolEntry[];
 }): Promise<OnboardingActionResult> {
+  "use server";
   const flowId = createFlowId();
   const log = new Logger(flowId);
   const startTime = performance.now();
@@ -462,7 +464,18 @@ export async function confirmLiteratureAction(args: {
         .from(thesisBoxes)
         .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
 
-      const boxMap = new Map(allBoxes.map((b) => [b.title, b.id]));
+      // Build a title→id map; detect duplicate titles that would silently
+      // overwrite each other (edge case: Gemini generates two boxes with
+      // the same title despite prompt-level safeguards).
+      const boxMap = new Map<string, number>();
+      for (const b of allBoxes) {
+        if (boxMap.has(b.title)) {
+          throw new Error(
+            `Aynı başlıkta birden fazla kutu bulundu: "${b.title}". Lütfen onboarding sürecini baştan başlatın.`,
+          );
+        }
+        boxMap.set(b.title, b.id);
+      }
 
       for (const entry of literaturePool) {
         const subBoxTitle = entry.subBoxTitle;
@@ -509,9 +522,13 @@ export async function confirmLiteratureAction(args: {
         }
       }
 
-      // 2d. Bulk insert all literature resources
+      // 2d. Bulk insert all literature resources (onConflictDoNothing guards
+      // against double-submit races — duplicate rows are silently skipped).
       if (allResources.length > 0) {
-        await tx.insert(libraryResources).values(allResources);
+        await tx
+          .insert(libraryResources)
+          .values(allResources)
+          .onConflictDoNothing();
       }
 
       // 2e. Mark onboarding as completed

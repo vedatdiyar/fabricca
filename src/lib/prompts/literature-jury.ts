@@ -13,6 +13,11 @@ export const literatureJuryAnalysisSchema: JsonSchema = {
       items: {
         type: "object",
         properties: {
+          id: {
+            type: "string",
+            description:
+              "Girdide sağlanan benzersiz referans anahtarı (OpenAlex ID, DOI veya title:başlık). EŞLEME İÇİN ZORUNLU — asla uydurma.",
+          },
           type: {
             type: "string",
             enum: ["PRIMARY", "SECONDARY"],
@@ -37,7 +42,7 @@ export const literatureJuryAnalysisSchema: JsonSchema = {
             description: "Yazar isimlerinin listesi",
           },
         },
-        required: ["type", "title", "doi", "authors"],
+        required: ["id", "type", "title", "doi", "authors"],
       },
     },
     reservedPool: {
@@ -47,6 +52,11 @@ export const literatureJuryAnalysisSchema: JsonSchema = {
       items: {
         type: "object",
         properties: {
+          id: {
+            type: "string",
+            description:
+              "Girdide sağlanan benzersiz referans anahtarı (OpenAlex ID, DOI veya title:başlık). EŞLEME İÇİN ZORUNLU — asla uydurma.",
+          },
           type: { type: "string", enum: ["PRIMARY", "SECONDARY"] },
           title: { type: "string" },
           abstract: { type: "string" },
@@ -56,7 +66,7 @@ export const literatureJuryAnalysisSchema: JsonSchema = {
           publicationYear: { type: "integer" },
           authors: { type: "array", items: { type: "string" } },
         },
-        required: ["type", "title", "doi", "authors"],
+        required: ["id", "type", "title", "doi", "authors"],
       },
     },
   },
@@ -138,6 +148,7 @@ _Not: 10.1016/j.soc.2019 doi'li makale siftingScore'u 64 olduğu ve barajın alt
 export function buildLiteratureJuryAnalysisPrompt(
   box: { title: string; description: string },
   siftedCandidates: {
+    refId: string;
     doi: string;
     title: string;
     abstract: string;

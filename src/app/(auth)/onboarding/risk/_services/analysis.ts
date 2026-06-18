@@ -29,7 +29,8 @@ export interface CalculatedOverlapItem {
   year: number;
   thesisType: string;
   department: string;
-  comparisonNote: string;
+  comparisonNote?: string;
+  yokPdfUrl?: string;
   axes: {
     subject: AxesOption;
     theory: AxesOption;
@@ -65,8 +66,11 @@ function badgeToRiskPercentage(
  * Gemini's holistic originality_level through to the output. This function
  * is deliberately passive — no axis counting, no weighted scoring.
  *
+ * Filters out IDs hallucinated by Gemini that don't exist in validDetails.
+ *
  * @param overlapTable - Raw overlap table from Gemini analysis.
  * @param validDetails - Enriched thesis metadata for ID lookup.
+ * @param logger - Optional logger instance.
  * @returns Enriched overlap table with Gemini's originality level and badge.
  */
 export function calculateOriginalityRisk(
@@ -80,6 +84,7 @@ export function calculateOriginalityRisk(
     context_overlap: "HIGH" | "PARTIAL" | "NONE";
   }>,
   validDetails: TezaraThesisDetails[],
+  logger?: Logger,
 ): CalculatedOriginalityRiskResult {
   if (validDetails.length === 0 || overlapTable.length === 0) {
     return {
@@ -89,13 +94,21 @@ export function calculateOriginalityRisk(
     };
   }
 
-  const calculatedOverlapTable = overlapTable.map((item) => {
+  const calculatedOverlapTable: CalculatedOverlapItem[] = [];
+  for (const item of overlapTable) {
     const detail = validDetails.find((d) => d.id === item.id);
     if (!detail) {
-      throw new Error(`Kaba elemeden gelen tez detayı bulunamadı: ${item.id}`);
+      logger?.warn("originality_hallucinated_id_filtered", {
+        service: "originality",
+        data: {
+          context: "calculateOriginalityRisk",
+          hallucinatedId: item.id,
+        },
+      });
+      continue;
     }
 
-    return {
+    calculatedOverlapTable.push({
       id: detail.id,
       title: detail.title,
       author: detail.author,
@@ -104,6 +117,7 @@ export function calculateOriginalityRisk(
       thesisType: detail.thesisType,
       department: detail.department,
       comparisonNote: item.academic_reasoning,
+      yokPdfUrl: detail.yokPdfUrl,
       axes: {
         subject: item.subject_overlap,
         theory: item.theory_overlap,
@@ -111,8 +125,8 @@ export function calculateOriginalityRisk(
         context: item.context_overlap,
       },
       originalityLevel: item.originality_level,
-    };
-  });
+    });
+  }
 
   const levels = new Set(calculatedOverlapTable.map((i) => i.originalityLevel));
   const RISK_PRIORITY = [

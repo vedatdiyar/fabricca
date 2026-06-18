@@ -309,6 +309,7 @@ export async function finalizeJuryAnalysisAction(params: {
       const riskCalcResult = calculateOriginalityRisk(
         overlapTable,
         validDetails,
+        log,
       );
 
       const strategicRecommendations = await synthesizeRoadmap(
@@ -412,9 +413,11 @@ export async function completeRiskStageAction(): Promise<OnboardingActionResult>
       .where(eq(thesisMatrices.userId, session.userId));
 
     if (matrix) {
-      await db
-        .delete(thesisBoxes)
-        .where(eq(thesisBoxes.thesisMatrixId, matrix.id));
+      await db.transaction(async (tx) => {
+        await tx
+          .delete(thesisBoxes)
+          .where(eq(thesisBoxes.thesisMatrixId, matrix.id));
+      });
     }
 
     revalidatePath("/onboarding", "layout");
