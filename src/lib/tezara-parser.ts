@@ -168,7 +168,9 @@ export function extractRscTexts(text: string): Record<string, string> {
  * @param raw - The raw object from the Tezara response
  * @returns A typed summary object, or null
  */
-function mapToThesisSummary(raw: Record<string, unknown>): TezaraThesisSummary | null {
+function mapToThesisSummary(
+  raw: Record<string, unknown>,
+): TezaraThesisSummary | null {
   const id = Number(raw.id ?? 0);
   if (!id) return null;
 
@@ -189,7 +191,10 @@ function mapToThesisSummary(raw: Record<string, unknown>): TezaraThesisSummary |
  * @param val - The value to scan.
  * @param results - The accumulator array of thesis summaries.
  */
-function findThesesRecursively(val: unknown, results: TezaraThesisSummary[]): void {
+function findThesesRecursively(
+  val: unknown,
+  results: TezaraThesisSummary[],
+): void {
   if (!val || typeof val !== "object") {
     return;
   }
@@ -250,7 +255,10 @@ export function parseRscTheses(text: string): TezaraThesisSummary[] {
         const record = obj as Record<string, unknown>;
 
         // Navigate the standard Next.js query cache state structure safely
-        const queries = (record?.state as Record<string, unknown>)?.queries || (record?.queries as unknown[]) || [];
+        const queries =
+          (record?.state as Record<string, unknown>)?.queries ||
+          (record?.queries as unknown[]) ||
+          [];
         if (Array.isArray(queries)) {
           for (const q of queries) {
             if (
@@ -267,7 +275,9 @@ export function parseRscTheses(text: string): TezaraThesisSummary[] {
               if (Array.isArray(hits)) {
                 for (const hit of hits) {
                   if (hit && typeof hit === "object") {
-                    const summary = mapToThesisSummary(hit as Record<string, unknown>);
+                    const summary = mapToThesisSummary(
+                      hit as Record<string, unknown>,
+                    );
                     if (summary && !results.some((r) => r.id === summary.id)) {
                       results.push(summary);
                     }
@@ -306,7 +316,9 @@ export function parseRscTheses(text: string): TezaraThesisSummary[] {
  * @param val - The value to scan.
  * @returns The found raw thesis object or null.
  */
-export function findThesisObjRecursively(val: unknown): TezaraRawThesisObj | null {
+export function findThesisObjRecursively(
+  val: unknown,
+): TezaraRawThesisObj | null {
   if (!val || typeof val !== "object") {
     return null;
   }

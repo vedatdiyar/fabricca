@@ -1,6 +1,5 @@
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
-import { extractMessage } from "@/lib/error-utils";
 import type { Logger } from "@/lib/logger";
 import {
   factQueryExtractionSchema,
@@ -59,10 +58,9 @@ export async function extractQueries(
 }> {
   log.file("queries.ts:32");
   const startTime = performance.now();
-  log.info({
-    step: "extract_queries",
-    status: "START",
-    studyTitle: params.studyTitle,
+  log.info("originality_queries_extract_start", {
+    service: "originality",
+    data: { context: params.studyTitle },
   });
 
   try {
@@ -140,21 +138,18 @@ export async function extractQueries(
     const combos3 = getCombinations(keywords, 3);
     tezaraQueries.push(...combos2, ...combos3);
 
-    const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
+    const durationMs = performance.now() - startTime;
     const tokens = log.lastTokens ?? { input: 0, output: 0 };
 
     log.preview("Extracted Tavily Queries", finalTavilyQueries);
 
-    log.info({
-      step: "extract_queries",
-      status: "SUCCESS",
-      metrics: {
-        duration,
-        tokens: {
-          prompt: tokens.input ?? 0,
-          completion: tokens.output ?? 0,
-        },
-        outputRows: finalTavilyQueries.length + tezaraQueries.length,
+    log.info("originality_queries_extract_success", {
+      service: "originality",
+      durationMs,
+      tokens: { input: tokens.input ?? 0, output: tokens.output ?? 0 },
+      data: {
+        count: finalTavilyQueries.length + tezaraQueries.length,
+        context: params.studyTitle,
       },
     });
 
@@ -164,14 +159,10 @@ export async function extractQueries(
       keywords,
     };
   } catch (err) {
-    log.error({
-      step: "extract_queries",
-      status: "FAILED",
-      diagnostics: {
-        errorCode: "GEMINI_EXTRACTION_ERROR",
-        message: extractMessage(err),
-        model: "gemini-3.1-flash-lite",
-      },
+    log.error("originality_queries_extract_failed", {
+      service: "originality",
+      error: err,
+      data: { context: params.studyTitle },
     });
     throw err;
   }

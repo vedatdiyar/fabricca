@@ -11,9 +11,7 @@ interface LibraryContentProps {
 }
 
 export function LibraryContent({ boxes }: LibraryContentProps) {
-  const [selectedBoxId, setSelectedBoxId] = useState<number>(
-    boxes[0]?.id ?? 0
-  );
+  const [selectedBoxId, setSelectedBoxId] = useState<number>(boxes[0]?.id ?? 0);
 
   const selectedBox = boxes.find((b) => b.id === selectedBoxId);
 
@@ -56,9 +54,7 @@ export function LibraryContent({ boxes }: LibraryContentProps) {
                       : "text-muted-foreground hover:bg-muted/20 hover:text-foreground"
                   }`}
                 >
-                  <span className="line-clamp-2 leading-snug">
-                    {box.title}
-                  </span>
+                  <span className="line-clamp-2 leading-snug">{box.title}</span>
                 </button>
               ))}
             </div>

@@ -215,7 +215,10 @@ export function EnrichmentView() {
           <form onSubmit={handleConfirm} className="w-full space-y-6">
             <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="calismaBasligi" className="block font-semibold text-foreground">
+                <Label
+                  htmlFor="calismaBasligi"
+                  className="block font-semibold text-foreground"
+                >
                   Çalışma Başlığı
                 </Label>
                 <Textarea
@@ -227,7 +230,10 @@ export function EnrichmentView() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="arastirmaSorusu" className="block font-semibold text-foreground">
+                <Label
+                  htmlFor="arastirmaSorusu"
+                  className="block font-semibold text-foreground"
+                >
                   Araştırma Sorusu
                 </Label>
                 <Textarea
@@ -239,7 +245,10 @@ export function EnrichmentView() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="temelIddia" className="block font-semibold text-foreground">
+                <Label
+                  htmlFor="temelIddia"
+                  className="block font-semibold text-foreground"
+                >
                   Temel İddia
                 </Label>
                 <Textarea
@@ -251,7 +260,10 @@ export function EnrichmentView() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="kuramsalCerceve" className="block font-semibold text-foreground">
+                <Label
+                  htmlFor="kuramsalCerceve"
+                  className="block font-semibold text-foreground"
+                >
                   Kavramsal ve Kuramsal Altyapı
                 </Label>
                 <Textarea
@@ -263,7 +275,10 @@ export function EnrichmentView() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="metodoloji" className="block font-semibold text-foreground">
+                <Label
+                  htmlFor="metodoloji"
+                  className="block font-semibold text-foreground"
+                >
                   Metodoloji Tasarımı
                 </Label>
                 <Textarea
@@ -275,7 +290,10 @@ export function EnrichmentView() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="veriStratejisi" className="block font-semibold text-foreground">
+                <Label
+                  htmlFor="veriStratejisi"
+                  className="block font-semibold text-foreground"
+                >
                   Veri Stratejisi
                 </Label>
                 <Textarea
@@ -287,7 +305,10 @@ export function EnrichmentView() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="tarihselSinirlar" className="block font-semibold text-foreground">
+                <Label
+                  htmlFor="tarihselSinirlar"
+                  className="block font-semibold text-foreground"
+                >
                   Tarihsel Sınırlar
                 </Label>
                 <Textarea
@@ -299,7 +320,10 @@ export function EnrichmentView() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="mekansalSinirlar" className="block font-semibold text-foreground">
+                <Label
+                  htmlFor="mekansalSinirlar"
+                  className="block font-semibold text-foreground"
+                >
                   Mekânsal Sınırlar
                 </Label>
                 <Textarea
@@ -311,7 +335,10 @@ export function EnrichmentView() {
                 />
               </div>
               <div className="md:col-span-full space-y-2">
-                <Label htmlFor="analitikOdak" className="block font-semibold text-foreground">
+                <Label
+                  htmlFor="analitikOdak"
+                  className="block font-semibold text-foreground"
+                >
                   Analitik Odak
                 </Label>
                 <Textarea

@@ -2,7 +2,6 @@ import { ThinkingLevel } from "@google/genai";
 import { tavilySearch } from "@/lib/tavily";
 import { searchTezara } from "@/lib/tezara";
 import { generateStructuredContent } from "@/lib/gemini";
-import { extractMessage } from "@/lib/error-utils";
 import type { Logger } from "@/lib/logger";
 import type {
   TezaraThesisSummary,
@@ -34,11 +33,13 @@ export async function executeParallelSearch(
   tezaraSearchResults: TezaraThesisSummary[][];
 }> {
   const startTime = performance.now();
-  log.info({
-    step: "parallel_search",
-    status: "START",
-    tavilyQueryCount: tavilyQueries.length,
-    tezaraQueryCount: tezaraQueries.length,
+  log.info("originality_search_parallel_start", {
+    service: "originality",
+    data: {
+      count: tavilyQueries.length + tezaraQueries.length,
+      tavilyQueryCount: tavilyQueries.length,
+      tezaraQueryCount: tezaraQueries.length,
+    },
   });
 
   try {
@@ -47,14 +48,10 @@ export async function executeParallelSearch(
         const res = await tavilySearch(query, log);
         return { query, results: res.results };
       } catch (err) {
-        log.error({
-          step: "tavily_search",
-          status: "FAILED",
-          diagnostics: {
-            errorCode: "TAVILY_SEARCH_ERROR",
-            query,
-            message: extractMessage(err),
-          },
+        log.error("originality_search_tavily_failed", {
+          service: "originality",
+          error: err,
+          data: { query, context: `Sorgu: ${query}` },
         });
         return { query, results: [] };
       }
@@ -64,14 +61,10 @@ export async function executeParallelSearch(
       try {
         return await searchTezara(query, log, true);
       } catch (err) {
-        log.error({
-          step: "tezara_search",
-          status: "FAILED",
-          diagnostics: {
-            errorCode: "TEZARA_SEARCH_ERROR",
-            query,
-            message: extractMessage(err),
-          },
+        log.error("originality_search_tezara_failed", {
+          service: "originality",
+          error: err,
+          data: { query, context: `Sorgu: ${query}` },
         });
         return [];
       }
@@ -90,12 +83,11 @@ export async function executeParallelSearch(
       (sum, list) => sum + list.length,
       0,
     );
-    const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
-    log.info({
-      step: "parallel_search",
-      status: "SUCCESS",
-      metrics: {
-        duration,
+    const durationMs = performance.now() - startTime;
+    log.info("originality_search_parallel_success", {
+      service: "originality",
+      durationMs,
+      data: {
         resultCount: tavilyResultCount + tezaraResultCount,
       },
     });
@@ -105,13 +97,9 @@ export async function executeParallelSearch(
       tezaraSearchResults,
     };
   } catch (err) {
-    log.error({
-      step: "parallel_search",
-      status: "FAILED",
-      diagnostics: {
-        errorCode: "SEARCH_EXECUTION_ERROR",
-        message: extractMessage(err),
-      },
+    log.error("originality_search_parallel_failed", {
+      service: "originality",
+      error: err,
     });
     throw err;
   }
@@ -138,10 +126,9 @@ export async function evaluateTavilyResults(
   log: Logger,
 ): Promise<TavilyEvaluationResponse> {
   const startTime = performance.now();
-  log.info({
-    step: "evaluate_tavily",
-    status: "START",
-    studyTitle: params.studyTitle,
+  log.info("originality_search_tavily_eval_start", {
+    service: "originality",
+    data: { context: params.studyTitle },
   });
 
   try {
@@ -176,19 +163,16 @@ export async function evaluateTavilyResults(
       ? tavilyEvaluation.items
       : [];
 
-    const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
+    const durationMs = performance.now() - startTime;
     const tokens = log.lastTokens || { input: 0, output: 0 };
 
-    log.info({
-      step: "evaluate_tavily",
-      status: "SUCCESS",
-      metrics: {
-        duration,
-        tokens: {
-          prompt: tokens.input ?? 0,
-          completion: tokens.output ?? 0,
-        },
-        outputRows: safeFactItems.length,
+    log.info("originality_search_tavily_eval_success", {
+      service: "originality",
+      durationMs,
+      tokens: { input: tokens.input ?? 0, output: tokens.output ?? 0 },
+      data: {
+        resultCount: safeFactItems.length,
+        context: params.studyTitle,
       },
     });
 
@@ -198,14 +182,10 @@ export async function evaluateTavilyResults(
         tavilyEvaluation?.briefingNote || "Maddi doğrulama analizi tamamlandı.",
     };
   } catch (err) {
-    log.error({
-      step: "evaluate_tavily",
-      status: "FAILED",
-      diagnostics: {
-        errorCode: "GEMINI_EVALUATION_ERROR",
-        message: extractMessage(err),
-        model: "gemini-3.1-flash-lite",
-      },
+    log.error("originality_search_tavily_eval_failed", {
+      service: "originality",
+      error: err,
+      data: { context: params.studyTitle },
     });
     throw err;
   }

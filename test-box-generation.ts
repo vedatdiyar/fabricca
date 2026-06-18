@@ -123,9 +123,7 @@ async function runSingleTest(runNumber: number): Promise<void> {
   const systemInstruction = buildThesisBoxGenerationSystemInstruction();
   const userPrompt = buildThesisBoxGenerationPrompt(thesisInput);
 
-  console.log(
-    `  Sistem talimatı: ${systemInstruction.length} karakter`,
-  );
+  console.log(`  Sistem talimatı: ${systemInstruction.length} karakter`);
   console.log(`  Kullanıcı promptu: ${userPrompt.length} karakter`);
   console.log(`  Model: gemini-3.1-flash-lite`);
 
@@ -150,12 +148,14 @@ async function runSingleTest(runNumber: number): Promise<void> {
   boxes.forEach((box, i) => {
     console.log("─".repeat(70));
     console.log(`  KUTU ${i + 1}: ${box.title}`);
-    console.log(`  Tip: ${(box as GeminiThesisBox & { boxType?: string }).boxType ?? "belirtilmemiş"}`);
-    console.log(`  Açıklama: ${box.description}`);
     console.log(
-      `  Kavramlar: ${(box.concepts ?? []).join(", ")}`,
+      `  Tip: ${(box as GeminiThesisBox & { boxType?: string }).boxType ?? "belirtilmemiş"}`,
     );
-    console.log(`  Semantic Search Block: ${box.semanticSearchBlock ? box.semanticSearchBlock.slice(0, 120) + "..." : "YOK"}`);
+    console.log(`  Açıklama: ${box.description}`);
+    console.log(`  Kavramlar: ${(box.concepts ?? []).join(", ")}`);
+    console.log(
+      `  Semantic Search Block: ${box.semanticSearchBlock ? box.semanticSearchBlock.slice(0, 120) + "..." : "YOK"}`,
+    );
     if (box.foundationalQueries && box.foundationalQueries.length > 0) {
       console.log(`  Kurucu Eserler:`);
       box.foundationalQueries.forEach((fq) => {
@@ -182,15 +182,14 @@ async function runSingleTest(runNumber: number): Promise<void> {
       if (!box.description) errors.push(`❌ Kutu ${i + 1}: description eksik`);
       if (!box.semanticSearchBlock)
         errors.push(`❌ Kutu ${i + 1}: semanticSearchBlock eksik`);
-      if (
-        !box.foundationalQueries ||
-        box.foundationalQueries.length === 0
-      ) {
+      if (!box.foundationalQueries || box.foundationalQueries.length === 0) {
         errors.push(`❌ Kutu ${i + 1}: foundationalQueries eksik`);
       } else {
         box.foundationalQueries.forEach((fq, j) => {
-          if (!fq.author) errors.push(`❌ Kutu ${i + 1}: FQ ${j + 1} author eksik`);
-          if (!fq.title) errors.push(`❌ Kutu ${i + 1}: FQ ${j + 1} title eksik`);
+          if (!fq.author)
+            errors.push(`❌ Kutu ${i + 1}: FQ ${j + 1} author eksik`);
+          if (!fq.title)
+            errors.push(`❌ Kutu ${i + 1}: FQ ${j + 1} title eksik`);
           if (!fq.publicationYear)
             errors.push(`❌ Kutu ${i + 1}: FQ ${j + 1} publicationYear eksik`);
         });
@@ -207,13 +206,23 @@ async function runSingleTest(runNumber: number): Promise<void> {
   }
 
   // İstatistik topla
-  results.push({ run: runNumber, boxCount: boxes.length, duration: parseFloat(duration), errors: errors.length });
+  results.push({
+    run: runNumber,
+    boxCount: boxes.length,
+    duration: parseFloat(duration),
+    errors: errors.length,
+  });
 }
 
 // ============================================================================
 // ANA TEST FONKSİYONU
 // ============================================================================
-const results: { run: number; boxCount: number; duration: number; errors: number }[] = [];
+const results: {
+  run: number;
+  boxCount: number;
+  duration: number;
+  errors: number;
+}[] = [];
 
 async function main() {
   console.log("=".repeat(80));
@@ -245,9 +254,7 @@ async function main() {
     if (r.status === "rejected") {
       const err = r.reason;
       console.log(`\n❌ TEST ${runNum} BAŞARISIZ!`);
-      console.log(
-        `Hata: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      console.log(`Hata: ${err instanceof Error ? err.message : String(err)}`);
       if (err instanceof Error && err.stack) {
         console.log(`Stack: ${err.stack}`);
       }
@@ -259,15 +266,21 @@ async function main() {
   console.log("\n" + "=".repeat(80));
   console.log("📊 ÖZET TABLOSU");
   console.log("=".repeat(80));
-  console.log(`  ${"Run".padStart(4)} | ${"Kutu".padStart(4)} | ${"Süre".padStart(7)} | ${"Hata".padStart(5)}`);
+  console.log(
+    `  ${"Run".padStart(4)} | ${"Kutu".padStart(4)} | ${"Süre".padStart(7)} | ${"Hata".padStart(5)}`,
+  );
   console.log("  " + "─".repeat(30));
   for (const r of results) {
-    console.log(`  ${String(r.run).padStart(4)} | ${String(r.boxCount).padStart(4)} | ${r.duration.toFixed(1).padStart(7)}s | ${String(r.errors).padStart(5)}`);
+    console.log(
+      `  ${String(r.run).padStart(4)} | ${String(r.boxCount).padStart(4)} | ${r.duration.toFixed(1).padStart(7)}s | ${String(r.errors).padStart(5)}`,
+    );
   }
   console.log("  " + "─".repeat(30));
   const avgBox = results.reduce((s, r) => s + r.boxCount, 0) / results.length;
   const avgDur = results.reduce((s, r) => s + r.duration, 0) / results.length;
-  console.log(`  Ort. kutu: ${avgBox.toFixed(1)} | Ort. süre: ${avgDur.toFixed(1)}s`);
+  console.log(
+    `  Ort. kutu: ${avgBox.toFixed(1)} | Ort. süre: ${avgDur.toFixed(1)}s`,
+  );
   console.log("=".repeat(80));
 }
 

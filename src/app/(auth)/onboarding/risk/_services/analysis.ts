@@ -1,6 +1,5 @@
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
-import { extractMessage } from "@/lib/error-utils";
 import type { Logger } from "@/lib/logger";
 import type { AxesOption, TezaraThesisDetails } from "@/lib/types";
 import {
@@ -195,10 +194,12 @@ export async function analyzeOriginalityRisk(
 }> {
   log.file("analysis.ts:42");
   const startTime = performance.now();
-  log.info({
-    step: "analyze_originality_risk",
-    status: "START",
-    thesisCount: params.validDetails.length,
+  log.info("originality_risk_analyze_start", {
+    service: "originality",
+    data: {
+      count: params.validDetails.length,
+      context: params.studyTitle,
+    },
   });
 
   try {
@@ -248,32 +249,26 @@ export async function analyzeOriginalityRisk(
       })),
     );
 
-    const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
+    const durationMs = performance.now() - startTime;
     const tokens = log.lastTokens || { input: 0, output: 0 };
 
-    log.info({
-      step: "analyze_originality_risk",
-      status: "SUCCESS",
-      metrics: {
-        duration,
-        tokens: {
-          prompt: tokens.input ?? 0,
-          completion: tokens.output ?? 0,
-        },
-        outputRows: overlapTable.length,
+    log.info("originality_risk_analyze_success", {
+      service: "originality",
+      durationMs,
+      tokens: { input: tokens.input ?? 0, output: tokens.output ?? 0 },
+      data: {
+        count: params.validDetails.length,
+        resultCount: overlapTable.length,
+        context: params.studyTitle,
       },
     });
 
     return { overlapTable };
   } catch (err) {
-    log.error({
-      step: "analyze_originality_risk",
-      status: "FAILED",
-      diagnostics: {
-        errorCode: "GEMINI_ANALYSIS_ERROR",
-        message: extractMessage(err),
-        model: "gemini-3.1-flash-lite",
-      },
+    log.error("originality_risk_analyze_failed", {
+      service: "originality",
+      error: err,
+      data: { context: params.studyTitle },
     });
     throw err;
   }

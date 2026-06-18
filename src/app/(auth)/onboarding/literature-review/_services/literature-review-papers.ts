@@ -48,9 +48,7 @@ export interface ValidatedPaper {
 // DOI Merge & Deduplication
 // ============================================================================
 
-export function mergePapers(
-  papers: RawPaper[],
-): ValidatedPaper[] {
+export function mergePapers(papers: RawPaper[]): ValidatedPaper[] {
   const doiMap = new Map<string, ValidatedPaper>();
   const openAlexIdMap = new Map<string, ValidatedPaper>();
   const noDoiPapers: ValidatedPaper[] = [];
@@ -81,7 +79,8 @@ export function mergePapers(
         existing.publisher = existing.publisher ?? paper.publisher;
         existing.openAlexId = existing.openAlexId ?? paper.openAlexId;
         if (paper.isFoundational) existing.isFoundational = true;
-        if (paper.relevanceScore > existing.relevanceScore) existing.relevanceScore = paper.relevanceScore;
+        if (paper.relevanceScore > existing.relevanceScore)
+          existing.relevanceScore = paper.relevanceScore;
         const existingSet = new Set(existing.authors);
         for (const a of paper.authors) {
           if (!existingSet.has(a)) {
@@ -101,7 +100,8 @@ export function mergePapers(
         existing.year = existing.year ?? paper.year;
         existing.publisher = existing.publisher ?? paper.publisher;
         if (paper.isFoundational) existing.isFoundational = true;
-        if (paper.relevanceScore > existing.relevanceScore) existing.relevanceScore = paper.relevanceScore;
+        if (paper.relevanceScore > existing.relevanceScore)
+          existing.relevanceScore = paper.relevanceScore;
       } else {
         openAlexIdMap.set(paper.openAlexId, { ...paper });
       }

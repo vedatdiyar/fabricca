@@ -31,7 +31,7 @@ export type ReplenishResult =
  * @returns Approved resources array wrapped in a result object, or a user-safe error message
  */
 export async function getApprovedResourcesAction(
-  boxId: number
+  boxId: number,
 ): Promise<GetApprovedResourcesResult> {
   const flowId = createFlowId();
   const log = new Logger(flowId);
@@ -48,8 +48,8 @@ export async function getApprovedResourcesAction(
       .where(
         and(
           eq(libraryResources.thesisBoxId, boxId),
-          eq(libraryResources.status, "APPROVED")
-        )
+          eq(libraryResources.status, "APPROVED"),
+        ),
       )
       .orderBy(asc(libraryResources.id));
 
@@ -72,7 +72,7 @@ export async function getApprovedResourcesAction(
  */
 export async function toggleResourceReadStatusAction(
   resourceId: number,
-  isRead: boolean
+  isRead: boolean,
 ): Promise<ToggleReadStatusResult> {
   const flowId = createFlowId();
   const log = new Logger(flowId);
@@ -112,7 +112,7 @@ export async function toggleResourceReadStatusAction(
  * @returns Newly promoted resources wrapped in a result object, or a user-safe error message
  */
 export async function replenishFromReservedAction(
-  boxId: number
+  boxId: number,
 ): Promise<ReplenishResult> {
   const flowId = createFlowId();
   const log = new Logger(flowId);
@@ -130,8 +130,8 @@ export async function replenishFromReservedAction(
       .where(
         and(
           eq(libraryResources.thesisBoxId, boxId),
-          eq(libraryResources.status, "APPROVED")
-        )
+          eq(libraryResources.status, "APPROVED"),
+        ),
       );
 
     const allRead =
@@ -152,14 +152,17 @@ export async function replenishFromReservedAction(
         .where(
           and(
             eq(libraryResources.thesisBoxId, boxId),
-            eq(libraryResources.status, "RESERVED")
-          )
+            eq(libraryResources.status, "RESERVED"),
+          ),
         )
         .orderBy(asc(libraryResources.id))
         .limit(5);
 
       if (reservedBatch.length === 0) {
-        return { promoted: null as LibraryResource[] | null, remainingCount: 0 };
+        return {
+          promoted: null as LibraryResource[] | null,
+          remainingCount: 0,
+        };
       }
 
       const batchIds = reservedBatch.map((r) => r.id);
@@ -174,8 +177,8 @@ export async function replenishFromReservedAction(
         .where(
           and(
             eq(libraryResources.thesisBoxId, boxId),
-            eq(libraryResources.status, "RESERVED")
-          )
+            eq(libraryResources.status, "RESERVED"),
+          ),
         );
 
       return { promoted: reservedBatch, remainingCount };
@@ -207,5 +210,3 @@ export async function replenishFromReservedAction(
     return { success: false, error: "Kaynaklar yenilenirken bir hata oluştu." };
   }
 }
-
-

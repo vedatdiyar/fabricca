@@ -189,7 +189,7 @@ export function TezaraOverlapTable({
                       </td>
                       <td className="p-3 text-center">
                         <span
-                           className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${getBadgeColor(item.axes.context || "NONE")}`}
+                          className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${getBadgeColor(item.axes.context || "NONE")}`}
                         >
                           {statusTranslation[item.axes.context || "NONE"] ||
                             item.axes.context}

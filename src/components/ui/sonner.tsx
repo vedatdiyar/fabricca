@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   CircleCheck,
@@ -6,14 +6,14 @@ import {
   LoaderCircle,
   OctagonX,
   TriangleAlert,
-} from "lucide-react"
-import { useTheme } from "next-themes"
-import { Toaster as Sonner } from "sonner"
+} from "lucide-react";
+import { useTheme } from "next-themes";
+import { Toaster as Sonner } from "sonner";
 
-type ToasterProps = React.ComponentProps<typeof Sonner>
+type ToasterProps = React.ComponentProps<typeof Sonner>;
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
+  const { theme = "system" } = useTheme();
 
   return (
     <Sonner
@@ -30,14 +30,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
         classNames: {
           toast:
             "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
-          error:
-            "bg-destructive/10 border-destructive/20 text-destructive",
-          success:
-            "bg-success/10 border-success/20 text-success",
-          warning:
-            "bg-warning/10 border-warning/20 text-warning",
-          info:
-            "bg-info/10 border-info/20 text-info",
+          error: "bg-destructive/10 border-destructive/20 text-destructive",
+          success: "bg-success/10 border-success/20 text-success",
+          warning: "bg-warning/10 border-warning/20 text-warning",
+          info: "bg-info/10 border-info/20 text-info",
           description: "group-[.toast]:text-muted-foreground",
           actionButton:
             "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
@@ -47,7 +43,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }}
       {...props}
     />
-  )
-}
+  );
+};
 
-export { Toaster }
+export { Toaster };

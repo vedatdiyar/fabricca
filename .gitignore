@@ -43,6 +43,9 @@ next-env.d.ts
 .vscode
 
 # AI Context Files
-repomix-output.txt
+repomix-output.xml
 repomix.config.json
 repomix-instruction.md
+
+# prettier
+.prettierignore

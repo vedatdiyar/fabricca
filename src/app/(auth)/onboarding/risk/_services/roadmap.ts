@@ -1,6 +1,5 @@
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
-import { extractMessage } from "@/lib/error-utils";
 import type { Logger } from "@/lib/logger";
 import {
   roadmapSchema,
@@ -46,10 +45,12 @@ export async function synthesizeRoadmap(
 ): Promise<string> {
   log.file("roadmap.ts:42");
   const startTime = performance.now();
-  log.info({
-    step: "synthesize_roadmap",
-    status: "START",
-    comparisonCount: params.comparisonResults.length,
+  log.info("originality_roadmap_synthesize_start", {
+    service: "originality",
+    data: {
+      count: params.comparisonResults.length,
+      context: params.studyTitle,
+    },
   });
 
   try {
@@ -72,14 +73,12 @@ export async function synthesizeRoadmap(
           },
         },
       );
-    } catch (roadmapError) {
-      log.warn({
-        step: "roadmap_thinking_failed_fallback",
-        status: "RETRYING",
-        diagnostics: {
-          errorCode: "ROADMAP_THINKING_ERROR",
-          message: extractMessage(roadmapError),
-          fallbackModel: "gemini-3.1-flash-lite-no-thinking",
+    } catch {
+      log.warn("originality_roadmap_thinking_fallback", {
+        service: "originality",
+        data: {
+          reason: "HIGH thinking failed, falling back to MINIMAL",
+          context: params.studyTitle,
         },
       });
 
@@ -97,34 +96,30 @@ export async function synthesizeRoadmap(
       );
     }
 
-    const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
+    const durationMs = performance.now() - startTime;
     const tokens = log.lastTokens || { input: 0, output: 0 };
 
-    log.preview("Roadmap Result (first 300 chars)", roadmapResult.strategicRecommendations?.slice(0, 300));
+    log.preview(
+      "Roadmap Result (first 300 chars)",
+      roadmapResult.strategicRecommendations?.slice(0, 300),
+    );
 
-    log.info({
-      step: "synthesize_roadmap",
-      status: "SUCCESS",
-      metrics: {
-        duration,
-        tokens: {
-          prompt: tokens.input ?? 0,
-          completion: tokens.output ?? 0,
-        },
-        outputRows: 1,
+    log.info("originality_roadmap_synthesize_success", {
+      service: "originality",
+      durationMs,
+      tokens: { input: tokens.input ?? 0, output: tokens.output ?? 0 },
+      data: {
+        count: 1,
+        context: params.studyTitle,
       },
     });
 
     return roadmapResult.strategicRecommendations;
   } catch (err) {
-    log.error({
-      step: "synthesize_roadmap",
-      status: "FAILED",
-      diagnostics: {
-        errorCode: "GEMINI_ROADMAP_ERROR",
-        message: extractMessage(err),
-        model: "gemini-3.1-flash-lite",
-      },
+    log.error("originality_roadmap_synthesize_failed", {
+      service: "originality",
+      error: err,
+      data: { context: params.studyTitle },
     });
     throw err;
   }

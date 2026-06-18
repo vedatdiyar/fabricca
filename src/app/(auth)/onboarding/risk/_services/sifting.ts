@@ -1,6 +1,5 @@
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
-import { extractMessage } from "@/lib/error-utils";
 import { cosineSimilarity } from "@/lib/utils";
 import { generateEmbeddings } from "@/lib/cloudflare";
 import { fetchThesisDetails } from "@/lib/tezara";
@@ -78,22 +77,29 @@ export async function siftAndFetchDetails(
     (a, b) => a.id - b.id,
   );
 
-  log.data("Raw/Unique Thesis Count", { rawCount, uniqueCount: uniqueTheses.length });
-
-  log.info({
-    step: "sift_and_fetch_details",
-    status: "START",
-    candidateCount: rawCount,
+  log.data("Raw/Unique Thesis Count", {
+    rawCount,
     uniqueCount: uniqueTheses.length,
   });
 
+  log.info("originality_sift_start", {
+    service: "originality",
+    data: {
+      count: rawCount,
+      uniqueCount: uniqueTheses.length,
+      context: params.studyTitle,
+    },
+  });
+
   if (uniqueTheses.length === 0) {
-    log.info({
-      step: "sift_and_fetch_details",
-      status: "SUCCESS",
-      metrics: {
-        duration: "0.0s",
-        outputRows: 0,
+    log.info("originality_sift_success", {
+      service: "originality",
+      durationMs: 0,
+      data: {
+        count: 0,
+        before: uniqueTheses.length,
+        after: 0,
+        context: params.studyTitle,
       },
     });
     return {
@@ -117,10 +123,12 @@ export async function siftAndFetchDetails(
 
     // 2. Stage 1 (Coarse Sifting via Google Gemini Embedding v2)
     const stage1Start = performance.now();
-    log.info({
-      step: "embedding_sifting_stage_1",
-      status: "START",
-      candidateCount: uniqueTheses.length,
+    log.info("originality_sift_embedding_start", {
+      service: "originality",
+      data: {
+        count: uniqueTheses.length,
+        context: params.studyTitle,
+      },
     });
 
     let passedStage1: TezaraThesisSummary[] = [];
@@ -153,34 +161,31 @@ export async function siftAndFetchDetails(
         score: c.similarity,
       }));
 
-      const stage1Duration =
-        ((performance.now() - stage1Start) / 1000).toFixed(1) + "s";
-      log.info({
-        step: "embedding_sifting_stage_1",
-        status: "SUCCESS",
-        metrics: {
-          duration: stage1Duration,
-          outputRows: passedStage1.length,
+      log.info("originality_sift_embedding_success", {
+        service: "originality",
+        durationMs: performance.now() - stage1Start,
+        data: {
+          count: passedStage1.length,
+          context: params.studyTitle,
         },
       });
     } catch (err) {
-      log.error({
-        step: "embedding_sifting_stage_1",
-        status: "FAILED",
-        diagnostics: {
-          errorCode: "EMBEDDING_SIFTING_ERROR",
-          message: extractMessage(err),
-        },
+      log.error("originality_sift_embedding_failed", {
+        service: "originality",
+        error: err,
+        data: { context: params.studyTitle },
       });
       throw err;
     }
 
     // 3. Fetch details (with Abstract) for the passed theses in batches
     const fetchStart = performance.now();
-    log.info({
-      step: "fetch_details_stage_2",
-      status: "START",
-      thesisCount: passedStage1.length,
+    log.info("originality_sift_fetch_start", {
+      service: "originality",
+      data: {
+        count: passedStage1.length,
+        context: params.studyTitle,
+      },
     });
 
     const batchSize = 10;
@@ -197,26 +202,24 @@ export async function siftAndFetchDetails(
     );
     fetchFailed = passedStage1.length - validDetails.length;
 
-    const fetchDuration =
-      ((performance.now() - fetchStart) / 1000).toFixed(1) + "s";
-    log.info({
-      step: "fetch_details_stage_2",
-      status: "SUCCESS",
-      metrics: {
-        duration: fetchDuration,
-        outputRows: validDetails.length,
+    log.info("originality_sift_fetch_success", {
+      service: "originality",
+      durationMs: performance.now() - fetchStart,
+      data: {
+        count: validDetails.length,
+        context: params.studyTitle,
       },
     });
 
     if (validDetails.length === 0) {
-      const totalDuration =
-        ((performance.now() - functionStart) / 1000).toFixed(1) + "s";
-      log.info({
-        step: "sift_and_fetch_details",
-        status: "SUCCESS",
-        metrics: {
-          duration: totalDuration,
-          outputRows: 0,
+      log.info("originality_sift_success", {
+        service: "originality",
+        durationMs: performance.now() - functionStart,
+        data: {
+          count: 0,
+          before: uniqueTheses.length,
+          after: 0,
+          context: params.studyTitle,
         },
       });
       return {
@@ -235,10 +238,12 @@ export async function siftAndFetchDetails(
 
     // 4. Stage 2 (Deep Sifting with Abstract)
     const stage2Start = performance.now();
-    log.info({
-      step: "sifting_stage_2",
-      status: "START",
-      candidateCount: validDetails.length,
+    log.info("originality_sift_deep_start", {
+      service: "originality",
+      data: {
+        count: validDetails.length,
+        context: params.studyTitle,
+      },
     });
 
     let finalIds: number[] = [];
@@ -274,31 +279,22 @@ export async function siftAndFetchDetails(
       const validIdSet = new Set(validDetails.map((t) => t.id));
       finalIds = targetIds.filter((id) => validIdSet.has(id));
 
-      const stage2Duration =
-        ((performance.now() - stage2Start) / 1000).toFixed(1) + "s";
       const tokens = log.lastTokens || { input: 0, output: 0 };
 
-      log.info({
-        step: "sifting_stage_2",
-        status: "SUCCESS",
-        metrics: {
-          duration: stage2Duration,
-          tokens: {
-            prompt: tokens.input ?? 0,
-            completion: tokens.output ?? 0,
-          },
-          outputRows: finalIds.length,
+      log.info("originality_sift_deep_success", {
+        service: "originality",
+        durationMs: performance.now() - stage2Start,
+        tokens: { input: tokens.input ?? 0, output: tokens.output ?? 0 },
+        data: {
+          count: finalIds.length,
+          context: params.studyTitle,
         },
       });
     } catch (err) {
-      log.error({
-        step: "sifting_stage_2",
-        status: "FAILED",
-        diagnostics: {
-          errorCode: "GEMINI_SIFTING_ERROR",
-          message: extractMessage(err),
-          model: "gemini-3.1-flash-lite",
-        },
+      log.error("originality_sift_deep_failed", {
+        service: "originality",
+        error: err,
+        data: { context: params.studyTitle },
       });
       throw err;
     }
@@ -309,20 +305,21 @@ export async function siftAndFetchDetails(
       finalIdSet.has(t.id),
     );
 
-    const eliminatedTheses = uniqueTheses.filter(
-      (t) => !finalIdSet.has(t.id),
+    const eliminatedTheses = uniqueTheses.filter((t) => !finalIdSet.has(t.id));
+
+    log.preview(
+      "Final Selected Thesis IDs",
+      finalSelectedTheses.map((t) => ({ id: t.id, title: t.title })),
     );
 
-    log.preview("Final Selected Thesis IDs", finalSelectedTheses.map((t) => ({ id: t.id, title: t.title })));
-
-    const totalDuration =
-      ((performance.now() - functionStart) / 1000).toFixed(1) + "s";
-    log.info({
-      step: "sift_and_fetch_details",
-      status: "SUCCESS",
-      metrics: {
-        duration: totalDuration,
-        outputRows: finalSelectedTheses.length,
+    log.info("originality_sift_success", {
+      service: "originality",
+      durationMs: performance.now() - functionStart,
+      data: {
+        count: finalSelectedTheses.length,
+        before: uniqueTheses.length,
+        after: finalSelectedTheses.length,
+        context: params.studyTitle,
       },
     });
 
@@ -339,13 +336,10 @@ export async function siftAndFetchDetails(
       },
     };
   } catch (err) {
-    log.error({
-      step: "sift_and_fetch_details",
-      status: "FAILED",
-      diagnostics: {
-        errorCode: "SIFTING_PIPELINE_ERROR",
-        message: extractMessage(err),
-      },
+    log.error("originality_sift_failed", {
+      service: "originality",
+      error: err,
+      data: { context: params.studyTitle },
     });
     throw err;
   }

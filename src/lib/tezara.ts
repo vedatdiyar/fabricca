@@ -64,13 +64,13 @@ export async function searchTezaraPage(
   } catch (err) {
     const durationMs = performance.now() - startTime;
     logger?.error("search_filtered", {
-        service: "tezara",
-        filePath: "src/lib/tezara.ts",
-        step: "page_search",
-        durationMs,
-        data: { query, page },
-        error: err,
-      });
+      service: "tezara",
+      filePath: "src/lib/tezara.ts",
+      step: "page_search",
+      durationMs,
+      data: { query, page },
+      error: err,
+    });
     return [];
   }
 }
@@ -201,13 +201,13 @@ export async function fetchThesisDetails(
   } catch (err) {
     const durationMs = performance.now() - startTime;
     logger?.error("search_filtered", {
-        service: "tezara",
-        filePath: "src/lib/tezara.ts",
-        step: "fetch_details",
-        durationMs,
-        data: { thesisId: id },
-        error: err,
-      });
+      service: "tezara",
+      filePath: "src/lib/tezara.ts",
+      step: "fetch_details",
+      durationMs,
+      data: { thesisId: id },
+      error: err,
+    });
     return null;
   }
 }

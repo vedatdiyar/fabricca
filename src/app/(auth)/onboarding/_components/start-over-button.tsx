@@ -19,12 +19,22 @@ import { resetOnboardingAction } from "@/app/(auth)/onboarding/actions";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 
 interface StartOverButtonProps {
-  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  variant?:
+    | "default"
+    | "destructive"
+    | "outline"
+    | "secondary"
+    | "ghost"
+    | "link";
   size?: "default" | "sm" | "lg" | "icon";
   className?: string;
 }
 
-export function StartOverButton({ variant = "outline", size = "sm", className = "" }: StartOverButtonProps) {
+export function StartOverButton({
+  variant = "outline",
+  size = "sm",
+  className = "",
+}: StartOverButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -41,7 +51,9 @@ export function StartOverButton({ variant = "outline", size = "sm", className = 
           window.location.href = "/onboarding/matrix";
         }
       } catch {
-        toast.error("Sıfırlama işlemi gerçekleştirilirken beklenmeyen bir hata oluştu.");
+        toast.error(
+          "Sıfırlama işlemi gerçekleştirilirken beklenmeyen bir hata oluştu.",
+        );
       }
     });
   };
@@ -49,23 +61,41 @@ export function StartOverButton({ variant = "outline", size = "sm", className = 
   return (
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant={variant} size={size} className={`border-destructive bg-destructive/20 text-destructive-foreground hover:bg-destructive/10 hover:text-destructive shadow-sm ${className}`} disabled={isPending}>
+        <Button
+          variant={variant}
+          size={size}
+          className={`border-destructive bg-destructive/20 text-destructive-foreground hover:bg-destructive/10 hover:text-destructive shadow-sm ${className}`}
+          disabled={isPending}
+        >
           <RotateCcw className="h-4 w-4 shrink-0" />
           <span>Baştan Başla</span>
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent className="bg-card">
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-foreground">Onboarding Sürecini Sıfırla</AlertDialogTitle>
+          <AlertDialogTitle className="text-foreground">
+            Onboarding Sürecini Sıfırla
+          </AlertDialogTitle>
           <AlertDialogDescription className="leading-relaxed">
-            Bu işlem, şu ana kadar girdiğiniz tüm bilgileri, analizleri ve oluşturulan kutuları kalıcı olarak silecektir. Devam etmek istiyor musunuz?
+            Bu işlem, şu ana kadar girdiğiniz tüm bilgileri, analizleri ve
+            oluşturulan kutuları kalıcı olarak silecektir. Devam etmek istiyor
+            musunuz?
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="mt-4 gap-2">
           <AlertDialogCancel>İptal Et</AlertDialogCancel>
-          <AlertDialogAction onClick={(e) => { e.preventDefault(); handleReset(); }} disabled={isPending}>
+          <AlertDialogAction
+            onClick={(e) => {
+              e.preventDefault();
+              handleReset();
+            }}
+            disabled={isPending}
+          >
             {isPending ? (
-              <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Sıfırlanıyor...</span>
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Sıfırlanıyor...
+              </span>
             ) : (
               "Evet, Baştan Başla"
             )}

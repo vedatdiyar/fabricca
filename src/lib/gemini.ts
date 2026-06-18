@@ -218,7 +218,11 @@ export async function generateStructuredContent<T>(
       service: "gemini",
       durationMs,
       tokens,
-      data: { model: modelName, attempt: attempts, thinkingLevel: thinkingLevel ?? undefined },
+      data: {
+        model: modelName,
+        attempt: attempts,
+        thinkingLevel: thinkingLevel ?? undefined,
+      },
     });
     return parsed;
   } catch (error) {
@@ -232,7 +236,11 @@ export async function generateStructuredContent<T>(
       service: "gemini",
       filePath: "src/lib/gemini.ts",
       durationMs,
-      data: { model: modelName, attempts, thinkingLevel: thinkingLevel ?? undefined },
+      data: {
+        model: modelName,
+        attempts,
+        thinkingLevel: thinkingLevel ?? undefined,
+      },
       error,
     });
     throw error;

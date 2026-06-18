@@ -20,18 +20,30 @@ interface RoleDistribution {
   count: number;
 }
 
-const ROLE_KEYS: RoleDistribution["key"][] = ["ZERO_RISK", "LOW_RISK", "MEDIUM_RISK", "HIGH_RISK"];
+const ROLE_KEYS: RoleDistribution["key"][] = [
+  "ZERO_RISK",
+  "LOW_RISK",
+  "MEDIUM_RISK",
+  "HIGH_RISK",
+];
 
 /**
  * Top-level positioning report view. Composes three sub-sections (Tavily
  * fact-check, Tezara overlap matrix, strategic roadmap) and a positioning
  * summary map showing role distribution across compared theses.
  */
-export function OriginalityReportView({ reportData }: OriginalityReportViewProps) {
+export function OriginalityReportView({
+  reportData,
+}: OriginalityReportViewProps) {
   const { tavilyResults, tezaraResults } = reportData;
 
   const roleDistribution = useMemo<RoleDistribution[]>(() => {
-    const counts: Record<string, number> = { ZERO_RISK: 0, LOW_RISK: 0, MEDIUM_RISK: 0, HIGH_RISK: 0 };
+    const counts: Record<string, number> = {
+      ZERO_RISK: 0,
+      LOW_RISK: 0,
+      MEDIUM_RISK: 0,
+      HIGH_RISK: 0,
+    };
     for (const item of tezaraResults.overlapTable ?? []) {
       if (counts[item.originalityLevel] !== undefined) {
         counts[item.originalityLevel]++;
@@ -53,7 +65,8 @@ export function OriginalityReportView({ reportData }: OriginalityReportViewProps
             <span>Literatür Konumlandırma ve Doğrulama Raporu</span>
           </h1>
           <p className="text-muted-foreground leading-relaxed text-sm">
-            Tez matrisinizin akademik literatür içindeki konumu, karşılaştırmalı pozisyon analizi ve olgusal doğrulaması.
+            Tez matrisinizin akademik literatür içindeki konumu, karşılaştırmalı
+            pozisyon analizi ve olgusal doğrulaması.
           </p>
         </div>
         <div className="flex items-center self-end sm:self-center">
@@ -78,8 +91,12 @@ export function OriginalityReportView({ reportData }: OriginalityReportViewProps
               key={role.key}
               className={`flex items-center gap-2.5 px-4 py-2.5 rounded-lg border ${BADGE_COLORS[role.key]}`}
             >
-              <span className="text-lg font-bold tabular-nums leading-none">{role.count}</span>
-              <span className="text-xs font-semibold tracking-wide leading-tight">{role.label}</span>
+              <span className="text-lg font-bold tabular-nums leading-none">
+                {role.count}
+              </span>
+              <span className="text-xs font-semibold tracking-wide leading-tight">
+                {role.label}
+              </span>
             </div>
           ))}
         </div>
