@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 import { redirect } from "next/navigation";
 import { getProfile } from "@/proxy";

@@ -1,4 +1,4 @@
-export const maxDuration = 300;
+"use server";
 
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
@@ -325,7 +325,6 @@ async function processSingleBox(
 export async function processLiteratureReviewAction(
   subBoxes: SubBoxInput[],
 ): Promise<{ data?: LiteratureReviewResult[]; error?: string }> {
-  "use server";
   const logger = new Logger(createFlowId());
 
   try {
@@ -413,7 +412,6 @@ const COOKIE_NAME = "fabricca_session";
 export async function confirmLiteratureAction(args: {
   literaturePool: LiteraturePoolEntry[];
 }): Promise<OnboardingActionResult> {
-  "use server";
   const flowId = createFlowId();
   const log = new Logger(flowId);
   const startTime = performance.now();
