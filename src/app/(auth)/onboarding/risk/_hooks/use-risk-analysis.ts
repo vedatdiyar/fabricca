@@ -286,7 +286,13 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
       updateLoadingStep(0, "completed");
       updateLoadingStep(1, "active");
 
-      useOnboardingStore.getState().setBoxes(boxesResult.boxes);
+      // Purge stale downstream state before seeding new boxes so that
+      // old literature articles or risk reports can never ghost-leak
+      // into the next step via sessionStorage.
+      const store = useOnboardingStore.getState();
+      store.setLiteraturePool([]);
+      store.setReportData(null);
+      store.setBoxes(boxesResult.boxes);
       hideLoading();
       router.push("/onboarding/boxes");
     } catch (err) {

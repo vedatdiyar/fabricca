@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { redirect } from "next/navigation";
 import { getProfile } from "@/proxy";
 import { eq } from "drizzle-orm";

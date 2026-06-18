@@ -9,6 +9,7 @@ import type {
 interface PersistedOnboardingState {
   boxes: GeminiThesisBox[] | null;
   literaturePool: LiteraturePoolEntry[];
+  enrichmentPool: unknown[];
   reportData: OriginalityReportData | null;
 }
 
@@ -52,6 +53,8 @@ interface OnboardingState extends LoadingState {
   literaturePool: LiteraturePoolEntry[];
   setLiteraturePool: (pool: LiteraturePoolEntry[]) => void;
   addToLiteraturePool: (entry: LiteraturePoolEntry) => void;
+  enrichmentPool: unknown[];
+  setEnrichmentPool: (pool: unknown[]) => void;
   resetStore: () => void;
 }
 
@@ -102,8 +105,15 @@ export const useOnboardingStore = create<OnboardingStore>()(
         if (exists) return;
         set({ literaturePool: [...current, entry] });
       },
+      enrichmentPool: [],
+      setEnrichmentPool: (enrichmentPool) => set({ enrichmentPool }),
       resetStore: () =>
-        set({ boxes: null, literaturePool: [], reportData: null }),
+        set({
+          boxes: null,
+          literaturePool: [],
+          enrichmentPool: [],
+          reportData: null,
+        }),
     }),
     {
       name: "onboarding-storage",
@@ -112,6 +122,7 @@ export const useOnboardingStore = create<OnboardingStore>()(
       partialize: (state) => ({
         boxes: state.boxes,
         literaturePool: state.literaturePool,
+        enrichmentPool: state.enrichmentPool,
         reportData: state.reportData,
       }),
       merge: (persisted, current) => {
@@ -121,6 +132,7 @@ export const useOnboardingStore = create<OnboardingStore>()(
           ...p,
           boxes: p.boxes ?? current.boxes,
           literaturePool: p.literaturePool ?? [],
+          enrichmentPool: p.enrichmentPool ?? [],
           reportData: p.reportData ?? current.reportData,
         };
       },

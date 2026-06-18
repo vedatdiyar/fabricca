@@ -186,6 +186,52 @@ export async function fetchOriginalityReport()
 export async function fetchBoxes()
 </file>
 
+<file path="src/app/api/route.ts">
+import { NextResponse } from "next/server";
+⋮----
+export function GET()
+</file>
+
+<file path="src/app/page.tsx">
+import { redirect } from "next/navigation";
+⋮----
+export default function RootPage()
+</file>
+
+<file path="src/components/providers/query-provider.tsx">
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useState } from "react";
+⋮----
+export default function QueryProvider({
+  children,
+}: {
+  children: React.ReactNode;
+})
+</file>
+
+<file path="src/db/seed.ts">
+import { hash } from "bcrypt-ts";
+import { db } from "./index";
+import { users } from "./schema";
+⋮----
+async function seed()
+</file>
+
+<file path="README.md">
+# fabricca
+</file>
+
+<file path="src/app/(auth)/onboarding/_components/onboarding-content.tsx">
+import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import { OnboardingGlobalLoader } from "@/components/onboarding-global-loader";
+⋮----
+export function OnboardingContent({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>)
+</file>
+
 <file path="src/app/(auth)/onboarding/literature-review/_services/literature-review-papers.ts">
 import type { FoundationalQuery } from "@/lib/types";
 ⋮----
@@ -225,69 +271,9 @@ export interface ValidatedPaper {
   relevanceScore: number;
 }
 ⋮----
-export function mergePapers(
-  papers: RawPaper[],
-): ValidatedPaper[]
+export function mergePapers(papers: RawPaper[]): ValidatedPaper[]
 ⋮----
 function ingest(raw: RawPaper): void
-</file>
-
-<file path="src/app/api/route.ts">
-import { NextResponse } from "next/server";
-⋮----
-export function GET()
-</file>
-
-<file path="src/app/page.tsx">
-import { redirect } from "next/navigation";
-⋮----
-export default function RootPage()
-</file>
-
-<file path="src/components/providers/query-provider.tsx">
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
-⋮----
-export default function QueryProvider({
-  children,
-}: {
-  children: React.ReactNode;
-})
-</file>
-
-<file path="src/db/seed.ts">
-import { hash } from "bcrypt-ts";
-import { db } from "./index";
-import { users } from "./schema";
-⋮----
-async function seed()
-</file>
-
-<file path="README.md">
-# fabricca
-</file>
-
-<file path="src/app/(app)/library/library-content.tsx">
-import { useState } from "react";
-import { Layers } from "lucide-react";
-import { LiteratureReader } from "@/components/literature-reader";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import type { ThesisBox } from "@/db/schema";
-⋮----
-interface LibraryContentProps {
-  boxes: ThesisBox[];
-}
-</file>
-
-<file path="src/app/(auth)/onboarding/_components/onboarding-content.tsx">
-import { useOnboardingStore } from "@/lib/store/onboarding-store";
-import { OnboardingGlobalLoader } from "@/components/onboarding-global-loader";
-⋮----
-export function OnboardingContent({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>)
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_components/tavily-fact-check-table.tsx">
@@ -304,31 +290,6 @@ import type { OriginalityReportData } from "@/lib/types";
 interface TavilyFactCheckTableProps {
   tavilyResults: OriginalityReportData["tavilyResults"];
 }
-</file>
-
-<file path="src/app/(auth)/onboarding/risk/_components/tezara-overlap-table.tsx">
-import { useMemo, useState, Fragment } from "react";
-import { GitCompare, ChevronDown, ChevronRight } from "lucide-react";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
-import { getThesisPriority } from "../_services/analysis";
-import { statusTranslation, getBadgeColor } from "../_lib/constants";
-import type { OriginalityReportData } from "@/lib/types";
-⋮----
-type OverlapRow =
-  OriginalityReportData["tezaraResults"]["overlapTable"][number];
-⋮----
-interface TezaraOverlapTableProps {
-  overlapTable: OriginalityReportData["tezaraResults"]["overlapTable"];
-  strategicRecommendations: string;
-}
-⋮----
-setExpandedThesisId(
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_lib/constants.ts">
@@ -398,86 +359,6 @@ export function LiteratureReader(
 onClick=
 </file>
 
-<file path="src/lib/tezara-parser.ts">
-import type { TezaraThesisSummary } from "./types";
-⋮----
-export interface TezaraRawThesisObj {
-  id?: number | string;
-  title_original?: string;
-  title_translated?: string;
-  author?: string;
-  university?: string;
-  year?: number | string;
-  thesis_type?: string;
-  thesisType?: string;
-  department?: string;
-  abstract_original?: string;
-  abstract_translated?: string;
-}
-⋮----
-export function extractJsonObjects(text: string): unknown[]
-⋮----
-/**
- * Extracts RSC stream text fragments mapped by their reference key.
- *
- * @param text - The raw RSC response text.
- * @returns A mapping of reference IDs to their resolved text contents.
- */
-export function extractRscTexts(text: string): Record<string, string>
-⋮----
-// Ensure the key looks like a valid alphanumeric reference identifier
-⋮----
-// If the content starts with a type prefix (like T12, etc.) followed by a comma
-// e.g. "T12,Özet" or "T12,\"Özet\""
-⋮----
-// If it is wrapped in quotes, try to parse it as a JSON string to handle unescaping
-⋮----
-// Fallback: save content as is, trimmed
-⋮----
-/**
- * Maps a raw thesis object from a Tezara RSC response to a typed TezaraThesisSummary.
- * Returns null if the raw object has no valid identifier.
- *
- * @param raw - The raw object from the Tezara response
- * @returns A typed summary object, or null
- */
-function mapToThesisSummary(raw: Record<string, unknown>): TezaraThesisSummary | null
-⋮----
-/**
- * Recursively searches any value to find and extract objects that match the thesis summary structure.
- *
- * @param val - The value to scan.
- * @param results - The accumulator array of thesis summaries.
- */
-function findThesesRecursively(val: unknown, results: TezaraThesisSummary[]): void
-⋮----
-// If the object looks like a thesis summary (must have title and some identifier or author)
-⋮----
-// Recurse into all properties
-⋮----
-/**
- * Parses the thesis search results from raw RSC stream text response.
- *
- * @param text - The raw RSC response text.
- * @returns A list of parsed thesis summary objects.
- */
-export function parseRscTheses(text: string): TezaraThesisSummary[]
-⋮----
-// Navigate the standard Next.js query cache state structure safely
-⋮----
-// Fallback: If no results were found via the structured path, search recursively
-⋮----
-/**
- * Recursively searches a JSON structure to find the thesis object details.
- *
- * @param val - The value to scan.
- * @returns The found raw thesis object or null.
- */
-export function findThesisObjRecursively(val: unknown): TezaraRawThesisObj | null
-⋮----
-// Check if the object contains a nested 'thesis' object with academic fields
-</file>
-
 <file path="src/lib/utils.ts">
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -485,6 +366,18 @@ import { twMerge } from "tailwind-merge";
 export function cn(...inputs: ClassValue[])
 ⋮----
 export function cosineSimilarity(vecA: number[], vecB: number[]): number
+</file>
+
+<file path="src/app/(app)/library/library-content.tsx">
+import { useState } from "react";
+import { Layers } from "lucide-react";
+import { LiteratureReader } from "@/components/literature-reader";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import type { ThesisBox } from "@/db/schema";
+⋮----
+interface LibraryContentProps {
+  boxes: ThesisBox[];
+}
 </file>
 
 <file path="src/app/(app)/library/page.tsx">
@@ -537,6 +430,31 @@ export function StrategicRoadmapSection({
 }: StrategicRoadmapSectionProps)
 </file>
 
+<file path="src/app/(auth)/onboarding/risk/_components/tezara-overlap-table.tsx">
+import { useMemo, useState, Fragment } from "react";
+import { GitCompare, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
+import { getThesisPriority } from "../_services/analysis";
+import { statusTranslation, getBadgeColor } from "../_lib/constants";
+import type { OriginalityReportData } from "@/lib/types";
+⋮----
+type OverlapRow =
+  OriginalityReportData["tezaraResults"]["overlapTable"][number];
+⋮----
+interface TezaraOverlapTableProps {
+  overlapTable: OriginalityReportData["tezaraResults"]["overlapTable"];
+  strategicRecommendations: string;
+}
+⋮----
+setExpandedThesisId(
+</file>
+
 <file path="src/app/(auth)/onboarding/risk/loading.tsx">
 import { Loader2 } from "lucide-react";
 ⋮----
@@ -555,11 +473,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>)
-</file>
-
-<file path="src/db/index.ts">
-import { Pool } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-serverless";
 </file>
 
 <file path="src/lib/cloudflare.ts">
@@ -599,38 +512,91 @@ export function getErrorDisplay(error: unknown): ErrorDisplay
 export function extractMessage(error: unknown): string
 </file>
 
-<file path="src/app/(app)/library/actions.ts">
-import { and, eq, inArray, asc, sql } from "drizzle-orm";
-import { redirect } from "next/navigation";
-import { db } from "@/db";
-import { libraryResources, type LibraryResource } from "@/db/schema";
-import { getSession } from "@/proxy";
-import { createFlowId, Logger } from "@/lib/logger";
+<file path="src/lib/tezara-parser.ts">
+import type { TezaraThesisSummary } from "./types";
 ⋮----
-export type GetApprovedResourcesResult =
-  | { success: true; data: LibraryResource[] }
-  | { success: false; error: string };
+export interface TezaraRawThesisObj {
+  id?: number | string;
+  title_original?: string;
+  title_translated?: string;
+  author?: string;
+  university?: string;
+  year?: number | string;
+  thesis_type?: string;
+  thesisType?: string;
+  department?: string;
+  abstract_original?: string;
+  abstract_translated?: string;
+}
 ⋮----
-export type ToggleReadStatusResult =
-  | { success: true }
-  | { success: false; error: string };
+export function extractJsonObjects(text: string): unknown[]
 ⋮----
-export type ReplenishResult =
-  | { success: true; data: LibraryResource[] }
-  | { success: false; error: string };
+/**
+ * Extracts RSC stream text fragments mapped by their reference key.
+ *
+ * @param text - The raw RSC response text.
+ * @returns A mapping of reference IDs to their resolved text contents.
+ */
+export function extractRscTexts(text: string): Record<string, string>
 ⋮----
-export async function getApprovedResourcesAction(
-  boxId: number
-): Promise<GetApprovedResourcesResult>
+// Ensure the key looks like a valid alphanumeric reference identifier
 ⋮----
-export async function toggleResourceReadStatusAction(
-  resourceId: number,
-  isRead: boolean
-): Promise<ToggleReadStatusResult>
+// If the content starts with a type prefix (like T12, etc.) followed by a comma
+// e.g. "T12,Özet" or "T12,\"Özet\""
 ⋮----
-export async function replenishFromReservedAction(
-  boxId: number
-): Promise<ReplenishResult>
+// If it is wrapped in quotes, try to parse it as a JSON string to handle unescaping
+⋮----
+// Fallback: save content as is, trimmed
+⋮----
+/**
+ * Maps a raw thesis object from a Tezara RSC response to a typed TezaraThesisSummary.
+ * Returns null if the raw object has no valid identifier.
+ *
+ * @param raw - The raw object from the Tezara response
+ * @returns A typed summary object, or null
+ */
+function mapToThesisSummary(
+  raw: Record<string, unknown>,
+): TezaraThesisSummary | null
+⋮----
+/**
+ * Recursively searches any value to find and extract objects that match the thesis summary structure.
+ *
+ * @param val - The value to scan.
+ * @param results - The accumulator array of thesis summaries.
+ */
+function findThesesRecursively(
+  val: unknown,
+  results: TezaraThesisSummary[],
+): void
+⋮----
+// If the object looks like a thesis summary (must have title and some identifier or author)
+⋮----
+// Recurse into all properties
+⋮----
+/**
+ * Parses the thesis search results from raw RSC stream text response.
+ *
+ * @param text - The raw RSC response text.
+ * @returns A list of parsed thesis summary objects.
+ */
+export function parseRscTheses(text: string): TezaraThesisSummary[]
+⋮----
+// Navigate the standard Next.js query cache state structure safely
+⋮----
+// Fallback: If no results were found via the structured path, search recursively
+⋮----
+/**
+ * Recursively searches a JSON structure to find the thesis object details.
+ *
+ * @param val - The value to scan.
+ * @returns The found raw thesis object or null.
+ */
+export function findThesisObjRecursively(
+  val: unknown,
+): TezaraRawThesisObj | null
+⋮----
+// Check if the object contains a nested 'thesis' object with academic fields
 </file>
 
 <file path="src/app/(auth)/onboarding/enrichment/page.tsx">
@@ -722,6 +688,11 @@ interface ErrorDisplayProps {
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 </file>
 
+<file path="src/db/index.ts">
+import { Pool } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-serverless";
+</file>
+
 <file path="src/lib/store/onboarding-store.ts">
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
@@ -800,6 +771,40 @@ export async function tavilySearch(
   query: string,
   logger?: Logger,
 ): Promise<TavilySearchResponse>
+</file>
+
+<file path="src/app/(app)/library/actions.ts">
+import { and, eq, inArray, asc, sql } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { db } from "@/db";
+import { libraryResources, type LibraryResource } from "@/db/schema";
+import { getSession } from "@/proxy";
+import { createFlowId, Logger } from "@/lib/logger";
+⋮----
+export type GetApprovedResourcesResult =
+  | { success: true; data: LibraryResource[] }
+  | { success: false; error: string };
+⋮----
+export type ToggleReadStatusResult =
+  | { success: true }
+  | { success: false; error: string };
+⋮----
+export type ReplenishResult =
+  | { success: true; data: LibraryResource[] }
+  | { success: false; error: string };
+⋮----
+export async function getApprovedResourcesAction(
+  boxId: number,
+): Promise<GetApprovedResourcesResult>
+⋮----
+export async function toggleResourceReadStatusAction(
+  resourceId: number,
+  isRead: boolean,
+): Promise<ToggleReadStatusResult>
+⋮----
+export async function replenishFromReservedAction(
+  boxId: number,
+): Promise<ReplenishResult>
 </file>
 
 <file path="src/app/(app)/layout.tsx">
@@ -897,13 +902,43 @@ import { cn } from "@/lib/utils";
 className=
 </file>
 
+<file path="src/app/(auth)/layout.tsx">
+import { redirect } from "next/navigation";
+import { getSessionWithOnboarding } from "@/proxy";
+⋮----
+export default async function AuthLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>)
+</file>
+
+<file path="src/proxy.ts">
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { users } from "@/db/schema";
+⋮----
+export type SessionUser = {
+  userId: number;
+  name: string;
+  onboardingCompleted?: boolean;
+};
+⋮----
+export type SessionWithOnboarding = SessionUser & {
+  onboardingCompleted: boolean;
+};
+⋮----
+export async function getSession(): Promise<SessionUser | null>
+⋮----
+export async function getSessionWithOnboarding(): Promise<SessionWithOnboarding | null>
+⋮----
+export async function getProfile()
+</file>
+
 <file path="src/app/(auth)/onboarding/literature-review/_components/literature-article-card.tsx">
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { JuryArticle } from "@/lib/types";
 ⋮----
 interface LiteratureArticleCardProps {
@@ -947,41 +982,6 @@ export function useRiskAnalysis(): UseRiskAnalysisResult
 async function init()
 </file>
 
-<file path="src/app/(auth)/layout.tsx">
-import { redirect } from "next/navigation";
-import { getSessionWithOnboarding } from "@/proxy";
-⋮----
-export default async function AuthLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>)
-</file>
-
-<file path="src/proxy.ts">
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { users } from "@/db/schema";
-⋮----
-export type SessionUser = {
-  userId: number;
-  name: string;
-  onboardingCompleted?: boolean;
-};
-⋮----
-export type SessionWithOnboarding = SessionUser & {
-  onboardingCompleted: boolean;
-};
-⋮----
-export async function getSession(): Promise<SessionUser | null>
-⋮----
-export async function getSessionWithOnboarding(): Promise<SessionWithOnboarding | null>
-⋮----
-export async function getProfile()
-</file>
-
 <file path="src/app/(auth)/onboarding/enrichment/actions.ts">
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
@@ -995,54 +995,11 @@ export async function confirmEnhancedThesisAction(
 ): Promise<OnboardingActionResult>
 </file>
 
-<file path="src/app/(auth)/onboarding/risk/_services/roadmap.ts">
-import { ThinkingLevel } from "@google/genai";
-import { generateStructuredContent } from "@/lib/gemini";
-import { extractMessage } from "@/lib/error-utils";
-import type { Logger } from "@/lib/logger";
-import {
-  roadmapSchema,
-  buildRoadmapSystemInstruction,
-  buildRoadmapPrompt,
-} from "@/lib/prompts";
-⋮----
-export interface SynthesizeRoadmapParams {
-  studyTitle: string;
-  researchQuestion: string;
-  mainClaim: string;
-  theoreticalFramework: string;
-  methodology: string;
-  dataStrategy: string;
-  historicalLimits: string;
-  spatialLimits: string;
-  analyticalFocus: string;
-  comparisonResults: {
-    title: string;
-    author: string;
-    year: number;
-    axes: {
-      subject: string;
-      theory: string;
-      methodology: string;
-      context?: string;
-    };
-    originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
-    comparisonNote: string;
-  }[];
-}
-⋮----
-export async function synthesizeRoadmap(
-  params: SynthesizeRoadmapParams,
-  log: Logger,
-): Promise<string>
-</file>
-
 <file path="src/app/(auth)/onboarding/risk/_services/search.ts">
 import { ThinkingLevel } from "@google/genai";
 import { tavilySearch } from "@/lib/tavily";
 import { searchTezara } from "@/lib/tezara";
 import { generateStructuredContent } from "@/lib/gemini";
-import { extractMessage } from "@/lib/error-utils";
 import type { Logger } from "@/lib/logger";
 import type {
   TezaraThesisSummary,
@@ -1094,7 +1051,13 @@ import { resetOnboardingAction } from "@/app/(auth)/onboarding/actions";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 ⋮----
 interface StartOverButtonProps {
-  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  variant?:
+    | "default"
+    | "destructive"
+    | "outline"
+    | "secondary"
+    | "ghost"
+    | "link";
   size?: "default" | "sm" | "lg" | "icon";
   className?: string;
 }
@@ -1160,10 +1123,126 @@ export async function fetchFullAbstracts(
 ): Promise<Map<string, string>>
 </file>
 
+<file path="src/app/(auth)/onboarding/risk/_components/risk-container.tsx">
+import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ErrorDisplay } from "@/components/error-display";
+import { OriginalityReportView } from "./originality-report-view";
+import { useRiskAnalysis } from "../_hooks/use-risk-analysis";
+</file>
+
+<file path="src/app/(auth)/onboarding/risk/_services/roadmap.ts">
+import { ThinkingLevel } from "@google/genai";
+import { generateStructuredContent } from "@/lib/gemini";
+import type { Logger } from "@/lib/logger";
+import {
+  roadmapSchema,
+  buildRoadmapSystemInstruction,
+  buildRoadmapPrompt,
+} from "@/lib/prompts";
+⋮----
+export interface SynthesizeRoadmapParams {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  theoreticalFramework: string;
+  methodology: string;
+  dataStrategy: string;
+  historicalLimits: string;
+  spatialLimits: string;
+  analyticalFocus: string;
+  comparisonResults: {
+    title: string;
+    author: string;
+    year: number;
+    axes: {
+      subject: string;
+      theory: string;
+      methodology: string;
+      context?: string;
+    };
+    originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
+    comparisonNote: string;
+  }[];
+}
+⋮----
+export async function synthesizeRoadmap(
+  params: SynthesizeRoadmapParams,
+  log: Logger,
+): Promise<string>
+</file>
+
+<file path="src/app/(auth)/onboarding/literature-review/_services/ai-processor.ts">
+import { ThinkingLevel } from "@google/genai";
+import { generateStructuredContent } from "@/lib/gemini";
+import {
+  buildLiteratureSiftingPrompt,
+  buildLiteratureJuryAnalysisPrompt,
+  buildLiteratureSiftingSystemInstruction,
+  buildLiteratureJuryAnalysisSystemInstruction,
+  literatureSiftingSchema,
+  literatureJuryAnalysisSchema,
+} from "@/lib/prompts";
+import { Logger } from "@/lib/logger";
+import type { SubBoxInput, ValidatedPaper } from "./literature-review-papers";
+import type { JuryArticle } from "@/lib/types";
+import { validateWithCrossRef } from "./search-api";
+⋮----
+export interface LiteratureReviewResult {
+  starterPack: JuryArticle[];
+  reservedPool: JuryArticle[];
+  error?: string;
+}
+⋮----
+interface SiftingResultItem {
+  id: string;
+  status: "ACCEPT" | "REJECT";
+}
+⋮----
+interface SiftingResponse {
+  siftedResults: SiftingResultItem[];
+}
+⋮----
+export async function runSiftingStage(
+  box: SubBoxInput,
+  candidates: ValidatedPaper[],
+  logger: Logger,
+  thesisCtx: {
+    studyTitle: string;
+    researchQuestion: string;
+    theoreticalFramework: string;
+    historicalLimits: string;
+    spatialLimits: string;
+  },
+): Promise<ValidatedPaper[]>
+⋮----
+interface JuryResponse {
+  starterPack: JuryArticle[];
+  reservedPool: JuryArticle[];
+}
+⋮----
+export async function runJuryStage(
+  box: SubBoxInput,
+  sifted: ValidatedPaper[],
+  logger: Logger,
+): Promise<LiteratureReviewResult>
+⋮----
+// Build lookup for isFoundational backfill
+⋮----
+function backfillIsFoundational(
+  articles: JuryArticle[],
+  lookup: Map<string, boolean>,
+): JuryArticle[]
+⋮----
+export async function enrichJuryArticleWithCrossRef(
+  article: JuryArticle,
+  pool: ValidatedPaper[],
+): Promise<JuryArticle>
+</file>
+
 <file path="src/app/(auth)/onboarding/risk/_services/analysis.ts">
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
-import { extractMessage } from "@/lib/error-utils";
 import type { Logger } from "@/lib/logger";
 import type { AxesOption, TezaraThesisDetails } from "@/lib/types";
 import {
@@ -1242,7 +1321,6 @@ export async function analyzeOriginalityRisk(
 <file path="src/app/(auth)/onboarding/risk/_services/queries.ts">
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
-import { extractMessage } from "@/lib/error-utils";
 import type { Logger } from "@/lib/logger";
 import {
   factQueryExtractionSchema,
@@ -1282,82 +1360,6 @@ function getCombinations(arr: string[], size: number): string[]
 function helper(start: number, path: string[])
 </file>
 
-<file path="src/app/(auth)/onboarding/literature-review/_services/ai-processor.ts">
-import { ThinkingLevel } from "@google/genai";
-import { generateStructuredContent } from "@/lib/gemini";
-import {
-  buildLiteratureSiftingPrompt,
-  buildLiteratureJuryAnalysisPrompt,
-  buildLiteratureSiftingSystemInstruction,
-  buildLiteratureJuryAnalysisSystemInstruction,
-  literatureSiftingSchema,
-  literatureJuryAnalysisSchema,
-} from "@/lib/prompts";
-import { Logger } from "@/lib/logger";
-import type { SubBoxInput, ValidatedPaper } from "./literature-review-papers";
-import type { JuryArticle } from "@/lib/types";
-import { validateWithCrossRef } from "./search-api";
-⋮----
-export interface LiteratureReviewResult {
-  starterPack: JuryArticle[];
-  reservedPool: JuryArticle[];
-  error?: string;
-}
-⋮----
-interface SiftingResultItem {
-  id: string;
-  status: "ACCEPT" | "REJECT";
-}
-⋮----
-interface SiftingResponse {
-  siftedResults: SiftingResultItem[];
-}
-⋮----
-export async function runSiftingStage(
-  box: SubBoxInput,
-  candidates: ValidatedPaper[],
-  logger: Logger,
-  thesisCtx: {
-    studyTitle: string;
-    researchQuestion: string;
-    theoreticalFramework: string;
-    historicalLimits: string;
-    spatialLimits: string;
-  },
-): Promise<ValidatedPaper[]>
-⋮----
-interface JuryResponse {
-  starterPack: JuryArticle[];
-  reservedPool: JuryArticle[];
-}
-⋮----
-export async function runJuryStage(
-  box: SubBoxInput,
-  sifted: ValidatedPaper[],
-  logger: Logger,
-): Promise<LiteratureReviewResult>
-⋮----
-// Build lookup for isFoundational backfill
-⋮----
-function backfillIsFoundational(
-  articles: JuryArticle[],
-  lookup: Map<string, boolean>,
-): JuryArticle[]
-⋮----
-export async function enrichJuryArticleWithCrossRef(
-  article: JuryArticle,
-  pool: ValidatedPaper[],
-): Promise<JuryArticle>
-</file>
-
-<file path="src/app/(auth)/onboarding/risk/_components/risk-container.tsx">
-import { Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { ErrorDisplay } from "@/components/error-display";
-import { OriginalityReportView } from "./originality-report-view";
-import { useRiskAnalysis } from "../_hooks/use-risk-analysis";
-</file>
-
 <file path="src/lib/tezara.ts">
 import type { Logger } from "./logger";
 import type { TezaraThesisSummary, TezaraThesisDetails } from "./types";
@@ -1387,6 +1389,50 @@ export async function fetchThesisDetails(
 ): Promise<TezaraThesisDetails | null>
 </file>
 
+<file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">
+import { Loader2, AlertCircle, BookOpen, Library } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import type { GeminiThesisBox } from "@/lib/types";
+import { LiteratureArticleCard } from "./literature-article-card";
+import {
+  useLiteratureReview,
+  type BoxStatus,
+} from "../_hooks/use-literature-review";
+⋮----
+function SubBoxQuery({
+  status,
+  errorMessage,
+}: {
+  status: BoxStatus;
+  errorMessage?: string;
+})
+</file>
+
+<file path="src/app/(auth)/onboarding/actions.ts">
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { thesisMatrices, originalityReports, users } from "@/db/schema";
+import { getSession } from "@/proxy";
+import { revalidatePath } from "next/cache";
+import { createFlowId, Logger } from "@/lib/logger";
+⋮----
+export async function resetOnboardingAction(): Promise<
+  { success: boolean } | { error: string }
+> {
+  const flowId = createFlowId();
+</file>
+
+<file path="src/app/(auth)/onboarding/page.tsx">
+import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
+import { getProfile } from "@/proxy";
+⋮----
+export default async function OnboardingPage()
+</file>
+
 <file path="package.json">
 {
   "name": "fabricca",
@@ -1398,7 +1444,7 @@ export async function fetchThesisDetails(
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "check:full": "npm run lint && npm run typecheck"
+    "check:full": "npm run lint && npm run typecheck && npx prettier --write ."
   },
   "dependencies": {
     "@google/genai": "^2.8.0",
@@ -1446,50 +1492,6 @@ export async function fetchThesisDetails(
 }
 </file>
 
-<file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">
-import { Loader2, AlertCircle, BookOpen, Library } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useOnboardingStore } from "@/lib/store/onboarding-store";
-import type { GeminiThesisBox } from "@/lib/types";
-import { LiteratureArticleCard } from "./literature-article-card";
-import {
-  useLiteratureReview,
-  type BoxStatus,
-} from "../_hooks/use-literature-review";
-⋮----
-function SubBoxQuery({
-  status,
-  errorMessage,
-}: {
-  status: BoxStatus;
-  errorMessage?: string;
-})
-</file>
-
-<file path="src/app/(auth)/onboarding/actions.ts">
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { thesisMatrices, originalityReports, users } from "@/db/schema";
-import { getSession } from "@/proxy";
-import { revalidatePath } from "next/cache";
-import { createFlowId, Logger } from "@/lib/logger";
-⋮----
-export async function resetOnboardingAction(): Promise<
-  { success: boolean } | { error: string }
-> {
-  const flowId = createFlowId();
-</file>
-
-<file path="src/app/(auth)/onboarding/page.tsx">
-import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
-import { getProfile } from "@/proxy";
-⋮----
-export default async function OnboardingPage()
-</file>
-
 <file path="src/lib/logger.ts">
 import pino from "pino";
 import pretty from "pino-pretty";
@@ -1499,7 +1501,6 @@ import { classifyError, getErrorDisplay } from "./error-utils";
 ⋮----
 export type LogLevel = "info" | "warn" | "error";
 export type LogEvent = "login_success" | "login_failed" | "flow_complete";
-⋮----
 export type ServiceName =
   | "gemini"
   | "cloudflare"
@@ -1553,18 +1554,13 @@ function getModuleDisplay(service: ServiceName, params?: LogParams): string
 ⋮----
 function getActionDisplay(event: string):
 ⋮----
-function getStatusTag(status: string): string
-⋮----
 function deriveStatus(event: string): string
 ⋮----
 function truncate(s: string, maxLen: number): string
 ⋮----
-/**
- * Central counter validator & normalizer.
- * Reads before/after and count-like fields from a data record,
- * validates internal consistency, and returns formatted metric strings.
- */
 function processDataMetrics(data: Record<string, unknown>): string[]
+⋮----
+function getStatusIcon(status: string): string
 ⋮----
 function peekStarted(flowId: string, event: string): boolean
 ⋮----
@@ -1582,9 +1578,6 @@ error(arg1: string | Record<string, unknown>, params?: LogParams): void
 ⋮----
 step(stepName: string, metadata?: Record<string, unknown>): void
 ⋮----
-/**
-   * Log a file reference (path or URL) for traceability.
-   */
 file(ref: string): void
 ⋮----
 data(label: string, value: unknown): void
@@ -1606,24 +1599,35 @@ private write(
     params?: LogParams,
 ): void
 ⋮----
-private renderEventLine(
-    service: ServiceName,
-    event: string,
-    status: string,
-    params?: LogParams,
-): void
+private buildPrefix(service: ServiceName | string, status: string): string
 ⋮----
-private buildPrefix(service: ServiceName | string, event: string): string
-⋮----
-private buildSuffix(
-    event: string,
-    status: string,
-    params?: LogParams,
-): string
+private buildSuffix(event: string, params?: LogParams): string
 ⋮----
 private renderDevLine(data: Record<string, unknown>): void
 ⋮----
 export function createFlowId(): string
+</file>
+
+<file path="src/app/(auth)/onboarding/boxes/_components/boxes-container.tsx">
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import {
+  Loader2,
+  CheckCircle2,
+  Rocket,
+  Library,
+  FileText,
+  PlusCircle,
+  WholeWord,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardTitle } from "@/components/ui/card";
+import { confirmBoxesAction } from "../actions";
+import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import type { GeminiThesisBox } from "@/lib/types";
+⋮----
+// No boxes anywhere — redirect to risk page to generate them.
 </file>
 
 <file path="src/app/(auth)/onboarding/boxes/actions.ts">
@@ -1651,24 +1655,6 @@ export async function generateBoxesAction(): Promise<
 export async function confirmBoxesAction(
   boxes: GeminiThesisBox[],
 ): Promise<OnboardingActionResult>
-</file>
-
-<file path="src/app/(auth)/onboarding/matrix/_components/matrix-form.tsx">
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
-⋮----
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { useOnboardingStore } from "@/lib/store/onboarding-store";
-import type { LoadingStep } from "@/lib/store/onboarding-store";
-import { enrichThesisMatrixAction, saveEnrichedMatrixAction } from "../actions";
-import { fetchThesisMatrix } from "../../_lib/fetch-actions";
-⋮----
-const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
 </file>
 
 <file path="src/app/(auth)/onboarding/matrix/actions.ts">
@@ -1715,76 +1701,6 @@ export async function enrichThesisMatrixAction(
 export async function saveEnrichedMatrixAction(
   enhancedData: EnhancedThesisData,
 ): Promise<
-</file>
-
-<file path="src/app/(auth)/onboarding/risk/_services/sifting.ts">
-import { ThinkingLevel } from "@google/genai";
-import { generateStructuredContent } from "@/lib/gemini";
-import { extractMessage } from "@/lib/error-utils";
-import { cosineSimilarity } from "@/lib/utils";
-import { generateEmbeddings } from "@/lib/cloudflare";
-import { fetchThesisDetails } from "@/lib/tezara";
-import type { Logger } from "@/lib/logger";
-import type {
-  TezaraThesisSummary,
-  TezaraThesisDetails,
-  DeepSiftEntry,
-  DeepSiftResponse,
-} from "@/lib/types";
-import {
-  deepSiftingSchema,
-  buildDeepSiftingSystemInstruction,
-  buildDeepSiftingPrompt,
-} from "@/lib/prompts";
-⋮----
-export interface SiftAndFetchDetailsParams {
-  studyTitle: string;
-  researchQuestion: string;
-  mainClaim: string;
-  theoreticalFramework: string;
-  methodology: string;
-  dataStrategy: string;
-  historicalLimits: string;
-  spatialLimits: string;
-  analyticalFocus: string;
-}
-⋮----
-export interface SiftingDiagnostic {
-  uniqueAfterDedup: number;
-  topSimilarities: { id: number; score: number }[];
-  stage1Count: number;
-  fetchRequested: number;
-  fetchSuccess: number;
-  fetchFailed: number;
-}
-⋮----
-export async function siftAndFetchDetails(
-  params: SiftAndFetchDetailsParams,
-  tezaraSearchResults: TezaraThesisSummary[][],
-  log: Logger,
-): Promise<
-</file>
-
-<file path="src/app/(auth)/onboarding/boxes/_components/boxes-container.tsx">
-import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import {
-  Loader2,
-  CheckCircle2,
-  Rocket,
-  Library,
-  FileText,
-  PlusCircle,
-  WholeWord,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardTitle } from "@/components/ui/card";
-import { confirmBoxesAction } from "../actions";
-import { useOnboardingStore } from "@/lib/store/onboarding-store";
-import type { GeminiThesisBox } from "@/lib/types";
-⋮----
-// No boxes anywhere — redirect to risk page to generate them.
 </file>
 
 <file path="src/app/(auth)/onboarding/literature-review/actions.ts">
@@ -1855,6 +1771,24 @@ export async function confirmLiteratureAction(args: {
 }): Promise<OnboardingActionResult>
 </file>
 
+<file path="src/app/(auth)/onboarding/matrix/_components/matrix-form.tsx">
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
+⋮----
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import type { LoadingStep } from "@/lib/store/onboarding-store";
+import { enrichThesisMatrixAction, saveEnrichedMatrixAction } from "../actions";
+import { fetchThesisMatrix } from "../../_lib/fetch-actions";
+⋮----
+const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
+</file>
+
 <file path="src/app/(auth)/onboarding/risk/_components/originality-report-view.tsx">
 import { useMemo } from "react";
 import { Layers } from "lucide-react";
@@ -1875,7 +1809,56 @@ interface RoleDistribution {
   count: number;
 }
 ⋮----
-export function OriginalityReportView(
+export function OriginalityReportView({
+  reportData,
+}: OriginalityReportViewProps)
+</file>
+
+<file path="src/app/(auth)/onboarding/risk/_services/sifting.ts">
+import { ThinkingLevel } from "@google/genai";
+import { generateStructuredContent } from "@/lib/gemini";
+import { cosineSimilarity } from "@/lib/utils";
+import { generateEmbeddings } from "@/lib/cloudflare";
+import { fetchThesisDetails } from "@/lib/tezara";
+import type { Logger } from "@/lib/logger";
+import type {
+  TezaraThesisSummary,
+  TezaraThesisDetails,
+  DeepSiftEntry,
+  DeepSiftResponse,
+} from "@/lib/types";
+import {
+  deepSiftingSchema,
+  buildDeepSiftingSystemInstruction,
+  buildDeepSiftingPrompt,
+} from "@/lib/prompts";
+⋮----
+export interface SiftAndFetchDetailsParams {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  theoreticalFramework: string;
+  methodology: string;
+  dataStrategy: string;
+  historicalLimits: string;
+  spatialLimits: string;
+  analyticalFocus: string;
+}
+⋮----
+export interface SiftingDiagnostic {
+  uniqueAfterDedup: number;
+  topSimilarities: { id: number; score: number }[];
+  stage1Count: number;
+  fetchRequested: number;
+  fetchSuccess: number;
+  fetchFailed: number;
+}
+⋮----
+export async function siftAndFetchDetails(
+  params: SiftAndFetchDetailsParams,
+  tezaraSearchResults: TezaraThesisSummary[][],
+  log: Logger,
+): Promise<
 </file>
 
 <file path="src/lib/types.ts">

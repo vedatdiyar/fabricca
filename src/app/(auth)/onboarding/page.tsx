@@ -38,7 +38,7 @@ export default async function OnboardingPage() {
     .where(eq(originalityReports.userId, profile.id));
 
   if (!report) {
-    redirect("/onboarding/matrix");
+    redirect("/onboarding/enrichment");
   }
 
   // Check if boxes exist

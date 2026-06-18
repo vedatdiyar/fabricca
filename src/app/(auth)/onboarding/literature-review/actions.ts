@@ -20,13 +20,11 @@ import type {
 import type { NewLibraryResource } from "@/db/schema";
 import type {
   SubBoxInput,
-  RawPaper,
   ValidatedPaper,
 } from "./_services/literature-review-papers";
 import { mergePapers } from "./_services/literature-review-papers";
 import {
   searchOpenAlex,
-  searchOpenAlexKeyword,
   resolveFoundationalWorks,
   fetchFullAbstracts,
 } from "./_services/search-api";
@@ -63,13 +61,13 @@ async function enrichBatch(
 // ============================================================================
 
 /**
- * Runs the full 6-stage pipeline for a single sub-box:
- * 1. OpenAlex search (semantic + keyword fallback + foundational)
- * 2. DOI-based deduplication
- * 3. AI sifting
- * 4. Full abstract recovery
- * 5. AI jury analysis → starter pack + reserved pool
- * 6. CrossRef polite-pool validation
+ * Runs the full literature review pipeline for a single sub-box:
+ * 1. Foundational track — resolves seminal works via OpenAlex or fallback,
+ *    directly converts to JuryArticle[] (bypasses all AI stages)
+ * 2. OpenAlex semantic search for non-foundational papers
+ * 3. Merge + AI sifting + abstract recovery + AI jury + CrossRef validation
+ *    on non-foundational papers only
+ * 4. Final assembly — foundational articles prepended, duplicates removed
  */
 async function processSingleBox(
   subBox: SubBoxInput,
@@ -89,7 +87,52 @@ async function processSingleBox(
   const boxCtx = `Kutu: ${subBox.title}`;
 
   // ------------------------------------------------------------------
-  // Stage 1: OpenAlex search (semantic vector + keyword fallback + foundational)
+  // Stage 1: Foundational Track (independent, bypasses AI stages)
+  // ------------------------------------------------------------------
+  const foundationalArticles: JuryArticle[] = [];
+
+  if (subBox.foundationalQueries && subBox.foundationalQueries.length > 0) {
+    logger.info("literature_foundational_start", {
+      service: "literature",
+      filePath: "onboarding/literature-review/actions.ts",
+      data: {
+        queryCount: subBox.foundationalQueries.length,
+        subBoxTitle: subBox.title,
+        context: boxCtx,
+      },
+    });
+
+    const foundationalStart = performance.now();
+    const resolved = await resolveFoundationalWorks(
+      subBox.foundationalQueries,
+      logger,
+    );
+
+    for (const fw of resolved) {
+      foundationalArticles.push({
+        type: "PRIMARY" as const,
+        title: fw.title,
+        abstract: "",
+        url: fw.id,
+        doi: "",
+        publisher: fw.publisher ?? "",
+        publicationYear: fw.publicationYear,
+        authors: fw.authors,
+        isFoundational: true,
+      });
+    }
+
+    logger.info("literature_foundational_done", {
+      service: "literature",
+      durationMs: performance.now() - foundationalStart,
+      filePath: "onboarding/literature-review/actions.ts",
+      status: "SUCCESS",
+      data: { resultCount: foundationalArticles.length, context: boxCtx },
+    });
+  }
+
+  // ------------------------------------------------------------------
+  // Stage 2: OpenAlex semantic search (non-foundational only)
   // ------------------------------------------------------------------
   logger.info("literature_search_start", {
     service: "literature",
@@ -98,64 +141,29 @@ async function processSingleBox(
   });
 
   const searchStart = performance.now();
-
-  const searchCalls: Promise<RawPaper[]>[] = [
-    searchOpenAlex(subBox.semanticSearchBlock),
-    searchOpenAlexKeyword(subBox.title),
-  ];
-  if (subBox.foundationalQueries && subBox.foundationalQueries.length > 0) {
-    const foundationalPromise = resolveFoundationalWorks(
-      subBox.foundationalQueries,
-      logger,
-    );
-    searchCalls.push(
-      foundationalPromise.then((foundational) =>
-        foundational.map(
-          (fw): RawPaper => ({
-            source: "openalex" as const,
-            title: fw.title,
-            abstract: null,
-            metadata: null,
-            doi: null,
-            url: fw.id,
-            authors: fw.authors,
-            year: fw.publicationYear,
-            publisher: fw.publisher,
-            openAlexId: fw.id,
-            isFoundational: true,
-            relevanceScore: 1.0,
-          }),
-        ),
-      ),
-    );
-  }
-
-  const settled = await Promise.allSettled(searchCalls);
-
-  const allRaw: RawPaper[] = [];
-  for (const result of settled) {
-    if (result.status === "fulfilled") {
-      allRaw.push(...result.value);
-    }
-  }
+  const semanticRaw = await searchOpenAlex(subBox.semanticSearchBlock);
 
   logger.info("literature_search_done", {
     service: "literature",
     durationMs: performance.now() - searchStart,
     filePath: "onboarding/literature-review/actions.ts",
     status: "SUCCESS",
-    data: { resultCount: allRaw.length, context: boxCtx },
+    data: { resultCount: semanticRaw.length, context: boxCtx },
   });
 
-  if (allRaw.length === 0) {
+  if (semanticRaw.length === 0 && foundationalArticles.length === 0) {
     return { starterPack: [], reservedPool: [] };
   }
 
+  if (semanticRaw.length === 0) {
+    return { starterPack: foundationalArticles, reservedPool: [] };
+  }
+
   // ------------------------------------------------------------------
-  // Stage 2: Multi-strategy deduplication
+  // Stage 3: Multi-strategy deduplication (semantic papers only)
   // ------------------------------------------------------------------
   const mergeStart = performance.now();
-  const merged = mergePapers(allRaw);
+  const merged = mergePapers(semanticRaw);
 
   logger.info("literature_merge_done", {
     service: "literature",
@@ -167,26 +175,19 @@ async function processSingleBox(
 
   const rawApiPool = merged;
 
-  // ------------------------------------------------------------------
-  // Stage 3: AI Sifting (foundational papers bypass with score 100)
-  // ------------------------------------------------------------------
-  const siftStart = performance.now();
-
-  const foundationalPapers = merged.filter((p) => p.isFoundational);
-  const nonFoundationalPapers = merged.filter((p) => !p.isFoundational);
-
-  const siftedNonFoundational = await runSiftingStage(
-    subBox,
-    nonFoundationalPapers,
-    logger,
-    thesisCtx,
-  );
-
-  for (const fp of foundationalPapers) {
-    (fp as unknown as Record<string, unknown>).siftingScore = 100;
+  // Patch empty abstracts before AI sifting so the model never sees
+  // a null/blank abstract and discards a potentially relevant paper.
+  for (const p of merged) {
+    if (!p.abstract || !p.abstract.trim()) {
+      p.abstract = "Özet verisi bulunamadı, başlık üzerinden değerlendirin";
+    }
   }
 
-  const sifted = [...foundationalPapers, ...siftedNonFoundational];
+  // ------------------------------------------------------------------
+  // Stage 4: AI Sifting (semantic papers only)
+  // ------------------------------------------------------------------
+  const siftStart = performance.now();
+  const sifted = await runSiftingStage(subBox, merged, logger, thesisCtx);
 
   logger.info("literature_sifting_done", {
     service: "literature",
@@ -196,17 +197,16 @@ async function processSingleBox(
     data: {
       before: merged.length,
       after: sifted.length,
-      foundationalBypassed: foundationalPapers.length,
       context: boxCtx,
     },
   });
 
   if (sifted.length === 0) {
-    return { starterPack: [], reservedPool: [] };
+    return { starterPack: foundationalArticles, reservedPool: [] };
   }
 
   // ------------------------------------------------------------------
-  // Stage 4: Full Abstract Recovery (post-sifting)
+  // Stage 5: Full Abstract Recovery (post-sifting)
   // ------------------------------------------------------------------
   const abstractStart = performance.now();
   const siftedIds: string[] = [];
@@ -224,6 +224,9 @@ async function processSingleBox(
       const resolved = abstractMap.get(p.openAlexId);
       if (resolved) p.abstract = resolved;
     }
+    if (!p.abstract || !p.abstract.trim()) {
+      p.abstract = "Özet verisi bulunamadı, başlık üzerinden değerlendirin";
+    }
   }
 
   logger.info("literature_abstract_recovery_done", {
@@ -239,7 +242,7 @@ async function processSingleBox(
   });
 
   // ------------------------------------------------------------------
-  // Stage 5: AI Jury Analysis
+  // Stage 6: AI Jury Analysis (semantic papers only)
   // ------------------------------------------------------------------
   const juryStart = performance.now();
   const result = await runJuryStage(subBox, sifted, logger);
@@ -254,50 +257,12 @@ async function processSingleBox(
       resultCount: result.starterPack.length + result.reservedPool.length,
       starterPackCount: result.starterPack.length,
       reservedPoolCount: result.reservedPool.length,
-      foundationalCount: foundationalPapers.length,
       context: boxCtx,
     },
   });
 
   // ------------------------------------------------------------------
-  // Foundational Bypass: Force foundational papers into starterPack as PRIMARY
-  // ------------------------------------------------------------------
-  if (foundationalPapers.length > 0) {
-    const foundationalJuryArticles: JuryArticle[] = foundationalPapers.map(
-      (fp) => ({
-        type: "PRIMARY" as const,
-        title: fp.title,
-        abstract: fp.abstract ?? "",
-        url: fp.url ?? "",
-        doi: fp.doi ?? "",
-        publisher: fp.publisher ?? "",
-        publicationYear: fp.year ?? 0,
-        authors: fp.authors,
-        isFoundational: true,
-      }),
-    );
-
-    const foundationalTitles = new Set(
-      foundationalPapers
-        .map((fp) => fp.title?.toLowerCase().trim())
-        .filter(Boolean),
-    );
-
-    result.starterPack = [
-      ...foundationalJuryArticles,
-      ...result.starterPack.filter(
-        (a) =>
-          !a.title || !foundationalTitles.has(a.title.toLowerCase().trim()),
-      ),
-    ];
-
-    result.reservedPool = result.reservedPool.filter(
-      (a) => !a.title || !foundationalTitles.has(a.title.toLowerCase().trim()),
-    );
-  }
-
-  // ------------------------------------------------------------------
-  // Stage 6: CrossRef polite-pool validation (concurrency-limited)
+  // Stage 7: CrossRef Polite-Pool Validation
   // ------------------------------------------------------------------
   const crossrefStart = performance.now();
   const [enrichedStarterPack, enrichedReservedPool] = await Promise.all([
@@ -315,6 +280,29 @@ async function processSingleBox(
       context: boxCtx,
     },
   });
+
+  // ------------------------------------------------------------------
+  // Final: Prepend foundational articles, dedup from semantic results
+  // ------------------------------------------------------------------
+  if (foundationalArticles.length > 0) {
+    const foundationalTitles = new Set(
+      foundationalArticles
+        .map((a) => a.title?.toLowerCase().trim())
+        .filter(Boolean),
+    );
+
+    const dedupedStarterPack = enrichedStarterPack.filter(
+      (a) => !a.title || !foundationalTitles.has(a.title.toLowerCase().trim()),
+    );
+    const dedupedReservedPool = enrichedReservedPool.filter(
+      (a) => !a.title || !foundationalTitles.has(a.title.toLowerCase().trim()),
+    );
+
+    return {
+      starterPack: [...foundationalArticles, ...dedupedStarterPack],
+      reservedPool: dedupedReservedPool,
+    };
+  }
 
   return {
     starterPack: enrichedStarterPack,
@@ -360,30 +348,32 @@ export async function processLiteratureReviewAction(
 
     if (!thesisCtx) return { error: "Tez matrisi bulunamadı." };
 
-    const settled = await Promise.allSettled(
-      subBoxes.map((box) => processSingleBox(box, thesisCtx, logger)),
-    );
-
     const results: LiteratureReviewResult[] = [];
-    for (let i = 0; i < settled.length; i++) {
-      const s = settled[i];
-      if (s.status === "fulfilled") {
-        results.push(s.value);
-      } else {
-        const boxTitle = subBoxes[i]?.title ?? `index ${i}`;
+
+    for (const box of subBoxes) {
+      try {
+        const result = await processSingleBox(box, thesisCtx, logger);
+        results.push(result);
+      } catch (err) {
+        const boxTitle = box.title ?? "Bilinmeyen kutu";
         logger.error("literature_box_failed", {
           service: "literature",
           filePath: "onboarding/literature-review/actions.ts",
           data: { subBoxTitle: boxTitle },
-          error: s.reason,
+          error: err,
         });
         results.push({
           starterPack: [],
           reservedPool: [],
-          error: `Kutu "${boxTitle}" işlenirken hata: ${s.reason?.message ?? "Bilinmeyen hata"}`,
+          error: `Kutu "${boxTitle}" işlenirken hata: ${err instanceof Error ? err.message : "Bilinmeyen hata"}`,
         });
       }
+
+      // 1200ms delay between boxes to respect OpenAlex rate limits
+      await new Promise((resolve) => setTimeout(resolve, 1200));
     }
+
+    revalidatePath("/onboarding/literature-review");
 
     return { data: results };
   } catch (err) {

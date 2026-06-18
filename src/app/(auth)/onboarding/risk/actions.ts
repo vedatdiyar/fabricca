@@ -62,9 +62,9 @@ export async function extractQueriesAction(
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
-  log.info({
-    step: "extractQueries",
+  log.info("originality_query_extract_start", {
     service: "originality",
+    data: { context: matrix.studyTitle },
   });
 
   try {
@@ -86,10 +86,9 @@ export async function extractQueriesAction(
       log,
     );
 
-    log.info({
-      step: "extractQueries",
-      status: "SUCCESS",
+    log.info("originality_query_extract_success", {
       service: "originality",
+      data: { context: matrix.studyTitle },
     });
 
     return {
@@ -97,14 +96,10 @@ export async function extractQueriesAction(
       data: { tavilyQueries, tezaraQueries, keywords },
     };
   } catch (err) {
-    log.error({
-      step: "extractQueries",
-      status: "FAILED",
+    log.error("originality_query_extract_failed", {
       service: "originality",
-      diagnostics: {
-        errorCode: "EXTRACT_QUERIES_ERROR",
-        message: err instanceof Error ? err.message : String(err),
-      },
+      error: err,
+      data: { context: matrix.studyTitle },
     });
     return {
       error: "Sorgu ve parametre çıkarma işlemi sırasında bir hata oluştu.",
@@ -137,9 +132,9 @@ export async function executeSearchAction(params: {
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
-  log.info({
-    step: "executeSearch",
+  log.info("originality_search_execute_start", {
     service: "originality",
+    data: { context: params.studyTitle },
   });
 
   try {
@@ -160,10 +155,9 @@ export async function executeSearchAction(params: {
       log,
     );
 
-    log.info({
-      step: "executeSearch",
-      status: "SUCCESS",
+    log.info("originality_search_execute_success", {
       service: "originality",
+      data: { context: params.studyTitle },
     });
 
     return {
@@ -171,14 +165,10 @@ export async function executeSearchAction(params: {
       data: { tezaraSearchResults, tavilyResults },
     };
   } catch (err) {
-    log.error({
-      step: "executeSearch",
-      status: "FAILED",
+    log.error("originality_search_execute_failed", {
       service: "originality",
-      diagnostics: {
-        errorCode: "EXECUTE_SEARCH_ERROR",
-        message: err instanceof Error ? err.message : String(err),
-      },
+      error: err,
+      data: { context: params.studyTitle },
     });
     return {
       error: "Paralel tarama motorları çalıştırılırken bir hata oluştu.",
@@ -201,9 +191,9 @@ export async function siftThesesAction(params: {
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
-  log.info({
-    step: "siftTheses",
+  log.info("originality_theses_sift_start", {
     service: "originality",
+    data: { context: params.matrix.studyTitle },
   });
 
   try {
@@ -227,10 +217,9 @@ export async function siftThesesAction(params: {
       log,
     );
 
-    log.info({
-      step: "siftTheses",
-      status: "SUCCESS",
+    log.info("originality_theses_sift_success", {
       service: "originality",
+      data: { context: params.matrix.studyTitle },
     });
 
     return {
@@ -238,14 +227,10 @@ export async function siftThesesAction(params: {
       data: { selected: finalTheses, eliminated: eliminatedTheses },
     };
   } catch (err) {
-    log.error({
-      step: "siftTheses",
-      status: "FAILED",
+    log.error("originality_theses_sift_failed", {
       service: "originality",
-      diagnostics: {
-        errorCode: "SIFT_THESES_ERROR",
-        message: err instanceof Error ? err.message : String(err),
-      },
+      error: err,
+      data: { context: params.matrix.studyTitle },
     });
     return {
       error: "Tez eleme ve detay çekme işlemi sırasında bir hata oluştu.",
@@ -271,9 +256,9 @@ export async function finalizeJuryAnalysisAction(params: {
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
-  log.info({
-    step: "finalizeJuryAnalysis",
+  log.info("originality_jury_finalize_start", {
     service: "originality",
+    data: { context: params.matrix.studyTitle },
   });
 
   try {
@@ -383,22 +368,17 @@ export async function finalizeJuryAnalysisAction(params: {
         },
       });
 
-    log.info({
-      step: "finalizeJuryAnalysis",
-      status: "SUCCESS",
+    log.info("originality_jury_finalize_success", {
       service: "originality",
+      data: { context: params.matrix.studyTitle },
     });
 
     return { success: true, data: reportData };
   } catch (err) {
-    log.error({
-      step: "finalizeJuryAnalysis",
-      status: "FAILED",
+    log.error("originality_jury_finalize_failed", {
       service: "originality",
-      diagnostics: {
-        errorCode: "FINALIZE_JURY_ERROR",
-        message: err instanceof Error ? err.message : String(err),
-      },
+      error: err,
+      data: { context: params.matrix.studyTitle },
     });
     return {
       error: "Jüri analizi ve risk raporu hazırlanırken bir hata oluştu.",
@@ -413,6 +393,14 @@ export async function finalizeJuryAnalysisAction(params: {
  * @returns Success or error response
  */
 export async function completeRiskStageAction(): Promise<OnboardingActionResult> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+  const startTime = performance.now();
+
+  log.info("originality_risk_complete_start", {
+    service: "originality",
+  });
+
   try {
     const session = await getSession();
     if (!session)
@@ -430,8 +418,18 @@ export async function completeRiskStageAction(): Promise<OnboardingActionResult>
     }
 
     revalidatePath("/onboarding", "layout");
+
+    log.info("originality_risk_complete_success", {
+      service: "originality",
+      durationMs: performance.now() - startTime,
+    });
+
     return { success: true };
-  } catch {
+  } catch (err) {
+    log.error("originality_risk_complete_failed", {
+      service: "originality",
+      error: err,
+    });
     return { error: "Risk aşaması tamamlanırken bir hata oluştu." };
   }
 }

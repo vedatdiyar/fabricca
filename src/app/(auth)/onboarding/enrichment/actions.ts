@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
 import { getSession } from "@/proxy";
 import { createFlowId, Logger } from "@/lib/logger";
+import { revalidatePath } from "next/cache";
 import type { EnhancedThesisData, OnboardingActionResult } from "@/lib/types";
 
 /**
@@ -19,11 +20,11 @@ export async function confirmEnhancedThesisAction(
 ): Promise<OnboardingActionResult> {
   const flowId = createFlowId();
   const log = new Logger(flowId);
+  const startTime = performance.now();
 
-  log.info({
-    step: "confirm_enhanced_thesis",
-    status: "START",
+  log.info("enrichment_confirm_start", {
     service: "enrichment",
+    data: { context: "Zenginleştirilmiş matris onayı" },
   });
 
   try {
@@ -84,21 +85,21 @@ export async function confirmEnhancedThesisAction(
         .where(eq(thesisBoxes.thesisMatrixId, matrix.id));
     }
 
-    log.info({
-      step: "confirm_enhanced_thesis",
-      status: "SUCCESS",
+    revalidatePath("/onboarding/matrix");
+    revalidatePath("/onboarding/enrichment");
+    revalidatePath("/onboarding/risk");
+
+    log.info("enrichment_confirm_success", {
       service: "enrichment",
+      durationMs: performance.now() - startTime,
+      data: { resultCount: 1, context: "Zenginleştirilmiş matris onayı" },
     });
     return { success: true };
   } catch (error) {
-    log.error({
-      step: "confirm_enhanced_thesis",
-      status: "FAILED",
+    log.error("enrichment_confirm_failed", {
       service: "enrichment",
-      diagnostics: {
-        errorCode: "CONFIRM_ENRICHED_THESIS_ERROR",
-        message: error instanceof Error ? error.message : String(error),
-      },
+      error,
+      data: { context: "Zenginleştirilmiş matris onayı" },
     });
     return { error: "Tez matrisi onaylanırken bir hata oluştu." };
   }

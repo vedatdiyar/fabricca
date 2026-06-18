@@ -27,8 +27,12 @@ export async function generateBoxesAction(): Promise<
 > {
   const flowId = createFlowId();
   const log = new Logger(flowId);
+  const startTime = performance.now();
 
-  log.info({ step: "generateBoxes", status: "START", service: "boxes" });
+  log.info("boxes_generate_start", {
+    service: "boxes",
+    data: { context: "Konu kutusu üretimi" },
+  });
 
   try {
     const session = await getSession();
@@ -63,18 +67,18 @@ export async function generateBoxesAction(): Promise<
 
     const draftBoxes = generationResult.boxes || [];
 
-    log.info({ step: "generateBoxes", status: "SUCCESS", service: "boxes" });
+    log.info("boxes_generate_success", {
+      service: "boxes",
+      durationMs: performance.now() - startTime,
+      data: { count: draftBoxes.length, context: "Konu kutusu üretimi" },
+    });
 
     return { success: true, boxes: draftBoxes };
   } catch (err) {
-    log.error({
-      step: "generateBoxes",
-      status: "FAILED",
+    log.error("boxes_generate_failed", {
       service: "boxes",
-      diagnostics: {
-        errorCode: "SYSTEM_ERROR",
-        message: err instanceof Error ? err.message : String(err),
-      },
+      error: err,
+      data: { context: "Konu kutusu üretimi" },
     });
     return {
       error: "Konu kutuları oluşturulurken beklenmeyen bir hata oluştu.",
@@ -94,8 +98,12 @@ export async function confirmBoxesAction(
 ): Promise<OnboardingActionResult> {
   const flowId = createFlowId();
   const log = new Logger(flowId);
+  const startTime = performance.now();
 
-  log.info({ step: "confirmBoxes", status: "START", service: "boxes" });
+  log.info("boxes_confirm_start", {
+    service: "boxes",
+    data: { context: "Konu kutusu kaydetme" },
+  });
 
   try {
     const session = await getSession();
@@ -132,17 +140,17 @@ export async function confirmBoxesAction(
     revalidatePath("/onboarding/literature-review");
     revalidatePath("/", "layout");
 
-    log.info({ step: "confirmBoxes", status: "SUCCESS", service: "boxes" });
+    log.info("boxes_confirm_success", {
+      service: "boxes",
+      durationMs: performance.now() - startTime,
+      data: { count: boxes.length, context: "Konu kutusu kaydetme" },
+    });
     return { success: true };
   } catch (err) {
-    log.error({
-      step: "confirmBoxes",
-      status: "FAILED",
+    log.error("boxes_confirm_failed", {
       service: "boxes",
-      diagnostics: {
-        errorCode: "TRANSACTION_ERROR",
-        message: err instanceof Error ? err.message : String(err),
-      },
+      error: err,
+      data: { context: "Konu kutusu kaydetme" },
     });
     return { error: "Konu kutuları kaydedilirken bir hata oluştu." };
   }

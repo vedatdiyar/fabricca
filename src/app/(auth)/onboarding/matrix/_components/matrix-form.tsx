@@ -110,6 +110,15 @@ export function MatrixForm() {
       }
 
       updateLoadingStep(1, "completed");
+
+      // Tez bilgileri değiştiği için ileriki adımlardaki tüm state kalıntılarını
+      // temizle — böylece eski kutu/literatür/rapor verileri asla hortlamaz.
+      const store = useOnboardingStore.getState();
+      store.setBoxes(null);
+      store.setLiteraturePool([]);
+      store.setReportData(null);
+      store.setEnrichmentPool([]);
+
       toast.success("Tez matrisi başarıyla zenginleştirildi.");
       hideLoading();
       router.push("/onboarding/enrichment");

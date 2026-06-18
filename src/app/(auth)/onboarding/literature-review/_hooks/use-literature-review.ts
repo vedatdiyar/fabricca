@@ -84,11 +84,35 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
       const poolTitles = new Set(
         currentStore.literaturePool.map((e) => e.subBoxTitle),
       );
-      // If the set of sub-boxes doesn't match literaturePool, reset the pool
-      if (
-        freshTitles.size !== poolTitles.size ||
-        ![...freshTitles].every((t) => poolTitles.has(t))
-      ) {
+
+      // 1. Title-level reconciliation — if the set of titles changed, flush.
+      const titlesMatch =
+        freshTitles.size === poolTitles.size &&
+        [...freshTitles].every((t) => poolTitles.has(t));
+
+      // 2. Content-level reconciliation — even with matching titles the box
+      //    content (description / semanticSearchBlock) may have been updated
+      //    server-side or via a handleProceed → setBoxes cycle.  Compare
+      //    every live DB box against its counterpart in the Zustand store.
+      let contentChanged = false;
+      if (titlesMatch) {
+        const freshBoxMap = new Map(allBoxes.map((b) => [b.title, b]));
+        const storeBoxMap = new Map(
+          (currentStore.boxes ?? []).map((b) => [b.title, b]),
+        );
+        contentChanged = [...freshTitles].some((title) => {
+          const fresh = freshBoxMap.get(title);
+          const stored = storeBoxMap.get(title);
+          if (!fresh || !stored) return false;
+          return (
+            (fresh.description ?? "") !== (stored.description ?? "") ||
+            (fresh.semanticSearchBlock ?? "") !==
+              (stored.semanticSearchBlock ?? "")
+          );
+        });
+      }
+
+      if (!titlesMatch || contentChanged) {
         useOnboardingStore.getState().setLiteraturePool([]);
       }
       // Merge foundationalQueries from Zustand store (if exists) into DB boxes
@@ -225,6 +249,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
         return;
       }
 
+      useOnboardingStore.getState().setEnrichmentPool([]);
       resetStore();
       setConfirming(false);
       toast.success("Tebrikler! Onboarding süreciniz tamamlandı.");

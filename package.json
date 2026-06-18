@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "check:full": "npm run lint && npm run typecheck"
+    "check:full": "npm run lint && npm run typecheck && npx prettier --write ."
   },
   "dependencies": {
     "@google/genai": "^2.8.0",

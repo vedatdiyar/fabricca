@@ -75,7 +75,10 @@ export function BoxesContainer() {
         return;
       }
 
-      useOnboardingStore.getState().setLiteraturePool([]);
+      const store = useOnboardingStore.getState();
+      store.setLiteraturePool([]);
+      store.setReportData(null);
+      store.setEnrichmentPool([]);
 
       setConfirming(false);
       toast.success(

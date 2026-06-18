@@ -5,20 +5,20 @@
  * Gemini API üzerinden konu kutuları (boxes) üretimini test eder.
  *
  * Kullanım:
- *   npx tsx test-box-generation.ts
+ *   npx tsx tests/test-box-generation.ts
  *
  * Gereksinimler:
  *   - .env.local dosyasında GEMINI_API_KEY tanımlı olmalıdır
  */
 
 import { GoogleGenAI } from "@google/genai";
-import type { JsonSchema } from "./src/lib/gemini";
+import type { JsonSchema } from "../src/lib/gemini";
 import {
   buildThesisBoxGenerationSystemInstruction,
   buildThesisBoxGenerationPrompt,
   thesisBoxGenerationSchema,
-} from "./src/lib/prompts/box-generation";
-import type { GeminiThesisBox } from "./src/lib/types";
+} from "../src/lib/prompts/box-generation";
+import type { GeminiThesisBox } from "../src/lib/types";
 
 // ============================================================================
 // GİRDI VERILERI

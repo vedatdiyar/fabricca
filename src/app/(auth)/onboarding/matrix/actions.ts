@@ -7,6 +7,7 @@ import { getSession } from "@/proxy";
 import { generateStructuredContent } from "@/lib/gemini";
 import { ThinkingLevel } from "@google/genai";
 import { createFlowId, Logger } from "@/lib/logger";
+import { revalidatePath } from "next/cache";
 
 import {
   enhancedThesisSchema,
@@ -48,11 +49,9 @@ export async function enrichThesisMatrixAction(
   const log = new Logger(flowId);
   const startTime = performance.now();
 
-  log.info({
-    step: "matrix_enrichment_api",
-    status: "START",
+  log.info("matrix_enrichment_start", {
     service: "matrix",
-    filePath: "onboarding/matrix/actions.ts",
+    data: { context: "Tez matrisi zenginleştirme" },
   });
 
   try {
@@ -104,27 +103,18 @@ export async function enrichThesisMatrixAction(
       { thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM } },
     );
 
-    const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
-
-    log.info({
-      step: "matrix_enrichment_api",
-      status: "SUCCESS",
+    log.info("matrix_enrichment_success", {
       service: "matrix",
-      filePath: "onboarding/matrix/actions.ts",
-      metrics: { duration },
+      durationMs: performance.now() - startTime,
+      data: { count: 1, context: "Tez matrisi zenginleştirme" },
     });
 
     return { success: true, data: enhancedData };
   } catch (error) {
-    log.error({
-      step: "matrix_enrichment_api",
-      status: "FAILED",
+    log.error("matrix_enrichment_failed", {
       service: "matrix",
-      filePath: "onboarding/matrix/actions.ts",
-      diagnostics: {
-        errorCode: "GEMINI_ENRICHMENT_ERROR",
-        message: error instanceof Error ? error.message : String(error),
-      },
+      error,
+      data: { context: "Tez matrisi zenginleştirme" },
     });
     return { error: "Tez matrisi zenginleştirilirken bir hata oluştu." };
   }
@@ -145,11 +135,9 @@ export async function saveEnrichedMatrixAction(
   const log = new Logger(flowId);
   const startTime = performance.now();
 
-  log.info({
-    step: "matrix_save_db",
-    status: "START",
+  log.info("matrix_save_start", {
     service: "db",
-    filePath: "onboarding/matrix/actions.ts",
+    data: { context: "Tez matrisi kaydetme" },
   });
 
   try {
@@ -207,27 +195,21 @@ export async function saveEnrichedMatrixAction(
         .where(eq(thesisBoxes.thesisMatrixId, matrixRow.id));
     }
 
-    const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
+    revalidatePath("/onboarding/matrix");
+    revalidatePath("/onboarding/enrichment");
 
-    log.info({
-      step: "matrix_save_db",
-      status: "SUCCESS",
+    log.info("matrix_save_success", {
       service: "db",
-      filePath: "onboarding/matrix/actions.ts",
-      metrics: { duration },
+      durationMs: performance.now() - startTime,
+      data: { context: "Tez matrisi kaydetme" },
     });
 
     return { success: true };
   } catch (error) {
-    log.error({
-      step: "matrix_save_db",
-      status: "FAILED",
+    log.error("matrix_save_failed", {
       service: "db",
-      filePath: "onboarding/matrix/actions.ts",
-      diagnostics: {
-        errorCode: "DB_WRITE_ERROR",
-        message: error instanceof Error ? error.message : String(error),
-      },
+      error,
+      data: { context: "Tez matrisi kaydetme" },
     });
     return { error: "Matris veri tabanına kaydedilirken bir hata oluştu." };
   }

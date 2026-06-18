@@ -4,9 +4,36 @@ import fs from "fs";
 import path from "path";
 import { classifyError, getErrorDisplay } from "./error-utils";
 
+// ── Global console.log interceptor (log pollution filter + flow separator) ──
+const originalConsoleLog = console.log;
+const FILTER_PATTERNS = [
+  "Cache skipped reason",
+  "api.openalex.org",
+  "api.crossref.org",
+  "fetchCache = default-no-store",
+  "cache skip",
+];
+let lastRenderedFlowId: string | null = null;
+console.log = (...args: unknown[]) => {
+  const message = typeof args[0] === "string" ? args[0] : "";
+  if (FILTER_PATTERNS.some((p) => message.includes(p))) return;
+  if (isDevelopment) {
+    const match = message.match(/\[(fl_\w+)\]/);
+    if (match) {
+      const currentFlowId = match[1];
+      if (lastRenderedFlowId !== null && lastRenderedFlowId !== currentFlowId) {
+        originalConsoleLog(
+          "\x1b[90m───────────────────────────────────────────────────────────────────────────────────────────────────\x1b[0m",
+        );
+      }
+      lastRenderedFlowId = currentFlowId;
+    }
+  }
+  originalConsoleLog(...args);
+};
+
 export type LogLevel = "info" | "warn" | "error";
 export type LogEvent = "login_success" | "login_failed" | "flow_complete";
-
 export type ServiceName =
   | "gemini"
   | "cloudflare"
@@ -54,11 +81,6 @@ export interface LogParams {
 
 const isDevelopment = process.env.NODE_ENV === "development";
 const PAYLOAD_DIR = ".next/logs";
-
-const TIMESTAMP_WIDTH = 10;
-const FLOW_ID_WIDTH = 14;
-const MODULE_WIDTH = 12;
-const ACTION_WIDTH = 22;
 
 const SERVICE_DISPLAY: Record<ServiceName, string> = {
   gemini: "GEMINI",
@@ -121,7 +143,7 @@ function getModuleDisplay(service: ServiceName, params?: LogParams): string {
     const suffix = sl === "LOW" ? "L1" : sl === "HIGH" ? "L2" : "";
     if (suffix) base = `GEMINI/${suffix}`;
   }
-  return base.padEnd(MODULE_WIDTH);
+  return base;
 }
 
 function getActionDisplay(event: string): { emoji: string; label: string } {
@@ -132,19 +154,6 @@ function getActionDisplay(event: string): { emoji: string; label: string } {
     .replace(/_(start|done|success|failed|filtered|empty)$/g, "")
     .toUpperCase();
   return { emoji: "📌", label: cleaned || event.toUpperCase() };
-}
-
-function getStatusTag(status: string): string {
-  switch (status) {
-    case "START":
-      return "\x1b[33m⏳ START\x1b[0m";
-    case "SUCCESS":
-      return "\x1b[32m🟢 SUCCESS\x1b[0m";
-    case "FAILED":
-      return "\x1b[31m🔴 FAILED\x1b[0m";
-    default:
-      return "";
-  }
 }
 
 function deriveStatus(event: string): string {
@@ -163,55 +172,27 @@ function truncate(s: string, maxLen: number): string {
   return s.length <= maxLen ? s : s.slice(0, maxLen - 3) + "...";
 }
 
-/**
- * Central counter validator & normalizer.
- * Reads before/after and count-like fields from a data record,
- * validates internal consistency, and returns formatted metric strings.
- */
 function processDataMetrics(data: Record<string, unknown>): string[] {
   const metrics: string[] = [];
-
   const before = data.before as number | undefined;
   const after = data.after as number | undefined;
-  if (before !== undefined && after !== undefined) {
-    if (before < after) {
-      metrics.push(`⚠️ ${before}→${after} (asymmetric)`);
-    } else if (before === after) {
-      metrics.push(`${before} → ${after} (unchanged)`);
-    } else {
-      metrics.push(`${before} → ${after}`);
-    }
-  }
 
+  if (before !== undefined && after !== undefined) {
+    metrics.push(`📊 ${before} → ${after}`);
+  }
   if (data.count !== undefined) metrics.push(`📊 Sayı: ${data.count}`);
   if (data.resultCount !== undefined)
     metrics.push(`📊 ${data.resultCount} sonuç`);
   if (data.rawCount !== undefined) metrics.push(`🔢 Ham: ${data.rawCount}`);
   if (data.mergedCount !== undefined) metrics.push(`🔀 ${data.mergedCount}`);
-  if (data.totalResults !== undefined)
-    metrics.push(`📊 Toplam: ${data.totalResults}`);
-  if (data.query) metrics.push(`🔍 ${truncate(String(data.query), 60)}`);
-  if (data.reason) metrics.push(`📝 ${truncate(String(data.reason), 80)}`);
-  if (data.starterPackCount !== undefined)
-    metrics.push(`📦 ${data.starterPackCount}`);
-  if (data.reservedPoolCount !== undefined)
-    metrics.push(`📦 ${data.reservedPoolCount}`);
-  if (data.enrichedCount !== undefined)
-    metrics.push(`🔗 ${data.enrichedCount}`);
-  if (data.requestedCount !== undefined)
-    metrics.push(`🔢 ${data.requestedCount}`);
-  if (data.resolvedCount !== undefined)
-    metrics.push(`✅ ${data.resolvedCount}`);
-  if (data.status) metrics.push(`🌐 HTTP ${data.status}`);
-  if (data.errorCode) metrics.push(`❌ ${data.errorCode}`);
-  if (data.chunkIndex !== undefined && data.totalChunks !== undefined) {
-    metrics.push(`📦 ${data.chunkIndex}/${data.totalChunks}`);
-  }
-  if (data.keptInChunk !== undefined)
-    metrics.push(`✅ ${data.keptInChunk} kept`);
-  if (data.model) metrics.push(`🏷️ ${data.model}`);
-
   return metrics;
+}
+
+function getStatusIcon(status: string): string {
+  if (status === "START") return "⏳";
+  if (status === "SUCCESS") return "🟢";
+  if (status === "FAILED") return "🔴";
+  return "⚪";
 }
 
 const pinoLogger = isDevelopment
@@ -222,21 +203,12 @@ const pinoLogger = isDevelopment
         ignore: "pid,hostname",
       }),
     )
-  : pino({
-      base: undefined,
-      timestamp: pino.stdTimeFunctions.isoTime,
-    });
+  : pino({ base: undefined, timestamp: pino.stdTimeFunctions.isoTime });
 
-/**
- * Deduplication guard for START events.
- * Prevents duplicate _start / START from rendering more than once per flow.
- */
 const startedEvents: Map<string, Set<string>> = new Map();
 
 function peekStarted(flowId: string, event: string): boolean {
-  const set = startedEvents.get(flowId);
-  if (!set) return false;
-  return set.has(event);
+  return startedEvents.get(flowId)?.has(event) ?? false;
 }
 
 function markStarted(flowId: string, event: string): void {
@@ -269,65 +241,46 @@ export class Logger {
     this.write("error", arg1, params);
   }
 
-  /**
-   * Log a named step within the current process flow.
-   */
   step(stepName: string, metadata?: Record<string, unknown>): void {
     if (!isDevelopment) return;
-    const prefix = this.buildPrefix("flow", "step");
-    const meta =
-      metadata && Object.keys(metadata).length > 0
-        ? ` ${JSON.stringify(metadata)}`
-        : "";
-    console.log(`${prefix}| 📍 ${stepName}${meta}`);
+    const prefix = this.buildPrefix("flow", "SUCCESS");
+    const suffix = this.buildSuffix(
+      "step",
+      metadata ? { data: metadata } : undefined,
+    );
+    console.log(`${prefix}${suffix} • 📍 ${stepName}`);
   }
 
-  /**
-   * Log a file reference (path or URL) for traceability.
-   */
   file(ref: string): void {
     if (!isDevelopment) return;
-    const prefix = this.buildPrefix("flow", "file_ref");
-    console.log(`${prefix}| 📁 ${ref}`);
+    const prefix = this.buildPrefix("flow", "SUCCESS");
+    console.log(`${prefix} | 📁 ${ref}`);
   }
 
-  /**
-   * Log an arbitrary labeled data point.
-   */
   data(label: string, value: unknown): void {
     if (!isDevelopment) return;
-    const prefix = this.buildPrefix("flow", "data");
+    const prefix = this.buildPrefix("flow", "SUCCESS");
     const display =
       typeof value === "object" ? JSON.stringify(value) : String(value);
-    console.log(`${prefix}| 📊 ${label}: ${truncate(display, 120)}`);
+    console.log(`${prefix} | 📊 ${label}: ${truncate(display, 120)}`);
   }
 
-  /**
-   * Log a preview of data with truncation for terminal readability.
-   */
   preview(label: string, value: unknown): void {
     if (!isDevelopment) return;
-    const prefix = this.buildPrefix("flow", "preview");
+    const prefix = this.buildPrefix("flow", "SUCCESS");
     const raw =
       typeof value === "object" ? JSON.stringify(value) : String(value);
-    const display = truncate(raw, 200);
-    console.log(`${prefix}| 👁️ ${label}: ${display}`);
+    console.log(`${prefix} | 👁️ ${label}: ${truncate(raw, 200)}`);
   }
 
-  /**
-   * Log an AI prompt sent to a model.
-   */
   prompt(model: string, content: string): void {
     if (!isDevelopment) return;
-    const prefix = this.buildPrefix("gemini", "ai_prompt");
-    const preview = truncate(content.replace(/\n/g, " "), 160);
-    console.log(`${prefix}| 💬 [${model}] ${preview}`);
+    const prefix = this.buildPrefix("gemini", "SUCCESS");
+    console.log(
+      `${prefix} | 💬 [${model}] ${truncate(content.replace(/\n/g, " "), 160)}`,
+    );
   }
 
-  /**
-   * Save a debug payload to disk for later inspection.
-   * @returns The file path of the saved payload, or undefined on failure / production.
-   */
   saveDebugPayload(
     stage: string,
     module: string,
@@ -339,8 +292,7 @@ export class Logger {
       const dir = path.resolve(process.cwd(), PAYLOAD_DIR);
       fs.mkdirSync(dir, { recursive: true });
       const cleanId = this.flowId.replace(/[^a-zA-Z0-9_-]/g, "_");
-      const fileName = `${cleanId}_${stage}_payload.json`;
-      const filePath = path.join(dir, fileName);
+      const filePath = path.join(dir, `${cleanId}_${stage}_payload.json`);
       const payload: PayloadData = {
         flowId: this.flowId,
         timestamp: new Date().toISOString(),
@@ -357,8 +309,6 @@ export class Logger {
     }
   }
 
-  // ─────────────────────────── Private ───────────────────────────────────
-
   private write(
     level: "info" | "warn" | "error",
     arg1: string | Record<string, unknown>,
@@ -366,13 +316,13 @@ export class Logger {
   ): void {
     if (typeof arg1 === "object" && arg1 !== null) {
       const entry: Record<string, unknown> = { flowId: this.flowId, ...arg1 };
-      const rawStatus = entry.status as string | undefined;
-
-      if (rawStatus === "START") {
-        const dedupKey = (entry.step as string) ?? "obj_start";
-        if (peekStarted(this.flowId, dedupKey)) return;
-        markStarted(this.flowId, dedupKey);
-      }
+      if (
+        entry.status === "START" &&
+        peekStarted(this.flowId, (entry.step as string) ?? "obj_start")
+      )
+        return;
+      if (entry.status === "START")
+        markStarted(this.flowId, (entry.step as string) ?? "obj_start");
 
       if (isDevelopment) this.renderDevLine(entry);
       else pinoLogger[level](entry);
@@ -381,216 +331,109 @@ export class Logger {
 
     const event = arg1 as string;
     const service = params?.service ?? "flow";
-    const entry: Record<string, unknown> = {
-      event,
-      flowId: this.flowId,
-      service,
-    };
-
-    if (params?.step) entry.step = params.step;
-    if (params?.durationMs !== undefined) {
-      entry.durationMs = Math.round(params.durationMs);
-    }
-    if (params?.data) entry.data = params.data;
-    if (params?.tokens) entry.tokens = params.tokens;
-
-    if (event === "ai_request_success" && params?.tokens) {
-      this.lastTokens = params.tokens;
-    }
-
-    if (level === "error") {
-      const err = params?.error;
-      entry.error = {
-        name: err instanceof Error ? err.name : "UnknownError",
-        message:
-          err instanceof Error
-            ? err.message
-            : err != null
-              ? String(err)
-              : "Unknown error",
-      };
-      if (err instanceof Error && err.stack) {
-        (entry.error as Record<string, unknown>).stack = err.stack;
-      }
-    }
-
     const status = params?.status ?? deriveStatus(event);
 
     if (status === "START" && peekStarted(this.flowId, event)) return;
     if (status === "START") markStarted(this.flowId, event);
 
     if (isDevelopment) {
-      this.renderEventLine(service, event, status, params);
+      const prefix = this.buildPrefix(service, status);
+      const suffix = this.buildSuffix(event, params);
+      console.log(`${prefix}${suffix}`);
     } else {
-      if (!status) return;
-      entry.status = status;
+      const entry: Record<string, unknown> = {
+        event,
+        flowId: this.flowId,
+        service,
+        status,
+      };
+      if (params?.step) entry.step = params.step;
+      if (params?.durationMs !== undefined)
+        entry.durationMs = Math.round(params.durationMs);
+      if (params?.data) entry.data = params.data;
+      if (params?.tokens) entry.tokens = params.tokens;
       pinoLogger[level](entry);
     }
   }
 
-  private renderEventLine(
-    service: ServiceName,
-    event: string,
-    status: string,
-    params?: LogParams,
-  ): void {
-    const prefix = this.buildPrefix(service, event);
-    const suffix = this.buildSuffix(event, status, params);
-    console.log(`${prefix}${suffix}`);
+  private buildPrefix(service: ServiceName | string, status: string): string {
+    const time = `[${getTimestamp()}]`;
+    const id = `[${truncateFlowId(this.flowId)}]`;
+
+    const rawMod = getModuleDisplay(service as ServiceName, {});
+    const mod = `[${rawMod.padEnd(12)}]`;
+    const icon = getStatusIcon(status);
+
+    // Hizalamayı bozan her şeyi sağa atmak için boruyu buraya kilitledik.
+    return `${time} ${id} ${mod} [${icon}] |`;
   }
 
-  private buildPrefix(service: ServiceName | string, event: string): string {
-    const time = getTimestamp();
-    const reqId = truncateFlowId(this.flowId);
-    const svc = service as ServiceName;
-    const moduleDisplay = getModuleDisplay(svc);
-    const actionDisplay = getActionDisplay(event);
-
-    const timePadded = `[${time}]`.padEnd(TIMESTAMP_WIDTH);
-    const idPadded = `[${reqId}]`.padEnd(FLOW_ID_WIDTH);
-    const modPadded = `[${moduleDisplay}]`.padEnd(MODULE_WIDTH + 2);
-    const actionPadded = `${actionDisplay.emoji} ${actionDisplay.label}`.padEnd(
-      ACTION_WIDTH,
-    );
-
-    return `${timePadded} ${idPadded} ${modPadded} ${actionPadded}`;
-  }
-
-  private buildSuffix(
-    event: string,
-    status: string,
-    params?: LogParams,
-  ): string {
+  private buildSuffix(event: string, params?: LogParams): string {
     const parts: string[] = [];
 
-    if (params?.step && params.step !== event) {
-      parts.push(params.step);
-    }
+    // Eylem alanını borunun hemen sağına alıyoruz
+    const actDisplay = getActionDisplay(event);
+    parts.push(`${actDisplay.emoji} ${actDisplay.label}`);
 
-    const statusTag = getStatusTag(status);
-    if (statusTag) parts.push(statusTag);
-
-    if (params?.data) {
-      const ctx =
-        params.data.context ?? params.data.boxTitle ?? params.data.subBox;
-      if (ctx) parts.push(`📦 ${ctx}`);
-    }
-
-    let suffix = "";
-    if (parts.length > 0) {
-      suffix += ` | ${parts.join(" • ")}`;
-    }
-
-    const metricParts: string[] = [];
-
+    // 1. Süre Metriği
     if (params?.durationMs !== undefined) {
-      metricParts.push(`⏱️ ${Math.round(params.durationMs)}ms`);
+      parts.push(`⏱️ ${Math.round(params.durationMs)}ms`);
     }
 
-    if (params?.filePath) {
-      metricParts.push(`📁 ${params.filePath.replace(/^src\//, "")}`);
-    }
+    // 2. Veri Sayaçları
+    if (params?.data) parts.push(...processDataMetrics(params.data));
 
+    // 3. Yapay Zeka Token Bilgileri
     if (params?.tokens) {
       const t = params.tokens;
-      if ((t.input ?? 0) > 0 || (t.output ?? 0) > 0) {
-        metricParts.push(`📥 ${t.input ?? "?"}`, `📤 ${t.output ?? "?"}`);
+      if (t.total !== undefined) parts.push(`💭 ${t.total}tkn`);
+      else if (t.input !== undefined || t.output !== undefined) {
+        parts.push(`📥 ${t.input ?? 0} / 📤 ${t.output ?? 0}`);
       }
-      if (t.total !== undefined) metricParts.push(`💭 ${t.total}tkn`);
     } else if (params?.data?.model) {
-      metricParts.push(`🏷️ ${params.data.model}`);
+      parts.push(`🏷️ ${String(params.data.model).replace("-flash-lite", "")}`);
     }
 
-    if (params?.data) {
-      const dataMetrics = processDataMetrics(params.data);
-      metricParts.push(...dataMetrics);
-    }
+    // 4. Bağlam Bilgisi
+    if (params?.data?.context) parts.push(`📦 ${params.data.context}`);
+    if (params?.step && params.step !== event) parts.push(`[${params.step}]`);
 
+    // 5. Hata Detayları
     if (params?.error) {
-      const err = params.error;
-      const display = getErrorDisplay(err);
-      const scenario = classifyError(err);
-      metricParts.push(`❌ [${scenario.toUpperCase()}] ${display.title}`);
+      const display = getErrorDisplay(params.error);
+      parts.push(
+        `❌ [${classifyError(params.error).toUpperCase()}] ${display.title}`,
+      );
     }
 
-    if (metricParts.length > 0) {
-      suffix += ` | ${metricParts.join(" | ")}`;
-    }
-
-    if (
-      event === "literature_sifting_done" &&
-      typeof params?.data?.before === "number" &&
-      typeof params?.data?.after === "number" &&
-      params.data.before > 40 &&
-      params.data.after <= 2
-    ) {
-      suffix += ` | ⚠️ DÜŞÜK KABUL ORANI (dosya: ${this.lastPayloadPath ?? "N/A"})`;
-    }
-
-    return suffix;
+    return ` ${parts.join(" • ")}`;
   }
 
   private renderDevLine(data: Record<string, unknown>): void {
-    const time = getTimestamp();
-    const reqId = truncateFlowId(this.flowId);
-    const svc = String(data.service ?? "flow") as ServiceName;
-    const moduleDisplay = getModuleDisplay(svc);
-
-    const event = String(data.event ?? data.step ?? "data");
-    const actionDisplay = getActionDisplay(event);
-
-    const timePadded = `[${time}]`.padEnd(TIMESTAMP_WIDTH);
-    const idPadded = `[${reqId}]`.padEnd(FLOW_ID_WIDTH);
-    const modPadded = `[${moduleDisplay}]`.padEnd(MODULE_WIDTH + 2);
-    const actionPadded = `${actionDisplay.emoji} ${actionDisplay.label}`.padEnd(
-      ACTION_WIDTH,
-    );
-
-    let line = `${timePadded} ${idPadded} ${modPadded} ${actionPadded}`;
-
-    const msgParts: string[] = [];
-
-    const step = data.step ? String(data.step) : "";
-    if (step && step !== event) msgParts.push(step);
-
+    const svc = (data.service ?? "flow") as ServiceName;
+    const ev = String(data.event ?? data.step ?? "data");
     const rawStatus = String(data.status ?? "");
-    if (rawStatus) msgParts.push(getStatusTag(rawStatus));
+    const prefix = this.buildPrefix(svc, rawStatus);
+    const parts: string[] = [];
 
-    if (msgParts.length > 0) line += ` | ${msgParts.join(" • ")}`;
+    const actDisplay = getActionDisplay(ev);
+    parts.push(`${actDisplay.emoji} ${actDisplay.label}`);
 
-    const metricParts: string[] = [];
-
-    const metrics = data.metrics as Record<string, unknown> | undefined;
-    if (metrics) {
-      const durMs = metrics.durationMs as number | undefined;
-      if (durMs !== undefined) metricParts.push(`⏱️ ${Math.round(durMs)}ms`);
-      const dur = metrics.duration as string | undefined;
-      if (dur !== undefined && durMs === undefined)
-        metricParts.push(`⏱️ ${dur}`);
-      const rc = metrics.resultCount as number | undefined;
-      if (rc !== undefined) metricParts.push(`📊 ${rc} sonuç`);
+    const nm = data.metrics as Record<string, unknown> | undefined;
+    if (nm?.durationMs !== undefined) {
+      parts.push(`⏱️ ${Math.round(nm.durationMs as number)}ms`);
     }
 
-    const extraData = data.data as Record<string, unknown> | undefined;
-    if (extraData) {
-      const dataMetrics = processDataMetrics(extraData);
-      metricParts.push(...dataMetrics);
-    }
-
-    const diagnostics = data.diagnostics as Record<string, unknown> | undefined;
-    if (diagnostics) {
-      const msg = diagnostics.message ? String(diagnostics.message) : "";
-      if (msg) metricParts.push(`❌ ${truncate(msg, 120)}`);
+    const ed = data.data as Record<string, unknown> | undefined;
+    if (ed) {
+      parts.push(...processDataMetrics(ed));
+      if (ed.context) parts.push(`📦 ${ed.context}`);
     }
 
     const err = data.error as { message?: string } | undefined;
-    if (err && err.message && !diagnostics) {
-      metricParts.push(`❌ ${truncate(err.message, 120)}`);
-    }
+    if (err?.message) parts.push(`❌ ${err.message}`);
 
-    if (metricParts.length > 0) line += ` | ${metricParts.join(" | ")}`;
-
-    console.log(line);
+    console.log(`${prefix} ${parts.join(" • ")}`);
   }
 }
 

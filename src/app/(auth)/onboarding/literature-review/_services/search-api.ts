@@ -227,7 +227,6 @@ async function queryOpenAlexWorks(
     const response = await fetch(url, {
       headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
       signal: AbortSignal.timeout(15000),
-      cache: "force-cache",
     });
     if (!response.ok) return [];
     const data = (await response.json()) as {
@@ -255,32 +254,9 @@ export async function searchOpenAlex(query: string): Promise<RawPaper[]> {
   });
   const results = await queryOpenAlexWorks(params, query);
   if (results.length === 0) {
-    return searchOpenAlexKeyword(query);
+    return [];
   }
   return results;
-}
-
-// ============================================================================
-// Stage 1b: OpenAlex Keyword Search (full-text fallback)
-// ============================================================================
-
-/**
- * Searches OpenAlex using the standard 'search' parameter (keyword/full-text).
- * Unlike 'search.semantic' which uses vector similarity, this performs exact
- * keyword matching as a fallback.
- */
-export async function searchOpenAlexKeyword(
-  query: string,
-): Promise<RawPaper[]> {
-  const params = new URLSearchParams({
-    search: query,
-    filter: "has_abstract:true",
-    sort: "cited_by_count:desc",
-    per_page: "50",
-    select:
-      "id,title,type,biblio,abstract_inverted_index,cited_by_count,relevance_score,authorships,publication_year,primary_location",
-  });
-  return queryOpenAlexWorks(params, query);
 }
 
 // ============================================================================
@@ -304,7 +280,6 @@ export async function validateWithCrossRef(
     const response = await fetch(endpoint, {
       headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
       signal: AbortSignal.timeout(10000),
-      cache: "force-cache",
     });
     if (!response.ok) return paper;
 
@@ -371,14 +346,17 @@ export interface FoundationalWorkResult {
 
 /**
  * Resolves a list of foundational (classical/seminal) work queries against the
- * OpenAlex works endpoint using AND-filtered title + author search. Returns
- * validated works sorted by citation count (highest first) and deduplicated.
+ * OpenAlex works endpoint using exact title search (filter=display_name.search).
+ * Each result is validated against title and/or author criteria before acceptance;
+ * if no result passes validation (LLM hallucination guard), the raw query data
+ * is preserved via createFallback instead of accepting an irrelevant match.
  *
- * Each query is resolved independently in a Promise.allSettled parallel batch.
- * Failed or empty results are silently filtered out.
+ * Each query is resolved independently in a Promise.all parallel batch.
+ * Every query is guaranteed to return a FoundationalWorkResult — either
+ * enriched by OpenAlex or created as a fallback from the raw query data.
  *
  * @param queries - Array of FoundationalQuery objects (author, title, publicationYear)
- * @returns Array of FoundationalWorkResult with OpenAlex metadata
+ * @returns Array of FoundationalWorkResult with OpenAlex metadata (guaranteed 1:1 with input)
  */
 export async function resolveFoundationalWorks(
   queries: FoundationalQuery[],
@@ -386,12 +364,25 @@ export async function resolveFoundationalWorks(
 ): Promise<FoundationalWorkResult[]> {
   if (!queries || queries.length === 0) return [];
 
-  const resolvePromises = queries.map(async (query) => {
+  function createFallback(query: FoundationalQuery): FoundationalWorkResult {
+    return {
+      id: "",
+      title: query.title,
+      type: "unknown",
+      publicationYear: query.publicationYear,
+      citedByCount: 0,
+      isFoundational: true,
+      authors: query.author ? [query.author] : [],
+      publisher: null,
+    } as FoundationalWorkResult;
+  }
+
+  const results: FoundationalWorkResult[] = [];
+  for (const query of queries) {
     try {
       const urlParams = new URLSearchParams({
-        filter: `title.search:${query.title},raw_author_name.search:${query.author}`,
-        sort: "cited_by_count:desc",
-        per_page: "1",
+        filter: `display_name.search:${encodeURIComponent(query.title)}`,
+        per_page: "5",
         select:
           "id,title,type,publication_year,cited_by_count,authorships,primary_location",
       });
@@ -401,43 +392,69 @@ export async function resolveFoundationalWorks(
         {
           headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
           signal: AbortSignal.timeout(15000),
-          cache: "force-cache",
         },
       );
 
-      if (!response.ok) return null;
+      const data = response.ok
+        ? ((await response.json()) as {
+            results?: Record<string, unknown>[];
+          })
+        : { results: undefined };
+      const resultData = data.results;
 
-      const data = (await response.json()) as {
-        results?: Record<string, unknown>[];
-      };
-      const result = data.results?.[0];
+      let bestResult: Record<string, unknown> | null = null;
 
-      if (!result) return null;
+      if (resultData && resultData.length > 0) {
+        const queryTitle = query.title.toLowerCase().trim();
+        const queryAuthor = query.author.toLowerCase().trim();
 
-      const authorships = result.authorships as
+        const match = resultData.find((r) => {
+          const rTitle = ((r.title as string) ?? "").toLowerCase().trim();
+          const authorships = r.authorships as
+            | { author?: { display_name?: string } }[]
+            | undefined;
+          const titleMatch =
+            rTitle.includes(queryTitle) || queryTitle.includes(rTitle);
+          const authorMatch = authorships?.some((a) =>
+            (a.author?.display_name ?? "").toLowerCase().includes(queryAuthor),
+          );
+          return titleMatch || authorMatch;
+        });
+
+        bestResult = match ?? null;
+      }
+
+      if (!bestResult) {
+        results.push(createFallback(query));
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        continue;
+      }
+
+      const authorships = bestResult.authorships as
         | { author?: { display_name?: string } }[]
         | null
         | undefined;
-      const primaryLocation = result.primary_location as
+      const primaryLocation = bestResult.primary_location as
         | {
             source?: { display_name?: string };
           }
         | null
         | undefined;
 
-      return {
-        id: result.id as string,
-        title: (result.title as string) ?? "",
-        type: (result.type as string) ?? "unknown",
-        publicationYear: (result.publication_year as number) ?? 0,
-        citedByCount: (result.cited_by_count as number) ?? 0,
+      results.push({
+        id: (bestResult.id as string) ?? "",
+        title: (bestResult.title as string) ?? query.title,
+        type: (bestResult.type as string) ?? "unknown",
+        publicationYear:
+          (bestResult.publication_year as number) ?? query.publicationYear,
+        citedByCount: (bestResult.cited_by_count as number) ?? 0,
         isFoundational: true,
         authors:
           authorships
             ?.map((a) => a.author?.display_name ?? "")
-            .filter(Boolean) ?? [],
+            .filter(Boolean) ?? (query.author ? [query.author] : []),
         publisher: primaryLocation?.source?.display_name ?? null,
-      } as FoundationalWorkResult;
+      } as FoundationalWorkResult);
     } catch (error) {
       logger?.error("foundational_work_resolution_failed", {
         service: "openalex",
@@ -446,14 +463,13 @@ export async function resolveFoundationalWorks(
         error,
         data: { queryTitle: query.title },
       });
-      return null;
+      results.push(createFallback(query));
     }
-  });
 
-  const resolvedWorks = await Promise.all(resolvePromises);
-  return resolvedWorks.filter(
-    (work): work is FoundationalWorkResult => work !== null,
-  );
+    await new Promise((resolve) => setTimeout(resolve, 800));
+  }
+
+  return results;
 }
 
 // ============================================================================
