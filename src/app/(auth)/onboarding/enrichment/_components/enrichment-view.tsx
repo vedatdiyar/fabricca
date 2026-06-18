@@ -95,9 +95,10 @@ export function EnrichmentView() {
         return;
       }
 
-      // Clear stale downstream Zustand state
+      // Clear stale downstream Zustand state (including any cached report data)
       setBoxes(null);
       setLiteraturePool([]);
+      useOnboardingStore.getState().clearReportData();
 
       // Build matrix input for analysis pipeline
       const matrixInput = {
@@ -171,6 +172,10 @@ export function EnrichmentView() {
         return;
       }
       updateLoadingStep(3, "completed");
+
+      // Cache the completed report in Zustand so the risk page can pick it up
+      // without re-running the analysis or hitting the DB.
+      useOnboardingStore.getState().setReportData(juryResult.data);
 
       hideLoading();
       setIsPending(false);

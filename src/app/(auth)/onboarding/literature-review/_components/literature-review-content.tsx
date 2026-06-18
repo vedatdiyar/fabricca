@@ -5,7 +5,10 @@ import { Button } from "@/components/ui/button";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import type { GeminiThesisBox } from "@/lib/types";
 import { LiteratureArticleCard } from "./literature-article-card";
-import { useLiteratureReview, type BoxStatus } from "../_hooks/use-literature-review";
+import {
+  useLiteratureReview,
+  type BoxStatus,
+} from "../_hooks/use-literature-review";
 
 /**
  * Renders a single sub-box's transient processing states (loading skeleton,
@@ -64,7 +67,7 @@ function SubBoxDone({ subBox }: { subBox: GeminiThesisBox }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         {entry.starterPack.map((article, idx) => (
           <LiteratureArticleCard key={idx} article={article} />
         ))}
@@ -94,13 +97,11 @@ export function LiteratureReviewContent() {
   const {
     subBoxes,
     loading,
-    processing,
     confirming,
     boxStatuses,
     boxErrors,
     allProcessed,
     literaturePool,
-    startReviewProcess,
     handleFinalize,
   } = useLiteratureReview();
 
@@ -126,7 +127,7 @@ export function LiteratureReviewContent() {
           <BookOpen className="w-12 h-12 text-primary" />
         </div>
         <div className="space-y-2">
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+          <h1 className="text-3xl font-medium tracking-tight text-foreground">
             Literatür Taraması
           </h1>
           <p className="text-muted-foreground leading-relaxed text-sm">
@@ -147,7 +148,7 @@ export function LiteratureReviewContent() {
             >
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-6 rounded-full bg-primary/20" />
-                <h3 className="text-base font-semibold text-foreground">
+                <h3 className="text-xl font-medium text-foreground tracking-tight">
                   {subBox.title}
                 </h3>
               </div>
@@ -170,22 +171,7 @@ export function LiteratureReviewContent() {
       </div>
 
       <div className="flex justify-center pt-4">
-        {!allProcessed && !processing ? (
-          <Button
-            onClick={startReviewProcess}
-            className="btn-academic-hero w-full sm:w-auto"
-          >
-            <BookOpen className="w-5 h-5 mr-2" />
-            Akademik Literatür Taramasını Başlat
-          </Button>
-        ) : processing ? (
-          <div className="text-center space-y-2">
-            <Loader2 className="w-6 h-6 text-primary animate-spin mx-auto" />
-            <p className="text-sm text-muted-foreground">
-              Alt kutular taranıyor...
-            </p>
-          </div>
-        ) : (
+        {allProcessed ? (
           <Button
             onClick={handleFinalize}
             disabled={confirming}
@@ -200,6 +186,13 @@ export function LiteratureReviewContent() {
               "Onayla ve Teze Başla."
             )}
           </Button>
+        ) : (
+          <div className="text-center space-y-2">
+            <Loader2 className="w-6 h-6 text-primary animate-spin mx-auto" />
+            <p className="text-sm text-muted-foreground">
+              Alt kutular taranıyor...
+            </p>
+          </div>
         )}
       </div>
     </div>

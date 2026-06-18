@@ -6,9 +6,7 @@ import { toast } from "sonner";
 import {
   Loader2,
   CheckCircle2,
-  Sparkles,
   Rocket,
-  Layers,
   Library,
   FileText,
   PlusCircle,
@@ -16,7 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
-import { generateBoxesAction, confirmBoxesAction } from "../actions";
+import { confirmBoxesAction } from "../actions";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import type { GeminiThesisBox } from "@/lib/types";
 
@@ -25,12 +23,20 @@ export function BoxesContainer() {
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
   const { boxes, setBoxes } = useOnboardingStore();
-  const showLoading = useOnboardingStore((s) => s.showLoading);
-  const hideLoading = useOnboardingStore((s) => s.hideLoading);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // 1) Check Zustand cache first — boxes are set here by the risk page's
+      //    proceed flow (handleProceed). This prevents the DB fallback from
+      //    overwriting the in-memory data with null.
+      const cached = useOnboardingStore.getState().boxes;
+      if (cached && cached.length > 0) {
+        if (!cancelled) setLoading(false);
+        return;
+      }
+
+      // 2) Fall back to the database.
       const { fetchBoxes } = await import("../../_lib/fetch-actions");
       const existing = await fetchBoxes();
       if (!cancelled) {
@@ -45,7 +51,9 @@ export function BoxesContainer() {
             })),
           );
         } else {
-          setBoxes(null);
+          // No boxes anywhere — redirect to risk page to generate them.
+          router.replace("/onboarding/risk");
+          return;
         }
         setLoading(false);
       }
@@ -53,24 +61,7 @@ export function BoxesContainer() {
     return () => {
       cancelled = true;
     };
-  }, [setBoxes]);
-
-  const handleGenerate = useCallback(async () => {
-    showLoading(
-      "Konu Kutuları Yapılandırılıyor",
-      "Tez matrisiniz çözümlenerek bağımsız literatür taraması kutularına dönüştürülüyor...",
-      [],
-    );
-
-    const result = await generateBoxesAction();
-    if ("error" in result) {
-      hideLoading();
-      toast.error(result.error);
-    } else {
-      hideLoading();
-      setBoxes(result.boxes);
-    }
-  }, [setBoxes, showLoading, hideLoading]);
+  }, [router, setBoxes]);
 
   const handleConfirm = useCallback(async () => {
     if (!boxes) return;
@@ -110,35 +101,12 @@ export function BoxesContainer() {
     );
   }
 
+  // Defensive guard: boxes should never be null here (the mount useEffect
+  // either restores them from Zustand/DB or redirects to the risk page).
   if (!boxes) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh] px-4">
-        <div className="text-center space-y-8 max-w-lg mx-auto">
-          <div className="relative inline-flex">
-            <div className="p-5 bg-primary/10 border border-primary/20 rounded-full">
-              <Layers className="w-14 h-14 text-primary" />
-            </div>
-            <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary shadow-[0_0_8px_#10b981] animate-pulse" />
-          </div>
-          <div className="space-y-3">
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-              Konu Kutuları
-            </h1>
-            <p className="text-muted-foreground leading-relaxed text-sm">
-              Tez matrisiniz çözümlenerek bağımsız literatür taraması kutularına
-              dönüştürülecek. Her bir kutu, tezinizin belirli bir yönünü temsil
-              eder ve doğrudan akademik veri tabanlarında arama yapmak için
-              kullanılacak.
-            </p>
-          </div>
-          <Button
-            onClick={handleGenerate}
-            className="btn-academic-hero w-full sm:w-auto bg-gradient-to-r from-primary to-emerald-400 hover:from-emerald-500 hover:to-emerald-300 text-primary-foreground shadow-lg shadow-primary/20 hover:shadow-emerald-500/30 transition-all duration-300"
-          >
-            <Sparkles className="w-5 h-5 mr-2" />
-            Tez Planını Çıkar ve Kutuları Oluştur
-          </Button>
-        </div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
       </div>
     );
   }

@@ -55,8 +55,14 @@ export function MatrixForm() {
     setIsPending(true);
 
     const steps: LoadingStep[] = [
-      { text: "Yapay zeka asistanı kavramsal ve kuramsal altyapıyı zenginleştiriyor...", status: "active" },
-      { text: "Zenginleştirilmiş akademik matris veri tabanına işleniyor...", status: "idle" },
+      {
+        text: "Yapay zeka asistanı kavramsal ve kuramsal altyapıyı zenginleştiriyor...",
+        status: "active",
+      },
+      {
+        text: "Zenginleştirilmiş akademik matris veri tabanına işleniyor...",
+        status: "idle",
+      },
     ];
 
     showLoading(

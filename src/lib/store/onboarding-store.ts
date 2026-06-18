@@ -1,10 +1,15 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
+import type {
+  GeminiThesisBox,
+  LiteraturePoolEntry,
+  OriginalityReportData,
+} from "@/lib/types";
 
 interface PersistedOnboardingState {
   boxes: GeminiThesisBox[] | null;
   literaturePool: LiteraturePoolEntry[];
+  reportData: OriginalityReportData | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -41,6 +46,9 @@ interface LoadingState {
 interface OnboardingState extends LoadingState {
   boxes: GeminiThesisBox[] | null;
   setBoxes: (boxes: GeminiThesisBox[] | null) => void;
+  reportData: OriginalityReportData | null;
+  setReportData: (data: OriginalityReportData | null) => void;
+  clearReportData: () => void;
   literaturePool: LiteraturePoolEntry[];
   setLiteraturePool: (pool: LiteraturePoolEntry[]) => void;
   addToLiteraturePool: (entry: LiteraturePoolEntry) => void;
@@ -83,6 +91,9 @@ export const useOnboardingStore = create<OnboardingStore>()(
       // ── Persisted state ──
       boxes: null,
       setBoxes: (boxes) => set({ boxes }),
+      reportData: null,
+      setReportData: (reportData) => set({ reportData }),
+      clearReportData: () => set({ reportData: null }),
       literaturePool: [],
       setLiteraturePool: (literaturePool) => set({ literaturePool }),
       addToLiteraturePool: (entry) => {
@@ -91,7 +102,8 @@ export const useOnboardingStore = create<OnboardingStore>()(
         if (exists) return;
         set({ literaturePool: [...current, entry] });
       },
-      resetStore: () => set({ boxes: null, literaturePool: [] }),
+      resetStore: () =>
+        set({ boxes: null, literaturePool: [], reportData: null }),
     }),
     {
       name: "onboarding-storage",
@@ -100,6 +112,7 @@ export const useOnboardingStore = create<OnboardingStore>()(
       partialize: (state) => ({
         boxes: state.boxes,
         literaturePool: state.literaturePool,
+        reportData: state.reportData,
       }),
       merge: (persisted, current) => {
         const p = persisted as Partial<PersistedOnboardingState>;
@@ -108,6 +121,7 @@ export const useOnboardingStore = create<OnboardingStore>()(
           ...p,
           boxes: p.boxes ?? current.boxes,
           literaturePool: p.literaturePool ?? [],
+          reportData: p.reportData ?? current.reportData,
         };
       },
     },

@@ -35,6 +35,7 @@ export function OnboardingStepper() {
         {STEPS.map((step, index) => {
           const isActive = currentIdx === index;
           const isCompleted = currentIdx > index;
+          const isFuture = currentIdx < index;
 
           return (
             <div
@@ -43,9 +44,15 @@ export function OnboardingStepper() {
             >
               <button
                 type="button"
-                onClick={() => router.push(step.route)}
+                disabled={isFuture}
+                onClick={() => {
+                  if (isFuture) return;
+                  router.push(step.route);
+                }}
                 className={cn(
-                  "flex items-center gap-4 w-full py-3 rounded-xl transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 cursor-pointer hover:text-foreground",
+                  "flex items-center gap-4 w-full py-3 rounded-xl transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20",
+                  !isFuture && "cursor-pointer hover:text-foreground",
+                  isFuture && "cursor-not-allowed opacity-40",
                   isActive && "text-primary font-medium",
                   !isActive && "text-muted-foreground",
                 )}

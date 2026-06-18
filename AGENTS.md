@@ -199,34 +199,6 @@ Yapay zeka, geliştirme süreci boyunca aşağıdaki disiplin kurallarına ve ko
 - **SDK Disiplini:** Projede eski nesil paketler (`@google/generative-ai`) kesinlikle kullanılmayacak; her zaman yeni nesil `@google/genai` kütüphanesi kullanılacaktır. İstemci başlatılırken `import { GoogleGenAI } from "@google/genai";` ve `const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });` standart kalıbı uygulanacaktır.
 - **Temperature Stratejisi:** Google'ın Gemini 3.0/3.1 ve üzeri modeller için önerdiği doğrultuda, modelin akıl yürütme (reasoning) ve JSON üretme yeteneklerinin en iyi performansı göstermesi ve döngüsel/mantıksal hataların önlenmesi için tüm çağrılarda (belirlenen istisnalar hariç) varsayılan temperature değeri olan `1.0` kullanılmalıdır.
 
-- **Ajan Akıl Yürütme Gücü (Thinking Config):** Gemini 3 ve üzeri modellerin mimari optimizasyonu ve akıl yürütme yetenekleri için her fonksiyonun gereksinimine göre özel `thinkingConfig` ayarları uygulanır. Sistem genelinde bu ayarlar aşağıdaki gibidir:
-
-  #### 1. `null` (Kapalı) — Yapısal ve Şablonlama Görevleri
-  - **Karakteristiği:** Ham metni akademik üsluba çevirme veya verileri JSON şemasına yerleştirme gibi saf biçimlendirme işleri.
-  - **Kural:** Akıl yürütme tamamen kapatılır (`null`). Model doğrudan çıktı üreterek maksimum hız ve minimum maliyet sağlar.
-  - **Not:** Wikipedia veya Google Books gibi dış API doğrulamaları zaten kod katmanında asenkron yapılıyorsa, yapay zekaya düşünme bütçesi verilmemelidir.
-  - **İstisna (Box Generation):** Konu kutularının atomik flat yapıya bölünmesi ve her kutu için parametrik hafızadan kurucu eser (foundationalQueries) metadata'sının çıkarılması, saf biçimlendirme olmayıp derin alan bilgisi ve disipliner muhakeme gerektirdiğinden `ThinkingLevel.HIGH` kullanılır.
-
-  #### 2. `minimal` — Hafif Kural Takibi
-  - **Karakteristiği:** Minimum düşünme bütçesi ile hızlı karar verme gerektiren işlemler (rota planlamada fallback, ön eleme sifting).
-  - **Kural:** `thinkingLevel: "minimal"` olarak ayarlanır.
-  - **Avantajı:** Modelin gereksiz analiz yapmadan hızlıca karar vermesini sağlar. Maliyet ve hız kritik olduğunda, ancak yine de bir miktar muhakeme gerektiğinde kullanılır.
-
-  #### 3. `low` — Kural Takibi ve Doğrulama Görevleri
-  - **Karakteristiği:** Kelimeleri eklerinden ayıklayıp kökünü bulma (lemma), iki metni karşılaştırıp "bilgi var mı/yok mu" testi yapma (fact-checking) veya katı eliminasyon kurallarıyla listeleri süzme.
-  - **Kural:** `thinkingLevel: "low"` olarak ayarlanır.
-  - **Avantajı:** Modele kuralları denetlemesi için minimum bütçe tanır. Modelin yaratıcı yorumlar yapmasını engeller, prompttaki katı sınırlamalara tam itaat etmesini sağlar.
-
-  #### 4. `medium` — Planlama ve İçerik Üretim Görevleri
-  - **Karakteristiği:** Günlük veya haftalık çalışma planlaması yapma, içerik taslakları (outline) çıkarma, beyin fırtınası süreçleri veya esnek e-posta/metin fikirleri üretme.
-  - **Kural:** `thinkingLevel: "medium"` olarak ayarlanır.
-  - **Avantajı:** Google dökümanına göre en dengeli yaratıcılık, mantık ve hız optimizasyonunu bu seviyede sunar. Katı kısıtlamalar yerine akıcı ve esnek tavsiye mekanizmaları kurmak için idealdir.
-
-  #### 5. `high` — Stratejik ve Derin Analiz Görevleri
-  - **Karakteristiği:** Kelime benzerliklerinin ötesine geçerek "anlamsal kapsam/yutulma" tespiti yapan jüri analizleri veya klişelerden uzak, isme özel taktiksel akademik yol haritaları sentezleme.
-  - **Kural:** `thinkingLevel: "high"` olarak ayarlanır.
-  - **Avantajı:** Akıl yürütme derinliğini maksimuma çıkarır. İlk token süresi uzasa bile, yüzeysel kalıpları yıkarak uzman seviyesinde ve yüksek kalitede analiz üretir.
-
 - **Prompt Mühendisliği Standartları:**
   1. Persona veya rolden ziyade asıl görevi (ne üretileceğini) en net şekilde tanımla.
   2. Prompt hiyerarşisinde aşağıdaki sırayı takip et: `ROL` → `BİLGİ VE ZAMAN KISITLAMALARI` → `OPERASYONEL KISITLAMALAR` → `UZMAN FEW-SHOT ÖRNEĞİ` → `TALİMATLAR VE GÖREV` → `KRİTİK GÜVENLİK BARIYERI`

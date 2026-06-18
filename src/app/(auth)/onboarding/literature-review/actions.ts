@@ -12,7 +12,11 @@ import {
 } from "@/db/schema";
 import { getSession } from "@/proxy";
 import { Logger, createFlowId } from "@/lib/logger";
-import type { LiteraturePoolEntry, OnboardingActionResult, JuryArticle } from "@/lib/types";
+import type {
+  LiteraturePoolEntry,
+  OnboardingActionResult,
+  JuryArticle,
+} from "@/lib/types";
 import type { NewLibraryResource } from "@/db/schema";
 import type {
   SubBoxInput,
@@ -161,17 +165,36 @@ async function processSingleBox(
   const rawApiPool = merged;
 
   // ------------------------------------------------------------------
-  // Stage 3: AI Sifting
+  // Stage 3: AI Sifting (foundational papers bypass with score 100)
   // ------------------------------------------------------------------
   const siftStart = performance.now();
-  const sifted = await runSiftingStage(subBox, merged, logger, thesisCtx);
+
+  const foundationalPapers = merged.filter((p) => p.isFoundational);
+  const nonFoundationalPapers = merged.filter((p) => !p.isFoundational);
+
+  const siftedNonFoundational = await runSiftingStage(
+    subBox,
+    nonFoundationalPapers,
+    logger,
+    thesisCtx,
+  );
+
+  for (const fp of foundationalPapers) {
+    (fp as unknown as Record<string, unknown>).siftingScore = 100;
+  }
+
+  const sifted = [...foundationalPapers, ...siftedNonFoundational];
 
   logger.info("literature_sifting_done", {
     service: "literature",
     durationMs: performance.now() - siftStart,
     filePath: "onboarding/literature-review/actions.ts",
     status: "SUCCESS",
-    data: { before: merged.length, after: sifted.length },
+    data: {
+      before: merged.length,
+      after: sifted.length,
+      foundationalBypassed: foundationalPapers.length,
+    },
   });
 
   if (sifted.length === 0) {
@@ -224,8 +247,46 @@ async function processSingleBox(
     data: {
       starterPackCount: result.starterPack.length,
       reservedPoolCount: result.reservedPool.length,
+      foundationalCount: foundationalPapers.length,
     },
   });
+
+  // ------------------------------------------------------------------
+  // Foundational Bypass: Force foundational papers into starterPack as PRIMARY
+  // ------------------------------------------------------------------
+  if (foundationalPapers.length > 0) {
+    const foundationalJuryArticles: JuryArticle[] = foundationalPapers.map(
+      (fp) => ({
+        type: "PRIMARY" as const,
+        title: fp.title,
+        abstract: fp.abstract ?? "",
+        url: fp.url ?? "",
+        doi: fp.doi ?? "",
+        publisher: fp.publisher ?? "",
+        publicationYear: fp.year ?? 0,
+        authors: fp.authors,
+        isFoundational: true,
+      }),
+    );
+
+    const foundationalTitles = new Set(
+      foundationalPapers
+        .map((fp) => fp.title?.toLowerCase().trim())
+        .filter(Boolean),
+    );
+
+    result.starterPack = [
+      ...foundationalJuryArticles,
+      ...result.starterPack.filter(
+        (a) =>
+          !a.title || !foundationalTitles.has(a.title.toLowerCase().trim()),
+      ),
+    ];
+
+    result.reservedPool = result.reservedPool.filter(
+      (a) => !a.title || !foundationalTitles.has(a.title.toLowerCase().trim()),
+    );
+  }
 
   // ------------------------------------------------------------------
   // Stage 6: CrossRef polite-pool validation (concurrency-limited)
@@ -357,7 +418,6 @@ export async function confirmLiteratureAction(args: {
 
   log.info({
     step: "confirmLiterature",
-    status: "PENDING",
     service: "literature",
   });
 

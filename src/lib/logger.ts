@@ -1,9 +1,10 @@
 import pino from "pino";
 import pretty from "pino-pretty";
+import fs from "fs";
+import path from "path";
 import { classifyError, getErrorDisplay } from "./error-utils";
 
 export type LogLevel = "info" | "warn" | "error";
-
 export type LogEvent = "login_success" | "login_failed" | "flow_complete";
 
 export type ServiceName =
@@ -31,6 +32,15 @@ export interface TokenUsage {
   total?: number;
 }
 
+export interface PayloadData {
+  flowId: string;
+  timestamp: string;
+  stage: string;
+  module: string;
+  prompt: string;
+  response?: string;
+}
+
 export interface LogParams {
   service?: ServiceName;
   step?: string;
@@ -39,10 +49,82 @@ export interface LogParams {
   error?: unknown;
   tokens?: TokenUsage;
   filePath?: string;
-  status?: "PENDING" | "SUCCESS" | "FAILED";
+  status?: "SUCCESS" | "FAILED";
 }
 
 const isDevelopment = process.env.NODE_ENV === "development";
+const PAYLOAD_DIR = ".next/logs";
+const MODULE_DISPLAY_WIDTH = 12;
+const ACTION_DISPLAY_WIDTH = 22;
+
+const SERVICE_DISPLAY: Record<ServiceName, string> = {
+  gemini: "GEMINI",
+  cloudflare: "CFLARE",
+  tavily: "TAVILY",
+  tezara: "TEZARA",
+  db: "DB",
+  auth: "AUTH",
+  flow: "FLOW",
+  matrix: "MATRIX",
+  enrichment: "ENRICH",
+  originality: "ORIG",
+  complete: "DONE",
+  boxes: "BOXES",
+  wikipedia: "WIKI",
+  literature: "LITERATURE",
+  library: "LIBRARY",
+  openalex: "OPENALEX",
+  crossref: "CROSSREF",
+};
+
+const ACTION_DISPLAY_MAP: Record<string, { emoji: string; label: string }> = {
+  literature_search_start: { emoji: "🔍", label: "SEARCH" },
+  literature_search_done: { emoji: "🔍", label: "SEARCH" },
+  literature_merge_done: { emoji: "🔀", label: "MERGE" },
+  literature_sifting_chunk: { emoji: "🧠", label: "SIFTING" },
+  literature_sifting_done: { emoji: "🧠", label: "SIFTED" },
+  literature_abstract_recovery_done: { emoji: "📄", label: "ABSTRACT" },
+  literature_jury_done: { emoji: "⚖️", label: "JURY" },
+  literature_crossref_done: { emoji: "🔗", label: "CROSSREF" },
+  literature_box_failed: { emoji: "📦", label: "BOX" },
+  literature_review_failed: { emoji: "📚", label: "REVIEW" },
+  foundational_work_resolution_failed: { emoji: "📚", label: "FOUNDATION" },
+  ai_request_start: { emoji: "🤖", label: "AI REQ" },
+  ai_request_success: { emoji: "🤖", label: "AI REQ" },
+  ai_request_failed: { emoji: "🤖", label: "AI REQ" },
+  ai_retry_attempt: { emoji: "🔄", label: "RETRY" },
+  search_filtered: { emoji: "🔍", label: "SEARCH" },
+  search_empty: { emoji: "🔍", label: "SEARCH" },
+};
+
+function getTimestamp(): string {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
+}
+
+function truncateFlowId(fid: string): string {
+  return fid.length <= 10 ? fid : fid.slice(0, 10);
+}
+
+function getModuleDisplay(service: ServiceName, params?: LogParams): string {
+  let base = SERVICE_DISPLAY[service] ?? service.toUpperCase();
+  if (params?.data?.thinkingLevel && service === "gemini") {
+    const sl = String(params.data.thinkingLevel);
+    const suffix = sl === "LOW" ? "L1" : sl === "HIGH" ? "L2" : "";
+    if (suffix) base = `GEMINI/${suffix}`;
+  }
+  return base.padEnd(MODULE_DISPLAY_WIDTH);
+}
+
+function getActionDisplay(event: string): { emoji: string; label: string } {
+  const entry = ACTION_DISPLAY_MAP[event];
+  if (entry) return entry;
+  const cleaned = event
+    .replace(/^(literature|ai)_/, "")
+    .replace(/_(start|done|success|failed|filtered|empty)$/g, "")
+    .toUpperCase();
+  return { emoji: "📌", label: cleaned || event.toUpperCase() };
+}
 
 const pinoLogger = isDevelopment
   ? pino(
@@ -57,38 +139,10 @@ const pinoLogger = isDevelopment
       timestamp: pino.stdTimeFunctions.isoTime,
     });
 
-/**
- * Benzersiz bir flowId üretir.
- * Base36 timestamp + rastgele 6 karakter.
- */
 export function createFlowId(): string {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).substring(2, 8);
   return `fl_${timestamp}_${random}`;
-}
-
-const SERVICE_ICONS: Record<ServiceName, string> = {
-  gemini: "🤖",
-  cloudflare: "☁️",
-  tavily: "🌐",
-  tezara: "🔎",
-  db: "🗄️",
-  auth: "🔐",
-  flow: "📌",
-  matrix: "📋",
-  enrichment: "✨",
-  originality: "⚖️",
-  complete: "✅",
-  boxes: "📦",
-  wikipedia: "📖",
-  literature: "📚",
-  library: "📖",
-  openalex: "🔬",
-  crossref: "🔗",
-};
-
-function getServiceIcon(service: ServiceName): string {
-  return SERVICE_ICONS[service] ?? "📌";
 }
 
 function getStatusTag(status: string): string {
@@ -97,17 +151,12 @@ function getStatusTag(status: string): string {
       return "\x1b[32m🟢 SUCCESS\x1b[0m";
     case "FAILED":
       return "\x1b[31m🔴 FAILED\x1b[0m";
-    case "PENDING":
-    case "START":
-    case "RETRYING":
-      return "\x1b[33m🟡 PENDING\x1b[0m";
     default:
-      return status;
+      return "";
   }
 }
 
 function deriveStatus(event: string): string {
-  if (event.endsWith("_start") || event.endsWith("_attempt")) return "PENDING";
   if (event.endsWith("_success")) return "SUCCESS";
   if (
     event.endsWith("_failed") ||
@@ -115,7 +164,7 @@ function deriveStatus(event: string): string {
     event.endsWith("_empty")
   )
     return "FAILED";
-  return "PENDING";
+  return "";
 }
 
 function truncate(s: string, maxLen: number): string {
@@ -125,6 +174,7 @@ function truncate(s: string, maxLen: number): string {
 export class Logger {
   public readonly flowId: string;
   public lastTokens?: TokenUsage;
+  public lastPayloadPath?: string;
 
   constructor(flowId: string) {
     this.flowId = flowId;
@@ -148,9 +198,12 @@ export class Logger {
     params?: LogParams,
   ): void {
     if (typeof arg1 === "object" && arg1 !== null) {
-      const entry = { flowId: this.flowId, ...arg1 };
+      const entry: Record<string, unknown> = { flowId: this.flowId, ...arg1 };
+      const status = entry.status as string | undefined;
+      if (status && status !== "SUCCESS" && status !== "FAILED") return;
       if (isDevelopment) this.renderDevLine(entry);
       else pinoLogger[level](entry);
+      return;
     } else {
       const event = arg1 as string;
       const service = params?.service ?? "flow";
@@ -194,18 +247,17 @@ export class Logger {
         }
       }
 
+      const status = params?.status ?? deriveStatus(event);
+      if (!status) return;
+
       if (isDevelopment) {
-        const status = params?.status ?? deriveStatus(event);
         this.renderEventLine(service, event, status, params);
       } else {
+        entry.status = status;
         pinoLogger[level](entry);
       }
     }
   }
-
-  // ==========================================================================
-  // Dev-Only Single-Line Renderers
-  // ==========================================================================
 
   private renderEventLine(
     service: ServiceName,
@@ -213,183 +265,209 @@ export class Logger {
     status: string,
     params?: LogParams,
   ): void {
-    const icon = getServiceIcon(service);
     const statusTag = getStatusTag(status);
-    const line = this.buildLine(icon, service, event, statusTag, params);
-    console.log(line);
+    console.log(this.buildLine(service, event, statusTag, params));
   }
 
   private renderDevLine(data: Record<string, unknown>): void {
-    const step = String(data.step ?? "unknown");
-    const svc = String(data.service ?? "flow");
-    const rawStatus = data.status ? String(data.status) : "";
-    const icon = getServiceIcon(svc as ServiceName);
-    const statusTag = rawStatus ? getStatusTag(rawStatus) : "";
+    const time = getTimestamp();
+    const reqId = truncateFlowId(this.flowId);
+    const svc = String(data.service ?? "flow") as ServiceName;
+    const moduleDisplay = getModuleDisplay(svc, {
+      data,
+    } as unknown as LogParams);
+    const event = String(data.event ?? data.step ?? "data");
+    const actionDisplay = getActionDisplay(event);
 
-    let line = `${icon} ${this.flowId} [${svc.toUpperCase()}] -> ${step}`;
-    if (statusTag) line += ` | ${statusTag}`;
+    // ARTIK BURASI DA SABİT HİZALI: ACTION_DISPLAY_WIDTH katı olarak korunuyor
+    const actionPadded = `${actionDisplay.emoji} ${actionDisplay.label}`.padEnd(
+      ACTION_DISPLAY_WIDTH,
+    );
+    let line = `[${time}] [${reqId}] [${moduleDisplay}] ${actionPadded}`;
 
+    const msgParts: string[] = [];
+    const step = data.step ? String(data.step) : "";
+    if (step) msgParts.push(step);
+
+    const rawStatus = String(data.status ?? "");
+    if (rawStatus) msgParts.push(getStatusTag(rawStatus));
+
+    if (msgParts.length > 0) line += ` | ${msgParts.join(" • ")}`;
+
+    const metricParts: string[] = [];
     const metrics = data.metrics as Record<string, unknown> | undefined;
     if (metrics) {
       const durMs = metrics.durationMs as number | undefined;
+      if (durMs !== undefined) metricParts.push(`⏱️ ${Math.round(durMs)}ms`);
       const dur = metrics.duration as string | undefined;
-      if (durMs !== undefined && typeof durMs === "number")
-        line += ` | ⏱️ ${Math.round(durMs)}ms`;
-      else if (dur) line += ` | ⏱️ ${dur}`;
+      if (dur !== undefined && durMs === undefined)
+        metricParts.push(`⏱️ ${dur}`);
       const rc = metrics.resultCount as number | undefined;
-      if (rc !== undefined) line += ` | 📊 ${rc} sonuç`;
+      if (rc !== undefined) metricParts.push(`📊 ${rc} sonuç`);
     }
 
     const extraData = data.data as Record<string, unknown> | undefined;
     if (extraData) {
-      const parts: string[] = [];
       if (extraData.count !== undefined)
-        parts.push(`📊 Sayı: ${extraData.count}`);
+        metricParts.push(`📊 Sayı: ${extraData.count}`);
       if (extraData.resultCount !== undefined)
-        parts.push(`📊 ${extraData.resultCount} sonuç`);
-      if (extraData.model) parts.push(`🏷️ Model: ${extraData.model}`);
+        metricParts.push(`📊 ${extraData.resultCount} sonuç`);
+      if (extraData.model) metricParts.push(`🏷️ ${extraData.model}`);
       if (extraData.query)
-        parts.push(`🔍 ${truncate(String(extraData.query), 60)}`);
-      if (parts.length > 0) line += ` | ${parts.join(" | ")}`;
+        metricParts.push(`🔍 ${truncate(String(extraData.query), 60)}`);
     }
 
     const diagnostics = data.diagnostics as Record<string, unknown> | undefined;
     if (diagnostics) {
       const msg = diagnostics.message ? String(diagnostics.message) : "";
-      if (msg) line += ` | ❌ ${truncate(msg, 120)}`;
+      if (msg) metricParts.push(`❌ ${truncate(msg, 120)}`);
     }
 
     const err = data.error as { message?: string } | undefined;
     if (err && err.message && !diagnostics) {
-      line += ` | ❌ ${truncate(err.message, 120)}`;
+      metricParts.push(`❌ ${truncate(err.message, 120)}`);
     }
 
+    if (metricParts.length > 0) line += ` | ${metricParts.join(" | ")}`;
     console.log(line);
   }
 
   private buildLine(
-    icon: string,
     service: ServiceName,
     event: string,
     statusTag: string,
     params?: LogParams,
   ): string {
-    const adim =
-      params?.step && params.step !== event
-        ? `${event} (${params.step})`
-        : event;
-    let line = `${icon} ${this.flowId} [${service.toUpperCase()}] -> ${adim} | ${statusTag}`;
+    const time = getTimestamp();
+    const reqId = truncateFlowId(this.flowId);
+    const moduleDisplay = getModuleDisplay(service, params);
+    const actionDisplay = getActionDisplay(event);
+    const actionPadded = `${actionDisplay.emoji} ${actionDisplay.label}`.padEnd(
+      ACTION_DISPLAY_WIDTH,
+    );
 
-    if (params?.durationMs !== undefined) {
-      line += ` | ⏱️ ${Math.round(params.durationMs)}ms`;
+    let line = `[${time}] [${reqId}] [${moduleDisplay}] ${actionPadded}`;
+
+    const msgParts: string[] = [];
+    if (params?.step && params.step !== event) {
+      msgParts.push(params.step);
+    }
+    if (statusTag) {
+      msgParts.push(statusTag);
+    }
+    if (msgParts.length > 0) {
+      line += ` | ${msgParts.join(" • ")}`;
     }
 
+    const metricParts: string[] = [];
+    if (params?.durationMs !== undefined) {
+      metricParts.push(`⏱️ ${Math.round(params.durationMs)}ms`);
+    }
     if (params?.filePath) {
       const cleanPath = params.filePath.replace(/^src\//, "");
-      line += ` | 📁 ${cleanPath}`;
+      metricParts.push(`📁 ${cleanPath}`);
     }
-
-    if (params?.data?.model && params?.tokens) {
+    if (params?.tokens) {
       const t = params.tokens;
-      line += ` | 🏷️ [Model: ${params.data.model} | 📥 In: ${t.input ?? "?"} | 📤 Out: ${t.output ?? "?"}`;
-      if (t.total !== undefined) line += ` | 💭 ${t.total} tkn`;
-      line += `]`;
-    } else {
       if (params?.data?.model) {
-        line += ` | 🏷️ Model: ${params.data.model}`;
+        metricParts.push(`🏷️ ${params.data.model}`);
       }
-      if (params?.tokens) {
-        const t = params.tokens;
-        line += ` | 📥 In: ${t.input ?? "?"} | 📤 Out: ${t.output ?? "?"}`;
-        if (t.total !== undefined) line += ` | 💭 ${t.total} tkn`;
-      }
+      metricParts.push(`📥 ${t.input ?? "?"}`, `📤 ${t.output ?? "?"}`);
+      if (t.total !== undefined) metricParts.push(`💭 ${t.total}tkn`);
+    } else if (params?.data?.model) {
+      metricParts.push(`🏷️ ${params.data.model}`);
     }
 
     if (params?.data && !params.data.model) {
-      const parts: string[] = [];
       const d = params.data;
-      if (d.query) parts.push(`🔍 ${truncate(String(d.query), 60)}`);
-      if (d.resultCount !== undefined) parts.push(`📊 ${d.resultCount} sonuç`);
-      if (d.count !== undefined) parts.push(`📊 Sayı: ${d.count}`);
-      if (d.rawCount !== undefined) parts.push(`🔢 Ham: ${d.rawCount}`);
-      if (d.mergedCount !== undefined)
-        parts.push(`🔀 Birleşik: ${d.mergedCount}`);
+      if (d.query) metricParts.push(`🔍 ${truncate(String(d.query), 60)}`);
+      if (d.resultCount !== undefined)
+        metricParts.push(`📊 ${d.resultCount} sonuç`);
+      if (d.count !== undefined) metricParts.push(`📊 Sayı: ${d.count}`);
+      if (d.rawCount !== undefined) metricParts.push(`🔢 Ham: ${d.rawCount}`);
+      if (d.mergedCount !== undefined) metricParts.push(`🔀 ${d.mergedCount}`);
       if (d.before !== undefined && d.after !== undefined)
-        parts.push(`${d.before} → ${d.after}`);
+        metricParts.push(`${d.before} → ${d.after}`);
       if (d.totalResults !== undefined)
-        parts.push(`📊 Toplam: ${d.totalResults}`);
-      if (d.reason) parts.push(`📝 ${truncate(String(d.reason), 80)}`);
+        metricParts.push(`📊 Toplam: ${d.totalResults}`);
+      if (d.reason) metricParts.push(`📝 ${truncate(String(d.reason), 80)}`);
       if (d.starterPackCount !== undefined)
-        parts.push(`📦 Starter: ${d.starterPackCount}`);
+        metricParts.push(`📦 ${d.starterPackCount}`);
       if (d.reservedPoolCount !== undefined)
-        parts.push(`📦 Reserved: ${d.reservedPoolCount}`);
+        metricParts.push(`📦 ${d.reservedPoolCount}`);
       if (d.enrichedCount !== undefined)
-        parts.push(`🔗 Zenginleştirilen: ${d.enrichedCount}`);
+        metricParts.push(`🔗 ${d.enrichedCount}`);
       if (d.requestedCount !== undefined)
-        parts.push(`🔢 İstenen: ${d.requestedCount}`);
+        metricParts.push(`🔢 ${d.requestedCount}`);
       if (d.resolvedCount !== undefined)
-        parts.push(`✅ Çözülen: ${d.resolvedCount}`);
-      if (d.status) parts.push(`🌐 HTTP ${d.status}`);
-      if (d.errorCode) parts.push(`❌ ${d.errorCode}`);
-      if (parts.length > 0) line += ` | ${parts.join(" | ")}`;
+        metricParts.push(`✅ ${d.resolvedCount}`);
+      if (d.status) metricParts.push(`🌐 HTTP ${d.status}`);
+      if (d.errorCode) metricParts.push(`❌ ${d.errorCode}`);
+      if (d.chunkIndex !== undefined)
+        metricParts.push(`📦 ${d.chunkIndex}/${d.totalChunks}`);
+      if (d.keptInChunk !== undefined)
+        metricParts.push(`✅ ${d.keptInChunk} kept`);
     }
 
     if (params?.error) {
       const err = params.error;
       const display = getErrorDisplay(err);
       const scenario = classifyError(err);
-      line += ` | ❌ [${scenario.toUpperCase()}] ${display.title}`;
+      metricParts.push(`❌ [${scenario.toUpperCase()}] ${display.title}`);
+    }
+
+    if (metricParts.length > 0) {
+      line += ` | ${metricParts.join(" | ")}`;
+    }
+
+    if (
+      event === "literature_sifting_done" &&
+      typeof params?.data?.before === "number" &&
+      typeof params?.data?.after === "number" &&
+      params.data.before > 40 &&
+      params.data.after <= 2
+    ) {
+      line += ` | ⚠️ DÜŞÜK KABUL ORANI (dosya: ${this.lastPayloadPath ?? "N/A"})`;
     }
 
     return line;
   }
 
   // ==========================================================================
-  // Dev-Only Helper Methods (no-ops in production)
+  // SIZINTI YAPAN ESKİ METOTLAR ARTIK TAMAMEN SESSİZCE UNUTULDU (NO-OP)
   // ==========================================================================
-
-  /**
-   * Dev modunda adım takibi için tek satır.
-   */
-  step(stepName: string, metadata?: Record<string, unknown>): void {
+  saveDebugPayload(
+    stage: string,
+    module: string,
+    prompt: string,
+    response?: string,
+  ): string | undefined {
     if (!isDevelopment) return;
-    const meta = metadata ? ` | ${JSON.stringify(metadata)}` : "";
-    console.log(`📌 ${this.flowId} ${stepName}${meta}`);
+    try {
+      const dir = path.resolve(process.cwd(), PAYLOAD_DIR);
+      fs.mkdirSync(dir, { recursive: true });
+      const cleanId = this.flowId.replace(/[^a-zA-Z0-9_-]/g, "_");
+      const fileName = `${cleanId}_${stage}_payload.json`;
+      const filePath = path.join(dir, fileName);
+      const payload: PayloadData = {
+        flowId: this.flowId,
+        timestamp: new Date().toISOString(),
+        stage,
+        module,
+        prompt,
+        response,
+      };
+      fs.writeFileSync(filePath, JSON.stringify(payload, null, 2), "utf-8");
+      this.lastPayloadPath = filePath;
+      return filePath;
+    } catch {
+      return;
+    }
   }
 
-  /**
-   * Dev modunda dosya referansını tek satırda basar.
-   */
-  file(ref: string): void {
-    if (!isDevelopment) return;
-    console.log(`📂 ${this.flowId} ${ref}`);
-  }
-
-  /**
-   * Dev modunda veriyi tek satırda gösterir.
-   */
-  data(label: string, value: unknown): void {
-    if (!isDevelopment) return;
-    const formatted = typeof value === "string" ? value : JSON.stringify(value);
-    const truncated =
-      formatted.length > 120 ? formatted.slice(0, 117) + "..." : formatted;
-    console.log(`📊 ${this.flowId} ${label}: ${truncated}`);
-  }
-
-  /**
-   * data() alias'ı.
-   */
-  preview(label: string, value: unknown): void {
-    this.data(label, value);
-  }
-
-  /**
-   * Dev modunda prompt içeriğini özet olarak basar.
-   */
-  prompt(model: string, content: string): void {
-    if (!isDevelopment) return;
-    const preview = content.slice(0, 100).replace(/\n/g, " ");
-    const suffix = content.length > 100 ? "..." : "";
-    console.log(`🧠 ${this.flowId} Prompt > ${model}: ${preview}${suffix}`);
-  }
+  step(stepName: string, metadata?: Record<string, unknown>): void {}
+  file(ref: string): void {}
+  data(label: string, value: unknown): void {}
+  preview(label: string, value: unknown): void {}
+  prompt(model: string, content: string): void {}
 }

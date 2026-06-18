@@ -88,6 +88,19 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
     let cancelled = false;
 
     async function init() {
+      // 1) Check Zustand cache first — avoids redundant DB reads and prevents
+      //    the auto-trigger from re-running analysis after enrichment.
+      const cachedReport = useOnboardingStore.getState().reportData;
+      if (cachedReport && !cancelled) {
+        setReportData(cachedReport);
+        // Also restore matrix so startAnalysis (if ever called) has data.
+        const matrix = await fetchThesisMatrix();
+        if (matrix) setMatrixData(matrix);
+        if (!cancelled) setLoading(false);
+        return;
+      }
+
+      // 2) Fall back to the database.
       const matrix = await fetchThesisMatrix();
       if (!matrix) {
         toast.error("Tez matrisi bulunamadı.");
@@ -229,9 +242,11 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
     }
   }, [matrixData, showLoading, hideLoading, updateLoadingStep]);
 
-  // Auto-trigger analysis for first-time visitors (no existing report).
+  // Auto-trigger analysis only when there really is no report anywhere
+  // (Zustand cache, DB or in-memory state).
   useEffect(() => {
-    if (!loading && !reportData && !analysing) {
+    const hasCache = !!useOnboardingStore.getState().reportData;
+    if (!loading && !reportData && !analysing && !hasCache) {
       startAnalysis();
     }
   }, [loading, reportData, analysing, startAnalysis]);

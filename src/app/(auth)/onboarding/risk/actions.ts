@@ -61,7 +61,6 @@ export async function extractQueriesAction(
 
   log.info({
     step: "extractQueries",
-    status: "PENDING",
     service: "originality",
   });
 
@@ -132,7 +131,6 @@ export async function executeSearchAction(params: {
 
   log.info({
     step: "executeSearch",
-    status: "PENDING",
     service: "originality",
   });
 
@@ -197,7 +195,6 @@ export async function siftThesesAction(params: {
 
   log.info({
     step: "siftTheses",
-    status: "PENDING",
     service: "originality",
   });
 
@@ -264,7 +261,6 @@ export async function finalizeJuryAnalysisAction(params: {
 
   log.info({
     step: "finalizeJuryAnalysis",
-    status: "PENDING",
     service: "originality",
   });
 

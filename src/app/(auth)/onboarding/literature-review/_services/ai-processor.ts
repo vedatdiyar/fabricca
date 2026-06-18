@@ -28,10 +28,8 @@ export interface LiteratureReviewResult {
 // ============================================================================
 
 interface SiftingResultItem {
-  doi: string;
-  title: string;
-  keep: boolean;
-  score: number;
+  id: string;
+  status: "ACCEPT" | "REJECT";
 }
 
 interface SiftingResponse {
@@ -52,7 +50,6 @@ export async function runSiftingStage(
   logger.file("ai-processor.ts:43");
   const CHUNK_SIZE = 60;
   const keptDecisions = new Map<string, boolean>();
-  const scoreDecisions = new Map<string, number>();
 
   for (let i = 0; i < candidates.length; i += CHUNK_SIZE) {
     const chunk = candidates.slice(i, i + CHUNK_SIZE);
@@ -60,10 +57,10 @@ export async function runSiftingStage(
     const totalChunks = Math.ceil(candidates.length / CHUNK_SIZE);
 
     const siftingInput = chunk.map((c) => ({
-      doi: c.doi ?? "",
+      id: c.openAlexId ?? c.doi ?? "title:" + c.title,
       title: c.title,
-      metadata: c.metadata ?? "",
-      authors: c.authors,
+      abstract_clean: c.abstract ?? "",
+      relevance_score: c.relevanceScore,
     }));
 
     const siftPrompt = buildLiteratureSiftingPrompt(
@@ -75,7 +72,7 @@ export async function runSiftingStage(
       thesisCtx,
     );
     if (chunkIndex === 1) {
-      logger.prompt("gemini-3.1-flash-lite (MINIMAL thinking)", siftPrompt);
+      logger.prompt("gemini-3.1-flash-lite (LOW thinking)", siftPrompt);
     }
 
     const siftingResult = await generateStructuredContent<SiftingResponse>(
@@ -84,20 +81,15 @@ export async function runSiftingStage(
       siftPrompt,
       literatureSiftingSchema,
       logger,
-      { thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } },
+      {
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        payloadStage: "sifting",
+      },
     );
 
     for (const r of siftingResult.siftedResults) {
-      if (r.keep) {
-        if (r.doi) {
-          keptDecisions.set("doi:" + r.doi, true);
-          scoreDecisions.set("doi:" + r.doi, r.score);
-        }
-        if (r.title) {
-          const titleKey = "title:" + r.title.toLowerCase().trim();
-          keptDecisions.set(titleKey, true);
-          scoreDecisions.set(titleKey, r.score);
-        }
+      if (r.status === "ACCEPT") {
+        keptDecisions.set("id:" + r.id, true);
       }
     }
 
@@ -107,30 +99,22 @@ export async function runSiftingStage(
         chunkIndex,
         totalChunks,
         chunkSize: chunk.length,
-        keptInChunk: siftingResult.siftedResults.filter((r) => r.keep).length,
+        keptInChunk: siftingResult.siftedResults.filter(
+          (r) => r.status === "ACCEPT",
+        ).length,
       },
     });
   }
 
   const kept = candidates.filter((c) => {
-    if (c.doi && keptDecisions.has("doi:" + c.doi)) return true;
-    if (c.title && keptDecisions.has("title:" + c.title.toLowerCase().trim()))
-      return true;
-    return false;
+    const id = c.openAlexId ?? c.doi ?? "title:" + c.title;
+    return id ? keptDecisions.has("id:" + id) : false;
   });
 
   for (const c of kept) {
-    const scoreKey = c.doi
-      ? "doi:" + c.doi
-      : c.title
-        ? "title:" + c.title.toLowerCase().trim()
-        : null;
-    if (scoreKey) {
-      const score = scoreDecisions.get(scoreKey);
-      if (score !== undefined) {
-        (c as unknown as Record<string, unknown>).siftingScore = score;
-      }
-    }
+    (c as unknown as Record<string, unknown>).siftingScore = Math.round(
+      c.relevanceScore * 100,
+    );
   }
 
   logger.data("Sifting Kept/Total", {
@@ -184,7 +168,7 @@ export async function runJuryStage(
   }
 
   logger.prompt(
-    "gemini-3.1-flash-lite (MEDIUM thinking)",
+    "gemini-3.1-flash-lite (HIGH thinking)",
     buildLiteratureJuryAnalysisPrompt(
       {
         title: box.title,
@@ -206,7 +190,10 @@ export async function runJuryStage(
     ),
     literatureJuryAnalysisSchema,
     logger,
-    { thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM } },
+    {
+      thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+      payloadStage: "jury",
+    },
   );
 
   const result = {

@@ -27,11 +27,122 @@ function resolveAbstractInvertedIndex(
   return entries.map(([, word]) => word).join(" ");
 }
 
+const STOP_WORDS = new Set([
+  "bir",
+  "bu",
+  "ile",
+  "ve",
+  "veya",
+  "veya",
+  "için",
+  "olarak",
+  "olan",
+  "the",
+  "a",
+  "an",
+  "and",
+  "or",
+  "in",
+  "on",
+  "at",
+  "to",
+  "for",
+  "of",
+  "with",
+  "by",
+  "is",
+  "it",
+  "as",
+  "be",
+  "are",
+  "was",
+  "were",
+  "been",
+  "being",
+  "have",
+  "has",
+  "had",
+  "do",
+  "does",
+  "did",
+  "will",
+  "would",
+  "can",
+  "its",
+  "all",
+  "each",
+  "every",
+  "some",
+  "any",
+  "no",
+  "not",
+  "only",
+  "this",
+  "that",
+  "these",
+  "those",
+  "from",
+  "into",
+  "through",
+  "over",
+]);
+
+function extractSignificantWords(query: string): string[] {
+  return query
+    .toLowerCase()
+    .replace(/[^a-z0-9çğıöşüâêîôû]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length >= 3)
+    .filter((w) => !STOP_WORDS.has(w));
+}
+
 // ============================================================================
 // OpenAlex Response Parser
 // ============================================================================
 
-function parseOpenAlexResults(results: Record<string, unknown>[]): RawPaper[] {
+function parseOpenAlexResults(
+  results: Record<string, unknown>[],
+  query?: string,
+): RawPaper[] {
+  const keywords = query ? extractSignificantWords(query) : [];
+
+  results = results.filter((work) => {
+    const type = work.type as string | undefined;
+    return type === "article" || type === "book-chapter" || type === "book";
+  });
+
+  results = results.filter((work) => {
+    const biblio = work.biblio as Record<string, unknown> | undefined;
+    if (!biblio) return true;
+    const fp = parseInt(biblio.first_page as string, 10);
+    const lp = parseInt(biblio.last_page as string, 10);
+    if (isNaN(fp) || isNaN(lp)) return true;
+    return lp - fp > 2;
+  });
+
+  results = results.filter((work) => {
+    const idx = work.abstract_inverted_index as
+      | Record<string, unknown>
+      | undefined;
+    if (!idx) return true;
+    return Object.keys(idx).length >= 40;
+  });
+
+  if (keywords.length > 0) {
+    results = results.filter((work) => {
+      const title = ((work.title as string) ?? "").toLowerCase();
+      const idx = work.abstract_inverted_index as
+        | Record<string, unknown>
+        | undefined;
+      const abstractKeys = idx ? Object.keys(idx) : [];
+      return keywords.some(
+        (kw) =>
+          title.includes(kw) ||
+          abstractKeys.some((ak) => ak.includes(kw) || kw.includes(ak)),
+      );
+    });
+  }
+
   const rawScores = results.map(
     (work) => (work.relevance_score as number) ?? 0,
   );
@@ -39,9 +150,13 @@ function parseOpenAlexResults(results: Record<string, unknown>[]): RawPaper[] {
   const safeMax = maxScore > 0 ? maxScore : 1;
 
   return results.map((work, i) => {
-    const topics = work.topics as { display_name?: string }[] | undefined;
-    const concepts = work.concepts as
-      | { display_name?: string; score?: number; level?: number }[]
+    const topics = work.topics as
+      | {
+          display_name?: string;
+          subfield?: { display_name?: string };
+          field?: { display_name?: string };
+          domain?: { display_name?: string };
+        }[]
       | undefined;
     const authorships = work.authorships as
       | { author?: { display_name?: string } }[]
@@ -55,34 +170,38 @@ function parseOpenAlexResults(results: Record<string, unknown>[]): RawPaper[] {
       | null
       | undefined;
 
-    const topicName = topics?.[0]?.display_name ?? null;
-    const topConcepts =
-      concepts
-        ?.filter(
-          (c) => (c.score ?? 0) > 0.3 && (c.level === 1 || c.level === 2),
-        )
-        .slice(0, 3)
-        .map((c) => c.display_name)
-        .filter(Boolean) ?? [];
+    const primaryTopic = topics?.[0];
+    const topicName = primaryTopic?.display_name ?? null;
+
+    const hierarchyParts: string[] = [];
+    const domain = primaryTopic?.domain?.display_name;
+    const field = primaryTopic?.field?.display_name;
+    const subfield = primaryTopic?.subfield?.display_name;
+    if (domain) hierarchyParts.push(domain);
+    if (field) hierarchyParts.push(field);
+    if (subfield) hierarchyParts.push(subfield);
 
     const metadataParts: string[] = [];
     if (topicName) metadataParts.push(`Topic: ${topicName}`);
-    if (topConcepts.length > 0)
-      metadataParts.push(`Concepts: ${topConcepts.join(", ")}`);
-    const metadata =
-      metadataParts.length > 0 ? metadataParts.join(". ") : null;
+    if (hierarchyParts.length > 0)
+      metadataParts.push(`Hierarchy: ${hierarchyParts.join(" > ")}`);
+    const metadata = metadataParts.length > 0 ? metadataParts.join(". ") : null;
+
+    const invertedIndex = work.abstract_inverted_index as
+      | Record<string, number[]>
+      | null
+      | undefined;
 
     return {
       source: "openalex" as const,
       title: (work.title as string) ?? null,
-      abstract: null,
+      abstract: resolveAbstractInvertedIndex(invertedIndex),
       metadata,
       doi: extractCleanDoi(work.doi as string | null | undefined),
       url: primaryLocation?.landing_page_url ?? (work.id as string) ?? null,
       authors:
-        authorships
-          ?.map((a) => a.author?.display_name ?? "")
-          .filter(Boolean) ?? [],
+        authorships?.map((a) => a.author?.display_name ?? "").filter(Boolean) ??
+        [],
       year: (work.publication_year as number) ?? null,
       publisher: primaryLocation?.source?.display_name ?? null,
       openAlexId: (work.id as string) ?? null,
@@ -96,7 +215,10 @@ function parseOpenAlexResults(results: Record<string, unknown>[]): RawPaper[] {
 // OpenAlex Query Executor (shared factory)
 // ============================================================================
 
-async function queryOpenAlexWorks(params: URLSearchParams): Promise<RawPaper[]> {
+async function queryOpenAlexWorks(
+  params: URLSearchParams,
+  query?: string,
+): Promise<RawPaper[]> {
   const apiKey = process.env.OPENALEX_API_KEY;
   if (apiKey) params.set("api_key", apiKey);
   const url = `https://api.openalex.org/works?${params.toString()}`;
@@ -112,7 +234,7 @@ async function queryOpenAlexWorks(params: URLSearchParams): Promise<RawPaper[]> 
     };
     const results = data.results;
     if (!results) return [];
-    return parseOpenAlexResults(results);
+    return parseOpenAlexResults(results, query);
   } catch {
     return [];
   }
@@ -125,13 +247,12 @@ async function queryOpenAlexWorks(params: URLSearchParams): Promise<RawPaper[]> 
 export async function searchOpenAlex(query: string): Promise<RawPaper[]> {
   const params = new URLSearchParams({
     "search.semantic": query,
-    filter: "type:journal-article|book|book-chapter",
-    sort: "relevance_score:desc",
+    filter: "has_abstract:true",
     per_page: "50",
     select:
-      "title,topics,concepts,doi,id,authorships,publication_year,primary_location",
+      "id,title,type,biblio,abstract_inverted_index,cited_by_count,relevance_score,authorships,publication_year,primary_location",
   });
-  const results = await queryOpenAlexWorks(params);
+  const results = await queryOpenAlexWorks(params, query);
   if (results.length === 0) {
     return searchOpenAlexKeyword(query);
   }
@@ -152,13 +273,13 @@ export async function searchOpenAlexKeyword(
 ): Promise<RawPaper[]> {
   const params = new URLSearchParams({
     search: query,
-    filter: "type:journal-article|book|book-chapter",
+    filter: "has_abstract:true",
     sort: "cited_by_count:desc",
     per_page: "50",
     select:
-      "title,topics,concepts,doi,id,authorships,publication_year,primary_location",
+      "id,title,type,biblio,abstract_inverted_index,cited_by_count,relevance_score,authorships,publication_year,primary_location",
   });
-  return queryOpenAlexWorks(params);
+  return queryOpenAlexWorks(params, query);
 }
 
 // ============================================================================
@@ -259,7 +380,7 @@ export async function resolveFoundationalWorks(
   const resolvePromises = queries.map(async (query) => {
     try {
       const urlParams = new URLSearchParams({
-        filter: `title.search:${query.title},raw_author_name.search:${query.author},publication_year:${query.publicationYear}`,
+        filter: `title.search:${query.title},raw_author_name.search:${query.author}`,
         sort: "cited_by_count:desc",
         per_page: "1",
         select: "id,title,type,publication_year,cited_by_count",
@@ -293,7 +414,8 @@ export async function resolveFoundationalWorks(
     } catch (error) {
       logger?.error("foundational_work_resolution_failed", {
         service: "openalex",
-        filePath: "src/app/(auth)/onboarding/literature-review/_services/search-api.ts",
+        filePath:
+          "src/app/(auth)/onboarding/literature-review/_services/search-api.ts",
         error,
         data: { queryTitle: query.title },
       });

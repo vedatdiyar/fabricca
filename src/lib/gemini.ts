@@ -134,10 +134,13 @@ export async function generateStructuredContent<T>(
     thinkingConfig?: {
       thinkingLevel?: ThinkingLevel;
     } | null;
+    payloadStage?: string;
   },
 ): Promise<T> {
   const startTime = performance.now();
   let attempts: number | undefined;
+
+  const thinkingLevel = options?.thinkingConfig?.thinkingLevel;
 
   logger?.info("ai_request_start", {
     service: "gemini",
@@ -145,6 +148,7 @@ export async function generateStructuredContent<T>(
       model: modelName,
       instructionLength: systemInstruction.length,
       promptLength: prompt.length,
+      thinkingLevel: thinkingLevel ?? undefined,
     },
   });
 
@@ -205,20 +209,30 @@ export async function generateStructuredContent<T>(
       : undefined;
 
     attempts = retryAttempts;
+
+    // Save debug payload
+    const payloadStage = options?.payloadStage ?? "gemini";
+    logger?.saveDebugPayload(payloadStage, modelName, prompt, text);
+
     logger?.info("ai_request_success", {
       service: "gemini",
       durationMs,
       tokens,
-      data: { model: modelName, attempt: attempts },
+      data: { model: modelName, attempt: attempts, thinkingLevel: thinkingLevel ?? undefined },
     });
     return parsed;
   } catch (error) {
     const durationMs = performance.now() - startTime;
+
+    // Save debug payload even on failure
+    const payloadStage = options?.payloadStage ?? "gemini";
+    logger?.saveDebugPayload(payloadStage, modelName, prompt);
+
     logger?.error("ai_request_failed", {
       service: "gemini",
       filePath: "src/lib/gemini.ts",
       durationMs,
-      data: { model: modelName, attempts },
+      data: { model: modelName, attempts, thinkingLevel: thinkingLevel ?? undefined },
       error,
     });
     throw error;
