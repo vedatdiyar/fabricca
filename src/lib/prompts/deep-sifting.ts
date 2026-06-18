@@ -62,7 +62,7 @@ Sen akademik özgünlük denetimi, intihal önleme stratejileri ve literatür ç
   "researchQuestion": "Depo işçileri algoritmik gözetim sistemlerine karşı nasıl karşı-davranış stratejileri geliştiriyor?",
   "theoreticalFramework": "Foucaultcu iktidar/direniş diyalektiği ve otonomist Marksist işçicilik.",
   "methodology": "Odaklanmış etnografi ve 20 derinlemesine görüşme.",
-  "historicalSpatialLimits": "Pandemi sonrası Türkiye, Kocaeli'deki lojistik üsleri."
+  "historicalSpatialLimits": "Pandemi sonrası dönem | Türkiye, Kocaeli'deki lojistik üsleri."
 }
 </ornek_hedef_matris>
 
@@ -108,9 +108,13 @@ _Not: 102 konu ve dönem açısından alakasız olduğu için NONE olarak değer
 export function buildDeepSiftingPrompt(params: {
   studyTitle: string;
   researchQuestion: string;
+  mainClaim: string;
   theoreticalFramework: string;
   methodology: string;
-  historicalSpatialLimits: string;
+  dataStrategy: string;
+  historicalLimits: string;
+  spatialLimits: string;
+  analyticalFocus: string;
   candidateDetails: {
     id: number;
     title: string;
@@ -118,13 +122,14 @@ export function buildDeepSiftingPrompt(params: {
     abstract: string;
   }[];
 }): string {
+  const temporalSpatialContext = `${params.historicalLimits} | ${params.spatialLimits}`;
   return `<hedef_tez_matrisi>
 {
   "studyTitle": "${params.studyTitle.replace(/"/g, '\\"')}",
   "researchQuestion": "${params.researchQuestion.replace(/"/g, '\\"')}",
   "theoreticalFramework": "${params.theoreticalFramework.replace(/"/g, '\\"')}",
   "methodology": "${params.methodology.replace(/"/g, '\\"')}",
-  "historicalSpatialLimits": "${params.historicalSpatialLimits.replace(/"/g, '\\"')}"
+  "historicalSpatialLimits": "${temporalSpatialContext.replace(/"/g, '\\"')}"
 }
 </hedef_tez_matrisi>
 

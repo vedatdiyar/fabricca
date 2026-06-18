@@ -31,10 +31,25 @@ export const enhancedThesisSchema: JsonSchema = {
       description:
         "Ham yönteme kesinlikle sadık kalarak, verilerin nasıl toplanacağını, tematikleştirileceğini ve çözümleneceğini detaylandıran metodolojik tasarım paragrafı.",
     },
-    historicalSpatialLimits: {
+    dataStrategy: {
       type: "string",
       description:
-        "Çalışmanın tarihsel, kronolojik ve coğrafi sınırlarını gerekçeleriyle birlikte ortaya koyan sınırlılıklar paragrafı.",
+        "Birincil/ikincil kaynak türlerini, arşiv kapsamını, örneklem veya veri kümesi büyüklüğünü ve veri toplama lojistiğini detaylandıran veri stratejisi paragrafı.",
+    },
+    historicalLimits: {
+      type: "string",
+      description:
+        "Çalışmanın olayın geçtiği net kronolojik zaman aralığını ve dönemsel sınırlarını gerekçeleriyle ortaya koyan paragraf.",
+    },
+    spatialLimits: {
+      type: "string",
+      description:
+        "Çalışmanın coğrafi/mekânsal odağını, sınırlarını ve bu mekânsal seçimin gerekçesini açıklayan paragraf.",
+    },
+    analyticalFocus: {
+      type: "string",
+      description:
+        "İncelenen aktörleri, kurumları veya söylemsel özneleri tanımlayan analitik odak paragrafı.",
     },
   },
   required: [
@@ -43,7 +58,10 @@ export const enhancedThesisSchema: JsonSchema = {
     "refinedThesisClaim",
     "conceptualTheoreticalInfrastructure",
     "academicMethodologyDesign",
-    "historicalSpatialLimits",
+    "dataStrategy",
+    "historicalLimits",
+    "spatialLimits",
+    "analyticalFocus",
   ],
 };
 
@@ -72,9 +90,12 @@ Sen lisansüstü ve doktora düzeyinde akademik danışmanlık ve bilimsel metod
   "studyTitle": "Şirketlerdeki borçların işçilere etkisi",
   "researchQuestion": "Kişisel borçlar beyaz yakalı çalışanları nasıl etkiliyor?",
   "mainClaim": "Borçlu olmak işçileri patrona daha bağımlı hale getiriyor ve onları korkutuyor.",
-  "methodology": "30 beyaz yakalı işçiyle yarı yapılandırılmış mülakat yaptım.",
   "theoreticalFramework": "Foucault'nun yönetimsellik fikri ve borçlu insan teorisi.",
-  "historicalSpatialLimits": "Günümüz Türkiye'si, İstanbul'daki plazalar, 2018-2025 arası."
+  "methodology": "30 beyaz yakalı işçiyle yarı yapılandırılmış mülakat yaptım.",
+  "dataStrategy": "Derinlemesine görüşmelerden elde edilmiş birincil nitel veriler; katılımcılar İstanbul'daki finans şirketlerinden kartopu örneklemeyle seçildi.",
+  "historicalLimits": "2018-2025 yılları arası, pandemi sonrası dönemin borçluluk dinamiklerinin yoğunlaştığı zaman aralığı.",
+  "spatialLimits": "İstanbul'un merkezi iş alanları: Levent, Maslak ve Şişli plaza ekosistemleri.",
+  "analyticalFocus": "Türkiye'deki beyaz yakalı profesyoneller; neoliberal iş kültürünün ürettiği finansal bağımlılık ilişkileri."
 }
 </ornek_girdi_ham_matris>
 
@@ -85,7 +106,10 @@ Sen lisansüstü ve doktora düzeyinde akademik danışmanlık ve bilimsel metod
   "refinedThesisClaim": "Çağdaş neoliberal rejim altında borçluluk, yalnızca dönemsel bir finansal yükümlülük değil; bireyin varoluşunu vicdani, ahlaki ve profesyonel düzeyde disipline eden, onu kurumsal hiyerarşilere ve rasyonaliteye daha sıkı bağlayan temel bir yönetimsellik teknolojisi olarak işlev görmektedir.",
   "conceptualTheoreticalInfrastructure": "Bu çalışma, felsefi omurgasını Michel Foucault'nun yönetimsellik (\`governmentality\`) analizinden ve Maurizio Lazzarato'nun borçlu insan kavramsallaştırmasından almaktadır. Borç kavramı saf bir ekonomik takas ilişkisi olmanın ötesine taşınarak, bireyin itaatkarlık mekanizmalarını kuran, rasyonalitesini ve kurumsal sadakatini yeniden üreten asimetrik bir iktidar düzlemi olarak ele alınmaktadır.",
   "academicMethodologyDesign": "Araştırmanın ampirik katmanı, kurumsal finans merkezlerinde istihdam edilen borçlu 30 beyaz yakalı profesyonel ile gerçekleştirilen yarı yapılandırılmış derinlemesine mülakatlara dayanmaktadır. Sahadan elde edilen nitel veriler, tezin kuramsal altyapısıyla epistemolojik bir uyum içinde tutularak teori güdümlü içerik analizine (\`theory-driven thematic analysis\`) tabi tutulacak; iktidar mekanizmaları, vicdani içselleştirme ve kariyer savunma taktikleri ekseninde tematikleştirilecektir.",
-  "historicalSpatialLimits": "Araştırmanın tarihsel ve mekansal sınırları, makroekonomik dönüşümlerin ve finansallaşma dalgalarının en yoğun hissedildiği 2018-2025 yılları arasındaki çağdaş Türkiye konjonktürü ile İstanbul'un merkezi iş alanlarındaki plaza ekosistemleri olarak belirlenmiştir."
+  "dataStrategy": "Araştırma, birincil nitel verilere dayanmaktadır. Katılımcılar İstanbul'un finans merkezlerinde istihdam edilen beyaz yakalı profesyoneller arasından kartopu örnekleme yöntemiyle belirlenmiş ve yarı yapılandırılmış görüşmeler yoluyla 30 katılımcıya ulaşılmıştır. Görüşmeler, borçluluk deneyiminin öznel ve yapısal boyutlarını kapsayacak şekilde tasarlanmış tematik bir görüşme formu üzerinden yürütülmüştür.",
+  "historicalLimits": "Araştırmanın kronolojik sınırları 2018-2025 yılları arasını kapsamakta olup; bu dönem Türkiye ekonomisinde finansallaşma dalgalarının, döviz kuru krizlerinin ve pandemi sonrası borç dinamiklerinin en yoğun biçimde hissedildiği zaman aralığını temsil etmektedir.",
+  "spatialLimits": "Araştırma mekânsal olarak İstanbul'un merkezi iş alanlarıyla —Levent, Maslak ve Şişli plaza ekosistemleri— sınırlandırılmıştır. Bu bölgeler, beyaz yakalı istihdamın ve kurumsal finans kültürünün en yoğun olduğu alanlar olarak seçilmiştir.",
+  "analyticalFocus": "Araştırmanın analitik odağında, neoliberal iş kültürü içerisinde borçluluk deneyimini yönetimsellik ve borçlu insan kavramları üzerinden yeniden üreten Türkiye'deki beyaz yakalı profesyoneller yer almaktadır. Çalışma, finansal bağımlılığın bireysel öznellik ve kurumsal sadakat üzerindeki dönüştürücü etkilerine odaklanmaktadır."
 }
 </ornek_beklenen_cikti>_`;
 }
@@ -97,18 +121,24 @@ export function buildMatrixEnhancementPrompt(params: {
   studyTitle: string;
   researchQuestion: string;
   mainClaim: string;
-  methodology: string;
   theoreticalFramework: string;
-  historicalSpatialLimits: string;
+  methodology: string;
+  dataStrategy: string;
+  historicalLimits: string;
+  spatialLimits: string;
+  analyticalFocus: string;
 }): string {
   return `<ham_ogrenci_matrisi>
 {
   "studyTitle": "${params.studyTitle.replace(/"/g, '\\"')}",
   "researchQuestion": "${params.researchQuestion.replace(/"/g, '\\"')}",
   "mainClaim": "${params.mainClaim.replace(/"/g, '\\"')}",
-  "methodology": "${params.methodology.replace(/"/g, '\\"')}",
   "theoreticalFramework": "${params.theoreticalFramework.replace(/"/g, '\\"')}",
-  "historicalSpatialLimits": "${params.historicalSpatialLimits.replace(/"/g, '\\"')}"
+  "methodology": "${params.methodology.replace(/"/g, '\\"')}",
+  "dataStrategy": "${params.dataStrategy.replace(/"/g, '\\"')}",
+  "historicalLimits": "${params.historicalLimits.replace(/"/g, '\\"')}",
+  "spatialLimits": "${params.spatialLimits.replace(/"/g, '\\"')}",
+  "analyticalFocus": "${params.analyticalFocus.replace(/"/g, '\\"')}"
 }
 </ham_ogrenci_matrisi>
 

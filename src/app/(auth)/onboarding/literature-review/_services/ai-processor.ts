@@ -44,7 +44,8 @@ export async function runSiftingStage(
     studyTitle: string;
     researchQuestion: string;
     theoreticalFramework: string;
-    historicalSpatialLimits: string;
+    historicalLimits: string;
+    spatialLimits: string;
   },
 ): Promise<ValidatedPaper[]> {
   logger.file("ai-processor.ts:43");

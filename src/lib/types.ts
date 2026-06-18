@@ -8,7 +8,10 @@ export type EnhancedThesisData = {
   refinedThesisClaim: string;
   conceptualTheoreticalInfrastructure: string;
   academicMethodologyDesign: string;
-  historicalSpatialLimits: string;
+  dataStrategy: string;
+  historicalLimits: string;
+  spatialLimits: string;
+  analyticalFocus: string;
 };
 
 export type EnhancedThesisActionResult =
@@ -133,9 +136,12 @@ export interface OnboardingFormData {
   studyTitle: string;
   researchQuestion: string;
   mainClaim: string;
-  methodology: string;
   theoreticalFramework: string;
-  historicalSpatialLimits: string;
+  methodology: string;
+  dataStrategy: string;
+  historicalLimits: string;
+  spatialLimits: string;
+  analyticalFocus: string;
 }
 
 /**

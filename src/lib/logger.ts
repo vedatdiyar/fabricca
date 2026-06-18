@@ -49,13 +49,16 @@ export interface LogParams {
   error?: unknown;
   tokens?: TokenUsage;
   filePath?: string;
-  status?: "SUCCESS" | "FAILED";
+  status?: "START" | "SUCCESS" | "FAILED";
 }
 
 const isDevelopment = process.env.NODE_ENV === "development";
 const PAYLOAD_DIR = ".next/logs";
-const MODULE_DISPLAY_WIDTH = 12;
-const ACTION_DISPLAY_WIDTH = 22;
+
+const TIMESTAMP_WIDTH = 10;
+const FLOW_ID_WIDTH = 14;
+const MODULE_WIDTH = 12;
+const ACTION_WIDTH = 22;
 
 const SERVICE_DISPLAY: Record<ServiceName, string> = {
   gemini: "GEMINI",
@@ -78,6 +81,11 @@ const SERVICE_DISPLAY: Record<ServiceName, string> = {
 };
 
 const ACTION_DISPLAY_MAP: Record<string, { emoji: string; label: string }> = {
+  step: { emoji: "📍", label: "STEP" },
+  file_ref: { emoji: "📁", label: "FILE" },
+  data: { emoji: "📊", label: "DATA" },
+  preview: { emoji: "👁️", label: "PREVIEW" },
+  ai_prompt: { emoji: "💬", label: "PROMPT" },
   literature_search_start: { emoji: "🔍", label: "SEARCH" },
   literature_search_done: { emoji: "🔍", label: "SEARCH" },
   literature_merge_done: { emoji: "🔀", label: "MERGE" },
@@ -113,7 +121,7 @@ function getModuleDisplay(service: ServiceName, params?: LogParams): string {
     const suffix = sl === "LOW" ? "L1" : sl === "HIGH" ? "L2" : "";
     if (suffix) base = `GEMINI/${suffix}`;
   }
-  return base.padEnd(MODULE_DISPLAY_WIDTH);
+  return base.padEnd(MODULE_WIDTH);
 }
 
 function getActionDisplay(event: string): { emoji: string; label: string } {
@@ -124,6 +132,86 @@ function getActionDisplay(event: string): { emoji: string; label: string } {
     .replace(/_(start|done|success|failed|filtered|empty)$/g, "")
     .toUpperCase();
   return { emoji: "📌", label: cleaned || event.toUpperCase() };
+}
+
+function getStatusTag(status: string): string {
+  switch (status) {
+    case "START":
+      return "\x1b[33m⏳ START\x1b[0m";
+    case "SUCCESS":
+      return "\x1b[32m🟢 SUCCESS\x1b[0m";
+    case "FAILED":
+      return "\x1b[31m🔴 FAILED\x1b[0m";
+    default:
+      return "";
+  }
+}
+
+function deriveStatus(event: string): string {
+  if (event.endsWith("_start")) return "START";
+  if (event.endsWith("_success")) return "SUCCESS";
+  if (
+    event.endsWith("_failed") ||
+    event.endsWith("_filtered") ||
+    event.endsWith("_empty")
+  )
+    return "FAILED";
+  return "";
+}
+
+function truncate(s: string, maxLen: number): string {
+  return s.length <= maxLen ? s : s.slice(0, maxLen - 3) + "...";
+}
+
+/**
+ * Central counter validator & normalizer.
+ * Reads before/after and count-like fields from a data record,
+ * validates internal consistency, and returns formatted metric strings.
+ */
+function processDataMetrics(data: Record<string, unknown>): string[] {
+  const metrics: string[] = [];
+
+  const before = data.before as number | undefined;
+  const after = data.after as number | undefined;
+  if (before !== undefined && after !== undefined) {
+    if (before < after) {
+      metrics.push(`⚠️ ${before}→${after} (asymmetric)`);
+    } else if (before === after) {
+      metrics.push(`${before} → ${after} (unchanged)`);
+    } else {
+      metrics.push(`${before} → ${after}`);
+    }
+  }
+
+  if (data.count !== undefined) metrics.push(`📊 Sayı: ${data.count}`);
+  if (data.resultCount !== undefined)
+    metrics.push(`📊 ${data.resultCount} sonuç`);
+  if (data.rawCount !== undefined) metrics.push(`🔢 Ham: ${data.rawCount}`);
+  if (data.mergedCount !== undefined) metrics.push(`🔀 ${data.mergedCount}`);
+  if (data.totalResults !== undefined)
+    metrics.push(`📊 Toplam: ${data.totalResults}`);
+  if (data.query) metrics.push(`🔍 ${truncate(String(data.query), 60)}`);
+  if (data.reason) metrics.push(`📝 ${truncate(String(data.reason), 80)}`);
+  if (data.starterPackCount !== undefined)
+    metrics.push(`📦 ${data.starterPackCount}`);
+  if (data.reservedPoolCount !== undefined)
+    metrics.push(`📦 ${data.reservedPoolCount}`);
+  if (data.enrichedCount !== undefined)
+    metrics.push(`🔗 ${data.enrichedCount}`);
+  if (data.requestedCount !== undefined)
+    metrics.push(`🔢 ${data.requestedCount}`);
+  if (data.resolvedCount !== undefined)
+    metrics.push(`✅ ${data.resolvedCount}`);
+  if (data.status) metrics.push(`🌐 HTTP ${data.status}`);
+  if (data.errorCode) metrics.push(`❌ ${data.errorCode}`);
+  if (data.chunkIndex !== undefined && data.totalChunks !== undefined) {
+    metrics.push(`📦 ${data.chunkIndex}/${data.totalChunks}`);
+  }
+  if (data.keptInChunk !== undefined)
+    metrics.push(`✅ ${data.keptInChunk} kept`);
+  if (data.model) metrics.push(`🏷️ ${data.model}`);
+
+  return metrics;
 }
 
 const pinoLogger = isDevelopment
@@ -139,36 +227,25 @@ const pinoLogger = isDevelopment
       timestamp: pino.stdTimeFunctions.isoTime,
     });
 
-export function createFlowId(): string {
-  const timestamp = Date.now().toString(36);
-  const random = Math.random().toString(36).substring(2, 8);
-  return `fl_${timestamp}_${random}`;
+/**
+ * Deduplication guard for START events.
+ * Prevents duplicate _start / START from rendering more than once per flow.
+ */
+const startedEvents: Map<string, Set<string>> = new Map();
+
+function peekStarted(flowId: string, event: string): boolean {
+  const set = startedEvents.get(flowId);
+  if (!set) return false;
+  return set.has(event);
 }
 
-function getStatusTag(status: string): string {
-  switch (status) {
-    case "SUCCESS":
-      return "\x1b[32m🟢 SUCCESS\x1b[0m";
-    case "FAILED":
-      return "\x1b[31m🔴 FAILED\x1b[0m";
-    default:
-      return "";
+function markStarted(flowId: string, event: string): void {
+  let set = startedEvents.get(flowId);
+  if (!set) {
+    set = new Set();
+    startedEvents.set(flowId, set);
   }
-}
-
-function deriveStatus(event: string): string {
-  if (event.endsWith("_success")) return "SUCCESS";
-  if (
-    event.endsWith("_failed") ||
-    event.endsWith("_filtered") ||
-    event.endsWith("_empty")
-  )
-    return "FAILED";
-  return "";
-}
-
-function truncate(s: string, maxLen: number): string {
-  return s.length <= maxLen ? s : s.slice(0, maxLen - 3) + "...";
+  set.add(event);
 }
 
 export class Logger {
@@ -192,250 +269,65 @@ export class Logger {
     this.write("error", arg1, params);
   }
 
-  private write(
-    level: "info" | "warn" | "error",
-    arg1: string | Record<string, unknown>,
-    params?: LogParams,
-  ): void {
-    if (typeof arg1 === "object" && arg1 !== null) {
-      const entry: Record<string, unknown> = { flowId: this.flowId, ...arg1 };
-      const status = entry.status as string | undefined;
-      if (status && status !== "SUCCESS" && status !== "FAILED") return;
-      if (isDevelopment) this.renderDevLine(entry);
-      else pinoLogger[level](entry);
-      return;
-    } else {
-      const event = arg1 as string;
-      const service = params?.service ?? "flow";
-      const entry: Record<string, unknown> = {
-        event,
-        flowId: this.flowId,
-        service,
-      };
-
-      if (params?.step) entry.step = params.step;
-      if (params?.durationMs !== undefined) {
-        entry.durationMs = Math.round(params.durationMs);
-      }
-      if (params?.data) {
-        entry.data = params.data;
-      }
-      if (params?.tokens) {
-        entry.tokens = params.tokens;
-      }
-
-      if (event === "ai_request_success" && params?.tokens) {
-        this.lastTokens = params.tokens;
-      }
-
-      if (level === "error") {
-        const err = params?.error;
-        entry.error = {
-          name: err instanceof Error ? err.name : "UnknownError",
-          message:
-            err instanceof Error
-              ? err.message
-              : err != null
-                ? String(err)
-                : "Unknown error",
-        };
-        if (err instanceof Error && err.stack) {
-          entry.error = {
-            ...(entry.error as Record<string, unknown>),
-            stack: err.stack,
-          };
-        }
-      }
-
-      const status = params?.status ?? deriveStatus(event);
-      if (!status) return;
-
-      if (isDevelopment) {
-        this.renderEventLine(service, event, status, params);
-      } else {
-        entry.status = status;
-        pinoLogger[level](entry);
-      }
-    }
+  /**
+   * Log a named step within the current process flow.
+   */
+  step(stepName: string, metadata?: Record<string, unknown>): void {
+    if (!isDevelopment) return;
+    const prefix = this.buildPrefix("flow", "step");
+    const meta =
+      metadata && Object.keys(metadata).length > 0
+        ? ` ${JSON.stringify(metadata)}`
+        : "";
+    console.log(`${prefix}| 📍 ${stepName}${meta}`);
   }
 
-  private renderEventLine(
-    service: ServiceName,
-    event: string,
-    status: string,
-    params?: LogParams,
-  ): void {
-    const statusTag = getStatusTag(status);
-    console.log(this.buildLine(service, event, statusTag, params));
+  /**
+   * Log a file reference (path or URL) for traceability.
+   */
+  file(ref: string): void {
+    if (!isDevelopment) return;
+    const prefix = this.buildPrefix("flow", "file_ref");
+    console.log(`${prefix}| 📁 ${ref}`);
   }
 
-  private renderDevLine(data: Record<string, unknown>): void {
-    const time = getTimestamp();
-    const reqId = truncateFlowId(this.flowId);
-    const svc = String(data.service ?? "flow") as ServiceName;
-    const moduleDisplay = getModuleDisplay(svc, {
-      data,
-    } as unknown as LogParams);
-    const event = String(data.event ?? data.step ?? "data");
-    const actionDisplay = getActionDisplay(event);
-
-    // ARTIK BURASI DA SABİT HİZALI: ACTION_DISPLAY_WIDTH katı olarak korunuyor
-    const actionPadded = `${actionDisplay.emoji} ${actionDisplay.label}`.padEnd(
-      ACTION_DISPLAY_WIDTH,
-    );
-    let line = `[${time}] [${reqId}] [${moduleDisplay}] ${actionPadded}`;
-
-    const msgParts: string[] = [];
-    const step = data.step ? String(data.step) : "";
-    if (step) msgParts.push(step);
-
-    const rawStatus = String(data.status ?? "");
-    if (rawStatus) msgParts.push(getStatusTag(rawStatus));
-
-    if (msgParts.length > 0) line += ` | ${msgParts.join(" • ")}`;
-
-    const metricParts: string[] = [];
-    const metrics = data.metrics as Record<string, unknown> | undefined;
-    if (metrics) {
-      const durMs = metrics.durationMs as number | undefined;
-      if (durMs !== undefined) metricParts.push(`⏱️ ${Math.round(durMs)}ms`);
-      const dur = metrics.duration as string | undefined;
-      if (dur !== undefined && durMs === undefined)
-        metricParts.push(`⏱️ ${dur}`);
-      const rc = metrics.resultCount as number | undefined;
-      if (rc !== undefined) metricParts.push(`📊 ${rc} sonuç`);
-    }
-
-    const extraData = data.data as Record<string, unknown> | undefined;
-    if (extraData) {
-      if (extraData.count !== undefined)
-        metricParts.push(`📊 Sayı: ${extraData.count}`);
-      if (extraData.resultCount !== undefined)
-        metricParts.push(`📊 ${extraData.resultCount} sonuç`);
-      if (extraData.model) metricParts.push(`🏷️ ${extraData.model}`);
-      if (extraData.query)
-        metricParts.push(`🔍 ${truncate(String(extraData.query), 60)}`);
-    }
-
-    const diagnostics = data.diagnostics as Record<string, unknown> | undefined;
-    if (diagnostics) {
-      const msg = diagnostics.message ? String(diagnostics.message) : "";
-      if (msg) metricParts.push(`❌ ${truncate(msg, 120)}`);
-    }
-
-    const err = data.error as { message?: string } | undefined;
-    if (err && err.message && !diagnostics) {
-      metricParts.push(`❌ ${truncate(err.message, 120)}`);
-    }
-
-    if (metricParts.length > 0) line += ` | ${metricParts.join(" | ")}`;
-    console.log(line);
+  /**
+   * Log an arbitrary labeled data point.
+   */
+  data(label: string, value: unknown): void {
+    if (!isDevelopment) return;
+    const prefix = this.buildPrefix("flow", "data");
+    const display =
+      typeof value === "object" ? JSON.stringify(value) : String(value);
+    console.log(`${prefix}| 📊 ${label}: ${truncate(display, 120)}`);
   }
 
-  private buildLine(
-    service: ServiceName,
-    event: string,
-    statusTag: string,
-    params?: LogParams,
-  ): string {
-    const time = getTimestamp();
-    const reqId = truncateFlowId(this.flowId);
-    const moduleDisplay = getModuleDisplay(service, params);
-    const actionDisplay = getActionDisplay(event);
-    const actionPadded = `${actionDisplay.emoji} ${actionDisplay.label}`.padEnd(
-      ACTION_DISPLAY_WIDTH,
-    );
-
-    let line = `[${time}] [${reqId}] [${moduleDisplay}] ${actionPadded}`;
-
-    const msgParts: string[] = [];
-    if (params?.step && params.step !== event) {
-      msgParts.push(params.step);
-    }
-    if (statusTag) {
-      msgParts.push(statusTag);
-    }
-    if (msgParts.length > 0) {
-      line += ` | ${msgParts.join(" • ")}`;
-    }
-
-    const metricParts: string[] = [];
-    if (params?.durationMs !== undefined) {
-      metricParts.push(`⏱️ ${Math.round(params.durationMs)}ms`);
-    }
-    if (params?.filePath) {
-      const cleanPath = params.filePath.replace(/^src\//, "");
-      metricParts.push(`📁 ${cleanPath}`);
-    }
-    if (params?.tokens) {
-      const t = params.tokens;
-      if (params?.data?.model) {
-        metricParts.push(`🏷️ ${params.data.model}`);
-      }
-      metricParts.push(`📥 ${t.input ?? "?"}`, `📤 ${t.output ?? "?"}`);
-      if (t.total !== undefined) metricParts.push(`💭 ${t.total}tkn`);
-    } else if (params?.data?.model) {
-      metricParts.push(`🏷️ ${params.data.model}`);
-    }
-
-    if (params?.data && !params.data.model) {
-      const d = params.data;
-      if (d.query) metricParts.push(`🔍 ${truncate(String(d.query), 60)}`);
-      if (d.resultCount !== undefined)
-        metricParts.push(`📊 ${d.resultCount} sonuç`);
-      if (d.count !== undefined) metricParts.push(`📊 Sayı: ${d.count}`);
-      if (d.rawCount !== undefined) metricParts.push(`🔢 Ham: ${d.rawCount}`);
-      if (d.mergedCount !== undefined) metricParts.push(`🔀 ${d.mergedCount}`);
-      if (d.before !== undefined && d.after !== undefined)
-        metricParts.push(`${d.before} → ${d.after}`);
-      if (d.totalResults !== undefined)
-        metricParts.push(`📊 Toplam: ${d.totalResults}`);
-      if (d.reason) metricParts.push(`📝 ${truncate(String(d.reason), 80)}`);
-      if (d.starterPackCount !== undefined)
-        metricParts.push(`📦 ${d.starterPackCount}`);
-      if (d.reservedPoolCount !== undefined)
-        metricParts.push(`📦 ${d.reservedPoolCount}`);
-      if (d.enrichedCount !== undefined)
-        metricParts.push(`🔗 ${d.enrichedCount}`);
-      if (d.requestedCount !== undefined)
-        metricParts.push(`🔢 ${d.requestedCount}`);
-      if (d.resolvedCount !== undefined)
-        metricParts.push(`✅ ${d.resolvedCount}`);
-      if (d.status) metricParts.push(`🌐 HTTP ${d.status}`);
-      if (d.errorCode) metricParts.push(`❌ ${d.errorCode}`);
-      if (d.chunkIndex !== undefined)
-        metricParts.push(`📦 ${d.chunkIndex}/${d.totalChunks}`);
-      if (d.keptInChunk !== undefined)
-        metricParts.push(`✅ ${d.keptInChunk} kept`);
-    }
-
-    if (params?.error) {
-      const err = params.error;
-      const display = getErrorDisplay(err);
-      const scenario = classifyError(err);
-      metricParts.push(`❌ [${scenario.toUpperCase()}] ${display.title}`);
-    }
-
-    if (metricParts.length > 0) {
-      line += ` | ${metricParts.join(" | ")}`;
-    }
-
-    if (
-      event === "literature_sifting_done" &&
-      typeof params?.data?.before === "number" &&
-      typeof params?.data?.after === "number" &&
-      params.data.before > 40 &&
-      params.data.after <= 2
-    ) {
-      line += ` | ⚠️ DÜŞÜK KABUL ORANI (dosya: ${this.lastPayloadPath ?? "N/A"})`;
-    }
-
-    return line;
+  /**
+   * Log a preview of data with truncation for terminal readability.
+   */
+  preview(label: string, value: unknown): void {
+    if (!isDevelopment) return;
+    const prefix = this.buildPrefix("flow", "preview");
+    const raw =
+      typeof value === "object" ? JSON.stringify(value) : String(value);
+    const display = truncate(raw, 200);
+    console.log(`${prefix}| 👁️ ${label}: ${display}`);
   }
 
-  // ==========================================================================
-  // SIZINTI YAPAN ESKİ METOTLAR ARTIK TAMAMEN SESSİZCE UNUTULDU (NO-OP)
-  // ==========================================================================
+  /**
+   * Log an AI prompt sent to a model.
+   */
+  prompt(model: string, content: string): void {
+    if (!isDevelopment) return;
+    const prefix = this.buildPrefix("gemini", "ai_prompt");
+    const preview = truncate(content.replace(/\n/g, " "), 160);
+    console.log(`${prefix}| 💬 [${model}] ${preview}`);
+  }
+
+  /**
+   * Save a debug payload to disk for later inspection.
+   * @returns The file path of the saved payload, or undefined on failure / production.
+   */
   saveDebugPayload(
     stage: string,
     module: string,
@@ -465,9 +357,245 @@ export class Logger {
     }
   }
 
-  step(stepName: string, metadata?: Record<string, unknown>): void {}
-  file(ref: string): void {}
-  data(label: string, value: unknown): void {}
-  preview(label: string, value: unknown): void {}
-  prompt(model: string, content: string): void {}
+  // ─────────────────────────── Private ───────────────────────────────────
+
+  private write(
+    level: "info" | "warn" | "error",
+    arg1: string | Record<string, unknown>,
+    params?: LogParams,
+  ): void {
+    if (typeof arg1 === "object" && arg1 !== null) {
+      const entry: Record<string, unknown> = { flowId: this.flowId, ...arg1 };
+      const rawStatus = entry.status as string | undefined;
+
+      if (rawStatus === "START") {
+        const dedupKey = (entry.step as string) ?? "obj_start";
+        if (peekStarted(this.flowId, dedupKey)) return;
+        markStarted(this.flowId, dedupKey);
+      }
+
+      if (isDevelopment) this.renderDevLine(entry);
+      else pinoLogger[level](entry);
+      return;
+    }
+
+    const event = arg1 as string;
+    const service = params?.service ?? "flow";
+    const entry: Record<string, unknown> = {
+      event,
+      flowId: this.flowId,
+      service,
+    };
+
+    if (params?.step) entry.step = params.step;
+    if (params?.durationMs !== undefined) {
+      entry.durationMs = Math.round(params.durationMs);
+    }
+    if (params?.data) entry.data = params.data;
+    if (params?.tokens) entry.tokens = params.tokens;
+
+    if (event === "ai_request_success" && params?.tokens) {
+      this.lastTokens = params.tokens;
+    }
+
+    if (level === "error") {
+      const err = params?.error;
+      entry.error = {
+        name: err instanceof Error ? err.name : "UnknownError",
+        message:
+          err instanceof Error
+            ? err.message
+            : err != null
+              ? String(err)
+              : "Unknown error",
+      };
+      if (err instanceof Error && err.stack) {
+        (entry.error as Record<string, unknown>).stack = err.stack;
+      }
+    }
+
+    const status = params?.status ?? deriveStatus(event);
+
+    if (status === "START" && peekStarted(this.flowId, event)) return;
+    if (status === "START") markStarted(this.flowId, event);
+
+    if (isDevelopment) {
+      this.renderEventLine(service, event, status, params);
+    } else {
+      if (!status) return;
+      entry.status = status;
+      pinoLogger[level](entry);
+    }
+  }
+
+  private renderEventLine(
+    service: ServiceName,
+    event: string,
+    status: string,
+    params?: LogParams,
+  ): void {
+    const prefix = this.buildPrefix(service, event);
+    const suffix = this.buildSuffix(event, status, params);
+    console.log(`${prefix}${suffix}`);
+  }
+
+  private buildPrefix(service: ServiceName | string, event: string): string {
+    const time = getTimestamp();
+    const reqId = truncateFlowId(this.flowId);
+    const svc = service as ServiceName;
+    const moduleDisplay = getModuleDisplay(svc);
+    const actionDisplay = getActionDisplay(event);
+
+    const timePadded = `[${time}]`.padEnd(TIMESTAMP_WIDTH);
+    const idPadded = `[${reqId}]`.padEnd(FLOW_ID_WIDTH);
+    const modPadded = `[${moduleDisplay}]`.padEnd(MODULE_WIDTH + 2);
+    const actionPadded = `${actionDisplay.emoji} ${actionDisplay.label}`.padEnd(
+      ACTION_WIDTH,
+    );
+
+    return `${timePadded} ${idPadded} ${modPadded} ${actionPadded}`;
+  }
+
+  private buildSuffix(
+    event: string,
+    status: string,
+    params?: LogParams,
+  ): string {
+    const parts: string[] = [];
+
+    if (params?.step && params.step !== event) {
+      parts.push(params.step);
+    }
+
+    const statusTag = getStatusTag(status);
+    if (statusTag) parts.push(statusTag);
+
+    if (params?.data) {
+      const ctx =
+        params.data.context ?? params.data.boxTitle ?? params.data.subBox;
+      if (ctx) parts.push(`📦 ${ctx}`);
+    }
+
+    let suffix = "";
+    if (parts.length > 0) {
+      suffix += ` | ${parts.join(" • ")}`;
+    }
+
+    const metricParts: string[] = [];
+
+    if (params?.durationMs !== undefined) {
+      metricParts.push(`⏱️ ${Math.round(params.durationMs)}ms`);
+    }
+
+    if (params?.filePath) {
+      metricParts.push(`📁 ${params.filePath.replace(/^src\//, "")}`);
+    }
+
+    if (params?.tokens) {
+      const t = params.tokens;
+      if ((t.input ?? 0) > 0 || (t.output ?? 0) > 0) {
+        metricParts.push(`📥 ${t.input ?? "?"}`, `📤 ${t.output ?? "?"}`);
+      }
+      if (t.total !== undefined) metricParts.push(`💭 ${t.total}tkn`);
+    } else if (params?.data?.model) {
+      metricParts.push(`🏷️ ${params.data.model}`);
+    }
+
+    if (params?.data) {
+      const dataMetrics = processDataMetrics(params.data);
+      metricParts.push(...dataMetrics);
+    }
+
+    if (params?.error) {
+      const err = params.error;
+      const display = getErrorDisplay(err);
+      const scenario = classifyError(err);
+      metricParts.push(`❌ [${scenario.toUpperCase()}] ${display.title}`);
+    }
+
+    if (metricParts.length > 0) {
+      suffix += ` | ${metricParts.join(" | ")}`;
+    }
+
+    if (
+      event === "literature_sifting_done" &&
+      typeof params?.data?.before === "number" &&
+      typeof params?.data?.after === "number" &&
+      params.data.before > 40 &&
+      params.data.after <= 2
+    ) {
+      suffix += ` | ⚠️ DÜŞÜK KABUL ORANI (dosya: ${this.lastPayloadPath ?? "N/A"})`;
+    }
+
+    return suffix;
+  }
+
+  private renderDevLine(data: Record<string, unknown>): void {
+    const time = getTimestamp();
+    const reqId = truncateFlowId(this.flowId);
+    const svc = String(data.service ?? "flow") as ServiceName;
+    const moduleDisplay = getModuleDisplay(svc);
+
+    const event = String(data.event ?? data.step ?? "data");
+    const actionDisplay = getActionDisplay(event);
+
+    const timePadded = `[${time}]`.padEnd(TIMESTAMP_WIDTH);
+    const idPadded = `[${reqId}]`.padEnd(FLOW_ID_WIDTH);
+    const modPadded = `[${moduleDisplay}]`.padEnd(MODULE_WIDTH + 2);
+    const actionPadded = `${actionDisplay.emoji} ${actionDisplay.label}`.padEnd(
+      ACTION_WIDTH,
+    );
+
+    let line = `${timePadded} ${idPadded} ${modPadded} ${actionPadded}`;
+
+    const msgParts: string[] = [];
+
+    const step = data.step ? String(data.step) : "";
+    if (step && step !== event) msgParts.push(step);
+
+    const rawStatus = String(data.status ?? "");
+    if (rawStatus) msgParts.push(getStatusTag(rawStatus));
+
+    if (msgParts.length > 0) line += ` | ${msgParts.join(" • ")}`;
+
+    const metricParts: string[] = [];
+
+    const metrics = data.metrics as Record<string, unknown> | undefined;
+    if (metrics) {
+      const durMs = metrics.durationMs as number | undefined;
+      if (durMs !== undefined) metricParts.push(`⏱️ ${Math.round(durMs)}ms`);
+      const dur = metrics.duration as string | undefined;
+      if (dur !== undefined && durMs === undefined)
+        metricParts.push(`⏱️ ${dur}`);
+      const rc = metrics.resultCount as number | undefined;
+      if (rc !== undefined) metricParts.push(`📊 ${rc} sonuç`);
+    }
+
+    const extraData = data.data as Record<string, unknown> | undefined;
+    if (extraData) {
+      const dataMetrics = processDataMetrics(extraData);
+      metricParts.push(...dataMetrics);
+    }
+
+    const diagnostics = data.diagnostics as Record<string, unknown> | undefined;
+    if (diagnostics) {
+      const msg = diagnostics.message ? String(diagnostics.message) : "";
+      if (msg) metricParts.push(`❌ ${truncate(msg, 120)}`);
+    }
+
+    const err = data.error as { message?: string } | undefined;
+    if (err && err.message && !diagnostics) {
+      metricParts.push(`❌ ${truncate(err.message, 120)}`);
+    }
+
+    if (metricParts.length > 0) line += ` | ${metricParts.join(" | ")}`;
+
+    console.log(line);
+  }
+}
+
+export function createFlowId(): string {
+  const timestamp = Date.now().toString(36);
+  const random = Math.random().toString(36).substring(2, 8);
+  return `fl_${timestamp}_${random}`;
 }

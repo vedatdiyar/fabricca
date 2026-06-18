@@ -19,9 +19,12 @@ export type ThesisMatrixInput = {
   studyTitle: string;
   researchQuestion: string;
   mainClaim: string;
-  methodology: string;
   theoreticalFramework: string;
-  historicalSpatialLimits: string;
+  methodology: string;
+  dataStrategy: string;
+  historicalLimits: string;
+  spatialLimits: string;
+  analyticalFocus: string;
 };
 
 const MIN_LENGTH = 3;
@@ -56,30 +59,40 @@ export async function enrichThesisMatrixAction(
     const studyTitle = validateField(data.studyTitle);
     const researchQuestion = validateField(data.researchQuestion);
     const mainClaim = validateField(data.mainClaim);
-    const methodology = validateField(data.methodology);
     const theoreticalFramework = validateField(data.theoreticalFramework);
-    const historicalSpatialLimits = validateField(data.historicalSpatialLimits);
+    const methodology = validateField(data.methodology);
+    const dataStrategy = validateField(data.dataStrategy);
+    const historicalLimits = validateField(data.historicalLimits);
+    const spatialLimits = validateField(data.spatialLimits);
+    const analyticalFocus = validateField(data.analyticalFocus);
     if (!studyTitle)
       return { error: "Çalışma başlığı en az 3 karakter olmalıdır." };
     if (!researchQuestion)
       return { error: "Araştırma sorusu en az 3 karakter olmalıdır." };
     if (!mainClaim) return { error: "Temel iddia en az 3 karakter olmalıdır." };
-    if (!methodology)
-      return { error: "Metodoloji en az 3 karakter olmalıdır." };
     if (!theoreticalFramework)
       return { error: "Kuramsal çerçeve en az 3 karakter olmalıdır." };
-    if (!historicalSpatialLimits)
-      return {
-        error: "Tarihsel/mekânsal sınırlar en az 3 karakter olmalıdır.",
-      };
+    if (!methodology)
+      return { error: "Metodoloji en az 3 karakter olmalıdır." };
+    if (!dataStrategy)
+      return { error: "Veri stratejisi en az 3 karakter olmalıdır." };
+    if (!historicalLimits)
+      return { error: "Tarihsel sınırlar en az 3 karakter olmalıdır." };
+    if (!spatialLimits)
+      return { error: "Mekânsal sınırlar en az 3 karakter olmalıdır." };
+    if (!analyticalFocus)
+      return { error: "Analitik odak en az 3 karakter olmalıdır." };
 
     const matrixEnhancementPrompt = buildMatrixEnhancementPrompt({
       studyTitle,
       researchQuestion,
       mainClaim,
-      methodology,
       theoreticalFramework,
-      historicalSpatialLimits,
+      methodology,
+      dataStrategy,
+      historicalLimits,
+      spatialLimits,
+      analyticalFocus,
     });
 
     const enhancedData = await generateStructuredContent<EnhancedThesisData>(
@@ -152,9 +165,12 @@ export async function saveEnrichedMatrixAction(
         studyTitle: enhancedData.academicStudyTitle,
         researchQuestion: enhancedData.literatureResearchQuestion,
         mainClaim: enhancedData.refinedThesisClaim,
-        methodology: enhancedData.academicMethodologyDesign,
         theoreticalFramework: enhancedData.conceptualTheoreticalInfrastructure,
-        historicalSpatialLimits: enhancedData.historicalSpatialLimits,
+        methodology: enhancedData.academicMethodologyDesign,
+        dataStrategy: enhancedData.dataStrategy,
+        historicalLimits: enhancedData.historicalLimits,
+        spatialLimits: enhancedData.spatialLimits,
+        analyticalFocus: enhancedData.analyticalFocus,
         keywords: [],
         updatedAt: new Date(),
       })
@@ -164,10 +180,13 @@ export async function saveEnrichedMatrixAction(
           studyTitle: enhancedData.academicStudyTitle,
           researchQuestion: enhancedData.literatureResearchQuestion,
           mainClaim: enhancedData.refinedThesisClaim,
-          methodology: enhancedData.academicMethodologyDesign,
           theoreticalFramework:
             enhancedData.conceptualTheoreticalInfrastructure,
-          historicalSpatialLimits: enhancedData.historicalSpatialLimits,
+          methodology: enhancedData.academicMethodologyDesign,
+          dataStrategy: enhancedData.dataStrategy,
+          historicalLimits: enhancedData.historicalLimits,
+          spatialLimits: enhancedData.spatialLimits,
+          analyticalFocus: enhancedData.analyticalFocus,
           keywords: [],
           updatedAt: new Date(),
         },

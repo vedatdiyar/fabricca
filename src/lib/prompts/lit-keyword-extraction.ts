@@ -34,11 +34,17 @@ Sen disiplinlerüstü çalışan kıdemli bir Akademik Bilgi Erişim Uzmanısın
 - TEK SORUMLULUK KURALI: Bu prompt yalnızca anahtar kelime üretir. Tavily sorgusu, teorik analiz veya olgusal doğrulama KESİNLİKLE bu kapsamda değildir.
 - ÇIKTI FORMATI: Yanıtın, yukarıda sağlanan \`litKeywordExtractionSchema\` ile %100 uyumlu, doğrulanmış ve parse edilebilir bir ham JSON objesi olmalıdır. Markdown \`\`\`json ... \`\`\` sarmalı kesinlikle yasaktır.
 
-# UZMAN FEW-SHOT ÖRNEĞİ
+# UZMAN FEW-SHOT ÖRNEĞİ (soyut X/Y/Z kalıbı — lütfen doğrudan kopyalamayın, yalnızca yapıyı örnek alın)
 <ornek_girdi_matrisi>
 {
-  "studyTitle": "Finansallaşma Kıskacında Öznellik: Beyaz Yakalı Çalışanlarda Borçluluk ve Yönetimsellik",
-  "historicalSpatialLimits": "2018-2025 yılları arasında İstanbul'daki plaza ekosistemleri."
+  "studyTitle": "X Sürecinde Öznellik: Y Çalışanlarında A ve B Yönetimsellik",
+  "mainClaim": "X süreci Y çalışanlarının A pratiklerini derinleştirirken B teknolojileri aracılığıyla C formasyonlarını dönüştürmektedir.",
+  "theoreticalFramework": "X teorileri, Y kuramı, A ve B çalışmaları",
+  "methodology": "Nitel derinlemesine mülakat ve tematik analiz",
+  "dataStrategy": "Bölgedeki ofislerde çalışan N katılımcı ile yarı yapılandırılmış mülakatlar",
+  "historicalLimits": "T1-T2 yılları arasında P ülkesinde artan Q ve R dönemi",
+  "spatialLimits": "Bölgenin S, T ve U merkezlerindeki V ekosistemleri",
+  "analyticalFocus": "A deneyimlerinin Y öznelliği üzerindeki dönüştürücü etkisi ve B mekanizmalarıyla ilişkisi"
 }
 </ornek_girdi_matrisi>
 
@@ -61,12 +67,24 @@ _Not: Keywords dizisi tam 5 elemandır. "financialization" yerine "finance", "su
 // ============================================================================
 export function buildLitKeywordPrompt(params: {
   studyTitle: string;
-  historicalSpatialLimits: string;
+  mainClaim: string;
+  theoreticalFramework: string;
+  methodology: string;
+  dataStrategy: string;
+  historicalLimits: string;
+  spatialLimits: string;
+  analyticalFocus: string;
 }): string {
   return `<hedef_tez_matrisi>
 {
   "studyTitle": "${params.studyTitle.replace(/"/g, '\\"')}",
-  "historicalSpatialLimits": "${params.historicalSpatialLimits.replace(/"/g, '\\"')}"
+  "mainClaim": "${params.mainClaim.replace(/"/g, '\\"')}",
+  "theoreticalFramework": "${params.theoreticalFramework.replace(/"/g, '\\"')}",
+  "methodology": "${params.methodology.replace(/"/g, '\\"')}",
+  "dataStrategy": "${params.dataStrategy.replace(/"/g, '\\"')}",
+  "historicalLimits": "${params.historicalLimits.replace(/"/g, '\\"')}",
+  "spatialLimits": "${params.spatialLimits.replace(/"/g, '\\"')}",
+  "analyticalFocus": "${params.analyticalFocus.replace(/"/g, '\\"')}"
 }
 </hedef_tez_matrisi>
 

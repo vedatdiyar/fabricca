@@ -12,9 +12,12 @@ export interface SynthesizeRoadmapParams {
   studyTitle: string;
   researchQuestion: string;
   mainClaim: string;
-  methodology: string;
   theoreticalFramework: string;
-  historicalSpatialLimits: string;
+  methodology: string;
+  dataStrategy: string;
+  historicalLimits: string;
+  spatialLimits: string;
+  analyticalFocus: string;
   comparisonResults: {
     title: string;
     author: string;

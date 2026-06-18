@@ -20,7 +20,11 @@ export async function confirmEnhancedThesisAction(
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
-  log.info({ step: "confirm_enhanced_thesis", status: "START", service: "enrichment" });
+  log.info({
+    step: "confirm_enhanced_thesis",
+    status: "START",
+    service: "enrichment",
+  });
 
   try {
     const session = await getSession();
@@ -38,9 +42,12 @@ export async function confirmEnhancedThesisAction(
         studyTitle: data.academicStudyTitle,
         researchQuestion: data.literatureResearchQuestion,
         mainClaim: data.refinedThesisClaim,
-        methodology: data.academicMethodologyDesign,
         theoreticalFramework: data.conceptualTheoreticalInfrastructure,
-        historicalSpatialLimits: data.historicalSpatialLimits,
+        methodology: data.academicMethodologyDesign,
+        dataStrategy: data.dataStrategy,
+        historicalLimits: data.historicalLimits,
+        spatialLimits: data.spatialLimits,
+        analyticalFocus: data.analyticalFocus,
         keywords: [],
         updatedAt: new Date(),
       })
@@ -50,15 +57,20 @@ export async function confirmEnhancedThesisAction(
           studyTitle: data.academicStudyTitle,
           researchQuestion: data.literatureResearchQuestion,
           mainClaim: data.refinedThesisClaim,
-          methodology: data.academicMethodologyDesign,
           theoreticalFramework: data.conceptualTheoreticalInfrastructure,
-          historicalSpatialLimits: data.historicalSpatialLimits,
+          methodology: data.academicMethodologyDesign,
+          dataStrategy: data.dataStrategy,
+          historicalLimits: data.historicalLimits,
+          spatialLimits: data.spatialLimits,
+          analyticalFocus: data.analyticalFocus,
           updatedAt: new Date(),
         },
       });
 
     // Clear downstream data: originality_reports
-    await db.delete(originalityReports).where(eq(originalityReports.userId, userId));
+    await db
+      .delete(originalityReports)
+      .where(eq(originalityReports.userId, userId));
 
     // Clear downstream data: thesis_boxes (cascades to library_resources via FK)
     const [matrix] = await db
@@ -67,15 +79,27 @@ export async function confirmEnhancedThesisAction(
       .where(eq(thesisMatrices.userId, userId));
 
     if (matrix) {
-      await db.delete(thesisBoxes).where(eq(thesisBoxes.thesisMatrixId, matrix.id));
+      await db
+        .delete(thesisBoxes)
+        .where(eq(thesisBoxes.thesisMatrixId, matrix.id));
     }
 
-    log.info({ step: "confirm_enhanced_thesis", status: "SUCCESS", service: "enrichment" });
+    log.info({
+      step: "confirm_enhanced_thesis",
+      status: "SUCCESS",
+      service: "enrichment",
+    });
     return { success: true };
   } catch (error) {
-    log.error({ step: "confirm_enhanced_thesis", status: "FAILED", service: "enrichment", diagnostics: { errorCode: "CONFIRM_ENRICHED_THESIS_ERROR", message: error instanceof Error ? error.message : String(error) } });
+    log.error({
+      step: "confirm_enhanced_thesis",
+      status: "FAILED",
+      service: "enrichment",
+      diagnostics: {
+        errorCode: "CONFIRM_ENRICHED_THESIS_ERROR",
+        message: error instanceof Error ? error.message : String(error),
+      },
+    });
     return { error: "Tez matrisi onaylanırken bir hata oluştu." };
   }
 }
-
-

@@ -45,3 +45,4 @@ next-env.d.ts
 # AI Context Files
 repomix-output.txt
 repomix.config.json
+repomix-instruction.md

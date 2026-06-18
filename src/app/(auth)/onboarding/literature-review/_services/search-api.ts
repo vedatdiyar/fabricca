@@ -227,6 +227,7 @@ async function queryOpenAlexWorks(
     const response = await fetch(url, {
       headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
       signal: AbortSignal.timeout(15000),
+      cache: "force-cache",
     });
     if (!response.ok) return [];
     const data = (await response.json()) as {
@@ -289,7 +290,12 @@ export async function searchOpenAlexKeyword(
 export async function validateWithCrossRef(
   paper: ValidatedPaper,
 ): Promise<ValidatedPaper> {
-  if (!paper.doi) return paper;
+  if (
+    !paper.doi ||
+    paper.doi.toLowerCase().trim() === "not_provided" ||
+    !/^10\.\d{4,}/.test(paper.doi.trim())
+  )
+    return paper;
 
   const contactEmail = process.env.CROSSREF_CONTACT_EMAIL;
   const endpoint = `https://api.crossref.org/works/${encodeURIComponent(paper.doi)}${contactEmail ? `?mailto=${encodeURIComponent(contactEmail)}` : ""}`;
@@ -298,6 +304,7 @@ export async function validateWithCrossRef(
     const response = await fetch(endpoint, {
       headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
       signal: AbortSignal.timeout(10000),
+      cache: "force-cache",
     });
     if (!response.ok) return paper;
 
@@ -358,6 +365,8 @@ export interface FoundationalWorkResult {
   publicationYear: number;
   citedByCount: number;
   isFoundational: boolean;
+  authors: string[];
+  publisher: string | null;
 }
 
 /**
@@ -383,7 +392,8 @@ export async function resolveFoundationalWorks(
         filter: `title.search:${query.title},raw_author_name.search:${query.author}`,
         sort: "cited_by_count:desc",
         per_page: "1",
-        select: "id,title,type,publication_year,cited_by_count",
+        select:
+          "id,title,type,publication_year,cited_by_count,authorships,primary_location",
       });
 
       const response = await fetch(
@@ -391,6 +401,7 @@ export async function resolveFoundationalWorks(
         {
           headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
           signal: AbortSignal.timeout(15000),
+          cache: "force-cache",
         },
       );
 
@@ -403,6 +414,17 @@ export async function resolveFoundationalWorks(
 
       if (!result) return null;
 
+      const authorships = result.authorships as
+        | { author?: { display_name?: string } }[]
+        | null
+        | undefined;
+      const primaryLocation = result.primary_location as
+        | {
+            source?: { display_name?: string };
+          }
+        | null
+        | undefined;
+
       return {
         id: result.id as string,
         title: (result.title as string) ?? "",
@@ -410,6 +432,11 @@ export async function resolveFoundationalWorks(
         publicationYear: (result.publication_year as number) ?? 0,
         citedByCount: (result.cited_by_count as number) ?? 0,
         isFoundational: true,
+        authors:
+          authorships
+            ?.map((a) => a.author?.display_name ?? "")
+            .filter(Boolean) ?? [],
+        publisher: primaryLocation?.source?.display_name ?? null,
       } as FoundationalWorkResult;
     } catch (error) {
       logger?.error("foundational_work_resolution_failed", {
@@ -445,9 +472,12 @@ export async function fetchFullAbstracts(
 ): Promise<Map<string, string>> {
   if (!openAlexIds || openAlexIds.length === 0) return new Map();
 
+  const cleanedIds = openAlexIds.map((id) =>
+    id.replace(/^https?:\/\/openalex\.org\//, ""),
+  );
   const apiKey = process.env.OPENALEX_API_KEY;
   const params = new URLSearchParams({
-    filter: `id:${openAlexIds.join("|")}`,
+    filter: `openalex_id:${cleanedIds.join("|")}`,
     select: "id,abstract_inverted_index",
     per_page: "200",
   });

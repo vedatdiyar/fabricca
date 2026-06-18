@@ -13,9 +13,12 @@ export interface AnalyzeOriginalityRiskParams {
   studyTitle: string;
   researchQuestion: string;
   mainClaim: string;
-  methodology: string;
   theoreticalFramework: string;
-  historicalSpatialLimits: string;
+  methodology: string;
+  dataStrategy: string;
+  historicalLimits: string;
+  spatialLimits: string;
+  analyticalFocus: string;
   validDetails: TezaraThesisDetails[];
 }
 
@@ -43,12 +46,18 @@ export interface CalculatedOriginalityRiskResult {
   riskPercentage: number;
 }
 
-function badgeToRiskPercentage(badge: CalculatedOriginalityRiskResult["originalityBadge"]): number {
+function badgeToRiskPercentage(
+  badge: CalculatedOriginalityRiskResult["originalityBadge"],
+): number {
   switch (badge) {
-    case "HIGH_RISK": return 100;
-    case "MEDIUM_RISK": return 50;
-    case "LOW_RISK": return 25;
-    case "ZERO_RISK": return 0;
+    case "HIGH_RISK":
+      return 100;
+    case "MEDIUM_RISK":
+      return 50;
+    case "LOW_RISK":
+      return 25;
+    case "ZERO_RISK":
+      return 0;
   }
 }
 
@@ -107,8 +116,14 @@ export function calculateOriginalityRisk(
   });
 
   const levels = new Set(calculatedOverlapTable.map((i) => i.originalityLevel));
-  const RISK_PRIORITY = ["HIGH_RISK", "MEDIUM_RISK", "LOW_RISK", "ZERO_RISK"] as const;
-  const originalityBadge = RISK_PRIORITY.find((r) => levels.has(r)) ?? "ZERO_RISK";
+  const RISK_PRIORITY = [
+    "HIGH_RISK",
+    "MEDIUM_RISK",
+    "LOW_RISK",
+    "ZERO_RISK",
+  ] as const;
+  const originalityBadge =
+    RISK_PRIORITY.find((r) => levels.has(r)) ?? "ZERO_RISK";
 
   return {
     originalityBadge,
@@ -118,11 +133,21 @@ export function calculateOriginalityRisk(
 }
 
 const PRIORITY_MAP: Record<number, number> = {
-  0b1111: 1, 0b1110: 2, 0b1101: 3, 0b1011: 4, 0b0111: 5,
-  0b1100: 6, 0b1001: 7, 0b1010: 8,
+  0b1111: 1,
+  0b1110: 2,
+  0b1101: 3,
+  0b1011: 4,
+  0b0111: 5,
+  0b1100: 6,
+  0b1001: 7,
+  0b1010: 8,
   0b1000: 9,
-  0b0011: 10, 0b0101: 11, 0b0110: 12,
-  0b0001: 13, 0b0010: 14, 0b0100: 15,
+  0b0011: 10,
+  0b0101: 11,
+  0b0110: 12,
+  0b0001: 13,
+  0b0010: 14,
+  0b0100: 15,
   0b0000: 16,
 };
 
@@ -177,13 +202,20 @@ export async function analyzeOriginalityRisk(
   });
 
   try {
-    log.prompt("gemini-3.1-flash-lite (HIGH thinking)", buildAnalysisPrompt(params));
+    log.prompt(
+      "gemini-3.1-flash-lite (HIGH thinking)",
+      buildAnalysisPrompt(params),
+    );
 
     const result = await generateStructuredContent<{
       overlapTable: {
         id: number;
         academic_reasoning: string;
-        originality_level: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
+        originality_level:
+          | "HIGH_RISK"
+          | "MEDIUM_RISK"
+          | "LOW_RISK"
+          | "ZERO_RISK";
         subject_overlap: "HIGH" | "PARTIAL" | "NONE";
         methodology_overlap: "HIGH" | "PARTIAL" | "NONE";
         theory_overlap: "HIGH" | "PARTIAL" | "NONE";
@@ -202,16 +234,19 @@ export async function analyzeOriginalityRisk(
 
     const overlapTable = result.overlapTable || [];
 
-    log.preview("Overlap Analysis Results", overlapTable.map((o) => ({
-      id: o.id,
-      overlappingAxes: [
-        o.subject_overlap !== "NONE" && `RQ:${o.subject_overlap}`,
-        o.methodology_overlap !== "NONE" && `METH:${o.methodology_overlap}`,
-        o.theory_overlap !== "NONE" && `THEORY:${o.theory_overlap}`,
-        o.context_overlap !== "NONE" && `CTX:${o.context_overlap}`,
-      ].filter(Boolean),
-      reasoning: o.academic_reasoning?.slice(0, 120),
-    })));
+    log.preview(
+      "Overlap Analysis Results",
+      overlapTable.map((o) => ({
+        id: o.id,
+        overlappingAxes: [
+          o.subject_overlap !== "NONE" && `RQ:${o.subject_overlap}`,
+          o.methodology_overlap !== "NONE" && `METH:${o.methodology_overlap}`,
+          o.theory_overlap !== "NONE" && `THEORY:${o.theory_overlap}`,
+          o.context_overlap !== "NONE" && `CTX:${o.context_overlap}`,
+        ].filter(Boolean),
+        reasoning: o.academic_reasoning?.slice(0, 120),
+      })),
+    );
 
     const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
     const tokens = log.lastTokens || { input: 0, output: 0 };

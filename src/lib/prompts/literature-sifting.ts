@@ -122,9 +122,11 @@ export function buildLiteratureSiftingPrompt(
     studyTitle: string;
     researchQuestion: string;
     theoreticalFramework: string;
-    historicalSpatialLimits: string;
+    historicalLimits: string;
+    spatialLimits: string;
   },
 ): string {
+  const temporalSpatialContext = `${thesisCtx.historicalLimits} | ${thesisCtx.spatialLimits}`;
   return `<hedef_alt_kutu>
 {
   "title": "${box.title.replace(/"/g, '\\"')}",
@@ -137,7 +139,7 @@ export function buildLiteratureSiftingPrompt(
   "studyTitle": "${thesisCtx.studyTitle.replace(/"/g, '\\"')}",
   "researchQuestion": "${thesisCtx.researchQuestion.replace(/"/g, '\\"')}",
   "theoreticalFramework": "${thesisCtx.theoreticalFramework.replace(/"/g, '\\"')}",
-  "historicalSpatialLimits": "${thesisCtx.historicalSpatialLimits.replace(/"/g, '\\"')}"
+  "historicalSpatialLimits": "${temporalSpatialContext.replace(/"/g, '\\"')}"
 }
 </kuresel_tez_matrisi>
 

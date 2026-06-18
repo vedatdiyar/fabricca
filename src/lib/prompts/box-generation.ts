@@ -1,42 +1,54 @@
 import type { JsonSchema } from "../gemini";
 
 // ============================================================================
-// 1. JSON YANIT ŞEMASI (%100 TÜRKÇE & ORGANİK ESNEK ARALIK)
+// 1. JSON YANIT ŞEMASI (EVRENSEL TİPOLOJİ & ÖZ-DENETİM KİLİTLİ)
 // ============================================================================
 export const thesisBoxGenerationSchema: JsonSchema = {
   type: "object",
   properties: {
     boxes: {
       type: "array",
-      minItems: 3, // Sade tezlerde yapay alt başlık üretimini engeller
-      maxItems: 5, // Odağın gereksiz dağılmasını engeller
       description:
-        "Tez matrisinin entelektüel sütunlarını temsil eden, hiyerarşisiz düz liste kutu seti.",
+        "Tezin entelektüel, metodolojik ve analitik omurgasını oluşturan, girdideki bileşen sayısına göre organik olarak şekillenen modüler, bağımsız ve kendi kendini denetlemiş kutu seti.",
       items: {
         type: "object",
         properties: {
           title: {
             type: "string",
             description:
-              "Kutunun ele aldığı akademik konunun başlığıdır. KESİNLİKLE TÜRKÇE OLMALIDIR. Kavramlar arası ilişkiselliği, sentezleri ve kuramsal köprüleri yansıtabilir.",
+              "Kutunun ele aldığı akademik konunun veya yöntemin başlığıdır. KESİNLİKLE TÜRKÇE OLMALIDIR. (Örn: 'Gramsciyen Hegemonya Kuramı' veya 'Nitel Mülakat ve Saha Metodolojisi')",
+          },
+          boxType: {
+            type: "string",
+            enum: [
+              "Kuram",
+              "Literatür",
+              "Bağlam",
+              "Yöntem",
+              "Veri",
+              "Analiz",
+              "Katkı",
+            ],
+            description:
+              "Kutunun işlevsel 7'li box tipolojisindeki tam karşılığı.",
           },
           description: {
             type: "string",
             description:
-              "Başlıkta belirtilen akademik konuyu, tezin bütünüyle olan ilişkisini kurarak tanımlayan kısa açıklamadır. KESİNLİKLE TÜRKÇE OLMALIDIR.",
+              "Başlıkta belirtilen akademik konuyu veya yöntemi, tezin bütünüyle olan ilişkisini kurarak tanımlayan kısa açıklamadır. KESİNLİKLE TÜRKÇE OLMALIDIR.",
           },
           semanticSearchBlock: {
             type: "string",
             maxLength: 2000,
             description:
-              "OpenAlex GTE-Large vektör motorunu maksimum başarıyla tetikleyecek, en az 3-4 cümleden oluşan, yoğun, elit, akademik İngilizce literatür özeti/paragrafı (narrative abstract). Asla virgülle ayrılmış kelime çuvalı, etiket dizisi veya anahtar kelime listesi formatında olmamalıdır. Doğrudan teorik ekolü, ampirik bağlamı ve analitik ilişkiselliği akan bir paragraf halinde, doğal İngilizce cümle yapılarıyla ifade eder.",
+              "OpenAlex GTE-Large vektör motorunu maksimum başarıyla tetikleyecek, en az 3-4 cümleden oluşan, yoğun, elit, akademik İngilizce literatür özeti/paragrafı (narrative abstract). Asla virgülle ayrılmış kelime çuvalı formatında olmamalıdır. Doğrudan teorik ekolü, yöntemsel/epistemolojik tartışmayı veya ampirik bağlamı akan bir anlatı halinde ifade eder.",
           },
           foundationalQueries: {
             type: "array",
             minItems: 2,
             maxItems: 2,
             description:
-              "O kutunun kuramsal/yöntemsel kökünü oluşturan tam 2 adet mikro-analitik kurucu/klasik eserin listesi.",
+              "O kutunun kuramsal, yöntemsel veya ampirik kökünü oluşturan tam 2 adet mikro-analitik kurucu/klasik eserin listesi.",
             items: {
               type: "object",
               properties: {
@@ -57,6 +69,11 @@ export const thesisBoxGenerationSchema: JsonSchema = {
               required: ["author", "title", "publicationYear"],
             },
           },
+          selfCorrectionJustification: {
+            type: "string",
+            description:
+              "Seçilen 2 eserin tezin Zaman (historicalLimits), Mekan (spatialLimits) ve Aktör (analyticalFocus) kısıtlarına olan ampirik uyumluluk denetimi ve öz-eleştirel akademik savunmasıdır. KESİNLİKLE TÜRKÇE OLMALIDIR.",
+          },
           concepts: {
             type: "array",
             items: {
@@ -64,14 +81,16 @@ export const thesisBoxGenerationSchema: JsonSchema = {
             },
             maxItems: 3,
             description:
-              "Kutunun kuramsal/tematik odağını belirten en fazla 3 adet Türkçe akademik kavram/etiket. KESİNLİKLE TÜRKÇE OLMALIDIR.",
+              "Kutunun kuramsal, yöntemsel veya tematik odağını belirten en fazla 3 adet Türkçe akademik kavram/etiket. KESİNLİKLE TÜRKÇE OLMALIDIR.",
           },
         },
         required: [
           "title",
+          "boxType",
           "description",
           "semanticSearchBlock",
           "foundationalQueries",
+          "selfCorrectionJustification",
           "concepts",
         ],
       },
@@ -81,11 +100,11 @@ export const thesisBoxGenerationSchema: JsonSchema = {
 };
 
 // ============================================================================
-// 2. SİSTEM TALİMATI (MİKRO-ANALİTİK ODAK & GÜRÜLTÜSÜZ SEMANTİK MOTOR AYARI)
+// 2. SİSTEM TALİMATI (ÖZ-DENETİMLİ SIZDIRMAZ AKADEMİK MOTOR AYARI)
 // ============================================================================
 export function buildThesisBoxGenerationSystemInstruction(): string {
   return `# ROL VE GÖREV
-Sen OpenAlex ve Semantic Scholar veritabanlarının indeksleme, taksonomi ve vektörel anlamsal eşleştirme (Semantic Search) mimarisine ultra-spesifik düzeyde hakim bir Kıdemli Veri Mimarı ve Academic Bibliyografya Uzmanısın. Görevin, girdi olarak sunulan yapılandırılmış tez matrisini bağımsız, hiyerarşisiz literatür konu kutularına (subject boxes) bölmektir.
+Sen OpenAlex ve Semantic Scholar veritabanlarının indeksleme, taksonomi ve vektörel anlamsal eşleştirme (Semantic Search) mimarisine ultra-spesifik düzeyde hakim bir Kıdemli Veri Mimarı ve Akademik Bibliyografya Uzmanısın. Görevin, girdi olarak sunulan yapılandırılmış 9 boyutlu tez matrisini girdiler, süreçler ve çıktılar ekseninde **7'li Box Tipolojisi** mantığıyla bağımsız, hiyerarşisiz literatür ve süreç kutularına (subject/methodology boxes) bölmektir.
 
 # BİLGİ VE ZAMAN KISITLAMALARI
 - Bilgi kesim tarihin Ocak 2025'tir.
@@ -93,26 +112,39 @@ Sen OpenAlex ve Semantic Scholar veritabanlarının indeksleme, taksonomi ve vek
 
 # OPERASYONEL KISITLAMALAR VE DİL KURALLARI
 - Kesinlikle objektif, mesafeli ve elit bir akademik Türkçe kullanacaksın.
-- DİL KURALI: JSON nesnesindeki "title", "description" ve "concepts" alanları KESİNLİKLE TÜRKÇE olmalıdır. Sadece harici indeks motorunu tetikleyecek olan "semanticSearchBlock" alanı ile "foundationalQueries" içindeki yazar/eser adları KESİNLİKLE akademik İNGİLİZCE ile üretilmelidir. Talimatların kendisi ve akıl yürütme dili tamamen Türkçe'dir.
+- DİL VE KÜRESEL ENDEKS KURALI: JSON nesnesindeki "title", "description", "concepts" ve "selfCorrectionJustification" alanları KESİNLİKLE TÜRKÇE olmalıdır. Harici tarama motorunu (OpenAlex) tetikleyecek olan "semanticSearchBlock" ve "foundationalQueries" alanları ise KESİNLİKLE akademik İNGİLİZCE ile üretilmelidir.
 
 # KUTU MİMARİSİ VE KESİN SEÇİM METRİKLERİ
-1. MİKRO-ANALİTİK ODAK VE MAKRO-TARİH YASAĞI (ANTI-MACRO HISTORY BIAS): "foundationalQueries" alanına seçilecek kurucu eserler kesinlikle genel ülkesel anlatı sunan giriş/tarih kitapları olamaz. Doğrudan kutunun dert edindiği mikro-analitik problemi, teoriyi veya söylemsel kırılmaları başlığında taşımak zorundadır. Yazarı, başlığı ve yılı nesne içinde bağımsız alanlar olarak verilmelidir.
+1. 7'Lİ BOX TİPOLOJİSİ ENTEGRASYONU: Girdideki verileri şu 7 işlevsel tipe göre analiz et ve dağıt: [Kuram, Literatür, Bağlam, Yöntem, Veri, Analiz, Katkı]. Her kutunun "boxType" alanı bu tiplerden biri olmak zorundadır. Model, tezin sadece konusunu değil; yöntemsel, lojistik ve analitik literatür altyapısını da bağımsız birer kutu olarak inşa etmelidir.
 
-2. SEMANTİK BLOCK DİYETİ — NARRATIVE ABSTRACT ZORUNLULUĞU (ANTI-KEYWORD-BAG RULE): "semanticSearchBlock" alanı artık virgülle ayrılmış kavram öbeği/kw çuvalı DEĞİLDİR. OpenAlex GTE-Large vektör motorunun en yüksek kosinüs benzerliği performansını gösterdiği format olan **en az 3-4 cümlelik akan paragraf (narrative abstract)** formatında, doğal akademik İngilizce cümleleriyle üretilmelidir. Kesinlikle "Analyze the utility of...", "This study explores...", "This section investigates..." gibi jenerik niyet kalıpları kullanma. Doğrudan teorik ekolü tanımlayan, ampirik bağlam sınırlarını ("Turkey", "1990s", "Kurdish movement" vb.) doğal cümle içinde eriten ve analitik ilişkiselliği paragraf boyunca akan bir anlatı inşa et. Amaç, vektör ağırlığının gürültülü/kalıp kelimelere bölünmesini engellemek ve anlamsal yoğunluğu maksimize ederek Peter D. Thomas, Chantal Mouffe gibi teorik zirvelere doğrudan eşleşmektir.
+2. ATOMİK BİLEŞEN AYRIŞTIRMASI VE ERİTME YASAĞI (MUTLAK KURAL): Girdide birden fazla bağımsız kuram, yaklaşım, tarihsel kırılma veya metodolojik araç varsa bunları asla tek bir jenerik kutuda birleştirme! Kutu sayısı, matrisin içerdiği bağımsız bileşen miktarına göre tamamen organik ve esnek şekilde genişlemelidir.
 
-3. ORGANİK AYRIŞTIRMA VE ERİTME YASAĞI: Tez matrisindeki kuramsal ekoller ile ampirik/tarihsel koşullar literatür taramasında bağımsız birer bölüm oluşturacaktır. Farklı ölçekteki ampirik tetikleyicileri veya iki farklı teorik okulu asla tek bir jenerik kutuda birleştirilemezsin. Kutu sayısı, matrisin içerdiği bağımsız unsur sayısı kadar (en az 3, en fazla 5) organik olarak genişlemelidir. Alt kutu/üst kutu hiyerarşisi oluşturmak yasaktır.
+3. SÜREÇ VE YÖNTEM LİTERATÜRÜ AYARI: Yöntem ve Veri kutuları için "foundationalQueries" alanına KESİNLİKLE uydurma (halüsinasyon) eserler, birincil kaynak isimleri, ham arşiv adları veya ana eserin çevirmenleri/editörleri (Örn: Gramsci'nin yanına çevirmeni Quintin Hoare'u eklemek) bağımsız yazar olarak yazılamaz. Her zaman uluslararası literatürde meşruiyeti olan iki farklı yöntembilimsel/arşivsel kurucu akademik yazar yerleştirilmelidir.
 
-4. MODEL TEMBELLİĞİ ENGELİ VE FORMAT: Çıktılarında asla "...", "vb.", "etc." kullanamazsın. Yanıtın, sağlanan şema ile %100 uyumlu ham JSON objesi olmalıdır. Markdown \`\`\`json ... \`\`\` kod blokları kullanma, sadece saf JSON verisi döndür.
+4. SEMANTİK BLOCK DİYETİ — NARRATIVE ABSTRACT ZORUNLULUĞU (ANTI-KEYWORD-BAG RULE): "semanticSearchBlock" alanı en az 3-4 cümlelik akan paragraf (narrative abstract) formatında, doğal akademik İngilizce cümleleriyle üretilmelidir. Asla jenerik niyet kalıpları kullanma.
 
-# SOYUT FORMÜLİZE FEW-SHOT ÖRNEĞİ (GÜRÜLTÜSÜZ VE RAFİNE SEMANTİK BLOK YAPISI)
+5. OPENALEX %100 GERÇEK İNGİLİZCE LİTERATÜR YASASI (HALÜSİNASYON VE TÜRKÇE YASAK): "foundationalQueries" alanına yazılacak kurucu eserlerin tamamı küresel akademik indekslerde (OpenAlex, Scopus) taranabilir, KESİNLİKLE İNGİLİZCE dilinde basılmış GERÇEK kitap veya hakemli dergi makaleleri olmak zorundadır. Türkçe basılmış yerel kitaplar veya bunların uydurma İngilizce çevirileri KESİNLİKLE YASAKTIR.
+   - ÖZELLİKLE "Bağlam", "Analiz" ve "Katkı" kutularında yerel konular (Örn: Türkiye Solu, Kürt Hareketi) işlenirken; yerel dildeki kitaplar yerine, bu ampirik alanı uluslararası literatüre taşımış uzmanların (Örn: Hamit Bozarslan, Mesut Yeğen, Cengiz Gunes, Nicole Watts, Martin van Bruinessen, Kemal Kirisci, Feroz Ahmad vb.) uluslararası indeksli GERÇEK İngilizce kitap ve makaleleri getirilmelidir. Başlık veya yazar KESİNLİKLE uydurulamaz.
+   - Bu kutularda ampirik bağlamı aşan genel makro-teorisyenler (Örn: Benedict Anderson, Charles Tilly, Sidney Tarrow, Donatella della Porta, Doug McAdam) kurucu eser olarak kullanılamaz.
+
+6. AKADEMİK ÖZ-DENETİM VE GEREKÇELENDİRME (MUTLAK EMİR): "foundationalQueries" alanına seçtiğin her bir eseri, tezin girdilerinde deklare edilen "historicalLimits" (Zaman), "spatialLimits" (Mekan) ve "analyticalFocus" (Aktörler) kısıtlarına göre denetleyeceksin.
+   - Seçtiğin eser tezin kronolojik dönemiyle veya coğrafyasıyla doğrudan örtüşmüyorsa (Örn: 1991 tezi için 1971 tarihli Gramsci kitabı veya 1985 tarihli Mouffe eseri seçmek), bunun akademik gerekçesini, yarattığı ampirik açığı/riski ve buna rağmen neden kaçınılmaz bir kurucu kaynak olarak seçildiğini "selfCorrectionJustification" alanında elit bir dille itiraf edip savunacaksın.
+   - Eğer eserin tezin bağlamıyla kronolojik ve mekansal bağı %100 kusursuzsa (Örn: 1991-1999 bağlamı için 2012 tarihli Cengiz Güneş eseri seçmek), bu alan uyumun analitik gücünü ve OpenAlex taramasındaki nokta atışı meşruiyetini doğrulamalıdır.
+
+7. MODEL TEMBELLİĞİ ENGELİ VE FORMAT: Çıktılarında asla "...", "vb.", "etc." kullanamazsın. Yanıtın, sağlanan şema ile %100 uyumlu ham JSON objesi olmalıdır. Markdown \`\`\`json ... \`\`\` kod blokları kullanma, sadece saf JSON verisi döndür.
+
+# 7'Lİ TİPOLOJİYE UYGUN FEW-SHOT ÖRNEĞİ
 <ornek_girdi_matrisi>
 {
   "studyTitle": "X Ülkesinde Z Bağlamında Y Süreci",
-  "researchQuestion": "M Kuramı ve N Yaklaşımı Ekseniyle V Vakası Nasıl Şekillenmektedir?",
-  "mainClaim": "V vakasının arkasındaki temel itici güç, ampirik/tarihsel C dinamiklerinin yarattığı D yapısal kırılmasıdır; bu süreç M kuramının sınırlarını zorlar.",
-  "methodology": "E yöntemi.",
-  "theoreticalFramework": "M Kuramı ve N Yaklaşımı.",
-  "historicalSpatialLimits": "X Coğrafyasında, V Vakası Özelinde, T-M yılları arası."
+  "researchQuestion": "M Kuramı Ekseninde N Yöntemiyle V Vakası Nasıl Şekillenmektedir?",
+  "mainClaim": "V vakasının arkasındaki temel itici güç, ampirik/tarihsel C dinamikleridir.",
+  "theoreticalFramework": "M Kuramı ve Alt Okulları",
+  "methodology": "N Metodolojisi",
+  "dataStrategy": "Birincil arşiv belgeleri ve ikincil literatür taraması",
+  "historicalLimits": "1991-1999 arası dönem",
+  "spatialLimits": "X Coğrafyası",
+  "analyticalFocus": "Devlet kurumları, siyasi aktörler ve muhalif hareketler"
 }
 </ornek_girdi_matrisi>
 
@@ -121,89 +153,65 @@ Sen OpenAlex ve Semantic Scholar veritabanlarının indeksleme, taksonomi ve vek
   "boxes": [
     {
       "title": "M Kuramı ve Kuramsal Temelleri",
-      "description": "Tezin teorik altyapısını oluşturan ve matriste açıkça belirtilen M kuramının temel argümanlarının literatür ekseninde incelenmesi.",
-      "concepts": ["Kavram1", "Kavram2"],
+      "boxType": "Kuram",
+      "description": "Tezin teorik altyapısını oluşturan M kuramının temel argümanlarının incelenmesi.",
+      "concepts": ["M Kuramı", "Söylemsel Alan"],
       "foundationalQueries": [
-        {
-          "author": "M Kuramının Kurucusu Olan Teorisyen",
-          "title": "M Kuramının Baş Yapıtı Olan Kitap",
-          "publicationYear": 1990
-        },
-        {
-          "author": "M Kuramını Geliştiren İkinci Yazar",
-          "title": "M Kuramı Üzerine Kritik Makale",
-          "publicationYear": 2000
-        }
+        { "author": "Teorisyen A", "title": "The Core Philosophy of M Theory", "publicationYear": 1990 },
+        { "author": "Teorisyen B", "title": "Rethinking M Framework in Political Theory", "publicationYear": 1985 }
       ],
-      "semanticSearchBlock": "M theory provides a structural paradigm that redefines core conceptual constraints within contemporary political ontology. Its theoretical apparatus foregrounds the dialectical relationship between hegemonic formations and counter-hegemonic struggles in late capitalist societies. This framework has been systematically applied across comparative institutional analysis to explain how structural power asymmetries are reproduced through discursive and non-discursive practices alike."
+      "selfCorrectionJustification": "Seçilen kurucu eserlerin yayın yılları (1990 ve 1985), tezin odaklandığı 1991-1999 ampirik dönem kısıtının kronolojik olarak gerisindedir. Ancak V vakasının arkasındaki ontolojik kırılmaları ve söylemsel alanı teorik olarak inşa edebilmek adına, bu post-klasik yapısalcı kuramın ana metinlerine başvurulması kuramsal bir zorunluluktur.",
+      "semanticSearchBlock": "M theory provides a structural paradigm that redefines core conceptual constraints within contemporary political ontology. Its theoretical apparatus foregrounds the dialectical relationship between hegemonic formations and counter-hegemonic struggles in late capitalist societies. This framework has been systematically applied across comparative institutional analysis to explain how structural power asymmetries are reproduced."
     },
     {
-      "title": "N Yaklaşımı ve Kavramsal Çerçeve",
-      "description": "Matriste deklare edilen N yaklaşımının, sosyal bilimler literatüründeki gelişim çizgisi ve söylemsel analiz yöntemlerine katkısı.",
-      "concepts": ["YaklaşımN", "KavramsalAnaliz"],
+      "title": "X Coğrafyasında V Vakası ve Yapısal Koşullar",
+      "boxType": "Bağlam",
+      "description": "1991-1999 kesitinde X coğrafyasındaki C dinamiklerinin ampirik analizi.",
+      "concepts": ["X Coğrafyası", "C Dinamikleri", "V Vakası"],
       "foundationalQueries": [
-        {
-          "author": "N Yaklaşımının Öncü Yazarı",
-          "title": "N Yaklaşımının Kuramsal Temelleri",
-          "publicationYear": 1995
-        },
-        {
-          "author": "N Yaklaşımını Metodolojiye Döken İsim",
-          "title": "N Yaklaşımı ile Analiz Rehberi",
-          "publicationYear": 2005
-        }
+        { "author": "Uzman X", "title": "Socio-Political Transformations in X Country: 1990s Realignments", "publicationYear": 2005 },
+        { "author": "Uzman Y", "title": "The Trajectory of V Case: From Protest to Institutionalization", "publicationYear": 2012 }
       ],
-      "semanticSearchBlock": "The N approach introduces a distinctive analytical trajectory that bridges critical discourse analysis and post-structuralist framing methodologies. Its strategic framing paradigm examines how political actors construct meaning through linguistic and extra-linguistic practices within contested public spheres. Contemporary applications of this framework have demonstrated its explanatory power in analyzing media discourse, identity formation, and the construction of collective action frames across diverse socio-political contexts."
-    },
-    {
-      "title": "X Coğrafyasında C Dinamikleri ve V Vakası",
-      "description": "Matriste deklare edilen yerel bağlam sınırları dahilinde, X coğrafyasındaki C dinamiklerinin ve V vakasının ampirik/tarihsel literatür karşılıkları.",
-      "concepts": ["X Ülkesi", "C Dinamikleri", "V Vakası"],
-      "foundationalQueries": [
-        {
-          "author": "X Coğrafyasında Çalışan Mikro Uzman Yazar",
-          "title": "C ve V Konusundaki Spesifik Analitik Eser",
-          "publicationYear": 2005
-        },
-        {
-          "author": "V Vakası Üzerine Alan Araştırması Yapan Yazar",
-          "title": "X Ülkesindeki D Yapısal Kırılması Analizi",
-          "publicationYear": 2012
-        }
-      ],
-      "semanticSearchBlock": "The socio-political landscape of X country during the T-M period was profoundly shaped by the intersection of local C dynamics and broader regional realignments. The V case exemplifies how structural economic transformations interacted with grassroots mobilization to produce distinct patterns of political contestation. Empirical studies of this period reveal that localized responses to central state policies were mediated by existing networks of patronage, ethnic solidarities, and historical memories of previous conflicts."
+      "selfCorrectionJustification": "Seçilen kaynaklar tezin 1991-1999 ampirik zaman sınırından sonra basılmış olsalar da, doğrudan X coğrafyasındaki 1990'lar dönüşümünü ve V vakasını geriye dönük (retrospective) saha araştırmalarıyla inceleyen en meşru uluslararası endeksli İngilizce monografilerdir. OpenAlex taramasında tam isabet sağlayacak ampirik uyuma sahiptir.",
+      "semanticSearchBlock": "The socio-political landscape of X country during the 1990s period was profoundly shaped by the intersection of local C dynamics and broader regional realignments. The V case exemplifies how structural economic transformations interacted with grassroots mobilization to produce distinct patterns of political contestation. Empirical studies of this period reveal that localized responses to central state policies were mediated by existing networks of patronage."
     }
   ]
 }
-</ornek_beklenen_cikti>_`;
+</ornek_beklenen_cikti>`;
 }
 
 // ============================================================================
-// 3. KULLANICI PROMPT OLUŞTURUCU
+// 3. KULLANICI PROMPT OLUŞTURUCU (9 BOYUTLU GİRDİ MOTORU)
 // ============================================================================
 export function buildThesisBoxGenerationPrompt(params: {
   studyTitle: string;
   researchQuestion: string;
   mainClaim: string;
-  methodology: string;
   theoreticalFramework: string;
-  historicalSpatialLimits: string;
+  methodology: string;
+  dataStrategy: string;
+  historicalLimits: string;
+  spatialLimits: string;
+  analyticalFocus: string;
 }): string {
   return `<hedef_tez_matrisi>
 {
   "studyTitle": "${params.studyTitle.replace(/"/g, '\\"')}",
   "researchQuestion": "${params.researchQuestion.replace(/"/g, '\\"')}",
   "mainClaim": "${params.mainClaim.replace(/"/g, '\\"')}",
-  "methodology": "${params.methodology.replace(/"/g, '\\"')}",
   "theoreticalFramework": "${params.theoreticalFramework.replace(/"/g, '\\"')}",
-  "historicalSpatialLimits": "${params.historicalSpatialLimits.replace(/"/g, '\\"')}"
+  "methodology": "${params.methodology.replace(/"/g, '\\"')}",
+  "dataStrategy": "${params.dataStrategy.replace(/"/g, '\\"')}",
+  "historicalLimits": "${params.historicalLimits.replace(/"/g, '\\"')}",
+  "spatialLimits": "${params.spatialLimits.replace(/"/g, '\\"')}",
+  "analyticalFocus": "${params.analyticalFocus.replace(/"/g, '\\"')}"
 }
 </hedef_tez_matrisi>
 
 # TALİMATLAR VE GÖREV
-Sistem talimatında tanımlanan tüm kurallara, dil kısıtlamalarına, "MİKRO-ANALİTİK ODAK" ilkelerine ve özellikle "SEMANTİK BLOCK DİYETİ VE GÜRÜLTÜ YASAĞI" standartlarına kusursuz şekilde bağlı kalarak, yukarıdaki <hedef_tez_matrisi> yapısını analiz et. En az 3, en fazla 5 adet özerk konu kutusu (subject boxes) üret.
+Sistem talimatında tanımlanan tüm kurallara, dil kısıtlamalarına, **7'li Box Tipolojisi** ilkelerine ve özellikle **Atomik Bileşen Ayrıştırması** ile **Akademik Öz-Denetim** standartlarına kusursuz şekilde bağlı kalarak, yukarıdaki 9 boyutlu <hedef_tez_matrisi> yapısını analiz et.
 
-# KRİTİK GÜVENLİK BARIYERI
-- Analizini gerçekleştirirken tamamen sağlanan matris verilerine sadık kal (Strictly Grounded).
-- Üreteceğin "semanticSearchBlock" alanlarının her biri, OpenAlex GTE-Large vektör motorunu maksimum başarıyla tetikleyecek **en az 3-4 cümleden oluşan akan paragraf (narrative abstract)** formatında olmalıdır. Virgülle ayrılmış kelime çuvalı, etiket dizisi veya anahtar kelime listesi formatı KESİNLİKLE YASAKTIR. Doğal akademik İngilizce cümle yapılarıyla, teorik ekolü ampirik bağlamla sentezleyen bir anlatı inşa et. Çıktıdaki başlık, açıklama ve kavram etiketleri tamamen Türkçe olmalıdır. Dahili olarak çok derinlemesine düşün (Think extremely hard) ve sadece nihai şemaya uygun ham JSON nesnesini döndür.`;
+Tezi girdiler, süreçler ve çıktılar odağında parçalayarak, girdideki bağımsız unsur ve bileşen sayısına göre tamamen organik sayıda, özerk ve literatür taramasına hazır kutu (boxes) üret. Girdide yan yana duran farklı teorileri, farklı ampirik dinamikleri veya farklı metodolojik araçları tek bir kutuda eritme; her bir bileşene kendi bağımsız kutusunu tanımla. 
+
+Çıktıdaki başlık, açıklama, kavram etiketleri ve özellikle seçtiğin kaynakların zaman/mekan/aktör uyumunu hesaba çektiğin "selfCorrectionJustification" alanı tamamen Türkçe olmalıdır. "foundationalQueries" alanındaki eserlerin tamamı OpenAlex'te %100 taranabilir gerçek, fiziksel olarak basılmış İngilizce literatür olmak zorundadır. Dahili olarak çok derinlemesine düşün ve sadece nihai şemaya uygun ham JSON nesnesini döndür.`;
 }

@@ -30,8 +30,13 @@ interface LitKeywordExtractionResponse {
  */
 export interface ExtractQueriesParams {
   studyTitle: string;
+  mainClaim: string;
+  theoreticalFramework: string;
   methodology: string;
-  historicalSpatialLimits: string;
+  dataStrategy: string;
+  historicalLimits: string;
+  spatialLimits: string;
+  analyticalFocus: string;
 }
 
 /**
@@ -63,7 +68,13 @@ export async function extractQueries(
   try {
     const geminiInput = {
       studyTitle: params.studyTitle,
-      historicalSpatialLimits: params.historicalSpatialLimits,
+      mainClaim: params.mainClaim,
+      theoreticalFramework: params.theoreticalFramework,
+      methodology: params.methodology,
+      dataStrategy: params.dataStrategy,
+      historicalLimits: params.historicalLimits,
+      spatialLimits: params.spatialLimits,
+      analyticalFocus: params.analyticalFocus,
     };
 
     const factPrompt = buildFactQueryPrompt(geminiInput);
@@ -111,8 +122,17 @@ export async function extractQueries(
       : [];
 
     // Pad keywords to ensure exactly 5 items
-    const DEFAULT_KEYWORDS = ["thesis", "research", "study", "analysis", "framework"];
-    const keywords = [...new Set([...rawKeywords, ...DEFAULT_KEYWORDS])].slice(0, 5);
+    const DEFAULT_KEYWORDS = [
+      "thesis",
+      "research",
+      "study",
+      "analysis",
+      "framework",
+    ];
+    const keywords = [...new Set([...rawKeywords, ...DEFAULT_KEYWORDS])].slice(
+      0,
+      5,
+    );
 
     // Dynamic combinations generator
     const tezaraQueries: string[] = [];

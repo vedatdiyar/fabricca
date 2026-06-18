@@ -150,9 +150,12 @@ export function buildAnalysisPrompt(params: {
   studyTitle: string;
   researchQuestion: string;
   mainClaim: string;
-  methodology: string;
   theoreticalFramework: string;
-  historicalSpatialLimits: string;
+  methodology: string;
+  dataStrategy: string;
+  historicalLimits: string;
+  spatialLimits: string;
+  analyticalFocus: string;
   validDetails: {
     id: number;
     title: string;
@@ -164,6 +167,7 @@ export function buildAnalysisPrompt(params: {
     abstract: string;
   }[];
 }): string {
+  const temporalSpatialContext = `${params.historicalLimits} | ${params.spatialLimits}`;
   return `<hedef_tez_matrisi>
 {
   "studyTitle": "${params.studyTitle.replace(/"/g, '\\"')}",
@@ -171,7 +175,7 @@ export function buildAnalysisPrompt(params: {
   "mainClaim": "${params.mainClaim.replace(/"/g, '\\"')}",
   "methodology": "${params.methodology.replace(/"/g, '\\"')}",
   "theoreticalFramework": "${params.theoreticalFramework.replace(/"/g, '\\"')}",
-  "historicalSpatialLimits": "${params.historicalSpatialLimits.replace(/"/g, '\\"')}"
+  "historicalSpatialLimits": "${temporalSpatialContext.replace(/"/g, '\\"')}"
 }
 </hedef_tez_matrisi>
 

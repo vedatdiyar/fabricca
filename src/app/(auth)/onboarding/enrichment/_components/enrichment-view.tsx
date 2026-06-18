@@ -42,9 +42,12 @@ export function EnrichmentView() {
   const [studyTitle, setStudyTitle] = useState("");
   const [researchQuestion, setResearchQuestion] = useState("");
   const [mainClaim, setMainClaim] = useState("");
-  const [methodology, setMethodology] = useState("");
   const [theoreticalFramework, setTheoreticalFramework] = useState("");
-  const [historicalSpatialLimits, setHistoricalSpatialLimits] = useState("");
+  const [methodology, setMethodology] = useState("");
+  const [dataStrategy, setDataStrategy] = useState("");
+  const [historicalLimits, setHistoricalLimits] = useState("");
+  const [spatialLimits, setSpatialLimits] = useState("");
+  const [analyticalFocus, setAnalyticalFocus] = useState("");
 
   const showLoading = useOnboardingStore((s) => s.showLoading);
   const hideLoading = useOnboardingStore((s) => s.hideLoading);
@@ -64,9 +67,12 @@ export function EnrichmentView() {
       setStudyTitle(matrix.studyTitle);
       setResearchQuestion(matrix.researchQuestion);
       setMainClaim(matrix.mainClaim);
-      setMethodology(matrix.methodology);
       setTheoreticalFramework(matrix.theoreticalFramework);
-      setHistoricalSpatialLimits(matrix.historicalSpatialLimits);
+      setMethodology(matrix.methodology);
+      setDataStrategy(matrix.dataStrategy);
+      setHistoricalLimits(matrix.historicalLimits);
+      setSpatialLimits(matrix.spatialLimits);
+      setAnalyticalFocus(matrix.analyticalFocus);
       setLoading(false);
     });
     return () => {
@@ -84,7 +90,10 @@ export function EnrichmentView() {
       refinedThesisClaim: mainClaim,
       conceptualTheoreticalInfrastructure: theoreticalFramework,
       academicMethodologyDesign: methodology,
-      historicalSpatialLimits: historicalSpatialLimits,
+      dataStrategy,
+      historicalLimits,
+      spatialLimits,
+      analyticalFocus,
     };
 
     try {
@@ -105,9 +114,12 @@ export function EnrichmentView() {
         studyTitle,
         researchQuestion,
         mainClaim,
-        methodology,
         theoreticalFramework,
-        historicalSpatialLimits,
+        methodology,
+        dataStrategy,
+        historicalLimits,
+        spatialLimits,
+        analyticalFocus,
       };
 
       // Show 4-stage loader
@@ -200,100 +212,118 @@ export function EnrichmentView() {
     <>
       <Card className="w-full pt-6">
         <CardContent>
-          <form
-            onSubmit={handleConfirm}
-            className="grid w-full grid-cols-1 gap-6 md:grid-cols-2"
-          >
-            <div className="space-y-2">
-              <Label
-                htmlFor="calismaBasligi"
-                className="mb-4 block font-semibold text-foreground"
-              >
-                Çalışma Başlığı
-              </Label>
-              <Textarea
-                id="calismaBasligi"
-                value={studyTitle}
-                onChange={(e) => setStudyTitle(e.target.value)}
-                required
-                className="textarea-academic"
-              />
+          <form onSubmit={handleConfirm} className="w-full space-y-6">
+            <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="calismaBasligi" className="block font-semibold text-foreground">
+                  Çalışma Başlığı
+                </Label>
+                <Textarea
+                  id="calismaBasligi"
+                  value={studyTitle}
+                  onChange={(e) => setStudyTitle(e.target.value)}
+                  required
+                  className="textarea-academic"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="arastirmaSorusu" className="block font-semibold text-foreground">
+                  Araştırma Sorusu
+                </Label>
+                <Textarea
+                  id="arastirmaSorusu"
+                  value={researchQuestion}
+                  onChange={(e) => setResearchQuestion(e.target.value)}
+                  required
+                  className="textarea-academic"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="temelIddia" className="block font-semibold text-foreground">
+                  Temel İddia
+                </Label>
+                <Textarea
+                  id="temelIddia"
+                  value={mainClaim}
+                  onChange={(e) => setMainClaim(e.target.value)}
+                  required
+                  className="textarea-academic"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="kuramsalCerceve" className="block font-semibold text-foreground">
+                  Kavramsal ve Kuramsal Altyapı
+                </Label>
+                <Textarea
+                  id="kuramsalCerceve"
+                  value={theoreticalFramework}
+                  onChange={(e) => setTheoreticalFramework(e.target.value)}
+                  required
+                  className="textarea-academic"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="metodoloji" className="block font-semibold text-foreground">
+                  Metodoloji Tasarımı
+                </Label>
+                <Textarea
+                  id="metodoloji"
+                  value={methodology}
+                  onChange={(e) => setMethodology(e.target.value)}
+                  required
+                  className="textarea-academic"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="veriStratejisi" className="block font-semibold text-foreground">
+                  Veri Stratejisi
+                </Label>
+                <Textarea
+                  id="veriStratejisi"
+                  value={dataStrategy}
+                  onChange={(e) => setDataStrategy(e.target.value)}
+                  required
+                  className="textarea-academic"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tarihselSinirlar" className="block font-semibold text-foreground">
+                  Tarihsel Sınırlar
+                </Label>
+                <Textarea
+                  id="tarihselSinirlar"
+                  value={historicalLimits}
+                  onChange={(e) => setHistoricalLimits(e.target.value)}
+                  required
+                  className="textarea-academic"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="mekansalSinirlar" className="block font-semibold text-foreground">
+                  Mekânsal Sınırlar
+                </Label>
+                <Textarea
+                  id="mekansalSinirlar"
+                  value={spatialLimits}
+                  onChange={(e) => setSpatialLimits(e.target.value)}
+                  required
+                  className="textarea-academic"
+                />
+              </div>
+              <div className="md:col-span-full space-y-2">
+                <Label htmlFor="analitikOdak" className="block font-semibold text-foreground">
+                  Analitik Odak
+                </Label>
+                <Textarea
+                  id="analitikOdak"
+                  value={analyticalFocus}
+                  onChange={(e) => setAnalyticalFocus(e.target.value)}
+                  required
+                  className="textarea-academic"
+                />
+              </div>
             </div>
-            <div className="space-y-2 md:col-start-1">
-              <Label
-                htmlFor="arastirmaSorusu"
-                className="mb-4 block font-semibold text-foreground"
-              >
-                Araştırma Sorusu
-              </Label>
-              <Textarea
-                id="arastirmaSorusu"
-                value={researchQuestion}
-                onChange={(e) => setResearchQuestion(e.target.value)}
-                required
-                className="textarea-academic"
-              />
-            </div>
-            <div className="space-y-2 md:row-start-3 md:col-start-1">
-              <Label
-                htmlFor="temelIddia"
-                className="mb-4 block font-semibold text-foreground"
-              >
-                Temel İddia
-              </Label>
-              <Textarea
-                id="temelIddia"
-                value={mainClaim}
-                onChange={(e) => setMainClaim(e.target.value)}
-                required
-                className="textarea-academic"
-              />
-            </div>
-            <div className="space-y-2 md:row-start-1 md:col-start-2">
-              <Label
-                htmlFor="metodoloji"
-                className="mb-4 block font-semibold text-foreground"
-              >
-                Metodoloji Tasarımı
-              </Label>
-              <Textarea
-                id="metodoloji"
-                value={methodology}
-                onChange={(e) => setMethodology(e.target.value)}
-                required
-                className="textarea-academic"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label
-                htmlFor="kuramsalCerceve"
-                className="mb-4 block font-semibold text-foreground"
-              >
-                Kavramsal ve Kuramsal Altyapı
-              </Label>
-              <Textarea
-                id="kuramsalCerceve"
-                value={theoreticalFramework}
-                onChange={(e) => setTheoreticalFramework(e.target.value)}
-                required
-                className="textarea-academic"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label
-                htmlFor="tarihselMekansalSinirlar"
-                className="mb-4 block font-semibold text-foreground"
-              >
-                Tarihsel / Mekânsal Sınırlar
-              </Label>
-              <Textarea
-                id="tarihselMekansalSinirlar"
-                value={historicalSpatialLimits}
-                onChange={(e) => setHistoricalSpatialLimits(e.target.value)}
-                required
-                className="textarea-academic"
-              />
-            </div>
+
             <div className="md:col-span-full">
               <Button
                 type="submit"

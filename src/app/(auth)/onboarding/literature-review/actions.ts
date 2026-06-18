@@ -77,7 +77,8 @@ async function processSingleBox(
     studyTitle: string;
     researchQuestion: string;
     theoreticalFramework: string;
-    historicalSpatialLimits: string;
+    historicalLimits: string;
+    spatialLimits: string;
   },
   logger: Logger,
 ): Promise<LiteratureReviewResult> {
@@ -85,13 +86,15 @@ async function processSingleBox(
     return { starterPack: [], reservedPool: [] };
   }
 
+  const boxCtx = `Kutu: ${subBox.title}`;
+
   // ------------------------------------------------------------------
   // Stage 1: OpenAlex search (semantic vector + keyword fallback + foundational)
   // ------------------------------------------------------------------
   logger.info("literature_search_start", {
     service: "literature",
     filePath: "onboarding/literature-review/actions.ts",
-    data: { queryCount: 1, subBoxTitle: subBox.title },
+    data: { queryCount: 1, subBoxTitle: subBox.title, context: boxCtx },
   });
 
   const searchStart = performance.now();
@@ -115,9 +118,9 @@ async function processSingleBox(
             metadata: null,
             doi: null,
             url: fw.id,
-            authors: [],
+            authors: fw.authors,
             year: fw.publicationYear,
-            publisher: null,
+            publisher: fw.publisher,
             openAlexId: fw.id,
             isFoundational: true,
             relevanceScore: 1.0,
@@ -141,7 +144,7 @@ async function processSingleBox(
     durationMs: performance.now() - searchStart,
     filePath: "onboarding/literature-review/actions.ts",
     status: "SUCCESS",
-    data: { resultCount: allRaw.length },
+    data: { resultCount: allRaw.length, context: boxCtx },
   });
 
   if (allRaw.length === 0) {
@@ -159,7 +162,7 @@ async function processSingleBox(
     durationMs: performance.now() - mergeStart,
     filePath: "onboarding/literature-review/actions.ts",
     status: "SUCCESS",
-    data: { mergedCount: merged.length },
+    data: { mergedCount: merged.length, context: boxCtx },
   });
 
   const rawApiPool = merged;
@@ -194,6 +197,7 @@ async function processSingleBox(
       before: merged.length,
       after: sifted.length,
       foundationalBypassed: foundationalPapers.length,
+      context: boxCtx,
     },
   });
 
@@ -228,8 +232,9 @@ async function processSingleBox(
     filePath: "onboarding/literature-review/actions.ts",
     status: "SUCCESS",
     data: {
-      requestedCount: siftedIds.length,
-      resolvedCount: abstractMap.size,
+      count: siftedIds.length,
+      resultCount: abstractMap.size,
+      context: boxCtx,
     },
   });
 
@@ -245,9 +250,12 @@ async function processSingleBox(
     filePath: "onboarding/literature-review/actions.ts",
     status: "SUCCESS",
     data: {
+      count: sifted.length,
+      resultCount: result.starterPack.length + result.reservedPool.length,
       starterPackCount: result.starterPack.length,
       reservedPoolCount: result.reservedPool.length,
       foundationalCount: foundationalPapers.length,
+      context: boxCtx,
     },
   });
 
@@ -304,6 +312,7 @@ async function processSingleBox(
     status: "SUCCESS",
     data: {
       enrichedCount: enrichedStarterPack.length + enrichedReservedPool.length,
+      context: boxCtx,
     },
   });
 
@@ -343,7 +352,8 @@ export async function processLiteratureReviewAction(
         studyTitle: thesisMatrices.studyTitle,
         researchQuestion: thesisMatrices.researchQuestion,
         theoreticalFramework: thesisMatrices.theoreticalFramework,
-        historicalSpatialLimits: thesisMatrices.historicalSpatialLimits,
+        historicalLimits: thesisMatrices.historicalLimits,
+        spatialLimits: thesisMatrices.spatialLimits,
       })
       .from(thesisMatrices)
       .where(eq(thesisMatrices.userId, session.userId));
@@ -416,19 +426,14 @@ export async function confirmLiteratureAction(args: {
   const log = new Logger(flowId);
   const startTime = performance.now();
 
-  log.info({
-    step: "confirmLiterature",
-    service: "literature",
-  });
+  log.info("confirm_literature_start", { service: "literature" });
 
   try {
     const session = await getSession();
     if (!session) {
-      log.warn({
-        step: "confirmLiterature",
-        status: "FAILED",
+      log.warn("confirm_literature_failed", {
         service: "literature",
-        diagnostics: { errorCode: "AUTH_ERROR", message: "Oturum bulunamadi." },
+        data: { reason: "Oturum bulunamadı." },
       });
       return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
     }
@@ -437,14 +442,9 @@ export async function confirmLiteratureAction(args: {
     const { literaturePool } = args;
 
     if (!literaturePool || literaturePool.length === 0) {
-      log.warn({
-        step: "confirmLiterature",
-        status: "FAILED",
+      log.warn("confirm_literature_failed", {
         service: "literature",
-        diagnostics: {
-          errorCode: "VALIDATION_ERROR",
-          message: "Literatür havuzu boş.",
-        },
+        data: { reason: "Onaylanacak literatür verisi bulunamadı." },
       });
       return { error: "Onaylanacak literatür verisi bulunamadı." };
     }
@@ -462,12 +462,6 @@ export async function confirmLiteratureAction(args: {
     const thesisMatrixId = matrix.id;
 
     // Compute total resource count for the final summary log
-    const totalResourceCount = literaturePool.reduce(
-      (sum, entry) =>
-        sum + entry.starterPack.length + entry.reservedPool.length,
-      0,
-    );
-
     // 2. Atomic transaction
     await db.transaction(async (tx) => {
       const allResources: NewLibraryResource[] = [];
@@ -567,26 +561,23 @@ export async function confirmLiteratureAction(args: {
       // Revalidation path skipped
     }
 
-    const duration = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
-
-    log.info({
-      step: "confirmLiterature",
-      status: "SUCCESS",
+    log.info("confirm_literature_success", {
       service: "literature",
-      data: { resultCount: totalResourceCount },
-      metrics: { duration },
+      durationMs: performance.now() - startTime,
+      data: {
+        resultCount: literaturePool.reduce(
+          (sum, entry) =>
+            sum + entry.starterPack.length + entry.reservedPool.length,
+          0,
+        ),
+      },
     });
 
     return { success: true };
   } catch (err) {
-    log.error({
-      step: "confirmLiterature",
-      status: "FAILED",
+    log.error("confirm_literature_failed", {
       service: "literature",
-      diagnostics: {
-        errorCode: "TRANSACTION_ERROR",
-        message: err instanceof Error ? err.message : String(err),
-      },
+      error: err,
     });
     return {
       error:

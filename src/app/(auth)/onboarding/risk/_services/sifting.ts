@@ -20,9 +20,13 @@ import {
 export interface SiftAndFetchDetailsParams {
   studyTitle: string;
   researchQuestion: string;
+  mainClaim: string;
   theoreticalFramework: string;
   methodology: string;
-  historicalSpatialLimits: string;
+  dataStrategy: string;
+  historicalLimits: string;
+  spatialLimits: string;
+  analyticalFocus: string;
 }
 
 export interface SiftingDiagnostic {

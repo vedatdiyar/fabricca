@@ -42,9 +42,12 @@ export async function generateBoxesAction(): Promise<
       studyTitle: matrix.studyTitle,
       researchQuestion: matrix.researchQuestion,
       mainClaim: matrix.mainClaim,
-      methodology: matrix.methodology,
       theoreticalFramework: matrix.theoreticalFramework,
-      historicalSpatialLimits: matrix.historicalSpatialLimits,
+      methodology: matrix.methodology,
+      dataStrategy: matrix.dataStrategy,
+      historicalLimits: matrix.historicalLimits,
+      spatialLimits: matrix.spatialLimits,
+      analyticalFocus: matrix.analyticalFocus,
     });
 
     const generationResult = await generateStructuredContent<{
