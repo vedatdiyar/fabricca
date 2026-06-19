@@ -28,121 +28,15 @@ function resolveAbstractInvertedIndex(
   return entries.map(([, word]) => word).join(" ");
 }
 
-const STOP_WORDS = new Set([
-  "bir",
-  "bu",
-  "ile",
-  "ve",
-  "veya",
-  "veya",
-  "için",
-  "olarak",
-  "olan",
-  "the",
-  "a",
-  "an",
-  "and",
-  "or",
-  "in",
-  "on",
-  "at",
-  "to",
-  "for",
-  "of",
-  "with",
-  "by",
-  "is",
-  "it",
-  "as",
-  "be",
-  "are",
-  "was",
-  "were",
-  "been",
-  "being",
-  "have",
-  "has",
-  "had",
-  "do",
-  "does",
-  "did",
-  "will",
-  "would",
-  "can",
-  "its",
-  "all",
-  "each",
-  "every",
-  "some",
-  "any",
-  "no",
-  "not",
-  "only",
-  "this",
-  "that",
-  "these",
-  "those",
-  "from",
-  "into",
-  "through",
-  "over",
-]);
-
-function extractSignificantWords(query: string): string[] {
-  return query
-    .toLowerCase()
-    .replace(/[^a-z0-9çğıöşüâêîôû]/g, " ")
-    .split(/\s+/)
-    .filter((w) => w.length >= 3)
-    .filter((w) => !STOP_WORDS.has(w));
-}
-
 // ============================================================================
 // OpenAlex Response Parser
 // ============================================================================
 
-function parseOpenAlexResults(
-  results: Record<string, unknown>[],
-  query?: string,
-): RawPaper[] {
-  const keywords = query ? extractSignificantWords(query) : [];
-
+function parseOpenAlexResults(results: Record<string, unknown>[]): RawPaper[] {
   results = results.filter((work) => {
     const type = work.type as string | undefined;
     return type === "article" || type === "book-chapter" || type === "book";
   });
-
-  results = results.filter((work) => {
-    const biblio = work.biblio as Record<string, unknown> | undefined;
-    if (!biblio) return true;
-    const fp = parseInt(biblio.first_page as string, 10);
-    const lp = parseInt(biblio.last_page as string, 10);
-    if (isNaN(fp) || isNaN(lp)) return true;
-    return lp - fp > 2;
-  });
-
-  results = results.filter((work) => {
-    const idx = work.abstract_inverted_index as
-      | Record<string, unknown>
-      | undefined;
-    if (!idx) return true;
-    return Object.keys(idx).length >= 40;
-  });
-
-  if (keywords.length > 0) {
-    results = results.filter((work) => {
-      const title = ((work.title as string) ?? "").toLowerCase();
-      const idx = work.abstract_inverted_index as
-        | Record<string, unknown>
-        | undefined;
-      const abstractKeys = idx ? Object.keys(idx) : [];
-      return keywords.some(
-        (kw) =>
-          title.includes(kw) ||
-          abstractKeys.some((ak) => ak.includes(kw) || kw.includes(ak)),
-      );
-    });
-  }
 
   const rawScores = results.map(
     (work) => (work.relevance_score as number) ?? 0,
@@ -218,7 +112,6 @@ function parseOpenAlexResults(
 
 async function queryOpenAlexWorks(
   params: URLSearchParams,
-  query?: string,
 ): Promise<RawPaper[]> {
   const apiKey = process.env.OPENALEX_API_KEY;
   if (apiKey) params.set("api_key", apiKey);
@@ -235,7 +128,7 @@ async function queryOpenAlexWorks(
     };
     const results = data.results;
     if (!results) return [];
-    return parseOpenAlexResults(results, query);
+    return parseOpenAlexResults(results);
   } catch {
     return [];
   }
@@ -253,7 +146,7 @@ export async function searchOpenAlex(query: string): Promise<RawPaper[]> {
     select:
       "id,title,type,biblio,abstract_inverted_index,cited_by_count,relevance_score,authorships,publication_year,primary_location",
   });
-  const results = await queryOpenAlexWorks(params, query);
+  const results = await queryOpenAlexWorks(params);
   if (results.length === 0) {
     return [];
   }
@@ -445,7 +338,7 @@ export interface FoundationalWorkResult {
  * if no result passes validation (LLM hallucination guard), the raw query data
  * is preserved via createFallback instead of accepting an irrelevant match.
  *
- * Each query is resolved independently in a Promise.all parallel batch.
+ * All queries are resolved in parallel via Promise.all.
  * Every query is guaranteed to return a FoundationalWorkResult — either
  * enriched by OpenAlex or created as a fallback from the raw query data.
  *
@@ -471,97 +364,98 @@ export async function resolveFoundationalWorks(
     } as FoundationalWorkResult;
   }
 
-  const results: FoundationalWorkResult[] = [];
-  for (const query of queries) {
-    try {
-      const urlParams = new URLSearchParams({
-        filter: `display_name.search:${encodeURIComponent(query.title)}`,
-        per_page: "5",
-        select:
-          "id,title,type,publication_year,cited_by_count,authorships,primary_location",
-      });
-
-      const response = await fetch(
-        `https://api.openalex.org/works?${urlParams.toString()}`,
-        {
-          headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
-          signal: AbortSignal.timeout(15000),
-        },
-      );
-
-      const data = response.ok
-        ? ((await response.json()) as {
-            results?: Record<string, unknown>[];
-          })
-        : { results: undefined };
-      const resultData = data.results;
-
-      let bestResult: Record<string, unknown> | null = null;
-
-      if (resultData && resultData.length > 0) {
-        const queryTitle = query.title.toLowerCase().trim();
-        const queryAuthor = query.author.toLowerCase().trim();
-
-        const match = resultData.find((r) => {
-          const rTitle = ((r.title as string) ?? "").toLowerCase().trim();
-          const authorships = r.authorships as
-            | { author?: { display_name?: string } }[]
-            | undefined;
-          const titleMatch =
-            rTitle.includes(queryTitle) || queryTitle.includes(rTitle);
-          const authorMatch = authorships?.some((a) =>
-            (a.author?.display_name ?? "").toLowerCase().includes(queryAuthor),
-          );
-          return titleMatch || authorMatch;
+  const results = await Promise.all(
+    queries.map(async (query) => {
+      try {
+        const urlParams = new URLSearchParams({
+          filter: `display_name.search:${encodeURIComponent(query.title)}`,
+          per_page: "5",
+          select:
+            "id,title,type,publication_year,cited_by_count,authorships,primary_location",
         });
 
-        bestResult = match ?? null;
+        const response = await fetch(
+          `https://api.openalex.org/works?${urlParams.toString()}`,
+          {
+            headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
+            signal: AbortSignal.timeout(15000),
+          },
+        );
+
+        const data = response.ok
+          ? ((await response.json()) as {
+              results?: Record<string, unknown>[];
+            })
+          : { results: undefined };
+        const resultData = data.results;
+
+        let bestResult: Record<string, unknown> | null = null;
+
+        if (resultData && resultData.length > 0) {
+          const queryTitle = query.title.toLowerCase().trim();
+          const queryAuthor = query.author.toLowerCase().trim();
+
+          const match = resultData.find((r) => {
+            const rTitle = ((r.title as string) ?? "").toLowerCase().trim();
+            const authorships = r.authorships as
+              | { author?: { display_name?: string } }[]
+              | undefined;
+            const titleMatch =
+              rTitle.includes(queryTitle) || queryTitle.includes(rTitle);
+            const authorMatch = authorships?.some((a) =>
+              (a.author?.display_name ?? "")
+                .toLowerCase()
+                .includes(queryAuthor),
+            );
+            return titleMatch || authorMatch;
+          });
+
+          bestResult = match ?? null;
+        }
+
+        if (!bestResult) {
+          return createFallback(query);
+        }
+
+        const authorships = bestResult.authorships as
+          | { author?: { display_name?: string } }[]
+          | null
+          | undefined;
+        const primaryLocation = bestResult.primary_location as
+          | {
+              source?: { display_name?: string };
+            }
+          | null
+          | undefined;
+
+        return {
+          id: (bestResult.id as string) ?? "",
+          title: formatAcademicTitle(
+            (bestResult.title as string) ?? query.title,
+          ),
+          type: (bestResult.type as string) ?? "unknown",
+          publicationYear:
+            (bestResult.publication_year as number) ?? query.publicationYear,
+          citedByCount: (bestResult.cited_by_count as number) ?? 0,
+          isFoundational: true,
+          authors:
+            authorships
+              ?.map((a) => a.author?.display_name ?? "")
+              .filter(Boolean) ?? (query.author ? [query.author] : []),
+          publisher: primaryLocation?.source?.display_name ?? null,
+        } as FoundationalWorkResult;
+      } catch (error) {
+        logger?.error("foundational_work_resolution_failed", {
+          service: "openalex",
+          filePath:
+            "src/app/(auth)/onboarding/literature-review/_services/search-api.ts",
+          error,
+          data: { queryTitle: query.title },
+        });
+        return createFallback(query);
       }
-
-      if (!bestResult) {
-        results.push(createFallback(query));
-        await new Promise((resolve) => setTimeout(resolve, 800));
-        continue;
-      }
-
-      const authorships = bestResult.authorships as
-        | { author?: { display_name?: string } }[]
-        | null
-        | undefined;
-      const primaryLocation = bestResult.primary_location as
-        | {
-            source?: { display_name?: string };
-          }
-        | null
-        | undefined;
-
-      results.push({
-        id: (bestResult.id as string) ?? "",
-        title: formatAcademicTitle((bestResult.title as string) ?? query.title),
-        type: (bestResult.type as string) ?? "unknown",
-        publicationYear:
-          (bestResult.publication_year as number) ?? query.publicationYear,
-        citedByCount: (bestResult.cited_by_count as number) ?? 0,
-        isFoundational: true,
-        authors:
-          authorships
-            ?.map((a) => a.author?.display_name ?? "")
-            .filter(Boolean) ?? (query.author ? [query.author] : []),
-        publisher: primaryLocation?.source?.display_name ?? null,
-      } as FoundationalWorkResult);
-    } catch (error) {
-      logger?.error("foundational_work_resolution_failed", {
-        service: "openalex",
-        filePath:
-          "src/app/(auth)/onboarding/literature-review/_services/search-api.ts",
-        error,
-        data: { queryTitle: query.title },
-      });
-      results.push(createFallback(query));
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 800));
-  }
+    }),
+  );
 
   return results;
 }

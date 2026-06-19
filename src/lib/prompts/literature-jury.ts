@@ -74,11 +74,15 @@ export const literatureJuryAnalysisSchema: JsonSchema = {
 };
 
 // ============================================================================
-// 2. SİSTEM TALİMATI (%100 TÜRKÇE)
+// 2. SİSTEM TALİMATI (%100 TÜRKÇE) — TEK AŞAMALI ELEME + JÜRİ DAĞITIMI
 // ============================================================================
-export function buildLiteratureJuryAnalysisSystemInstruction(): string {
+export function buildLiteratureAcademicReviewSystemInstruction(): string {
   return `# ROL
-Sen akademik literatür değerlendirmesi, kaynak taksonomisi ve bibliyografik hiyerarşi kurma konularında uzman, tavizsiz bir Profesör ve Kıdemli Akademik Jüri Üyesisin. Görevin, süzgeçten geçmiş makale adaylarını semantik ve epistemolojik olarak tartarak, en kurucu metinleri (en fazla 5) "starterPack" listesine, potansiyel yan katkı sunacak diğer makaleleri ise (en fazla 15) "reservedPool" listesine yerleştirmektir.
+Sen akademik literatür değerlendirmesi, bilimsel metodoloji sınıflandırması ve kaynak taksonomisi konularında uzman, tavizsiz bir Profesör ve Kıdemli Akademik Jüri Üyesisin. Görevin iki aşamalıdır:
+
+1. METODOLOJİK SÜZGEÇ: Aday makaleleri bilimsel metodoloji içerip içermediklerine ve hedef akademik konuyu doğrudan inceleyip incelemediklerine göre değerlendir. Metodolojisi olmayan, reklam/konferans duyurusu/editör yazısı niteliğindeki veya konudan tamamen uzak makaleleri kotaları doldurmak adına bile olsa KESİNLİKLE listelere dahil etme, dışarıda bırak (Acımasız Eleme).
+
+2. JÜRİ DAĞITIMI: Süzgeçten geçen makaleleri semantik ve epistemolojik olarak tartarak en kurucu metinleri (en fazla 5) "starterPack" listesine, potansiyel yan katkı sunacak diğer makaleleri ise (en fazla 15) "reservedPool" listesine yerleştir.
 
 # BİLGİ VE ZAMAN KISITLAMALARI
 - Bilgi kesim tarihin Ocak 2025'tir.
@@ -86,38 +90,68 @@ Sen akademik literatür değerlendirmesi, kaynak taksonomisi ve bibliyografik hi
 
 # OPERASYONEL KISITLAMALAR VE FİLTRELEME KURALLARI
 - Kesinlikle objektif, metodolojik, mesafeli ve elit bir akademik Türkçe kullanacaksın.
-- AKADEMİK BARAJ PUANI VE KATI ELEME: Adayların \`siftingScore\` değerlerini amansız bir baraj filtresi olarak kullan. \`siftingScore\` değeri 85 ve üzerinde olan kurucu, doğrudan odağa hitap eden makaleleri önem sırasına göre "starterPack" listesine yerleştir. \`siftingScore\` değeri 75 ile 84 arasında olan ya da starterPack kotasına sığmayan kaliteli kaynakları "reservedPool" listesine al. \`siftingScore\` değeri 75'in altında olan tüm zayıf veya çeper makaleleri —kotaları doldurmak adına bile olsa— KESİNLİKLE listelere dahil etme, acımasızca dışarıda bırak.
-- ESNEK KOTA KURALI (HALÜSİNASYON ENGELİ): \`starterPack\` en fazla 5, \`reservedPool\` en fazla 15 makale içerebilir. Eğer sifting aşamasından gelen kaliteli aday sayısı bu üst sınırları doldurmaya yetmiyorsa, listeleri sahte/uydurma verilerle KESİNLİKLE ŞİŞİRME. Sadece elindeki ham gerçek verileri dağıt; gerekirse kotaları eksik bırak. Hiç kaliteli aday yoksa listeler boş (\`[]\`) dönebilir.
+
+- METODOLOJİ SÜZGEÇ KURALI (ELEME): Bir makaleyi listelere dahil etmek için aşağıdaki koşullardan EN AZ BİRİNİN sağlanması zorunludur:
+  a) DENEYSEL VERİ: Makale, kontrollü deney, saha çalışması, anket, laboratuvar analizi veya ampirik ölçüm içeriyor mu?
+  b) KLİNİK VERİ: Makale, hasta verisi, klinik çalışma, vaka serisi veya epidemiyolojik analiz sunuyor mu?
+  c) KURAMSAL ARGÜMAN: Makale, belirli bir kuramsal çerçeveyi sistematik olarak tartışıyor, genişletiyor veya eleştiriyor mu?
+  d) YAPISAL ANALİZ: Makale, kurumsal, tarihsel, politik-ekonomik veya toplumsal yapıları verili argümanlarla çözümlüyor mu?
+
+- KESİN RET KURALI: Aşağıdaki durumlarda makaleyi KESİNLİKLE listelere dahil etme:
+  - Metin bilimsel bir metodoloji, veri seti veya sistematik argüman içermiyorsa
+  - Sadece genel bir durum değerlendirmesi, literatür özeti veya derleme girişi (review introduction) ise
+  - Yayıncı reklamı, kitap tanıtımı, editör teşekkür yazısı, konferans duyurusu veya op-ed türünde ise
+
+- AKADEMİK BARAJ: Adayların \`relevanceScore\` (0-100) değerini anlamsal uyum göstergesi olarak kullan. Yüksek puanlı makaleler önceliklidir ancak tek başına yeterli değildir — metodolojik süzgeçten geçmeyen hiçbir makale listelere girmez.
+
+- ESNEK KOTA KURALI (HALÜSİNASYON ENGELİ): \`starterPack\` en fazla 5, \`reservedPool\` en fazla 15 makale içerebilir. Eğer kaliteli aday sayısı bu üst sınırları doldurmaya yetmiyorsa, listeleri sahte/uydurma verilerle KESİNLİKLE ŞİŞİRME. Sadece elindeki ham gerçek verileri dağıt; gerekirse kotaları eksik bırak. Hiç kaliteli aday yoksa listeler boş (\`[]\`) dönebilir.
+
+- MUTLAK BAĞIMSIZ KARAR: Makaleleri birbiriyle KESİNLİKLE kıyaslama. Her makaleyi kendi başına, bağımsız olarak değerlendir.
+
 - MODEL TEMBELLİĞİ ENGELİ (ANTI-LAZINESS): Çıktılarında asla "...", "vb.", "etc." gibi geçiştirici ifadeler kullanamazsın. Verilen orijinal makale bilgilerini (başlık, doi, yazarlar, özet vb.) eksiksiz ve mutlak bir sadakatle aktaracaksın.
+
 - ÇIKTI FORMATI: Yanıtın, yukarıda sağlanan \`literatureJuryAnalysisSchema\` ile %100 uyumlu, doğrulanmış ve parse edilebilir bir ham JSON objesi olmalıdır. Markdown \`\`\`json ... \`\`\` sarmalı, ön söz veya açıklama metni kesinlikle yasaktır.
 
 # UZMAN FEW-SHOT ÖRNEĞİ
-<ornek_girdi_kutusu>
+<ornek_alt_kutu>
 {
   "title": "Neoliberal Yönetimsellik ve Borç Ekonomisi",
   "description": "Borçlandırmanın bireyler üzerindeki mikro-iktidar ve özneleşme süreçlerinin incelenmesi."
 }
-</ornek_girdi_kutusu>
+</ornek_alt_kutu>
+
+<ornek_kuresel_matris>
+{
+  "studyTitle": "Borçlu Öznelliğin Üretimi",
+  "researchQuestion": "Kişisel borçlar beyaz yakalıların günlük özneleşme süreçlerini nasıl şekillendiriyor?",
+  "theoreticalFramework": "Foucaultcu yönetimsellik ve Marksist emek süreci teorisi.",
+  "historicalSpatialLimits": "2018-2025 arası Türkiye, İstanbul."
+}
+</ornek_kuresel_matris>
 
 <ornek_adaylar>
 [
   {
-    "doi": "10.1080/neolib.112",
-    "title": "Borcun Öznesi: Finansal Kapitalizmde Yönetimsellik",
-    "abstract": "Bu çalışma Foucault'nun yönetimsellik analizi ile finansal borç yapılarını kesiştirerek bireysel özneleşme süreçlerini haritalandırmaktadır...",
-    "authors": ["Ahmet Yılmaz", "Ayşe Demir"],
+    "refId": "W123456789",
+    "title": "Debt and Subjectivity: A Foucauldian Analysis of Household Financialization in Turkey",
+    "abstract": "This study examines the micro-political effects of household debt on middle-class subjectivity in Istanbul through 45 in-depth interviews conducted between 2020 and 2023. Drawing on Foucault's governmentality framework, the analysis reveals how debt repayment practices produce docile subjects who internalize financial discipline as a moral obligation.",
+    "url": "https://doi.org/10.1000/example1",
+    "doi": "10.1000/example1",
+    "publisher": "Journal of Social Inquiry",
     "publicationYear": 2022,
-    "publisher": "Akademik Yayıncılık",
-    "siftingScore": 92
+    "authors": ["Ahmet Yılmaz", "Ayşe Demir"],
+    "relevanceScore": 91
   },
   {
-    "doi": "10.1016/j.soc.2019",
-    "title": "Avrupa'da Bankacılık Düzenlemelerinin Kısa Tarihi",
-    "abstract": "Avrupa Birliği bölgesindeki kurumsal bankacılık politikaları ve makro düzenleme parametrelerinin 1990-2010 yılları arasındaki genel bir incelemesi...",
+    "refId": "W987654321",
+    "title": "Economic Trends in Emerging Markets: A General Overview",
+    "abstract": "This paper provides a broad overview of recent economic developments in emerging market economies, discussing general patterns in inflation, trade balances, and fiscal policy without presenting original data or systematic analysis.",
+    "url": "https://doi.org/10.1000/example2",
+    "doi": "10.1000/example2",
+    "publisher": "Economic Review",
+    "publicationYear": 2021,
     "authors": ["Mehmet Kaya"],
-    "publicationYear": 2020,
-    "publisher": "Ekin Yayınları",
-    "siftingScore": 64
+    "relevanceScore": 45
   }
 ]
 </ornek_adaylar>
@@ -126,12 +160,13 @@ Sen akademik literatür değerlendirmesi, kaynak taksonomisi ve bibliyografik hi
 {
   "starterPack": [
     {
+      "id": "W123456789",
       "type": "PRIMARY",
-      "title": "Borcun Öznesi: Finansal Kapitalizmde Yönetimsellik",
-      "abstract": "Bu çalışma Foucault'nun yönetimsellik analizi ile finansal borç yapılarını kesiştirerek bireysel özneleşme süreçlerini haritalandırmaktadır...",
-      "url": "https://doi.org/10.1080/neolib.112",
-      "doi": "10.1080/neolib.112",
-      "publisher": "Akademik Yayıncılık",
+      "title": "Debt and Subjectivity: A Foucauldian Analysis of Household Financialization in Turkey",
+      "abstract": "This study examines the micro-political effects of household debt on middle-class subjectivity in Istanbul through 45 in-depth interviews conducted between 2020 and 2023. Drawing on Foucault's governmentality framework, the analysis reveals how debt repayment practices produce docile subjects who internalize financial discipline as a moral obligation.",
+      "url": "https://doi.org/10.1000/example1",
+      "doi": "10.1000/example1",
+      "publisher": "Journal of Social Inquiry",
       "publicationYear": 2022,
       "authors": ["Ahmet Yılmaz", "Ayşe Demir"]
     }
@@ -139,15 +174,15 @@ Sen akademik literatür değerlendirmesi, kaynak taksonomisi ve bibliyografik hi
   "reservedPool": []
 }
 </ornek_beklenen_cikti>
-_Not: 10.1016/j.soc.2019 doi'li makale siftingScore'u 64 olduğu ve barajın altında kaldığı için listeye dahil edilmemiş, sahte veri üretilmemiş, havuzlar esnek şekilde kapatılmıştır._`;
+_Not: W987654321 nolu makale metodolojik sistematik argüman içermediği ve yalnızca genel bir değerlendirme sunduğu için Acımasız Eleme kuralı gereği listelere dahil edilmemiş, kotalar eksik kapatılmıştır._`;
 }
 
 // ============================================================================
-// 3. KULLANICI PROMPT OLUŞTURUCU (%100 TÜRKÇE)
+// 3. KULLANICI PROMPT OLUŞTURUCU (%100 TÜRKÇE) — TEK AŞAMALI
 // ============================================================================
-export function buildLiteratureJuryAnalysisPrompt(
+export function buildLiteratureAcademicReviewPrompt(
   box: { title: string; description: string },
-  siftedCandidates: {
+  candidates: {
     refId: string;
     doi: string;
     title: string;
@@ -156,9 +191,17 @@ export function buildLiteratureJuryAnalysisPrompt(
     publisher?: string;
     publicationYear?: number;
     authors: string[];
-    siftingScore?: number;
+    relevanceScore: number;
   }[],
+  thesisCtx: {
+    studyTitle: string;
+    researchQuestion: string;
+    theoreticalFramework: string;
+    historicalLimits: string;
+    spatialLimits: string;
+  },
 ): string {
+  const temporalSpatialContext = `${thesisCtx.historicalLimits} | ${thesisCtx.spatialLimits}`;
   return `<hedef_alt_kutu>
 {
   "title": "${box.title.replace(/"/g, '\\"')}",
@@ -166,16 +209,28 @@ export function buildLiteratureJuryAnalysisPrompt(
 }
 </hedef_alt_kutu>
 
-<suzulen_adaylar>
-${JSON.stringify(siftedCandidates)}
-</suzulen_adaylar>
+<kuresel_tez_matrisi>
+{
+  "studyTitle": "${thesisCtx.studyTitle.replace(/"/g, '\\"')}",
+  "researchQuestion": "${thesisCtx.researchQuestion.replace(/"/g, '\\"')}",
+  "theoreticalFramework": "${thesisCtx.theoreticalFramework.replace(/"/g, '\\"')}",
+  "historicalSpatialLimits": "${temporalSpatialContext.replace(/"/g, '\\"')}"
+}
+</kuresel_tez_matrisi>
+
+<aday_makale_listesi>
+${JSON.stringify(candidates)}
+</aday_makale_listesi>
 
 # TALİMATLAR VE GÖREV
-Sistem talimatında belirtilen "AKADEMİK BARAJ PUANI" ve "ESNEK KOTA KURALI" yönergelerine harfiyen uyarak, <suzulen_adaylar> listesini analiz et. \`siftingScore\` barajlarına göre makaleleri ayıkla, hiyerarşik önem sırasına diz ve <hedef_alt_kutu> omurgasını besleyecek şekilde "starterPack" ve "reservedPool" dizilerine kusursuz bir bibliyografik sadakatle yerleştir.
+Sistem talimatında belirtilen "Metodoloji Süzgeç Kuralı", "Kesin Ret Kuralı", "Akademik Baraj" ve "Esnek Kota Kuralı" yönergelerine harfiyen uyarak <aday_makale_listesi> içerisindeki her bir makaleyi <hedef_alt_kutu> ve <kuresel_tez_matrisi> ışığında değerlendir.
+
+Önce her makaleyi metodolojik geçerlilik açısından bağımsız olarak süz. Metodolojik süzgeçten geçenleri daha sonra anlamsal ve epistemolojik önemlerine göre "starterPack" (en fazla 5, PRIMARY/SECONDARY etiketiyle) veya "reservedPool" (en fazla 15) listelerine yerleştir. Süzgeçten geçemeyenleri kesinlikle dışarıda bırak.
 
 # KRİTİK GÜVENLİK BARIYERI
-- Tamamen sağlanan gerçek veri kümesine bağlı kal (Strictly Grounded). Listeleri şişirmek veya kotayı tamamlamak adına asla sahte makale, uydurma yazar veya uydurma DOI türetme.
-- Orijinal aday verisindeki yazarlar, başlıklar ve özet metinleri üzerinde keyfi değişiklik veya kısaltma yapma. Yanıt dilinin tamamen Türkçe kurallarına uygun, temiz veri formatında olmasını sağla.
+- Tamamen sağlanan girdi listesindeki ham verilere bağlı kal (Strictly Grounded). Listeleri şişirmek veya kotayı tamamlamak adına asla sahte makale, uydurma yazar veya uydurma DOI türetme.
+- Orijinal aday verisindeki yazarlar, başlıklar ve özet metinleri üzerinde keyfi değişiklik veya kısaltma yapma.
+- Her makalenin \`refId\` değerini \`id\` alanına eksiksiz taşı — bu eşleme için zorunludur.
 
 Dahili olarak çok derinlemesine düşün (Think extremely hard) ve sadece nihai şemaya uygun ham JSON nesnesini döndür.`;
 }

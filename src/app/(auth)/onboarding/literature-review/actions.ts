@@ -18,10 +18,7 @@ import type {
   JuryArticle,
 } from "@/lib/types";
 import type { NewLibraryResource } from "@/db/schema";
-import type {
-  SubBoxInput,
-  ValidatedPaper,
-} from "./_services/literature-review-papers";
+import type { SubBoxInput } from "./_services/literature-review-papers";
 import { mergePapers } from "./_services/literature-review-papers";
 import {
   searchOpenAlex,
@@ -30,37 +27,9 @@ import {
 } from "./_services/search-api";
 import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
 import {
-  runSiftingStage,
-  runJuryStage,
-  enrichJuryArticleWithCrossRef,
+  runAcademicReviewStage,
   type LiteratureReviewResult,
 } from "./_services/ai-processor";
-
-// ============================================================================
-// Helper: enrichBatch — processes articles in concurrency-limited batches
-// ============================================================================
-
-const CROSSREF_CONCURRENCY = 5;
-
-async function enrichBatch(
-  articles: JuryArticle[],
-  pool: ValidatedPaper[],
-  logger?: Logger,
-): Promise<JuryArticle[]> {
-  const results: JuryArticle[] = [];
-  for (let i = 0; i < articles.length; i += CROSSREF_CONCURRENCY) {
-    const batch = articles.slice(i, i + CROSSREF_CONCURRENCY);
-    const enriched = await Promise.all(
-      batch.map((a) => enrichJuryArticleWithCrossRef(a, pool, logger)),
-    );
-    results.push(...enriched);
-
-    if (i + CROSSREF_CONCURRENCY < articles.length) {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    }
-  }
-  return results;
-}
 
 // ============================================================================
 // Helper: isArchivalBox — detects boxes that should bypass external APIs
@@ -101,7 +70,7 @@ function isArchivalBox(subBox: SubBoxInput): boolean {
  * 1. Foundational track — resolves seminal works via OpenAlex or fallback,
  *    directly converts to JuryArticle[] (bypasses all AI stages)
  * 2. OpenAlex semantic search for non-foundational papers
- * 3. Merge + AI sifting + abstract recovery + AI jury + CrossRef validation
+ * 3. Merge + abstract recovery + single-stage AI academic review (eleme + jüri)
  *    on non-foundational papers only
  * 4. Final assembly — foundational articles prepended, duplicates removed
  */
@@ -232,53 +201,21 @@ async function processSingleBox(
     data: { mergedCount: merged.length, context: boxCtx },
   });
 
-  const rawApiPool = merged;
-
-  // Patch empty abstracts before AI sifting so the model never sees
-  // a null/blank abstract and discards a potentially relevant paper.
-  for (const p of merged) {
-    if (!p.abstract || !p.abstract.trim()) {
-      p.abstract = "Özet verisi bulunamadı, başlık üzerinden değerlendirin";
-    }
-  }
-
   // ------------------------------------------------------------------
-  // Stage 4: AI Sifting (semantic papers only)
-  // ------------------------------------------------------------------
-  const siftStart = performance.now();
-  const sifted = await runSiftingStage(subBox, merged, logger, thesisCtx);
-
-  logger.info("literature_sifting_done", {
-    service: "literature",
-    durationMs: performance.now() - siftStart,
-    filePath: "onboarding/literature-review/actions.ts",
-    status: "SUCCESS",
-    data: {
-      before: merged.length,
-      after: sifted.length,
-      context: boxCtx,
-    },
-  });
-
-  if (sifted.length === 0) {
-    return { starterPack: foundationalArticles, reservedPool: [] };
-  }
-
-  // ------------------------------------------------------------------
-  // Stage 5: Full Abstract Recovery (post-sifting)
+  // Stage 4: Full Abstract Recovery (all merged papers)
   // ------------------------------------------------------------------
   const abstractStart = performance.now();
-  const siftedIds: string[] = [];
-  for (const p of sifted) {
-    if (p.openAlexId) siftedIds.push(p.openAlexId);
+  const mergedIds: string[] = [];
+  for (const p of merged) {
+    if (p.openAlexId) mergedIds.push(p.openAlexId);
   }
 
   let abstractMap = new Map<string, string>();
-  if (siftedIds.length > 0) {
-    abstractMap = await fetchFullAbstracts(siftedIds, logger);
+  if (mergedIds.length > 0) {
+    abstractMap = await fetchFullAbstracts(mergedIds, logger);
   }
 
-  for (const p of sifted) {
+  for (const p of merged) {
     if (p.openAlexId) {
       const resolved = abstractMap.get(p.openAlexId);
       if (resolved) p.abstract = resolved;
@@ -294,55 +231,33 @@ async function processSingleBox(
     filePath: "onboarding/literature-review/actions.ts",
     status: "SUCCESS",
     data: {
-      count: siftedIds.length,
+      count: mergedIds.length,
       resultCount: abstractMap.size,
       context: boxCtx,
     },
   });
 
   // ------------------------------------------------------------------
-  // Stage 6: AI Jury Analysis (semantic papers only)
+  // Stage 5: Single-stage AI Academic Review (eleme + jüri)
   // ------------------------------------------------------------------
-  const juryStart = performance.now();
-  const result = await runJuryStage(subBox, sifted, logger);
+  const reviewStart = performance.now();
+  const result = await runAcademicReviewStage(
+    subBox,
+    merged,
+    logger,
+    thesisCtx,
+  );
 
-  logger.info("literature_jury_done", {
+  logger.info("literature_academic_review_done", {
     service: "literature",
-    durationMs: performance.now() - juryStart,
+    durationMs: performance.now() - reviewStart,
     filePath: "onboarding/literature-review/actions.ts",
     status: "SUCCESS",
     data: {
-      count: sifted.length,
+      count: merged.length,
       resultCount: result.starterPack.length + result.reservedPool.length,
       starterPackCount: result.starterPack.length,
       reservedPoolCount: result.reservedPool.length,
-      context: boxCtx,
-    },
-  });
-
-  // ------------------------------------------------------------------
-  // Stage 7: CrossRef Polite-Pool Validation
-  // ------------------------------------------------------------------
-  const crossrefStart = performance.now();
-  const enrichedStarterPack = await enrichBatch(
-    result.starterPack,
-    rawApiPool,
-    logger,
-  );
-  await new Promise((resolve) => setTimeout(resolve, 600));
-  const enrichedReservedPool = await enrichBatch(
-    result.reservedPool,
-    rawApiPool,
-    logger,
-  );
-
-  logger.info("literature_crossref_done", {
-    service: "literature",
-    durationMs: performance.now() - crossrefStart,
-    filePath: "onboarding/literature-review/actions.ts",
-    status: "SUCCESS",
-    data: {
-      enrichedCount: enrichedStarterPack.length + enrichedReservedPool.length,
       context: boxCtx,
     },
   });
@@ -357,10 +272,10 @@ async function processSingleBox(
         .filter(Boolean),
     );
 
-    const dedupedStarterPack = enrichedStarterPack.filter(
+    const dedupedStarterPack = result.starterPack.filter(
       (a) => !a.title || !foundationalTitles.has(a.title.toLowerCase().trim()),
     );
-    const dedupedReservedPool = enrichedReservedPool.filter(
+    const dedupedReservedPool = result.reservedPool.filter(
       (a) => !a.title || !foundationalTitles.has(a.title.toLowerCase().trim()),
     );
 
@@ -371,8 +286,8 @@ async function processSingleBox(
   }
 
   return {
-    starterPack: enrichedStarterPack,
-    reservedPool: enrichedReservedPool,
+    starterPack: result.starterPack,
+    reservedPool: result.reservedPool,
   };
 }
 
@@ -382,8 +297,8 @@ async function processSingleBox(
 
 /**
  * Processes multiple sub-boxes through the literature review pipeline in parallel.
- * Each box goes through: OpenAlex search → dedup → AI sifting → abstract recovery
- * → jury analysis → CrossRef validation.
+ * Each box goes through: OpenAlex search → dedup → abstract recovery → single-stage
+ * AI academic review (eleme + jüri dağıtımı).
  *
  * @param subBoxes - Array of SubBoxInput to process concurrently
  * @returns Array of LiteratureReviewResult in the same order as the input, or an error message
@@ -414,30 +329,26 @@ export async function processLiteratureReviewAction(
 
     if (!thesisCtx) return { error: "Tez matrisi bulunamadı." };
 
-    const results: LiteratureReviewResult[] = [];
-
-    for (const box of subBoxes) {
-      try {
-        const result = await processSingleBox(box, thesisCtx, logger);
-        results.push(result);
-      } catch (err) {
-        const boxTitle = box.title ?? "Bilinmeyen kutu";
-        logger.error("literature_box_failed", {
-          service: "literature",
-          filePath: "onboarding/literature-review/actions.ts",
-          data: { subBoxTitle: boxTitle },
-          error: err,
-        });
-        results.push({
-          starterPack: [],
-          reservedPool: [],
-          error: `Kutu "${boxTitle}" işlenirken hata: ${err instanceof Error ? err.message : "Bilinmeyen hata"}`,
-        });
-      }
-
-      // 1200ms delay between boxes to respect OpenAlex rate limits
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-    }
+    const results = await Promise.all(
+      subBoxes.map(async (box) => {
+        try {
+          return await processSingleBox(box, thesisCtx, logger);
+        } catch (err) {
+          const boxTitle = box.title ?? "Bilinmeyen kutu";
+          logger.error("literature_box_failed", {
+            service: "literature",
+            filePath: "onboarding/literature-review/actions.ts",
+            data: { subBoxTitle: boxTitle },
+            error: err,
+          });
+          return {
+            starterPack: [],
+            reservedPool: [],
+            error: `Kutu "${boxTitle}" işlenirken hata: ${err instanceof Error ? err.message : "Bilinmeyen hata"}`,
+          };
+        }
+      }),
+    );
 
     revalidatePath("/onboarding/literature-review");
 

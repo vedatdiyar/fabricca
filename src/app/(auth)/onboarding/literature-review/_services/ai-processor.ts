@@ -1,18 +1,13 @@
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
 import {
-  buildLiteratureSiftingPrompt,
-  buildLiteratureJuryAnalysisPrompt,
-  buildLiteratureSiftingSystemInstruction,
-  buildLiteratureJuryAnalysisSystemInstruction,
-  literatureSiftingSchema,
+  buildLiteratureAcademicReviewPrompt,
+  buildLiteratureAcademicReviewSystemInstruction,
   literatureJuryAnalysisSchema,
 } from "@/lib/prompts";
 import { Logger } from "@/lib/logger";
 import type { SubBoxInput, ValidatedPaper } from "./literature-review-papers";
 import type { JuryArticle } from "@/lib/types";
-import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
-import { validateWithCrossRef } from "./search-api";
 
 // ============================================================================
 // Literature Review Result Types
@@ -26,110 +21,7 @@ export interface LiteratureReviewResult {
 }
 
 // ============================================================================
-// AI Sifting Stage
-// ============================================================================
-
-interface SiftingResultItem {
-  id: string;
-  status: "ACCEPT" | "REJECT";
-}
-
-interface SiftingResponse {
-  siftedResults: SiftingResultItem[];
-}
-
-export async function runSiftingStage(
-  box: SubBoxInput,
-  candidates: ValidatedPaper[],
-  logger: Logger,
-  thesisCtx: {
-    studyTitle: string;
-    researchQuestion: string;
-    theoreticalFramework: string;
-    historicalLimits: string;
-    spatialLimits: string;
-  },
-): Promise<ValidatedPaper[]> {
-  logger.file("ai-processor.ts:43");
-  const CHUNK_SIZE = 60;
-  const keptDecisions = new Map<string, boolean>();
-
-  for (let i = 0; i < candidates.length; i += CHUNK_SIZE) {
-    const chunk = candidates.slice(i, i + CHUNK_SIZE);
-    const chunkIndex = Math.floor(i / CHUNK_SIZE) + 1;
-    const totalChunks = Math.ceil(candidates.length / CHUNK_SIZE);
-
-    const siftingInput = chunk.map((c) => ({
-      id: c.openAlexId ?? c.doi ?? "title:" + c.title,
-      title: c.title,
-      abstract_clean: c.abstract ?? "",
-      relevance_score: c.relevanceScore,
-    }));
-
-    const siftPrompt = buildLiteratureSiftingPrompt(
-      {
-        title: box.title,
-        description: box.description,
-      },
-      siftingInput,
-      thesisCtx,
-    );
-    if (chunkIndex === 1) {
-      logger.prompt("gemini-3.1-flash-lite (LOW thinking)", siftPrompt);
-    }
-
-    const siftingResult = await generateStructuredContent<SiftingResponse>(
-      "gemini-3.1-flash-lite",
-      buildLiteratureSiftingSystemInstruction(),
-      siftPrompt,
-      literatureSiftingSchema,
-      logger,
-      {
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-        payloadStage: "sifting",
-      },
-    );
-
-    for (const r of siftingResult.siftedResults) {
-      if (r.status === "ACCEPT") {
-        keptDecisions.set("id:" + r.id, true);
-      }
-    }
-
-    logger.info("literature_sifting_chunk", {
-      service: "literature",
-      data: {
-        chunkIndex,
-        totalChunks,
-        chunkSize: chunk.length,
-        keptInChunk: siftingResult.siftedResults.filter(
-          (r) => r.status === "ACCEPT",
-        ).length,
-      },
-    });
-  }
-
-  const kept = candidates.filter((c) => {
-    const id = c.openAlexId ?? c.doi ?? "title:" + c.title;
-    return id ? keptDecisions.has("id:" + id) : false;
-  });
-
-  for (const c of kept) {
-    (c as unknown as Record<string, unknown>).siftingScore = Math.round(
-      c.relevanceScore * 100,
-    );
-  }
-
-  logger.data("Sifting Kept/Total", {
-    kept: kept.length,
-    total: candidates.length,
-  });
-
-  return kept;
-}
-
-// ============================================================================
-// AI Jury Analysis Stage
+// Single-Stage Academic Review (Eleme + Jüri Dağıtımı)
 // ============================================================================
 
 interface JuryResponseItem {
@@ -149,17 +41,24 @@ interface JuryResponse {
   reservedPool: JuryResponseItem[];
 }
 
-export async function runJuryStage(
+export async function runAcademicReviewStage(
   box: SubBoxInput,
-  sifted: ValidatedPaper[],
+  candidates: ValidatedPaper[],
   logger: Logger,
+  thesisCtx: {
+    studyTitle: string;
+    researchQuestion: string;
+    theoreticalFramework: string;
+    historicalLimits: string;
+    spatialLimits: string;
+  },
 ): Promise<LiteratureReviewResult> {
-  logger.file("ai-processor.ts:144");
+  logger.file("ai-processor.ts:runAcademicReviewStage");
 
   // Build a stable refId for each candidate so we can match Gemini's output
   // back to the original data. This is the hallucination firewall: any article
   // Gemini returns with an id NOT in this set is silently discarded.
-  const juryCandidates = sifted.map((c) => ({
+  const reviewCandidates = candidates.map((c) => ({
     refId: c.openAlexId ?? c.doi ?? "title:" + c.title,
     doi: c.doi ?? "",
     title: c.title,
@@ -168,15 +67,14 @@ export async function runJuryStage(
     publisher: c.publisher ?? "",
     publicationYear: c.year ?? 0,
     authors: c.authors,
-    siftingScore:
-      ((c as unknown as Record<string, unknown>).siftingScore as number) ?? 0,
+    relevanceScore: Math.round(c.relevanceScore * 100),
   }));
 
-  const validRefIds = new Set(juryCandidates.map((c) => c.refId));
+  const validRefIds = new Set(reviewCandidates.map((c) => c.refId));
 
   // Build lookup for isFoundational backfill
   const foundationalLookup = new Map<string, boolean>();
-  for (const p of sifted) {
+  for (const p of candidates) {
     if (p.doi) {
       foundationalLookup.set("doi:" + p.doi, p.isFoundational);
     }
@@ -190,30 +88,32 @@ export async function runJuryStage(
 
   logger.prompt(
     "gemini-3.1-flash-lite (HIGH thinking)",
-    buildLiteratureJuryAnalysisPrompt(
+    buildLiteratureAcademicReviewPrompt(
       {
         title: box.title,
         description: box.description,
       },
-      juryCandidates,
+      reviewCandidates,
+      thesisCtx,
     ),
   );
 
-  const juryResult = await generateStructuredContent<JuryResponse>(
+  const reviewResult = await generateStructuredContent<JuryResponse>(
     "gemini-3.1-flash-lite",
-    buildLiteratureJuryAnalysisSystemInstruction(),
-    buildLiteratureJuryAnalysisPrompt(
+    buildLiteratureAcademicReviewSystemInstruction(),
+    buildLiteratureAcademicReviewPrompt(
       {
         title: box.title,
         description: box.description,
       },
-      juryCandidates,
+      reviewCandidates,
+      thesisCtx,
     ),
     literatureJuryAnalysisSchema,
     logger,
     {
       thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
-      payloadStage: "jury",
+      payloadStage: "academic-review",
     },
   );
 
@@ -238,21 +138,21 @@ export async function runJuryStage(
     };
   }
 
-  const filteredStarterPack = filterHallucinated(juryResult.starterPack).map(
+  const filteredStarterPack = filterHallucinated(reviewResult.starterPack).map(
     toJuryArticle,
   );
-  const filteredReservedPool = filterHallucinated(juryResult.reservedPool).map(
-    toJuryArticle,
-  );
+  const filteredReservedPool = filterHallucinated(
+    reviewResult.reservedPool,
+  ).map(toJuryArticle);
 
   const hallutotal =
-    juryResult.starterPack.length + juryResult.reservedPool.length;
+    reviewResult.starterPack.length + reviewResult.reservedPool.length;
   const filteredTotal =
     filteredStarterPack.length + filteredReservedPool.length;
   const hallucinationCount = hallutotal - filteredTotal;
 
   if (hallucinationCount > 0) {
-    logger.warn("literature_jury_hallucination_filtered", {
+    logger.warn("literature_review_hallucination_filtered", {
       service: "literature",
       filePath: "ai-processor.ts",
       data: {
@@ -273,7 +173,7 @@ export async function runJuryStage(
     ),
   };
 
-  logger.data("Jury Split", {
+  logger.data("Academic Review Split", {
     starterPack: result.starterPack.length,
     reservedPool: result.reservedPool.length,
   });
@@ -301,61 +201,4 @@ function backfillIsFoundational(
     }
     return { ...a, isFoundational: found };
   });
-}
-
-// ============================================================================
-// CrossRef & Enrichment Helper (polite-pool)
-// ============================================================================
-
-export async function enrichJuryArticleWithCrossRef(
-  article: JuryArticle,
-  pool: ValidatedPaper[],
-  logger?: Logger,
-): Promise<JuryArticle> {
-  let resolvedAbstract = article.abstract;
-
-  if (article.doi) {
-    const match = pool.find((p) => p.doi === article.doi);
-    if (match?.abstract) {
-      resolvedAbstract = match.abstract;
-    }
-  } else if (article.title) {
-    const titleKey = article.title.toLowerCase().trim().slice(0, 80);
-    const match = pool.find(
-      (p) => p.title?.toLowerCase().trim().slice(0, 80) === titleKey,
-    );
-    if (match?.abstract) {
-      resolvedAbstract = match.abstract;
-    }
-  }
-
-  if (!article.doi) {
-    return { ...article, abstract: resolvedAbstract };
-  }
-
-  const paper: ValidatedPaper = {
-    title: article.title,
-    abstract: resolvedAbstract,
-    metadata: null,
-    doi: article.doi,
-    url: article.url,
-    authors: [...article.authors],
-    year: article.publicationYear,
-    publisher: article.publisher,
-    openAlexId: null,
-    isFoundational: article.isFoundational ?? false,
-    relevanceScore: 0,
-  };
-
-  const enriched = await validateWithCrossRef(paper, logger);
-
-  return {
-    ...article,
-    title: formatAcademicTitle(enriched.title),
-    abstract: resolvedAbstract,
-    authors: enriched.authors.length > 0 ? enriched.authors : article.authors,
-    url: enriched.url ?? article.url,
-    publisher: enriched.publisher ?? article.publisher,
-    publicationYear: enriched.year ?? article.publicationYear,
-  };
 }
