@@ -18,7 +18,10 @@ import type {
   JuryArticle,
 } from "@/lib/types";
 import type { NewLibraryResource } from "@/db/schema";
-import type { SubBoxInput } from "./_services/literature-review-papers";
+import type {
+  SubBoxInput,
+  RawPaper,
+} from "./_services/literature-review-papers";
 import { mergePapers } from "./_services/literature-review-papers";
 import {
   searchOpenAlex,
@@ -35,17 +38,6 @@ import {
 // Helper: isArchivalBox — detects boxes that should bypass external APIs
 // ============================================================================
 
-/**
- * Determines whether a sub-box focuses on primary archival/empirical sources.
- * Such boxes bypass OpenAlex search, AI sifting, jury analysis, and CrossRef
- * validation. Instead, manual archive entries are collected on the frontend
- * and saved directly as PRIMARY-type resources.
- *
- * Detection is two-pronged:
- * 1. boxType === "Ampirik" | "Arşiv" (primary signal)
- * 2. foundationalQueries contain explicit archival fund/code patterns
- *    (e.g. BCA, TBMM Zabıtları)
- */
 function isArchivalBox(subBox: SubBoxInput): boolean {
   const ARCHIVAL_TYPES = new Set(["Ampirik", "Arşiv"]);
   if (ARCHIVAL_TYPES.has(subBox.boxType ?? "")) return true;
@@ -62,18 +54,47 @@ function isArchivalBox(subBox: SubBoxInput): boolean {
 }
 
 // ============================================================================
+// Helper: withOpenAlexRetry — retries searchOpenAlex on 429/network errors
+// ============================================================================
+
+async function withOpenAlexRetry(
+  query: string,
+  logger: Logger,
+): Promise<RawPaper[]> {
+  const MAX_ATTEMPTS = 3;
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      return await searchOpenAlex(query);
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+
+      if (attempt < MAX_ATTEMPTS) {
+        const delayMs = Math.random() * 300 + 200;
+        logger.warn("openalex_rate_limit_retry", {
+          service: "literature",
+          filePath: "onboarding/literature-review/actions.ts",
+          data: {
+            attempt,
+            maxAttempts: MAX_ATTEMPTS,
+            delayMs: Math.round(delayMs),
+            query: query.substring(0, 120),
+            error: lastError.message,
+          },
+        });
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+
+  throw lastError ?? new Error("OpenAlex isteği başarısız oldu");
+}
+
+// ============================================================================
 // Helper: processSingleBox — processes a single sub-box through the pipeline
 // ============================================================================
 
-/**
- * Runs the full literature review pipeline for a single sub-box:
- * 1. Foundational track — resolves seminal works via OpenAlex or fallback,
- *    directly converts to JuryArticle[] (bypasses all AI stages)
- * 2. OpenAlex semantic search for non-foundational papers
- * 3. Merge + abstract recovery + single-stage AI academic review (eleme + jüri)
- *    on non-foundational papers only
- * 4. Final assembly — foundational articles prepended, duplicates removed
- */
 async function processSingleBox(
   subBox: SubBoxInput,
   thesisCtx: {
@@ -85,19 +106,6 @@ async function processSingleBox(
   },
   logger: Logger,
 ): Promise<LiteratureReviewResult> {
-  if (!subBox.semanticSearchBlock.trim()) {
-    return { starterPack: [], reservedPool: [] };
-  }
-
-  // ------------------------------------------------------------------
-  // Stage 0: Archival / Empirical Bypass
-  //   Boxes with boxType === "Ampirik" | "Arşiv" or containing archival
-  //   patterns in foundationalQueries skip ALL external API calls and AI
-  //   stages. The frontend renders a manual entry form where the user
-  //   inputs primary archive fund codes; those entries are converted to
-  //   JuryArticle[] with type: "PRIMARY" and saved directly to the DB
-  //   via the standard confirmLiteratureAction pipeline.
-  // ------------------------------------------------------------------
   if (isArchivalBox(subBox)) {
     logger.info("literature_archival_bypass", {
       service: "literature",
@@ -110,6 +118,10 @@ async function processSingleBox(
       },
     });
     return { starterPack: [], reservedPool: [], isArchivalBypass: true };
+  }
+
+  if (!subBox.semanticSearchBlock.trim()) {
+    return { starterPack: [], reservedPool: [] };
   }
 
   const boxCtx = `Kutu: ${subBox.title}`;
@@ -160,7 +172,7 @@ async function processSingleBox(
   }
 
   // ------------------------------------------------------------------
-  // Stage 2: OpenAlex semantic search (non-foundational only)
+  // Stage 2: OpenAlex semantic search (retry-safe)
   // ------------------------------------------------------------------
   logger.info("literature_search_start", {
     service: "literature",
@@ -169,7 +181,10 @@ async function processSingleBox(
   });
 
   const searchStart = performance.now();
-  const semanticRaw = await searchOpenAlex(subBox.semanticSearchBlock);
+  const semanticRaw = await withOpenAlexRetry(
+    subBox.semanticSearchBlock,
+    logger,
+  );
 
   logger.info("literature_search_done", {
     service: "literature",
@@ -292,21 +307,22 @@ async function processSingleBox(
 }
 
 // ============================================================================
-// Main Action: processLiteratureReviewAction (bulk/parallel)
+// Main Action: processLiteratureReviewAction (chunked concurrency)
 // ============================================================================
 
-/**
- * Processes multiple sub-boxes through the literature review pipeline in parallel.
- * Each box goes through: OpenAlex search → dedup → abstract recovery → single-stage
- * AI academic review (eleme + jüri dağıtımı).
- *
- * @param subBoxes - Array of SubBoxInput to process concurrently
- * @returns Array of LiteratureReviewResult in the same order as the input, or an error message
- */
 export async function processLiteratureReviewAction(
   subBoxes: SubBoxInput[],
 ): Promise<{ data?: LiteratureReviewResult[]; error?: string }> {
   const logger = new Logger(createFlowId());
+
+  logger.info("literature_process_start", {
+    service: "literature",
+    filePath: "onboarding/literature-review/actions.ts",
+    data: {
+      context: "Literatür taraması başlatıldı",
+      subBoxCount: subBoxes?.length ?? 0,
+    },
+  });
 
   try {
     if (!subBoxes || subBoxes.length === 0) {
@@ -329,26 +345,33 @@ export async function processLiteratureReviewAction(
 
     if (!thesisCtx) return { error: "Tez matrisi bulunamadı." };
 
-    const results = await Promise.all(
-      subBoxes.map(async (box) => {
-        try {
-          return await processSingleBox(box, thesisCtx, logger);
-        } catch (err) {
-          const boxTitle = box.title ?? "Bilinmeyen kutu";
-          logger.error("literature_box_failed", {
-            service: "literature",
-            filePath: "onboarding/literature-review/actions.ts",
-            data: { subBoxTitle: boxTitle },
-            error: err,
-          });
-          return {
-            starterPack: [],
-            reservedPool: [],
-            error: `Kutu "${boxTitle}" işlenirken hata: ${err instanceof Error ? err.message : "Bilinmeyen hata"}`,
-          };
-        }
-      }),
-    );
+    const CONCURRENCY_LIMIT = 2;
+    const results: LiteratureReviewResult[] = [];
+
+    for (let i = 0; i < subBoxes.length; i += CONCURRENCY_LIMIT) {
+      const chunk = subBoxes.slice(i, i + CONCURRENCY_LIMIT);
+      const chunkResults = await Promise.all(
+        chunk.map(async (box) => {
+          try {
+            return await processSingleBox(box, thesisCtx, logger);
+          } catch (err) {
+            const boxTitle = box.title ?? "Bilinmeyen kutu";
+            logger.error("literature_box_failed", {
+              service: "literature",
+              filePath: "onboarding/literature-review/actions.ts",
+              data: { subBoxTitle: boxTitle },
+              error: err,
+            });
+            return {
+              starterPack: [],
+              reservedPool: [],
+              error: `Kutu "${boxTitle}" işlenirken hata: ${err instanceof Error ? err.message : "Bilinmeyen hata"}`,
+            };
+          }
+        }),
+      );
+      results.push(...chunkResults);
+    }
 
     revalidatePath("/onboarding/literature-review");
 
@@ -369,23 +392,6 @@ export async function processLiteratureReviewAction(
 
 const COOKIE_NAME = "fabricca_session";
 
-/**
- * Finalizes the onboarding process by bulk-inserting literature review results
- * and marking the user as fully onboarded.
- *
- * 1. Validates session and retrieves the user's thesis matrix.
- * 2. In a single Drizzle transaction:
- *    a. Maps each `LiteraturePoolEntry` to sub-box DB IDs.
- *    b. Inserts starter pack articles with `status: APPROVED`.
- *    c. Inserts reserved pool articles with `status: RESERVED`.
- *    d. Sets `users.onboardingCompleted = true`.
- * 3. Updates the `fabricca_session` cookie with `onboardingCompleted: true`.
- * 4. Revalidates paths and returns success.
- *
- * @param args - Object containing the literature pool data
- * @param args.literaturePool - Array of LiteraturePoolEntry from Zustand store
- * @returns Onboarding action result indicating success or an error message
- */
 export async function confirmLiteratureAction(args: {
   literaturePool: LiteraturePoolEntry[];
 }): Promise<OnboardingActionResult> {
@@ -416,7 +422,6 @@ export async function confirmLiteratureAction(args: {
       return { error: "Onaylanacak literatür verisi bulunamadı." };
     }
 
-    // 1. Get the user's thesis matrix
     const [matrix] = await db
       .select({ id: thesisMatrices.id })
       .from(thesisMatrices)
@@ -428,20 +433,14 @@ export async function confirmLiteratureAction(args: {
 
     const thesisMatrixId = matrix.id;
 
-    // Compute total resource count for the final summary log
-    // 2. Atomic transaction
     await db.transaction(async (tx) => {
       const allResources: NewLibraryResource[] = [];
 
-      // 2a. Bulk-fetch all boxes for this matrix (avoids N+1 queries)
       const allBoxes = await tx
         .select({ id: thesisBoxes.id, title: thesisBoxes.title })
         .from(thesisBoxes)
         .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
 
-      // Build a title→id map; detect duplicate titles that would silently
-      // overwrite each other (edge case: Gemini generates two boxes with
-      // the same title despite prompt-level safeguards).
       const boxMap = new Map<string, number>();
       for (const b of allBoxes) {
         if (boxMap.has(b.title)) {
@@ -462,7 +461,6 @@ export async function confirmLiteratureAction(args: {
           );
         }
 
-        // 2b. Map starter pack articles → APPROVED
         for (const article of entry.starterPack) {
           allResources.push({
             thesisBoxId,
@@ -479,7 +477,6 @@ export async function confirmLiteratureAction(args: {
           });
         }
 
-        // 2c. Map reserved pool articles → RESERVED
         for (const article of entry.reservedPool) {
           allResources.push({
             thesisBoxId,
@@ -497,8 +494,6 @@ export async function confirmLiteratureAction(args: {
         }
       }
 
-      // 2d. Bulk insert all literature resources (onConflictDoNothing guards
-      // against double-submit races — duplicate rows are silently skipped).
       if (allResources.length > 0) {
         await tx
           .insert(libraryResources)
@@ -506,14 +501,12 @@ export async function confirmLiteratureAction(args: {
           .onConflictDoNothing();
       }
 
-      // 2e. Mark onboarding as completed
       await tx
         .update(users)
         .set({ onboardingCompleted: true })
         .where(eq(users.id, userId));
     });
 
-    // 3. Update session cookie with onboardingCompleted: true
     try {
       const cookieStore = await cookies();
       cookieStore.set(
@@ -535,7 +528,6 @@ export async function confirmLiteratureAction(args: {
       // Session cookie update skipped
     }
 
-    // 4. Revalidate paths
     try {
       revalidatePath("/onboarding", "layout");
       revalidatePath("/", "layout");

@@ -67,7 +67,6 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   const [confirming, setConfirming] = useState(false);
   const [processing, setProcessing] = useState(false);
   const processingRef = useRef(false);
-  const hasAutoTriggeredRef = useRef(false);
   const [boxStatuses, setBoxStatuses] = useState<Record<string, BoxStatus>>({});
   const [boxErrors, setBoxErrors] = useState<Record<string, string>>({});
   const [archivalBoxes, setArchivalBoxes] = useState<Set<string>>(new Set());
@@ -327,13 +326,29 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   }, [literaturePool, resetStore, router]);
 
   // Auto-trigger review process when boxes load and pool is empty.
+  // Uses state-based guards (loading, processing, literaturePool) instead of a
+  // ref to remain correct under React Strict Mode (double-mount).
   useEffect(() => {
-    if (loading || processing || hasAutoTriggeredRef.current) return;
-    if (subBoxes.length > 0 && !allProcessed) {
-      hasAutoTriggeredRef.current = true;
+    if (loading) return;
+    if (processing) return;
+    if (subBoxes.length === 0) return;
+
+    const allDone = subBoxes.every((box) =>
+      literaturePool.some((entry) => entry.subBoxTitle === box.title),
+    );
+
+    if (!allDone) {
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          "[literature] auto-trigger: starting review for",
+          subBoxes.length,
+          "boxes, pool size:",
+          literaturePool.length,
+        );
+      }
       startReviewProcess();
     }
-  }, [loading, processing, subBoxes, allProcessed, startReviewProcess]);
+  }, [loading, processing, subBoxes, literaturePool, startReviewProcess]);
 
   return {
     subBoxes,

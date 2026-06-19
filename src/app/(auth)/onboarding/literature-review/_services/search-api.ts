@@ -120,8 +120,11 @@ async function queryOpenAlexWorks(
   try {
     const response = await fetch(url, {
       headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(30000),
     });
+    if (response.status === 429) {
+      throw new Error("OpenAlex rate limit exceeded (429)");
+    }
     if (!response.ok) return [];
     const data = (await response.json()) as {
       results?: Record<string, unknown>[];
@@ -129,7 +132,15 @@ async function queryOpenAlexWorks(
     const results = data.results;
     if (!results) return [];
     return parseOpenAlexResults(results);
-  } catch {
+  } catch (err) {
+    if (
+      err instanceof Error &&
+      (err.message.includes("OpenAlex rate limit") ||
+        err instanceof TypeError ||
+        err.name === "AbortError")
+    ) {
+      throw err;
+    }
     return [];
   }
 }
@@ -378,7 +389,7 @@ export async function resolveFoundationalWorks(
           `https://api.openalex.org/works?${urlParams.toString()}`,
           {
             headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
-            signal: AbortSignal.timeout(15000),
+            signal: AbortSignal.timeout(30000),
           },
         );
 
@@ -493,7 +504,7 @@ export async function fetchFullAbstracts(
   try {
     const response = await fetch(url, {
       headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(30000),
     });
     if (!response.ok) {
       logger?.warn("fetch_full_abstracts_failed", {

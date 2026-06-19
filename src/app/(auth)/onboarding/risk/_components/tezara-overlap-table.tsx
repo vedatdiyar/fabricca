@@ -40,7 +40,15 @@ export function TezaraOverlapTable({
 
   const sortedTheses = useMemo<OverlapRow[]>(() => {
     if (!overlapTable) return [];
-    const items: OverlapRow[] = overlapTable.map((item) => ({ ...item }));
+    const items: OverlapRow[] = overlapTable
+      .map((item) => ({ ...item }))
+      .filter((item) => {
+        const s = item.axes.subject;
+        const t = item.axes.theory;
+        const m = item.axes.methodology;
+        const c = item.axes.context ?? "NONE";
+        return s !== "NONE" || t !== "NONE" || m !== "NONE" || c !== "NONE";
+      });
     const hasAnyNote = items.some((item) => item.comparisonNote);
 
     // If no row carries a note but a strategic roadmap exists, distribute its
