@@ -211,15 +211,12 @@ export const GeminiThesisBoxSchema = z.object({
       z.object({
         author: z.string().min(1),
         title: z.string().min(1),
-        publicationYear: z.number().int().positive(),
+        publicationYear: z.number().int().min(0),
       }),
     )
-    .min(2)
+    .min(1)
     .max(2),
   concepts: z.array(z.string()).max(3),
-  selfCorrectionJustification: z
-    .string()
-    .min(1, "Öz-denetim gerekçesi boş olamaz"),
 });
 
 export const BoxGenerationResponseSchema = z.object({

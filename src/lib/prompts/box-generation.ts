@@ -1,17 +1,17 @@
 import type { JsonSchema } from "../gemini";
 
 // ============================================================================
-// 1. JSON YANIT ŞEMASI (EVRENSEL TİPOLOJİ & ÖZ-DENETİM KİLİTLİ - 5-7 KUTU GARANTİLİ)
+// 1. JSON YANIT ŞEMASI (EVRENSEL TİPOLOJİ - 6-9 KUTU GARANTİLİ)
 // ============================================================================
 export const thesisBoxGenerationSchema: JsonSchema = {
   type: "object",
   properties: {
     boxes: {
       type: "array",
-      minItems: 5,
-      maxItems: 7,
+      minItems: 6,
+      maxItems: 9,
       description:
-        "Tezin entelektüel, metodolojik ve analitik omurgasını oluşturan, gereksiz odak dağılmasını engellemek için EN AZ 5, EN FAZLA 7 adet olacak şekilde kesin olarak sınırlandırılmış modüler, bağımsız ve kendi kendini denetlemiş kutu seti.",
+        "Tezin entelektüel, metodolojik ve analitik omurgasını oluşturan, gereksiz odak dağılmasını engellemek için EN AZ 6, EN FAZLA 9 adet olacak şekilde kesin olarak sınırlandırılmış modüler ve bağımsız kutu seti.",
       items: {
         type: "object",
         properties: {
@@ -49,10 +49,10 @@ export const thesisBoxGenerationSchema: JsonSchema = {
           },
           foundationalQueries: {
             type: "array",
-            minItems: 2,
+            minItems: 1,
             maxItems: 2,
             description:
-              "O kutunun kuramsal, yöntemsel veya ampirik kökünü oluşturan tam 2 adet mikro-analitik kurucu/klasik eserin listesi.",
+              "O kutunun kuramsal, yöntemsel veya ampirik kökünü oluşturan en az 1, en fazla 2 adet mikro-analitik kurucu/klasik eser, hakemli dergi makalesi veya kitap bölümü.",
             items: {
               type: "object",
               properties: {
@@ -73,11 +73,7 @@ export const thesisBoxGenerationSchema: JsonSchema = {
               required: ["author", "title", "publicationYear"],
             },
           },
-          selfCorrectionJustification: {
-            type: "string",
-            description:
-              "Seçilen 2 eserin tezin Zaman (historicalLimits), Mekan (spatialLimits) ve Aktör (analyticalFocus) kısıtlarına olan ampirik uyumluluk denetimi ve öz-eleştirel akademik savunmasıdır. KESİNLİKLE TÜRKÇE OLMALIDIR.",
-          },
+
           concepts: {
             type: "array",
             items: {
@@ -94,7 +90,6 @@ export const thesisBoxGenerationSchema: JsonSchema = {
           "description",
           "semanticSearchBlock",
           "foundationalQueries",
-          "selfCorrectionJustification",
           "concepts",
         ],
       },
@@ -104,7 +99,7 @@ export const thesisBoxGenerationSchema: JsonSchema = {
 };
 
 // ============================================================================
-// 2. SİSTEM TALİMATI (ÖZ-DENETİMLİ SIZDIRMAZ AKADEMİK MOTOR AYARI)
+// 2. SİSTEM TALİMATI (SIZDIRMAZ AKADEMİK MOTOR AYARI)
 // ============================================================================
 export function buildThesisBoxGenerationSystemInstruction(): string {
   return `# ROL VE GÖREV
@@ -116,20 +111,18 @@ Sen OpenAlex ve Semantic Scholar veritabanlarının indeksleme, taksonomi ve vek
 
 # OPERASYONEL KISITLAMALAR VE DİL KURALLARI
 - Kesinlikle objektif, mesafeli ve elit bir akademik Türkçe kullanacaksın.
-- DİL VE KÜRESEL ENDEKS KURALI: JSON nesnesindeki "title", "description", "concepts" ve "selfCorrectionJustification" alanları KESİNLİKLE TÜRKÇE olmalıdır. Harici tarama motorunu (OpenAlex) tetikleyecek olan "semanticSearchBlock" ve "foundationalQueries" alanları ise KESİNLİKLE akademik İNGİLİZCE ile üretilmelidir.
+- DİL VE KÜRESEL ENDEKS KURALI: JSON nesnesindeki "title", "description" ve "concepts" alanları KESİNLİKLE TÜRKÇE olmalıdır. Harici tarama motorunu (OpenAlex) tetikleyecek olan "semanticSearchBlock" ve "foundationalQueries" alanları ise KESİNLİKLE akademik İNGİLİZCE ile üretilmelidir.
 
 # KUTU MİMARİSİ VE KESİN SEÇİM METRİKLERİ
 1. 9'LU BOX TİPOLOJİSİ ENTEGRASYONU: Girdideki verileri şu 9 işlevsel tipe göre analiz et ve dağıt: [Kuram, Literatür, Bağlam, Yöntem, Veri, Analiz, Katkı, Ampirik, Arşiv]. Her kutunun "boxType" alanı bu tiplerden biri olmak zorundadır. Model, tezin sadece konusunu değil; yöntemsel, lojistik ve analitik literatür altyapısını da bağımsız birer kutu olarak inşa etmelidir.
-2. AKADEMİK KONSOLİDASYON VE KUTU SINIRI (KATI KURAL): Üretilecek toplam kutu sayısı **EN AZ 5, EN FAZLA 7** olmak zorundadır. Tezi gereksiz yere atomize edip yazım sürecini parçalama (fragmentation) tuzağına düşme! Eğer girdide 7'den fazla bağımsız bileşen, kuram veya aşama varsa, birbirine yakın olan temaları veya yöntem-veri ilişkilerini aynı kutu altında mantıksal olarak KONSOLİDE ET, birleştir. Yazım aşamasında operasyonel odak sağlamak için bu sınır kesindir.
-3. SÜREÇ VE YÖNTEM LİTERATÜRÜ AYARI: Yöntem ve Veri kutuları için "foundationalQueries" alanına KESİNLİKLE uydurma (halüsinasyon) eserler, birincil kaynak isimleri, ham arşiv adları veya ana eserin çevirmenleri/editörleri (Örn: Gramsci'nin yanına çevirmeni Quintin Hoare'u eklemek) bağımsız yazar olarak yazılamaz. Her zaman uluslararası literatürde meşruiyeti olan iki farklı yöntembilimsel/arşivsel kurucu akademik yazar yerleştirilmelidir.
+2. AKADEMİK BÖLÜMLEME VE KUTU SINIRI (KATI KURAL): Üretilecek toplam kutu sayısı EN AZ 6, EN FAZLA 9 olmak zorundadır. Girdide birden fazla bağımsız teorik ekol, farklı metodolojik yaklaşım veya çoklu ampirik bağlam varsa, bunların her biri anlamsal bütünlüğün ve vektörel tarama keskinliğinin bozulmaması için KEZİNLİKLE ayrı birer kutu (box) olarak inşa edilmelidir. Farklı teorileri veya yöntemleri asla aynı kutu altında birleştirme. Ancak bu ayrımı yaparken tezin ana omurgasını korumak için en kritik ve kurucu olan odaklara yoğunlaş, gereksiz mikro-ayrıntılara girme.
+3. SÜREÇ VE YÖNTEM LİTERATÜRÜ AYARI: Yöntem ve Veri kutuları için "foundationalQueries" alanına KESİNLİKLE uydurma (halüsinasyon) eserler, birincil kaynak isimleri, ham arşiv adları veya ana eserin çevirmenleri/editörleri (Örn: Gramsci'nin yanına çevirmeni Quintin Hoare'u eklemek) bağımsız yazar olarak yazılamaz. Her zaman uluslararası literatürde meşruiyeti olan kurucu bir veya iki akademik yazar/makale yerleştirilmelidir.
 4. SEMANTİK BLOCK DİYETİ — NARRATIVE ABSTRACT ZORUNLULUĞU (ANTI-KEYWORD-BAG RULE): "semanticSearchBlock" alanı en az 3-4 cümlelik akan paragraf (narrative abstract) formatında, doğal akademik İngilizce cümleleriyle üretilmelidir. Asla jenerik niyet kalıpları kullanma.
-5. OPENALEX %100 GERÇEK İNGİLİZCE LİTERATÜR YASASI (HALÜSİNASYON VE TÜRKÇE YASAK): "foundationalQueries" alanına yazılacak kurucu eserlerin tamamı küresel akademik indekslerde (OpenAlex, Scopus) taranabilir, KESİNLİKLE İNGİLİZCE dilinde basılmış GERÇEK kitap veya hakemli dergi makaleleri olmak zorundadır. Türkçe basılmış yerel kitaplar veya bunların uydurma İngilizce çevirileri KESİNLİKLE YASAKTIR.
+5. OPENALEX %100 GERÇEK İNGİLİZCE LİTERATÜR YASASI (HALÜSİNASYON VE TÜRKÇE YASAK): "foundationalQueries" alanına yazılacak kurucu eserlerin tamamı küresel akademik indekslerde (OpenAlex, Scopus) taranabilir, KESİNLİKLE İNGİLİZCE dilinde basılmış GERÇEK hakemli dergi makaleleri (journal articles), kitap bölümleri (book chapters) veya kitaplar olmak zorundadır. Türkçe basılmış yerel kitaplar veya bunların uydurma İngilizce çevirileri KESİNLİKLE YASAKTIR.
    - ÖZELLİKLE "Bağlam", "Analiz" ve "Katkı" kutularında yerel konular (Örn: Türkiye Solu, Kürt Hareketi) işlenirken; yerel dildeki kitaplar yerine, bu ampirik alanı uluslararası literatüre taşımış uzmanların (Örn: Hamit Bozarslan, Mesut Yeğen, Cengiz Gunes, Nicole Watts, Martin van Bruinessen, Kemal Kirisci, Feroz Ahmad vb.) uluslararası indeksli GERÇEK İngilizce kitap ve makaleleri getirilmelidir. Başlık veya yazar KESİNLİKLE uydurulamaz.
    - Bu kutularda ampirik bağlamı aşan genel makro-teorisyenler (Örn: Benedict Anderson, Charles Tilly, Sidney Tarrow, Donatella della Porta, Doug McAdam) kurucu eser olarak kullanılamaz.
-6. AKADEMİK ÖZ-DENETİM VE GEREKÇELENDİRME (MUTLAK EMİR): "foundationalQueries" alanına seçtiğin her bir eseri, tezin girdilerinde deklare edilen "historicalLimits" (Zaman), "spatialLimits" (Mekan) ve "analyticalFocus" (Aktörler) kısıtlarına göre denetleyeceksin.
-   - Seçtiğin eser tezin kronolojik dönemiyle veya coğrafyasıyla doğrudan örtüşmüyorsa (Örn: 1991 tezi için 1971 tarihli Gramsci kitabı veya 1985 tarihli Mouffe eseri seçmek), bunun akademik gerekçesini, yarattığı ampirik açığı/riski ve buna rağmen neden kaçınılmaz bir kurucu kaynak olarak seçildiğini "selfCorrectionJustification" alanında elit bir dille itiraf edip savunacaksın.
-   - Eğer eserin tezin bağlamıyla kronolojik ve mekansal bağı %100 kusursuzsa (Örn: 1991-1999 bağlamı için 2012 tarihli Cengiz Güneş eseri seçmek), bu alan uyumun analitik gücünü ve OpenAlex taramasındaki nokta atışı meşruiyetini doğrulamalıdır.
-7. MODEL TEMBELLİĞİ ENGELİ VE FORMAT: Çıktılarında asla "...", "vb.", "etc." kullanamazsın. Yanıtın, sağlanan şema ile %100 uyumlu ham JSON objesi olmalıdır. Markdown \`\`\`json ... \`\`\` kod blokları kullanma, sadece saf JSON verisi döndür.
+6. MODEL TEMBELLİĞİ ENGELİ VE FORMAT: Çıktılarında asla "...", "vb.", "etc." kullanamazsın. Yanıtın, sağlanan şema ile %100 uyumlu ham JSON objesi olmalıdır. Markdown \`\`\`json ... \`\`\` kod blokları kullanma, sadece saf JSON verisi döndür.
+7. ARŞİV/VERİ KUTUSU İÇİN KURGU KAYNAK KAPISI (HALÜSİNASYON ÖNLEME): Eğer üretilen kutunun "boxType" değeri "Arşiv" veya "Veri" ise ve bu dar ampirik alan için hafızanda %100 gerçek bir İngilizce literatür kaynağı bulunmuyorsa; halüsinasyon üretmek yerine "foundationalQueries" alanına tam olarak şu sabit taslak (dummy) veriyi basacaksın: "author": "Primary Source Repository", "title": "Fieldwork Documentation and Empirical Data Sources", "publicationYear": 0. Bu istisna kuralı, yalnızca gerçek bir eserin mevcut olmadığı Arşiv ve Veri kutuları için geçerlidir; diğer tüm boxType değerlerinde %100 gerçek ve doğrulanabilir literatür sağlama zorunluluğu devam eder.
 
 # 5-7 KUTU SINIRINA UYGUN FEW-SHOT ÖRNEĞİ
 <ornek_girdi_matrisi>
@@ -165,7 +158,6 @@ Sen OpenAlex ve Semantic Scholar veritabanlarının indeksleme, taksonomi ve vek
           "publicationYear": 1985
         }
       ],
-      "selfCorrectionJustification": "Seçilen kurucu eserlerin yayın yılları (1990 ve 1985), tezin odaklandığı 1991-1999 ampirik dönem kısıtının kronolojik olarak gerisindedir. Ancak V vakasının arkasındaki ontolojik kırılmaları ve söylemsel alanı teorik olarak inşa edebilmek adına, bu post-klasik yapısalcı kuramın ana metinlerine başvurulması kuramsal bir zorunluluktur.",
       "semanticSearchBlock": "M theory provides a structural paradigm that redefines core conceptual constraints within contemporary political ontology. Its theoretical apparatus foregrounds the dialectical relationship between hegemonic formations and counter-hegemonic struggles in late capitalist societies. This framework has been systematically applied across comparative institutional analysis to explain how structural power asymmetries are reproduced."
     },
     {
@@ -185,8 +177,21 @@ Sen OpenAlex ve Semantic Scholar veritabanlarının indeksleme, taksonomi ve vek
           "publicationYear": 2012
         }
       ],
-      "selfCorrectionJustification": "Seçilen kaynaklar tezin 1991-1999 ampirik zaman sınırından sonra basılmış olsalar da, doğrudan X coğrafyasındaki 1990'lar dönüşümünü and V vakasını geriye dönük (retrospective) saha araştırmalarıyla inceleyen en meşru uluslararası endeksli İngilizce monografilerdir. OpenAlex taramasında tam isabet sağlayacak ampirik uyuma sahiptir.",
       "semanticSearchBlock": "The socio-political landscape of X country during the 1990s period was profoundly shaped by the intersection of local C dynamics and broader regional realignments. The V case exemplifies how structural economic transformations interacted with grassroots mobilization to produce distinct patterns of political contestation. Empirical studies of this period reveal that localized responses to central state policies were mediated by existing networks of patronage."
+    },
+    {
+      "title": "Arşiv: Saha Belgeleri ve Ampirik Veri Kaynakları",
+      "boxType": "Arşiv",
+      "description": "Tezin ampirik omurgasını oluşturan birincil arşiv belgeleri ve saha verileri.",
+      "foundationalQueries": [
+        {
+          "author": "Primary Source Repository",
+          "title": "Fieldwork Documentation and Empirical Data Sources",
+          "publicationYear": 0
+        }
+      ],
+      "concepts": ["Arşiv", "Saha Verisi"],
+      "semanticSearchBlock": "This box covers primary archival sources and empirical fieldwork data that form the evidentiary backbone of the thesis. The repository includes official documents, institutional records, and first-hand observational data collected during the research period."
     }
   ]
 }
@@ -224,7 +229,7 @@ export function buildThesisBoxGenerationPrompt(params: {
 # TALİMATLAR VE GÖREV
 Sistem talimatında tanımlanan tüm kurallara, dil kısıtlamalarına, **9'lu Box Tipolojisi** ilkelerine ve özellikle **Akademik Konsolidasyon (5-7 Kutu Sınırı)** standartlarına kusursuz şekilde bağlı kalarak, yukarıdaki 9 boyutlu <hedef_tez_matrisi> yapısını analiz et. 
 
-Üretilecek toplam kutu sayısı **kesinlikle en az 5, en fazla 7 olmak zorundadır.** Tezi parçalara ayırıp odağı bozacak şekilde 8 veya 9 kutu üretme. İlişkili bileşenleri, teorileri veya veri katmanlarını tek bir kutuda akıllıca konsolide et.
+Üretilecek toplam kutu sayısı kesinlikle en az 6, en fazla 9 olmak zorundadır. Girdide yer alan farklı teorileri, bağımsız yöntemleri veya ayrı bağlam katmanlarını tek bir kutuda birleştirmek yerine, her biri için ayrı ve bağımsız birer kutu inşa et. Bilgi sızıntısını önlemek için her kutunun teorik/metodolojik odağı net ve tekil olmalıdır
 
-Çıktıdaki başlık, açıklama, kavram etiketleri ve özellikle seçtiğin kaynakların zaman/mekan/aktör uyumunu hesaba çektiğin "selfCorrectionJustification" alanı tamamen Türkçe olmalıdır. "foundationalQueries" alanındaki eserlerin tamamı OpenAlex'te %100 taranabilir gerçek, fiziksel olarak basılmış İngilizce literatür olmak zorundadır. Dahili olarak çok derinlemesine düşün ve sadece nihai şemaya uygun ham JSON nesnesini döndür.`;
+Çıktıdaki başlık, açıklama ve kavram etiketleri tamamen Türkçe olmalıdır. "foundationalQueries" alanındaki eserlerin tamamı OpenAlex'te %100 taranabilir gerçek, fiziksel olarak basılmış İngilizce literatür olmak zorundadır. Dahili olarak çok derinlemesine düşün ve sadece nihai şemaya uygun ham JSON nesnesini döndür.`;
 }

@@ -25,14 +25,14 @@ export function OnboardingGlobalLoader() {
       </div>
 
       <div className="w-full bg-white/5 border border-white/10 rounded-xl p-8">
-        <div className="flex items-start gap-2">
+        <div className="flex flex-wrap items-start justify-center gap-y-8 gap-x-6 w-full">
           {loadingSteps.map((step, index) => {
             const isActive = step.status === "active";
             const isCompleted = step.status === "completed";
             return (
               <div
                 key={index}
-                className="flex-1 flex flex-col items-center gap-3 min-w-0"
+                className="flex-1 min-w-[140px] max-w-[200px] flex flex-col items-center gap-3"
               >
                 <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
                   <div

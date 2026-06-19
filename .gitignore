@@ -54,3 +54,6 @@ repomix-instruction.md
 
 # prettier
 .prettierignore
+
+# codegraph
+.codegraph

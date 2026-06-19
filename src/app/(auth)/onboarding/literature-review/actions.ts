@@ -27,6 +27,7 @@ import {
   searchOpenAlex,
   resolveFoundationalWorks,
   fetchFullAbstracts,
+  enrichFinalArticles,
 } from "./_services/search-api";
 import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
 import {
@@ -263,6 +264,29 @@ async function processSingleBox(
     thesisCtx,
   );
 
+  // ------------------------------------------------------------------
+  // Stage 5.5: Final Enrichment — Crossref künye takviyesi (top 5)
+  // ------------------------------------------------------------------
+  const enrichmentStart = performance.now();
+  result.starterPack = await enrichFinalArticles(result.starterPack, 5, logger);
+  result.reservedPool = await enrichFinalArticles(
+    result.reservedPool,
+    5,
+    logger,
+  );
+
+  logger.info("literature_enrichment_done", {
+    service: "literature",
+    durationMs: performance.now() - enrichmentStart,
+    filePath: "onboarding/literature-review/actions.ts",
+    status: "SUCCESS",
+    data: {
+      starterPackCount: result.starterPack.length,
+      reservedPoolCount: result.reservedPool.length,
+      context: boxCtx,
+    },
+  });
+
   logger.info("literature_academic_review_done", {
     service: "literature",
     durationMs: performance.now() - reviewStart,
@@ -307,28 +331,24 @@ async function processSingleBox(
 }
 
 // ============================================================================
-// Main Action: processLiteratureReviewAction (chunked concurrency)
+// Main Action: processLiteratureReviewAction (single-box sequential)
 // ============================================================================
 
 export async function processLiteratureReviewAction(
-  subBoxes: SubBoxInput[],
-): Promise<{ data?: LiteratureReviewResult[]; error?: string }> {
+  box: SubBoxInput,
+): Promise<{ data?: LiteratureReviewResult; error?: string }> {
   const logger = new Logger(createFlowId());
 
   logger.info("literature_process_start", {
     service: "literature",
     filePath: "onboarding/literature-review/actions.ts",
     data: {
-      context: "Literatür taraması başlatıldı",
-      subBoxCount: subBoxes?.length ?? 0,
+      context: "Kutu literatür taraması başlatıldı",
+      subBoxTitle: box.title,
     },
   });
 
   try {
-    if (!subBoxes || subBoxes.length === 0) {
-      return { data: [] };
-    }
-
     const session = await getSession();
     if (!session) return { error: "Oturum bulunamadı." };
 
@@ -345,41 +365,15 @@ export async function processLiteratureReviewAction(
 
     if (!thesisCtx) return { error: "Tez matrisi bulunamadı." };
 
-    const CONCURRENCY_LIMIT = 2;
-    const results: LiteratureReviewResult[] = [];
-
-    for (let i = 0; i < subBoxes.length; i += CONCURRENCY_LIMIT) {
-      const chunk = subBoxes.slice(i, i + CONCURRENCY_LIMIT);
-      const chunkResults = await Promise.all(
-        chunk.map(async (box) => {
-          try {
-            return await processSingleBox(box, thesisCtx, logger);
-          } catch (err) {
-            const boxTitle = box.title ?? "Bilinmeyen kutu";
-            logger.error("literature_box_failed", {
-              service: "literature",
-              filePath: "onboarding/literature-review/actions.ts",
-              data: { subBoxTitle: boxTitle },
-              error: err,
-            });
-            return {
-              starterPack: [],
-              reservedPool: [],
-              error: `Kutu "${boxTitle}" işlenirken hata: ${err instanceof Error ? err.message : "Bilinmeyen hata"}`,
-            };
-          }
-        }),
-      );
-      results.push(...chunkResults);
-    }
-
-    revalidatePath("/onboarding/literature-review");
-
-    return { data: results };
+    const result = await processSingleBox(box, thesisCtx, logger);
+    return { data: result };
   } catch (err) {
+    const boxTitle = box.title ?? "Bilinmeyen kutu";
     const message = err instanceof Error ? err.message : "Beklenmeyen hata";
     logger.error("literature_review_failed", {
       service: "literature",
+      filePath: "onboarding/literature-review/actions.ts",
+      data: { subBoxTitle: boxTitle },
       error: err,
     });
     return { error: message };

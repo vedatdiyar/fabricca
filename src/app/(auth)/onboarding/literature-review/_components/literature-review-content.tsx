@@ -210,6 +210,7 @@ export function LiteratureReviewContent() {
     boxErrors,
     allProcessed,
     archivalBoxes,
+    literaturePool,
     addArchiveEntry,
     handleFinalize,
   } = useLiteratureReview();
@@ -250,9 +251,7 @@ export function LiteratureReviewContent() {
           const isArchival = archivalBoxes.has(subBox.title);
           const isCompleted = archivalBoxes.has(subBox.title)
             ? false
-            : useOnboardingStore
-                .getState()
-                .literaturePool.some((e) => e.subBoxTitle === subBox.title);
+            : literaturePool.some((e) => e.subBoxTitle === subBox.title);
           return (
             <div
               key={idx}

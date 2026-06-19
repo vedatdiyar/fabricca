@@ -45,7 +45,7 @@ export interface UseLiteratureReviewResult {
     subBoxTitle: string,
     entry: { title: string; description?: string },
   ) => void;
-  /** Starts the bulk literature-review pipeline. */
+  /** Starts the sequential literature-review pipeline (one box at a time). */
   startReviewProcess: () => Promise<void>;
   /** Finalizes onboarding: persists the pool, resets the store, navigates. */
   handleFinalize: () => Promise<void>;
@@ -53,10 +53,10 @@ export interface UseLiteratureReviewResult {
 
 /**
  * Encapsulates the literature-review step orchestration: loading the sub-boxes,
- * running the bulk parallel review pipeline (all boxes sent in a single server
- * action call), and finalizing onboarding (DB write -> store reset ->
- * dashboard navigation). The consuming component renders only the returned
- * state.
+ * running the sequential review pipeline (each box sent one at a time so the
+ * UI can update per-box progress in real time), and finalizing onboarding
+ * (DB write -> store reset -> dashboard navigation). The consuming component
+ * renders only the returned state.
  *
  * @returns Literature-review state plus the two orchestration callbacks.
  */
@@ -156,10 +156,11 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   }, []);
 
   /**
-   * Runs the literature-review pipeline over all sub-boxes in a single bulk
-   * server action call. All boxes are sent together; the server processes them
-   * in parallel via Promise.all. The global loading overlay is shown
-   * immediately with all steps marked active, then resolved in one pass.
+   * Runs the literature-review pipeline over all sub-boxes sequentially.
+   * Each sub-box is sent to the server one at a time; as soon as a box is
+   * done its result is written to the Zustand store and the UI is updated
+   * so the user can watch progress in real time. A 500 ms throttle between
+   * boxes prevents 429 rate-limit errors from OpenAlex.
    */
   const startReviewProcess = useCallback(async () => {
     if (subBoxes.length === 0 || processingRef.current) return;
@@ -167,9 +168,11 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     processingRef.current = true;
     setProcessing(true);
 
+    // All steps start as "idle"; each will transition to "active" then
+    // "completed" as it is processed sequentially.
     const reviewSteps: LoadingStep[] = subBoxes.map((box) => ({
       text: `${box.title} taranıyor...`,
-      status: "active" as const,
+      status: "idle" as const,
     }));
 
     showLoading(
@@ -178,51 +181,44 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
       reviewSteps,
     );
 
-    // Mark all loading steps as active upfront
     for (let i = 0; i < subBoxes.length; i++) {
+      const box = subBoxes[i];
+
       updateLoadingStep(i, "active");
-    }
+      setBoxStatuses((prev) => ({ ...prev, [box.title]: "loading" }));
 
-    setBoxStatuses((prev) => {
-      const next = { ...prev };
-      for (const box of subBoxes) next[box.title] = "loading";
-      return next;
-    });
-
-    const bulkResult = await processLiteratureReviewAction(
-      subBoxes.map((box) => ({
+      const result = await processLiteratureReviewAction({
         title: box.title,
         description: box.description,
         boxType: box.boxType,
         semanticSearchBlock: box.semanticSearchBlock,
         foundationalQueries: box.foundationalQueries,
-      })),
-    );
+      });
 
-    if (bulkResult.data) {
-      bulkResult.data.forEach((boxResult, j) => {
-        const box = subBoxes[j];
-
-        if (boxResult.isArchivalBypass) {
+      if (result.data) {
+        if (result.data.isArchivalBypass) {
           setArchivalBoxes((prev) => new Set(prev).add(box.title));
         } else {
           addToLiteraturePool({
             subBoxTitle: box.title,
-            starterPack: boxResult.starterPack,
-            reservedPool: boxResult.reservedPool,
+            starterPack: result.data.starterPack,
+            reservedPool: result.data.reservedPool,
           });
         }
 
         setBoxStatuses((prev) => ({ ...prev, [box.title]: "done" }));
-        updateLoadingStep(j, "completed");
-      });
-    } else {
-      const msg = bulkResult.error ?? "Literatür taraması başarısız oldu.";
-      subBoxes.forEach((box, j) => {
+        updateLoadingStep(i, "completed");
+      } else {
+        const msg = result.error ?? "Kutu işlenirken hata oluştu.";
         setBoxErrors((prev) => ({ ...prev, [box.title]: msg }));
         setBoxStatuses((prev) => ({ ...prev, [box.title]: "error" }));
-        updateLoadingStep(j, "completed");
-      });
+        updateLoadingStep(i, "completed");
+      }
+
+      // Throttle between boxes to avoid 429 rate-limit errors
+      if (i < subBoxes.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
     }
 
     processingRef.current = false;

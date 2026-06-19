@@ -1,7 +1,17 @@
 import type { RawPaper, ValidatedPaper } from "./literature-review-papers";
-import type { FoundationalQuery } from "@/lib/types";
+import type { FoundationalQuery, JuryArticle } from "@/lib/types";
 import type { Logger } from "@/lib/logger";
 import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
+
+// ============================================================================
+// Crossref Polite Pool Configuration
+// ============================================================================
+
+const CROSSREF_USER_AGENT =
+  "FabriccaAcademicAssistant/1.0 (mailto:iletisim@fabricca.com)";
+
+const CROSSREF_SELECT =
+  "DOI,title,publisher,container-title,volume,issue,page,author,issued,type,is-referenced-by-count";
 
 // ============================================================================
 // Helper Functions
@@ -152,10 +162,9 @@ async function queryOpenAlexWorks(
 export async function searchOpenAlex(query: string): Promise<RawPaper[]> {
   const params = new URLSearchParams({
     "search.semantic": query,
-    filter: "has_abstract:true",
     per_page: "50",
     select:
-      "id,title,type,biblio,abstract_inverted_index,cited_by_count,relevance_score,authorships,publication_year,primary_location",
+      "id,title,type,biblio,cited_by_count,authorships,publication_year,primary_location",
   });
   const results = await queryOpenAlexWorks(params);
   if (results.length === 0) {
@@ -190,7 +199,7 @@ export async function validateWithCrossRef(
     attempt++;
     try {
       const response = await fetch(endpoint, {
-        headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
+        headers: { "User-Agent": CROSSREF_USER_AGENT },
         signal: AbortSignal.timeout(10000),
       });
 
@@ -344,17 +353,19 @@ export interface FoundationalWorkResult {
 
 /**
  * Resolves a list of foundational (classical/seminal) work queries against the
- * OpenAlex works endpoint using exact title search (filter=display_name.search).
+ * Crossref API using query.bibliographic. Each query combines the author and
+ * title into a single bibliographic search, requesting the top-1 result.
+ *
  * Each result is validated against title and/or author criteria before acceptance;
  * if no result passes validation (LLM hallucination guard), the raw query data
  * is preserved via createFallback instead of accepting an irrelevant match.
  *
  * All queries are resolved in parallel via Promise.all.
  * Every query is guaranteed to return a FoundationalWorkResult — either
- * enriched by OpenAlex or created as a fallback from the raw query data.
+ * enriched by Crossref or created as a fallback from the raw query data.
  *
  * @param queries - Array of FoundationalQuery objects (author, title, publicationYear)
- * @returns Array of FoundationalWorkResult with OpenAlex metadata (guaranteed 1:1 with input)
+ * @returns Array of FoundationalWorkResult with Crossref metadata (guaranteed 1:1 with input)
  */
 export async function resolveFoundationalWorks(
   queries: FoundationalQuery[],
@@ -378,86 +389,97 @@ export async function resolveFoundationalWorks(
   const results = await Promise.all(
     queries.map(async (query) => {
       try {
-        const urlParams = new URLSearchParams({
-          filter: `display_name.search:${encodeURIComponent(query.title)}`,
-          per_page: "5",
-          select:
-            "id,title,type,publication_year,cited_by_count,authorships,primary_location",
+        const bibQuery = `${query.author} ${query.title}`;
+        const url = `https://api.crossref.org/works?query.bibliographic=${encodeURIComponent(bibQuery)}&rows=1&select=${encodeURIComponent(CROSSREF_SELECT)}`;
+
+        const response = await fetch(url, {
+          headers: { "User-Agent": CROSSREF_USER_AGENT },
+          signal: AbortSignal.timeout(15000),
         });
 
-        const response = await fetch(
-          `https://api.openalex.org/works?${urlParams.toString()}`,
-          {
-            headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
-            signal: AbortSignal.timeout(30000),
-          },
-        );
-
-        const data = response.ok
-          ? ((await response.json()) as {
-              results?: Record<string, unknown>[];
-            })
-          : { results: undefined };
-        const resultData = data.results;
-
-        let bestResult: Record<string, unknown> | null = null;
-
-        if (resultData && resultData.length > 0) {
-          const queryTitle = query.title.toLowerCase().trim();
-          const queryAuthor = query.author.toLowerCase().trim();
-
-          const match = resultData.find((r) => {
-            const rTitle = ((r.title as string) ?? "").toLowerCase().trim();
-            const authorships = r.authorships as
-              | { author?: { display_name?: string } }[]
-              | undefined;
-            const titleMatch =
-              rTitle.includes(queryTitle) || queryTitle.includes(rTitle);
-            const authorMatch = authorships?.some((a) =>
-              (a.author?.display_name ?? "")
-                .toLowerCase()
-                .includes(queryAuthor),
-            );
-            return titleMatch || authorMatch;
+        if (!response.ok) {
+          logger?.warn("crossref_foundational_non_ok", {
+            service: "crossref",
+            filePath:
+              "src/app/(auth)/onboarding/literature-review/_services/search-api.ts",
+            data: {
+              queryTitle: query.title,
+              status: response.status,
+            },
           });
-
-          bestResult = match ?? null;
-        }
-
-        if (!bestResult) {
           return createFallback(query);
         }
 
-        const authorships = bestResult.authorships as
-          | { author?: { display_name?: string } }[]
-          | null
+        const data = (await response.json()) as {
+          message?: { items?: Record<string, unknown>[] };
+        };
+        const items = data?.message?.items;
+        if (!items || items.length === 0) {
+          return createFallback(query);
+        }
+
+        const match = items[0];
+
+        // Validation — title/author fuzzy guard against hallucination
+        const matchTitle = ((match.title as string[])?.[0] ?? "")
+          .toLowerCase()
+          .trim();
+        const queryTitle = query.title.toLowerCase().trim();
+        const titleMatch =
+          matchTitle.includes(queryTitle) || queryTitle.includes(matchTitle);
+
+        const authorList = match.author as
+          | { given?: string; family?: string }[]
           | undefined;
-        const primaryLocation = bestResult.primary_location as
-          | {
-              source?: { display_name?: string };
-            }
-          | null
+        const queryAuthor = query.author.toLowerCase().trim();
+        const authorMatch = authorList?.some((a) => {
+          const full = `${a.given ?? ""} ${a.family ?? ""}`
+            .toLowerCase()
+            .trim();
+          return full.includes(queryAuthor);
+        });
+
+        if (!titleMatch && !authorMatch) {
+          return createFallback(query);
+        }
+
+        // Extract fields from Crossref response
+        const doi = extractCleanDoi(match.DOI as string | null | undefined);
+        const id = doi ? `https://doi.org/${doi}` : "";
+        const title = formatAcademicTitle(
+          ((match.title as string[])?.[0] as string) ?? query.title,
+        );
+        const type = (match.type as string) ?? "unknown";
+        const issued = match.issued as
+          | { "date-parts"?: number[][] }
           | undefined;
+        const publicationYear =
+          issued?.["date-parts"]?.[0]?.[0] ?? query.publicationYear;
+        const citedByCount = (match["is-referenced-by-count"] as number) ?? 0;
+        const publisher = (match.publisher as string) ?? null;
+        const containerTitle =
+          (match["container-title"] as string[])?.[0] ?? null;
+        const resolvedPublisher = publisher ?? containerTitle;
+        const authors: string[] =
+          authorList
+            ?.map((a) =>
+              `${(a.given ?? "").trim()} ${(a.family ?? "").trim()}`.trim(),
+            )
+            .filter(Boolean) ?? (query.author ? [query.author] : []);
 
         return {
-          id: (bestResult.id as string) ?? "",
-          title: formatAcademicTitle(
-            (bestResult.title as string) ?? query.title,
-          ),
-          type: (bestResult.type as string) ?? "unknown",
-          publicationYear:
-            (bestResult.publication_year as number) ?? query.publicationYear,
-          citedByCount: (bestResult.cited_by_count as number) ?? 0,
+          id,
+          title,
+          type,
+          publicationYear,
+          citedByCount,
           isFoundational: true,
-          authors:
-            authorships
-              ?.map((a) => a.author?.display_name ?? "")
-              .filter(Boolean) ?? (query.author ? [query.author] : []),
-          publisher: primaryLocation?.source?.display_name ?? null,
+          authors,
+          publisher: resolvedPublisher,
         } as FoundationalWorkResult;
       } catch (error) {
         logger?.error("foundational_work_resolution_failed", {
-          service: "openalex",
+          service: "crossref",
           filePath:
             "src/app/(auth)/onboarding/literature-review/_services/search-api.ts",
           error,
@@ -472,12 +494,174 @@ export async function resolveFoundationalWorks(
 }
 
 // ============================================================================
+// Final Enrichment — Crossref-based künye takviyesi (post-AI-review)
+// ============================================================================
+
+/**
+ * Enriches a single JuryArticle by fetching metadata from Crossref when
+ * critical fields (title, authors, year, publisher) are missing.
+ * Only missing fields are patched; existing values are never overwritten.
+ *
+ * Uses DOI-based exact lookup when available, otherwise falls back to
+ * query.bibliographic with the article title.
+ *
+ * @param article - The article to enrich in-place
+ * @param logger - Optional logger instance
+ * @returns The enriched article (same reference if no enrichment needed)
+ */
+async function enrichSingleJuryArticle(
+  article: JuryArticle,
+  logger?: Logger,
+): Promise<JuryArticle> {
+  const needsTitle = !article.title;
+  const needsAuthors = !article.authors || article.authors.length === 0;
+  const needsYear = !article.publicationYear || article.publicationYear === 0;
+  const needsPublisher = !article.publisher;
+
+  if (!needsTitle && !needsAuthors && !needsYear && !needsPublisher) {
+    return article;
+  }
+
+  const hasValidDoi = article.doi && /^10\.\d{4,}/.test(article.doi.trim());
+
+  let endpoint: string;
+  if (hasValidDoi) {
+    endpoint = `https://api.crossref.org/works/${encodeURIComponent(article.doi.trim())}?select=${encodeURIComponent(CROSSREF_SELECT)}`;
+  } else if (article.title) {
+    endpoint = `https://api.crossref.org/works?query.bibliographic=${encodeURIComponent(article.title)}&rows=1&select=${encodeURIComponent(CROSSREF_SELECT)}`;
+  } else {
+    return article;
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      headers: { "User-Agent": CROSSREF_USER_AGENT },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!response.ok) {
+      logger?.warn("crossref_enrichment_non_ok", {
+        service: "crossref",
+        filePath:
+          "src/app/(auth)/onboarding/literature-review/_services/search-api.ts",
+        data: {
+          doi: article.doi,
+          title: article.title?.substring(0, 100),
+          status: response.status,
+        },
+      });
+      return article;
+    }
+
+    const body = (await response.json()) as {
+      message?: { items?: Record<string, unknown>[] };
+    };
+
+    let item: Record<string, unknown> | undefined;
+
+    if (hasValidDoi) {
+      // DOI endpoint returns the work directly in message
+      const msg = body.message as Record<string, unknown> | undefined;
+      if (msg && msg.DOI) item = msg;
+    } else {
+      // query.bibliographic returns items array
+      const items = body?.message?.items;
+      if (items && items.length > 0) item = items[0];
+    }
+
+    if (!item) return article;
+
+    const enriched = { ...article };
+
+    if (needsTitle) {
+      const titleArr = item.title as string[] | undefined;
+      if (titleArr && titleArr.length > 0) {
+        enriched.title = formatAcademicTitle(titleArr[0]);
+      }
+    }
+
+    if (needsAuthors) {
+      const authorList = item.author as
+        | { given?: string; family?: string }[]
+        | undefined;
+      if (authorList && authorList.length > 0) {
+        enriched.authors = authorList
+          .map((a) =>
+            `${(a.given ?? "").trim()} ${(a.family ?? "").trim()}`.trim(),
+          )
+          .filter(Boolean);
+      }
+    }
+
+    if (needsYear) {
+      const issued = item.issued as { "date-parts"?: number[][] } | undefined;
+      const year = issued?.["date-parts"]?.[0]?.[0];
+      if (year) enriched.publicationYear = year;
+    }
+
+    if (needsPublisher) {
+      const publisher = item.publisher as string | undefined;
+      const containerTitle = item["container-title"] as string[] | undefined;
+      if (publisher) enriched.publisher = publisher;
+      else if (containerTitle && containerTitle.length > 0) {
+        enriched.publisher = containerTitle[0];
+      }
+    }
+
+    return enriched;
+  } catch (error) {
+    logger?.warn("crossref_enrichment_failed", {
+      service: "crossref",
+      filePath:
+        "src/app/(auth)/onboarding/literature-review/_services/search-api.ts",
+      data: {
+        doi: article.doi,
+        title: article.title?.substring(0, 100),
+        error: error instanceof Error ? error.message : String(error),
+      },
+    });
+    return article;
+  }
+}
+
+/**
+ * Enriches the top-N articles (by position) in a JuryArticle array with
+ * Crossref metadata when critical fields are missing.
+ *
+ * Designed to be called after the AI review stage, just before the final
+ * arrays are written to the database. Only the first `topN` articles are
+ * checked to avoid excessive API calls on low-ranked candidates.
+ *
+ * @param articles - Array of JuryArticle to potentially enrich
+ * @param topN - Number of top articles to inspect (default: 5)
+ * @param logger - Optional logger instance
+ * @returns Enriched article array (preserves order and unmodified articles)
+ */
+export async function enrichFinalArticles(
+  articles: JuryArticle[],
+  topN: number = 5,
+  logger?: Logger,
+): Promise<JuryArticle[]> {
+  if (!articles || articles.length === 0) return articles;
+
+  const toEnrich = articles.slice(0, topN);
+  const rest = articles.slice(topN);
+
+  const enriched = await Promise.all(
+    toEnrich.map((article) => enrichSingleJuryArticle(article, logger)),
+  );
+
+  return [...enriched, ...rest];
+}
+
+// ============================================================================
 // Full Abstract Recovery (post-sifting)
 // ============================================================================
 
 /**
  * Fetches full abstracts for a batch of OpenAlex work IDs after the sifting
- * stage. Uses a single API call with a pipe-delimited ID filter.
+ * stage. Splits IDs into chunks of 100 (OpenAlex OR limit) and queries each
+ * chunk in parallel, merging results into a single Map.
  *
  * @param openAlexIds - Array of OpenAlex work URLs (e.g. "https://openalex.org/W...")
  * @returns Map of openAlexId → full abstract text
@@ -488,69 +672,89 @@ export async function fetchFullAbstracts(
 ): Promise<Map<string, string>> {
   if (!openAlexIds || openAlexIds.length === 0) return new Map();
 
+  const CHUNK_SIZE = 100;
   const cleanedIds = openAlexIds.map((id) =>
     id.replace(/^https?:\/\/openalex\.org\//, ""),
   );
   const apiKey = process.env.OPENALEX_API_KEY;
-  const params = new URLSearchParams({
-    filter: `openalex_id:${cleanedIds.join("|")}`,
-    select: "id,abstract_inverted_index",
-    per_page: "200",
-  });
-  if (apiKey) params.set("api_key", apiKey);
 
-  const url = `https://api.openalex.org/works?${params.toString()}`;
-
-  try {
-    const response = await fetch(url, {
-      headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
-      signal: AbortSignal.timeout(30000),
-    });
-    if (!response.ok) {
-      logger?.warn("fetch_full_abstracts_failed", {
-        service: "openalex",
-        filePath:
-          "src/app/(auth)/onboarding/literature-review/_services/search-api.ts",
-        data: {
-          status: response.status,
-          idCount: openAlexIds.length,
-        },
-      });
-      return new Map();
-    }
-
-    const data = (await response.json()) as {
-      results?: Record<string, unknown>[];
-    };
-    const results = data.results;
-    if (!results) return new Map();
-
-    const abstractMap = new Map<string, string>();
-    for (const work of results) {
-      const id = work.id as string | undefined;
-      if (!id) continue;
-
-      const invertedIndex = work.abstract_inverted_index as
-        | Record<string, number[]>
-        | null
-        | undefined;
-      const resolved = resolveAbstractInvertedIndex(invertedIndex);
-      if (resolved) {
-        abstractMap.set(id, resolved);
-      }
-    }
-
-    return abstractMap;
-  } catch (err) {
-    logger?.warn("fetch_full_abstracts_exception", {
-      service: "openalex",
-      filePath:
-        "src/app/(auth)/onboarding/literature-review/_services/search-api.ts",
-      data: {
-        idCount: openAlexIds.length,
-        error: err instanceof Error ? err.message : String(err),
-      },
-    });
-    return new Map();
+  const chunks: string[][] = [];
+  for (let i = 0; i < cleanedIds.length; i += CHUNK_SIZE) {
+    chunks.push(cleanedIds.slice(i, i + CHUNK_SIZE));
   }
+
+  const chunkResults = await Promise.all(
+    chunks.map(async (chunk) => {
+      const params = new URLSearchParams({
+        filter: `openalex_id:${chunk.join("|")}`,
+        select: "id,abstract_inverted_index",
+        per_page: "100",
+      });
+      if (apiKey) params.set("api_key", apiKey);
+
+      const url = `https://api.openalex.org/works?${params.toString()}`;
+
+      try {
+        const response = await fetch(url, {
+          headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
+          signal: AbortSignal.timeout(30000),
+        });
+        if (!response.ok) {
+          logger?.warn("fetch_full_abstracts_chunk_failed", {
+            service: "openalex",
+            filePath:
+              "src/app/(auth)/onboarding/literature-review/_services/search-api.ts",
+            data: {
+              status: response.status,
+              chunkSize: chunk.length,
+            },
+          });
+          return new Map<string, string>();
+        }
+
+        const data = (await response.json()) as {
+          results?: Record<string, unknown>[];
+        };
+        const results = data.results;
+        if (!results) return new Map<string, string>();
+
+        const chunkMap = new Map<string, string>();
+        for (const work of results) {
+          const id = work.id as string | undefined;
+          if (!id) continue;
+
+          const invertedIndex = work.abstract_inverted_index as
+            | Record<string, number[]>
+            | null
+            | undefined;
+          const resolved = resolveAbstractInvertedIndex(invertedIndex);
+          if (resolved) {
+            chunkMap.set(id, resolved);
+          }
+        }
+
+        return chunkMap;
+      } catch (err) {
+        logger?.warn("fetch_full_abstracts_chunk_exception", {
+          service: "openalex",
+          filePath:
+            "src/app/(auth)/onboarding/literature-review/_services/search-api.ts",
+          data: {
+            chunkSize: chunk.length,
+            error: err instanceof Error ? err.message : String(err),
+          },
+        });
+        return new Map<string, string>();
+      }
+    }),
+  );
+
+  const abstractMap = new Map<string, string>();
+  for (const chunkMap of chunkResults) {
+    for (const [id, abstract] of chunkMap) {
+      abstractMap.set(id, abstract);
+    }
+  }
+
+  return abstractMap;
 }

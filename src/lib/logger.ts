@@ -13,17 +13,27 @@ const FILTER_PATTERNS = [
   "fetchCache = default-no-store",
   "cache skip",
 ];
+
 let lastRenderedFlowId: string | null = null;
+
 console.log = (...args: unknown[]) => {
   const message = typeof args[0] === "string" ? args[0] : "";
   if (FILTER_PATTERNS.some((p) => message.includes(p))) return;
+
   if (isDevelopment) {
     const match = message.match(/\[(fl_\w+)\]/);
     if (match) {
       const currentFlowId = match[1];
       if (lastRenderedFlowId !== null && lastRenderedFlowId !== currentFlowId) {
         originalConsoleLog(
-          "\x1b[90m───────────────────────────────────────────────────────────────────────────────────────────────────\x1b[0m",
+          "\x1b[90m└───────────────────────────────────────────────────────────────────────────────────────────────────┘\x1b[0m",
+        );
+        originalConsoleLog(
+          `\x1b[90m┌── [${currentFlowId}] ─────────────────────────────────────────────────────────────────────────────┐\x1b[0m`,
+        );
+      } else if (lastRenderedFlowId === null) {
+        originalConsoleLog(
+          `\x1b[90m┌── [${currentFlowId}] ─────────────────────────────────────────────────────────────────────────────┐\x1b[0m`,
         );
       }
       lastRenderedFlowId = currentFlowId;
@@ -136,6 +146,7 @@ function truncateFlowId(fid: string): string {
   return fid.length <= 10 ? fid : fid.slice(0, 10);
 }
 
+// Params opsiyonel, tip kontrolü yapıldı
 function getModuleDisplay(service: ServiceName, params?: LogParams): string {
   let base = SERVICE_DISPLAY[service] ?? service.toUpperCase();
   if (params?.data?.thinkingLevel && service === "gemini") {
@@ -176,10 +187,8 @@ function processDataMetrics(data: Record<string, unknown>): string[] {
   const metrics: string[] = [];
   const before = data.before as number | undefined;
   const after = data.after as number | undefined;
-
-  if (before !== undefined && after !== undefined) {
+  if (before !== undefined && after !== undefined)
     metrics.push(`📊 ${before} → ${after}`);
-  }
   if (data.count !== undefined) metrics.push(`📊 Sayı: ${data.count}`);
   if (data.resultCount !== undefined)
     metrics.push(`📊 ${data.resultCount} sonuç`);
@@ -244,40 +253,65 @@ export class Logger {
   step(stepName: string, metadata?: Record<string, unknown>): void {
     if (!isDevelopment) return;
     const prefix = this.buildPrefix("flow", "SUCCESS");
-    const suffix = this.buildSuffix(
-      "step",
-      metadata ? { data: metadata } : undefined,
-    );
-    console.log(`${prefix}${suffix} • 📍 ${stepName}`);
+
+    const actDisplay = getActionDisplay("step");
+    const fixedLabel = actDisplay.label.padEnd(12).slice(0, 12);
+    const actionArea = `${actDisplay.emoji} ${fixedLabel}`;
+
+    console.log(`${prefix} ${actionArea} \x1b[90m│\x1b[0m 📍 ${stepName}`);
   }
 
   file(ref: string): void {
     if (!isDevelopment) return;
     const prefix = this.buildPrefix("flow", "SUCCESS");
-    console.log(`${prefix} | 📁 ${ref}`);
+
+    const actDisplay = getActionDisplay("file_ref");
+    const fixedLabel = actDisplay.label.padEnd(12).slice(0, 12);
+    const actionArea = `${actDisplay.emoji} ${fixedLabel}`;
+
+    console.log(`${prefix} ${actionArea} \x1b[90m│\x1b[0m 📁 ${ref}`);
   }
 
   data(label: string, value: unknown): void {
     if (!isDevelopment) return;
     const prefix = this.buildPrefix("flow", "SUCCESS");
+
+    const actDisplay = getActionDisplay("data");
+    const fixedLabel = actDisplay.label.padEnd(12).slice(0, 12);
+    const actionArea = `${actDisplay.emoji} ${fixedLabel}`;
+
     const display =
       typeof value === "object" ? JSON.stringify(value) : String(value);
-    console.log(`${prefix} | 📊 ${label}: ${truncate(display, 120)}`);
+    console.log(
+      `${prefix} ${actionArea} \x1b[90m│\x1b[0m 📊 ${label}: ${truncate(display, 100)}`,
+    );
   }
 
   preview(label: string, value: unknown): void {
     if (!isDevelopment) return;
     const prefix = this.buildPrefix("flow", "SUCCESS");
+
+    const actDisplay = getActionDisplay("preview");
+    const fixedLabel = actDisplay.label.padEnd(12).slice(0, 12);
+    const actionArea = `${actDisplay.emoji} ${fixedLabel}`;
+
     const raw =
       typeof value === "object" ? JSON.stringify(value) : String(value);
-    console.log(`${prefix} | 👁️ ${label}: ${truncate(raw, 200)}`);
+    console.log(
+      `${prefix} ${actionArea} \x1b[90m│\x1b[0m 👁️ ${label}: ${truncate(raw, 120)}`,
+    );
   }
 
   prompt(model: string, content: string): void {
     if (!isDevelopment) return;
     const prefix = this.buildPrefix("gemini", "SUCCESS");
+
+    const actDisplay = getActionDisplay("ai_prompt");
+    const fixedLabel = actDisplay.label.padEnd(12).slice(0, 12);
+    const actionArea = `${actDisplay.emoji} ${fixedLabel}`;
+
     console.log(
-      `${prefix} | 💬 [${model}] ${truncate(content.replace(/\n/g, " "), 160)}`,
+      `${prefix} ${actionArea} \x1b[90m│\x1b[0m 💬 [${model}] ${truncate(content.replace(/\n/g, " "), 120)}`,
     );
   }
 
@@ -356,49 +390,41 @@ export class Logger {
     }
   }
 
+  // 1. ÖN EK (Ferah, dikey çizgi ayrımıyla sabitlendi)
   private buildPrefix(service: ServiceName | string, status: string): string {
     const time = `[${getTimestamp()}]`;
-    const id = `[${truncateFlowId(this.flowId)}]`;
-
-    const rawMod = getModuleDisplay(service as ServiceName, {});
-    const mod = `[${rawMod.padEnd(12)}]`;
     const icon = getStatusIcon(status);
+    const rawMod = getModuleDisplay(service as ServiceName, {});
 
-    // Hizalamayı bozan her şeyi sağa atmak için boruyu buraya kilitledik.
-    return `${time} ${id} ${mod} [${icon}] |`;
+    const fixedMod = rawMod.padEnd(12).slice(0, 12);
+
+    return `\x1b[90m│\x1b[0m ${time} ${icon} \x1b[36m${fixedMod}\x1b[0m \x1b[90m│\x1b[0m`;
   }
 
+  // 2. ARKA EK (Emoji ve kelimeler açıldı, okuması kolaylaştırıldı)
   private buildSuffix(event: string, params?: LogParams): string {
     const parts: string[] = [];
-
-    // Eylem alanını borunun hemen sağına alıyoruz
     const actDisplay = getActionDisplay(event);
-    parts.push(`${actDisplay.emoji} ${actDisplay.label}`);
 
-    // 1. Süre Metriği
-    if (params?.durationMs !== undefined) {
+    const fixedLabel = actDisplay.label.padEnd(12).slice(0, 12);
+    const actionArea = `${actDisplay.emoji} ${fixedLabel}`;
+
+    if (params?.durationMs !== undefined)
       parts.push(`⏱️ ${Math.round(params.durationMs)}ms`);
-    }
-
-    // 2. Veri Sayaçları
     if (params?.data) parts.push(...processDataMetrics(params.data));
 
-    // 3. Yapay Zeka Token Bilgileri
     if (params?.tokens) {
       const t = params.tokens;
-      if (t.total !== undefined) parts.push(`💭 ${t.total}tkn`);
-      else if (t.input !== undefined || t.output !== undefined) {
+      if (t.total !== undefined) parts.push(`💭 ${t.total} tkn`);
+      else if (t.input !== undefined || t.output !== undefined)
         parts.push(`📥 ${t.input ?? 0} / 📤 ${t.output ?? 0}`);
-      }
     } else if (params?.data?.model) {
       parts.push(`🏷️ ${String(params.data.model).replace("-flash-lite", "")}`);
     }
 
-    // 4. Bağlam Bilgisi
-    if (params?.data?.context) parts.push(`📦 ${params.data.context}`);
+    if (params?.data?.context) parts.push(`📦 ${String(params.data.context)}`);
     if (params?.step && params.step !== event) parts.push(`[${params.step}]`);
 
-    // 5. Hata Detayları
     if (params?.error) {
       const display = getErrorDisplay(params.error);
       parts.push(
@@ -406,7 +432,7 @@ export class Logger {
       );
     }
 
-    return ` ${parts.join(" • ")}`;
+    return ` ${actionArea} \x1b[90m│\x1b[0m ${parts.join("  •  ")}`;
   }
 
   private renderDevLine(data: Record<string, unknown>): void {
@@ -414,26 +440,28 @@ export class Logger {
     const ev = String(data.event ?? data.step ?? "data");
     const rawStatus = String(data.status ?? "");
     const prefix = this.buildPrefix(svc, rawStatus);
-    const parts: string[] = [];
 
+    const parts: string[] = [];
     const actDisplay = getActionDisplay(ev);
-    parts.push(`${actDisplay.emoji} ${actDisplay.label}`);
+    const fixedLabel = actDisplay.label.padEnd(12).slice(0, 12);
+    const actionArea = `${actDisplay.emoji} ${fixedLabel}`;
 
     const nm = data.metrics as Record<string, unknown> | undefined;
-    if (nm?.durationMs !== undefined) {
+    if (nm?.durationMs !== undefined)
       parts.push(`⏱️ ${Math.round(nm.durationMs as number)}ms`);
-    }
 
     const ed = data.data as Record<string, unknown> | undefined;
     if (ed) {
       parts.push(...processDataMetrics(ed));
-      if (ed.context) parts.push(`📦 ${ed.context}`);
+      if (ed.context) parts.push(`📦 ${String(ed.context)}`);
     }
 
     const err = data.error as { message?: string } | undefined;
     if (err?.message) parts.push(`❌ ${err.message}`);
 
-    console.log(`${prefix} ${parts.join(" • ")}`);
+    console.log(
+      `${prefix} ${actionArea} \x1b[90m│\x1b[0m ${parts.join("  •  ")}`,
+    );
   }
 }
 
