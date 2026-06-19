@@ -3,7 +3,12 @@
 import { eq } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
-import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
+import {
+  thesisMatrices,
+  originalityReports,
+  thesisBoxes,
+  libraryResources,
+} from "@/db/schema";
 import { getSession } from "@/session";
 
 /**
@@ -84,4 +89,70 @@ export async function fetchBoxes() {
   const matrix = await getCachedThesisMatrix(session.userId);
   if (!matrix) return [];
   return getCachedBoxes(matrix.id);
+}
+
+/**
+ * Server Action: checks which onboarding steps have existing data in the database
+ * for the current user. Used by the stepper to determine which future steps are
+ * clickable (steps with data can be re-visited even if they appear in the future).
+ *
+ * @returns A record of step key → boolean, or null if no session
+ */
+export async function checkStepsDataAction(): Promise<Record<
+  string,
+  boolean
+> | null> {
+  const session = await getSession();
+  if (!session) return null;
+
+  const userId = session.userId;
+
+  const [matrix] = await db
+    .select({ id: thesisMatrices.id })
+    .from(thesisMatrices)
+    .where(eq(thesisMatrices.userId, userId));
+
+  const hasMatrix = !!matrix;
+
+  const [report] = await db
+    .select({ id: originalityReports.id })
+    .from(originalityReports)
+    .where(eq(originalityReports.userId, userId));
+
+  const hasReport = !!report;
+
+  let hasBoxes = false;
+  let hasLiterature = false;
+
+  if (hasMatrix) {
+    const [box] = await db
+      .select({ id: thesisBoxes.id })
+      .from(thesisBoxes)
+      .where(eq(thesisBoxes.thesisMatrixId, matrix.id))
+      .limit(1);
+
+    hasBoxes = !!box;
+
+    if (hasBoxes) {
+      const [resource] = await db
+        .select({ id: libraryResources.id })
+        .from(libraryResources)
+        .innerJoin(
+          thesisBoxes,
+          eq(libraryResources.thesisBoxId, thesisBoxes.id),
+        )
+        .where(eq(thesisBoxes.thesisMatrixId, matrix.id))
+        .limit(1);
+
+      hasLiterature = !!resource;
+    }
+  }
+
+  return {
+    matrix: hasMatrix,
+    enrichment: hasMatrix,
+    risk: hasReport,
+    boxes: hasBoxes,
+    "literature-review": hasLiterature,
+  };
 }

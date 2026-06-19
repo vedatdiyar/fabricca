@@ -20,9 +20,6 @@ import { fetchBoxes } from "../../_lib/fetch-actions";
 /** Processing status of a single sub-box within the literature review grid. */
 export type BoxStatus = "idle" | "loading" | "done" | "error";
 
-/** Chunk size for parallel literature-review processing. */
-const CHUNK_SIZE = 2;
-
 /** Shape returned by {@link useLiteratureReview}. */
 export interface UseLiteratureReviewResult {
   /** The sub-boxes to render (merged DB boxes + Zustand foundational queries). */
@@ -48,7 +45,7 @@ export interface UseLiteratureReviewResult {
     subBoxTitle: string,
     entry: { title: string; description?: string },
   ) => void;
-  /** Starts the chunked parallel literature-review pipeline. */
+  /** Starts the bulk literature-review pipeline. */
   startReviewProcess: () => Promise<void>;
   /** Finalizes onboarding: persists the pool, resets the store, navigates. */
   handleFinalize: () => Promise<void>;
@@ -56,8 +53,8 @@ export interface UseLiteratureReviewResult {
 
 /**
  * Encapsulates the literature-review step orchestration: loading the sub-boxes,
- * running the chunked parallel review pipeline (with per-box status and loading
- * overlay bookkeeping), and finalizing onboarding (DB write → store reset →
+ * running the bulk parallel review pipeline (all boxes sent in a single server
+ * action call), and finalizing onboarding (DB write -> store reset ->
  * dashboard navigation). The consuming component renders only the returned
  * state.
  *
@@ -105,7 +102,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
 
       // 2. Content-level reconciliation — even with matching titles the box
       //    content (description / semanticSearchBlock) may have been updated
-      //    server-side or via a handleProceed → setBoxes cycle.  Compare
+      //    server-side or via a handleProceed -> setBoxes cycle.  Compare
       //    every live DB box against its counterpart in the Zustand store.
       let contentChanged = false;
       if (titlesMatch) {
@@ -160,10 +157,10 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   }, []);
 
   /**
-   * Runs the literature-review pipeline over all sub-boxes in fixed-size chunks
-   * (see {@link CHUNK_SIZE}). Each chunk is processed in parallel via the bulk
-   * server action; results are streamed into the Zustand pool and the global
-   * loading overlay is advanced step-by-step.
+   * Runs the literature-review pipeline over all sub-boxes in a single bulk
+   * server action call. All boxes are sent together; the server processes them
+   * in parallel via Promise.all. The global loading overlay is shown
+   * immediately with all steps marked active, then resolved in one pass.
    */
   const startReviewProcess = useCallback(async () => {
     if (subBoxes.length === 0 || processingRef.current) return;
@@ -173,7 +170,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
 
     const reviewSteps: LoadingStep[] = subBoxes.map((box) => ({
       text: `${box.title} taranıyor...`,
-      status: "idle" as const,
+      status: "active" as const,
     }));
 
     showLoading(
@@ -182,63 +179,51 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
       reviewSteps,
     );
 
-    let globalStepIndex = 0;
+    // Mark all loading steps as active upfront
+    for (let i = 0; i < subBoxes.length; i++) {
+      updateLoadingStep(i, "active");
+    }
 
-    for (let i = 0; i < subBoxes.length; i += CHUNK_SIZE) {
-      const chunk = subBoxes.slice(i, i + CHUNK_SIZE);
+    setBoxStatuses((prev) => {
+      const next = { ...prev };
+      for (const box of subBoxes) next[box.title] = "loading";
+      return next;
+    });
 
-      // Mark both chunk steps as active
-      for (let k = 0; k < chunk.length; k++) {
-        updateLoadingStep(globalStepIndex + k, "active");
-      }
+    const bulkResult = await processLiteratureReviewAction(
+      subBoxes.map((box) => ({
+        title: box.title,
+        description: box.description,
+        boxType: box.boxType,
+        semanticSearchBlock: box.semanticSearchBlock,
+        foundationalQueries: box.foundationalQueries,
+      })),
+    );
 
-      setBoxStatuses((prev) => {
-        const next = { ...prev };
-        for (const box of chunk) next[box.title] = "loading";
-        return next;
-      });
+    if (bulkResult.data) {
+      bulkResult.data.forEach((boxResult, j) => {
+        const box = subBoxes[j];
 
-      const bulkResult = await processLiteratureReviewAction(
-        chunk.map((box) => ({
-          title: box.title,
-          description: box.description,
-          boxType: box.boxType,
-          semanticSearchBlock: box.semanticSearchBlock,
-          foundationalQueries: box.foundationalQueries,
-        })),
-      );
-
-      if (bulkResult.data) {
-        for (let j = 0; j < chunk.length; j++) {
-          const box = chunk[j];
-          const boxResult = bulkResult.data[j];
-
-          if (boxResult.isArchivalBypass) {
-            setArchivalBoxes((prev) => new Set(prev).add(box.title));
-            setBoxStatuses((prev) => ({ ...prev, [box.title]: "done" }));
-            updateLoadingStep(globalStepIndex + j, "completed");
-            continue;
-          }
-
+        if (boxResult.isArchivalBypass) {
+          setArchivalBoxes((prev) => new Set(prev).add(box.title));
+        } else {
           addToLiteraturePool({
             subBoxTitle: box.title,
             starterPack: boxResult.starterPack,
             reservedPool: boxResult.reservedPool,
           });
-          setBoxStatuses((prev) => ({ ...prev, [box.title]: "done" }));
-          updateLoadingStep(globalStepIndex + j, "completed");
         }
-      } else {
-        const msg = bulkResult.error ?? "Literatür taraması başarısız oldu.";
-        for (let j = 0; j < chunk.length; j++) {
-          const box = chunk[j];
-          setBoxErrors((prev) => ({ ...prev, [box.title]: msg }));
-          setBoxStatuses((prev) => ({ ...prev, [box.title]: "error" }));
-          updateLoadingStep(globalStepIndex + j, "completed");
-        }
-      }
 
-      globalStepIndex += chunk.length;
+        setBoxStatuses((prev) => ({ ...prev, [box.title]: "done" }));
+        updateLoadingStep(j, "completed");
+      });
+    } else {
+      const msg = bulkResult.error ?? "Literatür taraması başarısız oldu.";
+      subBoxes.forEach((box, j) => {
+        setBoxErrors((prev) => ({ ...prev, [box.title]: msg }));
+        setBoxStatuses((prev) => ({ ...prev, [box.title]: "error" }));
+        updateLoadingStep(j, "completed");
+      });
     }
 
     processingRef.current = false;

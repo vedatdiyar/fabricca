@@ -20,7 +20,11 @@ const STEPS = [
   },
 ];
 
-export function OnboardingStepper() {
+export function OnboardingStepper({
+  stepsData,
+}: {
+  stepsData: Record<string, boolean>;
+}) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -36,6 +40,8 @@ export function OnboardingStepper() {
           const isActive = currentIdx === index;
           const isCompleted = currentIdx > index;
           const isFuture = currentIdx < index;
+          const hasData = stepsData[step.key] ?? false;
+          const isDisabled = isFuture && !hasData;
 
           return (
             <div
@@ -44,15 +50,15 @@ export function OnboardingStepper() {
             >
               <button
                 type="button"
-                disabled={isFuture}
+                disabled={isDisabled}
                 onClick={() => {
-                  if (isFuture) return;
+                  if (isDisabled) return;
                   router.push(step.route);
                 }}
                 className={cn(
                   "flex items-center gap-4 w-full py-3 rounded-xl transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20",
-                  !isFuture && "cursor-pointer hover:text-foreground",
-                  isFuture && "cursor-not-allowed opacity-40",
+                  !isDisabled && "cursor-pointer hover:text-foreground",
+                  isDisabled && "cursor-not-allowed opacity-40",
                   isActive && "text-primary font-medium",
                   !isActive && "text-muted-foreground",
                 )}
