@@ -4,7 +4,7 @@ import { and, eq, inArray, asc, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { libraryResources, type LibraryResource } from "@/db/schema";
-import { getSession } from "@/proxy";
+import { getSession } from "@/session";
 import { createFlowId, Logger } from "@/lib/logger";
 
 /* ---------- Result Types ---------- */

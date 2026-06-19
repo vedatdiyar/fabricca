@@ -45,19 +45,6 @@ const thesisInput = {
 };
 
 // ============================================================================
-// BASIT LOGGER (production logger'a bağımlılık olmadan)
-// ============================================================================
-const testLogger = {
-  info: (msg: string, data?: Record<string, unknown>) =>
-    console.log(`[INFO] ${msg}`, data ? JSON.stringify(data, null, 2) : ""),
-  warn: (msg: string, data?: Record<string, unknown>) =>
-    console.warn(`[WARN] ${msg}`, data ? JSON.stringify(data, null, 2) : ""),
-  error: (msg: string, data?: Record<string, unknown>) =>
-    console.error(`[ERROR] ${msg}`, data ? JSON.stringify(data, null, 2) : ""),
-  saveDebugPayload: () => undefined,
-};
-
-// ============================================================================
 // GEMINI ÇAĞRISI (generateStructuredContent'ın bağımsız kopyası)
 // ============================================================================
 let aiInstance: GoogleGenAI | null = null;

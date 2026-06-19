@@ -4,8 +4,13 @@ import { useMemo, useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
 import type { LoadingStep } from "@/lib/store/onboarding-store";
-import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
+import type {
+  GeminiThesisBox,
+  LiteraturePoolEntry,
+  JuryArticle,
+} from "@/lib/types";
 import {
   processLiteratureReviewAction,
   confirmLiteratureAction,
@@ -32,10 +37,17 @@ export interface UseLiteratureReviewResult {
   boxStatuses: Record<string, BoxStatus>;
   /** Per-box error messages keyed by box title. */
   boxErrors: Record<string, string>;
-  /** True when every sub-box has a corresponding literature-pool entry. */
+  /** True when every sub-box has a corresponding literature-pool entry (or manual entries for archival boxes). */
   allProcessed: boolean;
   /** The current literature pool (starter + reserved packs). */
   literaturePool: LiteraturePoolEntry[];
+  /** Set of sub-box titles that bypassed external APIs (archival/empirical). */
+  archivalBoxes: Set<string>;
+  /** Adds a manually-entered archive entry to the literature pool for an archival box. */
+  addArchiveEntry: (
+    subBoxTitle: string,
+    entry: { title: string; description?: string },
+  ) => void;
   /** Starts the chunked parallel literature-review pipeline. */
   startReviewProcess: () => Promise<void>;
   /** Finalizes onboarding: persists the pool, resets the store, navigates. */
@@ -61,6 +73,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   const hasAutoTriggeredRef = useRef(false);
   const [boxStatuses, setBoxStatuses] = useState<Record<string, BoxStatus>>({});
   const [boxErrors, setBoxErrors] = useState<Record<string, string>>({});
+  const [archivalBoxes, setArchivalBoxes] = useState<Set<string>>(new Set());
 
   const rawLiteraturePool = useOnboardingStore((s) => s.literaturePool);
   const literaturePool = useMemo(
@@ -144,8 +157,6 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     return () => {
       cancelled = true;
     };
-    // router intentionally excluded — redirect on mount only.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /**
@@ -191,6 +202,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
         chunk.map((box) => ({
           title: box.title,
           description: box.description,
+          boxType: box.boxType,
           semanticSearchBlock: box.semanticSearchBlock,
           foundationalQueries: box.foundationalQueries,
         })),
@@ -200,6 +212,14 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
         for (let j = 0; j < chunk.length; j++) {
           const box = chunk[j];
           const boxResult = bulkResult.data[j];
+
+          if (boxResult.isArchivalBypass) {
+            setArchivalBoxes((prev) => new Set(prev).add(box.title));
+            setBoxStatuses((prev) => ({ ...prev, [box.title]: "done" }));
+            updateLoadingStep(globalStepIndex + j, "completed");
+            continue;
+          }
+
           addToLiteraturePool({
             subBoxTitle: box.title,
             starterPack: boxResult.starterPack,
@@ -232,12 +252,61 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     updateLoadingStep,
   ]);
 
+  /**
+   * Adds a manually-entered archive entry for an archival/empirical box.
+   * Converts the user input into a JuryArticle with type: "PRIMARY" so it
+   * flows through the standard confirmLiteratureAction pipeline unchanged.
+   */
+  const addArchiveEntry = useCallback(
+    (subBoxTitle: string, entry: { title: string; description?: string }) => {
+      const archiveArticle: JuryArticle = {
+        type: "PRIMARY",
+        title: formatAcademicTitle(entry.title),
+        abstract:
+          entry.description ??
+          "Birincil arşiv belgesi — kullanıcı tarafından el ile girilmiştir.",
+        url: "",
+        doi: "",
+        publisher: "",
+        publicationYear: 0,
+        authors: [],
+        isFoundational: true,
+      };
+
+      const existingEntry = useOnboardingStore
+        .getState()
+        .literaturePool.find((e) => e.subBoxTitle === subBoxTitle);
+
+      if (existingEntry) {
+        const updatedPool = useOnboardingStore
+          .getState()
+          .literaturePool.map((e) =>
+            e.subBoxTitle === subBoxTitle
+              ? { ...e, starterPack: [...e.starterPack, archiveArticle] }
+              : e,
+          );
+        useOnboardingStore.getState().setLiteraturePool(updatedPool);
+      } else {
+        addToLiteraturePool({
+          subBoxTitle,
+          starterPack: [archiveArticle],
+          reservedPool: [],
+        });
+      }
+    },
+    [addToLiteraturePool],
+  );
+
   const allProcessed = useMemo(() => {
     if (subBoxes.length === 0) return false;
-    return subBoxes.every((box) =>
-      literaturePool.some((entry) => entry.subBoxTitle === box.title),
-    );
-  }, [subBoxes, literaturePool]);
+    return subBoxes.every((box) => {
+      if (archivalBoxes.has(box.title)) {
+        const entry = literaturePool.find((e) => e.subBoxTitle === box.title);
+        return entry !== undefined && entry.starterPack.length > 0;
+      }
+      return literaturePool.some((entry) => entry.subBoxTitle === box.title);
+    });
+  }, [subBoxes, literaturePool, archivalBoxes]);
 
   /**
    * Finalizes the onboarding flow: persists the literature pool to the database
@@ -290,6 +359,8 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     boxErrors,
     allProcessed,
     literaturePool,
+    archivalBoxes,
+    addArchiveEntry,
     startReviewProcess,
     handleFinalize,
   };

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getProfile } from "@/proxy";
+import { getProfile } from "@/session";
 import { RiskContainer } from "./_components/risk-container";
 
 /**

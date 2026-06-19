@@ -1,15 +1,30 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { getSessionWithOnboarding } from "@/proxy";
+import { getSessionWithOnboarding } from "@/session";
 import { Header } from "@/components/header";
 
 /**
- * Giriş sonrasi ana uygulama layout'u.
+ * Giriş sonrası ana uygulama layout'u.
  * Oturum kontrolü yapar, geçersizse /login'e yönlendirir.
  * Oturum varsa onboarding durumunu kontrol eder; tamamlanmamışsa
  * kullanıcıyı /onboarding sayfasına yönlendirir.
- * Kullanici adini Header bileşenine aktarir.
+ *
+ * cacheComponents (PPR) gereği layout'un kendisi cookies() gibi runtime
+ * API'lere erişemez; auth kontrolü Suspense-wrapped iç bileşene taşınmıştır.
  */
-export default async function AppLayout({
+export default function AppLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <Suspense fallback={null}>
+      <AppLayoutInner>{children}</AppLayoutInner>
+    </Suspense>
+  );
+}
+
+async function AppLayoutInner({
   children,
 }: Readonly<{
   children: React.ReactNode;

@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { compare } from "bcrypt-ts";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { getSession } from "@/proxy";
+import { getSession } from "@/session";
 import { createFlowId, Logger } from "@/lib/logger";
 
 export type LoginResult =

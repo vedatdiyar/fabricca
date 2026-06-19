@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getProfile } from "@/proxy";
+import { getProfile } from "@/session";
 import { MatrixForm } from "./_components/matrix-form";
 import { StartOverButton } from "../_components/start-over-button";
 

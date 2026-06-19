@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
-import { getProfile } from "@/proxy";
+import { getProfile } from "@/session";
 import { BoxesContainer } from "./_components/boxes-container";
 
 /**
- * Onboarding sürecinin final adımı: Bitiş ve Konu Kutuları Onayı (Server Component).
+ * Onboarding sürecinin dördüncü adımı: Konu Kutuları (Server Component).
  * Kullanıcının oturum yetkisini denetler ve Zustand store'daki kutuları gösterir.
  */
 export default async function OnboardingBoxesPage() {

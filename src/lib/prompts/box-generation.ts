@@ -28,9 +28,11 @@ export const thesisBoxGenerationSchema: JsonSchema = {
               "Veri",
               "Analiz",
               "Katkı",
+              "Ampirik",
+              "Arşiv",
             ],
             description:
-              "Kutunun işlevsel 7'li box tipolojisindeki tam karşılığı.",
+              "Kutunun işlevsel 9'lu box tipolojisindeki tam karşılığı (Kuram, Literatür, Bağlam, Yöntem, Veri, Analiz, Katkı, Ampirik, Arşiv).",
           },
           description: {
             type: "string",
@@ -104,7 +106,7 @@ export const thesisBoxGenerationSchema: JsonSchema = {
 // ============================================================================
 export function buildThesisBoxGenerationSystemInstruction(): string {
   return `# ROL VE GÖREV
-Sen OpenAlex ve Semantic Scholar veritabanlarının indeksleme, taksonomi ve vektörel anlamsal eşleştirme (Semantic Search) mimarisine ultra-spesifik düzeyde hakim bir Kıdemli Veri Mimarı ve Akademik Bibliyografya Uzmanısın. Görevin, girdi olarak sunulan yapılandırılmış 9 boyutlu tez matrisini girdiler, süreçler ve çıktılar ekseninde **7'li Box Tipolojisi** mantığıyla bağımsız, hiyerarşisiz literatür ve süreç kutularına (subject/methodology boxes) bölmektir.
+Sen OpenAlex ve Semantic Scholar veritabanlarının indeksleme, taksonomi ve vektörel anlamsal eşleştirme (Semantic Search) mimarisine ultra-spesifik düzeyde hakim bir Kıdemli Veri Mimarı ve Akademik Bibliyografya Uzmanısın. Görevin, girdi olarak sunulan yapılandırılmış 9 boyutlu tez matrisini girdiler, süreçler ve çıktılar ekseninde **9'lu Box Tipolojisi** (Kuram, Literatür, Bağlam, Yöntem, Veri, Analiz, Katkı, Ampirik, Arşiv) mantığıyla bağımsız, hiyerarşisiz literatür ve süreç kutularına (subject/methodology boxes) bölmektir.
 
 # BİLGİ VE ZAMAN KISITLAMALARI
 - Bilgi kesim tarihin Ocak 2025'tir.
@@ -115,7 +117,7 @@ Sen OpenAlex ve Semantic Scholar veritabanlarının indeksleme, taksonomi ve vek
 - DİL VE KÜRESEL ENDEKS KURALI: JSON nesnesindeki "title", "description", "concepts" ve "selfCorrectionJustification" alanları KESİNLİKLE TÜRKÇE olmalıdır. Harici tarama motorunu (OpenAlex) tetikleyecek olan "semanticSearchBlock" ve "foundationalQueries" alanları ise KESİNLİKLE akademik İNGİLİZCE ile üretilmelidir.
 
 # KUTU MİMARİSİ VE KESİN SEÇİM METRİKLERİ
-1. 7'Lİ BOX TİPOLOJİSİ ENTEGRASYONU: Girdideki verileri şu 7 işlevsel tipe göre analiz et ve dağıt: [Kuram, Literatür, Bağlam, Yöntem, Veri, Analiz, Katkı]. Her kutunun "boxType" alanı bu tiplerden biri olmak zorundadır. Model, tezin sadece konusunu değil; yöntemsel, lojistik ve analitik literatür altyapısını da bağımsız birer kutu olarak inşa etmelidir.
+1. 9'LU BOX TİPOLOJİSİ ENTEGRASYONU: Girdideki verileri şu 9 işlevsel tipe göre analiz et ve dağıt: [Kuram, Literatür, Bağlam, Yöntem, Veri, Analiz, Katkı, Ampirik, Arşiv]. Her kutunun "boxType" alanı bu tiplerden biri olmak zorundadır. Model, tezin sadece konusunu değil; yöntemsel, lojistik ve analitik literatür altyapısını da bağımsız birer kutu olarak inşa etmelidir.
 
 2. ATOMİK BİLEŞEN AYRIŞTIRMASI VE ERİTME YASAĞI (MUTLAK KURAL): Girdide birden fazla bağımsız kuram, yaklaşım, tarihsel kırılma veya metodolojik araç varsa bunları asla tek bir jenerik kutuda birleştirme! Kutu sayısı, matrisin içerdiği bağımsız bileşen miktarına göre tamamen organik ve esnek şekilde genişlemelidir.
 
@@ -133,7 +135,7 @@ Sen OpenAlex ve Semantic Scholar veritabanlarının indeksleme, taksonomi ve vek
 
 7. MODEL TEMBELLİĞİ ENGELİ VE FORMAT: Çıktılarında asla "...", "vb.", "etc." kullanamazsın. Yanıtın, sağlanan şema ile %100 uyumlu ham JSON objesi olmalıdır. Markdown \`\`\`json ... \`\`\` kod blokları kullanma, sadece saf JSON verisi döndür.
 
-# 7'Lİ TİPOLOJİYE UYGUN FEW-SHOT ÖRNEĞİ
+# 9'LU TİPOLOJİYE UYGUN FEW-SHOT ÖRNEĞİ
 <ornek_girdi_matrisi>
 {
   "studyTitle": "X Ülkesinde Z Bağlamında Y Süreci",
@@ -209,7 +211,7 @@ export function buildThesisBoxGenerationPrompt(params: {
 </hedef_tez_matrisi>
 
 # TALİMATLAR VE GÖREV
-Sistem talimatında tanımlanan tüm kurallara, dil kısıtlamalarına, **7'li Box Tipolojisi** ilkelerine ve özellikle **Atomik Bileşen Ayrıştırması** ile **Akademik Öz-Denetim** standartlarına kusursuz şekilde bağlı kalarak, yukarıdaki 9 boyutlu <hedef_tez_matrisi> yapısını analiz et.
+Sistem talimatında tanımlanan tüm kurallara, dil kısıtlamalarına, **9'lu Box Tipolojisi** ilkelerine ve özellikle **Atomik Bileşen Ayrıştırması** ile **Akademik Öz-Denetim** standartlarına kusursuz şekilde bağlı kalarak, yukarıdaki 9 boyutlu <hedef_tez_matrisi> yapısını analiz et.
 
 Tezi girdiler, süreçler ve çıktılar odağında parçalayarak, girdideki bağımsız unsur ve bileşen sayısına göre tamamen organik sayıda, özerk ve literatür taramasına hazır kutu (boxes) üret. Girdide yan yana duran farklı teorileri, farklı ampirik dinamikleri veya farklı metodolojik araçları tek bir kutuda eritme; her bir bileşene kendi bağımsız kutusunu tanımla. 
 

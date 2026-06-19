@@ -19,6 +19,7 @@ import type {
   ToggleReadStatusResult,
   ReplenishResult,
 } from "@/app/(app)/library/actions";
+import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
 
 /* ---------- Types ---------- */
 
@@ -319,7 +320,7 @@ export function LiteratureReader({ boxId, boxTitle }: LiteratureReaderProps) {
                         htmlFor={`resource-${resource.id}`}
                         className="cursor-pointer text-sm font-medium text-foreground leading-snug hover:text-primary transition-colors"
                       >
-                        {resource.title}
+                        {formatAcademicTitle(resource.title)}
                       </label>
 
                       <Badge

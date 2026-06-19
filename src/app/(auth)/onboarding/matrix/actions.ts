@@ -3,11 +3,11 @@
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
-import { getSession } from "@/proxy";
+import { getSession } from "@/session";
 import { generateStructuredContent } from "@/lib/gemini";
 import { ThinkingLevel } from "@google/genai";
 import { createFlowId, Logger } from "@/lib/logger";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 
 import {
   enhancedThesisSchema,
@@ -232,6 +232,10 @@ export async function saveEnrichedMatrixAction(
 
     revalidatePath("/onboarding/matrix");
     revalidatePath("/onboarding/enrichment");
+
+    updateTag("thesis-matrix");
+    updateTag("originality-report");
+    updateTag("thesis-boxes");
 
     log.info("matrix_save_success", {
       service: "db",

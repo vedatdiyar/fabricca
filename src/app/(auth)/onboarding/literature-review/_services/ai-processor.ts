@@ -11,6 +11,7 @@ import {
 import { Logger } from "@/lib/logger";
 import type { SubBoxInput, ValidatedPaper } from "./literature-review-papers";
 import type { JuryArticle } from "@/lib/types";
+import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
 import { validateWithCrossRef } from "./search-api";
 
 // ============================================================================
@@ -21,6 +22,7 @@ export interface LiteratureReviewResult {
   starterPack: JuryArticle[];
   reservedPool: JuryArticle[];
   error?: string;
+  isArchivalBypass?: boolean;
 }
 
 // ============================================================================
@@ -308,6 +310,7 @@ function backfillIsFoundational(
 export async function enrichJuryArticleWithCrossRef(
   article: JuryArticle,
   pool: ValidatedPaper[],
+  logger?: Logger,
 ): Promise<JuryArticle> {
   let resolvedAbstract = article.abstract;
 
@@ -344,10 +347,11 @@ export async function enrichJuryArticleWithCrossRef(
     relevanceScore: 0,
   };
 
-  const enriched = await validateWithCrossRef(paper);
+  const enriched = await validateWithCrossRef(paper, logger);
 
   return {
     ...article,
+    title: formatAcademicTitle(enriched.title),
     abstract: resolvedAbstract,
     authors: enriched.authors.length > 0 ? enriched.authors : article.authors,
     url: enriched.url ?? article.url,

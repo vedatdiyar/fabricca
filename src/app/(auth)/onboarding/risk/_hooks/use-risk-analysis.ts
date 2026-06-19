@@ -253,7 +253,9 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
   useEffect(() => {
     const hasCache = !!useOnboardingStore.getState().reportData;
     if (!loading && !reportData && !analysing && !hasCache) {
-      startAnalysis();
+      void Promise.resolve().then(() => {
+        startAnalysis();
+      });
     }
   }, [loading, reportData, analysing, startAnalysis]);
 

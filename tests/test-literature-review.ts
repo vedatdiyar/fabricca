@@ -22,7 +22,7 @@ import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 
 import { Logger, createFlowId } from "../src/lib/logger";
-import type { FoundationalQuery, JuryArticle } from "../src/lib/types";
+import type { JuryArticle } from "../src/lib/types";
 import type {
   SubBoxInput,
   ValidatedPaper,

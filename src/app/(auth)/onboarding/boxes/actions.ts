@@ -3,11 +3,11 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { thesisBoxes } from "@/db/schema";
-import { getSession } from "@/proxy";
+import { getSession } from "@/session";
 import { generateStructuredContent } from "@/lib/gemini";
 import { ThinkingLevel } from "@google/genai";
 import { createFlowId, Logger } from "@/lib/logger";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import {
   buildThesisBoxGenerationSystemInstruction,
   buildThesisBoxGenerationPrompt,
@@ -147,6 +147,8 @@ export async function confirmBoxesAction(
     revalidatePath("/onboarding", "layout");
     revalidatePath("/onboarding/literature-review");
     revalidatePath("/", "layout");
+
+    updateTag("thesis-boxes");
 
     log.info("boxes_confirm_success", {
       service: "boxes",

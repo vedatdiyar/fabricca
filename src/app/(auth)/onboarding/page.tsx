@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
-import { getProfile } from "@/proxy";
+import { getProfile } from "@/session";
 
 /**
  * Onboarding root router page.

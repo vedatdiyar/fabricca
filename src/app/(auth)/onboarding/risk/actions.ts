@@ -3,9 +3,9 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { originalityReports, thesisMatrices, thesisBoxes } from "@/db/schema";
-import { getSession } from "@/proxy";
+import { getSession } from "@/session";
 import { createFlowId, Logger } from "@/lib/logger";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import type {
   OnboardingActionResult,
   ScrapedTheses,
@@ -374,6 +374,8 @@ export async function finalizeJuryAnalysisAction(params: {
       data: { context: params.matrix.studyTitle },
     });
 
+    updateTag("originality-report");
+
     return { success: true, data: reportData };
   } catch (err) {
     log.error("originality_jury_finalize_failed", {
@@ -421,6 +423,8 @@ export async function completeRiskStageAction(): Promise<OnboardingActionResult>
     }
 
     revalidatePath("/onboarding", "layout");
+
+    updateTag("thesis-boxes");
 
     log.info("originality_risk_complete_success", {
       service: "originality",

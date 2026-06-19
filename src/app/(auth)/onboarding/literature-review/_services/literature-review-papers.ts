@@ -11,6 +11,7 @@ import type { FoundationalQuery } from "@/lib/types";
 export interface SubBoxInput {
   title: string;
   description: string;
+  boxType?: string;
   semanticSearchBlock: string;
   foundationalQueries: FoundationalQuery[];
 }

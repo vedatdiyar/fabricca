@@ -1,8 +1,7 @@
-export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 import { redirect } from "next/navigation";
-import { getProfile } from "@/proxy";
+import { getProfile } from "@/session";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { thesisMatrices } from "@/db/schema";

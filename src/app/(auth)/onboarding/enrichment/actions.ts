@@ -3,9 +3,9 @@
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
-import { getSession } from "@/proxy";
+import { getSession } from "@/session";
 import { createFlowId, Logger } from "@/lib/logger";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import type { EnhancedThesisData, OnboardingActionResult } from "@/lib/types";
 
 /**
@@ -88,6 +88,10 @@ export async function confirmEnhancedThesisAction(
     revalidatePath("/onboarding/matrix");
     revalidatePath("/onboarding/enrichment");
     revalidatePath("/onboarding/risk");
+
+    updateTag("thesis-matrix");
+    updateTag("originality-report");
+    updateTag("thesis-boxes");
 
     log.info("enrichment_confirm_success", {
       service: "enrichment",

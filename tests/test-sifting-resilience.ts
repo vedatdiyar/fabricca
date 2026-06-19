@@ -184,7 +184,6 @@ async function main() {
   console.log("\n  ☠️  AŞAMA 4: Zehirli Makale Enjeksiyonu\n");
 
   const poisonedPool = [...merged, ...TOXIC_ARTICLES];
-  const toxicIds = new Set(TOXIC_ARTICLES.map((t) => t.openAlexId!));
 
   console.log(`  Temiz makale sayısı: ${merged.length}`);
   console.log(`  Enjekte edilen zehirli makale: ${TOXIC_ARTICLES.length}`);

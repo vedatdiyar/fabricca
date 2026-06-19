@@ -198,6 +198,8 @@ export const GeminiThesisBoxSchema = z.object({
     "Veri",
     "Analiz",
     "Katkı",
+    "Ampirik",
+    "Arşiv",
   ]),
   description: z.string().min(1, "Kutu açıklaması boş olamaz"),
   semanticSearchBlock: z
@@ -233,7 +235,9 @@ export interface GeminiThesisBox {
     | "Yöntem"
     | "Veri"
     | "Analiz"
-    | "Katkı";
+    | "Katkı"
+    | "Ampirik"
+    | "Arşiv";
   description: string;
   semanticSearchBlock: string;
   foundationalQueries: FoundationalQuery[];

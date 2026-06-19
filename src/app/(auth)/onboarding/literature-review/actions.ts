@@ -2,7 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { db } from "@/db";
 import {
   thesisMatrices,
@@ -10,7 +10,7 @@ import {
   libraryResources,
   users,
 } from "@/db/schema";
-import { getSession } from "@/proxy";
+import { getSession } from "@/session";
 import { Logger, createFlowId } from "@/lib/logger";
 import type {
   LiteraturePoolEntry,
@@ -28,6 +28,7 @@ import {
   resolveFoundationalWorks,
   fetchFullAbstracts,
 } from "./_services/search-api";
+import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
 import {
   runSiftingStage,
   runJuryStage,
@@ -44,16 +45,51 @@ const CROSSREF_CONCURRENCY = 5;
 async function enrichBatch(
   articles: JuryArticle[],
   pool: ValidatedPaper[],
+  logger?: Logger,
 ): Promise<JuryArticle[]> {
   const results: JuryArticle[] = [];
   for (let i = 0; i < articles.length; i += CROSSREF_CONCURRENCY) {
     const batch = articles.slice(i, i + CROSSREF_CONCURRENCY);
     const enriched = await Promise.all(
-      batch.map((a) => enrichJuryArticleWithCrossRef(a, pool)),
+      batch.map((a) => enrichJuryArticleWithCrossRef(a, pool, logger)),
     );
     results.push(...enriched);
+
+    if (i + CROSSREF_CONCURRENCY < articles.length) {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    }
   }
   return results;
+}
+
+// ============================================================================
+// Helper: isArchivalBox — detects boxes that should bypass external APIs
+// ============================================================================
+
+/**
+ * Determines whether a sub-box focuses on primary archival/empirical sources.
+ * Such boxes bypass OpenAlex search, AI sifting, jury analysis, and CrossRef
+ * validation. Instead, manual archive entries are collected on the frontend
+ * and saved directly as PRIMARY-type resources.
+ *
+ * Detection is two-pronged:
+ * 1. boxType === "Ampirik" | "Arşiv" (primary signal)
+ * 2. foundationalQueries contain explicit archival fund/code patterns
+ *    (e.g. BCA, TBMM Zabıtları)
+ */
+function isArchivalBox(subBox: SubBoxInput): boolean {
+  const ARCHIVAL_TYPES = new Set(["Ampirik", "Arşiv"]);
+  if (ARCHIVAL_TYPES.has(subBox.boxType ?? "")) return true;
+  if (subBox.foundationalQueries && subBox.foundationalQueries.length > 0) {
+    const archivalPattern =
+      /\b(BCA|Başbakanlık|Cumhuriyet|arşiv|zabıt|archive|archival|fond|defter|tasnif|belge|document|record|manuscript|collection)\b/i;
+    return subBox.foundationalQueries.some(
+      (q) =>
+        archivalPattern.test(q.title) ||
+        archivalPattern.test((q as { author: string }).author),
+    );
+  }
+  return false;
 }
 
 // ============================================================================
@@ -84,6 +120,29 @@ async function processSingleBox(
     return { starterPack: [], reservedPool: [] };
   }
 
+  // ------------------------------------------------------------------
+  // Stage 0: Archival / Empirical Bypass
+  //   Boxes with boxType === "Ampirik" | "Arşiv" or containing archival
+  //   patterns in foundationalQueries skip ALL external API calls and AI
+  //   stages. The frontend renders a manual entry form where the user
+  //   inputs primary archive fund codes; those entries are converted to
+  //   JuryArticle[] with type: "PRIMARY" and saved directly to the DB
+  //   via the standard confirmLiteratureAction pipeline.
+  // ------------------------------------------------------------------
+  if (isArchivalBox(subBox)) {
+    logger.info("literature_archival_bypass", {
+      service: "literature",
+      filePath: "onboarding/literature-review/actions.ts",
+      data: {
+        subBoxTitle: subBox.title,
+        boxType: subBox.boxType ?? "bilinmiyor",
+        foundationalQueryCount: subBox.foundationalQueries?.length ?? 0,
+        context: `Kutu: ${subBox.title}`,
+      },
+    });
+    return { starterPack: [], reservedPool: [], isArchivalBypass: true };
+  }
+
   const boxCtx = `Kutu: ${subBox.title}`;
 
   // ------------------------------------------------------------------
@@ -111,7 +170,7 @@ async function processSingleBox(
     for (const fw of resolved) {
       foundationalArticles.push({
         type: "PRIMARY" as const,
-        title: fw.title,
+        title: formatAcademicTitle(fw.title),
         abstract: "",
         url: fw.id,
         doi: "",
@@ -265,10 +324,17 @@ async function processSingleBox(
   // Stage 7: CrossRef Polite-Pool Validation
   // ------------------------------------------------------------------
   const crossrefStart = performance.now();
-  const [enrichedStarterPack, enrichedReservedPool] = await Promise.all([
-    enrichBatch(result.starterPack, rawApiPool),
-    enrichBatch(result.reservedPool, rawApiPool),
-  ]);
+  const enrichedStarterPack = await enrichBatch(
+    result.starterPack,
+    rawApiPool,
+    logger,
+  );
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  const enrichedReservedPool = await enrichBatch(
+    result.reservedPool,
+    rawApiPool,
+    logger,
+  );
 
   logger.info("literature_crossref_done", {
     service: "literature",
@@ -491,7 +557,7 @@ export async function confirmLiteratureAction(args: {
             thesisBoxId,
             status: "APPROVED",
             type: article.type,
-            title: article.title,
+            title: formatAcademicTitle(article.title),
             abstract: article.abstract ?? null,
             url: article.url ?? null,
             doi: article.doi ?? null,
@@ -508,7 +574,7 @@ export async function confirmLiteratureAction(args: {
             thesisBoxId,
             status: "RESERVED",
             type: article.type,
-            title: article.title,
+            title: formatAcademicTitle(article.title),
             abstract: article.abstract ?? null,
             url: article.url ?? null,
             doi: article.doi ?? null,
@@ -565,6 +631,10 @@ export async function confirmLiteratureAction(args: {
     } catch {
       // Revalidation path skipped
     }
+
+    updateTag("thesis-matrix");
+    updateTag("originality-report");
+    updateTag("thesis-boxes");
 
     log.info("confirm_literature_success", {
       service: "literature",

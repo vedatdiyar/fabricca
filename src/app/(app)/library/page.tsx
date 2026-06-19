@@ -2,7 +2,7 @@ import { eq, asc } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { thesisMatrices, thesisBoxes } from "@/db/schema";
-import { getSession } from "@/proxy";
+import { getSession } from "@/session";
 import { LibraryContent } from "./library-content";
 
 export default async function LibraryPage() {

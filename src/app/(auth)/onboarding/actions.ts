@@ -3,8 +3,8 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { thesisMatrices, originalityReports, users } from "@/db/schema";
-import { getSession } from "@/proxy";
-import { revalidatePath } from "next/cache";
+import { getSession } from "@/session";
+import { revalidatePath, updateTag } from "next/cache";
 import { createFlowId, Logger } from "@/lib/logger";
 
 /**
@@ -48,6 +48,10 @@ export async function resetOnboardingAction(): Promise<
     });
 
     revalidatePath("/onboarding", "layout");
+
+    updateTag("thesis-matrix");
+    updateTag("originality-report");
+    updateTag("thesis-boxes");
 
     log.info({ step: "reset_onboarding", status: "SUCCESS", service: "flow" });
     return { success: true };

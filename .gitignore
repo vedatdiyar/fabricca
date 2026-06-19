@@ -27,6 +27,7 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
+.env
 .env*.local
 
 # vercel
@@ -41,6 +42,10 @@ next-env.d.ts
 
 # vscode
 .vscode
+
+# AI
+.agents/
+skills-lock.json
 
 # AI Context Files
 repomix-output.xml
