@@ -1,15 +1,8 @@
 import type { Logger } from "./logger";
 import type { TezaraThesisSummary, TezaraThesisDetails } from "./types";
-import {
-  extractRscTexts,
-  extractJsonObjects,
-  parseRscTheses,
-  findThesisObjRecursively,
-} from "./tezara-parser";
+import { parseTezaraDetails, parseTezaraSearchResults } from "./tezara-parser";
 
 const TEZARA_FETCH_HEADERS = {
-  rsc: "1",
-  accept: "text/x-component",
   "user-agent":
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 } as const;
@@ -31,7 +24,7 @@ export async function searchTezaraPage(
 ): Promise<TezaraThesisSummary[]> {
   const startTime = performance.now();
   try {
-    const url = `https://tezara.org/search?q=${encodeURIComponent(query)}&page=${page}${advanced ? "&advanced=true" : ""}&_rsc=vusbg`;
+    const url = `https://tezara.org/search?q=${encodeURIComponent(query)}&page=${page}${advanced ? "&advanced=true" : ""}`;
     const response = await fetch(url, { headers: TEZARA_FETCH_HEADERS });
 
     if (!response.ok) {
@@ -46,8 +39,8 @@ export async function searchTezaraPage(
       return [];
     }
 
-    const text = await response.text();
-    const results = parseRscTheses(text, logger);
+    const html = await response.text();
+    const results = parseTezaraSearchResults(html, logger);
     const durationMs = performance.now() - startTime;
 
     if (results.length === 0) {
@@ -94,7 +87,7 @@ export async function searchTezara(
 
 /**
  * Fetches details of a single thesis from Tezara by ID.
- * Resolves the abstract from references if needed, falling back to empty string if missing.
+ * Parses the rendered HTML page directly via cheerio.
  *
  * @param id - The thesis ID.
  * @param logger - Optional Logger instance.
@@ -106,7 +99,7 @@ export async function fetchThesisDetails(
 ): Promise<TezaraThesisDetails | null> {
   const startTime = performance.now();
   try {
-    const url = `https://tezara.org/theses/${id}?_rsc=vusbg`;
+    const url = `https://tezara.org/theses/${id}`;
     const response = await fetch(url, { headers: TEZARA_FETCH_HEADERS });
 
     if (!response.ok) {
@@ -121,87 +114,25 @@ export async function fetchThesisDetails(
       return null;
     }
 
-    const text = await response.text();
-    const refMap = extractRscTexts(text, logger);
+    const html = await response.text();
+    const details = parseTezaraDetails(html, logger);
 
-    // Extract YÖK PDF direct link key URL if present in response
-    const pdfMatch = text.match(
-      /https:\/\/tez\.yok\.gov\.tr\/UlusalTezMerkezi\/TezGoster\?key=[a-zA-Z0-9_\-]+/,
-    );
-    const yokPdfUrl = pdfMatch ? pdfMatch[0] : undefined;
-
-    let thesisObj = null;
-    const lines = text.split("\n");
-
-    for (const line of lines) {
-      try {
-        const jsonObjects = extractJsonObjects(line, logger);
-        for (const obj of jsonObjects) {
-          const found = findThesisObjRecursively(obj, undefined, 0, logger);
-          if (found) {
-            thesisObj = found;
-            break;
-          }
-        }
-        if (thesisObj) {
-          break;
-        }
-      } catch (err) {
-        logger?.error("parser_detail_fetch_failed", {
-          service: "tezara",
-          data: { thesisId: id, context: "fetchThesisDetails" },
-          error: err,
-        });
-      }
-    }
-
-    if (!thesisObj) {
+    if (!details) {
       const durationMs = performance.now() - startTime;
       logger?.warn("search_empty", {
         service: "tezara",
         filePath: "src/lib/tezara.ts",
         step: "fetch_details",
         durationMs,
-        data: { thesisId: id, reason: "Thesis metadata not found in response" },
+        data: {
+          thesisId: id,
+          reason: "Thesis metadata not found in response",
+        },
       });
       return null;
     }
 
-    let abstract = "";
-    const originalAbs = thesisObj.abstract_original;
-    const translatedAbs = thesisObj.abstract_translated;
-
-    if (typeof originalAbs === "string" && originalAbs) {
-      if (originalAbs.startsWith("$")) {
-        const refId = originalAbs.substring(1);
-        abstract = refMap[refId] || "";
-      } else {
-        abstract = originalAbs;
-      }
-    }
-
-    if (!abstract && typeof translatedAbs === "string" && translatedAbs) {
-      if (translatedAbs.startsWith("$")) {
-        const refId = translatedAbs.substring(1);
-        abstract = refMap[refId] || "";
-      } else {
-        abstract = translatedAbs;
-      }
-    }
-
-    return {
-      id: Number(thesisObj.id ?? id),
-      title: String(
-        thesisObj.title_original ?? thesisObj.title_translated ?? "",
-      ),
-      author: String(thesisObj.author ?? ""),
-      university: String(thesisObj.university ?? ""),
-      year: Number(thesisObj.year ?? 0),
-      thesisType: String(thesisObj.thesis_type ?? thesisObj.thesisType ?? ""),
-      department: String(thesisObj.department ?? ""),
-      abstract,
-      yokPdfUrl,
-    };
+    return details;
   } catch (err) {
     const durationMs = performance.now() - startTime;
     logger?.error("search_filtered", {

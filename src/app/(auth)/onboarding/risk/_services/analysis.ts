@@ -37,7 +37,7 @@ export interface CalculatedOverlapItem {
     methodology: AxesOption;
     context?: AxesOption;
   };
-  originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
+  riskScore: number;
 }
 
 export interface CalculatedOriginalityRiskResult {
@@ -46,38 +46,102 @@ export interface CalculatedOriginalityRiskResult {
   riskPercentage: number;
 }
 
-function badgeToRiskPercentage(
-  badge: CalculatedOriginalityRiskResult["originalityBadge"],
-): number {
-  switch (badge) {
-    case "HIGH_RISK":
-      return 100;
-    case "MEDIUM_RISK":
-      return 50;
-    case "LOW_RISK":
-      return 25;
-    case "ZERO_RISK":
-      return 0;
-  }
+type AxesLabel = "HIGH" | "PARTIAL" | "NONE";
+
+const SCORE_MAP: Record<AxesLabel, number> = {
+  HIGH: 100,
+  PARTIAL: 40,
+  NONE: 0,
+};
+
+const AXIS_WEIGHTS = {
+  subject: 0.4,
+  theory: 0.3,
+  methodology: 0.15,
+  context: 0.15,
+};
+
+/**
+ * Calculates a weighted risk score (0-100) for a single thesis based on its
+ * 4-axis overlap labels. Subject/Research Question (40%), Theory (30%),
+ * Methodology (15%), Context (15%).
+ *
+ * @param axes - The 4-axis overlap assessment from Gemini.
+ * @returns Rounded risk score between 0 and 100.
+ */
+export function calculateSingleScore(axes: {
+  subject: AxesLabel;
+  theory: AxesLabel;
+  methodology: AxesLabel;
+  context: AxesLabel;
+}): number {
+  const rawScore =
+    SCORE_MAP[axes.subject] * AXIS_WEIGHTS.subject +
+    SCORE_MAP[axes.theory] * AXIS_WEIGHTS.theory +
+    SCORE_MAP[axes.methodology] * AXIS_WEIGHTS.methodology +
+    SCORE_MAP[axes.context] * AXIS_WEIGHTS.context;
+
+  return Math.round(rawScore);
 }
 
 /**
- * Enriches the raw Gemini overlap analysis with thesis metadata and passes
- * Gemini's holistic originality_level through to the output. This function
- * is deliberately passive — no axis counting, no weighted scoring.
+ * Determines the project-level global risk badge and percentage based on the
+ * maximum individual thesis risk score in the candidate pool.
+ *
+ * @param scores - Array of per-thesis risk scores (0-100).
+ * @returns Global risk badge and display percentage.
+ */
+export function evaluateGlobalRisk(scores: number[]): {
+  badge: string;
+  percentage: number;
+} {
+  if (scores.length === 0) return { badge: "ZERO_RISK", percentage: 0 };
+
+  const maxScore = Math.max(...scores);
+
+  if (maxScore <= 15) return { badge: "ZERO_RISK", percentage: 0 };
+  if (maxScore <= 40) return { badge: "LOW_RISK", percentage: 25 };
+  if (maxScore <= 70) return { badge: "MEDIUM_RISK", percentage: 50 };
+  return { badge: "HIGH_RISK", percentage: 85 };
+}
+
+const SCORE_BADGE_THRESHOLDS: [number, string][] = [
+  [15, "ZERO_RISK"],
+  [40, "LOW_RISK"],
+  [70, "MEDIUM_RISK"],
+  [100, "HIGH_RISK"],
+];
+
+/**
+ * Maps an individual thesis risk score to its corresponding risk badge.
+ * Useful for per-thesis UI badge display.
+ *
+ * @param score - Risk score (0-100).
+ * @returns Corresponding risk badge label.
+ */
+export function getScoreBadge(score: number): string {
+  for (const [threshold, badge] of SCORE_BADGE_THRESHOLDS) {
+    if (score <= threshold) return badge;
+  }
+  return "HIGH_RISK";
+}
+
+/**
+ * Enriches the raw Gemini overlap analysis with thesis metadata and computes
+ * each thesis's risk score from the 4 axis labels. The project-level badge
+ * is derived from the highest individual risk score in the pool.
  *
  * Filters out IDs hallucinated by Gemini that don't exist in validDetails.
  *
- * @param overlapTable - Raw overlap table from Gemini analysis.
+ * @param overlapTable - Raw overlap table from Gemini analysis (axes only).
  * @param validDetails - Enriched thesis metadata for ID lookup.
  * @param logger - Optional logger instance.
- * @returns Enriched overlap table with Gemini's originality level and badge.
+ * @returns Enriched overlap table with computed risk scores and project badge.
  */
 export function calculateOriginalityRisk(
   overlapTable: Array<{
     id: number;
     academic_reasoning: string;
-    originality_level: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
     subject_overlap: "HIGH" | "PARTIAL" | "NONE";
     methodology_overlap: "HIGH" | "PARTIAL" | "NONE";
     theory_overlap: "HIGH" | "PARTIAL" | "NONE";
@@ -95,6 +159,8 @@ export function calculateOriginalityRisk(
   }
 
   const calculatedOverlapTable: CalculatedOverlapItem[] = [];
+  const allScores: number[] = [];
+
   for (const item of overlapTable) {
     const detail = validDetails.find((d) => d.id === item.id);
     if (!detail) {
@@ -108,6 +174,16 @@ export function calculateOriginalityRisk(
       continue;
     }
 
+    const axes = {
+      subject: item.subject_overlap,
+      theory: item.theory_overlap,
+      methodology: item.methodology_overlap,
+      context: item.context_overlap,
+    };
+
+    const riskScore = calculateSingleScore(axes);
+    allScores.push(riskScore);
+
     calculatedOverlapTable.push({
       id: detail.id,
       title: detail.title,
@@ -118,30 +194,18 @@ export function calculateOriginalityRisk(
       department: detail.department,
       comparisonNote: item.academic_reasoning,
       yokPdfUrl: detail.yokPdfUrl,
-      axes: {
-        subject: item.subject_overlap,
-        theory: item.theory_overlap,
-        methodology: item.methodology_overlap,
-        context: item.context_overlap,
-      },
-      originalityLevel: item.originality_level,
+      axes,
+      riskScore,
     });
   }
 
-  const levels = new Set(calculatedOverlapTable.map((i) => i.originalityLevel));
-  const RISK_PRIORITY = [
-    "HIGH_RISK",
-    "MEDIUM_RISK",
-    "LOW_RISK",
-    "ZERO_RISK",
-  ] as const;
-  const originalityBadge =
-    RISK_PRIORITY.find((r) => levels.has(r)) ?? "ZERO_RISK";
+  const globalRisk = evaluateGlobalRisk(allScores);
 
   return {
-    originalityBadge,
+    originalityBadge:
+      globalRisk.badge as CalculatedOriginalityRiskResult["originalityBadge"],
     overlapTable: calculatedOverlapTable,
-    riskPercentage: badgeToRiskPercentage(originalityBadge),
+    riskPercentage: globalRisk.percentage,
   };
 }
 
@@ -199,7 +263,6 @@ export async function analyzeOriginalityRisk(
   overlapTable: {
     id: number;
     academic_reasoning: string;
-    originality_level: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
     subject_overlap: "HIGH" | "PARTIAL" | "NONE";
     methodology_overlap: "HIGH" | "PARTIAL" | "NONE";
     theory_overlap: "HIGH" | "PARTIAL" | "NONE";
@@ -226,11 +289,6 @@ export async function analyzeOriginalityRisk(
       overlapTable: {
         id: number;
         academic_reasoning: string;
-        originality_level:
-          | "HIGH_RISK"
-          | "MEDIUM_RISK"
-          | "LOW_RISK"
-          | "ZERO_RISK";
         subject_overlap: "HIGH" | "PARTIAL" | "NONE";
         methodology_overlap: "HIGH" | "PARTIAL" | "NONE";
         theory_overlap: "HIGH" | "PARTIAL" | "NONE";

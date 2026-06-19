@@ -114,7 +114,7 @@ export interface OriginalityReportData {
       year: number;
       thesisType: string;
       department: string;
-      originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
+      riskScore: number;
     })[];
     strategicRecommendations: string;
     riskPercentage?: number;
@@ -171,7 +171,7 @@ export interface JuryReportItem {
   year: number;
   thesisType: string;
   department: string;
-  originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
+  riskScore: number;
   axes: {
     subject: AxesOption;
     theory: AxesOption;

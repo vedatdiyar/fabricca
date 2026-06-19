@@ -328,7 +328,7 @@ export async function finalizeJuryAnalysisAction(params: {
             author: item.author,
             year: item.year,
             axes: item.axes,
-            originalityLevel: item.originalityLevel,
+            riskScore: item.riskScore,
             comparisonNote: item.comparisonNote || "",
           })),
         },

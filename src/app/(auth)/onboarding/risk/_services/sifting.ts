@@ -259,6 +259,11 @@ export async function siftAndFetchDetails(
       });
       log.prompt("gemini-3.1-flash-lite (HIGH thinking)", deepSiftPrompt);
 
+      console.log(
+        "=== GEMINI'A GİDEN HAM TEZ VERİLERİ ===",
+        JSON.stringify(validDetails, null, 2),
+      );
+
       const deepSiftResult = await generateStructuredContent<DeepSiftResponse>(
         "gemini-3.1-flash-lite",
         buildDeepSiftingSystemInstruction(),

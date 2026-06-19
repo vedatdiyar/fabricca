@@ -27,7 +27,7 @@ export interface SynthesizeRoadmapParams {
       methodology: string;
       context?: string;
     };
-    originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
+    riskScore: number;
     comparisonNote: string;
   }[];
 }

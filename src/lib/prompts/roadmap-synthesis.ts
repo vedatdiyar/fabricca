@@ -53,7 +53,7 @@ Sen, üniversitelerin Sosyal Bilimler ve Lisansüstü Eğitim Enstitülerinde do
     "author": "Ahmet Yılmaz",
     "year": 2023,
     "axes": { "subject": "HIGH", "theory": "HIGH", "methodology": "HIGH", "context": "HIGH" },
-    "originalityLevel": "HIGH_RISK",
+    "riskScore": 85,
     "comparisonNote": "Kuram, mekan, yöntem ve örneklem evreni hedef tezle birebir çakışmaktadır."
   }
 ]
@@ -89,7 +89,7 @@ export function buildRoadmapPrompt(params: {
       methodology: string;
       context?: string;
     };
-    originalityLevel: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
+    riskScore: number;
     comparisonNote: string;
   }[];
 }): string {

@@ -22,12 +22,6 @@ export const geminiAnalysisSchema: JsonSchema = {
             description:
               "4 kritik akademik süzgece ve araştırma boşluğu (research gap) değerlendirmesine dayanan, kelime benzerliğine değil anlam nüanslarına odaklanan detaylı Türkçe akademik gerekçe paragrafı.",
           },
-          originality_level: {
-            type: "string",
-            enum: ["HIGH_RISK", "MEDIUM_RISK", "LOW_RISK", "ZERO_RISK"],
-            description:
-              "Jürinin bu aday tez için verdiği nihai bütünsel konumlandırma kararı. HIGH_RISK = hedef tezin özgün katkısını doğrudan tehdit ediyor. MEDIUM_RISK = kayda değer benzerlik var ama özgün katkı korunuyor. LOW_RISK = zemin oluşturan, destekleyici çalışma. ZERO_RISK = doğrudan ilişki kurulamayan, tamamen özgün alan.",
-          },
           subject_overlap: {
             type: "string",
             enum: ["HIGH", "PARTIAL", "NONE"],
@@ -56,7 +50,6 @@ export const geminiAnalysisSchema: JsonSchema = {
         required: [
           "id",
           "academic_reasoning",
-          "originality_level",
           "subject_overlap",
           "methodology_overlap",
           "theory_overlap",
@@ -90,11 +83,6 @@ Sen, üniversitelerin Fen, Sosyal, Sağlık ve Mühendislik Bilimleri Enstitüle
   - SÜZGEÇ B (Metodoloji): Veri toplama araçları, örneklem evrenleri veya analiz yöntemleri birbirinin replikası ise \`methodology_overlap: "HIGH"\`, kısmen benzerlik varsa \`"PARTIAL"\`, farklıysa \`"NONE"\`.
   - SÜZGEÇ C (Kuram): Üzerine inşa edildikleri temel kuramsal çerçeve, kavramsal şemsiye veya teorik modeller aynıysa \`theory_overlap: "HIGH"\`, kısmen ortaksa \`"PARTIAL"\`, farklıysa \`"NONE"\`.
   - SÜZGEÇ D (Tarihsel Dönem/Bağlam): Hedef çalışmanın ampirik sınırlarının, örneklem evreninin veya dönemsel kapsamının, aday çalışmanın kapsamı tarafından yutulması, kapsanması veya onun bir alt kümesi olması durumlarını kronolojik ve bağlamsal bir kesişme olarak kabul et. Tam kesişme varsa \`context_overlap: "HIGH"\`, kısmi kesişme varsa \`"PARTIAL"\`, tamamen farklı ve özgünse \`"NONE"\`.
-- NİHAİ BÜTÜNSEL KONUMLANDIRMA (\`originality_level\`): 4 eksenin her biri için verdiğin HIGH / PARTIAL / NONE kararlarını tek tek hesapladıktan sonra, aday tezin hedef teze göre genel konumunu jürinin kendi bütünsel vizyonuyla değerlendirerek \`originality_level\` alanını belirle. Bu karar, hiçbir kod veya suni kurala bağlı değildir; tamamen senin akademik muhakemene ve alan bilgine dayanır:
-  - HIGH_RISK = Hedef tezin özgün katkısını doğrudan gasp eden/baltalayan kritik çakışma. Aday tez, hedef tezin araştırma sorusunun büyük ölçüde aynısını yanıtlıyor olabilir; özgünlük ciddi tehdit altında.
-  - MEDIUM_RISK = Kayda değer benzerlikler var ancak hedef tezin research gap'i ve özgün katkısı büyük ölçüde korunuyor. Bazı eksenler örtüşse de temel odak farklı.
-  - LOW_RISK = Benzer alanda çalışan, zemin oluşturan, referans niteliğinde bir çalışma. Özgün katkıya tehdit yok, aksine destekliyor.
-  - ZERO_RISK = Doğrudan ilişki kurulamayan, tamamen farklı bir araştırma boşluğuna hitap eden çalışma. Sahte alarm seviyesinde jenerik benzerlik olabilir.
 - EKSİKSİZ TABLO ZORUNLULUĞU: Girdide sağlanan TÜM aday tezler çıktı dizisinde eksiksiz ve aynı doğrusal sırada yer almalıdır. Herhangi bir tezi listeden atlama veya "vb." diyerek geçiştirme (Anti-Laziness).
 - ÇIKTI FORMATI: Yanıtın, yukarıda sağlanan \`geminiAnalysisSchema\` ile %100 uyumlu, doğrulanmış ve parse edilebilir bir ham JSON objesi olmalıdır. Markdown \`\`\`json ... \`\`\` sarmalı kesinlikle yasaktır.
 
@@ -135,8 +123,7 @@ Aşağıdaki örnekte, aday tez hedef tezle aynı dönemi, aynı jenerik yöntem
       "subject_overlap": "PARTIAL",
       "methodology_overlap": "HIGH",
       "theory_overlap": "HIGH",
-      "context_overlap": "HIGH",
-      "originality_level": "MEDIUM_RISK"
+      "context_overlap": "HIGH"
     }
   ]
 }
@@ -195,13 +182,12 @@ ${JSON.stringify(
 </aday_tez_listesi>
 
 # TALİMATLAR VE GÖREV
-Sistem talimatında tanımlanan 4 akademik süzgeci (Araştırma Sorusu, Metodoloji, Kuram, Dönem/Bağlam) <aday_tez_listesi> içindeki tüm çalışmalara eksiksiz uygula. Her bir aday tez için subject_overlap, methodology_overlap, theory_overlap, context_overlap alanlarını 3 kademeli modele göre (HIGH, PARTIAL, NONE) işaretle. Ardından, jürinin bütünsel vizyonuyla aday tezin hedef teze göre genel konumunu değerlendirerek originality_level alanını (HIGH_RISK, MEDIUM_RISK, LOW_RISK veya ZERO_RISK) belirle. Her tez için üst düzey bir jüri üyesi üslubuyla Türkçe olarak gerekçelendirilmiş academic_reasoning paragrafı yaz. İki tez arasındaki felsefi ve ilişkisel boşluk (research gap) farklarını yakala; sadece jenerik kelime benzerliklerine dayanarak sahte alarm (false positive) üretme.
+Sistem talimatında tanımlanan 4 akademik süzgeci (Araştırma Sorusu, Metodoloji, Kuram, Dönem/Bağlam) <aday_tez_listesi> içindeki tüm çalışmalara eksiksiz uygula. Her bir aday tez için subject_overlap, methodology_overlap, theory_overlap, context_overlap alanlarını 3 kademeli modele göre (HIGH, PARTIAL, NONE) işaretle. Her tez için üst düzey bir jüri üyesi üslubuyla Türkçe olarak gerekçelendirilmiş academic_reasoning paragrafı yaz. İki tez arasındaki felsefi ve ilişkisel boşluk (research gap) farklarını yakala; sadece jenerik kelime benzerliklerine dayanarak sahte alarm (false positive) üretme.
 
 # KRİTİK GÜVENLİK BARIYERI
 - Tamamen sağlanan aday tez özetlerine bağlı kal (Strictly Grounded). Metinlerde açıkça belirtilmeyen metodolojik detayları veya bulguları aday çalışmalara atfetme.
 - Dizi uzunluğunun <aday_tez_listesi> eleman sayısı ile tam olarak senkronize olduğundan ve çıktı dilinin saf Türkçe olduğundan emin ol.
 - HIGH etiketi yalnızca hedef tezin özgün akademik katkısını doğrudan gasp eden/baltalayan güçlü çakışmalar için kullan. PARTIAL, kısmi benzerlik durumlarında tercih edilir. NONE, anlamsal/ilişkisel boşluk bulunan durumlar içindir.
-- originality_level kararını herhangi bir kod veya formüle bağlı kalmadan, sadece kendi akademik muhakemene güvenerek ver.
 
 Dahili olarak çok derinlemesine düşün (Think extremely hard) ve sadece nihai şemaya uygun ham JSON nesnesini döndür.`;
 }

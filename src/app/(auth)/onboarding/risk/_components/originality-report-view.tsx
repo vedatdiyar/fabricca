@@ -6,6 +6,7 @@ import { StartOverButton } from "../../_components/start-over-button";
 import { TavilyFactCheckTable } from "./tavily-fact-check-table";
 import { TezaraOverlapTable } from "./tezara-overlap-table";
 import { StrategicRoadmapSection } from "./strategic-roadmap-section";
+import { getScoreBadge } from "../_services/analysis";
 import { statusTranslation, BADGE_COLORS } from "../_lib/constants";
 import type { OriginalityReportData } from "@/lib/types";
 
@@ -45,8 +46,9 @@ export function OriginalityReportView({
       HIGH_RISK: 0,
     };
     for (const item of tezaraResults.overlapTable ?? []) {
-      if (counts[item.originalityLevel] !== undefined) {
-        counts[item.originalityLevel]++;
+      const badge = getScoreBadge(item.riskScore);
+      if (counts[badge] !== undefined) {
+        counts[badge]++;
       }
     }
     return ROLE_KEYS.map((key) => ({

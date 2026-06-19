@@ -9,7 +9,7 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
-import { getThesisPriority } from "../_services/analysis";
+import { getThesisPriority, getScoreBadge } from "../_services/analysis";
 import { statusTranslation, getBadgeColor } from "../_lib/constants";
 import type { OriginalityReportData } from "@/lib/types";
 
@@ -197,10 +197,10 @@ export function TezaraOverlapTable({
                       </td>
                       <td className="p-3 text-center">
                         <span
-                          className={`inline-flex px-3 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${getBadgeColor(item.originalityLevel)}`}
+                          className={`inline-flex px-3 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${getBadgeColor(getScoreBadge(item.riskScore))}`}
                         >
-                          {statusTranslation[item.originalityLevel] ||
-                            item.originalityLevel}
+                          {statusTranslation[getScoreBadge(item.riskScore)] ||
+                            getScoreBadge(item.riskScore)}
                         </span>
                       </td>
                     </tr>
