@@ -41,10 +41,7 @@ Sen disiplinlerüstü çalışan kıdemli bir Akademik Bilgi Erişim Uzmanısın
   "mainClaim": "X süreci Y çalışanlarının A pratiklerini derinleştirirken B teknolojileri aracılığıyla C formasyonlarını dönüştürmektedir.",
   "theoreticalFramework": "X teorileri, Y kuramı, A ve B çalışmaları",
   "methodology": "Nitel derinlemesine mülakat ve tematik analiz",
-  "dataStrategy": "Bölgedeki ofislerde çalışan N katılımcı ile yarı yapılandırılmış mülakatlar",
-  "historicalLimits": "T1-T2 yılları arasında P ülkesinde artan Q ve R dönemi",
-  "spatialLimits": "Bölgenin S, T ve U merkezlerindeki V ekosistemleri",
-  "analyticalFocus": "A deneyimlerinin Y öznelliği üzerindeki dönüştürücü etkisi ve B mekanizmalarıyla ilişkisi"
+  "researchScope": "T1-T2 yılları arasında P ülkesinde bölgenin S, T ve U merkezlerindeki V ekosistemlerinde A deneyimlerinin Y öznelliği üzerindeki dönüştürücü etkisi"
 }
 </ornek_girdi_matrisi>
 
@@ -67,24 +64,20 @@ _Not: Keywords dizisi tam 5 elemandır. "financialization" yerine "finance", "su
 // ============================================================================
 export function buildLitKeywordPrompt(params: {
   studyTitle: string;
+  researchQuestion: string;
   mainClaim: string;
   theoreticalFramework: string;
   methodology: string;
-  dataStrategy: string;
-  historicalLimits: string;
-  spatialLimits: string;
-  analyticalFocus: string;
+  researchScope: string;
 }): string {
   return `<hedef_tez_matrisi>
 {
   "studyTitle": "${params.studyTitle.replace(/"/g, '\\"')}",
+  "researchQuestion": "${params.researchQuestion.replace(/"/g, '\\"')}",
   "mainClaim": "${params.mainClaim.replace(/"/g, '\\"')}",
   "theoreticalFramework": "${params.theoreticalFramework.replace(/"/g, '\\"')}",
   "methodology": "${params.methodology.replace(/"/g, '\\"')}",
-  "dataStrategy": "${params.dataStrategy.replace(/"/g, '\\"')}",
-  "historicalLimits": "${params.historicalLimits.replace(/"/g, '\\"')}",
-  "spatialLimits": "${params.spatialLimits.replace(/"/g, '\\"')}",
-  "analyticalFocus": "${params.analyticalFocus.replace(/"/g, '\\"')}"
+  "researchScope": "${params.researchScope.replace(/"/g, '\\"')}"
 }
 </hedef_tez_matrisi>
 

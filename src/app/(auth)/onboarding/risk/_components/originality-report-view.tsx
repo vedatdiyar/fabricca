@@ -17,12 +17,11 @@ interface OriginalityReportViewProps {
 /** Role distribution computed from the overlap table. */
 interface RoleDistribution {
   label: string;
-  key: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
+  key: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
   count: number;
 }
 
 const ROLE_KEYS: RoleDistribution["key"][] = [
-  "ZERO_RISK",
   "LOW_RISK",
   "MEDIUM_RISK",
   "HIGH_RISK",
@@ -38,14 +37,21 @@ export function OriginalityReportView({
 }: OriginalityReportViewProps) {
   const { tavilyResults, tezaraResults } = reportData;
 
+  const filteredOverlapTable = useMemo(
+    () =>
+      (tezaraResults.overlapTable ?? []).filter(
+        (item) => getScoreBadge(item.riskScore) !== "ZERO_RISK",
+      ),
+    [tezaraResults.overlapTable],
+  );
+
   const roleDistribution = useMemo<RoleDistribution[]>(() => {
     const counts: Record<string, number> = {
-      ZERO_RISK: 0,
       LOW_RISK: 0,
       MEDIUM_RISK: 0,
       HIGH_RISK: 0,
     };
-    for (const item of tezaraResults.overlapTable ?? []) {
+    for (const item of filteredOverlapTable) {
       const badge = getScoreBadge(item.riskScore);
       if (counts[badge] !== undefined) {
         counts[badge]++;
@@ -56,7 +62,7 @@ export function OriginalityReportView({
       label: statusTranslation[key] ?? key,
       count: counts[key],
     }));
-  }, [tezaraResults.overlapTable]);
+  }, [filteredOverlapTable]);
 
   return (
     <div className="space-y-10">
@@ -109,7 +115,7 @@ export function OriginalityReportView({
 
       {/* Section B: Tezara Cross Literature comparison */}
       <TezaraOverlapTable
-        overlapTable={tezaraResults.overlapTable}
+        overlapTable={filteredOverlapTable}
         strategicRecommendations={tezaraResults.strategicRecommendations}
       />
 

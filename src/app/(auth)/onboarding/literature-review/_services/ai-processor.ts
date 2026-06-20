@@ -49,8 +49,7 @@ export async function runAcademicReviewStage(
     studyTitle: string;
     researchQuestion: string;
     theoreticalFramework: string;
-    historicalLimits: string;
-    spatialLimits: string;
+    researchScope: string;
   },
 ): Promise<LiteratureReviewResult> {
   logger.file("ai-processor.ts:runAcademicReviewStage");
@@ -236,7 +235,10 @@ export function deduplicateCandidatesGlobally(
 
   // Clone the input so we never mutate the caller's data
   for (const [title, candidates] of boxCandidates) {
-    result.set(title, candidates.map((c) => ({ ...c })));
+    result.set(
+      title,
+      candidates.map((c) => ({ ...c })),
+    );
   }
 
   // ------------------------------------------------------------------
@@ -314,9 +316,7 @@ export function deduplicateCandidatesGlobally(
   // Phase 3: Compact nulls from each box
   // ------------------------------------------------------------------
   for (const [boxTitle, candidates] of result) {
-    const compacted = candidates.filter(
-      (c): c is ValidatedPaper => c !== null,
-    );
+    const compacted = candidates.filter((c): c is ValidatedPaper => c !== null);
     result.set(boxTitle, compacted);
   }
 
@@ -331,9 +331,7 @@ export function deduplicateCandidatesGlobally(
     if (!eliminated || eliminated.length === 0) continue;
 
     // Sort eliminated by relevanceScore descending
-    eliminated.sort(
-      (a, b) => b.relevanceScore - a.relevanceScore,
-    );
+    eliminated.sort((a, b) => b.relevanceScore - a.relevanceScore);
 
     const needed = GLOBAL_DEDUP_MIN_SAFE_COUNT - candidates.length;
     const toRestore = eliminated.slice(0, needed);

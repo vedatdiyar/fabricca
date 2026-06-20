@@ -76,44 +76,29 @@ export async function enrichThesisMatrixAction(
       "Araştırma sorusu",
     );
     if (!researchQuestion.valid) return { error: researchQuestion.error };
-    const mainClaim = validateField(data.mainClaim, "Temel iddia");
-    if (!mainClaim.valid) return { error: mainClaim.error };
     const theoreticalFramework = validateField(
       data.theoreticalFramework,
-      "Kuramsal çerçeve",
+      "Kavramsal çerçeve",
     );
     if (!theoreticalFramework.valid)
       return { error: theoreticalFramework.error };
     const methodology = validateField(data.methodology, "Metodoloji");
     if (!methodology.valid) return { error: methodology.error };
-    const dataStrategy = validateField(data.dataStrategy, "Veri stratejisi");
-    if (!dataStrategy.valid) return { error: dataStrategy.error };
-    const historicalLimits = validateField(
-      data.historicalLimits,
-      "Tarihsel sınırlar",
+    const researchScope = validateField(
+      data.researchScope,
+      "Araştırma kapsamı",
     );
-    if (!historicalLimits.valid) return { error: historicalLimits.error };
-    const spatialLimits = validateField(
-      data.spatialLimits,
-      "Mekânsal sınırlar",
-    );
-    if (!spatialLimits.valid) return { error: spatialLimits.error };
-    const analyticalFocus = validateField(
-      data.analyticalFocus,
-      "Analitik odak",
-    );
-    if (!analyticalFocus.valid) return { error: analyticalFocus.error };
+    if (!researchScope.valid) return { error: researchScope.error };
+    const mainClaim = validateField(data.mainClaim, "Temel iddia");
+    if (!mainClaim.valid) return { error: mainClaim.error };
 
     const matrixEnhancementPrompt = buildMatrixEnhancementPrompt({
       studyTitle: studyTitle.value,
       researchQuestion: researchQuestion.value,
-      mainClaim: mainClaim.value,
       theoreticalFramework: theoreticalFramework.value,
       methodology: methodology.value,
-      dataStrategy: dataStrategy.value,
-      historicalLimits: historicalLimits.value,
-      spatialLimits: spatialLimits.value,
-      analyticalFocus: analyticalFocus.value,
+      researchScope: researchScope.value,
+      mainClaim: mainClaim.value,
     });
 
     const enhancedData = await generateStructuredContent<EnhancedThesisData>(
@@ -185,32 +170,23 @@ export async function saveEnrichedMatrixAction(
       .insert(thesisMatrices)
       .values({
         userId: session.userId,
-        studyTitle: enhancedData.academicStudyTitle,
-        researchQuestion: enhancedData.literatureResearchQuestion,
-        mainClaim: enhancedData.refinedThesisClaim,
-        theoreticalFramework: enhancedData.conceptualTheoreticalInfrastructure,
-        methodology: enhancedData.academicMethodologyDesign,
-        dataStrategy: enhancedData.dataStrategy,
-        historicalLimits: enhancedData.historicalLimits,
-        spatialLimits: enhancedData.spatialLimits,
-        analyticalFocus: enhancedData.analyticalFocus,
-        keywords: [],
+        studyTitle: enhancedData.studyTitle,
+        researchQuestion: enhancedData.researchQuestion,
+        theoreticalFramework: enhancedData.theoreticalFramework,
+        methodology: enhancedData.methodology,
+        researchScope: enhancedData.researchScope,
+        mainClaim: enhancedData.mainClaim,
         updatedAt: sql`now()`,
       })
       .onConflictDoUpdate({
         target: thesisMatrices.userId,
         set: {
-          studyTitle: enhancedData.academicStudyTitle,
-          researchQuestion: enhancedData.literatureResearchQuestion,
-          mainClaim: enhancedData.refinedThesisClaim,
-          theoreticalFramework:
-            enhancedData.conceptualTheoreticalInfrastructure,
-          methodology: enhancedData.academicMethodologyDesign,
-          dataStrategy: enhancedData.dataStrategy,
-          historicalLimits: enhancedData.historicalLimits,
-          spatialLimits: enhancedData.spatialLimits,
-          analyticalFocus: enhancedData.analyticalFocus,
-          keywords: [],
+          studyTitle: enhancedData.studyTitle,
+          researchQuestion: enhancedData.researchQuestion,
+          theoreticalFramework: enhancedData.theoreticalFramework,
+          methodology: enhancedData.methodology,
+          researchScope: enhancedData.researchScope,
+          mainClaim: enhancedData.mainClaim,
           updatedAt: sql`now()`,
         },
       });

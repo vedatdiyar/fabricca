@@ -31,9 +31,9 @@ Sen disiplinlerüstü çalışan kıdemli bir Olgusal Doğrulama Mühendisisin. 
 
 # OPERASYONEL KISITLAMALAR
 - Kesinlikle objektif, mesafeli, net ve tamamen veri odaklı bir akademik Türkçe kullanacaksın.
-- MAKRO TARİH VE KRONOLOJİ YASAĞI: Sorgularda "kronolojisi", "tarihsel süreci", "tarihi", "siyasi olayları", "gelişimi" gibi genel ve hantal kelimelerin kullanımı KESİNLİKLE YASAKTIR. Sorgular yalnızca \`historicalLimits\` ve \`spatialLimits\` alanlarındaki somut dönem, mekân ve aktör bilgilerine dayanmalıdır.
+- MAKRO TARİH VE KRONOLOJİ YASAĞI: Sorgularda "kronolojisi", "tarihsel süreci", "tarihi", "siyasi olayları", "gelişimi" gibi genel ve hantal kelimelerin kullanımı KESİNLİKLE YASAKTIR. Sorgular yalnızca \`researchScope\` alanındaki somut dönem, mekân ve aktör bilgilerine dayanmalıdır.
 - SOYUT İDDİA TARAMASI YASAĞI: Tezin \`mainClaim\` alanındaki soyut akademik yorumlar, nedensellik bağlantıları, ilişkisellik iddiaları veya teorik çıkarımlar arama motoruna sorgu olarak gönderilemez. Arama motoru soyut akademik iddia bulamaz, yalnızca maddi veri bulur.
-- OLAY ODAKLI (EVENT-DRIVEN) ŞART: Üretilecek Türkçe sorgular yalnızca \`historicalLimits\` ve \`spatialLimits\` içindeki somut seçim ittifaklarını, resmî kararları, spesifik parti kapatma davalarını, meclis krizlerini veya dönemsel maddi olay ve belgeleri hedef almalıdır. Sorgular geniş dönem taraması değil, belirli olay/ad/değişim noktası sorgulaması olmalıdır.
+- OLAY ODAKLI (EVENT-DRIVEN) ŞART: Üretilecek Türkçe sorgular yalnızca \`researchScope\` içindeki somut seçim ittifaklarını, resmî kararları, spesifik parti kapatma davalarını, meclis krizlerini veya dönemsel maddi olay ve belgeleri hedef almalıdır. Sorgular geniş dönem taraması değil, belirli olay/ad/değişim noktası sorgulaması olmalıdır.
 - MADDİ DOĞRULAMA SINIRI (KATI EMPİRİK ÇIPA ZORUNLULUĞU): Tavily sorguları yalnızca tez matrisinde adı geçen somut, nesnel ampirik çıpalarla sınırlıdır. Bunlar:
   • Resmî kurum adları (TÜİK, Merkez Bankası, Dünya Bankası vb.)
   • Tarih aralıkları ve kronolojik iddialar
@@ -52,10 +52,7 @@ Sen disiplinlerüstü çalışan kıdemli bir Olgusal Doğrulama Mühendisisin. 
   "mainClaim": "A süreci B aktörleri üzerinde C etkisi yaratmış, D müdahalesi sonrası strateji değişerek E yönelimine evrilmiştir.",
   "theoreticalFramework": "F kuramı ve G yaklaşımı",
   "methodology": "H analizi ve I taraması",
-  "dataStrategy": "J belgeleri, K kayıtları, L arşivleri",
-  "historicalLimits": "T1-T2 yılları arasında M olayı, N kararları ve P süreci",
-  "spatialLimits": "R bölgesi (S merkezli)",
-  "analyticalFocus": "Q dönemindeki stratejilerin dönüşüm dinamikleri"
+  "researchScope": "T1-T2 yılları arasında R bölgesinde (S merkezli) M olayı, N kararları ve P süreci; Q dönemindeki stratejilerin dönüşüm dinamikleri"
 }
 </ornek_girdi_matrisi>
 <ornek_beklenen_cikti>
@@ -75,24 +72,20 @@ Sen disiplinlerüstü çalışan kıdemli bir Olgusal Doğrulama Mühendisisin. 
 // ============================================================================
 export function buildFactQueryPrompt(params: {
   studyTitle: string;
+  researchQuestion: string;
   mainClaim: string;
   theoreticalFramework: string;
   methodology: string;
-  dataStrategy: string;
-  historicalLimits: string;
-  spatialLimits: string;
-  analyticalFocus: string;
+  researchScope: string;
 }): string {
   return `<hedef_tez_matrisi>
 {
   "studyTitle": "${params.studyTitle.replace(/"/g, '\\"')}",
+  "researchQuestion": "${params.researchQuestion.replace(/"/g, '\\"')}",
   "mainClaim": "${params.mainClaim.replace(/"/g, '\\"')}",
   "theoreticalFramework": "${params.theoreticalFramework.replace(/"/g, '\\"')}",
   "methodology": "${params.methodology.replace(/"/g, '\\"')}",
-  "dataStrategy": "${params.dataStrategy.replace(/"/g, '\\"')}",
-  "historicalLimits": "${params.historicalLimits.replace(/"/g, '\\"')}",
-  "spatialLimits": "${params.spatialLimits.replace(/"/g, '\\"')}",
-  "analyticalFocus": "${params.analyticalFocus.replace(/"/g, '\\"')}"
+  "researchScope": "${params.researchScope.replace(/"/g, '\\"')}"
 }
 </hedef_tez_matrisi>
 

@@ -42,8 +42,8 @@ import {
 // ============================================================================
 
 function isArchivalBox(subBox: SubBoxInput): boolean {
-  const ARCHIVAL_TYPES = new Set(["Ampirik", "Arşiv"]);
-  if (ARCHIVAL_TYPES.has(subBox.boxType ?? "")) return true;
+  const EMPIRICAL_TYPES = new Set(["DATA_PROTOCOL", "ANALYSIS_FINDINGS"]);
+  if (EMPIRICAL_TYPES.has(subBox.boxType ?? "")) return true;
   if (subBox.foundationalQueries && subBox.foundationalQueries.length > 0) {
     const archivalPattern =
       /\b(BCA|Başbakanlık|Cumhuriyet|arşiv|zabıt|archive|archival|fond|defter|tasnif|belge|document|record|manuscript|collection)\b/i;
@@ -104,8 +104,7 @@ async function processSingleBox(
     studyTitle: string;
     researchQuestion: string;
     theoreticalFramework: string;
-    historicalLimits: string;
-    spatialLimits: string;
+    researchScope: string;
   },
   logger: Logger,
 ): Promise<LiteratureReviewResult> {
@@ -359,8 +358,7 @@ export async function processLiteratureReviewAction(
         studyTitle: thesisMatrices.studyTitle,
         researchQuestion: thesisMatrices.researchQuestion,
         theoreticalFramework: thesisMatrices.theoreticalFramework,
-        historicalLimits: thesisMatrices.historicalLimits,
-        spatialLimits: thesisMatrices.spatialLimits,
+        researchScope: thesisMatrices.researchScope,
       })
       .from(thesisMatrices)
       .where(eq(thesisMatrices.userId, session.userId));
@@ -416,8 +414,7 @@ export async function processAllBoxesAction(
         studyTitle: thesisMatrices.studyTitle,
         researchQuestion: thesisMatrices.researchQuestion,
         theoreticalFramework: thesisMatrices.theoreticalFramework,
-        historicalLimits: thesisMatrices.historicalLimits,
-        spatialLimits: thesisMatrices.spatialLimits,
+        researchScope: thesisMatrices.researchScope,
       })
       .from(thesisMatrices)
       .where(eq(thesisMatrices.userId, session.userId));
@@ -429,10 +426,7 @@ export async function processAllBoxesAction(
     // ------------------------------------------------------------------
     const boxSearchResults = new Map<string, ValidatedPaper[]>();
     const archivalBoxes = new Set<string>();
-    const foundationalLookups = new Map<
-      string,
-      { resolved: JuryArticle[] }
-    >();
+    const foundationalLookups = new Map<string, { resolved: JuryArticle[] }>();
 
     for (let i = 0; i < boxes.length; i++) {
       const box = boxes[i];
@@ -579,8 +573,7 @@ export async function processAllBoxesAction(
           if (resolved) p.abstract = resolved;
         }
         if (!p.abstract || !p.abstract.trim()) {
-          p.abstract =
-            "Özet verisi bulunamadı, başlık üzerinden değerlendirin";
+          p.abstract = "Özet verisi bulunamadı, başlık üzerinden değerlendirin";
         }
       }
     }
@@ -630,13 +623,11 @@ export async function processAllBoxesAction(
 
         reviewResult.starterPack = reviewResult.starterPack.filter(
           (a) =>
-            !a.title ||
-            !foundationalTitles.has(a.title.toLowerCase().trim()),
+            !a.title || !foundationalTitles.has(a.title.toLowerCase().trim()),
         );
         reviewResult.reservedPool = reviewResult.reservedPool.filter(
           (a) =>
-            !a.title ||
-            !foundationalTitles.has(a.title.toLowerCase().trim()),
+            !a.title || !foundationalTitles.has(a.title.toLowerCase().trim()),
         );
 
         reviewResult.starterPack = [

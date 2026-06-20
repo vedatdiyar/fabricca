@@ -176,10 +176,7 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
         mainClaim: matrix.mainClaim,
         theoreticalFramework: matrix.theoreticalFramework,
         methodology: matrix.methodology,
-        dataStrategy: matrix.dataStrategy,
-        historicalLimits: matrix.historicalLimits,
-        spatialLimits: matrix.spatialLimits,
-        analyticalFocus: matrix.analyticalFocus,
+        researchScope: matrix.researchScope,
       };
 
       // ── Step 0: Extract queries ──
@@ -305,6 +302,8 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
       toast.error(
         err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.",
       );
+    } finally {
+      setProceeding(false);
     }
   }, [router, showLoading, hideLoading, updateLoadingStep]);
 

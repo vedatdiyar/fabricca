@@ -31,14 +31,8 @@ const THESIS_MATRIX = {
     "Birincil kuramsal çerçeve: Çerçeveleme Teorisi (Frame Analysis) — özellikle Snow ve Benford'un diagnostik, prognostik ve motivasyonel çerçeveler yaklaşımı. İkincil kuramsal çerçeve: Gramsci'nin hegemonya kavramı (hegemonik inşa, rıza üretimi, söylemsel meşruiyet). Kuramsal konumlanma: Sosyal hareketler literatürü + söylem ve hegemonya çalışmaları. Çalışma bilinçli olarak post-Marksist söylem teorisi yerine çerçeveleme yaklaşımını tercih etmektedir.",
   methodology:
     "Nitel araştırma tasarımına dayalı tarihsel karşılaştırmalı söylem analizi uygulanacaktır. Analiz, çerçeveleme teorisinden türetilmiş kodlama şemasıyla yürütülecek; kavramsal değişimler, çerçeve kaymaları ve aktörler arası söylemsel etkileşim izlenecektir. Türkiye sosyalist solunun yanıtları Gramscici hegemonya perspektifiyle yorumlanacaktır. Çalışma çift taraflı karşılaştırmalı okuma ve dönemsel izleme mantığıyla ilerlemektedir.",
-  dataStrategy:
-    "Birincil kaynaklar: (i) Kürt siyasi hareketi: Özgür Gündem ve devamı yayınlar; HEP, DEP, HADEP parti programları, kongre belgeleri ve savunma metinleri. (ii) Türkiye sosyalist solu: Özgürlük Dünyası ve Gelenek dergileri. İkincil kaynaklar: Kürt hareketi, sosyal hareketler ve Türkiye solu literatürü; mevcut akademik çalışmalar ve tarihsel analizler. Veri stratejisi: Çift taraflı arşiv taraması ve karşılıklı söylem eşleştirmesi.",
-  historicalLimits:
-    "1991–1999. Başlangıç noktası Sovyetler Birliği'nin çözülmesi ve yeni küresel söylemsel bağlamın oluşması; bitiş noktası Abdullah Öcalan'ın tutuklanması ve sonrasında görünür hale gelen ideolojik dönüşümün eşiğidir. Analitik olarak dönem 1991–1995 ve 1995–1999 olmak üzere iki alt evreye ayrılacaktır.",
-  spatialLimits:
-    "Türkiye. Odak alan Türkiye'de faaliyet gösteren Kürt siyasi hareketi ile Türkiye sosyalist soludur. Çalışma özellikle ulusal düzeyde yayımlanan parti belgeleri, basın organları ve düşünsel üretim alanına odaklanmaktadır; belirli bir şehir ya da yerel vaka analizi yürütülmeyecektir.",
-  analyticalFocus:
-    "Birincil aktörler: Kürt siyasi hareketi (PKK ile ilişkili söylemsel alan; HEP–DEP–HADEP çizgisi) ve Türkiye sosyalist solu (özellikle Özgürlük Dünyası ve Gelenek çevresi). İncelenen birimler: Parti programları, gazete yazıları, ideolojik metinler, siyasal açıklamalar ve söylemsel çerçeveler. Analitik odak: Söylem dönüşümü, çerçeve değişimi, meşruiyet üretimi, koalisyon dili ve hegemonik ilişki kurma girişimleri.",
+  researchScope:
+    "Zaman: 1991–1999 (Sovyetler Birliği'nin çözülmesinden Abdullah Öcalan'ın tutuklanmasına kadar; 1991–1995 ve 1995–1999 olarak iki alt evre). Mekân: Türkiye — ulusal düzeyde yayımlanan parti belgeleri, basın organları ve düşünsel üretim alanı; belirli bir şehir ya da yerel vaka analizi yürütülmeyecektir. Veri kaynakları: Birincil kaynaklar — Kürt siyasi hareketi: Özgür Gündem ve devamı yayınlar, HEP/DEP/HADEP parti programları, kongre belgeleri ve savunma metinleri; Türkiye sosyalist solu: Özgürlük Dünyası ve Gelenek dergileri. İkincil kaynaklar: Kürt hareketi, sosyal hareketler ve Türkiye solu literatürü. Analitik odak: Birincil aktörler — Kürt siyasi hareketi (PKK ile ilişkili söylemsel alan; HEP–DEP–HADEP çizgisi) ve Türkiye sosyalist solu (Özgürlük Dünyası ve Gelenek çevresi). İncelenen birimler: Parti programları, gazete yazıları, ideolojik metinler, siyasal açıklamalar ve söylemsel çerçeveler. Analiz odağı: Söylem dönüşümü, çerçeve değişimi, meşruiyet üretimi, koalisyon dili ve hegemonik ilişki kurma girişimleri.",
 };
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -49,7 +43,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function callGemini(): Promise<{ boxes: unknown[] }> {
+async function callGemini(): Promise<{ boxes: Record<string, unknown>[] }> {
   const response = await ai.models.generateContent({
     model: MODEL,
     contents: [{ role: "user", parts: [{ text: PROMPT }] }],
@@ -57,7 +51,10 @@ async function callGemini(): Promise<{ boxes: unknown[] }> {
       systemInstruction: SYSTEM_INSTRUCTION,
       temperature: 1.0,
       responseMimeType: "application/json",
-      responseJsonSchema: thesisBoxGenerationSchema as any,
+      responseJsonSchema: thesisBoxGenerationSchema as unknown as Record<
+        string,
+        unknown
+      >,
       thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
     },
   });
@@ -67,7 +64,11 @@ async function callGemini(): Promise<{ boxes: unknown[] }> {
 
   let cleaned = text.trim();
   if (cleaned.startsWith("```")) {
-    cleaned = cleaned.replace(/^```json\s*/i, "").replace(/^```\s*/, "").replace(/```$/, "").trim();
+    cleaned = cleaned
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/, "")
+      .replace(/```$/, "")
+      .trim();
   }
 
   const parsed = JSON.parse(cleaned);
@@ -75,18 +76,20 @@ async function callGemini(): Promise<{ boxes: unknown[] }> {
     throw new Error("Invalid response structure: missing 'boxes' array");
   }
 
-  return parsed;
+  return parsed as { boxes: Record<string, unknown>[] };
 }
 
 async function runTest(index: number): Promise<void> {
   let lastError: string | null = null;
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    process.stdout.write(`Test #${index} | Attempt ${attempt}/${MAX_RETRIES} | Calling Gemini... `);
+    process.stdout.write(
+      `Test #${index} | Attempt ${attempt}/${MAX_RETRIES} | Calling Gemini... `,
+    );
     try {
       const data = await callGemini();
       const boxes = data.boxes;
-      const types = boxes.map((b: any) => b.boxType || b.type);
+      const types = boxes.map((b) => String(b.boxType || b.type || ""));
 
       process.stdout.write(`OK (${types.length} boxes)\n`);
       console.log(`${"=".repeat(72)}`);
@@ -104,7 +107,9 @@ async function runTest(index: number): Promise<void> {
     }
   }
 
-  console.error(`Test #${index} | ALL ${MAX_RETRIES} RETRIES EXHAUSTED | Last error: ${lastError}`);
+  console.error(
+    `Test #${index} | ALL ${MAX_RETRIES} RETRIES EXHAUSTED | Last error: ${lastError}`,
+  );
 }
 
 async function main(): Promise<void> {

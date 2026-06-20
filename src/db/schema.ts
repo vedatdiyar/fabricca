@@ -42,14 +42,10 @@ export const thesisMatrices = pgTable("thesis_matrices", {
     .unique(),
   studyTitle: text("study_title").notNull(),
   researchQuestion: text("research_question").notNull(),
-  mainClaim: text("main_claim").notNull(),
   theoreticalFramework: text("theoretical_framework").notNull(),
   methodology: text("methodology").notNull(),
-  dataStrategy: text("data_strategy").notNull(),
-  historicalLimits: text("historical_limits").notNull(),
-  spatialLimits: text("spatial_limits").notNull(),
-  analyticalFocus: text("analytical_focus").notNull(),
-  keywords: jsonb("keywords").$type<string[]>().default([]).notNull(),
+  researchScope: text("research_scope").notNull(),
+  mainClaim: text("main_claim").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -122,6 +118,14 @@ export type OriginalityReport = InferSelectModel<typeof originalityReports>;
 /** Yeni özgünlük raporu oluşturma tipi (insert). */
 export type NewOriginalityReport = InferInsertModel<typeof originalityReports>;
 
+export const boxTypeEnum = pgEnum("box_type_enum", [
+  "PROBLEMATIZATION",
+  "CONCEPTUAL",
+  "DATA_PROTOCOL",
+  "ANALYSIS_FINDINGS",
+  "ARGUMENT_SYNTHESIS",
+]);
+
 export const literatureStatusEnum = pgEnum("literature_status_enum", [
   "SUGGESTED",
   "APPROVED",
@@ -146,7 +150,7 @@ export const thesisBoxes = pgTable(
       .notNull()
       .references(() => thesisMatrices.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
-    boxType: text("box_type"),
+    boxType: boxTypeEnum("box_type"),
     description: text("description"),
     semanticSearchBlock: text("semantic_search_block"),
     concepts: jsonb("concepts").$type<string[]>().default([]).notNull(),

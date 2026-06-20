@@ -216,6 +216,14 @@ export function LiteratureReviewContent() {
     handleFinalize,
   } = useLiteratureReview();
 
+  const boxTypeLabels: Record<string, string> = {
+    PROBLEMATIZATION: "Soru Odaklı",
+    CONCEPTUAL: "Teorik Altyapı",
+    DATA_PROTOCOL: "Yöntem / Protokol",
+    ANALYSIS_FINDINGS: "Saha ve Bulgular",
+    ARGUMENT_SYNTHESIS: "Argüman Sentezi",
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -265,7 +273,7 @@ export function LiteratureReviewContent() {
                 </h3>
                 {subBox.boxType && (
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary ml-auto">
-                    {subBox.boxType}
+                    {boxTypeLabels[subBox.boxType] ?? subBox.boxType}
                   </span>
                 )}
               </div>
@@ -303,9 +311,12 @@ export function LiteratureReviewContent() {
         ) : !allProcessed ? (
           <div className="flex flex-col items-center gap-3">
             <p className="text-sm text-amber-600 font-medium">
-              Lütfen arşiv/veri kutuları için gerekli girişleri tamamlayın.
+              Lütfen protokol/saha kutuları için gerekli girişleri tamamlayın.
             </p>
-            <Button disabled className="btn-academic-hero w-full sm:w-auto opacity-60">
+            <Button
+              disabled
+              className="btn-academic-hero w-full sm:w-auto opacity-60"
+            >
               Onayla ve Teze Başla.
             </Button>
           </div>

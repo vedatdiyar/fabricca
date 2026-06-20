@@ -5,19 +5,12 @@ export type OnboardingActionResult =
   | { success?: never; error: string };
 
 export const EnhancedThesisDataSchema = z.object({
-  academicStudyTitle: z.string().min(1, "Çalışma başlığı boş olamaz"),
-  literatureResearchQuestion: z.string().min(1, "Araştırma sorusu boş olamaz"),
-  refinedThesisClaim: z.string().min(1, "Temel iddia boş olamaz"),
-  conceptualTheoreticalInfrastructure: z
-    .string()
-    .min(1, "Kuramsal altyapı boş olamaz"),
-  academicMethodologyDesign: z
-    .string()
-    .min(1, "Metodoloji tasarımı boş olamaz"),
-  dataStrategy: z.string().min(1, "Veri stratejisi boş olamaz"),
-  historicalLimits: z.string().min(1, "Tarihsel sınırlar boş olamaz"),
-  spatialLimits: z.string().min(1, "Mekânsal sınırlar boş olamaz"),
-  analyticalFocus: z.string().min(1, "Analitik odak boş olamaz"),
+  studyTitle: z.string().min(1, "Çalışma başlığı boş olamaz"),
+  researchQuestion: z.string().min(1, "Araştırma sorusu boş olamaz"),
+  theoreticalFramework: z.string().min(1, "Kavramsal çerçeve boş olamaz"),
+  methodology: z.string().min(1, "Metodoloji boş olamaz"),
+  researchScope: z.string().min(1, "Araştırma kapsamı boş olamaz"),
+  mainClaim: z.string().min(1, "Temel iddia boş olamaz"),
 });
 
 export type EnhancedThesisData = z.infer<typeof EnhancedThesisDataSchema>;
@@ -100,7 +93,6 @@ export interface OriginalityReportData {
   originalityScore?: number;
   originalityBadge?: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
   overlapAnalysis?: OverlapItem[];
-  synthesisRoadmap?: string;
   tavilyResults: {
     items: TavilyEvaluationFact[];
     briefingNote: string;
@@ -143,13 +135,10 @@ export type OnboardingStep =
 export interface OnboardingFormData {
   studyTitle: string;
   researchQuestion: string;
-  mainClaim: string;
   theoreticalFramework: string;
   methodology: string;
-  dataStrategy: string;
-  historicalLimits: string;
-  spatialLimits: string;
-  analyticalFocus: string;
+  researchScope: string;
+  mainClaim: string;
 }
 
 /**
@@ -191,15 +180,11 @@ export interface FoundationalQuery {
 export const GeminiThesisBoxSchema = z.object({
   title: z.string().min(1, "Kutu başlığı boş olamaz"),
   boxType: z.enum([
-    "Kuram",
-    "Literatür",
-    "Bağlam",
-    "Yöntem",
-    "Veri",
-    "Analiz",
-    "Katkı",
-    "Ampirik",
-    "Arşiv",
+    "PROBLEMATIZATION",
+    "CONCEPTUAL",
+    "DATA_PROTOCOL",
+    "ANALYSIS_FINDINGS",
+    "ARGUMENT_SYNTHESIS",
   ]),
   description: z.string().min(1, "Kutu açıklaması boş olamaz"),
   semanticSearchBlock: z
@@ -216,7 +201,7 @@ export const GeminiThesisBoxSchema = z.object({
     )
     .min(1)
     .max(2),
-  concepts: z.array(z.string()).max(3),
+  concepts: z.array(z.string()).max(4),
 });
 
 export const BoxGenerationResponseSchema = z.object({
@@ -226,15 +211,11 @@ export const BoxGenerationResponseSchema = z.object({
 export interface GeminiThesisBox {
   title: string;
   boxType:
-    | "Kuram"
-    | "Literatür"
-    | "Bağlam"
-    | "Yöntem"
-    | "Veri"
-    | "Analiz"
-    | "Katkı"
-    | "Ampirik"
-    | "Arşiv";
+    | "PROBLEMATIZATION"
+    | "CONCEPTUAL"
+    | "DATA_PROTOCOL"
+    | "ANALYSIS_FINDINGS"
+    | "ARGUMENT_SYNTHESIS";
   description: string;
   semanticSearchBlock: string;
   foundationalQueries: FoundationalQuery[];

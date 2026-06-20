@@ -95,7 +95,7 @@ Aşağıdaki örnekte, aday tez hedef tezle aynı dönemi, aynı jenerik yöntem
   "researchQuestion": "Depo işçileri algoritmik gözetim sistemlerine karşı nasıl karşı-davranış stratejileri geliştiriyor?",
   "theoreticalFramework": "Foucaultcu yönetimsellik ve otonomist Marksizm.",
   "methodology": "30 beyaz yakalı çalışanla yarı yapılandırılmış mülakat.",
-  "historicalSpatialLimits": "Pandemi sonrası Türkiye, Kocaeli lojistik üsleri."
+  "researchScope": "Pandemi sonrası Türkiye, Kocaeli lojistik üsleri."
 }
 </ornek_hedef_matris>
 
@@ -139,10 +139,7 @@ export function buildAnalysisPrompt(params: {
   mainClaim: string;
   theoreticalFramework: string;
   methodology: string;
-  dataStrategy: string;
-  historicalLimits: string;
-  spatialLimits: string;
-  analyticalFocus: string;
+  researchScope: string;
   validDetails: {
     id: number;
     title: string;
@@ -154,7 +151,6 @@ export function buildAnalysisPrompt(params: {
     abstract: string;
   }[];
 }): string {
-  const temporalSpatialContext = `${params.historicalLimits} | ${params.spatialLimits}`;
   return `<hedef_tez_matrisi>
 {
   "studyTitle": "${params.studyTitle.replace(/"/g, '\\"')}",
@@ -162,7 +158,7 @@ export function buildAnalysisPrompt(params: {
   "mainClaim": "${params.mainClaim.replace(/"/g, '\\"')}",
   "methodology": "${params.methodology.replace(/"/g, '\\"')}",
   "theoreticalFramework": "${params.theoreticalFramework.replace(/"/g, '\\"')}",
-  "historicalSpatialLimits": "${temporalSpatialContext.replace(/"/g, '\\"')}"
+  "researchScope": "${params.researchScope.replace(/"/g, '\\"')}"
 }
 </hedef_tez_matrisi>
 

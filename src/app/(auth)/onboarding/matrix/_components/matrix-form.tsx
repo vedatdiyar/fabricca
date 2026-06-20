@@ -20,13 +20,10 @@ export function MatrixForm() {
 
   const [studyTitle, setStudyTitle] = useState("");
   const [researchQuestion, setResearchQuestion] = useState("");
-  const [mainClaim, setMainClaim] = useState("");
   const [theoreticalFramework, setTheoreticalFramework] = useState("");
   const [methodology, setMethodology] = useState("");
-  const [dataStrategy, setDataStrategy] = useState("");
-  const [historicalLimits, setHistoricalLimits] = useState("");
-  const [spatialLimits, setSpatialLimits] = useState("");
-  const [analyticalFocus, setAnalyticalFocus] = useState("");
+  const [researchScope, setResearchScope] = useState("");
+  const [mainClaim, setMainClaim] = useState("");
   const [isPending, setIsPending] = useState(false);
   const [loading, setLoading] = useState(true);
   const showLoading = useOnboardingStore((s) => s.showLoading);
@@ -42,13 +39,10 @@ export function MatrixForm() {
         if (matrix) {
           setStudyTitle(matrix.studyTitle);
           setResearchQuestion(matrix.researchQuestion);
-          setMainClaim(matrix.mainClaim);
           setTheoreticalFramework(matrix.theoreticalFramework);
           setMethodology(matrix.methodology);
-          setDataStrategy(matrix.dataStrategy);
-          setHistoricalLimits(matrix.historicalLimits);
-          setSpatialLimits(matrix.spatialLimits);
-          setAnalyticalFocus(matrix.analyticalFocus);
+          setResearchScope(matrix.researchScope);
+          setMainClaim(matrix.mainClaim);
         }
         setLoading(false);
       })
@@ -89,13 +83,10 @@ export function MatrixForm() {
       const enrichResult = await enrichThesisMatrixAction({
         studyTitle,
         researchQuestion,
-        mainClaim,
         theoreticalFramework,
         methodology,
-        dataStrategy,
-        historicalLimits,
-        spatialLimits,
-        analyticalFocus,
+        researchScope,
+        mainClaim,
       });
 
       if ("error" in enrichResult) {
@@ -163,7 +154,7 @@ export function MatrixForm() {
               </Label>
               <Textarea
                 id="calismaBasligi"
-                placeholder="Tez veya çalışma başlığınız"
+                placeholder="Tezinizin veya araştırmanızın mevcut/geçici başlığı."
                 value={studyTitle}
                 onChange={(e) => setStudyTitle(e.target.value)}
                 required
@@ -175,11 +166,11 @@ export function MatrixForm() {
                 htmlFor="arastirmaSorusu"
                 className="block font-semibold text-foreground"
               >
-                Araştırma Sorusu
+                Odak Sorular (Ana ve Alt Sorular)
               </Label>
               <Textarea
                 id="arastirmaSorusu"
-                placeholder="Çalışmanızın temel araştırma sorusu ve varsa alt soruları"
+                placeholder="Araştırdığınız temel 'Neden' ve 'Nasıl' soruları. Birden fazla soru varsa lütfen her birini yeni bir satıra maddeleyerek (Soru 1, Soru 2 şeklinde) yazın. Yapay zeka her soru için ayrı bir inceleme alanı açacaktır."
                 value={researchQuestion}
                 onChange={(e) => setResearchQuestion(e.target.value)}
                 required
@@ -188,30 +179,14 @@ export function MatrixForm() {
             </div>
             <div className="space-y-2">
               <Label
-                htmlFor="temelIddia"
+                htmlFor="kavramsalCerceve"
                 className="block font-semibold text-foreground"
               >
-                Temel İddia / Hipotez
+                Teorik Altyapı, Kavramlar ve Yazarlar
               </Label>
               <Textarea
-                id="temelIddia"
-                placeholder="Çalışmanızın savunduğu temel iddia veya hipotez"
-                value={mainClaim}
-                onChange={(e) => setMainClaim(e.target.value)}
-                required
-                className="textarea-academic"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label
-                htmlFor="kuramsalCerceve"
-                className="block font-semibold text-foreground"
-              >
-                Kuramsal Çerçeve
-              </Label>
-              <Textarea
-                id="kuramsalCerceve"
-                placeholder="Kullanılan kuramlar, kavramsal setler ve alt okullar"
+                id="kavramsalCerceve"
+                placeholder="Çalışmada kullanacağınız temel teoriler, okullar veya kurucu yazarlar (Örn: Foucault'nun Söylem Analizi, Bourdieu'nün Alan Teorisi). Birden fazla teorik yaklaşım varsa aralarına virgül koyarak veya maddeleyerek yazın."
                 value={theoreticalFramework}
                 onChange={(e) => setTheoreticalFramework(e.target.value)}
                 required
@@ -223,11 +198,11 @@ export function MatrixForm() {
                 htmlFor="metodoloji"
                 className="block font-semibold text-foreground"
               >
-                Veri Analiz Yöntemi
+                Veri Toplama ve Analiz Yöntemi
               </Label>
               <Textarea
                 id="metodoloji"
-                placeholder="Örn: Eleştirel Söylem Analizi, Süreç Takibi, İçerik Analizi"
+                placeholder="Veriyi nasıl toplayacağınız ve analiz edeceğiniz (Örn: Yarı yapılandırılmış mülakat, içerik analizi, anket, arşiv taraması). Eğer karma yöntem kullanıyorsanız her bir yöntemi ayrı bir madde olarak belirtin."
                 value={methodology}
                 onChange={(e) => setMethodology(e.target.value)}
                 required
@@ -236,64 +211,32 @@ export function MatrixForm() {
             </div>
             <div className="space-y-2">
               <Label
-                htmlFor="veriStratejisi"
+                htmlFor="arastirmaKapsami"
                 className="block font-semibold text-foreground"
               >
-                Veri Stratejisi
+                Araştırma Sınırları (Zaman, Mekân, Aktör)
               </Label>
               <Textarea
-                id="veriStratejisi"
-                placeholder="Birincil/ikincil kaynak tipi, arşiv kapsamı, örneklem/veri kümesi"
-                value={dataStrategy}
-                onChange={(e) => setDataStrategy(e.target.value)}
+                id="arastirmaKapsami"
+                placeholder="Araştırmanın ampirik sınırları. Zaman (Örn: 1990-2005), Mekân (Örn: Doğu Avrupa, İstanbul) ve odaklanılan Aktörleri/Kurumları net bir şekilde sınırlandırarak yazın."
+                value={researchScope}
+                onChange={(e) => setResearchScope(e.target.value)}
                 required
                 className="textarea-academic"
               />
             </div>
             <div className="space-y-2">
               <Label
-                htmlFor="tarihselSinirlar"
+                htmlFor="temelIddia"
                 className="block font-semibold text-foreground"
               >
-                Tarihsel Sınırlar
+                Merkez Savı (Tezin Ana İddiası)
               </Label>
               <Textarea
-                id="tarihselSinirlar"
-                placeholder="Olayın geçtiği net zaman aralığı (Örn: 1991-1999)"
-                value={historicalLimits}
-                onChange={(e) => setHistoricalLimits(e.target.value)}
-                required
-                className="textarea-academic"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label
-                htmlFor="mekansalSinirlar"
-                className="block font-semibold text-foreground"
-              >
-                Mekânsal Sınırlar
-              </Label>
-              <Textarea
-                id="mekansalSinirlar"
-                placeholder="Coğrafi/mekânsal odak (Örn: Türkiye, Diyarbakır, İstanbul)"
-                value={spatialLimits}
-                onChange={(e) => setSpatialLimits(e.target.value)}
-                required
-                className="textarea-academic"
-              />
-            </div>
-            <div className="md:col-span-full space-y-2">
-              <Label
-                htmlFor="analitikOdak"
-                className="block font-semibold text-foreground"
-              >
-                Analitik Odak
-              </Label>
-              <Textarea
-                id="analitikOdak"
-                placeholder="İncelenen aktörler, kurumlar veya söylemsel özneler"
-                value={analyticalFocus}
-                onChange={(e) => setAnalyticalFocus(e.target.value)}
+                id="temelIddia"
+                placeholder="Tezinizin tüm bu çalışmalar sonunda kanıtlamayı, savunmayı veya literatüre katkı olarak sunmayı hedeflediği o tek cümlelik ana fikir / hipotez."
+                value={mainClaim}
+                onChange={(e) => setMainClaim(e.target.value)}
                 required
                 className="textarea-academic"
               />

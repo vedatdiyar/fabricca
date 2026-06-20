@@ -11,10 +11,7 @@ import type {
   LiteraturePoolEntry,
   JuryArticle,
 } from "@/lib/types";
-import {
-  processAllBoxesAction,
-  confirmLiteratureAction,
-} from "../actions";
+import { processAllBoxesAction, confirmLiteratureAction } from "../actions";
 import { fetchBoxes } from "../../_lib/fetch-actions";
 
 /** Processing status of a single sub-box within the literature review grid. */
@@ -139,7 +136,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
             boxType:
               stored?.boxType ??
               (b.boxType as GeminiThesisBox["boxType"]) ??
-              "Kuram",
+              "PROBLEMATIZATION",
             description: b.description ?? "",
             semanticSearchBlock: b.semanticSearchBlock ?? "",
             foundationalQueries:
@@ -169,8 +166,8 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     setProcessing(true);
 
     const isArchival = (box: GeminiThesisBox): boolean => {
-      const ARCHIVAL_TYPES = new Set(["Ampirik", "Arşiv"]);
-      if (ARCHIVAL_TYPES.has(box.boxType ?? "")) return true;
+      const EMPIRICAL_TYPES = new Set(["DATA_PROTOCOL", "ANALYSIS_FINDINGS"]);
+      if (EMPIRICAL_TYPES.has(box.boxType ?? "")) return true;
       if (box.foundationalQueries && box.foundationalQueries.length > 0) {
         const archivalPattern =
           /\b(BCA|Başbakanlık|Cumhuriyet|arşiv|zabıt|archive|archival|fond|defter|tasnif|belge|document|record|manuscript|collection)\b/i;

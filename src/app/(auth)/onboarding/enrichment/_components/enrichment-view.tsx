@@ -42,13 +42,10 @@ export function EnrichmentView() {
 
   const [studyTitle, setStudyTitle] = useState("");
   const [researchQuestion, setResearchQuestion] = useState("");
-  const [mainClaim, setMainClaim] = useState("");
   const [theoreticalFramework, setTheoreticalFramework] = useState("");
   const [methodology, setMethodology] = useState("");
-  const [dataStrategy, setDataStrategy] = useState("");
-  const [historicalLimits, setHistoricalLimits] = useState("");
-  const [spatialLimits, setSpatialLimits] = useState("");
-  const [analyticalFocus, setAnalyticalFocus] = useState("");
+  const [researchScope, setResearchScope] = useState("");
+  const [mainClaim, setMainClaim] = useState("");
 
   const showLoading = useOnboardingStore((s) => s.showLoading);
   const hideLoading = useOnboardingStore((s) => s.hideLoading);
@@ -67,13 +64,10 @@ export function EnrichmentView() {
       }
       setStudyTitle(matrix.studyTitle);
       setResearchQuestion(matrix.researchQuestion);
-      setMainClaim(matrix.mainClaim);
       setTheoreticalFramework(matrix.theoreticalFramework);
       setMethodology(matrix.methodology);
-      setDataStrategy(matrix.dataStrategy);
-      setHistoricalLimits(matrix.historicalLimits);
-      setSpatialLimits(matrix.spatialLimits);
-      setAnalyticalFocus(matrix.analyticalFocus);
+      setResearchScope(matrix.researchScope);
+      setMainClaim(matrix.mainClaim);
       setLoading(false);
     });
     return () => {
@@ -86,15 +80,12 @@ export function EnrichmentView() {
     setIsPending(true);
 
     const data: EnhancedThesisData = {
-      academicStudyTitle: studyTitle,
-      literatureResearchQuestion: researchQuestion,
-      refinedThesisClaim: mainClaim,
-      conceptualTheoreticalInfrastructure: theoreticalFramework,
-      academicMethodologyDesign: methodology,
-      dataStrategy,
-      historicalLimits,
-      spatialLimits,
-      analyticalFocus,
+      studyTitle,
+      researchQuestion,
+      theoreticalFramework,
+      methodology,
+      researchScope,
+      mainClaim,
     };
 
     try {
@@ -114,13 +105,10 @@ export function EnrichmentView() {
       const matrixInput = {
         studyTitle,
         researchQuestion,
-        mainClaim,
         theoreticalFramework,
         methodology,
-        dataStrategy,
-        historicalLimits,
-        spatialLimits,
-        analyticalFocus,
+        researchScope,
+        mainClaim,
       };
 
       // Show 4-stage loader
@@ -237,7 +225,7 @@ export function EnrichmentView() {
                   htmlFor="arastirmaSorusu"
                   className="block font-semibold text-foreground"
                 >
-                  Araştırma Sorusu
+                  Odak Sorular (Ana ve Alt Sorular)
                 </Label>
                 <Textarea
                   id="arastirmaSorusu"
@@ -249,28 +237,13 @@ export function EnrichmentView() {
               </div>
               <div className="space-y-2">
                 <Label
-                  htmlFor="temelIddia"
+                  htmlFor="kavramsalCerceve"
                   className="block font-semibold text-foreground"
                 >
-                  Temel İddia
+                  Teorik Altyapı, Kavramlar ve Yazarlar
                 </Label>
                 <Textarea
-                  id="temelIddia"
-                  value={mainClaim}
-                  onChange={(e) => setMainClaim(e.target.value)}
-                  required
-                  className="textarea-academic"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label
-                  htmlFor="kuramsalCerceve"
-                  className="block font-semibold text-foreground"
-                >
-                  Kavramsal ve Kuramsal Altyapı
-                </Label>
-                <Textarea
-                  id="kuramsalCerceve"
+                  id="kavramsalCerceve"
                   value={theoreticalFramework}
                   onChange={(e) => setTheoreticalFramework(e.target.value)}
                   required
@@ -282,7 +255,7 @@ export function EnrichmentView() {
                   htmlFor="metodoloji"
                   className="block font-semibold text-foreground"
                 >
-                  Metodoloji Tasarımı
+                  Veri Toplama ve Analiz Yöntemi
                 </Label>
                 <Textarea
                   id="metodoloji"
@@ -294,60 +267,30 @@ export function EnrichmentView() {
               </div>
               <div className="space-y-2">
                 <Label
-                  htmlFor="veriStratejisi"
+                  htmlFor="arastirmaKapsami"
                   className="block font-semibold text-foreground"
                 >
-                  Veri Stratejisi
+                  Araştırma Sınırları (Zaman, Mekân, Aktör)
                 </Label>
                 <Textarea
-                  id="veriStratejisi"
-                  value={dataStrategy}
-                  onChange={(e) => setDataStrategy(e.target.value)}
+                  id="arastirmaKapsami"
+                  value={researchScope}
+                  onChange={(e) => setResearchScope(e.target.value)}
                   required
                   className="textarea-academic"
                 />
               </div>
               <div className="space-y-2">
                 <Label
-                  htmlFor="tarihselSinirlar"
+                  htmlFor="temelIddia"
                   className="block font-semibold text-foreground"
                 >
-                  Tarihsel Sınırlar
+                  Merkez Savı (Tezin Ana İddiası)
                 </Label>
                 <Textarea
-                  id="tarihselSinirlar"
-                  value={historicalLimits}
-                  onChange={(e) => setHistoricalLimits(e.target.value)}
-                  required
-                  className="textarea-academic"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label
-                  htmlFor="mekansalSinirlar"
-                  className="block font-semibold text-foreground"
-                >
-                  Mekânsal Sınırlar
-                </Label>
-                <Textarea
-                  id="mekansalSinirlar"
-                  value={spatialLimits}
-                  onChange={(e) => setSpatialLimits(e.target.value)}
-                  required
-                  className="textarea-academic"
-                />
-              </div>
-              <div className="md:col-span-full space-y-2">
-                <Label
-                  htmlFor="analitikOdak"
-                  className="block font-semibold text-foreground"
-                >
-                  Analitik Odak
-                </Label>
-                <Textarea
-                  id="analitikOdak"
-                  value={analyticalFocus}
-                  onChange={(e) => setAnalyticalFocus(e.target.value)}
+                  id="temelIddia"
+                  value={mainClaim}
+                  onChange={(e) => setMainClaim(e.target.value)}
                   required
                   className="textarea-academic"
                 />

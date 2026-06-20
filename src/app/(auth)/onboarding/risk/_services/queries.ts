@@ -29,13 +29,11 @@ interface LitKeywordExtractionResponse {
  */
 export interface ExtractQueriesParams {
   studyTitle: string;
+  researchQuestion: string;
   mainClaim: string;
   theoreticalFramework: string;
   methodology: string;
-  dataStrategy: string;
-  historicalLimits: string;
-  spatialLimits: string;
-  analyticalFocus: string;
+  researchScope: string;
 }
 
 /**
@@ -66,13 +64,11 @@ export async function extractQueries(
   try {
     const geminiInput = {
       studyTitle: params.studyTitle,
+      researchQuestion: params.researchQuestion,
       mainClaim: params.mainClaim,
       theoreticalFramework: params.theoreticalFramework,
       methodology: params.methodology,
-      dataStrategy: params.dataStrategy,
-      historicalLimits: params.historicalLimits,
-      spatialLimits: params.spatialLimits,
-      analyticalFocus: params.analyticalFocus,
+      researchScope: params.researchScope,
     };
 
     const factPrompt = buildFactQueryPrompt(geminiInput);

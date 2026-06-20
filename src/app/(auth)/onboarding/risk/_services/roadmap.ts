@@ -13,10 +13,7 @@ export interface SynthesizeRoadmapParams {
   mainClaim: string;
   theoreticalFramework: string;
   methodology: string;
-  dataStrategy: string;
-  historicalLimits: string;
-  spatialLimits: string;
-  analyticalFocus: string;
+  researchScope: string;
   comparisonResults: {
     title: string;
     author: string;

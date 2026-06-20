@@ -22,7 +22,7 @@ import { fetchThesisMatrix } from "../_lib/fetch-actions";
 
 /**
  * Generates subject boxes (boxes) via Gemini for the current user's thesis matrix.
- * Returns the generated boxes as JSON without writing to DB.
+ * Foundational works are produced directly by Gemini from its own academic memory.
  *
  * @returns The generated thesis boxes array, or a user-safe error message
  */
@@ -52,10 +52,7 @@ export async function generateBoxesAction(): Promise<
       mainClaim: matrix.mainClaim,
       theoreticalFramework: matrix.theoreticalFramework,
       methodology: matrix.methodology,
-      dataStrategy: matrix.dataStrategy,
-      historicalLimits: matrix.historicalLimits,
-      spatialLimits: matrix.spatialLimits,
-      analyticalFocus: matrix.analyticalFocus,
+      researchScope: matrix.researchScope,
     });
 
     const generationResult = await generateStructuredContent<{
@@ -72,15 +69,15 @@ export async function generateBoxesAction(): Promise<
       },
     );
 
-    const draftBoxes = generationResult.boxes || [];
+    const boxes = generationResult.boxes || [];
 
     log.info("boxes_generate_success", {
       service: "boxes",
       durationMs: performance.now() - startTime,
-      data: { count: draftBoxes.length, context: "Konu kutusu üretimi" },
+      data: { count: boxes.length, context: "Konu kutusu üretimi" },
     });
 
-    return { success: true, boxes: draftBoxes };
+    return { success: true, boxes };
   } catch (err) {
     log.error("boxes_generate_failed", {
       service: "boxes",

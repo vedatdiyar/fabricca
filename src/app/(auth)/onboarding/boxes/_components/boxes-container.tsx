@@ -18,6 +18,22 @@ import { confirmBoxesAction } from "../actions";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import type { GeminiThesisBox } from "@/lib/types";
 
+const boxTypeOrder: Record<string, number> = {
+  CONCEPTUAL: 1,
+  PROBLEMATIZATION: 2,
+  ANALYSIS_FINDINGS: 3,
+  DATA_PROTOCOL: 4,
+  ARGUMENT_SYNTHESIS: 5,
+};
+
+const badgeLabels: Record<string, string> = {
+  CONCEPTUAL: "Teorik Çatı",
+  PROBLEMATIZATION: "Problematizasyon",
+  ANALYSIS_FINDINGS: "Tarihsel Bağlam",
+  DATA_PROTOCOL: "Metodoloji",
+  ARGUMENT_SYNTHESIS: "Argüman Sentezi",
+};
+
 export function BoxesContainer() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -44,7 +60,8 @@ export function BoxesContainer() {
           setBoxes(
             existing.map((b) => ({
               title: b.title,
-              boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "Kuram",
+              boxType:
+                (b.boxType as GeminiThesisBox["boxType"]) ?? "CONCEPTUAL",
               description: b.description ?? "",
               semanticSearchBlock: b.semanticSearchBlock ?? "",
               foundationalQueries: b.foundationalQueries ?? [],
@@ -114,6 +131,10 @@ export function BoxesContainer() {
     );
   }
 
+  const sortedBoxes = [...boxes].sort((a, b) => {
+    return (boxTypeOrder[a.boxType] || 99) - (boxTypeOrder[b.boxType] || 99);
+  });
+
   return (
     <div className="max-w-7xl mx-auto space-y-12">
       <div className="flex flex-col items-center text-center space-y-5 max-w-2xl mx-auto">
@@ -134,8 +155,9 @@ export function BoxesContainer() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 auto-rows-min">
-        {boxes.map((box, idx) => {
-          const isLastOdd = boxes.length % 2 !== 0 && idx === boxes.length - 1;
+        {sortedBoxes.map((box, idx) => {
+          const isLastOdd =
+            sortedBoxes.length % 2 !== 0 && idx === sortedBoxes.length - 1;
           return (
             <BoxCard key={idx} box={box} index={idx} isLastOdd={isLastOdd} />
           );
@@ -184,6 +206,9 @@ function BoxCard({
         <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
           <PlusCircle className="w-3 h-3" />
           <span>Kutu {index + 1}</span>
+          <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-zinc-800 text-zinc-400 border border-zinc-700/50">
+            {badgeLabels[box.boxType]}
+          </span>
         </div>
         <div className="flex items-start gap-3">
           <span className="relative mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-primary shadow-[0_0_8px_#10b981]" />
@@ -232,17 +257,32 @@ function BoxCard({
                 <FileText className="w-3.5 h-3.5 text-accent-foreground mt-0.5 shrink-0" />
                 <span>
                   {(() => {
-                    const isDummy = fq.publicationYear === 0 || fq.author === "Primary Source Repository";
-                    const displayAuthor = isDummy ? "Birincil Kaynak Havuzu" : fq.author;
-                    const displayTitle = isDummy ? "Saha Çalışması Belgeleri ve Ampirik Veri Kaynakları" : fq.title;
-                    const displayYear = isDummy ? "" : ` (${fq.publicationYear})`;
+                    const isDummy =
+                      fq.publicationYear === 0 ||
+                      fq.author === "Primary Source Repository";
+                    const displayAuthor = isDummy
+                      ? "Birincil Kaynak Havuzu"
+                      : fq.author;
+                    const displayTitle = isDummy
+                      ? "Saha Çalışması Belgeleri ve Ampirik Veri Kaynakları"
+                      : fq.title;
+                    const displayYear = isDummy
+                      ? ""
+                      : ` (${fq.publicationYear})`;
                     return (
                       <>
-                        <strong className="font-medium text-foreground">{displayAuthor}</strong>{" "}
+                        <strong className="font-medium text-foreground">
+                          {displayAuthor}
+                        </strong>{" "}
                         {displayYear && (
-                          <span className="text-muted-foreground text-[11px]">{displayYear}</span>
+                          <span className="text-muted-foreground text-[11px]">
+                            {displayYear}
+                          </span>
                         )}{" "}
-                        — <span className="italic text-foreground">{displayTitle}</span>
+                        —{" "}
+                        <span className="italic text-foreground">
+                          {displayTitle}
+                        </span>
                       </>
                     );
                   })()}

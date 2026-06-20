@@ -29,13 +29,10 @@ import { synthesizeRoadmap } from "./_services/roadmap";
 interface OnboardingMatrixInput {
   studyTitle: string;
   researchQuestion: string;
-  mainClaim: string;
   theoreticalFramework: string;
   methodology: string;
-  dataStrategy: string;
-  historicalLimits: string;
-  spatialLimits: string;
-  analyticalFocus: string;
+  researchScope: string;
+  mainClaim: string;
 }
 
 /**
@@ -75,13 +72,11 @@ export async function extractQueriesAction(
     const { tavilyQueries, tezaraQueries, keywords } = await extractQueries(
       {
         studyTitle: matrix.studyTitle,
+        researchQuestion: matrix.researchQuestion,
         mainClaim: matrix.mainClaim,
         theoreticalFramework: matrix.theoreticalFramework,
         methodology: matrix.methodology,
-        dataStrategy: matrix.dataStrategy,
-        historicalLimits: matrix.historicalLimits,
-        spatialLimits: matrix.spatialLimits,
-        analyticalFocus: matrix.analyticalFocus,
+        researchScope: matrix.researchScope,
       },
       log,
     );
@@ -208,10 +203,7 @@ export async function siftThesesAction(params: {
         mainClaim: params.matrix.mainClaim,
         theoreticalFramework: params.matrix.theoreticalFramework,
         methodology: params.matrix.methodology,
-        dataStrategy: params.matrix.dataStrategy,
-        historicalLimits: params.matrix.historicalLimits,
-        spatialLimits: params.matrix.spatialLimits,
-        analyticalFocus: params.matrix.analyticalFocus,
+        researchScope: params.matrix.researchScope,
       },
       params.tezaraSearchResults,
       log,
@@ -269,13 +261,10 @@ export async function finalizeJuryAnalysisAction(params: {
     const {
       studyTitle,
       researchQuestion,
-      mainClaim,
       theoreticalFramework,
       methodology,
-      dataStrategy,
-      historicalLimits,
-      spatialLimits,
-      analyticalFocus,
+      researchScope,
+      mainClaim,
     } = params.matrix;
     const validDetails = params.scrapedTheses.selected;
 
@@ -297,10 +286,7 @@ export async function finalizeJuryAnalysisAction(params: {
           mainClaim,
           theoreticalFramework,
           methodology,
-          dataStrategy,
-          historicalLimits,
-          spatialLimits,
-          analyticalFocus,
+          researchScope,
           validDetails,
         },
         log,
@@ -319,10 +305,7 @@ export async function finalizeJuryAnalysisAction(params: {
           mainClaim,
           theoreticalFramework,
           methodology,
-          dataStrategy,
-          historicalLimits,
-          spatialLimits,
-          analyticalFocus,
+          researchScope,
           comparisonResults: riskCalcResult.overlapTable.map((item) => ({
             title: item.title,
             author: item.author,

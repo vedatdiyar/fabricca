@@ -42,7 +42,7 @@ Sen, üniversitelerin Sosyal Bilimler ve Lisansüstü Eğitim Enstitülerinde do
   "researchQuestion": "Depo işçileri algoritmik gözetim sistemlerine karşı nasıl karşı-davranış stratejileri geliştiriyor?",
   "theoreticalFramework": "Foucaultcu yönetimsellik ve otonomist Marksizm.",
   "methodology": "30 beyaz yakalı çalışanla yarı yapılandırılmış mülakat.",
-  "historicalSpatialLimits": "Pandemi sonrası Türkiye, Kocaeli lojistik üsleri."
+  "researchScope": "Pandemi sonrası Türkiye, Kocaeli lojistik üsleri."
 }
 </ornek_hedef_matris>
 
@@ -75,10 +75,7 @@ export function buildRoadmapPrompt(params: {
   mainClaim: string;
   theoreticalFramework: string;
   methodology: string;
-  dataStrategy: string;
-  historicalLimits: string;
-  spatialLimits: string;
-  analyticalFocus: string;
+  researchScope: string;
   comparisonResults: {
     title: string;
     author: string;
@@ -93,7 +90,6 @@ export function buildRoadmapPrompt(params: {
     comparisonNote: string;
   }[];
 }): string {
-  const temporalSpatialContext = `${params.historicalLimits} | ${params.spatialLimits}`;
   return `<hedef_tez_matrisi>
 {
   "studyTitle": "${params.studyTitle.replace(/"/g, '\\"')}",
@@ -101,7 +97,7 @@ export function buildRoadmapPrompt(params: {
   "mainClaim": "${params.mainClaim.replace(/"/g, '\\"')}",
   "methodology": "${params.methodology.replace(/"/g, '\\"')}",
   "theoreticalFramework": "${params.theoreticalFramework.replace(/"/g, '\\"')}",
-  "historicalSpatialLimits": "${temporalSpatialContext.replace(/"/g, '\\"')}"
+  "researchScope": "${params.researchScope.replace(/"/g, '\\"')}"
 }
 </hedef_tez_matrisi>
 

@@ -14,10 +14,7 @@ export interface AnalyzeOriginalityRiskParams {
   mainClaim: string;
   theoreticalFramework: string;
   methodology: string;
-  dataStrategy: string;
-  historicalLimits: string;
-  spatialLimits: string;
-  analyticalFocus: string;
+  researchScope: string;
   validDetails: TezaraThesisDetails[];
 }
 

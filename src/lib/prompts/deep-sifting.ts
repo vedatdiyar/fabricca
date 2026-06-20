@@ -66,7 +66,7 @@ Sen akademik özgünlük denetimi, literatür risk analizleri ve tez çakışma 
   "researchQuestion": "Depo işçileri algoritmik gözetim sistemlerine karşı nasıl karşı-davranış stratejileri geliştiriyor?",
   "theoreticalFramework": "Foucaultcu iktidar/direniş diyalektiği ve otonomist Marksist işçicilik.",
   "methodology": "Odaklanmış etnografi ve 20 derinlemesine görüşme.",
-  "historicalSpatialLimits": "Pandemi sonrası dönem | Türkiye, Kocaeli'deki lojistik üsleri."
+  "researchScope": "Pandemi sonrası dönem | Türkiye, Kocaeli'deki lojistik üsleri."
 }
 </ornek_hedef_matris>
 <ornek_aday_listesi>
@@ -105,10 +105,7 @@ export function buildDeepSiftingPrompt(params: {
   mainClaim: string;
   theoreticalFramework: string;
   methodology: string;
-  dataStrategy: string;
-  historicalLimits: string;
-  spatialLimits: string;
-  analyticalFocus: string;
+  researchScope: string;
   candidateDetails: {
     id: number;
     title: string;
@@ -116,14 +113,13 @@ export function buildDeepSiftingPrompt(params: {
     abstract: string;
   }[];
 }): string {
-  const temporalSpatialContext = `${params.historicalLimits} | ${params.spatialLimits}`;
   return `<hedef_tez_matrisi>
 {
   "studyTitle": "${params.studyTitle.replace(/"/g, '\\"')}",
   "researchQuestion": "${params.researchQuestion.replace(/"/g, '\\"')}",
   "theoreticalFramework": "${params.theoreticalFramework.replace(/"/g, '\\"')}",
   "methodology": "${params.methodology.replace(/"/g, '\\"')}",
-  "historicalSpatialLimits": "${temporalSpatialContext.replace(/"/g, '\\"')}"
+  "researchScope": "${params.researchScope.replace(/"/g, '\\"')}"
 }
 </hedef_tez_matrisi>
 
