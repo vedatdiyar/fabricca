@@ -20,7 +20,7 @@ export function StrategicRoadmapSection({
         <Compass className="w-5 h-5 text-primary" />
         Yol Haritası ve Akademik Tavsiyeler
       </h3>
-      <div className="p-4 bg-muted border border-border rounded-lg text-sm/7 text-foreground/90 whitespace-pre-line">
+      <div className="p-4 bg-muted border border-border rounded-lg text-sm leading-relaxed text-foreground/90 whitespace-pre-line">
         {strategicRecommendations}
       </div>
     </div>

@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import { Layers } from "lucide-react";
-import { StartOverButton } from "../../_components/start-over-button";
 import { TavilyFactCheckTable } from "./tavily-fact-check-table";
 import { TezaraOverlapTable } from "./tezara-overlap-table";
 import { StrategicRoadmapSection } from "./strategic-roadmap-section";
@@ -76,9 +75,6 @@ export function OriginalityReportView({
             Tez matrisinizin akademik literatür içindeki konumu, karşılaştırmalı
             pozisyon analizi ve olgusal doğrulaması.
           </p>
-        </div>
-        <div className="flex items-center self-end sm:self-center">
-          <StartOverButton />
         </div>
       </div>
 
