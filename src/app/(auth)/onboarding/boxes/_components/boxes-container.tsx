@@ -231,13 +231,21 @@ function BoxCard({
               >
                 <FileText className="w-3.5 h-3.5 text-accent-foreground mt-0.5 shrink-0" />
                 <span>
-                  <strong className="font-medium text-foreground">
-                    {fq.author}
-                  </strong>{" "}
-                  <span className="text-muted-foreground text-[11px]">
-                    ({fq.publicationYear})
-                  </span>{" "}
-                  — <span className="italic text-foreground">{fq.title}</span>
+                  {(() => {
+                    const isDummy = fq.publicationYear === 0 || fq.author === "Primary Source Repository";
+                    const displayAuthor = isDummy ? "Birincil Kaynak Havuzu" : fq.author;
+                    const displayTitle = isDummy ? "Saha Çalışması Belgeleri ve Ampirik Veri Kaynakları" : fq.title;
+                    const displayYear = isDummy ? "" : ` (${fq.publicationYear})`;
+                    return (
+                      <>
+                        <strong className="font-medium text-foreground">{displayAuthor}</strong>{" "}
+                        {displayYear && (
+                          <span className="text-muted-foreground text-[11px]">{displayYear}</span>
+                        )}{" "}
+                        — <span className="italic text-foreground">{displayTitle}</span>
+                      </>
+                    );
+                  })()}
                 </span>
               </li>
             ))}

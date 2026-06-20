@@ -12,7 +12,7 @@ import type {
   JuryArticle,
 } from "@/lib/types";
 import {
-  processLiteratureReviewAction,
+  processAllBoxesAction,
   confirmLiteratureAction,
 } from "../actions";
 import { fetchBoxes } from "../../_lib/fetch-actions";
@@ -156,11 +156,11 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   }, []);
 
   /**
-   * Runs the literature-review pipeline over all sub-boxes sequentially.
-   * Each sub-box is sent to the server one at a time; as soon as a box is
-   * done its result is written to the Zustand store and the UI is updated
-   * so the user can watch progress in real time. A 500 ms throttle between
-   * boxes prevents 429 rate-limit errors from OpenAlex.
+   * Runs the literature-review pipeline over all sub-boxes in a single
+   * batch server action. The server handles OpenAlex searches (rate-limited
+   * sequentially), global cross-box deduplication, Gemini academic review,
+   * and Crossref enrichment — all before returning the full result set.
+   * The loading overlay reports progress via steps.
    */
   const startReviewProcess = useCallback(async () => {
     if (subBoxes.length === 0 || processingRef.current) return;
@@ -168,69 +168,92 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     processingRef.current = true;
     setProcessing(true);
 
-    // All steps start as "idle"; each will transition to "active" then
-    // "completed" as it is processed sequentially.
-    const reviewSteps: LoadingStep[] = subBoxes.map((box) => ({
+    const isArchival = (box: GeminiThesisBox): boolean => {
+      const ARCHIVAL_TYPES = new Set(["Ampirik", "Arşiv"]);
+      if (ARCHIVAL_TYPES.has(box.boxType ?? "")) return true;
+      if (box.foundationalQueries && box.foundationalQueries.length > 0) {
+        const archivalPattern =
+          /\b(BCA|Başbakanlık|Cumhuriyet|arşiv|zabıt|archive|archival|fond|defter|tasnif|belge|document|record|manuscript|collection)\b/i;
+        return box.foundationalQueries.some(
+          (q) =>
+            archivalPattern.test(q.title) ||
+            archivalPattern.test((q as { author: string }).author),
+        );
+      }
+      return false;
+    };
+
+    const allSteps: LoadingStep[] = subBoxes.map((box) => ({
       text: `${box.title} taranıyor...`,
       status: "idle" as const,
     }));
 
     showLoading(
       "Literatür Taraması Devam Ediyor",
-      "Her bir konu kutusu için akademik veri tabanları taranıyor, yapay zeka değerlendirmesi yapılıyor.",
-      reviewSteps,
+      "Tüm konu kutuları için akademik veri tabanları taranıyor, yapay zeka değerlendirmesi yapılıyor.",
+      allSteps,
     );
 
+    // Mark all steps as active
     for (let i = 0; i < subBoxes.length; i++) {
-      const box = subBoxes[i];
-
       updateLoadingStep(i, "active");
-      setBoxStatuses((prev) => ({ ...prev, [box.title]: "loading" }));
+      setBoxStatuses((prev) => ({ ...prev, [subBoxes[i].title]: "loading" }));
+    }
 
-      const result = await processLiteratureReviewAction({
+    const result = await processAllBoxesAction(
+      subBoxes.map((box) => ({
         title: box.title,
         description: box.description,
         boxType: box.boxType,
         semanticSearchBlock: box.semanticSearchBlock,
         foundationalQueries: box.foundationalQueries,
-      });
+      })),
+    );
 
-      if (result.data) {
-        if (result.data.isArchivalBypass) {
-          setArchivalBoxes((prev) => new Set(prev).add(box.title));
-        } else {
-          addToLiteraturePool({
-            subBoxTitle: box.title,
-            starterPack: result.data.starterPack,
-            reservedPool: result.data.reservedPool,
-          });
+    if (result.data) {
+      // Collect archival box titles from the result
+      const archivalSet = new Set<string>();
+
+      for (const entry of result.data) {
+        const box = subBoxes.find((b) => b.title === entry.subBoxTitle);
+        if (box && isArchival(box)) {
+          archivalSet.add(entry.subBoxTitle);
         }
+      }
+      setArchivalBoxes(archivalSet);
 
-        setBoxStatuses((prev) => ({ ...prev, [box.title]: "done" }));
-        updateLoadingStep(i, "completed");
-      } else {
-        const msg = result.error ?? "Kutu işlenirken hata oluştu.";
-        setBoxErrors((prev) => ({ ...prev, [box.title]: msg }));
-        setBoxStatuses((prev) => ({ ...prev, [box.title]: "error" }));
+      // Set the entire pool at once
+      useOnboardingStore.getState().setLiteraturePool(result.data);
+
+      // Mark all boxes as done
+      for (let i = 0; i < subBoxes.length; i++) {
+        setBoxStatuses((prev) => ({
+          ...prev,
+          [subBoxes[i].title]: "done",
+        }));
         updateLoadingStep(i, "completed");
       }
+    } else {
+      const errorMsg =
+        result.error ?? "Literatür taraması sırasında bir hata oluştu.";
 
-      // Throttle between boxes to avoid 429 rate-limit errors
-      if (i < subBoxes.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
+      for (let i = 0; i < subBoxes.length; i++) {
+        setBoxErrors((prev) => ({
+          ...prev,
+          [subBoxes[i].title]: errorMsg,
+        }));
+        setBoxStatuses((prev) => ({
+          ...prev,
+          [subBoxes[i].title]: "error",
+        }));
+        updateLoadingStep(i, "completed");
       }
     }
 
     processingRef.current = false;
     setProcessing(false);
     hideLoading();
-  }, [
-    subBoxes,
-    addToLiteraturePool,
-    showLoading,
-    hideLoading,
-    updateLoadingStep,
-  ]);
+  }, [subBoxes, showLoading, hideLoading, updateLoadingStep]);
 
   /**
    * Adds a manually-entered archive entry for an archival/empirical box.
@@ -282,7 +305,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     return subBoxes.every((box) => {
       if (archivalBoxes.has(box.title)) {
         const entry = literaturePool.find((e) => e.subBoxTitle === box.title);
-        return entry !== undefined && entry.starterPack.length > 0;
+        return entry !== undefined;
       }
       return literaturePool.some((entry) => entry.subBoxTitle === box.title);
     });
@@ -342,7 +365,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
           literaturePool.length,
         );
       }
-      startReviewProcess();
+      Promise.resolve().then(() => startReviewProcess());
     }
   }, [loading, processing, subBoxes, literaturePool, startReviewProcess]);
 

@@ -1,24 +1,24 @@
 /**
  * Box-generation test script
  *
- * Runs 10 box-generation API calls in two batches of 5 parallel requests.
- * Each call uses the same thesis matrix input and validates against the JSON schema.
+ * Runs 5 sequential box-generation API calls with 3 retries each.
  *
  * Usage: npx tsx scripts/test-box-generation.ts
  */
-
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
-import dotenv from "dotenv";
+import * as dotenv from "dotenv";
+
 dotenv.config({ path: ".env.local" });
-dotenv.config(); // fallback
+dotenv.config();
+
 import {
   buildThesisBoxGenerationSystemInstruction,
   buildThesisBoxGenerationPrompt,
   thesisBoxGenerationSchema,
-} from "@/lib/prompts/box-generation";
-import { BoxGenerationResponseSchema } from "@/lib/types";
+} from "../src/lib/prompts/box-generation";
 
 const MODEL = "gemini-3.1-flash-lite";
+const MAX_RETRIES = 3;
 
 const THESIS_MATRIX = {
   studyTitle:
@@ -41,205 +41,81 @@ const THESIS_MATRIX = {
     "Birincil aktörler: Kürt siyasi hareketi (PKK ile ilişkili söylemsel alan; HEP–DEP–HADEP çizgisi) ve Türkiye sosyalist solu (özellikle Özgürlük Dünyası ve Gelenek çevresi). İncelenen birimler: Parti programları, gazete yazıları, ideolojik metinler, siyasal açıklamalar ve söylemsel çerçeveler. Analitik odak: Söylem dönüşümü, çerçeve değişimi, meşruiyet üretimi, koalisyon dili ve hegemonik ilişki kurma girişimleri.",
 };
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
-
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const SYSTEM_INSTRUCTION = buildThesisBoxGenerationSystemInstruction();
 const PROMPT = buildThesisBoxGenerationPrompt(THESIS_MATRIX);
 
-interface TestResult {
-  index: number;
-  batch: number;
-  success: boolean;
-  boxCount: number;
-  boxTypes: string[];
-  durationMs: number;
-  rawJson: unknown;
-  error?: string;
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function runSingleTest(
-  index: number,
-  batch: number,
-): Promise<TestResult> {
-  const startTime = performance.now();
-  try {
-    const response = await ai.models.generateContent({
-      model: MODEL,
-      contents: [{ role: "user", parts: [{ text: PROMPT }] }],
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        temperature: 1.0,
-        responseMimeType: "application/json",
-        responseJsonSchema: thesisBoxGenerationSchema,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
-      },
-    });
+async function callGemini(): Promise<{ boxes: unknown[] }> {
+  const response = await ai.models.generateContent({
+    model: MODEL,
+    contents: [{ role: "user", parts: [{ text: PROMPT }] }],
+    config: {
+      systemInstruction: SYSTEM_INSTRUCTION,
+      temperature: 1.0,
+      responseMimeType: "application/json",
+      responseJsonSchema: thesisBoxGenerationSchema as any,
+      thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+    },
+  });
 
-    const text = response.text;
-    if (!text) throw new Error("Boş yanıt");
+  const text = response.text;
+  if (!text) throw new Error("Empty response");
 
-    let cleanedText = text.trim();
-    if (cleanedText.startsWith("```")) {
-      cleanedText = cleanedText
-        .replace(/^```json\s*/i, "")
-        .replace(/^```\s*/, "")
-        .replace(/```$/, "")
-        .trim();
-    }
-
-    const parsed = JSON.parse(cleanedText);
-    const validation = BoxGenerationResponseSchema.safeParse(parsed);
-
-    if (!validation.success) {
-      return {
-        index,
-        batch,
-        success: false,
-        boxCount: 0,
-        boxTypes: [],
-        durationMs: Math.round(performance.now() - startTime),
-        rawJson: parsed,
-        error: `Zod doğrulama hatası: ${validation.error.issues
-          .map((i) => `${i.path.join(".")}: ${i.message}`)
-          .join("; ")}`,
-      };
-    }
-
-    const boxes = validation.data.boxes;
-    const durationMs = Math.round(performance.now() - startTime);
-    return {
-      index,
-      batch,
-      success: true,
-      boxCount: boxes.length,
-      boxTypes: boxes.map((b) => b.boxType),
-      durationMs,
-      rawJson: parsed,
-    };
-  } catch (err) {
-    return {
-      index,
-      batch,
-      success: false,
-      boxCount: 0,
-      boxTypes: [],
-      durationMs: Math.round(performance.now() - startTime),
-      rawJson: null,
-      error: String(err),
-    };
+  let cleaned = text.trim();
+  if (cleaned.startsWith("```")) {
+    cleaned = cleaned.replace(/^```json\s*/i, "").replace(/^```\s*/, "").replace(/```$/, "").trim();
   }
-}
 
-async function runBatch(
-  batchNumber: number,
-  size: number,
-): Promise<TestResult[]> {
-  const tasks: Promise<TestResult>[] = [];
-  for (let i = 0; i < size; i++) {
-    const globalIndex = (batchNumber - 1) * size + i + 1;
-    tasks.push(runSingleTest(globalIndex, batchNumber));
+  const parsed = JSON.parse(cleaned);
+  if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.boxes)) {
+    throw new Error("Invalid response structure: missing 'boxes' array");
   }
-  return Promise.all(tasks);
+
+  return parsed;
 }
 
-function printSeparator(title: string): void {
-  const line = "=".repeat(80);
-  console.log(`\n${line}`);
-  console.log(`  ${title}`);
-  console.log(`${line}\n`);
-}
+async function runTest(index: number): Promise<void> {
+  let lastError: string | null = null;
 
-function printResults(results: TestResult[]): void {
-  for (const r of results) {
-    const sep = "-".repeat(72);
-    const status = r.success ? "✓ BAŞARILI" : "✗ BAŞARISIZ";
-    console.log(`Test #${r.index} (Batch ${r.batch}) — ${status}`);
-    console.log(`  Süre: ${r.durationMs}ms`);
-    if (r.success) {
-      console.log(`  Kutu sayısı: ${r.boxCount}`);
-      console.log(`  Kutu tipleri: ${r.boxTypes.join(", ")}`);
-    } else {
-      console.log(`  Hata: ${r.error}`);
-    }
-    console.log(`  Ham JSON:`);
-    console.log(JSON.stringify(r.rawJson, null, 2));
-    console.log(sep);
-  }
-}
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    process.stdout.write(`Test #${index} | Attempt ${attempt}/${MAX_RETRIES} | Calling Gemini... `);
+    try {
+      const data = await callGemini();
+      const boxes = data.boxes;
+      const types = boxes.map((b: any) => b.boxType || b.type);
 
-function printSummary(allResults: TestResult[]): void {
-  const successful = allResults.filter((r) => r.success);
-  const failed = allResults.filter((r) => !r.success);
-  const avgDuration =
-    Math.round(
-      successful.reduce((sum, r) => sum + r.durationMs, 0) / successful.length,
-    ) || 0;
-  const avgBoxCount =
-    Math.round(
-      (successful.reduce((sum, r) => sum + r.boxCount, 0) / successful.length) *
-        100,
-    ) / 100 || 0;
-
-  printSeparator("ÖZET");
-  console.log(`Toplam test: ${allResults.length}`);
-  console.log(`Başarılı:     ${successful.length}`);
-  console.log(`Başarısız:    ${failed.length}`);
-  console.log(`Ort. süre:    ${avgDuration}ms`);
-  console.log(`Ort. kutu:    ${avgBoxCount}`);
-
-  if (successful.length > 0) {
-    console.log(`\nKutu tipi dağılımı (tüm başarılı testler):`);
-    const typeCounts: Record<string, number> = {};
-    for (const r of successful) {
-      for (const t of r.boxTypes) {
-        typeCounts[t] = (typeCounts[t] || 0) + 1;
-      }
-    }
-    for (const [type, count] of Object.entries(typeCounts).sort(
-      (a, b) => b[1] - a[1],
-    )) {
-      console.log(`  ${type}: ${count}`);
-    }
-
-    console.log(`\nKutu sayısı dağılımı:`);
-    const boxCountDist: Record<string, number> = {};
-    for (const r of successful) {
-      const key = String(r.boxCount);
-      boxCountDist[key] = (boxCountDist[key] || 0) + 1;
-    }
-    for (const [count, freq] of Object.entries(boxCountDist).sort(
-      (a, b) => Number(a[0]) - Number(b[0]),
-    )) {
-      console.log(`  ${count} kutu: ${freq} test`);
+      process.stdout.write(`OK (${types.length} boxes)\n`);
+      console.log(`${"=".repeat(72)}`);
+      console.log(`Test #${index} | Attempt ${attempt}/${MAX_RETRIES}`);
+      console.log(`Types: ${types.join(", ")}`);
+      console.log(`Full JSON:`);
+      console.log(JSON.stringify(data, null, 2));
+      console.log(`${"=".repeat(72)}\n`);
+      return;
+    } catch (err) {
+      lastError = String(err);
+      process.stdout.write(`FAILED\n`);
+      console.error(`Error: ${lastError}`);
+      if (attempt < MAX_RETRIES) await sleep(2000 * attempt);
     }
   }
 
-  if (failed.length > 0) {
-    console.log(`\nBaşarısız test detayı:`);
-    for (const r of failed) {
-      console.log(`  Test #${r.index}: ${r.error}`);
-    }
-  }
+  console.error(`Test #${index} | ALL ${MAX_RETRIES} RETRIES EXHAUSTED | Last error: ${lastError}`);
 }
 
 async function main(): Promise<void> {
-  const startTime = performance.now();
+  console.log("BOX GENERATION TEST — 5 Sequential Calls (3 Retries Each)\n");
 
-  printSeparator("BOX GENERATION TEST — BATCH 1/2 (5 PARALEL)");
-  console.log("5 paralel istek gönderiliyor...\n");
-  const batch1 = await runBatch(1, 5);
-  printResults(batch1);
+  for (let i = 1; i <= 5; i++) {
+    console.log(`>>> Starting Test #${i}...`);
+    await runTest(i);
+  }
 
-  printSeparator("BOX GENERATION TEST — BATCH 2/2 (5 PARALEL)");
-  console.log("5 paralel istek gönderiliyor...\n");
-  const batch2 = await runBatch(2, 5);
-  printResults(batch2);
-
-  const totalDuration = Math.round(performance.now() - startTime);
-  printSummary([...batch1, ...batch2]);
-  console.log(`\nToplam test süresi: ${totalDuration}ms`);
+  console.log("Done.");
 }
 
 main().catch(console.error);

@@ -205,6 +205,7 @@ export function LiteratureReviewContent() {
   const {
     subBoxes,
     loading,
+    processing,
     confirming,
     boxStatuses,
     boxErrors,
@@ -292,7 +293,23 @@ export function LiteratureReviewContent() {
       </div>
 
       <div className="flex justify-center pt-4">
-        {allProcessed ? (
+        {processing ? (
+          <div className="flex items-center gap-2">
+            <Loader2 className="w-6 h-6 text-primary animate-spin" />
+            <p className="text-sm text-muted-foreground">
+              Alt kutular taranıyor...
+            </p>
+          </div>
+        ) : !allProcessed ? (
+          <div className="flex flex-col items-center gap-3">
+            <p className="text-sm text-amber-600 font-medium">
+              Lütfen arşiv/veri kutuları için gerekli girişleri tamamlayın.
+            </p>
+            <Button disabled className="btn-academic-hero w-full sm:w-auto opacity-60">
+              Onayla ve Teze Başla.
+            </Button>
+          </div>
+        ) : (
           <Button
             onClick={handleFinalize}
             disabled={confirming}
@@ -307,13 +324,6 @@ export function LiteratureReviewContent() {
               "Onayla ve Teze Başla."
             )}
           </Button>
-        ) : (
-          <div className="text-center space-y-2">
-            <Loader2 className="w-6 h-6 text-primary animate-spin mx-auto" />
-            <p className="text-sm text-muted-foreground">
-              Alt kutular taranıyor...
-            </p>
-          </div>
         )}
       </div>
     </div>

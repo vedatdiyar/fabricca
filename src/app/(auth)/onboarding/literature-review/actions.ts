@@ -21,6 +21,7 @@ import type { NewLibraryResource } from "@/db/schema";
 import type {
   SubBoxInput,
   RawPaper,
+  ValidatedPaper,
 } from "./_services/literature-review-papers";
 import { mergePapers } from "./_services/literature-review-papers";
 import {
@@ -32,6 +33,7 @@ import {
 import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
 import {
   runAcademicReviewStage,
+  deduplicateCandidatesGlobally,
   type LiteratureReviewResult,
 } from "./_services/ai-processor";
 
@@ -374,6 +376,318 @@ export async function processLiteratureReviewAction(
       service: "literature",
       filePath: "onboarding/literature-review/actions.ts",
       data: { subBoxTitle: boxTitle },
+      error: err,
+    });
+    return { error: message };
+  }
+}
+
+// ============================================================================
+// Batch Action: processAllBoxesAction — 5-stage orchestration for all boxes
+// ============================================================================
+
+/**
+ * OpenAlex rate limit: minimum delay (ms) between sequential search requests.
+ * OpenAlex enforces ~1 request/second for non-authenticated use.
+ * 1100ms = 1s base + 100ms safety margin.
+ */
+const OPENALEX_REQUEST_DELAY_MS = 1100;
+
+export async function processAllBoxesAction(
+  boxes: SubBoxInput[],
+): Promise<{ data?: LiteraturePoolEntry[]; error?: string }> {
+  const logger = new Logger(createFlowId());
+
+  logger.info("literature_batch_process_start", {
+    service: "literature",
+    filePath: "onboarding/literature-review/actions.ts",
+    data: {
+      boxCount: boxes.length,
+      context: "Toplu literatür taraması başlatıldı",
+    },
+  });
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: "Oturum bulunamadı." };
+
+    const [thesisCtx] = await db
+      .select({
+        studyTitle: thesisMatrices.studyTitle,
+        researchQuestion: thesisMatrices.researchQuestion,
+        theoreticalFramework: thesisMatrices.theoreticalFramework,
+        historicalLimits: thesisMatrices.historicalLimits,
+        spatialLimits: thesisMatrices.spatialLimits,
+      })
+      .from(thesisMatrices)
+      .where(eq(thesisMatrices.userId, session.userId));
+
+    if (!thesisCtx) return { error: "Tez matrisi bulunamadı." };
+
+    // ------------------------------------------------------------------
+    // Phase 1: Sequential OpenAlex search with rate-limit throttle
+    // ------------------------------------------------------------------
+    const boxSearchResults = new Map<string, ValidatedPaper[]>();
+    const archivalBoxes = new Set<string>();
+    const foundationalLookups = new Map<
+      string,
+      { resolved: JuryArticle[] }
+    >();
+
+    for (let i = 0; i < boxes.length; i++) {
+      const box = boxes[i];
+      logger.info("literature_batch_search_start", {
+        service: "literature",
+        filePath: "onboarding/literature-review/actions.ts",
+        data: {
+          boxIndex: i,
+          boxTitle: box.title,
+          boxType: box.boxType ?? "bilinmiyor",
+        },
+      });
+
+      // Detect archival boxes early
+      if (isArchivalBox(box)) {
+        archivalBoxes.add(box.title);
+        boxSearchResults.set(box.title, []);
+        foundationalLookups.set(box.title, { resolved: [] });
+
+        logger.info("literature_archival_bypass", {
+          service: "literature",
+          filePath: "onboarding/literature-review/actions.ts",
+          data: {
+            subBoxTitle: box.title,
+            boxType: box.boxType ?? "bilinmiyor",
+            context: `Kutu: ${box.title}`,
+          },
+        });
+        continue;
+      }
+
+      if (!box.semanticSearchBlock.trim()) {
+        boxSearchResults.set(box.title, []);
+        foundationalLookups.set(box.title, { resolved: [] });
+        continue;
+      }
+
+      // Foundational track (independent)
+      const foundationalArticles: JuryArticle[] = [];
+      if (box.foundationalQueries && box.foundationalQueries.length > 0) {
+        logger.info("literature_foundational_start", {
+          service: "literature",
+          filePath: "onboarding/literature-review/actions.ts",
+          data: {
+            queryCount: box.foundationalQueries.length,
+            subBoxTitle: box.title,
+          },
+        });
+
+        const resolved = await resolveFoundationalWorks(
+          box.foundationalQueries,
+          logger,
+        );
+
+        for (const fw of resolved) {
+          foundationalArticles.push({
+            type: "PRIMARY" as const,
+            title: formatAcademicTitle(fw.title),
+            abstract: "",
+            url: fw.id,
+            doi: "",
+            publisher: fw.publisher ?? "",
+            publicationYear: fw.publicationYear,
+            authors: fw.authors,
+            isFoundational: true,
+          });
+        }
+      }
+      foundationalLookups.set(box.title, {
+        resolved: foundationalArticles,
+      });
+
+      // OpenAlex semantic search with throttle
+      const semanticRaw = await withOpenAlexRetry(
+        box.semanticSearchBlock,
+        logger,
+      );
+
+      logger.info("literature_batch_search_done", {
+        service: "literature",
+        filePath: "onboarding/literature-review/actions.ts",
+        data: {
+          boxTitle: box.title,
+          resultCount: semanticRaw.length,
+        },
+      });
+
+      // Within-box dedup
+      const merged = mergePapers(semanticRaw);
+      boxSearchResults.set(box.title, merged);
+
+      // Throttle between boxes (skip last)
+      if (i < boxes.length - 1) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, OPENALEX_REQUEST_DELAY_MS),
+        );
+      }
+    }
+
+    // ------------------------------------------------------------------
+    // Phase 2: Global cross-box deduplication
+    // ------------------------------------------------------------------
+    const dedupStart = performance.now();
+    const dedupedResults = deduplicateCandidatesGlobally(
+      boxSearchResults,
+      logger,
+    );
+
+    logger.info("literature_global_dedup_done", {
+      service: "literature",
+      durationMs: performance.now() - dedupStart,
+      filePath: "onboarding/literature-review/actions.ts",
+      data: {
+        totalBefore: [...boxSearchResults.values()].reduce(
+          (s, a) => s + a.length,
+          0,
+        ),
+        totalAfter: [...dedupedResults.values()].reduce(
+          (s, a) => s + a.length,
+          0,
+        ),
+      },
+    });
+
+    // ------------------------------------------------------------------
+    // Phase 3: Full abstract recovery (surviving candidates only)
+    // ------------------------------------------------------------------
+    const allSurvivingIds: string[] = [];
+    for (const [, candidates] of dedupedResults) {
+      for (const p of candidates) {
+        if (p.openAlexId) allSurvivingIds.push(p.openAlexId);
+      }
+    }
+
+    let abstractMap = new Map<string, string>();
+    if (allSurvivingIds.length > 0) {
+      abstractMap = await fetchFullAbstracts(allSurvivingIds, logger);
+    }
+
+    for (const [, candidates] of dedupedResults) {
+      for (const p of candidates) {
+        if (p.openAlexId) {
+          const resolved = abstractMap.get(p.openAlexId);
+          if (resolved) p.abstract = resolved;
+        }
+        if (!p.abstract || !p.abstract.trim()) {
+          p.abstract =
+            "Özet verisi bulunamadı, başlık üzerinden değerlendirin";
+        }
+      }
+    }
+
+    // ------------------------------------------------------------------
+    // Phase 4: Academic review (Gemini) — per box sequential
+    // ------------------------------------------------------------------
+    const poolEntries: LiteraturePoolEntry[] = [];
+
+    for (const box of boxes) {
+      if (archivalBoxes.has(box.title)) {
+        poolEntries.push({
+          subBoxTitle: box.title,
+          starterPack: foundationalLookups.get(box.title)?.resolved ?? [],
+          reservedPool: [],
+        });
+        continue;
+      }
+
+      const candidates = dedupedResults.get(box.title);
+      if (!candidates || candidates.length === 0) {
+        // Only foundational articles if any
+        poolEntries.push({
+          subBoxTitle: box.title,
+          starterPack: foundationalLookups.get(box.title)?.resolved ?? [],
+          reservedPool: [],
+        });
+        continue;
+      }
+
+      const reviewResult = await runAcademicReviewStage(
+        box,
+        candidates,
+        logger,
+        thesisCtx,
+      );
+
+      // Prepend foundational articles
+      const foundationalArticles =
+        foundationalLookups.get(box.title)?.resolved ?? [];
+      if (foundationalArticles.length > 0) {
+        const foundationalTitles = new Set(
+          foundationalArticles
+            .map((a) => a.title?.toLowerCase().trim())
+            .filter(Boolean),
+        );
+
+        reviewResult.starterPack = reviewResult.starterPack.filter(
+          (a) =>
+            !a.title ||
+            !foundationalTitles.has(a.title.toLowerCase().trim()),
+        );
+        reviewResult.reservedPool = reviewResult.reservedPool.filter(
+          (a) =>
+            !a.title ||
+            !foundationalTitles.has(a.title.toLowerCase().trim()),
+        );
+
+        reviewResult.starterPack = [
+          ...foundationalArticles,
+          ...reviewResult.starterPack,
+        ];
+      }
+
+      // ------------------------------------------------------------------
+      // Phase 5: Crossref enrichment (top 5)
+      // ------------------------------------------------------------------
+      reviewResult.starterPack = await enrichFinalArticles(
+        reviewResult.starterPack,
+        5,
+        logger,
+      );
+      reviewResult.reservedPool = await enrichFinalArticles(
+        reviewResult.reservedPool,
+        5,
+        logger,
+      );
+
+      poolEntries.push({
+        subBoxTitle: box.title,
+        starterPack: reviewResult.starterPack,
+        reservedPool: reviewResult.reservedPool,
+      });
+    }
+
+    logger.info("literature_batch_process_done", {
+      service: "literature",
+      filePath: "onboarding/literature-review/actions.ts",
+      data: {
+        boxCount: boxes.length,
+        totalStarterPack: poolEntries.reduce(
+          (s, e) => s + e.starterPack.length,
+          0,
+        ),
+        totalReservedPool: poolEntries.reduce(
+          (s, e) => s + e.reservedPool.length,
+          0,
+        ),
+      },
+    });
+
+    return { data: poolEntries };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Beklenmeyen hata";
+    logger.error("literature_batch_process_failed", {
+      service: "literature",
+      filePath: "onboarding/literature-review/actions.ts",
       error: err,
     });
     return { error: message };

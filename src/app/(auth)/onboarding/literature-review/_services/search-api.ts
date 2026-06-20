@@ -10,9 +10,6 @@ import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
 const CROSSREF_USER_AGENT =
   "FabriccaAcademicAssistant/1.0 (mailto:iletisim@fabricca.com)";
 
-const CROSSREF_SELECT =
-  "DOI,title,publisher,container-title,volume,issue,page,author,issued,type,is-referenced-by-count";
-
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -125,7 +122,7 @@ async function queryOpenAlexWorks(
 ): Promise<RawPaper[]> {
   const apiKey = process.env.OPENALEX_API_KEY;
   if (apiKey) params.set("api_key", apiKey);
-  const url = `https://api.openalex.org/works?${params.toString()}`;
+  const url = `https://api.openalex.org/works?${params.toString().replace(/\+/g, "%20")}`;
 
   try {
     const response = await fetch(url, {
@@ -160,11 +157,12 @@ async function queryOpenAlexWorks(
 // ============================================================================
 
 export async function searchOpenAlex(query: string): Promise<RawPaper[]> {
+  const trimmedQuery = query.substring(0, 2000);
   const params = new URLSearchParams({
-    "search.semantic": query,
+    "search.semantic": trimmedQuery,
     per_page: "50",
     select:
-      "id,title,type,biblio,cited_by_count,authorships,publication_year,primary_location",
+      "id,title,type,biblio,authorships,publication_year,primary_location,abstract_inverted_index,topics,relevance_score",
   });
   const results = await queryOpenAlexWorks(params);
   if (results.length === 0) {
@@ -386,109 +384,119 @@ export async function resolveFoundationalWorks(
     } as FoundationalWorkResult;
   }
 
-  const results = await Promise.all(
-    queries.map(async (query) => {
-      try {
-        const bibQuery = `${query.author} ${query.title}`;
-        const url = `https://api.crossref.org/works?query.bibliographic=${encodeURIComponent(bibQuery)}&rows=1&select=${encodeURIComponent(CROSSREF_SELECT)}`;
+  const results: FoundationalWorkResult[] = [];
+  const BATCH_SIZE = 2;
+  for (let i = 0; i < queries.length; i += BATCH_SIZE) {
+    const batch = queries.slice(i, i + BATCH_SIZE);
+    const batchResults = await Promise.all(
+      batch.map(async (query) => {
+        try {
+          const bibQuery = `${query.author} ${query.title}`;
+          const url = `https://api.crossref.org/works?query.bibliographic=${encodeURIComponent(bibQuery)}&rows=5`;
 
-        const response = await fetch(url, {
-          headers: { "User-Agent": CROSSREF_USER_AGENT },
-          signal: AbortSignal.timeout(15000),
-        });
+          const response = await fetch(url, {
+            headers: { "User-Agent": CROSSREF_USER_AGENT },
+            signal: AbortSignal.timeout(15000),
+          });
 
-        if (!response.ok) {
-          logger?.warn("crossref_foundational_non_ok", {
+          if (!response.ok) {
+            logger?.warn("crossref_foundational_non_ok", {
+              service: "crossref",
+              filePath:
+                "src/app/(auth)/onboarding/literature-review/_services/search-api.ts",
+              data: {
+                queryTitle: query.title,
+                status: response.status,
+              },
+            });
+            return createFallback(query);
+          }
+
+          const data = (await response.json()) as {
+            message?: { items?: Record<string, unknown>[] };
+          };
+          const items = data?.message?.items;
+          if (!items || items.length === 0) {
+            return createFallback(query);
+          }
+
+          const BOGUS_TITLE_PATTERNS = [
+            /^book\s+review/i,
+            /^reflections?\s+on/i,
+          ];
+
+          const queryTitle = query.title.toLowerCase().trim();
+          const queryAuthor = query.author.toLowerCase().trim();
+
+          // Find first non-bogus item that passes validation
+          let matchedItem: Record<string, unknown> | undefined;
+          for (const item of items) {
+            const itemTitle = ((item.title as string[])?.[0] ?? "")
+              .toLowerCase()
+              .trim();
+
+            const isBogus = BOGUS_TITLE_PATTERNS.some((pattern) =>
+              pattern.test(itemTitle),
+            );
+            if (isBogus) continue;
+
+            const titleMatch =
+              itemTitle.includes(queryTitle) || queryTitle.includes(itemTitle);
+
+            const itemAuthorList = item.author as
+              | { given?: string; family?: string }[]
+              | undefined;
+            const authorMatch = itemAuthorList?.some((a) => {
+              const full = `${a.given ?? ""} ${a.family ?? ""}`
+                .toLowerCase()
+                .trim();
+              return full.includes(queryAuthor);
+            });
+
+            if (titleMatch || authorMatch) {
+              matchedItem = item;
+              break;
+            }
+          }
+
+          if (!matchedItem) {
+            return createFallback(query);
+          }
+
+          // Extract only id and publisher from Crossref; lock LLM fields
+          const doi = extractCleanDoi(
+            matchedItem.DOI as string | null | undefined,
+          );
+          const id = doi ? `https://doi.org/${doi}` : "";
+          const publisher =
+            (matchedItem.publisher as string) ??
+            (matchedItem["container-title"] as string[])?.[0] ??
+            null;
+
+          return {
+            id,
+            title: query.title,
+            type: (matchedItem.type as string) ?? "unknown",
+            publicationYear: query.publicationYear,
+            citedByCount: 0,
+            isFoundational: true,
+            authors: query.author ? [query.author] : [],
+            publisher,
+          } as FoundationalWorkResult;
+        } catch (error) {
+          logger?.error("foundational_work_resolution_failed", {
             service: "crossref",
             filePath:
               "src/app/(auth)/onboarding/literature-review/_services/search-api.ts",
-            data: {
-              queryTitle: query.title,
-              status: response.status,
-            },
+            error,
+            data: { queryTitle: query.title },
           });
           return createFallback(query);
         }
-
-        const data = (await response.json()) as {
-          message?: { items?: Record<string, unknown>[] };
-        };
-        const items = data?.message?.items;
-        if (!items || items.length === 0) {
-          return createFallback(query);
-        }
-
-        const match = items[0];
-
-        // Validation — title/author fuzzy guard against hallucination
-        const matchTitle = ((match.title as string[])?.[0] ?? "")
-          .toLowerCase()
-          .trim();
-        const queryTitle = query.title.toLowerCase().trim();
-        const titleMatch =
-          matchTitle.includes(queryTitle) || queryTitle.includes(matchTitle);
-
-        const authorList = match.author as
-          | { given?: string; family?: string }[]
-          | undefined;
-        const queryAuthor = query.author.toLowerCase().trim();
-        const authorMatch = authorList?.some((a) => {
-          const full = `${a.given ?? ""} ${a.family ?? ""}`
-            .toLowerCase()
-            .trim();
-          return full.includes(queryAuthor);
-        });
-
-        if (!titleMatch && !authorMatch) {
-          return createFallback(query);
-        }
-
-        // Extract fields from Crossref response
-        const doi = extractCleanDoi(match.DOI as string | null | undefined);
-        const id = doi ? `https://doi.org/${doi}` : "";
-        const title = formatAcademicTitle(
-          ((match.title as string[])?.[0] as string) ?? query.title,
-        );
-        const type = (match.type as string) ?? "unknown";
-        const issued = match.issued as
-          | { "date-parts"?: number[][] }
-          | undefined;
-        const publicationYear =
-          issued?.["date-parts"]?.[0]?.[0] ?? query.publicationYear;
-        const citedByCount = (match["is-referenced-by-count"] as number) ?? 0;
-        const publisher = (match.publisher as string) ?? null;
-        const containerTitle =
-          (match["container-title"] as string[])?.[0] ?? null;
-        const resolvedPublisher = publisher ?? containerTitle;
-        const authors: string[] =
-          authorList
-            ?.map((a) =>
-              `${(a.given ?? "").trim()} ${(a.family ?? "").trim()}`.trim(),
-            )
-            .filter(Boolean) ?? (query.author ? [query.author] : []);
-
-        return {
-          id,
-          title,
-          type,
-          publicationYear,
-          citedByCount,
-          isFoundational: true,
-          authors,
-          publisher: resolvedPublisher,
-        } as FoundationalWorkResult;
-      } catch (error) {
-        logger?.error("foundational_work_resolution_failed", {
-          service: "crossref",
-          filePath:
-            "src/app/(auth)/onboarding/literature-review/_services/search-api.ts",
-          error,
-          data: { queryTitle: query.title },
-        });
-        return createFallback(query);
-      }
-    }),
-  );
+      }),
+    );
+    results.push(...batchResults);
+  }
 
   return results;
 }
@@ -526,9 +534,9 @@ async function enrichSingleJuryArticle(
 
   let endpoint: string;
   if (hasValidDoi) {
-    endpoint = `https://api.crossref.org/works/${encodeURIComponent(article.doi.trim())}?select=${encodeURIComponent(CROSSREF_SELECT)}`;
+    endpoint = `https://api.crossref.org/works/${encodeURIComponent(article.doi.trim())}`;
   } else if (article.title) {
-    endpoint = `https://api.crossref.org/works?query.bibliographic=${encodeURIComponent(article.title)}&rows=1&select=${encodeURIComponent(CROSSREF_SELECT)}`;
+    endpoint = `https://api.crossref.org/works?query.bibliographic=${encodeURIComponent(article.title)}&rows=1`;
   } else {
     return article;
   }
@@ -672,7 +680,7 @@ export async function fetchFullAbstracts(
 ): Promise<Map<string, string>> {
   if (!openAlexIds || openAlexIds.length === 0) return new Map();
 
-  const CHUNK_SIZE = 100;
+  const CHUNK_SIZE = 50;
   const cleanedIds = openAlexIds.map((id) =>
     id.replace(/^https?:\/\/openalex\.org\//, ""),
   );
@@ -692,7 +700,7 @@ export async function fetchFullAbstracts(
       });
       if (apiKey) params.set("api_key", apiKey);
 
-      const url = `https://api.openalex.org/works?${params.toString()}`;
+      const url = `https://api.openalex.org/works?${params.toString().replace(/\+/g, "%20")}`;
 
       try {
         const response = await fetch(url, {
