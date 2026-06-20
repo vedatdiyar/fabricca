@@ -1,10 +1,7 @@
-import pino from "pino";
-import pretty from "pino-pretty";
 import fs from "fs";
 import path from "path";
 import { classifyError, getErrorDisplay } from "./error-utils";
 
-// ── Global console.log interceptor (log pollution filter + flow separator) ──
 const originalConsoleLog = console.log;
 const FILTER_PATTERNS = [
   "Cache skipped reason",
@@ -55,6 +52,7 @@ export type ServiceName =
   | "matrix"
   | "enrichment"
   | "originality"
+  | "risk"
   | "complete"
   | "boxes"
   | "wikipedia"
@@ -86,11 +84,29 @@ export interface LogParams {
   error?: unknown;
   tokens?: TokenUsage;
   filePath?: string;
-  status?: "START" | "SUCCESS" | "FAILED";
+  status?: "START" | "SUCCESS" | "FAILED" | "RETRY";
 }
 
 const isDevelopment = process.env.NODE_ENV === "development";
 const PAYLOAD_DIR = ".next/logs";
+
+const A = {
+  reset: "\x1b[0m",
+  dim: "\x1b[2m",
+  gray: "\x1b[90m",
+  cyan: "\x1b[36m",
+  blue: "\x1b[34m",
+  yellow: "\x1b[33m",
+  magenta: "\x1b[35m",
+  green: "\x1b[32m",
+} as const;
+
+const SERVICE_ANSI: Partial<Record<ServiceName, string>> = {
+  matrix: A.blue,
+  risk: A.yellow,
+  literature: A.magenta,
+  complete: A.green,
+};
 
 const SERVICE_DISPLAY: Record<ServiceName, string> = {
   gemini: "GEMINI",
@@ -103,6 +119,7 @@ const SERVICE_DISPLAY: Record<ServiceName, string> = {
   matrix: "MATRIX",
   enrichment: "ENRICH",
   originality: "ORIG",
+  risk: "RISK",
   complete: "DONE",
   boxes: "BOXES",
   wikipedia: "WIKI",
@@ -137,24 +154,19 @@ const ACTION_DISPLAY_MAP: Record<string, { emoji: string; label: string }> = {
   search_empty: { emoji: "🔍", label: "SEARCH" },
 };
 
+const CONSOLE_METHOD: Record<string, "log" | "warn" | "error"> = {
+  info: "log",
+  warn: "warn",
+  error: "error",
+};
+
+function getServiceColor(service: ServiceName): string {
+  return SERVICE_ANSI[service] ?? A.cyan;
+}
+
 function getTimestamp(): string {
   const now = new Date();
   return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
-}
-
-function truncateFlowId(fid: string): string {
-  return fid.length <= 10 ? fid : fid.slice(0, 10);
-}
-
-// Params opsiyonel, tip kontrolü yapıldı
-function getModuleDisplay(service: ServiceName, params?: LogParams): string {
-  let base = SERVICE_DISPLAY[service] ?? service.toUpperCase();
-  if (params?.data?.thinkingLevel && service === "gemini") {
-    const sl = String(params.data.thinkingLevel);
-    const suffix = sl === "LOW" ? "L1" : sl === "HIGH" ? "L2" : "";
-    if (suffix) base = `GEMINI/${suffix}`;
-  }
-  return base;
 }
 
 function getActionDisplay(event: string): { emoji: string; label: string } {
@@ -188,31 +200,22 @@ function processDataMetrics(data: Record<string, unknown>): string[] {
   const before = data.before as number | undefined;
   const after = data.after as number | undefined;
   if (before !== undefined && after !== undefined)
-    metrics.push(`📊 ${before} → ${after}`);
-  if (data.count !== undefined) metrics.push(`📊 Sayı: ${data.count}`);
-  if (data.resultCount !== undefined)
-    metrics.push(`📊 ${data.resultCount} sonuç`);
-  if (data.rawCount !== undefined) metrics.push(`🔢 Ham: ${data.rawCount}`);
-  if (data.mergedCount !== undefined) metrics.push(`🔀 ${data.mergedCount}`);
+    metrics.push(`${before} → ${after}`);
+  if (data.count !== undefined) metrics.push(`Sayi: ${data.count}`);
+  if (data.resultCount !== undefined) metrics.push(`${data.resultCount} sonuc`);
+  if (data.rawCount !== undefined) metrics.push(`Ham: ${data.rawCount}`);
+  if (data.mergedCount !== undefined)
+    metrics.push(`Merge: ${data.mergedCount}`);
   return metrics;
 }
 
 function getStatusIcon(status: string): string {
   if (status === "START") return "⏳";
-  if (status === "SUCCESS") return "🟢";
-  if (status === "FAILED") return "🔴";
+  if (status === "SUCCESS") return "✓ ";
+  if (status === "FAILED") return "✖ ";
+  if (status === "RETRY") return "↻ ";
   return "⚪";
 }
-
-const pinoLogger = isDevelopment
-  ? pino(
-      pretty({
-        colorize: true,
-        translateTime: "HH:MM:ss",
-        ignore: "pid,hostname",
-      }),
-    )
-  : pino({ base: undefined, timestamp: pino.stdTimeFunctions.isoTime });
 
 const startedEvents: Map<string, Set<string>> = new Map();
 
@@ -227,6 +230,13 @@ function markStarted(flowId: string, event: string): void {
     startedEvents.set(flowId, set);
   }
   set.add(event);
+}
+
+function serializeError(error: unknown): Record<string, unknown> | string {
+  if (error instanceof Error) {
+    return { message: error.message, name: error.name };
+  }
+  return String(error);
 }
 
 export class Logger {
@@ -250,68 +260,45 @@ export class Logger {
     this.write("error", arg1, params);
   }
 
-  step(stepName: string, metadata?: Record<string, unknown>): void {
+  step(stepName: string, _metadata?: Record<string, unknown>): void {
     if (!isDevelopment) return;
-    const prefix = this.buildPrefix("flow", "SUCCESS");
-
+    void _metadata;
     const actDisplay = getActionDisplay("step");
-    const fixedLabel = actDisplay.label.padEnd(12).slice(0, 12);
-    const actionArea = `${actDisplay.emoji} ${fixedLabel}`;
-
-    console.log(`${prefix} ${actionArea} \x1b[90m│\x1b[0m 📍 ${stepName}`);
+    const prefix = this.buildPrefix("flow", "SUCCESS", actDisplay.label);
+    console.log(`${prefix}  ${stepName}`);
   }
 
   file(ref: string): void {
     if (!isDevelopment) return;
-    const prefix = this.buildPrefix("flow", "SUCCESS");
-
     const actDisplay = getActionDisplay("file_ref");
-    const fixedLabel = actDisplay.label.padEnd(12).slice(0, 12);
-    const actionArea = `${actDisplay.emoji} ${fixedLabel}`;
-
-    console.log(`${prefix} ${actionArea} \x1b[90m│\x1b[0m 📁 ${ref}`);
+    const prefix = this.buildPrefix("flow", "SUCCESS", actDisplay.label);
+    console.log(`${prefix}  ${ref}`);
   }
 
   data(label: string, value: unknown): void {
     if (!isDevelopment) return;
-    const prefix = this.buildPrefix("flow", "SUCCESS");
-
     const actDisplay = getActionDisplay("data");
-    const fixedLabel = actDisplay.label.padEnd(12).slice(0, 12);
-    const actionArea = `${actDisplay.emoji} ${fixedLabel}`;
-
+    const prefix = this.buildPrefix("flow", "SUCCESS", actDisplay.label);
     const display =
       typeof value === "object" ? JSON.stringify(value) : String(value);
-    console.log(
-      `${prefix} ${actionArea} \x1b[90m│\x1b[0m 📊 ${label}: ${truncate(display, 100)}`,
-    );
+    console.log(`${prefix}  ${label}: ${truncate(display, 100)}`);
   }
 
   preview(label: string, value: unknown): void {
     if (!isDevelopment) return;
-    const prefix = this.buildPrefix("flow", "SUCCESS");
-
     const actDisplay = getActionDisplay("preview");
-    const fixedLabel = actDisplay.label.padEnd(12).slice(0, 12);
-    const actionArea = `${actDisplay.emoji} ${fixedLabel}`;
-
+    const prefix = this.buildPrefix("flow", "SUCCESS", actDisplay.label);
     const raw =
       typeof value === "object" ? JSON.stringify(value) : String(value);
-    console.log(
-      `${prefix} ${actionArea} \x1b[90m│\x1b[0m 👁️ ${label}: ${truncate(raw, 120)}`,
-    );
+    console.log(`${prefix}  ${label}: ${truncate(raw, 120)}`);
   }
 
   prompt(model: string, content: string): void {
     if (!isDevelopment) return;
-    const prefix = this.buildPrefix("gemini", "SUCCESS");
-
     const actDisplay = getActionDisplay("ai_prompt");
-    const fixedLabel = actDisplay.label.padEnd(12).slice(0, 12);
-    const actionArea = `${actDisplay.emoji} ${fixedLabel}`;
-
+    const prefix = this.buildPrefix("gemini", "SUCCESS", actDisplay.label);
     console.log(
-      `${prefix} ${actionArea} \x1b[90m│\x1b[0m 💬 [${model}] ${truncate(content.replace(/\n/g, " "), 120)}`,
+      `${prefix}  [${model}] ${truncate(content.replace(/\n/g, " "), 120)}`,
     );
   }
 
@@ -358,8 +345,17 @@ export class Logger {
       if (entry.status === "START")
         markStarted(this.flowId, (entry.step as string) ?? "obj_start");
 
-      if (isDevelopment) this.renderDevLine(entry);
-      else pinoLogger[level](entry);
+      if (isDevelopment) {
+        this.renderDevLine(entry);
+      } else {
+        console[CONSOLE_METHOD[level]](
+          JSON.stringify({
+            timestamp: new Date().toISOString(),
+            level,
+            ...entry,
+          }),
+        );
+      }
       return;
     }
 
@@ -371,11 +367,19 @@ export class Logger {
     if (status === "START") markStarted(this.flowId, event);
 
     if (isDevelopment) {
-      const prefix = this.buildPrefix(service, status);
-      const suffix = this.buildSuffix(event, params);
-      console.log(`${prefix}${suffix}`);
+      const actDisplay = getActionDisplay(event);
+      const prefix = this.buildPrefix(service, status, actDisplay.label);
+      const suffix = this.buildSuffix(params);
+      const cleanSuffix = suffix.trim();
+      if (cleanSuffix) {
+        console.log(`${prefix}  ${cleanSuffix}`);
+      } else {
+        console.log(`${prefix}`);
+      }
     } else {
       const entry: Record<string, unknown> = {
+        timestamp: new Date().toISOString(),
+        level,
         event,
         flowId: this.flowId,
         service,
@@ -386,69 +390,74 @@ export class Logger {
         entry.durationMs = Math.round(params.durationMs);
       if (params?.data) entry.data = params.data;
       if (params?.tokens) entry.tokens = params.tokens;
-      pinoLogger[level](entry);
+      if (params?.error) entry.error = serializeError(params.error);
+      console[CONSOLE_METHOD[level]](JSON.stringify(entry));
     }
   }
 
-  // 1. ÖN EK (Ferah, dikey çizgi ayrımıyla sabitlendi)
-  private buildPrefix(service: ServiceName | string, status: string): string {
-    const time = `[${getTimestamp()}]`;
+  private buildPrefix(
+    service: ServiceName | string,
+    status: string,
+    stepLabel?: string,
+  ): string {
+    const time = getTimestamp();
     const icon = getStatusIcon(status);
-    const rawMod = getModuleDisplay(service as ServiceName, {});
-
-    const fixedMod = rawMod.padEnd(12).slice(0, 12);
-
-    return `\x1b[90m│\x1b[0m ${time} ${icon} \x1b[36m${fixedMod}\x1b[0m \x1b[90m│\x1b[0m`;
+    const stageDisplay =
+      SERVICE_DISPLAY[service as ServiceName] ??
+      (service as string).toUpperCase();
+    let fullStage = stageDisplay;
+    if (stepLabel) {
+      fullStage = `${stageDisplay} › ${stepLabel}`;
+    }
+    const fixedStage = fullStage.padEnd(20).slice(0, 20);
+    const color = getServiceColor(service as ServiceName);
+    return `${A.dim}[${time}]${A.reset} ${icon} ${color}${fixedStage}${A.reset} ${A.gray}│${A.reset}`;
   }
 
-  // 2. ARKA EK (Emoji ve kelimeler açıldı, okuması kolaylaştırıldı)
-  private buildSuffix(event: string, params?: LogParams): string {
+  private buildSuffix(params?: LogParams): string {
     const parts: string[] = [];
-    const actDisplay = getActionDisplay(event);
-
-    const fixedLabel = actDisplay.label.padEnd(12).slice(0, 12);
-    const actionArea = `${actDisplay.emoji} ${fixedLabel}`;
 
     if (params?.durationMs !== undefined)
-      parts.push(`⏱️ ${Math.round(params.durationMs)}ms`);
+      parts.push(`${Math.round(params.durationMs)}ms`);
+
     if (params?.data) parts.push(...processDataMetrics(params.data));
 
     if (params?.tokens) {
       const t = params.tokens;
-      if (t.total !== undefined) parts.push(`💭 ${t.total} tkn`);
+      if (t.total !== undefined) parts.push(`${t.total} tkn`);
       else if (t.input !== undefined || t.output !== undefined)
-        parts.push(`📥 ${t.input ?? 0} / 📤 ${t.output ?? 0}`);
+        parts.push(`${t.input ?? 0} / ${t.output ?? 0}`);
     } else if (params?.data?.model) {
-      parts.push(`🏷️ ${String(params.data.model).replace("-flash-lite", "")}`);
+      parts.push(String(params.data.model).replace("-flash-lite", ""));
     }
 
-    if (params?.data?.context) parts.push(`📦 ${String(params.data.context)}`);
-    if (params?.step && params.step !== event) parts.push(`[${params.step}]`);
+    if (params?.data?.context) parts.push(String(params.data.context));
+
+    const message = params?.step ?? "";
 
     if (params?.error) {
       const display = getErrorDisplay(params.error);
       parts.push(
-        `❌ [${classifyError(params.error).toUpperCase()}] ${display.title}`,
+        `[${classifyError(params.error).toUpperCase()}] ${display.title}`,
       );
     }
 
-    return ` ${actionArea} \x1b[90m│\x1b[0m ${parts.join("  •  ")}`;
+    const metricsStr = parts.length > 0 ? `  ${parts.join("  •  ")}` : "";
+    return `${message}${metricsStr}`;
   }
 
   private renderDevLine(data: Record<string, unknown>): void {
     const svc = (data.service ?? "flow") as ServiceName;
     const ev = String(data.event ?? data.step ?? "data");
     const rawStatus = String(data.status ?? "");
-    const prefix = this.buildPrefix(svc, rawStatus);
+    const actDisplay = getActionDisplay(ev);
+    const prefix = this.buildPrefix(svc, rawStatus, actDisplay.label);
 
     const parts: string[] = [];
-    const actDisplay = getActionDisplay(ev);
-    const fixedLabel = actDisplay.label.padEnd(12).slice(0, 12);
-    const actionArea = `${actDisplay.emoji} ${fixedLabel}`;
 
     const nm = data.metrics as Record<string, unknown> | undefined;
     if (nm?.durationMs !== undefined)
-      parts.push(`⏱️ ${Math.round(nm.durationMs as number)}ms`);
+      parts.push(`${Math.round(nm.durationMs as number)}ms`);
 
     const ed = data.data as Record<string, unknown> | undefined;
     if (ed) {
@@ -459,9 +468,13 @@ export class Logger {
     const err = data.error as { message?: string } | undefined;
     if (err?.message) parts.push(`❌ ${err.message}`);
 
-    console.log(
-      `${prefix} ${actionArea} \x1b[90m│\x1b[0m ${parts.join("  •  ")}`,
-    );
+    const metricsStr = parts.length > 0 ? `  ${parts.join("  •  ")}` : "";
+    const cleanMetrics = metricsStr.trim();
+    if (cleanMetrics) {
+      console.log(`${prefix}  ${cleanMetrics}`);
+    } else {
+      console.log(`${prefix}`);
+    }
   }
 }
 
