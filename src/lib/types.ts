@@ -180,7 +180,11 @@ export interface FoundationalQuery {
 export const FoundationalQuerySchema = z.object({
   author: z.string().min(1, "Yazar adı boş olamaz"),
   title: z.string().min(1, "Eser başlığı boş olamaz"),
-  publicationYear: z.number().int().min(0, "Yayın yılı geçersiz"),
+  publicationYear: z.coerce.number().int().min(0, "Yayın yılı geçersiz"),
+});
+
+export const RefinedFoundationalQueriesSchema = z.object({
+  foundationalQueries: z.array(FoundationalQuerySchema).max(4),
 });
 
 export const GeminiThesisBoxSchema = z.object({
@@ -196,7 +200,6 @@ export const GeminiThesisBoxSchema = z.object({
     .string()
     .min(1, "Semantik arama bloğu boş olamaz")
     .max(2000),
-  foundationalQueries: z.array(FoundationalQuerySchema).min(0).max(4),
   concepts: z.array(z.string()).max(4),
 });
 
@@ -205,7 +208,18 @@ export const BoxGenerationResponseSchema = z.object({
 });
 
 export const FinalGeminiThesisBoxSchema = GeminiThesisBoxSchema.extend({
-  foundationalQueries: z.array(FoundationalQuerySchema).min(2).max(4),
+  foundationalQueries: z.array(FoundationalQuerySchema).max(4),
+}).superRefine((data, ctx) => {
+  if (data.boxType === "ANALYSIS_FINDINGS") {
+    return;
+  }
+  if (!data.foundationalQueries || data.foundationalQueries.length < 2) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `"${data.title}" kutusu için en az 2 adet kurucu akademik eser bulunmalıdır.`,
+      path: ["foundationalQueries"],
+    });
+  }
 });
 
 export const FinalBoxGenerationResponseSchema = z.object({

@@ -56,11 +56,6 @@ export function OnboardingGlobalLoader() {
                 >
                   {step.text}
                 </span>
-                {isActive && (
-                  <span className="text-[10px] text-emerald-300/70 animate-pulse leading-tight">
-                    Yapılandırılmış akıl yürütme motoru çalıştırılıyor...
-                  </span>
-                )}
                 {isCompleted && (
                   <span className="text-emerald-400">
                     <svg

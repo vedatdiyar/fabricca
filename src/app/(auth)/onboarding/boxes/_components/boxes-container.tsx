@@ -28,7 +28,7 @@ const boxTypeOrder: Record<string, number> = {
 const badgeLabels: Record<string, string> = {
   CONCEPTUAL: "Teorik Çatı",
   PROBLEMATIZATION: "Problematizasyon",
-  ANALYSIS_FINDINGS: "Tarihsel Bağlam",
+  ANALYSIS_FINDINGS: "Arşiv",
   DATA_PROTOCOL: "Metodoloji",
 };
 
