@@ -23,7 +23,6 @@ const boxTypeOrder: Record<string, number> = {
   PROBLEMATIZATION: 2,
   ANALYSIS_FINDINGS: 3,
   DATA_PROTOCOL: 4,
-  ARGUMENT_SYNTHESIS: 5,
 };
 
 const badgeLabels: Record<string, string> = {
@@ -31,7 +30,6 @@ const badgeLabels: Record<string, string> = {
   PROBLEMATIZATION: "Problematizasyon",
   ANALYSIS_FINDINGS: "Tarihsel Bağlam",
   DATA_PROTOCOL: "Metodoloji",
-  ARGUMENT_SYNTHESIS: "Argüman Sentezi",
 };
 
 export function BoxesContainer() {

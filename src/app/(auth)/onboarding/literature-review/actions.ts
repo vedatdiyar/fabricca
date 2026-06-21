@@ -42,18 +42,13 @@ import {
 // ============================================================================
 
 function isArchivalBox(subBox: SubBoxInput): boolean {
-  const EMPIRICAL_TYPES = new Set(["DATA_PROTOCOL", "ANALYSIS_FINDINGS"]);
-  if (EMPIRICAL_TYPES.has(subBox.boxType ?? "")) return true;
-  if (subBox.foundationalQueries && subBox.foundationalQueries.length > 0) {
-    const archivalPattern =
-      /\b(BCA|Başbakanlık|Cumhuriyet|arşiv|zabıt|archive|archival|fond|defter|tasnif|belge|document|record|manuscript|collection)\b/i;
-    return subBox.foundationalQueries.some(
-      (q) =>
-        archivalPattern.test(q.title) ||
-        archivalPattern.test((q as { author: string }).author),
-    );
+  if (!subBox.foundationalQueries || subBox.foundationalQueries.length === 0) {
+    return false;
   }
-  return false;
+  const first = subBox.foundationalQueries[0];
+  return (
+    first.author === "Primary Source Repository" || first.publicationYear === 0
+  );
 }
 
 // ============================================================================

@@ -177,6 +177,12 @@ export interface FoundationalQuery {
   publicationYear: number;
 }
 
+export const FoundationalQuerySchema = z.object({
+  author: z.string().min(1, "Yazar adı boş olamaz"),
+  title: z.string().min(1, "Eser başlığı boş olamaz"),
+  publicationYear: z.number().int().min(0, "Yayın yılı geçersiz"),
+});
+
 export const GeminiThesisBoxSchema = z.object({
   title: z.string().min(1, "Kutu başlığı boş olamaz"),
   boxType: z.enum([
@@ -184,28 +190,28 @@ export const GeminiThesisBoxSchema = z.object({
     "CONCEPTUAL",
     "DATA_PROTOCOL",
     "ANALYSIS_FINDINGS",
-    "ARGUMENT_SYNTHESIS",
   ]),
   description: z.string().min(1, "Kutu açıklaması boş olamaz"),
   semanticSearchBlock: z
     .string()
     .min(1, "Semantik arama bloğu boş olamaz")
     .max(2000),
-  foundationalQueries: z
-    .array(
-      z.object({
-        author: z.string().min(1),
-        title: z.string().min(1),
-        publicationYear: z.number().int().min(0),
-      }),
-    )
-    .min(1)
-    .max(2),
+  foundationalQueries: z.array(FoundationalQuerySchema).min(0).max(4),
   concepts: z.array(z.string()).max(4),
 });
 
 export const BoxGenerationResponseSchema = z.object({
   boxes: z.array(GeminiThesisBoxSchema).min(1, "En az bir kutu üretilmelidir"),
+});
+
+export const FinalGeminiThesisBoxSchema = GeminiThesisBoxSchema.extend({
+  foundationalQueries: z.array(FoundationalQuerySchema).min(2).max(4),
+});
+
+export const FinalBoxGenerationResponseSchema = z.object({
+  boxes: z
+    .array(FinalGeminiThesisBoxSchema)
+    .min(1, "En az bir kutu üretilmelidir"),
 });
 
 export interface GeminiThesisBox {
@@ -214,8 +220,7 @@ export interface GeminiThesisBox {
     | "PROBLEMATIZATION"
     | "CONCEPTUAL"
     | "DATA_PROTOCOL"
-    | "ANALYSIS_FINDINGS"
-    | "ARGUMENT_SYNTHESIS";
+    | "ANALYSIS_FINDINGS";
   description: string;
   semanticSearchBlock: string;
   foundationalQueries: FoundationalQuery[];

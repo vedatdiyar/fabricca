@@ -22,17 +22,17 @@ const MAX_RETRIES = 3;
 
 const THESIS_MATRIX = {
   studyTitle:
-    "Söylem, Çerçeve ve Hegemonya: 1991–1999 Yılları Arasında Kürt Siyasi Hareketinin Söylem Dönüşümü ve Türkiye Sosyalist Soluyla İlişkisi",
+    "Söylemsel Dönüşüm ve Hegemonik Kırılmalar: 1991-1999 Döneminde Kürt Siyasi Hareketi ile Türkiye Sosyalist Solu Arasındaki İlişkisel Dinamikler",
   researchQuestion:
-    "Ana araştırma sorusu: 1991–1999 yılları arasında Kürt siyasi hareketi Marksist-Leninist söylemden demokrasi, insan hakları ve demokratik siyaset söylemine nasıl bir geçiş gerçekleştirmiştir; bu dönüşümü hangi yapısal koşullar şekillendirmiştir; ve Türkiye sosyalist solu bu dönüşüme nasıl yanıt vermiştir? Alt sorular: (i) Sovyetler Birliği'nin dağılması ve zorunlu kentleşme süreci söylemsel dönüşümü nasıl etkilemiştir? (ii) Kürt hareketinin yeni söylemsel çerçevesi hangi kavramlar ve siyasi talepler etrafında kurulmuştur? (iii) Türkiye sosyalist solunun farklı düşünsel çizgileri bu dönüşümü ne ölçüde benimsemiş, eleştirmiş veya reddetmiştir? (iv) Bu ilişkinin dönem içindeki dönüşüm dinamikleri nelerdir?",
+    "1991-1999 yılları arasında Kürt siyasi hareketinin Marksist-Leninist bir söylem evreninden demokrasi ve insan hakları odaklı bir söylemsel çerçevenin inşasına evrilmesini tetikleyen yapısal faktörler nelerdir ve bu dönüşüm, Türkiye sosyalist solunun, Kürt hareketiyle kurduğu ilişkilenme biçimlerini tarihsel olarak nasıl yeniden şekillendirmiştir?",
   mainClaim:
-    "Tezin temel iddiası, Kürt siyasi hareketinin ideolojik ve söylemsel dönüşümünün yalnızca 1999 sonrasında ortaya çıkmadığı; bu dönüşümün temellerinin 1991–1999 döneminde, küresel sosyalist dönüşüm ve Türkiye'deki toplumsal yeniden yapılanma koşulları altında inşa edildiğidir. Bu süreçte hareket, Marksist-Leninist çerçeveden demokrasi, insan hakları ve siyasal katılım merkezli yeni bir söylemsel çerçeveye yönelmiş; bu dönüşüm Türkiye sosyalist soluyla kurduğu ilişkiyi de yeniden yapılandırmıştır.",
+    "Kürt siyasi hareketindeki Marksist-Leninist söylemden demokrasi ve insan hakları merkezli yeni bir siyasal dile geçiş, 1999 sonrası bir gelişme değil, 1991-1999 yılları arasındaki küresel ve ulusal koşulların şekillendirdiği yapısal bir kırılma sürecidir. Bu dönüşüm, hareketin salt bir stratejik tercihi olmanın ötesinde, Türkiye sosyalist solu ile olan tarihsel ilişkiyi hegemonya ve meşruiyet arayışı temelinde yeniden tanımlayan ve aktörlerin siyasal konumlanışlarını kökten değiştiren belirleyici bir faktördür.",
   theoreticalFramework:
-    "Birincil kuramsal çerçeve: Çerçeveleme Teorisi (Frame Analysis) — özellikle Snow ve Benford'un diagnostik, prognostik ve motivasyonel çerçeveler yaklaşımı. İkincil kuramsal çerçeve: Gramsci'nin hegemonya kavramı (hegemonik inşa, rıza üretimi, söylemsel meşruiyet). Kuramsal konumlanma: Sosyal hareketler literatürü + söylem ve hegemonya çalışmaları. Çalışma bilinçli olarak post-Marksist söylem teorisi yerine çerçeveleme yaklaşımını tercih etmektedir.",
+    "Bu çalışma, teorik çerçevesini hegemonya kuramı ve sosyal hareket çalışmalarında temel bir analitik araç olan çerçeveleme kuramı (framing theory) üzerinden kurgulamaktadır. Söylemsel dönüşüm süreci; Soğuk Savaş sonrası değişen küresel konjonktür, Türkiye'deki hızlı kentleşme süreçleri ve yükselen demokratikleşme taleplerinin yarattığı siyasi iklimin bir sonucu olarak ele alınmaktadır. Bu bağlamda, hareketin siyasi dilindeki değişimler, hegemonya tesis etme ve meşruiyet alanını genişletme çabası olarak kavramsallaştırılmakta; böylece ideolojik metinlerin toplumsal gerçeklikleri yeniden kurma kapasitesi incelenmektedir. Benzer çalışmalardan farklı olarak Ernesto Laclau ve Chantal Mouffe kullanılmayacaktır.",
   methodology:
-    "Nitel araştırma tasarımına dayalı tarihsel karşılaştırmalı söylem analizi uygulanacaktır. Analiz, çerçeveleme teorisinden türetilmiş kodlama şemasıyla yürütülecek; kavramsal değişimler, çerçeve kaymaları ve aktörler arası söylemsel etkileşim izlenecektir. Türkiye sosyalist solunun yanıtları Gramscici hegemonya perspektifiyle yorumlanacaktır. Çalışma çift taraflı karşılaştırmalı okuma ve dönemsel izleme mantığıyla ilerlemektedir.",
+    "Araştırma, nitel tarihsel karşılaştırmalı söylem analizi yöntemiyle tasarlanmıştır. Birincil veri seti, HEP, DEP ve HADEP'in resmi programatik metinlerinden; sosyalist solun yanıtları ise Özgürlük Dünyası ve Gelenek dergilerindeki dönemsel tartışmalardan derlenmiştir. Analiz sürecinde, metinler arası söylemsel süreklilikleri ve kopuşları tespit etmek amacıyla çerçeveleme kodlama şeması uygulanacaktır. Elde edilen nitel veriler, Gramsci'ci hegemonya kavramsallaştırması ekseninde yorumlanarak, hareketin ideolojik dönüşümü ile sosyalist solun bu dönüşüme verdiği tepkiler arasında diyalektik bir ilişki kurulacaktır.",
   researchScope:
-    "Zaman: 1991–1999 (Sovyetler Birliği'nin çözülmesinden Abdullah Öcalan'ın tutuklanmasına kadar; 1991–1995 ve 1995–1999 olarak iki alt evre). Mekân: Türkiye — ulusal düzeyde yayımlanan parti belgeleri, basın organları ve düşünsel üretim alanı; belirli bir şehir ya da yerel vaka analizi yürütülmeyecektir. Veri kaynakları: Birincil kaynaklar — Kürt siyasi hareketi: Özgür Gündem ve devamı yayınlar, HEP/DEP/HADEP parti programları, kongre belgeleri ve savunma metinleri; Türkiye sosyalist solu: Özgürlük Dünyası ve Gelenek dergileri. İkincil kaynaklar: Kürt hareketi, sosyal hareketler ve Türkiye solu literatürü. Analitik odak: Birincil aktörler — Kürt siyasi hareketi (PKK ile ilişkili söylemsel alan; HEP–DEP–HADEP çizgisi) ve Türkiye sosyalist solu (Özgürlük Dünyası ve Gelenek çevresi). İncelenen birimler: Parti programları, gazete yazıları, ideolojik metinler, siyasal açıklamalar ve söylemsel çerçeveler. Analiz odağı: Söylem dönüşümü, çerçeve değişimi, meşruiyet üretimi, koalisyon dili ve hegemonik ilişki kurma girişimleri.",
+    "Araştırmanın kapsamı, Türkiye'de 1991-1999 yılları arasındaki iki ana dönemi (1991-1995 ve 1995-1999) içeren tarihsel periyodu içerir. İncelenen kaynaklar, Kürt siyasi hareketinin kurumsal parti belgeleri, süreli yayınlar ve ideolojik metinlerden teşekkül etmektedir. Çalışma, bu dönemde Kürt siyasi hareketinin söylemsel matrisindeki değişimleri, sosyalist solun kurumsal ve entelektüel refleksleriyle ilişkilendirerek, dönemsel krizlerin ve dönüşümlerin siyasal aktörlerin stratejik tercihleri ve ittifak süreçleri üzerindeki etkilerini bütünsel bir perspektifle analiz etmektedir.",
 };
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -113,7 +113,9 @@ async function runTest(index: number): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  console.log("BOX GENERATION TEST — 5 Sequential Calls (3 Retries Each)\n");
+  console.log(
+    "BOX GENERATION TEST (v2 — Esnek Ontolojik Raf Mimarisi) — 5 Sequential Calls (3 Retries Each)\n",
+  );
 
   for (let i = 1; i <= 5; i++) {
     console.log(`>>> Starting Test #${i}...`);

@@ -221,7 +221,6 @@ export function LiteratureReviewContent() {
     CONCEPTUAL: "Teorik Altyapı",
     DATA_PROTOCOL: "Yöntem / Protokol",
     ANALYSIS_FINDINGS: "Saha ve Bulgular",
-    ARGUMENT_SYNTHESIS: "Argüman Sentezi",
   };
 
   if (loading) {

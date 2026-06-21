@@ -114,6 +114,25 @@ async function retryOn503<T>(
 }
 
 /**
+ * Ham metin yanıtından markdown kod bloklarını temizler ve JSON olarak parse eder.
+ * Hem generateStructuredContent hem de generateContentWithSearch tarafından kullanılır.
+ *
+ * @param text - Gemini'den gelen ham metin yanıtı
+ * @returns Parse edilmiş JSON nesnesi
+ */
+export function sanitizeAndParseJson<T>(text: string): T {
+  let cleaned = text.trim();
+  if (cleaned.startsWith("```")) {
+    cleaned = cleaned
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/, "")
+      .replace(/```$/, "")
+      .trim();
+  }
+  return JSON.parse(cleaned) as T;
+}
+
+/**
  * Gemini modelinden yapılandırılmış JSON çıktısı almak için generic yardımcı.
  * Yanıt, verilen JSON şemasına göre JSON olarak parse edilir.
  *
@@ -178,19 +197,7 @@ export async function generateStructuredContent<T>(
       throw new Error("Gemini yanıtı boş döndü.");
     }
 
-    // ===== 🛡️ ROBUST SANITIZATION & TRUNCATION SAFEGUARD =====
-    // 1. Clean markdown code blocks (```json ... ```) if present
-    let cleanedText = text.trim();
-    if (cleanedText.startsWith("```")) {
-      cleanedText = cleanedText
-        .replace(/^```json\s*/i, "")
-        .replace(/^```\s*/, "")
-        .replace(/```$/, "")
-        .trim();
-    }
-
-    // 2. Attempt parsing the cleaned text
-    const parsed = JSON.parse(cleanedText) as T;
+    const parsed = sanitizeAndParseJson<T>(text);
 
     // 3. Runtime Zod schema validation (if provided)
     const zodSchema = options?.zodSchema;
@@ -269,6 +276,154 @@ export async function generateStructuredContent<T>(
         model: modelName,
         attempts,
         thinkingLevel: thinkingLevel ?? undefined,
+      },
+      error,
+    });
+    throw error;
+  }
+}
+
+/**
+ * Gemini modelinden canli arama (Search Grounding) ile metin uretimi icin generic yardimci.
+ * responseJsonSchema kullanilmaz (Search Grounding ile cakistigi icin); bunun yerine
+ * prompt ici json yonlendirmesi (Implicit JSON Mode) ve runtime Zod validasyonu kullanilir.
+ *
+ * @param modelName - Kullanilacak Gemini model adi (orn. "gemini-2.5-flash")
+ * @param systemInstruction - Sistem talimati (persona + kurallar)
+ * @param prompt - Kullanici promptu
+ * @param logger - Opsiyonel Logger instance'i
+ * @param options - Opsiyonel konfigurasyon: thinkingBudget, temperature, topP, zodSchema
+ * @returns Zod semasiyla valide edilmis tip guvenli nesne
+ */
+export async function generateContentWithSearch<T>(
+  modelName: string,
+  systemInstruction: string,
+  prompt: string,
+  logger?: Logger,
+  options?: {
+    thinkingBudget?: number;
+    temperature?: number;
+    topP?: number;
+    zodSchema?: z.ZodType<T>;
+  },
+): Promise<T> {
+  const startTime = performance.now();
+  let attempts: number | undefined;
+
+  const thinkingBudget = options?.thinkingBudget ?? 2048;
+  const temperature = options?.temperature ?? 0.7;
+  const topP = options?.topP ?? 0.95;
+
+  logger?.info("ai_search_start", {
+    service: "gemini",
+    data: {
+      model: modelName,
+      instructionLength: systemInstruction.length,
+      promptLength: prompt.length,
+      thinkingBudget,
+      temperature,
+      topP,
+    },
+  });
+
+  try {
+    const { result: response, attempts: retryAttempts } = await retryOn503(
+      () =>
+        getAi().models.generateContent({
+          model: modelName,
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          config: {
+            systemInstruction,
+            tools: [{ googleSearch: {} }],
+            thinkingConfig: { thinkingBudget },
+            temperature,
+            topP,
+          },
+        }),
+      2,
+      1000,
+      logger,
+    );
+
+    const text = response.text;
+    if (!text) {
+      throw new Error("Gemini yaniti bos dondur.");
+    }
+
+    const parsed = sanitizeAndParseJson<T>(text);
+
+    const zodSchema = options?.zodSchema;
+    if (zodSchema) {
+      const validationResult = zodSchema.safeParse(parsed);
+      if (!validationResult.success) {
+        logger?.error("ai_schema_validation_failed", {
+          service: "gemini",
+          filePath: "src/lib/gemini.ts",
+          data: {
+            model: modelName,
+            errorCount: validationResult.error.issues.length,
+            issues: validationResult.error.issues.map((i) => ({
+              path: i.path.join("."),
+              message: i.message,
+            })),
+          },
+          error: new Error(
+            `Zod validation failed: ${validationResult.error.message}`,
+          ),
+        });
+        throw new Error(
+          "AI yaniti beklenen yapisal sablona uymadi. Lutfen tekrar deneyin.",
+        );
+      }
+    }
+
+    const durationMs = performance.now() - startTime;
+    const metadata = (
+      response as unknown as {
+        usageMetadata?: {
+          promptTokenCount?: number;
+          candidatesTokenCount?: number;
+          totalTokenCount?: number;
+        };
+      }
+    )?.usageMetadata;
+
+    const tokens = metadata
+      ? {
+          input: metadata.promptTokenCount,
+          output: metadata.candidatesTokenCount,
+          total: metadata.totalTokenCount,
+        }
+      : undefined;
+
+    attempts = retryAttempts;
+
+    logger?.saveDebugPayload("gemini_search", modelName, prompt, text);
+
+    logger?.info("ai_search_success", {
+      service: "gemini",
+      durationMs,
+      tokens,
+      data: {
+        model: modelName,
+        attempt: attempts,
+        thinkingBudget,
+      },
+    });
+    return parsed;
+  } catch (error) {
+    const durationMs = performance.now() - startTime;
+
+    logger?.saveDebugPayload("gemini_search", modelName, prompt);
+
+    logger?.error("ai_search_failed", {
+      service: "gemini",
+      filePath: "src/lib/gemini.ts",
+      durationMs,
+      data: {
+        model: modelName,
+        attempts,
+        thinkingBudget,
       },
       error,
     });

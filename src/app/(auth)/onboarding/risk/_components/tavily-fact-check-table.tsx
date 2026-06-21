@@ -50,7 +50,7 @@ export function TavilyFactCheckTable({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="p-4 bg-muted border border-border rounded-lg text-sm/7 text-foreground/90 whitespace-pre-line">
+        <div className="p-4 bg-muted border border-border rounded-lg text-sm leading-relaxed text-foreground/90 whitespace-pre-line">
           <span className="font-semibold text-foreground mb-2 flex items-center gap-2">
             <FileText className="w-4 h-4 text-primary" />
             Doğrulama Özeti ve Analiz Notu

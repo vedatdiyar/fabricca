@@ -123,7 +123,6 @@ export const boxTypeEnum = pgEnum("box_type_enum", [
   "CONCEPTUAL",
   "DATA_PROTOCOL",
   "ANALYSIS_FINDINGS",
-  "ARGUMENT_SYNTHESIS",
 ]);
 
 export const literatureStatusEnum = pgEnum("literature_status_enum", [

@@ -201,11 +201,11 @@ function processDataMetrics(data: Record<string, unknown>): string[] {
   const after = data.after as number | undefined;
   if (before !== undefined && after !== undefined)
     metrics.push(`${before} → ${after}`);
-  if (data.count !== undefined) metrics.push(`Sayi: ${data.count}`);
-  if (data.resultCount !== undefined) metrics.push(`${data.resultCount} sonuc`);
+  if (data.count !== undefined) metrics.push(`Sayı: ${data.count}`);
+  if (data.resultCount !== undefined) metrics.push(`${data.resultCount} sonuç`);
   if (data.rawCount !== undefined) metrics.push(`Ham: ${data.rawCount}`);
   if (data.mergedCount !== undefined)
-    metrics.push(`Merge: ${data.mergedCount}`);
+    metrics.push(`Birleşme: ${data.mergedCount}`);
   return metrics;
 }
 
