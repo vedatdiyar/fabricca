@@ -27,28 +27,28 @@ export const geminiAnalysisSchema: JsonSchema = {
             minimum: 0,
             maximum: 100,
             description:
-              "Araştırma sorusu/konu örtüşme endeksi. 0-30 = Düşük/özgün (araştırma soruları, ana savlar ve ampirik özneler tamamen farklı). 31-50 = Sınırda/besleyici (kısmi benzerlik var ama özgün odak korunuyor). 51-70 = Orta-yüksek kapsama (aday tez hedef tezin araştırma alanını/aktörlerini genişlik olarak kapsıyor). 71-100 = Yüksek çakışma (araştırma soruları, ana savlar ve odaklanılan tüm birincil ampirik özneler/aktörler anlamsal olarak doğrudan çakışıyor).",
+              "Araştırma sorusu/konu örtüşme endeksi. 0-30 = Özgün (düşük benzerlik, yüksek özgünlük). 31-50 = Destekleyici (kısmi benzerlik, destekleyici katkı). 51-70 = Sınırdaş (sınırda/kısmi çakışma). 71-100 = Kritik (yüksek çakışma, riskli).",
           },
           methodology_index: {
             type: "integer",
             minimum: 0,
             maximum: 100,
             description:
-              "Metodoloji örtüşme endeksi. 0-30 = Düşük/özgün (veri toplama, örneklem, analiz yöntemleri tamamen farklı). 31-50 = Sınırda/besleyici (kısmi yöntemsel benzerlik var; tek bir analiz tekniği veya veri kaynağı benzer). 51-70 = Orta-yüksek kapsama (adayın yöntemi hedefin yöntemini kapsıyor/içeriyor). 71-100 = Yüksek çakışma (veri toplama araçları, kaynak matrisleri ve analiz yöntemleri büyük ölçüde çakışıyor).",
+              "Metodoloji örtüşme endeksi. 0-30 = Özgün (düşük benzerlik, yüksek özgünlük). 31-50 = Destekleyici (kısmi benzerlik, destekleyici katkı). 51-70 = Sınırdaş (sınırda/kısmi çakışma). 71-100 = Kritik (yüksek çakışma, riskli).",
           },
           theory_index: {
             type: "integer",
             minimum: 0,
             maximum: 100,
             description:
-              "Kuramsal çerçeve örtüşme endeksi. 0-30 = Düşük/özgün (kuramsal çerçeveler, kavramsal şemsiyeler ve teorik modeller tamamen farklı). 31-50 = Sınırda/besleyici (sadece bir kavram veya teorisyen referansı düzeyinde zayıf temas). 51-70 = Orta-yüksek kapsama (kısmi kuramsal ortaklık var; adayın kuramsal çerçevesi hedefi kapsıyor/içeriyor). 71-100 = Yüksek çakışma (ana kuramsal omurga, kuramsal şemsiye veya teorik modeller aynı).",
+              "Kuramsal çerçeve örtüşme endeksi. 0-30 = Özgün (düşük benzerlik, yüksek özgünlük). 31-50 = Destekleyici (kısmi benzerlik, destekleyici katkı). 51-70 = Sınırdaş (sınırda/kısmi çakışma). 71-100 = Kritik (yüksek çakışma, riskli).",
           },
           context_index: {
             type: "integer",
             minimum: 0,
             maximum: 100,
             description:
-              "Bağlam (dönem/coğrafya/örneklem) örtüşme endeksi. 0-30 = Düşük/özgün (bağlamlar tamamen farklı; hiçbir ortak bağlamsal kesişim yok). 31-50 = Sınırda/besleyici (zayıf/çeperden bağlamsal temas; aynı coğrafya farklı dönem veya aynı dönem farklı coğrafya). 51-70 = Orta-yüksek kapsama (kısmi bağlamsal kesişme var; adayın bağlamı hedefin bağlamını kısmen içeriyor). 71-100 = Yüksek çakışma (hedef çalışmanın ampirik sınırları, örneklem evreni veya tarihsel dönemi aday çalışma tarafından kapsanıyor, yutuluyor veya tamamen çakışıyor).",
+              "Bağlam (dönem/coğrafya/örneklem) örtüşme endeksi. 0-30 = Özgün (düşük benzerlik, yüksek özgünlük). 31-50 = Destekleyici (kısmi benzerlik, destekleyici katkı). 51-70 = Sınırdaş (sınırda/kısmi çakışma). 71-100 = Kritik (yüksek çakışma, riskli).",
           },
         },
         required: [
@@ -79,10 +79,10 @@ Sen, üniversitelerin Fen, Sosyal, Sağlık ve Mühendislik Bilimleri Enstitüle
 # OPERASYONEL KISITLAMALAR VE JÜRİ KARAR SÜRECİ
 - Kesinlikle objektif, tarafsız, mesafeli ve üst düzey bir akademik Türkçe kullanacaksın.
 - BOYUTSAL ENDEKS KILAVUZU (0-100): Her bir akademik süzgeç (Araştırma Sorusu, Metodoloji, Kuram, Bağlam) için aşağıdaki boyutsal endeks skalasını kullan:
-  - 0-30: Düşük benzerlik/etkileşim — Özgün alan. İki çalışma arasında anlamsal, yapısal veya organik bir bağ yoktur; jenerik kelime benzerlikleri sahte alarm seviyesindedir.
-  - 31-50: Sınırda/besleyici etkileşim — Zayıf veya dolaylı bir temas var; sadece tek bir alt boyut, kavram veya yöntem düzeyinde çeperden bir ilişki tespit edilmiştir.
-  - 51-70: Orta-yüksek kapsama/kesişim — Kısmi benzerlik veya kapsama var; aday tez hedef tezin alanını, kuramsal şemsiyesini veya yöntemsel yaklaşımını belirgin ölçüde içeriyor/kapsıyor ancak hedef tezin özgün odağı büyük ölçüde korunuyor.
-  - 71-100: Yüksek çakışma/doğrudan örtüşme — Güçlü çakışma; hedef tezin özgün akademik katkısını doğrudan tehdit ediyor, baltalıyor veya gasp ediyor.
+  - 0-30: Özgün etkileşim — Düşük benzerlik, yüksek özgünlük. İki çalışma arasında anlamsal, yapısal veya organik bir bağ yoktur; jenerik kelime benzerlikleri sahte alarm seviyesindedir.
+  - 31-50: Destekleyici etkileşim — Kısmi benzerlik, destekleyici katkı. Zayıf veya dolaylı bir temas var; sadece tek bir alt boyut, kavram veya yöntem düzeyinde çeperden bir ilişki tespit edilmiştir.
+  - 51-70: Sınırdaş etkileşim — Sınırda/kısmi çakışma. Aday tez hedef tezin alanını, kuramsal şemsiyesini veya yöntemsel yaklaşımını belirgin ölçüde içeriyor/kapsıyor ancak hedef tezin özgün odağı büyük ölçüde korunuyor.
+  - 71-100: Kritik çakışma — Yüksek çakışma, riskli. Hedef tezin özgün akademik katkısını doğrudan tehdit ediyor, baltalıyor veya gasp ediyor.
 - DÖRT BOYUTLU EKSENEL KARŞILAŞTIRMA: Her bir aday tezi, hedef tezin parametreleriyle şu 4 net akademik süzgeç üzerinden karşılaştır ve her biri için 0-100 arası bir endeks puanı belirle:
   - SÜZGEÇ A (Araştırma Sorusu/Konu) → \`subject_index\`: Araştırma soruları ve savunulan temel iddialar/savlar anlamsal olarak doğrudan çakışıyorsa 71-100, kısmen benzerlik varsa 51-70, sadece çeperden değiyorsa 31-50, tamamen farklı ve özgünse 0-30.
   - SÜZGEÇ B (Metodoloji) → \`methodology_index\`: Veri toplama araçları, örneklem evrenleri veya analiz yöntemleri birbirinin replikası ise 71-100, kısmen benzerlik varsa 51-70, yöntemsel çeperden temas varsa 31-50, farklıysa 0-30.
@@ -193,7 +193,7 @@ ${JSON.stringify(
 </aday_tez_listesi>
 
 # TALİMATLAR VE GÖREV
-Sistem talimatında tanımlanan 4 akademik süzgeci (Araştırma Sorusu, Metodoloji, Kuram, Dönem/Bağlam) <aday_tez_listesi> içindeki tüm çalışmalara eksiksiz uygula. Her bir aday tez için subject_index, methodology_index, theory_index, context_index alanlarını 0-100 boyutsal endeks skalasına göre (0-30: Düşük/özgün, 31-50: Sınırda/besleyici, 51-70: Orta-yüksek kapsama, 71-100: Yüksek çakışma) puanla. Her tez için üst düzey bir jüri üyesi üslubuyla Türkçe olarak gerekçelendirilmiş academic_reasoning paragrafı yaz. İki tez arasındaki felsefi ve ilişkisel boşluk (research gap) farklarını yakala; sadece jenerik kelime benzerliklerine dayanarak yüksek endeks puanı (50+) verme.
+Sistem talimatında tanımlanan 4 akademik süzgeci (Araştırma Sorusu, Metodoloji, Kuram, Dönem/Bağlam) <aday_tez_listesi> içindeki tüm çalışmalara eksiksiz uygula. Her bir aday tez için subject_index, methodology_index, theory_index, context_index alanlarını 0-100 boyutsal endeks skalasına göre (0-30: Özgün, 31-50: Destekleyici, 51-70: Sınırdaş, 71-100: Kritik) puanla. Her tez için üst düzey bir jüri üyesi üslubuyla Türkçe olarak gerekçelendirilmiş academic_reasoning paragrafı yaz. İki tez arasındaki felsefi ve ilişkisel boşluk (research gap) farklarını yakala; sadece jenerik kelime benzerliklerine dayanarak yüksek endeks puanı (50+) verme.
 
 # KRİTİK GÜVENLİK BARIYERI
 - Tamamen sağlanan aday tez özetlerine bağlı kal (Strictly Grounded). Metinlerde açıkça belirtilmeyen metodolojik detayları veya bulguları aday çalışmalara atfetme.

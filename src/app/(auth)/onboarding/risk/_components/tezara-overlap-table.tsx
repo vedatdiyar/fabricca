@@ -29,24 +29,24 @@ export function getAcademicStatus(score: number) {
   if (score <= 30) {
     return {
       label: "Özgün",
-      badgeClass: "bg-success/10 border-success/20 text-success",
+      badgeClass: "bg-success/20 border-success/20 text-success",
     };
   }
   if (score <= 50) {
     return {
-      label: "Besleyici",
-      badgeClass: "bg-warning/10 border-warning/20 text-warning",
+      label: "Destekleyici",
+      badgeClass: "bg-warning/20 border-warning/20 text-warning",
     };
   }
   if (score <= 70) {
     return {
-      label: "Sınırda",
-      badgeClass: "bg-orange-500/10 border-orange-500/20 text-orange-500",
+      label: "Sınırdaş",
+      badgeClass: "bg-orange-500/20 border-orange-500/20 text-orange-500",
     };
   }
   return {
     label: "Kritik",
-    badgeClass: "bg-destructive/10 border-destructive/20 text-destructive",
+    badgeClass: "bg-destructive/20 border-destructive/20 text-destructive",
   };
 }
 
@@ -58,7 +58,7 @@ function AxisCell({ score }: { score: number }) {
   return (
     <div className="flex items-center justify-center">
       <span
-        className={`inline-flex items-center justify-center w-[76px] py-0.5 rounded-full text-[10px] font-semibold border ${status.badgeClass}`}
+        className={`inline-flex items-center justify-center w-[84px] py-0.5 rounded-full text-[10px] font-bold tracking-wide border ${status.badgeClass}`}
       >
         {status.label}
       </span>
@@ -217,7 +217,7 @@ export function TezaraOverlapTable({
                       </td>
                       <td className="p-3 text-center">
                         <span
-                          className={`inline-flex px-3 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${getBadgeColor(getScoreBadge(item.riskScore))}`}
+                          className={`inline-flex items-center justify-center px-3 py-1 rounded-md text-xs font-bold tracking-wide border text-center ${getBadgeColor(getScoreBadge(item.riskScore))}`}
                         >
                           {BADGE_LABELS[getScoreBadge(item.riskScore)] ||
                             getScoreBadge(item.riskScore)}

@@ -104,7 +104,7 @@ export function parseTezaraSearchResults(
 
         // Thesis Type
         const thesisType = $li
-          .find("span.icon-graduation-cap")
+          .find("span.icon-graduation-cap, span.icon-trophy")
           .first()
           .parent()
           .text()
