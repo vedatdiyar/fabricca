@@ -190,7 +190,7 @@ export async function siftAndFetchDetails(
     for (let i = 0; i < passedStage1.length; i += batchSize) {
       const batch = passedStage1.slice(i, i + batchSize);
       const batchResults = await Promise.all(
-        batch.map((t) => fetchThesisDetails(t.id, log)),
+        batch.map((t) => fetchThesisDetails(t, log)),
       );
       detailsList.push(...batchResults);
     }

@@ -19,10 +19,10 @@ export interface SynthesizeRoadmapParams {
     author: string;
     year: number;
     axes: {
-      subject: string;
-      theory: string;
-      methodology: string;
-      context?: string;
+      subject: number;
+      theory: number;
+      methodology: number;
+      context?: number;
     };
     riskScore: number;
     comparisonNote: string;

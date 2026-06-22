@@ -100,10 +100,10 @@ export const originalityReports = pgTable("originality_reports", {
         thesisType: string;
         department: string;
         axes: {
-          subject: "BIREBIR" | "KAPSAYAN" | "TEGET" | "ALAKASIZ";
-          theory: "BIREBIR" | "KAPSAYAN" | "TEGET" | "ALAKASIZ";
-          methodology: "BIREBIR" | "KAPSAYAN" | "TEGET" | "ALAKASIZ";
-          context?: "BIREBIR" | "KAPSAYAN" | "TEGET" | "ALAKASIZ";
+          subject: number;
+          theory: number;
+          methodology: number;
+          context?: number;
         };
         riskScore: number;
         comparisonNote?: string;

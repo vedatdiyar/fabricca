@@ -80,10 +80,10 @@ export interface TavilyEvaluationResponse {
 export interface OverlapItem {
   id: number;
   axes: {
-    subject: AxesOption;
-    theory: AxesOption;
-    methodology: AxesOption;
-    context?: AxesOption;
+    subject: number;
+    theory: number;
+    methodology: number;
+    context?: number;
   };
   comparisonNote?: string;
   yokPdfUrl?: string;
@@ -170,10 +170,10 @@ export interface JuryReportItem {
   department: string;
   riskScore: number;
   axes: {
-    subject: AxesOption;
-    theory: AxesOption;
-    methodology: AxesOption;
-    context?: AxesOption;
+    subject: number;
+    theory: number;
+    methodology: number;
+    context?: number;
   };
   comparisonNote?: string;
   yokPdfUrl?: string;

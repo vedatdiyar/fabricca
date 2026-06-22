@@ -13,7 +13,10 @@ import {
   buildTavilyEvalPrompt,
 } from "@/lib/prompts";
 
-const MAX_TEZARA_CONCURRENCY = 5;
+const MAX_TEZARA_CONCURRENCY = 1;
+
+const TEZARA_MIN_SLEEP_MS = 360;
+const TEZARA_MAX_SLEEP_MS = 2000;
 
 /**
  * Runs an array of async operations with a concurrency cap.
@@ -34,6 +37,12 @@ async function runWithConcurrencyLimit<T, R>(
   async function worker(): Promise<void> {
     while (nextIndex < items.length) {
       const index = nextIndex++;
+      const jitterDelay =
+        TEZARA_MIN_SLEEP_MS +
+        Math.floor(
+          Math.random() * (TEZARA_MAX_SLEEP_MS - TEZARA_MIN_SLEEP_MS + 1),
+        );
+      await new Promise((resolve) => setTimeout(resolve, jitterDelay));
       results[index] = await fn(items[index], index);
     }
   }

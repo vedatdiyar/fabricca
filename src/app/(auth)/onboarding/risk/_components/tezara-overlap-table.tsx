@@ -10,7 +10,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { getThesisPriority, getScoreBadge } from "../_services/analysis";
-import { AXIS_LABELS, BADGE_LABELS, getBadgeColor } from "../_lib/constants";
+import { BADGE_LABELS, getBadgeColor } from "../_lib/constants";
 import type { OriginalityReportData } from "@/lib/types";
 
 /** A single overlap-table row after sorting and comparison-note backfill. */
@@ -18,19 +18,61 @@ type OverlapRow =
   OriginalityReportData["tezaraResults"]["overlapTable"][number];
 
 interface TezaraOverlapTableProps {
-  /** Raw overlap table (unsorted, possibly without comparison notes). */
   overlapTable: OriginalityReportData["tezaraResults"]["overlapTable"];
-  /** Strategic recommendations used to backfill missing comparison notes. */
   strategicRecommendations: string;
 }
 
 /**
+ * Helper to categorize originality scores (0-100) and return badge style classes.
+ */
+export function getAcademicStatus(score: number) {
+  if (score <= 30) {
+    return {
+      label: "Özgün",
+      badgeClass: "bg-success/10 border-success/20 text-success",
+    };
+  }
+  if (score <= 50) {
+    return {
+      label: "Besleyici",
+      badgeClass: "bg-warning/10 border-warning/20 text-warning",
+    };
+  }
+  if (score <= 70) {
+    return {
+      label: "Sınırda",
+      badgeClass: "bg-orange-500/10 border-orange-500/20 text-orange-500",
+    };
+  }
+  return {
+    label: "Kritik",
+    badgeClass: "bg-destructive/10 border-destructive/20 text-destructive",
+  };
+}
+
+/**
+ * Renders only the academic status badge for a dimensional index score.
+ */
+function AxisCell({ score }: { score: number }) {
+  const status = getAcademicStatus(score);
+  return (
+    <div className="flex items-center justify-center">
+      <span
+        className={`inline-flex items-center justify-center w-[76px] py-0.5 rounded-full text-[10px] font-semibold border ${status.badgeClass}`}
+      >
+        {status.label}
+      </span>
+    </div>
+  );
+}
+
+/**
  * Renders Section B of the originality report: the 4-axis literature overlap
- * matrix. Sorts rows by priority (subject > context > methodology > theory,
- * then doctorate over master's, then recency), backfills missing
- * `comparisonNote` values from the strategic recommendations blob when no row
- * carries its own note, and supports per-row expansion to reveal the detailed
- * comparison analysis.
+ * matrix with numeric dimensional index gauges. Sorts rows by priority
+ * (highest total overlap first, then doctorate over master's, then recency),
+ * backfills missing `comparisonNote` values from the strategic
+ * recommendations blob when no row carries its own note, and supports
+ * per-row expansion to reveal the detailed comparison analysis.
  */
 export function TezaraOverlapTable({
   overlapTable,
@@ -40,24 +82,9 @@ export function TezaraOverlapTable({
 
   const sortedTheses = useMemo<OverlapRow[]>(() => {
     if (!overlapTable) return [];
-    const items: OverlapRow[] = overlapTable
-      .map((item) => ({ ...item }))
-      .filter((item) => {
-        const s = item.axes.subject;
-        const t = item.axes.theory;
-        const m = item.axes.methodology;
-        const c = item.axes.context ?? "ALAKASIZ";
-        return (
-          s !== "ALAKASIZ" ||
-          t !== "ALAKASIZ" ||
-          m !== "ALAKASIZ" ||
-          c !== "ALAKASIZ"
-        );
-      });
+    const items: OverlapRow[] = overlapTable.map((item) => ({ ...item }));
     const hasAnyNote = items.some((item) => item.comparisonNote);
 
-    // If no row carries a note but a strategic roadmap exists, distribute its
-    // `---`-delimited sections across rows (legacy fallback format).
     if (!hasAnyNote && strategicRecommendations) {
       const parts = strategicRecommendations.split(/\n+---\n+/);
       const trimmedParts = parts.map((p) => {
@@ -79,7 +106,7 @@ export function TezaraOverlapTable({
     return items.sort((a, b) => {
       const priorityA = getThesisPriority(a.axes);
       const priorityB = getThesisPriority(b.axes);
-      if (priorityA !== priorityB) return priorityA - priorityB;
+      if (priorityA !== priorityB) return priorityB - priorityA;
       const tA = (a.thesisType || "").toLowerCase();
       const tB = (b.thesisType || "").toLowerCase();
       const wA =
@@ -108,7 +135,7 @@ export function TezaraOverlapTable({
         </CardTitle>
         <CardDescription>
           Benzer akademik çalışmaların konu, kuramsal çerçeve, metodoloji ve
-          bağlam eksenlerinde incelenmesi.
+          bağlam eksenlerinde 0-100 endeks puanları ile incelenmesi.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -119,20 +146,20 @@ export function TezaraOverlapTable({
                 <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase min-w-[320px]">
                   Karşılaştırılan Tez Bilgileri
                 </th>
-                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[80px]">
+                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[100px]">
                   Konu
                 </th>
-                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[80px]">
+                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[100px]">
                   Teori
                 </th>
-                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[80px]">
-                  YÖNTEM
+                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[100px]">
+                  Yöntem
                 </th>
-                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[80px]">
-                  DÖNEM
+                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[100px]">
+                  Dönem
                 </th>
                 <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[90px]">
-                  POZİSYON
+                  Pozisyon
                 </th>
               </tr>
             </thead>
@@ -170,41 +197,23 @@ export function TezaraOverlapTable({
                           <span>{item.title}</span>
                         </div>
                         <div className="pl-6 text-xs text-muted-foreground leading-relaxed">
-                          {item.author} • {item.university} ({item.year})
+                          {item.author} &bull; {item.university} ({item.year})
                         </div>
                         <div className="pl-6 text-[11px] text-muted-foreground font-mono">
                           {item.thesisType}
                         </div>
                       </td>
                       <td className="p-3 text-center">
-                        <span
-                          className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${getBadgeColor(item.axes.subject)}`}
-                        >
-                          {AXIS_LABELS[item.axes.subject] || item.axes.subject}
-                        </span>
+                        <AxisCell score={item.axes.subject} />
                       </td>
                       <td className="p-3 text-center">
-                        <span
-                          className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${getBadgeColor(item.axes.theory)}`}
-                        >
-                          {AXIS_LABELS[item.axes.theory] || item.axes.theory}
-                        </span>
+                        <AxisCell score={item.axes.theory} />
                       </td>
                       <td className="p-3 text-center">
-                        <span
-                          className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${getBadgeColor(item.axes.methodology)}`}
-                        >
-                          {AXIS_LABELS[item.axes.methodology] ||
-                            item.axes.methodology}
-                        </span>
+                        <AxisCell score={item.axes.methodology} />
                       </td>
                       <td className="p-3 text-center">
-                        <span
-                          className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${getBadgeColor(item.axes.context || "ALAKASIZ")}`}
-                        >
-                          {AXIS_LABELS[item.axes.context || "ALAKASIZ"] ||
-                            item.axes.context}
-                        </span>
+                        <AxisCell score={item.axes.context ?? 0} />
                       </td>
                       <td className="p-3 text-center">
                         <span

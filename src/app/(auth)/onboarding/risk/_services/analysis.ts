@@ -1,7 +1,7 @@
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
 import type { Logger } from "@/lib/logger";
-import type { AxesOption, TezaraThesisDetails } from "@/lib/types";
+import type { TezaraThesisDetails } from "@/lib/types";
 import {
   geminiAnalysisSchema,
   buildAnalysisSystemInstruction,
@@ -29,10 +29,10 @@ export interface CalculatedOverlapItem {
   comparisonNote?: string;
   yokPdfUrl?: string;
   axes: {
-    subject: AxesOption;
-    theory: AxesOption;
-    methodology: AxesOption;
-    context?: AxesOption;
+    subject: number;
+    theory: number;
+    methodology: number;
+    context: number;
   };
   riskScore: number;
 }
@@ -47,46 +47,27 @@ export interface CalculatedOriginalityRiskResult {
   riskPercentage: number;
 }
 
-const SCORE_MAP: Record<AxesOption, number> = {
-  BIREBIR: 100,
-  KAPSAYAN: 40,
-  TEGET: 15,
-  ALAKASIZ: 0,
-};
-
-const AXIS_WEIGHTS = {
-  subject: 0.4,
-  theory: 0.3,
-  methodology: 0.15,
-  context: 0.15,
-};
-
 /**
- * Calculates a weighted risk score (0-100) for a single thesis based on its
- * 4-axis overlap labels. Subject/Research Question (40%), Theory (30%),
- * Methodology (15%), Context (15%).
+ * Calculates a risk score (0-100) for a single thesis as the arithmetic mean
+ * of its 4 dimensional index scores.
  *
- * @param axes - The 4-axis overlap assessment from Gemini.
+ * @param axes - The 4-axis numeric indices from Gemini (0-100 each).
  * @returns Rounded risk score between 0 and 100.
  */
-export function calculateSingleScore(axes: {
-  subject: AxesOption;
-  theory: AxesOption;
-  methodology: AxesOption;
-  context: AxesOption;
+export function calculateRiskScore(axes: {
+  subject: number;
+  theory: number;
+  methodology: number;
+  context: number;
 }): number {
-  const rawScore =
-    SCORE_MAP[axes.subject] * AXIS_WEIGHTS.subject +
-    SCORE_MAP[axes.theory] * AXIS_WEIGHTS.theory +
-    SCORE_MAP[axes.methodology] * AXIS_WEIGHTS.methodology +
-    SCORE_MAP[axes.context] * AXIS_WEIGHTS.context;
-
-  return Math.round(rawScore);
+  return Math.round(
+    (axes.subject + axes.theory + axes.methodology + axes.context) / 4,
+  );
 }
 
 /**
- * Determines the project-level global risk badge and percentage based on the
- * maximum individual thesis risk score in the candidate pool.
+ * Determines the project-level global risk badge and display percentage based
+ * on the maximum individual thesis risk score in the candidate pool.
  *
  * @param scores - Array of per-thesis risk scores (0-100).
  * @returns Global risk badge and display percentage.
@@ -99,15 +80,15 @@ export function evaluateGlobalRisk(scores: number[]): {
 
   const maxScore = Math.max(...scores);
 
-  if (maxScore <= 15) return { badge: "OZGUN_CALISMA", percentage: 0 };
-  if (maxScore <= 40) return { badge: "BESLEYICI_CALISMA", percentage: 25 };
+  if (maxScore <= 30) return { badge: "OZGUN_CALISMA", percentage: 0 };
+  if (maxScore <= 50) return { badge: "BESLEYICI_CALISMA", percentage: 25 };
   if (maxScore <= 70) return { badge: "SINIRDAS_CALISMA", percentage: 50 };
   return { badge: "KRITIK_CAKISMA", percentage: 85 };
 }
 
 const SCORE_BADGE_THRESHOLDS: [number, string][] = [
-  [15, "OZGUN_CALISMA"],
-  [40, "BESLEYICI_CALISMA"],
+  [30, "OZGUN_CALISMA"],
+  [50, "BESLEYICI_CALISMA"],
   [70, "SINIRDAS_CALISMA"],
   [100, "KRITIK_CAKISMA"],
 ];
@@ -127,13 +108,27 @@ export function getScoreBadge(score: number): string {
 }
 
 /**
+ * Computes a sort priority integer for a thesis based on its 4-axis scores.
+ * Higher total overlap = higher priority (appears first in UI).
+ * Uses simple sum of axis scores.
+ */
+export function getThesisPriority(axes: {
+  subject: number;
+  theory: number;
+  methodology: number;
+  context?: number;
+}): number {
+  return axes.subject + axes.theory + axes.methodology + (axes.context ?? 0);
+}
+
+/**
  * Enriches the raw Gemini overlap analysis with thesis metadata and computes
- * each thesis's risk score from the 4 axis labels. The project-level badge
- * is derived from the highest individual risk score in the pool.
+ * each thesis's risk score from the 4 dimensional indices. The project-level
+ * badge is derived from the highest individual risk score in the pool.
  *
  * Filters out IDs hallucinated by Gemini that don't exist in validDetails.
  *
- * @param overlapTable - Raw overlap table from Gemini analysis (axes only).
+ * @param overlapTable - Raw overlap table from Gemini analysis (indices only).
  * @param validDetails - Enriched thesis metadata for ID lookup.
  * @param logger - Optional logger instance.
  * @returns Enriched overlap table with computed risk scores and project badge.
@@ -142,10 +137,10 @@ export function calculateOriginalityRisk(
   overlapTable: Array<{
     id: number;
     academic_reasoning: string;
-    subject_overlap: AxesOption;
-    methodology_overlap: AxesOption;
-    theory_overlap: AxesOption;
-    context_overlap: AxesOption;
+    subject_index: number;
+    methodology_index: number;
+    theory_index: number;
+    context_index: number;
   }>,
   validDetails: TezaraThesisDetails[],
   logger?: Logger,
@@ -175,13 +170,13 @@ export function calculateOriginalityRisk(
     }
 
     const axes = {
-      subject: item.subject_overlap,
-      theory: item.theory_overlap,
-      methodology: item.methodology_overlap,
-      context: item.context_overlap,
+      subject: item.subject_index,
+      theory: item.theory_index,
+      methodology: item.methodology_index,
+      context: item.context_index,
     };
 
-    const riskScore = calculateSingleScore(axes);
+    const riskScore = calculateRiskScore(axes);
     allScores.push(riskScore);
 
     calculatedOverlapTable.push({
@@ -209,48 +204,9 @@ export function calculateOriginalityRisk(
   };
 }
 
-const PRIORITY_MAP: Record<number, number> = {
-  0b1111: 1,
-  0b1110: 2,
-  0b1101: 3,
-  0b1011: 4,
-  0b0111: 5,
-  0b1100: 6,
-  0b1001: 7,
-  0b1010: 8,
-  0b1000: 9,
-  0b0011: 10,
-  0b0101: 11,
-  0b0110: 12,
-  0b0001: 13,
-  0b0010: 14,
-  0b0100: 15,
-  0b0000: 16,
-};
-
 /**
- * Computes a sort priority integer for a thesis based on its 4-axis overlap profile.
- * Lower numbers indicate higher academic risk and should appear first in the UI table.
- * Uses bit-mask encoding: subject=8, theory=4, methodology=2, context=1.
- */
-export function getThesisPriority(axes: {
-  subject: string;
-  theory: string;
-  methodology: string;
-  context?: string;
-}): number {
-  const bits =
-    (axes.subject !== "ALAKASIZ" ? 8 : 0) |
-    (axes.theory !== "ALAKASIZ" ? 4 : 0) |
-    (axes.methodology !== "ALAKASIZ" ? 2 : 0) |
-    ((axes.context ?? "ALAKASIZ") !== "ALAKASIZ" ? 1 : 0);
-
-  return PRIORITY_MAP[bits] ?? 16;
-}
-
-/**
- * Performs comparison between target thesis and a list of identified academic theses
- * using the Academic Jury Analysis model.
+ * Performs comparison between target thesis and a list of identified academic
+ * theses using the Academic Jury Analysis model.
  *
  * @param params - Comparison target matrix and candidate details.
  * @param log - Logger instance.
@@ -263,10 +219,10 @@ export async function analyzeOriginalityRisk(
   overlapTable: {
     id: number;
     academic_reasoning: string;
-    subject_overlap: AxesOption;
-    methodology_overlap: AxesOption;
-    theory_overlap: AxesOption;
-    context_overlap: AxesOption;
+    subject_index: number;
+    methodology_index: number;
+    theory_index: number;
+    context_index: number;
   }[];
 }> {
   log.file("analysis.ts:42");
@@ -289,10 +245,10 @@ export async function analyzeOriginalityRisk(
       overlapTable: {
         id: number;
         academic_reasoning: string;
-        subject_overlap: AxesOption;
-        methodology_overlap: AxesOption;
-        theory_overlap: AxesOption;
-        context_overlap: AxesOption;
+        subject_index: number;
+        methodology_index: number;
+        theory_index: number;
+        context_index: number;
       }[];
     }>(
       "gemini-3.1-flash-lite",
@@ -311,13 +267,12 @@ export async function analyzeOriginalityRisk(
       "Overlap Analysis Results",
       overlapTable.map((o) => ({
         id: o.id,
-        overlappingAxes: [
-          o.subject_overlap !== "ALAKASIZ" && `RQ:${o.subject_overlap}`,
-          o.methodology_overlap !== "ALAKASIZ" &&
-            `METH:${o.methodology_overlap}`,
-          o.theory_overlap !== "ALAKASIZ" && `THEORY:${o.theory_overlap}`,
-          o.context_overlap !== "ALAKASIZ" && `CTX:${o.context_overlap}`,
-        ].filter(Boolean),
+        indices: {
+          subject: o.subject_index,
+          methodology: o.methodology_index,
+          theory: o.theory_index,
+          context: o.context_index,
+        },
         reasoning: o.academic_reasoning?.slice(0, 120),
       })),
     );

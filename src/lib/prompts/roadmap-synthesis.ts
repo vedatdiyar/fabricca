@@ -52,7 +52,7 @@ Sen, üniversitelerin Sosyal Bilimler ve Lisansüstü Eğitim Enstitülerinde do
     "title": "E-Ticaret Depolarında Algoritmik Kontrol Mekanizmaları",
     "author": "Ahmet Yılmaz",
     "year": 2023,
-    "axes": { "subject": "HIGH", "theory": "HIGH", "methodology": "HIGH", "context": "HIGH" },
+    "axes": { "subject": 88, "theory": 82, "methodology": 78, "context": 90 },
     "riskScore": 85,
     "comparisonNote": "Kuram, mekan, yöntem ve örneklem evreni hedef tezle birebir çakışmaktadır."
   }
@@ -81,10 +81,10 @@ export function buildRoadmapPrompt(params: {
     author: string;
     year: number;
     axes: {
-      subject: string;
-      theory: string;
-      methodology: string;
-      context?: string;
+      subject: number;
+      theory: number;
+      methodology: number;
+      context?: number;
     };
     riskScore: number;
     comparisonNote: string;

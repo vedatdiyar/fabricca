@@ -1,73 +1,39 @@
 import * as cheerio from "cheerio";
 import type { Logger } from "./logger";
-import type { TezaraThesisDetails, TezaraThesisSummary } from "./types";
+import type { TezaraThesisSummary } from "./types";
 
 /**
- * Parses a Tezara thesis detail page HTML and returns structured thesis details.
- * Uses cheerio to extract metadata from the rendered page.
+ * Parses a Tezara thesis detail page HTML and extracts abstract and YÖK PDF URL.
+ * Uses a regex pattern for the abstract section and a CSS selector for the PDF link.
  *
  * @param html - Raw HTML of the detail page.
+ * @param id - The thesis ID (passthrough, unused in extraction but documents provenance).
  * @param logger - Optional logger instance.
- * @returns A typed thesis details object, or null if parsing fails.
+ * @returns An object with abstract and optional yokPdfUrl, or null if the page structure is invalid.
  */
 export function parseTezaraDetails(
   html: string,
+  id: number,
   logger?: Logger,
-): TezaraThesisDetails | null {
+): { abstract: string; yokPdfUrl?: string } | null {
   try {
     const $ = cheerio.load(html);
     const mainText = $("main").text();
 
-    // Title from h1
-    const title = $("h1").first().text().trim();
-    if (!title) return null;
+    if (!mainText) return null;
 
-    // Tez No
-    const tezNoMatch = mainText.match(/Tez No:\s*(\d+)/);
-    if (!tezNoMatch) return null;
-    const id = parseInt(tezNoMatch[1], 10);
-
-    // Author
-    const author =
-      mainText.match(/Yazar:\s*(.*?)(?=Danışman)/)?.[1]?.trim() ?? "";
-
-    // Thesis Type
-    const thesisType =
-      mainText.match(/Tez Türü:\s*(.*?)(?=Konular)/)?.[1]?.trim() ?? "";
-
-    // Year
-    const yearMatch = mainText.match(/Yıl:\s*(\d{4})/);
-    const year = yearMatch ? parseInt(yearMatch[1], 10) : 0;
-
-    // University
-    const university =
-      mainText.match(/Üniversite:\s*(.*?)(?=Enstitü)/)?.[1]?.trim() ?? "";
-
-    // Department (Ana Bilim Dalı)
-    const department =
-      mainText
-        .match(/Ana Bilim Dalı:\s*(.*?)(?=Bilim Dalı:|Sayfa Sayısı|Özet)/)?.[1]
-        ?.trim() ?? "";
-
-    // Abstract
+    // Abstract — regex korunuyor
     const abstract =
       mainText
         .match(/Özet\s*([\s\S]*?)(?:Özet \(Çeviri\)|Benzer Tezler|$)/)?.[1]
         ?.trim() ?? "";
 
-    // YÖK PDF URL
+    // YÖK PDF URL — CSS selector korunuyor
     const yokPdfUrl = $('a[href*="tez.yok.gov.tr/UlusalTezMerkezi/TezGoster"]')
       .first()
       .attr("href");
 
     return {
-      id,
-      title,
-      author,
-      university,
-      year,
-      thesisType,
-      department,
       abstract,
       yokPdfUrl,
     };
@@ -83,7 +49,8 @@ export function parseTezaraDetails(
 
 /**
  * Parses a Tezara search results page HTML and returns an array of thesis summaries.
- * Iterates over `<li id="thesis-...">` elements and extracts structured data.
+ * Iterates over `<li id="thesis-...">` elements and extracts structured data
+ * using stable CSS selectors.
  *
  * @param html - Raw HTML of the search results page.
  * @param logger - Optional logger instance.
