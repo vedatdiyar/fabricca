@@ -24,9 +24,10 @@ interface OpenAlexWork {
  * Executes the co-citation mining algorithm to find seminal works for a set of search queries.
  *
  * 1. For each query, fetch top 20 relevant works from OpenAlex semantic search.
- * 2. Collect their referenced_works IDs and count citation frequencies.
- * 3. Fetch metadata for the top 15 most cited references.
- * 4. Dedup by title and return top 2-4 works as FoundationalQuery objects.
+ * 2. Collect their referenced_works IDs and count citation frequencies per query.
+ * 3. Pick candidate references across all queries using round-robin.
+ * 4. Fetch metadata for the selected candidates.
+ * 5. Distribute the final resolved works equally across queries using round-robin selection.
  *
  * @param queries Array of English semantic search query paragraphs.
  * @param log Logger instance for pipeline event tracing.
@@ -45,14 +46,14 @@ export async function mineCoCitations(
     data: { queryCount: queries.length, queries },
   });
 
-  const referencesMap = new Map<
-    string,
-    { count: number; firstQueryIdx: number }
-  >();
+  const queryCandidates = new Map<number, Map<string, number>>();
   const activeQueries = queries.filter((q) => q.trim().length > 0);
 
   for (let i = 0; i < activeQueries.length; i++) {
     const query = activeQueries[i];
+    const candidatesMap = new Map<string, number>();
+    queryCandidates.set(i, candidatesMap);
+
     const params = new URLSearchParams({
       "search.semantic": query,
       per_page: "20",
@@ -79,12 +80,7 @@ export async function mineCoCitations(
           const refs = item.referenced_works || [];
           for (const ref of refs) {
             if (!ref) continue;
-            const existing = referencesMap.get(ref);
-            if (existing) {
-              existing.count += 1;
-            } else {
-              referencesMap.set(ref, { count: 1, firstQueryIdx: i });
-            }
+            candidatesMap.set(ref, (candidatesMap.get(ref) || 0) + 1);
           }
         }
       } else {
@@ -107,7 +103,13 @@ export async function mineCoCitations(
     }
   }
 
-  if (referencesMap.size === 0) {
+  // Count total distinct candidates across all queries
+  let totalCandidatesCount = 0;
+  for (const [, map] of queryCandidates) {
+    totalCandidatesCount += map.size;
+  }
+
+  if (totalCandidatesCount === 0) {
     log.warn("co_citation_miner_no_references", {
       service: "boxes",
       data: { context: "No references extracted from search results." },
@@ -115,14 +117,40 @@ export async function mineCoCitations(
     return [];
   }
 
-  // Sort candidates by citation frequency descending
-  const candidates = Array.from(referencesMap.entries())
-    .map(([id, stats]) => ({ id, count: stats.count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 15);
+  // Sort candidates for each query descending by citation count
+  const sortedCandidatesByQuery = new Map<
+    number,
+    { id: string; count: number }[]
+  >();
+  for (let i = 0; i < activeQueries.length; i++) {
+    const map = queryCandidates.get(i) || new Map();
+    const sorted = Array.from(map.entries())
+      .map(([id, count]) => ({ id, count }))
+      .sort((a, b) => b.count - a.count);
+    sortedCandidatesByQuery.set(i, sorted);
+  }
 
-  const candidateIds = candidates.map((c) =>
-    c.id.replace("https://openalex.org/", ""),
+  // Select up to 15 unique candidate IDs using round-robin across queries
+  const selectedIds = new Set<string>();
+  const indices = new Array(activeQueries.length).fill(0);
+  let added = true;
+  while (selectedIds.size < 15 && added) {
+    added = false;
+    for (let i = 0; i < activeQueries.length; i++) {
+      const list = sortedCandidatesByQuery.get(i) || [];
+      const idx = indices[i];
+      if (idx < list.length) {
+        const candidate = list[idx];
+        selectedIds.add(candidate.id);
+        indices[i]++;
+        added = true;
+        if (selectedIds.size >= 15) break;
+      }
+    }
+  }
+
+  const candidateIds = Array.from(selectedIds).map((id) =>
+    id.replace("https://openalex.org/", ""),
   );
   if (candidateIds.length === 0) {
     return [];
@@ -135,7 +163,11 @@ export async function mineCoCitations(
   });
   const detailsUrl = `https://api.openalex.org/works?${filterParams.toString().replace(/\+/g, "%20")}`;
 
-  const resolvedQueries: FoundationalQuery[] = [];
+  interface ResolvedWorkExtended extends FoundationalQuery {
+    id: string;
+  }
+
+  const resolvedQueries: ResolvedWorkExtended[] = [];
   try {
     log.info("openalex_resolve_details", {
       service: "boxes",
@@ -176,6 +208,7 @@ export async function mineCoCitations(
         }
 
         resolvedQueries.push({
+          id: item.id,
           author: authorStr,
           title,
           publicationYear: year,
@@ -189,8 +222,48 @@ export async function mineCoCitations(
     });
   }
 
-  // Deduplicate and filter down to top 2-4 works
-  const finalWorks = resolvedQueries.slice(0, 4);
+  // Distribute the resolved works equally among queries using round-robin selection
+  const resolvedForQueryMap = new Map<number, ResolvedWorkExtended[]>();
+  for (let i = 0; i < activeQueries.length; i++) {
+    const queryMap = queryCandidates.get(i) || new Map<string, number>();
+    const resolvedForQuery = resolvedQueries
+      .filter((w) => queryMap.has(w.id))
+      .sort((a, b) => {
+        const countA = queryMap.get(a.id) || 0;
+        const countB = queryMap.get(b.id) || 0;
+        return countB - countA;
+      });
+    resolvedForQueryMap.set(i, resolvedForQuery);
+  }
+
+  const finalWorks: FoundationalQuery[] = [];
+  const chosenIds = new Set<string>();
+  const resolvedIndices = new Array(activeQueries.length).fill(0);
+  let chosenAny = true;
+
+  while (finalWorks.length < 4 && chosenAny) {
+    chosenAny = false;
+    for (let i = 0; i < activeQueries.length; i++) {
+      const list = resolvedForQueryMap.get(i) || [];
+      let idx = resolvedIndices[i];
+      while (idx < list.length) {
+        const work = list[idx];
+        resolvedIndices[i]++;
+        if (!chosenIds.has(work.id)) {
+          chosenIds.add(work.id);
+          finalWorks.push({
+            author: work.author,
+            title: work.title,
+            publicationYear: work.publicationYear,
+          });
+          chosenAny = true;
+          break; // move to the next query in the round-robin
+        }
+        idx = resolvedIndices[i];
+      }
+      if (finalWorks.length >= 4) break;
+    }
+  }
 
   log.info("co_citation_miner_complete", {
     service: "boxes",

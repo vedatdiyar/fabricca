@@ -202,17 +202,6 @@ export const GeminiThesisBoxSchema = z.object({
 
 export const FinalGeminiThesisBoxSchema = GeminiThesisBoxSchema.extend({
   foundationalQueries: z.array(FoundationalQuerySchema).max(4),
-}).superRefine((data, ctx) => {
-  if (data.boxType === "ANALYSIS_FINDINGS") {
-    return;
-  }
-  if (!data.foundationalQueries || data.foundationalQueries.length < 2) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: `"${data.title}" kutusu için en az 2 adet kurucu akademik eser bulunmalıdır.`,
-      path: ["foundationalQueries"],
-    });
-  }
 });
 
 export const BoxGenerationResponseSchema = z.object({

@@ -18,7 +18,6 @@ import {
   FinalBoxGenerationResponseSchema,
   type GeminiThesisBox,
   type OnboardingActionResult,
-  type FoundationalQuery,
 } from "@/lib/types";
 import { fetchThesisMatrix } from "../_lib/fetch-actions";
 import { mineCoCitations } from "./_services/co-citation-miner";
@@ -147,58 +146,7 @@ export async function mineFoundationalQueriesAction(
         data: { title: box.title, queries: box.semanticSearchQueries },
       });
 
-      let mined = await mineCoCitations(box.semanticSearchQueries, log);
-
-      // Fallbacks to meet validation requirement (minimum 2 works for CONCEPTUAL, PROBLEMATIZATION, DATA_PROTOCOL)
-      if (mined.length < 2) {
-        log.warn("mining_fallback_applied", {
-          service: "boxes",
-          data: { title: box.title, countBefore: mined.length },
-        });
-
-        const fallbacks: Record<string, FoundationalQuery[]> = {
-          CONCEPTUAL: [
-            {
-              author: "Michel Foucault",
-              title: "Discipline and Punish: The Birth of the Prison",
-              publicationYear: 1975,
-            },
-            {
-              author: "Karl Marx",
-              title: "Capital: A Critique of Political Economy",
-              publicationYear: 1867,
-            },
-          ],
-          PROBLEMATIZATION: [
-            {
-              author: "David Harvey",
-              title: "A Brief History of Neoliberalism",
-              publicationYear: 2005,
-            },
-            {
-              author: "Immanuel Wallerstein",
-              title: "The Modern World-System",
-              publicationYear: 1974,
-            },
-          ],
-          DATA_PROTOCOL: [
-            {
-              author: "John W. Creswell",
-              title:
-                "Research Design: Qualitative, Quantitative, and Mixed Methods Approaches",
-              publicationYear: 2018,
-            },
-            {
-              author: "Robert K. Yin",
-              title: "Case Study Research and Applications",
-              publicationYear: 2017,
-            },
-          ],
-        };
-
-        const typeFallbacks = fallbacks[box.boxType] || fallbacks.CONCEPTUAL;
-        mined = [...mined, ...typeFallbacks].slice(0, 4);
-      }
+      const mined = await mineCoCitations(box.semanticSearchQueries, log);
 
       populatedBoxes.push({
         ...box,
