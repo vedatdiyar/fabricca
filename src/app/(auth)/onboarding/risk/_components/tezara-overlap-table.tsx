@@ -10,7 +10,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { getThesisPriority, getScoreBadge } from "../_services/analysis";
-import { statusTranslation, getBadgeColor } from "../_lib/constants";
+import { AXIS_LABELS, BADGE_LABELS, getBadgeColor } from "../_lib/constants";
 import type { OriginalityReportData } from "@/lib/types";
 
 /** A single overlap-table row after sorting and comparison-note backfill. */
@@ -46,8 +46,13 @@ export function TezaraOverlapTable({
         const s = item.axes.subject;
         const t = item.axes.theory;
         const m = item.axes.methodology;
-        const c = item.axes.context ?? "NONE";
-        return s !== "NONE" || t !== "NONE" || m !== "NONE" || c !== "NONE";
+        const c = item.axes.context ?? "ALAKASIZ";
+        return (
+          s !== "ALAKASIZ" ||
+          t !== "ALAKASIZ" ||
+          m !== "ALAKASIZ" ||
+          c !== "ALAKASIZ"
+        );
       });
     const hasAnyNote = items.some((item) => item.comparisonNote);
 
@@ -175,31 +180,29 @@ export function TezaraOverlapTable({
                         <span
                           className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${getBadgeColor(item.axes.subject)}`}
                         >
-                          {statusTranslation[item.axes.subject] ||
-                            item.axes.subject}
+                          {AXIS_LABELS[item.axes.subject] || item.axes.subject}
                         </span>
                       </td>
                       <td className="p-3 text-center">
                         <span
                           className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${getBadgeColor(item.axes.theory)}`}
                         >
-                          {statusTranslation[item.axes.theory] ||
-                            item.axes.theory}
+                          {AXIS_LABELS[item.axes.theory] || item.axes.theory}
                         </span>
                       </td>
                       <td className="p-3 text-center">
                         <span
                           className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${getBadgeColor(item.axes.methodology)}`}
                         >
-                          {statusTranslation[item.axes.methodology] ||
+                          {AXIS_LABELS[item.axes.methodology] ||
                             item.axes.methodology}
                         </span>
                       </td>
                       <td className="p-3 text-center">
                         <span
-                          className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${getBadgeColor(item.axes.context || "NONE")}`}
+                          className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${getBadgeColor(item.axes.context || "ALAKASIZ")}`}
                         >
-                          {statusTranslation[item.axes.context || "NONE"] ||
+                          {AXIS_LABELS[item.axes.context || "ALAKASIZ"] ||
                             item.axes.context}
                         </span>
                       </td>
@@ -207,7 +210,7 @@ export function TezaraOverlapTable({
                         <span
                           className={`inline-flex px-3 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${getBadgeColor(getScoreBadge(item.riskScore))}`}
                         >
-                          {statusTranslation[getScoreBadge(item.riskScore)] ||
+                          {BADGE_LABELS[getScoreBadge(item.riskScore)] ||
                             getScoreBadge(item.riskScore)}
                         </span>
                       </td>

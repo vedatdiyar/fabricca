@@ -272,7 +272,7 @@ export async function finalizeJuryAnalysisAction(params: {
 
     if (validDetails.length === 0) {
       tezaraResults = {
-        originalityBadge: "ZERO_RISK",
+        originalityBadge: "OZGUN_CALISMA",
         overlapTable: [],
         strategicRecommendations:
           "Literatür taramasında doğrudan çakışan veya risk teşkil eden herhangi bir akademik çalışma tespit edilmemiştir.",

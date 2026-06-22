@@ -38,17 +38,20 @@ export interface CalculatedOverlapItem {
 }
 
 export interface CalculatedOriginalityRiskResult {
-  originalityBadge: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
+  originalityBadge:
+    | "KRITIK_CAKISMA"
+    | "SINIRDAS_CALISMA"
+    | "BESLEYICI_CALISMA"
+    | "OZGUN_CALISMA";
   overlapTable: CalculatedOverlapItem[];
   riskPercentage: number;
 }
 
-type AxesLabel = "HIGH" | "PARTIAL" | "NONE";
-
-const SCORE_MAP: Record<AxesLabel, number> = {
-  HIGH: 100,
-  PARTIAL: 40,
-  NONE: 0,
+const SCORE_MAP: Record<AxesOption, number> = {
+  BIREBIR: 100,
+  KAPSAYAN: 40,
+  TEGET: 15,
+  ALAKASIZ: 0,
 };
 
 const AXIS_WEIGHTS = {
@@ -67,10 +70,10 @@ const AXIS_WEIGHTS = {
  * @returns Rounded risk score between 0 and 100.
  */
 export function calculateSingleScore(axes: {
-  subject: AxesLabel;
-  theory: AxesLabel;
-  methodology: AxesLabel;
-  context: AxesLabel;
+  subject: AxesOption;
+  theory: AxesOption;
+  methodology: AxesOption;
+  context: AxesOption;
 }): number {
   const rawScore =
     SCORE_MAP[axes.subject] * AXIS_WEIGHTS.subject +
@@ -92,21 +95,21 @@ export function evaluateGlobalRisk(scores: number[]): {
   badge: string;
   percentage: number;
 } {
-  if (scores.length === 0) return { badge: "ZERO_RISK", percentage: 0 };
+  if (scores.length === 0) return { badge: "OZGUN_CALISMA", percentage: 0 };
 
   const maxScore = Math.max(...scores);
 
-  if (maxScore <= 15) return { badge: "ZERO_RISK", percentage: 0 };
-  if (maxScore <= 40) return { badge: "LOW_RISK", percentage: 25 };
-  if (maxScore <= 70) return { badge: "MEDIUM_RISK", percentage: 50 };
-  return { badge: "HIGH_RISK", percentage: 85 };
+  if (maxScore <= 15) return { badge: "OZGUN_CALISMA", percentage: 0 };
+  if (maxScore <= 40) return { badge: "BESLEYICI_CALISMA", percentage: 25 };
+  if (maxScore <= 70) return { badge: "SINIRDAS_CALISMA", percentage: 50 };
+  return { badge: "KRITIK_CAKISMA", percentage: 85 };
 }
 
 const SCORE_BADGE_THRESHOLDS: [number, string][] = [
-  [15, "ZERO_RISK"],
-  [40, "LOW_RISK"],
-  [70, "MEDIUM_RISK"],
-  [100, "HIGH_RISK"],
+  [15, "OZGUN_CALISMA"],
+  [40, "BESLEYICI_CALISMA"],
+  [70, "SINIRDAS_CALISMA"],
+  [100, "KRITIK_CAKISMA"],
 ];
 
 /**
@@ -120,7 +123,7 @@ export function getScoreBadge(score: number): string {
   for (const [threshold, badge] of SCORE_BADGE_THRESHOLDS) {
     if (score <= threshold) return badge;
   }
-  return "HIGH_RISK";
+  return "KRITIK_CAKISMA";
 }
 
 /**
@@ -139,17 +142,17 @@ export function calculateOriginalityRisk(
   overlapTable: Array<{
     id: number;
     academic_reasoning: string;
-    subject_overlap: "HIGH" | "PARTIAL" | "NONE";
-    methodology_overlap: "HIGH" | "PARTIAL" | "NONE";
-    theory_overlap: "HIGH" | "PARTIAL" | "NONE";
-    context_overlap: "HIGH" | "PARTIAL" | "NONE";
+    subject_overlap: AxesOption;
+    methodology_overlap: AxesOption;
+    theory_overlap: AxesOption;
+    context_overlap: AxesOption;
   }>,
   validDetails: TezaraThesisDetails[],
   logger?: Logger,
 ): CalculatedOriginalityRiskResult {
   if (validDetails.length === 0 || overlapTable.length === 0) {
     return {
-      originalityBadge: "ZERO_RISK",
+      originalityBadge: "OZGUN_CALISMA",
       overlapTable: [],
       riskPercentage: 0,
     };
@@ -237,10 +240,10 @@ export function getThesisPriority(axes: {
   context?: string;
 }): number {
   const bits =
-    (axes.subject !== "NONE" ? 8 : 0) |
-    (axes.theory !== "NONE" ? 4 : 0) |
-    (axes.methodology !== "NONE" ? 2 : 0) |
-    ((axes.context ?? "NONE") !== "NONE" ? 1 : 0);
+    (axes.subject !== "ALAKASIZ" ? 8 : 0) |
+    (axes.theory !== "ALAKASIZ" ? 4 : 0) |
+    (axes.methodology !== "ALAKASIZ" ? 2 : 0) |
+    ((axes.context ?? "ALAKASIZ") !== "ALAKASIZ" ? 1 : 0);
 
   return PRIORITY_MAP[bits] ?? 16;
 }
@@ -260,10 +263,10 @@ export async function analyzeOriginalityRisk(
   overlapTable: {
     id: number;
     academic_reasoning: string;
-    subject_overlap: "HIGH" | "PARTIAL" | "NONE";
-    methodology_overlap: "HIGH" | "PARTIAL" | "NONE";
-    theory_overlap: "HIGH" | "PARTIAL" | "NONE";
-    context_overlap: "HIGH" | "PARTIAL" | "NONE";
+    subject_overlap: AxesOption;
+    methodology_overlap: AxesOption;
+    theory_overlap: AxesOption;
+    context_overlap: AxesOption;
   }[];
 }> {
   log.file("analysis.ts:42");
@@ -286,10 +289,10 @@ export async function analyzeOriginalityRisk(
       overlapTable: {
         id: number;
         academic_reasoning: string;
-        subject_overlap: "HIGH" | "PARTIAL" | "NONE";
-        methodology_overlap: "HIGH" | "PARTIAL" | "NONE";
-        theory_overlap: "HIGH" | "PARTIAL" | "NONE";
-        context_overlap: "HIGH" | "PARTIAL" | "NONE";
+        subject_overlap: AxesOption;
+        methodology_overlap: AxesOption;
+        theory_overlap: AxesOption;
+        context_overlap: AxesOption;
       }[];
     }>(
       "gemini-3.1-flash-lite",
@@ -309,10 +312,11 @@ export async function analyzeOriginalityRisk(
       overlapTable.map((o) => ({
         id: o.id,
         overlappingAxes: [
-          o.subject_overlap !== "NONE" && `RQ:${o.subject_overlap}`,
-          o.methodology_overlap !== "NONE" && `METH:${o.methodology_overlap}`,
-          o.theory_overlap !== "NONE" && `THEORY:${o.theory_overlap}`,
-          o.context_overlap !== "NONE" && `CTX:${o.context_overlap}`,
+          o.subject_overlap !== "ALAKASIZ" && `RQ:${o.subject_overlap}`,
+          o.methodology_overlap !== "ALAKASIZ" &&
+            `METH:${o.methodology_overlap}`,
+          o.theory_overlap !== "ALAKASIZ" && `THEORY:${o.theory_overlap}`,
+          o.context_overlap !== "ALAKASIZ" && `CTX:${o.context_overlap}`,
         ].filter(Boolean),
         reasoning: o.academic_reasoning?.slice(0, 120),
       })),

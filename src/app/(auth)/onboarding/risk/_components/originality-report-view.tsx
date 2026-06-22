@@ -6,7 +6,7 @@ import { TavilyFactCheckTable } from "./tavily-fact-check-table";
 import { TezaraOverlapTable } from "./tezara-overlap-table";
 import { StrategicRoadmapSection } from "./strategic-roadmap-section";
 import { getScoreBadge } from "../_services/analysis";
-import { statusTranslation, BADGE_COLORS } from "../_lib/constants";
+import { BADGE_LABELS, BADGE_COLORS } from "../_lib/constants";
 import type { OriginalityReportData } from "@/lib/types";
 
 interface OriginalityReportViewProps {
@@ -16,14 +16,14 @@ interface OriginalityReportViewProps {
 /** Role distribution computed from the overlap table. */
 interface RoleDistribution {
   label: string;
-  key: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK";
+  key: "KRITIK_CAKISMA" | "SINIRDAS_CALISMA" | "BESLEYICI_CALISMA";
   count: number;
 }
 
 const ROLE_KEYS: RoleDistribution["key"][] = [
-  "LOW_RISK",
-  "MEDIUM_RISK",
-  "HIGH_RISK",
+  "BESLEYICI_CALISMA",
+  "SINIRDAS_CALISMA",
+  "KRITIK_CAKISMA",
 ];
 
 /**
@@ -39,16 +39,16 @@ export function OriginalityReportView({
   const filteredOverlapTable = useMemo(
     () =>
       (tezaraResults.overlapTable ?? []).filter(
-        (item) => getScoreBadge(item.riskScore) !== "ZERO_RISK",
+        (item) => getScoreBadge(item.riskScore) !== "OZGUN_CALISMA",
       ),
     [tezaraResults.overlapTable],
   );
 
   const roleDistribution = useMemo<RoleDistribution[]>(() => {
     const counts: Record<string, number> = {
-      LOW_RISK: 0,
-      MEDIUM_RISK: 0,
-      HIGH_RISK: 0,
+      BESLEYICI_CALISMA: 0,
+      SINIRDAS_CALISMA: 0,
+      KRITIK_CAKISMA: 0,
     };
     for (const item of filteredOverlapTable) {
       const badge = getScoreBadge(item.riskScore);
@@ -58,7 +58,7 @@ export function OriginalityReportView({
     }
     return ROLE_KEYS.map((key) => ({
       key,
-      label: statusTranslation[key] ?? key,
+      label: BADGE_LABELS[key] ?? key,
       count: counts[key],
     }));
   }, [filteredOverlapTable]);

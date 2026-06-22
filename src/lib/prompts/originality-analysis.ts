@@ -24,27 +24,27 @@ export const geminiAnalysisSchema: JsonSchema = {
           },
           subject_overlap: {
             type: "string",
-            enum: ["HIGH", "PARTIAL", "NONE"],
+            enum: ["BIREBIR", "KAPSAYAN", "TEGET", "ALAKASIZ"],
             description:
-              "HIGH = Hedef tez ile aday tezin araştırma soruları ve temel iddiaları anlamsal/içeriksel olarak doğrudan çakışıyor. PARTIAL = Kısmi benzerlik var ama özgün katkı korunuyor. NONE = Anlamsal/ilişkisel boşluk var, jenerik kelime benzerliği seviyesinde.",
+              "BIREBIR = Hedef tez ile aday tezin araştırma soruları ve temel iddiaları anlamsal/içeriksel olarak doğrudan çakışıyor. KAPSAYAN = Kısmi benzerlik var ama özgün katkı korunuyor; aday tez hedefin alanını kapsıyor. TEGET = Sadece çeperden/tek bir alt boyuttan değiyor, organik bağ zayıf. ALAKASIZ = Anlamsal/ilişkisel boşluk var, jenerik kelime benzerliği seviyesinde.",
           },
           methodology_overlap: {
             type: "string",
-            enum: ["HIGH", "PARTIAL", "NONE"],
+            enum: ["BIREBIR", "KAPSAYAN", "TEGET", "ALAKASIZ"],
             description:
-              "HIGH = Veri toplama araçları, kaynak matrisleri ve analiz yöntemleri büyük ölçüde çakışıyor. PARTIAL = Kısmi benzerlik var. NONE = Yöntemler tamamen farklı.",
+              "BIREBIR = Veri toplama araçları, kaynak matrisleri ve analiz yöntemleri büyük ölçüde çakışıyor. KAPSAYAN = Kısmi benzerlik var; adayın yöntemi hedefi kapsıyor. TEGET = Yöntemsel çeperden temas var, sadece tek bir analiz tekniği benzer. ALAKASIZ = Yöntemler tamamen farklı.",
           },
           theory_overlap: {
             type: "string",
-            enum: ["HIGH", "PARTIAL", "NONE"],
+            enum: ["BIREBIR", "KAPSAYAN", "TEGET", "ALAKASIZ"],
             description:
-              "HIGH = Ana kuramsal omurga, kuramsal şemsiye veya teorik modeller aynı. PARTIAL = Kısmi kuramsal ortaklık var. NONE = Kuramsal çerçeveler tamamen farklı.",
+              "BIREBIR = Ana kuramsal omurga, kuramsal şemsiye veya teorik modeller aynı. KAPSAYAN = Kısmi kuramsal ortaklık var; adayın kuramsal çerçevesi hedefi kapsıyor/içeriyor. TEGET = Sadece bir kavram veya teorisyen referansı düzeyinde zayıf temas. ALAKASIZ = Kuramsal çerçeveler tamamen farklı.",
           },
           context_overlap: {
             type: "string",
-            enum: ["HIGH", "PARTIAL", "NONE"],
+            enum: ["BIREBIR", "KAPSAYAN", "TEGET", "ALAKASIZ"],
             description:
-              "HIGH = Hedef çalışmanın ampirik sınırları veya tarihsel dönemi aday çalışma tarafından kapsanıyor, yutuluyor veya tamamen çakışıyor. PARTIAL = Kısmi bağlamsal kesişme var. NONE = Bağlamlar tamamen farklı.",
+              "BIREBIR = Hedef çalışmanın ampirik sınırları veya tarihsel dönemi aday çalışma tarafından kapsanıyor, yutuluyor veya tamamen çakışıyor. KAPSAYAN = Kısmi bağlamsal kesişme var; adayın bağlamı hedefi kısmen içeriyor. TEGET = Zayıf/çeperden bağlamsal temas (aynı ülke farklı dönem gibi). ALAKASIZ = Bağlamlar tamamen farklı.",
           },
         },
         required: [
@@ -74,20 +74,21 @@ Sen, üniversitelerin Fen, Sosyal, Sağlık ve Mühendislik Bilimleri Enstitüle
 
 # OPERASYONEL KISITLAMALAR VE JÜRİ KARAR SÜRECİ
 - Kesinlikle objektif, tarafsız, mesafeli ve üst düzey bir akademik Türkçe kullanacaksın.
-- 3 KADEMELİ AKADEMİK KONUMLANDIRMA MODELİ (Eksenler): Her bir süzgeç için overlap değerini HIGH, PARTIAL veya NONE olarak belirle:
-  - HIGH: Güçlü çakışma, hedef tezin özgün katkısını doğrudan tehdit ediyor.
-  - PARTIAL: Kısmi benzerlik var ancak hedef tezin özgün katkısı net şekilde korunuyor.
-  - NONE: Anlamsal/ilişkisel boşluk var, sahte alarm (false positive) seviyesinde jenerik benzerlik.
+- 4 KADEMELİ AKADEMİK KONUMLANDIRMA MODELİ (Eksenler): Her bir süzgeç için overlap değerini BIREBIR, KAPSAYAN, TEGET veya ALAKASIZ olarak belirle:
+  - BIREBIR: Güçlü çakışma, hedef tezin özgün katkısını doğrudan tehdit ediyor.
+  - KAPSAYAN: Kısmi benzerlik var; aday tez hedefin alanını/genişliğini kapsıyor ancak özgün katkı korunuyor.
+  - TEGET: Sadece çeperden/tek bir alt boyuttan değiyor; organik bağ zayıf, dolaylı bir ilişki var.
+  - ALAKASIZ: Anlamsal/ilişkisel boşluk var, sahte alarm (false positive) seviyesinde jenerik benzerlik.
 - DOĞRUSAL EKSENEL KARŞILAŞTIRMA: Her bir aday tezi, hedef tezin parametreleriyle şu 4 net akademik süzgeç üzerinden karşılaştır:
-  - SÜZGEÇ A (Araştırma Sorusu): Araştırma soruları ve savunulan temel iddialar/savlar anlamsal olarak doğrudan çakışıyorsa \`subject_overlap: "HIGH"\`, kısmen benzerlik varsa \`"PARTIAL"\`, tamamen farklı ve özgünse \`"NONE"\`.
-  - SÜZGEÇ B (Metodoloji): Veri toplama araçları, örneklem evrenleri veya analiz yöntemleri birbirinin replikası ise \`methodology_overlap: "HIGH"\`, kısmen benzerlik varsa \`"PARTIAL"\`, farklıysa \`"NONE"\`.
-  - SÜZGEÇ C (Kuram): Üzerine inşa edildikleri temel kuramsal çerçeve, kavramsal şemsiye veya teorik modeller aynıysa \`theory_overlap: "HIGH"\`, kısmen ortaksa \`"PARTIAL"\`, farklıysa \`"NONE"\`.
-  - SÜZGEÇ D (Tarihsel Dönem/Bağlam): Hedef çalışmanın ampirik sınırlarının, örneklem evreninin veya dönemsel kapsamının, aday çalışmanın kapsamı tarafından yutulması, kapsanması veya onun bir alt kümesi olması durumlarını kronolojik ve bağlamsal bir kesişme olarak kabul et. Tam kesişme varsa \`context_overlap: "HIGH"\`, kısmi kesişme varsa \`"PARTIAL"\`, tamamen farklı ve özgünse \`"NONE"\`.
+  - SÜZGEÇ A (Araştırma Sorusu): Araştırma soruları ve savunulan temel iddialar/savlar anlamsal olarak doğrudan çakışıyorsa \`subject_overlap: "BIREBIR"\`, kısmen benzerlik varsa \`"KAPSAYAN"\`, sadece çeperden değiyorsa \`"TEGET"\`, tamamen farklı ve özgünse \`"ALAKASIZ"\`.
+  - SÜZGEÇ B (Metodoloji): Veri toplama araçları, örneklem evrenleri veya analiz yöntemleri birbirinin replikası ise \`methodology_overlap: "BIREBIR"\`, kısmen benzerlik varsa \`"KAPSAYAN"\`, yöntemsel çeperden temas varsa \`"TEGET"\`, farklıysa \`"ALAKASIZ"\`.
+  - SÜZGEÇ C (Kuram): Üzerine inşa edildikleri temel kuramsal çerçeve, kavramsal şemsiye veya teorik modeller aynıysa \`theory_overlap: "BIREBIR"\`, kısmen ortaksa \`"KAPSAYAN"\`, sadece bir kavram/teorisyen referansı düzeyindeyse \`"TEGET"\`, farklıysa \`"ALAKASIZ"\`.
+  - SÜZGEÇ D (Tarihsel Dönem/Bağlam): Hedef çalışmanın ampirik sınırlarının, örneklem evreninin veya dönemsel kapsamının, aday çalışmanın kapsamı tarafından yutulması, kapsanması veya onun bir alt kümesi olması durumlarını kronolojik ve bağlamsal bir kesişme olarak kabul et. Tam kesişme varsa \`context_overlap: "BIREBIR"\`, kısmi kesişme varsa \`"KAPSAYAN"\`, zayıf/çeperden temas varsa \`"TEGET"\`, tamamen farklı ve özgünse \`"ALAKASIZ"\`.
 - EKSİKSİZ TABLO ZORUNLULUĞU: Girdide sağlanan TÜM aday tezler çıktı dizisinde eksiksiz ve aynı doğrusal sırada yer almalıdır. Herhangi bir tezi listeden atlama veya "vb." diyerek geçiştirme (Anti-Laziness).
 - ÇIKTI FORMATI: Yanıtın, yukarıda sağlanan \`geminiAnalysisSchema\` ile %100 uyumlu, doğrulanmış ve parse edilebilir bir ham JSON objesi olmalıdır. Markdown \`\`\`json ... \`\`\` sarmalı kesinlikle yasaktır.
 
 # UZMAN FEW-SHOT ÖRNEĞİ
-Aşağıdaki örnekte, aday tez hedef tezle aynı dönemi, aynı jenerik yöntemi ve aynı kuramsal çerçeveyi kullansa da araştırma soruları farklı olduğu için nihai konumlandırma MEDIUM_RISK olarak belirlenmiştir. Bu, sahte alarm üretmeyen gerçekçi bir senaryodur.
+Aşağıdaki örnekte, aday tez hedef tezle aynı dönemi, aynı jenerik yöntemi ve aynı kuramsal çerçeveyi kullansa da araştırma soruları farklı olduğu için konumlandırma KAPSAYAN olarak belirlenmiştir. Bu, sahte alarm üretmeyen gerçekçi bir senaryodur.
 
 <ornek_hedef_matris>
 {
@@ -119,11 +120,11 @@ Aşağıdaki örnekte, aday tez hedef tezle aynı dönemi, aynı jenerik yöntem
   "overlapTable": [
     {
       "id": 999,
-      "academic_reasoning": "Aday çalışma, hedef tezle aynı kuramsal çerçeveyi (Foucaultcu yönetimsellik), aynı bağlamsal sınırları (Kocaeli lojistik üsleri) ve aynı jenerik yöntemi (yarı yapılandırılmış mülakat) paylaşmaktadır. Ancak aday tez, doğrudan denetim ve gözetim mekanizmalarının işçi özerkliğini nasıl kısıtladığına odaklanırken; hedef tez, işçilerin bu sistemlere karşı geliştirdiği karşı-davranış ve direniş stratejilerini araştırarak bambaşka bir research gap'i hedeflemektedir. Araştırma soruları anlamsal düzeyde farklılaştığı için subject_overlap PARTIAL olarak işaretlenmiştir. Kuram, yöntem ve bağlam örtüşmesine rağmen temel odaktaki bu fark, nihai konumlandırmayı MEDIUM_RISK seviyesinde tutmuştur.",
-      "subject_overlap": "PARTIAL",
-      "methodology_overlap": "HIGH",
-      "theory_overlap": "HIGH",
-      "context_overlap": "HIGH"
+      "academic_reasoning": "Aday çalışma, hedef tezle aynı kuramsal çerçeveyi (Foucaultcu yönetimsellik), aynı bağlamsal sınırları (Kocaeli lojistik üsleri) ve aynı jenerik yöntemi (yarı yapılandırılmış mülakat) paylaşmaktadır. Ancak aday tez, doğrudan denetim ve gözetim mekanizmalarının işçi özerkliğini nasıl kısıtladığına odaklanırken; hedef tez, işçilerin bu sistemlere karşı geliştirdiği karşı-davranış ve direniş stratejilerini araştırarak bambaşka bir research gap'i hedeflemektedir. Araştırma soruları anlamsal düzeyde farklılaştığı için subject_overlap KAPSAYAN olarak işaretlenmiştir. Kuram, yöntem ve bağlam adayın alanını kapsadığı için bu eksenler BIREBIR olarak konumlandırılmış, temel odaktaki fark ise subject_overlap'i KAPSAYAN seviyesinde tutmuştur.",
+      "subject_overlap": "KAPSAYAN",
+      "methodology_overlap": "BIREBIR",
+      "theory_overlap": "BIREBIR",
+      "context_overlap": "BIREBIR"
     }
   ]
 }
@@ -178,12 +179,12 @@ ${JSON.stringify(
 </aday_tez_listesi>
 
 # TALİMATLAR VE GÖREV
-Sistem talimatında tanımlanan 4 akademik süzgeci (Araştırma Sorusu, Metodoloji, Kuram, Dönem/Bağlam) <aday_tez_listesi> içindeki tüm çalışmalara eksiksiz uygula. Her bir aday tez için subject_overlap, methodology_overlap, theory_overlap, context_overlap alanlarını 3 kademeli modele göre (HIGH, PARTIAL, NONE) işaretle. Her tez için üst düzey bir jüri üyesi üslubuyla Türkçe olarak gerekçelendirilmiş academic_reasoning paragrafı yaz. İki tez arasındaki felsefi ve ilişkisel boşluk (research gap) farklarını yakala; sadece jenerik kelime benzerliklerine dayanarak sahte alarm (false positive) üretme.
+Sistem talimatında tanımlanan 4 akademik süzgeci (Araştırma Sorusu, Metodoloji, Kuram, Dönem/Bağlam) <aday_tez_listesi> içindeki tüm çalışmalara eksiksiz uygula. Her bir aday tez için subject_overlap, methodology_overlap, theory_overlap, context_overlap alanlarını 4 kademeli modele göre (BIREBIR, KAPSAYAN, TEGET, ALAKASIZ) işaretle. Her tez için üst düzey bir jüri üyesi üslubuyla Türkçe olarak gerekçelendirilmiş academic_reasoning paragrafı yaz. İki tez arasındaki felsefi ve ilişkisel boşluk (research gap) farklarını yakala; sadece jenerik kelime benzerliklerine dayanarak sahte alarm (false positive) üretme.
 
 # KRİTİK GÜVENLİK BARIYERI
 - Tamamen sağlanan aday tez özetlerine bağlı kal (Strictly Grounded). Metinlerde açıkça belirtilmeyen metodolojik detayları veya bulguları aday çalışmalara atfetme.
 - Dizi uzunluğunun <aday_tez_listesi> eleman sayısı ile tam olarak senkronize olduğundan ve çıktı dilinin saf Türkçe olduğundan emin ol.
-- HIGH etiketi yalnızca hedef tezin özgün akademik katkısını doğrudan gasp eden/baltalayan güçlü çakışmalar için kullan. PARTIAL, kısmi benzerlik durumlarında tercih edilir. NONE, anlamsal/ilişkisel boşluk bulunan durumlar içindir.
+- BIREBIR etiketi yalnızca hedef tezin özgün akademik katkısını doğrudan gasp eden/baltalayan güçlü çakışmalar için kullan. KAPSAYAN, kısmi benzerlik durumlarında tercih edilir. TEGET, sadece çeperden/tek bir alt boyuttan değen dolaylı ilişkiler içindir. ALAKASIZ, anlamsal/ilişkisel boşluk bulunan durumlar içindir.
 
 Dahili olarak çok derinlemesine düşün (Think extremely hard) ve sadece nihai şemaya uygun ham JSON nesnesini döndür.`;
 }

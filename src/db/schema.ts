@@ -86,7 +86,11 @@ export const originalityReports = pgTable("originality_reports", {
     .notNull(),
   tezaraResults: jsonb()
     .$type<{
-      originalityBadge: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
+      originalityBadge:
+        | "KRITIK_CAKISMA"
+        | "SINIRDAS_CALISMA"
+        | "BESLEYICI_CALISMA"
+        | "OZGUN_CALISMA";
       overlapTable: {
         id: number;
         title: string;
@@ -96,10 +100,10 @@ export const originalityReports = pgTable("originality_reports", {
         thesisType: string;
         department: string;
         axes: {
-          subject: "HIGH" | "PARTIAL" | "NONE";
-          theory: "HIGH" | "PARTIAL" | "NONE";
-          methodology: "HIGH" | "PARTIAL" | "NONE";
-          context?: "HIGH" | "PARTIAL" | "NONE";
+          subject: "BIREBIR" | "KAPSAYAN" | "TEGET" | "ALAKASIZ";
+          theory: "BIREBIR" | "KAPSAYAN" | "TEGET" | "ALAKASIZ";
+          methodology: "BIREBIR" | "KAPSAYAN" | "TEGET" | "ALAKASIZ";
+          context?: "BIREBIR" | "KAPSAYAN" | "TEGET" | "ALAKASIZ";
         };
         riskScore: number;
         comparisonNote?: string;

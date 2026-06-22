@@ -19,7 +19,7 @@ export type EnhancedThesisActionResult =
   | { success: true; data: EnhancedThesisData; error?: never }
   | { success?: never; error: string };
 
-export type AxesOption = "HIGH" | "PARTIAL" | "NONE";
+export type AxesOption = "BIREBIR" | "KAPSAYAN" | "TEGET" | "ALAKASIZ";
 
 /**
  * Tezara tez arama sonucu özeti.
@@ -58,7 +58,7 @@ export interface QueryExtractionResponse {
 
 export interface DeepSiftEntry {
   id: number;
-  positioning: "HIGH" | "PARTIAL" | "NONE";
+  positioning: AxesOption;
 }
 
 export interface DeepSiftResponse {
@@ -91,14 +91,22 @@ export interface OverlapItem {
 
 export interface OriginalityReportData {
   originalityScore?: number;
-  originalityBadge?: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
+  originalityBadge?:
+    | "KRITIK_CAKISMA"
+    | "SINIRDAS_CALISMA"
+    | "BESLEYICI_CALISMA"
+    | "OZGUN_CALISMA";
   overlapAnalysis?: OverlapItem[];
   tavilyResults: {
     items: TavilyEvaluationFact[];
     briefingNote: string;
   };
   tezaraResults: {
-    originalityBadge: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
+    originalityBadge:
+      | "KRITIK_CAKISMA"
+      | "SINIRDAS_CALISMA"
+      | "BESLEYICI_CALISMA"
+      | "OZGUN_CALISMA";
     overlapTable: (OverlapItem & {
       title: string;
       author: string;

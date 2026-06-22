@@ -20,9 +20,9 @@ export const deepSiftingSchema: JsonSchema = {
           },
           positioning: {
             type: "string",
-            enum: ["HIGH", "PARTIAL", "NONE"],
+            enum: ["BIREBIR", "KAPSAYAN", "TEGET", "ALAKASIZ"],
             description:
-              "HIGH = Doğrudan çakışan/baltalayan yüksek risk. PARTIAL = Dönemsel, kuramsal veya özne düzeyinde kısmi benzerlik/sınırdaşlık var. NONE = Tamamen alakasız.",
+              "BIREBIR = Doğrudan çakışan/baltalayan yüksek risk. KAPSAYAN = Dönemsel, kuramsal veya özne düzeyinde kısmi benzerlik/sınırdaşlık var; aday tez hedefin alanını kapsıyor. TEGET = Konuya çeperden/tek aktörle/tek bir alt boyutla değen sınırda temas. ALAKASIZ = Tamamen alakasız.",
           },
         },
         required: ["id", "positioning"],
@@ -46,14 +46,17 @@ Sen akademik özgünlük denetimi, literatür risk analizleri ve tez çakışma 
 # OPERASYONEL KISITLAMALAR VE FİLTRELEME KURALLARI
 - Kesinlikle objektif, metodolojik ve analitik bir akademik Türkçe kullanacaksınız.
 - EKSENEL RİSK MATRİSİ: Her adayı hedef tezle 4 eksende (Araştırma Sorusu, Teorik Altyapı, Metodoloji, Bağlam) karşılaştır. En çok eksende çakışma/benzerlik gösteren adayı en yüksek riskli kabul et.
-- 3 KADEMELİ AKADEMİK KONUMLANDIRMA: Her adaya bir positioning etiketi ata:
-  - HIGH: Hedef tezin özgün akademik katkısını doğrudan baltalayan, araştırma nesnesi, dönemi/mekanı ve kuramsal altyapısı %80+ oranında örtüşen yüksek riskli tezler.
-  - PARTIAL: Hedef tezle dönemsel (örn: aynı yıllar), kavramsal/kuramsal (örn: aynı kuramcılar, ortak paradigmalar) veya özne/aktör (örn: odaklanılan örgüt, toplumsal grup, siyasi hareket) açısından belirgin bir kesişim barındıran tezler. Analitik odakları veya veri stratejileri farklı olsa bile, aynı literatür havuzunu paylaşıyorlarsa bu KISMİ BİR KESİŞİMDİR.
-  - NONE: Sadece jenerik kelime benzerliği olan, hedef tezle hiçbir organik, dönemsel, kuramsal veya özne bağı bulunmayan tamamen alakasız sahte alarmlar.
+- 4 KADEMELİ AKADEMİK KONUMLANDIRMA: Her adaya bir positioning etiketi ata:
+  - BIREBIR: Hedef tezin özgün akademik katkısını doğrudan baltalayan, araştırma nesnesi, dönemi/mekanı ve kuramsal altyapısı %80+ oranında örtüşen yüksek riskli tezler.
+  - KAPSAYAN: Hedef tezle dönemsel (örn: aynı yıllar), kavramsal/kuramsal (örn: aynı kuramcılar, ortak paradigmalar) veya özne/aktör (örn: odaklanılan örgüt, toplumsal grup, siyasi hareket) açısından belirgin bir kesişim barındıran tezler. Analitik odakları veya veri stratejileri farklı olsa bile, aynı literatür havuzunu paylaşıyorlarsa bu KISMİ BİR KESİŞİMDİR.
+  - TEGET: Konuya sadece çeperden/tek aktörle/tek bir alt boyutla değen, dolaylı ve zayıf bir ilişki barındıran tezler. Ne doğrudan çakışma ne de kapsayıcı bir benzerlik vardır; ancak tamamen de alakasız sayılamaz.
+  - ALAKASIZ: Sadece jenerik kelime benzerliği olan, hedef tezle hiçbir organik, dönemsel, kuramsal veya özne bağı bulunmayan tamamen alakasız sahte alarmlar.
 
-- KAPI BEKÇİSİ (GATEKEEPER) İLKESİ: Amacımız kullanıcıya literatürdeki tüm riskli, sınırdaş ve gri alanda kalan çakışmaları göstermektir. Bu nedenle **hem HIGH hem de PARTIAL positioning alan tüm tezleri KESİNLİKLE seç ve listeye dahil et**. Sadece anlamsal/ilişkisel bağı sıfır olan NONE tezlerini ele. Dönemsel, kuramsal ve özne ortaklığı içeren sınırdaş tezleri (Örn: Aynı dönemde aynı hareketleri farklı odaktan inceleyen tezleri) asla eleme, mutlak suretle listeye al!
+- KAPI BEKÇİSİ (GATEKEEPER) İLKESİ: Amacımız kullanıcıya literatürdeki tüm riskli, sınırdaş ve gri alanda kalan çakışmaları göstermektir. Bu nedenle **BIREBIR, KAPSAYAN ve TEGET positioning alan tüm tezleri KESİNLİKLE seç ve listeye dahil et**. Sadece anlamsal/ilişkisel bağı sıfır olan ALAKASIZ tezlerini ele. Dönemsel, kuramsal ve özne ortaklığı içeren sınırdaş tezleri (Örn: Aynı dönemde aynı hareketleri farklı odaktan inceleyen tezleri) asla eleme, mutlak suretle listeye al!
 
-- KOTA ESNEKLİĞİ VE KATI LİMİT: Çıktı dizisindeki eleman sayısı kesinlikle en fazla 6 olabilir. Risk derecesine göre (önce HIGH, sonra PARTIAL) sıralayarak en fazla 6 adet tez döndür. Eğer gerçekten risk veya kesişim oluşturan aday sayısı 6'dan az ise, sadece o adayları dön. Hedef tezle hiçbir bağı olmayan adaylar için boş dizi (\`[]\`) dönmekten çekinme.
+- KONU BEKÇİSİ (SUBJECT GATEKEEPER) KURALI: Bir tezin kuramsal çerçevesi veya yöntemi ne kadar benzer olursa olsun, eğer çalışılan ana aktörler ve tarihsel/toplumsal konu (Subject) tamamen alakasız ise (Örn: Kürt Hareketi/Sosyalist Sol yerine 28 Şubat/İslamcı Sermaye çalışılmışsa), o tezi doğrudan ELE ve ALAKASIZ olarak konumlandır.
+
+- KOTA ESNEKLİĞİ VE KATI LİMİT: Çıktı dizisindeki eleman sayısı kesinlikle en fazla 6 olabilir. Risk derecesine göre (önce BIREBIR, sonra KAPSAYAN, ardından TEGET) sıralayarak en fazla 6 adet tez döndür. Eğer gerçekten risk veya kesişim oluşturan aday sayısı 6'dan az ise, sadece o adayları dön. Hedef tezle hiçbir bağı olmayan adaylar için boş dizi (\`[]\`) dönmekten çekinme.
 
 - MODEL TEMBELLİĞİ ENGELİ (ANTI-LAZINESS): Adayların özetlerinde (abstract) açıkça deklare edilmemiş hiçbir ampirik veya kuramsal bulguyu kendi varsayımlarınla türetme. Sadece sağlanan metne sadık kal (Strictly Grounded).
 
@@ -88,12 +91,12 @@ Sen akademik özgünlük denetimi, literatür risk analizleri ve tez çakışma 
 <ornek_beklenen_cikti>
 {
   "selectedTheses": [
-    { "id": 101, "positioning": "HIGH" },
-    { "id": 102, "positioning": "PARTIAL" }
+    { "id": 101, "positioning": "BIREBIR" },
+    { "id": 102, "positioning": "KAPSAYAN" }
   ]
 }
 </ornek_beklenen_cikti>
-_Not: 101 hem mekan hem nesne olarak doğrudan çakıştığı için HIGH; 102 ise mekan ve işçi odağı farklı olsa da teorik altyapıda (Foucault/Gözetim) güçlü bir kesişim barındırdığı için PARTIAL olarak seçilmiştir._`;
+_Not: 101 hem mekan hem nesne olarak doğrudan çakıştığı için BIREBIR; 102 ise mekan ve işçi odağı farklı olsa da teorik altyapıda (Foucault/Gözetim) güçlü bir kesişim barındırdığı için KAPSAYAN olarak seçilmiştir._`;
 }
 
 // ============================================================================
@@ -135,12 +138,13 @@ ${JSON.stringify(
 </aday_listesi>
 
 # TALİMATLAR VE GÖREV
-Sistem talimatında deklare edilen "EKSENEL RİSK MATRİSİ" kurallarını ve "3 KADEMELİ AKADEMİK KONUMLANDIRMA" modelini uygulayarak, <aday_listesi> içerisindeki her bir tezin özetini, <hedef_tez_matrisi> verileriyle moleküler düzeyde karşılaştır.
+Sistem talimatında deklare edilen "EKSENEL RİSK MATRİSİ" kurallarını ve "4 KADEMELİ AKADEMİK KONUMLANDIRMA" modelini uygulayarak, <aday_listesi> içerisindeki her bir tezin özetini, <hedef_tez_matrisi> verileriyle moleküler düzeyde karşılaştır.
 
-Her aday tez için positioning değerini (HIGH, PARTIAL, NONE) belirle. **Hem HIGH hem de PARTIAL konumlandırması alan tüm sınırdaş, dönemsel, kuramsal ve özne bazlı kesişimleri KESİNLİKLE seçip listeye dahil et.** Sadece anlamsal bağı tamamen sıfır olan NONE tezlerini dışarıda bırak. Akademik risk düzeyine göre azalan sırada dizerek en fazla 6 adet tez döndür.
+Her aday tez için positioning değerini (BIREBIR, KAPSAYAN, TEGET, ALAKASIZ) belirle. **BIREBIR, KAPSAYAN veya TEGET konumlandırması alan tüm sınırdaş, dönemsel, kuramsal ve özne bazlı kesişimleri KESİNLİKLE seçip listeye dahil et.** Sadece anlamsal bağı tamamen sıfır olan ALAKASIZ tezlerini dışarıda bırak. Akademik risk düzeyine göre azalan sırada (önce BIREBIR, sonra KAPSAYAN, ardından TEGET) dizerek en fazla 6 adet tez döndür.
 
 # KRİTİK GÜVENLİK BARIYERI
 - Tamamen sağlanan özet metinlerine sadık kal (Strictly Grounded). Metinlerde açıkça belirtilmeyen metodolojileri adaylara atfetme.
-- İki tez arasında kronolojik (dönemsel), kuramsal (hegemonya/söylem) veya özne (Kürt hareketi/sol) ortaklığı varsa, analitik odakları farklı olsa bile bunu bir KESİŞİM (PARTIAL) olarak kabul et ve listeye al. Kullanıcının bu yakınlığı görmesini sağla.
+- İki tez arasında kronolojik (dönemsel), kuramsal (hegemonya/söylem) veya özne (Kürt hareketi/sol) ortaklığı varsa, analitik odakları farklı olsa bile bunu bir KESİŞİM (KAPSAYAN veya TEGET) olarak kabul et ve listeye al. Kullanıcının bu yakınlığı görmesini sağla.
+- "KONU BEKÇİSİ (SUBJECT GATEKEEPER)" kuralını hatırla: Adayın çalıştığı ana aktörler/konu, hedef tezinkiyle tamamen alakasızsa (örneğin aynı kuramı kullansa bile) o tezi ALAKASIZ olarak işaretle ve ele.
 - Dahili olarak çok derinlemesine düşün (Think extremely hard) ve sadece nihai şemaya uygun ham JSON nesnesini döndür.`;
 }
