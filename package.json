@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "check:full": "npm run lint && npm run typecheck && npx prettier --write ."
+    "check:full": "npm run lint && npm run typecheck && npx prettier --write .",
+    "db:push": "drizzle-kit push"
   },
   "dependencies": {
     "@google/genai": "^2.8.0",

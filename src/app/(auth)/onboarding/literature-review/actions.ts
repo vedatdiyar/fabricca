@@ -27,8 +27,6 @@ import { mergePapers } from "./_services/literature-review-papers";
 import {
   searchOpenAlex,
   resolveFoundationalWorks,
-  fetchFullAbstracts,
-  enrichFinalArticles,
 } from "./_services/search-api";
 import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
 import {
@@ -87,6 +85,57 @@ async function withOpenAlexRetry(
   }
 
   throw lastError ?? new Error("OpenAlex isteği başarısız oldu");
+}
+
+// ============================================================================
+// Constants: Fixed pool sizes for rules-based 5+10 distribution
+// ============================================================================
+
+const STARTER_PACK_SIZE = 5;
+const RESERVED_POOL_SIZE = 10;
+
+/**
+ * Distributes foundational and AI-filtered semantic articles into a fixed-size
+ * starter pack (5) and reserved pool (10) using a pure rules-based algorithm:
+ *
+ * 1. All isFoundational articles are given priority for the starter pack.
+ * 2. Remaining starter pack slots are filled by the highest relevanceScore
+ *    from non-foundational articles.
+ * 3. The reserved pool gets the next 10 highest-scoring remaining articles.
+ *
+ * Articles from the semantic list that duplicate foundational titles are
+ * silently removed before distribution.
+ */
+function distributeFixedPool(
+  foundationalArticles: JuryArticle[],
+  semanticArticles: JuryArticle[],
+): { starterPack: JuryArticle[]; reservedPool: JuryArticle[] } {
+  const foundationalTitles = new Set(
+    foundationalArticles
+      .map((a) => a.title?.toLowerCase().trim())
+      .filter(Boolean),
+  );
+
+  const dedupedSemantic = semanticArticles.filter(
+    (a) => !a.title || !foundationalTitles.has(a.title.toLowerCase().trim()),
+  );
+
+  const allArticles = [...foundationalArticles, ...dedupedSemantic].sort(
+    (a, b) => {
+      if (a.isFoundational !== b.isFoundational) {
+        return a.isFoundational ? -1 : 1;
+      }
+      return b.relevanceScore - a.relevanceScore;
+    },
+  );
+
+  return {
+    starterPack: allArticles.slice(0, STARTER_PACK_SIZE),
+    reservedPool: allArticles.slice(
+      STARTER_PACK_SIZE,
+      STARTER_PACK_SIZE + RESERVED_POOL_SIZE,
+    ),
+  };
 }
 
 // ============================================================================
@@ -150,7 +199,6 @@ async function processSingleBox(
 
     for (const fw of resolved) {
       foundationalArticles.push({
-        type: "PRIMARY" as const,
         title: formatAcademicTitle(fw.title),
         abstract: "",
         url: fw.id,
@@ -159,6 +207,7 @@ async function processSingleBox(
         publicationYear: fw.publicationYear,
         authors: fw.authors,
         isFoundational: true,
+        relevanceScore: 100,
       });
     }
 
@@ -214,7 +263,7 @@ async function processSingleBox(
   }
 
   if (semanticRaw.length === 0) {
-    return { starterPack: foundationalArticles, reservedPool: [] };
+    return distributeFixedPool(foundationalArticles, []);
   }
 
   // ------------------------------------------------------------------
@@ -232,44 +281,14 @@ async function processSingleBox(
   });
 
   // ------------------------------------------------------------------
-  // Stage 4: Full Abstract Recovery (all merged papers)
+  // Stage 4: Single-stage AI Academic Review (eleme + jüri)
   // ------------------------------------------------------------------
-  const abstractStart = performance.now();
-  const mergedIds: string[] = [];
   for (const p of merged) {
-    if (p.openAlexId) mergedIds.push(p.openAlexId);
-  }
-
-  let abstractMap = new Map<string, string>();
-  if (mergedIds.length > 0) {
-    abstractMap = await fetchFullAbstracts(mergedIds, logger);
-  }
-
-  for (const p of merged) {
-    if (p.openAlexId) {
-      const resolved = abstractMap.get(p.openAlexId);
-      if (resolved) p.abstract = resolved;
-    }
     if (!p.abstract || !p.abstract.trim()) {
       p.abstract = "Özet verisi bulunamadı, başlık üzerinden değerlendirin";
     }
   }
 
-  logger.info("literature_abstract_recovery_done", {
-    service: "literature",
-    durationMs: performance.now() - abstractStart,
-    filePath: "onboarding/literature-review/actions.ts",
-    status: "SUCCESS",
-    data: {
-      count: mergedIds.length,
-      resultCount: abstractMap.size,
-      context: boxCtx,
-    },
-  });
-
-  // ------------------------------------------------------------------
-  // Stage 5: Single-stage AI Academic Review (eleme + jüri)
-  // ------------------------------------------------------------------
   const reviewStart = performance.now();
   const result = await runAcademicReviewStage(
     subBox,
@@ -277,29 +296,6 @@ async function processSingleBox(
     logger,
     thesisCtx,
   );
-
-  // ------------------------------------------------------------------
-  // Stage 5.5: Final Enrichment — Crossref künye takviyesi (top 5)
-  // ------------------------------------------------------------------
-  const enrichmentStart = performance.now();
-  result.starterPack = await enrichFinalArticles(result.starterPack, 5, logger);
-  result.reservedPool = await enrichFinalArticles(
-    result.reservedPool,
-    5,
-    logger,
-  );
-
-  logger.info("literature_enrichment_done", {
-    service: "literature",
-    durationMs: performance.now() - enrichmentStart,
-    filePath: "onboarding/literature-review/actions.ts",
-    status: "SUCCESS",
-    data: {
-      starterPackCount: result.starterPack.length,
-      reservedPoolCount: result.reservedPool.length,
-      context: boxCtx,
-    },
-  });
 
   logger.info("literature_academic_review_done", {
     service: "literature",
@@ -316,32 +312,9 @@ async function processSingleBox(
   });
 
   // ------------------------------------------------------------------
-  // Final: Prepend foundational articles, dedup from semantic results
+  // Final: Fixed 5+10 rules-based distribution
   // ------------------------------------------------------------------
-  if (foundationalArticles.length > 0) {
-    const foundationalTitles = new Set(
-      foundationalArticles
-        .map((a) => a.title?.toLowerCase().trim())
-        .filter(Boolean),
-    );
-
-    const dedupedStarterPack = result.starterPack.filter(
-      (a) => !a.title || !foundationalTitles.has(a.title.toLowerCase().trim()),
-    );
-    const dedupedReservedPool = result.reservedPool.filter(
-      (a) => !a.title || !foundationalTitles.has(a.title.toLowerCase().trim()),
-    );
-
-    return {
-      starterPack: [...foundationalArticles, ...dedupedStarterPack],
-      reservedPool: dedupedReservedPool,
-    };
-  }
-
-  return {
-    starterPack: result.starterPack,
-    reservedPool: result.reservedPool,
-  };
+  return distributeFixedPool(foundationalArticles, result.starterPack);
 }
 
 // ============================================================================
@@ -499,7 +472,6 @@ export async function processAllBoxesAction(
 
         for (const fw of resolved) {
           foundationalArticles.push({
-            type: "PRIMARY" as const,
             title: formatAcademicTitle(fw.title),
             abstract: "",
             url: fw.id,
@@ -508,6 +480,7 @@ export async function processAllBoxesAction(
             publicationYear: fw.publicationYear,
             authors: fw.authors,
             isFoundational: true,
+            relevanceScore: 100,
           });
         }
       }
@@ -579,35 +552,15 @@ export async function processAllBoxesAction(
     });
 
     // ------------------------------------------------------------------
-    // Phase 3: Full abstract recovery (surviving candidates only)
+    // Phase 3: Academic review (Gemini) — per box sequential
     // ------------------------------------------------------------------
-    const allSurvivingIds: string[] = [];
     for (const [, candidates] of dedupedResults) {
       for (const p of candidates) {
-        if (p.openAlexId) allSurvivingIds.push(p.openAlexId);
-      }
-    }
-
-    let abstractMap = new Map<string, string>();
-    if (allSurvivingIds.length > 0) {
-      abstractMap = await fetchFullAbstracts(allSurvivingIds, logger);
-    }
-
-    for (const [, candidates] of dedupedResults) {
-      for (const p of candidates) {
-        if (p.openAlexId) {
-          const resolved = abstractMap.get(p.openAlexId);
-          if (resolved) p.abstract = resolved;
-        }
         if (!p.abstract || !p.abstract.trim()) {
           p.abstract = "Özet verisi bulunamadı, başlık üzerinden değerlendirin";
         }
       }
     }
-
-    // ------------------------------------------------------------------
-    // Phase 4: Academic review (Gemini) — per box sequential
-    // ------------------------------------------------------------------
     const poolEntries: LiteraturePoolEntry[] = [];
 
     for (const box of boxes) {
@@ -638,49 +591,14 @@ export async function processAllBoxesAction(
         thesisCtx,
       );
 
-      // Prepend foundational articles
-      const foundationalArticles =
-        foundationalLookups.get(box.title)?.resolved ?? [];
-      if (foundationalArticles.length > 0) {
-        const foundationalTitles = new Set(
-          foundationalArticles
-            .map((a) => a.title?.toLowerCase().trim())
-            .filter(Boolean),
-        );
-
-        reviewResult.starterPack = reviewResult.starterPack.filter(
-          (a) =>
-            !a.title || !foundationalTitles.has(a.title.toLowerCase().trim()),
-        );
-        reviewResult.reservedPool = reviewResult.reservedPool.filter(
-          (a) =>
-            !a.title || !foundationalTitles.has(a.title.toLowerCase().trim()),
-        );
-
-        reviewResult.starterPack = [
-          ...foundationalArticles,
-          ...reviewResult.starterPack,
-        ];
-      }
-
-      // ------------------------------------------------------------------
-      // Phase 5: Crossref enrichment (top 5)
-      // ------------------------------------------------------------------
-      reviewResult.starterPack = await enrichFinalArticles(
+      const { starterPack, reservedPool } = distributeFixedPool(
+        foundationalLookups.get(box.title)?.resolved ?? [],
         reviewResult.starterPack,
-        5,
-        logger,
       );
-      reviewResult.reservedPool = await enrichFinalArticles(
-        reviewResult.reservedPool,
-        5,
-        logger,
-      );
-
       poolEntries.push({
         subBoxTitle: box.title,
-        starterPack: reviewResult.starterPack,
-        reservedPool: reviewResult.reservedPool,
+        starterPack,
+        reservedPool,
       });
     }
 
@@ -790,8 +708,6 @@ export async function confirmLiteratureAction(args: {
         for (const article of entry.starterPack) {
           allResources.push({
             thesisBoxId,
-            status: "APPROVED",
-            type: article.type,
             title: formatAcademicTitle(article.title),
             abstract: article.abstract ?? null,
             url: article.url ?? null,
@@ -800,14 +716,14 @@ export async function confirmLiteratureAction(args: {
             publicationYear: article.publicationYear ?? null,
             authors: article.authors ?? null,
             isRead: false,
+            isFoundational: article.isFoundational ?? false,
+            relevanceScore: article.relevanceScore ?? 0,
           });
         }
 
         for (const article of entry.reservedPool) {
           allResources.push({
             thesisBoxId,
-            status: "RESERVED",
-            type: article.type,
             title: formatAcademicTitle(article.title),
             abstract: article.abstract ?? null,
             url: article.url ?? null,
@@ -816,6 +732,8 @@ export async function confirmLiteratureAction(args: {
             publicationYear: article.publicationYear ?? null,
             authors: article.authors ?? null,
             isRead: false,
+            isFoundational: article.isFoundational ?? false,
+            relevanceScore: article.relevanceScore ?? 0,
           });
         }
       }

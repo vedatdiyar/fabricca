@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle, BookOpen, RefreshCw, Layers } from "lucide-react";
 import { toast } from "sonner";
@@ -10,14 +10,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  getApprovedResourcesAction,
+  getBoxResourcesAction,
   toggleResourceReadStatusAction,
-  replenishFromReservedAction,
 } from "@/app/(app)/library/actions";
 import type {
-  GetApprovedResourcesResult,
+  GetBoxResourcesResult,
   ToggleReadStatusResult,
-  ReplenishResult,
 } from "@/app/(app)/library/actions";
 import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
 
@@ -28,34 +26,27 @@ interface LiteratureReaderProps {
   boxTitle: string;
 }
 
-type ReaderStatus =
-  | "loading"
-  | "error"
-  | "reading"
-  | "all-read"
-  | "replenishing";
+type ReaderStatus = "loading" | "error" | "reading" | "all-read";
 
 /* ---------- Query Keys ---------- */
 
-const APPROVED_KEY = (boxId: number) =>
-  ["box-resources", boxId, "approved"] as const;
+const BOX_KEY = (boxId: number) => ["box-resources", boxId] as const;
 
 /* ---------- Component ---------- */
 
 export function LiteratureReader({ boxId, boxTitle }: LiteratureReaderProps) {
   const queryClient = useQueryClient();
-  const replenishTriggeredRef = useRef(false);
 
-  /* ---- Approved Resources Query ---- */
+  /* ---- Box Resources Query ---- */
   const {
     data: queryResult,
     isLoading,
     isError,
     error,
     refetch,
-  } = useQuery<GetApprovedResourcesResult>({
-    queryKey: APPROVED_KEY(boxId),
-    queryFn: () => getApprovedResourcesAction(boxId),
+  } = useQuery<GetBoxResourcesResult>({
+    queryKey: BOX_KEY(boxId),
+    queryFn: () => getBoxResourcesAction(boxId),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -76,26 +67,7 @@ export function LiteratureReader({ boxId, boxTitle }: LiteratureReaderProps) {
       toast.error("Okuma durumu güncellenirken bağlantı hatası oluştu.");
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: APPROVED_KEY(boxId) });
-    },
-  });
-
-  /* ---- Replenish Mutation ---- */
-  const replenishMutation = useMutation<ReplenishResult, Error, void>({
-    mutationFn: () => replenishFromReservedAction(boxId),
-    onSuccess: (result) => {
-      if (result.success) {
-        toast.success("Yeni kaynaklar başarıyla yüklendi.");
-      } else {
-        toast.info(result.error || "Kaynaklar hazırlanıyor...");
-      }
-    },
-    onError: () => {
-      toast.error("Kaynaklar yenilenirken bir hata oluştu.");
-    },
-    onSettled: () => {
-      replenishTriggeredRef.current = false;
-      queryClient.invalidateQueries({ queryKey: APPROVED_KEY(boxId) });
+      queryClient.invalidateQueries({ queryKey: BOX_KEY(boxId) });
     },
   });
 
@@ -105,24 +77,10 @@ export function LiteratureReader({ boxId, boxTitle }: LiteratureReaderProps) {
   const totalCount = resources.length;
   const allRead = totalCount > 0 && readCount === totalCount;
 
-  /* ---- Auto-trigger replenish when all read ---- */
-  useEffect(() => {
-    if (
-      allRead &&
-      totalCount > 0 &&
-      !replenishMutation.isPending &&
-      !replenishTriggeredRef.current
-    ) {
-      replenishTriggeredRef.current = true;
-      replenishMutation.mutate();
-    }
-  }, [allRead, totalCount, replenishMutation, boxId]);
-
   /* ---- Reader status ---- */
   const status: ReaderStatus = (() => {
     if (isLoading) return "loading";
     if (isError) return "error";
-    if (replenishMutation.isPending) return "replenishing";
     if (allRead && totalCount > 0) return "all-read";
     return "reading";
   })();
@@ -134,12 +92,6 @@ export function LiteratureReader({ boxId, boxTitle }: LiteratureReaderProps) {
     },
     [toggleMutation],
   );
-
-  /* ---- Manual retry ---- */
-  const handleRetryFetch = useCallback(() => {
-    replenishTriggeredRef.current = true;
-    replenishMutation.mutate();
-  }, [replenishMutation]);
 
   /* ---------- Render ---------- */
 
@@ -224,32 +176,6 @@ export function LiteratureReader({ boxId, boxTitle }: LiteratureReaderProps) {
           </div>
         )}
 
-        {/* ---- Replenishing ---- */}
-        {status === "replenishing" && (
-          <div className="flex animate-in fade-in flex-col items-center justify-center gap-4 p-10">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full border border-primary/20 bg-primary/10">
-              <RefreshCw className="h-7 w-7 animate-spin text-primary" />
-            </div>
-            <p className="text-base font-medium text-foreground">
-              Yeni Kaynaklar Hazırlanıyor...
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Lütfen kısa süre bekleyin.
-            </p>
-            <div className="mt-2 flex gap-1">
-              <div className="h-2 w-2 animate-bounce rounded-full bg-primary" />
-              <div
-                className="h-2 w-2 animate-bounce rounded-full bg-primary"
-                style={{ animationDelay: "0.1s" }}
-              />
-              <div
-                className="h-2 w-2 animate-bounce rounded-full bg-primary"
-                style={{ animationDelay: "0.2s" }}
-              />
-            </div>
-          </div>
-        )}
-
         {/* ---- All-read celebration ---- */}
         {status === "all-read" && totalCount > 0 && (
           <div className="animate-in fade-in flex flex-col items-center justify-center gap-4 p-10">
@@ -259,20 +185,7 @@ export function LiteratureReader({ boxId, boxTitle }: LiteratureReaderProps) {
             <p className="text-xl font-semibold text-foreground">Tebrikler!</p>
             <p className="text-center text-sm text-muted-foreground leading-relaxed">
               Bu kutuya ait tüm kaynakları okudunuz.
-              <br />
-              Yeni kaynaklar otomatik olarak hazırlanıyor.
             </p>
-            <div className="mt-2 flex gap-1">
-              <div className="h-2 w-2 animate-bounce rounded-full bg-success" />
-              <div
-                className="h-2 w-2 animate-bounce rounded-full bg-success"
-                style={{ animationDelay: "0.1s" }}
-              />
-              <div
-                className="h-2 w-2 animate-bounce rounded-full bg-success"
-                style={{ animationDelay: "0.2s" }}
-              />
-            </div>
           </div>
         )}
 
@@ -322,17 +235,6 @@ export function LiteratureReader({ boxId, boxTitle }: LiteratureReaderProps) {
                       >
                         {formatAcademicTitle(resource.title)}
                       </label>
-
-                      <Badge
-                        variant="outline"
-                        className={`shrink-0 text-[10px] px-1.5 py-0 ${
-                          resource.type === "PRIMARY"
-                            ? "border-primary/20 text-primary"
-                            : "border-info/20 text-info"
-                        }`}
-                      >
-                        {resource.type === "PRIMARY" ? "Birincil" : "İkincil"}
-                      </Badge>
                     </div>
 
                     {resource.authors && resource.authors.length > 0 && (
@@ -359,22 +261,6 @@ export function LiteratureReader({ boxId, boxTitle }: LiteratureReaderProps) {
                 </div>
               ))}
             </div>
-
-            {/* Manual replenish button at the bottom of list */}
-            {allRead && !replenishMutation.isPending && (
-              <div className="flex items-center justify-center border-t border-border/10 bg-success/5 p-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="gap-2 text-success"
-                  onClick={handleRetryFetch}
-                  disabled={replenishMutation.isPending}
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Yeni Kaynakları Manuel Yükle
-                </Button>
-              </div>
-            )}
           </ScrollArea>
         )}
       </CardContent>

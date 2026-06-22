@@ -22,4 +22,4 @@ const pool =
   globalForDb.pool ?? new Pool({ connectionString: process.env.DATABASE_URL! });
 globalForDb.pool = pool;
 
-export const db = drizzle(pool, { schema });
+export const db = drizzle(pool, { schema, casing: "snake_case" });

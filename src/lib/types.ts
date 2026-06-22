@@ -228,7 +228,6 @@ export interface GeminiThesisBox {
 }
 
 export interface JuryArticle {
-  type: "PRIMARY" | "SECONDARY";
   title: string;
   abstract: string;
   url: string;
@@ -236,7 +235,8 @@ export interface JuryArticle {
   publisher: string;
   publicationYear: number;
   authors: string[];
-  isFoundational?: boolean;
+  isFoundational: boolean;
+  relevanceScore: number;
 }
 
 export interface LiteraturePoolEntry {

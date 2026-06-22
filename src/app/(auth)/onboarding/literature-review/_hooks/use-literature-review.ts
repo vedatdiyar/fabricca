@@ -250,13 +250,12 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
 
   /**
    * Adds a manually-entered archive entry for an archival/empirical box.
-   * Converts the user input into a JuryArticle with type: "PRIMARY" so it
-   * flows through the standard confirmLiteratureAction pipeline unchanged.
+   * Converts the user input into a JuryArticle so it flows through the
+   * standard confirmLiteratureAction pipeline unchanged.
    */
   const addArchiveEntry = useCallback(
     (subBoxTitle: string, entry: { title: string; description?: string }) => {
       const archiveArticle: JuryArticle = {
-        type: "PRIMARY",
         title: formatAcademicTitle(entry.title),
         abstract:
           entry.description ??
@@ -267,6 +266,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
         publicationYear: 0,
         authors: [],
         isFoundational: true,
+        relevanceScore: 100,
       };
 
       const existingEntry = useOnboardingStore

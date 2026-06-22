@@ -7,8 +7,6 @@ interface LiteratureArticleCardProps {
 }
 
 export function LiteratureArticleCard({ article }: LiteratureArticleCardProps) {
-  const isPrimary = article.type === "PRIMARY";
-
   return (
     <Card className="bg-card border border-border hover:border-primary/20 transition-all">
       <CardHeader className="pb-2 pt-3 px-3">
@@ -17,15 +15,6 @@ export function LiteratureArticleCard({ article }: LiteratureArticleCardProps) {
             {formatAcademicTitle(article.title)}
           </CardTitle>
           <div className="shrink-0 flex items-center gap-1.5">
-            <span
-              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-                isPrimary
-                  ? "bg-success/10 border-success/20 text-success"
-                  : "bg-info/10 border-info/20 text-info"
-              }`}
-            >
-              {isPrimary ? "BİRİNCİL" : "İKİNCİL"}
-            </span>
             {article.isFoundational && (
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary">
                 KURUCU ESER

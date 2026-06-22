@@ -4,6 +4,7 @@ import {
   varchar,
   text,
   integer,
+  real,
   timestamp,
   jsonb,
   pgEnum,
@@ -19,12 +20,12 @@ import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
  * onboardingCompleted alanı, onboarding sürecinin tamamlanıp tamamlanmadığını tutar.
  */
 export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  email: varchar("email", { length: 255 }).notNull().unique(),
-  password: varchar("password", { length: 255 }).notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  id: serial().primaryKey(),
+  email: varchar({ length: 255 }).notNull().unique(),
+  password: varchar({ length: 255 }).notNull(),
+  name: varchar({ length: 255 }).notNull(),
+  onboardingCompleted: boolean().default(false).notNull(),
+  createdAt: timestamp().defaultNow().notNull(),
 });
 
 /**
@@ -35,19 +36,19 @@ export const users = pgTable("users", {
  * Sadece zenginleştirilmiş (enriched) versiyon kaydedilir; ham form yazılmaz.
  */
 export const thesisMatrices = pgTable("thesis_matrices", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id")
+  id: serial().primaryKey(),
+  userId: integer()
     .notNull()
     .references(() => users.id, { onDelete: "cascade" })
     .unique(),
-  studyTitle: text("study_title").notNull(),
-  researchQuestion: text("research_question").notNull(),
-  theoreticalFramework: text("theoretical_framework").notNull(),
-  methodology: text("methodology").notNull(),
-  researchScope: text("research_scope").notNull(),
-  mainClaim: text("main_claim").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  studyTitle: text().notNull(),
+  researchQuestion: text().notNull(),
+  theoreticalFramework: text().notNull(),
+  methodology: text().notNull(),
+  researchScope: text().notNull(),
+  mainClaim: text().notNull(),
+  createdAt: timestamp().defaultNow().notNull(),
+  updatedAt: timestamp().defaultNow().notNull(),
 });
 
 /** Veri tabanından okunan kullanıcı tipi (select). */
@@ -67,12 +68,12 @@ export type NewThesisMatrix = InferInsertModel<typeof thesisMatrices>;
  * Kullanıcının Tavily ve Tezara analiz sonuçlarını saklar.
  */
 export const originalityReports = pgTable("originality_reports", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id")
+  id: serial().primaryKey(),
+  userId: integer()
     .notNull()
     .references(() => users.id, { onDelete: "cascade" })
     .unique(),
-  tavilyResults: jsonb("tavily_results")
+  tavilyResults: jsonb()
     .$type<{
       items: {
         fact: string;
@@ -83,7 +84,7 @@ export const originalityReports = pgTable("originality_reports", {
       briefingNote: string;
     }>()
     .notNull(),
-  tezaraResults: jsonb("tezara_results")
+  tezaraResults: jsonb()
     .$type<{
       originalityBadge: "HIGH_RISK" | "MEDIUM_RISK" | "LOW_RISK" | "ZERO_RISK";
       overlapTable: {
@@ -108,8 +109,8 @@ export const originalityReports = pgTable("originality_reports", {
       riskPercentage?: number;
     }>()
     .notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: timestamp().defaultNow().notNull(),
+  updatedAt: timestamp().defaultNow().notNull(),
 });
 
 /** Veri tabanından okunan özgünlük raporu tipi (select). */
@@ -125,18 +126,6 @@ export const boxTypeEnum = pgEnum("box_type_enum", [
   "ANALYSIS_FINDINGS",
 ]);
 
-export const literatureStatusEnum = pgEnum("literature_status_enum", [
-  "SUGGESTED",
-  "APPROVED",
-  "RESERVED",
-  "REJECTED",
-]);
-
-export const literatureTypeEnum = pgEnum("literature_type_enum", [
-  "PRIMARY",
-  "SECONDARY",
-]);
-
 /**
  * Tez Kutuları (Box) tablosu.
  * Tez matrisine bağlı konu kutularını düz (flat) yapıda saklar.
@@ -144,25 +133,22 @@ export const literatureTypeEnum = pgEnum("literature_type_enum", [
 export const thesisBoxes = pgTable(
   "thesis_boxes",
   {
-    id: serial("id").primaryKey(),
-    thesisMatrixId: integer("thesis_matrix_id")
+    id: serial().primaryKey(),
+    thesisMatrixId: integer()
       .notNull()
       .references(() => thesisMatrices.id, { onDelete: "cascade" }),
-    title: text("title").notNull(),
+    title: text().notNull(),
     boxType: boxTypeEnum("box_type"),
-    description: text("description"),
-    semanticSearchQueries: jsonb("semantic_search_queries")
-      .$type<string[]>()
-      .default([])
-      .notNull(),
-    concepts: jsonb("concepts").$type<string[]>().default([]).notNull(),
-    foundationalQueries: jsonb("foundational_queries")
+    description: text(),
+    semanticSearchQueries: jsonb().$type<string[]>().default([]).notNull(),
+    concepts: jsonb().$type<string[]>().default([]).notNull(),
+    foundationalQueries: jsonb()
       .$type<{ author: string; title: string; publicationYear: number }[]>()
       .default([])
       .notNull(),
 
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    createdAt: timestamp().defaultNow().notNull(),
+    updatedAt: timestamp().defaultNow().notNull(),
   },
   (table) => [index("idx_thesis_boxes_matrix_id").on(table.thesisMatrixId)],
 );
@@ -181,28 +167,23 @@ export type NewThesisBox = InferInsertModel<typeof thesisBoxes>;
 export const libraryResources = pgTable(
   "library_resources",
   {
-    id: serial("id").primaryKey(),
-    thesisBoxId: integer("thesis_box_id")
+    id: serial().primaryKey(),
+    thesisBoxId: integer()
       .notNull()
       .references(() => thesisBoxes.id, { onDelete: "cascade" }),
-    status: literatureStatusEnum("status").default("SUGGESTED").notNull(),
-    type: literatureTypeEnum("type").notNull(),
-    title: text("title").notNull(),
-    abstract: text("abstract"),
-    url: text("url"),
-    doi: text("doi"),
-    publisher: text("publisher"),
-    publicationYear: integer("publication_year"),
-    authors: jsonb("authors").$type<string[]>(),
-    strategicRecommendations: text("strategic_recommendations"),
-    isRead: boolean("is_read").default(false),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
+    title: text().notNull(),
+    abstract: text(),
+    url: text(),
+    doi: text(),
+    publisher: text(),
+    publicationYear: integer(),
+    authors: jsonb().$type<string[]>(),
+    isRead: boolean().default(false),
+    relevanceScore: real(),
+    isFoundational: boolean().default(false).notNull(),
+    createdAt: timestamp().defaultNow().notNull(),
   },
   (table) => [
-    index("idx_library_resources_box_status").on(
-      table.thesisBoxId,
-      table.status,
-    ),
     uniqueIndex("idx_library_resources_box_doi").on(
       table.thesisBoxId,
       table.doi,

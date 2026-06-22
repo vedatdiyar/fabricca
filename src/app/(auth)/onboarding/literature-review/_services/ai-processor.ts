@@ -1,9 +1,8 @@
-import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
 import {
   buildLiteratureAcademicReviewPrompt,
   buildLiteratureAcademicReviewSystemInstruction,
-  literatureJuryAnalysisSchema,
+  literatureIrrelevanceFilterSchema,
 } from "@/lib/prompts";
 import { Logger } from "@/lib/logger";
 import type { SubBoxInput, ValidatedPaper } from "./literature-review-papers";
@@ -21,24 +20,11 @@ export interface LiteratureReviewResult {
 }
 
 // ============================================================================
-// Single-Stage Academic Review (Eleme + Jüri Dağıtımı)
+// Irrelevance Noise Filter — AI identifies clearly off-topic articles
 // ============================================================================
 
-interface JuryResponseItem {
-  id: string;
-  type: "PRIMARY" | "SECONDARY";
-  title: string;
-  abstract: string;
-  url: string;
-  doi: string;
-  publisher: string;
-  publicationYear: number;
-  authors: string[];
-}
-
-interface JuryResponse {
-  starterPack: JuryResponseItem[];
-  reservedPool: JuryResponseItem[];
+interface IrrelevanceFilterResponse {
+  excludedIds: string[];
 }
 
 export async function runAcademicReviewStage(
@@ -86,7 +72,7 @@ export async function runAcademicReviewStage(
   }
 
   logger.prompt(
-    "gemini-3.1-flash-lite (HIGH thinking)",
+    "gemini-3.1-flash-lite (no thinking)",
     buildLiteratureAcademicReviewPrompt(
       {
         title: box.title,
@@ -97,7 +83,7 @@ export async function runAcademicReviewStage(
     ),
   );
 
-  const reviewResult = await generateStructuredContent<JuryResponse>(
+  const aiResult = await generateStructuredContent<IrrelevanceFilterResponse>(
     "gemini-3.1-flash-lite",
     buildLiteratureAcademicReviewSystemInstruction(),
     buildLiteratureAcademicReviewPrompt(
@@ -108,48 +94,24 @@ export async function runAcademicReviewStage(
       reviewCandidates,
       thesisCtx,
     ),
-    literatureJuryAnalysisSchema,
+    literatureIrrelevanceFilterSchema,
     logger,
     {
-      thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+      thinkingConfig: null,
       payloadStage: "academic-review",
     },
   );
 
   // ===== HALÜSİNASYON FİLTRESİ =====
-  // Gemini'ın döndürdüğü her makalenin id'si mutlaka girdi listesindeki refId'lerden
-  // biriyle eşleşmelidir. Eşleşmeyen uydurma kayıtlar sessizce atılır.
-  function filterHallucinated(items: JuryResponseItem[]): JuryResponseItem[] {
-    return items.filter((item) => item.id && validRefIds.has(item.id));
-  }
-
-  // id alanını sıyır → JuryArticle tipine dönüştür
-  function toJuryArticle(item: JuryResponseItem): JuryArticle {
-    return {
-      type: item.type,
-      title: item.title,
-      abstract: item.abstract,
-      url: item.url,
-      doi: item.doi,
-      publisher: item.publisher,
-      publicationYear: item.publicationYear,
-      authors: item.authors,
-    };
-  }
-
-  const filteredStarterPack = filterHallucinated(reviewResult.starterPack).map(
-    toJuryArticle,
+  // Gemini'ın döndürdüğü excludedIds içindeki her ID girdi listesindeki
+  // refId'lerden biriyle eşleşmelidir. Eşleşmeyen uydurma ID'ler sessizce atılır.
+  const validExcludedIds = aiResult.excludedIds.filter((id) =>
+    validRefIds.has(id),
   );
-  const filteredReservedPool = filterHallucinated(
-    reviewResult.reservedPool,
-  ).map(toJuryArticle);
+  const excludedSet = new Set(validExcludedIds);
 
-  const hallutotal =
-    reviewResult.starterPack.length + reviewResult.reservedPool.length;
-  const filteredTotal =
-    filteredStarterPack.length + filteredReservedPool.length;
-  const hallucinationCount = hallutotal - filteredTotal;
-
+  const hallucinationCount =
+    aiResult.excludedIds.length - validExcludedIds.length;
   if (hallucinationCount > 0) {
     logger.warn("literature_review_hallucination_filtered", {
       service: "literature",
@@ -161,45 +123,33 @@ export async function runAcademicReviewStage(
     });
   }
 
+  // All non-excluded candidates pass through as starterPack
+  const survivingArticles: JuryArticle[] = reviewCandidates
+    .filter((c) => !excludedSet.has(c.refId))
+    .map((c) => ({
+      title: c.title,
+      abstract: c.abstract,
+      url: c.url,
+      doi: c.doi,
+      publisher: c.publisher,
+      publicationYear: c.publicationYear,
+      authors: c.authors,
+      isFoundational: false,
+      relevanceScore: c.relevanceScore,
+    }));
+
   const result = {
-    starterPack: backfillIsFoundational(
-      filteredStarterPack,
-      foundationalLookup,
-    ),
-    reservedPool: backfillIsFoundational(
-      filteredReservedPool,
-      foundationalLookup,
-    ),
+    starterPack: survivingArticles,
+    reservedPool: [],
   };
 
-  logger.data("Academic Review Split", {
-    starterPack: result.starterPack.length,
-    reservedPool: result.reservedPool.length,
+  logger.data("Academic Review Filter", {
+    total: reviewCandidates.length,
+    excluded: validExcludedIds.length,
+    surviving: result.starterPack.length,
   });
 
   return result;
-}
-
-// ============================================================================
-// Backfill isFoundational for Jury Articles
-// ============================================================================
-
-function backfillIsFoundational(
-  articles: JuryArticle[],
-  lookup: Map<string, boolean>,
-): JuryArticle[] {
-  return articles.map((a) => {
-    let found = false;
-    if (a.doi) {
-      found = lookup.get("doi:" + a.doi) ?? false;
-    }
-    if (!found && a.title) {
-      found =
-        lookup.get("title:" + a.title.toLowerCase().trim().slice(0, 80)) ??
-        false;
-    }
-    return { ...a, isFoundational: found };
-  });
 }
 
 // ============================================================================
