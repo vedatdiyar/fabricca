@@ -37,10 +37,9 @@ const ANALYSIS_STEPS: LoadingStep[] = [
 /** Loading step labels for the proceed-to-boxes orchestration. */
 const PROCEED_STEPS: LoadingStep[] = [
   {
-    text: "Tez matrisi analiz edilip konu kutuları oluşturuluyor...",
+    text: "Tez matrisi analiz edilip konu kutuları ve kurucu eserler oluşturuluyor...",
     status: "active",
   },
-  { text: "Kurucu akademik eserler taranıyor...", status: "idle" },
   { text: "Kutular sayfasına yönlendiriliyor...", status: "idle" },
 ];
 
@@ -290,8 +289,7 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
       }
 
       updateLoadingStep(0, "completed");
-      updateLoadingStep(1, "completed");
-      updateLoadingStep(2, "active");
+      updateLoadingStep(1, "active");
 
       // Purge stale downstream state before seeding new boxes so that
       // old literature articles or risk reports can never ghost-leak
