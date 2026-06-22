@@ -12,7 +12,7 @@ export interface SubBoxInput {
   title: string;
   description: string;
   boxType?: string;
-  semanticSearchBlock: string;
+  semanticSearchQueries: string[];
   foundationalQueries: FoundationalQuery[];
 }
 

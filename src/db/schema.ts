@@ -151,7 +151,10 @@ export const thesisBoxes = pgTable(
     title: text("title").notNull(),
     boxType: boxTypeEnum("box_type"),
     description: text("description"),
-    semanticSearchBlock: text("semantic_search_block"),
+    semanticSearchQueries: jsonb("semantic_search_queries")
+      .$type<string[]>()
+      .default([])
+      .notNull(),
     concepts: jsonb("concepts").$type<string[]>().default([]).notNull(),
     foundationalQueries: jsonb("foundational_queries")
       .$type<{ author: string; title: string; publicationYear: number }[]>()

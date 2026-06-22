@@ -14,7 +14,10 @@ import {
   finalizeJuryAnalysisAction,
   completeRiskStageAction,
 } from "../actions";
-import { generateBoxesAction } from "../../boxes/actions";
+import {
+  generateBoxesStructureAction,
+  mineFoundationalQueriesAction,
+} from "../../boxes/actions";
 import {
   fetchThesisMatrix,
   fetchOriginalityReport,
@@ -37,8 +40,12 @@ const ANALYSIS_STEPS: LoadingStep[] = [
 /** Loading step labels for the proceed-to-boxes orchestration. */
 const PROCEED_STEPS: LoadingStep[] = [
   {
-    text: "Tez matrisi analiz edilip konu kutuları ve kurucu eserler oluşturuluyor...",
+    text: "Tez matrisi analiz edilerek konu kutuları yapılandırılıyor...",
     status: "active",
+  },
+  {
+    text: "Konu kutuları için akademik veri tabanlarında kurucu eserler aranıyor (co-citation)...",
+    status: "idle",
   },
   { text: "Kutular sayfasına yönlendiriliyor...", status: "idle" },
 ];
@@ -280,16 +287,27 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
     showLoading("İşlem Tamamlanıyor", "Konu kutuları yapılandırılıyor.", steps);
 
     try {
-      const boxesResult = await generateBoxesAction();
-      if ("error" in boxesResult) {
+      const structResult = await generateBoxesStructureAction();
+      if ("error" in structResult) {
         hideLoading();
-        toast.error(boxesResult.error);
-        router.push("/onboarding/boxes");
+        toast.error(structResult.error);
         return;
       }
 
       updateLoadingStep(0, "completed");
       updateLoadingStep(1, "active");
+
+      const mineResult = await mineFoundationalQueriesAction(
+        structResult.boxes,
+      );
+      if ("error" in mineResult) {
+        hideLoading();
+        toast.error(mineResult.error);
+        return;
+      }
+
+      updateLoadingStep(1, "completed");
+      updateLoadingStep(2, "active");
 
       // Purge stale downstream state before seeding new boxes so that
       // old literature articles or risk reports can never ghost-leak
@@ -297,7 +315,10 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
       const store = useOnboardingStore.getState();
       store.setLiteraturePool([]);
       store.setReportData(null);
-      store.setBoxes(boxesResult.boxes);
+      store.setBoxes(mineResult.boxes);
+
+      // Delay briefly to allow loading step transition to be seen
+      await new Promise((resolve) => setTimeout(resolve, 500));
       hideLoading();
       router.push("/onboarding/boxes");
     } catch (err) {

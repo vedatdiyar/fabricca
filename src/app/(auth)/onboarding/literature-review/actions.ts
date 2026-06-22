@@ -117,7 +117,10 @@ async function processSingleBox(
     return { starterPack: [], reservedPool: [], isArchivalBypass: true };
   }
 
-  if (!subBox.semanticSearchBlock.trim()) {
+  if (
+    !subBox.semanticSearchQueries ||
+    subBox.semanticSearchQueries.length === 0
+  ) {
     return { starterPack: [], reservedPool: [] };
   }
 
@@ -174,14 +177,29 @@ async function processSingleBox(
   logger.info("literature_search_start", {
     service: "literature",
     filePath: "onboarding/literature-review/actions.ts",
-    data: { queryCount: 1, subBoxTitle: subBox.title, context: boxCtx },
+    data: {
+      queryCount: subBox.semanticSearchQueries.length,
+      subBoxTitle: subBox.title,
+      context: boxCtx,
+    },
   });
 
   const searchStart = performance.now();
-  const semanticRaw = await withOpenAlexRetry(
-    subBox.semanticSearchBlock,
-    logger,
-  );
+  const searchResultsList: RawPaper[][] = [];
+  for (let qIdx = 0; qIdx < subBox.semanticSearchQueries.length; qIdx++) {
+    const query = subBox.semanticSearchQueries[qIdx];
+    if (!query.trim()) continue;
+
+    const results = await withOpenAlexRetry(query, logger);
+    searchResultsList.push(results);
+
+    if (qIdx < subBox.semanticSearchQueries.length - 1) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, OPENALEX_REQUEST_DELAY_MS),
+      );
+    }
+  }
+  const semanticRaw = searchResultsList.flat();
 
   logger.info("literature_search_done", {
     service: "literature",
@@ -453,7 +471,10 @@ export async function processAllBoxesAction(
         continue;
       }
 
-      if (!box.semanticSearchBlock.trim()) {
+      if (
+        !box.semanticSearchQueries ||
+        box.semanticSearchQueries.length === 0
+      ) {
         boxSearchResults.set(box.title, []);
         foundationalLookups.set(box.title, { resolved: [] });
         continue;
@@ -495,10 +516,21 @@ export async function processAllBoxesAction(
       });
 
       // OpenAlex semantic search with throttle
-      const semanticRaw = await withOpenAlexRetry(
-        box.semanticSearchBlock,
-        logger,
-      );
+      const searchResultsList: RawPaper[][] = [];
+      for (let qIdx = 0; qIdx < box.semanticSearchQueries.length; qIdx++) {
+        const query = box.semanticSearchQueries[qIdx];
+        if (!query.trim()) continue;
+
+        const results = await withOpenAlexRetry(query, logger);
+        searchResultsList.push(results);
+
+        if (qIdx < box.semanticSearchQueries.length - 1) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, OPENALEX_REQUEST_DELAY_MS),
+          );
+        }
+      }
+      const semanticRaw = searchResultsList.flat();
 
       logger.info("literature_batch_search_done", {
         service: "literature",

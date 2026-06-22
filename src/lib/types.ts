@@ -187,37 +187,33 @@ export const RefinedFoundationalQueriesSchema = z.object({
   foundationalQueries: z.array(FoundationalQuerySchema).max(4),
 });
 
-export const GeminiThesisBoxSchema = z
-  .object({
-    title: z.string().min(1, "Kutu başlığı boş olamaz"),
-    boxType: z.enum([
-      "PROBLEMATIZATION",
-      "CONCEPTUAL",
-      "DATA_PROTOCOL",
-      "ANALYSIS_FINDINGS",
-    ]),
-    description: z.string().min(1, "Kutu açıklaması boş olamaz"),
-    semanticSearchBlock: z
-      .string()
-      .min(1, "Semantik arama bloğu boş olamaz")
-      .max(2000),
-    concepts: z.array(z.string()).max(4),
-    foundationalQueries: z.array(FoundationalQuerySchema).max(4),
-  })
-  .superRefine((data, ctx) => {
-    if (data.boxType === "ANALYSIS_FINDINGS") {
-      return;
-    }
-    if (!data.foundationalQueries || data.foundationalQueries.length < 2) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `"${data.title}" kutusu için en az 2 adet kurucu akademik eser bulunmalıdır.`,
-        path: ["foundationalQueries"],
-      });
-    }
-  });
+export const GeminiThesisBoxSchema = z.object({
+  title: z.string().min(1, "Kutu başlığı boş olamaz"),
+  boxType: z.enum([
+    "PROBLEMATIZATION",
+    "CONCEPTUAL",
+    "DATA_PROTOCOL",
+    "ANALYSIS_FINDINGS",
+  ]),
+  description: z.string().min(1, "Kutu açıklaması boş olamaz"),
+  semanticSearchQueries: z.array(z.string()).min(1).max(4),
+  concepts: z.array(z.string()).max(4),
+});
 
-export const FinalGeminiThesisBoxSchema = GeminiThesisBoxSchema;
+export const FinalGeminiThesisBoxSchema = GeminiThesisBoxSchema.extend({
+  foundationalQueries: z.array(FoundationalQuerySchema).max(4),
+}).superRefine((data, ctx) => {
+  if (data.boxType === "ANALYSIS_FINDINGS") {
+    return;
+  }
+  if (!data.foundationalQueries || data.foundationalQueries.length < 2) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `"${data.title}" kutusu için en az 2 adet kurucu akademik eser bulunmalıdır.`,
+      path: ["foundationalQueries"],
+    });
+  }
+});
 
 export const BoxGenerationResponseSchema = z.object({
   boxes: z.array(GeminiThesisBoxSchema).min(1, "En az bir kutu üretilmelidir"),
@@ -237,7 +233,7 @@ export interface GeminiThesisBox {
     | "DATA_PROTOCOL"
     | "ANALYSIS_FINDINGS";
   description: string;
-  semanticSearchBlock: string;
+  semanticSearchQueries: string[];
   foundationalQueries: FoundationalQuery[];
   concepts: string[];
 }

@@ -97,7 +97,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
         [...freshTitles].every((t) => poolTitles.has(t));
 
       // 2. Content-level reconciliation — even with matching titles the box
-      //    content (description / semanticSearchBlock) may have been updated
+      //    content (description / semanticSearchQueries) may have been updated
       //    server-side or via a handleProceed -> setBoxes cycle.  Compare
       //    every live DB box against its counterpart in the Zustand store.
       let contentChanged = false;
@@ -112,8 +112,8 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
           if (!fresh || !stored) return false;
           return (
             (fresh.description ?? "") !== (stored.description ?? "") ||
-            (fresh.semanticSearchBlock ?? "") !==
-              (stored.semanticSearchBlock ?? "")
+            (fresh.semanticSearchQueries ?? []).join("|||") !==
+              (stored.semanticSearchQueries ?? []).join("|||")
           );
         });
       }
@@ -138,7 +138,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
               (b.boxType as GeminiThesisBox["boxType"]) ??
               "PROBLEMATIZATION",
             description: b.description ?? "",
-            semanticSearchBlock: b.semanticSearchBlock ?? "",
+            semanticSearchQueries: b.semanticSearchQueries ?? [],
             foundationalQueries:
               stored?.foundationalQueries ?? b.foundationalQueries ?? [],
             concepts: b.concepts ?? [],
@@ -198,7 +198,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
         title: box.title,
         description: box.description,
         boxType: box.boxType,
-        semanticSearchBlock: box.semanticSearchBlock,
+        semanticSearchQueries: box.semanticSearchQueries,
         foundationalQueries: box.foundationalQueries,
       })),
     );

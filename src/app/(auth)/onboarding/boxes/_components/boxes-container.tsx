@@ -61,7 +61,7 @@ export function BoxesContainer() {
               boxType:
                 (b.boxType as GeminiThesisBox["boxType"]) ?? "CONCEPTUAL",
               description: b.description ?? "",
-              semanticSearchBlock: b.semanticSearchBlock ?? "",
+              semanticSearchQueries: b.semanticSearchQueries ?? [],
               foundationalQueries: b.foundationalQueries ?? [],
               concepts: b.concepts ?? [],
             })),
