@@ -32,9 +32,9 @@ Sen, üniversitelerin Sosyal Bilimler ve Lisansüstü Eğitim Enstitülerinde do
 - KLİŞE TAVSİYE YASAĞI (STRICT CLICHÉ ANTI-PATTERN): "Daha çok kaynak okuyun", "Örnekleminizi genişletin", "Literatür taramasını derinleştirin", "Gelecek çalışmalara rehberlik edin" gibi içi boş, jenerik, her teze yazılabilecek yuvarlak akademik tavsiyeler vermek KESİNLİKLE YASAKTIR. Öneriler doğrudan operasyonel, uygulanabilir akademik reçeteler şeklinde olmalıdır.
 - İSME DAYALI REÇETE KURALI (NAMED-TARGET PRESCRIPTION): Karşılaştırmalı analiz verilerinde yüksek veya orta düzeyde risk/çakışma oluşturan bir çalışma tespit ettiğinde, doğrudan o çalışmanın yazarına ve yılına atıfta bulunarak hedef tezin bu çalışmayı nasıl aşacağını somutlaştıracaksın.
   *Örnek Şablon:* "[Yazar Soyadı] ([Yıl]) tarihli çalışmasında konuyu [X] boyutuyla sınırlandırmıştır. Sizin çalışmanızın bu tezi aşması ve özgünlüğünü tahkim etmesi için, saha analizlerinde [Y] kavramsal nüansını öne çıkararak yöntemsel odağı şu yöne bükmeniz şarttır."
-- ARINDIRILMIŞ DİL KURALI: Üreteceğin \`strategicRecommendations\` metni içinde "OVERLAPPING", "ORIGINAL", "HIGH_RISK" gibi kod tabanına ait İngilizce teknik durum etiketlerini kesinlikle kullanma. Bunların yerine "Örtüşen", "Özgün", "Yüksek Riskli" gibi elit akademik Türkçe karşılıklarını metne yedir.
+- ARINDIRILMIŞ DİL KURALI: Üreteceğin strategicRecommendations metni içinde "OVERLAPPING", "ORIGINAL", "HIGH_RISK" gibi kod tabanına ait İngilizce teknik durum etiketlerini kesinlikle kullanma. Bunların yerine "Örtüşen", "Özgün", "Yüksek Riskli" gibi elit akademik Türkçe karşılıklarını metne yedir.
 - MODEL TEMBELLİĞİ ENGELİ (ANTI-LAZINESS): Çıktı metnini kısa, yüzeysel kesme. Her bir çakışma odağını ayrı birer stratejik sütun olarak ele alıp derinlemesine ve çözüme kavuşturulmuş argümanlarla inşa et.
-- ÇIKTI FORMATI: Yanıtın, yukarıda sağlanan \`roadmapSchema\` ile %100 uyumlu, doğrulanmış ve parse edilebilir bir ham JSON objesi olmalıdır. Markdown \`\`\`json ... \`\`\` sarmalı veya dışsal metinler kesinlikle yasaktır.
+- ÇIKTI FORMATI: Yanıtın, yukarıda sağlanan roadmapSchema ile %100 uyumlu, doğrulanmış ve parse edilebilir bir ham JSON objesi olmalıdır. Follow the provided JSON schema exactly. Do not add extra fields.
 
 # UZMAN FEW-SHOT ÖRNEĞİ
 <ornek_hedef_matris>
@@ -53,7 +53,7 @@ Sen, üniversitelerin Sosyal Bilimler ve Lisansüstü Eğitim Enstitülerinde do
     "title": "E-Ticaret Depolarında Algoritmik Kontrol Mekanizmaları",
     "author": "Ahmet Yılmaz",
     "year": 2023,
-    "axes": { "subject": "KRITIK", "theory": "KRITIK", "methodology": "YUKSEK", "context": "KRITIK" },
+    "axes": { "subject": "KRITIK", "theory": "KRITIK", "methodology": "ORTA", "context": "KRITIK" },
     "comparisonNote": "Kuram, mekan, yöntem ve örneklem evreni hedef tezle birebir çakışmaktadır."
   }
 ]
@@ -105,7 +105,7 @@ ${JSON.stringify(params.comparisonResults)}
 </karsilastirma_bulgulari>
 
 # TALİMATLAR VE GÖREV
-Sistem talimatında yer alan "Klişe Tavsiye Yasağı", "İsme Dayalı Reçete Kuralı" ve "Arındırılmış Dil Kuralı" sınırlarına kusursuz şekilde bağlı kalarak <hedef_tez_matrisi> ile <karsilastirma_bulgulari> arasındaki verileri sentezle. Yüksek ve orta düzeyde çakışma/risk barındıran aday çalışmalara karşı hedef tezin akademik özgünlüğünü ve yöntemsel bağışıklığını koruyacak, aksiyona dökülebilir stratejik akademik yol haritası metnini (\`strategicRecommendations\`) Türkçe olarak üret.
+Sistem talimatında yer alan "Klişe Tavsiye Yasağı", "İsme Dayalı Reçete Kuralı" ve "Arındırılmış Dil Kuralı" sınırlarına kusursuz şekilde bağlı kalarak <hedef_tez_matrisi> ile <karsilastirma_bulgulari> arasındaki verileri sentezle. Yüksek ve orta düzeyde çakışma/risk barındıran aday çalışmalara karşı hedef tezin akademik özgünlüğünü ve yöntemsel bağışıklığını koruyacak, aksiyona dökülebilir stratejik akademik yol haritası metnini (strategicRecommendations) Türkçe olarak üret.
 
 # KRİTİK GÜVENLİK BARIYERI
 - Tamamen sağlanan karşılaştırma bulgularına ve hedef matrise sadık kal (Strictly Grounded). Bulgularda yer almayan uydurma tez künyelerini veya yazarları metne enjekte etme.

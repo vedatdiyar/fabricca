@@ -110,6 +110,8 @@ export async function enrichThesisMatrixAction(
       {
         thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
         zodSchema: EnhancedThesisDataSchema,
+        temperature: 1.0,
+        seed: 42,
       },
     );
 

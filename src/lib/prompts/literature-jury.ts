@@ -6,6 +6,11 @@ import type { JsonSchema } from "../gemini";
 export const literatureIrrelevanceFilterSchema: JsonSchema = {
   type: "object",
   properties: {
+    evaluationSummary: {
+      type: "string",
+      description:
+        "Aday makalelerin başlık ve özetlerinin alt kutu tanımı ve genel tez konusuyla olan ilişkisinin kısa Türkçe değerlendirmesi. Hangi makalelerin neden elendiğini veya saklandığını isteğe bağlı olarak gerekçelendirin.",
+    },
     excludedIds: {
       type: "array",
       description:
@@ -21,17 +26,16 @@ export const literatureIrrelevanceFilterSchema: JsonSchema = {
 // ============================================================================
 export function buildLiteratureAcademicReviewSystemInstruction(): string {
   return `# ROL
-Sen akademik bir Alakasızlık Filtresisin (Noise Filter). Görevin son derece basittir: Sana sunulan makale özetlerini okuyup, o an işlenen alt kutunun (sub-box) tanımı ve tezin genel bağlamıyla **tamamen** ilgisiz olan gürültü makaleleri tespit etmektir.
+Sen akademik bir Alakasızlık Filtresisin (Noise Filter). Görevin son derece basittir: Sana sunulan makale özetlerini okuyup, o an işlenen alt kutunun (sub-box) tanımı ve tezin genel bağlamıyla tamamen ilgisiz olan gürültü makaleleri tespit etmektir.
 
 # OPERASYONEL KISITLAMALAR
-- Sadece **bariz şekilde alakasız** olanları ele. Bir makale alt kutuyla uzaktan bile ilişkiliyse veya emin değilsen, o makaleyi **eltme**, listede tut.
+- Sadece bariz şekilde alakasız olanları ele. Bir makale alt kutuyla uzaktan bile ilişkiliyse veya emin değilsen, o makaleyi eleme, listede tut.
 - Makaleleri metodolojik açıdan değerlendirme, kalite puanı verme veya önceliklendirme.
 - Sadece şu durumlarda ele: Makale bambaşka bir akademik alana aitse (örneğin sosyoloji konulu bir kutuda siber güvenlik makalesi), başlık ve özet açıkça tez ve alt kutuyla hiçbir ortak nokta içermiyorsa.
 - Aldığın her girdi makalesi zaten anlamsal arama motoru tarafından getirilmiştir; çoğu zaten ilgilidir. Sadece arama motorunun kaçırdığı bariz gürültüyü temizle.
-- **Kritik:** output alanı sadece \`excludedIds\`'dir. Eleyecek makale bulamazsan boş dizi (\`[]\`) döndür. Asla uydurma ID türetme.
-
-# ÇIKTI FORMATI
-Yanıtın, sağlanan JSON şemasına %100 uyumlu, parse edilebilir bir ham JSON objesi olmalıdır. Markdown sarmalı, ön söz veya açıklama metni yasaktır.`;
+- output alanında excludedIds zorunludur. Eleyecek makale bulamazsanız excludedIds dizisini boş [] olarak döndürünüz. Asla uydurma ID türetmeyiniz.
+- İsteğe bağlı olarak, elenen veya saklanan makaleler hakkındaki değerlendirme muhakemenizi evaluationSummary alanında Türkçe olarak açıklayabilirsiniz.
+- ÇIKTI FORMATI: Yanıtın, sağlanan JSON şemasına tamamen uygun, doğrulanmış ve parse edilebilir bir ham JSON nesnesi olmalıdır. Follow the provided JSON schema exactly. Do not add extra fields.`;
 }
 
 // ============================================================================
@@ -78,5 +82,5 @@ ${JSON.stringify(candidates)}
 </aday_makale_listesi>
 
 # TALİMATLAR VE GÖREV
-<aday_makale_listesi> içindeki her makaleyi <hedef_alt_kutu> ve <kuresel_tez_matrisi> bağlamında değerlendir. Sadece alt kutu açıklaması ve tez konusuyla **hiçbir şekilde ilişkili olmayan** (farklı disiplin, bambaşka konu) bariz gürültü makalelerinin refId'lerini \`excludedIds\` dizisine ekle. Alakasız makale yoksa boş dizi döndür.`;
+<aday_makale_listesi> içindeki her makaleyi <hedef_alt_kutu> ve <kuresel_tez_matrisi> bağlamında değerlendir. Sadece alt kutu açıklaması ve tez konusuyla hiçbir şekilde ilişkili olmayan (farklı disiplin, bambaşka konu) bariz gürültü makalelerinin refId'lerini excludedIds dizisine ekle. Alakasız makale yoksa boş dizi döndür. Dahili olarak çok derinlemesine düşün (Think extremely hard) ve sadece nihai şemaya uygun ham JSON nesnesini döndür.`;
 }

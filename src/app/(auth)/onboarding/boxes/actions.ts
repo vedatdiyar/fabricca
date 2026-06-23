@@ -67,6 +67,8 @@ export async function generateBoxesStructureAction(): Promise<
       {
         thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
         zodSchema: BoxGenerationResponseSchema,
+        temperature: 1.0,
+        seed: 42,
       },
     );
 

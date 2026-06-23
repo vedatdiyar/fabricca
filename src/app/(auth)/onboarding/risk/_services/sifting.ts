@@ -163,7 +163,8 @@ export async function siftAndFetchDetails(
       throw err;
     }
 
-    // 3. Fetch details (with Abstract) for the passed theses in batches
+    // 3. Fetch details (with Abstract) for the passed theses
+    // The pipeline queue in tezara-queue.ts handles concurrency, rate limiting, and burst control
     const fetchStart = performance.now();
     log.info("originality_sift_fetch_start", {
       service: "originality",
@@ -173,15 +174,9 @@ export async function siftAndFetchDetails(
       },
     });
 
-    const batchSize = 10;
-    const detailsList: (TezaraThesisDetails | null)[] = [];
-    for (let i = 0; i < passedStage1.length; i += batchSize) {
-      const batch = passedStage1.slice(i, i + batchSize);
-      const batchResults = await Promise.all(
-        batch.map((t) => fetchThesisDetails(t, log)),
-      );
-      detailsList.push(...batchResults);
-    }
+    const detailsList = await Promise.all(
+      passedStage1.map((t) => fetchThesisDetails(t, log)),
+    );
     const validDetails = detailsList.filter(
       (d): d is TezaraThesisDetails => d !== null,
     );

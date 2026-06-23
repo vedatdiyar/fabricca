@@ -54,7 +54,7 @@ export async function synthesizeRoadmap(
     let roadmapResult;
     const roadmapPrompt = buildRoadmapPrompt(params);
     try {
-      log.prompt("gemini-3.1-flash-lite (HIGH thinking)", roadmapPrompt);
+      log.prompt("gemini-3.1-flash-lite (LOW thinking)", roadmapPrompt);
 
       roadmapResult = await generateStructuredContent<{
         strategicRecommendations: string;
@@ -66,15 +66,17 @@ export async function synthesizeRoadmap(
         log,
         {
           thinkingConfig: {
-            thinkingLevel: ThinkingLevel.HIGH,
+            thinkingLevel: ThinkingLevel.LOW,
           },
+          temperature: 1.0,
+          seed: 42,
         },
       );
     } catch {
       log.warn("originality_roadmap_thinking_fallback", {
         service: "originality",
         data: {
-          reason: "HIGH thinking failed, falling back to MINIMAL",
+          reason: "LOW thinking failed, falling back to MINIMAL",
           context: params.studyTitle,
         },
       });
@@ -89,6 +91,8 @@ export async function synthesizeRoadmap(
         log,
         {
           thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
+          temperature: 1.0,
+          seed: 42,
         },
       );
     }

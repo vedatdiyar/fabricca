@@ -1,3 +1,4 @@
+import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
 import {
   buildLiteratureAcademicReviewPrompt,
@@ -24,6 +25,7 @@ export interface LiteratureReviewResult {
 // ============================================================================
 
 interface IrrelevanceFilterResponse {
+  evaluationSummary?: string;
   excludedIds: string[];
 }
 
@@ -97,8 +99,10 @@ export async function runAcademicReviewStage(
     literatureIrrelevanceFilterSchema,
     logger,
     {
-      thinkingConfig: null,
+      thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
       payloadStage: "academic-review",
+      temperature: 1.0,
+      seed: 42,
     },
   );
 

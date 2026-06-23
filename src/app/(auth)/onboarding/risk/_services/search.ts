@@ -13,49 +13,6 @@ import {
   buildTavilyEvalPrompt,
 } from "@/lib/prompts";
 
-const MAX_TEZARA_CONCURRENCY = 1;
-
-const TEZARA_MIN_SLEEP_MS = 360;
-const TEZARA_MAX_SLEEP_MS = 2000;
-
-/**
- * Runs an array of async operations with a concurrency cap.
- *
- * @param items - Items to process.
- * @param fn - Async function to apply on each item.
- * @param concurrency - Maximum number of concurrent operations.
- * @returns Array of results in original order.
- */
-async function runWithConcurrencyLimit<T, R>(
-  items: T[],
-  fn: (item: T, index: number) => Promise<R>,
-  concurrency: number,
-): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let nextIndex = 0;
-
-  async function worker(): Promise<void> {
-    while (nextIndex < items.length) {
-      const index = nextIndex++;
-      const jitterDelay =
-        TEZARA_MIN_SLEEP_MS +
-        Math.floor(
-          Math.random() * (TEZARA_MAX_SLEEP_MS - TEZARA_MIN_SLEEP_MS + 1),
-        );
-      await new Promise((resolve) => setTimeout(resolve, jitterDelay));
-      results[index] = await fn(items[index], index);
-    }
-  }
-
-  const workers = Array.from(
-    { length: Math.min(concurrency, items.length) },
-    () => worker(),
-  );
-  await Promise.all(workers);
-
-  return results;
-}
-
 /**
  * Runs Tavily and Tezara queries in parallel.
  *
@@ -100,9 +57,8 @@ export async function executeParallelSearch(
       }
     });
 
-    const tezaraSearchResults = await runWithConcurrencyLimit(
-      tezaraQueries,
-      async (query) => {
+    const tezaraSearchResults = await Promise.all(
+      tezaraQueries.map(async (query) => {
         try {
           return await searchTezara(query, log, true);
         } catch (err) {
@@ -113,8 +69,7 @@ export async function executeParallelSearch(
           });
           return [];
         }
-      },
-      MAX_TEZARA_CONCURRENCY,
+      }),
     );
 
     const tavilySearchResults = await Promise.all(tavilyPromises);
@@ -199,7 +154,9 @@ export async function evaluateTavilyResults(
         tavilyEvaluationSchema,
         log,
         {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
+          thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
+          temperature: 1.0,
+          seed: 42,
         },
       );
 

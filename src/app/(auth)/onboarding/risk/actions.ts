@@ -274,11 +274,10 @@ export async function finalizeJuryAnalysisAction(params: {
 
     if (validDetails.length === 0) {
       tezaraResults = {
-        originalityBadge: "OZGUN_CALISMA",
+        originalityBadge: "OZGUN",
         overlapTable: [],
         strategicRecommendations:
           "Literatür taramasında doğrudan çakışan veya risk teşkil eden herhangi bir akademik çalışma tespit edilmemiştir.",
-        riskPercentage: 0,
       };
     } else {
       const { overlapTable } = await analyzeOriginalityRisk(
@@ -323,7 +322,6 @@ export async function finalizeJuryAnalysisAction(params: {
         originalityBadge: riskCalcResult.originalityBadge,
         overlapTable: riskCalcResult.overlapTable,
         strategicRecommendations,
-        riskPercentage: riskCalcResult.riskPercentage,
       };
     }
 

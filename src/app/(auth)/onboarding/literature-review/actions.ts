@@ -552,7 +552,7 @@ export async function processAllBoxesAction(
     });
 
     // ------------------------------------------------------------------
-    // Phase 3: Academic review (Gemini) — per box sequential
+    // Phase 3: Academic review (Gemini) — per box parallelized
     // ------------------------------------------------------------------
     for (const [, candidates] of dedupedResults) {
       for (const p of candidates) {
@@ -561,27 +561,24 @@ export async function processAllBoxesAction(
         }
       }
     }
-    const poolEntries: LiteraturePoolEntry[] = [];
 
-    for (const box of boxes) {
+    const poolPromises = boxes.map(async (box) => {
       if (archivalBoxes.has(box.title)) {
-        poolEntries.push({
+        return {
           subBoxTitle: box.title,
           starterPack: foundationalLookups.get(box.title)?.resolved ?? [],
           reservedPool: [],
-        });
-        continue;
+        };
       }
 
       const candidates = dedupedResults.get(box.title);
       if (!candidates || candidates.length === 0) {
         // Only foundational articles if any
-        poolEntries.push({
+        return {
           subBoxTitle: box.title,
           starterPack: foundationalLookups.get(box.title)?.resolved ?? [],
           reservedPool: [],
-        });
-        continue;
+        };
       }
 
       const reviewResult = await runAcademicReviewStage(
@@ -595,12 +592,15 @@ export async function processAllBoxesAction(
         foundationalLookups.get(box.title)?.resolved ?? [],
         reviewResult.starterPack,
       );
-      poolEntries.push({
+
+      return {
         subBoxTitle: box.title,
         starterPack,
         reservedPool,
-      });
-    }
+      };
+    });
+
+    const poolEntries: LiteraturePoolEntry[] = await Promise.all(poolPromises);
 
     logger.info("literature_batch_process_done", {
       service: "literature",

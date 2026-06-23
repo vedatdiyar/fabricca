@@ -87,11 +87,7 @@ export const originalityReports = pgTable("originality_reports", {
     .notNull(),
   tezaraResults: jsonb()
     .$type<{
-      originalityBadge:
-        | "KRITIK_CAKISMA"
-        | "SINIRDAS_CALISMA"
-        | "BESLEYICI_CALISMA"
-        | "OZGUN_CALISMA";
+      originalityBadge: "IKIZ" | "SINIRDAS" | "OZGUN";
       overlapTable: {
         id: number;
         title: string;
@@ -110,7 +106,6 @@ export const originalityReports = pgTable("originality_reports", {
         yokPdfUrl?: string;
       }[];
       strategicRecommendations: string;
-      riskPercentage?: number;
     }>()
     .notNull(),
   createdAt: timestamp().defaultNow().notNull(),

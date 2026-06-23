@@ -1,4 +1,6 @@
 import { z } from "zod";
+import type { ThesisBadge as ThesisBadgeOrig } from "@/lib/utils";
+export type ThesisBadge = ThesisBadgeOrig;
 
 export type OnboardingActionResult =
   | { success: true; isProcessing?: boolean; error?: never }
@@ -19,7 +21,7 @@ export type EnhancedThesisActionResult =
   | { success: true; data: EnhancedThesisData; error?: never }
   | { success?: never; error: string };
 
-export type OverlapLevel = "KRITIK" | "YUKSEK" | "ORTA" | "DUSUK" | "YOK";
+export type OverlapLevel = "KRITIK" | "ORTA" | "OZGUN";
 
 export type AxesOption = "BIREBIR" | "KAPSAYAN" | "TEGET" | "ALAKASIZ";
 
@@ -93,22 +95,14 @@ export interface OverlapItem {
 
 export interface OriginalityReportData {
   originalityScore?: number;
-  originalityBadge?:
-    | "KRITIK_CAKISMA"
-    | "SINIRDAS_CALISMA"
-    | "BESLEYICI_CALISMA"
-    | "OZGUN_CALISMA";
+  originalityBadge?: ThesisBadge;
   overlapAnalysis?: OverlapItem[];
   tavilyResults: {
     items: TavilyEvaluationFact[];
     briefingNote: string;
   };
   tezaraResults: {
-    originalityBadge:
-      | "KRITIK_CAKISMA"
-      | "SINIRDAS_CALISMA"
-      | "BESLEYICI_CALISMA"
-      | "OZGUN_CALISMA";
+    originalityBadge: ThesisBadge;
     overlapTable: (OverlapItem & {
       title: string;
       author: string;
@@ -118,7 +112,6 @@ export interface OriginalityReportData {
       department: string;
     })[];
     strategicRecommendations: string;
-    riskPercentage?: number;
   };
 }
 

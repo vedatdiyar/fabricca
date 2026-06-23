@@ -10,7 +10,13 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { compareThesesByRisk } from "../_services/analysis";
-import { OVERLAP_LEVEL_LABELS, getOverlapLevelColor } from "../_lib/constants";
+import {
+  OVERLAP_LEVEL_LABELS,
+  getOverlapLevelColor,
+  THESIS_BADGE_LABELS,
+  THESIS_BADGE_COLORS,
+} from "../_lib/constants";
+import { calculateBadge } from "@/lib/utils";
 import type { OriginalityReportData, OverlapLevel } from "@/lib/types";
 
 /** A single overlap-table row after sorting and comparison-note backfill. */
@@ -109,13 +115,16 @@ export function TezaraOverlapTable({
                 <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[100px]">
                   Dönem
                 </th>
+                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[90px]">
+                  Durum
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {sortedTheses.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="p-8 text-center text-muted-foreground leading-relaxed text-sm"
                   >
                     Doğrudan ilişki kuran veya karşılaştırılabilir herhangi bir
@@ -161,7 +170,14 @@ export function TezaraOverlapTable({
                         <AxisCell level={item.axes.methodology} />
                       </td>
                       <td className="p-3 text-center">
-                        <AxisCell level={item.axes.context ?? "YOK"} />
+                        <AxisCell level={item.axes.context ?? "OZGUN"} />
+                      </td>
+                      <td className="p-3 text-center">
+                        <span
+                          className={`inline-flex items-center justify-center w-[84px] py-0.5 rounded-md text-[10px] font-bold tracking-wide border ${THESIS_BADGE_COLORS[calculateBadge(item.axes)]}`}
+                        >
+                          {THESIS_BADGE_LABELS[calculateBadge(item.axes)]}
+                        </span>
                       </td>
                     </tr>
                     {expandedThesisId === item.id && item.comparisonNote && (

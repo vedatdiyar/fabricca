@@ -46,7 +46,7 @@ export const thesisBoxGenerationSchema: JsonSchema = {
             items: { type: "string" },
             maxItems: 4,
             description:
-              "OpenAlex ve küresel akademik veritabanlarında semantik aramayı tetikleyecek, her bir ana teorik, metodolojik veya ampirik eksen/kavram için ayrı ayrı yazılmış zengin İngilizce akademik arama sorgu paragrafları. Eğer kutu birden fazla bağımsız kuramsal veya ampirik parametre/eksen içeriyorsa (örneğin hem Gramsci'nin hegemonya yaklaşımı hem de David Snow'un çerçeveleme kuramı varsa), dizide her eksen için ayrı birer eleman üretilmelidir. Tek eksen varsa dizide tek bir eleman bulunmalıdır.",
+              "OpenAlex ve küresel akademik veritabanlarında semantik aramayı tetikleyecek, her bir ana teorik, metodolojik veya ampirik eksen/kavram için ayrı ayrı yazılmış zengin İngilizce akademik arama sorgu paragrafları. Eğer kutu birden fazla bağımsız kuramsal veya ampirik onay/eksen içeriyorsa, dizide her eksen için ayrı birer eleman üretilmelidir. Tek eksen varsa dizide tek bir eleman bulunmalıdır.",
           },
         },
         required: [
@@ -74,22 +74,22 @@ Sen, girdi olarak sunulan tez matrisini (6 boyutlu yapı) analiz eden ve onu kü
 - Şu anki yıl 2026'dır.
 
 # MUTLAK İZOLASYON İLKESİ
-Her bir kutu (CONCEPTUAL, DATA_PROTOCOL, PROBLEMATIZATION), kendi akademik tipolojisi içinde tamamen izole ve bağımsız bir hücre olarak üretilmelidir. Kutuların açıklamaları, kavramları ve semantik blokları asla birbiriyle kesiştirilmemeli, içine diğer kutuların alanına giren sızıntılar (Örn: Yöntem kutusunun içine ampirik konunun/aktörlerin detaylarının sızması; teorik kutunun içine tarihsel/ampirik durumların karışması) kesinlikle eklenmemelidir. Her kutu kendi mikro-evreninde saf kalmalıdır.
+Each box (CONCEPTUAL, DATA_PROTOCOL, PROBLEMATIZATION) must be produced as a completely isolated and independent cell within its own academic typology. Box descriptions, concepts, and semantic blocks must never overlap, and leakages into other boxes (e.g., methodology leaking into empirical focus, or theory leaking into contextual details) are strictly forbidden.
 
 # ESNEK ONTOLOJİK RAF MİMARİSİ VE DOĞAL EKSEN KURALI
 Girdiyi analiz et. Toplam kutu sayısı tezin ampirik yapısının karmaşıklığına bağlı olarak dinamik olarak belirlenecek ve asla 5 kutuyu geçmeyecektir. Katı bir kutu sayısı dayatma. 
 
-*DOĞAL EKSEN KURALI:* PROBLEMATIZATION kutularının sayısı ve bölünme mantığı tamamen kullanıcı girdisine (THESIS_MATRIX) bağlıdır. Girdideki en baskın yapısal unsuru (belirgin tarihsel dönemler ise "Kronolojik", farklı aktörler/değişkenler ise "Aktör/Tema Bazlı", tek bir odak varsa "Tekli Derinlemesine Analiz") tespit etmeli ve tüm kutuları yalnızca bu tek bir mantık ekseninde üretmelisin. Aynı istek içinde hem kronolojik hem tematik karma bölünme yapılamaz, yapısal kararlılık korunmalıdır.
+*DOĞAL EKSEN KURALI:* PROBLEMATIZATION kutularının sayısı ve bölünme mantığı tamamen kullanıcı girdisine (THESIS_MATRIX) bağlıdır. Girdideki en baskın yapısal unsuru (kronolojik, tematik veya tek odak) tespit etmeli ve tüm kutuları yalnızca bu tek bir mantık ekseninde üretmelisin. Aynı istek içinde hem kronolojik hem tematik karma bölünme yapılamaz, yapısal kararlılık korunmalıdır.
 
 Şu tipolojik şablonu izle:
 
 KUTU TİPİ 1 — CONCEPTUAL (Teorik Çatı):
 - Çalışmanın beslendiği tüm ana kuramsal ekolleri, felsefi tartışmaları ve paradigmaları tek bir teorik şemsiye altında birleştir. Birbirinin içinden türeyen teorileri asla ayrı kutulara bölme.
-- SEMANTİK SORGULAR VE EKSEN AYRIMI: Bu kutunun "semanticSearchQueries" dizisi, OpenAlex vektör uzayında kurucu yazarları ilk sayfaya kilitlemelidir. Eğer kutu birden fazla bağımsız kuramsal veya ampirik parametre/eksen içeriyorsa (örneğin hem Gramsci'nin hegemonya yaklaşımı hem de David Snow'un çerçeveleme kuramı varsa), dizide her bir eksen için ayrı birer eleman (sorgu paragrafı) üretmelisin. Her bir sorguda, cümleye doğrudan [Kurucu Yazarın Tam Adı] ile başlayarak ve hemen ardından patentli kavramını yerleştirerek (Örn: "David Snow's frame alignment theory" veya "Antonio Gramsci's war of position") yerel coğrafi bağlamlardan (ülke adı, bölge, şehir), jenerik geçiş cümlelerinden ve laf kalabalığından %100 arındırılmış, çıplak, yoğun bir kuramsal İngilizce kullan.
+- SEMANTİK SORGULAR VE EKSEN AYRIMI: semanticSearchQueries dizisi, OpenAlex vektör uzayında kurucu yazarları ilk sayfaya kilitlemelidir. Eğer kutu birden fazla bağımsız kuramsal veya ampirik eksen içeriyorsa, dizide her bir eksen için ayrı birer eleman (sorgu paragrafı) üretmelisin. Her bir sorguda, cümleye doğrudan [Kurucu Yazarın Tam Adı] ile başlayarak ve hemen ardından patentli kavramını yerleştirerek (Örn: "David Snow's frame alignment theory" veya "Antonio Gramsci's war of position") yerel coğrafi bağlamlardan (ülke adı, bölge, şehir), jenerik geçiş cümlelerinden ve laf kalabalığından %100 arındırılmış, çıplak, yoğun bir kuramsal İngilizce kullan.
 
 KUTU TİPİ 2 — PROBLEMATIZATION (Dinamik Ampirik Odaklar):
 - Çalışmanın araştırma sorularını ve inceleme nesnesini ampirik/tematik odaklarına göre bağımsız hücrelere ayır.
-- **AMPİRİK CESARET VE ÖZNE SADAKATİ:** Tezin asıl öznelerini, spesifik aktörlerini, siyasi hareketleri ve tarihsel özneleri sansürleme, yumuşatma, jenerikleştirme veya korkakça törpüleme. Kutu başlıkları (title) ve açıklamaları (description), tezin ampirik, politik ve tarihsel çıplak gerçeğini doğrudan, cesurca ve net bir şekilde yansıtmalıdır.
+- AMPİRİK CESARET VE ÖZNE SADAKATİ: Tezin asıl öznelerini, spesifik aktörlerini, siyasi hareketleri ve tarihsel özneleri sansürleme, yumuşatma veya jenerikleştirme. Kutu başlıkları (title) ve açıklamaları (description), tezin ampirik, politik ve tarihsel çıplak gerçeğini doğrudan ve cesurca yansıtmalıdır.
 - Tezin tarihsel, coğrafi veya konjonktürel bağlamı eğer ikincil akademik literatür (makale/kitap) taranarak incelenecekse, orası ANALYSIS_FINDINGS değil, bir PROBLEMATIZATION kutusudur.
 
 KUTU TİPİ 3 — ANALYSIS_FINDINGS (Saha/Arşiv Ham Veri Havuzu):
@@ -98,21 +98,22 @@ KUTU TİPİ 3 — ANALYSIS_FINDINGS (Saha/Arşiv Ham Veri Havuzu):
 KUTU TİPİ 4 — DATA_PROTOCOL (Metodoloji ve Yöntem):
 - Çalışmada kullanılan veri toplama ve analiz yöntemini (Nitel, Nicel, Karma, Arşiv vb.) uluslararası literatürde karşılığı olan duru ve net tarama terimleriyle tanımla.
 
-# SEMANTİK SORGULARDA GİRDİ SADAKATİ KONTROLÜ
-"semanticSearchQueries" alanları oluşturulurken, yalnızca ve kesinlikle kullanıcı tarafından sağlanan girdi matrisindeki (THESIS_MATRIX) kavramlar, teoriler, yöntemler, aktörler ve iddialar temel alınmalıdır. Model, girdi metninde açıkça zikredilmeyen hiçbir tarihsel veya güncel olayı, dışsal kuramsal açılımı, varsayımı veya yan kavramı bu sorgulara ekleyemez. Metin zenginleştirme, sadece girdideki unsurların birbirleriyle olan ilişkisini yüksek düzeyli akademik İngilizce ile formüle etmekle sınırlıdır.
+# SEMANTİK SORGULARDE GİRDİ SADAKATİ KONTROLÜ
+semanticSearchQueries alanları oluşturulurken, yalnızca ve kesinlikle kullanıcı tarafından sağlanan girdi matrisindeki kavramlar, teoriler, yöntemler, aktörler ve iddialar temel alınmalıdır. Model, girdi metninde açıkça zikredilmeyen hiçbir tarihsel veya güncel olayı, dışsal kuramsal açılımı veya varsayımı bu sorgulara ekleyemez.
 
 # ANAHTAR KAVRAMLAR İÇİN SIKI KAPSAMLANDIRMA (STRICT SCOPING)
-"concepts" dizisi serbest bir çağrışım veya tahmin alanı değildir. Bu alana yazılacak kavramlar için kurallar:
-1. Yazılan kavramlar kesinlikle ve yalnızca o kutunun kendi "title" veya "description" alanında geçen kelimelerden türetilmelidir.
+concepts dizisi serbest bir çağrışım alanı değildir. Kurallar:
+1. Yazılan kavramlar kesinlikle ve yalnızca o kutunun kendi title veya description alanında geçen kelimelerden türetilmelidir.
 2. CONCEPTUAL kutusundaki kavramlar sadece teorik/kuramsal soyut terimleri içermelidir.
 3. PROBLEMATIZATION kutusundaki kavramlar sadece tezin ampirik öznelerini, mekânlarını, ilişkisel eksenlerini veya tarihsel dönemlerini içermelidir. Dışarıdan jenerik etiket veya eşanlamlı türetilemez.
 
 # OPERASYONEL İLKELER VE DİL KURALLARI
 1. DİL DENGESİ (SIFIR TOLERANS — KRİTİK KURAL):
-- "title" alanı KESİNLİKLE, ASLA, HİÇBİR KOŞULDA İNGİLİZCE OLAMAZ. Kuramsal kavram evrensel düzeyde İnovatif literatüre ait olsa bile, başlık saf Türkçe akademik dille üretilmelidir. (Örn: 'Gramscici Hegemonya ve Toplumsal Hareket Çerçevelemesi'). Bu kuralın tek bir istisnası dahi yoktur.
-- "description" ve "concepts" alanları da KESİNLİKLE TÜRKÇE olmalıdır.
-- "semanticSearchQueries" içindeki tüm sorgular KESİNLİKLE akademik İNGİLİZCE ile üretilmelidir.
-2. CONCEPTUAL SEMANTİK SORGULAR: CONCEPTUAL kutusunun "semanticSearchQueries" dizisindeki her bir eleman, doğrudan [Kurucu Yazar Tam Adı] ile başlayarak ve hemen ardından o yazarın patentine sahip olduğu [Teknik Marka Kavram]'ı yerleştirerek üretilmelidir (Örn: "Michel Foucault's governmentality framework" veya "David Snow's frame alignment theory"). Yerel coğrafi bağlam, ülke adı, jenerik geçiş cümleleri ve laf kalabalığı %100 yasaktır. Diğer kutu tiplerinin (PROBLEMATIZATION) semantik sorguları, arama motorlarının boğulmaması için tezin gerçek öznelerini, aktörlerini ve yıllarını içeren konsantre narrative abstract formatında yazılmalıdır.
+   - title alanı KESİNLİKLE, ASLA, HİÇBİR KOŞULDA İNGİLİZCE OLAMAZ. Kuramsal kavram evrensel düzeyde literatüre ait olsa bile, başlık saf Türkçe akademik dille üretilmelidir. Örneğin "Antonio Gramsci's War of Position" yazmak yerine "Antonio Gramsci'nin Mevzi Savaşı Kavramı" yazmalısınız. Bu kuralın tek bir istisnası dahi yoktur.
+   - description ve concepts alanları da KESİNLİKLE TÜRKÇE olmalıdır.
+   - semanticSearchQueries içindeki tüm sorgular KESİNLİKLE akademik İNGİLİZCE ile üretilmelidir.
+2. CONCEPTUAL SEMANTİK SORGULAR: CONCEPTUAL kutusunun semanticSearchQueries dizisindeki her bir eleman, doğrudan [Kurucu Yazar Tam Adı] ile başlayarak ve hemen ardından o yazarın patentine sahip olduğu [Teknik Marka Kavram]'ı yerleştirerek üretilmelidir (Örn: "Michel Foucault's governmentality framework"). Yerel coğrafi bağlam, ülke adı, jenerik geçiş cümleleri ve laf kalabalığı %100 yasaktır. Diğer kutuların semantik sorguları tezin gerçek öznelerini, aktörlerini ve yıllarını içeren narrative abstract formatında yazılmalıdır.
+3. FORMAT: Yanıtın, sağlanan JSON şemasına tamamen uygun, doğrulanmış ve parse edilebilir bir ham JSON nesnesi olmalıdır. Follow the provided JSON schema exactly. Do not add extra fields.
 
 # ESNEK VE DİNAMİK ÖRNEK MİMARİ
 <ornek_girdi_matrisi>
@@ -125,6 +126,7 @@ KUTU TİPİ 4 — DATA_PROTOCOL (Metodoloji ve Yöntem):
   "researchScope": "Zaman: Güncel neoliberal finansallaşma dönemi. Mekân: Türkiye. Aktör: Emekçi sınıfından bireysel işçi-borçlular."
 }
 </ornek_girdi_matrisi>
+
 <ornek_beklenen_cikti>
 {
   "boxes": [
@@ -191,14 +193,11 @@ ${matrixJson}
 END_THESIS_MATRIX
 
 # GÖREV VE TALİMAT
-Sistem talimatında tanımlanan esnek ontolojik kutu mimarisine, dil dengesine, **DOĞAL EKSEN KURALI**, **SEMANTİK SORGULARDA GİRDİ SADAKATİ KONTROLÜ**, **ANAHTAR KAVRAMLAR İÇ TR SIKI KAPSAMLANDIRMA** ve **AMPİRİK CESARET VE ÖZNE SADAKATİ** ilkelerine tam olarak bağlı kalarak yukarıdaki 6 boyutlu matris yapısını analiz et.
+Sistem talimatında tanımlanan esnek ontolojik kutu mimarisine, dil dengesine, DOĞAL EKSEN KURALI, SEMANTİK SORGULARDA GİRDİ SADAKATİ KONTROLÜ, ANAHTAR KAVRAMLAR İÇ TR SIKI KAPSAMLANDIRMA ve AMPİRİK CESARET VE ÖZNE SADAKATİ ilkelerine tam olarak bağlı kalarak yukarıdaki 6 boyutlu matris yapısını analiz et.
 
 1. **Doğal Eksen Uyumu:** Girdideki en baskın karakteristiğe (kronolojik, tematik veya tekli odak) karar ver ve PROBLEMATIZATION kutularını sadece bu eksende böl veya tek kutuda tut. Yapısal çelişki üretme.
 2. **Girdi Sadakati:** Arama sorgularında (semanticSearchQueries) yaratıcılığını sadece akademik İngilizce sentezi için kullan. Matriste açıkça geçmeyen harici hiçbir kavramı, alt kırılımı veya tarihsel iddiayı arama sorgularına enjekte etme.
-3. **Sıkı Kavram Kapsamı:** "concepts" dizilerini sadece ilgili kutunun kendi başlığı veya açıklama metninden doğrudan süzerek doldur. Dışarıdan bağımsız etiket uydurma.
+3. **Sıkı Kavram Kapsamı:** concepts dizilerini sadece ilgili kutunun kendi başlığı veya açıklama metninden doğrudan süzerek doldur. Dışarıdan bağımsız etiket uydurma.
 
-Çıktı olarak sadece ve sadece tanımlanan şemaya %100 uygun, markdown içermeyen saf JSON nesnesini döndür.
-
-# TÜRKÇE BAŞLIK ZORUNLULUĞU (KESİN KURAL — ASLA İHLAL EDİLEMEZ)
-Her bir kutunun "title" alanı, içerdiği kuramsal kavram veya yöntem hangi dilde literatüre ait olursa olsun, TAMAMEN TÜRKÇE AKADEMİK DİLLE yazılmak ZORUNDADIR. Örneğin "Antonio Gramsci's War of Position" yazmak yerine "Antonio Gramsci'nin Mevzi Savaşı Kavramı" yazmalısın. "title" alanında en ufak bir İngilizce ifade, kelime veya terim dahi bulunması, üretilen çıktının tamamen reddedilmesine yol açar. Bu kuralın hiçbir istisnası yoktur.`;
+Dahili olarak çok derinlemesine düşün (Think extremely hard) ve sadece nihai şemaya uygun ham JSON nesnesini döndür.`;
 }

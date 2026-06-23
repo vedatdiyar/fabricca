@@ -27,7 +27,7 @@ Projede kullanılacak teknolojiler kesin olarak belirlenmiştir. Yapay zeka, gel
 - **Veri Tabanı & ORM:** Neon Serverless PostgreSQL, Drizzle ORM
 - **Vektör Veri Tabanı (RAG):** Neon DB içinde entegre `pgvector` eklentisi
 - **LLM Modeli:** Google Gemini 3.1 Flash Lite (Tüm metin üretimi ve analiz işlemleri için)
-  - **Temperature Stratejisi:** Google'ın Gemini 3.0/3.1 ve üzeri modeller için önerdiği doğrultuda, modelin akıl yürütme (reasoning) ve JSON üretme yeteneklerinin en iyi performansı göstermesi ve döngüsel/mantıksal hataların önlenmesi için tüm çağrılarda (belirlenen istisnalar hariç) varsayılan temperature değeri olan `1.0` kullanılmalıdır.
+- **Temperature Stratejisi:** Google'ın Gemini 3.0/3.1 ve üzeri modeller için varsayılan ve önerilen temperature değeri olan `1.0` kullanılmalıdır. Belirlenimcilik (determinism) gerektiren veri çıkarma, eleme ve karşılaştırma görevlerinde de temperature değeri `1.0` olarak korunmalı, ancak çıktıların tutarlılığı için mutlaka sabit bir `seed` değeri (örn: `2` veya `42`) ile beslenmelidir.
 - **Embedding Model:** Cloudflare Workers AI (`@cf/qwen/qwen3-embedding-0.6b`) — REST API üzerinden vektör embedding üretimi
 - **AI Orkestrasyon:** Google Gen AI SDK (@google/genai - Doğrudan entegrasyon)
 - **Kimlik Doğrulama (Auth):** Drizzle tabanlı yerel `users` tablosu, `bcrypt-ts` ile şifreleme ve Next.js Cookies/Middleware tabanlı hafif session yönetimi
@@ -197,7 +197,7 @@ Yapay zeka, geliştirme süreci boyunca aşağıdaki disiplin kurallarına ve ko
 ### 6.3. Yapay Zeka Entegrasyon Kuralları (AI Integration Patterns)
 
 - **SDK Disiplini:** Projede eski nesil paketler (`@google/generative-ai`) kesinlikle kullanılmayacak; her zaman yeni nesil `@google/genai` kütüphanesi kullanılacaktır. İstemci başlatılırken `import { GoogleGenAI } from "@google/genai";` ve `const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });` standart kalıbı uygulanacaktır.
-- **Temperature Stratejisi:** Google'ın Gemini 3.0/3.1 ve üzeri modeller için önerdiği doğrultuda, modelin akıl yürütme (reasoning) ve JSON üretme yeteneklerinin en iyi performansı göstermesi ve döngüsel/mantıksal hataların önlenmesi için tüm çağrılarda (belirlenen istisnalar hariç) varsayılan temperature değeri olan `1.0` kullanılmalıdır.
+- **Temperature Stratejisi:** Google'ın Gemini 3.0/3.1 ve üzeri modelleri için varsayılan ve önerilen temperature değeri olan `1.0` kullanılmalıdır. Belirlenimcilik (determinism) gerektiren veri çıkarma, eleme ve karşılaştırma görevlerinde de temperature değeri `1.0` olarak korunmalı, ancak çıktıların tutarlılığı için mutlaka sabit bir `seed` değeri (örn: `2` veya `42`) ile beslenmelidir.
 
 - **Ajan Akıl Yürütme Gücü (Thinking Config):** Gemini 3 ve üzeri modellerin mimari optimizasyonu ve akıl yürütme yetenekleri için her fonksiyonun gereksinimine göre özel `thinkingConfig` ayarları uygulanır. Sistem genelinde bu ayarlar aşağıdaki gibidir:
 

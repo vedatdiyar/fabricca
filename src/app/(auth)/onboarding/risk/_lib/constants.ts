@@ -1,40 +1,35 @@
-import type { OverlapLevel } from "@/lib/types";
+import type { OverlapLevel, ThesisBadge } from "@/lib/types";
 
 /** Turkish display labels for originality badge values. */
-export const BADGE_LABELS: Record<string, string> = {
-  KRITIK_CAKISMA: "Kritik Çakışma",
-  SINIRDAS_CALISMA: "Sınırdaş Çalışma",
-  BESLEYICI_CALISMA: "Destekleyici Çalışma",
-  OZGUN_CALISMA: "Özgün Çalışma",
+export const THESIS_BADGE_LABELS: Record<ThesisBadge, string> = {
+  IKIZ: "İkiz Tez",
+  SINIRDAS: "Sınırdaş",
+  OZGUN: "Özgün",
 };
 
 /**
  * Badge color dictionary keyed by badge value.
- * - KRITIK_CAKISMA → destructive/red (güçlü çakışma)
- * - SINIRDAS_CALISMA → info/blue (sınırda/kısmi)
- * - BESLEYICI_CALISMA → warning/yellow (destekleyici)
- * - OZGUN_CALISMA → success/green (özgün)
+ * - IKIZ → destructive/red (güçlü çakışma)
+ * - SINIRDAS → warning/yellow (sınırda/kısmi)
+ * - OZGUN → success/green (özgün)
  * bg/border use soft transparency (max /20); text is always 100% opaque
  * — per AGENTS.md styling rules.
  */
-export const BADGE_COLORS: Record<string, string> = {
-  KRITIK_CAKISMA: "bg-destructive/20 border-destructive/20 text-destructive",
-  SINIRDAS_CALISMA: "bg-info/20 border-info/20 text-info",
-  BESLEYICI_CALISMA: "bg-warning/20 border-warning/20 text-warning",
-  OZGUN_CALISMA: "bg-success/20 border-success/20 text-success",
+export const THESIS_BADGE_COLORS: Record<ThesisBadge, string> = {
+  IKIZ: "bg-destructive/20 border-destructive/20 text-destructive",
+  SINIRDAS: "bg-warning/20 border-warning/20 text-warning",
+  OZGUN: "bg-success/20 border-success/20 text-success",
 };
 
-/** Returns the badge color class for a given risk level key. */
-export const getBadgeColor = (key: string): string =>
-  BADGE_COLORS[key] ?? BADGE_COLORS.OZGUN_CALISMA;
+/** Returns the badge color class for a given thesis badge key. */
+export const getBadgeColor = (key: ThesisBadge): string =>
+  THESIS_BADGE_COLORS[key] ?? THESIS_BADGE_COLORS.OZGUN;
 
 /** Turkish display labels for per-axis overlap levels. */
 export const OVERLAP_LEVEL_LABELS: Record<OverlapLevel, string> = {
   KRITIK: "Kritik",
-  YUKSEK: "Yüksek",
-  ORTA: "Orta",
-  DUSUK: "Düşük",
-  YOK: "Yok",
+  ORTA: "Kısmi",
+  OZGUN: "Özgün",
 };
 
 /**
@@ -43,10 +38,8 @@ export const OVERLAP_LEVEL_LABELS: Record<OverlapLevel, string> = {
  */
 export const OVERLAP_LEVEL_COLORS: Record<OverlapLevel, string> = {
   KRITIK: "bg-destructive/20 border-destructive/20 text-destructive",
-  YUKSEK: "bg-orange/20 border-orange/20 text-orange",
   ORTA: "bg-warning/20 border-warning/20 text-warning",
-  DUSUK: "bg-success/20 border-success/20 text-success",
-  YOK: "bg-muted/20 border-muted/20 text-muted-foreground",
+  OZGUN: "bg-success/20 border-success/20 text-success",
 };
 
 /**
@@ -54,7 +47,7 @@ export const OVERLAP_LEVEL_COLORS: Record<OverlapLevel, string> = {
  * Used for per-axis gauge bars in the overlap table.
  */
 export function getOverlapLevelColor(level: OverlapLevel): string {
-  return OVERLAP_LEVEL_COLORS[level] ?? OVERLAP_LEVEL_COLORS.YOK;
+  return OVERLAP_LEVEL_COLORS[level] ?? OVERLAP_LEVEL_COLORS.OZGUN;
 }
 
 /**
@@ -64,13 +57,9 @@ export function getOverlapLevelBarFill(level: OverlapLevel): string {
   switch (level) {
     case "KRITIK":
       return "bg-destructive";
-    case "YUKSEK":
-      return "bg-orange";
     case "ORTA":
       return "bg-warning";
-    case "DUSUK":
+    case "OZGUN":
       return "bg-success";
-    case "YOK":
-      return "bg-muted";
   }
 }

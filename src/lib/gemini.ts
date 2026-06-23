@@ -158,6 +158,7 @@ export async function generateStructuredContent<T>(
     payloadStage?: string;
     zodSchema?: z.ZodType<T>;
     seed?: number;
+    temperature?: number;
   },
 ): Promise<T> {
   const startTime = performance.now();
@@ -182,7 +183,7 @@ export async function generateStructuredContent<T>(
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           config: {
             systemInstruction,
-            temperature: 1.0,
+            temperature: options?.temperature ?? 1.0,
             responseMimeType: "application/json",
             responseJsonSchema: schema,
             thinkingConfig: options?.thinkingConfig ?? undefined,

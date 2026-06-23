@@ -17,11 +17,8 @@ interface FactQueryExtractionResponse {
   tavilyQueries: string[];
 }
 
-/**
- * Internal response type for the literature keyword extraction prompt.
- */
 interface LitKeywordExtractionResponse {
-  keywords: string[];
+  queries: string[];
 }
 
 /**
@@ -87,6 +84,8 @@ export async function extractQueries(
         log,
         {
           thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          temperature: 1.0,
+          seed: 42,
         },
       ),
       generateStructuredContent<LitKeywordExtractionResponse>(
@@ -97,6 +96,8 @@ export async function extractQueries(
         log,
         {
           thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          temperature: 1.0,
+          seed: 42,
         },
       ),
     ]);
@@ -111,28 +112,27 @@ export async function extractQueries(
         ? [`${params.studyTitle} research verification`]
         : rawTavilyQueries;
 
-    const rawKeywords = Array.isArray(keywordResult?.keywords)
-      ? keywordResult.keywords.map((k) => k.trim()).filter(Boolean)
+    const rawQueries = Array.isArray(keywordResult?.queries)
+      ? keywordResult.queries.map((q) => q.trim()).filter(Boolean)
       : [];
 
-    // Pad keywords to ensure exactly 5 items
-    const DEFAULT_KEYWORDS = [
-      "thesis",
-      "research",
-      "study",
-      "analysis",
-      "framework",
+    // Ensure we have at least 6 queries, max 8 (as per prompt/guidelines)
+    const DEFAULT_QUERIES = [
+      "subjectivity labor process",
+      "workplace governmentality",
+      "subject formation worker",
+      "neoliberal management class",
+      "empirical subjectivity study",
+      "qualitative thematic analysis",
     ];
-    const keywords = [...new Set([...rawKeywords, ...DEFAULT_KEYWORDS])].slice(
-      0,
-      5,
-    );
+    const tezaraQueries = [
+      ...new Set([...rawQueries, ...DEFAULT_QUERIES]),
+    ].slice(0, 8);
 
-    // Dynamic combinations generator
-    const tezaraQueries: string[] = [];
-    const combos2 = getCombinations(keywords, 2);
-    const combos3 = getCombinations(keywords, 3);
-    tezaraQueries.push(...combos2, ...combos3);
+    // Signature compatibility: map first word of each query as keywords
+    const keywords = tezaraQueries
+      .map((q) => q.split(" ")[0].trim())
+      .filter(Boolean);
 
     const durationMs = performance.now() - startTime;
     const tokens = log.lastTokens ?? { input: 0, output: 0 };
@@ -162,27 +162,4 @@ export async function extractQueries(
     });
     throw err;
   }
-}
-
-/**
- * Generates all unique combinations of a given size from an array of strings.
- * Combines words with spaces.
- *
- * @param arr - The string array pool.
- * @param size - The combination size (e.g. 2 or 3).
- * @returns Array of space-separated keyword combinations.
- */
-function getCombinations(arr: string[], size: number): string[] {
-  const result: string[] = [];
-  function helper(start: number, path: string[]) {
-    if (path.length === size) {
-      result.push(path.join(" "));
-      return;
-    }
-    for (let i = start; i < arr.length; i++) {
-      helper(i + 1, [...path, arr[i]]);
-    }
-  }
-  helper(0, []);
-  return result;
 }

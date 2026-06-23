@@ -4,7 +4,7 @@ import { ShieldAlert } from "lucide-react";
 import { TavilyFactCheckTable } from "./tavily-fact-check-table";
 import { TezaraOverlapTable } from "./tezara-overlap-table";
 import { StrategicRoadmapSection } from "./strategic-roadmap-section";
-import { BADGE_LABELS, BADGE_COLORS } from "../_lib/constants";
+import { THESIS_BADGE_LABELS, THESIS_BADGE_COLORS } from "../_lib/constants";
 import type { OriginalityReportData } from "@/lib/types";
 
 interface OriginalityReportViewProps {
@@ -24,7 +24,7 @@ export function OriginalityReportView({
     <div className="space-y-10">
       {/* Global Risk Badge: overall report risk level with percentage */}
       <div
-        className={`p-6 rounded-xl border ${BADGE_COLORS[tezaraResults.originalityBadge] ?? BADGE_COLORS.OZGUN_CALISMA} space-y-3`}
+        className={`p-6 rounded-xl border ${THESIS_BADGE_COLORS[tezaraResults.originalityBadge] ?? THESIS_BADGE_COLORS.OZGUN} space-y-3`}
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -36,18 +36,10 @@ export function OriginalityReportView({
                 Genel Rapor Risk Seviyesi
               </p>
               <h2 className="text-xl font-bold tracking-tight">
-                {BADGE_LABELS[tezaraResults.originalityBadge] ??
+                {THESIS_BADGE_LABELS[tezaraResults.originalityBadge] ??
                   tezaraResults.originalityBadge}
               </h2>
             </div>
-          </div>
-          <div className="flex flex-col items-end">
-            <span className="text-3xl font-bold tabular-nums leading-none">
-              %{tezaraResults.riskPercentage ?? 0}
-            </span>
-            <span className="text-xs font-medium text-muted-foreground mt-1">
-              Risk Yüzdesi
-            </span>
           </div>
         </div>
       </div>

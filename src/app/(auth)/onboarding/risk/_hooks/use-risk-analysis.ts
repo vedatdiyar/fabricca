@@ -132,7 +132,6 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
             overlapTable: report.tezaraResults.overlapTable,
             strategicRecommendations:
               report.tezaraResults.strategicRecommendations,
-            riskPercentage: report.tezaraResults.riskPercentage,
           },
         });
       } else if (!cancelled) {

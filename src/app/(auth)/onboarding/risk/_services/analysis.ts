@@ -1,7 +1,12 @@
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
 import type { Logger } from "@/lib/logger";
-import type { OverlapLevel, TezaraThesisDetails } from "@/lib/types";
+import type {
+  OverlapLevel,
+  TezaraThesisDetails,
+  ThesisBadge,
+} from "@/lib/types";
+import { calculateBadge } from "@/lib/utils";
 import {
   geminiAnalysisSchema,
   buildAnalysisSystemInstruction,
@@ -21,13 +26,70 @@ export interface AnalyzeOriginalityRiskParams {
 /**
  * Categorical ordering from lowest to highest risk.
  */
-const LEVEL_ORDER: OverlapLevel[] = [
-  "YOK",
-  "DUSUK",
-  "ORTA",
-  "YUKSEK",
-  "KRITIK",
-];
+const LEVEL_ORDER: OverlapLevel[] = ["OZGUN", "ORTA", "KRITIK"];
+
+export function getSubjectOverlap(
+  scorecard?: {
+    same_core_question: boolean;
+    is_subsumed: boolean;
+    significant_topic_intersection: boolean;
+    background_mention_only: boolean;
+  },
+  fallback: OverlapLevel = "OZGUN",
+): OverlapLevel {
+  if (!scorecard) return fallback;
+  if (scorecard.same_core_question || scorecard.is_subsumed) return "KRITIK";
+  if (scorecard.significant_topic_intersection) return "ORTA";
+  return "OZGUN";
+}
+
+export function getMethodologyOverlap(
+  scorecard?: {
+    identical_method_and_tools: boolean;
+    is_subsumed: boolean;
+    partially_shared_approach: boolean;
+    different_empirical_design: boolean;
+  },
+  fallback: OverlapLevel = "OZGUN",
+): OverlapLevel {
+  if (!scorecard) return fallback;
+  if (scorecard.identical_method_and_tools || scorecard.is_subsumed)
+    return "KRITIK";
+  if (scorecard.partially_shared_approach) return "ORTA";
+  return "OZGUN";
+}
+
+export function getTheoryOverlap(
+  scorecard?: {
+    same_theoretical_backbone: boolean;
+    is_subsumed: boolean;
+    shared_concepts_only: boolean;
+    different_epistemology: boolean;
+  },
+  fallback: OverlapLevel = "OZGUN",
+): OverlapLevel {
+  if (!scorecard) return fallback;
+  if (scorecard.same_theoretical_backbone || scorecard.is_subsumed)
+    return "KRITIK";
+  if (scorecard.shared_concepts_only) return "ORTA";
+  return "OZGUN";
+}
+
+export function getContextOverlap(
+  scorecard?: {
+    overlapping_universe_and_sample: boolean;
+    is_subsumed: boolean;
+    partial_contextual_contact: boolean;
+    distinct_context: boolean;
+  },
+  fallback: OverlapLevel = "OZGUN",
+): OverlapLevel {
+  if (!scorecard) return fallback;
+  if (scorecard.overlapping_universe_and_sample || scorecard.is_subsumed)
+    return "KRITIK";
+  if (scorecard.partial_contextual_contact) return "ORTA";
+  return "OZGUN";
+}
 
 export interface CalculatedOverlapItem {
   id: number;
@@ -48,14 +110,9 @@ export interface CalculatedOverlapItem {
 }
 
 export interface CalculatedOriginalityRiskResult {
-  originalityBadge:
-    | "KRITIK_CAKISMA"
-    | "SINIRDAS_CALISMA"
-    | "BESLEYICI_CALISMA"
-    | "OZGUN_CALISMA";
+  originalityBadge: ThesisBadge;
   overlapTable: CalculatedOverlapItem[];
   eliminatedTheses: CalculatedOverlapItem[];
-  riskPercentage: number;
 }
 
 /**
@@ -71,9 +128,9 @@ export function getThesisMaxLevel(axes: {
     axes.subject,
     axes.theory,
     axes.methodology,
-    axes.context ?? "YOK",
+    axes.context ?? "OZGUN",
   ];
-  let max: OverlapLevel = "YOK";
+  let max: OverlapLevel = "OZGUN";
   for (const l of levels) {
     if (LEVEL_ORDER.indexOf(l) > LEVEL_ORDER.indexOf(max)) max = l;
   }
@@ -93,12 +150,12 @@ function getThesisSecondMaxLevel(axes: {
     axes.subject,
     axes.theory,
     axes.methodology,
-    axes.context ?? "YOK",
+    axes.context ?? "OZGUN",
   ];
   const sorted = levels.sort(
     (a, b) => LEVEL_ORDER.indexOf(b) - LEVEL_ORDER.indexOf(a),
   );
-  return sorted.length > 1 ? sorted[1] : "YOK";
+  return sorted.length > 1 ? sorted[1] : "OZGUN";
 }
 
 interface AxesWithOptionalContext {
@@ -146,50 +203,38 @@ export function compareThesesByRisk(
 }
 
 /**
- * Determines the project-level global risk badge and percentage based on the
- * highest single axis value across all remaining theses.
- *
- * Rule:
- * - Any KRITIK axis → KRITIK_CAKISMA (85%)
- * - No KRITIK but ≥1 YUKSEK → SINIRDAS_CALISMA (50%)
- * - All axes ≤ ORTA → BESLEYICI_CALISMA (25%)
- * - Table empty → OZGUN_CALISMA (0%)
+ * Determines the project-level global thesis badge by evaluating each
+ * remaining thesis through calculateBadge. Priority order: IKIZ > SINIRDAS > OZGUN.
+ * - Table empty → "OZGUN"
  */
 function evaluateGlobalBadge(overlapTable: CalculatedOverlapItem[]): {
-  badge: CalculatedOriginalityRiskResult["originalityBadge"];
-  percentage: number;
+  badge: ThesisBadge;
 } {
   if (overlapTable.length === 0) {
-    return { badge: "OZGUN_CALISMA", percentage: 0 };
+    return { badge: "OZGUN" };
   }
 
-  let hasKRITIK = false;
-  let hasYUKSEK = false;
+  let hasIkiz = false;
+  let hasSinirdas = false;
 
   for (const item of overlapTable) {
-    const levels = [
-      item.axes.subject,
-      item.axes.theory,
-      item.axes.methodology,
-      item.axes.context,
-    ];
-    if (levels.includes("KRITIK")) hasKRITIK = true;
-    if (levels.includes("YUKSEK")) hasYUKSEK = true;
+    const b = calculateBadge(item.axes);
+    if (b === "IKIZ") hasIkiz = true;
+    else if (b === "SINIRDAS") hasSinirdas = true;
   }
 
-  if (hasKRITIK) return { badge: "KRITIK_CAKISMA", percentage: 85 };
-  if (hasYUKSEK) return { badge: "SINIRDAS_CALISMA", percentage: 50 };
-  return { badge: "BESLEYICI_CALISMA", percentage: 25 };
+  if (hasIkiz) return { badge: "IKIZ" };
+  if (hasSinirdas) return { badge: "SINIRDAS" };
+  return { badge: "OZGUN" };
 }
 
 /**
  * Enriches the raw Gemini overlap analysis with thesis metadata and applies
  * the jury elimination filter: a thesis stays in the overlap table only if at
- * least one of its 4 axes is KRITIK or YUKSEK. All others are relegated to
+ * least one of its 4 axes is KRITIK or ORTA. All others are relegated to
  * eliminatedTheses.
  *
- * The global badge is derived from the highest single axis level across
- * remaining theses, following institutional council rules.
+ * The global badge is derived from calculateBadge with priority IKIZ > SINIRDAS > OZGUN.
  *
  * Filters out IDs hallucinated by Gemini that don't exist in validDetails.
  */
@@ -199,24 +244,28 @@ export function calculateOriginalityRisk(
     academic_reasoning: string;
     subject_scorecard?: {
       same_core_question: boolean;
+      is_subsumed: boolean;
       significant_topic_intersection: boolean;
       background_mention_only: boolean;
     };
     subject_overlap: OverlapLevel;
     methodology_scorecard?: {
       identical_method_and_tools: boolean;
+      is_subsumed: boolean;
       partially_shared_approach: boolean;
       different_empirical_design: boolean;
     };
     methodology_overlap: OverlapLevel;
     theory_scorecard?: {
       same_theoretical_backbone: boolean;
+      is_subsumed: boolean;
       shared_concepts_only: boolean;
       different_epistemology: boolean;
     };
     theory_overlap: OverlapLevel;
     context_scorecard?: {
       overlapping_universe_and_sample: boolean;
+      is_subsumed: boolean;
       partial_contextual_contact: boolean;
       distinct_context: boolean;
     };
@@ -230,10 +279,9 @@ export function calculateOriginalityRisk(
 
   if (validDetails.length === 0 || overlapTable.length === 0) {
     return {
-      originalityBadge: "OZGUN_CALISMA",
+      originalityBadge: "OZGUN",
       overlapTable: [],
       eliminatedTheses: [],
-      riskPercentage: 0,
     };
   }
 
@@ -251,10 +299,13 @@ export function calculateOriginalityRisk(
     }
 
     const axes = {
-      subject: item.subject_overlap,
-      theory: item.theory_overlap,
-      methodology: item.methodology_overlap,
-      context: item.context_overlap,
+      subject: getSubjectOverlap(item.subject_scorecard, item.subject_overlap),
+      theory: getTheoryOverlap(item.theory_scorecard, item.theory_overlap),
+      methodology: getMethodologyOverlap(
+        item.methodology_scorecard,
+        item.methodology_overlap,
+      ),
+      context: getContextOverlap(item.context_scorecard, item.context_overlap),
     };
 
     const thesisEntry: CalculatedOverlapItem = {
@@ -270,18 +321,19 @@ export function calculateOriginalityRisk(
       axes,
     };
 
-    // Jury elimination filter: only theses with at least one KRITIK or YUKSEK
-    // axis are kept in the risk table. All others are eliminated.
-    const hasKRITIKorYUKSEK = (
+    // Jury elimination filter: only theses with at least one KRITIK or ORTA
+    // axis are kept in the risk table. All others are relegated to
+    // eliminatedTheses.
+    const hasKRITIKorORTA = (
       [
         axes.subject,
         axes.theory,
         axes.methodology,
         axes.context,
       ] as OverlapLevel[]
-    ).some((level) => level === "KRITIK" || level === "YUKSEK");
+    ).some((level) => level === "KRITIK" || level === "ORTA");
 
-    if (hasKRITIKorYUKSEK) {
+    if (hasKRITIKorORTA) {
       calculatedOverlapTable.push(thesisEntry);
     } else {
       logger?.info("originality_thesis_eliminated", {
@@ -303,7 +355,6 @@ export function calculateOriginalityRisk(
     originalityBadge: globalBadge.badge,
     overlapTable: calculatedOverlapTable,
     eliminatedTheses,
-    riskPercentage: globalBadge.percentage,
   };
 }
 
@@ -320,24 +371,28 @@ export async function analyzeOriginalityRisk(
     academic_reasoning: string;
     subject_scorecard?: {
       same_core_question: boolean;
+      is_subsumed: boolean;
       significant_topic_intersection: boolean;
       background_mention_only: boolean;
     };
     subject_overlap: OverlapLevel;
     methodology_scorecard?: {
       identical_method_and_tools: boolean;
+      is_subsumed: boolean;
       partially_shared_approach: boolean;
       different_empirical_design: boolean;
     };
     methodology_overlap: OverlapLevel;
     theory_scorecard?: {
       same_theoretical_backbone: boolean;
+      is_subsumed: boolean;
       shared_concepts_only: boolean;
       different_epistemology: boolean;
     };
     theory_overlap: OverlapLevel;
     context_scorecard?: {
       overlapping_universe_and_sample: boolean;
+      is_subsumed: boolean;
       partial_contextual_contact: boolean;
       distinct_context: boolean;
     };
@@ -373,24 +428,28 @@ export async function analyzeOriginalityRisk(
           academic_reasoning: string;
           subject_scorecard: {
             same_core_question: boolean;
+            is_subsumed: boolean;
             significant_topic_intersection: boolean;
             background_mention_only: boolean;
           };
           subject_overlap: OverlapLevel;
           methodology_scorecard: {
             identical_method_and_tools: boolean;
+            is_subsumed: boolean;
             partially_shared_approach: boolean;
             different_empirical_design: boolean;
           };
           methodology_overlap: OverlapLevel;
           theory_scorecard: {
             same_theoretical_backbone: boolean;
+            is_subsumed: boolean;
             shared_concepts_only: boolean;
             different_epistemology: boolean;
           };
           theory_overlap: OverlapLevel;
           context_scorecard: {
             overlapping_universe_and_sample: boolean;
+            is_subsumed: boolean;
             partial_contextual_contact: boolean;
             distinct_context: boolean;
           };
@@ -404,6 +463,7 @@ export async function analyzeOriginalityRisk(
         log,
         {
           thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+          temperature: 1.0,
           seed: 42,
         },
       );
