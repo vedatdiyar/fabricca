@@ -157,7 +157,12 @@ export function BoxesContainer() {
           const isLastOdd =
             sortedBoxes.length % 2 !== 0 && idx === sortedBoxes.length - 1;
           return (
-            <BoxCard key={idx} box={box} index={idx} isLastOdd={isLastOdd} />
+            <BoxCard
+              key={box.title}
+              box={box}
+              index={idx}
+              isLastOdd={isLastOdd}
+            />
           );
         })}
       </div>
@@ -228,7 +233,7 @@ function BoxCard({
             <div className="flex flex-wrap gap-1.5">
               {box.concepts.map((concept, i) => (
                 <span
-                  key={i}
+                  key={`${concept}-${i}`}
                   className="inline-flex items-center gap-1 px-2 py-1 rounded bg-primary/10 text-xs text-primary font-semibold"
                 >
                   <WholeWord className="w-3.5 h-3.5" />
@@ -249,7 +254,7 @@ function BoxCard({
           <ul className="space-y-2 pl-0.5">
             {box.foundationalQueries.slice(0, 3).map((fq, i) => (
               <li
-                key={i}
+                key={`${fq.title}-${fq.author}-${i}`}
                 className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground"
               >
                 <FileText className="w-3.5 h-3.5 text-accent-foreground mt-0.5 shrink-0" />

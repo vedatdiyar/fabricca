@@ -148,7 +148,10 @@ export function LiteratureReader({ boxId, boxTitle }: LiteratureReaderProps) {
         {status === "loading" && (
           <div className="flex flex-col gap-3 p-6">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-20 animate-pulse rounded-lg bg-muted" />
+              <div
+                key={`skeleton-${i}`}
+                className="h-20 animate-pulse rounded-lg bg-muted"
+              />
             ))}
           </div>
         )}

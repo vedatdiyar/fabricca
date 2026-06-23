@@ -124,31 +124,53 @@ async function queryOpenAlexWorks(
   if (apiKey) params.set("api_key", apiKey);
   const url = `https://api.openalex.org/works?${params.toString().replace(/\+/g, "%20")}`;
 
-  try {
-    const response = await fetch(url, {
-      headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
-      signal: AbortSignal.timeout(30000),
-    });
-    if (response.status === 429) {
-      throw new Error("OpenAlex rate limit exceeded (429)");
-    }
-    if (!response.ok) return [];
-    const data = (await response.json()) as {
-      results?: Record<string, unknown>[];
-    };
-    const results = data.results;
-    if (!results) return [];
-    return parseOpenAlexResults(results);
-  } catch (err) {
-    if (
-      err instanceof Error &&
-      (err.message.includes("OpenAlex rate limit") ||
-        err instanceof TypeError ||
-        err.name === "AbortError")
-    ) {
+  const MAX_RETRIES = 3;
+  const BASE_DELAY_MS = 1500;
+  let attempt = 0;
+
+  while (true) {
+    attempt++;
+    try {
+      const response = await fetch(url, {
+        headers: { "User-Agent": "FabriccaAcademicAssistant/1.0" },
+        signal: AbortSignal.timeout(30000),
+      });
+
+      if (response.status === 429) {
+        if (attempt <= MAX_RETRIES) {
+          const backoff = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+          const jitter = backoff * 0.3 * Math.random();
+          const delayMs = backoff + jitter;
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+          continue;
+        }
+        throw new Error("OpenAlex rate limit exceeded (429)");
+      }
+
+      if (!response.ok) return [];
+
+      const data = (await response.json()) as {
+        results?: Record<string, unknown>[];
+      };
+      const results = data.results;
+      if (!results) return [];
+      return parseOpenAlexResults(results);
+    } catch (err) {
+      const isRetryable =
+        err instanceof Error &&
+        (err.message.includes("rate limit") ||
+          err instanceof TypeError ||
+          err.name === "AbortError");
+
+      if (isRetryable && attempt <= MAX_RETRIES) {
+        const backoff = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+        const jitter = backoff * 0.3 * Math.random();
+        const delayMs = backoff + jitter;
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        continue;
+      }
       throw err;
     }
-    return [];
   }
 }
 

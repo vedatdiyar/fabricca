@@ -18,12 +18,14 @@ import { fetchThesisMatrix } from "../../_lib/fetch-actions";
 export function MatrixForm() {
   const router = useRouter();
 
-  const [studyTitle, setStudyTitle] = useState("");
-  const [researchQuestion, setResearchQuestion] = useState("");
-  const [theoreticalFramework, setTheoreticalFramework] = useState("");
-  const [methodology, setMethodology] = useState("");
-  const [researchScope, setResearchScope] = useState("");
-  const [mainClaim, setMainClaim] = useState("");
+  const [formState, setFormState] = useState({
+    studyTitle: "",
+    researchQuestion: "",
+    theoreticalFramework: "",
+    methodology: "",
+    researchScope: "",
+    mainClaim: "",
+  });
   const [isPending, setIsPending] = useState(false);
   const [loading, setLoading] = useState(true);
   const showLoading = useOnboardingStore((s) => s.showLoading);
@@ -37,12 +39,14 @@ export function MatrixForm() {
       .then((matrix) => {
         if (cancelled) return;
         if (matrix) {
-          setStudyTitle(matrix.studyTitle);
-          setResearchQuestion(matrix.researchQuestion);
-          setTheoreticalFramework(matrix.theoreticalFramework);
-          setMethodology(matrix.methodology);
-          setResearchScope(matrix.researchScope);
-          setMainClaim(matrix.mainClaim);
+          setFormState({
+            studyTitle: matrix.studyTitle,
+            researchQuestion: matrix.researchQuestion,
+            theoreticalFramework: matrix.theoreticalFramework,
+            methodology: matrix.methodology,
+            researchScope: matrix.researchScope,
+            mainClaim: matrix.mainClaim,
+          });
         }
         setLoading(false);
       })
@@ -81,12 +85,12 @@ export function MatrixForm() {
 
     try {
       const enrichResult = await enrichThesisMatrixAction({
-        studyTitle,
-        researchQuestion,
-        theoreticalFramework,
-        methodology,
-        researchScope,
-        mainClaim,
+        studyTitle: formState.studyTitle,
+        researchQuestion: formState.researchQuestion,
+        theoreticalFramework: formState.theoreticalFramework,
+        methodology: formState.methodology,
+        researchScope: formState.researchScope,
+        mainClaim: formState.mainClaim,
       });
 
       if ("error" in enrichResult) {
@@ -155,8 +159,13 @@ export function MatrixForm() {
               <Textarea
                 id="calismaBasligi"
                 placeholder="Tezinizin veya araştırmanızın mevcut/geçici başlığı."
-                value={studyTitle}
-                onChange={(e) => setStudyTitle(e.target.value)}
+                value={formState.studyTitle}
+                onChange={(e) =>
+                  setFormState((prev) => ({
+                    ...prev,
+                    studyTitle: e.target.value,
+                  }))
+                }
                 required
                 className="textarea-academic"
               />
@@ -171,8 +180,13 @@ export function MatrixForm() {
               <Textarea
                 id="arastirmaSorusu"
                 placeholder="Araştırdığınız temel 'Neden' ve 'Nasıl' soruları. Birden fazla soru varsa lütfen her birini yeni bir satıra maddeleyerek (Soru 1, Soru 2 şeklinde) yazın. Yapay zeka her soru için ayrı bir inceleme alanı açacaktır."
-                value={researchQuestion}
-                onChange={(e) => setResearchQuestion(e.target.value)}
+                value={formState.researchQuestion}
+                onChange={(e) =>
+                  setFormState((prev) => ({
+                    ...prev,
+                    researchQuestion: e.target.value,
+                  }))
+                }
                 required
                 className="textarea-academic"
               />
@@ -187,8 +201,13 @@ export function MatrixForm() {
               <Textarea
                 id="kavramsalCerceve"
                 placeholder="Çalışmada kullanacağınız temel teoriler, okullar veya kurucu yazarlar (Örn: Foucault'nun Söylem Analizi, Bourdieu'nün Alan Teorisi). Birden fazla teorik yaklaşım varsa aralarına virgül koyarak veya maddeleyerek yazın."
-                value={theoreticalFramework}
-                onChange={(e) => setTheoreticalFramework(e.target.value)}
+                value={formState.theoreticalFramework}
+                onChange={(e) =>
+                  setFormState((prev) => ({
+                    ...prev,
+                    theoreticalFramework: e.target.value,
+                  }))
+                }
                 required
                 className="textarea-academic"
               />
@@ -203,8 +222,13 @@ export function MatrixForm() {
               <Textarea
                 id="metodoloji"
                 placeholder="Veriyi nasıl toplayacağınız ve analiz edeceğiniz (Örn: Yarı yapılandırılmış mülakat, içerik analizi, anket, arşiv taraması). Eğer karma yöntem kullanıyorsanız her bir yöntemi ayrı bir madde olarak belirtin."
-                value={methodology}
-                onChange={(e) => setMethodology(e.target.value)}
+                value={formState.methodology}
+                onChange={(e) =>
+                  setFormState((prev) => ({
+                    ...prev,
+                    methodology: e.target.value,
+                  }))
+                }
                 required
                 className="textarea-academic"
               />
@@ -219,8 +243,13 @@ export function MatrixForm() {
               <Textarea
                 id="arastirmaKapsami"
                 placeholder="Araştırmanın ampirik sınırları. Zaman (Örn: 1990-2005), Mekân (Örn: Doğu Avrupa, İstanbul) ve odaklanılan Aktörleri/Kurumları net bir şekilde sınırlandırarak yazın."
-                value={researchScope}
-                onChange={(e) => setResearchScope(e.target.value)}
+                value={formState.researchScope}
+                onChange={(e) =>
+                  setFormState((prev) => ({
+                    ...prev,
+                    researchScope: e.target.value,
+                  }))
+                }
                 required
                 className="textarea-academic"
               />
@@ -235,8 +264,13 @@ export function MatrixForm() {
               <Textarea
                 id="temelIddia"
                 placeholder="Tezinizin tüm bu çalışmalar sonunda kanıtlamayı, savunmayı veya literatüre katkı olarak sunmayı hedeflediği o tek cümlelik ana fikir / hipotez."
-                value={mainClaim}
-                onChange={(e) => setMainClaim(e.target.value)}
+                value={formState.mainClaim}
+                onChange={(e) =>
+                  setFormState((prev) => ({
+                    ...prev,
+                    mainClaim: e.target.value,
+                  }))
+                }
                 required
                 className="textarea-academic"
               />

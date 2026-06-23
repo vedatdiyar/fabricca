@@ -65,6 +65,7 @@ export function LibraryContent({ boxes }: LibraryContentProps) {
       {/* Mobile selector */}
       <div className="w-full md:hidden">
         <select
+          aria-label="Konu kutusu seç"
           value={selectedBoxId}
           onChange={(e) => setSelectedBoxId(Number(e.target.value))}
           className="mb-4 w-full rounded-lg border border-border/20 bg-card px-4 py-2.5 text-sm text-foreground"

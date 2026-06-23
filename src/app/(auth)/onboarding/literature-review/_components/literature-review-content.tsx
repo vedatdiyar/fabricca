@@ -156,7 +156,10 @@ function SubBoxDone({
             </div>
             <div className="grid grid-cols-2 gap-3">
               {entry.starterPack.map((article, idx) => (
-                <LiteratureArticleCard key={idx} article={article} />
+                <LiteratureArticleCard
+                  key={`${article.title}-${idx}`}
+                  article={article}
+                />
               ))}
             </div>
           </>
@@ -177,7 +180,10 @@ function SubBoxDone({
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         {entry.starterPack.map((article, idx) => (
-          <LiteratureArticleCard key={idx} article={article} />
+          <LiteratureArticleCard
+            key={`${article.title}-${idx}`}
+            article={article}
+          />
         ))}
       </div>
       {entry.reservedPool.length > 0 && (
@@ -255,14 +261,14 @@ export function LiteratureReviewContent() {
       </div>
 
       <div className="grid grid-cols-1 gap-4">
-        {subBoxes.map((subBox, idx) => {
+        {subBoxes.map((subBox) => {
           const isArchival = archivalBoxes.has(subBox.title);
           const isCompleted = archivalBoxes.has(subBox.title)
             ? false
             : literaturePool.some((e) => e.subBoxTitle === subBox.title);
           return (
             <div
-              key={idx}
+              key={subBox.title}
               className="border border-border rounded-xl bg-card p-5 space-y-4"
             >
               <div className="flex items-center gap-2">

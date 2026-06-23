@@ -365,6 +365,7 @@ export function calculateOriginalityRisk(
 export async function analyzeOriginalityRisk(
   params: AnalyzeOriginalityRiskParams,
   log: Logger,
+  chunkSize = 3,
 ): Promise<{
   overlapTable: {
     id: number;
@@ -411,7 +412,6 @@ export async function analyzeOriginalityRisk(
 
   try {
     const chunks: TezaraThesisDetails[][] = [];
-    const chunkSize = 3;
     for (let i = 0; i < params.validDetails.length; i += chunkSize) {
       chunks.push(params.validDetails.slice(i, i + chunkSize));
     }

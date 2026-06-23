@@ -7,8 +7,6 @@ import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { confirmEnhancedThesisAction } from "../actions";
 import {
   extractQueriesAction,
@@ -21,6 +19,8 @@ import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import type { LoadingStep } from "@/lib/store/onboarding-store";
 import { getErrorDisplay } from "@/lib/error-utils";
 import type { EnhancedThesisData } from "@/lib/types";
+import { MatrixField } from "./matrix-field";
+import { EnrichmentLoadingSkeleton } from "./enrichment-loading-skeleton";
 
 const ANALYSIS_STEPS: LoadingStep[] = [
   { text: "Sorgu ve doğrulama parametreleri üretiliyor...", status: "idle" },
@@ -35,17 +35,24 @@ const ANALYSIS_STEPS: LoadingStep[] = [
   { text: "Nihai risk seviyesi ve tavsiyeler hazırlanıyor...", status: "idle" },
 ];
 
+/**
+ * Onboarding sürecinin 2. adımı olan Akademik Zenginleştirme İnceleme Ekranı.
+ * Kullanıcının zenginleştirilmiş tez matrisini incelemesini, düzenlemesini,
+ * onaylamasını ve ardından arka planda risk analizi motorlarının koşturulmasını yönetir.
+ */
 export function EnrichmentView() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [isPending, setIsPending] = useState(false);
 
-  const [studyTitle, setStudyTitle] = useState("");
-  const [researchQuestion, setResearchQuestion] = useState("");
-  const [theoreticalFramework, setTheoreticalFramework] = useState("");
-  const [methodology, setMethodology] = useState("");
-  const [researchScope, setResearchScope] = useState("");
-  const [mainClaim, setMainClaim] = useState("");
+  const [formState, setFormState] = useState({
+    studyTitle: "",
+    researchQuestion: "",
+    theoreticalFramework: "",
+    methodology: "",
+    researchScope: "",
+    mainClaim: "",
+  });
 
   const showLoading = useOnboardingStore((s) => s.showLoading);
   const hideLoading = useOnboardingStore((s) => s.hideLoading);
@@ -62,12 +69,14 @@ export function EnrichmentView() {
         router.push("/onboarding/matrix");
         return;
       }
-      setStudyTitle(matrix.studyTitle);
-      setResearchQuestion(matrix.researchQuestion);
-      setTheoreticalFramework(matrix.theoreticalFramework);
-      setMethodology(matrix.methodology);
-      setResearchScope(matrix.researchScope);
-      setMainClaim(matrix.mainClaim);
+      setFormState({
+        studyTitle: matrix.studyTitle,
+        researchQuestion: matrix.researchQuestion,
+        theoreticalFramework: matrix.theoreticalFramework,
+        methodology: matrix.methodology,
+        researchScope: matrix.researchScope,
+        mainClaim: matrix.mainClaim,
+      });
       setLoading(false);
     });
     return () => {
@@ -75,17 +84,23 @@ export function EnrichmentView() {
     };
   }, [router]);
 
+  /**
+   * Form onaylandığında tetiklenir. Düzenlenen tez matrisini kaydeder
+   * ve risk analizi motorlarını (Tavily, Tezara, Jüri Analizi) sırasıyla çalıştırır.
+   *
+   * @param e Form gönderme olayı.
+   */
   const handleConfirm = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsPending(true);
 
     const data: EnhancedThesisData = {
-      studyTitle,
-      researchQuestion,
-      theoreticalFramework,
-      methodology,
-      researchScope,
-      mainClaim,
+      studyTitle: formState.studyTitle,
+      researchQuestion: formState.researchQuestion,
+      theoreticalFramework: formState.theoreticalFramework,
+      methodology: formState.methodology,
+      researchScope: formState.researchScope,
+      mainClaim: formState.mainClaim,
     };
 
     try {
@@ -103,12 +118,12 @@ export function EnrichmentView() {
 
       // Build matrix input for analysis pipeline
       const matrixInput = {
-        studyTitle,
-        researchQuestion,
-        theoreticalFramework,
-        methodology,
-        researchScope,
-        mainClaim,
+        studyTitle: formState.studyTitle,
+        researchQuestion: formState.researchQuestion,
+        theoreticalFramework: formState.theoreticalFramework,
+        methodology: formState.methodology,
+        researchScope: formState.researchScope,
+        mainClaim: formState.mainClaim,
       };
 
       // Show 4-stage loader
@@ -192,11 +207,7 @@ export function EnrichmentView() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-      </div>
-    );
+    return <EnrichmentLoadingSkeleton />;
   }
 
   return (
@@ -205,96 +216,72 @@ export function EnrichmentView() {
         <CardContent>
           <form onSubmit={handleConfirm} className="w-full space-y-6">
             <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label
-                  htmlFor="calismaBasligi"
-                  className="block font-semibold text-foreground"
-                >
-                  Çalışma Başlığı
-                </Label>
-                <Textarea
-                  id="calismaBasligi"
-                  value={studyTitle}
-                  onChange={(e) => setStudyTitle(e.target.value)}
-                  required
-                  className="textarea-academic"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label
-                  htmlFor="arastirmaSorusu"
-                  className="block font-semibold text-foreground"
-                >
-                  Odak Sorular (Ana ve Alt Sorular)
-                </Label>
-                <Textarea
-                  id="arastirmaSorusu"
-                  value={researchQuestion}
-                  onChange={(e) => setResearchQuestion(e.target.value)}
-                  required
-                  className="textarea-academic"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label
-                  htmlFor="kavramsalCerceve"
-                  className="block font-semibold text-foreground"
-                >
-                  Teorik Altyapı, Kavramlar ve Yazarlar
-                </Label>
-                <Textarea
-                  id="kavramsalCerceve"
-                  value={theoreticalFramework}
-                  onChange={(e) => setTheoreticalFramework(e.target.value)}
-                  required
-                  className="textarea-academic"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label
-                  htmlFor="metodoloji"
-                  className="block font-semibold text-foreground"
-                >
-                  Veri Toplama ve Analiz Yöntemi
-                </Label>
-                <Textarea
-                  id="metodoloji"
-                  value={methodology}
-                  onChange={(e) => setMethodology(e.target.value)}
-                  required
-                  className="textarea-academic"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label
-                  htmlFor="arastirmaKapsami"
-                  className="block font-semibold text-foreground"
-                >
-                  Araştırma Sınırları (Zaman, Mekân, Aktör)
-                </Label>
-                <Textarea
-                  id="arastirmaKapsami"
-                  value={researchScope}
-                  onChange={(e) => setResearchScope(e.target.value)}
-                  required
-                  className="textarea-academic"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label
-                  htmlFor="temelIddia"
-                  className="block font-semibold text-foreground"
-                >
-                  Merkez Savı (Tezin Ana İddiası)
-                </Label>
-                <Textarea
-                  id="temelIddia"
-                  value={mainClaim}
-                  onChange={(e) => setMainClaim(e.target.value)}
-                  required
-                  className="textarea-academic"
-                />
-              </div>
+              <MatrixField
+                id="calismaBasligi"
+                label="Çalışma Başlığı"
+                value={formState.studyTitle}
+                onChange={(value) =>
+                  setFormState((prev) => ({
+                    ...prev,
+                    studyTitle: value,
+                  }))
+                }
+              />
+              <MatrixField
+                id="arastirmaSorusu"
+                label="Odak Sorular (Ana ve Alt Sorular)"
+                value={formState.researchQuestion}
+                onChange={(value) =>
+                  setFormState((prev) => ({
+                    ...prev,
+                    researchQuestion: value,
+                  }))
+                }
+              />
+              <MatrixField
+                id="kavramsalCerceve"
+                label="Teorik Altyapı, Kavramlar ve Yazarlar"
+                value={formState.theoreticalFramework}
+                onChange={(value) =>
+                  setFormState((prev) => ({
+                    ...prev,
+                    theoreticalFramework: value,
+                  }))
+                }
+              />
+              <MatrixField
+                id="metodoloji"
+                label="Veri Toplama ve Analiz Yöntemi"
+                value={formState.methodology}
+                onChange={(value) =>
+                  setFormState((prev) => ({
+                    ...prev,
+                    methodology: value,
+                  }))
+                }
+              />
+              <MatrixField
+                id="arastirmaKapsami"
+                label="Araştırma Sınırları (Zaman, Mekân, Aktör)"
+                value={formState.researchScope}
+                onChange={(value) =>
+                  setFormState((prev) => ({
+                    ...prev,
+                    researchScope: value,
+                  }))
+                }
+              />
+              <MatrixField
+                id="temelIddia"
+                label="Merkez Savı (Tezin Ana İddiası)"
+                value={formState.mainClaim}
+                onChange={(value) =>
+                  setFormState((prev) => ({
+                    ...prev,
+                    mainClaim: value,
+                  }))
+                }
+              />
             </div>
 
             <div className="md:col-span-full">

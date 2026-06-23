@@ -74,14 +74,17 @@ export function TavilyFactCheckTable({
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {tavilyResults.items?.map((item, idx) => {
+              {tavilyResults.items?.map((item) => {
                 const isKnownEnum = [
                   "VERIFIED",
                   "PARTIALLY_VERIFIED",
                   "REFUTED",
                 ].includes(item.result);
                 return (
-                  <tr key={idx} className="hover:bg-muted transition-colors">
+                  <tr
+                    key={item.fact}
+                    className="hover:bg-muted transition-colors"
+                  >
                     <td className="p-3 text-sm font-normal text-foreground leading-relaxed">
                       {item.fact}
                     </td>

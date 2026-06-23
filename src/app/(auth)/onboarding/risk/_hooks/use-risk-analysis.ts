@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useCallback, useReducer } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
@@ -78,16 +78,54 @@ export interface UseRiskAnalysisResult {
  *
  * @returns Risk analysis state plus the two orchestration callbacks.
  */
+type State = {
+  loading: boolean;
+  analysing: boolean;
+  proceeding: boolean;
+  error: string | null;
+  reportData: OriginalityReportData | null;
+  matrixData: ThesisMatrix | null;
+};
+
+const initialState: State = {
+  loading: true,
+  analysing: false,
+  proceeding: false,
+  error: null,
+  reportData: null,
+  matrixData: null,
+};
+
+type Action =
+  | { type: "SET_LOADING"; payload: boolean }
+  | { type: "SET_ANALYSING"; payload: boolean }
+  | { type: "SET_PROCEDING"; payload: boolean }
+  | { type: "SET_ERROR"; payload: string | null }
+  | { type: "SET_REPORT_DATA"; payload: OriginalityReportData | null }
+  | { type: "SET_MATRIX_DATA"; payload: ThesisMatrix | null };
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case "SET_LOADING":
+      return { ...state, loading: action.payload };
+    case "SET_ANALYSING":
+      return { ...state, analysing: action.payload };
+    case "SET_PROCEDING":
+      return { ...state, proceeding: action.payload };
+    case "SET_ERROR":
+      return { ...state, error: action.payload };
+    case "SET_REPORT_DATA":
+      return { ...state, reportData: action.payload };
+    case "SET_MATRIX_DATA":
+      return { ...state, matrixData: action.payload };
+    default:
+      return state;
+  }
+}
+
 export function useRiskAnalysis(): UseRiskAnalysisResult {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [analysing, setAnalysing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [reportData, setReportData] = useState<OriginalityReportData | null>(
-    null,
-  );
-  const [matrixData, setMatrixData] = useState<ThesisMatrix | null>(null);
-  const [proceeding, setProceeding] = useState(false);
+  const [state, dispatch] = useReducer(reducer, initialState);
 
   const showLoading = useOnboardingStore((s) => s.showLoading);
   const hideLoading = useOnboardingStore((s) => s.hideLoading);
@@ -102,43 +140,43 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
       //    the auto-trigger from re-running analysis after enrichment.
       const cachedReport = useOnboardingStore.getState().reportData;
       if (cachedReport && !cancelled) {
-        setReportData(cachedReport);
-        // Also restore matrix so startAnalysis (if ever called) has data.
+        dispatch({ type: "SET_REPORT_DATA", payload: cachedReport });
         const matrix = await fetchThesisMatrix();
-        if (matrix) setMatrixData(matrix);
-        if (!cancelled) setLoading(false);
+        if (matrix) dispatch({ type: "SET_MATRIX_DATA", payload: matrix });
+        if (!cancelled) dispatch({ type: "SET_LOADING", payload: false });
         return;
       }
 
-      // 2) Fall back to the database.
       const matrix = await fetchThesisMatrix();
       if (!matrix) {
         toast.error("Tez matrisi bulunamadı.");
         router.push("/onboarding/matrix");
         return;
       }
-      setMatrixData(matrix);
+      dispatch({ type: "SET_MATRIX_DATA", payload: matrix });
 
       const report = await fetchOriginalityReport();
       if (report && !cancelled) {
-        setReportData({
-          tavilyResults: {
-            items: report.tavilyResults
-              .items as OriginalityReportData["tavilyResults"]["items"],
-            briefingNote: report.tavilyResults.briefingNote,
-          },
-          tezaraResults: {
-            originalityBadge: report.tezaraResults.originalityBadge,
-            overlapTable: report.tezaraResults.overlapTable,
-            strategicRecommendations:
-              report.tezaraResults.strategicRecommendations,
+        dispatch({
+          type: "SET_REPORT_DATA",
+          payload: {
+            tavilyResults: {
+              items: report.tavilyResults
+                .items as OriginalityReportData["tavilyResults"]["items"],
+              briefingNote: report.tavilyResults.briefingNote,
+            },
+            tezaraResults: {
+              originalityBadge: report.tezaraResults.originalityBadge,
+              overlapTable: report.tezaraResults.overlapTable,
+              strategicRecommendations:
+                report.tezaraResults.strategicRecommendations,
+            },
           },
         });
       } else if (!cancelled) {
-        // DB cleaned (user went back and re-confirmed enrichment) — reset stale Zustand state
         useOnboardingStore.getState().resetStore();
       }
-      if (!cancelled) setLoading(false);
+      if (!cancelled) dispatch({ type: "SET_LOADING", payload: false });
     }
 
     init();
@@ -156,8 +194,8 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
    * loading overlay step-by-step and stores the resulting report in state.
    */
   const startAnalysis = useCallback(async () => {
-    setAnalysing(true);
-    setError(null);
+    dispatch({ type: "SET_ANALYSING", payload: true });
+    dispatch({ type: "SET_ERROR", payload: null });
 
     const steps = ANALYSIS_STEPS.map((s) => ({ ...s }));
     steps[0].status = "active";
@@ -168,13 +206,13 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
     );
 
     try {
-      let matrix = matrixData;
+      let matrix = state.matrixData;
       if (!matrix) {
         matrix = await fetchThesisMatrix();
         if (!matrix) {
-          setError("Tez matrisi bulunamadı.");
+          dispatch({ type: "SET_ERROR", payload: "Tez matrisi bulunamadı." });
           hideLoading();
-          setAnalysing(false);
+          dispatch({ type: "SET_ANALYSING", payload: false });
           return;
         }
       }
@@ -191,9 +229,9 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
       // ── Step 0: Extract queries ──
       const extractResult = await extractQueriesAction(matrixInput);
       if ("error" in extractResult) {
-        setError(extractResult.error);
+        dispatch({ type: "SET_ERROR", payload: extractResult.error });
         hideLoading();
-        setAnalysing(false);
+        dispatch({ type: "SET_ANALYSING", payload: false });
         return;
       }
       updateLoadingStep(0, "completed");
@@ -206,9 +244,9 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
         tezaraQueries: extractResult.data.tezaraQueries,
       });
       if ("error" in searchResult) {
-        setError(searchResult.error);
+        dispatch({ type: "SET_ERROR", payload: searchResult.error });
         hideLoading();
-        setAnalysing(false);
+        dispatch({ type: "SET_ANALYSING", payload: false });
         return;
       }
       updateLoadingStep(1, "completed");
@@ -220,9 +258,9 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
         tezaraSearchResults: searchResult.data.tezaraSearchResults,
       });
       if ("error" in siftResult) {
-        setError(siftResult.error);
+        dispatch({ type: "SET_ERROR", payload: siftResult.error });
         hideLoading();
-        setAnalysing(false);
+        dispatch({ type: "SET_ANALYSING", payload: false });
         return;
       }
       updateLoadingStep(2, "completed");
@@ -235,35 +273,37 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
         tavilyResults: searchResult.data.tavilyResults,
       });
       if ("error" in juryResult) {
-        setError(juryResult.error);
+        dispatch({ type: "SET_ERROR", payload: juryResult.error });
         hideLoading();
-        setAnalysing(false);
+        dispatch({ type: "SET_ANALYSING", payload: false });
         return;
       }
       updateLoadingStep(3, "completed");
-      setReportData(juryResult.data);
+      dispatch({ type: "SET_REPORT_DATA", payload: juryResult.data });
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Analiz sırasında bir hata oluştu.",
-      );
+      dispatch({
+        type: "SET_ERROR",
+        payload:
+          err instanceof Error
+            ? err.message
+            : "Analiz sırasında bir hata oluştu.",
+      });
     } finally {
       hideLoading();
-      setAnalysing(false);
+      dispatch({ type: "SET_ANALYSING", payload: false });
     }
-  }, [matrixData, showLoading, hideLoading, updateLoadingStep]);
+  }, [state.matrixData, showLoading, hideLoading, updateLoadingStep]);
 
   // Auto-trigger analysis only when there really is no report anywhere
   // (Zustand cache, DB or in-memory state).
   useEffect(() => {
     const hasCache = !!useOnboardingStore.getState().reportData;
-    if (!loading && !reportData && !analysing && !hasCache) {
+    if (!state.loading && !state.reportData && !state.analysing && !hasCache) {
       void Promise.resolve().then(() => {
         startAnalysis();
       });
     }
-  }, [loading, reportData, analysing, startAnalysis]);
+  }, [state.loading, state.reportData, state.analysing, startAnalysis]);
 
   /**
    * Finalizes the risk stage: persists the report, generates the subject boxes
@@ -271,11 +311,11 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
    * step. Reports any failure via toast and falls back to a direct navigation.
    */
   const handleProceed = useCallback(async () => {
-    setProceeding(true);
+    dispatch({ type: "SET_PROCEDING", payload: true });
 
     const result = await completeRiskStageAction();
     if (result.error) {
-      setProceeding(false);
+      dispatch({ type: "SET_PROCEDING", payload: false });
       toast.error(result.error);
       return;
     }
@@ -326,16 +366,16 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
         err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.",
       );
     } finally {
-      setProceeding(false);
+      dispatch({ type: "SET_PROCEDING", payload: false });
     }
   }, [router, showLoading, hideLoading, updateLoadingStep]);
 
   return {
-    loading,
-    analysing,
-    proceeding,
-    error,
-    reportData,
+    loading: state.loading,
+    analysing: state.analysing,
+    proceeding: state.proceeding,
+    error: state.error,
+    reportData: state.reportData,
     startAnalysis,
     handleProceed,
   };

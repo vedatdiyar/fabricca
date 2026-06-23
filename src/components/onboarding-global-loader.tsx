@@ -31,7 +31,7 @@ export function OnboardingGlobalLoader() {
             const isCompleted = step.status === "completed";
             return (
               <div
-                key={index}
+                key={`${step.text}-${index}`}
                 className="flex-1 min-w-[140px] max-w-[200px] flex flex-col items-center gap-3"
               >
                 <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">

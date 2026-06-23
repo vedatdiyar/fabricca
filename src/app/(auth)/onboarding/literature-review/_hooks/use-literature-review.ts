@@ -60,12 +60,16 @@ export interface UseLiteratureReviewResult {
 export function useLiteratureReview(): UseLiteratureReviewResult {
   const router = useRouter();
   const [subBoxes, setSubBoxes] = useState<GeminiThesisBox[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [confirming, setConfirming] = useState(false);
-  const [processing, setProcessing] = useState(false);
+  const [phase, setPhase] = useState({
+    loading: true,
+    processing: false,
+    confirming: false,
+  });
   const processingRef = useRef(false);
-  const [boxStatuses, setBoxStatuses] = useState<Record<string, BoxStatus>>({});
-  const [boxErrors, setBoxErrors] = useState<Record<string, string>>({});
+  const [boxResults, setBoxResults] = useState<{
+    statuses: Record<string, BoxStatus>;
+    errors: Record<string, string>;
+  }>({ statuses: {}, errors: {} });
   const [archivalBoxes, setArchivalBoxes] = useState<Set<string>>(new Set());
 
   const rawLiteraturePool = useOnboardingStore((s) => s.literaturePool);
@@ -145,7 +149,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
           };
         }),
       );
-      setLoading(false);
+      setPhase((prev) => ({ ...prev, loading: false }));
     });
     return () => {
       cancelled = true;
@@ -163,7 +167,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     if (subBoxes.length === 0 || processingRef.current) return;
 
     processingRef.current = true;
-    setProcessing(true);
+    setPhase((prev) => ({ ...prev, processing: true }));
 
     const isArchival = (box: GeminiThesisBox): boolean => {
       if (!box.foundationalQueries || box.foundationalQueries.length === 0) {
@@ -190,7 +194,10 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     // Mark all steps as active
     for (let i = 0; i < subBoxes.length; i++) {
       updateLoadingStep(i, "active");
-      setBoxStatuses((prev) => ({ ...prev, [subBoxes[i].title]: "loading" }));
+      setBoxResults((prev) => ({
+        ...prev,
+        statuses: { ...prev.statuses, [subBoxes[i].title]: "loading" },
+      }));
     }
 
     const result = await processAllBoxesAction(
@@ -220,9 +227,9 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
 
       // Mark all boxes as done
       for (let i = 0; i < subBoxes.length; i++) {
-        setBoxStatuses((prev) => ({
+        setBoxResults((prev) => ({
           ...prev,
-          [subBoxes[i].title]: "done",
+          statuses: { ...prev.statuses, [subBoxes[i].title]: "done" },
         }));
         updateLoadingStep(i, "completed");
       }
@@ -231,20 +238,17 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
         result.error ?? "Literatür taraması sırasında bir hata oluştu.";
 
       for (let i = 0; i < subBoxes.length; i++) {
-        setBoxErrors((prev) => ({
+        setBoxResults((prev) => ({
           ...prev,
-          [subBoxes[i].title]: errorMsg,
-        }));
-        setBoxStatuses((prev) => ({
-          ...prev,
-          [subBoxes[i].title]: "error",
+          errors: { ...prev.errors, [subBoxes[i].title]: errorMsg },
+          statuses: { ...prev.statuses, [subBoxes[i].title]: "error" },
         }));
         updateLoadingStep(i, "completed");
       }
     }
 
     processingRef.current = false;
-    setProcessing(false);
+    setPhase((prev) => ({ ...prev, processing: false }));
     hideLoading();
   }, [subBoxes, showLoading, hideLoading, updateLoadingStep]);
 
@@ -315,25 +319,25 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
       return;
     }
 
-    setConfirming(true);
+    setPhase((prev) => ({ ...prev, confirming: true }));
 
     try {
       const result = await confirmLiteratureAction({ literaturePool });
       if ("error" in result && result.error) {
         toast.error(result.error);
-        setConfirming(false);
+        setPhase((prev) => ({ ...prev, confirming: false }));
         return;
       }
 
       resetStore();
-      setConfirming(false);
+      setPhase((prev) => ({ ...prev, confirming: false }));
       toast.success("Tebrikler! Onboarding süreciniz tamamlandı.");
       router.push("/dashboard");
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.",
       );
-      setConfirming(false);
+      setPhase((prev) => ({ ...prev, confirming: false }));
     }
   }, [literaturePool, resetStore, router]);
 
@@ -341,8 +345,8 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   // Uses state-based guards (loading, processing, literaturePool) instead of a
   // ref to remain correct under React Strict Mode (double-mount).
   useEffect(() => {
-    if (loading) return;
-    if (processing) return;
+    if (phase.loading) return;
+    if (phase.processing) return;
     if (subBoxes.length === 0) return;
 
     const allDone = subBoxes.every((box) =>
@@ -360,15 +364,21 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
       }
       Promise.resolve().then(() => startReviewProcess());
     }
-  }, [loading, processing, subBoxes, literaturePool, startReviewProcess]);
+  }, [
+    phase.loading,
+    phase.processing,
+    subBoxes,
+    literaturePool,
+    startReviewProcess,
+  ]);
 
   return {
     subBoxes,
-    loading,
-    processing,
-    confirming,
-    boxStatuses,
-    boxErrors,
+    loading: phase.loading,
+    processing: phase.processing,
+    confirming: phase.confirming,
+    boxStatuses: boxResults.statuses,
+    boxErrors: boxResults.errors,
     allProcessed,
     literaturePool,
     archivalBoxes,

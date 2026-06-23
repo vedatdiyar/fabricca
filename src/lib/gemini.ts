@@ -87,12 +87,14 @@ async function retryOn503<T>(
       const is429 =
         error.message.includes("429") ||
         error.message.includes("quota") ||
-        error.message.includes("RESOURCE_EXHAUSTED");
+        error.message.includes("RESOURCE_EXHAUSTED") ||
+        ("status" in error &&
+          (error as { status: string }).status === "RESOURCE_EXHAUSTED") ||
+        ("code" in error && (error as { code: number }).code === 429);
 
       const exponent = attempt - 1;
-      const backoffDelay = is429
-        ? 30000 + attempt * 15000
-        : baseDelayMs * Math.pow(2, exponent);
+      const currentBaseDelay = is429 ? 5000 : baseDelayMs;
+      const backoffDelay = currentBaseDelay * Math.pow(2, exponent);
       const jitter = Math.random() * backoffDelay * 0.3; // %30 max jitter
       const totalDelay = backoffDelay + jitter;
 
@@ -190,7 +192,7 @@ export async function generateStructuredContent<T>(
             seed: options?.seed ?? undefined,
           },
         }),
-      2,
+      3,
       1000,
       logger,
     );

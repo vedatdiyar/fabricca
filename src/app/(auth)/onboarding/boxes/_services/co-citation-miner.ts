@@ -1,7 +1,7 @@
 import type { FoundationalQuery } from "@/lib/types";
 import { Logger } from "@/lib/logger";
 
-const OPENALEX_DELAY_MS = 1200;
+const OPENALEX_DELAY_MS = 1100;
 const OPENALEX_USER_AGENT =
   "FabriccaAcademicAssistant/1.0 (mailto:support@fabricca.com)";
 
@@ -18,6 +18,67 @@ interface OpenAlexWork {
   cited_by_count?: number;
   referenced_works?: string[];
   authorships?: OpenAlexAuthor[];
+}
+
+/**
+ * Fetch wrapper that retries on 429 rate limit or network/server errors with exponential backoff + jitter.
+ */
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  log: Logger,
+  maxRetries = 3,
+  baseDelayMs = 1500,
+): Promise<Response> {
+  let attempt = 0;
+  while (true) {
+    attempt++;
+    try {
+      const response = await fetch(url, options);
+      if (response.ok) {
+        return response;
+      }
+
+      const isRetryable = response.status === 429 || response.status >= 500;
+      if (!isRetryable || attempt > maxRetries) {
+        return response;
+      }
+
+      const backoff = baseDelayMs * Math.pow(2, attempt - 1);
+      const jitter = backoff * 0.3 * Math.random();
+      const delayMs = backoff + jitter;
+
+      log.warn("openalex_request_retry", {
+        service: "boxes",
+        data: {
+          attempt,
+          status: response.status,
+          delayMs: Math.round(delayMs),
+          url: url.substring(0, 120),
+        },
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    } catch (err) {
+      if (attempt > maxRetries) {
+        throw err;
+      }
+      const backoff = baseDelayMs * Math.pow(2, attempt - 1);
+      const jitter = backoff * 0.3 * Math.random();
+      const delayMs = backoff + jitter;
+
+      log.warn("openalex_request_network_retry", {
+        service: "boxes",
+        data: {
+          attempt,
+          delayMs: Math.round(delayMs),
+          error: err instanceof Error ? err.message : String(err),
+        },
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
 }
 
 /**
@@ -67,10 +128,14 @@ export async function mineCoCitations(
         data: { queryIndex: i, query: query.substring(0, 100) },
       });
 
-      const response = await fetch(url, {
-        headers: { "User-Agent": OPENALEX_USER_AGENT },
-        signal: AbortSignal.timeout(15000),
-      });
+      const response = await fetchWithRetry(
+        url,
+        {
+          headers: { "User-Agent": OPENALEX_USER_AGENT },
+          signal: AbortSignal.timeout(15000),
+        },
+        log,
+      );
 
       if (response.ok) {
         const data = (await response.json()) as { results?: OpenAlexWork[] };
@@ -98,9 +163,7 @@ export async function mineCoCitations(
     }
 
     // Abide by OpenAlex rate limits (max 1-2 requests/sec)
-    if (i < activeQueries.length - 1) {
-      await new Promise((resolve) => setTimeout(resolve, OPENALEX_DELAY_MS));
-    }
+    await new Promise((resolve) => setTimeout(resolve, OPENALEX_DELAY_MS));
   }
 
   // Count total distinct candidates across all queries
@@ -174,10 +237,14 @@ export async function mineCoCitations(
       data: { candidateCount: candidateIds.length },
     });
 
-    const response = await fetch(detailsUrl, {
-      headers: { "User-Agent": OPENALEX_USER_AGENT },
-      signal: AbortSignal.timeout(15000),
-    });
+    const response = await fetchWithRetry(
+      detailsUrl,
+      {
+        headers: { "User-Agent": OPENALEX_USER_AGENT },
+        signal: AbortSignal.timeout(15000),
+      },
+      log,
+    );
 
     if (response.ok) {
       const data = (await response.json()) as { results?: OpenAlexWork[] };
@@ -221,6 +288,9 @@ export async function mineCoCitations(
       error: err instanceof Error ? err : new Error(String(err)),
     });
   }
+
+  // Enforce a strict delay after resolving details to respect the rate limit before the next box is processed
+  await new Promise((resolve) => setTimeout(resolve, OPENALEX_DELAY_MS));
 
   // Distribute the resolved works equally among queries using round-robin selection
   const resolvedForQueryMap = new Map<number, ResolvedWorkExtended[]>();
