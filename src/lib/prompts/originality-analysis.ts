@@ -9,7 +9,7 @@ export const geminiAnalysisSchema: JsonSchema = {
     overlapTable: {
       type: "array",
       description:
-        "Girdideki her aday tez için mutlaka bir satır içermelidir. Hiçbir tez listeden çıkarılamaz. Dizi uzunluğu aday tez sayısına tam olarak eşit olmalıdır.",
+        "Girdideki aday tezlerden seçilenleri içerir. 4 akademik süzgecin tamamında DUSUK veya YOK seviyesinde kalan veya tamamen alakasız olan tezler JÜRİ ELEME EMİR KURALI uyarınca bu diziye KESİNLİKLE DAHİL EDİLMEZ. Dizi uzunluğu aday tez sayısından az veya eşit olabilir.",
       items: {
         type: "object",
         properties: {
@@ -20,44 +20,146 @@ export const geminiAnalysisSchema: JsonSchema = {
           academic_reasoning: {
             type: "string",
             description:
-              "4 boyut için verilen 0-100 endeks puanlarının her birini teker teker gerekçelendiren, kelime benzerliğine değil anlam nüanslarına ve araştırma boşluğu (research gap) değerlendirmesine dayanan detaylı Türkçe akademik gerekçe paragrafı.",
+              "4 boyut için verilen kategorik risk seviyelerinin her birini teker teker gerekçelendiren, kelime benzerliğine değil anlam nüanslarına, 'İlişkisel Bütünlük' kuralına ve araştırma boşluğu (research gap) değerlendirmesine dayanan detaylı Türkçe akademik gerekçe paragrafı.",
           },
-          subject_index: {
-            type: "integer",
-            minimum: 0,
-            maximum: 100,
-            description:
-              "Araştırma sorusu/konu örtüşme endeksi. 0-30 = Özgün (düşük benzerlik, yüksek özgünlük). 31-50 = Destekleyici (kısmi benzerlik, destekleyici katkı). 51-70 = Sınırdaş (sınırda/kısmi çakışma). 71-100 = Kritik (yüksek çakışma, riskli).",
+          subject_scorecard: {
+            type: "object",
+            description: "Konu/Araştırma Sorusu uyumu için nesnel karne.",
+            properties: {
+              same_core_question: {
+                type: "boolean",
+                description:
+                  "Hedef tez ile aday tezin temel araştırma sorusu veya temel iddiası doğrudan aynı mı?",
+              },
+              significant_topic_intersection: {
+                type: "boolean",
+                description:
+                  "İki çalışma aynı spesifik konuyu ve problematiği mi ele alıyor?",
+              },
+              background_mention_only: {
+                type: "boolean",
+                description:
+                  "Aday tez, hedef tezin konusuna sadece arka plan bilgisi olarak mı değiniyor?",
+              },
+            },
+            required: [
+              "same_core_question",
+              "significant_topic_intersection",
+              "background_mention_only",
+            ],
           },
-          methodology_index: {
-            type: "integer",
-            minimum: 0,
-            maximum: 100,
+          subject_overlap: {
+            type: "string",
+            enum: ["KRITIK", "YUKSEK", "ORTA", "DUSUK", "YOK"],
             description:
-              "Metodoloji örtüşme endeksi. 0-30 = Özgün (düşük benzerlik, yüksek özgünlük). 31-50 = Destekleyici (kısmi benzerlik, destekleyici katkı). 51-70 = Sınırdaş (sınırda/kısmi çakışma). 71-100 = Kritik (yüksek çakışma, riskli).",
+              "Araştırma sorusu/konu örtüşme seviyesi. KRITIK = Doğrudan gasp/baltalama (same_core_question=true), YUKSEK = Belirgin kapsama/çakışma (significant_topic_intersection=true), ORTA = Çeperden/dolaylı temas, DUSUK = Düşük benzerlik/sınırlı ilişki (background_mention_only=true), YOK = Hiçbir organik bağ yok.",
           },
-          theory_index: {
-            type: "integer",
-            minimum: 0,
-            maximum: 100,
-            description:
-              "Kuramsal çerçeve örtüşme endeksi. 0-30 = Özgün (düşük benzerlik, yüksek özgünlük). 31-50 = Destekleyici (kısmi benzerlik, destekleyici katkı). 51-70 = Sınırdaş (sınırda/kısmi çakışma). 71-100 = Kritik (yüksek çakışma, riskli).",
+          methodology_scorecard: {
+            type: "object",
+            description: "Metodoloji uyumu için nesnel karne.",
+            properties: {
+              identical_method_and_tools: {
+                type: "boolean",
+                description:
+                  "Veri toplama araçları ve analiz yöntemleri doğrudan birbirinin replikası mı?",
+              },
+              partially_shared_approach: {
+                type: "boolean",
+                description:
+                  "Kısmi yöntemsel benzerlik veya ortak yaklaşım var mı?",
+              },
+              different_empirical_design: {
+                type: "boolean",
+                description: "Yöntemsel tasarımları kökten farklı mı?",
+              },
+            },
+            required: [
+              "identical_method_and_tools",
+              "partially_shared_approach",
+              "different_empirical_design",
+            ],
           },
-          context_index: {
-            type: "integer",
-            minimum: 0,
-            maximum: 100,
+          methodology_overlap: {
+            type: "string",
+            enum: ["KRITIK", "YUKSEK", "ORTA", "DUSUK", "YOK"],
             description:
-              "Bağlam (dönem/coğrafya/örneklem) örtüşme endeksi. 0-30 = Özgün (düşük benzerlik, yüksek özgünlük). 31-50 = Destekleyici (kısmi benzerlik, destekleyici katkı). 51-70 = Sınırdaş (sınırda/kısmi çakışma). 71-100 = Kritik (yüksek çakışma, riskli).",
+              "Metodoloji örtüşme seviyesi. KRITIK = Replika yöntem (identical_method_and_tools=true), YUKSEK = Belirgin ölçüde ortak yaklaşım (partially_shared_approach=true), ORTA = Kısmi yöntemsel temas, DUSUK = Düşük benzerlik, YOK = Tamamen farklı metodoloji (different_empirical_design=true).",
+          },
+          theory_scorecard: {
+            type: "object",
+            description: "Kuramsal çerçeve uyumu için nesnel karne.",
+            properties: {
+              same_theoretical_backbone: {
+                type: "boolean",
+                description:
+                  "Üzerine inşa edildikleri ana kuramsal çerçeve veya teorik modeller doğrudan aynı mı?",
+              },
+              shared_concepts_only: {
+                type: "boolean",
+                description:
+                  "Sadece benzer kavramlar veya teorisyen referansları mı paylaşılıyor?",
+              },
+              different_epistemology: {
+                type: "boolean",
+                description:
+                  "Kuramsal ekol veya epistemolojik yaklaşımları kökten farklı mı?",
+              },
+            },
+            required: [
+              "same_theoretical_backbone",
+              "shared_concepts_only",
+              "different_epistemology",
+            ],
+          },
+          theory_overlap: {
+            type: "string",
+            enum: ["KRITIK", "YUKSEK", "ORTA", "DUSUK", "YOK"],
+            description:
+              "Kuramsal çerçeve örtüşme seviyesi. KRITIK = Aynı kuramsal omurga (same_theoretical_backbone=true), YUKSEK = Kapsamlı ortak kuram, ORTA = Tek kavram/teorisyen referansı (shared_concepts_only=true), DUSUK = Zayıf kuramsal bağ, YOK = Farklı kuramsal gelenek (different_epistemology=true).",
+          },
+          context_scorecard: {
+            type: "object",
+            description: "Bağlam/Dönem/Örneklem uyumu için nesnel karne.",
+            properties: {
+              overlapping_universe_and_sample: {
+                type: "boolean",
+                description:
+                  "Hedef tezin örneklem evreni, coğrafi alanı ve dönemi aday tez tarafından tamamen veya büyük ölçüde kapsanıyor/yutuluyor mu?",
+              },
+              partial_contextual_contact: {
+                type: "boolean",
+                description:
+                  "Sadece coğrafya veya dönem bazında kısmi bir kesişme mi var?",
+              },
+              distinct_context: {
+                type: "boolean",
+                description: "Bağlamlar tamamen bağımsız mı?",
+              },
+            },
+            required: [
+              "overlapping_universe_and_sample",
+              "partial_contextual_contact",
+              "distinct_context",
+            ],
+          },
+          context_overlap: {
+            type: "string",
+            enum: ["KRITIK", "YUKSEK", "ORTA", "DUSUK", "YOK"],
+            description:
+              "Bağlam (dönem/coğrafya/örneklem) örtüşme seviyesi. KRITIK = Tam kesişme/yutulma (overlapping_universe_and_sample=true), YUKSEK = Belirgin bağlamsal örtüşme, ORTA = Kısmi bağlamsal temas (partial_contextual_contact=true), DUSUK = Zayıf bağlamsal ilişki, YOK = Tamamen farklı bağlam (distinct_context=true).",
           },
         },
         required: [
           "id",
           "academic_reasoning",
-          "subject_index",
-          "methodology_index",
-          "theory_index",
-          "context_index",
+          "subject_scorecard",
+          "subject_overlap",
+          "methodology_scorecard",
+          "methodology_overlap",
+          "theory_scorecard",
+          "theory_overlap",
+          "context_scorecard",
+          "context_overlap",
         ],
       },
     },
@@ -65,51 +167,69 @@ export const geminiAnalysisSchema: JsonSchema = {
   required: ["overlapTable"],
 };
 
-// ============================================================================
-// 2. SİSTEM TALİMATI (%100 TÜRKÇE)
-// ============================================================================
+/**
+ * Jüri ve Özgünlük Risk Analizi için Gemini modeline verilecek sistem talimatını (System Instruction) oluşturur.
+ * Modelin akademik rolünü, analiz kurallarını ve kıyaslama kriterlerini tanımlar.
+ *
+ * @returns Sistem talimatı metni
+ */
 export function buildAnalysisSystemInstruction(): string {
   return `# ROL
-Sen, üniversitelerin Fen, Sosyal, Sağlık ve Mühendislik Bilimleri Enstitülerinde "Tez Savunma Jürisi", "Araştırma Boşluğu (Research Gap) Analisti" ve "Bilimsel Metodolog" olarak görev yapan kıdemli bir Profesörsün. Görevin, hedef tez ile aday tezleri yüzeysel kelime benzerliklerine göre değil; hedef tezin literatürde kapatmak istediği özgün akademik boşluk (research gap) ile aday tezin bu boşlukla olan ilişkisine göre tartarak her bir boyut için 0-100 arası bir endeks puanı vermektir.
+Sen, üniversitelerin enstitülerinde "Tez Savunma Jürisi" ve "Araştırma Boşluğu (Research Gap) Analisti" olarak görev yapan kıdemli bir akademisyensin. Görevin, hedef tez ile aday tezleri yüzeysel kelime benzerliklerine göre değil; hedef tezin literatürde kapatmak istediği özgün akademik boşluk ile aday tezin bu boşlukla olan ilişkisine göre değerlendirerek 5 seviyeli kategorik risk etiketi (KRITIK, YUKSEK, ORTA, DUSUK, YOK) vermektir.
 
-# BİLGİ VE ZAMAN KISITLAMALARI
-- Bilgi kesim tarihin Ocak 2025'tir.
-- Şu anki yıl 2026'dır. Zaman duyarlı kurgularda veya yayın yılı değerlendirmelerinde bu yılı baz almalısın.
+# DEĞERLENDİRME İLKELERİ VE KISITLAMALAR
+- Nesnel, tarafsız, mesafeli ve akademik bir Türkçe kullanınız.
+- Aday tezlerin sadece sağlanan özet metinlerine bağlı kalınız (Strictly Grounded). Özette açıkça belirtilmeyen metodolojik veya kuramsal detayları aday çalışmalara atfetmeyiniz, spekülatif niyet okumaları yapmayınız.
 
-# OPERASYONEL KISITLAMALAR VE JÜRİ KARAR SÜRECİ
-- Kesinlikle objektif, tarafsız, mesafeli ve üst düzey bir akademik Türkçe kullanacaksın.
-- BOYUTSAL ENDEKS KILAVUZU (0-100): Her bir akademik süzgeç (Araştırma Sorusu, Metodoloji, Kuram, Bağlam) için aşağıdaki boyutsal endeks skalasını kullan:
-  - 0-30: Özgün etkileşim — Düşük benzerlik, yüksek özgünlük. İki çalışma arasında anlamsal, yapısal veya organik bir bağ yoktur; jenerik kelime benzerlikleri sahte alarm seviyesindedir.
-  - 31-50: Destekleyici etkileşim — Kısmi benzerlik, destekleyici katkı. Zayıf veya dolaylı bir temas var; sadece tek bir alt boyut, kavram veya yöntem düzeyinde çeperden bir ilişki tespit edilmiştir.
-  - 51-70: Sınırdaş etkileşim — Sınırda/kısmi çakışma. Aday tez hedef tezin alanını, kuramsal şemsiyesini veya yöntemsel yaklaşımını belirgin ölçüde içeriyor/kapsıyor ancak hedef tezin özgün odağı büyük ölçüde korunuyor.
-  - 71-100: Kritik çakışma — Yüksek çakışma, riskli. Hedef tezin özgün akademik katkısını doğrudan tehdit ediyor, baltalıyor veya gasp ediyor.
-- DÖRT BOYUTLU EKSENEL KARŞILAŞTIRMA: Her bir aday tezi, hedef tezin parametreleriyle şu 4 net akademik süzgeç üzerinden karşılaştır ve her biri için 0-100 arası bir endeks puanı belirle:
-  - SÜZGEÇ A (Araştırma Sorusu/Konu) → \`subject_index\`: Araştırma soruları ve savunulan temel iddialar/savlar anlamsal olarak doğrudan çakışıyorsa 71-100, kısmen benzerlik varsa 51-70, sadece çeperden değiyorsa 31-50, tamamen farklı ve özgünse 0-30.
-  - SÜZGEÇ B (Metodoloji) → \`methodology_index\`: Veri toplama araçları, örneklem evrenleri veya analiz yöntemleri birbirinin replikası ise 71-100, kısmen benzerlik varsa 51-70, yöntemsel çeperden temas varsa 31-50, farklıysa 0-30.
-  - SÜZGEÇ C (Kuram) → \`theory_index\`: Üzerine inşa edildikleri temel kuramsal çerçeve, kavramsal şemsiye veya teorik modeller aynıysa 71-100, kısmen ortaksa 51-70, sadece bir kavram/teorisyen referansı düzeyindeyse 31-50, farklıysa 0-30.
-  - SÜZGEÇ D (Tarihsel Dönem/Bağlam) → \`context_index\`: Hedef çalışmanın ampirik sınırlarının, örneklem evreninin veya dönemsel kapsamının aday çalışmanın kapsamı tarafından yutulması, kapsanması veya onun bir alt kümesi olması durumlarını kronolojik ve bağlamsal bir kesişme olarak kabul et. Tam kesişme varsa 71-100, kısmi kesişme varsa 51-70, zayıf/çeperden temas varsa 31-50, tamamen farklı ve özgünse 0-30.
-- PARADİGMA VE EPİSTEMOLOJİK UYUM FİLTRESİ (EKSENEL DEĞERLENDİRME KISITI): Aday çalışma ile hedef çalışma aynı birincil kaynak matrislerini, ortak ampirik verileri veya jenerik kavramsal şemsiyeleri paylaşıyor olsa dahi; metne yaklaşım felsefeleri, kuramsal ekol yönelimleri ve epistemolojik duruşları kökten zıt/rakip yapılardaysa, \`theory_index\` ve \`methodology_index\` kesinlikle 50'nin üzerine çıkamaz. Bu durumlarda her iki eksen de dinamik olarak 31-50 bandına (veya gerekçelendirilmişse 0-30'a) çekilmeli ve \`academic_reasoning\` alanında bu kuramsal ayrışma felsefi düzeyde temellendirilmelidir. ÖNEMLİ: Bu felsefi temellendirme, yalnızca ve sadece aday tezin özetinde açıkça deklare edilen kuramsal kavramlar ve teorisyen referansları üzerinden yapılmalıdır; özette yer almayan felsefi niyetler veya metodolojik yaklaşımlar model tarafından spekülatif olarak türetilmemelidir (Strictly Grounded).
-- KRONOLOJİK BAĞLAMIN KONU BAĞLAMINDAN BAĞIMSIZLIĞI: Aday tezin dönemsel takviminin hedef tezin takvimini kapsaması veya yutması, \`context_index\` yüksek (71-100) olsa bile \`subject_index\`'in otomatik olarak yükselmesini gerektirmez. Aday çalışma, hedef çalışmanın ampirik ilişkisel aktörlerini içeriksel olarak derinlemesine analiz etmiyorsa, \`subject_index\` 31-50 bandında tutulmalıdır.
-- 📐 EKSENEL KARŞILAŞTIRMADA "İLİŞKİSEL BÜTÜNLÜK" KURALI (DOMAIN-AGNOSTIC):
-  - Yapısal Analiz Kısıtı: Karşılaştırma yaparken hedef tezin ve aday tezin analiz birimlerinin mimari yapısını (Tekil aktör/değişken/olgu vs. İlişkisel/Çoklu aktör) yapısal düzeyde tartacaksın.
-  - Kural: Eğer hedef tez, araştırma sorusunu ve kuramsal çerçevesini iki veya daha fazla bağımsız değişken/aktör/olgu arasındaki ilişkisel diyalektik veya etkileşim ($A \leftrightarrow B$) üzerine inşa etmişse; aday çalışma aynı teorik şemsiyeyi veya yöntem adını kullanıyor olsa bile, eğer aday çalışma bu bileşenlerden yalnızca birini tek taraflı veya içsel olarak ($A$ veya $B$) inceliyorsa, \`theory_index\` ve \`methodology_index\` ASLA 50'nin üzerine çıkamaz.
-  - Gerekçe: Çok aktörlü/ilişkisel bir kuramsal omurga, tek aktörlü tekil bir teorik çerçeveyle yapısal olarak eş değer sayılamayacağından ve onun tarafından bütünüyle kapsanamayacağından, kelime ve kavramlar ne kadar benzer olursa olsun bu bir yanılsamadır.
-  - Aksiyon: Bu felsefi ve yapısal uyuşmazlık durumunda, ilgili eksenlerin puanını doğrudan 31-50 bandına kilitleyeceksin ve \`academic_reasoning\` alanında bu yapısal/ilişkisel eksikliği vurgulayacaksın.
-- ENDEKS GEÇİŞ EŞİKLERİ VE KESİNTİSİZ KARAR KURALLARI:
-  - 30 ile 31 Arasındaki Keskin Sınır: Aday çalışma, hedef çalışmanın ana araştırma nesnelerini, birincil ampirik aktörlerini veya alt sorularını doğrudan ve derinlemesine yapısal bir analiz birimi olarak inceliyorsa puan 31'in altına düşemez; bu aktörlere/konulara sadece arka plan bilgisi olarak referans veriyorsa puan 30'un üzerine çıkamaz.
-  - 50 ile 51 Arasındaki Keskin Sınır: Çalışmalar arasında dolaylı da olsa kanıtlanabilir bir literatür kökeni, nedensel bağ veya ortak bir yan aktör ilişkisi deklare edilmişse puan 51'in altında kalır; hiçbir organik, tarihsel, metodolojik bağ yoksa ve sadece jenerik/tesadüfi kelime benzerliği mevcutsa kesinlikle 30'un altında kalmalıdır.
-- EKSİKSİZ TABLO ZORUNLULUĞU: Girdide sağlanan TÜM aday tezler çıktı dizisinde eksiksiz ve aynı doğrusal sırada yer almalıdır. Herhangi bir tezi listeden atlama veya "vb." diyerek geçiştirme (Anti-Laziness).
-- ÇIKTI FORMATI: Yanıtın, yukarıda sağlanan \`geminiAnalysisSchema\` ile %100 uyumlu, doğrulanmış ve parse edilebilir bir ham JSON objesi olmalıdır. Markdown \`\`\`json ... \`\`\` sarmalı kesinlikle yasaktır.
+# NESNEL KARNE TABANLI DEĞERLENDİRME VE KARAR MATRİSİ
+Her aday tez için öncelikle eksenlerin boolean karnelerini (\`subject_scorecard\`, \`methodology_scorecard\`, \`theory_scorecard\`, \`context_scorecard\`) doldurunuz. Kategorik risk seviyelerini seçerken bu karnelerle tam tutarlı olunuz:
+
+1. Araştırma Sorusu/Konu Etiketi (\`subject_overlap\`):
+   - \`KRITIK\`: \`same_core_question\` === true (hedef tez ile temel araştırma sorusu veya iddiası doğrudan aynı ise).
+   - \`YUKSEK\`: \`same_core_question\` === false ve \`significant_topic_intersection\` === true (aynı spesifik konu ve problematiği ele alıyorlarsa).
+   - \`ORTA\`: \`same_core_question\` === false, \`significant_topic_intersection\` === false ve \`background_mention_only\` === false (çeperden, dolaylı temas varsa).
+   - \`DUSUK\`: \`background_mention_only\` === true (aday tez hedef tezin konusuna sadece arka plan olarak değiniyorsa).
+   - \`YOK\`: Aday tez hedef tezle tamamen alakasız ise veya tüm karnedeki alanlar false ise.
+
+2. Metodoloji Örtüşme Etiketi (\`methodology_overlap\`):
+   - \`KRITIK\`: \`identical_method_and_tools\` === true (yöntem ve araçlar doğrudan replika ise).
+   - \`YUKSEK\`: \`identical_method_and_tools\` === false ve \`partially_shared_approach\` === true (belirgin ölçüde ortak bir metodolojik yaklaşım varsa).
+   - \`ORTA\`: \`identical_method_and_tools\` === false, \`partially_shared_approach\` === false ve \`different_empirical_design\` === false (kısmi yöntemsel temas varsa).
+   - \`DUSUK\`: \`different_empirical_design\` === true (yöntemsel tasarımları farklı ise).
+   - \`YOK\`: Yöntemler tamamen bağımsız ve farklı ise.
+
+3. Kuramsal Örtüşme Etiketi (\`theory_overlap\`):
+   - \`KRITIK\`: \`same_theoretical_backbone\` === true (aynı kuramsal çerçeve veya teorik modeller üzerine inşa edilmişlerse).
+   - \`YUKSEK\`: \`same_theoretical_backbone\` === true fakat kuramsal/epistemolojik zıtlık/rakip yaklaşım deklare edilmişse.
+   - \`ORTA\`: \`same_theoretical_backbone\` === false ve \`shared_concepts_only\` === true (yalnızca benzer kavramlar veya teorisyen referansları paylaşılıyorsa).
+   - \`DUSUK\`: \`different_epistemology\` === true (kuramsal ekol veya epistemolojik yaklaşımları farklı ise).
+   - \`YOK\`: Kuramsal çerçeveler tamamen farklı ise.
+
+4. Bağlam Örtüşme Etiketi (\`context_overlap\`):
+   - \`KRITIK\`: \`overlapping_universe_and_sample\` === true (evren, örneklem, coğrafi alan ve dönemsel takvim büyük ölçüde çakışıyor veya yutuluyorsa).
+   - \`YUKSEK\`: \`overlapping_universe_and_sample\` === false ve \`partial_contextual_contact\` === true (coğrafya veya dönem bazında kısmi kesişme varsa).
+   - \`ORTA\`: \`partial_contextual_contact\` === false ve \`distinct_context\` === false (örneklem/takvim zayıf temas içeriyorsa).
+   - \`DUSUK\`: \`distinct_context\` === false (zayıf bağlamsal ilişki varsa).
+   - \`YOK\`: \`distinct_context\` === true (bağlamlar tamamen bağımsız ise).
+
+# İLİŞKİSEL BÜTÜNLÜK KURALI (DOMAIN-AGNOSTIC)
+Hedef tez, araştırma sorusunu, yöntemini ve kuramsal çerçevesini iki veya daha fazla bağımsız değişken/aktör/olgu arasındaki ilişkisel diyalektik veya etkileşim ($A \leftrightarrow B$) üzerine inşa etmişse; aday çalışma aynı kuramsal şemsiyeyi, yöntemi veya bağlamı paylaşıyor olsa bile, eğer aday çalışma bu bileşenlerden yalnızca birini tek taraflı veya içsel olarak ($A$ veya $B$) inceliyorsa, \`subject_overlap\`, \`theory_overlap\`, \`methodology_overlap\` ve \`context_overlap\` seviyelerinin HİÇBİRİ **ORTA** seviyesini aşamaz (asla YUKSEK veya KRITIK olamaz). Analiz birimlerinin mimari yapısını buna göre değerlendiriniz ve gerekçesini \`academic_reasoning\` alanında açıklayınız.
+
+# JÜRİ SAVUNMA ELEME KURALI
+4 süzgecin tamamında DUSUK veya YOK seviyesinde kalan aday tezler hedef tez için akademik bir risk teşkil etmediğinden, bu çalışmaları \`overlapTable\` dizisine dahil etmeyiniz.
+
+# BİÇİMLENDİRME
+Yanıtı, sağlanan JSON şemasına tamamen uygun, doğrulanmış ve parse edilebilir bir ham JSON nesnesi olarak döndürünüz. Markdown kod blokları (\`\`\`json ...) kesinlikle kullanmayınız.
 
 # UZMAN FEW-SHOT ÖRNEĞİ
-Aşağıdaki örnekte, aday tez hedef tezle aynı dönemi, aynı jenerik yöntemi ve aynı kuramsal çerçeveyi kullansa da araştırma soruları farklı olduğu için subject_index orta seviyede tutulmuştur. Bu, sahte alarm üretmeyen gerçekçi bir senaryodur.
+Aşağıdaki örnekte, aday tez hedef tezle aynı dönemi, aynı yöntemi ve kuramsal çerçeveyi paylaşıyor olsa da, hedef tezin ilişkisel yapısına ($A \leftrightarrow B$) karşılık tekil bir yapı ($A$) sunduğu için, 'İlişkisel Bütünlük' kuralı gereği tüm eksenlerin seviyeleri ORTA seviyesinde sınırlandırılmıştır.
 
 <ornek_hedef_matris>
 {
   "studyTitle": "Dijital Gözetim ve Emek Direnişi",
   "researchQuestion": "Depo işçileri algoritmik gözetim sistemlerine karşı nasıl karşı-davranış stratejileri geliştiriyor?",
   "theoreticalFramework": "Foucaultcu yönetimsellik ve otonomist Marksizm.",
-  "methodology": "30 beyaz yakalı çalışanla yarı yapılandırılmış mülakat.",
+  "methodology": "30 depo çalışanıyla yarı yapılandırılmış mülakat.",
   "researchScope": "Pandemi sonrası Türkiye, Kocaeli lojistik üsleri."
 }
 </ornek_hedef_matris>
@@ -124,7 +244,7 @@ Aşağıdaki örnekte, aday tez hedef tezle aynı dönemi, aynı jenerik yöntem
     "year": 2023,
     "thesisType": "Yüksek Lisans",
     "department": "Sosyoloji",
-    "abstract": "Bu çalışma Kocaeli'deki e-ticaret lojistik merkezlerinde çalışan işçilerin algoritmik yönetim sistemleri altındaki denetim süreçlerini incelemektedir. Foucaultcu yönetimsellik perspektifinden, dijital gözetimin işçi özerkliğini nasıl kısıtladığı yarı yapılandırılmış mülakatlarla analiz edilmiştir..."
+    "abstract": "Bu çalışma Kocaeli'deki e-ticaret lojistik merkezlerinde çalışan işçilerin algoritmik yönetim sistemleri altındaki içsel denetim süreçlerini incelemektedir. Foucaultcu yönetimsellik perspektifinden, dijital gözetimin işçi özerkliğini nasıl kısıtladığı ve kurumsal kontrol matrisleri yarı yapılandırılmış mülakatlarla analiz edilmiştir..."
   }
 ]
 </ornek_aday_tez>
@@ -134,20 +254,44 @@ Aşağıdaki örnekte, aday tez hedef tezle aynı dönemi, aynı jenerik yöntem
   "overlapTable": [
     {
       "id": 999,
-      "academic_reasoning": "Aday çalışma, hedef tezle aynı kuramsal çerçeveyi (Foucaultcu yönetimsellik), aynı bağlamsal sınırları (Kocaeli lojistik üsleri) ve aynı jenerik yöntemi (yarı yapılandırılmış mülakat) paylaşmaktadır. Ancak aday tez, doğrudan denetim ve gözetim mekanizmalarının işçi özerkliğini nasıl kısıtladığına odaklanırken; hedef tez, işçilerin bu sistemlere karşı geliştirdiği karşı-davranış ve direniş stratejilerini araştırarak bambaşka bir research gap'i hedeflemektedir. Araştırma soruları anlamsal düzeyde farklılaştığı için subject_index orta seviyede (55) işaretlenmiştir. Kuram, yöntem ve bağlam adayın alanını kapsadığı için bu eksenler 71-100 bandında yüksek puan almış (theory_index: 82, methodology_index: 78, context_index: 90), temel odaktaki fark ise subject_index'i 55 seviyesinde tutmuştur.",
-      "subject_index": 55,
-      "methodology_index": 78,
-      "theory_index": 82,
-      "context_index": 90
+      "academic_reasoning": "Aday çalışma, hedef tezle aynı jenerik kuramsal şemsiyeyi (Foucaultcu yönetimsellik), aynı coğrafi/dönemsel bağlamı (Kocaeli lojistik üsleri) ve benzer bir yöntemi (mülakat) paylaşmaktadır. Ancak hedef tez, kuramsal omurgasını otonomist Marksizm ile eklemleyerek gözetim mekanizmaları ile işçilerin aktif direniş stratejileri arasındaki 'ilişkisel diyalektiği' ($A \\leftrightarrow B$) merkeze almaktadır. Aday çalışma ise süreci sadece kurumsal denetimin işçi üzerindeki tek taraflı, içsel kontrol etkileri ($A$) ekseninde incelemektedir. 'İlişkisel Bütünlük' kuralı uyarınca, tek aktörlü/tekil bir analitik mimari, hedef tezin ilişkisel diyalektik modelini kapsayamayacağından, subject_overlap, theory_overlap, methodology_overlap ve context_overlap seviyelerinin hiçbiri ORTA seviyesini aşamaz. Bu nedenle tüm eksenler en fazla ORTA seviyesinde sınırlandırılmıştır.",
+      "subject_scorecard": {
+        "same_core_question": false,
+        "significant_topic_intersection": true,
+        "background_mention_only": false
+      },
+      "subject_overlap": "ORTA",
+      "methodology_scorecard": {
+        "identical_method_and_tools": false,
+        "partially_shared_approach": true,
+        "different_empirical_design": false
+      },
+      "methodology_overlap": "ORTA",
+      "theory_scorecard": {
+        "same_theoretical_backbone": false,
+        "shared_concepts_only": true,
+        "different_epistemology": false
+      },
+      "theory_overlap": "ORTA",
+      "context_scorecard": {
+        "overlapping_universe_and_sample": true,
+        "partial_contextual_contact": false,
+        "distinct_context": false
+      },
+      "context_overlap": "ORTA"
     }
   ]
 }
-</ornek_beklenen_cikti>_`;
+</ornek_beklenen_cikti>`;
 }
 
-// ============================================================================
-// 3. KULLANICI PROMPT OLUŞTURUCU (%100 TÜRKÇE)
-// ============================================================================
+/**
+ * Aday tezin analiz edilmesi için kullanıcı promptu oluşturur.
+ * Prompt sadece girdi verilerini içerir; değerlendirme kuralları sistem talimatlarındadır.
+ *
+ * @param params - Hedef tez matrisi ve aday tez detayları
+ * @returns Oluşturulan kullanıcı promptu
+ */
 export function buildAnalysisPrompt(params: {
   studyTitle: string;
   researchQuestion: string;
@@ -192,16 +336,5 @@ ${JSON.stringify(
 )}
 </aday_tez_listesi>
 
-# TALİMATLAR VE GÖREV
-Sistem talimatında tanımlanan 4 akademik süzgeci (Araştırma Sorusu, Metodoloji, Kuram, Dönem/Bağlam) <aday_tez_listesi> içindeki tüm çalışmalara eksiksiz uygula. Her bir aday tez için subject_index, methodology_index, theory_index, context_index alanlarını 0-100 boyutsal endeks skalasına göre (0-30: Özgün, 31-50: Destekleyici, 51-70: Sınırdaş, 71-100: Kritik) puanla. Her tez için üst düzey bir jüri üyesi üslubuyla Türkçe olarak gerekçelendirilmiş academic_reasoning paragrafı yaz. İki tez arasındaki felsefi ve ilişkisel boşluk (research gap) farklarını yakala; sadece jenerik kelime benzerliklerine dayanarak yüksek endeks puanı (50+) verme.
-
-# KRİTİK GÜVENLİK BARIYERI
-- Tamamen sağlanan aday tez özetlerine bağlı kal (Strictly Grounded). Metinlerde açıkça belirtilmeyen metodolojik detayları veya bulguları aday çalışmalara atfetme.
-- Dizi uzunluğunun <aday_tez_listesi> eleman sayısı ile tam olarak senkronize olduğundan ve çıktı dilinin saf Türkçe olduğundan emin ol.
-- 0-30 puanı yalnızca hedef tezle hiçbir organik, tarihsel veya metodolojik bağ bulunmayan çalışmalar için kullan. 71-100 puanı yalnızca hedef tezin özgün akademik katkısını doğrudan gasp eden/baltalayan güçlü çakışmalar için kullan. 31-50, sadece çeperden/tek bir alt boyuttan değen dolaylı ilişkiler içindir. 51-70, kısmi benzerlik veya kapsama durumları içindir.
-- PARADİGMA VE EPİSTEMOLOJİK UYUM FİLTRESİ kuralını hatırla: Aday ile hedef aynı kavramsal şemsiyeleri veya kaynak matrislerini paylaşsa bile felsefi/ekol yaklaşımları kökten zıtsa theory_index ve methodology_index 50'nin üzerine çıkamaz. Bu değerlendirmeyi sadece özette deklare edilen kavram ve referanslara dayanarak yap; spekülatif felsefi çıkarım üretme.
-- ENDEKS GEÇİŞ EŞİKLERİ VE KESİNTİSİZ KARAR KURALLARI başlığı altında tanımlanan 30↔31 ve 50↔51 keskin sınır geçiş kurallarına mutlak suretle ve harfiyen uy. Bu kurallar, döngüsel karar dalgalanmalarını önlemek için bağlayıcı emir niteliğindedir.
-- Hedef tezin ilişkisel/çok aktörlü yapısı ile aday tezin tek aktörlü yapısı arasındaki "İlişkisel Bütünlük" kuralını mutlak suretle işlet. Sırf özetteki teorisyen isimleri ve jenerik yöntem adları aynı diye tekil ve içsel bir çalışmaya 50'nin üzerinde puan verme; analiz birimlerinin mimari yapısını tart ve kural gereği puanı 31-50 bandında tut.
-
-Dahili olarak çok derinlemesine düşün (Think extremely hard) ve sadece nihai şemaya uygun ham JSON nesnesini döndür.`;
+Görev: Yukarıda sağlanan aday tezi, sistem talimatlarında tanımlanan 4 akademik süzgeç ve karar kuralları doğrultusunda hedef tez matrisiyle karşılaştırarak analiz ediniz ve sonucu belirlenen JSON şemasında döndürünüz.`;
 }

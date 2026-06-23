@@ -1,20 +1,9 @@
-import { ThinkingLevel } from "@google/genai";
-import { generateStructuredContent } from "@/lib/gemini";
 import { cosineSimilarity } from "@/lib/utils";
 import { generateEmbeddings } from "@/lib/cloudflare";
 import { fetchThesisDetails } from "@/lib/tezara";
 import type { Logger } from "@/lib/logger";
-import type {
-  TezaraThesisSummary,
-  TezaraThesisDetails,
-  DeepSiftEntry,
-  DeepSiftResponse,
-} from "@/lib/types";
-import {
-  deepSiftingSchema,
-  buildDeepSiftingSystemInstruction,
-  buildDeepSiftingPrompt,
-} from "@/lib/prompts";
+import type { TezaraThesisSummary, TezaraThesisDetails } from "@/lib/types";
+import { GoogleGenAI } from "@google/genai";
 
 export interface SiftAndFetchDetailsParams {
   studyTitle: string;
@@ -35,13 +24,14 @@ export interface SiftingDiagnostic {
 }
 
 /**
- * Deduplicates, filters, sifts candidates in a two-stage pipeline using Gemini, and retrieves full thesis details.
- * Supports up to 20 parallel search query results.
+ * Deduplicates search results, selects top 15 via embedding cosine similarity,
+ * fetches full thesis details, and returns all valid theses for jury analysis.
+ * Deep sifting (Stage 2) has been removed — the jury now exercises elimination authority.
  *
- * @param params - Target thesis matrix parameters.
+ * @param params - Target thesis parameters.
  * @param tezaraSearchResults - Parallel search results from Tezara containing candidates.
  * @param log - Logger instance.
- * @returns Object containing finalTheses (array of TezaraThesisDetails selected by the LLM) and diagnostic info.
+ * @returns Object containing finalTheses (all embedding-top-15 theses with valid details) and diagnostic info.
  */
 export async function siftAndFetchDetails(
   params: SiftAndFetchDetailsParams,
@@ -130,22 +120,47 @@ export async function siftAndFetchDetails(
 
     let passedStage1: TezaraThesisSummary[] = [];
     try {
-      const queryText = `task: search result | query: ${params.studyTitle}`;
+      let targetTitleEn = "";
+      try {
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const response = await ai.models.generateContent({
+          model: "gemini-3.1-flash-lite",
+          contents: `Translate the following Turkish academic title into English. Return ONLY the English translation, no other text or quotes:\n"${params.studyTitle}"`,
+        });
+        targetTitleEn = response.text?.trim() || "";
+      } catch (err) {
+        log.warn("sifting_translation_failed", {
+          service: "originality",
+          error: err,
+          data: { title: params.studyTitle },
+        });
+      }
+
+      const queryTrText = `task: search result | query: ${params.studyTitle}`;
+      const queryEnText = targetTitleEn
+        ? `task: search result | query: ${targetTitleEn}`
+        : "";
+
       const docTexts = uniqueTheses.map(
         (t) => `title: ${t.title} | text: none`,
       );
-      const textsToEmbed = [queryText, ...docTexts];
+
+      const textsToEmbed = queryEnText
+        ? [queryTrText, queryEnText, ...docTexts]
+        : [queryTrText, ...docTexts];
 
       const embeddings = await generateEmbeddings(textsToEmbed, log);
 
-      const targetVector = embeddings[0];
-      const candidateVectors = embeddings.slice(1);
+      const trVector = embeddings[0];
+      const enVector = queryEnText ? embeddings[1] : null;
+      const candidateVectors = embeddings.slice(queryEnText ? 2 : 1);
 
       const candidatesWithSimilarity = uniqueTheses.map((t, idx) => {
-        const similarity = cosineSimilarity(
-          targetVector,
-          candidateVectors[idx],
-        );
+        const similarityTr = cosineSimilarity(trVector, candidateVectors[idx]);
+        const similarityEn = enVector
+          ? cosineSimilarity(enVector, candidateVectors[idx])
+          : 0;
+        const similarity = Math.max(similarityTr, similarityEn);
         return { thesis: t, similarity };
       });
 
@@ -233,100 +248,33 @@ export async function siftAndFetchDetails(
       };
     }
 
-    // 4. Stage 2 (Deep Sifting with Abstract)
-    const stage2Start = performance.now();
-    log.info("originality_sift_deep_start", {
-      service: "originality",
-      data: {
-        count: validDetails.length,
-        context: params.studyTitle,
-      },
-    });
+    // Stage 2 kaldirildi — embedding'den gecen 15 tezin tamami jury analizine gider.
+    // Jury (originality-analysis.ts) kendi eleme yetkisiyle alakasiz veya 4 ekseni
+    // de ozgun olan tezleri rapor disinda birakir.
 
-    let finalIds: number[] = [];
-    try {
-      const deepSiftPrompt = buildDeepSiftingPrompt({
-        ...params,
-        candidateDetails: validDetails.map((t) => ({
-          id: t.id,
-          title: t.title,
-          department: t.department,
-          abstract: t.abstract || "",
-        })),
-      });
-      log.prompt("gemini-3.1-flash-lite (HIGH thinking)", deepSiftPrompt);
-
-      console.log(
-        "=== GEMINI'A GİDEN HAM TEZ VERİLERİ ===",
-        JSON.stringify(validDetails, null, 2),
-      );
-
-      const deepSiftResult = await generateStructuredContent<DeepSiftResponse>(
-        "gemini-3.1-flash-lite",
-        buildDeepSiftingSystemInstruction(),
-        deepSiftPrompt,
-        deepSiftingSchema,
-        log,
-        {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
-        },
-      );
-
-      const targetEntries = Array.isArray(deepSiftResult?.selectedTheses)
-        ? deepSiftResult.selectedTheses
-        : ([] as DeepSiftEntry[]);
-
-      const targetIds = targetEntries.map((e) => e.id);
-
-      const validIdSet = new Set(validDetails.map((t) => t.id));
-      finalIds = targetIds.filter((id) => validIdSet.has(id));
-
-      const tokens = log.lastTokens || { input: 0, output: 0 };
-
-      log.info("originality_sift_deep_success", {
-        service: "originality",
-        durationMs: performance.now() - stage2Start,
-        tokens: { input: tokens.input ?? 0, output: tokens.output ?? 0 },
-        data: {
-          count: finalIds.length,
-          context: params.studyTitle,
-        },
-      });
-    } catch (err) {
-      log.error("originality_sift_deep_failed", {
-        service: "originality",
-        error: err,
-        data: { context: params.studyTitle },
-      });
-      throw err;
-    }
-
-    const finalIdSet = new Set(finalIds);
-
-    const finalSelectedTheses = validDetails.filter((t) =>
-      finalIdSet.has(t.id),
+    const passedStage1Ids = new Set(passedStage1.map((t) => t.id));
+    const eliminatedTheses = uniqueTheses.filter(
+      (t) => !passedStage1Ids.has(t.id),
     );
 
-    const eliminatedTheses = uniqueTheses.filter((t) => !finalIdSet.has(t.id));
-
     log.preview(
-      "Final Selected Thesis IDs",
-      finalSelectedTheses.map((t) => ({ id: t.id, title: t.title })),
+      "Final Thesis IDs (all valid from stage 1 → jury)",
+      validDetails.map((t) => ({ id: t.id, title: t.title })),
     );
 
     log.info("originality_sift_success", {
       service: "originality",
       durationMs: performance.now() - functionStart,
       data: {
-        count: finalSelectedTheses.length,
+        count: validDetails.length,
         before: uniqueTheses.length,
-        after: finalSelectedTheses.length,
+        after: validDetails.length,
         context: params.studyTitle,
       },
     });
 
     return {
-      finalTheses: finalSelectedTheses,
+      finalTheses: validDetails,
       eliminatedTheses,
       diagnostic: {
         uniqueAfterDedup: uniqueTheses.length,

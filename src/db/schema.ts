@@ -1,3 +1,4 @@
+import type { OverlapLevel } from "@/lib/types";
 import {
   pgTable,
   serial,
@@ -100,12 +101,11 @@ export const originalityReports = pgTable("originality_reports", {
         thesisType: string;
         department: string;
         axes: {
-          subject: number;
-          theory: number;
-          methodology: number;
-          context?: number;
+          subject: OverlapLevel;
+          theory: OverlapLevel;
+          methodology: OverlapLevel;
+          context?: OverlapLevel;
         };
-        riskScore: number;
         comparisonNote?: string;
         yokPdfUrl?: string;
       }[];

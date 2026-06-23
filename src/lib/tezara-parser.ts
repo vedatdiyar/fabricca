@@ -74,9 +74,16 @@ export function parseTezaraSearchResults(
 
         // Title is the second a[href^="/theses/"] in the li (first is the Tez No link)
         const titleLinks = $li.find('a[href^="/theses/"]');
-        const title =
-          titleLinks.length > 1 ? $(titleLinks[1]).text().trim() : "";
+        const titleLink = titleLinks.length > 1 ? $(titleLinks[1]) : null;
+        let title = titleLink ? titleLink.text().trim() : "";
         if (!title) return;
+
+        const altTitle = titleLink
+          ? titleLink.next("p").first().text().trim()
+          : "";
+        if (altTitle) {
+          title = `${title} / ${altTitle}`;
+        }
 
         // Author
         const author = $li

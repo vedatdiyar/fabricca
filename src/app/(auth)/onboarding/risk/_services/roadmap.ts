@@ -1,5 +1,6 @@
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
+import type { OverlapLevel } from "@/lib/types";
 import type { Logger } from "@/lib/logger";
 import {
   roadmapSchema,
@@ -19,12 +20,11 @@ export interface SynthesizeRoadmapParams {
     author: string;
     year: number;
     axes: {
-      subject: number;
-      theory: number;
-      methodology: number;
-      context?: number;
+      subject: OverlapLevel;
+      theory: OverlapLevel;
+      methodology: OverlapLevel;
+      context?: OverlapLevel;
     };
-    riskScore: number;
     comparisonNote: string;
   }[];
 }

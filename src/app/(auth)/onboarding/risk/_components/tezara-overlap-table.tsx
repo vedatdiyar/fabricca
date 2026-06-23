@@ -9,9 +9,9 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
-import { getThesisPriority, getScoreBadge } from "../_services/analysis";
-import { BADGE_LABELS, getBadgeColor } from "../_lib/constants";
-import type { OriginalityReportData } from "@/lib/types";
+import { compareThesesByRisk } from "../_services/analysis";
+import { OVERLAP_LEVEL_LABELS, getOverlapLevelColor } from "../_lib/constants";
+import type { OriginalityReportData, OverlapLevel } from "@/lib/types";
 
 /** A single overlap-table row after sorting and comparison-note backfill. */
 type OverlapRow =
@@ -23,44 +23,15 @@ interface TezaraOverlapTableProps {
 }
 
 /**
- * Helper to categorize originality scores (0-100) and return badge style classes.
+ * Renders only the categorical overlap level badge for a dimensional axis.
  */
-export function getAcademicStatus(score: number) {
-  if (score <= 30) {
-    return {
-      label: "Özgün",
-      badgeClass: "bg-success/20 border-success/20 text-success",
-    };
-  }
-  if (score <= 50) {
-    return {
-      label: "Destekleyici",
-      badgeClass: "bg-warning/20 border-warning/20 text-warning",
-    };
-  }
-  if (score <= 70) {
-    return {
-      label: "Sınırdaş",
-      badgeClass: "bg-orange-500/20 border-orange-500/20 text-orange-500",
-    };
-  }
-  return {
-    label: "Kritik",
-    badgeClass: "bg-destructive/20 border-destructive/20 text-destructive",
-  };
-}
-
-/**
- * Renders only the academic status badge for a dimensional index score.
- */
-function AxisCell({ score }: { score: number }) {
-  const status = getAcademicStatus(score);
+function AxisCell({ level }: { level: OverlapLevel }) {
   return (
     <div className="flex items-center justify-center">
       <span
-        className={`inline-flex items-center justify-center w-[84px] py-0.5 rounded-full text-[10px] font-bold tracking-wide border ${status.badgeClass}`}
+        className={`inline-flex items-center justify-center w-[84px] py-0.5 rounded-md text-[10px] font-bold tracking-wide border ${getOverlapLevelColor(level)}`}
       >
-        {status.label}
+        {OVERLAP_LEVEL_LABELS[level]}
       </span>
     </div>
   );
@@ -103,27 +74,7 @@ export function TezaraOverlapTable({
       });
     }
 
-    return items.sort((a, b) => {
-      const priorityA = getThesisPriority(a.axes);
-      const priorityB = getThesisPriority(b.axes);
-      if (priorityA !== priorityB) return priorityB - priorityA;
-      const tA = (a.thesisType || "").toLowerCase();
-      const tB = (b.thesisType || "").toLowerCase();
-      const wA =
-        tA.includes("doktora") || tA.includes("phd")
-          ? 2
-          : tA.includes("yüksek lisans")
-            ? 1
-            : 0;
-      const wB =
-        tB.includes("doktora") || tB.includes("phd")
-          ? 2
-          : tB.includes("yüksek lisans")
-            ? 1
-            : 0;
-      if (wB !== wA) return wB - wA;
-      return (b.year || 0) - (a.year || 0);
-    });
+    return items.sort(compareThesesByRisk);
   }, [overlapTable, strategicRecommendations]);
 
   return (
@@ -135,7 +86,7 @@ export function TezaraOverlapTable({
         </CardTitle>
         <CardDescription>
           Benzer akademik çalışmaların konu, kuramsal çerçeve, metodoloji ve
-          bağlam eksenlerinde 0-100 endeks puanları ile incelenmesi.
+          bağlam eksenlerinde kategorik risk seviyeleri ile incelenmesi.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -158,16 +109,13 @@ export function TezaraOverlapTable({
                 <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[100px]">
                   Dönem
                 </th>
-                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[90px]">
-                  Pozisyon
-                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {sortedTheses.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={5}
                     className="p-8 text-center text-muted-foreground leading-relaxed text-sm"
                   >
                     Doğrudan ilişki kuran veya karşılaştırılabilir herhangi bir
@@ -204,29 +152,21 @@ export function TezaraOverlapTable({
                         </div>
                       </td>
                       <td className="p-3 text-center">
-                        <AxisCell score={item.axes.subject} />
+                        <AxisCell level={item.axes.subject} />
                       </td>
                       <td className="p-3 text-center">
-                        <AxisCell score={item.axes.theory} />
+                        <AxisCell level={item.axes.theory} />
                       </td>
                       <td className="p-3 text-center">
-                        <AxisCell score={item.axes.methodology} />
+                        <AxisCell level={item.axes.methodology} />
                       </td>
                       <td className="p-3 text-center">
-                        <AxisCell score={item.axes.context ?? 0} />
-                      </td>
-                      <td className="p-3 text-center">
-                        <span
-                          className={`inline-flex items-center justify-center px-3 py-1 rounded-md text-xs font-bold tracking-wide border text-center ${getBadgeColor(getScoreBadge(item.riskScore))}`}
-                        >
-                          {BADGE_LABELS[getScoreBadge(item.riskScore)] ||
-                            getScoreBadge(item.riskScore)}
-                        </span>
+                        <AxisCell level={item.axes.context ?? "YOK"} />
                       </td>
                     </tr>
                     {expandedThesisId === item.id && item.comparisonNote && (
                       <tr className="bg-muted/10">
-                        <td colSpan={6} className="p-4 border-t border-border">
+                        <td colSpan={5} className="p-4 border-t border-border">
                           <div className="p-6 space-y-2 bg-background rounded-lg">
                             <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5 select-none">
                               <GitCompare className="w-3.5 h-3.5 text-primary" />

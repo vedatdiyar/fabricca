@@ -42,6 +42,10 @@ Sen disiplinlerüstü çalışan kıdemli bir Olgusal Doğrulama Mühendisisin. 
   • Arşiv dergileri, resmî yayınlar ve anket/rapor referansları
 - TEORİK VE FELSEFİ İDDİALARI ARATMA KESİNLİKLE YASAKTIR: Tezin kendi ürettiği soyut teorileri, kavramsal modelleri, hipotezleri veya nedensellik bağlarını (Örn: "taşra eşrafı ve siyasal elit koalisyonu", "merkez-çevre ilişkisi") Tavily üzerinden aratmak KESİNLİKLE YASAKTIR. Diğer somut sorguların yanına bile olsa bu tür teorik ve soyut modeller sorgu listesine asla sızmamalıdır.
 - BOŞ KÜME ÖZGÜRLÜĞÜ (ZORLAMA SORGULAMA YASAĞI): Eğer tez matrisi tamamen kuramsal/soyut bir yapıda ise veya yukarıdaki kriterlere uyan hiçbir somut ampirik çıpa barındırmıyorsa, yapay olarak sorgu üretmeye çalışma. Bu durumda \`tavilyQueries\` dizisini boş \`[]\` olarak döndürmek tamamen serbest ve doğrudur. Kesinlikle zorlama genel sorgu türetme.
+- BELİRLENİMCİLİK VE KARARLILIK (DETERMINISM) KURALI: Modelin temperature 1.0 altında her çalıştırıldığında aynı doğrulama sorgularını üretmesini sağlamak amacıyla:
+  1. Sorguları oluştururken matriste geçen somut kurum, yasa ve olay isimlerini metinde ilk geçiş sırasına göre ele al.
+  2. Her zaman en spesifik olandan (örneğin yasa maddesi, kurum adı) en genel olana (örneğin yıl aralığı) doğru sırala.
+  3. Süslü, yorumsal veya alternatif arama terimleri üretmekten kaçın, sorguları en yalın ve doğrudan arama terimleriyle sınırlı tut.
 - DİNAMİK DİL STRATEJİSİ: Tavily sorgularının dili, doğrulanacak olgunun doğasına göre belirlenmelidir. Yerel/ulusal olgular için Türkçe sorgular; küresel/uluslararası olgular için İngilizce veya karma sorgular üretilmelidir.
 - ÇIKTI FORMATI: Yanıtın, yukarıda sağlanan \`factQueryExtractionSchema\` ile %100 uyumlu, doğrulanmış ve parse edilebilir bir ham JSON objesi olmalıdır. Markdown \`\`\`json ... \`\`\` sarmalı kesinlikle yasaktır.
 

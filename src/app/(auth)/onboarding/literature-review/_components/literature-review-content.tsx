@@ -271,7 +271,7 @@ export function LiteratureReviewContent() {
                   {subBox.title}
                 </h3>
                 {subBox.boxType && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary ml-auto">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary ml-auto">
                     {boxTypeLabels[subBox.boxType] ?? subBox.boxType}
                   </span>
                 )}

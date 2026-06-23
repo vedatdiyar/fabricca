@@ -173,7 +173,8 @@ export async function executeSearchAction(params: {
 
 /**
  * Step 3: Sifts and fetches details for the Tezara candidates using
- * embedding similarity and Gemini deep sifting.
+ * embedding similarity (top 15), then returns all valid theses
+ * directly for jury analysis (deep sifting removed — jury has elimination authority).
  * No database writes.
  *
  * @param params - Thesis matrix and raw Tezara search results
@@ -231,9 +232,10 @@ export async function siftThesesAction(params: {
 }
 
 /**
- * Step 4: Runs the Gemini Jury analysis, calculates the final originality
- * risk profile, synthesizes the strategic roadmap, then writes the complete
- * report to the originality_reports table as a single upsert at the very end.
+ * Step 4: Runs the Gemini Jury analysis (with elimination authority — may exclude
+ * theses with all 4 axes original or completely irrelevant), calculates the final
+ * originality risk profile, synthesizes the strategic roadmap, then writes the
+ * complete report to the originality_reports table as a single upsert.
  *
  * @param params - Thesis matrix, scraped theses, and Tavily evaluation results
  * @returns The complete originality report data, or an error message
@@ -311,7 +313,6 @@ export async function finalizeJuryAnalysisAction(params: {
             author: item.author,
             year: item.year,
             axes: item.axes,
-            riskScore: item.riskScore,
             comparisonNote: item.comparisonNote || "",
           })),
         },

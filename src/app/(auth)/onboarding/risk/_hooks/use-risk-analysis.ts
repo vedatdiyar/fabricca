@@ -31,7 +31,7 @@ const ANALYSIS_STEPS: LoadingStep[] = [
     status: "idle",
   },
   {
-    text: "Karşılaştırmalı literatür matrisi yapılandırılıyor...",
+    text: "Karşılaştırmalı literatür matrisi yapılandırılıyor (embedding + jüri)...",
     status: "idle",
   },
   { text: "Nihai risk seviyesi ve tavsiyeler hazırlanıyor...", status: "idle" },

@@ -1,3 +1,4 @@
+import type { OverlapLevel } from "../types";
 import type { JsonSchema } from "../gemini";
 
 // ============================================================================
@@ -52,8 +53,7 @@ Sen, üniversitelerin Sosyal Bilimler ve Lisansüstü Eğitim Enstitülerinde do
     "title": "E-Ticaret Depolarında Algoritmik Kontrol Mekanizmaları",
     "author": "Ahmet Yılmaz",
     "year": 2023,
-    "axes": { "subject": 88, "theory": 82, "methodology": 78, "context": 90 },
-    "riskScore": 85,
+    "axes": { "subject": "KRITIK", "theory": "KRITIK", "methodology": "YUKSEK", "context": "KRITIK" },
     "comparisonNote": "Kuram, mekan, yöntem ve örneklem evreni hedef tezle birebir çakışmaktadır."
   }
 ]
@@ -81,12 +81,11 @@ export function buildRoadmapPrompt(params: {
     author: string;
     year: number;
     axes: {
-      subject: number;
-      theory: number;
-      methodology: number;
-      context?: number;
+      subject: OverlapLevel;
+      theory: OverlapLevel;
+      methodology: OverlapLevel;
+      context?: OverlapLevel;
     };
-    riskScore: number;
     comparisonNote: string;
   }[];
 }): string {

@@ -19,6 +19,8 @@ export type EnhancedThesisActionResult =
   | { success: true; data: EnhancedThesisData; error?: never }
   | { success?: never; error: string };
 
+export type OverlapLevel = "KRITIK" | "YUKSEK" | "ORTA" | "DUSUK" | "YOK";
+
 export type AxesOption = "BIREBIR" | "KAPSAYAN" | "TEGET" | "ALAKASIZ";
 
 /**
@@ -80,10 +82,10 @@ export interface TavilyEvaluationResponse {
 export interface OverlapItem {
   id: number;
   axes: {
-    subject: number;
-    theory: number;
-    methodology: number;
-    context?: number;
+    subject: OverlapLevel;
+    theory: OverlapLevel;
+    methodology: OverlapLevel;
+    context?: OverlapLevel;
   };
   comparisonNote?: string;
   yokPdfUrl?: string;
@@ -114,7 +116,6 @@ export interface OriginalityReportData {
       year: number;
       thesisType: string;
       department: string;
-      riskScore: number;
     })[];
     strategicRecommendations: string;
     riskPercentage?: number;
@@ -168,12 +169,11 @@ export interface JuryReportItem {
   year: number;
   thesisType: string;
   department: string;
-  riskScore: number;
   axes: {
-    subject: number;
-    theory: number;
-    methodology: number;
-    context?: number;
+    subject: OverlapLevel;
+    theory: OverlapLevel;
+    methodology: OverlapLevel;
+    context?: OverlapLevel;
   };
   comparisonNote?: string;
   yokPdfUrl?: string;

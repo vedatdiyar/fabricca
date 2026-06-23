@@ -1,7 +1,7 @@
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
 import type { Logger } from "@/lib/logger";
-import type { TezaraThesisDetails } from "@/lib/types";
+import type { OverlapLevel, TezaraThesisDetails } from "@/lib/types";
 import {
   geminiAnalysisSchema,
   buildAnalysisSystemInstruction,
@@ -18,6 +18,17 @@ export interface AnalyzeOriginalityRiskParams {
   validDetails: TezaraThesisDetails[];
 }
 
+/**
+ * Categorical ordering from lowest to highest risk.
+ */
+const LEVEL_ORDER: OverlapLevel[] = [
+  "YOK",
+  "DUSUK",
+  "ORTA",
+  "YUKSEK",
+  "KRITIK",
+];
+
 export interface CalculatedOverlapItem {
   id: number;
   title: string;
@@ -29,12 +40,11 @@ export interface CalculatedOverlapItem {
   comparisonNote?: string;
   yokPdfUrl?: string;
   axes: {
-    subject: number;
-    theory: number;
-    methodology: number;
-    context: number;
+    subject: OverlapLevel;
+    theory: OverlapLevel;
+    methodology: OverlapLevel;
+    context: OverlapLevel;
   };
-  riskScore: number;
 }
 
 export interface CalculatedOriginalityRiskResult {
@@ -44,117 +54,188 @@ export interface CalculatedOriginalityRiskResult {
     | "BESLEYICI_CALISMA"
     | "OZGUN_CALISMA";
   overlapTable: CalculatedOverlapItem[];
+  eliminatedTheses: CalculatedOverlapItem[];
   riskPercentage: number;
 }
 
 /**
- * Calculates a risk score (0-100) for a single thesis as the arithmetic mean
- * of its 4 dimensional index scores.
- *
- * @param axes - The 4-axis numeric indices from Gemini (0-100 each).
- * @returns Rounded risk score between 0 and 100.
+ * Returns the highest (most dangerous) overlap level present in the given axes.
  */
-export function calculateRiskScore(axes: {
-  subject: number;
-  theory: number;
-  methodology: number;
-  context: number;
-}): number {
-  return Math.round(
-    (axes.subject + axes.theory + axes.methodology + axes.context) / 4,
-  );
+export function getThesisMaxLevel(axes: {
+  subject: OverlapLevel;
+  theory: OverlapLevel;
+  methodology: OverlapLevel;
+  context?: OverlapLevel;
+}): OverlapLevel {
+  const levels = [
+    axes.subject,
+    axes.theory,
+    axes.methodology,
+    axes.context ?? "YOK",
+  ];
+  let max: OverlapLevel = "YOK";
+  for (const l of levels) {
+    if (LEVEL_ORDER.indexOf(l) > LEVEL_ORDER.indexOf(max)) max = l;
+  }
+  return max;
 }
 
 /**
- * Determines the project-level global risk badge and display percentage based
- * on the maximum individual thesis risk score in the candidate pool.
- *
- * @param scores - Array of per-thesis risk scores (0-100).
- * @returns Global risk badge and display percentage.
+ * Returns the second-highest overlap level for tiebreaker sorting.
  */
-export function evaluateGlobalRisk(scores: number[]): {
-  badge: string;
+function getThesisSecondMaxLevel(axes: {
+  subject: OverlapLevel;
+  theory: OverlapLevel;
+  methodology: OverlapLevel;
+  context?: OverlapLevel;
+}): OverlapLevel {
+  const levels = [
+    axes.subject,
+    axes.theory,
+    axes.methodology,
+    axes.context ?? "YOK",
+  ];
+  const sorted = levels.sort(
+    (a, b) => LEVEL_ORDER.indexOf(b) - LEVEL_ORDER.indexOf(a),
+  );
+  return sorted.length > 1 ? sorted[1] : "YOK";
+}
+
+interface AxesWithOptionalContext {
+  subject: OverlapLevel;
+  theory: OverlapLevel;
+  methodology: OverlapLevel;
+  context?: OverlapLevel;
+}
+
+/**
+ * Compares two theses for sorting: highest axis level first, then second-highest,
+ * then doctorate over master's, then most recent first.
+ */
+export function compareThesesByRisk(
+  a: { axes: AxesWithOptionalContext; thesisType: string; year: number },
+  b: { axes: AxesWithOptionalContext; thesisType: string; year: number },
+): number {
+  const maxA = getThesisMaxLevel(a.axes);
+  const maxB = getThesisMaxLevel(b.axes);
+  const diff = LEVEL_ORDER.indexOf(maxB) - LEVEL_ORDER.indexOf(maxA);
+  if (diff !== 0) return diff;
+
+  const secondA = getThesisSecondMaxLevel(a.axes);
+  const secondB = getThesisSecondMaxLevel(b.axes);
+  const diff2 = LEVEL_ORDER.indexOf(secondB) - LEVEL_ORDER.indexOf(secondA);
+  if (diff2 !== 0) return diff2;
+
+  const tA = (a.thesisType || "").toLowerCase();
+  const tB = (b.thesisType || "").toLowerCase();
+  const wA =
+    tA.includes("doktora") || tA.includes("phd")
+      ? 2
+      : tA.includes("yüksek lisans")
+        ? 1
+        : 0;
+  const wB =
+    tB.includes("doktora") || tB.includes("phd")
+      ? 2
+      : tB.includes("yüksek lisans")
+        ? 1
+        : 0;
+  if (wB !== wA) return wB - wA;
+
+  return (b.year || 0) - (a.year || 0);
+}
+
+/**
+ * Determines the project-level global risk badge and percentage based on the
+ * highest single axis value across all remaining theses.
+ *
+ * Rule:
+ * - Any KRITIK axis → KRITIK_CAKISMA (85%)
+ * - No KRITIK but ≥1 YUKSEK → SINIRDAS_CALISMA (50%)
+ * - All axes ≤ ORTA → BESLEYICI_CALISMA (25%)
+ * - Table empty → OZGUN_CALISMA (0%)
+ */
+function evaluateGlobalBadge(overlapTable: CalculatedOverlapItem[]): {
+  badge: CalculatedOriginalityRiskResult["originalityBadge"];
   percentage: number;
 } {
-  if (scores.length === 0) return { badge: "OZGUN_CALISMA", percentage: 0 };
-
-  const maxScore = Math.max(...scores);
-
-  if (maxScore <= 30) return { badge: "OZGUN_CALISMA", percentage: 0 };
-  if (maxScore <= 50) return { badge: "BESLEYICI_CALISMA", percentage: 25 };
-  if (maxScore <= 70) return { badge: "SINIRDAS_CALISMA", percentage: 50 };
-  return { badge: "KRITIK_CAKISMA", percentage: 85 };
-}
-
-const SCORE_BADGE_THRESHOLDS: [number, string][] = [
-  [30, "OZGUN_CALISMA"],
-  [50, "BESLEYICI_CALISMA"],
-  [70, "SINIRDAS_CALISMA"],
-  [100, "KRITIK_CAKISMA"],
-];
-
-/**
- * Maps an individual thesis risk score to its corresponding risk badge.
- * Useful for per-thesis UI badge display.
- *
- * @param score - Risk score (0-100).
- * @returns Corresponding risk badge label.
- */
-export function getScoreBadge(score: number): string {
-  for (const [threshold, badge] of SCORE_BADGE_THRESHOLDS) {
-    if (score <= threshold) return badge;
+  if (overlapTable.length === 0) {
+    return { badge: "OZGUN_CALISMA", percentage: 0 };
   }
-  return "KRITIK_CAKISMA";
+
+  let hasKRITIK = false;
+  let hasYUKSEK = false;
+
+  for (const item of overlapTable) {
+    const levels = [
+      item.axes.subject,
+      item.axes.theory,
+      item.axes.methodology,
+      item.axes.context,
+    ];
+    if (levels.includes("KRITIK")) hasKRITIK = true;
+    if (levels.includes("YUKSEK")) hasYUKSEK = true;
+  }
+
+  if (hasKRITIK) return { badge: "KRITIK_CAKISMA", percentage: 85 };
+  if (hasYUKSEK) return { badge: "SINIRDAS_CALISMA", percentage: 50 };
+  return { badge: "BESLEYICI_CALISMA", percentage: 25 };
 }
 
 /**
- * Computes a sort priority integer for a thesis based on its 4-axis scores.
- * Higher total overlap = higher priority (appears first in UI).
- * Uses simple sum of axis scores.
- */
-export function getThesisPriority(axes: {
-  subject: number;
-  theory: number;
-  methodology: number;
-  context?: number;
-}): number {
-  return axes.subject + axes.theory + axes.methodology + (axes.context ?? 0);
-}
-
-/**
- * Enriches the raw Gemini overlap analysis with thesis metadata and computes
- * each thesis's risk score from the 4 dimensional indices. The project-level
- * badge is derived from the highest individual risk score in the pool.
+ * Enriches the raw Gemini overlap analysis with thesis metadata and applies
+ * the jury elimination filter: a thesis stays in the overlap table only if at
+ * least one of its 4 axes is KRITIK or YUKSEK. All others are relegated to
+ * eliminatedTheses.
+ *
+ * The global badge is derived from the highest single axis level across
+ * remaining theses, following institutional council rules.
  *
  * Filters out IDs hallucinated by Gemini that don't exist in validDetails.
- *
- * @param overlapTable - Raw overlap table from Gemini analysis (indices only).
- * @param validDetails - Enriched thesis metadata for ID lookup.
- * @param logger - Optional logger instance.
- * @returns Enriched overlap table with computed risk scores and project badge.
  */
 export function calculateOriginalityRisk(
   overlapTable: Array<{
     id: number;
     academic_reasoning: string;
-    subject_index: number;
-    methodology_index: number;
-    theory_index: number;
-    context_index: number;
+    subject_scorecard?: {
+      same_core_question: boolean;
+      significant_topic_intersection: boolean;
+      background_mention_only: boolean;
+    };
+    subject_overlap: OverlapLevel;
+    methodology_scorecard?: {
+      identical_method_and_tools: boolean;
+      partially_shared_approach: boolean;
+      different_empirical_design: boolean;
+    };
+    methodology_overlap: OverlapLevel;
+    theory_scorecard?: {
+      same_theoretical_backbone: boolean;
+      shared_concepts_only: boolean;
+      different_epistemology: boolean;
+    };
+    theory_overlap: OverlapLevel;
+    context_scorecard?: {
+      overlapping_universe_and_sample: boolean;
+      partial_contextual_contact: boolean;
+      distinct_context: boolean;
+    };
+    context_overlap: OverlapLevel;
   }>,
   validDetails: TezaraThesisDetails[],
   logger?: Logger,
 ): CalculatedOriginalityRiskResult {
+  const calculatedOverlapTable: CalculatedOverlapItem[] = [];
+  const eliminatedTheses: CalculatedOverlapItem[] = [];
+
   if (validDetails.length === 0 || overlapTable.length === 0) {
     return {
       originalityBadge: "OZGUN_CALISMA",
       overlapTable: [],
+      eliminatedTheses: [],
       riskPercentage: 0,
     };
   }
-
-  const calculatedOverlapTable: CalculatedOverlapItem[] = [];
-  const allScores: number[] = [];
 
   for (const item of overlapTable) {
     const detail = validDetails.find((d) => d.id === item.id);
@@ -170,16 +251,13 @@ export function calculateOriginalityRisk(
     }
 
     const axes = {
-      subject: item.subject_index,
-      theory: item.theory_index,
-      methodology: item.methodology_index,
-      context: item.context_index,
+      subject: item.subject_overlap,
+      theory: item.theory_overlap,
+      methodology: item.methodology_overlap,
+      context: item.context_overlap,
     };
 
-    const riskScore = calculateRiskScore(axes);
-    allScores.push(riskScore);
-
-    calculatedOverlapTable.push({
+    const thesisEntry: CalculatedOverlapItem = {
       id: detail.id,
       title: detail.title,
       author: detail.author,
@@ -190,27 +268,48 @@ export function calculateOriginalityRisk(
       comparisonNote: item.academic_reasoning,
       yokPdfUrl: detail.yokPdfUrl,
       axes,
-      riskScore,
-    });
+    };
+
+    // Jury elimination filter: only theses with at least one KRITIK or YUKSEK
+    // axis are kept in the risk table. All others are eliminated.
+    const hasKRITIKorYUKSEK = (
+      [
+        axes.subject,
+        axes.theory,
+        axes.methodology,
+        axes.context,
+      ] as OverlapLevel[]
+    ).some((level) => level === "KRITIK" || level === "YUKSEK");
+
+    if (hasKRITIKorYUKSEK) {
+      calculatedOverlapTable.push(thesisEntry);
+    } else {
+      logger?.info("originality_thesis_eliminated", {
+        service: "originality",
+        data: {
+          context: "calculateOriginalityRisk",
+          thesisId: detail.id,
+          thesisTitle: detail.title,
+          axes,
+        },
+      });
+      eliminatedTheses.push(thesisEntry);
+    }
   }
 
-  const globalRisk = evaluateGlobalRisk(allScores);
+  const globalBadge = evaluateGlobalBadge(calculatedOverlapTable);
 
   return {
-    originalityBadge:
-      globalRisk.badge as CalculatedOriginalityRiskResult["originalityBadge"],
+    originalityBadge: globalBadge.badge,
     overlapTable: calculatedOverlapTable,
-    riskPercentage: globalRisk.percentage,
+    eliminatedTheses,
+    riskPercentage: globalBadge.percentage,
   };
 }
 
 /**
  * Performs comparison between target thesis and a list of identified academic
  * theses using the Academic Jury Analysis model.
- *
- * @param params - Comparison target matrix and candidate details.
- * @param log - Logger instance.
- * @returns Gemini response containing the evaluation overlap table.
  */
 export async function analyzeOriginalityRisk(
   params: AnalyzeOriginalityRiskParams,
@@ -219,10 +318,30 @@ export async function analyzeOriginalityRisk(
   overlapTable: {
     id: number;
     academic_reasoning: string;
-    subject_index: number;
-    methodology_index: number;
-    theory_index: number;
-    context_index: number;
+    subject_scorecard?: {
+      same_core_question: boolean;
+      significant_topic_intersection: boolean;
+      background_mention_only: boolean;
+    };
+    subject_overlap: OverlapLevel;
+    methodology_scorecard?: {
+      identical_method_and_tools: boolean;
+      partially_shared_approach: boolean;
+      different_empirical_design: boolean;
+    };
+    methodology_overlap: OverlapLevel;
+    theory_scorecard?: {
+      same_theoretical_backbone: boolean;
+      shared_concepts_only: boolean;
+      different_epistemology: boolean;
+    };
+    theory_overlap: OverlapLevel;
+    context_scorecard?: {
+      overlapping_universe_and_sample: boolean;
+      partial_contextual_contact: boolean;
+      distinct_context: boolean;
+    };
+    context_overlap: OverlapLevel;
   }[];
 }> {
   log.file("analysis.ts:42");
@@ -236,42 +355,68 @@ export async function analyzeOriginalityRisk(
   });
 
   try {
-    log.prompt(
-      "gemini-3.1-flash-lite (HIGH thinking)",
-      buildAnalysisPrompt(params),
-    );
+    const analysisPromises = params.validDetails.map(async (candidate) => {
+      const candidateParams = {
+        ...params,
+        validDetails: [candidate],
+      };
 
-    const result = await generateStructuredContent<{
-      overlapTable: {
-        id: number;
-        academic_reasoning: string;
-        subject_index: number;
-        methodology_index: number;
-        theory_index: number;
-        context_index: number;
-      }[];
-    }>(
-      "gemini-3.1-flash-lite",
-      buildAnalysisSystemInstruction(),
-      buildAnalysisPrompt(params),
-      geminiAnalysisSchema,
-      log,
-      {
-        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
-      },
-    );
+      const result = await generateStructuredContent<{
+        overlapTable: {
+          id: number;
+          academic_reasoning: string;
+          subject_scorecard: {
+            same_core_question: boolean;
+            significant_topic_intersection: boolean;
+            background_mention_only: boolean;
+          };
+          subject_overlap: OverlapLevel;
+          methodology_scorecard: {
+            identical_method_and_tools: boolean;
+            partially_shared_approach: boolean;
+            different_empirical_design: boolean;
+          };
+          methodology_overlap: OverlapLevel;
+          theory_scorecard: {
+            same_theoretical_backbone: boolean;
+            shared_concepts_only: boolean;
+            different_epistemology: boolean;
+          };
+          theory_overlap: OverlapLevel;
+          context_scorecard: {
+            overlapping_universe_and_sample: boolean;
+            partial_contextual_contact: boolean;
+            distinct_context: boolean;
+          };
+          context_overlap: OverlapLevel;
+        }[];
+      }>(
+        "gemini-3.1-flash-lite",
+        buildAnalysisSystemInstruction(),
+        buildAnalysisPrompt(candidateParams),
+        geminiAnalysisSchema,
+        log,
+        {
+          thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+          seed: 42,
+        },
+      );
 
-    const overlapTable = result.overlapTable || [];
+      return result.overlapTable || [];
+    });
+
+    const results = await Promise.all(analysisPromises);
+    const overlapTable = results.flat();
 
     log.preview(
       "Overlap Analysis Results",
       overlapTable.map((o) => ({
         id: o.id,
-        indices: {
-          subject: o.subject_index,
-          methodology: o.methodology_index,
-          theory: o.theory_index,
-          context: o.context_index,
+        overlap: {
+          subject: o.subject_overlap,
+          methodology: o.methodology_overlap,
+          theory: o.theory_overlap,
+          context: o.context_overlap,
         },
         reasoning: o.academic_reasoning?.slice(0, 120),
       })),

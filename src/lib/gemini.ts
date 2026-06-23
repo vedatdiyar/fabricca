@@ -157,6 +157,7 @@ export async function generateStructuredContent<T>(
     } | null;
     payloadStage?: string;
     zodSchema?: z.ZodType<T>;
+    seed?: number;
   },
 ): Promise<T> {
   const startTime = performance.now();
@@ -173,7 +174,6 @@ export async function generateStructuredContent<T>(
       thinkingLevel: thinkingLevel ?? undefined,
     },
   });
-
   try {
     const { result: response, attempts: retryAttempts } = await retryOn503(
       () =>
@@ -186,6 +186,7 @@ export async function generateStructuredContent<T>(
             responseMimeType: "application/json",
             responseJsonSchema: schema,
             thinkingConfig: options?.thinkingConfig ?? undefined,
+            seed: options?.seed ?? undefined,
           },
         }),
       2,
