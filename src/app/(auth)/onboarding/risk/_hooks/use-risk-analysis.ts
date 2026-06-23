@@ -44,7 +44,7 @@ const PROCEED_STEPS: LoadingStep[] = [
     status: "active",
   },
   {
-    text: "Konu kutuları için akademik veri tabanlarında kurucu eserler aranıyor (co-citation)...",
+    text: "Konu kutuları için akademik veri tabanlarında kurucu eserler aranıyor...",
     status: "idle",
   },
   { text: "Kutular sayfasına yönlendiriliyor...", status: "idle" },

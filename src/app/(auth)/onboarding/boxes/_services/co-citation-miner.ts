@@ -254,7 +254,7 @@ export async function mineCoCitations(
       for (const item of results) {
         const title = (item.title || "").trim();
         const year = item.publication_year || 0;
-        const authorsList =
+        let authorsList =
           item.authorships
             ?.map((a) => a.author?.display_name || "")
             .filter(Boolean) || [];
@@ -263,6 +263,123 @@ export async function mineCoCitations(
           continue;
         }
         seenTitles.add(title.toLowerCase());
+
+        // Fallback for works with empty authors (e.g. books/chapters cataloged under journal book-reviews)
+        if (authorsList.length === 0 && title) {
+          try {
+            // Split by colon to search the main title (e.g. "Activists in office") which helps locate the main book record
+            const mainTitle = title.split(":")[0].trim();
+            if (mainTitle.length > 5) {
+              const fallbackParams = new URLSearchParams({
+                filter: `title.search:${mainTitle}`,
+                per_page: "10",
+                select: "id,title,authorships,publication_year,cited_by_count",
+              });
+              const fallbackUrl = `https://api.openalex.org/works?${fallbackParams.toString().replace(/\+/g, "%20")}`;
+              const fallbackResponse = await fetchWithRetry(
+                fallbackUrl,
+                {
+                  headers: { "User-Agent": OPENALEX_USER_AGENT },
+                  signal: AbortSignal.timeout(8000),
+                },
+                log,
+              );
+              if (fallbackResponse.ok) {
+                const fallbackData = (await fallbackResponse.json()) as {
+                  results?: OpenAlexWork[];
+                };
+                const fallbackResults = fallbackData.results || [];
+
+                // Citation-Weighted Consensus: group matches by author and accumulate cited_by_count
+                const authorScores = new Map<
+                  string,
+                  { count: number; rawList: string[] }
+                >();
+                const REVIEW_PATTERNS = [
+                  /review/i,
+                  /reviewed/i,
+                  /recension/i,
+                  /discussion of/i,
+                  /\bpp\b/i,
+                ];
+
+                for (const match of fallbackResults) {
+                  const matchAuthors =
+                    match.authorships
+                      ?.map((a) => a.author?.display_name || "")
+                      .filter(Boolean) || [];
+                  if (matchAuthors.length === 0) continue;
+
+                  const matchTitle = (match.title || "").trim();
+                  // Skip review items that contain review keywords in their titles
+                  const isReview = REVIEW_PATTERNS.some((pattern) =>
+                    pattern.test(matchTitle),
+                  );
+                  if (isReview) continue;
+
+                  const cleanMainTitle = mainTitle.toLowerCase().trim();
+                  const cleanMatchTitle = matchTitle.toLowerCase().trim();
+                  const cleanTitle = title.toLowerCase().trim();
+
+                  // Check if titles match or contain each other
+                  const isTitleMatch =
+                    cleanMatchTitle.includes(cleanMainTitle) ||
+                    cleanMainTitle.includes(cleanMatchTitle) ||
+                    cleanMatchTitle.includes(cleanTitle) ||
+                    cleanTitle.includes(cleanMatchTitle);
+
+                  if (isTitleMatch) {
+                    // Create a unique key for the author combination
+                    let authorKey = "";
+                    if (matchAuthors.length > 2) {
+                      authorKey = `${matchAuthors[0]} et al.`;
+                    } else {
+                      authorKey = matchAuthors.join(" & ");
+                    }
+
+                    const score = (match.cited_by_count || 0) + 1; // Base score of 1 to count occurrences
+                    const existing = authorScores.get(
+                      authorKey.toLowerCase(),
+                    ) || { count: 0, rawList: matchAuthors };
+                    authorScores.set(authorKey.toLowerCase(), {
+                      count: existing.count + score,
+                      rawList: matchAuthors,
+                    });
+                  }
+                }
+
+                // Determine the winner (author with highest cumulative citation-weighted score)
+                let highestScore = -1;
+                let consensusAuthors: string[] = [];
+                for (const [, val] of authorScores.entries()) {
+                  if (val.count > highestScore) {
+                    highestScore = val.count;
+                    consensusAuthors = val.rawList;
+                  }
+                }
+
+                if (consensusAuthors.length > 0) {
+                  authorsList = consensusAuthors;
+                  log.info("openalex_author_fallback_resolved", {
+                    service: "boxes",
+                    data: {
+                      originalTitle: title,
+                      resolvedAuthors: consensusAuthors,
+                      score: highestScore,
+                    },
+                  });
+                }
+              }
+            }
+            // Respect rate limits after making an extra request
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          } catch (err) {
+            log.warn("openalex_author_fallback_failed", {
+              service: "boxes",
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
 
         // Format author name string
         let authorStr = "Bilinmeyen Yazar";

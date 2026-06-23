@@ -223,10 +223,10 @@ export function LiteratureReviewContent() {
   } = useLiteratureReview();
 
   const boxTypeLabels: Record<string, string> = {
-    PROBLEMATIZATION: "Soru Odaklı",
-    CONCEPTUAL: "Teorik Altyapı",
-    DATA_PROTOCOL: "Yöntem / Protokol",
-    ANALYSIS_FINDINGS: "Saha ve Bulgular",
+    CONCEPTUAL: "Teorik Çatı",
+    PROBLEMATIZATION: "Problematizasyon",
+    ANALYSIS_FINDINGS: "Arşiv",
+    DATA_PROTOCOL: "Metodoloji",
   };
 
   if (loading) {

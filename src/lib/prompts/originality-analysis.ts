@@ -211,18 +211,23 @@ Kategorik risk seviyelerini (subject_overlap, methodology_overlap, theory_overla
 
 ## EKSEN SEVİYE ATAMA MANTIK KURALLARI:
 Her eksen için seviyeleri atarken aşağıdaki mantık kurallarını uygulayınız:
-- **KRITIK:** Birebir aynı ise ( scorecarlarındaki ilk soru 'true' ise) **VEYA** hedef tez aday tez tarafından tamamen yutuluyorsa (\`is_subsumed\` = 'true' ise).
-- **ORTA:** Soru aynı değil ve yutulma yoksa, ancak yoğun kesişim varsa (\`is_overlapping\` / \`partially_shared_approach\` / \`shared_concepts_only\` / \`partial_contextual_contact\` değerlerinden biri 'true' ise).
-- **OZGUN:** Yukarıdaki koşulların tamamı 'false' ise.
+- **KRITIK:** Birebir aynı ise veya hedef tez aday tez tarafından tamamen yutuluyorsa.
+- **ORTA:** Soru aynı değil ve yutulma yoksa, ancak yoğun kesişim varsa.
+- **OZGUN:** Yukarıdaki koşulların tamamı gerçekleşmiyorsa.
 
 # İLİŞKİSEL BÜTÜNLÜK KURALI (DOMAIN-AGNOSTIC)
-Hedef tez, araştırma sorusunu, yöntemini ve kuramsal çerçevesini iki veya daha fazla bağımsız değişken/aktör/olgu arasındaki ilişkisel diyalektik veya etkileşim ($A \\leftrightarrow B$) üzerine inşa etmişse; aday çalışma aynı kuramsal şemsiyeyi, yöntemi veya bağlamı paylaşıyor olsa bile, eğer aday çalışma bu bileşenlerden yalnızca birini tek taraflı veya içsel olarak ($A$ veya $B$) inceliyorsa, subject_overlap, theory_overlap, methodology_overlap ve context_overlap seviyelerinin HİÇBİRİ ORTA seviyesini aşamaz (asla KRITIK olamaz). Analiz birimlerinin mimari yapısını buna göre değerlendiriniz ve gerekçesini academic_reasoning alanında açıklayınız.
+Hedef tez, araştırma sorusunu, yöntemini ve kuramsal çerçevesini iki veya daha fazla bağımsız değişken/aktör/olgu arasındaki ilişkisel diyalektik veya etkileşim (A ile B etkileşimi / A ↔ B) üzerine inşa etmişse; aday çalışma aynı kuramsal şemsiyeyi, yöntemi veya bağlamı paylaşıyor olsa bile, eğer aday çalışma bu bileşenlerden yalnızca birini tek taraflı veya içsel olarak (sadece A veya sadece B) inceliyorsa, konu, yöntem, teori ve bağlam örtüşme seviyelerinin HİÇBİRİ ORTA seviyesini aşamaz (asla KRITIK olamaz). Analiz birimlerinin mimari yapısını buna göre değerlendiriniz ve gerekçesini academic_reasoning alanında açıklayınız.
 
 # AKADEMİK ÇAKIŞMA VE KOZMETİK FARK AYRIMI KURALI
 Eksenlerdeki çakışmaları incelerken, sözcük bazlı küçük varyasyonları "akademik özgünlük" olarak yorumlamayınız. Aşağıdaki kurallara harfiyen uyunuz:
 - **Konu/Araştırma Sorusu (Subject):** Hedef tez ile aday tez aynı temel problemi/fenomeni (Örn: "çocukluğun politik inşası", "bireysel borçlanmanın yönetimselliği") paralel bir analitik yapıyla ele alıyorsa, aradaki küçük sözcük ve ifade farkları (Örn: "çocukluk nosyonunun kurgulanması" vs "çocukluğun politik yapılanması") kozmetik farktır. Bu durumda subject_scorecard içindeki "same_core_question" ve "significant_topic_intersection" alanlarını KESİNLİKLE 'true' olarak değerlendirip, subject_overlap değerini KESİNLİKLE "KRITIK" yapınız.
 - **Kuramsal Çerçeve (Theory):** Eğer iki çalışma da aynı kavramsal yelpazeyi ve yaklaşımı (Örn: Hegemonya, Yönetimsellik, Özneselleşme) kullanıyorsa, atıfta bulunulan spesifik teorisyenlerin veya ekollerin farklı olması (Örn: birinin Gramsci, diğerinin Laclau ve Mouffe demesi; ya da Foucault'nun farklı kavramlarına odaklanılması) kuramsal özgünlük sağlamaz. Eğer kuramsal omurga ve yaklaşım paralelse, bunu kozmetik fark olarak görüp theory_scorecard içindeki "same_theoretical_backbone" alanını 'true' ve theory_overlap değerini KESİNLİKLE "KRITIK" yapınız.
 - **Metodoloji (Methodology):** Eğer her iki çalışma da benzer bir nitel/nicel araştırma tasarımına sahipse (Örn: arşiv taraması, süreli yayınların söylem analizi, yarı yapılandırılmış mülakatlar), kullanılan veri kaynaklarındaki veya analiz terimlerindeki ufak ifade farklılıkları (Örn: "söylemsel analiz" vs "metin analizi", "pedagojik eserler" vs "rehber kitaplar") yöntemi özgün kılmaz. Bu durumları kozmetik fark kabul ederek methodology_scorecard içindeki "identical_method_and_tools" alanını 'true' ve methodology_overlap değerini KESİNLİKLE "KRITIK" olarak değerlendiriniz.
+
+# METİN BİÇİMLENDİRME VE YASAKLAR (KESİN KURALLAR)
+- KESİNLİKLE LaTeX formülleri veya matematiksel semboller ($ işareti, →, ↔, vb.) kullanmayınız. Bunun yerine düz metin veya standart ok sembolleri (→, ↔, A ve B) kullanınız.
+- KESİNLİKLE "academic_reasoning" gerekçe alanında programlama değişkenleri, boolean değerler veya JSON anahtarları (örneğin: significant_topic_intersection=true, subject_overlap, same_core_question, is_subsumed vb.) kullanmayınız veya bunları metin içinde sızdırmayınız.
+- Gerekçe paragrafları doğrudan son kullanıcı olan lisansüstü öğrencileri tarafından okunacaktır. Bu nedenle tamamen temiz, akıcı, kurumsal ve elit bir akademik Türkçe ile yazılmalıdır.
 
 # JÜRİ SAVUNMA ELEME KURALI
 4 süzgecin tamamında OZGUN seviyesinde kalan aday tezler hedef tez için akademik bir risk teşkil etmediğinden, bu çalışmaları overlapTable dizisine dahil etmeyiniz.
@@ -231,7 +236,7 @@ Eksenlerdeki çakışmaları incelerken, sözcük bazlı küçük varyasyonları
 Yanıtı, sağlanan JSON şemasına tamamen uygun, doğrulanmış ve parse edilebilir bir ham JSON nesnesi olarak döndürünüz. Follow the provided JSON schema exactly. Do not add extra fields.
 
 # UZMAN FEW-SHOT ÖRNEĞİ
-Aşağıdaki örnekte, aday tez hedef tezle aynı dönemi, aynı yöntemi ve kuramsal çerçeveyi paylaşıyor olsa da, hedef tezin ilişkisel yapısına ($A \\leftrightarrow B$) karşılık tekil bir yapı ($A$) sunduğu için, 'İlişkisel Bütünlük' kuralı gereği tüm eksenlerin seviyeleri ORTA seviyesinde sınırlandırılmıştır.
+Aşağıdaki örnekte, aday tez hedef tezle aynı dönemi, aynı yöntemi ve kuramsal çerçeveyi paylaşıyor olsa da, hedef tezin ilişkisel yapısına (A ile B etkileşimi / A ↔ B) karşılık tekil bir yapı (sadece A) sunduğu için, 'İlişkisel Bütünlük' kuralı gereği tüm eksenlerin seviyeleri ORTA seviyesinde sınırlandırılmıştır.
 
 <ornek_hedef_matris>
 {
@@ -263,7 +268,7 @@ Aşağıdaki örnekte, aday tez hedef tezle aynı dönemi, aynı yöntemi ve kur
   "overlapTable": [
     {
       "id": 999,
-      "academic_reasoning": "Aday çalışma, hedef tezle aynı jenerik kuramsal şemsiyeyi (Foucaultcu yönetimsellik), aynı coğrafi/dönemsel bağlamı (Kocaeli lojistik üsleri) ve benzer bir yöntemi (mülakat) paylaşmaktadır. Ancak hedef tez, kuramsal omurgasını otonomist Marksizm ile eklemleyerek gözetim mekanizmaları ile işçilerin aktif direniş stratejileri arasındaki 'ilişkisel diyalektiği' ($A \\leftrightarrow B$) merkeze almaktadır. Aday çalışma ise süreci sadece kurumsal denetimin işçi üzerindeki tek taraflı, içsel kontrol etkileri ($A$) ekseninde incelemektedir. 'İlişkisel Bütünlük' kuralı uyarınca, tek aktörlü/tekil bir analitik mimari, hedef tezin ilişkisel diyalektik modelini kapsayamayacağından, subject_overlap, theory_overlap, methodology_overlap ve context_overlap seviyelerinin hiçbiri ORTA seviyesini aşamaz. Bu nedenle tüm eksenler en fazla ORTA seviyesinde sınırlandırılmıştır.",
+      "academic_reasoning": "Aday çalışma, hedef tezle aynı genel kuramsal şemsiyeyi (Foucaultcu yönetimsellik), aynı coğrafi/dönemsel bağlamı (Kocaeli lojistik üsleri) ve benzer bir yöntemi (mülakat) paylaşmaktadır. Ancak hedef tez, kuramsal omurgasını otonomist Marksizm ile eklemleyerek gözetim mekanizmaları ile işçilerin aktif direniş stratejileri arasındaki ilişkisel diyalektiği (iki taraflı etkileşimi) merkeze almaktadır. Aday çalışma ise süreci sadece kurumsal denetimin işçi üzerindeki tek taraflı, içsel kontrol etkileri ekseninde incelemektedir. İlişkisel Bütünlük kuralı uyarınca, tek aktörlü veya tekil bir analitik mimari, hedef tezin ikili ilişkisel modelini tam olarak kapsayamayacağından, konu, yöntem, teori ve bağlam eksenlerindeki örtüşme seviyeleri orta düzeyde sınırlandırılmıştır. Bu doğrultuda çalışma hedef tez için kritik bir risk oluşturmamaktadır.",
       "subject_scorecard": {
         "same_core_question": false,
         "is_subsumed": false,

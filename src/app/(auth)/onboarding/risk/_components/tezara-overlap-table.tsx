@@ -115,7 +115,7 @@ export function TezaraOverlapTable({
                 <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[100px]">
                   Dönem
                 </th>
-                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[90px]">
+                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[90px] border-l border-border/50">
                   Durum
                 </th>
               </tr>
@@ -143,20 +143,20 @@ export function TezaraOverlapTable({
                       }
                     >
                       <td className="p-3 space-y-1">
-                        <div className="font-semibold text-foreground text-sm leading-relaxed flex items-start gap-2 select-none">
+                        <div className="font-semibold text-foreground text-xs leading-relaxed flex items-start gap-2 select-none">
                           <span className="mt-1 text-muted-foreground shrink-0 transition-transform duration-200">
                             {expandedThesisId === item.id ? (
-                              <ChevronDown className="w-4 h-4" />
+                              <ChevronDown className="w-3.5 h-3.5" />
                             ) : (
-                              <ChevronRight className="w-4 h-4" />
+                              <ChevronRight className="w-3.5 h-3.5" />
                             )}
                           </span>
                           <span>{item.title}</span>
                         </div>
-                        <div className="pl-6 text-xs text-muted-foreground leading-relaxed">
+                        <div className="pl-6 text-[11px] text-muted-foreground leading-relaxed">
                           {item.author} &bull; {item.university} ({item.year})
                         </div>
-                        <div className="pl-6 text-[11px] text-muted-foreground font-mono">
+                        <div className="pl-6 text-[10px] text-muted-foreground font-mono">
                           {item.thesisType}
                         </div>
                       </td>
@@ -172,9 +172,9 @@ export function TezaraOverlapTable({
                       <td className="p-3 text-center">
                         <AxisCell level={item.axes.context ?? "OZGUN"} />
                       </td>
-                      <td className="p-3 text-center">
+                      <td className="p-3 text-center border-l border-border/50">
                         <span
-                          className={`inline-flex items-center justify-center w-[84px] py-0.5 rounded-md text-[10px] font-bold tracking-wide border ${THESIS_BADGE_COLORS[calculateBadge(item.axes)]}`}
+                          className={`inline-flex items-center justify-center w-[84px] py-1 rounded-full text-[10px] font-bold tracking-wide border ${THESIS_BADGE_COLORS[calculateBadge(item.axes)]}`}
                         >
                           {THESIS_BADGE_LABELS[calculateBadge(item.axes)]}
                         </span>
@@ -182,7 +182,7 @@ export function TezaraOverlapTable({
                     </tr>
                     {expandedThesisId === item.id && item.comparisonNote && (
                       <tr className="bg-muted/10">
-                        <td colSpan={5} className="p-4 border-t border-border">
+                        <td colSpan={6} className="p-4 border-t border-border">
                           <div className="p-6 space-y-2 bg-background rounded-lg">
                             <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5 select-none">
                               <GitCompare className="w-3.5 h-3.5 text-primary" />
