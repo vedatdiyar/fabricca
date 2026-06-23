@@ -3,7 +3,6 @@ import { generateEmbeddings } from "@/lib/cloudflare";
 import { fetchThesisDetails } from "@/lib/tezara";
 import type { Logger } from "@/lib/logger";
 import type { TezaraThesisSummary, TezaraThesisDetails } from "@/lib/types";
-import { GoogleGenAI } from "@google/genai";
 
 export interface SiftAndFetchDetailsParams {
   studyTitle: string;
@@ -120,47 +119,21 @@ export async function siftAndFetchDetails(
 
     let passedStage1: TezaraThesisSummary[] = [];
     try {
-      let targetTitleEn = "";
-      try {
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const response = await ai.models.generateContent({
-          model: "gemini-3.1-flash-lite",
-          contents: `Translate the following Turkish academic title into English. Return ONLY the English translation, no other text or quotes:\n"${params.studyTitle}"`,
-        });
-        targetTitleEn = response.text?.trim() || "";
-      } catch (err) {
-        log.warn("sifting_translation_failed", {
-          service: "originality",
-          error: err,
-          data: { title: params.studyTitle },
-        });
-      }
-
-      const queryTrText = `task: search result | query: ${params.studyTitle}`;
-      const queryEnText = targetTitleEn
-        ? `task: search result | query: ${targetTitleEn}`
-        : "";
+      const queryText = `task: search result | query: ${params.studyTitle}`;
 
       const docTexts = uniqueTheses.map(
         (t) => `title: ${t.title} | text: none`,
       );
 
-      const textsToEmbed = queryEnText
-        ? [queryTrText, queryEnText, ...docTexts]
-        : [queryTrText, ...docTexts];
+      const textsToEmbed = [queryText, ...docTexts];
 
       const embeddings = await generateEmbeddings(textsToEmbed, log);
 
-      const trVector = embeddings[0];
-      const enVector = queryEnText ? embeddings[1] : null;
-      const candidateVectors = embeddings.slice(queryEnText ? 2 : 1);
+      const queryVector = embeddings[0];
+      const candidateVectors = embeddings.slice(1);
 
       const candidatesWithSimilarity = uniqueTheses.map((t, idx) => {
-        const similarityTr = cosineSimilarity(trVector, candidateVectors[idx]);
-        const similarityEn = enVector
-          ? cosineSimilarity(enVector, candidateVectors[idx])
-          : 0;
-        const similarity = Math.max(similarityTr, similarityEn);
+        const similarity = cosineSimilarity(queryVector, candidateVectors[idx]);
         return { thesis: t, similarity };
       });
 

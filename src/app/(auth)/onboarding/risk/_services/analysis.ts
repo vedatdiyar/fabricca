@@ -355,10 +355,16 @@ export async function analyzeOriginalityRisk(
   });
 
   try {
-    const analysisPromises = params.validDetails.map(async (candidate) => {
+    const chunks: TezaraThesisDetails[][] = [];
+    const chunkSize = 3;
+    for (let i = 0; i < params.validDetails.length; i += chunkSize) {
+      chunks.push(params.validDetails.slice(i, i + chunkSize));
+    }
+
+    const analysisPromises = chunks.map(async (group) => {
       const candidateParams = {
         ...params,
-        validDetails: [candidate],
+        validDetails: group,
       };
 
       const result = await generateStructuredContent<{
