@@ -85,6 +85,7 @@ export function LibraryContent({ boxes }: LibraryContentProps) {
             key={selectedBox.id}
             boxId={selectedBox.id}
             boxTitle={selectedBox.title}
+            boxType={selectedBox.boxType}
           />
         ) : (
           <div className="flex items-center justify-center h-full">

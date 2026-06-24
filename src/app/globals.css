@@ -133,7 +133,7 @@
   }
 
   .textarea-academic {
-    @apply h-[120px] overflow-y-auto resize-none leading-relaxed text-foreground font-light;
+    @apply min-h-[180px] overflow-y-auto resize-y leading-relaxed text-foreground font-normal bg-background/40 hover:bg-background/60 focus:bg-background/80 transition-all border border-border/60 hover:border-border focus:border-primary/50;
   }
 
   /* Global Error Display Styles */

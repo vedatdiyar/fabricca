@@ -8,6 +8,26 @@ export const THESIS_BADGE_LABELS: Record<ThesisBadge, string> = {
 };
 
 /**
+ * Soft icon container background colors keyed by badge value.
+ * Slightly softer (/10) than the card bg (/20) for layered depth.
+ */
+export const THESIS_BADGE_ICON_BG: Record<ThesisBadge, string> = {
+  IKIZ: "bg-destructive/10",
+  SINIRDAS: "bg-warning/10",
+  OZGUN: "bg-success/10",
+};
+
+/**
+ * Text-only color classes for the shield icon.
+ * Matches the text-{color} part of THESIS_BADGE_COLORS.
+ */
+export const THESIS_BADGE_TEXT: Record<ThesisBadge, string> = {
+  IKIZ: "text-destructive",
+  SINIRDAS: "text-warning",
+  OZGUN: "text-success",
+};
+
+/**
  * Badge color dictionary keyed by badge value.
  * - IKIZ → destructive/red (güçlü çakışma)
  * - SINIRDAS → warning/yellow (sınırda/kısmi)

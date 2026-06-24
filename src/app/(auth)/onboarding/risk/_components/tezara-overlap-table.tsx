@@ -115,7 +115,7 @@ export function TezaraOverlapTable({
                 <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[100px]">
                   Dönem
                 </th>
-                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[90px] border-l border-border/50">
+                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[90px] border-l border-border/20">
                   Durum
                 </th>
               </tr>
@@ -172,7 +172,7 @@ export function TezaraOverlapTable({
                       <td className="p-3 text-center">
                         <AxisCell level={item.axes.context ?? "OZGUN"} />
                       </td>
-                      <td className="p-3 text-center border-l border-border/50">
+                      <td className="p-3 text-center border-l border-border/20">
                         <span
                           className={`inline-flex items-center justify-center w-[84px] py-1 rounded-md text-[10px] font-bold tracking-wide border ${THESIS_BADGE_COLORS[calculateBadge(item.axes)]}`}
                         >
@@ -188,7 +188,7 @@ export function TezaraOverlapTable({
                               <GitCompare className="w-3.5 h-3.5 text-primary" />
                               Detaylı Karşılaştırma Analizi
                             </h4>
-                            <p className="text-sm leading-relaxed text-foreground font-light whitespace-pre-line">
+                            <p className="text-sm leading-relaxed text-foreground font-normal whitespace-pre-line">
                               {item.comparisonNote}
                             </p>
                           </div>

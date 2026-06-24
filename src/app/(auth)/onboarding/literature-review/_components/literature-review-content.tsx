@@ -138,6 +138,18 @@ function SubBoxDone({
   if (isArchival) {
     return (
       <div className="space-y-4">
+        <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 leading-relaxed">
+          <p className="font-medium text-foreground text-sm mb-1">
+            Birincil Malzeme Alanı
+          </p>
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            Bu alan, yapacağınız saha çalışması verileri (mülakat deşifreleri,
+            anketler) veya kütüphanelerden toplayacağınız birincil kaynaklar
+            (gazete, doküman, arşiv belgeleri) için ayrılmış size özel bir veri
+            havuzudur. Onboarding tamamlandıktan sonra kendi belgelerinizi
+            buraya yükleyebilirsiniz.
+          </p>
+        </div>
         <ArchiveEntryForm
           onAddEntry={(title, desc) =>
             onAddArchiveEntry(subBox.title, { title, description: desc })
@@ -225,7 +237,7 @@ export function LiteratureReviewContent() {
   const boxTypeLabels: Record<string, string> = {
     CONCEPTUAL: "Teorik Çatı",
     PROBLEMATIZATION: "Problematizasyon",
-    ANALYSIS_FINDINGS: "Arşiv",
+    PRIMARY_MATERIAL: "Birincil Malzeme",
     DATA_PROTOCOL: "Metodoloji",
   };
 
@@ -243,19 +255,18 @@ export function LiteratureReviewContent() {
       </div>
     );
   }
-
   return (
-    <div className="max-w-5xl mx-auto space-y-10 pb-24">
-      <div className="flex flex-col items-center text-center space-y-4 max-w-2xl mx-auto">
-        <div className="p-4 bg-primary/10 border border-primary/20 rounded-full">
-          <BookOpen className="w-12 h-12 text-primary" />
-        </div>
-        <div className="space-y-2">
-          <h1 className="text-3xl font-medium tracking-tight text-foreground">
-            Literatür Taraması
-          </h1>
-          <p className="text-muted-foreground leading-relaxed text-sm">
-            Her bir kutu için akademik veri tabanları taranıyor.
+    <div className="w-full space-y-8">
+      <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 w-full animate-in fade-in slide-in-from-top-2 duration-300">
+        <BookOpen className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+        <div className="space-y-0.5">
+          <p className="text-sm font-semibold text-foreground">
+            Akademik Kaynak Taraması Aktif
+          </p>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            Yapay zeka asistanınız her bir konu kutusu için akademik veri
+            tabanlarını (Crossref, Semantic Scholar, TEZARA vb.) tarayarak
+            başlangıç kaynaklarını derliyor.
           </p>
         </div>
       </div>
@@ -305,7 +316,7 @@ export function LiteratureReviewContent() {
         })}
       </div>
 
-      <div className="flex justify-center pt-4">
+      <div className="flex justify-end mt-8 pb-8">
         {processing ? (
           <div className="flex items-center gap-2">
             <Loader2 className="w-6 h-6 text-primary animate-spin" />
@@ -314,14 +325,11 @@ export function LiteratureReviewContent() {
             </p>
           </div>
         ) : !allProcessed ? (
-          <div className="flex flex-col items-center gap-3">
+          <div className="flex flex-col items-end gap-2">
             <p className="text-sm text-amber-600 font-medium">
               Lütfen protokol/saha kutuları için gerekli girişleri tamamlayın.
             </p>
-            <Button
-              disabled
-              className="btn-academic-hero w-full sm:w-auto opacity-60"
-            >
+            <Button disabled className="btn-academic-hero">
               Onayla ve Teze Başla.
             </Button>
           </div>
@@ -329,10 +337,10 @@ export function LiteratureReviewContent() {
           <Button
             onClick={handleFinalize}
             disabled={confirming}
-            className="btn-academic-hero w-full sm:w-auto"
+            className="btn-academic-hero"
           >
             {confirming ? (
-              <span className="flex items-center justify-center gap-2">
+              <span className="flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Kaydediliyor...
               </span>

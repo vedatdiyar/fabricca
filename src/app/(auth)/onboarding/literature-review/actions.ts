@@ -40,6 +40,9 @@ import {
 // ============================================================================
 
 function isArchivalBox(subBox: SubBoxInput): boolean {
+  if (subBox.boxType === "PRIMARY_MATERIAL") {
+    return true;
+  }
   if (!subBox.foundationalQueries || subBox.foundationalQueries.length === 0) {
     return false;
   }

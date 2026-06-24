@@ -1,28 +1,25 @@
 "use client";
 
-import { Compass } from "lucide-react";
-
 interface StrategicRoadmapSectionProps {
-  /** Strategic recommendations / roadmap text to display. */
+  /** Yapay zeka tarafından üretilen stratejik yol haritası ve tavsiyeler metni. */
   strategicRecommendations: string;
 }
 
 /**
- * Renders Section C of the positioning report: the strategic roadmap and
- * academic positioning recommendations.
+ * StrategicRoadmapSection — özgünlük raporunun C bölümü.
+ * Stratejik yol haritası ve akademik konumlandırma tavsiyelerini render eder.
+ * Bölüm başlığı üst bileşen (OriginalityReportView) tarafından section divider ile sağlanır.
+ *
+ * @param props.strategicRecommendations - Gemini tarafından üretilen tavsiyeler metni.
  */
 export function StrategicRoadmapSection({
   strategicRecommendations,
 }: StrategicRoadmapSectionProps) {
   return (
-    <div className="p-6 bg-card border border-border rounded-xl space-y-3 shadow-sm">
-      <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-        <Compass className="w-5 h-5 text-primary" />
-        Yol Haritası ve Akademik Tavsiyeler
-      </h3>
-      <div className="p-4 bg-muted border border-border rounded-lg text-sm leading-relaxed text-foreground/90 whitespace-pre-line">
+    <div className="rounded-xl border border-border/20 bg-card p-6">
+      <p className="text-sm leading-relaxed text-foreground whitespace-pre-line font-normal">
         {strategicRecommendations}
-      </div>
+      </p>
     </div>
   );
 }

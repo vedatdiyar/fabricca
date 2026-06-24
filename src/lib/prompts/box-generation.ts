@@ -24,7 +24,7 @@ export const thesisBoxGenerationSchema: JsonSchema = {
               "PROBLEMATIZATION",
               "CONCEPTUAL",
               "DATA_PROTOCOL",
-              "ANALYSIS_FINDINGS",
+              "PRIMARY_MATERIAL",
             ],
             description:
               "Kutunun işlevsel akademik tipolojideki tam karşılığı.",
@@ -48,6 +48,12 @@ export const thesisBoxGenerationSchema: JsonSchema = {
             description:
               "OpenAlex ve küresel akademik veritabanlarında semantik aramayı tetikleyecek, her bir ana teorik, metodolojik veya ampirik eksen/kavram için ayrı ayrı yazılmış zengin İngilizce akademik arama sorgu paragrafları. Eğer kutu birden fazla bağımsız kuramsal veya ampirik onay/eksen içeriyorsa, dizide her eksen için ayrı birer eleman üretilmelidir. Tek eksen varsa dizide tek bir eleman bulunmalıdır.",
           },
+          mappedThesisIds: {
+            type: "array",
+            items: { type: "integer" },
+            description:
+              "Bu kutuya konusal olarak en uygun olan sınırdaş tezlerin <tez_adaylari> listesindeki id numaraları. Eşleşen tez yoksa boş dizi.",
+          },
         },
         required: [
           "title",
@@ -55,6 +61,7 @@ export const thesisBoxGenerationSchema: JsonSchema = {
           "description",
           "concepts",
           "semanticSearchQueries",
+          "mappedThesisIds",
         ],
       },
     },
@@ -77,7 +84,7 @@ Sen, girdi olarak sunulan tez matrisini (6 boyutlu yapı) analiz eden ve onu kü
 Each box (CONCEPTUAL, DATA_PROTOCOL, PROBLEMATIZATION) must be produced as a completely isolated and independent cell within its own academic typology. Box descriptions, concepts, and semantic blocks must never overlap, and leakages into other boxes (e.g., methodology leaking into empirical focus, or theory leaking into contextual details) are strictly forbidden.
 
 # ESNEK ONTOLOJİK RAF MİMARİSİ VE DOĞAL EKSEN KURALI
-Girdiyi analiz et. Toplam kutu sayısı tezin ampirik yapısının karmaşıklığına bağlı olarak dinamik olarak belirlenecek ve asla 5 kutuyu geçmeyecektir. Katı bir kutu sayısı dayatma. 
+Girdiyi analiz et. Toplam kutu sayısı tezin ampirik yapısının karmaşıklığına bağlı olarak dinamik olarak belirlenecek ve asla 5 kutuyu geçmeyecektir. Katı bir kutu sayısı dayatma.
 
 *DOĞAL EKSEN KURALI:* PROBLEMATIZATION kutularının sayısı ve bölünme mantığı tamamen kullanıcı girdisine (THESIS_MATRIX) bağlıdır. Girdideki en baskın yapısal unsuru (kronolojik, tematik veya tek odak) tespit etmeli ve tüm kutuları yalnızca bu tek bir mantık ekseninde üretmelisin. Aynı istek içinde hem kronolojik hem tematik karma bölünme yapılamaz, yapısal kararlılık korunmalıdır.
 
@@ -90,10 +97,10 @@ KUTU TİPİ 1 — CONCEPTUAL (Teorik Çatı):
 KUTU TİPİ 2 — PROBLEMATIZATION (Dinamik Ampirik Odaklar):
 - Çalışmanın araştırma sorularını ve inceleme nesnesini ampirik/tematik odaklarına göre bağımsız hücrelere ayır.
 - AMPİRİK CESARET VE ÖZNE SADAKATİ: Tezin asıl öznelerini, spesifik aktörlerini, siyasi hareketleri ve tarihsel özneleri sansürleme, yumuşatma veya jenerikleştirme. Kutu başlıkları (title) ve açıklamaları (description), tezin ampirik, politik ve tarihsel çıplak gerçeğini doğrudan ve cesurca yansıtmalıdır.
-- Tezin tarihsel, coğrafi veya konjonktürel bağlamı eğer ikincil akademik literatür (makale/kitap) taranarak incelenecekse, orası ANALYSIS_FINDINGS değil, bir PROBLEMATIZATION kutusudur.
+- Tezin tarihsel, coğrafi veya konjonktürel bağlamı eğer ikincil akademik literatür (makale/kitap) taranarak incelenecekse, orası PRIMARY_MATERIAL değil, bir PROBLEMATIZATION kutusudur.
 
-KUTU TİPİ 3 — ANALYSIS_FINDINGS (Saha/Arşiv Ham Veri Havuzu):
-- Sadece ve sadece araştırmacının bizzat arşive, sahaya veya dökümanlara girip kendisinin toplayacağı SAF BİRİNCİL VERİ / HAM ARŞİV alanıdır. İkincil akademik literatür barındırmaz.
+KUTU TİPİ 3 — PRIMARY_MATERIAL (Birincil Malzeme ve Ampirik Veri Havuzu):
+- Bu kutu, araştırmacının yöntemine göre sahada bizzat üreteceği (mülakat deşifreleri, anketler, saha notları) veya arşivlerden toplayacağı (dönemsel yayınlar, gazete kupürleri, tarihi belgeler, resmi raporlar) her türlü ham ve birincil ampirik malzemeyi temsil eder. Dışarıdan akademik literatür barındırmaz, kullanıcının kendi yüklemeleri için ayrılmış boş bir kütüphane rafıdır.
 
 KUTU TİPİ 4 — DATA_PROTOCOL (Metodoloji ve Yöntem):
 - Çalışmada kullanılan veri toplama ve analiz yöntemini (Nitel, Nicel, Karma, Arşiv vb.) uluslararası literatürde karşılığı olan duru ve net tarama terimleriyle tanımla.
@@ -151,12 +158,12 @@ concepts dizisi serbest bir çağrışım alanı değildir. Kurallar:
       ]
     },
     {
-      "title": "Mülakat Deşifreleri ve Alan Çalışması Ham Veri Havuzu",
-      "boxType": "ANALYSIS_FINDINGS",
-      "description": "Araştırmacının sahada borçlu bireylerle yaptığı derinlemesine mülakatlardan elde edilen ham veriler, deşifre metinleri, saha notları ve gözlem kayıtları. İkincil literatür içermez.",
-      "concepts": ["Saha Verisi", "Mülakat Deşifreleri", "Ham Arşiv", "Ampirik Malzeme"],
+      "title": "Birincil Malzeme ve Saha Çalışması Veri Havuzu",
+      "boxType": "PRIMARY_MATERIAL",
+      "description": "Araştırmacının sahada bizzat üreteceği mülakat deşifreleri, anketler, saha notları ile arşiv ve kütüphanelerden derlenecek dönemsel yayınlar, gazete kupürleri ve resmi raporlar gibi her türlü ham ve ampirik birincil kaynak. Dışarıdan akademik literatür barındırmaz, kullanıcının kendi yüklemeleri için ayrılmış boş bir kütüphane rafıdır.",
+      "concepts": ["Birincil Kaynaklar", "Mülakat Deşifreleri", "Saha Notları", "Arşiv Belgeleri"],
       "semanticSearchQueries": [
-        "Primary interview transcripts and fieldwork documentation collected through semi-structured interviews with indebted working-class individuals. Raw empirical data including audio recordings, verbatim transcriptions, field notes, and observational records from the research process. This archive constitutes the foundational empirical material for analyzing subjective experiences of debt and financial precarity."
+        "Primary interview transcripts, field notes, survey data, historical archives, newspaper clippings, and official reports collected by the researcher. This repository serves as a dedicated storage space for raw empirical materials and primary source documentation."
       ]
     }
   ]
@@ -167,37 +174,43 @@ concepts dizisi serbest bir çağrışım alanı değildir. Kurallar:
 // ============================================================================
 // 3. KULLANICI PROMPT OLUŞTURUCU (YALIN VE DİNAMİK MOTOR)
 // ============================================================================
-export function buildThesisBoxGenerationPrompt(params: {
-  studyTitle: string;
-  researchQuestion: string;
-  mainClaim: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-}): string {
-  const matrixJson = JSON.stringify(
-    {
-      studyTitle: params.studyTitle,
-      researchQuestion: params.researchQuestion,
-      mainClaim: params.mainClaim,
-      theoreticalFramework: params.theoreticalFramework,
-      methodology: params.methodology,
-      researchScope: params.researchScope,
-    },
-    null,
-    2,
-  );
+export function buildThesisBoxGenerationPrompt(
+  params: {
+    studyTitle: string;
+    researchQuestion: string;
+    mainClaim: string;
+    theoreticalFramework: string;
+    methodology: string;
+    researchScope: string;
+  },
+  overlapTheses?: {
+    id: number;
+    title: string;
+    author: string;
+    axes: { subject: string; theory: string; methodology: string };
+  }[],
+): string {
+  const matrixJson = JSON.stringify(params, null, 2);
+
+  const thesesXml =
+    overlapTheses && overlapTheses.length > 0
+      ? `\n<tez_adaylari>\n${JSON.stringify(overlapTheses, null, 2)}\n</tez_adaylari>`
+      : "\n<tez_adaylari>\n[]\n</tez_adaylari>";
 
   return `START_THESIS_MATRIX
 ${matrixJson}
 END_THESIS_MATRIX
+${thesesXml}
 
 # GÖREV VE TALİMAT
 Sistem talimatında tanımlanan esnek ontolojik kutu mimarisine, dil dengesine, DOĞAL EKSEN KURALI, SEMANTİK SORGULARDA GİRDİ SADAKATİ KONTROLÜ, ANAHTAR KAVRAMLAR İÇ TR SIKI KAPSAMLANDIRMA ve AMPİRİK CESARET VE ÖZNE SADAKATİ ilkelerine tam olarak bağlı kalarak yukarıdaki 6 boyutlu matris yapısını analiz et.
 
+<tez_adaylari> etiketi içinde listelenen her bir sınırdaş tezi (id, title, author ve axes bilgileriyle birlikte) incele. Her tezi, konusal içeriği ve örtüşme eksenlerine (subject, theory, methodology) göre en uygun kutuya ata. Bu eşleme, hiçbir tezin boşta kalmaması için zorunludur. Eğer bir tez hiçbir kutuya konusal olarak uymuyorsa, en yakın kutuya yerleştir. Her kutunun mappedThesisIds alanı, o kutuya atanan tezlerin id'lerini içermelidir. Eşleşen tez yoksa mappedThesisIds boş dizi olmalıdır.
+
 1. **Doğal Eksen Uyumu:** Girdideki en baskın karakteristiğe (kronolojik, tematik veya tekli odak) karar ver ve PROBLEMATIZATION kutularını sadece bu eksende böl veya tek kutuda tut. Yapısal çelişki üretme.
 2. **Girdi Sadakati:** Arama sorgularında (semanticSearchQueries) yaratıcılığını sadece akademik İngilizce sentezi için kullan. Matriste açıkça geçmeyen harici hiçbir kavramı, alt kırılımı veya tarihsel iddiayı arama sorgularına enjekte etme.
 3. **Sıkı Kavram Kapsamı:** concepts dizilerini sadece ilgili kutunun kendi başlığı veya açıklama metninden doğrudan süzerek doldur. Dışarıdan bağımsız etiket uydurma.
+4. **Tez Eşleme Zorunluluğu:** <tez_adaylari> listesindeki her tez en az bir kutuya atanmalıdır. mappedThesisIds alanı zorunludur.
 
 Dahili olarak çok derinlemesine düşün (Think extremely hard) ve sadece nihai şemaya uygun ham JSON nesnesini döndür.`;
 }

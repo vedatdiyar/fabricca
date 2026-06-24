@@ -11,6 +11,7 @@ import {
   FileText,
   PlusCircle,
   WholeWord,
+  Archive,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -21,14 +22,14 @@ import type { GeminiThesisBox } from "@/lib/types";
 const boxTypeOrder: Record<string, number> = {
   CONCEPTUAL: 1,
   PROBLEMATIZATION: 2,
-  ANALYSIS_FINDINGS: 3,
+  PRIMARY_MATERIAL: 3,
   DATA_PROTOCOL: 4,
 };
 
 const badgeLabels: Record<string, string> = {
   CONCEPTUAL: "Teorik Çatı",
   PROBLEMATIZATION: "Problematizasyon",
-  ANALYSIS_FINDINGS: "Arşiv",
+  PRIMARY_MATERIAL: "Birincil Malzeme",
   DATA_PROTOCOL: "Metodoloji",
 };
 
@@ -132,22 +133,18 @@ export function BoxesContainer() {
   const sortedBoxes = [...boxes].sort((a, b) => {
     return (boxTypeOrder[a.boxType] || 99) - (boxTypeOrder[b.boxType] || 99);
   });
-
   return (
-    <div className="max-w-7xl mx-auto space-y-12">
-      <div className="flex flex-col items-center text-center space-y-5 max-w-2xl mx-auto">
-        <div className="relative inline-flex">
-          <div className="p-4 bg-primary/10 border border-primary/20 rounded-full">
-            <CheckCircle2 className="w-12 h-12 text-primary" />
-          </div>
-        </div>
-        <div className="space-y-3">
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-            Konu Kutuları Yapılandırıldı!
-          </h1>
-          <p className="text-muted-foreground leading-relaxed text-sm">
-            Tez matrisinizin çözümlenmesi tamamlandı. Aşağıdaki her bir kutu,
-            literatür taraması sürecinde bağımsız olarak taranacaktır.
+    <div className="w-full space-y-8">
+      <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 w-full animate-in fade-in slide-in-from-top-2 duration-300">
+        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+        <div className="space-y-0.5">
+          <p className="text-sm font-semibold text-foreground">
+            Konu Kutuları Yapılandırıldı
+          </p>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            Tez matrisinizin çözümlenmesi başarıyla tamamlandı. Aşağıdaki her
+            bir konu kutusu, literatür taraması sürecinde bağımsız olarak
+            taranacaktır.
           </p>
         </div>
       </div>
@@ -167,23 +164,21 @@ export function BoxesContainer() {
         })}
       </div>
 
-      <div className="flex flex-col items-center pt-4 pb-8">
+      <div className="flex justify-end mt-8 pb-8">
         <Button
           onClick={handleConfirm}
           disabled={confirming}
-          className="btn-academic-hero relative overflow-hidden bg-gradient-to-r from-primary to-emerald-400 hover:from-emerald-500 hover:to-emerald-300 text-primary-foreground shadow-lg shadow-primary/20 hover:shadow-emerald-500/30 transition-all duration-300 group"
+          className="btn-academic-hero"
         >
           {confirming ? (
-            <span className="flex items-center justify-center gap-2">
-              <Loader2 className="w-5 h-5 animate-spin" />
+            <span className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
               Kaydediliyor...
             </span>
           ) : (
-            <span className="flex items-center justify-center gap-3">
-              <Rocket className="w-5 h-5 transition-transform duration-300 group-hover:-translate-y-1 group-hover:translate-x-0.5" />
-              <span className="tracking-wide">
-                Kutuları Onayla ve Literatür Taramasını Başlat
-              </span>
+            <span className="flex items-center gap-2">
+              <Rocket className="w-4 h-4" />
+              Kutuları Onayla ve Literatür Taramasını Başlat
             </span>
           )}
         </Button>
@@ -203,18 +198,18 @@ function BoxCard({
 }) {
   return (
     <Card
-      className={`group/card grid grid-rows-[subgrid] row-span-4 p-6 bg-card border border-border/20 rounded-xl transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:shadow-[0_0_24px_-6px_#10b981]/20${isLastOdd ? " md:col-span-2" : ""}`}
+      className={`group/card grid grid-rows-subgrid row-span-4 p-6 bg-card border border-border/20 rounded-xl transition-all duration-300 hover:-translate-y-1 hover:border-primary/20${isLastOdd ? " md:col-span-2" : ""}`}
     >
-      <div className="[grid-row:1] space-y-3">
+      <div className="row-1 space-y-3">
         <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
           <PlusCircle className="w-3 h-3" />
           <span>Kutu {index + 1}</span>
-          <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-zinc-800 text-zinc-400 border border-zinc-700/50">
+          <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground border border-border/20">
             {badgeLabels[box.boxType]}
           </span>
         </div>
         <div className="flex items-start gap-3">
-          <span className="relative mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-primary shadow-[0_0_8px_#10b981]" />
+          <span className="relative mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-primary" />
           <CardTitle className="text-lg font-semibold text-foreground leading-snug">
             {box.title}
           </CardTitle>
@@ -222,14 +217,14 @@ function BoxCard({
       </div>
 
       {box.description && (
-        <p className="[grid-row:2] text-sm text-muted-foreground leading-relaxed">
+        <p className="row-2 text-sm text-muted-foreground leading-relaxed">
           {box.description}
         </p>
       )}
 
       {box.concepts && box.concepts.length > 0 && (
-        <div className="[grid-row:3]">
-          <div className="border-t border-border pt-3 border-b border-border pb-3">
+        <div className="row-3">
+          <div className="border-y border-border py-3">
             <div className="flex flex-wrap gap-1.5">
               {box.concepts.map((concept, i) => (
                 <span
@@ -245,8 +240,8 @@ function BoxCard({
         </div>
       )}
 
-      {box.foundationalQueries && box.foundationalQueries.length > 0 && (
-        <div className="[grid-row:4] border-t border-border/10 pt-4 space-y-3">
+      {box.foundationalQueries && box.foundationalQueries.length > 0 ? (
+        <div className="row-4 border-t border-border/10 pt-4 space-y-3">
           <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
             <Library className="w-3.5 h-3.5 text-primary" />
             Kurucu Literatür Temeli
@@ -294,7 +289,19 @@ function BoxCard({
             ))}
           </ul>
         </div>
-      )}
+      ) : box.boxType === "PRIMARY_MATERIAL" ? (
+        <div className="row-4 border-t border-border/10 pt-4 space-y-2">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <Archive className="w-3.5 h-3.5 text-muted-foreground" />
+            Arşiv / Birincil Malzeme Alanı
+          </h4>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Bu kutu, saha çalışması verileri ve birincil kaynaklar için
+            ayrılmıştır. Kurucu literatür taraması yapılmamıştır; arşiv
+            belgeleri bir sonraki adımda el ile girilecektir.
+          </p>
+        </div>
+      ) : null}
     </Card>
   );
 }

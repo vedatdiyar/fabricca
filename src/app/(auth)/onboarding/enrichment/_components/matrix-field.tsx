@@ -1,5 +1,6 @@
 "use client";
 
+import type { LucideIcon } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -9,19 +10,28 @@ interface MatrixFieldProps {
   value: string;
   onChange: (value: string) => void;
   required?: boolean;
+  /** İki haneli alan numarası rozeti (ör: "01"). */
+  number?: string;
+  /** Alan başlığının yanında gösterilecek Lucide ikonu. */
+  Icon?: LucideIcon;
+  /** Alan altında gösterilen yardımcı/bilgilendirme metni. */
+  hint?: string;
 }
 
 /**
- * MatrixField component renders a styled form field containing a Label
- * and an academic-styled Textarea element, specifically designed for
- * onboarding matrix editing steps.
+ * MatrixField — enrichment adımı için düzenlenebilir matris alanı.
+ * Numara rozeti, ikon ve ipucu metni desteğiyle alan kartı render eder.
+ * Enrichment adımında `border-primary/20` sınırı ile AI çıktısı olduğu belirtilir.
  *
- * @param props The properties of the MatrixField component.
- * @param props.id Unique identifier for the input element.
- * @param props.label User-facing text describing the input.
- * @param props.value Current text value of the input.
- * @param props.onChange Callback triggered when the input value changes.
- * @param props.required Indicates if the input is required in the form.
+ * @param props - Bileşen prop'ları
+ * @param props.id - Input elementinin benzersiz kimliği
+ * @param props.label - Kullanıcıya gösterilen alan başlığı
+ * @param props.value - Input'un mevcut değeri
+ * @param props.onChange - Değer değiştiğinde tetiklenen callback
+ * @param props.required - Alanın zorunlu olup olmadığı
+ * @param props.number - İki haneli alan numarası rozeti (ör: "01")
+ * @param props.Icon - Alan başlığının yanında gösterilecek Lucide ikonu
+ * @param props.hint - Alan altında gösterilen yardımcı açıklama metni
  */
 export function MatrixField({
   id,
@@ -29,19 +39,38 @@ export function MatrixField({
   value,
   onChange,
   required = true,
+  number,
+  Icon,
+  hint,
 }: MatrixFieldProps) {
   return (
-    <div className="space-y-2">
-      <Label htmlFor={id} className="block font-semibold text-foreground">
-        {label}
-      </Label>
+    <div className="space-y-2.5 rounded-xl border border-primary/20 bg-card p-4 transition-colors hover:border-primary/20">
+      <div className="flex items-center gap-2">
+        {number && (
+          <span className="inline-flex h-5 w-7 items-center justify-center rounded bg-primary/10 text-[9px] font-bold tracking-wider text-primary">
+            {number}
+          </span>
+        )}
+        {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground" />}
+        <Label
+          htmlFor={id}
+          className="cursor-pointer text-sm font-semibold text-foreground"
+        >
+          {label}
+        </Label>
+      </div>
       <Textarea
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={required}
-        className="textarea-academic"
+        className="textarea-academic border-border"
       />
+      {hint && (
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          {hint}
+        </p>
+      )}
     </div>
   );
 }

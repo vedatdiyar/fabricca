@@ -122,7 +122,7 @@ export const boxTypeEnum = pgEnum("box_type_enum", [
   "PROBLEMATIZATION",
   "CONCEPTUAL",
   "DATA_PROTOCOL",
-  "ANALYSIS_FINDINGS",
+  "PRIMARY_MATERIAL",
 ]);
 
 /**

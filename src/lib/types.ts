@@ -194,11 +194,12 @@ export const GeminiThesisBoxSchema = z.object({
     "PROBLEMATIZATION",
     "CONCEPTUAL",
     "DATA_PROTOCOL",
-    "ANALYSIS_FINDINGS",
+    "PRIMARY_MATERIAL",
   ]),
   description: z.string().min(1, "Kutu açıklaması boş olamaz"),
   semanticSearchQueries: z.array(z.string()).min(1).max(4),
   concepts: z.array(z.string()).max(4),
+  mappedThesisIds: z.array(z.number()).optional(),
 });
 
 export const FinalGeminiThesisBoxSchema = GeminiThesisBoxSchema.extend({
@@ -221,11 +222,12 @@ export interface GeminiThesisBox {
     | "PROBLEMATIZATION"
     | "CONCEPTUAL"
     | "DATA_PROTOCOL"
-    | "ANALYSIS_FINDINGS";
+    | "PRIMARY_MATERIAL";
   description: string;
   semanticSearchQueries: string[];
   foundationalQueries: FoundationalQuery[];
   concepts: string[];
+  mappedThesisIds?: number[];
 }
 
 export interface JuryArticle {

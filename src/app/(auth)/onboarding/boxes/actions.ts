@@ -2,7 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { thesisBoxes } from "@/db/schema";
+import { thesisBoxes, libraryResources } from "@/db/schema";
 import { getSession } from "@/session";
 import { generateStructuredContent } from "@/lib/gemini";
 import { ThinkingLevel } from "@google/genai";
@@ -19,7 +19,11 @@ import {
   type GeminiThesisBox,
   type OnboardingActionResult,
 } from "@/lib/types";
-import { fetchThesisMatrix } from "../_lib/fetch-actions";
+import type { NewLibraryResource } from "@/db/schema";
+import {
+  fetchThesisMatrix,
+  fetchOriginalityReport,
+} from "../_lib/fetch-actions";
 import { mineCoCitations } from "./_services/co-citation-miner";
 
 /**
@@ -39,22 +43,45 @@ export async function generateBoxesStructureAction(): Promise<
     if (!session)
       return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
 
-    const matrix = await fetchThesisMatrix();
+    const [matrix, report] = await Promise.all([
+      fetchThesisMatrix(),
+      fetchOriginalityReport(),
+    ]);
+
     if (!matrix) return { error: "Tez matrisi bulunamadı." };
+
+    // Extract overlapping theses from the originality report for Gemini context
+    const overlapTheses =
+      report?.tezaraResults?.overlapTable?.map((t) => ({
+        id: t.id,
+        title: t.title,
+        author: t.author,
+        axes: {
+          subject: t.axes.subject,
+          theory: t.axes.theory,
+          methodology: t.axes.methodology,
+        },
+      })) ?? [];
 
     log.info("box_structure_generation_start", {
       service: "boxes",
-      data: { context: "Kutu yapısı oluşturma (3.1 Flash Lite)" },
+      data: {
+        context: "Kutu yapısı oluşturma (3.1 Flash Lite)",
+        overlapThesisCount: overlapTheses.length,
+      },
     });
 
-    const geminiPrompt = buildThesisBoxGenerationPrompt({
-      studyTitle: matrix.studyTitle,
-      researchQuestion: matrix.researchQuestion,
-      mainClaim: matrix.mainClaim,
-      theoreticalFramework: matrix.theoreticalFramework,
-      methodology: matrix.methodology,
-      researchScope: matrix.researchScope,
-    });
+    const geminiPrompt = buildThesisBoxGenerationPrompt(
+      {
+        studyTitle: matrix.studyTitle,
+        researchQuestion: matrix.researchQuestion,
+        mainClaim: matrix.mainClaim,
+        theoreticalFramework: matrix.theoreticalFramework,
+        methodology: matrix.methodology,
+        researchScope: matrix.researchScope,
+      },
+      overlapTheses,
+    );
 
     const generationResult = await generateStructuredContent<{
       boxes: unknown[];
@@ -81,7 +108,7 @@ export async function generateBoxesStructureAction(): Promise<
         | "PROBLEMATIZATION"
         | "CONCEPTUAL"
         | "DATA_PROTOCOL"
-        | "ANALYSIS_FINDINGS";
+        | "PRIMARY_MATERIAL";
       return {
         title: (rawBox.title as string) || "",
         boxType,
@@ -89,6 +116,7 @@ export async function generateBoxesStructureAction(): Promise<
         semanticSearchQueries: (rawBox.semanticSearchQueries as string[]) || [],
         concepts: (rawBox.concepts as string[]) || [],
         foundationalQueries: [],
+        mappedThesisIds: (rawBox.mappedThesisIds as number[]) || [],
       };
     });
 
@@ -138,7 +166,7 @@ export async function mineFoundationalQueriesAction(
     const populatedBoxes: GeminiThesisBox[] = [];
 
     for (const box of boxes) {
-      if (box.boxType === "ANALYSIS_FINDINGS") {
+      if (box.boxType === "PRIMARY_MATERIAL") {
         populatedBoxes.push({ ...box, foundationalQueries: [] });
         continue;
       }
@@ -225,6 +253,8 @@ function deduplicateFoundationalQueries(
 /**
  * Persists the generated (and possibly user-edited) subject boxes to thesis_boxes.
  * Deletes existing boxes for the matrix first, then inserts flat hierarchy.
+ * After boxes are written, inserts Gemini-mapped overlapping theses from the
+ * originality report into library_resources using index-based box mapping.
  *
  * @param boxes - Array of GeminiThesisBox to persist
  * @returns Success or error response
@@ -246,10 +276,16 @@ export async function confirmBoxesAction(
     if (!session)
       return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
 
-    const matrix = await fetchThesisMatrix();
+    const [matrix, report] = await Promise.all([
+      fetchThesisMatrix(),
+      fetchOriginalityReport(),
+    ]);
+
     if (!matrix) return { error: "Tez matrisi bulunamadı." };
 
     const thesisMatrixId = matrix.id;
+    const overlapTable = report?.tezaraResults?.overlapTable ?? [];
+    const overlapMap = new Map(overlapTable.map((t) => [t.id, t]));
 
     await db.transaction(async (tx) => {
       // Delete existing boxes
@@ -257,7 +293,7 @@ export async function confirmBoxesAction(
         .delete(thesisBoxes)
         .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
 
-      // Insert all boxes as flat
+      // Insert all boxes as flat with RETURNING to capture generated IDs
       const boxValues = boxes.map((box) => ({
         thesisMatrixId,
         title: box.title,
@@ -268,8 +304,60 @@ export async function confirmBoxesAction(
         concepts: box.concepts || [],
       }));
 
+      let insertedBoxes: { id: number }[] = [];
+
       if (boxValues.length > 0) {
-        await tx.insert(thesisBoxes).values(boxValues);
+        insertedBoxes = await tx
+          .insert(thesisBoxes)
+          .values(boxValues)
+          .returning({ id: thesisBoxes.id });
+      }
+
+      // Index-based thesis mapping: boxes[i].mappedThesisIds → insertedBoxes[i].id
+      const libraryValues: NewLibraryResource[] = [];
+
+      for (let i = 0; i < boxes.length; i++) {
+        const thesisIds = boxes[i].mappedThesisIds ?? [];
+        if (thesisIds.length === 0) continue;
+
+        const boxId = insertedBoxes[i]?.id;
+        if (!boxId) continue;
+
+        for (const thesisId of thesisIds) {
+          const thesis = overlapMap.get(thesisId);
+          if (!thesis) {
+            log.warn("thesis_mapping_skip", {
+              service: "boxes",
+              data: {
+                thesisId,
+                boxIndex: i,
+                reason: "Tez overlapTable içinde bulunamadı",
+              },
+            });
+            continue;
+          }
+
+          libraryValues.push({
+            thesisBoxId: boxId,
+            title: thesis.title,
+            abstract: null,
+            url: thesis.yokPdfUrl ?? null,
+            doi: null,
+            publisher: thesis.university ?? null,
+            publicationYear: thesis.year,
+            authors: [thesis.author],
+            isRead: false,
+            isFoundational: false,
+            relevanceScore: 0.99,
+          });
+        }
+      }
+
+      if (libraryValues.length > 0) {
+        await tx
+          .insert(libraryResources)
+          .values(libraryValues)
+          .onConflictDoNothing();
       }
     });
 
@@ -282,7 +370,14 @@ export async function confirmBoxesAction(
     log.info("boxes_confirm_success", {
       service: "boxes",
       durationMs: performance.now() - startTime,
-      data: { count: boxes.length, context: "Konu kutusu kaydetme" },
+      data: {
+        count: boxes.length,
+        mappedThesisCount: boxes.reduce(
+          (sum, b) => sum + (b.mappedThesisIds?.length ?? 0),
+          0,
+        ),
+        context: "Konu kutusu kaydetme",
+      },
     });
     return { success: true };
   } catch (err) {

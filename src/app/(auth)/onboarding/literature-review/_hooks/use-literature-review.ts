@@ -170,6 +170,9 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     setPhase((prev) => ({ ...prev, processing: true }));
 
     const isArchival = (box: GeminiThesisBox): boolean => {
+      if (box.boxType === "PRIMARY_MATERIAL") {
+        return true;
+      }
       if (!box.foundationalQueries || box.foundationalQueries.length === 0) {
         return false;
       }

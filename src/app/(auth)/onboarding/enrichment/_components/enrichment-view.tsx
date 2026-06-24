@@ -3,10 +3,19 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import {
+  Loader2,
+  Sparkles,
+  FileText,
+  HelpCircle,
+  BookMarked,
+  Layers,
+  Compass,
+  Target,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { confirmEnhancedThesisAction } from "../actions";
 import {
   extractQueriesAction,
@@ -22,6 +31,103 @@ import type { EnhancedThesisData } from "@/lib/types";
 import { MatrixField } from "./matrix-field";
 import { EnrichmentLoadingSkeleton } from "./enrichment-loading-skeleton";
 
+type FormState = {
+  studyTitle: string;
+  researchQuestion: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+  mainClaim: string;
+};
+
+type FieldConfig = {
+  key: keyof FormState;
+  id: string;
+  number: string;
+  Icon: LucideIcon;
+  label: string;
+  hint: string;
+};
+
+type SectionConfig = {
+  id: string;
+  title: string;
+  fields: FieldConfig[];
+};
+
+/**
+ * Enrichment adımının alan tanımları. Matrix adımıyla aynı 3 bölüm yapısını kullanır;
+ * ipucu metinleri kullanıcı girdisi yerine yapay zekanın ne yaptığını açıklar.
+ */
+const ENRICHMENT_SECTIONS: SectionConfig[] = [
+  {
+    id: "arastirmaSorusu",
+    title: "Araştırma Sorusu",
+    fields: [
+      {
+        key: "studyTitle",
+        id: "calismaBasligi",
+        number: "01",
+        Icon: FileText,
+        label: "Çalışma Başlığı",
+        hint: "Başlığınız akademik normlar doğrultusunda sadeleştirildi.",
+      },
+      {
+        key: "researchQuestion",
+        id: "arastirmaSorusu",
+        number: "02",
+        Icon: HelpCircle,
+        label: "Odak Sorular",
+        hint: "Odak sorular analitik ve hiyerarşik bir yapıya kavuştu.",
+      },
+    ],
+  },
+  {
+    id: "kuramlCerceve",
+    title: "Kuramsal Çerçeve",
+    fields: [
+      {
+        key: "theoreticalFramework",
+        id: "kavramsalCerceve",
+        number: "03",
+        Icon: BookMarked,
+        label: "Teorik Altyapı ve Yazarlar",
+        hint: "Kuramsal referanslar ve kavramlar sistematize edildi.",
+      },
+      {
+        key: "methodology",
+        id: "metodoloji",
+        number: "04",
+        Icon: Layers,
+        label: "Veri Toplama ve Analiz Yöntemi",
+        hint: "Metodoloji daha belirgin ve akademik bir dille ifade edildi.",
+      },
+    ],
+  },
+  {
+    id: "sinirlarIddia",
+    title: "Sınırlar ve İddia",
+    fields: [
+      {
+        key: "researchScope",
+        id: "arastirmaKapsami",
+        number: "05",
+        Icon: Compass,
+        label: "Araştırma Sınırları",
+        hint: "Zaman, mekân ve aktör sınırları netleştirildi.",
+      },
+      {
+        key: "mainClaim",
+        id: "temelIddia",
+        number: "06",
+        Icon: Target,
+        label: "Merkez Savı",
+        hint: "İddia daha net, sınanabilir ve akademik bir forma getirildi.",
+      },
+    ],
+  },
+];
+
 const ANALYSIS_STEPS: LoadingStep[] = [
   { text: "Sorgu ve doğrulama parametreleri üretiliyor...", status: "idle" },
   {
@@ -36,16 +142,17 @@ const ANALYSIS_STEPS: LoadingStep[] = [
 ];
 
 /**
- * Onboarding sürecinin 2. adımı olan Akademik Zenginleştirme İnceleme Ekranı.
- * Kullanıcının zenginleştirilmiş tez matrisini incelemesini, düzenlemesini,
- * onaylamasını ve ardından arka planda risk analizi motorlarının koşturulmasını yönetir.
+ * EnrichmentView — onboarding sürecinin 2. adımı.
+ * Kullanıcının yapay zeka tarafından zenginleştirilmiş tez matrisini incelemesini,
+ * düzenlemesini ve onaylamasını sağlar. Onay sonrasında 4 aşamalı risk analizi
+ * pipeline'ını (Tavily, Tezara, Jüri Analizi) arka planda koşturur.
  */
 export function EnrichmentView() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [isPending, setIsPending] = useState(false);
 
-  const [formState, setFormState] = useState({
+  const [formState, setFormState] = useState<FormState>({
     studyTitle: "",
     researchQuestion: "",
     theoreticalFramework: "",
@@ -85,10 +192,10 @@ export function EnrichmentView() {
   }, [router]);
 
   /**
-   * Form onaylandığında tetiklenir. Düzenlenen tez matrisini kaydeder
-   * ve risk analizi motorlarını (Tavily, Tezara, Jüri Analizi) sırasıyla çalıştırır.
+   * Form onaylandığında tetiklenir. Düzenlenen tez matrisini kaydeder ve
+   * risk analizi motorlarını (Tavily, Tezara, Jüri Analizi) sırasıyla çalıştırır.
    *
-   * @param e Form gönderme olayı.
+   * @param e - Form gönderme olayı.
    */
   const handleConfirm = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -111,12 +218,11 @@ export function EnrichmentView() {
         return;
       }
 
-      // Clear stale downstream Zustand state (including any cached report data)
+      // Eski downstream Zustand state'ini temizle.
       setBoxes(null);
       setLiteraturePool([]);
       useOnboardingStore.getState().clearReportData();
 
-      // Build matrix input for analysis pipeline
       const matrixInput = {
         studyTitle: formState.studyTitle,
         researchQuestion: formState.researchQuestion,
@@ -126,7 +232,7 @@ export function EnrichmentView() {
         mainClaim: formState.mainClaim,
       };
 
-      // Show 4-stage loader
+      // 4 aşamalı yükleme spinner'ını başlat.
       const steps = ANALYSIS_STEPS.map((s) => ({ ...s }));
       steps[0].status = "active";
       showLoading(
@@ -135,7 +241,7 @@ export function EnrichmentView() {
         steps,
       );
 
-      // ── Step 0: Extract queries ──
+      // ── Adım 0: Sorguları çıkar ──
       const extractResult = await extractQueriesAction(matrixInput);
       if ("error" in extractResult) {
         hideLoading();
@@ -146,7 +252,7 @@ export function EnrichmentView() {
       updateLoadingStep(0, "completed");
       updateLoadingStep(1, "active");
 
-      // ── Step 1: Execute parallel searches ──
+      // ── Adım 1: Paralel arama motorlarını çalıştır ──
       const searchResult = await executeSearchAction({
         studyTitle: matrixInput.studyTitle,
         tavilyQueries: extractResult.data.tavilyQueries,
@@ -161,7 +267,7 @@ export function EnrichmentView() {
       updateLoadingStep(1, "completed");
       updateLoadingStep(2, "active");
 
-      // ── Step 2: Sift theses ──
+      // ── Adım 2: Tezleri filtrele ──
       const siftResult = await siftThesesAction({
         matrix: matrixInput,
         tezaraSearchResults: searchResult.data.tezaraSearchResults,
@@ -175,7 +281,7 @@ export function EnrichmentView() {
       updateLoadingStep(2, "completed");
       updateLoadingStep(3, "active");
 
-      // ── Step 3: Finalize jury analysis ──
+      // ── Adım 3: Jüri analizini tamamla ──
       const juryResult = await finalizeJuryAnalysisAction({
         matrix: matrixInput,
         scrapedTheses: siftResult.data,
@@ -189,8 +295,7 @@ export function EnrichmentView() {
       }
       updateLoadingStep(3, "completed");
 
-      // Cache the completed report in Zustand so the risk page can pick it up
-      // without re-running the analysis or hitting the DB.
+      // Tamamlanan raporu Zustand'a yaz; risk sayfası buradan okur.
       useOnboardingStore.getState().setReportData(juryResult.data);
 
       hideLoading();
@@ -211,98 +316,68 @@ export function EnrichmentView() {
   }
 
   return (
-    <>
-      <Card className="w-full pt-6">
-        <CardContent>
-          <form onSubmit={handleConfirm} className="w-full space-y-6">
-            <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-2">
-              <MatrixField
-                id="calismaBasligi"
-                label="Çalışma Başlığı"
-                value={formState.studyTitle}
-                onChange={(value) =>
-                  setFormState((prev) => ({
-                    ...prev,
-                    studyTitle: value,
-                  }))
-                }
-              />
-              <MatrixField
-                id="arastirmaSorusu"
-                label="Odak Sorular (Ana ve Alt Sorular)"
-                value={formState.researchQuestion}
-                onChange={(value) =>
-                  setFormState((prev) => ({
-                    ...prev,
-                    researchQuestion: value,
-                  }))
-                }
-              />
-              <MatrixField
-                id="kavramsalCerceve"
-                label="Teorik Altyapı, Kavramlar ve Yazarlar"
-                value={formState.theoreticalFramework}
-                onChange={(value) =>
-                  setFormState((prev) => ({
-                    ...prev,
-                    theoreticalFramework: value,
-                  }))
-                }
-              />
-              <MatrixField
-                id="metodoloji"
-                label="Veri Toplama ve Analiz Yöntemi"
-                value={formState.methodology}
-                onChange={(value) =>
-                  setFormState((prev) => ({
-                    ...prev,
-                    methodology: value,
-                  }))
-                }
-              />
-              <MatrixField
-                id="arastirmaKapsami"
-                label="Araştırma Sınırları (Zaman, Mekân, Aktör)"
-                value={formState.researchScope}
-                onChange={(value) =>
-                  setFormState((prev) => ({
-                    ...prev,
-                    researchScope: value,
-                  }))
-                }
-              />
-              <MatrixField
-                id="temelIddia"
-                label="Merkez Savı (Tezin Ana İddiası)"
-                value={formState.mainClaim}
-                onChange={(value) =>
-                  setFormState((prev) => ({
-                    ...prev,
-                    mainClaim: value,
-                  }))
-                }
-              />
-            </div>
+    <form onSubmit={handleConfirm} className="w-full space-y-8">
+      {/* AI zenginleştirme bildirimi */}
+      <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/10 px-4 py-3">
+        <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+        <div className="space-y-0.5">
+          <p className="text-sm font-semibold text-foreground">
+            Yapay Zeka Zenginleştirmesi Tamamlandı
+          </p>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            Tez matrisiniz akademik dile uyarlandı. Her alanı inceleyip
+            düzenleyebilir, ardından onaylayabilirsiniz.
+          </p>
+        </div>
+      </div>
 
-            <div className="md:col-span-full">
-              <Button
-                type="submit"
-                className="btn-academic-hero w-full"
-                disabled={isPending}
-              >
-                {isPending ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    {loading ? "Yükleniyor..." : "Analiz devam ediyor..."}
-                  </span>
-                ) : (
-                  "Onayla ve İlerle"
-                )}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </>
+      {ENRICHMENT_SECTIONS.map((section) => (
+        <div key={section.id} className="space-y-5">
+          {/* Bölüm başlığı — iki yanda divider çizgisi */}
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <span className="px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              {section.title}
+            </span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          {/* İki sütunlu alan grid'i */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {section.fields.map(({ key, id, number, Icon, label, hint }) => (
+              <MatrixField
+                key={id}
+                id={id}
+                number={number}
+                Icon={Icon}
+                label={label}
+                hint={hint}
+                value={formState[key]}
+                onChange={(value) =>
+                  setFormState((prev) => ({ ...prev, [key]: value }))
+                }
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+
+      <div>
+        <Button
+          type="submit"
+          className="btn-academic-hero w-full"
+          disabled={isPending}
+        >
+          {isPending ? (
+            <span className="flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Analiz devam ediyor...
+            </span>
+          ) : (
+            "Onayla ve İlerle"
+          )}
+        </Button>
+      </div>
+    </form>
   );
 }

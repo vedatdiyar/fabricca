@@ -24,6 +24,7 @@ import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
 interface LiteratureReaderProps {
   boxId: number;
   boxTitle: string;
+  boxType?: string | null;
 }
 
 type ReaderStatus = "loading" | "error" | "reading" | "all-read";
@@ -34,7 +35,11 @@ const BOX_KEY = (boxId: number) => ["box-resources", boxId] as const;
 
 /* ---------- Component ---------- */
 
-export function LiteratureReader({ boxId, boxTitle }: LiteratureReaderProps) {
+export function LiteratureReader({
+  boxId,
+  boxTitle,
+  boxType,
+}: LiteratureReaderProps) {
   const queryClient = useQueryClient();
 
   /* ---- Box Resources Query ---- */
@@ -144,6 +149,23 @@ export function LiteratureReader({ boxId, boxTitle }: LiteratureReaderProps) {
       </CardHeader>
 
       <CardContent className="p-0">
+        {boxType === "PRIMARY_MATERIAL" && (
+          <div className="p-6 border-b border-border/10 bg-primary/5">
+            <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 leading-relaxed">
+              <p className="font-medium text-foreground text-sm mb-1">
+                Birincil Malzeme Alanı
+              </p>
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                Bu alan, yapacağınız saha çalışması verileri (mülakat
+                deşifreleri, anketler) veya kütüphanelerden toplayacağınız
+                birincil kaynaklar (gazete, doküman, arşiv belgeleri) için
+                ayrılmış size özel bir veri havuzudur. Onboarding tamamlandıktan
+                sonra kendi belgelerinizi buraya yükleyebilirsiniz.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* ---- Loading ---- */}
         {status === "loading" && (
           <div className="flex flex-col gap-3 p-6">
@@ -198,9 +220,19 @@ export function LiteratureReader({ boxId, boxTitle }: LiteratureReaderProps) {
             <div className="flex h-12 w-12 items-center justify-center rounded-full border border-muted/20 bg-muted/10">
               <Layers className="h-6 w-6 text-muted-foreground" />
             </div>
-            <p className="text-sm text-muted-foreground">
-              Bu kutu için onaylanmış kaynak bulunmuyor.
-            </p>
+            {boxType === "PRIMARY_MATERIAL" ? (
+              <p className="text-center text-sm text-muted-foreground max-w-md px-4 leading-relaxed">
+                Bu alan, yapacağınız saha çalışması verileri (mülakat
+                deşifreleri, anketler) veya kütüphanelerden toplayacağınız
+                birincil kaynaklar (gazete, doküman, arşiv belgeleri) için
+                ayrılmış size özel bir veri havuzudur. Onboarding tamamlandıktan
+                sonra kendi belgelerinizi buraya yükleyebilirsiniz.
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Bu kutu için onaylanmış kaynak bulunmuyor.
+              </p>
+            )}
           </div>
         )}
 

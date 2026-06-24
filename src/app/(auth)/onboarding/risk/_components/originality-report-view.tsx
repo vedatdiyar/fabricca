@@ -4,16 +4,37 @@ import { ShieldAlert } from "lucide-react";
 import { TavilyFactCheckTable } from "./tavily-fact-check-table";
 import { TezaraOverlapTable } from "./tezara-overlap-table";
 import { StrategicRoadmapSection } from "./strategic-roadmap-section";
-import { THESIS_BADGE_LABELS, THESIS_BADGE_COLORS } from "../_lib/constants";
+import {
+  THESIS_BADGE_LABELS,
+  THESIS_BADGE_COLORS,
+  THESIS_BADGE_ICON_BG,
+  THESIS_BADGE_TEXT,
+} from "../_lib/constants";
 import type { OriginalityReportData } from "@/lib/types";
 
 interface OriginalityReportViewProps {
   reportData: OriginalityReportData;
 }
 
+/** Section divider — matrix/enrichment tasarım diliyle tutarlı bölüm ayırıcı. */
+function SectionDivider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="h-px flex-1 bg-border" />
+      <span className="px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+        {label}
+      </span>
+      <div className="h-px flex-1 bg-border" />
+    </div>
+  );
+}
+
 /**
- * Top-level positioning report view. Composes three sub-sections (Tavily
- * fact-check, Tezara overlap matrix, strategic roadmap).
+ * OriginalityReportView — özgünlük raporunun üst düzey görünümü.
+ * Global risk rozeti + 3 bölümlü rapor yapısını (Tavily, Tezara, Yol Haritası)
+ * section divider'larla ayrılmış olarak render eder.
+ *
+ * @param props.reportData - Jüri analizi sonucu oluşturulan özgünlük raporu verisi.
  */
 export function OriginalityReportView({
   reportData,
@@ -21,42 +42,53 @@ export function OriginalityReportView({
   const { tavilyResults, tezaraResults } = reportData;
 
   return (
-    <div className="space-y-10">
-      {/* Global Risk Badge: overall report risk level with percentage */}
+    <div className="space-y-8">
+      {/* Global Risk Rozeti */}
       <div
-        className={`p-6 rounded-xl border ${THESIS_BADGE_COLORS[tezaraResults.originalityBadge] ?? THESIS_BADGE_COLORS.OZGUN} space-y-3`}
+        className={`flex items-center gap-3 rounded-xl border p-4 ${THESIS_BADGE_COLORS[tezaraResults.originalityBadge] ?? THESIS_BADGE_COLORS.OZGUN}`}
       >
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-background/60">
-              <ShieldAlert className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                Genel Rapor Risk Seviyesi
-              </p>
-              <h2 className="text-xl font-bold tracking-tight">
-                {THESIS_BADGE_LABELS[tezaraResults.originalityBadge] ??
-                  tezaraResults.originalityBadge}
-              </h2>
-            </div>
-          </div>
+        <div
+          className={`shrink-0 rounded-lg p-2 ${THESIS_BADGE_ICON_BG[tezaraResults.originalityBadge] ?? THESIS_BADGE_ICON_BG.OZGUN}`}
+        >
+          <ShieldAlert
+            className={`h-5 w-5 ${THESIS_BADGE_TEXT[tezaraResults.originalityBadge] ?? THESIS_BADGE_TEXT.OZGUN}`}
+          />
+        </div>
+        <div className="flex flex-1 items-center justify-between gap-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
+            Genel Rapor Risk Seviyesi
+          </p>
+          <span
+            className={`rounded-md border px-2.5 py-0.5 text-sm font-bold ${THESIS_BADGE_COLORS[tezaraResults.originalityBadge] ?? THESIS_BADGE_COLORS.OZGUN}`}
+          >
+            {THESIS_BADGE_LABELS[tezaraResults.originalityBadge] ??
+              tezaraResults.originalityBadge}
+          </span>
         </div>
       </div>
 
-      {/* Section A: Tavily Fact Checking */}
-      <TavilyFactCheckTable tavilyResults={tavilyResults} />
+      {/* Bölüm A: Maddi Doğrulama */}
+      <div className="space-y-5">
+        <SectionDivider label="Doğrulama ve Güvence" />
+        <TavilyFactCheckTable tavilyResults={tavilyResults} />
+      </div>
 
-      {/* Section B: Tezara Cross Literature comparison */}
-      <TezaraOverlapTable
-        overlapTable={tezaraResults.overlapTable}
-        strategicRecommendations={tezaraResults.strategicRecommendations}
-      />
+      {/* Bölüm B: Tez Karşılaştırma Matrisi */}
+      <div className="space-y-5">
+        <SectionDivider label="Pozisyon Matrisi" />
+        <TezaraOverlapTable
+          overlapTable={tezaraResults.overlapTable}
+          strategicRecommendations={tezaraResults.strategicRecommendations}
+        />
+      </div>
 
-      {/* Section C: Strategic Recommendations */}
-      <StrategicRoadmapSection
-        strategicRecommendations={tezaraResults.strategicRecommendations}
-      />
+      {/* Bölüm C: Yol Haritası */}
+      <div className="space-y-5">
+        <SectionDivider label="Yol Haritası" />
+        <StrategicRoadmapSection
+          strategicRecommendations={tezaraResults.strategicRecommendations}
+        />
+      </div>
     </div>
   );
 }

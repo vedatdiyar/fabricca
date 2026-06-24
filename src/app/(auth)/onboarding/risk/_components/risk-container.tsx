@@ -31,9 +31,9 @@ export function RiskContainer() {
 
   if (reportData) {
     return (
-      <div className="max-w-5xl mx-auto">
+      <div className="w-full">
         <OriginalityReportView reportData={reportData} />
-        <div className="flex justify-end mt-8 pb-12">
+        <div className="flex justify-end mt-8 pb-8">
           <Button
             onClick={handleProceed}
             disabled={proceeding}
@@ -55,7 +55,7 @@ export function RiskContainer() {
 
   if (error) {
     return (
-      <div className="max-w-5xl mx-auto pt-10">
+      <div className="w-full pt-10">
         <ErrorDisplay error={error} onRetry={() => startAnalysis()} />
       </div>
     );
