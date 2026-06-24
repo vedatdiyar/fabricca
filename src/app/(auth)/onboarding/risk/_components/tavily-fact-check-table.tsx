@@ -97,7 +97,7 @@ export function TavilyFactCheckTable({
                             {tavilyStatusTranslation[item.result]}
                           </span>
                           {item.resultNote && (
-                            <p className="text-muted-foreground font-light text-xs leading-relaxed">
+                            <p className="text-muted-foreground font-normal text-xs leading-relaxed">
                               {item.resultNote}
                             </p>
                           )}

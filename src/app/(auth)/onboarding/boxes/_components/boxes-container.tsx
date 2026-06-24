@@ -215,7 +215,7 @@ function BoxCard({
         </div>
         <div className="flex items-start gap-3">
           <span className="relative mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-primary shadow-[0_0_8px_#10b981]" />
-          <CardTitle className="text-base font-semibold text-foreground leading-snug">
+          <CardTitle className="text-lg font-semibold text-foreground leading-snug">
             {box.title}
           </CardTitle>
         </div>

@@ -143,7 +143,7 @@ export function TezaraOverlapTable({
                       }
                     >
                       <td className="p-3 space-y-1">
-                        <div className="font-semibold text-foreground text-xs leading-relaxed flex items-start gap-2 select-none">
+                        <div className="font-semibold text-foreground text-sm leading-relaxed flex items-start gap-2 select-none">
                           <span className="mt-1 text-muted-foreground shrink-0 transition-transform duration-200">
                             {expandedThesisId === item.id ? (
                               <ChevronDown className="w-3.5 h-3.5" />
@@ -174,7 +174,7 @@ export function TezaraOverlapTable({
                       </td>
                       <td className="p-3 text-center border-l border-border/50">
                         <span
-                          className={`inline-flex items-center justify-center w-[84px] py-1 rounded-full text-[10px] font-bold tracking-wide border ${THESIS_BADGE_COLORS[calculateBadge(item.axes)]}`}
+                          className={`inline-flex items-center justify-center w-[84px] py-1 rounded-md text-[10px] font-bold tracking-wide border ${THESIS_BADGE_COLORS[calculateBadge(item.axes)]}`}
                         >
                           {THESIS_BADGE_LABELS[calculateBadge(item.axes)]}
                         </span>
