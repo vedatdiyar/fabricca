@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "check:full": "npm run lint && npm run typecheck && npx prettier --write .",
-    "db:push": "drizzle-kit push",
+    "db:push": "drizzle-kit push --force --accept-all",
     "db:seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
