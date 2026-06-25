@@ -4,8 +4,12 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { thesisMatrices, originalityReports, users } from "@/db/schema";
 import { getSession } from "@/session";
-import { revalidatePath, updateTag } from "next/cache";
 import { createFlowId, Logger } from "@/lib/logger";
+import { SESSION_ERROR_MSG } from "@/lib/constants/session";
+import {
+  revalidateOnboardingPaths,
+  invalidateOnboardingCache,
+} from "@/lib/cache-tags";
 
 /**
  * Resets the onboarding process for the currently authenticated user.
@@ -24,8 +28,7 @@ export async function resetOnboardingAction(): Promise<
 
   try {
     const session = await getSession();
-    if (!session)
-      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+    if (!session) return { error: SESSION_ERROR_MSG };
 
     const userId = session.userId;
 
@@ -47,11 +50,8 @@ export async function resetOnboardingAction(): Promise<
         .where(eq(users.id, userId));
     });
 
-    revalidatePath("/onboarding", "layout");
-
-    updateTag("thesis-matrix");
-    updateTag("originality-report");
-    updateTag("thesis-boxes");
+    revalidateOnboardingPaths();
+    invalidateOnboardingCache();
 
     log.info({ step: "reset_onboarding", status: "SUCCESS", service: "flow" });
     return { success: true };

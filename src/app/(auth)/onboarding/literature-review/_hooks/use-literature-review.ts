@@ -12,7 +12,7 @@ import type {
   JuryArticle,
 } from "@/lib/types";
 import { processAllBoxesAction, confirmLiteratureAction } from "../actions";
-import { fetchBoxes } from "../../_lib/fetch-actions";
+import { fetchBoxesWithFullShape } from "../../_lib/fetch-actions";
 
 /** Processing status of a single sub-box within the literature review grid. */
 export type BoxStatus = "idle" | "loading" | "done" | "error";
@@ -83,72 +83,27 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   const hideLoading = useOnboardingStore((s) => s.hideLoading);
   const updateLoadingStep = useOnboardingStore((s) => s.updateLoadingStep);
 
-  // Load boxes on mount and reconcile them against the persisted literature pool.
+  // Load boxes on mount. The DB is the single source of truth — Zustand boxes
+  // are never consulted. If the server-side title set changed (e.g. user went
+  // back and regenerated boxes), the stale literature pool is flushed.
   useEffect(() => {
     let cancelled = false;
-    fetchBoxes().then((allBoxes) => {
+    fetchBoxesWithFullShape().then((allBoxes) => {
       if (cancelled) return;
-      // With flat hierarchy, all boxes are direct items
-      const freshTitles = new Set(allBoxes.map((b) => b.title));
-      const currentStore = useOnboardingStore.getState();
-      const poolTitles = new Set(
-        currentStore.literaturePool.map((e) => e.subBoxTitle),
-      );
 
-      // 1. Title-level reconciliation — if the set of titles changed, flush.
+      const freshTitles = new Set(allBoxes.map((b) => b.title));
+      const poolTitles = new Set(
+        useOnboardingStore.getState().literaturePool.map((e) => e.subBoxTitle),
+      );
       const titlesMatch =
         freshTitles.size === poolTitles.size &&
         [...freshTitles].every((t) => poolTitles.has(t));
 
-      // 2. Content-level reconciliation — even with matching titles the box
-      //    content (description / semanticSearchQueries) may have been updated
-      //    server-side or via a handleProceed -> setBoxes cycle.  Compare
-      //    every live DB box against its counterpart in the Zustand store.
-      let contentChanged = false;
-      if (titlesMatch) {
-        const freshBoxMap = new Map(allBoxes.map((b) => [b.title, b]));
-        const storeBoxMap = new Map(
-          (currentStore.boxes ?? []).map((b) => [b.title, b]),
-        );
-        contentChanged = [...freshTitles].some((title) => {
-          const fresh = freshBoxMap.get(title);
-          const stored = storeBoxMap.get(title);
-          if (!fresh || !stored) return false;
-          return (
-            (fresh.description ?? "") !== (stored.description ?? "") ||
-            (fresh.semanticSearchQueries ?? []).join("|||") !==
-              (stored.semanticSearchQueries ?? []).join("|||")
-          );
-        });
-      }
-
-      if (!titlesMatch || contentChanged) {
+      if (!titlesMatch) {
         useOnboardingStore.getState().setLiteraturePool([]);
       }
-      // Merge Zustand store boxes into DB boxes for the full GeminiThesisBox
-      // shape (boxType, foundationalQueries). Fall back to DB stored values
-      // when Zustand is empty so that data is never silently dropped on
-      // page refresh.
-      const storeBoxMap = new Map(
-        (currentStore.boxes ?? []).map((b) => [b.title, b]),
-      );
-      setSubBoxes(
-        allBoxes.map((b) => {
-          const stored = storeBoxMap.get(b.title);
-          return {
-            title: b.title,
-            boxType:
-              stored?.boxType ??
-              (b.boxType as GeminiThesisBox["boxType"]) ??
-              "PROBLEMATIZATION",
-            description: b.description ?? "",
-            semanticSearchQueries: b.semanticSearchQueries ?? [],
-            foundationalQueries:
-              stored?.foundationalQueries ?? b.foundationalQueries ?? [],
-            concepts: b.concepts ?? [],
-          };
-        }),
-      );
+
+      setSubBoxes(allBoxes);
       setPhase((prev) => ({ ...prev, loading: false }));
     });
     return () => {

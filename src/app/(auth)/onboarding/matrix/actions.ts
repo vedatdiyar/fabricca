@@ -5,9 +5,10 @@ import { db } from "@/db";
 import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
 import { getSession } from "@/session";
 import { generateStructuredContent } from "@/lib/gemini";
+import { SESSION_ERROR_MSG } from "@/lib/constants/session";
 import { ThinkingLevel } from "@google/genai";
 import { createFlowId, Logger } from "@/lib/logger";
-import { revalidatePath, updateTag } from "next/cache";
+import { invalidateOnboardingCache } from "@/lib/cache-tags";
 
 import {
   enhancedThesisSchema,
@@ -165,7 +166,7 @@ export async function saveEnrichedMatrixAction(
   try {
     const session = await getSession();
     if (!session) {
-      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+      return { error: SESSION_ERROR_MSG };
     }
 
     await db
@@ -208,12 +209,7 @@ export async function saveEnrichedMatrixAction(
         .where(eq(thesisBoxes.thesisMatrixId, matrixRow.id));
     }
 
-    revalidatePath("/onboarding/matrix");
-    revalidatePath("/onboarding/enrichment");
-
-    updateTag("thesis-matrix");
-    updateTag("originality-report");
-    updateTag("thesis-boxes");
+    invalidateOnboardingCache();
 
     log.info("matrix_save_success", {
       service: "db",

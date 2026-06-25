@@ -1,6 +1,7 @@
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { z } from "zod";
 import type { Logger } from "./logger";
+import { classifyError } from "./error-utils";
 
 export interface JsonSchemaProperty {
   type: string;
@@ -81,6 +82,18 @@ async function retryOn503<T>(
           error.message.includes("quota"));
 
       if (!isRetryable || attempt > maxRetries) {
+        const scenario = classifyError(error);
+        logger?.error("ai_retry_exhausted", {
+          service: "gemini",
+          filePath: "src/lib/gemini.ts",
+          step: "retry_exhausted",
+          data: {
+            attempt,
+            maxRetries,
+            scenario,
+          },
+          error,
+        });
         throw error;
       }
 
@@ -268,6 +281,7 @@ export async function generateStructuredContent<T>(
     return parsed;
   } catch (error) {
     const durationMs = performance.now() - startTime;
+    const scenario = classifyError(error);
 
     // Save debug payload even on failure
     const payloadStage = options?.payloadStage ?? "gemini";
@@ -281,6 +295,7 @@ export async function generateStructuredContent<T>(
         model: modelName,
         attempts,
         thinkingLevel: thinkingLevel ?? undefined,
+        scenario,
       },
       error,
     });

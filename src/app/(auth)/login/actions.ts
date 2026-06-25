@@ -7,12 +7,15 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { getSession } from "@/session";
 import { createFlowId, Logger } from "@/lib/logger";
+import {
+  SESSION_COOKIE_NAME,
+  SESSION_MAX_AGE_SECONDS,
+  SESSION_ERROR_MSG,
+} from "@/lib/constants/session";
 
 export type LoginResult =
   | { success: true; error?: never }
   | { success?: never; error: string };
-
-const COOKIE_NAME = "fabricca_session";
 
 /**
  * E-posta ve şifre ile kullanıcı girişini doğrular.
@@ -69,7 +72,7 @@ export async function loginAction(
 
     const cookieStore = await cookies();
     cookieStore.set(
-      COOKIE_NAME,
+      SESSION_COOKIE_NAME,
       JSON.stringify({
         userId: user.id,
         name: user.name,
@@ -80,7 +83,7 @@ export async function loginAction(
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
         path: "/",
-        maxAge: 60 * 60 * 24 * 7,
+        maxAge: SESSION_MAX_AGE_SECONDS,
       },
     );
 
@@ -125,7 +128,7 @@ export async function checkOnboardingStatus(): Promise<OnboardingStatusResult> {
         service: "auth",
         data: { reason: "Oturum bulunamadı" },
       });
-      return { error: "Oturum bulunamadı." };
+      return { error: SESSION_ERROR_MSG };
     }
 
     const [user] = await db

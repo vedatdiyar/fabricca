@@ -23,15 +23,28 @@ export function parseTezaraDetails(
     if (!mainText) return null;
 
     // Abstract — regex korunuyor
-    const abstract =
-      mainText
-        .match(/Özet\s*([\s\S]*?)(?:Özet \(Çeviri\)|Benzer Tezler|$)/)?.[1]
-        ?.trim() ?? "";
+    const abstractMatch = mainText.match(
+      /Özet\s*([\s\S]*?)(?:Özet \(Çeviri\)|Benzer Tezler|$)/,
+    );
+    const abstract = abstractMatch?.[1]?.trim() ?? "";
+    if (!abstractMatch) {
+      logger?.warn("tezara_parse_selector_miss", {
+        service: "tezara",
+        data: { field: "abstract", thesisId: id },
+      });
+    }
 
     // YÖK PDF URL — CSS selector korunuyor
-    const yokPdfUrl = $('a[href*="tez.yok.gov.tr/UlusalTezMerkezi/TezGoster"]')
-      .first()
-      .attr("href");
+    const yokPdfLink = $(
+      'a[href*="tez.yok.gov.tr/UlusalTezMerkezi/TezGoster"]',
+    ).first();
+    const yokPdfUrl = yokPdfLink.attr("href");
+    if (!yokPdfUrl) {
+      logger?.warn("tezara_parse_selector_miss", {
+        service: "tezara",
+        data: { field: "yokPdfUrl", thesisId: id },
+      });
+    }
 
     return {
       abstract,

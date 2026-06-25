@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "check:full": "npm run lint && npm run typecheck && npx prettier --write .",
-    "db:push": "drizzle-kit push --force --accept-all",
+    "db:push": "drizzle-kit push --force",
     "db:seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
@@ -26,7 +26,6 @@
     "cheerio": "^1.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "dotenv": "^17.4.2",
     "drizzle-orm": "^0.43.1",
     "lucide-react": "^0.510.0",
     "next": "^16.2.9",
@@ -40,13 +39,14 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "dotenv": "^16.4.7",
     "@eslint/eslintrc": "^3.3.1",
     "@tailwindcss/postcss": "^4.1.6",
     "@types/node": "^22.15.3",
     "@types/pg": "^8.11.14",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "drizzle-kit": "^0.30.6",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.9",
     "postcss": "^8.5.3",

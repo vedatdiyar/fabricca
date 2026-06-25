@@ -6,12 +6,6 @@ import type {
   OriginalityReportData,
 } from "@/lib/types";
 
-interface PersistedOnboardingState {
-  boxes: GeminiThesisBox[] | null;
-  literaturePool: LiteraturePoolEntry[];
-  reportData: OriginalityReportData | null;
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Loading State Types (transient — not persisted)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -114,16 +108,18 @@ export const useOnboardingStore = create<OnboardingStore>()(
       version: 1,
       storage: createJSONStorage(() => sessionStorage),
       partialize: (state) => ({
-        boxes: state.boxes,
         literaturePool: state.literaturePool,
         reportData: state.reportData,
       }),
       merge: (persisted, current) => {
-        const p = persisted as Partial<PersistedOnboardingState>;
+        const p = persisted as Partial<{
+          literaturePool: LiteraturePoolEntry[];
+          reportData: OriginalityReportData | null;
+        }>;
         return {
           ...current,
           ...p,
-          boxes: p.boxes ?? current.boxes,
+          boxes: current.boxes,
           literaturePool: p.literaturePool ?? [],
           reportData: p.reportData ?? current.reportData,
         };

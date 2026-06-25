@@ -5,9 +5,11 @@ import { db } from "@/db";
 import { thesisBoxes, libraryResources } from "@/db/schema";
 import { getSession } from "@/session";
 import { generateStructuredContent } from "@/lib/gemini";
+import { SESSION_ERROR_MSG } from "@/lib/constants/session";
 import { ThinkingLevel } from "@google/genai";
 import { createFlowId, Logger } from "@/lib/logger";
-import { revalidatePath, updateTag } from "next/cache";
+import { updateTag } from "next/cache";
+import { CACHE_TAGS, revalidateOnboardingPaths } from "@/lib/cache-tags";
 import {
   buildThesisBoxGenerationSystemInstruction,
   buildThesisBoxGenerationPrompt,
@@ -24,7 +26,7 @@ import {
   fetchThesisMatrix,
   fetchOriginalityReport,
 } from "../_lib/fetch-actions";
-import { mineCoCitations } from "./_services/co-citation-miner";
+import { mineCoCitations } from "../_services/co-citation-miner";
 
 /**
  * Step 1: Generates the boxes structure (without foundational queries) using Gemini 3.1 Flash Lite.
@@ -40,8 +42,7 @@ export async function generateBoxesStructureAction(): Promise<
 
   try {
     const session = await getSession();
-    if (!session)
-      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+    if (!session) return { error: SESSION_ERROR_MSG };
 
     const [matrix, report] = await Promise.all([
       fetchThesisMatrix(),
@@ -155,8 +156,7 @@ export async function mineFoundationalQueriesAction(
 
   try {
     const session = await getSession();
-    if (!session)
-      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+    if (!session) return { error: SESSION_ERROR_MSG };
 
     log.info("mine_foundational_queries_start", {
       service: "boxes",
@@ -273,8 +273,7 @@ export async function confirmBoxesAction(
 
   try {
     const session = await getSession();
-    if (!session)
-      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+    if (!session) return { error: SESSION_ERROR_MSG };
 
     const [matrix, report] = await Promise.all([
       fetchThesisMatrix(),
@@ -361,11 +360,8 @@ export async function confirmBoxesAction(
       }
     });
 
-    revalidatePath("/onboarding", "layout");
-    revalidatePath("/onboarding/literature-review");
-    revalidatePath("/", "layout");
-
-    updateTag("thesis-boxes");
+    revalidateOnboardingPaths();
+    updateTag(CACHE_TAGS.thesisBoxes);
 
     log.info("boxes_confirm_success", {
       service: "boxes",

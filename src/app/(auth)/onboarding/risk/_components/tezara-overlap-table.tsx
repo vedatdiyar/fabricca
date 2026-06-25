@@ -16,7 +16,7 @@ import {
   THESIS_BADGE_LABELS,
   THESIS_BADGE_COLORS,
 } from "../_lib/constants";
-import { calculateBadge } from "@/lib/utils";
+import { calculateBadge } from "@/lib/academic/badge-calculator";
 import type { OriginalityReportData, OverlapLevel } from "@/lib/types";
 
 /** A single overlap-table row after sorting and comparison-note backfill. */

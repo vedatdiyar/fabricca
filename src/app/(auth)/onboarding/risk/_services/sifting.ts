@@ -1,4 +1,4 @@
-import { cosineSimilarity } from "@/lib/utils";
+import { cosineSimilarity } from "@/lib/math/vector";
 import { generateEmbeddings } from "@/lib/cloudflare";
 import { fetchThesisDetails } from "@/lib/tezara";
 import type { Logger } from "@/lib/logger";

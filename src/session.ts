@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { SESSION_COOKIE_NAME } from "@/lib/constants/session";
 
 export type SessionUser = {
   userId: number;
@@ -34,7 +35,7 @@ export async function getSession(): Promise<SessionUser | null> {
   }
   try {
     const cookieStore = await cookies();
-    const raw = cookieStore.get("fabricca_session")?.value;
+    const raw = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
     if (!raw) {
       return null;

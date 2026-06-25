@@ -1,4 +1,5 @@
 import type { Logger } from "./logger";
+import { classifyError } from "./error-utils";
 
 interface CloudflareEmbeddingItem {
   object: string;
@@ -61,17 +62,20 @@ export async function generateEmbeddings(
     if (!response.ok) {
       const errorText = await response.text();
       const errorMsg = `Cloudflare API error: ${response.status} ${response.statusText} - ${errorText}`;
+      const apiError = new Error(errorMsg);
       if (logger) {
         const durationMs = performance.now() - startTime;
+        const scenario = classifyError(apiError);
         logger.error("ai_request_failed", {
           service: "cloudflare",
           filePath: "src/lib/cloudflare.ts",
           step: "generate_embeddings_api_error",
           durationMs,
-          error: new Error(errorMsg),
+          error: apiError,
+          data: { scenario },
         });
       }
-      throw new Error(errorMsg);
+      throw apiError;
     }
 
     const result = (await response.json()) as CloudflareEmbeddingResponse;
@@ -108,12 +112,14 @@ export async function generateEmbeddings(
     return embeddings;
   } catch (error) {
     const durationMs = performance.now() - startTime;
+    const scenario = classifyError(error);
     logger?.error("ai_request_failed", {
       service: "cloudflare",
       filePath: "src/lib/cloudflare.ts",
       step: "generate_embeddings_failed",
       durationMs,
       error,
+      data: { scenario },
     });
     throw error;
   }

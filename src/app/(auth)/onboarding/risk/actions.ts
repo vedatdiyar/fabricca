@@ -5,7 +5,9 @@ import { db } from "@/db";
 import { originalityReports, thesisMatrices, thesisBoxes } from "@/db/schema";
 import { getSession } from "@/session";
 import { createFlowId, Logger } from "@/lib/logger";
-import { revalidatePath, updateTag } from "next/cache";
+import { SESSION_ERROR_MSG } from "@/lib/constants/session";
+import { updateTag } from "next/cache";
+import { CACHE_TAGS, revalidateOnboardingPaths } from "@/lib/cache-tags";
 import type {
   OnboardingActionResult,
   ScrapedTheses,
@@ -66,8 +68,7 @@ export async function extractQueriesAction(
 
   try {
     const session = await getSession();
-    if (!session)
-      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+    if (!session) return { error: SESSION_ERROR_MSG };
 
     const { tavilyQueries, tezaraQueries, keywords } = await extractQueries(
       {
@@ -134,8 +135,7 @@ export async function executeSearchAction(params: {
 
   try {
     const session = await getSession();
-    if (!session)
-      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+    if (!session) return { error: SESSION_ERROR_MSG };
 
     const { tavilySearchResults, tezaraSearchResults } =
       await executeParallelSearch(
@@ -194,8 +194,7 @@ export async function siftThesesAction(params: {
 
   try {
     const session = await getSession();
-    if (!session)
-      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+    if (!session) return { error: SESSION_ERROR_MSG };
 
     const { finalTheses, eliminatedTheses } = await siftAndFetchDetails(
       {
@@ -257,8 +256,7 @@ export async function finalizeJuryAnalysisAction(params: {
 
   try {
     const session = await getSession();
-    if (!session)
-      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+    if (!session) return { error: SESSION_ERROR_MSG };
 
     const {
       studyTitle,
@@ -356,7 +354,7 @@ export async function finalizeJuryAnalysisAction(params: {
       data: { context: params.matrix.studyTitle },
     });
 
-    updateTag("originality-report");
+    updateTag(CACHE_TAGS.originalityReport);
 
     return { success: true, data: reportData };
   } catch (err) {
@@ -388,8 +386,7 @@ export async function completeRiskStageAction(): Promise<OnboardingActionResult>
 
   try {
     const session = await getSession();
-    if (!session)
-      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+    if (!session) return { error: SESSION_ERROR_MSG };
 
     const [matrix] = await db
       .select({ id: thesisMatrices.id })
@@ -404,9 +401,9 @@ export async function completeRiskStageAction(): Promise<OnboardingActionResult>
       });
     }
 
-    revalidatePath("/onboarding", "layout");
+    revalidateOnboardingPaths();
 
-    updateTag("thesis-boxes");
+    updateTag(CACHE_TAGS.thesisBoxes);
 
     log.info("originality_risk_complete_success", {
       service: "originality",

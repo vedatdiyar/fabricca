@@ -17,15 +17,9 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { confirmEnhancedThesisAction } from "../actions";
-import {
-  extractQueriesAction,
-  executeSearchAction,
-  siftThesesAction,
-  finalizeJuryAnalysisAction,
-} from "../../risk/actions";
 import { fetchThesisMatrix } from "../../_lib/fetch-actions";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
-import type { LoadingStep } from "@/lib/store/onboarding-store";
+import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
 import { getErrorDisplay } from "@/lib/error-utils";
 import type { EnhancedThesisData } from "@/lib/types";
 import { MatrixField } from "./matrix-field";
@@ -128,24 +122,11 @@ const ENRICHMENT_SECTIONS: SectionConfig[] = [
   },
 ];
 
-const ANALYSIS_STEPS: LoadingStep[] = [
-  { text: "Sorgu ve doğrulama parametreleri üretiliyor...", status: "idle" },
-  {
-    text: "Tavily ve Tezara paralel motorları koşturuluyor...",
-    status: "idle",
-  },
-  {
-    text: "Karşılaştırmalı literatür matrisi yapılandırılıyor...",
-    status: "idle",
-  },
-  { text: "Nihai risk seviyesi ve tavsiyeler hazırlanıyor...", status: "idle" },
-];
-
 /**
  * EnrichmentView — onboarding sürecinin 2. adımı.
  * Kullanıcının yapay zeka tarafından zenginleştirilmiş tez matrisini incelemesini,
- * düzenlemesini ve onaylamasını sağlar. Onay sonrasında 4 aşamalı risk analizi
- * pipeline'ını (Tavily, Tezara, Jüri Analizi) arka planda koşturur.
+ * düzenlemesini ve onaylamasını sağlar. Onay sonrasında risk analizi pipeline'ını
+ * merkezi onboarding orkestratörü aracılığıyla çalıştırır.
  */
 export function EnrichmentView() {
   const router = useRouter();
@@ -161,11 +142,9 @@ export function EnrichmentView() {
     mainClaim: "",
   });
 
-  const showLoading = useOnboardingStore((s) => s.showLoading);
-  const hideLoading = useOnboardingStore((s) => s.hideLoading);
-  const updateLoadingStep = useOnboardingStore((s) => s.updateLoadingStep);
   const setBoxes = useOnboardingStore((s) => s.setBoxes);
   const setLiteraturePool = useOnboardingStore((s) => s.setLiteraturePool);
+  const { runRiskPipeline } = useOnboardingNavigation();
 
   useEffect(() => {
     let cancelled = false;
@@ -193,7 +172,7 @@ export function EnrichmentView() {
 
   /**
    * Form onaylandığında tetiklenir. Düzenlenen tez matrisini kaydeder ve
-   * risk analizi motorlarını (Tavily, Tezara, Jüri Analizi) sırasıyla çalıştırır.
+   * risk analizi pipeline'ını merkezi orkestratör üzerinden çalıştırır.
    *
    * @param e - Form gönderme olayı.
    */
@@ -232,78 +211,21 @@ export function EnrichmentView() {
         mainClaim: formState.mainClaim,
       };
 
-      // 4 aşamalı yükleme spinner'ını başlat.
-      const steps = ANALYSIS_STEPS.map((s) => ({ ...s }));
-      steps[0].status = "active";
-      showLoading(
-        "Risk Analiz Motorları Çalışıyor",
-        "Yapay zeka asistanınız tez matrisinizi inceliyor, veri tabanlarını tarıyor ve risk raporunu hazırlıyor.",
-        steps,
-      );
-
-      // ── Adım 0: Sorguları çıkar ──
-      const extractResult = await extractQueriesAction(matrixInput);
-      if ("error" in extractResult) {
-        hideLoading();
-        toast.error(extractResult.error);
+      // Risk pipeline'ını orkestratör üzerinden çalıştır
+      const pipelineResult = await runRiskPipeline(matrixInput);
+      if (pipelineResult.error) {
+        toast.error(pipelineResult.error);
         setIsPending(false);
         return;
       }
-      updateLoadingStep(0, "completed");
-      updateLoadingStep(1, "active");
-
-      // ── Adım 1: Paralel arama motorlarını çalıştır ──
-      const searchResult = await executeSearchAction({
-        studyTitle: matrixInput.studyTitle,
-        tavilyQueries: extractResult.data.tavilyQueries,
-        tezaraQueries: extractResult.data.tezaraQueries,
-      });
-      if ("error" in searchResult) {
-        hideLoading();
-        toast.error(searchResult.error);
-        setIsPending(false);
-        return;
-      }
-      updateLoadingStep(1, "completed");
-      updateLoadingStep(2, "active");
-
-      // ── Adım 2: Tezleri filtrele ──
-      const siftResult = await siftThesesAction({
-        matrix: matrixInput,
-        tezaraSearchResults: searchResult.data.tezaraSearchResults,
-      });
-      if ("error" in siftResult) {
-        hideLoading();
-        toast.error(siftResult.error);
-        setIsPending(false);
-        return;
-      }
-      updateLoadingStep(2, "completed");
-      updateLoadingStep(3, "active");
-
-      // ── Adım 3: Jüri analizini tamamla ──
-      const juryResult = await finalizeJuryAnalysisAction({
-        matrix: matrixInput,
-        scrapedTheses: siftResult.data,
-        tavilyResults: searchResult.data.tavilyResults,
-      });
-      if ("error" in juryResult) {
-        hideLoading();
-        toast.error(juryResult.error);
-        setIsPending(false);
-        return;
-      }
-      updateLoadingStep(3, "completed");
 
       // Tamamlanan raporu Zustand'a yaz; risk sayfası buradan okur.
-      useOnboardingStore.getState().setReportData(juryResult.data);
+      useOnboardingStore.getState().setReportData(pipelineResult.data!);
 
-      hideLoading();
       setIsPending(false);
       toast.success("Tez matrisi kaydedildi. Risk analizi tamamlandı.");
       router.push("/onboarding/risk");
     } catch (error) {
-      hideLoading();
       console.error(error);
       const display = getErrorDisplay(error);
       toast.error(`${display.title}: ${display.description}`);

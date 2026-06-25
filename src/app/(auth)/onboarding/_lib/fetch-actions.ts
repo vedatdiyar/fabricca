@@ -9,6 +9,7 @@ import {
   thesisBoxes,
   libraryResources,
 } from "@/db/schema";
+import type { GeminiThesisBox } from "@/lib/types";
 import { getSession } from "@/session";
 
 /**
@@ -89,6 +90,29 @@ export async function fetchBoxes() {
   const matrix = await getCachedThesisMatrix(session.userId);
   if (!matrix) return [];
   return getCachedBoxes(matrix.id);
+}
+
+/**
+ * Server Action: fetches boxes and maps every row to the full GeminiThesisBox
+ * shape clients expect.  The DB is the single source of truth — Zustand boxes
+ * are never consulted.
+ *
+ * @returns GeminiThesisBox[] hydrated from the database (empty if no matrix)
+ */
+export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
+  const session = await getSession();
+  if (!session) return [];
+  const matrix = await getCachedThesisMatrix(session.userId);
+  if (!matrix) return [];
+  const rows = await getCachedBoxes(matrix.id);
+  return rows.map((b) => ({
+    title: b.title,
+    boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "PROBLEMATIZATION",
+    description: b.description ?? "",
+    semanticSearchQueries: b.semanticSearchQueries ?? [],
+    foundationalQueries: b.foundationalQueries ?? [],
+    concepts: b.concepts ?? [],
+  }));
 }
 
 /**

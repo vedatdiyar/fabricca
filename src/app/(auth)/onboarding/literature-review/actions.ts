@@ -2,8 +2,11 @@
 
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
-import { revalidatePath, updateTag } from "next/cache";
 import { db } from "@/db";
+import {
+  revalidateOnboardingPaths,
+  invalidateOnboardingCache,
+} from "@/lib/cache-tags";
 import {
   thesisMatrices,
   thesisBoxes,
@@ -12,373 +15,20 @@ import {
 } from "@/db/schema";
 import { getSession } from "@/session";
 import { Logger, createFlowId } from "@/lib/logger";
-import type {
-  LiteraturePoolEntry,
-  OnboardingActionResult,
-  JuryArticle,
-} from "@/lib/types";
+import {
+  SESSION_COOKIE_NAME,
+  SESSION_MAX_AGE_SECONDS,
+  SESSION_ERROR_MSG,
+} from "@/lib/constants/session";
+import type { LiteraturePoolEntry, OnboardingActionResult } from "@/lib/types";
 import type { NewLibraryResource } from "@/db/schema";
-import type {
-  SubBoxInput,
-  RawPaper,
-  ValidatedPaper,
-} from "./_services/literature-review-papers";
-import { mergePapers } from "./_services/literature-review-papers";
-import {
-  searchOpenAlex,
-  resolveFoundationalWorks,
-} from "./_services/search-api";
+import type { SubBoxInput } from "./_services/literature-review-papers";
+import { orchestrateBatchProcess } from "./_services/batch-orchestrator";
 import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
-import {
-  runAcademicReviewStage,
-  deduplicateCandidatesGlobally,
-  type LiteratureReviewResult,
-} from "./_services/ai-processor";
 
 // ============================================================================
-// Helper: isArchivalBox — detects boxes that should bypass external APIs
+// Batch Action: processAllBoxesAction — delegates to batch orchestrator
 // ============================================================================
-
-function isArchivalBox(subBox: SubBoxInput): boolean {
-  if (subBox.boxType === "PRIMARY_MATERIAL") {
-    return true;
-  }
-  if (!subBox.foundationalQueries || subBox.foundationalQueries.length === 0) {
-    return false;
-  }
-  const first = subBox.foundationalQueries[0];
-  return (
-    first.author === "Primary Source Repository" || first.publicationYear === 0
-  );
-}
-
-// ============================================================================
-// Helper: withOpenAlexRetry — retries searchOpenAlex on 429/network errors
-// ============================================================================
-
-async function withOpenAlexRetry(
-  query: string,
-  logger: Logger,
-): Promise<RawPaper[]> {
-  const MAX_ATTEMPTS = 3;
-  let lastError: Error | null = null;
-
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    try {
-      return await searchOpenAlex(query);
-    } catch (err) {
-      lastError = err instanceof Error ? err : new Error(String(err));
-
-      if (attempt < MAX_ATTEMPTS) {
-        const delayMs = Math.random() * 300 + 200;
-        logger.warn("openalex_rate_limit_retry", {
-          service: "literature",
-          filePath: "onboarding/literature-review/actions.ts",
-          data: {
-            attempt,
-            maxAttempts: MAX_ATTEMPTS,
-            delayMs: Math.round(delayMs),
-            query: query.substring(0, 120),
-            error: lastError.message,
-          },
-        });
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-      }
-    }
-  }
-
-  throw lastError ?? new Error("OpenAlex isteği başarısız oldu");
-}
-
-// ============================================================================
-// Constants: Fixed pool sizes for rules-based 5+10 distribution
-// ============================================================================
-
-const STARTER_PACK_SIZE = 5;
-const RESERVED_POOL_SIZE = 10;
-
-/**
- * Distributes foundational and AI-filtered semantic articles into a fixed-size
- * starter pack (5) and reserved pool (10) using a pure rules-based algorithm:
- *
- * 1. All isFoundational articles are given priority for the starter pack.
- * 2. Remaining starter pack slots are filled by the highest relevanceScore
- *    from non-foundational articles.
- * 3. The reserved pool gets the next 10 highest-scoring remaining articles.
- *
- * Articles from the semantic list that duplicate foundational titles are
- * silently removed before distribution.
- */
-function distributeFixedPool(
-  foundationalArticles: JuryArticle[],
-  semanticArticles: JuryArticle[],
-): { starterPack: JuryArticle[]; reservedPool: JuryArticle[] } {
-  const foundationalTitles = new Set(
-    foundationalArticles
-      .map((a) => a.title?.toLowerCase().trim())
-      .filter(Boolean),
-  );
-
-  const dedupedSemantic = semanticArticles.filter(
-    (a) => !a.title || !foundationalTitles.has(a.title.toLowerCase().trim()),
-  );
-
-  const allArticles = [...foundationalArticles, ...dedupedSemantic].sort(
-    (a, b) => {
-      if (a.isFoundational !== b.isFoundational) {
-        return a.isFoundational ? -1 : 1;
-      }
-      return b.relevanceScore - a.relevanceScore;
-    },
-  );
-
-  return {
-    starterPack: allArticles.slice(0, STARTER_PACK_SIZE),
-    reservedPool: allArticles.slice(
-      STARTER_PACK_SIZE,
-      STARTER_PACK_SIZE + RESERVED_POOL_SIZE,
-    ),
-  };
-}
-
-// ============================================================================
-// Helper: processSingleBox — processes a single sub-box through the pipeline
-// ============================================================================
-
-async function processSingleBox(
-  subBox: SubBoxInput,
-  thesisCtx: {
-    studyTitle: string;
-    researchQuestion: string;
-    theoreticalFramework: string;
-    researchScope: string;
-  },
-  logger: Logger,
-): Promise<LiteratureReviewResult> {
-  if (isArchivalBox(subBox)) {
-    logger.info("literature_archival_bypass", {
-      service: "literature",
-      filePath: "onboarding/literature-review/actions.ts",
-      data: {
-        subBoxTitle: subBox.title,
-        boxType: subBox.boxType ?? "bilinmiyor",
-        foundationalQueryCount: subBox.foundationalQueries?.length ?? 0,
-        context: `Kutu: ${subBox.title}`,
-      },
-    });
-    return { starterPack: [], reservedPool: [], isArchivalBypass: true };
-  }
-
-  if (
-    !subBox.semanticSearchQueries ||
-    subBox.semanticSearchQueries.length === 0
-  ) {
-    return { starterPack: [], reservedPool: [] };
-  }
-
-  const boxCtx = `Kutu: ${subBox.title}`;
-
-  // ------------------------------------------------------------------
-  // Stage 1: Foundational Track (independent, bypasses AI stages)
-  // ------------------------------------------------------------------
-  const foundationalArticles: JuryArticle[] = [];
-
-  if (subBox.foundationalQueries && subBox.foundationalQueries.length > 0) {
-    logger.info("literature_foundational_start", {
-      service: "literature",
-      filePath: "onboarding/literature-review/actions.ts",
-      data: {
-        queryCount: subBox.foundationalQueries.length,
-        subBoxTitle: subBox.title,
-        context: boxCtx,
-      },
-    });
-
-    const foundationalStart = performance.now();
-    const resolved = await resolveFoundationalWorks(
-      subBox.foundationalQueries,
-      logger,
-    );
-
-    for (const fw of resolved) {
-      foundationalArticles.push({
-        title: formatAcademicTitle(fw.title),
-        abstract: "",
-        url: fw.id,
-        doi: "",
-        publisher: fw.publisher ?? "",
-        publicationYear: fw.publicationYear,
-        authors: fw.authors,
-        isFoundational: true,
-        relevanceScore: 100,
-      });
-    }
-
-    logger.info("literature_foundational_done", {
-      service: "literature",
-      durationMs: performance.now() - foundationalStart,
-      filePath: "onboarding/literature-review/actions.ts",
-      status: "SUCCESS",
-      data: { resultCount: foundationalArticles.length, context: boxCtx },
-    });
-  }
-
-  // ------------------------------------------------------------------
-  // Stage 2: OpenAlex semantic search (retry-safe)
-  // ------------------------------------------------------------------
-  logger.info("literature_search_start", {
-    service: "literature",
-    filePath: "onboarding/literature-review/actions.ts",
-    data: {
-      queryCount: subBox.semanticSearchQueries.length,
-      subBoxTitle: subBox.title,
-      context: boxCtx,
-    },
-  });
-
-  const searchStart = performance.now();
-  const searchResultsList: RawPaper[][] = [];
-  for (let qIdx = 0; qIdx < subBox.semanticSearchQueries.length; qIdx++) {
-    const query = subBox.semanticSearchQueries[qIdx];
-    if (!query.trim()) continue;
-
-    const results = await withOpenAlexRetry(query, logger);
-    searchResultsList.push(results);
-
-    if (qIdx < subBox.semanticSearchQueries.length - 1) {
-      await new Promise((resolve) =>
-        setTimeout(resolve, OPENALEX_REQUEST_DELAY_MS),
-      );
-    }
-  }
-  const semanticRaw = searchResultsList.flat();
-
-  logger.info("literature_search_done", {
-    service: "literature",
-    durationMs: performance.now() - searchStart,
-    filePath: "onboarding/literature-review/actions.ts",
-    status: "SUCCESS",
-    data: { resultCount: semanticRaw.length, context: boxCtx },
-  });
-
-  if (semanticRaw.length === 0 && foundationalArticles.length === 0) {
-    return { starterPack: [], reservedPool: [] };
-  }
-
-  if (semanticRaw.length === 0) {
-    return distributeFixedPool(foundationalArticles, []);
-  }
-
-  // ------------------------------------------------------------------
-  // Stage 3: Multi-strategy deduplication (semantic papers only)
-  // ------------------------------------------------------------------
-  const mergeStart = performance.now();
-  const merged = mergePapers(semanticRaw);
-
-  logger.info("literature_merge_done", {
-    service: "literature",
-    durationMs: performance.now() - mergeStart,
-    filePath: "onboarding/literature-review/actions.ts",
-    status: "SUCCESS",
-    data: { mergedCount: merged.length, context: boxCtx },
-  });
-
-  // ------------------------------------------------------------------
-  // Stage 4: Single-stage AI Academic Review (eleme + jüri)
-  // ------------------------------------------------------------------
-  for (const p of merged) {
-    if (!p.abstract || !p.abstract.trim()) {
-      p.abstract = "Özet verisi bulunamadı, başlık üzerinden değerlendirin";
-    }
-  }
-
-  const reviewStart = performance.now();
-  const result = await runAcademicReviewStage(
-    subBox,
-    merged,
-    logger,
-    thesisCtx,
-  );
-
-  logger.info("literature_academic_review_done", {
-    service: "literature",
-    durationMs: performance.now() - reviewStart,
-    filePath: "onboarding/literature-review/actions.ts",
-    status: "SUCCESS",
-    data: {
-      count: merged.length,
-      resultCount: result.starterPack.length + result.reservedPool.length,
-      starterPackCount: result.starterPack.length,
-      reservedPoolCount: result.reservedPool.length,
-      context: boxCtx,
-    },
-  });
-
-  // ------------------------------------------------------------------
-  // Final: Fixed 5+10 rules-based distribution
-  // ------------------------------------------------------------------
-  return distributeFixedPool(foundationalArticles, result.starterPack);
-}
-
-// ============================================================================
-// Main Action: processLiteratureReviewAction (single-box sequential)
-// ============================================================================
-
-export async function processLiteratureReviewAction(
-  box: SubBoxInput,
-): Promise<{ data?: LiteratureReviewResult; error?: string }> {
-  const logger = new Logger(createFlowId());
-
-  logger.info("literature_process_start", {
-    service: "literature",
-    filePath: "onboarding/literature-review/actions.ts",
-    data: {
-      context: "Kutu literatür taraması başlatıldı",
-      subBoxTitle: box.title,
-    },
-  });
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: "Oturum bulunamadı." };
-
-    const [thesisCtx] = await db
-      .select({
-        studyTitle: thesisMatrices.studyTitle,
-        researchQuestion: thesisMatrices.researchQuestion,
-        theoreticalFramework: thesisMatrices.theoreticalFramework,
-        researchScope: thesisMatrices.researchScope,
-      })
-      .from(thesisMatrices)
-      .where(eq(thesisMatrices.userId, session.userId));
-
-    if (!thesisCtx) return { error: "Tez matrisi bulunamadı." };
-
-    const result = await processSingleBox(box, thesisCtx, logger);
-    return { data: result };
-  } catch (err) {
-    const boxTitle = box.title ?? "Bilinmeyen kutu";
-    const message = err instanceof Error ? err.message : "Beklenmeyen hata";
-    logger.error("literature_review_failed", {
-      service: "literature",
-      filePath: "onboarding/literature-review/actions.ts",
-      data: { subBoxTitle: boxTitle },
-      error: err,
-    });
-    return { error: message };
-  }
-}
-
-// ============================================================================
-// Batch Action: processAllBoxesAction — 5-stage orchestration for all boxes
-// ============================================================================
-
-/**
- * OpenAlex rate limit: minimum delay (ms) between sequential search requests.
- * OpenAlex enforces ~1 request/second for non-authenticated use.
- * 1100ms = 1s base + 100ms safety margin.
- */
-const OPENALEX_REQUEST_DELAY_MS = 1100;
 
 export async function processAllBoxesAction(
   boxes: SubBoxInput[],
@@ -396,7 +46,7 @@ export async function processAllBoxesAction(
 
   try {
     const session = await getSession();
-    if (!session) return { error: "Oturum bulunamadı." };
+    if (!session) return { error: SESSION_ERROR_MSG };
 
     const [thesisCtx] = await db
       .select({
@@ -410,216 +60,11 @@ export async function processAllBoxesAction(
 
     if (!thesisCtx) return { error: "Tez matrisi bulunamadı." };
 
-    // ------------------------------------------------------------------
-    // Phase 1: Sequential OpenAlex search with rate-limit throttle
-    // ------------------------------------------------------------------
-    const boxSearchResults = new Map<string, ValidatedPaper[]>();
-    const archivalBoxes = new Set<string>();
-    const foundationalLookups = new Map<string, { resolved: JuryArticle[] }>();
-
-    for (let i = 0; i < boxes.length; i++) {
-      const box = boxes[i];
-      logger.info("literature_batch_search_start", {
-        service: "literature",
-        filePath: "onboarding/literature-review/actions.ts",
-        data: {
-          boxIndex: i,
-          boxTitle: box.title,
-          boxType: box.boxType ?? "bilinmiyor",
-        },
-      });
-
-      // Detect archival boxes early
-      if (isArchivalBox(box)) {
-        archivalBoxes.add(box.title);
-        boxSearchResults.set(box.title, []);
-        foundationalLookups.set(box.title, { resolved: [] });
-
-        logger.info("literature_archival_bypass", {
-          service: "literature",
-          filePath: "onboarding/literature-review/actions.ts",
-          data: {
-            subBoxTitle: box.title,
-            boxType: box.boxType ?? "bilinmiyor",
-            context: `Kutu: ${box.title}`,
-          },
-        });
-        continue;
-      }
-
-      if (
-        !box.semanticSearchQueries ||
-        box.semanticSearchQueries.length === 0
-      ) {
-        boxSearchResults.set(box.title, []);
-        foundationalLookups.set(box.title, { resolved: [] });
-        continue;
-      }
-
-      // Foundational track (independent)
-      const foundationalArticles: JuryArticle[] = [];
-      if (box.foundationalQueries && box.foundationalQueries.length > 0) {
-        logger.info("literature_foundational_start", {
-          service: "literature",
-          filePath: "onboarding/literature-review/actions.ts",
-          data: {
-            queryCount: box.foundationalQueries.length,
-            subBoxTitle: box.title,
-          },
-        });
-
-        const resolved = await resolveFoundationalWorks(
-          box.foundationalQueries,
-          logger,
-        );
-
-        for (const fw of resolved) {
-          foundationalArticles.push({
-            title: formatAcademicTitle(fw.title),
-            abstract: "",
-            url: fw.id,
-            doi: "",
-            publisher: fw.publisher ?? "",
-            publicationYear: fw.publicationYear,
-            authors: fw.authors,
-            isFoundational: true,
-            relevanceScore: 100,
-          });
-        }
-      }
-      foundationalLookups.set(box.title, {
-        resolved: foundationalArticles,
-      });
-
-      // OpenAlex semantic search with throttle
-      const searchResultsList: RawPaper[][] = [];
-      for (let qIdx = 0; qIdx < box.semanticSearchQueries.length; qIdx++) {
-        const query = box.semanticSearchQueries[qIdx];
-        if (!query.trim()) continue;
-
-        const results = await withOpenAlexRetry(query, logger);
-        searchResultsList.push(results);
-
-        if (qIdx < box.semanticSearchQueries.length - 1) {
-          await new Promise((resolve) =>
-            setTimeout(resolve, OPENALEX_REQUEST_DELAY_MS),
-          );
-        }
-      }
-      const semanticRaw = searchResultsList.flat();
-
-      logger.info("literature_batch_search_done", {
-        service: "literature",
-        filePath: "onboarding/literature-review/actions.ts",
-        data: {
-          boxTitle: box.title,
-          resultCount: semanticRaw.length,
-        },
-      });
-
-      // Within-box dedup
-      const merged = mergePapers(semanticRaw);
-      boxSearchResults.set(box.title, merged);
-
-      // Throttle between boxes (skip last)
-      if (i < boxes.length - 1) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, OPENALEX_REQUEST_DELAY_MS),
-        );
-      }
-    }
-
-    // ------------------------------------------------------------------
-    // Phase 2: Global cross-box deduplication
-    // ------------------------------------------------------------------
-    const dedupStart = performance.now();
-    const dedupedResults = deduplicateCandidatesGlobally(
-      boxSearchResults,
+    const { poolEntries } = await orchestrateBatchProcess(
+      boxes,
+      thesisCtx,
       logger,
     );
-
-    logger.info("literature_global_dedup_done", {
-      service: "literature",
-      durationMs: performance.now() - dedupStart,
-      filePath: "onboarding/literature-review/actions.ts",
-      data: {
-        totalBefore: [...boxSearchResults.values()].reduce(
-          (s, a) => s + a.length,
-          0,
-        ),
-        totalAfter: [...dedupedResults.values()].reduce(
-          (s, a) => s + a.length,
-          0,
-        ),
-      },
-    });
-
-    // ------------------------------------------------------------------
-    // Phase 3: Academic review (Gemini) — per box parallelized
-    // ------------------------------------------------------------------
-    for (const [, candidates] of dedupedResults) {
-      for (const p of candidates) {
-        if (!p.abstract || !p.abstract.trim()) {
-          p.abstract = "Özet verisi bulunamadı, başlık üzerinden değerlendirin";
-        }
-      }
-    }
-
-    const poolPromises = boxes.map(async (box) => {
-      if (archivalBoxes.has(box.title)) {
-        return {
-          subBoxTitle: box.title,
-          starterPack: foundationalLookups.get(box.title)?.resolved ?? [],
-          reservedPool: [],
-        };
-      }
-
-      const candidates = dedupedResults.get(box.title);
-      if (!candidates || candidates.length === 0) {
-        // Only foundational articles if any
-        return {
-          subBoxTitle: box.title,
-          starterPack: foundationalLookups.get(box.title)?.resolved ?? [],
-          reservedPool: [],
-        };
-      }
-
-      const reviewResult = await runAcademicReviewStage(
-        box,
-        candidates,
-        logger,
-        thesisCtx,
-      );
-
-      const { starterPack, reservedPool } = distributeFixedPool(
-        foundationalLookups.get(box.title)?.resolved ?? [],
-        reviewResult.starterPack,
-      );
-
-      return {
-        subBoxTitle: box.title,
-        starterPack,
-        reservedPool,
-      };
-    });
-
-    const poolEntries: LiteraturePoolEntry[] = await Promise.all(poolPromises);
-
-    logger.info("literature_batch_process_done", {
-      service: "literature",
-      filePath: "onboarding/literature-review/actions.ts",
-      data: {
-        boxCount: boxes.length,
-        totalStarterPack: poolEntries.reduce(
-          (s, e) => s + e.starterPack.length,
-          0,
-        ),
-        totalReservedPool: poolEntries.reduce(
-          (s, e) => s + e.reservedPool.length,
-          0,
-        ),
-      },
-    });
 
     return { data: poolEntries };
   } catch (err) {
@@ -637,8 +82,6 @@ export async function processAllBoxesAction(
 // Final Action: confirmLiteratureAction
 // ============================================================================
 
-const COOKIE_NAME = "fabricca_session";
-
 export async function confirmLiteratureAction(args: {
   literaturePool: LiteraturePoolEntry[];
 }): Promise<OnboardingActionResult> {
@@ -655,7 +98,7 @@ export async function confirmLiteratureAction(args: {
         service: "literature",
         data: { reason: "Oturum bulunamadı." },
       });
-      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+      return { error: SESSION_ERROR_MSG };
     }
 
     const userId = session.userId;
@@ -757,7 +200,7 @@ export async function confirmLiteratureAction(args: {
     try {
       const cookieStore = await cookies();
       cookieStore.set(
-        COOKIE_NAME,
+        SESSION_COOKIE_NAME,
         JSON.stringify({
           userId: session.userId,
           name: session.name,
@@ -768,7 +211,7 @@ export async function confirmLiteratureAction(args: {
           secure: process.env.NODE_ENV === "production",
           sameSite: "lax",
           path: "/",
-          maxAge: 60 * 60 * 24 * 7,
+          maxAge: SESSION_MAX_AGE_SECONDS,
         },
       );
     } catch {
@@ -776,15 +219,12 @@ export async function confirmLiteratureAction(args: {
     }
 
     try {
-      revalidatePath("/onboarding", "layout");
-      revalidatePath("/", "layout");
+      revalidateOnboardingPaths();
     } catch {
       // Revalidation path skipped
     }
 
-    updateTag("thesis-matrix");
-    updateTag("originality-report");
-    updateTag("thesis-boxes");
+    invalidateOnboardingCache();
 
     log.info("confirm_literature_success", {
       service: "literature",

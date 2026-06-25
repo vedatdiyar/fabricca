@@ -6,7 +6,7 @@ import type {
   TezaraThesisDetails,
   ThesisBadge,
 } from "@/lib/types";
-import { calculateBadge } from "@/lib/utils";
+import { calculateBadge } from "@/lib/academic/badge-calculator";
 import {
   geminiAnalysisSchema,
   buildAnalysisSystemInstruction,

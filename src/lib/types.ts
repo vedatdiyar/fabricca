@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ThesisBadge as ThesisBadgeOrig } from "@/lib/utils";
+import type { ThesisBadge as ThesisBadgeOrig } from "@/lib/academic/badge-calculator";
 export type ThesisBadge = ThesisBadgeOrig;
 
 export type OnboardingActionResult =
@@ -81,36 +81,30 @@ export interface TavilyEvaluationResponse {
   briefingNote: string;
 }
 
-export interface OverlapItem {
-  id: number;
-  axes: {
-    subject: OverlapLevel;
-    theory: OverlapLevel;
-    methodology: OverlapLevel;
-    context?: OverlapLevel;
-  };
-  comparisonNote?: string;
-  yokPdfUrl?: string;
-}
-
 export interface OriginalityReportData {
-  originalityScore?: number;
-  originalityBadge?: ThesisBadge;
-  overlapAnalysis?: OverlapItem[];
   tavilyResults: {
     items: TavilyEvaluationFact[];
     briefingNote: string;
   };
   tezaraResults: {
     originalityBadge: ThesisBadge;
-    overlapTable: (OverlapItem & {
+    overlapTable: {
+      id: number;
+      axes: {
+        subject: OverlapLevel;
+        theory: OverlapLevel;
+        methodology: OverlapLevel;
+        context?: OverlapLevel;
+      };
+      comparisonNote?: string;
+      yokPdfUrl?: string;
       title: string;
       author: string;
       university: string;
       year: number;
       thesisType: string;
       department: string;
-    })[];
+    }[];
     strategicRecommendations: string;
   };
 }

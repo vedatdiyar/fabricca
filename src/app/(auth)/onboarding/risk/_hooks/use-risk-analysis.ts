@@ -4,51 +4,13 @@ import { useEffect, useCallback, useReducer } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
-import type { LoadingStep } from "@/lib/store/onboarding-store";
 import type { OriginalityReportData } from "@/lib/types";
 import type { ThesisMatrix } from "@/db/schema";
-import {
-  extractQueriesAction,
-  executeSearchAction,
-  siftThesesAction,
-  finalizeJuryAnalysisAction,
-  completeRiskStageAction,
-} from "../actions";
-import {
-  generateBoxesStructureAction,
-  mineFoundationalQueriesAction,
-} from "../../boxes/actions";
 import {
   fetchThesisMatrix,
   fetchOriginalityReport,
 } from "../../_lib/fetch-actions";
-
-/** Loading step labels for the 4-stage risk analysis pipeline. */
-const ANALYSIS_STEPS: LoadingStep[] = [
-  { text: "Sorgu ve doğrulama parametreleri üretiliyor...", status: "idle" },
-  {
-    text: "Tavily ve Tezara paralel motorları koşturuluyor...",
-    status: "idle",
-  },
-  {
-    text: "Karşılaştırmalı literatür matrisi yapılandırılıyor (embedding + jüri)...",
-    status: "idle",
-  },
-  { text: "Nihai risk seviyesi ve tavsiyeler hazırlanıyor...", status: "idle" },
-];
-
-/** Loading step labels for the proceed-to-boxes orchestration. */
-const PROCEED_STEPS: LoadingStep[] = [
-  {
-    text: "Tez matrisi analiz edilerek konu kutuları yapılandırılıyor...",
-    status: "active",
-  },
-  {
-    text: "Konu kutuları için akademik veri tabanlarında kurucu eserler aranıyor...",
-    status: "idle",
-  },
-  { text: "Kutular sayfasına yönlendiriliyor...", status: "idle" },
-];
+import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
 
 /** Shape returned by {@link useRiskAnalysis}. */
 export interface UseRiskAnalysisResult {
@@ -127,9 +89,7 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
   const router = useRouter();
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  const showLoading = useOnboardingStore((s) => s.showLoading);
-  const hideLoading = useOnboardingStore((s) => s.hideLoading);
-  const updateLoadingStep = useOnboardingStore((s) => s.updateLoadingStep);
+  const { runRiskPipeline, proceedFromRisk } = useOnboardingNavigation();
 
   // Load existing report (and matrix) on mount.
   useEffect(() => {
@@ -183,27 +143,17 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
     return () => {
       cancelled = true;
     };
-    // router intentionally excluded — redirect on mount only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /**
-   * Runs the 4-stage risk analysis: query/parameter generation, parallel
-   * Tavily + Tezara search, comparative literature matrix construction, and
-   * the final risk-level + recommendations synthesis. Updates the global
-   * loading overlay step-by-step and stores the resulting report in state.
+   * Runs the 4-stage risk analysis via the central onboarding orchestrator.
+   * Delegates loading overlay management to the orchestrator; only manages
+   * local state transitions (analysing flag, error, report data).
    */
   const startAnalysis = useCallback(async () => {
     dispatch({ type: "SET_ANALYSING", payload: true });
     dispatch({ type: "SET_ERROR", payload: null });
-
-    const steps = ANALYSIS_STEPS.map((s) => ({ ...s }));
-    steps[0].status = "active";
-    showLoading(
-      "Risk Analiz Motorları Çalışıyor",
-      "Yapay zeka asistanınız tez matrisinizi inceliyor, veri tabanlarını tarıyor ve risk raporunu hazırlıyor.",
-      steps,
-    );
 
     try {
       let matrix = state.matrixData;
@@ -211,7 +161,6 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
         matrix = await fetchThesisMatrix();
         if (!matrix) {
           dispatch({ type: "SET_ERROR", payload: "Tez matrisi bulunamadı." });
-          hideLoading();
           dispatch({ type: "SET_ANALYSING", payload: false });
           return;
         }
@@ -226,60 +175,12 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
         researchScope: matrix.researchScope,
       };
 
-      // ── Step 0: Extract queries ──
-      const extractResult = await extractQueriesAction(matrixInput);
-      if ("error" in extractResult) {
-        dispatch({ type: "SET_ERROR", payload: extractResult.error });
-        hideLoading();
-        dispatch({ type: "SET_ANALYSING", payload: false });
-        return;
+      const result = await runRiskPipeline(matrixInput);
+      if (result.error) {
+        dispatch({ type: "SET_ERROR", payload: result.error });
+      } else if (result.data) {
+        dispatch({ type: "SET_REPORT_DATA", payload: result.data });
       }
-      updateLoadingStep(0, "completed");
-      updateLoadingStep(1, "active");
-
-      // ── Step 1: Execute parallel searches ──
-      const searchResult = await executeSearchAction({
-        studyTitle: matrixInput.studyTitle,
-        tavilyQueries: extractResult.data.tavilyQueries,
-        tezaraQueries: extractResult.data.tezaraQueries,
-      });
-      if ("error" in searchResult) {
-        dispatch({ type: "SET_ERROR", payload: searchResult.error });
-        hideLoading();
-        dispatch({ type: "SET_ANALYSING", payload: false });
-        return;
-      }
-      updateLoadingStep(1, "completed");
-      updateLoadingStep(2, "active");
-
-      // ── Step 2: Sift theses ──
-      const siftResult = await siftThesesAction({
-        matrix: matrixInput,
-        tezaraSearchResults: searchResult.data.tezaraSearchResults,
-      });
-      if ("error" in siftResult) {
-        dispatch({ type: "SET_ERROR", payload: siftResult.error });
-        hideLoading();
-        dispatch({ type: "SET_ANALYSING", payload: false });
-        return;
-      }
-      updateLoadingStep(2, "completed");
-      updateLoadingStep(3, "active");
-
-      // ── Step 3: Finalize jury analysis ──
-      const juryResult = await finalizeJuryAnalysisAction({
-        matrix: matrixInput,
-        scrapedTheses: siftResult.data,
-        tavilyResults: searchResult.data.tavilyResults,
-      });
-      if ("error" in juryResult) {
-        dispatch({ type: "SET_ERROR", payload: juryResult.error });
-        hideLoading();
-        dispatch({ type: "SET_ANALYSING", payload: false });
-        return;
-      }
-      updateLoadingStep(3, "completed");
-      dispatch({ type: "SET_REPORT_DATA", payload: juryResult.data });
     } catch (err) {
       dispatch({
         type: "SET_ERROR",
@@ -289,10 +190,9 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
             : "Analiz sırasında bir hata oluştu.",
       });
     } finally {
-      hideLoading();
       dispatch({ type: "SET_ANALYSING", payload: false });
     }
-  }, [state.matrixData, showLoading, hideLoading, updateLoadingStep]);
+  }, [state.matrixData, runRiskPipeline]);
 
   // Auto-trigger analysis only when there really is no report anywhere
   // (Zustand cache, DB or in-memory state).
@@ -306,69 +206,17 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
   }, [state.loading, state.reportData, state.analysing, startAnalysis]);
 
   /**
-   * Finalizes the risk stage: persists the report, generates the subject boxes
-   * via Gemini, seeds them into the Zustand store and navigates to the boxes
-   * step. Reports any failure via toast and falls back to a direct navigation.
+   * Finalizes the risk stage via the central onboarding orchestrator:
+   * persists the report, generates the subject boxes, seeds them into
+   * the Zustand store and navigates to the boxes step.
    */
   const handleProceed = useCallback(async () => {
     dispatch({ type: "SET_PROCEDING", payload: true });
-
-    const result = await completeRiskStageAction();
-    if (result.error) {
-      dispatch({ type: "SET_PROCEDING", payload: false });
-      toast.error(result.error);
-      return;
-    }
-
-    // DB done; now start Gemini box generation with GlobalLoader
-    const steps = PROCEED_STEPS.map((s) => ({ ...s }));
-    steps[0].status = "active";
-    showLoading("İşlem Tamamlanıyor", "Konu kutuları yapılandırılıyor.", steps);
-
-    try {
-      const structResult = await generateBoxesStructureAction();
-      if ("error" in structResult) {
-        hideLoading();
-        toast.error(structResult.error);
-        return;
-      }
-
-      updateLoadingStep(0, "completed");
-      updateLoadingStep(1, "active");
-
-      const mineResult = await mineFoundationalQueriesAction(
-        structResult.boxes,
-      );
-      if ("error" in mineResult) {
-        hideLoading();
-        toast.error(mineResult.error);
-        return;
-      }
-
-      updateLoadingStep(1, "completed");
-      updateLoadingStep(2, "active");
-
-      // Purge stale downstream state before seeding new boxes so that
-      // old literature articles or risk reports can never ghost-leak
-      // into the next step via sessionStorage.
-      const store = useOnboardingStore.getState();
-      store.setLiteraturePool([]);
-      store.setReportData(null);
-      store.setBoxes(mineResult.boxes);
-
-      // Delay briefly to allow loading step transition to be seen
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      hideLoading();
-      router.push("/onboarding/boxes");
-    } catch (err) {
-      hideLoading();
-      toast.error(
-        err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.",
-      );
-    } finally {
+    const result = await proceedFromRisk();
+    if (!result.success) {
       dispatch({ type: "SET_PROCEDING", payload: false });
     }
-  }, [router, showLoading, hideLoading, updateLoadingStep]);
+  }, [proceedFromRisk]);
 
   return {
     loading: state.loading,

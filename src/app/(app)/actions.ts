@@ -3,8 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createFlowId, Logger } from "@/lib/logger";
-
-const COOKIE_NAME = "fabricca_session";
+import { SESSION_COOKIE_NAME } from "@/lib/constants/session";
 
 /**
  * Oturumu sonlandırır.
@@ -16,7 +15,7 @@ export async function logoutAction() {
 
   try {
     const cookieStore = await cookies();
-    cookieStore.set(COOKIE_NAME, "", {
+    cookieStore.set(SESSION_COOKIE_NAME, "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

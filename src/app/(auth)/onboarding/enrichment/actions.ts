@@ -5,7 +5,8 @@ import { db } from "@/db";
 import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
 import { getSession } from "@/session";
 import { createFlowId, Logger } from "@/lib/logger";
-import { revalidatePath, updateTag } from "next/cache";
+import { SESSION_ERROR_MSG } from "@/lib/constants/session";
+import { invalidateOnboardingCache } from "@/lib/cache-tags";
 import type { EnhancedThesisData, OnboardingActionResult } from "@/lib/types";
 
 /**
@@ -30,7 +31,7 @@ export async function confirmEnhancedThesisAction(
   try {
     const session = await getSession();
     if (!session) {
-      return { error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+      return { error: SESSION_ERROR_MSG };
     }
 
     const userId = session.userId;
@@ -78,13 +79,7 @@ export async function confirmEnhancedThesisAction(
         .where(eq(thesisBoxes.thesisMatrixId, matrix.id));
     }
 
-    revalidatePath("/onboarding/matrix");
-    revalidatePath("/onboarding/enrichment");
-    revalidatePath("/onboarding/risk");
-
-    updateTag("thesis-matrix");
-    updateTag("originality-report");
-    updateTag("thesis-boxes");
+    invalidateOnboardingCache();
 
     log.info("enrichment_confirm_success", {
       service: "enrichment",
