@@ -30,7 +30,7 @@ Projede kullanılacak teknolojiler kesin olarak belirlenmiştir. Yapay zeka, gel
 - **Temperature Stratejisi:** Google'ın Gemini 3.0/3.1 ve üzeri modeller için varsayılan ve önerilen temperature değeri olan `1.0` kullanılmalıdır. Belirlenimcilik (determinism) gerektiren veri çıkarma, eleme ve karşılaştırma görevlerinde de temperature değeri `1.0` olarak korunmalı, ancak çıktıların tutarlılığı için mutlaka sabit bir `seed` değeri (örn: `2` veya `42`) ile beslenmelidir.
 - **Embedding Model:** Cloudflare Workers AI (`@cf/qwen/qwen3-embedding-0.6b`) — REST API üzerinden vektör embedding üretimi
 - **AI Orkestrasyon:** Google Gen AI SDK (@google/genai - Doğrudan entegrasyon)
-- **Kimlik Doğrulama (Auth):** Drizzle tabanlı yerel `users` tablosu, `bcrypt-ts` ile şifreleme ve Next.js Cookies/Middleware tabanlı hafif session yönetimi
+- **Kimlik Doğrulama (Auth):** Drizzle tabanlı yerel `users` tablosu, `bcrypt-ts` ile şifreleme ve `src/session.ts` üzerinden yönetilen Cookies tabanlı hafif session yönetimi
 
 ## 4. Klasör Yapısı (Folder Structure)
 
@@ -85,7 +85,7 @@ Proje, Next.js App Router'ın rota gruplama (route groups) özelliğini kullanar
 │   │   │           ├── page.tsx
 │   │   │           ├── _components/
 │   │   │           ├── _hooks/
-│   │   │           └── _services/    # ai-processor, literature-review-papers, search-api
+│   │   │           └── _services/    # ai-processor, literature-review-papers, batch-orchestrator, box-pipeline, foundational-resolver, openalex-collector
 │   │   ├── (app)/                    # Giriş sonrası ana uygulama (ortak layout)
 │   │   │   ├── actions.ts            # Ortak uygulama server action'ları
 │   │   │   ├── layout.tsx            # Header + oturum/yönlendirme kontrolü
@@ -99,9 +99,6 @@ Proje, Next.js App Router'ın rota gruplama (route groups) özelliğini kullanar
 │   │   │       ├── actions.ts
 │   │   │       ├── page.tsx
 │   │   │       └── library-content.tsx
-│   │   └── api/                      # API route'ları
-│   │       ├── route.ts              # Kök API
-│   │       └── onboarding/risk/status/route.ts  # Risk durumu endpoint'i
 │   ├── components/                   # Ortak kullanılan yapılar
 │   │   ├── error-display.tsx         # Hata gösterim bileşeni
 │   │   ├── header.tsx                # Üst navigasyon (Header)
@@ -118,7 +115,7 @@ Proje, Next.js App Router'ın rota gruplama (route groups) özelliğini kullanar
 │   │   ├── cloudflare.ts             # Cloudflare Workers AI (embedding)
 │   │   ├── error-utils.ts            # Hata yardımcıları
 │   │   ├── gemini.ts                 # Google Gen AI SDK entegrasyonu
-│   │   ├── logger.ts                 # Loglama
+│   │   ├── logger/                   # Loglama
 │   │   ├── tavily.ts                 # Tavily arama API
 │   │   ├── tezara.ts                 # TEZARA API entegrasyonu
 │   │   ├── tezara-parser.ts          # TEZARA veri ayrıştırıcı
@@ -127,9 +124,7 @@ Proje, Next.js App Router'ın rota gruplama (route groups) özelliğini kullanar
 │   │   ├── prompts/                  # Gemini prompt şablonları
 │   │   │   ├── index.ts
 │   │   │   ├── box-generation.ts
-│   │   │   ├── deep-sifting.ts
 │   │   │   ├── literature-jury.ts
-│   │   │   ├── literature-sifting.ts
 │   │   │   ├── matrix-enhancement.ts
 │   │   │   ├── originality-analysis.ts
 │   │   │   ├── fact-query-extraction.ts
@@ -138,7 +133,6 @@ Proje, Next.js App Router'ın rota gruplama (route groups) özelliğini kullanar
 │   │   │   └── tavily-evaluation.ts
 │   │   └── store/
 │   │       └── onboarding-store.ts   # Zustand onboarding store
-│   └── proxy.ts                      # Yönlendirme ve oturum kontrol katmanı
 ```
 
 - **Büyük/Küçük Harf Katılığı (Case Sensitivity):** Next.js App Router altındaki tüm klasör, rota ve sayfa dosya isimleri (page.tsx, layout.tsx, actions.ts) istisnasız tamamen küçük harflerle (lowercase) açılmalıdır. Dosya sisteminde daha sonradan yapılan büyük/küçük harf değişikliklerinde Mac hafızasının (cache) sapıtmaması için Git konfigürasyonu her zaman `git config core.ignorecase false` olarak set edilmeli ve Next.js derleyicisinin hayali manifest yolları araması engellenmelidir.
