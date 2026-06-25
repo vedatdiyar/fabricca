@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
+import { AIBanner } from "@/components/ai-banner";
+import { LoadingSpinner } from "@/components/loading-spinner";
 import { confirmBoxesAction } from "../actions";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import type { GeminiThesisBox } from "@/lib/types";
@@ -110,24 +112,13 @@ export function BoxesContainer() {
   }, [boxes, router]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center space-y-4">
-          <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto" />
-          <p className="text-muted-foreground text-sm">Kutular yükleniyor...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner variant="full" message="Kutular yükleniyor..." />;
   }
 
   // Defensive guard: boxes should never be null here (the mount useEffect
   // either restores them from Zustand/DB or redirects to the risk page).
   if (!boxes) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-      </div>
-    );
+    return <LoadingSpinner variant="full" />;
   }
 
   const sortedBoxes = [...boxes].sort((a, b) => {
@@ -135,19 +126,11 @@ export function BoxesContainer() {
   });
   return (
     <div className="w-full space-y-8">
-      <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 w-full animate-in fade-in slide-in-from-top-2 duration-300">
-        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-        <div className="space-y-0.5">
-          <p className="text-sm font-semibold text-foreground">
-            Konu Kutuları Yapılandırıldı
-          </p>
-          <p className="text-[11px] leading-relaxed text-muted-foreground">
-            Tez matrisinizin çözümlenmesi başarıyla tamamlandı. Aşağıdaki her
-            bir konu kutusu, literatür taraması sürecinde bağımsız olarak
-            taranacaktır.
-          </p>
-        </div>
-      </div>
+      <AIBanner
+        icon={CheckCircle2}
+        title="Konu Kutuları Yapılandırıldı"
+        description="Tez matrisinizin çözümlenmesi başarıyla tamamlandı. Aşağıdaki her bir konu kutusu, literatür taraması sürecinde bağımsız olarak taranacaktır."
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 auto-rows-min">
         {sortedBoxes.map((box, idx) => {
@@ -165,11 +148,7 @@ export function BoxesContainer() {
       </div>
 
       <div className="flex justify-end mt-8 pb-8">
-        <Button
-          onClick={handleConfirm}
-          disabled={confirming}
-          className="btn-academic-hero"
-        >
+        <Button onClick={handleConfirm} disabled={confirming} size="lg">
           {confirming ? (
             <span className="flex items-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -198,13 +177,13 @@ function BoxCard({
 }) {
   return (
     <Card
-      className={`group/card grid grid-rows-subgrid row-span-4 p-6 bg-card border border-border/20 rounded-xl transition-all duration-300 hover:-translate-y-1 hover:border-primary/20${isLastOdd ? " md:col-span-2" : ""}`}
+      className={`group/card grid grid-rows-subgrid row-span-4 p-6 rounded-md transition-all duration-300 hover:-translate-y-1 hover:border-primary/20${isLastOdd ? " md:col-span-2" : ""}`}
     >
-      <div className="row-1 space-y-3">
-        <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+      <div className="row-1 space-y-4">
+        <div className="flex items-center gap-2 text-muted-foreground text-xs">
           <PlusCircle className="w-3 h-3" />
           <span>Kutu {index + 1}</span>
-          <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground border border-border/20">
+          <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-secondary text-secondary-foreground border border-border/40">
             {badgeLabels[box.boxType]}
           </span>
         </div>
@@ -225,11 +204,11 @@ function BoxCard({
       {box.concepts && box.concepts.length > 0 && (
         <div className="row-3">
           <div className="border-y border-border py-3">
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-2">
               {box.concepts.map((concept, i) => (
                 <span
                   key={`${concept}-${i}`}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded bg-primary/10 text-xs text-primary font-semibold"
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 text-xs text-primary font-semibold"
                 >
                   <WholeWord className="w-3.5 h-3.5" />
                   {concept}
@@ -241,8 +220,8 @@ function BoxCard({
       )}
 
       {box.foundationalQueries && box.foundationalQueries.length > 0 ? (
-        <div className="row-4 border-t border-border/10 pt-4 space-y-3">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+        <div className="row-4 border-t border-border/40 pt-4 space-y-4">
+          <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <Library className="w-3.5 h-3.5 text-primary" />
             Kurucu Literatür Temeli
           </h4>
@@ -273,7 +252,7 @@ function BoxCard({
                           {displayAuthor}
                         </strong>{" "}
                         {displayYear && (
-                          <span className="text-muted-foreground text-[11px]">
+                          <span className="text-muted-foreground text-[10px]">
                             {displayYear}
                           </span>
                         )}{" "}
@@ -290,8 +269,8 @@ function BoxCard({
           </ul>
         </div>
       ) : box.boxType === "PRIMARY_MATERIAL" ? (
-        <div className="row-4 border-t border-border/10 pt-4 space-y-2">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+        <div className="row-4 border-t border-border/40 pt-4 space-y-2">
+          <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <Archive className="w-3.5 h-3.5 text-muted-foreground" />
             Arşiv / Birincil Malzeme Alanı
           </h4>

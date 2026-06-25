@@ -14,7 +14,7 @@ export function LiteratureArticleCard({ article }: LiteratureArticleCardProps) {
           <CardTitle className="text-sm font-medium text-foreground leading-snug">
             {formatAcademicTitle(article.title)}
           </CardTitle>
-          <div className="shrink-0 flex items-center gap-1.5">
+          <div className="shrink-0 flex items-center gap-2">
             {article.isFoundational && (
               <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary">
                 KURUCU ESER

@@ -66,6 +66,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     confirming: false,
   });
   const processingRef = useRef(false);
+  const finalizedRef = useRef(false);
   const [boxResults, setBoxResults] = useState<{
     statuses: Record<string, BoxStatus>;
     errors: Record<string, string>;
@@ -87,6 +88,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   // are never consulted. If the server-side title set changed (e.g. user went
   // back and regenerated boxes), the stale literature pool is flushed.
   useEffect(() => {
+    finalizedRef.current = false;
     let cancelled = false;
     fetchBoxesWithFullShape().then((allBoxes) => {
       if (cancelled) return;
@@ -287,6 +289,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
         return;
       }
 
+      finalizedRef.current = true;
       resetStore();
       setPhase((prev) => ({ ...prev, confirming: false }));
       toast.success("Tebrikler! Onboarding süreciniz tamamlandı.");
@@ -305,6 +308,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   useEffect(() => {
     if (phase.loading) return;
     if (phase.processing) return;
+    if (finalizedRef.current) return;
     if (subBoxes.length === 0) return;
 
     const allDone = subBoxes.every((box) =>

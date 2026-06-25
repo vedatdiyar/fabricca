@@ -35,7 +35,7 @@ function AxisCell({ level }: { level: OverlapLevel }) {
   return (
     <div className="flex items-center justify-center">
       <span
-        className={`inline-flex items-center justify-center w-[84px] py-0.5 rounded-md text-[10px] font-bold tracking-wide border ${getOverlapLevelColor(level)}`}
+        className={`inline-flex items-center justify-center w-20 py-0.5 rounded-md text-[10px] font-bold tracking-wide border ${getOverlapLevelColor(level)}`}
       >
         {OVERLAP_LEVEL_LABELS[level]}
       </span>
@@ -96,7 +96,7 @@ export function TezaraOverlapTable({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="overflow-x-auto border border-border rounded-lg">
+        <div className="overflow-x-auto border border-border rounded-md">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-muted border-b border-border">
@@ -115,7 +115,7 @@ export function TezaraOverlapTable({
                 <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[100px]">
                   Dönem
                 </th>
-                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[90px] border-l border-border/20">
+                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[90px] border-l border-border/40">
                   Durum
                 </th>
               </tr>
@@ -142,7 +142,7 @@ export function TezaraOverlapTable({
                         )
                       }
                     >
-                      <td className="p-3 space-y-1">
+                      <td className="p-3 space-y-2">
                         <div className="font-semibold text-foreground text-sm leading-relaxed flex items-start gap-2 select-none">
                           <span className="mt-1 text-muted-foreground shrink-0 transition-transform duration-200">
                             {expandedThesisId === item.id ? (
@@ -153,7 +153,7 @@ export function TezaraOverlapTable({
                           </span>
                           <span>{item.title}</span>
                         </div>
-                        <div className="pl-6 text-[11px] text-muted-foreground leading-relaxed">
+                        <div className="pl-6 text-[10px] text-muted-foreground leading-relaxed">
                           {item.author} &bull; {item.university} ({item.year})
                         </div>
                         <div className="pl-6 text-[10px] text-muted-foreground font-mono">
@@ -172,9 +172,9 @@ export function TezaraOverlapTable({
                       <td className="p-3 text-center">
                         <AxisCell level={item.axes.context ?? "OZGUN"} />
                       </td>
-                      <td className="p-3 text-center border-l border-border/20">
+                      <td className="p-3 text-center border-l border-border/40">
                         <span
-                          className={`inline-flex items-center justify-center w-[84px] py-1 rounded-md text-[10px] font-bold tracking-wide border ${THESIS_BADGE_COLORS[calculateBadge(item.axes)]}`}
+                          className={`inline-flex items-center justify-center w-20 py-1 rounded-md text-[10px] font-bold tracking-wide border ${THESIS_BADGE_COLORS[calculateBadge(item.axes)]}`}
                         >
                           {THESIS_BADGE_LABELS[calculateBadge(item.axes)]}
                         </span>
@@ -183,8 +183,8 @@ export function TezaraOverlapTable({
                     {expandedThesisId === item.id && item.comparisonNote && (
                       <tr className="bg-muted/10">
                         <td colSpan={6} className="p-4 border-t border-border">
-                          <div className="p-6 space-y-2 bg-background rounded-lg">
-                            <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5 select-none">
+                          <div className="p-6 space-y-2 bg-background rounded-md">
+                            <h4 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2 select-none">
                               <GitCompare className="w-3.5 h-3.5 text-primary" />
                               Detaylı Karşılaştırma Analizi
                             </h4>

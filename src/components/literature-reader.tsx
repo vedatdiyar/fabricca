@@ -101,13 +101,13 @@ export function LiteratureReader({
   /* ---------- Render ---------- */
 
   return (
-    <Card className="border border-border/20 bg-card">
-      <CardHeader className="border-b border-border/10 pb-4">
+    <Card className="border border-border bg-card">
+      <CardHeader className="border-b border-border/40 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <BookOpen className="h-5 w-5 text-primary" />
             <div>
-              <h2 className="text-lg font-semibold text-foreground">
+              <h2 className="font-serif text-xl font-semibold tracking-tight text-card-foreground">
                 {boxTitle}
               </h2>
               <p className="text-sm text-muted-foreground">
@@ -150,8 +150,8 @@ export function LiteratureReader({
 
       <CardContent className="p-0">
         {boxType === "PRIMARY_MATERIAL" && (
-          <div className="p-6 border-b border-border/10 bg-primary/5">
-            <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 leading-relaxed">
+          <div className="p-6 border-b border-border/40 bg-primary/5">
+            <div className="p-4 rounded-md bg-primary/10 border border-primary/20 leading-relaxed">
               <p className="font-medium text-foreground text-sm mb-1">
                 Birincil Malzeme Alanı
               </p>
@@ -172,7 +172,7 @@ export function LiteratureReader({
             {Array.from({ length: 5 }).map((_, i) => (
               <div
                 key={`skeleton-${i}`}
-                className="h-20 animate-pulse rounded-lg bg-muted"
+                className="h-20 animate-pulse rounded-md bg-muted"
               />
             ))}
           </div>
@@ -243,7 +243,7 @@ export function LiteratureReader({
               {resources.map((resource, index) => (
                 <div
                   key={resource.id}
-                  className={`flex items-start gap-4 border-b border-border/10 px-6 py-4 transition-colors hover:bg-muted/20 ${
+                  className={`flex items-start gap-4 border-b border-border/40 px-6 py-4 transition-colors hover:bg-muted/20 ${
                     resource.isRead ? "opacity-70" : ""
                   }`}
                 >
@@ -262,7 +262,7 @@ export function LiteratureReader({
                     }
                   />
 
-                  <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex-1 min-w-0 space-y-2">
                     <div className="flex items-center gap-2 flex-wrap">
                       <label
                         htmlFor={`resource-${resource.id}`}

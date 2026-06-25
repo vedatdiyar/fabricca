@@ -56,7 +56,7 @@ export function OnboardingStepper({
                   router.push(step.route);
                 }}
                 className={cn(
-                  "flex items-center gap-4 w-full py-3 rounded-xl transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20",
+                  "flex items-center gap-4 w-full py-3 rounded-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20",
                   !isDisabled && "cursor-pointer hover:text-foreground",
                   isDisabled && "cursor-not-allowed opacity-40",
                   isActive && "text-primary font-medium",
@@ -66,11 +66,11 @@ export function OnboardingStepper({
               >
                 <span
                   className={cn(
-                    "relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-all border bg-background shadow-sm",
+                    "relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-all border bg-background",
                     isActive &&
                       "bg-primary text-primary-foreground border-primary scale-110 ring-4 ring-primary/10",
                     isCompleted &&
-                      "border-primary/20 text-primary bg-primary/5 shadow-sm",
+                      "border-primary/20 text-primary bg-primary/5",
                     !isActive &&
                       !isCompleted &&
                       "border-border text-muted-foreground",
@@ -87,10 +87,10 @@ export function OnboardingStepper({
                 </span>
                 <span
                   className={cn(
-                    "hidden md:block text-[11px] tracking-wider uppercase font-medium select-none transition-colors",
+                    "hidden md:block text-xs tracking-wider uppercase font-medium select-none transition-colors",
                     isActive && "text-foreground font-semibold",
-                    isCompleted && "text-muted-foreground font-medium",
-                    !isActive && !isCompleted && "text-muted-foreground",
+                    isCompleted && "text-foreground font-medium",
+                    !isActive && !isCompleted && "text-foreground",
                   )}
                 >
                   {step.label}

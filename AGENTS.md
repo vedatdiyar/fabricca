@@ -141,7 +141,7 @@ Proje, Next.js App Router'ın rota gruplama (route groups) özelliğini kullanar
 
 Bu bölüm altındaki detaylı kurallar (sayfa genişlikleri, padding/margin standartları, buton animasyonları, opaklık kısıtlamaları ve otomatik akışı olmayan kutular için yönlendirici kart yapıları) merkezi stil dokümantasyonuna taşınmıştır.
 
-- Arayüz geliştirmeleri ve stillendirme kuralları için bkz: [docs/ui-system.md](file:///Users/vedatdiyar/Desktop/Fabricca/docs/ui-system.md)
+- Arayüz geliştirmeleri ve stillendirme kuralları için bkz: [docs/UI_RULES.md](file:///Users/vedatdiyar/Desktop/Fabricca/docs/UI_RULES.md)
 
 ## 6. Geliştirme, Veri Tabanı ve Yapay Zeka Kuralları (Development Patterns)
 
@@ -166,13 +166,13 @@ Bu bölüm altındaki detaylı kurallar (sayfa genişlikleri, padding/margin sta
 
 Drizzle ORM şema kuralları, şema senkronizasyon disiplini (`db:push`) ve onboarding adımlarının veritabanına aşamalı kaydedilmesini sağlayan Progressive Save kuralları ayrı bir dokümantasyona taşınmıştır.
 
-- Detaylı veri tabanı kuralları ve aşamalı kayıt mimarisi için bkz: [docs/database-rules.md](file:///Users/vedatdiyar/Desktop/Fabricca/docs/database-rules.md)
+- Detaylı veri tabanı kuralları ve aşamalı kayıt mimarisi için bkz: [docs/DATABASE_RULES.md](file:///Users/vedatdiyar/Desktop/Fabricca/docs/DATABASE_RULES.md)
 
 ### 6.4. Yapay Zeka Entegrasyon Kuralları (AI Integration)
 
 Google Gemini SDK standartları, thinkingConfig seviyeleri, prompt hiyerarşisi, XML prompt şablonları ve vanilla JSON Schema kuralları ayrı bir dokümantasyona taşınmıştır.
 
-- Gemini API entegrasyonu ve prompt standartları için bkz: [docs/llm-prompts.md](file:///Users/vedatdiyar/Desktop/Fabricca/docs/llm-prompts.md)
+- Gemini API entegrasyonu ve prompt standartları için bkz: [docs/LLM_PROMPTS.md](file:///Users/vedatdiyar/Desktop/Fabricca/docs/LLM_PROMPTS.md)
 
 ### 6.5. Yasaklar (YAPMA)
 
@@ -187,6 +187,6 @@ Google Gemini SDK standartları, thinkingConfig seviyeleri, prompt hiyerarşisi,
 
 Arayüz, veritabanı veya LLM mekanizmalarıyla ilgili bir geliştirme yapmadan önce, KESİNLİKLE ilgili docs/\*.md dosyasını oku, projenin mevcut kod tabanını tarayarak tasarım dilini keşfet ve o kurallara istisnasız itaat et:
 
-1. **Stil ve Kullanıcı Arayüzü Kuralları:** [docs/ui-system.md](file:///Users/vedatdiyar/Desktop/Fabricca/docs/ui-system.md)
-2. **Veri Tabanı ve ORM Kuralları (Progressive Save):** [docs/database-rules.md](file:///Users/vedatdiyar/Desktop/Fabricca/docs/database-rules.md)
-3. **Büyük Dil Modeli (Gemini) ve Prompt Kuralları:** [docs/llm-prompts.md](file:///Users/vedatdiyar/Desktop/Fabricca/docs/llm-prompts.md)
+1. **Stil ve Kullanıcı Arayüzü Kuralları:** [docs/UI_RULES.md](file:///Users/vedatdiyar/Desktop/Fabricca/docs/UI_RULES.md)
+2. **Veri Tabanı ve ORM Kuralları (Progressive Save):** [docs/DATABASE_RULES.md](file:///Users/vedatdiyar/Desktop/Fabricca/docs/DATABASE_RULES.md)
+3. **Büyük Dil Modeli (Gemini) ve Prompt Kuralları:** [docs/LLM_PROMPTS.md](file:///Users/vedatdiyar/Desktop/Fabricca/docs/LLM_PROMPTS.md)

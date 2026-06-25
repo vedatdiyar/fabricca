@@ -84,7 +84,7 @@ export function ErrorDisplay({ error, onRetry }: ErrorDisplayProps) {
         </div>
 
         <div className="space-y-2">
-          <h2 className="text-xl font-semibold text-foreground">
+          <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
             {display.title}
           </h2>
           <p className="text-sm text-muted-foreground leading-relaxed">

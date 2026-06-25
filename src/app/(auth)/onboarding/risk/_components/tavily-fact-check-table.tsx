@@ -50,7 +50,7 @@ export function TavilyFactCheckTable({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="p-4 bg-muted border border-border rounded-lg text-sm leading-relaxed text-foreground whitespace-pre-line">
+        <div className="p-4 bg-muted border border-border rounded-md text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
           <span className="font-semibold text-foreground mb-2 flex items-center gap-2">
             <FileText className="w-4 h-4 text-primary" />
             Doğrulama Özeti ve Analiz Notu
@@ -58,7 +58,7 @@ export function TavilyFactCheckTable({
           {tavilyResults.briefingNote}
         </div>
 
-        <div className="overflow-x-auto border border-border rounded-lg">
+        <div className="overflow-x-auto border border-border rounded-md">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-muted border-b border-border">
@@ -85,14 +85,14 @@ export function TavilyFactCheckTable({
                     key={item.fact}
                     className="hover:bg-muted transition-colors"
                   >
-                    <td className="p-3 text-sm font-normal text-foreground leading-relaxed">
+                    <td className="p-3 text-sm font-normal text-foreground hover:text-muted-foreground leading-relaxed">
                       {item.fact}
                     </td>
                     <td className="p-3 text-left max-w-[320px]">
                       {isKnownEnum ? (
                         <div className="space-y-2">
                           <span
-                            className={`inline-flex border px-2 py-0.5 rounded text-[11px] font-medium tracking-wide ${tavilyBadgeColor[item.result] ?? "bg-primary/10 border border-primary/20 text-primary"}`}
+                            className={`inline-flex border px-2 py-0.5 rounded text-[10px] font-medium tracking-wide ${tavilyBadgeColor[item.result] ?? "bg-primary/10 border border-primary/20 text-primary"}`}
                           >
                             {tavilyStatusTranslation[item.result]}
                           </span>

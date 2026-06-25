@@ -1,6 +1,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
+import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -44,10 +45,10 @@ export function MatrixField({
   hint,
 }: MatrixFieldProps) {
   return (
-    <div className="space-y-2.5 rounded-xl border border-primary/20 bg-card p-4 transition-colors hover:border-primary/20">
+    <Card className="space-y-2 p-4 hover:border-primary/20 rounded-md">
       <div className="flex items-center gap-2">
         {number && (
-          <span className="inline-flex h-5 w-7 items-center justify-center rounded bg-primary/10 text-[9px] font-bold tracking-wider text-primary">
+          <span className="inline-flex h-5 w-7 items-center justify-center rounded bg-primary/10 text-[10px] font-bold tracking-wider text-primary">
             {number}
           </span>
         )}
@@ -67,10 +68,8 @@ export function MatrixField({
         className="textarea-academic border-border"
       />
       {hint && (
-        <p className="text-[11px] leading-relaxed text-muted-foreground">
-          {hint}
-        </p>
+        <p className="text-xs leading-relaxed text-muted-foreground">{hint}</p>
       )}
-    </div>
+    </Card>
   );
 }

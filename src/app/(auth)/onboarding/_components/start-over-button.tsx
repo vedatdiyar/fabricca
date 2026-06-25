@@ -64,7 +64,7 @@ export function StartOverButton({
         <Button
           variant={variant}
           size={size}
-          className={`border-destructive bg-destructive/20 text-destructive-foreground hover:bg-destructive/10 hover:text-destructive shadow-sm ${className}`}
+          className={`border-destructive bg-destructive/20 text-destructive-foreground hover:bg-destructive/10 hover:text-destructive-foreground ${className}`}
           disabled={isPending}
         >
           <RotateCcw className="h-4 w-4 shrink-0" />

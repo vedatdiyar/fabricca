@@ -72,7 +72,7 @@ export default function LoginPage() {
             className="h-14 w-14"
           />
           <div className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
               Fabricca
             </h1>
             <p className="text-sm leading-relaxed text-muted-foreground">

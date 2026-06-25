@@ -2,6 +2,7 @@
 
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/loading-spinner";
 import { ErrorDisplay } from "@/components/error-display";
 import { OriginalityReportView } from "./originality-report-view";
 import { useRiskAnalysis } from "../_hooks/use-risk-analysis";
@@ -22,11 +23,7 @@ export function RiskContainer() {
   } = useRiskAnalysis();
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-      </div>
-    );
+    return <LoadingSpinner variant="full" />;
   }
 
   if (reportData) {
@@ -34,11 +31,7 @@ export function RiskContainer() {
       <div className="w-full">
         <OriginalityReportView reportData={reportData} />
         <div className="flex justify-end mt-8 pb-8">
-          <Button
-            onClick={handleProceed}
-            disabled={proceeding}
-            className="btn-academic-hero"
-          >
+          <Button onClick={handleProceed} disabled={proceeding} size="lg">
             {proceeding ? (
               <span className="flex items-center justify-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -65,9 +58,5 @@ export function RiskContainer() {
   // the 4-stage analysis already runs inside EnrichmentView and its result is
   // cached in Zustand. If it does (e.g. direct URL access), the auto-trigger
   // useEffect in useRiskAnalysis will start the pipeline immediately.
-  return (
-    <div className="flex items-center justify-center min-h-[50vh]">
-      <Loader2 className="w-8 h-8 text-primary animate-spin" />
-    </div>
-  );
+  return <LoadingSpinner variant="full" />;
 }

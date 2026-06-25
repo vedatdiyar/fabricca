@@ -10,8 +10,11 @@ import {
   Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { AIBanner } from "@/components/ai-banner";
+import { LoadingSpinner } from "@/components/loading-spinner";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import type { GeminiThesisBox } from "@/lib/types";
 import { LiteratureArticleCard } from "./literature-article-card";
@@ -41,12 +44,12 @@ function ArchiveEntryForm({
   };
 
   return (
-    <div className="space-y-3 border border-dashed border-border rounded-lg bg-card/20 p-4">
-      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-        <Archive className="w-4 h-4 text-muted-foreground" />
+    <div className="space-y-3 border border-dashed border-border rounded-md bg-card/20 p-4">
+      <div className="flex items-center gap-2 text-sm font-medium text-card-foreground">
+        <Archive className="w-4 h-4 text-card-foreground" />
         <span>Birincil Arşiv Belgesi Ekle</span>
       </div>
-      <p className="text-xs text-muted-foreground leading-relaxed">
+      <p className="text-xs text-card-foreground leading-relaxed">
         Arşiv fon kodunu veya belge adını girin (Örn: BCA, Fon Kodu: 30.10; TBMM
         Zabıtları, Cilt: 12).
       </p>
@@ -71,7 +74,7 @@ function ArchiveEntryForm({
         placeholder="Belge açıklaması (isteğe bağlı)"
         value={description}
         onChange={(e) => setDescription(e.target.value)}
-        className="min-h-[60px] text-sm"
+        className="min-h-[60px] resize-none overflow-y-auto text-sm"
       />
     </div>
   );
@@ -94,15 +97,15 @@ function SubBoxQuery({
     return (
       <div className="space-y-3 animate-pulse">
         <div className="h-5 w-3/4 rounded bg-muted" />
-        <div className="h-24 w-full rounded-lg bg-muted/20" />
-        <div className="h-24 w-full rounded-lg bg-muted/20" />
+        <div className="h-24 w-full rounded-md bg-muted/20" />
+        <div className="h-24 w-full rounded-md bg-muted/20" />
       </div>
     );
   }
 
   if (status === "error") {
     return (
-      <div className="p-6 text-center border border-destructive/20 rounded-lg bg-destructive/5">
+      <div className="p-6 text-center border border-destructive/20 rounded-md bg-destructive/5">
         <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-2" />
         <p className="text-sm text-destructive font-medium mb-1">
           Tarama hatası
@@ -138,7 +141,7 @@ function SubBoxDone({
   if (isArchival) {
     return (
       <div className="space-y-4">
-        <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 leading-relaxed">
+        <div className="p-4 rounded-md bg-primary/10 border border-primary/20 leading-relaxed">
           <p className="font-medium text-foreground text-sm mb-1">
             Birincil Malzeme Alanı
           </p>
@@ -182,7 +185,7 @@ function SubBoxDone({
 
   if (!entry || entry.starterPack.length === 0) {
     return (
-      <div className="p-6 text-center border border-dashed border-border rounded-lg bg-card/20">
+      <div className="p-6 text-center border border-dashed border-border rounded-md bg-card/20">
         <p className="text-sm text-muted-foreground">Kaynak bulunamadı.</p>
       </div>
     );
@@ -199,7 +202,7 @@ function SubBoxDone({
         ))}
       </div>
       {entry.reservedPool.length > 0 && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/20 border border-border/20">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/20 border border-border/40">
           <Library className="w-4 h-4 text-muted-foreground shrink-0" />
           <p className="text-xs text-muted-foreground">
             <span className="font-semibold text-foreground">
@@ -243,33 +246,16 @@ export function LiteratureReviewContent() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center space-y-4 max-w-md">
-          <div className="p-4 bg-muted/20 rounded-full inline-flex mx-auto">
-            <Loader2 className="w-8 h-8 text-muted-foreground animate-spin" />
-          </div>
-          <p className="text-muted-foreground text-sm">
-            Konu kutuları yükleniyor...
-          </p>
-        </div>
-      </div>
+      <LoadingSpinner variant="full" message="Konu kutuları yükleniyor..." />
     );
   }
   return (
     <div className="w-full space-y-8">
-      <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 w-full animate-in fade-in slide-in-from-top-2 duration-300">
-        <BookOpen className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-        <div className="space-y-0.5">
-          <p className="text-sm font-semibold text-foreground">
-            Akademik Kaynak Taraması Aktif
-          </p>
-          <p className="text-[11px] leading-relaxed text-muted-foreground">
-            Yapay zeka asistanınız her bir konu kutusu için akademik veri
-            tabanlarını (Crossref, Semantic Scholar, TEZARA vb.) tarayarak
-            başlangıç kaynaklarını derliyor.
-          </p>
-        </div>
-      </div>
+      <AIBanner
+        icon={BookOpen}
+        title="Akademik Kaynak Taraması Aktif"
+        description="Yapay zeka asistanınız her bir konu kutusu için akademik veri tabanlarını (Crossref, Semantic Scholar, TEZARA vb.) tarayarak başlangıç kaynaklarını derliyor."
+      />
 
       <div className="grid grid-cols-1 gap-4">
         {subBoxes.map((subBox) => {
@@ -278,13 +264,10 @@ export function LiteratureReviewContent() {
             ? false
             : literaturePool.some((e) => e.subBoxTitle === subBox.title);
           return (
-            <div
-              key={subBox.title}
-              className="border border-border rounded-xl bg-card p-5 space-y-4"
-            >
+            <Card key={subBox.title} className="p-6 space-y-4 rounded-md">
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-6 rounded-full bg-primary/20" />
-                <h3 className="text-xl font-medium text-foreground tracking-tight">
+                <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
                   {subBox.title}
                 </h3>
                 {subBox.boxType && (
@@ -311,7 +294,7 @@ export function LiteratureReviewContent() {
                   errorMessage={boxErrors[subBox.title]}
                 />
               )}
-            </div>
+            </Card>
           );
         })}
       </div>
@@ -326,19 +309,15 @@ export function LiteratureReviewContent() {
           </div>
         ) : !allProcessed ? (
           <div className="flex flex-col items-end gap-2">
-            <p className="text-sm text-amber-600 font-medium">
+            <p className="text-sm text-warning font-medium">
               Lütfen protokol/saha kutuları için gerekli girişleri tamamlayın.
             </p>
-            <Button disabled className="btn-academic-hero">
+            <Button disabled size="lg">
               Onayla ve Teze Başla.
             </Button>
           </div>
         ) : (
-          <Button
-            onClick={handleFinalize}
-            disabled={confirming}
-            className="btn-academic-hero"
-          >
+          <Button onClick={handleFinalize} disabled={confirming} size="lg">
             {confirming ? (
               <span className="flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />

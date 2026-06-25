@@ -20,14 +20,7 @@ export function OnboardingContent({
     <div className="relative min-h-[calc(100vh-4rem)]">
       {children}
       {isLoading && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{
-            background: "#0b100e",
-            backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
-          }}
-        >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md">
           <div className="w-full max-w-5xl px-6">
             <OnboardingGlobalLoader />
           </div>

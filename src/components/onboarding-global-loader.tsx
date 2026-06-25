@@ -1,5 +1,6 @@
 "use client";
 
+import { Card } from "@/components/ui/card";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 
 /**
@@ -15,17 +16,17 @@ export function OnboardingGlobalLoader() {
 
   return (
     <div className="flex flex-col items-center justify-center space-y-10 max-w-5xl mx-auto text-center px-6 w-full">
-      <div className="space-y-3">
-        <h2 className="text-2xl font-semibold tracking-tight text-white">
+      <div className="space-y-4">
+        <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
           {loadingTitle}
         </h2>
-        <p className="text-sm text-white/60 leading-relaxed max-w-lg mx-auto">
+        <p className="text-sm text-muted-foreground leading-relaxed max-w-lg mx-auto">
           {loadingDescription}
         </p>
       </div>
 
-      <div className="w-full bg-white/5 border border-white/10 rounded-xl p-8">
-        <div className="flex flex-wrap items-start justify-center gap-y-8 gap-x-6 w-full">
+      <Card className="w-full p-6 rounded-md">
+        <div className="flex flex-wrap items-start justify-center gap-y-6 gap-x-6 w-full">
           {loadingSteps.map((step, index) => {
             const isActive = step.status === "active";
             const isCompleted = step.status === "completed";
@@ -34,13 +35,13 @@ export function OnboardingGlobalLoader() {
                 key={`${step.text}-${index}`}
                 className="flex-1 min-w-[140px] max-w-[200px] flex flex-col items-center gap-3"
               >
-                <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                <div className="w-full h-2 rounded-full bg-border/40 overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-700 ease-out ${
                       isCompleted
-                        ? "w-full bg-emerald-400"
+                        ? "w-full bg-primary"
                         : isActive
-                          ? "w-full bg-gradient-to-r from-emerald-400 via-emerald-400/70 to-emerald-400 animate-pulse"
+                          ? "w-full bg-gradient-to-r from-primary via-primary/70 to-primary animate-pulse"
                           : "w-0"
                     }`}
                   />
@@ -48,16 +49,16 @@ export function OnboardingGlobalLoader() {
                 <span
                   className={`text-xs leading-tight text-center w-full transition-colors duration-300 ${
                     isCompleted
-                      ? "text-emerald-300 font-medium"
+                      ? "text-primary font-medium"
                       : isActive
-                        ? "text-white font-medium"
-                        : "text-white/40"
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground"
                   }`}
                 >
                   {step.text}
                 </span>
                 {isCompleted && (
-                  <span className="text-emerald-400">
+                  <span className="text-primary">
                     <svg
                       width="14"
                       height="14"
@@ -76,7 +77,7 @@ export function OnboardingGlobalLoader() {
             );
           })}
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

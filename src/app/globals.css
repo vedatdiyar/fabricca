@@ -83,7 +83,10 @@
   }
   h1,
   h2,
-  h3,
+  h3 {
+    font-family: var(--font-serif);
+    @apply font-semibold tracking-tight;
+  }
   h4,
   h5,
   h6 {
@@ -94,8 +97,7 @@
   pre {
     font-family: var(--font-mono);
   }
-  .badge-brand,
-  .box-title {
+  .badge-brand {
     font-family: var(--font-serif);
   }
   .academic-reading-zone {
@@ -105,13 +107,8 @@
     @apply flex items-center px-3 py-2 cursor-pointer;
   }
   .bottom-nav-item {
-    @apply flex flex-col items-center gap-0.5 px-3 py-1 text-xs font-medium transition-colors cursor-pointer;
+    @apply flex flex-col items-center gap-2 px-3 py-1 text-xs font-medium transition-colors cursor-pointer;
   }
-
-  .btn-academic-hero {
-    @apply px-8 py-5 text-base font-semibold tracking-wide transition-all duration-200 active:scale-[0.98] cursor-pointer;
-  }
-
   /* Küresel Modern Scrollbar */
   * {
     scrollbar-width: thin;
@@ -133,7 +130,7 @@
   }
 
   .textarea-academic {
-    @apply min-h-[180px] overflow-y-auto resize-y leading-relaxed text-foreground font-normal bg-background/40 hover:bg-background/60 focus:bg-background/80 transition-all border border-border/60 hover:border-border focus:border-primary/50;
+    @apply min-h-[180px] overflow-y-auto resize-none leading-relaxed text-foreground font-normal bg-background/40 hover:bg-background/60 focus:bg-background/80 transition-all border border-border/40 hover:border-border focus:border-primary/20;
   }
 
   /* Global Error Display Styles */

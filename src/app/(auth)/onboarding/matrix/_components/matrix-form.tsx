@@ -16,8 +16,10 @@ import {
 
 import { getErrorDisplay } from "@/lib/error-utils";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { LoadingSpinner } from "@/components/loading-spinner";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import type { LoadingStep } from "@/lib/store/onboarding-store";
 import { enrichThesisMatrixAction, saveEnrichedMatrixAction } from "../actions";
@@ -258,17 +260,13 @@ export function MatrixForm() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[40vh]">
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-      </div>
-    );
+    return <LoadingSpinner variant="card" />;
   }
 
   return (
     <form onSubmit={handleSubmit} className="w-full space-y-8">
       {MATRIX_SECTIONS.map((section) => (
-        <div key={section.id} className="space-y-5">
+        <div key={section.id} className="space-y-6">
           {/* Bölüm başlığı — iki yanda divider çizgisi */}
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-border" />
@@ -282,12 +280,12 @@ export function MatrixForm() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {section.fields.map(
               ({ key, id, number, Icon, label, placeholder, hint }) => (
-                <div
+                <Card
                   key={id}
-                  className="space-y-2.5 rounded-xl border border-border/20 bg-card p-4 transition-colors hover:border-primary/20"
+                  className="space-y-2 p-4 hover:border-primary/20 rounded-md"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="inline-flex h-5 w-7 items-center justify-center rounded bg-primary/10 text-[9px] font-bold tracking-wider text-primary">
+                    <span className="inline-flex h-5 w-7 items-center justify-center rounded bg-primary/10 text-[10px] font-bold tracking-wider text-primary">
                       {number}
                     </span>
                     <Icon className="h-3.5 w-3.5 text-muted-foreground" />
@@ -311,10 +309,10 @@ export function MatrixForm() {
                     required
                     className="textarea-academic border-border"
                   />
-                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  <p className="text-xs leading-relaxed text-muted-foreground">
                     {hint}
                   </p>
-                </div>
+                </Card>
               ),
             )}
           </div>
@@ -324,7 +322,8 @@ export function MatrixForm() {
       <div>
         <Button
           type="submit"
-          className="btn-academic-hero w-full"
+          size="lg"
+          className="w-full"
           disabled={isPending || isLoading}
         >
           {isPending ? (

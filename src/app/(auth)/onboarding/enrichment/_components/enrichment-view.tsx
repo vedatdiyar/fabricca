@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { AIBanner } from "@/components/ai-banner";
 import { confirmEnhancedThesisAction } from "../actions";
 import { fetchThesisMatrix } from "../../_lib/fetch-actions";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
@@ -239,22 +240,14 @@ export function EnrichmentView() {
 
   return (
     <form onSubmit={handleConfirm} className="w-full space-y-8">
-      {/* AI zenginleştirme bildirimi */}
-      <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/10 px-4 py-3">
-        <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-        <div className="space-y-0.5">
-          <p className="text-sm font-semibold text-foreground">
-            Yapay Zeka Zenginleştirmesi Tamamlandı
-          </p>
-          <p className="text-[11px] leading-relaxed text-muted-foreground">
-            Tez matrisiniz akademik dile uyarlandı. Her alanı inceleyip
-            düzenleyebilir, ardından onaylayabilirsiniz.
-          </p>
-        </div>
-      </div>
+      <AIBanner
+        icon={Sparkles}
+        title="Yapay Zeka Zenginleştirmesi Tamamlandı"
+        description="Tez matrisiniz akademik dile uyarlandı. Her alanı inceleyip düzenleyebilir, ardından onaylayabilirsiniz."
+      />
 
       {ENRICHMENT_SECTIONS.map((section) => (
-        <div key={section.id} className="space-y-5">
+        <div key={section.id} className="space-y-6">
           {/* Bölüm başlığı — iki yanda divider çizgisi */}
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-border" />
@@ -285,11 +278,7 @@ export function EnrichmentView() {
       ))}
 
       <div>
-        <Button
-          type="submit"
-          className="btn-academic-hero w-full"
-          disabled={isPending}
-        >
+        <Button type="submit" size="lg" className="w-full" disabled={isPending}>
           {isPending ? (
             <span className="flex items-center justify-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin" />

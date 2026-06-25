@@ -29,7 +29,7 @@ export default async function LiteratureReviewPage() {
       <div className="mx-auto flex w-full max-w-5xl flex-col items-center space-y-4">
         <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
           <div className="flex flex-col space-y-1 text-left">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
               Literatür Taraması
             </h1>
             <p className="text-sm leading-relaxed text-muted-foreground">

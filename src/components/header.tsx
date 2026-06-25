@@ -10,9 +10,10 @@ import {
   Layers,
   MessageSquareCode,
   LogOut,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { logoutAction } from "@/app/(app)/actions";
+import { logoutAction, resetOnboardingAction } from "@/app/(app)/actions";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -38,6 +39,18 @@ export function Header({ userName }: { userName: string }) {
     });
   }
 
+  function handleReset() {
+    if (
+      window.confirm(
+        "Onboarding sürecini sıfırlamak istediğinize emin misiniz? Tüm verileriniz silinecek ve başa döneceksiniz.",
+      )
+    ) {
+      startTransition(async () => {
+        await resetOnboardingAction();
+      });
+    }
+  }
+
   return (
     <>
       <header className="sticky top-0 z-50 w-full border-b border-border bg-background">
@@ -55,7 +68,7 @@ export function Header({ userName }: { userName: string }) {
             </span>
           </Link>
 
-          <nav className="hidden items-center gap-1 md:flex">
+          <nav className="hidden items-center gap-2 md:flex">
             {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
               const isActive = pathname === href;
 
@@ -80,10 +93,19 @@ export function Header({ userName }: { userName: string }) {
             })}
           </nav>
 
-          <div className="flex shrink-0 items-center gap-3">
-            <span className="hidden max-w-[120px] truncate text-sm text-muted-foreground sm:block">
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="hidden max-w-28 truncate text-sm text-muted-foreground sm:block">
               {userName}
             </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground"
+              onClick={handleReset}
+              title="Süreci Sıfırla"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -118,6 +140,22 @@ export function Header({ userName }: { userName: string }) {
               </Link>
             );
           })}
+          <button
+            className="flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground"
+            onClick={handleReset}
+            title="Süreci Sıfırla"
+          >
+            <RotateCcw className="h-5 w-5" />
+            <span className="text-xs">Sıfırla</span>
+          </button>
+          <button
+            className="flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground"
+            onClick={handleLogout}
+            title="Çikis Yap"
+          >
+            <LogOut className="h-5 w-5" />
+            <span className="text-xs">Çıkış</span>
+          </button>
         </div>
       </nav>
     </>
