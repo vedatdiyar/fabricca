@@ -56,18 +56,6 @@ export async function processAllBoxesAction(
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
 
-    const [thesisCtx] = await db
-      .select({
-        studyTitle: thesisMatrices.studyTitle,
-        researchQuestion: thesisMatrices.researchQuestion,
-        theoreticalFramework: thesisMatrices.theoreticalFramework,
-        researchScope: thesisMatrices.researchScope,
-      })
-      .from(thesisMatrices)
-      .where(eq(thesisMatrices.userId, session.userId));
-
-    if (!thesisCtx) return { error: "Tez matrisi bulunamadı." };
-
     // Load YÖK thesis entries from library_resources (written during box confirmation)
     // These are the "İlişkisel Tez Çalışmaları" from the risk originality report,
     // identified by relevanceScore: 0.99 and a non-null boxId relationship.
@@ -124,7 +112,6 @@ export async function processAllBoxesAction(
 
     const { poolEntries } = await orchestrateBatchProcess(
       boxes,
-      thesisCtx,
       logger,
       cachedPapers,
       thesisArticlesMap,

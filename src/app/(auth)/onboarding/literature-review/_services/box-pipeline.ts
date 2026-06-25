@@ -7,13 +7,12 @@
  * - `distributeFixedPool` — hybrid 3-tier 5+10 distribution (foundational →
  *   YÖK theses → semantic)
  * - `resolveBoxFoundationalWorks` — Crossref foundational lookups for one box
- * - `runBoxPipeline` — AI review + distribution for a single box
+ * - `runBoxPipeline` — distribution for a single box
  */
 
 import { Logger } from "@/lib/logger";
 import type { SubBoxInput, ValidatedPaper } from "./literature-review-papers";
 import type { JuryArticle } from "@/lib/types";
-import { runAcademicReviewStage } from "./ai-processor";
 import { resolveFoundationalWorks } from "./foundational-resolver";
 import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
 
@@ -189,20 +188,18 @@ export function distributeFixedPool(
 }
 
 // ============================================================================
-// runBoxPipeline — AI review + distribution for a single box
+// runBoxPipeline — distribution for a single box
 // ============================================================================
 
 /**
- * Runs a single box through the post-search pipeline:
- * 1. Fills abstract placeholders for missing abstracts
- * 2. Calls AI academic review (runAcademicReviewStage)
- * 3. Distributes articles into the hybrid 3-tier 5+10 pool
+ * Runs a single box through the post-search distribution pipeline:
+ * Distributes articles into the hybrid 3-tier 5+10 pool
+ * (foundational → YÖK theses → semantic).
  *
  * @param box - The sub-box metadata
  * @param candidates - Validated papers from OpenAlex (already deduplicated)
  * @param foundationalArticles - Pre-resolved foundational works
  * @param thesisArticles - YÖK thesis articles mapped via library_resources
- * @param thesisCtx - Thesis context for AI prompts
  * @param logger - Logger instance
  * @returns The distributed starter pack and reserved pool
  */
@@ -211,12 +208,6 @@ export async function runBoxPipeline(
   candidates: ValidatedPaper[],
   foundationalArticles: JuryArticle[],
   thesisArticles: JuryArticle[],
-  thesisCtx: {
-    studyTitle: string;
-    researchQuestion: string;
-    theoreticalFramework: string;
-    researchScope: string;
-  },
   logger: Logger,
 ): Promise<{ starterPack: JuryArticle[]; reservedPool: JuryArticle[] }> {
   if (
@@ -231,40 +222,32 @@ export async function runBoxPipeline(
     return distributeFixedPool(foundationalArticles, thesisArticles, []);
   }
 
-  // Fill abstract placeholders for AI review
-  for (const p of candidates) {
-    if (!p.abstract || !p.abstract.trim()) {
-      p.abstract = "Özet verisi bulunamadı, başlık üzerinden değerlendirin";
-    }
-  }
-
-  const reviewStart = performance.now();
-  const reviewResult = await runAcademicReviewStage(
-    box,
-    candidates,
-    logger,
-    thesisCtx,
-  );
-
-  logger.info("literature_academic_review_done", {
+  logger.info("literature_distribution_start", {
     service: "literature",
-    durationMs: performance.now() - reviewStart,
     filePath: "onboarding/literature-review/_services/box-pipeline.ts",
-    status: "SUCCESS",
     data: {
       count: candidates.length,
-      resultCount:
-        reviewResult.starterPack.length + reviewResult.reservedPool.length,
-      starterPackCount: reviewResult.starterPack.length,
-      reservedPoolCount: reviewResult.reservedPool.length,
+      foundationalCount: foundationalArticles.length,
       thesisCount: thesisArticles.length,
       context: `Kutu: ${box.title}`,
     },
   });
 
+  const semanticArticles: JuryArticle[] = candidates.map((c) => ({
+    title: c.title,
+    abstract: c.abstract ?? "",
+    url: c.url ?? "",
+    doi: c.doi,
+    publisher: c.publisher ?? "",
+    publicationYear: c.year ?? 0,
+    authors: c.authors,
+    isFoundational: false,
+    relevanceScore: Math.round(c.relevanceScore * 100),
+  }));
+
   return distributeFixedPool(
     foundationalArticles,
     thesisArticles,
-    reviewResult.starterPack,
+    semanticArticles,
   );
 }
