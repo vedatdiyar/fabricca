@@ -228,6 +228,7 @@ export async function mineCoCitations(
 
   interface ResolvedWorkExtended extends FoundationalQuery {
     id: string;
+    citedByCount: number;
   }
 
   const resolvedQueries: ResolvedWorkExtended[] = [];
@@ -396,6 +397,7 @@ export async function mineCoCitations(
           author: authorStr,
           title,
           publicationYear: year,
+          citedByCount: item.cited_by_count ?? 0,
         });
       }
     }
@@ -418,7 +420,8 @@ export async function mineCoCitations(
       .sort((a, b) => {
         const countA = queryMap.get(a.id) || 0;
         const countB = queryMap.get(b.id) || 0;
-        return countB - countA;
+        if (countB !== countA) return countB - countA;
+        return b.citedByCount - a.citedByCount;
       });
     resolvedForQueryMap.set(i, resolvedForQuery);
   }
@@ -428,7 +431,7 @@ export async function mineCoCitations(
   const resolvedIndices = new Array(activeQueries.length).fill(0);
   let chosenAny = true;
 
-  while (finalWorks.length < 4 && chosenAny) {
+  while (finalWorks.length < 3 && chosenAny) {
     chosenAny = false;
     for (let i = 0; i < activeQueries.length; i++) {
       const list = resolvedForQueryMap.get(i) || [];
@@ -448,7 +451,7 @@ export async function mineCoCitations(
         }
         idx = resolvedIndices[i];
       }
-      if (finalWorks.length >= 4) break;
+      if (finalWorks.length >= 3) break;
     }
   }
 

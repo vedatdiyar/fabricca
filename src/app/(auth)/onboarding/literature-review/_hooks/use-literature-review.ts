@@ -73,6 +73,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   }>({ statuses: {}, errors: {} });
   const [archivalBoxes, setArchivalBoxes] = useState<Set<string>>(new Set());
 
+  const cachedPapers = useOnboardingStore((s) => s.cachedPapers);
   const rawLiteraturePool = useOnboardingStore((s) => s.literaturePool);
   const literaturePool = useMemo(
     () => rawLiteraturePool ?? [],
@@ -126,19 +127,8 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     processingRef.current = true;
     setPhase((prev) => ({ ...prev, processing: true }));
 
-    const isArchival = (box: GeminiThesisBox): boolean => {
-      if (box.boxType === "PRIMARY_MATERIAL") {
-        return true;
-      }
-      if (!box.foundationalQueries || box.foundationalQueries.length === 0) {
-        return false;
-      }
-      const first = box.foundationalQueries[0];
-      return (
-        first.author === "Primary Source Repository" ||
-        first.publicationYear === 0
-      );
-    };
+    const isArchival = (box: GeminiThesisBox): boolean =>
+      box.boxType === "PRIMARY_MATERIAL";
 
     const allSteps: LoadingStep[] = subBoxes.map((box) => ({
       text: `${box.title} taranıyor...`,
@@ -168,6 +158,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
         semanticSearchQueries: box.semanticSearchQueries,
         foundationalQueries: box.foundationalQueries,
       })),
+      cachedPapers,
     );
 
     if (result.data) {
@@ -210,7 +201,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     processingRef.current = false;
     setPhase((prev) => ({ ...prev, processing: false }));
     hideLoading();
-  }, [subBoxes, showLoading, hideLoading, updateLoadingStep]);
+  }, [subBoxes, cachedPapers, showLoading, hideLoading, updateLoadingStep]);
 
   /**
    * Adds a manually-entered archive entry for an archival/empirical box.
@@ -225,7 +216,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
           entry.description ??
           "Birincil arşiv belgesi — kullanıcı tarafından el ile girilmiştir.",
         url: "",
-        doi: "",
+        doi: null as string | null,
         publisher: "",
         publicationYear: 0,
         authors: [],
@@ -233,26 +224,11 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
         relevanceScore: 100,
       };
 
-      const existingEntry = useOnboardingStore
-        .getState()
-        .literaturePool.find((e) => e.subBoxTitle === subBoxTitle);
-
-      if (existingEntry) {
-        const updatedPool = useOnboardingStore
-          .getState()
-          .literaturePool.map((e) =>
-            e.subBoxTitle === subBoxTitle
-              ? { ...e, starterPack: [...e.starterPack, archiveArticle] }
-              : e,
-          );
-        useOnboardingStore.getState().setLiteraturePool(updatedPool);
-      } else {
-        addToLiteraturePool({
-          subBoxTitle,
-          starterPack: [archiveArticle],
-          reservedPool: [],
-        });
-      }
+      addToLiteraturePool({
+        subBoxTitle,
+        starterPack: [archiveArticle],
+        reservedPool: [],
+      });
     },
     [addToLiteraturePool],
   );

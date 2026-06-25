@@ -47,7 +47,7 @@ export async function runAcademicReviewStage(
   // Gemini returns with an id NOT in this set is silently discarded.
   const reviewCandidates = candidates.map((c) => ({
     refId: c.openAlexId ?? c.doi ?? "title:" + c.title,
-    doi: c.doi ?? "",
+    doi: c.doi,
     title: c.title,
     abstract: c.abstract ?? "",
     url: c.url ?? "",

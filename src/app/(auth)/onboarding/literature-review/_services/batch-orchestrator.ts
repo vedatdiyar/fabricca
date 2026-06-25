@@ -4,14 +4,19 @@
  * Orchestrates:
  * 1. Sequential search across all boxes (foundational + OpenAlex semantic)
  * 2. Global cross-box deduplication
- * 3. Per-box AI academic review + fixed-pool distribution
+ * 3. Per-box AI academic review + hybrid 3-tier distribution
  * 4. Pool entry assembly
  */
 
 import { Logger } from "@/lib/logger";
-import type { SubBoxInput, ValidatedPaper } from "./literature-review-papers";
+import type {
+  SubBoxInput,
+  ValidatedPaper,
+  RawPaper,
+} from "./literature-review-papers";
 import type { JuryArticle, LiteraturePoolEntry } from "@/lib/types";
 import { collectOpenAlexResults } from "./openalex-collector";
+import { mergePapers } from "./literature-review-papers";
 import {
   isArchivalBox,
   resolveBoxFoundationalWorks,
@@ -38,11 +43,14 @@ export interface BatchOrchestrationResult {
  * Phase 1 — Sequential search (archival detection → foundational lookup →
  *            OpenAlex semantic search with throttle)
  * Phase 2 — Global cross-box deduplication
- * Phase 3 — Per-box AI academic review + 5+10 fixed pool distribution
+ * Phase 3 — Per-box AI academic review + hybrid 3-tier distribution
+ *           (foundational → YÖK theses → semantic)
  *
  * @param boxes - All sub-boxes to process
  * @param thesisCtx - Thesis context used in AI prompts
  * @param logger - Logger instance
+ * @param cachedPapers - Optional pre-cached OpenAlex results
+ * @param thesisArticlesMap - Optional per-box YÖK thesis articles from risk phase
  * @returns Pool entries for all boxes plus archival box titles
  */
 export async function orchestrateBatchProcess(
@@ -54,6 +62,8 @@ export async function orchestrateBatchProcess(
     researchScope: string;
   },
   logger: Logger,
+  cachedPapers?: Record<string, RawPaper[]>,
+  thesisArticlesMap?: Map<string, JuryArticle[]>,
 ): Promise<BatchOrchestrationResult> {
   // ------------------------------------------------------------------
   // Phase 1: Sequential search across all boxes
@@ -105,11 +115,12 @@ export async function orchestrateBatchProcess(
     const foundationalArticles = await resolveBoxFoundationalWorks(box, logger);
     foundationalLookups.set(box.title, foundationalArticles);
 
-    // OpenAlex semantic search with throttle
-    const merged = await collectOpenAlexResults(
-      box.semanticSearchQueries,
-      logger,
-    );
+    // OpenAlex semantic search with throttle (bypass if cached data exists)
+    const boxCache = cachedPapers?.[box.title];
+    const merged =
+      boxCache && boxCache.length > 0
+        ? mergePapers(boxCache)
+        : await collectOpenAlexResults(box.semanticSearchQueries, logger);
     boxSearchResults.set(box.title, merged);
 
     logger.info("literature_batch_search_done", {
@@ -172,6 +183,7 @@ export async function orchestrateBatchProcess(
       box,
       candidates,
       foundationalLookups.get(box.title) ?? [],
+      thesisArticlesMap?.get(box.title) ?? [],
       thesisCtx,
       logger,
     );

@@ -45,7 +45,7 @@ export function buildLiteratureAcademicReviewPrompt(
   box: { title: string; description: string },
   candidates: {
     refId: string;
-    doi: string;
+    doi: string | null;
     title: string;
     abstract: string;
     url?: string;

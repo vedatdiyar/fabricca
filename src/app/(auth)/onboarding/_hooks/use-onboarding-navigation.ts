@@ -16,6 +16,7 @@ import {
 import {
   generateBoxesStructureAction,
   mineFoundationalQueriesAction,
+  prefetchLiteratureCacheAction,
 } from "../boxes/actions";
 
 interface MatrixInput {
@@ -197,6 +198,15 @@ export function useOnboardingNavigation() {
       store.setLiteraturePool([]);
       store.setReportData(null);
       store.setBoxes(mineResult.boxes);
+
+      // Fire-and-forget: pre-fetch full literature cache in the background
+      // while the user views their boxes. The cache will be ready by the time
+      // they reach the literature-review step.
+      prefetchLiteratureCacheAction(mineResult.boxes).then((res) => {
+        if (res?.cachedPapers) {
+          useOnboardingStore.getState().setCachedPapers(res.cachedPapers);
+        }
+      });
 
       // Brief delay to allow loading step transition to be seen
       await new Promise((resolve) => setTimeout(resolve, 500));

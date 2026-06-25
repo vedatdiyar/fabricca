@@ -228,7 +228,7 @@ export interface JuryArticle {
   title: string;
   abstract: string;
   url: string;
-  doi: string;
+  doi: string | null;
   publisher: string;
   publicationYear: number;
   authors: string[];

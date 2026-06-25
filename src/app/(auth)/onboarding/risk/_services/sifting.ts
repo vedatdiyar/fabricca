@@ -1,8 +1,7 @@
-import { cosineSimilarity } from "@/lib/math/vector";
-import { generateEmbeddings } from "@/lib/cloudflare";
 import { fetchThesisDetails } from "@/lib/tezara";
 import type { Logger } from "@/lib/logger";
 import type { TezaraThesisSummary, TezaraThesisDetails } from "@/lib/types";
+import { siftThesesWithLLM } from "./llm-sifter";
 
 export interface SiftAndFetchDetailsParams {
   studyTitle: string;
@@ -15,7 +14,7 @@ export interface SiftAndFetchDetailsParams {
 
 export interface SiftingDiagnostic {
   uniqueAfterDedup: number;
-  topSimilarities: { id: number; score: number }[];
+  topIds: number[];
   stage1Count: number;
   fetchRequested: number;
   fetchSuccess: number;
@@ -23,14 +22,13 @@ export interface SiftingDiagnostic {
 }
 
 /**
- * Deduplicates search results, selects top 15 via embedding cosine similarity,
+ * Deduplicates search results, selects top 15 via LLM sifting (Gemini),
  * fetches full thesis details, and returns all valid theses for jury analysis.
- * Deep sifting (Stage 2) has been removed — the jury now exercises elimination authority.
  *
  * @param params - Target thesis parameters.
  * @param tezaraSearchResults - Parallel search results from Tezara containing candidates.
  * @param log - Logger instance.
- * @returns Object containing finalTheses (all embedding-top-15 theses with valid details) and diagnostic info.
+ * @returns Object containing finalTheses (all LLM-selected theses with valid details) and diagnostic info.
  */
 export async function siftAndFetchDetails(
   params: SiftAndFetchDetailsParams,
@@ -41,7 +39,7 @@ export async function siftAndFetchDetails(
   eliminatedTheses: TezaraThesisSummary[];
   diagnostic: SiftingDiagnostic;
 }> {
-  log.file("sifting.ts:53");
+  log.file("sifting.ts:44");
   const functionStart = performance.now();
 
   // Deduplication
@@ -93,7 +91,7 @@ export async function siftAndFetchDetails(
       eliminatedTheses: [],
       diagnostic: {
         uniqueAfterDedup: 0,
-        topSimilarities: [],
+        topIds: [],
         stage1Count: 0,
         fetchRequested: 0,
         fetchSuccess: 0,
@@ -103,13 +101,12 @@ export async function siftAndFetchDetails(
   }
 
   try {
-    // Diagnostic tracking
-    let topSimilarities: { id: number; score: number }[] = [];
+    let topIds: number[] = [];
     let fetchFailed = 0;
 
-    // 2. Stage 1 (Coarse Sifting via Google Gemini Embedding v2)
-    const stage1Start = performance.now();
-    log.info("originality_sift_embedding_start", {
+    // LLM Sifting (Stage 1): Gemini selects top 15 theses conceptually
+    const siftStart = performance.now();
+    log.info("originality_sift_llm_start", {
       service: "originality",
       data: {
         count: uniqueTheses.length,
@@ -117,45 +114,10 @@ export async function siftAndFetchDetails(
       },
     });
 
-    let passedStage1: TezaraThesisSummary[] = [];
     try {
-      const queryText = `task: search result | query: ${params.studyTitle}`;
-
-      const docTexts = uniqueTheses.map(
-        (t) => `title: ${t.title} | text: none`,
-      );
-
-      const textsToEmbed = [queryText, ...docTexts];
-
-      const embeddings = await generateEmbeddings(textsToEmbed, log);
-
-      const queryVector = embeddings[0];
-      const candidateVectors = embeddings.slice(1);
-
-      const candidatesWithSimilarity = uniqueTheses.map((t, idx) => {
-        const similarity = cosineSimilarity(queryVector, candidateVectors[idx]);
-        return { thesis: t, similarity };
-      });
-
-      candidatesWithSimilarity.sort((a, b) => b.similarity - a.similarity);
-
-      const topCandidates = candidatesWithSimilarity.slice(0, 15);
-      passedStage1 = topCandidates.map((c) => c.thesis);
-      topSimilarities = topCandidates.map((c) => ({
-        id: c.thesis.id,
-        score: c.similarity,
-      }));
-
-      log.info("originality_sift_embedding_success", {
-        service: "originality",
-        durationMs: performance.now() - stage1Start,
-        data: {
-          count: passedStage1.length,
-          context: params.studyTitle,
-        },
-      });
+      topIds = await siftThesesWithLLM(params, uniqueTheses, log);
     } catch (err) {
-      log.error("originality_sift_embedding_failed", {
+      log.error("originality_sift_llm_failed", {
         service: "originality",
         error: err,
         data: { context: params.studyTitle },
@@ -163,8 +125,25 @@ export async function siftAndFetchDetails(
       throw err;
     }
 
-    // 3. Fetch details (with Abstract) for the passed theses
-    // The pipeline queue in tezara-queue.ts handles concurrency, rate limiting, and burst control
+    const selectedThesesMap = new Map<number, TezaraThesisSummary>();
+    for (const id of topIds) {
+      const thesis = uniqueTheses.find((t) => t.id === id);
+      if (thesis) {
+        selectedThesesMap.set(id, thesis);
+      }
+    }
+    const passedStage1 = Array.from(selectedThesesMap.values());
+
+    log.info("originality_sift_llm_success", {
+      service: "originality",
+      durationMs: performance.now() - siftStart,
+      data: {
+        count: passedStage1.length,
+        context: params.studyTitle,
+      },
+    });
+
+    // Fetch details (with Abstract) for the passed theses
     const fetchStart = performance.now();
     log.info("originality_sift_fetch_start", {
       service: "originality",
@@ -207,7 +186,7 @@ export async function siftAndFetchDetails(
         eliminatedTheses: uniqueTheses,
         diagnostic: {
           uniqueAfterDedup: uniqueTheses.length,
-          topSimilarities,
+          topIds,
           stage1Count: passedStage1.length,
           fetchRequested: passedStage1.length,
           fetchSuccess: 0,
@@ -216,17 +195,13 @@ export async function siftAndFetchDetails(
       };
     }
 
-    // Stage 2 kaldirildi — embedding'den gecen 15 tezin tamami jury analizine gider.
-    // Jury (originality-analysis.ts) kendi eleme yetkisiyle alakasiz veya 4 ekseni
-    // de ozgun olan tezleri rapor disinda birakir.
-
     const passedStage1Ids = new Set(passedStage1.map((t) => t.id));
     const eliminatedTheses = uniqueTheses.filter(
       (t) => !passedStage1Ids.has(t.id),
     );
 
     log.preview(
-      "Final Thesis IDs (all valid from stage 1 → jury)",
+      "Final Thesis IDs (LLM selected → jury)",
       validDetails.map((t) => ({ id: t.id, title: t.title })),
     );
 
@@ -246,7 +221,7 @@ export async function siftAndFetchDetails(
       eliminatedTheses,
       diagnostic: {
         uniqueAfterDedup: uniqueTheses.length,
-        topSimilarities,
+        topIds,
         stage1Count: passedStage1.length,
         fetchRequested: passedStage1.length,
         fetchSuccess: validDetails.length,

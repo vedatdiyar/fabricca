@@ -27,6 +27,8 @@ import {
   fetchOriginalityReport,
 } from "../_lib/fetch-actions";
 import { mineCoCitations } from "../_services/co-citation-miner";
+import type { RawPaper } from "../literature-review/_services/literature-review-papers";
+import { searchOpenAlex } from "../literature-review/_services/openalex/client";
 
 /**
  * Step 1: Generates the boxes structure (without foundational queries) using Gemini 3.1 Flash Lite.
@@ -248,6 +250,57 @@ function deduplicateFoundationalQueries(
 
     return { ...box, foundationalQueries: uniqueQueries };
   });
+}
+
+/**
+ * Fire-and-forget action that pre-fetches the full literature pool (with abstracts)
+ * from OpenAlex for each non-archival box, so the Literature Review step can bypass
+ * the API entirely if cached data exists.
+ *
+ * @param boxes - The structured box array (must have foundationalQueries populated)
+ * @returns A record of box title → array of RawPaper, or empty on failure
+ */
+export async function prefetchLiteratureCacheAction(
+  boxes: GeminiThesisBox[],
+): Promise<{ cachedPapers: Record<string, RawPaper[]> }> {
+  const cachedPapers: Record<string, RawPaper[]> = {};
+
+  for (const box of boxes) {
+    if (
+      box.boxType === "PRIMARY_MATERIAL" ||
+      !box.semanticSearchQueries ||
+      box.semanticSearchQueries.length === 0
+    ) {
+      continue;
+    }
+
+    const allPapers: RawPaper[] = [];
+
+    for (const query of box.semanticSearchQueries) {
+      if (!query.trim()) continue;
+      try {
+        const results = await searchOpenAlex(query);
+        allPapers.push(...results);
+      } catch {
+        // Silently skip failed queries — this is a best-effort cache
+      }
+    }
+
+    // Simple title-based deduplication
+    const seen = new Set<string>();
+    const unique: RawPaper[] = [];
+    for (const p of allPapers) {
+      const key = (p.title ?? "").toLowerCase().trim();
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        unique.push(p);
+      }
+    }
+
+    cachedPapers[box.title] = unique;
+  }
+
+  return { cachedPapers };
 }
 
 /**

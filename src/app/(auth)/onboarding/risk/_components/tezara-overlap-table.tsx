@@ -45,11 +45,12 @@ function AxisCell({ level }: { level: OverlapLevel }) {
 
 /**
  * Renders Section B of the originality report: the 4-axis literature overlap
- * matrix with numeric dimensional index gauges. Sorts rows by priority
- * (highest total overlap first, then doctorate over master's, then recency),
- * backfills missing `comparisonNote` values from the strategic
- * recommendations blob when no row carries its own note, and supports
- * per-row expansion to reveal the detailed comparison analysis.
+ * matrix with numeric dimensional index gauges. Sorts rows by badge priority
+ * (İkiz first, then Sınırdaş, then Özgün), then by highest axis overlap level,
+ * then doctorate over master's, then recency. Backfills missing
+ * `comparisonNote` values from the strategic recommendations blob when no row
+ * carries its own note, and supports per-row expansion to reveal the detailed
+ * comparison analysis.
  */
 export function TezaraOverlapTable({
   overlapTable,

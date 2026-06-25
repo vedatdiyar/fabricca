@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { db } from "@/db";
 import {
@@ -20,9 +20,16 @@ import {
   SESSION_MAX_AGE_SECONDS,
   SESSION_ERROR_MSG,
 } from "@/lib/constants/session";
-import type { LiteraturePoolEntry, OnboardingActionResult } from "@/lib/types";
+import type {
+  LiteraturePoolEntry,
+  OnboardingActionResult,
+  JuryArticle,
+} from "@/lib/types";
 import type { NewLibraryResource } from "@/db/schema";
-import type { SubBoxInput } from "./_services/literature-review-papers";
+import type {
+  SubBoxInput,
+  RawPaper,
+} from "./_services/literature-review-papers";
 import { orchestrateBatchProcess } from "./_services/batch-orchestrator";
 import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
 
@@ -32,6 +39,7 @@ import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
 
 export async function processAllBoxesAction(
   boxes: SubBoxInput[],
+  cachedPapers?: Record<string, RawPaper[]>,
 ): Promise<{ data?: LiteraturePoolEntry[]; error?: string }> {
   const logger = new Logger(createFlowId());
 
@@ -60,10 +68,66 @@ export async function processAllBoxesAction(
 
     if (!thesisCtx) return { error: "Tez matrisi bulunamadı." };
 
+    // Load YÖK thesis entries from library_resources (written during box confirmation)
+    // These are the "İlişkisel Tez Çalışmaları" from the risk originality report,
+    // identified by relevanceScore: 0.99 and a non-null boxId relationship.
+    const thesisResources = await db
+      .select({
+        boxTitle: thesisBoxes.title,
+        title: libraryResources.title,
+        url: libraryResources.url,
+        publisher: libraryResources.publisher,
+        publicationYear: libraryResources.publicationYear,
+        authors: libraryResources.authors,
+        relevanceScore: libraryResources.relevanceScore,
+      })
+      .from(libraryResources)
+      .innerJoin(thesisBoxes, eq(libraryResources.thesisBoxId, thesisBoxes.id))
+      .innerJoin(
+        thesisMatrices,
+        eq(thesisBoxes.thesisMatrixId, thesisMatrices.id),
+      )
+      .where(
+        and(
+          eq(thesisMatrices.userId, session.userId),
+          eq(libraryResources.relevanceScore, 0.99),
+        ),
+      );
+
+    // Build per-box thesis article map
+    const thesisArticlesMap = new Map<string, JuryArticle[]>();
+    for (const row of thesisResources) {
+      const entry: JuryArticle = {
+        title: row.title,
+        abstract: "",
+        url: row.url ?? "",
+        doi: null as string | null,
+        publisher: row.publisher ?? "",
+        publicationYear: row.publicationYear ?? 0,
+        authors: (row.authors as string[]) ?? [],
+        isFoundational: false,
+        relevanceScore: 0.99,
+      };
+      const existing = thesisArticlesMap.get(row.boxTitle) ?? [];
+      existing.push(entry);
+      thesisArticlesMap.set(row.boxTitle, existing);
+    }
+
+    logger.info("literature_thesis_articles_loaded", {
+      service: "literature",
+      filePath: "onboarding/literature-review/actions.ts",
+      data: {
+        thesisCount: thesisResources.length,
+        boxCountWithTheses: thesisArticlesMap.size,
+      },
+    });
+
     const { poolEntries } = await orchestrateBatchProcess(
       boxes,
       thesisCtx,
       logger,
+      cachedPapers,
+      thesisArticlesMap,
     );
 
     return { data: poolEntries };
@@ -124,8 +188,6 @@ export async function confirmLiteratureAction(args: {
     const thesisMatrixId = matrix.id;
 
     await db.transaction(async (tx) => {
-      const allResources: NewLibraryResource[] = [];
-
       const allBoxes = await tx
         .select({ id: thesisBoxes.id, title: thesisBoxes.title })
         .from(thesisBoxes)
@@ -141,6 +203,8 @@ export async function confirmLiteratureAction(args: {
         boxMap.set(b.title, b.id);
       }
 
+      let totalSkipped = 0;
+
       for (const entry of literaturePool) {
         const subBoxTitle = entry.subBoxTitle;
         const thesisBoxId = boxMap.get(subBoxTitle);
@@ -151,13 +215,57 @@ export async function confirmLiteratureAction(args: {
           );
         }
 
-        for (const article of entry.starterPack) {
-          allResources.push({
+        const existingRecords = await tx
+          .select({ title: libraryResources.title, doi: libraryResources.doi })
+          .from(libraryResources)
+          .where(eq(libraryResources.thesisBoxId, thesisBoxId));
+
+        const existingTitleSet = new Set(
+          existingRecords
+            .map((r) => r.title?.toLowerCase().trim())
+            .filter(Boolean),
+        );
+
+        const existingDoiSet = new Set(
+          existingRecords
+            .map((r) => r.doi?.toLowerCase().trim())
+            .filter((d): d is string => !!d),
+        );
+
+        const toInsert: NewLibraryResource[] = [];
+        let boxSkipped = 0;
+
+        const maybePushArticle = (
+          article: (typeof entry.starterPack)[number],
+        ) => {
+          const title = formatAcademicTitle(article.title);
+          const titleKey = title.toLowerCase().trim();
+          const doiKey = article.doi?.toLowerCase().trim() ?? null;
+
+          if (!titleKey) {
+            boxSkipped++;
+            return;
+          }
+
+          if (existingTitleSet.has(titleKey)) {
+            boxSkipped++;
+            return;
+          }
+
+          if (doiKey && existingDoiSet.has(doiKey)) {
+            boxSkipped++;
+            return;
+          }
+
+          existingTitleSet.add(titleKey);
+          if (doiKey) existingDoiSet.add(doiKey);
+
+          toInsert.push({
             thesisBoxId,
-            title: formatAcademicTitle(article.title),
+            title,
             abstract: article.abstract ?? null,
             url: article.url ?? null,
-            doi: article.doi ?? null,
+            doi: article.doi?.trim() || null,
             publisher: article.publisher ?? null,
             publicationYear: article.publicationYear ?? null,
             authors: article.authors ?? null,
@@ -165,30 +273,29 @@ export async function confirmLiteratureAction(args: {
             isFoundational: article.isFoundational ?? false,
             relevanceScore: article.relevanceScore ?? 0,
           });
+        };
+
+        for (const article of entry.starterPack) maybePushArticle(article);
+        for (const article of entry.reservedPool) maybePushArticle(article);
+
+        if (toInsert.length > 0) {
+          await tx.insert(libraryResources).values(toInsert);
         }
 
-        for (const article of entry.reservedPool) {
-          allResources.push({
-            thesisBoxId,
-            title: formatAcademicTitle(article.title),
-            abstract: article.abstract ?? null,
-            url: article.url ?? null,
-            doi: article.doi ?? null,
-            publisher: article.publisher ?? null,
-            publicationYear: article.publicationYear ?? null,
-            authors: article.authors ?? null,
-            isRead: false,
-            isFoundational: article.isFoundational ?? false,
-            relevanceScore: article.relevanceScore ?? 0,
+        if (boxSkipped > 0) {
+          log.warn("confirm_literature_duplicate_skipped", {
+            service: "literature",
+            data: { subBoxTitle, skippedCount: boxSkipped },
           });
+          totalSkipped += boxSkipped;
         }
       }
 
-      if (allResources.length > 0) {
-        await tx
-          .insert(libraryResources)
-          .values(allResources)
-          .onConflictDoNothing();
+      if (totalSkipped > 0) {
+        log.warn("confirm_literature_duplicates_total", {
+          service: "literature",
+          data: { totalSkipped },
+        });
       }
 
       await tx

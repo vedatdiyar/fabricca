@@ -169,10 +169,22 @@ interface AxesWithOptionalContext {
  * Compares two theses for sorting: highest axis level first, then second-highest,
  * then doctorate over master's, then most recent first.
  */
+const BADGE_ORDER: ThesisBadge[] = ["IKIZ", "SINIRDAS", "OZGUN"];
+
+/**
+ * Compares two theses for sorting: İkiz first, then Sınırdaş, then Özgün.
+ * Within the same badge group, highest axis level first, then second-highest,
+ * then doctorate over master's, then most recent first.
+ */
 export function compareThesesByRisk(
   a: { axes: AxesWithOptionalContext; thesisType: string; year: number },
   b: { axes: AxesWithOptionalContext; thesisType: string; year: number },
 ): number {
+  const badgeA = calculateBadge(a.axes);
+  const badgeB = calculateBadge(b.axes);
+  const badgeDiff = BADGE_ORDER.indexOf(badgeA) - BADGE_ORDER.indexOf(badgeB);
+  if (badgeDiff !== 0) return badgeDiff;
+
   const maxA = getThesisMaxLevel(a.axes);
   const maxB = getThesisMaxLevel(b.axes);
   const diff = LEVEL_ORDER.indexOf(maxB) - LEVEL_ORDER.indexOf(maxA);
