@@ -234,6 +234,7 @@ export function LiteratureReviewContent() {
     archivalBoxes,
     literaturePool,
     addArchiveEntry,
+    startReviewProcess,
     handleFinalize,
   } = useLiteratureReview();
 
@@ -308,13 +309,23 @@ export function LiteratureReviewContent() {
             </p>
           </div>
         ) : !allProcessed ? (
-          <div className="flex flex-col items-end gap-2">
-            <p className="text-sm text-warning font-medium">
-              Lütfen protokol/saha kutuları için gerekli girişleri tamamlayın.
-            </p>
-            <Button disabled size="lg">
-              Onayla ve Teze Başla.
-            </Button>
+          <div className="flex flex-col items-end gap-3">
+            {literaturePool.length === 0 && (
+              <Button onClick={startReviewProcess} size="lg">
+                Literatür Taramasını Başlat
+              </Button>
+            )}
+            {literaturePool.length > 0 && (
+              <>
+                <p className="text-sm text-warning font-medium">
+                  Lütfen protokol/saha kutuları için gerekli girişleri
+                  tamamlayın.
+                </p>
+                <Button disabled size="lg">
+                  Onayla ve Teze Başla.
+                </Button>
+              </>
+            )}
           </div>
         ) : (
           <Button onClick={handleFinalize} disabled={confirming} size="lg">

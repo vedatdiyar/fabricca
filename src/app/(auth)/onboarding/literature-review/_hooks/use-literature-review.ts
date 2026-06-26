@@ -59,14 +59,16 @@ export interface UseLiteratureReviewResult {
  */
 export function useLiteratureReview(): UseLiteratureReviewResult {
   const router = useRouter();
-  const [subBoxes, setSubBoxes] = useState<GeminiThesisBox[]>([]);
+  const finalizedRef = useRef(false);
+  const processingRef = useRef(false);
+
   const [phase, setPhase] = useState({
     loading: true,
     processing: false,
     confirming: false,
   });
-  const processingRef = useRef(false);
-  const finalizedRef = useRef(false);
+  const [hasAttempted, setHasAttempted] = useState(false);
+  const [subBoxes, setSubBoxes] = useState<GeminiThesisBox[]>([]);
   const [boxResults, setBoxResults] = useState<{
     statuses: Record<string, BoxStatus>;
     errors: Record<string, string>;
@@ -124,6 +126,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   const startReviewProcess = useCallback(async () => {
     if (subBoxes.length === 0 || processingRef.current) return;
 
+    setHasAttempted(true);
     processingRef.current = true;
     setPhase((prev) => ({ ...prev, processing: true }));
 
@@ -135,14 +138,37 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
       status: "idle" as const,
     }));
 
+    let isCancelled = false;
+
     showLoading(
       "Literatür Taraması Devam Ediyor",
       "Tüm konu kutuları için akademik veri tabanları taranıyor, yapay zeka değerlendirmesi yapılıyor.",
       allSteps,
+      () => {
+        isCancelled = true;
+        processingRef.current = false;
+        setPhase((prev) => ({ ...prev, processing: false }));
+        // Clears literature-review step completion and literaturePool
+        useOnboardingStore.getState().clearDownstreamData("boxes");
+        toast.info("İşlem iptal edildi, önceki adıma yönlendiriliyorsunuz.");
+        router.push("/onboarding/boxes");
+        // Reset box statuses to idle when cancelled so we don't show loading skeletons forever
+        setBoxResults((prev) => {
+          const resetStatuses = { ...prev.statuses };
+          subBoxes.forEach((box) => {
+            resetStatuses[box.title] = "idle";
+          });
+          return {
+            ...prev,
+            statuses: resetStatuses,
+          };
+        });
+      },
     );
 
     // Mark all steps as active
     for (let i = 0; i < subBoxes.length; i++) {
+      if (isCancelled) return;
       updateLoadingStep(i, "active");
       setBoxResults((prev) => ({
         ...prev,
@@ -160,6 +186,8 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
       })),
       cachedPapers,
     );
+
+    if (isCancelled) return;
 
     if (result.data) {
       // Collect archival box titles from the result
@@ -201,7 +229,14 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     processingRef.current = false;
     setPhase((prev) => ({ ...prev, processing: false }));
     hideLoading();
-  }, [subBoxes, cachedPapers, showLoading, hideLoading, updateLoadingStep]);
+  }, [
+    subBoxes,
+    cachedPapers,
+    showLoading,
+    hideLoading,
+    updateLoadingStep,
+    router,
+  ]);
 
   /**
    * Adds a manually-entered archive entry for an archival/empirical box.
@@ -286,6 +321,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     if (phase.processing) return;
     if (finalizedRef.current) return;
     if (subBoxes.length === 0) return;
+    if (hasAttempted) return;
 
     const allDone = subBoxes.every((box) =>
       literaturePool.some((entry) => entry.subBoxTitle === box.title),
@@ -307,6 +343,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     phase.processing,
     subBoxes,
     literaturePool,
+    hasAttempted,
     startReviewProcess,
   ]);
 

@@ -80,15 +80,23 @@ export function useOnboardingNavigation() {
     ): Promise<{ data?: OriginalityReportData; error?: string }> => {
       const steps = ANALYSIS_STEPS.map((s) => ({ ...s }));
       steps[0].status = "active";
+
+      let isCancelled = false;
+
       showLoading(
         "Risk Analiz Motorları Çalışıyor",
         "Yapay zeka asistanınız tez matrisinizi inceliyor, veri tabanlarını tarıyor ve risk raporunu hazırlıyor.",
         steps,
+        () => {
+          isCancelled = true;
+          toast.info("İşlem iptal edildi.");
+        },
       );
 
       try {
         // Step 0: Extract queries
         const extractResult = await extractQueriesAction(matrixInput);
+        if (isCancelled) return { error: "cancelled" };
         if ("error" in extractResult) {
           hideLoading();
           return { error: extractResult.error };
@@ -102,6 +110,7 @@ export function useOnboardingNavigation() {
           tavilyQueries: extractResult.data.tavilyQueries,
           tezaraQueries: extractResult.data.tezaraQueries,
         });
+        if (isCancelled) return { error: "cancelled" };
         if ("error" in searchResult) {
           hideLoading();
           return { error: searchResult.error };
@@ -114,6 +123,7 @@ export function useOnboardingNavigation() {
           matrix: matrixInput,
           tezaraSearchResults: searchResult.data.tezaraSearchResults,
         });
+        if (isCancelled) return { error: "cancelled" };
         if ("error" in siftResult) {
           hideLoading();
           return { error: siftResult.error };
@@ -127,6 +137,7 @@ export function useOnboardingNavigation() {
           scrapedTheses: siftResult.data,
           tavilyResults: searchResult.data.tavilyResults,
         });
+        if (isCancelled) return { error: "cancelled" };
         if ("error" in juryResult) {
           hideLoading();
           return { error: juryResult.error };
@@ -136,6 +147,7 @@ export function useOnboardingNavigation() {
 
         return { data: juryResult.data };
       } catch (err) {
+        if (isCancelled) return { error: "cancelled" };
         hideLoading();
         return {
           error:
@@ -166,10 +178,23 @@ export function useOnboardingNavigation() {
 
     const steps = PROCEED_STEPS.map((s) => ({ ...s }));
     steps[0].status = "active";
-    showLoading("İşlem Tamamlanıyor", "Konu kutuları yapılandırılıyor.", steps);
+
+    let isCancelled = false;
+
+    showLoading(
+      "İşlem Tamamlanıyor",
+      "Konu kutuları yapılandırılıyor.",
+      steps,
+      () => {
+        isCancelled = true;
+        useOnboardingStore.getState().clearDownstreamData("risk");
+        toast.info("İşlem iptal edildi.");
+      },
+    );
 
     try {
       const structResult = await generateBoxesStructureAction();
+      if (isCancelled) return { success: false };
       if ("error" in structResult) {
         hideLoading();
         toast.error(structResult.error);
@@ -182,6 +207,7 @@ export function useOnboardingNavigation() {
       const mineResult = await mineFoundationalQueriesAction(
         structResult.boxes,
       );
+      if (isCancelled) return { success: false };
       if ("error" in mineResult) {
         hideLoading();
         toast.error(mineResult.error);
@@ -190,6 +216,8 @@ export function useOnboardingNavigation() {
 
       updateLoadingStep(1, "completed");
       updateLoadingStep(2, "active");
+
+      if (isCancelled) return { success: false };
 
       // Purge stale downstream state before seeding new boxes so that old
       // literature articles or risk reports can never ghost-leak into the
@@ -210,11 +238,13 @@ export function useOnboardingNavigation() {
 
       // Brief delay to allow loading step transition to be seen
       await new Promise((resolve) => setTimeout(resolve, 500));
+      if (isCancelled) return { success: false };
       hideLoading();
       router.push("/onboarding/boxes");
 
       return { success: true };
     } catch (err) {
+      if (isCancelled) return { success: false };
       hideLoading();
       toast.error(
         err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.",

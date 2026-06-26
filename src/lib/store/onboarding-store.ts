@@ -20,12 +20,14 @@ interface LoadingActions {
     title: string,
     description: string,
     steps: LoadingStep[],
+    onCancel?: () => void,
   ) => void;
   updateLoadingStep: (
     index: number,
     status: "idle" | "active" | "completed",
   ) => void;
   hideLoading: () => void;
+  cancelLoading: () => void;
 }
 
 interface LoadingState {
@@ -33,6 +35,7 @@ interface LoadingState {
   loadingTitle: string;
   loadingDescription: string;
   loadingSteps: LoadingStep[];
+  onCancel: (() => void) | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -65,12 +68,14 @@ export const useOnboardingStore = create<OnboardingStore>()(
       loadingTitle: "",
       loadingDescription: "",
       loadingSteps: [],
-      showLoading: (title, description, steps) =>
+      onCancel: null,
+      showLoading: (title, description, steps, onCancel) =>
         set({
           isLoading: true,
           loadingTitle: title,
           loadingDescription: description,
           loadingSteps: steps,
+          onCancel: onCancel ?? null,
         }),
       updateLoadingStep: (index, status) =>
         set((state) => {
@@ -86,7 +91,21 @@ export const useOnboardingStore = create<OnboardingStore>()(
           loadingTitle: "",
           loadingDescription: "",
           loadingSteps: [],
+          onCancel: null,
         }),
+      cancelLoading: () => {
+        const { onCancel } = get();
+        if (onCancel) {
+          onCancel();
+        }
+        set({
+          isLoading: false,
+          loadingTitle: "",
+          loadingDescription: "",
+          loadingSteps: [],
+          onCancel: null,
+        });
+      },
 
       // ── Persisted state ──
       boxes: null,

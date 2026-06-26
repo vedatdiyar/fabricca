@@ -205,10 +205,17 @@ export function MatrixForm() {
       },
     ];
 
+    let isCancelled = false;
+
     showLoading(
       "Tez Matrisi Zenginleştiriliyor",
       "Yapay zeka asistanınız tez anayasanızı analiz ederek akademik bir yapıya dönüştürüyor.",
       steps,
+      () => {
+        isCancelled = true;
+        setIsPending(false);
+        toast.info("İşlem iptal edildi.");
+      },
     );
 
     try {
@@ -221,6 +228,8 @@ export function MatrixForm() {
         mainClaim: formState.mainClaim,
       });
 
+      if (isCancelled) return;
+
       if ("error" in enrichResult) {
         hideLoading();
         toast.error(enrichResult.error);
@@ -232,6 +241,8 @@ export function MatrixForm() {
       updateLoadingStep(1, "active");
 
       const saveResult = await saveEnrichedMatrixAction(enrichResult.data);
+
+      if (isCancelled) return;
 
       if ("error" in saveResult) {
         hideLoading();
@@ -251,10 +262,13 @@ export function MatrixForm() {
       hideLoading();
       router.push("/onboarding/enrichment");
     } catch {
+      if (isCancelled) return;
       hideLoading();
       toast.error("Bir hata oluştu.");
     } finally {
-      setIsPending(false);
+      if (!isCancelled) {
+        setIsPending(false);
+      }
     }
   };
 

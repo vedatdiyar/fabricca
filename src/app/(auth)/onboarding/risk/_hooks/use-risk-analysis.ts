@@ -180,7 +180,14 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
 
       const result = await runRiskPipeline(matrixInput);
       if (result.error) {
-        dispatch({ type: "SET_ERROR", payload: result.error });
+        if (result.error === "cancelled") {
+          // Clears risk, boxes, literature-review step completion and reportData
+          useOnboardingStore.getState().clearDownstreamData("enrichment");
+          toast.info("İşlem iptal edildi, önceki adıma yönlendiriliyorsunuz.");
+          router.push("/onboarding/enrichment");
+        } else {
+          dispatch({ type: "SET_ERROR", payload: result.error });
+        }
       } else if (result.data) {
         dispatch({ type: "SET_REPORT_DATA", payload: result.data });
       }
@@ -195,18 +202,30 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
     } finally {
       dispatch({ type: "SET_ANALYSING", payload: false });
     }
-  }, [state.matrixData, runRiskPipeline]);
+  }, [state.matrixData, runRiskPipeline, router]);
 
   // Auto-trigger analysis only when there really is no report anywhere
   // (Zustand cache, DB or in-memory state).
   useEffect(() => {
     const hasCache = !!useOnboardingStore.getState().reportData;
-    if (!state.loading && !state.reportData && !state.analysing && !hasCache) {
+    if (
+      !state.loading &&
+      !state.reportData &&
+      !state.analysing &&
+      !state.error &&
+      !hasCache
+    ) {
       void Promise.resolve().then(() => {
         startAnalysis();
       });
     }
-  }, [state.loading, state.reportData, state.analysing, startAnalysis]);
+  }, [
+    state.loading,
+    state.reportData,
+    state.analysing,
+    state.error,
+    startAnalysis,
+  ]);
 
   /**
    * Finalizes the risk stage via the central onboarding orchestrator:

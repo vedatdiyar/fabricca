@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 
 /**
@@ -11,8 +12,13 @@ import { useOnboardingStore } from "@/lib/store/onboarding-store";
  * The active step shows a "Thinking Mode" indicator sub-text.
  */
 export function OnboardingGlobalLoader() {
-  const { loadingTitle, loadingDescription, loadingSteps } =
-    useOnboardingStore();
+  const {
+    loadingTitle,
+    loadingDescription,
+    loadingSteps,
+    cancelLoading,
+    onCancel,
+  } = useOnboardingStore();
 
   return (
     <div className="flex flex-col items-center justify-center space-y-10 max-w-5xl mx-auto text-center px-6 w-full">
@@ -78,6 +84,16 @@ export function OnboardingGlobalLoader() {
           })}
         </div>
       </Card>
+
+      {onCancel && (
+        <Button
+          variant="destructive"
+          onClick={cancelLoading}
+          className="w-full sm:w-auto px-8"
+        >
+          İptal Et
+        </Button>
+      )}
     </div>
   );
 }

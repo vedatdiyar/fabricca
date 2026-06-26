@@ -203,6 +203,14 @@ README.md
 <files>
 This section contains the contents of the repository's files.
 
+<file path="src/app/(app)/advisor/page.tsx">
+export default function AdvisorPage()
+</file>
+
+<file path="src/app/(app)/card-index/page.tsx">
+export default function CardIndexPage()
+</file>
+
 <file path="src/app/(app)/dashboard/_components/box-card.tsx">
 import { BookOpen, Book, FolderArchive } from "lucide-react";
 import {
@@ -451,30 +459,6 @@ export interface KanbanTask {
 }
 </file>
 
-<file path="src/app/(app)/advisor/page.tsx">
-export default function AdvisorPage()
-</file>
-
-<file path="src/app/(app)/card-index/page.tsx">
-export default function CardIndexPage()
-</file>
-
-<file path="src/app/(app)/dashboard/page.tsx">
-import { eq, asc, inArray } from "drizzle-orm";
-import { redirect } from "next/navigation";
-import { db } from "@/db";
-import {
-  thesisMatrices,
-  thesisBoxes,
-  libraryResources,
-  tasks,
-} from "@/db/schema";
-import { getSession } from "@/session";
-import { DashboardContent } from "./_components/dashboard-content";
-⋮----
-export default async function DashboardPage()
-</file>
-
 <file path="src/app/(auth)/onboarding/literature-review/_services/crossref/validator.ts">
 import { CROSSREF_USER_AGENT } from "../_shared";
 import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
@@ -632,81 +616,6 @@ export function calculateBadge(axes: {
 export function initConsoleFilter(): void
 </file>
 
-<file path="src/lib/logger/formatter.ts">
-import { classifyError, getErrorDisplay } from "../error-utils";
-⋮----
-export type ServiceName =
-  | "gemini"
-  | "cloudflare"
-  | "tavily"
-  | "tezara"
-  | "db"
-  | "auth"
-  | "flow"
-  | "matrix"
-  | "enrichment"
-  | "originality"
-  | "risk"
-  | "complete"
-  | "boxes"
-  | "wikipedia"
-  | "literature"
-  | "library"
-  | "openalex"
-  | "crossref"
-  | "dashboard";
-⋮----
-export type LogLevel = "info" | "warn" | "error";
-export interface TokenUsage {
-  input?: number;
-  output?: number;
-  total?: number;
-}
-⋮----
-export interface LogParams {
-  service?: ServiceName;
-  step?: string;
-  durationMs?: number;
-  data?: Record<string, unknown>;
-  error?: unknown;
-  tokens?: TokenUsage;
-  filePath?: string;
-  status?: "START" | "SUCCESS" | "FAILED" | "RETRY";
-}
-⋮----
-export function getServiceColor(service: ServiceName): string
-⋮----
-export function getTimestamp(): string
-⋮----
-export function getActionDisplay(event: string):
-⋮----
-export function deriveStatus(event: string): string
-⋮----
-export function truncate(s: string, maxLen: number): string
-⋮----
-export function processDataMetrics(data: Record<string, unknown>): string[]
-⋮----
-export function getStatusIcon(status: string): string
-⋮----
-export function peekStarted(flowId: string, event: string): boolean
-⋮----
-export function markStarted(flowId: string, event: string): void
-⋮----
-export function serializeError(
-  error: unknown,
-): Record<string, unknown> | string
-⋮----
-export function buildPrefix(
-  service: ServiceName | string,
-  status: string,
-  stepLabel?: string,
-): string
-⋮----
-export function buildSuffix(params?: LogParams): string
-⋮----
-export function renderDevLine(data: Record<string, unknown>): string
-</file>
-
 <file path="src/lib/logger/index.ts">
 
 </file>
@@ -859,85 +768,24 @@ export async function rerankTheses(
 ): Promise<CohereRerankResponse>
 </file>
 
-<file path="src/lib/tezara-queue.ts">
-import type { Logger } from "./logger";
-⋮----
-interface QueueItem {
-  url: string;
-  resolve: (value: Response) => void;
-  reject: (reason: unknown) => void;
-}
-⋮----
-function getDynamicDelay(): number
-⋮----
-function pruneTimestamps(): void
-⋮----
-async function processPipeline(): Promise<void>
-⋮----
-async function executeRequest(item: QueueItem): Promise<void>
-⋮----
-export async function enqueueTezaraFetch(
-  url: string,
-  logger?: Logger,
-): Promise<Response>
-</file>
-
 <file path="README.md">
 # fabricca
 </file>
 
-<file path="src/app/(auth)/onboarding/_services/co-citation-miner.ts">
-import type { FoundationalQuery } from "@/lib/types";
-import { Logger } from "@/lib/logger";
+<file path="src/app/(app)/dashboard/page.tsx">
+import { eq, asc, inArray } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { db } from "@/db";
+import {
+  thesisMatrices,
+  thesisBoxes,
+  libraryResources,
+  tasks,
+} from "@/db/schema";
+import { getSession } from "@/session";
+import { DashboardContent } from "./_components/dashboard-content";
 ⋮----
-interface OpenAlexAuthor {
-  author?: {
-    display_name?: string;
-  };
-}
-⋮----
-interface OpenAlexWork {
-  id: string;
-  title?: string;
-  publication_year?: number;
-  cited_by_count?: number;
-  referenced_works?: string[];
-  authorships?: OpenAlexAuthor[];
-}
-⋮----
-async function fetchWithRetry(
-  url: string,
-  options: RequestInit,
-  log: Logger,
-  maxRetries = 3,
-  baseDelayMs = 1500,
-): Promise<Response>
-⋮----
-export async function mineCoCitations(
-  queries: string[],
-  log: Logger,
-): Promise<FoundationalQuery[]>
-⋮----
-// Fetch metadata details for top candidate references
-⋮----
-interface ResolvedWorkExtended extends FoundationalQuery {
-    id: string;
-    citedByCount: number;
-  }
-⋮----
-// Fallback for works with empty authors (e.g. books/chapters cataloged under journal book-reviews)
-⋮----
-// Split by colon to search the main title (e.g. "Activists in office") which helps locate the main book record
-⋮----
-// Skip review items that contain review keywords in their titles
-⋮----
-// Check if titles match or contain each other
-⋮----
-// Create a unique key for the author combination
-⋮----
-const score = (match.cited_by_count || 0) + 1; // Base score of 1 to count occurrences
-⋮----
-// Determine the winner (author with highest cumulative citation-weighted score)
+export default async function DashboardPage()
 </file>
 
 <file path="src/app/icon0.svg">
@@ -974,6 +822,104 @@ import { db } from "./index";
 import { users } from "./schema";
 ⋮----
 async function seed()
+</file>
+
+<file path="src/lib/logger/formatter.ts">
+import { classifyError, getErrorDisplay } from "../error-utils";
+⋮----
+export type ServiceName =
+  | "gemini"
+  | "cloudflare"
+  | "tavily"
+  | "tezara"
+  | "db"
+  | "auth"
+  | "flow"
+  | "matrix"
+  | "enrichment"
+  | "originality"
+  | "risk"
+  | "complete"
+  | "boxes"
+  | "wikipedia"
+  | "literature"
+  | "library"
+  | "openalex"
+  | "crossref"
+  | "dashboard";
+⋮----
+export type LogLevel = "info" | "warn" | "error";
+export interface TokenUsage {
+  input?: number;
+  output?: number;
+  total?: number;
+}
+⋮----
+export interface LogParams {
+  service?: ServiceName;
+  step?: string;
+  durationMs?: number;
+  data?: Record<string, unknown>;
+  error?: unknown;
+  tokens?: TokenUsage;
+  filePath?: string;
+  status?: "START" | "SUCCESS" | "FAILED" | "RETRY";
+}
+⋮----
+export function getServiceColor(service: ServiceName): string
+⋮----
+export function getTimestamp(): string
+⋮----
+export function getActionDisplay(event: string):
+⋮----
+export function deriveStatus(event: string): string
+⋮----
+export function truncate(s: string, maxLen: number): string
+⋮----
+export function processDataMetrics(data: Record<string, unknown>): string[]
+⋮----
+export function getStatusIcon(status: string): string
+⋮----
+export function peekStarted(flowId: string, event: string): boolean
+⋮----
+export function markStarted(flowId: string, event: string): void
+⋮----
+export function serializeError(
+  error: unknown,
+): Record<string, unknown> | string
+⋮----
+export function buildPrefix(
+  service: ServiceName | string,
+  status: string,
+  stepLabel?: string,
+): string
+⋮----
+export function buildSuffix(params?: LogParams): string
+⋮----
+export function renderDevLine(data: Record<string, unknown>): string
+</file>
+
+<file path="src/lib/tezara-queue.ts">
+import type { Logger } from "./logger";
+⋮----
+interface QueueItem {
+  url: string;
+  resolve: (value: Response) => void;
+  reject: (reason: unknown) => void;
+}
+⋮----
+function getDynamicDelay(): number
+⋮----
+function pruneTimestamps(): void
+⋮----
+async function processPipeline(): Promise<void>
+⋮----
+async function executeRequest(item: QueueItem): Promise<void>
+⋮----
+export async function enqueueTezaraFetch(
+  url: string,
+  logger?: Logger,
+): Promise<Response>
 </file>
 
 <file path="src/session.ts">
@@ -1036,6 +982,60 @@ interface MatrixInput {
 }
 ⋮----
 export function useOnboardingNavigation()
+</file>
+
+<file path="src/app/(auth)/onboarding/_services/co-citation-miner.ts">
+import type { FoundationalQuery } from "@/lib/types";
+import { Logger } from "@/lib/logger";
+⋮----
+interface OpenAlexAuthor {
+  author?: {
+    display_name?: string;
+  };
+}
+⋮----
+interface OpenAlexWork {
+  id: string;
+  title?: string;
+  publication_year?: number;
+  cited_by_count?: number;
+  referenced_works?: string[];
+  authorships?: OpenAlexAuthor[];
+}
+⋮----
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  log: Logger,
+  maxRetries = 3,
+  baseDelayMs = 1500,
+): Promise<Response>
+⋮----
+export async function mineCoCitations(
+  queries: string[],
+  log: Logger,
+): Promise<FoundationalQuery[]>
+⋮----
+// Fetch metadata details for top candidate references
+⋮----
+interface ResolvedWorkExtended extends FoundationalQuery {
+    id: string;
+    citedByCount: number;
+  }
+⋮----
+// Fallback for works with empty authors (e.g. books/chapters cataloged under journal book-reviews)
+⋮----
+// Split by colon to search the main title (e.g. "Activists in office") which helps locate the main book record
+⋮----
+// Skip review items that contain review keywords in their titles
+⋮----
+// Check if titles match or contain each other
+⋮----
+// Create a unique key for the author combination
+⋮----
+const score = (match.cited_by_count || 0) + 1; // Base score of 1 to count occurrences
+⋮----
+// Determine the winner (author with highest cumulative citation-weighted score)
 </file>
 
 <file path="src/app/(auth)/onboarding/enrichment/_components/enrichment-loading-skeleton.tsx">
@@ -1343,24 +1343,6 @@ import { twMerge } from "tailwind-merge";
 export function cn(...inputs: ClassValue[])
 </file>
 
-<file path="src/app/(app)/actions.ts">
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
-import { createFlowId, Logger } from "@/lib/logger";
-import { db } from "@/db";
-import { users, thesisMatrices, originalityReports, tasks } from "@/db/schema";
-import { getSession } from "@/session";
-import {
-  SESSION_COOKIE_NAME,
-  SESSION_MAX_AGE_SECONDS,
-} from "@/lib/constants/session";
-⋮----
-export async function logoutAction()
-⋮----
-export async function resetOnboardingAction()
-</file>
-
 <file path="src/app/layout.tsx">
 import type { Metadata } from "next";
 import {
@@ -1408,23 +1390,22 @@ interface LibraryContentProps {
 }
 </file>
 
-<file path="src/app/(app)/layout.tsx">
-import { Suspense } from "react";
+<file path="src/app/(app)/actions.ts">
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { getSessionWithOnboarding } from "@/session";
-import { Header } from "@/components/header";
+import { eq } from "drizzle-orm";
+import { createFlowId, Logger } from "@/lib/logger";
+import { db } from "@/db";
+import { users, thesisMatrices, originalityReports, tasks } from "@/db/schema";
+import { getSession } from "@/session";
+import {
+  SESSION_COOKIE_NAME,
+  SESSION_MAX_AGE_SECONDS,
+} from "@/lib/constants/session";
 ⋮----
-export default function AppLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>)
+export async function logoutAction()
 ⋮----
-async function AppLayoutInner({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>)
+export async function resetOnboardingAction()
 </file>
 
 <file path="src/app/(auth)/onboarding/enrichment/page.tsx">
@@ -1469,30 +1450,23 @@ export default async function OnboardingLayout({
 }>)
 </file>
 
-<file path="src/app/(app)/library/actions.ts">
-import { eq } from "drizzle-orm";
+<file path="src/app/(app)/layout.tsx">
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { db } from "@/db";
-import { libraryResources, type LibraryResource } from "@/db/schema";
-import { getSession } from "@/session";
-import { createFlowId, Logger } from "@/lib/logger";
+import { getSessionWithOnboarding } from "@/session";
+import { Header } from "@/components/header";
 ⋮----
-export type GetBoxResourcesResult =
-  | { success: true; data: LibraryResource[] }
-  | { success: false; error: string };
+export default function AppLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>)
 ⋮----
-export type ToggleReadStatusResult =
-  | { success: true }
-  | { success: false; error: string };
-⋮----
-export async function getBoxResourcesAction(
-  boxId: number,
-): Promise<GetBoxResourcesResult>
-⋮----
-export async function toggleResourceReadStatusAction(
-  resourceId: number,
-  isRead: boolean,
-): Promise<ToggleReadStatusResult>
+async function AppLayoutInner({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>)
 </file>
 
 <file path="src/app/(auth)/login/actions.ts">
@@ -1613,6 +1587,32 @@ import { Pool } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-serverless";
 </file>
 
+<file path="src/app/(app)/library/actions.ts">
+import { eq } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { db } from "@/db";
+import { libraryResources, type LibraryResource } from "@/db/schema";
+import { getSession } from "@/session";
+import { createFlowId, Logger } from "@/lib/logger";
+⋮----
+export type GetBoxResourcesResult =
+  | { success: true; data: LibraryResource[] }
+  | { success: false; error: string };
+⋮----
+export type ToggleReadStatusResult =
+  | { success: true }
+  | { success: false; error: string };
+⋮----
+export async function getBoxResourcesAction(
+  boxId: number,
+): Promise<GetBoxResourcesResult>
+⋮----
+export async function toggleResourceReadStatusAction(
+  resourceId: number,
+  isRead: boolean,
+): Promise<ToggleReadStatusResult>
+</file>
+
 <file path="src/app/(auth)/login/page.tsx">
 import { useState, startTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -1679,6 +1679,7 @@ export default async function OnboardingRiskPage()
 
 <file path="src/components/onboarding-global-loader.tsx">
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 </file>
 
@@ -1711,12 +1712,14 @@ interface LoadingActions {
     title: string,
     description: string,
     steps: LoadingStep[],
+    onCancel?: () => void,
   ) => void;
   updateLoadingStep: (
     index: number,
     status: "idle" | "active" | "completed",
   ) => void;
   hideLoading: () => void;
+  cancelLoading: () => void;
 }
 ⋮----
 interface LoadingState {
@@ -1724,6 +1727,7 @@ interface LoadingState {
   loadingTitle: string;
   loadingDescription: string;
   loadingSteps: LoadingStep[];
+  onCancel: (() => void) | null;
 }
 ⋮----
 interface OnboardingState extends LoadingState {
@@ -2300,6 +2304,66 @@ type SectionConfig = {
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
 </file>
 
+<file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">
+import { useState } from "react";
+import {
+  Loader2,
+  AlertCircle,
+  BookOpen,
+  Library,
+  Archive,
+  Plus,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { AIBanner } from "@/components/ai-banner";
+import { LoadingSpinner } from "@/components/loading-spinner";
+import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import type { GeminiThesisBox } from "@/lib/types";
+import { LiteratureArticleCard } from "./literature-article-card";
+import {
+  useLiteratureReview,
+  type BoxStatus,
+} from "../_hooks/use-literature-review";
+⋮----
+function ArchiveEntryForm({
+  onAddEntry,
+}: {
+onAddEntry: (title: string, description: string)
+⋮----
+const handleAdd = () =>
+⋮----
+onChange=
+⋮----
+onAddArchiveEntry(subBox.title,
+</file>
+
+<file path="src/app/(auth)/onboarding/risk/_components/originality-report-view.tsx">
+import { ShieldAlert } from "lucide-react";
+import { TavilyFactCheckTable } from "./tavily-fact-check-table";
+import { TezaraOverlapTable } from "./tezara-overlap-table";
+import { StrategicRoadmapSection } from "./strategic-roadmap-section";
+import {
+  THESIS_BADGE_LABELS,
+  THESIS_BADGE_COLORS,
+  THESIS_BADGE_ICON_BG,
+  THESIS_BADGE_TEXT,
+} from "../_lib/constants";
+import type { OriginalityReportData } from "@/lib/types";
+⋮----
+interface OriginalityReportViewProps {
+  reportData: OriginalityReportData;
+}
+⋮----
+function SectionDivider(
+⋮----
+export function OriginalityReportView({
+  reportData,
+}: OriginalityReportViewProps)
+</file>
+
 <file path="src/app/(auth)/onboarding/risk/_services/analysis.ts">
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
@@ -2460,66 +2524,6 @@ export async function analyzeOriginalityRisk(
   log: Logger,
   chunkSize = 4,
 ): Promise<
-</file>
-
-<file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">
-import { useState } from "react";
-import {
-  Loader2,
-  AlertCircle,
-  BookOpen,
-  Library,
-  Archive,
-  Plus,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { AIBanner } from "@/components/ai-banner";
-import { LoadingSpinner } from "@/components/loading-spinner";
-import { useOnboardingStore } from "@/lib/store/onboarding-store";
-import type { GeminiThesisBox } from "@/lib/types";
-import { LiteratureArticleCard } from "./literature-article-card";
-import {
-  useLiteratureReview,
-  type BoxStatus,
-} from "../_hooks/use-literature-review";
-⋮----
-function ArchiveEntryForm({
-  onAddEntry,
-}: {
-onAddEntry: (title: string, description: string)
-⋮----
-const handleAdd = () =>
-⋮----
-onChange=
-⋮----
-onAddArchiveEntry(subBox.title,
-</file>
-
-<file path="src/app/(auth)/onboarding/risk/_components/originality-report-view.tsx">
-import { ShieldAlert } from "lucide-react";
-import { TavilyFactCheckTable } from "./tavily-fact-check-table";
-import { TezaraOverlapTable } from "./tezara-overlap-table";
-import { StrategicRoadmapSection } from "./strategic-roadmap-section";
-import {
-  THESIS_BADGE_LABELS,
-  THESIS_BADGE_COLORS,
-  THESIS_BADGE_ICON_BG,
-  THESIS_BADGE_TEXT,
-} from "../_lib/constants";
-import type { OriginalityReportData } from "@/lib/types";
-⋮----
-interface OriginalityReportViewProps {
-  reportData: OriginalityReportData;
-}
-⋮----
-function SectionDivider(
-⋮----
-export function OriginalityReportView({
-  reportData,
-}: OriginalityReportViewProps)
 </file>
 
 <file path="src/app/(auth)/onboarding/enrichment/_components/enrichment-view.tsx">
@@ -2859,49 +2863,6 @@ export async function finalizeJuryAnalysisAction(params: {
 export async function completeRiskStageAction(): Promise<OnboardingActionResult>
 </file>
 
-<file path="src/db/schema.ts">
-import type { OverlapLevel } from "@/lib/types";
-import {
-  pgTable,
-  serial,
-  varchar,
-  text,
-  integer,
-  real,
-  timestamp,
-  jsonb,
-  pgEnum,
-  boolean,
-  index,
-  uniqueIndex,
-} from "drizzle-orm/pg-core";
-import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
-⋮----
-export type User = InferSelectModel<typeof users>;
-⋮----
-export type NewUser = InferInsertModel<typeof users>;
-⋮----
-export type ThesisMatrix = InferSelectModel<typeof thesisMatrices>;
-⋮----
-export type NewThesisMatrix = InferInsertModel<typeof thesisMatrices>;
-⋮----
-export type OriginalityReport = InferSelectModel<typeof originalityReports>;
-⋮----
-export type NewOriginalityReport = InferInsertModel<typeof originalityReports>;
-⋮----
-export type ThesisBox = InferSelectModel<typeof thesisBoxes>;
-⋮----
-export type NewThesisBox = InferInsertModel<typeof thesisBoxes>;
-⋮----
-export type LibraryResource = InferSelectModel<typeof libraryResources>;
-⋮----
-export type NewLibraryResource = InferInsertModel<typeof libraryResources>;
-⋮----
-export type Task = InferSelectModel<typeof tasks>;
-⋮----
-export type NewTask = InferInsertModel<typeof tasks>;
-</file>
-
 <file path="src/app/(auth)/onboarding/literature-review/actions.ts">
 import { eq, and } from "drizzle-orm";
 import { cookies } from "next/headers";
@@ -2948,6 +2909,49 @@ export async function confirmLiteratureAction(args: {
 const maybePushArticle = (
           article: (typeof entry.starterPack)[number],
 ) =>
+</file>
+
+<file path="src/db/schema.ts">
+import type { OverlapLevel } from "@/lib/types";
+import {
+  pgTable,
+  serial,
+  varchar,
+  text,
+  integer,
+  real,
+  timestamp,
+  jsonb,
+  pgEnum,
+  boolean,
+  index,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
+import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
+⋮----
+export type User = InferSelectModel<typeof users>;
+⋮----
+export type NewUser = InferInsertModel<typeof users>;
+⋮----
+export type ThesisMatrix = InferSelectModel<typeof thesisMatrices>;
+⋮----
+export type NewThesisMatrix = InferInsertModel<typeof thesisMatrices>;
+⋮----
+export type OriginalityReport = InferSelectModel<typeof originalityReports>;
+⋮----
+export type NewOriginalityReport = InferInsertModel<typeof originalityReports>;
+⋮----
+export type ThesisBox = InferSelectModel<typeof thesisBoxes>;
+⋮----
+export type NewThesisBox = InferInsertModel<typeof thesisBoxes>;
+⋮----
+export type LibraryResource = InferSelectModel<typeof libraryResources>;
+⋮----
+export type NewLibraryResource = InferInsertModel<typeof libraryResources>;
+⋮----
+export type Task = InferSelectModel<typeof tasks>;
+⋮----
+export type NewTask = InferInsertModel<typeof tasks>;
 </file>
 
 <file path="src/lib/types.ts">

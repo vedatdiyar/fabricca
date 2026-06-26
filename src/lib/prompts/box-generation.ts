@@ -46,7 +46,7 @@ export const thesisBoxGenerationSchema: JsonSchema = {
             items: { type: "string" },
             maxItems: 4,
             description:
-              "OpenAlex ve küresel akademik veritabanlarında semantik aramayı tetikleyecek, her bir ana teorik, metodolojik veya ampirik eksen/kavram için ayrı ayrı yazılmış zengin İngilizce akademik arama sorgu paragrafları. Eğer kutu birden fazla bağımsız kuramsal veya ampirik onay/eksen içeriyorsa, dizide her eksen için ayrı birer eleman üretilmelidir. Tek eksen varsa dizide tek bir eleman bulunmalıdır.",
+              "OpenAlex ve küresel akademik veritabanlarında semantik aramayı en üst sıradan tetikleyecek; cümle yapısı, bağlaç ve laf kalabalığı barındırmayan, sadece kurucu yazarlar, teoriler ve çekirdek semantik etiketlerin yan yana listelendiği yoğun İngilizce arama dizileri (Core Academic Entities).",
           },
           mappedThesisIds: {
             type: "array",
@@ -92,12 +92,12 @@ Girdiyi analiz et. Toplam kutu sayısı tezin ampirik yapısının karmaşıklı
 
 KUTU TİPİ 1 — CONCEPTUAL (Teorik Çatı):
 - Çalışmanın beslendiği tüm ana kuramsal ekolleri, felsefi tartışmaları ve paradigmaları tek bir teorik şemsiye altında birleştir. Birbirinin içinden türeyen teorileri asla ayrı kutulara bölme.
-- SEMANTİK SORGULAR VE EKSEN AYRIMI: semanticSearchQueries dizisi, OpenAlex vektör uzayında kurucu yazarları ilk sayfaya kilitlemelidir. Eğer kutu birden fazla bağımsız kuramsal veya ampirik eksen içeriyorsa, dizide her bir eksen için ayrı birer eleman (sorgu paragrafı) üretmelisin. Her bir sorguda, cümleye doğrudan [Kurucu Yazarın Tam Adı] ile başlayarak ve hemen ardından patentli kavramını yerleştirerek (Örn: "David Snow's frame alignment theory" veya "Antonio Gramsci's war of position") yerel coğrafi bağlamlardan (ülke adı, bölge, şehir), jenerik geçiş cümlelerinden ve laf kalabalığından %100 arındırılmış, çıplak, yoğun bir kuramsal İngilizce kullan.
+- SEMANTİK SORGULAR VE ENTEGRE VEKTÖR UZAYI KURALI: semanticSearchQueries dizisi, OpenAlex vektör uzayında kurucu yazarları ve kurucu teorik eserleri ilk sayfaya kilitlemelidir. Bu sorgular KESİNLİKLE makale özeti (abstract) veya gramatik birer cümle formatında yazılamaz. Doğrudan [Kurucu Yazarın Tam Adı] [Patentli Kuramsal Kavramı] ve [Çekirdek Teori Etiketleri] yan yana getirilerek oluşturulmuş çıplak ve yoğun semantik diziler olmalıdır. 
 
 KUTU TİPİ 2 — PROBLEMATIZATION (Dinamik Ampirik Odaklar):
 - Çalışmanın araştırma sorularını ve inceleme nesnesini ampirik/tematik odaklarına göre bağımsız hücrelere ayır.
 - AMPİRİK CESARET VE ÖZNE SADAKATİ: Tezin asıl öznelerini, spesifik aktörlerini, siyasi hareketleri ve tarihsel özneleri sansürleme, yumuşatma veya jenerikleştirme. Kutu başlıkları (title) ve açıklamaları (description), tezin ampirik, politik ve tarihsel çıplak gerçeğini doğrudan ve cesurca yansıtmalıdır.
-- Tezin tarihsel, coğrafi veya konjonktürel bağlamı eğer ikincil akademik literatür (makale/kitap) taranarak incelenecekse, orası PRIMARY_MATERIAL değil, bir PROBLEMATIZATION kutusudur.
+- Tezin tarihsel, coğrafi veya konjonktürel bağlamı eğer ikincil akademik literatür (makale/kitap) taranarak incelenecekse, orası PRIMARY_MATERIAL değil, bir PROBLEMATIZATION kutusudur. Bu kutunun semantik sorguları da gramatik cümle yapısından arındırılmalı; spesifik aktör, mekân, tarih aralığı ve olayı niteleyen yalın isim öbeklerinin yan yana gelmesiyle kurulmalıdır.
 
 KUTU TİPİ 3 — PRIMARY_MATERIAL (Birincil Malzeme ve Ampirik Veri Havuzu):
 - Bu kutu, araştırmacının yöntemine göre sahada bizzat üreteceği (mülakat deşifreleri, anketler, saha notları) veya arşivlerden toplayacağı (dönemsel yayınlar, gazete kupürleri, tarihi belgeler, resmi raporlar) her türlü ham ve birincil ampirik malzemeyi temsil eder. Dışarıdan akademik literatür barındırmaz, kullanıcının kendi yüklemeleri için ayrılmış boş bir kütüphane rafıdır.
@@ -105,7 +105,10 @@ KUTU TİPİ 3 — PRIMARY_MATERIAL (Birincil Malzeme ve Ampirik Veri Havuzu):
 KUTU TİPİ 4 — DATA_PROTOCOL (Metodoloji ve Yöntem):
 - Çalışmada kullanılan veri toplama ve analiz yöntemini (Nitel, Nicel, Karma, Arşiv vb.) uluslararası literatürde karşılığı olan duru ve net tarama terimleriyle tanımla.
 
-# SEMANTİK SORGULARDE GİRDİ SADAKATİ KONTROLÜ
+# SEMANTİK SORGULARDA JENERİK KUYRUK YASAKLAMA ANAYASASI
+Sorgularda (semanticSearchQueries) "offers the structural tools to", "represents a shift from", "examines how the dynamics of", "redefines power as a decentralized network", "provides critical insights into" gibi jenerik, akademik makale taklidi yapan, yargı bildiren veya yapısal bağlaçlar içeren TARTIŞMA KUYRUKLARI VE GRAMATİK CÜMLE YAPILARI KESİNLİKLE YASAKTIR. Sorgular, OpenAlex'in semantik arama motorunu (GTE Large embedding modelini) doğrudan besleyecek şekilde; sadece saf, yoğun isimler, teoriler, kurucu yazarlar ve ampirik etiketlerin yan yana eklenmesiyle oluşturulmalıdır.
+
+# SEMANTİK SORGULARDA GİRDİ SADAKATİ KONTROLÜ
 semanticSearchQueries alanları oluşturulurken, yalnızca ve kesinlikle kullanıcı tarafından sağlanan girdi matrisindeki kavramlar, teoriler, yöntemler, aktörler ve iddialar temel alınmalıdır. Model, girdi metninde açıkça zikredilmeyen hiçbir tarihsel veya güncel olayı, dışsal kuramsal açılımı veya varsayımı bu sorgulara ekleyemez.
 
 # ANAHTAR KAVRAMLAR İÇİN SIKI KAPSAMLANDIRMA (STRICT SCOPING)
@@ -119,8 +122,7 @@ concepts dizisi serbest bir çağrışım alanı değildir. Kurallar:
    - title alanı KESİNLİKLE, ASLA, HİÇBİR KOŞULDA İNGİLİZCE OLAMAZ. Kuramsal kavram evrensel düzeyde literatüre ait olsa bile, başlık saf Türkçe akademik dille üretilmelidir. Örneğin "Antonio Gramsci's War of Position" yazmak yerine "Antonio Gramsci'nin Mevzi Savaşı Kavramı" yazmalısınız. Bu kuralın tek bir istisnası dahi yoktur.
    - description ve concepts alanları da KESİNLİKLE TÜRKÇE olmalıdır.
    - semanticSearchQueries içindeki tüm sorgular KESİNLİKLE akademik İNGİLİZCE ile üretilmelidir.
-2. CONCEPTUAL SEMANTİK SORGULAR: CONCEPTUAL kutusunun semanticSearchQueries dizisindeki her bir eleman, doğrudan [Kurucu Yazar Tam Adı] ile başlayarak ve hemen ardından o yazarın patentine sahip olduğu [Teknik Marka Kavram]'ı yerleştirerek üretilmelidir (Örn: "Michel Foucault's governmentality framework"). Yerel coğrafi bağlam, ülke adı, jenerik geçiş cümleleri ve laf kalabalığı %100 yasaktır. Diğer kutuların semantik sorguları tezin gerçek öznelerini, aktörlerini ve yıllarını içeren narrative abstract formatında yazılmalıdır.
-3. FORMAT: Yanıtın, sağlanan JSON şemasına tamamen uygun, doğrulanmış ve parse edilebilir bir ham JSON nesnesi olmalıdır. Follow the provided JSON schema exactly. Do not add extra fields.
+2. FORMAT: Yanıtın, sağlanan JSON şemasına tamamen uygun, doğrulanmış ve parse edilebilir bir ham JSON nesnesi olmalıdır. Follow the provided JSON schema exactly. Do not add extra fields.
 
 # ESNEK VE DİNAMİK ÖRNEK MİMARİ
 <ornek_girdi_matrisi>
@@ -143,9 +145,9 @@ concepts dizisi serbest bir çağrışım alanı değildir. Kurallar:
       "description": "Foucaulcu iktidar analizi, yönetimsellik ve Marksist yeniden üretim eleştirisinin neoliberal borçluluk ve süreç olarak özne inşası bağlamındaki evrensel kuramsal temelleri.",
       "concepts": ["Yönetimsellik", "Özne İnşası", "İktidar İlişkileri", "Yeniden Üretim"],
       "semanticSearchQueries": [
-        "Michel Foucault's governmentality framework redefines power as a decentralized network of disciplinary mechanisms that operate through the conduct of conduct.",
-        "Maurizio Lazzarato's theory of the indebted man positions debt as a constitutive power relation that governs economic subjects through obligation and repayment.",
-        "Karl Marx's reproduction theory provides the structural backbone for understanding how financial mechanisms extract value from social reproduction."
+        "Michel Foucault governmentality framework biopolitics disciplinary mechanisms power relations theory",
+        "Maurizio Lazzarato indebted man theory debt capitalism constitutive power relations economic subjects",
+        "Karl Marx social reproduction theory capital accumulation labor power financialization exploitation"
       ]
     },
     {
@@ -154,7 +156,7 @@ concepts dizisi serbest bir çağrışım alanı değildir. Kurallar:
       "description": "Tezin tarihsel ve coğrafi bağlamını oluşturan Türkiye'nin neoliberal finansallaşma dalgaları, borçlandırma mekanizmaları ve emekçi sınıfların borçluluk deneyimini ikincil akademik literatür üzerinden inceleyen analitik çerçeve.",
       "concepts": ["Türkiye Finansallaşması", "Borçluluk Rejimi", "Bağlamsal Analiz", "Neoliberal Dönüşüm"],
       "semanticSearchQueries": [
-        "The trajectory of neoliberal transformation and economic financialization in Turkey has established a distinctive regime of household and working-class indebtedness. Macroeconomic shifts, recurrent structural crises, and state-led financial inclusion policies have systematically driven laboring populations into institutional debt markets. Exploring this national context through secondary economic history literature provides critical insights into how localized financial patterns interact with structural labor market flexibilization."
+        "Turkey political economy neoliberal transformation financialization household debt working class indebtedness structural crisis capital accumulation labor market flexibilization"
       ]
     },
     {
@@ -163,7 +165,7 @@ concepts dizisi serbest bir çağrışım alanı değildir. Kurallar:
       "description": "Araştırmacının sahada bizzat üreteceği mülakat deşifreleri, anketler, saha notları ile arşiv ve kütüphanelerden derlenecek dönemsel yayınlar, gazete kupürleri ve resmi raporlar gibi her türlü ham ve ampirik birincil kaynak. Dışarıdan akademik literatür barındırmaz, kullanıcının kendi yüklemeleri için ayrılmış boş bir kütüphane rafıdır.",
       "concepts": ["Birincil Kaynaklar", "Mülakat Deşifreleri", "Saha Notları", "Arşiv Belgeleri"],
       "semanticSearchQueries": [
-        "Primary interview transcripts, field notes, survey data, historical archives, newspaper clippings, and official reports collected by the researcher. This repository serves as a dedicated storage space for raw empirical materials and primary source documentation."
+        "primary interview transcripts field notes qualitative survey data historical archives newspaper clippings official policy reports empirical raw data"
       ]
     }
   ]
@@ -191,7 +193,6 @@ export function buildThesisBoxGenerationPrompt(
   }[],
 ): string {
   const matrixJson = JSON.stringify(params, null, 2);
-
   const thesesXml =
     overlapTheses && overlapTheses.length > 0
       ? `\n<tez_adaylari>\n${JSON.stringify(overlapTheses, null, 2)}\n</tez_adaylari>`
@@ -203,12 +204,12 @@ END_THESIS_MATRIX
 ${thesesXml}
 
 # GÖREV VE TALİMAT
-Sistem talimatında tanımlanan esnek ontolojik kutu mimarisine, dil dengesine, DOĞAL EKSEN KURALI, SEMANTİK SORGULARDA GİRDİ SADAKATİ KONTROLÜ, ANAHTAR KAVRAMLAR İÇ TR SIKI KAPSAMLANDIRMA ve AMPİRİK CESARET VE ÖZNE SADAKATİ ilkelerine tam olarak bağlı kalarak yukarıdaki 6 boyutlu matris yapısını analiz et.
+Sistem talimatında tanımlanan esnek ontolojik kutu mimarisine, dil dengesine, DOĞAL EKSEN KURALI, SEMANTİK SORGULARDA JENERİK KUYRUK YASAKLAMA ANAYASASI, SEMANTİK SORGULARDA GİRDİ SADAKATİ KONTROLÜ, ANAHTAR KAVRAMLAR İÇİN TR SIKI KAPSAMLANDIRMA ve AMPİRİK CESARET VE ÖZNE SADAKATİ ilkelerine tam olarak bağlı kalarak yukarıdaki 6 boyutlu matris yapısını analiz et.
 
 <tez_adaylari> etiketi içinde listelenen her bir sınırdaş tezi (id, title, author ve axes bilgileriyle birlikte) incele. Her tezi, konusal içeriği ve örtüşme eksenlerine (subject, theory, methodology) göre en uygun kutuya ata. Bu eşleme, hiçbir tezin boşta kalmaması için zorunludur. Eğer bir tez hiçbir kutuya konusal olarak uymuyorsa, en yakın kutuya yerleştir. Her kutunun mappedThesisIds alanı, o kutuya atanan tezlerin id'lerini içermelidir. Eşleşen tez yoksa mappedThesisIds boş dizi olmalıdır.
 
 1. **Doğal Eksen Uyumu:** Girdideki en baskın karakteristiğe (kronolojik, tematik veya tekli odak) karar ver ve PROBLEMATIZATION kutularını sadece bu eksende böl veya tek kutuda tut. Yapısal çelişki üretme.
-2. **Girdi Sadakati:** Arama sorgularında (semanticSearchQueries) yaratıcılığını sadece akademik İngilizce sentezi için kullan. Matriste açıkça geçmeyen harici hiçbir kavramı, alt kırılımı veya tarihsel iddiayı arama sorgularına enjekte etme.
+2. **Girdi Sadakati ve Saf Vektör Uzayı:** Arama sorgularında (semanticSearchQueries) kesinlikle cümle kurma, edebi bağlaçlar veya jenerik kuyruklar kullanma. Yaratıcılığını sadece matristeki verileri akademik İngilizce kelime/kuramsal entity dizilerine dönüştürmek için kullan. Matriste açıkça geçmeyen harici hiçbir kavramı, alt kırılımı veya tarihsel iddiayı arama sorgularına enjekte etme.
 3. **Sıkı Kavram Kapsamı:** concepts dizilerini sadece ilgili kutunun kendi başlığı veya açıklama metninden doğrudan süzerek doldur. Dışarıdan bağımsız etiket uydurma.
 4. **Tez Eşleme Zorunluluğu:** <tez_adaylari> listesindeki her tez en az bir kutuya atanmalıdır. mappedThesisIds alanı zorunludur.
 
