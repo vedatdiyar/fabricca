@@ -29,6 +29,7 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --radius: 0.5rem;
+  --font-logo: var(--font-fredoka);
 }
 
 :root {
@@ -98,7 +99,7 @@
     font-family: var(--font-mono);
   }
   .badge-brand {
-    font-family: var(--font-serif);
+    font-family: var(--font-logo);
   }
   .academic-reading-zone {
     @apply text-base leading-relaxed tracking-normal;

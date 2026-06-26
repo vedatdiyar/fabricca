@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, Outfit, JetBrains_Mono } from "next/font/google";
+import {
+  Space_Grotesk,
+  Outfit,
+  JetBrains_Mono,
+  Fredoka,
+} from "next/font/google";
 import "./globals.css";
 
 import QueryProvider from "@/components/providers/query-provider";
@@ -21,6 +26,12 @@ const fontMono = JetBrains_Mono({
   subsets: ["latin"],
   weight: ["100", "200", "300", "400", "500", "600", "700", "800"],
   variable: "--font-mono",
+});
+
+const fontFredoka = Fredoka({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-fredoka",
 });
 
 export const metadata: Metadata = {
@@ -51,7 +62,7 @@ export default function RootLayout({
     <html
       lang="tr"
       suppressHydrationWarning
-      className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable}`}
+      className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable} ${fontFredoka.variable}`}
     >
       <body>
         <QueryProvider>
