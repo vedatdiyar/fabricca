@@ -118,6 +118,17 @@ export type OriginalityReport = InferSelectModel<typeof originalityReports>;
 /** Yeni özgünlük raporu oluşturma tipi (insert). */
 export type NewOriginalityReport = InferInsertModel<typeof originalityReports>;
 
+export const taskStatusEnum = pgEnum("task_status", [
+  "TODO",
+  "IN_PROGRESS",
+  "DONE",
+]);
+export const taskPriorityEnum = pgEnum("task_priority", [
+  "HIGH",
+  "MEDIUM",
+  "LOW",
+]);
+
 export const boxTypeEnum = pgEnum("box_type_enum", [
   "PROBLEMATIZATION",
   "CONCEPTUAL",
@@ -199,3 +210,35 @@ export type LibraryResource = InferSelectModel<typeof libraryResources>;
 
 /** Yeni kütüphane kaynağı oluşturma tipi (insert). */
 export type NewLibraryResource = InferInsertModel<typeof libraryResources>;
+
+/**
+ * Kanban Görevleri tablosu.
+ * Kullanıcının manuel olarak eklediği akademik görevleri saklar.
+ * thesisBoxId üzerinden konu kutularına dinamik bağlantılıdır;
+ * kutu silinirse görev korunur (SET NULL).
+ */
+export const tasks = pgTable(
+  "tasks",
+  {
+    id: serial().primaryKey(),
+    userId: integer()
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    thesisBoxId: integer().references(() => thesisBoxes.id, {
+      onDelete: "set null",
+    }),
+    title: text().notNull(),
+    description: text(),
+    status: taskStatusEnum("status").default("TODO").notNull(),
+    priority: taskPriorityEnum("priority").default("MEDIUM").notNull(),
+    createdAt: timestamp().defaultNow().notNull(),
+    updatedAt: timestamp().defaultNow().notNull(),
+  },
+  (table) => [index("idx_tasks_user_id").on(table.userId)],
+);
+
+/** Veri tabanından okunan görev tipi (select). */
+export type Task = InferSelectModel<typeof tasks>;
+
+/** Yeni görev oluşturma tipi (insert). */
+export type NewTask = InferInsertModel<typeof tasks>;

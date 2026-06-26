@@ -6,11 +6,11 @@ const TEZARA_FETCH_HEADERS = {
   connection: "keep-alive",
 } as const;
 
-const MAX_CONCURRENCY = 2;
+const MAX_CONCURRENCY = 4;
 const MIN_DELAY_MS = 0;
-const MAX_DELAY_MS = 700;
+const MAX_DELAY_MS = 400;
 const BURST_WINDOW_MS = 3000;
-const MAX_BURST = 6;
+const MAX_BURST = 12;
 
 interface QueueItem {
   url: string;

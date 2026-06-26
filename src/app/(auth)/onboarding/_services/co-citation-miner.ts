@@ -109,6 +109,7 @@ export async function mineCoCitations(
 
   const queryCandidates = new Map<number, Map<string, number>>();
   const activeQueries = queries.filter((q) => q.trim().length > 0);
+  const apiKey = process.env.OPENALEX_API_KEY;
 
   for (let i = 0; i < activeQueries.length; i++) {
     const query = activeQueries[i];
@@ -120,46 +121,94 @@ export async function mineCoCitations(
       per_page: "20",
       select: "id,title,referenced_works,cited_by_count",
     });
+    const apiKey = process.env.OPENALEX_API_KEY;
+    if (apiKey) params.set("api_key", apiKey);
     const url = `https://api.openalex.org/works?${params.toString().replace(/\+/g, "%20")}`;
 
-    try {
-      log.info("openalex_semantic_search", {
-        service: "boxes",
-        data: { queryIndex: i, query: query.substring(0, 100) },
-      });
+    let emptyRetries = 0;
+    const MAX_EMPTY_RETRIES = 2;
 
-      const response = await fetchWithRetry(
-        url,
-        {
-          headers: { "User-Agent": OPENALEX_USER_AGENT },
-          signal: AbortSignal.timeout(15000),
-        },
-        log,
-      );
+    while (true) {
+      try {
+        log.info("openalex_semantic_search", {
+          service: "boxes",
+          data: {
+            queryIndex: i,
+            query: query.substring(0, 100),
+            attempt: emptyRetries + 1,
+          },
+        });
 
-      if (response.ok) {
-        const data = (await response.json()) as { results?: OpenAlexWork[] };
-        const results = data.results || [];
+        const response = await fetchWithRetry(
+          url,
+          {
+            headers: { "User-Agent": OPENALEX_USER_AGENT },
+            signal: AbortSignal.timeout(15000),
+          },
+          log,
+        );
 
-        for (const item of results) {
-          const refs = item.referenced_works || [];
-          for (const ref of refs) {
-            if (!ref) continue;
-            candidatesMap.set(ref, (candidatesMap.get(ref) || 0) + 1);
+        if (response.ok) {
+          const data = (await response.json()) as {
+            results?: OpenAlexWork[];
+          };
+          const results = data.results || [];
+
+          if (results.length > 0) {
+            for (const item of results) {
+              const refs = item.referenced_works || [];
+              for (const ref of refs) {
+                if (!ref) continue;
+                candidatesMap.set(ref, (candidatesMap.get(ref) || 0) + 1);
+              }
+            }
+            break;
           }
+
+          // OpenAlex bazen 200 OK ile boş dizi döner (geçici API sorunu).
+          // Boş sonuçta rate-limit'e saygılı bir gecikmeyle yeniden dene.
+          emptyRetries++;
+          if (emptyRetries > MAX_EMPTY_RETRIES) {
+            log.warn("openalex_semantic_search_empty", {
+              service: "boxes",
+              data: {
+                queryIndex: i,
+                query: query.substring(0, 60),
+                retriesExhausted: true,
+              },
+            });
+            break;
+          }
+
+          log.warn("openalex_semantic_search_empty_retry", {
+            service: "boxes",
+            data: {
+              queryIndex: i,
+              attempt: emptyRetries,
+              maxRetries: MAX_EMPTY_RETRIES,
+              query: query.substring(0, 60),
+            },
+          });
+
+          await new Promise((resolve) =>
+            setTimeout(resolve, OPENALEX_DELAY_MS),
+          );
+          continue;
         }
-      } else {
+
         log.warn("openalex_semantic_search_failed", {
           service: "boxes",
           data: { status: response.status, query: query.substring(0, 60) },
         });
+        break;
+      } catch (err) {
+        log.error("openalex_request_failed", {
+          service: "boxes",
+          error: err instanceof Error ? err : new Error(String(err)),
+          data: { query: query.substring(0, 60) },
+        });
+        break;
       }
-    } catch (err) {
-      log.error("openalex_request_failed", {
-        service: "boxes",
-        error: err instanceof Error ? err : new Error(String(err)),
-        data: { query: query.substring(0, 60) },
-      });
     }
 
     // Abide by OpenAlex rate limits (max 1-2 requests/sec)
@@ -224,6 +273,7 @@ export async function mineCoCitations(
     filter: `openalex_id:${candidateIds.join("|")}`,
     select: "id,title,authorships,publication_year,cited_by_count",
   });
+  if (apiKey) filterParams.set("api_key", apiKey);
   const detailsUrl = `https://api.openalex.org/works?${filterParams.toString().replace(/\+/g, "%20")}`;
 
   interface ResolvedWorkExtended extends FoundationalQuery {
@@ -276,6 +326,7 @@ export async function mineCoCitations(
                 per_page: "10",
                 select: "id,title,authorships,publication_year,cited_by_count",
               });
+              if (apiKey) fallbackParams.set("api_key", apiKey);
               const fallbackUrl = `https://api.openalex.org/works?${fallbackParams.toString().replace(/\+/g, "%20")}`;
               const fallbackResponse = await fetchWithRetry(
                 fallbackUrl,

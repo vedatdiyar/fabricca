@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { createFlowId, Logger } from "@/lib/logger";
 import { db } from "@/db";
-import { users, thesisMatrices, originalityReports } from "@/db/schema";
+import { users, thesisMatrices, originalityReports, tasks } from "@/db/schema";
 import { getSession } from "@/session";
 import {
   SESSION_COOKIE_NAME,
@@ -64,6 +64,8 @@ export async function resetOnboardingAction() {
       redirect("/login");
       return;
     }
+
+    await db.delete(tasks).where(eq(tasks.userId, session.userId));
 
     await db
       .delete(originalityReports)

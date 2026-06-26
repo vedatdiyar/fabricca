@@ -1,6 +1,6 @@
 "use server";
 
-import { eq, asc, desc } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { libraryResources, type LibraryResource } from "@/db/schema";
@@ -39,18 +39,37 @@ export async function getBoxResourcesAction(
       redirect("/login");
     }
 
-    const resources = await db
+    const rawResources = await db
       .select()
       .from(libraryResources)
-      .where(eq(libraryResources.thesisBoxId, boxId))
-      .orderBy(
-        desc(libraryResources.isFoundational),
-        desc(libraryResources.relevanceScore),
-        asc(libraryResources.id),
-      )
-      .limit(5);
+      .where(eq(libraryResources.thesisBoxId, boxId));
 
-    return { success: true, data: resources };
+    // Öncelikli Sıralama:
+    // 1. Kurucu Eserler (isFoundational = true)
+    // 2. YÖK Tezleri (relevanceScore = 0.99)
+    // 3. Normal Makaleler (relevanceScore desc)
+    const sortedResources = [...rawResources].sort((a, b) => {
+      // 1. Kurucu Eser Önceliği
+      if (a.isFoundational && !b.isFoundational) return -1;
+      if (!a.isFoundational && b.isFoundational) return 1;
+
+      // 2. YÖK Tezi Önceliği
+      if (!a.isFoundational && !b.isFoundational) {
+        const isThesisA = a.relevanceScore === 0.99;
+        const isThesisB = b.relevanceScore === 0.99;
+        if (isThesisA && !isThesisB) return -1;
+        if (!isThesisA && isThesisB) return 1;
+      }
+
+      // 3. Alaka Düzeyi
+      const scoreA = a.relevanceScore ?? 0;
+      const scoreB = b.relevanceScore ?? 0;
+      if (scoreA !== scoreB) return scoreB - scoreA;
+
+      return a.id - b.id;
+    });
+
+    return { success: true, data: sortedResources.slice(0, 5) };
   } catch (err) {
     log.error("get_box_resources_failed", {
       service: "library",

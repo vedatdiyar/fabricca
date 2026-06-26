@@ -23,7 +23,7 @@ export interface SiftingDiagnostic {
 
 /**
  * Deduplicates search results, scores relevance via Cohere Rerank v4 Pro,
- * selects top 15, fetches full thesis details, and returns all valid
+ * selects top 20, fetches full thesis details, and returns all valid
  * theses for jury analysis.
  *
  * @param params - Target thesis parameters.
@@ -141,7 +141,7 @@ export async function siftAndFetchDetails(
           }
           return scoreDiff;
         })
-        .slice(0, 15);
+        .slice(0, 20);
 
       topIds = topResults.map((r) => uniqueTheses[r.index].id);
     } catch (err) {

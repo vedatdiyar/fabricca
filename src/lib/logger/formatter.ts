@@ -34,7 +34,8 @@ export type ServiceName =
   | "literature"
   | "library"
   | "openalex"
-  | "crossref";
+  | "crossref"
+  | "dashboard";
 
 export type LogLevel = "info" | "warn" | "error";
 export interface TokenUsage {
@@ -59,6 +60,7 @@ const SERVICE_ANSI: Partial<Record<ServiceName, string>> = {
   risk: A.yellow,
   literature: A.magenta,
   complete: A.green,
+  dashboard: A.cyan,
 };
 
 const SERVICE_DISPLAY: Record<ServiceName, string> = {
@@ -80,6 +82,7 @@ const SERVICE_DISPLAY: Record<ServiceName, string> = {
   library: "LIBRARY",
   openalex: "OPENALEX",
   crossref: "CROSSREF",
+  dashboard: "DASHBOARD",
 };
 
 const ACTION_DISPLAY_MAP: Record<string, { emoji: string; label: string }> = {

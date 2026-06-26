@@ -333,31 +333,50 @@ export function calculateOriginalityRisk(
       axes,
     };
 
-    // Jury elimination filter: only theses with at least one KRITIK or ORTA
-    // axis are kept in the risk table. All others are relegated to
-    // eliminatedTheses.
-    const hasKRITIKorORTA = (
-      [
-        axes.subject,
-        axes.theory,
-        axes.methodology,
-        axes.context,
-      ] as OverlapLevel[]
-    ).some((level) => level === "KRITIK" || level === "ORTA");
+    // Elimination rule 1: subject AND context both OZGUN → fundamentally
+    // unrelated, regardless of theory/methodology overlap.
+    const subjectIsOriginal = axes.subject === "OZGUN";
+    const contextIsOriginal = (axes.context ?? "OZGUN") === "OZGUN";
 
-    if (hasKRITIKorORTA) {
-      calculatedOverlapTable.push(thesisEntry);
-    } else {
+    if (subjectIsOriginal && contextIsOriginal) {
       logger?.info("originality_thesis_eliminated", {
         service: "originality",
         data: {
           context: "calculateOriginalityRisk",
+          reason: "subject_and_context_both_original",
           thesisId: detail.id,
           thesisTitle: detail.title,
           axes,
         },
       });
       eliminatedTheses.push(thesisEntry);
+    } else {
+      // Elimination rule 2: only theses with at least one KRITIK or ORTA
+      // axis are kept in the risk table.
+      const hasKRITIKorORTA = (
+        [
+          axes.subject,
+          axes.theory,
+          axes.methodology,
+          axes.context,
+        ] as OverlapLevel[]
+      ).some((level) => level === "KRITIK" || level === "ORTA");
+
+      if (hasKRITIKorORTA) {
+        calculatedOverlapTable.push(thesisEntry);
+      } else {
+        logger?.info("originality_thesis_eliminated", {
+          service: "originality",
+          data: {
+            context: "calculateOriginalityRisk",
+            reason: "all_axes_original",
+            thesisId: detail.id,
+            thesisTitle: detail.title,
+            axes,
+          },
+        });
+        eliminatedTheses.push(thesisEntry);
+      }
     }
   }
 
@@ -377,7 +396,7 @@ export function calculateOriginalityRisk(
 export async function analyzeOriginalityRisk(
   params: AnalyzeOriginalityRiskParams,
   log: Logger,
-  chunkSize = 3,
+  chunkSize = 4,
 ): Promise<{
   overlapTable: {
     id: number;

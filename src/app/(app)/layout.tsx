@@ -42,7 +42,7 @@ async function AppLayoutInner({
   return (
     <div className="min-h-screen">
       <Header userName={session.name} />
-      <main className="mx-auto w-full max-w-7xl px-4 pb-20 pt-24 sm:px-6 lg:px-8 md:pb-6">
+      <main className="mx-auto w-full max-w-7xl px-4 pb-20 pt-8 sm:px-6 lg:px-8 md:pb-6">
         {children}
       </main>
     </div>

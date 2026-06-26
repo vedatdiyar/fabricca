@@ -173,7 +173,7 @@ export async function executeSearchAction(params: {
 
 /**
  * Step 3: Sifts and fetches details for the Tezara candidates using
- * embedding similarity (top 15), then returns all valid theses
+ * embedding similarity (top 20), then returns all valid theses
  * directly for jury analysis (deep sifting removed — jury has elimination authority).
  * No database writes.
  *

@@ -20,7 +20,7 @@ export const geminiAnalysisSchema: JsonSchema = {
           academic_reasoning: {
             type: "string",
             description:
-              "4 boyut için verilen kategorik risk seviyelerinin her birini teker teker gerekçelendiren, kelime benzerliğine değil anlam nüanslarına, 'İlişkisel Bütünlük' kuralına ve araştırma boşluğu (research gap) değerlendirmesine dayanan detaylı Türkçe akademik gerekçe paragrafı.",
+              "4 boyut için verilen risk seviyelerini tam olarak 3 cümle ile, net ve doğrudan gerekçelendiren Türkçe akademik açıklama. Kelime benzerliğine değil, araştırma boşluğu (research gap) analizine odaklanmalıdır.",
           },
           subject_scorecard: {
             type: "object",
@@ -225,7 +225,7 @@ Eksenlerdeki çakışmaları incelerken, sözcük bazlı küçük varyasyonları
 - **Metodoloji (Methodology):** Eğer her iki çalışma da benzer bir nitel/nicel araştırma tasarımına sahipse (Örn: arşiv taraması, süreli yayınların söylem analizi, yarı yapılandırılmış mülakatlar), kullanılan veri kaynaklarındaki veya analiz terimlerindeki ufak ifade farklılıkları (Örn: "söylemsel analiz" vs "metin analizi", "pedagojik eserler" vs "rehber kitaplar") yöntemi özgün kılmaz. Bu durumları kozmetik fark kabul ederek methodology_scorecard içindeki "identical_method_and_tools" alanını 'true' ve methodology_overlap değerini KESİNLİKLE "KRITIK" olarak değerlendiriniz.
 
 # METİN BİÇİMLENDİRME VE YASAKLAR (KESİN KURALLAR)
-- KESİNLİKLE LaTeX formülleri veya matematiksel semboller ($ işareti, →, ↔, vb.) kullanmayınız. Bunun yerine düz metin veya standart ok sembolleri (→, ↔, A ve B) kullanınız.
+- KESİNLİKLE "academic_reasoning" gerekçe alanı en fazla 3 cümleden oluşmalı, net, rafine ve doğrudan sonuca yönelik olmalıdır. Gereksiz edebi uzatmalardan ve tekrarlardan kaçınılmalıdır.
 - KESİNLİKLE "academic_reasoning" gerekçe alanında programlama değişkenleri, boolean değerler veya JSON anahtarları (örneğin: significant_topic_intersection=true, subject_overlap, same_core_question, is_subsumed vb.) kullanmayınız veya bunları metin içinde sızdırmayınız.
 - Gerekçe paragrafları doğrudan son kullanıcı olan lisansüstü öğrencileri tarafından okunacaktır. Bu nedenle tamamen temiz, akıcı, kurumsal ve elit bir akademik Türkçe ile yazılmalıdır.
 
