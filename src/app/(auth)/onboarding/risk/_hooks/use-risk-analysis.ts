@@ -96,6 +96,9 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
     let cancelled = false;
 
     async function init() {
+      // Reset proceeding flag on any mount — protects against stale BF Cache
+      dispatch({ type: "SET_PROCEDING", payload: false });
+
       // 1) Check Zustand cache first — avoids redundant DB reads and prevents
       //    the auto-trigger from re-running analysis after enrichment.
       const cachedReport = useOnboardingStore.getState().reportData;
@@ -212,8 +215,10 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
    */
   const handleProceed = useCallback(async () => {
     dispatch({ type: "SET_PROCEDING", payload: true });
-    const result = await proceedFromRisk();
-    if (!result.success) {
+    try {
+      await proceedFromRisk();
+      dispatch({ type: "SET_PROCEDING", payload: false });
+    } catch {
       dispatch({ type: "SET_PROCEDING", payload: false });
     }
   }, [proceedFromRisk]);

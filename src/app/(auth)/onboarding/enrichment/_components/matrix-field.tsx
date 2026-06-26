@@ -65,6 +65,7 @@ export function MatrixField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={required}
+        rows={5}
         className="textarea-academic border-border"
       />
       {hint && (

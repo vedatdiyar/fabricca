@@ -324,7 +324,7 @@ export function LiteratureReviewContent() {
                 Kaydediliyor...
               </span>
             ) : (
-              "Onayla ve Teze Başla."
+              "Onayla ve Teze Başla"
             )}
           </Button>
         )}

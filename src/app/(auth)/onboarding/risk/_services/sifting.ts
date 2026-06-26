@@ -1,7 +1,7 @@
 import { fetchThesisDetails } from "@/lib/tezara";
 import type { Logger } from "@/lib/logger";
 import type { TezaraThesisSummary, TezaraThesisDetails } from "@/lib/types";
-import { siftThesesWithLLM } from "./llm-sifter";
+import { rerankTheses } from "@/lib/cohere";
 
 export interface SiftAndFetchDetailsParams {
   studyTitle: string;
@@ -22,13 +22,14 @@ export interface SiftingDiagnostic {
 }
 
 /**
- * Deduplicates search results, selects top 15 via LLM sifting (Gemini),
- * fetches full thesis details, and returns all valid theses for jury analysis.
+ * Deduplicates search results, scores relevance via Cohere Rerank v4 Pro,
+ * selects top 15, fetches full thesis details, and returns all valid
+ * theses for jury analysis.
  *
  * @param params - Target thesis parameters.
  * @param tezaraSearchResults - Parallel search results from Tezara containing candidates.
  * @param log - Logger instance.
- * @returns Object containing finalTheses (all LLM-selected theses with valid details) and diagnostic info.
+ * @returns Object containing finalTheses (all Cohere-selected theses with valid details) and diagnostic info.
  */
 export async function siftAndFetchDetails(
   params: SiftAndFetchDetailsParams,
@@ -104,9 +105,9 @@ export async function siftAndFetchDetails(
     let topIds: number[] = [];
     let fetchFailed = 0;
 
-    // LLM Sifting (Stage 1): Gemini selects top 15 theses conceptually
+    // Stage 1 — Cohere Rerank: semantic relevance scoring against the thesis matrix
     const siftStart = performance.now();
-    log.info("originality_sift_llm_start", {
+    log.info("originality_sift_cohere_start", {
       service: "originality",
       data: {
         count: uniqueTheses.length,
@@ -115,9 +116,36 @@ export async function siftAndFetchDetails(
     });
 
     try {
-      topIds = await siftThesesWithLLM(params, uniqueTheses, log);
+      // Build the rerank query from all 6 thesis matrix fields
+      const rerankQuery = [
+        `studyTitle: ${params.studyTitle}`,
+        `researchQuestion: ${params.researchQuestion}`,
+        `mainClaim: ${params.mainClaim}`,
+        `theoreticalFramework: ${params.theoreticalFramework}`,
+        `methodology: ${params.methodology}`,
+        `researchScope: ${params.researchScope}`,
+      ].join("\n");
+
+      // Documents are bare thesis titles (no metadata) for cross-lingual cross-attention
+      const titles = uniqueTheses.map((t) => t.title);
+
+      const { results } = await rerankTheses(rerankQuery, titles, log);
+
+      // Sort descending by relevance score, with ID-based tie-breaker
+      // for FP16 micro-fluctuations below 0.001
+      const topResults = results
+        .sort((a, b) => {
+          const scoreDiff = b.relevanceScore - a.relevanceScore;
+          if (Math.abs(scoreDiff) < 0.001) {
+            return uniqueTheses[a.index].id - uniqueTheses[b.index].id;
+          }
+          return scoreDiff;
+        })
+        .slice(0, 15);
+
+      topIds = topResults.map((r) => uniqueTheses[r.index].id);
     } catch (err) {
-      log.error("originality_sift_llm_failed", {
+      log.error("originality_sift_cohere_failed", {
         service: "originality",
         error: err,
         data: { context: params.studyTitle },
@@ -134,7 +162,7 @@ export async function siftAndFetchDetails(
     }
     const passedStage1 = Array.from(selectedThesesMap.values());
 
-    log.info("originality_sift_llm_success", {
+    log.info("originality_sift_cohere_success", {
       service: "originality",
       durationMs: performance.now() - siftStart,
       data: {
@@ -201,7 +229,7 @@ export async function siftAndFetchDetails(
     );
 
     log.preview(
-      "Final Thesis IDs (LLM selected → jury)",
+      "Final Thesis IDs (Cohere selected → jury)",
       validDetails.map((t) => ({ id: t.id, title: t.title })),
     );
 

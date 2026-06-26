@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useOnboardingStore } from "@/lib/store/onboarding-store";
 
 const STEPS = [
   { key: "matrix", label: "Tez Matrisi", route: "/onboarding/matrix" },
@@ -29,6 +30,8 @@ export function OnboardingStepper({
   const router = useRouter();
 
   const currentIdx = STEPS.findIndex((s) => s.route === pathname);
+  const isHydrated = useOnboardingStore.persist?.hasHydrated() ?? false;
+  const stepsCompleted = useOnboardingStore((s) => s.stepsCompleted);
 
   return (
     <nav
@@ -40,7 +43,10 @@ export function OnboardingStepper({
           const isActive = currentIdx === index;
           const isCompleted = currentIdx > index;
           const isFuture = currentIdx < index;
-          const hasData = stepsData[step.key] ?? false;
+          const hasData =
+            stepsData[step.key] ??
+            (isHydrated ? stepsCompleted[step.key] : false) ??
+            false;
           const isDisabled = isFuture && !hasData;
 
           return (

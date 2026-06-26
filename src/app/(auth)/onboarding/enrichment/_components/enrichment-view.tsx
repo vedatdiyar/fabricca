@@ -143,8 +143,6 @@ export function EnrichmentView() {
     mainClaim: "",
   });
 
-  const setBoxes = useOnboardingStore((s) => s.setBoxes);
-  const setLiteraturePool = useOnboardingStore((s) => s.setLiteraturePool);
   const { runRiskPipeline } = useOnboardingNavigation();
 
   useEffect(() => {
@@ -199,9 +197,8 @@ export function EnrichmentView() {
       }
 
       // Eski downstream Zustand state'ini temizle.
-      setBoxes(null);
-      setLiteraturePool([]);
-      useOnboardingStore.getState().clearReportData();
+      useOnboardingStore.getState().clearDownstreamData("enrichment");
+      useOnboardingStore.getState().setStepCompleted("enrichment");
 
       const matrixInput = {
         studyTitle: formState.studyTitle,
@@ -222,6 +219,7 @@ export function EnrichmentView() {
 
       // Tamamlanan raporu Zustand'a yaz; risk sayfası buradan okur.
       useOnboardingStore.getState().setReportData(pipelineResult.data!);
+      useOnboardingStore.getState().setStepCompleted("risk");
 
       setIsPending(false);
       toast.success("Tez matrisi kaydedildi. Risk analizi tamamlandı.");

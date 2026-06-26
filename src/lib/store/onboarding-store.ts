@@ -49,6 +49,9 @@ interface OnboardingState extends LoadingState {
   addToLiteraturePool: (entry: LiteraturePoolEntry) => void;
   cachedPapers: Record<string, RawPaper[]>;
   setCachedPapers: (papers: Record<string, RawPaper[]>) => void;
+  stepsCompleted: Record<string, boolean>;
+  setStepCompleted: (step: string) => void;
+  clearDownstreamData: (fromStep: string) => void;
   resetStore: () => void;
 }
 
@@ -114,36 +117,95 @@ export const useOnboardingStore = create<OnboardingStore>()(
       },
       cachedPapers: {},
       setCachedPapers: (cachedPapers) => set({ cachedPapers }),
+      stepsCompleted: {},
+      setStepCompleted: (step) =>
+        set((state) => ({
+          stepsCompleted: { ...state.stepsCompleted, [step]: true },
+        })),
+      clearDownstreamData: (fromStep) =>
+        set((state) => {
+          const toClear: string[] = [];
+          let base: Record<string, unknown> = {};
+
+          if (fromStep === "matrix" || fromStep === "enrichment") {
+            toClear.push("risk", "boxes", "literature-review");
+            base = {
+              reportData: null,
+              boxes: null,
+              literaturePool: [],
+              cachedPapers: {},
+            };
+          } else if (fromStep === "risk") {
+            toClear.push("boxes", "literature-review");
+            base = {
+              boxes: null,
+              literaturePool: [],
+              cachedPapers: {},
+            };
+          } else if (fromStep === "boxes") {
+            toClear.push("literature-review");
+            base = {
+              literaturePool: [],
+              cachedPapers: {},
+            };
+          }
+
+          return {
+            ...base,
+            stepsCompleted: Object.keys(state.stepsCompleted).reduce(
+              (acc, k) =>
+                toClear.includes(k)
+                  ? acc
+                  : { ...acc, [k]: state.stepsCompleted[k] },
+              {} as Record<string, boolean>,
+            ),
+          };
+        }),
       resetStore: () =>
         set({
           boxes: null,
           literaturePool: [],
           reportData: null,
           cachedPapers: {},
+          stepsCompleted: {},
         }),
     }),
     {
       name: "onboarding-storage",
-      version: 1,
+      version: 2,
+      migrate: (persisted, version) => {
+        if (version < 2) {
+          return {
+            ...(persisted as object),
+            stepsCompleted: {},
+          } as Record<string, unknown>;
+        }
+        return persisted as Record<string, unknown>;
+      },
       storage: createJSONStorage(() => sessionStorage),
       partialize: (state) => ({
         literaturePool: state.literaturePool,
         reportData: state.reportData,
         cachedPapers: state.cachedPapers,
+        boxes: state.boxes,
+        stepsCompleted: state.stepsCompleted,
       }),
       merge: (persisted, current) => {
         const p = persisted as Partial<{
           literaturePool: LiteraturePoolEntry[];
           reportData: OriginalityReportData | null;
           cachedPapers: Record<string, RawPaper[]>;
+          boxes: GeminiThesisBox[] | null;
+          stepsCompleted: Record<string, boolean>;
         }>;
         return {
           ...current,
           ...p,
-          boxes: current.boxes,
+          boxes: p.boxes ?? current.boxes,
           literaturePool: p.literaturePool ?? [],
           reportData: p.reportData ?? current.reportData,
           cachedPapers: p.cachedPapers ?? {},
+          stepsCompleted: p.stepsCompleted ?? {},
         };
       },
     },

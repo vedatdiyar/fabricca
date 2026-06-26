@@ -195,9 +195,9 @@ export function useOnboardingNavigation() {
       // literature articles or risk reports can never ghost-leak into the
       // next step via sessionStorage.
       const store = useOnboardingStore.getState();
-      store.setLiteraturePool([]);
-      store.setReportData(null);
+      store.clearDownstreamData("risk");
       store.setBoxes(mineResult.boxes);
+      store.setStepCompleted("boxes");
 
       // Fire-and-forget: pre-fetch full literature cache in the background
       // while the user views their boxes. The cache will be ready by the time

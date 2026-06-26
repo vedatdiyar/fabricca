@@ -244,9 +244,8 @@ export function MatrixForm() {
 
       // Tez değiştiğinde ileriki adımların önbelleğini temizle.
       const store = useOnboardingStore.getState();
-      store.setBoxes(null);
-      store.setLiteraturePool([]);
-      store.setReportData(null);
+      store.clearDownstreamData("matrix");
+      store.setStepCompleted("matrix");
 
       toast.success("Tez matrisi başarıyla zenginleştirildi.");
       hideLoading();
@@ -307,6 +306,7 @@ export function MatrixForm() {
                       }))
                     }
                     required
+                    rows={5}
                     className="textarea-academic border-border"
                   />
                   <p className="text-xs leading-relaxed text-muted-foreground">
