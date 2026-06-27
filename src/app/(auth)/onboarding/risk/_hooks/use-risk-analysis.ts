@@ -101,7 +101,7 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
       dispatch({ type: "SET_PROCEDING", payload: false });
 
       // 1) Check Zustand cache first — avoids redundant DB reads and prevents
-      //    the auto-trigger from re-running analysis after enrichment.
+      //    the auto-trigger from re-running analysis.
       const cachedReport = useOnboardingStore.getState().reportData;
       if (cachedReport && !cancelled) {
         dispatch({ type: "SET_REPORT_DATA", payload: cachedReport });
@@ -183,10 +183,10 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
       if (result.error) {
         if (result.error === "cancelled") {
           // Clears risk, boxes, literature-review step completion and reportData
-          useOnboardingStore.getState().clearDownstreamData("enrichment");
-          void clearDownstreamDbAction("enrichment");
+          useOnboardingStore.getState().clearDownstreamData("matrix");
+          void clearDownstreamDbAction("matrix");
           toast.info("İşlem iptal edildi, önceki adıma yönlendiriliyorsunuz.");
-          router.push("/onboarding/enrichment");
+          router.push("/onboarding/matrix");
         } else {
           dispatch({ type: "SET_ERROR", payload: result.error });
         }

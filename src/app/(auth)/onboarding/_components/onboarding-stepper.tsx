@@ -7,11 +7,6 @@ import { useOnboardingStore } from "@/lib/store/onboarding-store";
 
 const STEPS = [
   { key: "matrix", label: "Tez Matrisi", route: "/onboarding/matrix" },
-  {
-    key: "enrichment",
-    label: "Matris Zenginleştirme",
-    route: "/onboarding/enrichment",
-  },
   { key: "risk", label: "Özgünlük & Risk", route: "/onboarding/risk" },
   { key: "boxes", label: "Konu Kutuları", route: "/onboarding/boxes" },
   {

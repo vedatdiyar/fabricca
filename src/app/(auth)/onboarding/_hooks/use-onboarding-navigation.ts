@@ -56,7 +56,7 @@ const PROCEED_STEPS: LoadingStep[] = [
 
 /**
  * Central onboarding orchestrator hook that coordinates cross-feature flows
- * (enrichment → risk pipeline → boxes generation).
+ * (risk pipeline → boxes generation).
  *
  * UI components should import this hook instead of directly importing
  * actions from other feature folders, preserving feature isolation.
@@ -90,8 +90,8 @@ export function useOnboardingNavigation() {
         steps,
         () => {
           isCancelled = true;
-          useOnboardingStore.getState().clearDownstreamData("enrichment");
-          void clearDownstreamDbAction("enrichment");
+          useOnboardingStore.getState().clearDownstreamData("matrix");
+          void clearDownstreamDbAction("matrix");
           toast.info("İşlem iptal edildi.");
         },
       );

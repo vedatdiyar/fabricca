@@ -21,10 +21,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
-import type { LoadingStep } from "@/lib/store/onboarding-store";
-import { enrichThesisMatrixAction, saveEnrichedMatrixAction } from "../actions";
+import { saveThesisMatrixAction } from "../actions";
 import { fetchThesisMatrix } from "../../_lib/fetch-actions";
-import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
 
 type FormState = {
   studyTitle: string;
@@ -134,8 +132,8 @@ const MATRIX_SECTIONS: SectionConfig[] = [
 
 /**
  * MatrixForm — onboarding sürecinin 1. adımı.
- * Kullanıcının ham tez fikirlerini 6 alanlı 3 bölümlü akademik matrise doldurmasını sağlar.
- * Gönderimde Gemini ile zenginleştirme işlemini tetikler ve Enrichment adımına yönlendirir.
+ * Kullanıcının tez matrisini 6 alanlı 3 bölümlü akademik forma doldurmasını sağlar.
+ * Veritabanına kaydeder ve risk analizi adımına yönlendirir.
  */
 export function MatrixForm() {
   const router = useRouter();
@@ -151,10 +149,8 @@ export function MatrixForm() {
   const [isPending, setIsPending] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const showLoading = useOnboardingStore((s) => s.showLoading);
-  const hideLoading = useOnboardingStore((s) => s.hideLoading);
-  const updateLoadingStep = useOnboardingStore((s) => s.updateLoadingStep);
   const isLoading = useOnboardingStore((s) => s.isLoading);
+  const hideLoading = useOnboardingStore((s) => s.hideLoading);
 
   useEffect(() => {
     let cancelled = false;
@@ -186,8 +182,7 @@ export function MatrixForm() {
   }, [hideLoading]);
 
   /**
-   * Form gönderimini yönetir. Önce Gemini ile zenginleştirme yapar,
-   * ardından zenginleştirilmiş veriyi veritabanına kaydeder.
+   * Form gönderimini yönetir. Tez matrisini doğrular ve veritabanına kaydeder.
    *
    * @param e - Form gönderme olayı.
    */
@@ -195,34 +190,8 @@ export function MatrixForm() {
     e.preventDefault();
     setIsPending(true);
 
-    const steps: LoadingStep[] = [
-      {
-        text: "Yapay zeka asistanı kavramsal ve kuramsal altyapıyı zenginleştiriyor...",
-        status: "active",
-      },
-      {
-        text: "Zenginleştirilmiş akademik matris veri tabanına işleniyor...",
-        status: "idle",
-      },
-    ];
-
-    let isCancelled = false;
-
-    showLoading(
-      "Tez Matrisi Zenginleştiriliyor",
-      "Yapay zeka asistanınız tez anayasanızı analiz ederek akademik bir yapıya dönüştürüyor.",
-      steps,
-      () => {
-        isCancelled = true;
-        setIsPending(false);
-        useOnboardingStore.getState().clearDownstreamData("matrix");
-        void clearDownstreamDbAction("matrix");
-        toast.info("İşlem iptal edildi.");
-      },
-    );
-
     try {
-      const enrichResult = await enrichThesisMatrixAction({
+      const result = await saveThesisMatrixAction({
         studyTitle: formState.studyTitle,
         researchQuestion: formState.researchQuestion,
         theoreticalFramework: formState.theoreticalFramework,
@@ -231,47 +200,23 @@ export function MatrixForm() {
         mainClaim: formState.mainClaim,
       });
 
-      if (isCancelled) return;
-
-      if ("error" in enrichResult) {
-        hideLoading();
-        toast.error(enrichResult.error);
+      if ("error" in result) {
+        toast.error(result.error);
         setIsPending(false);
         return;
       }
-
-      updateLoadingStep(0, "completed");
-      updateLoadingStep(1, "active");
-
-      const saveResult = await saveEnrichedMatrixAction(enrichResult.data);
-
-      if (isCancelled) return;
-
-      if ("error" in saveResult) {
-        hideLoading();
-        toast.error(saveResult.error);
-        setIsPending(false);
-        return;
-      }
-
-      updateLoadingStep(1, "completed");
 
       // Tez değiştiğinde ileriki adımların önbelleğini temizle.
       const store = useOnboardingStore.getState();
       store.clearDownstreamData("matrix");
       store.setStepCompleted("matrix");
 
-      toast.success("Tez matrisi başarıyla zenginleştirildi.");
-      hideLoading();
-      router.push("/onboarding/enrichment");
-    } catch {
-      if (isCancelled) return;
-      hideLoading();
-      toast.error("Bir hata oluştu.");
-    } finally {
-      if (!isCancelled) {
-        setIsPending(false);
-      }
+      toast.success("Tez matrisi başarıyla kaydedildi.");
+      router.push("/onboarding/risk");
+    } catch (error) {
+      const display = getErrorDisplay(error);
+      toast.error(`${display.title}: ${display.description}`);
+      setIsPending(false);
     }
   };
 
@@ -346,10 +291,10 @@ export function MatrixForm() {
           {isPending ? (
             <span className="flex items-center justify-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin" />
-              Zenginleştiriliyor...
+              Kaydediliyor...
             </span>
           ) : (
-            "Tez Anayasasını Zenginleştir"
+            "Tez Anayasasını Kaydet"
           )}
         </Button>
       </div>

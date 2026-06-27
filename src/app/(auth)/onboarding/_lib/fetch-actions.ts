@@ -244,7 +244,6 @@ export async function checkStepsDataAction(): Promise<Record<
 
   return {
     matrix: hasMatrix,
-    enrichment: hasMatrix,
     risk: hasReport,
     boxes: hasBoxes,
     "literature-review": hasLiterature,

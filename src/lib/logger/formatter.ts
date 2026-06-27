@@ -25,7 +25,6 @@ export type ServiceName =
   | "auth"
   | "flow"
   | "matrix"
-  | "enrichment"
   | "originality"
   | "risk"
   | "complete"
@@ -72,7 +71,7 @@ const SERVICE_DISPLAY: Record<ServiceName, string> = {
   auth: "AUTH",
   flow: "FLOW",
   matrix: "MATRIX",
-  enrichment: "ENRICH",
+
   originality: "ORIG",
   risk: "RISK",
   complete: "DONE",

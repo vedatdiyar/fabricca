@@ -55,8 +55,7 @@ export function RiskContainer() {
   }
 
   // Idle state should never be reached in the normal onboarding flow because
-  // the 4-stage analysis already runs inside EnrichmentView and its result is
-  // cached in Zustand. If it does (e.g. direct URL access), the auto-trigger
-  // useEffect in useRiskAnalysis will start the pipeline immediately.
+  // the auto-trigger useEffect in useRiskAnalysis will start the pipeline
+  // immediately. If it does (e.g. direct URL access), the pipeline runs here.
   return <LoadingSpinner variant="full" />;
 }

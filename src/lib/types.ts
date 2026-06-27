@@ -6,21 +6,6 @@ export type OnboardingActionResult =
   | { success: true; isProcessing?: boolean; error?: never }
   | { success?: never; error: string };
 
-export const EnhancedThesisDataSchema = z.object({
-  studyTitle: z.string().min(1, "Çalışma başlığı boş olamaz"),
-  researchQuestion: z.string().min(1, "Araştırma sorusu boş olamaz"),
-  theoreticalFramework: z.string().min(1, "Kavramsal çerçeve boş olamaz"),
-  methodology: z.string().min(1, "Metodoloji boş olamaz"),
-  researchScope: z.string().min(1, "Araştırma kapsamı boş olamaz"),
-  mainClaim: z.string().min(1, "Temel iddia boş olamaz"),
-});
-
-export type EnhancedThesisData = z.infer<typeof EnhancedThesisDataSchema>;
-
-export type EnhancedThesisActionResult =
-  | { success: true; data: EnhancedThesisData; error?: never }
-  | { success?: never; error: string };
-
 export type OverlapLevel = "KRITIK" | "ORTA" | "OZGUN";
 
 export type AxesOption = "BIREBIR" | "KAPSAYAN" | "TEGET" | "ALAKASIZ";
@@ -118,12 +103,7 @@ export type StepStatus = "idle" | "loading" | "error" | "success";
  * Onboarding sürecindeki aktif adım tipini temsil eden enum benzeri tip.
  */
 export type OnboardingStep =
-  | "matrix"
-  | "enrichment"
-  | "risk"
-  | "boxes"
-  | "literature-review"
-  | "completed";
+  "matrix" | "risk" | "boxes" | "literature-review" | "completed";
 
 /**
  * Onboarding sürecinin ilk adımındaki tez matrisi form verileri.

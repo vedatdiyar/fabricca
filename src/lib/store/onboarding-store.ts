@@ -148,7 +148,7 @@ export const useOnboardingStore = create<OnboardingStore>()(
           const toClear: string[] = [];
           let base: Record<string, unknown> = {};
 
-          if (fromStep === "matrix" || fromStep === "enrichment") {
+          if (fromStep === "matrix") {
             toClear.push("risk", "boxes", "literature-review");
             base = {
               reportData: null,

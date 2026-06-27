@@ -82,7 +82,7 @@ export async function resetOnboardingAction(): Promise<
  * @returns Success status or a user-safe error message
  */
 export async function clearDownstreamDbAction(
-  fromStep: "matrix" | "enrichment" | "risk" | "boxes",
+  fromStep: "matrix" | "risk" | "boxes",
 ): Promise<{ success: boolean } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: SESSION_ERROR_MSG };
@@ -91,7 +91,7 @@ export async function clearDownstreamDbAction(
 
   try {
     await db.transaction(async (tx) => {
-      if (fromStep === "matrix" || fromStep === "enrichment") {
+      if (fromStep === "matrix") {
         // Clear originality reports
         await tx
           .delete(originalityReports)
