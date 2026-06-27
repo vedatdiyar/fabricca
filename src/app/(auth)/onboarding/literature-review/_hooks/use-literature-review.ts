@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect, useState, useCallback, useRef } from "react";
+import { useMemo, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -55,12 +55,9 @@ export interface UseLiteratureReviewResult {
 export function useLiteratureReview(): UseLiteratureReviewResult {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const finalizedRef = useRef(false);
-  const processingRef = useRef(false);
 
   const [processing, setProcessing] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [hasAttempted, setHasAttempted] = useState(false);
   const [literaturePool, setLiteraturePool] = useState<LiteraturePoolEntry[]>(
     [],
   );
@@ -100,10 +97,8 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   ]);
 
   const startReviewProcess = useCallback(async () => {
-    if (subBoxes.length === 0 || processingRef.current) return;
+    if (subBoxes.length === 0 || processing) return;
 
-    setHasAttempted(true);
-    processingRef.current = true;
     setProcessing(true);
 
     // If the box titles changed since the pool was built, clear the stale pool
@@ -132,7 +127,6 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
       allSteps,
       () => {
         isCancelled = true;
-        processingRef.current = false;
         setProcessing(false);
         setLiteraturePool([]);
         void clearDownstreamDbAction("boxes").then(() => {
@@ -217,12 +211,12 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
       }
     }
 
-    processingRef.current = false;
     setProcessing(false);
     hideLoading();
   }, [
     subBoxes,
     literaturePool,
+    processing,
     cachedPapers,
     showLoading,
     hideLoading,
@@ -292,7 +286,6 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
         return;
       }
 
-      finalizedRef.current = true;
       setLiteraturePool([]);
       setConfirming(false);
       queryClient.invalidateQueries();
@@ -307,12 +300,12 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   }, [literaturePool, queryClient, router]);
 
   // Auto-trigger review process when boxes load and pool is empty.
+  // Relies on the `processing` state as the guard — once set, further
+  // invocations of this effect are blocked until processing completes.
   useEffect(() => {
     if (loading) return;
     if (processing) return;
-    if (finalizedRef.current) return;
     if (subBoxes.length === 0) return;
-    if (hasAttempted) return;
 
     const allDone = subBoxes.every((box) =>
       literaturePool.some((entry) => entry.subBoxTitle === box.title),
@@ -334,7 +327,6 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     processing,
     subBoxes,
     literaturePool,
-    hasAttempted,
     startReviewProcess,
   ]);
 

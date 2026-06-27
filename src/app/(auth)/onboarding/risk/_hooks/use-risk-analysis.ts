@@ -49,6 +49,7 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
   const {
     data: reportData,
     isLoading: loading,
+    isFetching,
   } = useQuery({
     queryKey: ["originalityReport"],
     queryFn: async (): Promise<OriginalityReportData | null> => {
@@ -146,14 +147,17 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
   }, [startAnalysisInternal, resetAnalysisError]);
 
   // Auto-trigger analysis when the component mounts and no report exists yet.
+  // Uses isFetching to guard against the race window: mutation.onSuccess invalidates
+  // the query, which triggers a background refetch. During that gap isFetching is
+  // true, blocking a second trigger until the fresh reportData arrives.
   useEffect(() => {
-    if (loading) return;
+    if (loading || isFetching) return;
     if (analysing) return;
     if (reportData) return;
     if (analysisError) return;
 
     startAnalysis();
-  }, [loading, analysing, reportData, analysisError, startAnalysis]);
+  }, [loading, isFetching, analysing, reportData, analysisError, startAnalysis]);
 
   return {
     loading,

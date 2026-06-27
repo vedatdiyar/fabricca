@@ -198,50 +198,6 @@ README.md
 <files>
 This section contains the contents of the repository's files.
 
-<file path="src/components/providers/loading-overlay-provider.tsx">
-import {
-  createContext,
-  useContext,
-  useCallback,
-  useState,
-  useRef,
-  type ReactNode,
-} from "react";
-⋮----
-export interface LoadingStep {
-  text: string;
-  status: "idle" | "active" | "completed";
-}
-⋮----
-interface LoadingOverlayState {
-  isLoading: boolean;
-  loadingTitle: string;
-  loadingDescription: string;
-  loadingSteps: LoadingStep[];
-  onCancel: (() => void) | null;
-  showLoading: (
-    title: string,
-    description: string,
-    steps: LoadingStep[],
-    onCancel?: () => void,
-  ) => void;
-  updateLoadingStep: (
-    index: number,
-    status: "idle" | "active" | "completed",
-  ) => void;
-  hideLoading: () => void;
-  cancelLoading: () => void;
-}
-⋮----
-export function LoadingOverlayProvider({
-  children,
-}: {
-  children: ReactNode;
-})
-⋮----
-export function useLoadingOverlay(): LoadingOverlayState
-</file>
-
 <file path="src/app/(app)/advisor/page.tsx">
 export default function AdvisorPage()
 </file>
@@ -435,6 +391,50 @@ export async function collectOpenAlexResults(
 import { redirect } from "next/navigation";
 ⋮----
 export default function RootPage()
+</file>
+
+<file path="src/components/providers/loading-overlay-provider.tsx">
+import {
+  createContext,
+  useContext,
+  useCallback,
+  useState,
+  useRef,
+  type ReactNode,
+} from "react";
+⋮----
+export interface LoadingStep {
+  text: string;
+  status: "idle" | "active" | "completed";
+}
+⋮----
+interface LoadingOverlayState {
+  isLoading: boolean;
+  loadingTitle: string;
+  loadingDescription: string;
+  loadingSteps: LoadingStep[];
+  onCancel: (() => void) | null;
+  showLoading: (
+    title: string,
+    description: string,
+    steps: LoadingStep[],
+    onCancel?: () => void,
+  ) => void;
+  updateLoadingStep: (
+    index: number,
+    status: "idle" | "active" | "completed",
+  ) => void;
+  hideLoading: () => void;
+  cancelLoading: () => void;
+}
+⋮----
+export function LoadingOverlayProvider({
+  children,
+}: {
+  children: ReactNode;
+})
+⋮----
+export function useLoadingOverlay(): LoadingOverlayState
 </file>
 
 <file path="src/components/providers/query-provider.tsx">
@@ -997,12 +997,6 @@ export async function getSessionWithOnboarding(): Promise<SessionWithOnboarding 
 export async function getProfile()
 </file>
 
-<file path="src/app/(auth)/onboarding/_components/onboarding-content.tsx">
-import { LoadingOverlayProvider } from "@/components/providers/loading-overlay-provider";
-import { OnboardingGlobalLoader } from "@/components/onboarding-global-loader";
-import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
-</file>
-
 <file path="src/app/(auth)/onboarding/literature-review/_services/crossref/validator.ts">
 import { CROSSREF_USER_AGENT } from "../_shared";
 import type { ValidatedPaper } from "../literature-review-papers";
@@ -1188,6 +1182,12 @@ import { reopenOnboardingAction } from "@/app/(app)/actions";
 import { DashboardContent } from "./_components/dashboard-content";
 ⋮----
 export default async function DashboardPage()
+</file>
+
+<file path="src/app/(auth)/onboarding/_components/onboarding-content.tsx">
+import { LoadingOverlayProvider } from "@/components/providers/loading-overlay-provider";
+import { OnboardingGlobalLoader } from "@/components/onboarding-global-loader";
+import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/error.tsx">
@@ -1523,40 +1523,6 @@ async function AppLayoutInner({
 }>)
 </file>
 
-<file path="src/app/(auth)/onboarding/_hooks/use-onboarding-navigation.ts">
-import { useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
-import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
-import type { LoadingStep } from "@/components/providers/loading-overlay-provider";
-import type { OriginalityReportData } from "@/lib/types";
-import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
-import {
-  extractQueriesAction,
-  executeSearchAction,
-  siftThesesAction,
-  finalizeJuryAnalysisAction,
-  completeRiskStageAction,
-} from "../risk/actions";
-import {
-  generateBoxesStructureAction,
-  mineFoundationalQueriesAction,
-  prefetchLiteratureCacheAction,
-} from "../boxes/actions";
-⋮----
-interface MatrixInput {
-  studyTitle: string;
-  researchQuestion: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-  mainClaim: string;
-}
-⋮----
-export function useOnboardingNavigation()
-</file>
-
 <file path="src/app/(auth)/onboarding/_services/co-citation-miner.ts">
 import type { FoundationalQuery } from "@/lib/types";
 import { Logger } from "@/lib/logger";
@@ -1814,6 +1780,40 @@ export default function LoginPage()
 function handleSubmit(e: React.FormEvent<HTMLFormElement>)
 </file>
 
+<file path="src/app/(auth)/onboarding/_hooks/use-onboarding-navigation.ts">
+import { useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
+import type { LoadingStep } from "@/components/providers/loading-overlay-provider";
+import type { OriginalityReportData } from "@/lib/types";
+import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
+import {
+  extractQueriesAction,
+  executeSearchAction,
+  siftThesesAction,
+  finalizeJuryAnalysisAction,
+  completeRiskStageAction,
+} from "../risk/actions";
+import {
+  generateBoxesStructureAction,
+  mineFoundationalQueriesAction,
+  prefetchLiteratureCacheAction,
+} from "../boxes/actions";
+⋮----
+interface MatrixInput {
+  studyTitle: string;
+  researchQuestion: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+  mainClaim: string;
+}
+⋮----
+export function useOnboardingNavigation()
+</file>
+
 <file path="src/app/(auth)/onboarding/literature-review/page.tsx">
 import { redirect } from "next/navigation";
 import { getProfile } from "@/session";
@@ -1874,6 +1874,26 @@ export async function toggleResourceReadStatusAction(
 ): Promise<ToggleReadStatusResult>
 </file>
 
+<file path="src/lib/tezara-parser.ts">
+import type { Logger } from "./logger";
+import type { TezaraThesisSummary } from "./types";
+⋮----
+export function parseTezaraDetails(
+  html: string,
+  id: number,
+  logger?: Logger,
+):
+⋮----
+export function parseTezaraSearchResults(
+  html: string,
+  logger?: Logger,
+): TezaraThesisSummary[]
+⋮----
+// Title is the second a[href^="/theses/"] in the li (first is the Tez No link)
+⋮----
+// Author
+</file>
+
 <file path="src/app/(auth)/onboarding/_lib/fetch-actions.ts">
 import { eq, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
@@ -1906,32 +1926,6 @@ export async function checkStepsDataAction(): Promise<Record<
   boolean
 > | null> {
   const session = await getSession();
-</file>
-
-<file path="src/components/onboarding-global-loader.tsx">
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
-</file>
-
-<file path="src/lib/tezara-parser.ts">
-import type { Logger } from "./logger";
-import type { TezaraThesisSummary } from "./types";
-⋮----
-export function parseTezaraDetails(
-  html: string,
-  id: number,
-  logger?: Logger,
-):
-⋮----
-export function parseTezaraSearchResults(
-  html: string,
-  logger?: Logger,
-): TezaraThesisSummary[]
-⋮----
-// Title is the second a[href^="/theses/"] in the li (first is the Tez No link)
-⋮----
-// Author
 </file>
 
 <file path="src/components/literature-reader.tsx">
@@ -1970,41 +1964,18 @@ export function LiteratureReader({
 }: LiteratureReaderProps)
 </file>
 
+<file path="src/components/onboarding-global-loader.tsx">
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
+</file>
+
 <file path="src/app/(auth)/onboarding/_components/onboarding-stepper.tsx">
 import { usePathname, useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 ⋮----
 className=
-</file>
-
-<file path="src/app/(auth)/onboarding/_components/start-over-button.tsx">
-import { useState, useTransition } from "react";
-import { RotateCcw, Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { resetOnboardingAction } from "@/app/(auth)/onboarding/actions";
-⋮----
-interface StartOverButtonProps {
-  variant?:
-    | "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
-  size?: "default" | "sm" | "lg" | "icon";
-  className?: string;
-}
-⋮----
-const handleReset = () =>
 </file>
 
 <file path="src/app/(auth)/onboarding/literature-review/_components/literature-article-card.tsx">
@@ -2052,16 +2023,33 @@ export async function evaluateTavilyResults(
 ): Promise<TavilyEvaluationResponse>
 </file>
 
-<file path="src/app/(auth)/onboarding/risk/_components/risk-container.tsx">
-import { useEffect } from "react";
-import { Loader2 } from "lucide-react";
+<file path="src/app/(auth)/onboarding/_components/start-over-button.tsx">
+import { useState, useTransition } from "react";
+import { RotateCcw, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { LoadingSpinner } from "@/components/loading-spinner";
-import { ErrorDisplay } from "@/components/error-display";
-import { OriginalityReportView } from "./originality-report-view";
-import { useRiskAnalysis } from "../_hooks/use-risk-analysis";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { resetOnboardingAction } from "@/app/(auth)/onboarding/actions";
 ⋮----
-function IdleFallback(
+interface StartOverButtonProps {
+  variant?:
+    | "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  size?: "default" | "sm" | "lg" | "icon";
+  className?: string;
+}
+⋮----
+const handleReset = () =>
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_services/queries.ts">
@@ -2098,6 +2086,18 @@ export async function extractQueries(
   params: ExtractQueriesParams,
   log: Logger,
 ): Promise<
+</file>
+
+<file path="src/app/(auth)/onboarding/risk/_components/risk-container.tsx">
+import { useEffect } from "react";
+import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/loading-spinner";
+import { ErrorDisplay } from "@/components/error-display";
+import { OriginalityReportView } from "./originality-report-view";
+import { useRiskAnalysis } from "../_hooks/use-risk-analysis";
+⋮----
+function IdleFallback(
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_services/roadmap.ts">
@@ -2239,6 +2239,36 @@ export async function clearDownstreamDbAction(
 ): Promise<
 </file>
 
+<file path="src/app/(auth)/onboarding/matrix/actions.ts">
+import { eq, sql } from "drizzle-orm";
+import { db } from "@/db";
+import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
+import { getSession } from "@/session";
+import { SESSION_ERROR_MSG } from "@/lib/constants/session";
+import { createFlowId, Logger } from "@/lib/logger";
+import { invalidateOnboardingCache } from "@/lib/cache-tags";
+import type { OnboardingFormData } from "@/lib/types";
+⋮----
+type ValidationResult =
+  { valid: true; value: string } | { valid: false; error: string };
+⋮----
+function validateField(
+  value: string | undefined,
+  label: string,
+): ValidationResult
+⋮----
+/**
+ * Persists the thesis matrix to the database and clears any downstream analysis
+ * data (originality reports and thesis boxes) that may now be stale.
+ *
+ * @param data - The thesis matrix data from the onboarding form
+ * @returns Success confirmation or an error message
+ */
+export async function saveThesisMatrixAction(
+  data: OnboardingFormData,
+): Promise<
+</file>
+
 <file path="package.json">
 {
   "name": "fabricca",
@@ -2297,36 +2327,6 @@ export async function clearDownstreamDbAction(
     "typescript": "^5.8.3"
   }
 }
-</file>
-
-<file path="src/app/(auth)/onboarding/matrix/actions.ts">
-import { eq, sql } from "drizzle-orm";
-import { db } from "@/db";
-import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
-import { getSession } from "@/session";
-import { SESSION_ERROR_MSG } from "@/lib/constants/session";
-import { createFlowId, Logger } from "@/lib/logger";
-import { invalidateOnboardingCache } from "@/lib/cache-tags";
-import type { OnboardingFormData } from "@/lib/types";
-⋮----
-type ValidationResult =
-  { valid: true; value: string } | { valid: false; error: string };
-⋮----
-function validateField(
-  value: string | undefined,
-  label: string,
-): ValidationResult
-⋮----
-/**
- * Persists the thesis matrix to the database and clears any downstream analysis
- * data (originality reports and thesis boxes) that may now be stale.
- *
- * @param data - The thesis matrix data from the onboarding form
- * @returns Success confirmation or an error message
- */
-export async function saveThesisMatrixAction(
-  data: OnboardingFormData,
-): Promise<
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_components/originality-report-view.tsx">
@@ -2538,6 +2538,81 @@ export async function analyzeOriginalityRisk(
 ): Promise<
 </file>
 
+<file path="src/lib/gemini.ts">
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import { z } from "zod";
+import type { Logger } from "./logger";
+import { classifyError } from "./error-utils";
+⋮----
+export interface JsonSchemaProperty {
+  type: string;
+  items?:
+    | JsonSchemaProperty
+    | {
+        type: string;
+        enum?: string[];
+        properties?: Record<string, JsonSchemaProperty>;
+        required?: string[];
+      };
+  properties?: Record<string, JsonSchemaProperty>;
+  required?: string[];
+  enum?: string[];
+  description?: string;
+  minLength?: number;
+  maxLength?: number;
+  minItems?: number;
+  maxItems?: number;
+  minimum?: number;
+  maximum?: number;
+}
+⋮----
+export interface JsonSchema {
+  type: "object";
+  properties: Record<string, JsonSchemaProperty>;
+  required?: string[];
+}
+⋮----
+export function getAi(): GoogleGenAI
+⋮----
+async function retryOn503<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  baseDelayMs = 1000,
+  logger?: Logger,
+): Promise<
+⋮----
+export function sanitizeAndParseJson<T>(text: string): T
+⋮----
+/**
+ * Gemini modelinden yapılandırılmış JSON çıktısı almak için generic yardımcı.
+ * Yanıt, verilen JSON şemasına göre JSON olarak parse edilir.
+ *
+ * @param modelName - Kullanılacak Gemini model adı (örn. "gemini-3.1-flash-lite")
+ * @param systemInstruction - Sistem talimatı (persona + kurallar)
+ * @param prompt - Kullanıcı promptu
+ * @param schema - Yanıtın doğrulanacağı JSON şeması
+ * @param logger - Opsiyonel Logger instance'ı (AI event logları için)
+ * @param options - Opsiyonel Gemini konfigürasyon seçenekleri
+ * @returns Şemaya uygun olarak parse edilmiş tip güvenli nesne
+ */
+export async function generateStructuredContent<T>(
+  modelName: string,
+  systemInstruction: string,
+  prompt: string,
+  schema: JsonSchema,
+  logger?: Logger,
+  options?: {
+    thinkingConfig?: {
+      thinkingLevel?: ThinkingLevel;
+    } | null;
+    payloadStage?: string;
+    zodSchema?: z.ZodType<T>;
+    seed?: number;
+    temperature?: number;
+  },
+): Promise<T>
+</file>
+
 <file path="src/app/(auth)/onboarding/matrix/_components/matrix-form.tsx">
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -2623,81 +2698,6 @@ export async function siftAndFetchDetails(
 ): Promise<
 </file>
 
-<file path="src/lib/gemini.ts">
-import { GoogleGenAI, ThinkingLevel } from "@google/genai";
-import { z } from "zod";
-import type { Logger } from "./logger";
-import { classifyError } from "./error-utils";
-⋮----
-export interface JsonSchemaProperty {
-  type: string;
-  items?:
-    | JsonSchemaProperty
-    | {
-        type: string;
-        enum?: string[];
-        properties?: Record<string, JsonSchemaProperty>;
-        required?: string[];
-      };
-  properties?: Record<string, JsonSchemaProperty>;
-  required?: string[];
-  enum?: string[];
-  description?: string;
-  minLength?: number;
-  maxLength?: number;
-  minItems?: number;
-  maxItems?: number;
-  minimum?: number;
-  maximum?: number;
-}
-⋮----
-export interface JsonSchema {
-  type: "object";
-  properties: Record<string, JsonSchemaProperty>;
-  required?: string[];
-}
-⋮----
-export function getAi(): GoogleGenAI
-⋮----
-async function retryOn503<T>(
-  fn: () => Promise<T>,
-  maxRetries = 3,
-  baseDelayMs = 1000,
-  logger?: Logger,
-): Promise<
-⋮----
-export function sanitizeAndParseJson<T>(text: string): T
-⋮----
-/**
- * Gemini modelinden yapılandırılmış JSON çıktısı almak için generic yardımcı.
- * Yanıt, verilen JSON şemasına göre JSON olarak parse edilir.
- *
- * @param modelName - Kullanılacak Gemini model adı (örn. "gemini-3.1-flash-lite")
- * @param systemInstruction - Sistem talimatı (persona + kurallar)
- * @param prompt - Kullanıcı promptu
- * @param schema - Yanıtın doğrulanacağı JSON şeması
- * @param logger - Opsiyonel Logger instance'ı (AI event logları için)
- * @param options - Opsiyonel Gemini konfigürasyon seçenekleri
- * @returns Şemaya uygun olarak parse edilmiş tip güvenli nesne
- */
-export async function generateStructuredContent<T>(
-  modelName: string,
-  systemInstruction: string,
-  prompt: string,
-  schema: JsonSchema,
-  logger?: Logger,
-  options?: {
-    thinkingConfig?: {
-      thinkingLevel?: ThinkingLevel;
-    } | null;
-    payloadStage?: string;
-    zodSchema?: z.ZodType<T>;
-    seed?: number;
-    temperature?: number;
-  },
-): Promise<T>
-</file>
-
 <file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">
 import { useState } from "react";
 import { Loader2, AlertCircle, BookOpen, Archive, Plus } from "lucide-react";
@@ -2727,7 +2727,7 @@ onAddArchiveEntry(subBox.title,
 </file>
 
 <file path="src/app/(auth)/onboarding/literature-review/_hooks/use-literature-review.ts">
-import { useMemo, useEffect, useState, useCallback, useRef } from "react";
+import { useMemo, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
