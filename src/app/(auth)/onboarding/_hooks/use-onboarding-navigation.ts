@@ -90,6 +90,7 @@ export function useOnboardingNavigation() {
         steps,
         () => {
           isCancelled = true;
+          useOnboardingStore.getState().clearDownstreamData("enrichment");
           void clearDownstreamDbAction("enrichment");
           toast.info("İşlem iptal edildi.");
         },
@@ -190,6 +191,7 @@ export function useOnboardingNavigation() {
       () => {
         isCancelled = true;
         useOnboardingStore.getState().clearDownstreamData("risk");
+        useOnboardingStore.getState().unsetStepCompleted("boxes");
         void clearDownstreamDbAction("risk");
         toast.info("İşlem iptal edildi.");
       },

@@ -223,7 +223,7 @@ export function LiteratureReader({
             {boxType === "PRIMARY_MATERIAL" || boxType === "RELATED_THESES" ? (
               <p className="text-center text-sm text-muted-foreground max-w-md px-4 leading-relaxed">
                 {boxType === "RELATED_THESES"
-                  ? "Bu alan, özgünlük analizinde tespit edilen sınırdaş tez çalışmalarını barındırır. Kaynaklar onboarding süreci tamamlandığında otomatik olarak buraya eklenir."
+                  ? "Bu alan, özgünlük analizinde tespit edilen sınırdaş tez çalışmalarını barındırır."
                   : "Bu alan, yapacağınız saha çalışması verileri (mülakat deşifreleri, anketler) veya kütüphanelerden toplayacağınız birincil kaynaklar (gazete, doküman, arşiv belgeleri) için ayrılmış size özel bir veri havuzudur. Onboarding tamamlandıktan sonra kendi belgelerinizi buraya yükleyebilirsiniz."}
               </p>
             ) : (

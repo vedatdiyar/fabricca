@@ -337,7 +337,10 @@ export async function orchestrateBatchProcess(
     if (archivalBoxTitles.includes(box.title)) {
       return {
         subBoxTitle: box.title,
-        starterPack: foundationalLookups.get(box.title) ?? [],
+        starterPack:
+          box.boxType === "RELATED_THESES"
+            ? (thesisArticlesMap?.get(box.title) ?? [])
+            : (foundationalLookups.get(box.title) ?? []),
         reservedPool: [] as JuryArticle[],
       };
     }

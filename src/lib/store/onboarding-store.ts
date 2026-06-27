@@ -54,6 +54,7 @@ interface OnboardingState extends LoadingState {
   setCachedPapers: (papers: Record<string, RawPaper[]>) => void;
   stepsCompleted: Record<string, boolean>;
   setStepCompleted: (step: string) => void;
+  unsetStepCompleted: (step: string) => void;
   clearDownstreamData: (fromStep: string) => void;
   resetStore: () => void;
 }
@@ -141,6 +142,12 @@ export const useOnboardingStore = create<OnboardingStore>()(
         set((state) => ({
           stepsCompleted: { ...state.stepsCompleted, [step]: true },
         })),
+      unsetStepCompleted: (step) =>
+        set((state) => {
+          const stepsCompleted = { ...state.stepsCompleted };
+          delete stepsCompleted[step];
+          return { stepsCompleted };
+        }),
       clearDownstreamData: (fromStep) =>
         set((state) => {
           const toClear: string[] = [];

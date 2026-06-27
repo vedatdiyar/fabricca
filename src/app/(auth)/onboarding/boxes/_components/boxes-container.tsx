@@ -98,7 +98,6 @@ export function BoxesContainer() {
 
       const store = useOnboardingStore.getState();
       store.clearDownstreamData("boxes");
-      store.setStepCompleted("boxes");
 
       setConfirming(false);
       toast.success(
@@ -290,8 +289,7 @@ function BoxCard({
           </h4>
           <p className="text-xs text-muted-foreground leading-relaxed">
             Bu kutu, özgünlük analizinde tespit edilen sınırdaş tez
-            çalışmalarını barındırır. Bu kaynaklar literatür taraması aşamasında
-            otomatik olarak değerlendirilecektir.
+            çalışmalarını barındırır.
           </p>
         </div>
       ) : null}

@@ -1,6 +1,6 @@
 "use server";
 
-import { eq, and, not, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
   thesisMatrices,
@@ -123,28 +123,25 @@ export async function clearDownstreamDbAction(
             .where(eq(thesisBoxes.thesisMatrixId, matrix.id));
         }
       } else if (fromStep === "boxes") {
-        // Clear library resources that are NOT Yok theses (relevanceScore != 0.99)
+        // Clear all library resources (including YÖK theses) so the
+        // server-side stepsData check returns hasLiterature:false,
+        // keeping the literature-review stepper locked.
         const [matrix] = await tx
           .select({ id: thesisMatrices.id })
           .from(thesisMatrices)
           .where(eq(thesisMatrices.userId, userId));
 
         if (matrix) {
-          const boxes = await tx
+          const boxIds = await tx
             .select({ id: thesisBoxes.id })
             .from(thesisBoxes)
-            .where(eq(thesisBoxes.thesisMatrixId, matrix.id));
+            .where(eq(thesisBoxes.thesisMatrixId, matrix.id))
+            .then((rows) => rows.map((r) => r.id));
 
-          if (boxes.length > 0) {
-            const boxIds = boxes.map((b) => b.id);
+          if (boxIds.length > 0) {
             await tx
               .delete(libraryResources)
-              .where(
-                and(
-                  inArray(libraryResources.thesisBoxId, boxIds),
-                  not(eq(libraryResources.relevanceScore, 0.99)),
-                ),
-              );
+              .where(inArray(libraryResources.thesisBoxId, boxIds));
           }
         }
       }

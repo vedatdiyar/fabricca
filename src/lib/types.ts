@@ -197,7 +197,7 @@ export const GeminiThesisBoxSchema = z.object({
 });
 
 export const FinalGeminiThesisBoxSchema = GeminiThesisBoxSchema.extend({
-  foundationalQueries: z.array(FoundationalQuerySchema).max(4),
+  foundationalQueries: z.array(FoundationalQuerySchema).max(12),
 });
 
 export const BoxGenerationResponseSchema = z.object({

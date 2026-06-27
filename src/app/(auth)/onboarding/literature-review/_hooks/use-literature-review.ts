@@ -165,6 +165,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
         setPhase((prev) => ({ ...prev, processing: false }));
         // Clears literature-review step completion and literaturePool
         useOnboardingStore.getState().clearDownstreamData("boxes");
+        useOnboardingStore.getState().unsetStepCompleted("boxes");
         void clearDownstreamDbAction("boxes");
         toast.info("İşlem iptal edildi, önceki adıma yönlendiriliyorsunuz.");
         router.push("/onboarding/boxes");
@@ -219,6 +220,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
 
       // Set the entire pool at once
       useOnboardingStore.getState().setLiteraturePool(result.data);
+      useOnboardingStore.getState().setStepCompleted("boxes");
 
       // Mark all boxes as done
       for (let i = 0; i < subBoxes.length; i++) {

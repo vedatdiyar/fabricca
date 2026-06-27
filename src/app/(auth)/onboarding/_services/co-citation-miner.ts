@@ -96,11 +96,12 @@ function isSuspiciousMetadata(authors: string[], title: string): boolean {
 }
 
 /**
- * Computes a weighted score that balances local co-citation frequency with
- * global citation impact.
+ * Returns the local co-citation count as the raw score.
+ * The score equals the number of papers in the search pool that reference
+ * the candidate work — a pure consensus frequency without global citation bias.
  */
-function computeScore(localCount: number, globalCitations: number): number {
-  return localCount * 10 + Math.log10(globalCitations + 1) * 5;
+function computeScore(localCount: number): number {
+  return localCount;
 }
 
 /**
@@ -376,21 +377,25 @@ function extractOpenAlexId(candidateId: string): string {
 }
 
 /**
- * Executes the co-citation mining algorithm to find seminal works for a set of
- * search queries using a fully isolated per-query champion model.
+ * Runs a fully isolated per-query co-citation mining pipeline to find
+ * seminal works for each search query independently.
  *
- * 1. For each query, fetch top PER_PAGE works from OpenAlex semantic search.
- * 2. Count referenced_works frequencies per query independently.
- * 3. Select the top TOP_K most-referenced candidates per query.
- * 4. Fetch metadata for all candidates in parallel (chunked to avoid URI length limits).
- * 5. Run author-consensus fallback for works with suspicious metadata.
- * 6. Merge candidates with overlapping author+title (ID fragmentation recovery).
- * 7. Score each merged candidate via computeScore and pick the best champion
- *    per query, skipping champions already claimed by an earlier query.
+ * For each query:
+ * 1. Fetch top PER_PAGE works from OpenAlex semantic search
+ * 2. Count referenced_works frequencies (local co-citation)
+ * 3. Select the top TOP_K most-referenced candidates
+ * 4. Fetch metadata for those candidates (chunked for URI safety)
+ * 5. Run author-consensus fallback for works with suspicious metadata
+ * 6. Merge candidates with overlapping author+title (ID fragmentation recovery)
+ * 7. Score each merged candidate by localCount only (no global citation bias)
+ * 8. Pick the highest-scoring champion
+ *
+ * Each query is an isolated cell — no cross-query deduplication or pooled
+ * batch fetching. Every query gets its own champion regardless of overlap.
  *
  * @param queries Array of English semantic search query paragraphs.
  * @param log Logger instance for pipeline event tracing.
- * @returns Array of FoundationalQuery objects (one champion per query, max 4).
+ * @returns Array of FoundationalQuery objects (one champion per query).
  */
 export async function mineCoCitations(
   queries: string[],
@@ -407,17 +412,21 @@ export async function mineCoCitations(
 
   const activeQueries = queries.filter((q) => q.trim().length > 0);
   const apiKey = process.env.OPENALEX_API_KEY;
-
-  // ==========================================================================
-  // Phase 1: Per-query semantic search and candidate collection
-  // ==========================================================================
-
-  const queryCandidates = new Map<number, Map<string, number>>();
+  const champions: FoundationalQuery[] = [];
 
   for (let i = 0; i < activeQueries.length; i++) {
     const query = activeQueries[i];
+
+    log.info("co_citation_miner_query_start", {
+      service: "boxes",
+      data: { queryIndex: i, query: query.substring(0, 100) },
+    });
+
+    // ======================================================================
+    // Step 1: Semantic search — collect referenced works for this query alone
+    // ======================================================================
+
     const candidatesMap = new Map<string, number>();
-    queryCandidates.set(i, candidatesMap);
 
     const params = new URLSearchParams({
       "search.semantic": query,
@@ -511,81 +520,61 @@ export async function mineCoCitations(
       }
     }
 
-    await new Promise((resolve) => setTimeout(resolve, OPENALEX_DELAY_MS));
-  }
+    // ======================================================================
+    // Step 2: Select top K candidates for this query
+    // ======================================================================
 
-  // ==========================================================================
-  // Phase 2: Select top K candidates per query independently
-  // ==========================================================================
-
-  const queryTopCandidates = new Map<
-    number,
-    { id: string; localCount: number }[]
-  >();
-  let totalCandidatesCount = 0;
-
-  for (let i = 0; i < activeQueries.length; i++) {
-    const map = queryCandidates.get(i) || new Map();
-    const sorted = Array.from(map.entries())
+    const sortedCandidates = Array.from(candidatesMap.entries())
       .map(([id, localCount]) => ({ id, localCount }))
       .sort((a, b) => b.localCount - a.localCount)
       .slice(0, TOP_K);
-    queryTopCandidates.set(i, sorted);
-    totalCandidatesCount += sorted.length;
 
-    log.info("co_citation_miner_per_query_candidates", {
+    if (sortedCandidates.length === 0) {
+      log.warn("co_citation_miner_no_candidates", {
+        service: "boxes",
+        data: {
+          queryIndex: i,
+          query: query.substring(0, 80),
+          reason: "No referenced works extracted from search results",
+        },
+      });
+      continue;
+    }
+
+    log.info("co_citation_miner_query_candidates", {
       service: "boxes",
       data: {
         queryIndex: i,
-        query: activeQueries[i].substring(0, 80),
-        candidateCount: sorted.length,
+        query: query.substring(0, 80),
+        candidateCount: sortedCandidates.length,
       },
     });
-  }
 
-  if (totalCandidatesCount === 0) {
-    log.warn("co_citation_miner_no_references", {
-      service: "boxes",
-      data: { context: "No references extracted from search results." },
-    });
-    return [];
-  }
+    // ======================================================================
+    // Step 3: Fetch metadata for this query's candidates (chunked)
+    // ======================================================================
 
-  // ==========================================================================
-  // Phase 3: Batch-fetch metadata for all candidates (chunked for URI safety)
-  // ==========================================================================
+    // Throttle: delay before internal API calls (after semantic search)
+    await new Promise((resolve) => setTimeout(resolve, OPENALEX_DELAY_MS));
 
-  const allCandidateIds = new Set<string>();
-  for (const [, candidates] of queryTopCandidates) {
-    for (const c of candidates) {
-      allCandidateIds.add(extractOpenAlexId(c.id));
+    const candidateIds = sortedCandidates.map((c) => extractOpenAlexId(c.id));
+    const idChunks: string[][] = [];
+    for (let j = 0; j < candidateIds.length; j += DETAIL_CHUNK_SIZE) {
+      idChunks.push(candidateIds.slice(j, j + DETAIL_CHUNK_SIZE));
     }
-  }
 
-  const idChunks: string[][] = [];
-  const ids = Array.from(allCandidateIds);
-  for (let i = 0; i < ids.length; i += DETAIL_CHUNK_SIZE) {
-    idChunks.push(ids.slice(i, i + DETAIL_CHUNK_SIZE));
-  }
-
-  log.info("openalex_resolve_details", {
-    service: "boxes",
-    data: { candidateCount: ids.length, chunkCount: idChunks.length },
-  });
-
-  const detailResults: OpenAlexWork[] = [];
-  await Promise.all(
-    idChunks.map(async (chunk) => {
+    const detailResults: OpenAlexWork[] = [];
+    for (const chunk of idChunks) {
       const filterParams = new URLSearchParams({
         filter: `openalex_id:${chunk.join("|")}`,
         select: "id,title,authorships,publication_year,cited_by_count",
       });
       if (apiKey) filterParams.set("api_key", apiKey);
-      const url = `https://api.openalex.org/works?${filterParams.toString().replace(/\+/g, "%20")}`;
+      const detailUrl = `https://api.openalex.org/works?${filterParams.toString().replace(/\+/g, "%20")}`;
 
       try {
         const response = await fetchWithRetry(
-          url,
+          detailUrl,
           {
             headers: { "User-Agent": OPENALEX_USER_AGENT },
             signal: AbortSignal.timeout(15000),
@@ -608,196 +597,148 @@ export async function mineCoCitations(
           },
         });
       }
-    }),
-  );
-
-  // ==========================================================================
-  // Phase 4: Build resolved-details map with suspicious-metadata fallback
-  // ==========================================================================
-
-  const resolvedMap = new Map<
-    string,
-    {
-      openAlexId: string;
-      title: string;
-      publicationYear: number;
-      citedByCount: number;
-      authorsList: string[];
     }
-  >();
-  const seenTitles = new Set<string>();
 
-  for (const item of detailResults) {
-    const title = (item.title || "").trim();
-    if (!title || seenTitles.has(title.toLowerCase())) continue;
-    seenTitles.add(title.toLowerCase());
+    // ======================================================================
+    // Step 4: Build resolved-details map with author-consensus fallback
+    // ======================================================================
 
-    let authorsList =
-      item.authorships
-        ?.map((a) => a.author?.display_name || "")
-        .filter(Boolean) || [];
+    const resolvedMap = new Map<
+      string,
+      {
+        openAlexId: string;
+        title: string;
+        publicationYear: number;
+        citedByCount: number;
+        authorsList: string[];
+      }
+    >();
+    const seenTitles = new Set<string>();
 
-    // Fallback for works with suspicious metadata (empty/short authors, short title)
-    if (isSuspiciousMetadata(authorsList, title)) {
-      log.info("openalex_fallback_triggered", {
-        service: "boxes",
-        data: {
-          title: title.substring(0, 80),
-          authorCount: authorsList.length,
-          reason:
-            authorsList.length === 0
-              ? "empty_authors"
-              : authorsList.some((a) => a.length < 3)
-                ? "short_author_name"
-                : "short_title",
-        },
-      });
+    for (const item of detailResults) {
+      const title = (item.title || "").trim();
+      if (!title || seenTitles.has(title.toLowerCase())) continue;
+      seenTitles.add(title.toLowerCase());
 
-      const resolved = await resolveAuthorsViaFallback(title, apiKey, log);
-      if (resolved) {
-        authorsList = resolved;
-      } else {
-        // Fallback failed — skip this candidate entirely
-        log.warn("openalex_candidate_skipped", {
+      let authorsList =
+        item.authorships
+          ?.map((a) => a.author?.display_name || "")
+          .filter(Boolean) || [];
+
+      if (isSuspiciousMetadata(authorsList, title)) {
+        log.info("openalex_fallback_triggered", {
           service: "boxes",
           data: {
             title: title.substring(0, 80),
-            reason: "fallback_failed_suspicious_metadata",
+            authorCount: authorsList.length,
+            reason:
+              authorsList.length === 0
+                ? "empty_authors"
+                : authorsList.some((a) => a.length < 3)
+                  ? "short_author_name"
+                  : "short_title",
           },
         });
-        continue;
+
+        const resolved = await resolveAuthorsViaFallback(title, apiKey, log);
+        if (resolved) {
+          authorsList = resolved;
+        } else {
+          log.warn("openalex_candidate_skipped", {
+            service: "boxes",
+            data: {
+              title: title.substring(0, 80),
+              reason: "fallback_failed_suspicious_metadata",
+            },
+          });
+          continue;
+        }
       }
+
+      resolvedMap.set(item.id, {
+        openAlexId: item.id,
+        title,
+        publicationYear: item.publication_year || 0,
+        citedByCount: item.cited_by_count ?? 0,
+        authorsList,
+      });
     }
 
-    resolvedMap.set(item.id, {
-      openAlexId: item.id,
-      title,
-      publicationYear: item.publication_year || 0,
-      citedByCount: item.cited_by_count ?? 0,
-      authorsList,
-    });
-  }
+    // ======================================================================
+    // Step 5: Author+title similarity merging (ID fragmentation recovery)
+    // ======================================================================
 
-  // Enforce rate-limit delay before moving to the next box
-  await new Promise((resolve) => setTimeout(resolve, OPENALEX_DELAY_MS));
-
-  // ==========================================================================
-  // Phase 5: Author+title similarity merging (ID fragmentation recovery)
-  // ==========================================================================
-
-  const queryMergedCandidates = new Map<number, MergedCandidate[]>();
-  for (let i = 0; i < activeQueries.length; i++) {
-    const candidates = queryTopCandidates.get(i) || [];
-    const merged = mergeCandidates(candidates, resolvedMap);
-    queryMergedCandidates.set(i, merged);
-    const mergedCount = candidates.length - merged.length;
+    const merged = mergeCandidates(sortedCandidates, resolvedMap);
+    const mergedCount = sortedCandidates.length - merged.length;
 
     if (mergedCount > 0) {
       log.info("co_citation_miner_merged_records", {
         service: "boxes",
         data: {
           queryIndex: i,
-          query: activeQueries[i].substring(0, 80),
-          before: candidates.length,
+          query: query.substring(0, 80),
+          before: sortedCandidates.length,
           after: merged.length,
           mergedCount,
         },
       });
     }
-  }
 
-  // ==========================================================================
-  // Phase 6: Per-query champion selection with cross-query deduplication
-  // ==========================================================================
+    // ======================================================================
+    // Step 6: Score and pick champions (Pure localCount, picking top 3 works
+    // per query for intra-box multi-champion support)
+    // ======================================================================
 
-  /**
-   * Generates a fingerprint (normalized author+core title) to identify works
-   * that may have different OpenAlex IDs but are the same scholarly work.
-   */
-  function championFingerprint(title: string, authorsList: string[]): string {
-    const normAuthor = normalizeForMergeAuthor(authorsList);
-    const normTitle = normalizeForMergeTitle(title);
-    const coreTitle = normTitle.split(":")[0].trim();
-    return `${normAuthor} ||| ${coreTitle}`;
-  }
-
-  const chosenChampionFingerprints = new Set<string>();
-  const champions: FoundationalQuery[] = [];
-
-  for (let i = 0; i < activeQueries.length; i++) {
-    const merged = queryMergedCandidates.get(i) || [];
-
-    const scored = merged
-      .map((c) => ({
-        id: c.id,
-        title: c.title,
-        publicationYear: c.publicationYear,
-        authorsList: c.authorsList,
-        fingerprint: championFingerprint(c.title, c.authorsList),
-        score: computeScore(c.localCount, c.citedByCount),
-      }))
-      .sort((a, b) => b.score - a.score);
-
-    if (scored.length === 0) {
+    if (merged.length === 0) {
       log.warn("co_citation_miner_no_champion", {
         service: "boxes",
         data: {
           queryIndex: i,
-          query: activeQueries[i].substring(0, 80),
+          query: query.substring(0, 80),
           reason: "No resolved candidates available",
         },
       });
       continue;
     }
 
-    // Pick the highest-scoring candidate not already claimed — checks both
-    // OpenAlex ID (exact) and author+core-title fingerprint (fuzzy, catches
-    // ID fragmentation across queries).
-    const champion = scored.find(
-      (c) =>
-        !chosenChampionFingerprints.has(c.id) &&
-        !chosenChampionFingerprints.has(c.fingerprint),
-    );
-    if (!champion) {
-      log.warn("co_citation_miner_no_champion", {
+    const sortedChampions = merged
+      .map((c) => ({
+        ...c,
+        score: computeScore(c.localCount),
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+
+    for (const champ of sortedChampions) {
+      const authorStr =
+        champ.authorsList.length > 0
+          ? champ.authorsList.length > 2
+            ? `${champ.authorsList[0]} et al.`
+            : champ.authorsList.join(" & ")
+          : "Bilinmeyen Yazar";
+
+      champions.push({
+        author: authorStr,
+        title: champ.title,
+        publicationYear: champ.publicationYear,
+      });
+
+      log.info("co_citation_miner_champion_selected", {
         service: "boxes",
         data: {
           queryIndex: i,
-          query: activeQueries[i].substring(0, 80),
-          reason: "All top candidates already chosen by previous queries",
+          query: query.substring(0, 80),
+          champion: {
+            author: authorStr,
+            title: champ.title,
+            score: champ.score,
+          },
         },
       });
-      continue;
     }
 
-    chosenChampionFingerprints.add(champion.id);
-    chosenChampionFingerprints.add(champion.fingerprint);
-
-    const authorStr =
-      champion.authorsList.length > 0
-        ? champion.authorsList.length > 2
-          ? `${champion.authorsList[0]} et al.`
-          : champion.authorsList.join(" & ")
-        : "Bilinmeyen Yazar";
-
-    champions.push({
-      author: authorStr,
-      title: champion.title,
-      publicationYear: champion.publicationYear,
-    });
-
-    log.info("co_citation_miner_champion_selected", {
-      service: "boxes",
-      data: {
-        queryIndex: i,
-        query: activeQueries[i].substring(0, 80),
-        champion: {
-          author: authorStr,
-          title: champion.title,
-          score: champion.score,
-        },
-      },
-    });
+    // Inter-query throttle: delay before the next query's first API call
+    await new Promise((resolve) => setTimeout(resolve, OPENALEX_DELAY_MS));
   }
 
   log.info("co_citation_miner_complete", {

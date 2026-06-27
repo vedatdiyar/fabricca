@@ -86,6 +86,8 @@ src/
         _lib/
           fetch-actions.ts
         _services/
+          __tests__/
+            mine-co-citations.integration.ts
           co-citation-miner.ts
         boxes/
           _components/
@@ -205,6 +207,122 @@ README.md
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path="src/app/(auth)/onboarding/_services/__tests__/mine-co-citations.integration.ts">
+import dotenv from "dotenv";
+import { mineCoCitations } from "../co-citation-miner";
+import { Logger, createFlowId } from "@/lib/logger";
+import type { FoundationalQuery } from "@/lib/types";
+⋮----
+interface OpenAlexSearchHit {
+  id: string;
+  title?: string;
+  referenced_works?: string[];
+}
+⋮----
+interface OpenAlexSearchResponse {
+  results?: OpenAlexSearchHit[];
+}
+⋮----
+interface OpenAlexAuthorEntry {
+  author?: {
+    display_name?: string;
+  };
+}
+⋮----
+interface OpenAlexDetailHit {
+  id: string;
+  title?: string;
+  publication_year?: number;
+  authorships?: OpenAlexAuthorEntry[];
+}
+⋮----
+interface OpenAlexDetailResponse {
+  results?: OpenAlexDetailHit[];
+}
+⋮----
+function interceptConsole(): void
+⋮----
+function restoreConsole(): void
+⋮----
+const fmtDur = (ms: number): string => `$
+const delay = (ms: number): Promise<void>
+⋮----
+function extractScore(queryIndex: number): string
+⋮----
+interface TopCandidate {
+  title: string;
+  authors: string[];
+  year: number;
+  localCount: number;
+}
+⋮----
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  retries = 2,
+): Promise<Response | null>
+⋮----
+async function fetchTopCandidates(
+  query: string,
+  apiKey: string | undefined,
+): Promise<TopCandidate[]>
+⋮----
+// ==================================================================
+// Report Renderer
+// ==================================================================
+⋮----
+interface IsolatedEntry {
+  label: string;
+  durationMs: number;
+  champion: FoundationalQuery | null;
+}
+⋮----
+function fmtAuthor(authors: string[]): string
+⋮----
+function renderReport(
+  totalMs: number,
+  isolated: IsolatedEntry[],
+  batchMs: number,
+  batchChamps: FoundationalQuery[],
+  crossAnalysis: { verdict: "TEMİZ" | "ÇAPRAZ KİRLENME"; detail?: string }[],
+  topFive: { label: string; candidates: TopCandidate[] }[],
+  network: { has429: boolean; hasTimeout: boolean },
+): void
+⋮----
+const L = (s: string) => console.log(`$
+const sep = () => console.log(`╠$
+⋮----
+// ── Isolated calls — top 3 from supplementary analysis ──
+⋮----
+// ── Batch call (miner's champions) ──
+⋮----
+// ── Cross-contamination analysis ──
+⋮----
+// ── Bottom border ──
+⋮----
+// ==================================================================
+// Main
+// ==================================================================
+⋮----
+async function main(): Promise<void>
+⋮----
+// ------------------------------------------------------------------
+// Phase S — Supplementary Top‑5 analysis (direct OpenAlex calls)
+// ------------------------------------------------------------------
+⋮----
+// ------------------------------------------------------------------
+// Phase 1 — Isolated calls
+// ------------------------------------------------------------------
+⋮----
+// ------------------------------------------------------------------
+// Phase 2 — Batch call
+// ------------------------------------------------------------------
+⋮----
+// ------------------------------------------------------------------
+// Phase 3 — Cross-contamination analysis
+// ------------------------------------------------------------------
+</file>
 
 <file path="src/app/(app)/advisor/page.tsx">
 export default function AdvisorPage()
@@ -1130,7 +1248,7 @@ async function fetchWithRetry(
 ⋮----
 function isSuspiciousMetadata(authors: string[], title: string): boolean
 ⋮----
-function computeScore(localCount: number, globalCitations: number): number
+function computeScore(localCount: number): number
 ⋮----
 async function resolveAuthorsViaFallback(
   title: string,
@@ -1198,30 +1316,30 @@ interface MergeGroup {
 function extractOpenAlexId(candidateId: string): string
 ⋮----
 /**
- * Executes the co-citation mining algorithm to find seminal works for a set of
- * search queries using a fully isolated per-query champion model.
+ * Runs a fully isolated per-query co-citation mining pipeline to find
+ * seminal works for each search query independently.
  *
- * 1. For each query, fetch top PER_PAGE works from OpenAlex semantic search.
- * 2. Count referenced_works frequencies per query independently.
- * 3. Select the top TOP_K most-referenced candidates per query.
- * 4. Fetch metadata for all candidates in parallel (chunked to avoid URI length limits).
- * 5. Run author-consensus fallback for works with suspicious metadata.
- * 6. Merge candidates with overlapping author+title (ID fragmentation recovery).
- * 7. Score each merged candidate via computeScore and pick the best champion
- *    per query, skipping champions already claimed by an earlier query.
+ * For each query:
+ * 1. Fetch top PER_PAGE works from OpenAlex semantic search
+ * 2. Count referenced_works frequencies (local co-citation)
+ * 3. Select the top TOP_K most-referenced candidates
+ * 4. Fetch metadata for those candidates (chunked for URI safety)
+ * 5. Run author-consensus fallback for works with suspicious metadata
+ * 6. Merge candidates with overlapping author+title (ID fragmentation recovery)
+ * 7. Score each merged candidate by localCount only (no global citation bias)
+ * 8. Pick the highest-scoring champion
+ *
+ * Each query is an isolated cell — no cross-query deduplication or pooled
+ * batch fetching. Every query gets its own champion regardless of overlap.
  *
  * @param queries Array of English semantic search query paragraphs.
  * @param log Logger instance for pipeline event tracing.
- * @returns Array of FoundationalQuery objects (one champion per query, max 4).
+ * @returns Array of FoundationalQuery objects (one champion per query).
  */
 export async function mineCoCitations(
   queries: string[],
   log: Logger,
 ): Promise<FoundationalQuery[]>
-⋮----
-// Fallback for works with suspicious metadata (empty/short authors, short title)
-⋮----
-function championFingerprint(title: string, authorsList: string[]): string
 </file>
 
 <file path="src/app/(auth)/onboarding/enrichment/_components/matrix-field.tsx">
@@ -1880,6 +1998,7 @@ interface OnboardingState extends LoadingState {
   setCachedPapers: (papers: Record<string, RawPaper[]>) => void;
   stepsCompleted: Record<string, boolean>;
   setStepCompleted: (step: string) => void;
+  unsetStepCompleted: (step: string) => void;
   clearDownstreamData: (fromStep: string) => void;
   resetStore: () => void;
 }
@@ -2078,7 +2197,7 @@ export async function synthesizeRoadmap(
 </file>
 
 <file path="src/app/(auth)/onboarding/actions.ts">
-import { eq, and, not, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
   thesisMatrices,

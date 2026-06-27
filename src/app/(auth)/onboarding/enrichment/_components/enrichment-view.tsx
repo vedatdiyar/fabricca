@@ -198,7 +198,6 @@ export function EnrichmentView() {
 
       // Eski downstream Zustand state'ini temizle.
       useOnboardingStore.getState().clearDownstreamData("enrichment");
-      useOnboardingStore.getState().setStepCompleted("enrichment");
 
       const matrixInput = {
         studyTitle: formState.studyTitle,
@@ -219,6 +218,7 @@ export function EnrichmentView() {
 
       // Tamamlanan raporu Zustand'a yaz; risk sayfası buradan okur.
       useOnboardingStore.getState().setReportData(pipelineResult.data!);
+      useOnboardingStore.getState().setStepCompleted("enrichment");
       useOnboardingStore.getState().setStepCompleted("risk");
 
       setIsPending(false);
