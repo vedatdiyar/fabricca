@@ -192,7 +192,7 @@ export const GeminiThesisBoxSchema = z.object({
     "RELATED_THESES",
   ]),
   description: z.string().min(1, "Kutu açıklaması boş olamaz"),
-  semanticSearchQueries: z.array(z.string()).min(1).max(4),
+  semanticSearchQueries: z.array(z.string()).max(4),
   concepts: z.array(z.string()).max(4),
 });
 

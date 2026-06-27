@@ -206,6 +206,14 @@ README.md
 <files>
 This section contains the contents of the repository's files.
 
+<file path="src/app/(app)/advisor/page.tsx">
+export default function AdvisorPage()
+</file>
+
+<file path="src/app/(app)/card-index/page.tsx">
+export default function CardIndexPage()
+</file>
+
 <file path="src/app/(app)/dashboard/_components/add-task-modal.tsx">
 import { useState } from "react";
 import { X } from "lucide-react";
@@ -230,6 +238,22 @@ export function AddTaskModal({
 const handleSubmit = (e: React.FormEvent) =>
 ⋮----
 const handleClose = () =>
+</file>
+
+<file path="src/app/(app)/dashboard/_components/box-card.tsx">
+import { BookOpen, Book, FolderArchive } from "lucide-react";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
+import type { TopicBox } from "../types";
+⋮----
+interface BoxCardProps {
+  box: TopicBox;
+}
 </file>
 
 <file path="src/app/(app)/dashboard/_components/edit-task-modal.tsx">
@@ -303,133 +327,6 @@ export function useDashboard(
   initialResources: LibraryResource[],
   initialTasks: TaskRow[],
 )
-</file>
-
-<file path="src/app/(app)/advisor/page.tsx">
-export default function AdvisorPage()
-</file>
-
-<file path="src/app/(app)/card-index/page.tsx">
-export default function CardIndexPage()
-</file>
-
-<file path="src/app/(app)/dashboard/_components/box-card.tsx">
-import { BookOpen, Book, FolderArchive } from "lucide-react";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
-import type { TopicBox } from "../types";
-⋮----
-interface BoxCardProps {
-  box: TopicBox;
-}
-</file>
-
-<file path="src/app/(app)/dashboard/_components/dashboard-content.tsx">
-import type { ThesisBox, LibraryResource } from "@/db/schema";
-import { BoxCard } from "./box-card";
-import { KanbanBoard } from "./kanban-board";
-import { useDashboard } from "./use-dashboard";
-⋮----
-interface TaskRow {
-  id: number;
-  title: string;
-  description: string | null;
-  status: "TODO" | "IN_PROGRESS" | "DONE";
-  priority: "HIGH" | "MEDIUM" | "LOW";
-  thesisBoxId: number | null;
-  boxTitle: string | null;
-}
-⋮----
-interface DashboardContentProps {
-  initialBoxes: ThesisBox[];
-  initialResources: LibraryResource[];
-  initialTasks: TaskRow[];
-}
-</file>
-
-<file path="src/app/(app)/dashboard/_components/kanban-board.tsx">
-import { useState } from "react";
-import {
-  ChevronRight,
-  Activity,
-  Clock,
-  CheckCircle2,
-  BookOpen,
-  Sparkles,
-  Plus,
-  ChevronDown,
-  ChevronUp,
-  Pencil,
-  Trash2,
-} from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import type { ThesisBox } from "@/db/schema";
-import type { KanbanTask } from "../types";
-import { AddTaskModal } from "./add-task-modal";
-import { EditTaskModal } from "./edit-task-modal";
-⋮----
-interface KanbanBoardProps {
-  tasks: KanbanTask[];
-  onTaskStatusChange: (
-    taskId: string,
-    newStatus: "TODO" | "IN_PROGRESS" | "DONE",
-  ) => void;
-  onAddTask: (task: Omit<KanbanTask, "id">) => void;
-  onEditTask: (
-    taskId: string,
-    input: {
-      title: string;
-      priority: "HIGH" | "MEDIUM" | "LOW";
-      thesisBoxId?: number | null;
-    },
-  ) => Promise<boolean>;
-  onDeleteTask: (taskId: string) => Promise<void>;
-  boxes: ThesisBox[];
-}
-⋮----
-interface KanbanCardProps {
-  task: KanbanTask;
-  onDragStart: (e: React.DragEvent, taskId: string) => void;
-  onDragEnd: () => void;
-  onEdit: (task: KanbanTask) => void;
-  onDelete: (taskId: string) => void;
-}
-⋮----
-function KanbanCard({
-  task,
-  onDragStart,
-  onDragEnd,
-  onEdit,
-  onDelete,
-}: KanbanCardProps)
-⋮----
-className=
-⋮----
-e.stopPropagation();
-onEdit(task);
-⋮----
-const handleDragStart = (e: React.DragEvent, taskId: string) =>
-⋮----
-const handleDragOver = (e: React.DragEvent) =>
-⋮----
-const handleDragEnter = (e: React.DragEvent, colId: string) =>
-⋮----
-const handleDrop = (
-    e: React.DragEvent,
-    targetStatus: "TODO" | "IN_PROGRESS" | "DONE",
-) =>
-⋮----
-const openEditModal = (task: KanbanTask) =>
-⋮----
-onDragEnter=
 </file>
 
 <file path="src/app/(app)/dashboard/actions.ts">
@@ -819,6 +716,109 @@ export async function rerankTheses(
 # fabricca
 </file>
 
+<file path="src/app/(app)/dashboard/_components/dashboard-content.tsx">
+import type { ThesisBox, LibraryResource } from "@/db/schema";
+import { BoxCard } from "./box-card";
+import { KanbanBoard } from "./kanban-board";
+import { useDashboard } from "./use-dashboard";
+⋮----
+interface TaskRow {
+  id: number;
+  title: string;
+  description: string | null;
+  status: "TODO" | "IN_PROGRESS" | "DONE";
+  priority: "HIGH" | "MEDIUM" | "LOW";
+  thesisBoxId: number | null;
+  boxTitle: string | null;
+}
+⋮----
+interface DashboardContentProps {
+  initialBoxes: ThesisBox[];
+  initialResources: LibraryResource[];
+  initialTasks: TaskRow[];
+}
+</file>
+
+<file path="src/app/(app)/dashboard/_components/kanban-board.tsx">
+import { useState } from "react";
+import {
+  ChevronRight,
+  Activity,
+  Clock,
+  CheckCircle2,
+  BookOpen,
+  Sparkles,
+  Plus,
+  ChevronDown,
+  ChevronUp,
+  Pencil,
+  Trash2,
+} from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import type { ThesisBox } from "@/db/schema";
+import type { KanbanTask } from "../types";
+import { AddTaskModal } from "./add-task-modal";
+import { EditTaskModal } from "./edit-task-modal";
+⋮----
+interface KanbanBoardProps {
+  tasks: KanbanTask[];
+  onTaskStatusChange: (
+    taskId: string,
+    newStatus: "TODO" | "IN_PROGRESS" | "DONE",
+  ) => void;
+  onAddTask: (task: Omit<KanbanTask, "id">) => void;
+  onEditTask: (
+    taskId: string,
+    input: {
+      title: string;
+      priority: "HIGH" | "MEDIUM" | "LOW";
+      thesisBoxId?: number | null;
+    },
+  ) => Promise<boolean>;
+  onDeleteTask: (taskId: string) => Promise<void>;
+  boxes: ThesisBox[];
+}
+⋮----
+interface KanbanCardProps {
+  task: KanbanTask;
+  onDragStart: (e: React.DragEvent, taskId: string) => void;
+  onDragEnd: () => void;
+  onEdit: (task: KanbanTask) => void;
+  onDelete: (taskId: string) => void;
+}
+⋮----
+function KanbanCard({
+  task,
+  onDragStart,
+  onDragEnd,
+  onEdit,
+  onDelete,
+}: KanbanCardProps)
+⋮----
+className=
+⋮----
+e.stopPropagation();
+onEdit(task);
+⋮----
+const handleDragStart = (e: React.DragEvent, taskId: string) =>
+⋮----
+const handleDragOver = (e: React.DragEvent) =>
+⋮----
+const handleDragEnter = (e: React.DragEvent, colId: string) =>
+⋮----
+const handleDrop = (
+    e: React.DragEvent,
+    targetStatus: "TODO" | "IN_PROGRESS" | "DONE",
+) =>
+⋮----
+const openEditModal = (task: KanbanTask) =>
+⋮----
+onDragEnter=
+</file>
+
 <file path="src/app/(app)/dashboard/page.tsx">
 import { eq, asc, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -999,6 +999,108 @@ import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import { OnboardingGlobalLoader } from "@/components/onboarding-global-loader";
 </file>
 
+<file path="src/app/(auth)/onboarding/enrichment/_components/enrichment-loading-skeleton.tsx">
+import { LoadingSpinner } from "@/components/loading-spinner";
+⋮----
+export function EnrichmentLoadingSkeleton()
+</file>
+
+<file path="src/app/(auth)/onboarding/literature-review/_services/batch-orchestrator.ts">
+import { Logger } from "@/lib/logger";
+import type {
+  SubBoxInput,
+  ValidatedPaper,
+  RawPaper,
+} from "./literature-review-papers";
+import type { JuryArticle, LiteraturePoolEntry } from "@/lib/types";
+import { collectOpenAlexResults } from "./openalex-collector";
+import { mergePapers } from "./literature-review-papers";
+import {
+  isArchivalBox,
+  resolveBoxFoundationalWorks,
+  runBoxPipeline,
+} from "./box-pipeline";
+⋮----
+export interface BatchOrchestrationResult {
+  poolEntries: LiteraturePoolEntry[];
+  archivalBoxTitles: string[];
+}
+⋮----
+interface DedupEliminatedEntry {
+  boxTitle: string;
+  candidate: ValidatedPaper;
+  relevanceScore: number;
+}
+⋮----
+function deduplicateCandidatesGlobally(
+  boxCandidates: Map<string, ValidatedPaper[]>,
+  logger?: Logger,
+): Map<string, ValidatedPaper[]>
+⋮----
+function resolveDedupKey(candidate: ValidatedPaper): string | null
+⋮----
+export async function orchestrateBatchProcess(
+  boxes: SubBoxInput[],
+  logger: Logger,
+  cachedPapers?: Record<string, RawPaper[]>,
+  thesisArticlesMap?: Map<string, JuryArticle[]>,
+): Promise<BatchOrchestrationResult>
+</file>
+
+<file path="src/components/header.tsx">
+import { startTransition } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  BookOpen,
+  Layers,
+  MessageSquareCode,
+  LogOut,
+  RotateCcw,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { logoutAction, resetOnboardingAction } from "@/app/(app)/actions";
+import { cn } from "@/lib/utils";
+⋮----
+export function Header(
+⋮----
+function handleLogout()
+⋮----
+function handleReset()
+⋮----
+className=
+</file>
+
+<file path="src/lib/error-utils.ts">
+export type ErrorScenario = "quota" | "network" | "system";
+⋮----
+export interface ErrorDisplay {
+  title: string;
+  description: string;
+  scenario: ErrorScenario;
+  canRetry: boolean;
+}
+⋮----
+export function classifyError(error: unknown): ErrorScenario
+⋮----
+export function getErrorDisplay(error: unknown): ErrorDisplay
+⋮----
+export function extractMessage(error: unknown): string
+</file>
+
+<file path="src/app/(app)/library/page.tsx">
+import { eq, asc } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { db } from "@/db";
+import { thesisMatrices, thesisBoxes } from "@/db/schema";
+import { getSession } from "@/session";
+import { LibraryContent } from "./library-content";
+⋮----
+export default async function LibraryPage()
+</file>
+
 <file path="src/app/(auth)/onboarding/_services/co-citation-miner.ts">
 import type { FoundationalQuery } from "@/lib/types";
 import { Logger } from "@/lib/logger";
@@ -1122,52 +1224,24 @@ export async function mineCoCitations(
 function championFingerprint(title: string, authorsList: string[]): string
 </file>
 
-<file path="src/app/(auth)/onboarding/enrichment/_components/enrichment-loading-skeleton.tsx">
-import { LoadingSpinner } from "@/components/loading-spinner";
+<file path="src/app/(auth)/onboarding/enrichment/_components/matrix-field.tsx">
+import type { LucideIcon } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 ⋮----
-export function EnrichmentLoadingSkeleton()
-</file>
-
-<file path="src/app/(auth)/onboarding/literature-review/_services/batch-orchestrator.ts">
-import { Logger } from "@/lib/logger";
-import type {
-  SubBoxInput,
-  ValidatedPaper,
-  RawPaper,
-} from "./literature-review-papers";
-import type { JuryArticle, LiteraturePoolEntry } from "@/lib/types";
-import { collectOpenAlexResults } from "./openalex-collector";
-import { mergePapers } from "./literature-review-papers";
-import {
-  isArchivalBox,
-  resolveBoxFoundationalWorks,
-  runBoxPipeline,
-} from "./box-pipeline";
-⋮----
-export interface BatchOrchestrationResult {
-  poolEntries: LiteraturePoolEntry[];
-  archivalBoxTitles: string[];
+interface MatrixFieldProps {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+  number?: string;
+  Icon?: LucideIcon;
+  hint?: string;
 }
 ⋮----
-interface DedupEliminatedEntry {
-  boxTitle: string;
-  candidate: ValidatedPaper;
-  relevanceScore: number;
-}
-⋮----
-function deduplicateCandidatesGlobally(
-  boxCandidates: Map<string, ValidatedPaper[]>,
-  logger?: Logger,
-): Map<string, ValidatedPaper[]>
-⋮----
-function resolveDedupKey(candidate: ValidatedPaper): string | null
-⋮----
-export async function orchestrateBatchProcess(
-  boxes: SubBoxInput[],
-  logger: Logger,
-  cachedPapers?: Record<string, RawPaper[]>,
-  thesisArticlesMap?: Map<string, JuryArticle[]>,
-): Promise<BatchOrchestrationResult>
+onChange=
 </file>
 
 <file path="src/app/(auth)/onboarding/literature-review/_services/box-pipeline.ts">
@@ -1197,154 +1271,6 @@ export async function runBoxPipeline(
   thesisArticles: JuryArticle[],
   logger: Logger,
 ): Promise<
-</file>
-
-<file path="src/components/header.tsx">
-import { startTransition } from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  BookOpen,
-  Layers,
-  MessageSquareCode,
-  LogOut,
-  RotateCcw,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { logoutAction, resetOnboardingAction } from "@/app/(app)/actions";
-import { cn } from "@/lib/utils";
-⋮----
-export function Header(
-⋮----
-function handleLogout()
-⋮----
-function handleReset()
-⋮----
-className=
-</file>
-
-<file path="src/lib/error-utils.ts">
-export type ErrorScenario = "quota" | "network" | "system";
-⋮----
-export interface ErrorDisplay {
-  title: string;
-  description: string;
-  scenario: ErrorScenario;
-  canRetry: boolean;
-}
-⋮----
-export function classifyError(error: unknown): ErrorScenario
-⋮----
-export function getErrorDisplay(error: unknown): ErrorDisplay
-⋮----
-export function extractMessage(error: unknown): string
-</file>
-
-<file path="src/app/(app)/library/page.tsx">
-import { eq, asc } from "drizzle-orm";
-import { redirect } from "next/navigation";
-import { db } from "@/db";
-import { thesisMatrices, thesisBoxes } from "@/db/schema";
-import { getSession } from "@/session";
-import { LibraryContent } from "./library-content";
-⋮----
-export default async function LibraryPage()
-</file>
-
-<file path="src/app/(auth)/onboarding/_hooks/use-onboarding-navigation.ts">
-import { useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { useOnboardingStore } from "@/lib/store/onboarding-store";
-import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
-import type { LoadingStep } from "@/lib/store/onboarding-store";
-import type { OriginalityReportData } from "@/lib/types";
-import {
-  extractQueriesAction,
-  executeSearchAction,
-  siftThesesAction,
-  finalizeJuryAnalysisAction,
-  completeRiskStageAction,
-} from "../risk/actions";
-import {
-  generateBoxesStructureAction,
-  mineFoundationalQueriesAction,
-  prefetchLiteratureCacheAction,
-} from "../boxes/actions";
-⋮----
-interface MatrixInput {
-  studyTitle: string;
-  researchQuestion: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-  mainClaim: string;
-}
-⋮----
-export function useOnboardingNavigation()
-</file>
-
-<file path="src/app/(auth)/onboarding/_lib/fetch-actions.ts">
-import { eq, sql } from "drizzle-orm";
-import { cacheLife, cacheTag } from "next/cache";
-import { db } from "@/db";
-import {
-  thesisMatrices,
-  originalityReports,
-  thesisBoxes,
-  libraryResources,
-} from "@/db/schema";
-import type { GeminiThesisBox } from "@/lib/types";
-import { getSession } from "@/session";
-⋮----
-async function getCachedThesisMatrix(userId: number)
-⋮----
-async function getCachedOriginalityReport(userId: number)
-⋮----
-async function getCachedBoxes(thesisMatrixId: number)
-⋮----
-export async function fetchThesisMatrix()
-⋮----
-export async function fetchOriginalityReport()
-⋮----
-export async function fetchBoxes()
-⋮----
-export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]>
-⋮----
-/**
- * Server Action: checks which onboarding steps have existing data in the database
- * for the current user. Used by the stepper to determine which future steps are
- * clickable (steps with data can be re-visited even if they appear in the future).
- *
- * @returns A record of step key → boolean, or null if no session
- */
-export async function checkStepsDataAction(): Promise<Record<
-  string,
-  boolean
-> | null> {
-  const session = await getSession();
-</file>
-
-<file path="src/app/(auth)/onboarding/enrichment/_components/matrix-field.tsx">
-import type { LucideIcon } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-⋮----
-interface MatrixFieldProps {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  required?: boolean;
-  number?: string;
-  Icon?: LucideIcon;
-  hint?: string;
-}
-⋮----
-onChange=
 </file>
 
 <file path="src/app/(auth)/onboarding/literature-review/_services/literature-review-papers.ts">
@@ -1458,6 +1384,80 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 ⋮----
 export function cn(...inputs: ClassValue[])
+</file>
+
+<file path="src/app/(auth)/onboarding/_hooks/use-onboarding-navigation.ts">
+import { useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
+import type { LoadingStep } from "@/lib/store/onboarding-store";
+import type { OriginalityReportData } from "@/lib/types";
+import {
+  extractQueriesAction,
+  executeSearchAction,
+  siftThesesAction,
+  finalizeJuryAnalysisAction,
+  completeRiskStageAction,
+} from "../risk/actions";
+import {
+  generateBoxesStructureAction,
+  mineFoundationalQueriesAction,
+  prefetchLiteratureCacheAction,
+} from "../boxes/actions";
+⋮----
+interface MatrixInput {
+  studyTitle: string;
+  researchQuestion: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+  mainClaim: string;
+}
+⋮----
+export function useOnboardingNavigation()
+</file>
+
+<file path="src/app/(auth)/onboarding/_lib/fetch-actions.ts">
+import { eq, sql } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
+import { db } from "@/db";
+import {
+  thesisMatrices,
+  originalityReports,
+  thesisBoxes,
+  libraryResources,
+} from "@/db/schema";
+import type { GeminiThesisBox } from "@/lib/types";
+import { getSession } from "@/session";
+⋮----
+async function getCachedThesisMatrix(userId: number)
+⋮----
+async function getCachedOriginalityReport(userId: number)
+⋮----
+async function getCachedBoxes(thesisMatrixId: number)
+⋮----
+export async function fetchThesisMatrix()
+⋮----
+export async function fetchOriginalityReport()
+⋮----
+export async function fetchBoxes()
+⋮----
+export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]>
+⋮----
+/**
+ * Server Action: checks which onboarding steps have existing data in the database
+ * for the current user. Used by the stepper to determine which future steps are
+ * clickable (steps with data can be re-visited even if they appear in the future).
+ *
+ * @returns A record of step key → boolean, or null if no session
+ */
+export async function checkStepsDataAction(): Promise<Record<
+  string,
+  boolean
+> | null> {
+  const session = await getSession();
 </file>
 
 <file path="src/app/layout.tsx">
@@ -1662,43 +1662,6 @@ async function AuthLayoutInner({
 }>)
 </file>
 
-<file path="src/components/literature-reader.tsx">
-import { useCallback } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle, BookOpen, RefreshCw, Layers } from "lucide-react";
-import { toast } from "sonner";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-  getBoxResourcesAction,
-  toggleResourceReadStatusAction,
-} from "@/app/(app)/library/actions";
-import type {
-  GetBoxResourcesResult,
-  ToggleReadStatusResult,
-} from "@/app/(app)/library/actions";
-import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
-⋮----
-interface LiteratureReaderProps {
-  boxId: number;
-  boxTitle: string;
-  boxType?: string | null;
-}
-⋮----
-type ReaderStatus = "loading" | "error" | "reading" | "all-read";
-⋮----
-const BOX_KEY = (boxId: number)
-⋮----
-export function LiteratureReader({
-  boxId,
-  boxTitle,
-  boxType,
-}: LiteratureReaderProps)
-</file>
-
 <file path="src/db/index.ts">
 import { Pool } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-serverless";
@@ -1792,6 +1755,43 @@ import { RiskContainer } from "./_components/risk-container";
 import { StartOverButton } from "../_components/start-over-button";
 ⋮----
 export default async function OnboardingRiskPage()
+</file>
+
+<file path="src/components/literature-reader.tsx">
+import { useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { CheckCircle, BookOpen, RefreshCw, Layers } from "lucide-react";
+import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  getBoxResourcesAction,
+  toggleResourceReadStatusAction,
+} from "@/app/(app)/library/actions";
+import type {
+  GetBoxResourcesResult,
+  ToggleReadStatusResult,
+} from "@/app/(app)/library/actions";
+import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
+⋮----
+interface LiteratureReaderProps {
+  boxId: number;
+  boxTitle: string;
+  boxType?: string | null;
+}
+⋮----
+type ReaderStatus = "loading" | "error" | "reading" | "all-read";
+⋮----
+const BOX_KEY = (boxId: number)
+⋮----
+export function LiteratureReader({
+  boxId,
+  boxTitle,
+  boxType,
+}: LiteratureReaderProps)
 </file>
 
 <file path="src/app/(auth)/onboarding/_components/onboarding-stepper.tsx">
@@ -2029,34 +2029,6 @@ export async function confirmEnhancedThesisAction(
 ): Promise<OnboardingActionResult>
 </file>
 
-<file path="src/app/(auth)/onboarding/actions.ts">
-import { eq, and, not, inArray } from "drizzle-orm";
-import { db } from "@/db";
-import {
-  thesisMatrices,
-  originalityReports,
-  users,
-  thesisBoxes,
-  libraryResources,
-} from "@/db/schema";
-import { getSession } from "@/session";
-import { createFlowId, Logger } from "@/lib/logger";
-import { SESSION_ERROR_MSG } from "@/lib/constants/session";
-import {
-  revalidateOnboardingPaths,
-  invalidateOnboardingCache,
-} from "@/lib/cache-tags";
-⋮----
-export async function resetOnboardingAction(): Promise<
-  { success: boolean } | { error: string }
-> {
-  const flowId = createFlowId();
-⋮----
-export async function clearDownstreamDbAction(
-  fromStep: "matrix" | "enrichment" | "risk" | "boxes",
-): Promise<
-</file>
-
 <file path="src/app/(auth)/onboarding/page.tsx">
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
@@ -2103,6 +2075,34 @@ export async function synthesizeRoadmap(
   params: SynthesizeRoadmapParams,
   log: Logger,
 ): Promise<string>
+</file>
+
+<file path="src/app/(auth)/onboarding/actions.ts">
+import { eq, and, not, inArray } from "drizzle-orm";
+import { db } from "@/db";
+import {
+  thesisMatrices,
+  originalityReports,
+  users,
+  thesisBoxes,
+  libraryResources,
+} from "@/db/schema";
+import { getSession } from "@/session";
+import { createFlowId, Logger } from "@/lib/logger";
+import { SESSION_ERROR_MSG } from "@/lib/constants/session";
+import {
+  revalidateOnboardingPaths,
+  invalidateOnboardingCache,
+} from "@/lib/cache-tags";
+⋮----
+export async function resetOnboardingAction(): Promise<
+  { success: boolean } | { error: string }
+> {
+  const flowId = createFlowId();
+⋮----
+export async function clearDownstreamDbAction(
+  fromStep: "matrix" | "enrichment" | "risk" | "boxes",
+): Promise<
 </file>
 
 <file path="src/lib/tezara.ts">
@@ -2217,6 +2217,67 @@ export async function saveEnrichedMatrixAction(
 ): Promise<
 </file>
 
+<file path="package.json">
+{
+  "name": "fabricca",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "check:full": "npm run lint && npm run typecheck && npx prettier --write .",
+    "db:push": "drizzle-kit push --force",
+    "db:seed": "tsx src/db/seed.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^2.8.0",
+    "@neondatabase/serverless": "^1.0.0",
+    "@radix-ui/react-accordion": "^1.2.14",
+    "@radix-ui/react-alert-dialog": "^1.1.16",
+    "@radix-ui/react-checkbox": "^1.3.4",
+    "@radix-ui/react-label": "^2.1.9",
+    "@radix-ui/react-scroll-area": "^1.2.11",
+    "@radix-ui/react-slot": "^1.2.5",
+    "@tanstack/react-query": "^5.101.0",
+    "bcrypt-ts": "^6.0.0",
+    "cheerio": "^1.2.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.43.1",
+    "lucide-react": "^0.510.0",
+    "next": "^16.2.9",
+    "next-themes": "^0.4.6",
+    "pg": "^8.15.6",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.2.0",
+    "tailwindcss-animate": "^1.0.7",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.7",
+    "@eslint/eslintrc": "^3.3.1",
+    "@tailwindcss/postcss": "^4.1.6",
+    "@types/node": "^22.15.3",
+    "@types/pg": "^8.11.14",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.9",
+    "postcss": "^8.5.3",
+    "repomix": "^1.15.0",
+    "tailwindcss": "^4.1.6",
+    "tsx": "^4.22.4",
+    "typescript": "^5.8.3"
+  }
+}
+</file>
+
 <file path="src/app/(auth)/onboarding/literature-review/_hooks/use-literature-review.ts">
 import { useMemo, useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -2310,128 +2371,6 @@ function reducer(state: State, action: Action): State
 export function useRiskAnalysis(): UseRiskAnalysisResult
 ⋮----
 async function init()
-</file>
-
-<file path="package.json">
-{
-  "name": "fabricca",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
-    "check:full": "npm run lint && npm run typecheck && npx prettier --write .",
-    "db:push": "drizzle-kit push --force",
-    "db:seed": "tsx src/db/seed.ts"
-  },
-  "dependencies": {
-    "@google/genai": "^2.8.0",
-    "@neondatabase/serverless": "^1.0.0",
-    "@radix-ui/react-accordion": "^1.2.14",
-    "@radix-ui/react-alert-dialog": "^1.1.16",
-    "@radix-ui/react-checkbox": "^1.3.4",
-    "@radix-ui/react-label": "^2.1.9",
-    "@radix-ui/react-scroll-area": "^1.2.11",
-    "@radix-ui/react-slot": "^1.2.5",
-    "@tanstack/react-query": "^5.101.0",
-    "bcrypt-ts": "^6.0.0",
-    "cheerio": "^1.2.0",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "drizzle-orm": "^0.43.1",
-    "lucide-react": "^0.510.0",
-    "next": "^16.2.9",
-    "next-themes": "^0.4.6",
-    "pg": "^8.15.6",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "sonner": "^2.0.7",
-    "tailwind-merge": "^3.2.0",
-    "tailwindcss-animate": "^1.0.7",
-    "zustand": "^5.0.14"
-  },
-  "devDependencies": {
-    "dotenv": "^16.4.7",
-    "@eslint/eslintrc": "^3.3.1",
-    "@tailwindcss/postcss": "^4.1.6",
-    "@types/node": "^22.15.3",
-    "@types/pg": "^8.11.14",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "drizzle-kit": "^0.31.10",
-    "eslint": "^9.39.4",
-    "eslint-config-next": "^16.2.9",
-    "postcss": "^8.5.3",
-    "repomix": "^1.15.0",
-    "tailwindcss": "^4.1.6",
-    "tsx": "^4.22.4",
-    "typescript": "^5.8.3"
-  }
-}
-</file>
-
-<file path="src/app/(auth)/onboarding/matrix/_components/matrix-form.tsx">
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import type { LucideIcon } from "lucide-react";
-import {
-  Loader2,
-  FileText,
-  HelpCircle,
-  BookMarked,
-  Layers,
-  Compass,
-  Target,
-} from "lucide-react";
-⋮----
-import { getErrorDisplay } from "@/lib/error-utils";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { LoadingSpinner } from "@/components/loading-spinner";
-import { useOnboardingStore } from "@/lib/store/onboarding-store";
-import type { LoadingStep } from "@/lib/store/onboarding-store";
-import { enrichThesisMatrixAction, saveEnrichedMatrixAction } from "../actions";
-import { fetchThesisMatrix } from "../../_lib/fetch-actions";
-import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
-⋮----
-type FormState = {
-  studyTitle: string;
-  researchQuestion: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-  mainClaim: string;
-};
-⋮----
-type FieldConfig = {
-  key: keyof FormState;
-  id: string;
-  number: string;
-  Icon: LucideIcon;
-  label: string;
-  placeholder: string;
-  hint: string;
-};
-⋮----
-type SectionConfig = {
-  id: string;
-  title: string;
-  fields: FieldConfig[];
-};
-⋮----
-/**
-   * Form gönderimini yönetir. Önce Gemini ile zenginleştirme yapar,
-   * ardından zenginleştirilmiş veriyi veritabanına kaydeder.
-   *
-   * @param e - Form gönderme olayı.
-   */
-const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_components/originality-report-view.tsx">
@@ -2672,6 +2611,67 @@ type SectionConfig = {
 };
 ⋮----
 const handleConfirm = async (e: React.FormEvent<HTMLFormElement>) =>
+</file>
+
+<file path="src/app/(auth)/onboarding/matrix/_components/matrix-form.tsx">
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import type { LucideIcon } from "lucide-react";
+import {
+  Loader2,
+  FileText,
+  HelpCircle,
+  BookMarked,
+  Layers,
+  Compass,
+  Target,
+} from "lucide-react";
+⋮----
+import { getErrorDisplay } from "@/lib/error-utils";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { LoadingSpinner } from "@/components/loading-spinner";
+import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import type { LoadingStep } from "@/lib/store/onboarding-store";
+import { enrichThesisMatrixAction, saveEnrichedMatrixAction } from "../actions";
+import { fetchThesisMatrix } from "../../_lib/fetch-actions";
+import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
+⋮----
+type FormState = {
+  studyTitle: string;
+  researchQuestion: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+  mainClaim: string;
+};
+⋮----
+type FieldConfig = {
+  key: keyof FormState;
+  id: string;
+  number: string;
+  Icon: LucideIcon;
+  label: string;
+  placeholder: string;
+  hint: string;
+};
+⋮----
+type SectionConfig = {
+  id: string;
+  title: string;
+  fields: FieldConfig[];
+};
+⋮----
+/**
+   * Form gönderimini yönetir. Önce Gemini ile zenginleştirme yapar,
+   * ardından zenginleştirilmiş veriyi veritabanına kaydeder.
+   *
+   * @param e - Form gönderme olayı.
+   */
+const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
 </file>
 
 <file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">
