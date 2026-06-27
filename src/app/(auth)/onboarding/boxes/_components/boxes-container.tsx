@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Loader2,
   CheckCircle2,
@@ -19,15 +20,15 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { AIBanner } from "@/components/ai-banner";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { confirmBoxesAction } from "../actions";
-import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import { fetchBoxesWithFullShape } from "../../_lib/fetch-actions";
 import type { GeminiThesisBox, RelatedThesisEntry } from "@/lib/types";
 
 const boxTypeOrder: Record<string, number> = {
-  CONCEPTUAL: 1,
-  PROBLEMATIZATION: 2,
+  PROBLEMATIZATION: 1,
+  CONCEPTUAL: 2,
   DATA_PROTOCOL: 3,
-  RELATED_THESES: 4,
-  PRIMARY_MATERIAL: 5,
+  PRIMARY_MATERIAL: 4,
+  RELATED_THESES: 5,
 };
 
 const badgeLabels: Record<string, string> = {
@@ -35,46 +36,33 @@ const badgeLabels: Record<string, string> = {
   PROBLEMATIZATION: "Problematizasyon",
   PRIMARY_MATERIAL: "Birincil Malzeme",
   DATA_PROTOCOL: "Metodoloji",
-  RELATED_THESES: "İlişkisel Tezler",
+  RELATED_THESES: "\u0130lişkisel Tezler",
 };
 
 export function BoxesContainer() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [confirming, setConfirming] = useState(false);
-  const { boxes, setBoxes } = useOnboardingStore();
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      // 1) Check Zustand cache first — boxes are set here by the risk page's
-      //    proceed flow (handleProceed). This prevents the DB fallback from
-      //    overwriting the in-memory data with null.
-      const cached = useOnboardingStore.getState().boxes;
-      if (cached && cached.length > 0) {
-        if (!cancelled) setLoading(false);
-        return;
-      }
-
-      // 2) Fall back to the database.
-      const { fetchBoxesWithFullShape } =
-        await import("../../_lib/fetch-actions");
+  const {
+    data: boxes,
+    isLoading: loading,
+  } = useQuery({
+    queryKey: ["boxes"],
+    queryFn: async (): Promise<GeminiThesisBox[]> => {
       const existing = await fetchBoxesWithFullShape();
-      if (!cancelled) {
-        if (existing.length > 0) {
-          setBoxes(existing);
-        } else {
-          // No boxes anywhere — redirect to risk page to generate them.
-          router.replace("/onboarding/risk");
-          return;
-        }
-        setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [router, setBoxes]);
+      if (existing.length > 0) return existing;
+      return [];
+    },
+  });
+
+  // Fallback redirect: if query completed but no boxes exist, redirect to risk
+  const boxesResolved = !loading && boxes !== undefined;
+  useEffect(() => {
+    if (boxesResolved && boxes.length === 0) {
+      router.replace("/onboarding/risk");
+    }
+  }, [boxesResolved, boxes, router]);
 
   const handleConfirm = useCallback(async () => {
     if (!boxes) return;
@@ -88,8 +76,8 @@ export function BoxesContainer() {
         return;
       }
 
-      const store = useOnboardingStore.getState();
-      store.clearDownstreamData("boxes");
+      queryClient.invalidateQueries({ queryKey: ["boxes"] });
+      queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
 
       setConfirming(false);
       toast.success(
@@ -102,14 +90,12 @@ export function BoxesContainer() {
       );
       setConfirming(false);
     }
-  }, [boxes, router]);
+  }, [boxes, queryClient, router]);
 
   if (loading) {
     return <LoadingSpinner variant="full" message="Kutular yükleniyor..." />;
   }
 
-  // Defensive guard: boxes should never be null here (the mount useEffect
-  // either restores them from Zustand/DB or redirects to the risk page).
   if (!boxes) {
     return <LoadingSpinner variant="full" />;
   }
@@ -204,10 +190,7 @@ function BoxCard({
   index: number;
   isLastOdd?: boolean;
 }) {
-  // Aggregeer sub-box concepts/foundationalQueries; master seviyesinde tutulmaz
-  const subConcepts = [
-    ...new Set((box.subBoxes ?? []).flatMap((sb) => sb.concepts ?? [])),
-  ];
+  const parentConcepts = box.concepts ?? [];
   const subFoundational = (box.subBoxes ?? []).flatMap(
     (sb) => sb.foundationalQueries ?? [],
   );
@@ -238,11 +221,11 @@ function BoxCard({
         </p>
       )}
 
-      {subConcepts.length > 0 && (
+      {parentConcepts.length > 0 && (
         <div className="row-3">
           <div className="border-y border-border py-3">
             <div className="flex flex-wrap gap-2">
-              {subConcepts.map((concept, i) => (
+              {parentConcepts.map((concept, i) => (
                 <span
                   key={`${concept}-${i}`}
                   className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 text-xs text-primary font-semibold"

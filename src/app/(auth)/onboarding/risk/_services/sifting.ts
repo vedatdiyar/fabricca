@@ -116,6 +116,9 @@ export async function siftAndFetchDetails(
     });
 
     try {
+      // Freeze input array layout for deterministic cross-attention ordering
+      uniqueTheses.sort((a, b) => a.id - b.id);
+
       // Build the rerank query from all 6 thesis matrix fields
       const rerankQuery = [
         `studyTitle: ${params.studyTitle}`,

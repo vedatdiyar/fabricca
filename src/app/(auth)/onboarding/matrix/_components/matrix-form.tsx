@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import type { LucideIcon } from "lucide-react";
 import {
   Loader2,
@@ -20,7 +21,7 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { LoadingSpinner } from "@/components/loading-spinner";
-import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
 import { saveThesisMatrixAction } from "../actions";
 import { fetchThesisMatrix } from "../../_lib/fetch-actions";
 
@@ -49,22 +50,17 @@ type SectionConfig = {
   fields: FieldConfig[];
 };
 
-/**
- * Matrisin 3 tematik bölümü ve her bölümdeki 2 alan tanımı.
- * Alan sıralaması akademik mantık akışını izler:
- * kimlik → çerçeve → kapsam ve iddia.
- */
 const MATRIX_SECTIONS: SectionConfig[] = [
   {
     id: "arastirmaSorusu",
-    title: "Araştırma Sorusu",
+    title: "Ara\u015ftırma Sorusu",
     fields: [
       {
         key: "studyTitle",
         id: "calismaBasligi",
         number: "01",
         Icon: FileText,
-        label: "Çalışma Başlığı",
+        label: "\u00c7alışma Başlığı",
         placeholder: "Araştırmanızın mevcut veya geçici başlığını yazın...",
         hint: "Kesin başlık henüz belli değilse taslak bir ad belirtebilirsiniz.",
       },
@@ -81,7 +77,7 @@ const MATRIX_SECTIONS: SectionConfig[] = [
   },
   {
     id: "kuramlCerceve",
-    title: "Kuramsal Çerçeve",
+    title: "Kuramsal \u00c7erçeve",
     fields: [
       {
         key: "theoreticalFramework",
@@ -112,7 +108,7 @@ const MATRIX_SECTIONS: SectionConfig[] = [
         id: "arastirmaKapsami",
         number: "05",
         Icon: Compass,
-        label: "Araştırma Sınırları",
+        label: "Ara\u015ftırma Sınırları",
         placeholder: "Zaman, mekân ve odaklanılan aktörleri tanımlayın...",
         hint: "Örn: 1990–2005, Doğu Avrupa, yerel yönetimler. Bu sınırların dışı kapsam dışıdır.",
       },
@@ -137,6 +133,7 @@ const MATRIX_SECTIONS: SectionConfig[] = [
  */
 export function MatrixForm() {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const [formState, setFormState] = useState<FormState>({
     studyTitle: "",
@@ -149,8 +146,7 @@ export function MatrixForm() {
   const [isPending, setIsPending] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const isLoading = useOnboardingStore((s) => s.isLoading);
-  const hideLoading = useOnboardingStore((s) => s.hideLoading);
+  const { isLoading, hideLoading } = useLoadingOverlay();
 
   useEffect(() => {
     let cancelled = false;
@@ -181,11 +177,6 @@ export function MatrixForm() {
     };
   }, [hideLoading]);
 
-  /**
-   * Form gönderimini yönetir. Tez matrisini doğrular ve veritabanına kaydeder.
-   *
-   * @param e - Form gönderme olayı.
-   */
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsPending(true);
@@ -206,10 +197,7 @@ export function MatrixForm() {
         return;
       }
 
-      // Tez değiştiğinde ileriki adımların önbelleğini temizle.
-      const store = useOnboardingStore.getState();
-      store.clearDownstreamData("matrix");
-      store.setStepCompleted("matrix");
+      queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
 
       toast.success("Tez matrisi başarıyla kaydedildi.");
       router.push("/onboarding/risk");
@@ -228,7 +216,6 @@ export function MatrixForm() {
     <form onSubmit={handleSubmit} className="w-full space-y-8">
       {MATRIX_SECTIONS.map((section) => (
         <div key={section.id} className="space-y-6">
-          {/* Bölüm başlığı — iki yanda divider çizgisi */}
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-border" />
             <span className="px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
@@ -237,7 +224,6 @@ export function MatrixForm() {
             <div className="h-px flex-1 bg-border" />
           </div>
 
-          {/* İki sütunlu alan grid'i */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {section.fields.map(
               ({ key, id, number, Icon, label, placeholder, hint }) => (

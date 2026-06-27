@@ -493,7 +493,7 @@ export async function analyzeOriginalityRisk(
         geminiAnalysisSchema,
         log,
         {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           temperature: 1.0,
           seed: 42,
         },

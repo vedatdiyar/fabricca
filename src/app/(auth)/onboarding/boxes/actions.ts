@@ -31,7 +31,6 @@ import {
 const RawSubBoxSchema = z.object({
   title: z.string().min(1, "Alt kutu başlığı boş olamaz"),
   semanticQuery: z.string().min(1, "Arama sorgusu boş olamaz"),
-  concepts: z.array(z.string()).max(4).optional(),
   foundationalQueries: z.array(FoundationalQuerySchema).max(2).optional(),
 });
 
@@ -44,6 +43,7 @@ const RawGeminiBoxSchema = z.object({
     "PRIMARY_MATERIAL",
   ]),
   description: z.string().min(1, "Kutu açıklaması boş olamaz"),
+  concepts: z.array(z.string()).max(6).optional(),
   subBoxes: z.array(RawSubBoxSchema),
 });
 
@@ -135,6 +135,7 @@ export async function generateBoxesStructureAction(): Promise<
         description: box.description,
         parentId: null,
         semanticQuery: null,
+        concepts: box.concepts ?? [],
         subBoxes: (box.subBoxes || []).map((sb) => ({
           title: sb.title,
           boxType,
@@ -143,7 +144,7 @@ export async function generateBoxesStructureAction(): Promise<
           semanticQuery: sb.semanticQuery,
           subBoxes: undefined,
           foundationalQueries: sb.foundationalQueries ?? [],
-          concepts: sb.concepts ?? [],
+          concepts: [],
         })),
         foundationalQueries: [],
       };

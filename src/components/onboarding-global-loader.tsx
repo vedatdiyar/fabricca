@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
 
 /**
  * Global onboarding loading screen rendered inside the blur overlay.
@@ -18,7 +18,7 @@ export function OnboardingGlobalLoader() {
     loadingSteps,
     cancelLoading,
     onCancel,
-  } = useOnboardingStore();
+  } = useLoadingOverlay();
 
   return (
     <div className="flex flex-col items-center justify-center space-y-10 max-w-5xl mx-auto text-center px-6 w-full">
@@ -91,7 +91,7 @@ export function OnboardingGlobalLoader() {
           onClick={cancelLoading}
           className="w-full sm:w-auto px-8"
         >
-          İptal Et
+          {"\u0130ptal Et"}
         </Button>
       )}
     </div>

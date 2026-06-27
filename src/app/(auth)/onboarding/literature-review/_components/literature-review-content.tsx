@@ -8,8 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { AIBanner } from "@/components/ai-banner";
 import { LoadingSpinner } from "@/components/loading-spinner";
-import { useOnboardingStore } from "@/lib/store/onboarding-store";
-import type { GeminiThesisBox } from "@/lib/types";
+import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
 import { LiteratureArticleCard } from "./literature-article-card";
 import {
   useLiteratureReview,
@@ -118,15 +117,16 @@ function SubBoxQuery({
  */
 function SubBoxDone({
   subBox,
+  literaturePool,
   onAddArchiveEntry,
 }: {
   subBox: GeminiThesisBox;
+  literaturePool: LiteraturePoolEntry[];
   onAddArchiveEntry: (
     subBoxTitle: string,
     entry: { title: string; description?: string },
   ) => void;
 }) {
-  const literaturePool = useOnboardingStore((s) => s.literaturePool);
   const entry = literaturePool.find((e) => e.subBoxTitle === subBox.title);
 
   /* PRIMARY_MATERIAL boxes get a manual archive-entry form */
@@ -267,6 +267,7 @@ export function LiteratureReviewContent() {
               (isArchival && boxStatuses[subBox.title] === "done") ? (
                 <SubBoxDone
                   subBox={subBox}
+                  literaturePool={literaturePool}
                   onAddArchiveEntry={addArchiveEntry}
                 />
               ) : (

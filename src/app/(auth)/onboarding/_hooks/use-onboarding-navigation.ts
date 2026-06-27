@@ -3,10 +3,11 @@
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useOnboardingStore } from "@/lib/store/onboarding-store";
-import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
-import type { LoadingStep } from "@/lib/store/onboarding-store";
+import { useQueryClient } from "@tanstack/react-query";
+import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
+import type { LoadingStep } from "@/components/providers/loading-overlay-provider";
 import type { OriginalityReportData } from "@/lib/types";
+import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
 import {
   extractQueriesAction,
   executeSearchAction,
@@ -63,9 +64,8 @@ const PROCEED_STEPS: LoadingStep[] = [
  */
 export function useOnboardingNavigation() {
   const router = useRouter();
-  const showLoading = useOnboardingStore((s) => s.showLoading);
-  const hideLoading = useOnboardingStore((s) => s.hideLoading);
-  const updateLoadingStep = useOnboardingStore((s) => s.updateLoadingStep);
+  const queryClient = useQueryClient();
+  const { showLoading, hideLoading, updateLoadingStep } = useLoadingOverlay();
 
   /**
    * Runs the full 4-stage risk analysis pipeline (query extraction →
@@ -90,14 +90,14 @@ export function useOnboardingNavigation() {
         steps,
         () => {
           isCancelled = true;
-          useOnboardingStore.getState().clearDownstreamData("matrix");
-          void clearDownstreamDbAction("matrix");
+          void clearDownstreamDbAction("matrix").then(() => {
+            queryClient.invalidateQueries();
+          });
           toast.info("İşlem iptal edildi.");
         },
       );
 
       try {
-        // Step 0: Extract queries
         const extractResult = await extractQueriesAction(matrixInput);
         if (isCancelled) return { error: "cancelled" };
         if ("error" in extractResult) {
@@ -107,7 +107,6 @@ export function useOnboardingNavigation() {
         updateLoadingStep(0, "completed");
         updateLoadingStep(1, "active");
 
-        // Step 1: Execute parallel searches
         const searchResult = await executeSearchAction({
           studyTitle: matrixInput.studyTitle,
           tavilyQueries: extractResult.data.tavilyQueries,
@@ -121,7 +120,6 @@ export function useOnboardingNavigation() {
         updateLoadingStep(1, "completed");
         updateLoadingStep(2, "active");
 
-        // Step 2: Sift theses
         const siftResult = await siftThesesAction({
           matrix: matrixInput,
           tezaraSearchResults: searchResult.data.tezaraSearchResults,
@@ -134,7 +132,6 @@ export function useOnboardingNavigation() {
         updateLoadingStep(2, "completed");
         updateLoadingStep(3, "active");
 
-        // Step 3: Finalize jury analysis (includes DB write inside the action)
         const juryResult = await finalizeJuryAnalysisAction({
           matrix: matrixInput,
           scrapedTheses: siftResult.data,
@@ -160,25 +157,18 @@ export function useOnboardingNavigation() {
         };
       }
     },
-    [showLoading, hideLoading, updateLoadingStep],
+    [showLoading, hideLoading, updateLoadingStep, queryClient],
   );
 
   /**
    * Finalizes the risk stage: persists the report status, generates the
-   * subject boxes via Gemini, mines foundational queries via OpenAlex, and
-   * navigates to the boxes step. Reports any failure via toast.
-   *
-   * @returns Whether the flow completed successfully (navigates on success).
+   * subject boxes via Gemini, mines foundational queries via OpenAlex, seeds
+   * the boxes into the TanStack Query cache, and navigates to the boxes step.
+   * Reports any failure via toast.
    */
   const proceedFromRisk = useCallback(async (): Promise<{
     success: boolean;
   }> => {
-    const result = await completeRiskStageAction();
-    if (result.error) {
-      toast.error(result.error);
-      return { success: false };
-    }
-
     const steps = PROCEED_STEPS.map((s) => ({ ...s }));
     steps[0].status = "active";
 
@@ -190,14 +180,22 @@ export function useOnboardingNavigation() {
       steps,
       () => {
         isCancelled = true;
-        useOnboardingStore.getState().clearDownstreamData("risk");
-        useOnboardingStore.getState().unsetStepCompleted("boxes");
-        void clearDownstreamDbAction("risk");
+        void clearDownstreamDbAction("risk").then(() => {
+          queryClient.invalidateQueries();
+        });
         toast.info("İşlem iptal edildi.");
       },
     );
 
     try {
+      const stageResult = await completeRiskStageAction();
+      if (isCancelled) return { success: false };
+      if (stageResult.error) {
+        hideLoading();
+        toast.error(stageResult.error);
+        return { success: false };
+      }
+
       const structResult = await generateBoxesStructureAction();
       if (isCancelled) return { success: false };
       if ("error" in structResult) {
@@ -224,20 +222,18 @@ export function useOnboardingNavigation() {
 
       if (isCancelled) return { success: false };
 
-      // Purge stale downstream state before seeding new boxes so that old
-      // literature articles or risk reports can never ghost-leak into the
-      // next step via sessionStorage.
-      const store = useOnboardingStore.getState();
-      store.clearDownstreamData("risk");
-      store.setBoxes(mineResult.boxes);
-      store.setStepCompleted("boxes");
+      // Seed boxes into TanStack Query cache
+      queryClient.setQueryData(["boxes"], mineResult.boxes);
+
+      // Invalidate onboarding-steps so the stepper reflects the new state
+      queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
 
       // Fire-and-forget: pre-fetch full literature cache in the background
       // while the user views their boxes. The cache will be ready by the time
       // they reach the literature-review step.
       prefetchLiteratureCacheAction(mineResult.boxes).then((res) => {
         if (res?.cachedPapers) {
-          useOnboardingStore.getState().setCachedPapers(res.cachedPapers);
+          queryClient.setQueryData(["cachedPapers"], res.cachedPapers);
         }
       });
 
@@ -256,7 +252,7 @@ export function useOnboardingNavigation() {
       );
       return { success: false };
     }
-  }, [router, showLoading, hideLoading, updateLoadingStep]);
+  }, [router, showLoading, hideLoading, updateLoadingStep, queryClient]);
 
   return { runRiskPipeline, proceedFromRisk };
 }

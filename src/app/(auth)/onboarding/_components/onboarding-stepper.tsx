@@ -3,15 +3,14 @@
 import { usePathname, useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useOnboardingStore } from "@/lib/store/onboarding-store";
 
 const STEPS = [
   { key: "matrix", label: "Tez Matrisi", route: "/onboarding/matrix" },
-  { key: "risk", label: "Özgünlük & Risk", route: "/onboarding/risk" },
+  { key: "risk", label: "\u00d6zgünlük & Risk", route: "/onboarding/risk" },
   { key: "boxes", label: "Konu Kutuları", route: "/onboarding/boxes" },
   {
     key: "literature-review",
-    label: "Literatür Tarama",
+    label: "Literat\u00fcr Tarama",
     route: "/onboarding/literature-review",
   },
 ];
@@ -25,8 +24,6 @@ export function OnboardingStepper({
   const router = useRouter();
 
   const currentIdx = STEPS.findIndex((s) => s.route === pathname);
-  const isHydrated = useOnboardingStore.persist?.hasHydrated() ?? false;
-  const stepsCompleted = useOnboardingStore((s) => s.stepsCompleted);
 
   return (
     <nav
@@ -38,8 +35,7 @@ export function OnboardingStepper({
           const isActive = currentIdx === index;
           const isCompleted = currentIdx > index;
           const isFuture = currentIdx < index;
-          const clientValue = isHydrated ? stepsCompleted[step.key] : undefined;
-          const hasData = clientValue ?? stepsData[step.key] ?? false;
+          const hasData = stepsData[step.key] ?? false;
           const isDisabled = isFuture && !hasData;
 
           return (

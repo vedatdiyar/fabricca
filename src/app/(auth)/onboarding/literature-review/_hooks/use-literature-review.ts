@@ -2,9 +2,10 @@
 
 import { useMemo, useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { useOnboardingStore } from "@/lib/store/onboarding-store";
-import type { LoadingStep } from "@/lib/store/onboarding-store";
+import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
+import type { LoadingStep } from "@/components/providers/loading-overlay-provider";
 import type {
   GeminiThesisBox,
   LiteraturePoolEntry,
@@ -15,11 +16,11 @@ import { fetchBoxesWithFullShape } from "../../_lib/fetch-actions";
 import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
 
 const boxOrderWeight: Record<string, number> = {
-  CONCEPTUAL: 1,
-  PROBLEMATIZATION: 2,
+  PROBLEMATIZATION: 1,
+  CONCEPTUAL: 2,
   DATA_PROTOCOL: 3,
-  RELATED_THESES: 4,
-  PRIMARY_MATERIAL: 5,
+  PRIMARY_MATERIAL: 4,
+  RELATED_THESES: 5,
 };
 
 /** Processing status of a single sub-box within the literature review grid. */
@@ -27,132 +28,93 @@ export type BoxStatus = "idle" | "loading" | "done" | "error";
 
 /** Shape returned by {@link useLiteratureReview}. */
 export interface UseLiteratureReviewResult {
-  /** The sub-boxes to render (merged DB boxes + Zustand foundational queries). */
   subBoxes: GeminiThesisBox[];
-  /** True while the boxes are being loaded on mount. */
   loading: boolean;
-  /** True while the parallel review pipeline is running. */
   processing: boolean;
-  /** True while the finalize (confirm) flow is writing to the database. */
   confirming: boolean;
-  /** Per-box processing status keyed by box title. */
   boxStatuses: Record<string, BoxStatus>;
-  /** Per-box error messages keyed by box title. */
   boxErrors: Record<string, string>;
-  /** True when every sub-box has a corresponding literature-pool entry (or manual entries for archival boxes). */
   allProcessed: boolean;
-  /** The current literature pool (starter + reserved packs). */
   literaturePool: LiteraturePoolEntry[];
-  /** Set of sub-box titles that bypassed external APIs (archival/empirical). */
   archivalBoxes: Set<string>;
-  /** Adds a manually-entered archive entry to the literature pool for an archival box. */
   addArchiveEntry: (
     subBoxTitle: string,
     entry: { title: string; description?: string },
   ) => void;
-  /** Starts the sequential literature-review pipeline (one box at a time). */
   startReviewProcess: () => Promise<void>;
-  /** Finalizes onboarding: persists the pool, resets the store, navigates. */
   handleFinalize: () => Promise<void>;
 }
 
 /**
- * Encapsulates the literature-review step orchestration: loading the sub-boxes,
- * running the sequential review pipeline (each box sent one at a time so the
- * UI can update per-box progress in real time), and finalizing onboarding
- * (DB write -> store reset -> dashboard navigation). The consuming component
- * renders only the returned state.
+ * Encapsulates the literature-review step orchestration: loading the sub-boxes
+ * via TanStack Query, running the sequential review pipeline, and finalizing
+ * onboarding. The literature pool is held in local state (no global store).
  *
  * @returns Literature-review state plus the two orchestration callbacks.
  */
 export function useLiteratureReview(): UseLiteratureReviewResult {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const finalizedRef = useRef(false);
   const processingRef = useRef(false);
 
-  const [phase, setPhase] = useState({
-    loading: true,
-    processing: false,
-    confirming: false,
-  });
+  const [processing, setProcessing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [hasAttempted, setHasAttempted] = useState(false);
-  const [subBoxes, setSubBoxes] = useState<GeminiThesisBox[]>([]);
+  const [literaturePool, setLiteraturePool] = useState<LiteraturePoolEntry[]>(
+    [],
+  );
   const [boxResults, setBoxResults] = useState<{
     statuses: Record<string, BoxStatus>;
     errors: Record<string, string>;
   }>({ statuses: {}, errors: {} });
   const [archivalBoxes, setArchivalBoxes] = useState<Set<string>>(new Set());
 
-  const cachedPapers = useOnboardingStore((s) => s.cachedPapers);
-  const rawLiteraturePool = useOnboardingStore((s) => s.literaturePool);
-  const literaturePool = useMemo(
-    () => rawLiteraturePool ?? [],
-    [rawLiteraturePool],
-  );
-  const addToLiteraturePool = useOnboardingStore((s) => s.addToLiteraturePool);
-  const resetStore = useOnboardingStore((s) => s.resetStore);
-  const showLoading = useOnboardingStore((s) => s.showLoading);
-  const hideLoading = useOnboardingStore((s) => s.hideLoading);
-  const updateLoadingStep = useOnboardingStore((s) => s.updateLoadingStep);
+  const { showLoading, hideLoading, updateLoadingStep } = useLoadingOverlay();
 
-  // Load boxes on mount. The DB is the single source of truth — Zustand boxes
-  // are never consulted. If the server-side title set changed (e.g. user went
-  // back and regenerated boxes), the stale literature pool is flushed.
-  useEffect(() => {
-    finalizedRef.current = false;
-    let cancelled = false;
-    fetchBoxesWithFullShape().then((allBoxes) => {
-      if (cancelled) return;
+  // Fetch boxes from DB via TanStack Query
+  const {
+    data: allBoxes,
+    isLoading: boxesLoading,
+  } = useQuery({
+    queryKey: ["boxes-full"],
+    queryFn: fetchBoxesWithFullShape,
+  });
 
-      const freshTitles = new Set(allBoxes.map((b) => b.title));
-      const poolTitles = new Set(
-        useOnboardingStore.getState().literaturePool.map((e) => e.subBoxTitle),
-      );
-      const titlesMatch =
-        freshTitles.size === poolTitles.size &&
-        [...freshTitles].every((t) => poolTitles.has(t));
-
-      if (!titlesMatch) {
-        useOnboardingStore.getState().setLiteraturePool([]);
-      }
-
-      // If the pool is populated but the literature-review step is not
-      // marked complete, the data is stale (e.g. restored from sessionStorage
-      // after a code change at a previous stage). Clear it so the pipeline
-      // re-runs instead of showing stale cache.
-      const steps = useOnboardingStore.getState().stepsCompleted;
-      const pool = useOnboardingStore.getState().literaturePool;
-      if (pool.length > 0 && !steps["literature-review"]) {
-        useOnboardingStore.getState().setLiteraturePool([]);
-      }
-
-      setSubBoxes(
-        [...allBoxes].sort((a, b) => {
-          const weightA = boxOrderWeight[a.boxType] ?? 99;
-          const weightB = boxOrderWeight[b.boxType] ?? 99;
-          return weightA - weightB;
-        }),
-      );
-      setPhase((prev) => ({ ...prev, loading: false }));
+  // Derive sorted subBoxes directly from the query result
+  const subBoxes = useMemo(() => {
+    if (!allBoxes) return [];
+    return [...allBoxes].sort((a, b) => {
+      const weightA = boxOrderWeight[a.boxType] ?? 99;
+      const weightB = boxOrderWeight[b.boxType] ?? 99;
+      return weightA - weightB;
     });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  }, [allBoxes]);
 
-  /**
-   * Runs the literature-review pipeline over all sub-boxes in a single
-   * batch server action. The server handles OpenAlex searches (rate-limited
-   * sequentially), global cross-box deduplication, Gemini academic review,
-   * and Crossref enrichment — all before returning the full result set.
-   * The loading overlay reports progress via steps.
-   */
+  // Loading: true while the query is still in flight
+  const loading = boxesLoading || allBoxes === undefined;
+
+  // Derive cached papers from TanStack Query cache (set by prefetch in proceedFromRisk)
+  const cachedPapers = queryClient.getQueryData<Record<string, never>>([
+    "cachedPapers",
+  ]);
+
   const startReviewProcess = useCallback(async () => {
     if (subBoxes.length === 0 || processingRef.current) return;
 
     setHasAttempted(true);
     processingRef.current = true;
-    setPhase((prev) => ({ ...prev, processing: true }));
+    setProcessing(true);
+
+    // If the box titles changed since the pool was built, clear the stale pool
+    const poolTitles = new Set(literaturePool.map((e) => e.subBoxTitle));
+    const freshTitles = new Set(subBoxes.map((b) => b.title));
+    const titlesMatch =
+      freshTitles.size === poolTitles.size &&
+      [...freshTitles].every((t) => poolTitles.has(t));
+    if (!titlesMatch && literaturePool.length > 0) {
+      setLiteraturePool([]);
+    }
 
     const isArchival = (box: GeminiThesisBox): boolean =>
       box.boxType === "PRIMARY_MATERIAL" || box.boxType === "RELATED_THESES";
@@ -171,15 +133,13 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
       () => {
         isCancelled = true;
         processingRef.current = false;
-        setPhase((prev) => ({ ...prev, processing: false }));
-        // Clears literature-review step completion and literaturePool
-        useOnboardingStore.getState().clearDownstreamData("boxes");
-        useOnboardingStore.getState().unsetStepCompleted("boxes");
-        useOnboardingStore.getState().unsetStepCompleted("literature-review");
-        void clearDownstreamDbAction("boxes");
+        setProcessing(false);
+        setLiteraturePool([]);
+        void clearDownstreamDbAction("boxes").then(() => {
+          queryClient.invalidateQueries();
+        });
         toast.info("İşlem iptal edildi, önceki adıma yönlendiriliyorsunuz.");
         router.push("/onboarding/boxes");
-        // Reset box statuses to idle when cancelled so we don't show loading skeletons forever
         setBoxResults((prev) => {
           const resetStatuses = { ...prev.statuses };
           subBoxes.forEach((box) => {
@@ -193,7 +153,6 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
       },
     );
 
-    // Mark all steps as active
     for (let i = 0; i < subBoxes.length; i++) {
       if (isCancelled) return;
       updateLoadingStep(i, "active");
@@ -217,13 +176,12 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
           (sb) => sb.foundationalQueries ?? [],
         ),
       })),
-      cachedPapers,
+      cachedPapers as Record<string, never> | undefined,
     );
 
     if (isCancelled) return;
 
     if (result.data) {
-      // Collect archival box titles from the result
       const archivalSet = new Set<string>();
 
       for (const entry of result.data) {
@@ -234,11 +192,10 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
       }
       setArchivalBoxes(archivalSet);
 
-      // Set the entire pool at once
-      useOnboardingStore.getState().setLiteraturePool(result.data);
-      useOnboardingStore.getState().setStepCompleted("boxes");
+      setLiteraturePool(result.data);
 
-      // Mark all boxes as done
+      queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
+
       for (let i = 0; i < subBoxes.length; i++) {
         setBoxResults((prev) => ({
           ...prev,
@@ -261,22 +218,19 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     }
 
     processingRef.current = false;
-    setPhase((prev) => ({ ...prev, processing: false }));
+    setProcessing(false);
     hideLoading();
   }, [
     subBoxes,
+    literaturePool,
     cachedPapers,
     showLoading,
     hideLoading,
     updateLoadingStep,
+    queryClient,
     router,
   ]);
 
-  /**
-   * Adds a manually-entered archive entry for an archival/empirical box.
-   * Converts the user input into a JuryArticle so it flows through the
-   * standard confirmLiteratureAction pipeline unchanged.
-   */
   const addArchiveEntry = useCallback(
     (subBoxTitle: string, entry: { title: string; description?: string }) => {
       const archiveArticle: JuryArticle = {
@@ -293,12 +247,22 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
         relevanceScore: 100,
       };
 
-      addToLiteraturePool({
-        subBoxTitle,
-        articles: [archiveArticle],
+      setLiteraturePool((prev) => {
+        const existingIndex = prev.findIndex(
+          (e) => e.subBoxTitle === subBoxTitle,
+        );
+        if (existingIndex >= 0) {
+          const updated = [...prev];
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            articles: [...updated[existingIndex].articles, archiveArticle],
+          };
+          return updated;
+        }
+        return [...prev, { subBoxTitle, articles: [archiveArticle] }];
       });
     },
-    [addToLiteraturePool],
+    [],
   );
 
   const allProcessed = useMemo(() => {
@@ -312,46 +276,40 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     });
   }, [subBoxes, literaturePool, archivalBoxes]);
 
-  /**
-   * Finalizes the onboarding flow: persists the literature pool to the database
-   * via {@link confirmLiteratureAction}, resets the transient Zustand store,
-   * notifies the user and navigates to the dashboard.
-   */
   const handleFinalize = useCallback(async () => {
     if (literaturePool.length === 0) {
       toast.error("Henüz işlenmiş literatür verisi bulunamadı.");
       return;
     }
 
-    setPhase((prev) => ({ ...prev, confirming: true }));
+    setConfirming(true);
 
     try {
       const result = await confirmLiteratureAction({ literaturePool });
       if ("error" in result && result.error) {
         toast.error(result.error);
-        setPhase((prev) => ({ ...prev, confirming: false }));
+        setConfirming(false);
         return;
       }
 
       finalizedRef.current = true;
-      resetStore();
-      setPhase((prev) => ({ ...prev, confirming: false }));
+      setLiteraturePool([]);
+      setConfirming(false);
+      queryClient.invalidateQueries();
       toast.success("Tebrikler! Onboarding süreciniz tamamlandı.");
       router.push("/dashboard");
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.",
       );
-      setPhase((prev) => ({ ...prev, confirming: false }));
+      setConfirming(false);
     }
-  }, [literaturePool, resetStore, router]);
+  }, [literaturePool, queryClient, router]);
 
   // Auto-trigger review process when boxes load and pool is empty.
-  // Uses state-based guards (loading, processing, literaturePool) instead of a
-  // ref to remain correct under React Strict Mode (double-mount).
   useEffect(() => {
-    if (phase.loading) return;
-    if (phase.processing) return;
+    if (loading) return;
+    if (processing) return;
     if (finalizedRef.current) return;
     if (subBoxes.length === 0) return;
     if (hasAttempted) return;
@@ -372,8 +330,8 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
       Promise.resolve().then(() => startReviewProcess());
     }
   }, [
-    phase.loading,
-    phase.processing,
+    loading,
+    processing,
     subBoxes,
     literaturePool,
     hasAttempted,
@@ -382,9 +340,9 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
 
   return {
     subBoxes,
-    loading: phase.loading,
-    processing: phase.processing,
-    confirming: phase.confirming,
+    loading,
+    processing,
+    confirming,
     boxStatuses: boxResults.statuses,
     boxErrors: boxResults.errors,
     allProcessed,

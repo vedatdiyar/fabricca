@@ -13,11 +13,11 @@ import type { GeminiThesisBox } from "@/lib/types";
 import { getSession } from "@/session";
 
 const boxOrderWeight: Record<string, number> = {
-  CONCEPTUAL: 1,
-  PROBLEMATIZATION: 2,
+  PROBLEMATIZATION: 1,
+  CONCEPTUAL: 2,
   DATA_PROTOCOL: 3,
-  RELATED_THESES: 4,
-  PRIMARY_MATERIAL: 5,
+  PRIMARY_MATERIAL: 4,
+  RELATED_THESES: 5,
 };
 
 /**
@@ -65,11 +65,11 @@ async function getCachedBoxes(thesisMatrixId: number) {
     .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId))
     .orderBy(
       sql`CASE ${thesisBoxes.boxType}
-        WHEN 'CONCEPTUAL' THEN 1
-        WHEN 'PROBLEMATIZATION' THEN 2
+        WHEN 'PROBLEMATIZATION' THEN 1
+        WHEN 'CONCEPTUAL' THEN 2
         WHEN 'DATA_PROTOCOL' THEN 3
-        WHEN 'RELATED_THESES' THEN 4
-        WHEN 'PRIMARY_MATERIAL' THEN 5
+        WHEN 'PRIMARY_MATERIAL' THEN 4
+        WHEN 'RELATED_THESES' THEN 5
         ELSE 99
       END`,
     );

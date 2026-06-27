@@ -108,13 +108,13 @@ export function TezaraOverlapTable({
                   Konu
                 </th>
                 <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[100px]">
+                  Bağlam
+                </th>
+                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[100px]">
                   Teori
                 </th>
                 <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[100px]">
-                  Yöntem
-                </th>
-                <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[100px]">
-                  Dönem
+                  Metodoloji
                 </th>
                 <th className="p-3 text-xs font-semibold text-muted-foreground tracking-wider uppercase text-center w-[90px] border-l border-border/40">
                   Durum
@@ -165,13 +165,13 @@ export function TezaraOverlapTable({
                         <AxisCell level={item.axes.subject} />
                       </td>
                       <td className="p-3 text-center">
+                        <AxisCell level={item.axes.context ?? "OZGUN"} />
+                      </td>
+                      <td className="p-3 text-center">
                         <AxisCell level={item.axes.theory} />
                       </td>
                       <td className="p-3 text-center">
                         <AxisCell level={item.axes.methodology} />
-                      </td>
-                      <td className="p-3 text-center">
-                        <AxisCell level={item.axes.context ?? "OZGUN"} />
                       </td>
                       <td className="p-3 text-center border-l border-border/40">
                         <span

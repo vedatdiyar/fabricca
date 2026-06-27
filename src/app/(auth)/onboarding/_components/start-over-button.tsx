@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { RotateCcw, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -16,11 +17,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { resetOnboardingAction } from "@/app/(auth)/onboarding/actions";
-import { useOnboardingStore } from "@/lib/store/onboarding-store";
 
 interface StartOverButtonProps {
   variant?:
-    "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+    | "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
   size?: "default" | "sm" | "lg" | "icon";
   className?: string;
 }
@@ -30,6 +30,7 @@ export function StartOverButton({
   size = "sm",
   className = "",
 }: StartOverButtonProps) {
+  const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -40,7 +41,7 @@ export function StartOverButton({
         if ("error" in result && result.error) {
           toast.error(result.error);
         } else {
-          useOnboardingStore.getState().resetStore();
+          queryClient.invalidateQueries();
           toast.success("Onboarding süreci başarıyla sıfırlandı.");
           setIsOpen(false);
           window.location.href = "/onboarding/matrix";

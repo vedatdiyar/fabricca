@@ -1,20 +1,18 @@
 "use client";
 
-import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import { LoadingOverlayProvider } from "@/components/providers/loading-overlay-provider";
 import { OnboardingGlobalLoader } from "@/components/onboarding-global-loader";
+import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
 
 /**
- * Client wrapper that renders children always underneath and conditionally
- * overlays the global loading screen on top when isLoading is true.
- * The overlay uses a deep-emerald/black background with backdrop-blur so
- * the active form/view remains visible but inaccessible underneath.
+ * Inner content that reads loading state from context.
  */
-export function OnboardingContent({
+function OnboardingInner({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const isLoading = useOnboardingStore((s) => s.isLoading);
+  const { isLoading } = useLoadingOverlay();
 
   return (
     <div className="relative min-h-[calc(100vh-4rem)]">
@@ -27,5 +25,22 @@ export function OnboardingContent({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Client wrapper that provides the loading overlay context to all onboarding
+ * pages. Renders children always underneath and conditionally overlays the
+ * global loading screen on top when isLoading is true.
+ */
+export function OnboardingContent({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <LoadingOverlayProvider>
+      <OnboardingInner>{children}</OnboardingInner>
+    </LoadingOverlayProvider>
   );
 }
