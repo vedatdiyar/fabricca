@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
 import {
@@ -11,6 +11,14 @@ import {
 } from "@/db/schema";
 import type { GeminiThesisBox } from "@/lib/types";
 import { getSession } from "@/session";
+
+const boxOrderWeight: Record<string, number> = {
+  CONCEPTUAL: 1,
+  PROBLEMATIZATION: 2,
+  PRIMARY_MATERIAL: 3,
+  DATA_PROTOCOL: 4,
+  RELATED_THESES: 5,
+};
 
 /**
  * Cached DB query that fetches the thesis matrix for a given user.
@@ -54,7 +62,17 @@ async function getCachedBoxes(thesisMatrixId: number) {
   return db
     .select()
     .from(thesisBoxes)
-    .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
+    .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId))
+    .orderBy(
+      sql`CASE ${thesisBoxes.boxType}
+        WHEN 'CONCEPTUAL' THEN 1
+        WHEN 'PROBLEMATIZATION' THEN 2
+        WHEN 'PRIMARY_MATERIAL' THEN 3
+        WHEN 'DATA_PROTOCOL' THEN 4
+        WHEN 'RELATED_THESES' THEN 5
+        ELSE 99
+      END`,
+    );
 }
 
 /**
@@ -105,14 +123,20 @@ export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
   const matrix = await getCachedThesisMatrix(session.userId);
   if (!matrix) return [];
   const rows = await getCachedBoxes(matrix.id);
-  return rows.map((b) => ({
-    title: b.title,
-    boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "PROBLEMATIZATION",
-    description: b.description ?? "",
-    semanticSearchQueries: b.semanticSearchQueries ?? [],
-    foundationalQueries: b.foundationalQueries ?? [],
-    concepts: b.concepts ?? [],
-  }));
+  return rows
+    .map((b) => ({
+      title: b.title,
+      boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "PROBLEMATIZATION",
+      description: b.description ?? "",
+      semanticSearchQueries: b.semanticSearchQueries ?? [],
+      foundationalQueries: b.foundationalQueries ?? [],
+      concepts: b.concepts ?? [],
+    }))
+    .sort((a, b) => {
+      const weightA = boxOrderWeight[a.boxType] ?? 99;
+      const weightB = boxOrderWeight[b.boxType] ?? 99;
+      return weightA - weightB;
+    });
 }
 
 /**

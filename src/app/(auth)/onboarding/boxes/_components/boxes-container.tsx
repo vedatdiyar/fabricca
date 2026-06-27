@@ -26,6 +26,7 @@ const boxTypeOrder: Record<string, number> = {
   PROBLEMATIZATION: 2,
   PRIMARY_MATERIAL: 3,
   DATA_PROTOCOL: 4,
+  RELATED_THESES: 5,
 };
 
 const badgeLabels: Record<string, string> = {
@@ -33,6 +34,7 @@ const badgeLabels: Record<string, string> = {
   PROBLEMATIZATION: "Problematizasyon",
   PRIMARY_MATERIAL: "Birincil Malzeme",
   DATA_PROTOCOL: "Metodoloji",
+  RELATED_THESES: "İlişkisel Tezler",
 };
 
 export function BoxesContainer() {
@@ -278,6 +280,18 @@ function BoxCard({
             Bu kutu, saha çalışması verileri ve birincil kaynaklar için
             ayrılmıştır. Kurucu literatür taraması yapılmamıştır; arşiv
             belgeleri bir sonraki adımda el ile girilecektir.
+          </p>
+        </div>
+      ) : box.boxType === "RELATED_THESES" ? (
+        <div className="row-4 border-t border-border/40 pt-4 space-y-2">
+          <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+            <Archive className="w-3.5 h-3.5 text-muted-foreground" />
+            Sınırdaş Tez Havuzu
+          </h4>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Bu kutu, özgünlük analizinde tespit edilen sınırdaş tez
+            çalışmalarını barındırır. Bu kaynaklar literatür taraması aşamasında
+            otomatik olarak değerlendirilecektir.
           </p>
         </div>
       ) : null}

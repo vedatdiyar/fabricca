@@ -22,7 +22,7 @@ import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
 
 const STARTER_PACK_SIZE = 5;
 const RESERVED_SEMANTIC_MAX = 10;
-const MAX_FOUNDATIONAL_IN_STARTER = 3;
+const MAX_FOUNDATIONAL_IN_STARTER = 4;
 
 // ============================================================================
 // isArchivalBox — detects boxes that should bypass external APIs
@@ -30,6 +30,7 @@ const MAX_FOUNDATIONAL_IN_STARTER = 3;
 
 export function isArchivalBox(subBox: SubBoxInput): boolean {
   if (subBox.boxType === "PRIMARY_MATERIAL") return true;
+  if (subBox.boxType === "RELATED_THESES") return true;
   if (!subBox.foundationalQueries || subBox.foundationalQueries.length === 0) {
     return false;
   }

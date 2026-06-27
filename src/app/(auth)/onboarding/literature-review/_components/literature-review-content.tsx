@@ -243,6 +243,7 @@ export function LiteratureReviewContent() {
     PROBLEMATIZATION: "Problematizasyon",
     PRIMARY_MATERIAL: "Birincil Malzeme",
     DATA_PROTOCOL: "Metodoloji",
+    RELATED_THESES: "İlişkisel Tezler",
   };
 
   if (loading) {

@@ -9,7 +9,6 @@ import {
   BookOpen,
   Sparkles,
   Plus,
-  X,
   ChevronDown,
   ChevronUp,
   Pencil,
@@ -21,6 +20,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ThesisBox } from "@/db/schema";
 import type { KanbanTask } from "../types";
+import { AddTaskModal } from "./add-task-modal";
+import { EditTaskModal } from "./edit-task-modal";
 
 interface KanbanBoardProps {
   tasks: KanbanTask[];
@@ -185,20 +186,8 @@ export function KanbanBoard({
 }: KanbanBoardProps) {
   const [activeDragCol, setActiveDragCol] = useState<string | null>(null);
   const [showAllDone, setShowAllDone] = useState(false);
-
-  // Add Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [taskTitle, setTaskTitle] = useState("");
-  const [priority, setPriority] = useState<"HIGH" | "MEDIUM" | "LOW">("MEDIUM");
-  const [selectedBoxId, setSelectedBoxId] = useState("");
-
-  // Edit Modal State
   const [editingTask, setEditingTask] = useState<KanbanTask | null>(null);
-  const [editTitle, setEditTitle] = useState("");
-  const [editPriority, setEditPriority] = useState<"HIGH" | "MEDIUM" | "LOW">(
-    "MEDIUM",
-  );
-  const [editBoxId, setEditBoxId] = useState("");
 
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     e.dataTransfer.setData("text/plain", taskId);
@@ -226,62 +215,9 @@ export function KanbanBoard({
     setActiveDragCol(null);
   };
 
-  const handleAddSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!taskTitle.trim()) return;
-
-    const matchedBox = boxes.find((b) => String(b.id) === selectedBoxId);
-
-    onAddTask({
-      title: taskTitle.trim(),
-      description: matchedBox
-        ? `"${matchedBox.title}" alanı kapsamında tanımlanmış çalışma görevi.`
-        : "Genel tez çalışma adımı.",
-      status: "TODO",
-      priority,
-      thesisBoxId: selectedBoxId ? Number(selectedBoxId) : null,
-      boxTitle: matchedBox ? matchedBox.title : "Genel",
-    });
-
-    setTaskTitle("");
-    setPriority("MEDIUM");
-    setSelectedBoxId("");
-    setIsAddModalOpen(false);
-  };
-
-  const handleEditSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingTask || !editTitle.trim()) return;
-
-    const success = await onEditTask(editingTask.id, {
-      title: editTitle.trim(),
-      priority: editPriority,
-      thesisBoxId: editBoxId ? Number(editBoxId) : null,
-    });
-
-    if (success) {
-      setEditingTask(null);
-      setEditTitle("");
-      setEditPriority("MEDIUM");
-      setEditBoxId("");
-    }
-  };
-
   const openEditModal = (task: KanbanTask) => {
     setEditingTask(task);
-    setEditTitle(task.title);
-    setEditPriority(task.priority);
-    setEditBoxId(task.thesisBoxId ? String(task.thesisBoxId) : "");
   };
-
-  const closeEditModal = () => {
-    setEditingTask(null);
-    setEditTitle("");
-    setEditPriority("MEDIUM");
-    setEditBoxId("");
-  };
-
-  const isEditModalOpen = editingTask !== null;
 
   return (
     <div className="w-full space-y-6">
@@ -416,219 +352,20 @@ export function KanbanBoard({
         })}
       </div>
 
-      {/* Add Task Modal */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-md border border-border bg-card p-6 text-card-foreground relative space-y-4">
-            <button
-              onClick={() => setIsAddModalOpen(false)}
-              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <X className="h-4 w-4" />
-            </button>
+      <AddTaskModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onAdd={onAddTask}
+        boxes={boxes}
+      />
 
-            <div>
-              <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
-                Yeni Tez Görevi Ekle
-              </h3>
-              <p className="font-sans text-xs text-muted-foreground mt-1">
-                Kanban tahtasına manuel akademik bir çalışma adımı kaydedin.
-              </p>
-            </div>
-
-            <form onSubmit={handleAddSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="taskTitle"
-                  className="font-sans text-xs text-muted-foreground"
-                >
-                  Görev Adı *
-                </label>
-                <input
-                  id="taskTitle"
-                  type="text"
-                  required
-                  value={taskTitle}
-                  onChange={(e) => setTaskTitle(e.target.value)}
-                  placeholder="Örn: Metodoloji taslağı oluşturma"
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="priority"
-                    className="font-sans text-xs text-muted-foreground"
-                  >
-                    Öncelik Derecesi
-                  </label>
-                  <select
-                    id="priority"
-                    value={priority}
-                    onChange={(e) =>
-                      setPriority(e.target.value as "HIGH" | "MEDIUM" | "LOW")
-                    }
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                  >
-                    <option value="HIGH">Yüksek</option>
-                    <option value="MEDIUM">Orta</option>
-                    <option value="LOW">Düşük</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="boxSelect"
-                    className="font-sans text-xs text-muted-foreground"
-                  >
-                    İlişkili Konu Kutusu
-                  </label>
-                  <select
-                    id="boxSelect"
-                    value={selectedBoxId}
-                    onChange={(e) => setSelectedBoxId(e.target.value)}
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                  >
-                    <option value="">Genel / Yok</option>
-                    {boxes.map((box) => (
-                      <option key={box.id} value={box.id}>
-                        {box.title}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-3 border-t border-border/40">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="rounded-md font-sans text-xs px-4 py-2"
-                >
-                  İptal
-                </Button>
-                <Button
-                  type="submit"
-                  variant="default"
-                  className="rounded-md font-sans text-xs px-4 py-2"
-                >
-                  Kaydet
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Task Modal */}
-      {isEditModalOpen && editingTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-md border border-border bg-card p-6 text-card-foreground relative space-y-4">
-            <button
-              onClick={closeEditModal}
-              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <X className="h-4 w-4" />
-            </button>
-
-            <div>
-              <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
-                Görevi Düzenle
-              </h3>
-              <p className="font-sans text-xs text-muted-foreground mt-1">
-                Seçili görevin başlık, öncelik veya kutu bilgisini güncelleyin.
-              </p>
-            </div>
-
-            <form onSubmit={handleEditSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="editTitle"
-                  className="font-sans text-xs text-muted-foreground"
-                >
-                  Görev Adı *
-                </label>
-                <input
-                  id="editTitle"
-                  type="text"
-                  required
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  placeholder="Örn: Metodoloji taslağı oluşturma"
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="editPriority"
-                    className="font-sans text-xs text-muted-foreground"
-                  >
-                    Öncelik Derecesi
-                  </label>
-                  <select
-                    id="editPriority"
-                    value={editPriority}
-                    onChange={(e) =>
-                      setEditPriority(
-                        e.target.value as "HIGH" | "MEDIUM" | "LOW",
-                      )
-                    }
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                  >
-                    <option value="HIGH">Yüksek</option>
-                    <option value="MEDIUM">Orta</option>
-                    <option value="LOW">Düşük</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="editBoxSelect"
-                    className="font-sans text-xs text-muted-foreground"
-                  >
-                    İlişkili Konu Kutusu
-                  </label>
-                  <select
-                    id="editBoxSelect"
-                    value={editBoxId}
-                    onChange={(e) => setEditBoxId(e.target.value)}
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                  >
-                    <option value="">Genel / Yok</option>
-                    {boxes.map((box) => (
-                      <option key={box.id} value={box.id}>
-                        {box.title}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-3 border-t border-border/40">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={closeEditModal}
-                  className="rounded-md font-sans text-xs px-4 py-2"
-                >
-                  İptal
-                </Button>
-                <Button
-                  type="submit"
-                  variant="default"
-                  className="rounded-md font-sans text-xs px-4 py-2"
-                >
-                  Güncelle
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <EditTaskModal
+        key={editingTask?.id ?? "none"}
+        task={editingTask}
+        onClose={() => setEditingTask(null)}
+        onEdit={onEditTask}
+        boxes={boxes}
+      />
     </div>
   );
 }

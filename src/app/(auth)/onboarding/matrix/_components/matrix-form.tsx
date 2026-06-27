@@ -24,6 +24,7 @@ import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import type { LoadingStep } from "@/lib/store/onboarding-store";
 import { enrichThesisMatrixAction, saveEnrichedMatrixAction } from "../actions";
 import { fetchThesisMatrix } from "../../_lib/fetch-actions";
+import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
 
 type FormState = {
   studyTitle: string;
@@ -214,6 +215,8 @@ export function MatrixForm() {
       () => {
         isCancelled = true;
         setIsPending(false);
+        useOnboardingStore.getState().clearDownstreamData("matrix");
+        void clearDownstreamDbAction("matrix");
         toast.info("İşlem iptal edildi.");
       },
     );

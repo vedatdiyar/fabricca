@@ -4,6 +4,9 @@ import { Logger } from "@/lib/logger";
 const OPENALEX_DELAY_MS = 1100;
 const OPENALEX_USER_AGENT =
   "FabriccaAcademicAssistant/1.0 (mailto:support@fabricca.com)";
+const PER_PAGE = 50;
+const TOP_K = 20;
+const DETAIL_CHUNK_SIZE = 40;
 
 interface OpenAlexAuthor {
   author?: {
@@ -82,17 +85,312 @@ async function fetchWithRetry(
 }
 
 /**
- * Executes the co-citation mining algorithm to find seminal works for a set of search queries.
+ * Checks whether a work's metadata is missing or suspicious enough to warrant
+ * the author consensus fallback.
+ */
+function isSuspiciousMetadata(authors: string[], title: string): boolean {
+  if (authors.length === 0) return true;
+  if (authors.some((a) => a.length < 3)) return true;
+  if (title.length < 10) return true;
+  return false;
+}
+
+/**
+ * Computes a weighted score that balances local co-citation frequency with
+ * global citation impact.
+ */
+function computeScore(localCount: number, globalCitations: number): number {
+  return localCount * 10 + Math.log10(globalCitations + 1) * 5;
+}
+
+/**
+ * Runs the author-consensus fallback to recover author metadata for works
+ * (e.g. books monographs) whose OpenAlex record has empty or broken authors.
  *
- * 1. For each query, fetch top 20 relevant works from OpenAlex semantic search.
- * 2. Collect their referenced_works IDs and count citation frequencies per query.
- * 3. Pick candidate references across all queries using round-robin.
- * 4. Fetch metadata for the selected candidates.
- * 5. Distribute the final resolved works equally across queries using round-robin selection.
+ * Searches by the main title (before colon), skips review-type entries, and
+ * uses citation-weighted scoring to determine the most likely author set.
+ *
+ * @returns The resolved authors list if successful, or null if resolution failed.
+ */
+async function resolveAuthorsViaFallback(
+  title: string,
+  apiKey: string | undefined,
+  log: Logger,
+): Promise<string[] | null> {
+  const mainTitle = title.split(":")[0].trim();
+  if (mainTitle.length <= 5) return null;
+
+  try {
+    const fallbackParams = new URLSearchParams({
+      filter: `title.search:${mainTitle}`,
+      per_page: "10",
+      select: "id,title,authorships,publication_year,cited_by_count",
+    });
+    if (apiKey) fallbackParams.set("api_key", apiKey);
+    const fallbackUrl = `https://api.openalex.org/works?${fallbackParams.toString().replace(/\+/g, "%20")}`;
+
+    const fallbackResponse = await fetchWithRetry(
+      fallbackUrl,
+      {
+        headers: { "User-Agent": OPENALEX_USER_AGENT },
+        signal: AbortSignal.timeout(8000),
+      },
+      log,
+    );
+
+    if (!fallbackResponse.ok) return null;
+    const fallbackData = (await fallbackResponse.json()) as {
+      results?: OpenAlexWork[];
+    };
+    const fallbackResults = fallbackData.results || [];
+
+    const authorScores = new Map<
+      string,
+      { count: number; rawList: string[] }
+    >();
+    const REVIEW_PATTERNS = [
+      /review/i,
+      /reviewed/i,
+      /recension/i,
+      /discussion of/i,
+      /\bpp\b/i,
+    ];
+
+    for (const match of fallbackResults) {
+      const matchAuthors =
+        match.authorships
+          ?.map((a) => a.author?.display_name || "")
+          .filter(Boolean) || [];
+      if (matchAuthors.length === 0) continue;
+
+      const matchTitle = (match.title || "").trim();
+      if (REVIEW_PATTERNS.some((pattern) => pattern.test(matchTitle))) continue;
+
+      const cleanMainTitle = mainTitle.toLowerCase().trim();
+      const cleanMatchTitle = matchTitle.toLowerCase().trim();
+      const cleanTitle = title.toLowerCase().trim();
+
+      const isTitleMatch =
+        cleanMatchTitle.includes(cleanMainTitle) ||
+        cleanMainTitle.includes(cleanMatchTitle) ||
+        cleanMatchTitle.includes(cleanTitle) ||
+        cleanTitle.includes(cleanMatchTitle);
+
+      if (isTitleMatch) {
+        const authorKey =
+          matchAuthors.length > 2
+            ? `${matchAuthors[0]} et al.`
+            : matchAuthors.join(" & ");
+        const score = (match.cited_by_count || 0) + 1;
+        const existing = authorScores.get(authorKey.toLowerCase()) || {
+          count: 0,
+          rawList: matchAuthors,
+        };
+        authorScores.set(authorKey.toLowerCase(), {
+          count: existing.count + score,
+          rawList: matchAuthors,
+        });
+      }
+    }
+
+    let highestScore = -1;
+    let consensusAuthors: string[] = [];
+    for (const [, val] of authorScores) {
+      if (val.count > highestScore) {
+        highestScore = val.count;
+        consensusAuthors = val.rawList;
+      }
+    }
+
+    if (consensusAuthors.length > 0) {
+      log.info("openalex_author_fallback_resolved", {
+        service: "boxes",
+        data: {
+          originalTitle: title,
+          resolvedAuthors: consensusAuthors,
+          score: highestScore,
+        },
+      });
+      return consensusAuthors;
+    }
+
+    return null;
+  } catch (err) {
+    log.warn("openalex_author_fallback_failed", {
+      service: "boxes",
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
+}
+
+/**
+ * Normalizes an author list for merge-key generation — lowercases, removes
+ * punctuation and "et al." suffixes, sorts multi-author entries.
+ */
+function normalizeForMergeAuthor(authorsList: string[]): string {
+  return authorsList
+    .map((a) =>
+      a
+        .toLowerCase()
+        .replace(/\./g, " ")
+        .replace(/et\s*al\.?/g, "")
+        .replace(/[^a-z\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+    .sort()
+    .join(" | ");
+}
+
+/**
+ * Normalizes a title for merge-key matching — lowercases, strips punctuation,
+ * collapses whitespace.
+ */
+function normalizeForMergeTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Merges candidates whose author lists and titles substantially overlap
+ * (same classic work split across multiple OpenAlex IDs, e.g. different
+ * editions of Gramsci's Prison Notebooks).
+ *
+ * Two candidates match when their normalized authors overlap AND their
+ * normalized titles overlap (one contains the other, or the core pre-colon
+ * segments overlap).
+ *
+ * Merged record:
+ *   - localCount = sum of all merged entries
+ *   - citedByCount = max of all merged entries
+ *   - title / authorsList = from the entry with the longest title
+ */
+interface ResolvedEntry {
+  openAlexId: string;
+  title: string;
+  publicationYear: number;
+  citedByCount: number;
+  authorsList: string[];
+}
+
+interface MergedCandidate {
+  id: string;
+  title: string;
+  publicationYear: number;
+  localCount: number;
+  citedByCount: number;
+  authorsList: string[];
+}
+
+function mergeCandidates(
+  candidates: { id: string; localCount: number }[],
+  resolvedMap: Map<string, ResolvedEntry>,
+): MergedCandidate[] {
+  interface MergeGroup {
+    ids: Set<string>;
+    localCount: number;
+    citedByCount: number;
+    title: string;
+    publicationYear: number;
+    authorsList: string[];
+  }
+
+  const groups: MergeGroup[] = [];
+
+  for (const c of candidates) {
+    const resolved = resolvedMap.get(c.id);
+    if (!resolved) continue;
+
+    const normAuthor = normalizeForMergeAuthor(resolved.authorsList);
+    const normTitle = normalizeForMergeTitle(resolved.title);
+    const coreTitle = normTitle.split(":")[0].trim();
+
+    let merged = false;
+    for (const group of groups) {
+      const groupNormAuthor = normalizeForMergeAuthor(group.authorsList);
+      const groupNormTitle = normalizeForMergeTitle(group.title);
+      const groupCoreTitle = groupNormTitle.split(":")[0].trim();
+
+      const authorMatch =
+        normAuthor === groupNormAuthor ||
+        normAuthor.includes(groupNormAuthor) ||
+        groupNormAuthor.includes(normAuthor);
+
+      if (!authorMatch) continue;
+
+      const titleMatch =
+        normTitle.includes(groupNormTitle) ||
+        groupNormTitle.includes(normTitle) ||
+        coreTitle.includes(groupCoreTitle) ||
+        groupCoreTitle.includes(coreTitle);
+
+      if (titleMatch) {
+        group.ids.add(c.id);
+        group.localCount += c.localCount;
+        group.citedByCount = Math.max(
+          group.citedByCount,
+          resolved.citedByCount,
+        );
+        if (resolved.title.length > group.title.length) {
+          group.title = resolved.title;
+          group.publicationYear = resolved.publicationYear;
+          group.authorsList = resolved.authorsList;
+        }
+        merged = true;
+        break;
+      }
+    }
+
+    if (!merged) {
+      groups.push({
+        ids: new Set([c.id]),
+        localCount: c.localCount,
+        citedByCount: resolved.citedByCount,
+        title: resolved.title,
+        publicationYear: resolved.publicationYear,
+        authorsList: resolved.authorsList,
+      });
+    }
+  }
+
+  return groups.map((g) => ({
+    id: Array.from(g.ids)[0],
+    title: g.title,
+    publicationYear: g.publicationYear,
+    localCount: g.localCount,
+    citedByCount: g.citedByCount,
+    authorsList: g.authorsList,
+  }));
+}
+
+/**
+ * Opens a candidate id string (full OpenAlex URL) and extracts the canonical
+ * identifier portion (e.g. "W123456789").
+ */
+function extractOpenAlexId(candidateId: string): string {
+  return candidateId.replace("https://openalex.org/", "");
+}
+
+/**
+ * Executes the co-citation mining algorithm to find seminal works for a set of
+ * search queries using a fully isolated per-query champion model.
+ *
+ * 1. For each query, fetch top PER_PAGE works from OpenAlex semantic search.
+ * 2. Count referenced_works frequencies per query independently.
+ * 3. Select the top TOP_K most-referenced candidates per query.
+ * 4. Fetch metadata for all candidates in parallel (chunked to avoid URI length limits).
+ * 5. Run author-consensus fallback for works with suspicious metadata.
+ * 6. Merge candidates with overlapping author+title (ID fragmentation recovery).
+ * 7. Score each merged candidate via computeScore and pick the best champion
+ *    per query, skipping champions already claimed by an earlier query.
  *
  * @param queries Array of English semantic search query paragraphs.
  * @param log Logger instance for pipeline event tracing.
- * @returns Array of FoundationalQuery objects.
+ * @returns Array of FoundationalQuery objects (one champion per query, max 4).
  */
 export async function mineCoCitations(
   queries: string[],
@@ -107,9 +405,14 @@ export async function mineCoCitations(
     data: { queryCount: queries.length, queries },
   });
 
-  const queryCandidates = new Map<number, Map<string, number>>();
   const activeQueries = queries.filter((q) => q.trim().length > 0);
   const apiKey = process.env.OPENALEX_API_KEY;
+
+  // ==========================================================================
+  // Phase 1: Per-query semantic search and candidate collection
+  // ==========================================================================
+
+  const queryCandidates = new Map<number, Map<string, number>>();
 
   for (let i = 0; i < activeQueries.length; i++) {
     const query = activeQueries[i];
@@ -118,10 +421,9 @@ export async function mineCoCitations(
 
     const params = new URLSearchParams({
       "search.semantic": query,
-      per_page: "20",
+      per_page: String(PER_PAGE),
       select: "id,title,referenced_works,cited_by_count",
     });
-    const apiKey = process.env.OPENALEX_API_KEY;
     if (apiKey) params.set("api_key", apiKey);
     const url = `https://api.openalex.org/works?${params.toString().replace(/\+/g, "%20")}`;
 
@@ -165,8 +467,6 @@ export async function mineCoCitations(
             break;
           }
 
-          // OpenAlex bazen 200 OK ile boş dizi döner (geçici API sorunu).
-          // Boş sonuçta rate-limit'e saygılı bir gecikmeyle yeniden dene.
           emptyRetries++;
           if (emptyRetries > MAX_EMPTY_RETRIES) {
             log.warn("openalex_semantic_search_empty", {
@@ -211,14 +511,36 @@ export async function mineCoCitations(
       }
     }
 
-    // Abide by OpenAlex rate limits (max 1-2 requests/sec)
     await new Promise((resolve) => setTimeout(resolve, OPENALEX_DELAY_MS));
   }
 
-  // Count total distinct candidates across all queries
+  // ==========================================================================
+  // Phase 2: Select top K candidates per query independently
+  // ==========================================================================
+
+  const queryTopCandidates = new Map<
+    number,
+    { id: string; localCount: number }[]
+  >();
   let totalCandidatesCount = 0;
-  for (const [, map] of queryCandidates) {
-    totalCandidatesCount += map.size;
+
+  for (let i = 0; i < activeQueries.length; i++) {
+    const map = queryCandidates.get(i) || new Map();
+    const sorted = Array.from(map.entries())
+      .map(([id, localCount]) => ({ id, localCount }))
+      .sort((a, b) => b.localCount - a.localCount)
+      .slice(0, TOP_K);
+    queryTopCandidates.set(i, sorted);
+    totalCandidatesCount += sorted.length;
+
+    log.info("co_citation_miner_per_query_candidates", {
+      service: "boxes",
+      data: {
+        queryIndex: i,
+        query: activeQueries[i].substring(0, 80),
+        candidateCount: sorted.length,
+      },
+    });
   }
 
   if (totalCandidatesCount === 0) {
@@ -229,287 +551,259 @@ export async function mineCoCitations(
     return [];
   }
 
-  // Sort candidates for each query descending by citation count
-  const sortedCandidatesByQuery = new Map<
-    number,
-    { id: string; count: number }[]
-  >();
-  for (let i = 0; i < activeQueries.length; i++) {
-    const map = queryCandidates.get(i) || new Map();
-    const sorted = Array.from(map.entries())
-      .map(([id, count]) => ({ id, count }))
-      .sort((a, b) => b.count - a.count);
-    sortedCandidatesByQuery.set(i, sorted);
-  }
+  // ==========================================================================
+  // Phase 3: Batch-fetch metadata for all candidates (chunked for URI safety)
+  // ==========================================================================
 
-  // Select up to 15 unique candidate IDs using round-robin across queries
-  const selectedIds = new Set<string>();
-  const indices = new Array(activeQueries.length).fill(0);
-  let added = true;
-  while (selectedIds.size < 15 && added) {
-    added = false;
-    for (let i = 0; i < activeQueries.length; i++) {
-      const list = sortedCandidatesByQuery.get(i) || [];
-      const idx = indices[i];
-      if (idx < list.length) {
-        const candidate = list[idx];
-        selectedIds.add(candidate.id);
-        indices[i]++;
-        added = true;
-        if (selectedIds.size >= 15) break;
-      }
+  const allCandidateIds = new Set<string>();
+  for (const [, candidates] of queryTopCandidates) {
+    for (const c of candidates) {
+      allCandidateIds.add(extractOpenAlexId(c.id));
     }
   }
 
-  const candidateIds = Array.from(selectedIds).map((id) =>
-    id.replace("https://openalex.org/", ""),
-  );
-  if (candidateIds.length === 0) {
-    return [];
+  const idChunks: string[][] = [];
+  const ids = Array.from(allCandidateIds);
+  for (let i = 0; i < ids.length; i += DETAIL_CHUNK_SIZE) {
+    idChunks.push(ids.slice(i, i + DETAIL_CHUNK_SIZE));
   }
 
-  // Fetch metadata details for top candidate references
-  const filterParams = new URLSearchParams({
-    filter: `openalex_id:${candidateIds.join("|")}`,
-    select: "id,title,authorships,publication_year,cited_by_count",
+  log.info("openalex_resolve_details", {
+    service: "boxes",
+    data: { candidateCount: ids.length, chunkCount: idChunks.length },
   });
-  if (apiKey) filterParams.set("api_key", apiKey);
-  const detailsUrl = `https://api.openalex.org/works?${filterParams.toString().replace(/\+/g, "%20")}`;
 
-  interface ResolvedWorkExtended extends FoundationalQuery {
-    id: string;
-    citedByCount: number;
-  }
+  const detailResults: OpenAlexWork[] = [];
+  await Promise.all(
+    idChunks.map(async (chunk) => {
+      const filterParams = new URLSearchParams({
+        filter: `openalex_id:${chunk.join("|")}`,
+        select: "id,title,authorships,publication_year,cited_by_count",
+      });
+      if (apiKey) filterParams.set("api_key", apiKey);
+      const url = `https://api.openalex.org/works?${filterParams.toString().replace(/\+/g, "%20")}`;
 
-  const resolvedQueries: ResolvedWorkExtended[] = [];
-  try {
-    log.info("openalex_resolve_details", {
-      service: "boxes",
-      data: { candidateCount: candidateIds.length },
-    });
+      try {
+        const response = await fetchWithRetry(
+          url,
+          {
+            headers: { "User-Agent": OPENALEX_USER_AGENT },
+            signal: AbortSignal.timeout(15000),
+          },
+          log,
+        );
 
-    const response = await fetchWithRetry(
-      detailsUrl,
-      {
-        headers: { "User-Agent": OPENALEX_USER_AGENT },
-        signal: AbortSignal.timeout(15000),
-      },
-      log,
-    );
-
-    if (response.ok) {
-      const data = (await response.json()) as { results?: OpenAlexWork[] };
-      const results = data.results || [];
-      const seenTitles = new Set<string>();
-
-      for (const item of results) {
-        const title = (item.title || "").trim();
-        const year = item.publication_year || 0;
-        let authorsList =
-          item.authorships
-            ?.map((a) => a.author?.display_name || "")
-            .filter(Boolean) || [];
-
-        if (!title || seenTitles.has(title.toLowerCase())) {
-          continue;
+        if (response.ok) {
+          const data = (await response.json()) as {
+            results?: OpenAlexWork[];
+          };
+          if (data.results) detailResults.push(...data.results);
         }
-        seenTitles.add(title.toLowerCase());
-
-        // Fallback for works with empty authors (e.g. books/chapters cataloged under journal book-reviews)
-        if (authorsList.length === 0 && title) {
-          try {
-            // Split by colon to search the main title (e.g. "Activists in office") which helps locate the main book record
-            const mainTitle = title.split(":")[0].trim();
-            if (mainTitle.length > 5) {
-              const fallbackParams = new URLSearchParams({
-                filter: `title.search:${mainTitle}`,
-                per_page: "10",
-                select: "id,title,authorships,publication_year,cited_by_count",
-              });
-              if (apiKey) fallbackParams.set("api_key", apiKey);
-              const fallbackUrl = `https://api.openalex.org/works?${fallbackParams.toString().replace(/\+/g, "%20")}`;
-              const fallbackResponse = await fetchWithRetry(
-                fallbackUrl,
-                {
-                  headers: { "User-Agent": OPENALEX_USER_AGENT },
-                  signal: AbortSignal.timeout(8000),
-                },
-                log,
-              );
-              if (fallbackResponse.ok) {
-                const fallbackData = (await fallbackResponse.json()) as {
-                  results?: OpenAlexWork[];
-                };
-                const fallbackResults = fallbackData.results || [];
-
-                // Citation-Weighted Consensus: group matches by author and accumulate cited_by_count
-                const authorScores = new Map<
-                  string,
-                  { count: number; rawList: string[] }
-                >();
-                const REVIEW_PATTERNS = [
-                  /review/i,
-                  /reviewed/i,
-                  /recension/i,
-                  /discussion of/i,
-                  /\bpp\b/i,
-                ];
-
-                for (const match of fallbackResults) {
-                  const matchAuthors =
-                    match.authorships
-                      ?.map((a) => a.author?.display_name || "")
-                      .filter(Boolean) || [];
-                  if (matchAuthors.length === 0) continue;
-
-                  const matchTitle = (match.title || "").trim();
-                  // Skip review items that contain review keywords in their titles
-                  const isReview = REVIEW_PATTERNS.some((pattern) =>
-                    pattern.test(matchTitle),
-                  );
-                  if (isReview) continue;
-
-                  const cleanMainTitle = mainTitle.toLowerCase().trim();
-                  const cleanMatchTitle = matchTitle.toLowerCase().trim();
-                  const cleanTitle = title.toLowerCase().trim();
-
-                  // Check if titles match or contain each other
-                  const isTitleMatch =
-                    cleanMatchTitle.includes(cleanMainTitle) ||
-                    cleanMainTitle.includes(cleanMatchTitle) ||
-                    cleanMatchTitle.includes(cleanTitle) ||
-                    cleanTitle.includes(cleanMatchTitle);
-
-                  if (isTitleMatch) {
-                    // Create a unique key for the author combination
-                    let authorKey = "";
-                    if (matchAuthors.length > 2) {
-                      authorKey = `${matchAuthors[0]} et al.`;
-                    } else {
-                      authorKey = matchAuthors.join(" & ");
-                    }
-
-                    const score = (match.cited_by_count || 0) + 1; // Base score of 1 to count occurrences
-                    const existing = authorScores.get(
-                      authorKey.toLowerCase(),
-                    ) || { count: 0, rawList: matchAuthors };
-                    authorScores.set(authorKey.toLowerCase(), {
-                      count: existing.count + score,
-                      rawList: matchAuthors,
-                    });
-                  }
-                }
-
-                // Determine the winner (author with highest cumulative citation-weighted score)
-                let highestScore = -1;
-                let consensusAuthors: string[] = [];
-                for (const [, val] of authorScores.entries()) {
-                  if (val.count > highestScore) {
-                    highestScore = val.count;
-                    consensusAuthors = val.rawList;
-                  }
-                }
-
-                if (consensusAuthors.length > 0) {
-                  authorsList = consensusAuthors;
-                  log.info("openalex_author_fallback_resolved", {
-                    service: "boxes",
-                    data: {
-                      originalTitle: title,
-                      resolvedAuthors: consensusAuthors,
-                      score: highestScore,
-                    },
-                  });
-                }
-              }
-            }
-            // Respect rate limits after making an extra request
-            await new Promise((resolve) => setTimeout(resolve, 500));
-          } catch (err) {
-            log.warn("openalex_author_fallback_failed", {
-              service: "boxes",
-              error: err instanceof Error ? err.message : String(err),
-            });
-          }
-        }
-
-        // Format author name string
-        let authorStr = "Bilinmeyen Yazar";
-        if (authorsList.length > 0) {
-          if (authorsList.length > 2) {
-            authorStr = `${authorsList[0]} et al.`;
-          } else {
-            authorStr = authorsList.join(" & ");
-          }
-        }
-
-        resolvedQueries.push({
-          id: item.id,
-          author: authorStr,
-          title,
-          publicationYear: year,
-          citedByCount: item.cited_by_count ?? 0,
+      } catch (err) {
+        log.warn("openalex_detail_chunk_failed", {
+          service: "boxes",
+          data: {
+            chunkSize: chunk.length,
+            error: err instanceof Error ? err.message : String(err),
+          },
         });
       }
+    }),
+  );
+
+  // ==========================================================================
+  // Phase 4: Build resolved-details map with suspicious-metadata fallback
+  // ==========================================================================
+
+  const resolvedMap = new Map<
+    string,
+    {
+      openAlexId: string;
+      title: string;
+      publicationYear: number;
+      citedByCount: number;
+      authorsList: string[];
     }
-  } catch (err) {
-    log.error("openalex_resolve_failed", {
-      service: "boxes",
-      error: err instanceof Error ? err : new Error(String(err)),
+  >();
+  const seenTitles = new Set<string>();
+
+  for (const item of detailResults) {
+    const title = (item.title || "").trim();
+    if (!title || seenTitles.has(title.toLowerCase())) continue;
+    seenTitles.add(title.toLowerCase());
+
+    let authorsList =
+      item.authorships
+        ?.map((a) => a.author?.display_name || "")
+        .filter(Boolean) || [];
+
+    // Fallback for works with suspicious metadata (empty/short authors, short title)
+    if (isSuspiciousMetadata(authorsList, title)) {
+      log.info("openalex_fallback_triggered", {
+        service: "boxes",
+        data: {
+          title: title.substring(0, 80),
+          authorCount: authorsList.length,
+          reason:
+            authorsList.length === 0
+              ? "empty_authors"
+              : authorsList.some((a) => a.length < 3)
+                ? "short_author_name"
+                : "short_title",
+        },
+      });
+
+      const resolved = await resolveAuthorsViaFallback(title, apiKey, log);
+      if (resolved) {
+        authorsList = resolved;
+      } else {
+        // Fallback failed — skip this candidate entirely
+        log.warn("openalex_candidate_skipped", {
+          service: "boxes",
+          data: {
+            title: title.substring(0, 80),
+            reason: "fallback_failed_suspicious_metadata",
+          },
+        });
+        continue;
+      }
+    }
+
+    resolvedMap.set(item.id, {
+      openAlexId: item.id,
+      title,
+      publicationYear: item.publication_year || 0,
+      citedByCount: item.cited_by_count ?? 0,
+      authorsList,
     });
   }
 
-  // Enforce a strict delay after resolving details to respect the rate limit before the next box is processed
+  // Enforce rate-limit delay before moving to the next box
   await new Promise((resolve) => setTimeout(resolve, OPENALEX_DELAY_MS));
 
-  // Distribute the resolved works equally among queries using round-robin selection
-  const resolvedForQueryMap = new Map<number, ResolvedWorkExtended[]>();
+  // ==========================================================================
+  // Phase 5: Author+title similarity merging (ID fragmentation recovery)
+  // ==========================================================================
+
+  const queryMergedCandidates = new Map<number, MergedCandidate[]>();
   for (let i = 0; i < activeQueries.length; i++) {
-    const queryMap = queryCandidates.get(i) || new Map<string, number>();
-    const resolvedForQuery = resolvedQueries
-      .filter((w) => queryMap.has(w.id))
-      .sort((a, b) => {
-        const countA = queryMap.get(a.id) || 0;
-        const countB = queryMap.get(b.id) || 0;
-        if (countB !== countA) return countB - countA;
-        return b.citedByCount - a.citedByCount;
+    const candidates = queryTopCandidates.get(i) || [];
+    const merged = mergeCandidates(candidates, resolvedMap);
+    queryMergedCandidates.set(i, merged);
+    const mergedCount = candidates.length - merged.length;
+
+    if (mergedCount > 0) {
+      log.info("co_citation_miner_merged_records", {
+        service: "boxes",
+        data: {
+          queryIndex: i,
+          query: activeQueries[i].substring(0, 80),
+          before: candidates.length,
+          after: merged.length,
+          mergedCount,
+        },
       });
-    resolvedForQueryMap.set(i, resolvedForQuery);
+    }
   }
 
-  const finalWorks: FoundationalQuery[] = [];
-  const chosenIds = new Set<string>();
-  const resolvedIndices = new Array(activeQueries.length).fill(0);
-  let chosenAny = true;
+  // ==========================================================================
+  // Phase 6: Per-query champion selection with cross-query deduplication
+  // ==========================================================================
 
-  while (finalWorks.length < 3 && chosenAny) {
-    chosenAny = false;
-    for (let i = 0; i < activeQueries.length; i++) {
-      const list = resolvedForQueryMap.get(i) || [];
-      let idx = resolvedIndices[i];
-      while (idx < list.length) {
-        const work = list[idx];
-        resolvedIndices[i]++;
-        if (!chosenIds.has(work.id)) {
-          chosenIds.add(work.id);
-          finalWorks.push({
-            author: work.author,
-            title: work.title,
-            publicationYear: work.publicationYear,
-          });
-          chosenAny = true;
-          break; // move to the next query in the round-robin
-        }
-        idx = resolvedIndices[i];
-      }
-      if (finalWorks.length >= 3) break;
+  /**
+   * Generates a fingerprint (normalized author+core title) to identify works
+   * that may have different OpenAlex IDs but are the same scholarly work.
+   */
+  function championFingerprint(title: string, authorsList: string[]): string {
+    const normAuthor = normalizeForMergeAuthor(authorsList);
+    const normTitle = normalizeForMergeTitle(title);
+    const coreTitle = normTitle.split(":")[0].trim();
+    return `${normAuthor} ||| ${coreTitle}`;
+  }
+
+  const chosenChampionFingerprints = new Set<string>();
+  const champions: FoundationalQuery[] = [];
+
+  for (let i = 0; i < activeQueries.length; i++) {
+    const merged = queryMergedCandidates.get(i) || [];
+
+    const scored = merged
+      .map((c) => ({
+        id: c.id,
+        title: c.title,
+        publicationYear: c.publicationYear,
+        authorsList: c.authorsList,
+        fingerprint: championFingerprint(c.title, c.authorsList),
+        score: computeScore(c.localCount, c.citedByCount),
+      }))
+      .sort((a, b) => b.score - a.score);
+
+    if (scored.length === 0) {
+      log.warn("co_citation_miner_no_champion", {
+        service: "boxes",
+        data: {
+          queryIndex: i,
+          query: activeQueries[i].substring(0, 80),
+          reason: "No resolved candidates available",
+        },
+      });
+      continue;
     }
+
+    // Pick the highest-scoring candidate not already claimed — checks both
+    // OpenAlex ID (exact) and author+core-title fingerprint (fuzzy, catches
+    // ID fragmentation across queries).
+    const champion = scored.find(
+      (c) =>
+        !chosenChampionFingerprints.has(c.id) &&
+        !chosenChampionFingerprints.has(c.fingerprint),
+    );
+    if (!champion) {
+      log.warn("co_citation_miner_no_champion", {
+        service: "boxes",
+        data: {
+          queryIndex: i,
+          query: activeQueries[i].substring(0, 80),
+          reason: "All top candidates already chosen by previous queries",
+        },
+      });
+      continue;
+    }
+
+    chosenChampionFingerprints.add(champion.id);
+    chosenChampionFingerprints.add(champion.fingerprint);
+
+    const authorStr =
+      champion.authorsList.length > 0
+        ? champion.authorsList.length > 2
+          ? `${champion.authorsList[0]} et al.`
+          : champion.authorsList.join(" & ")
+        : "Bilinmeyen Yazar";
+
+    champions.push({
+      author: authorStr,
+      title: champion.title,
+      publicationYear: champion.publicationYear,
+    });
+
+    log.info("co_citation_miner_champion_selected", {
+      service: "boxes",
+      data: {
+        queryIndex: i,
+        query: activeQueries[i].substring(0, 80),
+        champion: {
+          author: authorStr,
+          title: champion.title,
+          score: champion.score,
+        },
+      },
+    });
   }
 
   log.info("co_citation_miner_complete", {
     service: "boxes",
-    data: { foundCount: finalWorks.length },
+    data: { foundCount: champions.length },
   });
 
-  return finalWorks;
+  return champions;
 }

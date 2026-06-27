@@ -57,9 +57,12 @@ src/
         page.tsx
       dashboard/
         _components/
+          add-task-modal.tsx
           box-card.tsx
           dashboard-content.tsx
+          edit-task-modal.tsx
           kanban-board.tsx
+          use-dashboard.ts
         actions.ts
         page.tsx
         types.ts
@@ -203,6 +206,105 @@ README.md
 <files>
 This section contains the contents of the repository's files.
 
+<file path="src/app/(app)/dashboard/_components/add-task-modal.tsx">
+import { useState } from "react";
+import { X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { ThesisBox } from "@/db/schema";
+import type { KanbanTask } from "../types";
+⋮----
+interface AddTaskModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onAdd: (task: Omit<KanbanTask, "id">) => void;
+  boxes: ThesisBox[];
+}
+⋮----
+export function AddTaskModal({
+  isOpen,
+  onClose,
+  onAdd,
+  boxes,
+}: AddTaskModalProps)
+⋮----
+const handleSubmit = (e: React.FormEvent) =>
+⋮----
+const handleClose = () =>
+</file>
+
+<file path="src/app/(app)/dashboard/_components/edit-task-modal.tsx">
+import { useState } from "react";
+import { X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { ThesisBox } from "@/db/schema";
+import type { KanbanTask } from "../types";
+⋮----
+interface EditTaskModalProps {
+  task: KanbanTask | null;
+  onClose: () => void;
+  onEdit: (
+    taskId: string,
+    input: {
+      title: string;
+      priority: "HIGH" | "MEDIUM" | "LOW";
+      thesisBoxId?: number | null;
+    },
+  ) => Promise<boolean>;
+  boxes: ThesisBox[];
+}
+⋮----
+export function EditTaskModal({
+  task,
+  onClose,
+  onEdit,
+  boxes,
+}: EditTaskModalProps)
+⋮----
+const handleSubmit = async (e: React.FormEvent) =>
+</file>
+
+<file path="src/app/(app)/dashboard/_components/use-dashboard.ts">
+import { useState, useCallback } from "react";
+import { toast } from "sonner";
+import { toggleResourceReadStatusAction } from "@/app/(app)/library/actions";
+import type { ThesisBox, LibraryResource } from "@/db/schema";
+import {
+  addTaskAction,
+  updateTaskStatusAction,
+  deleteTaskAction,
+  updateTaskAction,
+} from "@/app/(app)/dashboard/actions";
+import type { TopicBox, KanbanTask } from "../types";
+⋮----
+interface TaskRow {
+  id: number;
+  title: string;
+  description: string | null;
+  status: "TODO" | "IN_PROGRESS" | "DONE";
+  priority: "HIGH" | "MEDIUM" | "LOW";
+  thesisBoxId: number | null;
+  boxTitle: string | null;
+}
+⋮----
+interface ArticleState {
+  id: string;
+  title: string;
+  author: string;
+  year: number;
+  isRead: boolean;
+  isFoundational: boolean;
+  isInInitialStarterPack: boolean;
+  boxId: string;
+  boxTitle: string;
+}
+⋮----
+export function useDashboard(
+  initialBoxes: ThesisBox[],
+  initialResources: LibraryResource[],
+  initialTasks: TaskRow[],
+)
+</file>
+
 <file path="src/app/(app)/advisor/page.tsx">
 export default function AdvisorPage()
 </file>
@@ -228,19 +330,10 @@ interface BoxCardProps {
 </file>
 
 <file path="src/app/(app)/dashboard/_components/dashboard-content.tsx">
-import { useState } from "react";
-import { toast } from "sonner";
-import { toggleResourceReadStatusAction } from "@/app/(app)/library/actions";
 import type { ThesisBox, LibraryResource } from "@/db/schema";
-import {
-  addTaskAction,
-  updateTaskStatusAction,
-  deleteTaskAction,
-  updateTaskAction,
-} from "@/app/(app)/dashboard/actions";
 import { BoxCard } from "./box-card";
 import { KanbanBoard } from "./kanban-board";
-import type { TopicBox, KanbanTask } from "../types";
+import { useDashboard } from "./use-dashboard";
 ⋮----
 interface TaskRow {
   id: number;
@@ -257,43 +350,6 @@ interface DashboardContentProps {
   initialResources: LibraryResource[];
   initialTasks: TaskRow[];
 }
-⋮----
-interface ArticleState {
-  id: string;
-  title: string;
-  author: string;
-  year: number;
-  isRead: boolean;
-  isFoundational: boolean;
-  isInInitialStarterPack: boolean;
-  boxId: string;
-  boxTitle: string;
-}
-⋮----
-const getVisibleArticlesForBox = (boxId: string): ArticleState[] =>
-⋮----
-/**
-   * Aktif görüntülenecek okuma görevlerini üretir.
-   */
-const getActiveReadingTasks = (): KanbanTask[] =>
-⋮----
-const handleTaskStatusChange = async (
-    taskId: string,
-    newStatus: "TODO" | "IN_PROGRESS" | "DONE",
-) =>
-⋮----
-const handleAddTask = async (taskInput: Omit<KanbanTask, "id">) =>
-⋮----
-const handleEditTask = async (
-    taskId: string,
-    input: {
-      title: string;
-      priority: "HIGH" | "MEDIUM" | "LOW";
-      thesisBoxId?: number | null;
-    },
-) =>
-⋮----
-const handleDeleteTask = async (taskId: string) =>
 </file>
 
 <file path="src/app/(app)/dashboard/_components/kanban-board.tsx">
@@ -306,7 +362,6 @@ import {
   BookOpen,
   Sparkles,
   Plus,
-  X,
   ChevronDown,
   ChevronUp,
   Pencil,
@@ -318,6 +373,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ThesisBox } from "@/db/schema";
 import type { KanbanTask } from "../types";
+import { AddTaskModal } from "./add-task-modal";
+import { EditTaskModal } from "./edit-task-modal";
 ⋮----
 interface KanbanBoardProps {
   tasks: KanbanTask[];
@@ -359,8 +416,6 @@ className=
 e.stopPropagation();
 onEdit(task);
 ⋮----
-// Edit Modal State
-⋮----
 const handleDragStart = (e: React.DragEvent, taskId: string) =>
 ⋮----
 const handleDragOver = (e: React.DragEvent) =>
@@ -372,17 +427,9 @@ const handleDrop = (
     targetStatus: "TODO" | "IN_PROGRESS" | "DONE",
 ) =>
 ⋮----
-const handleAddSubmit = (e: React.FormEvent) =>
-⋮----
-const handleEditSubmit = async (e: React.FormEvent) =>
-⋮----
 const openEditModal = (task: KanbanTask) =>
 ⋮----
-const closeEditModal = () =>
-⋮----
 onDragEnter=
-⋮----
-onClick=
 </file>
 
 <file path="src/app/(app)/dashboard/actions.ts">
@@ -952,38 +999,6 @@ import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import { OnboardingGlobalLoader } from "@/components/onboarding-global-loader";
 </file>
 
-<file path="src/app/(auth)/onboarding/_hooks/use-onboarding-navigation.ts">
-import { useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { useOnboardingStore } from "@/lib/store/onboarding-store";
-import type { LoadingStep } from "@/lib/store/onboarding-store";
-import type { OriginalityReportData } from "@/lib/types";
-import {
-  extractQueriesAction,
-  executeSearchAction,
-  siftThesesAction,
-  finalizeJuryAnalysisAction,
-  completeRiskStageAction,
-} from "../risk/actions";
-import {
-  generateBoxesStructureAction,
-  mineFoundationalQueriesAction,
-  prefetchLiteratureCacheAction,
-} from "../boxes/actions";
-⋮----
-interface MatrixInput {
-  studyTitle: string;
-  researchQuestion: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-  mainClaim: string;
-}
-⋮----
-export function useOnboardingNavigation()
-</file>
-
 <file path="src/app/(auth)/onboarding/_services/co-citation-miner.ts">
 import type { FoundationalQuery } from "@/lib/types";
 import { Logger } from "@/lib/logger";
@@ -1011,31 +1026,100 @@ async function fetchWithRetry(
   baseDelayMs = 1500,
 ): Promise<Response>
 ⋮----
+function isSuspiciousMetadata(authors: string[], title: string): boolean
+⋮----
+function computeScore(localCount: number, globalCitations: number): number
+⋮----
+async function resolveAuthorsViaFallback(
+  title: string,
+  apiKey: string | undefined,
+  log: Logger,
+): Promise<string[] | null>
+⋮----
+function normalizeForMergeAuthor(authorsList: string[]): string
+⋮----
+/**
+ * Normalizes a title for merge-key matching — lowercases, strips punctuation,
+ * collapses whitespace.
+ */
+function normalizeForMergeTitle(title: string): string
+⋮----
+/**
+ * Merges candidates whose author lists and titles substantially overlap
+ * (same classic work split across multiple OpenAlex IDs, e.g. different
+ * editions of Gramsci's Prison Notebooks).
+ *
+ * Two candidates match when their normalized authors overlap AND their
+ * normalized titles overlap (one contains the other, or the core pre-colon
+ * segments overlap).
+ *
+ * Merged record:
+ *   - localCount = sum of all merged entries
+ *   - citedByCount = max of all merged entries
+ *   - title / authorsList = from the entry with the longest title
+ */
+interface ResolvedEntry {
+  openAlexId: string;
+  title: string;
+  publicationYear: number;
+  citedByCount: number;
+  authorsList: string[];
+}
+⋮----
+interface MergedCandidate {
+  id: string;
+  title: string;
+  publicationYear: number;
+  localCount: number;
+  citedByCount: number;
+  authorsList: string[];
+}
+⋮----
+function mergeCandidates(
+  candidates: { id: string; localCount: number }[],
+  resolvedMap: Map<string, ResolvedEntry>,
+): MergedCandidate[]
+⋮----
+interface MergeGroup {
+    ids: Set<string>;
+    localCount: number;
+    citedByCount: number;
+    title: string;
+    publicationYear: number;
+    authorsList: string[];
+  }
+⋮----
+/**
+ * Opens a candidate id string (full OpenAlex URL) and extracts the canonical
+ * identifier portion (e.g. "W123456789").
+ */
+function extractOpenAlexId(candidateId: string): string
+⋮----
+/**
+ * Executes the co-citation mining algorithm to find seminal works for a set of
+ * search queries using a fully isolated per-query champion model.
+ *
+ * 1. For each query, fetch top PER_PAGE works from OpenAlex semantic search.
+ * 2. Count referenced_works frequencies per query independently.
+ * 3. Select the top TOP_K most-referenced candidates per query.
+ * 4. Fetch metadata for all candidates in parallel (chunked to avoid URI length limits).
+ * 5. Run author-consensus fallback for works with suspicious metadata.
+ * 6. Merge candidates with overlapping author+title (ID fragmentation recovery).
+ * 7. Score each merged candidate via computeScore and pick the best champion
+ *    per query, skipping champions already claimed by an earlier query.
+ *
+ * @param queries Array of English semantic search query paragraphs.
+ * @param log Logger instance for pipeline event tracing.
+ * @returns Array of FoundationalQuery objects (one champion per query, max 4).
+ */
 export async function mineCoCitations(
   queries: string[],
   log: Logger,
 ): Promise<FoundationalQuery[]>
 ⋮----
-// Fetch metadata details for top candidate references
+// Fallback for works with suspicious metadata (empty/short authors, short title)
 ⋮----
-interface ResolvedWorkExtended extends FoundationalQuery {
-    id: string;
-    citedByCount: number;
-  }
-⋮----
-// Fallback for works with empty authors (e.g. books/chapters cataloged under journal book-reviews)
-⋮----
-// Split by colon to search the main title (e.g. "Activists in office") which helps locate the main book record
-⋮----
-// Skip review items that contain review keywords in their titles
-⋮----
-// Check if titles match or contain each other
-⋮----
-// Create a unique key for the author combination
-⋮----
-const score = (match.cited_by_count || 0) + 1; // Base score of 1 to count occurrences
-⋮----
-// Determine the winner (author with highest cumulative citation-weighted score)
+function championFingerprint(title: string, authorsList: string[]): string
 </file>
 
 <file path="src/app/(auth)/onboarding/enrichment/_components/enrichment-loading-skeleton.tsx">
@@ -1169,8 +1253,41 @@ import { LibraryContent } from "./library-content";
 export default async function LibraryPage()
 </file>
 
+<file path="src/app/(auth)/onboarding/_hooks/use-onboarding-navigation.ts">
+import { useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
+import type { LoadingStep } from "@/lib/store/onboarding-store";
+import type { OriginalityReportData } from "@/lib/types";
+import {
+  extractQueriesAction,
+  executeSearchAction,
+  siftThesesAction,
+  finalizeJuryAnalysisAction,
+  completeRiskStageAction,
+} from "../risk/actions";
+import {
+  generateBoxesStructureAction,
+  mineFoundationalQueriesAction,
+  prefetchLiteratureCacheAction,
+} from "../boxes/actions";
+⋮----
+interface MatrixInput {
+  studyTitle: string;
+  researchQuestion: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+  mainClaim: string;
+}
+⋮----
+export function useOnboardingNavigation()
+</file>
+
 <file path="src/app/(auth)/onboarding/_lib/fetch-actions.ts">
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
 import {
@@ -1677,12 +1794,6 @@ import { StartOverButton } from "../_components/start-over-button";
 export default async function OnboardingRiskPage()
 </file>
 
-<file path="src/components/onboarding-global-loader.tsx">
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useOnboardingStore } from "@/lib/store/onboarding-store";
-</file>
-
 <file path="src/app/(auth)/onboarding/_components/onboarding-stepper.tsx">
 import { usePathname, useRouter } from "next/navigation";
 import { Check } from "lucide-react";
@@ -1690,6 +1801,32 @@ import { cn } from "@/lib/utils";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 ⋮----
 className=
+</file>
+
+<file path="src/components/onboarding-global-loader.tsx">
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useOnboardingStore } from "@/lib/store/onboarding-store";
+</file>
+
+<file path="src/lib/tezara-parser.ts">
+import type { Logger } from "./logger";
+import type { TezaraThesisSummary } from "./types";
+⋮----
+export function parseTezaraDetails(
+  html: string,
+  id: number,
+  logger?: Logger,
+):
+⋮----
+export function parseTezaraSearchResults(
+  html: string,
+  logger?: Logger,
+): TezaraThesisSummary[]
+⋮----
+// Title is the second a[href^="/theses/"] in the li (first is the Tez No link)
+⋮----
+// Author
 </file>
 
 <file path="src/lib/store/onboarding-store.ts">
@@ -1750,26 +1887,6 @@ interface OnboardingState extends LoadingState {
 type OnboardingStore = OnboardingState & LoadingActions;
 ⋮----
 // ── Persisted state ──
-</file>
-
-<file path="src/lib/tezara-parser.ts">
-import type { Logger } from "./logger";
-import type { TezaraThesisSummary } from "./types";
-⋮----
-export function parseTezaraDetails(
-  html: string,
-  id: number,
-  logger?: Logger,
-):
-⋮----
-export function parseTezaraSearchResults(
-  html: string,
-  logger?: Logger,
-): TezaraThesisSummary[]
-⋮----
-// Title is the second a[href^="/theses/"] in the li (first is the Tez No link)
-⋮----
-// Author
 </file>
 
 <file path="src/app/(auth)/onboarding/_components/start-over-button.tsx">
@@ -1913,9 +2030,15 @@ export async function confirmEnhancedThesisAction(
 </file>
 
 <file path="src/app/(auth)/onboarding/actions.ts">
-import { eq } from "drizzle-orm";
+import { eq, and, not, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { thesisMatrices, originalityReports, users } from "@/db/schema";
+import {
+  thesisMatrices,
+  originalityReports,
+  users,
+  thesisBoxes,
+  libraryResources,
+} from "@/db/schema";
 import { getSession } from "@/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import { SESSION_ERROR_MSG } from "@/lib/constants/session";
@@ -1928,6 +2051,10 @@ export async function resetOnboardingAction(): Promise<
   { success: boolean } | { error: string }
 > {
   const flowId = createFlowId();
+⋮----
+export async function clearDownstreamDbAction(
+  fromStep: "matrix" | "enrichment" | "risk" | "boxes",
+): Promise<
 </file>
 
 <file path="src/app/(auth)/onboarding/page.tsx">
@@ -2041,52 +2168,6 @@ function AxisCell(
 setExpandedThesisId(
 </file>
 
-<file path="src/app/(auth)/onboarding/literature-review/_hooks/use-literature-review.ts">
-import { useMemo, useEffect, useState, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { useOnboardingStore } from "@/lib/store/onboarding-store";
-import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
-import type { LoadingStep } from "@/lib/store/onboarding-store";
-import type {
-  GeminiThesisBox,
-  LiteraturePoolEntry,
-  JuryArticle,
-} from "@/lib/types";
-import { processAllBoxesAction, confirmLiteratureAction } from "../actions";
-import { fetchBoxesWithFullShape } from "../../_lib/fetch-actions";
-⋮----
-export type BoxStatus = "idle" | "loading" | "done" | "error";
-⋮----
-export interface UseLiteratureReviewResult {
-  subBoxes: GeminiThesisBox[];
-  loading: boolean;
-  processing: boolean;
-  confirming: boolean;
-  boxStatuses: Record<string, BoxStatus>;
-  boxErrors: Record<string, string>;
-  allProcessed: boolean;
-  literaturePool: LiteraturePoolEntry[];
-  archivalBoxes: Set<string>;
-  addArchiveEntry: (
-    subBoxTitle: string,
-    entry: { title: string; description?: string },
-  ) => void;
-  startReviewProcess: () => Promise<void>;
-  handleFinalize: () => Promise<void>;
-}
-⋮----
-export function useLiteratureReview(): UseLiteratureReviewResult
-⋮----
-const isArchival = (box: GeminiThesisBox): boolean
-⋮----
-/**
-   * Finalizes the onboarding flow: persists the literature pool to the database
-   * via {@link confirmLiteratureAction}, resets the transient Zustand store,
-   * notifies the user and navigates to the dashboard.
-   */
-</file>
-
 <file path="src/app/(auth)/onboarding/matrix/actions.ts">
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
@@ -2136,6 +2217,53 @@ export async function saveEnrichedMatrixAction(
 ): Promise<
 </file>
 
+<file path="src/app/(auth)/onboarding/literature-review/_hooks/use-literature-review.ts">
+import { useMemo, useEffect, useState, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
+import type { LoadingStep } from "@/lib/store/onboarding-store";
+import type {
+  GeminiThesisBox,
+  LiteraturePoolEntry,
+  JuryArticle,
+} from "@/lib/types";
+import { processAllBoxesAction, confirmLiteratureAction } from "../actions";
+import { fetchBoxesWithFullShape } from "../../_lib/fetch-actions";
+import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
+⋮----
+export type BoxStatus = "idle" | "loading" | "done" | "error";
+⋮----
+export interface UseLiteratureReviewResult {
+  subBoxes: GeminiThesisBox[];
+  loading: boolean;
+  processing: boolean;
+  confirming: boolean;
+  boxStatuses: Record<string, BoxStatus>;
+  boxErrors: Record<string, string>;
+  allProcessed: boolean;
+  literaturePool: LiteraturePoolEntry[];
+  archivalBoxes: Set<string>;
+  addArchiveEntry: (
+    subBoxTitle: string,
+    entry: { title: string; description?: string },
+  ) => void;
+  startReviewProcess: () => Promise<void>;
+  handleFinalize: () => Promise<void>;
+}
+⋮----
+export function useLiteratureReview(): UseLiteratureReviewResult
+⋮----
+const isArchival = (box: GeminiThesisBox): boolean
+⋮----
+/**
+   * Finalizes the onboarding flow: persists the literature pool to the database
+   * via {@link confirmLiteratureAction}, resets the transient Zustand store,
+   * notifies the user and navigates to the dashboard.
+   */
+</file>
+
 <file path="src/app/(auth)/onboarding/risk/_hooks/use-risk-analysis.ts">
 import { useEffect, useCallback, useReducer } from "react";
 import { useRouter } from "next/navigation";
@@ -2148,6 +2276,7 @@ import {
   fetchOriginalityReport,
 } from "../../_lib/fetch-actions";
 import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
+import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
 ⋮----
 export interface UseRiskAnalysisResult {
   loading: boolean;
@@ -2269,6 +2398,7 @@ import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import type { LoadingStep } from "@/lib/store/onboarding-store";
 import { enrichThesisMatrixAction, saveEnrichedMatrixAction } from "../actions";
 import { fetchThesisMatrix } from "../../_lib/fetch-actions";
+import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
 ⋮----
 type FormState = {
   studyTitle: string;
@@ -2302,42 +2432,6 @@ type SectionConfig = {
    * @param e - Form gönderme olayı.
    */
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
-</file>
-
-<file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">
-import { useState } from "react";
-import {
-  Loader2,
-  AlertCircle,
-  BookOpen,
-  Library,
-  Archive,
-  Plus,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { AIBanner } from "@/components/ai-banner";
-import { LoadingSpinner } from "@/components/loading-spinner";
-import { useOnboardingStore } from "@/lib/store/onboarding-store";
-import type { GeminiThesisBox } from "@/lib/types";
-import { LiteratureArticleCard } from "./literature-article-card";
-import {
-  useLiteratureReview,
-  type BoxStatus,
-} from "../_hooks/use-literature-review";
-⋮----
-function ArchiveEntryForm({
-  onAddEntry,
-}: {
-onAddEntry: (title: string, description: string)
-⋮----
-const handleAdd = () =>
-⋮----
-onChange=
-⋮----
-onAddArchiveEntry(subBox.title,
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_components/originality-report-view.tsx">
@@ -2580,6 +2674,42 @@ type SectionConfig = {
 const handleConfirm = async (e: React.FormEvent<HTMLFormElement>) =>
 </file>
 
+<file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">
+import { useState } from "react";
+import {
+  Loader2,
+  AlertCircle,
+  BookOpen,
+  Library,
+  Archive,
+  Plus,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { AIBanner } from "@/components/ai-banner";
+import { LoadingSpinner } from "@/components/loading-spinner";
+import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import type { GeminiThesisBox } from "@/lib/types";
+import { LiteratureArticleCard } from "./literature-article-card";
+import {
+  useLiteratureReview,
+  type BoxStatus,
+} from "../_hooks/use-literature-review";
+⋮----
+function ArchiveEntryForm({
+  onAddEntry,
+}: {
+onAddEntry: (title: string, description: string)
+⋮----
+const handleAdd = () =>
+⋮----
+onChange=
+⋮----
+onAddArchiveEntry(subBox.title,
+</file>
+
 <file path="src/app/(auth)/onboarding/risk/_services/sifting.ts">
 import { fetchThesisDetails } from "@/lib/tezara";
 import type { Logger } from "@/lib/logger";
@@ -2738,6 +2868,7 @@ import {
   fetchThesisMatrix,
   fetchOriginalityReport,
 } from "../_lib/fetch-actions";
+⋮----
 import { mineCoCitations } from "../_services/co-citation-miner";
 import type { RawPaper } from "../literature-review/_services/literature-review-papers";
 import { searchOpenAlex } from "../literature-review/_services/openalex/client";
@@ -2746,6 +2877,8 @@ export async function generateBoxesStructureAction(): Promise<
   { success: true; boxes: GeminiThesisBox[] } | { error: string }
 > {
   const flowId = createFlowId();
+⋮----
+// Append the hardcoded RELATED_THESES box (server-side, no Gemini involvement)
 ⋮----
 export async function mineFoundationalQueriesAction(
   boxes: GeminiThesisBox[],
@@ -2772,7 +2905,7 @@ export async function confirmBoxesAction(
   boxes: GeminiThesisBox[],
 ): Promise<OnboardingActionResult>
 ⋮----
-// Index-based thesis mapping: boxes[i].mappedThesisIds → insertedBoxes[i].id
+// Insert all overlap theses into the RELATED_THESES box
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/actions.ts">
@@ -3103,12 +3236,12 @@ export interface GeminiThesisBox {
     | "PROBLEMATIZATION"
     | "CONCEPTUAL"
     | "DATA_PROTOCOL"
-    | "PRIMARY_MATERIAL";
+    | "PRIMARY_MATERIAL"
+    | "RELATED_THESES";
   description: string;
   semanticSearchQueries: string[];
   foundationalQueries: FoundationalQuery[];
   concepts: string[];
-  mappedThesisIds?: number[];
 }
 ⋮----
 export interface JuryArticle {

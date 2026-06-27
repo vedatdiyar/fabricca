@@ -11,6 +11,7 @@ import {
   fetchOriginalityReport,
 } from "../../_lib/fetch-actions";
 import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
+import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
 
 /** Shape returned by {@link useRiskAnalysis}. */
 export interface UseRiskAnalysisResult {
@@ -183,6 +184,7 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
         if (result.error === "cancelled") {
           // Clears risk, boxes, literature-review step completion and reportData
           useOnboardingStore.getState().clearDownstreamData("enrichment");
+          void clearDownstreamDbAction("enrichment");
           toast.info("İşlem iptal edildi, önceki adıma yönlendiriliyorsunuz.");
           router.push("/onboarding/enrichment");
         } else {

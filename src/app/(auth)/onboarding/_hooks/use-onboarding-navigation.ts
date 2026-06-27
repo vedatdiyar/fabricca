@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
 import type { LoadingStep } from "@/lib/store/onboarding-store";
 import type { OriginalityReportData } from "@/lib/types";
 import {
@@ -89,6 +90,7 @@ export function useOnboardingNavigation() {
         steps,
         () => {
           isCancelled = true;
+          void clearDownstreamDbAction("enrichment");
           toast.info("İşlem iptal edildi.");
         },
       );
@@ -188,6 +190,7 @@ export function useOnboardingNavigation() {
       () => {
         isCancelled = true;
         useOnboardingStore.getState().clearDownstreamData("risk");
+        void clearDownstreamDbAction("risk");
         toast.info("İşlem iptal edildi.");
       },
     );

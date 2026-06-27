@@ -13,6 +13,15 @@ import type {
 } from "@/lib/types";
 import { processAllBoxesAction, confirmLiteratureAction } from "../actions";
 import { fetchBoxesWithFullShape } from "../../_lib/fetch-actions";
+import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
+
+const boxOrderWeight: Record<string, number> = {
+  CONCEPTUAL: 1,
+  PROBLEMATIZATION: 2,
+  PRIMARY_MATERIAL: 3,
+  DATA_PROTOCOL: 4,
+  RELATED_THESES: 5,
+};
 
 /** Processing status of a single sub-box within the literature review grid. */
 export type BoxStatus = "idle" | "loading" | "done" | "error";
@@ -108,7 +117,13 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
         useOnboardingStore.getState().setLiteraturePool([]);
       }
 
-      setSubBoxes(allBoxes);
+      setSubBoxes(
+        [...allBoxes].sort((a, b) => {
+          const weightA = boxOrderWeight[a.boxType] ?? 99;
+          const weightB = boxOrderWeight[b.boxType] ?? 99;
+          return weightA - weightB;
+        }),
+      );
       setPhase((prev) => ({ ...prev, loading: false }));
     });
     return () => {
@@ -131,7 +146,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     setPhase((prev) => ({ ...prev, processing: true }));
 
     const isArchival = (box: GeminiThesisBox): boolean =>
-      box.boxType === "PRIMARY_MATERIAL";
+      box.boxType === "PRIMARY_MATERIAL" || box.boxType === "RELATED_THESES";
 
     const allSteps: LoadingStep[] = subBoxes.map((box) => ({
       text: `${box.title} taranıyor...`,
@@ -150,6 +165,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
         setPhase((prev) => ({ ...prev, processing: false }));
         // Clears literature-review step completion and literaturePool
         useOnboardingStore.getState().clearDownstreamData("boxes");
+        void clearDownstreamDbAction("boxes");
         toast.info("İşlem iptal edildi, önceki adıma yönlendiriliyorsunuz.");
         router.push("/onboarding/boxes");
         // Reset box statuses to idle when cancelled so we don't show loading skeletons forever

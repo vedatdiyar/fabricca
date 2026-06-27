@@ -134,6 +134,7 @@ export const boxTypeEnum = pgEnum("box_type_enum", [
   "CONCEPTUAL",
   "DATA_PROTOCOL",
   "PRIMARY_MATERIAL",
+  "RELATED_THESES",
 ]);
 
 /**

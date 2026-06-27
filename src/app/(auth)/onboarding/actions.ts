@@ -1,8 +1,14 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, and, not, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { thesisMatrices, originalityReports, users } from "@/db/schema";
+import {
+  thesisMatrices,
+  originalityReports,
+  users,
+  thesisBoxes,
+  libraryResources,
+} from "@/db/schema";
 import { getSession } from "@/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import { SESSION_ERROR_MSG } from "@/lib/constants/session";
@@ -66,5 +72,92 @@ export async function resetOnboardingAction(): Promise<
       },
     });
     return { error: "Sıfırlama işlemi gerçekleştirilirken bir hata oluştu." };
+  }
+}
+
+/**
+ * Dynamically clears all downstream step data in the database.
+ *
+ * @param fromStep - The step from which to clear downstream data
+ * @returns Success status or a user-safe error message
+ */
+export async function clearDownstreamDbAction(
+  fromStep: "matrix" | "enrichment" | "risk" | "boxes",
+): Promise<{ success: boolean } | { error: string }> {
+  const session = await getSession();
+  if (!session) return { error: SESSION_ERROR_MSG };
+
+  const userId = session.userId;
+
+  try {
+    await db.transaction(async (tx) => {
+      if (fromStep === "matrix" || fromStep === "enrichment") {
+        // Clear originality reports
+        await tx
+          .delete(originalityReports)
+          .where(eq(originalityReports.userId, userId));
+
+        // Get matrix ID
+        const [matrix] = await tx
+          .select({ id: thesisMatrices.id })
+          .from(thesisMatrices)
+          .where(eq(thesisMatrices.userId, userId));
+
+        if (matrix) {
+          // Clear thesis boxes (cascades to libraryResources)
+          await tx
+            .delete(thesisBoxes)
+            .where(eq(thesisBoxes.thesisMatrixId, matrix.id));
+        }
+      } else if (fromStep === "risk") {
+        // Get matrix ID
+        const [matrix] = await tx
+          .select({ id: thesisMatrices.id })
+          .from(thesisMatrices)
+          .where(eq(thesisMatrices.userId, userId));
+
+        if (matrix) {
+          // Clear thesis boxes (cascades to libraryResources)
+          await tx
+            .delete(thesisBoxes)
+            .where(eq(thesisBoxes.thesisMatrixId, matrix.id));
+        }
+      } else if (fromStep === "boxes") {
+        // Clear library resources that are NOT Yok theses (relevanceScore != 0.99)
+        const [matrix] = await tx
+          .select({ id: thesisMatrices.id })
+          .from(thesisMatrices)
+          .where(eq(thesisMatrices.userId, userId));
+
+        if (matrix) {
+          const boxes = await tx
+            .select({ id: thesisBoxes.id })
+            .from(thesisBoxes)
+            .where(eq(thesisBoxes.thesisMatrixId, matrix.id));
+
+          if (boxes.length > 0) {
+            const boxIds = boxes.map((b) => b.id);
+            await tx
+              .delete(libraryResources)
+              .where(
+                and(
+                  inArray(libraryResources.thesisBoxId, boxIds),
+                  not(eq(libraryResources.relevanceScore, 0.99)),
+                ),
+              );
+          }
+        }
+      }
+    });
+
+    invalidateOnboardingCache();
+    return { success: true };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Sıfırlama işlemi gerçekleştirilirken bir hata oluştu.",
+    };
   }
 }
