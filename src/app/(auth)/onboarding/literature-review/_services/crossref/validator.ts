@@ -1,5 +1,4 @@
 import { CROSSREF_USER_AGENT } from "../_shared";
-import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
 import type { ValidatedPaper } from "../literature-review-papers";
 import type { Logger } from "@/lib/logger";
 
@@ -13,6 +12,10 @@ export async function validateWithCrossRef(
     !/^10\.\d{4,}/.test(paper.doi.trim())
   )
     return paper;
+
+  // Only call Crossref when authors is empty OR publisher is empty.
+  // If both fields are already filled, skip the external request.
+  if (paper.authors.length > 0 && paper.publisher) return paper;
 
   const contactEmail = process.env.CROSSREF_CONTACT_EMAIL;
   const endpoint = `https://api.crossref.org/works/${encodeURIComponent(paper.doi)}${contactEmail ? `?mailto=${encodeURIComponent(contactEmail)}` : ""}`;
@@ -35,19 +38,24 @@ export async function validateWithCrossRef(
         const message = body?.message;
         if (!message) return paper;
 
-        const authorList = message.author as
-          { given?: string; family?: string }[] | undefined;
-        if (authorList && authorList.length > 0) {
-          const resolvedAuthors: string[] = [];
-          for (const a of authorList) {
-            const given = (a.given ?? "").trim();
-            const family = (a.family ?? "").trim();
-            const full = `${given} ${family}`.trim();
-            if (full) resolvedAuthors.push(full);
-          }
-          if (resolvedAuthors.length > 0) {
-            paper.authors = resolvedAuthors;
-          }
+        type CrossrefPerson = { given?: string; family?: string };
+        const resolveNames = (list: CrossrefPerson[] | undefined): string[] => {
+          if (!list || list.length === 0) return [];
+          return list
+            .map((p) =>
+              `${(p.given ?? "").trim()} ${(p.family ?? "").trim()}`.trim(),
+            )
+            .filter(Boolean);
+        };
+
+        // Try authors first; fall back to editors (e.g. edited volumes)
+        const authorList = message.author as CrossrefPerson[] | undefined;
+        const resolvedAuthors =
+          authorList && authorList.length > 0
+            ? resolveNames(authorList)
+            : resolveNames(message.editor as CrossrefPerson[] | undefined);
+        if (resolvedAuthors.length > 0) {
+          paper.authors = resolvedAuthors;
         }
 
         const crossrefUrl = message.URL as string | undefined;
@@ -63,7 +71,7 @@ export async function validateWithCrossRef(
 
         const title = message.title as string[] | undefined;
         if (title && title.length > 0) {
-          paper.title = formatAcademicTitle(title[0]);
+          paper.title = title[0];
         }
 
         const published = message.published as

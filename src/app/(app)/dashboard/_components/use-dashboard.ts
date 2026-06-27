@@ -74,7 +74,7 @@ export function useDashboard(
           year: res.publicationYear ?? 0,
           isRead: res.isRead ?? false,
           isFoundational: res.isFoundational,
-          isInInitialStarterPack: index < 3,
+          isInInitialStarterPack: index < 4,
           boxId: String(res.thesisBoxId),
           boxTitle: box.title,
         });

@@ -1,6 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { JuryArticle } from "@/lib/types";
-import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
 
 interface LiteratureArticleCardProps {
   article: JuryArticle;
@@ -12,7 +11,7 @@ export function LiteratureArticleCard({ article }: LiteratureArticleCardProps) {
       <CardHeader className="pb-2 pt-3 px-3">
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-sm font-medium text-foreground leading-snug">
-            {formatAcademicTitle(article.title)}
+            {article.title}
           </CardTitle>
           <div className="shrink-0 flex items-center gap-2">
             {article.isFoundational && (

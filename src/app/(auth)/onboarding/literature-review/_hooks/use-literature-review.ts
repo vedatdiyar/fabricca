@@ -4,7 +4,6 @@ import { useMemo, useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
-import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
 import type { LoadingStep } from "@/lib/store/onboarding-store";
 import type {
   GeminiThesisBox,
@@ -18,9 +17,9 @@ import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
 const boxOrderWeight: Record<string, number> = {
   CONCEPTUAL: 1,
   PROBLEMATIZATION: 2,
-  PRIMARY_MATERIAL: 3,
-  DATA_PROTOCOL: 4,
-  RELATED_THESES: 5,
+  DATA_PROTOCOL: 3,
+  RELATED_THESES: 4,
+  PRIMARY_MATERIAL: 5,
 };
 
 /** Processing status of a single sub-box within the literature review grid. */
@@ -117,6 +116,16 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
         useOnboardingStore.getState().setLiteraturePool([]);
       }
 
+      // If the pool is populated but the literature-review step is not
+      // marked complete, the data is stale (e.g. restored from sessionStorage
+      // after a code change at a previous stage). Clear it so the pipeline
+      // re-runs instead of showing stale cache.
+      const steps = useOnboardingStore.getState().stepsCompleted;
+      const pool = useOnboardingStore.getState().literaturePool;
+      if (pool.length > 0 && !steps["literature-review"]) {
+        useOnboardingStore.getState().setLiteraturePool([]);
+      }
+
       setSubBoxes(
         [...allBoxes].sort((a, b) => {
           const weightA = boxOrderWeight[a.boxType] ?? 99;
@@ -202,8 +211,11 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
         subBoxes: (box.subBoxes ?? []).map((sb) => ({
           title: sb.title,
           semanticQuery: sb.semanticQuery ?? "",
+          foundationalQueries: sb.foundationalQueries ?? [],
         })),
-        foundationalQueries: box.foundationalQueries ?? [],
+        foundationalQueries: (box.subBoxes ?? []).flatMap(
+          (sb) => sb.foundationalQueries ?? [],
+        ),
       })),
       cachedPapers,
     );
@@ -268,7 +280,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   const addArchiveEntry = useCallback(
     (subBoxTitle: string, entry: { title: string; description?: string }) => {
       const archiveArticle: JuryArticle = {
-        title: formatAcademicTitle(entry.title),
+        title: entry.title,
         abstract:
           entry.description ??
           "Birincil arşiv belgesi — kullanıcı tarafından el ile girilmiştir.",
@@ -283,8 +295,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
 
       addToLiteraturePool({
         subBoxTitle,
-        starterPack: [archiveArticle],
-        reservedPool: [],
+        articles: [archiveArticle],
       });
     },
     [addToLiteraturePool],

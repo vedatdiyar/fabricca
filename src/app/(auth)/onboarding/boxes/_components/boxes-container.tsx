@@ -25,9 +25,9 @@ import type { GeminiThesisBox, RelatedThesisEntry } from "@/lib/types";
 const boxTypeOrder: Record<string, number> = {
   CONCEPTUAL: 1,
   PROBLEMATIZATION: 2,
-  PRIMARY_MATERIAL: 3,
-  DATA_PROTOCOL: 4,
-  RELATED_THESES: 5,
+  DATA_PROTOCOL: 3,
+  RELATED_THESES: 4,
+  PRIMARY_MATERIAL: 5,
 };
 
 const badgeLabels: Record<string, string> = {

@@ -283,6 +283,5 @@ export interface JuryArticle {
 
 export interface LiteraturePoolEntry {
   subBoxTitle: string;
-  starterPack: JuryArticle[];
-  reservedPool: JuryArticle[];
+  articles: JuryArticle[];
 }

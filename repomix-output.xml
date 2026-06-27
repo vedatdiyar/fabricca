@@ -187,8 +187,6 @@ src/
       vector.ts
     store/
       onboarding-store.ts
-    utils/
-      academic-formatter.ts
     cache-tags.ts
     cloudflare.ts
     cohere.ts
@@ -445,8 +443,6 @@ function restoreConsole(): void
 const fmtDur = (ms: number): string => `$
 const delay = (ms: number): Promise<void>
 ⋮----
-function extractScore(queryIndex: number): string
-⋮----
 interface TopCandidate {
   title: string;
   authors: string[];
@@ -521,18 +517,6 @@ async function main(): Promise<void>
 // ------------------------------------------------------------------
 </file>
 
-<file path="src/app/(auth)/onboarding/literature-review/_services/crossref/validator.ts">
-import { CROSSREF_USER_AGENT } from "../_shared";
-import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
-import type { ValidatedPaper } from "../literature-review-papers";
-import type { Logger } from "@/lib/logger";
-⋮----
-export async function validateWithCrossRef(
-  paper: ValidatedPaper,
-  logger?: Logger,
-): Promise<ValidatedPaper>
-</file>
-
 <file path="src/app/(auth)/onboarding/literature-review/_services/openalex/client.ts">
 import { parseOpenAlexResults } from "./parser";
 import type { RawPaper } from "../literature-review-papers";
@@ -544,46 +528,8 @@ async function queryOpenAlexWorks(
 export async function searchOpenAlex(query: string): Promise<RawPaper[]>
 </file>
 
-<file path="src/app/(auth)/onboarding/literature-review/_services/openalex/parser.ts">
-import { extractCleanDoi } from "../_shared";
-import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
-import type { RawPaper } from "../literature-review-papers";
-⋮----
-function resolveAbstractInvertedIndex(
-  invertedIndex: Record<string, number[]> | null | undefined,
-): string | null
-⋮----
-function parseOpenAlexResults(results: Record<string, unknown>[]): RawPaper[]
-</file>
-
 <file path="src/app/(auth)/onboarding/literature-review/_services/_shared.ts">
 export function extractCleanDoi(raw: string | null | undefined): string | null
-</file>
-
-<file path="src/app/(auth)/onboarding/literature-review/_services/foundational-resolver.ts">
-import { extractCleanDoi, CROSSREF_USER_AGENT } from "./_shared";
-import type { FoundationalQuery } from "@/lib/types";
-import type { Logger } from "@/lib/logger";
-⋮----
-export interface FoundationalWorkResult {
-  id: string;
-  title: string;
-  type: string;
-  publicationYear: number;
-  citedByCount: number;
-  isFoundational: boolean;
-  authors: string[];
-  publisher: string | null;
-}
-⋮----
-function createFallback(query: FoundationalQuery): FoundationalWorkResult
-⋮----
-export async function resolveFoundationalWorks(
-  queries: FoundationalQuery[],
-  logger?: Logger,
-): Promise<FoundationalWorkResult[]>
-⋮----
-// Extract only id and publisher from Crossref; lock LLM fields
 </file>
 
 <file path="src/app/(auth)/onboarding/literature-review/_services/openalex-collector.ts">
@@ -796,12 +742,6 @@ export function writePayloadFile(
 export function cosineSimilarity(vecA: number[], vecB: number[]): number
 </file>
 
-<file path="src/lib/utils/academic-formatter.ts">
-function capitalize(word: string): string
-⋮----
-export function formatAcademicTitle(text: string): string
-</file>
-
 <file path="src/lib/cache-tags.ts">
 import { revalidatePath, updateTag } from "next/cache";
 ⋮----
@@ -937,20 +877,55 @@ const openEditModal = (task: KanbanTask) =>
 onDragEnter=
 </file>
 
-<file path="src/app/(app)/dashboard/page.tsx">
-import { eq, asc, inArray } from "drizzle-orm";
-import { redirect } from "next/navigation";
-import { db } from "@/db";
-import {
-  thesisMatrices,
-  thesisBoxes,
-  libraryResources,
-  tasks,
-} from "@/db/schema";
-import { getSession } from "@/session";
-import { DashboardContent } from "./_components/dashboard-content";
+<file path="src/app/(auth)/onboarding/literature-review/_services/crossref/validator.ts">
+import { CROSSREF_USER_AGENT } from "../_shared";
+import type { ValidatedPaper } from "../literature-review-papers";
+import type { Logger } from "@/lib/logger";
 ⋮----
-export default async function DashboardPage()
+export async function validateWithCrossRef(
+  paper: ValidatedPaper,
+  logger?: Logger,
+): Promise<ValidatedPaper>
+⋮----
+type CrossrefPerson = { given?: string; family?: string };
+const resolveNames = (list: CrossrefPerson[] | undefined): string[] =>
+</file>
+
+<file path="src/app/(auth)/onboarding/literature-review/_services/openalex/parser.ts">
+import { extractCleanDoi } from "../_shared";
+import type { RawPaper } from "../literature-review-papers";
+⋮----
+function resolveAbstractInvertedIndex(
+  invertedIndex: Record<string, number[]> | null | undefined,
+): string | null
+⋮----
+function parseOpenAlexResults(results: Record<string, unknown>[]): RawPaper[]
+</file>
+
+<file path="src/app/(auth)/onboarding/literature-review/_services/foundational-resolver.ts">
+import { extractCleanDoi, CROSSREF_USER_AGENT } from "./_shared";
+import type { FoundationalQuery } from "@/lib/types";
+import type { Logger } from "@/lib/logger";
+⋮----
+export interface FoundationalWorkResult {
+  id: string;
+  title: string;
+  type: string;
+  publicationYear: number;
+  citedByCount: number;
+  isFoundational: boolean;
+  authors: string[];
+  publisher: string | null;
+}
+⋮----
+function createFallback(query: FoundationalQuery): FoundationalWorkResult
+⋮----
+export async function resolveFoundationalWorks(
+  queries: FoundationalQuery[],
+  logger?: Logger,
+): Promise<FoundationalWorkResult[]>
+⋮----
+// Extract only id and publisher from Crossref; lock LLM fields
 </file>
 
 <file path="src/app/icon0.svg">
@@ -1112,6 +1087,25 @@ export async function getSessionWithOnboarding(): Promise<SessionWithOnboarding 
 export async function getProfile()
 </file>
 
+<file path="src/app/(app)/dashboard/page.tsx">
+import { eq, asc, inArray } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import { db } from "@/db";
+import {
+  thesisMatrices,
+  thesisBoxes,
+  libraryResources,
+  tasks,
+} from "@/db/schema";
+import { getSession } from "@/session";
+import { Button } from "@/components/ui/button";
+import { reopenOnboardingAction } from "@/app/(app)/actions";
+import { DashboardContent } from "./_components/dashboard-content";
+⋮----
+export default async function DashboardPage()
+</file>
+
 <file path="src/app/(auth)/onboarding/_components/onboarding-content.tsx">
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import { OnboardingGlobalLoader } from "@/components/onboarding-global-loader";
@@ -1166,17 +1160,6 @@ export function getErrorDisplay(error: unknown): ErrorDisplay
 export function extractMessage(error: unknown): string
 </file>
 
-<file path="src/app/(app)/library/page.tsx">
-import { eq, asc } from "drizzle-orm";
-import { redirect } from "next/navigation";
-import { db } from "@/db";
-import { thesisMatrices, thesisBoxes } from "@/db/schema";
-import { getSession } from "@/session";
-import { LibraryContent } from "./library-content";
-⋮----
-export default async function LibraryPage()
-</file>
-
 <file path="src/app/(auth)/onboarding/enrichment/_components/matrix-field.tsx">
 import type { LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -1195,124 +1178,6 @@ interface MatrixFieldProps {
 }
 ⋮----
 onChange=
-</file>
-
-<file path="src/app/(auth)/onboarding/literature-review/_services/batch-orchestrator.ts">
-import { Logger } from "@/lib/logger";
-import type {
-  SubBoxInput,
-  ValidatedPaper,
-  RawPaper,
-} from "./literature-review-papers";
-import type { JuryArticle, LiteraturePoolEntry } from "@/lib/types";
-import { searchOpenAlex } from "./openalex/client";
-import { mergePapers } from "./literature-review-papers";
-import {
-  isArchivalBox,
-  resolveBoxFoundationalWorks,
-  runBoxPipeline,
-} from "./box-pipeline";
-⋮----
-export interface BatchOrchestrationResult {
-  poolEntries: LiteraturePoolEntry[];
-  archivalBoxTitles: string[];
-}
-⋮----
-interface DedupEliminatedEntry {
-  boxTitle: string;
-  candidate: ValidatedPaper;
-  relevanceScore: number;
-}
-⋮----
-function deduplicateCandidatesGlobally(
-  boxCandidates: Map<string, ValidatedPaper[]>,
-  logger?: Logger,
-): Map<string, ValidatedPaper[]>
-⋮----
-function resolveDedupKey(candidate: ValidatedPaper): string | null
-⋮----
-export async function orchestrateBatchProcess(
-  boxes: SubBoxInput[],
-  logger: Logger,
-  cachedPapers?: Record<string, RawPaper[]>,
-  thesisArticlesMap?: Map<string, JuryArticle[]>,
-): Promise<BatchOrchestrationResult>
-</file>
-
-<file path="src/app/(auth)/onboarding/literature-review/_services/box-pipeline.ts">
-import { Logger } from "@/lib/logger";
-import type { SubBoxInput, ValidatedPaper } from "./literature-review-papers";
-import type { JuryArticle } from "@/lib/types";
-import { resolveFoundationalWorks } from "./foundational-resolver";
-import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
-⋮----
-export function isArchivalBox(subBox: SubBoxInput): boolean
-⋮----
-export async function resolveBoxFoundationalWorks(
-  box: SubBoxInput,
-  logger: Logger,
-): Promise<JuryArticle[]>
-⋮----
-export function distributeFixedPool(
-  foundationalArticles: JuryArticle[],
-  _thesisArticles: JuryArticle[],
-  semanticArticles: JuryArticle[],
-):
-⋮----
-export async function runBoxPipeline(
-  box: SubBoxInput,
-  candidates: ValidatedPaper[],
-  foundationalArticles: JuryArticle[],
-  thesisArticles: JuryArticle[],
-  logger: Logger,
-): Promise<
-</file>
-
-<file path="src/app/(auth)/onboarding/literature-review/_services/literature-review-papers.ts">
-import type { FoundationalQuery } from "@/lib/types";
-⋮----
-export interface SubBoxInput {
-  title: string;
-  description: string;
-  boxType?: string;
-  subBoxes: { title: string; semanticQuery: string }[];
-  foundationalQueries: FoundationalQuery[];
-}
-⋮----
-export interface RawPaper {
-  source: "openalex";
-  title: string | null;
-  abstract: string | null;
-  metadata: string | null;
-  doi: string | null;
-  url: string | null;
-  authors: string[];
-  year: number | null;
-  publisher: string | null;
-  openAlexId: string | null;
-  isFoundational: boolean;
-  relevanceScore: number;
-  subBoxId?: string;
-}
-⋮----
-export interface ValidatedPaper {
-  title: string;
-  abstract: string | null;
-  metadata: string | null;
-  doi: string | null;
-  url: string | null;
-  authors: string[];
-  year: number | null;
-  publisher: string | null;
-  openAlexId: string | null;
-  isFoundational: boolean;
-  relevanceScore: number;
-  subBoxId?: string;
-}
-⋮----
-export function mergePapers(papers: RawPaper[]): ValidatedPaper[]
-⋮----
-function ingest(raw: RawPaper): void
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/error.tsx">
@@ -1381,6 +1246,252 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 ⋮----
 export function cn(...inputs: ClassValue[])
+</file>
+
+<file path="src/app/(app)/library/page.tsx">
+import { eq, asc } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { db } from "@/db";
+import { thesisMatrices, thesisBoxes } from "@/db/schema";
+import { getSession } from "@/session";
+import { LibraryContent } from "./library-content";
+⋮----
+export default async function LibraryPage()
+</file>
+
+<file path="src/app/(auth)/onboarding/literature-review/_services/batch-orchestrator.ts">
+import { Logger } from "@/lib/logger";
+import type {
+  SubBoxInput,
+  ValidatedPaper,
+  RawPaper,
+} from "./literature-review-papers";
+import type { JuryArticle, LiteraturePoolEntry } from "@/lib/types";
+import { searchOpenAlex } from "./openalex/client";
+import { mergePapers } from "./literature-review-papers";
+import { isArchivalBox } from "./box-pipeline";
+import { resolveFoundationalWorks } from "./foundational-resolver";
+import { validateWithCrossRef } from "./crossref/validator";
+⋮----
+export interface BatchOrchestrationResult {
+  poolEntries: LiteraturePoolEntry[];
+  archivalBoxTitles: string[];
+}
+⋮----
+function toSemanticArticle(candidate: ValidatedPaper): JuryArticle
+⋮----
+// ============================================================================
+// Global Cross-Box Candidate Deduplication
+// ============================================================================
+⋮----
+/** Minimum safe candidate count per box after global dedup. */
+⋮----
+interface DedupEliminatedEntry {
+  boxTitle: string;
+  candidate: ValidatedPaper;
+  relevanceScore: number;
+}
+⋮----
+function deduplicateCandidatesGlobally(
+  boxCandidates: Map<string, ValidatedPaper[]>,
+  logger?: Logger,
+): Map<string, ValidatedPaper[]>
+⋮----
+// Phase 1: Build a global index keyed by dedup key
+⋮----
+// Phase 2: Hard dedup — keep only the highest-scoring occurrence
+⋮----
+// Phase 3: Compact nulls from each box
+⋮----
+// Phase 4: Soft restore
+⋮----
+function resolveDedupKey(candidate: ValidatedPaper): string | null
+⋮----
+export async function orchestrateBatchProcess(
+  boxes: SubBoxInput[],
+  logger: Logger,
+  cachedPapers?: Record<string, RawPaper[]>,
+  thesisArticlesMap?: Map<string, JuryArticle[]>,
+): Promise<BatchOrchestrationResult>
+⋮----
+// No cache — perform per-sub-box searches with throttling
+⋮----
+// Resolve foundational works for this sub-box
+⋮----
+// Search OpenAlex for this sub-box
+⋮----
+// Silently skip failed queries
+⋮----
+// Throttle between sub-box queries
+⋮----
+// Crossref enrichment: fill empty authors or publisher via DOI
+</file>
+
+<file path="src/app/(auth)/onboarding/literature-review/_services/box-pipeline.ts">
+import { Logger } from "@/lib/logger";
+import type { SubBoxInput } from "./literature-review-papers";
+import type { JuryArticle } from "@/lib/types";
+import { resolveFoundationalWorks } from "./foundational-resolver";
+⋮----
+export function isArchivalBox(subBox: SubBoxInput): boolean
+⋮----
+export async function resolveBoxFoundationalWorks(
+  box: SubBoxInput,
+  logger: Logger,
+): Promise<JuryArticle[]>
+</file>
+
+<file path="src/app/(auth)/onboarding/literature-review/_services/literature-review-papers.ts">
+import type { FoundationalQuery } from "@/lib/types";
+⋮----
+export interface SubBoxItem {
+  title: string;
+  semanticQuery: string;
+  foundationalQueries: FoundationalQuery[];
+}
+⋮----
+export interface SubBoxInput {
+  title: string;
+  description: string;
+  boxType?: string;
+  subBoxes: SubBoxItem[];
+  foundationalQueries: FoundationalQuery[];
+}
+⋮----
+export interface RawPaper {
+  source: "openalex";
+  title: string | null;
+  abstract: string | null;
+  metadata: string | null;
+  doi: string | null;
+  url: string | null;
+  authors: string[];
+  year: number | null;
+  publisher: string | null;
+  openAlexId: string | null;
+  isFoundational: boolean;
+  relevanceScore: number;
+  subBoxId?: string;
+}
+⋮----
+export interface ValidatedPaper {
+  title: string;
+  abstract: string | null;
+  metadata: string | null;
+  doi: string | null;
+  url: string | null;
+  authors: string[];
+  year: number | null;
+  publisher: string | null;
+  openAlexId: string | null;
+  isFoundational: boolean;
+  relevanceScore: number;
+  subBoxId?: string;
+}
+⋮----
+export function mergePapers(papers: RawPaper[]): ValidatedPaper[]
+⋮----
+function ingest(raw: RawPaper): void
+</file>
+
+<file path="src/app/layout.tsx">
+import type { Metadata } from "next";
+import {
+  Space_Grotesk,
+  Outfit,
+  JetBrains_Mono,
+  Fredoka,
+} from "next/font/google";
+⋮----
+import QueryProvider from "@/components/providers/query-provider";
+import { Toaster } from "@/components/ui/sonner";
+⋮----
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>)
+</file>
+
+<file path="src/components/error-display.tsx">
+import { useEffect } from "react";
+import { AlertTriangle, WifiOff, Clock, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  getErrorDisplay,
+  type ErrorDisplay as ErrorDisplayType,
+} from "@/lib/error-utils";
+⋮----
+interface ErrorDisplayProps {
+  error: unknown;
+  onRetry?: () => void;
+}
+</file>
+
+<file path="src/app/(app)/library/library-content.tsx">
+import { useState } from "react";
+import { Layers } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { LiteratureReader } from "@/components/literature-reader";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import type { ThesisBox } from "@/db/schema";
+⋮----
+interface LibraryContentProps {
+  boxes: ThesisBox[];
+}
+</file>
+
+<file path="src/app/(app)/actions.ts">
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
+import { createFlowId, Logger } from "@/lib/logger";
+import { db } from "@/db";
+import { users, thesisMatrices, originalityReports, tasks } from "@/db/schema";
+import { getSession } from "@/session";
+import {
+  SESSION_COOKIE_NAME,
+  SESSION_MAX_AGE_SECONDS,
+} from "@/lib/constants/session";
+⋮----
+export async function logoutAction()
+⋮----
+export async function reopenOnboardingAction()
+⋮----
+export async function resetOnboardingAction()
+</file>
+
+<file path="src/app/(auth)/onboarding/_hooks/use-onboarding-navigation.ts">
+import { useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
+import type { LoadingStep } from "@/lib/store/onboarding-store";
+import type { OriginalityReportData } from "@/lib/types";
+import {
+  extractQueriesAction,
+  executeSearchAction,
+  siftThesesAction,
+  finalizeJuryAnalysisAction,
+  completeRiskStageAction,
+} from "../risk/actions";
+import {
+  generateBoxesStructureAction,
+  mineFoundationalQueriesAction,
+  prefetchLiteratureCacheAction,
+} from "../boxes/actions";
+⋮----
+interface MatrixInput {
+  studyTitle: string;
+  researchQuestion: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+  mainClaim: string;
+}
+⋮----
+export function useOnboardingNavigation()
 </file>
 
 <file path="src/app/(auth)/onboarding/_services/co-citation-miner.ts">
@@ -1527,138 +1638,6 @@ interface RefereeVerdict {
     }
 </file>
 
-<file path="src/app/layout.tsx">
-import type { Metadata } from "next";
-import {
-  Space_Grotesk,
-  Outfit,
-  JetBrains_Mono,
-  Fredoka,
-} from "next/font/google";
-⋮----
-import QueryProvider from "@/components/providers/query-provider";
-import { Toaster } from "@/components/ui/sonner";
-⋮----
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>)
-</file>
-
-<file path="src/components/error-display.tsx">
-import { useEffect } from "react";
-import { AlertTriangle, WifiOff, Clock, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  getErrorDisplay,
-  type ErrorDisplay as ErrorDisplayType,
-} from "@/lib/error-utils";
-⋮----
-interface ErrorDisplayProps {
-  error: unknown;
-  onRetry?: () => void;
-}
-</file>
-
-<file path="src/app/(app)/library/library-content.tsx">
-import { useState } from "react";
-import { Layers } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { LiteratureReader } from "@/components/literature-reader";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import type { ThesisBox } from "@/db/schema";
-⋮----
-interface LibraryContentProps {
-  boxes: ThesisBox[];
-}
-</file>
-
-<file path="src/app/(app)/actions.ts">
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
-import { createFlowId, Logger } from "@/lib/logger";
-import { db } from "@/db";
-import { users, thesisMatrices, originalityReports, tasks } from "@/db/schema";
-import { getSession } from "@/session";
-import {
-  SESSION_COOKIE_NAME,
-  SESSION_MAX_AGE_SECONDS,
-} from "@/lib/constants/session";
-⋮----
-export async function logoutAction()
-⋮----
-export async function resetOnboardingAction()
-</file>
-
-<file path="src/app/(auth)/onboarding/_hooks/use-onboarding-navigation.ts">
-import { useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { useOnboardingStore } from "@/lib/store/onboarding-store";
-import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
-import type { LoadingStep } from "@/lib/store/onboarding-store";
-import type { OriginalityReportData } from "@/lib/types";
-import {
-  extractQueriesAction,
-  executeSearchAction,
-  siftThesesAction,
-  finalizeJuryAnalysisAction,
-  completeRiskStageAction,
-} from "../risk/actions";
-import {
-  generateBoxesStructureAction,
-  mineFoundationalQueriesAction,
-  prefetchLiteratureCacheAction,
-} from "../boxes/actions";
-⋮----
-interface MatrixInput {
-  studyTitle: string;
-  researchQuestion: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-  mainClaim: string;
-}
-⋮----
-export function useOnboardingNavigation()
-</file>
-
-<file path="src/app/(auth)/onboarding/_lib/fetch-actions.ts">
-import { eq, sql } from "drizzle-orm";
-import { cacheLife, cacheTag } from "next/cache";
-import { db } from "@/db";
-import {
-  thesisMatrices,
-  originalityReports,
-  thesisBoxes,
-  libraryResources,
-} from "@/db/schema";
-import type { GeminiThesisBox } from "@/lib/types";
-import { getSession } from "@/session";
-⋮----
-async function getCachedThesisMatrix(userId: number)
-⋮----
-async function getCachedOriginalityReport(userId: number)
-⋮----
-async function getCachedBoxes(thesisMatrixId: number)
-⋮----
-export async function fetchThesisMatrix()
-⋮----
-export async function fetchOriginalityReport()
-⋮----
-export async function fetchBoxes()
-⋮----
-export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]>
-⋮----
-export async function checkStepsDataAction(): Promise<Record<
-  string,
-  boolean
-> | null> {
-  const session = await getSession();
-</file>
-
 <file path="src/app/(auth)/onboarding/enrichment/page.tsx">
 import { redirect } from "next/navigation";
 import { getProfile } from "@/session";
@@ -1720,36 +1699,38 @@ async function AppLayoutInner({
 }>)
 </file>
 
-<file path="src/app/(auth)/login/actions.ts">
-import { cookies } from "next/headers";
-import { eq } from "drizzle-orm";
-import { compare } from "bcrypt-ts";
+<file path="src/app/(auth)/onboarding/_lib/fetch-actions.ts">
+import { eq, sql } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
-import { users } from "@/db/schema";
-import { getSession } from "@/session";
-import { createFlowId, Logger } from "@/lib/logger";
 import {
-  SESSION_COOKIE_NAME,
-  SESSION_MAX_AGE_SECONDS,
-  SESSION_ERROR_MSG,
-} from "@/lib/constants/session";
+  thesisMatrices,
+  originalityReports,
+  thesisBoxes,
+  libraryResources,
+} from "@/db/schema";
+import type { GeminiThesisBox } from "@/lib/types";
+import { getSession } from "@/session";
 ⋮----
-export type LoginResult =
-  { success: true; error?: never } | { success?: never; error: string };
+async function getCachedThesisMatrix(userId: number)
 ⋮----
-export async function loginAction(
-  email: string,
-  password: string,
-): Promise<LoginResult>
+async function getCachedOriginalityReport(userId: number)
 ⋮----
-export type OnboardingStatusResult =
-  | {
-      onboardingCompleted: boolean;
-      error?: never;
-    }
-  | { onboardingCompleted?: never; error: string };
+async function getCachedBoxes(thesisMatrixId: number)
 ⋮----
-export async function checkOnboardingStatus(): Promise<OnboardingStatusResult>
+export async function fetchThesisMatrix()
+⋮----
+export async function fetchOriginalityReport()
+⋮----
+export async function fetchBoxes()
+⋮----
+export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]>
+⋮----
+export async function checkStepsDataAction(): Promise<Record<
+  string,
+  boolean
+> | null> {
+  const session = await getSession();
 </file>
 
 <file path="src/app/(auth)/onboarding/boxes/page.tsx">
@@ -1800,33 +1781,36 @@ import { Pool } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-serverless";
 </file>
 
-<file path="src/app/(app)/library/actions.ts">
-import { eq, inArray } from "drizzle-orm";
-import { redirect } from "next/navigation";
+<file path="src/app/(auth)/login/actions.ts">
+import { cookies } from "next/headers";
+import { eq } from "drizzle-orm";
+import { compare } from "bcrypt-ts";
 import { db } from "@/db";
-import {
-  thesisBoxes,
-  libraryResources,
-  type LibraryResource,
-} from "@/db/schema";
+import { users } from "@/db/schema";
 import { getSession } from "@/session";
 import { createFlowId, Logger } from "@/lib/logger";
+import {
+  SESSION_COOKIE_NAME,
+  SESSION_MAX_AGE_SECONDS,
+  SESSION_ERROR_MSG,
+} from "@/lib/constants/session";
 ⋮----
-export type GetBoxResourcesResult =
-  | { success: true; data: LibraryResource[] }
-  | { success: false; error: string };
+export type LoginResult =
+  { success: true; error?: never } | { success?: never; error: string };
 ⋮----
-export type ToggleReadStatusResult =
-  { success: true } | { success: false; error: string };
+export async function loginAction(
+  email: string,
+  password: string,
+): Promise<LoginResult>
 ⋮----
-export async function getBoxResourcesAction(
-  boxId: number,
-): Promise<GetBoxResourcesResult>
+export type OnboardingStatusResult =
+  | {
+      onboardingCompleted: boolean;
+      error?: never;
+    }
+  | { onboardingCompleted?: never; error: string };
 ⋮----
-export async function toggleResourceReadStatusAction(
-  resourceId: number,
-  isRead: boolean,
-): Promise<ToggleReadStatusResult>
+export async function checkOnboardingStatus(): Promise<OnboardingStatusResult>
 </file>
 
 <file path="src/app/(auth)/login/page.tsx">
@@ -1893,6 +1877,35 @@ import { StartOverButton } from "../_components/start-over-button";
 export default async function OnboardingRiskPage()
 </file>
 
+<file path="src/app/(app)/library/actions.ts">
+import { eq, inArray } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { db } from "@/db";
+import {
+  thesisBoxes,
+  libraryResources,
+  type LibraryResource,
+} from "@/db/schema";
+import { getSession } from "@/session";
+import { createFlowId, Logger } from "@/lib/logger";
+⋮----
+export type GetBoxResourcesResult =
+  | { success: true; data: LibraryResource[] }
+  | { success: false; error: string };
+⋮----
+export type ToggleReadStatusResult =
+  { success: true } | { success: false; error: string };
+⋮----
+export async function getBoxResourcesAction(
+  boxId: number,
+): Promise<GetBoxResourcesResult>
+⋮----
+export async function toggleResourceReadStatusAction(
+  resourceId: number,
+  isRead: boolean,
+): Promise<ToggleReadStatusResult>
+</file>
+
 <file path="src/components/literature-reader.tsx">
 import { useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -1911,7 +1924,6 @@ import type {
   GetBoxResourcesResult,
   ToggleReadStatusResult,
 } from "@/app/(app)/library/actions";
-import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
 ⋮----
 interface LiteratureReaderProps {
   boxId: number;
@@ -1965,6 +1977,15 @@ import { useOnboardingStore } from "@/lib/store/onboarding-store";
 className=
 </file>
 
+<file path="src/app/(auth)/onboarding/literature-review/_components/literature-article-card.tsx">
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { JuryArticle } from "@/lib/types";
+⋮----
+interface LiteratureArticleCardProps {
+  article: JuryArticle;
+}
+</file>
+
 <file path="src/app/(auth)/onboarding/_components/start-over-button.tsx">
 import { useState, useTransition } from "react";
 import { RotateCcw, Loader2 } from "lucide-react";
@@ -1992,16 +2013,6 @@ interface StartOverButtonProps {
 }
 ⋮----
 const handleReset = () =>
-</file>
-
-<file path="src/app/(auth)/onboarding/literature-review/_components/literature-article-card.tsx">
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { JuryArticle } from "@/lib/types";
-import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
-⋮----
-interface LiteratureArticleCardProps {
-  article: JuryArticle;
-}
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_components/risk-container.tsx">
@@ -2643,57 +2654,6 @@ export async function analyzeOriginalityRisk(
 ): Promise<
 </file>
 
-<file path="src/app/(auth)/onboarding/literature-review/_hooks/use-literature-review.ts">
-import { useMemo, useEffect, useState, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { useOnboardingStore } from "@/lib/store/onboarding-store";
-import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
-import type { LoadingStep } from "@/lib/store/onboarding-store";
-import type {
-  GeminiThesisBox,
-  LiteraturePoolEntry,
-  JuryArticle,
-} from "@/lib/types";
-import { processAllBoxesAction, confirmLiteratureAction } from "../actions";
-import { fetchBoxesWithFullShape } from "../../_lib/fetch-actions";
-import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
-⋮----
-export type BoxStatus = "idle" | "loading" | "done" | "error";
-⋮----
-export interface UseLiteratureReviewResult {
-  subBoxes: GeminiThesisBox[];
-  loading: boolean;
-  processing: boolean;
-  confirming: boolean;
-  boxStatuses: Record<string, BoxStatus>;
-  boxErrors: Record<string, string>;
-  allProcessed: boolean;
-  literaturePool: LiteraturePoolEntry[];
-  archivalBoxes: Set<string>;
-  addArchiveEntry: (
-    subBoxTitle: string,
-    entry: { title: string; description?: string },
-  ) => void;
-  startReviewProcess: () => Promise<void>;
-  handleFinalize: () => Promise<void>;
-}
-⋮----
-export function useLiteratureReview(): UseLiteratureReviewResult
-⋮----
-const isArchival = (box: GeminiThesisBox): boolean
-⋮----
-// Collect archival box titles from the result
-⋮----
-// Set the entire pool at once
-⋮----
-/**
-   * Finalizes the onboarding flow: persists the literature pool to the database
-   * via {@link confirmLiteratureAction}, resets the transient Zustand store,
-   * notifies the user and navigates to the dashboard.
-   */
-</file>
-
 <file path="src/app/(auth)/onboarding/matrix/_components/matrix-form.tsx">
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -2811,14 +2771,7 @@ const handleConfirm = async (e: React.FormEvent<HTMLFormElement>) =>
 
 <file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">
 import { useState } from "react";
-import {
-  Loader2,
-  AlertCircle,
-  BookOpen,
-  Library,
-  Archive,
-  Plus,
-} from "lucide-react";
+import { Loader2, AlertCircle, BookOpen, Archive, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -2843,6 +2796,56 @@ const handleAdd = () =>
 onChange=
 ⋮----
 onAddArchiveEntry(subBox.title,
+</file>
+
+<file path="src/app/(auth)/onboarding/literature-review/_hooks/use-literature-review.ts">
+import { useMemo, useEffect, useState, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import type { LoadingStep } from "@/lib/store/onboarding-store";
+import type {
+  GeminiThesisBox,
+  LiteraturePoolEntry,
+  JuryArticle,
+} from "@/lib/types";
+import { processAllBoxesAction, confirmLiteratureAction } from "../actions";
+import { fetchBoxesWithFullShape } from "../../_lib/fetch-actions";
+import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
+⋮----
+export type BoxStatus = "idle" | "loading" | "done" | "error";
+⋮----
+export interface UseLiteratureReviewResult {
+  subBoxes: GeminiThesisBox[];
+  loading: boolean;
+  processing: boolean;
+  confirming: boolean;
+  boxStatuses: Record<string, BoxStatus>;
+  boxErrors: Record<string, string>;
+  allProcessed: boolean;
+  literaturePool: LiteraturePoolEntry[];
+  archivalBoxes: Set<string>;
+  addArchiveEntry: (
+    subBoxTitle: string,
+    entry: { title: string; description?: string },
+  ) => void;
+  startReviewProcess: () => Promise<void>;
+  handleFinalize: () => Promise<void>;
+}
+⋮----
+export function useLiteratureReview(): UseLiteratureReviewResult
+⋮----
+const isArchival = (box: GeminiThesisBox): boolean
+⋮----
+// Collect archival box titles from the result
+⋮----
+// Set the entire pool at once
+⋮----
+/**
+   * Finalizes the onboarding flow: persists the literature pool to the database
+   * via {@link confirmLiteratureAction}, resets the transient Zustand store,
+   * notifies the user and navigates to the dashboard.
+   */
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_services/sifting.ts">
@@ -2951,6 +2954,94 @@ export async function generateStructuredContent<T>(
 ): Promise<T>
 </file>
 
+<file path="src/app/(auth)/onboarding/risk/actions.ts">
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { originalityReports, thesisMatrices, thesisBoxes } from "@/db/schema";
+import { getSession } from "@/session";
+import { createFlowId, Logger } from "@/lib/logger";
+import { SESSION_ERROR_MSG } from "@/lib/constants/session";
+import { updateTag } from "next/cache";
+import { CACHE_TAGS, revalidateOnboardingPaths } from "@/lib/cache-tags";
+import type {
+  OnboardingActionResult,
+  ScrapedTheses,
+  TavilyEvaluationResponse,
+  TezaraThesisSummary,
+  OriginalityReportData,
+} from "@/lib/types";
+⋮----
+import { extractQueries } from "./_services/queries";
+import {
+  executeParallelSearch,
+  evaluateTavilyResults,
+} from "./_services/search";
+import { siftAndFetchDetails } from "./_services/sifting";
+import {
+  analyzeOriginalityRisk,
+  calculateOriginalityRisk,
+} from "./_services/analysis";
+import { synthesizeRoadmap } from "./_services/roadmap";
+⋮----
+interface OnboardingMatrixInput {
+  studyTitle: string;
+  researchQuestion: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+  mainClaim: string;
+}
+⋮----
+export async function extractQueriesAction(
+  matrix: OnboardingMatrixInput,
+): Promise<
+  | {
+      success: true;
+      data: {
+        tavilyQueries: string[];
+        tezaraQueries: string[];
+        keywords: string[];
+      };
+    }
+  | { error: string }
+> {
+  const flowId = createFlowId();
+⋮----
+export async function executeSearchAction(params: {
+  studyTitle: string;
+  tavilyQueries: string[];
+  tezaraQueries: string[];
+}): Promise<
+  | {
+      success: true;
+      data: {
+        tezaraSearchResults: TezaraThesisSummary[][];
+        tavilyResults: TavilyEvaluationResponse;
+      };
+    }
+  | { error: string }
+> {
+  const flowId = createFlowId();
+⋮----
+export async function siftThesesAction(params: {
+  matrix: OnboardingMatrixInput;
+  tezaraSearchResults: TezaraThesisSummary[][];
+}): Promise<
+⋮----
+export async function finalizeJuryAnalysisAction(params: {
+  matrix: OnboardingMatrixInput;
+  scrapedTheses: ScrapedTheses;
+  tavilyResults: TavilyEvaluationResponse;
+}): Promise<
+  { success: true; data: OriginalityReportData } | { error: string }
+> {
+  const flowId = createFlowId();
+⋮----
+// Single database write at the very end of the pipeline
+⋮----
+export async function completeRiskStageAction(): Promise<OnboardingActionResult>
+</file>
+
 <file path="src/app/(auth)/onboarding/boxes/_components/boxes-container.tsx">
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -3045,94 +3136,6 @@ export async function confirmBoxesAction(
 // Insert all overlap theses into the RELATED_THESES box
 </file>
 
-<file path="src/app/(auth)/onboarding/risk/actions.ts">
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { originalityReports, thesisMatrices, thesisBoxes } from "@/db/schema";
-import { getSession } from "@/session";
-import { createFlowId, Logger } from "@/lib/logger";
-import { SESSION_ERROR_MSG } from "@/lib/constants/session";
-import { updateTag } from "next/cache";
-import { CACHE_TAGS, revalidateOnboardingPaths } from "@/lib/cache-tags";
-import type {
-  OnboardingActionResult,
-  ScrapedTheses,
-  TavilyEvaluationResponse,
-  TezaraThesisSummary,
-  OriginalityReportData,
-} from "@/lib/types";
-⋮----
-import { extractQueries } from "./_services/queries";
-import {
-  executeParallelSearch,
-  evaluateTavilyResults,
-} from "./_services/search";
-import { siftAndFetchDetails } from "./_services/sifting";
-import {
-  analyzeOriginalityRisk,
-  calculateOriginalityRisk,
-} from "./_services/analysis";
-import { synthesizeRoadmap } from "./_services/roadmap";
-⋮----
-interface OnboardingMatrixInput {
-  studyTitle: string;
-  researchQuestion: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-  mainClaim: string;
-}
-⋮----
-export async function extractQueriesAction(
-  matrix: OnboardingMatrixInput,
-): Promise<
-  | {
-      success: true;
-      data: {
-        tavilyQueries: string[];
-        tezaraQueries: string[];
-        keywords: string[];
-      };
-    }
-  | { error: string }
-> {
-  const flowId = createFlowId();
-⋮----
-export async function executeSearchAction(params: {
-  studyTitle: string;
-  tavilyQueries: string[];
-  tezaraQueries: string[];
-}): Promise<
-  | {
-      success: true;
-      data: {
-        tezaraSearchResults: TezaraThesisSummary[][];
-        tavilyResults: TavilyEvaluationResponse;
-      };
-    }
-  | { error: string }
-> {
-  const flowId = createFlowId();
-⋮----
-export async function siftThesesAction(params: {
-  matrix: OnboardingMatrixInput;
-  tezaraSearchResults: TezaraThesisSummary[][];
-}): Promise<
-⋮----
-export async function finalizeJuryAnalysisAction(params: {
-  matrix: OnboardingMatrixInput;
-  scrapedTheses: ScrapedTheses;
-  tavilyResults: TavilyEvaluationResponse;
-}): Promise<
-  { success: true; data: OriginalityReportData } | { error: string }
-> {
-  const flowId = createFlowId();
-⋮----
-// Single database write at the very end of the pipeline
-⋮----
-export async function completeRiskStageAction(): Promise<OnboardingActionResult>
-</file>
-
 <file path="src/app/(auth)/onboarding/literature-review/actions.ts">
 import { eq, and } from "drizzle-orm";
 import { cookies } from "next/headers";
@@ -3165,7 +3168,6 @@ import type {
   RawPaper,
 } from "./_services/literature-review-papers";
 import { orchestrateBatchProcess } from "./_services/batch-orchestrator";
-import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
 ⋮----
 export async function processAllBoxesAction(
   boxes: SubBoxInput[],
@@ -3176,9 +3178,7 @@ export async function confirmLiteratureAction(args: {
   literaturePool: LiteraturePoolEntry[];
 }): Promise<OnboardingActionResult>
 ⋮----
-const maybePushArticle = (
-          article: (typeof entry.starterPack)[number],
-) =>
+const maybePushArticle = (article: (typeof entry.articles)[number]) =>
 </file>
 
 <file path="src/db/schema.ts">
@@ -3419,8 +3419,7 @@ export interface JuryArticle {
 ⋮----
 export interface LiteraturePoolEntry {
   subBoxTitle: string;
-  starterPack: JuryArticle[];
-  reservedPool: JuryArticle[];
+  articles: JuryArticle[];
 }
 </file>
 

@@ -8,11 +8,17 @@ import type { FoundationalQuery } from "@/lib/types";
 // Types
 // ============================================================================
 
+export interface SubBoxItem {
+  title: string;
+  semanticQuery: string;
+  foundationalQueries: FoundationalQuery[];
+}
+
 export interface SubBoxInput {
   title: string;
   description: string;
   boxType?: string;
-  subBoxes: { title: string; semanticQuery: string }[];
+  subBoxes: SubBoxItem[];
   foundationalQueries: FoundationalQuery[];
 }
 

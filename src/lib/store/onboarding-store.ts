@@ -125,10 +125,7 @@ export const useOnboardingStore = create<OnboardingStore>()(
           const updated = [...current];
           updated[existingIndex] = {
             ...updated[existingIndex],
-            starterPack: [
-              ...updated[existingIndex].starterPack,
-              ...entry.starterPack,
-            ],
+            articles: [...updated[existingIndex].articles, ...entry.articles],
           };
           set({ literaturePool: updated });
         } else {

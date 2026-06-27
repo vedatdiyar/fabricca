@@ -130,23 +130,6 @@ const fmtDur = (ms: number): string => `${(ms / 1000).toFixed(1)} sn`;
 const delay = (ms: number): Promise<void> =>
   new Promise((r) => setTimeout(r, ms));
 
-function extractScore(queryIndex: number): string {
-  for (const line of captured) {
-    try {
-      const obj = JSON.parse(line);
-      if (
-        obj.event === "co_citation_miner_champion_selected" &&
-        obj.data?.queryIndex === queryIndex
-      ) {
-        return String(obj.data.champion?.score ?? "?");
-      }
-    } catch {
-      // not JSON
-    }
-  }
-  return "?";
-}
-
 // ==================================================================
 // Supplementary Top‑5 analysis via direct OpenAlex calls
 // (mirrors the miner's Step‑1‑to‑Step‑5 pipeline for inspection)

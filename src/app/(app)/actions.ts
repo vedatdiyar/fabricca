@@ -46,6 +46,59 @@ export async function logoutAction() {
 }
 
 /**
+ * Onboarding sürecine verileri silmeden geri döner.
+ * Sadece onboardingCompleted bayrağını false yapar, hiçbir veriyi silmez.
+ * Kullanıcının onboarding adımlarını tekrar gözden geçirmesi için kullanılır.
+ */
+export async function reopenOnboardingAction() {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  try {
+    const session = await getSession();
+    if (!session) {
+      redirect("/login");
+      return;
+    }
+
+    await db
+      .update(users)
+      .set({ onboardingCompleted: false })
+      .where(eq(users.id, session.userId));
+
+    const cookieStore = await cookies();
+    cookieStore.set(
+      SESSION_COOKIE_NAME,
+      JSON.stringify({
+        userId: session.userId,
+        name: session.name,
+        onboardingCompleted: false,
+      }),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: SESSION_MAX_AGE_SECONDS,
+      },
+    );
+
+    log.info("onboarding_reopen_success", {
+      service: "auth",
+      data: { userId: session.userId },
+    });
+  } catch (err) {
+    log.error("onboarding_reopen_failed", {
+      service: "auth",
+      error: err,
+      data: { reason: "Onboarding yeniden açılırken hata oluştu" },
+    });
+  }
+
+  redirect("/onboarding");
+}
+
+/**
  * Onboarding sürecini sıfırlar.
  * Tez matrisi, özgünlük raporu, konu kutuları ve kütüphane kaynaklarını siler,
  * kullanıcının onboardingCompleted durumunu false yapar,

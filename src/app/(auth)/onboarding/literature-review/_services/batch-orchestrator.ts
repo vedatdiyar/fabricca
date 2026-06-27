@@ -2,10 +2,10 @@
  * Batch orchestrator — coordinates the full multi-box literature review pipeline.
  *
  * Orchestrates:
- * 1. Sequential search across all boxes (foundational + OpenAlex semantic)
+ * 1. Sequential search per sub-box (foundational resolution + OpenAlex semantic)
  * 2. Global cross-box deduplication
- * 3. Per-box hybrid 3-tier distribution
- * 4. Pool entry assembly
+ * 3. Per-sub-box distribution (1 foundational + 3 semantic per sub-box)
+ * 4. Pool entry assembly (flat articles array, no starterPack/reservedPool split)
  */
 
 import { Logger } from "@/lib/logger";
@@ -17,11 +17,9 @@ import type {
 import type { JuryArticle, LiteraturePoolEntry } from "@/lib/types";
 import { searchOpenAlex } from "./openalex/client";
 import { mergePapers } from "./literature-review-papers";
-import {
-  isArchivalBox,
-  resolveBoxFoundationalWorks,
-  runBoxPipeline,
-} from "./box-pipeline";
+import { isArchivalBox } from "./box-pipeline";
+import { resolveFoundationalWorks } from "./foundational-resolver";
+import { validateWithCrossRef } from "./crossref/validator";
 
 // ============================================================================
 // Public interface
@@ -30,6 +28,27 @@ import {
 export interface BatchOrchestrationResult {
   poolEntries: LiteraturePoolEntry[];
   archivalBoxTitles: string[];
+}
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+const MAX_SEMANTIC_PER_SUB_BOX = 3;
+
+function toSemanticArticle(candidate: ValidatedPaper): JuryArticle {
+  return {
+    title: candidate.title,
+    abstract: candidate.abstract ?? "",
+    url: candidate.url ?? "",
+    doi: candidate.doi,
+    publisher: candidate.publisher ?? "",
+    publicationYear: candidate.year ?? 0,
+    authors: candidate.authors,
+    isFoundational: false,
+    relevanceScore: Math.round(candidate.relevanceScore * 100),
+    subBoxId: candidate.subBoxId,
+  };
 }
 
 // ============================================================================
@@ -45,25 +64,12 @@ interface DedupEliminatedEntry {
   relevanceScore: number;
 }
 
-/**
- * Deduplicates raw candidates across all boxes globally.
- *
- * If the same article (matching DOI or OpenAlex ID) appears in multiple boxes,
- * it is retained only in the box where it achieved the highest relevanceScore.
- * After hard dedup, if any box falls below the safe threshold
- * (`GLOBAL_DEDUP_MIN_SAFE_COUNT`), the highest-scoring eliminated candidates
- * are restored to that box as a soft-dedup safeguard.
- *
- * @param boxCandidates - Map of box title → array of raw candidates
- * @returns A new map with the same keys but deduplicated candidate arrays
- */
 function deduplicateCandidatesGlobally(
   boxCandidates: Map<string, ValidatedPaper[]>,
   logger?: Logger,
 ): Map<string, ValidatedPaper[]> {
   const result = new Map<string, ValidatedPaper[]>();
 
-  // Clone the input so we never mutate the caller's data
   for (const [title, candidates] of boxCandidates) {
     result.set(
       title,
@@ -71,10 +77,7 @@ function deduplicateCandidatesGlobally(
     );
   }
 
-  // ------------------------------------------------------------------
   // Phase 1: Build a global index keyed by dedup key
-  // ------------------------------------------------------------------
-  // dedupKey → { boxTitle, relevanceScore, indexInBox }[]
   const globalIndex = new Map<
     string,
     { boxTitle: string; relevanceScore: number; index: number }[]
@@ -99,24 +102,17 @@ function deduplicateCandidatesGlobally(
     }
   }
 
-  // ------------------------------------------------------------------
   // Phase 2: Hard dedup — keep only the highest-scoring occurrence
-  // ------------------------------------------------------------------
-  // Track eliminated candidates per box for soft-restore
   const eliminatedPerBox = new Map<string, DedupEliminatedEntry[]>();
 
   for (const [, occurrences] of globalIndex) {
-    if (occurrences.length < 2) continue; // not a duplicate
+    if (occurrences.length < 2) continue;
 
-    // Sort by relevanceScore descending, then by box title alphabetically
-    // for deterministic tie-breaking
     occurrences.sort((a, b) => {
       if (b.relevanceScore !== a.relevanceScore)
         return b.relevanceScore - a.relevanceScore;
       return a.boxTitle.localeCompare(b.boxTitle);
     });
-
-    // Keep the winner (occurrences[0]), eliminate duplicates starting at index 1
 
     for (let k = 1; k < occurrences.length; k++) {
       const loser = occurrences[k];
@@ -126,7 +122,6 @@ function deduplicateCandidatesGlobally(
       const candidate = boxCandidates[loser.index];
       if (!candidate) continue;
 
-      // Mark as eliminated (null) — we'll compact later
       boxCandidates[loser.index] = null as unknown as ValidatedPaper;
 
       let elimBucket = eliminatedPerBox.get(loser.boxTitle);
@@ -142,27 +137,20 @@ function deduplicateCandidatesGlobally(
     }
   }
 
-  // ------------------------------------------------------------------
   // Phase 3: Compact nulls from each box
-  // ------------------------------------------------------------------
   for (const [boxTitle, candidates] of result) {
     const compacted = candidates.filter((c): c is ValidatedPaper => c !== null);
     result.set(boxTitle, compacted);
   }
 
-  // ------------------------------------------------------------------
-  // Phase 4: Soft restore — if any box is starving, bring back
-  //           the highest-scoring eliminated candidates
-  // ------------------------------------------------------------------
+  // Phase 4: Soft restore
   for (const [boxTitle, candidates] of result) {
     if (candidates.length >= GLOBAL_DEDUP_MIN_SAFE_COUNT) continue;
 
     const eliminated = eliminatedPerBox.get(boxTitle);
     if (!eliminated || eliminated.length === 0) continue;
 
-    // Sort eliminated by relevanceScore descending
     eliminated.sort((a, b) => b.relevanceScore - a.relevanceScore);
-
     const needed = GLOBAL_DEDUP_MIN_SAFE_COUNT - candidates.length;
     const toRestore = eliminated.slice(0, needed);
 
@@ -179,7 +167,7 @@ function deduplicateCandidatesGlobally(
           boxTitle,
           restoredCount: toRestore.length,
           candidateTitles: toRestore.map((e) => e.candidate.title),
-          context: `Soft-dedup restore: ${toRestore.length} aday ${boxTitle} kutusuna geri iade edildi`,
+          context: `${toRestore.length} aday ${boxTitle} kutusuna geri iade edildi`,
         },
       });
     }
@@ -188,11 +176,6 @@ function deduplicateCandidatesGlobally(
   return result;
 }
 
-/**
- * Resolves a stable deduplication key for a candidate.
- * Priority: DOI > OpenAlex ID > title (first 100 chars lowercase).
- * Returns null if no meaningful key can be derived.
- */
 function resolveDedupKey(candidate: ValidatedPaper): string | null {
   if (candidate.doi) {
     const cleaned = candidate.doi.trim().toLowerCase();
@@ -216,20 +199,6 @@ function resolveDedupKey(candidate: ValidatedPaper): string | null {
 // Orchestrator
 // ============================================================================
 
-/**
- * Runs the full batch literature review pipeline over all sub-boxes.
- *
- * Phase 1 — Sequential search (archival detection → foundational lookup →
- *            OpenAlex semantic search with throttle)
- * Phase 2 — Global cross-box deduplication
- * Phase 3 — Per-box 1+1 distribution (1 foundational → 1 semantic)
- *
- * @param boxes - All sub-boxes to process
- * @param logger - Logger instance
- * @param cachedPapers - Optional pre-cached OpenAlex results
- * @param thesisArticlesMap - Optional per-box YÖK thesis articles from risk phase
- * @returns Pool entries for all boxes plus archival box titles
- */
 export async function orchestrateBatchProcess(
   boxes: SubBoxInput[],
   logger: Logger,
@@ -237,7 +206,7 @@ export async function orchestrateBatchProcess(
   thesisArticlesMap?: Map<string, JuryArticle[]>,
 ): Promise<BatchOrchestrationResult> {
   // ------------------------------------------------------------------
-  // Phase 1: Sequential search across all boxes
+  // Phase 1: Sequential search across all sub-boxes
   // ------------------------------------------------------------------
   const boxSearchResults = new Map<string, ValidatedPaper[]>();
   const archivalBoxTitles: string[] = [];
@@ -256,7 +225,7 @@ export async function orchestrateBatchProcess(
       },
     });
 
-    // Archival bypass
+    // Archival bypass — these boxes skip external API calls
     if (isArchivalBox(box)) {
       archivalBoxTitles.push(box.title);
       boxSearchResults.set(box.title, []);
@@ -275,46 +244,102 @@ export async function orchestrateBatchProcess(
       continue;
     }
 
-    // Skip boxes without subBoxes
     if (!box.subBoxes || box.subBoxes.length === 0) {
       boxSearchResults.set(box.title, []);
       foundationalLookups.set(box.title, []);
       continue;
     }
 
-    // Foundational works resolution
-    const foundationalArticles = await resolveBoxFoundationalWorks(box, logger);
-    foundationalLookups.set(box.title, foundationalArticles);
-
+    // Check for cached papers (pre-fetched during box confirmation)
     const boxCache = cachedPapers?.[box.title];
-    let merged: ValidatedPaper[];
+    const allPapers: RawPaper[] = [];
+    const allFoundationals: JuryArticle[] = [];
 
     if (boxCache && boxCache.length > 0) {
-      merged = mergePapers(boxCache);
-    } else {
-      const allRawPapers: RawPaper[] = [];
-      for (let qi = 0; qi < (box.subBoxes?.length ?? 0); qi++) {
-        const sub = box.subBoxes![qi];
-        if (!sub.semanticQuery?.trim()) continue;
+      // Use cached papers — tag each with the first sub-box index
+      for (const rp of boxCache) {
+        rp.subBoxId = "0";
+      }
+      allPapers.push(...boxCache);
 
-        try {
-          const results = await searchOpenAlex(sub.semanticQuery);
-          for (const rp of results) {
-            rp.subBoxId = String(qi);
+      // Still resolve foundationals per sub-box
+      for (let si = 0; si < box.subBoxes.length; si++) {
+        const sub = box.subBoxes[si];
+        if (sub.foundationalQueries && sub.foundationalQueries.length > 0) {
+          const resolved = await resolveFoundationalWorks(
+            sub.foundationalQueries,
+            logger,
+          );
+          for (const fw of resolved) {
+            allFoundationals.push({
+              title: fw.title,
+              abstract: "",
+              url: fw.id,
+              doi: null as string | null,
+              publisher: fw.publisher ?? "",
+              publicationYear: fw.publicationYear,
+              authors: fw.authors,
+              isFoundational: true,
+              relevanceScore: 100,
+              subBoxId: String(si),
+            });
           }
-          allRawPapers.push(...results);
-        } catch {
-          // Silently skip failed queries
+        }
+      }
+    } else {
+      // No cache — perform per-sub-box searches with throttling
+      for (let si = 0; si < box.subBoxes.length; si++) {
+        const sub = box.subBoxes[si];
+
+        // Resolve foundational works for this sub-box
+        if (sub.foundationalQueries && sub.foundationalQueries.length > 0) {
+          const resolved = await resolveFoundationalWorks(
+            sub.foundationalQueries,
+            logger,
+          );
+          for (const fw of resolved) {
+            allFoundationals.push({
+              title: fw.title,
+              abstract: "",
+              url: fw.id,
+              doi: null as string | null,
+              publisher: fw.publisher ?? "",
+              publicationYear: fw.publicationYear,
+              authors: fw.authors,
+              isFoundational: true,
+              relevanceScore: 100,
+              subBoxId: String(si),
+            });
+          }
+        }
+
+        // Search OpenAlex for this sub-box
+        if (sub.semanticQuery?.trim()) {
+          try {
+            const results = await searchOpenAlex(sub.semanticQuery);
+            for (const rp of results) {
+              rp.subBoxId = String(si);
+            }
+            allPapers.push(...results);
+          } catch {
+            // Silently skip failed queries
+          }
         }
 
         // Throttle between sub-box queries
-        if (qi < (box.subBoxes?.length ?? 0) - 1) {
+        if (si < box.subBoxes.length - 1) {
           await new Promise((resolve) => setTimeout(resolve, 1100));
         }
       }
-      merged = mergePapers(allRawPapers);
     }
-    boxSearchResults.set(box.title, merged);
+
+    const merged = mergePapers(allPapers);
+    // Crossref enrichment: fill empty authors or publisher via DOI
+    const enriched = await Promise.all(
+      merged.map((p) => validateWithCrossRef(p, logger)),
+    );
+    boxSearchResults.set(box.title, enriched);
+    foundationalLookups.set(box.title, allFoundationals);
 
     logger.info("literature_batch_search_done", {
       service: "literature",
@@ -322,6 +347,7 @@ export async function orchestrateBatchProcess(
       data: {
         boxTitle: box.title,
         resultCount: merged.length,
+        foundationalCount: allFoundationals.length,
       },
     });
   }
@@ -352,42 +378,81 @@ export async function orchestrateBatchProcess(
   });
 
   // ------------------------------------------------------------------
-  // Phase 3: Per-box fixed-pool distribution
+  // Phase 3: Per-sub-box distribution (1 foundational + 3 semantic)
   // ------------------------------------------------------------------
   const poolPromises = boxes.map(async (box) => {
+    // Archival boxes: keep existing behavior (just foundationals or theses)
     if (archivalBoxTitles.includes(box.title)) {
       return {
         subBoxTitle: box.title,
-        starterPack:
+        articles:
           box.boxType === "RELATED_THESES"
             ? (thesisArticlesMap?.get(box.title) ?? [])
             : (foundationalLookups.get(box.title) ?? []),
-        reservedPool: [] as JuryArticle[],
-      };
+      } satisfies LiteraturePoolEntry;
     }
 
     const candidates = dedupedResults.get(box.title);
+    const foundationals = foundationalLookups.get(box.title) ?? [];
+
     if (!candidates || candidates.length === 0) {
       return {
         subBoxTitle: box.title,
-        starterPack: foundationalLookups.get(box.title) ?? [],
-        reservedPool: [] as JuryArticle[],
-      };
+        articles: foundationals,
+      } satisfies LiteraturePoolEntry;
     }
 
-    const { starterPack, reservedPool } = await runBoxPipeline(
-      box,
-      candidates,
-      foundationalLookups.get(box.title) ?? [],
-      thesisArticlesMap?.get(box.title) ?? [],
-      logger,
-    );
+    logger.info("literature_distribution_start", {
+      service: "literature",
+      filePath: "onboarding/literature-review/_services/batch-orchestrator.ts",
+      data: {
+        count: candidates.length,
+        foundationalCount: foundationals.length,
+        subBoxCount: box.subBoxes?.length ?? 0,
+        context: `Kutu: ${box.title}`,
+      },
+    });
+
+    const allArticles: JuryArticle[] = [];
+
+    // Build a set of normalized titles from all foundational works.
+    // If a semantic candidate has the same title as a foundational work,
+    // it is excluded — preventing the same paper from appearing twice.
+    const foundationalTitles = new Set<string>();
+    for (const f of foundationals) {
+      const key = f.title.toLowerCase().replace(/\s+/g, " ").trim();
+      if (key.length > 5) foundationalTitles.add(key);
+    }
+
+    // First pass: all foundational works first, then semantic articles.
+    for (let si = 0; si < (box.subBoxes?.length ?? 0); si++) {
+      const subFoundational = foundationals.filter(
+        (f) => f.subBoxId === String(si),
+      );
+      const topFoundational = subFoundational
+        .sort((a, b) => b.relevanceScore - a.relevanceScore)
+        .slice(0, 1);
+      allArticles.push(...topFoundational);
+    }
+
+    // Second pass: all semantic articles (excluding duplicates of foundationals)
+    for (let si = 0; si < (box.subBoxes?.length ?? 0); si++) {
+      const subSemantic = candidates
+        .filter((c) => c.subBoxId === String(si))
+        .filter((c) => {
+          const key = (c.title || "").toLowerCase().replace(/\s+/g, " ").trim();
+          return !foundationalTitles.has(key);
+        })
+        .sort((a, b) => b.relevanceScore - a.relevanceScore)
+        .slice(0, MAX_SEMANTIC_PER_SUB_BOX)
+        .map(toSemanticArticle);
+      allArticles.push(...subSemantic);
+    }
 
     return {
       subBoxTitle: box.title,
-      starterPack,
-      reservedPool,
-    };
+      articles: allArticles,
+    } satisfies LiteraturePoolEntry;
   });
 
   const poolEntries = await Promise.all(poolPromises);
@@ -397,14 +462,7 @@ export async function orchestrateBatchProcess(
     filePath: "onboarding/literature-review/_services/batch-orchestrator.ts",
     data: {
       boxCount: boxes.length,
-      totalStarterPack: poolEntries.reduce(
-        (s, e) => s + e.starterPack.length,
-        0,
-      ),
-      totalReservedPool: poolEntries.reduce(
-        (s, e) => s + e.reservedPool.length,
-        0,
-      ),
+      totalArticles: poolEntries.reduce((s, e) => s + e.articles.length, 0),
     },
   });
 

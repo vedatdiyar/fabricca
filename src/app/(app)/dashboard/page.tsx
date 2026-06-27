@@ -1,5 +1,6 @@
 import { eq, asc, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { db } from "@/db";
 import {
   thesisMatrices,
@@ -8,6 +9,8 @@ import {
   tasks,
 } from "@/db/schema";
 import { getSession } from "@/session";
+import { Button } from "@/components/ui/button";
+import { reopenOnboardingAction } from "@/app/(app)/actions";
 import { DashboardContent } from "./_components/dashboard-content";
 
 /**
@@ -105,6 +108,17 @@ export default async function DashboardPage() {
             hedeflerinizi tek bir panelden yönetin.
           </p>
         </div>
+        <form action={reopenOnboardingAction}>
+          <Button
+            type="submit"
+            variant="outline"
+            size="sm"
+            className="gap-2 shrink-0"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Onboarding&rsquo;e Dön
+          </Button>
+        </form>
       </div>
 
       {/* Main dashboard content (interactive) */}

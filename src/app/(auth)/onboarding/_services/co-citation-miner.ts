@@ -752,7 +752,10 @@ export async function mineCoCitations(
         },
       });
 
-      const refereePrompt = buildRefereePrompt(candidateListForReferee, boxContext);
+      const refereePrompt = buildRefereePrompt(
+        candidateListForReferee,
+        boxContext,
+      );
 
       const verdict = await generateStructuredContent<RefereeVerdict>(
         "gemini-3.1-flash-lite",
@@ -773,8 +776,7 @@ export async function mineCoCitations(
       const matched = merged.find((c) => {
         const cNormTitle = normalizeForMergeTitle(c.title);
         return (
-          cNormTitle.includes(llmNormTitle) ||
-          llmNormTitle.includes(cNormTitle)
+          cNormTitle.includes(llmNormTitle) || llmNormTitle.includes(cNormTitle)
         );
       });
 

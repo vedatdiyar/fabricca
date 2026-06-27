@@ -56,7 +56,8 @@ export async function resolveFoundationalWorks(
       batch.map(async (query) => {
         try {
           const bibQuery = `${query.author} ${query.title}`;
-          const url = `https://api.crossref.org/works?query.bibliographic=${encodeURIComponent(bibQuery)}&rows=5`;
+          const mailto = "iletisim@fabricca.com";
+          const url = `https://api.crossref.org/works?query.bibliographic=${encodeURIComponent(bibQuery)}&rows=5&select=DOI,title,author,container-title,publisher&mailto=${mailto}`;
 
           const response = await fetch(url, {
             headers: { "User-Agent": CROSSREF_USER_AGENT },

@@ -17,7 +17,6 @@ import type {
   GetBoxResourcesResult,
   ToggleReadStatusResult,
 } from "@/app/(app)/library/actions";
-import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
 
 /* ---------- Types ---------- */
 
@@ -266,7 +265,7 @@ export function LiteratureReader({
                         htmlFor={`resource-${resource.id}`}
                         className="cursor-pointer text-sm font-medium text-foreground leading-snug hover:text-primary transition-colors"
                       >
-                        {formatAcademicTitle(resource.title)}
+                        {resource.title}
                       </label>
                     </div>
 

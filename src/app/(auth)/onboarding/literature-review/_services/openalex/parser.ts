@@ -1,5 +1,4 @@
 import { extractCleanDoi } from "../_shared";
-import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
 import type { RawPaper } from "../literature-review-papers";
 
 function resolveAbstractInvertedIndex(
@@ -69,7 +68,7 @@ function parseOpenAlexResults(results: Record<string, unknown>[]): RawPaper[] {
 
     return {
       source: "openalex" as const,
-      title: formatAcademicTitle((work.title as string) ?? ""),
+      title: (work.title as string) ?? "",
       abstract: resolveAbstractInvertedIndex(invertedIndex),
       metadata,
       doi: extractCleanDoi(work.doi as string | null | undefined),

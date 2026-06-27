@@ -15,9 +15,9 @@ import { getSession } from "@/session";
 const boxOrderWeight: Record<string, number> = {
   CONCEPTUAL: 1,
   PROBLEMATIZATION: 2,
-  PRIMARY_MATERIAL: 3,
-  DATA_PROTOCOL: 4,
-  RELATED_THESES: 5,
+  DATA_PROTOCOL: 3,
+  RELATED_THESES: 4,
+  PRIMARY_MATERIAL: 5,
 };
 
 /**
@@ -67,9 +67,9 @@ async function getCachedBoxes(thesisMatrixId: number) {
       sql`CASE ${thesisBoxes.boxType}
         WHEN 'CONCEPTUAL' THEN 1
         WHEN 'PROBLEMATIZATION' THEN 2
-        WHEN 'PRIMARY_MATERIAL' THEN 3
-        WHEN 'DATA_PROTOCOL' THEN 4
-        WHEN 'RELATED_THESES' THEN 5
+        WHEN 'DATA_PROTOCOL' THEN 3
+        WHEN 'RELATED_THESES' THEN 4
+        WHEN 'PRIMARY_MATERIAL' THEN 5
         ELSE 99
       END`,
     );

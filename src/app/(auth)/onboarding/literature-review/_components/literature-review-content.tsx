@@ -1,14 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Loader2,
-  AlertCircle,
-  BookOpen,
-  Library,
-  Archive,
-  Plus,
-} from "lucide-react";
+import { Loader2, AlertCircle, BookOpen, Archive, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -125,11 +118,9 @@ function SubBoxQuery({
  */
 function SubBoxDone({
   subBox,
-  isArchival,
   onAddArchiveEntry,
 }: {
   subBox: GeminiThesisBox;
-  isArchival: boolean;
   onAddArchiveEntry: (
     subBoxTitle: string,
     entry: { title: string; description?: string },
@@ -138,7 +129,8 @@ function SubBoxDone({
   const literaturePool = useOnboardingStore((s) => s.literaturePool);
   const entry = literaturePool.find((e) => e.subBoxTitle === subBox.title);
 
-  if (isArchival) {
+  /* PRIMARY_MATERIAL boxes get a manual archive-entry form */
+  if (subBox.boxType === "PRIMARY_MATERIAL") {
     return (
       <div className="space-y-4">
         <div className="p-4 rounded-md bg-primary/10 border border-primary/20 leading-relaxed">
@@ -158,19 +150,17 @@ function SubBoxDone({
             onAddArchiveEntry(subBox.title, { title, description: desc })
           }
         />
-        {entry && entry.starterPack.length > 0 && (
+        {entry && entry.articles.length > 0 && (
           <>
             <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-success/10 border border-success/20">
               <Archive className="w-4 h-4 text-success shrink-0" />
               <p className="text-xs text-success font-medium">
-                <span className="font-semibold">
-                  {entry.starterPack.length}
-                </span>{" "}
+                <span className="font-semibold">{entry.articles.length}</span>{" "}
                 birincil arşiv belgesi eklendi.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              {entry.starterPack.map((article, idx) => (
+              {entry.articles.map((article, idx) => (
                 <LiteratureArticleCard
                   key={`${article.title}-${idx}`}
                   article={article}
@@ -183,7 +173,8 @@ function SubBoxDone({
     );
   }
 
-  if (!entry || entry.starterPack.length === 0) {
+  /* Standard boxes (including RELATED_THESES): show entries or empty state */
+  if (!entry || entry.articles.length === 0) {
     return (
       <div className="p-6 text-center border border-dashed border-border rounded-md bg-card/20">
         <p className="text-sm text-muted-foreground">Kaynak bulunamadı.</p>
@@ -194,24 +185,13 @@ function SubBoxDone({
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
-        {entry.starterPack.map((article, idx) => (
+        {entry.articles.map((article, idx) => (
           <LiteratureArticleCard
             key={`${article.title}-${idx}`}
             article={article}
           />
         ))}
       </div>
-      {entry.reservedPool.length > 0 && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/20 border border-border/40">
-          <Library className="w-4 h-4 text-muted-foreground shrink-0" />
-          <p className="text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">
-              {entry.reservedPool.length}
-            </span>{" "}
-            ek kaynak daha önerildi.
-          </p>
-        </div>
-      )}
     </div>
   );
 }
@@ -287,7 +267,6 @@ export function LiteratureReviewContent() {
               (isArchival && boxStatuses[subBox.title] === "done") ? (
                 <SubBoxDone
                   subBox={subBox}
-                  isArchival={isArchival}
                   onAddArchiveEntry={addArchiveEntry}
                 />
               ) : (

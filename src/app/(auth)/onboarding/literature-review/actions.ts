@@ -31,7 +31,6 @@ import type {
   RawPaper,
 } from "./_services/literature-review-papers";
 import { orchestrateBatchProcess } from "./_services/batch-orchestrator";
-import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
 
 // ============================================================================
 // Batch Action: processAllBoxesAction — delegates to batch orchestrator
@@ -222,10 +221,8 @@ export async function confirmLiteratureAction(args: {
         const toInsert: NewLibraryResource[] = [];
         let boxSkipped = 0;
 
-        const maybePushArticle = (
-          article: (typeof entry.starterPack)[number],
-        ) => {
-          const title = formatAcademicTitle(article.title);
+        const maybePushArticle = (article: (typeof entry.articles)[number]) => {
+          const title = article.title;
           const titleKey = title.toLowerCase().trim();
           const doiKey = article.doi?.toLowerCase().trim() ?? null;
 
@@ -262,8 +259,7 @@ export async function confirmLiteratureAction(args: {
           });
         };
 
-        for (const article of entry.starterPack) maybePushArticle(article);
-        for (const article of entry.reservedPool) maybePushArticle(article);
+        for (const article of entry.articles) maybePushArticle(article);
 
         if (toInsert.length > 0) {
           await tx.insert(libraryResources).values(toInsert);
@@ -325,8 +321,7 @@ export async function confirmLiteratureAction(args: {
       durationMs: performance.now() - startTime,
       data: {
         resultCount: literaturePool.reduce(
-          (sum, entry) =>
-            sum + entry.starterPack.length + entry.reservedPool.length,
+          (sum, entry) => sum + entry.articles.length,
           0,
         ),
       },
