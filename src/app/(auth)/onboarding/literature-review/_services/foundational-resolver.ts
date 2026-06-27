@@ -108,8 +108,7 @@ export async function resolveFoundationalWorks(
               itemTitle.includes(queryTitle) || queryTitle.includes(itemTitle);
 
             const itemAuthorList = item.author as
-              | { given?: string; family?: string }[]
-              | undefined;
+              { given?: string; family?: string }[] | undefined;
             const authorMatch = itemAuthorList?.some((a) => {
               const full = `${a.given ?? ""} ${a.family ?? ""}`
                 .toLowerCase()

@@ -199,8 +199,11 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
         title: box.title,
         description: box.description,
         boxType: box.boxType,
-        semanticSearchQueries: box.semanticSearchQueries,
-        foundationalQueries: box.foundationalQueries,
+        subBoxes: (box.subBoxes ?? []).map((sb) => ({
+          title: sb.title,
+          semanticQuery: sb.semanticQuery ?? "",
+        })),
+        foundationalQueries: box.foundationalQueries ?? [],
       })),
       cachedPapers,
     );

@@ -15,7 +15,7 @@ import type {
   RawPaper,
 } from "./literature-review-papers";
 import type { JuryArticle, LiteraturePoolEntry } from "@/lib/types";
-import { collectOpenAlexResults } from "./openalex-collector";
+import { searchOpenAlex } from "./openalex/client";
 import { mergePapers } from "./literature-review-papers";
 import {
   isArchivalBox,
@@ -37,7 +37,7 @@ export interface BatchOrchestrationResult {
 // ============================================================================
 
 /** Minimum safe candidate count per box after global dedup. */
-const GLOBAL_DEDUP_MIN_SAFE_COUNT = 5;
+const GLOBAL_DEDUP_MIN_SAFE_COUNT = 1;
 
 interface DedupEliminatedEntry {
   boxTitle: string;
@@ -222,8 +222,7 @@ function resolveDedupKey(candidate: ValidatedPaper): string | null {
  * Phase 1 — Sequential search (archival detection → foundational lookup →
  *            OpenAlex semantic search with throttle)
  * Phase 2 — Global cross-box deduplication
- * Phase 3 — Per-box hybrid 3-tier distribution
- *           (foundational → YÖK theses → semantic)
+ * Phase 3 — Per-box 1+1 distribution (1 foundational → 1 semantic)
  *
  * @param boxes - All sub-boxes to process
  * @param logger - Logger instance
@@ -276,8 +275,8 @@ export async function orchestrateBatchProcess(
       continue;
     }
 
-    // Skip boxes without semantic queries
-    if (!box.semanticSearchQueries || box.semanticSearchQueries.length === 0) {
+    // Skip boxes without subBoxes
+    if (!box.subBoxes || box.subBoxes.length === 0) {
       boxSearchResults.set(box.title, []);
       foundationalLookups.set(box.title, []);
       continue;
@@ -287,12 +286,34 @@ export async function orchestrateBatchProcess(
     const foundationalArticles = await resolveBoxFoundationalWorks(box, logger);
     foundationalLookups.set(box.title, foundationalArticles);
 
-    // OpenAlex semantic search with throttle (bypass if cached data exists)
     const boxCache = cachedPapers?.[box.title];
-    const merged =
-      boxCache && boxCache.length > 0
-        ? mergePapers(boxCache)
-        : await collectOpenAlexResults(box.semanticSearchQueries, logger);
+    let merged: ValidatedPaper[];
+
+    if (boxCache && boxCache.length > 0) {
+      merged = mergePapers(boxCache);
+    } else {
+      const allRawPapers: RawPaper[] = [];
+      for (let qi = 0; qi < (box.subBoxes?.length ?? 0); qi++) {
+        const sub = box.subBoxes![qi];
+        if (!sub.semanticQuery?.trim()) continue;
+
+        try {
+          const results = await searchOpenAlex(sub.semanticQuery);
+          for (const rp of results) {
+            rp.subBoxId = String(qi);
+          }
+          allRawPapers.push(...results);
+        } catch {
+          // Silently skip failed queries
+        }
+
+        // Throttle between sub-box queries
+        if (qi < (box.subBoxes?.length ?? 0) - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 1100));
+        }
+      }
+      merged = mergePapers(allRawPapers);
+    }
     boxSearchResults.set(box.title, merged);
 
     logger.info("literature_batch_search_done", {

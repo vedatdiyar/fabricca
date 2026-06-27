@@ -27,8 +27,7 @@ const MIN_LENGTH = 3;
 const MAX_LENGTH = 4000;
 
 type ValidationResult =
-  | { valid: true; value: string }
-  | { valid: false; error: string };
+  { valid: true; value: string } | { valid: false; error: string };
 
 function validateField(
   value: string | undefined,

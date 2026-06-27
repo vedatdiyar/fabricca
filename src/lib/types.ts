@@ -209,14 +209,17 @@ export const GeminiThesisBoxSchema = z.object({
     "RELATED_THESES",
   ]),
   description: z.string().min(1, "Kutu açıklaması boş olamaz"),
-  semanticSearchQueries: z.array(z.string()).max(4),
-  concepts: z.array(z.string()).max(4),
+  parentId: z.number().nullable().optional(),
+  semanticQuery: z.string().nullable().optional(),
+  get subBoxes() {
+    return z.array(GeminiThesisBoxSchema).optional();
+  },
+  foundationalQueries: z.array(FoundationalQuerySchema).max(12).optional(),
+  concepts: z.array(z.string()).max(4).optional(),
   relatedTheses: z.array(RelatedThesisEntrySchema).optional(),
 });
 
-export const FinalGeminiThesisBoxSchema = GeminiThesisBoxSchema.extend({
-  foundationalQueries: z.array(FoundationalQuerySchema).max(12),
-});
+export const FinalGeminiThesisBoxSchema = GeminiThesisBoxSchema;
 
 export const BoxGenerationResponseSchema = z.object({
   boxes: z.array(GeminiThesisBoxSchema).min(1, "En az bir kutu üretilmelidir"),
@@ -257,9 +260,11 @@ export interface GeminiThesisBox {
     | "PRIMARY_MATERIAL"
     | "RELATED_THESES";
   description: string;
-  semanticSearchQueries: string[];
-  foundationalQueries: FoundationalQuery[];
-  concepts: string[];
+  parentId: number | null;
+  semanticQuery: string | null;
+  subBoxes?: GeminiThesisBox[];
+  foundationalQueries?: FoundationalQuery[];
+  concepts?: string[];
   relatedTheses?: RelatedThesisEntry[];
 }
 
@@ -273,6 +278,7 @@ export interface JuryArticle {
   authors: string[];
   isFoundational: boolean;
   relevanceScore: number;
+  subBoxId?: string;
 }
 
 export interface LiteraturePoolEntry {

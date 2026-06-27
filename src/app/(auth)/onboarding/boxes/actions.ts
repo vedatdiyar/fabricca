@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { thesisBoxes, libraryResources } from "@/db/schema";
 import { getSession } from "@/session";
+import { z } from "zod";
 import { generateStructuredContent } from "@/lib/gemini";
 import { SESSION_ERROR_MSG } from "@/lib/constants/session";
 import { ThinkingLevel } from "@google/genai";
@@ -16,11 +17,39 @@ import {
   thesisBoxGenerationSchema,
 } from "@/lib/prompts/box-generation";
 import {
-  BoxGenerationResponseSchema,
   FinalBoxGenerationResponseSchema,
+  FoundationalQuerySchema,
   type GeminiThesisBox,
   type OnboardingActionResult,
 } from "@/lib/types";
+
+// ---------------------------------------------------------------------------
+// Ham Gemini çıktısı için yerel Zod şemaları.
+// Gemini'den dönen sub-box'lar yalnızca {title, semanticQuery} içerir;
+// aşağıda normalizasyon aşamasında GeminiThesisBox[]'a dönüştürülür.
+// ---------------------------------------------------------------------------
+const RawSubBoxSchema = z.object({
+  title: z.string().min(1, "Alt kutu başlığı boş olamaz"),
+  semanticQuery: z.string().min(1, "Arama sorgusu boş olamaz"),
+  concepts: z.array(z.string()).max(4).optional(),
+  foundationalQueries: z.array(FoundationalQuerySchema).max(2).optional(),
+});
+
+const RawGeminiBoxSchema = z.object({
+  title: z.string().min(1, "Kutu başlığı boş olamaz"),
+  boxType: z.enum([
+    "PROBLEMATIZATION",
+    "CONCEPTUAL",
+    "DATA_PROTOCOL",
+    "PRIMARY_MATERIAL",
+  ]),
+  description: z.string().min(1, "Kutu açıklaması boş olamaz"),
+  subBoxes: z.array(RawSubBoxSchema),
+});
+
+const RawBoxGenerationResponseSchema = z.object({
+  boxes: z.array(RawGeminiBoxSchema).min(1, "En az bir kutu üretilmelidir"),
+});
 import type { NewLibraryResource } from "@/db/schema";
 import {
   fetchThesisMatrix,
@@ -30,6 +59,7 @@ import {
 /** Default box title for the hardcoded related theses box appended server-side. */
 const RELATED_THESES_TITLE = "İlişkisel Tez Çalışmaları";
 import { mineCoCitations } from "../_services/co-citation-miner";
+import type { BoxContext } from "../_services/co-citation-miner";
 import type { RawPaper } from "../literature-review/_services/literature-review-papers";
 import { searchOpenAlex } from "../literature-review/_services/openalex/client";
 
@@ -72,9 +102,9 @@ export async function generateBoxesStructureAction(): Promise<
       researchScope: matrix.researchScope,
     });
 
-    const generationResult = await generateStructuredContent<{
-      boxes: unknown[];
-    }>(
+    const generationResult = await generateStructuredContent<
+      z.infer<typeof RawBoxGenerationResponseSchema>
+    >(
       "gemini-3.1-flash-lite",
       buildThesisBoxGenerationSystemInstruction(),
       geminiPrompt,
@@ -82,7 +112,7 @@ export async function generateBoxesStructureAction(): Promise<
       log,
       {
         thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
-        zodSchema: BoxGenerationResponseSchema,
+        zodSchema: RawBoxGenerationResponseSchema,
         temperature: 1.0,
         seed: 42,
       },
@@ -90,20 +120,31 @@ export async function generateBoxesStructureAction(): Promise<
 
     const rawBoxes = generationResult.boxes || [];
 
-    // Normalize generated boxes, initializing empty foundationalQueries
+    // Normalize generated boxes to full GeminiThesisBox shape.
+    // Gemini returns sub-boxes as {title, semanticQuery, concepts?, foundationalQueries?};
+    // we promote each sub-box to a full GeminiThesisBox (parentId set on save).
     const normalizedBoxes: GeminiThesisBox[] = rawBoxes.map((box) => {
-      const rawBox = box as Record<string, unknown>;
-      const boxType = (rawBox.boxType || rawBox.type) as
+      const boxType = box.boxType as
         | "PROBLEMATIZATION"
         | "CONCEPTUAL"
         | "DATA_PROTOCOL"
         | "PRIMARY_MATERIAL";
       return {
-        title: (rawBox.title as string) || "",
+        title: box.title,
         boxType,
-        description: (rawBox.description as string) || "",
-        semanticSearchQueries: (rawBox.semanticSearchQueries as string[]) || [],
-        concepts: (rawBox.concepts as string[]) || [],
+        description: box.description,
+        parentId: null,
+        semanticQuery: null,
+        subBoxes: (box.subBoxes || []).map((sb) => ({
+          title: sb.title,
+          boxType,
+          description: sb.title,
+          parentId: null,
+          semanticQuery: sb.semanticQuery,
+          subBoxes: undefined,
+          foundationalQueries: sb.foundationalQueries ?? [],
+          concepts: sb.concepts ?? [],
+        })),
         foundationalQueries: [],
       };
     });
@@ -115,7 +156,9 @@ export async function generateBoxesStructureAction(): Promise<
       title: RELATED_THESES_TITLE,
       boxType: "RELATED_THESES",
       description: "Tez matrisiyle örtüşen sınırdaş akademik çalışmalar.",
-      semanticSearchQueries: [],
+      parentId: null,
+      semanticQuery: null,
+      subBoxes: [],
       concepts: [],
       foundationalQueries: [],
       relatedTheses: overlapTable.map((t) => ({
@@ -180,20 +223,42 @@ export async function mineFoundationalQueriesAction(
         box.boxType === "PRIMARY_MATERIAL" ||
         box.boxType === "RELATED_THESES"
       ) {
-        populatedBoxes.push({ ...box, foundationalQueries: [] });
+        populatedBoxes.push(box);
         continue;
       }
 
       log.info("mining_box_foundational", {
         service: "boxes",
-        data: { title: box.title, queries: box.semanticSearchQueries },
+        data: { title: box.title, queryCount: box.subBoxes?.length ?? 0 },
       });
 
-      const mined = await mineCoCitations(box.semanticSearchQueries, log);
+      const queries = (box.subBoxes ?? [])
+        .map((s) => s.semanticQuery)
+        .filter((q): q is string => q !== null);
+      const boxContext: BoxContext = {
+        boxType: box.boxType,
+        title: box.title,
+        description: box.description,
+      };
+      const mined = await mineCoCitations(queries, log, boxContext);
+
+      // Distribute each mined champion to its corresponding sub-box
+      // (mineCoCitations returns one result per query, in order)
+      let minedIdx = 0;
+      const updatedSubBoxes = (box.subBoxes ?? []).map((sb) => {
+        if (sb.semanticQuery?.trim()) {
+          const champion =
+            minedIdx < mined.length ? mined[minedIdx] : undefined;
+          minedIdx++;
+          return { ...sb, foundationalQueries: champion ? [champion] : [] };
+        }
+        return { ...sb, foundationalQueries: [] };
+      });
 
       populatedBoxes.push({
         ...box,
-        foundationalQueries: mined,
+        subBoxes: updatedSubBoxes,
+        foundationalQueries: [],
       });
     }
 
@@ -240,27 +305,30 @@ export async function mineFoundationalQueriesAction(
 }
 
 /**
- * Removes duplicate foundational queries across all boxes based on
- * author+title key. If a work was already assigned to an earlier box,
- * it is filtered out from subsequent boxes.
+ * Removes duplicate foundational queries across all sub-boxes globally
+ * based on author+title key. If a work was already assigned to an earlier
+ * sub-box, it is filtered out from subsequent sub-boxes.
  */
 function deduplicateFoundationalQueries(
   boxes: GeminiThesisBox[],
 ): GeminiThesisBox[] {
   const seen = new Set<string>();
 
-  return boxes.map((box) => {
-    const uniqueQueries = box.foundationalQueries.filter((q) => {
-      const key = `${q.author}|${q.title}`.toLowerCase().trim();
-      if (seen.has(key)) {
-        return false;
-      }
-      seen.add(key);
-      return true;
-    });
-
-    return { ...box, foundationalQueries: uniqueQueries };
-  });
+  return boxes.map((box) => ({
+    ...box,
+    subBoxes: (box.subBoxes ?? []).map((sb) => {
+      const uniqueQueries = (sb.foundationalQueries ?? []).filter((q) => {
+        const key = `${q.author}|${q.title}`.toLowerCase().trim();
+        if (seen.has(key)) {
+          return false;
+        }
+        seen.add(key);
+        return true;
+      });
+      return { ...sb, foundationalQueries: uniqueQueries };
+    }),
+    foundationalQueries: [],
+  }));
 }
 
 /**
@@ -279,18 +347,18 @@ export async function prefetchLiteratureCacheAction(
   for (const box of boxes) {
     if (
       box.boxType === "PRIMARY_MATERIAL" ||
-      !box.semanticSearchQueries ||
-      box.semanticSearchQueries.length === 0
+      !box.subBoxes ||
+      box.subBoxes.length === 0
     ) {
       continue;
     }
 
     const allPapers: RawPaper[] = [];
 
-    for (const query of box.semanticSearchQueries) {
-      if (!query.trim()) continue;
+    for (const sub of box.subBoxes) {
+      if (!sub.semanticQuery?.trim()) continue;
       try {
-        const results = await searchOpenAlex(query);
+        const results = await searchOpenAlex(sub.semanticQuery);
         allPapers.push(...results);
       } catch {
         // Silently skip failed queries — this is a best-effort cache
@@ -357,24 +425,50 @@ export async function confirmBoxesAction(
         .delete(thesisBoxes)
         .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
 
-      // Insert all boxes as flat with RETURNING to capture generated IDs
-      const boxValues = boxes.map((box) => ({
+      // Insert parent boxes (flat rows, no subBoxes/semanticSearchQueries columns)
+      const parentValues = boxes.map((box) => ({
         thesisMatrixId,
         title: box.title,
         boxType: box.boxType,
         description: box.description || "",
-        semanticSearchQueries: box.semanticSearchQueries || [],
+        parentId: null,
+        semanticQuery: null,
         foundationalQueries: box.foundationalQueries || [],
         concepts: box.concepts || [],
       }));
 
-      let insertedBoxes: { id: number }[] = [];
+      let insertedBoxes: { id: number; title: string }[] = [];
 
-      if (boxValues.length > 0) {
+      if (parentValues.length > 0) {
         insertedBoxes = await tx
           .insert(thesisBoxes)
-          .values(boxValues)
-          .returning({ id: thesisBoxes.id });
+          .values(parentValues)
+          .returning({ id: thesisBoxes.id, title: thesisBoxes.title });
+      }
+
+      // Insert sub-boxes as separate rows with parentId FK
+      const subBoxValues: (typeof thesisBoxes.$inferInsert)[] = [];
+
+      for (let i = 0; i < boxes.length; i++) {
+        const parentRow = insertedBoxes[i];
+        if (!parentRow) continue;
+        const parentSubBoxes = boxes[i]?.subBoxes ?? [];
+        for (const sb of parentSubBoxes) {
+          subBoxValues.push({
+            thesisMatrixId,
+            title: sb.title,
+            boxType: sb.boxType,
+            description: sb.description,
+            parentId: parentRow.id,
+            semanticQuery: sb.semanticQuery || "",
+            foundationalQueries: sb.foundationalQueries ?? [],
+            concepts: sb.concepts ?? [],
+          });
+        }
+      }
+
+      if (subBoxValues.length > 0) {
+        await tx.insert(thesisBoxes).values(subBoxValues);
       }
 
       // Insert all overlap theses into the RELATED_THESES box

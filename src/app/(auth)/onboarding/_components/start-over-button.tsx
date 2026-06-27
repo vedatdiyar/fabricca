@@ -20,12 +20,7 @@ import { useOnboardingStore } from "@/lib/store/onboarding-store";
 
 interface StartOverButtonProps {
   variant?:
-    | "default"
-    | "destructive"
-    | "outline"
-    | "secondary"
-    | "ghost"
-    | "link";
+    "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
   size?: "default" | "sm" | "lg" | "icon";
   className?: string;
 }

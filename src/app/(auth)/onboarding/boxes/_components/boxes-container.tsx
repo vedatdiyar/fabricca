@@ -21,7 +21,6 @@ import { LoadingSpinner } from "@/components/loading-spinner";
 import { confirmBoxesAction } from "../actions";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import type { GeminiThesisBox, RelatedThesisEntry } from "@/lib/types";
-import { calculateBadge } from "@/lib/academic/badge-calculator";
 
 const boxTypeOrder: Record<string, number> = {
   CONCEPTUAL: 1,
@@ -161,95 +160,23 @@ export function BoxesContainer() {
 }
 
 /**
- * Örtüşme seviyesi için Türkçe etiket.
- */
-const axisLevelLabel: Record<string, string> = {
-  KRITIK: "Kritik",
-  ORTA: "Orta",
-  OZGUN: "Özgün",
-};
-
-/**
- * Eksen adı için Türkçe etiket.
- */
-const axisNameLabel: Record<string, string> = {
-  subject: "Konu",
-  theory: "Kuram",
-  methodology: "Yöntem",
-  context: "Bağlam",
-};
-
-/**
- * Rozet seviyesi için Türkçe etiket.
- */
-const badgeLabel: Record<string, string> = {
-  IKIZ: "İkiz Tez",
-  SINIRDAS: "Sınırdaş Tez",
-  OZGUN: "Özgün",
-};
-
-/**
  * Bir örtüşen tez kaydını kart olarak görüntüler.
  */
 function RelatedThesisCard({ thesis }: { thesis: RelatedThesisEntry }) {
-  const badge = calculateBadge(thesis.axes);
-
   return (
     <div className="border border-border/60 rounded-md p-3 space-y-2 bg-card/30">
-      <div className="flex items-start justify-between gap-2">
-        <div className="space-y-0.5 min-w-0">
-          <p className="text-xs font-semibold text-foreground leading-snug">
-            {thesis.title}
-          </p>
-          <p className="text-[11px] text-muted-foreground">
-            {thesis.author} — {thesis.university} ({thesis.year})
-          </p>
-        </div>
-        <span
-          className={`shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
-            badge === "IKIZ"
-              ? "bg-destructive/10 border-destructive/30 text-destructive"
-              : badge === "SINIRDAS"
-                ? "bg-warning/10 border-warning/30 text-warning"
-                : "bg-success/10 border-success/30 text-success"
-          }`}
-        >
-          {badgeLabel[badge]}
-        </span>
+      <div className="space-y-0.5">
+        <p className="text-xs font-semibold text-foreground leading-snug">
+          {thesis.title}
+        </p>
+        <p className="text-[11px] text-muted-foreground">
+          {thesis.author} — {thesis.university} ({thesis.year})
+        </p>
       </div>
 
       {thesis.thesisType && (
         <p className="text-[10px] text-muted-foreground">
           {thesis.thesisType} · {thesis.department}
-        </p>
-      )}
-
-      <div className="flex flex-wrap gap-1.5">
-        {(["subject", "theory", "methodology", "context"] as const).map(
-          (axis) => {
-            const level = thesis.axes[axis];
-            if (!level) return null;
-            return (
-              <span
-                key={axis}
-                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border ${
-                  level === "KRITIK"
-                    ? "bg-destructive/10 border-destructive/20 text-destructive"
-                    : level === "ORTA"
-                      ? "bg-warning/10 border-warning/20 text-warning"
-                      : "bg-success/10 border-success/20 text-success"
-                }`}
-              >
-                {axisNameLabel[axis]}: {axisLevelLabel[level]}
-              </span>
-            );
-          },
-        )}
-      </div>
-
-      {thesis.comparisonNote && (
-        <p className="text-[10px] text-muted-foreground leading-relaxed italic border-t border-border/20 pt-2">
-          {thesis.comparisonNote}
         </p>
       )}
 
@@ -277,6 +204,14 @@ function BoxCard({
   index: number;
   isLastOdd?: boolean;
 }) {
+  // Aggregeer sub-box concepts/foundationalQueries; master seviyesinde tutulmaz
+  const subConcepts = [
+    ...new Set((box.subBoxes ?? []).flatMap((sb) => sb.concepts ?? [])),
+  ];
+  const subFoundational = (box.subBoxes ?? []).flatMap(
+    (sb) => sb.foundationalQueries ?? [],
+  );
+
   return (
     <Card
       className={`group/card grid grid-rows-subgrid row-span-4 p-6 rounded-md transition-all duration-300 hover:-translate-y-1 hover:border-primary/20${isLastOdd ? " md:col-span-2" : ""}`}
@@ -303,11 +238,11 @@ function BoxCard({
         </p>
       )}
 
-      {box.concepts && box.concepts.length > 0 && (
+      {subConcepts.length > 0 && (
         <div className="row-3">
           <div className="border-y border-border py-3">
             <div className="flex flex-wrap gap-2">
-              {box.concepts.map((concept, i) => (
+              {subConcepts.map((concept, i) => (
                 <span
                   key={`${concept}-${i}`}
                   className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 text-xs text-primary font-semibold"
@@ -321,14 +256,14 @@ function BoxCard({
         </div>
       )}
 
-      {box.foundationalQueries && box.foundationalQueries.length > 0 ? (
+      {subFoundational.length > 0 ? (
         <div className="row-4 border-t border-border/40 pt-4 space-y-4">
           <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <Library className="w-3.5 h-3.5 text-primary" />
             Kurucu Literatür Temeli
           </h4>
           <ul className="space-y-2 pl-0.5">
-            {box.foundationalQueries.slice(0, 3).map((fq, i) => (
+            {subFoundational.slice(0, 3).map((fq, i) => (
               <li
                 key={`${fq.title}-${fq.author}-${i}`}
                 className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground"

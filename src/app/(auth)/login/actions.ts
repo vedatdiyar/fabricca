@@ -14,8 +14,7 @@ import {
 } from "@/lib/constants/session";
 
 export type LoginResult =
-  | { success: true; error?: never }
-  | { success?: never; error: string };
+  { success: true; error?: never } | { success?: never; error: string };
 
 /**
  * E-posta ve şifre ile kullanıcı girişini doğrular.

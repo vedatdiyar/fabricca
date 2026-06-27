@@ -1,12 +1,22 @@
 import type { FoundationalQuery } from "@/lib/types";
 import { Logger } from "@/lib/logger";
+import { ThinkingLevel } from "@google/genai";
+import { generateStructuredContent } from "@/lib/gemini";
+import {
+  CO_CITATION_REFEREE_SCHEMA,
+  buildRefereeSystemInstruction,
+  buildRefereePrompt,
+} from "@/lib/prompts";
+import type { RefereeBoxContext as BoxContext } from "@/lib/prompts/co-citation-referee";
+export type { BoxContext };
 
 const OPENALEX_DELAY_MS = 1100;
 const OPENALEX_USER_AGENT =
   "FabriccaAcademicAssistant/1.0 (mailto:support@fabricca.com)";
-const PER_PAGE = 50;
-const TOP_K = 20;
+const PER_PAGE = 10;
+const TOP_K = 10;
 const DETAIL_CHUNK_SIZE = 40;
+const BOX_REFEREE_SEED = 42;
 
 interface OpenAlexAuthor {
   author?: {
@@ -381,25 +391,29 @@ function extractOpenAlexId(candidateId: string): string {
  * seminal works for each search query independently.
  *
  * For each query:
- * 1. Fetch top PER_PAGE works from OpenAlex semantic search
+ * 1. Fetch top 10 works from OpenAlex semantic search
  * 2. Count referenced_works frequencies (local co-citation)
- * 3. Select the top TOP_K most-referenced candidates
+ * 3. Select the top 10 most-referenced candidates (up from 5 for richer LLM input)
  * 4. Fetch metadata for those candidates (chunked for URI safety)
  * 5. Run author-consensus fallback for works with suspicious metadata
  * 6. Merge candidates with overlapping author+title (ID fragmentation recovery)
- * 7. Score each merged candidate by localCount only (no global citation bias)
- * 8. Pick the highest-scoring champion
+ * 7. LLM Referee — Gemini evaluates the merged list with box context to merge
+ *    editions semantically, filter out secondary literature, and select the true
+ *    root classic champion. Falls back to pure localCount if the call fails.
+ * 8. Return one champion per query.
  *
  * Each query is an isolated cell — no cross-query deduplication or pooled
  * batch fetching. Every query gets its own champion regardless of overlap.
  *
  * @param queries Array of English semantic search query paragraphs.
  * @param log Logger instance for pipeline event tracing.
- * @returns Array of FoundationalQuery objects (one champion per query).
+ * @param boxContext Optional box metadata (type, title, description) passed
+ *   to the LLM referee for context-aware champion selection.
  */
 export async function mineCoCitations(
   queries: string[],
   log: Logger,
+  boxContext?: BoxContext,
 ): Promise<FoundationalQuery[]> {
   if (!queries || queries.length === 0) {
     return [];
@@ -685,8 +699,9 @@ export async function mineCoCitations(
     }
 
     // ======================================================================
-    // Step 6: Score and pick champions (Pure localCount, picking top 3 works
-    // per query for intra-box multi-champion support)
+    // Step 6: LLM Referee — semantic champion selection with edition
+    // merging and secondary-literature filtering. Falls back to localCount
+    // champion if the referee call fails.
     // ======================================================================
 
     if (merged.length === 0) {
@@ -701,41 +716,141 @@ export async function mineCoCitations(
       continue;
     }
 
-    const sortedChampions = merged
-      .map((c) => ({
-        ...c,
-        score: computeScore(c.localCount),
-      }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 3);
+    interface RefereeVerdict {
+      champion: {
+        title: string;
+        author: string;
+        publicationYear: number;
+        academicReasoning: string;
+      };
+    }
 
-    for (const champ of sortedChampions) {
-      const authorStr =
-        champ.authorsList.length > 0
-          ? champ.authorsList.length > 2
-            ? `${champ.authorsList[0]} et al.`
-            : champ.authorsList.join(" & ")
-          : "Bilinmeyen Yazar";
+    const candidateListForReferee = merged.map((c, idx) => ({
+      index: idx + 1,
+      title: c.title,
+      author:
+        c.authorsList.length > 0
+          ? c.authorsList.length > 2
+            ? `${c.authorsList[0]} et al.`
+            : c.authorsList.join(" & ")
+          : "Bilinmeyen Yazar",
+      year: c.publicationYear,
+      localCount: c.localCount,
+    }));
 
-      champions.push({
-        author: authorStr,
-        title: champ.title,
-        publicationYear: champ.publicationYear,
-      });
+    let champion: MergedCandidate;
 
-      log.info("co_citation_miner_champion_selected", {
+    try {
+      log.info("llm_referee_start", {
         service: "boxes",
         data: {
           queryIndex: i,
-          query: query.substring(0, 80),
-          champion: {
-            author: authorStr,
-            title: champ.title,
-            score: champ.score,
-          },
+          candidateCount: candidateListForReferee.length,
+          boxContext: boxContext
+            ? { title: boxContext.title, boxType: boxContext.boxType }
+            : undefined,
         },
       });
+
+      const refereePrompt = buildRefereePrompt(candidateListForReferee, boxContext);
+
+      const verdict = await generateStructuredContent<RefereeVerdict>(
+        "gemini-3.1-flash-lite",
+        buildRefereeSystemInstruction(),
+        refereePrompt,
+        CO_CITATION_REFEREE_SCHEMA,
+        log,
+        {
+          temperature: 1.0,
+          seed: BOX_REFEREE_SEED,
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          payloadStage: "co-citation-referee",
+        },
+      );
+
+      // Match the LLM verdict back to a merged candidate
+      const llmNormTitle = normalizeForMergeTitle(verdict.champion.title);
+      const matched = merged.find((c) => {
+        const cNormTitle = normalizeForMergeTitle(c.title);
+        return (
+          cNormTitle.includes(llmNormTitle) ||
+          llmNormTitle.includes(cNormTitle)
+        );
+      });
+
+      if (matched) {
+        champion = {
+          ...matched,
+          title: verdict.champion.title,
+          publicationYear: verdict.champion.publicationYear,
+          authorsList: [verdict.champion.author],
+        };
+      } else {
+        // No semantic match — use LLM verdict values directly
+        champion = {
+          id: "",
+          title: verdict.champion.title,
+          publicationYear: verdict.champion.publicationYear,
+          localCount: 0,
+          citedByCount: 0,
+          authorsList: [verdict.champion.author],
+        };
+      }
+
+      log.info("llm_referee_verdict", {
+        service: "boxes",
+        data: {
+          queryIndex: i,
+          selectedTitle: verdict.champion.title,
+          selectedAuthor: verdict.champion.author,
+          selectedYear: verdict.champion.publicationYear,
+          matchedCandidateTitle: matched?.title ?? null,
+          academicReasoning: verdict.champion.academicReasoning,
+        },
+      });
+    } catch (err) {
+      log.warn("llm_referee_fallback", {
+        service: "boxes",
+        data: {
+          queryIndex: i,
+          reason: "LLM referee failed, falling back to localCount champion",
+          error: err instanceof Error ? err.message : String(err),
+        },
+      });
+
+      champion = merged
+        .map((c) => ({
+          ...c,
+          score: computeScore(c.localCount),
+        }))
+        .sort((a, b) => b.score - a.score)[0];
     }
+
+    const authorStr =
+      champion.authorsList.length > 0
+        ? champion.authorsList.length > 2
+          ? `${champion.authorsList[0]} et al.`
+          : champion.authorsList.join(" & ")
+        : "Bilinmeyen Yazar";
+
+    champions.push({
+      author: authorStr,
+      title: champion.title,
+      publicationYear: champion.publicationYear,
+    });
+
+    log.info("co_citation_miner_champion_selected", {
+      service: "boxes",
+      data: {
+        queryIndex: i,
+        query: query.substring(0, 80),
+        champion: {
+          author: authorStr,
+          title: champion.title,
+          score: champion.localCount,
+        },
+      },
+    });
 
     // Inter-query throttle: delay before the next query's first API call
     await new Promise((resolve) => setTimeout(resolve, OPENALEX_DELAY_MS));

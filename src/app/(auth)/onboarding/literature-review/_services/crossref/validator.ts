@@ -31,14 +31,12 @@ export async function validateWithCrossRef(
 
       if (response.ok) {
         const body = (await response.json()) as
-          | { message?: Record<string, unknown> }
-          | undefined;
+          { message?: Record<string, unknown> } | undefined;
         const message = body?.message;
         if (!message) return paper;
 
         const authorList = message.author as
-          | { given?: string; family?: string }[]
-          | undefined;
+          { given?: string; family?: string }[] | undefined;
         if (authorList && authorList.length > 0) {
           const resolvedAuthors: string[] = [];
           for (const a of authorList) {
@@ -57,8 +55,7 @@ export async function validateWithCrossRef(
 
         const publisher = message.publisher as string | undefined;
         const containerTitle = message["container-title"] as
-          | string[]
-          | undefined;
+          string[] | undefined;
         if (publisher) paper.publisher = publisher;
         else if (containerTitle && containerTitle.length > 0) {
           paper.publisher = containerTitle[0];
@@ -70,8 +67,7 @@ export async function validateWithCrossRef(
         }
 
         const published = message.published as
-          | { "date-parts"?: number[][] }
-          | undefined;
+          { "date-parts"?: number[][] } | undefined;
         const dateParts = published?.["date-parts"];
         if (dateParts && dateParts.length > 0 && dateParts[0].length > 0) {
           paper.year = dateParts[0][0];

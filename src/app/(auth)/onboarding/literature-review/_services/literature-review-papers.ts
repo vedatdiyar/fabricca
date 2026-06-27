@@ -12,7 +12,7 @@ export interface SubBoxInput {
   title: string;
   description: string;
   boxType?: string;
-  semanticSearchQueries: string[];
+  subBoxes: { title: string; semanticQuery: string }[];
   foundationalQueries: FoundationalQuery[];
 }
 
@@ -29,6 +29,7 @@ export interface RawPaper {
   openAlexId: string | null;
   isFoundational: boolean;
   relevanceScore: number;
+  subBoxId?: string;
 }
 
 export interface ValidatedPaper {
@@ -43,6 +44,7 @@ export interface ValidatedPaper {
   openAlexId: string | null;
   isFoundational: boolean;
   relevanceScore: number;
+  subBoxId?: string;
 }
 
 // ============================================================================
@@ -68,6 +70,7 @@ export function mergePapers(papers: RawPaper[]): ValidatedPaper[] {
       openAlexId: raw.openAlexId,
       isFoundational: raw.isFoundational,
       relevanceScore: raw.relevanceScore,
+      subBoxId: raw.subBoxId,
     };
 
     if (paper.doi) {

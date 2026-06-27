@@ -38,9 +38,7 @@ function parseOpenAlexResults(results: Record<string, unknown>[]): RawPaper[] {
         }[]
       | undefined;
     const authorships = work.authorships as
-      | { author?: { display_name?: string } }[]
-      | null
-      | undefined;
+      { author?: { display_name?: string } }[] | null | undefined;
     const primaryLocation = work.primary_location as
       | {
           landing_page_url?: string;
@@ -67,9 +65,7 @@ function parseOpenAlexResults(results: Record<string, unknown>[]): RawPaper[] {
     const metadata = metadataParts.length > 0 ? metadataParts.join(". ") : null;
 
     const invertedIndex = work.abstract_inverted_index as
-      | Record<string, number[]>
-      | null
-      | undefined;
+      Record<string, number[]> | null | undefined;
 
     return {
       source: "openalex" as const,

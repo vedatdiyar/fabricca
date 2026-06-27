@@ -4,8 +4,8 @@
  *
  * Contains:
  * - `isArchivalBox` — detects boxes that bypass external APIs
- * - `distributeFixedPool` — hybrid 3-tier 5+10 distribution (foundational →
- *   YÖK theses → semantic)
+ * - `distributeFixedPool` — 1+1 per-subBox distribution (1 foundational →
+ *   1 semantic)
  * - `resolveBoxFoundationalWorks` — Crossref foundational lookups for one box
  * - `runBoxPipeline` — distribution for a single box
  */
@@ -17,12 +17,11 @@ import { resolveFoundationalWorks } from "./foundational-resolver";
 import { formatAcademicTitle } from "@/lib/utils/academic-formatter";
 
 // ============================================================================
-// Constants: Hybrid pool sizes for the 3-tier distribution
+// Constants: Pool limits for 1+1 core distribution
 // ============================================================================
 
-const STARTER_PACK_SIZE = 5;
-const RESERVED_SEMANTIC_MAX = 10;
-const MAX_FOUNDATIONAL_IN_STARTER = 4;
+const RESERVED_SEMANTIC_MAX = 1;
+const MAX_FOUNDATIONAL_IN_STARTER = 1;
 
 // ============================================================================
 // isArchivalBox — detects boxes that should bypass external APIs
@@ -92,100 +91,50 @@ export async function resolveBoxFoundationalWorks(
 }
 
 // ============================================================================
-// distributeFixedPool — hybrid 3-tier 5+10 distribution
+// distributeFixedPool — 1+1 core distribution (1 foundational + 1 semantic)
 // ============================================================================
 
 /**
- * Distributes foundational, YÖK thesis, and AI-filtered semantic articles into
- * a fixed-size starter pack (max 5) and a reserved pool using a strict 3-tier
- * hierarchical algorithm:
+ * Distributes foundational and semantic articles into a strict 1+1 core:
  *
- * 1. Foundational (isFoundational: true) — max 3 articles fill the top starter
- *    slots. Remaining foundational articles overflow to the reserved pool.
- * 2. YÖK Theses (relevanceScore: 0.99 from mapped thesis data) — fill remaining
- *    starter slots. Overflow goes to the reserved pool.
- * 3. Semantic OpenAlex — fill any remaining starter slots (by relevanceScore
- *    descending). At most 10 overflow to the reserved pool.
+ * 1. Foundational (isFoundational: true) — top 1 by relevanceScore → starterPack
+ * 2. Semantic OpenAlex — top 1 by relevanceScore → reservedPool
+ *    (semantic articles that duplicate a foundational title are silently removed)
  *
- * Thesis and semantic articles that duplicate foundational titles are silently
- * removed before distribution.
+ * Thesis articles are not distributed under the 1+1 subBox contract.
  *
  * @param foundationalArticles - Crossref-resolved foundational works
- * @param thesisArticles - YÖK thesis articles from the risk originality report
+ * @param thesisArticles - YÖK thesis articles (unused in 1+1 mode)
  * @param semanticArticles - AI-reviewed OpenAlex semantic search results
- * @returns Starter pack (max 5) and reserved pool with all overflow
+ * @returns Starter pack (top foundational) and reserved pool (top semantic)
  */
 export function distributeFixedPool(
   foundationalArticles: JuryArticle[],
-  thesisArticles: JuryArticle[],
+  _thesisArticles: JuryArticle[],
   semanticArticles: JuryArticle[],
 ): { starterPack: JuryArticle[]; reservedPool: JuryArticle[] } {
-  const starterPack: JuryArticle[] = [];
-  const reservedPool: JuryArticle[] = [];
+  // Pick top 1 foundational by relevanceScore
+  const topFoundational = [...foundationalArticles]
+    .sort((a, b) => b.relevanceScore - a.relevanceScore)
+    .slice(0, MAX_FOUNDATIONAL_IN_STARTER);
 
   // Build a dedup set from foundational titles
   const foundationalTitles = new Set(
-    foundationalArticles
-      .map((a) => a.title?.toLowerCase().trim())
-      .filter(Boolean),
+    topFoundational.map((a) => a.title?.toLowerCase().trim()).filter(Boolean),
   );
 
-  // Remove thesis and semantic articles that duplicate foundational titles
-  const dedupedTheses = thesisArticles.filter(
-    (a) => !a.title || !foundationalTitles.has(a.title.toLowerCase().trim()),
-  );
-  const dedupedSemantic = semanticArticles.filter(
-    (a) => !a.title || !foundationalTitles.has(a.title.toLowerCase().trim()),
-  );
+  // Pick top 1 semantic, filtering out foundational duplicates
+  const topSemantic = [...semanticArticles]
+    .filter(
+      (a) => !a.title || !foundationalTitles.has(a.title.toLowerCase().trim()),
+    )
+    .sort((a, b) => b.relevanceScore - a.relevanceScore)
+    .slice(0, RESERVED_SEMANTIC_MAX);
 
-  // Remove thesis duplicates from semantic list (thesis takes priority)
-  const thesisTitles = new Set(
-    dedupedTheses.map((a) => a.title?.toLowerCase().trim()).filter(Boolean),
-  );
-  const finalSemantic = dedupedSemantic.filter(
-    (a) => !a.title || !thesisTitles.has(a.title.toLowerCase().trim()),
-  );
-
-  // Sort each tier by relevanceScore descending
-  const sortedFoundational = [...foundationalArticles].sort(
-    (a, b) => b.relevanceScore - a.relevanceScore,
-  );
-  const sortedTheses = [...dedupedTheses].sort(
-    (a, b) => b.relevanceScore - a.relevanceScore,
-  );
-  const sortedSemantic = [...finalSemantic].sort(
-    (a, b) => b.relevanceScore - a.relevanceScore,
-  );
-
-  // Tier 1: Foundational — max 3 to starter, rest to reserved
-  const foundationalForStarter = sortedFoundational.slice(
-    0,
-    MAX_FOUNDATIONAL_IN_STARTER,
-  );
-  const foundationalOverflow = sortedFoundational.slice(
-    MAX_FOUNDATIONAL_IN_STARTER,
-  );
-  starterPack.push(...foundationalForStarter);
-  reservedPool.push(...foundationalOverflow);
-
-  // Tier 2: YÖK Theses — fill remaining starter slots, rest to reserved
-  let remaining = STARTER_PACK_SIZE - starterPack.length;
-  const thesisForStarter = sortedTheses.slice(0, remaining);
-  const thesisOverflow = sortedTheses.slice(remaining);
-  starterPack.push(...thesisForStarter);
-  reservedPool.push(...thesisOverflow);
-
-  // Tier 3: Semantic OpenAlex — fill remaining starter, max 10 to reserved
-  remaining = STARTER_PACK_SIZE - starterPack.length;
-  const semanticForStarter = sortedSemantic.slice(0, remaining);
-  const semanticForReserved = sortedSemantic.slice(
-    remaining,
-    remaining + RESERVED_SEMANTIC_MAX,
-  );
-  starterPack.push(...semanticForStarter);
-  reservedPool.push(...semanticForReserved);
-
-  return { starterPack, reservedPool };
+  return {
+    starterPack: topFoundational,
+    reservedPool: topSemantic,
+  };
 }
 
 // ============================================================================
@@ -194,15 +143,14 @@ export function distributeFixedPool(
 
 /**
  * Runs a single box through the post-search distribution pipeline:
- * Distributes articles into the hybrid 3-tier 5+10 pool
- * (foundational → YÖK theses → semantic).
+ * Distributes articles into a 1+1 pool (1 foundational → 1 semantic).
  *
  * @param box - The sub-box metadata
  * @param candidates - Validated papers from OpenAlex (already deduplicated)
  * @param foundationalArticles - Pre-resolved foundational works
  * @param thesisArticles - YÖK thesis articles mapped via library_resources
  * @param logger - Logger instance
- * @returns The distributed starter pack and reserved pool
+ * @returns The distributed starter pack and reserved pool (1 foundational + 1 semantic)
  */
 export async function runBoxPipeline(
   box: SubBoxInput,
@@ -244,6 +192,7 @@ export async function runBoxPipeline(
     authors: c.authors,
     isFoundational: false,
     relevanceScore: Math.round(c.relevanceScore * 100),
+    subBoxId: c.subBoxId,
   }));
 
   return distributeFixedPool(

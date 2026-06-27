@@ -26,11 +26,14 @@ export default async function LibraryPage() {
     );
   }
 
-  const boxes = await db
+  const allBoxes = await db
     .select()
     .from(thesisBoxes)
     .where(eq(thesisBoxes.thesisMatrixId, matrix.id))
     .orderBy(asc(thesisBoxes.id));
+
+  // Sadece ana kutuları (parentId = null) göster; sub-box'lar master içinde toplanır
+  const boxes = allBoxes.filter((b) => b.parentId === null);
 
   return <LibraryContent boxes={boxes} />;
 }

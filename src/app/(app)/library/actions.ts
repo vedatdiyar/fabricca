@@ -1,9 +1,13 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { libraryResources, type LibraryResource } from "@/db/schema";
+import {
+  thesisBoxes,
+  libraryResources,
+  type LibraryResource,
+} from "@/db/schema";
 import { getSession } from "@/session";
 import { createFlowId, Logger } from "@/lib/logger";
 
@@ -14,8 +18,7 @@ export type GetBoxResourcesResult =
   | { success: false; error: string };
 
 export type ToggleReadStatusResult =
-  | { success: true }
-  | { success: false; error: string };
+  { success: true } | { success: false; error: string };
 
 /* ---------- Server Actions ---------- */
 
@@ -39,10 +42,17 @@ export async function getBoxResourcesAction(
       redirect("/login");
     }
 
+    // Master kutu ise sub-box'larının ID'lerini de ekle
+    const subBoxIds = await db
+      .select({ id: thesisBoxes.id })
+      .from(thesisBoxes)
+      .where(eq(thesisBoxes.parentId, boxId));
+    const allIds = [boxId, ...subBoxIds.map((s) => s.id)];
+
     const rawResources = await db
       .select()
       .from(libraryResources)
-      .where(eq(libraryResources.thesisBoxId, boxId));
+      .where(inArray(libraryResources.thesisBoxId, allIds));
 
     // Öncelikli Sıralama:
     // 1. Kurucu Eserler (isFoundational = true)

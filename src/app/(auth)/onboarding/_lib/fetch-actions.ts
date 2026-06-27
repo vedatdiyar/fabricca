@@ -128,12 +128,35 @@ export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
   const report = await getCachedOriginalityReport(session.userId);
   const overlapTable = report?.tezaraResults?.overlapTable ?? [];
 
-  const boxes: GeminiThesisBox[] = rows.map((b) => {
+  // Group flat rows into parent → sub-boxes tree.
+  const parentRows = rows.filter((r) => r.parentId === null);
+  const subBoxMap = new Map<number, GeminiThesisBox[]>();
+  for (const r of rows) {
+    if (r.parentId !== null) {
+      const list = subBoxMap.get(r.parentId) ?? [];
+      list.push({
+        title: r.title,
+        boxType:
+          (r.boxType as GeminiThesisBox["boxType"]) ?? "PROBLEMATIZATION",
+        description: r.description ?? "",
+        parentId: r.parentId,
+        semanticQuery: r.semanticQuery,
+        subBoxes: undefined,
+        foundationalQueries: r.foundationalQueries ?? [],
+        concepts: r.concepts ?? [],
+      });
+      subBoxMap.set(r.parentId, list);
+    }
+  }
+
+  const boxes: GeminiThesisBox[] = parentRows.map((b) => {
     const box: GeminiThesisBox = {
       title: b.title,
       boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "PROBLEMATIZATION",
       description: b.description ?? "",
-      semanticSearchQueries: b.semanticSearchQueries ?? [],
+      parentId: null,
+      semanticQuery: null,
+      subBoxes: subBoxMap.get(b.id),
       foundationalQueries: b.foundationalQueries ?? [],
       concepts: b.concepts ?? [],
     };

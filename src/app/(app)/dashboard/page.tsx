@@ -38,23 +38,40 @@ export default async function DashboardPage() {
     );
   }
 
-  // 2. Tez matrisine bağlı konu kutularını çek
-  const dbBoxes = await db
+  // 2. Tüm flat satırları (master + sub) çek, parentId ile ayrıştır
+  const allBoxRows = await db
     .select()
     .from(thesisBoxes)
     .where(eq(thesisBoxes.thesisMatrixId, matrix.id))
     .orderBy(asc(thesisBoxes.id));
 
+  // Yalnızca ana kutuları frontend'e yolla
+  const dbBoxes = allBoxRows.filter((b) => b.parentId === null);
+
+  // Sub-box ID → master ID haritası (resource remap için)
+  const childIdToParentId = new Map<number, number>();
+  for (const row of allBoxRows) {
+    if (row.parentId !== null) {
+      childIdToParentId.set(row.id, row.parentId);
+    }
+  }
+
   let dbResources: (typeof libraryResources.$inferSelect)[] = [];
 
-  if (dbBoxes.length > 0) {
-    const boxIds = dbBoxes.map((b) => b.id);
+  if (allBoxRows.length > 0) {
+    const allBoxIds = allBoxRows.map((b) => b.id);
 
-    // 3. Konu kutularına ait kütüphane kaynaklarını (makaleleri) çek
-    dbResources = await db
+    // 3. Tüm kutulardaki (master + sub) kaynakları çek
+    const rawResources = await db
       .select()
       .from(libraryResources)
-      .where(inArray(libraryResources.thesisBoxId, boxIds));
+      .where(inArray(libraryResources.thesisBoxId, allBoxIds));
+
+    // Sub-box'a bağlı kaynakların thesisBoxId'sini parent master ID'ye yönlendir
+    dbResources = rawResources.map((r) => ({
+      ...r,
+      thesisBoxId: childIdToParentId.get(r.thesisBoxId) ?? r.thesisBoxId,
+    }));
   }
 
   // 4. Kullanıcının kayıtlı görevlerini thesisBoxes ile JOIN yaparak çek (dinamik kutu başlığı)

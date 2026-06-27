@@ -12,6 +12,7 @@ import {
   boolean,
   index,
   uniqueIndex,
+  foreignKey,
 } from "drizzle-orm/pg-core";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 
@@ -151,7 +152,8 @@ export const thesisBoxes = pgTable(
     title: text().notNull(),
     boxType: boxTypeEnum("box_type"),
     description: text(),
-    semanticSearchQueries: jsonb().$type<string[]>().default([]).notNull(),
+    parentId: integer(),
+    semanticQuery: text(),
     concepts: jsonb().$type<string[]>().default([]).notNull(),
     foundationalQueries: jsonb()
       .$type<{ author: string; title: string; publicationYear: number }[]>()
@@ -161,7 +163,13 @@ export const thesisBoxes = pgTable(
     createdAt: timestamp().defaultNow().notNull(),
     updatedAt: timestamp().defaultNow().notNull(),
   },
-  (table) => [index("idx_thesis_boxes_matrix_id").on(table.thesisMatrixId)],
+  (table) => [
+    index("idx_thesis_boxes_matrix_id").on(table.thesisMatrixId),
+    foreignKey({
+      columns: [table.parentId],
+      foreignColumns: [table.id],
+    }).onDelete("cascade"),
+  ],
 );
 
 /** Veri tabanından okunan tez kutusu tipi (select). */
@@ -190,6 +198,7 @@ export const libraryResources = pgTable(
     publicationYear: integer(),
     authors: jsonb().$type<string[]>(),
     isRead: boolean().default(false),
+
     relevanceScore: real(),
     isFoundational: boolean().default(false).notNull(),
     createdAt: timestamp().defaultNow().notNull(),
