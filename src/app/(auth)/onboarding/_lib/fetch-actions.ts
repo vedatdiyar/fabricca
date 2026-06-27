@@ -123,20 +123,43 @@ export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
   const matrix = await getCachedThesisMatrix(session.userId);
   if (!matrix) return [];
   const rows = await getCachedBoxes(matrix.id);
-  return rows
-    .map((b) => ({
+
+  // Load related theses from the originality report for RELATED_THESES boxes.
+  const report = await getCachedOriginalityReport(session.userId);
+  const overlapTable = report?.tezaraResults?.overlapTable ?? [];
+
+  const boxes: GeminiThesisBox[] = rows.map((b) => {
+    const box: GeminiThesisBox = {
       title: b.title,
       boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "PROBLEMATIZATION",
       description: b.description ?? "",
       semanticSearchQueries: b.semanticSearchQueries ?? [],
       foundationalQueries: b.foundationalQueries ?? [],
       concepts: b.concepts ?? [],
-    }))
-    .sort((a, b) => {
-      const weightA = boxOrderWeight[a.boxType] ?? 99;
-      const weightB = boxOrderWeight[b.boxType] ?? 99;
-      return weightA - weightB;
-    });
+    };
+
+    if (b.boxType === "RELATED_THESES" && overlapTable.length > 0) {
+      box.relatedTheses = overlapTable.map((t) => ({
+        title: t.title,
+        author: t.author,
+        university: t.university,
+        year: t.year,
+        thesisType: t.thesisType,
+        department: t.department,
+        axes: t.axes,
+        comparisonNote: t.comparisonNote,
+        yokPdfUrl: t.yokPdfUrl,
+      }));
+    }
+
+    return box;
+  });
+
+  return boxes.sort((a, b) => {
+    const weightA = boxOrderWeight[a.boxType] ?? 99;
+    const weightB = boxOrderWeight[b.boxType] ?? 99;
+    return weightA - weightB;
+  });
 }
 
 /**

@@ -143,11 +143,9 @@ export const useOnboardingStore = create<OnboardingStore>()(
           stepsCompleted: { ...state.stepsCompleted, [step]: true },
         })),
       unsetStepCompleted: (step) =>
-        set((state) => {
-          const stepsCompleted = { ...state.stepsCompleted };
-          delete stepsCompleted[step];
-          return { stepsCompleted };
-        }),
+        set((state) => ({
+          stepsCompleted: { ...state.stepsCompleted, [step]: false },
+        })),
       clearDownstreamData: (fromStep) =>
         set((state) => {
           const toClear: string[] = [];

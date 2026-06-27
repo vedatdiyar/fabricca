@@ -166,6 +166,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
         // Clears literature-review step completion and literaturePool
         useOnboardingStore.getState().clearDownstreamData("boxes");
         useOnboardingStore.getState().unsetStepCompleted("boxes");
+        useOnboardingStore.getState().unsetStepCompleted("literature-review");
         void clearDownstreamDbAction("boxes");
         toast.info("İşlem iptal edildi, önceki adıma yönlendiriliyorsunuz.");
         router.push("/onboarding/boxes");

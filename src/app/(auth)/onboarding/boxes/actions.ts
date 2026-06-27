@@ -49,7 +49,10 @@ export async function generateBoxesStructureAction(): Promise<
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
 
-    const [matrix] = await Promise.all([fetchThesisMatrix()]);
+    const [matrix, report] = await Promise.all([
+      fetchThesisMatrix(),
+      fetchOriginalityReport(),
+    ]);
 
     if (!matrix) return { error: "Tez matrisi bulunamadı." };
 
@@ -105,7 +108,9 @@ export async function generateBoxesStructureAction(): Promise<
       };
     });
 
-    // Append the hardcoded RELATED_THESES box (server-side, no Gemini involvement)
+    // Populate the RELATED_THESES box with overlapping theses from the
+    // originality report (already computed during risk analysis).
+    const overlapTable = report?.tezaraResults?.overlapTable ?? [];
     normalizedBoxes.push({
       title: RELATED_THESES_TITLE,
       boxType: "RELATED_THESES",
@@ -113,6 +118,17 @@ export async function generateBoxesStructureAction(): Promise<
       semanticSearchQueries: [],
       concepts: [],
       foundationalQueries: [],
+      relatedTheses: overlapTable.map((t) => ({
+        title: t.title,
+        author: t.author,
+        university: t.university,
+        year: t.year,
+        thesisType: t.thesisType,
+        department: t.department,
+        axes: t.axes,
+        comparisonNote: t.comparisonNote,
+        yokPdfUrl: t.yokPdfUrl,
+      })),
     });
 
     log.info("box_structure_generation_success", {

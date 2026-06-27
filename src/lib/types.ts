@@ -182,6 +182,23 @@ export const RefinedFoundationalQueriesSchema = z.object({
   foundationalQueries: z.array(FoundationalQuerySchema).max(4),
 });
 
+export const RelatedThesisEntrySchema = z.object({
+  title: z.string().min(1, "Tez başlığı boş olamaz"),
+  author: z.string().min(1, "Yazar adı boş olamaz"),
+  university: z.string(),
+  year: z.number().int(),
+  thesisType: z.string(),
+  department: z.string(),
+  axes: z.object({
+    subject: z.enum(["KRITIK", "ORTA", "OZGUN"]),
+    theory: z.enum(["KRITIK", "ORTA", "OZGUN"]),
+    methodology: z.enum(["KRITIK", "ORTA", "OZGUN"]),
+    context: z.enum(["KRITIK", "ORTA", "OZGUN"]).optional(),
+  }),
+  comparisonNote: z.string().optional(),
+  yokPdfUrl: z.string().optional(),
+});
+
 export const GeminiThesisBoxSchema = z.object({
   title: z.string().min(1, "Kutu başlığı boş olamaz"),
   boxType: z.enum([
@@ -194,6 +211,7 @@ export const GeminiThesisBoxSchema = z.object({
   description: z.string().min(1, "Kutu açıklaması boş olamaz"),
   semanticSearchQueries: z.array(z.string()).max(4),
   concepts: z.array(z.string()).max(4),
+  relatedTheses: z.array(RelatedThesisEntrySchema).optional(),
 });
 
 export const FinalGeminiThesisBoxSchema = GeminiThesisBoxSchema.extend({
@@ -210,6 +228,26 @@ export const FinalBoxGenerationResponseSchema = z.object({
     .min(1, "En az bir kutu üretilmelidir"),
 });
 
+/**
+ * Özgünlük analizinde tespit edilen sınırdaş/ikiz tez çalışması.
+ */
+export interface RelatedThesisEntry {
+  title: string;
+  author: string;
+  university: string;
+  year: number;
+  thesisType: string;
+  department: string;
+  axes: {
+    subject: OverlapLevel;
+    theory: OverlapLevel;
+    methodology: OverlapLevel;
+    context?: OverlapLevel;
+  };
+  comparisonNote?: string;
+  yokPdfUrl?: string;
+}
+
 export interface GeminiThesisBox {
   title: string;
   boxType:
@@ -222,6 +260,7 @@ export interface GeminiThesisBox {
   semanticSearchQueries: string[];
   foundationalQueries: FoundationalQuery[];
   concepts: string[];
+  relatedTheses?: RelatedThesisEntry[];
 }
 
 export interface JuryArticle {

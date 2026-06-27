@@ -43,10 +43,8 @@ export function OnboardingStepper({
           const isActive = currentIdx === index;
           const isCompleted = currentIdx > index;
           const isFuture = currentIdx < index;
-          const hasData =
-            stepsData[step.key] ??
-            (isHydrated ? stepsCompleted[step.key] : false) ??
-            false;
+          const clientValue = isHydrated ? stepsCompleted[step.key] : undefined;
+          const hasData = clientValue ?? stepsData[step.key] ?? false;
           const isDisabled = isFuture && !hasData;
 
           return (
