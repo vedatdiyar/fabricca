@@ -177,6 +177,11 @@ src/
     index.ts
     schema.ts
     seed.ts
+  experimental-jury/
+    juryEngine.ts
+    promptTemplate.ts
+    testRunner.ts
+    types.ts
   lib/
     academic/
       badge-calculator.ts
@@ -218,6 +223,128 @@ README.md
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path="src/experimental-jury/juryEngine.ts">
+import type { JuryVerdict } from "./types";
+⋮----
+export interface JuryRawData {
+  subject_has_same_primary_actor: boolean;
+  subject_has_secondary_layer: boolean;
+  theory_has_same_primary_framework: boolean;
+  theory_has_secondary_framework: boolean;
+  context_spatial_match: boolean;
+  context_temporal_covers: boolean;
+  mainClaimMatched: boolean;
+}
+⋮----
+export class JuryEngine
+⋮----
+static classify(data: JuryRawData): JuryVerdict
+</file>
+
+<file path="src/experimental-jury/promptTemplate.ts">
+import type { JsonSchema } from "../lib/gemini";
+⋮----
+export function buildJuryPrompt(
+  matrix: {
+    studyTitle: string;
+    researchQuestion: string;
+    theoreticalFramework: string;
+    methodology: string;
+    researchScope: string;
+    mainClaim: string;
+  },
+  candidate: {
+    id: number;
+    title: string;
+    author: string;
+    university: string;
+    year: number;
+    thesisType: string;
+    department: string;
+    abstract: string;
+  },
+): string
+</file>
+
+<file path="src/experimental-jury/testRunner.ts">
+import { config } from "dotenv";
+⋮----
+import { GoogleGenAI } from "@google/genai";
+import { JuryEngine } from "./juryEngine";
+import type { JuryRawData } from "./juryEngine";
+import {
+  JURY_SYSTEM_INSTRUCTION,
+  JURY_RESPONSE_SCHEMA,
+  buildJuryPrompt,
+} from "./promptTemplate";
+import type { JuryVerdict } from "./types";
+⋮----
+interface CandidateThesis {
+  id: number;
+  title: string;
+  author: string;
+  university: string;
+  year: number;
+  thesisType: string;
+  department: string;
+  abstract: string;
+}
+⋮----
+interface ThesisSnapshot {
+  id: number;
+  year: number;
+  title: string;
+  actor: boolean;
+  layer: boolean;
+  theory: boolean;
+  secTheory: boolean;
+  spatial: boolean;
+  temporal: boolean;
+  MC: boolean;
+  verdict: JuryVerdict;
+}
+⋮----
+function verdictLabel(v: JuryVerdict): string
+⋮----
+function tick(v: boolean): string
+⋮----
+function snip(s: string, max = 65): string
+⋮----
+async function run(): Promise<void>
+</file>
+
+<file path="src/experimental-jury/types.ts">
+export interface ThesisMatrix {
+  studyTitle: string;
+  researchQuestion: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+  mainClaim: string;
+}
+⋮----
+export interface AxisBooleans {
+  subject: boolean;
+  theory: boolean;
+  methodology: boolean;
+  context: boolean;
+  FINAL: boolean;
+}
+⋮----
+export interface BooleanScorecard {
+  subject: AxisBooleans;
+  theory: AxisBooleans;
+  methodology: AxisBooleans;
+  context: AxisBooleans;
+}
+⋮----
+export type JuryVerdict = "RISK" | "LITERATURE_GAP" | "EMPIRICAL_FUEL" | "NOISE";
+</file>
+
+<file path="README.md">
+# fabricca
+</file>
 
 <file path="src/app/(app)/advisor/page.tsx">
 export default function AdvisorPage()
@@ -500,19 +627,6 @@ interface LoadingSpinnerProps {
 className=
 </file>
 
-<file path="src/lib/academic/badge-calculator.ts">
-import type { OverlapLevel } from "@/lib/types";
-⋮----
-export type ThesisBadge = "IKIZ" | "SINIRDAS" | "OZGUN";
-⋮----
-export function calculateBadge(axes: {
-  subject: OverlapLevel;
-  theory: OverlapLevel;
-  methodology: OverlapLevel;
-  context?: OverlapLevel;
-}): ThesisBadge
-</file>
-
 <file path="src/lib/academic/embedding-resolver.ts">
 
 </file>
@@ -694,10 +808,6 @@ export async function rerankTheses(
   titles: string[],
   log: LoggerInstance,
 ): Promise<CohereRerankResponse>
-</file>
-
-<file path="README.md">
-# fabricca
 </file>
 
 <file path="src/app/(app)/dashboard/_components/dashboard-content.tsx">
@@ -1028,6 +1138,19 @@ import { db } from "./index";
 import { users } from "./schema";
 ⋮----
 async function seed()
+</file>
+
+<file path="src/lib/academic/badge-calculator.ts">
+import type { OverlapLevel } from "@/lib/types";
+⋮----
+export type ThesisBadge = "IKIZ" | "SINIRDAS" | "OZGUN";
+⋮----
+export function calculateBadge(axes: {
+  subject: OverlapLevel;
+  theory: OverlapLevel;
+  methodology: OverlapLevel;
+  context?: OverlapLevel;
+}): ThesisBadge
 </file>
 
 <file path="src/lib/tezara-queue.ts">
@@ -1990,35 +2113,6 @@ import { StartOverButton } from "../_components/start-over-button";
 export default async function OnboardingRiskPage()
 </file>
 
-<file path="src/app/(app)/library/actions.ts">
-import { eq, inArray } from "drizzle-orm";
-import { redirect } from "next/navigation";
-import { db } from "@/db";
-import {
-  thesisBoxes,
-  libraryResources,
-  type LibraryResource,
-} from "@/db/schema";
-import { getSession } from "@/session";
-import { createFlowId, Logger } from "@/lib/logger";
-⋮----
-export type GetBoxResourcesResult =
-  | { success: true; data: LibraryResource[] }
-  | { success: false; error: string };
-⋮----
-export type ToggleReadStatusResult =
-  { success: true } | { success: false; error: string };
-⋮----
-export async function getBoxResourcesAction(
-  boxId: number,
-): Promise<GetBoxResourcesResult>
-⋮----
-export async function toggleResourceReadStatusAction(
-  resourceId: number,
-  isRead: boolean,
-): Promise<ToggleReadStatusResult>
-</file>
-
 <file path="src/app/(auth)/onboarding/_hooks/use-onboarding-navigation.ts">
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -2101,6 +2195,35 @@ export function parseTezaraSearchResults(
 // Author
 </file>
 
+<file path="src/app/(app)/library/actions.ts">
+import { eq, inArray } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { db } from "@/db";
+import {
+  thesisBoxes,
+  libraryResources,
+  type LibraryResource,
+} from "@/db/schema";
+import { getSession } from "@/session";
+import { createFlowId, Logger } from "@/lib/logger";
+⋮----
+export type GetBoxResourcesResult =
+  | { success: true; data: LibraryResource[] }
+  | { success: false; error: string };
+⋮----
+export type ToggleReadStatusResult =
+  { success: true } | { success: false; error: string };
+⋮----
+export async function getBoxResourcesAction(
+  boxId: number,
+): Promise<GetBoxResourcesResult>
+⋮----
+export async function toggleResourceReadStatusAction(
+  resourceId: number,
+  isRead: boolean,
+): Promise<ToggleReadStatusResult>
+</file>
+
 <file path="src/components/literature-reader.tsx">
 import { useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -2143,6 +2266,10 @@ import { Button } from "@/components/ui/button";
 import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
 </file>
 
+<file path="src/lib/prompts/index.ts">
+
+</file>
+
 <file path="src/app/(auth)/onboarding/_lib/fetch-actions.ts">
 import { eq, sql, and, not } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
@@ -2183,10 +2310,6 @@ export async function checkStepsDataAction(): Promise<Record<
   boolean
 > | null> {
   const session = await getSession();
-</file>
-
-<file path="src/lib/prompts/index.ts">
-
 </file>
 
 <file path="src/app/(auth)/onboarding/literature-review/_components/literature-article-card.tsx">
@@ -2309,31 +2432,6 @@ export async function extractQueries(
 ): Promise<
 </file>
 
-<file path="src/lib/prompts/originality-analysis.ts">
-import type { JsonSchema } from "../gemini";
-⋮----
-export function buildAnalysisSystemInstruction(): string
-⋮----
-export function buildAnalysisPrompt(params: {
-  studyTitle: string;
-  researchQuestion: string;
-  mainClaim: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-  validDetails: {
-    id: number;
-    title: string;
-    author: string;
-    university: string;
-    year: number;
-    thesisType: string;
-    department: string;
-    abstract: string;
-  }[];
-}): string
-</file>
-
 <file path="src/app/(auth)/onboarding/risk/_components/risk-container.tsx">
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -2389,6 +2487,31 @@ import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
 import { getProfile } from "@/session";
 ⋮----
 export default async function OnboardingPage()
+</file>
+
+<file path="src/lib/prompts/originality-analysis.ts">
+import type { JsonSchema } from "../gemini";
+⋮----
+export function buildAnalysisSystemInstruction(): string
+⋮----
+export function buildAnalysisPrompt(params: {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+  validDetails: {
+    id: number;
+    title: string;
+    author: string;
+    university: string;
+    year: number;
+    thesisType: string;
+    department: string;
+    abstract: string;
+  }[];
+}): string
 </file>
 
 <file path="src/lib/tezara.ts">
@@ -2622,41 +2745,23 @@ export interface AnalyzeOriginalityRiskParams {
   validDetails: TezaraThesisDetails[];
 }
 ⋮----
-export function getSubjectOverlap(
-  scorecard?: {
-    same_core_question: boolean;
-    is_subsumed: boolean;
-    significant_topic_intersection: boolean;
-    background_mention_only: boolean;
-  },
-): OverlapLevel
-⋮----
-export function getMethodologyOverlap(
-  scorecard?: {
-    identical_method_and_tools: boolean;
-    is_subsumed: boolean;
-    partially_shared_approach: boolean;
-    different_empirical_design: boolean;
-  },
-): OverlapLevel
-⋮----
-export function getTheoryOverlap(
-  scorecard?: {
-    same_theoretical_backbone: boolean;
-    is_subsumed: boolean;
-    shared_concepts_only: boolean;
-    different_epistemology: boolean;
-  },
-): OverlapLevel
-⋮----
-export function getContextOverlap(
-  scorecard?: {
-    overlapping_universe_and_sample: boolean;
-    is_subsumed: boolean;
-    partial_contextual_contact: boolean;
-    distinct_context: boolean;
-  },
-): OverlapLevel
+export interface GeminiOverlapItem {
+  id: number;
+  subject_has_same_primary_actor: boolean;
+  subject_has_same_primary_actor_evidence: string;
+  subject_has_secondary_layer: boolean;
+  subject_has_secondary_layer_evidence: string;
+  theory_has_same_primary_framework: boolean;
+  theory_has_same_primary_framework_evidence: string;
+  theory_has_secondary_framework: boolean;
+  theory_has_secondary_framework_evidence: string;
+  context_spatial_match: boolean;
+  context_spatial_match_evidence: string;
+  context_temporal_covers: boolean;
+  context_temporal_covers_evidence: string;
+  mainClaimMatched: boolean;
+  mainClaimMatched_evidence: string;
+}
 ⋮----
 export interface CalculatedOverlapItem {
   id: number;
@@ -2711,34 +2816,7 @@ export function compareThesesByRisk(
 function evaluateGlobalBadge(overlapTable: CalculatedOverlapItem[]):
 ⋮----
 export function calculateOriginalityRisk(
-  overlapTable: Array<{
-    id: number;
-    academic_reasoning: string;
-    subject_scorecard?: {
-      same_core_question: boolean;
-      is_subsumed: boolean;
-      significant_topic_intersection: boolean;
-      background_mention_only: boolean;
-    };
-    methodology_scorecard?: {
-      identical_method_and_tools: boolean;
-      is_subsumed: boolean;
-      partially_shared_approach: boolean;
-      different_empirical_design: boolean;
-    };
-    theory_scorecard?: {
-      same_theoretical_backbone: boolean;
-      is_subsumed: boolean;
-      shared_concepts_only: boolean;
-      different_epistemology: boolean;
-    };
-    context_scorecard?: {
-      overlapping_universe_and_sample: boolean;
-      is_subsumed: boolean;
-      partial_contextual_contact: boolean;
-      distinct_context: boolean;
-    };
-  }>,
+  overlapTable: GeminiOverlapItem[],
   validDetails: TezaraThesisDetails[],
   logger?: Logger,
 ): CalculatedOriginalityRiskResult
@@ -3109,6 +3187,31 @@ export async function finalizeJuryAnalysisAction(params: {
 export async function completeRiskStageAction(): Promise<OnboardingActionResult>
 </file>
 
+<file path="src/app/(auth)/onboarding/boxes/_components/boxes-container.tsx">
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Loader2,
+  CheckCircle2,
+  Rocket,
+  Library,
+  FileText,
+  PlusCircle,
+  WholeWord,
+  Archive,
+  ExternalLink,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardTitle } from "@/components/ui/card";
+import { AIBanner } from "@/components/ai-banner";
+import { LoadingSpinner } from "@/components/loading-spinner";
+import { confirmBoxesAction } from "../actions";
+import { fetchBoxesWithFullShape } from "../../_lib/fetch-actions";
+import type { GeminiThesisBox, RelatedThesisEntry } from "@/lib/types";
+</file>
+
 <file path="src/app/(auth)/onboarding/boxes/actions.ts">
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
@@ -3178,31 +3281,6 @@ export async function confirmBoxesAction(
 // Insert sub-boxes as separate rows with parentId FK
 ⋮----
 // Insert all overlap theses into the RELATED_THESES box
-</file>
-
-<file path="src/app/(auth)/onboarding/boxes/_components/boxes-container.tsx">
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Loader2,
-  CheckCircle2,
-  Rocket,
-  Library,
-  FileText,
-  PlusCircle,
-  WholeWord,
-  Archive,
-  ExternalLink,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardTitle } from "@/components/ui/card";
-import { AIBanner } from "@/components/ai-banner";
-import { LoadingSpinner } from "@/components/loading-spinner";
-import { confirmBoxesAction } from "../actions";
-import { fetchBoxesWithFullShape } from "../../_lib/fetch-actions";
-import type { GeminiThesisBox, RelatedThesisEntry } from "@/lib/types";
 </file>
 
 <file path="src/app/(auth)/onboarding/literature-review/actions.ts">

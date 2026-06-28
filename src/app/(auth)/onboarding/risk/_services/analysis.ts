@@ -28,63 +28,30 @@ export interface AnalyzeOriginalityRiskParams {
  */
 const LEVEL_ORDER: OverlapLevel[] = ["OZGUN", "ORTA", "KRITIK"];
 
-export function getSubjectOverlap(
-  scorecard?: {
-    same_core_question: boolean;
-    is_subsumed: boolean;
-    significant_topic_intersection: boolean;
-    background_mention_only: boolean;
-  },
-): OverlapLevel {
-  if (!scorecard) return "OZGUN";
-  if (scorecard.same_core_question || scorecard.is_subsumed) return "KRITIK";
-  if (scorecard.significant_topic_intersection) return "ORTA";
-  return "OZGUN";
-}
-
-export function getMethodologyOverlap(
-  scorecard?: {
-    identical_method_and_tools: boolean;
-    is_subsumed: boolean;
-    partially_shared_approach: boolean;
-    different_empirical_design: boolean;
-  },
-): OverlapLevel {
-  if (!scorecard) return "OZGUN";
-  if (scorecard.identical_method_and_tools || scorecard.is_subsumed)
-    return "KRITIK";
-  if (scorecard.partially_shared_approach) return "ORTA";
-  return "OZGUN";
-}
-
-export function getTheoryOverlap(
-  scorecard?: {
-    same_theoretical_backbone: boolean;
-    is_subsumed: boolean;
-    shared_concepts_only: boolean;
-    different_epistemology: boolean;
-  },
-): OverlapLevel {
-  if (!scorecard) return "OZGUN";
-  if (scorecard.same_theoretical_backbone || scorecard.is_subsumed)
-    return "KRITIK";
-  if (scorecard.shared_concepts_only) return "ORTA";
-  return "OZGUN";
-}
-
-export function getContextOverlap(
-  scorecard?: {
-    overlapping_universe_and_sample: boolean;
-    is_subsumed: boolean;
-    partial_contextual_contact: boolean;
-    distinct_context: boolean;
-  },
-): OverlapLevel {
-  if (!scorecard) return "OZGUN";
-  if (scorecard.overlapping_universe_and_sample || scorecard.is_subsumed)
-    return "KRITIK";
-  if (scorecard.partial_contextual_contact) return "ORTA";
-  return "OZGUN";
+/**
+ * Gemini'nin düz boolean + evidence şemasından döndürdüğü
+ * tek bir aday tez karşılaştırma satırının tip tanımı.
+ *
+ * Bu interface hem `analyzeOriginalityRisk` çıktısında hem de
+ * `calculateOriginalityRisk` girdisinde ortak tip olarak kullanılarak
+ * iki fonksiyon arasındaki pipe'ın tip güvenliğini garanti eder.
+ */
+export interface GeminiOverlapItem {
+  id: number;
+  subject_has_same_primary_actor: boolean;
+  subject_has_same_primary_actor_evidence: string;
+  subject_has_secondary_layer: boolean;
+  subject_has_secondary_layer_evidence: string;
+  theory_has_same_primary_framework: boolean;
+  theory_has_same_primary_framework_evidence: string;
+  theory_has_secondary_framework: boolean;
+  theory_has_secondary_framework_evidence: string;
+  context_spatial_match: boolean;
+  context_spatial_match_evidence: string;
+  context_temporal_covers: boolean;
+  context_temporal_covers_evidence: string;
+  mainClaimMatched: boolean;
+  mainClaimMatched_evidence: string;
 }
 
 export interface CalculatedOverlapItem {
@@ -161,10 +128,6 @@ interface AxesWithOptionalContext {
   context?: OverlapLevel;
 }
 
-/**
- * Compares two theses for sorting: highest axis level first, then second-highest,
- * then doctorate over master's, then most recent first.
- */
 const BADGE_ORDER: ThesisBadge[] = ["IKIZ", "SINIRDAS", "OZGUN"];
 
 /**
@@ -237,44 +200,22 @@ function evaluateGlobalBadge(overlapTable: CalculatedOverlapItem[]): {
 }
 
 /**
- * Enriches the raw Gemini overlap analysis with thesis metadata and applies
- * the jury elimination filter: a thesis stays in the overlap table only if at
- * least one of its 4 axes is KRITIK or ORTA. All others are relegated to
- * eliminatedTheses.
+ * Gemini'nin düz boolean + evidence çıktısını alarak her aday tez için
+ * deterministik İkincil Katman ve Küme Matematiği ile KRITIK / ORTA / OZGUN
+ * sınıflandırması üretir.
  *
- * The global badge is derived from calculateBadge with priority IKIZ > SINIRDAS > OZGUN.
+ * Eleme kuralı: Subject ve Context eksenleri aynı anda OZGUN ise tez
+ * eliminatedTheses listesine taşınır.
  *
- * Filters out IDs hallucinated by Gemini that don't exist in validDetails.
+ * Metodoloji ekseni Gemini şemasında bulunmadığından sabit OZGUN olarak atanır.
+ *
+ * @param overlapTable - Gemini'dan dönen düz boolean overlap tablosu
+ * @param validDetails - TEZARA'dan çekilen tez detayları
+ * @param logger - Opsiyonel loglama servisi
+ * @returns Badge, kalan ve elenen tez listeleri
  */
 export function calculateOriginalityRisk(
-  overlapTable: Array<{
-    id: number;
-    academic_reasoning: string;
-    subject_scorecard?: {
-      same_core_question: boolean;
-      is_subsumed: boolean;
-      significant_topic_intersection: boolean;
-      background_mention_only: boolean;
-    };
-    methodology_scorecard?: {
-      identical_method_and_tools: boolean;
-      is_subsumed: boolean;
-      partially_shared_approach: boolean;
-      different_empirical_design: boolean;
-    };
-    theory_scorecard?: {
-      same_theoretical_backbone: boolean;
-      is_subsumed: boolean;
-      shared_concepts_only: boolean;
-      different_epistemology: boolean;
-    };
-    context_scorecard?: {
-      overlapping_universe_and_sample: boolean;
-      is_subsumed: boolean;
-      partial_contextual_contact: boolean;
-      distinct_context: boolean;
-    };
-  }>,
+  overlapTable: GeminiOverlapItem[],
   validDetails: TezaraThesisDetails[],
   logger?: Logger,
 ): CalculatedOriginalityRiskResult {
@@ -302,11 +243,44 @@ export function calculateOriginalityRisk(
       continue;
     }
 
+    const sameSubject = item.subject_has_same_primary_actor;
+    const extraSubject = item.subject_has_secondary_layer;
+    const sameTheory = item.theory_has_same_primary_framework;
+    const extraTheory = item.theory_has_secondary_framework;
+    const sameContext =
+      item.context_spatial_match && item.context_temporal_covers;
+
+    let subjectOverlap: OverlapLevel = "OZGUN";
+    let theoryOverlap: OverlapLevel = "OZGUN";
+    let contextOverlap: OverlapLevel = "OZGUN";
+    const methodologyOverlap: OverlapLevel = "OZGUN";
+
+    // 1. Bağlam Hesaplama (Küme Kapsama)
+    if (sameContext) contextOverlap = "KRITIK";
+    else if (item.context_spatial_match) contextOverlap = "ORTA";
+
+    // 2. Konu Hesaplama (İkincil Bakış Filtresi)
+    if (sameSubject && !extraSubject) subjectOverlap = "KRITIK";
+    else if (sameSubject && extraSubject) subjectOverlap = "ORTA";
+
+    // 3. Teori Hesaplama (Ek Kuram Filtresi)
+    if (sameTheory && !extraTheory) theoryOverlap = "KRITIK";
+    else if (sameTheory && extraTheory) theoryOverlap = "ORTA";
+
+    // Kanıt notlarını temizce birleştir
+    const comparisonNote = [
+      item.subject_has_secondary_layer_evidence,
+      item.theory_has_secondary_framework_evidence,
+      item.context_temporal_covers_evidence,
+    ]
+      .filter(Boolean)
+      .join(" | ");
+
     const axes = {
-      subject: getSubjectOverlap(item.subject_scorecard),
-      theory: getTheoryOverlap(item.theory_scorecard),
-      methodology: getMethodologyOverlap(item.methodology_scorecard),
-      context: getContextOverlap(item.context_scorecard),
+      subject: subjectOverlap,
+      theory: theoryOverlap,
+      methodology: methodologyOverlap,
+      context: contextOverlap,
     };
 
     const thesisEntry: CalculatedOverlapItem = {
@@ -317,12 +291,12 @@ export function calculateOriginalityRisk(
       year: detail.year,
       thesisType: detail.thesisType,
       department: detail.department,
-      comparisonNote: item.academic_reasoning,
+      comparisonNote,
       yokPdfUrl: detail.yokPdfUrl,
       axes,
     };
 
-    // Gate: both subject and context OZGUN -> eliminated, otherwise calculatedOverlapTable
+    // Gate: both subject and context OZGUN -> eliminated
     const subjectIsOriginal = axes.subject === "OZGUN";
     const contextIsOriginal = axes.context === "OZGUN";
 
@@ -353,44 +327,22 @@ export function calculateOriginalityRisk(
 }
 
 /**
- * Performs comparison between target thesis and a list of identified academic
- * theses using the Academic Jury Analysis model.
+ * Hedef tez ile tespit edilen aday akademik tezler arasında, deterministik
+ * ikincil katman boolean şeması üzerinden karşılaştırma analizi yapar.
+ *
+ * @param params - Hedef tez matrisi ve aday tez detayları
+ * @param log - Loglama servisi
+ * @param chunkSize - Paralel Gemini çağrılarında kullanılacak grup boyutu
+ * @returns Gemini'nin ürettiği düz boolean overlap tablosu
  */
 export async function analyzeOriginalityRisk(
   params: AnalyzeOriginalityRiskParams,
   log: Logger,
   chunkSize = 4,
 ): Promise<{
-  overlapTable: {
-    id: number;
-    academic_reasoning: string;
-    subject_scorecard?: {
-      same_core_question: boolean;
-      is_subsumed: boolean;
-      significant_topic_intersection: boolean;
-      background_mention_only: boolean;
-    };
-    methodology_scorecard?: {
-      identical_method_and_tools: boolean;
-      is_subsumed: boolean;
-      partially_shared_approach: boolean;
-      different_empirical_design: boolean;
-    };
-    theory_scorecard?: {
-      same_theoretical_backbone: boolean;
-      is_subsumed: boolean;
-      shared_concepts_only: boolean;
-      different_epistemology: boolean;
-    };
-    context_scorecard?: {
-      overlapping_universe_and_sample: boolean;
-      is_subsumed: boolean;
-      partial_contextual_contact: boolean;
-      distinct_context: boolean;
-    };
-  }[];
+  overlapTable: GeminiOverlapItem[];
 }> {
-  log.file("analysis.ts:42");
+  log.file("analysis.ts");
   const startTime = performance.now();
   log.info("originality_risk_analyze_start", {
     service: "originality",
@@ -413,34 +365,7 @@ export async function analyzeOriginalityRisk(
       };
 
       const result = await generateStructuredContent<{
-        overlapTable: {
-          id: number;
-          academic_reasoning: string;
-          subject_scorecard: {
-            same_core_question: boolean;
-            is_subsumed: boolean;
-            significant_topic_intersection: boolean;
-            background_mention_only: boolean;
-          };
-          methodology_scorecard: {
-            identical_method_and_tools: boolean;
-            is_subsumed: boolean;
-            partially_shared_approach: boolean;
-            different_empirical_design: boolean;
-          };
-          theory_scorecard: {
-            same_theoretical_backbone: boolean;
-            is_subsumed: boolean;
-            shared_concepts_only: boolean;
-            different_epistemology: boolean;
-          };
-          context_scorecard: {
-            overlapping_universe_and_sample: boolean;
-            is_subsumed: boolean;
-            partial_contextual_contact: boolean;
-            distinct_context: boolean;
-          };
-        }[];
+        overlapTable: GeminiOverlapItem[];
       }>(
         "gemini-3.1-flash-lite",
         buildAnalysisSystemInstruction(),
@@ -464,13 +389,15 @@ export async function analyzeOriginalityRisk(
       "Overlap Analysis Results",
       overlapTable.map((o) => ({
         id: o.id,
-        overlap: {
-          subject: getSubjectOverlap(o.subject_scorecard),
-          methodology: getMethodologyOverlap(o.methodology_scorecard),
-          theory: getTheoryOverlap(o.theory_scorecard),
-          context: getContextOverlap(o.context_scorecard),
+        booleans: {
+          sameActor: o.subject_has_same_primary_actor,
+          secondaryLayer: o.subject_has_secondary_layer,
+          sameFramework: o.theory_has_same_primary_framework,
+          secondaryFramework: o.theory_has_secondary_framework,
+          spatialMatch: o.context_spatial_match,
+          temporalCovers: o.context_temporal_covers,
+          claimMatched: o.mainClaimMatched,
         },
-        reasoning: o.academic_reasoning?.slice(0, 120),
       })),
     );
 
