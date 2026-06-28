@@ -1,11 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Loader2,
   CheckCircle2,
   Rocket,
   Library,
@@ -19,7 +17,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { AIBanner } from "@/components/ai-banner";
 import { LoadingSpinner } from "@/components/loading-spinner";
-import { confirmBoxesAction } from "../actions";
 import { fetchBoxesWithFullShape } from "../../_lib/fetch-actions";
 import type { GeminiThesisBox, RelatedThesisEntry } from "@/lib/types";
 
@@ -42,55 +39,21 @@ const badgeLabels: Record<string, string> = {
 export function BoxesContainer() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [confirming, setConfirming] = useState(false);
 
-  const {
-    data: boxes,
-    isLoading: loading,
-  } = useQuery({
+  const { data: boxes, isLoading: loading } = useQuery({
     queryKey: ["boxes"],
     queryFn: async (): Promise<GeminiThesisBox[]> => {
       const existing = await fetchBoxesWithFullShape();
       if (existing.length > 0) return existing;
       return [];
     },
+    staleTime: Infinity,
   });
 
-  // Fallback redirect: if query completed but no boxes exist, redirect to risk
-  const boxesResolved = !loading && boxes !== undefined;
-  useEffect(() => {
-    if (boxesResolved && boxes.length === 0) {
-      router.replace("/onboarding/risk");
-    }
-  }, [boxesResolved, boxes, router]);
-
-  const handleConfirm = useCallback(async () => {
-    if (!boxes) return;
-    setConfirming(true);
-
-    try {
-      const result = await confirmBoxesAction(boxes);
-      if ("error" in result && result.error) {
-        toast.error(result.error);
-        setConfirming(false);
-        return;
-      }
-
-      queryClient.invalidateQueries({ queryKey: ["boxes"] });
-      queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
-
-      setConfirming(false);
-      toast.success(
-        "Konu kutuları kaydedildi. Literatür taramasına geçiliyor.",
-      );
-      router.push("/onboarding/literature-review");
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.",
-      );
-      setConfirming(false);
-    }
-  }, [boxes, queryClient, router]);
+  const handleProceed = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
+    router.push("/onboarding/literature-review");
+  }, [queryClient, router]);
 
   if (loading) {
     return <LoadingSpinner variant="full" message="Kutular yükleniyor..." />;
@@ -127,18 +90,11 @@ export function BoxesContainer() {
       </div>
 
       <div className="flex justify-end mt-8 pb-8">
-        <Button onClick={handleConfirm} disabled={confirming} size="lg">
-          {confirming ? (
-            <span className="flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Kaydediliyor...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              <Rocket className="w-4 h-4" />
-              Kutuları Onayla ve Literatür Taramasını Başlat
-            </span>
-          )}
+        <Button onClick={handleProceed} size="lg">
+          <span className="flex items-center gap-2">
+            <Rocket className="w-4 h-4" />
+            Literatür Taramasına Geç
+          </span>
         </Button>
       </div>
     </div>

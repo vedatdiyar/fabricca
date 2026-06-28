@@ -177,11 +177,6 @@ src/
     index.ts
     schema.ts
     seed.ts
-  experimental-jury/
-    juryEngine.ts
-    promptTemplate.ts
-    testRunner.ts
-    types.ts
   lib/
     academic/
       badge-calculator.ts
@@ -224,134 +219,22 @@ README.md
 <files>
 This section contains the contents of the repository's files.
 
-<file path="src/experimental-jury/juryEngine.ts">
-import type { JuryVerdict } from "./types";
-⋮----
-export interface JuryRawData {
-  subject_has_same_primary_actor: boolean;
-  subject_has_secondary_layer: boolean;
-  theory_has_same_primary_framework: boolean;
-  theory_has_secondary_framework: boolean;
-  context_spatial_match: boolean;
-  context_temporal_covers: boolean;
-  mainClaimMatched: boolean;
-}
-⋮----
-export class JuryEngine
-⋮----
-static classify(data: JuryRawData): JuryVerdict
-</file>
-
-<file path="src/experimental-jury/promptTemplate.ts">
-import type { JsonSchema } from "../lib/gemini";
-⋮----
-export function buildJuryPrompt(
-  matrix: {
-    studyTitle: string;
-    researchQuestion: string;
-    theoreticalFramework: string;
-    methodology: string;
-    researchScope: string;
-    mainClaim: string;
-  },
-  candidate: {
-    id: number;
-    title: string;
-    author: string;
-    university: string;
-    year: number;
-    thesisType: string;
-    department: string;
-    abstract: string;
-  },
-): string
-</file>
-
-<file path="src/experimental-jury/testRunner.ts">
-import { config } from "dotenv";
-⋮----
-import { GoogleGenAI } from "@google/genai";
-import { JuryEngine } from "./juryEngine";
-import type { JuryRawData } from "./juryEngine";
-import {
-  JURY_SYSTEM_INSTRUCTION,
-  JURY_RESPONSE_SCHEMA,
-  buildJuryPrompt,
-} from "./promptTemplate";
-import type { JuryVerdict } from "./types";
-⋮----
-interface CandidateThesis {
-  id: number;
-  title: string;
-  author: string;
-  university: string;
-  year: number;
-  thesisType: string;
-  department: string;
-  abstract: string;
-}
-⋮----
-interface ThesisSnapshot {
-  id: number;
-  year: number;
-  title: string;
-  actor: boolean;
-  layer: boolean;
-  theory: boolean;
-  secTheory: boolean;
-  spatial: boolean;
-  temporal: boolean;
-  MC: boolean;
-  verdict: JuryVerdict;
-}
-⋮----
-function verdictLabel(v: JuryVerdict): string
-⋮----
-function tick(v: boolean): string
-⋮----
-function snip(s: string, max = 65): string
-⋮----
-async function run(): Promise<void>
-</file>
-
-<file path="src/experimental-jury/types.ts">
-export interface ThesisMatrix {
-  studyTitle: string;
-  researchQuestion: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-  mainClaim: string;
-}
-⋮----
-export interface AxisBooleans {
-  subject: boolean;
-  theory: boolean;
-  methodology: boolean;
-  context: boolean;
-  FINAL: boolean;
-}
-⋮----
-export interface BooleanScorecard {
-  subject: AxisBooleans;
-  theory: AxisBooleans;
-  methodology: AxisBooleans;
-  context: AxisBooleans;
-}
-⋮----
-export type JuryVerdict = "RISK" | "LITERATURE_GAP" | "EMPIRICAL_FUEL" | "NOISE";
-</file>
-
-<file path="README.md">
-# fabricca
-</file>
-
 <file path="src/app/(app)/advisor/page.tsx">
 export default function AdvisorPage()
 </file>
 
 <file path="src/app/(app)/card-index/page.tsx">
 export default function CardIndexPage()
+</file>
+
+<file path="src/app/page.tsx">
+import { redirect } from "next/navigation";
+⋮----
+export default function RootPage()
+</file>
+
+<file path="README.md">
+# fabricca
 </file>
 
 <file path="src/app/(app)/dashboard/_components/add-task-modal.tsx">
@@ -535,10 +418,32 @@ export async function collectOpenAlexResults(
 ): Promise<ValidatedPaper[]>
 </file>
 
-<file path="src/app/page.tsx">
-import { redirect } from "next/navigation";
-⋮----
-export default function RootPage()
+<file path="src/app/icon0.svg">
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none"><metadata><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:dc="http://purl.org/dc/elements/1.1/"><rdf:Description><dc:creator>RealFaviconGenerator</dc:creator><dc:source>https://realfavicongenerator.net</dc:source></rdf:Description></rdf:RDF></metadata><path d="M258 478C391.101 478 499 375.921 499 250C499 124.079 391.101 22 258 22C124.899 22 17 124.079 17 250C17 375.921 124.899 478 258 478Z" fill="#121917"></path><path d="M246.226 10.8441C247.312 10.7859 248.467 10.7623 249.556 10.7328C314.133 8.98486 373.707 32.4599 420.465 74.4124C471.42 120.716 501.001 184.369 502.722 251.409C504.457 316.684 478.966 379.955 431.827 427.38C388.779 470.713 327.676 499.107 264.687 500.783C203.088 502.658 143.072 482.002 96.9748 443.058C44.8021 399.584 13.1276 338.002 9.04683 272.11C4.95745 205.75 28.379 140.511 74.2776 90.4161C108.502 53.5729 153.749 26.6496 204.406 15.9524C218.852 12.9018 231.611 11.7074 246.226 10.8441ZM36.531 337.479C39.6407 329.177 42.7365 322.945 48.6058 315.931C64.4689 296.976 90.6497 286.696 115.395 295.341C125.913 299.014 135.904 306.422 140.709 316.24C147.352 329.448 144.22 348.226 128.916 354.692C123.705 356.841 117.809 356.926 112.533 354.928C104.814 352.061 99.5814 344.99 102.723 337.057C104.766 331.896 110.715 328.279 116.184 331.184C122.065 334.306 124.02 338.109 124.061 344.31C127.456 343.459 130.467 342.174 132.19 339.102C137.731 329.211 131.131 318.722 121.991 314.059C115.642 310.795 108.173 310.127 101.295 312.207C79.3864 318.647 69.8861 344.483 77.2229 363.927C84.8079 384.029 99.0439 397.133 118.974 406.349C168.744 430.225 228.655 423.426 278.634 403.749C282.576 402.199 286.547 400.677 290.512 399.187C303.254 394.404 316.036 389.725 328.861 385.147C350.175 377.576 369.063 371.772 392.042 370.66C403 370.127 411.45 368.858 422.163 372.824C400.455 379.044 379.485 387.397 359.594 397.747C353.941 400.746 347.938 404.423 342.404 407.691C328.679 415.873 314.712 423.681 300.521 431.107C267.295 448.509 241.248 458.708 202.678 458.431C189.579 458.456 176.522 457.013 163.777 454.127C159.507 453.128 155.255 452.06 151.024 450.923C159.266 455.787 167.804 459.335 176.836 462.508C203.499 471.875 227.93 474.481 255.652 468.085C282.294 461.938 303.956 451.162 326.792 436.618C338.806 428.968 349.017 420.64 360.607 412.666C382.312 397.741 409.063 382.957 435.484 377.336C442.544 375.833 449.408 375.462 456.54 375.156C482.868 330.793 493.561 279.563 487.051 228.986C485.999 220.485 483.907 208.301 481.604 199.843L353.938 172.781C332.31 168.208 309.056 163.692 287.659 158.625C287.742 154.015 287.788 149.405 287.802 144.795L386.7 128.716C404.645 125.763 426.025 122.821 443.54 119.155C439.962 113.625 432.078 104.671 427.551 99.7452C395.666 64.9998 353.293 40.4695 306.22 29.5032C288.527 25.4847 263.691 22.8497 245.409 24.0697C183.677 27.3695 125.909 54.0732 85.0104 98.214C40.8944 146.399 18.511 209.199 22.7153 272.993C24.0838 293.283 29.2654 318.256 36.531 337.479Z" fill="#E8F0FE"></path><path d="M230.204 92.6969C230.512 90.5431 230.777 87.6163 232.812 86.4275C238.108 83.3344 239.306 89.0228 239.905 92.0806C244.422 97.1688 253.613 101.027 259.594 105.598C263.555 108.626 271.482 117.542 275.189 118.855C276.582 119.349 277.813 119.717 278.591 121.004C279.395 122.34 279.167 126.387 278.588 127.82C278.194 128.786 277.568 129.451 276.572 129.879C274.914 130.589 272.283 130.575 270.456 130.742L270.383 168.724C276.476 169.573 275.549 171.134 275.447 176.431C287.861 176.356 286.362 178.397 286.309 189.689C286.289 194.108 277.717 199.772 274.212 202.035C274.216 204.607 274.07 210.506 274.328 212.87C275.212 220.913 275.993 228.882 276.721 236.939L282.172 297.489C282.999 306.992 284.482 320.282 284.734 329.646C277.317 328.956 274.424 328.736 266.872 329.397C265.339 321.123 267.868 310.127 256.052 312.304C253.322 312.808 252.001 313.108 250.251 315.247C249.254 318.581 249.559 326.442 249.221 330.333C248.692 336.398 248.169 343.475 247.011 349.427C255.748 340.526 266.518 333.32 279.749 332.813C286.948 332.539 294.742 334.413 300.127 339.165C303.969 342.498 306.226 347.171 306.389 352.118C306.581 358.825 302.917 364.554 298.171 369.232C297.506 369.885 296.807 370.505 296.076 371.095C301.07 369.239 306.491 366.46 311.873 368.618C314.805 369.793 319.942 373.933 319.531 377.138C318.115 378.524 307.024 381.987 304.34 381.873C302.553 381.804 301.034 379.847 299.369 379.413C292.002 377.541 284.886 376.797 279.399 371.154C274.967 366.595 274.676 359.106 279.849 355.123C286.776 349.792 291.389 356.39 294.176 361.431C304.082 355.615 296.92 346.125 287.467 344.537C282.94 343.758 278.273 344.764 274.54 347.322C262.973 355.281 264.416 368.911 272.273 378.688C276.36 383.776 280.061 386.319 285.899 389.369C266.835 398.689 247.553 403.387 226.577 407.332C187.053 414.758 119.235 410.306 95.1531 374.296C92.34 370.767 90.0686 366.148 88.3681 362.049C91.1197 365.76 94.339 368.728 97.9905 371.614C106.252 376.879 116.608 381.858 126.807 381.996C127.956 382.012 140.464 380.411 141.686 380.09C151.593 377.465 156.693 361.274 167.474 357.95C172.276 356.472 176.112 357.149 180.828 356.459C182.036 346.156 182.734 335.894 183.76 325.575C186.203 300.265 188.774 274.966 191.485 249.679C192.961 235.789 194.318 219.433 196.681 205.782C210.591 204.853 226.666 204.491 240.683 204.122C237.959 201.461 237.201 200.342 235.48 196.992C225.935 197.02 216.387 197.205 206.845 197.545C202.188 197.697 197.22 198.145 192.541 197.935C182.536 197.488 184.21 189.579 184.128 182.702C184.042 175.691 189.221 176.341 194.751 176.423C194.655 171.027 194.013 169.715 200.097 168.826L199.921 143.773C199.901 140.539 200.03 133.807 199.742 130.827C194.219 130.405 191.177 131.014 191.108 124.47C190.36 118.767 194.781 119.615 198.131 117.104C199.544 116.044 202.347 112.824 203.86 111.219C210.466 104.209 223.724 99.1567 230.204 92.6969ZM223.506 168.117C230.006 168.171 236.509 168.179 243.009 168.141L247.073 168.157C247.941 157.544 249.738 144.54 245.002 134.567C244.131 132.732 230.373 133.346 227.888 133.448C227.054 133.53 225.812 133.492 225.389 134.219C220.689 142.276 222.675 159.874 223.506 168.117ZM234.983 234.746C233.732 235.291 232.597 235.791 232.253 237.176C231.422 240.534 231.925 245.259 231.978 248.79L236.678 248.755C238.174 248.753 238.386 249.004 239.388 248.356C239.753 246.585 239.829 244.265 239.739 242.457C239.547 238.598 240.011 234.875 234.983 234.746ZM217.002 167.31C216.926 155.054 216.731 146.023 218.511 133.883C214.656 133.846 210.744 133.777 206.898 133.79C206.812 144.814 206.597 157.195 206.881 168.146C208.602 168.18 215.88 168.576 216.89 167.802L217.002 167.31ZM254.758 168.143L263.549 168.129C263.539 156.929 263.774 144.906 263.496 133.77L260.312 133.748L251.773 133.786C253.815 145.26 253.441 155.316 253.289 166.833C253.276 167.796 253.286 167.587 254 168.085L254.758 168.143Z" fill="#E8F0FE" fill-opacity="0.933333"></path></svg>
+</file>
+
+<file path="src/app/manifest.json">
+{
+  "name": "Fabricca",
+  "short_name": "Fabricca",
+  "icons": [
+    {
+      "src": "/web-app-manifest-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/web-app-manifest-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "theme_color": "#4d5557",
+  "background_color": "#4d5557",
+  "display": "standalone"
+}
 </file>
 
 <file path="src/components/providers/loading-overlay-provider.tsx">
@@ -576,11 +481,7 @@ interface LoadingOverlayState {
   cancelLoading: () => void;
 }
 ⋮----
-export function LoadingOverlayProvider({
-  children,
-}: {
-  children: ReactNode;
-})
+export function LoadingOverlayProvider(
 ⋮----
 export function useLoadingOverlay(): LoadingOverlayState
 </file>
@@ -594,6 +495,16 @@ export default function QueryProvider({
 }: {
   children: React.ReactNode;
 })
+</file>
+
+<file path="src/components/ui/card.tsx">
+import { cn } from "@/lib/utils";
+</file>
+
+<file path="src/components/ui/label.tsx">
+import { cva, type VariantProps } from "class-variance-authority";
+⋮----
+import { cn } from "@/lib/utils";
 </file>
 
 <file path="src/components/ai-banner.tsx">
@@ -625,6 +536,14 @@ interface LoadingSpinnerProps {
 }
 ⋮----
 className=
+</file>
+
+<file path="src/db/seed.ts">
+import { hash } from "bcrypt-ts";
+import { db } from "./index";
+import { users } from "./schema";
+⋮----
+async function seed()
 </file>
 
 <file path="src/lib/academic/embedding-resolver.ts">
@@ -1069,34 +988,6 @@ async function main(): Promise<void>
 // ------------------------------------------------------------------
 </file>
 
-<file path="src/app/icon0.svg">
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none"><metadata><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:dc="http://purl.org/dc/elements/1.1/"><rdf:Description><dc:creator>RealFaviconGenerator</dc:creator><dc:source>https://realfavicongenerator.net</dc:source></rdf:Description></rdf:RDF></metadata><path d="M258 478C391.101 478 499 375.921 499 250C499 124.079 391.101 22 258 22C124.899 22 17 124.079 17 250C17 375.921 124.899 478 258 478Z" fill="#121917"></path><path d="M246.226 10.8441C247.312 10.7859 248.467 10.7623 249.556 10.7328C314.133 8.98486 373.707 32.4599 420.465 74.4124C471.42 120.716 501.001 184.369 502.722 251.409C504.457 316.684 478.966 379.955 431.827 427.38C388.779 470.713 327.676 499.107 264.687 500.783C203.088 502.658 143.072 482.002 96.9748 443.058C44.8021 399.584 13.1276 338.002 9.04683 272.11C4.95745 205.75 28.379 140.511 74.2776 90.4161C108.502 53.5729 153.749 26.6496 204.406 15.9524C218.852 12.9018 231.611 11.7074 246.226 10.8441ZM36.531 337.479C39.6407 329.177 42.7365 322.945 48.6058 315.931C64.4689 296.976 90.6497 286.696 115.395 295.341C125.913 299.014 135.904 306.422 140.709 316.24C147.352 329.448 144.22 348.226 128.916 354.692C123.705 356.841 117.809 356.926 112.533 354.928C104.814 352.061 99.5814 344.99 102.723 337.057C104.766 331.896 110.715 328.279 116.184 331.184C122.065 334.306 124.02 338.109 124.061 344.31C127.456 343.459 130.467 342.174 132.19 339.102C137.731 329.211 131.131 318.722 121.991 314.059C115.642 310.795 108.173 310.127 101.295 312.207C79.3864 318.647 69.8861 344.483 77.2229 363.927C84.8079 384.029 99.0439 397.133 118.974 406.349C168.744 430.225 228.655 423.426 278.634 403.749C282.576 402.199 286.547 400.677 290.512 399.187C303.254 394.404 316.036 389.725 328.861 385.147C350.175 377.576 369.063 371.772 392.042 370.66C403 370.127 411.45 368.858 422.163 372.824C400.455 379.044 379.485 387.397 359.594 397.747C353.941 400.746 347.938 404.423 342.404 407.691C328.679 415.873 314.712 423.681 300.521 431.107C267.295 448.509 241.248 458.708 202.678 458.431C189.579 458.456 176.522 457.013 163.777 454.127C159.507 453.128 155.255 452.06 151.024 450.923C159.266 455.787 167.804 459.335 176.836 462.508C203.499 471.875 227.93 474.481 255.652 468.085C282.294 461.938 303.956 451.162 326.792 436.618C338.806 428.968 349.017 420.64 360.607 412.666C382.312 397.741 409.063 382.957 435.484 377.336C442.544 375.833 449.408 375.462 456.54 375.156C482.868 330.793 493.561 279.563 487.051 228.986C485.999 220.485 483.907 208.301 481.604 199.843L353.938 172.781C332.31 168.208 309.056 163.692 287.659 158.625C287.742 154.015 287.788 149.405 287.802 144.795L386.7 128.716C404.645 125.763 426.025 122.821 443.54 119.155C439.962 113.625 432.078 104.671 427.551 99.7452C395.666 64.9998 353.293 40.4695 306.22 29.5032C288.527 25.4847 263.691 22.8497 245.409 24.0697C183.677 27.3695 125.909 54.0732 85.0104 98.214C40.8944 146.399 18.511 209.199 22.7153 272.993C24.0838 293.283 29.2654 318.256 36.531 337.479Z" fill="#E8F0FE"></path><path d="M230.204 92.6969C230.512 90.5431 230.777 87.6163 232.812 86.4275C238.108 83.3344 239.306 89.0228 239.905 92.0806C244.422 97.1688 253.613 101.027 259.594 105.598C263.555 108.626 271.482 117.542 275.189 118.855C276.582 119.349 277.813 119.717 278.591 121.004C279.395 122.34 279.167 126.387 278.588 127.82C278.194 128.786 277.568 129.451 276.572 129.879C274.914 130.589 272.283 130.575 270.456 130.742L270.383 168.724C276.476 169.573 275.549 171.134 275.447 176.431C287.861 176.356 286.362 178.397 286.309 189.689C286.289 194.108 277.717 199.772 274.212 202.035C274.216 204.607 274.07 210.506 274.328 212.87C275.212 220.913 275.993 228.882 276.721 236.939L282.172 297.489C282.999 306.992 284.482 320.282 284.734 329.646C277.317 328.956 274.424 328.736 266.872 329.397C265.339 321.123 267.868 310.127 256.052 312.304C253.322 312.808 252.001 313.108 250.251 315.247C249.254 318.581 249.559 326.442 249.221 330.333C248.692 336.398 248.169 343.475 247.011 349.427C255.748 340.526 266.518 333.32 279.749 332.813C286.948 332.539 294.742 334.413 300.127 339.165C303.969 342.498 306.226 347.171 306.389 352.118C306.581 358.825 302.917 364.554 298.171 369.232C297.506 369.885 296.807 370.505 296.076 371.095C301.07 369.239 306.491 366.46 311.873 368.618C314.805 369.793 319.942 373.933 319.531 377.138C318.115 378.524 307.024 381.987 304.34 381.873C302.553 381.804 301.034 379.847 299.369 379.413C292.002 377.541 284.886 376.797 279.399 371.154C274.967 366.595 274.676 359.106 279.849 355.123C286.776 349.792 291.389 356.39 294.176 361.431C304.082 355.615 296.92 346.125 287.467 344.537C282.94 343.758 278.273 344.764 274.54 347.322C262.973 355.281 264.416 368.911 272.273 378.688C276.36 383.776 280.061 386.319 285.899 389.369C266.835 398.689 247.553 403.387 226.577 407.332C187.053 414.758 119.235 410.306 95.1531 374.296C92.34 370.767 90.0686 366.148 88.3681 362.049C91.1197 365.76 94.339 368.728 97.9905 371.614C106.252 376.879 116.608 381.858 126.807 381.996C127.956 382.012 140.464 380.411 141.686 380.09C151.593 377.465 156.693 361.274 167.474 357.95C172.276 356.472 176.112 357.149 180.828 356.459C182.036 346.156 182.734 335.894 183.76 325.575C186.203 300.265 188.774 274.966 191.485 249.679C192.961 235.789 194.318 219.433 196.681 205.782C210.591 204.853 226.666 204.491 240.683 204.122C237.959 201.461 237.201 200.342 235.48 196.992C225.935 197.02 216.387 197.205 206.845 197.545C202.188 197.697 197.22 198.145 192.541 197.935C182.536 197.488 184.21 189.579 184.128 182.702C184.042 175.691 189.221 176.341 194.751 176.423C194.655 171.027 194.013 169.715 200.097 168.826L199.921 143.773C199.901 140.539 200.03 133.807 199.742 130.827C194.219 130.405 191.177 131.014 191.108 124.47C190.36 118.767 194.781 119.615 198.131 117.104C199.544 116.044 202.347 112.824 203.86 111.219C210.466 104.209 223.724 99.1567 230.204 92.6969ZM223.506 168.117C230.006 168.171 236.509 168.179 243.009 168.141L247.073 168.157C247.941 157.544 249.738 144.54 245.002 134.567C244.131 132.732 230.373 133.346 227.888 133.448C227.054 133.53 225.812 133.492 225.389 134.219C220.689 142.276 222.675 159.874 223.506 168.117ZM234.983 234.746C233.732 235.291 232.597 235.791 232.253 237.176C231.422 240.534 231.925 245.259 231.978 248.79L236.678 248.755C238.174 248.753 238.386 249.004 239.388 248.356C239.753 246.585 239.829 244.265 239.739 242.457C239.547 238.598 240.011 234.875 234.983 234.746ZM217.002 167.31C216.926 155.054 216.731 146.023 218.511 133.883C214.656 133.846 210.744 133.777 206.898 133.79C206.812 144.814 206.597 157.195 206.881 168.146C208.602 168.18 215.88 168.576 216.89 167.802L217.002 167.31ZM254.758 168.143L263.549 168.129C263.539 156.929 263.774 144.906 263.496 133.77L260.312 133.748L251.773 133.786C253.815 145.26 253.441 155.316 253.289 166.833C253.276 167.796 253.286 167.587 254 168.085L254.758 168.143Z" fill="#E8F0FE" fill-opacity="0.933333"></path></svg>
-</file>
-
-<file path="src/app/manifest.json">
-{
-  "name": "Fabricca",
-  "short_name": "Fabricca",
-  "icons": [
-    {
-      "src": "/web-app-manifest-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/web-app-manifest-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
-  ],
-  "theme_color": "#4d5557",
-  "background_color": "#4d5557",
-  "display": "standalone"
-}
-</file>
-
 <file path="src/components/ui/accordion.tsx">
 import { ChevronDown } from "lucide-react";
 ⋮----
@@ -1110,20 +1001,16 @@ import { buttonVariants } from "@/components/ui/button";
 className=
 </file>
 
-<file path="src/components/ui/card.tsx">
-import { cn } from "@/lib/utils";
-</file>
-
 <file path="src/components/ui/checkbox.tsx">
 import { Check } from "lucide-react";
 ⋮----
 import { cn } from "@/lib/utils";
 </file>
 
-<file path="src/components/ui/label.tsx">
-import { cva, type VariantProps } from "class-variance-authority";
-⋮----
+<file path="src/components/ui/input.tsx">
 import { cn } from "@/lib/utils";
+⋮----
+className=
 </file>
 
 <file path="src/components/ui/scroll-area.tsx">
@@ -1132,12 +1019,30 @@ import { cn } from "@/lib/utils";
 className=
 </file>
 
-<file path="src/db/seed.ts">
-import { hash } from "bcrypt-ts";
-import { db } from "./index";
-import { users } from "./schema";
+<file path="src/components/header.tsx">
+import { startTransition } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  BookOpen,
+  Layers,
+  MessageSquareCode,
+  LogOut,
+  RotateCcw,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { logoutAction, resetOnboardingAction } from "@/app/(app)/actions";
+import { cn } from "@/lib/utils";
 ⋮----
-async function seed()
+export function Header(
+⋮----
+function handleLogout()
+⋮----
+function handleReset()
+⋮----
+className=
 </file>
 
 <file path="src/lib/academic/badge-calculator.ts">
@@ -1199,6 +1104,25 @@ export async function getSession(): Promise<SessionUser | null>
 export async function getSessionWithOnboarding(): Promise<SessionWithOnboarding | null>
 ⋮----
 export async function getProfile()
+</file>
+
+<file path="src/app/(app)/dashboard/page.tsx">
+import { eq, asc, inArray } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import { db } from "@/db";
+import {
+  thesisMatrices,
+  thesisBoxes,
+  libraryResources,
+  tasks,
+} from "@/db/schema";
+import { getSession } from "@/session";
+import { Button } from "@/components/ui/button";
+import { reopenOnboardingAction } from "@/app/(app)/actions";
+import { DashboardContent } from "./_components/dashboard-content";
+⋮----
+export default async function DashboardPage()
 </file>
 
 <file path="src/app/(auth)/onboarding/literature-review/_services/crossref/validator.ts">
@@ -1267,36 +1191,34 @@ function Badge(
 <div className=
 </file>
 
-<file path="src/components/ui/input.tsx">
+<file path="src/components/ui/button.tsx">
+import { Slot } from "@radix-ui/react-slot";
+import { cva, type VariantProps } from "class-variance-authority";
+⋮----
 import { cn } from "@/lib/utils";
+⋮----
+export interface ButtonProps
+  extends
+    React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean;
+}
 ⋮----
 className=
 </file>
 
-<file path="src/components/header.tsx">
-import { startTransition } from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { usePathname } from "next/navigation";
+<file path="src/components/ui/sonner.tsx">
 import {
-  LayoutDashboard,
-  BookOpen,
-  Layers,
-  MessageSquareCode,
-  LogOut,
-  RotateCcw,
+  CircleCheck,
+  Info,
+  LoaderCircle,
+  OctagonX,
+  TriangleAlert,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { logoutAction, resetOnboardingAction } from "@/app/(app)/actions";
-import { cn } from "@/lib/utils";
+import { useTheme } from "next-themes";
+import { Toaster as Sonner } from "sonner";
 ⋮----
-export function Header(
-⋮----
-function handleLogout()
-⋮----
-function handleReset()
-⋮----
-className=
+type ToasterProps = React.ComponentProps<typeof Sonner>;
 </file>
 
 <file path="src/lib/logger/formatter.ts">
@@ -1390,23 +1312,22 @@ export function getErrorDisplay(error: unknown): ErrorDisplay
 export function extractMessage(error: unknown): string
 </file>
 
-<file path="src/app/(app)/dashboard/page.tsx">
-import { eq, asc, inArray } from "drizzle-orm";
-import { redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
-import { db } from "@/db";
-import {
-  thesisMatrices,
-  thesisBoxes,
-  libraryResources,
-  tasks,
-} from "@/db/schema";
-import { getSession } from "@/session";
-import { Button } from "@/components/ui/button";
-import { reopenOnboardingAction } from "@/app/(app)/actions";
-import { DashboardContent } from "./_components/dashboard-content";
+<file path="src/lib/utils.ts">
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 ⋮----
-export default async function DashboardPage()
+export function cn(...inputs: ClassValue[])
+</file>
+
+<file path="src/app/(app)/library/page.tsx">
+import { eq, asc } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { db } from "@/db";
+import { thesisMatrices, thesisBoxes } from "@/db/schema";
+import { getSession } from "@/session";
+import { LibraryContent } from "./library-content";
+⋮----
+export default async function LibraryPage()
 </file>
 
 <file path="src/app/(auth)/onboarding/_components/onboarding-content.tsx">
@@ -1432,34 +1353,29 @@ import { LoadingSpinner } from "@/components/loading-spinner";
 export default function RiskLoading()
 </file>
 
-<file path="src/components/ui/button.tsx">
-import { Slot } from "@radix-ui/react-slot";
-import { cva, type VariantProps } from "class-variance-authority";
+<file path="src/app/layout.tsx">
+import type { Metadata } from "next";
+import {
+  Space_Grotesk,
+  Outfit,
+  JetBrains_Mono,
+  Fredoka,
+} from "next/font/google";
 ⋮----
-import { cn } from "@/lib/utils";
+import QueryProvider from "@/components/providers/query-provider";
+import { Toaster } from "@/components/ui/sonner";
 ⋮----
-export interface ButtonProps
-  extends
-    React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  asChild?: boolean;
-}
-⋮----
-className=
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>)
 </file>
 
-<file path="src/components/ui/sonner.tsx">
-import {
-  CircleCheck,
-  Info,
-  LoaderCircle,
-  OctagonX,
-  TriangleAlert,
-} from "lucide-react";
-import { useTheme } from "next-themes";
-import { Toaster as Sonner } from "sonner";
+<file path="src/components/ui/textarea.tsx">
+import { cn } from "@/lib/utils";
 ⋮----
-type ToasterProps = React.ComponentProps<typeof Sonner>;
+className=
 </file>
 
 <file path="src/lib/prompts/tavily-evaluation.ts">
@@ -1517,49 +1433,6 @@ export async function tavilySearch(
 ): Promise<TavilySearchResponse>
 </file>
 
-<file path="src/lib/utils.ts">
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-⋮----
-export function cn(...inputs: ClassValue[])
-</file>
-
-<file path="src/app/(app)/library/page.tsx">
-import { eq, asc } from "drizzle-orm";
-import { redirect } from "next/navigation";
-import { db } from "@/db";
-import { thesisMatrices, thesisBoxes } from "@/db/schema";
-import { getSession } from "@/session";
-import { LibraryContent } from "./library-content";
-⋮----
-export default async function LibraryPage()
-</file>
-
-<file path="src/app/layout.tsx">
-import type { Metadata } from "next";
-import {
-  Space_Grotesk,
-  Outfit,
-  JetBrains_Mono,
-  Fredoka,
-} from "next/font/google";
-⋮----
-import QueryProvider from "@/components/providers/query-provider";
-import { Toaster } from "@/components/ui/sonner";
-⋮----
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>)
-</file>
-
-<file path="src/components/ui/textarea.tsx">
-import { cn } from "@/lib/utils";
-⋮----
-className=
-</file>
-
 <file path="src/components/error-display.tsx">
 import { useEffect } from "react";
 import { AlertTriangle, WifiOff, Clock, RefreshCw } from "lucide-react";
@@ -1601,6 +1474,45 @@ import type { ThesisBox } from "@/db/schema";
 interface LibraryContentProps {
   boxes: ThesisBox[];
 }
+</file>
+
+<file path="src/app/(app)/actions.ts">
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
+import { createFlowId, Logger } from "@/lib/logger";
+import { db } from "@/db";
+import { users, thesisMatrices, originalityReports, tasks } from "@/db/schema";
+import { getSession } from "@/session";
+import {
+  SESSION_COOKIE_NAME,
+  SESSION_MAX_AGE_SECONDS,
+} from "@/lib/constants/session";
+⋮----
+export async function logoutAction()
+⋮----
+export async function reopenOnboardingAction()
+⋮----
+export async function resetOnboardingAction()
+</file>
+
+<file path="src/app/(app)/layout.tsx">
+import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import { getSessionWithOnboarding } from "@/session";
+import { Header } from "@/components/header";
+⋮----
+export default function AppLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>)
+⋮----
+async function AppLayoutInner({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>)
 </file>
 
 <file path="src/app/(auth)/onboarding/literature-review/_services/batch-orchestrator.ts">
@@ -1759,6 +1671,29 @@ export function StrategicRoadmapSection({
 }: StrategicRoadmapSectionProps)
 </file>
 
+<file path="src/app/(auth)/layout.tsx">
+import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import { getSessionWithOnboarding } from "@/session";
+⋮----
+export default function AuthLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>)
+⋮----
+async function AuthLayoutInner({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>)
+</file>
+
+<file path="src/db/index.ts">
+import { Pool } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-serverless";
+</file>
+
 <file path="src/lib/prompts/fact-query-extraction.ts">
 import type { JsonSchema } from "../gemini";
 ⋮----
@@ -1774,43 +1709,69 @@ export function buildFactQueryPrompt(params: {
 }): string
 </file>
 
-<file path="src/app/(app)/actions.ts">
+<file path="src/app/(auth)/login/actions.ts">
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
-import { createFlowId, Logger } from "@/lib/logger";
+import { compare } from "bcrypt-ts";
 import { db } from "@/db";
-import { users, thesisMatrices, originalityReports, tasks } from "@/db/schema";
+import { users } from "@/db/schema";
 import { getSession } from "@/session";
+import { createFlowId, Logger } from "@/lib/logger";
 import {
   SESSION_COOKIE_NAME,
   SESSION_MAX_AGE_SECONDS,
+  SESSION_ERROR_MSG,
 } from "@/lib/constants/session";
 ⋮----
-export async function logoutAction()
+export type LoginResult =
+  { success: true; error?: never } | { success?: never; error: string };
 ⋮----
-export async function reopenOnboardingAction()
+export async function loginAction(
+  email: string,
+  password: string,
+): Promise<LoginResult>
 ⋮----
-export async function resetOnboardingAction()
+export type OnboardingStatusResult =
+  | {
+      onboardingCompleted: boolean;
+      error?: never;
+    }
+  | { onboardingCompleted?: never; error: string };
+⋮----
+export async function checkOnboardingStatus(): Promise<OnboardingStatusResult>
 </file>
 
-<file path="src/app/(app)/layout.tsx">
-import { Suspense } from "react";
-import { redirect } from "next/navigation";
-import { getSessionWithOnboarding } from "@/session";
-import { Header } from "@/components/header";
+<file path="src/app/(auth)/login/page.tsx">
+import { useState, startTransition } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { toast } from "sonner";
+import { Eye, EyeOff, Lock, Mail, ShieldAlert } from "lucide-react";
 ⋮----
-export default function AppLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>)
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { loginAction, checkOnboardingStatus } from "./actions";
 ⋮----
-async function AppLayoutInner({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>)
+export default function LoginPage()
+⋮----
+/**
+   * Form gönderimini yönetir.
+   * Server action'ı startTransition ile güvenli şekilde tetikler,
+   * sonucu toast bildirimi olarak gösterir.
+   * Başarılı giriş sonrası onboarding durumunu sorgulayarak
+   * uygun sayfaya yönlendirme yapar.
+   *
+   * @param e - Form submit olayı
+   */
+function handleSubmit(e: React.FormEvent<HTMLFormElement>)
 </file>
 
 <file path="src/app/(auth)/onboarding/_services/co-citation-miner.ts">
@@ -1994,94 +1955,6 @@ export default async function OnboardingLayout({
 }>)
 </file>
 
-<file path="src/app/(auth)/layout.tsx">
-import { Suspense } from "react";
-import { redirect } from "next/navigation";
-import { getSessionWithOnboarding } from "@/session";
-⋮----
-export default function AuthLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>)
-⋮----
-async function AuthLayoutInner({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>)
-</file>
-
-<file path="src/db/index.ts">
-import { Pool } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-serverless";
-</file>
-
-<file path="src/app/(auth)/login/actions.ts">
-import { cookies } from "next/headers";
-import { eq } from "drizzle-orm";
-import { compare } from "bcrypt-ts";
-import { db } from "@/db";
-import { users } from "@/db/schema";
-import { getSession } from "@/session";
-import { createFlowId, Logger } from "@/lib/logger";
-import {
-  SESSION_COOKIE_NAME,
-  SESSION_MAX_AGE_SECONDS,
-  SESSION_ERROR_MSG,
-} from "@/lib/constants/session";
-⋮----
-export type LoginResult =
-  { success: true; error?: never } | { success?: never; error: string };
-⋮----
-export async function loginAction(
-  email: string,
-  password: string,
-): Promise<LoginResult>
-⋮----
-export type OnboardingStatusResult =
-  | {
-      onboardingCompleted: boolean;
-      error?: never;
-    }
-  | { onboardingCompleted?: never; error: string };
-⋮----
-export async function checkOnboardingStatus(): Promise<OnboardingStatusResult>
-</file>
-
-<file path="src/app/(auth)/login/page.tsx">
-import { useState, startTransition } from "react";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { toast } from "sonner";
-import { Eye, EyeOff, Lock, Mail, ShieldAlert } from "lucide-react";
-⋮----
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { loginAction, checkOnboardingStatus } from "./actions";
-⋮----
-export default function LoginPage()
-⋮----
-/**
-   * Form gönderimini yönetir.
-   * Server action'ı startTransition ile güvenli şekilde tetikler,
-   * sonucu toast bildirimi olarak gösterir.
-   * Başarılı giriş sonrası onboarding durumunu sorgulayarak
-   * uygun sayfaya yönlendirme yapar.
-   *
-   * @param e - Form submit olayı
-   */
-function handleSubmit(e: React.FormEvent<HTMLFormElement>)
-</file>
-
 <file path="src/app/(auth)/onboarding/literature-review/page.tsx">
 import { redirect } from "next/navigation";
 import { getProfile } from "@/session";
@@ -2132,6 +2005,7 @@ import {
 import {
   generateBoxesStructureAction,
   mineFoundationalQueriesAction,
+  confirmBoxesAction,
   prefetchLiteratureCacheAction,
 } from "../boxes/actions";
 ⋮----
@@ -2388,7 +2262,7 @@ import { resetOnboardingAction } from "@/app/(auth)/onboarding/actions";
 ⋮----
 interface StartOverButtonProps {
   variant?:
-    | "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+    "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
   size?: "default" | "sm" | "lg" | "icon";
   className?: string;
 }
@@ -2430,6 +2304,16 @@ export async function extractQueries(
   params: ExtractQueriesParams,
   log: Logger,
 ): Promise<
+</file>
+
+<file path="src/app/(auth)/onboarding/page.tsx">
+import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
+import { getProfile } from "@/session";
+⋮----
+export default async function OnboardingPage()
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_components/risk-container.tsx">
@@ -2479,41 +2363,6 @@ export async function synthesizeRoadmap(
 ): Promise<string>
 </file>
 
-<file path="src/app/(auth)/onboarding/page.tsx">
-import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
-import { getProfile } from "@/session";
-⋮----
-export default async function OnboardingPage()
-</file>
-
-<file path="src/lib/prompts/originality-analysis.ts">
-import type { JsonSchema } from "../gemini";
-⋮----
-export function buildAnalysisSystemInstruction(): string
-⋮----
-export function buildAnalysisPrompt(params: {
-  studyTitle: string;
-  researchQuestion: string;
-  mainClaim: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-  validDetails: {
-    id: number;
-    title: string;
-    author: string;
-    university: string;
-    year: number;
-    thesisType: string;
-    department: string;
-    abstract: string;
-  }[];
-}): string
-</file>
-
 <file path="src/lib/tezara.ts">
 import type { Logger } from "./logger";
 import type { TezaraThesisSummary, TezaraThesisDetails } from "./types";
@@ -2542,6 +2391,59 @@ export async function fetchThesisDetails(
   summary: TezaraThesisSummary,
   logger?: Logger,
 ): Promise<TezaraThesisDetails | null>
+</file>
+
+<file path="src/app/(auth)/onboarding/actions.ts">
+import { eq, inArray } from "drizzle-orm";
+import { db } from "@/db";
+import {
+  thesisMatrices,
+  originalityReports,
+  users,
+  thesisBoxes,
+  libraryResources,
+} from "@/db/schema";
+import { getSession } from "@/session";
+import { createFlowId, Logger } from "@/lib/logger";
+import { SESSION_ERROR_MSG } from "@/lib/constants/session";
+import {
+  revalidateOnboardingPaths,
+  invalidateOnboardingCache,
+} from "@/lib/cache-tags";
+⋮----
+export async function resetOnboardingAction(): Promise<
+  { success: boolean } | { error: string }
+> {
+  const flowId = createFlowId();
+⋮----
+export async function clearDownstreamDbAction(
+  fromStep: "matrix" | "risk" | "boxes",
+): Promise<
+</file>
+
+<file path="src/lib/prompts/originality-analysis.ts">
+import type { JsonSchema } from "../gemini";
+⋮----
+export function buildAnalysisSystemInstruction(): string
+⋮----
+export function buildAnalysisPrompt(params: {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+  validDetails: {
+    id: number;
+    title: string;
+    author: string;
+    university: string;
+    year: number;
+    thesisType: string;
+    department: string;
+    abstract: string;
+  }[];
+}): string
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_components/tezara-overlap-table.tsx">
@@ -2575,64 +2477,6 @@ interface TezaraOverlapTableProps {
 function AxisCell(
 ⋮----
 setExpandedThesisId(
-</file>
-
-<file path="src/app/(auth)/onboarding/actions.ts">
-import { eq, inArray } from "drizzle-orm";
-import { db } from "@/db";
-import {
-  thesisMatrices,
-  originalityReports,
-  users,
-  thesisBoxes,
-  libraryResources,
-} from "@/db/schema";
-import { getSession } from "@/session";
-import { createFlowId, Logger } from "@/lib/logger";
-import { SESSION_ERROR_MSG } from "@/lib/constants/session";
-import {
-  revalidateOnboardingPaths,
-  invalidateOnboardingCache,
-} from "@/lib/cache-tags";
-⋮----
-export async function resetOnboardingAction(): Promise<
-  { success: boolean } | { error: string }
-> {
-  const flowId = createFlowId();
-⋮----
-export async function clearDownstreamDbAction(
-  fromStep: "matrix" | "risk" | "boxes",
-): Promise<
-</file>
-
-<file path="src/app/(auth)/onboarding/matrix/actions.ts">
-import { eq, sql } from "drizzle-orm";
-import { db } from "@/db";
-import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
-import { getSession } from "@/session";
-import { SESSION_ERROR_MSG } from "@/lib/constants/session";
-import { createFlowId, Logger } from "@/lib/logger";
-import { invalidateOnboardingCache } from "@/lib/cache-tags";
-import type { OnboardingFormData } from "@/lib/types";
-⋮----
-type ValidationResult =
-  { valid: true; value: string } | { valid: false; error: string };
-⋮----
-function validateField(
-  value: string | undefined,
-  label: string,
-): ValidationResult
-⋮----
-/**
- * Persists the thesis matrix to the database and clears any downstream analysis
- * data (originality reports and thesis boxes) that may now be stale.
- *
- * @param data - The thesis matrix data from the onboarding form
- * @returns Success confirmation or an error message
- */
-export async function saveThesisMatrixAction(
-  data: OnboardingFormData,
-): Promise<
 </file>
 
 <file path="package.json">
@@ -2695,6 +2539,36 @@ export async function saveThesisMatrixAction(
 }
 </file>
 
+<file path="src/app/(auth)/onboarding/matrix/actions.ts">
+import { eq, sql } from "drizzle-orm";
+import { db } from "@/db";
+import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
+import { getSession } from "@/session";
+import { SESSION_ERROR_MSG } from "@/lib/constants/session";
+import { createFlowId, Logger } from "@/lib/logger";
+import { invalidateOnboardingCache } from "@/lib/cache-tags";
+import type { OnboardingFormData } from "@/lib/types";
+⋮----
+type ValidationResult =
+  { valid: true; value: string } | { valid: false; error: string };
+⋮----
+function validateField(
+  value: string | undefined,
+  label: string,
+): ValidationResult
+⋮----
+/**
+ * Persists the thesis matrix to the database and clears any downstream analysis
+ * data (originality reports and thesis boxes) that may now be stale.
+ *
+ * @param data - The thesis matrix data from the onboarding form
+ * @returns Success confirmation or an error message
+ */
+export async function saveThesisMatrixAction(
+  data: OnboardingFormData,
+): Promise<
+</file>
+
 <file path="src/app/(auth)/onboarding/risk/_components/originality-report-view.tsx">
 import { ShieldAlert } from "lucide-react";
 import { TavilyFactCheckTable } from "./tavily-fact-check-table";
@@ -2717,6 +2591,104 @@ function SectionDivider(
 export function OriginalityReportView({
   reportData,
 }: OriginalityReportViewProps)
+</file>
+
+<file path="src/lib/gemini.ts">
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import { z } from "zod";
+import type { Logger } from "./logger";
+import { classifyError } from "./error-utils";
+⋮----
+export interface JsonSchemaProperty {
+  type: string;
+  items?:
+    | JsonSchemaProperty
+    | {
+        type: string;
+        enum?: string[];
+        properties?: Record<string, JsonSchemaProperty>;
+        required?: string[];
+      };
+  properties?: Record<string, JsonSchemaProperty>;
+  required?: string[];
+  enum?: string[];
+  description?: string;
+  minLength?: number;
+  maxLength?: number;
+  minItems?: number;
+  maxItems?: number;
+  minimum?: number;
+  maximum?: number;
+}
+⋮----
+export interface JsonSchema {
+  type: "object";
+  properties: Record<string, JsonSchemaProperty>;
+  required?: string[];
+}
+⋮----
+export function getAi(): GoogleGenAI
+⋮----
+async function retryOn503<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  baseDelayMs = 1000,
+  logger?: Logger,
+): Promise<
+⋮----
+export function sanitizeAndParseJson<T>(text: string): T
+⋮----
+/**
+ * Gemini modelinden yapılandırılmış JSON çıktısı almak için generic yardımcı.
+ * Yanıt, verilen JSON şemasına göre JSON olarak parse edilir.
+ *
+ * @param modelName - Kullanılacak Gemini model adı (örn. "gemini-3.1-flash-lite")
+ * @param systemInstruction - Sistem talimatı (persona + kurallar)
+ * @param prompt - Kullanıcı promptu
+ * @param schema - Yanıtın doğrulanacağı JSON şeması
+ * @param logger - Opsiyonel Logger instance'ı (AI event logları için)
+ * @param options - Opsiyonel Gemini konfigürasyon seçenekleri
+ * @returns Şemaya uygun olarak parse edilmiş tip güvenli nesne
+ */
+export async function generateStructuredContent<T>(
+  modelName: string,
+  systemInstruction: string,
+  prompt: string,
+  schema: JsonSchema,
+  logger?: Logger,
+  options?: {
+    thinkingConfig?: {
+      thinkingLevel?: ThinkingLevel;
+    } | null;
+    payloadStage?: string;
+    zodSchema?: z.ZodType<T>;
+    seed?: number;
+    temperature?: number;
+  },
+): Promise<T>
+</file>
+
+<file path="src/app/(auth)/onboarding/risk/_hooks/use-risk-analysis.ts">
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
+import {
+  fetchThesisMatrix,
+  fetchOriginalityReport,
+} from "../../_lib/fetch-actions";
+import type { OriginalityReportData } from "@/lib/types";
+⋮----
+export interface UseRiskAnalysisResult {
+  loading: boolean;
+  analysing: boolean;
+  error: string | null;
+  reportData: OriginalityReportData | null;
+  proceeding: boolean;
+  startAnalysis: () => Promise<void>;
+  handleProceed: () => Promise<void>;
+}
+⋮----
+export function useRiskAnalysis(): UseRiskAnalysisResult
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_services/analysis.ts">
@@ -2826,104 +2798,6 @@ export async function analyzeOriginalityRisk(
   log: Logger,
   chunkSize = 4,
 ): Promise<
-</file>
-
-<file path="src/lib/gemini.ts">
-import { GoogleGenAI, ThinkingLevel } from "@google/genai";
-import { z } from "zod";
-import type { Logger } from "./logger";
-import { classifyError } from "./error-utils";
-⋮----
-export interface JsonSchemaProperty {
-  type: string;
-  items?:
-    | JsonSchemaProperty
-    | {
-        type: string;
-        enum?: string[];
-        properties?: Record<string, JsonSchemaProperty>;
-        required?: string[];
-      };
-  properties?: Record<string, JsonSchemaProperty>;
-  required?: string[];
-  enum?: string[];
-  description?: string;
-  minLength?: number;
-  maxLength?: number;
-  minItems?: number;
-  maxItems?: number;
-  minimum?: number;
-  maximum?: number;
-}
-⋮----
-export interface JsonSchema {
-  type: "object";
-  properties: Record<string, JsonSchemaProperty>;
-  required?: string[];
-}
-⋮----
-export function getAi(): GoogleGenAI
-⋮----
-async function retryOn503<T>(
-  fn: () => Promise<T>,
-  maxRetries = 3,
-  baseDelayMs = 1000,
-  logger?: Logger,
-): Promise<
-⋮----
-export function sanitizeAndParseJson<T>(text: string): T
-⋮----
-/**
- * Gemini modelinden yapılandırılmış JSON çıktısı almak için generic yardımcı.
- * Yanıt, verilen JSON şemasına göre JSON olarak parse edilir.
- *
- * @param modelName - Kullanılacak Gemini model adı (örn. "gemini-3.1-flash-lite")
- * @param systemInstruction - Sistem talimatı (persona + kurallar)
- * @param prompt - Kullanıcı promptu
- * @param schema - Yanıtın doğrulanacağı JSON şeması
- * @param logger - Opsiyonel Logger instance'ı (AI event logları için)
- * @param options - Opsiyonel Gemini konfigürasyon seçenekleri
- * @returns Şemaya uygun olarak parse edilmiş tip güvenli nesne
- */
-export async function generateStructuredContent<T>(
-  modelName: string,
-  systemInstruction: string,
-  prompt: string,
-  schema: JsonSchema,
-  logger?: Logger,
-  options?: {
-    thinkingConfig?: {
-      thinkingLevel?: ThinkingLevel;
-    } | null;
-    payloadStage?: string;
-    zodSchema?: z.ZodType<T>;
-    seed?: number;
-    temperature?: number;
-  },
-): Promise<T>
-</file>
-
-<file path="src/app/(auth)/onboarding/risk/_hooks/use-risk-analysis.ts">
-import { useState, useCallback, useEffect, useRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
-import {
-  fetchThesisMatrix,
-  fetchOriginalityReport,
-} from "../../_lib/fetch-actions";
-import type { OriginalityReportData } from "@/lib/types";
-⋮----
-export interface UseRiskAnalysisResult {
-  loading: boolean;
-  analysing: boolean;
-  error: string | null;
-  reportData: OriginalityReportData | null;
-  proceeding: boolean;
-  startAnalysis: () => Promise<void>;
-  handleProceed: () => Promise<void>;
-}
-⋮----
-export function useRiskAnalysis(): UseRiskAnalysisResult
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_services/sifting.ts">
@@ -3188,12 +3062,10 @@ export async function completeRiskStageAction(): Promise<OnboardingActionResult>
 </file>
 
 <file path="src/app/(auth)/onboarding/boxes/_components/boxes-container.tsx">
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Loader2,
   CheckCircle2,
   Rocket,
   Library,
@@ -3207,7 +3079,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { AIBanner } from "@/components/ai-banner";
 import { LoadingSpinner } from "@/components/loading-spinner";
-import { confirmBoxesAction } from "../actions";
 import { fetchBoxesWithFullShape } from "../../_lib/fetch-actions";
 import type { GeminiThesisBox, RelatedThesisEntry } from "@/lib/types";
 </file>
@@ -3232,21 +3103,28 @@ import {
 import {
   FinalBoxGenerationResponseSchema,
   FoundationalQuerySchema,
+  type FoundationalQuery,
   type GeminiThesisBox,
   type OnboardingActionResult,
 } from "@/lib/types";
 import { calculateBadge } from "@/lib/academic/badge-calculator";
-⋮----
 import type { NewLibraryResource } from "@/db/schema";
 import {
   fetchThesisMatrix,
   fetchOriginalityReport,
 } from "../_lib/fetch-actions";
-⋮----
 import { mineCoCitations } from "../_services/co-citation-miner";
 import type { BoxContext } from "../_services/co-citation-miner";
 import type { RawPaper } from "../literature-review/_services/literature-review-papers";
 import { searchOpenAlex } from "../literature-review/_services/openalex/client";
+⋮----
+type RawNestedResponse = z.infer<typeof RawNestedResponseSchema>;
+⋮----
+type ThesisBoxType = GeminiThesisBox["boxType"];
+⋮----
+function mapToProductionShape(
+  apiResponse: RawNestedResponse,
+): GeminiThesisBox[]
 ⋮----
 export async function generateBoxesStructureAction(): Promise<
   { success: true; boxes: GeminiThesisBox[] } | { error: string }
@@ -3265,22 +3143,29 @@ export async function prefetchLiteratureCacheAction(
   boxes: GeminiThesisBox[],
 ): Promise<
 ⋮----
+// ---------------------------------------------------------------------------
+// Step 3: Box Persistence
+// ---------------------------------------------------------------------------
+⋮----
 /**
- * Persists the generated (and possibly user-edited) subject boxes to thesis_boxes.
- * Deletes existing boxes for the matrix first, then inserts flat hierarchy.
- * After boxes are written, inserts Gemini-mapped overlapping theses from the
- * originality report into library_resources using index-based box mapping.
+ * Üretilen (ve kullanıcı tarafından düzenlenebilmiş) konu kutularını
+ * thesis_boxes tablosuna yazar. Mevcut kutular silinir, düz hiyerarşi
+ * yeniden eklenir. Özgünlük raporundaki örtüşen tezler library_resources'a
+ * eklenir.
  *
- * @param boxes - Array of GeminiThesisBox to persist
- * @returns Success or error response
+ * @param boxes - Kaydedilecek GeminiThesisBox dizisi
+ * @returns Başarı veya hata yanıtı
  */
 export async function confirmBoxesAction(
   boxes: GeminiThesisBox[],
 ): Promise<OnboardingActionResult>
 ⋮----
-// Insert sub-boxes as separate rows with parentId FK
+// Step 3: Map original flat index → database ID
+// (child box'ların parentId alanı orijinal flat array index'ini işaret eder)
 ⋮----
-// Insert all overlap theses into the RELATED_THESES box
+// Step 4: Insert child boxes with correct FK parentId
+⋮----
+// Step 5: RELATED_THESES box — DB ID via flat-index map
 </file>
 
 <file path="src/app/(auth)/onboarding/literature-review/actions.ts">

@@ -36,11 +36,7 @@ interface LoadingOverlayState {
 
 const LoadingOverlayContext = createContext<LoadingOverlayState | null>(null);
 
-export function LoadingOverlayProvider({
-  children,
-}: {
-  children: ReactNode;
-}) {
+export function LoadingOverlayProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingTitle, setLoadingTitle] = useState("");
   const [loadingDescription, setLoadingDescription] = useState("");

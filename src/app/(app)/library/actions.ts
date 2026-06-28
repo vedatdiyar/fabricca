@@ -117,7 +117,8 @@ export async function toggleResourceReadStatusAction(
     if (res?.abstract?.startsWith("[MUTLAK İKİZ TEHDİDİ]")) {
       return {
         success: false,
-        error: "Mutlak ikiz tehdidi içeren tezlerin okuma durumu değiştirilemez.",
+        error:
+          "Mutlak ikiz tehdidi içeren tezlerin okuma durumu değiştirilemez.",
       };
     }
 

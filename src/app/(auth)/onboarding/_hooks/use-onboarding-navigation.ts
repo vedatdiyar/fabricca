@@ -18,6 +18,7 @@ import {
 import {
   generateBoxesStructureAction,
   mineFoundationalQueriesAction,
+  confirmBoxesAction,
   prefetchLiteratureCacheAction,
 } from "../boxes/actions";
 
@@ -166,8 +167,9 @@ export function useOnboardingNavigation() {
 
   /**
    * Finalizes the risk stage: persists the report status, generates the
-   * subject boxes via Gemini, mines foundational queries via OpenAlex, seeds
-   * the boxes into the TanStack Query cache, and navigates to the boxes step.
+   * subject boxes via Gemini, mines foundational queries via OpenAlex,
+   * persists the boxes to the database immediately, seeds the boxes into
+   * the TanStack Query cache, and navigates to the boxes step.
    * Reports any failure via toast.
    */
   const proceedFromRisk = useCallback(async (): Promise<{
@@ -178,25 +180,25 @@ export function useOnboardingNavigation() {
 
     let isCancelled = false;
 
-      showLoading(
-        "İşlem Tamamlanıyor",
-        "Konu kutuları yapılandırılıyor.",
-        steps,
-        () => {
-          isCancelled = true;
-          void clearDownstreamDbAction("risk").then(() => {
-            queryClient.invalidateQueries();
-          });
-          toast.info("İşlem iptal edildi.");
-        },
-      );
+    showLoading(
+      "İşlem Tamamlanıyor",
+      "Konu kutuları yapılandırılıyor.",
+      steps,
+      () => {
+        isCancelled = true;
+        void clearDownstreamDbAction("risk").then(() => {
+          queryClient.invalidateQueries();
+        });
+        toast.info("İşlem iptal edildi.");
+      },
+    );
 
-      // Immediate downstream purge + cache invalidation to lock future steps
-      await clearDownstreamDbAction("risk");
-      await queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
+    // Immediate downstream purge + cache invalidation to lock future steps
+    await clearDownstreamDbAction("risk");
+    await queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
 
-      try {
-        const stageResult = await completeRiskStageAction();
+    try {
+      const stageResult = await completeRiskStageAction();
       if (isCancelled) return { success: false };
       if (stageResult.error) {
         hideLoading();
@@ -229,6 +231,15 @@ export function useOnboardingNavigation() {
       updateLoadingStep(2, "active");
 
       if (isCancelled) return { success: false };
+
+      // Persist generated boxes to DB immediately
+      const saveResult = await confirmBoxesAction(mineResult.boxes);
+      if (isCancelled) return { success: false };
+      if ("error" in saveResult) {
+        hideLoading();
+        toast.error(saveResult.error);
+        return { success: false };
+      }
 
       // Seed boxes into TanStack Query cache
       queryClient.setQueryData(["boxes"], mineResult.boxes);

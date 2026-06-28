@@ -20,7 +20,7 @@ import { resetOnboardingAction } from "@/app/(auth)/onboarding/actions";
 
 interface StartOverButtonProps {
   variant?:
-    | "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+    "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
   size?: "default" | "sm" | "lg" | "icon";
   className?: string;
 }

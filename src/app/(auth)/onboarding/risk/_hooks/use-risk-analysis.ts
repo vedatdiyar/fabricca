@@ -72,8 +72,7 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
         tezaraResults: {
           originalityBadge: tezaraResults.originalityBadge,
           overlapTable: tezaraResults.overlapTable,
-          strategicRecommendations:
-            tezaraResults.strategicRecommendations,
+          strategicRecommendations: tezaraResults.strategicRecommendations,
         },
       };
     },
@@ -145,8 +144,7 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
     try {
       await startAnalysisInternal();
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : String(err);
+      const message = err instanceof Error ? err.message : String(err);
       if (message === "__cancelled__") {
         // Cancellation is not an error — already handled by the pipeline
         return;
@@ -172,7 +170,8 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
     analysing,
     proceeding,
     error:
-      analysisError instanceof Error && analysisError.message !== "__cancelled__"
+      analysisError instanceof Error &&
+      analysisError.message !== "__cancelled__"
         ? analysisError.message
         : null,
     reportData: reportData ?? null,

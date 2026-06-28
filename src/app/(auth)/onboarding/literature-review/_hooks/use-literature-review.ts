@@ -70,10 +70,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   const { showLoading, hideLoading, updateLoadingStep } = useLoadingOverlay();
 
   // Fetch boxes from DB via TanStack Query
-  const {
-    data: allBoxes,
-    isLoading: boxesLoading,
-  } = useQuery({
+  const { data: allBoxes, isLoading: boxesLoading } = useQuery({
     queryKey: ["boxes-full"],
     queryFn: fetchBoxesWithFullShape,
   });
@@ -322,13 +319,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
       }
       Promise.resolve().then(() => startReviewProcess());
     }
-  }, [
-    loading,
-    processing,
-    subBoxes,
-    literaturePool,
-    startReviewProcess,
-  ]);
+  }, [loading, processing, subBoxes, literaturePool, startReviewProcess]);
 
   return {
     subBoxes,

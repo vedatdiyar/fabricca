@@ -19,55 +19,120 @@ import {
 import {
   FinalBoxGenerationResponseSchema,
   FoundationalQuerySchema,
+  type FoundationalQuery,
   type GeminiThesisBox,
   type OnboardingActionResult,
 } from "@/lib/types";
 import { calculateBadge } from "@/lib/academic/badge-calculator";
-
-// ---------------------------------------------------------------------------
-// Ham Gemini çıktısı için yerel Zod şemaları.
-// Gemini'den dönen sub-box'lar yalnızca {title, semanticQuery} içerir;
-// aşağıda normalizasyon aşamasında GeminiThesisBox[]'a dönüştürülür.
-// ---------------------------------------------------------------------------
-const RawSubBoxSchema = z.object({
-  title: z.string().min(1, "Alt kutu başlığı boş olamaz"),
-  semanticQuery: z.string().min(1, "Arama sorgusu boş olamaz"),
-  foundationalQueries: z.array(FoundationalQuerySchema).max(2).optional(),
-});
-
-const RawGeminiBoxSchema = z.object({
-  title: z.string().min(1, "Kutu başlığı boş olamaz"),
-  boxType: z.enum([
-    "PROBLEMATIZATION",
-    "CONCEPTUAL",
-    "DATA_PROTOCOL",
-    "PRIMARY_MATERIAL",
-  ]),
-  description: z.string().min(1, "Kutu açıklaması boş olamaz"),
-  concepts: z.array(z.string()).max(6).optional(),
-  subBoxes: z.array(RawSubBoxSchema),
-});
-
-const RawBoxGenerationResponseSchema = z.object({
-  boxes: z.array(RawGeminiBoxSchema).min(1, "En az bir kutu üretilmelidir"),
-});
 import type { NewLibraryResource } from "@/db/schema";
 import {
   fetchThesisMatrix,
   fetchOriginalityReport,
 } from "../_lib/fetch-actions";
-
-/** Default box title for the hardcoded related theses box appended server-side. */
-const RELATED_THESES_TITLE = "İlişkisel Tez Çalışmaları";
 import { mineCoCitations } from "../_services/co-citation-miner";
 import type { BoxContext } from "../_services/co-citation-miner";
 import type { RawPaper } from "../literature-review/_services/literature-review-papers";
 import { searchOpenAlex } from "../literature-review/_services/openalex/client";
 
+// ---------------------------------------------------------------------------
+// Gemini 5-quadrant nested yanıtı için Zod doğrulama şemaları.
+// ---------------------------------------------------------------------------
+
+const RawSubBoxSchema = z.object({
+  title: z.string().min(1, "Alt kutu başlığı boş olamaz"),
+  description: z.string().min(1, "Alt kutu açıklaması boş olamaz"),
+  concepts: z.array(z.string()).min(1),
+  semanticQuery: z.string().min(1, "Arama sorgusu boş olamaz"),
+  foundationalQueries: z.array(FoundationalQuerySchema).optional(),
+});
+
+const RawCategorySchema = z.object({
+  title: z.string().min(1, "Kategori başlığı boş olamaz"),
+  description: z.string().min(1, "Kategori açıklaması boş olamaz"),
+  subBoxes: z.array(RawSubBoxSchema).min(1),
+});
+
+const RawNestedResponseSchema = z.object({
+  conceptual: RawCategorySchema,
+  problematization: RawCategorySchema,
+  primaryMaterial: RawCategorySchema,
+  context: RawCategorySchema,
+  dataProtocol: RawCategorySchema,
+});
+
+type RawNestedResponse = z.infer<typeof RawNestedResponseSchema>;
+
+/** Default box title for the hardcoded related theses box appended server-side. */
+const RELATED_THESES_TITLE = "İlişkisel Tez Çalışmaları";
+
+// ---------------------------------------------------------------------------
+// Quadrant → Production BoxType Mapping (Adapter)
+// ---------------------------------------------------------------------------
+
+type ThesisBoxType = GeminiThesisBox["boxType"];
+
+const QUADRANT_MAPPING: Record<string, ThesisBoxType> = {
+  conceptual: "CONCEPTUAL",
+  problematization: "PROBLEMATIZATION",
+  primaryMaterial: "PRIMARY_MATERIAL",
+  context: "PRIMARY_MATERIAL",
+  dataProtocol: "DATA_PROTOCOL",
+};
+
 /**
- * Step 1: Generates the boxes structure (without foundational queries) using Gemini 3.1 Flash Lite.
+ * Gemini'nin 5-quadrant nested çıktısını düz (flat) GeminiThesisBox[] yapısına
+ * dönüştürür. Her kategori bir parent box (parentId: null), altındaki subBoxes
+ * ise parentId olarak parent'ın çıktı dizisindeki index'ini taşır.
  *
- * @returns The structured boxes array (with empty foundationalQueries), or a user-safe error message
+ * @param apiResponse - Gemini'den dönen 5-quadrant nested JSON nesnesi
+ * @returns Düz GeminiThesisBox dizisi
+ */
+function mapToProductionShape(
+  apiResponse: RawNestedResponse,
+): GeminiThesisBox[] {
+  const result: GeminiThesisBox[] = [];
+
+  for (const [category, boxType] of Object.entries(QUADRANT_MAPPING)) {
+    const cat = apiResponse[category as keyof RawNestedResponse];
+    if (!cat?.subBoxes || cat.subBoxes.length === 0) continue;
+
+    const parentIndex = result.length;
+    result.push({
+      title: cat.title,
+      boxType,
+      description: cat.description,
+      parentId: null,
+      semanticQuery: null,
+      concepts: [],
+      foundationalQueries: [],
+    });
+
+    for (const sub of cat.subBoxes) {
+      result.push({
+        title: sub.title,
+        boxType,
+        description: sub.description,
+        parentId: parentIndex,
+        semanticQuery: sub.semanticQuery ?? null,
+        concepts: sub.concepts ?? [],
+        foundationalQueries: [],
+      });
+    }
+  }
+
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Step 1: Box Structure Generation
+// ---------------------------------------------------------------------------
+
+/**
+ * Gemini 3.1 Flash Lite ile 5-quadrant epistemolojik kutu yapısını üretir.
+ * Nested API yanıtını adaptör ile düz GeminiThesisBox[] yapısına çevirir ve
+ * RELATED_THESES kutusunu özgünlük raporundan ekler.
+ *
+ * @returns Üretilen düz kutu dizisi veya kullanıcıya güvenli hata mesajı
  */
 export async function generateBoxesStructureAction(): Promise<
   { success: true; boxes: GeminiThesisBox[] } | { error: string }
@@ -103,9 +168,7 @@ export async function generateBoxesStructureAction(): Promise<
       researchScope: matrix.researchScope,
     });
 
-    const generationResult = await generateStructuredContent<
-      z.infer<typeof RawBoxGenerationResponseSchema>
-    >(
+    const generationResult = await generateStructuredContent<RawNestedResponse>(
       "gemini-3.1-flash-lite",
       buildThesisBoxGenerationSystemInstruction(),
       geminiPrompt,
@@ -113,43 +176,13 @@ export async function generateBoxesStructureAction(): Promise<
       log,
       {
         thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
-        zodSchema: RawBoxGenerationResponseSchema,
+        zodSchema: RawNestedResponseSchema,
         temperature: 1.0,
         seed: 42,
       },
     );
 
-    const rawBoxes = generationResult.boxes || [];
-
-    // Normalize generated boxes to full GeminiThesisBox shape.
-    // Gemini returns sub-boxes as {title, semanticQuery, concepts?, foundationalQueries?};
-    // we promote each sub-box to a full GeminiThesisBox (parentId set on save).
-    const normalizedBoxes: GeminiThesisBox[] = rawBoxes.map((box) => {
-      const boxType = box.boxType as
-        | "PROBLEMATIZATION"
-        | "CONCEPTUAL"
-        | "DATA_PROTOCOL"
-        | "PRIMARY_MATERIAL";
-      return {
-        title: box.title,
-        boxType,
-        description: box.description,
-        parentId: null,
-        semanticQuery: null,
-        concepts: box.concepts ?? [],
-        subBoxes: (box.subBoxes || []).map((sb) => ({
-          title: sb.title,
-          boxType,
-          description: sb.title,
-          parentId: null,
-          semanticQuery: sb.semanticQuery,
-          subBoxes: undefined,
-          foundationalQueries: sb.foundationalQueries ?? [],
-          concepts: [],
-        })),
-        foundationalQueries: [],
-      };
-    });
+    const normalizedBoxes = mapToProductionShape(generationResult);
 
     // Populate the RELATED_THESES box with overlapping theses from the
     // originality report (already computed during risk analysis).
@@ -200,11 +233,19 @@ export async function generateBoxesStructureAction(): Promise<
   }
 }
 
+// ---------------------------------------------------------------------------
+// Step 2: Foundational Query Mining
+// ---------------------------------------------------------------------------
+
 /**
- * Step 2: Mines OpenAlex for foundational queries based on the box semantic queries.
+ * Her kutunun semantik sorgularını OpenAlex üzerinde aratarak
+ * co-citation tabanlı kurucu eserleri bulur ve sub-box'lara dağıtır.
+ * Düz (flat) array yapısını destekler: parent box'lar (parentId === null)
+ * pas geçilir, child box'lar (parentId !== null) semantik sorgularıyla
+ * madenciliğe gönderilir.
  *
- * @param boxes - The structured box array from Step 1
- * @returns The populated boxes array, or a user-safe error message
+ * @param boxes - Step 1'den gelen düz kutu dizisi
+ * @returns Kurucu eserlerle zenginleştirilmiş kutu dizisi veya hata
  */
 export async function mineFoundationalQueriesAction(
   boxes: GeminiThesisBox[],
@@ -222,10 +263,55 @@ export async function mineFoundationalQueriesAction(
       data: { boxCount: boxes.length },
     });
 
-    const populatedBoxes: GeminiThesisBox[] = [];
+    // Map parentId → { queries in order, parent context }
+    const childrenByParent = new Map<
+      number,
+      { flatIndex: number; query: string }[]
+    >();
+    for (let i = 0; i < boxes.length; i++) {
+      const b = boxes[i];
+      if (b.parentId === null) continue;
+      if (b.boxType === "PRIMARY_MATERIAL" || b.boxType === "RELATED_THESES") {
+        continue;
+      }
+      if (!b.semanticQuery?.trim()) continue;
+      const list = childrenByParent.get(b.parentId) ?? [];
+      list.push({ flatIndex: i, query: b.semanticQuery });
+      childrenByParent.set(b.parentId, list);
+    }
 
-    for (const box of boxes) {
+    // Batch-mine each parent's children
+    const minedByParent = new Map<number, FoundationalQuery[]>();
+    for (const [parentIndex, entries] of childrenByParent) {
+      const parent = boxes[parentIndex];
+      if (!parent) continue;
+
+      const boxContext: BoxContext = {
+        boxType: parent.boxType,
+        title: parent.title,
+        description: parent.description,
+      };
+
+      log.info("mining_parent_batch", {
+        service: "boxes",
+        data: {
+          parentTitle: parent.title,
+          childCount: entries.length,
+        },
+      });
+
+      const queries = entries.map((e) => e.query);
+      const mined = await mineCoCitations(queries, log, boxContext);
+      minedByParent.set(parentIndex, mined);
+    }
+
+    // Build result array — preserve original flat order
+    const populatedBoxes: GeminiThesisBox[] = [];
+    for (let i = 0; i < boxes.length; i++) {
+      const box = boxes[i];
+
       if (
+        box.parentId === null ||
         box.boxType === "PRIMARY_MATERIAL" ||
         box.boxType === "RELATED_THESES"
       ) {
@@ -233,38 +319,18 @@ export async function mineFoundationalQueriesAction(
         continue;
       }
 
-      log.info("mining_box_foundational", {
-        service: "boxes",
-        data: { title: box.title, queryCount: box.subBoxes?.length ?? 0 },
-      });
-
-      const queries = (box.subBoxes ?? [])
-        .map((s) => s.semanticQuery)
-        .filter((q): q is string => q !== null);
-      const boxContext: BoxContext = {
-        boxType: box.boxType,
-        title: box.title,
-        description: box.description,
-      };
-      const mined = await mineCoCitations(queries, log, boxContext);
-
-      // Distribute each mined champion to its corresponding sub-box
-      // (mineCoCitations returns one result per query, in order)
-      let minedIdx = 0;
-      const updatedSubBoxes = (box.subBoxes ?? []).map((sb) => {
-        if (sb.semanticQuery?.trim()) {
-          const champion =
-            minedIdx < mined.length ? mined[minedIdx] : undefined;
-          minedIdx++;
-          return { ...sb, foundationalQueries: champion ? [champion] : [] };
-        }
-        return { ...sb, foundationalQueries: [] };
-      });
+      // Child box — attach mined champion indexed by position in parent's group
+      const parentMined = minedByParent.get(box.parentId) ?? [];
+      const siblings = childrenByParent.get(box.parentId) ?? [];
+      const idxInGroup = siblings.findIndex((s) => s.flatIndex === i);
+      const champion =
+        idxInGroup >= 0 && idxInGroup < parentMined.length
+          ? parentMined[idxInGroup]
+          : undefined;
 
       populatedBoxes.push({
         ...box,
-        subBoxes: updatedSubBoxes,
-        foundationalQueries: [],
+        foundationalQueries: champion ? [champion] : [],
       });
     }
 
@@ -311,9 +377,12 @@ export async function mineFoundationalQueriesAction(
 }
 
 /**
- * Removes duplicate foundational queries across all sub-boxes globally
- * based on author+title key. If a work was already assigned to an earlier
- * sub-box, it is filtered out from subsequent sub-boxes.
+ * Flat array içindeki tüm box'lar arasında yazar+başlık bazlı global
+ * deduplikasyon yapar. Daha önceki bir box'a atanmış eser, sonraki
+ * box'lardan filtrelenir.
+ *
+ * @param boxes - Kurucu eserlerle doldurulmuş düz kutu dizisi
+ * @returns Deduplike edilmiş düz kutu dizisi
  */
 function deduplicateFoundationalQueries(
   boxes: GeminiThesisBox[],
@@ -322,49 +391,55 @@ function deduplicateFoundationalQueries(
 
   return boxes.map((box) => ({
     ...box,
-    subBoxes: (box.subBoxes ?? []).map((sb) => {
-      const uniqueQueries = (sb.foundationalQueries ?? []).filter((q) => {
-        const key = `${q.author}|${q.title}`.toLowerCase().trim();
-        if (seen.has(key)) {
-          return false;
-        }
-        seen.add(key);
-        return true;
-      });
-      return { ...sb, foundationalQueries: uniqueQueries };
+    foundationalQueries: (box.foundationalQueries ?? []).filter((q) => {
+      const key = `${q.author}|${q.title}`.toLowerCase().trim();
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
     }),
-    foundationalQueries: [],
   }));
 }
 
+// ---------------------------------------------------------------------------
+// Literature Cache Pre-fetch
+// ---------------------------------------------------------------------------
+
 /**
- * Fire-and-forget action that pre-fetches the full literature pool (with abstracts)
- * from OpenAlex for each non-archival box, so the Literature Review step can bypass
- * the API entirely if cached data exists.
+ * Her kutunun semantik sorgularını OpenAlex'te aratarak sonuçları ön belleğe
+ * alır. Flat array yapısında child box'lar parentId referansı ile ebeveynlerine
+ * bağlanır; sonuçlar ebeveyn başlığı altında gruplanır. Literatür Tarama adımı
+ * bu önbellekten beslenebilir.
  *
- * @param boxes - The structured box array (must have foundationalQueries populated)
- * @returns A record of box title → array of RawPaper, or empty on failure
+ * @param boxes - Kurucu eserleri doldurulmuş düz kutu dizisi
+ * @returns Kutu başlığı → RawPaper[] eşleşmesi
  */
 export async function prefetchLiteratureCacheAction(
   boxes: GeminiThesisBox[],
 ): Promise<{ cachedPapers: Record<string, RawPaper[]> }> {
   const cachedPapers: Record<string, RawPaper[]> = {};
 
-  for (const box of boxes) {
-    if (
-      box.boxType === "PRIMARY_MATERIAL" ||
-      !box.subBoxes ||
-      box.subBoxes.length === 0
-    ) {
-      continue;
-    }
+  // Group children by their parent's flat index
+  const childrenByParent = new Map<number, GeminiThesisBox[]>();
+  for (let i = 0; i < boxes.length; i++) {
+    const b = boxes[i];
+    if (b.parentId === null) continue;
+    const list = childrenByParent.get(b.parentId) ?? [];
+    list.push(b);
+    childrenByParent.set(b.parentId, list);
+  }
+
+  for (const [parentIndex, children] of childrenByParent) {
+    const parent = boxes[parentIndex];
+    if (!parent || parent.boxType === "PRIMARY_MATERIAL") continue;
 
     const allPapers: RawPaper[] = [];
 
-    for (const sub of box.subBoxes) {
-      if (!sub.semanticQuery?.trim()) continue;
+    for (const child of children) {
+      if (!child.semanticQuery?.trim()) continue;
       try {
-        const results = await searchOpenAlex(sub.semanticQuery);
+        const results = await searchOpenAlex(child.semanticQuery);
         allPapers.push(...results);
       } catch {
         // Silently skip failed queries — this is a best-effort cache
@@ -382,20 +457,24 @@ export async function prefetchLiteratureCacheAction(
       }
     }
 
-    cachedPapers[box.title] = unique;
+    cachedPapers[parent.title] = unique;
   }
 
   return { cachedPapers };
 }
 
+// ---------------------------------------------------------------------------
+// Step 3: Box Persistence
+// ---------------------------------------------------------------------------
+
 /**
- * Persists the generated (and possibly user-edited) subject boxes to thesis_boxes.
- * Deletes existing boxes for the matrix first, then inserts flat hierarchy.
- * After boxes are written, inserts Gemini-mapped overlapping theses from the
- * originality report into library_resources using index-based box mapping.
+ * Üretilen (ve kullanıcı tarafından düzenlenebilmiş) konu kutularını
+ * thesis_boxes tablosuna yazar. Mevcut kutular silinir, düz hiyerarşi
+ * yeniden eklenir. Özgünlük raporundaki örtüşen tezler library_resources'a
+ * eklenir.
  *
- * @param boxes - Array of GeminiThesisBox to persist
- * @returns Success or error response
+ * @param boxes - Kaydedilecek GeminiThesisBox dizisi
+ * @returns Başarı veya hata yanıtı
  */
 export async function confirmBoxesAction(
   boxes: GeminiThesisBox[],
@@ -431,58 +510,77 @@ export async function confirmBoxesAction(
         .delete(thesisBoxes)
         .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
 
-      // Insert parent boxes (flat rows, no subBoxes/semanticSearchQueries columns)
-      const parentValues = boxes.map((box) => ({
-        thesisMatrixId,
-        title: box.title,
-        boxType: box.boxType,
-        description: box.description || "",
-        parentId: null,
-        semanticQuery: null,
-        foundationalQueries: box.foundationalQueries || [],
-        concepts: box.concepts || [],
-      }));
-
-      let insertedBoxes: { id: number; title: string }[] = [];
-
-      if (parentValues.length > 0) {
-        insertedBoxes = await tx
-          .insert(thesisBoxes)
-          .values(parentValues)
-          .returning({ id: thesisBoxes.id, title: thesisBoxes.title });
-      }
-
-      // Insert sub-boxes as separate rows with parentId FK
-      const subBoxValues: (typeof thesisBoxes.$inferInsert)[] = [];
-
+      // Step 1: Collect parent flat indices (original array positions)
+      const parentFlatIndices: number[] = [];
       for (let i = 0; i < boxes.length; i++) {
-        const parentRow = insertedBoxes[i];
-        if (!parentRow) continue;
-        const parentSubBoxes = boxes[i]?.subBoxes ?? [];
-        for (const sb of parentSubBoxes) {
-          subBoxValues.push({
-            thesisMatrixId,
-            title: sb.title,
-            boxType: sb.boxType,
-            description: sb.description,
-            parentId: parentRow.id,
-            semanticQuery: sb.semanticQuery || "",
-            foundationalQueries: sb.foundationalQueries ?? [],
-            concepts: sb.concepts ?? [],
-          });
+        if (boxes[i].parentId === null) {
+          parentFlatIndices.push(i);
         }
       }
 
-      if (subBoxValues.length > 0) {
-        await tx.insert(thesisBoxes).values(subBoxValues);
+      // Step 2: Insert parent boxes first (preserving flat order)
+      const parentValues = parentFlatIndices.map((i) => ({
+        thesisMatrixId,
+        title: boxes[i].title,
+        boxType: boxes[i].boxType,
+        description: boxes[i].description || "",
+        parentId: null,
+        semanticQuery: null,
+        foundationalQueries: boxes[i].foundationalQueries || [],
+        concepts: boxes[i].concepts || [],
+      }));
+
+      let insertedParents: { id: number }[] = [];
+
+      if (parentValues.length > 0) {
+        insertedParents = await tx
+          .insert(thesisBoxes)
+          .values(parentValues)
+          .returning({ id: thesisBoxes.id });
       }
 
-      // Insert all overlap theses into the RELATED_THESES box
-      const relatedBoxIndex = boxes.findIndex(
+      // Step 3: Map original flat index → database ID
+      // (child box'ların parentId alanı orijinal flat array index'ini işaret eder)
+      const dbParentIdMap = new Map<number, number>();
+      for (let j = 0; j < parentFlatIndices.length; j++) {
+        const dbId = insertedParents[j]?.id;
+        if (dbId !== undefined) {
+          dbParentIdMap.set(parentFlatIndices[j], dbId);
+        }
+      }
+
+      // Step 4: Insert child boxes with correct FK parentId
+      const childValues: (typeof thesisBoxes.$inferInsert)[] = [];
+
+      for (let i = 0; i < boxes.length; i++) {
+        const box = boxes[i];
+        if (box.parentId === null) continue;
+
+        const mappedParentId = dbParentIdMap.get(box.parentId) ?? null;
+        childValues.push({
+          thesisMatrixId,
+          title: box.title,
+          boxType: box.boxType,
+          description: box.description || "",
+          parentId: mappedParentId,
+          semanticQuery: box.semanticQuery || "",
+          foundationalQueries: box.foundationalQueries ?? [],
+          concepts: box.concepts ?? [],
+        });
+      }
+
+      if (childValues.length > 0) {
+        await tx.insert(thesisBoxes).values(childValues);
+      }
+
+      // Step 5: RELATED_THESES box — DB ID via flat-index map
+      const relatedBoxFlatIndex = boxes.findIndex(
         (b) => b.title === RELATED_THESES_TITLE,
       );
       const relatedBoxId =
-        relatedBoxIndex >= 0 ? insertedBoxes[relatedBoxIndex]?.id : null;
+        relatedBoxFlatIndex >= 0
+          ? (dbParentIdMap.get(relatedBoxFlatIndex) ?? null)
+          : null;
 
       if (relatedBoxId && overlapTable.length > 0) {
         for (const thesis of overlapTable) {
@@ -492,7 +590,7 @@ export async function confirmBoxesAction(
             title: thesis.title,
             abstract: isIkiz
               ? `[MUTLAK İKİZ TEHDİDİ] ${thesis.comparisonNote || ""}`
-              : (thesis.comparisonNote || null),
+              : thesis.comparisonNote || null,
             url: thesis.yokPdfUrl ?? null,
             doi: null,
             publisher: thesis.university ?? null,

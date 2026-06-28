@@ -195,15 +195,11 @@ export const GeminiThesisBoxSchema = z.object({
     return z.array(GeminiThesisBoxSchema).optional();
   },
   foundationalQueries: z.array(FoundationalQuerySchema).max(12).optional(),
-  concepts: z.array(z.string()).max(4).optional(),
+  concepts: z.array(z.string()).max(6).optional(),
   relatedTheses: z.array(RelatedThesisEntrySchema).optional(),
 });
 
 export const FinalGeminiThesisBoxSchema = GeminiThesisBoxSchema;
-
-export const BoxGenerationResponseSchema = z.object({
-  boxes: z.array(GeminiThesisBoxSchema).min(1, "En az bir kutu üretilmelidir"),
-});
 
 export const FinalBoxGenerationResponseSchema = z.object({
   boxes: z
