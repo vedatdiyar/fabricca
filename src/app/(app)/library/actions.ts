@@ -109,6 +109,18 @@ export async function toggleResourceReadStatusAction(
       redirect("/login");
     }
 
+    const [res] = await db
+      .select({ abstract: libraryResources.abstract })
+      .from(libraryResources)
+      .where(eq(libraryResources.id, resourceId));
+
+    if (res?.abstract?.startsWith("[MUTLAK İKİZ TEHDİDİ]")) {
+      return {
+        success: false,
+        error: "Mutlak ikiz tehdidi içeren tezlerin okuma durumu değiştirilemez.",
+      };
+    }
+
     await db
       .update(libraryResources)
       .set({ isRead })

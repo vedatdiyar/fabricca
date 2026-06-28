@@ -11,6 +11,7 @@ import {
 } from "@/db/schema";
 import type { GeminiThesisBox } from "@/lib/types";
 import { getSession } from "@/session";
+import { calculateBadge } from "@/lib/academic/badge-calculator";
 
 const boxOrderWeight: Record<string, number> = {
   PROBLEMATIZATION: 1,
@@ -162,17 +163,21 @@ export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
     };
 
     if (b.boxType === "RELATED_THESES" && overlapTable.length > 0) {
-      box.relatedTheses = overlapTable.map((t) => ({
-        title: t.title,
-        author: t.author,
-        university: t.university,
-        year: t.year,
-        thesisType: t.thesisType,
-        department: t.department,
-        axes: t.axes,
-        comparisonNote: t.comparisonNote,
-        yokPdfUrl: t.yokPdfUrl,
-      }));
+      box.relatedTheses = overlapTable.map((t) => {
+        const isIkiz = calculateBadge(t.axes) === "IKIZ";
+        const note = t.comparisonNote || "";
+        return {
+          title: t.title,
+          author: t.author,
+          university: t.university,
+          year: t.year,
+          thesisType: t.thesisType,
+          department: t.department,
+          axes: t.axes,
+          comparisonNote: isIkiz ? `[MUTLAK İKİZ TEHDİDİ] ${note}` : note,
+          yokPdfUrl: t.yokPdfUrl,
+        };
+      });
     }
 
     return box;

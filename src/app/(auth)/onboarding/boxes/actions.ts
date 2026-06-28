@@ -22,6 +22,7 @@ import {
   type GeminiThesisBox,
   type OnboardingActionResult,
 } from "@/lib/types";
+import { calculateBadge } from "@/lib/academic/badge-calculator";
 
 // ---------------------------------------------------------------------------
 // Ham Gemini çıktısı için yerel Zod şemaları.
@@ -162,17 +163,21 @@ export async function generateBoxesStructureAction(): Promise<
       subBoxes: [],
       concepts: [],
       foundationalQueries: [],
-      relatedTheses: overlapTable.map((t) => ({
-        title: t.title,
-        author: t.author,
-        university: t.university,
-        year: t.year,
-        thesisType: t.thesisType,
-        department: t.department,
-        axes: t.axes,
-        comparisonNote: t.comparisonNote,
-        yokPdfUrl: t.yokPdfUrl,
-      })),
+      relatedTheses: overlapTable.map((t) => {
+        const isIkiz = calculateBadge(t.axes) === "IKIZ";
+        const note = t.comparisonNote || "";
+        return {
+          title: t.title,
+          author: t.author,
+          university: t.university,
+          year: t.year,
+          thesisType: t.thesisType,
+          department: t.department,
+          axes: t.axes,
+          comparisonNote: isIkiz ? `[MUTLAK İKİZ TEHDİDİ] ${note}` : note,
+          yokPdfUrl: t.yokPdfUrl,
+        };
+      }),
     });
 
     log.info("box_structure_generation_success", {
@@ -481,10 +486,13 @@ export async function confirmBoxesAction(
 
       if (relatedBoxId && overlapTable.length > 0) {
         for (const thesis of overlapTable) {
+          const isIkiz = calculateBadge(thesis.axes) === "IKIZ";
           libraryValues.push({
             thesisBoxId: relatedBoxId,
             title: thesis.title,
-            abstract: null,
+            abstract: isIkiz
+              ? `[MUTLAK İKİZ TEHDİDİ] ${thesis.comparisonNote || ""}`
+              : (thesis.comparisonNote || null),
             url: thesis.yokPdfUrl ?? null,
             doi: null,
             publisher: thesis.university ?? null,

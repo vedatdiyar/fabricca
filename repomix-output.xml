@@ -36,7 +36,7 @@ The content is organized as follows:
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
 - Only files matching these patterns are included: src/**/*, package.json, README.md
-- Files matching these patterns are excluded: **/*.test.ts, **/*.spec.ts, docs/**, *.log, src/app/globals.css, src/components/ui/**, src/lib/prompts/**
+- Files matching these patterns are excluded: **/*.test.ts, **/*.spec.ts, docs/**, *.log, src/app/globals.css
 - Files matching patterns in .gitignore are excluded
 - Files matching default ignore patterns are excluded
 - Code comments have been removed from supported file types
@@ -155,6 +155,18 @@ src/
     providers/
       loading-overlay-provider.tsx
       query-provider.tsx
+    ui/
+      accordion.tsx
+      alert-dialog.tsx
+      badge.tsx
+      button.tsx
+      card.tsx
+      checkbox.tsx
+      input.tsx
+      label.tsx
+      scroll-area.tsx
+      sonner.tsx
+      textarea.tsx
     ai-banner.tsx
     error-display.tsx
     header.tsx
@@ -179,6 +191,15 @@ src/
       payload-writer.ts
     math/
       vector.ts
+    prompts/
+      box-generation.ts
+      co-citation-referee.ts
+      fact-query-extraction.ts
+      index.ts
+      lit-keyword-extraction.ts
+      originality-analysis.ts
+      roadmap-synthesis.ts
+      tavily-evaluation.ts
     cache-tags.ts
     cloudflare.ts
     cohere.ts
@@ -622,6 +643,31 @@ export function writePayloadFile(
 export function cosineSimilarity(vecA: number[], vecB: number[]): number
 </file>
 
+<file path="src/lib/prompts/co-citation-referee.ts">
+import type { JsonSchema } from "../gemini";
+⋮----
+export interface RefereeCandidate {
+  index: number;
+  title: string;
+  author: string;
+  year: number;
+  localCount: number;
+}
+⋮----
+export interface RefereeBoxContext {
+  boxType: string;
+  title: string;
+  description: string;
+}
+⋮----
+export function buildRefereeSystemInstruction(): string
+⋮----
+export function buildRefereePrompt(
+  candidateList: RefereeCandidate[],
+  boxContext?: RefereeBoxContext,
+): string
+</file>
+
 <file path="src/lib/cache-tags.ts">
 import { revalidatePath, updateTag } from "next/cache";
 ⋮----
@@ -941,6 +987,41 @@ async function main(): Promise<void>
 }
 </file>
 
+<file path="src/components/ui/accordion.tsx">
+import { ChevronDown } from "lucide-react";
+⋮----
+import { cn } from "@/lib/utils";
+</file>
+
+<file path="src/components/ui/alert-dialog.tsx">
+import { cn } from "@/lib/utils";
+import { buttonVariants } from "@/components/ui/button";
+⋮----
+className=
+</file>
+
+<file path="src/components/ui/card.tsx">
+import { cn } from "@/lib/utils";
+</file>
+
+<file path="src/components/ui/checkbox.tsx">
+import { Check } from "lucide-react";
+⋮----
+import { cn } from "@/lib/utils";
+</file>
+
+<file path="src/components/ui/label.tsx">
+import { cva, type VariantProps } from "class-variance-authority";
+⋮----
+import { cn } from "@/lib/utils";
+</file>
+
+<file path="src/components/ui/scroll-area.tsx">
+import { cn } from "@/lib/utils";
+⋮----
+className=
+</file>
+
 <file path="src/db/seed.ts">
 import { hash } from "bcrypt-ts";
 import { db } from "./index";
@@ -1046,6 +1127,27 @@ export async function resolveFoundationalWorks(
 ): Promise<FoundationalWorkResult[]>
 ⋮----
 // Extract only id and publisher from Crossref; lock LLM fields
+</file>
+
+<file path="src/components/ui/badge.tsx">
+import { cva, type VariantProps } from "class-variance-authority";
+⋮----
+import { cn } from "@/lib/utils";
+⋮----
+export interface BadgeProps
+  extends
+    React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof badgeVariants> {}
+⋮----
+function Badge(
+⋮----
+<div className=
+</file>
+
+<file path="src/components/ui/input.tsx">
+import { cn } from "@/lib/utils";
+⋮----
+className=
 </file>
 
 <file path="src/components/header.tsx">
@@ -1207,6 +1309,47 @@ import { LoadingSpinner } from "@/components/loading-spinner";
 export default function RiskLoading()
 </file>
 
+<file path="src/components/ui/button.tsx">
+import { Slot } from "@radix-ui/react-slot";
+import { cva, type VariantProps } from "class-variance-authority";
+⋮----
+import { cn } from "@/lib/utils";
+⋮----
+export interface ButtonProps
+  extends
+    React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean;
+}
+⋮----
+className=
+</file>
+
+<file path="src/components/ui/sonner.tsx">
+import {
+  CircleCheck,
+  Info,
+  LoaderCircle,
+  OctagonX,
+  TriangleAlert,
+} from "lucide-react";
+import { useTheme } from "next-themes";
+import { Toaster as Sonner } from "sonner";
+⋮----
+type ToasterProps = React.ComponentProps<typeof Sonner>;
+</file>
+
+<file path="src/lib/prompts/tavily-evaluation.ts">
+import type { JsonSchema } from "../gemini";
+⋮----
+export function buildTavilyEvalSystemInstruction(): string
+⋮----
+export function buildTavilyEvalPrompt(params: {
+  studyTitle: string;
+  tavilyResultsFormatted: string;
+}): string
+</file>
+
 <file path="src/lib/cloudflare.ts">
 import type { Logger } from "./logger";
 import { classifyError } from "./error-utils";
@@ -1288,6 +1431,12 @@ export default function RootLayout({
 }>)
 </file>
 
+<file path="src/components/ui/textarea.tsx">
+import { cn } from "@/lib/utils";
+⋮----
+className=
+</file>
+
 <file path="src/components/error-display.tsx">
 import { useEffect } from "react";
 import { AlertTriangle, WifiOff, Clock, RefreshCw } from "lucide-react";
@@ -1301,6 +1450,21 @@ interface ErrorDisplayProps {
   error: unknown;
   onRetry?: () => void;
 }
+</file>
+
+<file path="src/lib/prompts/lit-keyword-extraction.ts">
+import type { JsonSchema } from "../gemini";
+⋮----
+export function buildLitKeywordExtractionSystemInstruction(): string
+⋮----
+export function buildLitKeywordPrompt(params: {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+}): string
 </file>
 
 <file path="src/app/(app)/library/library-content.tsx">
@@ -1472,16 +1636,19 @@ export function StrategicRoadmapSection({
 }: StrategicRoadmapSectionProps)
 </file>
 
-<file path="src/app/(auth)/onboarding/layout.tsx">
-import { OnboardingStepper } from "./_components/onboarding-stepper";
-import { OnboardingContent } from "./_components/onboarding-content";
-import { checkStepsDataAction } from "./_lib/fetch-actions";
+<file path="src/lib/prompts/fact-query-extraction.ts">
+import type { JsonSchema } from "../gemini";
 ⋮----
-export default async function OnboardingLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>)
+export function buildFactQueryExtractionSystemInstruction(): string
+⋮----
+export function buildFactQueryPrompt(params: {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+}): string
 </file>
 
 <file path="src/app/(app)/actions.ts">
@@ -1692,6 +1859,18 @@ interface TavilyFactCheckTableProps {
 }
 </file>
 
+<file path="src/app/(auth)/onboarding/layout.tsx">
+import { OnboardingStepper } from "./_components/onboarding-stepper";
+import { OnboardingContent } from "./_components/onboarding-content";
+import { checkStepsDataAction } from "./_lib/fetch-actions";
+⋮----
+export default async function OnboardingLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>)
+</file>
+
 <file path="src/app/(auth)/layout.tsx">
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
@@ -1780,40 +1959,6 @@ export default function LoginPage()
 function handleSubmit(e: React.FormEvent<HTMLFormElement>)
 </file>
 
-<file path="src/app/(auth)/onboarding/_hooks/use-onboarding-navigation.ts">
-import { useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
-import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
-import type { LoadingStep } from "@/components/providers/loading-overlay-provider";
-import type { OriginalityReportData } from "@/lib/types";
-import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
-import {
-  extractQueriesAction,
-  executeSearchAction,
-  siftThesesAction,
-  finalizeJuryAnalysisAction,
-  completeRiskStageAction,
-} from "../risk/actions";
-import {
-  generateBoxesStructureAction,
-  mineFoundationalQueriesAction,
-  prefetchLiteratureCacheAction,
-} from "../boxes/actions";
-⋮----
-interface MatrixInput {
-  studyTitle: string;
-  researchQuestion: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-  mainClaim: string;
-}
-⋮----
-export function useOnboardingNavigation()
-</file>
-
 <file path="src/app/(auth)/onboarding/literature-review/page.tsx">
 import { redirect } from "next/navigation";
 import { getProfile } from "@/session";
@@ -1874,6 +2019,68 @@ export async function toggleResourceReadStatusAction(
 ): Promise<ToggleReadStatusResult>
 </file>
 
+<file path="src/app/(auth)/onboarding/_hooks/use-onboarding-navigation.ts">
+import { useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
+import type { LoadingStep } from "@/components/providers/loading-overlay-provider";
+import type { OriginalityReportData } from "@/lib/types";
+import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
+import {
+  extractQueriesAction,
+  executeSearchAction,
+  siftThesesAction,
+  finalizeJuryAnalysisAction,
+  completeRiskStageAction,
+} from "../risk/actions";
+import {
+  generateBoxesStructureAction,
+  mineFoundationalQueriesAction,
+  prefetchLiteratureCacheAction,
+} from "../boxes/actions";
+⋮----
+interface MatrixInput {
+  studyTitle: string;
+  researchQuestion: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+  mainClaim: string;
+}
+⋮----
+export function useOnboardingNavigation()
+</file>
+
+<file path="src/lib/prompts/roadmap-synthesis.ts">
+import type { OverlapLevel } from "../types";
+import type { JsonSchema } from "../gemini";
+⋮----
+export function buildRoadmapSystemInstruction(): string
+⋮----
+export function buildRoadmapPrompt(params: {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+  comparisonResults: {
+    title: string;
+    author: string;
+    year: number;
+    axes: {
+      subject: OverlapLevel;
+      theory: OverlapLevel;
+      methodology: OverlapLevel;
+      context?: OverlapLevel;
+    };
+    comparisonNote: string;
+  }[];
+}): string
+</file>
+
 <file path="src/lib/tezara-parser.ts">
 import type { Logger } from "./logger";
 import type { TezaraThesisSummary } from "./types";
@@ -1892,40 +2099,6 @@ export function parseTezaraSearchResults(
 // Title is the second a[href^="/theses/"] in the li (first is the Tez No link)
 ⋮----
 // Author
-</file>
-
-<file path="src/app/(auth)/onboarding/_lib/fetch-actions.ts">
-import { eq, sql, and, not } from "drizzle-orm";
-import { cacheLife, cacheTag } from "next/cache";
-import { db } from "@/db";
-import {
-  thesisMatrices,
-  originalityReports,
-  thesisBoxes,
-  libraryResources,
-} from "@/db/schema";
-import type { GeminiThesisBox } from "@/lib/types";
-import { getSession } from "@/session";
-⋮----
-async function getCachedThesisMatrix(userId: number)
-⋮----
-async function getCachedOriginalityReport(userId: number)
-⋮----
-async function getCachedBoxes(thesisMatrixId: number)
-⋮----
-export async function fetchThesisMatrix()
-⋮----
-export async function fetchOriginalityReport()
-⋮----
-export async function fetchBoxes()
-⋮----
-export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]>
-⋮----
-export async function checkStepsDataAction(): Promise<Record<
-  string,
-  boolean
-> | null> {
-  const session = await getSession();
 </file>
 
 <file path="src/components/literature-reader.tsx">
@@ -1970,14 +2143,50 @@ import { Button } from "@/components/ui/button";
 import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
 </file>
 
-<file path="src/app/(auth)/onboarding/_components/onboarding-stepper.tsx">
-import { usePathname, useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { Check } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { checkStepsDataAction } from "../_lib/fetch-actions";
+<file path="src/app/(auth)/onboarding/_lib/fetch-actions.ts">
+import { eq, sql, and, not } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
+import { db } from "@/db";
+import {
+  thesisMatrices,
+  originalityReports,
+  thesisBoxes,
+  libraryResources,
+} from "@/db/schema";
+import type { GeminiThesisBox } from "@/lib/types";
+import { getSession } from "@/session";
+import { calculateBadge } from "@/lib/academic/badge-calculator";
 ⋮----
-className=
+async function getCachedThesisMatrix(userId: number)
+⋮----
+async function getCachedOriginalityReport(userId: number)
+⋮----
+async function getCachedBoxes(thesisMatrixId: number)
+⋮----
+export async function fetchThesisMatrix()
+⋮----
+export async function fetchOriginalityReport()
+⋮----
+export async function fetchBoxes()
+⋮----
+export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]>
+⋮----
+/**
+ * Server Action: checks which onboarding steps have existing data in the database
+ * for the current user. Used by the stepper to determine which future steps are
+ * clickable (steps with data can be re-visited even if they appear in the future).
+ *
+ * @returns A record of step key → boolean, or null if no session
+ */
+export async function checkStepsDataAction(): Promise<Record<
+  string,
+  boolean
+> | null> {
+  const session = await getSession();
+</file>
+
+<file path="src/lib/prompts/index.ts">
+
 </file>
 
 <file path="src/app/(auth)/onboarding/literature-review/_components/literature-article-card.tsx">
@@ -2023,6 +2232,16 @@ export async function evaluateTavilyResults(
   }[],
   log: Logger,
 ): Promise<TavilyEvaluationResponse>
+</file>
+
+<file path="src/app/(auth)/onboarding/_components/onboarding-stepper.tsx">
+import { usePathname, useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { Check } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { checkStepsDataAction } from "../_lib/fetch-actions";
+⋮----
+className=
 </file>
 
 <file path="src/app/(auth)/onboarding/_components/start-over-button.tsx">
@@ -2088,6 +2307,31 @@ export async function extractQueries(
   params: ExtractQueriesParams,
   log: Logger,
 ): Promise<
+</file>
+
+<file path="src/lib/prompts/originality-analysis.ts">
+import type { JsonSchema } from "../gemini";
+⋮----
+export function buildAnalysisSystemInstruction(): string
+⋮----
+export function buildAnalysisPrompt(params: {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+  validDetails: {
+    id: number;
+    title: string;
+    author: string;
+    university: string;
+    year: number;
+    thesisType: string;
+    department: string;
+    abstract: string;
+  }[];
+}): string
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_components/risk-container.tsx">
@@ -2385,7 +2629,6 @@ export function getSubjectOverlap(
     significant_topic_intersection: boolean;
     background_mention_only: boolean;
   },
-  fallback: OverlapLevel = "OZGUN",
 ): OverlapLevel
 ⋮----
 export function getMethodologyOverlap(
@@ -2395,7 +2638,6 @@ export function getMethodologyOverlap(
     partially_shared_approach: boolean;
     different_empirical_design: boolean;
   },
-  fallback: OverlapLevel = "OZGUN",
 ): OverlapLevel
 ⋮----
 export function getTheoryOverlap(
@@ -2405,7 +2647,6 @@ export function getTheoryOverlap(
     shared_concepts_only: boolean;
     different_epistemology: boolean;
   },
-  fallback: OverlapLevel = "OZGUN",
 ): OverlapLevel
 ⋮----
 export function getContextOverlap(
@@ -2415,7 +2656,6 @@ export function getContextOverlap(
     partial_contextual_contact: boolean;
     distinct_context: boolean;
   },
-  fallback: OverlapLevel = "OZGUN",
 ): OverlapLevel
 ⋮----
 export interface CalculatedOverlapItem {
@@ -2480,28 +2720,24 @@ export function calculateOriginalityRisk(
       significant_topic_intersection: boolean;
       background_mention_only: boolean;
     };
-    subject_overlap: OverlapLevel;
     methodology_scorecard?: {
       identical_method_and_tools: boolean;
       is_subsumed: boolean;
       partially_shared_approach: boolean;
       different_empirical_design: boolean;
     };
-    methodology_overlap: OverlapLevel;
     theory_scorecard?: {
       same_theoretical_backbone: boolean;
       is_subsumed: boolean;
       shared_concepts_only: boolean;
       different_epistemology: boolean;
     };
-    theory_overlap: OverlapLevel;
     context_scorecard?: {
       overlapping_universe_and_sample: boolean;
       is_subsumed: boolean;
       partial_contextual_contact: boolean;
       distinct_context: boolean;
     };
-    context_overlap: OverlapLevel;
   }>,
   validDetails: TezaraThesisDetails[],
   logger?: Logger,
@@ -2512,29 +2748,6 @@ export async function analyzeOriginalityRisk(
   log: Logger,
   chunkSize = 4,
 ): Promise<
-</file>
-
-<file path="src/app/(auth)/onboarding/risk/_hooks/use-risk-analysis.ts">
-import { useState, useCallback, useEffect, useRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
-import {
-  fetchThesisMatrix,
-  fetchOriginalityReport,
-} from "../../_lib/fetch-actions";
-import type { OriginalityReportData } from "@/lib/types";
-⋮----
-export interface UseRiskAnalysisResult {
-  loading: boolean;
-  analysing: boolean;
-  error: string | null;
-  reportData: OriginalityReportData | null;
-  proceeding: boolean;
-  startAnalysis: () => Promise<void>;
-  handleProceed: () => Promise<void>;
-}
-⋮----
-export function useRiskAnalysis(): UseRiskAnalysisResult
 </file>
 
 <file path="src/lib/gemini.ts">
@@ -2612,6 +2825,103 @@ export async function generateStructuredContent<T>(
 ): Promise<T>
 </file>
 
+<file path="src/app/(auth)/onboarding/risk/_hooks/use-risk-analysis.ts">
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
+import {
+  fetchThesisMatrix,
+  fetchOriginalityReport,
+} from "../../_lib/fetch-actions";
+import type { OriginalityReportData } from "@/lib/types";
+⋮----
+export interface UseRiskAnalysisResult {
+  loading: boolean;
+  analysing: boolean;
+  error: string | null;
+  reportData: OriginalityReportData | null;
+  proceeding: boolean;
+  startAnalysis: () => Promise<void>;
+  handleProceed: () => Promise<void>;
+}
+⋮----
+export function useRiskAnalysis(): UseRiskAnalysisResult
+</file>
+
+<file path="src/app/(auth)/onboarding/risk/_services/sifting.ts">
+import { fetchThesisDetails } from "@/lib/tezara";
+import type { Logger } from "@/lib/logger";
+import type { TezaraThesisSummary, TezaraThesisDetails } from "@/lib/types";
+import { rerankTheses } from "@/lib/cohere";
+⋮----
+export interface SiftAndFetchDetailsParams {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+}
+⋮----
+export interface SiftingDiagnostic {
+  uniqueAfterDedup: number;
+  topIds: number[];
+  stage1Count: number;
+  fetchRequested: number;
+  fetchSuccess: number;
+  fetchFailed: number;
+}
+⋮----
+export async function siftAndFetchDetails(
+  params: SiftAndFetchDetailsParams,
+  tezaraSearchResults: TezaraThesisSummary[][],
+  log: Logger,
+): Promise<
+</file>
+
+<file path="src/lib/prompts/box-generation.ts">
+import type { JsonSchema } from "../gemini";
+⋮----
+export function buildThesisBoxGenerationSystemInstruction(): string
+⋮----
+export function buildThesisBoxGenerationPrompt(params: {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+}): string
+</file>
+
+<file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">
+import { useState } from "react";
+import { Loader2, AlertCircle, BookOpen, Archive, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { AIBanner } from "@/components/ai-banner";
+import { LoadingSpinner } from "@/components/loading-spinner";
+import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
+import { LiteratureArticleCard } from "./literature-article-card";
+import {
+  useLiteratureReview,
+  type BoxStatus,
+} from "../_hooks/use-literature-review";
+⋮----
+function ArchiveEntryForm({
+  onAddEntry,
+}: {
+onAddEntry: (title: string, description: string)
+⋮----
+const handleAdd = () =>
+⋮----
+onChange=
+⋮----
+onAddArchiveEntry(subBox.title,
+</file>
+
 <file path="src/app/(auth)/onboarding/matrix/_components/matrix-form.tsx">
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -2668,65 +2978,6 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
 ⋮----
 // Purge downstream data before anything else so the risk page
 // does not see stale reports and skip re-analysis.
-</file>
-
-<file path="src/app/(auth)/onboarding/risk/_services/sifting.ts">
-import { fetchThesisDetails } from "@/lib/tezara";
-import type { Logger } from "@/lib/logger";
-import type { TezaraThesisSummary, TezaraThesisDetails } from "@/lib/types";
-import { rerankTheses } from "@/lib/cohere";
-⋮----
-export interface SiftAndFetchDetailsParams {
-  studyTitle: string;
-  researchQuestion: string;
-  mainClaim: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-}
-⋮----
-export interface SiftingDiagnostic {
-  uniqueAfterDedup: number;
-  topIds: number[];
-  stage1Count: number;
-  fetchRequested: number;
-  fetchSuccess: number;
-  fetchFailed: number;
-}
-⋮----
-export async function siftAndFetchDetails(
-  params: SiftAndFetchDetailsParams,
-  tezaraSearchResults: TezaraThesisSummary[][],
-  log: Logger,
-): Promise<
-</file>
-
-<file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">
-import { useState } from "react";
-import { Loader2, AlertCircle, BookOpen, Archive, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { AIBanner } from "@/components/ai-banner";
-import { LoadingSpinner } from "@/components/loading-spinner";
-import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
-import { LiteratureArticleCard } from "./literature-article-card";
-import {
-  useLiteratureReview,
-  type BoxStatus,
-} from "../_hooks/use-literature-review";
-⋮----
-function ArchiveEntryForm({
-  onAddEntry,
-}: {
-onAddEntry: (title: string, description: string)
-⋮----
-const handleAdd = () =>
-⋮----
-onChange=
-⋮----
-onAddArchiveEntry(subBox.title,
 </file>
 
 <file path="src/app/(auth)/onboarding/literature-review/_hooks/use-literature-review.ts">
@@ -2881,6 +3132,7 @@ import {
   type GeminiThesisBox,
   type OnboardingActionResult,
 } from "@/lib/types";
+import { calculateBadge } from "@/lib/academic/badge-calculator";
 ⋮----
 import type { NewLibraryResource } from "@/db/schema";
 import {
