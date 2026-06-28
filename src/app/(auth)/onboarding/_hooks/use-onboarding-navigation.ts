@@ -97,6 +97,10 @@ export function useOnboardingNavigation() {
         },
       );
 
+      // Immediate downstream purge + cache invalidation to lock future steps
+      await clearDownstreamDbAction("matrix");
+      await queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
+
       try {
         const extractResult = await extractQueriesAction(matrixInput);
         if (isCancelled) return { error: "cancelled" };
@@ -174,21 +178,25 @@ export function useOnboardingNavigation() {
 
     let isCancelled = false;
 
-    showLoading(
-      "İşlem Tamamlanıyor",
-      "Konu kutuları yapılandırılıyor.",
-      steps,
-      () => {
-        isCancelled = true;
-        void clearDownstreamDbAction("risk").then(() => {
-          queryClient.invalidateQueries();
-        });
-        toast.info("İşlem iptal edildi.");
-      },
-    );
+      showLoading(
+        "İşlem Tamamlanıyor",
+        "Konu kutuları yapılandırılıyor.",
+        steps,
+        () => {
+          isCancelled = true;
+          void clearDownstreamDbAction("risk").then(() => {
+            queryClient.invalidateQueries();
+          });
+          toast.info("İşlem iptal edildi.");
+        },
+      );
 
-    try {
-      const stageResult = await completeRiskStageAction();
+      // Immediate downstream purge + cache invalidation to lock future steps
+      await clearDownstreamDbAction("risk");
+      await queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
+
+      try {
+        const stageResult = await completeRiskStageAction();
       if (isCancelled) return { success: false };
       if (stageResult.error) {
         hideLoading();

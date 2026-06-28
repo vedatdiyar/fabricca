@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
 import {
@@ -130,8 +130,17 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
     }
   }, [proceedFromRisk]);
 
-  // Wrap startAnalysis to silence the cancellation sentinel
+  // Ref guards: ensure auto-trigger fires at most once and no two
+  // analysis executions overlap.
+  const hasFiredRef = useRef(false);
+  const isExecutingRef = useRef(false);
+
+  // Wrap startAnalysis to silence the cancellation sentinel and guard
+  // against concurrent invocations from React strict-mode double-mount
+  // or reference-drift re-renders.
   const startAnalysis = useCallback(async () => {
+    if (isExecutingRef.current) return;
+    isExecutingRef.current = true;
     resetAnalysisError();
     try {
       await startAnalysisInternal();
@@ -143,21 +152,20 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
         return;
       }
       // Real error — let it surface through mutation state
+    } finally {
+      isExecutingRef.current = false;
     }
   }, [startAnalysisInternal, resetAnalysisError]);
 
-  // Auto-trigger analysis when the component mounts and no report exists yet.
-  // Uses isFetching to guard against the race window: mutation.onSuccess invalidates
-  // the query, which triggers a background refetch. During that gap isFetching is
-  // true, blocking a second trigger until the fresh reportData arrives.
+  // Auto-trigger analysis exactly once on mount when no report exists yet.
   useEffect(() => {
+    if (hasFiredRef.current) return;
     if (loading || isFetching) return;
-    if (analysing) return;
     if (reportData) return;
-    if (analysisError) return;
 
+    hasFiredRef.current = true;
     startAnalysis();
-  }, [loading, isFetching, analysing, reportData, analysisError, startAnalysis]);
+  }, [loading, isFetching, reportData, startAnalysis]);
 
   return {
     loading,

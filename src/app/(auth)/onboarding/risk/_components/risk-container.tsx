@@ -1,25 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { ErrorDisplay } from "@/components/error-display";
 import { OriginalityReportView } from "./originality-report-view";
 import { useRiskAnalysis } from "../_hooks/use-risk-analysis";
-
-/**
- * Safety-net fallback rendered when no report exists, no error occurred, and the
- * auto-trigger inside {@link useRiskAnalysis} has not yet started the pipeline.
- * Triggers the analysis immediately on mount.
- */
-function IdleFallback({ startAnalysis }: { startAnalysis: () => void }) {
-  useEffect(() => {
-    startAnalysis();
-  }, [startAnalysis]);
-
-  return <LoadingSpinner variant="full" message="Analiz başlatılıyor..." />;
-}
 
 /**
  * Top-level risk-stage container. Delegates all orchestration
@@ -68,8 +54,7 @@ export function RiskContainer() {
     );
   }
 
-  // Idle state: no report, no error, not loading. The auto-trigger useEffect
-  // inside useRiskAnalysis should start the pipeline immediately, but as a
-  // safety net we also fire startAnalysis from IdleFallback.
-  return <IdleFallback startAnalysis={startAnalysis} />;
+  // Idle state: the auto-trigger useEffect inside useRiskAnalysis handles
+  // starting the pipeline on mount. Render a static loading placeholder.
+  return <LoadingSpinner variant="full" message="Analiz başlatılıyor..." />;
 }

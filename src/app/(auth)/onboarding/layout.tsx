@@ -20,7 +20,7 @@ export default async function OnboardingLayout({
 
   return (
     <div className="flex min-h-screen bg-background">
-      <OnboardingStepper stepsData={stepsData} />
+      <OnboardingStepper initialData={stepsData} />
       <main className="flex-1 min-w-0">
         <OnboardingContent>{children}</OnboardingContent>
       </main>

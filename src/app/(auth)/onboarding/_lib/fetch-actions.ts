@@ -1,6 +1,6 @@
 "use server";
 
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and, not } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
 import {
@@ -235,7 +235,12 @@ export async function checkStepsDataAction(): Promise<Record<
           thesisBoxes,
           eq(libraryResources.thesisBoxId, thesisBoxes.id),
         )
-        .where(eq(thesisBoxes.thesisMatrixId, matrix.id))
+        .where(
+          and(
+            eq(thesisBoxes.thesisMatrixId, matrix.id),
+            not(eq(thesisBoxes.boxType, "RELATED_THESES")),
+          ),
+        )
         .limit(1);
 
       hasLiterature = !!resource;

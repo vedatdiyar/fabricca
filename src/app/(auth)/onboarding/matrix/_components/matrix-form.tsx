@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
 import { saveThesisMatrixAction } from "../actions";
+import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
 import { fetchThesisMatrix } from "../../_lib/fetch-actions";
 
 type FormState = {
@@ -182,6 +183,16 @@ export function MatrixForm() {
     setIsPending(true);
 
     try {
+      // Purge downstream data before anything else so the risk page
+      // does not see stale reports and skip re-analysis.
+      const clearResult = await clearDownstreamDbAction("matrix");
+      if ("error" in clearResult) {
+        toast.error(clearResult.error);
+        setIsPending(false);
+        return;
+      }
+      await queryClient.invalidateQueries();
+
       const result = await saveThesisMatrixAction({
         studyTitle: formState.studyTitle,
         researchQuestion: formState.researchQuestion,
@@ -196,8 +207,6 @@ export function MatrixForm() {
         setIsPending(false);
         return;
       }
-
-      queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
 
       toast.success("Tez matrisi başarıyla kaydedildi.");
       router.push("/onboarding/risk");

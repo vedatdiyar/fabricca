@@ -1895,7 +1895,7 @@ export function parseTezaraSearchResults(
 </file>
 
 <file path="src/app/(auth)/onboarding/_lib/fetch-actions.ts">
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and, not } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
 import {
@@ -1972,8 +1972,10 @@ import { useLoadingOverlay } from "@/components/providers/loading-overlay-provid
 
 <file path="src/app/(auth)/onboarding/_components/onboarding-stepper.tsx">
 import { usePathname, useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { checkStepsDataAction } from "../_lib/fetch-actions";
 ⋮----
 className=
 </file>
@@ -2089,15 +2091,12 @@ export async function extractQueries(
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_components/risk-container.tsx">
-import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { ErrorDisplay } from "@/components/error-display";
 import { OriginalityReportView } from "./originality-report-view";
 import { useRiskAnalysis } from "../_hooks/use-risk-analysis";
-⋮----
-function IdleFallback(
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_services/roadmap.ts">
@@ -2353,29 +2352,6 @@ export function OriginalityReportView({
 }: OriginalityReportViewProps)
 </file>
 
-<file path="src/app/(auth)/onboarding/risk/_hooks/use-risk-analysis.ts">
-import { useState, useCallback, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
-import {
-  fetchThesisMatrix,
-  fetchOriginalityReport,
-} from "../../_lib/fetch-actions";
-import type { OriginalityReportData } from "@/lib/types";
-⋮----
-export interface UseRiskAnalysisResult {
-  loading: boolean;
-  analysing: boolean;
-  error: string | null;
-  reportData: OriginalityReportData | null;
-  proceeding: boolean;
-  startAnalysis: () => Promise<void>;
-  handleProceed: () => Promise<void>;
-}
-⋮----
-export function useRiskAnalysis(): UseRiskAnalysisResult
-</file>
-
 <file path="src/app/(auth)/onboarding/risk/_services/analysis.ts">
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
@@ -2538,6 +2514,29 @@ export async function analyzeOriginalityRisk(
 ): Promise<
 </file>
 
+<file path="src/app/(auth)/onboarding/risk/_hooks/use-risk-analysis.ts">
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
+import {
+  fetchThesisMatrix,
+  fetchOriginalityReport,
+} from "../../_lib/fetch-actions";
+import type { OriginalityReportData } from "@/lib/types";
+⋮----
+export interface UseRiskAnalysisResult {
+  loading: boolean;
+  analysing: boolean;
+  error: string | null;
+  reportData: OriginalityReportData | null;
+  proceeding: boolean;
+  startAnalysis: () => Promise<void>;
+  handleProceed: () => Promise<void>;
+}
+⋮----
+export function useRiskAnalysis(): UseRiskAnalysisResult
+</file>
+
 <file path="src/lib/gemini.ts">
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { z } from "zod";
@@ -2637,6 +2636,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
 import { saveThesisMatrixAction } from "../actions";
+import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
 import { fetchThesisMatrix } from "../../_lib/fetch-actions";
 ⋮----
 type FormState = {
@@ -2665,6 +2665,9 @@ type SectionConfig = {
 };
 ⋮----
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
+⋮----
+// Purge downstream data before anything else so the risk page
+// does not see stale reports and skip re-analysis.
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_services/sifting.ts">

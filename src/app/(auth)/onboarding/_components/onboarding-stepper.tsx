@@ -1,8 +1,10 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { checkStepsDataAction } from "../_lib/fetch-actions";
 
 const STEPS = [
   { key: "matrix", label: "Tez Matrisi", route: "/onboarding/matrix" },
@@ -16,12 +18,18 @@ const STEPS = [
 ];
 
 export function OnboardingStepper({
-  stepsData,
+  initialData,
 }: {
-  stepsData: Record<string, boolean>;
+  initialData: Record<string, boolean>;
 }) {
   const pathname = usePathname();
   const router = useRouter();
+
+  const { data: stepsData = {} } = useQuery({
+    queryKey: ["onboarding-steps"],
+    queryFn: async () => (await checkStepsDataAction()) ?? {},
+    initialData,
+  });
 
   const currentIdx = STEPS.findIndex((s) => s.route === pathname);
 
