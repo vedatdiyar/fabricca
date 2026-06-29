@@ -83,16 +83,15 @@ Quadrant Protocols:
 Absolute In-Scope Filtering Law (Zero Out-of-Scope):
 Any element explicitly marked in the input matrix as "kapsam dışı", "hariç tutulanlar", "bu çalışmanın dışındadır", or "incelenmemiştir" must be STRICTLY EXCLUDED from every box's title, description, and concepts array. These out-of-scope entities must be treated as invisible — the model must never turn excluded variables into box content. If an environmental quadrant (like micro-context) contains ONLY out-of-scope parameters or lacks data in the matrix, you MUST omit creating that sub-box entirely. NEVER hallucinate dummy concepts (like "örgütsel kısıtlar") to fill a box.
 
-Pure Domain Isolation Principle (No Cross-Contamination):
-Each sub-box's semanticQuery must construct a terminology space completely orthogonal to all other quadrants. 
-- dataProtocol Query Rule: Must NEVER contain the thesis's empirical actors (e.g., movement names, class categories, party labels, specific periodicals) or temporal constraints (date ranges, historical periods). Only pure, universal scientific method literature may be targeted.
-- conceptual Query Rule: Must target only the relevant abstract theory's general literature. The specific empirical phenomenon, date, location, or actor to which the theory is applied in this thesis must never leak into the query.
-- Every box must establish its own independent literature lane in external citation databases (OpenAlex/CrossRef), fully isolated from all other boxes' terminology.
+Pure Domain Isolation Principle (No Cross-Contamination): 
+Each sub-box's semanticQuery must be strictly anchored to its own title, description, and concepts, maintaining horizontal isolation from other quadrants while preserving its internal vertical integrity.
+- dataProtocol Query Rule: Focus exclusively on the methodological mechanics, analytical frameworks, and coding paradigms required for the specific analysis (e.g., "Critical Discourse Analysis", "Systematic Textual Coding Frameworks"). Never leak empirical data or actors from other quadrants here.
+- conceptual & problematization Query Rule: Must directly and aggressively target the core academic paradigms, explicit core theories, and disciplinary sub-fields defined inside this specific box's title and concepts (e.g., if the box concerns "Gramsci, Hegemony, and Consent", the query must structurally focus on "Gramscian hegemony, civil society consent negotiation, and counter-hegemonic political sociology strategies"). Do not sanitize or delete the foundational theories or main conceptual pillars of the box; they must remain as the heavy anchors of the query.
 
-OpenAlex Vector Optimization Contract (Pure Abstract Simulation):
-Every sub-box's semanticQuery field MUST be synthesized in English and formatted as a dense, paragraph-length prose mimicking an elite academic journal abstract. 
-- STRICTLY FORBIDDEN: You must never use conversational or contextual meta-fillers such as "This box investigates...", "The research aims to...", "In this sub-box, we focus on...", "The problem space examines...", or "This segment describes...".
-- Mandatory Structure: The paragraph must consist of at least 3 dense, direct sentences that immediately launch into the core conceptual, theoretical, or methodological substance. It must read like verbatim prose from an actual academic paper to match high-dimensional embeddings in external citation databases (OpenAlex using GTE Large EN).
+OpenAlex Vector Optimization Contract (Heavy Anchoring Architecture): 
+Every sub-box's semanticQuery field MUST be synthesized in English as a dense, direct academic text packed with the explicit high-dimensional terminology of that specific box's paradigm.
+- STRICTLY FORBIDDEN: Do not use conversational fillers ("This box focuses on...") and do not replace explicit theoretical terms or paradigm names with vague, overly generalized meta-synonyms (e.g., do not replace "Gramscian Hegemony" with "general sociopolitical domination models"). 
+- Mandatory Structure: Construct at least 3 dense, literal sentences that use the precise, un-sanitized academic keywords, exact theoretical models, and methodological frameworks belonging to the box. The prose must be structurally optimized for dense embedding matching by prioritizing authoritative academic nomenclature over generic prose.
 
 Foundational Queries Static Rule: The foundationalQueries field in every sub-box MUST always be an empty array ([]). Foundational works are resolved by an external mining system post-generation.
 

@@ -150,12 +150,16 @@ export interface FoundationalQuery {
   author: string;
   title: string;
   publicationYear: number;
+  doi?: string | null;
+  publisher?: string | null;
 }
 
 export const FoundationalQuerySchema = z.object({
   author: z.string().min(1, "Yazar adı boş olamaz"),
   title: z.string().min(1, "Eser başlığı boş olamaz"),
   publicationYear: z.coerce.number().int().min(0, "Yayın yılı geçersiz"),
+  doi: z.string().nullable().optional(),
+  publisher: z.string().nullable().optional(),
 });
 
 export const RefinedFoundationalQueriesSchema = z.object({

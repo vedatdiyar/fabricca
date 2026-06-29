@@ -29,8 +29,6 @@ import {
   fetchThesisMatrix,
   fetchOriginalityReport,
 } from "../_lib/fetch-actions";
-import { mineCoCitations } from "../_services/co-citation-miner";
-import type { BoxContext } from "../_services/co-citation-miner";
 import type { RawPaper } from "../literature-review/_services/literature-review-papers";
 import { searchOpenAlex } from "../literature-review/_services/openalex/client";
 
@@ -234,6 +232,11 @@ export async function generateBoxesStructureAction(): Promise<
 }
 
 // ---------------------------------------------------------------------------
+// Exa & Crossref Foundational Query Mining Service
+// ---------------------------------------------------------------------------
+import { processSingleBox } from "./_services/foundational-oracle";
+
+// ---------------------------------------------------------------------------
 // Step 2: Foundational Query Mining
 // ---------------------------------------------------------------------------
 
@@ -258,81 +261,67 @@ export async function mineFoundationalQueriesAction(
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
 
+    const thesisMatrix = await fetchThesisMatrix();
+    if (!thesisMatrix) return { error: "Tez matrisi bulunamadı." };
+
     log.info("mine_foundational_queries_start", {
       service: "boxes",
       data: { boxCount: boxes.length },
     });
 
-    // Map parentId → { queries in order, parent context }
-    const childrenByParent = new Map<
-      number,
-      { flatIndex: number; query: string }[]
-    >();
+    // Identify target child boxes for mining
+    // Bypasses parent boxes (parentId === null) and RELATED_THESES or PRIMARY_MATERIAL boxes
+    const targetBoxesToProcess: { box: GeminiThesisBox; flatIndex: number }[] =
+      [];
     for (let i = 0; i < boxes.length; i++) {
       const b = boxes[i];
       if (b.parentId === null) continue;
       if (b.boxType === "PRIMARY_MATERIAL" || b.boxType === "RELATED_THESES") {
         continue;
       }
-      if (!b.semanticQuery?.trim()) continue;
-      const list = childrenByParent.get(b.parentId) ?? [];
-      list.push({ flatIndex: i, query: b.semanticQuery });
-      childrenByParent.set(b.parentId, list);
+      targetBoxesToProcess.push({ box: b, flatIndex: i });
     }
 
-    // Batch-mine each parent's children
-    const minedByParent = new Map<number, FoundationalQuery[]>();
-    for (const [parentIndex, entries] of childrenByParent) {
-      const parent = boxes[parentIndex];
-      if (!parent) continue;
+    log.info("mine_foundational_queries_parallel_launch", {
+      service: "boxes",
+      data: { targetCount: targetBoxesToProcess.length },
+    });
 
-      const boxContext: BoxContext = {
-        boxType: parent.boxType,
-        title: parent.title,
-        description: parent.description,
-      };
+    // Concurrently process all target child boxes
+    const results = await Promise.all(
+      targetBoxesToProcess.map(async ({ box, flatIndex }) => {
+        try {
+          return await processSingleBox(box, flatIndex, thesisMatrix, log);
+        } catch (err) {
+          log.error("process_single_box_failed", {
+            service: "boxes",
+            data: { boxTitle: box.title, flatIndex },
+            error: err instanceof Error ? err : new Error(String(err)),
+          });
+          return null;
+        }
+      }),
+    );
 
-      log.info("mining_parent_batch", {
-        service: "boxes",
-        data: {
-          parentTitle: parent.title,
-          childCount: entries.length,
-        },
-      });
-
-      const queries = entries.map((e) => e.query);
-      const mined = await mineCoCitations(queries, log, boxContext);
-      minedByParent.set(parentIndex, mined);
-    }
-
-    // Build result array — preserve original flat order
-    const populatedBoxes: GeminiThesisBox[] = [];
-    for (let i = 0; i < boxes.length; i++) {
-      const box = boxes[i];
-
-      if (
-        box.parentId === null ||
-        box.boxType === "PRIMARY_MATERIAL" ||
-        box.boxType === "RELATED_THESES"
-      ) {
-        populatedBoxes.push(box);
-        continue;
+    // Map resolved results back to flatIndex
+    const resultsMap = new Map<number, FoundationalQuery>();
+    for (const r of results) {
+      if (r) {
+        resultsMap.set(r.flatIndex, r.foundationalQuery);
       }
-
-      // Child box — attach mined champion indexed by position in parent's group
-      const parentMined = minedByParent.get(box.parentId) ?? [];
-      const siblings = childrenByParent.get(box.parentId) ?? [];
-      const idxInGroup = siblings.findIndex((s) => s.flatIndex === i);
-      const champion =
-        idxInGroup >= 0 && idxInGroup < parentMined.length
-          ? parentMined[idxInGroup]
-          : undefined;
-
-      populatedBoxes.push({
-        ...box,
-        foundationalQueries: champion ? [champion] : [],
-      });
     }
+
+    // Build the final flat populatedBoxes array preserving original structure and parents
+    const populatedBoxes: GeminiThesisBox[] = boxes.map((box, i) => {
+      const queryForBox = resultsMap.get(i);
+      if (queryForBox) {
+        return {
+          ...box,
+          foundationalQueries: [queryForBox],
+        };
+      }
+      return box;
+    });
 
     // Deduplicate across all boxes
     const dedupedBoxes = deduplicateFoundationalQueries(populatedBoxes);
