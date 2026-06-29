@@ -161,7 +161,15 @@ export function processDataMetrics(data: Record<string, unknown>): string[] {
   const after = data.after as number | undefined;
   if (before !== undefined && after !== undefined)
     metrics.push(`${before} → ${after}`);
-  if (data.count !== undefined) metrics.push(`Sayı: ${data.count}`);
+  if (data.parentCount !== undefined && data.childCount !== undefined) {
+    metrics.push(
+      `Ana Kutu: ${data.parentCount} • Alt Kutu: ${data.childCount}`,
+    );
+  } else if (data.count !== undefined) {
+    metrics.push(`Sayı: ${data.count}`);
+  }
+  if (data.targetCount !== undefined)
+    metrics.push(`Taranacak: ${data.targetCount}`);
   if (data.resultCount !== undefined) metrics.push(`${data.resultCount} sonuç`);
   if (data.rawCount !== undefined) metrics.push(`Ham: ${data.rawCount}`);
   if (data.mergedCount !== undefined)
@@ -243,8 +251,16 @@ export function buildSuffix(params?: LogParams): string {
 
   if (params?.error) {
     const display = getErrorDisplay(params.error);
+    const origMessage =
+      params.error instanceof Error
+        ? params.error.message
+        : typeof params.error === "object" &&
+            params.error !== null &&
+            "message" in params.error
+          ? String((params.error as { message: unknown }).message)
+          : String(params.error);
     parts.push(
-      `[${classifyError(params.error).toUpperCase()}] ${display.title}`,
+      `[${classifyError(params.error).toUpperCase()}] ${display.title} (Detay: ${origMessage})`,
     );
   }
 

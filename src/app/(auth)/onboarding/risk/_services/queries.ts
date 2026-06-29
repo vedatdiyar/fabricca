@@ -117,17 +117,67 @@ export async function extractQueries(
       : [];
 
     // Ensure we have at least 6 queries, max 8 (as per prompt/guidelines)
-    const DEFAULT_QUERIES = [
-      "subjectivity labor process",
-      "workplace governmentality",
-      "subject formation worker",
-      "neoliberal management class",
-      "empirical subjectivity study",
-      "qualitative thematic analysis",
-    ];
-    const tezaraQueries = [
-      ...new Set([...rawQueries, ...DEFAULT_QUERIES]),
-    ].slice(0, 8);
+    let tezaraQueries = [...rawQueries];
+    if (tezaraQueries.length < 6) {
+      const stopWords = new Set([
+        "ve",
+        "ile",
+        "bir",
+        "in",
+        "the",
+        "on",
+        "of",
+        "and",
+        "or",
+        "a",
+        "an",
+        "de",
+        "da",
+        "ki",
+        "göre",
+        "üzerine",
+        "hakkında",
+        "ilişkin",
+        "analizi",
+        "incelemesi",
+        "değerlendirilmesi",
+        "boyutu",
+        "dönemi",
+        "yılları",
+        "arasında",
+        "döneminde",
+        "yaklaşımı",
+        "kuramı",
+        "çalışması",
+        "özelinde",
+      ]);
+      const titleWords = params.studyTitle
+        .toLowerCase()
+        .replace(/[^a-zA-ZğüşıöçĞÜŞİÖÇ\s]/g, "")
+        .split(/\s+/)
+        .map((w) => w.trim())
+        .filter((w) => w.length > 2 && !stopWords.has(w));
+
+      // Generate 2-word combinations from title words
+      for (
+        let i = 0;
+        i < titleWords.length - 1 && tezaraQueries.length < 6;
+        i++
+      ) {
+        const queryCandidate = `${titleWords[i]} ${titleWords[i + 1]}`;
+        if (!tezaraQueries.includes(queryCandidate)) {
+          tezaraQueries.push(queryCandidate);
+        }
+      }
+
+      // If still less than 6, add single words
+      for (let i = 0; i < titleWords.length && tezaraQueries.length < 6; i++) {
+        if (!tezaraQueries.includes(titleWords[i])) {
+          tezaraQueries.push(titleWords[i]);
+        }
+      }
+    }
+    tezaraQueries = tezaraQueries.slice(0, 8);
 
     // Signature compatibility: map first word of each query as keywords
     const keywords = tezaraQueries

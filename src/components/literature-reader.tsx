@@ -148,18 +148,24 @@ export function LiteratureReader({
       </CardHeader>
 
       <CardContent className="p-0">
-        {(boxType === "PRIMARY_MATERIAL" || boxType === "RELATED_THESES") && (
+        {(boxType === "PRIMARY_MATERIAL" ||
+          boxType === "CONTEXT" ||
+          boxType === "RELATED_THESES") && (
           <div className="p-6 border-b border-border/40 bg-primary/5">
             <div className="p-4 rounded-md bg-primary/10 border border-primary/20 leading-relaxed">
               <p className="font-medium text-foreground text-sm mb-1">
                 {boxType === "RELATED_THESES"
                   ? "Sınırdaş Tez Havuzu"
-                  : "Birincil Malzeme Alanı"}
+                  : boxType === "PRIMARY_MATERIAL"
+                    ? "Birincil Malzeme Alanı"
+                    : "Bağlamsal Sınırlar Alanı"}
               </p>
               <p className="text-muted-foreground text-xs leading-relaxed">
                 {boxType === "RELATED_THESES"
                   ? "Bu alan, özgünlük analizinde tespit edilen sınırdaş tez çalışmalarını barındırır."
-                  : "Bu alan, yapacağınız saha çalışması verileri (mülakat deşifreleri, anketler) veya kütüphanelerden toplayacağınız birincil kaynaklar (gazete, doküman, arşiv belgeleri) için ayrılmış size özel bir veri havuzudur. Onboarding tamamlandıktan sonra kendi belgelerinizi buraya yükleyebilirsiniz."}
+                  : boxType === "PRIMARY_MATERIAL"
+                    ? "Bu alan, yapacağınız saha çalışması verileri (mülakat deşifreleri, anketler) veya kütüphanelerden toplayacağınız birincil kaynaklar (gazete, doküman, arşiv belgeleri) için ayrılmış size özel bir veri havuzudur. Onboarding tamamlandıktan sonra kendi belgelerinizi buraya yükleyebilirsiniz."
+                    : "Bu alan, tezinizin küresel/makro ve yerel/mikro çevresel arka plan faktörleri, yapısal olayları veya tarihsel/politik kısıtları için ayrılmış özel bir arka plan veri havuzudur. Onboarding tamamlandıktan sonra kendi bağlamsal belgelerinizi veya notlarınızı buraya ekleyebilirsiniz."}
               </p>
             </div>
           </div>
@@ -219,11 +225,15 @@ export function LiteratureReader({
             <div className="flex h-12 w-12 items-center justify-center rounded-full border border-muted/20 bg-muted/10">
               <Layers className="h-6 w-6 text-muted-foreground" />
             </div>
-            {boxType === "PRIMARY_MATERIAL" || boxType === "RELATED_THESES" ? (
+            {boxType === "PRIMARY_MATERIAL" ||
+            boxType === "CONTEXT" ||
+            boxType === "RELATED_THESES" ? (
               <p className="text-center text-sm text-muted-foreground max-w-md px-4 leading-relaxed">
                 {boxType === "RELATED_THESES"
                   ? "Bu alan, özgünlük analizinde tespit edilen sınırdaş tez çalışmalarını barındırır."
-                  : "Bu alan, yapacağınız saha çalışması verileri (mülakat deşifreleri, anketler) veya kütüphanelerden toplayacağınız birincil kaynaklar (gazete, doküman, arşiv belgeleri) için ayrılmış size özel bir veri havuzudur. Onboarding tamamlandıktan sonra kendi belgelerinizi buraya yükleyebilirsiniz."}
+                  : boxType === "PRIMARY_MATERIAL"
+                    ? "Bu alan, yapacağınız saha çalışması verileri (mülakat deşifreleri, anketler) veya kütüphanelerden toplayacağınız birincil kaynaklar (gazete, doküman, arşiv belgeleri) için ayrılmış size özel bir veri havuzudur. Onboarding tamamlandıktan sonra kendi belgelerinizi buraya yükleyebilirsiniz."
+                    : "Bu alan, tezinizin küresel/makro ve yerel/mikro çevresel arka plan faktörleri, yapısal olayları veya tarihsel/politik kısıtları için ayrılmış özel bir arka plan veri havuzudur. Onboarding tamamlandıktan sonra kendi bağlamsal belgelerinizi veya notlarınızı buraya ekleyebilirsiniz."}
               </p>
             ) : (
               <p className="text-sm text-muted-foreground">

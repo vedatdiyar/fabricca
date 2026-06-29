@@ -55,7 +55,7 @@ export function getAi(): GoogleGenAI {
  * @param baseDelayMs - Başlangıç gecikme süresi milisaniye (varsayılan: 1000ms)
  * @param logger - Loglama için Logger instance'ı
  */
-async function retryOn503<T>(
+export async function retryOn503<T>(
   fn: () => Promise<T>,
   maxRetries = 3,
   baseDelayMs = 1000,

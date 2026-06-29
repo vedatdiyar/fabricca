@@ -18,7 +18,8 @@ const boxOrderWeight: Record<string, number> = {
   CONCEPTUAL: 2,
   DATA_PROTOCOL: 3,
   PRIMARY_MATERIAL: 4,
-  RELATED_THESES: 5,
+  CONTEXT: 5,
+  RELATED_THESES: 6,
 };
 
 /**
@@ -70,7 +71,8 @@ async function getCachedBoxes(thesisMatrixId: number) {
         WHEN 'CONCEPTUAL' THEN 2
         WHEN 'DATA_PROTOCOL' THEN 3
         WHEN 'PRIMARY_MATERIAL' THEN 4
-        WHEN 'RELATED_THESES' THEN 5
+        WHEN 'CONTEXT' THEN 5
+        WHEN 'RELATED_THESES' THEN 6
         ELSE 99
       END`,
     );

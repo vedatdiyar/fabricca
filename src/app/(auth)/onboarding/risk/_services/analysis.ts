@@ -38,20 +38,11 @@ const LEVEL_ORDER: OverlapLevel[] = ["OZGUN", "ORTA", "KRITIK"];
  */
 export interface GeminiOverlapItem {
   id: number;
-  subject_has_same_primary_actor: boolean;
-  subject_has_same_primary_actor_evidence: string;
-  subject_has_secondary_layer: boolean;
-  subject_has_secondary_layer_evidence: string;
-  theory_has_same_primary_framework: boolean;
-  theory_has_same_primary_framework_evidence: string;
-  theory_has_secondary_framework: boolean;
-  theory_has_secondary_framework_evidence: string;
-  context_spatial_match: boolean;
-  context_spatial_match_evidence: string;
-  context_temporal_covers: boolean;
-  context_temporal_covers_evidence: string;
-  mainClaimMatched: boolean;
-  mainClaimMatched_evidence: string;
+  comparisonNote: string;
+  subject: OverlapLevel;
+  context: OverlapLevel;
+  theory: OverlapLevel;
+  methodology: OverlapLevel;
 }
 
 export interface CalculatedOverlapItem {
@@ -243,44 +234,11 @@ export function calculateOriginalityRisk(
       continue;
     }
 
-    const sameSubject = item.subject_has_same_primary_actor;
-    const extraSubject = item.subject_has_secondary_layer;
-    const sameTheory = item.theory_has_same_primary_framework;
-    const extraTheory = item.theory_has_secondary_framework;
-    const sameContext =
-      item.context_spatial_match && item.context_temporal_covers;
-
-    let subjectOverlap: OverlapLevel = "OZGUN";
-    let theoryOverlap: OverlapLevel = "OZGUN";
-    let contextOverlap: OverlapLevel = "OZGUN";
-    const methodologyOverlap: OverlapLevel = "OZGUN";
-
-    // 1. Bağlam Hesaplama (Küme Kapsama)
-    if (sameContext) contextOverlap = "KRITIK";
-    else if (item.context_spatial_match) contextOverlap = "ORTA";
-
-    // 2. Konu Hesaplama (İkincil Bakış Filtresi)
-    if (sameSubject && !extraSubject) subjectOverlap = "KRITIK";
-    else if (sameSubject && extraSubject) subjectOverlap = "ORTA";
-
-    // 3. Teori Hesaplama (Ek Kuram Filtresi)
-    if (sameTheory && !extraTheory) theoryOverlap = "KRITIK";
-    else if (sameTheory && extraTheory) theoryOverlap = "ORTA";
-
-    // Kanıt notlarını temizce birleştir
-    const comparisonNote = [
-      item.subject_has_secondary_layer_evidence,
-      item.theory_has_secondary_framework_evidence,
-      item.context_temporal_covers_evidence,
-    ]
-      .filter(Boolean)
-      .join(" | ");
-
     const axes = {
-      subject: subjectOverlap,
-      theory: theoryOverlap,
-      methodology: methodologyOverlap,
-      context: contextOverlap,
+      subject: item.subject,
+      theory: item.theory,
+      methodology: item.methodology,
+      context: item.context,
     };
 
     const thesisEntry: CalculatedOverlapItem = {
@@ -291,21 +249,26 @@ export function calculateOriginalityRisk(
       year: detail.year,
       thesisType: detail.thesisType,
       department: detail.department,
-      comparisonNote,
+      comparisonNote: item.comparisonNote,
       yokPdfUrl: detail.yokPdfUrl,
       axes,
     };
 
-    // Gate: both subject and context OZGUN -> eliminated
-    const subjectIsOriginal = axes.subject === "OZGUN";
-    const contextIsOriginal = axes.context === "OZGUN";
+    // Gate: Toplam uyuşan eksen sayısı 1 veya daha az ise bu çalışma alakasız/düşük risk kabul edilerek elenir
+    const totalNonOriginal =
+      (axes.subject !== "OZGUN" ? 1 : 0) +
+      (axes.theory !== "OZGUN" ? 1 : 0) +
+      (axes.methodology !== "OZGUN" ? 1 : 0) +
+      (axes.context !== "OZGUN" ? 1 : 0);
 
-    if (subjectIsOriginal && contextIsOriginal) {
+    const isEliminated = totalNonOriginal <= 1;
+
+    if (isEliminated) {
       logger?.info("originality_thesis_eliminated", {
         service: "originality",
         data: {
           context: "calculateOriginalityRisk",
-          reason: "subject_and_context_both_original",
+          reason: "low_overall_axis_overlap",
           thesisId: detail.id,
           thesisTitle: detail.title,
           axes,
@@ -373,7 +336,7 @@ export async function analyzeOriginalityRisk(
         geminiAnalysisSchema,
         log,
         {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
           temperature: 1.0,
           seed: 42,
         },
@@ -389,14 +352,11 @@ export async function analyzeOriginalityRisk(
       "Overlap Analysis Results",
       overlapTable.map((o) => ({
         id: o.id,
-        booleans: {
-          sameActor: o.subject_has_same_primary_actor,
-          secondaryLayer: o.subject_has_secondary_layer,
-          sameFramework: o.theory_has_same_primary_framework,
-          secondaryFramework: o.theory_has_secondary_framework,
-          spatialMatch: o.context_spatial_match,
-          temporalCovers: o.context_temporal_covers,
-          claimMatched: o.mainClaimMatched,
+        axes: {
+          subject: o.subject,
+          context: o.context,
+          theory: o.theory,
+          methodology: o.methodology,
         },
       })),
     );

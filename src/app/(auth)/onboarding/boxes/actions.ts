@@ -47,7 +47,7 @@ const RawSubBoxSchema = z.object({
 const RawCategorySchema = z.object({
   title: z.string().min(1, "Kategori başlığı boş olamaz"),
   description: z.string().min(1, "Kategori açıklaması boş olamaz"),
-  subBoxes: z.array(RawSubBoxSchema).min(1),
+  subBoxes: z.array(RawSubBoxSchema),
 });
 
 const RawNestedResponseSchema = z.object({
@@ -73,7 +73,7 @@ const QUADRANT_MAPPING: Record<string, ThesisBoxType> = {
   conceptual: "CONCEPTUAL",
   problematization: "PROBLEMATIZATION",
   primaryMaterial: "PRIMARY_MATERIAL",
-  context: "PRIMARY_MATERIAL",
+  context: "CONTEXT",
   dataProtocol: "DATA_PROTOCOL",
 };
 
@@ -211,11 +211,19 @@ export async function generateBoxesStructureAction(): Promise<
       }),
     });
 
+    const parentCount = normalizedBoxes.filter(
+      (b) => b.parentId === null,
+    ).length;
+    const childCount = normalizedBoxes.filter(
+      (b) => b.parentId !== null,
+    ).length;
+
     log.info("box_structure_generation_success", {
       service: "boxes",
       durationMs: performance.now() - startTime,
       data: {
-        count: normalizedBoxes.length,
+        parentCount,
+        childCount,
       },
     });
 
@@ -239,6 +247,37 @@ import { processSingleBox } from "./_services/foundational-oracle";
 // ---------------------------------------------------------------------------
 // Step 2: Foundational Query Mining
 // ---------------------------------------------------------------------------
+
+/**
+ * Processes an array of items with a limit on concurrent asynchronous operations.
+ *
+ * @param items - Array of items to process.
+ * @param limit - Maximum number of concurrent operations.
+ * @param fn - Asynchronous function to apply to each item.
+ * @returns Array of results preserving the original order.
+ */
+async function limitConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let index = 0;
+
+  async function worker() {
+    while (index < items.length) {
+      const currentIndex = index++;
+      results[currentIndex] = await fn(items[currentIndex]);
+      if (index < items.length) {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(limit, items.length) }, worker);
+  await Promise.all(workers);
+  return results;
+}
 
 /**
  * Her kutunun semantik sorgularını OpenAlex üzerinde aratarak
@@ -270,7 +309,7 @@ export async function mineFoundationalQueriesAction(
     });
 
     // Identify target child boxes for mining
-    // Bypasses parent boxes (parentId === null) and RELATED_THESES or PRIMARY_MATERIAL boxes
+    // Bypasses parent boxes (parentId === null), RELATED_THESES, PRIMARY_MATERIAL or CONTEXT boxes
     const targetBoxesToProcess: { box: GeminiThesisBox; flatIndex: number }[] =
       [];
     for (let i = 0; i < boxes.length; i++) {
@@ -287,9 +326,11 @@ export async function mineFoundationalQueriesAction(
       data: { targetCount: targetBoxesToProcess.length },
     });
 
-    // Concurrently process all target child boxes
-    const results = await Promise.all(
-      targetBoxesToProcess.map(async ({ box, flatIndex }) => {
+    // Concurrently process all target child boxes with limited concurrency (max 3)
+    const results = await limitConcurrency(
+      targetBoxesToProcess,
+      3,
+      async ({ box, flatIndex }) => {
         try {
           return await processSingleBox(box, flatIndex, thesisMatrix, log);
         } catch (err) {
@@ -300,7 +341,7 @@ export async function mineFoundationalQueriesAction(
           });
           return null;
         }
-      }),
+      },
     );
 
     // Map resolved results back to flatIndex
@@ -347,10 +388,16 @@ export async function mineFoundationalQueriesAction(
       };
     }
 
+    const parentCount = dedupedBoxes.filter((b) => b.parentId === null).length;
+    const childCount = dedupedBoxes.filter((b) => b.parentId !== null).length;
+
     log.info("mine_foundational_queries_complete", {
       service: "boxes",
       durationMs: performance.now() - startTime,
-      data: { count: dedupedBoxes.length },
+      data: {
+        parentCount,
+        childCount,
+      },
     });
 
     return { success: true, boxes: dedupedBoxes };
@@ -603,11 +650,15 @@ export async function confirmBoxesAction(
     revalidateOnboardingPaths();
     updateTag(CACHE_TAGS.thesisBoxes);
 
+    const parentCount = boxes.filter((b) => b.parentId === null).length;
+    const childCount = boxes.filter((b) => b.parentId !== null).length;
+
     log.info("boxes_confirm_success", {
       service: "boxes",
       durationMs: performance.now() - startTime,
       data: {
-        count: boxes.length,
+        parentCount,
+        childCount,
         mappedThesisCount: libraryValues.length,
         context: "Konu kutusu kaydetme",
       },

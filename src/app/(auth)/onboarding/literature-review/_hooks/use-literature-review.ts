@@ -20,7 +20,8 @@ const boxOrderWeight: Record<string, number> = {
   CONCEPTUAL: 2,
   DATA_PROTOCOL: 3,
   PRIMARY_MATERIAL: 4,
-  RELATED_THESES: 5,
+  CONTEXT: 5,
+  RELATED_THESES: 6,
 };
 
 /** Processing status of a single sub-box within the literature review grid. */
@@ -41,7 +42,6 @@ export interface UseLiteratureReviewResult {
     subBoxTitle: string,
     entry: { title: string; description?: string },
   ) => void;
-  startReviewProcess: () => Promise<void>;
   handleFinalize: () => Promise<void>;
 }
 
@@ -332,7 +332,6 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     literaturePool,
     archivalBoxes,
     addArchiveEntry,
-    startReviewProcess,
     handleFinalize,
   };
 }

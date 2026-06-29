@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { ErrorDisplay } from "@/components/error-display";
@@ -38,7 +38,10 @@ export function RiskContainer() {
                 Kaydediliyor...
               </span>
             ) : (
-              "Analizi Onayla ve Kutulara Geç"
+              <span className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4" />
+                Risk Analizini Onayla ve Konu Kutularına Geç
+              </span>
             )}
           </Button>
         </div>

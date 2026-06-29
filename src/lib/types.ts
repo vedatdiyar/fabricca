@@ -190,6 +190,7 @@ export const GeminiThesisBoxSchema = z.object({
     "CONCEPTUAL",
     "DATA_PROTOCOL",
     "PRIMARY_MATERIAL",
+    "CONTEXT",
     "RELATED_THESES",
   ]),
   description: z.string().min(1, "Kutu açıklaması boş olamaz"),
@@ -238,6 +239,7 @@ export interface GeminiThesisBox {
     | "CONCEPTUAL"
     | "DATA_PROTOCOL"
     | "PRIMARY_MATERIAL"
+    | "CONTEXT"
     | "RELATED_THESES";
   description: string;
   parentId: number | null;

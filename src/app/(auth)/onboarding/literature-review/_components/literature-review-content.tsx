@@ -129,20 +129,19 @@ function SubBoxDone({
 }) {
   const entry = literaturePool.find((e) => e.subBoxTitle === subBox.title);
 
-  /* PRIMARY_MATERIAL boxes get a manual archive-entry form */
+  /* PRIMARY_MATERIAL and CONTEXT boxes get a manual archive-entry form */
   if (subBox.boxType === "PRIMARY_MATERIAL") {
+    const isPrimary = subBox.boxType === "PRIMARY_MATERIAL";
     return (
       <div className="space-y-4">
         <div className="p-4 rounded-md bg-primary/10 border border-primary/20 leading-relaxed">
           <p className="font-medium text-foreground text-sm mb-1">
-            Birincil Malzeme Alanı
+            {isPrimary ? "Birincil Malzeme Alanı" : "Bağlamsal Sınırlar Alanı"}
           </p>
           <p className="text-muted-foreground text-xs leading-relaxed">
-            Bu alan, yapacağınız saha çalışması verileri (mülakat deşifreleri,
-            anketler) veya kütüphanelerden toplayacağınız birincil kaynaklar
-            (gazete, doküman, arşiv belgeleri) için ayrılmış size özel bir veri
-            havuzudur. Onboarding tamamlandıktan sonra kendi belgelerinizi
-            buraya yükleyebilirsiniz.
+            {isPrimary
+              ? "Bu alan, yapacağınız saha çalışması verileri (mülakat deşifreleri, anketler) veya kütüphanelerden toplayacağınız birincil kaynaklar (gazete, doküman, arşiv belgeleri) için ayrılmış size özel bir veri havuzudur. Onboarding tamamlandıktan sonra kendi belgelerinizi buraya yükleyebilirsiniz."
+              : "Bu alan, tezinizin küresel/makro ve yerel/mikro çevresel arka plan faktörleri, yapısal olayları veya tarihsel/politik kısıtları için ayrılmış özel bir arka plan veri havuzudur. Onboarding tamamlandıktan sonra kendi bağlamsal belgelerinizi veya notlarınızı buraya ekleyebilirsiniz."}
           </p>
         </div>
         <ArchiveEntryForm
@@ -214,7 +213,6 @@ export function LiteratureReviewContent() {
     archivalBoxes,
     literaturePool,
     addArchiveEntry,
-    startReviewProcess,
     handleFinalize,
   } = useLiteratureReview();
 
@@ -222,6 +220,7 @@ export function LiteratureReviewContent() {
     CONCEPTUAL: "Teorik Çatı",
     PROBLEMATIZATION: "Problematizasyon",
     PRIMARY_MATERIAL: "Birincil Malzeme",
+    CONTEXT: "Bağlam",
     DATA_PROTOCOL: "Metodoloji",
     RELATED_THESES: "İlişkisel Tezler",
   };
@@ -289,26 +288,7 @@ export function LiteratureReviewContent() {
               Alt kutular taranıyor...
             </p>
           </div>
-        ) : !allProcessed ? (
-          <div className="flex flex-col items-end gap-3">
-            {literaturePool.length === 0 && (
-              <Button onClick={startReviewProcess} size="lg">
-                Literatür Taramasını Başlat
-              </Button>
-            )}
-            {literaturePool.length > 0 && (
-              <>
-                <p className="text-sm text-warning font-medium">
-                  Lütfen protokol/saha kutuları için gerekli girişleri
-                  tamamlayın.
-                </p>
-                <Button disabled size="lg">
-                  Onayla ve Teze Başla.
-                </Button>
-              </>
-            )}
-          </div>
-        ) : (
+        ) : allProcessed ? (
           <Button onClick={handleFinalize} disabled={confirming} size="lg">
             {confirming ? (
               <span className="flex items-center gap-2">
@@ -316,10 +296,13 @@ export function LiteratureReviewContent() {
                 Kaydediliyor...
               </span>
             ) : (
-              "Onayla ve Teze Başla"
+              <span className="flex items-center gap-2">
+                <BookOpen className="w-4 h-4" />
+                Literatür Taramasını Onayla ve Teze Geç
+              </span>
             )}
           </Button>
-        )}
+        ) : null}
       </div>
     </div>
   );

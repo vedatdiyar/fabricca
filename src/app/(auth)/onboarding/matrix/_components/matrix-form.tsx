@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { LucideIcon } from "lucide-react";
 import {
   Loader2,
+  Table,
   FileText,
   HelpCircle,
   BookMarked,
@@ -154,6 +155,7 @@ export function MatrixForm() {
     fetchThesisMatrix()
       .then((matrix) => {
         if (cancelled) return;
+        setIsPending(false);
         if (matrix) {
           setFormState({
             studyTitle: matrix.studyTitle,
@@ -168,6 +170,7 @@ export function MatrixForm() {
       })
       .catch((err) => {
         if (cancelled) return;
+        setIsPending(false);
         setLoading(false);
         const display = getErrorDisplay(err);
         toast.error(`${display.title}: ${display.description}`);
@@ -213,6 +216,8 @@ export function MatrixForm() {
     } catch (error) {
       const display = getErrorDisplay(error);
       toast.error(`${display.title}: ${display.description}`);
+      setIsPending(false);
+    } finally {
       setIsPending(false);
     }
   };
@@ -276,20 +281,18 @@ export function MatrixForm() {
         </div>
       ))}
 
-      <div>
-        <Button
-          type="submit"
-          size="lg"
-          className="w-full"
-          disabled={isPending || isLoading}
-        >
+      <div className="flex justify-end mt-8 pb-8">
+        <Button type="submit" size="lg" disabled={isPending || isLoading}>
           {isPending ? (
             <span className="flex items-center justify-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin" />
               Kaydediliyor...
             </span>
           ) : (
-            "Tez Anayasasını Kaydet"
+            <span className="flex items-center gap-2">
+              <Table className="w-4 h-4" />
+              Tez Matrisini Onayla ve Risk Analizine Geç
+            </span>
           )}
         </Button>
       </div>

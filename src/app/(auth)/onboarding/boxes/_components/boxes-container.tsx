@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  Loader2,
   CheckCircle2,
-  Rocket,
+  Box,
   Library,
   FileText,
   PlusCircle,
@@ -25,20 +26,23 @@ const boxTypeOrder: Record<string, number> = {
   CONCEPTUAL: 2,
   DATA_PROTOCOL: 3,
   PRIMARY_MATERIAL: 4,
-  RELATED_THESES: 5,
+  CONTEXT: 5,
+  RELATED_THESES: 6,
 };
 
 const badgeLabels: Record<string, string> = {
   CONCEPTUAL: "Teorik Çatı",
   PROBLEMATIZATION: "Problematizasyon",
   PRIMARY_MATERIAL: "Birincil Malzeme",
+  CONTEXT: "Bağlam",
   DATA_PROTOCOL: "Metodoloji",
-  RELATED_THESES: "\u0130lişkisel Tezler",
+  RELATED_THESES: "İlişkisel Tezler",
 };
 
 export function BoxesContainer() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [isPending, startTransition] = useTransition();
 
   const { data: boxes, isLoading: loading } = useQuery({
     queryKey: ["boxes"],
@@ -51,8 +55,10 @@ export function BoxesContainer() {
   });
 
   const handleProceed = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
-    router.push("/onboarding/literature-review");
+    startTransition(() => {
+      queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
+      router.push("/onboarding/literature-review");
+    });
   }, [queryClient, router]);
 
   if (loading) {
@@ -93,11 +99,18 @@ export function BoxesContainer() {
       </div>
 
       <div className="flex justify-end mt-8 pb-8">
-        <Button onClick={handleProceed} size="lg">
-          <span className="flex items-center gap-2">
-            <Rocket className="w-4 h-4" />
-            Literatür Taramasına Geç
-          </span>
+        <Button onClick={handleProceed} disabled={isPending} size="lg">
+          {isPending ? (
+            <span className="flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Kaydediliyor...
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              <Box className="w-4 h-4" />
+              Konu Kutularını Onayla ve Literatür Taramasına Geç
+            </span>
+          )}
         </Button>
       </div>
     </div>
@@ -281,12 +294,14 @@ function BoxCard({
         <div className="border-t border-border/40 pt-4 space-y-2 mt-5">
           <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <Archive className="w-3.5 h-3.5 text-muted-foreground" />
-            Arşiv / Birincil Malzeme Alanı
+            {box.boxType === "PRIMARY_MATERIAL"
+              ? "Arşiv / Birincil Malzeme Alanı"
+              : "Bağlamsal Sınırlar"}
           </h4>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Bu kutu, saha çalışması verileri ve birincil kaynaklar için
-            ayrılmıştır. Kurucu literatür taraması yapılmamıştır; arşiv
-            belgeleri bir sonraki adımda el ile girilecektir.
+            {box.boxType === "PRIMARY_MATERIAL"
+              ? "Bu kutu, saha çalışması verileri ve birincil kaynaklar için ayrılmıştır. Kurucu literatür taraması yapılmamıştır; arşiv belgeleri bir sonraki adımda el ile girilecektir."
+              : "Bu kutu, yerel ve küresel bağlamsal arka plan faktörleri için ayrılmıştır. Kurucu literatür taraması yapılmamıştır; bağlamsal bilgiler bir sonraki adımda el ile girilecektir."}
           </p>
         </div>
       ) : box.boxType === "RELATED_THESES" ? (
