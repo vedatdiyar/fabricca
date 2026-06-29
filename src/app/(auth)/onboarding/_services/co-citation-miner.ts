@@ -144,7 +144,7 @@ async function resolveAuthorsViaFallback(
       fallbackUrl,
       {
         headers: { "User-Agent": OPENALEX_USER_AGENT },
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(30000),
       },
       log,
     );
@@ -468,7 +468,7 @@ export async function mineCoCitations(
           url,
           {
             headers: { "User-Agent": OPENALEX_USER_AGENT },
-            signal: AbortSignal.timeout(15000),
+            signal: AbortSignal.timeout(30000),
           },
           log,
         );
@@ -591,7 +591,7 @@ export async function mineCoCitations(
           detailUrl,
           {
             headers: { "User-Agent": OPENALEX_USER_AGENT },
-            signal: AbortSignal.timeout(15000),
+            signal: AbortSignal.timeout(30000),
           },
           log,
         );

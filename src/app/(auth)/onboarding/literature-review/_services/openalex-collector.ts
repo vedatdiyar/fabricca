@@ -41,7 +41,9 @@ async function withOpenAlexRetry(
       lastError = err instanceof Error ? err : new Error(String(err));
 
       if (attempt < maxAttempts) {
-        const delayMs = Math.random() * 300 + 200;
+        const backoff = 1500 * Math.pow(2, attempt - 1);
+        const jitter = backoff * 0.3 * Math.random();
+        const delayMs = backoff + jitter;
         logger.warn("openalex_rate_limit_retry", {
           service: "literature",
           filePath:

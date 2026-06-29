@@ -442,7 +442,7 @@ export async function prefetchLiteratureCacheAction(
         const results = await searchOpenAlex(child.semanticQuery);
         allPapers.push(...results);
       } catch {
-        // Silently skip failed queries — this is a best-effort cache
+        // Best-effort cache — failed queries are silently skipped
       }
     }
 

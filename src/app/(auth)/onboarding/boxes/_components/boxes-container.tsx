@@ -47,7 +47,7 @@ export function BoxesContainer() {
       if (existing.length > 0) return existing;
       return [];
     },
-    staleTime: Infinity,
+    staleTime: 0,
   });
 
   const handleProceed = useCallback(() => {
@@ -63,9 +63,11 @@ export function BoxesContainer() {
     return <LoadingSpinner variant="full" />;
   }
 
-  const sortedBoxes = [...boxes].sort((a, b) => {
-    return (boxTypeOrder[a.boxType] || 99) - (boxTypeOrder[b.boxType] || 99);
-  });
+  const sortedBoxes = [...boxes]
+    .filter((b) => b.parentId === null)
+    .sort((a, b) => {
+      return (boxTypeOrder[a.boxType] || 99) - (boxTypeOrder[b.boxType] || 99);
+    });
   return (
     <div className="w-full space-y-8">
       <AIBanner
@@ -76,14 +78,15 @@ export function BoxesContainer() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 auto-rows-min">
         {sortedBoxes.map((box, idx) => {
-          const isLastOdd =
-            sortedBoxes.length % 2 !== 0 && idx === sortedBoxes.length - 1;
+          const isFullWidth =
+            (sortedBoxes.length % 2 !== 0 && idx === sortedBoxes.length - 1) ||
+            idx >= 4;
           return (
             <BoxCard
               key={box.title}
               box={box}
               index={idx}
-              isLastOdd={isLastOdd}
+              isFullWidth={isFullWidth}
             />
           );
         })}
@@ -140,22 +143,19 @@ function RelatedThesisCard({ thesis }: { thesis: RelatedThesisEntry }) {
 function BoxCard({
   box,
   index,
-  isLastOdd = false,
+  isFullWidth = false,
 }: {
   box: GeminiThesisBox;
   index: number;
-  isLastOdd?: boolean;
+  isFullWidth?: boolean;
 }) {
   const parentConcepts = box.concepts ?? [];
-  const subFoundational = (box.subBoxes ?? []).flatMap(
-    (sb) => sb.foundationalQueries ?? [],
-  );
 
   return (
     <Card
-      className={`group/card grid grid-rows-subgrid row-span-4 p-6 rounded-md transition-all duration-300 hover:-translate-y-1 hover:border-primary/20${isLastOdd ? " md:col-span-2" : ""}`}
+      className={`group/card flex flex-col h-full p-6 rounded-md transition-all duration-300 hover:-translate-y-1 hover:border-primary/20${isFullWidth ? " md:col-span-2" : ""}`}
     >
-      <div className="row-1 space-y-4">
+      <div className="space-y-4">
         <div className="flex items-center gap-2 text-muted-foreground text-xs">
           <PlusCircle className="w-3 h-3" />
           <span>Kutu {index + 1}</span>
@@ -172,13 +172,13 @@ function BoxCard({
       </div>
 
       {box.description && (
-        <p className="row-2 text-sm text-muted-foreground leading-relaxed">
+        <p className="text-sm text-muted-foreground leading-relaxed mt-4">
           {box.description}
         </p>
       )}
 
       {parentConcepts.length > 0 && (
-        <div className="row-3">
+        <div className="mt-4">
           <div className="border-y border-border py-3">
             <div className="flex flex-wrap gap-2">
               {parentConcepts.map((concept, i) => (
@@ -195,57 +195,90 @@ function BoxCard({
         </div>
       )}
 
-      {subFoundational.length > 0 ? (
-        <div className="row-4 border-t border-border/40 pt-4 space-y-4">
+      {box.subBoxes && box.subBoxes.length > 0 ? (
+        <div className="border-t border-border/40 pt-4 space-y-4 mt-5">
           <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <Library className="w-3.5 h-3.5 text-primary" />
-            Kurucu Literatür Temeli
+            Alt Konu Kutuları
           </h4>
-          <ul className="space-y-2 pl-0.5">
-            {subFoundational.slice(0, 3).map((fq, i) => (
-              <li
-                key={`${fq.title}-${fq.author}-${i}`}
-                className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground"
-              >
-                <FileText className="w-3.5 h-3.5 text-accent-foreground mt-0.5 shrink-0" />
-                <span>
-                  {(() => {
-                    const isDummy =
-                      fq.publicationYear === 0 ||
-                      fq.author === "Primary Source Repository";
-                    const displayAuthor = isDummy
-                      ? "Birincil Kaynak Havuzu"
-                      : fq.author;
-                    const displayTitle = isDummy
-                      ? "Saha Çalışması Belgeleri ve Ampirik Veri Kaynakları"
-                      : fq.title;
-                    const displayYear = isDummy
-                      ? ""
-                      : ` (${fq.publicationYear})`;
-                    return (
-                      <>
-                        <strong className="font-medium text-foreground">
-                          {displayAuthor}
-                        </strong>{" "}
-                        {displayYear && (
-                          <span className="text-muted-foreground text-[10px]">
-                            {displayYear}
-                          </span>
-                        )}{" "}
-                        —{" "}
-                        <span className="italic text-foreground">
-                          {displayTitle}
+          <div className="relative border-l border-primary/20 pl-4 ml-2.5 space-y-4 mt-2">
+            {box.subBoxes.map((subBox, sbIdx) => (
+              <div key={`${subBox.title}-${sbIdx}`} className="relative">
+                {/* Timeline Node */}
+                <span className="absolute -left-[21.5px] top-[21px] h-2.5 w-2.5 rounded-full border-2 border-primary bg-background" />
+
+                {/* Nested Box Card */}
+                <div className="p-4 rounded-md border border-border bg-card/40 hover:bg-card/75 hover:border-primary/20 transition-all duration-200 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <h5 className="font-serif text-sm font-semibold text-foreground leading-snug">
+                      {subBox.title}
+                    </h5>
+                  </div>
+                  {subBox.description && (
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {subBox.description}
+                    </p>
+                  )}
+                  {subBox.concepts && subBox.concepts.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {subBox.concepts.map((concept, cIdx) => (
+                        <span
+                          key={`${concept}-${cIdx}`}
+                          className="inline-flex items-center px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20 text-[10px] text-primary font-medium"
+                        >
+                          {concept}
                         </span>
-                      </>
-                    );
-                  })()}
-                </span>
-              </li>
+                      ))}
+                    </div>
+                  )}
+                  {subBox.foundationalQueries &&
+                    subBox.foundationalQueries.length > 0 && (
+                      <div className="pt-3 mt-3 border-t border-border/40 space-y-2">
+                        <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                          <FileText className="w-3.5 h-3.5 text-primary" />
+                          <span>Temel Akademik Kaynak</span>
+                        </div>
+                        {subBox.foundationalQueries.map((fq, fqIdx) => (
+                          <div
+                            key={`${fq.title}-${fqIdx}`}
+                            className="p-2.5 rounded bg-background/60 border border-border/60 text-xs text-muted-foreground leading-relaxed space-y-1"
+                          >
+                            {(() => {
+                              const isDummy =
+                                fq.publicationYear === 0 ||
+                                fq.author === "Primary Source Repository";
+                              const displayAuthor = isDummy
+                                ? "Birincil Kaynak Havuzu"
+                                : fq.author;
+                              const displayTitle = isDummy
+                                ? "Saha Çalışması Belgeleri ve Ampirik Veri Kaynakları"
+                                : fq.title;
+                              const displayYear = isDummy
+                                ? ""
+                                : ` (${fq.publicationYear})`;
+                              return (
+                                <>
+                                  <div className="text-foreground font-semibold font-serif">
+                                    {displayTitle}
+                                  </div>
+                                  <div className="text-[10px] text-muted-foreground">
+                                    {displayAuthor}{" "}
+                                    {displayYear && `· ${displayYear}`}
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                </div>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
       ) : box.boxType === "PRIMARY_MATERIAL" ? (
-        <div className="row-4 border-t border-border/40 pt-4 space-y-2">
+        <div className="border-t border-border/40 pt-4 space-y-2 mt-5">
           <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <Archive className="w-3.5 h-3.5 text-muted-foreground" />
             Arşiv / Birincil Malzeme Alanı
@@ -257,7 +290,7 @@ function BoxCard({
           </p>
         </div>
       ) : box.boxType === "RELATED_THESES" ? (
-        <div className="row-4 border-t border-border/40 pt-4 space-y-3">
+        <div className="border-t border-border/40 pt-4 space-y-3 mt-5">
           <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <Archive className="w-3.5 h-3.5 text-muted-foreground" />
             Sınırdaş Tez Havuzu
@@ -268,13 +301,20 @@ function BoxCard({
             )}
           </h4>
           {box.relatedTheses && box.relatedTheses.length > 0 ? (
-            <div className="space-y-3">
-              {box.relatedTheses.map((thesis, i) => (
-                <RelatedThesisCard
-                  key={`${thesis.title}-${i}`}
-                  thesis={thesis}
-                />
-              ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {box.relatedTheses.map((thesis, i) => {
+                const isLastOdd =
+                  box.relatedTheses!.length % 2 !== 0 &&
+                  i === box.relatedTheses!.length - 1;
+                return (
+                  <div
+                    key={`${thesis.title}-${i}`}
+                    className={isLastOdd ? "md:col-span-2" : ""}
+                  >
+                    <RelatedThesisCard thesis={thesis} />
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <p className="text-xs text-muted-foreground leading-relaxed">

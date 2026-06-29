@@ -322,7 +322,7 @@ export async function orchestrateBatchProcess(
             }
             allPapers.push(...results);
           } catch {
-            // Silently skip failed queries
+            // Best-effort — failed queries are silently skipped
           }
         }
 

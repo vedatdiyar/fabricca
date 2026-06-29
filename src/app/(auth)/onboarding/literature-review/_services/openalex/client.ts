@@ -31,7 +31,16 @@ async function queryOpenAlexWorks(
         throw new Error("OpenAlex rate limit exceeded (429)");
       }
 
-      if (!response.ok) return [];
+      if (!response.ok) {
+        if (response.status >= 500 && attempt <= MAX_RETRIES) {
+          const backoff = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+          const jitter = backoff * 0.3 * Math.random();
+          const delayMs = backoff + jitter;
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+          continue;
+        }
+        return [];
+      }
 
       const data = (await response.json()) as {
         results?: Record<string, unknown>[];
