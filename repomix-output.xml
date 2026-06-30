@@ -210,8 +210,6 @@ src/
     tezara.ts
     types.ts
     utils.ts
-  scratch/
-    e2e-originality-test.ts
   session.ts
 package.json
 README.md
@@ -610,53 +608,6 @@ export function writePayloadFile(
 export function cosineSimilarity(vecA: number[], vecB: number[]): number
 </file>
 
-<file path="src/lib/prompts/co-citation-referee.ts">
-import type { JsonSchema } from "../gemini";
-⋮----
-export interface RefereeCandidate {
-  index: number;
-  title: string;
-  author: string;
-  year: number;
-  localCount: number;
-}
-⋮----
-export interface RefereeBoxContext {
-  boxType: string;
-  title: string;
-  description: string;
-}
-⋮----
-export function buildRefereeSystemInstruction(): string
-⋮----
-export function buildRefereePrompt(
-  candidateList: RefereeCandidate[],
-  boxContext?: RefereeBoxContext,
-): string
-</file>
-
-<file path="src/lib/prompts/foundational-oracle.ts">
-import type { JsonSchema } from "../gemini";
-⋮----
-export function buildFoundationalOracleSystemInstruction(): string
-⋮----
-export function buildFoundationalOracleUserPrompt(params: {
-  studyTitle: string;
-  researchQuestion: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-  mainClaim: string;
-  box: {
-    title: string;
-    boxType: string;
-    description: string;
-    concepts?: string[];
-    semanticQuery?: string | null;
-  };
-}): string
-</file>
-
 <file path="src/lib/cache-tags.ts">
 import { revalidatePath, updateTag } from "next/cache";
 ⋮----
@@ -683,52 +634,6 @@ export async function rerankTheses(
   titles: string[],
   log: LoggerInstance,
 ): Promise<CohereRerankResponse>
-</file>
-
-<file path="src/scratch/e2e-originality-test.ts">
-import { createFlowId, Logger } from "../lib/logger";
-import { extractQueries } from "../app/(auth)/onboarding/risk/_services/queries";
-import { searchTezara } from "../lib/tezara";
-import { siftAndFetchDetails } from "../app/(auth)/onboarding/risk/_services/sifting";
-import {
-  analyzeOriginalityRisk,
-  calculateOriginalityRisk,
-} from "../app/(auth)/onboarding/risk/_services/analysis";
-import type { TezaraThesisSummary } from "../lib/types";
-import { writeFileSync } from "fs";
-import path from "path";
-⋮----
-interface ThesisMatrixInput {
-  studyTitle: string;
-  researchQuestion: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-  mainClaim: string;
-}
-⋮----
-class SilentLogger extends Logger
-⋮----
-constructor(flowId: string)
-⋮----
-override info(): void
-override warn(): void
-override error(): void
-override step(): void
-override file(): void
-override data(): void
-override preview(): void
-override prompt(): void
-override saveDebugPayload(): string | undefined
-⋮----
-/**
- * Runs the E2E originality analysis pipeline using only real project functions.
- * Terminal shows minimal progress; full detailed JSON is written to e2e-output.json.
- * Tavily is fully bypassed (queries extracted but never executed).
- */
-async function runE2ETest(): Promise<void>
-⋮----
-// Adim 1: Query Extraction (Gemini)
 </file>
 
 <file path="README.md">
@@ -1411,6 +1316,53 @@ function handleReset()
 className=
 </file>
 
+<file path="src/lib/prompts/co-citation-referee.ts">
+import type { JsonSchema } from "../gemini";
+⋮----
+export interface RefereeCandidate {
+  index: number;
+  title: string;
+  author: string;
+  year: number;
+  localCount: number;
+}
+⋮----
+export interface RefereeBoxContext {
+  boxType: string;
+  title: string;
+  description: string;
+}
+⋮----
+export function buildRefereeSystemInstruction(): string
+⋮----
+export function buildRefereePrompt(
+  candidateList: RefereeCandidate[],
+  boxContext?: RefereeBoxContext,
+): string
+</file>
+
+<file path="src/lib/prompts/foundational-oracle.ts">
+import type { JsonSchema } from "../gemini";
+⋮----
+export function buildFoundationalOracleSystemInstruction(): string
+⋮----
+export function buildFoundationalOracleUserPrompt(params: {
+  studyTitle: string;
+  researchQuestion: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+  mainClaim: string;
+  box: {
+    title: string;
+    boxType: string;
+    description: string;
+    concepts?: string[];
+    semanticQuery?: string | null;
+  };
+}): string
+</file>
+
 <file path="src/lib/tavily.ts">
 import type { Logger } from "./logger";
 ⋮----
@@ -1743,12 +1695,6 @@ export default function RootLayout({
 }>)
 </file>
 
-<file path="src/lib/academic/badge-calculator.ts">
-import type { ThesisAxes, ThesisBadge } from "@/lib/types";
-⋮----
-export function calculateBadge(axes: ThesisAxes): ThesisBadge
-</file>
-
 <file path="src/lib/logger/formatter.ts">
 import { classifyError, getErrorDisplay } from "../error-utils";
 ⋮----
@@ -1821,17 +1767,6 @@ export function buildPrefix(
 export function buildSuffix(params?: LogParams): string
 ⋮----
 export function renderDevLine(data: Record<string, unknown>): string
-</file>
-
-<file path="src/lib/prompts/tavily-evaluation.ts">
-import type { JsonSchema } from "../gemini";
-⋮----
-export function buildTavilyEvalSystemInstruction(): string
-⋮----
-export function buildTavilyEvalPrompt(params: {
-  studyTitle: string;
-  tavilyResultsFormatted: string;
-}): string
 </file>
 
 <file path="src/lib/cloudflare.ts">
@@ -1927,18 +1862,20 @@ import { Pool } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-serverless";
 </file>
 
-<file path="src/lib/prompts/lit-keyword-extraction.ts">
+<file path="src/lib/academic/badge-calculator.ts">
+import type { ThesisAxes, ThesisBadge } from "@/lib/types";
+⋮----
+export function calculateBadge(axes: ThesisAxes): ThesisBadge
+</file>
+
+<file path="src/lib/prompts/tavily-evaluation.ts">
 import type { JsonSchema } from "../gemini";
 ⋮----
-export function buildLitKeywordExtractionSystemInstruction(): string
+export function buildTavilyEvalSystemInstruction(): string
 ⋮----
-export function buildLitKeywordPrompt(params: {
+export function buildTavilyEvalPrompt(params: {
   studyTitle: string;
-  researchQuestion: string;
-  mainClaim: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
+  tavilyResultsFormatted: string;
 }): string
 </file>
 
@@ -2043,12 +1980,12 @@ import { StartOverButton } from "../_components/start-over-button";
 export default async function OnboardingRiskPage()
 </file>
 
-<file path="src/lib/prompts/fact-query-extraction.ts">
+<file path="src/lib/prompts/lit-keyword-extraction.ts">
 import type { JsonSchema } from "../gemini";
 ⋮----
-export function buildFactQueryExtractionSystemInstruction(): string
+export function buildLitKeywordExtractionSystemInstruction(): string
 ⋮----
-export function buildFactQueryPrompt(params: {
+export function buildLitKeywordPrompt(params: {
   studyTitle: string;
   researchQuestion: string;
   mainClaim: string;
@@ -2163,6 +2100,21 @@ export default async function OnboardingLayout({
 }>)
 </file>
 
+<file path="src/lib/prompts/fact-query-extraction.ts">
+import type { JsonSchema } from "../gemini";
+⋮----
+export function buildFactQueryExtractionSystemInstruction(): string
+⋮----
+export function buildFactQueryPrompt(params: {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+}): string
+</file>
+
 <file path="src/app/(auth)/onboarding/literature-review/page.tsx">
 import { redirect } from "next/navigation";
 import { getProfile } from "@/session";
@@ -2254,29 +2206,6 @@ export default async function OnboardingPage()
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
-</file>
-
-<file path="src/lib/prompts/roadmap-synthesis.ts">
-import type { ThesisAxes } from "../types";
-import type { JsonSchema } from "../gemini";
-⋮----
-export function buildRoadmapSystemInstruction(): string
-⋮----
-export function buildRoadmapPrompt(params: {
-  studyTitle: string;
-  researchQuestion: string;
-  mainClaim: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-  comparisonResults: {
-    title: string;
-    author: string;
-    year: number;
-    axes: ThesisAxes;
-    comparisonNote: string;
-  }[];
-}): string
 </file>
 
 <file path="src/app/(app)/library/actions.ts">
@@ -2408,6 +2337,29 @@ export function LiteratureReader({
 }: LiteratureReaderProps)
 </file>
 
+<file path="src/lib/prompts/roadmap-synthesis.ts">
+import type { ThesisAxes } from "../types";
+import type { JsonSchema } from "../gemini";
+⋮----
+export function buildRoadmapSystemInstruction(): string
+⋮----
+export function buildRoadmapPrompt(params: {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+  comparisonResults: {
+    title: string;
+    author: string;
+    year: number;
+    axes: ThesisAxes;
+    comparisonNote: string;
+  }[];
+}): string
+</file>
+
 <file path="src/app/(auth)/onboarding/literature-review/_components/literature-article-card.tsx">
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { JuryArticle } from "@/lib/types";
@@ -2419,6 +2371,36 @@ interface LiteratureArticleCardProps {
 
 <file path="src/lib/prompts/index.ts">
 
+</file>
+
+<file path="src/lib/tezara.ts">
+import type { Logger } from "./logger";
+import type { TezaraThesisSummary, TezaraThesisDetails } from "./types";
+import { parseTezaraDetails, parseTezaraSearchResults } from "./tezara-parser";
+import { enqueueTezaraFetch } from "./tezara-queue";
+⋮----
+async function fetchWithRetry(
+  url: string,
+  logger?: Logger,
+): Promise<Response | null>
+⋮----
+export async function searchTezaraPage(
+  query: string,
+  page: number,
+  logger?: Logger,
+  advanced = false,
+): Promise<TezaraThesisSummary[]>
+⋮----
+export async function searchTezara(
+  query: string,
+  logger?: Logger,
+  advanced = false,
+): Promise<TezaraThesisSummary[]>
+⋮----
+export async function fetchThesisDetails(
+  summary: TezaraThesisSummary,
+  logger?: Logger,
+): Promise<TezaraThesisDetails | null>
 </file>
 
 <file path="src/app/(auth)/onboarding/_components/onboarding-stepper.tsx">
@@ -2500,36 +2482,6 @@ export async function extractQueries(
 // If still less than 6, add single words
 ⋮----
 // Signature compatibility: map first word of each query as keywords
-</file>
-
-<file path="src/lib/tezara.ts">
-import type { Logger } from "./logger";
-import type { TezaraThesisSummary, TezaraThesisDetails } from "./types";
-import { parseTezaraDetails, parseTezaraSearchResults } from "./tezara-parser";
-import { enqueueTezaraFetch } from "./tezara-queue";
-⋮----
-async function fetchWithRetry(
-  url: string,
-  logger?: Logger,
-): Promise<Response | null>
-⋮----
-export async function searchTezaraPage(
-  query: string,
-  page: number,
-  logger?: Logger,
-  advanced = false,
-): Promise<TezaraThesisSummary[]>
-⋮----
-export async function searchTezara(
-  query: string,
-  logger?: Logger,
-  advanced = false,
-): Promise<TezaraThesisSummary[]>
-⋮----
-export async function fetchThesisDetails(
-  summary: TezaraThesisSummary,
-  logger?: Logger,
-): Promise<TezaraThesisDetails | null>
 </file>
 
 <file path="src/app/(auth)/onboarding/_lib/fetch-actions.ts">
@@ -2649,31 +2601,6 @@ function AxisCell(
 setExpandedThesisId(
 </file>
 
-<file path="src/lib/prompts/originality-analysis.ts">
-import type { JsonSchema } from "../gemini";
-⋮----
-export function buildAnalysisSystemInstruction(): string
-⋮----
-export function buildAnalysisPrompt(params: {
-  studyTitle: string;
-  researchQuestion: string;
-  mainClaim: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-  validDetails: {
-    id: number;
-    title: string;
-    author: string;
-    university: string;
-    year: number;
-    thesisType: string;
-    department: string;
-    abstract: string;
-  }[];
-}): string
-</file>
-
 <file path="src/app/(auth)/onboarding/matrix/actions.ts">
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
@@ -2702,6 +2629,31 @@ function validateField(
 export async function saveThesisMatrixAction(
   data: OnboardingFormData,
 ): Promise<
+</file>
+
+<file path="src/lib/prompts/originality-analysis.ts">
+import type { JsonSchema } from "../gemini";
+⋮----
+export function buildAnalysisSystemInstruction(): string
+⋮----
+export function buildAnalysisPrompt(params: {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+  validDetails: {
+    id: number;
+    title: string;
+    author: string;
+    university: string;
+    year: number;
+    thesisType: string;
+    department: string;
+    abstract: string;
+  }[];
+}): string
 </file>
 
 <file path="package.json">
@@ -2900,6 +2852,34 @@ export async function siftAndFetchDetails(
 ): Promise<
 </file>
 
+<file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">
+import { useState } from "react";
+import { Loader2, AlertCircle, BookOpen, Archive, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { AIBanner } from "@/components/ai-banner";
+import { LoadingSpinner } from "@/components/loading-spinner";
+import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
+import { LiteratureArticleCard } from "./literature-article-card";
+import {
+  useLiteratureReview,
+  type BoxStatus,
+} from "../_hooks/use-literature-review";
+⋮----
+function ArchiveEntryForm({
+  onAddEntry,
+}: {
+onAddEntry: (title: string, description: string)
+⋮----
+const handleAdd = () =>
+⋮----
+onChange=
+⋮----
+onAddArchiveEntry(subBox.title,
+</file>
+
 <file path="src/app/(auth)/onboarding/matrix/_components/matrix-form.tsx">
 import { useState, useEffect, useReducer } from "react";
 import { useRouter } from "next/navigation";
@@ -3055,34 +3035,6 @@ export async function analyzeOriginalityRisk(
 ): Promise<
 </file>
 
-<file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">
-import { useState } from "react";
-import { Loader2, AlertCircle, BookOpen, Archive, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { AIBanner } from "@/components/ai-banner";
-import { LoadingSpinner } from "@/components/loading-spinner";
-import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
-import { LiteratureArticleCard } from "./literature-article-card";
-import {
-  useLiteratureReview,
-  type BoxStatus,
-} from "../_hooks/use-literature-review";
-⋮----
-function ArchiveEntryForm({
-  onAddEntry,
-}: {
-onAddEntry: (title: string, description: string)
-⋮----
-const handleAdd = () =>
-⋮----
-onChange=
-⋮----
-onAddArchiveEntry(subBox.title,
-</file>
-
 <file path="src/app/(auth)/onboarding/risk/actions.ts">
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
@@ -3171,21 +3123,6 @@ export async function finalizeJuryAnalysisAction(params: {
 export async function completeRiskStageAction(): Promise<OnboardingActionResult>
 </file>
 
-<file path="src/lib/prompts/box-generation.ts">
-import type { JsonSchema } from "../gemini";
-⋮----
-export function buildThesisBoxGenerationSystemInstruction(): string
-⋮----
-export function buildThesisBoxGenerationPrompt(params: {
-  studyTitle: string;
-  researchQuestion: string;
-  mainClaim: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-}): string
-</file>
-
 <file path="src/app/(auth)/onboarding/literature-review/_hooks/use-literature-review.ts">
 import { useMemo, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -3224,6 +3161,21 @@ export interface UseLiteratureReviewResult {
 export function useLiteratureReview(): UseLiteratureReviewResult
 ⋮----
 const isArchival = (box: GeminiThesisBox): boolean
+</file>
+
+<file path="src/lib/prompts/box-generation.ts">
+import type { JsonSchema } from "../gemini";
+⋮----
+export function buildThesisBoxGenerationSystemInstruction(): string
+⋮----
+export function buildThesisBoxGenerationPrompt(params: {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+}): string
 </file>
 
 <file path="src/db/schema.ts">

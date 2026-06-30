@@ -35,9 +35,10 @@ export interface ExtractQueriesParams {
 
 /**
  * Extracts factual Turkish search queries for Tavily and academic English queries for Tezara
- * using Gemini based on the target thesis matrix. Runs two independent prompts in parallel:
- *   - fact-query-extraction: produces only concrete empirical Tavily queries
- *   - lit-keyword-extraction: produces only 5 English lemma keywords for the Tezara combination engine
+ * using Gemini based on the target thesis matrix. Runs two prompts sequentially to
+ * guarantee a deterministic KV-cache session order between runs:
+ *   - fact-query-extraction: produces only concrete empirical Tavily queries (always first)
+ *   - lit-keyword-extraction: produces English lemma queries for the Tezara engine (always second)
  *
  * @param params - The thesis matrix parameters.
  * @param log - The logger instance.
@@ -74,9 +75,10 @@ export async function extractQueries(
     log.prompt("gemini-3.1-flash-lite (fact queries)", factPrompt);
     log.prompt("gemini-3.1-flash-lite (keywords)", keywordPrompt);
 
-    // Run both extraction prompts in parallel
-    const [factResult, keywordResult] = await Promise.all([
-      generateStructuredContent<FactQueryExtractionResponse>(
+    // Run both extraction prompts sequentially (factResult ALWAYS first) for
+    // deterministic KV-cache session order between runs.
+    const factResult =
+      await generateStructuredContent<FactQueryExtractionResponse>(
         "gemini-3.1-flash-lite",
         buildFactQueryExtractionSystemInstruction(),
         factPrompt,
@@ -87,8 +89,10 @@ export async function extractQueries(
           temperature: 1.0,
           seed: 42,
         },
-      ),
-      generateStructuredContent<LitKeywordExtractionResponse>(
+      );
+
+    const keywordResult =
+      await generateStructuredContent<LitKeywordExtractionResponse>(
         "gemini-3.1-flash-lite",
         buildLitKeywordExtractionSystemInstruction(),
         keywordPrompt,
@@ -99,8 +103,7 @@ export async function extractQueries(
           temperature: 1.0,
           seed: 42,
         },
-      ),
-    ]);
+      );
 
     const rawTavilyQueries = Array.isArray(factResult?.tavilyQueries)
       ? factResult.tavilyQueries

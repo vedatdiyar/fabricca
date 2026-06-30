@@ -10,7 +10,10 @@ export const THESIS_AXES_SCHEMA: JsonSchema = {
     problem_sinirlari: {
       type: "object",
       properties: {
-        gerekce: { type: "string", description: "Kısa gerekçe (1-2 cümle)" },
+        gerekce: {
+          type: "string",
+          description: "Kısa gerekçe (1-2 cümle, maksimum 150 karakter)",
+        },
         secim: {
           type: "string",
           enum: ["TAM_ORTÜŞME", "KISMI_ORTÜŞME", "ALAKASIZ"],
@@ -21,7 +24,10 @@ export const THESIS_AXES_SCHEMA: JsonSchema = {
     teorik_perspektif: {
       type: "object",
       properties: {
-        gerekce: { type: "string", description: "Kısa gerekçe (1-2 cümle)" },
+        gerekce: {
+          type: "string",
+          description: "Kısa gerekçe (1-2 cümle, maksimum 150 karakter)",
+        },
         secim: {
           type: "string",
           enum: ["TAM_ORTÜŞME", "KISMI_ORTÜŞME", "ALAKASIZ"],
@@ -32,7 +38,10 @@ export const THESIS_AXES_SCHEMA: JsonSchema = {
     metodolojik_kurgu: {
       type: "object",
       properties: {
-        gerekce: { type: "string", description: "Kısa gerekçe (1-2 cümle)" },
+        gerekce: {
+          type: "string",
+          description: "Kısa gerekçe (1-2 cümle, maksimum 150 karakter)",
+        },
         secim: {
           type: "string",
           enum: ["TAM_ORTÜŞME", "KISMI_ORTÜŞME", "ALAKASIZ"],
@@ -43,10 +52,13 @@ export const THESIS_AXES_SCHEMA: JsonSchema = {
     zaman_mekan_ozgullugu: {
       type: "object",
       properties: {
-        gerekce: { type: "string", description: "Kısa gerekçe (1-2 cümle)" },
+        gerekce: {
+          type: "string",
+          description: "Kısa gerekçe (1-2 cümle, maksimum 150 karakter)",
+        },
         secim: {
           type: "string",
-          enum: ["TAM_ORTÜŞME", "KISMI_ORTÜŞME", "ALAKASIZ"],
+          enum: ["TAM_ORTÜŞME", "ALAKASIZ"],
         },
       },
       required: ["gerekce", "secim"],
@@ -110,7 +122,28 @@ Tezlerin ampirik veri toplama araçları, veri işleme süreçleri ve analiz tek
 - **TAM_ORTÜŞME**: Karşı tezin metninde yazan ampirik tarihsel periyot (takvim yılları) VE coğrafi kapsam, hedef tezin metnindeki dönemi ve coğrafyayı ya birebir karşılıyor ya da hedef tezin ampirik zaman dilimini ve coğrafi sınırlarını bir şemsiye gibi tamamen içine alıp (yutup) kapsıyorsa seçilir. Bu iki şartın (Zaman VE Mekan) eşzamanlı olarak hedef tezi yutması zorunludur.
 - **[KAPSAMA KURALI]**: Eğer karşı tezin incelediği zaman aralığı (örnek: 1990-2014) hedef tezin zaman aralığını (örnek: 1991-1999) ya da karşı tezin coğrafi kapsamı (örnek: tüm Türkiye) hedef tezin coğrafi kapsamını (örnek: İstanbul) tamamen yutup kapsayıp içine alıyorsa, bu durum zaman/mekan açısından birebir veya daha geniş bir kapsama ilişkisidir (TAM_ORTÜŞME). Karşı tezin aralığının daha geniş olması sebebiyle çekinip "ALAKASIZ" seçilmemeli, KESİNLİKLE "TAM_ORTÜŞME" seçilmelidir. Sadece aralarında kronolojik kopukluk varsa (örnek: 1959-1984 ile 1991-1999) veya coğrafyalar tamamen farklıysa "ALAKASIZ" seçilmelidir.
 - **KISMI_ORTÜŞME**: [BU SEÇENEK BU EKSEN İÇİN GEÇERSİZDİR VE ASLA SEÇİLEMEZ]
-- **ALAKASIZ (Kronolojik Kopukluk ve Bilgi Yokluğu Bariyeri)**: Karşı tezin ampirik tarihsel periyodu (takvim yılları) ile hedef tezin dönemi arasında bütünsel bir kapsama ilişkisi yoksa veya araları kronolojik olarak kopuksa ya da iki tezin incelenen coğrafi alanları/ülkeleri tamamen farklıysa doğrudan bu seçenek işaretlenmelidir. Ayrıca karşı tezin özet metninde ampirik zamana (yıl/dönem) veya mekana dair hiçbir somut veri/yıl beyan edilmemişse, jürinin harici çıkarım yapması kesinlikle yasaktır; karar doğrudan bu seçenektir.`;
+- **ALAKASIZ (Kronolojik Kopukluk ve Bilgi Yokluğu Bariyeri)**: Karşı tezin ampirik tarihsel periyodu (takvim yılları) ile hedef tezin dönemi arasında bütünsel bir kapsama ilişkisi yoksa veya araları kronolojik olarak kopuksa ya da iki tezin incelenen coğrafi alanları/ülkeleri tamamen farklıysa doğrudan bu seçenek işaretlenmelidir. Ayrıca karşı tezin özet metninde ampirik zamana (yıl/dönem) veya mekana dair hiçbir somut veri/yıl beyan edilmemişse, jürinin harici çıkarım yapması kesinlikle yasaktır; karar doğrudan bu seçenektir.
+
+### 🧠 CONTEXT WARM-UP & KESİN KARAR SINIRLARI
+- Bu analiz kurallı bir eşleştirme motorudur. İlk çağrı (Run A) ile ardışık çağrılar (Run B, Run C) arasında hiçbir felsefi yorum farkı veya karar oynaklığı gösterilemez.
+- [KATI PROBLEM SINIRI KURALI]: Hedef tezin çift aktörlü yapısının (Aktör A ve Aktör B etkileşimi) sadece tek bir aktörünü (Sadece Aktör A veya Sadece Aktör B) odağa alan çalışmalar konu ekseninde ALAKASIZ DEĞİLDİR, kesinlikle KISMI_ORTÜŞME olarak seçilecektir. Kadriye Okudan tezi (#363401) bu kuralın doğrudan bir örneğidir ve bu mantıkla değerlendirilmelidir.
+
+### 🚨 KARAR DETERMİNİZMİ (TEST KISITI)
+- temperature: 1.0 etkisini sıfırlamak ve runlar arası karar oynaklığını engellemek için, her aday tezin 4 eksenini değerlendirirken KESİNLİKLE şu MEKANİK SIRAYI ve KURALLARI izleyin:
+  1. **ZAMAN-MEKAN ÖZGÜLLÜĞÜ** en somut veri olduğu için İLK sırada değerlendirin. Önce karşı tez özetinde somut yıl/dönem veya coğrafya var mı kontrol edin. Yoksa → ALAKASIZ. Varsa → KAPSAMA KURALI'na göre TAM_ORTÜŞME/ALAKASIZ kararını verin.
+  2. **ARAŞTIRMA PROBLEMİNİN SINIRLARI** ikinci sırada değerlendirin. Çift aktör varsa KISMI_ORTÜŞME kuralını uygulayın.
+  3. **METODOLOJİK KURGU** üçüncü sırada değerlendirin. Önce özette yöntem bilgisi var mı kontrol edin.
+  4. **TEORİK PERSPEKTİF** son sırada değerlendirin. Kuramcı/kuram adı geçiyor mu kontrol edin.
+- Bu sıralama KESİNLİKLE her aday tez ve her run için birebir aynı işletilmelidir. Sıra atlamak veya değiştirmek yasaktır.
+- Her eksende karar, önce somut veri kontrolü (var/yok), ardından kural sayfasındaki ilgili tanıma göre mekanik eşleştirme yapılarak verilmelidir. Konsept sezgisi veya yorum farkına izin verilmez.
+
+### 📝 GEREKÇE (GEREKCE) FORMAT KISITLAMALARI
+Jürinin ürettiği gerekce metinlerinin kelime/karakter esnekliğini (temperature kaynaklı varyasyonları) sıfırlamak için şu yapısal sınırları tavizsiz uygulayın:
+1. **Uzunluk Sınırı:** Her bir eksen için yazılacak gerekce metni en fazla 2 cümle ve maksimum 150 karakter olacaktır. 150 karakterin aşılması kesinlikle yasaktır.
+2. **Kalıp Şablon Şartı:** Serbest edebi yorum yapılmayacak, gerekçeler doğrudan şu analitik kalıplarla başlatılacaktır:
+   - "Hedef tezde olmayan [Değişken] yabancı değişkeni konuyu başkalaştırmıştır."
+   - "Karşı tez dönemi ([Yıllar]), hedef tezin [Yıllar] periyodunu tamamen kapsamaktadır."
+   - "İki çalışma da [Kuram/Yöntem] ortak paydasını/ailesini paylaşmaktadır."`;
 }
 
 // ============================================================================

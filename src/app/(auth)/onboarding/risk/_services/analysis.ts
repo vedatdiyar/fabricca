@@ -262,12 +262,18 @@ export async function analyzeOriginalityRisk(
   });
 
   try {
+    // Deterministik chunk kompozisyonu: validDetails'i ID'ye göre sıralayarak
+    // Cohere sıralama değişkenliğini nötralize eder.
+    const sortedDetails = [...params.validDetails].sort((a, b) => a.id - b.id);
+
     const chunks: TezaraThesisDetails[][] = [];
-    for (let i = 0; i < params.validDetails.length; i += chunkSize) {
-      chunks.push(params.validDetails.slice(i, i + chunkSize));
+    for (let i = 0; i < sortedDetails.length; i += chunkSize) {
+      chunks.push(sortedDetails.slice(i, i + chunkSize));
     }
 
-    const analysisPromises = chunks.map(async (group) => {
+    const overlapTable: GeminiOverlapItem[] = [];
+
+    for (const group of chunks) {
       const candidateParams = {
         ...params,
         validDetails: group,
@@ -283,7 +289,7 @@ export async function analyzeOriginalityRisk(
           geminiAnalysisSchema,
           log,
           {
-            thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+            thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
             temperature: 1.0,
             seed: 42,
           },
@@ -328,7 +334,7 @@ export async function analyzeOriginalityRisk(
             });
           }
         }
-        return finalItems;
+        overlapTable.push(...finalItems);
       } catch (err) {
         log.warn("originality_chunk_analysis_failed", {
           service: "originality",
@@ -338,7 +344,7 @@ export async function analyzeOriginalityRisk(
           },
         });
         // Graceful error fallback for all theses in this group to avoid failing onboarding
-        return group.map((t) => ({
+        const fallbackItems = group.map((t) => ({
           id: t.id,
           problem_sinirlari: {
             gerekce: "Analiz sırasında hata oluştu.",
@@ -357,11 +363,9 @@ export async function analyzeOriginalityRisk(
             secim: "ALAKASIZ",
           },
         }));
+        overlapTable.push(...fallbackItems);
       }
-    });
-
-    const results = await Promise.all(analysisPromises);
-    const overlapTable = results.flat();
+    }
 
     log.preview(
       "Overlap Analysis Results",

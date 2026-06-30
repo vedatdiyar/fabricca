@@ -183,19 +183,20 @@ export async function siftAndFetchDetails(
 
       const { results } = await rerankTheses(rerankQuery, titles, log);
 
-      // Sort descending by relevance score, with ID-based tie-breaker
-      // for FP16 micro-fluctuations below 0.001
+      // Cohere'in semantic siralamasi ana omurgadir; yalnizca floating-point
+      // gurultusu seviyesindeki esit/bitisik skorlarda ID bazli k69a
+      // determinizm saglanir (esik: 0.0001)
       const MIN_SCORE = 0.59;
       const topResults = results
         .filter((r) => r.relevanceScore >= MIN_SCORE)
         .sort((a, b) => {
           const scoreDiff = b.relevanceScore - a.relevanceScore;
-          if (Math.abs(scoreDiff) < 0.001) {
+          if (Math.abs(scoreDiff) < 0.0001) {
             return uniqueTheses[a.index].id - uniqueTheses[b.index].id;
           }
           return scoreDiff;
         })
-        .slice(0, 20);
+        .slice(0, 25);
 
       topIds = topResults.map((r) => uniqueTheses[r.index].id);
     } catch (err) {
