@@ -3,6 +3,55 @@ import type { Logger } from "@/lib/logger";
 import type { TezaraThesisSummary, TezaraThesisDetails } from "@/lib/types";
 import { rerankTheses } from "@/lib/cohere";
 
+/**
+ * Tezara'dan tez detaylarını üssel geri çekilme (exponential backoff) ile çeker.
+ * Maksimum 3 deneme yapar. Detaylar null dönerse veya hata oluşursa hata fırlatır.
+ *
+ * @param thesis - Detayları çekilecek tez özeti.
+ * @param log - Logger instance.
+ * @returns TezaraThesisDetails
+ */
+async function fetchDetailsWithRetry(
+  thesis: TezaraThesisSummary,
+  log: Logger,
+): Promise<TezaraThesisDetails> {
+  const maxAttempts = 3;
+  let delay = 500; // ms
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const details = await fetchThesisDetails(thesis, log);
+      if (!details) {
+        throw new Error(`Tez detayları çekilemedi (null döndü).`);
+      }
+      return details;
+    } catch (err) {
+      log.warn("originality_fetch_details_attempt_failed", {
+        service: "originality",
+        data: {
+          thesisId: thesis.id,
+          attempt,
+          maxAttempts,
+        },
+        error: err instanceof Error ? err.message : String(err),
+      });
+
+      if (attempt === maxAttempts) {
+        throw new Error(
+          `Tez ID ${thesis.id} detayları ${maxAttempts} denemeye rağmen çekilemedi.`,
+        );
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      delay *= 2;
+    }
+  }
+
+  throw new Error(
+    `Unexpected fallthrough in fetchDetailsWithRetry for ID ${thesis.id}`,
+  );
+}
+
 export interface SiftAndFetchDetailsParams {
   studyTitle: string;
   researchQuestion: string;
@@ -187,12 +236,10 @@ export async function siftAndFetchDetails(
     });
 
     const detailsList = await Promise.all(
-      passedStage1.map((t) => fetchThesisDetails(t, log)),
+      passedStage1.map((t) => fetchDetailsWithRetry(t, log)),
     );
-    const validDetails = detailsList.filter(
-      (d): d is TezaraThesisDetails => d !== null,
-    );
-    fetchFailed = passedStage1.length - validDetails.length;
+    const validDetails = detailsList;
+    fetchFailed = 0;
 
     log.info("originality_sift_fetch_success", {
       service: "originality",

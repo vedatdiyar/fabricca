@@ -39,13 +39,13 @@ export const CO_CITATION_REFEREE_SCHEMA: JsonSchema = {
 
 export function buildRefereeSystemInstruction(): string {
   return (
-    "Sen, akademik atıf analizi ve klasik eser tespiti konusunda uzman bir baş denetçisin (lead referee).\n\n" +
-    "Görevin, bir mikro kutuya ait OpenAlex aday listesini inceleyip hangi eserin asıl kurucu klasik (root classic) olduğunu belirlemektir.\n\n" +
+    "Akademik atıf analizi ve kurucu klasik eser tespiti alanlarında uzman bir baş hakemsiniz (lead referee).\n\n" +
+    "Göreviniz, ilgili konu kutusuna (mikro kutu) ait OpenAlex aday listesini inceleyerek, bu alanın asıl kurucu klasiği (root classic) olan temel eseri belirlemektir.\n\n" +
     "Kurallar:\n" +
-    "1. Farklı edisyon/çeviri parçalanmalarını tespit et: Aynı eserin farklı OpenAlex ID'lerine dağılmış baskılarını anlamsal olarak birleştir.\n" +
-    "2. Sekonder literatürü ele: Yorumcuların eserleri değerli olsa da, bu mikro kutunun asıl kurucu klasiği değildir.\n" +
-    "3. Kendi akademik bilgini kullan: Bu mikro kutu bağlamında en uygun kurucu metni belirle.\n\n" +
-    "SADECE en güçlü 1 adet eseri şampiyon olarak seç. Birden fazla eser seçme."
+    "1. Farklı edisyon/çeviri bölünmelerini tespit edin: Aynı eserin farklı veri tabanı kimliklerine dağılmış basım ve çevirilerini anlamsal olarak birleştirin.\n" +
+    "2. İkincil literatürü eleyin: Yorumcuların veya üzerine yazılmış diğer akademik eserler değerli olsa da, bu mikro kutunun asıl kurucu klasiği konumunda değildir.\n" +
+    "3. Kendi akademik ve entelektüel birikiminizi kullanın: Sunulan mikro kutu bağlamı açısından en uygun kurucu klasik metni tespit edin.\n\n" +
+    'SADECE en güçlü ve kurucu nitelikteki tek (1) eseri "şampiyon" (champion) olarak seçin. Birden fazla eser belirlemeyin.'
   );
 }
 
@@ -67,7 +67,7 @@ export function buildRefereePrompt(
     ),
     `</aday_listesi>`,
     ``,
-    `Yukarıdaki aday listesini değerlendir. Hangi eser, bu mikro kutunun asıl kurucu klasiğidir?`,
+    `Yukarıda sunulan aday listesini titizlikle değerlendirin. Hangi eser bu mikro kutunun asıl kurucu klasiği olma niteliğini taşımaktadır?`,
   ];
   return ctxLines.join("\n");
 }

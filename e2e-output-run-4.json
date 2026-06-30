@@ -1,0 +1,605 @@
+{
+  "metadata": {
+    "flowId": "fl_mr0x9lom_f6h7xc",
+    "completedAt": "2026-06-30T17:31:17.912Z",
+    "studyTitle": "1990'ların Başında Türkiye'de Kürt Siyaseti ile Sosyalist Kesim Arasındaki Söylemsel Etkileşimin İncelenmesi (1991–1999)",
+    "tezaraQueries": [
+      "kurdish movement discourse",
+      "socialist left turkey",
+      "political framing analysis",
+      "hegemony consent theory",
+      "ideological shift discourse",
+      "discourse interaction turkey",
+      "marxist leninist transformation"
+    ],
+    "totalCandidates": 140,
+    "afterRerank": 138,
+    "finalAday": 20,
+    "eliminatedByRerank": 118
+  },
+  "globalBadge": "SAVUNMA RİSKİ",
+  "overlapTable": [
+    {
+      "id": 363401,
+      "title": "1990-2014 dönemi Kürt siyasal hareketinin söyleminin dönüşümü / Transformation of Kurdish political movement discourse during 1990-2014",
+      "author": "KADRİYE OKUDAN DERNEK",
+      "university": "Akdeniz Üniversitesi",
+      "year": 2014,
+      "thesisType": "Doktora",
+      "department": "Kamu Yönetimi Ana Bilim Dalı",
+      "comparisonNote": "Hedef tez Kürt siyaseti ile sosyalist sol arasındaki etkileşimi incelerken, bu çalışma sadece Kürt siyasi hareketini merkeze alarak çok aktörlü ağdaki tek bir değişkeni saf ve izole biçimde incelemektedir. Hedef tez Gramsci (hegemonya) temelli bir yaklaşım sunarken, karşı tez Laclau ve Mouffe'un hegemonya kuramını kullanmaktadır; bu iki kuramsal çerçeve aynı entelektüel felsefi soy ağacına ve hegemonya literatürüne aittir. Her iki tez de siyasi belgelerin, parti programlarının ve metinlerin analizi üzerine kurulu olan söylem analizi yöntem ailesini ve aynı ampirik veri toplama tekniğini kullanmaktadır. Karşı tezin 1990-2014 periyodu, hedef tezin 1991-1999 dönemini kapsama kuralı gereği tamamen içine almaktadır.",
+      "yokPdfUrl": "https://tez.yok.gov.tr/UlusalTezMerkezi/TezGoster?key=gyLHMouPes-CvnhRcjQsKRzlW_3Qj2rlxum_pFnAoQCnxvfVm6XnimeA4R7qRBSq",
+      "axes": {
+        "problem_sinirlari": {
+          "gerekce": "Hedef tez Kürt siyaseti ile sosyalist sol arasındaki etkileşimi incelerken, bu çalışma sadece Kürt siyasi hareketini merkeze alarak çok aktörlü ağdaki tek bir değişkeni saf ve izole biçimde incelemektedir.",
+          "secim": "KISMI_ORTÜŞME"
+        },
+        "teorik_perspektif": {
+          "gerekce": "Hedef tez Gramsci (hegemonya) temelli bir yaklaşım sunarken, karşı tez Laclau ve Mouffe'un hegemonya kuramını kullanmaktadır; bu iki kuramsal çerçeve aynı entelektüel felsefi soy ağacına ve hegemonya literatürüne aittir.",
+          "secim": "KISMI_ORTÜŞME"
+        },
+        "metodolojik_kurgu": {
+          "gerekce": "Her iki tez de siyasi belgelerin, parti programlarının ve metinlerin analizi üzerine kurulu olan söylem analizi yöntem ailesini ve aynı ampirik veri toplama tekniğini kullanmaktadır.",
+          "secim": "TAM_ORTÜŞME"
+        },
+        "zaman_mekan_ozgullugu": {
+          "gerekce": "Karşı tezin 1990-2014 periyodu, hedef tezin 1991-1999 dönemini kapsama kuralı gereği tamamen içine almaktadır.",
+          "secim": "TAM_ORTÜŞME"
+        }
+      }
+    },
+    {
+      "id": 368607,
+      "title": "The transformation of the socialist left in Turkey: A case study on the Pluralism of ÖDP, Liberty and Solidarity Party / Türkiye sosyalist solunun dönüşümü: Özgürlük ve Dayanışma Partisi'nin çoğulculuğu üzerine",
+      "author": "AYŞE BANU BARGU HASTÜRK",
+      "university": "Boğaziçi Üniversitesi",
+      "year": 2000,
+      "thesisType": "Yüksek Lisans",
+      "department": "Siyaset Bilimi ve Uluslararası İlişkiler Ana Bilim Dalı",
+      "comparisonNote": "Hedef tezin ana aktörlerinden biri olan 'sosyalist sol'u (ÖDP özelinde) izole ederek ele almaktadır ancak hedef tezin temelindeki 'Kürt siyaseti' değişkeni çalışmada yer almamaktadır. Pluralizm ve postmodern yaklaşımlar ile hedef tezin kullandığı Çerçeveleme ve Hegemonya kuramları arasında kuramsal bir soy ağacı bağı bulunmamaktadır. Hedef tez metin/söylem analizi yaparken, bu çalışma derinlemesine mülakat yöntemini kullanmaktadır; yöntem aileleri farklıdır. Çalışmanın kapsadığı dönem 1980 sonrası genel bir periyodu içermekte olup, hedef tezin 1991-1999 zaman aralığını kapsam veya dönem olarak karşılamamaktadır.",
+      "yokPdfUrl": "https://tez.yok.gov.tr/UlusalTezMerkezi/TezGoster?key=kScA8XnrRb0WogX-qPGFkg4Cl1tP2CWN7eRPbmxnPUbXNmPnxCAlRvxvkCUDlu4i",
+      "axes": {
+        "problem_sinirlari": {
+          "gerekce": "Hedef tezin ana aktörlerinden biri olan 'sosyalist sol'u (ÖDP özelinde) izole ederek ele almaktadır ancak hedef tezin temelindeki 'Kürt siyaseti' değişkeni çalışmada yer almamaktadır.",
+          "secim": "KISMI_ORTÜŞME"
+        },
+        "teorik_perspektif": {
+          "gerekce": "Pluralizm ve postmodern yaklaşımlar ile hedef tezin kullandığı Çerçeveleme ve Hegemonya kuramları arasında kuramsal bir soy ağacı bağı bulunmamaktadır.",
+          "secim": "ALAKASIZ"
+        },
+        "metodolojik_kurgu": {
+          "gerekce": "Hedef tez metin/söylem analizi yaparken, bu çalışma derinlemesine mülakat yöntemini kullanmaktadır; yöntem aileleri farklıdır.",
+          "secim": "ALAKASIZ"
+        },
+        "zaman_mekan_ozgullugu": {
+          "gerekce": "Çalışmanın kapsadığı dönem 1980 sonrası genel bir periyodu içermekte olup, hedef tezin 1991-1999 zaman aralığını kapsam veya dönem olarak karşılamamaktadır.",
+          "secim": "ALAKASIZ"
+        }
+      }
+    },
+    {
+      "id": 537669,
+      "title": "Türkiye sosyalist solunun Kürt meselesine bakışı: 1960-1971 / Perspective of Turkish socialist left to the Kurdish issue: 1960-1971",
+      "author": "ENES ATEŞ",
+      "university": "Marmara Üniversitesi",
+      "year": 2019,
+      "thesisType": "Yüksek Lisans",
+      "department": "Ortadoğu Sosyolojisi ve Antropolojisi Ana Bilim Dalı",
+      "comparisonNote": "Hedef tezle aynı aktör kümesini (sosyalist sol ve Kürt meselesi) merkeze almaktadır, ancak farklı bir tarihsel dönemde incelediği için kısmi bir odak ortaklığı mevcuttur. Özet metinde herhangi bir kuramsal çerçeve veya felsefi okul belirtilmemiştir. Her iki çalışma da dergi ve siyasi metinler üzerinden arşivsel doküman analizi yöntemini kullanmaktadır, bu da yöntem ailesi açısından akrabalık oluşturur. 1960-1971 dönemi ile 1991-1999 dönemi arasında kronolojik bir kopukluk mevcuttur; zaman dilimleri birbiriyle örtüşmemektedir.",
+      "yokPdfUrl": "https://tez.yok.gov.tr/UlusalTezMerkezi/TezGoster?key=as2oTjW5jfr9IKSvmCdJYm7gfKvA9Mp2Kl_qq0UvnLZmqfniovc53MUjx2nOyqKA",
+      "axes": {
+        "problem_sinirlari": {
+          "gerekce": "Hedef tezle aynı aktör kümesini (sosyalist sol ve Kürt meselesi) merkeze almaktadır, ancak farklı bir tarihsel dönemde incelediği için kısmi bir odak ortaklığı mevcuttur.",
+          "secim": "KISMI_ORTÜŞME"
+        },
+        "teorik_perspektif": {
+          "gerekce": "Özet metinde herhangi bir kuramsal çerçeve veya felsefi okul belirtilmemiştir.",
+          "secim": "ALAKASIZ"
+        },
+        "metodolojik_kurgu": {
+          "gerekce": "Her iki çalışma da dergi ve siyasi metinler üzerinden arşivsel doküman analizi yöntemini kullanmaktadır, bu da yöntem ailesi açısından akrabalık oluşturur.",
+          "secim": "KISMI_ORTÜŞME"
+        },
+        "zaman_mekan_ozgullugu": {
+          "gerekce": "1960-1971 dönemi ile 1991-1999 dönemi arasında kronolojik bir kopukluk mevcuttur; zaman dilimleri birbiriyle örtüşmemektedir.",
+          "secim": "ALAKASIZ"
+        }
+      }
+    },
+    {
+      "id": 731770,
+      "title": "Soğuk savaş sonrası PKK'nın ideolojik dönüşümü / The ideological transformation of PKK after cold war",
+      "author": "MERT GÜNDÜZ",
+      "university": "Necmettin Erbakan Üniversitesi",
+      "year": 2022,
+      "thesisType": "Yüksek Lisans",
+      "department": "Uluslararası İlişkiler Ana Bilim Dalı",
+      "comparisonNote": "Hedef tezin ilişkisel ağındaki ana aktörlerden biri olan 'Kürt hareketini/PKK'yı' izole ve saf halde çalışarak incelediği için kısmi bir örtüşme söz konusudur. Özet metinde herhangi bir kuramsal çerçeveye dair bilgi verilmemiştir. Özet metinde herhangi bir yöntem detayı veya teknik belirtilmemiştir. Özet metinde kesin ve somut bir tarihsel yıl aralığı belirtilmemiş, sadece 'Soğuk Savaş sonrası' gibi genel bir ifade kullanılmıştır.",
+      "yokPdfUrl": "https://tez.yok.gov.tr/UlusalTezMerkezi/TezGoster?key=kScA8XnrRb0WogX-qPGFkuVRoAn_pifbaAlleRZbus8BsDQO9Xp6_JmBPflZcvl3",
+      "axes": {
+        "problem_sinirlari": {
+          "gerekce": "Hedef tezin ilişkisel ağındaki ana aktörlerden biri olan 'Kürt hareketini/PKK'yı' izole ve saf halde çalışarak incelediği için kısmi bir örtüşme söz konusudur.",
+          "secim": "KISMI_ORTÜŞME"
+        },
+        "teorik_perspektif": {
+          "gerekce": "Özet metinde herhangi bir kuramsal çerçeveye dair bilgi verilmemiştir.",
+          "secim": "ALAKASIZ"
+        },
+        "metodolojik_kurgu": {
+          "gerekce": "Özet metinde herhangi bir yöntem detayı veya teknik belirtilmemiştir.",
+          "secim": "ALAKASIZ"
+        },
+        "zaman_mekan_ozgullugu": {
+          "gerekce": "Özet metinde kesin ve somut bir tarihsel yıl aralığı belirtilmemiş, sadece 'Soğuk Savaş sonrası' gibi genel bir ifade kullanılmıştır.",
+          "secim": "ALAKASIZ"
+        }
+      }
+    },
+    {
+      "id": 699067,
+      "title": "Discussion on the Kurdish identity in 1970s Turkish left: Textual analysis of the 1970s left periodicals / 1970'ler Türk solunda Kürt sorununun tartışılması: 1970'lerdeki sol dergilerin metin analizi",
+      "author": "MİNE ÇETİN",
+      "university": "İhsan Doğramacı Bilkent Üniversitesi",
+      "year": 2021,
+      "thesisType": "Yüksek Lisans",
+      "department": "Siyaset Bilimi ve Kamu Yönetimi Ana Bilim Dalı",
+      "comparisonNote": "İki tez de Türkiye solunun Kürt meselesine yaklaşımını/etkileşimini merkezine almaktadır. Hedef tezin ilişkisel ağındaki temel aktörleri (Kürt hareketi ve Türk solu) izole ederek 1970'ler düzleminde ele alması kısmi örtüşme sayılır. Özet metinde tezin dayandığı teorik bir çerçeve veya kavramsal zemin belirtilmemiştir. Her iki çalışma da nitel metin/içerik analizi (tematik analiz) yöntemini kullanmaktadır; bu durum aynı geniş yöntem ailesine işaret eder. 1970'ler ile 1991-1999 dönemleri arasında kronolojik bir kopukluk mevcuttur.",
+      "yokPdfUrl": "https://tez.yok.gov.tr/UlusalTezMerkezi/TezGoster?key=tqUiYt63sTQLTpozMJ92QpA1JKV_VQj3JRmAMB_sLQ90bOPCMKwCWvQ3_87JO93i",
+      "axes": {
+        "problem_sinirlari": {
+          "gerekce": "İki tez de Türkiye solunun Kürt meselesine yaklaşımını/etkileşimini merkezine almaktadır. Hedef tezin ilişkisel ağındaki temel aktörleri (Kürt hareketi ve Türk solu) izole ederek 1970'ler düzleminde ele alması kısmi örtüşme sayılır.",
+          "secim": "KISMI_ORTÜŞME"
+        },
+        "teorik_perspektif": {
+          "gerekce": "Özet metinde tezin dayandığı teorik bir çerçeve veya kavramsal zemin belirtilmemiştir.",
+          "secim": "ALAKASIZ"
+        },
+        "metodolojik_kurgu": {
+          "gerekce": "Her iki çalışma da nitel metin/içerik analizi (tematik analiz) yöntemini kullanmaktadır; bu durum aynı geniş yöntem ailesine işaret eder.",
+          "secim": "KISMI_ORTÜŞME"
+        },
+        "zaman_mekan_ozgullugu": {
+          "gerekce": "1970'ler ile 1991-1999 dönemleri arasında kronolojik bir kopukluk mevcuttur.",
+          "secim": "ALAKASIZ"
+        }
+      }
+    },
+    {
+      "id": 579932,
+      "title": "Parti, cami, cemevi: Kürt siyasal hareketinin dinle kurduğu dönüştürücü ilişki / Party, mosque, cemevi: Kurdish political movement's transformative relationship with religion",
+      "author": "ERKAN KARABAY",
+      "university": "Mimar Sinan Güzel Sanatlar Üniversitesi",
+      "year": 2019,
+      "thesisType": "Yüksek Lisans",
+      "department": "Sosyoloji Ana Bilim Dalı",
+      "comparisonNote": "Her iki tez de 'Kürt Siyasi Hareketi' ana aktörünü merkeze almaktadır; hedef tez bu aktörü 'sosyalistlerle etkileşim' üzerinden, bu tez ise 'dinle kurulan ilişki' üzerinden ele alarak değişkenleri farklılaştırmıştır. Her iki çalışma da Gramsci'nin hegemonya teorisini kuramsal bir dayanak olarak kullanmaktadır, bu da kuramsal soy ağacı açısından akrabalık göstermektedir. Özet metinde kullanılan veri toplama aracı ve analiz tekniğine dair somut bir bilgi/yöntem detayı yer almamaktadır. Tez, 1990'lardan günümüze kadar olan süreci kapsadığını belirttiği için hedef tezin 1991-1999 aralığını bütünsel olarak içine almaktadır.",
+      "yokPdfUrl": "https://tez.yok.gov.tr/UlusalTezMerkezi/TezGoster?key=jNRDC1RLfVd4_T7x7ZXmmaqGvSfgm7HVPt0IzqkQtmKy7Tb6a4pSUsCANA42K2PO",
+      "axes": {
+        "problem_sinirlari": {
+          "gerekce": "Her iki tez de 'Kürt Siyasi Hareketi' ana aktörünü merkeze almaktadır; hedef tez bu aktörü 'sosyalistlerle etkileşim' üzerinden, bu tez ise 'dinle kurulan ilişki' üzerinden ele alarak değişkenleri farklılaştırmıştır.",
+          "secim": "KISMI_ORTÜŞME"
+        },
+        "teorik_perspektif": {
+          "gerekce": "Her iki çalışma da Gramsci'nin hegemonya teorisini kuramsal bir dayanak olarak kullanmaktadır, bu da kuramsal soy ağacı açısından akrabalık göstermektedir.",
+          "secim": "KISMI_ORTÜŞME"
+        },
+        "metodolojik_kurgu": {
+          "gerekce": "Özet metinde kullanılan veri toplama aracı ve analiz tekniğine dair somut bir bilgi/yöntem detayı yer almamaktadır.",
+          "secim": "ALAKASIZ"
+        },
+        "zaman_mekan_ozgullugu": {
+          "gerekce": "Tez, 1990'lardan günümüze kadar olan süreci kapsadığını belirttiği için hedef tezin 1991-1999 aralığını bütünsel olarak içine almaktadır.",
+          "secim": "TAM_ORTÜŞME"
+        }
+      }
+    }
+  ],
+  "eliminatedTheses": [
+    {
+      "id": 241101,
+      "title": "Türkiye'de sosyalist sol akımın dönüşümü ve Doğu Perinçek / The transformation of the socialist left movement in Turkey and Doğu Perinçek",
+      "author": "GÜLŞAH ATALAY",
+      "university": "Trakya Üniversitesi",
+      "year": 2009,
+      "thesisType": "Yüksek Lisans",
+      "department": "Kamu Yönetimi Ana Bilim Dalı",
+      "comparisonNote": "Karşı tez, hedef tezin ana değişkeni olan Kürt siyasetini dışarıda bırakıp, odak noktasına Doğu Perinçek ve genel sosyalist kuram gibi yabancı değişkenleri alarak araştırma nesnesini başkalaştırmıştır. Tezde hedef tezin Gramsci veya çerçeveleme kuramı ile bağ kuracak bir kuramsal çerçeve belirtilmemiştir, genel bir ideoloji tanımı yapılmıştır. Özet metinde herhangi bir metodolojik kurgu, teknik veya analiz yöntemi beyan edilmemiştir. Tezde somut bir zaman dilimi/periyodu veya kronolojik kapsam belirtilmemiştir.",
+      "yokPdfUrl": "https://tez.yok.gov.tr/UlusalTezMerkezi/TezGoster?key=CwVIqqBuz1VkysVpueogAa1sksutX3gM9q_yZE7yP88yejSqG-znZ4ojebSZBJtB",
+      "axes": {
+        "problem_sinirlari": {
+          "gerekce": "Karşı tez, hedef tezin ana değişkeni olan Kürt siyasetini dışarıda bırakıp, odak noktasına Doğu Perinçek ve genel sosyalist kuram gibi yabancı değişkenleri alarak araştırma nesnesini başkalaştırmıştır.",
+          "secim": "ALAKASIZ"
+        },
+        "teorik_perspektif": {
+          "gerekce": "Tezde hedef tezin Gramsci veya çerçeveleme kuramı ile bağ kuracak bir kuramsal çerçeve belirtilmemiştir, genel bir ideoloji tanımı yapılmıştır.",
+          "secim": "ALAKASIZ"
+        },
+        "metodolojik_kurgu": {
+          "gerekce": "Özet metinde herhangi bir metodolojik kurgu, teknik veya analiz yöntemi beyan edilmemiştir.",
+          "secim": "ALAKASIZ"
+        },
+        "zaman_mekan_ozgullugu": {
+          "gerekce": "Tezde somut bir zaman dilimi/periyodu veya kronolojik kapsam belirtilmemiştir.",
+          "secim": "ALAKASIZ"
+        }
+      }
+    },
+    {
+      "id": 496006,
+      "title": "CHP's discourse on the Kurdish Question: Continuties or ruptures / CHP söyleminde Kürt Sorunu: Süreklilik mi kopuş mu?",
+      "author": "ONUR ALP YILMAZ",
+      "university": "İstanbul Bilgi Üniversitesi",
+      "year": 2017,
+      "thesisType": "Yüksek Lisans",
+      "department": "Uluslararası İlişkiler Ana Bilim Dalı",
+      "comparisonNote": "Karşı tez, hedef tezin sosyalist sol aktörü yerine CHP'yi merkezi değişken olarak ekleyerek, yabancı bir değişken bariyeri oluşturmuştur. Karşı tezin özetinde hedef tezin kuramsal çerçevesiyle (Gramsci/Snow-Benford) kesişen veya akraba bir kuramsal arka plan belirtilmemiştir. Her iki tez de nitel metin ve içerik analizi yöntem ailesine dahil olsa da, karşı tez görüşme tekniğini de içeren farklı bir uygulama yapmaktadır. Karşı tezin zaman aralığı net bir şekilde tanımlanmamış ve hedef tezin 1991-1999 periyodunu kapsayıcı/şemsiye bir tanımlama yapılmamıştır.",
+      "yokPdfUrl": "https://tez.yok.gov.tr/UlusalTezMerkezi/TezGoster?key=vbVkXe1KChYWNElr1MuLZrLF_bIeLOEmt3rPnhJ7bwAt2BZ-HbTEbqsRU0pixblh",
+      "axes": {
+        "problem_sinirlari": {
+          "gerekce": "Karşı tez, hedef tezin sosyalist sol aktörü yerine CHP'yi merkezi değişken olarak ekleyerek, yabancı bir değişken bariyeri oluşturmuştur.",
+          "secim": "ALAKASIZ"
+        },
+        "teorik_perspektif": {
+          "gerekce": "Karşı tezin özetinde hedef tezin kuramsal çerçevesiyle (Gramsci/Snow-Benford) kesişen veya akraba bir kuramsal arka plan belirtilmemiştir.",
+          "secim": "ALAKASIZ"
+        },
+        "metodolojik_kurgu": {
+          "gerekce": "Her iki tez de nitel metin ve içerik analizi yöntem ailesine dahil olsa da, karşı tez görüşme tekniğini de içeren farklı bir uygulama yapmaktadır.",
+          "secim": "KISMI_ORTÜŞME"
+        },
+        "zaman_mekan_ozgullugu": {
+          "gerekce": "Karşı tezin zaman aralığı net bir şekilde tanımlanmamış ve hedef tezin 1991-1999 periyodunu kapsayıcı/şemsiye bir tanımlama yapılmamıştır.",
+          "secim": "ALAKASIZ"
+        }
+      }
+    },
+    {
+      "id": 501357,
+      "title": "İdeolojik ve toplumsal açıdan PKK'nın stratejik dönüşümü / PKK's strategic transformation in terms of ideological and social perspective",
+      "author": "KAMİL ÇETİN",
+      "university": "Gazi Üniversitesi",
+      "year": 2017,
+      "thesisType": "Yüksek Lisans",
+      "department": "Sosyoloji Ana Bilim Dalı",
+      "comparisonNote": "Tez, PKK'nın içsel stratejik dönüşümüne ve güvenlik eksenli bir tarihçeye odaklanırken, hedef tez Kürt hareketi ile Türkiye solu arasındaki 'söylemsel etkileşimi' incelemektedir; aktör etkileşimi yerine örgüt içi analiz yapıldığından alakasızdır. Metinde herhangi bir kuramsal çerçeve veya felsefi okul beyan edilmemiştir. Metodolojik kurguya veya kullanılan analiz tekniğine dair hiçbir bilgi bulunmamaktadır. İncelenen dönem (1970-2017) ile hedef tezin dar aralığı (1991-1999) arasında bütünsel bir kapsama veya örtüşme yoktur.",
+      "yokPdfUrl": "https://tez.yok.gov.tr/UlusalTezMerkezi/TezGoster?key=MzP7PYssFqdb3WIjlroAkTu2Z2F4PMq9rzNGILRdjM3jxvTtvkU-viFZ-eV-l3f5",
+      "axes": {
+        "problem_sinirlari": {
+          "gerekce": "Tez, PKK'nın içsel stratejik dönüşümüne ve güvenlik eksenli bir tarihçeye odaklanırken, hedef tez Kürt hareketi ile Türkiye solu arasındaki 'söylemsel etkileşimi' incelemektedir; aktör etkileşimi yerine örgüt içi analiz yapıldığından alakasızdır.",
+          "secim": "ALAKASIZ"
+        },
+        "teorik_perspektif": {
+          "gerekce": "Metinde herhangi bir kuramsal çerçeve veya felsefi okul beyan edilmemiştir.",
+          "secim": "ALAKASIZ"
+        },
+        "metodolojik_kurgu": {
+          "gerekce": "Metodolojik kurguya veya kullanılan analiz tekniğine dair hiçbir bilgi bulunmamaktadır.",
+          "secim": "ALAKASIZ"
+        },
+        "zaman_mekan_ozgullugu": {
+          "gerekce": "İncelenen dönem (1970-2017) ile hedef tezin dar aralığı (1991-1999) arasında bütünsel bir kapsama veya örtüşme yoktur.",
+          "secim": "ALAKASIZ"
+        }
+      }
+    },
+    {
+      "id": 483956,
+      "title": "Söylem kuramı çerçevesinde azınlık meselesi: AB - Türkiye etkileşimi / Minority issue in the framework of discourse theory: EU-Turkey interaction",
+      "author": "GÜLNAZ ATİLLA",
+      "university": "Marmara Üniversitesi",
+      "year": 2017,
+      "thesisType": "Yüksek Lisans",
+      "department": "Avrupa Birliği Siyaseti ve Uluslararası İlişkiler Ana Bilim Dalı",
+      "comparisonNote": "Tez, AB-Türkiye ekseninde bir azınlık meselesine odaklanmaktadır; hedef tezin Kürt hareketi-Türkiye solu etkileşim ağından tamamen farklı yabancı değişkenler içermektedir. Hedef tez Gramscian gelenekten beslenirken, bu tez Post-Marksist ve Post-yapısalcı söylem kuramı çerçevesini kullanmaktadır; aynı felsefi soy ağacına mensupturlar. Metodolojik kurgu ve ampirik veri toplama araçlarına dair somut bir bilgi (yöntem detayları) özet metinde yer almamaktadır. Özet metinde ampirik bir zaman dilimi veya takvim yılı belirtilmemiştir.",
+      "yokPdfUrl": "https://tez.yok.gov.tr/UlusalTezMerkezi/TezGoster?key=RrI-Krk3A-RkF4YfHofuk0gW8hvjqzaaEK6y-D6zOm0ea6GcyxXxRktFfcfA0sup",
+      "axes": {
+        "problem_sinirlari": {
+          "gerekce": "Tez, AB-Türkiye ekseninde bir azınlık meselesine odaklanmaktadır; hedef tezin Kürt hareketi-Türkiye solu etkileşim ağından tamamen farklı yabancı değişkenler içermektedir.",
+          "secim": "ALAKASIZ"
+        },
+        "teorik_perspektif": {
+          "gerekce": "Hedef tez Gramscian gelenekten beslenirken, bu tez Post-Marksist ve Post-yapısalcı söylem kuramı çerçevesini kullanmaktadır; aynı felsefi soy ağacına mensupturlar.",
+          "secim": "KISMI_ORTÜŞME"
+        },
+        "metodolojik_kurgu": {
+          "gerekce": "Metodolojik kurgu ve ampirik veri toplama araçlarına dair somut bir bilgi (yöntem detayları) özet metinde yer almamaktadır.",
+          "secim": "ALAKASIZ"
+        },
+        "zaman_mekan_ozgullugu": {
+          "gerekce": "Özet metinde ampirik bir zaman dilimi veya takvim yılı belirtilmemiştir.",
+          "secim": "ALAKASIZ"
+        }
+      }
+    },
+    {
+      "id": 768952,
+      "title": "Türkiye'de Milli Mücadele döneminde sol-sosyalist hareketler / Left-socialist movements in the period of National Struggle in Turkey",
+      "author": "MERT EYMEN KAYALP",
+      "university": "Sakarya Üniversitesi",
+      "year": 2022,
+      "thesisType": "Yüksek Lisans",
+      "department": "Siyaset Bilimi ve Kamu Yönetimi Ana Bilim Dalı",
+      "comparisonNote": "Araştırma konusu 1990'ların siyasi atmosferi ve Kürt-Sosyalist etkileşimi yerine, Milli Mücadele dönemindeki genel sosyalist hareketlere odaklandığı için konu bütünlüğü yoktur. Tez, Marksizm'in genel tarihsel gelişimine ve erken Cumhuriyet dönemine odaklanmaktadır; hedef tezin kullandığı Çerçeveleme ve Hegemonya kuramlarıyla yapısal bir bağı yoktur. Özet metinde herhangi bir metodolojik kurgu veya veri toplama aracı belirtilmemiştir. İncelenen tarihsel periyot (Milli Mücadele dönemi) ile hedef tezin dönemi (1991-1999) arasında kronolojik kopukluk vardır.",
+      "yokPdfUrl": "https://tez.yok.gov.tr/UlusalTezMerkezi/TezGoster?key=qVqOZFj2DwNmvdf1oGFYiIQiPTDIe5pHqIEFKor8W09Vf4F-uvHPD_RddY4joBKo",
+      "axes": {
+        "problem_sinirlari": {
+          "gerekce": "Araştırma konusu 1990'ların siyasi atmosferi ve Kürt-Sosyalist etkileşimi yerine, Milli Mücadele dönemindeki genel sosyalist hareketlere odaklandığı için konu bütünlüğü yoktur.",
+          "secim": "ALAKASIZ"
+        },
+        "teorik_perspektif": {
+          "gerekce": "Tez, Marksizm'in genel tarihsel gelişimine ve erken Cumhuriyet dönemine odaklanmaktadır; hedef tezin kullandığı Çerçeveleme ve Hegemonya kuramlarıyla yapısal bir bağı yoktur.",
+          "secim": "ALAKASIZ"
+        },
+        "metodolojik_kurgu": {
+          "gerekce": "Özet metinde herhangi bir metodolojik kurgu veya veri toplama aracı belirtilmemiştir.",
+          "secim": "ALAKASIZ"
+        },
+        "zaman_mekan_ozgullugu": {
+          "gerekce": "İncelenen tarihsel periyot (Milli Mücadele dönemi) ile hedef tezin dönemi (1991-1999) arasında kronolojik kopukluk vardır.",
+          "secim": "ALAKASIZ"
+        }
+      }
+    },
+    {
+      "id": 642523,
+      "title": "PKK'nın ideolojik dönüşümünde toplumsal ekoloji felsefesi / Social ecology philosophy in ideological transformation of PKK",
+      "author": "ONUR AĞIRDİL",
+      "university": "Polis Akademisi",
+      "year": 2020,
+      "thesisType": "Yüksek Lisans",
+      "department": "Güvenlik Stratejileri ve Yönetimi Ana Bilim Dalı",
+      "comparisonNote": "Tez, PKK'nın ideolojik mutasyonuna ve toplumsal ekolojiye odaklanmaktadır; hedef tezin ana konusu olan 1990'lar etkileşimi ile bir ilişkisi yoktur. Murray Bookchin'in toplumsal ekoloji felsefesine dayanmaktadır; hedef tezin kullandığı Gramsci ve Çerçeveleme yaklaşımıyla bir bağ kurulmamıştır. Özet metinde spesifik bir metodolojik kurgu veya teknik detay paylaşılmamıştır. 2000'li yılların sonrası ve ideolojik dönüşüm sürecini incelediği için hedef tezin 1991-1999 periyoduyla örtüşmemektedir.",
+      "yokPdfUrl": "https://tez.yok.gov.tr/UlusalTezMerkezi/TezGoster?key=fl0Kw4p1rmMDotyKRdYv1NHJI6a2lGwOQnSm1XmhcxvZ6hgyoZApw7KJIRtV3s1K",
+      "axes": {
+        "problem_sinirlari": {
+          "gerekce": "Tez, PKK'nın ideolojik mutasyonuna ve toplumsal ekolojiye odaklanmaktadır; hedef tezin ana konusu olan 1990'lar etkileşimi ile bir ilişkisi yoktur.",
+          "secim": "ALAKASIZ"
+        },
+        "teorik_perspektif": {
+          "gerekce": "Murray Bookchin'in toplumsal ekoloji felsefesine dayanmaktadır; hedef tezin kullandığı Gramsci ve Çerçeveleme yaklaşımıyla bir bağ kurulmamıştır.",
+          "secim": "ALAKASIZ"
+        },
+        "metodolojik_kurgu": {
+          "gerekce": "Özet metinde spesifik bir metodolojik kurgu veya teknik detay paylaşılmamıştır.",
+          "secim": "ALAKASIZ"
+        },
+        "zaman_mekan_ozgullugu": {
+          "gerekce": "2000'li yılların sonrası ve ideolojik dönüşüm sürecini incelediği için hedef tezin 1991-1999 periyoduyla örtüşmemektedir.",
+          "secim": "ALAKASIZ"
+        }
+      }
+    },
+    {
+      "id": 385799,
+      "title": "Kurdish İslamism: engaging with Kurdish Nationalist and İslamist discourse and movements in Turkey / Kürt İslamcılığı: Türkiye'de Mürt Milliyetçi ve İslamcı söylem ve hareketlerin etkileşimi",
+      "author": "YUSUF ÇEVİK",
+      "university": "Fatih Üniversitesi",
+      "year": 2015,
+      "thesisType": "Yüksek Lisans",
+      "department": "Siyaset Bilimi ve Kamu Yönetimi Ana Bilim Dalı",
+      "comparisonNote": "Tez, Kürt hareketini İslamcı söylem ve Nakşibendi tarikatı ekseninde ele alarak, hedef tezin temelindeki sosyalist sol-Kürt hareketi etkileşiminden tamamen farklı yabancı bir değişken seti (İslamcılık) üzerine inşa edilmiştir. Teorik çerçevede hedef tezin temel dayanakları olan Gramsci veya Çerçeveleme yaklaşımı bulunmamaktadır; kendine özgü bir sosyolojik zemin sunulmuştur. Özet metinde spesifik bir metodolojik kurgu belirtilmediği için tahmin yürütülemez. Çalışmanın odağı 1980'lerden itibaren gelişen bir süreci kapsamakta olup, hedef tezin 1991-1999 dönem sınırlarıyla kronolojik bir örtüşme veya kapsama ilişkisi bulunmamaktadır.",
+      "yokPdfUrl": "https://tez.yok.gov.tr/UlusalTezMerkezi/TezGoster?key=sY7m19PfcL6F1NUw-cr80Hq0sAo6IkGJstkS_PI9TXURH_5lFSGR3KRhwG9AVElN",
+      "axes": {
+        "problem_sinirlari": {
+          "gerekce": "Tez, Kürt hareketini İslamcı söylem ve Nakşibendi tarikatı ekseninde ele alarak, hedef tezin temelindeki sosyalist sol-Kürt hareketi etkileşiminden tamamen farklı yabancı bir değişken seti (İslamcılık) üzerine inşa edilmiştir.",
+          "secim": "ALAKASIZ"
+        },
+        "teorik_perspektif": {
+          "gerekce": "Teorik çerçevede hedef tezin temel dayanakları olan Gramsci veya Çerçeveleme yaklaşımı bulunmamaktadır; kendine özgü bir sosyolojik zemin sunulmuştur.",
+          "secim": "ALAKASIZ"
+        },
+        "metodolojik_kurgu": {
+          "gerekce": "Özet metinde spesifik bir metodolojik kurgu belirtilmediği için tahmin yürütülemez.",
+          "secim": "ALAKASIZ"
+        },
+        "zaman_mekan_ozgullugu": {
+          "gerekce": "Çalışmanın odağı 1980'lerden itibaren gelişen bir süreci kapsamakta olup, hedef tezin 1991-1999 dönem sınırlarıyla kronolojik bir örtüşme veya kapsama ilişkisi bulunmamaktadır.",
+          "secim": "ALAKASIZ"
+        }
+      }
+    },
+    {
+      "id": 204721,
+      "title": "Turkish modernity and Kurdish ethno-nationalism / Türk modernliği ve Kürt etnik milliyetçiliği",
+      "author": "MEKİN MUSTAFA KEMAL ÖKEM",
+      "university": "Orta Doğu Teknik Üniversitesi",
+      "year": 2006,
+      "thesisType": "Doktora",
+      "department": "Siyaset Bilimi ve Kamu Yönetimi Ana Bilim Dalı",
+      "comparisonNote": "Tez, Kürt milliyetçiliği ile Türk modernliğini temel almaktadır. Sosyalist sol ile olan bağ, tarihsel arka planın bir parçası olarak geçse de, tezin ana araştırma nesnesi bu etkileşim değildir; yabancı değişkenler (Modernite, Devlet meşruiyeti) baskındır. Hedef tezin kullandığı Gramsci veya Çerçeveleme kuramsal kolonları bu çalışmada yer almamaktadır. Özet metinde metodolojik kurguya veya analiz tekniğine dair net bir bilgi verilmemiştir. İncelenen dönem ağırlıklı olarak 1960-1980 arası olup, hedef tezin 1991-1999 periyodu ile kronolojik bir bütünlük veya kapsama ilişkisi yoktur.",
+      "yokPdfUrl": "https://tez.yok.gov.tr/UlusalTezMerkezi/TezGoster?key=ePX_SaJ0b35Gq45swKG3lJm6dVoILIsCb95Ulof9cEbRtPGVxu-WHPa6bjBSIGB-",
+      "axes": {
+        "problem_sinirlari": {
+          "gerekce": "Tez, Kürt milliyetçiliği ile Türk modernliğini temel almaktadır. Sosyalist sol ile olan bağ, tarihsel arka planın bir parçası olarak geçse de, tezin ana araştırma nesnesi bu etkileşim değildir; yabancı değişkenler (Modernite, Devlet meşruiyeti) baskındır.",
+          "secim": "ALAKASIZ"
+        },
+        "teorik_perspektif": {
+          "gerekce": "Hedef tezin kullandığı Gramsci veya Çerçeveleme kuramsal kolonları bu çalışmada yer almamaktadır.",
+          "secim": "ALAKASIZ"
+        },
+        "metodolojik_kurgu": {
+          "gerekce": "Özet metinde metodolojik kurguya veya analiz tekniğine dair net bir bilgi verilmemiştir.",
+          "secim": "ALAKASIZ"
+        },
+        "zaman_mekan_ozgullugu": {
+          "gerekce": "İncelenen dönem ağırlıklı olarak 1960-1980 arası olup, hedef tezin 1991-1999 periyodu ile kronolojik bir bütünlük veya kapsama ilişkisi yoktur.",
+          "secim": "ALAKASIZ"
+        }
+      }
+    },
+    {
+      "id": 396084,
+      "title": "Siyasal alanda erkekliğin inşası: Kürt siyasi hareketinde cinsiyetin yeniden konumlanışı / Construction of masculinity in the political sphere: Re - positioning of gender in Kurdish political movement",
+      "author": "BAHAR MERMERTAŞ",
+      "university": "Mardin Artuklu Üniversitesi",
+      "year": 2015,
+      "thesisType": "Yüksek Lisans",
+      "department": "Sosyoloji Ana Bilim Dalı",
+      "comparisonNote": "Çalışma, Kürt siyasi hareketinde erkeklik ve toplumsal cinsiyet üzerine kuruludur. Hedef tezin aksine, sosyalist sol etkileşimi değil, eril-dişil söylemin inşası gibi tamamen farklı bir yabancı değişken seti merkeze alınmıştır. Erkeklik çalışmaları ve toplumsal cinsiyet sosyolojisi temelindedir; hedef tezin Gramsci ve Çerçeveleme temelli perspektifiyle bir akrabalık bağı kurulamaz. Hedef tez doküman analizi/söylem analizi yaparken, bu çalışma derinlemesine mülakatlar ve saha görüşmeleri yöntemini benimsemiştir; yöntem aileleri farklıdır. Çalışma BDP dönemini (2000 sonrası) kapsamakta olup, hedef tezin 1991-1999 dönemini kapsamamaktadır; kronolojik kopukluk vardır.",
+      "yokPdfUrl": "https://tez.yok.gov.tr/UlusalTezMerkezi/TezGoster?key=WBc656i315e2eV6-EZV1olCKV-fz5UPcYI6ldEdwqOseBKPIwZ8Zj3GwijKs6_cP",
+      "axes": {
+        "problem_sinirlari": {
+          "gerekce": "Çalışma, Kürt siyasi hareketinde erkeklik ve toplumsal cinsiyet üzerine kuruludur. Hedef tezin aksine, sosyalist sol etkileşimi değil, eril-dişil söylemin inşası gibi tamamen farklı bir yabancı değişken seti merkeze alınmıştır.",
+          "secim": "ALAKASIZ"
+        },
+        "teorik_perspektif": {
+          "gerekce": "Erkeklik çalışmaları ve toplumsal cinsiyet sosyolojisi temelindedir; hedef tezin Gramsci ve Çerçeveleme temelli perspektifiyle bir akrabalık bağı kurulamaz.",
+          "secim": "ALAKASIZ"
+        },
+        "metodolojik_kurgu": {
+          "gerekce": "Hedef tez doküman analizi/söylem analizi yaparken, bu çalışma derinlemesine mülakatlar ve saha görüşmeleri yöntemini benimsemiştir; yöntem aileleri farklıdır.",
+          "secim": "ALAKASIZ"
+        },
+        "zaman_mekan_ozgullugu": {
+          "gerekce": "Çalışma BDP dönemini (2000 sonrası) kapsamakta olup, hedef tezin 1991-1999 dönemini kapsamamaktadır; kronolojik kopukluk vardır.",
+          "secim": "ALAKASIZ"
+        }
+      }
+    },
+    {
+      "id": 99976,
+      "title": "Halkçı söylem-sınıf söylemi: Türkiye'de sosyalist sol söyleminde 1977-1980 tarihleri arasında demokratik popüler adlandırmalar ve sınıf adlandırmaları / Populist discourse-class discourse: Democratic populer interpellation and class interpellation in socialist left discourse in Turkey between 1977 and 1980",
+      "author": "UĞRAŞ ULAŞ TOL",
+      "university": "Ankara Üniversitesi",
+      "year": 2001,
+      "thesisType": "Yüksek Lisans",
+      "department": "Kamu Yönetimi Ana Bilim Dalı",
+      "comparisonNote": "Hedef tez Kürt siyaseti ile sosyalist sol etkileşimine odaklanırken, bu çalışma tamamen farklı bir zaman diliminde (1977-1980) ve Kürt siyaseti olmaksızın sadece sol içi (Dev-Yol ve TKP) bir karşılaştırmaya odaklanarak farklı bir araştırma nesnesi inşa etmiştir. Hedef tez Gramsci ve Çerçeveleme (Snow-Benford) yaklaşımını kullanırken, bu çalışma post-yapısalcı iktidar ve mikro-iktidar kuramlarına yaslanmaktadır; teorik kökenler farklıdır. Her iki çalışma da 'söylem analizi' yöntem ailesine mensuptur; teknik detaylar farklı olsa da yöntemsel aile yakınlığı mevcuttur. İncelenen dönemler (1977-1980 ile 1991-1999) arasında tarihsel bir örtüşme veya kapsama ilişkisi bulunmamaktadır.",
+      "yokPdfUrl": "https://tez.yok.gov.tr/UlusalTezMerkezi/TezGoster?key=KOgdn9H3uVnWeb15j2W4h29C5Q1POd1RBLGS-09xJshcCN3_YXiz8q_PvkHgwm8_",
+      "axes": {
+        "problem_sinirlari": {
+          "gerekce": "Hedef tez Kürt siyaseti ile sosyalist sol etkileşimine odaklanırken, bu çalışma tamamen farklı bir zaman diliminde (1977-1980) ve Kürt siyaseti olmaksızın sadece sol içi (Dev-Yol ve TKP) bir karşılaştırmaya odaklanarak farklı bir araştırma nesnesi inşa etmiştir.",
+          "secim": "ALAKASIZ"
+        },
+        "teorik_perspektif": {
+          "gerekce": "Hedef tez Gramsci ve Çerçeveleme (Snow-Benford) yaklaşımını kullanırken, bu çalışma post-yapısalcı iktidar ve mikro-iktidar kuramlarına yaslanmaktadır; teorik kökenler farklıdır.",
+          "secim": "ALAKASIZ"
+        },
+        "metodolojik_kurgu": {
+          "gerekce": "Her iki çalışma da 'söylem analizi' yöntem ailesine mensuptur; teknik detaylar farklı olsa da yöntemsel aile yakınlığı mevcuttur.",
+          "secim": "KISMI_ORTÜŞME"
+        },
+        "zaman_mekan_ozgullugu": {
+          "gerekce": "İncelenen dönemler (1977-1980 ile 1991-1999) arasında tarihsel bir örtüşme veya kapsama ilişkisi bulunmamaktadır.",
+          "secim": "ALAKASIZ"
+        }
+      }
+    },
+    {
+      "id": 658119,
+      "title": "İsmet Özel'in Türk sosyalist solu üzerine eleştirilerine dair bir inceleme / An examination of İsmet Özel's criticism of the Turkish socialist left",
+      "author": "HİLAL TAKCI",
+      "university": "Pamukkale Üniversitesi",
+      "year": 2021,
+      "thesisType": "Yüksek Lisans",
+      "department": "Sosyoloji Ana Bilim Dalı",
+      "comparisonNote": "Bu çalışma İsmet Özel'in düşünce dünyasına odaklanarak, hedef tezin temelindeki Kürt siyaseti-sosyalist sol etkileşimi ilişkisinden tamamen farklı bir özne ve konu belirlemiştir. Çalışma poetika ve edebiyat eleştirisi eksenli bir kuramsal çerçeve sunmakta olup, hedef tezin Gramsci/Çerçeveleme perspektifiyle bir bağı bulunmamaktadır. Çalışma edebiyat ve düşünce tarihi odaklı bir inceleme olup, hedef tezin sistematik söylem/kodlama analizi metodolojisiyle örtüşmemektedir. İncelenen dönem (1960-1970'ler) ile hedef tezin dönemi (1991-1999) arasında kronolojik bir kopukluk mevcuttur.",
+      "yokPdfUrl": "https://tez.yok.gov.tr/UlusalTezMerkezi/TezGoster?key=wf-FPgY-5qjHEzEoOgvMs9XeDfZSsFUcC0Oo-BbkU4WrGXwVPS43TTVQGvYgXUa5",
+      "axes": {
+        "problem_sinirlari": {
+          "gerekce": "Bu çalışma İsmet Özel'in düşünce dünyasına odaklanarak, hedef tezin temelindeki Kürt siyaseti-sosyalist sol etkileşimi ilişkisinden tamamen farklı bir özne ve konu belirlemiştir.",
+          "secim": "ALAKASIZ"
+        },
+        "teorik_perspektif": {
+          "gerekce": "Çalışma poetika ve edebiyat eleştirisi eksenli bir kuramsal çerçeve sunmakta olup, hedef tezin Gramsci/Çerçeveleme perspektifiyle bir bağı bulunmamaktadır.",
+          "secim": "ALAKASIZ"
+        },
+        "metodolojik_kurgu": {
+          "gerekce": "Çalışma edebiyat ve düşünce tarihi odaklı bir inceleme olup, hedef tezin sistematik söylem/kodlama analizi metodolojisiyle örtüşmemektedir.",
+          "secim": "ALAKASIZ"
+        },
+        "zaman_mekan_ozgullugu": {
+          "gerekce": "İncelenen dönem (1960-1970'ler) ile hedef tezin dönemi (1991-1999) arasında kronolojik bir kopukluk mevcuttur.",
+          "secim": "ALAKASIZ"
+        }
+      }
+    },
+    {
+      "id": 127802,
+      "title": "Şefik Hüsnü Değmer: Türkiye sol hareketi içindeki yeri ve görüşleri / Şefik Hüsnü Değmer: His place in left movement of Turkey and his ideas",
+      "author": "ÖZGE UNSUR",
+      "university": "Ankara Üniversitesi",
+      "year": 2003,
+      "thesisType": "Yüksek Lisans",
+      "department": "Kamu Yönetimi ve Siyaset Bilimi Ana Bilim Dalı",
+      "comparisonNote": "Çalışma tarihsel bir şahsiyet (Şefik Hüsnü) ve TKP tarihine odaklanmakta olup, hedef tezin 1990'lardaki Kürt hareketi etkileşimiyle bir ilgisi yoktur. Çalışma tarihsel/biyografik bir yaklaşım sergilemekte olup, hedef tezin siyaset sosyolojisi ve çerçeveleme teorileriyle bir akrabalığı yoktur. Çalışma arşiv ve tarihsel belge analizi yöntemini kullanmakta olup, hedef tezin sistematik kodlama/söylem analizi yöntemiyle farklılık göstermektedir. İncelenen 1919-1939 periyodu ile hedef tezin 1991-1999 periyodu arasında tarihsel bir bağ veya kapsama bulunmamaktadır.",
+      "yokPdfUrl": "https://tez.yok.gov.tr/UlusalTezMerkezi/TezGoster?key=RrI-Krk3A-RkF4YfHofukzhsdZ9ZNh-yKsCifs8FmXePw4vU-nt-SYLjf__QZYS0",
+      "axes": {
+        "problem_sinirlari": {
+          "gerekce": "Çalışma tarihsel bir şahsiyet (Şefik Hüsnü) ve TKP tarihine odaklanmakta olup, hedef tezin 1990'lardaki Kürt hareketi etkileşimiyle bir ilgisi yoktur.",
+          "secim": "ALAKASIZ"
+        },
+        "teorik_perspektif": {
+          "gerekce": "Çalışma tarihsel/biyografik bir yaklaşım sergilemekte olup, hedef tezin siyaset sosyolojisi ve çerçeveleme teorileriyle bir akrabalığı yoktur.",
+          "secim": "ALAKASIZ"
+        },
+        "metodolojik_kurgu": {
+          "gerekce": "Çalışma arşiv ve tarihsel belge analizi yöntemini kullanmakta olup, hedef tezin sistematik kodlama/söylem analizi yöntemiyle farklılık göstermektedir.",
+          "secim": "ALAKASIZ"
+        },
+        "zaman_mekan_ozgullugu": {
+          "gerekce": "İncelenen 1919-1939 periyodu ile hedef tezin 1991-1999 periyodu arasında tarihsel bir bağ veya kapsama bulunmamaktadır.",
+          "secim": "ALAKASIZ"
+        }
+      }
+    },
+    {
+      "id": 342499,
+      "title": "Terör örgütü PKK'nın din algısı ve Abdullah Öcalan'ın din söylemi / Religious perceptive of PKK terrorist organisation and the religious statements of Abdullah Öcalan",
+      "author": "KAAN ÖZYİĞİT",
+      "university": "Harran Üniversitesi",
+      "year": 2013,
+      "thesisType": "Yüksek Lisans",
+      "department": "Felsefe ve Din Bilimleri Ana Bilim Dalı",
+      "comparisonNote": "Hedef tez 1991-1999 yılları arasındaki söylemsel etkileşimi incelerken, bu tez PKK'nın din algısı ve dinin araçsallaştırılması gibi hedef tezin çalışma sınırları dışında kalan yabancı değişkenlere odaklanmaktadır. Tezde hedef tezin temelini oluşturan çerçeveleme ve hegemonya yaklaşımları yerine, din felsefesi ve materyalist ideoloji eksenli bir yaklaşım benimsenmiştir. Özet metinde araştırmada kullanılan veri toplama araçları ve analiz tekniklerine dair herhangi bir metodolojik kurgu bilgisi bulunmamaktadır. Araştırmanın kapsadığı somut ampirik tarihsel bir periyot (yıl aralığı) belirtilmemiştir.",
+      "yokPdfUrl": "https://tez.yok.gov.tr/UlusalTezMerkezi/TezGoster?key=iTkOhwevEenJZ3onUvs52migl-Rhjt1BiHAM8rdIzghLEmYRFvTToYyH9Qf6e63M",
+      "axes": {
+        "problem_sinirlari": {
+          "gerekce": "Hedef tez 1991-1999 yılları arasındaki söylemsel etkileşimi incelerken, bu tez PKK'nın din algısı ve dinin araçsallaştırılması gibi hedef tezin çalışma sınırları dışında kalan yabancı değişkenlere odaklanmaktadır.",
+          "secim": "ALAKASIZ"
+        },
+        "teorik_perspektif": {
+          "gerekce": "Tezde hedef tezin temelini oluşturan çerçeveleme ve hegemonya yaklaşımları yerine, din felsefesi ve materyalist ideoloji eksenli bir yaklaşım benimsenmiştir.",
+          "secim": "ALAKASIZ"
+        },
+        "metodolojik_kurgu": {
+          "gerekce": "Özet metinde araştırmada kullanılan veri toplama araçları ve analiz tekniklerine dair herhangi bir metodolojik kurgu bilgisi bulunmamaktadır.",
+          "secim": "ALAKASIZ"
+        },
+        "zaman_mekan_ozgullugu": {
+          "gerekce": "Araştırmanın kapsadığı somut ampirik tarihsel bir periyot (yıl aralığı) belirtilmemiştir.",
+          "secim": "ALAKASIZ"
+        }
+      }
+    },
+    {
+      "id": 598974,
+      "title": "PKK terör örgütünün ideolojik ve yapısal dönüşümü / The ideological and structural transformation of the PKK terrorist organization",
+      "author": "HALİL ŞEN",
+      "university": "Polis Akademisi",
+      "year": 2019,
+      "thesisType": "Yüksek Lisans",
+      "department": "Güvenlik Stratejileri ve Yönetimi Ana Bilim Dalı",
+      "comparisonNote": "Hedef tezin söylemsel etkileşim odağından farklı olarak, bu tez örgütün yapısal ve ideolojik dönüşümünü, güvenlik stratejilerini ve genel tarihsel sürecini inceleyerek yabancı değişkenler içermektedir. Güvenlik stratejileri ve genel bir dönüşüm analizi üzerine kurulmuş olup, hedef tezin kuramsal taşıyıcı kolonları olan çerçeveleme ve hegemonya ile hiçbir bağı yoktur. Tezde kullanılan veri toplama aracı veya analiz yöntemine dair bir bilgi sunulmamıştır. Kuruluştan günümüze ifadesi, hedef tezin tanımladığı 1991-1999 spesifik evresiyle örtüşen, net bir ampirik zaman dilimi verisi içermemektedir.",
+      "yokPdfUrl": "https://tez.yok.gov.tr/UlusalTezMerkezi/TezGoster?key=npGs9H39x7G6401x51yqpBbaNLXqPO-X98FiWjiTpIQaiJsryHaEgdQcBO13lt4z",
+      "axes": {
+        "problem_sinirlari": {
+          "gerekce": "Hedef tezin söylemsel etkileşim odağından farklı olarak, bu tez örgütün yapısal ve ideolojik dönüşümünü, güvenlik stratejilerini ve genel tarihsel sürecini inceleyerek yabancı değişkenler içermektedir.",
+          "secim": "ALAKASIZ"
+        },
+        "teorik_perspektif": {
+          "gerekce": "Güvenlik stratejileri ve genel bir dönüşüm analizi üzerine kurulmuş olup, hedef tezin kuramsal taşıyıcı kolonları olan çerçeveleme ve hegemonya ile hiçbir bağı yoktur.",
+          "secim": "ALAKASIZ"
+        },
+        "metodolojik_kurgu": {
+          "gerekce": "Tezde kullanılan veri toplama aracı veya analiz yöntemine dair bir bilgi sunulmamıştır.",
+          "secim": "ALAKASIZ"
+        },
+        "zaman_mekan_ozgullugu": {
+          "gerekce": "Kuruluştan günümüze ifadesi, hedef tezin tanımladığı 1991-1999 spesifik evresiyle örtüşen, net bir ampirik zaman dilimi verisi içermemektedir.",
+          "secim": "ALAKASIZ"
+        }
+      }
+    }
+  ]
+}

@@ -56,36 +56,29 @@ const BADGE_ORDER: ThesisBadge[] = [
 ];
 
 const SELECTION_SCORE: Record<string, number> = {
-  // problem_sinirlari (Konu)
-  BİREBİR: 3,
-  "GENİŞLETİLMİŞ KONU": 2,
+  TAM_ORTÜŞME: 3,
+  KISMI_ORTÜŞME: 2,
   ALAKASIZ: 1,
-
-  // teorik_perspektif (Teori)
-  "AYNI GÖZLÜK": 3,
-  "EVRİLMİŞ TEORİ": 2,
-  "FARKLI GÖZLÜK": 1,
-
-  // metodolojik_kurgu (Yöntem)
-  "BİREBİR YÖNTEM": 3,
-  "YÖNTEMSEL AKRABA": 2,
-  "FARKLI YÖNTEM": 1,
-
-  // zaman_mekan_ozgullugu (Bağlam)
-  "AYNI DOKU": 3,
-  "PARALEL BAĞLAM": 2,
-  "ALAKASIZ BAĞLAM": 1,
 };
 
 /**
- * Calculates the sum of choice scores across the 4 axes to break ties in sorting.
+ * Calculates the weighted sum of choice scores across the 4 axes to break ties in sorting.
  */
 function getAxesTotalScore(axes: ThesisAxes): number {
+  const pScore = SELECTION_SCORE[axes.problem_sinirlari.secim] ?? 1;
+  const tScore = SELECTION_SCORE[axes.teorik_perspektif.secim] ?? 1;
+  const mScore = SELECTION_SCORE[axes.metodolojik_kurgu.secim] ?? 1;
+  // Şayet konu (problem_sinirlari) alakasız ise Bağlam (zaman_mekan_ozgullugu) her türlü alakasız kabul edilir.
+  const isTopicAlakasiz = axes.problem_sinirlari.secim === "ALAKASIZ";
+  const zScore = isTopicAlakasiz
+    ? 1
+    : (SELECTION_SCORE[axes.zaman_mekan_ozgullugu.secim] ?? 1);
+
   return (
-    (SELECTION_SCORE[axes.problem_sinirlari.secim] ?? 1) +
-    (SELECTION_SCORE[axes.teorik_perspektif.secim] ?? 1) +
-    (SELECTION_SCORE[axes.metodolojik_kurgu.secim] ?? 1) +
-    (SELECTION_SCORE[axes.zaman_mekan_ozgullugu.secim] ?? 1)
+    pScore * 3 + // Konu Ağırlığı (x3)
+    zScore * 3 + // Bağlam Ağırlığı (x3)
+    tScore * 1 + // Teori Ağırlığı (x1)
+    mScore * 1 // Yöntem Ağırlığı (x1)
   );
 }
 
@@ -254,7 +247,7 @@ export function calculateOriginalityRisk(
 export async function analyzeOriginalityRisk(
   params: AnalyzeOriginalityRiskParams,
   log: Logger,
-  chunkSize = 4,
+  chunkSize = 3,
 ): Promise<{
   overlapTable: GeminiOverlapItem[];
 }> {
@@ -320,17 +313,17 @@ export async function analyzeOriginalityRisk(
               teorik_perspektif: {
                 gerekce:
                   "Sistem eksik analizi güvenli varsayılan ile doldurdu.",
-                secim: "FARKLI GÖZLÜK",
+                secim: "ALAKASIZ",
               },
               metodolojik_kurgu: {
                 gerekce:
                   "Sistem eksik analizi güvenli varsayılan ile doldurdu.",
-                secim: "FARKLI YÖNTEM",
+                secim: "ALAKASIZ",
               },
               zaman_mekan_ozgullugu: {
                 gerekce:
                   "Sistem eksik analizi güvenli varsayılan ile doldurdu.",
-                secim: "ALAKASIZ BAĞLAM",
+                secim: "ALAKASIZ",
               },
             });
           }
@@ -353,15 +346,15 @@ export async function analyzeOriginalityRisk(
           },
           teorik_perspektif: {
             gerekce: "Analiz sırasında hata oluştu.",
-            secim: "FARKLI GÖZLÜK",
+            secim: "ALAKASIZ",
           },
           metodolojik_kurgu: {
             gerekce: "Analiz sırasında hata oluştu.",
-            secim: "FARKLI YÖNTEM",
+            secim: "ALAKASIZ",
           },
           zaman_mekan_ozgullugu: {
             gerekce: "Analiz sırasında hata oluştu.",
-            secim: "ALAKASIZ BAĞLAM",
+            secim: "ALAKASIZ",
           },
         }));
       }

@@ -234,39 +234,6 @@ import { redirect } from "next/navigation";
 export default function RootPage()
 </file>
 
-<file path="src/scratch/e2e-originality-test.ts">
-import { createFlowId, Logger } from "../lib/logger";
-import { extractQueries } from "../app/(auth)/onboarding/risk/_services/queries";
-import { searchTezara } from "../lib/tezara";
-import { siftAndFetchDetails } from "../app/(auth)/onboarding/risk/_services/sifting";
-import {
-  analyzeOriginalityRisk,
-  calculateOriginalityRisk,
-} from "../app/(auth)/onboarding/risk/_services/analysis";
-import type {
-  TezaraThesisSummary,
-  ThesisBadge,
-  ThesisAxes,
-} from "../lib/types";
-⋮----
-interface ThesisMatrixInput {
-  studyTitle: string;
-  researchQuestion: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-  mainClaim: string;
-}
-⋮----
-async function runE2ETest(): Promise<void>
-⋮----
-// Check if eliminated by Cohere Rerank
-⋮----
-// Check if evaluated by Gemini jury
-⋮----
-function calculateOriginalityBadge(axes: ThesisAxes): ThesisBadge
-</file>
-
 <file path="src/app/(app)/dashboard/_components/add-task-modal.tsx">
 import { useState } from "react";
 import { X } from "lucide-react";
@@ -455,6 +422,13 @@ export default function QueryProvider({
 }: {
   children: React.ReactNode;
 })
+</file>
+
+<file path="src/components/ui/alert-dialog.tsx">
+import { cn } from "@/lib/utils";
+import { buttonVariants } from "@/components/ui/button";
+⋮----
+className=
 </file>
 
 <file path="src/components/ui/card.tsx">
@@ -709,6 +683,52 @@ export async function rerankTheses(
   titles: string[],
   log: LoggerInstance,
 ): Promise<CohereRerankResponse>
+</file>
+
+<file path="src/scratch/e2e-originality-test.ts">
+import { createFlowId, Logger } from "../lib/logger";
+import { extractQueries } from "../app/(auth)/onboarding/risk/_services/queries";
+import { searchTezara } from "../lib/tezara";
+import { siftAndFetchDetails } from "../app/(auth)/onboarding/risk/_services/sifting";
+import {
+  analyzeOriginalityRisk,
+  calculateOriginalityRisk,
+} from "../app/(auth)/onboarding/risk/_services/analysis";
+import type { TezaraThesisSummary } from "../lib/types";
+import { writeFileSync } from "fs";
+import path from "path";
+⋮----
+interface ThesisMatrixInput {
+  studyTitle: string;
+  researchQuestion: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+  mainClaim: string;
+}
+⋮----
+class SilentLogger extends Logger
+⋮----
+constructor(flowId: string)
+⋮----
+override info(): void
+override warn(): void
+override error(): void
+override step(): void
+override file(): void
+override data(): void
+override preview(): void
+override prompt(): void
+override saveDebugPayload(): string | undefined
+⋮----
+/**
+ * Runs the E2E originality analysis pipeline using only real project functions.
+ * Terminal shows minimal progress; full detailed JSON is written to e2e-output.json.
+ * Tavily is fully bypassed (queries extracted but never executed).
+ */
+async function runE2ETest(): Promise<void>
+⋮----
+// Adim 1: Query Extraction (Gemini)
 </file>
 
 <file path="README.md">
@@ -1331,13 +1351,6 @@ import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 </file>
 
-<file path="src/components/ui/alert-dialog.tsx">
-import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
-⋮----
-className=
-</file>
-
 <file path="src/components/ui/button.tsx">
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -1396,6 +1409,29 @@ function handleLogout()
 function handleReset()
 ⋮----
 className=
+</file>
+
+<file path="src/lib/tavily.ts">
+import type { Logger } from "./logger";
+⋮----
+export interface TavilySearchResult {
+  title: string;
+  url: string;
+  content: string;
+  score: number;
+  rawContent?: string;
+}
+⋮----
+export interface TavilySearchResponse {
+  query: string;
+  responseTime: number;
+  results: TavilySearchResult[];
+}
+⋮----
+export async function tavilySearch(
+  query: string,
+  logger?: Logger,
+): Promise<TavilySearchResponse>
 </file>
 
 <file path="src/lib/tezara-queue.ts">
@@ -1599,10 +1635,10 @@ import { Toaster as Sonner } from "sonner";
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 </file>
 
-<file path="src/lib/academic/badge-calculator.ts">
-import type { ThesisAxes, ThesisBadge } from "@/lib/types";
+<file path="src/components/ui/textarea.tsx">
+import { cn } from "@/lib/utils";
 ⋮----
-export function calculateBadge(axes: ThesisAxes): ThesisBadge
+className=
 </file>
 
 <file path="src/lib/error-utils.ts">
@@ -1620,29 +1656,6 @@ export function classifyError(error: unknown): ErrorScenario
 export function getErrorDisplay(error: unknown): ErrorDisplay
 ⋮----
 export function extractMessage(error: unknown): string
-</file>
-
-<file path="src/lib/tavily.ts">
-import type { Logger } from "./logger";
-⋮----
-export interface TavilySearchResult {
-  title: string;
-  url: string;
-  content: string;
-  score: number;
-  rawContent?: string;
-}
-⋮----
-export interface TavilySearchResponse {
-  query: string;
-  responseTime: number;
-  results: TavilySearchResult[];
-}
-⋮----
-export async function tavilySearch(
-  query: string,
-  logger?: Logger,
-): Promise<TavilySearchResponse>
 </file>
 
 <file path="src/lib/utils.ts">
@@ -1702,6 +1715,15 @@ import { OnboardingGlobalLoader } from "@/components/onboarding-global-loader";
 import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
 </file>
 
+<file path="src/app/(auth)/onboarding/matrix/page.tsx">
+import { redirect } from "next/navigation";
+import { getProfile } from "@/session";
+import { MatrixForm } from "./_components/matrix-form";
+import { StartOverButton } from "../_components/start-over-button";
+⋮----
+export default async function OnboardingMatrixPage()
+</file>
+
 <file path="src/app/layout.tsx">
 import type { Metadata } from "next";
 import {
@@ -1721,10 +1743,10 @@ export default function RootLayout({
 }>)
 </file>
 
-<file path="src/components/ui/textarea.tsx">
-import { cn } from "@/lib/utils";
+<file path="src/lib/academic/badge-calculator.ts">
+import type { ThesisAxes, ThesisBadge } from "@/lib/types";
 ⋮----
-className=
+export function calculateBadge(axes: ThesisAxes): ThesisBadge
 </file>
 
 <file path="src/lib/logger/formatter.ts">
@@ -1833,63 +1855,6 @@ export async function generateEmbeddings(
 ): Promise<number[][]>
 </file>
 
-<file path="src/app/(auth)/onboarding/matrix/page.tsx">
-import { redirect } from "next/navigation";
-import { getProfile } from "@/session";
-import { MatrixForm } from "./_components/matrix-form";
-import { StartOverButton } from "../_components/start-over-button";
-⋮----
-export default async function OnboardingMatrixPage()
-</file>
-
-<file path="src/components/error-display.tsx">
-import { useEffect } from "react";
-import { AlertTriangle, WifiOff, Clock, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  getErrorDisplay,
-  type ErrorDisplay as ErrorDisplayType,
-} from "@/lib/error-utils";
-⋮----
-interface ErrorDisplayProps {
-  error: unknown;
-  onRetry?: () => void;
-}
-</file>
-
-<file path="src/db/index.ts">
-import { Pool } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-serverless";
-</file>
-
-<file path="src/lib/prompts/lit-keyword-extraction.ts">
-import type { JsonSchema } from "../gemini";
-⋮----
-export function buildLitKeywordExtractionSystemInstruction(): string
-⋮----
-export function buildLitKeywordPrompt(params: {
-  studyTitle: string;
-  researchQuestion: string;
-  mainClaim: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-}): string
-</file>
-
-<file path="src/app/(app)/library/library-content.tsx">
-import { useState } from "react";
-import { Layers } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { LiteratureReader } from "@/components/literature-reader";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import type { ThesisBox } from "@/db/schema";
-⋮----
-interface LibraryContentProps {
-  boxes: ThesisBox[];
-}
-</file>
-
 <file path="src/app/(app)/actions.ts">
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -1940,6 +1905,54 @@ export type OnboardingStatusResult =
   | { onboardingCompleted?: never; error: string };
 ⋮----
 export async function checkOnboardingStatus(): Promise<OnboardingStatusResult>
+</file>
+
+<file path="src/components/error-display.tsx">
+import { useEffect } from "react";
+import { AlertTriangle, WifiOff, Clock, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  getErrorDisplay,
+  type ErrorDisplay as ErrorDisplayType,
+} from "@/lib/error-utils";
+⋮----
+interface ErrorDisplayProps {
+  error: unknown;
+  onRetry?: () => void;
+}
+</file>
+
+<file path="src/db/index.ts">
+import { Pool } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-serverless";
+</file>
+
+<file path="src/lib/prompts/lit-keyword-extraction.ts">
+import type { JsonSchema } from "../gemini";
+⋮----
+export function buildLitKeywordExtractionSystemInstruction(): string
+⋮----
+export function buildLitKeywordPrompt(params: {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+}): string
+</file>
+
+<file path="src/app/(app)/library/library-content.tsx">
+import { useState } from "react";
+import { Layers } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { LiteratureReader } from "@/components/literature-reader";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import type { ThesisBox } from "@/db/schema";
+⋮----
+interface LibraryContentProps {
+  boxes: ThesisBox[];
+}
 </file>
 
 <file path="src/app/(auth)/onboarding/literature-review/_services/box-pipeline.ts">
@@ -2019,6 +2032,15 @@ interface StrategicRoadmapSectionProps {
 export function StrategicRoadmapSection({
   strategicRecommendations,
 }: StrategicRoadmapSectionProps)
+</file>
+
+<file path="src/app/(auth)/onboarding/risk/page.tsx">
+import { redirect } from "next/navigation";
+import { getProfile } from "@/session";
+import { RiskContainer } from "./_components/risk-container";
+import { StartOverButton } from "../_components/start-over-button";
+⋮----
+export default async function OnboardingRiskPage()
 </file>
 
 <file path="src/lib/prompts/fact-query-extraction.ts">
@@ -2127,15 +2149,6 @@ import type { OriginalityReportData } from "@/lib/types";
 interface TavilyFactCheckTableProps {
   tavilyResults: OriginalityReportData["tavilyResults"];
 }
-</file>
-
-<file path="src/app/(auth)/onboarding/risk/page.tsx">
-import { redirect } from "next/navigation";
-import { getProfile } from "@/session";
-import { RiskContainer } from "./_components/risk-container";
-import { StartOverButton } from "../_components/start-over-button";
-⋮----
-export default async function OnboardingRiskPage()
 </file>
 
 <file path="src/app/(auth)/onboarding/layout.tsx">
@@ -2295,51 +2308,6 @@ export async function toggleResourceReadStatusAction(
 ): Promise<ToggleReadStatusResult>
 </file>
 
-<file path="src/components/literature-reader.tsx">
-import { useCallback } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle, BookOpen, RefreshCw, Layers } from "lucide-react";
-import { toast } from "sonner";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-  getBoxResourcesAction,
-  toggleResourceReadStatusAction,
-} from "@/app/(app)/library/actions";
-import type {
-  GetBoxResourcesResult,
-  ToggleReadStatusResult,
-} from "@/app/(app)/library/actions";
-⋮----
-interface LiteratureReaderProps {
-  boxId: number;
-  boxTitle: string;
-  boxType?: string | null;
-}
-⋮----
-type ReaderStatus = "loading" | "error" | "reading" | "all-read";
-⋮----
-const BOX_KEY = (boxId: number)
-⋮----
-export function LiteratureReader({
-  boxId,
-  boxTitle,
-  boxType,
-}: LiteratureReaderProps)
-</file>
-
-<file path="src/app/(auth)/onboarding/literature-review/_components/literature-article-card.tsx">
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { JuryArticle } from "@/lib/types";
-⋮----
-interface LiteratureArticleCardProps {
-  article: JuryArticle;
-}
-</file>
-
 <file path="src/app/(auth)/onboarding/risk/_services/search.ts">
 import { ThinkingLevel } from "@google/genai";
 import { tavilySearch } from "@/lib/tavily";
@@ -2404,6 +2372,51 @@ export async function clearDownstreamDbAction(
 ): Promise<
 </file>
 
+<file path="src/components/literature-reader.tsx">
+import { useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { CheckCircle, BookOpen, RefreshCw, Layers } from "lucide-react";
+import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  getBoxResourcesAction,
+  toggleResourceReadStatusAction,
+} from "@/app/(app)/library/actions";
+import type {
+  GetBoxResourcesResult,
+  ToggleReadStatusResult,
+} from "@/app/(app)/library/actions";
+⋮----
+interface LiteratureReaderProps {
+  boxId: number;
+  boxTitle: string;
+  boxType?: string | null;
+}
+⋮----
+type ReaderStatus = "loading" | "error" | "reading" | "all-read";
+⋮----
+const BOX_KEY = (boxId: number)
+⋮----
+export function LiteratureReader({
+  boxId,
+  boxTitle,
+  boxType,
+}: LiteratureReaderProps)
+</file>
+
+<file path="src/app/(auth)/onboarding/literature-review/_components/literature-article-card.tsx">
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { JuryArticle } from "@/lib/types";
+⋮----
+interface LiteratureArticleCardProps {
+  article: JuryArticle;
+}
+</file>
+
 <file path="src/lib/prompts/index.ts">
 
 </file>
@@ -2445,48 +2458,6 @@ interface StartOverButtonProps {
 }
 ⋮----
 const handleReset = () =>
-</file>
-
-<file path="src/app/(auth)/onboarding/_lib/fetch-actions.ts">
-import { eq, sql, and, not } from "drizzle-orm";
-import { cacheLife, cacheTag } from "next/cache";
-import { db } from "@/db";
-import {
-  thesisMatrices,
-  originalityReports,
-  thesisBoxes,
-  libraryResources,
-} from "@/db/schema";
-import type { GeminiThesisBox } from "@/lib/types";
-import { getSession } from "@/session";
-import { calculateBadge } from "@/lib/academic/badge-calculator";
-⋮----
-async function getCachedThesisMatrix(userId: number)
-⋮----
-async function getCachedOriginalityReport(userId: number)
-⋮----
-async function getCachedBoxes(thesisMatrixId: number)
-⋮----
-export async function fetchThesisMatrix()
-⋮----
-export async function fetchOriginalityReport()
-⋮----
-export async function fetchBoxes()
-⋮----
-export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]>
-⋮----
-/**
- * Server Action: checks which onboarding steps have existing data in the database
- * for the current user. Used by the stepper to determine which future steps are
- * clickable (steps with data can be re-visited even if they appear in the future).
- *
- * @returns A record of step key → boolean, or null if no session
- */
-export async function checkStepsDataAction(): Promise<Record<
-  string,
-  boolean
-> | null> {
-  const session = await getSession();
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_services/queries.ts">
@@ -2559,6 +2530,48 @@ export async function fetchThesisDetails(
   summary: TezaraThesisSummary,
   logger?: Logger,
 ): Promise<TezaraThesisDetails | null>
+</file>
+
+<file path="src/app/(auth)/onboarding/_lib/fetch-actions.ts">
+import { eq, sql, and, not } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
+import { db } from "@/db";
+import {
+  thesisMatrices,
+  originalityReports,
+  thesisBoxes,
+  libraryResources,
+} from "@/db/schema";
+import type { GeminiThesisBox } from "@/lib/types";
+import { getSession } from "@/session";
+import { calculateBadge } from "@/lib/academic/badge-calculator";
+⋮----
+async function getCachedThesisMatrix(userId: number)
+⋮----
+async function getCachedOriginalityReport(userId: number)
+⋮----
+async function getCachedBoxes(thesisMatrixId: number)
+⋮----
+export async function fetchThesisMatrix()
+⋮----
+export async function fetchOriginalityReport()
+⋮----
+export async function fetchBoxes()
+⋮----
+export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]>
+⋮----
+/**
+ * Server Action: checks which onboarding steps have existing data in the database
+ * for the current user. Used by the stepper to determine which future steps are
+ * clickable (steps with data can be re-visited even if they appear in the future).
+ *
+ * @returns A record of step key → boolean, or null if no session
+ */
+export async function checkStepsDataAction(): Promise<Record<
+  string,
+  boolean
+> | null> {
+  const session = await getSession();
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_components/risk-container.tsx">
@@ -2851,34 +2864,16 @@ export async function generateStructuredContent<T>(
 ): Promise<T>
 </file>
 
-<file path="src/app/(auth)/onboarding/risk/_hooks/use-risk-analysis.ts">
-import { useState, useCallback, useEffect, useRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
-import {
-  fetchThesisMatrix,
-  fetchOriginalityReport,
-} from "../../_lib/fetch-actions";
-import type { OriginalityReportData } from "@/lib/types";
-⋮----
-export interface UseRiskAnalysisResult {
-  loading: boolean;
-  analysing: boolean;
-  error: string | null;
-  reportData: OriginalityReportData | null;
-  proceeding: boolean;
-  startAnalysis: () => Promise<void>;
-  handleProceed: () => Promise<void>;
-}
-⋮----
-export function useRiskAnalysis(): UseRiskAnalysisResult
-</file>
-
 <file path="src/app/(auth)/onboarding/risk/_services/sifting.ts">
 import { fetchThesisDetails } from "@/lib/tezara";
 import type { Logger } from "@/lib/logger";
 import type { TezaraThesisSummary, TezaraThesisDetails } from "@/lib/types";
 import { rerankTheses } from "@/lib/cohere";
+⋮----
+async function fetchDetailsWithRetry(
+  thesis: TezaraThesisSummary,
+  log: Logger,
+): Promise<TezaraThesisDetails>
 ⋮----
 export interface SiftAndFetchDetailsParams {
   studyTitle: string;
@@ -2905,34 +2900,6 @@ export async function siftAndFetchDetails(
 ): Promise<
 </file>
 
-<file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">
-import { useState } from "react";
-import { Loader2, AlertCircle, BookOpen, Archive, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { AIBanner } from "@/components/ai-banner";
-import { LoadingSpinner } from "@/components/loading-spinner";
-import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
-import { LiteratureArticleCard } from "./literature-article-card";
-import {
-  useLiteratureReview,
-  type BoxStatus,
-} from "../_hooks/use-literature-review";
-⋮----
-function ArchiveEntryForm({
-  onAddEntry,
-}: {
-onAddEntry: (title: string, description: string)
-⋮----
-const handleAdd = () =>
-⋮----
-onChange=
-⋮----
-onAddArchiveEntry(subBox.title,
-</file>
-
 <file path="src/app/(auth)/onboarding/matrix/_components/matrix-form.tsx">
 import { useState, useEffect, useReducer } from "react";
 import { useRouter } from "next/navigation";
@@ -2956,7 +2923,10 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { LoadingSpinner } from "@/components/loading-spinner";
-import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
+import {
+  useLoadingOverlay,
+  type LoadingStep,
+} from "@/components/providers/loading-overlay-provider";
 import { saveThesisMatrixAction } from "../actions";
 import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
 import { fetchThesisMatrix } from "../../_lib/fetch-actions";
@@ -2987,6 +2957,29 @@ type SectionConfig = {
 };
 ⋮----
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
+</file>
+
+<file path="src/app/(auth)/onboarding/risk/_hooks/use-risk-analysis.ts">
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
+import {
+  fetchThesisMatrix,
+  fetchOriginalityReport,
+} from "../../_lib/fetch-actions";
+import type { OriginalityReportData } from "@/lib/types";
+⋮----
+export interface UseRiskAnalysisResult {
+  loading: boolean;
+  analysing: boolean;
+  error: string | null;
+  reportData: OriginalityReportData | null;
+  proceeding: boolean;
+  startAnalysis: () => Promise<void>;
+  handleProceed: () => Promise<void>;
+}
+⋮----
+export function useRiskAnalysis(): UseRiskAnalysisResult
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_services/analysis.ts">
@@ -3058,8 +3051,36 @@ export function calculateOriginalityRisk(
 export async function analyzeOriginalityRisk(
   params: AnalyzeOriginalityRiskParams,
   log: Logger,
-  chunkSize = 4,
+  chunkSize = 3,
 ): Promise<
+</file>
+
+<file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">
+import { useState } from "react";
+import { Loader2, AlertCircle, BookOpen, Archive, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { AIBanner } from "@/components/ai-banner";
+import { LoadingSpinner } from "@/components/loading-spinner";
+import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
+import { LiteratureArticleCard } from "./literature-article-card";
+import {
+  useLiteratureReview,
+  type BoxStatus,
+} from "../_hooks/use-literature-review";
+⋮----
+function ArchiveEntryForm({
+  onAddEntry,
+}: {
+onAddEntry: (title: string, description: string)
+⋮----
+const handleAdd = () =>
+⋮----
+onChange=
+⋮----
+onAddArchiveEntry(subBox.title,
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/actions.ts">
@@ -3205,6 +3226,50 @@ export function useLiteratureReview(): UseLiteratureReviewResult
 const isArchival = (box: GeminiThesisBox): boolean
 </file>
 
+<file path="src/db/schema.ts">
+import type { ThesisAxes, ThesisBadge } from "@/lib/types";
+import {
+  pgTable,
+  serial,
+  varchar,
+  text,
+  integer,
+  real,
+  timestamp,
+  jsonb,
+  pgEnum,
+  boolean,
+  index,
+  uniqueIndex,
+  foreignKey,
+} from "drizzle-orm/pg-core";
+import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
+⋮----
+export type User = InferSelectModel<typeof users>;
+⋮----
+export type NewUser = InferInsertModel<typeof users>;
+⋮----
+export type ThesisMatrix = InferSelectModel<typeof thesisMatrices>;
+⋮----
+export type NewThesisMatrix = InferInsertModel<typeof thesisMatrices>;
+⋮----
+export type OriginalityReport = InferSelectModel<typeof originalityReports>;
+⋮----
+export type NewOriginalityReport = InferInsertModel<typeof originalityReports>;
+⋮----
+export type ThesisBox = InferSelectModel<typeof thesisBoxes>;
+⋮----
+export type NewThesisBox = InferInsertModel<typeof thesisBoxes>;
+⋮----
+export type LibraryResource = InferSelectModel<typeof libraryResources>;
+⋮----
+export type NewLibraryResource = InferInsertModel<typeof libraryResources>;
+⋮----
+export type Task = InferSelectModel<typeof tasks>;
+⋮----
+export type NewTask = InferInsertModel<typeof tasks>;
+</file>
+
 <file path="src/app/(auth)/onboarding/literature-review/actions.ts">
 import { eq, and } from "drizzle-orm";
 import { cookies } from "next/headers";
@@ -3248,50 +3313,6 @@ export async function confirmLiteratureAction(args: {
 }): Promise<OnboardingActionResult>
 ⋮----
 const maybePushArticle = (article: (typeof entry.articles)[number]) =>
-</file>
-
-<file path="src/db/schema.ts">
-import type { ThesisAxes, ThesisBadge } from "@/lib/types";
-import {
-  pgTable,
-  serial,
-  varchar,
-  text,
-  integer,
-  real,
-  timestamp,
-  jsonb,
-  pgEnum,
-  boolean,
-  index,
-  uniqueIndex,
-  foreignKey,
-} from "drizzle-orm/pg-core";
-import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
-⋮----
-export type User = InferSelectModel<typeof users>;
-⋮----
-export type NewUser = InferInsertModel<typeof users>;
-⋮----
-export type ThesisMatrix = InferSelectModel<typeof thesisMatrices>;
-⋮----
-export type NewThesisMatrix = InferInsertModel<typeof thesisMatrices>;
-⋮----
-export type OriginalityReport = InferSelectModel<typeof originalityReports>;
-⋮----
-export type NewOriginalityReport = InferInsertModel<typeof originalityReports>;
-⋮----
-export type ThesisBox = InferSelectModel<typeof thesisBoxes>;
-⋮----
-export type NewThesisBox = InferInsertModel<typeof thesisBoxes>;
-⋮----
-export type LibraryResource = InferSelectModel<typeof libraryResources>;
-⋮----
-export type NewLibraryResource = InferInsertModel<typeof libraryResources>;
-⋮----
-export type Task = InferSelectModel<typeof tasks>;
-⋮----
-export type NewTask = InferInsertModel<typeof tasks>;
 </file>
 
 <file path="src/app/(auth)/onboarding/boxes/_components/boxes-container.tsx">

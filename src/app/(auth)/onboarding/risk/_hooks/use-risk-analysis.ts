@@ -156,14 +156,23 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
   }, [startAnalysisInternal, resetAnalysisError]);
 
   // Auto-trigger analysis exactly once on mount when no report exists yet.
+  // Also responds to the "reanalyze" flag set by MatrixForm after a
+  // re-submission, guaranteeing the pipeline runs even if the server's
+  // "use cache" returns stale report data.
   useEffect(() => {
     if (hasFiredRef.current) return;
     if (loading || isFetching) return;
-    if (reportData) return;
+
+    const reanalyze = queryClient.getQueryData(["reanalyze"]);
+    if (reportData && !reanalyze) return;
 
     hasFiredRef.current = true;
+    if (reanalyze) {
+      queryClient.removeQueries({ queryKey: ["reanalyze"] });
+      queryClient.removeQueries({ queryKey: ["originalityReport"] });
+    }
     startAnalysis();
-  }, [loading, isFetching, reportData, startAnalysis]);
+  }, [loading, isFetching, reportData, startAnalysis, queryClient]);
 
   return {
     loading,

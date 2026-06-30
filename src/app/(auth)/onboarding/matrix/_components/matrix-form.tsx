@@ -22,7 +22,10 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { LoadingSpinner } from "@/components/loading-spinner";
-import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
+import {
+  useLoadingOverlay,
+  type LoadingStep,
+} from "@/components/providers/loading-overlay-provider";
 import { saveThesisMatrixAction } from "../actions";
 import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
 import { fetchThesisMatrix } from "../../_lib/fetch-actions";
@@ -128,6 +131,19 @@ const MATRIX_SECTIONS: SectionConfig[] = [
   },
 ];
 
+const ANALYSIS_STEPS: LoadingStep[] = [
+  { text: "Sorgu ve doğrulama parametreleri üretiliyor...", status: "idle" },
+  {
+    text: "Tavily ve Tezara paralel motorları koşturuluyor...",
+    status: "idle",
+  },
+  {
+    text: "Karşılaştırmalı literatür matrisi yapılandırılıyor...",
+    status: "idle",
+  },
+  { text: "Nihai risk seviyesi ve tavsiyeler hazırlanıyor...", status: "idle" },
+];
+
 /**
  * MatrixForm — onboarding sürecinin 1. adımı.
  * Kullanıcının tez matrisini 6 alanlı 3 bölümlü akademik forma doldurmasını sağlar.
@@ -158,7 +174,7 @@ export function MatrixForm() {
     { loading: true },
   );
 
-  const { isLoading, hideLoading } = useLoadingOverlay();
+  const { isLoading, showLoading } = useLoadingOverlay();
 
   useEffect(() => {
     let cancelled = false;
@@ -185,9 +201,8 @@ export function MatrixForm() {
       });
     return () => {
       cancelled = true;
-      hideLoading();
     };
-  }, [hideLoading]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -220,6 +235,17 @@ export function MatrixForm() {
       }
 
       toast.success("Tez matrisi başarıyla kaydedildi.");
+
+      // Show the loading overlay immediately and clear stale caches so the
+      // risk page starts fresh — the auto-trigger effect will pick up from
+      // the already-visible overlay.
+      showLoading(
+        "Risk Analiz Motorları Çalışıyor",
+        "Yapay zeka asistanınız tez matrisinizi inceliyor, veri tabanlarını tarıyor ve risk raporunu hazırlıyor.",
+        ANALYSIS_STEPS,
+      );
+      queryClient.removeQueries({ queryKey: ["originalityReport"] });
+      queryClient.setQueryData(["reanalyze"], true);
       router.push("/onboarding/risk");
     } catch (error) {
       const display = getErrorDisplay(error);
