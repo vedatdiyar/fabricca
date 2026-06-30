@@ -11,13 +11,13 @@ import {
 } from "@/components/ui/card";
 import { compareThesesByRisk } from "../_services/analysis";
 import {
-  OVERLAP_LEVEL_LABELS,
-  getOverlapLevelColor,
+  AXIS_SECIM_LABELS,
+  getAxisSecimColor,
   THESIS_BADGE_LABELS,
   THESIS_BADGE_COLORS,
 } from "../_lib/constants";
 import { calculateBadge } from "@/lib/academic/badge-calculator";
-import type { OriginalityReportData, OverlapLevel } from "@/lib/types";
+import type { OriginalityReportData } from "@/lib/types";
 
 /** A single overlap-table row after sorting and comparison-note backfill. */
 type OverlapRow =
@@ -31,13 +31,13 @@ interface TezaraOverlapTableProps {
 /**
  * Renders only the categorical overlap level badge for a dimensional axis.
  */
-function AxisCell({ level }: { level: OverlapLevel }) {
+function AxisCell({ secim }: { secim: string }) {
   return (
     <div className="flex items-center justify-center">
       <span
-        className={`inline-flex items-center justify-center w-20 py-0.5 rounded-md text-[10px] font-bold tracking-wide border ${getOverlapLevelColor(level)}`}
+        className={`inline-flex items-center justify-center w-20 py-0.5 rounded-md text-xs font-semibold font-serif tracking-wide border ${getAxisSecimColor(secim)}`}
       >
-        {OVERLAP_LEVEL_LABELS[level]}
+        {AXIS_SECIM_LABELS[secim] ?? secim}
       </span>
     </div>
   );
@@ -162,20 +162,22 @@ export function TezaraOverlapTable({
                         </div>
                       </td>
                       <td className="p-3 text-center">
-                        <AxisCell level={item.axes.subject} />
+                        <AxisCell secim={item.axes.problem_sinirlari.secim} />
                       </td>
                       <td className="p-3 text-center">
-                        <AxisCell level={item.axes.context ?? "OZGUN"} />
+                        <AxisCell
+                          secim={item.axes.zaman_mekan_ozgullugu.secim}
+                        />
                       </td>
                       <td className="p-3 text-center">
-                        <AxisCell level={item.axes.theory} />
+                        <AxisCell secim={item.axes.teorik_perspektif.secim} />
                       </td>
                       <td className="p-3 text-center">
-                        <AxisCell level={item.axes.methodology} />
+                        <AxisCell secim={item.axes.metodolojik_kurgu.secim} />
                       </td>
                       <td className="p-3 text-center border-l border-border/40">
                         <span
-                          className={`inline-flex items-center justify-center w-20 py-1 rounded-md text-[10px] font-bold tracking-wide border ${THESIS_BADGE_COLORS[calculateBadge(item.axes)]}`}
+                          className={`inline-flex items-center justify-center w-20 py-1 rounded-md text-[10px] font-semibold font-serif tracking-wide border ${THESIS_BADGE_COLORS[calculateBadge(item.axes)]}`}
                         >
                           {THESIS_BADGE_LABELS[calculateBadge(item.axes)]}
                         </span>

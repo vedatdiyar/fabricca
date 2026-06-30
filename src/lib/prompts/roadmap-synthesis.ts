@@ -1,4 +1,4 @@
-import type { OverlapLevel } from "../types";
+import type { ThesisAxes } from "../types";
 import type { JsonSchema } from "../gemini";
 
 // ============================================================================
@@ -53,8 +53,13 @@ Sen, üniversitelerin Sosyal Bilimler ve Lisansüstü Eğitim Enstitülerinde do
     "title": "E-Ticaret Depolarında Algoritmik Kontrol Mekanizmaları",
     "author": "Ahmet Yılmaz",
     "year": 2023,
-    "axes": { "subject": "KRITIK", "theory": "KRITIK", "methodology": "ORTA", "context": "KRITIK" },
-    "comparisonNote": "Kuram, mekan, yöntem ve örneklem evreni hedef tezle birebir çakışmaktadır."
+    "axes": {
+      "problem_sinirlari": { "gerekce": "Konu ve aktörler benzerdir.", "secim": "GENİŞLETİLMİŞ KONU" },
+      "teorik_perspektif": { "gerekce": "Foucault kuramsal çerçevesi ortaktır.", "secim": "AYNI GÖZLÜK" },
+      "metodolojik_kurgu": { "gerekce": "Yarı yapılandırılmış mülakat kullanılmıştır.", "secim": "YÖNTEMSEL AKRABA" },
+      "zaman_mekan_ozgullugu": { "gerekce": "Pandemi sonrası Türkiye ve Kocaeli bağlamı ortaktır.", "secim": "AYNI DOKU" }
+    },
+    "comparisonNote": "Kuram, mekan, yöntem ve örneklem evreni hedef tezle büyük ölçüde çakışmaktadır."
   }
 ]
 </ornek_karsilastirma_bulgulari>
@@ -80,12 +85,7 @@ export function buildRoadmapPrompt(params: {
     title: string;
     author: string;
     year: number;
-    axes: {
-      subject: OverlapLevel;
-      theory: OverlapLevel;
-      methodology: OverlapLevel;
-      context?: OverlapLevel;
-    };
+    axes: ThesisAxes;
     comparisonNote: string;
   }[];
 }): string {

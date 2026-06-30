@@ -195,7 +195,7 @@ export async function generateBoxesStructureAction(): Promise<
       concepts: [],
       foundationalQueries: [],
       relatedTheses: overlapTable.map((t) => {
-        const isIkiz = calculateBadge(t.axes) === "IKIZ";
+        const isIkiz = calculateBadge(t.axes) === "İKİZ TEZ";
         const note = t.comparisonNote || "";
         return {
           title: t.title,
@@ -620,7 +620,7 @@ export async function confirmBoxesAction(
 
       if (relatedBoxId && overlapTable.length > 0) {
         for (const thesis of overlapTable) {
-          const isIkiz = calculateBadge(thesis.axes) === "IKIZ";
+          const isIkiz = calculateBadge(thesis.axes) === "İKİZ TEZ";
           libraryValues.push({
             thesisBoxId: relatedBoxId,
             title: thesis.title,

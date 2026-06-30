@@ -1,14 +1,28 @@
 import { z } from "zod";
-import type { ThesisBadge as ThesisBadgeOrig } from "@/lib/academic/badge-calculator";
-export type ThesisBadge = ThesisBadgeOrig;
+
+export type ThesisBadge =
+  | "İKİZ TEZ"
+  | "SAVUNMA RİSKİ"
+  | "TEORİ KAYNAĞI"
+  | "YÖNTEM KAYNAĞI"
+  | "BAĞLAM KAYNAĞI"
+  | "ÖZGÜN";
+
+export interface AxisDecision {
+  gerekce: string;
+  secim: string;
+}
+
+export interface ThesisAxes {
+  problem_sinirlari: AxisDecision;
+  teorik_perspektif: AxisDecision;
+  metodolojik_kurgu: AxisDecision;
+  zaman_mekan_ozgullugu: AxisDecision;
+}
 
 export type OnboardingActionResult =
   | { success: true; isProcessing?: boolean; error?: never }
   | { success?: never; error: string };
-
-export type OverlapLevel = "KRITIK" | "ORTA" | "OZGUN";
-
-export type AxesOption = "BIREBIR" | "KAPSAYAN" | "TEGET" | "ALAKASIZ";
 
 /**
  * Tezara tez arama sonucu özeti.
@@ -45,15 +59,6 @@ export interface QueryExtractionResponse {
   keywords: string[];
 }
 
-export interface DeepSiftEntry {
-  id: number;
-  positioning: AxesOption;
-}
-
-export interface DeepSiftResponse {
-  selectedTheses: DeepSiftEntry[];
-}
-
 export interface TavilyEvaluationFact {
   fact: string;
   result: "VERIFIED" | "PARTIALLY_VERIFIED" | "REFUTED";
@@ -75,12 +80,7 @@ export interface OriginalityReportData {
     originalityBadge: ThesisBadge;
     overlapTable: {
       id: number;
-      axes: {
-        subject: OverlapLevel;
-        theory: OverlapLevel;
-        methodology: OverlapLevel;
-        context?: OverlapLevel;
-      };
+      axes: ThesisAxes;
       comparisonNote?: string;
       yokPdfUrl?: string;
       title: string;
@@ -125,9 +125,6 @@ export interface ScrapedTheses {
   eliminated: TezaraThesisSummary[];
 }
 
-/**
- * Jüri analizi tablosunda listelenen karşılaştırmalı tez verisi.
- */
 export interface JuryReportItem {
   id: number;
   title: string;
@@ -136,12 +133,7 @@ export interface JuryReportItem {
   year: number;
   thesisType: string;
   department: string;
-  axes: {
-    subject: OverlapLevel;
-    theory: OverlapLevel;
-    methodology: OverlapLevel;
-    context?: OverlapLevel;
-  };
+  axes: ThesisAxes;
   comparisonNote?: string;
   yokPdfUrl?: string;
 }
@@ -174,10 +166,10 @@ export const RelatedThesisEntrySchema = z.object({
   thesisType: z.string(),
   department: z.string(),
   axes: z.object({
-    subject: z.enum(["KRITIK", "ORTA", "OZGUN"]),
-    theory: z.enum(["KRITIK", "ORTA", "OZGUN"]),
-    methodology: z.enum(["KRITIK", "ORTA", "OZGUN"]),
-    context: z.enum(["KRITIK", "ORTA", "OZGUN"]).optional(),
+    problem_sinirlari: z.object({ gerekce: z.string(), secim: z.string() }),
+    teorik_perspektif: z.object({ gerekce: z.string(), secim: z.string() }),
+    metodolojik_kurgu: z.object({ gerekce: z.string(), secim: z.string() }),
+    zaman_mekan_ozgullugu: z.object({ gerekce: z.string(), secim: z.string() }),
   }),
   comparisonNote: z.string().optional(),
   yokPdfUrl: z.string().optional(),
@@ -212,9 +204,6 @@ export const FinalBoxGenerationResponseSchema = z.object({
     .min(1, "En az bir kutu üretilmelidir"),
 });
 
-/**
- * Özgünlük analizinde tespit edilen sınırdaş/ikiz tez çalışması.
- */
 export interface RelatedThesisEntry {
   title: string;
   author: string;
@@ -222,12 +211,7 @@ export interface RelatedThesisEntry {
   year: number;
   thesisType: string;
   department: string;
-  axes: {
-    subject: OverlapLevel;
-    theory: OverlapLevel;
-    methodology: OverlapLevel;
-    context?: OverlapLevel;
-  };
+  axes: ThesisAxes;
   comparisonNote?: string;
   yokPdfUrl?: string;
 }

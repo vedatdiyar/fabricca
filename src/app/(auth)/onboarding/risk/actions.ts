@@ -272,7 +272,7 @@ export async function finalizeJuryAnalysisAction(params: {
 
     if (validDetails.length === 0) {
       tezaraResults = {
-        originalityBadge: "OZGUN",
+        originalityBadge: "ÖZGÜN",
         overlapTable: [],
         strategicRecommendations:
           "Literatür taramasında doğrudan çakışan veya risk teşkil eden herhangi bir akademik çalışma tespit edilmemiştir.",

@@ -233,7 +233,326 @@ export default function RootPage()
 </file>
 
 <file path="README.md">
-# fabricca
+# Fabricca — Dijital Tez Asistanı
+
+**Fabricca**, yüksek lisans ve doktora öğrencilerinin akademik araştırma, tez
+yazım ve literatür tarama süreçlerini yapay zeka desteğiyle uçtan uca
+yönetmelerini sağlayan gelişmiş bir **Dijital Tez Asistanı ve Akademik Çalışma
+Platformudur**.
+
+> Platform, dışarıdan serbest kayda tamamen kapalıdır. Yalnızca veri tabanında
+> seed edilmiş izinli kullanıcılar tarafından kullanılabilir.
+
+---
+
+## Özellikler
+
+### 1. Tez Matrisi (Thesis Matrix)
+
+Çalışmanızın temel yapı taşlarını tanımladığınız ilk adımdır. Araştırma sorusu,
+temel iddia, kuramsal çerçeve, metodoloji, araştırma kapsamı ve çalışma başlığı
+olmak üzere altı temel alanı kapsar.
+
+### 2. Özgünlük & Risk Analizi
+
+Tavily (web) ve TEZARA (YÖK Ulusal Tez Merkezi) API'leri üzerinden eşzamanlı
+çalışan çift kademeli bir analiz motorudur:
+
+- **Web taraması:** Çalışmanızın temel iddialarının internetteki mevcut
+  literatürle örtüşme/çelişme durumunu maddi olarak denetler.
+- **Tez karşılaştırması:** YÖK Tez veri tabanındaki benzer tezlerle konu, kuram,
+  yöntem ve bağlam eksenlerinde karşılaştırma yaparak özgünlük rozeti
+  (IKIZ / SINIRDAS / OZGUN) üretir.
+- **Cohere Rerank v4.0 Pro** ile semantik benzerlik sıralaması yapılır.
+- Sonuçlar, deterministik boolean mantığı ile tek bir özgünlük rozetine
+  indirgenir.
+
+### 3. Konu Kutuları (Thesis Boxes)
+
+Google Gemini 3.1 Flash Lite tarafından tez matrisiniz analiz edilerek
+otomatik oluşturulan kavramsal kutulardır. Altı tür kutu mevcuttur:
+
+- `PROBLEMATIZATION` — Problem Tanımlama
+- `CONCEPTUAL` — Kavramsal Çerçeve
+- `DATA_PROTOCOL` — Veri ve Yöntem
+- `PRIMARY_MATERIAL` — Birincil Kaynaklar
+- `CONTEXT` — Bağlam
+- `RELATED_THESES` — İlgili Tezler
+
+Kutular iç içe alt kutular (sub-box) barındırabilir ve her kutuya temel
+(foundational) kaynak sorguları bağlanabilir.
+
+### 4. Literatür Taraması
+
+Her bir konu kutusu için çoklu akademik veri tabanlarında eşzamanlı kaynak
+taraması yapar:
+
+- **OpenAlex API** — Geniş akademik makale indeksi
+- **CrossRef API** — DOI ve yayıncı bilgileri
+- **Exa API** — Gelişmiş semantik arama
+- **Semantic Scholar API** — Atıf ve etki analizi
+- **FoundationalOracle** — Temel kaynakların DOI/publisher çözümlemesi
+
+### 5. Danışman Odası (RAG Chat) — Geliştirme Aşamasında
+
+Makalelerinizin vektör embedding'leri (Cloudflare Workers AI / Qwen3) üzerinden
+RAG tabanlı sorgulanabildiği yapay zeka sohbet arayüzü.
+
+### 6. Kartoteks — Geliştirme Aşamasında
+
+Geleneksel akademik kartoteks sisteminin dijital versiyonu. Makalelerden not
+çıkarma, alıntı fişleme ve konu kutularına yerleştirme imkanı sunar.
+
+### 7. Kütüphane
+
+Sistemdeki tüm akademik kaynakların görüntülenmesi ve yönetimi. Her kaynak
+bağlı olduğu konu kutusuna göre filtrelenebilir.
+
+### 8. Dashboard (Genel Özet)
+
+Konu kutuları, kaynaklar ve kanban görevlerinin tek bir panelde toplandığı
+merkezi yönetim ekranı.
+
+---
+
+## Kullanılan Teknolojiler
+
+| Kategori               | Teknoloji                                             |
+| ---------------------- | ----------------------------------------------------- |
+| **Frontend & Backend** | Next.js 16 (App Router, Server Actions, PPR)          |
+| **UI Bileşenleri**     | Tailwind CSS v4, Shadcn UI, Lucide React              |
+| **Veri Tabanı**        | Neon Serverless PostgreSQL                            |
+| **ORM**                | Drizzle ORM (snake_case)                              |
+| **Vektör DB (RAG)**    | pgvector (Neon içinde)                                |
+| **LLM**                | Google Gemini 3.1 Flash Lite                          |
+| **Embedding**          | Cloudflare Workers AI (Qwen3-Embedding-0.6B, 768 dim) |
+| **Rerank**             | Cohere Rerank v4.0 Pro                                |
+| **Web Arama**          | Tavily Search API                                     |
+| **Tez Veri Kaynağı**   | TEZARA (YÖK Tez)                                      |
+| **Akademik Veri**      | OpenAlex, CrossRef, Exa, Semantic Scholar             |
+| **State Yönetimi**     | Zustand (sessionStorage)                              |
+| **Sunucu Durumu**      | TanStack Query                                        |
+| **Auth**               | bcrypt-ts + Cookie tabanlı hafif session              |
+| **Derleyici**          | Turbopack                                             |
+| **Lint / Format**      | ESLint, Prettier                                      |
+
+---
+
+## Proje Yapısı
+
+Proje, Next.js App Router'ın rota gruplama (route groups) özelliğini kullanarak
+özellik/sayfa tabanlı (feature-driven) olarak organize edilmiştir.
+
+```
+src/
+├── app/
+│   ├── globals.css                  # Global stiller (Tailwind v4)
+│   ├── layout.tsx                   # Root layout (font, QueryProvider, Toaster)
+│   ├── page.tsx                     # / → /login yönlendirmesi
+│   ├── (auth)/                      # Kimlik doğrulama grubu
+│   │   ├── layout.tsx               # Oturum kontrolü + yönlendirme
+│   │   ├── login/                   # /login — Giriş sayfası
+│   │   └── onboarding/              # 5 adımlı onboarding süreci
+│   │       ├── layout.tsx           # Adım container'ı
+│   │       ├── actions.ts           # Ortak onboarding server action'ları
+│   │       ├── _components/         # Ortak onboarding bileşenleri
+│   │       ├── _lib/                # Fetch yardımcıları
+│   │       ├── matrix/              # Adım 1: Tez Matrisi
+│   │       ├── risk/                # Adım 3: Özgünlük & Risk Analizi
+│   │       │   ├── _services/       # analysis, queries, roadmap, search, sifting
+│   │       │   └── _hooks/          # use-risk-analysis
+│   │       ├── boxes/               # Adım 4: Konu Kutuları
+│   │       └── literature-review/   # Adım 5: Literatür Taraması
+│   │           └── _services/       # batch-orchestrator, box-pipeline,
+│   │                                # foundational-resolver, openalex-collector
+│   └── (app)/                       # Giriş sonrası ana uygulama
+│       ├── layout.tsx               # Header + oturum/yönlendirme kontrolü
+│       ├── actions.ts               # Ortak uygulama server action'ları
+│       ├── dashboard/               # /dashboard — Genel Özet
+│       ├── library/                 # /library — Kütüphane
+│       ├── advisor/                 # /advisor — Danışman Odası (placeholder)
+│       └── card-index/              # /card-index — Kartoteks (placeholder)
+├── components/                      # Ortak bileşenler
+│   ├── header.tsx                   # Üst navigasyon
+│   ├── literature-reader.tsx        # Literatür okuyucu
+│   ├── error-display.tsx            # Hata görüntüleme
+│   ├── onboarding-global-loader.tsx # Onboarding yükleyici
+│   ├── providers/
+│   │   └── query-provider.tsx       # TanStack Query Provider
+│   └── ui/                          # Shadcn UI bileşenleri
+├── db/
+│   ├── index.ts                     # Neon DB bağlantısı (WebSocket singleton)
+│   ├── schema.ts                    # 6 tablo şeması (Drizzle ORM)
+│   └── seed.ts                      # Seed verisi (2 kullanıcı)
+├── lib/
+│   ├── gemini.ts                    # Google Gen AI SDK entegrasyonu
+│   ├── cloudflare.ts                # Cloudflare Workers AI (embedding)
+│   ├── cohere.ts                    # Cohere Rerank entegrasyonu
+│   ├── tavily.ts                    # Tavily web arama API
+│   ├── tezara.ts                    # TEZARA API istemcisi
+│   ├── tezara-parser.ts             # TEZARA HTML ayrıştırıcı (cheerio)
+│   ├── tezara-queue.ts              # TEZARA kuyruk/rate-limit yönetimi
+│   ├── types.ts                     # Paylaşılan TypeScript tipleri + Zod şemaları
+│   ├── error-utils.ts               # Hata sınıflandırma
+│   ├── cache-tags.ts                # Next.js cache tag sabitleri
+│   ├── utils.ts                     # Genel yardımcı fonksiyonlar
+│   ├── academic/
+│   │   ├── badge-calculator.ts      # Özgünlük rozeti (boolean mantık)
+│   │   └── embedding-resolver.ts    # Vektör embedding çözümleyici
+│   ├── prompts/                     # Gemini prompt şablonları (8 adet)
+│   ├── logger/                      # Yapılandırılmış loglama sistemi
+│   ├── constants/
+│   │   └── session.ts               # Session cookie sabitleri
+│   └── store/
+│       └── onboarding-store.ts      # Zustand onboarding store
+└── session.ts                       # Cookie tabanlı session yönetimi
+```
+
+---
+
+## Veri Tabanı Şeması
+
+Neon PostgreSQL üzerinde 6 tablo (Drizzle ORM, snake_case casing):
+
+| Tablo                 | Açıklama            | Önemli Alanlar                                                               |
+| --------------------- | ------------------- | ---------------------------------------------------------------------------- |
+| `users`               | Kullanıcı hesapları | email (unique), password (bcrypt hash), onboardingCompleted                  |
+| `thesis_matrices`     | Tez matrisi         | userId (unique), 6 temel metin alanı                                         |
+| `originality_reports` | Özgünlük raporları  | userId (unique), tavilyResults (JSONB), tezaraResults (JSONB)                |
+| `thesis_boxes`        | Konu kutuları       | thesisMatrixId, title, boxType (enum), parentId, foundationalQueries (JSONB) |
+| `library_resources`   | Akademik kaynaklar  | thesisBoxId, title, doi (unique pair), authors (JSONB), isFoundational       |
+| `tasks`               | Kanban görevleri    | userId, thesisBoxId, status/priority (enum)                                  |
+
+Her tabloda `createdAt` ve `updatedAt` timestamp alanları bulunur. İlişkiler
+`onDelete: "cascade"` ile yönetilir; görevlerde kutu silinince `set null` uygulanır.
+
+---
+
+## Onboarding Süreci
+
+Kullanıcı ilk girişinde sırasıyla şu adımları tamamlar:
+
+```
+1. Tez Matrisi (Matrix) — 6 temel alanın tanımı
+         ↓
+2. (Enrichment — kaldırıldı)
+         ↓
+3. Özgünlük & Risk Analizi (Risk)
+   ├─ Tavily ile web taraması (fact-checking)
+   ├─ TEZARA ile YÖK Tez karşılaştırması
+   ├─ Cohere Rerank ile semantik sıralama
+   └─ Özgünlük rozeti (IKIZ / SINIRDAS / OZGUN)
+         ↓
+4. Konu Kutuları (Boxes)
+   └─ Gemini ile otomatik kutu oluşturma + kullanıcı onayı
+         ↓
+5. Literatür Taraması (Literature Review)
+   ├─ OpenAlex / CrossRef / Exa / Semantic Scholar taraması
+   ├─ FoundationalOracle ile temel kaynak çözümlemesi
+   └─ Kaynakların kutu bazında gruplanması
+         ↓
+   Dashboard (onboarding tamamlandı)
+```
+
+Sistem, her adımda kullanıcının kaldığı yerden devam edebilmesini sağlar
+(örneğin; adım 3'te kaldıysa doğrudan `/onboarding/risk` sayfasına yönlendirilir).
+
+---
+
+## Çevresel Değişkenler
+
+Projenin çalışması için gerekli tüm API anahtarları `.env.local` dosyasında
+tanımlanır:
+
+| Değişken                   | Hizmet                          |
+| -------------------------- | ------------------------------- |
+| `DATABASE_URL`             | Neon PostgreSQL bağlantı dizesi |
+| `GEMINI_API_KEY`           | Google Gemini API               |
+| `CLOUDFLARE_ACCOUNT_ID`    | Cloudflare Workers AI hesap ID  |
+| `CLOUDFLARE_API_TOKEN`     | Cloudflare Workers AI API token |
+| `TAVILY_API_KEY`           | Tavily Search API               |
+| `OPENALEX_API_KEY`         | OpenAlex Academic API           |
+| `CROSSREF_CONTACT_EMAIL`   | CrossRef Polite Pool e-posta    |
+| `COHERE_API_KEY`           | Cohere Rerank API               |
+| `EXA_API_KEY`              | Exa API                         |
+| `SEMANTIC_SCHOLAR_API_KEY` | Semantic Scholar API            |
+
+---
+
+## Geliştirme
+
+```bash
+# Bağımlılıkları yükle
+npm install
+
+# Geliştirme sunucusunu başlat (Turbopack)
+npm run dev
+
+# Veri tabanı şemasını Neon'a push et
+npm run db:push
+
+# Seed verisini yükle (2 kullanıcı)
+npm run db:seed
+
+# Production build
+npm run build
+
+# Production sunucusunu başlat
+npm run start
+
+# Kalite kontrol (lint + typecheck + prettier)
+npm run check:full
+
+# Yalnızca tip denetimi
+npm run typecheck
+
+# Yalnızca lint
+npm run lint
+```
+
+---
+
+## Kullanıcılar
+
+Platform, dışarıdan kayda kapalı olduğu için veri tabanına seed edilmiş iki
+kullanıcı ile gelir:
+
+| İsim                   | E-posta                        |
+| ---------------------- | ------------------------------ |
+| Vedat Diyar Çelikkeser | vedatdiyarcelikkeser@gmail.com |
+| Tuğba Ahncr            | tubaahncr@gmail.com            |
+
+---
+
+## Mimari Kararlar ve Geliştirme Prensipleri
+
+- **Feature-driven klasör yapısı:** Sayfalar özellik bazında gruplanmıştır;
+  her modül kendi bileşenlerini, servislerini ve hook'larını barındırır.
+- **Single Responsibility:** Her dosya, her bileşen ve her fonksiyon yalnızca
+  tek bir işten sorumludur.
+- **600 satır sınırı:** Dosyalar ideal olarak 600 satırı aşmaz; aşıldığında
+  alt modüllere bölünür (zoraki bölünmelerden kaçınılır).
+- **Golden Boundary Rule:**
+  - Backend/mantık katmanı: %100 İngilizce (camelCase/snake_case)
+  - UI/çıktı katmanı: %100 Türkçe (akademik Türkçe, Türkçe karakterler)
+- **Progressive Save:** Onboarding adımları veri tabanına aşamalı olarak
+  kaydedilir; kullanıcı her adımda kaldığı yerden devam edebilir.
+- **Deterministic AI Çıktısı:** Temperature 1.0 + sabit seed değeri (2 veya 42)
+  ile tutarlı ve tekrarlanabilir model çıktıları hedeflenir.
+- **Kapalı sistem:** Dışarıdan kayıt yoktur; yalnızca seed edilmiş kullanıcılar.
+- **Sıkı tip güvenliği:** `any` tipi kullanımı yasaktır; tüm tipler Drizzle
+  şemalarından türetilir veya açık arayüzlerle tanımlanır.
+- **Singleton DB Pool:** Neon WebSocket pool, HMR/Fast Refresh'te her modül
+  yeniden yüklendiğinde yeni bağlantı oluşmasını engellemek için global
+  singleton olarak yönetilir.
+- **JSDoc zorunluluğu:** Tüm fonksiyonlar, server action'lar ve custom hook'lar
+  eksiksiz JSDoc dökümantasyonu ile yazılır.
+
+---
+
+## Lisans
+
+Özel (Private) — Tüm hakları saklıdır.
 </file>
 
 <file path="src/app/(app)/dashboard/_components/add-task-modal.tsx">
@@ -381,82 +700,6 @@ export interface KanbanTask {
   thesisBoxId?: number | null;
   boxTitle?: string;
 }
-</file>
-
-<file path="src/app/(auth)/onboarding/boxes/_services/foundational-oracle.ts">
-import {
-  ThinkingLevel,
-  Type,
-  createPartFromFunctionResponse,
-} from "@google/genai";
-import { getAi, retryOn503 } from "@/lib/gemini";
-import type { Logger } from "@/lib/logger";
-import type { GeminiThesisBox, FoundationalQuery } from "@/lib/types";
-import {
-  foundationalOracleResponseSchema,
-  buildFoundationalOracleSystemInstruction,
-  buildFoundationalOracleUserPrompt,
-} from "@/lib/prompts";
-⋮----
-interface ExaResult {
-  title: string;
-  url: string;
-  author?: string;
-  text?: string;
-  publishedDate?: string;
-}
-⋮----
-interface CrossrefResult {
-  doi: string | null;
-  publisher: string | null;
-  title: string | null;
-  author: string | null;
-  publicationYear: number | null;
-}
-⋮----
-function tokenize(text: string): string[]
-⋮----
-function calculateTitleScore(itemTitle: string, queryTitle: string): number
-⋮----
-function matchAuthor(
-  itemAuthorList: { given?: string; family?: string }[] | undefined,
-  queryAuthor: string,
-): boolean
-⋮----
-function extractYear(item: Record<string, unknown>): number | null
-⋮----
-function parseRetryAfter(header: string | null): number | null
-⋮----
-async function searchExa(query: string, log?: Logger): Promise<ExaResult[]>
-⋮----
-export async function lookupCrossref(
-  title: string,
-  author: string,
-): Promise<CrossrefResult>
-⋮----
-async function fetchWorks(
-    queryParam: string,
-    value: string,
-): Promise<Record<string, unknown>[]>
-⋮----
-interface MinedBoxResult {
-  flatIndex: number;
-  foundationalQuery: FoundationalQuery;
-}
-⋮----
-export async function processSingleBox(
-  box: GeminiThesisBox,
-  flatIndex: number,
-  thesisMatrix: {
-    studyTitle: string;
-    researchQuestion: string;
-    theoreticalFramework: string;
-    methodology: string;
-    researchScope: string;
-    mainClaim: string;
-  },
-  log: Logger,
-): Promise<MinedBoxResult | null>
 </file>
 
 <file path="src/app/(auth)/onboarding/literature-review/_services/_shared.ts">
@@ -901,6 +1144,82 @@ export function useDashboard(
 )
 </file>
 
+<file path="src/app/(auth)/onboarding/boxes/_services/foundational-oracle.ts">
+import {
+  ThinkingLevel,
+  Type,
+  createPartFromFunctionResponse,
+} from "@google/genai";
+import { getAi, retryOn503 } from "@/lib/gemini";
+import type { Logger } from "@/lib/logger";
+import type { GeminiThesisBox, FoundationalQuery } from "@/lib/types";
+import {
+  foundationalOracleResponseSchema,
+  buildFoundationalOracleSystemInstruction,
+  buildFoundationalOracleUserPrompt,
+} from "@/lib/prompts";
+⋮----
+interface ExaResult {
+  title: string;
+  url: string;
+  author?: string;
+  text?: string;
+  publishedDate?: string;
+}
+⋮----
+interface CrossrefResult {
+  doi: string | null;
+  publisher: string | null;
+  title: string | null;
+  author: string | null;
+  publicationYear: number | null;
+}
+⋮----
+function tokenize(text: string): string[]
+⋮----
+function calculateTitleScore(itemTitle: string, queryTitle: string): number
+⋮----
+function matchAuthor(
+  itemAuthorList: { given?: string; family?: string }[] | undefined,
+  queryAuthor: string,
+): boolean
+⋮----
+function extractYear(item: Record<string, unknown>): number | null
+⋮----
+function parseRetryAfter(header: string | null): number | null
+⋮----
+async function searchExa(query: string, log?: Logger): Promise<ExaResult[]>
+⋮----
+export async function lookupCrossref(
+  title: string,
+  author: string,
+): Promise<CrossrefResult>
+⋮----
+async function fetchWorks(
+    queryParam: string,
+    value: string,
+): Promise<Record<string, unknown>[]>
+⋮----
+interface MinedBoxResult {
+  flatIndex: number;
+  foundationalQuery: FoundationalQuery;
+}
+⋮----
+export async function processSingleBox(
+  box: GeminiThesisBox,
+  flatIndex: number,
+  thesisMatrix: {
+    studyTitle: string;
+    researchQuestion: string;
+    theoreticalFramework: string;
+    methodology: string;
+    researchScope: string;
+    mainClaim: string;
+  },
+  log: Logger,
+): Promise<MinedBoxResult | null>
+</file>
+
 <file path="src/app/(auth)/onboarding/literature-review/_services/openalex/client.ts">
 import { parseOpenAlexResults } from "./parser";
 import type { RawPaper } from "../literature-review-papers";
@@ -1045,16 +1364,9 @@ className=
 </file>
 
 <file path="src/lib/academic/badge-calculator.ts">
-import type { OverlapLevel } from "@/lib/types";
+import type { ThesisAxes, ThesisBadge } from "@/lib/types";
 ⋮----
-export type ThesisBadge = "IKIZ" | "SINIRDAS" | "OZGUN";
-⋮----
-export function calculateBadge(axes: {
-  subject: OverlapLevel;
-  theory: OverlapLevel;
-  methodology: OverlapLevel;
-  context?: OverlapLevel;
-}): ThesisBadge
+export function calculateBadge(axes: ThesisAxes): ThesisBadge
 </file>
 
 <file path="src/lib/tezara-queue.ts">
@@ -1124,6 +1436,25 @@ import { DashboardContent } from "./_components/dashboard-content";
 export default async function DashboardPage()
 </file>
 
+<file path="src/app/(app)/layout.tsx">
+import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import { getSessionWithOnboarding } from "@/session";
+import { Header } from "@/components/header";
+⋮----
+export default function AppLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>)
+⋮----
+async function AppLayoutInner({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>)
+</file>
+
 <file path="src/app/(auth)/onboarding/literature-review/_services/crossref/validator.ts">
 import { CROSSREF_USER_AGENT } from "../_shared";
 import type { ValidatedPaper } from "../literature-review-papers";
@@ -1175,6 +1506,41 @@ export async function resolveFoundationalWorks(
 // Extract only id and publisher from Crossref; lock LLM fields
 </file>
 
+<file path="src/app/(auth)/onboarding/risk/error.tsx">
+import { ErrorDisplay } from "@/components/error-display";
+⋮----
+export default function OnboardingRiskError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+reset: ()
+</file>
+
+<file path="src/app/(auth)/onboarding/risk/loading.tsx">
+import { LoadingSpinner } from "@/components/loading-spinner";
+⋮----
+export default function RiskLoading()
+</file>
+
+<file path="src/app/(auth)/layout.tsx">
+import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import { getSessionWithOnboarding } from "@/session";
+⋮----
+export default function AuthLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>)
+⋮----
+async function AuthLayoutInner({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>)
+</file>
+
 <file path="src/components/ui/badge.tsx">
 import { cva, type VariantProps } from "class-variance-authority";
 ⋮----
@@ -1202,6 +1568,128 @@ import { useTheme } from "next-themes";
 import { Toaster as Sonner } from "sonner";
 ⋮----
 type ToasterProps = React.ComponentProps<typeof Sonner>;
+</file>
+
+<file path="src/lib/error-utils.ts">
+export type ErrorScenario = "quota" | "network" | "system";
+⋮----
+export interface ErrorDisplay {
+  title: string;
+  description: string;
+  scenario: ErrorScenario;
+  canRetry: boolean;
+}
+⋮----
+export function classifyError(error: unknown): ErrorScenario
+⋮----
+export function getErrorDisplay(error: unknown): ErrorDisplay
+⋮----
+export function extractMessage(error: unknown): string
+</file>
+
+<file path="src/lib/tavily.ts">
+import type { Logger } from "./logger";
+⋮----
+export interface TavilySearchResult {
+  title: string;
+  url: string;
+  content: string;
+  score: number;
+  rawContent?: string;
+}
+⋮----
+export interface TavilySearchResponse {
+  query: string;
+  responseTime: number;
+  results: TavilySearchResult[];
+}
+⋮----
+export async function tavilySearch(
+  query: string,
+  logger?: Logger,
+): Promise<TavilySearchResponse>
+</file>
+
+<file path="src/lib/utils.ts">
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+⋮----
+export function cn(...inputs: ClassValue[])
+</file>
+
+<file path="src/app/(app)/library/page.tsx">
+import { eq, asc } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { db } from "@/db";
+import { thesisMatrices, thesisBoxes } from "@/db/schema";
+import { getSession } from "@/session";
+import { LibraryContent } from "./library-content";
+⋮----
+export default async function LibraryPage()
+</file>
+
+<file path="src/app/(auth)/login/page.tsx">
+import { useState, startTransition } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { toast } from "sonner";
+import { Eye, EyeOff, Lock, Mail, ShieldAlert } from "lucide-react";
+⋮----
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { loginAction, checkOnboardingStatus } from "./actions";
+⋮----
+export default function LoginPage()
+⋮----
+/**
+   * Form gönderimini yönetir.
+   * Server action'ı startTransition ile güvenli şekilde tetikler,
+   * sonucu toast bildirimi olarak gösterir.
+   * Başarılı giriş sonrası onboarding durumunu sorgulayarak
+   * uygun sayfaya yönlendirme yapar.
+   *
+   * @param e - Form submit olayı
+   */
+function handleSubmit(e: React.FormEvent<HTMLFormElement>)
+</file>
+
+<file path="src/app/(auth)/onboarding/_components/onboarding-content.tsx">
+import { LoadingOverlayProvider } from "@/components/providers/loading-overlay-provider";
+import { OnboardingGlobalLoader } from "@/components/onboarding-global-loader";
+import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
+</file>
+
+<file path="src/app/layout.tsx">
+import type { Metadata } from "next";
+import {
+  Space_Grotesk,
+  Outfit,
+  JetBrains_Mono,
+  Fredoka,
+} from "next/font/google";
+⋮----
+import QueryProvider from "@/components/providers/query-provider";
+import { Toaster } from "@/components/ui/sonner";
+⋮----
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>)
+</file>
+
+<file path="src/components/ui/textarea.tsx">
+import { cn } from "@/lib/utils";
+⋮----
+className=
 </file>
 
 <file path="src/lib/logger/formatter.ts">
@@ -1278,149 +1766,6 @@ export function buildSuffix(params?: LogParams): string
 export function renderDevLine(data: Record<string, unknown>): string
 </file>
 
-<file path="src/lib/error-utils.ts">
-export type ErrorScenario = "quota" | "network" | "system";
-⋮----
-export interface ErrorDisplay {
-  title: string;
-  description: string;
-  scenario: ErrorScenario;
-  canRetry: boolean;
-}
-⋮----
-export function classifyError(error: unknown): ErrorScenario
-⋮----
-export function getErrorDisplay(error: unknown): ErrorDisplay
-⋮----
-export function extractMessage(error: unknown): string
-</file>
-
-<file path="src/lib/tavily.ts">
-import type { Logger } from "./logger";
-⋮----
-export interface TavilySearchResult {
-  title: string;
-  url: string;
-  content: string;
-  score: number;
-  rawContent?: string;
-}
-⋮----
-export interface TavilySearchResponse {
-  query: string;
-  responseTime: number;
-  results: TavilySearchResult[];
-}
-⋮----
-export async function tavilySearch(
-  query: string,
-  logger?: Logger,
-): Promise<TavilySearchResponse>
-</file>
-
-<file path="src/lib/utils.ts">
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-⋮----
-export function cn(...inputs: ClassValue[])
-</file>
-
-<file path="src/app/(app)/library/page.tsx">
-import { eq, asc } from "drizzle-orm";
-import { redirect } from "next/navigation";
-import { db } from "@/db";
-import { thesisMatrices, thesisBoxes } from "@/db/schema";
-import { getSession } from "@/session";
-import { LibraryContent } from "./library-content";
-⋮----
-export default async function LibraryPage()
-</file>
-
-<file path="src/app/(app)/layout.tsx">
-import { Suspense } from "react";
-import { redirect } from "next/navigation";
-import { getSessionWithOnboarding } from "@/session";
-import { Header } from "@/components/header";
-⋮----
-export default function AppLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>)
-⋮----
-async function AppLayoutInner({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>)
-</file>
-
-<file path="src/app/(auth)/onboarding/_components/onboarding-content.tsx">
-import { LoadingOverlayProvider } from "@/components/providers/loading-overlay-provider";
-import { OnboardingGlobalLoader } from "@/components/onboarding-global-loader";
-import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
-</file>
-
-<file path="src/app/(auth)/onboarding/risk/error.tsx">
-import { ErrorDisplay } from "@/components/error-display";
-⋮----
-export default function OnboardingRiskError({
-  error,
-  reset,
-}: {
-  error: Error & { digest?: string };
-reset: ()
-</file>
-
-<file path="src/app/(auth)/onboarding/risk/loading.tsx">
-import { LoadingSpinner } from "@/components/loading-spinner";
-⋮----
-export default function RiskLoading()
-</file>
-
-<file path="src/app/(auth)/layout.tsx">
-import { Suspense } from "react";
-import { redirect } from "next/navigation";
-import { getSessionWithOnboarding } from "@/session";
-⋮----
-export default function AuthLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>)
-⋮----
-async function AuthLayoutInner({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>)
-</file>
-
-<file path="src/app/layout.tsx">
-import type { Metadata } from "next";
-import {
-  Space_Grotesk,
-  Outfit,
-  JetBrains_Mono,
-  Fredoka,
-} from "next/font/google";
-⋮----
-import QueryProvider from "@/components/providers/query-provider";
-import { Toaster } from "@/components/ui/sonner";
-⋮----
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>)
-</file>
-
-<file path="src/components/ui/textarea.tsx">
-import { cn } from "@/lib/utils";
-⋮----
-className=
-</file>
-
 <file path="src/lib/prompts/tavily-evaluation.ts">
 import type { JsonSchema } from "../gemini";
 ⋮----
@@ -1453,37 +1798,13 @@ export async function generateEmbeddings(
 ): Promise<number[][]>
 </file>
 
-<file path="src/app/(auth)/login/page.tsx">
-import { useState, startTransition } from "react";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { toast } from "sonner";
-import { Eye, EyeOff, Lock, Mail, ShieldAlert } from "lucide-react";
+<file path="src/app/(auth)/onboarding/matrix/page.tsx">
+import { redirect } from "next/navigation";
+import { getProfile } from "@/session";
+import { MatrixForm } from "./_components/matrix-form";
+import { StartOverButton } from "../_components/start-over-button";
 ⋮----
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { loginAction, checkOnboardingStatus } from "./actions";
-⋮----
-export default function LoginPage()
-⋮----
-/**
-   * Form gönderimini yönetir.
-   * Server action'ı startTransition ile güvenli şekilde tetikler,
-   * sonucu toast bildirimi olarak gösterir.
-   * Başarılı giriş sonrası onboarding durumunu sorgulayarak
-   * uygun sayfaya yönlendirme yapar.
-   *
-   * @param e - Form submit olayı
-   */
-function handleSubmit(e: React.FormEvent<HTMLFormElement>)
+export default async function OnboardingMatrixPage()
 </file>
 
 <file path="src/components/error-display.tsx">
@@ -1554,6 +1875,38 @@ export async function reopenOnboardingAction()
 export async function resetOnboardingAction()
 </file>
 
+<file path="src/app/(auth)/login/actions.ts">
+import { cookies } from "next/headers";
+import { eq } from "drizzle-orm";
+import { compare } from "bcrypt-ts";
+import { db } from "@/db";
+import { users } from "@/db/schema";
+import { getSession } from "@/session";
+import { createFlowId, Logger } from "@/lib/logger";
+import {
+  SESSION_COOKIE_NAME,
+  SESSION_MAX_AGE_SECONDS,
+  SESSION_ERROR_MSG,
+} from "@/lib/constants/session";
+⋮----
+export type LoginResult =
+  { success: true; error?: never } | { success?: never; error: string };
+⋮----
+export async function loginAction(
+  email: string,
+  password: string,
+): Promise<LoginResult>
+⋮----
+export type OnboardingStatusResult =
+  | {
+      onboardingCompleted: boolean;
+      error?: never;
+    }
+  | { onboardingCompleted?: never; error: string };
+⋮----
+export async function checkOnboardingStatus(): Promise<OnboardingStatusResult>
+</file>
+
 <file path="src/app/(auth)/onboarding/literature-review/_services/box-pipeline.ts">
 import { Logger } from "@/lib/logger";
 import type { SubBoxInput } from "./literature-review-papers";
@@ -1621,15 +1974,6 @@ export function mergePapers(papers: RawPaper[]): ValidatedPaper[]
 function ingest(raw: RawPaper): void
 </file>
 
-<file path="src/app/(auth)/onboarding/matrix/page.tsx">
-import { redirect } from "next/navigation";
-import { getProfile } from "@/session";
-import { MatrixForm } from "./_components/matrix-form";
-import { StartOverButton } from "../_components/start-over-button";
-⋮----
-export default async function OnboardingMatrixPage()
-</file>
-
 <file path="src/app/(auth)/onboarding/risk/_components/strategic-roadmap-section.tsx">
 import { Card, CardContent } from "@/components/ui/card";
 ⋮----
@@ -1655,38 +1999,6 @@ export function buildFactQueryPrompt(params: {
   methodology: string;
   researchScope: string;
 }): string
-</file>
-
-<file path="src/app/(auth)/login/actions.ts">
-import { cookies } from "next/headers";
-import { eq } from "drizzle-orm";
-import { compare } from "bcrypt-ts";
-import { db } from "@/db";
-import { users } from "@/db/schema";
-import { getSession } from "@/session";
-import { createFlowId, Logger } from "@/lib/logger";
-import {
-  SESSION_COOKIE_NAME,
-  SESSION_MAX_AGE_SECONDS,
-  SESSION_ERROR_MSG,
-} from "@/lib/constants/session";
-⋮----
-export type LoginResult =
-  { success: true; error?: never } | { success?: never; error: string };
-⋮----
-export async function loginAction(
-  email: string,
-  password: string,
-): Promise<LoginResult>
-⋮----
-export type OnboardingStatusResult =
-  | {
-      onboardingCompleted: boolean;
-      error?: never;
-    }
-  | { onboardingCompleted?: never; error: string };
-⋮----
-export async function checkOnboardingStatus(): Promise<OnboardingStatusResult>
 </file>
 
 <file path="src/app/(auth)/onboarding/boxes/page.tsx">
@@ -1782,6 +2094,15 @@ interface TavilyFactCheckTableProps {
 }
 </file>
 
+<file path="src/app/(auth)/onboarding/risk/page.tsx">
+import { redirect } from "next/navigation";
+import { getProfile } from "@/session";
+import { RiskContainer } from "./_components/risk-container";
+import { StartOverButton } from "../_components/start-over-button";
+⋮----
+export default async function OnboardingRiskPage()
+</file>
+
 <file path="src/app/(auth)/onboarding/layout.tsx">
 import { OnboardingStepper } from "./_components/onboarding-stepper";
 import { OnboardingContent } from "./_components/onboarding-content";
@@ -1807,26 +2128,17 @@ export default async function LiteratureReviewPage()
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_lib/constants.ts">
-import type { OverlapLevel, ThesisBadge } from "@/lib/types";
+import type { ThesisBadge } from "@/lib/types";
 ⋮----
 export const getBadgeColor = (key: ThesisBadge): string
 ⋮----
-export function getOverlapLevelColor(level: OverlapLevel): string
+export function getAxisSecimColor(secim: string): string
 ⋮----
-export function getOverlapLevelBarFill(level: OverlapLevel): string
-</file>
-
-<file path="src/app/(auth)/onboarding/risk/page.tsx">
-import { redirect } from "next/navigation";
-import { getProfile } from "@/session";
-import { RiskContainer } from "./_components/risk-container";
-import { StartOverButton } from "../_components/start-over-button";
-⋮----
-export default async function OnboardingRiskPage()
+export function getAxisSecimBarFill(secim: string): string
 </file>
 
 <file path="src/lib/prompts/roadmap-synthesis.ts">
-import type { OverlapLevel } from "../types";
+import type { ThesisAxes } from "../types";
 import type { JsonSchema } from "../gemini";
 ⋮----
 export function buildRoadmapSystemInstruction(): string
@@ -1842,12 +2154,7 @@ export function buildRoadmapPrompt(params: {
     title: string;
     author: string;
     year: number;
-    axes: {
-      subject: OverlapLevel;
-      theory: OverlapLevel;
-      methodology: OverlapLevel;
-      context?: OverlapLevel;
-    };
+    axes: ThesisAxes;
     comparisonNote: string;
   }[];
 }): string
@@ -1908,40 +2215,14 @@ interface MatrixInput {
 export function useOnboardingNavigation()
 </file>
 
-<file path="src/components/literature-reader.tsx">
-import { useCallback } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle, BookOpen, RefreshCw, Layers } from "lucide-react";
-import { toast } from "sonner";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-  getBoxResourcesAction,
-  toggleResourceReadStatusAction,
-} from "@/app/(app)/library/actions";
-import type {
-  GetBoxResourcesResult,
-  ToggleReadStatusResult,
-} from "@/app/(app)/library/actions";
+<file path="src/app/(auth)/onboarding/page.tsx">
+import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
+import { getProfile } from "@/session";
 ⋮----
-interface LiteratureReaderProps {
-  boxId: number;
-  boxTitle: string;
-  boxType?: string | null;
-}
-⋮----
-type ReaderStatus = "loading" | "error" | "reading" | "all-read";
-⋮----
-const BOX_KEY = (boxId: number)
-⋮----
-export function LiteratureReader({
-  boxId,
-  boxTitle,
-  boxType,
-}: LiteratureReaderProps)
+export default async function OnboardingPage()
 </file>
 
 <file path="src/components/onboarding-global-loader.tsx">
@@ -1979,56 +2260,40 @@ export async function toggleResourceReadStatusAction(
 ): Promise<ToggleReadStatusResult>
 </file>
 
-<file path="src/app/(auth)/onboarding/page.tsx">
-import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
-import { getProfile } from "@/session";
-⋮----
-export default async function OnboardingPage()
-</file>
-
-<file path="src/app/(auth)/onboarding/_lib/fetch-actions.ts">
-import { eq, sql, and, not } from "drizzle-orm";
-import { cacheLife, cacheTag } from "next/cache";
-import { db } from "@/db";
+<file path="src/components/literature-reader.tsx">
+import { useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { CheckCircle, BookOpen, RefreshCw, Layers } from "lucide-react";
+import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
-  thesisMatrices,
-  originalityReports,
-  thesisBoxes,
-  libraryResources,
-} from "@/db/schema";
-import type { GeminiThesisBox } from "@/lib/types";
-import { getSession } from "@/session";
-import { calculateBadge } from "@/lib/academic/badge-calculator";
+  getBoxResourcesAction,
+  toggleResourceReadStatusAction,
+} from "@/app/(app)/library/actions";
+import type {
+  GetBoxResourcesResult,
+  ToggleReadStatusResult,
+} from "@/app/(app)/library/actions";
 ⋮----
-async function getCachedThesisMatrix(userId: number)
+interface LiteratureReaderProps {
+  boxId: number;
+  boxTitle: string;
+  boxType?: string | null;
+}
 ⋮----
-async function getCachedOriginalityReport(userId: number)
+type ReaderStatus = "loading" | "error" | "reading" | "all-read";
 ⋮----
-async function getCachedBoxes(thesisMatrixId: number)
+const BOX_KEY = (boxId: number)
 ⋮----
-export async function fetchThesisMatrix()
-⋮----
-export async function fetchOriginalityReport()
-⋮----
-export async function fetchBoxes()
-⋮----
-export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]>
-⋮----
-/**
- * Server Action: checks which onboarding steps have existing data in the database
- * for the current user. Used by the stepper to determine which future steps are
- * clickable (steps with data can be re-visited even if they appear in the future).
- *
- * @returns A record of step key → boolean, or null if no session
- */
-export async function checkStepsDataAction(): Promise<Record<
-  string,
-  boolean
-> | null> {
-  const session = await getSession();
+export function LiteratureReader({
+  boxId,
+  boxTitle,
+  boxType,
+}: LiteratureReaderProps)
 </file>
 
 <file path="src/app/(auth)/onboarding/literature-review/_components/literature-article-card.tsx">
@@ -2076,6 +2341,34 @@ export async function evaluateTavilyResults(
 ): Promise<TavilyEvaluationResponse>
 </file>
 
+<file path="src/app/(auth)/onboarding/actions.ts">
+import { eq, inArray } from "drizzle-orm";
+import { db } from "@/db";
+import {
+  thesisMatrices,
+  originalityReports,
+  users,
+  thesisBoxes,
+  libraryResources,
+} from "@/db/schema";
+import { getSession } from "@/session";
+import { createFlowId, Logger } from "@/lib/logger";
+import { SESSION_ERROR_MSG } from "@/lib/constants/session";
+import {
+  revalidateOnboardingPaths,
+  invalidateOnboardingCache,
+} from "@/lib/cache-tags";
+⋮----
+export async function resetOnboardingAction(): Promise<
+  { success: boolean } | { error: string }
+> {
+  const flowId = createFlowId();
+⋮----
+export async function clearDownstreamDbAction(
+  fromStep: "matrix" | "risk" | "boxes",
+): Promise<
+</file>
+
 <file path="src/lib/prompts/index.ts">
 
 </file>
@@ -2088,6 +2381,77 @@ import { cn } from "@/lib/utils";
 import { checkStepsDataAction } from "../_lib/fetch-actions";
 ⋮----
 className=
+</file>
+
+<file path="src/app/(auth)/onboarding/_lib/fetch-actions.ts">
+import { eq, sql, and, not } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
+import { db } from "@/db";
+import {
+  thesisMatrices,
+  originalityReports,
+  thesisBoxes,
+  libraryResources,
+} from "@/db/schema";
+import type { GeminiThesisBox } from "@/lib/types";
+import { getSession } from "@/session";
+import { calculateBadge } from "@/lib/academic/badge-calculator";
+⋮----
+async function getCachedThesisMatrix(userId: number)
+⋮----
+async function getCachedOriginalityReport(userId: number)
+⋮----
+async function getCachedBoxes(thesisMatrixId: number)
+⋮----
+export async function fetchThesisMatrix()
+⋮----
+export async function fetchOriginalityReport()
+⋮----
+export async function fetchBoxes()
+⋮----
+export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]>
+⋮----
+/**
+ * Server Action: checks which onboarding steps have existing data in the database
+ * for the current user. Used by the stepper to determine which future steps are
+ * clickable (steps with data can be re-visited even if they appear in the future).
+ *
+ * @returns A record of step key → boolean, or null if no session
+ */
+export async function checkStepsDataAction(): Promise<Record<
+  string,
+  boolean
+> | null> {
+  const session = await getSession();
+</file>
+
+<file path="src/app/(auth)/onboarding/_components/start-over-button.tsx">
+import { useState, useTransition } from "react";
+import { RotateCcw, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { resetOnboardingAction } from "@/app/(auth)/onboarding/actions";
+⋮----
+interface StartOverButtonProps {
+  variant?:
+    "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  size?: "default" | "sm" | "lg" | "icon";
+  className?: string;
+}
+⋮----
+const handleReset = () =>
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_services/queries.ts">
@@ -2132,63 +2496,6 @@ export async function extractQueries(
 // Signature compatibility: map first word of each query as keywords
 </file>
 
-<file path="src/app/(auth)/onboarding/actions.ts">
-import { eq, inArray } from "drizzle-orm";
-import { db } from "@/db";
-import {
-  thesisMatrices,
-  originalityReports,
-  users,
-  thesisBoxes,
-  libraryResources,
-} from "@/db/schema";
-import { getSession } from "@/session";
-import { createFlowId, Logger } from "@/lib/logger";
-import { SESSION_ERROR_MSG } from "@/lib/constants/session";
-import {
-  revalidateOnboardingPaths,
-  invalidateOnboardingCache,
-} from "@/lib/cache-tags";
-⋮----
-export async function resetOnboardingAction(): Promise<
-  { success: boolean } | { error: string }
-> {
-  const flowId = createFlowId();
-⋮----
-export async function clearDownstreamDbAction(
-  fromStep: "matrix" | "risk" | "boxes",
-): Promise<
-</file>
-
-<file path="src/app/(auth)/onboarding/_components/start-over-button.tsx">
-import { useState, useTransition } from "react";
-import { RotateCcw, Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { resetOnboardingAction } from "@/app/(auth)/onboarding/actions";
-⋮----
-interface StartOverButtonProps {
-  variant?:
-    "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
-  size?: "default" | "sm" | "lg" | "icon";
-  className?: string;
-}
-⋮----
-const handleReset = () =>
-</file>
-
 <file path="src/lib/tezara.ts">
 import type { Logger } from "./logger";
 import type { TezaraThesisSummary, TezaraThesisDetails } from "./types";
@@ -2219,19 +2526,10 @@ export async function fetchThesisDetails(
 ): Promise<TezaraThesisDetails | null>
 </file>
 
-<file path="src/app/(auth)/onboarding/risk/_components/risk-container.tsx">
-import { Loader2, ShieldCheck } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { LoadingSpinner } from "@/components/loading-spinner";
-import { ErrorDisplay } from "@/components/error-display";
-import { OriginalityReportView } from "./originality-report-view";
-import { useRiskAnalysis } from "../_hooks/use-risk-analysis";
-</file>
-
 <file path="src/app/(auth)/onboarding/risk/_services/roadmap.ts">
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
-import type { OverlapLevel } from "@/lib/types";
+import type { ThesisAxes } from "@/lib/types";
 import type { Logger } from "@/lib/logger";
 import {
   roadmapSchema,
@@ -2250,12 +2548,7 @@ export interface SynthesizeRoadmapParams {
     title: string;
     author: string;
     year: number;
-    axes: {
-      subject: OverlapLevel;
-      theory: OverlapLevel;
-      methodology: OverlapLevel;
-      context?: OverlapLevel;
-    };
+    axes: ThesisAxes;
     comparisonNote: string;
   }[];
 }
@@ -2264,6 +2557,48 @@ export async function synthesizeRoadmap(
   params: SynthesizeRoadmapParams,
   log: Logger,
 ): Promise<string>
+</file>
+
+<file path="src/app/(auth)/onboarding/risk/_components/risk-container.tsx">
+import { Loader2, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/loading-spinner";
+import { ErrorDisplay } from "@/components/error-display";
+import { OriginalityReportView } from "./originality-report-view";
+import { useRiskAnalysis } from "../_hooks/use-risk-analysis";
+</file>
+
+<file path="src/app/(auth)/onboarding/risk/_components/tezara-overlap-table.tsx">
+import { useMemo, useState, Fragment } from "react";
+import { GitCompare, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
+import { compareThesesByRisk } from "../_services/analysis";
+import {
+  AXIS_SECIM_LABELS,
+  getAxisSecimColor,
+  THESIS_BADGE_LABELS,
+  THESIS_BADGE_COLORS,
+} from "../_lib/constants";
+import { calculateBadge } from "@/lib/academic/badge-calculator";
+import type { OriginalityReportData } from "@/lib/types";
+⋮----
+type OverlapRow =
+  OriginalityReportData["tezaraResults"]["overlapTable"][number];
+⋮----
+interface TezaraOverlapTableProps {
+  overlapTable: OriginalityReportData["tezaraResults"]["overlapTable"];
+  strategicRecommendations: string;
+}
+⋮----
+function AxisCell(
+⋮----
+setExpandedThesisId(
 </file>
 
 <file path="src/lib/prompts/originality-analysis.ts">
@@ -2291,37 +2626,34 @@ export function buildAnalysisPrompt(params: {
 }): string
 </file>
 
-<file path="src/app/(auth)/onboarding/risk/_components/tezara-overlap-table.tsx">
-import { useMemo, useState, Fragment } from "react";
-import { GitCompare, ChevronDown, ChevronRight } from "lucide-react";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
-import { compareThesesByRisk } from "../_services/analysis";
-import {
-  OVERLAP_LEVEL_LABELS,
-  getOverlapLevelColor,
-  THESIS_BADGE_LABELS,
-  THESIS_BADGE_COLORS,
-} from "../_lib/constants";
-import { calculateBadge } from "@/lib/academic/badge-calculator";
-import type { OriginalityReportData, OverlapLevel } from "@/lib/types";
+<file path="src/app/(auth)/onboarding/matrix/actions.ts">
+import { eq, sql } from "drizzle-orm";
+import { db } from "@/db";
+import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
+import { getSession } from "@/session";
+import { SESSION_ERROR_MSG } from "@/lib/constants/session";
+import { createFlowId, Logger } from "@/lib/logger";
+import { invalidateOnboardingCache } from "@/lib/cache-tags";
+import type { OnboardingFormData } from "@/lib/types";
 ⋮----
-type OverlapRow =
-  OriginalityReportData["tezaraResults"]["overlapTable"][number];
+type ValidationResult =
+  { valid: true; value: string } | { valid: false; error: string };
 ⋮----
-interface TezaraOverlapTableProps {
-  overlapTable: OriginalityReportData["tezaraResults"]["overlapTable"];
-  strategicRecommendations: string;
-}
+function validateField(
+  value: string | undefined,
+  label: string,
+): ValidationResult
 ⋮----
-function AxisCell(
-⋮----
-setExpandedThesisId(
+/**
+ * Persists the thesis matrix to the database and clears any downstream analysis
+ * data (originality reports and thesis boxes) that may now be stale.
+ *
+ * @param data - The thesis matrix data from the onboarding form
+ * @returns Success confirmation or an error message
+ */
+export async function saveThesisMatrixAction(
+  data: OnboardingFormData,
+): Promise<
 </file>
 
 <file path="package.json">
@@ -2383,36 +2715,6 @@ setExpandedThesisId(
     "typescript": "^5.8.3"
   }
 }
-</file>
-
-<file path="src/app/(auth)/onboarding/matrix/actions.ts">
-import { eq, sql } from "drizzle-orm";
-import { db } from "@/db";
-import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
-import { getSession } from "@/session";
-import { SESSION_ERROR_MSG } from "@/lib/constants/session";
-import { createFlowId, Logger } from "@/lib/logger";
-import { invalidateOnboardingCache } from "@/lib/cache-tags";
-import type { OnboardingFormData } from "@/lib/types";
-⋮----
-type ValidationResult =
-  { valid: true; value: string } | { valid: false; error: string };
-⋮----
-function validateField(
-  value: string | undefined,
-  label: string,
-): ValidationResult
-⋮----
-/**
- * Persists the thesis matrix to the database and clears any downstream analysis
- * data (originality reports and thesis boxes) that may now be stale.
- *
- * @param data - The thesis matrix data from the onboarding form
- * @returns Success confirmation or an error message
- */
-export async function saveThesisMatrixAction(
-  data: OnboardingFormData,
-): Promise<
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_components/originality-report-view.tsx">
@@ -2514,106 +2816,6 @@ export async function generateStructuredContent<T>(
 ): Promise<T>
 </file>
 
-<file path="src/app/(auth)/onboarding/risk/_services/analysis.ts">
-import { ThinkingLevel } from "@google/genai";
-import { generateStructuredContent } from "@/lib/gemini";
-import type { Logger } from "@/lib/logger";
-import type {
-  OverlapLevel,
-  TezaraThesisDetails,
-  ThesisBadge,
-} from "@/lib/types";
-import { calculateBadge } from "@/lib/academic/badge-calculator";
-import {
-  geminiAnalysisSchema,
-  buildAnalysisSystemInstruction,
-  buildAnalysisPrompt,
-} from "@/lib/prompts";
-⋮----
-export interface AnalyzeOriginalityRiskParams {
-  studyTitle: string;
-  researchQuestion: string;
-  mainClaim: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-  validDetails: TezaraThesisDetails[];
-}
-⋮----
-export interface GeminiOverlapItem {
-  id: number;
-  comparisonNote: string;
-  subject: OverlapLevel;
-  context: OverlapLevel;
-  theory: OverlapLevel;
-  methodology: OverlapLevel;
-}
-⋮----
-export interface CalculatedOverlapItem {
-  id: number;
-  title: string;
-  author: string;
-  university: string;
-  year: number;
-  thesisType: string;
-  department: string;
-  comparisonNote?: string;
-  yokPdfUrl?: string;
-  axes: {
-    subject: OverlapLevel;
-    theory: OverlapLevel;
-    methodology: OverlapLevel;
-    context: OverlapLevel;
-  };
-}
-⋮----
-export interface CalculatedOriginalityRiskResult {
-  originalityBadge: ThesisBadge;
-  overlapTable: CalculatedOverlapItem[];
-  eliminatedTheses: CalculatedOverlapItem[];
-}
-⋮----
-export function getThesisMaxLevel(axes: {
-  subject: OverlapLevel;
-  theory: OverlapLevel;
-  methodology: OverlapLevel;
-  context?: OverlapLevel;
-}): OverlapLevel
-⋮----
-function getThesisSecondMaxLevel(axes: {
-  subject: OverlapLevel;
-  theory: OverlapLevel;
-  methodology: OverlapLevel;
-  context?: OverlapLevel;
-}): OverlapLevel
-⋮----
-interface AxesWithOptionalContext {
-  subject: OverlapLevel;
-  theory: OverlapLevel;
-  methodology: OverlapLevel;
-  context?: OverlapLevel;
-}
-⋮----
-export function compareThesesByRisk(
-  a: { axes: AxesWithOptionalContext; thesisType: string; year: number },
-  b: { axes: AxesWithOptionalContext; thesisType: string; year: number },
-): number
-⋮----
-function evaluateGlobalBadge(overlapTable: CalculatedOverlapItem[]):
-⋮----
-export function calculateOriginalityRisk(
-  overlapTable: GeminiOverlapItem[],
-  validDetails: TezaraThesisDetails[],
-  logger?: Logger,
-): CalculatedOriginalityRiskResult
-⋮----
-export async function analyzeOriginalityRisk(
-  params: AnalyzeOriginalityRiskParams,
-  log: Logger,
-  chunkSize = 4,
-): Promise<
-</file>
-
 <file path="src/app/(auth)/onboarding/risk/_services/sifting.ts">
 import { fetchThesisDetails } from "@/lib/tezara";
 import type { Logger } from "@/lib/logger";
@@ -2645,36 +2847,8 @@ export async function siftAndFetchDetails(
 ): Promise<
 </file>
 
-<file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">
-import { useState } from "react";
-import { Loader2, AlertCircle, BookOpen, Archive, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { AIBanner } from "@/components/ai-banner";
-import { LoadingSpinner } from "@/components/loading-spinner";
-import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
-import { LiteratureArticleCard } from "./literature-article-card";
-import {
-  useLiteratureReview,
-  type BoxStatus,
-} from "../_hooks/use-literature-review";
-⋮----
-function ArchiveEntryForm({
-  onAddEntry,
-}: {
-onAddEntry: (title: string, description: string)
-⋮----
-const handleAdd = () =>
-⋮----
-onChange=
-⋮----
-onAddArchiveEntry(subBox.title,
-</file>
-
 <file path="src/app/(auth)/onboarding/matrix/_components/matrix-form.tsx">
-import { useState, useEffect } from "react";
+import { useState, useEffect, useReducer } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -2727,9 +2901,6 @@ type SectionConfig = {
 };
 ⋮----
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
-⋮----
-// Purge downstream data before anything else so the risk page
-// does not see stale reports and skip re-analysis.
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_hooks/use-risk-analysis.ts">
@@ -2755,59 +2926,105 @@ export interface UseRiskAnalysisResult {
 export function useRiskAnalysis(): UseRiskAnalysisResult
 </file>
 
-<file path="src/lib/prompts/box-generation.ts">
-import type { JsonSchema } from "../gemini";
+<file path="src/app/(auth)/onboarding/risk/_services/analysis.ts">
+import { ThinkingLevel } from "@google/genai";
+import { generateStructuredContent } from "@/lib/gemini";
+import type { Logger } from "@/lib/logger";
+import type { TezaraThesisDetails, ThesisBadge, ThesisAxes } from "@/lib/types";
+import { calculateBadge } from "@/lib/academic/badge-calculator";
+import {
+  geminiAnalysisSchema,
+  buildAnalysisSystemInstruction,
+  buildAnalysisPrompt,
+} from "@/lib/prompts";
 ⋮----
-export function buildThesisBoxGenerationSystemInstruction(): string
-⋮----
-export function buildThesisBoxGenerationPrompt(params: {
+export interface AnalyzeOriginalityRiskParams {
   studyTitle: string;
   researchQuestion: string;
   mainClaim: string;
   theoreticalFramework: string;
   methodology: string;
   researchScope: string;
-}): string
-</file>
-
-<file path="src/app/(auth)/onboarding/literature-review/_hooks/use-literature-review.ts">
-import { useMemo, useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
-import type { LoadingStep } from "@/components/providers/loading-overlay-provider";
-import type {
-  GeminiThesisBox,
-  LiteraturePoolEntry,
-  JuryArticle,
-} from "@/lib/types";
-import { processAllBoxesAction, confirmLiteratureAction } from "../actions";
-import { fetchBoxesWithFullShape } from "../../_lib/fetch-actions";
-import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
-⋮----
-export type BoxStatus = "idle" | "loading" | "done" | "error";
-⋮----
-export interface UseLiteratureReviewResult {
-  subBoxes: GeminiThesisBox[];
-  loading: boolean;
-  processing: boolean;
-  confirming: boolean;
-  boxStatuses: Record<string, BoxStatus>;
-  boxErrors: Record<string, string>;
-  allProcessed: boolean;
-  literaturePool: LiteraturePoolEntry[];
-  archivalBoxes: Set<string>;
-  addArchiveEntry: (
-    subBoxTitle: string,
-    entry: { title: string; description?: string },
-  ) => void;
-  handleFinalize: () => Promise<void>;
+  validDetails: TezaraThesisDetails[];
 }
 ⋮----
-export function useLiteratureReview(): UseLiteratureReviewResult
+export interface GeminiOverlapItem {
+  id: number;
+  problem_sinirlari: { gerekce: string; secim: string };
+  teorik_perspektif: { gerekce: string; secim: string };
+  metodolojik_kurgu: { gerekce: string; secim: string };
+  zaman_mekan_ozgullugu: { gerekce: string; secim: string };
+}
 ⋮----
-const isArchival = (box: GeminiThesisBox): boolean
+export interface CalculatedOverlapItem {
+  id: number;
+  title: string;
+  author: string;
+  university: string;
+  year: number;
+  thesisType: string;
+  department: string;
+  comparisonNote?: string;
+  yokPdfUrl?: string;
+  axes: ThesisAxes;
+}
+⋮----
+export interface CalculatedOriginalityRiskResult {
+  originalityBadge: ThesisBadge;
+  overlapTable: CalculatedOverlapItem[];
+  eliminatedTheses: CalculatedOverlapItem[];
+}
+⋮----
+function getAxesTotalScore(axes: ThesisAxes): number
+⋮----
+export function compareThesesByRisk(
+  a: { axes: ThesisAxes; thesisType: string; year: number },
+  b: { axes: ThesisAxes; thesisType: string; year: number },
+): number
+⋮----
+function evaluateGlobalBadge(
+  overlapTable: CalculatedOverlapItem[],
+): ThesisBadge
+⋮----
+export function calculateOriginalityRisk(
+  overlapTable: GeminiOverlapItem[],
+  validDetails: TezaraThesisDetails[],
+  logger?: Logger,
+): CalculatedOriginalityRiskResult
+⋮----
+export async function analyzeOriginalityRisk(
+  params: AnalyzeOriginalityRiskParams,
+  log: Logger,
+  chunkSize = 4,
+): Promise<
+</file>
+
+<file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">
+import { useState } from "react";
+import { Loader2, AlertCircle, BookOpen, Archive, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { AIBanner } from "@/components/ai-banner";
+import { LoadingSpinner } from "@/components/loading-spinner";
+import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
+import { LiteratureArticleCard } from "./literature-article-card";
+import {
+  useLiteratureReview,
+  type BoxStatus,
+} from "../_hooks/use-literature-review";
+⋮----
+function ArchiveEntryForm({
+  onAddEntry,
+}: {
+onAddEntry: (title: string, description: string)
+⋮----
+const handleAdd = () =>
+⋮----
+onChange=
+⋮----
+onAddArchiveEntry(subBox.title,
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/actions.ts">
@@ -2898,8 +3115,63 @@ export async function finalizeJuryAnalysisAction(params: {
 export async function completeRiskStageAction(): Promise<OnboardingActionResult>
 </file>
 
+<file path="src/lib/prompts/box-generation.ts">
+import type { JsonSchema } from "../gemini";
+⋮----
+export function buildThesisBoxGenerationSystemInstruction(): string
+⋮----
+export function buildThesisBoxGenerationPrompt(params: {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+}): string
+</file>
+
+<file path="src/app/(auth)/onboarding/literature-review/_hooks/use-literature-review.ts">
+import { useMemo, useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
+import type { LoadingStep } from "@/components/providers/loading-overlay-provider";
+import type {
+  GeminiThesisBox,
+  LiteraturePoolEntry,
+  JuryArticle,
+} from "@/lib/types";
+import { processAllBoxesAction, confirmLiteratureAction } from "../actions";
+import { fetchBoxesWithFullShape } from "../../_lib/fetch-actions";
+import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
+⋮----
+export type BoxStatus = "idle" | "loading" | "done" | "error";
+⋮----
+export interface UseLiteratureReviewResult {
+  subBoxes: GeminiThesisBox[];
+  loading: boolean;
+  processing: boolean;
+  confirming: boolean;
+  boxStatuses: Record<string, BoxStatus>;
+  boxErrors: Record<string, string>;
+  allProcessed: boolean;
+  literaturePool: LiteraturePoolEntry[];
+  archivalBoxes: Set<string>;
+  addArchiveEntry: (
+    subBoxTitle: string,
+    entry: { title: string; description?: string },
+  ) => void;
+  handleFinalize: () => Promise<void>;
+}
+⋮----
+export function useLiteratureReview(): UseLiteratureReviewResult
+⋮----
+const isArchival = (box: GeminiThesisBox): boolean
+</file>
+
 <file path="src/db/schema.ts">
-import type { OverlapLevel } from "@/lib/types";
+import type { ThesisAxes, ThesisBadge } from "@/lib/types";
 import {
   pgTable,
   serial,
@@ -3105,16 +3377,30 @@ export async function confirmBoxesAction(
 
 <file path="src/lib/types.ts">
 import { z } from "zod";
-import type { ThesisBadge as ThesisBadgeOrig } from "@/lib/academic/badge-calculator";
-export type ThesisBadge = ThesisBadgeOrig;
+⋮----
+export type ThesisBadge =
+  | "İKİZ TEZ"
+  | "SAVUNMA RİSKİ"
+  | "TEORİ KAYNAĞI"
+  | "YÖNTEM KAYNAĞI"
+  | "BAĞLAM KAYNAĞI"
+  | "ÖZGÜN";
+⋮----
+export interface AxisDecision {
+  gerekce: string;
+  secim: string;
+}
+⋮----
+export interface ThesisAxes {
+  problem_sinirlari: AxisDecision;
+  teorik_perspektif: AxisDecision;
+  metodolojik_kurgu: AxisDecision;
+  zaman_mekan_ozgullugu: AxisDecision;
+}
 ⋮----
 export type OnboardingActionResult =
   | { success: true; isProcessing?: boolean; error?: never }
   | { success?: never; error: string };
-⋮----
-export type OverlapLevel = "KRITIK" | "ORTA" | "OZGUN";
-⋮----
-export type AxesOption = "BIREBIR" | "KAPSAYAN" | "TEGET" | "ALAKASIZ";
 ⋮----
 export interface TezaraThesisSummary {
   id: number;
@@ -3143,15 +3429,6 @@ export interface QueryExtractionResponse {
   keywords: string[];
 }
 ⋮----
-export interface DeepSiftEntry {
-  id: number;
-  positioning: AxesOption;
-}
-⋮----
-export interface DeepSiftResponse {
-  selectedTheses: DeepSiftEntry[];
-}
-⋮----
 export interface TavilyEvaluationFact {
   fact: string;
   result: "VERIFIED" | "PARTIALLY_VERIFIED" | "REFUTED";
@@ -3173,12 +3450,7 @@ export interface OriginalityReportData {
     originalityBadge: ThesisBadge;
     overlapTable: {
       id: number;
-      axes: {
-        subject: OverlapLevel;
-        theory: OverlapLevel;
-        methodology: OverlapLevel;
-        context?: OverlapLevel;
-      };
+      axes: ThesisAxes;
       comparisonNote?: string;
       yokPdfUrl?: string;
       title: string;
@@ -3219,12 +3491,7 @@ export interface JuryReportItem {
   year: number;
   thesisType: string;
   department: string;
-  axes: {
-    subject: OverlapLevel;
-    theory: OverlapLevel;
-    methodology: OverlapLevel;
-    context?: OverlapLevel;
-  };
+  axes: ThesisAxes;
   comparisonNote?: string;
   yokPdfUrl?: string;
 }
@@ -3246,12 +3513,7 @@ export interface RelatedThesisEntry {
   year: number;
   thesisType: string;
   department: string;
-  axes: {
-    subject: OverlapLevel;
-    theory: OverlapLevel;
-    methodology: OverlapLevel;
-    context?: OverlapLevel;
-  };
+  axes: ThesisAxes;
   comparisonNote?: string;
   yokPdfUrl?: string;
 }

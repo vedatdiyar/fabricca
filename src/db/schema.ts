@@ -1,4 +1,4 @@
-import type { OverlapLevel } from "@/lib/types";
+import type { ThesisAxes, ThesisBadge } from "@/lib/types";
 import {
   pgTable,
   serial,
@@ -87,7 +87,7 @@ export const originalityReports = pgTable("originality_reports", {
     .notNull(),
   tezaraResults: jsonb()
     .$type<{
-      originalityBadge: "IKIZ" | "SINIRDAS" | "OZGUN";
+      originalityBadge: ThesisBadge;
       overlapTable: {
         id: number;
         title: string;
@@ -96,12 +96,7 @@ export const originalityReports = pgTable("originality_reports", {
         year: number;
         thesisType: string;
         department: string;
-        axes: {
-          subject: OverlapLevel;
-          theory: OverlapLevel;
-          methodology: OverlapLevel;
-          context?: OverlapLevel;
-        };
+        axes: ThesisAxes;
         comparisonNote?: string;
         yokPdfUrl?: string;
       }[];

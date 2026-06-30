@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useReducer } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -146,7 +146,17 @@ export function MatrixForm() {
     mainClaim: "",
   });
   const [isPending, setIsPending] = useState(false);
-  const [loading, setLoading] = useState(true);
+
+  const [loadState, dispatch] = useReducer(
+    (_state: { loading: boolean }, action: { type: "done" | "error" }) => {
+      switch (action.type) {
+        case "done":
+        case "error":
+          return { loading: false };
+      }
+    },
+    { loading: true },
+  );
 
   const { isLoading, hideLoading } = useLoadingOverlay();
 
@@ -155,7 +165,6 @@ export function MatrixForm() {
     fetchThesisMatrix()
       .then((matrix) => {
         if (cancelled) return;
-        setIsPending(false);
         if (matrix) {
           setFormState({
             studyTitle: matrix.studyTitle,
@@ -166,12 +175,11 @@ export function MatrixForm() {
             mainClaim: matrix.mainClaim,
           });
         }
-        setLoading(false);
+        dispatch({ type: "done" });
       })
       .catch((err) => {
         if (cancelled) return;
-        setIsPending(false);
-        setLoading(false);
+        dispatch({ type: "error" });
         const display = getErrorDisplay(err);
         toast.error(`${display.title}: ${display.description}`);
       });
@@ -222,7 +230,7 @@ export function MatrixForm() {
     }
   };
 
-  if (loading) {
+  if (loadState.loading) {
     return <LoadingSpinner variant="card" />;
   }
 

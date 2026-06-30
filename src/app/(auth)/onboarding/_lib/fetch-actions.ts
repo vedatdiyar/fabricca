@@ -166,7 +166,7 @@ export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
 
     if (b.boxType === "RELATED_THESES" && overlapTable.length > 0) {
       box.relatedTheses = overlapTable.map((t) => {
-        const isIkiz = calculateBadge(t.axes) === "IKIZ";
+        const isIkiz = calculateBadge(t.axes) === "İKİZ TEZ";
         const note = t.comparisonNote || "";
         return {
           title: t.title,

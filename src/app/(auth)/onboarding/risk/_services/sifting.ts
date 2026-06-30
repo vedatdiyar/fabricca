@@ -136,7 +136,9 @@ export async function siftAndFetchDetails(
 
       // Sort descending by relevance score, with ID-based tie-breaker
       // for FP16 micro-fluctuations below 0.001
+      const MIN_SCORE = 0.59;
       const topResults = results
+        .filter((r) => r.relevanceScore >= MIN_SCORE)
         .sort((a, b) => {
           const scoreDiff = b.relevanceScore - a.relevanceScore;
           if (Math.abs(scoreDiff) < 0.001) {

@@ -1,33 +1,42 @@
-import type { OverlapLevel } from "@/lib/types";
+import type { ThesisAxes, ThesisBadge } from "@/lib/types";
 
-export type ThesisBadge = "IKIZ" | "SINIRDAS" | "OZGUN";
+/**
+ * Calculates the originality/risk badge for a comparative thesis based on its 4 axes.
+ *
+ * @param axes - The 4-axis decision data for the thesis
+ * @returns The calculated ThesisBadge string
+ */
+export function calculateBadge(axes: ThesisAxes): ThesisBadge {
+  const p = axes.problem_sinirlari.secim;
+  const t = axes.teorik_perspektif.secim;
+  const m = axes.metodolojik_kurgu.secim;
+  const z = axes.zaman_mekan_ozgullugu.secim;
 
-export function calculateBadge(axes: {
-  subject: OverlapLevel;
-  theory: OverlapLevel;
-  methodology: OverlapLevel;
-  context?: OverlapLevel;
-}): ThesisBadge {
-  const s = axes.subject;
-  const c = axes.context ?? "OZGUN";
-  const t = axes.theory;
-  const m = axes.methodology;
-
-  // 1. EĞER (Subject === KRITIK ve Context === KRITIK) VE (Theory === KRITIK veya Methodology === KRITIK) ise -> IKIZ
-  if (s === "KRITIK" && c === "KRITIK" && (t === "KRITIK" || m === "KRITIK")) {
-    return "IKIZ";
+  // 🔴 1. SEVIYE: MUTLAK RISK (İKİZ TEZ)
+  if (p === "BİREBİR" && t === "AYNI GÖZLÜK" && z === "AYNI DOKU") {
+    return "İKİZ TEZ";
   }
 
-  // 2. EĞER (Subject === KRITIK ve Context === KRITIK) ise -> SINIRDAS
-  if (s === "KRITIK" && c === "KRITIK") {
-    return "SINIRDAS";
+  // 🟡 2. SEVIYE: SARTLI RISK (SAVUNMA RİSKİ)
+  if (p === "BİREBİR" || p === "GENİŞLETİLMİŞ KONU") {
+    if (z === "AYNI DOKU" || z === "PARALEL BAĞLAM") {
+      return "SAVUNMA RİSKİ";
+    }
   }
 
-  // 3. EĞER (Subject === KRITIK veya Context === KRITIK) VE (Subject === ORTA veya Context === ORTA) ise -> SINIRDAS
-  if ((s === "KRITIK" || c === "KRITIK") && (s === "ORTA" || c === "ORTA")) {
-    return "SINIRDAS";
+  // 🟢 3. SEVIYE: DOGRUDAN FAYDA (REHBER / YAKIT ALANI)
+  if (p === "ALAKASIZ") {
+    if (t === "AYNI GÖZLÜK" || t === "EVRİLMİŞ TEORİ") {
+      return "TEORİ KAYNAĞI";
+    }
+    if (t === "FARKLI GÖZLÜK" && m === "BİREBİR YÖNTEM") {
+      return "YÖNTEM KAYNAĞI";
+    }
+    if (z === "AYNI DOKU") {
+      return "BAĞLAM KAYNAĞI";
+    }
   }
 
-  // 4. KALAN TÜM DURUMLARDA -> OZGUN
-  return "OZGUN";
+  // ❌ ELEME FILTRESI (GÖRÜNTÜLENMEYECEK)
+  return "ÖZGÜN";
 }

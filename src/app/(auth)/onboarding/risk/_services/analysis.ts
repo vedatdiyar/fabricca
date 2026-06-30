@@ -1,11 +1,7 @@
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
 import type { Logger } from "@/lib/logger";
-import type {
-  OverlapLevel,
-  TezaraThesisDetails,
-  ThesisBadge,
-} from "@/lib/types";
+import type { TezaraThesisDetails, ThesisBadge, ThesisAxes } from "@/lib/types";
 import { calculateBadge } from "@/lib/academic/badge-calculator";
 import {
   geminiAnalysisSchema,
@@ -23,26 +19,12 @@ export interface AnalyzeOriginalityRiskParams {
   validDetails: TezaraThesisDetails[];
 }
 
-/**
- * Categorical ordering from lowest to highest risk.
- */
-const LEVEL_ORDER: OverlapLevel[] = ["OZGUN", "ORTA", "KRITIK"];
-
-/**
- * Gemini'nin düz boolean + evidence şemasından döndürdüğü
- * tek bir aday tez karşılaştırma satırının tip tanımı.
- *
- * Bu interface hem `analyzeOriginalityRisk` çıktısında hem de
- * `calculateOriginalityRisk` girdisinde ortak tip olarak kullanılarak
- * iki fonksiyon arasındaki pipe'ın tip güvenliğini garanti eder.
- */
 export interface GeminiOverlapItem {
   id: number;
-  comparisonNote: string;
-  subject: OverlapLevel;
-  context: OverlapLevel;
-  theory: OverlapLevel;
-  methodology: OverlapLevel;
+  problem_sinirlari: { gerekce: string; secim: string };
+  teorik_perspektif: { gerekce: string; secim: string };
+  metodolojik_kurgu: { gerekce: string; secim: string };
+  zaman_mekan_ozgullugu: { gerekce: string; secim: string };
 }
 
 export interface CalculatedOverlapItem {
@@ -55,12 +37,7 @@ export interface CalculatedOverlapItem {
   department: string;
   comparisonNote?: string;
   yokPdfUrl?: string;
-  axes: {
-    subject: OverlapLevel;
-    theory: OverlapLevel;
-    methodology: OverlapLevel;
-    context: OverlapLevel;
-  };
+  axes: ThesisAxes;
 }
 
 export interface CalculatedOriginalityRiskResult {
@@ -69,81 +46,65 @@ export interface CalculatedOriginalityRiskResult {
   eliminatedTheses: CalculatedOverlapItem[];
 }
 
-/**
- * Returns the highest (most dangerous) overlap level present in the given axes.
- */
-export function getThesisMaxLevel(axes: {
-  subject: OverlapLevel;
-  theory: OverlapLevel;
-  methodology: OverlapLevel;
-  context?: OverlapLevel;
-}): OverlapLevel {
-  const levels = [
-    axes.subject,
-    axes.theory,
-    axes.methodology,
-    axes.context ?? "OZGUN",
-  ];
-  let max: OverlapLevel = "OZGUN";
-  for (const l of levels) {
-    if (LEVEL_ORDER.indexOf(l) > LEVEL_ORDER.indexOf(max)) max = l;
-  }
-  return max;
-}
+const BADGE_ORDER: ThesisBadge[] = [
+  "İKİZ TEZ",
+  "SAVUNMA RİSKİ",
+  "TEORİ KAYNAĞI",
+  "YÖNTEM KAYNAĞI",
+  "BAĞLAM KAYNAĞI",
+  "ÖZGÜN",
+];
+
+const SELECTION_SCORE: Record<string, number> = {
+  // problem_sinirlari (Konu)
+  BİREBİR: 3,
+  "GENİŞLETİLMİŞ KONU": 2,
+  ALAKASIZ: 1,
+
+  // teorik_perspektif (Teori)
+  "AYNI GÖZLÜK": 3,
+  "EVRİLMİŞ TEORİ": 2,
+  "FARKLI GÖZLÜK": 1,
+
+  // metodolojik_kurgu (Yöntem)
+  "BİREBİR YÖNTEM": 3,
+  "YÖNTEMSEL AKRABA": 2,
+  "FARKLI YÖNTEM": 1,
+
+  // zaman_mekan_ozgullugu (Bağlam)
+  "AYNI DOKU": 3,
+  "PARALEL BAĞLAM": 2,
+  "ALAKASIZ BAĞLAM": 1,
+};
 
 /**
- * Returns the second-highest overlap level for tiebreaker sorting.
+ * Calculates the sum of choice scores across the 4 axes to break ties in sorting.
  */
-function getThesisSecondMaxLevel(axes: {
-  subject: OverlapLevel;
-  theory: OverlapLevel;
-  methodology: OverlapLevel;
-  context?: OverlapLevel;
-}): OverlapLevel {
-  const levels = [
-    axes.subject,
-    axes.theory,
-    axes.methodology,
-    axes.context ?? "OZGUN",
-  ];
-  const sorted = levels.sort(
-    (a, b) => LEVEL_ORDER.indexOf(b) - LEVEL_ORDER.indexOf(a),
+function getAxesTotalScore(axes: ThesisAxes): number {
+  return (
+    (SELECTION_SCORE[axes.problem_sinirlari.secim] ?? 1) +
+    (SELECTION_SCORE[axes.teorik_perspektif.secim] ?? 1) +
+    (SELECTION_SCORE[axes.metodolojik_kurgu.secim] ?? 1) +
+    (SELECTION_SCORE[axes.zaman_mekan_ozgullugu.secim] ?? 1)
   );
-  return sorted.length > 1 ? sorted[1] : "OZGUN";
 }
-
-interface AxesWithOptionalContext {
-  subject: OverlapLevel;
-  theory: OverlapLevel;
-  methodology: OverlapLevel;
-  context?: OverlapLevel;
-}
-
-const BADGE_ORDER: ThesisBadge[] = ["IKIZ", "SINIRDAS", "OZGUN"];
 
 /**
- * Compares two theses for sorting: İkiz first, then Sınırdaş, then Özgün.
- * Within the same badge group, highest axis level first, then second-highest,
- * then doctorate over master's, then most recent first.
+ * Compares two theses for sorting: İkiz first, then Sınırdaş/Savunma, then Guides, then Özgün.
+ * Breaks ties using sum of axis scores, then doctorate over master's, then most recent first.
  */
 export function compareThesesByRisk(
-  a: { axes: AxesWithOptionalContext; thesisType: string; year: number },
-  b: { axes: AxesWithOptionalContext; thesisType: string; year: number },
+  a: { axes: ThesisAxes; thesisType: string; year: number },
+  b: { axes: ThesisAxes; thesisType: string; year: number },
 ): number {
   const badgeA = calculateBadge(a.axes);
   const badgeB = calculateBadge(b.axes);
   const badgeDiff = BADGE_ORDER.indexOf(badgeA) - BADGE_ORDER.indexOf(badgeB);
   if (badgeDiff !== 0) return badgeDiff;
 
-  const maxA = getThesisMaxLevel(a.axes);
-  const maxB = getThesisMaxLevel(b.axes);
-  const diff = LEVEL_ORDER.indexOf(maxB) - LEVEL_ORDER.indexOf(maxA);
-  if (diff !== 0) return diff;
-
-  const secondA = getThesisSecondMaxLevel(a.axes);
-  const secondB = getThesisSecondMaxLevel(b.axes);
-  const diff2 = LEVEL_ORDER.indexOf(secondB) - LEVEL_ORDER.indexOf(secondA);
-  if (diff2 !== 0) return diff2;
+  const scoreA = getAxesTotalScore(a.axes);
+  const scoreB = getAxesTotalScore(b.axes);
+  if (scoreB !== scoreA) return scoreB - scoreA;
 
   const tA = (a.thesisType || "").toLowerCase();
   const tB = (b.thesisType || "").toLowerCase();
@@ -166,44 +127,34 @@ export function compareThesesByRisk(
 
 /**
  * Determines the project-level global thesis badge by evaluating each
- * remaining thesis through calculateBadge. Priority order: IKIZ > SINIRDAS > OZGUN.
- * - Table empty → "OZGUN"
+ * remaining thesis. Priority order: IKIZ > SAVUNMA > GUIDES > OZGUN.
  */
-function evaluateGlobalBadge(overlapTable: CalculatedOverlapItem[]): {
-  badge: ThesisBadge;
-} {
+function evaluateGlobalBadge(
+  overlapTable: CalculatedOverlapItem[],
+): ThesisBadge {
   if (overlapTable.length === 0) {
-    return { badge: "OZGUN" };
+    return "ÖZGÜN";
   }
 
-  let hasIkiz = false;
-  let hasSinirdas = false;
-
+  let worstBadge: ThesisBadge = "ÖZGÜN";
   for (const item of overlapTable) {
-    const b = calculateBadge(item.axes);
-    if (b === "IKIZ") hasIkiz = true;
-    else if (b === "SINIRDAS") hasSinirdas = true;
+    const badge = calculateBadge(item.axes);
+    if (BADGE_ORDER.indexOf(badge) < BADGE_ORDER.indexOf(worstBadge)) {
+      worstBadge = badge;
+    }
   }
 
-  if (hasIkiz) return { badge: "IKIZ" };
-  if (hasSinirdas) return { badge: "SINIRDAS" };
-  return { badge: "OZGUN" };
+  return worstBadge;
 }
 
 /**
- * Gemini'nin düz boolean + evidence çıktısını alarak her aday tez için
- * deterministik İkincil Katman ve Küme Matematiği ile KRITIK / ORTA / OZGUN
- * sınıflandırması üretir.
+ * Maps LLM output table data to individual thesis entities. Evaluates risk badges
+ * and isolates unrelated candidates ("ÖZGÜN") into the eliminated list.
  *
- * Eleme kuralı: Subject ve Context eksenleri aynı anda OZGUN ise tez
- * eliminatedTheses listesine taşınır.
- *
- * Metodoloji ekseni Gemini şemasında bulunmadığından sabit OZGUN olarak atanır.
- *
- * @param overlapTable - Gemini'dan dönen düz boolean overlap tablosu
- * @param validDetails - TEZARA'dan çekilen tez detayları
- * @param logger - Opsiyonel loglama servisi
- * @returns Badge, kalan ve elenen tez listeleri
+ * @param overlapTable - Gemini output
+ * @param validDetails - Theses details fetched from Tezara
+ * @param logger - Logger
+ * @returns Originality badge, active overlap list and eliminated list
  */
 export function calculateOriginalityRisk(
   overlapTable: GeminiOverlapItem[],
@@ -215,7 +166,7 @@ export function calculateOriginalityRisk(
 
   if (validDetails.length === 0 || overlapTable.length === 0) {
     return {
-      originalityBadge: "OZGUN",
+      originalityBadge: "ÖZGÜN",
       overlapTable: [],
       eliminatedTheses: [],
     };
@@ -234,12 +185,22 @@ export function calculateOriginalityRisk(
       continue;
     }
 
-    const axes = {
-      subject: item.subject,
-      theory: item.theory,
-      methodology: item.methodology,
-      context: item.context,
+    const axes: ThesisAxes = {
+      problem_sinirlari: item.problem_sinirlari,
+      teorik_perspektif: item.teorik_perspektif,
+      metodolojik_kurgu: item.metodolojik_kurgu,
+      zaman_mekan_ozgullugu: item.zaman_mekan_ozgullugu,
     };
+
+    // Combine comparison notes of each axis or use the first non-empty gerekce
+    const comparisonNote = [
+      axes.problem_sinirlari.gerekce,
+      axes.teorik_perspektif.gerekce,
+      axes.metodolojik_kurgu.gerekce,
+      axes.zaman_mekan_ozgullugu.gerekce,
+    ]
+      .filter(Boolean)
+      .join(" ");
 
     const thesisEntry: CalculatedOverlapItem = {
       id: detail.id,
@@ -249,26 +210,18 @@ export function calculateOriginalityRisk(
       year: detail.year,
       thesisType: detail.thesisType,
       department: detail.department,
-      comparisonNote: item.comparisonNote,
+      comparisonNote,
       yokPdfUrl: detail.yokPdfUrl,
       axes,
     };
 
-    // Gate: Toplam uyuşan eksen sayısı 1 veya daha az ise bu çalışma alakasız/düşük risk kabul edilerek elenir
-    const totalNonOriginal =
-      (axes.subject !== "OZGUN" ? 1 : 0) +
-      (axes.theory !== "OZGUN" ? 1 : 0) +
-      (axes.methodology !== "OZGUN" ? 1 : 0) +
-      (axes.context !== "OZGUN" ? 1 : 0);
-
-    const isEliminated = totalNonOriginal <= 1;
-
-    if (isEliminated) {
+    const badge = calculateBadge(axes);
+    if (badge === "ÖZGÜN") {
       logger?.info("originality_thesis_eliminated", {
         service: "originality",
         data: {
           context: "calculateOriginalityRisk",
-          reason: "low_overall_axis_overlap",
+          reason: "unrelated_or_fully_original",
           thesisId: detail.id,
           thesisTitle: detail.title,
           axes,
@@ -283,20 +236,20 @@ export function calculateOriginalityRisk(
   const globalBadge = evaluateGlobalBadge(calculatedOverlapTable);
 
   return {
-    originalityBadge: globalBadge.badge,
+    originalityBadge: globalBadge,
     overlapTable: calculatedOverlapTable,
     eliminatedTheses,
   };
 }
 
 /**
- * Hedef tez ile tespit edilen aday akademik tezler arasında, deterministik
- * ikincil katman boolean şeması üzerinden karşılaştırma analizi yapar.
+ * Runs originality comparison analysis against target thesis matrices.
+ * Evaluates theses in parallel batches of size 4.
  *
- * @param params - Hedef tez matrisi ve aday tez detayları
- * @param log - Loglama servisi
- * @param chunkSize - Paralel Gemini çağrılarında kullanılacak grup boyutu
- * @returns Gemini'nin ürettiği düz boolean overlap tablosu
+ * @param params - Target matrix parameters
+ * @param log - Logger
+ * @param chunkSize - Batch chunk size (defaults to 4)
+ * @returns Gemini output overlap table
  */
 export async function analyzeOriginalityRisk(
   params: AnalyzeOriginalityRiskParams,
@@ -327,22 +280,91 @@ export async function analyzeOriginalityRisk(
         validDetails: group,
       };
 
-      const result = await generateStructuredContent<{
-        overlapTable: GeminiOverlapItem[];
-      }>(
-        "gemini-3.1-flash-lite",
-        buildAnalysisSystemInstruction(),
-        buildAnalysisPrompt(candidateParams),
-        geminiAnalysisSchema,
-        log,
-        {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
-          temperature: 1.0,
-          seed: 42,
-        },
-      );
+      try {
+        const result = await generateStructuredContent<{
+          overlapTable: GeminiOverlapItem[];
+        }>(
+          "gemini-3.1-flash-lite",
+          buildAnalysisSystemInstruction(),
+          buildAnalysisPrompt(candidateParams),
+          geminiAnalysisSchema,
+          log,
+          {
+            thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+            temperature: 1.0,
+            seed: 42,
+          },
+        );
 
-      return result.overlapTable || [];
+        const items = result?.overlapTable || [];
+        const returnedIds = new Set(items.map((it) => it.id));
+        const finalItems: GeminiOverlapItem[] = [...items];
+
+        // Gracefully backfill any missing IDs in this chunk with safe fallback "ÖZGÜN"
+        for (const thesis of group) {
+          if (!returnedIds.has(thesis.id)) {
+            log.warn("originality_missing_thesis_id_backfilled", {
+              service: "originality",
+              data: {
+                thesisId: thesis.id,
+                thesisTitle: thesis.title,
+              },
+            });
+            finalItems.push({
+              id: thesis.id,
+              problem_sinirlari: {
+                gerekce:
+                  "Sistem eksik analizi güvenli varsayılan ile doldurdu.",
+                secim: "ALAKASIZ",
+              },
+              teorik_perspektif: {
+                gerekce:
+                  "Sistem eksik analizi güvenli varsayılan ile doldurdu.",
+                secim: "FARKLI GÖZLÜK",
+              },
+              metodolojik_kurgu: {
+                gerekce:
+                  "Sistem eksik analizi güvenli varsayılan ile doldurdu.",
+                secim: "FARKLI YÖNTEM",
+              },
+              zaman_mekan_ozgullugu: {
+                gerekce:
+                  "Sistem eksik analizi güvenli varsayılan ile doldurdu.",
+                secim: "ALAKASIZ BAĞLAM",
+              },
+            });
+          }
+        }
+        return finalItems;
+      } catch (err) {
+        log.warn("originality_chunk_analysis_failed", {
+          service: "originality",
+          error: err,
+          data: {
+            chunkIds: group.map((t) => t.id),
+          },
+        });
+        // Graceful error fallback for all theses in this group to avoid failing onboarding
+        return group.map((t) => ({
+          id: t.id,
+          problem_sinirlari: {
+            gerekce: "Analiz sırasında hata oluştu.",
+            secim: "ALAKASIZ",
+          },
+          teorik_perspektif: {
+            gerekce: "Analiz sırasında hata oluştu.",
+            secim: "FARKLI GÖZLÜK",
+          },
+          metodolojik_kurgu: {
+            gerekce: "Analiz sırasında hata oluştu.",
+            secim: "FARKLI YÖNTEM",
+          },
+          zaman_mekan_ozgullugu: {
+            gerekce: "Analiz sırasında hata oluştu.",
+            secim: "ALAKASIZ BAĞLAM",
+          },
+        }));
+      }
     });
 
     const results = await Promise.all(analysisPromises);
@@ -353,10 +375,10 @@ export async function analyzeOriginalityRisk(
       overlapTable.map((o) => ({
         id: o.id,
         axes: {
-          subject: o.subject,
-          context: o.context,
-          theory: o.theory,
-          methodology: o.methodology,
+          problem_sinirlari: o.problem_sinirlari.secim,
+          teorik_perspektif: o.teorik_perspektif.secim,
+          metodolojik_kurgu: o.metodolojik_kurgu.secim,
+          zaman_mekan_ozgullugu: o.zaman_mekan_ozgullugu.secim,
         },
       })),
     );

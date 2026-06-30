@@ -41,28 +41,36 @@ export function OriginalityReportView({
 }: OriginalityReportViewProps) {
   const { tavilyResults, tezaraResults } = reportData;
 
+  const badgeColor =
+    THESIS_BADGE_COLORS[tezaraResults.originalityBadge] ??
+    THESIS_BADGE_COLORS["ÖZGÜN"];
+  const iconBg =
+    THESIS_BADGE_ICON_BG[tezaraResults.originalityBadge] ??
+    THESIS_BADGE_ICON_BG["ÖZGÜN"];
+  const badgeText =
+    THESIS_BADGE_TEXT[tezaraResults.originalityBadge] ??
+    THESIS_BADGE_TEXT["ÖZGÜN"];
+  const labelText =
+    THESIS_BADGE_LABELS[tezaraResults.originalityBadge] ??
+    tezaraResults.originalityBadge;
+
   return (
     <div className="space-y-8">
       {/* Global Risk Rozeti */}
       <div
-        className={`flex items-center gap-3 rounded-md border p-4 ${THESIS_BADGE_COLORS[tezaraResults.originalityBadge] ?? THESIS_BADGE_COLORS.OZGUN}`}
+        className={`flex items-center gap-3 rounded-md border p-4 ${badgeColor}`}
       >
-        <div
-          className={`shrink-0 rounded-md p-2 ${THESIS_BADGE_ICON_BG[tezaraResults.originalityBadge] ?? THESIS_BADGE_ICON_BG.OZGUN}`}
-        >
-          <ShieldAlert
-            className={`h-5 w-5 ${THESIS_BADGE_TEXT[tezaraResults.originalityBadge] ?? THESIS_BADGE_TEXT.OZGUN}`}
-          />
+        <div className={`shrink-0 rounded-md p-2 ${iconBg}`}>
+          <ShieldAlert className={`h-5 w-5 ${badgeText}`} />
         </div>
         <div className="flex flex-1 items-center justify-between gap-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
             Genel Rapor Risk Seviyesi
           </p>
           <span
-            className={`rounded-md border px-2.5 py-0.5 text-sm font-bold ${THESIS_BADGE_COLORS[tezaraResults.originalityBadge] ?? THESIS_BADGE_COLORS.OZGUN}`}
+            className={`rounded-md border px-2.5 py-0.5 text-sm font-bold ${badgeColor}`}
           >
-            {THESIS_BADGE_LABELS[tezaraResults.originalityBadge] ??
-              tezaraResults.originalityBadge}
+            {labelText}
           </span>
         </div>
       </div>
