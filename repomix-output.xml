@@ -210,6 +210,8 @@ src/
     tezara.ts
     types.ts
     utils.ts
+  scratch/
+    e2e-originality-test.ts
   session.ts
 package.json
 README.md
@@ -232,327 +234,37 @@ import { redirect } from "next/navigation";
 export default function RootPage()
 </file>
 
-<file path="README.md">
-# Fabricca — Dijital Tez Asistanı
-
-**Fabricca**, yüksek lisans ve doktora öğrencilerinin akademik araştırma, tez
-yazım ve literatür tarama süreçlerini yapay zeka desteğiyle uçtan uca
-yönetmelerini sağlayan gelişmiş bir **Dijital Tez Asistanı ve Akademik Çalışma
-Platformudur**.
-
-> Platform, dışarıdan serbest kayda tamamen kapalıdır. Yalnızca veri tabanında
-> seed edilmiş izinli kullanıcılar tarafından kullanılabilir.
-
----
-
-## Özellikler
-
-### 1. Tez Matrisi (Thesis Matrix)
-
-Çalışmanızın temel yapı taşlarını tanımladığınız ilk adımdır. Araştırma sorusu,
-temel iddia, kuramsal çerçeve, metodoloji, araştırma kapsamı ve çalışma başlığı
-olmak üzere altı temel alanı kapsar.
-
-### 2. Özgünlük & Risk Analizi
-
-Tavily (web) ve TEZARA (YÖK Ulusal Tez Merkezi) API'leri üzerinden eşzamanlı
-çalışan çift kademeli bir analiz motorudur:
-
-- **Web taraması:** Çalışmanızın temel iddialarının internetteki mevcut
-  literatürle örtüşme/çelişme durumunu maddi olarak denetler.
-- **Tez karşılaştırması:** YÖK Tez veri tabanındaki benzer tezlerle konu, kuram,
-  yöntem ve bağlam eksenlerinde karşılaştırma yaparak özgünlük rozeti
-  (IKIZ / SINIRDAS / OZGUN) üretir.
-- **Cohere Rerank v4.0 Pro** ile semantik benzerlik sıralaması yapılır.
-- Sonuçlar, deterministik boolean mantığı ile tek bir özgünlük rozetine
-  indirgenir.
-
-### 3. Konu Kutuları (Thesis Boxes)
-
-Google Gemini 3.1 Flash Lite tarafından tez matrisiniz analiz edilerek
-otomatik oluşturulan kavramsal kutulardır. Altı tür kutu mevcuttur:
-
-- `PROBLEMATIZATION` — Problem Tanımlama
-- `CONCEPTUAL` — Kavramsal Çerçeve
-- `DATA_PROTOCOL` — Veri ve Yöntem
-- `PRIMARY_MATERIAL` — Birincil Kaynaklar
-- `CONTEXT` — Bağlam
-- `RELATED_THESES` — İlgili Tezler
-
-Kutular iç içe alt kutular (sub-box) barındırabilir ve her kutuya temel
-(foundational) kaynak sorguları bağlanabilir.
-
-### 4. Literatür Taraması
-
-Her bir konu kutusu için çoklu akademik veri tabanlarında eşzamanlı kaynak
-taraması yapar:
-
-- **OpenAlex API** — Geniş akademik makale indeksi
-- **CrossRef API** — DOI ve yayıncı bilgileri
-- **Exa API** — Gelişmiş semantik arama
-- **Semantic Scholar API** — Atıf ve etki analizi
-- **FoundationalOracle** — Temel kaynakların DOI/publisher çözümlemesi
-
-### 5. Danışman Odası (RAG Chat) — Geliştirme Aşamasında
-
-Makalelerinizin vektör embedding'leri (Cloudflare Workers AI / Qwen3) üzerinden
-RAG tabanlı sorgulanabildiği yapay zeka sohbet arayüzü.
-
-### 6. Kartoteks — Geliştirme Aşamasında
-
-Geleneksel akademik kartoteks sisteminin dijital versiyonu. Makalelerden not
-çıkarma, alıntı fişleme ve konu kutularına yerleştirme imkanı sunar.
-
-### 7. Kütüphane
-
-Sistemdeki tüm akademik kaynakların görüntülenmesi ve yönetimi. Her kaynak
-bağlı olduğu konu kutusuna göre filtrelenebilir.
-
-### 8. Dashboard (Genel Özet)
-
-Konu kutuları, kaynaklar ve kanban görevlerinin tek bir panelde toplandığı
-merkezi yönetim ekranı.
-
----
-
-## Kullanılan Teknolojiler
-
-| Kategori               | Teknoloji                                             |
-| ---------------------- | ----------------------------------------------------- |
-| **Frontend & Backend** | Next.js 16 (App Router, Server Actions, PPR)          |
-| **UI Bileşenleri**     | Tailwind CSS v4, Shadcn UI, Lucide React              |
-| **Veri Tabanı**        | Neon Serverless PostgreSQL                            |
-| **ORM**                | Drizzle ORM (snake_case)                              |
-| **Vektör DB (RAG)**    | pgvector (Neon içinde)                                |
-| **LLM**                | Google Gemini 3.1 Flash Lite                          |
-| **Embedding**          | Cloudflare Workers AI (Qwen3-Embedding-0.6B, 768 dim) |
-| **Rerank**             | Cohere Rerank v4.0 Pro                                |
-| **Web Arama**          | Tavily Search API                                     |
-| **Tez Veri Kaynağı**   | TEZARA (YÖK Tez)                                      |
-| **Akademik Veri**      | OpenAlex, CrossRef, Exa, Semantic Scholar             |
-| **State Yönetimi**     | Zustand (sessionStorage)                              |
-| **Sunucu Durumu**      | TanStack Query                                        |
-| **Auth**               | bcrypt-ts + Cookie tabanlı hafif session              |
-| **Derleyici**          | Turbopack                                             |
-| **Lint / Format**      | ESLint, Prettier                                      |
-
----
-
-## Proje Yapısı
-
-Proje, Next.js App Router'ın rota gruplama (route groups) özelliğini kullanarak
-özellik/sayfa tabanlı (feature-driven) olarak organize edilmiştir.
-
-```
-src/
-├── app/
-│   ├── globals.css                  # Global stiller (Tailwind v4)
-│   ├── layout.tsx                   # Root layout (font, QueryProvider, Toaster)
-│   ├── page.tsx                     # / → /login yönlendirmesi
-│   ├── (auth)/                      # Kimlik doğrulama grubu
-│   │   ├── layout.tsx               # Oturum kontrolü + yönlendirme
-│   │   ├── login/                   # /login — Giriş sayfası
-│   │   └── onboarding/              # 5 adımlı onboarding süreci
-│   │       ├── layout.tsx           # Adım container'ı
-│   │       ├── actions.ts           # Ortak onboarding server action'ları
-│   │       ├── _components/         # Ortak onboarding bileşenleri
-│   │       ├── _lib/                # Fetch yardımcıları
-│   │       ├── matrix/              # Adım 1: Tez Matrisi
-│   │       ├── risk/                # Adım 3: Özgünlük & Risk Analizi
-│   │       │   ├── _services/       # analysis, queries, roadmap, search, sifting
-│   │       │   └── _hooks/          # use-risk-analysis
-│   │       ├── boxes/               # Adım 4: Konu Kutuları
-│   │       └── literature-review/   # Adım 5: Literatür Taraması
-│   │           └── _services/       # batch-orchestrator, box-pipeline,
-│   │                                # foundational-resolver, openalex-collector
-│   └── (app)/                       # Giriş sonrası ana uygulama
-│       ├── layout.tsx               # Header + oturum/yönlendirme kontrolü
-│       ├── actions.ts               # Ortak uygulama server action'ları
-│       ├── dashboard/               # /dashboard — Genel Özet
-│       ├── library/                 # /library — Kütüphane
-│       ├── advisor/                 # /advisor — Danışman Odası (placeholder)
-│       └── card-index/              # /card-index — Kartoteks (placeholder)
-├── components/                      # Ortak bileşenler
-│   ├── header.tsx                   # Üst navigasyon
-│   ├── literature-reader.tsx        # Literatür okuyucu
-│   ├── error-display.tsx            # Hata görüntüleme
-│   ├── onboarding-global-loader.tsx # Onboarding yükleyici
-│   ├── providers/
-│   │   └── query-provider.tsx       # TanStack Query Provider
-│   └── ui/                          # Shadcn UI bileşenleri
-├── db/
-│   ├── index.ts                     # Neon DB bağlantısı (WebSocket singleton)
-│   ├── schema.ts                    # 6 tablo şeması (Drizzle ORM)
-│   └── seed.ts                      # Seed verisi (2 kullanıcı)
-├── lib/
-│   ├── gemini.ts                    # Google Gen AI SDK entegrasyonu
-│   ├── cloudflare.ts                # Cloudflare Workers AI (embedding)
-│   ├── cohere.ts                    # Cohere Rerank entegrasyonu
-│   ├── tavily.ts                    # Tavily web arama API
-│   ├── tezara.ts                    # TEZARA API istemcisi
-│   ├── tezara-parser.ts             # TEZARA HTML ayrıştırıcı (cheerio)
-│   ├── tezara-queue.ts              # TEZARA kuyruk/rate-limit yönetimi
-│   ├── types.ts                     # Paylaşılan TypeScript tipleri + Zod şemaları
-│   ├── error-utils.ts               # Hata sınıflandırma
-│   ├── cache-tags.ts                # Next.js cache tag sabitleri
-│   ├── utils.ts                     # Genel yardımcı fonksiyonlar
-│   ├── academic/
-│   │   ├── badge-calculator.ts      # Özgünlük rozeti (boolean mantık)
-│   │   └── embedding-resolver.ts    # Vektör embedding çözümleyici
-│   ├── prompts/                     # Gemini prompt şablonları (8 adet)
-│   ├── logger/                      # Yapılandırılmış loglama sistemi
-│   ├── constants/
-│   │   └── session.ts               # Session cookie sabitleri
-│   └── store/
-│       └── onboarding-store.ts      # Zustand onboarding store
-└── session.ts                       # Cookie tabanlı session yönetimi
-```
-
----
-
-## Veri Tabanı Şeması
-
-Neon PostgreSQL üzerinde 6 tablo (Drizzle ORM, snake_case casing):
-
-| Tablo                 | Açıklama            | Önemli Alanlar                                                               |
-| --------------------- | ------------------- | ---------------------------------------------------------------------------- |
-| `users`               | Kullanıcı hesapları | email (unique), password (bcrypt hash), onboardingCompleted                  |
-| `thesis_matrices`     | Tez matrisi         | userId (unique), 6 temel metin alanı                                         |
-| `originality_reports` | Özgünlük raporları  | userId (unique), tavilyResults (JSONB), tezaraResults (JSONB)                |
-| `thesis_boxes`        | Konu kutuları       | thesisMatrixId, title, boxType (enum), parentId, foundationalQueries (JSONB) |
-| `library_resources`   | Akademik kaynaklar  | thesisBoxId, title, doi (unique pair), authors (JSONB), isFoundational       |
-| `tasks`               | Kanban görevleri    | userId, thesisBoxId, status/priority (enum)                                  |
-
-Her tabloda `createdAt` ve `updatedAt` timestamp alanları bulunur. İlişkiler
-`onDelete: "cascade"` ile yönetilir; görevlerde kutu silinince `set null` uygulanır.
-
----
-
-## Onboarding Süreci
-
-Kullanıcı ilk girişinde sırasıyla şu adımları tamamlar:
-
-```
-1. Tez Matrisi (Matrix) — 6 temel alanın tanımı
-         ↓
-2. (Enrichment — kaldırıldı)
-         ↓
-3. Özgünlük & Risk Analizi (Risk)
-   ├─ Tavily ile web taraması (fact-checking)
-   ├─ TEZARA ile YÖK Tez karşılaştırması
-   ├─ Cohere Rerank ile semantik sıralama
-   └─ Özgünlük rozeti (IKIZ / SINIRDAS / OZGUN)
-         ↓
-4. Konu Kutuları (Boxes)
-   └─ Gemini ile otomatik kutu oluşturma + kullanıcı onayı
-         ↓
-5. Literatür Taraması (Literature Review)
-   ├─ OpenAlex / CrossRef / Exa / Semantic Scholar taraması
-   ├─ FoundationalOracle ile temel kaynak çözümlemesi
-   └─ Kaynakların kutu bazında gruplanması
-         ↓
-   Dashboard (onboarding tamamlandı)
-```
-
-Sistem, her adımda kullanıcının kaldığı yerden devam edebilmesini sağlar
-(örneğin; adım 3'te kaldıysa doğrudan `/onboarding/risk` sayfasına yönlendirilir).
-
----
-
-## Çevresel Değişkenler
-
-Projenin çalışması için gerekli tüm API anahtarları `.env.local` dosyasında
-tanımlanır:
-
-| Değişken                   | Hizmet                          |
-| -------------------------- | ------------------------------- |
-| `DATABASE_URL`             | Neon PostgreSQL bağlantı dizesi |
-| `GEMINI_API_KEY`           | Google Gemini API               |
-| `CLOUDFLARE_ACCOUNT_ID`    | Cloudflare Workers AI hesap ID  |
-| `CLOUDFLARE_API_TOKEN`     | Cloudflare Workers AI API token |
-| `TAVILY_API_KEY`           | Tavily Search API               |
-| `OPENALEX_API_KEY`         | OpenAlex Academic API           |
-| `CROSSREF_CONTACT_EMAIL`   | CrossRef Polite Pool e-posta    |
-| `COHERE_API_KEY`           | Cohere Rerank API               |
-| `EXA_API_KEY`              | Exa API                         |
-| `SEMANTIC_SCHOLAR_API_KEY` | Semantic Scholar API            |
-
----
-
-## Geliştirme
-
-```bash
-# Bağımlılıkları yükle
-npm install
-
-# Geliştirme sunucusunu başlat (Turbopack)
-npm run dev
-
-# Veri tabanı şemasını Neon'a push et
-npm run db:push
-
-# Seed verisini yükle (2 kullanıcı)
-npm run db:seed
-
-# Production build
-npm run build
-
-# Production sunucusunu başlat
-npm run start
-
-# Kalite kontrol (lint + typecheck + prettier)
-npm run check:full
-
-# Yalnızca tip denetimi
-npm run typecheck
-
-# Yalnızca lint
-npm run lint
-```
-
----
-
-## Kullanıcılar
-
-Platform, dışarıdan kayda kapalı olduğu için veri tabanına seed edilmiş iki
-kullanıcı ile gelir:
-
-| İsim                   | E-posta                        |
-| ---------------------- | ------------------------------ |
-| Vedat Diyar Çelikkeser | vedatdiyarcelikkeser@gmail.com |
-| Tuğba Ahncr            | tubaahncr@gmail.com            |
-
----
-
-## Mimari Kararlar ve Geliştirme Prensipleri
-
-- **Feature-driven klasör yapısı:** Sayfalar özellik bazında gruplanmıştır;
-  her modül kendi bileşenlerini, servislerini ve hook'larını barındırır.
-- **Single Responsibility:** Her dosya, her bileşen ve her fonksiyon yalnızca
-  tek bir işten sorumludur.
-- **600 satır sınırı:** Dosyalar ideal olarak 600 satırı aşmaz; aşıldığında
-  alt modüllere bölünür (zoraki bölünmelerden kaçınılır).
-- **Golden Boundary Rule:**
-  - Backend/mantık katmanı: %100 İngilizce (camelCase/snake_case)
-  - UI/çıktı katmanı: %100 Türkçe (akademik Türkçe, Türkçe karakterler)
-- **Progressive Save:** Onboarding adımları veri tabanına aşamalı olarak
-  kaydedilir; kullanıcı her adımda kaldığı yerden devam edebilir.
-- **Deterministic AI Çıktısı:** Temperature 1.0 + sabit seed değeri (2 veya 42)
-  ile tutarlı ve tekrarlanabilir model çıktıları hedeflenir.
-- **Kapalı sistem:** Dışarıdan kayıt yoktur; yalnızca seed edilmiş kullanıcılar.
-- **Sıkı tip güvenliği:** `any` tipi kullanımı yasaktır; tüm tipler Drizzle
-  şemalarından türetilir veya açık arayüzlerle tanımlanır.
-- **Singleton DB Pool:** Neon WebSocket pool, HMR/Fast Refresh'te her modül
-  yeniden yüklendiğinde yeni bağlantı oluşmasını engellemek için global
-  singleton olarak yönetilir.
-- **JSDoc zorunluluğu:** Tüm fonksiyonlar, server action'lar ve custom hook'lar
-  eksiksiz JSDoc dökümantasyonu ile yazılır.
-
----
-
-## Lisans
-
-Özel (Private) — Tüm hakları saklıdır.
+<file path="src/scratch/e2e-originality-test.ts">
+import { createFlowId, Logger } from "../lib/logger";
+import { extractQueries } from "../app/(auth)/onboarding/risk/_services/queries";
+import { searchTezara } from "../lib/tezara";
+import { siftAndFetchDetails } from "../app/(auth)/onboarding/risk/_services/sifting";
+import {
+  analyzeOriginalityRisk,
+  calculateOriginalityRisk,
+} from "../app/(auth)/onboarding/risk/_services/analysis";
+import type {
+  TezaraThesisSummary,
+  ThesisBadge,
+  ThesisAxes,
+} from "../lib/types";
+⋮----
+interface ThesisMatrixInput {
+  studyTitle: string;
+  researchQuestion: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+  mainClaim: string;
+}
+⋮----
+async function runE2ETest(): Promise<void>
+⋮----
+// Check if eliminated by Cohere Rerank
+⋮----
+// Check if evaluated by Gemini jury
+⋮----
+function calculateOriginalityBadge(axes: ThesisAxes): ThesisBadge
 </file>
 
 <file path="src/app/(app)/dashboard/_components/add-task-modal.tsx">
@@ -999,6 +711,329 @@ export async function rerankTheses(
 ): Promise<CohereRerankResponse>
 </file>
 
+<file path="README.md">
+# Fabricca — Dijital Tez Asistanı
+
+**Fabricca**, yüksek lisans ve doktora öğrencilerinin akademik araştırma, tez
+yazım ve literatür tarama süreçlerini yapay zeka desteğiyle uçtan uca
+yönetmelerini sağlayan gelişmiş bir **Dijital Tez Asistanı ve Akademik Çalışma
+Platformudur**.
+
+> Platform, dışarıdan serbest kayda tamamen kapalıdır. Yalnızca veri tabanında
+> seed edilmiş izinli kullanıcılar tarafından kullanılabilir.
+
+---
+
+## Özellikler
+
+### 1. Tez Matrisi (Thesis Matrix)
+
+Çalışmanızın temel yapı taşlarını tanımladığınız ilk adımdır. Araştırma sorusu,
+temel iddia, kuramsal çerçeve, metodoloji, araştırma kapsamı ve çalışma başlığı
+olmak üzere altı temel alanı kapsar.
+
+### 2. Özgünlük & Risk Analizi
+
+Tavily (web) ve TEZARA (YÖK Ulusal Tez Merkezi) API'leri üzerinden eşzamanlı
+çalışan çift kademeli bir analiz motorudur:
+
+- **Web taraması:** Çalışmanızın temel iddialarının internetteki mevcut
+  literatürle örtüşme/çelişme durumunu maddi olarak denetler.
+- **Tez karşılaştırması:** YÖK Tez veri tabanındaki benzer tezlerle konu, kuram,
+  yöntem ve bağlam eksenlerinde karşılaştırma yaparak özgünlük rozeti
+  (IKIZ / SINIRDAS / OZGUN) üretir.
+- **Cohere Rerank v4.0 Pro** ile semantik benzerlik sıralaması yapılır.
+- Sonuçlar, deterministik boolean mantığı ile tek bir özgünlük rozetine
+  indirgenir.
+
+### 3. Konu Kutuları (Thesis Boxes)
+
+Google Gemini 3.1 Flash Lite tarafından tez matrisiniz analiz edilerek
+otomatik oluşturulan kavramsal kutulardır. Altı tür kutu mevcuttur:
+
+- `PROBLEMATIZATION` — Problem Tanımlama
+- `CONCEPTUAL` — Kavramsal Çerçeve
+- `DATA_PROTOCOL` — Veri ve Yöntem
+- `PRIMARY_MATERIAL` — Birincil Kaynaklar
+- `CONTEXT` — Bağlam
+- `RELATED_THESES` — İlgili Tezler
+
+Kutular iç içe alt kutular (sub-box) barındırabilir ve her kutuya temel
+(foundational) kaynak sorguları bağlanabilir.
+
+### 4. Literatür Taraması
+
+Her bir konu kutusu için çoklu akademik veri tabanlarında eşzamanlı kaynak
+taraması yapar:
+
+- **OpenAlex API** — Geniş akademik makale indeksi
+- **CrossRef API** — DOI ve yayıncı bilgileri
+- **Exa API** — Gelişmiş semantik arama
+- **Semantic Scholar API** — Atıf ve etki analizi
+- **FoundationalOracle** — Temel kaynakların DOI/publisher çözümlemesi
+
+### 5. Danışman Odası (RAG Chat) — Geliştirme Aşamasında
+
+Makalelerinizin vektör embedding'leri (Cloudflare Workers AI / Qwen3) üzerinden
+RAG tabanlı sorgulanabildiği yapay zeka sohbet arayüzü.
+
+### 6. Kartoteks — Geliştirme Aşamasında
+
+Geleneksel akademik kartoteks sisteminin dijital versiyonu. Makalelerden not
+çıkarma, alıntı fişleme ve konu kutularına yerleştirme imkanı sunar.
+
+### 7. Kütüphane
+
+Sistemdeki tüm akademik kaynakların görüntülenmesi ve yönetimi. Her kaynak
+bağlı olduğu konu kutusuna göre filtrelenebilir.
+
+### 8. Dashboard (Genel Özet)
+
+Konu kutuları, kaynaklar ve kanban görevlerinin tek bir panelde toplandığı
+merkezi yönetim ekranı.
+
+---
+
+## Kullanılan Teknolojiler
+
+| Kategori               | Teknoloji                                             |
+| ---------------------- | ----------------------------------------------------- |
+| **Frontend & Backend** | Next.js 16 (App Router, Server Actions, PPR)          |
+| **UI Bileşenleri**     | Tailwind CSS v4, Shadcn UI, Lucide React              |
+| **Veri Tabanı**        | Neon Serverless PostgreSQL                            |
+| **ORM**                | Drizzle ORM (snake_case)                              |
+| **Vektör DB (RAG)**    | pgvector (Neon içinde)                                |
+| **LLM**                | Google Gemini 3.1 Flash Lite                          |
+| **Embedding**          | Cloudflare Workers AI (Qwen3-Embedding-0.6B, 768 dim) |
+| **Rerank**             | Cohere Rerank v4.0 Pro                                |
+| **Web Arama**          | Tavily Search API                                     |
+| **Tez Veri Kaynağı**   | TEZARA (YÖK Tez)                                      |
+| **Akademik Veri**      | OpenAlex, CrossRef, Exa, Semantic Scholar             |
+| **State Yönetimi**     | Zustand (sessionStorage)                              |
+| **Sunucu Durumu**      | TanStack Query                                        |
+| **Auth**               | bcrypt-ts + Cookie tabanlı hafif session              |
+| **Derleyici**          | Turbopack                                             |
+| **Lint / Format**      | ESLint, Prettier                                      |
+
+---
+
+## Proje Yapısı
+
+Proje, Next.js App Router'ın rota gruplama (route groups) özelliğini kullanarak
+özellik/sayfa tabanlı (feature-driven) olarak organize edilmiştir.
+
+```
+src/
+├── app/
+│   ├── globals.css                  # Global stiller (Tailwind v4)
+│   ├── layout.tsx                   # Root layout (font, QueryProvider, Toaster)
+│   ├── page.tsx                     # / → /login yönlendirmesi
+│   ├── (auth)/                      # Kimlik doğrulama grubu
+│   │   ├── layout.tsx               # Oturum kontrolü + yönlendirme
+│   │   ├── login/                   # /login — Giriş sayfası
+│   │   └── onboarding/              # 5 adımlı onboarding süreci
+│   │       ├── layout.tsx           # Adım container'ı
+│   │       ├── actions.ts           # Ortak onboarding server action'ları
+│   │       ├── _components/         # Ortak onboarding bileşenleri
+│   │       ├── _lib/                # Fetch yardımcıları
+│   │       ├── matrix/              # Adım 1: Tez Matrisi
+│   │       ├── risk/                # Adım 3: Özgünlük & Risk Analizi
+│   │       │   ├── _services/       # analysis, queries, roadmap, search, sifting
+│   │       │   └── _hooks/          # use-risk-analysis
+│   │       ├── boxes/               # Adım 4: Konu Kutuları
+│   │       └── literature-review/   # Adım 5: Literatür Taraması
+│   │           └── _services/       # batch-orchestrator, box-pipeline,
+│   │                                # foundational-resolver, openalex-collector
+│   └── (app)/                       # Giriş sonrası ana uygulama
+│       ├── layout.tsx               # Header + oturum/yönlendirme kontrolü
+│       ├── actions.ts               # Ortak uygulama server action'ları
+│       ├── dashboard/               # /dashboard — Genel Özet
+│       ├── library/                 # /library — Kütüphane
+│       ├── advisor/                 # /advisor — Danışman Odası (placeholder)
+│       └── card-index/              # /card-index — Kartoteks (placeholder)
+├── components/                      # Ortak bileşenler
+│   ├── header.tsx                   # Üst navigasyon
+│   ├── literature-reader.tsx        # Literatür okuyucu
+│   ├── error-display.tsx            # Hata görüntüleme
+│   ├── onboarding-global-loader.tsx # Onboarding yükleyici
+│   ├── providers/
+│   │   └── query-provider.tsx       # TanStack Query Provider
+│   └── ui/                          # Shadcn UI bileşenleri
+├── db/
+│   ├── index.ts                     # Neon DB bağlantısı (WebSocket singleton)
+│   ├── schema.ts                    # 6 tablo şeması (Drizzle ORM)
+│   └── seed.ts                      # Seed verisi (2 kullanıcı)
+├── lib/
+│   ├── gemini.ts                    # Google Gen AI SDK entegrasyonu
+│   ├── cloudflare.ts                # Cloudflare Workers AI (embedding)
+│   ├── cohere.ts                    # Cohere Rerank entegrasyonu
+│   ├── tavily.ts                    # Tavily web arama API
+│   ├── tezara.ts                    # TEZARA API istemcisi
+│   ├── tezara-parser.ts             # TEZARA HTML ayrıştırıcı (cheerio)
+│   ├── tezara-queue.ts              # TEZARA kuyruk/rate-limit yönetimi
+│   ├── types.ts                     # Paylaşılan TypeScript tipleri + Zod şemaları
+│   ├── error-utils.ts               # Hata sınıflandırma
+│   ├── cache-tags.ts                # Next.js cache tag sabitleri
+│   ├── utils.ts                     # Genel yardımcı fonksiyonlar
+│   ├── academic/
+│   │   ├── badge-calculator.ts      # Özgünlük rozeti (boolean mantık)
+│   │   └── embedding-resolver.ts    # Vektör embedding çözümleyici
+│   ├── prompts/                     # Gemini prompt şablonları (8 adet)
+│   ├── logger/                      # Yapılandırılmış loglama sistemi
+│   ├── constants/
+│   │   └── session.ts               # Session cookie sabitleri
+│   └── store/
+│       └── onboarding-store.ts      # Zustand onboarding store
+└── session.ts                       # Cookie tabanlı session yönetimi
+```
+
+---
+
+## Veri Tabanı Şeması
+
+Neon PostgreSQL üzerinde 6 tablo (Drizzle ORM, snake_case casing):
+
+| Tablo                 | Açıklama            | Önemli Alanlar                                                               |
+| --------------------- | ------------------- | ---------------------------------------------------------------------------- |
+| `users`               | Kullanıcı hesapları | email (unique), password (bcrypt hash), onboardingCompleted                  |
+| `thesis_matrices`     | Tez matrisi         | userId (unique), 6 temel metin alanı                                         |
+| `originality_reports` | Özgünlük raporları  | userId (unique), tavilyResults (JSONB), tezaraResults (JSONB)                |
+| `thesis_boxes`        | Konu kutuları       | thesisMatrixId, title, boxType (enum), parentId, foundationalQueries (JSONB) |
+| `library_resources`   | Akademik kaynaklar  | thesisBoxId, title, doi (unique pair), authors (JSONB), isFoundational       |
+| `tasks`               | Kanban görevleri    | userId, thesisBoxId, status/priority (enum)                                  |
+
+Her tabloda `createdAt` ve `updatedAt` timestamp alanları bulunur. İlişkiler
+`onDelete: "cascade"` ile yönetilir; görevlerde kutu silinince `set null` uygulanır.
+
+---
+
+## Onboarding Süreci
+
+Kullanıcı ilk girişinde sırasıyla şu adımları tamamlar:
+
+```
+1. Tez Matrisi (Matrix) — 6 temel alanın tanımı
+         ↓
+2. (Enrichment — kaldırıldı)
+         ↓
+3. Özgünlük & Risk Analizi (Risk)
+   ├─ Tavily ile web taraması (fact-checking)
+   ├─ TEZARA ile YÖK Tez karşılaştırması
+   ├─ Cohere Rerank ile semantik sıralama
+   └─ Özgünlük rozeti (IKIZ / SINIRDAS / OZGUN)
+         ↓
+4. Konu Kutuları (Boxes)
+   └─ Gemini ile otomatik kutu oluşturma + kullanıcı onayı
+         ↓
+5. Literatür Taraması (Literature Review)
+   ├─ OpenAlex / CrossRef / Exa / Semantic Scholar taraması
+   ├─ FoundationalOracle ile temel kaynak çözümlemesi
+   └─ Kaynakların kutu bazında gruplanması
+         ↓
+   Dashboard (onboarding tamamlandı)
+```
+
+Sistem, her adımda kullanıcının kaldığı yerden devam edebilmesini sağlar
+(örneğin; adım 3'te kaldıysa doğrudan `/onboarding/risk` sayfasına yönlendirilir).
+
+---
+
+## Çevresel Değişkenler
+
+Projenin çalışması için gerekli tüm API anahtarları `.env.local` dosyasında
+tanımlanır:
+
+| Değişken                   | Hizmet                          |
+| -------------------------- | ------------------------------- |
+| `DATABASE_URL`             | Neon PostgreSQL bağlantı dizesi |
+| `GEMINI_API_KEY`           | Google Gemini API               |
+| `CLOUDFLARE_ACCOUNT_ID`    | Cloudflare Workers AI hesap ID  |
+| `CLOUDFLARE_API_TOKEN`     | Cloudflare Workers AI API token |
+| `TAVILY_API_KEY`           | Tavily Search API               |
+| `OPENALEX_API_KEY`         | OpenAlex Academic API           |
+| `CROSSREF_CONTACT_EMAIL`   | CrossRef Polite Pool e-posta    |
+| `COHERE_API_KEY`           | Cohere Rerank API               |
+| `EXA_API_KEY`              | Exa API                         |
+| `SEMANTIC_SCHOLAR_API_KEY` | Semantic Scholar API            |
+
+---
+
+## Geliştirme
+
+```bash
+# Bağımlılıkları yükle
+npm install
+
+# Geliştirme sunucusunu başlat (Turbopack)
+npm run dev
+
+# Veri tabanı şemasını Neon'a push et
+npm run db:push
+
+# Seed verisini yükle (2 kullanıcı)
+npm run db:seed
+
+# Production build
+npm run build
+
+# Production sunucusunu başlat
+npm run start
+
+# Kalite kontrol (lint + typecheck + prettier)
+npm run check:full
+
+# Yalnızca tip denetimi
+npm run typecheck
+
+# Yalnızca lint
+npm run lint
+```
+
+---
+
+## Kullanıcılar
+
+Platform, dışarıdan kayda kapalı olduğu için veri tabanına seed edilmiş iki
+kullanıcı ile gelir:
+
+| İsim                   | E-posta                        |
+| ---------------------- | ------------------------------ |
+| Vedat Diyar Çelikkeser | vedatdiyarcelikkeser@gmail.com |
+| Tuğba Ahncr            | tubaahncr@gmail.com            |
+
+---
+
+## Mimari Kararlar ve Geliştirme Prensipleri
+
+- **Feature-driven klasör yapısı:** Sayfalar özellik bazında gruplanmıştır;
+  her modül kendi bileşenlerini, servislerini ve hook'larını barındırır.
+- **Single Responsibility:** Her dosya, her bileşen ve her fonksiyon yalnızca
+  tek bir işten sorumludur.
+- **600 satır sınırı:** Dosyalar ideal olarak 600 satırı aşmaz; aşıldığında
+  alt modüllere bölünür (zoraki bölünmelerden kaçınılır).
+- **Golden Boundary Rule:**
+  - Backend/mantık katmanı: %100 İngilizce (camelCase/snake_case)
+  - UI/çıktı katmanı: %100 Türkçe (akademik Türkçe, Türkçe karakterler)
+- **Progressive Save:** Onboarding adımları veri tabanına aşamalı olarak
+  kaydedilir; kullanıcı her adımda kaldığı yerden devam edebilir.
+- **Deterministic AI Çıktısı:** Temperature 1.0 + sabit seed değeri (2 veya 42)
+  ile tutarlı ve tekrarlanabilir model çıktıları hedeflenir.
+- **Kapalı sistem:** Dışarıdan kayıt yoktur; yalnızca seed edilmiş kullanıcılar.
+- **Sıkı tip güvenliği:** `any` tipi kullanımı yasaktır; tüm tipler Drizzle
+  şemalarından türetilir veya açık arayüzlerle tanımlanır.
+- **Singleton DB Pool:** Neon WebSocket pool, HMR/Fast Refresh'te her modül
+  yeniden yüklendiğinde yeni bağlantı oluşmasını engellemek için global
+  singleton olarak yönetilir.
+- **JSDoc zorunluluğu:** Tüm fonksiyonlar, server action'lar ve custom hook'lar
+  eksiksiz JSDoc dökümantasyonu ile yazılır.
+
+---
+
+## Lisans
+
+Özel (Private) — Tüm hakları saklıdır.
+</file>
+
 <file path="src/app/(app)/dashboard/_components/dashboard-content.tsx">
 import type { ThesisBox, LibraryResource } from "@/db/schema";
 import { BoxCard } from "./box-card";
@@ -1363,12 +1398,6 @@ function handleReset()
 className=
 </file>
 
-<file path="src/lib/academic/badge-calculator.ts">
-import type { ThesisAxes, ThesisBadge } from "@/lib/types";
-⋮----
-export function calculateBadge(axes: ThesisAxes): ThesisBadge
-</file>
-
 <file path="src/lib/tezara-queue.ts">
 import type { Logger } from "./logger";
 ⋮----
@@ -1568,6 +1597,12 @@ import { useTheme } from "next-themes";
 import { Toaster as Sonner } from "sonner";
 ⋮----
 type ToasterProps = React.ComponentProps<typeof Sonner>;
+</file>
+
+<file path="src/lib/academic/badge-calculator.ts">
+import type { ThesisAxes, ThesisBadge } from "@/lib/types";
+⋮----
+export function calculateBadge(axes: ThesisAxes): ThesisBadge
 </file>
 
 <file path="src/lib/error-utils.ts">
@@ -2137,29 +2172,6 @@ export function getAxisSecimColor(secim: string): string
 export function getAxisSecimBarFill(secim: string): string
 </file>
 
-<file path="src/lib/prompts/roadmap-synthesis.ts">
-import type { ThesisAxes } from "../types";
-import type { JsonSchema } from "../gemini";
-⋮----
-export function buildRoadmapSystemInstruction(): string
-⋮----
-export function buildRoadmapPrompt(params: {
-  studyTitle: string;
-  researchQuestion: string;
-  mainClaim: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-  comparisonResults: {
-    title: string;
-    author: string;
-    year: number;
-    axes: ThesisAxes;
-    comparisonNote: string;
-  }[];
-}): string
-</file>
-
 <file path="src/lib/tezara-parser.ts">
 import type { Logger } from "./logger";
 import type { TezaraThesisSummary } from "./types";
@@ -2229,6 +2241,29 @@ export default async function OnboardingPage()
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
+</file>
+
+<file path="src/lib/prompts/roadmap-synthesis.ts">
+import type { ThesisAxes } from "../types";
+import type { JsonSchema } from "../gemini";
+⋮----
+export function buildRoadmapSystemInstruction(): string
+⋮----
+export function buildRoadmapPrompt(params: {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+  comparisonResults: {
+    title: string;
+    author: string;
+    year: number;
+    axes: ThesisAxes;
+    comparisonNote: string;
+  }[];
+}): string
 </file>
 
 <file path="src/app/(app)/library/actions.ts">
@@ -2383,6 +2418,35 @@ import { checkStepsDataAction } from "../_lib/fetch-actions";
 className=
 </file>
 
+<file path="src/app/(auth)/onboarding/_components/start-over-button.tsx">
+import { useState, useTransition } from "react";
+import { RotateCcw, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { resetOnboardingAction } from "@/app/(auth)/onboarding/actions";
+⋮----
+interface StartOverButtonProps {
+  variant?:
+    "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  size?: "default" | "sm" | "lg" | "icon";
+  className?: string;
+}
+⋮----
+const handleReset = () =>
+</file>
+
 <file path="src/app/(auth)/onboarding/_lib/fetch-actions.ts">
 import { eq, sql, and, not } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
@@ -2423,35 +2487,6 @@ export async function checkStepsDataAction(): Promise<Record<
   boolean
 > | null> {
   const session = await getSession();
-</file>
-
-<file path="src/app/(auth)/onboarding/_components/start-over-button.tsx">
-import { useState, useTransition } from "react";
-import { RotateCcw, Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { resetOnboardingAction } from "@/app/(auth)/onboarding/actions";
-⋮----
-interface StartOverButtonProps {
-  variant?:
-    "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
-  size?: "default" | "sm" | "lg" | "icon";
-  className?: string;
-}
-⋮----
-const handleReset = () =>
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_services/queries.ts">
@@ -2526,6 +2561,15 @@ export async function fetchThesisDetails(
 ): Promise<TezaraThesisDetails | null>
 </file>
 
+<file path="src/app/(auth)/onboarding/risk/_components/risk-container.tsx">
+import { Loader2, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/loading-spinner";
+import { ErrorDisplay } from "@/components/error-display";
+import { OriginalityReportView } from "./originality-report-view";
+import { useRiskAnalysis } from "../_hooks/use-risk-analysis";
+</file>
+
 <file path="src/app/(auth)/onboarding/risk/_services/roadmap.ts">
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
@@ -2557,15 +2601,6 @@ export async function synthesizeRoadmap(
   params: SynthesizeRoadmapParams,
   log: Logger,
 ): Promise<string>
-</file>
-
-<file path="src/app/(auth)/onboarding/risk/_components/risk-container.tsx">
-import { Loader2, ShieldCheck } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { LoadingSpinner } from "@/components/loading-spinner";
-import { ErrorDisplay } from "@/components/error-display";
-import { OriginalityReportView } from "./originality-report-view";
-import { useRiskAnalysis } from "../_hooks/use-risk-analysis";
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_components/tezara-overlap-table.tsx">
@@ -2816,6 +2851,29 @@ export async function generateStructuredContent<T>(
 ): Promise<T>
 </file>
 
+<file path="src/app/(auth)/onboarding/risk/_hooks/use-risk-analysis.ts">
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
+import {
+  fetchThesisMatrix,
+  fetchOriginalityReport,
+} from "../../_lib/fetch-actions";
+import type { OriginalityReportData } from "@/lib/types";
+⋮----
+export interface UseRiskAnalysisResult {
+  loading: boolean;
+  analysing: boolean;
+  error: string | null;
+  reportData: OriginalityReportData | null;
+  proceeding: boolean;
+  startAnalysis: () => Promise<void>;
+  handleProceed: () => Promise<void>;
+}
+⋮----
+export function useRiskAnalysis(): UseRiskAnalysisResult
+</file>
+
 <file path="src/app/(auth)/onboarding/risk/_services/sifting.ts">
 import { fetchThesisDetails } from "@/lib/tezara";
 import type { Logger } from "@/lib/logger";
@@ -2845,6 +2903,34 @@ export async function siftAndFetchDetails(
   tezaraSearchResults: TezaraThesisSummary[][],
   log: Logger,
 ): Promise<
+</file>
+
+<file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">
+import { useState } from "react";
+import { Loader2, AlertCircle, BookOpen, Archive, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { AIBanner } from "@/components/ai-banner";
+import { LoadingSpinner } from "@/components/loading-spinner";
+import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
+import { LiteratureArticleCard } from "./literature-article-card";
+import {
+  useLiteratureReview,
+  type BoxStatus,
+} from "../_hooks/use-literature-review";
+⋮----
+function ArchiveEntryForm({
+  onAddEntry,
+}: {
+onAddEntry: (title: string, description: string)
+⋮----
+const handleAdd = () =>
+⋮----
+onChange=
+⋮----
+onAddArchiveEntry(subBox.title,
 </file>
 
 <file path="src/app/(auth)/onboarding/matrix/_components/matrix-form.tsx">
@@ -2901,29 +2987,6 @@ type SectionConfig = {
 };
 ⋮----
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
-</file>
-
-<file path="src/app/(auth)/onboarding/risk/_hooks/use-risk-analysis.ts">
-import { useState, useCallback, useEffect, useRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
-import {
-  fetchThesisMatrix,
-  fetchOriginalityReport,
-} from "../../_lib/fetch-actions";
-import type { OriginalityReportData } from "@/lib/types";
-⋮----
-export interface UseRiskAnalysisResult {
-  loading: boolean;
-  analysing: boolean;
-  error: string | null;
-  reportData: OriginalityReportData | null;
-  proceeding: boolean;
-  startAnalysis: () => Promise<void>;
-  handleProceed: () => Promise<void>;
-}
-⋮----
-export function useRiskAnalysis(): UseRiskAnalysisResult
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_services/analysis.ts">
@@ -2997,34 +3060,6 @@ export async function analyzeOriginalityRisk(
   log: Logger,
   chunkSize = 4,
 ): Promise<
-</file>
-
-<file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">
-import { useState } from "react";
-import { Loader2, AlertCircle, BookOpen, Archive, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { AIBanner } from "@/components/ai-banner";
-import { LoadingSpinner } from "@/components/loading-spinner";
-import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
-import { LiteratureArticleCard } from "./literature-article-card";
-import {
-  useLiteratureReview,
-  type BoxStatus,
-} from "../_hooks/use-literature-review";
-⋮----
-function ArchiveEntryForm({
-  onAddEntry,
-}: {
-onAddEntry: (title: string, description: string)
-⋮----
-const handleAdd = () =>
-⋮----
-onChange=
-⋮----
-onAddArchiveEntry(subBox.title,
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/actions.ts">
@@ -3170,50 +3205,6 @@ export function useLiteratureReview(): UseLiteratureReviewResult
 const isArchival = (box: GeminiThesisBox): boolean
 </file>
 
-<file path="src/db/schema.ts">
-import type { ThesisAxes, ThesisBadge } from "@/lib/types";
-import {
-  pgTable,
-  serial,
-  varchar,
-  text,
-  integer,
-  real,
-  timestamp,
-  jsonb,
-  pgEnum,
-  boolean,
-  index,
-  uniqueIndex,
-  foreignKey,
-} from "drizzle-orm/pg-core";
-import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
-⋮----
-export type User = InferSelectModel<typeof users>;
-⋮----
-export type NewUser = InferInsertModel<typeof users>;
-⋮----
-export type ThesisMatrix = InferSelectModel<typeof thesisMatrices>;
-⋮----
-export type NewThesisMatrix = InferInsertModel<typeof thesisMatrices>;
-⋮----
-export type OriginalityReport = InferSelectModel<typeof originalityReports>;
-⋮----
-export type NewOriginalityReport = InferInsertModel<typeof originalityReports>;
-⋮----
-export type ThesisBox = InferSelectModel<typeof thesisBoxes>;
-⋮----
-export type NewThesisBox = InferInsertModel<typeof thesisBoxes>;
-⋮----
-export type LibraryResource = InferSelectModel<typeof libraryResources>;
-⋮----
-export type NewLibraryResource = InferInsertModel<typeof libraryResources>;
-⋮----
-export type Task = InferSelectModel<typeof tasks>;
-⋮----
-export type NewTask = InferInsertModel<typeof tasks>;
-</file>
-
 <file path="src/app/(auth)/onboarding/literature-review/actions.ts">
 import { eq, and } from "drizzle-orm";
 import { cookies } from "next/headers";
@@ -3257,6 +3248,50 @@ export async function confirmLiteratureAction(args: {
 }): Promise<OnboardingActionResult>
 ⋮----
 const maybePushArticle = (article: (typeof entry.articles)[number]) =>
+</file>
+
+<file path="src/db/schema.ts">
+import type { ThesisAxes, ThesisBadge } from "@/lib/types";
+import {
+  pgTable,
+  serial,
+  varchar,
+  text,
+  integer,
+  real,
+  timestamp,
+  jsonb,
+  pgEnum,
+  boolean,
+  index,
+  uniqueIndex,
+  foreignKey,
+} from "drizzle-orm/pg-core";
+import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
+⋮----
+export type User = InferSelectModel<typeof users>;
+⋮----
+export type NewUser = InferInsertModel<typeof users>;
+⋮----
+export type ThesisMatrix = InferSelectModel<typeof thesisMatrices>;
+⋮----
+export type NewThesisMatrix = InferInsertModel<typeof thesisMatrices>;
+⋮----
+export type OriginalityReport = InferSelectModel<typeof originalityReports>;
+⋮----
+export type NewOriginalityReport = InferInsertModel<typeof originalityReports>;
+⋮----
+export type ThesisBox = InferSelectModel<typeof thesisBoxes>;
+⋮----
+export type NewThesisBox = InferInsertModel<typeof thesisBoxes>;
+⋮----
+export type LibraryResource = InferSelectModel<typeof libraryResources>;
+⋮----
+export type NewLibraryResource = InferInsertModel<typeof libraryResources>;
+⋮----
+export type Task = InferSelectModel<typeof tasks>;
+⋮----
+export type NewTask = InferInsertModel<typeof tasks>;
 </file>
 
 <file path="src/app/(auth)/onboarding/boxes/_components/boxes-container.tsx">

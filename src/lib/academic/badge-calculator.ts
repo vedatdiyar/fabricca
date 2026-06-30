@@ -12,6 +12,11 @@ export function calculateBadge(axes: ThesisAxes): ThesisBadge {
   const m = axes.metodolojik_kurgu.secim;
   const z = axes.zaman_mekan_ozgullugu.secim;
 
+  // 🛡️ GİYOTİN FİLTRESİ: Konu ALAKASIZ ve Bağlam ALAKASIZ BAĞLAM ise doğrudan akademik gürültü kabul edilir.
+  if (p === "ALAKASIZ" && z === "ALAKASIZ BAĞLAM") {
+    return "ÖZGÜN";
+  }
+
   // 🔴 1. SEVIYE: MUTLAK RISK (İKİZ TEZ)
   if (p === "BİREBİR" && t === "AYNI GÖZLÜK" && z === "AYNI DOKU") {
     return "İKİZ TEZ";

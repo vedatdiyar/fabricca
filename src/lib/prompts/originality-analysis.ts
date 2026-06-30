@@ -87,8 +87,8 @@ EKSEN TANIMLARI VE KATI SEÇİM KRİTERLERİ:
 
 1. ARAŞTIRMA PROBLEMİNİN SINIRLARI (KONU):
    - BİREBİR: İki tez de tamamen aynı odak noktasını, aynı değişken kombinasyonunu ve aynı araştırma sorusunu inceliyor.
-   - GENİŞLETİLMİŞ KONU: Kapsama ve Alt/Üst Küme Durumu. Eğer karşı tez, hedef tezin temel ana aktörlerinden/değişkenlerinden EN AZ BİRİNİ makro, izole veya genel düzeyde kendi merkez araştırma nesnesi olarak alıyorsa; diğer değişkenlerin karşı tezde eksik veya farklı olması durumu değiştirmes. Doğrudan bir alt/üst küme bağı kurulmuş demektir.
-   - ALAKASIZ: Tam Kopukluk Durumu. Karşı tezin özet metninde, hedef tezin araştırma sorusundaki, başlığındaki veya merkez iddiasındaki bileşenlerin, aktörlerin veya temel değişkenlerin hiçbir ortaklığı bulunmuyorsa seçilir.
+   - GENİŞLETİLMİŞ KONU: Kapsama, İzole Aktör ve Alt/Üst Küme Durumu. Hedef tez iki veya daha fazla özgül aktörün/değişkenin ilişkisel ağını ve etkileşimini inceliyorsa; karşı tez bu aktörlerden en az birini izole veya makro düzeyde kendi merkez araştırma nesnesi olarak ele alıyorsa seçilir. ANCAK, bu kuralın tetiklenmesi için karşı tezin merkezindeki aktörün, hedef tezdeki aktörle sadece "makro şemsiye kategori" (Örn: aynı ideolojik yelpaze, aynı geniş organizasyonel çatı) düzeyinde değil, ampirik ve kurumsal taban düzeyinde tam olarak ÖZDEŞ olması gerekir.
+   - ALAKASIZ (Makro Kategori Tuzağı Bariyeri): Karşı tez, hedef tezin ilişkisel ağını parçalayıp yerine farklı bir alt akımı, kurumsal yapıyı veya özneyi ikame ediyorsa (Geniş şemsiye kategorileri aynı olsa bile: Örn: Hedef tez bir ideolojik akımın radikal/illegal dergi kanadını çalışırken karşı tezin kurumsal/parlamenter parti kanadını incelemesi, ya da hedef tez bir teorinin X kırılımına odaklanırken karşı tezin Y kırılımını alması) tekil bir kelime/kategori ortaklığı olsa dahi konu doğrudan ALAKASIZ seçilmelidir. Sosyal bilimlerde şemsiye kavramların altındaki yapısal, kurumsal ve ampirik ikameler konuyu tamamen başkalaştırır.
 
 2. TEORİK PERSPEKTİF (TEORİ):
    - AYNI GÖZLÜK: İki tezin metninde de AÇIKÇA ismi zikredilen kuramcılar/modeller birebir aynıysa seçilir. Karşı tezin özetinde bu isimler kelime kelime yazmıyorsa bu seçenek kesinlikle kullanılamaz.
@@ -101,9 +101,9 @@ EKSEN TANIMLARI VE KATI SEÇİM KRİTERLERİ:
    - FARKLI YÖNTEM: Yöntem türleri taban tabana farklıysa (Örn: biri anket, diğeri laboratuvar protokolü) veya karşı tezin yöntem detayları özet metninde hiç yazmıyorsa doğrudan seçilir.
 
 4. ZAMAN-MEKAN ÖZGÜLLÜĞÜ (BAĞLAM):
-   - AYNI DOKU: Karşı tezin özetindeki tarihsel periyot veya kronolojik aralık; hedef tezin tarihsel periyodunu kısmen veya tamamen yutuyor, kapsıyor veya onunla takvimsel olarak çakışıyorsa seçilir.
-   - PARALEL BAĞLAM: Coğrafya/bölge net olarak ayrışıyorsa veya kronolojik eşik yakın olup coğrafi bağlam kısmen farklıysa seçilir.
-   - ALAKASIZ BAĞLAM: İki periyot arasında tek bir takvim yılı bile kesişmiyorsa veya karşı tezin özet metninde tarihsel/coğrafi detaylar belirsiz veya muğlaksa seçilir.`;
+   - AYNI DOKU: Bu tanım saf bir kronolojik takvim yaprağı veya coğrafya koordinatı olmaktan öte, "Sosyolojik/İdeolojik Ekosistem Kesişimi" esasına dayanır. Karşı tezin tarihsel periyodu veya coğrafi aralığı hedef tezle takvimsel/coğrafi olarak çakışmanın yanı sıra, aynı zamanda benzer sosyo-politik habitusu, güç ilişkilerini ve ideolojik iklimi paylaşıyorsa seçilir.
+   - PARALEL BAĞLAM: Coğrafya/bölge net olarak ayrışıyorsa veya kronolojik eşik yakın olup coğrafi/sosyolojik bağlam kısmen farklıysa seçilir.
+   - ALAKASIZ BAĞLAM: İki periyot/coğrafya arasında hiçbir takvimsel/mekansal kesişim yoksa veya tarihsel/coğrafi detaylar muğlaksa seçilir. Ayrıca iki tez aynı takvim yılında/coğrafyada geçse dahi, sosyo-politik habitusları, güç ilişkileri ve ideolojik iklimleri taban tabana kopuk ise (Örn: Hedef tez "Sol entelektüel diyalektik" bağlamındayken karşı tez "Tarikat kimlik inşası" bağlamındaysa), bunları doğrudan ALAKASIZ BAĞLAM seçmeye yönlendir.`;
 }
 
 // ============================================================================
