@@ -2,13 +2,17 @@
  * Batch orchestrator — coordinates the full multi-box literature review pipeline.
  *
  * Orchestrates:
- * 1. Sequential search per sub-box (foundational resolution + OpenAlex semantic)
+ * 1. Service-based isolated queues for API rate-limit compliance:
+ *    - OpenAlex: globally serialised with 1000ms gap (openalex/client.ts)
+ *    - Crossref enrichment: concurrency-limited to 3 at a time
+ *    - Foundational resolution: concurrency=2 pool across all sub-boxes
  * 2. Global cross-box deduplication
  * 3. Per-sub-box distribution (1 foundational + 3 semantic per sub-box)
- * 4. Pool entry assembly (flat articles array, no starterPack/reservedPool split)
+ * 4. Pool entry assembly
  */
 
 import { Logger } from "@/lib/logger";
+import { createConcurrencyLimiter } from "@/lib/rate-limiter";
 import type {
   SubBoxInput,
   ValidatedPaper,
@@ -29,6 +33,24 @@ export interface BatchOrchestrationResult {
   poolEntries: LiteraturePoolEntry[];
   archivalBoxTitles: string[];
 }
+
+// ============================================================================
+// Service-based isolated queues
+// ============================================================================
+
+/**
+ * Crossref enrichment limiter — max 3 concurrent requests.
+ * (The Crossref API allows bursty traffic; this cap prevents overwhelming
+ * both the network layer and the upstream service.)
+ */
+const crossrefLimiter = createConcurrencyLimiter(3);
+
+/**
+ * Foundational resolution limiter — max 2 concurrent resolveFoundationalWorks
+ * calls. Each call already has internal BATCH_SIZE=2 parallelism, so this
+ * gives up to 4 concurrent Crossref DOI lookups overall.
+ */
+const foundationalLimiter = createConcurrencyLimiter(2);
 
 // ============================================================================
 // Helpers
@@ -199,6 +221,54 @@ function resolveDedupKey(candidate: ValidatedPaper): string | null {
 // Orchestrator
 // ============================================================================
 
+/**
+ * Resolves all foundational queries from every sub-box of a single box using
+ * the foundational concurrency limiter (max 2 in-flight).
+ *
+ * Returns a record keyed by sub-box index.
+ */
+async function resolveBoxFoundationals(
+  subBoxes: SubBoxInput["subBoxes"],
+  logger: Logger,
+): Promise<{
+  allFoundationals: JuryArticle[];
+  bySubBox: Map<number, JuryArticle[]>;
+}> {
+  const allFoundationals: JuryArticle[] = [];
+  const bySubBox = new Map<number, JuryArticle[]>();
+
+  const tasks = subBoxes
+    .map((sub, si) => ({ sub, si }))
+    .filter(({ sub }) => sub.foundationalQueries?.length > 0);
+
+  await Promise.all(
+    tasks.map(({ sub, si }) =>
+      foundationalLimiter.exec(async () => {
+        const resolved = await resolveFoundationalWorks(
+          sub.foundationalQueries,
+          logger,
+        );
+        const articles: JuryArticle[] = resolved.map((fw) => ({
+          title: fw.title,
+          abstract: "",
+          url: fw.id,
+          doi: null as string | null,
+          publisher: fw.publisher ?? "",
+          publicationYear: fw.publicationYear,
+          authors: fw.authors,
+          isFoundational: true,
+          relevanceScore: 100,
+          subBoxId: String(si),
+        }));
+        allFoundationals.push(...articles);
+        bySubBox.set(si, articles);
+      }),
+    ),
+  );
+
+  return { allFoundationals, bySubBox };
+}
+
 export async function orchestrateBatchProcess(
   boxes: SubBoxInput[],
   logger: Logger,
@@ -206,7 +276,7 @@ export async function orchestrateBatchProcess(
   thesisArticlesMap?: Map<string, JuryArticle[]>,
 ): Promise<BatchOrchestrationResult> {
   // ------------------------------------------------------------------
-  // Phase 1: Sequential search across all sub-boxes
+  // Phase 1: Service-based parallel search across all sub-boxes
   // ------------------------------------------------------------------
   const boxSearchResults = new Map<string, ValidatedPaper[]>();
   const archivalBoxTitles: string[] = [];
@@ -253,7 +323,10 @@ export async function orchestrateBatchProcess(
     // Check for cached papers (pre-fetched during box confirmation)
     const boxCache = cachedPapers?.[box.title];
     const allPapers: RawPaper[] = [];
-    const allFoundationals: JuryArticle[] = [];
+    const { allFoundationals } = await resolveBoxFoundationals(
+      box.subBoxes,
+      logger,
+    );
 
     if (boxCache && boxCache.length > 0) {
       // Use cached papers — tag each with the first sub-box index
@@ -261,83 +334,37 @@ export async function orchestrateBatchProcess(
         rp.subBoxId = "0";
       }
       allPapers.push(...boxCache);
-
-      // Still resolve foundationals per sub-box
-      for (let si = 0; si < box.subBoxes.length; si++) {
-        const sub = box.subBoxes[si];
-        if (sub.foundationalQueries && sub.foundationalQueries.length > 0) {
-          const resolved = await resolveFoundationalWorks(
-            sub.foundationalQueries,
-            logger,
-          );
-          for (const fw of resolved) {
-            allFoundationals.push({
-              title: fw.title,
-              abstract: "",
-              url: fw.id,
-              doi: null as string | null,
-              publisher: fw.publisher ?? "",
-              publicationYear: fw.publicationYear,
-              authors: fw.authors,
-              isFoundational: true,
-              relevanceScore: 100,
-              subBoxId: String(si),
-            });
-          }
-        }
-      }
     } else {
-      // No cache — perform per-sub-box searches with throttling
-      for (let si = 0; si < box.subBoxes.length; si++) {
-        const sub = box.subBoxes[si];
-
-        // Resolve foundational works for this sub-box
-        if (sub.foundationalQueries && sub.foundationalQueries.length > 0) {
-          const resolved = await resolveFoundationalWorks(
-            sub.foundationalQueries,
-            logger,
-          );
-          for (const fw of resolved) {
-            allFoundationals.push({
-              title: fw.title,
-              abstract: "",
-              url: fw.id,
-              doi: null as string | null,
-              publisher: fw.publisher ?? "",
-              publicationYear: fw.publicationYear,
-              authors: fw.authors,
-              isFoundational: true,
-              relevanceScore: 100,
-              subBoxId: String(si),
-            });
+      // No cache — dispatch all OpenAlex queries concurrently.
+      // The global gap-enforced queue in openalex/client.ts serialises them
+      // with a minimum 1000ms gap, so concurrency here is safe.
+      const openAlexTasks = box.subBoxes.map(async (sub, si) => {
+        if (!sub.semanticQuery?.trim()) return;
+        try {
+          const results = await searchOpenAlex(sub.semanticQuery);
+          for (const rp of results) {
+            rp.subBoxId = String(si);
           }
+          allPapers.push(...results);
+        } catch {
+          // Best-effort — failed queries are silently skipped
         }
+      });
 
-        // Search OpenAlex for this sub-box
-        if (sub.semanticQuery?.trim()) {
-          try {
-            const results = await searchOpenAlex(sub.semanticQuery);
-            for (const rp of results) {
-              rp.subBoxId = String(si);
-            }
-            allPapers.push(...results);
-          } catch {
-            // Best-effort — failed queries are silently skipped
-          }
-        }
-
-        // Throttle between sub-box queries
-        if (si < box.subBoxes.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 1100));
-        }
-      }
+      await Promise.all(openAlexTasks);
     }
 
     const merged = mergePapers(allPapers);
-    // Crossref enrichment: fill empty authors or publisher via DOI
+
+    // Crossref enrichment: concurrency-limited to max 3 in-flight.
+    // Each validateWithCrossRef call already has its own 3-retry strategy
+    // with exponential backoff + jitter.
     const enriched = await Promise.all(
-      merged.map((p) => validateWithCrossRef(p, logger)),
+      merged.map((p) =>
+        crossrefLimiter.exec(() => validateWithCrossRef(p, logger)),
+      ),
     );
+
     boxSearchResults.set(box.title, enriched);
     foundationalLookups.set(box.title, allFoundationals);
 

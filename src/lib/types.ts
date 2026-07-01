@@ -148,7 +148,11 @@ export interface FoundationalQuery {
 
 export const FoundationalQuerySchema = z.object({
   author: z.string().min(1, "Yazar adı boş olamaz"),
-  title: z.string().min(1, "Eser başlığı boş olamaz"),
+  title: z.preprocess(
+    (v) =>
+      typeof v === "string" && v.trim().length === 0 ? "İsimsiz Kaynak" : v,
+    z.string().min(1, "Eser başlığı boş olamaz"),
+  ),
   publicationYear: z.coerce.number().int().min(0, "Yayın yılı geçersiz"),
   doi: z.string().nullable().optional(),
   publisher: z.string().nullable().optional(),
@@ -192,7 +196,10 @@ export const GeminiThesisBoxSchema = z.object({
     return z.array(GeminiThesisBoxSchema).optional();
   },
   foundationalQueries: z.array(FoundationalQuerySchema).max(12).optional(),
-  concepts: z.array(z.string()).max(6).optional(),
+  concepts: z.preprocess(
+    (arr) => (Array.isArray(arr) ? arr.slice(0, 5) : arr),
+    z.array(z.string()).optional(),
+  ),
   relatedTheses: z.array(RelatedThesisEntrySchema).optional(),
 });
 

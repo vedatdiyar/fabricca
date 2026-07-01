@@ -124,16 +124,16 @@ function RelatedThesisCard({ thesis }: { thesis: RelatedThesisEntry }) {
   return (
     <div className="border border-border/60 rounded-md p-3 space-y-2 bg-card/30">
       <div className="space-y-0.5">
-        <p className="text-xs font-semibold text-foreground leading-snug">
+        <p className="text-sm font-semibold text-foreground leading-snug">
           {thesis.title}
         </p>
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {thesis.author} — {thesis.university} ({thesis.year})
         </p>
       </div>
 
       {thesis.thesisType && (
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-[11px] text-muted-foreground">
           {thesis.thesisType} · {thesis.department}
         </p>
       )}
@@ -143,7 +143,7 @@ function RelatedThesisCard({ thesis }: { thesis: RelatedThesisEntry }) {
           href={thesis.yokPdfUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-[10px] text-primary font-medium hover:underline"
+          className="inline-flex items-center gap-1 text-[11px] text-primary font-medium hover:underline"
         >
           <ExternalLink className="w-3 h-3" />
           YÖK Tez PDF
@@ -316,20 +316,10 @@ function BoxCard({
             )}
           </h4>
           {box.relatedTheses && box.relatedTheses.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {box.relatedTheses.map((thesis, i) => {
-                const isLastOdd =
-                  box.relatedTheses!.length % 2 !== 0 &&
-                  i === box.relatedTheses!.length - 1;
-                return (
-                  <div
-                    key={`${thesis.title}-${i}`}
-                    className={isLastOdd ? "md:col-span-2" : ""}
-                  >
-                    <RelatedThesisCard thesis={thesis} />
-                  </div>
-                );
-              })}
+            <div className="flex flex-col gap-4">
+              {box.relatedTheses.map((thesis, i) => (
+                <RelatedThesisCard key={`${thesis.title}-${i}`} thesis={thesis} />
+              ))}
             </div>
           ) : (
             <p className="text-xs text-muted-foreground leading-relaxed">

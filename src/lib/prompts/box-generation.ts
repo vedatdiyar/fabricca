@@ -11,11 +11,6 @@ const STANDARD_SUB_BOX = {
   properties: {
     title: { type: "string" as const },
     description: { type: "string" as const },
-    concepts: {
-      type: "array" as const,
-      items: { type: "string" as const },
-      minItems: 1,
-    },
     semanticQuery: { type: "string" as const, minLength: 1 },
     foundationalQueries: {
       type: "array" as const,
@@ -29,7 +24,7 @@ const STANDARD_SUB_BOX = {
       },
     },
   },
-  required: ["title", "description", "concepts", "semanticQuery"],
+  required: ["title", "description", "semanticQuery"],
 };
 
 const PRIMARY_SUB_BOX = {
@@ -37,11 +32,6 @@ const PRIMARY_SUB_BOX = {
   properties: {
     title: { type: "string" as const },
     description: { type: "string" as const },
-    concepts: {
-      type: "array" as const,
-      items: { type: "string" as const },
-      minItems: 1,
-    },
     semanticQuery: { type: "string" as const },
     foundationalQueries: {
       type: "array" as const,
@@ -55,7 +45,7 @@ const PRIMARY_SUB_BOX = {
       },
     },
   },
-  required: ["title", "description", "concepts", "semanticQuery"],
+  required: ["title", "description", "semanticQuery"],
 };
 
 function buildCategory(
@@ -66,9 +56,14 @@ function buildCategory(
     properties: {
       title: { type: "string" },
       description: { type: "string" },
+      concepts: {
+        type: "array" as const,
+        items: { type: "string" as const },
+        maxItems: 5,
+      },
       subBoxes: { type: "array", items },
     },
-    required: ["title", "description", "subBoxes"],
+    required: ["title", "description", "concepts", "subBoxes"],
   };
 }
 
@@ -110,7 +105,11 @@ GENERAL CONTRACT:
 1. Language Division: 'title', 'description' and 'concepts' fields MUST be in academic TURKISH. 'semanticQuery' fields MUST be in ENGLISH as dense academic paragraphs suitable for OpenAlex/GTE-Large EN vector search.
 2. Scope Safety: Variables explicitly marked "out of scope" or "excluded" in the input matrix must never leak into any field.
 3. Foundational Contract: 'foundationalQueries' array MUST be empty ([]) in every sub-box.
-4. UNIVERSAL SAVINGS CONTRACT for semanticQuery (applies to ALL quadrants except PRIMARY_MATERIAL):
+4. CONCEPTS CONSTRAINT (ZERO-TOLERANCE HARD LIMIT):
+   a. The 'concepts' array is defined EXCLUSIVELY at the category (main box) level. Sub-boxes MUST NOT contain a 'concepts' field under any circumstances.
+   b. HARD LIMIT: Each main box MUST contain at most 5 concepts. Generating 6 or more concepts is a DIRECT VIOLATION of the output schema (maxItems: 5). This is NOT a suggestion — it is a structural schema constraint that will cause the output to be rejected.
+   c. QUALITY RULE: Select only the most essential keywords or theoretical labels per quadrant. Each concept must be a single, high-density academic term. Prefer 3-5 highly relevant concepts over padding with fringe terms.
+5. UNIVERSAL SAVINGS CONTRACT for semanticQuery (applies to ALL quadrants except PRIMARY_MATERIAL):
    a. MAXIMUM LENGTH: 500 characters. Every character must carry semantic weight.
    b. FORBIDDEN FILLER PATTERNS (ZERO TOLERANCE): Never start with or include phrases like "This study/research/analysis/article/paper examines/explores/investigates/focuses/analyzes." These are prose noise that wastes the character budget.
    c. MANDATORY OPENING: The query MUST start directly with the highest-semantic-weight term — the core subject, theory name, or actor name from the sub-box's title or concepts. The opening 3-5 words must be the most search-relevant terms.
@@ -122,7 +121,7 @@ QUADRANT-SPECIFIC PRODUCTION PROTOCOLS:
 - Task: Define the independent abstract models, theories, axioms or paradigmatic frameworks upon which the thesis is constructed.
 - Dynamic Splitting Principle: If the input matrix contains multiple distinct theoretical backbones or schools, split them into separate sub-boxes.
 - semanticQuery Rule ("Anchored Abstract Mimicry — Positive Filter"):
-  * The query MUST be constructed primarily from THIS sub-box's title and concepts array.
+  * The query MUST be constructed primarily from THIS sub-box's title and the parent category's concepts array.
    * Opening word: the core theory name (e.g., the specific scientific model or paradigm analyzed — never "This study...").
   * Sentence 1: Core theory + primary mechanism.
   * Sentence 2: Key theorists + conceptual relationship.
@@ -138,7 +137,7 @@ QUADRANT-SPECIFIC PRODUCTION PROTOCOLS:
    * Opening word: the primary empirical subject or variable conflict from this sub-box (e.g., the specific phenomenon or system component being tested — never "This study...").
   * Sentence 1: Core tension + primary actors directly from this sub-box's title.
   * Sentence 2: Relational mechanism between the actors (adoption, friction, alienation).
-  * Sentence 3: Time boundary and context, drawn minimally from the sub-box's concepts.
+  * Sentence 3: Time boundary and context, drawn minimally from the parent category's concepts.
   * GOAL: Each sub-box produces a DISTINCT search vector. If sub-box A and sub-box B share the same matrix root, their queries MUST NOT be interchangeable.
   * PREVIOUS RULE CANCELLED: Instructions to strip, hide or super-categorize empirical names from semanticQuery are REVOKED. Proper nouns from the matrix MUST be used directly in the English query.
 
@@ -190,10 +189,11 @@ ${matrixJson}
 \`\`\`
 CRITICAL OPERATIONAL REMINDERS:
 - Apply the UNIVERSAL SAVINGS CONTRACT: max 500 chars, no filler openings, start with highest-weight term.
-- Apply POSITIVE FILTER: each sub-box query derives core content from its own title+concepts.
+- Apply POSITIVE FILTER: each sub-box query derives core content from its own title and the parent category's concepts.
 - Apply MATRIX-CONDITIONAL CONCEPT GENERATION: CONTEXT sub-box titles must derive from specific parameters in researchScope/theoreticalFramework.
 - Apply PHENOMENOLOGICAL SPLITTING: CONTEXT queries chain System State A -> Environmental/Structural Pressure -> System State B / Target Adaptation.
 - Apply DYNAMIC SPLITTING: multiple variables -> multiple sub-boxes.
+- CONCEPTS CONSTRAINT (ZERO TOLERANCE): Each main box MUST have at most 5 concepts (maxItems: 5 in schema). Concepts are at the category level ONLY, not sub-box level. Exceeding 5 concepts per main box is a schema violation — the output will be rejected.
 - PRIMARY_MATERIAL: return empty string ("") for semanticQuery.
 - Output ONLY valid JSON matching the defined schema.`;
 }

@@ -45,6 +45,31 @@ export function getAi(): GoogleGenAI {
 }
 
 /**
+ * Hatadan HTTP durum kodunu ve açıklamasını ayıklar.
+ * Örn: "429 (RESOURCE_EXHAUSTED)" veya "503 (UNAVAILABLE)"
+ */
+function extractHttpStatus(error: unknown): string {
+  if (error instanceof Error) {
+    const err = error as unknown as Record<string, unknown>;
+    const status = typeof err.status === "string" ? err.status : "";
+    const code = typeof err.code === "number" ? err.code : 0;
+
+    if (code === 429 || status === "RESOURCE_EXHAUSTED")
+      return "429 (RESOURCE_EXHAUSTED)";
+    if (code === 503 || status === "UNAVAILABLE") return "503 (UNAVAILABLE)";
+    if (status) return `${code} (${status})`;
+    if (code) return `${code}`;
+
+    // Fallback: message içinden tara
+    if (error.message.includes("429") || error.message.includes("quota"))
+      return "429 (RESOURCE_EXHAUSTED)";
+    if (error.message.includes("503") || error.message.includes("UNAVAILABLE"))
+      return "503 (UNAVAILABLE)";
+  }
+  return "bilinmiyor";
+}
+
+/**
  * Bir asenkron fonksiyonu 503 (UNAVAILABLE) veya sunucu yoğunluğu hatalarına karşı
  * üssel olarak geri çekilerek (exponential backoff) ve jitter ekleyerek yeniden dener.
  * Ayrıca 429 (RESOURCE_EXHAUSTED) kota aşımı hatalarını da daha uzun bekleme süreleriyle
@@ -83,6 +108,7 @@ export async function retryOn503<T>(
 
       if (!isRetryable || attempt > maxRetries) {
         const scenario = classifyError(error);
+        const httpStatus = extractHttpStatus(error);
         logger?.error("ai_retry_exhausted", {
           service: "gemini",
           filePath: "src/lib/gemini.ts",
@@ -91,6 +117,8 @@ export async function retryOn503<T>(
             attempt,
             maxRetries,
             scenario,
+            httpStatus,
+            retryLog: `GEMINI › RETRY | Deneme: ${attempt} | HTTP Durumu: ${httpStatus} | Mesaj: ${error instanceof Error ? error.message : String(error)}`,
           },
           error,
         });
@@ -105,6 +133,7 @@ export async function retryOn503<T>(
           (error as { status: string }).status === "RESOURCE_EXHAUSTED") ||
         ("code" in error && (error as { code: number }).code === 429);
 
+      const httpStatus = extractHttpStatus(error);
       const exponent = attempt - 1;
       const currentBaseDelay = is429 ? 5000 : baseDelayMs;
       const backoffDelay = currentBaseDelay * Math.pow(2, exponent);
@@ -120,8 +149,10 @@ export async function retryOn503<T>(
           attempt,
           maxRetries,
           delayMs: Math.round(totalDelay),
+          httpStatus,
           errorMessage: error?.message || String(error),
           quotaExceeded: is429,
+          retryLog: `GEMINI › RETRY | Deneme: ${attempt} | HTTP Durumu: ${httpStatus} | Mesaj: ${error instanceof Error ? error.message : String(error)}`,
         },
       });
 

@@ -1,9 +1,9 @@
 /**
- * OpenAlex sequential search collector.
+ * OpenAlex search collector.
  *
- * Encapsulates the OpenAlex HTTP search loop with rate-limit throttle and
- * retry logic. Both single-box and batch-box pipelines call this service
- * instead of duplicating the search loop.
+ * Rate-limit management is delegated to the global gap-enforced queue
+ * in openalex/client.ts (1000ms gap between requests, cross-caller).
+ * This file provides a higher-level batched interface with retry logging.
  */
 
 import { searchOpenAlex } from "./openalex/client";
@@ -12,84 +12,44 @@ import type { RawPaper, ValidatedPaper } from "./literature-review-papers";
 import type { Logger } from "@/lib/logger";
 
 /**
- * OpenAlex rate limit: minimum delay (ms) between sequential search requests.
- * OpenAlex enforces ~1 request/second for non-authenticated use.
- * 1100ms = 1s base + 100ms safety margin.
- */
-const OPENALEX_REQUEST_DELAY_MS = 1100;
-
-/**
- * Retries a single OpenAlex semantic search with exponential back-off on
- * network / 429 errors.
- *
- * @param query - The search query string
- * @param logger - Logger instance
- * @param maxAttempts - Maximum retry attempts (default 3)
- * @returns Raw papers from OpenAlex
- */
-async function withOpenAlexRetry(
-  query: string,
-  logger: Logger,
-  maxAttempts = 3,
-): Promise<RawPaper[]> {
-  let lastError: Error | null = null;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      return await searchOpenAlex(query);
-    } catch (err) {
-      lastError = err instanceof Error ? err : new Error(String(err));
-
-      if (attempt < maxAttempts) {
-        const backoff = 1500 * Math.pow(2, attempt - 1);
-        const jitter = backoff * 0.3 * Math.random();
-        const delayMs = backoff + jitter;
-        logger.warn("openalex_rate_limit_retry", {
-          service: "literature",
-          filePath:
-            "onboarding/literature-review/_services/openalex-collector.ts",
-          data: {
-            attempt,
-            maxAttempts,
-            delayMs: Math.round(delayMs),
-            query: query.substring(0, 120),
-            error: lastError.message,
-          },
-        });
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-      }
-    }
-  }
-
-  throw lastError ?? new Error("OpenAlex isteği başarısız oldu");
-}
-
-/**
- * Runs a sequential OpenAlex search for all given queries with rate-limit
- * throttle between requests, then deduplicates the combined results.
+ * Runs an OpenAlex search for all given queries. Calls are dispatched
+ * concurrently — the global gap-enforced queue in client.ts serialises
+ * them with the required 1000ms gap.
  *
  * @param queries - Array of semantic search query strings
  * @param logger - Logger instance
- * @param delayMs - Throttle delay between queries (default 1100ms)
  * @returns Deduplicated validated papers
  */
 export async function collectOpenAlexResults(
   queries: string[],
   logger: Logger,
-  delayMs = OPENALEX_REQUEST_DELAY_MS,
 ): Promise<ValidatedPaper[]> {
-  const searchResultsList: RawPaper[][] = [];
-  for (let i = 0; i < queries.length; i++) {
-    const query = queries[i];
-    if (!query.trim()) continue;
+  const settled = await Promise.allSettled(
+    queries.map(async (query) => {
+      if (!query.trim()) return [] as RawPaper[];
+      try {
+        return await searchOpenAlex(query);
+      } catch (err) {
+        logger.error("openalex_collect_failed", {
+          service: "literature",
+          filePath:
+            "onboarding/literature-review/_services/openalex-collector.ts",
+          data: {
+            query: query.substring(0, 120),
+            error: err instanceof Error ? err.message : String(err),
+          },
+        });
+        return [] as RawPaper[];
+      }
+    }),
+  );
 
-    const results = await withOpenAlexRetry(query, logger);
-    searchResultsList.push(results);
-
-    if (i < queries.length - 1) {
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
+  const semanticRaw: RawPaper[] = [];
+  for (const r of settled) {
+    if (r.status === "fulfilled") {
+      semanticRaw.push(...r.value);
     }
   }
-  const semanticRaw = searchResultsList.flat();
+
   return mergePapers(semanticRaw);
 }

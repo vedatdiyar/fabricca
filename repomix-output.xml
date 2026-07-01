@@ -89,6 +89,7 @@ src/
           _components/
             boxes-container.tsx
           _services/
+            exa-search.ts
             foundational-oracle.ts
           actions.ts
           page.tsx
@@ -204,6 +205,7 @@ src/
     cohere.ts
     error-utils.ts
     gemini.ts
+    rate-limiter.ts
     tavily.ts
     tezara-parser.ts
     tezara-queue.ts
@@ -226,6 +228,46 @@ export default function AdvisorPage()
 export default function CardIndexPage()
 </file>
 
+<file path="src/app/(auth)/onboarding/boxes/_services/exa-search.ts">
+import { Type } from "@google/genai";
+import type { Logger } from "@/lib/logger";
+⋮----
+export interface ExaResult {
+  title: string;
+  url: string;
+  author?: string;
+  text?: string;
+  publishedDate?: string;
+  highlights?: string[];
+}
+⋮----
+export interface ExaConfig {
+  query: string;
+  category?: string;
+  type: string;
+  systemPrompt?: string;
+  contents: Record<string, unknown>;
+  numResults: number;
+}
+⋮----
+export function buildExaConfig(
+  boxType: string,
+  query: string,
+  researchScope: string,
+  log?: Logger,
+): ExaConfig
+⋮----
+export function buildVanillaFallbackConfig(originalQuery: string): ExaConfig
+⋮----
+function parseRetryAfter(header: string | null): number | null
+⋮----
+export async function searchExa(
+  cfg: ExaConfig,
+  originalQuery: string,
+  log?: Logger,
+): Promise<ExaResult[]>
+</file>
+
 <file path="src/app/page.tsx">
 import { redirect } from "next/navigation";
 ⋮----
@@ -246,6 +288,44 @@ export interface ButtonProps
 }
 ⋮----
 className=
+</file>
+
+<file path="src/lib/rate-limiter.ts">
+export interface GapEnforcedQueue<T> {
+  exec(fn: () => Promise<T>): Promise<T>;
+  size: number;
+  waitForIdle(): Promise<void>;
+}
+⋮----
+exec(fn: ()
+⋮----
+waitForIdle(): Promise<void>;
+⋮----
+export function createGapEnforcedQueue<T>(
+  minGapMs: number,
+): GapEnforcedQueue<T>
+⋮----
+async function drain(): Promise<void>
+⋮----
+exec(fn: () => Promise<T>): Promise<T>
+⋮----
+get size(): number
+⋮----
+async waitForIdle(): Promise<void>
+⋮----
+export interface ConcurrencyLimiter {
+  exec<T>(fn: () => Promise<T>): Promise<T>;
+  size: number;
+  waitForIdle(): Promise<void>;
+}
+⋮----
+exec<T>(fn: ()
+⋮----
+export function createConcurrencyLimiter(
+  concurrency: number,
+): ConcurrencyLimiter
+⋮----
+exec<T>(fn: () => Promise<T>): Promise<T>
 </file>
 
 <file path="src/app/(app)/dashboard/_components/add-task-modal.tsx">
@@ -1159,6 +1239,7 @@ export function useDashboard(
 
 <file path="src/app/(auth)/onboarding/literature-review/_services/openalex/client.ts">
 import { parseOpenAlexResults } from "./parser";
+import { createGapEnforcedQueue } from "@/lib/rate-limiter";
 import type { RawPaper } from "../literature-review-papers";
 ⋮----
 async function queryOpenAlexWorks(
@@ -1174,16 +1255,9 @@ import { mergePapers } from "./literature-review-papers";
 import type { RawPaper, ValidatedPaper } from "./literature-review-papers";
 import type { Logger } from "@/lib/logger";
 ⋮----
-async function withOpenAlexRetry(
-  query: string,
-  logger: Logger,
-  maxAttempts = 3,
-): Promise<RawPaper[]>
-⋮----
 export async function collectOpenAlexResults(
   queries: string[],
   logger: Logger,
-  delayMs = OPENALEX_REQUEST_DELAY_MS,
 ): Promise<ValidatedPaper[]>
 </file>
 
@@ -1414,81 +1488,6 @@ export default function LoginPage()
 function handleSubmit(e: React.FormEvent<HTMLFormElement>)
 </file>
 
-<file path="src/app/(auth)/onboarding/boxes/_services/foundational-oracle.ts">
-import { ThinkingLevel, Type } from "@google/genai";
-import { getAi, retryOn503 } from "@/lib/gemini";
-import type { Logger } from "@/lib/logger";
-import type { GeminiThesisBox, FoundationalQuery } from "@/lib/types";
-import {
-  foundationalOracleResponseSchema,
-  buildFoundationalOracleSystemInstruction,
-  buildFoundationalOracleUserPrompt,
-} from "@/lib/prompts";
-⋮----
-interface ExaResult {
-  title: string;
-  url: string;
-  author?: string;
-  text?: string;
-  publishedDate?: string;
-}
-⋮----
-interface CrossrefResult {
-  doi: string | null;
-  publisher: string | null;
-  title: string | null;
-  author: string | null;
-  publicationYear: number | null;
-}
-⋮----
-function tokenize(text: string): string[]
-⋮----
-export function calculateTitleScore(
-  itemTitle: string,
-  queryTitle: string,
-): number
-⋮----
-export function matchAuthor(
-  itemAuthorList: { given?: string; family?: string }[] | undefined,
-  queryAuthor: string,
-): boolean
-⋮----
-function extractYear(item: Record<string, unknown>): number | null
-⋮----
-function parseRetryAfter(header: string | null): number | null
-⋮----
-async function searchExa(query: string, log?: Logger): Promise<ExaResult[]>
-⋮----
-export async function lookupCrossref(
-  title: string,
-  author: string,
-): Promise<CrossrefResult>
-⋮----
-async function fetchWorks(
-    queryParam: string,
-    value: string,
-): Promise<Record<string, unknown>[]>
-⋮----
-interface MinedBoxResult {
-  flatIndex: number;
-  foundationalQuery: FoundationalQuery;
-}
-⋮----
-export async function processSingleBox(
-  box: GeminiThesisBox,
-  flatIndex: number,
-  thesisMatrix: {
-    studyTitle: string;
-    researchQuestion: string;
-    theoreticalFramework: string;
-    methodology: string;
-    researchScope: string;
-    mainClaim: string;
-  },
-  log: Logger,
-): Promise<MinedBoxResult | null>
-</file>
-
 <file path="src/app/(auth)/onboarding/literature-review/_services/crossref/validator.ts">
 import { CROSSREF_USER_AGENT } from "../_shared";
 import type { ValidatedPaper } from "../literature-review-papers";
@@ -1668,6 +1667,58 @@ export default async function LibraryPage()
 import { LoadingOverlayProvider } from "@/components/providers/loading-overlay-provider";
 import { OnboardingGlobalLoader } from "@/components/onboarding-global-loader";
 import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
+</file>
+
+<file path="src/app/(auth)/onboarding/boxes/_services/foundational-oracle.ts">
+import { ThinkingLevel } from "@google/genai";
+import { getAi, retryOn503 } from "@/lib/gemini";
+import type { Logger } from "@/lib/logger";
+import type { GeminiThesisBox, FoundationalQuery } from "@/lib/types";
+import {
+  foundationalOracleResponseSchema,
+  buildFoundationalOracleSystemInstruction,
+  buildFoundationalOracleUserPrompt,
+} from "@/lib/prompts";
+import { searchExa, exaSearchTool, buildExaConfig } from "./exa-search";
+⋮----
+interface CrossrefResult {
+  doi: string | null;
+  publisher: string | null;
+  title: string | null;
+  author: string | null;
+  publicationYear: number | null;
+}
+⋮----
+function extractYear(item: Record<string, unknown>): number | null
+⋮----
+export async function lookupCrossref(
+  title: string,
+  author: string,
+): Promise<CrossrefResult>
+⋮----
+async function fetchWorks(
+    queryParam: string,
+    value: string,
+): Promise<Record<string, unknown>[]>
+⋮----
+interface MinedBoxResult {
+  flatIndex: number;
+  foundationalQuery: FoundationalQuery;
+}
+⋮----
+export async function processSingleBox(
+  box: GeminiThesisBox,
+  flatIndex: number,
+  thesisMatrix: {
+    studyTitle: string;
+    researchQuestion: string;
+    theoreticalFramework: string;
+    methodology: string;
+    researchScope: string;
+    mainClaim: string;
+  },
+  log: Logger,
+): Promise<MinedBoxResult | null>
 </file>
 
 <file path="src/app/(auth)/onboarding/matrix/page.tsx">
@@ -1994,6 +2045,7 @@ export default async function OnboardingBoxesPage()
 
 <file path="src/app/(auth)/onboarding/literature-review/_services/batch-orchestrator.ts">
 import { Logger } from "@/lib/logger";
+import { createConcurrencyLimiter } from "@/lib/rate-limiter";
 import type {
   SubBoxInput,
   ValidatedPaper,
@@ -2040,6 +2092,11 @@ function deduplicateCandidatesGlobally(
 ⋮----
 function resolveDedupKey(candidate: ValidatedPaper): string | null
 ⋮----
+async function resolveBoxFoundationals(
+  subBoxes: SubBoxInput["subBoxes"],
+  logger: Logger,
+): Promise<
+⋮----
 export async function orchestrateBatchProcess(
   boxes: SubBoxInput[],
   logger: Logger,
@@ -2047,17 +2104,9 @@ export async function orchestrateBatchProcess(
   thesisArticlesMap?: Map<string, JuryArticle[]>,
 ): Promise<BatchOrchestrationResult>
 ⋮----
-// No cache — perform per-sub-box searches with throttling
-⋮----
-// Resolve foundational works for this sub-box
-⋮----
-// Search OpenAlex for this sub-box
-⋮----
-// Best-effort — failed queries are silently skipped
-⋮----
-// Throttle between sub-box queries
-⋮----
-// Crossref enrichment: fill empty authors or publisher via DOI
+// ------------------------------------------------------------------
+// Phase 1: Service-based parallel search across all sub-boxes
+// ------------------------------------------------------------------
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_components/tavily-fact-check-table.tsx">
@@ -2780,6 +2829,8 @@ export interface JsonSchema {
 ⋮----
 export function getAi(): GoogleGenAI
 ⋮----
+function extractHttpStatus(error: unknown): string
+⋮----
 export async function retryOn503<T>(
   fn: () => Promise<T>,
   maxRetries = 3,
@@ -2879,6 +2930,42 @@ type SectionConfig = {
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
 </file>
 
+<file path="src/app/(auth)/onboarding/risk/_services/sifting.ts">
+import { fetchThesisDetails } from "@/lib/tezara";
+import type { Logger } from "@/lib/logger";
+import type { TezaraThesisSummary, TezaraThesisDetails } from "@/lib/types";
+import { rerankTheses } from "@/lib/cohere";
+⋮----
+async function fetchDetailsWithRetry(
+  thesis: TezaraThesisSummary,
+  log: Logger,
+): Promise<TezaraThesisDetails>
+⋮----
+export interface SiftAndFetchDetailsParams {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+}
+⋮----
+export interface SiftingDiagnostic {
+  uniqueAfterDedup: number;
+  topIds: number[];
+  stage1Count: number;
+  fetchRequested: number;
+  fetchSuccess: number;
+  fetchFailed: number;
+}
+⋮----
+export async function siftAndFetchDetails(
+  params: SiftAndFetchDetailsParams,
+  tezaraSearchResults: TezaraThesisSummary[][],
+  log: Logger,
+): Promise<
+</file>
+
 <file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">
 import { useState } from "react";
 import { Loader2, AlertCircle, BookOpen, Archive, Plus } from "lucide-react";
@@ -2928,42 +3015,6 @@ export interface UseRiskAnalysisResult {
 }
 ⋮----
 export function useRiskAnalysis(): UseRiskAnalysisResult
-</file>
-
-<file path="src/app/(auth)/onboarding/risk/_services/sifting.ts">
-import { fetchThesisDetails } from "@/lib/tezara";
-import type { Logger } from "@/lib/logger";
-import type { TezaraThesisSummary, TezaraThesisDetails } from "@/lib/types";
-import { rerankTheses } from "@/lib/cohere";
-⋮----
-async function fetchDetailsWithRetry(
-  thesis: TezaraThesisSummary,
-  log: Logger,
-): Promise<TezaraThesisDetails>
-⋮----
-export interface SiftAndFetchDetailsParams {
-  studyTitle: string;
-  researchQuestion: string;
-  mainClaim: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-}
-⋮----
-export interface SiftingDiagnostic {
-  uniqueAfterDedup: number;
-  topIds: number[];
-  stage1Count: number;
-  fetchRequested: number;
-  fetchSuccess: number;
-  fetchFailed: number;
-}
-⋮----
-export async function siftAndFetchDetails(
-  params: SiftAndFetchDetailsParams,
-  tezaraSearchResults: TezaraThesisSummary[][],
-  log: Logger,
-): Promise<
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/actions.ts">
@@ -3173,25 +3224,6 @@ export async function analyzeOriginalityRisk(
 ): Promise<
 </file>
 
-<file path="src/lib/prompts/box-generation.ts">
-import type { JsonSchema } from "../gemini";
-⋮----
-function buildCategory(
-  items: typeof STANDARD_SUB_BOX | typeof PRIMARY_SUB_BOX,
-)
-⋮----
-export function buildThesisBoxGenerationSystemInstruction(): string
-⋮----
-export function buildThesisBoxGenerationPrompt(params: {
-  studyTitle: string;
-  researchQuestion: string;
-  mainClaim: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-}): string
-</file>
-
 <file path="src/db/schema.ts">
 import type { ThesisAxes, ThesisBadge } from "@/lib/types";
 import {
@@ -3234,6 +3266,25 @@ export type NewLibraryResource = InferInsertModel<typeof libraryResources>;
 export type Task = InferSelectModel<typeof tasks>;
 ⋮----
 export type NewTask = InferInsertModel<typeof tasks>;
+</file>
+
+<file path="src/lib/prompts/box-generation.ts">
+import type { JsonSchema } from "../gemini";
+⋮----
+function buildCategory(
+  items: typeof STANDARD_SUB_BOX | typeof PRIMARY_SUB_BOX,
+)
+⋮----
+export function buildThesisBoxGenerationSystemInstruction(): string
+⋮----
+export function buildThesisBoxGenerationPrompt(params: {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+}): string
 </file>
 
 <file path="src/app/(auth)/onboarding/literature-review/actions.ts">

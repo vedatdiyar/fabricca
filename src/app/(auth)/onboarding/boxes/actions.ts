@@ -39,7 +39,6 @@ import { searchOpenAlex } from "../literature-review/_services/openalex/client";
 const RawSubBoxSchema = z.object({
   title: z.string().min(1, "Alt kutu başlığı boş olamaz"),
   description: z.string().min(1, "Alt kutu açıklaması boş olamaz"),
-  concepts: z.array(z.string()).min(1),
   semanticQuery: z.string(),
   foundationalQueries: z.array(FoundationalQuerySchema).optional(),
 });
@@ -47,6 +46,10 @@ const RawSubBoxSchema = z.object({
 const RawCategorySchema = z.object({
   title: z.string().min(1, "Kategori başlığı boş olamaz"),
   description: z.string().min(1, "Kategori açıklaması boş olamaz"),
+  concepts: z.preprocess(
+    (arr) => (Array.isArray(arr) ? arr.slice(0, 5) : arr),
+    z.array(z.string()).optional(),
+  ),
   subBoxes: z.array(RawSubBoxSchema),
 });
 
@@ -96,18 +99,13 @@ function mapToProductionShape(
 
     const parentIndex = result.length;
 
-    // Unique concept aggregation from child sub-boxes
-    const aggregatedConcepts = Array.from(
-      new Set(cat.subBoxes.flatMap((sub) => sub.concepts ?? [])),
-    );
-
     result.push({
       title: cat.title,
       boxType,
       description: cat.description,
       parentId: null,
       semanticQuery: null,
-      concepts: aggregatedConcepts,
+      concepts: cat.concepts ?? [],
       foundationalQueries: [],
     });
 
@@ -118,7 +116,6 @@ function mapToProductionShape(
         description: sub.description,
         parentId: parentIndex,
         semanticQuery: sub.semanticQuery ?? null,
-        concepts: sub.concepts ?? [],
         foundationalQueries: [],
       });
     }

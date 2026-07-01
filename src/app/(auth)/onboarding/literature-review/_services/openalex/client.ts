@@ -1,5 +1,15 @@
 import { parseOpenAlexResults } from "./parser";
+import { createGapEnforcedQueue } from "@/lib/rate-limiter";
 import type { RawPaper } from "../literature-review-papers";
+
+/**
+ * Global gap-enforced queue for OpenAlex.
+ * OpenAlex enforces ~1 request/second — every logical request (including its
+ * retries) is serialised with a minimum 1000ms gap after the previous one.
+ * The gap counts from completion to next start, so retries within a single
+ * request do NOT add extra gap time.
+ */
+const openAlexQueue = createGapEnforcedQueue<RawPaper[]>(1000);
 
 async function queryOpenAlexWorks(
   params: URLSearchParams,
@@ -75,7 +85,11 @@ export async function searchOpenAlex(query: string): Promise<RawPaper[]> {
     select:
       "id,title,type,biblio,authorships,publication_year,primary_location,abstract_inverted_index,topics,relevance_score",
   });
-  const results = await queryOpenAlexWorks(params);
+
+  // Route through the global gap-enforced queue.
+  // The queue serialises ALL callers (batch-orchestrator, boxes/actions,
+  // openalex-collector) into a single pipeline respecting the 1 req/s limit.
+  const results = await openAlexQueue.exec(() => queryOpenAlexWorks(params));
   if (results.length === 0) {
     return [];
   }
