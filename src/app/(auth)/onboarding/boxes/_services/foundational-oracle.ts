@@ -1,7 +1,6 @@
 import {
   ThinkingLevel,
   Type,
-  createPartFromFunctionResponse,
 } from "@google/genai";
 import { getAi, retryOn503 } from "@/lib/gemini";
 import type { Logger } from "@/lib/logger";
@@ -130,20 +129,23 @@ async function searchExa(query: string, log?: Logger): Promise<ExaResult[]> {
       const response = await fetch("https://api.exa.ai/search", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-api-key": apiKey },
+        signal: AbortSignal.timeout(8000),
         body: JSON.stringify({
           query,
-          mode: "neural",
-          type: "neural",
+          type: "auto",
           category: "research",
           numResults: 5,
-          contents: { text: true },
+          contents: { text: { maxCharacters: 15000 } },
         }),
       });
 
       if (response.status === 429) {
         if (attempt > maxRetries) {
-          const errorText = await response.text();
-          throw new Error(`Exa API error (${response.status}): ${errorText}`);
+          log?.error("exa_rate_limit_exhausted", {
+            service: "boxes",
+            data: { query, maxRetries },
+          });
+          return [];
         }
 
         const retryAfterHeader = response.headers.get("retry-after");
@@ -171,8 +173,11 @@ async function searchExa(query: string, log?: Logger): Promise<ExaResult[]> {
       }
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Exa API error (${response.status}): ${errorText}`);
+        log?.error("exa_non_ok_response", {
+          service: "boxes",
+          data: { status: response.status, query },
+        });
+        return [];
       }
 
       const data = (await response.json()) as {
@@ -187,18 +192,14 @@ async function searchExa(query: string, log?: Logger): Promise<ExaResult[]> {
 
       return data.results || [];
     } catch (error) {
-      const isRetryableNetworkError =
+      const is429Retryable =
         error instanceof Error &&
-        (error.message.includes("fetch failed") ||
-          error.message.includes("timeout") ||
-          error.message.includes("502") ||
-          error.message.includes("503") ||
-          error.message.includes("504"));
+        (error.message.includes("429") || error.message.includes("quota"));
 
-      if (isRetryableNetworkError && attempt <= maxRetries) {
+      if (is429Retryable && attempt <= maxRetries) {
         const exponent = attempt - 1;
         const delay = 2000 * Math.pow(2, exponent) + Math.random() * 1000;
-        log?.warn("exa_network_retry", {
+        log?.warn("exa_429_retry", {
           service: "boxes",
           data: {
             attempt,
@@ -212,7 +213,15 @@ async function searchExa(query: string, log?: Logger): Promise<ExaResult[]> {
         continue;
       }
 
-      throw error;
+      log?.error("exa_search_failed", {
+        service: "boxes",
+        data: {
+          query,
+          attempt,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+      return [];
     }
   }
 }
@@ -368,24 +377,18 @@ export async function processSingleBox(
     parts: import("@google/genai").Part[];
   }> = [{ role: "user", parts: [{ text: USER_PROMPT }] }];
 
-  let searchCount = 0;
-  const MAX_SEARCHES = 3;
-  let finalText: string | null = null;
-  let exaRawResults: ExaResult[] = [];
+  // -------------------------------------------------------------------
+  // Phase 1: Collect search queries from Gemini (agentic loop, no Exa)
+  // -------------------------------------------------------------------
+  let iteration = 0;
+  const MAX_ITERATIONS = 3;
+  const collectedQueries: string[] = [];
 
-  while (true) {
-    const isFinalTurn = searchCount >= MAX_SEARCHES;
-    const config: Record<string, unknown> = { ...commonConfig };
-
-    if (isFinalTurn) {
-      config.toolConfig = {
-        functionCallingConfig: { mode: "NONE" },
-      };
-      config.responseMimeType = "application/json";
-      config.responseJsonSchema = foundationalOracleResponseSchema;
-    } else {
-      config.tools = [exaSearchTool];
-    }
+  while (iteration < MAX_ITERATIONS) {
+    const config: Record<string, unknown> = {
+      ...commonConfig,
+      tools: [exaSearchTool],
+    };
 
     const { result: response } = await retryOn503(
       () =>
@@ -412,53 +415,149 @@ export async function processSingleBox(
       (p: import("@google/genai").Part) => p.functionCall,
     );
 
-    if (
-      functionCallPart?.functionCall?.args?.query &&
-      searchCount < MAX_SEARCHES
-    ) {
-      searchCount++;
+    if (functionCallPart?.functionCall?.args?.query) {
       const query = String(functionCallPart.functionCall.args.query);
+      collectedQueries.push(query);
+      iteration++;
 
-      log.info("exa_search_round", {
+      log.info("exa_search_query_collected", {
         service: "boxes",
-        data: { boxTitle: box.title, round: searchCount, query },
+        data: {
+          boxTitle: box.title,
+          iteration,
+          queryCount: collectedQueries.length,
+          query,
+        },
       });
-
-      const rawResults = await searchExa(query, log);
-      exaRawResults = rawResults;
-
-      const sanitizedResults = rawResults.map((r) => ({
-        title: r.title,
-        author: r.author ?? null,
-        publicationYear: r.publishedDate
-          ? new Date(r.publishedDate).getFullYear()
-          : null,
-      }));
 
       contents.push({ role: "model", parts: modelParts });
       contents.push({
         role: "user",
         parts: [
-          createPartFromFunctionResponse("0", "exa_academic_search", {
-            results: sanitizedResults,
-          }),
+          {
+            text: `"${query}" sorgusu için arama başlatıldı. Lütfen bir sonraki sorguyu üret.`,
+          },
         ],
       });
-    } else if (isFinalTurn) {
-      const textPart = modelParts.find(
-        (p: import("@google/genai").Part) => p.text,
-      );
-      finalText = textPart?.text ?? response.text ?? null;
-      if (!finalText) {
-        throw new Error(`Model NONE modunda metin döndürmedi: ${box.title}`);
-      }
-      break;
     } else {
-      contents.push({ role: "model", parts: modelParts });
-      searchCount = MAX_SEARCHES;
+      break;
     }
   }
 
+  if (collectedQueries.length === 0) {
+    log.warn("no_queries_collected", {
+      service: "boxes",
+      data: { boxTitle: box.title },
+    });
+    return null;
+  }
+
+  // -------------------------------------------------------------------
+  // Phase 2: Execute all collected queries in parallel via Promise.all
+  // -------------------------------------------------------------------
+  log.info("exa_parallel_search_start", {
+    service: "boxes",
+    data: { boxTitle: box.title, queryCount: collectedQueries.length },
+  });
+
+  const parallelSearchStart = performance.now();
+
+  const allResultsArrays = await Promise.all(
+    collectedQueries.map((q) =>
+      searchExa(q, log).catch(() => [] as ExaResult[]),
+    ),
+  );
+
+  log.info("exa_parallel_search_done", {
+    service: "boxes",
+    durationMs: performance.now() - parallelSearchStart,
+    data: {
+      boxTitle: box.title,
+      queryCount: collectedQueries.length,
+      totalResults: allResultsArrays.reduce((s, a) => s + a.length, 0),
+    },
+  });
+
+  // Use the last non-empty result set for backward compatibility
+  let exaRawResults: ExaResult[] = [];
+  for (const arr of allResultsArrays) {
+    if (arr.length > 0) {
+      exaRawResults = arr;
+    }
+  }
+
+  if (exaRawResults.length === 0) {
+    log.warn("no_exa_results", {
+      service: "boxes",
+      data: { boxTitle: box.title },
+    });
+    return null;
+  }
+
+  // -------------------------------------------------------------------
+  // Phase 3: Present all parallel results to Gemini for final selection
+  // -------------------------------------------------------------------
+  const allSanitized = allResultsArrays.map((group) =>
+    group.map((r) => ({
+      title: r.title,
+      author: r.author ?? null,
+      publicationYear: r.publishedDate
+        ? new Date(r.publishedDate).getFullYear()
+        : null,
+    })),
+  );
+
+  const summaryLines: string[] = [];
+  for (let i = 0; i < allSanitized.length; i++) {
+    const group = allSanitized[i];
+    summaryLines.push(`Sorgu ${i + 1} sonuçları:`);
+    for (const r of group) {
+      summaryLines.push(
+        `- ${r.title} (${r.author}, ${r.publicationYear ?? "Tarih yok"})`,
+      );
+    }
+  }
+
+  contents.push({
+    role: "user",
+    parts: [
+      {
+        text: `Tüm arama sonuçları:\n${summaryLines.join("\n")}\n\nŞimdi en uygun kurucu eseri seç.`,
+      },
+    ],
+  });
+
+  const finalConfig: Record<string, unknown> = {
+    ...commonConfig,
+    toolConfig: { functionCallingConfig: { mode: "NONE" } },
+    responseMimeType: "application/json",
+    responseJsonSchema: foundationalOracleResponseSchema,
+  };
+
+  const { result: finalResponse } = await retryOn503(
+    () =>
+      ai.models.generateContent({
+        model: "gemini-3.1-flash-lite",
+        contents: contents as Parameters<
+          typeof ai.models.generateContent
+        >[0]["contents"],
+        config: finalConfig as Parameters<
+          typeof ai.models.generateContent
+        >[0]["config"],
+      }),
+    3,
+    1000,
+    log,
+  );
+
+  const finalText = finalResponse.text;
+  if (!finalText) {
+    throw new Error(`Model NONE modunda metin döndürmedi: ${box.title}`);
+  }
+
+  // -------------------------------------------------------------------
+  // Phase 4: Parse selection, Crossref lookup, return result
+  // -------------------------------------------------------------------
   let cleaned = finalText.trim();
   if (cleaned.startsWith("```")) {
     cleaned = cleaned
@@ -470,15 +569,6 @@ export async function processSingleBox(
 
   const outputObj = JSON.parse(cleaned) as { selectedIndex: number };
   const sIdx = outputObj.selectedIndex;
-
-  if (exaRawResults.length === 0) {
-    log.warn("no_exa_results", {
-      service: "boxes",
-      data: { boxTitle: box.title },
-    });
-    return null;
-  }
-
   const finalIdx = Math.max(0, Math.min(sIdx, exaRawResults.length - 1));
   const selectedResult = exaRawResults[finalIdx];
 

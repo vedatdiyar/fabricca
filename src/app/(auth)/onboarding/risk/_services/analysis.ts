@@ -237,11 +237,11 @@ export function calculateOriginalityRisk(
 
 /**
  * Runs originality comparison analysis against target thesis matrices.
- * Evaluates theses in parallel batches of size 4.
+ * Evaluates theses in parallel across all chunks, then sorts results by ID.
  *
  * @param params - Target matrix parameters
  * @param log - Logger
- * @param chunkSize - Batch chunk size (defaults to 4)
+ * @param chunkSize - Batch chunk size (defaults to 3)
  * @returns Gemini output overlap table
  */
 export async function analyzeOriginalityRisk(
@@ -271,9 +271,10 @@ export async function analyzeOriginalityRisk(
       chunks.push(sortedDetails.slice(i, i + chunkSize));
     }
 
-    const overlapTable: GeminiOverlapItem[] = [];
-
-    for (const group of chunks) {
+    // Her chunk kendi içinde hatayı yutup fallback döndürür,
+    // böylece Promise.all asla reject olmaz ve tüm chunk'lar
+    // eşzamanlı olarak tetiklenir.
+    const chunkPromises = chunks.map(async (group) => {
       const candidateParams = {
         ...params,
         validDetails: group,
@@ -299,7 +300,6 @@ export async function analyzeOriginalityRisk(
         const returnedIds = new Set(items.map((it) => it.id));
         const finalItems: GeminiOverlapItem[] = [...items];
 
-        // Gracefully backfill any missing IDs in this chunk with safe fallback "ÖZGÜN"
         for (const thesis of group) {
           if (!returnedIds.has(thesis.id)) {
             log.warn("originality_missing_thesis_id_backfilled", {
@@ -334,7 +334,7 @@ export async function analyzeOriginalityRisk(
             });
           }
         }
-        overlapTable.push(...finalItems);
+        return finalItems;
       } catch (err) {
         log.warn("originality_chunk_analysis_failed", {
           service: "originality",
@@ -343,8 +343,7 @@ export async function analyzeOriginalityRisk(
             chunkIds: group.map((t) => t.id),
           },
         });
-        // Graceful error fallback for all theses in this group to avoid failing onboarding
-        const fallbackItems = group.map((t) => ({
+        return group.map((t) => ({
           id: t.id,
           problem_sinirlari: {
             gerekce: "Analiz sırasında hata oluştu.",
@@ -363,9 +362,11 @@ export async function analyzeOriginalityRisk(
             secim: "ALAKASIZ",
           },
         }));
-        overlapTable.push(...fallbackItems);
       }
-    }
+    });
+
+    const nested = await Promise.all(chunkPromises);
+    const overlapTable = nested.flat().sort((a, b) => a.id - b.id);
 
     log.preview(
       "Overlap Analysis Results",

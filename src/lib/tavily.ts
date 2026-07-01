@@ -22,7 +22,7 @@ export interface TavilySearchResponse {
 
 /**
  * Tavily Search API'sini kullanarak arama yapan jenerik fonksiyon.
- * Arama derinliği 'advanced', kaynak başına parça adedi 3, maksimum sonuç sayısı 5
+ * Arama derinliği 'advanced', kaynak başına parça adedi 3, maksimum sonuç sayısı 3
  * ve tam eşleşme (exact_match) aktif olarak yapılandırılmıştır.
  *
  * @param query - İnternet üzerinde aranacak ve maddi doğrulanacak sorgu metni.
@@ -58,7 +58,7 @@ export async function tavilySearch(
       query,
       search_depth: "advanced",
       chunks_per_source: 3,
-      max_results: 5,
+      max_results: 3,
     }),
   });
 

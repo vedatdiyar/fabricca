@@ -46,6 +46,11 @@ export const getBadgeColor = (key: ThesisBadge): string =>
 
 /** Turkish display labels for per-axis selections. */
 export const AXIS_SECIM_LABELS: Record<string, string> = {
+  // Standart Eşleşmeler
+  TAM_ORTÜŞME: "Tam",
+  KISMI_ORTÜŞME: "Kısmi",
+  ALAKASIZ: "Alakasız",
+
   // Özdeş
   BİREBİR: "Özdeş",
   "AYNI GÖZLÜK": "Özdeş",
@@ -59,7 +64,6 @@ export const AXIS_SECIM_LABELS: Record<string, string> = {
   "PARALEL BAĞLAM": "Benzer",
 
   // Alakasız
-  ALAKASIZ: "Alakasız",
   "FARKLI GÖZLÜK": "Alakasız",
   "FARKLI YÖNTEM": "Alakasız",
   "ALAKASIZ BAĞLAM": "Alakasız",
@@ -67,6 +71,11 @@ export const AXIS_SECIM_LABELS: Record<string, string> = {
 
 /** Badge color classes for per-axis selections. */
 export const AXIS_SECIM_COLORS: Record<string, string> = {
+  // Standart Eşleşmeler
+  TAM_ORTÜŞME: "bg-destructive/20 border-destructive/20 text-destructive",
+  KISMI_ORTÜŞME: "bg-warning/20 border-warning/20 text-warning",
+  ALAKASIZ: "bg-success/20 border-success/20 text-success",
+
   // Özdeş
   BİREBİR: "bg-destructive/20 border-destructive/20 text-destructive",
   "AYNI GÖZLÜK": "bg-destructive/20 border-destructive/20 text-destructive",
@@ -80,7 +89,6 @@ export const AXIS_SECIM_COLORS: Record<string, string> = {
   "PARALEL BAĞLAM": "bg-warning/20 border-warning/20 text-warning",
 
   // Alakasız
-  ALAKASIZ: "bg-success/20 border-success/20 text-success",
   "FARKLI GÖZLÜK": "bg-success/20 border-success/20 text-success",
   "FARKLI YÖNTEM": "bg-success/20 border-success/20 text-success",
   "ALAKASIZ BAĞLAM": "bg-success/20 border-success/20 text-success",
@@ -96,6 +104,7 @@ export function getAxisSecimColor(secim: string): string {
 /** Returns the solid gauge bar fill color based on the selection string. */
 export function getAxisSecimBarFill(secim: string): string {
   if (
+    secim === "TAM_ORTÜŞME" ||
     secim === "BİREBİR" ||
     secim === "AYNI GÖZLÜK" ||
     secim === "BİREBİR YÖNTEM" ||
@@ -104,6 +113,7 @@ export function getAxisSecimBarFill(secim: string): string {
     return "bg-destructive";
   }
   if (
+    secim === "KISMI_ORTÜŞME" ||
     secim === "GENİŞLETİLMİŞ KONU" ||
     secim === "EVRİLMİŞ TEORİ" ||
     secim === "YÖNTEMSEL AKRABA" ||

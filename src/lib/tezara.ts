@@ -7,18 +7,23 @@ const MAX_RETRIES = 3;
 
 /**
  * Fetches a URL through the TEZARA pipeline queue with exponential backoff retry logic.
+ * If an AbortSignal is provided and fires, the retry loop breaks immediately
+ * so the caller (fetchDetailsWithRetry) can retry with a fresh timeout signal.
  *
  * @param url - The URL to fetch.
  * @param logger - Optional Logger instance.
+ * @param signal - Optional AbortSignal (e.g. from AbortSignal.timeout(5000)).
  * @returns The fetch Response if successful, or null after all retries fail.
  */
 async function fetchWithRetry(
   url: string,
   logger?: Logger,
+  signal?: AbortSignal,
 ): Promise<Response | null> {
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const response = await enqueueTezaraFetch(url, logger);
+      if (signal?.aborted) break;
+      const response = await enqueueTezaraFetch(url, logger, signal);
       if (response.ok) return response;
       logger?.warn("tezara_retry_status", {
         service: "tezara",
@@ -27,6 +32,7 @@ async function fetchWithRetry(
         data: { url, attempt, status: response.status },
       });
     } catch (err) {
+      if (signal?.aborted) break;
       logger?.warn("tezara_retry_network", {
         service: "tezara",
         filePath: "src/lib/tezara.ts",
@@ -134,16 +140,18 @@ export async function searchTezara(
  *
  * @param summary - The thesis summary from search results.
  * @param logger - Optional Logger instance.
+ * @param signal - Optional AbortSignal (e.g. from AbortSignal.timeout(5000)).
  * @returns Thesis details object, or null if fetching or parsing fails.
  */
 export async function fetchThesisDetails(
   summary: TezaraThesisSummary,
   logger?: Logger,
+  signal?: AbortSignal,
 ): Promise<TezaraThesisDetails | null> {
   const startTime = performance.now();
   try {
     const url = `https://tezara.org/theses/${summary.id}`;
-    const response = await fetchWithRetry(url, logger);
+    const response = await fetchWithRetry(url, logger, signal);
 
     if (!response) {
       const durationMs = performance.now() - startTime;

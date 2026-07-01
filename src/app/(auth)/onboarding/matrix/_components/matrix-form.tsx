@@ -47,6 +47,7 @@ type FieldConfig = {
   label: string;
   placeholder: string;
   hint: string;
+  rows: number;
 };
 
 type SectionConfig = {
@@ -67,7 +68,8 @@ const MATRIX_SECTIONS: SectionConfig[] = [
         Icon: FileText,
         label: "\u00c7alışma Başlığı",
         placeholder: "Araştırmanızın mevcut veya geçici başlığını yazın...",
-        hint: "Kesin başlık henüz belli değilse taslak bir ad belirtebilirsiniz.",
+        hint: "",
+        rows: 2,
       },
       {
         key: "researchQuestion",
@@ -76,7 +78,8 @@ const MATRIX_SECTIONS: SectionConfig[] = [
         Icon: HelpCircle,
         label: "Odak Sorular",
         placeholder: "Temel araştırma sorunuzu ve varsa alt soruları yazın...",
-        hint: "'Neden' ve 'Nasıl' sorularınızı her satıra bir tane olacak şekilde yazabilirsiniz.",
+        hint: "",
+        rows: 5,
       },
     ],
   },
@@ -91,7 +94,8 @@ const MATRIX_SECTIONS: SectionConfig[] = [
         Icon: BookMarked,
         label: "Teorik Altyapı ve Yazarlar",
         placeholder: "Kullanacağınız teoriler, okullar veya kurucu yazarlar...",
-        hint: "Foucault'nun Söylem Analizi, Bourdieu'nün Alan Teorisi gibi. Birden fazlaysa virgülle ayırın.",
+        hint: "",
+        rows: 5,
       },
       {
         key: "methodology",
@@ -100,7 +104,8 @@ const MATRIX_SECTIONS: SectionConfig[] = [
         Icon: Layers,
         label: "Veri Toplama ve Analiz Yöntemi",
         placeholder: "Veriyi nasıl toplayacak ve analiz edeceksiniz?",
-        hint: "Yarı yapılandırılmış mülakat, içerik analizi, anket gibi. Karma yöntemde her birini belirtin.",
+        hint: "",
+        rows: 5,
       },
     ],
   },
@@ -115,7 +120,8 @@ const MATRIX_SECTIONS: SectionConfig[] = [
         Icon: Compass,
         label: "Ara\u015ftırma Sınırları",
         placeholder: "Zaman, mekân ve odaklanılan aktörleri tanımlayın...",
-        hint: "Örn: 1990–2005, Doğu Avrupa, yerel yönetimler. Bu sınırların dışı kapsam dışıdır.",
+        hint: "",
+        rows: 5,
       },
       {
         key: "mainClaim",
@@ -125,7 +131,8 @@ const MATRIX_SECTIONS: SectionConfig[] = [
         label: "Merkez Savı",
         placeholder:
           "Bu çalışmayla kanıtlamak istediğiniz temel iddianızı yazın...",
-        hint: "Tüm çalışmanızı özetleyen tek bir cümle; literatüre kattığınız özgün katkı nedir?",
+        hint: "",
+        rows: 5,
       },
     ],
   },
@@ -272,9 +279,9 @@ export function MatrixForm() {
             <div className="h-px flex-1 bg-border" />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4">
             {section.fields.map(
-              ({ key, id, number, Icon, label, placeholder, hint }) => (
+              ({ key, id, number, Icon, label, placeholder, rows }) => (
                 <Card
                   key={id}
                   className="space-y-2 p-4 hover:border-primary/20 rounded-md"
@@ -302,12 +309,9 @@ export function MatrixForm() {
                       }))
                     }
                     required
-                    rows={5}
+                    rows={rows}
                     className="textarea-academic border-border"
                   />
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    {hint}
-                  </p>
                 </Card>
               ),
             )}

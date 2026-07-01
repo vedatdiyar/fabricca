@@ -25,6 +25,7 @@ import { siftAndFetchDetails } from "./_services/sifting";
 import {
   analyzeOriginalityRisk,
   calculateOriginalityRisk,
+  compareThesesByRisk,
 } from "./_services/analysis";
 import { synthesizeRoadmap } from "./_services/roadmap";
 
@@ -296,6 +297,17 @@ export async function finalizeJuryAnalysisAction(params: {
         validDetails,
         log,
       );
+
+      // Hem semantik risk önceliği (badge) hem de ID bazlı katı determinizm
+      const stableSort = (
+        a: (typeof riskCalcResult.overlapTable)[number],
+        b: (typeof riskCalcResult.overlapTable)[number],
+      ) => {
+        const badgeDiff = compareThesesByRisk(a, b);
+        return badgeDiff !== 0 ? badgeDiff : a.id - b.id;
+      };
+      riskCalcResult.overlapTable.sort(stableSort);
+      riskCalcResult.eliminatedTheses.sort(stableSort);
 
       const strategicRecommendations = await synthesizeRoadmap(
         {

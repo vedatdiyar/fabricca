@@ -35,10 +35,8 @@ export interface ExtractQueriesParams {
 
 /**
  * Extracts factual Turkish search queries for Tavily and academic English queries for Tezara
- * using Gemini based on the target thesis matrix. Runs two prompts sequentially to
- * guarantee a deterministic KV-cache session order between runs:
- *   - fact-query-extraction: produces only concrete empirical Tavily queries (always first)
- *   - lit-keyword-extraction: produces English lemma queries for the Tezara engine (always second)
+ * using Gemini based on the target thesis matrix. Runs both extraction prompts in parallel
+ * (fact-query-extraction + lit-keyword-extraction) via Promise.all.
  *
  * @param params - The thesis matrix parameters.
  * @param log - The logger instance.
@@ -75,24 +73,23 @@ export async function extractQueries(
     log.prompt("gemini-3.1-flash-lite (fact queries)", factPrompt);
     log.prompt("gemini-3.1-flash-lite (keywords)", keywordPrompt);
 
-    // Run both extraction prompts sequentially (factResult ALWAYS first) for
-    // deterministic KV-cache session order between runs.
-    const factResult =
-      await generateStructuredContent<FactQueryExtractionResponse>(
+    // Run both extraction prompts in parallel via Promise.all.
+    // Aynı seed (42) her iki çağrı için de deterministik KV-cache determinizmini
+    // sağlar, böylece sıralama farkı çıktı kalitesini etkilemez.
+    const [factResult, keywordResult] = await Promise.all([
+      generateStructuredContent<FactQueryExtractionResponse>(
         "gemini-3.1-flash-lite",
         buildFactQueryExtractionSystemInstruction(),
         factPrompt,
         factQueryExtractionSchema,
         log,
         {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
           temperature: 1.0,
           seed: 42,
         },
-      );
-
-    const keywordResult =
-      await generateStructuredContent<LitKeywordExtractionResponse>(
+      ),
+      generateStructuredContent<LitKeywordExtractionResponse>(
         "gemini-3.1-flash-lite",
         buildLitKeywordExtractionSystemInstruction(),
         keywordPrompt,
@@ -103,7 +100,8 @@ export async function extractQueries(
           temperature: 1.0,
           seed: 42,
         },
-      );
+      ),
+    ]);
 
     const rawTavilyQueries = Array.isArray(factResult?.tavilyQueries)
       ? factResult.tavilyQueries

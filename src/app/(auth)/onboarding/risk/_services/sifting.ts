@@ -3,6 +3,11 @@ import type { Logger } from "@/lib/logger";
 import type { TezaraThesisSummary, TezaraThesisDetails } from "@/lib/types";
 import { rerankTheses } from "@/lib/cohere";
 
+const CRITICAL_IDS = new Set([241258, 294105]);
+const MAX_RETRY_ATTEMPTS = 6;
+const TIMEOUT_STEPS = [5000, 5000, 5000, 8000, 8000, 8000];
+const BACKOFF_STEPS = [500, 1000, 2000, 3000, 4000, 5000];
+
 /**
  * Tezara'dan tez detaylarını üssel geri çekilme (exponential backoff) ile çeker.
  * Maksimum 3 deneme yapar. Detaylar null dönerse veya hata oluşursa hata fırlatır.
@@ -15,35 +20,47 @@ async function fetchDetailsWithRetry(
   thesis: TezaraThesisSummary,
   log: Logger,
 ): Promise<TezaraThesisDetails> {
-  const maxAttempts = 3;
-  let delay = 500; // ms
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+  for (let attempt = 1; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
+    const timeoutMs = TIMEOUT_STEPS[attempt - 1];
+    const timeoutSignal = AbortSignal.timeout(timeoutMs);
     try {
-      const details = await fetchThesisDetails(thesis, log);
+      const details = await fetchThesisDetails(thesis, log, timeoutSignal);
       if (!details) {
         throw new Error(`Tez detayları çekilemedi (null döndü).`);
       }
       return details;
     } catch (err) {
+      const isTimeout = timeoutSignal.aborted;
       log.warn("originality_fetch_details_attempt_failed", {
         service: "originality",
         data: {
           thesisId: thesis.id,
           attempt,
-          maxAttempts,
+          maxAttempts: MAX_RETRY_ATTEMPTS,
+          timeoutMs,
+          isTimeout,
         },
         error: err instanceof Error ? err.message : String(err),
       });
 
-      if (attempt === maxAttempts) {
+      if (attempt === MAX_RETRY_ATTEMPTS) {
+        log.error("detail_fetch_fatal_per_id", {
+          service: "originality",
+          data: {
+            thesisId: thesis.id,
+            title: thesis.title,
+            author: thesis.author,
+            year: thesis.year,
+          },
+        });
         throw new Error(
-          `Tez ID ${thesis.id} detayları ${maxAttempts} denemeye rağmen çekilemedi.`,
+          `Tez ID ${thesis.id} detayları ${MAX_RETRY_ATTEMPTS} denemeye rağmen çekilemedi.`,
         );
       }
 
-      await new Promise((resolve) => setTimeout(resolve, delay));
-      delay *= 2;
+      await new Promise((resolve) =>
+        setTimeout(resolve, BACKOFF_STEPS[attempt - 1]),
+      );
     }
   }
 
@@ -236,17 +253,52 @@ export async function siftAndFetchDetails(
       },
     });
 
-    const detailsList = await Promise.all(
+    // Phase 1: isolated parallel fetch — one failing thesis no longer kills the batch
+    const settledResults = await Promise.allSettled(
       passedStage1.map((t) => fetchDetailsWithRetry(t, log)),
     );
-    const validDetails = detailsList;
-    fetchFailed = 0;
+
+    const validDetails: TezaraThesisDetails[] = [];
+    const failedTheses: TezaraThesisSummary[] = [];
+
+    for (let i = 0; i < settledResults.length; i++) {
+      const item = settledResults[i];
+      if (item.status === "fulfilled") {
+        validDetails.push(item.value);
+      } else {
+        failedTheses.push(passedStage1[i]);
+      }
+    }
+
+    // Phase 2: removed — fetchDetailsWithRetry has MAX_RETRY_ATTEMPTS internally
+
+    // Phase 3: fail-safe enforcement — critical IDs halt the pipeline gracefully
+    for (const failed of failedTheses) {
+      if (CRITICAL_IDS.has(failed.id)) {
+        throw new Error(
+          `Kritik tez ID ${failed.id} (${failed.author}) detayları tüm denemelere rağmen çekilemedi. İşlem güvenli duraklatıldı.`,
+        );
+      }
+    }
+
+    fetchFailed = failedTheses.length;
+
+    if (fetchFailed > 0) {
+      log.warn("originality_fetch_details_failed_final", {
+        service: "originality",
+        data: {
+          failedCount: fetchFailed,
+          failedIds: failedTheses.map((t) => ({ id: t.id, author: t.author })),
+        },
+      });
+    }
 
     log.info("originality_sift_fetch_success", {
       service: "originality",
       durationMs: performance.now() - fetchStart,
       data: {
         count: validDetails.length,
+        failedCount: fetchFailed,
         context: params.studyTitle,
       },
     });

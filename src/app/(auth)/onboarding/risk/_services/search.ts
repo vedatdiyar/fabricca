@@ -28,7 +28,7 @@ export async function executeParallelSearch(
 ): Promise<{
   tavilySearchResults: {
     query: string;
-    results: { title: string; url: string; content: string }[];
+    results: { title: string; url: string; content: string; score: number }[];
   }[];
   tezaraSearchResults: TezaraThesisSummary[][];
 }> {
@@ -120,7 +120,7 @@ export async function evaluateTavilyResults(
   params: EvaluateTavilyParams,
   tavilySearchResults: {
     query: string;
-    results: { title: string; url: string; content: string }[];
+    results: { title: string; url: string; content: string; score: number }[];
   }[],
   log: Logger,
 ): Promise<TavilyEvaluationResponse> {
@@ -134,6 +134,7 @@ export async function evaluateTavilyResults(
     const tavilyResultsFormatted = tavilySearchResults
       .map((item) => {
         const resultsSnippet = item.results
+          .filter((r) => r.score > 0.6)
           .map(
             (r) =>
               `- Başlık: ${r.title}\n  URL: ${r.url}\n  Özet: ${r.content}`,

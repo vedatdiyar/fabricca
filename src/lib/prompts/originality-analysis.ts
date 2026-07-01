@@ -160,10 +160,8 @@ export function buildAnalysisPrompt(params: {
     id: number;
     title: string;
     author: string;
-    university: string;
     year: number;
     thesisType: string;
-    department: string;
     abstract: string;
   }[];
 }): string {
@@ -173,9 +171,9 @@ export function buildAnalysisPrompt(params: {
     author: t.author || "Belirtilmemiş",
     year: t.year || 0,
     thesisType: t.thesisType || "Belirtilmemiş",
-    university: t.university || "Belirtilmemiş",
-    department: t.department || "Belirtilmemiş",
-    abstract: t.abstract || "Özet mevcut değil",
+    abstract: t.abstract
+      ? `${t.abstract.slice(0, 800)}...`
+      : "Özet mevcut değil",
   }));
 
   return `Aşağıdaki hedef tez matrisini, aday tez listesindeki her bir tezle ayrı ayrı karşılaştır. Her aday tez için 4 eksende (problem_sinirlari, teorik_perspektif, metodolojik_kurgu, zaman_mekan_ozgullugu) değerlendirme yap.

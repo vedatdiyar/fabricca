@@ -429,6 +429,22 @@ import { buttonVariants } from "@/components/ui/button";
 className=
 </file>
 
+<file path="src/components/ui/button.tsx">
+import { Slot } from "@radix-ui/react-slot";
+import { cva, type VariantProps } from "class-variance-authority";
+⋮----
+import { cn } from "@/lib/utils";
+⋮----
+export interface ButtonProps
+  extends
+    React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean;
+}
+⋮----
+className=
+</file>
+
 <file path="src/components/ui/card.tsx">
 import { cn } from "@/lib/utils";
 </file>
@@ -1108,7 +1124,6 @@ export function useDashboard(
 import {
   ThinkingLevel,
   Type,
-  createPartFromFunctionResponse,
 } from "@google/genai";
 import { getAi, retryOn503 } from "@/lib/gemini";
 import type { Logger } from "@/lib/logger";
@@ -1210,6 +1225,17 @@ export async function collectOpenAlexResults(
 ): Promise<ValidatedPaper[]>
 </file>
 
+<file path="src/app/(auth)/onboarding/risk/error.tsx">
+import { ErrorDisplay } from "@/components/error-display";
+⋮----
+export default function OnboardingRiskError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+reset: ()
+</file>
+
 <file path="src/components/providers/loading-overlay-provider.tsx">
 import {
   createContext,
@@ -1256,22 +1282,6 @@ import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 </file>
 
-<file path="src/components/ui/button.tsx">
-import { Slot } from "@radix-ui/react-slot";
-import { cva, type VariantProps } from "class-variance-authority";
-⋮----
-import { cn } from "@/lib/utils";
-⋮----
-export interface ButtonProps
-  extends
-    React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  asChild?: boolean;
-}
-⋮----
-className=
-</file>
-
 <file path="src/components/ui/checkbox.tsx">
 import { Check } from "lucide-react";
 ⋮----
@@ -1285,6 +1295,12 @@ className=
 </file>
 
 <file path="src/components/ui/scroll-area.tsx">
+import { cn } from "@/lib/utils";
+⋮----
+className=
+</file>
+
+<file path="src/components/ui/textarea.tsx">
 import { cn } from "@/lib/utils";
 ⋮----
 className=
@@ -1393,6 +1409,7 @@ interface QueueItem {
   url: string;
   resolve: (value: Response) => void;
   reject: (reason: unknown) => void;
+  signal?: AbortSignal;
 }
 ⋮----
 function getDynamicDelay(): number
@@ -1406,7 +1423,10 @@ async function executeRequest(item: QueueItem): Promise<void>
 export async function enqueueTezaraFetch(
   url: string,
   logger?: Logger,
+  signal?: AbortSignal,
 ): Promise<Response>
+⋮----
+const onAbort = () =>
 </file>
 
 <file path="src/session.ts">
@@ -1523,17 +1543,6 @@ export async function resolveFoundationalWorks(
 // Extract only id and publisher from Crossref; lock LLM fields
 </file>
 
-<file path="src/app/(auth)/onboarding/risk/error.tsx">
-import { ErrorDisplay } from "@/components/error-display";
-⋮----
-export default function OnboardingRiskError({
-  error,
-  reset,
-}: {
-  error: Error & { digest?: string };
-reset: ()
-</file>
-
 <file path="src/app/(auth)/onboarding/risk/loading.tsx">
 import { LoadingSpinner } from "@/components/loading-spinner";
 ⋮----
@@ -1585,12 +1594,6 @@ import { useTheme } from "next-themes";
 import { Toaster as Sonner } from "sonner";
 ⋮----
 type ToasterProps = React.ComponentProps<typeof Sonner>;
-</file>
-
-<file path="src/components/ui/textarea.tsx">
-import { cn } from "@/lib/utils";
-⋮----
-className=
 </file>
 
 <file path="src/lib/error-utils.ts">
@@ -1980,21 +1983,6 @@ import { StartOverButton } from "../_components/start-over-button";
 export default async function OnboardingRiskPage()
 </file>
 
-<file path="src/lib/prompts/lit-keyword-extraction.ts">
-import type { JsonSchema } from "../gemini";
-⋮----
-export function buildLitKeywordExtractionSystemInstruction(): string
-⋮----
-export function buildLitKeywordPrompt(params: {
-  studyTitle: string;
-  researchQuestion: string;
-  mainClaim: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-}): string
-</file>
-
 <file path="src/app/(auth)/onboarding/boxes/page.tsx">
 import { redirect } from "next/navigation";
 import { getProfile } from "@/session";
@@ -2106,6 +2094,21 @@ import type { JsonSchema } from "../gemini";
 export function buildFactQueryExtractionSystemInstruction(): string
 ⋮----
 export function buildFactQueryPrompt(params: {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+}): string
+</file>
+
+<file path="src/lib/prompts/lit-keyword-extraction.ts">
+import type { JsonSchema } from "../gemini";
+⋮----
+export function buildLitKeywordExtractionSystemInstruction(): string
+⋮----
+export function buildLitKeywordPrompt(params: {
   studyTitle: string;
   researchQuestion: string;
   mainClaim: string;
@@ -2267,7 +2270,7 @@ export async function evaluateTavilyResults(
   params: EvaluateTavilyParams,
   tavilySearchResults: {
     query: string;
-    results: { title: string; url: string; content: string }[];
+    results: { title: string; url: string; content: string; score: number }[];
   }[],
   log: Logger,
 ): Promise<TavilyEvaluationResponse>
@@ -2360,59 +2363,6 @@ export function buildRoadmapPrompt(params: {
 }): string
 </file>
 
-<file path="src/app/(auth)/onboarding/literature-review/_components/literature-article-card.tsx">
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { JuryArticle } from "@/lib/types";
-⋮----
-interface LiteratureArticleCardProps {
-  article: JuryArticle;
-}
-</file>
-
-<file path="src/lib/prompts/index.ts">
-
-</file>
-
-<file path="src/lib/tezara.ts">
-import type { Logger } from "./logger";
-import type { TezaraThesisSummary, TezaraThesisDetails } from "./types";
-import { parseTezaraDetails, parseTezaraSearchResults } from "./tezara-parser";
-import { enqueueTezaraFetch } from "./tezara-queue";
-⋮----
-async function fetchWithRetry(
-  url: string,
-  logger?: Logger,
-): Promise<Response | null>
-⋮----
-export async function searchTezaraPage(
-  query: string,
-  page: number,
-  logger?: Logger,
-  advanced = false,
-): Promise<TezaraThesisSummary[]>
-⋮----
-export async function searchTezara(
-  query: string,
-  logger?: Logger,
-  advanced = false,
-): Promise<TezaraThesisSummary[]>
-⋮----
-export async function fetchThesisDetails(
-  summary: TezaraThesisSummary,
-  logger?: Logger,
-): Promise<TezaraThesisDetails | null>
-</file>
-
-<file path="src/app/(auth)/onboarding/_components/onboarding-stepper.tsx">
-import { usePathname, useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { Check } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { checkStepsDataAction } from "../_lib/fetch-actions";
-⋮----
-className=
-</file>
-
 <file path="src/app/(auth)/onboarding/_components/start-over-button.tsx">
 import { useState, useTransition } from "react";
 import { RotateCcw, Loader2 } from "lucide-react";
@@ -2440,6 +2390,61 @@ interface StartOverButtonProps {
 }
 ⋮----
 const handleReset = () =>
+</file>
+
+<file path="src/app/(auth)/onboarding/literature-review/_components/literature-article-card.tsx">
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { JuryArticle } from "@/lib/types";
+⋮----
+interface LiteratureArticleCardProps {
+  article: JuryArticle;
+}
+</file>
+
+<file path="src/lib/prompts/index.ts">
+
+</file>
+
+<file path="src/lib/tezara.ts">
+import type { Logger } from "./logger";
+import type { TezaraThesisSummary, TezaraThesisDetails } from "./types";
+import { parseTezaraDetails, parseTezaraSearchResults } from "./tezara-parser";
+import { enqueueTezaraFetch } from "./tezara-queue";
+⋮----
+async function fetchWithRetry(
+  url: string,
+  logger?: Logger,
+  signal?: AbortSignal,
+): Promise<Response | null>
+⋮----
+export async function searchTezaraPage(
+  query: string,
+  page: number,
+  logger?: Logger,
+  advanced = false,
+): Promise<TezaraThesisSummary[]>
+⋮----
+export async function searchTezara(
+  query: string,
+  logger?: Logger,
+  advanced = false,
+): Promise<TezaraThesisSummary[]>
+⋮----
+export async function fetchThesisDetails(
+  summary: TezaraThesisSummary,
+  logger?: Logger,
+  signal?: AbortSignal,
+): Promise<TezaraThesisDetails | null>
+</file>
+
+<file path="src/app/(auth)/onboarding/_components/onboarding-stepper.tsx">
+import { usePathname, useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { Check } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { checkStepsDataAction } from "../_lib/fetch-actions";
+⋮----
+className=
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_services/queries.ts">
@@ -2601,61 +2606,6 @@ function AxisCell(
 setExpandedThesisId(
 </file>
 
-<file path="src/app/(auth)/onboarding/matrix/actions.ts">
-import { eq, sql } from "drizzle-orm";
-import { db } from "@/db";
-import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
-import { getSession } from "@/session";
-import { SESSION_ERROR_MSG } from "@/lib/constants/session";
-import { createFlowId, Logger } from "@/lib/logger";
-import { invalidateOnboardingCache } from "@/lib/cache-tags";
-import type { OnboardingFormData } from "@/lib/types";
-⋮----
-type ValidationResult =
-  { valid: true; value: string } | { valid: false; error: string };
-⋮----
-function validateField(
-  value: string | undefined,
-  label: string,
-): ValidationResult
-⋮----
-/**
- * Persists the thesis matrix to the database and clears any downstream analysis
- * data (originality reports and thesis boxes) that may now be stale.
- *
- * @param data - The thesis matrix data from the onboarding form
- * @returns Success confirmation or an error message
- */
-export async function saveThesisMatrixAction(
-  data: OnboardingFormData,
-): Promise<
-</file>
-
-<file path="src/lib/prompts/originality-analysis.ts">
-import type { JsonSchema } from "../gemini";
-⋮----
-export function buildAnalysisSystemInstruction(): string
-⋮----
-export function buildAnalysisPrompt(params: {
-  studyTitle: string;
-  researchQuestion: string;
-  mainClaim: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-  validDetails: {
-    id: number;
-    title: string;
-    author: string;
-    university: string;
-    year: number;
-    thesisType: string;
-    department: string;
-    abstract: string;
-  }[];
-}): string
-</file>
-
 <file path="package.json">
 {
   "name": "fabricca",
@@ -2669,7 +2619,11 @@ export function buildAnalysisPrompt(params: {
     "typecheck": "tsc --noEmit",
     "check:full": "npm run lint && npm run typecheck && npx prettier --write .",
     "db:push": "drizzle-kit push --force",
-    "db:seed": "tsx src/db/seed.ts"
+    "db:seed": "tsx src/db/seed.ts",
+    "test:speed": "tsx scripts/infrastructure-stress.test.ts",
+    "test:quality": "tsx scripts/infrastructure-quality.test.ts",
+    "test:fullfactcheck": "tsx scripts/test-full-factcheck-flow.ts",
+    "test:determinism": "tsx scripts/determinism-test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.8.0",
@@ -2717,6 +2671,36 @@ export function buildAnalysisPrompt(params: {
 }
 </file>
 
+<file path="src/app/(auth)/onboarding/matrix/actions.ts">
+import { eq, sql } from "drizzle-orm";
+import { db } from "@/db";
+import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
+import { getSession } from "@/session";
+import { SESSION_ERROR_MSG } from "@/lib/constants/session";
+import { createFlowId, Logger } from "@/lib/logger";
+import { invalidateOnboardingCache } from "@/lib/cache-tags";
+import type { OnboardingFormData } from "@/lib/types";
+⋮----
+type ValidationResult =
+  { valid: true; value: string } | { valid: false; error: string };
+⋮----
+function validateField(
+  value: string | undefined,
+  label: string,
+): ValidationResult
+⋮----
+/**
+ * Persists the thesis matrix to the database and clears any downstream analysis
+ * data (originality reports and thesis boxes) that may now be stale.
+ *
+ * @param data - The thesis matrix data from the onboarding form
+ * @returns Success confirmation or an error message
+ */
+export async function saveThesisMatrixAction(
+  data: OnboardingFormData,
+): Promise<
+</file>
+
 <file path="src/app/(auth)/onboarding/risk/_components/originality-report-view.tsx">
 import { ShieldAlert } from "lucide-react";
 import { TavilyFactCheckTable } from "./tavily-fact-check-table";
@@ -2739,6 +2723,29 @@ function SectionDivider(
 export function OriginalityReportView({
   reportData,
 }: OriginalityReportViewProps)
+</file>
+
+<file path="src/lib/prompts/originality-analysis.ts">
+import type { JsonSchema } from "../gemini";
+⋮----
+export function buildAnalysisSystemInstruction(): string
+⋮----
+export function buildAnalysisPrompt(params: {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+  validDetails: {
+    id: number;
+    title: string;
+    author: string;
+    year: number;
+    thesisType: string;
+    abstract: string;
+  }[];
+}): string
 </file>
 
 <file path="src/lib/gemini.ts">
@@ -2816,70 +2823,6 @@ export async function generateStructuredContent<T>(
 ): Promise<T>
 </file>
 
-<file path="src/app/(auth)/onboarding/risk/_services/sifting.ts">
-import { fetchThesisDetails } from "@/lib/tezara";
-import type { Logger } from "@/lib/logger";
-import type { TezaraThesisSummary, TezaraThesisDetails } from "@/lib/types";
-import { rerankTheses } from "@/lib/cohere";
-⋮----
-async function fetchDetailsWithRetry(
-  thesis: TezaraThesisSummary,
-  log: Logger,
-): Promise<TezaraThesisDetails>
-⋮----
-export interface SiftAndFetchDetailsParams {
-  studyTitle: string;
-  researchQuestion: string;
-  mainClaim: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-}
-⋮----
-export interface SiftingDiagnostic {
-  uniqueAfterDedup: number;
-  topIds: number[];
-  stage1Count: number;
-  fetchRequested: number;
-  fetchSuccess: number;
-  fetchFailed: number;
-}
-⋮----
-export async function siftAndFetchDetails(
-  params: SiftAndFetchDetailsParams,
-  tezaraSearchResults: TezaraThesisSummary[][],
-  log: Logger,
-): Promise<
-</file>
-
-<file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">
-import { useState } from "react";
-import { Loader2, AlertCircle, BookOpen, Archive, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { AIBanner } from "@/components/ai-banner";
-import { LoadingSpinner } from "@/components/loading-spinner";
-import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
-import { LiteratureArticleCard } from "./literature-article-card";
-import {
-  useLiteratureReview,
-  type BoxStatus,
-} from "../_hooks/use-literature-review";
-⋮----
-function ArchiveEntryForm({
-  onAddEntry,
-}: {
-onAddEntry: (title: string, description: string)
-⋮----
-const handleAdd = () =>
-⋮----
-onChange=
-⋮----
-onAddArchiveEntry(subBox.title,
-</file>
-
 <file path="src/app/(auth)/onboarding/matrix/_components/matrix-form.tsx">
 import { useState, useEffect, useReducer } from "react";
 import { useRouter } from "next/navigation";
@@ -2928,6 +2871,7 @@ type FieldConfig = {
   label: string;
   placeholder: string;
   hint: string;
+  rows: number;
 };
 ⋮----
 type SectionConfig = {
@@ -2937,6 +2881,164 @@ type SectionConfig = {
 };
 ⋮----
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
+</file>
+
+<file path="src/app/(auth)/onboarding/risk/_services/sifting.ts">
+import { fetchThesisDetails } from "@/lib/tezara";
+import type { Logger } from "@/lib/logger";
+import type { TezaraThesisSummary, TezaraThesisDetails } from "@/lib/types";
+import { rerankTheses } from "@/lib/cohere";
+⋮----
+async function fetchDetailsWithRetry(
+  thesis: TezaraThesisSummary,
+  log: Logger,
+): Promise<TezaraThesisDetails>
+⋮----
+export interface SiftAndFetchDetailsParams {
+  studyTitle: string;
+  researchQuestion: string;
+  mainClaim: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+}
+⋮----
+export interface SiftingDiagnostic {
+  uniqueAfterDedup: number;
+  topIds: number[];
+  stage1Count: number;
+  fetchRequested: number;
+  fetchSuccess: number;
+  fetchFailed: number;
+}
+⋮----
+export async function siftAndFetchDetails(
+  params: SiftAndFetchDetailsParams,
+  tezaraSearchResults: TezaraThesisSummary[][],
+  log: Logger,
+): Promise<
+</file>
+
+<file path="src/app/(auth)/onboarding/risk/actions.ts">
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { originalityReports, thesisMatrices, thesisBoxes } from "@/db/schema";
+import { getSession } from "@/session";
+import { createFlowId, Logger } from "@/lib/logger";
+import { SESSION_ERROR_MSG } from "@/lib/constants/session";
+import { updateTag } from "next/cache";
+import { CACHE_TAGS, revalidateOnboardingPaths } from "@/lib/cache-tags";
+import type {
+  OnboardingActionResult,
+  ScrapedTheses,
+  TavilyEvaluationResponse,
+  TezaraThesisSummary,
+  OriginalityReportData,
+} from "@/lib/types";
+⋮----
+import { extractQueries } from "./_services/queries";
+import {
+  executeParallelSearch,
+  evaluateTavilyResults,
+} from "./_services/search";
+import { siftAndFetchDetails } from "./_services/sifting";
+import {
+  analyzeOriginalityRisk,
+  calculateOriginalityRisk,
+  compareThesesByRisk,
+} from "./_services/analysis";
+import { synthesizeRoadmap } from "./_services/roadmap";
+⋮----
+interface OnboardingMatrixInput {
+  studyTitle: string;
+  researchQuestion: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+  mainClaim: string;
+}
+⋮----
+export async function extractQueriesAction(
+  matrix: OnboardingMatrixInput,
+): Promise<
+  | {
+      success: true;
+      data: {
+        tavilyQueries: string[];
+        tezaraQueries: string[];
+        keywords: string[];
+      };
+    }
+  | { error: string }
+> {
+  const flowId = createFlowId();
+⋮----
+export async function executeSearchAction(params: {
+  studyTitle: string;
+  tavilyQueries: string[];
+  tezaraQueries: string[];
+}): Promise<
+  | {
+      success: true;
+      data: {
+        tezaraSearchResults: TezaraThesisSummary[][];
+        tavilyResults: TavilyEvaluationResponse;
+      };
+    }
+  | { error: string }
+> {
+  const flowId = createFlowId();
+⋮----
+export async function siftThesesAction(params: {
+  matrix: OnboardingMatrixInput;
+  tezaraSearchResults: TezaraThesisSummary[][];
+}): Promise<
+⋮----
+export async function finalizeJuryAnalysisAction(params: {
+  matrix: OnboardingMatrixInput;
+  scrapedTheses: ScrapedTheses;
+  tavilyResults: TavilyEvaluationResponse;
+}): Promise<
+  { success: true; data: OriginalityReportData } | { error: string }
+> {
+  const flowId = createFlowId();
+⋮----
+const stableSort = (
+        a: (typeof riskCalcResult.overlapTable)[number],
+        b: (typeof riskCalcResult.overlapTable)[number],
+) =>
+⋮----
+// Single database write at the very end of the pipeline
+⋮----
+export async function completeRiskStageAction(): Promise<OnboardingActionResult>
+</file>
+
+<file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">
+import { useState } from "react";
+import { Loader2, AlertCircle, BookOpen, Archive, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { AIBanner } from "@/components/ai-banner";
+import { LoadingSpinner } from "@/components/loading-spinner";
+import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
+import { LiteratureArticleCard } from "./literature-article-card";
+import {
+  useLiteratureReview,
+  type BoxStatus,
+} from "../_hooks/use-literature-review";
+⋮----
+function ArchiveEntryForm({
+  onAddEntry,
+}: {
+onAddEntry: (title: string, description: string)
+⋮----
+const handleAdd = () =>
+⋮----
+onChange=
+⋮----
+onAddArchiveEntry(subBox.title,
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_hooks/use-risk-analysis.ts">
@@ -3033,94 +3135,6 @@ export async function analyzeOriginalityRisk(
   log: Logger,
   chunkSize = 3,
 ): Promise<
-</file>
-
-<file path="src/app/(auth)/onboarding/risk/actions.ts">
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { originalityReports, thesisMatrices, thesisBoxes } from "@/db/schema";
-import { getSession } from "@/session";
-import { createFlowId, Logger } from "@/lib/logger";
-import { SESSION_ERROR_MSG } from "@/lib/constants/session";
-import { updateTag } from "next/cache";
-import { CACHE_TAGS, revalidateOnboardingPaths } from "@/lib/cache-tags";
-import type {
-  OnboardingActionResult,
-  ScrapedTheses,
-  TavilyEvaluationResponse,
-  TezaraThesisSummary,
-  OriginalityReportData,
-} from "@/lib/types";
-⋮----
-import { extractQueries } from "./_services/queries";
-import {
-  executeParallelSearch,
-  evaluateTavilyResults,
-} from "./_services/search";
-import { siftAndFetchDetails } from "./_services/sifting";
-import {
-  analyzeOriginalityRisk,
-  calculateOriginalityRisk,
-} from "./_services/analysis";
-import { synthesizeRoadmap } from "./_services/roadmap";
-⋮----
-interface OnboardingMatrixInput {
-  studyTitle: string;
-  researchQuestion: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-  mainClaim: string;
-}
-⋮----
-export async function extractQueriesAction(
-  matrix: OnboardingMatrixInput,
-): Promise<
-  | {
-      success: true;
-      data: {
-        tavilyQueries: string[];
-        tezaraQueries: string[];
-        keywords: string[];
-      };
-    }
-  | { error: string }
-> {
-  const flowId = createFlowId();
-⋮----
-export async function executeSearchAction(params: {
-  studyTitle: string;
-  tavilyQueries: string[];
-  tezaraQueries: string[];
-}): Promise<
-  | {
-      success: true;
-      data: {
-        tezaraSearchResults: TezaraThesisSummary[][];
-        tavilyResults: TavilyEvaluationResponse;
-      };
-    }
-  | { error: string }
-> {
-  const flowId = createFlowId();
-⋮----
-export async function siftThesesAction(params: {
-  matrix: OnboardingMatrixInput;
-  tezaraSearchResults: TezaraThesisSummary[][];
-}): Promise<
-⋮----
-export async function finalizeJuryAnalysisAction(params: {
-  matrix: OnboardingMatrixInput;
-  scrapedTheses: ScrapedTheses;
-  tavilyResults: TavilyEvaluationResponse;
-}): Promise<
-  { success: true; data: OriginalityReportData } | { error: string }
-> {
-  const flowId = createFlowId();
-⋮----
-// Single database write at the very end of the pipeline
-⋮----
-export async function completeRiskStageAction(): Promise<OnboardingActionResult>
 </file>
 
 <file path="src/app/(auth)/onboarding/literature-review/_hooks/use-literature-review.ts">

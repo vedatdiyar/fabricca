@@ -16,6 +16,7 @@ interface QueueItem {
   url: string;
   resolve: (value: Response) => void;
   reject: (reason: unknown) => void;
+  signal?: AbortSignal;
 }
 
 const queue: QueueItem[] = [];
@@ -77,6 +78,7 @@ async function executeRequest(item: QueueItem): Promise<void> {
     const response = await fetch(item.url, {
       keepalive: true,
       headers: TEZARA_FETCH_HEADERS,
+      signal: item.signal,
     });
     item.resolve(response);
   } catch (err) {
@@ -93,15 +95,33 @@ async function executeRequest(item: QueueItem): Promise<void> {
  *
  * @param url - The TEZARA URL to fetch.
  * @param logger - Optional logger instance for queue backlog warnings.
+ * @param signal - Optional AbortSignal for request cancellation / timeout.
  * @returns The fetch Response.
  */
 export async function enqueueTezaraFetch(
   url: string,
   logger?: Logger,
+  signal?: AbortSignal,
 ): Promise<Response> {
   return new Promise<Response>((resolve, reject) => {
-    queue.push({ url, resolve, reject });
+    if (signal?.aborted) {
+      reject(signal.reason);
+      return;
+    }
+
+    const item: QueueItem = { url, resolve, reject, signal };
+    queue.push(item);
     processPipeline();
+
+    if (signal) {
+      const onAbort = () => {
+        const idx = queue.indexOf(item);
+        if (idx !== -1) queue.splice(idx, 1);
+        reject(signal.reason);
+      };
+      signal.addEventListener("abort", onAbort, { once: true });
+    }
+
     if (queue.length > 5) {
       logger?.warn("tezara_queue_backlog", {
         service: "tezara",
