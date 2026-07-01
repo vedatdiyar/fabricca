@@ -1,7 +1,4 @@
-import {
-  ThinkingLevel,
-  Type,
-} from "@google/genai";
+import { ThinkingLevel, Type } from "@google/genai";
 import { getAi, retryOn503 } from "@/lib/gemini";
 import type { Logger } from "@/lib/logger";
 import type { GeminiThesisBox, FoundationalQuery } from "@/lib/types";
@@ -56,7 +53,10 @@ function tokenize(text: string): string[] {
     .filter((t) => t.length > 1);
 }
 
-function calculateTitleScore(itemTitle: string, queryTitle: string): number {
+export function calculateTitleScore(
+  itemTitle: string,
+  queryTitle: string,
+): number {
   const itemTokens = new Set(tokenize(itemTitle));
   const queryTokens = tokenize(queryTitle);
   if (queryTokens.length === 0) return 0;
@@ -64,7 +64,7 @@ function calculateTitleScore(itemTitle: string, queryTitle: string): number {
   return matches.length / queryTokens.length;
 }
 
-function matchAuthor(
+export function matchAuthor(
   itemAuthorList: { given?: string; family?: string }[] | undefined,
   queryAuthor: string,
 ): boolean {

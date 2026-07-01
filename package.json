@@ -10,11 +10,7 @@
     "typecheck": "tsc --noEmit",
     "check:full": "npm run lint && npm run typecheck && npx prettier --write .",
     "db:push": "drizzle-kit push --force",
-    "db:seed": "tsx src/db/seed.ts",
-    "test:speed": "tsx scripts/infrastructure-stress.test.ts",
-    "test:quality": "tsx scripts/infrastructure-quality.test.ts",
-    "test:fullfactcheck": "tsx scripts/test-full-factcheck-flow.ts",
-    "test:determinism": "tsx scripts/determinism-test.ts"
+    "db:seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
     "@google/genai": "^2.8.0",

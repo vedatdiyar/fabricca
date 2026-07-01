@@ -3,8 +3,10 @@ import type { JsonSchema } from "../gemini";
 // ============================================================================
 // 1. JSON YANIT ŞEMASI (5-QUADRANT NESTED STRUCTURE)
 // ============================================================================
+// CİFT ŞEMA: PRIMARY_MATERIAL icin semanticQuery opsiyonel (ZERO PRODUCTION),
+// diger kadranlar icin zorunlu (minLength: 1).
 
-const SUB_BOX = {
+const STANDARD_SUB_BOX = {
   type: "object" as const,
   properties: {
     title: { type: "string" as const },
@@ -17,34 +19,72 @@ const SUB_BOX = {
     semanticQuery: { type: "string" as const, minLength: 1 },
     foundationalQueries: {
       type: "array" as const,
-      items: { type: "string" as const },
+      items: {
+        type: "object" as const,
+        properties: {
+          author: { type: "string" as const },
+          title: { type: "string" as const },
+          publicationYear: { type: "number" as const },
+        },
+      },
     },
   },
   required: ["title", "description", "concepts", "semanticQuery"],
 };
 
-const CATEGORY = {
+const PRIMARY_SUB_BOX = {
   type: "object" as const,
   properties: {
     title: { type: "string" as const },
     description: { type: "string" as const },
-    subBoxes: { type: "array" as const, items: SUB_BOX },
+    concepts: {
+      type: "array" as const,
+      items: { type: "string" as const },
+      minItems: 1,
+    },
+    semanticQuery: { type: "string" as const },
+    foundationalQueries: {
+      type: "array" as const,
+      items: {
+        type: "object" as const,
+        properties: {
+          author: { type: "string" as const },
+          title: { type: "string" as const },
+          publicationYear: { type: "number" as const },
+        },
+      },
+    },
   },
-  required: ["title", "description", "subBoxes"],
+  required: ["title", "description", "concepts", "semanticQuery"],
 };
 
+function buildCategory(
+  items: typeof STANDARD_SUB_BOX | typeof PRIMARY_SUB_BOX,
+) {
+  return {
+    type: "object",
+    properties: {
+      title: { type: "string" },
+      description: { type: "string" },
+      subBoxes: { type: "array", items },
+    },
+    required: ["title", "description", "subBoxes"],
+  };
+}
+
 /**
- * Gemini'ye gönderilen 5-quadrant nested JSON şeması.
- * Gemini çıktısı, adaptör fonksiyonu ile düz GeminiThesisBox[] yapısına dönüştürülür.
+ * Gemini'ye gonderilen 5-quadrant nested JSON semasi.
+ * PRIMARY_MATERIAL PRIMARY_SUB_BOX kullanir (semanticQuery opsiyonel),
+ * diger kadranlar STANDARD_SUB_BOX kullanir (semanticQuery zorunlu).
  */
 export const thesisBoxGenerationSchema: JsonSchema = {
   type: "object",
   properties: {
-    conceptual: { ...CATEGORY },
-    problematization: { ...CATEGORY },
-    primaryMaterial: { ...CATEGORY },
-    context: { ...CATEGORY },
-    dataProtocol: { ...CATEGORY },
+    conceptual: buildCategory(STANDARD_SUB_BOX),
+    problematization: buildCategory(STANDARD_SUB_BOX),
+    context: buildCategory(STANDARD_SUB_BOX),
+    dataProtocol: buildCategory(STANDARD_SUB_BOX),
+    primaryMaterial: buildCategory(PRIMARY_SUB_BOX),
   },
   required: [
     "conceptual",
@@ -56,106 +96,84 @@ export const thesisBoxGenerationSchema: JsonSchema = {
 };
 
 // ============================================================================
-// 2. SİSTEM TALİMATI (SANDBOX-PROVEN EPISTEMOLOGICAL ENGINE)
+// 2. SISTEM TALIMATI — EVRENSEL TASARRUF + FENOMENOLOJIK BOLME
 // ============================================================================
 
 /**
- * OpenAlex vektör uzayı (GTE Large EN) için optimize edilmiş,
- * alan bağımsız saf epistemoloji motoru sistem talimatı.
- *
- * @returns Gemini system instruction metni
+ * OpenAlex vektor uzayi (GTE Large EN) icin optimize edilmis,
+ * alan bagimsiz epistemoloji motoru sistem talimati.
  */
 export function buildThesisBoxGenerationSystemInstruction(): string {
-  return `Rol: Soyut bilimsel veri yapıları üzerinde çalışan deterministik bir Epistemolojik Mimari Çıkarım Motorusunuz.
+  return `You are an Architectural Inference Engine that transforms any scientific thesis matrix into a deterministic, hierarchical epistemological data structure.
 
-Kayıpsızlık Sözleşmesi: Girdi matrisinde adı geçen her bir bağımsız varlık, dönüşüm, kuramsal çerçeve, metodolojik araç, zaman kesiti veya kaynak sınıfı KESİNLİKLE yakalanmalı ve doğru epistemolojik kadrana atanmalıdır.
+GENERAL CONTRACT:
+1. Language Division: 'title', 'description' and 'concepts' fields MUST be in academic TURKISH. 'semanticQuery' fields MUST be in ENGLISH as dense academic paragraphs suitable for OpenAlex/GTE-Large EN vector search.
+2. Scope Safety: Variables explicitly marked "out of scope" or "excluded" in the input matrix must never leak into any field.
+3. Foundational Contract: 'foundationalQueries' array MUST be empty ([]) in every sub-box.
+4. UNIVERSAL SAVINGS CONTRACT for semanticQuery (applies to ALL quadrants except PRIMARY_MATERIAL):
+   a. MAXIMUM LENGTH: 500 characters. Every character must carry semantic weight.
+   b. FORBIDDEN FILLER PATTERNS (ZERO TOLERANCE): Never start with or include phrases like "This study/research/analysis/article/paper examines/explores/investigates/focuses/analyzes." These are prose noise that wastes the character budget.
+   c. MANDATORY OPENING: The query MUST start directly with the highest-semantic-weight term — the core subject, theory name, or actor name from the sub-box's title or concepts. The opening 3-5 words must be the most search-relevant terms.
+   d. DENSITY RULE: Every word in the query must contribute conceptual or empirical weight. Minimize conjunctions, auxiliary verbs, and prepositional filler. Prioritize noun and proper noun density over verb phrases.
 
-Kadran Protokolleri:
-1. conceptual (Kavramsal): Bağımsız soyut modelleri, teorileri, çerçeveleri veya paradigmaları tanımlayın. Her bağımsız model ailesi kendi alt kutusuna (sub-box) izole edilmelidir.
-2. problematization (Sorunsallaştırma): Temel çelişkileri, araştırma boşluklarını, darboğazları veya problem boyutlarını tanımlayın. Bunları mantıksal boyutlarına, aşamalarına veya teorik açılarına göre ayrı alt kutulara bölün.
-3. primaryMaterial (Birincil Malzeme): İncelenen ham konuları, malzemeleri, veri kaynaklarını veya araştırma sınıflarını tanımlayın. Bunları iç sınıflandırmalarına, farklı bakış açılarına veya farklı kaynak popülasyonlarına göre ayrı alt kutularda gruplandırın.
-4. context (Bağlam): Çevreleyen ekosistem kısıtlamalarını, çevresel faktörleri veya yapısal sınırları tanımlayın. Bunları farklı kapsamlara, seviyelere veya bağlamsal ortamlara (örneğin varsa makro/mikro, küresel/yerel veya yapısal/zamansal boyutlara) göre ayrı alt kutulara bölün.
-5. dataProtocol (Veri Protokolü): Metodolojik işlemleri, veri işleme tekniklerini, analitik çerçeveleri veya kodlama şemalarını tanımlayın. Bunları belirgin metodolojik adımlara, araçlara veya analitik aşamalara göre ayrı alt kutularda gruplandırın.
+QUADRANT-SPECIFIC PRODUCTION PROTOCOLS:
 
-Mutlak Kapsam İçi Filtreleme Yasası (Sıfır Kapsam Dışı Sızıntısı):
-Girdi matrisinde açıkça "kapsam dışı", "hariç tutulanlar", "bu çalışmanın dışındadır" veya "incelenmemiştir" olarak işaretlenmiş herhangi bir unsur, KESİNLİKLE her kutunun başlığından, açıklamasından ve kavramlar (concepts) dizisinden hariç tutulmalıdır. Bu kapsam dışı varlıklar görünmez olarak kabul edilmelidir; model asla hariç tutulan değişkenleri kutu içeriğine dönüştürmemelidir.
+## 1. CONCEPTUAL (Theoretical Pillars)
+- Task: Define the independent abstract models, theories, axioms or paradigmatic frameworks upon which the thesis is constructed.
+- Dynamic Splitting Principle: If the input matrix contains multiple distinct theoretical backbones or schools, split them into separate sub-boxes.
+- semanticQuery Rule ("Anchored Abstract Mimicry — Positive Filter"):
+  * The query MUST be constructed primarily from THIS sub-box's title and concepts array.
+   * Opening word: the core theory name (e.g., the specific scientific model or paradigm analyzed — never "This study...").
+  * Sentence 1: Core theory + primary mechanism.
+  * Sentence 2: Key theorists + conceptual relationship.
+  * Sentence 3: Boundary parameters — what the theory explains, stripped of the thesis's own empirical details.
+  * General matrix data may be used ONLY as supplementary context, never as the primary content driver.
 
-Eksik Kategoriler ve Alt Kutuların Yönetimi (Şema Uyumluluk Yasası):
-JSON şeması her 5 kadranın da (conceptual, problematization, primaryMaterial, context, dataProtocol) mevcut olmasını gerektirdiğinden, ancak subBoxes dizisinin boş olmasına izin verdiğinden:
-1. Belirli bir alt kutu (örneğin mikro bağlam) için veri eksikse ancak kadranın diğer geçerli alt kutuları (örneğin makro bağlam) varsa, eksik olan alt kutuyu listelemeyin.
-2. Girdi matrisinde kadrana ait hiçbir veri bulunmuyorsa veya kadran sadece kapsam dışı parametreleri içeriyorsa, şema kısıtlamasını karşılamak için bu kadranın subBoxes dizisini KESİNLİKLE boş ([]) olarak ayarlamalısınız. Bu durumda asla sahte/geçici alt kutular veya uydurma akademik içerik üretmeyin. subBoxes dizisini [] olarak ayarlamak, sisteme bu kadranı tez kutusu yapısından tamamen çıkaracağını bildirir.
+## 2. PROBLEMATIZATION (Relational Conflict & Structural Tension)
+- Task: Extract the core paradoxes, research gaps, systemic bottlenecks or tension lines between variables from the thesis.
+- Dynamic Splitting Principle: If the input matrix contains multiple interacting, conflicting, or mutually-distancing empirical foci, subjects or variable clusters, split them into independent sub-boxes. Do not collapse them into a single generic "problem" container.
+- semanticQuery Rule ("Positive Filter — Sub-Box Encapsulation"):
+  * The query MUST derive its core content primarily from THIS sub-box's own title and concepts.
+  * The general matrix data (studyTitle, researchQuestion, mainClaim, etc.) may be used ONLY as supplementary context to fill gaps — never as the primary source of actors, relations or time periods.
+   * Opening word: the primary empirical subject or variable conflict from this sub-box (e.g., the specific phenomenon or system component being tested — never "This study...").
+  * Sentence 1: Core tension + primary actors directly from this sub-box's title.
+  * Sentence 2: Relational mechanism between the actors (adoption, friction, alienation).
+  * Sentence 3: Time boundary and context, drawn minimally from the sub-box's concepts.
+  * GOAL: Each sub-box produces a DISTINCT search vector. If sub-box A and sub-box B share the same matrix root, their queries MUST NOT be interchangeable.
+  * PREVIOUS RULE CANCELLED: Instructions to strip, hide or super-categorize empirical names from semanticQuery are REVOKED. Proper nouns from the matrix MUST be used directly in the English query.
 
-Saf Alan İzolasyonu İlkesi (Çapraz Bulaşma Yasağı):
-Her alt kutunun semanticQuery alanı; dikey bütünlüğünü korurken diğer kadranlardan yatay olarak izole kalacak şekilde, kesinlikle kendi başlığına, açıklamasına ve kavramlarına çıpalanmalıdır.
-- dataProtocol Sorgu Kuralı: Yalnızca ilgili analiz için gereken metodolojik mekaniklere, analitik çerçevelere ve kodlama paradigmalarına odaklanın (örneğin: "Kritik Söylem Analizi", "Sistematik Metin Kodlama Çerçeveleri"). Buraya asla diğer kadranlardan ampirik veriler veya aktörler sızdırmayın.
-- conceptual & problematization Sorgu Kuralı: Doğrudan ve güçlü bir şekilde bu spesifik kutunun başlığı ve kavramları içinde tanımlanan temel akademik paradigmaları, açık temel teorileri ve disipliner alt alanları hedeflemelidir (örneğin, kutu "Gramsci, Hegemonya ve Rıza" ile ilgiliyse, sorgu yapısal olarak "Gramscian hegemony, civil society consent negotiation, and counter-hegemonic political sociology strategies" konularına odaklanmalıdır). Kutunun temel teorilerini veya ana kavramsal sütunlarını basitleştirmeyin veya silmeyin; bunlar sorgunun güçlü çıpaları olarak kalmalıdır.
+## 3. CONTEXT (Systemic Background Parameters — PHENOMENOLOGICAL SPLITTING)
+- Task: Analyze the systemic, structural, environmental or parametric background conditions surrounding the thesis focus.
+- MATRIX-CONDITIONAL CONCEPT GENERATION:
+  * Examine the 'researchScope' and 'theoreticalFramework' fields from the input matrix.
+  * Identify every independent spatial, temporal, structural, and environmental parameter embedded in these fields (e.g., environmental parameters, system constraints, temporal milestones, structural changes).
+  * For EACH identified parameter, create a dedicated CONTEXT sub-box whose title is DERIVED DIRECTLY FROM THAT PARAMETER — not a generic label like "Background" or "General Context".
+- Dynamic Splitting Principle: Every independent contextual parameter must become its own sub-box. Do not merge macro parameters with micro parameters.
+- PHENOMENOLOGICAL SPLITTING — Search Contract:
+  * Former restriction on importing variables or state descriptions from the PROBLEMATIZATION quadrant is HEREBY CANCELLED.
+  * CONTEXT queries MUST chain the causal/systemic path in a single dense paragraph: System State A -> Environmental/Structural Pressure -> System State B / Target Adaptation.
+  * Opening word: the primary background variable or constraint itself directly (e.g., the specific parameter, condition, or structural limit derived from the matrix — never "This study...").
+  * Sentence 1: System State A — define the initial condition, baseline parameter, or resting state of the system component under analysis (use proper nouns or technical identifiers from the matrix).
+  * Sentence 2: Environmental/Structural Pressure — describe the specific perturbation, constraint, or external force that acts upon System State A, and the causal mechanism through which it propagates.
+  * Sentence 3: System State B / Target Adaptation — describe the resulting transformation, phase shift, reorganization, or response of the system component. Name the core variables or sub-components directly.
+  * GOAL: Each CONTEXT query must be a self-contained causal/systemic narrative that would enable OpenAlex to retrieve studies about (a) the initial condition, (b) the external pressure, AND (c) the resulting system transformation — simultaneously.
 
-OpenAlex Vektör Optimizasyon Sözleşmesi (Yoğun Çıpalama Mimarisi):
-Her alt kutunun semanticQuery alanı, KESİNLİKLE ilgili kutunun paradigmasına ait belirgin yüksek boyutlu terminolojiyle paketlenmiş yoğun ve doğrudan akademik bir İngilizce metin olarak sentezlenmelidir.
-- KESİNLİKLE YASAKTIR: Konuşma dilindeki dolgu ifadeleri kullanmayın ("Bu kutu ... konusuna odaklanır" gibi) ve belirgin teorik terimleri veya paradigma isimlerini belirsiz, aşırı genelleştirilmiş meta-sinonimlerle değiştirmeyin (örneğin, "Gramscian Hegemony" terimini "general sociopolitical domination models" ile değiştirmeyin).
-- Zorunlu Yapı: Kutunun tam akademik anahtar kelimelerini, kesin teorik modellerini ve metodolojik çerçevelerini içeren en az 3 yoğun ve kelimesi kelimesine cümle kurun. Metin, genel anlatım yerine yetkili akademik terminolojiyi önceliklendirerek yoğun veri eşleştirmesi (dense embedding matching) için yapısal olarak optimize edilmelidir.
+## 4. DATA_PROTOCOL (Methodological Framework)
+- Task: Define the methodological steps, coding schemas, or algorithmic verification processes.
+- Dynamic Splitting Principle: Group distinct analytical phases, coding schemas, or test protocols into independent sub-boxes.
+- semanticQuery Rule: Define only the analytical technique, coding schema, or the mathematical/qualitative mechanics of the method at an abstract level. Never allow empirical bleed-through from other quadrants. Opening word MUST be the method name.
 
-Temel Sorgular Statik Kuralı:
-Her alt kutudaki foundationalQueries alanı KESİNLİKLE her zaman boş bir dizi ([]) olmalıdır. Temel eserler, üretim sonrasında harici bir tarama sistemi tarafından çözümlenir.
-
-Dil: Tüm başlıklar ve açıklamalar akıcı bir akademik Türkçe ile yazılacaktır. Kavramlar (concepts) ham Türkçe terimleri birebir içerecektir. semanticQuery ise her zaman İngilizce dilinde olmalıdır.
-
----
-ÖRNEK UYGULAMA (SOYUT SİSTEM ÇALIŞMASI):
-Girdi Matrisi: {
-  "study_title": "Optimizing Wireless Sensor Networks using Genetic Algorithms (2020-2024)",
-  "theoretical_framework": "Darwinian Evolutionary Theory and Shannon Entropy Limits.",
-  "methodology": "Dataset of 500 router node packets. Techniques involve building a custom Python bitwise parsing matrix and critical algorithmic convergence testing. Exclude cellular 5G data.",
-  "main_claim": "Applying bitwise tracking reduces network saturation during node failures."
-}
-
-Çıktı JSON Yapısı (Meta-dolgulardan ve bağlamsal gürültüden arındırılmış temiz soyut biçimlendirmeye dikkat edin):
-{
-  "conceptual": {
-    "title": "Evrimsel Optimizasyon ve Enformasyon Sınırları",
-    "description": "Ağ optimizasyonunda kullanılan soyut matematiksel modeller.",
-    "subBoxes": [
-      {
-        "title": "Genetik Algoritmalar Kuramı",
-        "description": "Darwinist evrim ilkelerinin yapay zeka optimizasyon süreçlerine uygulanması.",
-        "concepts": ["Genetik Algoritmalar", "Optimizasyon"],
-        "semanticQuery": "Heuristic search models optimize multi-objective resource allocation bottlenecks within volatile networked environments. Artificial selection and mutation operators simulate biological adaptation pathways to bypass computational limitations. Evolutionary computation convergence rates dictate equilibrium thresholds under severe constraint matrices.",
-        "foundationalQueries": []
-      }
-    ]
-  },
-  "dataProtocol": {
-    "title": "Veri İşleme ve Algoritmik Doğrulama",
-    "description": "Ağ verilerinin ayrıştırılması ve model kararlılık testleri.",
-    "subBoxes": [
-      {
-        "title": "Bit düzeyinde Ayrıştırma Cetveli",
-        "description": "Ham paket verilerinin sistematik matris kodlaması.",
-        "concepts": ["Ayrıştırma Cetveli"],
-        "semanticQuery": "Low-level data serialization architectures govern qualitative stream telemetry parsing and systematic packet matrix categorization. Standardized matrix conventions maintain multi-variable database integrity across large longitudinal unstructured datasets. Algorithmic parsing rules optimize strict metadata schemas for downstream consumption.",
-        "foundationalQueries": []
-      },
-      {
-        "title": "Yakınsama ve Kararlılık Analizi",
-        "description": "Algoritmik kararlılık sınırlarının kritik testi.",
-        "concepts": ["Yakınsama", "Eleştirel Analiz"],
-        "semanticQuery": "Mathematical verification methodologies applied to stochastic algorithms guarantee computational equilibrium and asymptotic stability. Empirical testing evaluates processing runtimes and latency boundaries during simulated cascading fault sequences. Quantitative performance metrics validate discrete optimization model boundaries against strict theoretical thresholds.",
-        "foundationalQueries": []
-      }
-    ]
-  }
-}`;
+## 5. PRIMARY_MATERIAL (Raw Source Layer — No-Scan Layer)
+- Task: Group raw data sources, archival documents, corpora or source populations by structural class.
+- semanticQuery Rule ("ZERO PRODUCTION CONTRACT"): ALWAYS return an empty string ("") for the 'semanticQuery' field. This quadrant represents archival/physical data sources that will not be scanned in global academic databases. Do not waste computational tokens.`;
 }
 
 // ============================================================================
-// 3. KULLANICI PROMPT OLUŞTURUCU
+// 3. KULLANICI PROMPT OLUSTURUCU
 // ============================================================================
 
 /**
- * Tez matrisinden Gemini'ye gönderilecek kullanıcı promptunu oluşturur.
- *
- * @param params - Tez matrisinin 6 boyutlu alanları
- * @returns Gemini'ye gönderilecek user prompt metni
+ * Tez matrisinden Gemini'ye gonderilecek kullanici promptunu olusturur.
  */
 export function buildThesisBoxGenerationPrompt(params: {
   studyTitle: string;
@@ -166,6 +184,16 @@ export function buildThesisBoxGenerationPrompt(params: {
   researchScope: string;
 }): string {
   const matrixJson = JSON.stringify(params, null, 2);
-
-  return `Analyze the following thesis matrix and produce the 5-quadrant epistemological box structure per the system instruction and JSON schema: \`\`\`json ${matrixJson} \`\`\` Output ONLY valid JSON matching the defined schema.`;
+  return `Analyze the following thesis matrix and produce the 5-quadrant epistemological box structure:
+\`\`\`json
+${matrixJson}
+\`\`\`
+CRITICAL OPERATIONAL REMINDERS:
+- Apply the UNIVERSAL SAVINGS CONTRACT: max 500 chars, no filler openings, start with highest-weight term.
+- Apply POSITIVE FILTER: each sub-box query derives core content from its own title+concepts.
+- Apply MATRIX-CONDITIONAL CONCEPT GENERATION: CONTEXT sub-box titles must derive from specific parameters in researchScope/theoreticalFramework.
+- Apply PHENOMENOLOGICAL SPLITTING: CONTEXT queries chain System State A -> Environmental/Structural Pressure -> System State B / Target Adaptation.
+- Apply DYNAMIC SPLITTING: multiple variables -> multiple sub-boxes.
+- PRIMARY_MATERIAL: return empty string ("") for semanticQuery.
+- Output ONLY valid JSON matching the defined schema.`;
 }

@@ -40,7 +40,7 @@ const RawSubBoxSchema = z.object({
   title: z.string().min(1, "Alt kutu başlığı boş olamaz"),
   description: z.string().min(1, "Alt kutu açıklaması boş olamaz"),
   concepts: z.array(z.string()).min(1),
-  semanticQuery: z.string().min(1, "Arama sorgusu boş olamaz"),
+  semanticQuery: z.string(),
   foundationalQueries: z.array(FoundationalQuerySchema).optional(),
 });
 
@@ -95,13 +95,19 @@ function mapToProductionShape(
     if (!cat?.subBoxes || cat.subBoxes.length === 0) continue;
 
     const parentIndex = result.length;
+
+    // Unique concept aggregation from child sub-boxes
+    const aggregatedConcepts = Array.from(
+      new Set(cat.subBoxes.flatMap((sub) => sub.concepts ?? [])),
+    );
+
     result.push({
       title: cat.title,
       boxType,
       description: cat.description,
       parentId: null,
       semanticQuery: null,
-      concepts: [],
+      concepts: aggregatedConcepts,
       foundationalQueries: [],
     });
 
