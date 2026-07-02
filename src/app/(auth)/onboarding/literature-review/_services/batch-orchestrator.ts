@@ -328,10 +328,7 @@ export async function orchestrateBatchProcess(
     );
 
     if (boxCache && boxCache.length > 0) {
-      // Use cached papers — tag each with the first sub-box index
-      for (const rp of boxCache) {
-        rp.subBoxId = "0";
-      }
+      // Cached papers already have subBoxId set during prefetch (actions.ts Step 4)
       allPapers.push(...boxCache);
     } else {
       logger.warn("literature_no_cache_for_box", {

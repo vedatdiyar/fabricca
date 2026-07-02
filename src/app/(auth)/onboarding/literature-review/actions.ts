@@ -289,16 +289,17 @@ export async function processAllBoxesAction(
     const prefetchedCache: Record<string, RawPaper[]> = {};
 
     const cacheTasks = boxes.map(async (box) => {
-      const queries = box.subBoxes
-        .map((s) => s.semanticQuery?.trim())
-        .filter((q): q is string => !!q);
-
-      if (queries.length === 0) return;
+      if (box.subBoxes.length === 0) return;
 
       const allPapers: RawPaper[] = [];
 
-      for (const query of queries) {
+      for (let si = 0; si < box.subBoxes.length; si++) {
+        const query = box.subBoxes[si].semanticQuery?.trim();
+        if (!query) continue;
         const papers = await cacheLimiter.exec(() => searchOpenAlex(query));
+        for (const p of papers) {
+          p.subBoxId = String(si);
+        }
         allPapers.push(...papers);
       }
 

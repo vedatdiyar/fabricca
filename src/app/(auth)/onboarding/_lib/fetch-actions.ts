@@ -3,11 +3,7 @@
 import { eq, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
-import {
-  thesisMatrices,
-  originalityReports,
-  thesisBoxes,
-} from "@/db/schema";
+import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
 import type { GeminiThesisBox } from "@/lib/types";
 import { getSession } from "@/session";
 import { calculateBadge } from "@/lib/academic/badge-calculator";

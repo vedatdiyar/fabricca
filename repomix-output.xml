@@ -234,60 +234,6 @@ import { redirect } from "next/navigation";
 export default function RootPage()
 </file>
 
-<file path="src/lib/prompts/bulk-foundational-selection.ts">
-import { z } from "zod";
-import type { JsonSchema } from "../gemini";
-⋮----
-export function buildBulkFoundationalSystemInstruction(): string
-⋮----
-export interface ExaResultSlim {
-  title: string;
-  author: string | null;
-  publicationYear: number | null;
-  url: string | null;
-  textSnippet: string | null;
-}
-⋮----
-export interface BulkFoundationalEntry {
-  parentIndex: number;
-  boxTitle: string;
-  boxType: string;
-  boxDescription: string;
-  semanticQuery: string;
-  researchScope: string;
-  exaResults: ExaResultSlim[];
-}
-⋮----
-export function buildBulkFoundationalSelectionPrompt(
-  thesisMatrix: {
-    studyTitle: string;
-    researchQuestion: string;
-    theoreticalFramework: string;
-    methodology: string;
-    researchScope: string;
-    mainClaim: string;
-  },
-  entries: BulkFoundationalEntry[],
-): string
-</file>
-
-<file path="src/lib/prompts/bulk-semantic-query.ts">
-import { z } from "zod";
-import type { JsonSchema } from "../gemini";
-⋮----
-export function buildBulkSemanticSystemInstruction(): string
-⋮----
-export interface BulkSemanticQueryEntry {
-  index: number;
-  title: string;
-  description: string;
-}
-⋮----
-export function buildBulkSemanticQueryPrompt(
-  entries: BulkSemanticQueryEntry[],
-): string
-</file>
-
 <file path="src/app/(app)/dashboard/_components/add-task-modal.tsx">
 import { useState } from "react";
 import { X } from "lucide-react";
@@ -776,6 +722,60 @@ export function writePayloadFile(
 export function cosineSimilarity(vecA: number[], vecB: number[]): number
 </file>
 
+<file path="src/lib/prompts/bulk-foundational-selection.ts">
+import { z } from "zod";
+import type { JsonSchema } from "../gemini";
+⋮----
+export function buildBulkFoundationalSystemInstruction(): string
+⋮----
+export interface ExaResultSlim {
+  title: string;
+  author: string | null;
+  publicationYear: number | null;
+  url: string | null;
+  textSnippet: string | null;
+}
+⋮----
+export interface BulkFoundationalEntry {
+  parentIndex: number;
+  boxTitle: string;
+  boxType: string;
+  boxDescription: string;
+  semanticQuery: string;
+  researchScope: string;
+  exaResults: ExaResultSlim[];
+}
+⋮----
+export function buildBulkFoundationalSelectionPrompt(
+  thesisMatrix: {
+    studyTitle: string;
+    researchQuestion: string;
+    theoreticalFramework: string;
+    methodology: string;
+    researchScope: string;
+    mainClaim: string;
+  },
+  entries: BulkFoundationalEntry[],
+): string
+</file>
+
+<file path="src/lib/prompts/bulk-semantic-query.ts">
+import { z } from "zod";
+import type { JsonSchema } from "../gemini";
+⋮----
+export function buildBulkSemanticSystemInstruction(): string
+⋮----
+export interface BulkSemanticQueryEntry {
+  index: number;
+  title: string;
+  description: string;
+}
+⋮----
+export function buildBulkSemanticQueryPrompt(
+  entries: BulkSemanticQueryEntry[],
+): string
+</file>
+
 <file path="src/lib/prompts/semantic-query-generation.ts">
 import { z } from "zod";
 import type { JsonSchema } from "../gemini";
@@ -1157,59 +1157,6 @@ export async function searchExa(
 ): Promise<ExaResult[]>
 </file>
 
-<file path="src/app/(auth)/onboarding/literature-review/_services/foundational-oracle.ts">
-import type { Logger } from "@/lib/logger";
-import type { GeminiThesisBox, FoundationalQuery } from "@/lib/types";
-import {
-  bulkFoundationalSelectionSchema,
-  BulkFoundationalSelectionResponseSchema,
-  buildBulkFoundationalSystemInstruction,
-  buildBulkFoundationalSelectionPrompt,
-} from "@/lib/prompts";
-import type { BulkFoundationalEntry } from "@/lib/prompts";
-import { generateStructuredContent } from "@/lib/gemini";
-import { searchExa, buildExaConfig } from "./exa-search";
-import type { ExaResult } from "./exa-search";
-import { createConcurrencyLimiter } from "@/lib/rate-limiter";
-⋮----
-interface CrossrefResult {
-  doi: string | null;
-  publisher: string | null;
-  title: string | null;
-  author: string | null;
-  publicationYear: number | null;
-}
-⋮----
-function extractYear(item: Record<string, unknown>): number | null
-⋮----
-export async function lookupCrossref(
-  title: string,
-  author: string,
-): Promise<CrossrefResult>
-⋮----
-async function fetchWorks(
-    queryParam: string,
-    value: string,
-): Promise<Record<string, unknown>[]>
-⋮----
-export async function processFoundationalSelectionsBulk(
-  parentEntries: {
-    index: number;
-    box: GeminiThesisBox;
-    semanticQuery: string;
-  }[],
-  thesisMatrix: {
-    studyTitle: string;
-    researchQuestion: string;
-    theoreticalFramework: string;
-    methodology: string;
-    researchScope: string;
-    mainClaim: string;
-  },
-  logger: Logger,
-): Promise<Map<number, FoundationalQuery>>
-</file>
-
 <file path="src/components/providers/loading-overlay-provider.tsx">
 import {
   createContext,
@@ -1423,6 +1370,59 @@ function resolveAbstractInvertedIndex(
 ): string | null
 ⋮----
 function parseOpenAlexResults(results: Record<string, unknown>[]): RawPaper[]
+</file>
+
+<file path="src/app/(auth)/onboarding/literature-review/_services/foundational-oracle.ts">
+import type { Logger } from "@/lib/logger";
+import type { GeminiThesisBox, FoundationalQuery } from "@/lib/types";
+import {
+  bulkFoundationalSelectionSchema,
+  BulkFoundationalSelectionResponseSchema,
+  buildBulkFoundationalSystemInstruction,
+  buildBulkFoundationalSelectionPrompt,
+} from "@/lib/prompts";
+import type { BulkFoundationalEntry } from "@/lib/prompts";
+import { generateStructuredContent } from "@/lib/gemini";
+import { searchExa, buildExaConfig } from "./exa-search";
+import type { ExaResult } from "./exa-search";
+import { createConcurrencyLimiter } from "@/lib/rate-limiter";
+⋮----
+interface CrossrefResult {
+  doi: string | null;
+  publisher: string | null;
+  title: string | null;
+  author: string | null;
+  publicationYear: number | null;
+}
+⋮----
+function extractYear(item: Record<string, unknown>): number | null
+⋮----
+export async function lookupCrossref(
+  title: string,
+  author: string,
+): Promise<CrossrefResult>
+⋮----
+async function fetchWorks(
+    queryParam: string,
+    value: string,
+): Promise<Record<string, unknown>[]>
+⋮----
+export async function processFoundationalSelectionsBulk(
+  parentEntries: {
+    index: number;
+    box: GeminiThesisBox;
+    semanticQuery: string;
+  }[],
+  thesisMatrix: {
+    studyTitle: string;
+    researchQuestion: string;
+    theoreticalFramework: string;
+    methodology: string;
+    researchScope: string;
+    mainClaim: string;
+  },
+  logger: Logger,
+): Promise<Map<number, FoundationalQuery>>
 </file>
 
 <file path="src/app/(auth)/onboarding/literature-review/_services/foundational-resolver.ts">
@@ -2327,10 +2327,6 @@ export async function evaluateTavilyResults(
 ): Promise<TavilyEvaluationResponse>
 </file>
 
-<file path="src/lib/prompts/index.ts">
-
-</file>
-
 <file path="src/lib/tezara.ts">
 import type { Logger } from "./logger";
 import type { TezaraThesisSummary, TezaraThesisDetails } from "./types";
@@ -2361,47 +2357,6 @@ export async function fetchThesisDetails(
   logger?: Logger,
   signal?: AbortSignal,
 ): Promise<TezaraThesisDetails | null>
-</file>
-
-<file path="src/app/(auth)/onboarding/_lib/fetch-actions.ts">
-import { eq, sql } from "drizzle-orm";
-import { cacheLife, cacheTag } from "next/cache";
-import { db } from "@/db";
-import {
-  thesisMatrices,
-  originalityReports,
-  thesisBoxes,
-} from "@/db/schema";
-import type { GeminiThesisBox } from "@/lib/types";
-import { getSession } from "@/session";
-import { calculateBadge } from "@/lib/academic/badge-calculator";
-⋮----
-async function getCachedThesisMatrix(userId: number)
-⋮----
-async function getCachedOriginalityReport(userId: number)
-⋮----
-async function getCachedBoxes(thesisMatrixId: number)
-⋮----
-export async function fetchThesisMatrix()
-⋮----
-export async function fetchOriginalityReport()
-⋮----
-export async function fetchBoxes()
-⋮----
-export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]>
-⋮----
-/**
- * Server Action: checks which onboarding steps have existing data in the database
- * for the current user. Used by the stepper to determine which future steps are
- * clickable (steps with data can be re-visited even if they appear in the future).
- *
- * @returns A record of step key → boolean, or null if no session
- */
-export async function checkStepsDataAction(): Promise<Record<
-  string,
-  boolean
-> | null> {
-  const session = await getSession();
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_services/queries.ts">
@@ -2444,6 +2399,47 @@ export async function extractQueries(
 // If still less than 6, add single words
 ⋮----
 // Signature compatibility: map first word of each query as keywords
+</file>
+
+<file path="src/lib/prompts/index.ts">
+
+</file>
+
+<file path="src/app/(auth)/onboarding/_lib/fetch-actions.ts">
+import { eq, sql } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
+import { db } from "@/db";
+import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
+import type { GeminiThesisBox } from "@/lib/types";
+import { getSession } from "@/session";
+import { calculateBadge } from "@/lib/academic/badge-calculator";
+⋮----
+async function getCachedThesisMatrix(userId: number)
+⋮----
+async function getCachedOriginalityReport(userId: number)
+⋮----
+async function getCachedBoxes(thesisMatrixId: number)
+⋮----
+export async function fetchThesisMatrix()
+⋮----
+export async function fetchOriginalityReport()
+⋮----
+export async function fetchBoxes()
+⋮----
+export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]>
+⋮----
+/**
+ * Server Action: checks which onboarding steps have existing data in the database
+ * for the current user. Used by the stepper to determine which future steps are
+ * clickable (steps with data can be re-visited even if they appear in the future).
+ *
+ * @returns A record of step key → boolean, or null if no session
+ */
+export async function checkStepsDataAction(): Promise<Record<
+  string,
+  boolean
+> | null> {
+  const session = await getSession();
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/_services/roadmap.ts">
@@ -2941,34 +2937,6 @@ export async function siftAndFetchDetails(
 ): Promise<
 </file>
 
-<file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">
-import { useState } from "react";
-import { Loader2, AlertCircle, BookOpen, Archive, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { AIBanner } from "@/components/ai-banner";
-import { LoadingSpinner } from "@/components/loading-spinner";
-import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
-import { LiteratureArticleCard } from "./literature-article-card";
-import {
-  useLiteratureReview,
-  type BoxStatus,
-} from "../_hooks/use-literature-review";
-⋮----
-function ArchiveEntryForm({
-  onAddEntry,
-}: {
-onAddEntry: (title: string, description: string)
-⋮----
-const handleAdd = () =>
-⋮----
-onChange=
-⋮----
-onAddArchiveEntry(subBox.title,
-</file>
-
 <file path="src/app/(auth)/onboarding/risk/_hooks/use-risk-analysis.ts">
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -3056,6 +3024,34 @@ export async function analyzeOriginalityRisk(
   log: Logger,
   chunkSize = 3,
 ): Promise<
+</file>
+
+<file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">
+import { useState } from "react";
+import { Loader2, AlertCircle, BookOpen, Archive, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { AIBanner } from "@/components/ai-banner";
+import { LoadingSpinner } from "@/components/loading-spinner";
+import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
+import { LiteratureArticleCard } from "./literature-article-card";
+import {
+  useLiteratureReview,
+  type BoxStatus,
+} from "../_hooks/use-literature-review";
+⋮----
+function ArchiveEntryForm({
+  onAddEntry,
+}: {
+onAddEntry: (title: string, description: string)
+⋮----
+const handleAdd = () =>
+⋮----
+onChange=
+⋮----
+onAddArchiveEntry(subBox.title,
 </file>
 
 <file path="src/db/schema.ts">
