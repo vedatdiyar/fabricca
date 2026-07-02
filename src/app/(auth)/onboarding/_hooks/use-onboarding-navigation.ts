@@ -17,9 +17,7 @@ import {
 } from "../risk/actions";
 import {
   generateBoxesStructureAction,
-  mineFoundationalQueriesAction,
   confirmBoxesAction,
-  prefetchLiteratureCacheAction,
 } from "../boxes/actions";
 
 interface MatrixInput {
@@ -48,10 +46,6 @@ const PROCEED_STEPS: LoadingStep[] = [
   {
     text: "Tez matrisi analiz edilerek konu kutuları yapılandırılıyor...",
     status: "active",
-  },
-  {
-    text: "Konu kutuları için akademik veri tabanlarında kurucu eserler aranıyor...",
-    status: "idle",
   },
   { text: "Kutular sayfasına yönlendiriliyor...", status: "idle" },
 ];
@@ -167,10 +161,9 @@ export function useOnboardingNavigation() {
 
   /**
    * Finalizes the risk stage: persists the report status, generates the
-   * subject boxes via Gemini, mines foundational queries via OpenAlex,
-   * persists the boxes to the database immediately, seeds the boxes into
-   * the TanStack Query cache, and navigates to the boxes step.
-   * Reports any failure via toast.
+   * subject boxes via Gemini, persists the boxes to the database immediately,
+   * seeds the boxes into the TanStack Query cache, and navigates to the boxes
+   * step.  Reports any failure via toast.
    */
   const proceedFromRisk = useCallback(async (): Promise<{
     success: boolean;
@@ -217,23 +210,10 @@ export function useOnboardingNavigation() {
       updateLoadingStep(0, "completed");
       updateLoadingStep(1, "active");
 
-      const mineResult = await mineFoundationalQueriesAction(
-        structResult.boxes,
-      );
-      if (isCancelled) return { success: false };
-      if ("error" in mineResult) {
-        hideLoading();
-        toast.error(mineResult.error);
-        return { success: false };
-      }
-
-      updateLoadingStep(1, "completed");
-      updateLoadingStep(2, "active");
-
       if (isCancelled) return { success: false };
 
       // Persist generated boxes to DB immediately
-      const saveResult = await confirmBoxesAction(mineResult.boxes);
+      const saveResult = await confirmBoxesAction(structResult.boxes);
       if (isCancelled) return { success: false };
       if ("error" in saveResult) {
         hideLoading();
@@ -242,19 +222,10 @@ export function useOnboardingNavigation() {
       }
 
       // Seed boxes into TanStack Query cache
-      queryClient.setQueryData(["boxes"], mineResult.boxes);
+      queryClient.setQueryData(["boxes"], structResult.boxes);
 
       // Invalidate onboarding-steps so the stepper reflects the new state
       queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
-
-      // Fire-and-forget: pre-fetch full literature cache in the background
-      // while the user views their boxes. The cache will be ready by the time
-      // they reach the literature-review step.
-      prefetchLiteratureCacheAction(mineResult.boxes).then((res) => {
-        if (res?.cachedPapers) {
-          queryClient.setQueryData(["cachedPapers"], res.cachedPapers);
-        }
-      });
 
       // Brief delay to allow loading step transition to be seen
       await new Promise((resolve) => setTimeout(resolve, 500));

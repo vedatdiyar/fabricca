@@ -17,9 +17,7 @@ import {
   thesisBoxGenerationSchema,
 } from "@/lib/prompts/box-generation";
 import {
-  FinalBoxGenerationResponseSchema,
   FoundationalQuerySchema,
-  type FoundationalQuery,
   type GeminiThesisBox,
   type OnboardingActionResult,
 } from "@/lib/types";
@@ -29,8 +27,6 @@ import {
   fetchThesisMatrix,
   fetchOriginalityReport,
 } from "../_lib/fetch-actions";
-import type { RawPaper } from "../literature-review/_services/literature-review-papers";
-import { searchOpenAlex } from "../literature-review/_services/openalex/client";
 
 // ---------------------------------------------------------------------------
 // Gemini 5-quadrant nested yanıtı için Zod doğrulama şemaları.
@@ -39,7 +35,6 @@ import { searchOpenAlex } from "../literature-review/_services/openalex/client";
 const RawSubBoxSchema = z.object({
   title: z.string().min(1, "Alt kutu başlığı boş olamaz"),
   description: z.string().min(1, "Alt kutu açıklaması boş olamaz"),
-  semanticQuery: z.string(),
   foundationalQueries: z.array(FoundationalQuerySchema).optional(),
 });
 
@@ -115,7 +110,7 @@ function mapToProductionShape(
         boxType,
         description: sub.description,
         parentId: parentIndex,
-        semanticQuery: sub.semanticQuery ?? null,
+        semanticQuery: null,
         foundationalQueries: [],
       });
     }
@@ -243,267 +238,7 @@ export async function generateBoxesStructureAction(): Promise<
 }
 
 // ---------------------------------------------------------------------------
-// Exa & Crossref Foundational Query Mining Service
-// ---------------------------------------------------------------------------
-import { processSingleBox } from "./_services/foundational-oracle";
-
-// ---------------------------------------------------------------------------
-// Step 2: Foundational Query Mining
-// ---------------------------------------------------------------------------
-
-/**
- * Processes an array of items with a limit on concurrent asynchronous operations.
- *
- * @param items - Array of items to process.
- * @param limit - Maximum number of concurrent operations.
- * @param fn - Asynchronous function to apply to each item.
- * @returns Array of results preserving the original order.
- */
-async function limitConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let index = 0;
-
-  async function worker() {
-    while (index < items.length) {
-      const currentIndex = index++;
-      results[currentIndex] = await fn(items[currentIndex]);
-      if (index < items.length) {
-        await new Promise((resolve) => setTimeout(resolve, 300));
-      }
-    }
-  }
-
-  const workers = Array.from({ length: Math.min(limit, items.length) }, worker);
-  await Promise.all(workers);
-  return results;
-}
-
-/**
- * Her kutunun semantik sorgularını OpenAlex üzerinde aratarak
- * co-citation tabanlı kurucu eserleri bulur ve sub-box'lara dağıtır.
- * Düz (flat) array yapısını destekler: parent box'lar (parentId === null)
- * pas geçilir, child box'lar (parentId !== null) semantik sorgularıyla
- * madenciliğe gönderilir.
- *
- * @param boxes - Step 1'den gelen düz kutu dizisi
- * @returns Kurucu eserlerle zenginleştirilmiş kutu dizisi veya hata
- */
-export async function mineFoundationalQueriesAction(
-  boxes: GeminiThesisBox[],
-): Promise<{ success: true; boxes: GeminiThesisBox[] } | { error: string }> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-  const startTime = performance.now();
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const thesisMatrix = await fetchThesisMatrix();
-    if (!thesisMatrix) return { error: "Tez matrisi bulunamadı." };
-
-    log.info("mine_foundational_queries_start", {
-      service: "boxes",
-      data: { boxCount: boxes.length },
-    });
-
-    // Identify target child boxes for mining
-    // Bypasses parent boxes (parentId === null), RELATED_THESES, PRIMARY_MATERIAL or CONTEXT boxes
-    const targetBoxesToProcess: { box: GeminiThesisBox; flatIndex: number }[] =
-      [];
-    for (let i = 0; i < boxes.length; i++) {
-      const b = boxes[i];
-      if (b.parentId === null) continue;
-      if (b.boxType === "PRIMARY_MATERIAL" || b.boxType === "RELATED_THESES") {
-        continue;
-      }
-      targetBoxesToProcess.push({ box: b, flatIndex: i });
-    }
-
-    log.info("mine_foundational_queries_parallel_launch", {
-      service: "boxes",
-      data: { targetCount: targetBoxesToProcess.length },
-    });
-
-    // Concurrently process all target child boxes with limited concurrency (max 3)
-    const results = await limitConcurrency(
-      targetBoxesToProcess,
-      3,
-      async ({ box, flatIndex }) => {
-        try {
-          return await processSingleBox(box, flatIndex, thesisMatrix, log);
-        } catch (err) {
-          log.error("process_single_box_failed", {
-            service: "boxes",
-            data: { boxTitle: box.title, flatIndex },
-            error: err instanceof Error ? err : new Error(String(err)),
-          });
-          return null;
-        }
-      },
-    );
-
-    // Map resolved results back to flatIndex
-    const resultsMap = new Map<number, FoundationalQuery>();
-    for (const r of results) {
-      if (r) {
-        resultsMap.set(r.flatIndex, r.foundationalQuery);
-      }
-    }
-
-    // Build the final flat populatedBoxes array preserving original structure and parents
-    const populatedBoxes: GeminiThesisBox[] = boxes.map((box, i) => {
-      const queryForBox = resultsMap.get(i);
-      if (queryForBox) {
-        return {
-          ...box,
-          foundationalQueries: [queryForBox],
-        };
-      }
-      return box;
-    });
-
-    // Deduplicate across all boxes
-    const dedupedBoxes = deduplicateFoundationalQueries(populatedBoxes);
-
-    // Final validation
-    const validationResult = FinalBoxGenerationResponseSchema.safeParse({
-      boxes: dedupedBoxes,
-    });
-
-    if (!validationResult.success) {
-      log.error("box_mining_validation_failed", {
-        service: "boxes",
-        error: new Error(validationResult.error.message),
-        data: {
-          issues: validationResult.error.issues.map((i) => ({
-            path: i.path.join("."),
-            message: i.message,
-          })),
-        },
-      });
-      return {
-        error: "Kutulardaki kurucu literatür verisi doğrulamayı geçemedi.",
-      };
-    }
-
-    const parentCount = dedupedBoxes.filter((b) => b.parentId === null).length;
-    const childCount = dedupedBoxes.filter((b) => b.parentId !== null).length;
-
-    log.info("mine_foundational_queries_complete", {
-      service: "boxes",
-      durationMs: performance.now() - startTime,
-      data: {
-        parentCount,
-        childCount,
-      },
-    });
-
-    return { success: true, boxes: dedupedBoxes };
-  } catch (err) {
-    log.error("mine_foundational_queries_failed", {
-      service: "boxes",
-      error: err instanceof Error ? err : new Error(String(err)),
-    });
-    return {
-      error: "Kurucu eserler aranırken beklenmeyen bir hata oluştu.",
-    };
-  }
-}
-
-/**
- * Flat array içindeki tüm box'lar arasında yazar+başlık bazlı global
- * deduplikasyon yapar. Daha önceki bir box'a atanmış eser, sonraki
- * box'lardan filtrelenir.
- *
- * @param boxes - Kurucu eserlerle doldurulmuş düz kutu dizisi
- * @returns Deduplike edilmiş düz kutu dizisi
- */
-function deduplicateFoundationalQueries(
-  boxes: GeminiThesisBox[],
-): GeminiThesisBox[] {
-  const seen = new Set<string>();
-
-  return boxes.map((box) => ({
-    ...box,
-    foundationalQueries: (box.foundationalQueries ?? []).filter((q) => {
-      const key = `${q.author}|${q.title}`.toLowerCase().trim();
-      if (seen.has(key)) {
-        return false;
-      }
-      seen.add(key);
-      return true;
-    }),
-  }));
-}
-
-// ---------------------------------------------------------------------------
-// Literature Cache Pre-fetch
-// ---------------------------------------------------------------------------
-
-/**
- * Her kutunun semantik sorgularını OpenAlex'te aratarak sonuçları ön belleğe
- * alır. Flat array yapısında child box'lar parentId referansı ile ebeveynlerine
- * bağlanır; sonuçlar ebeveyn başlığı altında gruplanır. Literatür Tarama adımı
- * bu önbellekten beslenebilir.
- *
- * @param boxes - Kurucu eserleri doldurulmuş düz kutu dizisi
- * @returns Kutu başlığı → RawPaper[] eşleşmesi
- */
-export async function prefetchLiteratureCacheAction(
-  boxes: GeminiThesisBox[],
-): Promise<{ cachedPapers: Record<string, RawPaper[]> }> {
-  const cachedPapers: Record<string, RawPaper[]> = {};
-
-  // Group children by their parent's flat index
-  const childrenByParent = new Map<number, GeminiThesisBox[]>();
-  for (let i = 0; i < boxes.length; i++) {
-    const b = boxes[i];
-    if (b.parentId === null) continue;
-    const list = childrenByParent.get(b.parentId) ?? [];
-    list.push(b);
-    childrenByParent.set(b.parentId, list);
-  }
-
-  for (const [parentIndex, children] of childrenByParent) {
-    const parent = boxes[parentIndex];
-    if (!parent || parent.boxType === "PRIMARY_MATERIAL") continue;
-
-    const allPapers: RawPaper[] = [];
-
-    for (const child of children) {
-      if (!child.semanticQuery?.trim()) continue;
-      try {
-        const results = await searchOpenAlex(child.semanticQuery);
-        allPapers.push(...results);
-      } catch {
-        // Best-effort cache — failed queries are silently skipped
-      }
-    }
-
-    // Simple title-based deduplication
-    const seen = new Set<string>();
-    const unique: RawPaper[] = [];
-    for (const p of allPapers) {
-      const key = (p.title ?? "").toLowerCase().trim();
-      if (key && !seen.has(key)) {
-        seen.add(key);
-        unique.push(p);
-      }
-    }
-
-    cachedPapers[parent.title] = unique;
-  }
-
-  return { cachedPapers };
-}
-
-// ---------------------------------------------------------------------------
-// Step 3: Box Persistence
+// Step 2: Box Persistence
 // ---------------------------------------------------------------------------
 
 /**

@@ -318,7 +318,10 @@ function BoxCard({
           {box.relatedTheses && box.relatedTheses.length > 0 ? (
             <div className="flex flex-col gap-4">
               {box.relatedTheses.map((thesis, i) => (
-                <RelatedThesisCard key={`${thesis.title}-${i}`} thesis={thesis} />
+                <RelatedThesisCard
+                  key={`${thesis.title}-${i}`}
+                  thesis={thesis}
+                />
               ))}
             </div>
           ) : (

@@ -31,6 +31,17 @@ import type {
   RawPaper,
 } from "./_services/literature-review-papers";
 import { orchestrateBatchProcess } from "./_services/batch-orchestrator";
+import { createConcurrencyLimiter } from "@/lib/rate-limiter";
+import { generateStructuredContent } from "@/lib/gemini";
+import {
+  buildStandaloneSemanticQuerySystemInstruction,
+  buildSemanticQueryPrompt,
+  semanticQuerySchema,
+  SemanticQueryResponseSchema,
+} from "@/lib/prompts";
+import type { GeminiThesisBox } from "@/lib/types";
+import { processSingleBox } from "./_services/foundational-oracle";
+import { searchOpenAlex } from "./_services/openalex/client";
 
 // ============================================================================
 // Batch Action: processAllBoxesAction — delegates to batch orchestrator
@@ -54,6 +65,171 @@ export async function processAllBoxesAction(
   try {
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
+
+    // =========================================================================
+    // Step 1: Load thesis matrix + existing box rows from DB
+    // =========================================================================
+    const [matrix] = await db
+      .select({
+        id: thesisMatrices.id,
+        studyTitle: thesisMatrices.studyTitle,
+        researchQuestion: thesisMatrices.researchQuestion,
+        theoreticalFramework: thesisMatrices.theoreticalFramework,
+        methodology: thesisMatrices.methodology,
+        researchScope: thesisMatrices.researchScope,
+        mainClaim: thesisMatrices.mainClaim,
+      })
+      .from(thesisMatrices)
+      .where(eq(thesisMatrices.userId, session.userId));
+
+    if (!matrix) return { error: "Tez matrisi bulunamadı." };
+
+    const thesisMatrixId = matrix.id;
+
+    const allBoxRows = await db
+      .select({
+        id: thesisBoxes.id,
+        title: thesisBoxes.title,
+        parentId: thesisBoxes.parentId,
+        description: thesisBoxes.description,
+        boxType: thesisBoxes.boxType,
+        semanticQuery: thesisBoxes.semanticQuery,
+      })
+      .from(thesisBoxes)
+      .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
+
+    // Index: parent title → parent DB row
+    const parentByTitle = new Map<string, (typeof allBoxRows)[number]>();
+    // Index: parentId → Map<child title, child DB row>
+    const childrenByParent = new Map<
+      number,
+      Map<string, (typeof allBoxRows)[number]>
+    >();
+
+    for (const row of allBoxRows) {
+      if (row.parentId === null) {
+        parentByTitle.set(row.title, row);
+      } else {
+        let children = childrenByParent.get(row.parentId);
+        if (!children) {
+          children = new Map();
+          childrenByParent.set(row.parentId, children);
+        }
+        children.set(row.title, row);
+      }
+    }
+
+    // =========================================================================
+    // Step 2: Semantic Query Generation
+    // For each sub-box with an empty semanticQuery, call Gemini and persist.
+    // =========================================================================
+    const sqLimiter = createConcurrencyLimiter(3);
+    const sqTasks: Promise<void>[] = [];
+
+    for (const box of boxes) {
+      const parentRow = parentByTitle.get(box.title);
+      if (!parentRow) continue;
+
+      const childMap = childrenByParent.get(parentRow.id) ?? new Map();
+
+      for (const sub of box.subBoxes) {
+        if (sub.semanticQuery?.trim()) continue;
+
+        const childRow = childMap.get(sub.title);
+        if (!childRow) continue;
+
+        sqTasks.push(
+          sqLimiter.exec(async () => {
+            const result = await generateStructuredContent<{
+              semanticQuery: string;
+            }>(
+              "gemini-3.1-flash-lite",
+              buildStandaloneSemanticQuerySystemInstruction(),
+              buildSemanticQueryPrompt(sub.title, childRow.description ?? ""),
+              semanticQuerySchema,
+              logger,
+              {
+                payloadStage: "semantic_query",
+                zodSchema: SemanticQueryResponseSchema,
+                seed: 2,
+                temperature: 1.0,
+              },
+            );
+
+            sub.semanticQuery = result.semanticQuery;
+
+            await db
+              .update(thesisBoxes)
+              .set({ semanticQuery: result.semanticQuery })
+              .where(eq(thesisBoxes.id, childRow.id));
+          }),
+        );
+      }
+    }
+
+    await Promise.all(sqTasks);
+
+    // =========================================================================
+    // Step 3: Foundational Mining (per parent box via processSingleBox)
+    // =========================================================================
+    const miningLimiter = createConcurrencyLimiter(3);
+
+    const adaptToGeminiThesisBox = (b: SubBoxInput): GeminiThesisBox => ({
+      title: b.title,
+      boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "CONCEPTUAL",
+      description: b.description,
+      parentId: null,
+      semanticQuery: null,
+      concepts: [],
+      foundationalQueries: b.foundationalQueries,
+    });
+
+    const mineTasks = boxes.map(async (box, idx) => {
+      const adapted = adaptToGeminiThesisBox(box);
+      return miningLimiter.exec(async () => {
+        const mined = await processSingleBox(adapted, idx, matrix, logger);
+        if (!mined) return;
+
+        box.foundationalQueries.push(mined.foundationalQuery);
+
+        for (const sub of box.subBoxes) {
+          sub.foundationalQueries.push(mined.foundationalQuery);
+        }
+      });
+    });
+
+    await Promise.all(mineTasks);
+
+    // =========================================================================
+    // Step 4: Cache Prefetch — use fresh semantic queries to pre-cache OpenAlex
+    // =========================================================================
+    const cacheLimiter = createConcurrencyLimiter(3);
+    const prefetchedCache: Record<string, RawPaper[]> = {};
+
+    const cacheTasks = boxes.map(async (box) => {
+      const queries = box.subBoxes
+        .map((s) => s.semanticQuery?.trim())
+        .filter((q): q is string => !!q);
+
+      if (queries.length === 0) return;
+
+      const allPapers: RawPaper[] = [];
+
+      for (const query of queries) {
+        const papers = await cacheLimiter.exec(() => searchOpenAlex(query));
+        allPapers.push(...papers);
+      }
+
+      prefetchedCache[box.title] = allPapers;
+    });
+
+    await Promise.all(cacheTasks);
+
+    const mergedCache = { ...(cachedPapers ?? {}), ...prefetchedCache };
+
+    // =========================================================================
+    // Existing flow: load YÖK thesis entries + orchestrate
+    // =========================================================================
 
     // Load YÖK thesis entries from library_resources (written during box confirmation)
     // These are the "İlişkisel Tez Çalışmaları" from the risk originality report,
@@ -112,7 +288,7 @@ export async function processAllBoxesAction(
     const { poolEntries } = await orchestrateBatchProcess(
       boxes,
       logger,
-      cachedPapers,
+      mergedCache,
       thesisArticlesMap,
     );
 
