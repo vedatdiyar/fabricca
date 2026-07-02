@@ -7,3 +7,5 @@ export * from "./box-generation";
 export * from "./co-citation-referee";
 export * from "./foundational-oracle";
 export * from "./semantic-query-generation";
+export * from "./bulk-semantic-query";
+export * from "./bulk-foundational-selection";

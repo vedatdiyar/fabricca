@@ -11,10 +11,6 @@ import { StartOverButton } from "../_components/start-over-button";
 export default async function LiteratureReviewPage() {
   const profile = await getProfile();
 
-  if (profile.onboarding_completed) {
-    redirect("/dashboard");
-  }
-
   const [matrix] = await db
     .select({ id: thesisMatrices.id })
     .from(thesisMatrices)

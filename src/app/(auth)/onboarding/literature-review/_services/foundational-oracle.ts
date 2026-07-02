@@ -1,13 +1,16 @@
-import { ThinkingLevel } from "@google/genai";
-import { getAi, retryOn503, logRawLlmCall } from "@/lib/gemini";
 import type { Logger } from "@/lib/logger";
 import type { GeminiThesisBox, FoundationalQuery } from "@/lib/types";
 import {
-  foundationalOracleResponseSchema,
-  buildFoundationalOracleSystemInstruction,
-  buildFoundationalOracleUserPrompt,
+  bulkFoundationalSelectionSchema,
+  BulkFoundationalSelectionResponseSchema,
+  buildBulkFoundationalSystemInstruction,
+  buildBulkFoundationalSelectionPrompt,
 } from "@/lib/prompts";
-import { searchExa, exaSearchTool, buildExaConfig } from "./exa-search";
+import type { BulkFoundationalEntry } from "@/lib/prompts";
+import { generateStructuredContent } from "@/lib/gemini";
+import { searchExa, buildExaConfig } from "./exa-search";
+import type { ExaResult } from "./exa-search";
+import { createConcurrencyLimiter } from "@/lib/rate-limiter";
 
 interface CrossrefResult {
   doi: string | null;
@@ -92,14 +95,23 @@ export async function lookupCrossref(
   };
 }
 
-interface MinedBoxResult {
-  flatIndex: number;
-  foundationalQuery: FoundationalQuery;
-}
-
-export async function processSingleBox(
-  box: GeminiThesisBox,
-  flatIndex: number,
+/**
+ * Processes all active parent boxes in a single bulk operation:
+ * 1. Runs Exa search for each parent (throttled, concurrency=3)
+ * 2. Dispatches one Gemini call to select the best foundational work per parent
+ * 3. Per-entry sanity check (hallucination guard) + Crossref enrichment
+ *
+ * @param parentEntries - Ordered list of parent boxes with pre-generated semantic queries
+ * @param thesisMatrix - The thesis matrix for context-aware selection
+ * @param logger - Logger instance
+ * @returns Map of parent index → enriched FoundationalQuery
+ */
+export async function processFoundationalSelectionsBulk(
+  parentEntries: {
+    index: number;
+    box: GeminiThesisBox;
+    semanticQuery: string;
+  }[],
   thesisMatrix: {
     studyTitle: string;
     researchQuestion: string;
@@ -108,250 +120,176 @@ export async function processSingleBox(
     researchScope: string;
     mainClaim: string;
   },
-  log: Logger,
-): Promise<MinedBoxResult | null> {
-  const ai = getAi();
+  logger: Logger,
+): Promise<Map<number, FoundationalQuery>> {
+  if (parentEntries.length === 0) return new Map();
 
-  const USER_PROMPT = buildFoundationalOracleUserPrompt({
-    studyTitle: thesisMatrix.studyTitle,
-    researchQuestion: thesisMatrix.researchQuestion,
-    theoreticalFramework: thesisMatrix.theoreticalFramework,
-    methodology: thesisMatrix.methodology,
-    researchScope: thesisMatrix.researchScope,
-    mainClaim: thesisMatrix.mainClaim,
-    box: {
-      title: box.title,
-      boxType: box.boxType,
-      description: box.description,
-      concepts: box.concepts,
-      semanticQuery: box.semanticQuery,
-    },
-  });
+  // ------------------------------------------------------------------
+  // Phase 1: Exa search for each parent (concurrent, throttled)
+  // ------------------------------------------------------------------
+  const exaLimiter = createConcurrencyLimiter(3);
 
-  const commonConfig = {
-    systemInstruction: buildFoundationalOracleSystemInstruction(),
-    temperature: 1.0,
-    seed: 42,
-    thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-  };
+  const exaTasks = parentEntries.map(async (entry) => {
+    const query = entry.semanticQuery;
+    if (!query?.trim())
+      return { index: entry.index, results: [] as ExaResult[] };
 
-  const contents: Array<{
-    role: string;
-    parts: import("@google/genai").Part[];
-  }> = [{ role: "user", parts: [{ text: USER_PROMPT }] }];
-
-  // -------------------------------------------------------------------
-  // Phase 1: Generate a single semantic search query
-  // -------------------------------------------------------------------
-  const queryConfig: Record<string, unknown> = {
-    ...commonConfig,
-    tools: [exaSearchTool],
-  };
-
-  const payload1 = {
-    model: "gemini-3.1-flash-lite",
-    contents: contents as Parameters<
-      typeof ai.models.generateContent
-    >[0]["contents"],
-    config: queryConfig as Parameters<
-      typeof ai.models.generateContent
-    >[0]["config"],
-  };
-
-  logRawLlmCall({
-    modelName: "gemini-3.1-flash-lite",
-    systemInstruction: commonConfig.systemInstruction,
-    userPrompt: USER_PROMPT,
-    payload: payload1,
-    thesisMatrix,
-    stage: "oracle_phase1",
-  });
-
-  const { result: phase1Response } = await retryOn503(
-    () => ai.models.generateContent(payload1),
-    3,
-    1000,
-    log,
-  );
-
-  const modelParts = phase1Response.candidates?.[0]?.content?.parts;
-  if (!modelParts || modelParts.length === 0) {
-    throw new Error(`Boş yanıt: ${box.title}`);
-  }
-
-  const functionCallPart = modelParts.find(
-    (p: import("@google/genai").Part) => p.functionCall,
-  );
-  const query = functionCallPart?.functionCall?.args?.query
-    ? String(functionCallPart.functionCall.args.query)
-    : null;
-
-  if (!query) {
-    log.warn("no_query_generated", {
-      service: "boxes",
-      data: { boxTitle: box.title },
-    });
-    return null;
-  }
-
-  log.info("semantic_query_generated", {
-    service: "boxes",
-    data: { boxTitle: box.title, queryLength: query.length, query },
-  });
-
-  // -------------------------------------------------------------------
-  // Phase 2: Single Exa search with the generated query
-  // -------------------------------------------------------------------
-  const boxType = box.boxType ?? "UNKNOWN";
-  const researchScope = thesisMatrix.researchScope ?? "";
-
-  const cfg = buildExaConfig(boxType, query, researchScope, log);
-  cfg.query = query;
-
-  log.info("exa_search_start", {
-    service: "boxes",
-    data: { boxTitle: box.title, boxType },
-  });
-
-  const searchStart = performance.now();
-  const exaResults = await searchExa(cfg, query, log);
-  log.info("exa_search_done", {
-    service: "boxes",
-    durationMs: performance.now() - searchStart,
-    data: {
-      boxTitle: box.title,
-      resultCount: exaResults.length,
-    },
-  });
-
-  if (exaResults.length === 0) {
-    log.warn("no_exa_results", {
-      service: "boxes",
-      data: { boxTitle: box.title },
-    });
-    return null;
-  }
-
-  // -------------------------------------------------------------------
-  // Phase 3: Present results to Gemini for final selection
-  // -------------------------------------------------------------------
-  const sanitized = exaResults.map((r) => ({
-    title: r.title,
-    author: r.author ?? null,
-    publicationYear: r.publishedDate
-      ? new Date(r.publishedDate).getFullYear()
-      : null,
-    url: r.url ?? null,
-    textSnippet: r.text ? r.text.slice(0, 300) : null,
-  }));
-
-  const summaryLines: string[] = [];
-  for (const r of sanitized) {
-    const displayTitle = r.title || "(başlık boş)";
-    summaryLines.push(
-      `- ${displayTitle} (${r.author}, ${r.publicationYear ?? "Tarih yok"})`,
+    const boxType = entry.box.boxType ?? "CONCEPTUAL";
+    const cfg = buildExaConfig(
+      boxType,
+      query,
+      thesisMatrix.researchScope,
+      logger,
     );
-    if (r.textSnippet) summaryLines.push(`  Özet: ${r.textSnippet}`);
-  }
+    cfg.query = query;
 
-  contents.push({ role: "model", parts: modelParts });
-  contents.push({
-    role: "user",
-    parts: [
-      {
-        text: `Arama sonuçları:\n${summaryLines.join("\n")}\n\nŞimdi en uygun kurucu eseri seç ve şemayı doldur.`,
+    logger.info("exa_bulk_search_start", {
+      service: "literature",
+      filePath: "onboarding/literature-review/_services/foundational-oracle.ts",
+      data: { parentIndex: entry.index, boxTitle: entry.box.title, boxType },
+    });
+
+    const results = await exaLimiter.exec(() => searchExa(cfg, query, logger));
+
+    logger.info("exa_bulk_search_done", {
+      service: "literature",
+      filePath: "onboarding/literature-review/_services/foundational-oracle.ts",
+      data: {
+        parentIndex: entry.index,
+        resultCount: results.length,
       },
-    ],
+    });
+
+    return { index: entry.index, results };
   });
 
-  const finalConfig: Record<string, unknown> = {
-    ...commonConfig,
-    toolConfig: { functionCallingConfig: { mode: "NONE" } },
-    responseMimeType: "application/json",
-    responseJsonSchema: foundationalOracleResponseSchema,
-  };
+  const exaResultsByIndex = await Promise.all(exaTasks);
 
-  const payload2 = {
-    model: "gemini-3.1-flash-lite",
-    contents: contents as Parameters<
-      typeof ai.models.generateContent
-    >[0]["contents"],
-    config: finalConfig as Parameters<
-      typeof ai.models.generateContent
-    >[0]["config"],
-  };
+  // ------------------------------------------------------------------
+  // Phase 2: Build bulk prompt entries (only parents with results)
+  // ------------------------------------------------------------------
+  const bulkEntries: BulkFoundationalEntry[] = exaResultsByIndex
+    .map(({ index, results }) => {
+      const entry = parentEntries.find((e) => e.index === index);
+      if (!entry) return null;
 
-  logRawLlmCall({
-    modelName: "gemini-3.1-flash-lite",
-    systemInstruction: commonConfig.systemInstruction,
-    userPrompt: contents[contents.length - 1].parts?.[0]?.text || "",
-    payload: payload2,
-    thesisMatrix,
-    stage: "oracle_phase2",
-  });
-
-  const { result: finalResponse } = await retryOn503(
-    () => ai.models.generateContent(payload2),
-    3,
-    1000,
-    log,
-  );
-
-  const finalText = finalResponse.text;
-  if (!finalText) {
-    throw new Error(`Model NONE modunda metin döndürmedi: ${box.title}`);
-  }
-
-  // -------------------------------------------------------------------
-  // Phase 4: Parse selection, sanity check, Crossref merge
-  // -------------------------------------------------------------------
-  let cleaned = finalText.trim();
-  if (cleaned.startsWith("```")) {
-    cleaned = cleaned
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/, "")
-      .replace(/```$/, "")
-      .trim();
-  }
-
-  const outputObj = JSON.parse(cleaned) as {
-    selectedIndex: number;
-    refinedTitle: string;
-    refinedAuthor: string;
-  };
-  const sIdx = outputObj.selectedIndex;
-  const finalIdx = Math.max(0, Math.min(sIdx, exaResults.length - 1));
-  const selectedResult = exaResults[finalIdx];
-
-  const isHallucinated = !selectedResult.title
-    .toLowerCase()
-    .split(/\s+/)
-    .some(
-      (word) =>
-        word.length > 3 && outputObj.refinedTitle.toLowerCase().includes(word),
+      return {
+        parentIndex: index,
+        boxTitle: entry.box.title,
+        boxType: entry.box.boxType ?? "CONCEPTUAL",
+        boxDescription: entry.box.description,
+        semanticQuery: entry.semanticQuery,
+        researchScope: thesisMatrix.researchScope,
+        exaResults: results.map((r) => ({
+          title: r.title,
+          author: r.author ?? null,
+          publicationYear: r.publishedDate
+            ? new Date(r.publishedDate).getFullYear()
+            : null,
+          url: r.url ?? null,
+          textSnippet: r.text ? r.text.slice(0, 300) : null,
+        })),
+      } as BulkFoundationalEntry;
+    })
+    .filter(
+      (e): e is BulkFoundationalEntry => e !== null && e.exaResults.length > 0,
     );
 
-  const safeTitle = isHallucinated
-    ? selectedResult.title
-    : outputObj.refinedTitle;
+  if (bulkEntries.length === 0) {
+    logger.warn("bulk_foundational_no_results", {
+      service: "literature",
+      filePath: "onboarding/literature-review/_services/foundational-oracle.ts",
+      data: { totalParents: parentEntries.length },
+    });
+    return new Map();
+  }
 
-  const crossrefVerified = await lookupCrossref(
-    safeTitle,
-    outputObj.refinedAuthor,
+  // ------------------------------------------------------------------
+  // Phase 3: Single Gemini call for foundational selection
+  // ------------------------------------------------------------------
+  const response = await generateStructuredContent<{
+    selections: {
+      parentIndex: number;
+      selectedIndex: number;
+      refinedTitle: string;
+      refinedAuthor: string;
+    }[];
+  }>(
+    "gemini-3.1-flash-lite",
+    buildBulkFoundationalSystemInstruction(),
+    buildBulkFoundationalSelectionPrompt(thesisMatrix, bulkEntries),
+    bulkFoundationalSelectionSchema,
+    logger,
+    {
+      payloadStage: "bulk_foundational_selection",
+      zodSchema: BulkFoundationalSelectionResponseSchema,
+      seed: 42,
+      temperature: 1.0,
+      thesisMatrix,
+    },
   );
 
-  const pubYear = selectedResult.publishedDate
-    ? new Date(selectedResult.publishedDate).getFullYear()
-    : 0;
+  // ------------------------------------------------------------------
+  // Phase 4: Parse, sanity check, Crossref enrichment
+  // ------------------------------------------------------------------
+  const result = new Map<number, FoundationalQuery>();
 
-  return {
-    flatIndex,
-    foundationalQuery: {
+  for (const sel of response.selections) {
+    const entry = bulkEntries.find((e) => e.parentIndex === sel.parentIndex);
+    if (!entry) {
+      logger.warn("bulk_foundational_no_entry_match", {
+        service: "literature",
+        filePath:
+          "onboarding/literature-review/_services/foundational-oracle.ts",
+        data: { parentIndex: sel.parentIndex },
+      });
+      continue;
+    }
+
+    const safeIdx = Math.max(
+      0,
+      Math.min(sel.selectedIndex, entry.exaResults.length - 1),
+    );
+    const selectedResult = entry.exaResults[safeIdx];
+
+    // Hallucination guard: check if the refined title shares significant words
+    // with the actual result title
+    const isHallucinated = !selectedResult.title
+      .toLowerCase()
+      .split(/\s+/)
+      .some(
+        (word) =>
+          word.length > 3 && sel.refinedTitle.toLowerCase().includes(word),
+      );
+
+    const safeTitle = isHallucinated ? selectedResult.title : sel.refinedTitle;
+
+    // Crossref enrichment
+    const crossrefVerified = await lookupCrossref(safeTitle, sel.refinedAuthor);
+
+    const fq: FoundationalQuery = {
       title: crossrefVerified.title?.trim() || safeTitle,
-      author: outputObj.refinedAuthor,
-      publicationYear: crossrefVerified.publicationYear || pubYear,
+      author: sel.refinedAuthor,
+      publicationYear:
+        (crossrefVerified.publicationYear || selectedResult.publicationYear) ??
+        0,
       doi: crossrefVerified.doi,
       publisher: crossrefVerified.publisher,
-    },
-  };
+    };
+
+    result.set(sel.parentIndex, fq);
+
+    logger.info("bulk_foundational_selected", {
+      service: "literature",
+      filePath: "onboarding/literature-review/_services/foundational-oracle.ts",
+      data: {
+        parentIndex: sel.parentIndex,
+        title: fq.title,
+        author: fq.author,
+        hallucinationFlagged: isHallucinated,
+      },
+    });
+  }
+
+  return result;
 }

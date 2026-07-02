@@ -1,13 +1,12 @@
 "use server";
 
-import { eq, sql, and, not } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
 import {
   thesisMatrices,
   originalityReports,
   thesisBoxes,
-  libraryResources,
 } from "@/db/schema";
 import type { GeminiThesisBox } from "@/lib/types";
 import { getSession } from "@/session";
@@ -223,7 +222,6 @@ export async function checkStepsDataAction(): Promise<Record<
   const hasReport = !!report;
 
   let hasBoxes = false;
-  let hasLiterature = false;
 
   if (hasMatrix) {
     const [box] = await db
@@ -233,31 +231,12 @@ export async function checkStepsDataAction(): Promise<Record<
       .limit(1);
 
     hasBoxes = !!box;
-
-    if (hasBoxes) {
-      const [resource] = await db
-        .select({ id: libraryResources.id })
-        .from(libraryResources)
-        .innerJoin(
-          thesisBoxes,
-          eq(libraryResources.thesisBoxId, thesisBoxes.id),
-        )
-        .where(
-          and(
-            eq(thesisBoxes.thesisMatrixId, matrix.id),
-            not(eq(thesisBoxes.boxType, "RELATED_THESES")),
-          ),
-        )
-        .limit(1);
-
-      hasLiterature = !!resource;
-    }
   }
 
   return {
     matrix: hasMatrix,
     risk: hasReport,
     boxes: hasBoxes,
-    "literature-review": hasLiterature,
+    "literature-review": hasBoxes,
   };
 }

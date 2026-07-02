@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useTransition } from "react";
+import { useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
-  Loader2,
   CheckCircle2,
   Box,
   Library,
@@ -41,8 +40,6 @@ const badgeLabels: Record<string, string> = {
 
 export function BoxesContainer() {
   const router = useRouter();
-  const queryClient = useQueryClient();
-  const [isPending, startTransition] = useTransition();
 
   const { data: boxes, isLoading: loading } = useQuery({
     queryKey: ["boxes"],
@@ -55,11 +52,8 @@ export function BoxesContainer() {
   });
 
   const handleProceed = useCallback(() => {
-    startTransition(() => {
-      queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
-      router.push("/onboarding/literature-review");
-    });
-  }, [queryClient, router]);
+    router.push("/onboarding/literature-review");
+  }, [router]);
 
   if (loading) {
     return <LoadingSpinner variant="full" message="Kutular yükleniyor..." />;
@@ -99,18 +93,11 @@ export function BoxesContainer() {
       </div>
 
       <div className="flex justify-end mt-8 pb-8">
-        <Button onClick={handleProceed} disabled={isPending} size="lg">
-          {isPending ? (
-            <span className="flex items-center justify-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Kaydediliyor...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              <Box className="w-4 h-4" />
-              Konu Kutularını Onayla ve Literatür Taramasına Geç
-            </span>
-          )}
+        <Button onClick={handleProceed} size="lg">
+          <span className="flex items-center gap-2">
+            <Box className="w-4 h-4" />
+            Literatür Taramasına Geç
+          </span>
         </Button>
       </div>
     </div>

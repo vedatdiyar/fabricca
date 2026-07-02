@@ -19,7 +19,6 @@ import type {
   RawPaper,
 } from "./literature-review-papers";
 import type { JuryArticle, LiteraturePoolEntry } from "@/lib/types";
-import { searchOpenAlex } from "./openalex/client";
 import { mergePapers } from "./literature-review-papers";
 import { isArchivalBox } from "./box-pipeline";
 import { resolveFoundationalWorks } from "./foundational-resolver";
@@ -335,23 +334,16 @@ export async function orchestrateBatchProcess(
       }
       allPapers.push(...boxCache);
     } else {
-      // No cache — dispatch all OpenAlex queries concurrently.
-      // The global gap-enforced queue in openalex/client.ts serialises them
-      // with a minimum 1000ms gap, so concurrency here is safe.
-      const openAlexTasks = box.subBoxes.map(async (sub, si) => {
-        if (!sub.semanticQuery?.trim()) return;
-        try {
-          const results = await searchOpenAlex(sub.semanticQuery);
-          for (const rp of results) {
-            rp.subBoxId = String(si);
-          }
-          allPapers.push(...results);
-        } catch {
-          // Best-effort — failed queries are silently skipped
-        }
+      logger.warn("literature_no_cache_for_box", {
+        service: "literature",
+        filePath:
+          "onboarding/literature-review/_services/batch-orchestrator.ts",
+        data: {
+          boxTitle: box.title,
+          context:
+            "OA verisi ön-çekme aşamasında (actions.ts Step 4) alınmalıdır. Bu kutu için cache bulunamadı, boş sonuç dönülüyor.",
+        },
       });
-
-      await Promise.all(openAlexTasks);
     }
 
     const merged = mergePapers(allPapers);

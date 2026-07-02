@@ -298,7 +298,7 @@ export function LiteratureReviewContent() {
             ) : (
               <span className="flex items-center gap-2">
                 <BookOpen className="w-4 h-4" />
-                Literatür Taramasını Onayla ve Teze Geç
+                Literatürü Tamamla ve Teze Başla
               </span>
             )}
           </Button>

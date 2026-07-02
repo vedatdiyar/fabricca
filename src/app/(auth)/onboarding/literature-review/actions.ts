@@ -34,13 +34,14 @@ import { orchestrateBatchProcess } from "./_services/batch-orchestrator";
 import { createConcurrencyLimiter } from "@/lib/rate-limiter";
 import { generateStructuredContent } from "@/lib/gemini";
 import {
-  buildStandaloneSemanticQuerySystemInstruction,
-  buildSemanticQueryPrompt,
-  semanticQuerySchema,
-  SemanticQueryResponseSchema,
+  bulkSemanticQuerySchema,
+  BulkSemanticQueryResponseSchema,
+  buildBulkSemanticSystemInstruction,
+  buildBulkSemanticQueryPrompt,
 } from "@/lib/prompts";
 import type { GeminiThesisBox } from "@/lib/types";
-import { processSingleBox } from "./_services/foundational-oracle";
+import { processFoundationalSelectionsBulk } from "./_services/foundational-oracle";
+import { isArchivalBox } from "./_services/box-pipeline";
 import { searchOpenAlex } from "./_services/openalex/client";
 
 // ============================================================================
@@ -120,111 +121,166 @@ export async function processAllBoxesAction(
     }
 
     // =========================================================================
-    // Step 2: Semantic Query Generation
-    // For each sub-box with an empty semanticQuery, call Gemini and persist.
+    // Step 2: Bulk Semantic Query Generation
+    // Aggregate all active sub-boxes needing queries into a single Gemini call.
     // =========================================================================
-    const sqLimiter = createConcurrencyLimiter(3);
-    const sqTasks: Promise<void>[] = [];
+    interface FlatSubEntry {
+      flatIndex: number;
+      childRow: (typeof allBoxRows)[number] | undefined;
+      sub: (typeof boxes)[number]["subBoxes"][number];
+    }
+
+    const flatNeedingQueries: FlatSubEntry[] = [];
+    let flatIdx = 0;
 
     for (const box of boxes) {
+      if (isArchivalBox(box)) continue;
+
       const parentRow = parentByTitle.get(box.title);
       if (!parentRow) continue;
 
       const childMap = childrenByParent.get(parentRow.id) ?? new Map();
 
       for (const sub of box.subBoxes) {
-        if (sub.semanticQuery?.trim()) continue;
+        const entry: FlatSubEntry = {
+          flatIndex: flatIdx++,
+          childRow: childMap.get(sub.title),
+          sub,
+        };
 
-        const childRow = childMap.get(sub.title);
-        if (!childRow) continue;
-
-        sqTasks.push(
-          sqLimiter.exec(async () => {
-            const result = await generateStructuredContent<{
-              semanticQuery: string;
-            }>(
-              "gemini-3.1-flash-lite",
-              buildStandaloneSemanticQuerySystemInstruction(),
-              buildSemanticQueryPrompt(sub.title, childRow.description ?? ""),
-              semanticQuerySchema,
-              logger,
-              {
-                payloadStage: "semantic_query",
-                zodSchema: SemanticQueryResponseSchema,
-                seed: 2,
-                temperature: 1.0,
-                thesisMatrix: matrix,
-              },
-            );
-
-            sub.semanticQuery = result.semanticQuery;
-
-            await db
-              .update(thesisBoxes)
-              .set({ semanticQuery: result.semanticQuery })
-              .where(eq(thesisBoxes.id, childRow.id));
-          }),
-        );
+        if (!sub.semanticQuery?.trim()) {
+          flatNeedingQueries.push(entry);
+        }
       }
     }
 
-    await Promise.all(sqTasks);
+    if (flatNeedingQueries.length > 0) {
+      const bulkResult = await generateStructuredContent<{
+        queries: { index: number; semanticQuery: string }[];
+      }>(
+        "gemini-3.1-flash-lite",
+        buildBulkSemanticSystemInstruction(),
+        buildBulkSemanticQueryPrompt(
+          flatNeedingQueries.map((e) => ({
+            index: e.flatIndex,
+            title: e.sub.title,
+            description: e.childRow?.description ?? "",
+          })),
+        ),
+        bulkSemanticQuerySchema,
+        logger,
+        {
+          payloadStage: "bulk_semantic_queries",
+          zodSchema: BulkSemanticQueryResponseSchema,
+          seed: 2,
+          temperature: 1.0,
+          thesisMatrix: matrix,
+        },
+      );
+
+      const queryByIndex = new Map(
+        bulkResult.queries.map((q) => [q.index, q.semanticQuery]),
+      );
+
+      for (const entry of flatNeedingQueries) {
+        const query = queryByIndex.get(entry.flatIndex);
+        if (!query || !entry.childRow) continue;
+
+        entry.sub.semanticQuery = query;
+
+        await db
+          .update(thesisBoxes)
+          .set({ semanticQuery: query })
+          .where(eq(thesisBoxes.id, entry.childRow.id));
+      }
+
+      const generatedCount = flatNeedingQueries.filter((e) =>
+        queryByIndex.has(e.flatIndex),
+      ).length;
+
+      logger.info("literature_bulk_semantic_done", {
+        service: "literature",
+        filePath: "onboarding/literature-review/actions.ts",
+        data: {
+          totalNeeded: flatNeedingQueries.length,
+          generated: generatedCount,
+          geminiCalls: 1,
+        },
+      });
+    }
 
     // =========================================================================
-    // Step 3: Foundational Mining (per parent box via processSingleBox)
+    // Step 3: Bulk Foundational Mining
+    // Uses semanticQuery from Phase 1 as Exa queries; throttled Exa + 1 Gemini call.
     // =========================================================================
-    const miningLimiter = createConcurrencyLimiter(3);
+    const activeParentsForMining = boxes.filter(
+      (b) => b.boxType !== "PRIMARY_MATERIAL" && b.boxType !== "RELATED_THESES",
+    );
 
-    const adaptToGeminiThesisBox = (b: SubBoxInput): GeminiThesisBox => ({
-      title: b.title,
-      boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "CONCEPTUAL",
-      description: b.description,
-      parentId: null,
-      semanticQuery: null,
-      concepts: [],
-      foundationalQueries: b.foundationalQueries,
-    });
+    if (activeParentsForMining.length > 0) {
+      const parentEntries: {
+        index: number;
+        box: GeminiThesisBox;
+        semanticQuery: string;
+      }[] = [];
 
-    const mineTasks = boxes.map(async (box, idx) => {
-      const adapted = adaptToGeminiThesisBox(box);
-      return miningLimiter.exec(async () => {
-        try {
-          const mined = await processSingleBox(adapted, idx, matrix, logger);
-          if (!mined) return;
+      for (let idx = 0; idx < activeParentsForMining.length; idx++) {
+        const box = activeParentsForMining[idx];
+        const exaQuery =
+          box.subBoxes.find((s) => s.semanticQuery?.trim())?.semanticQuery ??
+          "";
 
-          box.foundationalQueries.push(mined.foundationalQuery);
+        parentEntries.push({
+          index: idx,
+          semanticQuery: exaQuery,
+          box: {
+            title: box.title,
+            boxType:
+              (box.boxType as GeminiThesisBox["boxType"]) ?? "CONCEPTUAL",
+            description: box.description,
+            parentId: null,
+            semanticQuery: exaQuery,
+            concepts: [],
+            foundationalQueries: box.foundationalQueries,
+          },
+        });
+      }
 
-          for (const sub of box.subBoxes) {
-            sub.foundationalQueries.push(mined.foundationalQuery);
-          }
-        } catch (err) {
-          logger.warn("literature_mining_skipped", {
+      const foundationalMap = await processFoundationalSelectionsBulk(
+        parentEntries,
+        matrix,
+        logger,
+      );
+
+      // Distribute results
+      for (const [idx, fq] of foundationalMap) {
+        const box = activeParentsForMining[idx];
+        if (!box) {
+          logger.warn("literature_bulk_foundational_no_box", {
             service: "literature",
             filePath: "onboarding/literature-review/actions.ts",
-            data: {
-              boxTitle: box.title,
-              error: err instanceof Error ? err.message : String(err),
-              context: `Kutu: ${box.title} — kurucu eser madenciliği atlandı`,
-            },
+            data: { parentIndex: idx },
           });
+          continue;
         }
+
+        box.foundationalQueries.push(fq);
+
+        for (const sub of box.subBoxes) {
+          sub.foundationalQueries.push(fq);
+        }
+      }
+
+      logger.info("literature_bulk_foundational_done", {
+        service: "literature",
+        filePath: "onboarding/literature-review/actions.ts",
+        data: {
+          totalParents: activeParentsForMining.length,
+          selected: foundationalMap.size,
+          geminiCalls: 1,
+        },
       });
-    });
-
-    const mineResults = await Promise.allSettled(mineTasks);
-    const minedCount = mineResults.filter(
-      (r) => r.status === "fulfilled",
-    ).length;
-
-    logger.info("literature_mining_done", {
-      service: "literature",
-      filePath: "onboarding/literature-review/actions.ts",
-      data: {
-        total: boxes.length,
-        mined: minedCount,
-        skipped: boxes.length - minedCount,
-      },
-    });
+    }
 
     // =========================================================================
     // Step 4: Cache Prefetch — use fresh semantic queries to pre-cache OpenAlex
@@ -482,12 +538,295 @@ export async function confirmLiteratureAction(args: {
           data: { totalSkipped },
         });
       }
-
-      await tx
-        .update(users)
-        .set({ onboardingCompleted: true })
-        .where(eq(users.id, userId));
     });
+
+    try {
+      revalidateOnboardingPaths();
+    } catch {
+      // Revalidation path skipped
+    }
+
+    invalidateOnboardingCache();
+
+    log.info("confirm_literature_success", {
+      service: "literature",
+      durationMs: performance.now() - startTime,
+      data: {
+        resultCount: literaturePool.reduce(
+          (sum, entry) => sum + entry.articles.length,
+          0,
+        ),
+      },
+    });
+
+    return { success: true };
+  } catch (err) {
+    log.error("confirm_literature_failed", {
+      service: "literature",
+      error: err,
+    });
+    return {
+      error:
+        err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.",
+    };
+  }
+}
+
+// ============================================================================
+// Preloaded Pool: fetchPreloadedLiteraturePool
+// load already-saved library_resources for the literature-review page
+// when the user arrives via ?preloaded=true
+// ============================================================================
+
+export async function fetchPreloadedLiteraturePool(): Promise<{
+  data?: LiteraturePoolEntry[];
+  error?: string;
+}> {
+  const session = await getSession();
+  if (!session) return { error: SESSION_ERROR_MSG };
+
+  const [matrix] = await db
+    .select({ id: thesisMatrices.id })
+    .from(thesisMatrices)
+    .where(eq(thesisMatrices.userId, session.userId));
+
+  if (!matrix) return { error: "Tez matrisi bulunamadı." };
+
+  const rows = await db
+    .select({
+      boxTitle: thesisBoxes.title,
+      title: libraryResources.title,
+      abstract: libraryResources.abstract,
+      url: libraryResources.url,
+      doi: libraryResources.doi,
+      publisher: libraryResources.publisher,
+      publicationYear: libraryResources.publicationYear,
+      authors: libraryResources.authors,
+      isFoundational: libraryResources.isFoundational,
+      relevanceScore: libraryResources.relevanceScore,
+    })
+    .from(libraryResources)
+    .innerJoin(thesisBoxes, eq(libraryResources.thesisBoxId, thesisBoxes.id))
+    .where(eq(thesisBoxes.thesisMatrixId, matrix.id));
+
+  const grouped = new Map<string, JuryArticle[]>();
+  for (const row of rows) {
+    const list = grouped.get(row.boxTitle) ?? [];
+    list.push({
+      title: row.title,
+      abstract: row.abstract ?? "",
+      url: row.url ?? "",
+      doi: row.doi,
+      publisher: row.publisher ?? "",
+      publicationYear: row.publicationYear ?? 0,
+      authors: (row.authors as string[]) ?? [],
+      isFoundational: row.isFoundational ?? false,
+      relevanceScore: row.relevanceScore ?? 0,
+    });
+    grouped.set(row.boxTitle, list);
+  }
+
+  const pool: LiteraturePoolEntry[] = [];
+  for (const [subBoxTitle, articles] of grouped) {
+    pool.push({ subBoxTitle, articles });
+  }
+
+  return { data: pool };
+}
+
+// ============================================================================
+// Append Archive Entries: appendArchiveEntriesAction
+// writes only newly-added archive entries (PRIMARY_MATERIAL / CONTEXT)
+// to the library_resources table, then finalises onboarding
+// ============================================================================
+
+export async function appendArchiveEntriesAction(args: {
+  entries: { subBoxTitle: string; articles: JuryArticle[] }[];
+}): Promise<OnboardingActionResult> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  log.info("append_archive_start", { service: "literature" });
+
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { error: SESSION_ERROR_MSG };
+    }
+
+    const userId = session.userId;
+    const { entries } = args;
+
+    if (!entries || entries.length === 0) {
+      log.warn("append_archive_empty", {
+        service: "literature",
+        data: { reason: "Eklenecek arşiv kaydı bulunamadı." },
+      });
+      return { error: "Eklenecek arşiv kaydı bulunamadı." };
+    }
+
+    const [matrix] = await db
+      .select({ id: thesisMatrices.id })
+      .from(thesisMatrices)
+      .where(eq(thesisMatrices.userId, userId));
+
+    if (!matrix) {
+      return { error: "Tez matrisi bulunamadı." };
+    }
+
+    const thesisMatrixId = matrix.id;
+
+    await db.transaction(async (tx) => {
+      const allBoxes = await tx
+        .select({ id: thesisBoxes.id, title: thesisBoxes.title })
+        .from(thesisBoxes)
+        .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
+
+      const boxMap = new Map<string, number>();
+      for (const b of allBoxes) {
+        if (boxMap.has(b.title)) {
+          throw new Error(
+            `Aynı başlıkta birden fazla kutu bulundu: "${b.title}".`,
+          );
+        }
+        boxMap.set(b.title, b.id);
+      }
+
+      let totalInserted = 0;
+      let totalSkipped = 0;
+
+      for (const entry of entries) {
+        const subBoxTitle = entry.subBoxTitle;
+        const thesisBoxId = boxMap.get(subBoxTitle);
+
+        if (!thesisBoxId) {
+          log.warn("append_archive_no_box_match", {
+            service: "literature",
+            data: { subBoxTitle },
+          });
+          continue;
+        }
+
+        const existingRecords = await tx
+          .select({ title: libraryResources.title, doi: libraryResources.doi })
+          .from(libraryResources)
+          .where(eq(libraryResources.thesisBoxId, thesisBoxId));
+
+        const existingTitleSet = new Set(
+          existingRecords
+            .map((r) => r.title?.toLowerCase().trim())
+            .filter(Boolean),
+        );
+
+        const existingDoiSet = new Set(
+          existingRecords
+            .map((r) => r.doi?.toLowerCase().trim())
+            .filter((d): d is string => !!d),
+        );
+
+        const toInsert: NewLibraryResource[] = [];
+        let entrySkipped = 0;
+
+        for (const article of entry.articles) {
+          const titleKey = article.title.toLowerCase().trim();
+          const doiKey = article.doi?.toLowerCase().trim() ?? null;
+
+          if (!titleKey) {
+            entrySkipped++;
+            continue;
+          }
+
+          if (existingTitleSet.has(titleKey)) {
+            entrySkipped++;
+            continue;
+          }
+
+          if (doiKey && existingDoiSet.has(doiKey)) {
+            entrySkipped++;
+            continue;
+          }
+
+          existingTitleSet.add(titleKey);
+          if (doiKey) existingDoiSet.add(doiKey);
+
+          toInsert.push({
+            thesisBoxId,
+            title: article.title,
+            abstract: article.abstract ?? null,
+            url: article.url ?? null,
+            doi: article.doi?.trim() || null,
+            publisher: article.publisher ?? null,
+            publicationYear: article.publicationYear ?? null,
+            authors: article.authors ?? null,
+            isRead: false,
+            isFoundational: article.isFoundational ?? false,
+            relevanceScore: article.relevanceScore ?? 0,
+          });
+        }
+
+        if (toInsert.length > 0) {
+          await tx.insert(libraryResources).values(toInsert);
+          totalInserted += toInsert.length;
+        }
+
+        totalSkipped += entrySkipped;
+
+        if (entrySkipped > 0) {
+          log.warn("append_archive_duplicate_skipped", {
+            service: "literature",
+            data: { subBoxTitle, skippedCount: entrySkipped },
+          });
+        }
+      }
+
+      log.info("append_archive_inserted", {
+        service: "literature",
+        data: { inserted: totalInserted, skipped: totalSkipped },
+      });
+    });
+
+    try {
+      revalidateOnboardingPaths();
+    } catch {
+      // Revalidation path skipped
+    }
+
+    invalidateOnboardingCache();
+
+    log.info("append_archive_success", { service: "literature" });
+
+    return { success: true };
+  } catch (err) {
+    log.error("append_archive_failed", {
+      service: "literature",
+      error: err,
+    });
+    return {
+      error:
+        err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.",
+    };
+  }
+}
+
+// ============================================================================
+// Finalize Onboarding: finalizeOnboardingAction
+// lightweight action that only sets onboardingCompleted flag
+// used in preloaded mode when no archive entries exist
+// ============================================================================
+
+export async function finalizeOnboardingAction(): Promise<OnboardingActionResult> {
+  const log = new Logger(createFlowId());
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const userId = session.userId;
+
+    await db
+      .update(users)
+      .set({ onboardingCompleted: true })
+      .where(eq(users.id, userId));
 
     try {
       const cookieStore = await cookies();
@@ -518,20 +857,11 @@ export async function confirmLiteratureAction(args: {
 
     invalidateOnboardingCache();
 
-    log.info("confirm_literature_success", {
-      service: "literature",
-      durationMs: performance.now() - startTime,
-      data: {
-        resultCount: literaturePool.reduce(
-          (sum, entry) => sum + entry.articles.length,
-          0,
-        ),
-      },
-    });
+    log.info("finalize_onboarding_success", { service: "literature" });
 
     return { success: true };
   } catch (err) {
-    log.error("confirm_literature_failed", {
+    log.error("finalize_onboarding_failed", {
       service: "literature",
       error: err,
     });
