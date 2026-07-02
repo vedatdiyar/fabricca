@@ -48,6 +48,15 @@ export async function synthesizeRoadmap(
   try {
     let roadmapResult;
     const roadmapPrompt = buildRoadmapPrompt(params);
+    const thesisMatrix = {
+      studyTitle: params.studyTitle,
+      researchQuestion: params.researchQuestion,
+      mainClaim: params.mainClaim,
+      theoreticalFramework: params.theoreticalFramework,
+      methodology: params.methodology,
+      researchScope: params.researchScope,
+    };
+
     try {
       log.prompt("gemini-3.1-flash-lite (LOW thinking)", roadmapPrompt);
 
@@ -65,6 +74,8 @@ export async function synthesizeRoadmap(
           },
           temperature: 1.0,
           seed: 42,
+          thesisMatrix,
+          payloadStage: "roadmap_synthesis",
         },
       );
     } catch {
@@ -88,6 +99,8 @@ export async function synthesizeRoadmap(
           thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
           temperature: 1.0,
           seed: 42,
+          thesisMatrix,
+          payloadStage: "roadmap_synthesis",
         },
       );
     }

@@ -8,7 +8,9 @@ const MAX_RETRY_ATTEMPTS = 6;
 function getExponentialDelay(attempt: number): number {
   const baseDelay = 2000;
   const jitterMax = 1000;
-  return Math.floor(baseDelay * Math.pow(2, attempt) + Math.random() * jitterMax);
+  return Math.floor(
+    baseDelay * Math.pow(2, attempt) + Math.random() * jitterMax,
+  );
 }
 
 /**

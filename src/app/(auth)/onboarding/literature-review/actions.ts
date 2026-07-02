@@ -153,6 +153,7 @@ export async function processAllBoxesAction(
                 zodSchema: SemanticQueryResponseSchema,
                 seed: 2,
                 temperature: 1.0,
+                thesisMatrix: matrix,
               },
             );
 
@@ -187,18 +188,43 @@ export async function processAllBoxesAction(
     const mineTasks = boxes.map(async (box, idx) => {
       const adapted = adaptToGeminiThesisBox(box);
       return miningLimiter.exec(async () => {
-        const mined = await processSingleBox(adapted, idx, matrix, logger);
-        if (!mined) return;
+        try {
+          const mined = await processSingleBox(adapted, idx, matrix, logger);
+          if (!mined) return;
 
-        box.foundationalQueries.push(mined.foundationalQuery);
+          box.foundationalQueries.push(mined.foundationalQuery);
 
-        for (const sub of box.subBoxes) {
-          sub.foundationalQueries.push(mined.foundationalQuery);
+          for (const sub of box.subBoxes) {
+            sub.foundationalQueries.push(mined.foundationalQuery);
+          }
+        } catch (err) {
+          logger.warn("literature_mining_skipped", {
+            service: "literature",
+            filePath: "onboarding/literature-review/actions.ts",
+            data: {
+              boxTitle: box.title,
+              error: err instanceof Error ? err.message : String(err),
+              context: `Kutu: ${box.title} — kurucu eser madenciliği atlandı`,
+            },
+          });
         }
       });
     });
 
-    await Promise.all(mineTasks);
+    const mineResults = await Promise.allSettled(mineTasks);
+    const minedCount = mineResults.filter(
+      (r) => r.status === "fulfilled",
+    ).length;
+
+    logger.info("literature_mining_done", {
+      service: "literature",
+      filePath: "onboarding/literature-review/actions.ts",
+      data: {
+        total: boxes.length,
+        mined: minedCount,
+        skipped: boxes.length - minedCount,
+      },
+    });
 
     // =========================================================================
     // Step 4: Cache Prefetch — use fresh semantic queries to pre-cache OpenAlex

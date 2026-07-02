@@ -123,6 +123,7 @@ export async function evaluateTavilyResults(
     results: { title: string; url: string; content: string; score: number }[];
   }[],
   log: Logger,
+  thesisMatrix?: unknown,
 ): Promise<TavilyEvaluationResponse> {
   const startTime = performance.now();
   log.info("originality_search_tavily_eval_start", {
@@ -158,6 +159,8 @@ export async function evaluateTavilyResults(
           thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
           temperature: 1.0,
           seed: 42,
+          thesisMatrix,
+          payloadStage: "tavily_evaluation",
         },
       );
 

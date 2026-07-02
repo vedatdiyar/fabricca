@@ -2,6 +2,9 @@ import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { z } from "zod";
 import type { Logger } from "./logger";
 import { classifyError } from "./error-utils";
+import crypto from "crypto";
+import fs from "fs";
+import path from "path";
 
 export interface JsonSchemaProperty {
   type: string;
@@ -82,7 +85,7 @@ function extractHttpStatus(error: unknown): string {
  */
 export async function retryOn503<T>(
   fn: () => Promise<T>,
-  maxRetries = 3,
+  maxRetries = 5,
   baseDelayMs = 1000,
   logger?: Logger,
 ): Promise<{ result: T; attempts: number }> {
@@ -191,6 +194,57 @@ export function sanitizeAndParseJson<T>(text: string): T {
  * @param options - Opsiyonel Gemini konfigürasyon seçenekleri
  * @returns Şemaya uygun olarak parse edilmiş tip güvenli nesne
  */
+export function logRawLlmCall(params: {
+  modelName: string;
+  systemInstruction: string;
+  userPrompt: string;
+  payload: unknown;
+  thesisMatrix: unknown;
+  stage?: string;
+}) {
+  if (process.env.NODE_ENV !== "development") return;
+  if (typeof window !== "undefined") return;
+
+  const timestamp = new Date().toISOString();
+  const combinedPrompt = `System Instruction:\n${params.systemInstruction}\n\nUser Prompt:\n${params.userPrompt}`;
+
+  const hashObject = {
+    systemInstruction: params.systemInstruction,
+    userPrompt: params.userPrompt,
+    combinedPrompt,
+    payload: params.payload,
+    thesisMatrix: params.thesisMatrix,
+  };
+
+  const hash = crypto
+    .createHash("sha256")
+    .update(JSON.stringify(hashObject))
+    .digest("hex");
+
+  const logData = {
+    timestamp,
+    hash,
+    stage: params.stage || "gemini",
+    ...hashObject,
+  };
+
+  try {
+    const dir = path.resolve(process.cwd(), ".next/logs/llm_inputs");
+    fs.mkdirSync(dir, { recursive: true });
+    const cleanTime = timestamp.replace(/:/g, "-");
+    const filename = `${cleanTime}_${hash.substring(0, 8)}.json`;
+    fs.writeFileSync(
+      path.join(dir, filename),
+      JSON.stringify(logData, null, 2),
+      "utf-8",
+    );
+  } catch (err) {
+    console.error("Failed to write raw LLM log:", err);
+  }
+
+  return hash;
+}
+
 export async function generateStructuredContent<T>(
   modelName: string,
   systemInstruction: string,
@@ -205,6 +259,7 @@ export async function generateStructuredContent<T>(
     zodSchema?: z.ZodType<T>;
     seed?: number;
     temperature?: number;
+    thesisMatrix?: unknown;
   },
 ): Promise<T> {
   const startTime = performance.now();
@@ -221,21 +276,34 @@ export async function generateStructuredContent<T>(
       thinkingLevel: thinkingLevel ?? undefined,
     },
   });
+
+  const thesisMatrix = options?.thesisMatrix || null;
+
+  const payload = {
+    model: modelName,
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    config: {
+      systemInstruction,
+      temperature: options?.temperature ?? 1.0,
+      responseMimeType: "application/json",
+      responseJsonSchema: schema,
+      thinkingConfig: options?.thinkingConfig ?? undefined,
+      seed: options?.seed ?? undefined,
+    },
+  };
+
+  logRawLlmCall({
+    modelName,
+    systemInstruction,
+    userPrompt: prompt,
+    payload,
+    thesisMatrix,
+    stage: options?.payloadStage,
+  });
+
   try {
     const { result: response, attempts: retryAttempts } = await retryOn503(
-      () =>
-        getAi().models.generateContent({
-          model: modelName,
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          config: {
-            systemInstruction,
-            temperature: options?.temperature ?? 1.0,
-            responseMimeType: "application/json",
-            responseJsonSchema: schema,
-            thinkingConfig: options?.thinkingConfig ?? undefined,
-            seed: options?.seed ?? undefined,
-          },
-        }),
+      () => getAi().models.generateContent(payload),
       3,
       1000,
       logger,

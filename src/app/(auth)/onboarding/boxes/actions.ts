@@ -175,6 +175,8 @@ export async function generateBoxesStructureAction(): Promise<
         zodSchema: RawNestedResponseSchema,
         temperature: 1.0,
         seed: 42,
+        thesisMatrix: matrix,
+        payloadStage: "box_generation",
       },
     );
 

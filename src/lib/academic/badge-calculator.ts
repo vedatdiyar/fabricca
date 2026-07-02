@@ -71,3 +71,62 @@ export function calculateBadge(axes: ThesisAxes): ThesisBadge {
   // Din politikaları örneğinde olduğu gibi tamamen başka sulara yelken açmış tezler.
   return "ÖZGÜN";
 }
+
+export const BADGE_ORDER: ThesisBadge[] = [
+  "İKİZ TEZ",
+  "SAVUNMA RİSKİ",
+  "TEORİ KAYNAĞI",
+  "YÖNTEM KAYNAĞI",
+  "BAĞLAM KAYNAĞI",
+  "ÖZGÜN",
+];
+
+const SELECTION_SCORE: Record<string, number> = {
+  TAM_ORTÜŞME: 3,
+  KISMI_ORTÜŞME: 2,
+  ALAKASIZ: 1,
+};
+
+function getAxesTotalScore(axes: ThesisAxes): number {
+  const pScore = SELECTION_SCORE[axes.problem_sinirlari.secim] ?? 1;
+  const tScore = SELECTION_SCORE[axes.teorik_perspektif.secim] ?? 1;
+  const mScore = SELECTION_SCORE[axes.metodolojik_kurgu.secim] ?? 1;
+  const isTopicAlakasiz = axes.problem_sinirlari.secim === "ALAKASIZ";
+  const zScore = isTopicAlakasiz
+    ? 1
+    : (SELECTION_SCORE[axes.zaman_mekan_ozgullugu.secim] ?? 1);
+
+  return pScore * 3 + zScore * 3 + tScore * 1 + mScore * 1;
+}
+
+export function compareThesesByRisk(
+  a: { axes: ThesisAxes; thesisType: string; year: number },
+  b: { axes: ThesisAxes; thesisType: string; year: number },
+): number {
+  const badgeA = calculateBadge(a.axes);
+  const badgeB = calculateBadge(b.axes);
+  const badgeDiff = BADGE_ORDER.indexOf(badgeA) - BADGE_ORDER.indexOf(badgeB);
+  if (badgeDiff !== 0) return badgeDiff;
+
+  const scoreA = getAxesTotalScore(a.axes);
+  const scoreB = getAxesTotalScore(b.axes);
+  if (scoreB !== scoreA) return scoreB - scoreA;
+
+  const tA = (a.thesisType || "").toLowerCase();
+  const tB = (b.thesisType || "").toLowerCase();
+  const wA =
+    tA.includes("doktora") || tA.includes("phd")
+      ? 2
+      : tA.includes("yüksek lisans")
+        ? 1
+        : 0;
+  const wB =
+    tB.includes("doktora") || tB.includes("phd")
+      ? 2
+      : tB.includes("yüksek lisans")
+        ? 1
+        : 0;
+  if (wB !== wA) return wB - wA;
+
+  return (b.year || 0) - (a.year || 0);
+}

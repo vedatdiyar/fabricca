@@ -87,6 +87,8 @@ export async function extractQueries(
           thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
           temperature: 1.0,
           seed: 42,
+          thesisMatrix: geminiInput,
+          payloadStage: "fact_queries",
         },
       ),
       generateStructuredContent<LitKeywordExtractionResponse>(
@@ -99,6 +101,8 @@ export async function extractQueries(
           thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           temperature: 1.0,
           seed: 42,
+          thesisMatrix: geminiInput,
+          payloadStage: "keywords",
         },
       ),
     ]);

@@ -9,7 +9,7 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
-import { compareThesesByRisk } from "../_services/analysis";
+import { compareThesesByRisk } from "@/lib/academic/badge-calculator";
 import {
   AXIS_SECIM_LABELS,
   getAxisSecimColor,

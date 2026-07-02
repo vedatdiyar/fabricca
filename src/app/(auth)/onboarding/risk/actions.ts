@@ -25,8 +25,8 @@ import { siftAndFetchDetails } from "./_services/sifting";
 import {
   analyzeOriginalityRisk,
   calculateOriginalityRisk,
-  compareThesesByRisk,
 } from "./_services/analysis";
+import { compareThesesByRisk } from "@/lib/academic/badge-calculator";
 import { synthesizeRoadmap } from "./_services/roadmap";
 
 interface OnboardingMatrixInput {
@@ -138,6 +138,11 @@ export async function executeSearchAction(params: {
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
 
+    const [matrix] = await db
+      .select()
+      .from(thesisMatrices)
+      .where(eq(thesisMatrices.userId, session.userId));
+
     const { tavilySearchResults, tezaraSearchResults } =
       await executeParallelSearch(
         params.tavilyQueries,
@@ -149,6 +154,16 @@ export async function executeSearchAction(params: {
       { studyTitle: params.studyTitle },
       tavilySearchResults,
       log,
+      matrix
+        ? {
+            studyTitle: matrix.studyTitle,
+            researchQuestion: matrix.researchQuestion,
+            theoreticalFramework: matrix.theoreticalFramework,
+            methodology: matrix.methodology,
+            researchScope: matrix.researchScope,
+            mainClaim: matrix.mainClaim,
+          }
+        : undefined,
     );
 
     log.info("originality_search_execute_success", {

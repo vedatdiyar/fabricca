@@ -58,6 +58,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
 
   const [processing, setProcessing] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [hasAttempted, setHasAttempted] = useState(false);
   const [literaturePool, setLiteraturePool] = useState<LiteraturePoolEntry[]>(
     [],
   );
@@ -96,6 +97,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   const startReviewProcess = useCallback(async () => {
     if (subBoxes.length === 0 || processing) return;
 
+    setHasAttempted(true);
     setProcessing(true);
 
     // If the box titles changed since the pool was built, clear the stale pool
@@ -125,6 +127,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
       () => {
         isCancelled = true;
         setProcessing(false);
+        setHasAttempted(false);
         setLiteraturePool([]);
         void clearDownstreamDbAction("boxes").then(() => {
           queryClient.invalidateQueries();
@@ -195,6 +198,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
         updateLoadingStep(i, "completed");
       }
     } else {
+      setHasAttempted(false);
       const errorMsg =
         result.error ?? "Literatür taraması sırasında bir hata oluştu.";
 
@@ -303,6 +307,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     if (loading) return;
     if (processing) return;
     if (subBoxes.length === 0) return;
+    if (hasAttempted) return;
 
     const allDone = subBoxes.every((box) =>
       literaturePool.some((entry) => entry.subBoxTitle === box.title),
@@ -319,7 +324,14 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
       }
       Promise.resolve().then(() => startReviewProcess());
     }
-  }, [loading, processing, subBoxes, literaturePool, startReviewProcess]);
+  }, [
+    loading,
+    processing,
+    hasAttempted,
+    subBoxes,
+    literaturePool,
+    startReviewProcess,
+  ]);
 
   return {
     subBoxes,

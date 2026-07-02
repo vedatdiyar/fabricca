@@ -2,7 +2,7 @@ import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/gemini";
 import type { Logger } from "@/lib/logger";
 import type { TezaraThesisDetails, ThesisBadge, ThesisAxes } from "@/lib/types";
-import { calculateBadge } from "@/lib/academic/badge-calculator";
+import { calculateBadge, BADGE_ORDER } from "@/lib/academic/badge-calculator";
 import {
   geminiAnalysisSchema,
   buildAnalysisSystemInstruction,
@@ -44,78 +44,6 @@ export interface CalculatedOriginalityRiskResult {
   originalityBadge: ThesisBadge;
   overlapTable: CalculatedOverlapItem[];
   eliminatedTheses: CalculatedOverlapItem[];
-}
-
-const BADGE_ORDER: ThesisBadge[] = [
-  "İKİZ TEZ",
-  "SAVUNMA RİSKİ",
-  "TEORİ KAYNAĞI",
-  "YÖNTEM KAYNAĞI",
-  "BAĞLAM KAYNAĞI",
-  "ÖZGÜN",
-];
-
-const SELECTION_SCORE: Record<string, number> = {
-  TAM_ORTÜŞME: 3,
-  KISMI_ORTÜŞME: 2,
-  ALAKASIZ: 1,
-};
-
-/**
- * Calculates the weighted sum of choice scores across the 4 axes to break ties in sorting.
- */
-function getAxesTotalScore(axes: ThesisAxes): number {
-  const pScore = SELECTION_SCORE[axes.problem_sinirlari.secim] ?? 1;
-  const tScore = SELECTION_SCORE[axes.teorik_perspektif.secim] ?? 1;
-  const mScore = SELECTION_SCORE[axes.metodolojik_kurgu.secim] ?? 1;
-  // Şayet konu (problem_sinirlari) alakasız ise Bağlam (zaman_mekan_ozgullugu) her türlü alakasız kabul edilir.
-  const isTopicAlakasiz = axes.problem_sinirlari.secim === "ALAKASIZ";
-  const zScore = isTopicAlakasiz
-    ? 1
-    : (SELECTION_SCORE[axes.zaman_mekan_ozgullugu.secim] ?? 1);
-
-  return (
-    pScore * 3 + // Konu Ağırlığı (x3)
-    zScore * 3 + // Bağlam Ağırlığı (x3)
-    tScore * 1 + // Teori Ağırlığı (x1)
-    mScore * 1 // Yöntem Ağırlığı (x1)
-  );
-}
-
-/**
- * Compares two theses for sorting: İkiz first, then Sınırdaş/Savunma, then Guides, then Özgün.
- * Breaks ties using sum of axis scores, then doctorate over master's, then most recent first.
- */
-export function compareThesesByRisk(
-  a: { axes: ThesisAxes; thesisType: string; year: number },
-  b: { axes: ThesisAxes; thesisType: string; year: number },
-): number {
-  const badgeA = calculateBadge(a.axes);
-  const badgeB = calculateBadge(b.axes);
-  const badgeDiff = BADGE_ORDER.indexOf(badgeA) - BADGE_ORDER.indexOf(badgeB);
-  if (badgeDiff !== 0) return badgeDiff;
-
-  const scoreA = getAxesTotalScore(a.axes);
-  const scoreB = getAxesTotalScore(b.axes);
-  if (scoreB !== scoreA) return scoreB - scoreA;
-
-  const tA = (a.thesisType || "").toLowerCase();
-  const tB = (b.thesisType || "").toLowerCase();
-  const wA =
-    tA.includes("doktora") || tA.includes("phd")
-      ? 2
-      : tA.includes("yüksek lisans")
-        ? 1
-        : 0;
-  const wB =
-    tB.includes("doktora") || tB.includes("phd")
-      ? 2
-      : tB.includes("yüksek lisans")
-        ? 1
-        : 0;
-  if (wB !== wA) return wB - wA;
-
-  return (b.year || 0) - (a.year || 0);
 }
 
 /**
@@ -280,6 +208,15 @@ export async function analyzeOriginalityRisk(
         validDetails: group,
       };
 
+      const thesisMatrix = {
+        studyTitle: params.studyTitle,
+        researchQuestion: params.researchQuestion,
+        theoreticalFramework: params.theoreticalFramework,
+        methodology: params.methodology,
+        researchScope: params.researchScope,
+        mainClaim: params.mainClaim,
+      };
+
       try {
         const result = await generateStructuredContent<{
           overlapTable: GeminiOverlapItem[];
@@ -293,6 +230,8 @@ export async function analyzeOriginalityRisk(
             thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
             temperature: 1.0,
             seed: 42,
+            thesisMatrix,
+            payloadStage: "jury_evaluation",
           },
         );
 

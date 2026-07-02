@@ -220,7 +220,7 @@ export async function searchExa(
       const response = await fetch("https://api.exa.ai/search", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-api-key": apiKey },
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(15000),
         body: JSON.stringify(body),
       });
 

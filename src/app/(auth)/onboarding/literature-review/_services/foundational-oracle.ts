@@ -1,5 +1,5 @@
 import { ThinkingLevel } from "@google/genai";
-import { getAi, retryOn503 } from "@/lib/gemini";
+import { getAi, retryOn503, logRawLlmCall } from "@/lib/gemini";
 import type { Logger } from "@/lib/logger";
 import type { GeminiThesisBox, FoundationalQuery } from "@/lib/types";
 import {
@@ -148,17 +148,27 @@ export async function processSingleBox(
     tools: [exaSearchTool],
   };
 
+  const payload1 = {
+    model: "gemini-3.1-flash-lite",
+    contents: contents as Parameters<
+      typeof ai.models.generateContent
+    >[0]["contents"],
+    config: queryConfig as Parameters<
+      typeof ai.models.generateContent
+    >[0]["config"],
+  };
+
+  logRawLlmCall({
+    modelName: "gemini-3.1-flash-lite",
+    systemInstruction: commonConfig.systemInstruction,
+    userPrompt: USER_PROMPT,
+    payload: payload1,
+    thesisMatrix,
+    stage: "oracle_phase1",
+  });
+
   const { result: phase1Response } = await retryOn503(
-    () =>
-      ai.models.generateContent({
-        model: "gemini-3.1-flash-lite",
-        contents: contents as Parameters<
-          typeof ai.models.generateContent
-        >[0]["contents"],
-        config: queryConfig as Parameters<
-          typeof ai.models.generateContent
-        >[0]["config"],
-      }),
+    () => ai.models.generateContent(payload1),
     3,
     1000,
     log,
@@ -261,17 +271,27 @@ export async function processSingleBox(
     responseJsonSchema: foundationalOracleResponseSchema,
   };
 
+  const payload2 = {
+    model: "gemini-3.1-flash-lite",
+    contents: contents as Parameters<
+      typeof ai.models.generateContent
+    >[0]["contents"],
+    config: finalConfig as Parameters<
+      typeof ai.models.generateContent
+    >[0]["config"],
+  };
+
+  logRawLlmCall({
+    modelName: "gemini-3.1-flash-lite",
+    systemInstruction: commonConfig.systemInstruction,
+    userPrompt: contents[contents.length - 1].parts?.[0]?.text || "",
+    payload: payload2,
+    thesisMatrix,
+    stage: "oracle_phase2",
+  });
+
   const { result: finalResponse } = await retryOn503(
-    () =>
-      ai.models.generateContent({
-        model: "gemini-3.1-flash-lite",
-        contents: contents as Parameters<
-          typeof ai.models.generateContent
-        >[0]["contents"],
-        config: finalConfig as Parameters<
-          typeof ai.models.generateContent
-        >[0]["config"],
-      }),
+    () => ai.models.generateContent(payload2),
     3,
     1000,
     log,
