@@ -3,10 +3,13 @@ import type { Logger } from "@/lib/logger";
 import type { TezaraThesisSummary, TezaraThesisDetails } from "@/lib/types";
 import { rerankTheses } from "@/lib/cohere";
 
-const CRITICAL_IDS = new Set([241258, 294105]);
 const MAX_RETRY_ATTEMPTS = 6;
-const TIMEOUT_STEPS = [5000, 5000, 5000, 8000, 8000, 8000];
-const BACKOFF_STEPS = [500, 1000, 2000, 3000, 4000, 5000];
+
+function getExponentialDelay(attempt: number): number {
+  const baseDelay = 2000;
+  const jitterMax = 1000;
+  return baseDelay * Math.pow(2, attempt) + Math.random() * jitterMax;
+}
 
 /**
  * Tezara'dan tez detaylarını üssel geri çekilme (exponential backoff) ile çeker.
@@ -21,7 +24,7 @@ async function fetchDetailsWithRetry(
   log: Logger,
 ): Promise<TezaraThesisDetails> {
   for (let attempt = 1; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
-    const timeoutMs = TIMEOUT_STEPS[attempt - 1];
+    const timeoutMs = getExponentialDelay(attempt);
     const timeoutSignal = AbortSignal.timeout(timeoutMs);
     try {
       const details = await fetchThesisDetails(thesis, log, timeoutSignal);
@@ -40,7 +43,7 @@ async function fetchDetailsWithRetry(
           timeoutMs,
           isTimeout,
         },
-        error: err instanceof Error ? err.message : String(err),
+        error: `[ID: ${thesis.id}] ${err instanceof Error ? err.message : String(err)}`,
       });
 
       if (attempt === MAX_RETRY_ATTEMPTS) {
@@ -54,18 +57,18 @@ async function fetchDetailsWithRetry(
           },
         });
         throw new Error(
-          `Tez ID ${thesis.id} detayları ${MAX_RETRY_ATTEMPTS} denemeye rağmen çekilemedi.`,
+          `[ID: ${thesis.id}] Tez ID ${thesis.id} detayları ${MAX_RETRY_ATTEMPTS} denemeye rağmen çekilemedi.`,
         );
       }
 
       await new Promise((resolve) =>
-        setTimeout(resolve, BACKOFF_STEPS[attempt - 1]),
+        setTimeout(resolve, getExponentialDelay(attempt)),
       );
     }
   }
 
   throw new Error(
-    `Unexpected fallthrough in fetchDetailsWithRetry for ID ${thesis.id}`,
+    `[ID: ${thesis.id}] Unexpected fallthrough in fetchDetailsWithRetry for ID ${thesis.id}`,
   );
 }
 
@@ -253,9 +256,16 @@ export async function siftAndFetchDetails(
       },
     });
 
-    // Phase 1: isolated parallel fetch — one failing thesis no longer kills the batch
+    // Phase 1: shuffle to distribute queue-induced timeout risk evenly
+    // across all theses instead of deterministically penalizing tail items
+    const shuffled = [...passedStage1];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
     const settledResults = await Promise.allSettled(
-      passedStage1.map((t) => fetchDetailsWithRetry(t, log)),
+      shuffled.map((t) => fetchDetailsWithRetry(t, log)),
     );
 
     const validDetails: TezaraThesisDetails[] = [];
@@ -266,18 +276,7 @@ export async function siftAndFetchDetails(
       if (item.status === "fulfilled") {
         validDetails.push(item.value);
       } else {
-        failedTheses.push(passedStage1[i]);
-      }
-    }
-
-    // Phase 2: removed — fetchDetailsWithRetry has MAX_RETRY_ATTEMPTS internally
-
-    // Phase 3: fail-safe enforcement — critical IDs halt the pipeline gracefully
-    for (const failed of failedTheses) {
-      if (CRITICAL_IDS.has(failed.id)) {
-        throw new Error(
-          `Kritik tez ID ${failed.id} (${failed.author}) detayları tüm denemelere rağmen çekilemedi. İşlem güvenli duraklatıldı.`,
-        );
+        failedTheses.push(shuffled[i]);
       }
     }
 

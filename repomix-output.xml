@@ -229,98 +229,6 @@ export default function AdvisorPage()
 export default function CardIndexPage()
 </file>
 
-<file path="src/app/(auth)/onboarding/literature-review/_services/exa-search.ts">
-import { Type } from "@google/genai";
-import type { Logger } from "@/lib/logger";
-⋮----
-export interface ExaResult {
-  title: string;
-  url: string;
-  author?: string;
-  text?: string;
-  publishedDate?: string;
-  highlights?: string[];
-}
-⋮----
-export interface ExaConfig {
-  query: string;
-  category?: string;
-  type: string;
-  systemPrompt?: string;
-  contents: Record<string, unknown>;
-  numResults: number;
-}
-⋮----
-export function buildExaConfig(
-  boxType: string,
-  query: string,
-  researchScope: string,
-  log?: Logger,
-): ExaConfig
-⋮----
-export function buildVanillaFallbackConfig(originalQuery: string): ExaConfig
-⋮----
-function parseRetryAfter(header: string | null): number | null
-⋮----
-export async function searchExa(
-  cfg: ExaConfig,
-  originalQuery: string,
-  log?: Logger,
-): Promise<ExaResult[]>
-</file>
-
-<file path="src/app/(auth)/onboarding/literature-review/_services/foundational-oracle.ts">
-import { ThinkingLevel } from "@google/genai";
-import { getAi, retryOn503 } from "@/lib/gemini";
-import type { Logger } from "@/lib/logger";
-import type { GeminiThesisBox, FoundationalQuery } from "@/lib/types";
-import {
-  foundationalOracleResponseSchema,
-  buildFoundationalOracleSystemInstruction,
-  buildFoundationalOracleUserPrompt,
-} from "@/lib/prompts";
-import { searchExa, exaSearchTool, buildExaConfig } from "./exa-search";
-⋮----
-interface CrossrefResult {
-  doi: string | null;
-  publisher: string | null;
-  title: string | null;
-  author: string | null;
-  publicationYear: number | null;
-}
-⋮----
-function extractYear(item: Record<string, unknown>): number | null
-⋮----
-export async function lookupCrossref(
-  title: string,
-  author: string,
-): Promise<CrossrefResult>
-⋮----
-async function fetchWorks(
-    queryParam: string,
-    value: string,
-): Promise<Record<string, unknown>[]>
-⋮----
-interface MinedBoxResult {
-  flatIndex: number;
-  foundationalQuery: FoundationalQuery;
-}
-⋮----
-export async function processSingleBox(
-  box: GeminiThesisBox,
-  flatIndex: number,
-  thesisMatrix: {
-    studyTitle: string;
-    researchQuestion: string;
-    theoreticalFramework: string;
-    methodology: string;
-    researchScope: string;
-    mainClaim: string;
-  },
-  log: Logger,
-): Promise<MinedBoxResult | null>
-</file>
-
 <file path="src/app/(auth)/onboarding/risk/error.tsx">
 import { ErrorDisplay } from "@/components/error-display";
 ⋮----
@@ -352,29 +260,6 @@ export interface ButtonProps
 }
 ⋮----
 className=
-</file>
-
-<file path="src/lib/prompts/semantic-query-generation.ts">
-import { z } from "zod";
-import type { JsonSchema } from "../gemini";
-⋮----
-export function buildStandaloneSemanticQuerySystemInstruction(): string
-⋮----
-export function buildSemanticQueryPrompt(
-  title: string,
-  description: string,
-): string
-</file>
-
-<file path="src/lib/prompts/test-semantic-prompt.ts">
-import type { JsonSchema } from "../gemini";
-⋮----
-export function buildStandaloneSemanticQuerySystemInstruction(): string
-⋮----
-export function buildSemanticQueryPrompt(
-  title: string,
-  description: string,
-): string
 </file>
 
 <file path="src/app/(app)/dashboard/_components/add-task-modal.tsx">
@@ -526,6 +411,98 @@ export interface KanbanTask {
 
 <file path="src/app/(auth)/onboarding/literature-review/_services/_shared.ts">
 export function extractCleanDoi(raw: string | null | undefined): string | null
+</file>
+
+<file path="src/app/(auth)/onboarding/literature-review/_services/exa-search.ts">
+import { Type } from "@google/genai";
+import type { Logger } from "@/lib/logger";
+⋮----
+export interface ExaResult {
+  title: string;
+  url: string;
+  author?: string;
+  text?: string;
+  publishedDate?: string;
+  highlights?: string[];
+}
+⋮----
+export interface ExaConfig {
+  query: string;
+  category?: string;
+  type: string;
+  systemPrompt?: string;
+  contents: Record<string, unknown>;
+  numResults: number;
+}
+⋮----
+export function buildExaConfig(
+  boxType: string,
+  query: string,
+  researchScope: string,
+  log?: Logger,
+): ExaConfig
+⋮----
+export function buildVanillaFallbackConfig(originalQuery: string): ExaConfig
+⋮----
+function parseRetryAfter(header: string | null): number | null
+⋮----
+export async function searchExa(
+  cfg: ExaConfig,
+  originalQuery: string,
+  log?: Logger,
+): Promise<ExaResult[]>
+</file>
+
+<file path="src/app/(auth)/onboarding/literature-review/_services/foundational-oracle.ts">
+import { ThinkingLevel } from "@google/genai";
+import { getAi, retryOn503 } from "@/lib/gemini";
+import type { Logger } from "@/lib/logger";
+import type { GeminiThesisBox, FoundationalQuery } from "@/lib/types";
+import {
+  foundationalOracleResponseSchema,
+  buildFoundationalOracleSystemInstruction,
+  buildFoundationalOracleUserPrompt,
+} from "@/lib/prompts";
+import { searchExa, exaSearchTool, buildExaConfig } from "./exa-search";
+⋮----
+interface CrossrefResult {
+  doi: string | null;
+  publisher: string | null;
+  title: string | null;
+  author: string | null;
+  publicationYear: number | null;
+}
+⋮----
+function extractYear(item: Record<string, unknown>): number | null
+⋮----
+export async function lookupCrossref(
+  title: string,
+  author: string,
+): Promise<CrossrefResult>
+⋮----
+async function fetchWorks(
+    queryParam: string,
+    value: string,
+): Promise<Record<string, unknown>[]>
+⋮----
+interface MinedBoxResult {
+  flatIndex: number;
+  foundationalQuery: FoundationalQuery;
+}
+⋮----
+export async function processSingleBox(
+  box: GeminiThesisBox,
+  flatIndex: number,
+  thesisMatrix: {
+    studyTitle: string;
+    researchQuestion: string;
+    theoreticalFramework: string;
+    methodology: string;
+    researchScope: string;
+    mainClaim: string;
+  },
+  log: Logger,
+): Promise<MinedBoxResult | null>
 </file>
 
 <file path="src/app/icon0.svg">
@@ -791,6 +768,29 @@ export function writePayloadFile(
 
 <file path="src/lib/math/vector.ts">
 export function cosineSimilarity(vecA: number[], vecB: number[]): number
+</file>
+
+<file path="src/lib/prompts/semantic-query-generation.ts">
+import { z } from "zod";
+import type { JsonSchema } from "../gemini";
+⋮----
+export function buildStandaloneSemanticQuerySystemInstruction(): string
+⋮----
+export function buildSemanticQueryPrompt(
+  title: string,
+  description: string,
+): string
+</file>
+
+<file path="src/lib/prompts/test-semantic-prompt.ts">
+import type { JsonSchema } from "../gemini";
+⋮----
+export function buildStandaloneSemanticQuerySystemInstruction(): string
+⋮----
+export function buildSemanticQueryPrompt(
+  title: string,
+  description: string,
+): string
 </file>
 
 <file path="src/lib/cache-tags.ts">
@@ -2252,39 +2252,6 @@ interface StartOverButtonProps {
 const handleReset = () =>
 </file>
 
-<file path="src/app/(auth)/onboarding/_hooks/use-onboarding-navigation.ts">
-import { useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
-import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
-import type { LoadingStep } from "@/components/providers/loading-overlay-provider";
-import type { OriginalityReportData } from "@/lib/types";
-import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
-import {
-  extractQueriesAction,
-  executeSearchAction,
-  siftThesesAction,
-  finalizeJuryAnalysisAction,
-  completeRiskStageAction,
-} from "../risk/actions";
-import {
-  generateBoxesStructureAction,
-  confirmBoxesAction,
-} from "../boxes/actions";
-⋮----
-interface MatrixInput {
-  studyTitle: string;
-  researchQuestion: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-  mainClaim: string;
-}
-⋮----
-export function useOnboardingNavigation()
-</file>
-
 <file path="src/app/(auth)/onboarding/risk/_lib/constants.ts">
 import type { ThesisBadge } from "@/lib/types";
 ⋮----
@@ -2366,6 +2333,39 @@ export async function toggleResourceReadStatusAction(
   resourceId: number,
   isRead: boolean,
 ): Promise<ToggleReadStatusResult>
+</file>
+
+<file path="src/app/(auth)/onboarding/_hooks/use-onboarding-navigation.ts">
+import { useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { useLoadingOverlay } from "@/components/providers/loading-overlay-provider";
+import type { LoadingStep } from "@/components/providers/loading-overlay-provider";
+import type { OriginalityReportData } from "@/lib/types";
+import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
+import {
+  extractQueriesAction,
+  executeSearchAction,
+  siftThesesAction,
+  finalizeJuryAnalysisAction,
+  completeRiskStageAction,
+} from "../risk/actions";
+import {
+  generateBoxesStructureAction,
+  confirmBoxesAction,
+} from "../boxes/actions";
+⋮----
+interface MatrixInput {
+  studyTitle: string;
+  researchQuestion: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+  mainClaim: string;
+}
+⋮----
+export function useOnboardingNavigation()
 </file>
 
 <file path="src/components/literature-reader.tsx">
@@ -2472,10 +2472,6 @@ export async function evaluateTavilyResults(
 ): Promise<TavilyEvaluationResponse>
 </file>
 
-<file path="src/lib/prompts/index.ts">
-
-</file>
-
 <file path="src/lib/tezara.ts">
 import type { Logger } from "./logger";
 import type { TezaraThesisSummary, TezaraThesisDetails } from "./types";
@@ -2558,6 +2554,10 @@ export async function extractQueries(
 // If still less than 6, add single words
 ⋮----
 // Signature compatibility: map first word of each query as keywords
+</file>
+
+<file path="src/lib/prompts/index.ts">
+
 </file>
 
 <file path="src/app/(auth)/onboarding/_lib/fetch-actions.ts">
@@ -2898,6 +2898,8 @@ import type { Logger } from "@/lib/logger";
 import type { TezaraThesisSummary, TezaraThesisDetails } from "@/lib/types";
 import { rerankTheses } from "@/lib/cohere";
 ⋮----
+function getExponentialDelay(attempt: number): number
+⋮----
 async function fetchDetailsWithRetry(
   thesis: TezaraThesisSummary,
   log: Logger,
@@ -2926,66 +2928,6 @@ export async function siftAndFetchDetails(
   tezaraSearchResults: TezaraThesisSummary[][],
   log: Logger,
 ): Promise<
-</file>
-
-<file path="src/app/(auth)/onboarding/matrix/_components/matrix-form.tsx">
-import { useState, useEffect, useReducer } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
-import type { LucideIcon } from "lucide-react";
-import {
-  Loader2,
-  Table,
-  FileText,
-  HelpCircle,
-  BookMarked,
-  Layers,
-  Compass,
-  Target,
-} from "lucide-react";
-⋮----
-import { getErrorDisplay } from "@/lib/error-utils";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { LoadingSpinner } from "@/components/loading-spinner";
-import {
-  useLoadingOverlay,
-  type LoadingStep,
-} from "@/components/providers/loading-overlay-provider";
-import { saveThesisMatrixAction } from "../actions";
-import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
-import { fetchThesisMatrix } from "../../_lib/fetch-actions";
-⋮----
-type FormState = {
-  studyTitle: string;
-  researchQuestion: string;
-  theoreticalFramework: string;
-  methodology: string;
-  researchScope: string;
-  mainClaim: string;
-};
-⋮----
-type FieldConfig = {
-  key: keyof FormState;
-  id: string;
-  number: string;
-  Icon: LucideIcon;
-  label: string;
-  placeholder: string;
-  hint: string;
-  rows: number;
-};
-⋮----
-type SectionConfig = {
-  id: string;
-  title: string;
-  fields: FieldConfig[];
-};
-⋮----
-const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
 </file>
 
 <file path="src/app/(auth)/onboarding/risk/actions.ts">
@@ -3080,6 +3022,66 @@ const stableSort = (
 // Single database write at the very end of the pipeline
 ⋮----
 export async function completeRiskStageAction(): Promise<OnboardingActionResult>
+</file>
+
+<file path="src/app/(auth)/onboarding/matrix/_components/matrix-form.tsx">
+import { useState, useEffect, useReducer } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import type { LucideIcon } from "lucide-react";
+import {
+  Loader2,
+  Table,
+  FileText,
+  HelpCircle,
+  BookMarked,
+  Layers,
+  Compass,
+  Target,
+} from "lucide-react";
+⋮----
+import { getErrorDisplay } from "@/lib/error-utils";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { LoadingSpinner } from "@/components/loading-spinner";
+import {
+  useLoadingOverlay,
+  type LoadingStep,
+} from "@/components/providers/loading-overlay-provider";
+import { saveThesisMatrixAction } from "../actions";
+import { clearDownstreamDbAction } from "@/app/(auth)/onboarding/actions";
+import { fetchThesisMatrix } from "../../_lib/fetch-actions";
+⋮----
+type FormState = {
+  studyTitle: string;
+  researchQuestion: string;
+  theoreticalFramework: string;
+  methodology: string;
+  researchScope: string;
+  mainClaim: string;
+};
+⋮----
+type FieldConfig = {
+  key: keyof FormState;
+  id: string;
+  number: string;
+  Icon: LucideIcon;
+  label: string;
+  placeholder: string;
+  hint: string;
+  rows: number;
+};
+⋮----
+type SectionConfig = {
+  id: string;
+  title: string;
+  fields: FieldConfig[];
+};
+⋮----
+const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
 </file>
 
 <file path="src/app/(auth)/onboarding/literature-review/_components/literature-review-content.tsx">

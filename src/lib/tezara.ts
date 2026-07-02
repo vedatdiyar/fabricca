@@ -161,6 +161,7 @@ export async function fetchThesisDetails(
         step: "fetch_details",
         durationMs,
         data: { thesisId: summary.id, status: "retry_exhausted" },
+        error: `[ID: ${summary.id}] fetch_details retry exhausted for thesis ${summary.id}`,
       });
       return null;
     }
@@ -179,6 +180,7 @@ export async function fetchThesisDetails(
           thesisId: summary.id,
           reason: "Thesis metadata not found in response",
         },
+        error: `[ID: ${summary.id}] parseTezaraDetails returned null for thesis ${summary.id}`,
       });
       return null;
     }
@@ -196,7 +198,7 @@ export async function fetchThesisDetails(
       step: "fetch_details",
       durationMs,
       data: { thesisId: summary.id },
-      error: err,
+      error: `[ID: ${summary.id}] ${err instanceof Error ? err.message : String(err)}`,
     });
     return null;
   }
