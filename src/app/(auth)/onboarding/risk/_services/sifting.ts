@@ -8,7 +8,7 @@ const MAX_RETRY_ATTEMPTS = 6;
 function getExponentialDelay(attempt: number): number {
   const baseDelay = 2000;
   const jitterMax = 1000;
-  return baseDelay * Math.pow(2, attempt) + Math.random() * jitterMax;
+  return Math.floor(baseDelay * Math.pow(2, attempt) + Math.random() * jitterMax);
 }
 
 /**
@@ -205,13 +205,13 @@ export async function siftAndFetchDetails(
 
       // Cohere'in semantic siralamasi ana omurgadir; yalnizca floating-point
       // gurultusu seviyesindeki esit/bitisik skorlarda ID bazli k69a
-      // determinizm saglanir (esik: 0.0001)
+      // determinizm saglanir (esik: 0.005)
       const MIN_SCORE = 0.59;
       const topResults = results
         .filter((r) => r.relevanceScore >= MIN_SCORE)
         .sort((a, b) => {
           const scoreDiff = b.relevanceScore - a.relevanceScore;
-          if (Math.abs(scoreDiff) < 0.0001) {
+          if (Math.abs(scoreDiff) < 0.005) {
             return uniqueTheses[a.index].id - uniqueTheses[b.index].id;
           }
           return scoreDiff;

@@ -2472,38 +2472,6 @@ export async function evaluateTavilyResults(
 ): Promise<TavilyEvaluationResponse>
 </file>
 
-<file path="src/lib/tezara.ts">
-import type { Logger } from "./logger";
-import type { TezaraThesisSummary, TezaraThesisDetails } from "./types";
-import { parseTezaraDetails, parseTezaraSearchResults } from "./tezara-parser";
-import { enqueueTezaraFetch } from "./tezara-queue";
-⋮----
-async function fetchWithRetry(
-  url: string,
-  logger?: Logger,
-  signal?: AbortSignal,
-): Promise<Response | null>
-⋮----
-export async function searchTezaraPage(
-  query: string,
-  page: number,
-  logger?: Logger,
-  advanced = false,
-): Promise<TezaraThesisSummary[]>
-⋮----
-export async function searchTezara(
-  query: string,
-  logger?: Logger,
-  advanced = false,
-): Promise<TezaraThesisSummary[]>
-⋮----
-export async function fetchThesisDetails(
-  summary: TezaraThesisSummary,
-  logger?: Logger,
-  signal?: AbortSignal,
-): Promise<TezaraThesisDetails | null>
-</file>
-
 <file path="src/app/(auth)/onboarding/_components/onboarding-stepper.tsx">
 import { usePathname, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -2558,6 +2526,38 @@ export async function extractQueries(
 
 <file path="src/lib/prompts/index.ts">
 
+</file>
+
+<file path="src/lib/tezara.ts">
+import type { Logger } from "./logger";
+import type { TezaraThesisSummary, TezaraThesisDetails } from "./types";
+import { parseTezaraDetails, parseTezaraSearchResults } from "./tezara-parser";
+import { enqueueTezaraFetch } from "./tezara-queue";
+⋮----
+async function fetchWithRetry(
+  url: string,
+  logger?: Logger,
+  signal?: AbortSignal,
+): Promise<Response | null>
+⋮----
+export async function searchTezaraPage(
+  query: string,
+  page: number,
+  logger?: Logger,
+  advanced = false,
+): Promise<TezaraThesisSummary[]>
+⋮----
+export async function searchTezara(
+  query: string,
+  logger?: Logger,
+  advanced = false,
+): Promise<TezaraThesisSummary[]>
+⋮----
+export async function fetchThesisDetails(
+  summary: TezaraThesisSummary,
+  logger?: Logger,
+  signal?: AbortSignal,
+): Promise<TezaraThesisDetails | null>
 </file>
 
 <file path="src/app/(auth)/onboarding/_lib/fetch-actions.ts">
