@@ -1,0 +1,381 @@
+/**
+ * Batch orchestrator — coordinates the full multi-box literature review pipeline.
+ *
+ * Implements the "Universal Single-Call OpenAlex Reverse Citation Engineering"
+ * pipeline. Sub-boxes are processed in parallel via a concurrency limiter,
+ * and each sub-box result is progressively persisted to the database.
+ */
+
+import { Logger } from "@/lib/logger";
+import { createConcurrencyLimiter } from "@/lib/rate-limiter";
+import type { JuryArticle, LiteraturePoolEntry } from "@/lib/types";
+import type {
+  SubBoxInput,
+  SubBoxItem,
+  RawPaper,
+} from "./literature-review-papers";
+import { searchOpenAlex, fetchOpenAlexMetadataBatch } from "./openalex/client";
+import { extractCleanDoi } from "@/lib/academic/utils";
+import { selectFoundationalWorksBulk } from "./foundational-oracle";
+import { clusterRefMetadata, type Cluster } from "./clustering";
+import {
+  analyzeReferenceFrequencies,
+  selectRelatedArticles,
+  type QueueItem,
+} from "./selection";
+
+// ============================================================================
+// Public interface
+// ============================================================================
+
+export interface BatchOrchestrationResult {
+  poolEntries: LiteraturePoolEntry[];
+  archivalBoxTitles: string[];
+}
+
+interface SubBoxResult {
+  boxType: string;
+  boxDescription: string;
+  subBox: SubBoxItem;
+  candidates: QueueItem["candidates"];
+  activeWorks: RawPaper[];
+  rawPapers: RawPaper[];
+}
+
+// ============================================================================
+// Core Pipeline Orchestrator
+// ============================================================================
+
+/**
+ * Runs the full multi-box literature review pipeline:
+ *   Phase 1 — Parallel OpenAlex search + frequency analysis + clustering
+ *   Phase 2 — Bulk foundational work selection (Gemini)
+ *   Phase 3 — Per-sub-box related-article selection + progressive save
+ *
+ * @param boxes - All sub-box inputs grouped by parent box
+ * @param logger - Logger instance
+ * @param thesisArticlesMap - Preloaded RELATED_THESES articles (optional)
+ * @param checkCancelled - Cancellation check callback
+ * @param persistSubBox - Callback for progressive per-sub-box persistence
+ * @returns Aggregated pool entries and archival titles
+ */
+export async function orchestrateBatchProcess(
+  boxes: SubBoxInput[],
+  logger: Logger,
+  thesisArticlesMap?: Map<string, JuryArticle[]>,
+  checkCancelled?: () => boolean,
+  persistSubBox?: (
+    subBoxTitle: string,
+    articles: JuryArticle[],
+  ) => Promise<void>,
+): Promise<BatchOrchestrationResult> {
+  const poolEntries: LiteraturePoolEntry[] = [];
+  const archivalBoxTitles: string[] = [];
+  const assignedFoundationalTitles = new Set<string>();
+  const limiter = createConcurrencyLimiter(3);
+
+  // ── ARCHIVAL BYPASS ──────────────────────────────────────────────────────
+  for (let i = 0; i < boxes.length; i++) {
+    if (checkCancelled?.()) break;
+    const box = boxes[i];
+
+    if (
+      box.boxType === "PRIMARY_MATERIAL" ||
+      box.boxType === "RELATED_THESES"
+    ) {
+      archivalBoxTitles.push(box.title);
+      const articles =
+        box.boxType === "RELATED_THESES"
+          ? (thesisArticlesMap?.get(box.title) ?? [])
+          : [];
+
+      poolEntries.push({ subBoxTitle: box.title, articles });
+
+      logger.info("literature_archival_bypass", {
+        service: "literature",
+        filePath:
+          "onboarding/literature-review/_services/batch-orchestrator.ts",
+        data: {
+          subBoxTitle: box.title,
+          boxType: box.boxType ?? "unknown",
+          articleCount: articles.length,
+        },
+      });
+    }
+  }
+
+  // ── COLLECT ACTIVE SUB-BOXES ────────────────────────────────────────────
+  const activeJobs: { box: SubBoxInput; subBox: SubBoxItem }[] = [];
+  for (const box of boxes) {
+    if (!box.subBoxes || box.subBoxes.length === 0) continue;
+    if (box.boxType === "PRIMARY_MATERIAL" || box.boxType === "RELATED_THESES")
+      continue;
+
+    for (const subBox of box.subBoxes) {
+      activeJobs.push({ box, subBox });
+    }
+  }
+
+  if (activeJobs.length === 0) {
+    return { poolEntries, archivalBoxTitles };
+  }
+
+  // ── PHASE 1: PARALLEL CANDIDATE COMPILATION ─────────────────────────────
+  logger.info("literature_batch_phase1_start", {
+    service: "literature",
+    filePath: "onboarding/literature-review/_services/batch-orchestrator.ts",
+    data: { jobCount: activeJobs.length },
+  });
+
+  const phase1Results = await Promise.allSettled(
+    activeJobs.map(({ box, subBox }) =>
+      limiter.exec(async (): Promise<SubBoxResult> => {
+        const query = subBox.semanticQuery?.trim();
+
+        if (!query) {
+          return {
+            boxType: box.boxType ?? "PROBLEMATIZATION",
+            boxDescription: box.description ?? "",
+            subBox,
+            candidates: [],
+            activeWorks: [],
+            rawPapers: [],
+          };
+        }
+
+        const rawPapers = await searchOpenAlex(query, 25, checkCancelled);
+        const activeWorks = rawPapers.filter(
+          (p) =>
+            p.referencedWorks &&
+            p.referencedWorks.length > 0 &&
+            p.title?.trim(),
+        );
+        const N = activeWorks.length;
+        const subBoxCandidates: QueueItem["candidates"] = [];
+
+        if (N > 0) {
+          const { leaderIds, refToModernIdx } = analyzeReferenceFrequencies(
+            activeWorks,
+            N,
+          );
+          const refMetadata = await fetchOpenAlexMetadataBatch(
+            leaderIds,
+            checkCancelled,
+          );
+          const clusters = clusterRefMetadata(refMetadata, refToModernIdx);
+
+          const mappedCandidates = clusters.slice(0, 5).map((c) => {
+            const sortedMembers = [...c.members].sort((a, b) => {
+              const hasDoiA = !!a.doi;
+              const hasDoiB = !!b.doi;
+              if (hasDoiA && !hasDoiB) return -1;
+              if (!hasDoiA && hasDoiB) return 1;
+              return (b.citedByCount ?? 0) - (a.citedByCount ?? 0);
+            });
+            const chosen = sortedMembers[0];
+            return {
+              title: chosen.title,
+              authors: chosen.authors.join(", "),
+              year: null,
+              openAlexId: chosen.id,
+              doi: chosen.doi ? extractCleanDoi(chosen.doi) : null,
+              publisher: null,
+              cluster: c,
+            };
+          });
+
+          subBoxCandidates.push(...mappedCandidates);
+        }
+
+        return {
+          boxType: box.boxType ?? "PROBLEMATIZATION",
+          boxDescription: box.description ?? "",
+          subBox,
+          candidates: subBoxCandidates,
+          activeWorks,
+          rawPapers,
+        };
+      }),
+    ),
+  );
+
+  const fulfilledResults: SubBoxResult[] = [];
+  for (const result of phase1Results) {
+    if (result.status === "fulfilled") {
+      fulfilledResults.push(result.value);
+    } else {
+      logger.error("literature_phase1_subbox_failed", {
+        service: "literature",
+        filePath:
+          "onboarding/literature-review/_services/batch-orchestrator.ts",
+        error:
+          result.reason instanceof Error
+            ? result.reason.message
+            : String(result.reason),
+      });
+    }
+  }
+
+  logger.info("literature_batch_phase1_complete", {
+    service: "literature",
+    filePath: "onboarding/literature-review/_services/batch-orchestrator.ts",
+    data: {
+      total: activeJobs.length,
+      succeeded: fulfilledResults.length,
+      failed: activeJobs.length - fulfilledResults.length,
+    },
+  });
+
+  // ── PHASE 2: BULK FOUNDATIONAL WORK SELECTION ───────────────────────────
+  const selectionInput = fulfilledResults
+    .filter((r) => r.candidates.length > 0)
+    .map((r) => ({
+      title: r.subBox.title,
+      boxType: r.boxType,
+      description: r.boxDescription,
+      candidates: r.candidates.map((c) => ({
+        title: c.title,
+        authors: c.authors,
+        year: c.year,
+        openAlexId: c.openAlexId,
+        doi: c.doi,
+        publisher: c.publisher,
+      })),
+    }));
+
+  let bulkSelections: {
+    subBoxTitle: string;
+    selectedIndex: number;
+    reasoning: string;
+  }[] = [];
+
+  if (selectionInput.length > 0) {
+    logger.info("literature_bulk_foundational_selection_start", {
+      service: "literature",
+      filePath: "onboarding/literature-review/_services/batch-orchestrator.ts",
+      data: { activeSubBoxCount: selectionInput.length },
+    });
+
+    try {
+      const bulkResult = await selectFoundationalWorksBulk(selectionInput);
+      bulkSelections = bulkResult.selections;
+    } catch (err) {
+      logger.error("literature_bulk_foundational_selection_failed", {
+        service: "literature",
+        filePath:
+          "onboarding/literature-review/_services/batch-orchestrator.ts",
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  // ── PHASE 3: FINAL ASSIGNMENT + PROGRESSIVE SAVE ────────────────────────
+  for (const r of fulfilledResults) {
+    if (checkCancelled?.()) break;
+
+    const subBoxArticles: JuryArticle[] = [];
+    let foundationalArticle: JuryArticle | null = null;
+    let topCluster: Cluster | null = null;
+
+    const activeCandidates = r.candidates.filter(
+      (c) => !assignedFoundationalTitles.has(c.title),
+    );
+
+    if (activeCandidates.length > 0) {
+      let chosenCandidate: (typeof activeCandidates)[number] | null = null;
+
+      const matchedSelection = bulkSelections.find(
+        (s) => s.subBoxTitle === r.subBox.title,
+      );
+
+      if (matchedSelection && matchedSelection.selectedIndex >= 0) {
+        const fullSelectedCandidate =
+          r.candidates[matchedSelection.selectedIndex];
+        if (
+          fullSelectedCandidate &&
+          !assignedFoundationalTitles.has(fullSelectedCandidate.title)
+        ) {
+          chosenCandidate = fullSelectedCandidate;
+        }
+      }
+
+      if (!chosenCandidate) {
+        chosenCandidate = activeCandidates[0];
+      }
+
+      if (chosenCandidate) {
+        foundationalArticle = {
+          title: chosenCandidate.title,
+          comparisonNote: null,
+          badge: null,
+          url: chosenCandidate.openAlexId,
+          doi: chosenCandidate.doi,
+          publisher: chosenCandidate.publisher,
+          publicationYear: chosenCandidate.year,
+          authors: chosenCandidate.authors.split(", ").map((a) => a.trim()),
+          isFoundational: true,
+          relevanceScore: 100,
+        };
+        assignedFoundationalTitles.add(chosenCandidate.title);
+        topCluster = chosenCandidate.cluster;
+      }
+    }
+
+    const queueItem: QueueItem = {
+      subBoxTitle: r.subBox.title,
+      boxType: r.boxType,
+      boxDescription: r.boxDescription,
+      candidates: r.candidates,
+      activeWorks: r.activeWorks,
+      rawPapers: r.rawPapers,
+    };
+
+    const top3Related = selectRelatedArticles(queueItem, topCluster);
+
+    if (foundationalArticle) {
+      subBoxArticles.push(foundationalArticle);
+    }
+    subBoxArticles.push(...top3Related);
+
+    poolEntries.push({
+      subBoxTitle: r.subBox.title,
+      articles: subBoxArticles,
+    });
+
+    // Progressive save: persist this sub-box's results immediately
+    if (persistSubBox && subBoxArticles.length > 0) {
+      try {
+        await persistSubBox(r.subBox.title, subBoxArticles);
+      } catch (err) {
+        logger.error("literature_progressive_save_failed", {
+          service: "literature",
+          filePath:
+            "onboarding/literature-review/_services/batch-orchestrator.ts",
+          data: { subBoxTitle: r.subBox.title },
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
+    logger.info("literature_subbox_mining_complete", {
+      service: "literature",
+      filePath: "onboarding/literature-review/_services/batch-orchestrator.ts",
+      data: {
+        subBoxTitle: r.subBox.title,
+        foundationalTitle: foundationalArticle?.title ?? "Not found",
+        relatedCount: top3Related.length,
+      },
+    });
+  }
+
+  logger.info("literature_batch_process_done", {
+    service: "literature",
+    filePath: "onboarding/literature-review/_services/batch-orchestrator.ts",
+    data: {
+      boxCount: boxes.length,
+      totalArticles: poolEntries.reduce((s, e) => s + e.articles.length, 0),
+    },
+  });
+
+  return { poolEntries, archivalBoxTitles };
+}

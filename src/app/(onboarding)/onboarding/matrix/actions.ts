@@ -1,0 +1,141 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { eq, sql } from "drizzle-orm";
+import { z } from "zod";
+import { db } from "@/db";
+import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
+import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
+import { createFlowId, Logger } from "@/lib/logger";
+import { invalidateOnboardingCache } from "@/lib/cache-tags";
+
+const MIN_LENGTH = 3;
+const MAX_LENGTH = 4000;
+
+const thesisMatrixSchema = z.object({
+  mainActors: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+  researchFocus: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+  temporalScope: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+  spatialScope: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+  theoreticalFramework: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+  methodology: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+  mainClaim: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+});
+
+/**
+ * Persists the thesis matrix to the database and clears any downstream analysis
+ * data (originality reports and thesis boxes) that may now be stale.
+ *
+ * @param data - The thesis matrix data from the onboarding form
+ * @returns Success confirmation or an error message
+ */
+export async function saveThesisMatrixAction(
+  data: unknown,
+): Promise<{ success: true } | { error: string }> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+  const startTime = performance.now();
+
+  const parsed = thesisMatrixSchema.safeParse(data);
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0];
+    const msg = firstIssue
+      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
+      : "Validation failed.";
+    return { error: msg };
+  }
+
+  const validated = parsed.data;
+
+  log.info("matrix_save_start", {
+    service: "db",
+    data: { context: "Saving thesis matrix" },
+  });
+
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { error: SESSION_ERROR_MSG };
+    }
+
+    let insertedId: number | undefined;
+
+    await db.transaction(async (tx) => {
+      const [matrixRow] = await tx
+        .insert(thesisMatrices)
+        .values({
+          userId: session.userId,
+          mainActors: validated.mainActors,
+          researchFocus: validated.researchFocus,
+          temporalScope: validated.temporalScope,
+          spatialScope: validated.spatialScope,
+          theoreticalFramework: validated.theoreticalFramework,
+          methodology: validated.methodology,
+          mainClaim: validated.mainClaim,
+          updatedAt: sql`now()`,
+        })
+        .onConflictDoUpdate({
+          target: thesisMatrices.userId,
+          set: {
+            mainActors: validated.mainActors,
+            researchFocus: validated.researchFocus,
+            temporalScope: validated.temporalScope,
+            spatialScope: validated.spatialScope,
+            theoreticalFramework: validated.theoreticalFramework,
+            methodology: validated.methodology,
+            mainClaim: validated.mainClaim,
+            updatedAt: sql`now()`,
+          },
+        })
+        .returning({ id: thesisMatrices.id });
+
+      if (matrixRow) {
+        insertedId = matrixRow.id;
+        await Promise.all([
+          tx
+            .delete(originalityReports)
+            .where(eq(originalityReports.userId, session.userId)),
+          tx
+            .delete(thesisBoxes)
+            .where(eq(thesisBoxes.thesisMatrixId, matrixRow.id)),
+        ]);
+      }
+    });
+
+    // DIAGNOSTIC: verify the row persisted
+    const [verifyRow] = await db
+      .select({ id: thesisMatrices.id })
+      .from(thesisMatrices)
+      .where(eq(thesisMatrices.userId, session.userId));
+
+    log.info("matrix_save_verify", {
+      service: "db",
+      data: {
+        userId: session.userId,
+        insertedId,
+        foundInDb: !!verifyRow,
+        verifyId: verifyRow?.id,
+      },
+    });
+
+    invalidateOnboardingCache();
+    // Also clear the originality-report cache so a stale report does not
+    // reappear after reset.
+    revalidatePath("/onboarding/risk");
+
+    log.info("matrix_save_success", {
+      service: "db",
+      durationMs: performance.now() - startTime,
+      data: { context: "Saving thesis matrix" },
+    });
+
+    return { success: true };
+  } catch (error) {
+    log.error("matrix_save_failed", {
+      service: "db",
+      error,
+      data: { context: "Saving thesis matrix" },
+    });
+    return { error: "Failed to save thesis matrix to the database." };
+  }
+}

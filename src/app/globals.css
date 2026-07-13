@@ -1,0 +1,155 @@
+@import "tailwindcss";
+
+@plugin "tailwindcss-animate";
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-historical: var(--historical);
+  --color-historical-foreground: var(--historical-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius: 0.5rem;
+  --font-logo: var(--font-fredoka);
+}
+
+:root {
+  /* --- Derin Zümrüt Zemin ve Yüksek Kontrastlı Yazı --- */
+  --background: #0b100e; /* Lacivert değil! Çok derin, asil bir zümrüt-siyah. Kontrastı muazzam tutar */
+  --foreground: #eef5f2; /* Temiz, parlayan nane-beyazı ana metin */
+
+  /* --- Kart Yapıları (Zeminden yeşil tonuyla bıçak gibi ayrışan kartlar) --- */
+  --card: #121a17; /* Arka planla kontrastı kusursuz kuran koyu zümrüt kart rengi */
+  --card-foreground: #ffffff;
+
+  --popover: #0e1412;
+  --popover-foreground: #eef5f2;
+
+  /* --- Gerçek Zümrüt Yeşili (Primary) --- */
+  --primary: #10b981; /* Ödün vermediğimiz, ekranda aslanlar gibi parlayan net zümrüt yeşili */
+  --primary-foreground: #0b100e; /* Yeşil butonların üzerindeki okunaklı koyu yazı */
+
+  --secondary: #1a2622; /* Ara katmanlar için doygun yeşil-gri */
+  --secondary-foreground: #cbd5e1;
+
+  --accent: #1a2622;
+  --accent-foreground: #34d399; /* Detaylar için daha açık nane yeşili */
+
+  --muted: #121a17;
+  --muted-foreground: #8fa39b;
+
+  /* --- Durum Renkleri --- */
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  --success: #10b981;
+  --success-foreground: #ffffff;
+  --warning: #fbbf24;
+  --warning-foreground: #0b100e;
+  --info: #3b82f6;
+  --info-foreground: #ffffff;
+
+  /* --- Tarihsel Soy Kütüğü (HISTORICAL_ANCHOR) --- */
+  --historical: #b45309;
+  --historical-foreground: #ffffff;
+
+  /* --- Keskin Sınırlar --- */
+  --border: #20302a; /* Yeşilin tonlarında, kartları jilet gibi ayıran ara çizgi */
+  --input: #121a17;
+  --ring: #10b981;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-serif);
+    @apply font-semibold tracking-tight;
+  }
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-sans);
+    @apply font-semibold tracking-tight;
+  }
+  code,
+  pre {
+    font-family: var(--font-mono);
+  }
+  .badge-brand {
+    font-family: var(--font-logo);
+  }
+  .academic-reading-zone {
+    @apply text-base leading-relaxed tracking-normal;
+  }
+  .header-nav-item {
+    @apply flex items-center px-3 py-2 cursor-pointer;
+  }
+  .bottom-nav-item {
+    @apply flex flex-col items-center gap-2 px-3 py-1 text-xs font-medium transition-colors cursor-pointer;
+  }
+  /* Küresel Modern Scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--color-border);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-primary);
+  }
+
+  .textarea-academic {
+    @apply overflow-y-auto resize-none leading-relaxed text-foreground font-normal bg-background/40 hover:bg-background/60 focus:bg-background/80 transition-all border border-border/40 hover:border-border focus:border-primary/20;
+  }
+
+  /* Global Error Display Styles */
+  .error-display-container {
+    @apply flex min-h-screen w-full flex-col items-center justify-center bg-background p-6;
+  }
+
+  .error-display-content {
+    @apply flex flex-col items-center justify-center text-center space-y-6 max-w-md w-full;
+  }
+
+  .error-display-icon-wrapper {
+    @apply flex items-center justify-center w-12 h-12 rounded-full border;
+  }
+}
