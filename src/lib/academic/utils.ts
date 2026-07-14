@@ -46,10 +46,11 @@ interface SortableResource {
   isFoundational: boolean | null;
   relevanceScore: number | null;
   id: number;
+  badge?: string | null;
 }
 
 /**
- * Shared academic sort: foundational first, then thesis (score === 0.99),
+ * Shared academic sort: foundational first, then thesis (has a badge),
  * then relevanceScore descending, then id ascending.
  * Used by both library actions and dashboard to keep sort order consistent.
  */
@@ -61,8 +62,8 @@ export function sortLibraryResources<T extends SortableResource>(
     if (!a.isFoundational && b.isFoundational) return 1;
 
     if (!a.isFoundational && !b.isFoundational) {
-      const isThesisA = a.relevanceScore === 0.99;
-      const isThesisB = b.relevanceScore === 0.99;
+      const isThesisA = !!a.badge;
+      const isThesisB = !!b.badge;
       if (isThesisA && !isThesisB) return -1;
       if (!isThesisA && isThesisB) return 1;
     }

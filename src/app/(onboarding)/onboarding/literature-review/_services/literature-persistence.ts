@@ -5,7 +5,6 @@ import { normalizeTitle } from "@/lib/academic/utils";
 import type { LiteraturePoolEntry, JuryArticle } from "@/lib/types";
 import type { NewLibraryResource } from "@/db/schema";
 import { Logger } from "@/lib/logger";
-import { sanitizeAcademicDataBulk } from "@/lib/services/academic-sanitizer";
 import { buildBoxMap } from "../_lib/box-loader";
 
 export type TxClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -91,26 +90,6 @@ export async function persistSubBoxEntry(
   articles: JuryArticle[],
   logger?: Logger,
 ): Promise<void> {
-  // Sanitize
-  if (articles.length > 0) {
-    const sanitized = await sanitizeAcademicDataBulk(
-      articles.map((a) => ({
-        title: a.title,
-        author: a.authors.join(", "),
-      })),
-      logger,
-    );
-    for (let k = 0; k < articles.length; k++) {
-      if (sanitized[k]) {
-        articles[k].title = sanitized[k].title;
-        articles[k].authors = sanitized[k].author
-          .split(", ")
-          .map((s) => s.trim())
-          .filter(Boolean);
-      }
-    }
-  }
-
   // Sort and slice
   const sorted = [...articles]
     .sort((a, b) => b.relevanceScore - a.relevanceScore)
@@ -119,7 +98,12 @@ export async function persistSubBoxEntry(
   // Persist in transaction
   await db.transaction(async (tx) => {
     const allBoxes = await tx
-      .select({ id: thesisBoxes.id, title: thesisBoxes.title })
+      .select({
+        id: thesisBoxes.id,
+        title: thesisBoxes.title,
+        parentId: thesisBoxes.parentId,
+        boxType: thesisBoxes.boxType,
+      })
       .from(thesisBoxes)
       .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
 
@@ -156,45 +140,6 @@ export async function persistLiteraturePool(
   onWarn?: (message: string, data?: Record<string, unknown>) => void,
   logger?: Logger,
 ): Promise<void> {
-  // Batch sanitization
-  const allSanitizeTargets: {
-    entryIdx: number;
-    articleIdx: number;
-    article: JuryArticle;
-  }[] = [];
-  for (let i = 0; i < literaturePool.length; i++) {
-    const entry = literaturePool[i];
-    for (let j = 0; j < entry.articles.length; j++) {
-      allSanitizeTargets.push({
-        entryIdx: i,
-        articleIdx: j,
-        article: entry.articles[j],
-      });
-    }
-  }
-  if (allSanitizeTargets.length > 0) {
-    const sanitized = await sanitizeAcademicDataBulk(
-      allSanitizeTargets.map((t) => ({
-        title: t.article.title,
-        author: t.article.authors.join(", "),
-      })),
-      logger,
-    );
-    for (let k = 0; k < allSanitizeTargets.length; k++) {
-      if (sanitized[k]) {
-        const target =
-          literaturePool[allSanitizeTargets[k].entryIdx].articles[
-            allSanitizeTargets[k].articleIdx
-          ];
-        target.title = sanitized[k].title;
-        target.authors = sanitized[k].author
-          .split(", ")
-          .map((s) => s.trim())
-          .filter(Boolean);
-      }
-    }
-  }
-
   // Collect top 4 per entry
   const allTopArticles: { entryIdx: number; article: JuryArticle }[] = [];
   for (let i = 0; i < literaturePool.length; i++) {
@@ -210,7 +155,12 @@ export async function persistLiteraturePool(
   // Transactional persist
   await db.transaction(async (tx) => {
     const allBoxes = await tx
-      .select({ id: thesisBoxes.id, title: thesisBoxes.title })
+      .select({
+        id: thesisBoxes.id,
+        title: thesisBoxes.title,
+        parentId: thesisBoxes.parentId,
+        boxType: thesisBoxes.boxType,
+      })
       .from(thesisBoxes)
       .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
 
@@ -270,7 +220,12 @@ export async function persistArchiveEntries(
 ): Promise<void> {
   await db.transaction(async (tx) => {
     const allBoxes = await tx
-      .select({ id: thesisBoxes.id, title: thesisBoxes.title })
+      .select({
+        id: thesisBoxes.id,
+        title: thesisBoxes.title,
+        parentId: thesisBoxes.parentId,
+        boxType: thesisBoxes.boxType,
+      })
       .from(thesisBoxes)
       .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
 

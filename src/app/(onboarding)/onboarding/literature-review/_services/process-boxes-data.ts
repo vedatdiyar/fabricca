@@ -97,7 +97,7 @@ export async function loadOverlapTheses(allBoxRows: BoxRowData[]): Promise<{
       publicationYear: thesis.year,
       authors: [thesis.author],
       isFoundational: false,
-      relevanceScore: 0.99,
+      relevanceScore: 99,
     } satisfies JuryArticle;
   });
 

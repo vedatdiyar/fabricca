@@ -23,6 +23,7 @@ import {
   selectRelatedArticles,
   type QueueItem,
 } from "./selection";
+import { sanitizeAcademicDataBulk } from "@/lib/services/academic-sanitizer";
 
 // ============================================================================
 // Public interface
@@ -279,7 +280,14 @@ export async function orchestrateBatchProcess(
     }
   }
 
-  // ── PHASE 3: FINAL ASSIGNMENT + PROGRESSIVE SAVE ────────────────────────
+  // ── PHASE 3: FINAL ASSIGNMENT, BULK SANITIZATION, AND PROGRESSIVE SAVE ────────────────────────
+  const subBoxResultsToPersist: {
+    subBoxTitle: string;
+    articles: JuryArticle[];
+    foundationalArticle: JuryArticle | null;
+    top3Related: JuryArticle[];
+  }[] = [];
+
   for (const r of fulfilledResults) {
     if (checkCancelled?.()) break;
 
@@ -347,21 +355,80 @@ export async function orchestrateBatchProcess(
     }
     subBoxArticles.push(...top3Related);
 
-    poolEntries.push({
+    subBoxResultsToPersist.push({
       subBoxTitle: r.subBox.title,
       articles: subBoxArticles,
+      foundationalArticle,
+      top3Related,
+    });
+  }
+
+  // Bulk sanitization of all selected articles in a single LLM call
+  const allArticlesToSanitize: JuryArticle[] = [];
+  for (const item of subBoxResultsToPersist) {
+    allArticlesToSanitize.push(...item.articles);
+  }
+
+  if (allArticlesToSanitize.length > 0 && !checkCancelled?.()) {
+    try {
+      logger.info("literature_bulk_sanitization_start", {
+        service: "literature",
+        filePath:
+          "onboarding/literature-review/_services/batch-orchestrator.ts",
+        data: { count: allArticlesToSanitize.length },
+      });
+
+      const sanitized = await sanitizeAcademicDataBulk(
+        allArticlesToSanitize.map((a) => ({
+          title: a.title,
+          author: a.authors.join(", "),
+        })),
+        logger,
+      );
+
+      for (let k = 0; k < allArticlesToSanitize.length; k++) {
+        if (sanitized[k]) {
+          allArticlesToSanitize[k].title = sanitized[k].title;
+          allArticlesToSanitize[k].authors = sanitized[k].author
+            .split(", ")
+            .map((s) => s.trim())
+            .filter(Boolean);
+        }
+      }
+
+      logger.info("literature_bulk_sanitization_success", {
+        service: "literature",
+        filePath:
+          "onboarding/literature-review/_services/batch-orchestrator.ts",
+      });
+    } catch (err) {
+      logger.error("literature_bulk_sanitization_failed", {
+        service: "literature",
+        filePath:
+          "onboarding/literature-review/_services/batch-orchestrator.ts",
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  // Progressive save loops with already-sanitized articles
+  for (const item of subBoxResultsToPersist) {
+    if (checkCancelled?.()) break;
+
+    poolEntries.push({
+      subBoxTitle: item.subBoxTitle,
+      articles: item.articles,
     });
 
-    // Progressive save: persist this sub-box's results immediately
-    if (persistSubBox && subBoxArticles.length > 0) {
+    if (persistSubBox && item.articles.length > 0) {
       try {
-        await persistSubBox(r.subBox.title, subBoxArticles);
+        await persistSubBox(item.subBoxTitle, item.articles);
       } catch (err) {
         logger.error("literature_progressive_save_failed", {
           service: "literature",
           filePath:
             "onboarding/literature-review/_services/batch-orchestrator.ts",
-          data: { subBoxTitle: r.subBox.title },
+          data: { subBoxTitle: item.subBoxTitle },
           error: err instanceof Error ? err.message : String(err),
         });
       }
@@ -371,9 +438,9 @@ export async function orchestrateBatchProcess(
       service: "literature",
       filePath: "onboarding/literature-review/_services/batch-orchestrator.ts",
       data: {
-        subBoxTitle: r.subBox.title,
-        foundationalTitle: foundationalArticle?.title ?? "Not found",
-        relatedCount: top3Related.length,
+        subBoxTitle: item.subBoxTitle,
+        foundationalTitle: item.foundationalArticle?.title ?? "Not found",
+        relatedCount: item.top3Related.length,
       },
     });
   }

@@ -143,8 +143,8 @@ export function buildThesisBoxGenerationSystemInstruction(): string {
   4. DATA_PROTOCOL — Pure Methodological Literature: Search ONLY pure method and analytical standards literature. NO actor or publication names may leak.
   5. PRIMARY_MATERIAL — No-Scan Layer: semanticQuery MUST always be "" (empty string). If the input matrix contains MULTIPLE independent source categories (e.g., official legal party documents AND independent journal archives), the LLM MUST split PRIMARY_MATERIAL into distinct sub-boxes — one per source category — each with a concrete descriptive title. NEVER merge multiple source types into a single sub-box title connected by "ve".
 - OPENALEX SEMANTIC SEARCH OPTIMIZATION:
-  - DEPTH & DENSITY (1000-1500 chars): Every semanticQuery (except primaryMaterial) MUST be 1000-1500 characters of dense, flowing academic English prose. Hallucination is FORBIDDEN; instead, infuse the matrix's research questions, central claims, and rationales into the query as substantive academic content.
-  - MAX UPPER BOUND: Never exceed 2000 characters.
+  - DEPTH & DENSITY (800-1000 chars): Every semanticQuery (except primaryMaterial) MUST be 800-1000 characters of dense, flowing academic English prose. Hallucination is FORBIDDEN; instead, infuse the matrix's research questions, central claims, and rationales into the query as substantive academic content.
+  - MAX UPPER BOUND: Never exceed 1000 characters.
   - CONCEPTUAL QUALIFIERS: When local/native proper nouns (actors, journals, organizations from the input) appear in PROBLEMATIZATION or CONTEXT sub-box queries, they MUST be immediately followed by universal academic descriptors explaining what they are. The GTE Large EN embedding model cannot resolve bare native names.
 - CRITICAL PROSE CONSTRAINT: Every semanticQuery MUST start directly with a high-weight academic noun or concept. FORBIDDEN: 'The research explores', 'This study analyzes'.
 - NEGATIVE CONSTRAINT BAN: Do NOT use explicit negative exclusion phrases (e.g. "strictly excluding", "not including", "without reference to") in any semanticQuery. Isolation must emerge naturally from positive conceptual focus.
@@ -202,7 +202,7 @@ Analyze the above thesis matrix in the <context> block and produce the 5-quadran
 - CONTEXT: Macro ruptures as direct structural pressure on the auto-detected core subject. No generic world history.
 - DATA_PROTOCOL: Pure method. No actor or publication names.
 - PRIMARY_MATERIAL: semanticQuery MUST be empty string "". Split multiple source categories into distinct sub-boxes.
-- OPENALEX: 1000-1500 chars per query. Conceptual qualifiers for local names. Max 2000.
+- OPENALEX: 800-1000 chars per query. Conceptual qualifiers for local names. Max 1000.
 - CRITICAL PROSE CONSTRAINT: Every semanticQuery MUST start directly with a high-weight academic noun or concept. FORBIDDEN: 'The research explores', 'This study analyzes', etc.
 - NO CONCEPTUAL EMBELLISHMENT: Strictly adhere to the matrix's explicit terminology. FORBIDDEN to inject external ideological descriptors not present in the input.
 - Output ONLY valid JSON matching the defined schema.

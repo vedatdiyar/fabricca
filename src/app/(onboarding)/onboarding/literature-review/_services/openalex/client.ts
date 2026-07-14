@@ -75,7 +75,7 @@ export async function searchOpenAlex(
   perPage: number,
   checkCancelled?: () => boolean,
 ): Promise<RawPaper[]> {
-  const trimmedQuery = query.substring(0, 2000);
+  const trimmedQuery = query.substring(0, 1000);
   const params = new URLSearchParams({
     "search.semantic": trimmedQuery,
     per_page: String(perPage),
