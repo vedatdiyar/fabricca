@@ -163,6 +163,8 @@ export interface RelatedThesisEntry {
 }
 
 export interface GeminiThesisBox {
+  /** DB id — populated when loaded from the database, undefined for Gemini-generated raw output */
+  id?: number;
   title: string;
   boxType:
     | "PROBLEMATIZATION"
@@ -196,5 +198,6 @@ export interface JuryArticle {
 
 export interface LiteraturePoolEntry {
   subBoxTitle: string;
+  thesisBoxId: number;
   articles: JuryArticle[];
 }

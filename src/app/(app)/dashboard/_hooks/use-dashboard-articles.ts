@@ -20,14 +20,22 @@ interface ArticleState {
 function buildArticleState(
   initialBoxes: ThesisBox[],
   initialResources: LibraryResource[],
+  childIdToParentId: Map<number, number>,
 ): ArticleState[] {
   const mapped: ArticleState[] = [];
 
   initialBoxes.forEach((box) => {
-    const boxRes = initialResources.filter((r) => r.thesisBoxId === box.id);
+    const boxRes = initialResources.filter((r) => {
+      const effectiveParentId =
+        childIdToParentId.get(r.thesisBoxId) ?? r.thesisBoxId;
+      return effectiveParentId === box.id;
+    });
     const sortedRes = sortLibraryResources(boxRes);
 
     sortedRes.forEach((res, index) => {
+      const effectiveParentId =
+        childIdToParentId.get(res.thesisBoxId) ?? res.thesisBoxId;
+
       mapped.push({
         id: String(res.id),
         title: res.title,
@@ -39,7 +47,7 @@ function buildArticleState(
         isRead: res.isRead ?? false,
         isFoundational: res.isFoundational,
         isInInitialStarterPack: index < 4,
-        boxId: String(res.thesisBoxId),
+        boxId: String(effectiveParentId),
         boxTitle: box.title,
       });
     });
@@ -55,9 +63,10 @@ function buildArticleState(
 export function useDashboardArticles(
   initialBoxes: ThesisBox[],
   initialResources: LibraryResource[],
+  childIdToParentId: Map<number, number>,
 ) {
   const [articles, setArticles] = useState<ArticleState[]>(() =>
-    buildArticleState(initialBoxes, initialResources),
+    buildArticleState(initialBoxes, initialResources, childIdToParentId),
   );
 
   const getVisibleArticlesForBox = useCallback(

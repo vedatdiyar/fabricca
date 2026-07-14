@@ -131,6 +131,7 @@ function SubBoxDone({
   literaturePool: LiteraturePoolEntry[];
   onAddArchiveEntry: (
     subBoxTitle: string,
+    thesisBoxId: number,
     entry: { title: string; description?: string },
   ) => void;
 }) {
@@ -181,7 +182,10 @@ function SubBoxDone({
                   {/* Input form for this child box */}
                   <ArchiveEntryForm
                     onAddEntry={(title, desc) =>
-                      onAddArchiveEntry(sub.title, { title, description: desc })
+                      onAddArchiveEntry(sub.title, sub.id ?? 0, {
+                        title,
+                        description: desc,
+                      })
                     }
                   />
 
@@ -211,7 +215,10 @@ function SubBoxDone({
           <div className="space-y-4">
             <ArchiveEntryForm
               onAddEntry={(title, desc) =>
-                onAddArchiveEntry(subBox.title, { title, description: desc })
+                onAddArchiveEntry(subBox.title, subBox.id ?? 0, {
+                  title,
+                  description: desc,
+                })
               }
             />
             {entry && entry.articles.length > 0 && (

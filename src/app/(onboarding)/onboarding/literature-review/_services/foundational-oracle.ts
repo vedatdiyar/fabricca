@@ -64,11 +64,12 @@ const zodBulkSelectSchema = z.object({
 const BULK_FOUNDATIONAL_JURY_PROMPT = `<constraints>
 Selection Rules (Box Type Based Strategy):
 1. If box type is "CONCEPTUAL": Select the primary original theoretical source that establishes/introduces the theoretical framework or concept mentioned in the box title or description. Do NOT under ANY circumstances select secondary interpretations, critiques, revisionist theories, or applied studies when the original primary work of the theory's creator is among the candidates. The primary foundational text always takes absolute precedence.
-2. If box type is "PROBLEMATIZATION", "CONTEXT" or "DATA_PROTOCOL": Prefer empirical studies, field research, historical analyses, or methodological landmarks that directly overlap with the box title and description — avoid broad theoretical umbrellas or comprehensive textbooks.
-3. GLOBAL STRICT SEQUENTIAL DEDUPLICATION:
+2. If box type is "PROBLEMATIZATION", "CONTEXT" or "DATA_PROTOCOL": Prefer empirical studies, field research, historical analyses, or methodological landmarks that directly overlap with the box title and description. Do NOT under any circumstances select broad, abstract theoretical works (e.g. general discourse theory, general hegemony theory, general social protest theory) for these boxes, even if they match keywords. These boxes require works that are empirically, historically, or geographically grounded in the specific context described (e.g. Turkey, Kurdish conflict, Turkish left).
+3. LANGUAGE PREFERENCE: Prefer works written in English or Turkish. Avoid selecting works in French, German, or other languages unless they are the absolute primary original text for a CONCEPTUAL framework and no English/Turkish translation or version is available in the candidates.
+4. GLOBAL STRICT SEQUENTIAL DEDUPLICATION:
    Process selections sequentially in order (Sub-Box [0] -> Sub-Box [1] -> Sub-Box [2]...).
    When selecting for a sub-box, check titles selected for all PREVIOUS sub-boxes. Under NO circumstances select a work that was already chosen for a prior sub-box, even if it appears in the current sub-box's candidate list. Ensure every sub-box gets a unique work.
-4. Output format: For each sub-box, return the sub-box title (subBoxTitle), the 0-based index of the selected candidate (selectedIndex), and a reasoning string in Turkish (Türkçe gerekçe) explaining the choice.
+5. Output format: For each sub-box, return the sub-box title (subBoxTitle), the 0-based index of the selected candidate (selectedIndex), and a reasoning string in Turkish (Türkçe gerekçe) explaining the choice.
 </constraints>
 
 <task>

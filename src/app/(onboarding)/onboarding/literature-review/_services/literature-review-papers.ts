@@ -10,11 +10,14 @@ import type { FoundationalQuery } from "@/lib/types";
 
 export interface SubBoxItem {
   title: string;
+  thesisBoxId: number;
   semanticQuery: string;
   foundationalQueries: FoundationalQuery[];
 }
 
 export interface SubBoxInput {
+  /** Parent box DB id — used for archival bypass entries */
+  id: number;
   title: string;
   description: string;
   boxType?: string;

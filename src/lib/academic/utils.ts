@@ -81,7 +81,11 @@ export function normalizeTitle(
   maxLength?: number,
 ): string {
   if (!title) return "";
-  let normalized = title.toLowerCase().replace(/\s+/g, " ").trim();
+  let normalized = title
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
   if (maxLength !== undefined && normalized.length > maxLength) {
     normalized = normalized.slice(0, maxLength);
   }

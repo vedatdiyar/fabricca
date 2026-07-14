@@ -34,7 +34,11 @@ export default async function DashboardPage() {
     );
   }
 
-  const { parentBoxes: dbBoxes, resources: dbResources } = boxResult.data;
+  const {
+    parentBoxes: dbBoxes,
+    resources: dbResources,
+    childIdToParentId,
+  } = boxResult.data;
   const dbTasks = tasksResult.success ? (tasksResult.data ?? []) : [];
 
   return (
@@ -68,6 +72,7 @@ export default async function DashboardPage() {
         initialBoxes={dbBoxes}
         initialResources={dbResources}
         initialTasks={dbTasks}
+        childIdToParentId={childIdToParentId}
       />
     </div>
   );

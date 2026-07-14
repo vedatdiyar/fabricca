@@ -102,8 +102,8 @@ export async function processAllBoxesAction(
       logger,
       thesisArticlesMap,
       () => isLiteratureCancelled(userId),
-      async (subBoxTitle, articles) => {
-        await persistSubBoxEntry(matrix.id, subBoxTitle, articles, logger);
+      async (thesisBoxId, articles) => {
+        await persistSubBoxEntry(thesisBoxId, articles, logger);
       },
     );
 
@@ -151,7 +151,6 @@ export async function confirmLiteratureAction(args: {
     }
 
     await persistLiteraturePool(
-      matrix.id,
       literaturePool,
       (msg, data) => {
         log.warn(msg, { service: "literature", data });
@@ -212,7 +211,7 @@ export async function fetchPreloadedLiteraturePool(): Promise<{
 
 export async function appendArchiveEntriesAction(args: {
   entries: {
-    subBoxTitle: string;
+    thesisBoxId: number;
     articles: import("@/lib/types").JuryArticle[];
   }[];
 }): Promise<OnboardingActionResult> {
@@ -230,14 +229,7 @@ export async function appendArchiveEntriesAction(args: {
       return { error: "No archive entries found to append." };
     }
 
-    const [matrix] = await db
-      .select({ id: thesisMatrices.id })
-      .from(thesisMatrices)
-      .where(eq(thesisMatrices.userId, session.userId));
-
-    if (!matrix) return { error: "Thesis matrix not found." };
-
-    await persistArchiveEntries(matrix.id, entries, (msg, data) => {
+    await persistArchiveEntries(entries, (msg, data) => {
       log.warn(msg, { service: "literature", data });
     });
 

@@ -10,12 +10,14 @@ interface DashboardContentProps {
   initialBoxes: ThesisBox[];
   initialResources: LibraryResource[];
   initialTasks: TaskRow[];
+  childIdToParentId: Map<number, number>;
 }
 
 export function DashboardContent({
   initialBoxes,
   initialResources,
   initialTasks,
+  childIdToParentId,
 }: DashboardContentProps) {
   const {
     topicBoxes,
@@ -24,7 +26,12 @@ export function DashboardContent({
     handleAddTask,
     handleEditTask,
     handleDeleteTask,
-  } = useDashboard(initialBoxes, initialResources, initialTasks);
+  } = useDashboard(
+    initialBoxes,
+    initialResources,
+    initialTasks,
+    childIdToParentId,
+  );
 
   return (
     <div className="w-full space-y-8">

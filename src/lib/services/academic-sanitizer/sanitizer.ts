@@ -53,6 +53,7 @@ const SYSTEM_INSTRUCTION = `<constraints>
 - Latince bilimsel terimleri (Homo sapiens, Homo subprimicus, in vitro, in vivo, et al. vb.) orijinal italik/yazi stillerinden bagimsiz olarak bilimsel yazim standartlarina gore duzelt: cins adi buyuk, tur adi kucuk.
 - Yazar isimlerini tamamen BUYUK veya tamamen kucuk harften Proper Case'e cevir.
 - Ingilizce karakter setine kurban gitmis Turkce isimleri modelin dogru Turkce yazimina cevir.
+- Başlıkların sonundaki asterisk (*), dipnot işaretleri veya gereksiz özel karakterleri temizle.
 - Ciktiya hicbir aciklama, not veya ek metin EKLEME. Yalnizca JSON semasina uygun nesneyi dondur.
 </constraints>
 
@@ -68,7 +69,11 @@ const SYSTEM_INSTRUCTION = `<constraints>
   <example>
     <input>[{"title": "an essay on author x's literature", "author": "jOHN mICHAEL doe"}]</input>
     <output>[{"title": "An Essay on Author X's Literature", "author": "John Michael Doe"}]</output>
-  </examples>
+  </example>
+  <example>
+    <input>[{"title": "An Insider's Critique of the Social Movement Framing Perspective*", "author": "Robert D. Benford"}]</input>
+    <output>[{"title": "An Insider's Critique of the Social Movement Framing Perspective", "author": "Robert D. Benford"}]</output>
+  </example>
 </examples>
 
 <task>

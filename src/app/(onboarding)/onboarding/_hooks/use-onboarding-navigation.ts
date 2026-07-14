@@ -452,11 +452,13 @@ export function useOnboardingNavigation() {
       // Step 2: Fetch boxes
       const boxes = await fetchBoxesWithFullShape();
       const subBoxInputs: SubBoxInput[] = boxes.map((box) => ({
+        id: box.id ?? 0,
         title: box.title,
         description: box.description,
         boxType: box.boxType,
         subBoxes: (box.subBoxes ?? []).map((sb) => ({
           title: sb.title,
+          thesisBoxId: sb.id ?? 0,
           semanticQuery: sb.semanticQuery ?? "",
           foundationalQueries: sb.foundationalQueries ?? [],
         })),
@@ -502,6 +504,7 @@ export function useOnboardingNavigation() {
     async (
       archiveEntries: {
         subBoxTitle: string;
+        thesisBoxId: number;
         articles: JuryArticle[];
       }[],
     ): Promise<{ success: boolean; error?: string }> => {

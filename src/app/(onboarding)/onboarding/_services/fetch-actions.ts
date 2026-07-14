@@ -223,6 +223,7 @@ export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
     if (r.parentId !== null) {
       const list = subBoxMap.get(r.parentId) ?? [];
       list.push({
+        id: r.id,
         title: r.title,
         boxType:
           (r.boxType as GeminiThesisBox["boxType"]) ?? "PROBLEMATIZATION",
@@ -239,6 +240,7 @@ export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
 
   const boxes: GeminiThesisBox[] = parentRows.map((b) => {
     const box: GeminiThesisBox = {
+      id: b.id,
       title: b.title,
       boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "PROBLEMATIZATION",
       description: b.description ?? "",

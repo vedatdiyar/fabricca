@@ -15,7 +15,7 @@ import type {
   RawPaper,
 } from "./literature-review-papers";
 import { searchOpenAlex, fetchOpenAlexMetadataBatch } from "./openalex/client";
-import { extractCleanDoi } from "@/lib/academic/utils";
+import { extractCleanDoi, normalizeTitle } from "@/lib/academic/utils";
 import { selectFoundationalWorksBulk } from "./foundational-oracle";
 import { clusterRefMetadata, type Cluster } from "./clustering";
 import {
@@ -38,6 +38,7 @@ interface SubBoxResult {
   boxType: string;
   boxDescription: string;
   subBox: SubBoxItem;
+  thesisBoxId: number;
   candidates: QueueItem["candidates"];
   activeWorks: RawPaper[];
   rawPapers: RawPaper[];
@@ -66,13 +67,13 @@ export async function orchestrateBatchProcess(
   thesisArticlesMap?: Map<string, JuryArticle[]>,
   checkCancelled?: () => boolean,
   persistSubBox?: (
-    subBoxTitle: string,
+    thesisBoxId: number,
     articles: JuryArticle[],
   ) => Promise<void>,
 ): Promise<BatchOrchestrationResult> {
   const poolEntries: LiteraturePoolEntry[] = [];
   const archivalBoxTitles: string[] = [];
-  const assignedFoundationalTitles = new Set<string>();
+  const assignedTitles = new Set<string>();
   const limiter = createConcurrencyLimiter(3);
 
   // ── ARCHIVAL BYPASS ──────────────────────────────────────────────────────
@@ -90,7 +91,11 @@ export async function orchestrateBatchProcess(
           ? (thesisArticlesMap?.get(box.title) ?? [])
           : [];
 
-      poolEntries.push({ subBoxTitle: box.title, articles });
+      poolEntries.push({
+        subBoxTitle: box.title,
+        thesisBoxId: box.id,
+        articles,
+      });
 
       logger.info("literature_archival_bypass", {
         service: "literature",
@@ -138,6 +143,7 @@ export async function orchestrateBatchProcess(
             boxType: box.boxType ?? "PROBLEMATIZATION",
             boxDescription: box.description ?? "",
             subBox,
+            thesisBoxId: subBox.thesisBoxId,
             candidates: [],
             activeWorks: [],
             rawPapers: [],
@@ -192,6 +198,7 @@ export async function orchestrateBatchProcess(
           boxType: box.boxType ?? "PROBLEMATIZATION",
           boxDescription: box.description ?? "",
           subBox,
+          thesisBoxId: subBox.thesisBoxId,
           candidates: subBoxCandidates,
           activeWorks,
           rawPapers,
@@ -283,6 +290,7 @@ export async function orchestrateBatchProcess(
   // ── PHASE 3: FINAL ASSIGNMENT, BULK SANITIZATION, AND PROGRESSIVE SAVE ────────────────────────
   const subBoxResultsToPersist: {
     subBoxTitle: string;
+    thesisBoxId: number;
     articles: JuryArticle[];
     foundationalArticle: JuryArticle | null;
     top3Related: JuryArticle[];
@@ -296,7 +304,7 @@ export async function orchestrateBatchProcess(
     let topCluster: Cluster | null = null;
 
     const activeCandidates = r.candidates.filter(
-      (c) => !assignedFoundationalTitles.has(c.title),
+      (c) => !assignedTitles.has(normalizeTitle(c.title)),
     );
 
     if (activeCandidates.length > 0) {
@@ -311,7 +319,7 @@ export async function orchestrateBatchProcess(
           r.candidates[matchedSelection.selectedIndex];
         if (
           fullSelectedCandidate &&
-          !assignedFoundationalTitles.has(fullSelectedCandidate.title)
+          !assignedTitles.has(normalizeTitle(fullSelectedCandidate.title))
         ) {
           chosenCandidate = fullSelectedCandidate;
         }
@@ -334,9 +342,37 @@ export async function orchestrateBatchProcess(
           isFoundational: true,
           relevanceScore: 100,
         };
-        assignedFoundationalTitles.add(chosenCandidate.title);
+        assignedTitles.add(normalizeTitle(chosenCandidate.title));
         topCluster = chosenCandidate.cluster;
       }
+    }
+
+    // Print visibility details to development terminal for options & reasoning review
+    if (process.env.NODE_ENV === "development") {
+      const matchedSelection = bulkSelections.find(
+        (s) => s.subBoxTitle === r.subBox.title,
+      );
+      console.log("\n=======================================================");
+      console.log(`   GEMINI SELECTION FOR SUB-BOX: "${r.subBox.title}"`);
+      console.log("=======================================================");
+      console.log("Candidates:");
+      r.candidates.forEach((c, idx) => {
+        const isSelected =
+          matchedSelection && matchedSelection.selectedIndex === idx;
+        console.log(
+          `  [${isSelected ? "✓" : " "}] ${idx}. "${c.title}" by ${c.authors}`,
+        );
+      });
+      if (matchedSelection) {
+        console.log(
+          `\nDecision Reasoning (Gerekçe): ${matchedSelection.reasoning}`,
+        );
+      } else {
+        console.log(
+          "\nDecision Reasoning (Gerekçe): No matching selection found / Fallback to first candidate.",
+        );
+      }
+      console.log("=======================================================\n");
     }
 
     const queueItem: QueueItem = {
@@ -348,7 +384,16 @@ export async function orchestrateBatchProcess(
       rawPapers: r.rawPapers,
     };
 
-    const top3Related = selectRelatedArticles(queueItem, topCluster);
+    const top3Related = selectRelatedArticles(
+      queueItem,
+      topCluster,
+      assignedTitles,
+      foundationalArticle?.title,
+    );
+
+    for (const art of top3Related) {
+      assignedTitles.add(normalizeTitle(art.title));
+    }
 
     if (foundationalArticle) {
       subBoxArticles.push(foundationalArticle);
@@ -357,6 +402,7 @@ export async function orchestrateBatchProcess(
 
     subBoxResultsToPersist.push({
       subBoxTitle: r.subBox.title,
+      thesisBoxId: r.thesisBoxId,
       articles: subBoxArticles,
       foundationalArticle,
       top3Related,
@@ -417,12 +463,13 @@ export async function orchestrateBatchProcess(
 
     poolEntries.push({
       subBoxTitle: item.subBoxTitle,
+      thesisBoxId: item.thesisBoxId,
       articles: item.articles,
     });
 
     if (persistSubBox && item.articles.length > 0) {
       try {
-        await persistSubBox(item.subBoxTitle, item.articles);
+        await persistSubBox(item.thesisBoxId, item.articles);
       } catch (err) {
         logger.error("literature_progressive_save_failed", {
           service: "literature",

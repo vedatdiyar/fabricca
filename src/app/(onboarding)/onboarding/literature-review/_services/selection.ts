@@ -5,6 +5,7 @@
 import type { JuryArticle } from "@/lib/types";
 import type { RawPaper } from "./literature-review-papers";
 import type { Cluster } from "./clustering";
+import { normalizeTitle } from "@/lib/academic/utils";
 
 interface QueueItem {
   subBoxTitle: string;
@@ -100,39 +101,62 @@ export function analyzeReferenceFrequencies(
 
 /**
  * Scores and selects the top 3 related articles from the candidate pool,
- * preferring works that cite the top cluster.
+ * preferring works that cite the top cluster and globally deduplicating titles.
  *
  * @param item - The sub-box queue item with active works and raw papers
  * @param topCluster - The top co-citation cluster (may be null)
+ * @param assignedTitles - Global set of already assigned normalized titles (optional)
+ * @param foundationalTitle - Title of the selected foundational work for this box (optional)
  * @returns Up to 3 JuryArticle entries sorted by relevance
  */
 export function selectRelatedArticles(
   item: QueueItem,
-  topCluster: Cluster | null,
+  _topCluster: Cluster | null,
+  assignedTitles?: Set<string>,
+  foundationalTitle?: string,
 ): JuryArticle[] {
-  let candidatePool =
-    item.activeWorks.length > 0 ? item.activeWorks : item.rawPapers;
-  candidatePool = candidatePool.filter((p) => p.title?.trim());
+  const candidatePool = item.rawPapers.filter((p) => p.title?.trim());
+  const normalizedFoundational = foundationalTitle
+    ? normalizeTitle(foundationalTitle)
+    : "";
 
-  const topClusterMemberIds = new Set(
-    topCluster?.members.map((m) => m.id) ?? [],
-  );
+  const scoredCandidates = candidatePool
+    .map((paper) => ({ paper, score: paper.relevanceScore }))
+    .sort((a, b) => b.score - a.score);
 
-  const scoredCandidates = candidatePool.map((paper) => {
-    const citesFoundational = topCluster
-      ? (paper.referencedWorks || []).some((refId) =>
-          topClusterMemberIds.has(refId),
-        )
-      : false;
+  const selected: typeof scoredCandidates = [];
 
-    const score =
-      0.7 * paper.relevanceScore + 0.3 * (citesFoundational ? 1.0 : 0.0);
-    return { paper, score };
-  });
+  // Try to pick globally unique candidates first, skipping the foundational work of the current box
+  for (const it of scoredCandidates) {
+    const normTitle = normalizeTitle(it.paper.title!);
+    if (normTitle === normalizedFoundational) {
+      continue;
+    }
+    if (assignedTitles && assignedTitles.has(normTitle)) {
+      continue;
+    }
 
-  scoredCandidates.sort((a, b) => b.score - a.score);
+    selected.push(it);
+    if (selected.length === 3) break;
+  }
 
-  return scoredCandidates.slice(0, 3).map(
+  // Fallback: if we have fewer than 3 candidates after filtering, relax the global deduplication check
+  if (selected.length < 3) {
+    for (const it of scoredCandidates) {
+      const normTitle = normalizeTitle(it.paper.title!);
+      if (normTitle === normalizedFoundational) {
+        continue;
+      }
+      if (selected.some((s) => normalizeTitle(s.paper.title!) === normTitle)) {
+        continue;
+      }
+
+      selected.push(it);
+      if (selected.length === 3) break;
+    }
+  }
+
+  return selected.map(
     (it) =>
       ({
         title: it.paper.title!,

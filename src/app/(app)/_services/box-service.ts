@@ -59,11 +59,11 @@ export async function getUsersMatrixAndBoxes(
 
 /**
  * Fetches the thesis matrix, box hierarchy, and all associated library
- * resources for a given user. Resources linked to sub-boxes are remapped
- * to their master box via the child-parent ID map.
+ * resources for a given user. Resources are now stored directly on their
+ * parent thesisBoxId — no remapping needed.
  *
  * @param userId - The authenticated user's ID
- * @returns Extended data including resources with remapped thesisBoxId
+ * @returns Extended data including resources with original thesisBoxId
  */
 export async function getUsersMatrixAndBoxesWithResources(
   userId: number,
@@ -74,22 +74,17 @@ export async function getUsersMatrixAndBoxesWithResources(
     return { error: boxResult.error };
   }
 
-  const { allBoxRows, childIdToParentId } = boxResult.data;
+  const { allBoxRows } = boxResult.data;
 
   let resources: (typeof libraryResources.$inferSelect)[] = [];
 
   if (allBoxRows.length > 0) {
     const allBoxIds = allBoxRows.map((b) => b.id);
 
-    const rawResources = await db
+    resources = await db
       .select()
       .from(libraryResources)
       .where(inArray(libraryResources.thesisBoxId, allBoxIds));
-
-    resources = rawResources.map((r) => ({
-      ...r,
-      thesisBoxId: childIdToParentId.get(r.thesisBoxId) ?? r.thesisBoxId,
-    }));
   }
 
   return {

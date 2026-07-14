@@ -1,11 +1,10 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { thesisBoxes, libraryResources } from "@/db/schema";
 import { normalizeTitle } from "@/lib/academic/utils";
 import type { LiteraturePoolEntry, JuryArticle } from "@/lib/types";
 import type { NewLibraryResource } from "@/db/schema";
 import { Logger } from "@/lib/logger";
-import { buildBoxMap } from "../_lib/box-loader";
 
 export type TxClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -76,47 +75,31 @@ async function insertLiteratureBatch(
 }
 
 /**
- * Sanitizes a batch of articles and persists them to the database inside
- * a transaction. Used for progressive save during the pipeline.
+ * Persists articles directly to the target box using its DB id.
+ * No title-based lookup — the thesisBoxId is passed directly and safely.
  *
- * @param thesisMatrixId - The thesis matrix DB id
- * @param subBoxTitle - The target sub-box title
+ * @param thesisBoxId - The target sub-box's database ID
  * @param articles - Articles to persist
  * @param logger - Optional Logger instance for structured LLM call logging
  */
 export async function persistSubBoxEntry(
-  thesisMatrixId: number,
-  subBoxTitle: string,
+  thesisBoxId: number,
   articles: JuryArticle[],
   logger?: Logger,
 ): Promise<void> {
-  // Sort and slice
-  const sorted = [...articles]
-    .sort((a, b) => b.relevanceScore - a.relevanceScore)
-    .slice(0, 4);
-
-  // Persist in transaction
   await db.transaction(async (tx) => {
-    const allBoxes = await tx
-      .select({
-        id: thesisBoxes.id,
-        title: thesisBoxes.title,
-        parentId: thesisBoxes.parentId,
-        boxType: thesisBoxes.boxType,
-      })
+    const [box] = await tx
+      .select({ boxType: thesisBoxes.boxType })
       .from(thesisBoxes)
-      .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
+      .where(eq(thesisBoxes.id, thesisBoxId));
 
-    const boxMap = buildBoxMap(allBoxes);
-    const thesisBoxId = boxMap.get(subBoxTitle);
+    const limit = box?.boxType === "RELATED_THESES" ? undefined : 4;
+    const sorted = [...articles].sort(
+      (a, b) => b.relevanceScore - a.relevanceScore,
+    );
+    const sliced = limit !== undefined ? sorted.slice(0, limit) : sorted;
 
-    if (!thesisBoxId) {
-      throw new Error(
-        `Sub-box not found: "${subBoxTitle}". Please restart the onboarding process.`,
-      );
-    }
-
-    const { toInsert } = await insertLiteratureBatch(tx, thesisBoxId, sorted);
+    const { toInsert } = await insertLiteratureBatch(tx, thesisBoxId, sliced);
 
     if (toInsert.length > 0) {
       await tx.insert(libraryResources).values(toInsert);
@@ -126,67 +109,60 @@ export async function persistSubBoxEntry(
 
 /**
  * Confirms the entire literature pool by persisting all entries in a single
- * transaction. This is called at the end of the pipeline; entries that were
- * already progressively saved are skipped via dedup.
+ * transaction. Uses thesisBoxId directly from each pool entry — no title lookup.
  *
- * @param thesisMatrixId - The thesis matrix DB id
- * @param literaturePool - Pool entries to persist
+ * @param literaturePool - Pool entries with thesisBoxId
  * @param onWarn - Optional warning callback
  * @param logger - Optional Logger instance for structured LLM call logging
  */
 export async function persistLiteraturePool(
-  thesisMatrixId: number,
   literaturePool: LiteraturePoolEntry[],
   onWarn?: (message: string, data?: Record<string, unknown>) => void,
   logger?: Logger,
 ): Promise<void> {
-  // Collect top 4 per entry
-  const allTopArticles: { entryIdx: number; article: JuryArticle }[] = [];
-  for (let i = 0; i < literaturePool.length; i++) {
-    const entry = literaturePool[i];
-    const sorted = [...entry.articles]
-      .sort((a, b) => b.relevanceScore - a.relevanceScore)
-      .slice(0, 4);
-    for (const article of sorted) {
-      allTopArticles.push({ entryIdx: i, article });
+  const boxIds = literaturePool.map((e) => e.thesisBoxId);
+  const boxes =
+    boxIds.length > 0
+      ? await db
+          .select({ id: thesisBoxes.id, boxType: thesisBoxes.boxType })
+          .from(thesisBoxes)
+          .where(inArray(thesisBoxes.id, boxIds))
+      : [];
+
+  const boxTypeMap = new Map<number, string | null>(
+    boxes.map((b) => [b.id, b.boxType]),
+  );
+
+  const allTopArticles: { entry: LiteraturePoolEntry; article: JuryArticle }[] =
+    [];
+  for (const entry of literaturePool) {
+    const boxType = boxTypeMap.get(entry.thesisBoxId);
+    const limit = boxType === "RELATED_THESES" ? undefined : 4;
+    const sorted = [...entry.articles].sort(
+      (a, b) => b.relevanceScore - a.relevanceScore,
+    );
+    const sliced = limit !== undefined ? sorted.slice(0, limit) : sorted;
+
+    for (const article of sliced) {
+      allTopArticles.push({ entry, article });
     }
   }
 
-  // Transactional persist
+  const entryArticleMap = new Map<number, JuryArticle[]>();
+  for (const { entry, article } of allTopArticles) {
+    const list = entryArticleMap.get(entry.thesisBoxId) ?? [];
+    list.push(article);
+    entryArticleMap.set(entry.thesisBoxId, list);
+  }
+
   await db.transaction(async (tx) => {
-    const allBoxes = await tx
-      .select({
-        id: thesisBoxes.id,
-        title: thesisBoxes.title,
-        parentId: thesisBoxes.parentId,
-        boxType: thesisBoxes.boxType,
-      })
-      .from(thesisBoxes)
-      .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
-
-    const boxMap = buildBoxMap(allBoxes);
-
-    const entryArticleMap = new Map<number, JuryArticle[]>();
-    for (const { entryIdx, article } of allTopArticles) {
-      const list = entryArticleMap.get(entryIdx) ?? [];
-      list.push(article);
-      entryArticleMap.set(entryIdx, list);
-    }
-
     const skippedResults = await Promise.all(
-      literaturePool.map(async (entry, idx) => {
-        const thesisBoxId = boxMap.get(entry.subBoxTitle);
-        if (!thesisBoxId) {
-          throw new Error(
-            `Sub-box not found: "${entry.subBoxTitle}". Please restart the onboarding process.`,
-          );
-        }
-
-        const articles = entryArticleMap.get(idx) ?? [];
+      literaturePool.map(async (entry) => {
+        const articles = entryArticleMap.get(entry.thesisBoxId) ?? [];
 
         const { toInsert, skipped } = await insertLiteratureBatch(
           tx,
-          thesisBoxId,
+          entry.thesisBoxId,
           articles,
         );
 
@@ -210,51 +186,29 @@ export async function persistLiteraturePool(
 }
 
 /**
- * Persists archive entries (PRIMARY_MATERIAL / CONTEXT) to the database
- * inside a single transaction.
+ * Persists archive entries using thesisBoxId directly — no title lookup.
  */
 export async function persistArchiveEntries(
-  thesisMatrixId: number,
-  entries: { subBoxTitle: string; articles: JuryArticle[] }[],
+  entries: { thesisBoxId: number; articles: JuryArticle[] }[],
   onWarn?: (message: string, data?: Record<string, unknown>) => void,
 ): Promise<void> {
   await db.transaction(async (tx) => {
-    const allBoxes = await tx
-      .select({
-        id: thesisBoxes.id,
-        title: thesisBoxes.title,
-        parentId: thesisBoxes.parentId,
-        boxType: thesisBoxes.boxType,
-      })
-      .from(thesisBoxes)
-      .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
+    const skippedResults = await Promise.all(
+      entries.map(async (entry) => {
+        const { toInsert, skipped } = await insertLiteratureBatch(
+          tx,
+          entry.thesisBoxId,
+          entry.articles,
+        );
 
-    const boxMap = buildBoxMap(allBoxes);
+        if (toInsert.length > 0) {
+          await tx.insert(libraryResources).values(toInsert);
+        }
 
-    const insertionPromises = entries.map(async (entry) => {
-      const thesisBoxId = boxMap.get(entry.subBoxTitle);
+        return skipped;
+      }),
+    );
 
-      if (!thesisBoxId) {
-        onWarn?.("append_archive_no_box_match", {
-          subBoxTitle: entry.subBoxTitle,
-        });
-        return 0;
-      }
-
-      const { toInsert, skipped } = await insertLiteratureBatch(
-        tx,
-        thesisBoxId,
-        entry.articles,
-      );
-
-      if (toInsert.length > 0) {
-        await tx.insert(libraryResources).values(toInsert);
-      }
-
-      return skipped;
-    });
-
-    const skippedResults = await Promise.all(insertionPromises);
     const totalSkipped = skippedResults.reduce(
       (sum, current) => sum + current,
       0,
@@ -274,7 +228,9 @@ export async function fetchPreloadedPool(
 ): Promise<LiteraturePoolEntry[]> {
   const rows = await db
     .select({
+      thesisBoxId: libraryResources.thesisBoxId,
       boxTitle: thesisBoxes.title,
+      boxType: thesisBoxes.boxType,
       title: libraryResources.title,
       comparisonNote: libraryResources.comparisonNote,
       badge: libraryResources.badge,
@@ -290,9 +246,13 @@ export async function fetchPreloadedPool(
     .innerJoin(thesisBoxes, eq(libraryResources.thesisBoxId, thesisBoxes.id))
     .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
 
-  const grouped = new Map<string, JuryArticle[]>();
+  const grouped = new Map<
+    number,
+    { boxTitle: string; boxType: string | null; articles: JuryArticle[] }
+  >();
   for (const row of rows) {
-    const list = grouped.get(row.boxTitle) ?? [];
+    const existing = grouped.get(row.thesisBoxId);
+    const list = existing?.articles ?? [];
     list.push({
       title: row.title,
       comparisonNote: row.comparisonNote ?? null,
@@ -305,17 +265,27 @@ export async function fetchPreloadedPool(
       isFoundational: row.isFoundational ?? false,
       relevanceScore: row.relevanceScore ?? 0,
     });
-    grouped.set(row.boxTitle, list);
+    grouped.set(row.thesisBoxId, {
+      boxTitle: row.boxTitle,
+      boxType: row.boxType,
+      articles: list,
+    });
   }
 
-  for (const [, articles] of grouped) {
-    articles.sort((a, b) => b.relevanceScore - a.relevanceScore);
-    if (articles.length > 4) articles.length = 4;
+  for (const [, group] of grouped) {
+    group.articles.sort((a, b) => b.relevanceScore - a.relevanceScore);
+    if (group.boxType !== "RELATED_THESES" && group.articles.length > 4) {
+      group.articles.length = 4;
+    }
   }
 
   const pool: LiteraturePoolEntry[] = [];
-  for (const [subBoxTitle, articles] of grouped) {
-    pool.push({ subBoxTitle, articles });
+  for (const [thesisBoxId, group] of grouped) {
+    pool.push({
+      subBoxTitle: group.boxTitle,
+      thesisBoxId,
+      articles: group.articles,
+    });
   }
 
   return pool;

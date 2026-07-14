@@ -36,6 +36,7 @@ export interface UseLiteratureReviewResult {
   archivalBoxes: Set<string>;
   addArchiveEntry: (
     subBoxTitle: string,
+    thesisBoxId: number,
     entry: { title: string; description?: string },
   ) => void;
   handleFinalize: () => Promise<void>;
@@ -62,7 +63,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   const [processing, setProcessing] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [manualEntries, setManualEntries] = useState<
-    { subBoxTitle: string; articles: JuryArticle[] }[]
+    { subBoxTitle: string; thesisBoxId: number; articles: JuryArticle[] }[]
   >([]);
   const [boxErrors, setBoxErrors] = useState<Record<string, string>>({});
   const [allProcessed, setAllProcessed] = useState(false);
@@ -141,7 +142,11 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   }, [subBoxes, literaturePool]);
 
   const addArchiveEntry = useCallback(
-    (subBoxTitle: string, entry: { title: string; description?: string }) => {
+    (
+      subBoxTitle: string,
+      thesisBoxId: number,
+      entry: { title: string; description?: string },
+    ) => {
       const archiveArticle: JuryArticle = {
         title: entry.title,
         comparisonNote:
@@ -159,7 +164,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
 
       setManualEntries((prev) => {
         const existingIndex = prev.findIndex(
-          (e) => e.subBoxTitle === subBoxTitle,
+          (e) => e.thesisBoxId === thesisBoxId,
         );
         if (existingIndex >= 0) {
           const updated = [...prev];
@@ -169,7 +174,10 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
           };
           return updated;
         }
-        return [...prev, { subBoxTitle, articles: [archiveArticle] }];
+        return [
+          ...prev,
+          { subBoxTitle, thesisBoxId, articles: [archiveArticle] },
+        ];
       });
     },
     [],
@@ -182,15 +190,13 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
 
     setConfirming(true);
 
-    const archiveEntries = literaturePool.filter((e) =>
-      archivalBoxes.has(e.subBoxTitle),
-    );
+    const archiveEntries = manualEntries;
 
     const result = await finalizeLiterature(archiveEntries);
     setConfirming(false);
 
     if ("error" in result && result.error) return;
-  }, [literaturePool, archivalBoxes, finalizeLiterature]);
+  }, [literaturePool, manualEntries, finalizeLiterature]);
 
   return {
     subBoxes,

@@ -18,9 +18,10 @@ export function useDashboard(
   initialBoxes: ThesisBox[],
   initialResources: LibraryResource[],
   initialTasks: TaskRow[],
+  childIdToParentId: Map<number, number>,
 ) {
   const { articles, topicBoxes, updateArticleReadStatus } =
-    useDashboardArticles(initialBoxes, initialResources);
+    useDashboardArticles(initialBoxes, initialResources, childIdToParentId);
 
   const { readingTaskStatuses, setReadingTaskStatuses, getActiveReadingTasks } =
     useDashboardReadingStatus(initialResources);
