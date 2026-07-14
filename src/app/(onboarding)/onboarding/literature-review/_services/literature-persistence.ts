@@ -4,6 +4,7 @@ import { thesisBoxes, libraryResources } from "@/db/schema";
 import { normalizeTitle } from "@/lib/academic/utils";
 import type { LiteraturePoolEntry, JuryArticle } from "@/lib/types";
 import type { NewLibraryResource } from "@/db/schema";
+import { Logger } from "@/lib/logger";
 import { sanitizeAcademicDataBulk } from "@/lib/services/academic-sanitizer";
 import { buildBoxMap } from "../_lib/box-loader";
 
@@ -82,11 +83,13 @@ async function insertLiteratureBatch(
  * @param thesisMatrixId - The thesis matrix DB id
  * @param subBoxTitle - The target sub-box title
  * @param articles - Articles to persist
+ * @param logger - Optional Logger instance for structured LLM call logging
  */
 export async function persistSubBoxEntry(
   thesisMatrixId: number,
   subBoxTitle: string,
   articles: JuryArticle[],
+  logger?: Logger,
 ): Promise<void> {
   // Sanitize
   if (articles.length > 0) {
@@ -95,6 +98,7 @@ export async function persistSubBoxEntry(
         title: a.title,
         author: a.authors.join(", "),
       })),
+      logger,
     );
     for (let k = 0; k < articles.length; k++) {
       if (sanitized[k]) {
@@ -140,11 +144,17 @@ export async function persistSubBoxEntry(
  * Confirms the entire literature pool by persisting all entries in a single
  * transaction. This is called at the end of the pipeline; entries that were
  * already progressively saved are skipped via dedup.
+ *
+ * @param thesisMatrixId - The thesis matrix DB id
+ * @param literaturePool - Pool entries to persist
+ * @param onWarn - Optional warning callback
+ * @param logger - Optional Logger instance for structured LLM call logging
  */
 export async function persistLiteraturePool(
   thesisMatrixId: number,
   literaturePool: LiteraturePoolEntry[],
   onWarn?: (message: string, data?: Record<string, unknown>) => void,
+  logger?: Logger,
 ): Promise<void> {
   // Batch sanitization
   const allSanitizeTargets: {
@@ -168,6 +178,7 @@ export async function persistLiteraturePool(
         title: t.article.title,
         author: t.article.authors.join(", "),
       })),
+      logger,
     );
     for (let k = 0; k < allSanitizeTargets.length; k++) {
       if (sanitized[k]) {

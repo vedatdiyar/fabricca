@@ -2,6 +2,7 @@ import { ThinkingLevel } from "@google/genai";
 import { z } from "zod";
 import { generateStructuredContent } from "../gemini";
 import type { JsonSchema } from "../gemini";
+import { Logger } from "../../logger";
 import { GEMINI_MODEL, GEMINI_TEMPERATURE, GEMINI_SEED } from "../../constants";
 
 // ============================================================================
@@ -82,10 +83,12 @@ type AcademicItem = { title: string; author: string };
  * proper-casing, acronym preservation, and Turkish character repair.
  *
  * @param items - Array of academic items with raw title and author fields
+ * @param logger - Optional Logger instance for structured LLM call logging
  * @returns Array with sanitised title and author fields in the same order
  */
 export async function sanitizeAcademicDataBulk(
   items: AcademicItem[],
+  logger?: Logger,
 ): Promise<AcademicItem[]> {
   if (items.length === 0) return items;
 
@@ -94,7 +97,7 @@ export async function sanitizeAcademicDataBulk(
     SYSTEM_INSTRUCTION,
     JSON.stringify(items),
     SANITIZE_RESPONSE_SCHEMA,
-    undefined,
+    logger,
     {
       zodSchema: sanitizeResponseSchema,
       thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },

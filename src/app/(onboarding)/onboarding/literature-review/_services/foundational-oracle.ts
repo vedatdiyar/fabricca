@@ -4,6 +4,7 @@ import {
 } from "@/lib/services/gemini";
 import { GEMINI_MODEL, GEMINI_TEMPERATURE, GEMINI_SEED } from "@/lib/constants";
 import { ThinkingLevel } from "@google/genai";
+import { Logger } from "@/lib/logger";
 import { z } from "zod";
 
 export interface CandidateWork {
@@ -80,6 +81,7 @@ You are an expert academic committee member and auditor. Given the thesis sub-bo
  * ThinkingLevel.LOW for optimized performance and global deduplication.
  *
  * @param subBoxes - List of sub-boxes along with their compiled candidates
+ * @param logger - Optional Logger instance for structured LLM call logging
  * @returns Object mapping each sub-box title to its selected candidate
  *          index and selection reasoning (in Turkish for UI display)
  */
@@ -90,6 +92,7 @@ export async function selectFoundationalWorksBulk(
     description: string;
     candidates: CandidateWork[];
   }[],
+  logger?: Logger,
 ): Promise<BulkSelectionResult> {
   if (subBoxes.length === 0) {
     return { selections: [] };
@@ -121,7 +124,7 @@ For each sub-box in the <context> block above, select the most appropriate found
     BULK_FOUNDATIONAL_JURY_PROMPT,
     prompt,
     bulkSelectSchema,
-    undefined,
+    logger,
     {
       temperature: GEMINI_TEMPERATURE,
       seed: GEMINI_SEED,

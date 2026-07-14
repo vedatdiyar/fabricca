@@ -257,8 +257,18 @@ export async function orchestrateBatchProcess(
     });
 
     try {
-      const bulkResult = await selectFoundationalWorksBulk(selectionInput);
+      const bulkResult = await selectFoundationalWorksBulk(
+        selectionInput,
+        logger,
+      );
       bulkSelections = bulkResult.selections;
+
+      logger.info("literature_bulk_foundational_selection_success", {
+        service: "literature",
+        filePath:
+          "onboarding/literature-review/_services/batch-orchestrator.ts",
+        data: { selectedCount: bulkSelections.length },
+      });
     } catch (err) {
       logger.error("literature_bulk_foundational_selection_failed", {
         service: "literature",
