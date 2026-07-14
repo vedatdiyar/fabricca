@@ -34,7 +34,7 @@ export function StartOverButton({ className, ...props }: ButtonProps) {
           queryClient.invalidateQueries();
           toast.success("Onboarding süreci başarıyla sıfırlandı.");
           setIsOpen(false);
-          window.location.href = "/onboarding/matrix?reset=" + Date.now();
+          window.location.href = "/onboarding/matrix";
         }
       } catch {
         toast.error(

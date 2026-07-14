@@ -49,18 +49,16 @@ export async function resetOnboardingAction(): Promise<
     // a failure in any step rolls the entire reset back. This prevents leaving
     // the user in an inconsistent state (e.g. matrix deleted but
     // onboardingCompleted still flagged as true).
+    // Queries are run sequentially to prevent socket contention/queuing issues.
     await db.transaction(async (tx) => {
-      // Concurrently run resets
-      await Promise.all([
-        tx.delete(thesisMatrices).where(eq(thesisMatrices.userId, userId)),
-        tx
-          .delete(originalityReports)
-          .where(eq(originalityReports.userId, userId)),
-        tx
-          .update(users)
-          .set({ onboardingCompleted: false })
-          .where(eq(users.id, userId)),
-      ]);
+      await tx.delete(thesisMatrices).where(eq(thesisMatrices.userId, userId));
+      await tx
+        .delete(originalityReports)
+        .where(eq(originalityReports.userId, userId));
+      await tx
+        .update(users)
+        .set({ onboardingCompleted: false })
+        .where(eq(users.id, userId));
     });
 
     const cookieStore = await cookies();
@@ -116,16 +114,14 @@ export async function clearDownstreamDbAction(
   try {
     await db.transaction(async (tx) => {
       if (fromStep === "matrix") {
-        // Clear originality reports and fetch matrix concurrently
-        const [, matrixResult] = await Promise.all([
-          tx
-            .delete(originalityReports)
-            .where(eq(originalityReports.userId, userId)),
-          tx
-            .select({ id: thesisMatrices.id })
-            .from(thesisMatrices)
-            .where(eq(thesisMatrices.userId, userId)),
-        ]);
+        // Clear originality reports and fetch matrix sequentially to avoid connection contention
+        await tx
+          .delete(originalityReports)
+          .where(eq(originalityReports.userId, userId));
+        const matrixResult = await tx
+          .select({ id: thesisMatrices.id })
+          .from(thesisMatrices)
+          .where(eq(thesisMatrices.userId, userId));
 
         const matrix = matrixResult[0];
         if (matrix) {

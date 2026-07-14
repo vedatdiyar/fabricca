@@ -22,10 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
-import {
-  fetchThesisMatrix,
-  fetchThesisMatrixFresh,
-} from "../../_services/fetch-actions";
+import { fetchThesisMatrixFresh } from "../../_services/fetch-actions";
 
 type FormState = {
   mainActors: string;
@@ -224,15 +221,7 @@ export function MatrixForm() {
     error,
   } = useQuery({
     queryKey: ["thesis-matrix"],
-    queryFn: async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const isReset = urlParams.has("reset");
-      const fetchFn = isReset ? fetchThesisMatrixFresh : fetchThesisMatrix;
-      if (isReset) {
-        window.history.replaceState({}, "", "/onboarding/matrix");
-      }
-      return fetchFn();
-    },
+    queryFn: fetchThesisMatrixFresh,
     staleTime: 0,
   });
 

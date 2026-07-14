@@ -91,14 +91,12 @@ export async function saveThesisMatrixAction(
 
       if (matrixRow) {
         insertedId = matrixRow.id;
-        await Promise.all([
-          tx
-            .delete(originalityReports)
-            .where(eq(originalityReports.userId, session.userId)),
-          tx
-            .delete(thesisBoxes)
-            .where(eq(thesisBoxes.thesisMatrixId, matrixRow.id)),
-        ]);
+        await tx
+          .delete(originalityReports)
+          .where(eq(originalityReports.userId, session.userId));
+        await tx
+          .delete(thesisBoxes)
+          .where(eq(thesisBoxes.thesisMatrixId, matrixRow.id));
       }
     });
 
