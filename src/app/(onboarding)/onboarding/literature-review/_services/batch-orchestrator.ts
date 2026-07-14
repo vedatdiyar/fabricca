@@ -347,34 +347,6 @@ export async function orchestrateBatchProcess(
       }
     }
 
-    // Print visibility details to development terminal for options & reasoning review
-    if (process.env.NODE_ENV === "development") {
-      const matchedSelection = bulkSelections.find(
-        (s) => s.subBoxTitle === r.subBox.title,
-      );
-      console.log("\n=======================================================");
-      console.log(`   GEMINI SELECTION FOR SUB-BOX: "${r.subBox.title}"`);
-      console.log("=======================================================");
-      console.log("Candidates:");
-      r.candidates.forEach((c, idx) => {
-        const isSelected =
-          matchedSelection && matchedSelection.selectedIndex === idx;
-        console.log(
-          `  [${isSelected ? "✓" : " "}] ${idx}. "${c.title}" by ${c.authors}`,
-        );
-      });
-      if (matchedSelection) {
-        console.log(
-          `\nDecision Reasoning (Gerekçe): ${matchedSelection.reasoning}`,
-        );
-      } else {
-        console.log(
-          "\nDecision Reasoning (Gerekçe): No matching selection found / Fallback to first candidate.",
-        );
-      }
-      console.log("=======================================================\n");
-    }
-
     const queueItem: QueueItem = {
       subBoxTitle: r.subBox.title,
       boxType: r.boxType,
