@@ -110,11 +110,11 @@ export function TezaraOverlapCards({ overlapTable }: TezaraOverlapCardsProps) {
 
               <div className="pt-2 border-t border-border/40 space-y-2">
                 <h4 className="text-xs font-sans font-medium uppercase tracking-wider text-muted-foreground">
-                  Akademik Eylem Planı
+                  Hedef Teze Katkısı
                 </h4>
                 <p className="text-sm font-sans leading-relaxed text-foreground antialiased font-normal">
                   {item.analysisNote ||
-                    "Bu tez için özel bir eylem planı gerekmemektedir."}
+                    "Bu tezin hedef teze doğrudan bir katkısı tespit edilememiştir."}
                 </p>
               </div>
 

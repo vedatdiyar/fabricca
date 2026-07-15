@@ -75,7 +75,7 @@ export interface OriginalityReportData {
       primaryBadge: AnalysisBadge;
       /** Tüm aktif rozetler (donör bayrakları dahil) */
       badges: AnalysisBadge[];
-      /** LLM'in maksimum 2 cümlelik somut eylem plani */
+      /** Aday tezin hedef teze sağladığı akademik katkı açıklaması */
       analysisNote: string;
       yokPdfUrl?: string;
       abstract?: string;

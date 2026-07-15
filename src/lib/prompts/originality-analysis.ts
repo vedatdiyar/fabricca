@@ -69,7 +69,7 @@ export const tezAnalizSonucuSchema: JsonSchema = {
     analysisNote: {
       type: "string",
       description:
-        "A maximum of 2 sentences containing directly actionable academic guidance. Must be written in fluent, academic Turkish. Generic advice is forbidden.",
+        "A maximum of 2 sentences describing the candidate thesis's specific academic contribution to the target thesis. Must describe what the thesis offers, not what it lacks. Written in fluent, academic Turkish.",
     },
   },
   required: [
@@ -144,12 +144,13 @@ DATA INSUFFICIENCY RULE: If there is absolutely no mention, data, or evidence re
 </scoring_rules>
 
 <analysis_note_rules>
-- The "analysisNote" field must contain a maximum of 2 sentences of directly actionable academic guidance.
+- The "analysisNote" field must contain a maximum of 2 sentences describing the candidate thesis's specific academic contribution to the target thesis.
 - It must be written in fluent, academic Turkish.
-- FORBIDDEN: Generic advice like "read more sources", "deepen the literature review".
-- REQUIRED: Specific, named, implementable academic prescription referencing the candidate thesis directly.
+- FORBIDDEN: Deficiency-focused language such as "incelenmemiştir", "bulunmamaktadır", "yetersizdir". Also forbidden: prescriptive language using "-melidir/-malıdır" (e.g., "literatür genişletilmelidir", "incelenmelidir").
+- REQUIRED: Positive framing that states what the candidate thesis provides, offers, or enables. Reference the specific contribution pattern implied by the classification scores (empirical foundation, historical baseline, theoretical comparison, etc.).
+- WRITING PATTERN (guide only — adapt to content): "Bu tez, [kapsam/konu] sağlayarak / sunarak / göstererek, hedef tezin [boyut/analiz]'ini güçlendirmekte / zenginleştirmekte / temellendirmektedir."
 - If researchFocus=0 AND theoreticalFramework=0 AND methodology=0, analysisNote should be an empty string "".
-- DATA INSUFFICIENCY RULE: If any parameter is scored as 0 due to data insufficiency (absence of evidence in the text), you are strictly FORBIDDEN from generating hypothetical advice or uydurma theories. Instead, the 'analysisNote' MUST explicitly state the documentation failure in Turkish (e.g., 'Aday tezin özet metninde [ilgili alan] bilgisine rastlanmamıştır. Akademik dökümantasyon yetersizliği nedeniyle doğrudan alakasız/kusurlu kabul edilmiştir.').
+- DATA INSUFFICIENCY RULE: If any parameter is scored as 0 due to data insufficiency (absence of evidence in the text), you are strictly FORBIDDEN from generating hypothetical advice or fabricated theories. Instead, the 'analysisNote' MUST explicitly state the documentation failure in Turkish (e.g., 'Aday tezin özet metninde [ilgili alan] bilgisine rastlanmamıştır. Akademik dökümantasyon yetersizliği nedeniyle katkı değerlendirmesi yapılamamıştır.').
 </analysis_note_rules>
 
 <isolation_rule>

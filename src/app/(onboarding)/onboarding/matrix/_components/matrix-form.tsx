@@ -60,9 +60,9 @@ const MATRIX_SECTIONS: SectionConfig[] = [
         id: "anaAktorler",
         number: "01",
         Icon: FileText,
-        label: "Ana Aktörler / Kurumlar / Özneler",
+        label: "Araştırma Özneleri / Aktörler / Analiz Nesneleri",
         placeholder:
-          "Araştırma kapsamında odaklanılan aktörler, gruplar, kurum veya kuruluşlar... (örn. sivil toplum kuruluşları, kamu kurumları, özel sektör aktörleri vb.)",
+          "Araştırma kapsamında odaklanılan aktörler, toplumsal gruplar, tarihsel figürler, kurumlar veya analiz edilen temel kavramsal/edebi nesneler...",
         rows: 3,
       },
       {
@@ -70,9 +70,9 @@ const MATRIX_SECTIONS: SectionConfig[] = [
         id: "arastirmaProblemi",
         number: "02",
         Icon: HelpCircle,
-        label: "Araştırma Problemi / Konu Odağı",
+        label: "Araştırma Problemi ve Temel Soru",
         placeholder:
-          "İncelediğiniz temel problem, araştırma sorusu veya odaklanılan olgu/kavram...",
+          "Araştırmanızın literatürde doldurmayı hedeflediği boşluk, çözmeye çalıştığı çelişki veya yanıt aradığı temel araştırma sorusu...",
         rows: 4,
       },
     ],
@@ -88,7 +88,7 @@ const MATRIX_SECTIONS: SectionConfig[] = [
         Icon: Compass,
         label: "Zaman Dilimi / Dönem",
         placeholder:
-          "Araştırmanın sınırlandırıldığı kronolojik dönem (örn. belirli bir yıl aralığı, on yıl veya dönem)...",
+          "Araştırmanın sınırlandırıldığı kronolojik dönem (örn. belirli bir yıl aralığı, tarihsel dönem, yüzyıl veya zaman aralığı)...",
         rows: 2,
       },
       {
@@ -96,9 +96,9 @@ const MATRIX_SECTIONS: SectionConfig[] = [
         id: "mekansalBaglam",
         number: "04",
         Icon: Compass,
-        label: "Mekânsal Bağlam / Coğrafya",
+        label: "Mekânsal Sınırlar / İnceleme Sahası",
         placeholder:
-          "Araştırmanın gerçekleştiği coğrafi/mekânsal sınırlar veya inceleme birimi (örn. bir ülke, bölge, kurum veya yayın organı)...",
+          "Araştırmanın gerçekleştiği coğrafi/mekânsal sınırlar, ülke, bölge, kurum veya sanal inceleme sahası...",
         rows: 2,
       },
     ],
@@ -112,9 +112,9 @@ const MATRIX_SECTIONS: SectionConfig[] = [
         id: "kavramsalCerceve",
         number: "05",
         Icon: BookMarked,
-        label: "Kuramsal Çerçeve ve Kurucu Yazarlar",
+        label: "Kuramsal / Kavramsal Çerçeve veya Yaklaşım",
         placeholder:
-          "Kullanacağınız teoriler, kavramsal modeller ve ilgili kuramcılar...",
+          "Araştırmayı üzerine inşa ettiğiniz teoriler, kavramsal modeller, historiografik yaklaşımlar veya ana paradigmalar ile kurucu literatür...",
         rows: 4,
       },
       {
@@ -122,9 +122,9 @@ const MATRIX_SECTIONS: SectionConfig[] = [
         id: "metodoloji",
         number: "06",
         Icon: Layers,
-        label: "Veri Toplama ve Analiz Yöntemi",
+        label: "Yöntem ve Veri Kaynakları",
         placeholder:
-          "Kullanacağınız yöntem ve analiz araçları (örn. nitel/nicel içerik analizi, mülakat, anket, deneysel yöntem)...",
+          "Verilerinizi nereden toplayacağınız (arşiv, anket, saha çalışması, veri tabanı, taranacak yayınlar vb.) ve hangi yöntemlerle analiz edeceğiniz (nitel/nicel analiz, söylem analizi vb.)...",
         rows: 4,
       },
       {
@@ -134,7 +134,7 @@ const MATRIX_SECTIONS: SectionConfig[] = [
         Icon: Target,
         label: "Merkez Savı / Temel İddia",
         placeholder:
-          "Bu çalışmayla kanıtlamak istediğiniz temel savınız/hipoteziniz...",
+          "Bu çalışmayla kanıtlamak istediğiniz temel savınız, hipoteziniz veya ana teziniz...",
         rows: 4,
       },
     ],
