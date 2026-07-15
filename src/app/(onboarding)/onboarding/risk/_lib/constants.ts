@@ -93,14 +93,14 @@ export const ANALYSIS_BADGE_CARD_STYLE: Record<
     text: "text-primary",
   },
   HISTORICAL_BASELINE_DATA: {
-    card: "bg-muted/20",
-    border: "border-border/40",
-    text: "text-foreground",
+    card: "bg-historical/10",
+    border: "border-historical/20",
+    text: "text-historical",
   },
   FUTURE_PROSPECTIVE_CONTEXT: {
-    card: "bg-muted/20",
-    border: "border-border/40",
-    text: "text-foreground",
+    card: "bg-warning/10",
+    border: "border-warning/20",
+    text: "text-warning",
   },
   MACRO_STRUCTURAL_CONTEXT: {
     card: "bg-muted/10",
@@ -151,7 +151,7 @@ export function getUiBadgeConfig(badge: string): {
     const config = getAnalysisBadgeConfig(badge);
     return {
       text: config.label,
-      bgClass: `${config.card} border ${config.border} ${config.text}`,
+      bgClass: `${config.card} border ${config.border} text-foreground`,
     };
   }
 

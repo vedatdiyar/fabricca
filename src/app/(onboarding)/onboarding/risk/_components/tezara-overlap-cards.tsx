@@ -81,7 +81,7 @@ export function TezaraOverlapCards({ overlapTable }: TezaraOverlapCardsProps) {
             <CardHeader className="p-4 pb-2">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <span
-                  className={`inline-flex items-center gap-2 text-[10px] font-sans font-medium px-2 py-0.5 rounded-md border ${config.card} ${config.border} ${config.text}`}
+                  className={`inline-flex items-center gap-2 text-[10px] font-sans font-medium px-2 py-0.5 rounded-md border ${config.card} ${config.border} text-foreground`}
                 >
                   <Icon className="w-3.5 h-3.5 shrink-0" />
                   {config.label}
