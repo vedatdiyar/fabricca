@@ -10,7 +10,8 @@ import {
 } from "@/lib/prompts";
 
 interface LitKeywordExtractionResponse {
-  queries: string[];
+  turkishQueries: string[];
+  englishQueries: string[];
 }
 
 /**
@@ -19,12 +20,12 @@ interface LitKeywordExtractionResponse {
 export type ExtractQueriesParams = ThesisMatrix;
 
 /**
- * Extracts academic English queries for Tezara using Gemini based on the
+ * Extracts academic queries for Tezara using Gemini based on the
  * target thesis matrix.
  *
  * @param params - The thesis matrix parameters.
  * @param log - The logger instance.
- * @returns An object containing arrays of Tezara queries and keywords.
+ * @returns An object containing arrays of Tezara queries.
  */
 export async function extractQueries(
   params: ExtractQueriesParams,
@@ -40,10 +41,6 @@ export async function extractQueries(
     const geminiInput = {
       mainActors: params.mainActors,
       researchFocus: params.researchFocus,
-      temporalScope: params.temporalScope,
-      spatialScope: params.spatialScope,
-      theoreticalFramework: params.theoreticalFramework,
-      methodology: params.methodology,
       mainClaim: params.mainClaim,
     };
 
@@ -67,9 +64,14 @@ export async function extractQueries(
         },
       );
 
-    const rawQueries = Array.isArray(keywordResult?.queries)
-      ? keywordResult.queries.map((q) => q.trim()).filter(Boolean)
+    const turkishList = Array.isArray(keywordResult?.turkishQueries)
+      ? keywordResult.turkishQueries.map((q) => q.trim()).filter(Boolean)
       : [];
+    const englishList = Array.isArray(keywordResult?.englishQueries)
+      ? keywordResult.englishQueries.map((q) => q.trim()).filter(Boolean)
+      : [];
+
+    const rawQueries = [...turkishList, ...englishList];
 
     // Ensure we have at least 6 queries, max 8 (as per prompt/guidelines)
     let tezaraQueries = [...rawQueries];

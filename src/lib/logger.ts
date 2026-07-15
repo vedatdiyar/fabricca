@@ -301,7 +301,7 @@ export class Logger implements LoggerInstance {
         const icon = statusIcon("START");
         const color = statusColor("START");
         console.log(
-          `${timeTag} INFO ${color}${icon}${C_RESET} ${baseEvent} -> START`,
+          `${timeTag} START ${color}${icon}${C_RESET} ${baseEvent}`,
         );
         return;
       }
@@ -322,11 +322,9 @@ export class Logger implements LoggerInstance {
         const icon = statusIcon(status);
         const color = statusColor(status);
         const timeTag = this.timestamp();
-        const levelLabel =
-          level === "info" ? "INFO" : level === "warn" ? "WARN" : "ERROR";
 
         console.log(
-          `${timeTag} ${levelLabel} ${color}${icon}${C_RESET} ${baseEvent} -> ${status}${durStr}`,
+          `${timeTag} ${status} ${color}${icon}${C_RESET} ${baseEvent}${durStr}`,
         );
 
         if (p?.error != null) {

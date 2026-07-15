@@ -157,6 +157,12 @@ export function parseTezaraSearchResults(
           .text()
           .trim();
 
+        // Language — flag icon alt text (e.g., "Türkçe", "İngilizce", "Fransızca")
+        const language = $li
+          .find('img[src*="/static/flags/"]')
+          .first()
+          .attr("alt");
+
         results.push({
           id,
           title,
@@ -165,6 +171,7 @@ export function parseTezaraSearchResults(
           year,
           thesisType,
           department,
+          language,
         });
       } catch {
         // Skip individual item errors

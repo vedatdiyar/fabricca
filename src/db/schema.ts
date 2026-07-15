@@ -90,6 +90,7 @@ export const originalityReports = pgTable(
     thesisType: text().notNull(),
     department: text().notNull(),
     yokPdfUrl: text(),
+    abstract: text(),
     /**
      * Primary badge produced by the deterministic decision engine.
      * Possible values: CRITICAL_OVERLAP, APPROACH_DIVERGENCE,

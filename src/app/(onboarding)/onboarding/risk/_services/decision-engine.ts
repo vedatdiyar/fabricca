@@ -33,6 +33,7 @@ export interface CalculatedComparisonItem {
   thesisType: string;
   department: string;
   yokPdfUrl?: string;
+  abstract?: string;
   bucket: ThesisBucket;
   primaryBadge: AnalysisBadge;
   badges: AnalysisBadge[];
@@ -181,6 +182,7 @@ export function calculateRelationships(
       thesisType: detail.thesisType,
       department: detail.department,
       yokPdfUrl: detail.yokPdfUrl,
+      abstract: detail.abstract,
       bucket: decision.bucket,
       primaryBadge: decision.primaryBadge,
       badges: decision.badges,

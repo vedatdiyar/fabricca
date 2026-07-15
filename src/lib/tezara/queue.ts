@@ -1,19 +1,15 @@
 import { createConcurrencyLimiter } from "../rate-limiter";
-import type { Logger } from "../logger";
-
 const TEZARA_FETCH_HEADERS = {
   "user-agent":
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
   connection: "keep-alive",
 } as const;
 
-const MAX_CONCURRENCY = 3;
-const MIN_DELAY_MS = 400;
-const MAX_DELAY_MS = 800;
+const MAX_CONCURRENCY = 12;
+const MIN_DELAY_MS = 100;
+const MAX_DELAY_MS = 250;
 const BURST_WINDOW_MS = 3000;
-const MAX_BURST = 12;
-const BACKLOG_WARN_THRESHOLD = 5;
-
+const MAX_BURST = 24;
 const requestTimestamps: number[] = [];
 
 function getDynamicDelay(): number {
@@ -43,23 +39,13 @@ const limiter = createConcurrencyLimiter(MAX_CONCURRENCY);
  * - burst: max 12 requests in any rolling 3-second window
  *
  * @param url - The TEZARA URL to fetch.
- * @param logger - Optional logger instance for queue backlog warnings.
  * @param signal - Optional AbortSignal for request cancellation / timeout.
  * @returns The fetch Response.
  */
 export async function enqueueTezaraFetch(
   url: string,
-  logger?: Logger,
   signal?: AbortSignal,
 ): Promise<Response> {
-  if (limiter.size > BACKLOG_WARN_THRESHOLD) {
-    logger?.warn("tezara_queue_backlog", {
-      service: "tezara",
-      step: "enqueue",
-      data: { queueLength: limiter.size, url },
-    });
-  }
-
   return limiter.exec(async () => {
     // Burst check: wait if we've exceeded the burst window limit
     pruneTimestamps();

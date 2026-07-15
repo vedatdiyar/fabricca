@@ -35,6 +35,7 @@ export interface TezaraThesisSummary {
   year: number;
   thesisType: string;
   department: string;
+  language?: string;
 }
 
 /**
@@ -68,6 +69,7 @@ export interface OriginalityReportData {
       /** LLM'in maksimum 2 cümlelik somut eylem plani */
       analysisNote: string;
       yokPdfUrl?: string;
+      abstract?: string;
       title: string;
       author: string;
       university: string;

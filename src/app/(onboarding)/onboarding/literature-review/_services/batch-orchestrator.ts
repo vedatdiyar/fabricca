@@ -14,7 +14,11 @@ import type {
   SubBoxItem,
   RawPaper,
 } from "./literature-review-papers";
-import { searchOpenAlex, fetchOpenAlexMetadataBatch } from "./openalex/client";
+import {
+  searchOpenAlex,
+  fetchOpenAlexMetadataBatch,
+  healAuthorsByTitle,
+} from "./openalex/client";
 import { extractCleanDoi, normalizeTitle } from "@/lib/academic/utils";
 import { selectFoundationalWorksBulk } from "./foundational-oracle";
 import { clusterRefMetadata, type Cluster } from "./clustering";
@@ -371,6 +375,32 @@ export async function orchestrateBatchProcess(
       subBoxArticles.push(foundationalArticle);
     }
     subBoxArticles.push(...top3Related);
+
+    // Programmatic Author Healing for any selected article with empty authors
+    for (const art of subBoxArticles) {
+      if (art.authors.length === 0 && !checkCancelled?.()) {
+        try {
+          const healed = await healAuthorsByTitle(art.title);
+          if (healed && healed.length > 0) {
+            art.authors = healed;
+            logger.info("literature_author_healing_success", {
+              service: "literature",
+              filePath:
+                "onboarding/literature-review/_services/batch-orchestrator.ts",
+              data: { title: art.title, resolved: healed.join(", ") },
+            });
+          }
+        } catch (err) {
+          logger.error("literature_author_healing_failed", {
+            service: "literature",
+            filePath:
+              "onboarding/literature-review/_services/batch-orchestrator.ts",
+            data: { title: art.title },
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+    }
 
     subBoxResultsToPersist.push({
       subBoxTitle: r.subBox.title,

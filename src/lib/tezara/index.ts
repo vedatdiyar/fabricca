@@ -22,7 +22,7 @@ export async function searchTezaraPage(
   const startTime = performance.now();
   try {
     const url = `https://tezara.org/search?q=${encodeURIComponent(query)}&page=${page}${advanced ? "&advanced=true" : ""}`;
-    const response = await enqueueTezaraFetch(url, logger);
+    const response = await enqueueTezaraFetch(url);
 
     if (!response || !response.ok) {
       const durationMs = performance.now() - startTime;
@@ -99,7 +99,7 @@ export async function fetchThesisDetails(
   const startTime = performance.now();
   try {
     const url = `https://tezara.org/theses/${summary.id}`;
-    const response = await enqueueTezaraFetch(url, logger);
+    const response = await enqueueTezaraFetch(url);
 
     if (!response || !response.ok) {
       const durationMs = performance.now() - startTime;

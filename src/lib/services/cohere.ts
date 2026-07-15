@@ -47,16 +47,20 @@ export function formatRerankQuery(matrix: ThesisMatrix): string {
  * temporalScope (via year), and other academic parameters.
  */
 export function formatRerankDocuments(
-  summaries: TezaraThesisSummary[],
+  summaries: (TezaraThesisSummary & { abstract?: string })[],
 ): string[] {
   return summaries.map((s) => {
-    return [
+    const parts = [
       `Title: ${s.title}`,
       `University: ${s.university} (Turkey / Türkiye)`,
       `Department: ${s.department}`,
       `Year: ${s.year}`,
       `Type: ${s.thesisType}`,
-    ].join("\n");
+    ];
+    if (s.abstract) {
+      parts.push(`Abstract: ${s.abstract}`);
+    }
+    return parts.join("\n");
   });
 }
 

@@ -140,6 +140,7 @@ DATA INSUFFICIENCY RULE: If there is absolutely no mention, data, or evidence re
 - Similarly, if the candidate studies the relationship between these same analytical actor families (X+Y) but in a different chronological period, this represents a temporal shift of the same relationship. Score 'researchFocus' as 50 (or 100 if identical) rather than 0.
 - Only score 0 if a completely unrelated concept or different political/analytical family (e.g., Actor Family Z, unrelated institutions) is substituted (X+Z).
 </actor_focus_clarification>
+
 </scoring_rules>
 
 <analysis_note_rules>
