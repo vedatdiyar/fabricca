@@ -93,9 +93,9 @@ export const ANALYSIS_BADGE_CARD_STYLE: Record<
     text: "text-primary",
   },
   HISTORICAL_BASELINE_DATA: {
-    card: "bg-historical/10",
-    border: "border-historical/20",
-    text: "text-historical",
+    card: "bg-destructive/10",
+    border: "border-destructive/20",
+    text: "text-destructive",
   },
   FUTURE_PROSPECTIVE_CONTEXT: {
     card: "bg-warning/10",
@@ -103,14 +103,14 @@ export const ANALYSIS_BADGE_CARD_STYLE: Record<
     text: "text-warning",
   },
   MACRO_STRUCTURAL_CONTEXT: {
-    card: "bg-muted/10",
-    border: "border-border/40",
-    text: "text-muted-foreground",
+    card: "bg-info/10",
+    border: "border-info/20",
+    text: "text-info",
   },
   PARALLEL_LITERATURE_REFERENCE: {
-    card: "bg-muted/10",
-    border: "border-border/40",
-    text: "text-muted-foreground",
+    card: "bg-info/10",
+    border: "border-info/20",
+    text: "text-info",
   },
   IRRELEVANT_DATA: {
     card: "bg-muted/40 opacity-70",
@@ -151,7 +151,7 @@ export function getUiBadgeConfig(badge: string): {
     const config = getAnalysisBadgeConfig(badge);
     return {
       text: config.label,
-      bgClass: `${config.card} border ${config.border} text-foreground`,
+      bgClass: `${config.card} border ${config.border} ${config.text}`,
     };
   }
 

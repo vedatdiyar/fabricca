@@ -25,8 +25,6 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
-  --color-historical: var(--historical);
-  --color-historical-foreground: var(--historical-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -69,10 +67,6 @@
   --warning-foreground: #0b100e;
   --info: #3b82f6;
   --info-foreground: #ffffff;
-
-  /* --- Tarihsel Soy Kütüğü (HISTORICAL_ANCHOR) --- */
-  --historical: #b45309;
-  --historical-foreground: #ffffff;
 
   /* --- Keskin Sınırlar --- */
   --border: #20302a; /* Yeşilin tonlarında, kartları jilet gibi ayıran ara çizgi */
