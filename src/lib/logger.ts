@@ -300,9 +300,7 @@ export class Logger implements LoggerInstance {
         const timeTag = this.timestamp();
         const icon = statusIcon("START");
         const color = statusColor("START");
-        console.log(
-          `${timeTag} START ${color}${icon}${C_RESET} ${baseEvent}`,
-        );
+        console.log(`${timeTag} START ${color}${icon}${C_RESET} ${baseEvent}`);
         return;
       }
 

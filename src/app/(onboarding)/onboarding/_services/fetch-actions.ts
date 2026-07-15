@@ -39,6 +39,7 @@ function groupRowsToReport(
     academicTactic: string;
     isEliminated: boolean;
     eliminationStage: string | null;
+    relevanceScore: number | null;
   }>,
 ): OriginalityReportData | null {
   if (rows.length === 0) return null;
@@ -49,17 +50,15 @@ function groupRowsToReport(
   // Global badge: determined by the presence of RISK bucket theses
   let globalBadge: RelationshipBadge = "UNRELATED";
 
-  const activeDiagnoses = activeRows.map((r) => r.diagnosis);
-  const hasTwin = activeDiagnoses.includes("CRITICAL_OVERLAP");
-  const hasSalvageable = activeDiagnoses.includes("APPROACH_DIVERGENCE");
-  const hasContribution = activeRows.length > 0 && !hasTwin && !hasSalvageable;
+  const hasDuplicate = activeRows.some(
+    (r) => r.diagnosis === "DUPLICATE_THESIS_RISK",
+  );
+  const hasContribution = activeRows.length > 0 && !hasDuplicate;
 
-  if (hasTwin) {
+  if (hasDuplicate) {
     globalBadge = "HIGH_RISK";
-  } else if (hasSalvageable) {
-    globalBadge = "SALVAGEABLE";
   } else if (hasContribution) {
-    globalBadge = "CONTRIBUTION";
+    globalBadge = "CONTRIBUTION_READY";
   }
 
   return {
@@ -78,6 +77,7 @@ function groupRowsToReport(
         primaryBadge: row.diagnosis as AnalysisBadge,
         badges: [row.diagnosis as AnalysisBadge],
         analysisNote: row.academicTactic,
+        relevanceScore: row.relevanceScore ?? 0,
       })),
       eliminatedTheses: eliminatedRows.map((row) => ({
         id: row.externalThesisId,
@@ -253,7 +253,7 @@ export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
 
     if (b.boxType === "RELATED_THESES" && overlapTable.length > 0) {
       box.relatedTheses = overlapTable.map((t) => {
-        const isTwinCandidate = t.primaryBadge === "CRITICAL_OVERLAP";
+        const isTwinCandidate = t.primaryBadge === "DUPLICATE_THESIS_RISK";
         const explanation = t.analysisNote || "";
         return {
           title: t.title,

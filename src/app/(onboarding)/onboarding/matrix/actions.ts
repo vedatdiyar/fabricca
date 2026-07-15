@@ -58,8 +58,6 @@ export async function saveThesisMatrixAction(
       return { error: SESSION_ERROR_MSG };
     }
 
-    let insertedId: number | undefined;
-
     await db.transaction(async (tx) => {
       const [matrixRow] = await tx
         .insert(thesisMatrices)
@@ -90,7 +88,6 @@ export async function saveThesisMatrixAction(
         .returning({ id: thesisMatrices.id });
 
       if (matrixRow) {
-        insertedId = matrixRow.id;
         await tx
           .delete(originalityReports)
           .where(eq(originalityReports.userId, session.userId));
@@ -98,22 +95,6 @@ export async function saveThesisMatrixAction(
           .delete(thesisBoxes)
           .where(eq(thesisBoxes.thesisMatrixId, matrixRow.id));
       }
-    });
-
-    // DIAGNOSTIC: verify the row persisted
-    const [verifyRow] = await db
-      .select({ id: thesisMatrices.id })
-      .from(thesisMatrices)
-      .where(eq(thesisMatrices.userId, session.userId));
-
-    log.info("matrix_save_verify", {
-      service: "db",
-      data: {
-        userId: session.userId,
-        insertedId,
-        foundInDb: !!verifyRow,
-        verifyId: verifyRow?.id,
-      },
     });
 
     invalidateOnboardingCache();

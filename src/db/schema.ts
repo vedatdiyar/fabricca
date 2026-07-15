@@ -92,11 +92,17 @@ export const originalityReports = pgTable(
     yokPdfUrl: text(),
     abstract: text(),
     /**
-     * Primary badge produced by the deterministic decision engine.
-     * Possible values: CRITICAL_OVERLAP, APPROACH_DIVERGENCE,
-     * DIALECTICAL_OPPORTUNITY, LITERATURE_BRIDGE, THEMATIC_SYNTHESIS, IRRELEVANT_DATA
+     * Primary badge produced by the 2-stage deterministic decision engine.
+     * Possible values: DUPLICATE_THESIS_RISK, EMPIRICAL_FOUNDATION_SOURCE,
+     * DIALECTICAL_DISCUSSION_SUPPORT, THEMATIC_SYNTHESIS_OPPORTUNITY,
+     * CROSS_CONTEXTUAL_VALIDATION, METHODOLOGICAL_AND_THEORETICAL_PEER,
+     * HISTORICAL_BASELINE_DATA, FUTURE_PROSPECTIVE_CONTEXT,
+     * MACRO_STRUCTURAL_CONTEXT, PARALLEL_LITERATURE_REFERENCE,
+     * IRRELEVANT_DATA
      */
     diagnosis: varchar({ length: 100 }).notNull(),
+    /** Composite relevance score (sum of all 7 LLM dimensions, range 0-700) */
+    relevanceScore: integer("relevance_score").notNull().default(0),
     /** Academic tactic (action plan) */
     academicTactic: text("academic_tactic").notNull(),
     /** Flag for eliminated theses — when true, hidden from the main overlap table */

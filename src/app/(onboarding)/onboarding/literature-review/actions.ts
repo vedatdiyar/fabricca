@@ -103,7 +103,7 @@ export async function processAllBoxesAction(
       thesisArticlesMap,
       () => isLiteratureCancelled(userId),
       async (thesisBoxId, articles) => {
-        await persistSubBoxEntry(thesisBoxId, articles, logger);
+        await persistSubBoxEntry(thesisBoxId, articles);
       },
     );
 
@@ -150,13 +150,9 @@ export async function confirmLiteratureAction(args: {
       return { error: "Thesis matrix not found." };
     }
 
-    await persistLiteraturePool(
-      literaturePool,
-      (msg, data) => {
-        log.warn(msg, { service: "literature", data });
-      },
-      log,
-    );
+    await persistLiteraturePool(literaturePool, (msg, data) => {
+      log.warn(msg, { service: "literature", data });
+    });
 
     try {
       revalidateOnboardingPaths();

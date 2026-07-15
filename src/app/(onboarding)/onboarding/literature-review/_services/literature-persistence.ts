@@ -4,7 +4,6 @@ import { thesisBoxes, libraryResources } from "@/db/schema";
 import { normalizeTitle } from "@/lib/academic/utils";
 import type { LiteraturePoolEntry, JuryArticle } from "@/lib/types";
 import type { NewLibraryResource } from "@/db/schema";
-import { Logger } from "@/lib/logger";
 
 export type TxClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -80,12 +79,10 @@ async function insertLiteratureBatch(
  *
  * @param thesisBoxId - The target sub-box's database ID
  * @param articles - Articles to persist
- * @param logger - Optional Logger instance for structured LLM call logging
  */
 export async function persistSubBoxEntry(
   thesisBoxId: number,
   articles: JuryArticle[],
-  logger?: Logger,
 ): Promise<void> {
   await db.transaction(async (tx) => {
     const [box] = await tx
@@ -113,12 +110,10 @@ export async function persistSubBoxEntry(
  *
  * @param literaturePool - Pool entries with thesisBoxId
  * @param onWarn - Optional warning callback
- * @param logger - Optional Logger instance for structured LLM call logging
  */
 export async function persistLiteraturePool(
   literaturePool: LiteraturePoolEntry[],
   onWarn?: (message: string, data?: Record<string, unknown>) => void,
-  logger?: Logger,
 ): Promise<void> {
   const boxIds = literaturePool.map((e) => e.thesisBoxId);
   const boxes =

@@ -277,6 +277,11 @@ export async function finalizeJuryAnalysisAction(params: {
         const pA = BADGE_ORDER_PRIORITY[a.primaryBadge] ?? 99;
         const pB = BADGE_ORDER_PRIORITY[b.primaryBadge] ?? 99;
         if (pA !== pB) return pA - pB;
+        // Same badge: higher relevance score first
+        if (a.relevanceScore !== b.relevanceScore) {
+          return b.relevanceScore - a.relevanceScore;
+        }
+        // Tiebreaker: newest first
         return b.year - a.year;
       },
     );
@@ -317,13 +322,14 @@ export async function finalizeJuryAnalysisAction(params: {
           year: item.year,
           thesisType: item.thesisType,
           department: item.department,
+          relevanceScore: item.relevanceScore,
         })),
         eliminatedTheses: [], // Elenen tezler UI'da gösterilmeyecek
       },
     };
 
     // ── Transactional write: eski kayıtları sil, yenilerini yaz (Sadece aktif tezler kaydedilir) ──
-    const dbRows = reportData.tezaraResults.overlapTable.map((item) => ({
+    const dbRows = activeTheses.map((item) => ({
       userId: session.userId,
       externalThesisId: item.id,
       title: item.title,
@@ -335,6 +341,7 @@ export async function finalizeJuryAnalysisAction(params: {
       yokPdfUrl: item.yokPdfUrl ?? null,
       abstract: item.abstract ?? null,
       diagnosis: item.primaryBadge,
+      relevanceScore: item.relevanceScore,
       academicTactic: item.analysisNote,
       isEliminated: false,
       eliminationStage: null,

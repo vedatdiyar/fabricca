@@ -1,23 +1,32 @@
 import { z } from "zod";
 
 /**
- * Deterministik karar motorunun her aday tez için üretebileceği rozet değerleri.
- * Birden fazla rozet aynı anda taşınabilir (badges[]); birincil rozet primaryBadge'de
- * belirlenir.
+ * Deterministic decision engine badge values.
+ *
+ * Stage 1 (Mutlak Özgünlük Kontrolü):
+ *   DUPLICATE_THESIS_RISK — All 7 dimensions scored 100 (identical clone)
+ *
+ * Stage 2 (Akademik Katkı / Yararlanma Alanları):
+ *   Badges #1-#9 are checked in strict priority order; first match wins.
+ *   Gatekeeper: RF>0 & MA>0 or IRRELEVANT_DATA.
  */
 export type AnalysisBadge =
-  | "CRITICAL_OVERLAP" // Sav, odak ve aktör kilitlenmesi (En üst risk seviyesi)
-  | "APPROACH_DIVERGENCE" // Odak ve aktör çakışıyor ancak teori veya metot farklı (Kurtarılabilir)
-  | "DIALECTICAL_OPPORTUNITY" // Akademik Antitez (Katkı)
-  | "LITERATURE_BRIDGE" // Literatür Köprüsü (Katkı)
-  | "THEMATIC_SYNTHESIS" // Tematik Sentez (Katkı)
-  | "IRRELEVANT_DATA"; // Bağlam Dışı (Gürültü)
+  | "DUPLICATE_THESIS_RISK" // Stage 1 — RISK bucket
+  | "EMPIRICAL_FOUNDATION_SOURCE" // Stage 2 #1 — CONTRIBUTION
+  | "DIALECTICAL_DISCUSSION_SUPPORT" // Stage 2 #2 — CONTRIBUTION
+  | "THEMATIC_SYNTHESIS_OPPORTUNITY" // Stage 2 #3 — CONTRIBUTION
+  | "CROSS_CONTEXTUAL_VALIDATION" // Stage 2 #4 — CONTRIBUTION
+  | "METHODOLOGICAL_AND_THEORETICAL_PEER" // Stage 2 #5 — CONTRIBUTION
+  | "HISTORICAL_BASELINE_DATA" // Stage 2 #6 — CONTRIBUTION
+  | "FUTURE_PROSPECTIVE_CONTEXT" // Stage 2 #7 — CONTRIBUTION
+  | "MACRO_STRUCTURAL_CONTEXT" // Stage 2 #8 — CONTRIBUTION
+  | "PARALLEL_LITERATURE_REFERENCE" // Stage 2 #9 — CONTRIBUTION
+  | "IRRELEVANT_DATA"; // Stage 2 gatekeeper fail — IRRELEVANT
 
 export type RelationshipBadge =
-  | "HIGH_RISK" // En az bir tez CRITICAL_OVERLAP rozeti almış
-  | "SALVAGEABLE" // En yüksek risk seviyesi APPROACH_DIVERGENCE rozeti
-  | "CONTRIBUTION" // Sadece aktif katkı/fırsat rozetleri mevcut
-  | "UNRELATED"; // Hiçbir aktif tez yok veya tümü elenmiş/bağlam dışı
+  | "HIGH_RISK" // At least one DUPLICATE_THESIS_RISK exists
+  | "CONTRIBUTION_READY" // No duplicates, at least one CONTRIBUTION badge
+  | "UNRELATED"; // All theses are IRRELEVANT_DATA or empty pool
 
 export type OnboardingActionResult =
   | { success: true; isProcessing?: boolean; error?: never }
@@ -76,6 +85,8 @@ export interface OriginalityReportData {
       year: number;
       thesisType: string;
       department: string;
+      /** Bileşik benzerlik skoru (7 boyut toplamı, 0-700 aralığı) */
+      relevanceScore: number;
     }[];
     /** Gemini analizinden geçip elenen (NOISE) tezler */
     eliminatedTheses: {

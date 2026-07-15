@@ -2,10 +2,14 @@
 
 import { useMemo, ElementType } from "react";
 import {
+  ArrowRight,
+  BookOpen,
   Compass,
   FileText,
   GitBranch,
   HelpCircle,
+  History,
+  Layers,
   RefreshCw,
   ShieldAlert,
   Sparkles,
@@ -24,11 +28,16 @@ interface TezaraOverlapCardsProps {
 }
 
 const BADGE_ICONS: Record<AnalysisBadge, ElementType> = {
-  CRITICAL_OVERLAP: ShieldAlert,
-  APPROACH_DIVERGENCE: Compass,
-  DIALECTICAL_OPPORTUNITY: RefreshCw,
-  LITERATURE_BRIDGE: GitBranch,
-  THEMATIC_SYNTHESIS: Sparkles,
+  DUPLICATE_THESIS_RISK: ShieldAlert,
+  EMPIRICAL_FOUNDATION_SOURCE: Sparkles,
+  DIALECTICAL_DISCUSSION_SUPPORT: RefreshCw,
+  THEMATIC_SYNTHESIS_OPPORTUNITY: GitBranch,
+  CROSS_CONTEXTUAL_VALIDATION: Compass,
+  METHODOLOGICAL_AND_THEORETICAL_PEER: FileText,
+  HISTORICAL_BASELINE_DATA: History,
+  FUTURE_PROSPECTIVE_CONTEXT: ArrowRight,
+  MACRO_STRUCTURAL_CONTEXT: Layers,
+  PARALLEL_LITERATURE_REFERENCE: BookOpen,
   IRRELEVANT_DATA: HelpCircle,
 };
 
@@ -40,6 +49,11 @@ export function TezaraOverlapCards({ overlapTable }: TezaraOverlapCardsProps) {
       const pA = BADGE_ORDER_PRIORITY[a.primaryBadge] ?? 99;
       const pB = BADGE_ORDER_PRIORITY[b.primaryBadge] ?? 99;
       if (pA !== pB) return pA - pB;
+      // Same badge: higher relevance score first
+      if (a.relevanceScore !== b.relevanceScore) {
+        return b.relevanceScore - a.relevanceScore;
+      }
+      // Tiebreaker: newest first
       return b.year - a.year;
     });
   }, [overlapTable]);

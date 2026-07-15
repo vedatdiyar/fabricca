@@ -32,7 +32,8 @@ function deduplicateSiftingResults(
 
         if (/[\u0600-\u06FF]/.test(t.title)) continue;
 
-        if (t.language && t.language !== "Türkçe" && t.language !== "İngilizce") continue;
+        if (t.language && t.language !== "Türkçe" && t.language !== "İngilizce")
+          continue;
 
         if (!uniqueThesesMap.has(t.id)) {
           uniqueThesesMap.set(t.id, t);

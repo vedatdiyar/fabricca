@@ -135,7 +135,7 @@ export async function generateBoxesStructureAction(): Promise<
       concepts: [],
       foundationalQueries: [],
       relatedTheses: overlapTable.map((t) => {
-        const isTwinCandidate = t.primaryBadge === "CRITICAL_OVERLAP";
+        const isTwinCandidate = t.primaryBadge === "DUPLICATE_THESIS_RISK";
         const explanation = t.analysisNote || "";
         return {
           title: t.title,
