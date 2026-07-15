@@ -134,25 +134,17 @@ export async function generateBoxesStructureAction(): Promise<
       subBoxes: [],
       concepts: [],
       foundationalQueries: [],
-      relatedTheses: overlapTable.map((t) => {
-        const isTwinCandidate = t.primaryBadge === "DUPLICATE_THESIS_RISK";
-        const explanation = t.analysisNote || "";
-        return {
-          title: t.title,
-          author: t.author,
-          university: t.university,
-          year: t.year,
-          thesisType: t.thesisType,
-          department: t.department,
-          primaryBadge: t.primaryBadge,
-          badges: t.badges,
-          analysisNote: t.analysisNote,
-          explanation: isTwinCandidate
-            ? `[İKİZ TEZ ADAYI] ${explanation}`
-            : explanation,
-          yokPdfUrl: t.yokPdfUrl,
-        };
-      }),
+      relatedTheses: overlapTable.map((t) => ({
+        title: t.title,
+        author: t.author,
+        university: t.university,
+        year: t.year,
+        thesisType: t.thesisType,
+        department: t.department,
+        primaryBadge: t.primaryBadge,
+        badges: t.badges,
+        yokPdfUrl: t.yokPdfUrl,
+      })),
     });
 
     const parentCount = normalizedBoxes.filter(

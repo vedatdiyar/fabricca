@@ -75,8 +75,6 @@ export interface OriginalityReportData {
       primaryBadge: AnalysisBadge;
       /** Tüm aktif rozetler (donör bayrakları dahil) */
       badges: AnalysisBadge[];
-      /** Aday tezin hedef teze sağladığı akademik katkı açıklaması */
-      analysisNote: string;
       yokPdfUrl?: string;
       abstract?: string;
       title: string;
@@ -100,7 +98,6 @@ export interface OriginalityReportData {
       yokPdfUrl?: string;
       primaryBadge: AnalysisBadge;
       badges: AnalysisBadge[];
-      analysisNote: string;
       eliminationStage: "ANALYSIS";
     }[];
   };
@@ -158,7 +155,6 @@ export const RelatedThesisEntrySchema = z.object({
   department: z.string(),
   primaryBadge: z.string(),
   badges: z.array(z.string()),
-  analysisNote: z.string(),
   yokPdfUrl: z.string().optional(),
 });
 
@@ -171,7 +167,6 @@ export interface RelatedThesisEntry {
   department: string;
   primaryBadge: AnalysisBadge;
   badges: AnalysisBadge[];
-  analysisNote: string;
   yokPdfUrl?: string;
 }
 

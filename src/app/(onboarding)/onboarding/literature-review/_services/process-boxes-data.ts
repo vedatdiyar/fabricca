@@ -89,7 +89,7 @@ export async function loadOverlapTheses(allBoxRows: BoxRowData[]): Promise<{
   const articles: JuryArticle[] = overlapTable.map((thesis) => {
     return {
       title: thesis.title,
-      comparisonNote: thesis.analysisNote,
+      comparisonNote: null,
       badge: thesis.primaryBadge,
       url: thesis.yokPdfUrl ?? "",
       doi: null as string | null,

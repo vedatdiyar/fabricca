@@ -19,7 +19,6 @@ export interface DecisionResult {
   bucket: ThesisBucket;
   primaryBadge: AnalysisBadge;
   badges: AnalysisBadge[];
-  analysisNote: string;
   relevanceScore: number;
 }
 
@@ -36,7 +35,6 @@ export interface CalculatedComparisonItem {
   bucket: ThesisBucket;
   primaryBadge: AnalysisBadge;
   badges: AnalysisBadge[];
-  analysisNote: string;
   relevanceScore: number;
 }
 
@@ -53,20 +51,17 @@ export interface CalculatedRelationshipsResult {
  * Applies the 2-stage deterministic decision engine to a single LLM-scored item.
  *
  * Stage 1: All 7 dimensions === 100 → DUPLICATE_THESIS_RISK (RISK bucket).
- *   Gatekeeper: RF=0 or MA=0 → IRRELEVANT_DATA (IRRELEVANT bucket).
+ *   Gatekeeper: RF=0 AND MA=0 → IRRELEVANT_DATA (IRRELEVANT bucket).
  *
  * Stage 2: 9 badges checked in strict priority order (#1 → #9).
- *   Year comparison is used for HISTORICAL_BASELINE (#6) and
- *   FUTURE_PROSPECTIVE_CONTEXT (#7). A safe Number() conversion is applied.
- *   If years are equal or unparseable, #6 and #7 are skipped.
+ *   #6 HISTORICAL_BASELINE_DATA uses temporalScope.label === "PAST".
+ *   #7 FUTURE_PROSPECTIVE_CONTEXT uses temporalScope.label === "FUTURE".
  *
  * @param item - The raw LLM classification output
- * @param options - Optional user year and candidate year for temporal badges
  * @returns DecisionResult with bucket, primary badge, badge set, and relevance score
  */
 export function applyDecisionEngine(
   item: LLMScoredItem,
-  options?: { userYear?: number; candidateYear?: number },
 ): DecisionResult {
   const {
     researchFocus,
@@ -77,7 +72,6 @@ export function applyDecisionEngine(
     methodology,
     mainClaim,
     tez_id,
-    analysisNote,
   } = item;
   const thesisId = Number(tez_id);
 
@@ -105,21 +99,17 @@ export function applyDecisionEngine(
       bucket: "RISK",
       primaryBadge: "DUPLICATE_THESIS_RISK",
       badges: ["DUPLICATE_THESIS_RISK"],
-      analysisNote,
       relevanceScore,
     };
   }
 
   // ── Gatekeeper (Gürültü Kontrolü) ─────────────────────────────────────────
-  if (researchFocus === 0 || mainActors === 0) {
+  if (researchFocus === 0 && mainActors === 0) {
     return {
       thesisId,
       bucket: "IRRELEVANT",
       primaryBadge: "IRRELEVANT_DATA",
       badges: ["IRRELEVANT_DATA"],
-      analysisNote:
-        analysisNote ||
-        "Bu tez çalışmanızla doğrudan bir ilgi veya katkı ilişkisi taşımamaktadır.",
       relevanceScore,
     };
   }
@@ -130,7 +120,7 @@ export function applyDecisionEngine(
     researchFocus === 50 &&
     mainActors === 50 &&
     temporalScope.score === 100 &&
-    spatialScope === 100 &&
+    spatialScope >= 50 &&
     (methodology >= 50 || theoreticalFramework >= 50)
   ) {
     return {
@@ -138,7 +128,6 @@ export function applyDecisionEngine(
       bucket: "CONTRIBUTION",
       primaryBadge: "EMPIRICAL_FOUNDATION_SOURCE",
       badges: ["EMPIRICAL_FOUNDATION_SOURCE"],
-      analysisNote,
       relevanceScore,
     };
   }
@@ -150,7 +139,6 @@ export function applyDecisionEngine(
       bucket: "CONTRIBUTION",
       primaryBadge: "DIALECTICAL_DISCUSSION_SUPPORT",
       badges: ["DIALECTICAL_DISCUSSION_SUPPORT"],
-      analysisNote,
       relevanceScore,
     };
   }
@@ -159,14 +147,13 @@ export function applyDecisionEngine(
   if (
     researchFocus === 100 &&
     temporalScope.score === 100 &&
-    spatialScope === 100
+    spatialScope >= 50
   ) {
     return {
       thesisId,
       bucket: "CONTRIBUTION",
       primaryBadge: "THEMATIC_SYNTHESIS_OPPORTUNITY",
       badges: ["THEMATIC_SYNTHESIS_OPPORTUNITY"],
-      analysisNote,
       relevanceScore,
     };
   }
@@ -174,14 +161,13 @@ export function applyDecisionEngine(
   // #4: CROSS_CONTEXTUAL_VALIDATION
   if (
     researchFocus === 100 &&
-    (temporalScope.score === 0 || spatialScope === 0)
+    spatialScope === 0
   ) {
     return {
       thesisId,
       bucket: "CONTRIBUTION",
       primaryBadge: "CROSS_CONTEXTUAL_VALIDATION",
       badges: ["CROSS_CONTEXTUAL_VALIDATION"],
-      analysisNote,
       relevanceScore,
     };
   }
@@ -196,36 +182,22 @@ export function applyDecisionEngine(
       bucket: "CONTRIBUTION",
       primaryBadge: "METHODOLOGICAL_AND_THEORETICAL_PEER",
       badges: ["METHODOLOGICAL_AND_THEORETICAL_PEER"],
-      analysisNote,
       relevanceScore,
     };
   }
-
-  // ── Year-safe guard for #6 and #7 ─────────────────────────────────────────
-  const cYear = options?.candidateYear;
-  const uYear = options?.userYear ?? new Date().getFullYear();
-  const canCompare =
-    cYear !== undefined &&
-    uYear !== undefined &&
-    !isNaN(Number(cYear)) &&
-    !isNaN(Number(uYear)) &&
-    Number(cYear) > 0 &&
-    Number(uYear) > 0;
 
   // #6: HISTORICAL_BASELINE_DATA
   if (
     researchFocus === 50 &&
     temporalScope.score === 0 &&
     (mainActors === 50 || mainActors === 100) &&
-    canCompare &&
-    Number(cYear) < Number(uYear)
+    temporalScope.label === "PAST"
   ) {
     return {
       thesisId,
       bucket: "CONTRIBUTION",
       primaryBadge: "HISTORICAL_BASELINE_DATA",
       badges: ["HISTORICAL_BASELINE_DATA"],
-      analysisNote,
       relevanceScore,
     };
   }
@@ -235,15 +207,13 @@ export function applyDecisionEngine(
     researchFocus === 50 &&
     temporalScope.score === 0 &&
     (mainActors === 50 || mainActors === 100) &&
-    canCompare &&
-    Number(cYear) > Number(uYear)
+    temporalScope.label === "FUTURE"
   ) {
     return {
       thesisId,
       bucket: "CONTRIBUTION",
       primaryBadge: "FUTURE_PROSPECTIVE_CONTEXT",
       badges: ["FUTURE_PROSPECTIVE_CONTEXT"],
-      analysisNote,
       relevanceScore,
     };
   }
@@ -260,7 +230,6 @@ export function applyDecisionEngine(
       bucket: "CONTRIBUTION",
       primaryBadge: "MACRO_STRUCTURAL_CONTEXT",
       badges: ["MACRO_STRUCTURAL_CONTEXT"],
-      analysisNote,
       relevanceScore,
     };
   }
@@ -271,7 +240,6 @@ export function applyDecisionEngine(
     bucket: "CONTRIBUTION",
     primaryBadge: "PARALLEL_LITERATURE_REFERENCE",
     badges: ["PARALLEL_LITERATURE_REFERENCE"],
-    analysisNote,
     relevanceScore,
   };
 }
@@ -287,14 +255,12 @@ export function applyDecisionEngine(
  * @param llmResults - The raw LLM classification results
  * @param validDetails - Candidate thesis details from Tezara
  * @param logger - Optional logger instance
- * @param userYear - Optional user thesis year (defaults to current year)
  * @returns Global relationship badge and comparison table
  */
 export function calculateRelationships(
   llmResults: LLMScoredItem[],
   validDetails: TezaraThesisDetails[],
   logger?: Logger,
-  userYear?: number,
 ): CalculatedRelationshipsResult {
   if (validDetails.length === 0 || llmResults.length === 0) {
     return {
@@ -321,10 +287,7 @@ export function calculateRelationships(
       continue;
     }
 
-    const decision = applyDecisionEngine(llmItem, {
-      userYear,
-      candidateYear: detail.year,
-    });
+    const decision = applyDecisionEngine(llmItem);
 
     items.push({
       id: detail.id,
@@ -339,7 +302,6 @@ export function calculateRelationships(
       bucket: decision.bucket,
       primaryBadge: decision.primaryBadge,
       badges: decision.badges,
-      analysisNote: decision.analysisNote,
       relevanceScore: decision.relevanceScore,
     });
   }

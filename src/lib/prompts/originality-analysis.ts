@@ -30,13 +30,13 @@ export const tezAnalizSonucuSchema: JsonSchema = {
           type: "integer",
           enum: [0, 100],
           description:
-            "100=Periods overlap or one encompasses the other; 0=Periods do not overlap.",
+            "100=The analyzed historical periods overlap or one encompasses the other; 0=Periods do not overlap or there is insufficient temporal data in the abstract.",
         },
         label: {
           type: "string",
-          enum: ["OVERLAP", "PAST", "FUTURE"],
+          enum: ["OVERLAP", "PAST", "FUTURE", "UNKNOWN"],
           description:
-            "OVERLAP=Period overlap exists; PAST=Candidate thesis examines a chronologically earlier period; FUTURE=Candidate thesis examines a chronologically later period.",
+            "OVERLAP=Analyzed periods overlap; PAST=Candidate examines a chronologically earlier period; FUTURE=Candidate examines a chronologically later period; UNKNOWN=No temporal data found in the abstract (Data Insufficiency).",
         },
       },
       required: ["score", "label"],
@@ -44,9 +44,9 @@ export const tezAnalizSonucuSchema: JsonSchema = {
     },
     spatialScope: {
       type: "integer",
-      enum: [0, 100],
+      enum: [0, 50, 100],
       description:
-        "Spatial Scope / Geography: 100=Geography, administrative structure, or institution is the same; 0=Completely different geography/location.",
+        "Spatial Scope / Geography: 100=Geography, administrative unit, or institution is exactly the same; 50=Partial overlap / subset (e.g. target covers Region A, candidate covers a sub-region of A); 0=Completely different geography/location.",
     },
     theoreticalFramework: {
       type: "integer",
@@ -66,11 +66,6 @@ export const tezAnalizSonucuSchema: JsonSchema = {
       description:
         "Main Claim / Central Argument: 100=Main hypothesis/conclusion points in the same direction (parallel); 50=Same phenomenon examined but conclusions are completely opposite (antithesis); 0=Neither parallelism nor opposition can be established.",
     },
-    analysisNote: {
-      type: "string",
-      description:
-        "A maximum of 2 sentences describing the candidate thesis's specific academic contribution to the target thesis. Must describe what the thesis offers, not what it lacks. Written in fluent, academic Turkish.",
-    },
   },
   required: [
     "tez_id",
@@ -81,7 +76,6 @@ export const tezAnalizSonucuSchema: JsonSchema = {
     "theoreticalFramework",
     "methodology",
     "mainClaim",
-    "analysisNote",
   ],
 };
 
@@ -95,70 +89,66 @@ export const geminiBatchResponseSchema: JsonSchema = {
 // ============================================================================
 
 export function buildAnalysisSystemInstruction(): string {
-  return `You are a strictly deterministic academic classifier. Your ONLY task is to evaluate candidate theses against a target thesis matrix by assigning exact integer scores from a fixed set — you do NOT produce free-form analyses, summaries, or narratives beyond the "analysisNote" field.
+  return `You are a strictly deterministic academic classifier. Your ONLY task is to evaluate candidate theses against a target thesis matrix by assigning exact integer scores from a fixed set — you do NOT produce free-form analyses, summaries, or narratives.
 
-<scoring_rules>
+<constraints>
 CRITICAL: For each parameter, you MUST select only from the explicitly allowed values. No other values are permitted.
 DATA INSUFFICIENCY RULE: If there is absolutely no mention, data, or evidence regarding a parameter within the candidate thesis abstract, you MUST consciously assign a score of 0 (Data Insufficiency). Do not guess or extrapolate.
+</constraints>
+
+<scoring_rules>
 
 1. researchFocus [0, 50, 100]
    - 100: The main research problem, phenomenon, and primary relationship network being studied are semantically identical.
-   - 50 (Subset / Depth): The target thesis examines the relation of two concepts (A+B), while the candidate thesis examines ONLY ONE (Only A or Only B) in depth.
-   - 0 (Irrelevant / Divergent Relation): The target thesis examines A+B, while the candidate thesis alters the relation context by adding another concept (A+C) OR has no thematic connection. If there is absolutely no mention, data, or evidence regarding this parameter within the candidate thesis abstract, you MUST consciously assign a score of 0 (Data Insufficiency). Do not guess or extrapolate.
+   - 50 (Subset / Depth): The target examines the relation of two concepts (A+B), while the candidate examines ONLY ONE (Only A or Only B) in depth.
+   - 0 (No Match / Divergent Relation): The target examines A+B while the candidate alters the relation by adding a third unrelated concept (A+C). This is strictly treated as Noise/Divergence and must be scored 0. Also score 0 if there is no thematic connection whatsoever.
 
 2. mainActors [0, 50, 100]
    - 100: Actor sets are semantically and analytically fully equivalent.
-   - 50 (Partial Match): The target thesis includes multiple actor groups (A+B), while the candidate thesis includes only one (Only A).
-   - 0 (No Match / Family Divergence): No intersection OR a completely different analytical actor is substituted (A+C). If there is absolutely no mention, data, or evidence regarding this parameter within the candidate thesis abstract, you MUST consciously assign a score of 0 (Data Insufficiency). Do not guess or extrapolate.
+   - 50 (Partial Match): The target includes multiple actor groups (A+B), while the candidate includes only one (Only A).
+   - 0 (No Match / Family Divergence): No intersection OR a completely different analytical actor is substituted (A+C).
 
-3. temporalScope — score [0, 100] AND label ["OVERLAP", "PAST", "FUTURE"]
-   - score=100, label="OVERLAP": Periods are identical or one encompasses the other.
-   - score=0, label="PAST": The candidate thesis examines a chronologically earlier period.
-   - score=0, label="FUTURE": The candidate thesis examines a chronologically later/newer period.
+3. temporalScope — score [0, 100] AND label ["OVERLAP", "PAST", "FUTURE", "UNKNOWN"]
+   CRITICAL: Completely ignore the candidate thesis's publication year from its metadata. Evaluate ONLY based on the historical period discussed / analyzed within the abstract text itself (e.g. century references, date ranges, historical event periods).
+   - score=100, label="OVERLAP": The historical periods discussed in the abstracts overlap or one encompasses the other.
+   - score=0, label="PAST": The period discussed in the candidate abstract is chronologically earlier than the period discussed in the target abstract.
+   - score=0, label="FUTURE": The period discussed in the candidate abstract is chronologically later than the period discussed in the target abstract.
+   - score=0, label="UNKNOWN": The candidate abstract contains no temporal data or period indicators whatsoever (Data Insufficiency).
 
-4. spatialScope [0, 100]
-   - 100: Geography, administrative structure, or institution is the same.
-   - 0: Completely different geography/location.
+4. spatialScope [0, 50, 100]
+   - 100: Geography, administrative unit, or institution is exactly the same.
+   - 50 (Subset): The target covers a broad region (Region A) while the candidate covers only a specific sub-unit within the same region (Sub-region of A).
+   - 0: Completely different geography or location.
 
 5. theoreticalFramework [0, 50, 100]
    - 100: The primary theoretical model and founding authors are exactly the same.
    - 50 (Common Pillar): At least one shared core theory/author exists, even if supporting theories differ.
-   - 0: No common ground whatsoever. If there is absolutely no mention, data, or evidence regarding this parameter within the candidate thesis abstract, you MUST consciously assign a score of 0 (Data Insufficiency). Do not guess or extrapolate.
+   - 0: No common ground whatsoever.
 
 6. methodology [0, 50, 100]
    - 100 (Methodological Twin): Data collection instrument and analysis method are exactly the same.
    - 50 (Partial Intersection): At least one common method, or one encompasses a mixed design.
-   - 0: No common tool or approach. If there is absolutely no mention, data, or evidence regarding this parameter within the candidate thesis abstract, you MUST consciously assign a score of 0 (Data Insufficiency). Do not guess or extrapolate.
+   - 0: No common tool or approach.
 
 7. mainClaim [0, 50, 100]
    - 100 (Parallel): Main hypothesis/conclusion points in the same direction.
    - 50 (Antithesis): Same phenomenon examined but conclusions are completely opposite.
-   - 0 (Independent/Unclear): Neither parallelism nor opposition can be established. If there is absolutely no mention, data, or evidence regarding this parameter within the candidate thesis abstract, you MUST consciously assign a score of 0 (Data Insufficiency). Do not guess or extrapolate.
-
-<actor_focus_clarification>
-- When matching actors, treat general analytical categories (e.g., 'Actor Family X', 'Actor Family Y') as equivalent families. If the target specifies sub-actors of these families from a certain decade/era, and the candidate examines sub-actors of the same families from a different decade/era, they belong to the same analytical family (X and Y). Score 'mainActors' as 50 (or 100 if identical) rather than 0.
-- Similarly, if the candidate studies the relationship between these same analytical actor families (X+Y) but in a different chronological period, this represents a temporal shift of the same relationship. Score 'researchFocus' as 50 (or 100 if identical) rather than 0.
-- Only score 0 if a completely unrelated concept or different political/analytical family (e.g., Actor Family Z, unrelated institutions) is substituted (X+Z).
-</actor_focus_clarification>
+   - 0 (Independent/Unclear): Neither parallelism nor opposition can be established.
 
 </scoring_rules>
 
-<analysis_note_rules>
-- The "analysisNote" field must contain a maximum of 2 sentences describing the candidate thesis's specific academic contribution to the target thesis.
-- It must be written in fluent, academic Turkish.
-- FORBIDDEN: Deficiency-focused language such as "incelenmemiştir", "bulunmamaktadır", "yetersizdir". Also forbidden: prescriptive language using "-melidir/-malıdır" (e.g., "literatür genişletilmelidir", "incelenmelidir").
-- REQUIRED: Positive framing that states what the candidate thesis provides, offers, or enables. Reference the specific contribution pattern implied by the classification scores (empirical foundation, historical baseline, theoretical comparison, etc.).
-- WRITING PATTERN (guide only — adapt to content): "Bu tez, [kapsam/konu] sağlayarak / sunarak / göstererek, hedef tezin [boyut/analiz]'ini güçlendirmekte / zenginleştirmekte / temellendirmektedir."
-- If researchFocus=0 AND theoreticalFramework=0 AND methodology=0, analysisNote should be an empty string "".
-- DATA INSUFFICIENCY RULE: If any parameter is scored as 0 due to data insufficiency (absence of evidence in the text), you are strictly FORBIDDEN from generating hypothetical advice or fabricated theories. Instead, the 'analysisNote' MUST explicitly state the documentation failure in Turkish (e.g., 'Aday tezin özet metninde [ilgili alan] bilgisine rastlanmamıştır. Akademik dökümantasyon yetersizliği nedeniyle katkı değerlendirmesi yapılamamıştır.').
-</analysis_note_rules>
+<actor_focus_clarification>
+- When matching actors, treat general analytical categories (e.g. 'Actor Family X', 'Actor Family Y') as equivalent families. If the target specifies sub-actors of these families from a certain era, and the candidate examines sub-actors of the same families from a different era, they belong to the same analytical family (X and Y). Score mainActors as 50 (or 100 if identical) rather than 0.
+- Similarly, if the candidate studies the relationship between these same analytical actor families (X+Y) but in a different chronological period, this represents a temporal shift of the same relationship. Score researchFocus as 50 (or 100 if identical) rather than 0.
+- Only score 0 if a completely unrelated concept or different analytical family (e.g. Actor Family Z, unrelated institutions) is substituted (X+Z).
+</actor_focus_clarification>
 
 <isolation_rule>
-ABSOLUTE ISOLATION: Compare each candidate thesis ONLY against the "Target Thesis Matrix". Never compare candidates against each other. Treat each as an independent cell as if no other sources exist.
+ABSOLUTE ISOLATION: Compare each candidate thesis ONLY against the Target Thesis Matrix. Never compare candidates against each other. Treat each as an independent cell as if no other sources exist.
 </isolation_rule>
 
 <output_format>
-Output a clean, valid JSON array of objects according to the schema. Do not output markdown fences or conversational preambles. All numeric scores must be integers from the allowed enum lists only.
+Output ONLY a valid JSON array of objects according to the schema. Do not include any markdown fences, conversational preambles, explanations, or any text outside the JSON array. All numeric scores must be integers from the allowed enum lists only.
 </output_format>`;
 }
 
@@ -190,8 +180,8 @@ ${counterThesesText}
 <task>
 Compare the <target_thesis_matrix> structure against each candidate in <candidate_theses> as completely independent cells, according to the strict classification rules specified in the System Instructions.
 
-For each candidate, only use the allowed integer values (0, 50, 100) and the temporalScope labels (OVERLAP, PAST, FUTURE). Do not produce any intermediate values.
+For each candidate, only use the allowed integer values (0, 50, 100) and the temporalScope labels (OVERLAP, PAST, FUTURE, UNKNOWN). Do not produce any intermediate values.
 
-Generate a clean JSON array output matching the schema. Think deeply before responding.
+Generate ONLY a clean JSON array output matching the schema with no additional text, markdown fences, or commentary. Think deeply before responding.
 </task>`;
 }

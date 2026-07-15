@@ -17,7 +17,7 @@ import {
 
 export interface LLMTemporalScope {
   score: 0 | 100;
-  label: "OVERLAP" | "PAST" | "FUTURE";
+  label: "OVERLAP" | "PAST" | "FUTURE" | "UNKNOWN";
 }
 
 export interface LLMScoredItem {
@@ -25,17 +25,16 @@ export interface LLMScoredItem {
   researchFocus: 0 | 50 | 100;
   mainActors: 0 | 50 | 100;
   temporalScope: LLMTemporalScope;
-  spatialScope: 0 | 100;
+  spatialScope: 0 | 50 | 100;
   theoreticalFramework: 0 | 50 | 100;
   methodology: 0 | 50 | 100;
   mainClaim: 0 | 50 | 100;
-  analysisNote: string;
 }
 
 // Zod şeması — runtime doğrulama
 const llmTemporalScopeZodSchema = z.object({
   score: z.union([z.literal(0), z.literal(100)]),
-  label: z.enum(["OVERLAP", "PAST", "FUTURE"]),
+  label: z.enum(["OVERLAP", "PAST", "FUTURE", "UNKNOWN"]),
 });
 
 const llmScoredItemZodSchema = z.object({
@@ -43,11 +42,10 @@ const llmScoredItemZodSchema = z.object({
   researchFocus: z.union([z.literal(0), z.literal(50), z.literal(100)]),
   mainActors: z.union([z.literal(0), z.literal(50), z.literal(100)]),
   temporalScope: llmTemporalScopeZodSchema,
-  spatialScope: z.union([z.literal(0), z.literal(100)]),
+  spatialScope: z.union([z.literal(0), z.literal(50), z.literal(100)]),
   theoreticalFramework: z.union([z.literal(0), z.literal(50), z.literal(100)]),
   methodology: z.union([z.literal(0), z.literal(50), z.literal(100)]),
   mainClaim: z.union([z.literal(0), z.literal(50), z.literal(100)]),
-  analysisNote: z.string(),
 });
 
 export const llmBatchResponseZodSchema = z.array(llmScoredItemZodSchema);

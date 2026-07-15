@@ -76,7 +76,6 @@ function groupRowsToReport(
         // DB stores diagnosis as primaryBadge; build a single-element badge array
         primaryBadge: row.diagnosis as AnalysisBadge,
         badges: [row.diagnosis as AnalysisBadge],
-        analysisNote: row.academicTactic,
         relevanceScore: row.relevanceScore ?? 0,
       })),
       eliminatedTheses: eliminatedRows.map((row) => ({
@@ -90,7 +89,6 @@ function groupRowsToReport(
         yokPdfUrl: row.yokPdfUrl ?? undefined,
         primaryBadge: row.diagnosis as AnalysisBadge,
         badges: [row.diagnosis as AnalysisBadge],
-        analysisNote: row.academicTactic,
         eliminationStage: "ANALYSIS" as const,
       })),
     },
@@ -252,24 +250,17 @@ export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
     };
 
     if (b.boxType === "RELATED_THESES" && overlapTable.length > 0) {
-      box.relatedTheses = overlapTable.map((t) => {
-        const isTwinCandidate = t.primaryBadge === "DUPLICATE_THESIS_RISK";
-        const explanation = t.analysisNote || "";
-        return {
-          title: t.title,
-          author: t.author,
-          university: t.university,
-          year: t.year,
-          thesisType: t.thesisType,
-          department: t.department,
-          primaryBadge: t.primaryBadge,
-          badges: t.badges,
-          analysisNote: isTwinCandidate
-            ? `[İKİZ TEZ ADAYI] ${explanation}`
-            : explanation,
-          yokPdfUrl: t.yokPdfUrl,
-        };
-      });
+      box.relatedTheses = overlapTable.map((t) => ({
+        title: t.title,
+        author: t.author,
+        university: t.university,
+        year: t.year,
+        thesisType: t.thesisType,
+        department: t.department,
+        primaryBadge: t.primaryBadge,
+        badges: t.badges,
+        yokPdfUrl: t.yokPdfUrl,
+      }));
     }
 
     return box;

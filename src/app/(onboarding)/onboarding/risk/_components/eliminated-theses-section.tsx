@@ -78,16 +78,6 @@ export function EliminatedThesesSection({
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-border/40 space-y-1">
-                  <h4 className="text-[9px] font-sans font-medium uppercase tracking-wider text-muted-foreground/60">
-                    Değerlendirme Notu
-                  </h4>
-                  <p className="text-xs font-sans leading-relaxed text-foreground/60 antialiased font-normal">
-                    {item.analysisNote ||
-                      "Bu tez konu odağı ve kuramsal/metodolojik çerçeve açısından çalışmanızla doğrudan bir ilişki veya katkı barındırmamaktadır."}
-                  </p>
-                </div>
-
                 {item.yokPdfUrl && (
                   <div className="flex justify-end pt-0.5">
                     <a

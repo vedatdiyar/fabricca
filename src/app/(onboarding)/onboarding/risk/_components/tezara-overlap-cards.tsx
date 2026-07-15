@@ -108,16 +108,6 @@ export function TezaraOverlapCards({ overlapTable }: TezaraOverlapCardsProps) {
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-border/40 space-y-2">
-                <h4 className="text-xs font-sans font-medium uppercase tracking-wider text-muted-foreground">
-                  Hedef Teze Katkısı
-                </h4>
-                <p className="text-sm font-sans leading-relaxed text-foreground antialiased font-normal">
-                  {item.analysisNote ||
-                    "Bu tezin hedef teze doğrudan bir katkısı tespit edilememiştir."}
-                </p>
-              </div>
-
               {item.yokPdfUrl && (
                 <div className="flex justify-end pt-1">
                   <a
