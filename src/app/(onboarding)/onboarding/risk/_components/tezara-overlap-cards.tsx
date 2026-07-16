@@ -120,37 +120,37 @@ export function TezaraOverlapCards({ overlapTable }: TezaraOverlapCardsProps) {
                   <div className="grid grid-cols-7 gap-1">
                     {[
                       {
-                        label: "OF",
+                        label: "Odak",
                         value: item.dimensionScores.researchFocus,
                         title: "Araştırma Odağı",
                       },
                       {
-                        label: "AK",
+                        label: "Aktörler",
                         value: item.dimensionScores.mainActors,
                         title: "Ana Aktörler",
                       },
                       {
-                        label: "ZK",
+                        label: "Zaman",
                         value: item.dimensionScores.temporalScope.score,
                         title: `Zamansal Kapsam (${item.dimensionScores.temporalScope.label})`,
                       },
                       {
-                        label: "MK",
+                        label: "Mekan",
                         value: item.dimensionScores.spatialScope,
                         title: "Mekânsal Kapsam",
                       },
                       {
-                        label: "KU",
+                        label: "Kuram",
                         value: item.dimensionScores.theoreticalFramework,
                         title: "Kuramsal Çerçeve",
                       },
                       {
-                        label: "YT",
+                        label: "Yöntem",
                         value: item.dimensionScores.methodology,
                         title: "Yöntem",
                       },
                       {
-                        label: "İS",
+                        label: "İddia",
                         value: item.dimensionScores.mainClaim,
                         title: "İddia / Sav",
                       },

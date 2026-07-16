@@ -99,27 +99,27 @@ export function EliminatedThesesSection({
                     <div className="grid grid-cols-7 gap-0.5">
                       {[
                         {
-                          label: "OF",
+                           label: "Odak",
                           value: item.dimensionScores.researchFocus,
                         },
-                        { label: "AK", value: item.dimensionScores.mainActors },
+                         { label: "Aktörler", value: item.dimensionScores.mainActors },
                         {
-                          label: "ZK",
+                           label: "Zaman",
                           value: item.dimensionScores.temporalScope.score,
                         },
                         {
-                          label: "MK",
+                           label: "Mekan",
                           value: item.dimensionScores.spatialScope,
                         },
                         {
-                          label: "KU",
+                           label: "Kuram",
                           value: item.dimensionScores.theoreticalFramework,
                         },
                         {
-                          label: "YT",
+                           label: "Yöntem",
                           value: item.dimensionScores.methodology,
                         },
-                        { label: "İS", value: item.dimensionScores.mainClaim },
+                         { label: "İddia", value: item.dimensionScores.mainClaim },
                       ].map((dim) => (
                         <div
                           key={dim.label}
