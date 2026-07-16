@@ -103,11 +103,20 @@ export const originalityReports = pgTable(
     diagnosis: varchar({ length: 100 }).notNull(),
     /** Composite relevance score (sum of all 7 LLM dimensions, range 0-700) */
     relevanceScore: integer("relevance_score").notNull().default(0),
+    /** Individual LLM dimension scores */
+    researchFocusScore: integer("research_focus_score"),
+    mainActorsScore: integer("main_actors_score"),
+    temporalScopeScore: integer("temporal_scope_score"),
+    temporalScopeLabel: varchar("temporal_scope_label", { length: 20 }),
+    spatialScopeScore: integer("spatial_scope_score"),
+    theoreticalFrameworkScore: integer("theoretical_framework_score"),
+    methodologyScore: integer("methodology_score"),
+    mainClaimScore: integer("main_claim_score"),
     /** Academic tactic (action plan) */
     academicTactic: text("academic_tactic").notNull(),
     /** Flag for eliminated theses — when true, hidden from the main overlap table */
     isEliminated: boolean().default(false).notNull(),
-    /** Elimination stage: SIFTING (before Cohere rerank) */
+    /** Elimination stage: SIFTING (before Cohere rerank) or ANALYSIS (after jury) */
     eliminationStage: varchar("elimination_stage", { length: 20 }),
     createdAt: timestamp().defaultNow().notNull(),
     updatedAt: timestamp().defaultNow().notNull(),

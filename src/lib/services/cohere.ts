@@ -23,18 +23,15 @@ export interface CohereRerankResponse {
 /**
  * Formats the thesis matrix into a YAML-structured query string for Cohere Rerank.
  *
- * The structured key-value format helps the cross-attention mechanism
- * distinguish between different semantic dimensions of the research.
+ * Only the three core semantic dimensions (actors, focus, claim) are used;
+ * temporal, spatial, theoretical, and methodological fields are excluded
+ * as they introduce noise rather than relevant signal.
  */
 export function formatRerankQuery(matrix: ThesisMatrix): string {
   return [
     "Araştırma Matrisi:",
     `  Ana Aktörler: ${matrix.mainActors}`,
     `  Araştırma Odağı: ${matrix.researchFocus}`,
-    `  Zaman Aralığı: ${matrix.temporalScope}`,
-    `  Mekan: ${matrix.spatialScope}`,
-    `  Kuramsal Çerçeve: ${matrix.theoreticalFramework}`,
-    `  Yöntem: ${matrix.methodology}`,
     `  Ana İddia: ${matrix.mainClaim}`,
   ].join("\n");
 }

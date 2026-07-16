@@ -4,7 +4,7 @@ import type { TezaraThesisSummary } from "../types";
 
 /**
  * Parses a Tezara thesis detail page HTML and extracts abstract and YÖK PDF URL.
- * Uses a regex pattern for the abstract section and a CSS selector for the PDF link.
+ * Uses ID-based selectors for the abstract (#abstract) and CSS selector for the PDF link.
  *
  * @param html - Raw HTML of the detail page.
  * @param id - The thesis ID (passthrough, unused in extraction but documents provenance).
@@ -18,42 +18,25 @@ export function parseTezaraDetails(
 ): { abstract: string; yokPdfUrl?: string } | null {
   try {
     const $ = cheerio.load(html);
-    const mainText = $("main").text();
 
-    if (!mainText) return null;
+    // Abstract — target the <p id="abstract"> element directly
+    const abstractEl = $("#abstract");
+    let abstract = abstractEl.text().trim();
 
-    // Abstract — fallback zinciri ile akıllı ayıklama
-    let abstract = "";
-    const tryExtract = (pattern: RegExp): string =>
-      mainText.match(pattern)?.[1]?.trim() ?? "";
-
-    // 1. Adım: Mevcut regex ile dene
-    abstract = tryExtract(
-      /Özet\s*([\s\S]*?)(?:Özet \(Çeviri\)|Benzer Tezler|$)/,
-    );
-
-    // 2. Adım: Sonuç geçersizse ("Özet yok.", <10 karakter, boş) Fallback 1
-    const isJunk =
-      !abstract || abstract.length < 10 || /^Özet yok\.?$/i.test(abstract);
-    if (isJunk) {
-      abstract = tryExtract(/Özet \(Çeviri\)\s*([\s\S]*?)(?:Benzer Tezler|$)/);
+    // Fallback: check for Özet (Çeviri) if original is empty or too short
+    if (!abstract || abstract.length < 10 || /^Özet yok\.?$/i.test(abstract)) {
+      const translatedEl = $("#abstract_translated");
+      abstract = translatedEl.text().trim();
     }
 
-    // 3. Adım: Hâlâ geçersizse Fallback 2 — ham metni temizle
     if (!abstract || abstract.length < 10) {
-      abstract = tryExtract(/Özet\s*([\s\S]*?)(?:Benzer Tezler|$)/)
-        .replace(/^Özet yok\.?\s*/i, "")
-        .trim();
-    }
-
-    if (!abstract) {
       logger?.warn("tezara_parse_selector_miss", {
         service: "tezara",
         data: { field: "abstract", thesisId: id },
       });
     }
 
-    // YÖK PDF URL — CSS selector korunuyor
+    // YÖK PDF URL
     const yokPdfLink = $(
       'a[href*="tez.yok.gov.tr/UlusalTezMerkezi/TezGoster"]',
     ).first();

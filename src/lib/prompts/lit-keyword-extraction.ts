@@ -11,13 +11,13 @@ export const litKeywordExtractionSchema: JsonSchema = {
       type: "array",
       items: { type: "string" },
       description:
-        "YÖKTEZ veritabanında Türkçe dizinlenmiş tezleri bulmak için en uygun 3 ila 4 adet Türkçe akademik arama sorgusu.",
+        "YÖKTEZ veritabanında Türkçe dizinlenmiş tezleri bulmak için en uygun 4 adet Türkçe akademik arama sorgusu.",
     },
     englishQueries: {
       type: "array",
       items: { type: "string" },
       description:
-        "YÖKTEZ veritabanında İngilizce dizinlenmiş tezleri bulmak için en uygun 3 ila 4 adet İngilizce akademik arama sorgusu.",
+        "YÖKTEZ veritabanında İngilizce dizinlenmiş tezleri bulmak için en uygun 4 adet İngilizce akademik arama sorgusu.",
     },
   },
   required: ["turkishQueries", "englishQueries"],
@@ -29,38 +29,40 @@ export const litKeywordExtractionSchema: JsonSchema = {
 export function buildLitKeywordExtractionSystemInstruction(): string {
   return `<constraints>
 - Kesinlikle objektif, mesafeli, net ve tamamen veri odaklı bir akademik Türkçe kullanmalısınız.
-- Bilgi kesim tarihiniz Ocak 2025'tir.
-- Şu anki yıl 2026'dır. Zaman duyarlı kurgularda veya yayın yılı değerlendirmelerinde bu yılı temel almalısınız.
-- KATI SORGULAR KİLİDİ: turkishQueries listesi en az 3, en fazla 4 eleman içermelidir. englishQueries listesi en az 3, en fazla 4 eleman içermelidir.
-- SORGULARIN YAPISI: Her bir sorgu, 2 ila 4 kelimeden oluşan doğal akademik tamlamalar veya kavram grupları olmalıdır. Özel karakter veya tırnak işareti kullanmayınız.
-- TÜRKÇE KARAKTER KURALI: Türkçe sorgular üretilirken Türkçe karakterleri (ç, ğ, ı, ö, ş, ü, â) KESİNLİKLE aynen koruyunuz. İngilizce karakterlere dönüştürmeyiniz (Örn: "kürt", "söylem", "kopuş", "dönüşüm" olarak yazılmalıdır; "kurt", "soylem" vb. yazılması kesinlikle yasaktır).
-- TAMLAMA SERBESTLİĞİ: Türkçe sorgularda kelimeleri en yalın kök hallerine (lemma) indirgemek için zorlamayınız. Doğal akademik tamlamaları (Örn: "kürt siyasal hareketi", "söylem dönüşümü", "sosyalist hareket", "siyasal ittifak") aynen kullanınız.
-- AKADEMİK VARYASYON KURALI: Arama başarısını artırmak için kavramların eşanlamlılarını ve dilbilgisel varyasyonlarını da kullanınız (Örn: matriste "siyasi" geçiyorsa "siyasal" varyasyonunu da deneyin; "söylem dönüşümü" yerine "söyleminin dönüşümü" veya "söylemsel dönüşüm" kalıplarını üretin).
-- KONU VE AKTÖR ODAKLILIK KURALI: Sadece kuram veya yöntem içeren sorgular kesinlikle üretmeyiniz (Örn: "çerçeveleme teorisi", "nitel söylem analizi" tek başına yasaktır). Kuram veya yöntem kullanılacaksa, bu kavramlar KESİNLİKLE ana aktörler veya konu odağı ile birleştirilerek çapraz sorgular oluşturulmalıdır.
-- TEK SORUMLULUK KURALI: Bu yönerge yalnızca arama sorguları üretir. Tavily sorguları, teorik analiz veya olgusal doğrulama KESİNLİKLE bu kapsamda değildir.
-- ÇIKTI FORMATI: Yanıtınız, yukarıda sağlanan litKeywordExtractionSchema ile %100 uyumlu, doğrulanmış ve parse edilebilir bir ham JSON objesi olmalıdır. Şemaya harfiyen uyunuz ve fazladan alan eklemeyiniz.
+- Bilgi kesim tarihiniz Ocak 2025'tir. Şu anki yıl 2026'dır.
+- KATI 2 KELİME LİMİTİ: turkishQueries ve englishQueries listelerindeki HER BİR SORGU kesinlikle en az 2, en fazla 2 kelimeden oluşmalıdır. 3 veya daha fazla kelime içeren sorgular (Örn: "HADEP Marksist söylem") Meilisearch motorunda sıfır sonuç döndürdüğü için KESİNLİKLE YASAKTIR.
+- KATI SAYI KISITI: turkishQueries listesi tam olarak 4 eleman içermelidir. englishQueries listesi tam olarak 4 eleman içermelidir. Toplamda 8 sorgu üretilecektir.
+- ŞEMSİYE ARAMA KURALI: Matristen yola çıkarak en az 1 adet Türkçe ve 1 adet İngilizce geniş şemsiye sorgu üretilmelidir (Örn: "Kürt siyasal", "Kurdish political"). Şemsiye sorgular jenerik kalmamalı, matristeki temel aktör/odak kavramını yansıtmalıdır.
+- ÇAPRAZ ARAMA KURALI: Aktör isimleri (HEP, DEP, HADEP, Özgürlük Dünyası vb.) tek başına kullanılmamalıdır. Her aktör kelimesi mutlaka yanına bağlamsal 1 kelime eklenerek çaprazlanmalıdır (Örn: "HADEP söylem", "DEP davası", "Kürt sol").
+- TÜRKÇE KARAKTER KURALI: Türkçe sorgularda Türkçe karakterleri (ç, ğ, ı, ö, ş, ü, â) KESİNLİKLE aynen koruyunuz.
+- AKADEMİK VARYASYON KURALI: Kavramların eşanlamlılarını ve dilbilgisel varyasyonlarını kullanınız (Örn: matriste "siyasi" geçiyorsa "siyasal" varyasyonunu da deneyin).
+- YÖNTEMSEL GÜRÜLTÜ FİLTRESİ: Tek başına "söylem analizi", "metodoloji", "çerçeveleme", "kuram" gibi jenerik akademik kavramlar sorgularda yer alamaz. Bu kelimeler ancak bir aktör veya somut bağlamla çaprazlandığında kullanılabilir.
+- TEK SORUMLULUK KURALI: Bu yönerge yalnızca arama sorguları üretir.
+- ÇIKTI FORMATI: Yanıtınız, sağlanan litKeywordExtractionSchema ile %100 uyumlu, parse edilebilir bir ham JSON objesi olmalıdır.
 </constraints>
 
 <examples>
   <example>
     <input>
 {
-  "mainActors": "Borçlandırılmış bireyler / işçi-borçlular. Araştırmanın temel öznesi, neoliberal dönemde bireysel borç ilişkisine dahil olan ve bu ilişki içinde belirli pratikler geliştiren borçlulardır.",
-  "researchFocus": "Neoliberalizmde bireysel borçlandırmanın bir siyasal iktidar ilişkisi olarak nasıl işlediği.",
-  "mainClaim": "Bireysel borçlandırma neoliberalizmde yalnızca ekonomik bir ilişki değil, siyasal bir iktidar ilişkisidir."
+  "mainActors": "Borçlandırılmış bireyler / işçi-borçlular, Neoliberal devlet politikaları",
+  "researchFocus": "Neoliberalizmde bireysel borçlandırmanın bir siyasal iktidar ilişkisi olarak işleyişi",
+  "mainClaim": "Bireysel borçlandırma neoliberalizmde yalnızca ekonomik bir ilişki değil siyasal bir iktidar ilişkisidir"
 }
     </input>
     <output>
 {
   "turkishQueries": [
-    "türkiye bireysel borçlanma siyasal",
-    "neoliberalizm borçlu özne pratik",
-    "borçlanma iktidar ilişkisi türkiye"
+    "borçlu özne",
+    "neoliberal borç",
+    "işçi borçlanma",
+    "borç iktidar"
   ],
   "englishQueries": [
-    "neoliberalism debt subject turkey",
-    "indebted worker political power",
-    "debt governmentality daily practice"
+    "debt subject",
+    "neoliberal indebted",
+    "worker debt",
+    "debt power"
   ]
 }
     </output>
@@ -68,7 +70,7 @@ export function buildLitKeywordExtractionSystemInstruction(): string {
 </examples>
 
 <task>
-Disiplinlerüstü çalışan kıdemli bir Akademik Bilgi Erişim Uzmanı rolündesiniz. Göreviniz, girdi olarak sunulan kısıtlı tez matrisini (sadece aktör, odak ve iddia) analiz ederek; YÖKTEZ (Ulusal Tez Merkezi) veritabanında en alakalı benzer çalışmaları bulmak üzere 3-4 adet Türkçe ve 3-4 adet İngilizce konu/aktör odaklı akademik arama sorgusu üretmektir.
+Disiplinlerüstü çalışan kıdemli bir Akademik Bilgi Erişim Uzmanı rolündesiniz. Göreviniz, girdi olarak sunulan kısıtlı tez matrisini (aktör, odak ve iddia) analiz ederek; YÖKTEZ (Ulusal Tez Merkezi) Meilisearch indeksinde en alakalı benzer çalışmaları bulmak üzere 4 adet Türkçe ve 4 adet İngilizce (toplam 8 adet) 2 kelimelik akademik arama sorgusu üretmektir. Her sorgu kesinlikle 2 kelime olmalı, şemsiye ve çapraz formatlarda olmalıdır.
 </task>`;
 }
 
@@ -87,10 +89,12 @@ export function buildLitKeywordPrompt(
 </context>
 
 <task>
-Sistem talimatında tanımlanan kurallara (özellikle Türkçe karakterleri koruma, akademik tamlama serbestliği, eşanlam varyasyonu ve konu/aktör odaklılık kurallarına) harfiyen bağlı kalarak, yukarıdaki <context> içindeki kısıtlı tez matrisi esasına göre en yüksek ilgililik oranını yakalayacak 3-4 adet Türkçe ve 3-4 adet İngilizce akademik arama sorgusu üretiniz.
-- Tamamen sağlanan matris verilerine bağlı kalınız (Strictly Grounded).
-- Çıktı formatının saf ham JSON (turkishQueries ve englishQueries anahtarları) olduğunu doğrulayınız.
-Dahili olarak derinlemesine bir akademik muhakeme yürüterek sadece nihai şemaya uygun ham JSON nesnesini döndürünüz.
+Sistem talimatındaki kurallara harfiyen uyarak:
+1. HER SORGU KESİNLİKLE 2 KELİMEDEN OLUŞMALIDIR. 3 kelime yasaktır.
+2. En az 1 Türkçe ve 1 İngilizce şemsiye sorgu üretiniz.
+3. Aktör adlarını tek başına kullanmayınız, mutlaka bağlamla çaprazlayınız.
+4. Jenerik yöntem/kuram kelimelerini sorgularda kullanmayınız.
+Tam olarak 4 Türkçe ve 4 İngilizce (toplam 8) sorgu üretiniz.
 Cevaplamadan önce çok derin düşün.
 </task>`;
 }

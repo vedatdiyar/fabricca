@@ -289,22 +289,36 @@ export async function finalizeJuryAnalysisAction(params: {
     const activeTheses = relationshipResult.comparisonTable.filter(
       (item) => item.bucket !== "IRRELEVANT",
     );
+    const eliminatedTheses = relationshipResult.comparisonTable.filter(
+      (item) => item.bucket === "IRRELEVANT",
+    );
 
-    // ── Akademik standardizasyon (Sadece aktif tezler için) ──
-    if (activeTheses.length > 0) {
+    // ── Akademik standardizasyon (Tüm tezler için) ──
+    const allTheses = relationshipResult.comparisonTable;
+    if (allTheses.length > 0) {
       const sanitized = await sanitizeAcademicDataBulk(
-        activeTheses.map((item) => ({
+        allTheses.map((item) => ({
           title: item.title,
           author: item.author,
         })),
       );
-      for (let i = 0; i < activeTheses.length; i++) {
+      for (let i = 0; i < allTheses.length; i++) {
         if (sanitized[i]) {
-          activeTheses[i].title = sanitized[i].title;
-          activeTheses[i].author = sanitized[i].author;
+          allTheses[i].title = sanitized[i].title;
+          allTheses[i].author = sanitized[i].author;
         }
       }
     }
+
+    const buildDimensions = (item: CalculatedComparisonItem) => ({
+      researchFocus: item.researchFocus,
+      mainActors: item.mainActors,
+      temporalScope: item.temporalScope,
+      spatialScope: item.spatialScope,
+      theoreticalFramework: item.theoreticalFramework,
+      methodology: item.methodology,
+      mainClaim: item.mainClaim,
+    });
 
     const reportData: OriginalityReportData = {
       tezaraResults: {
@@ -322,13 +336,28 @@ export async function finalizeJuryAnalysisAction(params: {
           thesisType: item.thesisType,
           department: item.department,
           relevanceScore: item.relevanceScore,
+          dimensionScores: buildDimensions(item),
         })),
-        eliminatedTheses: [], // Elenen tezler UI'da gösterilmeyecek
+        eliminatedTheses: eliminatedTheses.map((item) => ({
+          id: item.id,
+          title: item.title,
+          author: item.author,
+          university: item.university,
+          year: item.year,
+          thesisType: item.thesisType,
+          department: item.department,
+          yokPdfUrl: item.yokPdfUrl,
+          primaryBadge: item.primaryBadge,
+          badges: item.badges,
+          eliminationStage: "ANALYSIS" as const,
+          relevanceScore: item.relevanceScore,
+          dimensionScores: buildDimensions(item),
+        })),
       },
     };
 
-    // ── Transactional write: eski kayıtları sil, yenilerini yaz (Sadece aktif tezler kaydedilir) ──
-    const dbRows = activeTheses.map((item) => ({
+    // ── Transactional write: eski kayıtları sil, tüm tezleri yaz (aktif + elenen) ──
+    const dbRows = allTheses.map((item) => ({
       userId: session.userId,
       externalThesisId: item.id,
       title: item.title,
@@ -341,9 +370,17 @@ export async function finalizeJuryAnalysisAction(params: {
       abstract: item.abstract ?? null,
       diagnosis: item.primaryBadge,
       relevanceScore: item.relevanceScore,
+      researchFocusScore: item.researchFocus,
+      mainActorsScore: item.mainActors,
+      temporalScopeScore: item.temporalScope.score,
+      temporalScopeLabel: item.temporalScope.label,
+      spatialScopeScore: item.spatialScope,
+      theoreticalFrameworkScore: item.theoreticalFramework,
+      methodologyScore: item.methodology,
+      mainClaimScore: item.mainClaim,
       academicTactic: "",
-      isEliminated: false,
-      eliminationStage: null,
+      isEliminated: item.bucket === "IRRELEVANT",
+      eliminationStage: item.bucket === "IRRELEVANT" ? "ANALYSIS" : null,
       updatedAt: new Date(),
     }));
 

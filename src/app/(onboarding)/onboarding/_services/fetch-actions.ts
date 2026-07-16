@@ -40,6 +40,14 @@ function groupRowsToReport(
     isEliminated: boolean;
     eliminationStage: string | null;
     relevanceScore: number | null;
+    researchFocusScore: number | null;
+    mainActorsScore: number | null;
+    temporalScopeScore: number | null;
+    temporalScopeLabel: string | null;
+    spatialScopeScore: number | null;
+    theoreticalFrameworkScore: number | null;
+    methodologyScore: number | null;
+    mainClaimScore: number | null;
   }>,
 ): OriginalityReportData | null {
   if (rows.length === 0) return null;
@@ -61,34 +69,43 @@ function groupRowsToReport(
     globalBadge = "CONTRIBUTION_READY";
   }
 
+  const buildEntry = (row: (typeof rows)[number]) => ({
+    id: row.externalThesisId,
+    title: row.title,
+    author: row.author,
+    university: row.university,
+    year: row.year,
+    thesisType: row.thesisType,
+    department: row.department,
+    yokPdfUrl: row.yokPdfUrl ?? undefined,
+    primaryBadge: row.diagnosis as AnalysisBadge,
+    badges: [row.diagnosis as AnalysisBadge],
+    relevanceScore: row.relevanceScore ?? 0,
+    dimensionScores:
+      row.researchFocusScore !== null
+        ? {
+            researchFocus: row.researchFocusScore,
+            mainActors: row.mainActorsScore!,
+            temporalScope: {
+              score: row.temporalScopeScore!,
+              label: row.temporalScopeLabel ?? "UNKNOWN",
+            },
+            spatialScope: row.spatialScopeScore!,
+            theoreticalFramework: row.theoreticalFrameworkScore!,
+            methodology: row.methodologyScore!,
+            mainClaim: row.mainClaimScore!,
+          }
+        : undefined,
+  });
+
   return {
     tezaraResults: {
       relationshipBadge: globalBadge,
       overlapTable: activeRows.map((row) => ({
-        id: row.externalThesisId,
-        title: row.title,
-        author: row.author,
-        university: row.university,
-        year: row.year,
-        thesisType: row.thesisType,
-        department: row.department,
-        yokPdfUrl: row.yokPdfUrl ?? undefined,
-        // DB stores diagnosis as primaryBadge; build a single-element badge array
-        primaryBadge: row.diagnosis as AnalysisBadge,
-        badges: [row.diagnosis as AnalysisBadge],
-        relevanceScore: row.relevanceScore ?? 0,
+        ...buildEntry(row),
       })),
       eliminatedTheses: eliminatedRows.map((row) => ({
-        id: row.externalThesisId,
-        title: row.title,
-        author: row.author,
-        university: row.university,
-        year: row.year,
-        thesisType: row.thesisType,
-        department: row.department,
-        yokPdfUrl: row.yokPdfUrl ?? undefined,
-        primaryBadge: row.diagnosis as AnalysisBadge,
-        badges: [row.diagnosis as AnalysisBadge],
+        ...buildEntry(row),
         eliminationStage: "ANALYSIS" as const,
       })),
     },

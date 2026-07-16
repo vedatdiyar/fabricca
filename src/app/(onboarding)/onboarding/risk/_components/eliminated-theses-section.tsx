@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, FileText, XCircle } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Eye,
+  FileText,
+  XCircle,
+} from "lucide-react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { stripAltTitle } from "@/lib/academic/utils";
 import type { OriginalityReportData } from "@/lib/types";
@@ -73,10 +79,69 @@ export function EliminatedThesesSection({
                     </span>
                     <span>&bull;</span>
                     <span className="text-[9px] text-muted-foreground/40">
-                      Eleme Aşaması: Jüri Sınıflandırması
+                      Puan: {item.relevanceScore}
+                    </span>
+                    <span>&bull;</span>
+                    <span className="text-[9px] text-muted-foreground/40">
+                      Eleme: Jüri Sınıflandırması
                     </span>
                   </div>
                 </div>
+
+                {item.dimensionScores && (
+                  <div className="pt-0.5">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Eye className="w-2.5 h-2.5 text-muted-foreground/40" />
+                      <span className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground/40 font-sans">
+                        7 Boyut
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-7 gap-0.5">
+                      {[
+                        {
+                          label: "OF",
+                          value: item.dimensionScores.researchFocus,
+                        },
+                        { label: "AK", value: item.dimensionScores.mainActors },
+                        {
+                          label: "ZK",
+                          value: item.dimensionScores.temporalScope.score,
+                        },
+                        {
+                          label: "MK",
+                          value: item.dimensionScores.spatialScope,
+                        },
+                        {
+                          label: "KU",
+                          value: item.dimensionScores.theoreticalFramework,
+                        },
+                        {
+                          label: "YT",
+                          value: item.dimensionScores.methodology,
+                        },
+                        { label: "İS", value: item.dimensionScores.mainClaim },
+                      ].map((dim) => (
+                        <div
+                          key={dim.label}
+                          className={`flex flex-col items-center gap-0.5 px-0.5 py-0.5 rounded-sm ${
+                            dim.value === 100
+                              ? "bg-success/10 text-success/70"
+                              : dim.value === 50
+                                ? "bg-warning/10 text-warning/70"
+                                : "bg-muted/10 text-muted-foreground/40"
+                          }`}
+                        >
+                          <span className="text-[6px] font-semibold uppercase leading-none font-mono">
+                            {dim.label}
+                          </span>
+                          <span className="text-[8px] font-bold leading-none font-mono">
+                            {dim.value}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {item.yokPdfUrl && (
                   <div className="flex justify-end pt-0.5">

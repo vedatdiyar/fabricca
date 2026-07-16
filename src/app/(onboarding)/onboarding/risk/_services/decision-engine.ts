@@ -36,6 +36,14 @@ export interface CalculatedComparisonItem {
   primaryBadge: AnalysisBadge;
   badges: AnalysisBadge[];
   relevanceScore: number;
+  /** Individual LLM dimension scores for transparency */
+  researchFocus: number;
+  mainActors: number;
+  temporalScope: { score: number; label: string };
+  spatialScope: number;
+  theoreticalFramework: number;
+  methodology: number;
+  mainClaim: number;
 }
 
 export interface CalculatedRelationshipsResult {
@@ -298,6 +306,13 @@ export function calculateRelationships(
       primaryBadge: decision.primaryBadge,
       badges: decision.badges,
       relevanceScore: decision.relevanceScore,
+      researchFocus: llmItem.researchFocus,
+      mainActors: llmItem.mainActors,
+      temporalScope: llmItem.temporalScope,
+      spatialScope: llmItem.spatialScope,
+      theoreticalFramework: llmItem.theoreticalFramework,
+      methodology: llmItem.methodology,
+      mainClaim: llmItem.mainClaim,
     });
   }
 

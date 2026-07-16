@@ -73,64 +73,45 @@ export async function extractQueries(
 
     const rawQueries = [...turkishList, ...englishList];
 
-    // Ensure we have at least 6 queries, max 8 (as per prompt/guidelines)
-    let tezaraQueries = [...rawQueries];
+    // Filter to enforce 2-word limit: drop any query with <2 or >2 words
+    let tezaraQueries = rawQueries.filter((q) => {
+      const wc = q.trim().split(/\s+/).length;
+      return wc === 2;
+    });
+
+    // Actor-based smart padding: if <6 queries, generate clean 2-word
+    // umbrella forms from mainActors text instead of researchFocus noise
     if (tezaraQueries.length < 6) {
-      const stopWords = new Set([
-        "ve",
-        "ile",
-        "bir",
-        "in",
-        "the",
-        "on",
-        "of",
-        "and",
-        "or",
-        "a",
-        "an",
-        "de",
-        "da",
-        "ki",
-        "göre",
-        "üzerine",
-        "hakkında",
-        "ilişkin",
-        "analizi",
-        "incelemesi",
-        "değerlendirilmesi",
-        "boyutu",
-        "dönemi",
-        "yılları",
-        "arasında",
-        "döneminde",
-        "yaklaşımı",
-        "kuramı",
-        "çalışması",
-        "özelinde",
-      ]);
-      const titleWords = params.researchFocus
+      const actorWords = params.mainActors
         .toLowerCase()
         .replace(/[^a-zA-ZğüşıöçĞÜŞİÖÇ\s]/g, "")
         .split(/\s+/)
         .map((w) => w.trim())
-        .filter((w) => w.length > 2 && !stopWords.has(w));
+        .filter((w) => w.length > 2)
+        .filter(
+          (w) =>
+            ![
+              "ve", "ile", "bir", "in", "the", "on", "of", "and",
+              "or", "a", "an", "de", "da", "ki", "göre", "üzerine",
+              "hakkında", "ilişkin", "araştırmanın", "temel", "öznesi",
+            ].includes(w),
+        );
 
-      // Generate 2-word combinations from title words
-      for (
-        let i = 0;
-        i < titleWords.length - 1 && tezaraQueries.length < 6;
-        i++
-      ) {
-        const queryCandidate = `${titleWords[i]} ${titleWords[i + 1]}`;
-        if (!tezaraQueries.includes(queryCandidate)) {
-          tezaraQueries.push(queryCandidate);
+      const uniqueWords = [...new Set(actorWords)];
+
+      // Generate adjacent 2-word combos from actor text
+      for (let i = 0; i < uniqueWords.length - 1 && tezaraQueries.length < 6; i++) {
+        const candidate = `${uniqueWords[i]} ${uniqueWords[i + 1]}`;
+        if (!tezaraQueries.includes(candidate)) {
+          tezaraQueries.push(candidate);
         }
       }
 
-      // If still less than 6, add single words
-      for (let i = 0; i < titleWords.length && tezaraQueries.length < 6; i++) {
-        if (!tezaraQueries.includes(titleWords[i])) {
-          tezaraQueries.push(titleWords[i]);
+      // If still <6, add single meaningful actor words as 1-word queries
+      // (single words are allowed only as last-resort fallback)
+      for (let i = 0; i < uniqueWords.length && tezaraQueries.length < 6; i++) {
+        if (!tezaraQueries.includes(uniqueWords[i]) && !tezaraQueries.some((q) => q.includes(uniqueWords[i]))) {
+          tezaraQueries.push(uniqueWords[i]);
         }
       }
     }

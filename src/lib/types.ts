@@ -71,7 +71,7 @@ export interface OriginalityReportData {
     relationshipBadge: RelationshipBadge;
     overlapTable: {
       id: number;
-      /** Birincil karar rozeti — kadrın rengi ve ikonunu belirler */
+      /** Birincil karar rozeti — kartın rengi ve ikonunu belirler */
       primaryBadge: AnalysisBadge;
       /** Tüm aktif rozetler (donör bayrakları dahil) */
       badges: AnalysisBadge[];
@@ -85,8 +85,18 @@ export interface OriginalityReportData {
       department: string;
       /** Bileşik benzerlik skoru (7 boyut toplamı, 0-700 aralığı) */
       relevanceScore: number;
+      /** 7 LLM boyutunun bireysel puanları */
+      dimensionScores?: {
+        researchFocus: number;
+        mainActors: number;
+        temporalScope: { score: number; label: string };
+        spatialScope: number;
+        theoreticalFramework: number;
+        methodology: number;
+        mainClaim: number;
+      };
     }[];
-    /** Gemini analizinden geçip elenen (NOISE) tezler */
+    /** Jüri analizinden geçip elenen (IRRELEVANT / GÜRÜLTÜ) tezler */
     eliminatedTheses: {
       id: number;
       title: string;
@@ -99,6 +109,18 @@ export interface OriginalityReportData {
       primaryBadge: AnalysisBadge;
       badges: AnalysisBadge[];
       eliminationStage: "ANALYSIS";
+      /** Bileşik benzerlik skoru (7 boyut toplamı, 0-700 aralığı) */
+      relevanceScore: number;
+      /** 7 LLM boyutunun bireysel puanları */
+      dimensionScores?: {
+        researchFocus: number;
+        mainActors: number;
+        temporalScope: { score: number; label: string };
+        spatialScope: number;
+        theoreticalFramework: number;
+        methodology: number;
+        mainClaim: number;
+      };
     }[];
   };
 }

@@ -13,6 +13,7 @@ import {
   RefreshCw,
   ShieldAlert,
   Sparkles,
+  Eye,
 } from "lucide-react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { stripAltTitle } from "@/lib/academic/utils";
@@ -107,6 +108,75 @@ export function TezaraOverlapCards({ overlapTable }: TezaraOverlapCardsProps) {
                   </span>
                 </div>
               </div>
+
+              {item.dimensionScores && (
+                <div className="pt-1">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <Eye className="w-3 h-3 text-muted-foreground/50" />
+                    <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 font-sans">
+                      7 Boyutlu Analiz
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-7 gap-1">
+                    {[
+                      {
+                        label: "OF",
+                        value: item.dimensionScores.researchFocus,
+                        title: "Araştırma Odağı",
+                      },
+                      {
+                        label: "AK",
+                        value: item.dimensionScores.mainActors,
+                        title: "Ana Aktörler",
+                      },
+                      {
+                        label: "ZK",
+                        value: item.dimensionScores.temporalScope.score,
+                        title: `Zamansal Kapsam (${item.dimensionScores.temporalScope.label})`,
+                      },
+                      {
+                        label: "MK",
+                        value: item.dimensionScores.spatialScope,
+                        title: "Mekânsal Kapsam",
+                      },
+                      {
+                        label: "KU",
+                        value: item.dimensionScores.theoreticalFramework,
+                        title: "Kuramsal Çerçeve",
+                      },
+                      {
+                        label: "YT",
+                        value: item.dimensionScores.methodology,
+                        title: "Yöntem",
+                      },
+                      {
+                        label: "İS",
+                        value: item.dimensionScores.mainClaim,
+                        title: "İddia / Sav",
+                      },
+                    ].map((dim) => (
+                      <div
+                        key={dim.label}
+                        title={dim.title}
+                        className={`flex flex-col items-center gap-0.5 px-1 py-1 rounded-sm ${
+                          dim.value === 100
+                            ? "bg-success/15 text-success"
+                            : dim.value === 50
+                              ? "bg-warning/15 text-warning"
+                              : "bg-muted/20 text-muted-foreground/50"
+                        }`}
+                      >
+                        <span className="text-[7px] font-semibold uppercase leading-none font-mono">
+                          {dim.label}
+                        </span>
+                        <span className="text-[9px] font-bold leading-none font-mono">
+                          {dim.value}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {item.yokPdfUrl && (
                 <div className="flex justify-end pt-1">
