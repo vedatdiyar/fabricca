@@ -60,9 +60,7 @@ export interface CalculatedRelationshipsResult {
  * @param item - The raw LLM classification output
  * @returns DecisionResult with bucket, primary badge, badge set, and relevance score
  */
-export function applyDecisionEngine(
-  item: LLMScoredItem,
-): DecisionResult {
+export function applyDecisionEngine(item: LLMScoredItem): DecisionResult {
   const {
     researchFocus,
     mainActors,
@@ -159,10 +157,7 @@ export function applyDecisionEngine(
   }
 
   // #4: CROSS_CONTEXTUAL_VALIDATION
-  if (
-    researchFocus === 100 &&
-    spatialScope === 0
-  ) {
+  if (researchFocus === 100 && spatialScope === 0) {
     return {
       thesisId,
       bucket: "CONTRIBUTION",
