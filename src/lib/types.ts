@@ -1,41 +1,67 @@
 import { z } from "zod";
 
-/**
- * Deterministic decision engine badge values.
- *
- * Stage 1 (Mutlak Özgünlük Kontrolü):
- *   DUPLICATE_THESIS_RISK — All 7 dimensions scored 100 (identical clone)
- *
- * Stage 2 (Akademik Katkı / Yararlanma Alanları):
- *   Badges #1-#9 are checked in strict priority order; first match wins.
- *   Gatekeeper: RF>0 & MA>0 or IRRELEVANT_DATA.
- */
-export type AnalysisBadge =
-  | "DUPLICATE_THESIS_RISK" // Stage 1 — RISK bucket
-  | "EMPIRICAL_FOUNDATION_SOURCE" // Stage 2 #1 — CONTRIBUTION
-  | "DIALECTICAL_DISCUSSION_SUPPORT" // Stage 2 #2 — CONTRIBUTION
-  | "THEMATIC_SYNTHESIS_OPPORTUNITY" // Stage 2 #3 — CONTRIBUTION
-  | "CROSS_CONTEXTUAL_VALIDATION" // Stage 2 #4 — CONTRIBUTION
-  | "METHODOLOGICAL_AND_THEORETICAL_PEER" // Stage 2 #5 — CONTRIBUTION
-  | "HISTORICAL_BASELINE_DATA" // Stage 2 #6 — CONTRIBUTION
-  | "FUTURE_PROSPECTIVE_CONTEXT" // Stage 2 #7 — CONTRIBUTION
-  | "MACRO_STRUCTURAL_CONTEXT" // Stage 2 #8 — CONTRIBUTION
-  | "PARALLEL_LITERATURE_REFERENCE" // Stage 2 #9 — CONTRIBUTION
-  | "IRRELEVANT_DATA"; // Stage 2 gatekeeper fail — IRRELEVANT
+export type TemporalScopeLabel = "OVERLAP" | "PAST" | "FUTURE" | "UNKNOWN";
+
+export interface ThesisParams {
+  researchFocus: 0 | 50 | 100;
+  mainActors: 0 | 50 | 100;
+  temporalScope: 0 | 100;
+  temporalScopeLabel: TemporalScopeLabel;
+  spatialScope: 0 | 50 | 100;
+  theoreticalFramework: 0 | 50 | 100;
+  methodology: 0 | 50 | 100;
+  mainClaim: 0 | 50 | 100;
+}
+
+export type DimensionLevel = "LOW" | "MEDIUM" | "HIGH";
+
+export interface DimensionScores {
+  content: DimensionLevel;
+  methodTheory: DimensionLevel;
+  context: DimensionLevel;
+}
+
+export type AcademicBadge =
+  | "IRRELEVANT_DATA"
+  | "TWIN_THESIS_ALERT"
+  | "CRITICAL_REPLICATION_ALERT"
+  | "INDEPENDENT_CONCEPTUAL_STUDY"
+  | "INNOVATIVE_EXPLORATION"
+  | "HORIZON_EXPANSION"
+  | "METHODOLOGICAL_REVOLUTION"
+  | "GEOGRAPHIC_REPRESENTATION"
+  | "METHOD_DRIVEN_ANALYSIS"
+  | "THEMATIC_INITIATIVE"
+  | "BALANCED_SCHOLARLY_CONTRIBUTION"
+  | "EMPIRICAL_ADAPTATION"
+  | "CONTEXTUAL_MODEL_TRANSFER"
+  | "CONCEPTUAL_MODEL_TRANSFER"
+  | "VALIDATION_STUDY"
+  | "METHODOLOGICAL_INNOVATION"
+  | "METHODOLOGICAL_RECONSTRUCTION"
+  | "THEORETICAL_RECONSTRUCT"
+  | "METHODOLOGICAL_CONTRAST"
+  | "DIALECTICAL_CONTRIBUTION"
+  | "PARADIGM_CHALLENGE"
+  | "THEMATIC_EXPANSION"
+  | "INCREMENTAL_CLAIM_CONTRIBUTION"
+  | "SPATIAL_REPLICATION"
+  | "LOCAL_VALIDATION_STUDY"
+  | "HIGH_LITERATURE_PARALLELISM"
+  | "NARROW_SCOPE_REPLICATION"
+  | "TEMPORAL_FOLLOW_UP"
+  | "BORDERLINE_SIMILARITY_ALERT"
+  | "TEMPORAL_UPDATE_STUDY";
 
 export type RelationshipBadge =
-  | "HIGH_RISK" // At least one DUPLICATE_THESIS_RISK exists
-  | "CONTRIBUTION_READY" // No duplicates, at least one CONTRIBUTION badge
-  | "UNRELATED"; // All theses are IRRELEVANT_DATA or empty pool
+  "HIGH_RISK" | "CONTRIBUTION_READY" | "UNRELATED";
+
+export type ThesisBucket = "RISK" | "CONTRIBUTION" | "IRRELEVANT";
 
 export type OnboardingActionResult =
   | { success: true; isProcessing?: boolean; error?: never }
   | { success?: never; error: string };
 
-/**
- * Tezara tez arama sonucu özeti.
- * Listeleme sorgularından dönen kısa tez kaydını temsil eder.
- */
 export interface TezaraThesisSummary {
   id: number;
   title: string;
@@ -47,10 +73,6 @@ export interface TezaraThesisSummary {
   language?: string;
 }
 
-/**
- * Tezara tez detay kaydı.
- * Bireysel tez sayfasından çekilen tam içeriği temsil eder.
- */
 export interface TezaraThesisDetails {
   id: number;
   title: string;
@@ -63,18 +85,13 @@ export interface TezaraThesisDetails {
   yokPdfUrl?: string;
 }
 
-/**
- * Özgünlük raporu verisi.
- */
 export interface OriginalityReportData {
   tezaraResults: {
     relationshipBadge: RelationshipBadge;
     overlapTable: {
       id: number;
-      /** Birincil karar rozeti — kartın rengi ve ikonunu belirler */
-      primaryBadge: AnalysisBadge;
-      /** Tüm aktif rozetler (donör bayrakları dahil) */
-      badges: AnalysisBadge[];
+      primaryBadge: AcademicBadge;
+      badges: AcademicBadge[];
       yokPdfUrl?: string;
       abstract?: string;
       title: string;
@@ -83,9 +100,7 @@ export interface OriginalityReportData {
       year: number;
       thesisType: string;
       department: string;
-      /** Bileşik benzerlik skoru (7 boyut toplamı, 0-700 aralığı) */
       relevanceScore: number;
-      /** 7 LLM boyutunun bireysel puanları */
       dimensionScores?: {
         researchFocus: number;
         mainActors: number;
@@ -96,7 +111,6 @@ export interface OriginalityReportData {
         mainClaim: number;
       };
     }[];
-    /** Jüri analizinden geçip elenen (IRRELEVANT / GÜRÜLTÜ) tezler */
     eliminatedTheses: {
       id: number;
       title: string;
@@ -106,12 +120,10 @@ export interface OriginalityReportData {
       thesisType: string;
       department: string;
       yokPdfUrl?: string;
-      primaryBadge: AnalysisBadge;
-      badges: AnalysisBadge[];
+      primaryBadge: AcademicBadge;
+      badges: AcademicBadge[];
       eliminationStage: "ANALYSIS";
-      /** Bileşik benzerlik skoru (7 boyut toplamı, 0-700 aralığı) */
       relevanceScore: number;
-      /** 7 LLM boyutunun bireysel puanları */
       dimensionScores?: {
         researchFocus: number;
         mainActors: number;
@@ -125,11 +137,6 @@ export interface OriginalityReportData {
   };
 }
 
-/**
- * Tez matrisinin 7 temel alanını tanımlayan kanonik tip.
- * Prompt builder'lar, servis katmanları ve onboarding akışı
- * tarafından ortak kullanılır.
- */
 export interface ThesisMatrix {
   mainActors: string;
   researchFocus: string;
@@ -140,9 +147,6 @@ export interface ThesisMatrix {
   mainClaim: string;
 }
 
-/**
- * YÖKTEZ ve sifting sonucunda elenen ve seçilen tez nesneleri.
- */
 export interface ScrapedTheses {
   selected: TezaraThesisDetails[];
   eliminated: TezaraThesisSummary[];
@@ -187,13 +191,12 @@ export interface RelatedThesisEntry {
   year: number;
   thesisType: string;
   department: string;
-  primaryBadge: AnalysisBadge;
-  badges: AnalysisBadge[];
+  primaryBadge: AcademicBadge;
+  badges: AcademicBadge[];
   yokPdfUrl?: string;
 }
 
 export interface GeminiThesisBox {
-  /** DB id — populated when loaded from the database, undefined for Gemini-generated raw output */
   id?: number;
   title: string;
   boxType:

@@ -13,7 +13,7 @@ import type {
   GeminiThesisBox,
   OriginalityReportData,
   RelationshipBadge,
-  AnalysisBadge,
+  AcademicBadge,
 } from "@/lib/types";
 import { getSession } from "@/lib/session";
 import { BOX_ORDER_WEIGHT } from "../_lib/box-constants";
@@ -59,7 +59,9 @@ function groupRowsToReport(
   let globalBadge: RelationshipBadge = "UNRELATED";
 
   const hasDuplicate = activeRows.some(
-    (r) => r.diagnosis === "DUPLICATE_THESIS_RISK",
+    (r) =>
+      r.diagnosis === "TWIN_THESIS_ALERT" ||
+      r.diagnosis === "CRITICAL_REPLICATION_ALERT",
   );
   const hasContribution = activeRows.length > 0 && !hasDuplicate;
 
@@ -78,8 +80,8 @@ function groupRowsToReport(
     thesisType: row.thesisType,
     department: row.department,
     yokPdfUrl: row.yokPdfUrl ?? undefined,
-    primaryBadge: row.diagnosis as AnalysisBadge,
-    badges: [row.diagnosis as AnalysisBadge],
+    primaryBadge: row.diagnosis as AcademicBadge,
+    badges: [row.diagnosis as AcademicBadge],
     relevanceScore: row.relevanceScore ?? 0,
     dimensionScores:
       row.researchFocusScore !== null

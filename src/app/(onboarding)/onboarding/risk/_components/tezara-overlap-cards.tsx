@@ -2,23 +2,43 @@
 
 import { useMemo, ElementType } from "react";
 import {
-  ArrowRight,
-  BookOpen,
-  Compass,
-  FileText,
-  GitBranch,
-  HelpCircle,
-  History,
-  Layers,
-  RefreshCw,
+  AlertTriangle,
   ShieldAlert,
+  XOctagon,
+  Compass,
   Sparkles,
+  Expand,
+  Cpu,
+  Globe,
+  FileSearch,
+  Lightbulb,
+  CheckSquare,
+  RefreshCw,
+  Shuffle,
+  GitFork,
+  CheckCircle,
+  Layers,
+  Binary,
+  BookOpen,
+  Sliders,
+  GitCompare,
+  Flame,
+  Bookmark,
+  TrendingUp,
+  Map,
+  Locate,
+  Activity,
+  Minimize,
+  Calendar,
   Eye,
+  Clock,
+  HelpCircle,
+  FileText,
 } from "lucide-react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { stripAltTitle } from "@/lib/academic/utils";
-import type { OriginalityReportData, AnalysisBadge } from "@/lib/types";
-import { getAnalysisBadgeConfig } from "../_lib/constants";
+import type { OriginalityReportData, AcademicBadge } from "@/lib/types";
+import { getAcademicBadgeConfig } from "../_lib/constants";
 import { BADGE_ORDER_PRIORITY } from "../_lib/sort-utils";
 
 type OverlapRow =
@@ -28,18 +48,37 @@ interface TezaraOverlapCardsProps {
   overlapTable: OverlapRow[];
 }
 
-const BADGE_ICONS: Record<AnalysisBadge, ElementType> = {
-  DUPLICATE_THESIS_RISK: ShieldAlert,
-  EMPIRICAL_FOUNDATION_SOURCE: Sparkles,
-  DIALECTICAL_DISCUSSION_SUPPORT: RefreshCw,
-  THEMATIC_SYNTHESIS_OPPORTUNITY: GitBranch,
-  CROSS_CONTEXTUAL_VALIDATION: Compass,
-  METHODOLOGICAL_AND_THEORETICAL_PEER: FileText,
-  HISTORICAL_BASELINE_DATA: History,
-  FUTURE_PROSPECTIVE_CONTEXT: ArrowRight,
-  MACRO_STRUCTURAL_CONTEXT: Layers,
-  PARALLEL_LITERATURE_REFERENCE: BookOpen,
-  IRRELEVANT_DATA: HelpCircle,
+const BADGE_ICONS: Record<AcademicBadge, ElementType> = {
+  IRRELEVANT_DATA: XOctagon,
+  TWIN_THESIS_ALERT: ShieldAlert,
+  CRITICAL_REPLICATION_ALERT: AlertTriangle,
+  INDEPENDENT_CONCEPTUAL_STUDY: Compass,
+  INNOVATIVE_EXPLORATION: Sparkles,
+  HORIZON_EXPANSION: Expand,
+  METHODOLOGICAL_REVOLUTION: Cpu,
+  GEOGRAPHIC_REPRESENTATION: Globe,
+  METHOD_DRIVEN_ANALYSIS: FileSearch,
+  THEMATIC_INITIATIVE: Lightbulb,
+  BALANCED_SCHOLARLY_CONTRIBUTION: CheckSquare,
+  EMPIRICAL_ADAPTATION: RefreshCw,
+  CONTEXTUAL_MODEL_TRANSFER: Shuffle,
+  CONCEPTUAL_MODEL_TRANSFER: GitFork,
+  VALIDATION_STUDY: CheckCircle,
+  METHODOLOGICAL_INNOVATION: Layers,
+  METHODOLOGICAL_RECONSTRUCTION: Binary,
+  THEORETICAL_RECONSTRUCT: BookOpen,
+  METHODOLOGICAL_CONTRAST: Sliders,
+  DIALECTICAL_CONTRIBUTION: GitCompare,
+  PARADIGM_CHALLENGE: Flame,
+  THEMATIC_EXPANSION: Bookmark,
+  INCREMENTAL_CLAIM_CONTRIBUTION: TrendingUp,
+  SPATIAL_REPLICATION: Map,
+  LOCAL_VALIDATION_STUDY: Locate,
+  HIGH_LITERATURE_PARALLELISM: Activity,
+  NARROW_SCOPE_REPLICATION: Minimize,
+  TEMPORAL_FOLLOW_UP: Calendar,
+  BORDERLINE_SIMILARITY_ALERT: Eye,
+  TEMPORAL_UPDATE_STUDY: Clock,
 };
 
 export function TezaraOverlapCards({ overlapTable }: TezaraOverlapCardsProps) {
@@ -50,11 +89,9 @@ export function TezaraOverlapCards({ overlapTable }: TezaraOverlapCardsProps) {
       const pA = BADGE_ORDER_PRIORITY[a.primaryBadge] ?? 99;
       const pB = BADGE_ORDER_PRIORITY[b.primaryBadge] ?? 99;
       if (pA !== pB) return pA - pB;
-      // Same badge: higher relevance score first
       if (a.relevanceScore !== b.relevanceScore) {
         return b.relevanceScore - a.relevanceScore;
       }
-      // Tiebreaker: newest first
       return b.year - a.year;
     });
   }, [overlapTable]);
@@ -71,7 +108,7 @@ export function TezaraOverlapCards({ overlapTable }: TezaraOverlapCardsProps) {
   return (
     <div className="grid grid-cols-1 gap-4 w-full">
       {sortedTheses.map((item) => {
-        const config = getAnalysisBadgeConfig(item.primaryBadge);
+        const config = getAcademicBadgeConfig(item.primaryBadge);
         const Icon = BADGE_ICONS[item.primaryBadge] || HelpCircle;
 
         return (

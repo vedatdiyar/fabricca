@@ -92,13 +92,10 @@ export const originalityReports = pgTable(
     yokPdfUrl: text(),
     abstract: text(),
     /**
-     * Primary badge produced by the 2-stage deterministic decision engine.
-     * Possible values: DUPLICATE_THESIS_RISK, EMPIRICAL_FOUNDATION_SOURCE,
-     * DIALECTICAL_DISCUSSION_SUPPORT, THEMATIC_SYNTHESIS_OPPORTUNITY,
-     * CROSS_CONTEXTUAL_VALIDATION, METHODOLOGICAL_AND_THEORETICAL_PEER,
-     * HISTORICAL_BASELINE_DATA, FUTURE_PROSPECTIVE_CONTEXT,
-     * MACRO_STRUCTURAL_CONTEXT, PARALLEL_LITERATURE_REFERENCE,
-     * IRRELEVANT_DATA
+     * Primary badge produced by the 4-step academic decision engine.
+     * Possible values: IRRELEVANT_DATA, TWIN_THESIS_ALERT,
+     * CRITICAL_REPLICATION_ALERT, plus 27 matrix-based academic badges
+     * (INDEPENDENT_CONCEPTUAL_STUDY … TEMPORAL_UPDATE_STUDY)
      */
     diagnosis: varchar({ length: 100 }).notNull(),
     /** Composite relevance score (sum of all 7 LLM dimensions, range 0-700) */

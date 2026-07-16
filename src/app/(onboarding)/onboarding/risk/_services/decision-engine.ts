@@ -1,24 +1,20 @@
 import type { Logger } from "@/lib/logger";
 import type {
-  AnalysisBadge,
+  AcademicBadge,
   RelationshipBadge,
   TezaraThesisDetails,
+  ThesisBucket,
+  DimensionLevel,
+  DimensionScores,
+  TemporalScopeLabel,
 } from "@/lib/types";
 import type { LLMScoredItem } from "./analysis";
-
-// ============================================================================
-// Deterministic Decision Engine — 2-Stage Literatür Analizi
-// Stage 1: Mutlak Özgünlük Kontrolü (DUPLICATE_THESIS_RISK)
-// Stage 2: Akademik Katkı / Yararlanma Alanları (9 badges, priority order)
-// ============================================================================
-
-export type ThesisBucket = "RISK" | "CONTRIBUTION" | "IRRELEVANT";
 
 export interface DecisionResult {
   thesisId: number;
   bucket: ThesisBucket;
-  primaryBadge: AnalysisBadge;
-  badges: AnalysisBadge[];
+  primaryBadge: AcademicBadge;
+  badges: AcademicBadge[];
   relevanceScore: number;
 }
 
@@ -33,10 +29,9 @@ export interface CalculatedComparisonItem {
   yokPdfUrl?: string;
   abstract?: string;
   bucket: ThesisBucket;
-  primaryBadge: AnalysisBadge;
-  badges: AnalysisBadge[];
+  primaryBadge: AcademicBadge;
+  badges: AcademicBadge[];
   relevanceScore: number;
-  /** Individual LLM dimension scores for transparency */
   researchFocus: number;
   mainActors: number;
   temporalScope: { score: number; label: string };
@@ -51,23 +46,104 @@ export interface CalculatedRelationshipsResult {
   comparisonTable: CalculatedComparisonItem[];
 }
 
-// ============================================================================
-// applyDecisionEngine — 2-Stage Decision Engine
-// ============================================================================
+function computeDimensionLevel(score: number): DimensionLevel {
+  if (score >= 150) return "HIGH";
+  if (score === 100) return "MEDIUM";
+  return "LOW";
+}
 
-/**
- * Applies the 2-stage deterministic decision engine to a single LLM-scored item.
- *
- * Stage 1: All 7 dimensions === 100 → DUPLICATE_THESIS_RISK (RISK bucket).
- *   Gatekeeper: RF=0 AND MA=0 → IRRELEVANT_DATA (IRRELEVANT bucket).
- *
- * Stage 2: 9 badges checked in strict priority order (#1 → #9).
- *   #6 HISTORICAL_BASELINE_DATA uses temporalScope.label === "PAST".
- *   #7 FUTURE_PROSPECTIVE_CONTEXT uses temporalScope.label === "FUTURE".
- *
- * @param item - The raw LLM classification output
- * @returns DecisionResult with bucket, primary badge, badge set, and relevance score
- */
+function computeDimensionScores(params: {
+  researchFocus: number;
+  mainClaim: number;
+  methodology: number;
+  theoreticalFramework: number;
+  spatialScope: number;
+  mainActors: number;
+}): DimensionScores {
+  const content = params.researchFocus + params.mainClaim;
+  const methodTheory = params.methodology + params.theoreticalFramework;
+  const context = params.spatialScope + params.mainActors;
+
+  return {
+    content: computeDimensionLevel(content),
+    methodTheory: computeDimensionLevel(methodTheory),
+    context: computeDimensionLevel(context),
+  };
+}
+
+function getAcademicBadge(
+  scores: DimensionScores,
+  temporalLabel: TemporalScopeLabel,
+): AcademicBadge {
+  const { content, methodTheory, context } = scores;
+
+  if (content === "LOW" && methodTheory === "LOW" && context === "LOW")
+    return "INDEPENDENT_CONCEPTUAL_STUDY";
+  if (content === "LOW" && methodTheory === "LOW" && context === "MEDIUM")
+    return "INNOVATIVE_EXPLORATION";
+  if (content === "LOW" && methodTheory === "MEDIUM" && context === "LOW")
+    return "HORIZON_EXPANSION";
+  if (content === "MEDIUM" && methodTheory === "LOW" && context === "LOW")
+    return "METHODOLOGICAL_REVOLUTION";
+  if (content === "MEDIUM" && methodTheory === "MEDIUM" && context === "LOW")
+    return "GEOGRAPHIC_REPRESENTATION";
+  if (content === "MEDIUM" && methodTheory === "LOW" && context === "MEDIUM")
+    return "METHOD_DRIVEN_ANALYSIS";
+  if (content === "LOW" && methodTheory === "MEDIUM" && context === "MEDIUM")
+    return "THEMATIC_INITIATIVE";
+  if (content === "MEDIUM" && methodTheory === "MEDIUM" && context === "MEDIUM")
+    return "BALANCED_SCHOLARLY_CONTRIBUTION";
+
+  if (content === "LOW" && methodTheory === "HIGH" && context === "LOW")
+    return "EMPIRICAL_ADAPTATION";
+  if (content === "MEDIUM" && methodTheory === "HIGH" && context === "LOW")
+    return "CONTEXTUAL_MODEL_TRANSFER";
+  if (content === "LOW" && methodTheory === "HIGH" && context === "MEDIUM")
+    return "CONCEPTUAL_MODEL_TRANSFER";
+
+  if (content === "HIGH" && methodTheory === "LOW" && context === "LOW")
+    return "METHODOLOGICAL_INNOVATION";
+  if (content === "HIGH" && methodTheory === "LOW" && context === "MEDIUM")
+    return "METHODOLOGICAL_RECONSTRUCTION";
+  if (content === "MEDIUM" && methodTheory === "LOW" && context === "HIGH")
+    return "THEORETICAL_RECONSTRUCT";
+  if (content === "HIGH" && methodTheory === "LOW" && context === "HIGH")
+    return "METHODOLOGICAL_CONTRAST";
+
+  if (content === "LOW" && methodTheory === "MEDIUM" && context === "HIGH")
+    return "DIALECTICAL_CONTRIBUTION";
+  if (content === "LOW" && methodTheory === "HIGH" && context === "HIGH")
+    return "PARADIGM_CHALLENGE";
+  if (content === "MEDIUM" && methodTheory === "MEDIUM" && context === "HIGH")
+    return "THEMATIC_EXPANSION";
+  if (content === "MEDIUM" && methodTheory === "HIGH" && context === "HIGH")
+    return "INCREMENTAL_CLAIM_CONTRIBUTION";
+
+  if (content === "HIGH" && methodTheory === "MEDIUM" && context === "LOW")
+    return "SPATIAL_REPLICATION";
+  if (content === "HIGH" && methodTheory === "HIGH" && context === "LOW")
+    return "LOCAL_VALIDATION_STUDY";
+  if (content === "HIGH" && methodTheory === "MEDIUM" && context === "MEDIUM")
+    return "HIGH_LITERATURE_PARALLELISM";
+  if (content === "HIGH" && methodTheory === "HIGH" && context === "MEDIUM")
+    return "NARROW_SCOPE_REPLICATION";
+
+  if (
+    content === "MEDIUM" &&
+    methodTheory === "HIGH" &&
+    context === "MEDIUM" &&
+    temporalLabel === "FUTURE"
+  )
+    return "TEMPORAL_FOLLOW_UP";
+
+  if (content === "HIGH" && methodTheory === "MEDIUM" && context === "HIGH")
+    return "BORDERLINE_SIMILARITY_ALERT";
+  if (content === "HIGH" && methodTheory === "HIGH" && context === "HIGH")
+    return "TEMPORAL_UPDATE_STUDY";
+
+  return "BALANCED_SCHOLARLY_CONTRIBUTION";
+}
+
 export function applyDecisionEngine(item: LLMScoredItem): DecisionResult {
   const {
     researchFocus,
@@ -90,27 +166,10 @@ export function applyDecisionEngine(item: LLMScoredItem): DecisionResult {
     methodology +
     mainClaim;
 
-  // ── STAGE 1: Mutlak Özgünlük Kontrolü ────────────────────────────────────
-  if (
-    researchFocus === 100 &&
-    mainActors === 100 &&
-    temporalScope.score === 100 &&
-    spatialScope === 100 &&
-    theoreticalFramework === 100 &&
-    methodology === 100 &&
-    mainClaim === 100
-  ) {
-    return {
-      thesisId,
-      bucket: "RISK",
-      primaryBadge: "DUPLICATE_THESIS_RISK",
-      badges: ["DUPLICATE_THESIS_RISK"],
-      relevanceScore,
-    };
-  }
+  const isTemporalOverlap =
+    temporalScope.score === 100 && temporalScope.label === "OVERLAP";
 
-  // ── Gatekeeper (Gürültü Kontrolü) ─────────────────────────────────────────
-  if (researchFocus === 0 && mainActors === 0) {
+  if (mainClaim === 0 && (researchFocus === 0 || mainActors === 0)) {
     return {
       thesisId,
       bucket: "IRRELEVANT",
@@ -120,146 +179,62 @@ export function applyDecisionEngine(item: LLMScoredItem): DecisionResult {
     };
   }
 
-  // ── STAGE 2: Akademik Katkı / Yararlanma Alanları ─────────────────────────
-  // #1: EMPIRICAL_FOUNDATION_SOURCE
-  if (
-    researchFocus === 50 &&
-    mainActors === 50 &&
-    temporalScope.score === 100 &&
-    spatialScope >= 50 &&
-    (methodology >= 50 || theoreticalFramework >= 50)
-  ) {
-    return {
-      thesisId,
-      bucket: "CONTRIBUTION",
-      primaryBadge: "EMPIRICAL_FOUNDATION_SOURCE",
-      badges: ["EMPIRICAL_FOUNDATION_SOURCE"],
-      relevanceScore,
-    };
-  }
-
-  // #2: DIALECTICAL_DISCUSSION_SUPPORT
-  if (mainClaim === 50) {
-    return {
-      thesisId,
-      bucket: "CONTRIBUTION",
-      primaryBadge: "DIALECTICAL_DISCUSSION_SUPPORT",
-      badges: ["DIALECTICAL_DISCUSSION_SUPPORT"],
-      relevanceScore,
-    };
-  }
-
-  // #3: THEMATIC_SYNTHESIS_OPPORTUNITY
   if (
     researchFocus === 100 &&
-    temporalScope.score === 100 &&
-    spatialScope >= 50
-  ) {
-    return {
-      thesisId,
-      bucket: "CONTRIBUTION",
-      primaryBadge: "THEMATIC_SYNTHESIS_OPPORTUNITY",
-      badges: ["THEMATIC_SYNTHESIS_OPPORTUNITY"],
-      relevanceScore,
-    };
-  }
-
-  // #4: CROSS_CONTEXTUAL_VALIDATION
-  if (researchFocus === 100 && spatialScope === 0) {
-    return {
-      thesisId,
-      bucket: "CONTRIBUTION",
-      primaryBadge: "CROSS_CONTEXTUAL_VALIDATION",
-      badges: ["CROSS_CONTEXTUAL_VALIDATION"],
-      relevanceScore,
-    };
-  }
-
-  // #5: METHODOLOGICAL_AND_THEORETICAL_PEER
-  if (
-    researchFocus === 50 &&
-    (theoreticalFramework === 100 || methodology === 100)
-  ) {
-    return {
-      thesisId,
-      bucket: "CONTRIBUTION",
-      primaryBadge: "METHODOLOGICAL_AND_THEORETICAL_PEER",
-      badges: ["METHODOLOGICAL_AND_THEORETICAL_PEER"],
-      relevanceScore,
-    };
-  }
-
-  // #6: HISTORICAL_BASELINE_DATA
-  if (
-    researchFocus === 50 &&
-    temporalScope.score === 0 &&
-    (mainActors === 50 || mainActors === 100) &&
-    temporalScope.label === "PAST"
-  ) {
-    return {
-      thesisId,
-      bucket: "CONTRIBUTION",
-      primaryBadge: "HISTORICAL_BASELINE_DATA",
-      badges: ["HISTORICAL_BASELINE_DATA"],
-      relevanceScore,
-    };
-  }
-
-  // #7: FUTURE_PROSPECTIVE_CONTEXT
-  if (
-    researchFocus === 50 &&
-    temporalScope.score === 0 &&
-    (mainActors === 50 || mainActors === 100) &&
-    temporalScope.label === "FUTURE"
-  ) {
-    return {
-      thesisId,
-      bucket: "CONTRIBUTION",
-      primaryBadge: "FUTURE_PROSPECTIVE_CONTEXT",
-      badges: ["FUTURE_PROSPECTIVE_CONTEXT"],
-      relevanceScore,
-    };
-  }
-
-  // #8: MACRO_STRUCTURAL_CONTEXT (TS control intentionally removed)
-  if (
-    researchFocus === 50 &&
     mainActors === 100 &&
-    methodology === 0 &&
-    theoreticalFramework === 0
+    isTemporalOverlap &&
+    spatialScope === 100 &&
+    theoreticalFramework === 100 &&
+    methodology === 100 &&
+    mainClaim === 100
   ) {
     return {
       thesisId,
-      bucket: "CONTRIBUTION",
-      primaryBadge: "MACRO_STRUCTURAL_CONTEXT",
-      badges: ["MACRO_STRUCTURAL_CONTEXT"],
+      bucket: "RISK",
+      primaryBadge: "TWIN_THESIS_ALERT",
+      badges: ["TWIN_THESIS_ALERT"],
       relevanceScore,
     };
   }
 
-  // #9: PARALLEL_LITERATURE_REFERENCE (fallback)
+  if (
+    researchFocus === 100 &&
+    mainActors === 100 &&
+    isTemporalOverlap &&
+    spatialScope === 100 &&
+    mainClaim === 100 &&
+    (methodology === 50 || methodology === 100) &&
+    (theoreticalFramework === 50 || theoreticalFramework === 100)
+  ) {
+    return {
+      thesisId,
+      bucket: "RISK",
+      primaryBadge: "CRITICAL_REPLICATION_ALERT",
+      badges: ["CRITICAL_REPLICATION_ALERT"],
+      relevanceScore,
+    };
+  }
+
+  const dimScores = computeDimensionScores({
+    researchFocus,
+    mainClaim,
+    methodology,
+    theoreticalFramework,
+    spatialScope,
+    mainActors,
+  });
+
+  const primaryBadge = getAcademicBadge(dimScores, temporalScope.label);
+
   return {
     thesisId,
     bucket: "CONTRIBUTION",
-    primaryBadge: "PARALLEL_LITERATURE_REFERENCE",
-    badges: ["PARALLEL_LITERATURE_REFERENCE"],
+    primaryBadge,
+    badges: [primaryBadge],
     relevanceScore,
   };
 }
 
-// ============================================================================
-// calculateRelationships — Decision Engine + Global Badge
-// ============================================================================
-
-/**
- * Applies the 2-stage decision engine to each LLM-scored item,
- * merges with thesis details, and computes the global relationship badge.
- *
- * @param llmResults - The raw LLM classification results
- * @param validDetails - Candidate thesis details from Tezara
- * @param logger - Optional logger instance
- * @returns Global relationship badge and comparison table
- */
 export function calculateRelationships(
   llmResults: LLMScoredItem[],
   validDetails: TezaraThesisDetails[],

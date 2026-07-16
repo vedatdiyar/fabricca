@@ -91,16 +91,38 @@ export async function extractQueries(
         .filter(
           (w) =>
             ![
-              "ve", "ile", "bir", "in", "the", "on", "of", "and",
-              "or", "a", "an", "de", "da", "ki", "göre", "üzerine",
-              "hakkında", "ilişkin", "araştırmanın", "temel", "öznesi",
+              "ve",
+              "ile",
+              "bir",
+              "in",
+              "the",
+              "on",
+              "of",
+              "and",
+              "or",
+              "a",
+              "an",
+              "de",
+              "da",
+              "ki",
+              "göre",
+              "üzerine",
+              "hakkında",
+              "ilişkin",
+              "araştırmanın",
+              "temel",
+              "öznesi",
             ].includes(w),
         );
 
       const uniqueWords = [...new Set(actorWords)];
 
       // Generate adjacent 2-word combos from actor text
-      for (let i = 0; i < uniqueWords.length - 1 && tezaraQueries.length < 6; i++) {
+      for (
+        let i = 0;
+        i < uniqueWords.length - 1 && tezaraQueries.length < 6;
+        i++
+      ) {
         const candidate = `${uniqueWords[i]} ${uniqueWords[i + 1]}`;
         if (!tezaraQueries.includes(candidate)) {
           tezaraQueries.push(candidate);
@@ -110,7 +132,10 @@ export async function extractQueries(
       // If still <6, add single meaningful actor words as 1-word queries
       // (single words are allowed only as last-resort fallback)
       for (let i = 0; i < uniqueWords.length && tezaraQueries.length < 6; i++) {
-        if (!tezaraQueries.includes(uniqueWords[i]) && !tezaraQueries.some((q) => q.includes(uniqueWords[i]))) {
+        if (
+          !tezaraQueries.includes(uniqueWords[i]) &&
+          !tezaraQueries.some((q) => q.includes(uniqueWords[i]))
+        ) {
           tezaraQueries.push(uniqueWords[i]);
         }
       }
