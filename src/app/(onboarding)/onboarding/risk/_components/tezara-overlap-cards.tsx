@@ -5,32 +5,12 @@ import {
   AlertTriangle,
   ShieldAlert,
   XOctagon,
-  Compass,
-  Sparkles,
-  Expand,
   Cpu,
   Globe,
-  FileSearch,
-  Lightbulb,
-  CheckSquare,
-  RefreshCw,
-  Shuffle,
-  GitFork,
-  CheckCircle,
-  Layers,
-  Binary,
   BookOpen,
-  Sliders,
   GitCompare,
-  Flame,
   Bookmark,
   TrendingUp,
-  Map,
-  Locate,
-  Activity,
-  Minimize,
-  Calendar,
-  Eye,
   Clock,
   HelpCircle,
   FileText,
@@ -52,33 +32,13 @@ const BADGE_ICONS: Record<AcademicBadge, ElementType> = {
   IRRELEVANT_DATA: XOctagon,
   TWIN_THESIS_ALERT: ShieldAlert,
   CRITICAL_REPLICATION_ALERT: AlertTriangle,
-  INDEPENDENT_CONCEPTUAL_STUDY: Compass,
-  INNOVATIVE_EXPLORATION: Sparkles,
-  HORIZON_EXPANSION: Expand,
-  METHODOLOGICAL_REVOLUTION: Cpu,
-  GEOGRAPHIC_REPRESENTATION: Globe,
-  METHOD_DRIVEN_ANALYSIS: FileSearch,
-  THEMATIC_INITIATIVE: Lightbulb,
-  BALANCED_SCHOLARLY_CONTRIBUTION: CheckSquare,
-  EMPIRICAL_ADAPTATION: RefreshCw,
-  CONTEXTUAL_MODEL_TRANSFER: Shuffle,
-  CONCEPTUAL_MODEL_TRANSFER: GitFork,
-  VALIDATION_STUDY: CheckCircle,
-  METHODOLOGICAL_INNOVATION: Layers,
-  METHODOLOGICAL_RECONSTRUCTION: Binary,
-  THEORETICAL_RECONSTRUCT: BookOpen,
-  METHODOLOGICAL_CONTRAST: Sliders,
-  DIALECTICAL_CONTRIBUTION: GitCompare,
-  PARADIGM_CHALLENGE: Flame,
-  THEMATIC_EXPANSION: Bookmark,
-  INCREMENTAL_CLAIM_CONTRIBUTION: TrendingUp,
-  SPATIAL_REPLICATION: Map,
-  LOCAL_VALIDATION_STUDY: Locate,
-  HIGH_LITERATURE_PARALLELISM: Activity,
-  NARROW_SCOPE_REPLICATION: Minimize,
-  TEMPORAL_FOLLOW_UP: Calendar,
-  BORDERLINE_SIMILARITY_ALERT: Eye,
-  TEMPORAL_UPDATE_STUDY: Clock,
+  METHODOLOGY_REFERENCE: Cpu,
+  THEORETICAL_ANCHOR: BookOpen,
+  HISTORICAL_CONTEXT: Clock,
+  FUTURE_PROJECTION: TrendingUp,
+  CONTEXTUAL_COMPARISON: Globe,
+  EMPIRICAL_BENCHMARK: GitCompare,
+  BACKGROUND_LITERATURE: Bookmark,
 };
 
 export function TezaraOverlapCards({ overlapTable }: TezaraOverlapCardsProps) {
@@ -86,12 +46,12 @@ export function TezaraOverlapCards({ overlapTable }: TezaraOverlapCardsProps) {
     if (!overlapTable) return [];
 
     return [...overlapTable].sort((a, b) => {
-      const pA = BADGE_ORDER_PRIORITY[a.primaryBadge] ?? 99;
-      const pB = BADGE_ORDER_PRIORITY[b.primaryBadge] ?? 99;
-      if (pA !== pB) return pA - pB;
       if (a.relevanceScore !== b.relevanceScore) {
         return b.relevanceScore - a.relevanceScore;
       }
+      const pA = BADGE_ORDER_PRIORITY[a.primaryBadge] ?? 99;
+      const pB = BADGE_ORDER_PRIORITY[b.primaryBadge] ?? 99;
+      if (pA !== pB) return pA - pB;
       return b.year - a.year;
     });
   }, [overlapTable]);
@@ -146,72 +106,12 @@ export function TezaraOverlapCards({ overlapTable }: TezaraOverlapCardsProps) {
                 </div>
               </div>
 
-              {item.dimensionScores && (
-                <div className="pt-1">
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <Eye className="w-3 h-3 text-muted-foreground/50" />
-                    <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 font-sans">
-                      7 Boyutlu Analiz
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-7 gap-1">
-                    {[
-                      {
-                        label: "Odak",
-                        value: item.dimensionScores.researchFocus,
-                        title: "Araştırma Odağı",
-                      },
-                      {
-                        label: "Aktörler",
-                        value: item.dimensionScores.mainActors,
-                        title: "Ana Aktörler",
-                      },
-                      {
-                        label: "Zaman",
-                        value: item.dimensionScores.temporalScope.score,
-                        title: `Zamansal Kapsam (${item.dimensionScores.temporalScope.label})`,
-                      },
-                      {
-                        label: "Mekan",
-                        value: item.dimensionScores.spatialScope,
-                        title: "Mekânsal Kapsam",
-                      },
-                      {
-                        label: "Kuram",
-                        value: item.dimensionScores.theoreticalFramework,
-                        title: "Kuramsal Çerçeve",
-                      },
-                      {
-                        label: "Yöntem",
-                        value: item.dimensionScores.methodology,
-                        title: "Yöntem",
-                      },
-                      {
-                        label: "İddia",
-                        value: item.dimensionScores.mainClaim,
-                        title: "İddia / Sav",
-                      },
-                    ].map((dim) => (
-                      <div
-                        key={dim.label}
-                        title={dim.title}
-                        className={`flex flex-col items-center gap-0.5 px-1 py-1 rounded-sm ${
-                          dim.value === 100
-                            ? "bg-success/15 text-success"
-                            : dim.value === 50
-                              ? "bg-warning/15 text-warning"
-                              : "bg-muted/20 text-muted-foreground/50"
-                        }`}
-                      >
-                        <span className="text-[7px] font-semibold uppercase leading-none font-mono">
-                          {dim.label}
-                        </span>
-                        <span className="text-[9px] font-bold leading-none font-mono">
-                          {dim.value}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+              {config.description && (
+                <div className="text-xs text-foreground bg-muted/10 p-3 rounded-md border border-border/40 font-sans leading-relaxed">
+                  <span className="font-semibold block text-[10px] uppercase tracking-wider text-muted-foreground/80 mb-1">
+                    Akademik Yol Haritası
+                  </span>
+                  {config.description}
                 </div>
               )}
 

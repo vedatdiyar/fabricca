@@ -46,102 +46,63 @@ export interface CalculatedRelationshipsResult {
   comparisonTable: CalculatedComparisonItem[];
 }
 
-function computeDimensionLevel(score: number): DimensionLevel {
-  if (score >= 150) return "HIGH";
-  if (score === 100) return "MEDIUM";
-  return "LOW";
-}
-
-function computeDimensionScores(params: {
-  researchFocus: number;
-  mainClaim: number;
-  methodology: number;
-  theoreticalFramework: number;
-  spatialScope: number;
-  mainActors: number;
-}): DimensionScores {
-  const content = params.researchFocus + params.mainClaim;
-  const methodTheory = params.methodology + params.theoreticalFramework;
-  const context = params.spatialScope + params.mainActors;
-
-  return {
-    content: computeDimensionLevel(content),
-    methodTheory: computeDimensionLevel(methodTheory),
-    context: computeDimensionLevel(context),
-  };
-}
-
 function getAcademicBadge(
-  scores: DimensionScores,
-  temporalLabel: TemporalScopeLabel,
+  item: LLMScoredItem,
+  bucket: ThesisBucket,
 ): AcademicBadge {
-  const { content, methodTheory, context } = scores;
+  if (bucket === "RISK") {
+    // Twin or Critical Replication is already handled in applyDecisionEngine,
+    // but we support it as a safeguard.
+    return item.researchFocus === 100 &&
+      item.mainActors === 100 &&
+      item.temporalScope.score === 100 &&
+      item.temporalScope.label === "OVERLAP" &&
+      item.spatialScope === 100 &&
+      item.theoreticalFramework === 100 &&
+      item.methodology === 100 &&
+      item.mainClaim === 100
+      ? "TWIN_THESIS_ALERT"
+      : "CRITICAL_REPLICATION_ALERT";
+  }
 
-  if (content === "LOW" && methodTheory === "LOW" && context === "LOW")
-    return "INDEPENDENT_CONCEPTUAL_STUDY";
-  if (content === "LOW" && methodTheory === "LOW" && context === "MEDIUM")
-    return "INNOVATIVE_EXPLORATION";
-  if (content === "LOW" && methodTheory === "MEDIUM" && context === "LOW")
-    return "HORIZON_EXPANSION";
-  if (content === "MEDIUM" && methodTheory === "LOW" && context === "LOW")
-    return "METHODOLOGICAL_REVOLUTION";
-  if (content === "MEDIUM" && methodTheory === "MEDIUM" && context === "LOW")
-    return "GEOGRAPHIC_REPRESENTATION";
-  if (content === "MEDIUM" && methodTheory === "LOW" && context === "MEDIUM")
-    return "METHOD_DRIVEN_ANALYSIS";
-  if (content === "LOW" && methodTheory === "MEDIUM" && context === "MEDIUM")
-    return "THEMATIC_INITIATIVE";
-  if (content === "MEDIUM" && methodTheory === "MEDIUM" && context === "MEDIUM")
-    return "BALANCED_SCHOLARLY_CONTRIBUTION";
+  // 1. Yöntemsel Şablon / Metot Referansı
+  if (item.methodology === 100) {
+    return "METHODOLOGY_REFERENCE";
+  }
 
-  if (content === "LOW" && methodTheory === "HIGH" && context === "LOW")
-    return "EMPIRICAL_ADAPTATION";
-  if (content === "MEDIUM" && methodTheory === "HIGH" && context === "LOW")
-    return "CONTEXTUAL_MODEL_TRANSFER";
-  if (content === "LOW" && methodTheory === "HIGH" && context === "MEDIUM")
-    return "CONCEPTUAL_MODEL_TRANSFER";
+  // 2. Kuramsal Temel / Teori Referansı
+  if (item.theoreticalFramework === 100) {
+    return "THEORETICAL_ANCHOR";
+  }
 
-  if (content === "HIGH" && methodTheory === "LOW" && context === "LOW")
-    return "METHODOLOGICAL_INNOVATION";
-  if (content === "HIGH" && methodTheory === "LOW" && context === "MEDIUM")
-    return "METHODOLOGICAL_RECONSTRUCTION";
-  if (content === "MEDIUM" && methodTheory === "LOW" && context === "HIGH")
-    return "THEORETICAL_RECONSTRUCT";
-  if (content === "HIGH" && methodTheory === "LOW" && context === "HIGH")
-    return "METHODOLOGICAL_CONTRAST";
-
-  if (content === "LOW" && methodTheory === "MEDIUM" && context === "HIGH")
-    return "DIALECTICAL_CONTRIBUTION";
-  if (content === "LOW" && methodTheory === "HIGH" && context === "HIGH")
-    return "PARADIGM_CHALLENGE";
-  if (content === "MEDIUM" && methodTheory === "MEDIUM" && context === "HIGH")
-    return "THEMATIC_EXPANSION";
-  if (content === "MEDIUM" && methodTheory === "HIGH" && context === "HIGH")
-    return "INCREMENTAL_CLAIM_CONTRIBUTION";
-
-  if (content === "HIGH" && methodTheory === "MEDIUM" && context === "LOW")
-    return "SPATIAL_REPLICATION";
-  if (content === "HIGH" && methodTheory === "HIGH" && context === "LOW")
-    return "LOCAL_VALIDATION_STUDY";
-  if (content === "HIGH" && methodTheory === "MEDIUM" && context === "MEDIUM")
-    return "HIGH_LITERATURE_PARALLELISM";
-  if (content === "HIGH" && methodTheory === "HIGH" && context === "MEDIUM")
-    return "NARROW_SCOPE_REPLICATION";
-
+  // 3. Tarihsel Derinlik / Kronolojik Referans
   if (
-    content === "MEDIUM" &&
-    methodTheory === "HIGH" &&
-    context === "MEDIUM" &&
-    temporalLabel === "FUTURE"
-  )
-    return "TEMPORAL_FOLLOW_UP";
+    item.temporalScope.label === "PAST" &&
+    (item.researchFocus >= 50 || item.mainActors >= 50)
+  ) {
+    return "HISTORICAL_CONTEXT";
+  }
 
-  if (content === "HIGH" && methodTheory === "MEDIUM" && context === "HIGH")
-    return "BORDERLINE_SIMILARITY_ALERT";
-  if (content === "HIGH" && methodTheory === "HIGH" && context === "HIGH")
-    return "TEMPORAL_UPDATE_STUDY";
+  // 4. Gelecek Projeksiyonu / Ardıl Çalışma
+  if (
+    item.temporalScope.label === "FUTURE" &&
+    (item.researchFocus >= 50 || item.mainActors >= 50)
+  ) {
+    return "FUTURE_PROJECTION";
+  }
 
-  return "BALANCED_SCHOLARLY_CONTRIBUTION";
+  // 5. Mekânsal Kıyas / Bağlam Transferi
+  if (item.spatialScope === 0 && item.researchFocus === 100) {
+    return "CONTEXTUAL_COMPARISON";
+  }
+
+  // 6. Bulgusal Kıyas / Tartışma Ortağı
+  if (item.researchFocus >= 50 || item.mainActors >= 50) {
+    return "EMPIRICAL_BENCHMARK";
+  }
+
+  // 7. Genel Literatür / Arka Plan Dolgusu (Varsayılan)
+  return "BACKGROUND_LITERATURE";
 }
 
 export function applyDecisionEngine(item: LLMScoredItem): DecisionResult {
@@ -170,13 +131,18 @@ export function applyDecisionEngine(item: LLMScoredItem): DecisionResult {
     temporalScope.score === 100 && temporalScope.label === "OVERLAP";
 
   if (mainClaim === 0 && (researchFocus === 0 || mainActors === 0)) {
-    return {
-      thesisId,
-      bucket: "IRRELEVANT",
-      primaryBadge: "IRRELEVANT_DATA",
-      badges: ["IRRELEVANT_DATA"],
-      relevanceScore,
-    };
+    const isComplementaryPair =
+      (researchFocus === 0 && mainActors === 100) ||
+      (researchFocus === 100 && mainActors === 0);
+    if (!isComplementaryPair) {
+      return {
+        thesisId,
+        bucket: "IRRELEVANT",
+        primaryBadge: "IRRELEVANT_DATA",
+        badges: ["IRRELEVANT_DATA"],
+        relevanceScore,
+      };
+    }
   }
 
   if (
@@ -215,16 +181,7 @@ export function applyDecisionEngine(item: LLMScoredItem): DecisionResult {
     };
   }
 
-  const dimScores = computeDimensionScores({
-    researchFocus,
-    mainClaim,
-    methodology,
-    theoreticalFramework,
-    spatialScope,
-    mainActors,
-  });
-
-  const primaryBadge = getAcademicBadge(dimScores, temporalScope.label);
+  const primaryBadge = getAcademicBadge(item, "CONTRIBUTION");
 
   return {
     thesisId,

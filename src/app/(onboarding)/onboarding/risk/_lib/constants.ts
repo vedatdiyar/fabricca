@@ -38,13 +38,13 @@ export const ACADEMIC_BADGE_META: Record<AcademicBadge, AcademicBadgeMeta> = {
   IRRELEVANT_DATA: {
     title: "Analiz Dışı Veri",
     description:
-      "Ana iddiası ve araştırma odağı referans çalışma ile örtüşmemektedir.",
+      "Ana iddiası ve araştırma odağı tezinizle örtüşmediği için analiz dışı bırakılmıştır.",
     type: "danger",
   },
   TWIN_THESIS_ALERT: {
-    title: "İkiz Tez / Birebir Eşleşme",
+    title: "Birebir Çakışma",
     description:
-      "Tüm bilimsel araştırma parametreleri referans tez ile tam uyumluluk göstermektedir.",
+      "Tüm bilimsel araştırma parametreleri teziniz ile tam uyumluluk göstermektedir. Özgünlük riski çok yüksektir.",
     type: "danger",
   },
   CRITICAL_REPLICATION_ALERT: {
@@ -53,193 +53,103 @@ export const ACADEMIC_BADGE_META: Record<AcademicBadge, AcademicBadgeMeta> = {
       "Temel bağlamsal unsurlar ve yöntem tasarımı referans çalışma ile çok yüksek oranda çakışmaktadır.",
     type: "warning",
   },
-  INDEPENDENT_CONCEPTUAL_STUDY: {
-    title: "Bağımsız Kavramsal Araştırma",
+  METHODOLOGY_REFERENCE: {
+    title: "Metot Referansı",
     description:
-      "Araştırma tasarımı, yöntemi ve teorik kurgusu literatürden tamamen bağımsız, yüksek özgünlüğe sahip çalışma.",
+      "Aday tezin yöntem tasarımı ve veri toplama araçları tezinizle birebir aynıdır; metot şablonunu doğrudan referans alabilirsiniz.",
     type: "success",
   },
-  INNOVATIVE_EXPLORATION: {
-    title: "Yenilikçi Alan Sınaması",
+  THEORETICAL_ANCHOR: {
+    title: "Kuramsal Temel",
     description:
-      "Yeni bir problematik ve yöntemin, benzer veya paralel bir hedef kitle üzerinde ilk kez sınanması.",
+      "Aday tezin kavramsal çerçevesi ve kuramsal temelleri tezinizle örtüşmektedir; literatür taramanızı kurgularken referans alabilirsiniz.",
     type: "success",
   },
-  HORIZON_EXPANSION: {
-    title: "Ufuk Genişletici Araştırma",
+  HISTORICAL_CONTEXT: {
+    title: "Tarihsel Arka Plan",
     description:
-      "Özgün bir araştırma probleminin, standart metodolojilerle tamamen farklı bir coğrafi/mekânsal bağlamda çözümlenmesi.",
-    type: "success",
-  },
-  METHODOLOGICAL_REVOLUTION: {
-    title: "Yöntemsel Paradigma Değişimi",
-    description:
-      "Bilinen bir problemin, literatürde daha önce o kitle için hiç denenmemiş bir yöntemle analiz edilmesi.",
-    type: "success",
-  },
-  GEOGRAPHIC_REPRESENTATION: {
-    title: "Coğrafi/Bağlamsal Temsil",
-    description:
-      "Benzer konu ve yöntemlerin, literatürde daha önce temsil edilmemiş tamamen yeni bir coğrafi bağlama uyarlanması.",
-    type: "success",
-  },
-  METHOD_DRIVEN_ANALYSIS: {
-    title: "Metot Odaklı Yenileme",
-    description:
-      "Paralel bir kitle ve konuda, araştırma yöntemini kökten değiştirerek analiz derinliği sağlayan çalışma.",
-    type: "success",
-  },
-  THEMATIC_INITIATIVE: {
-    title: "Tematik Öncü Çalışma",
-    description:
-      "Yepyeni bir bilimsel sorunsalın, mevcut standart yöntem ve hedef kitle sınırları içerisine başarıyla entegre edilmesi.",
-    type: "success",
-  },
-  BALANCED_SCHOLARLY_CONTRIBUTION: {
-    title: "Dengeli Akademik Katkı",
-    description:
-      "Mevcut literatürün ana akım parametrelerini dengeli şekilde izleyen, paralel ama bağımsız bilimsel katkı.",
+      "Çalışılan aktör veya odağın geçmiş bir dönemini incelemektedir. Tezinizin giriş ve tarihsel arka plan bölümlerinde olgunlaşma sürecini açıklamak için kullanılmalıdır.",
     type: "info",
   },
-  EMPIRICAL_ADAPTATION: {
-    title: "Uygulamalı Model Adaptasyonu",
+  FUTURE_PROJECTION: {
+    title: "Gelecek Projeksiyonu",
     description:
-      "Rüştünü ispatlamış bir kuram ve yöntemin, literatürde çalışılmamış yeni bir temaya ve mekâna başarıyla uyarlanması.",
+      "Çalıştığınız konunun daha yakın/güncel bir dönemini incelemektedir. Kendi bulgularınızın gelecekteki yansımalarını veya trend takibini tartışırken kullanılmalıdır.",
     type: "info",
   },
-  CONTEXTUAL_MODEL_TRANSFER: {
-    title: "Bağlamsal Model Transferi",
+  CONTEXTUAL_COMPARISON: {
+    title: "Bağlam Transferi",
     description:
-      "Yerleşik bir teorik modelin, benzer bir konunun çözümü için yepyeni bir coğrafya veya kitleye aktarılması.",
-    type: "info",
-  },
-  CONCEPTUAL_MODEL_TRANSFER: {
-    title: "Kavramsal Model Transferi",
-    description:
-      "Yöntem ve teoriyi değiştirmeden tutarak, aynı hedef kitle üzerinde yepyeni bir araştırma probleminin çözülmesi.",
-    type: "info",
-  },
-  VALIDATION_STUDY: {
-    title: "Doğrulayıcı Alan Çalışması",
-    description:
-      "Standart bir yöntem ve teorinin, paralel bir kitlede doğruluğunu test etmek amacıyla yeniden çalıştırılması.",
-    type: "info",
-  },
-  METHODOLOGICAL_INNOVATION: {
-    title: "Metodolojik Yenilikçilik",
-    description:
-      "Aynı araştırma problemini, yepyeni bir metodolojiyle ve tamamen farklı bir bağlamsal evrende ele alan çalışma.",
+      "Benzer bir problemi farklı bir coğrafi veya kurumsal bağlamda ele almaktadır. Yöntemin/modelin yeni bir alana transfer edilmesinin getirdiği katkıyı savunmak için kullanılmalıdır.",
     type: "success",
   },
-  METHODOLOGICAL_RECONSTRUCTION: {
-    title: "Metodolojik Yeniden İnşa",
+  EMPIRICAL_BENCHMARK: {
+    title: "Tartışma Ortağı",
     description:
-      "Aynı araştırma konusunun, benzer bağlamda fakat o konu için literatürde yeni sayılan bir yöntem tasarımıyla sınanması.",
+      "Benzer odak veya aktörlerle çalışmaktadır. Elde ettiğiniz bulguları bu tezin sonuçlarıyla tezinizin tartışma bölümünde kıyaslamak için kullanılmalıdır.",
     type: "success",
   },
-  THEORETICAL_RECONSTRUCT: {
-    title: "Kuramsal Yenilenme",
+  BACKGROUND_LITERATURE: {
+    title: "Genel Literatür",
     description:
-      "Benzer bir araştırma probleminin, tamamen bağımsız ve yeni bir teorik perspektif ile yeniden çözümlenmesi.",
-    type: "success",
-  },
-  METHODOLOGICAL_CONTRAST: {
-    title: "Metodolojik Karşıtlık",
-    description:
-      "İncelenen konu, kitle ve mekân aynıyken; kullanılan yöntemsel veya kuramsal lensin kökten farklılaşması.",
-    type: "success",
-  },
-  DIALECTICAL_CONTRIBUTION: {
-    title: "Diyalektik Akademik Katkı",
-    description:
-      "Aynı araştırma evreninde, benzer yöntemlerle tamamen bağımsız veya farklı bir hipotez/iddia geliştirilmesi.",
+      "Doğrudan bir yöntem veya bulgu kıyası yerine, literatür taramasında genel bağlamı desteklemek amacıyla arka plan referansı olarak kullanılabilir.",
     type: "info",
-  },
-  PARADIGM_CHALLENGE: {
-    title: "Paradigmatik Karşıtlık / Antitez",
-    description:
-      "Aynı kitle ve yöntemlerle, literatürde kabul görmüş yerleşik teze meydan okuyan zıt bulgu/antitez sunulması.",
-    type: "success",
-  },
-  THEMATIC_EXPANSION: {
-    title: "Tematik Genişleme / Yeni Odak",
-    description:
-      "Mevcut literatür bağlamını koruyarak, daha önce analiz edilmemiş yeni bir kurumsal aktörü veya tematik odağı inceleme.",
-    type: "info",
-  },
-  INCREMENTAL_CLAIM_CONTRIBUTION: {
-    title: "Kümülatif Bulgusal Katkı",
-    description:
-      "Aynı kitle ve yöntemlerle, literatürdeki mevcut bulgulara yeni ve tamamlayıcı bir ek tez sunulması.",
-    type: "info",
-  },
-  SPATIAL_REPLICATION: {
-    title: "Mekânsal Replikasyon",
-    description:
-      "Aynı araştırma problemini benzer yöntemlerle, sadece farklı bir mekânsal/coğrafi bağlamda tekrarlama.",
-    type: "warning",
-  },
-  LOCAL_VALIDATION_STUDY: {
-    title: "Yerel Doğrulama Çalışması",
-    description:
-      "Tasarım ve içerik olarak referans çalışmanın benzeri olup, sadece yerel coğrafi örneklemi farklılaştıran çalışma.",
-    type: "warning",
-  },
-  HIGH_LITERATURE_PARALLELISM: {
-    title: "Yüksek Literatür Paralelliği",
-    description:
-      "Konu, yöntem ve bağlamın büyük ölçüde çakıştığı, özgünlük payı oldukça sınırlı olan paralel çalışma.",
-    type: "warning",
-  },
-  NARROW_SCOPE_REPLICATION: {
-    title: "Dar Kapsamlı Replikasyon",
-    description:
-      "Çok dar bir bağlamsal/örneklem farkı dışında referans çalışmanın tüm araştırma patikasını tekrarlayan çalışma.",
-    type: "warning",
-  },
-  TEMPORAL_FOLLOW_UP: {
-    title: "Zamansal Takip Çalışması",
-    description:
-      "Araştırma tasarımı ve bağlamı aynı tutarak, sadece incelenen zaman dilimini (periyodunu) ileriye kaydıran çalışma.",
-    type: "warning",
-  },
-  BORDERLINE_SIMILARITY_ALERT: {
-    title: "Sınırda Benzerlik Değerlendirmesi",
-    description:
-      "Aynı kitlede, aynı konuyu benzer yöntemlerle çalışma. Kritik benzerlik sınırının hemen altında yer alır.",
-    type: "warning",
-  },
-  TEMPORAL_UPDATE_STUDY: {
-    title: "Periyodik Güncelleme Çalışması",
-    description:
-      "Birebir aynı kitle, yöntem ve kuramla sadece zaman diliminin güncellenmiş (yeni yıl verisi) sürümü.",
-    type: "warning",
   },
 };
 
-const BADGE_TYPE_TO_CARD: Record<
-  BadgeType,
+const ACADEMIC_BADGE_STYLE: Record<
+  AcademicBadge,
   { card: string; border: string; text: string }
 > = {
-  danger: {
-    card: "bg-destructive/10",
-    border: "border-destructive/20",
-    text: "text-destructive",
+  TWIN_THESIS_ALERT: {
+    card: "bg-red-500/10",
+    border: "border-red-500/20",
+    text: "text-red-400",
   },
-  warning: {
-    card: "bg-warning/10",
-    border: "border-warning/20",
-    text: "text-warning",
+  CRITICAL_REPLICATION_ALERT: {
+    card: "bg-orange-500/10",
+    border: "border-orange-500/20",
+    text: "text-orange-400",
   },
-  success: {
-    card: "bg-success/10",
-    border: "border-success/20",
-    text: "text-success",
+  IRRELEVANT_DATA: {
+    card: "bg-zinc-500/5",
+    border: "border-zinc-500/10",
+    text: "text-zinc-500",
   },
-  info: {
-    card: "bg-info/10",
-    border: "border-info/20",
-    text: "text-info",
+  METHODOLOGY_REFERENCE: {
+    card: "bg-cyan-500/10",
+    border: "border-cyan-500/20",
+    text: "text-cyan-400",
+  },
+  THEORETICAL_ANCHOR: {
+    card: "bg-indigo-500/10",
+    border: "border-indigo-500/20",
+    text: "text-indigo-400",
+  },
+  HISTORICAL_CONTEXT: {
+    card: "bg-amber-500/10",
+    border: "border-amber-500/20",
+    text: "text-amber-400",
+  },
+  FUTURE_PROJECTION: {
+    card: "bg-fuchsia-500/10",
+    border: "border-fuchsia-500/20",
+    text: "text-fuchsia-400",
+  },
+  CONTEXTUAL_COMPARISON: {
+    card: "bg-emerald-500/10",
+    border: "border-emerald-500/20",
+    text: "text-emerald-400",
+  },
+  EMPIRICAL_BENCHMARK: {
+    card: "bg-blue-500/10",
+    border: "border-blue-500/20",
+    text: "text-blue-400",
+  },
+  BACKGROUND_LITERATURE: {
+    card: "bg-slate-500/10",
+    border: "border-slate-500/20",
+    text: "text-slate-400",
   },
 };
 
@@ -252,8 +162,8 @@ export function getAcademicBadgeConfig(badge: string): {
 } {
   const key = badge as AcademicBadge;
   const meta = ACADEMIC_BADGE_META[key];
-  if (meta) {
-    const style = BADGE_TYPE_TO_CARD[meta.type];
+  const style = ACADEMIC_BADGE_STYLE[key];
+  if (meta && style) {
     return { label: meta.title, description: meta.description, ...style };
   }
   return {
@@ -271,8 +181,8 @@ export function getUiBadgeConfig(badge: string): {
 } {
   const key = badge as AcademicBadge;
   const meta = ACADEMIC_BADGE_META[key];
-  if (meta) {
-    const style = BADGE_TYPE_TO_CARD[meta.type];
+  const style = ACADEMIC_BADGE_STYLE[key];
+  if (meta && style) {
     return {
       text: meta.title,
       bgClass: `${style.card} border ${style.border} ${style.text}`,

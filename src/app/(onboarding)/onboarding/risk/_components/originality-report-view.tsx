@@ -1,7 +1,6 @@
 "use client";
 
 import { TezaraOverlapCards } from "./tezara-overlap-cards";
-import { EliminatedThesesSection } from "./eliminated-theses-section";
 import type { OriginalityReportData } from "@/lib/types";
 
 interface OriginalityReportViewProps {
@@ -40,11 +39,6 @@ export function OriginalityReportView({
         <SectionDivider label="Pozisyon Matrisi" />
         <TezaraOverlapCards overlapTable={tezaraResults.overlapTable} />
       </div>
-
-      {/* Bölüm B: Elenen Tezler (accordion) */}
-      <EliminatedThesesSection
-        eliminatedTheses={tezaraResults.eliminatedTheses}
-      />
     </div>
   );
 }

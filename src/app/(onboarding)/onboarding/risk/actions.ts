@@ -289,23 +289,19 @@ export async function finalizeJuryAnalysisAction(params: {
     const activeTheses = relationshipResult.comparisonTable.filter(
       (item) => item.bucket !== "IRRELEVANT",
     );
-    const eliminatedTheses = relationshipResult.comparisonTable.filter(
-      (item) => item.bucket === "IRRELEVANT",
-    );
 
-    // ── Akademik standardizasyon (Tüm tezler için) ──
-    const allTheses = relationshipResult.comparisonTable;
-    if (allTheses.length > 0) {
+    // ── Akademik standardizasyon (Sadece aktif/elenmemiş tezler için) ──
+    if (activeTheses.length > 0) {
       const sanitized = await sanitizeAcademicDataBulk(
-        allTheses.map((item) => ({
+        activeTheses.map((item) => ({
           title: item.title,
           author: item.author,
         })),
       );
-      for (let i = 0; i < allTheses.length; i++) {
+      for (let i = 0; i < activeTheses.length; i++) {
         if (sanitized[i]) {
-          allTheses[i].title = sanitized[i].title;
-          allTheses[i].author = sanitized[i].author;
+          activeTheses[i].title = sanitized[i].title;
+          activeTheses[i].author = sanitized[i].author;
         }
       }
     }
@@ -338,26 +334,12 @@ export async function finalizeJuryAnalysisAction(params: {
           relevanceScore: item.relevanceScore,
           dimensionScores: buildDimensions(item),
         })),
-        eliminatedTheses: eliminatedTheses.map((item) => ({
-          id: item.id,
-          title: item.title,
-          author: item.author,
-          university: item.university,
-          year: item.year,
-          thesisType: item.thesisType,
-          department: item.department,
-          yokPdfUrl: item.yokPdfUrl,
-          primaryBadge: item.primaryBadge,
-          badges: item.badges,
-          eliminationStage: "ANALYSIS" as const,
-          relevanceScore: item.relevanceScore,
-          dimensionScores: buildDimensions(item),
-        })),
+        eliminatedTheses: [], // Elenen tezler UI katmanına gönderilmez
       },
     };
 
-    // ── Transactional write: eski kayıtları sil, tüm tezleri yaz (aktif + elenen) ──
-    const dbRows = allTheses.map((item) => ({
+    // ── Transactional write: eski kayıtları sil, sadece aktif tezleri yaz ──
+    const dbRows = activeTheses.map((item) => ({
       userId: session.userId,
       externalThesisId: item.id,
       title: item.title,
@@ -379,8 +361,8 @@ export async function finalizeJuryAnalysisAction(params: {
       methodologyScore: item.methodology,
       mainClaimScore: item.mainClaim,
       academicTactic: "",
-      isEliminated: item.bucket === "IRRELEVANT",
-      eliminationStage: item.bucket === "IRRELEVANT" ? "ANALYSIS" : null,
+      isEliminated: false,
+      eliminationStage: null,
       updatedAt: new Date(),
     }));
 
