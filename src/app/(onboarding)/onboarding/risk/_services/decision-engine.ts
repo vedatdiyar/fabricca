@@ -4,9 +4,6 @@ import type {
   RelationshipBadge,
   TezaraThesisDetails,
   ThesisBucket,
-  DimensionLevel,
-  DimensionScores,
-  TemporalScopeLabel,
 } from "@/lib/types";
 import type { LLMScoredItem } from "./analysis";
 
