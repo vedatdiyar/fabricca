@@ -31,8 +31,8 @@ export interface CalculatedComparisonItem {
   relevanceScore: number;
   researchFocus: number;
   mainActors: number;
-  temporalScope: { score: number; label: string };
-  spatialScope: number;
+  scopeContext: number;
+  temporalLabel: string;
   theoreticalFramework: number;
   methodology: number;
   mainClaim: number;
@@ -48,13 +48,10 @@ function getAcademicBadge(
   bucket: ThesisBucket,
 ): AcademicBadge {
   if (bucket === "RISK") {
-    // Twin or Critical Replication is already handled in applyDecisionEngine,
-    // but we support it as a safeguard.
     return item.researchFocus === 100 &&
       item.mainActors === 100 &&
-      item.temporalScope.score === 100 &&
-      item.temporalScope.label === "OVERLAP" &&
-      item.spatialScope === 100 &&
+      item.scopeContext === 100 &&
+      item.temporalLabel === "OVERLAP" &&
       item.theoreticalFramework === 100 &&
       item.methodology === 100 &&
       item.mainClaim === 100
@@ -74,7 +71,7 @@ function getAcademicBadge(
 
   // 3. Tarihsel Derinlik / Kronolojik Referans
   if (
-    item.temporalScope.label === "PAST" &&
+    item.temporalLabel === "PAST" &&
     (item.researchFocus >= 50 || item.mainActors >= 50)
   ) {
     return "HISTORICAL_CONTEXT";
@@ -82,14 +79,14 @@ function getAcademicBadge(
 
   // 4. Gelecek Projeksiyonu / Ardıl Çalışma
   if (
-    item.temporalScope.label === "FUTURE" &&
+    item.temporalLabel === "FUTURE" &&
     (item.researchFocus >= 50 || item.mainActors >= 50)
   ) {
     return "FUTURE_PROJECTION";
   }
 
-  // 5. Mekânsal Kıyas / Bağlam Transferi
-  if (item.spatialScope === 0 && item.researchFocus === 100) {
+  // 5. Bağlam Kıyası / Farklı Bağlamda Aynı Odak
+  if (item.scopeContext === 0 && item.researchFocus === 100) {
     return "CONTEXTUAL_COMPARISON";
   }
 
@@ -106,8 +103,8 @@ export function applyDecisionEngine(item: LLMScoredItem): DecisionResult {
   const {
     researchFocus,
     mainActors,
-    temporalScope,
-    spatialScope,
+    scopeContext,
+    temporalLabel,
     theoreticalFramework,
     methodology,
     mainClaim,
@@ -118,14 +115,12 @@ export function applyDecisionEngine(item: LLMScoredItem): DecisionResult {
   const relevanceScore =
     researchFocus +
     mainActors +
-    temporalScope.score +
-    spatialScope +
+    scopeContext +
     theoreticalFramework +
     methodology +
     mainClaim;
 
-  const isTemporalOverlap =
-    temporalScope.score === 100 && temporalScope.label === "OVERLAP";
+  const isContextOverlap = scopeContext === 100 && temporalLabel === "OVERLAP";
 
   if (mainClaim === 0 && (researchFocus === 0 || mainActors === 0)) {
     const isComplementaryPair =
@@ -145,8 +140,7 @@ export function applyDecisionEngine(item: LLMScoredItem): DecisionResult {
   if (
     researchFocus === 100 &&
     mainActors === 100 &&
-    isTemporalOverlap &&
-    spatialScope === 100 &&
+    isContextOverlap &&
     theoreticalFramework === 100 &&
     methodology === 100 &&
     mainClaim === 100
@@ -163,8 +157,7 @@ export function applyDecisionEngine(item: LLMScoredItem): DecisionResult {
   if (
     researchFocus === 100 &&
     mainActors === 100 &&
-    isTemporalOverlap &&
-    spatialScope === 100 &&
+    isContextOverlap &&
     mainClaim === 100 &&
     (methodology === 50 || methodology === 100) &&
     (theoreticalFramework === 50 || theoreticalFramework === 100)
@@ -237,8 +230,8 @@ export function calculateRelationships(
       relevanceScore: decision.relevanceScore,
       researchFocus: llmItem.researchFocus,
       mainActors: llmItem.mainActors,
-      temporalScope: llmItem.temporalScope,
-      spatialScope: llmItem.spatialScope,
+      scopeContext: llmItem.scopeContext,
+      temporalLabel: llmItem.temporalLabel,
       theoreticalFramework: llmItem.theoreticalFramework,
       methodology: llmItem.methodology,
       mainClaim: llmItem.mainClaim,

@@ -8,8 +8,7 @@ export interface LoadedMatrixData {
   id: number;
   mainActors: string;
   researchFocus: string;
-  temporalScope: string;
-  spatialScope: string;
+  context: string;
   theoreticalFramework: string;
   methodology: string;
   mainClaim: string;
@@ -36,8 +35,7 @@ export async function loadThesisMatrixAndBoxes(userId: number): Promise<{
       id: thesisMatrices.id,
       mainActors: thesisMatrices.mainActors,
       researchFocus: thesisMatrices.researchFocus,
-      temporalScope: thesisMatrices.temporalScope,
-      spatialScope: thesisMatrices.spatialScope,
+      context: thesisMatrices.context,
       theoreticalFramework: thesisMatrices.theoreticalFramework,
       methodology: thesisMatrices.methodology,
       mainClaim: thesisMatrices.mainClaim,

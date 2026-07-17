@@ -45,8 +45,7 @@ import type { SubBoxInput } from "../literature-review/_services/literature-revi
 interface MatrixInput {
   mainActors: string;
   researchFocus: string;
-  temporalScope: string;
-  spatialScope: string;
+  context: string;
   theoreticalFramework: string;
   methodology: string;
   mainClaim: string;
@@ -303,8 +302,7 @@ export function useOnboardingNavigation() {
         const cleanMatrixInput = {
           mainActors: matrixInput.mainActors,
           researchFocus: matrixInput.researchFocus,
-          temporalScope: matrixInput.temporalScope,
-          spatialScope: matrixInput.spatialScope,
+          context: matrixInput.context,
           theoreticalFramework: matrixInput.theoreticalFramework,
           methodology: matrixInput.methodology,
           mainClaim: matrixInput.mainClaim,

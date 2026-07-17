@@ -23,15 +23,15 @@ export interface CohereRerankResponse {
 /**
  * Formats the thesis matrix into a YAML-structured query string for Cohere Rerank.
  *
- * Only the three core semantic dimensions (actors, focus, claim) are used;
- * temporal, spatial, theoretical, and methodological fields are excluded
- * as they introduce noise rather than relevant signal.
+ * Four core semantic dimensions are used: actors, focus, context, and claim.
+ * Theoretical and methodological fields are excluded as they introduce noise.
  */
 export function formatRerankQuery(matrix: ThesisMatrix): string {
   return [
     "Araştırma Matrisi:",
     `  Ana Aktörler: ${matrix.mainActors}`,
     `  Araştırma Odağı: ${matrix.researchFocus}`,
+    `  Tarihsel/Toplumsal Bağlam: ${matrix.context}`,
     `  Ana İddia: ${matrix.mainClaim}`,
   ].join("\n");
 }
@@ -40,8 +40,8 @@ export function formatRerankQuery(matrix: ThesisMatrix): string {
  * Formats raw TEZARA summaries into YAML-structured document strings
  * containing metadata (Title, University, Department, Year, Type) for Cohere Rerank.
  *
- * This structured metadata allows Cohere to match spatialScope (via university location),
- * temporalScope (via year), and other academic parameters.
+ * University/department names and year metadata allow Cohere to match
+ * contextual and temporal signals from the candidate's metadata.
  */
 export function formatRerankDocuments(
   summaries: (TezaraThesisSummary & { abstract?: string })[],

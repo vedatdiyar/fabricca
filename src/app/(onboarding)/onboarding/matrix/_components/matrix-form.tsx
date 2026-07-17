@@ -11,7 +11,7 @@ import {
   HelpCircle,
   BookMarked,
   Layers,
-  Compass,
+  Globe,
   Target,
 } from "lucide-react";
 
@@ -27,8 +27,7 @@ import { fetchThesisMatrixFresh } from "../../_services/fetch-actions";
 type FormState = {
   mainActors: string;
   researchFocus: string;
-  temporalScope: string;
-  spatialScope: string;
+  context: string;
   theoreticalFramework: string;
   methodology: string;
   mainClaim: string;
@@ -63,7 +62,7 @@ const MATRIX_SECTIONS: SectionConfig[] = [
         label: "Araştırma Özneleri / Aktörler / Analiz Nesneleri",
         placeholder:
           "Araştırma kapsamında odaklanılan aktörler, toplumsal gruplar, tarihsel figürler, kurumlar veya analiz edilen temel kavramsal/edebi nesneler...",
-        rows: 3,
+        rows: 4,
       },
       {
         key: "researchFocus",
@@ -78,28 +77,18 @@ const MATRIX_SECTIONS: SectionConfig[] = [
     ],
   },
   {
-    id: "kapsamVeBaglam",
-    title: "Kapsam ve Bağlam",
+    id: "baglam",
+    title: "Bağlam",
     fields: [
       {
-        key: "temporalScope",
-        id: "zamanDilimi",
+        key: "context",
+        id: "tarihselBaglam",
         number: "03",
-        Icon: Compass,
-        label: "Zaman Dilimi / Dönem",
+        Icon: Globe,
+        label: "Tarihsel ve Toplumsal Bağlam",
         placeholder:
-          "Araştırmanın sınırlandırıldığı kronolojik dönem (örn. belirli bir yıl aralığı, tarihsel dönem, yüzyıl veya zaman aralığı)...",
-        rows: 2,
-      },
-      {
-        key: "spatialScope",
-        id: "mekansalBaglam",
-        number: "04",
-        Icon: Compass,
-        label: "Mekânsal Sınırlar / İnceleme Sahası",
-        placeholder:
-          "Araştırmanın gerçekleştiği coğrafi/mekânsal sınırlar, ülke, bölge, kurum veya sanal inceleme sahası...",
-        rows: 2,
+          "Araştırmanın geçtiği dönem, mekân ve bu çerçevede araştırma problemini biçimlendiren tarihsel, siyasal, toplumsal, ekonomik bağlam ve arka plan dinamikleri...",
+        rows: 4,
       },
     ],
   },
@@ -110,7 +99,7 @@ const MATRIX_SECTIONS: SectionConfig[] = [
       {
         key: "theoreticalFramework",
         id: "kavramsalCerceve",
-        number: "05",
+        number: "04",
         Icon: BookMarked,
         label: "Kuramsal / Kavramsal Çerçeve veya Yaklaşım",
         placeholder:
@@ -120,7 +109,7 @@ const MATRIX_SECTIONS: SectionConfig[] = [
       {
         key: "methodology",
         id: "metodoloji",
-        number: "06",
+        number: "05",
         Icon: Layers,
         label: "Yöntem ve Veri Kaynakları",
         placeholder:
@@ -130,7 +119,7 @@ const MATRIX_SECTIONS: SectionConfig[] = [
       {
         key: "mainClaim",
         id: "temelIddia",
-        number: "07",
+        number: "06",
         Icon: Target,
         label: "Merkez Savı / Temel İddia",
         placeholder:
@@ -202,8 +191,7 @@ const MatrixCard = memo(function MatrixCard({
 const EMPTY_VALUES: FormState = {
   mainActors: "",
   researchFocus: "",
-  temporalScope: "",
-  spatialScope: "",
+  context: "",
   theoreticalFramework: "",
   methodology: "",
   mainClaim: "",
@@ -230,8 +218,7 @@ export function MatrixForm() {
     return {
       mainActors: editedValues.mainActors ?? base.mainActors,
       researchFocus: editedValues.researchFocus ?? base.researchFocus,
-      temporalScope: editedValues.temporalScope ?? base.temporalScope,
-      spatialScope: editedValues.spatialScope ?? base.spatialScope,
+      context: editedValues.context ?? base.context,
       theoreticalFramework:
         editedValues.theoreticalFramework ?? base.theoreticalFramework,
       methodology: editedValues.methodology ?? base.methodology,
@@ -255,10 +242,9 @@ export function MatrixForm() {
       await submitMatrix({
         mainActors: formState.mainActors,
         researchFocus: formState.researchFocus,
+        context: formState.context,
         theoreticalFramework: formState.theoreticalFramework,
         methodology: formState.methodology,
-        temporalScope: formState.temporalScope,
-        spatialScope: formState.spatialScope,
         mainClaim: formState.mainClaim,
       });
     } catch (error) {

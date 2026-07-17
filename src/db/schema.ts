@@ -47,8 +47,7 @@ export const thesisMatrices = pgTable("thesis_matrices", {
     .unique(),
   mainActors: text().notNull(),
   researchFocus: text().notNull(),
-  temporalScope: text().notNull(),
-  spatialScope: text().notNull(),
+  context: text().notNull(),
   theoreticalFramework: text().notNull(),
   methodology: text().notNull(),
   mainClaim: text().notNull(),
@@ -98,14 +97,13 @@ export const originalityReports = pgTable(
      * (INDEPENDENT_CONCEPTUAL_STUDY … TEMPORAL_UPDATE_STUDY)
      */
     diagnosis: varchar({ length: 100 }).notNull(),
-    /** Composite relevance score (sum of all 7 LLM dimensions, range 0-700) */
+    /** Composite relevance score (sum of all 6 LLM dimensions, range 0-600) */
     relevanceScore: integer("relevance_score").notNull().default(0),
     /** Individual LLM dimension scores */
     researchFocusScore: integer("research_focus_score"),
     mainActorsScore: integer("main_actors_score"),
-    temporalScopeScore: integer("temporal_scope_score"),
-    temporalScopeLabel: varchar("temporal_scope_label", { length: 20 }),
-    spatialScopeScore: integer("spatial_scope_score"),
+    scopeContextScore: integer("scope_context_score"),
+    temporalLabel: varchar("temporal_label", { length: 20 }),
     theoreticalFrameworkScore: integer("theoretical_framework_score"),
     methodologyScore: integer("methodology_score"),
     mainClaimScore: integer("main_claim_score"),

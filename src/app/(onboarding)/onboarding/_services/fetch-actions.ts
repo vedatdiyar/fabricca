@@ -42,9 +42,8 @@ function groupRowsToReport(
     relevanceScore: number | null;
     researchFocusScore: number | null;
     mainActorsScore: number | null;
-    temporalScopeScore: number | null;
-    temporalScopeLabel: string | null;
-    spatialScopeScore: number | null;
+    scopeContextScore: number | null;
+    temporalLabel: string | null;
     theoreticalFrameworkScore: number | null;
     methodologyScore: number | null;
     mainClaimScore: number | null;
@@ -88,11 +87,8 @@ function groupRowsToReport(
         ? {
             researchFocus: row.researchFocusScore,
             mainActors: row.mainActorsScore!,
-            temporalScope: {
-              score: row.temporalScopeScore!,
-              label: row.temporalScopeLabel ?? "UNKNOWN",
-            },
-            spatialScope: row.spatialScopeScore!,
+            scopeContext: row.scopeContextScore!,
+            temporalLabel: row.temporalLabel ?? "UNKNOWN",
             theoreticalFramework: row.theoreticalFrameworkScore!,
             methodology: row.methodologyScore!,
             mainClaim: row.mainClaimScore!,

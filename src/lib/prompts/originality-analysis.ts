@@ -23,30 +23,17 @@ export const tezAnalizSonucuSchema: JsonSchema = {
       description:
         "Main Actors: 100=Actor sets are semantically and analytically fully equivalent; 50=The target thesis includes multiple actor groups (A+B) while the candidate includes only one (Only A) (Partial Match); 0=No intersection OR a completely different analytical actor is substituted (A+C) (No Match / Family Divergence).",
     },
-    temporalScope: {
-      type: "object",
-      properties: {
-        score: {
-          type: "integer",
-          enum: [0, 100],
-          description:
-            "100=The analyzed historical periods overlap or one encompasses the other; 0=Periods do not overlap or there is insufficient temporal data in the abstract.",
-        },
-        label: {
-          type: "string",
-          enum: ["OVERLAP", "PAST", "FUTURE", "UNKNOWN"],
-          description:
-            "OVERLAP=Analyzed periods overlap; PAST=Candidate examines a chronologically earlier period; FUTURE=Candidate examines a chronologically later period; UNKNOWN=No temporal data found in the abstract (Data Insufficiency).",
-        },
-      },
-      required: ["score", "label"],
-      description: "Temporal scope / Period evaluation.",
-    },
-    spatialScope: {
+    scopeContext: {
       type: "integer",
       enum: [0, 50, 100],
       description:
-        "Spatial Scope / Geography: 100=Geography, administrative unit, or institution is exactly the same; 50=Partial overlap / subset (e.g. target covers Region A, candidate covers a sub-region of A); 0=Completely different geography/location.",
+        "Scope / Context: 100=The historical period, geography, institutional setting, and socio-political background overlap or one encompasses the other; 50=Partial overlap / subset (e.g. target covers the entire historical-societal context, candidate covers only one sub-dimension); 0=Completely different context — different period, geography, or background dynamics.",
+    },
+    temporalLabel: {
+      type: "string",
+      enum: ["OVERLAP", "PAST", "FUTURE", "UNKNOWN"],
+      description:
+        "OVERLAP=Analyzed periods overlap; PAST=Candidate examines a chronologically earlier period; FUTURE=Candidate examines a chronologically later period; UNKNOWN=No temporal data found in the abstract (Data Insufficiency).",
     },
     theoreticalFramework: {
       type: "integer",
@@ -71,8 +58,8 @@ export const tezAnalizSonucuSchema: JsonSchema = {
     "tez_id",
     "researchFocus",
     "mainActors",
-    "temporalScope",
-    "spatialScope",
+    "scopeContext",
+    "temporalLabel",
     "theoreticalFramework",
     "methodology",
     "mainClaim",
@@ -108,17 +95,18 @@ DATA INSUFFICIENCY RULE: If there is absolutely no mention, data, or evidence re
    - 50 (Partial Match): The target includes multiple actor groups (A+B), while the candidate includes only one (Only A).
    - 0 (No Match / Family Divergence): No intersection OR a completely different analytical actor is substituted (A+C).
 
-3. temporalScope — score [0, 100] AND label ["OVERLAP", "PAST", "FUTURE", "UNKNOWN"]
-   CRITICAL: Completely ignore the candidate thesis's publication year from its metadata. Evaluate ONLY based on the historical period discussed / analyzed within the abstract text itself (e.g. century references, date ranges, historical event periods).
-   - score=100, label="OVERLAP": The historical periods discussed in the abstracts overlap or one encompasses the other.
-   - score=0, label="PAST": The period discussed in the candidate abstract is chronologically earlier than the period discussed in the target abstract.
-   - score=0, label="FUTURE": The period discussed in the candidate abstract is chronologically later than the period discussed in the target abstract.
-   - score=0, label="UNKNOWN": The candidate abstract contains no temporal data or period indicators whatsoever (Data Insufficiency).
+3. scopeContext [0, 50, 100]
+   CRITICAL: Evaluate whether the broader historical-societal context (period, geography, institutional setting, socio-political background dynamics) overlaps or diverges. This is a unified field — do NOT split temporal and spatial; treat them as one intertwined context.
+   - 100: The historical period, geography, institutional setting, and socio-political background are the same or one encompasses the other. There is strong overlap in the overall contextual framework.
+   - 50 (Subset): The target covers the full historical-geographical-societal context (Multidimensional A+B), while the candidate covers only ONE dimension or a sub-unit (Only A) — e.g. same period but different geography, or same geography but different period.
+   - 0: Completely different context — different period AND different geography, or unrelated background dynamics.
 
-4. spatialScope [0, 50, 100]
-   - 100: Geography, administrative unit, or institution is exactly the same.
-   - 50 (Subset): The target covers a broad region (Region A) while the candidate covers only a specific sub-unit within the same region (Sub-region of A).
-   - 0: Completely different geography or location.
+4. temporalLabel ["OVERLAP", "PAST", "FUTURE", "UNKNOWN"]
+   CRITICAL: Completely ignore the candidate thesis's publication year from its metadata. Evaluate ONLY based on the historical period discussed / analyzed within the abstract text itself (e.g. century references, date ranges, historical event periods). This field is NOT scored — it is only a directional label.
+   - "OVERLAP": The historical periods discussed in the abstracts overlap or one encompasses the other.
+   - "PAST": The period discussed in the candidate abstract is chronologically earlier than the period discussed in the target abstract.
+   - "FUTURE": The period discussed in the candidate abstract is chronologically later than the period discussed in the target abstract.
+   - "UNKNOWN": The candidate abstract contains no temporal data or period indicators whatsoever (Data Insufficiency).
 
 5. theoreticalFramework [0, 50, 100]
    - 100: The primary theoretical model and founding authors are exactly the same.
@@ -180,7 +168,7 @@ ${counterThesesText}
 <task>
 Compare the <target_thesis_matrix> structure against each candidate in <candidate_theses> as completely independent cells, according to the strict classification rules specified in the System Instructions.
 
-For each candidate, only use the allowed integer values (0, 50, 100) and the temporalScope labels (OVERLAP, PAST, FUTURE, UNKNOWN). Do not produce any intermediate values.
+For each candidate, only use the allowed integer values (0, 50, 100) and the temporalLabel values (OVERLAP, PAST, FUTURE, UNKNOWN). Do not produce any intermediate values.
 
 Generate ONLY a clean JSON array output matching the schema with no additional text, markdown fences, or commentary. Think deeply before responding.
 </task>`;

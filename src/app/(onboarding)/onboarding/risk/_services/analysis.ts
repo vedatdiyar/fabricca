@@ -15,34 +15,24 @@ import {
 // LLM Output Types — Raw classification data produced by Gemini
 // ============================================================================
 
-export interface LLMTemporalScope {
-  score: 0 | 100;
-  label: "OVERLAP" | "PAST" | "FUTURE" | "UNKNOWN";
-}
-
 export interface LLMScoredItem {
   tez_id: string;
   researchFocus: 0 | 50 | 100;
   mainActors: 0 | 50 | 100;
-  temporalScope: LLMTemporalScope;
-  spatialScope: 0 | 50 | 100;
+  scopeContext: 0 | 50 | 100;
+  temporalLabel: "OVERLAP" | "PAST" | "FUTURE" | "UNKNOWN";
   theoreticalFramework: 0 | 50 | 100;
   methodology: 0 | 50 | 100;
   mainClaim: 0 | 50 | 100;
 }
 
 // Zod şeması — runtime doğrulama
-const llmTemporalScopeZodSchema = z.object({
-  score: z.union([z.literal(0), z.literal(100)]),
-  label: z.enum(["OVERLAP", "PAST", "FUTURE", "UNKNOWN"]),
-});
-
 const llmScoredItemZodSchema = z.object({
   tez_id: z.string(),
   researchFocus: z.union([z.literal(0), z.literal(50), z.literal(100)]),
   mainActors: z.union([z.literal(0), z.literal(50), z.literal(100)]),
-  temporalScope: llmTemporalScopeZodSchema,
-  spatialScope: z.union([z.literal(0), z.literal(50), z.literal(100)]),
+  scopeContext: z.union([z.literal(0), z.literal(50), z.literal(100)]),
+  temporalLabel: z.enum(["OVERLAP", "PAST", "FUTURE", "UNKNOWN"]),
   theoreticalFramework: z.union([z.literal(0), z.literal(50), z.literal(100)]),
   methodology: z.union([z.literal(0), z.literal(50), z.literal(100)]),
   mainClaim: z.union([z.literal(0), z.literal(50), z.literal(100)]),
@@ -57,8 +47,7 @@ export const llmBatchResponseZodSchema = z.array(llmScoredItemZodSchema);
 export type AnalyzeOriginalityRiskParams = {
   mainActors: string;
   researchFocus: string;
-  temporalScope: string;
-  spatialScope: string;
+  context: string;
   theoreticalFramework: string;
   methodology: string;
   mainClaim: string;
@@ -99,8 +88,7 @@ export async function analyzeOriginalityRisk(
     const userThesis = {
       mainActors: params.mainActors,
       researchFocus: params.researchFocus,
-      temporalScope: params.temporalScope,
-      spatialScope: params.spatialScope,
+      context: params.context,
       theoreticalFramework: params.theoreticalFramework,
       methodology: params.methodology,
       mainClaim: params.mainClaim,
@@ -166,8 +154,8 @@ export async function analyzeOriginalityRisk(
         tez_id: o.tez_id,
         researchFocus: o.researchFocus,
         mainActors: o.mainActors,
-        temporalScope: o.temporalScope,
-        spatialScope: o.spatialScope,
+        scopeContext: o.scopeContext,
+        temporalLabel: o.temporalLabel,
         theoreticalFramework: o.theoreticalFramework,
         methodology: o.methodology,
         mainClaim: o.mainClaim,

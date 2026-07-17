@@ -1,13 +1,12 @@
 import { z } from "zod";
 
-export type TemporalScopeLabel = "OVERLAP" | "PAST" | "FUTURE" | "UNKNOWN";
+export type TemporalLabel = "OVERLAP" | "PAST" | "FUTURE" | "UNKNOWN";
 
 export interface ThesisParams {
   researchFocus: 0 | 50 | 100;
   mainActors: 0 | 50 | 100;
-  temporalScope: 0 | 100;
-  temporalScopeLabel: TemporalScopeLabel;
-  spatialScope: 0 | 50 | 100;
+  scopeContext: 0 | 50 | 100;
+  temporalLabel: TemporalLabel;
   theoreticalFramework: 0 | 50 | 100;
   methodology: 0 | 50 | 100;
   mainClaim: 0 | 50 | 100;
@@ -84,8 +83,8 @@ export interface OriginalityReportData {
       dimensionScores?: {
         researchFocus: number;
         mainActors: number;
-        temporalScope: { score: number; label: string };
-        spatialScope: number;
+        scopeContext: number;
+        temporalLabel: string;
         theoreticalFramework: number;
         methodology: number;
         mainClaim: number;
@@ -107,8 +106,8 @@ export interface OriginalityReportData {
       dimensionScores?: {
         researchFocus: number;
         mainActors: number;
-        temporalScope: { score: number; label: string };
-        spatialScope: number;
+        scopeContext: number;
+        temporalLabel: string;
         theoreticalFramework: number;
         methodology: number;
         mainClaim: number;
@@ -120,8 +119,7 @@ export interface OriginalityReportData {
 export interface ThesisMatrix {
   mainActors: string;
   researchFocus: string;
-  temporalScope: string;
-  spatialScope: string;
+  context: string;
   theoreticalFramework: string;
   methodology: string;
   mainClaim: string;
