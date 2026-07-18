@@ -61,6 +61,7 @@ export async function extractQueries(
           seed: GEMINI_SEED,
           thesisMatrix: geminiInput,
           payloadStage: "keywords",
+          quiet: true,
         },
       );
 

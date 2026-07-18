@@ -114,6 +114,7 @@ export async function generateBoxesStructureAction(): Promise<
         seed: GEMINI_SEED,
         thesisMatrix: matrix,
         payloadStage: "box_generation",
+        quiet: true,
       },
     );
 

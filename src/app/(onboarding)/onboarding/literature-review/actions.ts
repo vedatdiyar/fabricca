@@ -60,15 +60,6 @@ export async function processAllBoxesAction(
 ): Promise<{ data?: LiteraturePoolEntry[]; error?: string }> {
   const logger = new Logger(createFlowId());
 
-  logger.info("literature_batch_process_start", {
-    service: "literature",
-    filePath: "onboarding/literature-review/actions.ts",
-    data: {
-      boxCount: boxes.length,
-      context: "Batch literature review started",
-    },
-  });
-
   try {
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
@@ -84,18 +75,6 @@ export async function processAllBoxesAction(
 
     const { thesisArticlesMap } = await loadOverlapTheses(allBoxRows);
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
-
-    logger.info("literature_thesis_articles_loaded", {
-      service: "literature",
-      filePath: "onboarding/literature-review/actions.ts",
-      data: {
-        thesisCount:
-          thesisArticlesMap.size > 0
-            ? (thesisArticlesMap.values().next().value?.length ?? 0)
-            : 0,
-        boxCountWithTheses: thesisArticlesMap.size,
-      },
-    });
 
     const { poolEntries } = await orchestrateBatchProcess(
       boxes,
@@ -151,7 +130,7 @@ export async function confirmLiteratureAction(args: {
     }
 
     await persistLiteraturePool(literaturePool, (msg, data) => {
-      log.warn(msg, { service: "literature", data });
+      log.info(msg, { service: "literature", data });
     });
 
     try {

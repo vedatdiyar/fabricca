@@ -114,12 +114,7 @@ export async function executeSearchAction(params: {
       params.tezaraQueries.map(async (query) => {
         try {
           return await searchTezara(query, log, true);
-        } catch (err) {
-          log.error("originality_search_tezara_failed", {
-            service: "originality",
-            error: err,
-            data: { query, context: `Query: ${query}` },
-          });
+        } catch {
           return [];
         }
       }),

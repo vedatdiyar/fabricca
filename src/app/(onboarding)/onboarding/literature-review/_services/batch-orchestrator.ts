@@ -100,17 +100,6 @@ export async function orchestrateBatchProcess(
         thesisBoxId: box.id,
         articles,
       });
-
-      logger.info("literature_archival_bypass", {
-        service: "literature",
-        filePath:
-          "onboarding/literature-review/_services/batch-orchestrator.ts",
-        data: {
-          subBoxTitle: box.title,
-          boxType: box.boxType ?? "unknown",
-          articleCount: articles.length,
-        },
-      });
     }
   }
 
@@ -131,7 +120,7 @@ export async function orchestrateBatchProcess(
   }
 
   // ── PHASE 1: PARALLEL CANDIDATE COMPILATION ─────────────────────────────
-  logger.info("literature_batch_phase1_start", {
+  logger.info("literature_batch_search_start", {
     service: "literature",
     filePath: "onboarding/literature-review/_services/batch-orchestrator.ts",
     data: { jobCount: activeJobs.length },
@@ -228,7 +217,7 @@ export async function orchestrateBatchProcess(
     }
   }
 
-  logger.info("literature_batch_phase1_complete", {
+  logger.info("literature_batch_search_success", {
     service: "literature",
     filePath: "onboarding/literature-review/_services/batch-orchestrator.ts",
     data: {
@@ -383,12 +372,6 @@ export async function orchestrateBatchProcess(
           const healed = await healAuthorsByTitle(art.title);
           if (healed && healed.length > 0) {
             art.authors = healed;
-            logger.info("literature_author_healing_success", {
-              service: "literature",
-              filePath:
-                "onboarding/literature-review/_services/batch-orchestrator.ts",
-              data: { title: art.title, resolved: healed.join(", ") },
-            });
           }
         } catch (err) {
           logger.error("literature_author_healing_failed", {
@@ -482,26 +465,7 @@ export async function orchestrateBatchProcess(
         });
       }
     }
-
-    logger.info("literature_subbox_mining_complete", {
-      service: "literature",
-      filePath: "onboarding/literature-review/_services/batch-orchestrator.ts",
-      data: {
-        subBoxTitle: item.subBoxTitle,
-        foundationalTitle: item.foundationalArticle?.title ?? "Not found",
-        relatedCount: item.top3Related.length,
-      },
-    });
   }
-
-  logger.info("literature_batch_process_done", {
-    service: "literature",
-    filePath: "onboarding/literature-review/_services/batch-orchestrator.ts",
-    data: {
-      boxCount: boxes.length,
-      totalArticles: poolEntries.reduce((s, e) => s + e.articles.length, 0),
-    },
-  });
 
   return { poolEntries, archivalBoxTitles };
 }

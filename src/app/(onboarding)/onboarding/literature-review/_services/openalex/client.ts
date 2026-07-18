@@ -4,11 +4,16 @@ import type { RawPaper, RefMetadata } from "../literature-review-papers";
 import { CROSSREF_USER_AGENT, withRetry } from "@/lib/api-utils";
 
 /**
- * Global gap-enforced queue for OpenAlex API calls.
- * Enforces ~1 request/second — every logical request (including its
- * retries) is serialised with a minimum 1000ms gap after the previous one.
+ * Queue for semantic search (search.semantic).
+ * OpenAlex enforces 1 req/s for this endpoint.
  */
-const openAlexQueue = createGapEnforcedQueue<unknown>(1000);
+const semanticQueue = createGapEnforcedQueue<unknown>(1000);
+
+/**
+ * Queue for list/filter calls (metadata batch, author healing).
+ * OpenAlex allows up to 100 req/s for these endpoints.
+ */
+const openAlexQueue = createGapEnforcedQueue<unknown>(100);
 
 const OPENALEX_RETRYABLE = "OPENALEX_RETRYABLE_ERROR";
 
@@ -88,7 +93,7 @@ export async function searchOpenAlex(
     params.set("api_key", apiKey);
   }
 
-  return (await openAlexQueue.exec(() =>
+  return (await semanticQueue.exec(() =>
     queryOpenAlexWorks(params, checkCancelled),
   )) as RawPaper[];
 }

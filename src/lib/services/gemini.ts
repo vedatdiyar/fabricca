@@ -186,6 +186,7 @@ export async function generateStructuredContent<T>(
       category: HarmCategory;
       threshold: HarmBlockThreshold;
     }>;
+    quiet?: boolean;
   },
 ): Promise<T> {
   const startTime = performance.now();
@@ -194,15 +195,17 @@ export async function generateStructuredContent<T>(
   const thinkingLevel = options?.thinkingConfig?.thinkingLevel;
   const callLabel = options?.payloadStage ?? "gemini";
 
-  logger?.info(`${callLabel}_start`, {
-    service: "gemini",
-    data: {
-      model: modelName,
-      instructionLength: systemInstruction.length,
-      promptLength: prompt.length,
-      thinkingLevel: thinkingLevel ?? undefined,
-    },
-  });
+  if (!options?.quiet) {
+    logger?.info(`${callLabel}_start`, {
+      service: "gemini",
+      data: {
+        model: modelName,
+        instructionLength: systemInstruction.length,
+        promptLength: prompt.length,
+        thinkingLevel: thinkingLevel ?? undefined,
+      },
+    });
+  }
 
   const thesisMatrix = options?.thesisMatrix || null;
 
@@ -358,16 +361,18 @@ export async function generateStructuredContent<T>(
     const payloadStage = options?.payloadStage ?? "gemini";
     logger?.saveDebugPayload(payloadStage, modelName, prompt, text);
 
-    logger?.info(`${callLabel}_success`, {
-      service: "gemini",
-      durationMs,
-      tokens,
-      data: {
-        model: modelName,
-        attempt: attempts,
-        thinkingLevel: thinkingLevel ?? undefined,
-      },
-    });
+    if (!options?.quiet) {
+      logger?.info(`${callLabel}_success`, {
+        service: "gemini",
+        durationMs,
+        tokens,
+        data: {
+          model: modelName,
+          attempt: attempts,
+          thinkingLevel: thinkingLevel ?? undefined,
+        },
+      });
+    }
     return parsed;
   } catch (error) {
     const durationMs = performance.now() - startTime;

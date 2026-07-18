@@ -80,6 +80,9 @@ const C_GREEN = "\x1b[32m";
 const C_RED = "\x1b[31m";
 const C_YELLOW = "\x1b[33m";
 
+/** Dev modda yazılan toplam satır sayısı — START öncesi boşluk kontrolü için */
+let devLogCount = 0;
+
 /**
  * Status'e karşılık gelen ikonu döndürür.
  * @param s START | SUCCESS | FAILED | RETRY
@@ -300,7 +303,12 @@ export class Logger implements LoggerInstance {
         const timeTag = this.timestamp();
         const icon = statusIcon("START");
         const color = statusColor("START");
-        console.log(`${timeTag} START ${color}${icon}${C_RESET} ${baseEvent}`);
+        const annotation = p?.data?.summary ? ` ${p.data.summary}` : "";
+        if (devLogCount > 0) console.log("");
+        devLogCount++;
+        console.log(
+          `${timeTag} START ${color}${icon}${C_RESET} ${baseEvent}${annotation}`,
+        );
         return;
       }
 
@@ -328,6 +336,7 @@ export class Logger implements LoggerInstance {
         if (p?.error != null) {
           console.log(`  ↳ reason: ${extractReason(p.error)}`);
         }
+        devLogCount++;
         return;
       }
 
@@ -336,6 +345,7 @@ export class Logger implements LoggerInstance {
       const levelLabel =
         level === "info" ? "INFO" : level === "warn" ? "WARN" : "ERROR";
       console.log(`${timeTag} ${levelLabel} ${event}`);
+      devLogCount++;
       return;
     }
 

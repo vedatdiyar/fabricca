@@ -122,20 +122,17 @@ export function applyDecisionEngine(item: LLMScoredItem): DecisionResult {
 
   const isContextOverlap = scopeContext === 100 && temporalLabel === "OVERLAP";
 
-  if (mainClaim === 0 && (researchFocus === 0 || mainActors === 0)) {
-    const isComplementaryPair =
-      (researchFocus === 0 && mainActors === 100) ||
-      (researchFocus === 100 && mainActors === 0);
-    if (!isComplementaryPair) {
-      return {
-        thesisId,
-        bucket: "IRRELEVANT",
-        primaryBadge: "IRRELEVANT_DATA",
-        badges: ["IRRELEVANT_DATA"],
-        relevanceScore,
-      };
-    }
+  // ── DÜZELTİLMİŞ ELEME KURALI: Biri >= 50 ise tez kalır ───────────
+  if (researchFocus === 0 && mainActors === 0) {
+    return {
+      thesisId,
+      bucket: "IRRELEVANT",
+      primaryBadge: "IRRELEVANT_DATA",
+      badges: ["IRRELEVANT_DATA"],
+      relevanceScore,
+    };
   }
+  // ───────────────────────────────────────────────────────────────
 
   if (
     researchFocus === 100 &&

@@ -133,6 +133,8 @@ For each sub-box in the <context> block above, select the most appropriate found
         thinkingLevel: ThinkingLevel.LOW,
       },
       zodSchema: zodBulkSelectSchema,
+      payloadStage: "literature_bulk_foundational_selection",
+      quiet: true,
     },
   );
 

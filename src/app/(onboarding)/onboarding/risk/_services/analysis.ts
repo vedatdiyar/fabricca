@@ -94,6 +94,11 @@ export async function analyzeOriginalityRisk(
       mainClaim: params.mainClaim,
     };
 
+    log.info("originality_classification_start", {
+      service: "originality",
+      data: { summary: `(${sortedTheses.length} theses)` },
+    });
+
     const limiter = createConcurrencyLimiter(8);
     const chunkPromises = chunks.map((group) =>
       limiter.exec(async () => {
@@ -118,6 +123,7 @@ export async function analyzeOriginalityRisk(
             zodSchema: llmBatchResponseZodSchema,
             thesisMatrix: params,
             payloadStage: "originality_classification",
+            quiet: true,
           },
         );
 
@@ -144,6 +150,12 @@ export async function analyzeOriginalityRisk(
     );
 
     const nested = await Promise.all(chunkPromises);
+
+    log.info("originality_classification_success", {
+      service: "originality",
+      durationMs: performance.now() - startTime,
+    });
+
     const llmResults = nested
       .flat()
       .sort((a, b) => Number(a.tez_id) - Number(b.tez_id));

@@ -71,13 +71,6 @@ async function fetchAllAbstracts(
   validDetails: TezaraThesisDetails[];
   eliminatedTheses: TezaraThesisSummary[];
 }> {
-  const fetchStart = performance.now();
-
-  log.info("originality_fetch_all_abstracts_start", {
-    service: "originality",
-    data: { count: theses.length },
-  });
-
   const results = await Promise.allSettled(
     theses.map((thesis) => fetchThesisDetails(thesis, log)),
   );
@@ -103,16 +96,6 @@ async function fetchAllAbstracts(
 
   validDetails.sort((a, b) => a.id - b.id);
 
-  log.info("originality_fetch_all_abstracts_success", {
-    service: "originality",
-    durationMs: performance.now() - fetchStart,
-    data: {
-      total: theses.length,
-      valid: validDetails.length,
-      eliminated: eliminatedTheses.length,
-    },
-  });
-
   return { validDetails, eliminatedTheses };
 }
 
@@ -126,14 +109,6 @@ async function rerankAndSelectTheses(
   validDetails: TezaraThesisDetails[],
   log: Logger,
 ): Promise<number[]> {
-  log.info("originality_sift_cohere_start", {
-    service: "originality",
-    data: {
-      count: validDetails.length,
-      context: params.researchFocus,
-    },
-  });
-
   try {
     const query = formatRerankQuery(params);
     const documents = formatRerankDocuments(validDetails);
@@ -141,10 +116,6 @@ async function rerankAndSelectTheses(
     const { results } = await rerankTheses(query, documents, log);
 
     if (results.length === 0) {
-      log.warn("originality_sift_cohere_empty", {
-        service: "originality",
-        data: { count: validDetails.length, context: params.researchFocus },
-      });
       return [];
     }
 

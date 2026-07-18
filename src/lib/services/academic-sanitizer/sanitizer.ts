@@ -108,6 +108,8 @@ export async function sanitizeAcademicDataBulk(
       thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       seed: GEMINI_SEED,
       temperature: GEMINI_TEMPERATURE,
+      payloadStage: "literature_bulk_sanitization",
+      quiet: true,
     },
   );
 
