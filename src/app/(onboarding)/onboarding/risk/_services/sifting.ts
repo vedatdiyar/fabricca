@@ -127,7 +127,7 @@ async function rerankAndSelectTheses(
     log.error("originality_sift_cohere_failed", {
       service: "originality",
       error: err,
-      data: { context: params.researchFocus },
+      data: { context: params.researchCore },
     });
     throw err;
   }
@@ -213,7 +213,7 @@ export async function siftAndFetchDetails(
       service: "originality",
       error: err,
       durationMs,
-      data: { context: params.researchFocus },
+      data: { context: params.researchCore },
     });
     log.groupEnd("originality_sift", durationMs);
     throw err;

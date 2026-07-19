@@ -13,9 +13,9 @@ const MIN_LENGTH = 3;
 const MAX_LENGTH = 4000;
 
 const thesisMatrixSchema = z.object({
-  mainActors: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
-  researchFocus: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
-  context: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+  researchCore: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+  spatialContext: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+  temporalContext: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
   theoreticalFramework: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
   methodology: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
   mainClaim: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
@@ -62,9 +62,9 @@ export async function saveThesisMatrixAction(
         .insert(thesisMatrices)
         .values({
           userId: session.userId,
-          mainActors: validated.mainActors,
-          researchFocus: validated.researchFocus,
-          context: validated.context,
+          researchCore: validated.researchCore,
+          spatialContext: validated.spatialContext,
+          temporalContext: validated.temporalContext,
           theoreticalFramework: validated.theoreticalFramework,
           methodology: validated.methodology,
           mainClaim: validated.mainClaim,
@@ -73,9 +73,9 @@ export async function saveThesisMatrixAction(
         .onConflictDoUpdate({
           target: thesisMatrices.userId,
           set: {
-            mainActors: validated.mainActors,
-            researchFocus: validated.researchFocus,
-            context: validated.context,
+            researchCore: validated.researchCore,
+            spatialContext: validated.spatialContext,
+            temporalContext: validated.temporalContext,
             theoreticalFramework: validated.theoreticalFramework,
             methodology: validated.methodology,
             mainClaim: validated.mainClaim,

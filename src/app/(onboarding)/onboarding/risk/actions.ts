@@ -49,7 +49,7 @@ export async function extractQueriesAction(
 
   log.info("originality_query_extract_start", {
     service: "originality",
-    data: { context: matrix.researchFocus },
+    data: { context: matrix.researchCore },
   });
 
   try {
@@ -60,7 +60,7 @@ export async function extractQueriesAction(
 
     log.info("originality_query_extract_success", {
       service: "originality",
-      data: { context: matrix.researchFocus },
+      data: { context: matrix.researchCore },
     });
 
     return {
@@ -71,7 +71,7 @@ export async function extractQueriesAction(
     log.error("originality_query_extract_failed", {
       service: "originality",
       error: err,
-      data: { context: matrix.researchFocus },
+      data: { context: matrix.researchCore },
     });
     return {
       error: "An error occurred while extracting queries and parameters.",
@@ -87,7 +87,7 @@ export async function extractQueriesAction(
  * @returns Raw search results from Tezara, or an error
  */
 export async function executeSearchAction(params: {
-  researchFocus: string;
+  researchCore: string;
   tezaraQueries: string[];
 }): Promise<
   | {
@@ -103,7 +103,7 @@ export async function executeSearchAction(params: {
 
   log.info("originality_search_execute_start", {
     service: "originality",
-    data: { context: params.researchFocus },
+    data: { context: params.researchCore },
   });
 
   try {
@@ -122,7 +122,7 @@ export async function executeSearchAction(params: {
 
     log.info("originality_search_execute_success", {
       service: "originality",
-      data: { context: params.researchFocus },
+      data: { context: params.researchCore },
     });
 
     return {
@@ -133,7 +133,7 @@ export async function executeSearchAction(params: {
     log.error("originality_search_execute_failed", {
       service: "originality",
       error: err,
-      data: { context: params.researchFocus },
+      data: { context: params.researchCore },
     });
     return {
       error: "An error occurred while executing the Tezara search.",
@@ -159,7 +159,7 @@ export async function siftThesesAction(params: {
 
   log.info("originality_theses_sift_start", {
     service: "originality",
-    data: { context: params.matrix.researchFocus },
+    data: { context: params.matrix.researchCore },
   });
 
   try {
@@ -168,9 +168,9 @@ export async function siftThesesAction(params: {
 
     const { finalTheses, eliminatedTheses } = await siftAndFetchDetails(
       {
-        mainActors: params.matrix.mainActors,
-        researchFocus: params.matrix.researchFocus,
-        context: params.matrix.context,
+        researchCore: params.matrix.researchCore,
+        spatialContext: params.matrix.spatialContext,
+        temporalContext: params.matrix.temporalContext,
         theoreticalFramework: params.matrix.theoreticalFramework,
         methodology: params.matrix.methodology,
         mainClaim: params.matrix.mainClaim,
@@ -181,7 +181,7 @@ export async function siftThesesAction(params: {
 
     log.info("originality_theses_sift_success", {
       service: "originality",
-      data: { context: params.matrix.researchFocus },
+      data: { context: params.matrix.researchCore },
     });
 
     return {
@@ -192,7 +192,7 @@ export async function siftThesesAction(params: {
     log.error("originality_theses_sift_failed", {
       service: "originality",
       error: err,
-      data: { context: params.matrix.researchFocus },
+      data: { context: params.matrix.researchCore },
     });
     return {
       error: "An error occurred while sifting theses and fetching details.",
@@ -243,9 +243,9 @@ export async function finalizeJuryAnalysisAction(params: {
     // ── LLM sınıflandırma analizi (3'erli batch, ThinkingLevel.HIGH) ──
     const { llmResults } = await analyzeOriginalityRisk(
       {
-        mainActors: params.matrix.mainActors,
-        researchFocus: params.matrix.researchFocus,
-        context: params.matrix.context,
+        researchCore: params.matrix.researchCore,
+        spatialContext: params.matrix.spatialContext,
+        temporalContext: params.matrix.temporalContext,
         theoreticalFramework: params.matrix.theoreticalFramework,
         methodology: params.matrix.methodology,
         mainClaim: params.matrix.mainClaim,
@@ -300,9 +300,8 @@ export async function finalizeJuryAnalysisAction(params: {
     }
 
     const buildDimensions = (item: CalculatedComparisonItem) => ({
-      researchFocus: item.researchFocus,
-      mainActors: item.mainActors,
-      scopeContext: item.scopeContext,
+      researchCore: item.researchCore,
+      spatialContext: item.spatialContext,
       temporalLabel: item.temporalLabel,
       theoreticalFramework: item.theoreticalFramework,
       methodology: item.methodology,
@@ -345,9 +344,8 @@ export async function finalizeJuryAnalysisAction(params: {
       abstract: item.abstract ?? null,
       diagnosis: item.primaryBadge,
       relevanceScore: item.relevanceScore,
-      researchFocusScore: item.researchFocus,
-      mainActorsScore: item.mainActors,
-      scopeContextScore: item.scopeContext,
+      researchCoreScore: item.researchCore,
+      spatialContextScore: item.spatialContext,
       temporalLabel: item.temporalLabel,
       theoreticalFrameworkScore: item.theoreticalFramework,
       methodologyScore: item.methodology,
@@ -378,7 +376,7 @@ export async function finalizeJuryAnalysisAction(params: {
       service: "originality",
       error: err,
       durationMs,
-      data: { context: params.matrix.researchFocus },
+      data: { context: params.matrix.researchCore },
     });
     log.groupEnd("originality_jury_finalize", durationMs);
     return {

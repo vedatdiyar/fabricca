@@ -6,32 +6,30 @@ import { z } from "zod";
 import type { Logger } from "@/lib/logger";
 import type { TezaraThesisDetails } from "@/lib/types";
 import {
-  geminiBatchResponseSchema,
-  buildAnalysisSystemInstruction,
-  buildAnalysisPrompt,
+  PARAM_DEFINITIONS,
+  buildIsolatedSystemInstruction,
+  buildIsolatedPrompt,
 } from "@/lib/prompts/originality-analysis";
+import type { ParamDefinition } from "@/lib/prompts/originality-analysis";
 
 // ============================================================================
-// LLM Output Types — Raw classification data produced by Gemini
+// LLM Output Types
 // ============================================================================
 
 export interface LLMScoredItem {
   tez_id: string;
-  researchFocus: 0 | 50 | 100;
-  mainActors: 0 | 50 | 100;
-  scopeContext: 0 | 50 | 100;
+  researchCore: 0 | 50 | 100;
+  spatialContext: 0 | 50 | 100;
   temporalLabel: "OVERLAP" | "PAST" | "FUTURE" | "UNKNOWN";
   theoreticalFramework: 0 | 50 | 100;
   methodology: 0 | 50 | 100;
   mainClaim: 0 | 50 | 100;
 }
 
-// Zod şeması — runtime doğrulama
 const llmScoredItemZodSchema = z.object({
   tez_id: z.string(),
-  researchFocus: z.union([z.literal(0), z.literal(50), z.literal(100)]),
-  mainActors: z.union([z.literal(0), z.literal(50), z.literal(100)]),
-  scopeContext: z.union([z.literal(0), z.literal(50), z.literal(100)]),
+  researchCore: z.union([z.literal(0), z.literal(50), z.literal(100)]),
+  spatialContext: z.union([z.literal(0), z.literal(50), z.literal(100)]),
   temporalLabel: z.enum(["OVERLAP", "PAST", "FUTURE", "UNKNOWN"]),
   theoreticalFramework: z.union([z.literal(0), z.literal(50), z.literal(100)]),
   methodology: z.union([z.literal(0), z.literal(50), z.literal(100)]),
@@ -41,37 +39,55 @@ const llmScoredItemZodSchema = z.object({
 export const llmBatchResponseZodSchema = z.array(llmScoredItemZodSchema);
 
 // ============================================================================
-// Analysis Orchestration — LLM Batching + Result Assembly
+// Zod schema builder for per-parameter responses
+// ============================================================================
+
+function buildParamZodSchema(
+  param: ParamDefinition,
+): z.ZodType<{ tez_id: number; score: string | number }[]> {
+  if (param.isStringEnum) {
+    return z.array(
+      z.object({
+        tez_id: z.number(),
+        score: z.enum(["OVERLAP", "PAST", "FUTURE", "UNKNOWN"]),
+      }),
+    ) as unknown as z.ZodType<{ tez_id: number; score: string | number }[]>;
+  }
+  return z.array(
+    z.object({
+      tez_id: z.number(),
+      score: z.union([z.literal(0), z.literal(50), z.literal(100)]),
+    }),
+  ) as unknown as z.ZodType<{ tez_id: number; score: string | number }[]>;
+}
+
+// ============================================================================
+// Analysis Orchestration
 // ============================================================================
 
 export type AnalyzeOriginalityRiskParams = {
-  mainActors: string;
-  researchFocus: string;
-  context: string;
+  researchCore: string;
+  spatialContext: string;
+  temporalContext: string;
   theoreticalFramework: string;
   methodology: string;
   mainClaim: string;
   selectedTheses: TezaraThesisDetails[];
 };
 
-// ============================================================================
-// analyzeOriginalityRisk — LLM Batching + Validation
-// ============================================================================
-
 /**
  * Compares selected candidate theses against the user's thesis matrix
- * using Gemini in batches of 3. The LLM produces categorical scores
- * of 0, 50, or 100 for each dimension.
+ * using 7 parallel isolated Gemini calls — one per parameter (RF, MA, SC,
+ * TF, ME, MC, Temporal). Each call scores ALL theses on a single parameter,
+ * eliminating cross-contamination between dimensions.
  *
  * @param params - The user's thesis matrix and selected candidate theses
  * @param log - Logger instance
- * @param chunkSize - Number of candidate theses per batch (default: 3)
  * @returns Raw LLM classification results (llmResults)
  */
 export async function analyzeOriginalityRisk(
   params: AnalyzeOriginalityRiskParams,
   log: Logger,
-  chunkSize = 3,
 ): Promise<{ llmResults: LLMScoredItem[] }> {
   log.file("analysis.ts");
   const startTime = performance.now();
@@ -80,93 +96,119 @@ export async function analyzeOriginalityRisk(
   try {
     const sortedTheses = [...params.selectedTheses].sort((a, b) => a.id - b.id);
 
-    const chunks: TezaraThesisDetails[][] = [];
-    for (let i = 0; i < sortedTheses.length; i += chunkSize) {
-      chunks.push(sortedTheses.slice(i, i + chunkSize));
-    }
-
     const userThesis = {
-      mainActors: params.mainActors,
-      researchFocus: params.researchFocus,
-      context: params.context,
+      researchCore: params.researchCore,
+      spatialContext: params.spatialContext,
+      temporalContext: params.temporalContext,
       theoreticalFramework: params.theoreticalFramework,
       methodology: params.methodology,
       mainClaim: params.mainClaim,
     };
 
+    const thesesForPrompt = sortedTheses.map((t) => ({
+      id: t.id,
+      title: t.title,
+      abstract: t.abstract,
+    }));
+
+    const systemInstruction = buildIsolatedSystemInstruction();
+
     log.info("originality_classification_start", {
       service: "originality",
-      data: { summary: `(${sortedTheses.length} theses)` },
+      data: {
+        summary: `(${sortedTheses.length} theses × ${PARAM_DEFINITIONS.length} isolated params)`,
+      },
     });
 
     const limiter = createConcurrencyLimiter(8);
-    const chunkPromises = chunks.map((group) =>
-      limiter.exec(async () => {
-        const batchInput = group.map((t) => ({
-          id: String(t.id),
-          title: t.title,
-          abstract: t.abstract,
-        }));
+    const paramPromises = PARAM_DEFINITIONS.map((param) =>
+      limiter.exec(
+        async (): Promise<{
+          paramKey: string;
+          results: { tez_id: number; score: number | string }[];
+        }> => {
+          const prompt = buildIsolatedPrompt(
+            userThesis,
+            thesesForPrompt,
+            param,
+          );
 
-        const result = await generateStructuredContent<LLMScoredItem[]>(
-          GEMINI_MODEL,
-          buildAnalysisSystemInstruction(),
-          buildAnalysisPrompt(userThesis, batchInput),
-          geminiBatchResponseSchema,
-          log,
-          {
-            thinkingConfig: {
-              thinkingLevel: ThinkingLevel.HIGH,
-            },
+          const result = await generateStructuredContent<
+            { tez_id: number; score: number | string }[]
+          >(GEMINI_MODEL, systemInstruction, prompt, param.jsonSchema, log, {
+            thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
             temperature: GEMINI_TEMPERATURE,
             seed: GEMINI_SEED,
-            zodSchema: llmBatchResponseZodSchema,
+            zodSchema: buildParamZodSchema(param),
             thesisMatrix: params,
-            payloadStage: "originality_classification",
+            payloadStage: `originality_classification_${param.key}`,
             quiet: true,
-          },
-        );
+          });
 
-        const items = result || [];
-        const returnedIds = new Set(items.map((it) => String(it.tez_id)));
-
-        for (const thesis of group) {
-          if (!returnedIds.has(String(thesis.id))) {
-            log.error("originality_missing_thesis_id_corruption", {
-              service: "originality",
-              data: {
-                thesisId: thesis.id,
-                chunkIds: group.map((t) => t.id),
-              },
-            });
-            throw new Error(
-              "Classification payload corruption: The model omitted requested thesis IDs from the structured response.",
-            );
+          // Validate all thesis IDs are present
+          const returnedIds = new Set(result.map((r) => r.tez_id));
+          for (const thesis of sortedTheses) {
+            if (!returnedIds.has(thesis.id)) {
+              log.error("originality_missing_thesis_id_corruption", {
+                service: "originality",
+                data: {
+                  paramKey: param.key,
+                  thesisId: thesis.id,
+                },
+              });
+              throw new Error(
+                `Classification payload corruption for param "${param.key}": Model omitted thesis ID ${thesis.id} from the structured response.`,
+              );
+            }
           }
-        }
 
-        return items;
-      }),
+          return { paramKey: param.key, results: result };
+        },
+      ),
     );
 
-    const nested = await Promise.all(chunkPromises);
+    const paramResults = await Promise.all(paramPromises);
 
     log.info("originality_classification_success", {
       service: "originality",
       durationMs: performance.now() - startTime,
     });
 
-    const llmResults = nested
-      .flat()
-      .sort((a, b) => Number(a.tez_id) - Number(b.tez_id));
+    // Merge 7 param results into LLMScoredItem[]
+    const thesisMap = new Map<number, Record<string, number | string>>();
+    for (const { paramKey, results } of paramResults) {
+      for (const item of results) {
+        if (!thesisMap.has(item.tez_id)) {
+          thesisMap.set(item.tez_id, {});
+        }
+        thesisMap.get(item.tez_id)![paramKey] = item.score;
+      }
+    }
+
+    const llmResults: LLMScoredItem[] = sortedTheses
+      .map((thesis) => {
+        const scores = thesisMap.get(thesis.id);
+        if (!scores) return null;
+
+        return {
+          tez_id: String(thesis.id),
+          researchCore: (scores.RC ?? 0) as 0 | 50 | 100,
+          spatialContext: (scores.SC ?? 0) as 0 | 50 | 100,
+          temporalLabel: (scores.Temporal ?? "UNKNOWN") as
+            "OVERLAP" | "PAST" | "FUTURE" | "UNKNOWN",
+          theoreticalFramework: (scores.TF ?? 0) as 0 | 50 | 100,
+          methodology: (scores.ME ?? 0) as 0 | 50 | 100,
+          mainClaim: (scores.MC ?? 0) as 0 | 50 | 100,
+        };
+      })
+      .filter((r): r is LLMScoredItem => r !== null);
 
     log.preview(
       "LLM Classification Results",
       llmResults.map((o) => ({
         tez_id: o.tez_id,
-        researchFocus: o.researchFocus,
-        mainActors: o.mainActors,
-        scopeContext: o.scopeContext,
+        researchCore: o.researchCore,
+        spatialContext: o.spatialContext,
         temporalLabel: o.temporalLabel,
         theoreticalFramework: o.theoreticalFramework,
         methodology: o.methodology,
@@ -184,7 +226,7 @@ export async function analyzeOriginalityRisk(
       service: "originality",
       error: err,
       durationMs,
-      data: { context: params.researchFocus },
+      data: { context: params.researchCore },
     });
     log.groupEnd("originality_risk_analyze", durationMs);
     throw err;

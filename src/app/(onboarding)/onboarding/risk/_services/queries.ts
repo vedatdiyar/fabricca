@@ -39,8 +39,7 @@ export async function extractQueries(
 
   try {
     const geminiInput = {
-      mainActors: params.mainActors,
-      researchFocus: params.researchFocus,
+      researchCore: params.researchCore,
       mainClaim: params.mainClaim,
     };
 
@@ -80,10 +79,10 @@ export async function extractQueries(
       return wc === 2;
     });
 
-    // Actor-based smart padding: if <6 queries, generate clean 2-word
-    // umbrella forms from mainActors text instead of researchFocus noise
+    // Core-based smart padding: if <6 queries, generate clean 2-word
+    // umbrella forms from researchCore text
     if (tezaraQueries.length < 6) {
-      const actorWords = params.mainActors
+      const coreWords = params.researchCore
         .toLowerCase()
         .replace(/[^a-zA-ZğüşıöçĞÜŞİÖÇ\s]/g, "")
         .split(/\s+/)
@@ -116,9 +115,9 @@ export async function extractQueries(
             ].includes(w),
         );
 
-      const uniqueWords = [...new Set(actorWords)];
+      const uniqueWords = [...new Set(coreWords)];
 
-      // Generate adjacent 2-word combos from actor text
+      // Generate adjacent 2-word combos from core text
       for (
         let i = 0;
         i < uniqueWords.length - 1 && tezaraQueries.length < 6;
@@ -130,7 +129,7 @@ export async function extractQueries(
         }
       }
 
-      // If still <6, add single meaningful actor words as 1-word queries
+      // If still <6, add single meaningful words as 1-word queries
       // (single words are allowed only as last-resort fallback)
       for (let i = 0; i < uniqueWords.length && tezaraQueries.length < 6; i++) {
         if (
@@ -155,7 +154,7 @@ export async function extractQueries(
       service: "originality",
       error: err,
       durationMs,
-      data: { context: params.researchFocus },
+      data: { context: params.researchCore },
     });
     log.groupEnd("originality_queries_extract", durationMs);
     throw err;

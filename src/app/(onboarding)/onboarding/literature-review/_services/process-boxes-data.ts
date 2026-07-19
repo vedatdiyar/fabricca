@@ -6,9 +6,9 @@ import type { JuryArticle } from "@/lib/types";
 
 export interface LoadedMatrixData {
   id: number;
-  mainActors: string;
-  researchFocus: string;
-  context: string;
+  researchCore: string;
+  spatialContext: string;
+  temporalContext: string;
   theoreticalFramework: string;
   methodology: string;
   mainClaim: string;
@@ -33,9 +33,9 @@ export async function loadThesisMatrixAndBoxes(userId: number): Promise<{
   const [matrix] = await db
     .select({
       id: thesisMatrices.id,
-      mainActors: thesisMatrices.mainActors,
-      researchFocus: thesisMatrices.researchFocus,
-      context: thesisMatrices.context,
+      researchCore: thesisMatrices.researchCore,
+      spatialContext: thesisMatrices.spatialContext,
+      temporalContext: thesisMatrices.temporalContext,
       theoreticalFramework: thesisMatrices.theoreticalFramework,
       methodology: thesisMatrices.methodology,
       mainClaim: thesisMatrices.mainClaim,

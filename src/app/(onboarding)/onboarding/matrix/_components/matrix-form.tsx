@@ -7,12 +7,11 @@ import type { LucideIcon } from "lucide-react";
 import {
   Loader2,
   Table,
-  FileText,
-  HelpCircle,
   BookMarked,
   Layers,
   Globe,
   Target,
+  Clock,
 } from "lucide-react";
 
 import { getErrorDisplay } from "@/lib/error-utils";
@@ -25,9 +24,9 @@ import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation"
 import { fetchThesisMatrixFresh } from "../../_services/fetch-actions";
 
 type FormState = {
-  mainActors: string;
-  researchFocus: string;
-  context: string;
+  researchCore: string;
+  spatialContext: string;
+  temporalContext: string;
   theoreticalFramework: string;
   methodology: string;
   mainClaim: string;
@@ -51,27 +50,17 @@ type SectionConfig = {
 
 const MATRIX_SECTIONS: SectionConfig[] = [
   {
-    id: "odakVeAktorler",
-    title: "Odak ve Aktörler",
+    id: "arastirmaOdağı",
+    title: "Araştırma Odağı",
     fields: [
       {
-        key: "mainActors",
-        id: "anaAktorler",
+        key: "researchCore",
+        id: "researchCore",
         number: "01",
-        Icon: FileText,
-        label: "Araştırma Özneleri / Aktörler / Analiz Nesneleri",
+        Icon: Target,
+        label: "Araştırma Odağı / Temel Problem ve Özneler",
         placeholder:
-          "Araştırma kapsamında odaklanılan aktörler, toplumsal gruplar, tarihsel figürler, kurumlar veya analiz edilen temel kavramsal/edebi nesneler...",
-        rows: 4,
-      },
-      {
-        key: "researchFocus",
-        id: "arastirmaProblemi",
-        number: "02",
-        Icon: HelpCircle,
-        label: "Araştırma Problemi ve Temel Soru",
-        placeholder:
-          "Araştırmanızın literatürde doldurmayı hedeflediği boşluk, çözmeye çalıştığı çelişki veya yanıt aradığı temel araştırma sorusu...",
+          "Araştırmanızın temel problemi, odaklandığı ana aktörler, özneler, kurumlar veya analiz nesneleri. Bu alan araştırma sorunuzu ve bu sorunun merkezindeki özneleri birlikte tanımlar...",
         rows: 4,
       },
     ],
@@ -81,14 +70,24 @@ const MATRIX_SECTIONS: SectionConfig[] = [
     title: "Bağlam",
     fields: [
       {
-        key: "context",
-        id: "tarihselBaglam",
-        number: "03",
+        key: "spatialContext",
+        id: "spatialContext",
+        number: "02",
         Icon: Globe,
-        label: "Tarihsel ve Toplumsal Bağlam",
+        label: "Mekânsal / Coğrafi Bağlam",
         placeholder:
-          "Araştırmanın geçtiği dönem, mekân ve bu çerçevede araştırma problemini biçimlendiren tarihsel, siyasal, toplumsal, ekonomik bağlam ve arka plan dinamikleri...",
-        rows: 4,
+          "Araştırmanın geçtiği coğrafi mekân, bölge, ülke veya kurumsal ortam...",
+        rows: 3,
+      },
+      {
+        key: "temporalContext",
+        id: "temporalContext",
+        number: "03",
+        Icon: Clock,
+        label: "Tarihsel / Zamansal Bağlam",
+        placeholder:
+          "Araştırmanın odaklandığı dönem, tarihsel aralık veya zamansal kesit...",
+        rows: 3,
       },
     ],
   },
@@ -189,9 +188,9 @@ const MatrixCard = memo(function MatrixCard({
  * analysis step.
  */
 const EMPTY_VALUES: FormState = {
-  mainActors: "",
-  researchFocus: "",
-  context: "",
+  researchCore: "",
+  spatialContext: "",
+  temporalContext: "",
   theoreticalFramework: "",
   methodology: "",
   mainClaim: "",
@@ -216,9 +215,9 @@ export function MatrixForm() {
   const formState = useMemo((): FormState => {
     const base = initialMatrix ?? EMPTY_VALUES;
     return {
-      mainActors: editedValues.mainActors ?? base.mainActors,
-      researchFocus: editedValues.researchFocus ?? base.researchFocus,
-      context: editedValues.context ?? base.context,
+      researchCore: editedValues.researchCore ?? base.researchCore,
+      spatialContext: editedValues.spatialContext ?? base.spatialContext,
+      temporalContext: editedValues.temporalContext ?? base.temporalContext,
       theoreticalFramework:
         editedValues.theoreticalFramework ?? base.theoreticalFramework,
       methodology: editedValues.methodology ?? base.methodology,
@@ -240,9 +239,9 @@ export function MatrixForm() {
 
     try {
       await submitMatrix({
-        mainActors: formState.mainActors,
-        researchFocus: formState.researchFocus,
-        context: formState.context,
+        researchCore: formState.researchCore,
+        spatialContext: formState.spatialContext,
+        temporalContext: formState.temporalContext,
         theoreticalFramework: formState.theoreticalFramework,
         methodology: formState.methodology,
         mainClaim: formState.mainClaim,

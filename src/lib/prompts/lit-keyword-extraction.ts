@@ -45,8 +45,7 @@ export function buildLitKeywordExtractionSystemInstruction(): string {
   <example>
     <input>
 {
-  "mainActors": "Borçlandırılmış bireyler / işçi-borçlular, Neoliberal devlet politikaları",
-  "researchFocus": "Neoliberalizmde bireysel borçlandırmanın bir siyasal iktidar ilişkisi olarak işleyişi",
+  "researchCore": "Borçlandırılmış bireyler / işçi-borçlular, Neoliberal devlet politikaları — Neoliberalizmde bireysel borçlandırmanın bir siyasal iktidar ilişkisi olarak işleyişi",
   "mainClaim": "Bireysel borçlandırma neoliberalizmde yalnızca ekonomik bir ilişki değil siyasal bir iktidar ilişkisidir"
 }
     </input>
@@ -78,12 +77,11 @@ Disiplinlerüstü çalışan kıdemli bir Akademik Bilgi Erişim Uzmanı rolünd
 // 3. KULLANICI PROMPT OLUŞTURUCU (%100 TÜRKÇE)
 // ============================================================================
 export function buildLitKeywordPrompt(
-  params: Pick<ThesisMatrix, "mainActors" | "researchFocus" | "mainClaim">,
+  params: Pick<ThesisMatrix, "researchCore" | "mainClaim">,
 ): string {
   return `<context>
 {
-  "mainActors": "${params.mainActors.replace(/"/g, '\\"')}",
-  "researchFocus": "${params.researchFocus.replace(/"/g, '\\"')}",
+  "researchCore": "${params.researchCore.replace(/"/g, '\\"')}",
   "mainClaim": "${params.mainClaim.replace(/"/g, '\\"')}"
 }
 </context>

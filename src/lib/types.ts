@@ -2,23 +2,7 @@ import { z } from "zod";
 
 export type TemporalLabel = "OVERLAP" | "PAST" | "FUTURE" | "UNKNOWN";
 
-export interface ThesisParams {
-  researchFocus: 0 | 50 | 100;
-  mainActors: 0 | 50 | 100;
-  scopeContext: 0 | 50 | 100;
-  temporalLabel: TemporalLabel;
-  theoreticalFramework: 0 | 50 | 100;
-  methodology: 0 | 50 | 100;
-  mainClaim: 0 | 50 | 100;
-}
-
 export type DimensionLevel = "LOW" | "MEDIUM" | "HIGH";
-
-export interface DimensionScores {
-  content: DimensionLevel;
-  methodTheory: DimensionLevel;
-  context: DimensionLevel;
-}
 
 export type AcademicBadge =
   | "IRRELEVANT_DATA"
@@ -81,9 +65,8 @@ export interface OriginalityReportData {
       department: string;
       relevanceScore: number;
       dimensionScores?: {
-        researchFocus: number;
-        mainActors: number;
-        scopeContext: number;
+        researchCore: number;
+        spatialContext: number;
         temporalLabel: string;
         theoreticalFramework: number;
         methodology: number;
@@ -104,9 +87,8 @@ export interface OriginalityReportData {
       eliminationStage: "ANALYSIS";
       relevanceScore: number;
       dimensionScores?: {
-        researchFocus: number;
-        mainActors: number;
-        scopeContext: number;
+        researchCore: number;
+        spatialContext: number;
         temporalLabel: string;
         theoreticalFramework: number;
         methodology: number;
@@ -117,9 +99,9 @@ export interface OriginalityReportData {
 }
 
 export interface ThesisMatrix {
-  mainActors: string;
-  researchFocus: string;
-  context: string;
+  researchCore: string;
+  spatialContext: string;
+  temporalContext: string;
   theoreticalFramework: string;
   methodology: string;
   mainClaim: string;
@@ -176,7 +158,7 @@ export interface RelatedThesisEntry {
 
 export interface GeminiThesisBox {
   id?: number;
-  title: string;
+  parentId: number | null;
   boxType:
     | "PROBLEMATIZATION"
     | "CONCEPTUAL"
@@ -184,8 +166,8 @@ export interface GeminiThesisBox {
     | "PRIMARY_MATERIAL"
     | "CONTEXT"
     | "RELATED_THESES";
+  title: string;
   description: string;
-  parentId: number | null;
   semanticQuery: string | null;
   subBoxes?: GeminiThesisBox[];
   foundationalQueries?: FoundationalQuery[];
@@ -195,15 +177,15 @@ export interface GeminiThesisBox {
 
 export interface JuryArticle {
   title: string;
-  comparisonNote: string | null;
-  badge: string | null;
-  url: string;
-  doi: string | null;
+  authors: string[];
   publisher: string | null;
   publicationYear: number | null;
-  authors: string[];
-  isFoundational: boolean;
+  doi: string | null;
+  url: string;
   relevanceScore: number;
+  badge: string | null;
+  comparisonNote: string | null;
+  isFoundational: boolean;
   subBoxId?: string;
 }
 

@@ -17,20 +17,20 @@ export const ingestionResponseSchema: JsonSchema = {
         type: "object",
         properties: {
           id: { type: "number", description: "Tezin ID numarası" },
-          mainActors: {
+          researchCore: {
             type: "string",
             description:
-              "Tezin odaklandığı ana aktörler, kurumlar, özneler veya gruplar.",
+              "Tezin araştırma odağı, temel problemi ve odaklandığı ana aktörler, özneler veya analiz nesneleri.",
           },
-          researchFocus: {
+          spatialContext: {
             type: "string",
             description:
-              "Tezin araştırma problemi, konu odağı veya temel araştırma sorusu.",
+              "Tezin geçtiği coğrafi mekân, bölge, ülke veya kurumsal ortam.",
           },
-          context: {
+          temporalContext: {
             type: "string",
             description:
-              "Tezin geçtiği dönem, mekân ve araştırma problemini biçimlendiren tarihsel, siyasal, toplumsal, ekonomik bağlam ve arka plan dinamikleri.",
+              "Tezin odaklandığı dönem, tarihsel aralık, siyasal/toplumsal zamansal kesit.",
           },
           theoreticalFramework: {
             type: "string",
@@ -50,9 +50,9 @@ export const ingestionResponseSchema: JsonSchema = {
         },
         required: [
           "id",
-          "mainActors",
-          "researchFocus",
-          "context",
+          "researchCore",
+          "spatialContext",
+          "temporalContext",
           "theoreticalFramework",
           "methodology",
           "mainClaim",

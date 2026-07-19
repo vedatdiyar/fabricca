@@ -43,9 +43,9 @@ import {
 import type { SubBoxInput } from "../literature-review/_services/literature-review-papers";
 
 interface MatrixInput {
-  mainActors: string;
-  researchFocus: string;
-  context: string;
+  researchCore: string;
+  spatialContext: string;
+  temporalContext: string;
   theoreticalFramework: string;
   methodology: string;
   mainClaim: string;
@@ -145,7 +145,7 @@ export function useOnboardingNavigation() {
         await completeStep(0, steps);
 
         const searchResult = await executeSearchAction({
-          researchFocus: matrixInput.researchFocus,
+          researchCore: matrixInput.researchCore,
           tezaraQueries: extractResult.data.tezaraQueries,
         });
         if (isCancelled) return { error: "cancelled" };
@@ -300,9 +300,9 @@ export function useOnboardingNavigation() {
 
         // Step 3: Run risk analysis pipeline
         const cleanMatrixInput = {
-          mainActors: matrixInput.mainActors,
-          researchFocus: matrixInput.researchFocus,
-          context: matrixInput.context,
+          researchCore: matrixInput.researchCore,
+          spatialContext: matrixInput.spatialContext,
+          temporalContext: matrixInput.temporalContext,
           theoreticalFramework: matrixInput.theoreticalFramework,
           methodology: matrixInput.methodology,
           mainClaim: matrixInput.mainClaim,

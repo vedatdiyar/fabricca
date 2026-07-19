@@ -19,6 +19,10 @@ import {
   type InferInsertModel,
 } from "drizzle-orm";
 
+// ============================================================================
+// A) USERS
+// ============================================================================
+
 /**
  * Users table.
  * Email is unique and the password is hashed using bcrypt-ts.
@@ -33,6 +37,16 @@ export const users = pgTable("users", {
   createdAt: timestamp().defaultNow().notNull(),
 });
 
+/** User type for select queries. */
+export type User = InferSelectModel<typeof users>;
+
+/** User type for insert queries. */
+export type NewUser = InferInsertModel<typeof users>;
+
+// ============================================================================
+// B) THESIS MATRICES
+// ============================================================================
+
 /**
  * Thesis Matrix table.
  * Stores the working title, research question, main claim, methodology,
@@ -45,9 +59,9 @@ export const thesisMatrices = pgTable("thesis_matrices", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" })
     .unique(),
-  mainActors: text().notNull(),
-  researchFocus: text().notNull(),
-  context: text().notNull(),
+  researchCore: text().notNull(),
+  spatialContext: text().notNull(),
+  temporalContext: text().notNull(),
   theoreticalFramework: text().notNull(),
   methodology: text().notNull(),
   mainClaim: text().notNull(),
@@ -55,17 +69,15 @@ export const thesisMatrices = pgTable("thesis_matrices", {
   updatedAt: timestamp().defaultNow().notNull(),
 });
 
-/** User type for select queries. */
-export type User = InferSelectModel<typeof users>;
-
-/** User type for insert queries. */
-export type NewUser = InferInsertModel<typeof users>;
-
 /** ThesisMatrix type for select queries. */
 export type ThesisMatrix = InferSelectModel<typeof thesisMatrices>;
 
 /** ThesisMatrix type for insert queries. */
 export type NewThesisMatrix = InferInsertModel<typeof thesisMatrices>;
+
+// ============================================================================
+// C) ORIGINALITY REPORTS
+// ============================================================================
 
 /**
  * Originality Report table (Zero-JSONB multi-row).
@@ -88,8 +100,17 @@ export const originalityReports = pgTable(
     year: integer().notNull(),
     thesisType: text().notNull(),
     department: text().notNull(),
-    yokPdfUrl: text(),
     abstract: text(),
+    yokPdfUrl: text(),
+    /** Individual LLM dimension scores */
+    researchCoreScore: integer("research_core_score"),
+    spatialContextScore: integer("spatial_context_score"),
+    temporalLabel: varchar("temporal_label", { length: 20 }),
+    theoreticalFrameworkScore: integer("theoretical_framework_score"),
+    methodologyScore: integer("methodology_score"),
+    mainClaimScore: integer("main_claim_score"),
+    /** Composite relevance score (sum of 5 LLM dimensions RC+SC+TF+ME+MC, TC excluded, range 0-500) */
+    relevanceScore: integer("relevance_score").notNull().default(0),
     /**
      * Primary badge produced by the 4-step academic decision engine.
      * Possible values: IRRELEVANT_DATA, TWIN_THESIS_ALERT,
@@ -97,16 +118,6 @@ export const originalityReports = pgTable(
      * (INDEPENDENT_CONCEPTUAL_STUDY … TEMPORAL_UPDATE_STUDY)
      */
     diagnosis: varchar({ length: 100 }).notNull(),
-    /** Composite relevance score (sum of all 6 LLM dimensions, range 0-600) */
-    relevanceScore: integer("relevance_score").notNull().default(0),
-    /** Individual LLM dimension scores */
-    researchFocusScore: integer("research_focus_score"),
-    mainActorsScore: integer("main_actors_score"),
-    scopeContextScore: integer("scope_context_score"),
-    temporalLabel: varchar("temporal_label", { length: 20 }),
-    theoreticalFrameworkScore: integer("theoretical_framework_score"),
-    methodologyScore: integer("methodology_score"),
-    mainClaimScore: integer("main_claim_score"),
     /** Academic tactic (action plan) */
     academicTactic: text("academic_tactic").notNull(),
     /** Flag for eliminated theses — when true, hidden from the main overlap table */
@@ -130,16 +141,9 @@ export type OriginalityReport = InferSelectModel<typeof originalityReports>;
 /** OriginalityReport type for insert queries. */
 export type NewOriginalityReport = InferInsertModel<typeof originalityReports>;
 
-export const taskStatusEnum = pgEnum("task_status", [
-  "TODO",
-  "IN_PROGRESS",
-  "DONE",
-]);
-export const taskPriorityEnum = pgEnum("task_priority", [
-  "HIGH",
-  "MEDIUM",
-  "LOW",
-]);
+// ============================================================================
+// D) THESIS BOXES
+// ============================================================================
 
 export const boxTypeEnum = pgEnum("box_type_enum", [
   "PROBLEMATIZATION",
@@ -161,17 +165,16 @@ export const thesisBoxes = pgTable(
     thesisMatrixId: integer()
       .notNull()
       .references(() => thesisMatrices.id, { onDelete: "cascade" }),
-    title: text().notNull(),
-    boxType: boxTypeEnum("box_type"),
-    description: text(),
     parentId: integer(),
+    boxType: boxTypeEnum("box_type"),
+    title: text().notNull(),
+    description: text(),
     semanticQuery: text(),
     concepts: jsonb().$type<string[]>().default([]).notNull(),
     foundationalQueries: jsonb()
       .$type<{ author: string; title: string; publicationYear: number }[]>()
       .default([])
       .notNull(),
-
     createdAt: timestamp().defaultNow().notNull(),
     updatedAt: timestamp().defaultNow().notNull(),
   },
@@ -191,6 +194,10 @@ export type ThesisBox = InferSelectModel<typeof thesisBoxes>;
 /** ThesisBox type for insert queries. */
 export type NewThesisBox = InferInsertModel<typeof thesisBoxes>;
 
+// ============================================================================
+// E) LIBRARY RESOURCES
+// ============================================================================
+
 /**
  * Library Resources table.
  * Stores recommended / approved / rejected academic sources
@@ -204,16 +211,15 @@ export const libraryResources = pgTable(
       .notNull()
       .references(() => thesisBoxes.id, { onDelete: "cascade" }),
     title: text().notNull(),
-    comparisonNote: text(),
-    badge: varchar({ length: 50 }),
-    url: text(),
-    doi: text(),
+    authors: text().array(),
     publisher: text(),
     publicationYear: integer(),
-    authors: text().array(),
-    isRead: boolean().default(false).notNull(),
-
+    doi: text(),
+    url: text(),
     relevanceScore: real(),
+    badge: varchar({ length: 50 }),
+    comparisonNote: text(),
+    isRead: boolean().default(false).notNull(),
     isFoundational: boolean().default(false).notNull(),
     createdAt: timestamp().defaultNow().notNull(),
     updatedAt: timestamp().defaultNow().notNull(),
@@ -235,6 +241,21 @@ export type LibraryResource = InferSelectModel<typeof libraryResources>;
 
 /** LibraryResource type for insert queries. */
 export type NewLibraryResource = InferInsertModel<typeof libraryResources>;
+
+// ============================================================================
+// F) TASKS
+// ============================================================================
+
+export const taskStatusEnum = pgEnum("task_status", [
+  "TODO",
+  "IN_PROGRESS",
+  "DONE",
+]);
+export const taskPriorityEnum = pgEnum("task_priority", [
+  "HIGH",
+  "MEDIUM",
+  "LOW",
+]);
 
 /**
  * Kanban Tasks table.
@@ -270,6 +291,10 @@ export type Task = InferSelectModel<typeof tasks>;
 
 /** Task type for insert queries. */
 export type NewTask = InferInsertModel<typeof tasks>;
+
+// ============================================================================
+// RELATIONS
+// ============================================================================
 
 export const usersRelations = relations(users, ({ one, many }) => ({
   thesisMatrix: one(thesisMatrices),

@@ -115,6 +115,67 @@ export function TezaraOverlapCards({ overlapTable }: TezaraOverlapCardsProps) {
                 </div>
               )}
 
+              {item.dimensionScores && (
+                <div className="text-xs bg-muted/10 p-3 rounded-md border border-border/40 font-sans leading-relaxed space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                      Parametre Puanları
+                    </span>
+                    <span className="text-[10px] font-mono text-muted-foreground">
+                      Toplam:{" "}
+                      <span className="font-semibold text-foreground">
+                        {item.relevanceScore}
+                      </span>
+                      /500
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                    {[
+                      {
+                        key: "researchCore",
+                        label: "Araştırma Odağı",
+                        value: item.dimensionScores.researchCore,
+                      },
+                      {
+                        key: "spatialContext",
+                        label: "Mekânsal Bağlam",
+                        value: item.dimensionScores.spatialContext,
+                      },
+                      {
+                        key: "theoreticalFramework",
+                        label: "Kuramsal Çerçeve",
+                        value: item.dimensionScores.theoreticalFramework,
+                      },
+                      {
+                        key: "methodology",
+                        label: "Metodoloji",
+                        value: item.dimensionScores.methodology,
+                      },
+                      {
+                        key: "mainClaim",
+                        label: "Temel İddia",
+                        value: item.dimensionScores.mainClaim,
+                      },
+                      {
+                        key: "temporalLabel",
+                        label: "Zamansal Etiket",
+                        value: item.dimensionScores.temporalLabel,
+                      },
+                    ].map(({ key, label, value }) => (
+                      <div
+                        key={key}
+                        className="flex items-center justify-between gap-2"
+                      >
+                        <span className="text-muted-foreground">{label}</span>
+                        <span className="font-mono font-medium text-foreground tabular-nums">
+                          {typeof value === "string" ? value : `${value}`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {item.yokPdfUrl && (
                 <div className="flex justify-end pt-1">
                   <a

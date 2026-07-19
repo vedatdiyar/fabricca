@@ -40,9 +40,8 @@ function groupRowsToReport(
     isEliminated: boolean;
     eliminationStage: string | null;
     relevanceScore: number | null;
-    researchFocusScore: number | null;
-    mainActorsScore: number | null;
-    scopeContextScore: number | null;
+    researchCoreScore: number | null;
+    spatialContextScore: number | null;
     temporalLabel: string | null;
     theoreticalFrameworkScore: number | null;
     methodologyScore: number | null;
@@ -83,11 +82,10 @@ function groupRowsToReport(
     badges: [row.diagnosis as AcademicBadge],
     relevanceScore: row.relevanceScore ?? 0,
     dimensionScores:
-      row.researchFocusScore !== null
+      row.researchCoreScore !== null
         ? {
-            researchFocus: row.researchFocusScore,
-            mainActors: row.mainActorsScore!,
-            scopeContext: row.scopeContextScore!,
+            researchCore: row.researchCoreScore,
+            spatialContext: row.spatialContextScore!,
             temporalLabel: row.temporalLabel ?? "UNKNOWN",
             theoreticalFramework: row.theoreticalFrameworkScore!,
             methodology: row.methodologyScore!,

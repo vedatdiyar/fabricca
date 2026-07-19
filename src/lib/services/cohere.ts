@@ -29,9 +29,9 @@ export interface CohereRerankResponse {
 export function formatRerankQuery(matrix: ThesisMatrix): string {
   return [
     "Araştırma Matrisi:",
-    `  Ana Aktörler: ${matrix.mainActors}`,
-    `  Araştırma Odağı: ${matrix.researchFocus}`,
-    `  Tarihsel/Toplumsal Bağlam: ${matrix.context}`,
+    `  Araştırma Odağı: ${matrix.researchCore}`,
+    `  Mekânsal Bağlam: ${matrix.spatialContext}`,
+    `  Tarihsel Bağlam: ${matrix.temporalContext}`,
     `  Ana İddia: ${matrix.mainClaim}`,
   ].join("\n");
 }
