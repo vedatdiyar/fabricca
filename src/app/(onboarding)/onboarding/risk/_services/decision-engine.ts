@@ -110,18 +110,7 @@ export function applyDecisionEngine(item: LLMScoredItem): DecisionResult {
     };
   }
 
-  // Rule 2: RC = 50 & totalScore < 100 → IRRELEVANT
-  if (researchCore === 50 && relevanceScore < 100) {
-    return {
-      thesisId,
-      bucket: "IRRELEVANT",
-      primaryBadge: "IRRELEVANT_DATA",
-      badges: ["IRRELEVANT_DATA"],
-      relevanceScore,
-    };
-  }
-
-  // Rule 3: RC = 100 & SC = 100 & temporalLabel = OVERLAP & MC = 100 &
+  // Rule 2: RC = 100 & SC = 100 & temporalLabel = OVERLAP & MC = 100 &
   //         (ME = 100 OR TF = 100) → RISK
   const isContextOverlap =
     spatialContext === 100 && temporalLabel === "OVERLAP";
