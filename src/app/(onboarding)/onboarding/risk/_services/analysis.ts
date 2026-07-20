@@ -127,8 +127,11 @@ export async function analyzeOriginalityRisk(
           paramKey: string;
           results: { tez_id: number; score: number | string }[];
         }> => {
+          // Pass only the single matrix field relevant to this parameter.
+          // All other matrix fields are intentionally withheld to prevent
+          // cross-dimensional contamination in the LLM's reasoning.
           const prompt = buildIsolatedPrompt(
-            userThesis,
+            userThesis[param.matrixField],
             thesesForPrompt,
             param,
           );

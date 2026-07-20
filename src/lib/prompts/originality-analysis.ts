@@ -4,10 +4,21 @@ import type { JsonSchema } from "../services/gemini";
 // 1. PARAMETER DEFINITIONS
 // ============================================================================
 
+/** Keys of the target thesis matrix that map to each scoring parameter. */
+export type MatrixField =
+  | "researchCore"
+  | "spatialContext"
+  | "temporalContext"
+  | "theoreticalFramework"
+  | "methodology"
+  | "mainClaim";
+
 export interface ParamDefinition {
   key: string;
   label: string;
   description: string;
+  /** The single target matrix field this parameter evaluates against. */
+  matrixField: MatrixField;
   isStringEnum: boolean;
   jsonSchema: JsonSchema;
 }
@@ -16,8 +27,9 @@ export const PARAM_DEFINITIONS: ParamDefinition[] = [
   {
     key: "RC",
     label: "Araştırma Odağı",
+    matrixField: "researchCore",
     description:
-      "The degree to which the candidate thesis's primary research focus — including both the core intellectual problem AND the main actors, subjects, or analytical objects — matches the target's research core. Evaluate the COMBINED research problem and its subjects: what specific phenomenon, relationship, process, or knowledge gap is investigated, AND which actors/groups/organizations are the primary subjects of analysis. Score 100 if the candidate investigates the same or nearly identical problem-actor constellation. Score 50 if the candidate investigates a related but distinct sub-problem within the same domain (e.g., Discipline A), OR if the same problem is studied through different but adjacent actors/subjects. Score 0 if the candidate's primary inquiry falls into a fundamentally different academic discipline, field of study, or theoretical domain (e.g., Discipline B) — even if the subjects, actors, or geographic settings (e.g., Actor X, Region Y) appear identical. A shared actor or geographic setting alone does not justify a score of 50 if the core inquiry belongs to a completely different field or domain.",
+      "The degree to which the candidate thesis's primary research focus — including both the core intellectual problem AND the full set of main actors, subjects, or analytical objects — matches the target's research core.\n\nCRITICAL — Relational Research Rule: If the target thesis examines a RELATIONSHIP or INTERACTION between two or more distinct actor groups (e.g., 'Group A's transformation and its effect on its relationship with Group B'), and the candidate thesis studies only ONE of those actor groups in isolation without examining their inter-group relationship, score 50 — NOT 100. The full actor constellation and the relational dynamic between actors must both match to qualify for 100.\n\nScore 100 only if the candidate investigates the same or nearly identical problem-actor constellation: same core intellectual problem AND the same set of primary actors AND the same relational or structural dynamic under study.\nScore 50 if: (a) the candidate investigates a related but distinct sub-problem within the same domain; OR (b) the same problem is studied but through only a subset of the target's actors (e.g., target studies A↔B relationship, candidate studies only A); OR (c) the candidate's actors overlap partially but the relational dynamic is absent.\nScore 0 if the candidate's primary inquiry belongs to a fundamentally different academic discipline or field — even if subjects, actors, or geographic settings appear identical. A shared actor or setting alone does not justify 50 if the core inquiry is in a different domain.",
     isStringEnum: false,
     jsonSchema: {
       type: "array",
@@ -35,8 +47,9 @@ export const PARAM_DEFINITIONS: ParamDefinition[] = [
   {
     key: "SC",
     label: "Mekânsal Bağlam",
+    matrixField: "spatialContext",
     description:
-      "The degree to which the geographic setting and spatial context of the candidate thesis match those of the target. Evaluate ONLY the geographic, spatial, or institutional setting — not the historical period (which is evaluated separately). Score 100 if the candidate studies the same or overlapping geographic region, country, or institutional space. Score 50 if the candidate studies an adjacent, comparable, or broadly similar geographic context. Score 0 if the candidate is situated in a fundamentally different geographic or institutional setting.",
+      "The degree to which the geographic setting and spatial context of the candidate thesis match those of the target. Evaluate ONLY the geographic or institutional setting — NOT the historical period (evaluated in Temporal) and NOT the actors or subject matter (evaluated in RC).\n\nScore 100 if the candidate studies the exact same country, city, region, or institutional space as the target.\nScore 50 if: (a) the candidate studies a neighboring country or a region within the same broader geopolitical zone as the target (e.g., both in the Middle East, both in the Balkans, both in post-Soviet space); OR (b) the candidate is a multi-context comparative study that includes the target's geography as one case among several others.\nScore 0 if the candidate is situated in a fundamentally different geographic region, continent, or institutional setting with no meaningful spatial overlap with the target.\n\nDo NOT let shared actors, time period, or subject matter influence this score — evaluate geographic/institutional setting only.",
     isStringEnum: false,
     jsonSchema: {
       type: "array",
@@ -54,8 +67,9 @@ export const PARAM_DEFINITIONS: ParamDefinition[] = [
   {
     key: "TF",
     label: "Kuramsal Çerçeve",
+    matrixField: "theoreticalFramework",
     description:
-      "The degree to which the specific theoretical traditions, conceptual frameworks, or theorists employed as the primary analytical lens in the candidate thesis match those of the target. Score 100 if the candidate uses the same specific theory or theorist. Score 50 if the candidate draws from the same broad theoretical paradigm or tradition (e.g., both within critical theory, both within discourse analysis traditions, both within a shared sociological paradigm family). Score 0 if the candidate employs a completely different theoretical tradition.",
+      "The degree to which the specific theoretical traditions, conceptual frameworks, or theorists employed as the primary analytical lens in the candidate thesis match those of the target.\n\nCRITICAL — Evidence Requirement: Do NOT infer or assume a theoretical framework from the research topic, subject matter, actors, or geographic setting alone. Base your score ONLY on explicit evidence found in the candidate's title or abstract. If no theoretical framework or theorist is explicitly named or clearly described, assign 0.\n\nScore 100 if the abstract or title explicitly names and employs the same specific theory, model, or theorist as the target (e.g., both explicitly use Snow & Benford's Framing Theory; both explicitly apply Gramscian hegemony).\nScore 50 if the abstract or title explicitly references the same named theoretical school, tradition, or paradigm family as the target, but uses a different specific variant, theorist, or model within that family (e.g., target uses Gramscian hegemony, candidate uses neo-Marxist state theory; both are within the same Marxist critical tradition, but different theorists).\nScore 0 if the candidate employs a completely different theoretical tradition, OR if no theoretical framework is mentioned or clearly inferable from the abstract or title.",
     isStringEnum: false,
     jsonSchema: {
       type: "array",
@@ -73,8 +87,9 @@ export const PARAM_DEFINITIONS: ParamDefinition[] = [
   {
     key: "ME",
     label: "Yöntem",
+    matrixField: "methodology",
     description:
-      "The degree to which the candidate thesis's primary analytical technique and data category type match those of the target. Evaluate the METHOD TYPE (e.g., qualitative discourse analysis, ethnographic fieldwork, quantitative survey, archival research, content analysis), NOT the specific data sources. Score 100 if the candidate uses the same primary analytical technique AND the same data category type. Score 50 if both share the same methodological paradigm (qualitative or quantitative) but differ in technique or data category. Score 0 if the candidate uses a fundamentally different methodology. Do NOT score based on shared specific sources; the mere fact that two theses use the same publication or archive as a data source does not alone qualify for a high score.",
+      "The degree to which the candidate thesis's primary analytical technique and data category type match those of the target. Evaluate the METHOD TYPE applied, NOT the specific sources, archives, or publications used.\n\nData category reference (non-exhaustive): political/party documents and manifestos; newspaper or periodical content; semi-structured interviews; ethnographic fieldwork notes; parliamentary or court records; survey or census data; historical archival documents; statistical datasets.\n\nScore 100 if the candidate uses the same primary analytical technique (e.g., discourse analysis, content analysis, ethnographic fieldwork, comparative historical analysis) AND the same general data category type (e.g., both analyze political texts and party documents; both conduct in-depth interviews; both use survey data).\nScore 50 if both theses share the same broad methodological paradigm (both qualitative OR both quantitative) but differ in their primary analytical technique OR in their data category type.\nScore 0 if the candidate uses a fundamentally different methodological paradigm from the target (e.g., target is qualitative discourse analysis, candidate is quantitative regression).\n\nCRITICAL: Do NOT raise a score because both theses cite the same specific publication, journal, or archive. Overlap in data sources alone — without overlap in analytical technique and data category — does not justify 100 or 50.",
     isStringEnum: false,
     jsonSchema: {
       type: "array",
@@ -92,8 +107,9 @@ export const PARAM_DEFINITIONS: ParamDefinition[] = [
   {
     key: "MC",
     label: "Merkez Sav",
+    matrixField: "mainClaim",
     description:
-      "The degree to which the candidate thesis's central argument, conclusion, or contribution claim overlaps with the target's main claim. Score 100 if the candidate makes a parallel or nearly identical central argument, or arrives at a substantially similar conclusion. Score 50 if the candidate makes a partially overlapping argument or a claim pointing in the same direction. Score 0 if the candidate's central claim is completely different or unrelated to the target's.",
+      "The degree to which the candidate thesis's central argument, conclusion, or contribution claim overlaps with the target's main claim.\n\nCRITICAL — Multi-Component Claims: If the target's main claim contains multiple distinct sub-arguments or contributions (e.g., Claim A about phenomenon X AND Claim B about relational dynamic Y), and the candidate's central argument overlaps with only some of those components, score 50 — NOT 100. Score 100 ONLY when the candidate's central argument is nearly identical to the target's in BOTH its core direction AND the full scope of its key sub-claims.\n\nScore 100 if the candidate makes a nearly identical central argument to the target — matching both the primary direction of the claim AND its key sub-arguments or conclusions in their entirety.\nScore 50 if: (a) the candidate's argument overlaps with only some of the target's sub-claims; OR (b) the candidate reaches a similar general conclusion through a substantially different argumentative path; OR (c) the candidate's claim points in the same general direction as the target's but is narrower or broader in scope.\nScore 0 if the candidate's central claim is completely unrelated to the target's, or argues for the opposite position.",
     isStringEnum: false,
     jsonSchema: {
       type: "array",
@@ -111,8 +127,9 @@ export const PARAM_DEFINITIONS: ParamDefinition[] = [
   {
     key: "Temporal",
     label: "Tarihsel Dönem",
+    matrixField: "temporalContext",
     description:
-      "Does the candidate thesis's analyzed historical period overlap with the target's period? If the abstract does not explicitly state a date range, infer the period from historical events, political formations, or named figures mentioned in the title or abstract. If inference is impossible after consulting both title and abstract, use UNKNOWN. OVERLAP=The candidate's period overlaps with or contains the target's period; PAST=The candidate's period is entirely earlier than the target's; FUTURE=The candidate's period is entirely later than the target's; UNKNOWN=No temporal data can be determined from title or abstract.",
+      "Does the candidate thesis's analyzed historical period overlap with the target's period? Use the following priority order: (1) Explicit date ranges stated in the abstract or title; (2) Named historical events, political formations, or eras whose dates are well-established (e.g., 'Cold War', 'Ottoman period', '1980 coup'); (3) Named political parties, leaders, or regimes with known active periods. If inference is impossible after consulting both title and abstract, use UNKNOWN.\n\nOVERLAP = The candidate's analyzed period shares at least one year with the target's period — including cases where the candidate's period partially overlaps, fully contains, or is fully contained within the target's period.\nPAST = The candidate's period ends entirely before the target's period begins — with no year in common.\nFUTURE = The candidate's period begins entirely after the target's period ends — with no year in common.\nUNKNOWN = No temporal information can be determined or inferred from the title or abstract, even after applying the inference rules above.\n\nCRITICAL: Do NOT use UNKNOWN if a reasonable inference is possible from named events, eras, or formations. UNKNOWN is reserved strictly for cases where no temporal anchor exists at all.",
     isStringEnum: true,
     jsonSchema: {
       type: "array",
@@ -156,8 +173,19 @@ Output ONLY a valid JSON array of objects according to the schema. No markdown f
 // 3. ISOLATED PROMPT BUILDER
 // ============================================================================
 
+/**
+ * Builds the isolated scoring prompt for a single parameter.
+ * Only the target matrix field relevant to this parameter is exposed to the
+ * model — all other matrix fields are intentionally withheld to prevent
+ * cross-dimensional contamination.
+ *
+ * @param targetFieldValue - The single target matrix field value for this parameter
+ * @param theses - Candidate theses (id, title, abstract)
+ * @param param - The parameter definition being scored
+ * @returns The full prompt string for this isolated scoring call
+ */
 export function buildIsolatedPrompt(
-  targetMatrix: Record<string, string>,
+  targetFieldValue: string,
   theses: { id: number; title: string; abstract: string }[],
   param: ParamDefinition,
 ): string {
@@ -173,9 +201,9 @@ export function buildIsolatedPrompt(
     : "0, 50, or 100 (integer)";
 
   return `<context>
-<target_thesis_matrix>
-${JSON.stringify(targetMatrix, null, 2)}
-</target_thesis_matrix>
+<target_field label="${param.label}">
+${targetFieldValue}
+</target_field>
 
 <candidate_theses>
 ${thesesXml}
