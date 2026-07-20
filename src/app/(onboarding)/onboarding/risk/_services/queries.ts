@@ -73,74 +73,29 @@ export async function extractQueries(
 
     const rawQueries = [...turkishList, ...englishList];
 
-    // Filter to enforce 2-word limit: drop any query with <2 or >2 words
+    // Filter to enforce 2-3 word limits, and allow 1-word queries only if they appear in matrixText
+    const matrixText = `${params.researchCore} ${params.mainClaim}`;
     let tezaraQueries = rawQueries.filter((q) => {
-      const wc = q.trim().split(/\s+/).length;
-      return wc === 2;
+      const trimmed = q.trim();
+      const wordCount = trimmed.split(/\s+/).length;
+      if (wordCount === 2 || wordCount === 3) {
+        return true;
+      }
+      if (wordCount === 1) {
+        // Topic-agnostic check: 1-word queries are allowed only if the word appears in the matrix text
+        const word = trimmed.toLowerCase();
+        const escapedWord = word.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+        const regex = new RegExp(
+          `(?:^|[^a-zA-ZğüşıöçĞÜŞİÖÇ])(${escapedWord})(?:$|[^a-zA-ZğüşıöçĞÜŞİÖÇ])`,
+          "i",
+        );
+        return regex.test(matrixText);
+      }
+      return false;
     });
 
-    // Core-based smart padding: if <6 queries, generate clean 2-word
-    // umbrella forms from researchCore text
-    if (tezaraQueries.length < 6) {
-      const coreWords = params.researchCore
-        .toLowerCase()
-        .replace(/[^a-zA-ZğüşıöçĞÜŞİÖÇ\s]/g, "")
-        .split(/\s+/)
-        .map((w) => w.trim())
-        .filter((w) => w.length > 2)
-        .filter(
-          (w) =>
-            ![
-              "ve",
-              "ile",
-              "bir",
-              "in",
-              "the",
-              "on",
-              "of",
-              "and",
-              "or",
-              "a",
-              "an",
-              "de",
-              "da",
-              "ki",
-              "göre",
-              "üzerine",
-              "hakkında",
-              "ilişkin",
-              "araştırmanın",
-              "temel",
-              "öznesi",
-            ].includes(w),
-        );
-
-      const uniqueWords = [...new Set(coreWords)];
-
-      // Generate adjacent 2-word combos from core text
-      for (
-        let i = 0;
-        i < uniqueWords.length - 1 && tezaraQueries.length < 6;
-        i++
-      ) {
-        const candidate = `${uniqueWords[i]} ${uniqueWords[i + 1]}`;
-        if (!tezaraQueries.includes(candidate)) {
-          tezaraQueries.push(candidate);
-        }
-      }
-
-      // If still <6, add single meaningful words as 1-word queries
-      // (single words are allowed only as last-resort fallback)
-      for (let i = 0; i < uniqueWords.length && tezaraQueries.length < 6; i++) {
-        if (
-          !tezaraQueries.includes(uniqueWords[i]) &&
-          !tezaraQueries.some((q) => q.includes(uniqueWords[i]))
-        ) {
-          tezaraQueries.push(uniqueWords[i]);
-        }
-      }
-    }
-    tezaraQueries = tezaraQueries.slice(0, 8);
+    // Remove duplicates and limit to 16
+    tezaraQueries = Array.from(new Set(tezaraQueries)).slice(0, 16);
 
     const durationMs = performance.now() - startTime;
     log.groupEnd("originality_queries_extract", durationMs);

@@ -100,10 +100,23 @@ async function fetchAllAbstracts(
 }
 
 // ──────────────────────────────────────────────
-// Extraction 3: Cohere rerank + top-N seç (abstract-aware)
+// Extraction 3: Cohere rerank + strict score >= 0.80 filter
 // ──────────────────────────────────────────────
+
+/** Minimum Cohere relevance score required for a thesis to pass to jury analysis. */
+const RELEVANCE_SCORE_THRESHOLD = 0.8;
+
 export type SiftAndFetchDetailsParams = ThesisMatrix;
 
+/**
+ * Runs Cohere Rerank v4 Pro on validated thesis abstracts and returns the IDs
+ * of those that meet or exceed the relevance threshold. No artificial caps applied.
+ *
+ * @param params - The thesis matrix used as the rerank query.
+ * @param validDetails - Theses with valid abstracts to rerank.
+ * @param log - Logger instance.
+ * @returns Array of thesis IDs with relevanceScore >= 0.80.
+ */
 async function rerankAndSelectTheses(
   params: SiftAndFetchDetailsParams,
   validDetails: TezaraThesisDetails[],
@@ -119,10 +132,18 @@ async function rerankAndSelectTheses(
       return [];
     }
 
-    const topN = Math.min(20, results.length);
-    const topResults = results.slice(0, topN);
+    // Strict threshold — no min/max caps; yield exactly what the model deems relevant
+    const passing = results.filter(
+      (r) => r.relevanceScore >= RELEVANCE_SCORE_THRESHOLD,
+    );
 
-    return topResults.map((r) => validDetails[r.index].id);
+    log.data("Rerank threshold filter", {
+      total: results.length,
+      passing: passing.length,
+      threshold: RELEVANCE_SCORE_THRESHOLD,
+    });
+
+    return passing.map((r) => validDetails[r.index].id);
   } catch (err) {
     log.error("originality_sift_cohere_failed", {
       service: "originality",
@@ -134,11 +155,11 @@ async function rerankAndSelectTheses(
 }
 
 /**
- * Deduplicates search results, fetches all abstracts in parallel (C=12),
- * scores relevance via Cohere Rerank v4 Pro (abstract-aware), selects
- * top 20, and returns all valid theses for jury analysis.
+ * Deduplicates search results, fetches all abstracts (via detailsCache — instant),
+ * scores relevance via Cohere Rerank v4 Pro, and returns every thesis with
+ * relevanceScore >= 0.80. No artificial min or max caps applied.
  *
- * Tekil akış: dedup → fetchAllAbstracts → abstract-aware rerank → top-20
+ * Tekil akış: dedup → fetchAllAbstracts → abstract-aware rerank → score ≥ 0.80
  */
 export async function siftAndFetchDetails(
   params: SiftAndFetchDetailsParams,
@@ -176,7 +197,7 @@ export async function siftAndFetchDetails(
       };
     }
 
-    // Adım 3: Abstract-aware Cohere rerank → top-20
+    // Adım 3: Abstract-aware Cohere rerank → score >= 0.80
     const topIds = await rerankAndSelectTheses(params, validDetails, log);
 
     // Adım 4: Sonuç yapısını oluştur

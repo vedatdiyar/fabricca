@@ -11,13 +11,13 @@ export const litKeywordExtractionSchema: JsonSchema = {
       type: "array",
       items: { type: "string" },
       description:
-        "YÖKTEZ veritabanında Türkçe dizinlenmiş tezleri bulmak için en uygun 4 adet Türkçe akademik arama sorgusu.",
+        "YÖKTEZ veritabanında Türkçe dizinlenmiş tezleri bulmak için en uygun 8 adet Türkçe akademik arama sorgusu.",
     },
     englishQueries: {
       type: "array",
       items: { type: "string" },
       description:
-        "YÖKTEZ veritabanında İngilizce dizinlenmiş tezleri bulmak için en uygun 4 adet İngilizce akademik arama sorgusu.",
+        "YÖKTEZ veritabanında İngilizce dizinlenmiş tezleri bulmak için en uygun 8 adet İngilizce akademik arama sorgusu.",
     },
   },
   required: ["turkishQueries", "englishQueries"],
@@ -30,13 +30,13 @@ export function buildLitKeywordExtractionSystemInstruction(): string {
   return `<constraints>
 - Kesinlikle objektif, mesafeli, net ve tamamen veri odaklı bir akademik Türkçe kullanmalısınız.
 - Bilgi kesim tarihiniz Ocak 2025'tir. Şu anki yıl 2026'dır.
-- KATI 2 KELİME LİMİTİ: turkishQueries ve englishQueries listelerindeki HER BİR SORGU kesinlikle en az 2, en fazla 2 kelimeden oluşmalıdır. 3 veya daha fazla kelime içeren sorgular (Örn: "HADEP Marksist söylem") Meilisearch motorunda sıfır sonuç döndürdüğü için KESİNLİKLE YASAKTIR.
-- KATI SAYI KISITI: turkishQueries listesi tam olarak 4 eleman içermelidir. englishQueries listesi tam olarak 4 eleman içermelidir. Toplamda 8 sorgu üretilecektir.
-- ŞEMSİYE ARAMA KURALI: Matristen yola çıkarak en az 1 adet Türkçe ve 1 adet İngilizce geniş şemsiye sorgu üretilmelidir (Örn: "Kürt siyasal", "Kurdish political"). Şemsiye sorgular jenerik kalmamalı, matristeki temel aktör/odak kavramını yansıtmalıdır.
-- ÇAPRAZ ARAMA KURALI: Aktör isimleri (HEP, DEP, HADEP, Özgürlük Dünyası vb.) tek başına kullanılmamalıdır. Her aktör kelimesi mutlaka yanına bağlamsal 1 kelime eklenerek çaprazlanmalıdır (Örn: "HADEP söylem", "DEP davası", "Kürt sol").
+- KELİME LİMİTİ: Arama sorguları en az 2, en fazla 3 kelimeden oluşmalıdır. Sadece metinde doğrudan geçen çok spesifik özel isimler, kısaltmalar veya yayın adları (Örn: 'AktörX', 'DergiY') için istisnai olarak 1 kelimelik sorguya izin verilir.
+- SAYI KISITI: turkishQueries listesi tam olarak 8 eleman içermelidir. englishQueries listesi tam olarak 8 eleman içermelidir. Toplamda 16 sorgu üretilecektir.
+- ŞEMSİYE ARAMA KURALI: Matristen yola çıkarak en az 1 adet geniş şemsiye sorgu üretilmelidir (Örn: 'DisiplinA politikalari', 'DisiplinA dynamics'). Şemsiye sorgular jenerik kalmamalı, matristeki temel odak kavramını yansıtmalıdır.
+- ÇAPRAZ ARAMA KURALI: Aktör veya yayın isimleri tek başına kullanılmamalıdır (1 kelimelik istisnalar hariç). Her aktör kelimesi mutlaka yanına bağlamsal 1 kelime eklenerek çaprazlanmalıdır (Örn: 'AktörX söylemi', 'DergiY analizi').
 - TÜRKÇE KARAKTER KURALI: Türkçe sorgularda Türkçe karakterleri (ç, ğ, ı, ö, ş, ü, â) KESİNLİKLE aynen koruyunuz.
-- AKADEMİK VARYASYON KURALI: Kavramların eşanlamlılarını ve dilbilgisel varyasyonlarını kullanınız (Örn: matriste "siyasi" geçiyorsa "siyasal" varyasyonunu da deneyin).
-- YÖNTEMSEL GÜRÜLTÜ FİLTRESİ: Tek başına "söylem analizi", "metodoloji", "çerçeveleme", "kuram" gibi jenerik akademik kavramlar sorgularda yer alamaz. Bu kelimeler ancak bir aktör veya somut bağlamla çaprazlandığında kullanılabilir.
+- AKADEMİK VARYASYON KURALI: Kavramların eşanlamlılarını ve dilbilgisel varyasyonlarını kullanınız (Örn: matriste 'siyasi' geçiyorsa 'siyasal' varyasyonunu da deneyin).
+- YÖNTEMSEL GÜRÜLTÜ FİLTRESİ: Tek başına 'söylem analizi', 'metodoloji', 'kuram' gibi jenerik akademik kavramlar sorgularda yer alamaz. Bu kelimeler ancak bir aktör veya somut bağlamla çaprazlandığında kullanılabilir.
 - TEK SORUMLULUK KURALI: Bu yönerge yalnızca arama sorguları üretir.
 - ÇIKTI FORMATI: Yanıtınız, sağlanan litKeywordExtractionSchema ile %100 uyumlu, parse edilebilir bir ham JSON objesi olmalıdır.
 </constraints>
@@ -45,23 +45,31 @@ export function buildLitKeywordExtractionSystemInstruction(): string {
   <example>
     <input>
 {
-  "researchCore": "Borçlandırılmış bireyler / işçi-borçlular, Neoliberal devlet politikaları — Neoliberalizmde bireysel borçlandırmanın bir siyasal iktidar ilişkisi olarak işleyişi",
-  "mainClaim": "Bireysel borçlandırma neoliberalizmde yalnızca ekonomik bir ilişki değil siyasal bir iktidar ilişkisidir"
+  "researchCore": "Neoliberalizmde bireysel borçlandırmanın ve işçi sınıfı borçlanmasının bir iktidar ilişkisi olarak işleyişi",
+  "mainClaim": "Bireysel borçlandırma yalnızca ekonomik bir ilişki değil, Foucaultcu ve Marksist yaklaşımlar çerçevesinde işçi-borçluların tabi kılındığı asimetrik bir iktidar ilişkisidir."
 }
     </input>
     <output>
 {
   "turkishQueries": [
-    "borçlu özne",
-    "neoliberal borç",
-    "işçi borçlanma",
-    "borç iktidar"
+    "borçlu öznellik",
+    "neoliberal borçlanma",
+    "işçi sınıfı borç",
+    "borç iktidar ilişkisi",
+    "finansal disiplin",
+    "borç tabi kılınma",
+    "neoliberal borçluluk",
+    "borç asimetrisi"
   ],
   "englishQueries": [
-    "debt subject",
-    "neoliberal indebted",
-    "worker debt",
-    "debt power"
+    "indebted subjectivity",
+    "neoliberal indebtedness",
+    "working class debt",
+    "debt power relations",
+    "financial discipline",
+    "debt subordination",
+    "neoliberal debt politics",
+    "debt asymmetry"
   ]
 }
     </output>
@@ -69,7 +77,7 @@ export function buildLitKeywordExtractionSystemInstruction(): string {
 </examples>
 
 <task>
-Disiplinlerüstü çalışan kıdemli bir Akademik Bilgi Erişim Uzmanı rolündesiniz. Göreviniz, girdi olarak sunulan kısıtlı tez matrisini (aktör, odak ve iddia) analiz ederek; YÖKTEZ (Ulusal Tez Merkezi) Meilisearch indeksinde en alakalı benzer çalışmaları bulmak üzere 4 adet Türkçe ve 4 adet İngilizce (toplam 8 adet) 2 kelimelik akademik arama sorgusu üretmektir. Her sorgu kesinlikle 2 kelime olmalı, şemsiye ve çapraz formatlarda olmalıdır.
+Disiplinlerüstü çalışan kıdemli bir Akademik Bilgi Erişim Uzmanı rolündesiniz. Göreviniz, girdi olarak sunulan kısıtlı tez matrisini (aktör, odak ve iddia) analiz ederek; Meilisearch indeksinde en alakalı benzer çalışmaları bulmak üzere 8 adet Türkçe ve 8 adet İngilizce (toplam 16 adet) akademik arama sorgusu üretmektir.
 </task>`;
 }
 
@@ -88,11 +96,11 @@ export function buildLitKeywordPrompt(
 
 <task>
 Sistem talimatındaki kurallara harfiyen uyarak:
-1. HER SORGU KESİNLİKLE 2 KELİMEDEN OLUŞMALIDIR. 3 kelime yasaktır.
+1. HER SORGU 2 VEYA 3 KELİMEDEN OLUŞMALIDIR (Spesifik özel isim/kısaltmalar hariç).
 2. En az 1 Türkçe ve 1 İngilizce şemsiye sorgu üretiniz.
 3. Aktör adlarını tek başına kullanmayınız, mutlaka bağlamla çaprazlayınız.
-4. Jenerik yöntem/kuram kelimelerini sorgularda kullanmayınız.
-Tam olarak 4 Türkçe ve 4 İngilizce (toplam 8) sorgu üretiniz.
+4. Jenerik yöntem/kuram kelimelerini sorgularda tek başına kullanmayınız.
+Tam olarak 8 Türkçe ve 8 İngilizce (toplam 16) sorgu üretiniz.
 Cevaplamadan önce çok derin düşün.
 </task>`;
 }
