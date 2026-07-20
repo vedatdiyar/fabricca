@@ -14,6 +14,7 @@ const MAX_LENGTH = 4000;
 
 const thesisMatrixSchema = z.object({
   researchCore: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+  targetActors: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
   spatialContext: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
   temporalContext: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
   theoreticalFramework: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
@@ -63,6 +64,7 @@ export async function saveThesisMatrixAction(
         .values({
           userId: session.userId,
           researchCore: validated.researchCore,
+          targetActors: validated.targetActors,
           spatialContext: validated.spatialContext,
           temporalContext: validated.temporalContext,
           theoreticalFramework: validated.theoreticalFramework,
@@ -74,6 +76,7 @@ export async function saveThesisMatrixAction(
           target: thesisMatrices.userId,
           set: {
             researchCore: validated.researchCore,
+            targetActors: validated.targetActors,
             spatialContext: validated.spatialContext,
             temporalContext: validated.temporalContext,
             theoreticalFramework: validated.theoreticalFramework,

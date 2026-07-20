@@ -94,6 +94,7 @@ export async function generateBoxesStructureAction(): Promise<
 
     const geminiPrompt = buildThesisBoxGenerationPrompt({
       researchCore: matrix.researchCore,
+      targetActors: matrix.targetActors,
       spatialContext: matrix.spatialContext,
       temporalContext: matrix.temporalContext,
       theoreticalFramework: matrix.theoreticalFramework,

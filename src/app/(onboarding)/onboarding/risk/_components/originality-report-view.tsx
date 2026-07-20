@@ -39,6 +39,12 @@ export function OriginalityReportView({
         <SectionDivider label="Pozisyon Matrisi" />
         <TezaraOverlapCards overlapTable={tezaraResults.overlapTable} />
       </div>
+
+      {/* Bölüm B: Jüri Tarafından Elenenler */}
+      <div className="space-y-5">
+        <SectionDivider label="Jüri Tarafından Elenenler" />
+        <TezaraOverlapCards overlapTable={tezaraResults.eliminatedTheses} />
+      </div>
     </div>
   );
 }

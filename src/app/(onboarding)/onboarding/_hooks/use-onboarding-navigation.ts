@@ -22,8 +22,7 @@ import { getStepTanStackKeys } from "@/lib/onboarding-cache";
 import { clearDownstreamDbAction } from "@/app/(onboarding)/onboarding/actions";
 import {
   extractQueriesAction,
-  executeSearchAction,
-  siftThesesAction,
+  executeSearchAndSiftAction,
   finalizeJuryAnalysisAction,
 } from "../risk/actions";
 import {
@@ -44,6 +43,7 @@ import type { SubBoxInput } from "../literature-review/_services/literature-revi
 
 interface MatrixInput {
   researchCore: string;
+  targetActors: string;
   spatialContext: string;
   temporalContext: string;
   theoreticalFramework: string;
@@ -144,31 +144,21 @@ export function useOnboardingNavigation() {
         }
         await completeStep(0, steps);
 
-        const searchResult = await executeSearchAction({
-          researchCore: matrixInput.researchCore,
+        const searchAndSiftResult = await executeSearchAndSiftAction({
+          matrix: matrixInput,
           tezaraQueries: extractResult.data.tezaraQueries,
         });
         if (isCancelled) return { error: "cancelled" };
-        if ("error" in searchResult) {
+        if ("error" in searchAndSiftResult) {
           hideLoading();
-          return { error: searchResult.error };
+          return { error: searchAndSiftResult.error };
         }
         await completeStep(1, steps);
-
-        const siftResult = await siftThesesAction({
-          matrix: matrixInput,
-          tezaraSearchResults: searchResult.data.tezaraSearchResults,
-        });
-        if (isCancelled) return { error: "cancelled" };
-        if ("error" in siftResult) {
-          hideLoading();
-          return { error: siftResult.error };
-        }
         await completeStep(2, steps);
 
         const juryResult = await finalizeJuryAnalysisAction({
           matrix: matrixInput,
-          scrapedTheses: siftResult.data,
+          selectedTheses: searchAndSiftResult.data.selected,
         });
         if (isCancelled) return { error: "cancelled" };
         if ("error" in juryResult) {
@@ -301,6 +291,7 @@ export function useOnboardingNavigation() {
         // Step 3: Run risk analysis pipeline
         const cleanMatrixInput = {
           researchCore: matrixInput.researchCore,
+          targetActors: matrixInput.targetActors,
           spatialContext: matrixInput.spatialContext,
           temporalContext: matrixInput.temporalContext,
           theoreticalFramework: matrixInput.theoreticalFramework,

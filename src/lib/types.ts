@@ -46,6 +46,7 @@ export interface TezaraThesisDetails {
   department: string;
   abstract: string;
   yokPdfUrl?: string;
+  language?: string;
 }
 
 export interface OriginalityReportData {
@@ -66,6 +67,7 @@ export interface OriginalityReportData {
       relevanceScore: number;
       dimensionScores?: {
         researchCore: number;
+        actor: number;
         spatialContext: number;
         temporalLabel: string;
         theoreticalFramework: number;
@@ -88,6 +90,7 @@ export interface OriginalityReportData {
       relevanceScore: number;
       dimensionScores?: {
         researchCore: number;
+        actor: number;
         spatialContext: number;
         temporalLabel: string;
         theoreticalFramework: number;
@@ -100,6 +103,7 @@ export interface OriginalityReportData {
 
 export interface ThesisMatrix {
   researchCore: string;
+  targetActors: string;
   spatialContext: string;
   temporalContext: string;
   theoreticalFramework: string;
@@ -109,7 +113,7 @@ export interface ThesisMatrix {
 
 export interface ScrapedTheses {
   selected: TezaraThesisDetails[];
-  eliminated: TezaraThesisSummary[];
+  eliminated: TezaraThesisDetails[];
 }
 
 export interface FoundationalQuery {

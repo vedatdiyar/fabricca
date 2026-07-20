@@ -25,6 +25,7 @@ import { fetchThesisMatrixFresh } from "../../_services/fetch-actions";
 
 type FormState = {
   researchCore: string;
+  targetActors: string;
   spatialContext: string;
   temporalContext: string;
   theoreticalFramework: string;
@@ -58,10 +59,20 @@ const MATRIX_SECTIONS: SectionConfig[] = [
         id: "researchCore",
         number: "01",
         Icon: Target,
-        label: "Araştırma Odağı / Temel Problem ve Özneler",
+        label: "Araştırma Konusu / Olgu",
         placeholder:
-          "Araştırmanızın temel problemi, odaklandığı ana aktörler, özneler, kurumlar veya analiz nesneleri. Bu alan araştırma sorunuzu ve bu sorunun merkezindeki özneleri birlikte tanımlar...",
-        rows: 4,
+          "Araştırmanızın temel konusu, kavramsal veya teorik problemi (örn: soylulaştırma, popülizm, söylem tasarımı)...",
+        rows: 3,
+      },
+      {
+        key: "targetActors",
+        id: "targetActors",
+        number: "02",
+        Icon: Target,
+        label: "Aktör / Odak Grup",
+        placeholder:
+          "Araştırmanızda odaklanılan ana aktörler, özneler, kurumlar veya toplumsal gruplar (örn: yerel yönetimler, mülteciler, siyasi partiler)...",
+        rows: 3,
       },
     ],
   },
@@ -72,21 +83,21 @@ const MATRIX_SECTIONS: SectionConfig[] = [
       {
         key: "spatialContext",
         id: "spatialContext",
-        number: "02",
+        number: "03",
         Icon: Globe,
-        label: "Mekânsal / Coğrafi Bağlam",
+        label: "Coğrafi Bağlam",
         placeholder:
-          "Araştırmanın geçtiği coğrafi mekân, bölge, ülke veya kurumsal ortam...",
+          "Araştırmanın geçtiği coğrafi mekân, bölge veya ülke (örn: Türkiye, İstanbul)...",
         rows: 3,
       },
       {
         key: "temporalContext",
         id: "temporalContext",
-        number: "03",
+        number: "04",
         Icon: Clock,
-        label: "Tarihsel / Zamansal Bağlam",
+        label: "Tarihsel Dönem",
         placeholder:
-          "Araştırmanın odaklandığı dönem, tarihsel aralık veya zamansal kesit...",
+          "Araştırmanın odaklandığı tarihsel zaman dilimi, aralık veya dönem (örn: 2000'ler, Cumhuriyet dönemi)...",
         rows: 3,
       },
     ],
@@ -98,32 +109,32 @@ const MATRIX_SECTIONS: SectionConfig[] = [
       {
         key: "theoreticalFramework",
         id: "kavramsalCerceve",
-        number: "04",
+        number: "05",
         Icon: BookMarked,
-        label: "Kuramsal / Kavramsal Çerçeve veya Yaklaşım",
+        label: "Kuramsal Yaklaşım",
         placeholder:
-          "Araştırmayı üzerine inşa ettiğiniz teoriler, kavramsal modeller, historiografik yaklaşımlar veya ana paradigmalar ile kurucu literatür...",
-        rows: 4,
+          "Araştırmayı üzerine inşa ettiğiniz teoriler, kavramsal modeller veya ana paradigmalar (örn: Gramsci hegemonya, söylem kuramı)...",
+        rows: 3,
       },
       {
         key: "methodology",
         id: "metodoloji",
-        number: "05",
+        number: "06",
         Icon: Layers,
-        label: "Yöntem ve Veri Kaynakları",
+        label: "Araştırma Yöntemi",
         placeholder:
-          "Verilerinizi nereden toplayacağınız (arşiv, anket, saha çalışması, veri tabanı, taranacak yayınlar vb.) ve hangi yöntemlerle analiz edeceğiniz (nitel/nicel analiz, söylem analizi vb.)...",
-        rows: 4,
+          "Araştırmada kullanacağınız temel analitik yöntem veya teknik (örn: söylem analizi, anket çalışması)...",
+        rows: 3,
       },
       {
         key: "mainClaim",
         id: "temelIddia",
-        number: "06",
+        number: "07",
         Icon: Target,
-        label: "Merkez Savı / Temel İddia",
+        label: "Merkez Sav",
         placeholder:
-          "Bu çalışmayla kanıtlamak istediğiniz temel savınız, hipoteziniz veya ana teziniz...",
-        rows: 4,
+          "Bu çalışmayla savunacağınız temel tez, hipotez veya ana nedensellik argümanınız...",
+        rows: 3,
       },
     ],
   },
@@ -189,6 +200,7 @@ const MatrixCard = memo(function MatrixCard({
  */
 const EMPTY_VALUES: FormState = {
   researchCore: "",
+  targetActors: "",
   spatialContext: "",
   temporalContext: "",
   theoreticalFramework: "",
@@ -216,6 +228,7 @@ export function MatrixForm() {
     const base = initialMatrix ?? EMPTY_VALUES;
     return {
       researchCore: editedValues.researchCore ?? base.researchCore,
+      targetActors: editedValues.targetActors ?? base.targetActors,
       spatialContext: editedValues.spatialContext ?? base.spatialContext,
       temporalContext: editedValues.temporalContext ?? base.temporalContext,
       theoreticalFramework:
@@ -240,6 +253,7 @@ export function MatrixForm() {
     try {
       await submitMatrix({
         researchCore: formState.researchCore,
+        targetActors: formState.targetActors,
         spatialContext: formState.spatialContext,
         temporalContext: formState.temporalContext,
         theoreticalFramework: formState.theoreticalFramework,

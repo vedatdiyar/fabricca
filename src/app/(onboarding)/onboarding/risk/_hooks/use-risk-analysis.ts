@@ -72,6 +72,7 @@ export function useRiskAnalysis(): UseRiskAnalysisResult {
 
       const matrixInput = {
         researchCore: matrix.researchCore,
+        targetActors: matrix.targetActors,
         spatialContext: matrix.spatialContext,
         temporalContext: matrix.temporalContext,
         theoreticalFramework: matrix.theoreticalFramework,

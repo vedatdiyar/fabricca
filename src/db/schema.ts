@@ -60,6 +60,7 @@ export const thesisMatrices = pgTable("thesis_matrices", {
     .references(() => users.id, { onDelete: "cascade" })
     .unique(),
   researchCore: text().notNull(),
+  targetActors: text("target_actors").notNull(),
   spatialContext: text().notNull(),
   temporalContext: text().notNull(),
   theoreticalFramework: text().notNull(),
@@ -104,12 +105,13 @@ export const originalityReports = pgTable(
     yokPdfUrl: text(),
     /** Individual LLM dimension scores */
     researchCoreScore: integer("research_core_score"),
+    actorScore: integer("actor_score"),
     spatialContextScore: integer("spatial_context_score"),
     temporalLabel: varchar("temporal_label", { length: 20 }),
     theoreticalFrameworkScore: integer("theoretical_framework_score"),
     methodologyScore: integer("methodology_score"),
     mainClaimScore: integer("main_claim_score"),
-    /** Composite relevance score (sum of 5 LLM dimensions RC+SC+TF+ME+MC, TC excluded, range 0-500) */
+    /** Composite relevance score (sum of 6 LLM dimensions RC+Actor+SC+TF+ME+MC, TC excluded, range 0-600) */
     relevanceScore: integer("relevance_score").notNull().default(0),
     /**
      * Primary badge produced by the 4-step academic decision engine.
@@ -153,6 +155,9 @@ export const boxTypeEnum = pgEnum("box_type_enum", [
   "CONTEXT",
   "RELATED_THESES",
 ]);
+
+/** Stages at which a thesis can be eliminated from the originality analysis pipeline. */
+export type EliminationStage = "SIFTING" | "ANALYSIS";
 
 /**
  * Thesis Boxes table.

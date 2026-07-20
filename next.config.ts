@@ -6,6 +6,11 @@ const nextConfig: NextConfig = {
     root: process.cwd(),
   },
   logging: false,
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "4mb",
+    },
+  },
 };
 
 export default nextConfig;

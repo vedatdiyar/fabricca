@@ -1,6 +1,6 @@
 import type { LoggerInstance } from "@/lib/logger";
 import { withRetry } from "@/lib/api-utils";
-import type { ThesisMatrix, TezaraThesisSummary } from "@/lib/types";
+import type { ThesisMatrix, TezaraThesisDetails } from "@/lib/types";
 
 const REQUEST_TIMEOUT_MS = 30_000;
 
@@ -29,9 +29,10 @@ export interface CohereRerankResponse {
 export function formatRerankQuery(matrix: ThesisMatrix): string {
   return [
     "Araştırma Matrisi:",
-    `  Araştırma Odağı: ${matrix.researchCore}`,
-    `  Mekânsal Bağlam: ${matrix.spatialContext}`,
-    `  Tarihsel Bağlam: ${matrix.temporalContext}`,
+    `  Araştırma Konusu / Olgu: ${matrix.researchCore}`,
+    `  Aktör / Odak Grup: ${matrix.targetActors}`,
+    `  Coğrafi Bağlam: ${matrix.spatialContext}`,
+    `  Tarihsel Dönem: ${matrix.temporalContext}`,
     `  Ana İddia: ${matrix.mainClaim}`,
   ].join("\n");
 }
@@ -44,7 +45,7 @@ export function formatRerankQuery(matrix: ThesisMatrix): string {
  * contextual and temporal signals from the candidate's metadata.
  */
 export function formatRerankDocuments(
-  summaries: (TezaraThesisSummary & { abstract?: string })[],
+  summaries: TezaraThesisDetails[],
 ): string[] {
   return summaries.map((s) => {
     const parts = [

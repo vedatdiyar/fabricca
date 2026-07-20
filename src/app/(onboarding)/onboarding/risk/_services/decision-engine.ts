@@ -30,6 +30,7 @@ export interface CalculatedComparisonItem {
   badges: AcademicBadge[];
   relevanceScore: number;
   researchCore: number;
+  actor: number;
   spatialContext: number;
   temporalLabel: string;
   theoreticalFramework: number;
@@ -54,22 +55,32 @@ function getAcademicBadge(item: LLMScoredItem): AcademicBadge {
   }
 
   // 3. Tarihsel Derinlik / Kronolojik Referans
-  if (item.temporalLabel === "PAST" && item.researchCore >= 50) {
+  if (
+    item.temporalLabel === "PAST" &&
+    (item.researchCore >= 50 || item.actor >= 50)
+  ) {
     return "HISTORICAL_CONTEXT";
   }
 
   // 4. Gelecek Projeksiyonu / Ardıl Çalışma
-  if (item.temporalLabel === "FUTURE" && item.researchCore >= 50) {
+  if (
+    item.temporalLabel === "FUTURE" &&
+    (item.researchCore >= 50 || item.actor >= 50)
+  ) {
     return "FUTURE_PROJECTION";
   }
 
   // 5. Bağlam Kıyası / Farklı Bağlamda Aynı Odak
-  if (item.spatialContext === 0 && item.researchCore === 100) {
+  if (
+    item.spatialContext === 0 &&
+    item.researchCore === 100 &&
+    item.actor === 100
+  ) {
     return "CONTEXTUAL_COMPARISON";
   }
 
   // 6. Bulgusal Kıyas / Tartışma Ortağı
-  if (item.researchCore >= 50) {
+  if (item.researchCore >= 50 || item.actor >= 50) {
     return "EMPIRICAL_BENCHMARK";
   }
 
@@ -80,6 +91,7 @@ function getAcademicBadge(item: LLMScoredItem): AcademicBadge {
 export function applyDecisionEngine(item: LLMScoredItem): DecisionResult {
   const {
     researchCore,
+    actor,
     spatialContext,
     temporalLabel,
     theoreticalFramework,
@@ -89,17 +101,18 @@ export function applyDecisionEngine(item: LLMScoredItem): DecisionResult {
   } = item;
   const thesisId = Number(tez_id);
 
-  // Max 500-point score: RC + SC + TF + ME + MC (TC/temporalLabel excluded)
+  // Max 600-point score: RC + Actor + SC + TF + ME + MC (TC/temporalLabel excluded)
   // Temporal is a categorical signal kept separate for badge logic.
   const relevanceScore =
     researchCore +
+    actor +
     spatialContext +
     theoreticalFramework +
     methodology +
     mainClaim;
 
   // ── 4 Ordered Rules ──────────────────────────────────────────
-  // Rule 1: RC = 0 → IRRELEVANT
+  // Rule 1: RC = 0 → IRRELEVANT (If core topic has 0 relation, it is irrelevant data)
   if (researchCore === 0) {
     return {
       thesisId,
@@ -110,12 +123,13 @@ export function applyDecisionEngine(item: LLMScoredItem): DecisionResult {
     };
   }
 
-  // Rule 2: RC = 100 & SC = 100 & temporalLabel = OVERLAP & MC = 100 &
+  // Rule 2: RC = 100 & Actor = 100 & SC = 100 & temporalLabel = OVERLAP & MC = 100 &
   //         (ME = 100 OR TF = 100) → RISK
   const isContextOverlap =
     spatialContext === 100 && temporalLabel === "OVERLAP";
   if (
     researchCore === 100 &&
+    actor === 100 &&
     isContextOverlap &&
     mainClaim === 100 &&
     (methodology === 100 || theoreticalFramework === 100)
@@ -123,6 +137,7 @@ export function applyDecisionEngine(item: LLMScoredItem): DecisionResult {
     // Twin thesis: all six at 100
     const allMax =
       researchCore === 100 &&
+      actor === 100 &&
       spatialContext === 100 &&
       theoreticalFramework === 100 &&
       methodology === 100 &&
@@ -195,6 +210,7 @@ export function calculateRelationships(
       badges: decision.badges,
       relevanceScore: decision.relevanceScore,
       researchCore: llmItem.researchCore,
+      actor: llmItem.actor,
       spatialContext: llmItem.spatialContext,
       temporalLabel: llmItem.temporalLabel,
       theoreticalFramework: llmItem.theoreticalFramework,

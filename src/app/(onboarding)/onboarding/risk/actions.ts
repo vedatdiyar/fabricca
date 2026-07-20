@@ -9,7 +9,7 @@ import { updateTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import type {
   ScrapedTheses,
-  TezaraThesisSummary,
+  TezaraThesisDetails,
   OriginalityReportData,
   ThesisMatrix,
 } from "@/lib/types";
@@ -93,7 +93,7 @@ export async function executeSearchAction(params: {
   | {
       success: true;
       data: {
-        tezaraSearchResults: TezaraThesisSummary[][];
+        tezaraSearchResults: TezaraThesisDetails[][];
       };
     }
   | { error: string }
@@ -113,7 +113,7 @@ export async function executeSearchAction(params: {
     const tezaraSearchResults = await Promise.all(
       params.tezaraQueries.map(async (query) => {
         try {
-          return await searchTezara(query, log, true);
+          return await searchTezara(query, log);
         } catch {
           return [];
         }
@@ -142,6 +142,76 @@ export async function executeSearchAction(params: {
 }
 
 /**
+ * Combined Step 2+3: Executes Tezara search queries and immediately sifts
+ * the results through Cohere Rerank — all on the server side, no large
+ * payloads transferred to the client.
+ *
+ * @param params - Thesis matrix + extracted Tezara queries
+ * @returns Structured ScrapedTheses, or an error
+ */
+export async function executeSearchAndSiftAction(params: {
+  matrix: OnboardingMatrixInput;
+  tezaraQueries: string[];
+}): Promise<{ success: true; data: ScrapedTheses } | { error: string }> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  const fnStart = performance.now();
+  log.groupStart("originality_search_and_sift");
+
+  try {
+    const session = await getSession();
+    if (!session) {
+      log.groupEnd("originality_search_and_sift", performance.now() - fnStart);
+      return { error: SESSION_ERROR_MSG };
+    }
+
+    // Step A: Meilisearch queries
+    const tezaraSearchResults = await Promise.all(
+      params.tezaraQueries.map(async (query) => {
+        try {
+          return await searchTezara(query, log);
+        } catch {
+          return [];
+        }
+      }),
+    );
+
+    // Step B: Dedup + abstract filter + Cohere Rerank
+    const { finalTheses, eliminatedTheses } = await siftAndFetchDetails(
+      {
+        researchCore: params.matrix.researchCore,
+        targetActors: params.matrix.targetActors,
+        spatialContext: params.matrix.spatialContext,
+        temporalContext: params.matrix.temporalContext,
+        theoreticalFramework: params.matrix.theoreticalFramework,
+        methodology: params.matrix.methodology,
+        mainClaim: params.matrix.mainClaim,
+      },
+      tezaraSearchResults,
+      log,
+    );
+
+    log.groupEnd("originality_search_and_sift", performance.now() - fnStart);
+
+    return {
+      success: true,
+      data: { selected: finalTheses, eliminated: eliminatedTheses },
+    };
+  } catch (err) {
+    log.error("originality_search_and_sift_failed", {
+      service: "originality",
+      error: err,
+      data: { context: params.matrix.researchCore },
+    });
+    log.groupEnd("originality_search_and_sift", performance.now() - fnStart);
+    return {
+      error: "An error occurred while searching and sifting theses.",
+    };
+  }
+}
+
+/**
  * Step 3: Sifts and fetches details for the Tezara candidates using
  * Cohere rerank (top 20), then returns all valid theses
  * directly for classification analysis.
@@ -152,7 +222,7 @@ export async function executeSearchAction(params: {
  */
 export async function siftThesesAction(params: {
   matrix: OnboardingMatrixInput;
-  tezaraSearchResults: TezaraThesisSummary[][];
+  tezaraSearchResults: TezaraThesisDetails[][];
 }): Promise<{ success: true; data: ScrapedTheses } | { error: string }> {
   const flowId = createFlowId();
   const log = new Logger(flowId);
@@ -169,6 +239,7 @@ export async function siftThesesAction(params: {
     const { finalTheses, eliminatedTheses } = await siftAndFetchDetails(
       {
         researchCore: params.matrix.researchCore,
+        targetActors: params.matrix.targetActors,
         spatialContext: params.matrix.spatialContext,
         temporalContext: params.matrix.temporalContext,
         theoreticalFramework: params.matrix.theoreticalFramework,
@@ -211,7 +282,7 @@ export async function siftThesesAction(params: {
  */
 export async function finalizeJuryAnalysisAction(params: {
   matrix: OnboardingMatrixInput;
-  scrapedTheses: ScrapedTheses;
+  selectedTheses: TezaraThesisDetails[];
 }): Promise<
   { success: true; data: OriginalityReportData | null } | { error: string }
 > {
@@ -228,7 +299,7 @@ export async function finalizeJuryAnalysisAction(params: {
       return { error: SESSION_ERROR_MSG };
     }
 
-    const validDetails = params.scrapedTheses.selected;
+    const validDetails = params.selectedTheses;
 
     // NO_MATCH_FOUND: No theses eligible for analysis — clears DB, returns null
     if (validDetails.length === 0) {
@@ -244,6 +315,7 @@ export async function finalizeJuryAnalysisAction(params: {
     const { llmResults } = await analyzeOriginalityRisk(
       {
         researchCore: params.matrix.researchCore,
+        targetActors: params.matrix.targetActors,
         spatialContext: params.matrix.spatialContext,
         temporalContext: params.matrix.temporalContext,
         theoreticalFramework: params.matrix.theoreticalFramework,
@@ -301,6 +373,7 @@ export async function finalizeJuryAnalysisAction(params: {
 
     const buildDimensions = (item: CalculatedComparisonItem) => ({
       researchCore: item.researchCore,
+      actor: item.actor,
       spatialContext: item.spatialContext,
       temporalLabel: item.temporalLabel,
       theoreticalFramework: item.theoreticalFramework,
@@ -308,6 +381,12 @@ export async function finalizeJuryAnalysisAction(params: {
       mainClaim: item.mainClaim,
     });
 
+    // Separate active and eliminated theses (IRRELEVANT bucket) for report and DB
+    const eliminatedTheses = relationshipResult.comparisonTable.filter(
+      (item) => item.bucket === "IRRELEVANT",
+    );
+
+    // Build report data (both active and eliminated)
     const reportData: OriginalityReportData = {
       tezaraResults: {
         relationshipBadge: relationshipResult.globalRelationshipBadge,
@@ -326,12 +405,27 @@ export async function finalizeJuryAnalysisAction(params: {
           relevanceScore: item.relevanceScore,
           dimensionScores: buildDimensions(item),
         })),
-        eliminatedTheses: [], // Elenen tezler UI katmanına gönderilmez
+        eliminatedTheses: eliminatedTheses.map((item) => ({
+          id: item.id,
+          primaryBadge: item.primaryBadge,
+          badges: item.badges,
+          yokPdfUrl: item.yokPdfUrl,
+          abstract: item.abstract,
+          title: item.title,
+          author: item.author,
+          university: item.university,
+          year: item.year,
+          thesisType: item.thesisType,
+          department: item.department,
+          relevanceScore: item.relevanceScore,
+          dimensionScores: buildDimensions(item),
+          eliminationStage: "ANALYSIS",
+        })),
       },
     };
 
-    // ── Transactional write: eski kayıtları sil, sadece aktif tezleri yaz ──
-    const dbRows = activeTheses.map((item) => ({
+    // Build DB rows for both active and eliminated theses
+    const activeDbRows = activeTheses.map((item) => ({
       userId: session.userId,
       externalThesisId: item.id,
       title: item.title,
@@ -345,6 +439,7 @@ export async function finalizeJuryAnalysisAction(params: {
       diagnosis: item.primaryBadge,
       relevanceScore: item.relevanceScore,
       researchCoreScore: item.researchCore,
+      actorScore: item.actor,
       spatialContextScore: item.spatialContext,
       temporalLabel: item.temporalLabel,
       theoreticalFrameworkScore: item.theoreticalFramework,
@@ -355,6 +450,34 @@ export async function finalizeJuryAnalysisAction(params: {
       eliminationStage: null,
       updatedAt: new Date(),
     }));
+
+    const eliminatedDbRows = eliminatedTheses.map((item) => ({
+      userId: session.userId,
+      externalThesisId: item.id,
+      title: item.title,
+      author: item.author,
+      university: item.university,
+      year: item.year,
+      thesisType: item.thesisType,
+      department: item.department,
+      yokPdfUrl: item.yokPdfUrl ?? null,
+      abstract: item.abstract ?? null,
+      diagnosis: item.primaryBadge,
+      relevanceScore: item.relevanceScore,
+      researchCoreScore: item.researchCore,
+      actorScore: item.actor,
+      spatialContextScore: item.spatialContext,
+      temporalLabel: item.temporalLabel,
+      theoreticalFrameworkScore: item.theoreticalFramework,
+      methodologyScore: item.methodology,
+      mainClaimScore: item.mainClaim,
+      academicTactic: "",
+      isEliminated: true,
+      eliminationStage: "ANALYSIS",
+      updatedAt: new Date(),
+    }));
+
+    const dbRows = [...activeDbRows, ...eliminatedDbRows];
 
     await db.transaction(async (tx) => {
       await tx

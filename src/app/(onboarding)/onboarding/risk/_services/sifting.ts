@@ -1,10 +1,5 @@
-import { fetchThesisDetails } from "@/lib/tezara";
 import type { Logger } from "@/lib/logger";
-import type {
-  TezaraThesisSummary,
-  TezaraThesisDetails,
-  ThesisMatrix,
-} from "@/lib/types";
+import type { TezaraThesisDetails, ThesisMatrix } from "@/lib/types";
 import {
   rerankTheses,
   formatRerankQuery,
@@ -12,95 +7,78 @@ import {
 } from "@/lib/services/cohere";
 
 // ──────────────────────────────────────────────
-// Extraction 1: Deduplike et + ID bazlı sırala
+// Extraction 1: Deduplike et + abstract filtresi + ID bazlı sırala
 // ──────────────────────────────────────────────
 function normaliseField(value: string): string {
   return value.trim().replace(/\s{2,}/g, " ");
 }
 
 function deduplicateSiftingResults(
-  tezaraSearchResults: TezaraThesisSummary[][],
+  tezaraSearchResults: TezaraThesisDetails[][],
   log: Logger,
-): { uniqueTheses: TezaraThesisSummary[]; rawCount: number } {
-  const uniqueThesesMap = new Map<number, TezaraThesisSummary>();
+): {
+  validDetails: TezaraThesisDetails[];
+  eliminatedTheses: TezaraThesisDetails[];
+  rawCount: number;
+} {
+  const uniqueMap = new Map<number, TezaraThesisDetails>();
   let rawCount = 0;
+
   for (const list of tezaraSearchResults) {
     if (Array.isArray(list)) {
       rawCount += list.length;
       for (const t of list) {
         if (!t || typeof t.id !== "number") continue;
 
+        // Arapça başlıklı tezleri ele
         if (/[\u0600-\u06FF]/.test(t.title)) continue;
 
+        // Sadece Türkçe ve İngilizce tezleri kabul et
         if (t.language && t.language !== "Türkçe" && t.language !== "İngilizce")
           continue;
 
-        if (!uniqueThesesMap.has(t.id)) {
-          uniqueThesesMap.set(t.id, t);
+        if (!uniqueMap.has(t.id)) {
+          uniqueMap.set(t.id, t);
         } else {
-          const existing = uniqueThesesMap.get(t.id)!;
+          const existing = uniqueMap.get(t.id)!;
           const existingNorm = normaliseField(existing.title);
           const incomingNorm = normaliseField(t.title);
           if (incomingNorm.localeCompare(existingNorm) < 0) {
-            uniqueThesesMap.set(t.id, t);
+            uniqueMap.set(t.id, t);
           }
         }
       }
     }
   }
 
-  const uniqueTheses = Array.from(uniqueThesesMap.values()).sort(
+  const uniqueTheses = Array.from(uniqueMap.values()).sort(
     (a, b) => a.id - b.id,
   );
 
-  log.data("Raw/Unique Thesis Count", {
-    rawCount,
-    uniqueCount: uniqueTheses.length,
-  });
-
-  return { uniqueTheses, rawCount };
-}
-
-// ──────────────────────────────────────────────
-// Extraction 2: Tüm tezlerin abstractlarını paralel çek (C=12 queue ile)
-// ──────────────────────────────────────────────
-async function fetchAllAbstracts(
-  theses: TezaraThesisSummary[],
-  log: Logger,
-): Promise<{
-  validDetails: TezaraThesisDetails[];
-  eliminatedTheses: TezaraThesisSummary[];
-}> {
-  const results = await Promise.allSettled(
-    theses.map((thesis) => fetchThesisDetails(thesis, log)),
-  );
-
+  // Abstract filtresi: abstract'ı olmayan veya <50 karakter olan tezleri ele
   const validDetails: TezaraThesisDetails[] = [];
-  const eliminatedTheses: TezaraThesisSummary[] = [];
+  const eliminatedTheses: TezaraThesisDetails[] = [];
 
-  for (let i = 0; i < results.length; i++) {
-    const result = results[i];
-    const thesis = theses[i];
-
-    if (result.status === "fulfilled" && result.value) {
-      const details = result.value;
-      if (!details.abstract || details.abstract.length < 50) {
-        eliminatedTheses.push(thesis);
-        continue;
-      }
-      validDetails.push(details);
+  for (const t of uniqueTheses) {
+    if (!t.abstract || t.abstract.length < 50) {
+      eliminatedTheses.push(t);
     } else {
-      eliminatedTheses.push(thesis);
+      validDetails.push(t);
     }
   }
 
-  validDetails.sort((a, b) => a.id - b.id);
+  log.data("Raw/Unique/Valid Thesis Count", {
+    rawCount,
+    uniqueCount: uniqueTheses.length,
+    validCount: validDetails.length,
+    eliminatedCount: eliminatedTheses.length,
+  });
 
-  return { validDetails, eliminatedTheses };
+  return { validDetails, eliminatedTheses, rawCount };
 }
 
 // ──────────────────────────────────────────────
-// Extraction 3: Cohere rerank + strict score >= 0.80 filter
+// Extraction 2: Cohere rerank + strict score >= 0.80 filter
 // ──────────────────────────────────────────────
 
 /** Minimum Cohere relevance score required for a thesis to pass to jury analysis. */
@@ -132,7 +110,6 @@ async function rerankAndSelectTheses(
       return [];
     }
 
-    // Strict threshold — no min/max caps; yield exactly what the model deems relevant
     const passing = results.filter(
       (r) => r.relevanceScore >= RELEVANCE_SCORE_THRESHOLD,
     );
@@ -155,66 +132,43 @@ async function rerankAndSelectTheses(
 }
 
 /**
- * Deduplicates search results, fetches all abstracts (via detailsCache — instant),
- * scores relevance via Cohere Rerank v4 Pro, and returns every thesis with
- * relevanceScore >= 0.80. No artificial min or max caps applied.
+ * Deduplicates search results (abstract'lar zaten searchTezara'dan geldiği
+ * için ayrı bir fetch gerekmez), abstract filtresi uygular, Cohere Rerank
+ * v4 Pro ile puanlar ve relevanceScore >= 0.80 olan tezleri döndürür.
  *
- * Tekil akış: dedup → fetchAllAbstracts → abstract-aware rerank → score ≥ 0.80
+ * Akış: dedup → abstract filter → Cohere rerank → score ≥ 0.80
  */
 export async function siftAndFetchDetails(
   params: SiftAndFetchDetailsParams,
-  tezaraSearchResults: TezaraThesisSummary[][],
+  tezaraSearchResults: TezaraThesisDetails[][],
   log: Logger,
 ): Promise<{
   finalTheses: TezaraThesisDetails[];
-  eliminatedTheses: TezaraThesisSummary[];
+  eliminatedTheses: TezaraThesisDetails[];
 }> {
   log.file("sifting.ts");
   const functionStart = performance.now();
   log.groupStart("originality_sift");
 
-  // Adım 1: Deduplike et
-  const { uniqueTheses } = deduplicateSiftingResults(tezaraSearchResults, log);
+  const { validDetails, eliminatedTheses: abstractEliminated } =
+    deduplicateSiftingResults(tezaraSearchResults, log);
 
-  if (uniqueTheses.length === 0) {
-    log.groupEnd("originality_sift", 0);
+  if (validDetails.length === 0) {
+    log.groupEnd("originality_sift", performance.now() - functionStart);
     return {
       finalTheses: [],
-      eliminatedTheses: [],
+      eliminatedTheses: abstractEliminated,
     };
   }
 
   try {
-    // Adım 2: Tüm tezlerin abstractlarını paralel çek
-    const { validDetails, eliminatedTheses: abstractEliminated } =
-      await fetchAllAbstracts(uniqueTheses, log);
-
-    if (validDetails.length === 0) {
-      log.groupEnd("originality_sift", performance.now() - functionStart);
-      return {
-        finalTheses: [],
-        eliminatedTheses: uniqueTheses,
-      };
-    }
-
-    // Adım 3: Abstract-aware Cohere rerank → score >= 0.80
     const topIds = await rerankAndSelectTheses(params, validDetails, log);
 
-    // Adım 4: Sonuç yapısını oluştur
     const selectedIds = new Set(topIds);
     const finalTheses = validDetails.filter((t) => selectedIds.has(t.id));
-    const eliminatedFromRerank: TezaraThesisSummary[] = validDetails
-      .filter((t) => !selectedIds.has(t.id))
-      .map((t) => ({
-        id: t.id,
-        title: t.title,
-        author: t.author,
-        university: t.university,
-        year: t.year,
-        thesisType: t.thesisType,
-        department: t.department,
-      }));
-
+    const eliminatedFromRerank = validDetails.filter(
+      (t) => !selectedIds.has(t.id),
+    );
     const allEliminated = [...abstractEliminated, ...eliminatedFromRerank];
 
     log.preview(

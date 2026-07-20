@@ -26,10 +26,30 @@ export interface ParamDefinition {
 export const PARAM_DEFINITIONS: ParamDefinition[] = [
   {
     key: "RC",
-    label: "Araştırma Odağı",
+    label: "Araştırma Konusu / Olgu",
     matrixField: "researchCore",
     description:
-      "The degree to which the candidate thesis's research problematic — defined by the specific phenomenon under investigation AND the actor/object constellation through which it is examined — matches the target's research core.\n\nScore 100 if the candidate investigates the same research problematic: the same phenomenon through the same actor/object constellation in the same analytical dimension.\n\nScore 50 if the candidate addresses part of the target's research problematic while sharing the same general phenomenon — meaning the candidate studies the same type of internal dynamic (discourse, ideology, identity, or political strategy) of the same actor groups, even if only partially. This includes: (a) the target examines a relational dynamic between two or more actor groups and the candidate studies one direction of that dynamic — whether examining one actor group in isolation or another group's perspective on the shared phenomenon; OR (b) the candidate studies the same phenomenon through a partially overlapping actor set.\n\nScore 0 if the candidate's research problematic has no meaningful relation to the target's. A shared actor name alone does not justify 50 when the candidate asks a fundamentally different type of question about that actor — specifically, if the candidate examines military operations, security strategy, external governance, or institutional responses concerning that actor rather than the actor's own internal discourse, ideology, or identity.",
+      "The degree to which the candidate thesis's research topic or phenomenon under investigation matches the target's research core.\n\nCRITICAL - Focus ONLY on the core conceptual/theoretical phenomenon or social problem being studied (e.g., gentrification, pop music representation, clientelism, structural reform). Ignore the specific actors/groups (evaluated in Actor) and ignore the geographical scope (evaluated in SC).\n\nScore 100 if the candidate investigates the exact same research topic or phenomenon in the same analytical dimension.\nScore 50 if the candidate addresses a closely related or overlapping phenomenon within the same conceptual family (e.g., studying political party communication when the target is party ideology; or housing policy when the target is gentrification).\nScore 0 if the candidate's research topic/phenomenon has no meaningful relation to the target's.",
+    isStringEnum: false,
+    jsonSchema: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          tez_id: { type: "integer" },
+          score: { type: "integer", enum: [0, 50, 100] },
+        },
+        required: ["tez_id", "score"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    key: "Actor",
+    label: "Aktör / Odak Grup",
+    matrixField: "researchCore",
+    description:
+      "The degree to which the target actors, organizations, population groups, or subjects analyzed in the candidate thesis match those of the target's research core.\n\nCRITICAL - Focus ONLY on who or what is being analyzed (e.g., political parties, Syrian refugees, local municipalities, a specific author's texts). Ignore the phenomenon/topic (evaluated in RC) and ignore the physical geography (evaluated in SC).\n\nScore 100 if the candidate studies the exact same actor groups or institutional actors.\nScore 50 if the candidate studies a partially overlapping or closely related actor group (e.g., local councils when the target is municipalities; or a different political party in the same country; or refugees in general when the target is Syrian refugees).\nScore 0 if the candidate studies a fundamentally different actor group with no logical overlap.",
     isStringEnum: false,
     jsonSchema: {
       type: "array",
@@ -46,10 +66,10 @@ export const PARAM_DEFINITIONS: ParamDefinition[] = [
   },
   {
     key: "SC",
-    label: "Mekânsal Bağlam",
+    label: "Coğrafi Bağlam",
     matrixField: "spatialContext",
     description:
-      "The degree to which the geographic setting and spatial context of the candidate thesis match those of the target. Evaluate ONLY the geographic or institutional setting — NOT the historical period (evaluated in Temporal) and NOT the actors or subject matter (evaluated in RC).\n\nScore 100 if the candidate studies the exact same country, city, region, or institutional space as the target.\nScore 50 if: (a) the candidate studies a neighboring country or a region within the same broader geopolitical zone as the target (e.g., both in the Middle East, both in the Balkans, both in post-Soviet space); OR (b) the candidate is a multi-context comparative study that includes the target's geography as one case among several others.\nScore 0 if the candidate is situated in a fundamentally different geographic region, continent, or institutional setting with no meaningful spatial overlap with the target.\n\nDo NOT let shared actors, time period, or subject matter influence this score — evaluate geographic/institutional setting only.",
+      "The degree to which the physical geographic setting (country, city, region) of the candidate thesis matches that of the target.\n\nCRITICAL - Evaluate ONLY the geographic limits. Do NOT let the historical period (evaluated in Temporal), the actors (evaluated in Actor), or the institutional/organizational setting (evaluated in Actor) influence this score.\n\nScore 100 if the candidate studies the exact same country, city, or geographical region as the target.\nScore 50 if: (a) the candidate studies a neighboring country or a region within the same broader geopolitical zone as the target (e.g., both in the Middle East, both in the Balkans, both in post-Soviet space); OR (b) the candidate is a multi-context comparative study that includes the target's geography as one case among several others.\nScore 0 if the candidate is situated in a fundamentally different geographic region with no meaningful spatial overlap with the target.",
     isStringEnum: false,
     jsonSchema: {
       type: "array",
@@ -69,7 +89,7 @@ export const PARAM_DEFINITIONS: ParamDefinition[] = [
     label: "Kuramsal Çerçeve",
     matrixField: "theoreticalFramework",
     description:
-      "The degree to which the specific theoretical traditions, conceptual frameworks, or theorists employed as the primary analytical lens in the candidate thesis match those of the target.\n\nCRITICAL — Evidence Requirement: Do NOT infer or assume a theoretical framework from the research topic, subject matter, actors, or geographic setting alone. Base your score ONLY on explicit evidence found in the candidate's title or abstract. If no theoretical framework or theorist is explicitly named or clearly described, assign 0.\n\nScore 100 if the abstract or title explicitly names and employs the same specific theory, model, or theorist as the target (e.g., both explicitly use Snow & Benford's Framing Theory; both explicitly apply Gramscian hegemony).\nScore 50 if the abstract or title explicitly references the same named theoretical school, tradition, or paradigm family as the target, but uses a different specific variant, theorist, or model within that family (e.g., target uses Gramscian hegemony, candidate uses neo-Marxist state theory; both are within the same Marxist critical tradition, but different theorists).\nScore 0 if the candidate employs a completely different theoretical tradition, OR if no theoretical framework is mentioned or clearly inferable from the abstract or title.",
+      "The degree to which the specific theoretical traditions, conceptual frameworks, or theorists employed as the primary analytical lens in the candidate thesis match those of the target.\n\nCRITICAL - Do NOT infer or assume a theoretical framework from the research topic, subject matter, or actors alone. Base your score ONLY on explicit evidence found in the candidate's title or abstract. Do NOT confuse research methodology (e.g., qualitative interviews) with theoretical lens. If no theoretical framework or theorist is explicitly named or clearly described, assign 0.\n\nScore 100 if the abstract or title explicitly names and employs the same specific theory, model, or theorist as the target (e.g., both explicitly use Snow & Benford's Framing Theory; both explicitly apply Gramscian hegemony).\nScore 50 if the abstract or title explicitly references the same named theoretical school, tradition, or paradigm family as the target, but uses a different specific variant, theorist, or model within that family (e.g., target uses Gramscian hegemony, candidate uses neo-Marxist state theory; both are within the Marxist critical tradition).\nScore 0 if the candidate employs a completely different theoretical tradition, OR if no theoretical framework is mentioned or clearly inferable from the abstract or title.",
     isStringEnum: false,
     jsonSchema: {
       type: "array",
@@ -86,10 +106,10 @@ export const PARAM_DEFINITIONS: ParamDefinition[] = [
   },
   {
     key: "ME",
-    label: "Yöntem",
+    label: "Araştırma Yöntemi",
     matrixField: "methodology",
     description:
-      "The degree to which the candidate thesis's primary analytical technique and data category type match those of the target. Evaluate the METHOD TYPE applied, NOT the specific sources, archives, or publications used.\n\nData category reference (non-exhaustive): political/party documents and manifestos; newspaper or periodical content; semi-structured interviews; ethnographic fieldwork notes; parliamentary or court records; survey or census data; historical archival documents; statistical datasets.\n\nScore 100 if the candidate uses the same primary analytical technique (e.g., discourse analysis, content analysis, ethnographic fieldwork, comparative historical analysis) AND the same general data category type (e.g., both analyze political texts and party documents; both conduct in-depth interviews; both use survey data).\nScore 50 if both theses share the same broad methodological paradigm (both qualitative OR both quantitative) but differ in their primary analytical technique OR in their data category type.\nScore 0 if the candidate uses a fundamentally different methodological paradigm from the target (e.g., target is qualitative discourse analysis, candidate is quantitative regression).\n\nCRITICAL: Do NOT raise a score because both theses cite the same specific publication, journal, or archive. Overlap in data sources alone — without overlap in analytical technique and data category — does not justify 100 or 50.",
+      "The degree to which the candidate thesis's primary analytical technique matches that of the target.\n\nCRITICAL - Focus strictly on the research method type and design (e.g., quantitative regression, qualitative discourse analysis, ethnography, content analysis, historical comparative analysis). Do NOT let the data source (e.g., newspapers, archives, manifestos) or data collection subjects (evaluated in Actor) influence this score.\n\nScore 100 if the candidate uses the same primary analytical technique (e.g., both use critical discourse analysis; both use semi-structured interviews and thematic analysis).\nScore 50 if both theses share the same broad methodological paradigm (both qualitative OR both quantitative) but differ in their primary analytical technique.\nScore 0 if the candidate uses a fundamentally different methodological paradigm from the target (e.g., target is qualitative discourse analysis, candidate is quantitative regression).",
     isStringEnum: false,
     jsonSchema: {
       type: "array",
@@ -109,7 +129,7 @@ export const PARAM_DEFINITIONS: ParamDefinition[] = [
     label: "Merkez Sav",
     matrixField: "mainClaim",
     description:
-      "The degree to which the candidate thesis's central argument, conclusion, or contribution claim overlaps with the target's main claim.\n\nCRITICAL — Multi-Component Claims: If the target's main claim contains multiple distinct sub-arguments or contributions (e.g., Claim A about phenomenon X AND Claim B about relational dynamic Y), and the candidate's central argument overlaps with only some of those components, score 50 — NOT 100. Score 100 ONLY when the candidate's central argument is nearly identical to the target's in BOTH its core direction AND the full scope of its key sub-claims.\n\nScore 100 if the candidate makes a nearly identical central argument to the target — matching both the primary direction of the claim AND its key sub-arguments or conclusions in their entirety.\nScore 50 if: (a) the candidate's argument overlaps with only some of the target's sub-claims; OR (b) the candidate reaches a similar general conclusion through a substantially different argumentative path; OR (c) the candidate's claim points in the same general direction as the target's but is narrower or broader in scope.\nScore 0 if the candidate's central claim is completely unrelated to the target's, or argues for the opposite position.",
+      "The degree to which the logical structure and direction of the candidate thesis's central argument matches the target's main claim.\n\nCRITICAL - Focus strictly on the argumentative direction and relationships (e.g., causal link, critique of power, discursive shift, positive correlation) rather than repeating the specific nouns/actors. If the target's main claim contains multiple distinct sub-arguments or contributions, and the candidate's central argument overlaps with only some, score 50 - NOT 100.\n\nScore 100 if the candidate's argument matches both the primary direction of the claim and its key sub-arguments or conclusions in their entirety.\nScore 50 if: (a) the candidate's argument overlaps with only some of the target's sub-claims; OR (b) the candidate reaches a similar general conclusion through a substantially different argumentative path; OR (c) the candidate's claim points in the same general direction as the target's but is narrower or broader in scope.\nScore 0 if the candidate's central claim is completely unrelated to the target's, or argues for the opposite position.",
     isStringEnum: false,
     jsonSchema: {
       type: "array",

@@ -126,19 +126,24 @@ export function TezaraOverlapCards({ overlapTable }: TezaraOverlapCardsProps) {
                       <span className="font-semibold text-foreground">
                         {item.relevanceScore}
                       </span>
-                      /500
+                      /600
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
                     {[
                       {
                         key: "researchCore",
-                        label: "Araştırma Odağı",
+                        label: "Araştırma Konusu / Olgu",
                         value: item.dimensionScores.researchCore,
                       },
                       {
+                        key: "actor",
+                        label: "Aktör / Odak Grup",
+                        value: item.dimensionScores.actor,
+                      },
+                      {
                         key: "spatialContext",
-                        label: "Mekânsal Bağlam",
+                        label: "Coğrafi Bağlam",
                         value: item.dimensionScores.spatialContext,
                       },
                       {
@@ -148,12 +153,12 @@ export function TezaraOverlapCards({ overlapTable }: TezaraOverlapCardsProps) {
                       },
                       {
                         key: "methodology",
-                        label: "Metodoloji",
+                        label: "Araştırma Yöntemi",
                         value: item.dimensionScores.methodology,
                       },
                       {
                         key: "mainClaim",
-                        label: "Temel İddia",
+                        label: "Merkez Sav",
                         value: item.dimensionScores.mainClaim,
                       },
                       {

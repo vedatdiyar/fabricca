@@ -19,6 +19,7 @@ import type { ParamDefinition } from "@/lib/prompts/originality-analysis";
 export interface LLMScoredItem {
   tez_id: string;
   researchCore: 0 | 50 | 100;
+  actor: 0 | 50 | 100;
   spatialContext: 0 | 50 | 100;
   temporalLabel: "OVERLAP" | "PAST" | "FUTURE" | "UNKNOWN";
   theoreticalFramework: 0 | 50 | 100;
@@ -29,6 +30,7 @@ export interface LLMScoredItem {
 const llmScoredItemZodSchema = z.object({
   tez_id: z.string(),
   researchCore: z.union([z.literal(0), z.literal(50), z.literal(100)]),
+  actor: z.union([z.literal(0), z.literal(50), z.literal(100)]),
   spatialContext: z.union([z.literal(0), z.literal(50), z.literal(100)]),
   temporalLabel: z.enum(["OVERLAP", "PAST", "FUTURE", "UNKNOWN"]),
   theoreticalFramework: z.union([z.literal(0), z.literal(50), z.literal(100)]),
@@ -67,6 +69,7 @@ function buildParamZodSchema(
 
 export type AnalyzeOriginalityRiskParams = {
   researchCore: string;
+  targetActors: string;
   spatialContext: string;
   temporalContext: string;
   theoreticalFramework: string;
@@ -98,6 +101,7 @@ export async function analyzeOriginalityRisk(
 
     const userThesis = {
       researchCore: params.researchCore,
+      targetActors: params.targetActors,
       spatialContext: params.spatialContext,
       temporalContext: params.temporalContext,
       theoreticalFramework: params.theoreticalFramework,
@@ -196,6 +200,7 @@ export async function analyzeOriginalityRisk(
         return {
           tez_id: String(thesis.id),
           researchCore: (scores.RC ?? 0) as 0 | 50 | 100,
+          actor: (scores.Actor ?? 0) as 0 | 50 | 100,
           spatialContext: (scores.SC ?? 0) as 0 | 50 | 100,
           temporalLabel: (scores.Temporal ?? "UNKNOWN") as
             "OVERLAP" | "PAST" | "FUTURE" | "UNKNOWN",
@@ -211,6 +216,7 @@ export async function analyzeOriginalityRisk(
       llmResults.map((o) => ({
         tez_id: o.tez_id,
         researchCore: o.researchCore,
+        actor: o.actor,
         spatialContext: o.spatialContext,
         temporalLabel: o.temporalLabel,
         theoreticalFramework: o.theoreticalFramework,

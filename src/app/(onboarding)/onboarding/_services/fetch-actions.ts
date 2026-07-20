@@ -41,6 +41,7 @@ function groupRowsToReport(
     eliminationStage: string | null;
     relevanceScore: number | null;
     researchCoreScore: number | null;
+    actorScore: number | null;
     spatialContextScore: number | null;
     temporalLabel: string | null;
     theoreticalFrameworkScore: number | null;
@@ -51,7 +52,9 @@ function groupRowsToReport(
   if (rows.length === 0) return null;
 
   const activeRows = rows.filter((r) => !r.isEliminated);
-  const eliminatedRows = rows.filter((r) => r.isEliminated);
+  const eliminatedRows = rows.filter(
+    (r) => r.isEliminated && r.eliminationStage === "ANALYSIS",
+  );
 
   // Global badge: determined by the presence of RISK bucket theses
   let globalBadge: RelationshipBadge = "UNRELATED";
@@ -85,6 +88,7 @@ function groupRowsToReport(
       row.researchCoreScore !== null
         ? {
             researchCore: row.researchCoreScore,
+            actor: row.actorScore!,
             spatialContext: row.spatialContextScore!,
             temporalLabel: row.temporalLabel ?? "UNKNOWN",
             theoreticalFramework: row.theoreticalFrameworkScore!,
@@ -102,7 +106,7 @@ function groupRowsToReport(
       })),
       eliminatedTheses: eliminatedRows.map((row) => ({
         ...buildEntry(row),
-        eliminationStage: "ANALYSIS" as const,
+        eliminationStage: row.eliminationStage as "ANALYSIS",
       })),
     },
   };
