@@ -3,7 +3,9 @@ import type { AcademicBadge } from "@/lib/types";
 export const BADGE_ORDER_PRIORITY: Record<AcademicBadge, number> = {
   HIGH_RISK_REPLICATION: 1,
   RELATED_THESIS: 2,
-  SAFE_ORIGINAL: 3,
+  HISTORICAL_BACKGROUND: 3,
+  METHODOLOGICAL_BENCHMARK: 4,
+  OUT_OF_SCOPE: 5,
 };
 
 export function sortComparisonItems<

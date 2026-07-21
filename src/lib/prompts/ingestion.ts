@@ -118,6 +118,5 @@ ${thesisBlocks}
 
 <task>
 Yukarıdaki <context> bloğunda <tez id='X'> etiketleriyle verilen her bir tez için, başlık, yazar ve özet bilgilerini inceleyerek 6 alana ayırın ve ingestionResponseSchema şemasına uygun JSON olarak döndürün. Metinde açıkça geçmeyen alanlar için "Belirtilmemiş" değerini kullanın. Her tezi bağımsız olarak işleyin.
-Cevaplamadan önce çok derin düşün.
 </task>`;
 }

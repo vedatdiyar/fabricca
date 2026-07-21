@@ -4,10 +4,11 @@ import { useMemo, useState, type ElementType } from "react";
 import {
   AlertTriangle,
   Cable,
-  Lightbulb,
+  History,
+  Sparkles,
+  FileX,
   FileText,
   FileSearch,
-  Sparkles,
   HelpCircle,
   ChevronDown,
   ChevronRight,
@@ -29,7 +30,9 @@ interface TezaraOverlapCardsProps {
 const BADGE_ICONS: Record<AcademicBadge, ElementType> = {
   HIGH_RISK_REPLICATION: AlertTriangle,
   RELATED_THESIS: Cable,
-  SAFE_ORIGINAL: Lightbulb,
+  HISTORICAL_BACKGROUND: History,
+  METHODOLOGICAL_BENCHMARK: Sparkles,
+  OUT_OF_SCOPE: FileX,
 };
 
 export function TezaraOverlapCards({ overlapTable }: TezaraOverlapCardsProps) {

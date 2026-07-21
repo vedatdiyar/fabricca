@@ -45,7 +45,7 @@ export async function extractQueries(
 
     const keywordPrompt = buildLitKeywordPrompt(geminiInput);
 
-    log.prompt("gemini-3.5-flash-lite (keywords)", keywordPrompt);
+    log.prompt(`${GEMINI_MODEL} (keywords)`, keywordPrompt);
 
     const keywordResult =
       await generateStructuredContent<LitKeywordExtractionResponse>(

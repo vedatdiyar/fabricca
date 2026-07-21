@@ -106,7 +106,7 @@ export const originalityReports = pgTable(
     relevanceExplanation: text("relevance_explanation"),
     originalityStatus: varchar("originality_status", { length: 50 })
       .notNull()
-      .default("SAFE_ORIGINAL"),
+      .default("OUT_OF_SCOPE"),
     uniquenessGap: text("uniqueness_gap"),
     replicationWarning: text("replication_warning"),
     literatureReviewUsage: text("literature_review_usage"),

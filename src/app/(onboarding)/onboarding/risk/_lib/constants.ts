@@ -26,7 +26,7 @@ export function getGlobalBadgeConfig(badge: string): {
   };
 }
 
-type BadgeType = "danger" | "warning" | "success" | "info";
+type BadgeType = "danger" | "warning" | "info" | "purple" | "slate";
 
 interface AcademicBadgeMeta {
   title: string;
@@ -36,22 +36,34 @@ interface AcademicBadgeMeta {
 
 export const ACADEMIC_BADGE_META: Record<AcademicBadge, AcademicBadgeMeta> = {
   HIGH_RISK_REPLICATION: {
-    title: "İkiz Tez",
+    title: "İkiz Tez (Yüksek Risk)",
     description:
-      "Tezinizle birebir örtüşen araştırma parametrelerine sahiptir. Özgünlük beyanınızda mutlaka ele almanız gereken bir çalışmadır.",
+      "Tezinizle aynı dönem, aktör ve kuramsal çerçeveye sahiptir. Doğrudan özgünlük çakışması riski taşır.",
     type: "danger",
   },
   RELATED_THESIS: {
     title: "İlişkili Çalışma",
     description:
-      "Ortak noktalar barındırmakla birlikte farklılaştığı alanlar sayesinde tezinize katkı sağlayabilir.",
+      "Aynı dönem ve aktörleri paylaşır; farklı kuramsal çerçeve veya odakla tezinizin ana akademik rakibidir.",
     type: "warning",
   },
-  SAFE_ORIGINAL: {
-    title: "Faydalı",
+  HISTORICAL_BACKGROUND: {
+    title: "Tarihsel Arka Plan",
     description:
-      "Tezinizle herhangi bir çakışması bulunmamaktadır. Literatür taramanızda rahatlıkla kullanabileceğiniz bir kaynaktır.",
-    type: "success",
+      "Tezinizin dönemi öncesine aittir. Çakışma riski taşımaz; tezinize kurucu tarihsel ve kavramsal zemin sunar.",
+    type: "info",
+  },
+  METHODOLOGICAL_BENCHMARK: {
+    title: "Yöntemsel Emsal",
+    description:
+      "Farklı bir coğrafya veya aktörü işlemekle birlikte tezinizle aynı kuram ve yöntemi kullanır. Metodolojik emsaldir.",
+    type: "purple",
+  },
+  OUT_OF_SCOPE: {
+    title: "Kapsam Dışı",
+    description:
+      "Konu, aktör, dönem veya yöntem bakımından tezinizle hiçbir anlamlı bağı bulunmamaktadır.",
+    type: "slate",
   },
 };
 
@@ -69,10 +81,20 @@ const ACADEMIC_BADGE_STYLE: Record<
     border: "border-amber-500/20",
     text: "text-amber-400",
   },
-  SAFE_ORIGINAL: {
-    card: "bg-emerald-500/10",
-    border: "border-emerald-500/20",
-    text: "text-emerald-400",
+  HISTORICAL_BACKGROUND: {
+    card: "bg-blue-500/10",
+    border: "border-blue-500/20",
+    text: "text-blue-400",
+  },
+  METHODOLOGICAL_BENCHMARK: {
+    card: "bg-purple-500/10",
+    border: "border-purple-500/20",
+    text: "text-purple-400",
+  },
+  OUT_OF_SCOPE: {
+    card: "bg-slate-500/10",
+    border: "border-slate-500/20",
+    text: "text-slate-400",
   },
 };
 

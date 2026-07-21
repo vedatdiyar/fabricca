@@ -159,17 +159,19 @@ export async function executeSearchAndSiftAction(
 ): Promise<{ success: true; data: ScrapedTheses } | { error: string }> {
   const log = new Logger(flowId ?? createFlowId());
 
-  const fnStart = performance.now();
-  log.groupStart("originality_search_and_sift");
-
   try {
     const session = await getSession();
-    if (!session) {
-      log.groupEnd("originality_search_and_sift", performance.now() - fnStart);
-      return { error: SESSION_ERROR_MSG };
-    }
+    if (!session) return { error: SESSION_ERROR_MSG };
 
     // Step A: Meilisearch queries
+    log.info("tezara_search_start", {
+      service: "originality",
+      data: {
+        queryCount: params.tezaraQueries.length,
+        context: params.matrix.researchCore,
+      },
+    });
+
     const tezaraSearchResults = await Promise.all(
       params.tezaraQueries.map(async (query) => {
         try {
@@ -179,6 +181,11 @@ export async function executeSearchAndSiftAction(
         }
       }),
     );
+
+    log.info("tezara_search_success", {
+      service: "originality",
+      data: { context: params.matrix.researchCore },
+    });
 
     // Step B: Dedup + Cohere Rerank
     const { finalTheses, eliminatedTheses } = await siftAndFetchDetails(
@@ -193,19 +200,16 @@ export async function executeSearchAndSiftAction(
       log,
     );
 
-    log.groupEnd("originality_search_and_sift", performance.now() - fnStart);
-
     return {
       success: true,
       data: { selected: finalTheses, eliminated: eliminatedTheses },
     };
   } catch (err) {
-    log.error("originality_search_and_sift_failed", {
+    log.error("execute_search_and_sift_failed", {
       service: "originality",
       error: err,
       data: { context: params.matrix.researchCore },
     });
-    log.groupEnd("originality_search_and_sift", performance.now() - fnStart);
     return {
       error: "An error occurred while sifting theses.",
     };
@@ -291,22 +295,15 @@ export async function finalizeJuryAnalysisAction(
   { success: true; data: OriginalityReportData | null } | { error: string }
 > {
   const log = new Logger(flowId ?? createFlowId());
-  const juryStart = performance.now();
-
-  log.groupStart("originality_jury_finalize");
 
   try {
     const session = await getSession();
-    if (!session) {
-      log.groupEnd("originality_jury_finalize", performance.now() - juryStart);
-      return { error: SESSION_ERROR_MSG };
-    }
+    if (!session) return { error: SESSION_ERROR_MSG };
 
     const validDetails = params.selectedTheses;
 
     // NO_MATCH_FOUND: No theses eligible for analysis — clears DB, returns null
     if (validDetails.length === 0) {
-      log.groupEnd("originality_jury_finalize", performance.now() - juryStart);
       await db
         .delete(originalityReports)
         .where(eq(originalityReports.userId, session.userId));
@@ -327,7 +324,12 @@ export async function finalizeJuryAnalysisAction(
       log,
     );
 
-    // ── Apply decision engine ──
+    // ── Decision engine + DB persist ──
+    log.info("report_persist_start", {
+      service: "originality",
+      data: { count: validDetails.length, context: params.matrix.researchCore },
+    });
+
     const relationshipResult = calculateRelationships(
       auditResults,
       validDetails,
@@ -444,19 +446,23 @@ export async function finalizeJuryAnalysisAction(
       }
     });
 
-    log.groupEnd("originality_jury_finalize", performance.now() - juryStart);
+    log.info("report_persist_success", {
+      service: "originality",
+      data: {
+        activeCount: activeTheses.length,
+        eliminatedCount: eliminatedTheses.length,
+      },
+    });
+
     updateTag(CACHE_TAGS.originalityReport);
 
     return { success: true, data: reportData };
   } catch (err) {
-    const durationMs = performance.now() - juryStart;
-    log.error("originality_jury_finalize_failed", {
+    log.error("report_persist_failed", {
       service: "originality",
       error: err,
-      durationMs,
       data: { context: params.matrix.researchCore },
     });
-    log.groupEnd("originality_jury_finalize", durationMs);
     return {
       error: "An error occurred while finalized the jury analysis.",
     };

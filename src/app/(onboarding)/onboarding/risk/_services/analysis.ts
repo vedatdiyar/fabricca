@@ -35,7 +35,9 @@ const qualitativeAuditItemZodSchema = z.object({
   originalityStatus: z.enum([
     "HIGH_RISK_REPLICATION",
     "RELATED_THESIS",
-    "SAFE_ORIGINAL",
+    "HISTORICAL_BACKGROUND",
+    "METHODOLOGICAL_BENCHMARK",
+    "OUT_OF_SCOPE",
   ]),
   uniquenessGap: z.string(),
   replicationWarning: z.string(),
@@ -61,10 +63,6 @@ export async function analyzeOriginalityRisk(
   params: AnalyzeOriginalityRiskParams,
   log: Logger,
 ): Promise<{ auditResults: QualitativeAuditItem[] }> {
-  log.file("analysis.ts");
-  const startTime = performance.now();
-  log.groupStart("originality_risk_analyze");
-
   try {
     const sortedTheses = [...params.selectedTheses].sort((a, b) => a.id - b.id);
 
@@ -76,7 +74,7 @@ export async function analyzeOriginalityRisk(
       mainClaim: params.mainClaim,
     };
 
-    // 1. Run ingestion on all candidate theses to extract their 6-dimension matrices
+    // 1. Run ingestion on candidate theses to extract their 6-dimension matrices (Parallel LOW batches of 5)
     log.info("originality_ingestion_start", {
       service: "originality",
       data: { count: sortedTheses.length },
@@ -84,49 +82,62 @@ export async function analyzeOriginalityRisk(
     const ingestionStart = performance.now();
 
     const ingestionSystemInstruction = buildIngestionSystemInstruction();
-    const ingestionPrompt = buildIngestionPrompt(
-      sortedTheses.map((t) => ({
-        id: t.id,
-        title: t.title,
-        author: t.author,
-        abstract: t.abstract || "",
-      })),
+    const formattedTheses = sortedTheses.map((t) => ({
+      id: t.id,
+      title: t.title,
+      author: t.author,
+      abstract: t.abstract || "",
+    }));
+
+    const INGESTION_BATCH_SIZE = 5;
+    const thesisBatches: (typeof formattedTheses)[] = [];
+    for (let i = 0; i < formattedTheses.length; i += INGESTION_BATCH_SIZE) {
+      thesisBatches.push(formattedTheses.slice(i, i + INGESTION_BATCH_SIZE));
+    }
+
+    type IngestionExtractedItem = {
+      id: number;
+      researchCore: string;
+      spatialContext: string;
+      temporalContext: string;
+      theoreticalFramework: string;
+      methodology: string;
+      mainClaim: string;
+    };
+
+    const ingestionBatchPromises = thesisBatches.map((batch, batchIdx) =>
+      generateStructuredContent<{ theses: IngestionExtractedItem[] }>(
+        GEMINI_MODEL,
+        ingestionSystemInstruction,
+        buildIngestionPrompt(batch),
+        ingestionResponseSchema,
+        log,
+        {
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          seed: GEMINI_SEED,
+          payloadStage: `originality_candidate_ingestion_b${batchIdx + 1}`,
+          quiet: true,
+        },
+      ),
     );
 
-    const ingestionResult = await generateStructuredContent<{
-      theses: {
-        id: number;
-        researchCore: string;
-        spatialContext: string;
-        temporalContext: string;
-        theoreticalFramework: string;
-        methodology: string;
-        mainClaim: string;
-      }[];
-    }>(
-      GEMINI_MODEL,
-      ingestionSystemInstruction,
-      ingestionPrompt,
-      ingestionResponseSchema,
-      log,
-      {
-        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
-        seed: GEMINI_SEED,
-        payloadStage: "originality_candidate_ingestion",
-        quiet: true,
-      },
-    );
+    const batchResults = await Promise.all(ingestionBatchPromises);
+    const allIngestedTheses = batchResults.flatMap((res) => res.theses);
 
     const ingestionDuration = performance.now() - ingestionStart;
     log.info("originality_ingestion_success", {
       service: "originality",
       durationMs: ingestionDuration,
+      data: {
+        count: allIngestedTheses.length,
+        batchCount: thesisBatches.length,
+      },
     });
 
     // Map candidate theses to IngestedThesisCandidate format
     const ingestedCandidates: IngestedThesisCandidate[] = sortedTheses.map(
       (t) => {
-        const matched = ingestionResult.theses.find((it) => it.id === t.id);
+        const matched = allIngestedTheses.find((it) => it.id === t.id);
         return {
           id: t.id,
           title: t.title,
@@ -213,19 +224,13 @@ export async function analyzeOriginalityRisk(
       },
     });
 
-    const totalDuration = performance.now() - startTime;
-    log.groupEnd("originality_risk_analyze", totalDuration);
-
     return { auditResults };
   } catch (err) {
-    const durationMs = performance.now() - startTime;
-    log.error("originality_risk_analyze_failed", {
+    log.error("originality_audit_failed", {
       service: "originality",
       error: err,
-      durationMs,
       data: { context: params.researchCore },
     });
-    log.groupEnd("originality_risk_analyze", durationMs);
     throw err;
   }
 }

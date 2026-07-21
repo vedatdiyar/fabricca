@@ -78,11 +78,11 @@ function deduplicateSiftingResults(
 }
 
 // ──────────────────────────────────────────────
-// Extraction 2: Cohere rerank + strict score >= 0.80 filter
+// Extraction 2: Cohere rerank + strict score >= 0.75 filter
 // ──────────────────────────────────────────────
 
 /** Minimum Cohere relevance score required for a thesis to pass to jury analysis. */
-const RELEVANCE_SCORE_THRESHOLD = 0.8;
+const RELEVANCE_SCORE_THRESHOLD = 0.75;
 
 /** Maximum number of candidate theses passing Cohere reranking to avoid hitting API limitations. */
 const COHERE_MAX_LIMIT = 45;
@@ -96,7 +96,7 @@ export type SiftAndFetchDetailsParams = ThesisMatrix;
  * @param params - The thesis matrix used as the rerank query.
  * @param validDetails - Theses with valid abstracts to rerank.
  * @param log - Logger instance.
- * @returns Array of thesis IDs with relevanceScore >= 0.80.
+ * @returns Array of thesis IDs with relevanceScore >= 0.75.
  */
 async function rerankAndSelectTheses(
   params: SiftAndFetchDetailsParams,
@@ -154,20 +154,20 @@ export async function siftAndFetchDetails(
   finalTheses: TezaraThesisDetails[];
   eliminatedTheses: TezaraThesisDetails[];
 }> {
-  log.file("sifting.ts");
-  const functionStart = performance.now();
-  log.groupStart("originality_sift");
-
   const { validDetails, eliminatedTheses: abstractEliminated } =
     deduplicateSiftingResults(tezaraSearchResults, log);
 
   if (validDetails.length === 0) {
-    log.groupEnd("originality_sift", performance.now() - functionStart);
     return {
       finalTheses: [],
       eliminatedTheses: abstractEliminated,
     };
   }
+
+  log.info("cohere_rerank_start", {
+    service: "originality",
+    data: { count: validDetails.length, context: params.researchCore },
+  });
 
   try {
     const topIds = await rerankAndSelectTheses(params, validDetails, log);
@@ -179,26 +179,24 @@ export async function siftAndFetchDetails(
     );
     const allEliminated = [...abstractEliminated, ...eliminatedFromRerank];
 
-    log.preview(
-      "Final Thesis IDs (Cohere selected → jury)",
-      finalTheses.map((t) => ({ id: t.id, title: t.title })),
-    );
-
-    log.groupEnd("originality_sift", performance.now() - functionStart);
+    log.info("cohere_rerank_success", {
+      service: "originality",
+      data: {
+        finalCount: finalTheses.length,
+        eliminatedCount: allEliminated.length,
+      },
+    });
 
     return {
       finalTheses,
       eliminatedTheses: allEliminated,
     };
   } catch (err) {
-    const durationMs = performance.now() - functionStart;
-    log.error("originality_sift_failed", {
+    log.error("cohere_rerank_failed", {
       service: "originality",
       error: err,
-      durationMs,
       data: { context: params.researchCore },
     });
-    log.groupEnd("originality_sift", durationMs);
     throw err;
   }
 }
