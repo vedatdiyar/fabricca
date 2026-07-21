@@ -47,17 +47,11 @@ export const ACADEMIC_BADGE_META: Record<AcademicBadge, AcademicBadgeMeta> = {
       "Aynı dönem ve aktörleri paylaşır; farklı kuramsal çerçeve veya odakla tezinizin ana akademik rakibidir.",
     type: "warning",
   },
-  HISTORICAL_BACKGROUND: {
-    title: "Tarihsel Arka Plan",
+  REFERENCE_MATERIAL: {
+    title: "Referans / Yardımcı Kaynak",
     description:
-      "Tezinizin dönemi öncesine aittir. Çakışma riski taşımaz; tezinize kurucu tarihsel ve kavramsal zemin sunar.",
+      "Tezinizle doğrudan çakışma veya rekabet içermeyen; dönem, konu veya kapsam farkı nedeniyle arka plan/referans kaynak olarak değerlendirilebilecek çalışmadır.",
     type: "info",
-  },
-  METHODOLOGICAL_BENCHMARK: {
-    title: "Yöntemsel Emsal",
-    description:
-      "Farklı bir coğrafya veya aktörü işlemekle birlikte tezinizle aynı kuram ve yöntemi kullanır. Metodolojik emsaldir.",
-    type: "purple",
   },
   OUT_OF_SCOPE: {
     title: "Kapsam Dışı",
@@ -81,15 +75,10 @@ const ACADEMIC_BADGE_STYLE: Record<
     border: "border-amber-500/20",
     text: "text-amber-400",
   },
-  HISTORICAL_BACKGROUND: {
+  REFERENCE_MATERIAL: {
     card: "bg-blue-500/10",
     border: "border-blue-500/20",
     text: "text-blue-400",
-  },
-  METHODOLOGICAL_BENCHMARK: {
-    card: "bg-purple-500/10",
-    border: "border-purple-500/20",
-    text: "text-purple-400",
   },
   OUT_OF_SCOPE: {
     card: "bg-slate-500/10",

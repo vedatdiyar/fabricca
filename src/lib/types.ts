@@ -7,8 +7,7 @@ export type DimensionLevel = "LOW" | "MEDIUM" | "HIGH";
 export type AcademicBadge =
   | "HIGH_RISK_REPLICATION"
   | "RELATED_THESIS"
-  | "HISTORICAL_BACKGROUND"
-  | "METHODOLOGICAL_BENCHMARK"
+  | "REFERENCE_MATERIAL"
   | "OUT_OF_SCOPE";
 
 export type RelationshipBadge =

@@ -20,11 +20,11 @@ export function buildQualitativeSystemInstruction(): string {
   - If its core research question or primary analytical focus is out of scope, it is NOT relevant.
 
 - STRICT RELEVANCE THRESHOLD & NUANCED DISCRIMINATION:
-  - If the candidate thesis focuses on a DIFFERENT PRIMARY ANALYTICAL SUBJECT or DIFFERENT ACTOR PERSPECTIVE (e.g. analyzing external state policy / state institutions instead of the target's internal movement discourse, or analyzing external press / media coverage instead of the target's self-expressed primary texts), it is OUT_OF_SCOPE.
-  - Merely sharing a background era (Period T1) or broad regional setting (Region X) without sharing the specific primary analytical subject and primary target actors MUST result in OUT_OF_SCOPE.
+  - If the candidate thesis focuses on a DIFFERENT PRIMARY ANALYTICAL SUBJECT or DIFFERENT ACTOR PERSPECTIVE (e.g. analyzing external state policy / state institutions instead of the target's internal movement discourse, or analyzing early state formation instead of late movement dynamics), it is OUT_OF_SCOPE.
+  - Merely sharing a background era (Period T1), broad regional setting (Region X), or general theoretical framework (e.g. Gramscian hegemony, Foucault, Marxism) without sharing the specific primary analytical subject and primary target actors MUST result in OUT_OF_SCOPE. Never mark a thesis as relevant solely because of shared theoretical keywords.
 
-- EVALUATION TAXONOMY (5-BADGE CLASSIFICATION RULE):
-  Each candidate thesis MUST be categorized into EXACTLY ONE of the following 5 status badges:
+- EVALUATION TAXONOMY (4-BADGE CLASSIFICATION RULE):
+  Each candidate thesis MUST be categorized into EXACTLY ONE of the following 4 status badges:
 
   1. HIGH_RISK_REPLICATION (Yüksek Riskli Çakışma):
      - Applies ONLY when the candidate thesis shares the SAME specific timeframe (Period T1), SAME primary target actors (Actor X), AND SAME theoretical framework (Theory W) as the target matrix. Poses a direct originality threat.
@@ -32,18 +32,15 @@ export function buildQualitativeSystemInstruction(): string {
   2. RELATED_THESIS (İlişkili Dönemsel Çalışma):
      - Applies ONLY when the candidate thesis shares the EXACT SAME specific primary actors (Actor X) AND EXACT SAME specific primary research subject in the same timeframe (Period T1), but employs a different theoretical framework or broader scope.
 
-  3. HISTORICAL_BACKGROUND (Tarihsel Arka Plan / Kökensel Bağlam):
-     - Applies ONLY when the candidate thesis is CHRONOLOGICALLY EARLIER than the target timeframe (e.g. Period T0 prior to Period T1) and specifically explains the foundational historical/conceptual origins of the EXACT same actor dynamics as a cohesive whole.
+   3. REFERENCE_MATERIAL (Referans / Yardımcı Kaynak):
+      - Applies when the candidate thesis does NOT qualify as HIGH_RISK_REPLICATION or RELATED_THESIS, and is NOT completely OUT_OF_SCOPE. This includes theses that are chronologically earlier and provide foundational/contextual background, those that share peripheral themes or indirect connections, or any thesis that offers useful reference material without posing a direct overlap or rivalry with the target thesis.
 
-  4. METHODOLOGICAL_BENCHMARK (Yöntemsel / Kuramsal Emsal):
-     - Applies when the candidate thesis covers a TOTALLY DIFFERENT geographical/actor setting (Region Y / Actor Z), BUT uses the EXACT SAME specialized theoretical framework (Theory W) or analytical methodology (Method M).
-
-  5. OUT_OF_SCOPE (Kapsam Dışı / İlgisiz):
-     - MUST be assigned whenever the candidate thesis has a different analytical subject (e.g. external media representation, state-centric security policy, general international relations), different primary focus, or lacks direct structural connection. Set all guidance text fields strictly to "N/A".
+  4. OUT_OF_SCOPE (Kapsam Dışı / İlgisiz):
+     - MUST be assigned whenever the candidate thesis has a different analytical subject, different target actors (e.g. state-building vs. non-state movement, media representation, international relations), or lacks direct structural connection. Set all guidance text fields strictly to "N/A".
 
 - RELEVANCE DISCIPLINE:
   - Set isRelevant: false ONLY for OUT_OF_SCOPE.
-  - Set isRelevant: true for HIGH_RISK_REPLICATION, RELATED_THESIS, HISTORICAL_BACKGROUND, and METHODOLOGICAL_BENCHMARK.
+   - Set isRelevant: true for HIGH_RISK_REPLICATION, RELATED_THESIS, and REFERENCE_MATERIAL.
 
 - DEPTH AND ACADEMIC RIGOR (EXHAUSTIVE PROSE MANDATE):
   For all relevant candidate theses (isRelevant: true), you MUST provide deep, comprehensive, multi-sentence academic evaluations in elite Academic Turkish (Akademik Türkçe). Never provide shallow or single-sentence summaries. For OUT_OF_SCOPE theses, fill all text fields strictly with "N/A".
@@ -59,7 +56,7 @@ export function buildQualitativeSystemInstruction(): string {
 
 <task>
 Perform a deep originality audit and literature integration analysis for candidate theses against a target thesis matrix. Compare each candidate thesis in complete isolation against the target thesis matrix.
-Categorize each candidate into exactly one of the 5 status badges based on strict academic discrimination.
+Categorize each candidate into exactly one of the 4 status badges based on strict academic discrimination.
 Write all textual explanations in fluent, elite Academic Turkish.
 </task>`;
 }
@@ -147,8 +144,7 @@ export const qualitativeAnalysisJsonSchema: JsonSchema = {
         enum: [
           "HIGH_RISK_REPLICATION",
           "RELATED_THESIS",
-          "HISTORICAL_BACKGROUND",
-          "METHODOLOGICAL_BENCHMARK",
+          "REFERENCE_MATERIAL",
           "OUT_OF_SCOPE",
         ],
       },
@@ -160,7 +156,7 @@ export const qualitativeAnalysisJsonSchema: JsonSchema = {
       replicationWarning: {
         type: "string",
         description:
-          "Duruma göre: HIGH_RISK_REPLICATION için çakışma uyarısı; RELATED_THESIS için ortak boyutlar ve rakip değerlendirmesi; HISTORICAL_BACKGROUND için kökensel bağlam; METHODOLOGICAL_BENCHMARK için emsal kullanım notu; OUT_OF_SCOPE için 'N/A'. Türkçe yazılmalıdır.",
+          "Duruma göre: HIGH_RISK_REPLICATION için çakışma uyarısı; RELATED_THESIS için ortak boyutlar ve rakip değerlendirmesi; REFERENCE_MATERIAL için referans/arka plan bağlamı; OUT_OF_SCOPE için 'N/A'. Türkçe yazılmalıdır.",
       },
       literatureReviewUsage: {
         type: "string",

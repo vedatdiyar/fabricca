@@ -1,5 +1,5 @@
 import { generateStructuredContent } from "@/lib/services/gemini";
-import { GEMINI_MODEL, GEMINI_SEED } from "@/lib/constants";
+import { GEMINI_MODEL, INGESTION_MODEL, GEMINI_SEED } from "@/lib/constants";
 import { ThinkingLevel } from "@google/genai";
 import { z } from "zod";
 import type { Logger } from "@/lib/logger";
@@ -35,8 +35,7 @@ const qualitativeAuditItemZodSchema = z.object({
   originalityStatus: z.enum([
     "HIGH_RISK_REPLICATION",
     "RELATED_THESIS",
-    "HISTORICAL_BACKGROUND",
-    "METHODOLOGICAL_BENCHMARK",
+    "REFERENCE_MATERIAL",
     "OUT_OF_SCOPE",
   ]),
   uniquenessGap: z.string(),
@@ -64,7 +63,9 @@ export async function analyzeOriginalityRisk(
   log: Logger,
 ): Promise<{ auditResults: QualitativeAuditItem[] }> {
   try {
-    const sortedTheses = [...params.selectedTheses].sort((a, b) => a.id - b.id);
+    // Maintain Cohere rerank rank order so batching (size 3) is stable and
+    // changes at rank 24/25 only touch the last batch (Batch 8).
+    const orderedTheses = [...params.selectedTheses];
 
     const userThesis = {
       researchCore: params.researchCore,
@@ -77,12 +78,12 @@ export async function analyzeOriginalityRisk(
     // 1. Run ingestion on candidate theses to extract their 6-dimension matrices (Parallel LOW batches of 5)
     log.info("originality_ingestion_start", {
       service: "originality",
-      data: { count: sortedTheses.length },
+      data: { count: orderedTheses.length },
     });
     const ingestionStart = performance.now();
 
     const ingestionSystemInstruction = buildIngestionSystemInstruction();
-    const formattedTheses = sortedTheses.map((t) => ({
+    const formattedTheses = orderedTheses.map((t) => ({
       id: t.id,
       title: t.title,
       author: t.author,
@@ -107,7 +108,7 @@ export async function analyzeOriginalityRisk(
 
     const ingestionBatchPromises = thesisBatches.map((batch, batchIdx) =>
       generateStructuredContent<{ theses: IngestionExtractedItem[] }>(
-        GEMINI_MODEL,
+        INGESTION_MODEL,
         ingestionSystemInstruction,
         buildIngestionPrompt(batch),
         ingestionResponseSchema,
@@ -135,7 +136,7 @@ export async function analyzeOriginalityRisk(
     });
 
     // Map candidate theses to IngestedThesisCandidate format
-    const ingestedCandidates: IngestedThesisCandidate[] = sortedTheses.map(
+    const ingestedCandidates: IngestedThesisCandidate[] = orderedTheses.map(
       (t) => {
         const matched = allIngestedTheses.find((it) => it.id === t.id);
         return {
@@ -199,7 +200,7 @@ export async function analyzeOriginalityRisk(
 
     // Validate all thesis IDs are present before declaring success
     const returnedIds = new Set(auditResults.map((r) => r.thesisId));
-    for (const thesis of sortedTheses) {
+    for (const thesis of orderedTheses) {
       if (!returnedIds.has(thesis.id)) {
         log.error("originality_missing_thesis_id_corruption", {
           service: "originality",
@@ -218,7 +219,7 @@ export async function analyzeOriginalityRisk(
       service: "originality",
       durationMs: auditDuration,
       data: {
-        validatedIds: sortedTheses.length,
+        validatedIds: orderedTheses.length,
         resultCount: auditResults.length,
         ingestionDurationMs: ingestionDuration,
       },

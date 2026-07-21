@@ -30,8 +30,7 @@ interface TezaraOverlapCardsProps {
 const BADGE_ICONS: Record<AcademicBadge, ElementType> = {
   HIGH_RISK_REPLICATION: AlertTriangle,
   RELATED_THESIS: Cable,
-  HISTORICAL_BACKGROUND: History,
-  METHODOLOGICAL_BENCHMARK: Sparkles,
+  REFERENCE_MATERIAL: History,
   OUT_OF_SCOPE: FileX,
 };
 

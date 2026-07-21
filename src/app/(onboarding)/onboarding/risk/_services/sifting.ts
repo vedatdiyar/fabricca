@@ -85,7 +85,7 @@ function deduplicateSiftingResults(
 const RELEVANCE_SCORE_THRESHOLD = 0.75;
 
 /** Maximum number of candidate theses passing Cohere reranking to avoid hitting API limitations. */
-const COHERE_MAX_LIMIT = 45;
+const COHERE_MAX_LIMIT = 42;
 
 export type SiftAndFetchDetailsParams = ThesisMatrix;
 
@@ -172,8 +172,11 @@ export async function siftAndFetchDetails(
   try {
     const topIds = await rerankAndSelectTheses(params, validDetails, log);
 
+    const detailMap = new Map(validDetails.map((t) => [t.id, t]));
+    const finalTheses = topIds
+      .map((id) => detailMap.get(id))
+      .filter((t): t is TezaraThesisDetails => t !== undefined);
     const selectedIds = new Set(topIds);
-    const finalTheses = validDetails.filter((t) => selectedIds.has(t.id));
     const eliminatedFromRerank = validDetails.filter(
       (t) => !selectedIds.has(t.id),
     );
