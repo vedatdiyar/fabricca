@@ -35,18 +35,17 @@ function groupRowsToReport(
     thesisType: string;
     department: string;
     yokPdfUrl: string | null;
-    diagnosis: string;
-    academicTactic: string;
+    abstract: string | null;
+    isRelevant: boolean;
+    relevanceExplanation: string | null;
+    originalityStatus: string;
+    uniquenessGap: string | null;
+    replicationWarning: string | null;
+    literatureReviewUsage: string | null;
+    chapterIntegration: string | null;
+    conceptualBorrowing: string | null;
     isEliminated: boolean;
     eliminationStage: string | null;
-    relevanceScore: number | null;
-    researchCoreScore: number | null;
-    actorScore: number | null;
-    spatialContextScore: number | null;
-    temporalLabel: string | null;
-    theoreticalFrameworkScore: number | null;
-    methodologyScore: number | null;
-    mainClaimScore: number | null;
   }>,
 ): OriginalityReportData | null {
   if (rows.length === 0) return null;
@@ -60,9 +59,7 @@ function groupRowsToReport(
   let globalBadge: RelationshipBadge = "UNRELATED";
 
   const hasDuplicate = activeRows.some(
-    (r) =>
-      r.diagnosis === "TWIN_THESIS_ALERT" ||
-      r.diagnosis === "CRITICAL_REPLICATION_ALERT",
+    (r) => r.originalityStatus === "HIGH_RISK_REPLICATION",
   );
   const hasContribution = activeRows.length > 0 && !hasDuplicate;
 
@@ -81,21 +78,15 @@ function groupRowsToReport(
     thesisType: row.thesisType,
     department: row.department,
     yokPdfUrl: row.yokPdfUrl ?? undefined,
-    primaryBadge: row.diagnosis as AcademicBadge,
-    badges: [row.diagnosis as AcademicBadge],
-    relevanceScore: row.relevanceScore ?? 0,
-    dimensionScores:
-      row.researchCoreScore !== null
-        ? {
-            researchCore: row.researchCoreScore,
-            actor: row.actorScore!,
-            spatialContext: row.spatialContextScore!,
-            temporalLabel: row.temporalLabel ?? "UNKNOWN",
-            theoreticalFramework: row.theoreticalFrameworkScore!,
-            methodology: row.methodologyScore!,
-            mainClaim: row.mainClaimScore!,
-          }
-        : undefined,
+    abstract: row.abstract ?? undefined,
+    isRelevant: row.isRelevant,
+    relevanceExplanation: row.relevanceExplanation ?? "",
+    originalityStatus: row.originalityStatus as AcademicBadge,
+    uniquenessGap: row.uniquenessGap ?? "",
+    replicationWarning: row.replicationWarning ?? "",
+    literatureReviewUsage: row.literatureReviewUsage ?? "",
+    chapterIntegration: row.chapterIntegration ?? "",
+    conceptualBorrowing: row.conceptualBorrowing ?? "",
   });
 
   return {
@@ -274,8 +265,7 @@ export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
         year: t.year,
         thesisType: t.thesisType,
         department: t.department,
-        primaryBadge: t.primaryBadge,
-        badges: t.badges,
+        originalityStatus: t.originalityStatus,
         yokPdfUrl: t.yokPdfUrl,
       }));
     }

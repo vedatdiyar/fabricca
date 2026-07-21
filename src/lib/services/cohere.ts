@@ -31,8 +31,7 @@ export function formatRerankQuery(matrix: ThesisMatrix): string {
     "Araştırma Matrisi:",
     `  Araştırma Konusu / Olgu: ${matrix.researchCore}`,
     `  Aktör / Odak Grup: ${matrix.targetActors}`,
-    `  Coğrafi Bağlam: ${matrix.spatialContext}`,
-    `  Tarihsel Dönem: ${matrix.temporalContext}`,
+    `  Tarihsel ve Coğrafi Bağlam: ${matrix.context}`,
     `  Ana İddia: ${matrix.mainClaim}`,
   ].join("\n");
 }

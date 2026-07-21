@@ -1,97 +1,66 @@
 import { generateStructuredContent } from "@/lib/services/gemini";
 import { GEMINI_MODEL, GEMINI_TEMPERATURE, GEMINI_SEED } from "@/lib/constants";
 import { ThinkingLevel } from "@google/genai";
-import { createConcurrencyLimiter } from "@/lib/rate-limiter";
 import { z } from "zod";
 import type { Logger } from "@/lib/logger";
-import type { TezaraThesisDetails } from "@/lib/types";
+import type { TezaraThesisDetails, AcademicBadge } from "@/lib/types";
 import {
-  PARAM_DEFINITIONS,
-  buildIsolatedSystemInstruction,
-  buildIsolatedPrompt,
+  buildQualitativeSystemInstruction,
+  buildQualitativePrompt,
+  qualitativeAnalysisJsonSchema,
+  type IngestedThesisCandidate,
 } from "@/lib/prompts/originality-analysis";
-import type { ParamDefinition } from "@/lib/prompts/originality-analysis";
+import {
+  buildIngestionSystemInstruction,
+  buildIngestionPrompt,
+  ingestionResponseSchema,
+} from "@/lib/prompts/ingestion";
 
-// ============================================================================
-// LLM Output Types
-// ============================================================================
-
-export interface LLMScoredItem {
-  tez_id: string;
-  researchCore: 0 | 50 | 100;
-  actor: 0 | 50 | 100;
-  spatialContext: 0 | 50 | 100;
-  temporalLabel: "OVERLAP" | "PAST" | "FUTURE" | "UNKNOWN";
-  theoreticalFramework: 0 | 50 | 100;
-  methodology: 0 | 50 | 100;
-  mainClaim: 0 | 50 | 100;
+export interface QualitativeAuditItem {
+  thesisId: number;
+  isRelevant: boolean;
+  relevanceExplanation: string;
+  originalityStatus: AcademicBadge;
+  uniquenessGap: string;
+  replicationWarning: string;
+  literatureReviewUsage: string;
+  chapterIntegration: string;
+  conceptualBorrowing: string;
 }
 
-const llmScoredItemZodSchema = z.object({
-  tez_id: z.string(),
-  researchCore: z.union([z.literal(0), z.literal(50), z.literal(100)]),
-  actor: z.union([z.literal(0), z.literal(50), z.literal(100)]),
-  spatialContext: z.union([z.literal(0), z.literal(50), z.literal(100)]),
-  temporalLabel: z.enum(["OVERLAP", "PAST", "FUTURE", "UNKNOWN"]),
-  theoreticalFramework: z.union([z.literal(0), z.literal(50), z.literal(100)]),
-  methodology: z.union([z.literal(0), z.literal(50), z.literal(100)]),
-  mainClaim: z.union([z.literal(0), z.literal(50), z.literal(100)]),
+const qualitativeAuditItemZodSchema = z.object({
+  thesisId: z.number(),
+  isRelevant: z.boolean(),
+  relevanceExplanation: z.string(),
+  originalityStatus: z.enum([
+    "HIGH_RISK_REPLICATION",
+    "POTENTIAL_OVERLAP",
+    "SAFE_ORIGINAL",
+  ]),
+  uniquenessGap: z.string(),
+  replicationWarning: z.string(),
+  literatureReviewUsage: z.string(),
+  chapterIntegration: z.string(),
+  conceptualBorrowing: z.string(),
 });
 
-export const llmBatchResponseZodSchema = z.array(llmScoredItemZodSchema);
-
-// ============================================================================
-// Zod schema builder for per-parameter responses
-// ============================================================================
-
-function buildParamZodSchema(
-  param: ParamDefinition,
-): z.ZodType<{ tez_id: number; score: string | number }[]> {
-  if (param.isStringEnum) {
-    return z.array(
-      z.object({
-        tez_id: z.number(),
-        score: z.enum(["OVERLAP", "PAST", "FUTURE", "UNKNOWN"]),
-      }),
-    ) as unknown as z.ZodType<{ tez_id: number; score: string | number }[]>;
-  }
-  return z.array(
-    z.object({
-      tez_id: z.number(),
-      score: z.union([z.literal(0), z.literal(50), z.literal(100)]),
-    }),
-  ) as unknown as z.ZodType<{ tez_id: number; score: string | number }[]>;
-}
-
-// ============================================================================
-// Analysis Orchestration
-// ============================================================================
+export const qualitativeBatchResponseZodSchema = z.array(
+  qualitativeAuditItemZodSchema,
+);
 
 export type AnalyzeOriginalityRiskParams = {
   researchCore: string;
   targetActors: string;
-  spatialContext: string;
-  temporalContext: string;
-  theoreticalFramework: string;
-  methodology: string;
+  context: string;
+  framework: string;
   mainClaim: string;
   selectedTheses: TezaraThesisDetails[];
 };
 
-/**
- * Compares selected candidate theses against the user's thesis matrix
- * using 7 parallel isolated Gemini calls — one per parameter (RF, MA, SC,
- * TF, ME, MC, Temporal). Each call scores ALL theses on a single parameter,
- * eliminating cross-contamination between dimensions.
- *
- * @param params - The user's thesis matrix and selected candidate theses
- * @param log - Logger instance
- * @returns Raw LLM classification results (llmResults)
- */
 export async function analyzeOriginalityRisk(
   params: AnalyzeOriginalityRiskParams,
   log: Logger,
-): Promise<{ llmResults: LLMScoredItem[] }> {
+): Promise<{ auditResults: QualitativeAuditItem[] }> {
   log.file("analysis.ts");
   const startTime = performance.now();
   log.groupStart("originality_risk_analyze");
@@ -102,133 +71,162 @@ export async function analyzeOriginalityRisk(
     const userThesis = {
       researchCore: params.researchCore,
       targetActors: params.targetActors,
-      spatialContext: params.spatialContext,
-      temporalContext: params.temporalContext,
-      theoreticalFramework: params.theoreticalFramework,
-      methodology: params.methodology,
+      context: params.context,
+      framework: params.framework,
       mainClaim: params.mainClaim,
     };
 
-    const thesesForPrompt = sortedTheses.map((t) => ({
-      id: t.id,
-      title: t.title,
-      abstract: t.abstract,
-    }));
+    // 1. Run ingestion on all candidate theses to extract their 6-dimension matrices
+    log.info("originality_ingestion_start", {
+      service: "originality",
+      data: { count: sortedTheses.length },
+    });
+    const ingestionStart = performance.now();
 
-    const systemInstruction = buildIsolatedSystemInstruction();
+    const ingestionSystemInstruction = buildIngestionSystemInstruction();
+    const ingestionPrompt = buildIngestionPrompt(
+      sortedTheses.map((t) => ({
+        id: t.id,
+        title: t.title,
+        author: t.author,
+        abstract: t.abstract || "",
+      })),
+    );
+
+    const ingestionResult = await generateStructuredContent<{
+      theses: {
+        id: number;
+        researchCore: string;
+        spatialContext: string;
+        temporalContext: string;
+        theoreticalFramework: string;
+        methodology: string;
+        mainClaim: string;
+      }[];
+    }>(
+      GEMINI_MODEL,
+      ingestionSystemInstruction,
+      ingestionPrompt,
+      ingestionResponseSchema,
+      log,
+      {
+        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+        temperature: GEMINI_TEMPERATURE,
+        seed: GEMINI_SEED,
+        payloadStage: "originality_candidate_ingestion",
+        quiet: true,
+      },
+    );
+
+    const ingestionDuration = performance.now() - ingestionStart;
+    log.info("originality_ingestion_success", {
+      service: "originality",
+      durationMs: ingestionDuration,
+    });
+
+    // Map candidate theses to IngestedThesisCandidate format
+    const ingestedCandidates: IngestedThesisCandidate[] = sortedTheses.map(
+      (t) => {
+        const matched = ingestionResult.theses.find((it) => it.id === t.id);
+        return {
+          id: t.id,
+          title: t.title,
+          matrix: {
+            researchCore: matched?.researchCore || "Belirtilmemiş",
+            spatialContext: matched?.spatialContext || "Belirtilmemiş",
+            temporalContext: matched?.temporalContext || "Belirtilmemiş",
+            theoreticalFramework:
+              matched?.theoreticalFramework || "Belirtilmemiş",
+            methodology: matched?.methodology || "Belirtilmemiş",
+            mainClaim: matched?.mainClaim || "Belirtilmemiş",
+          },
+        };
+      },
+    );
+
+    // 2. Run originality audit comparing user matrix to candidate matrices
+    log.info("originality_audit_start", {
+      service: "originality",
+      data: { count: ingestedCandidates.length },
+    });
+    const auditStart = performance.now();
+
+    const BATCH_SIZE = 3;
+    const chunks: IngestedThesisCandidate[][] = [];
+    for (let i = 0; i < ingestedCandidates.length; i += BATCH_SIZE) {
+      chunks.push(ingestedCandidates.slice(i, i + BATCH_SIZE));
+    }
 
     log.info("originality_classification_start", {
       service: "originality",
       data: {
-        summary: `(${sortedTheses.length} theses × ${PARAM_DEFINITIONS.length} isolated params)`,
+        summary: `(${ingestedCandidates.length} theses partitioned into ${chunks.length} batches of size ${BATCH_SIZE} × qualitative audit)`,
       },
     });
 
-    const limiter = createConcurrencyLimiter(8);
-    const paramPromises = PARAM_DEFINITIONS.map((param) =>
-      limiter.exec(
-        async (): Promise<{
-          paramKey: string;
-          results: { tez_id: number; score: number | string }[];
-        }> => {
-          // Pass only the single matrix field relevant to this parameter.
-          // All other matrix fields are intentionally withheld to prevent
-          // cross-dimensional contamination in the LLM's reasoning.
-          const prompt = buildIsolatedPrompt(
-            userThesis[param.matrixField],
-            thesesForPrompt,
-            param,
-          );
+    const systemInstruction = buildQualitativeSystemInstruction();
 
-          const result = await generateStructuredContent<
-            { tez_id: number; score: number | string }[]
-          >(GEMINI_MODEL, systemInstruction, prompt, param.jsonSchema, log, {
-            thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
-            temperature: GEMINI_TEMPERATURE,
-            seed: GEMINI_SEED,
-            zodSchema: buildParamZodSchema(param),
-            thesisMatrix: params,
-            payloadStage: `originality_classification_${param.key}`,
-            quiet: true,
-          });
+    // Call all batches concurrently using Promise.all
+    const batchPromises = chunks.map(async (chunk, index) => {
+      const prompt = buildQualitativePrompt(userThesis, chunk);
 
-          // Validate all thesis IDs are present
-          const returnedIds = new Set(result.map((r) => r.tez_id));
-          for (const thesis of sortedTheses) {
-            if (!returnedIds.has(thesis.id)) {
-              log.error("originality_missing_thesis_id_corruption", {
-                service: "originality",
-                data: {
-                  paramKey: param.key,
-                  thesisId: thesis.id,
-                },
-              });
-              throw new Error(
-                `Classification payload corruption for param "${param.key}": Model omitted thesis ID ${thesis.id} from the structured response.`,
-              );
-            }
-          }
-
-          return { paramKey: param.key, results: result };
+      return generateStructuredContent<QualitativeAuditItem[]>(
+        GEMINI_MODEL,
+        systemInstruction,
+        prompt,
+        qualitativeAnalysisJsonSchema,
+        log,
+        {
+          thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+          temperature: GEMINI_TEMPERATURE,
+          seed: GEMINI_SEED,
+          zodSchema: qualitativeBatchResponseZodSchema,
+          thesisMatrix: params,
+          payloadStage: `originality_qualitative_audit_batch_${index + 1}`,
+          quiet: true,
         },
-      ),
-    );
-
-    const paramResults = await Promise.all(paramPromises);
-
-    log.info("originality_classification_success", {
-      service: "originality",
-      durationMs: performance.now() - startTime,
+      );
     });
 
-    // Merge 7 param results into LLMScoredItem[]
-    const thesisMap = new Map<number, Record<string, number | string>>();
-    for (const { paramKey, results } of paramResults) {
-      for (const item of results) {
-        if (!thesisMap.has(item.tez_id)) {
-          thesisMap.set(item.tez_id, {});
-        }
-        thesisMap.get(item.tez_id)![paramKey] = item.score;
+    const resultsArray = await Promise.all(batchPromises);
+    const auditResults = resultsArray.flat();
+    const auditDuration = performance.now() - auditStart;
+
+    log.info("originality_audit_success", {
+      service: "originality",
+      durationMs: auditDuration,
+    });
+
+    // Validate all thesis IDs are present
+    const returnedIds = new Set(auditResults.map((r) => r.thesisId));
+    for (const thesis of sortedTheses) {
+      if (!returnedIds.has(thesis.id)) {
+        log.error("originality_missing_thesis_id_corruption", {
+          service: "originality",
+          data: {
+            thesisId: thesis.id,
+          },
+        });
+        throw new Error(
+          `Classification payload corruption: Model omitted thesis ID ${thesis.id} from the qualitative response.`,
+        );
       }
     }
 
-    const llmResults: LLMScoredItem[] = sortedTheses
-      .map((thesis) => {
-        const scores = thesisMap.get(thesis.id);
-        if (!scores) return null;
+    const totalDuration = performance.now() - startTime;
+    log.info("originality_classification_success", {
+      service: "originality",
+      durationMs: totalDuration,
+      data: {
+        ingestionDurationMs: ingestionDuration,
+        auditDurationMs: auditDuration,
+        totalDurationMs: totalDuration,
+      },
+    });
 
-        return {
-          tez_id: String(thesis.id),
-          researchCore: (scores.RC ?? 0) as 0 | 50 | 100,
-          actor: (scores.Actor ?? 0) as 0 | 50 | 100,
-          spatialContext: (scores.SC ?? 0) as 0 | 50 | 100,
-          temporalLabel: (scores.Temporal ?? "UNKNOWN") as
-            "OVERLAP" | "PAST" | "FUTURE" | "UNKNOWN",
-          theoreticalFramework: (scores.TF ?? 0) as 0 | 50 | 100,
-          methodology: (scores.ME ?? 0) as 0 | 50 | 100,
-          mainClaim: (scores.MC ?? 0) as 0 | 50 | 100,
-        };
-      })
-      .filter((r): r is LLMScoredItem => r !== null);
+    log.groupEnd("originality_risk_analyze", totalDuration);
 
-    log.preview(
-      "LLM Classification Results",
-      llmResults.map((o) => ({
-        tez_id: o.tez_id,
-        researchCore: o.researchCore,
-        actor: o.actor,
-        spatialContext: o.spatialContext,
-        temporalLabel: o.temporalLabel,
-        theoreticalFramework: o.theoreticalFramework,
-        methodology: o.methodology,
-        mainClaim: o.mainClaim,
-      })),
-    );
-
-    const durationMs = performance.now() - startTime;
-    log.groupEnd("originality_risk_analyze", durationMs);
-
-    return { llmResults };
+    return { auditResults };
   } catch (err) {
     const durationMs = performance.now() - startTime;
     log.error("originality_risk_analyze_failed", {

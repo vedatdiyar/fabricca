@@ -95,10 +95,8 @@ export async function generateBoxesStructureAction(): Promise<
     const geminiPrompt = buildThesisBoxGenerationPrompt({
       researchCore: matrix.researchCore,
       targetActors: matrix.targetActors,
-      spatialContext: matrix.spatialContext,
-      temporalContext: matrix.temporalContext,
-      theoreticalFramework: matrix.theoreticalFramework,
-      methodology: matrix.methodology,
+      context: matrix.context,
+      framework: matrix.framework,
       mainClaim: matrix.mainClaim,
     });
 
@@ -142,8 +140,7 @@ export async function generateBoxesStructureAction(): Promise<
         year: t.year,
         thesisType: t.thesisType,
         department: t.department,
-        primaryBadge: t.primaryBadge,
-        badges: t.badges,
+        originalityStatus: t.originalityStatus,
         yokPdfUrl: t.yokPdfUrl,
       })),
     });

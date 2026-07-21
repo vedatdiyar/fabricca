@@ -5,16 +5,7 @@ export type TemporalLabel = "OVERLAP" | "PAST" | "FUTURE" | "UNKNOWN";
 export type DimensionLevel = "LOW" | "MEDIUM" | "HIGH";
 
 export type AcademicBadge =
-  | "IRRELEVANT_DATA"
-  | "TWIN_THESIS_ALERT"
-  | "CRITICAL_REPLICATION_ALERT"
-  | "METHODOLOGY_REFERENCE"
-  | "THEORETICAL_ANCHOR"
-  | "HISTORICAL_CONTEXT"
-  | "FUTURE_PROJECTION"
-  | "CONTEXTUAL_COMPARISON"
-  | "EMPIRICAL_BENCHMARK"
-  | "BACKGROUND_LITERATURE";
+  "SAFE_ORIGINAL" | "POTENTIAL_OVERLAP" | "HIGH_RISK_REPLICATION";
 
 export type RelationshipBadge =
   "HIGH_RISK" | "CONTRIBUTION_READY" | "UNRELATED";
@@ -54,26 +45,22 @@ export interface OriginalityReportData {
     relationshipBadge: RelationshipBadge;
     overlapTable: {
       id: number;
-      primaryBadge: AcademicBadge;
-      badges: AcademicBadge[];
-      yokPdfUrl?: string;
-      abstract?: string;
       title: string;
       author: string;
       university: string;
       year: number;
       thesisType: string;
       department: string;
-      relevanceScore: number;
-      dimensionScores?: {
-        researchCore: number;
-        actor: number;
-        spatialContext: number;
-        temporalLabel: string;
-        theoreticalFramework: number;
-        methodology: number;
-        mainClaim: number;
-      };
+      yokPdfUrl?: string;
+      abstract?: string;
+      isRelevant: boolean;
+      relevanceExplanation: string;
+      originalityStatus: AcademicBadge;
+      uniquenessGap: string;
+      replicationWarning: string;
+      literatureReviewUsage: string;
+      chapterIntegration: string;
+      conceptualBorrowing: string;
     }[];
     eliminatedTheses: {
       id: number;
@@ -84,19 +71,16 @@ export interface OriginalityReportData {
       thesisType: string;
       department: string;
       yokPdfUrl?: string;
-      primaryBadge: AcademicBadge;
-      badges: AcademicBadge[];
+      abstract?: string;
+      isRelevant: boolean;
+      relevanceExplanation: string;
+      originalityStatus: AcademicBadge;
+      uniquenessGap: string;
+      replicationWarning: string;
+      literatureReviewUsage: string;
+      chapterIntegration: string;
+      conceptualBorrowing: string;
       eliminationStage: "ANALYSIS";
-      relevanceScore: number;
-      dimensionScores?: {
-        researchCore: number;
-        actor: number;
-        spatialContext: number;
-        temporalLabel: string;
-        theoreticalFramework: number;
-        methodology: number;
-        mainClaim: number;
-      };
     }[];
   };
 }
@@ -104,10 +88,8 @@ export interface OriginalityReportData {
 export interface ThesisMatrix {
   researchCore: string;
   targetActors: string;
-  spatialContext: string;
-  temporalContext: string;
-  theoreticalFramework: string;
-  methodology: string;
+  context: string;
+  framework: string;
   mainClaim: string;
 }
 
@@ -143,8 +125,7 @@ export const RelatedThesisEntrySchema = z.object({
   year: z.number().int(),
   thesisType: z.string(),
   department: z.string(),
-  primaryBadge: z.string(),
-  badges: z.array(z.string()),
+  originalityStatus: z.string(),
   yokPdfUrl: z.string().optional(),
 });
 
@@ -155,8 +136,7 @@ export interface RelatedThesisEntry {
   year: number;
   thesisType: string;
   department: string;
-  primaryBadge: AcademicBadge;
-  badges: AcademicBadge[];
+  originalityStatus: AcademicBadge;
   yokPdfUrl?: string;
 }
 

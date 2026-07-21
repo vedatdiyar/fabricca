@@ -69,29 +69,21 @@ export const ingestionResponseSchema: JsonSchema = {
 
 /**
  * Ingestion pipeline için sistem talimatı.
- * Gürültülü ham tez metinlerinden 6 alanlı yapılandırılmış matris çıkarır.
+ * Tezara'dan gelen temiz tez özetlerinden 6 alanlı yapılandırılmış matris çıkarır.
  *
  * @returns Sistem talimatı string'i
  */
 export function buildIngestionSystemInstruction(): string {
   return `<constraints>
 - You are a strictly grounded extraction assistant. You ONLY extract information that is *explicitly written* in the provided text. You do NOT infer, assume, guess, or use your own knowledge or training data.
-- [ZORUNLU GÜRÜLTÜ TEMİZLEME]: Ham metin içindeki aşağıdaki gürültü türlerini tamamen temizleyerek sadece akademik içeriği koruyun:
-  * HTML etiketleri ve izleri (örn. <div>, <p>, &nbsp;, <br/>, class="...")
-  * Üniversite, enstitü, anabilim dalı künyeleri
-  * Jüri üyesi isimleri, unvanları, kurumları (Doç. Dr., Prof. Dr., jüri listeleri)
-  * Sayfa numaraları, tez numarası (tez no), enstitü kayıt numaraları
-  * Teslim tarihi, savunma tarihi, kabul/ret tarihleri
-  * Dosya boyutu, sayfa sayısı, tablo/şekil sayısı gibi metadata
-  * BibTeX, APA, MLA gibi kaynakça format kalıntıları
- - [EKSİK ALAN KURALI]: Eğer 6 alandan herhangi biri için temizlenmiş metinde açık, spesifik ve doğrudan bir bilgi yoksa, o alana "Belirtilmemiş" yazın. Asla tahmin yürütmeyin, uydurmayın, metinde olmayan bir teorisyen/yıl/yöntem eklemeyin.
-- [TEK KAYNAK KURALI]: Tüm bilgiler sadece sağlanan <ham_tez_metni> bloklarından alınmalıdır. Modelin kendi bilgisi KESİNLİKLE kullanılamaz.
-- [ÖZGÜN METİN KORUMA]: Temizleme sonrası elde edilen akademik içerik, tezin özünden kopmayacak şekilde özgün ifadeleri korumalı, gereksiz yere yeniden yazılmamalı veya genelleştirilmemelidir.
+- [EKSİK ALAN KURALI]: Eğer 6 alandan herhangi biri için verilen metinde açık, spesifik ve doğrudan bir bilgi yoksa, o alana "Belirtilmemiş" yazın. Asla tahmin yürütmeyin, uydurmayın, metinde olmayan bir teorisyen/yıl/yöntem eklemeyin.
+- [TEK KAYNAK KURALI]: Tüm bilgiler sadece sağlanan <tez id='X'> bloklarından alınmalıdır. Modelin kendi bilgisi KESİNLİKLE kullanılamaz.
+- [ÖZGÜN METİN KORUMA]: Çıkarılan akademik içerik, tezin özünden kopmayacak şekilde özgün ifadeleri korumalı, gereksiz yere yeniden yazılmamalı veya genelleştirilmemelidir.
 - ÇIKTI FORMATI: ingestionResponseSchema ile %100 uyumlu bir JSON objesi döndürün. Her tez kendi <tez id='X'> bloğundan bağımsız olarak parse edilmelidir.
 </constraints>
 
 <task>
-Akademik tez meta verilerini gürültülü ham metinlerden yapılandırılmış formata dönüştüren uzman bir metin madencisi ve kütüphaneci rolündesiniz. Göreviniz, web scraping veya PDF çıktısı kaynaklı kirlilik içeren her bir ham tez metnini temizleyerek 6 ana alana ayırmaktır. Her bir tezi bağımsız olarak işleyin. Hiçbir bilgi uydurmayın, sadece metinde yazanı çıkarın.
+Akademik tez özetlerinden 6 alanlı yapılandırılmış matris çıkaran uzman bir metin madencisi rolündesiniz. Göreviniz, her bir tez için başlık, yazar ve özet bilgilerini inceleyerek 6 ana alana ayırmaktır. Her bir tezi bağımsız olarak işleyin. Hiçbir bilgi uydurmayın, sadece metinde yazanı çıkarın.
 </task>`;
 }
 
@@ -125,7 +117,7 @@ ${thesisBlocks}
 </context>
 
 <task>
-Yukarıdaki <context> bloğunda <tez id='X'> etiketleriyle verilen her bir tez için, sistem talimatındaki gürültü temizleme kurallarına göre ham metni temizleyerek 6 alana ayırın ve ingestionResponseSchema şemasına uygun JSON olarak döndürün. Metinde açıkça geçmeyen alanlar için "Belirtilmemiş" değerini kullanın. Her tezi bağımsız olarak işleyin.
+Yukarıdaki <context> bloğunda <tez id='X'> etiketleriyle verilen her bir tez için, başlık, yazar ve özet bilgilerini inceleyerek 6 alana ayırın ve ingestionResponseSchema şemasına uygun JSON olarak döndürün. Metinde açıkça geçmeyen alanlar için "Belirtilmemiş" değerini kullanın. Her tezi bağımsız olarak işleyin.
 Cevaplamadan önce çok derin düşün.
 </task>`;
 }

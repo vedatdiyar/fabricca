@@ -84,11 +84,14 @@ function deduplicateSiftingResults(
 /** Minimum Cohere relevance score required for a thesis to pass to jury analysis. */
 const RELEVANCE_SCORE_THRESHOLD = 0.8;
 
+/** Maximum number of candidate theses passing Cohere reranking to avoid hitting API limitations. */
+const COHERE_MAX_LIMIT = 45;
+
 export type SiftAndFetchDetailsParams = ThesisMatrix;
 
 /**
  * Runs Cohere Rerank v4 Pro on validated thesis abstracts and returns the IDs
- * of those that meet or exceed the relevance threshold. No artificial caps applied.
+ * of those that meet or exceed the relevance threshold, capped at a maximum limit.
  *
  * @param params - The thesis matrix used as the rerank query.
  * @param validDetails - Theses with valid abstracts to rerank.
@@ -114,13 +117,18 @@ async function rerankAndSelectTheses(
       (r) => r.relevanceScore >= RELEVANCE_SCORE_THRESHOLD,
     );
 
+    // Apply the Cohere limit cap (e.g. 45 for BATCH_SIZE = 3)
+    const capped = passing.slice(0, COHERE_MAX_LIMIT);
+
     log.data("Rerank threshold filter", {
       total: results.length,
       passing: passing.length,
+      capped: capped.length,
       threshold: RELEVANCE_SCORE_THRESHOLD,
+      limit: COHERE_MAX_LIMIT,
     });
 
-    return passing.map((r) => validDetails[r.index].id);
+    return capped.map((r) => validDetails[r.index].id);
   } catch (err) {
     log.error("originality_sift_cohere_failed", {
       service: "originality",

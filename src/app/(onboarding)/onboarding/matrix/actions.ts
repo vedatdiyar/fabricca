@@ -15,10 +15,8 @@ const MAX_LENGTH = 4000;
 const thesisMatrixSchema = z.object({
   researchCore: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
   targetActors: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
-  spatialContext: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
-  temporalContext: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
-  theoreticalFramework: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
-  methodology: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+  context: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+  framework: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
   mainClaim: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
 });
 
@@ -65,10 +63,8 @@ export async function saveThesisMatrixAction(
           userId: session.userId,
           researchCore: validated.researchCore,
           targetActors: validated.targetActors,
-          spatialContext: validated.spatialContext,
-          temporalContext: validated.temporalContext,
-          theoreticalFramework: validated.theoreticalFramework,
-          methodology: validated.methodology,
+          context: validated.context,
+          framework: validated.framework,
           mainClaim: validated.mainClaim,
           updatedAt: sql`now()`,
         })
@@ -77,10 +73,8 @@ export async function saveThesisMatrixAction(
           set: {
             researchCore: validated.researchCore,
             targetActors: validated.targetActors,
-            spatialContext: validated.spatialContext,
-            temporalContext: validated.temporalContext,
-            theoreticalFramework: validated.theoreticalFramework,
-            methodology: validated.methodology,
+            context: validated.context,
+            framework: validated.framework,
             mainClaim: validated.mainClaim,
             updatedAt: sql`now()`,
           },

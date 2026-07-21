@@ -61,11 +61,9 @@ export const thesisMatrices = pgTable("thesis_matrices", {
     .unique(),
   researchCore: text().notNull(),
   targetActors: text("target_actors").notNull(),
-  spatialContext: text().notNull(),
-  temporalContext: text().notNull(),
-  theoreticalFramework: text().notNull(),
-  methodology: text().notNull(),
-  mainClaim: text().notNull(),
+  context: text("context").notNull(),
+  framework: text("framework").notNull(),
+  mainClaim: text("main_claim").notNull(),
   createdAt: timestamp().defaultNow().notNull(),
   updatedAt: timestamp().defaultNow().notNull(),
 });
@@ -103,25 +101,17 @@ export const originalityReports = pgTable(
     department: text().notNull(),
     abstract: text(),
     yokPdfUrl: text(),
-    /** Individual LLM dimension scores */
-    researchCoreScore: integer("research_core_score"),
-    actorScore: integer("actor_score"),
-    spatialContextScore: integer("spatial_context_score"),
-    temporalLabel: varchar("temporal_label", { length: 20 }),
-    theoreticalFrameworkScore: integer("theoretical_framework_score"),
-    methodologyScore: integer("methodology_score"),
-    mainClaimScore: integer("main_claim_score"),
-    /** Composite relevance score (sum of 6 LLM dimensions RC+Actor+SC+TF+ME+MC, TC excluded, range 0-600) */
-    relevanceScore: integer("relevance_score").notNull().default(0),
-    /**
-     * Primary badge produced by the 4-step academic decision engine.
-     * Possible values: IRRELEVANT_DATA, TWIN_THESIS_ALERT,
-     * CRITICAL_REPLICATION_ALERT, plus 27 matrix-based academic badges
-     * (INDEPENDENT_CONCEPTUAL_STUDY … TEMPORAL_UPDATE_STUDY)
-     */
-    diagnosis: varchar({ length: 100 }).notNull(),
-    /** Academic tactic (action plan) */
-    academicTactic: text("academic_tactic").notNull(),
+    /** Qualitative evaluation fields */
+    isRelevant: boolean("is_relevant").default(false).notNull(),
+    relevanceExplanation: text("relevance_explanation"),
+    originalityStatus: varchar("originality_status", { length: 50 })
+      .notNull()
+      .default("SAFE_ORIGINAL"),
+    uniquenessGap: text("uniqueness_gap"),
+    replicationWarning: text("replication_warning"),
+    literatureReviewUsage: text("literature_review_usage"),
+    chapterIntegration: text("chapter_integration"),
+    conceptualBorrowing: text("conceptual_borrowing"),
     /** Flag for eliminated theses — when true, hidden from the main overlap table */
     isEliminated: boolean().default(false).notNull(),
     /** Elimination stage: SIFTING (before Cohere rerank) or ANALYSIS (after jury) */
@@ -131,7 +121,7 @@ export const originalityReports = pgTable(
   },
   (table) => [
     index("idx_or_user_id").on(table.userId),
-    index("idx_or_diagnosis").on(table.diagnosis),
+    index("idx_or_status").on(table.originalityStatus),
     index("idx_or_external_id").on(table.externalThesisId),
     index("idx_or_user_eliminated").on(table.userId, table.isEliminated),
   ],

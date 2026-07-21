@@ -44,10 +44,8 @@ import type { SubBoxInput } from "../literature-review/_services/literature-revi
 interface MatrixInput {
   researchCore: string;
   targetActors: string;
-  spatialContext: string;
-  temporalContext: string;
-  theoreticalFramework: string;
-  methodology: string;
+  context: string;
+  framework: string;
   mainClaim: string;
 }
 
@@ -292,10 +290,8 @@ export function useOnboardingNavigation() {
         const cleanMatrixInput = {
           researchCore: matrixInput.researchCore,
           targetActors: matrixInput.targetActors,
-          spatialContext: matrixInput.spatialContext,
-          temporalContext: matrixInput.temporalContext,
-          theoreticalFramework: matrixInput.theoreticalFramework,
-          methodology: matrixInput.methodology,
+          context: matrixInput.context,
+          framework: matrixInput.framework,
           mainClaim: matrixInput.mainClaim,
         };
         const riskResult = await runRiskPipeline(cleanMatrixInput);

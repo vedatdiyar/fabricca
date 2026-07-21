@@ -4,22 +4,17 @@ import { useMemo, ElementType } from "react";
 import {
   AlertTriangle,
   ShieldAlert,
-  XOctagon,
-  Cpu,
-  Globe,
   BookOpen,
-  GitCompare,
-  Bookmark,
-  TrendingUp,
-  Clock,
-  HelpCircle,
   FileText,
+  FileSearch,
+  Sparkles,
+  HelpCircle,
 } from "lucide-react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { stripAltTitle } from "@/lib/academic/utils";
 import type { OriginalityReportData, AcademicBadge } from "@/lib/types";
 import { getAcademicBadgeConfig } from "../_lib/constants";
-import { BADGE_ORDER_PRIORITY } from "../_lib/sort-utils";
+import { sortComparisonItems } from "../_lib/sort-utils";
 
 type OverlapRow =
   OriginalityReportData["tezaraResults"]["overlapTable"][number];
@@ -29,31 +24,14 @@ interface TezaraOverlapCardsProps {
 }
 
 const BADGE_ICONS: Record<AcademicBadge, ElementType> = {
-  IRRELEVANT_DATA: XOctagon,
-  TWIN_THESIS_ALERT: ShieldAlert,
-  CRITICAL_REPLICATION_ALERT: AlertTriangle,
-  METHODOLOGY_REFERENCE: Cpu,
-  THEORETICAL_ANCHOR: BookOpen,
-  HISTORICAL_CONTEXT: Clock,
-  FUTURE_PROJECTION: TrendingUp,
-  CONTEXTUAL_COMPARISON: Globe,
-  EMPIRICAL_BENCHMARK: GitCompare,
-  BACKGROUND_LITERATURE: Bookmark,
+  HIGH_RISK_REPLICATION: AlertTriangle,
+  POTENTIAL_OVERLAP: ShieldAlert,
+  SAFE_ORIGINAL: BookOpen,
 };
 
 export function TezaraOverlapCards({ overlapTable }: TezaraOverlapCardsProps) {
   const sortedTheses = useMemo<OverlapRow[]>(() => {
-    if (!overlapTable) return [];
-
-    return [...overlapTable].sort((a, b) => {
-      if (a.relevanceScore !== b.relevanceScore) {
-        return b.relevanceScore - a.relevanceScore;
-      }
-      const pA = BADGE_ORDER_PRIORITY[a.primaryBadge] ?? 99;
-      const pB = BADGE_ORDER_PRIORITY[b.primaryBadge] ?? 99;
-      if (pA !== pB) return pA - pB;
-      return b.year - a.year;
-    });
+    return sortComparisonItems(overlapTable);
   }, [overlapTable]);
 
   if (sortedTheses.length === 0) {
@@ -66,27 +44,27 @@ export function TezaraOverlapCards({ overlapTable }: TezaraOverlapCardsProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 w-full">
+    <div className="grid grid-cols-1 gap-6 w-full">
       {sortedTheses.map((item) => {
-        const config = getAcademicBadgeConfig(item.primaryBadge);
-        const Icon = BADGE_ICONS[item.primaryBadge] || HelpCircle;
+        const config = getAcademicBadgeConfig(item.originalityStatus);
+        const Icon = BADGE_ICONS[item.originalityStatus] || HelpCircle;
 
         return (
           <Card
             key={item.id}
             className={`w-full overflow-hidden transition-all duration-200 border rounded-md ${config.card} ${config.border}`}
           >
-            <CardHeader className="p-4 pb-2">
+            <CardHeader className="p-5 pb-3">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <span
-                  className={`inline-flex items-center gap-2 text-[10px] font-sans font-medium px-2 py-0.5 rounded-md border ${config.card} ${config.border} text-foreground`}
+                  className={`inline-flex items-center gap-1.5 text-[10px] font-sans font-semibold px-2.5 py-1 rounded-md border uppercase tracking-wider ${config.card} ${config.border} ${config.text}`}
                 >
                   <Icon className="w-3.5 h-3.5 shrink-0" />
                   {config.label}
                 </span>
               </div>
             </CardHeader>
-            <CardContent className="p-4 pt-2 space-y-4">
+            <CardContent className="p-5 pt-0 space-y-5">
               <div className="space-y-2">
                 <h3 className="font-serif text-lg font-medium leading-snug text-foreground tracking-tight">
                   {stripAltTitle(item.title)}
@@ -100,89 +78,92 @@ export function TezaraOverlapCards({ overlapTable }: TezaraOverlapCardsProps) {
                     {item.university} ({item.year})
                   </span>
                   <span>&bull;</span>
-                  <span className="font-sans text-[10px] uppercase bg-muted/20 px-1 rounded-sm">
+                  <span className="font-sans text-[10px] uppercase bg-muted/20 px-1.5 rounded-sm">
                     {item.thesisType}
                   </span>
+                  <span>&bull;</span>
+                  <span className="italic">{item.department}</span>
                 </div>
               </div>
 
-              {config.description && (
-                <div className="text-xs text-foreground bg-muted/10 p-3 rounded-md border border-border/40 font-sans leading-relaxed">
-                  <span className="font-semibold block text-[10px] uppercase tracking-wider text-muted-foreground/80 mb-1">
-                    Akademik Yol Haritası
-                  </span>
-                  {config.description}
-                </div>
-              )}
+              {/* Relevance Explanation */}
+              <div className="text-xs text-foreground bg-muted/10 p-4 rounded-md border border-border/40 font-sans leading-relaxed">
+                <span className="font-semibold block text-[10px] uppercase tracking-wider text-muted-foreground/80 mb-1.5 flex items-center gap-1">
+                  <FileSearch className="w-3.5 h-3.5" />
+                  Tezin Alaka Düzeyi
+                </span>
+                {item.relevanceExplanation}
+              </div>
 
-              {item.dimensionScores && (
-                <div className="text-xs bg-muted/10 p-3 rounded-md border border-border/40 font-sans leading-relaxed space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-[10px] uppercase tracking-wider text-muted-foreground/80">
-                      Parametre Puanları
+              {/* Qualitative Sections */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Left Column */}
+                <div className="space-y-4">
+                  {/* Uniqueness Gap */}
+                  <div className="bg-background p-4 rounded-md border border-border/40 space-y-1">
+                    <span className="font-semibold block text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                      Özgünlük Farkı (Gap)
                     </span>
-                    <span className="text-[10px] font-mono text-muted-foreground">
-                      Toplam:{" "}
-                      <span className="font-semibold text-foreground">
-                        {item.relevanceScore}
-                      </span>
-                      /600
-                    </span>
+                    <p className="text-xs leading-relaxed text-foreground/90 font-sans">
+                      {item.uniquenessGap}
+                    </p>
                   </div>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                    {[
-                      {
-                        key: "researchCore",
-                        label: "Araştırma Konusu / Olgu",
-                        value: item.dimensionScores.researchCore,
-                      },
-                      {
-                        key: "actor",
-                        label: "Aktör / Odak Grup",
-                        value: item.dimensionScores.actor,
-                      },
-                      {
-                        key: "spatialContext",
-                        label: "Coğrafi Bağlam",
-                        value: item.dimensionScores.spatialContext,
-                      },
-                      {
-                        key: "theoreticalFramework",
-                        label: "Kuramsal Çerçeve",
-                        value: item.dimensionScores.theoreticalFramework,
-                      },
-                      {
-                        key: "methodology",
-                        label: "Araştırma Yöntemi",
-                        value: item.dimensionScores.methodology,
-                      },
-                      {
-                        key: "mainClaim",
-                        label: "Merkez Sav",
-                        value: item.dimensionScores.mainClaim,
-                      },
-                      {
-                        key: "temporalLabel",
-                        label: "Zamansal Etiket",
-                        value: item.dimensionScores.temporalLabel,
-                      },
-                    ].map(({ key, label, value }) => (
-                      <div
-                        key={key}
-                        className="flex items-center justify-between gap-2"
-                      >
-                        <span className="text-muted-foreground">{label}</span>
-                        <span className="font-mono font-medium text-foreground tabular-nums">
-                          {typeof value === "string" ? value : `${value}`}
-                        </span>
-                      </div>
-                    ))}
+
+                  {/* Chapter Integration */}
+                  <div className="bg-background p-4 rounded-md border border-border/40 space-y-1">
+                    <span className="font-semibold block text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                      Tez Bölümlerine Entegrasyon
+                    </span>
+                    <p className="text-xs leading-relaxed text-foreground/90 font-sans">
+                      {item.chapterIntegration}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right Column */}
+                <div className="space-y-4">
+                  {/* Literature Usage */}
+                  <div className="bg-background p-4 rounded-md border border-border/40 space-y-1">
+                    <span className="font-semibold block text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                      Literatürde Konumlandırma
+                    </span>
+                    <p className="text-xs leading-relaxed text-foreground/90 font-sans">
+                      {item.literatureReviewUsage}
+                    </p>
+                  </div>
+
+                  {/* Conceptual Borrowing */}
+                  <div className="bg-background p-4 rounded-md border border-border/40 space-y-1">
+                    <span className="font-semibold block text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                      Kavramsal / Teorik Atıflar
+                    </span>
+                    <p className="text-xs leading-relaxed text-foreground/90 font-sans">
+                      {item.conceptualBorrowing}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Replication Warning (if relevant) */}
+              {item.replicationWarning && item.replicationWarning !== "N/A" && (
+                <div className="bg-destructive/5 text-destructive p-4 rounded-md border border-destructive/10 text-xs leading-relaxed font-sans flex gap-2.5">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold block text-[10px] uppercase tracking-wider mb-1">
+                      Kopya / Çakışma Uyarısı
+                    </span>
+                    {item.replicationWarning}
                   </div>
                 </div>
               )}
 
-              {item.yokPdfUrl && (
-                <div className="flex justify-end pt-1">
+              {/* YOK PDF and metadata footer */}
+              <div className="flex justify-between items-center pt-2 border-t border-border/20">
+                <span className="text-[10px] text-muted-foreground font-mono flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-primary/70 animate-pulse" />
+                  Niteliksel Yol Haritası Üretilmiştir.
+                </span>
+                {item.yokPdfUrl && (
                   <a
                     href={item.yokPdfUrl}
                     target="_blank"
@@ -192,8 +173,8 @@ export function TezaraOverlapCards({ overlapTable }: TezaraOverlapCardsProps) {
                     <FileText className="w-3.5 h-3.5" />
                     Tez Detayını İncele (YÖK PDF)
                   </a>
-                </div>
-              )}
+                )}
+              </div>
             </CardContent>
           </Card>
         );

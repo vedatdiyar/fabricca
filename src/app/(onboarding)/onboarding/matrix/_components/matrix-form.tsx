@@ -4,15 +4,7 @@ import { useState, useCallback, useMemo, memo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { LucideIcon } from "lucide-react";
-import {
-  Loader2,
-  Table,
-  BookMarked,
-  Layers,
-  Globe,
-  Target,
-  Clock,
-} from "lucide-react";
+import { Loader2, Table, BookMarked, Globe, Target } from "lucide-react";
 
 import { getErrorDisplay } from "@/lib/error-utils";
 import { Button } from "@/components/ui/button";
@@ -26,10 +18,8 @@ import { fetchThesisMatrixFresh } from "../../_services/fetch-actions";
 type FormState = {
   researchCore: string;
   targetActors: string;
-  spatialContext: string;
-  temporalContext: string;
-  theoreticalFramework: string;
-  methodology: string;
+  context: string;
+  framework: string;
   mainClaim: string;
 };
 
@@ -51,7 +41,7 @@ type SectionConfig = {
 
 const MATRIX_SECTIONS: SectionConfig[] = [
   {
-    id: "arastirmaOdağı",
+    id: "arastirmaOdagi",
     title: "Araştırma Odağı",
     fields: [
       {
@@ -59,79 +49,59 @@ const MATRIX_SECTIONS: SectionConfig[] = [
         id: "researchCore",
         number: "01",
         Icon: Target,
-        label: "Araştırma Konusu / Olgu",
+        label: "Araştırma Konusu ve Soruları",
         placeholder:
-          "Araştırmanızın temel konusu, kavramsal veya teorik problemi (örn: soylulaştırma, popülizm, söylem tasarımı)...",
-        rows: 3,
+          "Araştırmanızın temel konusu, kavramsal/teorik problemi ve cevap aradığı temel sorular (örn: Kürt hareketinin söylemsel dönüşümünü tetikleyen sol ilişkiler nelerdir?)...",
+        rows: 4,
       },
       {
         key: "targetActors",
         id: "targetActors",
         number: "02",
         Icon: Target,
-        label: "Aktör / Odak Grup",
+        label: "Aktörler ve Odak Gruplar",
         placeholder:
-          "Araştırmanızda odaklanılan ana aktörler, özneler, kurumlar veya toplumsal gruplar (örn: yerel yönetimler, mülteciler, siyasi partiler)...",
+          "Araştırmanızda odaklanılan ana aktörler, özneler, kurumlar veya toplumsal gruplar (örn: PKK, DEP, HADEP ve Türkiye sosyalist sol partileri)...",
         rows: 3,
       },
     ],
   },
   {
-    id: "baglam",
-    title: "Bağlam",
+    id: "baglamVeYontem",
+    title: "Bağlam ve Çerçeve",
     fields: [
       {
-        key: "spatialContext",
-        id: "spatialContext",
+        key: "context",
+        id: "context",
         number: "03",
         Icon: Globe,
-        label: "Coğrafi Bağlam",
+        label: "Tarihsel ve Coğrafi Bağlam",
         placeholder:
-          "Araştırmanın geçtiği coğrafi mekân, bölge veya ülke (örn: Türkiye, İstanbul)...",
+          "Araştırmanın geçtiği yer, dönem ve bu dönemi önemli kılan tarihsel/yapısal gelişmeler (örn: 1991-1999 dönemi Türkiye'si, Sovyetlerin dağılması ve zorunlu göçler)...",
         rows: 3,
       },
       {
-        key: "temporalContext",
-        id: "temporalContext",
+        key: "framework",
+        id: "framework",
         number: "04",
-        Icon: Clock,
-        label: "Tarihsel Dönem",
+        Icon: BookMarked,
+        label: "Kuramsal ve Metodolojik Çerçeve",
         placeholder:
-          "Araştırmanın odaklandığı tarihsel zaman dilimi, aralık veya dönem (örn: 2000'ler, Cumhuriyet dönemi)...",
+          "Araştırmada kullanılan teoriler, yöntemler ve veri kaynakları (örn: Gramsci hegemonya teorisi ve süreli yayınların söylem analizi, mülakatlar)...",
         rows: 3,
       },
     ],
   },
   {
-    id: "kuramYontemSav",
-    title: "Kuram, Yöntem ve Sav",
+    id: "sav",
+    title: "Tezin İddiası",
     fields: [
       {
-        key: "theoreticalFramework",
-        id: "kavramsalCerceve",
-        number: "05",
-        Icon: BookMarked,
-        label: "Kuramsal Yaklaşım",
-        placeholder:
-          "Araştırmayı üzerine inşa ettiğiniz teoriler, kavramsal modeller veya ana paradigmalar (örn: Gramsci hegemonya, söylem kuramı)...",
-        rows: 3,
-      },
-      {
-        key: "methodology",
-        id: "metodoloji",
-        number: "06",
-        Icon: Layers,
-        label: "Araştırma Yöntemi",
-        placeholder:
-          "Araştırmada kullanacağınız temel analitik yöntem veya teknik (örn: söylem analizi, anket çalışması)...",
-        rows: 3,
-      },
-      {
         key: "mainClaim",
-        id: "temelIddia",
-        number: "07",
+        id: "mainClaim",
+        number: "05",
         Icon: Target,
-        label: "Merkez Sav",
+        label: "Merkez Sav ve Ana İddia",
         placeholder:
           "Bu çalışmayla savunacağınız temel tez, hipotez veya ana nedensellik argümanınız...",
         rows: 3,
@@ -194,17 +164,15 @@ const MatrixCard = memo(function MatrixCard({
 });
 
 /**
- * MatrixForm — onboarding step 1. Renders the thesis matrix as a 7-field,
+ * MatrixForm — onboarding step 1. Renders the thesis matrix as a 5-field,
  * 3-section academic form. Persists to the database and navigates to the risk
  * analysis step.
  */
 const EMPTY_VALUES: FormState = {
   researchCore: "",
   targetActors: "",
-  spatialContext: "",
-  temporalContext: "",
-  theoreticalFramework: "",
-  methodology: "",
+  context: "",
+  framework: "",
   mainClaim: "",
 };
 
@@ -229,11 +197,8 @@ export function MatrixForm() {
     return {
       researchCore: editedValues.researchCore ?? base.researchCore,
       targetActors: editedValues.targetActors ?? base.targetActors,
-      spatialContext: editedValues.spatialContext ?? base.spatialContext,
-      temporalContext: editedValues.temporalContext ?? base.temporalContext,
-      theoreticalFramework:
-        editedValues.theoreticalFramework ?? base.theoreticalFramework,
-      methodology: editedValues.methodology ?? base.methodology,
+      context: editedValues.context ?? base.context,
+      framework: editedValues.framework ?? base.framework,
       mainClaim: editedValues.mainClaim ?? base.mainClaim,
     };
   }, [initialMatrix, editedValues]);
@@ -254,10 +219,8 @@ export function MatrixForm() {
       await submitMatrix({
         researchCore: formState.researchCore,
         targetActors: formState.targetActors,
-        spatialContext: formState.spatialContext,
-        temporalContext: formState.temporalContext,
-        theoreticalFramework: formState.theoreticalFramework,
-        methodology: formState.methodology,
+        context: formState.context,
+        framework: formState.framework,
         mainClaim: formState.mainClaim,
       });
     } catch (error) {

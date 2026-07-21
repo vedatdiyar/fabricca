@@ -7,10 +7,8 @@ import type { JuryArticle } from "@/lib/types";
 export interface LoadedMatrixData {
   id: number;
   researchCore: string;
-  spatialContext: string;
-  temporalContext: string;
-  theoreticalFramework: string;
-  methodology: string;
+  context: string;
+  framework: string;
   mainClaim: string;
 }
 
@@ -34,10 +32,8 @@ export async function loadThesisMatrixAndBoxes(userId: number): Promise<{
     .select({
       id: thesisMatrices.id,
       researchCore: thesisMatrices.researchCore,
-      spatialContext: thesisMatrices.spatialContext,
-      temporalContext: thesisMatrices.temporalContext,
-      theoreticalFramework: thesisMatrices.theoreticalFramework,
-      methodology: thesisMatrices.methodology,
+      context: thesisMatrices.context,
+      framework: thesisMatrices.framework,
       mainClaim: thesisMatrices.mainClaim,
     })
     .from(thesisMatrices)
@@ -88,7 +84,7 @@ export async function loadOverlapTheses(allBoxRows: BoxRowData[]): Promise<{
     return {
       title: thesis.title,
       comparisonNote: null,
-      badge: thesis.primaryBadge,
+      badge: thesis.originalityStatus,
       url: thesis.yokPdfUrl ?? "",
       doi: null as string | null,
       publisher: thesis.university ?? "",

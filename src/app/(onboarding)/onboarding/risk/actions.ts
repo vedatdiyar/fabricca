@@ -18,9 +18,8 @@ import { extractQueries } from "./_services/queries";
 import { siftAndFetchDetails } from "./_services/sifting";
 import { analyzeOriginalityRisk } from "./_services/analysis";
 import { calculateRelationships } from "./_services/decision-engine";
-import type { CalculatedComparisonItem } from "./_services/decision-engine";
 import { sanitizeAcademicDataBulk } from "@/lib/services/academic-sanitizer";
-import { BADGE_ORDER_PRIORITY, BUCKET_ORDER } from "./_lib/sort-utils";
+import { sortComparisonItems } from "./_lib/sort-utils";
 import { searchTezara } from "@/lib/tezara";
 
 type OnboardingMatrixInput = ThesisMatrix;
@@ -177,15 +176,13 @@ export async function executeSearchAndSiftAction(params: {
       }),
     );
 
-    // Step B: Dedup + abstract filter + Cohere Rerank
+    // Step B: Dedup + Cohere Rerank
     const { finalTheses, eliminatedTheses } = await siftAndFetchDetails(
       {
         researchCore: params.matrix.researchCore,
         targetActors: params.matrix.targetActors,
-        spatialContext: params.matrix.spatialContext,
-        temporalContext: params.matrix.temporalContext,
-        theoreticalFramework: params.matrix.theoreticalFramework,
-        methodology: params.matrix.methodology,
+        context: params.matrix.context,
+        framework: params.matrix.framework,
         mainClaim: params.matrix.mainClaim,
       },
       tezaraSearchResults,
@@ -206,7 +203,7 @@ export async function executeSearchAndSiftAction(params: {
     });
     log.groupEnd("originality_search_and_sift", performance.now() - fnStart);
     return {
-      error: "An error occurred while searching and sifting theses.",
+      error: "An error occurred while sifting theses.",
     };
   }
 }
@@ -240,10 +237,8 @@ export async function siftThesesAction(params: {
       {
         researchCore: params.matrix.researchCore,
         targetActors: params.matrix.targetActors,
-        spatialContext: params.matrix.spatialContext,
-        temporalContext: params.matrix.temporalContext,
-        theoreticalFramework: params.matrix.theoreticalFramework,
-        methodology: params.matrix.methodology,
+        context: params.matrix.context,
+        framework: params.matrix.framework,
         mainClaim: params.matrix.mainClaim,
       },
       params.tezaraSearchResults,
@@ -266,14 +261,14 @@ export async function siftThesesAction(params: {
       data: { context: params.matrix.researchCore },
     });
     return {
-      error: "An error occurred while sifting theses and fetching details.",
+      error: "An error occurred while sifting theses.",
     };
   }
 }
 
 /**
- * Step 4: Runs the Gemini classification analysis in batches of 3,
- * applies the deterministic decision engine (RİSK / KATKI / GÜRÜLTÜ),
+ * Step 4: Runs the Gemini classification analysis,
+ * applies the qualitative decision engine,
  * and writes the complete report to the originality_reports table as a
  * single transaction.
  *
@@ -311,51 +306,36 @@ export async function finalizeJuryAnalysisAction(params: {
       return { success: true, data: null };
     }
 
-    // ── LLM sınıflandırma analizi (3'erli batch, ThinkingLevel.HIGH) ──
-    const { llmResults } = await analyzeOriginalityRisk(
+    // ── LLM qualitative originality audit call ──
+    const { auditResults } = await analyzeOriginalityRisk(
       {
         researchCore: params.matrix.researchCore,
         targetActors: params.matrix.targetActors,
-        spatialContext: params.matrix.spatialContext,
-        temporalContext: params.matrix.temporalContext,
-        theoreticalFramework: params.matrix.theoreticalFramework,
-        methodology: params.matrix.methodology,
+        context: params.matrix.context,
+        framework: params.matrix.framework,
         mainClaim: params.matrix.mainClaim,
         selectedTheses: validDetails,
       },
       log,
     );
 
-    // ── Deterministik karar motoru — GÜRÜLTÜ elenir, RİSK/KATKI sınıflanır ──
+    // ── Apply decision engine ──
     const relationshipResult = calculateRelationships(
-      llmResults,
+      auditResults,
       validDetails,
       log,
     );
 
-    // ── Priority-ordered stable sorting ──
-    relationshipResult.comparisonTable.sort(
-      (a: CalculatedComparisonItem, b: CalculatedComparisonItem) => {
-        if (a.bucket !== b.bucket) {
-          return BUCKET_ORDER[a.bucket] - BUCKET_ORDER[b.bucket];
-        }
-        const pA = BADGE_ORDER_PRIORITY[a.primaryBadge] ?? 99;
-        const pB = BADGE_ORDER_PRIORITY[b.primaryBadge] ?? 99;
-        if (pA !== pB) return pA - pB;
-        // Same badge: higher relevance score first
-        if (a.relevanceScore !== b.relevanceScore) {
-          return b.relevanceScore - a.relevanceScore;
-        }
-        // Tiebreaker: newest first
-        return b.year - a.year;
-      },
+    // Sort comparison items using stable priority-based sort
+    relationshipResult.comparisonTable = sortComparisonItems(
+      relationshipResult.comparisonTable,
     );
 
     const activeTheses = relationshipResult.comparisonTable.filter(
       (item) => item.bucket !== "IRRELEVANT",
     );
 
-    // ── Akademik standardizasyon (Sadece aktif/elenmemiş tezler için) ──
+    // Sanitize titles and authors for active theses
     if (activeTheses.length > 0) {
       const sanitized = await sanitizeAcademicDataBulk(
         activeTheses.map((item) => ({
@@ -371,61 +351,58 @@ export async function finalizeJuryAnalysisAction(params: {
       }
     }
 
-    const buildDimensions = (item: CalculatedComparisonItem) => ({
-      researchCore: item.researchCore,
-      actor: item.actor,
-      spatialContext: item.spatialContext,
-      temporalLabel: item.temporalLabel,
-      theoreticalFramework: item.theoreticalFramework,
-      methodology: item.methodology,
-      mainClaim: item.mainClaim,
-    });
-
-    // Separate active and eliminated theses (IRRELEVANT bucket) for report and DB
     const eliminatedTheses = relationshipResult.comparisonTable.filter(
       (item) => item.bucket === "IRRELEVANT",
     );
 
-    // Build report data (both active and eliminated)
+    // Build qualitative report data
     const reportData: OriginalityReportData = {
       tezaraResults: {
         relationshipBadge: relationshipResult.globalRelationshipBadge,
         overlapTable: activeTheses.map((item) => ({
           id: item.id,
-          primaryBadge: item.primaryBadge,
-          badges: item.badges,
-          yokPdfUrl: item.yokPdfUrl,
-          abstract: item.abstract,
           title: item.title,
           author: item.author,
           university: item.university,
           year: item.year,
           thesisType: item.thesisType,
           department: item.department,
-          relevanceScore: item.relevanceScore,
-          dimensionScores: buildDimensions(item),
+          yokPdfUrl: item.yokPdfUrl,
+          abstract: item.abstract,
+          isRelevant: item.isRelevant,
+          relevanceExplanation: item.relevanceExplanation,
+          originalityStatus: item.originalityStatus,
+          uniquenessGap: item.uniquenessGap,
+          replicationWarning: item.replicationWarning,
+          literatureReviewUsage: item.literatureReviewUsage,
+          chapterIntegration: item.chapterIntegration,
+          conceptualBorrowing: item.conceptualBorrowing,
         })),
         eliminatedTheses: eliminatedTheses.map((item) => ({
           id: item.id,
-          primaryBadge: item.primaryBadge,
-          badges: item.badges,
-          yokPdfUrl: item.yokPdfUrl,
-          abstract: item.abstract,
           title: item.title,
           author: item.author,
           university: item.university,
           year: item.year,
           thesisType: item.thesisType,
           department: item.department,
-          relevanceScore: item.relevanceScore,
-          dimensionScores: buildDimensions(item),
+          yokPdfUrl: item.yokPdfUrl,
+          abstract: item.abstract,
+          isRelevant: item.isRelevant,
+          relevanceExplanation: item.relevanceExplanation,
+          originalityStatus: item.originalityStatus,
+          uniquenessGap: item.uniquenessGap,
+          replicationWarning: item.replicationWarning,
+          literatureReviewUsage: item.literatureReviewUsage,
+          chapterIntegration: item.chapterIntegration,
+          conceptualBorrowing: item.conceptualBorrowing,
           eliminationStage: "ANALYSIS",
         })),
       },
     };
 
-    // Build DB rows for both active and eliminated theses
-    const activeDbRows = activeTheses.map((item) => ({
+    // Build database rows to insert
+    const dbRows = activeTheses.map((item) => ({
       userId: session.userId,
       externalThesisId: item.id,
       title: item.title,
@@ -436,48 +413,18 @@ export async function finalizeJuryAnalysisAction(params: {
       department: item.department,
       yokPdfUrl: item.yokPdfUrl ?? null,
       abstract: item.abstract ?? null,
-      diagnosis: item.primaryBadge,
-      relevanceScore: item.relevanceScore,
-      researchCoreScore: item.researchCore,
-      actorScore: item.actor,
-      spatialContextScore: item.spatialContext,
-      temporalLabel: item.temporalLabel,
-      theoreticalFrameworkScore: item.theoreticalFramework,
-      methodologyScore: item.methodology,
-      mainClaimScore: item.mainClaim,
-      academicTactic: "",
+      isRelevant: item.isRelevant,
+      relevanceExplanation: item.relevanceExplanation,
+      originalityStatus: item.originalityStatus,
+      uniquenessGap: item.uniquenessGap,
+      replicationWarning: item.replicationWarning,
+      literatureReviewUsage: item.literatureReviewUsage,
+      chapterIntegration: item.chapterIntegration,
+      conceptualBorrowing: item.conceptualBorrowing,
       isEliminated: false,
       eliminationStage: null,
       updatedAt: new Date(),
     }));
-
-    const eliminatedDbRows = eliminatedTheses.map((item) => ({
-      userId: session.userId,
-      externalThesisId: item.id,
-      title: item.title,
-      author: item.author,
-      university: item.university,
-      year: item.year,
-      thesisType: item.thesisType,
-      department: item.department,
-      yokPdfUrl: item.yokPdfUrl ?? null,
-      abstract: item.abstract ?? null,
-      diagnosis: item.primaryBadge,
-      relevanceScore: item.relevanceScore,
-      researchCoreScore: item.researchCore,
-      actorScore: item.actor,
-      spatialContextScore: item.spatialContext,
-      temporalLabel: item.temporalLabel,
-      theoreticalFrameworkScore: item.theoreticalFramework,
-      methodologyScore: item.methodology,
-      mainClaimScore: item.mainClaim,
-      academicTactic: "",
-      isEliminated: true,
-      eliminationStage: "ANALYSIS",
-      updatedAt: new Date(),
-    }));
-
-    const dbRows = [...activeDbRows, ...eliminatedDbRows];
 
     await db.transaction(async (tx) => {
       await tx
@@ -503,8 +450,7 @@ export async function finalizeJuryAnalysisAction(params: {
     });
     log.groupEnd("originality_jury_finalize", durationMs);
     return {
-      error:
-        "An error occurred while preparing the analysis and relationship report.",
+      error: "An error occurred while finalized the jury analysis.",
     };
   }
 }
