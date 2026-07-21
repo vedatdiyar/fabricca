@@ -1,5 +1,5 @@
 import { generateStructuredContent } from "@/lib/services/gemini";
-import { GEMINI_MODEL, GEMINI_TEMPERATURE, GEMINI_SEED } from "@/lib/constants";
+import { GEMINI_MODEL, GEMINI_SEED } from "@/lib/constants";
 import { ThinkingLevel } from "@google/genai";
 import { z } from "zod";
 import type { Logger } from "@/lib/logger";
@@ -111,7 +111,6 @@ export async function analyzeOriginalityRisk(
       log,
       {
         thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
-        temperature: GEMINI_TEMPERATURE,
         seed: GEMINI_SEED,
         payloadStage: "originality_candidate_ingestion",
         quiet: true,
@@ -175,7 +174,6 @@ export async function analyzeOriginalityRisk(
         log,
         {
           thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
-          temperature: GEMINI_TEMPERATURE,
           seed: GEMINI_SEED,
           zodSchema: qualitativeBatchResponseZodSchema,
           thesisMatrix: params,

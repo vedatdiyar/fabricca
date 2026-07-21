@@ -2,7 +2,7 @@ import {
   generateStructuredContent,
   type JsonSchema,
 } from "@/lib/services/gemini";
-import { GEMINI_MODEL, GEMINI_TEMPERATURE, GEMINI_SEED } from "@/lib/constants";
+import { GEMINI_MODEL, GEMINI_SEED } from "@/lib/constants";
 import { ThinkingLevel } from "@google/genai";
 import { Logger } from "@/lib/logger";
 import { z } from "zod";
@@ -78,8 +78,8 @@ You are an expert academic committee member and auditor. Given the thesis sub-bo
 
 /**
  * Calls Gemini to select the most appropriate foundational work for
- * multiple sub-boxes simultaneously. Uses temperature 1.0 and
- * ThinkingLevel.LOW for optimized performance and global deduplication.
+ * multiple sub-boxes simultaneously. Uses ThinkingLevel.LOW for optimized
+ * performance and global deduplication.
  *
  * @param subBoxes - List of sub-boxes along with their compiled candidates
  * @param logger - Optional Logger instance for structured LLM call logging
@@ -127,7 +127,6 @@ For each sub-box in the <context> block above, select the most appropriate found
     bulkSelectSchema,
     logger,
     {
-      temperature: GEMINI_TEMPERATURE,
       seed: GEMINI_SEED,
       thinkingConfig: {
         thinkingLevel: ThinkingLevel.LOW,

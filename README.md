@@ -31,7 +31,7 @@ TEZARA (YÖK Ulusal Tez Merkezi) API'si üzerinden çalışan bir analiz motorud
 
 ### 3. Konu Kutuları (Thesis Boxes)
 
-Google Gemini 3.1 Flash Lite tarafından tez matrisiniz analiz edilerek
+Google Gemini 3.5 Flash-Lite tarafından tez matrisiniz analiz edilerek
 otomatik oluşturulan kavramsal kutulardır. Altı tür kutu mevcuttur:
 
 - `PROBLEMATIZATION` — Problem Tanımlama
@@ -86,7 +86,7 @@ merkezi yönetim ekranı.
 | **Veri Tabanı**        | Neon Serverless PostgreSQL                            |
 | **ORM**                | Drizzle ORM (snake_case)                              |
 | **Vektör DB (RAG)**    | pgvector (Neon içinde)                                |
-| **LLM**                | Google Gemini 3.1 Flash Lite                          |
+| **LLM**                | Google Gemini 3.5 Flash-Lite                          |
 | **Embedding**          | Cloudflare Workers AI (Qwen3-Embedding-0.6B, 768 dim) |
 | **Rerank**             | Cohere Rerank v4.0 Pro                                |
 | **Tez Veri Kaynağı**   | TEZARA (YÖK Tez)                                      |
@@ -280,8 +280,8 @@ npm run lint
   - UI/çıktı katmanı: %100 Türkçe (akademik Türkçe, Türkçe karakterler)
 - **Progressive Save:** Onboarding adımları veri tabanına aşamalı olarak
   kaydedilir; kullanıcı her adımda kaldığı yerden devam edebilir.
-- **Deterministic AI Çıktısı:** Temperature 1.0 + sabit seed değeri (2 veya 42)
-  ile tutarlı ve tekrarlanabilir model çıktıları hedeflenir.
+- **Deterministic AI Çıktısı:** Sabit seed değeri (42) ile tutarlı ve tekrarlanabilir
+  model çıktıları hedeflenir.
 - **Kapalı sistem:** Dışarıdan kayıt yoktur; yalnızca seed edilmiş kullanıcılar.
 - **Sıkı tip güvenliği:** `any` tipi kullanımı yasaktır; tüm tipler Drizzle
   şemalarından türetilir veya açık arayüzlerle tanımlanır.

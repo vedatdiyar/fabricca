@@ -3,7 +3,7 @@ import { z } from "zod";
 import { generateStructuredContent } from "../gemini";
 import type { JsonSchema } from "../gemini";
 import { Logger } from "../../logger";
-import { GEMINI_MODEL, GEMINI_TEMPERATURE, GEMINI_SEED } from "../../constants";
+import { GEMINI_MODEL, GEMINI_SEED } from "../../constants";
 
 // ============================================================================
 // Vanilla JSON Schema — LLM_INTEGRATION.md Rule 7
@@ -107,7 +107,6 @@ export async function sanitizeAcademicDataBulk(
       zodSchema: sanitizeResponseSchema,
       thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       seed: GEMINI_SEED,
-      temperature: GEMINI_TEMPERATURE,
       payloadStage: "literature_bulk_sanitization",
       quiet: true,
     },

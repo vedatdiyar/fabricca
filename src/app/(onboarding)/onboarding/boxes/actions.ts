@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { thesisBoxes } from "@/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { generateStructuredContent } from "@/lib/services/gemini";
-import { GEMINI_MODEL, GEMINI_TEMPERATURE, GEMINI_SEED } from "@/lib/constants";
+import { GEMINI_MODEL, GEMINI_SEED } from "@/lib/constants";
 import { ThinkingLevel } from "@google/genai";
 import { createFlowId, Logger } from "@/lib/logger";
 import { updateTag } from "next/cache";
@@ -60,7 +60,7 @@ const confirmBoxesSchema = z.array(
 
 /**
  * Generates the 5-quadrant epistemological box structure and semanticQuery
- * fields in a single Gemini 3.1 Flash Lite call. The nested API response is
+ * fields in a single Gemini 3.5 Flash-Lite call. The nested API response is
  * flattened through the adapter and a RELATED_THESES box is appended from the
  * originality report.
  *
@@ -88,7 +88,7 @@ export async function generateBoxesStructureAction(): Promise<
     log.info("box_structure_generation_start", {
       service: "boxes",
       data: {
-        context: "Single-call box structure + semanticQuery (3.1 Flash Lite)",
+        context: "Single-call box structure + semanticQuery (3.5 Flash-Lite)",
       },
     });
 
@@ -109,7 +109,6 @@ export async function generateBoxesStructureAction(): Promise<
       {
         thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
         zodSchema: thesisBoxGenerationSchema,
-        temperature: GEMINI_TEMPERATURE,
         seed: GEMINI_SEED,
         thesisMatrix: matrix,
         payloadStage: "box_generation",

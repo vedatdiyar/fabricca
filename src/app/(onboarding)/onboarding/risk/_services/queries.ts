@@ -1,6 +1,6 @@
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/services/gemini";
-import { GEMINI_MODEL, GEMINI_TEMPERATURE, GEMINI_SEED } from "@/lib/constants";
+import { GEMINI_MODEL, GEMINI_SEED } from "@/lib/constants";
 import type { Logger } from "@/lib/logger";
 import type { ThesisMatrix } from "@/lib/types";
 import {
@@ -45,7 +45,7 @@ export async function extractQueries(
 
     const keywordPrompt = buildLitKeywordPrompt(geminiInput);
 
-    log.prompt("gemini-3.1-flash-lite (keywords)", keywordPrompt);
+    log.prompt("gemini-3.5-flash-lite (keywords)", keywordPrompt);
 
     const keywordResult =
       await generateStructuredContent<LitKeywordExtractionResponse>(
@@ -56,7 +56,6 @@ export async function extractQueries(
         log,
         {
           thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-          temperature: GEMINI_TEMPERATURE,
           seed: GEMINI_SEED,
           thesisMatrix: geminiInput,
           payloadStage: "keywords",
