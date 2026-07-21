@@ -16,7 +16,7 @@ export function buildQualitativeSystemInstruction(): string {
   2. If the candidate thesis studies the same actor groups and a related thematic focus or research topic, set isRelevant = true, evaluate the originality status, explain the uniqueness gap, and provide literature/chapter usage guidelines in fluent Academic Turkish.
   3. Use the following originalityStatus classifications:
      - HIGH_RISK_REPLICATION: If the candidate thesis shares the same core topic, same actors, same context (time/space), same theoretical framework, and methodology. This indicates a high risk of duplicate work.
-     - POTENTIAL_OVERLAP: If the candidate thesis has a very similar topic or actors but differs in its primary thesis/arguments, scope, or framework.
+     - RELATED_THESIS: If the candidate thesis has a very similar topic or actors but differs in its primary thesis/arguments, scope, or framework.
      - SAFE_ORIGINAL: If the candidate thesis poses no replication threat because it differs substantially in its core research questions, time period, or primary thesis.
   4. For chapterIntegration, map the literature directly to standard thesis chapters:
      - Giriş ve Literatür Taraması (for gap/contextual placement)
@@ -111,7 +111,7 @@ export const qualitativeAnalysisJsonSchema: JsonSchema = {
       },
       originalityStatus: {
         type: "string",
-        enum: ["HIGH_RISK_REPLICATION", "POTENTIAL_OVERLAP", "SAFE_ORIGINAL"],
+        enum: ["HIGH_RISK_REPLICATION", "RELATED_THESIS", "SAFE_ORIGINAL"],
       },
       uniquenessGap: {
         type: "string",
@@ -121,7 +121,7 @@ export const qualitativeAnalysisJsonSchema: JsonSchema = {
       replicationWarning: {
         type: "string",
         description:
-          "Eğer kopya riski varsa uyarının detayları, yoksa 'N/A'. Türkçe yazılmalıdır.",
+          "Duruma göre: HIGH_RISK_REPLICATION için kopya/çakışma uyarısının detayları; RELATED_THESIS için paylaşılan boyutlar, ortak kaynaklar, metodolojik yakınlık ve farklılaşma noktalarına dair ilişkisel değerlendirme notu; SAFE_ORIGINAL için 'N/A'. Türkçe yazılmalıdır.",
       },
       literatureReviewUsage: {
         type: "string",

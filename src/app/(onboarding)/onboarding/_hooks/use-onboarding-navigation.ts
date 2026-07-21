@@ -133,19 +133,32 @@ export function useOnboardingNavigation() {
       for (const key of matrixTqKeys)
         queryClient.invalidateQueries({ queryKey: key });
 
+      // Single flowId across all pipeline steps for cohesive traceability
+      const pipelineFlowId = `pipeline_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`;
+      const pipelineStart = performance.now();
+
       try {
-        const extractResult = await extractQueriesAction(matrixInput);
+        const extractResult = await extractQueriesAction(
+          matrixInput,
+          pipelineFlowId,
+        );
         if (isCancelled) return { error: "cancelled" };
         if ("error" in extractResult) {
           hideLoading();
           return { error: extractResult.error };
         }
         await completeStep(0, steps);
+        console.log(
+          `[${new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}] INFO  [${pipelineFlowId}] originality_query_extract completed: ${extractResult.data.tezaraQueries.length} queries generated`,
+        );
 
-        const searchAndSiftResult = await executeSearchAndSiftAction({
-          matrix: matrixInput,
-          tezaraQueries: extractResult.data.tezaraQueries,
-        });
+        const searchAndSiftResult = await executeSearchAndSiftAction(
+          {
+            matrix: matrixInput,
+            tezaraQueries: extractResult.data.tezaraQueries,
+          },
+          pipelineFlowId,
+        );
         if (isCancelled) return { error: "cancelled" };
         if ("error" in searchAndSiftResult) {
           hideLoading();
@@ -153,11 +166,17 @@ export function useOnboardingNavigation() {
         }
         await completeStep(1, steps);
         await completeStep(2, steps);
+        console.log(
+          `[${new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}] INFO  [${pipelineFlowId}] originality_search_and_sift completed: ${searchAndSiftResult.data.selected.length} selected, ${searchAndSiftResult.data.eliminated.length} eliminated`,
+        );
 
-        const juryResult = await finalizeJuryAnalysisAction({
-          matrix: matrixInput,
-          selectedTheses: searchAndSiftResult.data.selected,
-        });
+        const juryResult = await finalizeJuryAnalysisAction(
+          {
+            matrix: matrixInput,
+            selectedTheses: searchAndSiftResult.data.selected,
+          },
+          pipelineFlowId,
+        );
         if (isCancelled) return { error: "cancelled" };
         if ("error" in juryResult) {
           hideLoading();
@@ -165,6 +184,11 @@ export function useOnboardingNavigation() {
         }
         await completeStep(3, steps);
         hideLoading();
+
+        const pipelineDuration = Math.round(performance.now() - pipelineStart);
+        console.log(
+          `[${new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}] INFO  [${pipelineFlowId}] originality_pipeline_completed: ${pipelineDuration}ms total`,
+        );
 
         return { data: juryResult.data };
       } catch (err) {

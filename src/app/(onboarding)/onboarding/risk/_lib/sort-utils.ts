@@ -2,7 +2,7 @@ import type { AcademicBadge } from "@/lib/types";
 
 export const BADGE_ORDER_PRIORITY: Record<AcademicBadge, number> = {
   HIGH_RISK_REPLICATION: 1,
-  POTENTIAL_OVERLAP: 2,
+  RELATED_THESIS: 2,
   SAFE_ORIGINAL: 3,
 };
 

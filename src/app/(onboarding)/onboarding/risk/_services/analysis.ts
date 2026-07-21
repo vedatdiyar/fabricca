@@ -34,7 +34,7 @@ const qualitativeAuditItemZodSchema = z.object({
   relevanceExplanation: z.string(),
   originalityStatus: z.enum([
     "HIGH_RISK_REPLICATION",
-    "POTENTIAL_OVERLAP",
+    "RELATED_THESIS",
     "SAFE_ORIGINAL",
   ]),
   uniquenessGap: z.string(),
@@ -144,25 +144,22 @@ export async function analyzeOriginalityRisk(
       },
     );
 
-    // 2. Run originality audit comparing user matrix to candidate matrices
-    log.info("originality_audit_start", {
-      service: "originality",
-      data: { count: ingestedCandidates.length },
-    });
-    const auditStart = performance.now();
-
+    // 2. Run originality audit (batch LLM comparison + validation)
     const BATCH_SIZE = 3;
     const chunks: IngestedThesisCandidate[][] = [];
     for (let i = 0; i < ingestedCandidates.length; i += BATCH_SIZE) {
       chunks.push(ingestedCandidates.slice(i, i + BATCH_SIZE));
     }
 
-    log.info("originality_classification_start", {
+    log.info("originality_audit_start", {
       service: "originality",
       data: {
-        summary: `(${ingestedCandidates.length} theses partitioned into ${chunks.length} batches of size ${BATCH_SIZE} × qualitative audit)`,
+        count: ingestedCandidates.length,
+        batches: chunks.length,
+        summary: `(${ingestedCandidates.length} theses partitioned into ${chunks.length} batches of size ${BATCH_SIZE})`,
       },
     });
+    const auditStart = performance.now();
 
     const systemInstruction = buildQualitativeSystemInstruction();
 
@@ -190,14 +187,8 @@ export async function analyzeOriginalityRisk(
 
     const resultsArray = await Promise.all(batchPromises);
     const auditResults = resultsArray.flat();
-    const auditDuration = performance.now() - auditStart;
 
-    log.info("originality_audit_success", {
-      service: "originality",
-      durationMs: auditDuration,
-    });
-
-    // Validate all thesis IDs are present
+    // Validate all thesis IDs are present before declaring success
     const returnedIds = new Set(auditResults.map((r) => r.thesisId));
     for (const thesis of sortedTheses) {
       if (!returnedIds.has(thesis.id)) {
@@ -213,17 +204,18 @@ export async function analyzeOriginalityRisk(
       }
     }
 
-    const totalDuration = performance.now() - startTime;
-    log.info("originality_classification_success", {
+    const auditDuration = performance.now() - auditStart;
+    log.info("originality_audit_success", {
       service: "originality",
-      durationMs: totalDuration,
+      durationMs: auditDuration,
       data: {
+        validatedIds: sortedTheses.length,
+        resultCount: auditResults.length,
         ingestionDurationMs: ingestionDuration,
-        auditDurationMs: auditDuration,
-        totalDurationMs: totalDuration,
       },
     });
 
+    const totalDuration = performance.now() - startTime;
     log.groupEnd("originality_risk_analyze", totalDuration);
 
     return { auditResults };

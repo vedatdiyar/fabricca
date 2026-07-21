@@ -34,6 +34,7 @@ type OnboardingMatrixInput = ThesisMatrix;
  */
 export async function extractQueriesAction(
   matrix: OnboardingMatrixInput,
+  flowId?: string,
 ): Promise<
   | {
       success: true;
@@ -43,8 +44,7 @@ export async function extractQueriesAction(
     }
   | { error: string }
 > {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
+  const log = new Logger(flowId ?? createFlowId());
 
   log.info("originality_query_extract_start", {
     service: "originality",
@@ -85,10 +85,13 @@ export async function extractQueriesAction(
  * @param params - Study title and query array for Tezara
  * @returns Raw search results from Tezara, or an error
  */
-export async function executeSearchAction(params: {
-  researchCore: string;
-  tezaraQueries: string[];
-}): Promise<
+export async function executeSearchAction(
+  params: {
+    researchCore: string;
+    tezaraQueries: string[];
+  },
+  flowId?: string,
+): Promise<
   | {
       success: true;
       data: {
@@ -97,8 +100,7 @@ export async function executeSearchAction(params: {
     }
   | { error: string }
 > {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
+  const log = new Logger(flowId ?? createFlowId());
 
   log.info("originality_search_execute_start", {
     service: "originality",
@@ -148,12 +150,14 @@ export async function executeSearchAction(params: {
  * @param params - Thesis matrix + extracted Tezara queries
  * @returns Structured ScrapedTheses, or an error
  */
-export async function executeSearchAndSiftAction(params: {
-  matrix: OnboardingMatrixInput;
-  tezaraQueries: string[];
-}): Promise<{ success: true; data: ScrapedTheses } | { error: string }> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
+export async function executeSearchAndSiftAction(
+  params: {
+    matrix: OnboardingMatrixInput;
+    tezaraQueries: string[];
+  },
+  flowId?: string,
+): Promise<{ success: true; data: ScrapedTheses } | { error: string }> {
+  const log = new Logger(flowId ?? createFlowId());
 
   const fnStart = performance.now();
   log.groupStart("originality_search_and_sift");
@@ -217,12 +221,14 @@ export async function executeSearchAndSiftAction(params: {
  * @param params - Thesis matrix and raw Tezara search results
  * @returns Structured ScrapedTheses object with selected and eliminated theses, or an error
  */
-export async function siftThesesAction(params: {
-  matrix: OnboardingMatrixInput;
-  tezaraSearchResults: TezaraThesisDetails[][];
-}): Promise<{ success: true; data: ScrapedTheses } | { error: string }> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
+export async function siftThesesAction(
+  params: {
+    matrix: OnboardingMatrixInput;
+    tezaraSearchResults: TezaraThesisDetails[][];
+  },
+  flowId?: string,
+): Promise<{ success: true; data: ScrapedTheses } | { error: string }> {
+  const log = new Logger(flowId ?? createFlowId());
 
   log.info("originality_theses_sift_start", {
     service: "originality",
@@ -275,14 +281,16 @@ export async function siftThesesAction(params: {
  * @param params - Thesis matrix and scraped theses
  * @returns The complete originality report data, or an error message
  */
-export async function finalizeJuryAnalysisAction(params: {
-  matrix: OnboardingMatrixInput;
-  selectedTheses: TezaraThesisDetails[];
-}): Promise<
+export async function finalizeJuryAnalysisAction(
+  params: {
+    matrix: OnboardingMatrixInput;
+    selectedTheses: TezaraThesisDetails[];
+  },
+  flowId?: string,
+): Promise<
   { success: true; data: OriginalityReportData | null } | { error: string }
 > {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
+  const log = new Logger(flowId ?? createFlowId());
   const juryStart = performance.now();
 
   log.groupStart("originality_jury_finalize");

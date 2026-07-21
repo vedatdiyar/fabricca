@@ -36,21 +36,21 @@ interface AcademicBadgeMeta {
 
 export const ACADEMIC_BADGE_META: Record<AcademicBadge, AcademicBadgeMeta> = {
   HIGH_RISK_REPLICATION: {
-    title: "Kopya / Replikasyon Riski",
+    title: "İkiz Tez",
     description:
-      "Tüm bilimsel araştırma parametreleri teziniz ile tam uyumluluk göstermektedir. Özgünlük riski çok yüksektir.",
+      "Tezinizle birebir örtüşen araştırma parametrelerine sahiptir. Özgünlük beyanınızda mutlaka ele almanız gereken bir çalışmadır.",
     type: "danger",
   },
-  POTENTIAL_OVERLAP: {
-    title: "Kısmi Çakışma",
+  RELATED_THESIS: {
+    title: "İlişkili Çalışma",
     description:
-      "Benzer konu veya aktörleri içeriyor. Giriş bölümünde özgünlük farkınızı (gap) vurguladığınız sürece yazılabilir.",
+      "Ortak noktalar barındırmakla birlikte farklılaştığı alanlar sayesinde tezinize katkı sağlayabilir.",
     type: "warning",
   },
   SAFE_ORIGINAL: {
-    title: "Özgün / Güvenli",
+    title: "Faydalı",
     description:
-      "Teziniz için hiçbir risk teşkil etmez. Literatürde nasıl kullanacağınızı görmek için kılavuza tıklayın.",
+      "Tezinizle herhangi bir çakışması bulunmamaktadır. Literatür taramanızda rahatlıkla kullanabileceğiniz bir kaynaktır.",
     type: "success",
   },
 };
@@ -64,7 +64,7 @@ const ACADEMIC_BADGE_STYLE: Record<
     border: "border-red-500/20",
     text: "text-red-400",
   },
-  POTENTIAL_OVERLAP: {
+  RELATED_THESIS: {
     card: "bg-amber-500/10",
     border: "border-amber-500/20",
     text: "text-amber-400",

@@ -5,7 +5,7 @@ export type TemporalLabel = "OVERLAP" | "PAST" | "FUTURE" | "UNKNOWN";
 export type DimensionLevel = "LOW" | "MEDIUM" | "HIGH";
 
 export type AcademicBadge =
-  "SAFE_ORIGINAL" | "POTENTIAL_OVERLAP" | "HIGH_RISK_REPLICATION";
+  "SAFE_ORIGINAL" | "RELATED_THESIS" | "HIGH_RISK_REPLICATION";
 
 export type RelationshipBadge =
   "HIGH_RISK" | "CONTRIBUTION_READY" | "UNRELATED";

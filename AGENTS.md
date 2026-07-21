@@ -24,7 +24,7 @@ Bu uygulama, yüksek lisans ve doktora öğrencilerinin akademik araştırma, te
 Projede kullanılacak teknolojiler kesin olarak belirlenmiştir. Yapay zeka, geliştirme süreci boyunca bu yığının dışına çıkamaz ve alternatif kütüphaneler öneremez:
 
 - **Frontend & Backend Framework:** Next.js (App Router, Server Actions)
-- **Stil & UI Bileşenleri:** Tailwind CSS, Shadcn UI, Lucide React (İkonlar için)
+- **Stil & UI Bileşenleri:** Tailwind CSS, Shadcn UI, Lucide React (İkonlar için), `sonner` (Toast bildirimleri), `next-themes` (Karanlık tema)
 - **Veri Tabanı & ORM:** Neon Serverless PostgreSQL, Drizzle ORM
 - **Vektör Veri Tabanı (RAG):** Neon DB içinde entegre `pgvector` eklentisi
 - **LLM Modeli (Ana):** Google Gemini 3.1 Flash Lite (Tüm metin üretimi ve analiz işlemleri için)
@@ -48,6 +48,11 @@ Projenin çalışması ve dış servislerle entegrasyonu için aşağıdaki çev
 - `COHERE_API_KEY`: Cohere Rerank API anahtarı.
 - `OPENALEX_API_KEY`: OpenAlex API istek limitlerini artırmak için kullanılan anahtar.
 - `CROSSREF_CONTACT_EMAIL`: Crossref API isteklerinde "polite pool"a dahil olmak için kullanılan iletişim e-postası.
+- `TAVILY_API_KEY`: Tavily arama API anahtarı (literatür taraması).
+- `EXA_API_KEY`: Exa arama API anahtarı.
+- `SEMANTIC_SCHOLAR_API_KEY`: Semantic Scholar API anahtarı.
+- `CEREBRAS_API_KEY`: Cerebras API anahtarı.
+- `SEED_USER1_PASSWORD` & `SEED_USER2_PASSWORD`: Seed edilmiş kullanıcı hesaplarının şifreleri.
 
 ## 4. Klasör Yapısı (Folder Structure)
 
@@ -66,6 +71,7 @@ Proje, Next.js App Router'ın rota gruplama (route groups) özelliğini kullanar
 │   │   │       ├── boxes/            # Adım 3: Konu Kutuları
 │   │   │       └── literature-review/# Adım 4: Literatür Tarama
 │   │   └── (app)/                    # Giriş sonrası ana uygulama rotaları (Layout paylaşımlı)
+│   │       ├── _services/            # Route-group seviyesinde paylaşılan servisler
 │   │       ├── dashboard/            # Ana panel -> /dashboard
 │   │       ├── card-index/           # Kartoteks -> /card-index
 │   │       ├── advisor/              # Danışman Odası (RAG Chat) -> /advisor
@@ -78,7 +84,9 @@ Proje, Next.js App Router'ın rota gruplama (route groups) özelliğini kullanar
 │   └── lib/                          # Ortak kütüphaneler ve servis entegrasyonları
 │       ├── logger.ts                 # Yapılandırılmış Logger sınıfı
 │       ├── error-utils.ts            # Hata maskeleme ve sınıflandırma yardımcıları
-│       ├── services/                 # Harici API servis istemcileri (gemini, cohere, vb.)
+│       ├── services/                 # Harici API servis istemcileri (gemini, cohere, vb.) — barrel export: index.ts
+│       ├── tezara/                   # Tezara / Meilisearch tez veritabanı entegrasyonu (harici servis)
+│       ├── academic/                 # Akademik veri yardımcıları (DOI temizleme, CrossRef dönüşümleri)
 │       └── prompts/                  # Gemini ve diğer modeller için prompt şablonları
 ```
 
