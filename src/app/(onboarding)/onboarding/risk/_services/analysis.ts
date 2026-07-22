@@ -1,4 +1,5 @@
 import { generateStructuredContent } from "@/lib/services/gemini";
+import { generateCerebrasStructuredContent } from "@/lib/services/cerebras";
 import { FLASH_LITE_31, GEMINI_SEED } from "@/lib/constants";
 import { ThinkingLevel } from "@google/genai";
 import { z } from "zod";
@@ -69,7 +70,7 @@ export async function analyzeOriginalityRisk(
       mainClaim: params.mainClaim,
     };
 
-    // 1. Run ingestion on candidate theses to extract their 6-dimension matrices (Parallel LOW batches of 5)
+    // 1. Run ingestion on candidate theses to extract their 6-dimension matrices via Cerebras Gemma 4 31B (Single-pass)
     log.info("originality_ingestion_start", {
       service: "originality",
       data: { count: orderedTheses.length },
@@ -84,12 +85,6 @@ export async function analyzeOriginalityRisk(
       abstract: t.abstract || "",
     }));
 
-    const INGESTION_BATCH_SIZE = 5;
-    const thesisBatches: (typeof formattedTheses)[] = [];
-    for (let i = 0; i < formattedTheses.length; i += INGESTION_BATCH_SIZE) {
-      thesisBatches.push(formattedTheses.slice(i, i + INGESTION_BATCH_SIZE));
-    }
-
     type IngestionExtractedItem = {
       id: number;
       researchCore: string;
@@ -100,32 +95,28 @@ export async function analyzeOriginalityRisk(
       mainClaim: string;
     };
 
-    const ingestionBatchPromises = thesisBatches.map((batch, batchIdx) =>
-      generateStructuredContent<{ theses: IngestionExtractedItem[] }>(
-        FLASH_LITE_31,
-        ingestionSystemInstruction,
-        buildIngestionPrompt(batch),
-        ingestionResponseSchema,
-        log,
-        {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-          seed: GEMINI_SEED,
-          payloadStage: `originality_candidate_ingestion_b${batchIdx + 1}`,
-          quiet: true,
-        },
-      ),
+    const cerebrasPrompt = buildIngestionPrompt(formattedTheses);
+    const cerebrasResponse = await generateCerebrasStructuredContent<{
+      theses: IngestionExtractedItem[];
+    }>(
+      ingestionSystemInstruction,
+      cerebrasPrompt,
+      ingestionResponseSchema,
+      log,
+      {
+        payloadStage: "originality_candidate_ingestion_single_pass",
+      },
     );
 
-    const batchResults = await Promise.all(ingestionBatchPromises);
-    const allIngestedTheses = batchResults.flatMap((res) => res.theses);
-
+    const allIngestedTheses = cerebrasResponse?.theses || [];
     const ingestionDuration = performance.now() - ingestionStart;
+
     log.info("originality_ingestion_success", {
       service: "originality",
       durationMs: ingestionDuration,
       data: {
         count: allIngestedTheses.length,
-        batchCount: thesisBatches.length,
+        provider: "cerebras",
       },
     });
 
