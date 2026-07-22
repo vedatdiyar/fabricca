@@ -3,7 +3,7 @@ import { z } from "zod";
 import { generateStructuredContent } from "../gemini";
 import type { JsonSchema } from "../gemini";
 import { Logger } from "../../logger";
-import { FLASH_LITE_35, GEMINI_SEED } from "../../constants";
+import { FLASH_35, GEMINI_SEED } from "../../constants";
 
 // ============================================================================
 // Vanilla JSON Schema — LLM_INTEGRATION.md Rule 7
@@ -98,7 +98,7 @@ export async function sanitizeAcademicDataBulk(
   if (items.length === 0) return items;
 
   const result = await generateStructuredContent<SanitizeResponse>(
-    FLASH_LITE_35,
+    FLASH_35,
     SYSTEM_INSTRUCTION,
     JSON.stringify(items),
     SANITIZE_RESPONSE_SCHEMA,

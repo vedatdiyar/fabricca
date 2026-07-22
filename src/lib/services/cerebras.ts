@@ -150,18 +150,6 @@ export async function generateCerebrasStructuredContent<T>(
       throw new Error("Cerebras API returned empty completion content.");
     }
 
-    log.info("cerebras_api_success", {
-      service: "cerebras",
-      durationMs,
-      data: {
-        stage,
-        model,
-        promptTokens: data.usage?.prompt_tokens,
-        completionTokens: data.usage?.completion_tokens,
-        totalTokens: data.usage?.total_tokens,
-      },
-    });
-
     const parsed: T = JSON.parse(contentStr);
     log.groupEnd(`cerebras_${stage}_success`, durationMs);
     return parsed;

@@ -195,10 +195,6 @@ export function TezaraOverlapCards({ overlapTable }: TezaraOverlapCardsProps) {
 
                 {/* YOK PDF and metadata footer */}
                 <div className="flex justify-between items-center pt-2 border-t border-border/20">
-                  <span className="text-[10px] text-muted-foreground font-mono flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-primary/70 animate-pulse" />
-                    Niteliksel Yol Haritası Üretilmiştir.
-                  </span>
                   {item.yokPdfUrl && (
                     <a
                       href={item.yokPdfUrl}

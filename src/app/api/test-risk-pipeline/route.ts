@@ -22,31 +22,6 @@ const MOCK_SESSION = { userId: USER_ID, name: "Vedat Diyar Çelikkeser" };
 // Comparison helpers
 // ──────────────────────────────────────────────
 
-function deepEqual(a: unknown, b: unknown): boolean {
-  if (Object.is(a, b)) return true;
-  if (a === null || b === null || a === undefined || b === undefined)
-    return a === b;
-  if (typeof a !== typeof b) return false;
-  if (typeof a !== "object") return a === b;
-  if (Array.isArray(a) && Array.isArray(b)) {
-    if (a.length !== b.length) return false;
-    for (let i = 0; i < a.length; i++) {
-      if (!deepEqual(a[i], b[i])) return false;
-    }
-    return true;
-  }
-  const aObj = a as Record<string, unknown>;
-  const bObj = b as Record<string, unknown>;
-  const keysA = Object.keys(aObj).sort();
-  const keysB = Object.keys(bObj).sort();
-  if (keysA.length !== keysB.length) return false;
-  for (let i = 0; i < keysA.length; i++) {
-    if (keysA[i] !== keysB[i]) return false;
-    if (!deepEqual(aObj[keysA[i]], bObj[keysB[i]])) return false;
-  }
-  return true;
-}
-
 function findDifferences(a: unknown, b: unknown, path = ""): string[] {
   const diffs: string[] = [];
   if (Object.is(a, b)) return diffs;
@@ -86,12 +61,6 @@ function findDifferences(a: unknown, b: unknown, path = ""): string[] {
     diffs.push(...findDifferences(aObj[key], bObj[key], `${path}.${key}`));
   }
   return diffs;
-}
-
-function truncateJson(obj: unknown, maxLen = 600): string {
-  const str = JSON.stringify(obj, null, 2);
-  if (str.length <= maxLen) return str;
-  return str.substring(0, maxLen) + "\n... (truncated)";
 }
 
 // ──────────────────────────────────────────────
