@@ -109,11 +109,9 @@ export async function persistSubBoxEntry(
  * transaction. Uses thesisBoxId directly from each pool entry — no title lookup.
  *
  * @param literaturePool - Pool entries with thesisBoxId
- * @param onWarn - Optional warning callback
  */
 export async function persistLiteraturePool(
   literaturePool: LiteraturePoolEntry[],
-  onWarn?: (message: string, data?: Record<string, unknown>) => void,
 ): Promise<void> {
   const boxIds = literaturePool.map((e) => e.thesisBoxId);
   const boxes =
@@ -151,11 +149,11 @@ export async function persistLiteraturePool(
   }
 
   await db.transaction(async (tx) => {
-    const skippedResults = await Promise.all(
+    await Promise.all(
       literaturePool.map(async (entry) => {
         const articles = entryArticleMap.get(entry.thesisBoxId) ?? [];
 
-        const { toInsert, skipped } = await insertLiteratureBatch(
+        const { toInsert } = await insertLiteratureBatch(
           tx,
           entry.thesisBoxId,
           articles,
@@ -164,19 +162,8 @@ export async function persistLiteraturePool(
         if (toInsert.length > 0) {
           await tx.insert(libraryResources).values(toInsert);
         }
-
-        return skipped;
       }),
     );
-
-    const totalSkipped = skippedResults.reduce(
-      (sum, current) => sum + current,
-      0,
-    );
-
-    if (totalSkipped > 0) {
-      onWarn?.("confirm_literature_duplicates_total", { totalSkipped });
-    }
   });
 }
 

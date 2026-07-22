@@ -129,9 +129,7 @@ export async function confirmLiteratureAction(args: {
       return { error: "Thesis matrix not found." };
     }
 
-    await persistLiteraturePool(literaturePool, (msg, data) => {
-      log.info(msg, { service: "literature", data });
-    });
+    await persistLiteraturePool(literaturePool);
 
     try {
       revalidateOnboardingPaths();
