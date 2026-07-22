@@ -16,8 +16,8 @@ import {
 export type ExtractQueriesParams = ThesisMatrix;
 
 /**
- * Extracts 8 universal academic search queries for Tezara (4 TR + 4 EN) and 1-sentence Cohere semantic target
- * using Gemini based on the target thesis matrix parameters (researchCore, targetActors, mainClaim).
+ * Extracts 8 multi-angle academic queries (Subject, Topic, Intersection) for Tezara
+ * and 1-sentence Cohere semantic target using Gemini based on the target thesis matrix.
  *
  * @param params - The thesis matrix parameters.
  * @param log - The logger instance.
