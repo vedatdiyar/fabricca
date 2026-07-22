@@ -122,14 +122,20 @@ export const thesisBoxGenerationJsonSchema: JsonSchema = {
 export function buildThesisBoxGenerationSystemInstruction(): string {
   return `<constraints>
 - LANGUAGE: title/description/concepts in academic TURKISH; semanticQuery in %100 ENGLISH academic prose. No language mixing.
-- 5 QUADRANT ISOLATION — each quadrant's semanticQuery MUST be ontologically pure:
-  1. CONCEPTUAL: Pure theoretical abstraction. NO empirical actors, geography, or history. Split distinct theories into separate sub-boxes.
-  2. PROBLEMATIZATION: Concrete empirical actors + live tension BETWEEN them. Native proper nouns STRICTLY FORBIDDEN in semanticQuery — use ONLY English academic category names (e.g. "Marxist-Leninist factions in Country C"). Do NOT anonymize into vague placeholders. Geographical anchoring: MUST include country/region in English. Grammatical subject: THIS sub-box's actors MUST be the subject of dominant clauses; actors from other sub-boxes ONLY in dependent clauses.
-  3. CONTEXT: Macro-historical ruptures as structural pressure on the core subject. MUST explicitly name specific events, periods, and regional settings from the input.
-  4. DATA_PROTOCOL: Pure methodology. MUST name frameworks, traditions, and landmark methodologist names. Exclude empirical thesis actor names.
-  5. PRIMARY_MATERIAL: semanticQuery = "". Split multiple source categories into distinct sub-boxes.
-- semanticQuery: 800-1000 characters of dense prose. Start directly with a substantive noun/concept. Forbidden: "The research explores", "This study analyzes". No negative exclusion phrases — isolation through positive focus.
-- TITLES: Concrete empirical intent, 5-7 words max. Banned: "Analiz", "Çalışma", "Ampirik", "Kutu", "Literatür", "Kaynak", "Birincil Kaynak", "Başlık", "Quadrant", "İnceleme".
+- ABSOLUTE SUB-BOX ISOLATION — each sub-box query is COMPLETELY ISOLATED from every other sub-box. A query for sub-box A must NEVER reference concepts, actors, or events that belong to sub-box B, C, D, or E. Each sub-box is its own sealed ontological container.
+
+1. CONCEPTUAL: PURE THEORY ONLY. Zero empirical references. Forbidden in query: country names, person names, party names, event names, geographic terms, period names. Each sub-box query must focus on ONE specific theory and ONLY that theory — no merging distinct theories.
+
+2. PROBLEMATIZATION: Concrete empirical actors + live tension BETWEEN them. ZERO native proper nouns in semanticQuery. Forbidden: any specific party name, publication name, person name, organization name. Use ONLY English academic category names WITH geographical anchoring (country/region required alongside the category, e.g. "Kurdish political movement in Turkey" is valid, but "Ethnonationalist political movements" alone is too vague). ACTOR FIDELITY: The sub-box title determines THIS sub-box's actor — that actor MUST be the grammatical SUBJECT of dominant clauses.
+
+3. CONTEXT: Macro-historical ruptures as structural pressure. Name the specific event/period WITH geographical anchoring in the opening 5 words. Do NOT start with a generic phrase.
+
+4. DATA_PROTOCOL: Pure methodology. MUST name frameworks, traditions, landmark methodologist names. Zero thesis-specific actor names.
+
+5. PRIMARY_MATERIAL: semanticQuery = "". Split multiple source categories into distinct sub-boxes.
+
+- semanticQuery: MAXIMUM 1000 characters. Start directly with a substantive noun/concept. Forbidden openings: "The research explores", "This study analyzes", "This paper", "The article", "Macro-structural". Each query is ONE sub-box's concept ONLY — no merging.
+- TITLES: Concrete empirical intent, 5-7 words max. Banned: "Analiz", "Calisma", "Ampirik", "Kutu", "Literatur", "Kaynak", "Birincil Kaynak", "Baslik", "Quadrant", "Inceleme".
 - SUB-BOX COUNT: homogeneous → 1; heterogeneous → N>=2 (one per distinct entity). Max 4 concepts per quadrant.
 - Adhere strictly to the input matrix terminology. NO external ideological embellishment.
 - Output ONLY valid JSON matching the schema.
@@ -160,6 +166,6 @@ ${matrixJson}
 <task>
 Analyze the matrix above and produce the 5-quadrant epistemological box structure following the constraints and example.
 
-Key rule for PROBLEMATIZATION: This sub-box's empirical actors MUST be the grammatical subject of dominant clauses; other actors from the input appear ONLY in dependent clauses.
+CRITICAL — ABSOLUTE SUB-BOX ISOLATION: Each sub-box query must ONLY contain concepts belonging to THAT sub-box. Zero cross-sub-box contamination. No merging distinct theories in CONCEPTUAL. No swapping actors in PROBLEMATIZATION. No generic openings in CONTEXT.
 </task>`;
 }
