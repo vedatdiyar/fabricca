@@ -102,8 +102,7 @@ export async function analyzeOriginalityRisk(
 
     const allIngestedTheses: IngestionExtractedItem[] = [];
 
-    for (let bIndex = 0; bIndex < ingestionBatches.length; bIndex++) {
-      const batch = ingestionBatches[bIndex];
+    const ingestionPromises = ingestionBatches.map(async (batch, bIndex) => {
       const ingestionPrompt = buildIngestionPrompt(batch);
 
       const geminiResponse = await generateStructuredContent<{
@@ -124,7 +123,9 @@ export async function analyzeOriginalityRisk(
       if (geminiResponse?.theses) {
         allIngestedTheses.push(...geminiResponse.theses);
       }
-    }
+    });
+
+    await Promise.all(ingestionPromises);
 
     const ingestionDuration = performance.now() - ingestionStart;
 
