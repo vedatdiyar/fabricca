@@ -175,7 +175,7 @@ export async function analyzeOriginalityRisk(
     );
 
     // 2. Run originality audit (batch LLM comparison + validation)
-    const BATCH_SIZE = 4;
+    const BATCH_SIZE = 3;
     const chunks: IngestedThesisCandidate[][] = [];
     for (let i = 0; i < ingestedCandidates.length; i += BATCH_SIZE) {
       chunks.push(ingestedCandidates.slice(i, i + BATCH_SIZE));

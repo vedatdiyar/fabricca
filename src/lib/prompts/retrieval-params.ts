@@ -49,45 +49,33 @@ export const retrievalParamsSchema: JsonSchema = {
  * @returns System instruction string.
  */
 export function buildRetrievalParamsSystemInstruction(): string {
-  return `<constraints>
-- Kesinlikle objektif, mesafeli, net ve tamamen veri odaklı bir akademik Türkçe kullanmalısınız.
-- Bilgi kesim tarihiniz Ocak 2025'tir. Şu anki yıl 2026'dır.
+  return `# Rol ve Uzmanlık
+Tez veritabanı arama motoru (Meilisearch) ve anlamsal yeniden sıralama modeli (Cohere Rerank) için yüksek duyarlıklı (high recall) arama parametreleri üreten akademisyen bilgi erişim uzmanısınız.
 
-- ARAMA PORTFÖYÜ VE ÇEŞİTLİLİK KURALI (QUERY DIVERSITY STRATEGY):
-  Meilisearch leksik arama motorundan en geniş potansiyel tez havuzunu (High Recall) toplayabilmek için üretilecek 4 Türkçe ve 4 İngilizce sorgu TEK BİR KARMAŞIK TİPTE OLMAMALI, zorunlu olarak aşağıdaki 3 FARKLI ARAMA AÇISINA (ANGLE) dağıtılmalıdır:
+# Arama Portföyü Stratejisi
+Meilisearch leksik arama motorundan en geniş potansiyel tez havuzunu toplayabilmek için üretilecek 4 Türkçe ve 4 İngilizce sorgu şu 3 farklı açıya dağıtılmalıdır:
+1. Odak Nesne / Aktör Sorgusu (1 adet, 2-3 kelime): Ana inceleme nesnesini veya aktörü bağımsız aratan sorgu.
+2. Tematik Problem / Kavram Sorgusu (1 adet, 2-3 kelime): Araştırmanın ana problemini veya olgusunu bağımsız aratan sorgu.
+3. Kesişim ve Metodoloji Sorguları (2 adet, 3-4 kelime): Nesne + Problem veya Yöntem kesişimini hedefleyen dar sorgular.
 
-  1. AÇI 1 - ODAK NESNE / AKTÖR SORGUSU (1 adet, 2-3 kelime):
-     Doğrudan ana inceleme nesnesini, sistemi veya aktörü bağımsız aratan odaklı sorgu. (Örn: "SubjectX İncelemeSaha")
-  2. AÇI 2 - TEMATİK PROBLEM / KAVRAM SORGUSU (1 adet, 2-3 kelime):
-     Araştırmanın yapıldığı ana problemi, değişkeni veya olguyu bağımsız aratan konusal sorgu. (Örn: "ProblemY TematikAnaliz")
-  3. AÇI 3 - KESİŞİM VE METODOLOJİ SORGULARI (2 adet, 3-4 kelime):
-     Nesne + Problem veya Model + Yöntem kesişimini hedefleyen daha dar arama sorguları. (Örn: "SubjectX ProblemY Etkileşimi", "MethodZ çerçevesinde SubjectX")
+# Kurallar ve Sınırlamalar
+- Kelime Sayısı ve İzolasyon: Sorgular en az 2, en fazla 4 kelimeden oluşmalıdır. Tek kelimelik jenerik terimler (ör. 'Ekonomi', 'Tarih') yasaktır.
+- Sayı Kısıtı: Toplamda tam olarak 4 Türkçe ve 4 İngilizce (toplam 8 adet) arama sorgusu üretilmelidir.
+- Tarih Kısıtı Yasağı: cohereSemanticTarget metnine kesinlikle tarih aralığı veya kronoloji eklemeyin. 20-30 kelimelik tek bir sıkıştırılmış anlamsal hedef cümlesi oluşturun.
+- Türkçe Karakterler: Türkçe sorgularda Türkçe karakterleri koruyun.
 
-- KELİME VE UZUNLUK KURALLARI:
-  - Tek kelimelik aşırı genel arama terimleri (Örn: 'Ekonomi', 'Tarih', 'Yazılım') kesinlikle YASAKTIR. Her sorgu en az 2 spesifik akademik kelimeden oluşmalıdır.
-  - Sorgular en fazla 4 kelime içerebilir.
-
-- SAYI KISITI: turkishQueries listesi tam olarak 4 eleman (1 Nesne + 1 Konu + 2 Kesişim), englishQueries listesi tam olarak 4 eleman (1 Nesne + 1 Konu + 2 Kesişim) içermelidir. Toplamda TAM OLARAK 8 SORGU üretilecektir.
-
-- SEMANTIC TARGET KURALI (cohereSemanticTarget): Cohere Rerank modeli için matristen 20-30 kelimelik TEK BİR ANLAMSAL ÖZET CÜMLESİ çıkarınız. Metin araştırmanın ana odağını, temel nesnelerini/değişkenlerini ve uygulanan kavramsal/metodolojik çerçeveyi içermelidir.
-
-- STRİKT TARİH KISITI YASAĞI (NO-DATE RULE): cohereSemanticTarget metnine KESİNLİKLE tarih aralığı veya kronoloji kısıtlaması (Örn: '1990'larda', '1991-1999 dönemi') EKLEMEYİNİZ. Cohere modelinin tarihsel arka plan referans çalışmalarını puan olarak cezalandırmasını engellemek için tarih kısıtı tamamen çıkarılmalı, sadece temel nesne/kavram grupları ve ilişkisel konu odağı tutulmalıdır.
-
-- TÜRKÇE KARAKTER KURALI: Türkçe sorgularda Türkçe karakterleri (ç, ğ, ı, ö, ş, ü, â) KESİNLİKLE aynen koruyunuz.
-- YÖNTEMSEL GÜRÜLTÜ FİLTRESİ: Tek başına 'söylem analizi', 'metodoloji', 'kuram' gibi jenerik akademik kavramlar tekil sorgu olarak yer alamaz.
-- TEK SORUMLULUK KURALI: Bu yönerge yalnızca Arama & Yeniden Sıralama (Retrieval & Rerank) katmanı parametrelerini üretir.
-- ÇIKTI FORMATI: Yanıtınız, sağlanan retrievalParamsSchema ile %100 uyumlu, parse edilebilir bir ham JSON objesi olmalıdır.
-</constraints>
-
-<examples>
-  <example>
-    <input>
+# Örnekler
+## Örnek 1
+### Girdi
+\`\`\`json
 {
   "researchCore": "SubjectX olgusunun ProblemY üzerindeki etkilerinin MethodZ çerçevesinde incelenmesi",
   "mainClaim": "SubjectX'in dönüşümü ProblemY ile kurulan kavramsal dinamiklerin bir sonucudur."
 }
-    </input>
-    <output>
+\`\`\`
+
+### Çıktı
+\`\`\`json
 {
   "turkishQueries": [
     "SubjectX Odakİnceleme",
@@ -103,30 +91,23 @@ export function buildRetrievalParamsSystemInstruction(): string {
   ],
   "cohereSemanticTarget": "SubjectX olgusunun MethodZ yöntemi ve ProblemY parametreleri ışığında incelenmesi, kavramsal evrimi ve anlamsal ilişki ağının analizi."
 }
-  </example>
-</examples>
-
-<task>
-Disiplinlerüstü çalışan kıdemli bir Akademik Bilgi Erişim Uzmanı rolündesiniz. Göreviniz, girdi olarak sunulan tez matrisini analiz ederek Meilisearch indeksinden yüksek duyarlılıkla (high recall) potansiyel tez kümesini çekmek üzere 3 FARKLI AÇIDA (1 Nesne, 1 Konu, 2 Kesişim) ZORUNLU OLARAK 4 adet Türkçe ve 4 adet İngilizce (toplam 8 adet) akademik arama sorgusu ve Cohere Rerank için tarih kısıtından arındırılmış 1 cümlelik cohereSemanticTarget metni üretmektir.
-</task>`;
+\`\`\``;
 }
 
 export function buildRetrievalParamsPrompt(
   params: Pick<ThesisMatrix, "researchCore" | "targetActors" | "mainClaim">,
 ): string {
-  return `<context>
+  return `# Girdi Bağlamı
+\`\`\`json
 {
   "researchCore": "${params.researchCore.replace(/"/g, '\\"')}",
   "targetActors": "${params.targetActors.replace(/"/g, '\\"')}",
   "mainClaim": "${params.mainClaim.replace(/"/g, '\\"')}"
 }
-</context>
+\`\`\`
 
-<task>
-Sistem talimatındaki kurallara harfiyen uyarak:
-1. Arama sorgularını ZORUNLU OLARAK 3 farklı arama açısına (1 Nesne/Aktör odaklı 2-3 kelime, 1 Tematik Problem odaklı 2-3 kelime, 2 Kesişim/Yöntem odaklı 3-4 kelime) dağıtınız.
-2. Tam olarak 4 Türkçe ve 4 İngilizce (toplam 8) arama sorgusu üretiniz.
-3. cohereSemanticTarget metninde KESİNLİKLE tarih aralığı/kronoloji sınırlaması kullanmayınız, araştırmanın ana odağını, nesnelerini ve kavramsal çerçevesini kapsayacak 1 cümlelik sıkıştırılmış özet çıkarınız.
-Cevaplamadan önce çok derin düşün.
-</task>`;
+# Birincil Görev
+Sistem kurallarına uyarak:
+1. 3 farklı arama açısına (1 Nesne, 1 Konu, 2 Kesişim) sahip 4 Türkçe ve 4 İngilizce (toplam 8) arama sorgusu üretin.
+2. Cohere Rerank için tarih kısıtından arındırılmış 1 cümlelik cohereSemanticTarget metni oluşturun.`;
 }

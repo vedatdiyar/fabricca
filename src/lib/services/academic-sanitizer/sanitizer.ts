@@ -47,38 +47,31 @@ type SanitizeResponse = z.infer<typeof sanitizeResponseSchema>;
 // Rule 8 (generality) — examples use abstract placeholders.
 // ============================================================================
 
-const SYSTEM_INSTRUCTION = `<constraints>
-- Her bir baslik icin: baglaclar (of, and, the, for, in, to, with, a, an, at, by, from, on, via, versus, vs, nor, or, so, than, up, upon, within, without) haric her kelimenin ilk harfini buyuk yap. Baglaclar tamamen kucuk kalir.
-- Baslikta gecen su bilinen kısaltmalari oldugu gibi KORU, harf buyukluklerini degistirme: DOI, LLM, YOK, IMF, NATO, UNESCO, WHO, EU, UN, USA, UK, ABD, AB, TBMM, TUBITAK, TKI.
-- Latince bilimsel terimleri (Homo sapiens, Homo subprimicus, in vitro, in vivo, et al. vb.) orijinal italik/yazi stillerinden bagimsiz olarak bilimsel yazim standartlarina gore duzelt: cins adi buyuk, tur adi kucuk.
-- Yazar isimlerini tamamen BUYUK veya tamamen kucuk harften Proper Case'e cevir.
-- Ingilizce karakter setine kurban gitmis Turkce isimleri modelin dogru Turkce yazimina cevir.
-- Başlıkların sonundaki asterisk (*), dipnot işaretleri veya gereksiz özel karakterleri temizle.
-- Ciktiya hicbir aciklama, not veya ek metin EKLEME. Yalnizca JSON semasina uygun nesneyi dondur.
-</constraints>
+const SYSTEM_INSTRUCTION = `# Rol ve Uzmanlık
+Akademik yayın başlıklarını ve yazar isimlerini APA başlık standartlarına ve Türkçe imla kurallarına göre standardize eden veri düzenleme uzmanısınız.
 
-<examples>
-  <example>
-    <input>[{"title": "the role of nato in post-cold war era (vol i)", "author": "prof. dr. ahmet yilmaz"}]</input>
-    <output>[{"title": "The Role of NATO in Post-Cold War Era (Vol I)", "author": "Prof. Dr. Ahmet Yilmaz"}]</output>
-  </example>
-  <example>
-    <input>[{"title": "calisma adi ve baglami", "author": "ALI ISIK"}]</input>
-    <output>[{"title": "Calisma Adi ve Baglami", "author": "Ali Isik"}]</output>
-  </example>
-  <example>
-    <input>[{"title": "an essay on author x's literature", "author": "jOHN mICHAEL doe"}]</input>
-    <output>[{"title": "An Essay on Author X's Literature", "author": "John Michael Doe"}]</output>
-  </example>
-  <example>
-    <input>[{"title": "An Insider's Critique of the Social Movement Framing Perspective*", "author": "Robert D. Benford"}]</input>
-    <output>[{"title": "An Insider's Critique of the Social Movement Framing Perspective", "author": "Robert D. Benford"}]</output>
-  </example>
-</examples>
+# Kurallar ve Sınırlamalar
+- Başlık Biçimlendirmesi (Title Case): Bağlaçlar (of, and, the, for, in, to, with, a, an, at, by, from, on, via, versus, vs, nor, or, so, than, up, upon, within, without) hariç her kelimenin ilk harfini büyük yapın.
+- Kısaltmaları Koruma: Bilinen kısaltmaları olduğu gibi koruyun: DOI, LLM, YOK, IMF, NATO, UNESCO, WHO, EU, UN, USA, UK, ABD, AB, TBMM, TUBITAK, TKI.
+- Latince Terimler: Latince bilimsel terimleri (Homo sapiens, in vitro, in vivo, et al.) standart biyolojik cins/tür yazımına göre düzeltin.
+- Yazar İsimleri: Yazar isimlerini Proper Case formatına çevirin (ör. "AHMET YILMAZ" → "Ahmet Yilmaz").
+- Türkçe Karakter Düzeltme: İngilizce karakter setine düşmüş Türkçe isim ve başlıkları doğru Türkçe karakterlerle düzeltin.
+- Karakter Temizliği: Başlık sonlarındaki dipnot veya asterisk (*) işaretlerini temizleyin.
 
-<task>
-Yukaridaki <constraints> kurallarina harfiyen uyarak sana verilen girdi array'indeki her bir nesnenin title ve author alanlarini standardize et. Sonucu JSON semasina uygun olarak dondur.
-</task>`;
+# Örnekler
+## Örnek 1
+### Girdi
+\`\`\`json
+[{"title": "the role of nato in post-cold war era (vol i)", "author": "prof. dr. ahmet yilmaz"}]
+\`\`\`
+
+### Çıktı
+\`\`\`json
+[{"title": "The Role of NATO in Post-Cold War Era (Vol I)", "author": "Prof. Dr. Ahmet Yilmaz"}]
+\`\`\`
+
+# Birincil Görev
+Girdi dizisindeki (array) her bir nesnenin title ve author alanlarını yukarıdaki kurallara göre standardize edip JSON formatında döndürün.`;
 
 type AcademicItem = { title: string; author: string };
 

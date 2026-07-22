@@ -8,7 +8,7 @@ const subBoxSchema = z.object({
   semanticQuery: z
     .string()
     .describe(
-      "Must be empty string for primaryMaterial. For others, must be formal English academic prose, heavily anchored or purely theoretical based on the quadrant.",
+      "primaryMaterial için boş string olmalıdır. Diğerleri için kadran türüne göre güçlü bir şekilde temellendirilmiş veya tamamen teorik, resmî İngilizce akademik metin olmalıdır.",
     ),
   foundationalQueries: z
     .array(
@@ -28,11 +28,13 @@ const quadrantSchema = z.object({
   concepts: z
     .array(z.string())
     .max(4)
-    .describe("At most 4 concepts allowed. Never output 5."),
+    .describe("En fazla 4 kavram izin verilir. Asla 5 adet üretmeyin."),
   subBoxes: z
     .array(subBoxSchema)
     .min(1)
-    .describe("Dynamically 1 for homogeneous, N>=2 for heterogeneous targets."),
+    .describe(
+      "Homojen hedefler için dinamik olarak 1, heterojen hedefler için N>=2.",
+    ),
 });
 
 export const thesisBoxGenerationSchema = z.object({
@@ -41,7 +43,7 @@ export const thesisBoxGenerationSchema = z.object({
     allocation_rationale: z
       .string()
       .describe(
-        "Justification in Turkish for the chosen sub-box counts across all quadrants.",
+        "Tüm kadranlardaki alt kutu sayıları tercihi için Türkçe akademik gerekçe.",
       ),
   }),
   conceptual: quadrantSchema,
@@ -120,52 +122,40 @@ export const thesisBoxGenerationJsonSchema: JsonSchema = {
 };
 
 export function buildThesisBoxGenerationSystemInstruction(): string {
-  return `<constraints>
-- LANGUAGE: title/description/concepts in academic TURKISH; semanticQuery in %100 ENGLISH academic prose. No language mixing.
-- ABSOLUTE SUB-BOX ISOLATION — each sub-box query is COMPLETELY ISOLATED from every other sub-box. A query for sub-box A must NEVER reference concepts, actors, or events that belong to sub-box B, C, D, or E. Each sub-box is its own sealed ontological container.
+  return `# Rol ve Uzmanlık
+Girdi olarak verilen akademik tez matrisini analiz ederek 5 kadranlı epistemolojik konu kutusu (box) ve alt kutu (sub-box) yapısını oluşturan uzman bir akademik yapılandırma asistanısınız.
 
-1. CONCEPTUAL: PURE THEORY ONLY. Zero empirical references. Forbidden in query: country names, person names, party names, event names, geographic terms, period names. Each sub-box query must focus on ONE specific theory and ONLY that theory — no merging distinct theories.
+# Kurallar ve Sınırlamalar
+- Dil Kuralları: title, description ve concepts alanları akademik Türkçe; semanticQuery alanı tamamen (%100) İngilizce akademik metin olmalıdır.
+- Alt Kutu İzolasyon İlkesi: Her bir alt kutu sorgusu diğer tüm alt kutulardan tamamen bağımsızdır. Alt kutu A için yazılan sorgu; B, C, D veya E alt kutularının kavramlarına, aktörlerine veya olaylarına asla değinmemelidir.
+- Başlık Kuralları: Başlıklar 5-7 kelimeyi geçmeyen somut ifadeler olmalıdır. "Analiz", "Çalışma", "Ampirik", "Kutu", "İnceleme" gibi jenerik kelimeler kullanmayın.
+- Sorgu Sınırlamaları: semanticQuery maksimum 1000 karakter olmalıdır. "The research explores", "This study analyzes" gibi jenerik giriş kalıpları kullanmayın.
 
-2. PROBLEMATIZATION: Concrete empirical actors + live tension BETWEEN them. ZERO native proper nouns in semanticQuery. Forbidden: any specific party name, publication name, person name, organization name. Use ONLY English academic category names WITH geographical anchoring (country/region required alongside the category, e.g. "Kurdish political movement in Turkey" is valid, but "Ethnonationalist political movements" alone is too vague). ACTOR FIDELITY: The sub-box title determines THIS sub-box's actor — that actor MUST be the grammatical SUBJECT of dominant clauses.
+# Kadran Özel Kuralları
+1. CONCEPTUAL (Kavramsal): Yalnızca teorik kavramlar içerir. Ülke, kişi, parti, olay veya dönem gibi ampirik özel isimler yer alamaz.
+2. PROBLEMATIZATION (Problem Söylemi): Ampirik aktörler ve aralarındaki gerilimi konu alır. Özel ad kullanmayın; coğrafi olarak konumlandırılmış İngilizce akademik kategori isimleri kullanın (ör. "Kurdish political movement in Turkey").
+3. CONTEXT (Tarihsel/Mekânsal Bağlam): Tarihsel ve coğrafi kırılmaları kapsar. İlk 5 kelime içinde dönemi ve coğrafyayı adlandırın.
+4. DATA_PROTOCOL (Veri/Yöntem Protokolü): Araştırma yöntemini ve kurucu metodolog isimlerini kapsar. Teze özel aktör isimleri içermez.
+5. PRIMARY_MATERIAL (Birincil Kaynak): semanticQuery boş string ("") olmalıdır. Farklı kaynak türlerini ayrı alt kutulara bölün.
 
-3. CONTEXT: Macro-historical ruptures as structural pressure. Name the specific event/period WITH geographical anchoring in the opening 5 words. Do NOT start with a generic phrase.
+# Örnekler
+## Örnek 1
+### Girdi
+Z Olayı sırasında C Ülkesindeki X Aktörü ile Y Aktörü arasındaki etkileşim; W Kuramı; M Yöntemi (Yazar P). Kaynaklar: X belgeleri + Y arşivleri.
 
-4. DATA_PROTOCOL: Pure methodology. MUST name frameworks, traditions, landmark methodologist names. Zero thesis-specific actor names.
-
-5. PRIMARY_MATERIAL: semanticQuery = "". Split multiple source categories into distinct sub-boxes.
-
-- semanticQuery: MAXIMUM 1000 characters. Start directly with a substantive noun/concept. Forbidden openings: "The research explores", "This study analyzes", "This paper", "The article", "Macro-structural". Each query is ONE sub-box's concept ONLY — no merging.
-- TITLES: Concrete empirical intent, 5-7 words max. Banned: "Analiz", "Calisma", "Ampirik", "Kutu", "Literatur", "Kaynak", "Birincil Kaynak", "Baslik", "Quadrant", "Inceleme".
-- SUB-BOX COUNT: homogeneous → 1; heterogeneous → N>=2 (one per distinct entity). Max 4 concepts per quadrant.
-- Adhere strictly to the input matrix terminology. NO external ideological embellishment.
-- Output ONLY valid JSON matching the schema.
-</constraints>
-
-<examples>
-  <example>
-    <input>
-Interaction between Actor X and Actor Y in Country C during Event Z; Theory W; Method M (Author P). Sources: docs Cat X + archives Cat Y.
-    </input>
-    <output>
-- CONCEPTUAL: 1 sub-box → Theory W concepts.
-- PROBLEMATIZATION: 2 sub-boxes → Actor X pole, Actor Y pole in Country C.
-- CONTEXT: 1 sub-box → Event Z in Country C.
-- DATA_PROTOCOL: 1 sub-box → Method M (Author P).
-- PRIMARY_MATERIAL: 2 sub-boxes → "Official Docs of Category X" + "Independent Archives of Category Y".
-    </output>
-  </example>
-</examples>`;
+### Çıktı
+- CONCEPTUAL: 1 alt kutu → W Kuramı kavramları.
+- PROBLEMATIZATION: 2 alt kutu → C Ülkesindeki X Aktörü kutbu, Y Aktörü kutbu.
+- CONTEXT: 1 alt kutu → C Ülkesindeki Z Olayı.
+- DATA_PROTOCOL: 1 alt kutu → M Yöntemi (Yazar P).
+- PRIMARY_MATERIAL: 2 alt kutu → X Resmi Belgeleri + Y Bağımsız Arşivleri.`;
 }
 
 export function buildThesisBoxGenerationPrompt(params: ThesisMatrix): string {
   const matrixJson = JSON.stringify(params, null, 2);
-  return `<context>
+  return `# Girdi Bağlamı
 ${matrixJson}
-</context>
 
-<task>
-Analyze the matrix above and produce the 5-quadrant epistemological box structure following the constraints and example.
-
-CRITICAL — ABSOLUTE SUB-BOX ISOLATION: Each sub-box query must ONLY contain concepts belonging to THAT sub-box. Zero cross-sub-box contamination. No merging distinct theories in CONCEPTUAL. No swapping actors in PROBLEMATIZATION. No generic openings in CONTEXT.
-</task>`;
+# Birincil Görev
+Yukarıda sağlanan tez matrisini inceleyin. Belirtilen kadran ve alt kutu kurallarına harfiyen uyarak 5 kadranlı epistemolojik kutu yapısını JSON formatında üretin. Alt kutular arasında kavram veya aktör çakışması olmamasına özen gösterin.`;
 }

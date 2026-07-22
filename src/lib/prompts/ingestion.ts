@@ -74,17 +74,17 @@ export const ingestionResponseSchema: JsonSchema = {
  * @returns Sistem talimatı string'i
  */
 export function buildIngestionSystemInstruction(): string {
-  return `<constraints>
-- You are a strictly grounded extraction assistant. You ONLY extract information that is *explicitly written* in the provided text. You do NOT infer, assume, guess, or use your own knowledge or training data.
-- [EKSİK ALAN KURALI]: Eğer 6 alandan herhangi biri için verilen metinde açık, spesifik ve doğrudan bir bilgi yoksa, o alana "Belirtilmemiş" yazın. Asla tahmin yürütmeyin, uydurmayın, metinde olmayan bir teorisyen/yıl/yöntem eklemeyin.
-- [TEK KAYNAK KURALI]: Tüm bilgiler sadece sağlanan <tez id='X'> bloklarından alınmalıdır. Modelin kendi bilgisi KESİNLİKLE kullanılamaz.
-- [ÖZGÜN METİN KORUMA]: Çıkarılan akademik içerik, tezin özünden kopmayacak şekilde özgün ifadeleri korumalı, gereksiz yere yeniden yazılmamalı veya genelleştirilmemelidir.
-- ÇIKTI FORMATI: ingestionResponseSchema ile %100 uyumlu bir JSON objesi döndürün. Her tez kendi <tez id='X'> bloğundan bağımsız olarak parse edilmelidir.
-</constraints>
+  return `# Rol ve Uzmanlık
+Akademik tez metinlerinden ve özetlerinden doğrudan veri çıkaran uzman bir metin madenciliği asistanısınız.
 
-<task>
-Akademik tez özetlerinden 6 alanlı yapılandırılmış matris çıkaran uzman bir metin madencisi rolündesiniz. Göreviniz, her bir tez için başlık, yazar ve özet bilgilerini inceleyerek 6 ana alana ayırmaktır. Her bir tezi bağımsız olarak işleyin. Hiçbir bilgi uydurmayın, sadece metinde yazanı çıkarın.
-</task>`;
+# Kurallar ve Sınırlamalar
+- Sıkı Bağlam İlkesi: Yalnızca sağlanan tez özetlerinde açıkça yazılı olan bilgileri çıkarın. Asla dışarıdan bilgi eklemeyin, tahmin yürütmeyin veya varsayımda bulunmayın.
+- Eksik Alan Kuralı: Metinde açıkça geçmeyen alanlar için değer olarak kesinlikle "Belirtilmemiş" yazın.
+- Özgün Metin Koruma: Çıkarılan içeriklerde tezin akademik özgün ifadelerini koruyun; gereksiz genelleştirmeler yapmayın.
+- İzolasyon: Her tezi diğer tezlerden tamamen bağımsız olarak ayrıştırın.
+
+# Çıktı Biçimi
+- ingestionResponseSchema ile tam uyumlu bir JSON objesi döndürün.`;
 }
 
 // ============================================================================
@@ -93,7 +93,7 @@ Akademik tez özetlerinden 6 alanlı yapılandırılmış matris çıkaran uzman
 
 /**
  * Ingestion prompt oluşturur. Her tez için başlık, yazar ve özet bilgilerini
- * <tez id='X'> XML etiketleri içinde sarmalayarak LLM'e gönderir.
+ * <tez id='X'> etiketleri içinde sarmalayarak LLM'e gönderir.
  *
  * @param details - Tez detayları (id, title, author, abstract)
  * @returns Kullanıcı prompt string'i
@@ -103,20 +103,16 @@ export function buildIngestionPrompt(
 ): string {
   const thesisBlocks = details
     .map(
-      (t) => `<tez id="${t.id}">
-Başlık: ${t.title}
-Yazar: ${t.author}
-Özet:
-${t.abstract}
-</tez>`,
+      (t) => `### Tez #${t.id}
+- Başlık: ${t.title}
+- Yazar: ${t.author}
+- Özet: ${t.abstract}`,
     )
-    .join("\n");
+    .join("\n\n");
 
-  return `<context>
+  return `# Girdi Bağlamı
 ${thesisBlocks}
-</context>
 
-<task>
-Yukarıdaki <context> bloğunda <tez id='X'> etiketleriyle verilen her bir tez için, başlık, yazar ve özet bilgilerini inceleyerek 6 alana ayırın ve ingestionResponseSchema şemasına uygun JSON olarak döndürün. Metinde açıkça geçmeyen alanlar için "Belirtilmemiş" değerini kullanın. Her tezi bağımsız olarak işleyin.
-</task>`;
+# Birincil Görev
+Yukarıdaki bağlamda verilen her bir tezi bağımsız olarak inceleyin. Başlık, yazar ve özet bilgilerini 6 ana alana ayırarak JSON formatında döndürün. Metinde açıkça yer almayan alanlar için "Belirtilmemiş" değerini kullanın.`;
 }

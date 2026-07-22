@@ -8,61 +8,29 @@ import type { ThesisMatrix } from "../types";
  * @returns Yapay zekaya verilecek sistem talimatı string'i
  */
 export function buildQualitativeSystemInstruction(): string {
-  return `<constraints>
-- EVALUATION DISCIPLINE: Evaluate candidate studies against a target thesis matrix and categorize each study into EXACTLY ONE category using a strict sequential Decision Tree.
+  return `# Rol ve Uzmanlık
+Aday akademik çalışmaları hedef tez matrisi ile karşılaştırarak özgünlük risklerini ve literatür entegrasyon imkânlarını değerlendiren kıdemli bir akademik denetçi ve metodologsunuz.
 
-- ISOLATED EVALUATION PRINCIPLE: Evaluate each candidate thesis in complete isolation against the target thesis matrix. Do NOT let the presence of other candidate theses in the batch influence your judgment.
+# Kurallar ve Sınırlamalar
+- İzolasyon İlkesi: Her aday tezi diğer aday tezlerden tamamen bağımsız olarak değerlendirin.
+- Bağlam Bağlılığı: Değerlendirmeleri yalnızca verilen hedef tez matrisindeki parametrelere dayandırın. Spekülasyon yapmayın veya kurgusal bağlantılar üretmeyin.
+- Tematik Uyum Zorunluluğu: Yalnızca aktör adı ortaklığı (ör. bir siyasal hareket ismi) çalışmanın ilgili olduğunu göstermez. Araştırma konusu ve tematik eksen farklıysa çalışma doğrudan OUT_OF_SCOPE sınıfına alınmalıdır.
+- İlgililik Ayarı: HIGH_RISK_REPLICATION, RELATED_THESIS ve REFERENCE_MATERIAL durumlarında isRelevant: true; OUT_OF_SCOPE durumunda isRelevant: false olmalıdır.
 
-- STRICT MATRIX GROUNDING (NO EXTRAPOLATION):
-  - Base your evaluation and literature integration guide STRICTLY on the explicit parameters provided in the target thesis matrix (<target_thesis_matrix>).
-  - Do NOT invent, extrapolate, or hallucinate non-existent research topics, unstated thesis chapters, or fictional connections between the candidate study and the target thesis.
-  - If a candidate thesis does not clearly align with the explicit parameters in <target_thesis_matrix>, do NOT invent hypothetical usage scenarios.
+# İşlem Adımları (Karar Ağacı)
+1. Adım 1 (Aktör ve Konu Kontrolü): Aday çalışma farklı bir araştırma nesnesine mi odaklanıyor? Evet ise → OUT_OF_SCOPE.
+2. Adım 2 (Tematik Eksen Kontrolü): Aday çalışma farklı bir tematik problem alanına mı odaklanıyor? Evet ise → OUT_OF_SCOPE.
+3. Adım 3 (Sınıflandırma):
+   - HIGH_RISK_REPLICATION: Aynı zaman dilimi, aynı aktörler ve aynı kuramsal çerçeve.
+   - RELATED_THESIS: Aynı zaman dilimi ve aktörler, fakat farklı kuramsal çerçeve veya veri kümesi.
+   - REFERENCE_MATERIAL: Tarihsel öncül, kavramsal şecere veya kuramsal temel oluşturan önceki literatür.
+4. Adım 4 (Varsayılan Durum): Diğer durumlarda → OUT_OF_SCOPE.
 
-- BALANCED SCOPE & DECISION TREE ELIMINATION PIPELINE (EVALUATE CANDIDATE IN THIS STRICT SEQUENCE):
-
-  1. STEP 1: RESEARCH SUBJECT & FOCUS ALIGNMENT CHECK
-     Inspect the target thesis matrix's primary research subjects / core entities (<target_actors> / <research_core>).
-     - Does the candidate study focus primarily on DIFFERENT research entities, fundamentally different subject domains, or totally unrelated study objects?
-     - IF YES (and it also lacks any shared theoretical framework/methodology) -> MUST classify immediately as OUT_OF_SCOPE.
-
-  2. STEP 2: THEMATIC & ANALYTICAL AXIS CHECK
-     Inspect the target thesis matrix's analytical problem (<research_core>) and theoretical framework (<framework>).
-     - Does the candidate study focus on a DIFFERENT thematic axis, different problem statement, OR completely unrelated analytical field even if it belongs to the same broad academic discipline?
-     - IF YES (and it has no theoretical/methodological overlap with the target) -> MUST classify immediately as OUT_OF_SCOPE.
-
-  3. STEP 3: CATEGORIZATION OF ALIGNED STUDIES
-     For studies that PASS Step 1 or Step 2 (aligned subject, theme, or foundational framework):
-
-     a) HIGH_RISK_REPLICATION:
-        - SAME timeframe/context, SAME primary target subjects/entities, AND SAME theoretical/methodological framework (Direct originality threat).
-
-     b) RELATED_THESIS:
-        - SAME timeframe/context AND SAME primary target subjects/entities, BUT employing a DIFFERENT theoretical framework or analytical angle (e.g., different methodology, theory, or sub-focus).
-
-     c) REFERENCE_MATERIAL (FOUNDATIONAL & ANTECEDENT LITERATURE):
-        - The candidate study belongs to a PRIOR historical timeframe, foundational conceptual era, OR establishes the foundational **Theoretical Framework** / **Methodology** explicitly specified in <framework> or <research_core>.
-        - Mark as REFERENCE_MATERIAL ONLY if a researcher MUST cite it to establish the historical origins, conceptual genealogy, theoretical foundation, or literature baseline in the Literature Review / Introduction chapters.
-
-  4. STEP 4: DEFAULT FALLBACK
-     - Any candidate study that fails to demonstrate clear subject, thematic, or theoretical alignment with <target_thesis_matrix> MUST be classified as OUT_OF_SCOPE.
-
-- RELEVANCE DISCIPLINE:
-  - Set isRelevant: true STRICTLY for HIGH_RISK_REPLICATION, RELATED_THESIS, and REFERENCE_MATERIAL.
-  - Set isRelevant: false STRICTLY for OUT_OF_SCOPE.
-
-- OUTPUT PROSE MANDATE:
-  - relevanceExplanation: 1-2 sentence concise justification for EVERY thesis in Academic Turkish, strictly grounded in the target matrix parameters without speculation.
-  - uniquenessGap: Deep analysis for HIGH_RISK_REPLICATION and RELATED_THESIS ONLY. For REFERENCE_MATERIAL and OUT_OF_SCOPE, write strictly "N/A".
-  - literatureIntegration: Concrete, realistic usage instructions (e.g., "Giriş veya Kuramsal Çerçeve bölümünde temel teorik altyapıyı kurarken kullanılmalı") for HIGH_RISK_REPLICATION, RELATED_THESIS, and REFERENCE_MATERIAL. For OUT_OF_SCOPE, write strictly "N/A".
-
-- OUTPUT FORMAT: Return a JSON array matching qualitativeAnalysisJsonSchema exactly.
-</constraints>
-
-<task>
-Perform a deep originality audit and literature integration analysis using the Decision Tree pipeline above. Process each candidate thesis in isolation.
-Base all judgments strictly on the explicit context provided without speculating or inventing unstated connections.
-Return structured JSON matching the rules above.
-</task>`;
+# Çıktı Biçimi
+- relevanceExplanation: Türkçe 1-2 cümlelik öz gerekçe.
+- uniquenessGap: Yalnızca HIGH_RISK_REPLICATION ve RELATED_THESIS için temel fark (literatür boşluğu); diğerlerinde strictly "N/A".
+- literatureIntegration: HIGH_RISK_REPLICATION, RELATED_THESIS ve REFERENCE_MATERIAL için nerede ve nasıl kullanılacağı rehberi; OUT_OF_SCOPE için strictly "N/A".
+- qualitativeAnalysisJsonSchema ile uyumlu bir JSON dizisi döndürün.`;
 }
 
 export interface IngestedThesisCandidate {
@@ -81,7 +49,7 @@ export interface IngestedThesisCandidate {
 /**
  * Kullanıcı tez matrisi ile aday tezlerin çıkarılmış matris detaylarını birleştirerek karşılaştırma promptunu oluşturur.
  * Statik ve dinamik verilerin ayrımı, bağlam önbellekleme (context caching) kurallarına ve
- * XML yapısal kapsülleme standartlarına uygundur.
+ * Markdown yapısal kapsülleme standartlarına uygundur.
  *
  * @param matrix - Kullanıcının kendi tezine ait araştırma matrisi
  * @param theses - Karşılaştırılacak olan aday tezlerin çıkarılmış matris listesi
@@ -91,45 +59,32 @@ export function buildQualitativePrompt(
   matrix: ThesisMatrix,
   theses: IngestedThesisCandidate[],
 ): string {
-  const thesesXml = theses
+  const thesesMarkdown = theses
     .map(
-      (t) =>
-        `<thesis>
-<id>${t.id}</id>
-<title>${t.title}</title>
-<ingested_matrix>
-<research_core>${t.matrix.researchCore}</research_core>
-<spatial_context>${t.matrix.spatialContext}</spatial_context>
-<temporal_context>${t.matrix.temporalContext}</temporal_context>
-<theoretical_framework>${t.matrix.theoreticalFramework}</theoretical_framework>
-<methodology>${t.matrix.methodology}</methodology>
-<main_claim>${t.matrix.mainClaim}</main_claim>
-</ingested_matrix>
-</thesis>`,
+      (t) => `### Aday Tez #${t.id}
+- Başlık: ${t.title}
+- Araştırma Odağı: ${t.matrix.researchCore}
+- Mekânsal Bağlam: ${t.matrix.spatialContext}
+- Zamansal Bağlam: ${t.matrix.temporalContext}
+- Kuramsal Çerçeve: ${t.matrix.theoreticalFramework}
+- Yöntem: ${t.matrix.methodology}
+- Ana İddia: ${t.matrix.mainClaim}`,
     )
-    .join("\n");
+    .join("\n\n");
 
-  return `<context>
-<target_thesis_matrix>
-<research_core>${matrix.researchCore}</research_core>
-<target_actors>${matrix.targetActors}</target_actors>
-<context>${matrix.context}</context>
-<framework>${matrix.framework}</framework>
-<main_claim>${matrix.mainClaim}</main_claim>
-</target_thesis_matrix>
+  return `# Girdi Bağlamı
+## Hedef Tez Matrisi
+- Araştırma Odağı: ${matrix.researchCore}
+- Hedef Aktörler: ${matrix.targetActors}
+- Tarihsel/Mekânsal Bağlam: ${matrix.context}
+- Kuramsal Çerçeve: ${matrix.framework}
+- Ana İddia: ${matrix.mainClaim}
 
-<candidate_theses>
-${thesesXml}
-</candidate_theses>
-</context>
+## Değerlendirilecek Aday Tez Listesi
+${thesesMarkdown}
 
-<task>
-Read the target thesis matrix and compare it against each of the candidate theses in the context above in complete isolation.
-Generate a structured JSON evaluation containing the audit report and literature integration guide for each candidate.
-Write all textual explanations and guidelines in fluent, high-level Academic Turkish.
-Return exactly ${theses.length} objects, one per thesis, in the same order as the candidate_theses list above.
-Cevaplamadan önce çok derin düşün.
-</task>`;
+# Birincil Görev
+Hedef tez matrisini aday tezlerin her biriyle izole bir şekilde karşılaştırın. Belirtilen Karar Ağacı adımlarını izleyerek her aday tez için denetim raporu ve literatür entegrasyon rehberini Türkçe olarak hazırlayın. Toplam tam olarak ${theses.length} aday tez için JSON formatında değerlendirme döndürün.`;
 }
 
 export const qualitativeAnalysisJsonSchema: JsonSchema = {
