@@ -1,5 +1,5 @@
 import { generateStructuredContent } from "@/lib/services/gemini";
-import { FLASH_LITE_31, FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
+import { FLASH_LITE_31, GEMINI_SEED } from "@/lib/constants";
 import { ThinkingLevel } from "@google/genai";
 import { z } from "zod";
 import type { Logger } from "@/lib/logger";
@@ -102,7 +102,7 @@ export async function analyzeOriginalityRisk(
 
     const ingestionBatchPromises = thesisBatches.map((batch, batchIdx) =>
       generateStructuredContent<{ theses: IngestionExtractedItem[] }>(
-        FLASH_LITE_35,
+        FLASH_LITE_31,
         ingestionSystemInstruction,
         buildIngestionPrompt(batch),
         ingestionResponseSchema,
@@ -150,7 +150,7 @@ export async function analyzeOriginalityRisk(
     );
 
     // 2. Run originality audit (batch LLM comparison + validation)
-    const BATCH_SIZE = 3;
+    const BATCH_SIZE = 4;
     const chunks: IngestedThesisCandidate[][] = [];
     for (let i = 0; i < ingestedCandidates.length; i += BATCH_SIZE) {
       chunks.push(ingestedCandidates.slice(i, i + BATCH_SIZE));

@@ -85,7 +85,7 @@ function deduplicateSiftingResults(
 const RELEVANCE_SCORE_THRESHOLD = 0.75;
 
 /** Maximum number of candidate theses passing Cohere reranking to avoid hitting API limitations. */
-const COHERE_MAX_LIMIT = 39;
+const COHERE_MAX_LIMIT = 24;
 
 export type SiftAndFetchDetailsParams = ThesisMatrix;
 
