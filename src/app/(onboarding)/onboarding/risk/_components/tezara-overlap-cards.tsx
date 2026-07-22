@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   Cable,
   History,
-  Sparkles,
   FileX,
   FileText,
   FileSearch,

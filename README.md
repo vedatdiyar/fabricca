@@ -31,7 +31,7 @@ TEZARA (YÖK Ulusal Tez Merkezi) API'si üzerinden çalışan bir analiz motorud
 
 ### 3. Konu Kutuları (Thesis Boxes)
 
-Google Gemini 3.5 Flash-Lite tarafından tez matrisiniz analiz edilerek
+Google Gemini (`FLASH_LITE_31`) tarafından tez matrisiniz analiz edilerek
 otomatik oluşturulan kavramsal kutulardır. Altı tür kutu mevcuttur:
 
 - `PROBLEMATIZATION` — Problem Tanımlama
@@ -86,7 +86,7 @@ merkezi yönetim ekranı.
 | **Veri Tabanı**        | Neon Serverless PostgreSQL                            |
 | **ORM**                | Drizzle ORM (snake_case)                              |
 | **Vektör DB (RAG)**    | pgvector (Neon içinde)                                |
-| **LLM**                | Google Gemini 3.5 Flash-Lite                          |
+| **LLM**                | Google Gemini (`FLASH_LITE_31`)                       |
 | **Embedding**          | Cloudflare Workers AI (Qwen3-Embedding-0.6B, 768 dim) |
 | **Rerank**             | Cohere Rerank v4.0 Pro                                |
 | **Tez Veri Kaynağı**   | TEZARA (YÖK Tez)                                      |
