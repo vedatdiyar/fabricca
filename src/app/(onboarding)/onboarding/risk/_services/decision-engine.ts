@@ -1,4 +1,5 @@
 import type { Logger } from "@/lib/logger";
+import type { EliminationStage } from "@/db/schema";
 import type {
   AcademicBadge,
   RelationshipBadge,
@@ -22,10 +23,9 @@ export interface CalculatedComparisonItem {
   relevanceExplanation: string;
   originalityStatus: AcademicBadge;
   uniquenessGap: string;
-  replicationWarning: string;
-  literatureReviewUsage: string;
-  chapterIntegration: string;
-  conceptualBorrowing: string;
+  literatureIntegration: string;
+  isEliminated: boolean;
+  eliminationStage?: EliminationStage | null;
 }
 
 export interface CalculatedRelationshipsResult {
@@ -64,12 +64,25 @@ export function calculateRelationships(
     }
 
     let bucket: ThesisBucket = "IRRELEVANT";
-    if (auditItem.isRelevant) {
-      if (auditItem.originalityStatus === "HIGH_RISK_REPLICATION") {
-        bucket = "RISK";
-      } else {
-        bucket = "CONTRIBUTION";
-      }
+    let isEliminated = false;
+    let eliminationStage: EliminationStage | null = null;
+
+    if (
+      auditItem.originalityStatus === "HIGH_RISK_REPLICATION" ||
+      auditItem.originalityStatus === "RELATED_THESIS"
+    ) {
+      // Ana karşılaştırma tablosuna giden birincil rakipler
+      bucket = "PRIMARY_COMPETITOR";
+      isEliminated = false;
+    } else if (auditItem.originalityStatus === "REFERENCE_MATERIAL") {
+      // Dipnot / Arka plan kaynakları (Ana tabloyu şişirmez, kısa rehberiyle kalır)
+      bucket = "BACKGROUND_REFERENCE";
+      isEliminated = false;
+    } else {
+      // OUT_OF_SCOPE - Kapsam dışı elenenler
+      bucket = "IRRELEVANT";
+      isEliminated = true;
+      eliminationStage = "ANALYSIS";
     }
 
     items.push({
@@ -87,23 +100,23 @@ export function calculateRelationships(
       relevanceExplanation: auditItem.relevanceExplanation,
       originalityStatus: auditItem.originalityStatus,
       uniquenessGap: auditItem.uniquenessGap,
-      replicationWarning: auditItem.replicationWarning,
-      literatureReviewUsage: auditItem.literatureReviewUsage,
-      chapterIntegration: auditItem.chapterIntegration,
-      conceptualBorrowing: auditItem.conceptualBorrowing,
+      literatureIntegration: auditItem.literatureIntegration,
+      isEliminated,
+      eliminationStage,
     });
   }
 
   let globalBadge: RelationshipBadge = "UNRELATED";
-  const activeItems = items.filter((i) => i.isRelevant);
-  const riskItems = activeItems.filter((i) => i.bucket === "RISK");
-  const contributionItems = activeItems.filter(
-    (i) => i.bucket === "CONTRIBUTION",
+  const primaryCompetitors = items.filter(
+    (i) => i.bucket === "PRIMARY_COMPETITOR",
+  );
+  const hasHighRisk = primaryCompetitors.some(
+    (i) => i.originalityStatus === "HIGH_RISK_REPLICATION",
   );
 
-  if (riskItems.length > 0) {
+  if (hasHighRisk) {
     globalBadge = "HIGH_RISK";
-  } else if (contributionItems.length > 0) {
+  } else if (items.some((i) => !i.isEliminated)) {
     globalBadge = "CONTRIBUTION_READY";
   }
 

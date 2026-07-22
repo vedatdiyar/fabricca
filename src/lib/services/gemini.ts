@@ -104,7 +104,7 @@ export function sanitizeAndParseJson<T>(text: string): T {
  * Gemini modelinden yapılandırılmış JSON çıktısı almak için generic yardımcı.
  * Yanıt, verilen JSON şemasına göre JSON olarak parse edilir.
  *
- * @param modelName - Kullanılacak Gemini model adı (örn. GEMINI_MODEL sabiti)
+ * @param modelName - Kullanılacak Gemini model adı (örn. FLASH_LITE_31 sabiti)
  * @param systemInstruction - Sistem talimatı (persona + kurallar)
  * @param prompt - Kullanıcı promptu
  * @param schema - Yanıtın doğrulanacağı JSON şeması

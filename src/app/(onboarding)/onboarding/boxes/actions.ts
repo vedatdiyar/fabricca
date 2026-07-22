@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { thesisBoxes } from "@/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { generateStructuredContent } from "@/lib/services/gemini";
-import { GEMINI_MODEL, GEMINI_SEED } from "@/lib/constants";
+import { FLASH_LITE_31, GEMINI_SEED } from "@/lib/constants";
 import { ThinkingLevel } from "@google/genai";
 import { createFlowId, Logger } from "@/lib/logger";
 import { updateTag } from "next/cache";
@@ -101,7 +101,7 @@ export async function generateBoxesStructureAction(): Promise<
     });
 
     const generationResult = await generateStructuredContent<RawNestedResponse>(
-      GEMINI_MODEL,
+      FLASH_LITE_31,
       buildThesisBoxGenerationSystemInstruction(),
       geminiPrompt,
       thesisBoxGenerationJsonSchema,

@@ -1,5 +1,5 @@
 import { generateStructuredContent } from "@/lib/services/gemini";
-import { GEMINI_MODEL, INGESTION_MODEL, GEMINI_SEED } from "@/lib/constants";
+import { FLASH_LITE_31, FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 import { ThinkingLevel } from "@google/genai";
 import { z } from "zod";
 import type { Logger } from "@/lib/logger";
@@ -22,13 +22,10 @@ export interface QualitativeAuditItem {
   relevanceExplanation: string;
   originalityStatus: AcademicBadge;
   uniquenessGap: string;
-  replicationWarning: string;
-  literatureReviewUsage: string;
-  chapterIntegration: string;
-  conceptualBorrowing: string;
+  literatureIntegration: string;
 }
 
-const qualitativeAuditItemZodSchema = z.object({
+export const qualitativeAuditItemZodSchema = z.object({
   thesisId: z.number(),
   isRelevant: z.boolean(),
   relevanceExplanation: z.string(),
@@ -39,10 +36,7 @@ const qualitativeAuditItemZodSchema = z.object({
     "OUT_OF_SCOPE",
   ]),
   uniquenessGap: z.string(),
-  replicationWarning: z.string(),
-  literatureReviewUsage: z.string(),
-  chapterIntegration: z.string(),
-  conceptualBorrowing: z.string(),
+  literatureIntegration: z.string(),
 });
 
 export const qualitativeBatchResponseZodSchema = z.array(
@@ -108,7 +102,7 @@ export async function analyzeOriginalityRisk(
 
     const ingestionBatchPromises = thesisBatches.map((batch, batchIdx) =>
       generateStructuredContent<{ theses: IngestionExtractedItem[] }>(
-        INGESTION_MODEL,
+        FLASH_LITE_35,
         ingestionSystemInstruction,
         buildIngestionPrompt(batch),
         ingestionResponseSchema,
@@ -179,7 +173,7 @@ export async function analyzeOriginalityRisk(
       const prompt = buildQualitativePrompt(userThesis, chunk);
 
       return generateStructuredContent<QualitativeAuditItem[]>(
-        GEMINI_MODEL,
+        FLASH_LITE_31,
         systemInstruction,
         prompt,
         qualitativeAnalysisJsonSchema,

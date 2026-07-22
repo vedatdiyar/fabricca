@@ -13,7 +13,8 @@ export type AcademicBadge =
 export type RelationshipBadge =
   "HIGH_RISK" | "CONTRIBUTION_READY" | "UNRELATED";
 
-export type ThesisBucket = "RISK" | "CONTRIBUTION" | "IRRELEVANT";
+export type ThesisBucket =
+  "PRIMARY_COMPETITOR" | "BACKGROUND_REFERENCE" | "IRRELEVANT";
 
 export type OnboardingActionResult =
   | { success: true; isProcessing?: boolean; error?: never }
@@ -43,48 +44,30 @@ export interface TezaraThesisDetails {
   language?: string;
 }
 
+export interface OriginalityReportItem {
+  id: number;
+  title: string;
+  author: string;
+  university: string;
+  year: number;
+  thesisType: string;
+  department: string;
+  yokPdfUrl?: string;
+  abstract?: string;
+  isRelevant: boolean;
+  relevanceExplanation: string;
+  originalityStatus: AcademicBadge;
+  uniquenessGap: string;
+  literatureIntegration: string;
+}
+
 export interface OriginalityReportData {
   tezaraResults: {
     relationshipBadge: RelationshipBadge;
-    overlapTable: {
-      id: number;
-      title: string;
-      author: string;
-      university: string;
-      year: number;
-      thesisType: string;
-      department: string;
-      yokPdfUrl?: string;
-      abstract?: string;
-      isRelevant: boolean;
-      relevanceExplanation: string;
-      originalityStatus: AcademicBadge;
-      uniquenessGap: string;
-      replicationWarning: string;
-      literatureReviewUsage: string;
-      chapterIntegration: string;
-      conceptualBorrowing: string;
-    }[];
-    eliminatedTheses: {
-      id: number;
-      title: string;
-      author: string;
-      university: string;
-      year: number;
-      thesisType: string;
-      department: string;
-      yokPdfUrl?: string;
-      abstract?: string;
-      isRelevant: boolean;
-      relevanceExplanation: string;
-      originalityStatus: AcademicBadge;
-      uniquenessGap: string;
-      replicationWarning: string;
-      literatureReviewUsage: string;
-      chapterIntegration: string;
-      conceptualBorrowing: string;
+    overlapTable: OriginalityReportItem[];
+    eliminatedTheses: (OriginalityReportItem & {
       eliminationStage: "ANALYSIS";
-    }[];
+    })[];
   };
 }
 

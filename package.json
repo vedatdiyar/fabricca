@@ -12,7 +12,8 @@
     "db:push": "drizzle-kit push --force",
     "db:seed": "tsx src/db/seed.ts",
     "run:analysis": "npx tsx scripts/run-analysis.ts",
-    "test:stress": "npx tsx tests/stress/run-integration-tests.ts"
+    "test:stress": "npx tsx tests/stress/run-integration-tests.ts",
+    "validate:ingestion": "npx tsx scripts/validate-ingestion-fidelity.ts"
   },
   "dependencies": {
     "@google/genai": "^2.8.0",

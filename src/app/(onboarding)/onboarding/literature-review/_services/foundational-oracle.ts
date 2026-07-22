@@ -2,7 +2,7 @@ import {
   generateStructuredContent,
   type JsonSchema,
 } from "@/lib/services/gemini";
-import { GEMINI_MODEL, GEMINI_SEED } from "@/lib/constants";
+import { FLASH_LITE_31, GEMINI_SEED } from "@/lib/constants";
 import { ThinkingLevel } from "@google/genai";
 import { Logger } from "@/lib/logger";
 import { z } from "zod";
@@ -121,7 +121,7 @@ For each sub-box in the <context> block above, select the most appropriate found
 </task>`;
 
   const result = await generateStructuredContent<BulkSelectionResult>(
-    GEMINI_MODEL,
+    FLASH_LITE_31,
     BULK_FOUNDATIONAL_JURY_PROMPT,
     prompt,
     bulkSelectSchema,

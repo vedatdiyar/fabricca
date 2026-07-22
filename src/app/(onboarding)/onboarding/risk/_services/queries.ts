@@ -1,18 +1,14 @@
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredContent } from "@/lib/services/gemini";
-import { GEMINI_MODEL, GEMINI_SEED } from "@/lib/constants";
+import { FLASH_LITE_31, GEMINI_SEED } from "@/lib/constants";
 import type { Logger } from "@/lib/logger";
 import type { ThesisMatrix } from "@/lib/types";
 import {
-  litKeywordExtractionSchema,
-  buildLitKeywordExtractionSystemInstruction,
-  buildLitKeywordPrompt,
+  retrievalParamsSchema,
+  buildRetrievalParamsSystemInstruction,
+  buildRetrievalParamsPrompt,
+  type RetrievalParamsResponse,
 } from "@/lib/prompts";
-
-interface LitKeywordExtractionResponse {
-  turkishQueries: string[];
-  englishQueries: string[];
-}
 
 /**
  * Parameter interface for query extraction function.
@@ -20,18 +16,19 @@ interface LitKeywordExtractionResponse {
 export type ExtractQueriesParams = ThesisMatrix;
 
 /**
- * Extracts academic queries for Tezara using Gemini based on the
- * target thesis matrix.
+ * Extracts 8 dyadic academic queries for Tezara and 1-sentence Cohere semantic target
+ * using Gemini based on the target thesis matrix.
  *
  * @param params - The thesis matrix parameters.
  * @param log - The logger instance.
- * @returns An object containing arrays of Tezara queries.
+ * @returns Object containing tezaraQueries array and cohereSemanticTarget string.
  */
 export async function extractQueries(
   params: ExtractQueriesParams,
   log: Logger,
 ): Promise<{
   tezaraQueries: string[];
+  cohereSemanticTarget: string;
 }> {
   log.file("queries.ts:32");
   const startTime = performance.now();
@@ -43,16 +40,16 @@ export async function extractQueries(
       mainClaim: params.mainClaim,
     };
 
-    const keywordPrompt = buildLitKeywordPrompt(geminiInput);
+    const keywordPrompt = buildRetrievalParamsPrompt(geminiInput);
 
-    log.prompt(`${GEMINI_MODEL} (keywords)`, keywordPrompt);
+    log.prompt(`${FLASH_LITE_31} (keywords)`, keywordPrompt);
 
     const keywordResult =
-      await generateStructuredContent<LitKeywordExtractionResponse>(
-        GEMINI_MODEL,
-        buildLitKeywordExtractionSystemInstruction(),
+      await generateStructuredContent<RetrievalParamsResponse>(
+        FLASH_LITE_31,
+        buildRetrievalParamsSystemInstruction(),
         keywordPrompt,
-        litKeywordExtractionSchema,
+        retrievalParamsSchema,
         log,
         {
           thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
@@ -72,35 +69,32 @@ export async function extractQueries(
 
     const rawQueries = [...turkishList, ...englishList];
 
-    // Filter to enforce 2-3 word limits, and allow 1-word queries only if they appear in matrixText
-    const matrixText = `${params.researchCore} ${params.mainClaim}`;
+    // Filter to enforce 2-4 word limits for dyadic queries
     let tezaraQueries = rawQueries.filter((q) => {
       const trimmed = q.trim();
       const wordCount = trimmed.split(/\s+/).length;
-      if (wordCount === 2 || wordCount === 3) {
-        return true;
-      }
-      if (wordCount === 1) {
-        // Topic-agnostic check: 1-word queries are allowed only if the word appears in the matrix text
-        const word = trimmed.toLowerCase();
-        const escapedWord = word.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
-        const regex = new RegExp(
-          `(?:^|[^a-zA-ZğüşıöçĞÜŞİÖÇ])(${escapedWord})(?:$|[^a-zA-ZğüşıöçĞÜŞİÖÇ])`,
-          "i",
-        );
-        return regex.test(matrixText);
-      }
-      return false;
+      return wordCount >= 2 && wordCount <= 4;
     });
 
-    // Remove duplicates and limit to 16
-    tezaraQueries = Array.from(new Set(tezaraQueries)).slice(0, 16);
+    // Remove duplicates and limit to 8 strict dyadic queries (4 TR + 4 EN)
+    tezaraQueries = Array.from(new Set(tezaraQueries)).slice(0, 8);
+
+    const cohereSemanticTarget =
+      typeof keywordResult?.cohereSemanticTarget === "string"
+        ? keywordResult.cohereSemanticTarget.trim()
+        : `${params.researchCore} - ${params.targetActors}`;
+
+    log.data("extact_queries_result", {
+      tezaraQueriesCount: tezaraQueries.length,
+      cohereSemanticTarget,
+    });
 
     const durationMs = performance.now() - startTime;
     log.groupEnd("originality_queries_extract", durationMs);
 
     return {
       tezaraQueries,
+      cohereSemanticTarget,
     };
   } catch (err) {
     const durationMs = performance.now() - startTime;

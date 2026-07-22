@@ -108,10 +108,7 @@ export const originalityReports = pgTable(
       .notNull()
       .default("OUT_OF_SCOPE"),
     uniquenessGap: text("uniqueness_gap"),
-    replicationWarning: text("replication_warning"),
-    literatureReviewUsage: text("literature_review_usage"),
-    chapterIntegration: text("chapter_integration"),
-    conceptualBorrowing: text("conceptual_borrowing"),
+    literatureIntegration: text("literature_integration"),
     /** Flag for eliminated theses — when true, hidden from the main overlap table */
     isEliminated: boolean().default(false).notNull(),
     /** Elimination stage: SIFTING (before Cohere rerank) or ANALYSIS (after jury) */

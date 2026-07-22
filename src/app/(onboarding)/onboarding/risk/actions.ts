@@ -40,6 +40,7 @@ export async function extractQueriesAction(
       success: true;
       data: {
         tezaraQueries: string[];
+        cohereSemanticTarget: string;
       };
     }
   | { error: string }
@@ -55,16 +56,19 @@ export async function extractQueriesAction(
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
 
-    const { tezaraQueries } = await extractQueries(matrix, log);
+    const { tezaraQueries, cohereSemanticTarget } = await extractQueries(
+      matrix,
+      log,
+    );
 
     log.info("originality_query_extract_success", {
       service: "originality",
-      data: { context: matrix.researchCore },
+      data: { context: matrix.researchCore, cohereSemanticTarget },
     });
 
     return {
       success: true,
-      data: { tezaraQueries },
+      data: { tezaraQueries, cohereSemanticTarget },
     };
   } catch (err) {
     log.error("originality_query_extract_failed", {
@@ -147,13 +151,14 @@ export async function executeSearchAction(
  * the results through Cohere Rerank — all on the server side, no large
  * payloads transferred to the client.
  *
- * @param params - Thesis matrix + extracted Tezara queries
+ * @param params - Thesis matrix + extracted Tezara queries + optional cohereSemanticTarget
  * @returns Structured ScrapedTheses, or an error
  */
 export async function executeSearchAndSiftAction(
   params: {
     matrix: OnboardingMatrixInput;
     tezaraQueries: string[];
+    cohereSemanticTarget?: string;
   },
   flowId?: string,
 ): Promise<{ success: true; data: ScrapedTheses } | { error: string }> {
@@ -198,6 +203,7 @@ export async function executeSearchAndSiftAction(
       },
       tezaraSearchResults,
       log,
+      params.cohereSemanticTarget,
     );
 
     return {
@@ -325,11 +331,6 @@ export async function finalizeJuryAnalysisAction(
     );
 
     // ── Decision engine + DB persist ──
-    log.info("report_persist_start", {
-      service: "originality",
-      data: { count: validDetails.length, context: params.matrix.researchCore },
-    });
-
     const relationshipResult = calculateRelationships(
       auditResults,
       validDetails,
@@ -347,29 +348,44 @@ export async function finalizeJuryAnalysisAction(
 
     // Sanitize titles and authors for active theses
     if (activeTheses.length > 0) {
+      log.info("sanitize_academic_data_start", {
+        service: "originality",
+        data: { count: activeTheses.length },
+      });
+
       const sanitized = await sanitizeAcademicDataBulk(
         activeTheses.map((item) => ({
           title: item.title,
           author: item.author,
         })),
+        log,
       );
+
       for (let i = 0; i < activeTheses.length; i++) {
         if (sanitized[i]) {
           activeTheses[i].title = sanitized[i].title;
           activeTheses[i].author = sanitized[i].author;
         }
       }
+
+      log.info("sanitize_academic_data_success", {
+        service: "originality",
+        data: { count: activeTheses.length },
+      });
     }
 
     const eliminatedTheses = relationshipResult.comparisonTable.filter(
-      (item) => item.bucket === "IRRELEVANT",
+      (item) => item.isEliminated,
+    );
+    const relevantTheses = relationshipResult.comparisonTable.filter(
+      (item) => !item.isEliminated,
     );
 
     // Build qualitative report data
     const reportData: OriginalityReportData = {
       tezaraResults: {
         relationshipBadge: relationshipResult.globalRelationshipBadge,
-        overlapTable: activeTheses.map((item) => ({
+        overlapTable: relevantTheses.map((item) => ({
           id: item.id,
           title: item.title,
           author: item.author,
@@ -383,10 +399,7 @@ export async function finalizeJuryAnalysisAction(
           relevanceExplanation: item.relevanceExplanation,
           originalityStatus: item.originalityStatus,
           uniquenessGap: item.uniquenessGap,
-          replicationWarning: item.replicationWarning,
-          literatureReviewUsage: item.literatureReviewUsage,
-          chapterIntegration: item.chapterIntegration,
-          conceptualBorrowing: item.conceptualBorrowing,
+          literatureIntegration: item.literatureIntegration,
         })),
         eliminatedTheses: eliminatedTheses.map((item) => ({
           id: item.id,
@@ -402,17 +415,14 @@ export async function finalizeJuryAnalysisAction(
           relevanceExplanation: item.relevanceExplanation,
           originalityStatus: item.originalityStatus,
           uniquenessGap: item.uniquenessGap,
-          replicationWarning: item.replicationWarning,
-          literatureReviewUsage: item.literatureReviewUsage,
-          chapterIntegration: item.chapterIntegration,
-          conceptualBorrowing: item.conceptualBorrowing,
-          eliminationStage: "ANALYSIS",
+          literatureIntegration: item.literatureIntegration,
+          eliminationStage: "ANALYSIS" as const,
         })),
       },
     };
 
-    // Build database rows to insert
-    const dbRows = activeTheses.map((item) => ({
+    // Build database rows to insert — all items from comparisonTable
+    const dbRows = relationshipResult.comparisonTable.map((item) => ({
       userId: session.userId,
       externalThesisId: item.id,
       title: item.title,
@@ -427,12 +437,9 @@ export async function finalizeJuryAnalysisAction(
       relevanceExplanation: item.relevanceExplanation,
       originalityStatus: item.originalityStatus,
       uniquenessGap: item.uniquenessGap,
-      replicationWarning: item.replicationWarning,
-      literatureReviewUsage: item.literatureReviewUsage,
-      chapterIntegration: item.chapterIntegration,
-      conceptualBorrowing: item.conceptualBorrowing,
-      isEliminated: false,
-      eliminationStage: null,
+      literatureIntegration: item.literatureIntegration,
+      isEliminated: item.isEliminated,
+      eliminationStage: item.eliminationStage ?? null,
       updatedAt: new Date(),
     }));
 
@@ -446,19 +453,11 @@ export async function finalizeJuryAnalysisAction(
       }
     });
 
-    log.info("report_persist_success", {
-      service: "originality",
-      data: {
-        activeCount: activeTheses.length,
-        eliminatedCount: eliminatedTheses.length,
-      },
-    });
-
     updateTag(CACHE_TAGS.originalityReport);
 
     return { success: true, data: reportData };
   } catch (err) {
-    log.error("report_persist_failed", {
+    log.error("finalize_jury_failed", {
       service: "originality",
       error: err,
       data: { context: params.matrix.researchCore },

@@ -85,7 +85,7 @@ function deduplicateSiftingResults(
 const RELEVANCE_SCORE_THRESHOLD = 0.75;
 
 /** Maximum number of candidate theses passing Cohere reranking to avoid hitting API limitations. */
-const COHERE_MAX_LIMIT = 42;
+const COHERE_MAX_LIMIT = 39;
 
 export type SiftAndFetchDetailsParams = ThesisMatrix;
 
@@ -93,18 +93,20 @@ export type SiftAndFetchDetailsParams = ThesisMatrix;
  * Runs Cohere Rerank v4 Pro on validated thesis abstracts and returns the IDs
  * of those that meet or exceed the relevance threshold, capped at a maximum limit.
  *
- * @param params - The thesis matrix used as the rerank query.
+ * @param params - The thesis matrix used as the rerank query fallback.
  * @param validDetails - Theses with valid abstracts to rerank.
  * @param log - Logger instance.
+ * @param cohereSemanticTarget - Optional 1-sentence compressed semantic target.
  * @returns Array of thesis IDs with relevanceScore >= 0.75.
  */
 async function rerankAndSelectTheses(
   params: SiftAndFetchDetailsParams,
   validDetails: TezaraThesisDetails[],
   log: Logger,
+  cohereSemanticTarget?: string,
 ): Promise<number[]> {
   try {
-    const query = formatRerankQuery(params);
+    const query = formatRerankQuery(params, cohereSemanticTarget);
     const documents = formatRerankDocuments(validDetails);
 
     const { results } = await rerankTheses(query, documents, log);
@@ -126,6 +128,7 @@ async function rerankAndSelectTheses(
       capped: capped.length,
       threshold: RELEVANCE_SCORE_THRESHOLD,
       limit: COHERE_MAX_LIMIT,
+      queryLength: query.length,
     });
 
     return capped.map((r) => validDetails[r.index].id);
@@ -142,14 +145,15 @@ async function rerankAndSelectTheses(
 /**
  * Deduplicates search results (abstract'lar zaten searchTezara'dan geldiği
  * için ayrı bir fetch gerekmez), abstract filtresi uygular, Cohere Rerank
- * v4 Pro ile puanlar ve relevanceScore >= 0.80 olan tezleri döndürür.
+ * v4 Pro ile puanlar ve relevanceScore >= 0.75 olan tezleri döndürür.
  *
- * Akış: dedup → abstract filter → Cohere rerank → score ≥ 0.80
+ * Akış: dedup → abstract filter → Cohere rerank (via cohereSemanticTarget) → score ≥ 0.75
  */
 export async function siftAndFetchDetails(
   params: SiftAndFetchDetailsParams,
   tezaraSearchResults: TezaraThesisDetails[][],
   log: Logger,
+  cohereSemanticTarget?: string,
 ): Promise<{
   finalTheses: TezaraThesisDetails[];
   eliminatedTheses: TezaraThesisDetails[];
@@ -166,11 +170,20 @@ export async function siftAndFetchDetails(
 
   log.info("cohere_rerank_start", {
     service: "originality",
-    data: { count: validDetails.length, context: params.researchCore },
+    data: {
+      count: validDetails.length,
+      context: params.researchCore,
+      cohereSemanticTarget,
+    },
   });
 
   try {
-    const topIds = await rerankAndSelectTheses(params, validDetails, log);
+    const topIds = await rerankAndSelectTheses(
+      params,
+      validDetails,
+      log,
+      cohereSemanticTarget,
+    );
 
     const detailMap = new Map(validDetails.map((t) => [t.id, t]));
     const finalTheses = topIds

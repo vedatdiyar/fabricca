@@ -9,6 +9,7 @@ import {
   FileX,
   FileText,
   FileSearch,
+  BookOpenCheck,
   HelpCircle,
   ChevronDown,
   ChevronRight,
@@ -33,6 +34,19 @@ const BADGE_ICONS: Record<AcademicBadge, ElementType> = {
   REFERENCE_MATERIAL: History,
   OUT_OF_SCOPE: FileX,
 };
+
+/** Badges for which uniquenessGap should be shown (not "N/A"). */
+const SHOW_GAP_BADGES: AcademicBadge[] = [
+  "HIGH_RISK_REPLICATION",
+  "RELATED_THESIS",
+];
+
+/** Badges for which literatureIntegration should be shown (not "N/A"). */
+const SHOW_INTEGRATION_BADGES: AcademicBadge[] = [
+  "HIGH_RISK_REPLICATION",
+  "RELATED_THESIS",
+  "REFERENCE_MATERIAL",
+];
 
 export function TezaraOverlapCards({ overlapTable }: TezaraOverlapCardsProps) {
   const sortedTheses = useMemo<OverlapRow[]>(() => {
@@ -68,6 +82,18 @@ export function TezaraOverlapCards({ overlapTable }: TezaraOverlapCardsProps) {
         const config = getAcademicBadgeConfig(item.originalityStatus);
         const Icon = BADGE_ICONS[item.originalityStatus] || HelpCircle;
         const isExpanded = expandedIds.has(item.id);
+
+        const showGap =
+          SHOW_GAP_BADGES.includes(item.originalityStatus) &&
+          item.uniquenessGap &&
+          item.uniquenessGap !== "N/A";
+
+        const showIntegration =
+          SHOW_INTEGRATION_BADGES.includes(item.originalityStatus) &&
+          item.literatureIntegration &&
+          item.literatureIntegration !== "N/A";
+
+        const isHighRisk = item.originalityStatus === "HIGH_RISK_REPLICATION";
 
         return (
           <Collapsible
@@ -118,83 +144,53 @@ export function TezaraOverlapCards({ overlapTable }: TezaraOverlapCardsProps) {
 
                 <CollapsibleContent>
                   {/* Relevance Explanation */}
-                  <div className="text-xs text-foreground bg-muted/10 p-4 rounded-md border border-border/40 font-sans leading-relaxed">
+                  <div
+                    className={`text-xs text-foreground p-4 rounded-md border font-sans leading-relaxed mb-4 ${
+                      isHighRisk
+                        ? "bg-destructive/5 border-destructive/10"
+                        : "bg-muted/10 border-border/40"
+                    }`}
+                  >
                     <span className="font-semibold block text-[10px] uppercase tracking-wider text-muted-foreground/80 mb-1.5 flex items-center gap-1">
                       <FileSearch className="w-3.5 h-3.5" />
-                      Tezin Alaka Düzeyi
+                      {isHighRisk
+                        ? "Kritik Özgünlük Uyarısı"
+                        : "Tezin Alaka Düzeyi"}
                     </span>
                     {item.relevanceExplanation}
                   </div>
 
-                  {/* Qualitative Sections */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 auto-rows-auto gap-4">
-                    {/* Uniqueness Gap */}
-                    <div className="bg-background p-4 rounded-md border border-border/40 space-y-1 md:col-start-1 md:row-start-1">
-                      <span className="font-semibold block text-[10px] uppercase tracking-wider text-muted-foreground/80">
-                        Özgünlük Farkı (Gap)
-                      </span>
-                      <p className="text-xs leading-relaxed text-foreground/90 font-sans">
-                        {item.uniquenessGap}
-                      </p>
-                    </div>
-
-                    {/* Literature Usage */}
-                    <div className="bg-background p-4 rounded-md border border-border/40 space-y-1 md:col-start-2 md:row-start-1">
-                      <span className="font-semibold block text-[10px] uppercase tracking-wider text-muted-foreground/80">
-                        Literatürde Konumlandırma
-                      </span>
-                      <p className="text-xs leading-relaxed text-foreground/90 font-sans">
-                        {item.literatureReviewUsage}
-                      </p>
-                    </div>
-
-                    {/* Chapter Integration */}
-                    <div className="bg-background p-4 rounded-md border border-border/40 space-y-1 md:col-start-1 md:row-start-2">
-                      <span className="font-semibold block text-[10px] uppercase tracking-wider text-muted-foreground/80">
-                        Tez Bölümlerine Entegrasyon
-                      </span>
-                      <p className="text-xs leading-relaxed text-foreground/90 font-sans">
-                        {item.chapterIntegration}
-                      </p>
-                    </div>
-
-                    {/* Conceptual Borrowing */}
-                    <div className="bg-background p-4 rounded-md border border-border/40 space-y-1 md:col-start-2 md:row-start-2">
-                      <span className="font-semibold block text-[10px] uppercase tracking-wider text-muted-foreground/80">
-                        Kavramsal / Teorik Atıflar
-                      </span>
-                      <p className="text-xs leading-relaxed text-foreground/90 font-sans">
-                        {item.conceptualBorrowing}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Replication Warning (if relevant) */}
-                  {item.replicationWarning &&
-                    item.replicationWarning !== "N/A" &&
-                    (() => {
-                      const isHighRisk =
-                        item.originalityStatus === "HIGH_RISK_REPLICATION";
-                      return (
-                        <div
-                          className={`mt-4 p-4 rounded-md border text-xs leading-relaxed font-sans flex gap-2.5 ${
-                            isHighRisk
-                              ? "bg-destructive/5 text-destructive border-destructive/10"
-                              : "bg-amber-500/5 text-amber-600 border-amber-500/20"
-                          }`}
-                        >
-                          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                          <div>
-                            <span className="font-semibold block text-[10px] uppercase tracking-wider mb-1">
-                              {isHighRisk
-                                ? "Kritik Uyarı"
-                                : "İlişkisel Yakınlık"}
-                            </span>
-                            {item.replicationWarning}
-                          </div>
+                  {/* Qualitative Panels — only shown when content is meaningful */}
+                  {(showGap || showIntegration) && (
+                    <div
+                      className={`grid gap-4 ${showGap && showIntegration ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"}`}
+                    >
+                      {/* Uniqueness Gap — HIGH_RISK & RELATED only */}
+                      {showGap && (
+                        <div className="bg-background p-4 rounded-md border border-border/40 space-y-1">
+                          <span className="font-semibold block text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                            Özgünlük Farkı (Literature Gap)
+                          </span>
+                          <p className="text-xs leading-relaxed text-foreground/90 font-sans">
+                            {item.uniquenessGap}
+                          </p>
                         </div>
-                      );
-                    })()}
+                      )}
+
+                      {/* Literature Integration — HIGH_RISK, RELATED & REFERENCE */}
+                      {showIntegration && (
+                        <div className="bg-background p-4 rounded-md border border-border/40 space-y-1">
+                          <span className="font-semibold block text-[10px] uppercase tracking-wider text-muted-foreground/80 flex items-center gap-1">
+                            <BookOpenCheck className="w-3.5 h-3.5" />
+                            Tezde Kullanım Rehberi
+                          </span>
+                          <p className="text-xs leading-relaxed text-foreground/90 font-sans">
+                            {item.literatureIntegration}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </CollapsibleContent>
 
                 {/* YOK PDF and metadata footer */}

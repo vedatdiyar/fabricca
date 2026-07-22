@@ -9,55 +9,53 @@ import type { ThesisMatrix } from "../types";
  */
 export function buildQualitativeSystemInstruction(): string {
   return `<constraints>
-- ACADEMIC PERSONALITY: Act as an extremely selective, uncompromising, and elite academic reviewer. Your standard for academic rigor, depth, and relevance is exceptionally high. You evaluate candidate studies with total objectivity and zero leniency.
+- ACADEMIC PERSONALITY: Act as a rigorous, highly analytical, and disciplined academic reviewer. Your task is to evaluate candidate studies against a target thesis matrix and categorize them into EXACTLY ONE category using a strict sequential Decision Tree.
 
-- ISOLATED EVALUATION PRINCIPLE: When evaluating a candidate thesis against the target thesis matrix, evaluate that candidate thesis in COMPLETE ISOLATION. Do NOT compare candidate theses to each other, and do NOT let the presence of other candidate theses in the batch influence your judgment of the current thesis.
+- ISOLATED EVALUATION PRINCIPLE: Evaluate each candidate thesis in complete isolation against the target thesis matrix. Do NOT let the presence of other candidate theses in the batch influence your judgment.
 
-- EVALUATE THE WHOLE STUDY (HOLISTIC UTILIZATION, NO KEYWORD HUNTING):
-  - Evaluate each candidate thesis as a cohesive, unified whole based on its primary research question, core analytical subject, and primary target actors.
-  - Do NOT declare a thesis relevant simply because it shares broad background keywords, broad geographical areas, or broad historical eras (e.g., Domain A, Region X, Period T1).
-  - Do NOT chop up candidate theses into artificial piecemeal recommendations. Evaluate how the candidate study is utilized as a single cohesive unit (e.g. foundational historical antecedent, core literature counterpart, or foundational actor overview).
-  - If its core research question or primary analytical focus is out of scope, it is NOT relevant.
+- DECISION TREE ELIMINATION PIPELINE (EVALUATE CANDIDATE IN THIS STRICT SEQUENCE):
 
-- STRICT RELEVANCE THRESHOLD & NUANCED DISCRIMINATION:
-  - If the candidate thesis focuses on a DIFFERENT PRIMARY ANALYTICAL SUBJECT or DIFFERENT ACTOR PERSPECTIVE (e.g. analyzing external state policy / state institutions instead of the target's internal movement discourse, or analyzing early state formation instead of late movement dynamics), it is OUT_OF_SCOPE.
-  - Merely sharing a background era (Period T1), broad regional setting (Region X), or general theoretical framework (e.g. Gramscian hegemony, Foucault, Marxism) without sharing the specific primary analytical subject and primary target actors MUST result in OUT_OF_SCOPE. Never mark a thesis as relevant solely because of shared theoretical keywords.
+  1. STEP 1: DYADIC ACTOR & PERSPECTIVE ALIGNMENT CHECK
+     Inspect the target thesis matrix's primary actors (<target_actors>).
+     - Does the candidate study focus primarily on DIFFERENT actors (e.g., State/Government ideology, official state institutions, mainstream/external media representation, gender/masculinity sociology, or third-party organizations) rather than the target's specific non-state movement/actor dyad?
+     - IF YES -> MUST classify immediately as OUT_OF_SCOPE. (Do NOT classify external state reports, mainstream press representations, or unrelated social/gender sociology as background reference).
 
-- EVALUATION TAXONOMY (4-BADGE CLASSIFICATION RULE):
-  Each candidate thesis MUST be categorized into EXACTLY ONE of the following 4 status badges:
+  2. STEP 2: THEMATIC & ANALYTICAL AXIS CHECK
+     Inspect the target thesis matrix's analytical problem (<research_core>).
+     - Does the candidate study focus on a DIFFERENT thematic/analytical axis (e.g., Religion, Gender, Spatial/Urban Transformation, Foreign Policy, Geopolitics) even if it belongs to the same academic discipline (e.g., Political Science/Sociology)?
+     - IF YES -> MUST classify immediately as OUT_OF_SCOPE.
 
-  1. HIGH_RISK_REPLICATION (Yüksek Riskli Çakışma):
-     - Applies ONLY when the candidate thesis shares the SAME specific timeframe (Period T1), SAME primary target actors (Actor X), AND SAME theoretical framework (Theory W) as the target matrix. Poses a direct originality threat.
+  3. STEP 3: CATEGORIZATION OF ACTOR-ALIGNED STUDIES
+     For studies that PASS Step 1 (exact same primary actor dyad) AND Step 2 (aligned thematic axis):
 
-  2. RELATED_THESIS (İlişkili Dönemsel Çalışma):
-     - Applies ONLY when the candidate thesis shares the EXACT SAME specific primary actors (Actor X) AND EXACT SAME specific primary research subject in the same timeframe (Period T1), but employs a different theoretical framework or broader scope.
+     a) HIGH_RISK_REPLICATION:
+        - SAME timeframe, SAME primary target actors, AND SAME theoretical framework (Direct originality threat).
 
-   3. REFERENCE_MATERIAL (Referans / Yardımcı Kaynak):
-      - Applies when the candidate thesis does NOT qualify as HIGH_RISK_REPLICATION or RELATED_THESIS, and is NOT completely OUT_OF_SCOPE. This includes theses that are chronologically earlier and provide foundational/contextual background, those that share peripheral themes or indirect connections, or any thesis that offers useful reference material without posing a direct overlap or rivalry with the target thesis.
+     b) RELATED_THESIS:
+        - SAME timeframe AND EXACT SAME primary target actors, but employing a DIFFERENT theoretical framework or analytical angle (e.g., discourse vs tactics).
 
-  4. OUT_OF_SCOPE (Kapsam Dışı / İlgisiz):
-     - MUST be assigned whenever the candidate thesis has a different analytical subject, different target actors (e.g. state-building vs. non-state movement, media representation, international relations), or lacks direct structural connection. Set all guidance text fields strictly to "N/A".
+     c) REFERENCE_MATERIAL (STRICTLY DYAD-ALIGNED ANTECEDENTS):
+        - The candidate study belongs to a PRIOR historical timeframe OR foundational conceptual era, BUT focuses STRICTLY on the EXACT SAME primary actor dyad (e.g., historical antecedents of Movement A <-> Movement B).
+        - Mark as REFERENCE_MATERIAL ONLY if a researcher MUST cite it to establish the historical origins, conceptual genealogy, or historical continuity of the exact same actor interaction in the Literature Review / Background chapters.
+
+  4. STEP 4: DEFAULT FALLBACK
+     - Any study that fails the strict criteria above MUST be classified as OUT_OF_SCOPE.
 
 - RELEVANCE DISCIPLINE:
-  - Set isRelevant: false ONLY for OUT_OF_SCOPE.
-   - Set isRelevant: true for HIGH_RISK_REPLICATION, RELATED_THESIS, and REFERENCE_MATERIAL.
+  - Set isRelevant: true ONLY for HIGH_RISK_REPLICATION, RELATED_THESIS, and REFERENCE_MATERIAL.
+  - Set isRelevant: false STRICTLY for OUT_OF_SCOPE.
 
-- DEPTH AND ACADEMIC RIGOR (EXHAUSTIVE PROSE MANDATE):
-  For all relevant candidate theses (isRelevant: true), you MUST provide deep, comprehensive, multi-sentence academic evaluations in elite Academic Turkish (Akademik Türkçe). Never provide shallow or single-sentence summaries. For OUT_OF_SCOPE theses, fill all text fields strictly with "N/A".
-  1. relevanceExplanation: Write a thorough, analytical paragraph explaining the precise structural, thematic, and historical relationship between the candidate thesis and the target matrix.
-  2. uniquenessGap: Detail the exact scientific gap, theoretical differentiation, and novel contribution (Literature Gap) that distinguishes the user's thesis from the candidate study as a whole.
-  3. replicationWarning: Provide a nuanced, comparative evaluation note detailing shared dimensions, potential overlap areas, and how to frame the user's work to avoid replication claims.
-  4. literatureReviewUsage: Give specific, actionable literature review placement instructions for the candidate study as a cohesive unit, including recommended subsection titles (e.g. "'... Tarihsel Arka Planı' başlığı altında...").
-  5. chapterIntegration: Detail exactly which chapter (e.g. Introduction, Theoretical Framework, Historical Background) and sub-clause of the user's thesis should incorporate the candidate study as a cohesive whole, and how.
-  6. conceptualBorrowing: List specific theoretical concepts, analytical frameworks, or key citations to borrow, adapt, or cite from the candidate thesis.
+- OUTPUT PROSE MANDATE:
+  - relevanceExplanation: 1-2 sentence concise justification for EVERY thesis in Academic Turkish, explicitly referencing actor alignment or thematic mismatch.
+  - uniquenessGap: Deep analysis for HIGH_RISK_REPLICATION and RELATED_THESIS ONLY. For REFERENCE_MATERIAL and OUT_OF_SCOPE, write strictly "N/A".
+  - literatureIntegration: Concrete usage instructions (e.g., "Giriş / Bölüm 2'de tarihsel kökenleri tartışırken kullanılmalı") for HIGH_RISK_REPLICATION, RELATED_THESIS, and REFERENCE_MATERIAL. For OUT_OF_SCOPE, write strictly "N/A".
 
-- OUTPUT FORMAT: Return a JSON array matching qualitativeAnalysisJsonSchema exactly. Process each thesis independently in complete isolation.
+- OUTPUT FORMAT: Return a JSON array matching qualitativeAnalysisJsonSchema exactly.
 </constraints>
 
 <task>
-Perform a deep originality audit and literature integration analysis for candidate theses against a target thesis matrix. Compare each candidate thesis in complete isolation against the target thesis matrix.
-Categorize each candidate into exactly one of the 4 status badges based on strict academic discrimination.
-Write all textual explanations in fluent, elite Academic Turkish.
+Perform a deep originality audit and literature integration analysis using the Decision Tree pipeline above. Process each candidate thesis in isolation.
+Return structured JSON matching the rules above.
 </task>`;
 }
 
@@ -135,10 +133,6 @@ export const qualitativeAnalysisJsonSchema: JsonSchema = {
     properties: {
       thesisId: { type: "integer" },
       isRelevant: { type: "boolean" },
-      relevanceExplanation: {
-        type: "string",
-        description: "Tezin alaka düzeyinin gerekçesi. Türkçe yazılmalıdır.",
-      },
       originalityStatus: {
         type: "string",
         enum: [
@@ -148,42 +142,29 @@ export const qualitativeAnalysisJsonSchema: JsonSchema = {
           "OUT_OF_SCOPE",
         ],
       },
+      relevanceExplanation: {
+        type: "string",
+        description:
+          "Tezin bu kategoriye atanmasının 1-2 cümlelik öz gerekçesi. Türkçe.",
+      },
       uniquenessGap: {
         type: "string",
         description:
-          "Kullanıcının tezini bu tezden ayıran temel bilimsel fark (boşluk). Türkçe yazılmalıdır.",
+          "HIGH_RISK ve RELATED için: Çakışma riski ve kullanıcının tezini ayıran temel bilimsel fark (Literature Gap). REFERENCE ve OUT_OF_SCOPE için strictly 'N/A'. Türkçe.",
       },
-      replicationWarning: {
+      literatureIntegration: {
         type: "string",
         description:
-          "Duruma göre: HIGH_RISK_REPLICATION için çakışma uyarısı; RELATED_THESIS için ortak boyutlar ve rakip değerlendirmesi; REFERENCE_MATERIAL için referans/arka plan bağlamı; OUT_OF_SCOPE için 'N/A'. Türkçe yazılmalıdır.",
-      },
-      literatureReviewUsage: {
-        type: "string",
-        description:
-          "Kullanıcının bu tezi kendi literatür taramasında nasıl konumlandırıp yazabileceği. Türkçe yazılmalıdır.",
-      },
-      chapterIntegration: {
-        type: "string",
-        description:
-          "Bu tezin kavramlarının veya bulgularının kullanıcının kendi tez bölümlerine nasıl entegre edilebileceği. Türkçe yazılmalıdır.",
-      },
-      conceptualBorrowing: {
-        type: "string",
-        description:
-          "Bu tezden ödünç alınabilecek veya atıf yapılabilecek teorik kavramlar/referanslar. Türkçe yazılmalıdır.",
+          "HIGH_RISK, RELATED ve REFERENCE için: Bu tezin kullanıcının tezinde tam olarak hangi bölümde ve nasıl kullanılacağı rehberi. OUT_OF_SCOPE için strictly 'N/A'. Türkçe.",
       },
     },
     required: [
       "thesisId",
       "isRelevant",
-      "relevanceExplanation",
       "originalityStatus",
+      "relevanceExplanation",
       "uniquenessGap",
-      "replicationWarning",
-      "literatureReviewUsage",
-      "chapterIntegration",
-      "conceptualBorrowing",
+      "literatureIntegration",
     ],
     additionalProperties: false,
   },

@@ -40,10 +40,7 @@ function groupRowsToReport(
     relevanceExplanation: string | null;
     originalityStatus: string;
     uniquenessGap: string | null;
-    replicationWarning: string | null;
-    literatureReviewUsage: string | null;
-    chapterIntegration: string | null;
-    conceptualBorrowing: string | null;
+    literatureIntegration: string | null;
     isEliminated: boolean;
     eliminationStage: string | null;
   }>,
@@ -55,7 +52,7 @@ function groupRowsToReport(
     (r) => r.isEliminated && r.eliminationStage === "ANALYSIS",
   );
 
-  // Global badge: determined by the presence of RISK bucket theses
+  // Global badge: determined by the presence of HIGH_RISK_REPLICATION in active rows
   let globalBadge: RelationshipBadge = "UNRELATED";
 
   const hasDuplicate = activeRows.some(
@@ -83,10 +80,7 @@ function groupRowsToReport(
     relevanceExplanation: row.relevanceExplanation ?? "",
     originalityStatus: row.originalityStatus as AcademicBadge,
     uniquenessGap: row.uniquenessGap ?? "",
-    replicationWarning: row.replicationWarning ?? "",
-    literatureReviewUsage: row.literatureReviewUsage ?? "",
-    chapterIntegration: row.chapterIntegration ?? "",
-    conceptualBorrowing: row.conceptualBorrowing ?? "",
+    literatureIntegration: row.literatureIntegration ?? "",
   });
 
   return {

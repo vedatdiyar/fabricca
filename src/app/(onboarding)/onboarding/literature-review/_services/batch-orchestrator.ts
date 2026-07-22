@@ -205,15 +205,17 @@ export async function orchestrateBatchProcess(
     if (result.status === "fulfilled") {
       fulfilledResults.push(result.value);
     } else {
+      const errorMsg =
+        result.reason instanceof Error
+          ? result.reason.message
+          : String(result.reason);
       logger.error("literature_phase1_subbox_failed", {
         service: "literature",
         filePath:
           "onboarding/literature-review/_services/batch-orchestrator.ts",
-        error:
-          result.reason instanceof Error
-            ? result.reason.message
-            : String(result.reason),
+        error: errorMsg,
       });
+      throw result.reason;
     }
   }
 
@@ -277,6 +279,7 @@ export async function orchestrateBatchProcess(
           "onboarding/literature-review/_services/batch-orchestrator.ts",
         error: err instanceof Error ? err.message : String(err),
       });
+      throw err;
     }
   }
 
@@ -381,6 +384,7 @@ export async function orchestrateBatchProcess(
             data: { title: art.title },
             error: err instanceof Error ? err.message : String(err),
           });
+          throw err;
         }
       }
     }
@@ -439,6 +443,7 @@ export async function orchestrateBatchProcess(
           "onboarding/literature-review/_services/batch-orchestrator.ts",
         error: err instanceof Error ? err.message : String(err),
       });
+      throw err;
     }
   }
 
@@ -463,6 +468,7 @@ export async function orchestrateBatchProcess(
           data: { subBoxTitle: item.subBoxTitle },
           error: err instanceof Error ? err.message : String(err),
         });
+        throw err;
       }
     }
   }
