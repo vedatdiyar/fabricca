@@ -58,8 +58,7 @@ export async function analyzeOriginalityRisk(
   log: Logger,
 ): Promise<{ auditResults: QualitativeAuditItem[] }> {
   try {
-    // Maintain Cohere rerank rank order so batching (size 3) is stable and
-    // changes at rank 24/25 only touch the last batch (Batch 8).
+    // Maintain Cohere rerank rank order so batching is stable
     const orderedTheses = [...params.selectedTheses];
 
     const userThesis = {
@@ -70,7 +69,7 @@ export async function analyzeOriginalityRisk(
       mainClaim: params.mainClaim,
     };
 
-    // 1. Run ingestion on candidate theses to extract their 6-dimension matrices via Cerebras Gemma 4 31B (Single-pass)
+    // 1. Run ingestion on candidate theses to extract their 6-dimension matrices via Cerebras Gemma 4 31B (batched to respect token quotas)
     log.info("originality_ingestion_start", {
       service: "originality",
       data: { count: orderedTheses.length },
@@ -95,20 +94,55 @@ export async function analyzeOriginalityRisk(
       mainClaim: string;
     };
 
-    const cerebrasPrompt = buildIngestionPrompt(formattedTheses);
-    const cerebrasResponse = await generateCerebrasStructuredContent<{
-      theses: IngestionExtractedItem[];
-    }>(
-      ingestionSystemInstruction,
-      cerebrasPrompt,
-      ingestionResponseSchema,
-      log,
-      {
-        payloadStage: "originality_candidate_ingestion_single_pass",
-      },
-    );
+    const INGESTION_BATCH_SIZE = 12;
+    const ingestionBatches: (typeof formattedTheses)[] = [];
+    for (let i = 0; i < formattedTheses.length; i += INGESTION_BATCH_SIZE) {
+      ingestionBatches.push(formattedTheses.slice(i, i + INGESTION_BATCH_SIZE));
+    }
 
-    const allIngestedTheses = cerebrasResponse?.theses || [];
+    const allIngestedTheses: IngestionExtractedItem[] = [];
+
+    for (let bIndex = 0; bIndex < ingestionBatches.length; bIndex++) {
+      const batch = ingestionBatches[bIndex];
+      const cerebrasPrompt = buildIngestionPrompt(batch);
+
+      try {
+        const cerebrasResponse = await generateCerebrasStructuredContent<{
+          theses: IngestionExtractedItem[];
+        }>(
+          ingestionSystemInstruction,
+          cerebrasPrompt,
+          ingestionResponseSchema,
+          log,
+          {
+            payloadStage: `originality_candidate_ingestion_batch_${bIndex + 1}`,
+          },
+        );
+
+        if (cerebrasResponse?.theses) {
+          allIngestedTheses.push(...cerebrasResponse.theses);
+        }
+      } catch (ingestErr) {
+        log.warn("cerebras_ingestion_batch_fallback", {
+          service: "originality",
+          error: ingestErr,
+          data: { batchIndex: bIndex + 1 },
+        });
+        // Graceful fallback for batch items if Cerebras hits 429 quota or network error
+        batch.forEach((item) => {
+          allIngestedTheses.push({
+            id: item.id,
+            researchCore: item.abstract.slice(0, 400),
+            spatialContext: "Belirtilmemiş",
+            temporalContext: "Belirtilmemiş",
+            theoreticalFramework: "Belirtilmemiş",
+            methodology: "Belirtilmemiş",
+            mainClaim: item.abstract.slice(0, 400),
+          });
+        });
+      }
+    }
+
     const ingestionDuration = performance.now() - ingestionStart;
 
     log.info("originality_ingestion_success", {
@@ -128,13 +162,13 @@ export async function analyzeOriginalityRisk(
           id: t.id,
           title: t.title,
           matrix: {
-            researchCore: matched?.researchCore || "Belirtilmemiş",
+            researchCore: matched?.researchCore || t.abstract.slice(0, 400),
             spatialContext: matched?.spatialContext || "Belirtilmemiş",
             temporalContext: matched?.temporalContext || "Belirtilmemiş",
             theoreticalFramework:
               matched?.theoreticalFramework || "Belirtilmemiş",
             methodology: matched?.methodology || "Belirtilmemiş",
-            mainClaim: matched?.mainClaim || "Belirtilmemiş",
+            mainClaim: matched?.mainClaim || t.abstract.slice(0, 400),
           },
         };
       },

@@ -78,26 +78,26 @@ function deduplicateSiftingResults(
 }
 
 // ──────────────────────────────────────────────
-// Extraction 2: Cohere rerank + strict score >= 0.75 filter
+// Extraction 2: Cohere rerank + Top-N ranking selection
 // ──────────────────────────────────────────────
 
-/** Minimum Cohere relevance score required for a thesis to pass to jury analysis. */
-const RELEVANCE_SCORE_THRESHOLD = 0.75;
+/** Minimal relevance floor to eliminate complete zero-correlation noise before ranking selection. */
+const MIN_RELEVANCE_FLOOR = 0.3;
 
-/** Maximum number of candidate theses passing Cohere reranking to avoid hitting API limitations. */
+/** Maximum number of candidate theses passing Cohere reranking to avoid hitting Gemini rate limits (15 RPM). */
 const COHERE_MAX_LIMIT = 24;
 
 export type SiftAndFetchDetailsParams = ThesisMatrix;
 
 /**
  * Runs Cohere Rerank v4 Pro on validated thesis abstracts and returns the IDs
- * of those that meet or exceed the relevance threshold, capped at a maximum limit.
+ * of the top ranked theses (up to COHERE_MAX_LIMIT = 24), sorted by descending relevance.
  *
  * @param params - The thesis matrix used as the rerank query fallback.
  * @param validDetails - Theses with valid abstracts to rerank.
  * @param log - Logger instance.
  * @param cohereSemanticTarget - Optional 1-sentence compressed semantic target.
- * @returns Array of thesis IDs with relevanceScore >= 0.75.
+ * @returns Array of top thesis IDs for jury analysis.
  */
 async function rerankAndSelectTheses(
   params: SiftAndFetchDetailsParams,
@@ -115,18 +115,16 @@ async function rerankAndSelectTheses(
       return [];
     }
 
+    // Filter out complete noise (< 0.30) and take the top N highest-ranked candidates
     const passing = results.filter(
-      (r) => r.relevanceScore >= RELEVANCE_SCORE_THRESHOLD,
+      (r) => r.relevanceScore >= MIN_RELEVANCE_FLOOR,
     );
-
-    // Apply the Cohere limit cap (e.g. 45 for BATCH_SIZE = 3)
     const capped = passing.slice(0, COHERE_MAX_LIMIT);
 
-    log.data("Rerank threshold filter", {
-      total: results.length,
-      passing: passing.length,
-      capped: capped.length,
-      threshold: RELEVANCE_SCORE_THRESHOLD,
+    log.data("Rerank Top-N Selection Filter", {
+      totalInput: results.length,
+      aboveFloor: passing.length,
+      selectedTopN: capped.length,
       limit: COHERE_MAX_LIMIT,
       queryLength: query.length,
     });

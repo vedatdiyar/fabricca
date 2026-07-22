@@ -16,8 +16,8 @@ import {
 export type ExtractQueriesParams = ThesisMatrix;
 
 /**
- * Extracts 8 dyadic academic queries for Tezara and 1-sentence Cohere semantic target
- * using Gemini based on the target thesis matrix.
+ * Extracts 8 universal academic search queries for Tezara (4 TR + 4 EN) and 1-sentence Cohere semantic target
+ * using Gemini based on the target thesis matrix parameters (researchCore, targetActors, mainClaim).
  *
  * @param params - The thesis matrix parameters.
  * @param log - The logger instance.
@@ -37,6 +37,7 @@ export async function extractQueries(
   try {
     const geminiInput = {
       researchCore: params.researchCore,
+      targetActors: params.targetActors,
       mainClaim: params.mainClaim,
     };
 
@@ -69,14 +70,14 @@ export async function extractQueries(
 
     const rawQueries = [...turkishList, ...englishList];
 
-    // Filter to enforce 2-4 word limits for dyadic queries
+    // Filter to enforce 2-4 word limits for clean multi-keyword search
     let tezaraQueries = rawQueries.filter((q) => {
       const trimmed = q.trim();
       const wordCount = trimmed.split(/\s+/).length;
       return wordCount >= 2 && wordCount <= 4;
     });
 
-    // Remove duplicates and limit to 8 strict dyadic queries (4 TR + 4 EN)
+    // Remove duplicates and limit to 8 queries (4 TR + 4 EN)
     tezaraQueries = Array.from(new Set(tezaraQueries)).slice(0, 8);
 
     const cohereSemanticTarget =
