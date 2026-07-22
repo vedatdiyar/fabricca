@@ -2,36 +2,37 @@ import type { JsonSchema } from "../services/gemini";
 import type { ThesisMatrix } from "../types";
 
 /**
- * Originality ve literatür entegrasyonu analiz süreci için sistem talimatını oluşturur.
- * Persona veya duygusal ifadeler içermez, kurallar evrensel genelleştirme ilkesine (LLM_INTEGRATION.md) uygundur.
- *
- * @returns Yapay zekaya verilecek sistem talimatı string'i
+ * Akademik denetim ve literatür eleme mekanizması için optimize edilmiş Sistem Talimatı.
  */
 export function buildQualitativeSystemInstruction(): string {
   return `# Rol ve Uzmanlık
-Aday akademik çalışmaları hedef tez matrisi ile karşılaştırarak özgünlük risklerini ve literatür entegrasyon imkânlarını değerlendiren kıdemli bir akademik denetçi ve metodologsunuz.
+Siz, hedef tez matrisini aday çalışmalarla karşılaştırarak özgünlük risklerini ve literatür entegrasyon imkânlarını değerlendiren kıdemli bir akademik denetçisiniz.
 
-# Kurallar ve Sınırlamalar
-- İzolasyon İlkesi: Her aday tezi diğer aday tezlerden tamamen bağımsız olarak değerlendirin.
-- Bağlam Bağlılığı: Değerlendirmeleri yalnızca verilen hedef tez matrisindeki parametrelere dayandırın. Spekülasyon yapmayın veya kurgusal bağlantılar üretmeyin.
-- Konu ve Aktör Katılığı (Gatekeeper Rule): Bir aday tezin ilgili (isRelevant: true) sayılabilmesi için HEM araştırma konusunun/probleminin HEM DE hedef aktörlerinin/inceleme nesnesinin hedef tez matrisi ile doğrudan örtüşmesi zorunludur.
-- Kapsam Dışı İlkesi: Aday tezin araştırma konusu VEYA hedef aktörleri hedef tez matrisinden farklıysa, tarihsel dönem, coğrafya veya yöntem kesişse dahi çalışma istisnasız OUT_OF_SCOPE (isRelevant: false) olarak sınıflandırılmalıdır. Tarihsel dönem ortaklığı tek başına bir tezi ilgili yapmaz.
-- İlgililik Ayarı: HIGH_RISK_REPLICATION, RELATED_THESIS ve REFERENCE_MATERIAL durumlarında isRelevant: true; OUT_OF_SCOPE durumunda isRelevant: false olmalıdır.
+# Temel Değerlendirme İlkeleri
+- İzolasyon: Her aday tezi diğer aday tezlerden tamamen bağımsız değerlendirin.
+- Doğrudan İlliyet Aratın: Bir tezin ilgili (isRelevant: true) sayılabilmesi için, hedef tezin ARAŞTIRMA PROBLEMİ, AKTÖRLERİ veya KURAMSAL ÇERÇEVESİ ile doğrudan metodolojik/içeriksel bir bağı olmalıdır. Yalnızca aynı anahtar kelimeleri (örneğin "Kürt meselesi", "Türkiye siyaseti") içermesi bir tezi ilgili KILMAZ.
 
-# İşlem Adımları (Karar Ağacı)
-1. Adım 1 (Aktör ve İnceleme Nesnesi Kontrolü): Aday çalışma farklı bir aktör grubuna veya inceleme nesnesine mi odaklanıyor? Evet ise → OUT_OF_SCOPE (isRelevant: false).
-2. Adım 2 (Araştırma Konusu ve Problem Kontrolü): Aday çalışma farklı bir araştırma konusuna veya tematik problem alanına mı odaklanıyor? Evet ise → OUT_OF_SCOPE (isRelevant: false).
-3. Adım 3 (Sınıflandırma - Yalnızca Adım 1 ve 2'yi Geçenler İçin):
-   - HIGH_RISK_REPLICATION: Aynı araştırma konusu, aynı hedef aktörler, aynı zaman dilimi ve aynı kuramsal çerçeve.
-   - RELATED_THESIS: Aynı araştırma konusu ve hedef aktörler, fakat farklı kuramsal çerçeve, farklı dönem veya farklı veri kümesi.
-   - REFERENCE_MATERIAL: Aynı konu ve aktör ekseninde doğrudan kurumsal/kavramsal şecere veya teorik temel oluşturan öncül literatür.
-4. Adım 4 (Varsayılan Durum): Diğer tüm durumlarda → OUT_OF_SCOPE (isRelevant: false).
+# Karar Ağacı ve Sınıflandırma
+Aday çalışmayı aşağıdaki kurallara göre KESİN olarak tek bir kategoriye atayın:
+
+1. HIGH_RISK_REPLICATION (isRelevant: true):
+   - Aynı araştırma konusu/problemi, aynı hedef aktörler, aynı tarihsel dönem VE aynı/benzer kuramsal çerçeve. (Birebir çakışma riski).
+
+2. RELATED_THESIS (isRelevant: true):
+   - Hedef tezle BİREBİR AYNI AKTÖR veya BİREBİR AYNI KAVRAMSAL PROBLEM üzerinde çalışan; fakat farklı bir alt döneme, farklı bir coğrafyaya veya farklı bir veri kümesine odaklanan tezler.
+
+3. REFERENCE_MATERIAL (isRelevant: true):
+   - Hedef tezin dayandığı kuramsal modelin (örn. Çerçeveleme, Hegemonya) teorik temeli OLAN veya hedef tezin aktörünün DOĞRUDAN TARİHSEL ŞECERESİNİ/ÖNCÜLÜNÜ (örn. DDKO, TİP-Kürt ilişkisi) inceleyen kurucu çalışmalar.
+   - UYARI: Genel tarihsel arka plan sunan, genel uluslararası ilişkiler yazıları veya genel Türkiye siyaseti özetleri bu kategoriye GİREMEZ.
+
+4. OUT_OF_SCOPE (isRelevant: false):
+   - Yukarıdaki 3 kritere girmeyen DİĞER TÜM ÇALIŞMALAR.
+   - Örnekler: Farklı aktörlere odaklanan tezler (CHP, AKP, Devlet Aklı), genel uluslararası boyut analizleri, tamamen farklı dönemsel ve tematik odağa sahip sosyolojik çalışmalar.
 
 # Çıktı Biçimi
 - relevanceExplanation: Türkçe 1-2 cümlelik öz gerekçe.
-- uniquenessGap: Yalnızca HIGH_RISK_REPLICATION ve RELATED_THESIS için temel fark (literatür boşluğu); diğerlerinde strictly "N/A".
-- literatureIntegration: HIGH_RISK_REPLICATION, RELATED_THESIS ve REFERENCE_MATERIAL için nerede ve nasıl kullanılacağı rehberi; OUT_OF_SCOPE için strictly "N/A".
-- qualitativeAnalysisJsonSchema ile uyumlu bir JSON dizisi döndürün.`;
+- uniquenessGap: Yalnızca HIGH_RISK_REPLICATION ve RELATED_THESIS için temel bilimsel fark (literatür boşluğu); diğerlerinde strictly "N/A".
+- literatureIntegration: HIGH_RISK_REPLICATION, RELATED_THESIS ve REFERENCE_MATERIAL için tezin nerede ve nasıl kullanılacağı rehberi; OUT_OF_SCOPE için strictly "N/A".`;
 }
 
 export interface IngestedThesisCandidate {
@@ -39,6 +40,7 @@ export interface IngestedThesisCandidate {
   title: string;
   matrix: {
     researchCore: string;
+    targetActors?: string;
     spatialContext: string;
     temporalContext: string;
     theoreticalFramework: string;
@@ -48,13 +50,7 @@ export interface IngestedThesisCandidate {
 }
 
 /**
- * Kullanıcı tez matrisi ile aday tezlerin çıkarılmış matris detaylarını birleştirerek karşılaştırma promptunu oluşturur.
- * Statik ve dinamik verilerin ayrımı, bağlam önbellekleme (context caching) kurallarına ve
- * Markdown yapısal kapsülleme standartlarına uygundur.
- *
- * @param matrix - Kullanıcının kendi tezine ait araştırma matrisi
- * @param theses - Karşılaştırılacak olan aday tezlerin çıkarılmış matris listesi
- * @returns Kullanıcı sorgu prompt string'i
+ * Kullanıcı tez matrisi ile aday tez listesini karşılaştıran kullanıcı promptunu oluşturur.
  */
 export function buildQualitativePrompt(
   matrix: ThesisMatrix,
@@ -62,9 +58,10 @@ export function buildQualitativePrompt(
 ): string {
   const thesesMarkdown = theses
     .map(
-      (t) => `### Aday Tez #${t.id}
+      (t) => `### Aday Tez ID: ${t.id}
 - Başlık: ${t.title}
 - Araştırma Odağı: ${t.matrix.researchCore}
+- Hedef Aktörler / İnceleme Nesnesi: ${t.matrix.targetActors || "Belirtilmemiş"}
 - Mekânsal Bağlam: ${t.matrix.spatialContext}
 - Zamansal Bağlam: ${t.matrix.temporalContext}
 - Kuramsal Çerçeve: ${t.matrix.theoreticalFramework}
@@ -74,6 +71,7 @@ export function buildQualitativePrompt(
     .join("\n\n");
 
   return `# Girdi Bağlamı
+
 ## Hedef Tez Matrisi
 - Araştırma Odağı: ${matrix.researchCore}
 - Hedef Aktörler: ${matrix.targetActors}
@@ -84,8 +82,10 @@ export function buildQualitativePrompt(
 ## Değerlendirilecek Aday Tez Listesi
 ${thesesMarkdown}
 
-# Birincil Görev
-Hedef tez matrisini aday tezlerin her biriyle izole bir şekilde karşılaştırın. Belirtilen Karar Ağacı adımlarını izleyerek her aday tez için denetim raporu ve literatür entegrasyon rehberini Türkçe olarak hazırlayın. Toplam tam olarak ${theses.length} aday tez için JSON formatında değerlendirme döndürün.`;
+# Görev
+Hedef tez matrisini aday tezlerin her biriyle izole bir şekilde karşılaştırın. 
+Sistem talimatındaki katı eleme ve sınıflandırma kurallarını uygulayarak her aday tez için Türkçe değerlendirme raporu hazırlayın. 
+Toplam ${theses.length} adet aday tez için, aday tezlerin orijinal ID değerlerini (thesisId) koruyarak tanımlanan JSON şemasına uygun çıktı üretin.`;
 }
 
 export const qualitativeAnalysisJsonSchema: JsonSchema = {
@@ -112,7 +112,7 @@ export const qualitativeAnalysisJsonSchema: JsonSchema = {
       uniquenessGap: {
         type: "string",
         description:
-          "HIGH_RISK ve RELATED için: Çakışma riski ve kullanıcının tezini ayıran temel bilimsel fark (Literature Gap). REFERENCE ve OUT_OF_SCOPE için strictly 'N/A'. Türkçe.",
+          "HIGH_RISK ve RELATED için: Çakışma riski ve kullanıcının tezini ayıran temel bilimsel fark. REFERENCE ve OUT_OF_SCOPE için strictly 'N/A'. Türkçe.",
       },
       literatureIntegration: {
         type: "string",

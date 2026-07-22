@@ -5,7 +5,7 @@ import type { JsonSchema } from "../services/gemini";
 // ============================================================================
 
 /**
- * LLM çıktı şeması: Ham tez metinlerinden çıkarılan 6 alanlı yapılandırılmış
+ * LLM çıktı şeması: Ham tez metinlerinden çıkarılan 7 alanlı yapılandırılmış
  * matris. Her tez bağımsız olarak parse edilir.
  */
 export const ingestionResponseSchema: JsonSchema = {
@@ -17,6 +17,11 @@ export const ingestionResponseSchema: JsonSchema = {
         type: "object",
         properties: {
           id: { type: "number", description: "Tezin ID numarası" },
+          targetActors: {
+            type: "string",
+            description:
+              "Tezin odaklandığı ana hedef aktörler, kurumlar, gruplar veya inceleme nesneleri.",
+          },
           researchCore: {
             type: "string",
             description:
@@ -50,6 +55,7 @@ export const ingestionResponseSchema: JsonSchema = {
         },
         required: [
           "id",
+          "targetActors",
           "researchCore",
           "spatialContext",
           "temporalContext",
@@ -69,7 +75,7 @@ export const ingestionResponseSchema: JsonSchema = {
 
 /**
  * Ingestion pipeline için sistem talimatı.
- * Tezara'dan gelen temiz tez özetlerinden 6 alanlı yapılandırılmış matris çıkarır.
+ * Tez özetlerinden 7 alanlı yapılandırılmış matris çıkarır.
  *
  * @returns Sistem talimatı string'i
  */
@@ -114,5 +120,5 @@ export function buildIngestionPrompt(
 ${thesisBlocks}
 
 # Birincil Görev
-Yukarıdaki bağlamda verilen her bir tezi bağımsız olarak inceleyin. Başlık, yazar ve özet bilgilerini 6 ana alana ayırarak JSON formatında döndürün. Metinde açıkça yer almayan alanlar için "Belirtilmemiş" değerini kullanın.`;
+Yukarıdaki bağlamda verilen her bir tezi bağımsız olarak inceleyin. Başlık, yazar ve özet bilgilerini 7 ana alana ayırarak JSON formatında döndürün. Metinde açıkça yer almayan alanlar için "Belirtilmemiş" değerini kullanın.`;
 }

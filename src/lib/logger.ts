@@ -21,7 +21,6 @@ type ServiceName =
   | "library"
   | "openalex"
   | "crossref"
-  | "cerebras"
   | "dashboard";
 
 export interface LogParams {

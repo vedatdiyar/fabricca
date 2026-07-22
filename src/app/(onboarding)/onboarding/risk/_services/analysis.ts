@@ -1,5 +1,4 @@
 import { generateStructuredContent } from "@/lib/services/gemini";
-import { generateCerebrasStructuredContent } from "@/lib/services/cerebras";
 import { FLASH_LITE_31, GEMINI_SEED } from "@/lib/constants";
 import { ThinkingLevel } from "@google/genai";
 import { z } from "zod";
@@ -69,7 +68,7 @@ export async function analyzeOriginalityRisk(
       mainClaim: params.mainClaim,
     };
 
-    // 1. Run ingestion on candidate theses to extract their 6-dimension matrices via Cerebras Gemma 4 31B (batched to respect token quotas)
+    // 1. Run ingestion on candidate theses to extract their 7-dimension matrices via Gemini Flash-Lite 3.1 (batched for quality)
     log.info("originality_ingestion_start", {
       service: "originality",
       data: { count: orderedTheses.length },
@@ -86,6 +85,7 @@ export async function analyzeOriginalityRisk(
 
     type IngestionExtractedItem = {
       id: number;
+      targetActors: string;
       researchCore: string;
       spatialContext: string;
       temporalContext: string;
@@ -94,7 +94,7 @@ export async function analyzeOriginalityRisk(
       mainClaim: string;
     };
 
-    const INGESTION_BATCH_SIZE = 12;
+    const INGESTION_BATCH_SIZE = 5;
     const ingestionBatches: (typeof formattedTheses)[] = [];
     for (let i = 0; i < formattedTheses.length; i += INGESTION_BATCH_SIZE) {
       ingestionBatches.push(formattedTheses.slice(i, i + INGESTION_BATCH_SIZE));
@@ -104,42 +104,25 @@ export async function analyzeOriginalityRisk(
 
     for (let bIndex = 0; bIndex < ingestionBatches.length; bIndex++) {
       const batch = ingestionBatches[bIndex];
-      const cerebrasPrompt = buildIngestionPrompt(batch);
+      const ingestionPrompt = buildIngestionPrompt(batch);
 
-      try {
-        const cerebrasResponse = await generateCerebrasStructuredContent<{
-          theses: IngestionExtractedItem[];
-        }>(
-          ingestionSystemInstruction,
-          cerebrasPrompt,
-          ingestionResponseSchema,
-          log,
-          {
-            payloadStage: `originality_candidate_ingestion_batch_${bIndex + 1}`,
-          },
-        );
+      const geminiResponse = await generateStructuredContent<{
+        theses: IngestionExtractedItem[];
+      }>(
+        FLASH_LITE_31,
+        ingestionSystemInstruction,
+        ingestionPrompt,
+        ingestionResponseSchema,
+        log,
+        {
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          payloadStage: `originality_candidate_ingestion_batch_${bIndex + 1}`,
+          quiet: true,
+        },
+      );
 
-        if (cerebrasResponse?.theses) {
-          allIngestedTheses.push(...cerebrasResponse.theses);
-        }
-      } catch (ingestErr) {
-        log.warn("cerebras_ingestion_batch_fallback", {
-          service: "originality",
-          error: ingestErr,
-          data: { batchIndex: bIndex + 1 },
-        });
-        // Graceful fallback for batch items if Cerebras hits 429 quota or network error
-        batch.forEach((item) => {
-          allIngestedTheses.push({
-            id: item.id,
-            researchCore: item.abstract.slice(0, 400),
-            spatialContext: "Belirtilmemiş",
-            temporalContext: "Belirtilmemiş",
-            theoreticalFramework: "Belirtilmemiş",
-            methodology: "Belirtilmemiş",
-            mainClaim: item.abstract.slice(0, 400),
-          });
-        });
+      if (geminiResponse?.theses) {
+        allIngestedTheses.push(...geminiResponse.theses);
       }
     }
 
@@ -150,7 +133,7 @@ export async function analyzeOriginalityRisk(
       durationMs: ingestionDuration,
       data: {
         count: allIngestedTheses.length,
-        provider: "cerebras",
+        provider: "gemini",
       },
     });
 
@@ -162,6 +145,7 @@ export async function analyzeOriginalityRisk(
           id: t.id,
           title: t.title,
           matrix: {
+            targetActors: matched?.targetActors || "Belirtilmemiş",
             researchCore: matched?.researchCore || t.abstract.slice(0, 400),
             spatialContext: matched?.spatialContext || "Belirtilmemiş",
             temporalContext: matched?.temporalContext || "Belirtilmemiş",

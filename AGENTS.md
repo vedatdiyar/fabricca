@@ -51,7 +51,6 @@ Projenin çalışması ve dış servislerle entegrasyonu için aşağıdaki çev
 - `TAVILY_API_KEY`: Tavily arama API anahtarı (literatür taraması).
 - `EXA_API_KEY`: Exa arama API anahtarı.
 - `SEMANTIC_SCHOLAR_API_KEY`: Semantic Scholar API anahtarı.
-- `CEREBRAS_API_KEY`: Cerebras API anahtarı.
 - `SEED_USER1_PASSWORD` & `SEED_USER2_PASSWORD`: Seed edilmiş kullanıcı hesaplarının şifreleri.
 
 ## 4. Klasör Yapısı (Folder Structure)
