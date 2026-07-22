@@ -218,7 +218,7 @@ const SubBoxSection = memo(function SubBoxSection({
   subBoxes: GeminiThesisBox[];
 }) {
   return (
-    <div className="border-t border-border/40 pt-4 space-y-4 mt-5">
+    <div className="pt-4 space-y-4 mt-5">
       <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
         <Library className="w-3.5 h-3.5 text-primary" />
         Alt Konu Kutuları
@@ -278,7 +278,7 @@ const SubBoxSection = memo(function SubBoxSection({
  */
 const PrimaryMaterialSection = memo(function PrimaryMaterialSection() {
   return (
-    <div className="border-t border-border/40 pt-4 space-y-2 mt-5">
+    <div className="pt-4 space-y-2 mt-5">
       <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
         <Archive className="w-3.5 h-3.5 text-muted-foreground" />
         Arşiv / Birincil Malzeme Alanı
@@ -297,7 +297,7 @@ const PrimaryMaterialSection = memo(function PrimaryMaterialSection() {
  */
 const RelatedThesesSection = memo(function RelatedThesesSection() {
   return (
-    <div className="border-t border-border/40 pt-4 space-y-3 mt-5">
+    <div className="pt-4 space-y-3 mt-5">
       <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
         <Archive className="w-3.5 h-3.5 text-muted-foreground" />
         Sınırdaş Tez Havuzu
@@ -356,7 +356,7 @@ const BoxCard = memo(function BoxCard({
                   key={`${concept}-${i}`}
                   className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 text-xs text-primary font-semibold"
                 >
-                  <WholeWord className="w-3.5 h-3.5" />
+                  <WholeWord className="w-3.5 h-3.5 shrink-0" />
                   {concept}
                 </span>
               ))}

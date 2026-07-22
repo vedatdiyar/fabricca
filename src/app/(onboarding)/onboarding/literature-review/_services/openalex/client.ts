@@ -211,9 +211,13 @@ interface OpenAlexHealCandidate {
  * @returns Array of resolved author names
  */
 export async function healAuthorsByTitle(title: string): Promise<string[]> {
-  const trimmedTitle = title.substring(0, 1000);
+  const cleanSearchTitle = title
+    .replace(/[:\-,\(\)]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .substring(0, 200);
   const params = new URLSearchParams({
-    filter: `title.search:${trimmedTitle}`,
+    filter: `title.search:${cleanSearchTitle}`,
     per_page: "15",
     select: "id,title,type,authorships,cited_by_count,primary_location",
   });

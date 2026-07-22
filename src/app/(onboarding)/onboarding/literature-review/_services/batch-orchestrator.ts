@@ -187,6 +187,29 @@ export async function orchestrateBatchProcess(
           subBoxCandidates.push(...mappedCandidates);
         }
 
+        // Fallback: If co-citation clustering yields 0 candidates (e.g., OpenAlex lacks referencedWorks trees),
+        // populate candidates directly from top rawPapers so Gemini Jury can select a Foundational Work.
+        if (subBoxCandidates.length === 0 && rawPapers.length > 0) {
+          const fallbackCandidates = rawPapers
+            .filter((p) => p.title?.trim())
+            .slice(0, 5)
+            .map((p) => ({
+              title: p.title!,
+              authors: p.authors.join(", "),
+              year: p.year,
+              openAlexId: p.openAlexId ?? "",
+              doi: p.doi ? extractCleanDoi(p.doi) : null,
+              publisher: p.publisher,
+              cluster: {
+                surname: p.authors[0] ?? "Unknown",
+                members: [],
+                combinedFrequency: 1,
+                citingModernIndices: [],
+              },
+            }));
+          subBoxCandidates.push(...fallbackCandidates);
+        }
+
         return {
           boxType: box.boxType ?? "PROBLEMATIZATION",
           boxDescription: box.description ?? "",

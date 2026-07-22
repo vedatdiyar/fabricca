@@ -39,12 +39,12 @@ export const retrievalParamsSchema: JsonSchema = {
 };
 
 // ============================================================================
-// 2. SİSTEM TALİMATI (%100 TÜRKÇE - EVRENSEL GENELLEŞTİRME İLKESİNE UYGUN)
+// 2. SİSTEM TALİMATI (%100 TÜRKÇE)
 // ============================================================================
 /**
  * Builds the system instruction for Gemini 3.5 Flash-Lite retrieval parameters generation
  * (Tezara Meilisearch queries & Cohere semantic target).
- * Follows LLM_INTEGRATION.md standards (XML tags, positive boundaries, Generality Principle).
+ * Follows LLM_INTEGRATION.md standards.
  *
  * @returns System instruction string.
  */
@@ -59,18 +59,20 @@ Meilisearch leksik arama motorundan en geniş potansiyel tez havuzunu toplayabil
 3. Kesişim ve Metodoloji Sorguları (2 adet, 3-4 kelime): Nesne + Problem veya Yöntem kesişimini hedefleyen dar sorgular.
 
 # Kurallar ve Sınırlamalar
-- Kelime Sayısı ve İzolasyon: Sorgular en az 2, en fazla 4 kelimeden oluşmalıdır. Tek kelimelik jenerik terimler (ör. 'Ekonomi', 'Tarih') yasaktır.
-- Sayı Kısıtı: Toplamda tam olarak 4 Türkçe ve 4 İngilizce (toplam 8 adet) arama sorgusu üretilmelidir.
-- Tarih Kısıtı Yasağı: cohereSemanticTarget metnine kesinlikle tarih aralığı veya kronoloji eklemeyin. 20-30 kelimelik tek bir sıkıştırılmış anlamsal hedef cümlesi oluşturun.
-- Türkçe Karakterler: Türkçe sorgularda Türkçe karakterleri koruyun.
+- Kelime Sayısı ve İzolasyon: Sorgular en az 2, en fazla 4 kelimeden oluşmalıdır.
+- Sorgu Sayısı: Toplamda tam olarak 4 Türkçe ve 4 İngilizce (toplam 8 adet) arama sorgusu üretilmelidir.
+- Tarih Kısıtları: cohereSemanticTarget metni tarih aralığı veya kronolojiden arındırılmış olmalıdır. 20-30 kelimelik tek bir sıkıştırılmış anlamsal hedef cümlesi oluşturun.
+- Karakter Yapısı: Türkçe sorgularda Türkçe karakterler tam ve eksiksiz korunmalıdır.
 
 # Örnekler
-## Örnek 1
+
+## Örnek 1 (Disiplin: Siyaset Bilimi / Kamu Yönetimi)
 ### Girdi
 \`\`\`json
 {
-  "researchCore": "SubjectX olgusunun ProblemY üzerindeki etkilerinin MethodZ çerçevesinde incelenmesi",
-  "mainClaim": "SubjectX'in dönüşümü ProblemY ile kurulan kavramsal dinamiklerin bir sonucudur."
+  "researchCore": "Türkiye'de e-devlet dönüşümünün kamu bürokrasisinde şeffaflık ve hesap verebilirlik üzerindeki etkilerini inceler.",
+  "targetActors": "Kamu kurumları ve T.C. Cumhurbaşkanlığı Dijital Dönüşüm Ofisi.",
+  "mainClaim": "E-devlet uygulamaları şeffaflığı artırırken bürokratik vesayet dinamiklerini dijital mecraya taşımıştır."
 }
 \`\`\`
 
@@ -78,18 +80,47 @@ Meilisearch leksik arama motorundan en geniş potansiyel tez havuzunu toplayabil
 \`\`\`json
 {
   "turkishQueries": [
-    "SubjectX Odakİnceleme",
-    "ProblemY TematikAnaliz",
-    "SubjectX ProblemY Etkileşimi",
-    "MethodZ çerçevesinde SubjectX"
+    "E-Devlet Kamu Bürokrasisi",
+    "Kamu Yönetiminde Şeffaflık",
+    "Dijital Dönüşüm Hesap Verebilirlik",
+    "E-Devlet Bürokratik Dönüşüm Analizi"
   ],
   "englishQueries": [
-    "SubjectX FocusAnalysis",
-    "ProblemY ThematicDomain",
-    "SubjectX ProblemY Interaction",
-    "MethodZ framework SubjectX"
+    "E-Government Public Bureaucracy",
+    "Public Administration Transparency",
+    "Digital Transformation Accountability",
+    "E-Government Bureaucratic Transformation Analysis"
   ],
-  "cohereSemanticTarget": "SubjectX olgusunun MethodZ yöntemi ve ProblemY parametreleri ışığında incelenmesi, kavramsal evrimi ve anlamsal ilişki ağının analizi."
+  "cohereSemanticTarget": "Türkiye kamu bürokrasisinde e-devlet dönüşümünün şeffaflık, hesap verebilirlik ve dijitalleşme parametreleri ışığında nitel ve kurumsal analizi."
+}
+\`\`\`
+
+## Örnek 2 (Disiplin: Biyomedikal Mühendislik / Tıp)
+### Girdi
+\`\`\`json
+{
+  "researchCore": "Tip 2 diyabet hastalarının biyosensör sürekli glukoz izleme verilerinden yapay zeka tabanlı hipoglisemi erken uyarı modeli geliştirilmesi.",
+  "targetActors": "Tip 2 diyabet hastaları ve klinik tedavi ekipleri.",
+  "mainClaim": "Derin yinelemeli sinir ağları (LSTM) hipoglisemi ataklarını 45 dakika önceden yüksek hassasiyetle tahmin eder."
+}
+\`\`\`
+
+### Çıktı
+\`\`\`json
+{
+  "turkishQueries": [
+    "Sürekli Glukoz İzleme",
+    "Tip 2 Diyabet Hipoglisemi",
+    "Biyosensör Glukoz Erken Uyarı",
+    "LSTM Diyabet Hipoglisemi Tahmini"
+  ],
+  "englishQueries": [
+    "Continuous Glucose Monitoring",
+    "Type 2 Diabetes Hypoglycemia",
+    "Biosensor Glucose Early Warning",
+    "LSTM Diabetes Hypoglycemia Prediction"
+  ],
+  "cohereSemanticTarget": "Tip 2 diyabet hastalarında biyosensör sürekli glukoz izleme verilerinden LSTM derin öğrenme mimarisi ile hipoglisemi erken uyarı modeli geliştirilmesi."
 }
 \`\`\``;
 }

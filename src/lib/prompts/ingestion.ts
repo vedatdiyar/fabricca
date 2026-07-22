@@ -84,13 +84,37 @@ export function buildIngestionSystemInstruction(): string {
 Akademik tez metinlerinden ve özetlerinden doğrudan veri çıkaran uzman bir metin madenciliği asistanısınız.
 
 # Kurallar ve Sınırlamalar
-- Sıkı Bağlam İlkesi: Yalnızca sağlanan tez özetlerinde açıkça yazılı olan bilgileri çıkarın. Asla dışarıdan bilgi eklemeyin, tahmin yürütmeyin veya varsayımda bulunmayın.
-- Eksik Alan Kuralı: Metinde açıkça geçmeyen alanlar için değer olarak kesinlikle "Belirtilmemiş" yazın.
-- Özgün Metin Koruma: Çıkarılan içeriklerde tezin akademik özgün ifadelerini koruyun; gereksiz genelleştirmeler yapmayın.
-- İzolasyon: Her tezi diğer tezlerden tamamen bağımsız olarak ayrıştırın.
+- Sıkı Bağlam İlkesi: Sadece sağlanan tez özetlerinde açıkça yazılı olan metinsel bilgilere temellenin.
+- Eksik Alan Kuralı: Metinde açıkça geçmeyen alanlar için değer olarak kesinlikle "Belirtilmemiş" ifadesini yazın.
+- Özgün Metin Koruma: Çıkarılan içeriklerde tezin akademik özgün ifadelerini koruyun; doğrudan metinde geçen spesifik kavramlara odaklanın.
+- İzolasyon İlkesi: Her tezi diğer tezlerden tamamen bağımsız olarak ayrıştırın.
 
-# Çıktı Biçimi
-- ingestionResponseSchema ile tam uyumlu bir JSON objesi döndürün.`;
+# Örnekler
+
+## Örnek 1 (Disiplin: Çevre Mühendisliği / Sürdürülebilirlik)
+### Girdi
+### Tez #101
+- Başlık: Marmara Havzası Sanayi Atıksularında Ağır Metal Arıtımı ve Membran Biyoreaktör Performansı
+- Yazar: Dr. Mehmet Yılmaz
+- Özet: Bu çalışma, 2018-2023 yılları arasında Marmara Havzası'ndaki organize sanayi bölgelerinden kaynaklanan atıksularda krom ve nikel arıtımını incelemektedir. İnceleme nesnesi olarak 5 farklı tekstil fabrikası seçilmiştir. Araştırmada İleri Oksidasyon ve Membran Biyoreaktör (MBR) hibrit yöntemi kullanılmış, atıksu numuneleri ICP-MS cihazı ile analiz edilmiştir. Çalışmanın kuramsal çerçevesi Kirleten Öder Prensibi ve Döngüsel Ekonomi modeline dayanır. Araştırma, MBR-İleri Oksidasyon bileşiminin ağır metal arıtım verimini %98,5 seviyesine çıkararak standart biyolojik arıtma yöntemlerine kıyasla üstünlük sağladığını savunmaktadır.
+
+### Çıktı
+\`\`\`json
+{
+  "theses": [
+    {
+      "id": 101,
+      "targetActors": "Marmara Havzası'ndaki 5 farklı tekstil fabrikası ve organize sanayi bölgeleri.",
+      "researchCore": "Marmara Havzası sanayi atıksularında krom ve nikel arıtımı ile Membran Biyoreaktör performansının incelenmesi.",
+      "spatialContext": "Marmara Havzası organize sanayi bölgeleri, Türkiye.",
+      "temporalContext": "2018-2023 yılları arası.",
+      "theoreticalFramework": "Kirleten Öder Prensibi ve Döngüsel Ekonomi modeli.",
+      "methodology": "İleri Oksidasyon ve Membran Biyoreaktör (MBR) hibrit yöntemi, ICP-MS numune analizi.",
+      "mainClaim": "MBR-İleri Oksidasyon bileşimi ağır metal arıtım verimini %98,5 seviyesine çıkararak standart biyolojik arıtma yöntemlerine kıyasla belirgin üstünlük sağlamaktadır."
+    }
+  ]
+}
+\`\`\``;
 }
 
 // ============================================================================
@@ -99,7 +123,7 @@ Akademik tez metinlerinden ve özetlerinden doğrudan veri çıkaran uzman bir m
 
 /**
  * Ingestion prompt oluşturur. Her tez için başlık, yazar ve özet bilgilerini
- * <tez id='X'> etiketleri içinde sarmalayarak LLM'e gönderir.
+ * sarmalayarak LLM'e gönderir.
  *
  * @param details - Tez detayları (id, title, author, abstract)
  * @returns Kullanıcı prompt string'i
