@@ -63,7 +63,7 @@ const MATRIX_SECTIONS: SectionConfig[] = [
           "Neyi, hangi temel problemi çözmek veya hangi hipotezi test etmek için inceliyorsun?",
         placeholder:
           "Çalışmanızın odağını, çözmeyi hedeflediğiniz temel problemi ve araştırma sorularınızı detaylandırın...",
-        rows: 4,
+        rows: 6,
       },
       {
         key: "framework",
@@ -75,7 +75,7 @@ const MATRIX_SECTIONS: SectionConfig[] = [
           "Çalışmanı hangi teorik mercekle, modelle veya kavramsal yaklaşımla ele alıyorsun?",
         placeholder:
           "Temel aldığınız teorik merceği, kavramsal modelleri ve analitik yaklaşımınızı açıklayın...",
-        rows: 4,
+        rows: 6,
       },
     ],
   },
@@ -93,7 +93,7 @@ const MATRIX_SECTIONS: SectionConfig[] = [
           "Veriyi nereden topluyorsun? Kimi, hangi veri kümesini, materyali veya aktörleri inceliyorsun?",
         placeholder:
           "İncelediğiniz aktörleri, veri setlerini, materyalleri veya odak nesnelerinizi tanımlayın...",
-        rows: 3,
+        rows: 6,
       },
       {
         key: "mainClaim",
@@ -105,7 +105,7 @@ const MATRIX_SECTIONS: SectionConfig[] = [
           "Veriyi nasıl topluyor, işliyor veya ölçüyorsun? (Nitel, nicel, deneysel, simülasyon vb.)",
         placeholder:
           "Veri toplama, veri işleme ve analiz yöntemlerinizi (nitel/nicel/deneysel/simülasyon) ve temel argümanınızı açıklayın...",
-        rows: 3,
+        rows: 6,
       },
       {
         key: "context",
@@ -117,7 +117,7 @@ const MATRIX_SECTIONS: SectionConfig[] = [
           "Çalışmanın zaman, mekan, sektör, örneklem veya coğrafi sınırları nedir?",
         placeholder:
           "Çalışmanızın dönemsel, coğrafi, sektörel veya örneklem sınırlarını belirtin...",
-        rows: 3,
+        rows: 6,
       },
     ],
   },
@@ -319,7 +319,7 @@ export function MatrixForm() {
           ) : (
             <span className="flex items-center gap-2">
               <Table className="w-4 h-4" />
-              Matrisi Onayla ve Risk Analizine Geç
+              Matrisi Onayla ve Konumlandırma Aşamasına Geç
             </span>
           )}
         </Button>

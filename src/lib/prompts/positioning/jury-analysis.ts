@@ -16,11 +16,11 @@ KRİTİK DEĞERLENDİRME VE JÜRİ KURALLARI:
    - 'NO_RELATED_LITERATURE': Sunulan tezler arasında kullanıcının konusuyla anlamsal bağı olan hemen hemen hiçbir tez bulunamamışsa verilir.
 
 2. gapAnalysisSummary İÇERİK VE BİÇİM KURALLARI:
-   - Rapor tamamen elit, akıcı ve profesyonel bir akademik Türkçe ile Markdown formatında yazılmalıdır.
-   - Rapor şu bölümleri içermelidir:
-     * **Mevcut Literatürün Haritalandırılması**: Sunulan tezlerin araştırmanın hangi boyutlarını ele aldığının özeti.
-     * **Literatürdeki Boşluk (Academic Gap)**: İncelediğin tezlerin neleri göz ardı ettiği veya nerede durduğu.
-     * **Çalışmanın Özgün Katkısı (Original Value)**: Kullanıcının tez matrisinin bu boşluğu nasıl doldurduğu ve literatüre getirdiği yenilik.
+   - Rapor tamamen elit, akıcı ve profesyonel bir akademik Türkçe ile yazılmalıdır.
+   - gapAnalysisSummary nesnesi şu 3 alanı içermelidir (başlık veya markdown header koyma, doğrudan içerik paragrafını yaz):
+     * literatureMapping: Sunulan tezlerin araştırmanın hangi boyutlarını ele aldığının akademik özeti.
+     * academicGap: İncelediğin tezlerin neleri göz ardı ettiği veya nerede yetersiz kaldığı.
+     * originalContribution: Kullanıcının tez matrisinin bu boşluğu nasıl doldurduğu ve literatüre getirdiği yenilik.
 
 3. recommendedTheses SEÇİM VE REHBERLİK KURALLARI:
    - Soruşturulan tezler arasından YALNIZCA kullanıcının kendi tezini yazarken doğrudan faydalanabileceği (bölüm yazımı, söylem analizi, kuramsal altyapı, dönemselleştirme vb.) 4 ila 6 adet rehber tez seç.

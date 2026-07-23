@@ -10,7 +10,10 @@ import {
   buildPositioningJuryUserPrompt,
 } from "@/lib/prompts";
 import type { SiftedThesis } from "./sifting";
-import type { PositioningMatrixInput } from "../_lib/validation";
+import {
+  gapAnalysisStructuredSchema,
+  type PositioningMatrixInput,
+} from "../_lib/validation";
 
 /** Threshold constant for Cohere relevance score filter. */
 export const RELEVANCE_THRESHOLD = 0.75;
@@ -76,12 +79,7 @@ export const juryAnalysisResultSchema = z.object({
     "NOVEL_GAP_IDENTIFIED",
     "NO_RELATED_LITERATURE",
   ]),
-  gapAnalysisSummary: z
-    .string()
-    .min(50)
-    .describe(
-      "Akademik boşluk sentezi ve özgünlük değerlendirme raporu (Markdown formatında, akıcı ve elit bir Türkçe ile)",
-    ),
+  gapAnalysisSummary: gapAnalysisStructuredSchema,
   recommendedTheses: z
     .array(juryRecommendedThesisSchema)
     .min(4)
@@ -103,9 +101,27 @@ export const juryAnalysisResultJsonSchema: JsonSchema = {
         "Yalnızca Konu + Teori + Analiz Birimi BİREBİR aynı ise DIRECT_OVERLAP verilir. Özgün katkı varsa NOVEL_GAP_IDENTIFIED verilir.",
     },
     gapAnalysisSummary: {
-      type: "string",
-      description:
-        "Markdown formatında sözlü özgünlük ve akademik boşluk sentezi (Literatürdeki diğer tezlerin eksik kaldığı yönleri ve kullanıcının doldurduğu boşluğu açıklayan sentez)",
+      type: "object",
+      properties: {
+        literatureMapping: {
+          type: "string",
+          description:
+            "Mevcut Literatürün Haritalandırılması: Sunulan tezlerin araştırmanın hangi boyutlarını ele aldığının akademik özeti",
+        },
+        academicGap: {
+          type: "string",
+          description:
+            "Literatürdeki Boşluk: İncelediğin tezlerin neleri göz ardı ettiği veya yetersiz kaldığı alanların analizi",
+        },
+        originalContribution: {
+          type: "string",
+          description:
+            "Çalışmanın Özgün Katkısı: Kullanıcının tez matrisinin bu boşluğu nasıl doldurduğu ve literatüre getirdiği yenilik",
+        },
+      },
+      required: ["literatureMapping", "academicGap", "originalContribution"],
+      additionalProperties: false,
+      description: "3 sabit akademik sentez bölümü",
     },
     recommendedTheses: {
       type: "array",
@@ -175,8 +191,14 @@ export async function analyzePositioningJury(
 
     return {
       globalStatus: "NO_RELATED_LITERATURE",
-      gapAnalysisSummary:
-        "Veritabanında girilen tez matrisiyle doğrudan ilişkilendirilebilecek herhangi bir akademik teze rastlanmamıştır. Bu durum çalışmanızın literatürde bakir ve yüksek özgünlüğe sahip bir alanda konumlandığına işaret edebilir.",
+      gapAnalysisSummary: {
+        literatureMapping:
+          "Veritabanında girilen tez matrisiyle doğrudan ilişkilendirilebilecek herhangi bir akademik teze rastlanmamıştır.",
+        academicGap:
+          "Doğrudan eşleşen bir çalışma bulunmadığı için mevcut literatürde tespit edilmiş bir çakışma veya doymuşluk alanı bulunmamaktadır.",
+        originalContribution:
+          "Çalışmanız literatürde henüz işlenmemiş son derece bakir ve yüksek özgünlüğe sahip bir alanda konumlanmaktadır.",
+      },
       recommendedTheses: [],
     };
   }

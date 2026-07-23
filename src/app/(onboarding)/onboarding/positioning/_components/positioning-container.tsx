@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, memo } from "react";
+import { useState, useCallback, useEffect, memo } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { LucideIcon } from "lucide-react";
@@ -14,8 +14,8 @@ import {
   AlertTriangle,
   HelpCircle,
   Sparkles,
+  Lightbulb,
   ArrowRight,
-  RotateCcw,
   BookOpen,
   ExternalLink,
   Search,
@@ -71,9 +71,9 @@ const POSITIONING_SECTIONS: SectionConfig[] = [
         description:
           "Neyi, hangi temel problemi çözmek veya hangi hipotezi test etmek için inceliyorsun?",
         placeholder:
-          "Çalışmanızın odağını, çözmeyi hedeflediğiniz temel problemi ve araştırma hipotezlerinizi en az 200 karakterle detaylandırın...",
+          "Çalışmanızın odağını, çözmeyi hedeflediğiniz temel problemi ve araştırma hipotezlerinizi detaylandırın...",
         rows: 4,
-        minLength: 200,
+        minLength: 3,
       },
       {
         key: "theoreticalFramework",
@@ -84,9 +84,9 @@ const POSITIONING_SECTIONS: SectionConfig[] = [
         description:
           "Çalışmanı hangi teorik mercekle, modelle veya kavramsal yaklaşımla ele alıyorsun?",
         placeholder:
-          "Temel aldığınız teorik merceği, kavramsal modelleri ve analitik yaklaşımınızı en az 200 karakterle açıklayın...",
+          "Temel aldığınız teorik merceği, kavramsal modelleri ve analitik yaklaşımınızı açıklayın...",
         rows: 4,
-        minLength: 200,
+        minLength: 3,
       },
     ],
   },
@@ -103,9 +103,9 @@ const POSITIONING_SECTIONS: SectionConfig[] = [
         description:
           "Veriyi nereden topluyorsun? Kimi, hangi veri kümesini, materyali veya aktörleri inceliyorsun?",
         placeholder:
-          "İncelediğiniz aktörleri, veri setlerini, materyalleri veya odak nesnelerinizi en az 150 karakterle tanımlayın...",
+          "İncelediğiniz aktörleri, veri setlerini, materyalleri veya odak nesnelerinizi tanımlayın...",
         rows: 3,
-        minLength: 150,
+        minLength: 3,
       },
       {
         key: "methodology",
@@ -116,9 +116,9 @@ const POSITIONING_SECTIONS: SectionConfig[] = [
         description:
           "Veriyi nasıl topluyor, işliyor veya ölçüyorsun? (Nitel, nicel, deneysel, simülasyon vb.)",
         placeholder:
-          "Veri toplama, veri işleme ve analiz yöntemlerinizi (nitel/nicel/deneysel/simülasyon) en az 150 karakterle detaylandırın...",
+          "Veri toplama, veri işleme ve analiz yöntemlerinizi (nitel/nicel/deneysel/simülasyon) detaylandırın...",
         rows: 3,
-        minLength: 150,
+        minLength: 3,
       },
       {
         key: "scopeAndContext",
@@ -129,9 +129,9 @@ const POSITIONING_SECTIONS: SectionConfig[] = [
         description:
           "Çalışmanın zaman, mekan, sektör, örneklem veya coğrafi sınırları nedir?",
         placeholder:
-          "Çalışmanızın dönemsel, coğrafi, sektörel veya örneklem sınırlarını en az 150 karakterle belirteyin...",
+          "Çalışmanızın dönemsel, coğrafi, sektörel veya örneklem sınırlarını belirteyin...",
         rows: 3,
-        minLength: 150,
+        minLength: 3,
       },
     ],
   },
@@ -255,7 +255,7 @@ export function PositioningContainer({
   );
 
   const [viewMode, setViewMode] = useState<ViewMode>(
-    hasExistingReport ? "report" : "form",
+    hasExistingReport ? "report" : "loading",
   );
 
   const [formState, setFormState] = useState<PositioningMatrixInput>(
@@ -267,13 +267,65 @@ export function PositioningContainer({
     hasExistingReport
       ? {
           globalStatus: initialRecord.globalStatus as PositioningGlobalStatus,
-          gapAnalysisSummary: initialRecord.gapAnalysisSummary ?? "",
+          gapAnalysisSummary:
+            (initialRecord.gapAnalysisSummary as JuryAnalysisResult["gapAnalysisSummary"]) ?? {
+              literatureMapping: "",
+              academicGap: "",
+              originalContribution: "",
+            },
           recommendedTheses:
             (initialRecord.recommendedTheses as JuryAnalysisResult["recommendedTheses"]) ??
             [],
         }
       : null,
   );
+
+  // Auto-trigger the AI positioning pipeline on initial mount if no report exists yet
+  useEffect(() => {
+    if (!hasExistingReport) {
+      let isMounted = true;
+
+      const executePipeline = async () => {
+        const parsed = positioningMatrixSchema.safeParse(formState);
+        if (!parsed.success) {
+          if (isMounted) {
+            setViewMode("form");
+            toast.error(
+              "Lütfen konumlandırma matrisi alanlarını doldurup tekrar deneyin.",
+            );
+          }
+          return;
+        }
+
+        try {
+          const res = await runPositioningPipelineAction(parsed.data);
+          if (!isMounted) return;
+
+          if ("error" in res && res.error) {
+            toast.error(res.error);
+            setViewMode("form");
+          } else if ("success" in res && res.success) {
+            toast.success(
+              "Konumlandırma analizi ve jüri değerlendirmesi tamamlandı!",
+            );
+            setReportData(res.report);
+            setViewMode("report");
+          }
+        } catch {
+          if (isMounted) {
+            toast.error("Bir hata oluştu. Lütfen tekrar deneyin.");
+            setViewMode("form");
+          }
+        }
+      };
+
+      void executePipeline();
+
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [hasExistingReport, formState]);
 
   const handleFieldChange = useCallback((key: FieldKey, value: string) => {
     setFormState((prev) => ({ ...prev, [key]: value }));
@@ -363,7 +415,7 @@ export function PositioningContainer({
           <div className="flex items-center gap-3 text-xs text-foreground/80">
             <Sparkles className="h-4 w-4 text-primary animate-pulse shrink-0" />
             <span>
-              3. Yapay zeka akademisyen jürisi özgünlük boşluğunu raporluyor
+              3. Akademik jüri özgünlük boşluğu ve sentez raporunu hazırlıyor
             </span>
           </div>
         </div>
@@ -416,31 +468,51 @@ export function PositioningContainer({
           </div>
 
           {/* Subtitle Message based on status */}
-          <p className="text-xs leading-relaxed text-muted-foreground bg-muted/40 p-3 rounded-md">
-            {isNovelGap &&
-              "Çalışmanızın odağı, yöntemi ve kapsamı literatürdeki mevcut tezlerden belirgin biçimde ayrışmakta ve özgün bir akademik boşluk doldurmaktadır."}
-            {isDirectOverlap &&
-              "Çalışmanızın odağı literatürdeki mevcut tezlerle yüksek oranda çakışmaktadır. Jüri önerileri doğrultusunda teorik çerçeve veya yönteminizi güncellemeniz tavsiye edilir."}
-            {!isNovelGap &&
-              !isDirectOverlap &&
-              "Doğrudan eşleşen tez sayısı sınırlıdır. Kavramsal çerçevenizi veya arama sınırlarınızı genişleterek tekrar değerlendirebilirsiniz."}
-          </p>
+          {isNovelGap && (
+            <div className="p-4 rounded-md bg-emerald-500/5 border border-emerald-500/20 border-l-2 border-l-emerald-500">
+              <p className="text-sm leading-relaxed text-card-foreground">
+                <CheckCircle2 className="h-4 w-4 inline-block mr-2 text-emerald-600 dark:text-emerald-400 shrink-0 align-text-top" />
+                Çalışmanızın odağı, yöntemi ve kapsamı literatürdeki mevcut
+                tezlerden belirgin biçimde ayrışmakta ve özgün bir akademik
+                boşluk doldurmaktadır.
+              </p>
+            </div>
+          )}
+          {isDirectOverlap && (
+            <div className="p-4 rounded-md bg-destructive/5 border border-destructive/20 border-l-2 border-l-destructive">
+              <p className="text-sm leading-relaxed text-card-foreground">
+                <AlertTriangle className="h-4 w-4 inline-block mr-2 text-destructive shrink-0 align-text-top" />
+                Çalışmanızın odağı literatürdeki mevcut tezlerle yüksek oranda
+                çakışmaktadır. Jüri önerileri doğrultusunda teorik çerçeve veya
+                yönteminizi güncellemeniz tavsiye edilir.
+              </p>
+            </div>
+          )}
+          {!isNovelGap && !isDirectOverlap && (
+            <div className="p-4 rounded-md bg-amber-500/5 border border-amber-500/20 border-l-2 border-l-amber-500">
+              <p className="text-sm leading-relaxed text-card-foreground">
+                <HelpCircle className="h-4 w-4 inline-block mr-2 text-amber-600 dark:text-amber-400 shrink-0 align-text-top" />
+                Doğrudan eşleşen tez sayısı sınırlıdır. Kavramsal çerçevenizi
+                veya arama sınırlarınızı genişleterek tekrar
+                değerlendirebilirsiniz.
+              </p>
+            </div>
+          )}
         </Card>
 
-        {/* Markdown Gap Analysis Summary Card */}
-        <Card className="p-6 space-y-4 border-border shadow-sm">
-          <div className="flex items-center gap-2 pb-2 border-b border-border">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <h3 className="font-serif text-base font-bold text-foreground">
-              Yapay Zeka Akademisyen Jüri Sentezi
-            </h3>
+        {/* Academic Jury Synthesis Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2.5 pb-2 border-b border-border">
+            <Sparkles className="h-5 w-5 text-primary shrink-0" />
+            <h2 className="font-serif text-lg font-bold text-foreground">
+              Akademik Jüri Sentezi
+            </h2>
           </div>
 
           <PositioningMarkdownRenderer
             content={reportData.gapAnalysisSummary}
-            className="pt-2"
           />
-        </Card>
+        </div>
 
         {/* Guiding Thesis Cards Section */}
         {reportData.recommendedTheses &&
@@ -461,7 +533,7 @@ export function PositioningContainer({
                   return (
                     <Card
                       key={thesisId}
-                      className="p-5 space-y-3 hover:border-primary/30 transition-all"
+                      className="p-4 space-y-3 hover:border-primary/30 transition-all"
                     >
                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                         <div className="space-y-1">
@@ -491,22 +563,28 @@ export function PositioningContainer({
                       </div>
 
                       {(thesis.contributionArea || thesis.relevanceReason) && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 border-t border-border/60 text-xs">
+                        <div className="p-3 rounded bg-card border border-border/40 space-y-3 text-xs">
                           {thesis.contributionArea && (
-                            <div className="p-2.5 rounded bg-primary/5 border border-primary/10 space-y-1">
-                              <span className="font-semibold text-primary block">
-                                📌 Katkı / Odak Alanı:
+                            <div className="space-y-1">
+                              <span className="flex items-center gap-1.5 font-semibold text-primary">
+                                <Target className="h-3.5 w-3.5 shrink-0" />
+                                Katkı / Odak Alanı:
                               </span>
-                              <span className="text-foreground/90 leading-relaxed block">
+                              <span className="text-foreground leading-relaxed block">
                                 {thesis.contributionArea}
                               </span>
                             </div>
                           )}
 
+                          {thesis.relevanceReason && thesis.contributionArea && (
+                            <div className="border-t border-border/40" />
+                          )}
+
                           {thesis.relevanceReason && (
-                            <div className="p-2.5 rounded bg-muted/60 border border-border/80 space-y-1">
-                              <span className="font-semibold text-foreground/80 block">
-                                💡 İlişki ve Ayrışma Sebebi:
+                            <div className="space-y-1">
+                              <span className="flex items-center gap-1.5 font-semibold text-foreground">
+                                <Lightbulb className="h-3.5 w-3.5 shrink-0" />
+                                İlişki ve Ayrışma Sebebi:
                               </span>
                               <span className="text-muted-foreground leading-relaxed block">
                                 {thesis.relevanceReason}
@@ -523,17 +601,7 @@ export function PositioningContainer({
           )}
 
         {/* Bottom Action Controls */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-border">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setViewMode("form")}
-            className="w-full sm:w-auto"
-          >
-            <RotateCcw className="w-4 h-4 mr-2" />
-            Matrisi Düzenle & Yeniden Analiz Et
-          </Button>
-
+        <div className="flex justify-end pt-6">
           <Button
             type="button"
             size="lg"

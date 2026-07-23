@@ -78,7 +78,7 @@ export function useOnboardingNavigation() {
 
   /**
    * Saves the thesis matrix to the database, purges downstream data,
-   * and navigates to the boxes page.
+   * and navigates to the positioning page.
    *
    * @param matrixInput - The thesis matrix fields to persist.
    */
@@ -101,7 +101,7 @@ export function useOnboardingNavigation() {
 
         queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
 
-        router.push("/onboarding/boxes");
+        router.push("/onboarding/positioning");
 
         return { success: true };
       } catch (err) {

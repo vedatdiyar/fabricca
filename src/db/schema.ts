@@ -22,6 +22,7 @@ import {
 import type {
   PositioningMatrixInput,
   RecommendedThesisItem,
+  GapAnalysisStructured,
 } from "@/app/(onboarding)/onboarding/positioning/_lib/validation";
 
 // ============================================================================
@@ -106,7 +107,9 @@ export const thesisPositioning = pgTable(
       .$type<PositioningMatrixInput>()
       .notNull(),
     globalStatus: positioningGlobalStatusEnum("global_status"),
-    gapAnalysisSummary: text("gap_analysis_summary"),
+    gapAnalysisSummary: jsonb("gap_analysis_summary").$type<
+      GapAnalysisStructured | string
+    >(),
     recommendedTheses: jsonb("recommended_theses")
       .$type<RecommendedThesisItem[]>()
       .default([]),

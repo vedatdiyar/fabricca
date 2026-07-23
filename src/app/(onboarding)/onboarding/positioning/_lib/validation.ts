@@ -8,32 +8,26 @@ export const positioningMatrixSchema = z.object({
   subjectAndProblem: z
     .string()
     .trim()
-    .min(
-      200,
-      "Çalışmanın odağı ve problemi akademik derinlik için en az 200 karakter olmalıdır.",
-    ),
+    .min(3, "Çalışmanın odağı ve problemi en az 3 karakter olmalıdır."),
   theoreticalFramework: z
     .string()
     .trim()
-    .min(
-      200,
-      "Teorik veya kavramsal çerçeve akademik netlik için en az 200 karakter olmalıdır.",
-    ),
+    .min(3, "Teorik veya kavramsal çerçeve en az 3 karakter olmalıdır."),
   unitOfAnalysis: z
     .string()
     .trim()
     .min(
-      150,
-      "Analiz birimi, aktörler veya odak nesne en az 150 karakter olmalıdır.",
+      3,
+      "Analiz birimi, aktörler veya odak nesne en az 3 karakter olmalıdır.",
     ),
   methodology: z
     .string()
     .trim()
-    .min(150, "Metodoloji ve yöntem en az 150 karakter olmalıdır."),
+    .min(3, "Metodoloji ve yöntem en az 3 karakter olmalıdır."),
   scopeAndContext: z
     .string()
     .trim()
-    .min(150, "Kapsam ve sınırlar en az 150 karakter olmalıdır."),
+    .min(3, "Kapsam ve sınırlar en az 3 karakter olmalıdır."),
 });
 
 /** Input payload type inferred from the positioning matrix Zod schema. */
@@ -55,3 +49,21 @@ export interface RecommendedThesisItem {
   relevanceReason: string;
   doi?: string;
 }
+
+/** Zod validation schema for the 3 structured gap analysis sections. */
+export const gapAnalysisStructuredSchema = z.object({
+  literatureMapping: z
+    .string()
+    .describe(
+      "Mevcut Literatürün Haritalandırılması bölümünün akademik analizi",
+    ),
+  academicGap: z
+    .string()
+    .describe("Literatürdeki Boşluk bölümünün akademik analizi"),
+  originalContribution: z
+    .string()
+    .describe("Çalışmanın Özgün Katkısı bölümünün akademik analizi"),
+});
+
+/** Structured gap analysis type inferred from Zod schema. */
+export type GapAnalysisStructured = z.infer<typeof gapAnalysisStructuredSchema>;

@@ -1,17 +1,18 @@
 import React from "react";
+import { Compass, ScanEye, Sparkles } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import type { GapAnalysisStructured } from "../_lib/validation";
 
 interface PositioningMarkdownRendererProps {
-  content: string;
+  content: GapAnalysisStructured | string | unknown;
   className?: string;
 }
 
 /**
- * Parses inline markdown elements (bold, italic, inline code) into React nodes.
- *
- * @param text - Raw markdown text segment.
- * @returns Array of formatted React elements or plain text strings.
+ * Parses inline markdown formatting (bold, italic, inline code).
  */
 function parseInlineMarkdown(text: string): React.ReactNode[] {
+  if (!text) return [];
   const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
   return parts.map((part, idx) => {
     if (part.startsWith("**") && part.endsWith("**")) {
@@ -43,9 +44,110 @@ function parseInlineMarkdown(text: string): React.ReactNode[] {
 }
 
 /**
- * Custom lightweight Markdown renderer for academic positioning gap reports.
- * Formats headings, bullet lists, numbered lists, blockquotes, and paragraphs
- * without requiring external npm dependencies.
+ * Normalizes input payload into a structured GapAnalysisStructured object.
+ * Supports structured objects, JSON strings, and legacy markdown strings.
+ */
+function normalizeGapAnalysis(
+  content: GapAnalysisStructured | string | unknown,
+): GapAnalysisStructured {
+  if (!content) {
+    return {
+      literatureMapping: "",
+      academicGap: "",
+      originalContribution: "",
+    };
+  }
+
+  // Direct structured object
+  if (
+    typeof content === "object" &&
+    content !== null &&
+    ("literatureMapping" in content ||
+      "academicGap" in content ||
+      "originalContribution" in content)
+  ) {
+    const obj = content as Record<string, unknown>;
+    return {
+      literatureMapping: String(obj.literatureMapping ?? ""),
+      academicGap: String(obj.academicGap ?? ""),
+      originalContribution: String(obj.originalContribution ?? ""),
+    };
+  }
+
+  // String payload (JSON or legacy Markdown)
+  if (typeof content === "string") {
+    const trimmed = content.trim();
+    if (trimmed.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (typeof parsed === "object" && parsed !== null) {
+          return {
+            literatureMapping: String(parsed.literatureMapping ?? ""),
+            academicGap: String(parsed.academicGap ?? ""),
+            originalContribution: String(parsed.originalContribution ?? ""),
+          };
+        }
+      } catch {
+        // Fallback to legacy markdown parsing below
+      }
+    }
+
+    // Legacy Markdown parser for older database entries
+    return parseLegacyMarkdown(trimmed);
+  }
+
+  return {
+    literatureMapping: String(content),
+    academicGap: "",
+    originalContribution: "",
+  };
+}
+
+/**
+ * Legacy parser for un-migrated database records saved in Markdown format.
+ */
+function parseLegacyMarkdown(markdown: string): GapAnalysisStructured {
+  const result: GapAnalysisStructured = {
+    literatureMapping: "",
+    academicGap: "",
+    originalContribution: "",
+  };
+
+  const sections = markdown.split(/##\s+/);
+  for (const sec of sections) {
+    const lines = sec.trim().split("\n");
+    const heading = lines[0]?.toLowerCase() ?? "";
+    const body = lines.slice(1).join("\n").trim();
+
+    if (
+      heading.includes("harita") ||
+      heading.includes("literatürün") ||
+      heading.includes("mevcut")
+    ) {
+      result.literatureMapping = body || lines.join("\n").trim();
+    } else if (
+      heading.includes("boşluk") ||
+      heading.includes("eksik") ||
+      heading.includes("gap")
+    ) {
+      result.academicGap = body;
+    } else if (
+      heading.includes("özgün") ||
+      heading.includes("katkı") ||
+      heading.includes("değer")
+    ) {
+      result.originalContribution = body;
+    } else if (!result.literatureMapping && body) {
+      result.literatureMapping = sec.trim();
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Pure, structured renderer for the 3 fixed Academic Jury Synthesis sections.
+ * Directly renders cards with designated icons without fuzzy matching or regex.
  */
 export function PositioningMarkdownRenderer({
   content,
@@ -53,130 +155,54 @@ export function PositioningMarkdownRenderer({
 }: PositioningMarkdownRendererProps) {
   if (!content) return null;
 
-  const lines = content.split("\n");
-  const elements: React.ReactNode[] = [];
+  const data = normalizeGapAnalysis(content);
 
-  let inBulletList = false;
-  let bulletItems: React.ReactNode[] = [];
+  return (
+    <div className={`space-y-4 ${className}`}>
+      {/* 1. Mevcut Literatürün Haritalandırılması */}
+      <Card className="p-6 space-y-3 border-border shadow-sm bg-card hover:border-border/80 transition-colors">
+        <div className="flex items-center gap-2 pb-2 border-b border-border">
+          <Compass className="h-4 w-4 text-sky-600 dark:text-sky-400 shrink-0" />
+          <h3 className="font-serif text-base font-bold text-foreground">
+            Mevcut Literatürün Haritalandırılması
+          </h3>
+        </div>
+        <div className="text-sm leading-relaxed text-foreground/90 space-y-2 pt-1">
+          {data.literatureMapping.split("\n\n").map((para, idx) => (
+            <p key={idx}>{parseInlineMarkdown(para)}</p>
+          ))}
+        </div>
+      </Card>
 
-  const flushBulletList = () => {
-    if (inBulletList && bulletItems.length > 0) {
-      elements.push(
-        <ul
-          key={`bullet-list-${elements.length}`}
-          className="my-3 space-y-2 pl-5 list-disc text-sm leading-relaxed text-foreground/90"
-        >
-          {bulletItems}
-        </ul>,
-      );
-      bulletItems = [];
-      inBulletList = false;
-    }
-  };
+      {/* 2. Literatürdeki Boşluk */}
+      <Card className="p-6 space-y-3 border-border shadow-sm bg-card hover:border-border/80 transition-colors">
+        <div className="flex items-center gap-2 pb-2 border-b border-border">
+          <ScanEye className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+          <h3 className="font-serif text-base font-bold text-foreground">
+            Literatürdeki Boşluk
+          </h3>
+        </div>
+        <div className="text-sm leading-relaxed text-foreground/90 space-y-2 pt-1">
+          {data.academicGap.split("\n\n").map((para, idx) => (
+            <p key={idx}>{parseInlineMarkdown(para)}</p>
+          ))}
+        </div>
+      </Card>
 
-  lines.forEach((line, idx) => {
-    const trimmed = line.trim();
-
-    if (!trimmed) {
-      flushBulletList();
-      return;
-    }
-
-    // Headings
-    if (trimmed.startsWith("# ")) {
-      flushBulletList();
-      elements.push(
-        <h1
-          key={idx}
-          className="mt-6 mb-3 font-serif text-xl font-bold tracking-tight text-foreground border-b border-border pb-2"
-        >
-          {parseInlineMarkdown(trimmed.slice(2))}
-        </h1>,
-      );
-      return;
-    }
-
-    if (trimmed.startsWith("## ")) {
-      flushBulletList();
-      elements.push(
-        <h2
-          key={idx}
-          className="mt-5 mb-2.5 font-serif text-lg font-semibold tracking-tight text-foreground"
-        >
-          {parseInlineMarkdown(trimmed.slice(3))}
-        </h2>,
-      );
-      return;
-    }
-
-    if (trimmed.startsWith("### ")) {
-      flushBulletList();
-      elements.push(
-        <h3
-          key={idx}
-          className="mt-4 mb-2 font-serif text-base font-semibold text-foreground/95"
-        >
-          {parseInlineMarkdown(trimmed.slice(4))}
-        </h3>,
-      );
-      return;
-    }
-
-    // Blockquote
-    if (trimmed.startsWith("> ")) {
-      flushBulletList();
-      elements.push(
-        <blockquote
-          key={idx}
-          className="my-3 border-l-4 border-primary/50 bg-primary/5 px-4 py-2.5 rounded-r text-sm text-foreground/90 italic"
-        >
-          {parseInlineMarkdown(trimmed.slice(2))}
-        </blockquote>,
-      );
-      return;
-    }
-
-    // Bullet List
-    if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
-      inBulletList = true;
-      bulletItems.push(
-        <li key={idx} className="marker:text-primary">
-          {parseInlineMarkdown(trimmed.slice(2))}
-        </li>,
-      );
-      return;
-    }
-
-    // Numbered list item
-    const numberedMatch = trimmed.match(/^(\d+)\.\s+(.*)/);
-    if (numberedMatch) {
-      flushBulletList();
-      elements.push(
-        <div
-          key={idx}
-          className="my-2 flex items-start gap-2 text-sm leading-relaxed"
-        >
-          <span className="font-semibold text-primary min-w-[20px]">
-            {numberedMatch[1]}.
-          </span>
-          <span className="text-foreground/90">
-            {parseInlineMarkdown(numberedMatch[2])}
-          </span>
-        </div>,
-      );
-      return;
-    }
-
-    // Standard Paragraph
-    flushBulletList();
-    elements.push(
-      <p key={idx} className="my-2 text-sm leading-relaxed text-foreground/90">
-        {parseInlineMarkdown(trimmed)}
-      </p>,
-    );
-  });
-
-  flushBulletList();
-
-  return <div className={`space-y-1 ${className}`}>{elements}</div>;
+      {/* 3. Çalışmanın Özgün Katkısı */}
+      <Card className="p-6 space-y-3 border-border shadow-sm bg-card hover:border-border/80 transition-colors">
+        <div className="flex items-center gap-2 pb-2 border-b border-border">
+          <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <h3 className="font-serif text-base font-bold text-foreground">
+            Çalışmanın Özgün Katkısı
+          </h3>
+        </div>
+        <div className="text-sm leading-relaxed text-foreground/90 space-y-2 pt-1">
+          {data.originalContribution.split("\n\n").map((para, idx) => (
+            <p key={idx}>{parseInlineMarkdown(para)}</p>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
 }

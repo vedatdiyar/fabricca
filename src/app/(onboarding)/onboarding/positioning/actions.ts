@@ -2,7 +2,7 @@
 
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { thesisPositioning } from "@/db/schema";
+import { thesisPositioning, thesisMatrices } from "@/db/schema";
 import type { ThesisPositioning } from "@/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
@@ -91,6 +91,8 @@ export async function savePositioningMatrixAction(
 
 /**
  * Fetches the existing positioning record for the authenticated user.
+ * If no positioning record exists yet, attempts to pre-fill matrixInput
+ * from the user's thesis_matrices record.
  *
  * @returns The user's positioning record or null if not found
  */
@@ -106,7 +108,35 @@ export async function getPositioningAction(): Promise<ThesisPositioning | null> 
       .from(thesisPositioning)
       .where(eq(thesisPositioning.userId, session.userId));
 
-    return record ?? null;
+    if (record) {
+      return record;
+    }
+
+    const [matrix] = await db
+      .select()
+      .from(thesisMatrices)
+      .where(eq(thesisMatrices.userId, session.userId));
+
+    if (matrix) {
+      return {
+        id: "prefilled-from-matrix",
+        userId: session.userId,
+        matrixInput: {
+          subjectAndProblem: matrix.researchCore || "",
+          theoreticalFramework: matrix.framework || "",
+          unitOfAnalysis: matrix.targetActors || "",
+          methodology: matrix.mainClaim || "",
+          scopeAndContext: matrix.context || "",
+        },
+        globalStatus: null,
+        gapAnalysisSummary: null,
+        recommendedTheses: [],
+        createdAt: matrix.createdAt,
+        updatedAt: matrix.updatedAt,
+      } as ThesisPositioning;
+    }
+
+    return null;
   } catch {
     return null;
   }
