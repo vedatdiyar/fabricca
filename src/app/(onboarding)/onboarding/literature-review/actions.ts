@@ -24,10 +24,7 @@ import {
   persistSubBoxEntry,
   fetchPreloadedPool,
 } from "./_services/literature-persistence";
-import {
-  loadThesisMatrixAndBoxes,
-  loadOverlapTheses,
-} from "./_services/process-boxes-data";
+import { loadThesisMatrixAndBoxes } from "./_services/process-boxes-data";
 
 // ============================================================================
 // Session-based cancellation flags — keyed by userId so concurrent users
@@ -69,11 +66,14 @@ export async function processAllBoxesAction(
 
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
 
-    const { matrix, allBoxRows } = await loadThesisMatrixAndBoxes(userId);
+    const { matrix } = await loadThesisMatrixAndBoxes(userId);
     if (!matrix) return { error: "Thesis matrix not found." };
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
 
-    const { thesisArticlesMap } = await loadOverlapTheses(allBoxRows);
+    const thesisArticlesMap = new Map<
+      string,
+      import("@/lib/types").JuryArticle[]
+    >();
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
 
     const { poolEntries } = await orchestrateBatchProcess(

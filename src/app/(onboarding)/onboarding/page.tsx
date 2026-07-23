@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
   thesisMatrices,
-  originalityReports,
+  thesisPositioning,
   thesisBoxes,
   libraryResources,
 } from "@/db/schema";
@@ -12,12 +12,10 @@ import { getProfile } from "@/lib/session";
 /**
  * Onboarding root router page.
  * Finds the LAST successfully completed step and redirects there.
- * Never auto-forwards the user to a step they haven't explicitly started.
  * - Nothing completed yet → matrix (first step)
- * - Matrix exists, no report → matrix
- * - Report exists, no boxes → risk
- * - Boxes exist, no literature → boxes
- * - Literature review not completed → literature-review
+ * - Matrix exists, no positioning report → positioning
+ * - Positioning exists, no boxes → boxes
+ * - Boxes exist, literature review not completed → literature-review
  * - Fully completed → dashboard
  */
 export default async function OnboardingPage() {
@@ -27,7 +25,7 @@ export default async function OnboardingPage() {
     redirect("/dashboard");
   }
 
-  // Check matrix first
+  // Step 1: Check matrix
   const [matrix] = await db
     .select({ id: thesisMatrices.id })
     .from(thesisMatrices)
@@ -37,17 +35,20 @@ export default async function OnboardingPage() {
     redirect("/onboarding/matrix");
   }
 
-  // Check if report (risk analysis) exists
-  const [report] = await db
-    .select({ id: originalityReports.id })
-    .from(originalityReports)
-    .where(eq(originalityReports.userId, profile.id));
+  // Step 2: Check positioning report
+  const [positioning] = await db
+    .select({
+      id: thesisPositioning.id,
+      globalStatus: thesisPositioning.globalStatus,
+    })
+    .from(thesisPositioning)
+    .where(eq(thesisPositioning.userId, profile.id));
 
-  if (!report) {
-    redirect("/onboarding/matrix");
+  if (!positioning || !positioning.globalStatus) {
+    redirect("/onboarding/positioning");
   }
 
-  // Check if boxes exist
+  // Step 3: Check if boxes exist
   const [box] = await db
     .select({ id: thesisBoxes.id })
     .from(thesisBoxes)
@@ -55,10 +56,10 @@ export default async function OnboardingPage() {
     .limit(1);
 
   if (!box) {
-    redirect("/onboarding/risk");
+    redirect("/onboarding/boxes");
   }
 
-  // Check if literature review exists (library resources)
+  // Step 4: Check if literature review exists (library resources)
   const [lit] = await db
     .select({ id: libraryResources.id })
     .from(libraryResources)

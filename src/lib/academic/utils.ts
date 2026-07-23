@@ -91,3 +91,21 @@ export function normalizeTitle(
   }
   return normalized;
 }
+
+/**
+ * Strips subtitles (separated by ':', '/', or ' - ') to extract the core title,
+ * then normalizes it. Useful for cross-edition / duplicate matching where subtitles
+ * may differ (e.g. "Security as Practice: Discourse Analysis..." vs "Security as Practice").
+ */
+export function normalizeCleanTitle(
+  title: string | null | undefined,
+  maxLength?: number,
+): string {
+  if (!title) return "";
+  let coreTitle = title;
+  const separatorMatch = title.match(/^([^:/\-–—]+)/);
+  if (separatorMatch && separatorMatch[1].trim().length >= 3) {
+    coreTitle = separatorMatch[1].trim();
+  }
+  return normalizeTitle(coreTitle, maxLength);
+}

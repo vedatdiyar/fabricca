@@ -12,8 +12,6 @@ type ServiceName =
   | "auth"
   | "flow"
   | "matrix"
-  | "originality"
-  | "risk"
   | "complete"
   | "boxes"
   | "wikipedia"
@@ -21,7 +19,9 @@ type ServiceName =
   | "library"
   | "openalex"
   | "crossref"
-  | "dashboard";
+  | "dashboard"
+  | "cohere"
+  | "positioning";
 
 export interface LogParams {
   service?: ServiceName;

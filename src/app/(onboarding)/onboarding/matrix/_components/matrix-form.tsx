@@ -4,7 +4,15 @@ import { useState, useCallback, useMemo, memo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { LucideIcon } from "lucide-react";
-import { Loader2, Table, BookMarked, Globe, Target } from "lucide-react";
+import {
+  Loader2,
+  Table,
+  BookOpen,
+  Boxes,
+  Compass,
+  MapPin,
+  Target,
+} from "lucide-react";
 
 import { getErrorDisplay } from "@/lib/error-utils";
 import { Button } from "@/components/ui/button";
@@ -29,6 +37,7 @@ type FieldConfig = {
   number: string;
   Icon: LucideIcon;
   label: string;
+  description: string;
   placeholder: string;
   rows: number;
 };
@@ -41,69 +50,73 @@ type SectionConfig = {
 
 const MATRIX_SECTIONS: SectionConfig[] = [
   {
-    id: "arastirmaOdagi",
-    title: "Araştırma Odağı",
+    id: "odakVeTeori",
+    title: "Çalışma Odağı ve Teorik Altyapı",
     fields: [
       {
         key: "researchCore",
         id: "researchCore",
         number: "01",
         Icon: Target,
-        label: "Araştırma Konusu ve Soruları",
+        label: "Çalışmanın Odağı & Problemi",
+        description:
+          "Neyi, hangi temel problemi çözmek veya hangi hipotezi test etmek için inceliyorsun?",
         placeholder:
-          "Araştırmanızın temel konusu, kavramsal/teorik problemi ve cevap aradığı temel sorular (örn: Kürt hareketinin söylemsel dönüşümünü tetikleyen sol ilişkiler nelerdir?)...",
+          "Çalışmanızın odağını, çözmeyi hedeflediğiniz temel problemi ve araştırma sorularınızı detaylandırın...",
         rows: 4,
-      },
-      {
-        key: "targetActors",
-        id: "targetActors",
-        number: "02",
-        Icon: Target,
-        label: "Aktörler ve Odak Gruplar",
-        placeholder:
-          "Araştırmanızda odaklanılan ana aktörler, özneler, kurumlar veya toplumsal gruplar (örn: PKK, DEP, HADEP ve Türkiye sosyalist sol partileri)...",
-        rows: 3,
-      },
-    ],
-  },
-  {
-    id: "baglamVeYontem",
-    title: "Bağlam ve Çerçeve",
-    fields: [
-      {
-        key: "context",
-        id: "context",
-        number: "03",
-        Icon: Globe,
-        label: "Tarihsel ve Coğrafi Bağlam",
-        placeholder:
-          "Araştırmanın geçtiği yer, dönem ve bu dönemi önemli kılan tarihsel/yapısal gelişmeler (örn: 1991-1999 dönemi Türkiye'si, Sovyetlerin dağılması ve zorunlu göçler)...",
-        rows: 3,
       },
       {
         key: "framework",
         id: "framework",
-        number: "04",
-        Icon: BookMarked,
-        label: "Kuramsal ve Metodolojik Çerçeve",
+        number: "02",
+        Icon: Compass,
+        label: "Teorik / Kavramsal Çerçeve",
+        description:
+          "Çalışmanı hangi teorik mercekle, modelle veya kavramsal yaklaşımla ele alıyorsun?",
         placeholder:
-          "Araştırmada kullanılan teoriler, yöntemler ve veri kaynakları (örn: Gramsci hegemonya teorisi ve süreli yayınların söylem analizi, mülakatlar)...",
-        rows: 3,
+          "Temel aldığınız teorik merceği, kavramsal modelleri ve analitik yaklaşımınızı açıklayın...",
+        rows: 4,
       },
     ],
   },
   {
-    id: "sav",
-    title: "Tezin İddiası",
+    id: "analizYontemKapsam",
+    title: "Analiz Birimi, Metodoloji ve Kapsam Sınırları",
     fields: [
+      {
+        key: "targetActors",
+        id: "targetActors",
+        number: "03",
+        Icon: Boxes,
+        label: "Analiz Birimi / Aktörler / Odak Nesne",
+        description:
+          "Veriyi nereden topluyorsun? Kimi, hangi veri kümesini, materyali veya aktörleri inceliyorsun?",
+        placeholder:
+          "İncelediğiniz aktörleri, veri setlerini, materyalleri veya odak nesnelerinizi tanımlayın...",
+        rows: 3,
+      },
       {
         key: "mainClaim",
         id: "mainClaim",
-        number: "05",
-        Icon: Target,
-        label: "Merkez Sav ve Ana İddia",
+        number: "04",
+        Icon: BookOpen,
+        label: "Metodoloji & Yöntem",
+        description:
+          "Veriyi nasıl topluyor, işliyor veya ölçüyorsun? (Nitel, nicel, deneysel, simülasyon vb.)",
         placeholder:
-          "Bu çalışmayla savunacağınız temel tez, hipotez veya ana nedensellik argümanınız...",
+          "Veri toplama, veri işleme ve analiz yöntemlerinizi (nitel/nicel/deneysel/simülasyon) ve temel argümanınızı açıklayın...",
+        rows: 3,
+      },
+      {
+        key: "context",
+        id: "context",
+        number: "05",
+        Icon: MapPin,
+        label: "Kapsam & Sınırlar",
+        description:
+          "Çalışmanın zaman, mekan, sektör, örneklem veya coğrafi sınırları nedir?",
+        placeholder:
+          "Çalışmanızın dönemsel, coğrafi, sektörel veya örneklem sınırlarını belirtin...",
         rows: 3,
       },
     ],
@@ -116,6 +129,7 @@ interface MatrixCardProps {
   number: string;
   Icon: LucideIcon;
   label: string;
+  description: string;
   placeholder: string;
   value: string;
   rows: number;
@@ -131,24 +145,32 @@ const MatrixCard = memo(function MatrixCard({
   number,
   Icon,
   label,
+  description,
   placeholder,
   value,
   rows,
   onChange,
 }: MatrixCardProps) {
   return (
-    <Card className="space-y-2 p-4 hover:border-primary/20 rounded-md">
-      <div className="flex items-center gap-2">
-        <span className="inline-flex h-5 w-7 items-center justify-center rounded bg-primary/10 text-[10px] font-bold tracking-wider text-primary">
-          {number}
-        </span>
-        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-        <Label
-          htmlFor={id}
-          className="cursor-pointer text-sm font-semibold text-foreground"
-        >
-          {label}
-        </Label>
+    <Card className="space-y-3 p-4 hover:border-primary/20 rounded-md transition-all shadow-xs">
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex h-5 w-7 items-center justify-center rounded bg-primary/10 text-[10px] font-bold tracking-wider text-primary">
+            {number}
+          </span>
+          <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Label
+            htmlFor={id}
+            className="cursor-pointer text-sm font-semibold text-foreground"
+          >
+            {label}
+          </Label>
+        </div>
+        {description && (
+          <p className="text-xs text-muted-foreground pl-9 leading-relaxed">
+            {description}
+          </p>
+        )}
       </div>
       <Textarea
         id={id}
@@ -157,7 +179,7 @@ const MatrixCard = memo(function MatrixCard({
         onChange={(e) => onChange(fieldKey, e.target.value)}
         required
         rows={rows}
-        className="textarea-academic border-border"
+        className="textarea-academic border-border focus-visible:ring-primary/20 text-sm leading-relaxed"
       />
     </Card>
   );
@@ -165,7 +187,7 @@ const MatrixCard = memo(function MatrixCard({
 
 /**
  * MatrixForm — onboarding step 1. Renders the thesis matrix as a 5-field,
- * 3-section academic form. Persists to the database and navigates to the risk
+ * 2-section academic form. Persists to the database and navigates to the risk
  * analysis step.
  */
 const EMPTY_VALUES: FormState = {
@@ -258,7 +280,16 @@ export function MatrixForm() {
 
           <div className="grid grid-cols-1 gap-4">
             {section.fields.map(
-              ({ key, id, number, Icon, label, placeholder, rows }) => (
+              ({
+                key,
+                id,
+                number,
+                Icon,
+                label,
+                description,
+                placeholder,
+                rows,
+              }) => (
                 <MatrixCard
                   key={id}
                   fieldKey={key}
@@ -266,6 +297,7 @@ export function MatrixForm() {
                   number={number}
                   Icon={Icon}
                   label={label}
+                  description={description}
                   placeholder={placeholder}
                   value={formState[key]}
                   rows={rows}

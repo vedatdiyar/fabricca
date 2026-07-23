@@ -1,10 +1,9 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { thesisMatrices, originalityReports, thesisBoxes } from "@/db/schema";
+import { thesisMatrices, thesisBoxes } from "@/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import { invalidateOnboardingCache } from "@/lib/cache-tags";
@@ -83,18 +82,12 @@ export async function saveThesisMatrixAction(
 
       if (matrixRow) {
         await tx
-          .delete(originalityReports)
-          .where(eq(originalityReports.userId, session.userId));
-        await tx
           .delete(thesisBoxes)
           .where(eq(thesisBoxes.thesisMatrixId, matrixRow.id));
       }
     });
 
     invalidateOnboardingCache();
-    // Also clear the originality-report cache so a stale report does not
-    // reappear after reset.
-    revalidatePath("/onboarding/risk");
 
     log.info("matrix_save_success", {
       service: "db",

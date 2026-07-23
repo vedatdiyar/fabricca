@@ -12,12 +12,17 @@ import {
   index,
   uniqueIndex,
   foreignKey,
+  uuid,
 } from "drizzle-orm/pg-core";
 import {
   relations,
   type InferSelectModel,
   type InferInsertModel,
 } from "drizzle-orm";
+import type {
+  PositioningMatrixInput,
+  RecommendedThesisItem,
+} from "@/app/(onboarding)/onboarding/positioning/_lib/validation";
 
 // ============================================================================
 // A) USERS
@@ -75,60 +80,47 @@ export type ThesisMatrix = InferSelectModel<typeof thesisMatrices>;
 export type NewThesisMatrix = InferInsertModel<typeof thesisMatrices>;
 
 // ============================================================================
-// C) ORIGINALITY REPORTS
+// C) THESIS POSITIONING
 // ============================================================================
 
+export const positioningGlobalStatusEnum = pgEnum("positioning_global_status", [
+  "DIRECT_OVERLAP",
+  "NOVEL_GAP_IDENTIFIED",
+  "NO_RELATED_LITERATURE",
+]);
+
 /**
- * Originality Report table (Zero-JSONB multi-row).
- * Each compared thesis is stored as an independent row.
- * Uses a decision-tree-based badge system.
- * Converted to the nested TezaraResult contract via groupRowsToReport()
- * keyed by userId — all UI components consume this shape.
+ * Thesis Positioning table.
+ * Stores universal positioning matrix input, AI gap analysis synthesis,
+ * global positioning status, and recommended guiding theses.
  */
-export const originalityReports = pgTable(
-  "originality_reports",
+export const thesisPositioning = pgTable(
+  "thesis_positioning",
   {
-    id: serial().primaryKey(),
-    userId: integer()
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: integer("user_id")
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    externalThesisId: integer().notNull(),
-    title: text().notNull(),
-    author: text().notNull(),
-    university: text().notNull(),
-    year: integer().notNull(),
-    thesisType: text().notNull(),
-    department: text().notNull(),
-    abstract: text(),
-    yokPdfUrl: text(),
-    /** Qualitative evaluation fields */
-    isRelevant: boolean("is_relevant").default(false).notNull(),
-    relevanceExplanation: text("relevance_explanation"),
-    originalityStatus: varchar("originality_status", { length: 50 })
-      .notNull()
-      .default("OUT_OF_SCOPE"),
-    uniquenessGap: text("uniqueness_gap"),
-    literatureIntegration: text("literature_integration"),
-    /** Flag for eliminated theses — when true, hidden from the main overlap table */
-    isEliminated: boolean().default(false).notNull(),
-    /** Elimination stage: SIFTING (before Cohere rerank) or ANALYSIS (after jury) */
-    eliminationStage: varchar("elimination_stage", { length: 20 }),
-    createdAt: timestamp().defaultNow().notNull(),
-    updatedAt: timestamp().defaultNow().notNull(),
+      .references(() => users.id, { onDelete: "cascade" })
+      .unique(),
+    matrixInput: jsonb("matrix_input")
+      .$type<PositioningMatrixInput>()
+      .notNull(),
+    globalStatus: positioningGlobalStatusEnum("global_status"),
+    gapAnalysisSummary: text("gap_analysis_summary"),
+    recommendedTheses: jsonb("recommended_theses")
+      .$type<RecommendedThesisItem[]>()
+      .default([]),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
-  (table) => [
-    index("idx_or_user_id").on(table.userId),
-    index("idx_or_status").on(table.originalityStatus),
-    index("idx_or_external_id").on(table.externalThesisId),
-    index("idx_or_user_eliminated").on(table.userId, table.isEliminated),
-  ],
+  (table) => [uniqueIndex("idx_thesis_positioning_user_id").on(table.userId)],
 );
 
-/** OriginalityReport type for select queries. */
-export type OriginalityReport = InferSelectModel<typeof originalityReports>;
+/** ThesisPositioning type for select queries. */
+export type ThesisPositioning = InferSelectModel<typeof thesisPositioning>;
 
-/** OriginalityReport type for insert queries. */
-export type NewOriginalityReport = InferInsertModel<typeof originalityReports>;
+/** NewThesisPositioning type for insert queries. */
+export type NewThesisPositioning = InferInsertModel<typeof thesisPositioning>;
 
 // ============================================================================
 // D) THESIS BOXES
@@ -142,9 +134,6 @@ export const boxTypeEnum = pgEnum("box_type_enum", [
   "CONTEXT",
   "RELATED_THESES",
 ]);
-
-/** Stages at which a thesis can be eliminated from the originality analysis pipeline. */
-export type EliminationStage = "SIFTING" | "ANALYSIS";
 
 /**
  * Thesis Boxes table.
@@ -290,9 +279,19 @@ export type NewTask = InferInsertModel<typeof tasks>;
 
 export const usersRelations = relations(users, ({ one, many }) => ({
   thesisMatrix: one(thesisMatrices),
-  originalityReports: many(originalityReports),
+  thesisPositioning: one(thesisPositioning),
   tasks: many(tasks),
 }));
+
+export const thesisPositioningRelations = relations(
+  thesisPositioning,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [thesisPositioning.userId],
+      references: [users.id],
+    }),
+  }),
+);
 
 export const thesisMatricesRelations = relations(
   thesisMatrices,
@@ -302,16 +301,6 @@ export const thesisMatricesRelations = relations(
       references: [users.id],
     }),
     thesisBoxes: many(thesisBoxes),
-  }),
-);
-
-export const originalityReportsRelations = relations(
-  originalityReports,
-  ({ one }) => ({
-    user: one(users, {
-      fields: [originalityReports.userId],
-      references: [users.id],
-    }),
   }),
 );
 

@@ -5,7 +5,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import type { LibraryResource } from "@/db/schema";
-import { getUiBadgeConfig } from "@/app/(onboarding)/onboarding/risk/_lib/constants";
 
 interface ReaderResourceListProps {
   resources: LibraryResource[];
@@ -52,12 +51,7 @@ export function ReaderResourceList({
                   {resource.title}
                 </label>
                 {resource.badge && (
-                  <Badge
-                    variant="outline"
-                    className={getUiBadgeConfig(resource.badge).bgClass}
-                  >
-                    {getUiBadgeConfig(resource.badge).text}
-                  </Badge>
+                  <Badge variant="outline">{resource.badge}</Badge>
                 )}
               </div>
 

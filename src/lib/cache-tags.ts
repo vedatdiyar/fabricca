@@ -17,7 +17,7 @@ export function revalidateOnboardingPaths(): void {
  */
 export function invalidateOnboardingCache(): void {
   updateTag(CACHE_TAGS.thesisMatrix);
-  updateTag(CACHE_TAGS.originalityReport);
+  updateTag(CACHE_TAGS.positioning);
   updateTag(CACHE_TAGS.thesisBoxes);
 }
 

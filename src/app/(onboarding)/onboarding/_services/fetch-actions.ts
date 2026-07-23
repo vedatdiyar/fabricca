@@ -5,97 +5,13 @@ import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
 import {
   thesisMatrices,
-  originalityReports,
+  thesisPositioning,
   thesisBoxes,
   libraryResources,
 } from "@/db/schema";
-import type {
-  GeminiThesisBox,
-  OriginalityReportData,
-  RelationshipBadge,
-  AcademicBadge,
-} from "@/lib/types";
+import type { GeminiThesisBox } from "@/lib/types";
 import { getSession } from "@/lib/session";
 import { BOX_ORDER_WEIGHT } from "../_lib/box-constants";
-
-/**
- * Reconstructs a nested TezaraResults contract from flat multi-row DB output.
- * Uses the deterministic badge system (primaryBadge / badges).
- *
- * @param rows - Flat DB rows for a single userId
- * @returns The reconstructed OriginalityReportData or null
- */
-function groupRowsToReport(
-  rows: Array<{
-    externalThesisId: number;
-    title: string;
-    author: string;
-    university: string;
-    year: number;
-    thesisType: string;
-    department: string;
-    yokPdfUrl: string | null;
-    abstract: string | null;
-    isRelevant: boolean;
-    relevanceExplanation: string | null;
-    originalityStatus: string;
-    uniquenessGap: string | null;
-    literatureIntegration: string | null;
-    isEliminated: boolean;
-    eliminationStage: string | null;
-  }>,
-): OriginalityReportData | null {
-  if (rows.length === 0) return null;
-
-  const activeRows = rows.filter((r) => !r.isEliminated);
-  const eliminatedRows = rows.filter(
-    (r) => r.isEliminated && r.eliminationStage === "ANALYSIS",
-  );
-
-  // Global badge: determined by the presence of HIGH_RISK_REPLICATION in active rows
-  let globalBadge: RelationshipBadge = "UNRELATED";
-
-  const hasDuplicate = activeRows.some(
-    (r) => r.originalityStatus === "HIGH_RISK_REPLICATION",
-  );
-  const hasContribution = activeRows.length > 0 && !hasDuplicate;
-
-  if (hasDuplicate) {
-    globalBadge = "HIGH_RISK";
-  } else if (hasContribution) {
-    globalBadge = "CONTRIBUTION_READY";
-  }
-
-  const buildEntry = (row: (typeof rows)[number]) => ({
-    id: row.externalThesisId,
-    title: row.title,
-    author: row.author,
-    university: row.university,
-    year: row.year,
-    thesisType: row.thesisType,
-    department: row.department,
-    yokPdfUrl: row.yokPdfUrl ?? undefined,
-    abstract: row.abstract ?? undefined,
-    isRelevant: row.isRelevant,
-    relevanceExplanation: row.relevanceExplanation ?? "",
-    originalityStatus: row.originalityStatus as AcademicBadge,
-    uniquenessGap: row.uniquenessGap ?? "",
-    literatureIntegration: row.literatureIntegration ?? "",
-  });
-
-  return {
-    tezaraResults: {
-      relationshipBadge: globalBadge,
-      overlapTable: activeRows.map((row) => ({
-        ...buildEntry(row),
-      })),
-      eliminatedTheses: eliminatedRows.map((row) => ({
-        ...buildEntry(row),
-        eliminationStage: row.eliminationStage as "ANALYSIS",
-      })),
-    },
-  };
-}
 
 /**
  * Cached DB query that returns the user's thesis matrix.
@@ -111,25 +27,6 @@ async function getCachedThesisMatrix(userId: number) {
     .from(thesisMatrices)
     .where(eq(thesisMatrices.userId, userId));
   return matrix ?? null;
-}
-
-/**
- * Cached DB query that reconstructs a nested TezaraResults contract from
- * flat multi-row DB output.
- */
-async function getCachedOriginalityReport(
-  userId: number,
-): Promise<OriginalityReportData | null> {
-  "use cache";
-  cacheTag("originality-report");
-  cacheLife("minutes");
-
-  const rows = await db
-    .select()
-    .from(originalityReports)
-    .where(eq(originalityReports.userId, userId));
-
-  return groupRowsToReport(rows);
 }
 
 /**
@@ -187,18 +84,6 @@ export async function fetchThesisMatrixFresh() {
 }
 
 /**
- * Server Action: extracts the session, then delegates to the cached
- * originality report query.
- *
- * @returns The reconstructed OriginalityReportData or null
- */
-export async function fetchOriginalityReport(): Promise<OriginalityReportData | null> {
-  const session = await getSession();
-  if (!session) return null;
-  return getCachedOriginalityReport(session.userId);
-}
-
-/**
  * Server Action: fetches boxes and maps each row to the full GeminiThesisBox
  * structure expected by client components. The DB is used as the single source
  * of truth.
@@ -210,11 +95,7 @@ export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
   if (!session) return [];
   const matrix = await getCachedThesisMatrix(session.userId);
   if (!matrix) return [];
-  const [rows, report] = await Promise.all([
-    getCachedBoxes(matrix.id),
-    getCachedOriginalityReport(session.userId),
-  ]);
-  const overlapTable = report?.tezaraResults?.overlapTable ?? [];
+  const rows = await getCachedBoxes(matrix.id);
 
   // Group flat rows into a parent → child tree
   const parentRows = rows.filter((r) => r.parentId === null);
@@ -238,34 +119,17 @@ export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
     }
   }
 
-  const boxes: GeminiThesisBox[] = parentRows.map((b) => {
-    const box: GeminiThesisBox = {
-      id: b.id,
-      title: b.title,
-      boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "PROBLEMATIZATION",
-      description: b.description ?? "",
-      parentId: null,
-      semanticQuery: null,
-      subBoxes: subBoxMap.get(b.id),
-      foundationalQueries: b.foundationalQueries ?? [],
-      concepts: b.concepts ?? [],
-    };
-
-    if (b.boxType === "RELATED_THESES" && overlapTable.length > 0) {
-      box.relatedTheses = overlapTable.map((t) => ({
-        title: t.title,
-        author: t.author,
-        university: t.university,
-        year: t.year,
-        thesisType: t.thesisType,
-        department: t.department,
-        originalityStatus: t.originalityStatus,
-        yokPdfUrl: t.yokPdfUrl,
-      }));
-    }
-
-    return box;
-  });
+  const boxes: GeminiThesisBox[] = parentRows.map((b) => ({
+    id: b.id,
+    title: b.title,
+    boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "PROBLEMATIZATION",
+    description: b.description ?? "",
+    parentId: null,
+    semanticQuery: null,
+    subBoxes: subBoxMap.get(b.id),
+    foundationalQueries: b.foundationalQueries ?? [],
+    concepts: b.concepts ?? [],
+  }));
 
   return boxes.sort((a, b) => {
     const weightA = BOX_ORDER_WEIGHT[a.boxType] ?? 99;
@@ -289,27 +153,27 @@ export async function checkStepsDataAction(): Promise<Record<
 
   const userId = session.userId;
 
-  const [matrixResult, reportResult] = await Promise.all([
-    db
-      .select({ id: thesisMatrices.id })
-      .from(thesisMatrices)
-      .where(eq(thesisMatrices.userId, userId)),
-    db
-      .select({ id: originalityReports.id })
-      .from(originalityReports)
-      .where(eq(originalityReports.userId, userId)),
-  ]);
+  const [matrix] = await db
+    .select({ id: thesisMatrices.id })
+    .from(thesisMatrices)
+    .where(eq(thesisMatrices.userId, userId));
 
-  const matrix = matrixResult[0];
-  const report = reportResult[0];
   const hasMatrix = !!matrix;
-  const hasReport = !!report;
 
+  let hasPositioning = false;
   let hasBoxes = false;
   let hasLiterature = false;
 
   if (hasMatrix) {
-    const [boxResult, litResult] = await Promise.all([
+    const [posResult, boxResult, litResult] = await Promise.all([
+      db
+        .select({
+          id: thesisPositioning.id,
+          globalStatus: thesisPositioning.globalStatus,
+        })
+        .from(thesisPositioning)
+        .where(eq(thesisPositioning.userId, userId))
+        .limit(1),
       db
         .select({ id: thesisBoxes.id })
         .from(thesisBoxes)
@@ -326,13 +190,14 @@ export async function checkStepsDataAction(): Promise<Record<
         .limit(1),
     ]);
 
+    hasPositioning = posResult.length > 0 && !!posResult[0].globalStatus;
     hasBoxes = boxResult.length > 0;
     hasLiterature = litResult.length > 0;
   }
 
   return {
     matrix: hasMatrix,
-    risk: hasReport,
+    positioning: hasPositioning,
     boxes: hasBoxes,
     "literature-review": hasLiterature,
   };

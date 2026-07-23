@@ -5,7 +5,7 @@
 import type { JuryArticle } from "@/lib/types";
 import type { RawPaper } from "./literature-review-papers";
 import type { Cluster } from "./clustering";
-import { normalizeTitle } from "@/lib/academic/utils";
+import { normalizeCleanTitle } from "@/lib/academic/utils";
 
 interface QueueItem {
   subBoxTitle: string;
@@ -117,7 +117,7 @@ export function selectRelatedArticles(
 ): JuryArticle[] {
   const candidatePool = item.rawPapers.filter((p) => p.title?.trim());
   const normalizedFoundational = foundationalTitle
-    ? normalizeTitle(foundationalTitle)
+    ? normalizeCleanTitle(foundationalTitle)
     : "";
 
   const scoredCandidates = candidatePool
@@ -128,7 +128,7 @@ export function selectRelatedArticles(
 
   // Try to pick globally unique candidates first, skipping the foundational work of the current box
   for (const it of scoredCandidates) {
-    const normTitle = normalizeTitle(it.paper.title!);
+    const normTitle = normalizeCleanTitle(it.paper.title!);
     if (normTitle === normalizedFoundational) {
       continue;
     }
@@ -143,11 +143,13 @@ export function selectRelatedArticles(
   // Fallback: if we have fewer than 3 candidates after filtering, relax the global deduplication check
   if (selected.length < 3) {
     for (const it of scoredCandidates) {
-      const normTitle = normalizeTitle(it.paper.title!);
+      const normTitle = normalizeCleanTitle(it.paper.title!);
       if (normTitle === normalizedFoundational) {
         continue;
       }
-      if (selected.some((s) => normalizeTitle(s.paper.title!) === normTitle)) {
+      if (
+        selected.some((s) => normalizeCleanTitle(s.paper.title!) === normTitle)
+      ) {
         continue;
       }
 

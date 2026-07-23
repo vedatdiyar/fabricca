@@ -19,7 +19,7 @@ import {
   fetchOpenAlexMetadataBatch,
   healAuthorsByTitle,
 } from "./openalex/client";
-import { extractCleanDoi, normalizeTitle } from "@/lib/academic/utils";
+import { extractCleanDoi, normalizeCleanTitle } from "@/lib/academic/utils";
 import { selectFoundationalWorksBulk } from "./foundational-oracle";
 import { clusterRefMetadata, type Cluster } from "./clustering";
 import {
@@ -323,7 +323,7 @@ export async function orchestrateBatchProcess(
     let topCluster: Cluster | null = null;
 
     const activeCandidates = r.candidates.filter(
-      (c) => !assignedTitles.has(normalizeTitle(c.title)),
+      (c) => !assignedTitles.has(normalizeCleanTitle(c.title)),
     );
 
     if (activeCandidates.length > 0) {
@@ -338,7 +338,7 @@ export async function orchestrateBatchProcess(
           r.candidates[matchedSelection.selectedIndex];
         if (
           fullSelectedCandidate &&
-          !assignedTitles.has(normalizeTitle(fullSelectedCandidate.title))
+          !assignedTitles.has(normalizeCleanTitle(fullSelectedCandidate.title))
         ) {
           chosenCandidate = fullSelectedCandidate;
         }
@@ -361,7 +361,7 @@ export async function orchestrateBatchProcess(
           isFoundational: true,
           relevanceScore: 100,
         };
-        assignedTitles.add(normalizeTitle(chosenCandidate.title));
+        assignedTitles.add(normalizeCleanTitle(chosenCandidate.title));
         topCluster = chosenCandidate.cluster;
       }
     }
@@ -383,7 +383,7 @@ export async function orchestrateBatchProcess(
     );
 
     for (const art of top3Related) {
-      assignedTitles.add(normalizeTitle(art.title));
+      assignedTitles.add(normalizeCleanTitle(art.title));
     }
 
     if (foundationalArticle) {

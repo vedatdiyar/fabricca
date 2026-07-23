@@ -8,11 +8,15 @@ import { checkStepsDataAction } from "../_services/fetch-actions";
 
 const STEPS = [
   { key: "matrix", label: "Çalışma Matrisi", route: "/onboarding/matrix" },
-  { key: "risk", label: "\u00d6zgünlük & Risk", route: "/onboarding/risk" },
+  {
+    key: "positioning",
+    label: "Konumlandırma",
+    route: "/onboarding/positioning",
+  },
   { key: "boxes", label: "Konu Kutuları", route: "/onboarding/boxes" },
   {
     key: "literature-review",
-    label: "Literat\u00fcr Tarama",
+    label: "Literatür Tarama",
     route: "/onboarding/literature-review",
   },
 ];

@@ -120,7 +120,7 @@ export function BoxesContainer() {
           </h2>
           <p className="text-sm text-muted-foreground max-w-md">
             Konu kutuları oluşturulurken bir hata oluştu. Lütfen tekrar deneyin
-            veya risk analizi adımına geri dönün.
+            veya tekrar deneyin.
           </p>
         </div>
         <Button onClick={handleRetry} disabled={retrying} size="lg">

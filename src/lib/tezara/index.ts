@@ -96,18 +96,17 @@ async function meiliSearch(
  *
  * @param query - The search query term.
  * @param logger - Optional Logger instance.
+ * @param options - Optional options such as search result limit.
  * @returns A list of thesis details with abstracts.
  */
 export async function searchTezara(
   query: string,
   logger?: Logger,
+  options?: { limit?: number },
 ): Promise<TezaraThesisDetails[]> {
   const startTime = performance.now();
-  const data = await meiliSearch(
-    { q: query, limit: 100 },
-    logger,
-    "search_meili",
-  );
+  const limit = options?.limit ?? 100;
+  const data = await meiliSearch({ q: query, limit }, logger, "search_meili");
   const durationMs = performance.now() - startTime;
 
   if (!data) return [];

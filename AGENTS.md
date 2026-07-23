@@ -27,11 +27,10 @@ Projede kullanılacak teknolojiler kesin olarak belirlenmiştir. Yapay zeka, gel
 - **Stil & UI Bileşenleri:** Tailwind CSS, Shadcn UI, Lucide React (İkonlar için), `sonner` (Toast bildirimleri), `next-themes` (Karanlık tema)
 - **Veri Tabanı & ORM:** Neon Serverless PostgreSQL, Drizzle ORM
 - **Vektör Veri Tabanı (RAG):** Neon DB içinde entegre `pgvector` eklentisi
-- **LLM Modelleri:** Google Gemini Flash-Lite modelleri (`FLASH_LITE_31`, `FLASH_LITE_35` sabitleri — göreve özel metin üretimi ve analiz işlemleri için)
+- **LLM Modeli:** Google Gemini Flash-Lite (`FLASH_LITE_31` sabiti — tüm metin üretimi ve analiz işlemleri için)
 - **Embedding Model:** Cloudflare Workers AI (`@cf/qwen/qwen3-embedding-0.6b`)
 - **AI Orkestrasyon:** Google Gen AI SDK (`@google/genai` - Doğrudan entegrasyon)
 - **Kimlik Doğrulama (Auth):** Drizzle tabanlı yerel `users` tablosu, `bcrypt-ts` ile şifreleme ve `src/lib/session.ts` üzerinden Cookies tabanlı hafif session yönetimi
-- **AI Reranking:** Cohere (Rerank v4 Pro)
 - **Runtime Doğrulama:** Zod v4 (`z.email()`, `z.enum()`, `safeParse`) — Server Action girdi validasyonu ve LLM çıktı şema kontrolü
 - **İstemci Cache & State Yönetimi:** `@tanstack/react-query` — Sunucu verisi önbellekleme, optimistik güncellemeler ve mutasyon yönetimi
 - **Akademik Yayın Veri Kaynağı:** OpenAlex API (REST)

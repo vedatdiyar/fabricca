@@ -171,16 +171,15 @@ src/
 
 ## Veri Tabanı Şeması
 
-Neon PostgreSQL üzerinde 6 tablo (Drizzle ORM, snake_case casing):
+Neon PostgreSQL üzerinde 5 tablo (Drizzle ORM, snake_case casing):
 
-| Tablo                 | Açıklama            | Önemli Alanlar                                                               |
-| --------------------- | ------------------- | ---------------------------------------------------------------------------- |
-| `users`               | Kullanıcı hesapları | email (unique), password (bcrypt hash), onboardingCompleted                  |
-| `thesis_matrices`     | Tez matrisi         | userId (unique), 6 temel metin alanı                                         |
-| `originality_reports` | Özgünlük raporları  | userId (unique), tezaraResults (JSONB)                                       |
-| `thesis_boxes`        | Konu kutuları       | thesisMatrixId, title, boxType (enum), parentId, foundationalQueries (JSONB) |
-| `library_resources`   | Akademik kaynaklar  | thesisBoxId, title, doi (unique pair), authors (JSONB), isFoundational       |
-| `tasks`               | Kanban görevleri    | userId, thesisBoxId, status/priority (enum)                                  |
+| Tablo               | Açıklama            | Önemli Alanlar                                                               |
+| ------------------- | ------------------- | ---------------------------------------------------------------------------- |
+| `users`             | Kullanıcı hesapları | email (unique), password (bcrypt hash), onboardingCompleted                  |
+| `thesis_matrices`   | Tez matrisi         | userId (unique), 6 temel metin alanı                                         |
+| `thesis_boxes`      | Konu kutuları       | thesisMatrixId, title, boxType (enum), parentId, foundationalQueries (JSONB) |
+| `library_resources` | Akademik kaynaklar  | thesisBoxId, title, doi (unique pair), authors (JSONB), isFoundational       |
+| `tasks`             | Kanban görevleri    | userId, thesisBoxId, status/priority (enum)                                  |
 
 Her tabloda `createdAt` ve `updatedAt` timestamp alanları bulunur. İlişkiler
 `onDelete: "cascade"` ile yönetilir; görevlerde kutu silinince `set null` uygulanır.
@@ -194,15 +193,10 @@ Kullanıcı ilk girişinde sırasıyla şu adımları tamamlar:
 ```
 1. Tez Matrisi (Matrix) — 6 temel alanın tanımı
          ↓
-2. Özgünlük & Risk Analizi (Risk)
-   ├─ TEZARA ile YÖK Tez karşılaştırması
-   ├─ Cohere Rerank ile semantik sıralama
-   └─ Özgünlük rozeti (IKIZ / SINIRDAS / OZGUN)
-         ↓
-4. Konu Kutuları (Boxes)
+2. Konu Kutuları (Boxes)
    └─ Gemini ile otomatik kutu oluşturma + kullanıcı onayı
          ↓
-5. Literatür Taraması (Literature Review)
+3. Literatür Taraması (Literature Review)
    ├─ OpenAlex / CrossRef / Exa / Semantic Scholar taraması
    ├─ FoundationalOracle ile temel kaynak çözümlemesi
    └─ Kaynakların kutu bazında gruplanması
@@ -211,7 +205,7 @@ Kullanıcı ilk girişinde sırasıyla şu adımları tamamlar:
 ```
 
 Sistem, her adımda kullanıcının kaldığı yerden devam edebilmesini sağlar
-(örneğin; adım 3'te kaldıysa doğrudan `/onboarding/risk` sayfasına yönlendirilir).
+(örneğin; adım 2'te kaldıysa doğrudan `/onboarding/matrix` sayfasına yönlendirilir).
 
 ---
 

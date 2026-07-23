@@ -21,12 +21,7 @@ import {
 import { type OnboardingActionResult } from "@/lib/types";
 import { mapToProductionShape } from "../_lib/box-mapper";
 
-import {
-  fetchThesisMatrix,
-  fetchOriginalityReport,
-} from "../_services/fetch-actions";
-
-const RELATED_THESES_TITLE = "İlişkisel Tez Çalışmaları";
+import { fetchThesisMatrix } from "../_services/fetch-actions";
 
 const confirmBoxesSchema = z.array(
   z.object({
@@ -54,7 +49,6 @@ const confirmBoxesSchema = z.array(
       )
       .optional()
       .default([]),
-    relatedTheses: z.any().optional(),
   }),
 );
 
@@ -78,10 +72,7 @@ export async function generateBoxesStructureAction(): Promise<
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
 
-    const [matrix, report] = await Promise.all([
-      fetchThesisMatrix(),
-      fetchOriginalityReport(),
-    ]);
+    const matrix = await fetchThesisMatrix();
 
     if (!matrix) return { error: "Thesis matrix not found." };
 
@@ -119,30 +110,6 @@ export async function generateBoxesStructureAction(): Promise<
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { analysis, ...quadrantsOnly } = generationResult;
     const normalizedBoxes = mapToProductionShape(quadrantsOnly);
-
-    // Populate the RELATED_THESES box with overlapping theses from the
-    // originality report (already computed during risk analysis).
-    const overlapTable = report?.tezaraResults?.overlapTable ?? [];
-    normalizedBoxes.push({
-      title: RELATED_THESES_TITLE,
-      boxType: "RELATED_THESES",
-      description: "Tez matrisiyle örtüşen sınırdaş akademik çalışmalar.",
-      parentId: null,
-      semanticQuery: null,
-      subBoxes: [],
-      concepts: [],
-      foundationalQueries: [],
-      relatedTheses: overlapTable.map((t) => ({
-        title: t.title,
-        author: t.author,
-        university: t.university,
-        year: t.year,
-        thesisType: t.thesisType,
-        department: t.department,
-        originalityStatus: t.originalityStatus,
-        yokPdfUrl: t.yokPdfUrl,
-      })),
-    });
 
     const parentCount = normalizedBoxes.filter(
       (b) => b.parentId === null,

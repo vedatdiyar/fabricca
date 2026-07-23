@@ -1,21 +1,5 @@
 import { z } from "zod";
 
-export type TemporalLabel = "OVERLAP" | "PAST" | "FUTURE" | "UNKNOWN";
-
-export type DimensionLevel = "LOW" | "MEDIUM" | "HIGH";
-
-export type AcademicBadge =
-  | "HIGH_RISK_REPLICATION"
-  | "RELATED_THESIS"
-  | "REFERENCE_MATERIAL"
-  | "OUT_OF_SCOPE";
-
-export type RelationshipBadge =
-  "HIGH_RISK" | "CONTRIBUTION_READY" | "UNRELATED";
-
-export type ThesisBucket =
-  "PRIMARY_COMPETITOR" | "BACKGROUND_REFERENCE" | "IRRELEVANT";
-
 export type OnboardingActionResult =
   | { success: true; isProcessing?: boolean; error?: never }
   | { success?: never; error: string };
@@ -44,44 +28,12 @@ export interface TezaraThesisDetails {
   language?: string;
 }
 
-export interface OriginalityReportItem {
-  id: number;
-  title: string;
-  author: string;
-  university: string;
-  year: number;
-  thesisType: string;
-  department: string;
-  yokPdfUrl?: string;
-  abstract?: string;
-  isRelevant: boolean;
-  relevanceExplanation: string;
-  originalityStatus: AcademicBadge;
-  uniquenessGap: string;
-  literatureIntegration: string;
-}
-
-export interface OriginalityReportData {
-  tezaraResults: {
-    relationshipBadge: RelationshipBadge;
-    overlapTable: OriginalityReportItem[];
-    eliminatedTheses: (OriginalityReportItem & {
-      eliminationStage: "ANALYSIS";
-    })[];
-  };
-}
-
 export interface ThesisMatrix {
   researchCore: string;
   targetActors: string;
   context: string;
   framework: string;
   mainClaim: string;
-}
-
-export interface ScrapedTheses {
-  selected: TezaraThesisDetails[];
-  eliminated: TezaraThesisDetails[];
 }
 
 export interface FoundationalQuery {
@@ -104,28 +56,6 @@ export const FoundationalQuerySchema = z.object({
   publisher: z.string().nullable().optional(),
 });
 
-export const RelatedThesisEntrySchema = z.object({
-  title: z.string().min(1, "Tez başlığı boş olamaz"),
-  author: z.string().min(1, "Yazar adı boş olamaz"),
-  university: z.string(),
-  year: z.number().int(),
-  thesisType: z.string(),
-  department: z.string(),
-  originalityStatus: z.string(),
-  yokPdfUrl: z.string().optional(),
-});
-
-export interface RelatedThesisEntry {
-  title: string;
-  author: string;
-  university: string;
-  year: number;
-  thesisType: string;
-  department: string;
-  originalityStatus: AcademicBadge;
-  yokPdfUrl?: string;
-}
-
 export interface GeminiThesisBox {
   id?: number;
   parentId: number | null;
@@ -142,7 +72,6 @@ export interface GeminiThesisBox {
   subBoxes?: GeminiThesisBox[];
   foundationalQueries?: FoundationalQuery[];
   concepts?: string[];
-  relatedTheses?: RelatedThesisEntry[];
 }
 
 export interface JuryArticle {

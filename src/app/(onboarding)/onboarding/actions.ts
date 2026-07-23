@@ -6,7 +6,7 @@ import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
   thesisMatrices,
-  originalityReports,
+  thesisPositioning,
   users,
   thesisBoxes,
   libraryResources,
@@ -26,7 +26,7 @@ import {
 
 /**
  * Resets the onboarding process for the currently authenticated user.
- * Deletes all onboarding data (thesis_matrices cascades to thesis_boxes
+ * Deletes all onboarding data (thesis_matrices, thesis_positioning cascades to thesis_boxes
  * and library_resources) and sets onboardingCompleted to false.
  *
  * @returns Success status or a user-safe error message
@@ -45,16 +45,13 @@ export async function resetOnboardingAction(): Promise<
 
     const userId = session.userId;
 
-    // All three destructive operations run inside a single transaction so that
-    // a failure in any step rolls the entire reset back. This prevents leaving
-    // the user in an inconsistent state (e.g. matrix deleted but
-    // onboardingCompleted still flagged as true).
-    // Queries are run sequentially to prevent socket contention/queuing issues.
+    // All destructive operations run inside a single transaction so that
+    // a failure in any step rolls the entire reset back.
     await db.transaction(async (tx) => {
       await tx.delete(thesisMatrices).where(eq(thesisMatrices.userId, userId));
       await tx
-        .delete(originalityReports)
-        .where(eq(originalityReports.userId, userId));
+        .delete(thesisPositioning)
+        .where(eq(thesisPositioning.userId, userId));
       await tx
         .update(users)
         .set({ onboardingCompleted: false })
@@ -104,7 +101,7 @@ export async function resetOnboardingAction(): Promise<
  * @returns Success status or a user-safe error message
  */
 export async function clearDownstreamDbAction(
-  fromStep: "matrix" | "risk" | "boxes",
+  fromStep: "matrix" | "positioning" | "boxes",
 ): Promise<{ success: boolean } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: SESSION_ERROR_MSG };
@@ -114,10 +111,10 @@ export async function clearDownstreamDbAction(
   try {
     await db.transaction(async (tx) => {
       if (fromStep === "matrix") {
-        // Clear originality reports and fetch matrix sequentially to avoid connection contention
         await tx
-          .delete(originalityReports)
-          .where(eq(originalityReports.userId, userId));
+          .delete(thesisPositioning)
+          .where(eq(thesisPositioning.userId, userId));
+
         const matrixResult = await tx
           .select({ id: thesisMatrices.id })
           .from(thesisMatrices)
@@ -125,20 +122,18 @@ export async function clearDownstreamDbAction(
 
         const matrix = matrixResult[0];
         if (matrix) {
-          // Clear thesis boxes (cascades to libraryResources)
           await tx
             .delete(thesisBoxes)
             .where(eq(thesisBoxes.thesisMatrixId, matrix.id));
         }
-      } else if (fromStep === "risk") {
-        // Get matrix ID
-        const [matrix] = await tx
+      } else if (fromStep === "positioning") {
+        const matrixResult = await tx
           .select({ id: thesisMatrices.id })
           .from(thesisMatrices)
           .where(eq(thesisMatrices.userId, userId));
 
+        const matrix = matrixResult[0];
         if (matrix) {
-          // Clear thesis boxes (cascades to libraryResources)
           await tx
             .delete(thesisBoxes)
             .where(eq(thesisBoxes.thesisMatrixId, matrix.id));

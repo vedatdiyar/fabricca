@@ -10,7 +10,6 @@ async function reset() {
   await db.execute(`DROP TABLE IF EXISTS tasks CASCADE`);
   await db.execute(`DROP TABLE IF EXISTS library_resources CASCADE`);
   await db.execute(`DROP TABLE IF EXISTS thesis_boxes CASCADE`);
-  await db.execute(`DROP TABLE IF EXISTS originality_reports CASCADE`);
   await db.execute(`DROP TABLE IF EXISTS thesis_matrices CASCADE`);
   await db.execute(`DROP TABLE IF EXISTS users CASCADE`);
 
