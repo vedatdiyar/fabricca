@@ -93,12 +93,13 @@ export async function searchAndSiftTheses(
   logger?: Logger,
   options?: { topN?: number },
 ): Promise<SiftedThesis[]> {
-  const startTime = performance.now();
   const topN = options?.topN ?? 12;
 
   const cleanDirect = sanitizeMeiliQuery(queries.directQuery);
   const cleanExpanded = sanitizeMeiliQuery(queries.expandedQuery);
   const cleanConceptual = sanitizeMeiliQuery(queries.conceptualQuery);
+
+  const searchStart = performance.now();
 
   logger?.info("sifting_parallel_search_start", {
     service: "tezara",
@@ -152,11 +153,31 @@ export async function searchAndSiftTheses(
     return [];
   }
 
+  logger?.info("sifting_parallel_search_success", {
+    service: "tezara",
+    filePath:
+      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    durationMs: performance.now() - searchStart,
+    data: { candidateCount: filteredCandidates.length },
+  });
+
   // Step 4: Format target query as structured YAML string for Cohere Rerank v4.0 Pro
   const targetYamlQuery = formatMatrixToYamlQuery(matrixInput);
 
   // Step 5: Format candidate documents as structured YAML strings for Cohere Rerank v4.0 Pro
   const candidateYamlDocs = filteredCandidates.map(formatThesisToYaml);
+
+  const rerankStart = performance.now();
+
+  logger?.info("cohere_rerank_start", {
+    service: "cohere",
+    filePath:
+      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    data: {
+      model: "rerank-v4.0-pro",
+      candidateCount: filteredCandidates.length,
+    },
+  });
 
   // Step 6: Invoke Cohere Rerank v4 Pro API with structured YAML payload
   const rerankResults = await rerankWithCohere({
@@ -182,15 +203,12 @@ export async function searchAndSiftTheses(
 
   const topResults = siftedTheses.slice(0, topN);
 
-  logger?.info("sifting_parallel_search_success", {
-    service: "positioning",
+  logger?.info("cohere_rerank_success", {
+    service: "cohere",
     filePath:
       "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
-    durationMs: performance.now() - startTime,
-    data: {
-      candidatesPassedToRerank: filteredCandidates.length,
-      topCount: topResults.length,
-    },
+    durationMs: performance.now() - rerankStart,
+    data: { topCount: topResults.length },
   });
 
   return topResults;

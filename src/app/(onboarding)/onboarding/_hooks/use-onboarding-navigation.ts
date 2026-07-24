@@ -21,25 +21,15 @@ import { getStepTanStackKeys } from "@/lib/onboarding-cache";
 import { clearDownstreamDbAction } from "@/app/(onboarding)/onboarding/actions";
 import { saveThesisMatrixAction } from "../matrix/actions";
 import { fetchBoxesWithFullShape } from "../_services/fetch-actions";
+import { runBoxesPipelineAction } from "../boxes/actions";
 import {
-  generateBoxesStructureAction,
-  confirmBoxesAction,
-} from "../boxes/actions";
-import {
-  fetchPreloadedLiteraturePool,
-  processAllBoxesAction,
-  confirmLiteratureAction,
+  runLiteraturePipelineAction,
   appendArchiveEntriesAction,
   finalizeOnboardingAction,
   setLiteratureCancelledAction,
 } from "../literature-review/actions";
 import type { SubBoxInput } from "../literature-review/_services/literature-review-papers";
-import {
-  executePositioningSearchAction,
-  runPositioningJuryAction,
-  savePositioningReportAction,
-} from "../positioning/actions";
-import type { PositioningMatrixInput } from "../positioning/_lib/validation";
+import { runPositioningPipelineAction } from "../positioning/actions";
 
 /**
  * Central onboarding orchestrator hook that coordinates all cross-feature
@@ -124,46 +114,15 @@ export function useOnboardingNavigation() {
 
         await completeStep(0, steps);
 
-        const positioningInput: PositioningMatrixInput = {
-          subjectAndProblem: matrixInput.researchCore,
-          theoreticalFramework: matrixInput.framework,
-          unitOfAnalysis: matrixInput.targetActors,
-          methodology: matrixInput.mainClaim,
-          scopeAndContext: matrixInput.context,
-        };
-
-        const searchRes =
-          await executePositioningSearchAction(positioningInput);
-        if ("error" in searchRes) {
+        const pipelineRes = await runPositioningPipelineAction(matrixInput);
+        if ("error" in pipelineRes) {
           hideLoading();
-          toast.error(searchRes.error);
-          return { success: false, error: searchRes.error };
+          toast.error(pipelineRes.error);
+          return { success: false, error: pipelineRes.error };
         }
 
         await completeStep(1, steps);
-
-        const juryRes = await runPositioningJuryAction(
-          positioningInput,
-          searchRes.theses,
-        );
-        if ("error" in juryRes) {
-          hideLoading();
-          toast.error(juryRes.error);
-          return { success: false, error: juryRes.error };
-        }
-
         await completeStep(2, steps);
-
-        const saveReportRes = await savePositioningReportAction(
-          positioningInput,
-          juryRes.report,
-        );
-        if ("error" in saveReportRes) {
-          hideLoading();
-          toast.error(saveReportRes.error);
-          return { success: false, error: saveReportRes.error };
-        }
-
         await completeStep(3, steps);
 
         queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
@@ -184,11 +143,10 @@ export function useOnboardingNavigation() {
   );
 
   /**
-   * Runs the full literature review AI pipeline: checks for a pre-existing
-   * pool in the database; if none exists, runs the batch AI search across
-   * all sub-boxes, persists the results via confirmLiteratureAction, and
-   * returns the literature pool.  Hides the loading overlay on completion
-   * or error.
+   * Runs the full literature review AI pipeline as a single server action.
+   * The pipeline handles DB pre-check, OpenAlex search, foundational
+   * selection, related-article assignment, sanitization, and persistence.
+   * Hides the loading overlay on completion or error.
    *
    * @param subBoxInputs - The sub-box inputs to feed to the AI pipeline.
    * @returns The literature pool entries on success, or an error string.
@@ -220,44 +178,19 @@ export function useOnboardingNavigation() {
       );
 
       try {
-        // Step 1: Check for pre-existing pool
-        const existing = await fetchPreloadedLiteraturePool();
+        const pipelineResult = await runLiteraturePipelineAction(subBoxInputs);
         if (isCancelled) return { error: "cancelled" };
-
-        if (existing.data && existing.data.length > 0) {
-          updateLoadingStep(0, "completed");
-          updateLoadingStep(1, "completed");
-          updateLoadingStep(2, "completed");
+        if (pipelineResult.error) {
           hideLoading();
-          return { data: existing.data };
+          return { error: pipelineResult.error };
         }
 
         await completeStep(0, steps);
-
-        // Step 2: AI pipeline
-        const processResult = await processAllBoxesAction(subBoxInputs);
-        if (isCancelled) return { error: "cancelled" };
-        if ("error" in processResult) {
-          hideLoading();
-          return { error: processResult.error };
-        }
-
         await completeStep(1, steps);
-
-        // Step 3: Confirm and persist results
-        const confirmResult = await confirmLiteratureAction({
-          literaturePool: processResult.data!,
-        });
-        if (isCancelled) return { error: "cancelled" };
-        if ("error" in confirmResult) {
-          hideLoading();
-          return { error: confirmResult.error };
-        }
-
         await completeStep(2, steps);
         hideLoading();
 
-        return { data: processResult.data! };
+        return { data: pipelineResult.data! };
       } catch (err) {
         if (isCancelled) return { error: "cancelled" };
         hideLoading();
@@ -359,22 +292,14 @@ export function useOnboardingNavigation() {
     );
 
     try {
-      const structResult = await generateBoxesStructureAction();
-      if ("error" in structResult) {
+      const pipelineResult = await runBoxesPipelineAction();
+      if ("error" in pipelineResult) {
         hideLoading();
-        toast.error(structResult.error);
+        toast.error(pipelineResult.error);
         return;
       }
 
       await completeStep(0, steps);
-
-      const saveResult = await confirmBoxesAction(structResult.boxes);
-      if ("error" in saveResult) {
-        hideLoading();
-        toast.error(saveResult.error);
-        return;
-      }
-
       await completeStep(1, steps);
 
       queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });

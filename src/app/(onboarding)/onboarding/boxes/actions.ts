@@ -275,3 +275,180 @@ export async function confirmBoxesAction(
     return { error: "Failed to save subject boxes to the database." };
   }
 }
+
+/**
+ * Runs the full boxes pipeline: box structure generation via Gemini → DB
+ * persistence. Logs START/SUCCESS for each sub-step and a top-level total.
+ *
+ * @returns The generated box array on success or a user-facing error message
+ */
+export async function runBoxesPipelineAction(): Promise<
+  | { success: true; boxes: import("@/lib/types").GeminiThesisBox[] }
+  | { error: string }
+> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+  const pipelineStart = performance.now();
+
+  try {
+    // ── Step 1: Generate box structure ────────────────────────────────────
+    log.info("box_structure_generation_start", {
+      service: "boxes",
+      data: {
+        context: "Single-call box structure + semanticQuery (3.5 Flash-Lite)",
+      },
+    });
+
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const matrix = await fetchThesisMatrix();
+    if (!matrix) return { error: "Thesis matrix not found." };
+
+    const geminiPrompt = buildThesisBoxGenerationPrompt({
+      researchCore: matrix.researchCore,
+      targetActors: matrix.targetActors,
+      context: matrix.context,
+      framework: matrix.framework,
+      mainClaim: matrix.mainClaim,
+    });
+
+    const generationResult = await generateStructuredContent<RawNestedResponse>(
+      FLASH_LITE_31,
+      buildThesisBoxGenerationSystemInstruction(),
+      geminiPrompt,
+      thesisBoxGenerationJsonSchema,
+      log,
+      {
+        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+        zodSchema: thesisBoxGenerationSchema,
+        seed: GEMINI_SEED,
+        thesisMatrix: matrix,
+        payloadStage: "box_generation",
+        quiet: true,
+      },
+    );
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { analysis, ...quadrantsOnly } = generationResult;
+    const normalizedBoxes = mapToProductionShape(quadrantsOnly);
+
+    log.info("box_structure_generation_success", {
+      service: "boxes",
+      data: {
+        parentCount: normalizedBoxes.filter((b) => b.parentId === null).length,
+        childCount: normalizedBoxes.filter((b) => b.parentId !== null).length,
+      },
+    });
+
+    // ── Step 2: Persist box hierarchy ────────────────────────────────────
+    log.info("boxes_confirm_start", {
+      service: "boxes",
+      data: { context: "Persisting subject boxes" },
+    });
+
+    const parsed = confirmBoxesSchema.safeParse(normalizedBoxes);
+    if (!parsed.success) {
+      log.error("boxes_confirm_validation_failed", {
+        service: "boxes",
+        error: parsed.error,
+      });
+      return { error: "Invalid box data received." };
+    }
+
+    const validBoxes = parsed.data;
+    const thesisMatrixId = matrix.id;
+
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(thesisBoxes)
+        .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
+
+      const parentFlatIndices: number[] = [];
+      for (let i = 0; i < validBoxes.length; i++) {
+        if (validBoxes[i].parentId === null) {
+          parentFlatIndices.push(i);
+        }
+      }
+
+      const parentValues = parentFlatIndices.map((i) => ({
+        thesisMatrixId,
+        title: validBoxes[i].title,
+        boxType: validBoxes[i].boxType,
+        description: validBoxes[i].description || "",
+        parentId: null,
+        semanticQuery: null,
+        foundationalQueries: validBoxes[i].foundationalQueries || [],
+        concepts: validBoxes[i].concepts || [],
+      }));
+
+      let insertedParents: { id: number }[] = [];
+      if (parentValues.length > 0) {
+        insertedParents = await tx
+          .insert(thesisBoxes)
+          .values(parentValues)
+          .returning({ id: thesisBoxes.id });
+      }
+
+      const dbParentIdMap = new Map<number, number>();
+      for (let j = 0; j < parentFlatIndices.length; j++) {
+        const dbId = insertedParents[j]?.id;
+        if (dbId !== undefined) {
+          dbParentIdMap.set(parentFlatIndices[j], dbId);
+        }
+      }
+
+      const childValues: (typeof thesisBoxes.$inferInsert)[] = [];
+      for (let i = 0; i < validBoxes.length; i++) {
+        const box = validBoxes[i];
+        if (box.parentId === null) continue;
+        const mappedParentId = dbParentIdMap.get(box.parentId) ?? null;
+        childValues.push({
+          thesisMatrixId,
+          title: box.title,
+          boxType: box.boxType,
+          description: box.description || "",
+          parentId: mappedParentId,
+          semanticQuery: box.semanticQuery || "",
+          foundationalQueries: box.foundationalQueries ?? [],
+          concepts: box.concepts ?? [],
+        });
+      }
+
+      if (childValues.length > 0) {
+        await tx.insert(thesisBoxes).values(childValues);
+      }
+    });
+
+    revalidateOnboardingPaths();
+    updateTag(CACHE_TAGS.thesisBoxes);
+
+    log.info("boxes_confirm_success", {
+      service: "boxes",
+      data: {
+        parentCount: validBoxes.filter((b) => b.parentId === null).length,
+        childCount: validBoxes.filter((b) => b.parentId !== null).length,
+      },
+    });
+
+    // ── Toplam ───────────────────────────────────────────────────────────
+    log.info("boxes_toplam", {
+      service: "boxes",
+      durationMs: performance.now() - pipelineStart,
+      data: {
+        parentCount: validBoxes.filter((b) => b.parentId === null).length,
+        childCount: validBoxes.filter((b) => b.parentId !== null).length,
+      },
+    });
+
+    return { success: true, boxes: normalizedBoxes };
+  } catch (err) {
+    log.error("boxes_pipeline_failed", {
+      service: "boxes",
+      error: err instanceof Error ? err : new Error(String(err)),
+    });
+    return {
+      error: "An unexpected error occurred while generating subject boxes.",
+    };
+  }
+}

@@ -344,7 +344,15 @@ export class Logger implements LoggerInstance {
       const timeTag = this.timestamp();
       const levelLabel =
         level === "info" ? "INFO" : level === "warn" ? "WARN" : "ERROR";
-      console.log(`${timeTag} ${levelLabel} ${event}`);
+      const durMsFromData =
+        p?.data && typeof p.data === "object" && "durationMs" in p.data
+          ? (p.data as Record<string, unknown>).durationMs
+          : undefined;
+      const durStrInfo =
+        durMsFromData != null
+          ? ` (${formatDuration(durMsFromData as number)})`
+          : "";
+      console.log(`${timeTag} ${levelLabel} ${event}${durStrInfo}`);
       devLogCount++;
       return;
     }

@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo } from "react";
 import { toast } from "sonner";
-import { toggleResourceReadStatusAction } from "@/app/(app)/library/actions";
+import { toggleResourceReadStatusAction } from "@/app/(app)/dashboard/actions";
 import type { ThesisBox, LibraryResource } from "@/db/schema";
 import type { TaskRow } from "../_lib/schemas";
 import { useDashboardArticles } from "./use-dashboard-articles";

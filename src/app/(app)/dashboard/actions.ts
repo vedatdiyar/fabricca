@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { createFlowId, Logger } from "@/lib/logger";
 import { db } from "@/db";
-import { tasks, thesisBoxes } from "@/db/schema";
+import { tasks, thesisBoxes, libraryResources } from "@/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import {
   AddTaskSchema,
@@ -323,5 +323,55 @@ export async function deleteTaskAction(taskId: number): Promise<{
       error: err,
     });
     return { success: false, error: "Failed to delete task." };
+  }
+}
+
+/**
+ * Toggles the isRead flag on a single library resource.
+ * Used by Dashboard reading tasks.
+ *
+ * @param resourceId - The resource ID to update
+ * @param isRead - New boolean read state
+ * @returns Success or error result
+ */
+export async function toggleResourceReadStatusAction(
+  resourceId: number,
+  isRead: boolean,
+): Promise<{ success: boolean; error?: string }> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, error: SESSION_ERROR_MSG };
+
+    const [res] = await db
+      .select({ badge: libraryResources.badge })
+      .from(libraryResources)
+      .where(eq(libraryResources.id, resourceId));
+
+    if (res?.badge === "CRITICAL_OVERLAP") {
+      return {
+        success: false,
+        error:
+          "Kritik çakışma riski taşıyan tez adayları için okuma durumu değiştirilemez.",
+      };
+    }
+
+    await db
+      .update(libraryResources)
+      .set({ isRead })
+      .where(eq(libraryResources.id, resourceId));
+
+    return { success: true };
+  } catch (err) {
+    log.error("toggle_read_status_failed", {
+      service: "dashboard",
+      error: err,
+    });
+    return {
+      success: false,
+      error: "Failed to update read status.",
+    };
   }
 }

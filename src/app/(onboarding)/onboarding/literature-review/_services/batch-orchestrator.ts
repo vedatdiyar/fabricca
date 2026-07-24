@@ -120,7 +120,7 @@ export async function orchestrateBatchProcess(
   }
 
   // ── PHASE 1: PARALLEL CANDIDATE COMPILATION ─────────────────────────────
-  logger.info("literature_batch_search_start", {
+  logger.info("literature_openalex_search_start", {
     service: "literature",
     filePath: "onboarding/literature-review/_services/batch-orchestrator.ts",
     data: { jobCount: activeJobs.length },
@@ -242,7 +242,7 @@ export async function orchestrateBatchProcess(
     }
   }
 
-  logger.info("literature_batch_search_success", {
+  logger.info("literature_openalex_search_success", {
     service: "literature",
     filePath: "onboarding/literature-review/_services/batch-orchestrator.ts",
     data: {
@@ -276,7 +276,7 @@ export async function orchestrateBatchProcess(
   }[] = [];
 
   if (selectionInput.length > 0) {
-    logger.info("literature_bulk_foundational_selection_start", {
+    logger.info("literature_foundational_selection_start", {
       service: "literature",
       filePath: "onboarding/literature-review/_services/batch-orchestrator.ts",
       data: { activeSubBoxCount: selectionInput.length },
@@ -289,7 +289,7 @@ export async function orchestrateBatchProcess(
       );
       bulkSelections = bulkResult.selections;
 
-      logger.info("literature_bulk_foundational_selection_success", {
+      logger.info("literature_foundational_selection_success", {
         service: "literature",
         filePath:
           "onboarding/literature-review/_services/batch-orchestrator.ts",
@@ -314,6 +314,12 @@ export async function orchestrateBatchProcess(
     foundationalArticle: JuryArticle | null;
     top3Related: JuryArticle[];
   }[] = [];
+
+  logger.info("literature_related_selection_start", {
+    service: "literature",
+    filePath: "onboarding/literature-review/_services/batch-orchestrator.ts",
+    data: { subBoxCount: fulfilledResults.length },
+  });
 
   for (const r of fulfilledResults) {
     if (checkCancelled?.()) break;
@@ -421,6 +427,12 @@ export async function orchestrateBatchProcess(
     });
   }
 
+  logger.info("literature_related_selection_success", {
+    service: "literature",
+    filePath: "onboarding/literature-review/_services/batch-orchestrator.ts",
+    data: { totalSubBoxes: subBoxResultsToPersist.length },
+  });
+
   // Bulk sanitization of all selected articles in a single LLM call
   const allArticlesToSanitize: JuryArticle[] = [];
   for (const item of subBoxResultsToPersist) {
@@ -429,7 +441,7 @@ export async function orchestrateBatchProcess(
 
   if (allArticlesToSanitize.length > 0 && !checkCancelled?.()) {
     try {
-      logger.info("literature_bulk_sanitization_start", {
+      logger.info("literature_sanitization_start", {
         service: "literature",
         filePath:
           "onboarding/literature-review/_services/batch-orchestrator.ts",
@@ -454,7 +466,7 @@ export async function orchestrateBatchProcess(
         }
       }
 
-      logger.info("literature_bulk_sanitization_success", {
+      logger.info("literature_sanitization_success", {
         service: "literature",
         filePath:
           "onboarding/literature-review/_services/batch-orchestrator.ts",

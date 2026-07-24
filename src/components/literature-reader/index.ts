@@ -1,1 +1,0 @@
-export { LiteratureReader } from "./main";

@@ -6,17 +6,13 @@ import { thesisPositioning, thesisMatrices } from "@/db/schema";
 import type { ThesisPositioning } from "@/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
+import type { ThesisMatrix } from "@/lib/types";
 import { positioningMatrixSchema } from "./_lib/validation";
-import {
-  generatePositioningQueries,
-  type GeneratedQueries,
-} from "./_services/queries";
-import { searchAndSiftTheses, type SiftedThesis } from "./_services/sifting";
-import {
-  analyzePositioningJury,
-  type JuryAnalysisResult,
-} from "./_services/analysis";
+import { generatePositioningQueries } from "./_services/queries";
+import { searchAndSiftTheses } from "./_services/sifting";
+import { analyzePositioningJury } from "./_services/analysis";
 import { savePositioningReportTransaction } from "./_services/decision-engine";
+import { sanitizeAcademicDataBulk } from "@/lib/services/academic-sanitizer";
 
 /**
  * Fetches the existing positioning record for the authenticated user.
@@ -91,170 +87,36 @@ export async function getPositioningAction(): Promise<ThesisPositioning | null> 
 }
 
 /**
- * Server Action executing FAZ 3 search pipeline:
- * 1. Validates user's 5-field positioning matrix input.
- * 2. Generates 3-tier academic search queries via Gemini Flash-Lite.
- * 3. Executes parallel searches on Tezara Meilisearch, filters out invalid abstracts & languages,
- *    and reranks candidates with Cohere Rerank v4 Pro.
- * 4. Returns sifted theses alongside generated queries.
+ * Tek bir pipeline'da positioning sürecinin tüm adımlarını çalıştırır:
+ *   1. generate_positioning_queries — 3 kademeli akademik sorgu üretimi
+ *   2. sifting_parallel_search — Tezara Meilisearch paralel arama + filtreleme
+ *   3. cohere_rerank — Cohere Rerank v4 Pro ile anlamsal sıralama
+ *   4. positioning_jury_analysis — Gemini LLM jüri değerlendirmesi
+ *   5. literature_bulk_sanitization — Akademik metin temizliği
+ *   6. positioning_db_transaction — Raporun veritabanına yazılması
  *
- * @param data - Raw form payload submitted from client.
- * @returns Object containing success flag, sifted theses, and generated queries, or error string.
- */
-export async function executePositioningSearchAction(
-  data: unknown,
-): Promise<
-  | { success: true; theses: SiftedThesis[]; queries: GeneratedQueries }
-  | { error: string }
-> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-  const startTime = performance.now();
-
-  const parsed = positioningMatrixSchema.safeParse(data);
-  if (!parsed.success) {
-    const firstIssue = parsed.error.issues[0];
-    const msg = firstIssue
-      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
-      : "Form doğrulaması başarısız.";
-    return { error: msg };
-  }
-
-  const validated = parsed.data;
-
-  log.info("execute_positioning_search_start", {
-    service: "positioning",
-    filePath: "src/app/(onboarding)/onboarding/positioning/actions.ts",
-    data: { context: "Executing positioning search pipeline" },
-  });
-
-  try {
-    const session = await getSession();
-    if (!session) {
-      return { error: SESSION_ERROR_MSG };
-    }
-
-    // Step 1: Generate 3-tier search queries with Gemini
-    const queries = await generatePositioningQueries(validated, log);
-
-    // Step 2: Parallel search Tezara, filter language/abstract, and Cohere rerank
-    const theses = await searchAndSiftTheses(queries, validated, log);
-
-    log.info("execute_positioning_search_success", {
-      service: "positioning",
-      filePath: "src/app/(onboarding)/onboarding/positioning/actions.ts",
-      durationMs: performance.now() - startTime,
-      data: { resultCount: theses.length },
-    });
-
-    return {
-      success: true,
-      theses,
-      queries,
-    };
-  } catch (error) {
-    log.error("execute_positioning_search_failed", {
-      service: "positioning",
-      filePath: "src/app/(onboarding)/onboarding/positioning/actions.ts",
-      durationMs: performance.now() - startTime,
-      error,
-    });
-    return {
-      error:
-        "Tez arama ve süzme işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.",
-    };
-  }
-}
-
-/**
- * Server Action that runs FAZ 4 LLM Jury analysis on pre-sifted theses.
- * Validates the matrix input, then runs Gemini Flash-Lite jury evaluation.
+ * Her adım START/SUCCESS logu üretir; pipeline sonunda positioning_toplam
+ * satırı tüm sürecin toplam süresini gösterir.
  *
- * @param data - Raw positioning matrix payload.
- * @param theses - Pre-sifted theses from executePositioningSearchAction.
- * @returns The jury analysis report on success, or an error string.
+ * @param matrixInput - Kullanıcının tez matrisi (5 alan)
+ * @returns Başarılıysa { success: true }, hatalıysa { error: string }
  */
-export async function runPositioningJuryAction(
-  data: unknown,
-  theses: SiftedThesis[],
-): Promise<
-  | {
-      success: true;
-      report: JuryAnalysisResult;
-    }
-  | { error: string }
-> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-  const startTime = performance.now();
-
-  const parsed = positioningMatrixSchema.safeParse(data);
-  if (!parsed.success) {
-    const firstIssue = parsed.error.issues[0];
-    const msg = firstIssue
-      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
-      : "Form doğrulaması başarısız.";
-    return { error: msg };
-  }
-
-  const validated = parsed.data;
-
-  log.info("run_positioning_jury_start", {
-    service: "positioning",
-    filePath: "src/app/(onboarding)/onboarding/positioning/actions.ts",
-    data: { context: "Running LLM jury analysis on sifted theses" },
-  });
-
-  try {
-    const session = await getSession();
-    if (!session) {
-      return { error: SESSION_ERROR_MSG };
-    }
-
-    const report = await analyzePositioningJury(validated, theses, log);
-
-    log.info("run_positioning_jury_success", {
-      service: "positioning",
-      filePath: "src/app/(onboarding)/onboarding/positioning/actions.ts",
-      durationMs: performance.now() - startTime,
-      data: {
-        globalStatus: report.globalStatus,
-        recommendedCount: report.recommendedTheses.length,
-      },
-    });
-
-    return { success: true, report };
-  } catch (error) {
-    log.error("run_positioning_jury_failed", {
-      service: "positioning",
-      filePath: "src/app/(onboarding)/onboarding/positioning/actions.ts",
-      durationMs: performance.now() - startTime,
-      error,
-    });
-    return {
-      error: "Jüri analizi sırasında bir hata oluştu. Lütfen tekrar deneyin.",
-    };
-  }
-}
-
-/**
- * Server Action that persists the positioning report to the database and
- * invalidates the onboarding step cache. Does NOT clear downstream data
- * (the caller is responsible for that before calling this action).
- *
- * @param data - Raw positioning matrix payload.
- * @param report - The jury analysis result to persist.
- * @returns Success flag or error string.
- */
-export async function savePositioningReportAction(
-  data: unknown,
-  report: JuryAnalysisResult,
+export async function runPositioningPipelineAction(
+  matrixInput: ThesisMatrix,
 ): Promise<{ success: true } | { error: string }> {
   const flowId = createFlowId();
   const log = new Logger(flowId);
-  const startTime = performance.now();
+  const pipelineStart = performance.now();
 
-  const parsed = positioningMatrixSchema.safeParse(data);
+  const positioningInput: Record<string, string> = {
+    subjectAndProblem: matrixInput.researchCore ?? "",
+    theoreticalFramework: matrixInput.framework ?? "",
+    unitOfAnalysis: matrixInput.targetActors ?? "",
+    methodology: matrixInput.mainClaim ?? "",
+    scopeAndContext: matrixInput.context ?? "",
+  };
+
+  const parsed = positioningMatrixSchema.safeParse(positioningInput);
   if (!parsed.success) {
     const firstIssue = parsed.error.issues[0];
     const msg = firstIssue
@@ -265,41 +127,94 @@ export async function savePositioningReportAction(
 
   const validated = parsed.data;
 
-  log.info("save_positioning_report_start", {
-    service: "positioning",
-    filePath: "src/app/(onboarding)/onboarding/positioning/actions.ts",
-    data: { context: "Persisting positioning report to database" },
-  });
-
   try {
     const session = await getSession();
-    if (!session) {
-      return { error: SESSION_ERROR_MSG };
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    // ── Step 1: Query generation ──
+    log.info("generate_positioning_queries_start", {
+      service: "positioning",
+      data: {
+        context: "3-tier academic search query generation (Gemini Flash-Lite)",
+      },
+    });
+    const queries = await generatePositioningQueries(validated, log);
+    log.info("generate_positioning_queries_success", {
+      service: "positioning",
+      data: { directQuery: queries.directQuery },
+    });
+
+    // ── Steps 2 & 3: Tezara search + Cohere rerank (logged inside searchAndSiftTheses) ──
+    const theses = await searchAndSiftTheses(queries, validated, log);
+
+    // ── Step 4: Jury LLM analysis ──
+    log.info("positioning_jury_analysis_start", {
+      service: "positioning",
+      data: { context: "LLM jury analysis on sifted theses" },
+    });
+    const juryResult = await analyzePositioningJury(validated, theses, log);
+    log.info("positioning_jury_analysis_success", {
+      service: "positioning",
+      data: { globalStatus: juryResult.globalStatus },
+    });
+
+    // ── Step 5: Sanitization ──
+    if (juryResult.recommendedTheses.length > 0) {
+      log.info("literature_bulk_sanitization_start", {
+        service: "positioning",
+        data: { count: juryResult.recommendedTheses.length },
+      });
+
+      const itemsToSanitize = juryResult.recommendedTheses.map((t) => ({
+        title: t.title || "",
+        author: t.author || "",
+      }));
+      const sanitized = await sanitizeAcademicDataBulk(itemsToSanitize, log);
+      juryResult.recommendedTheses = juryResult.recommendedTheses.map(
+        (t, idx) => ({
+          ...t,
+          title: sanitized[idx]?.title || t.title,
+          author: sanitized[idx]?.author || t.author,
+        }),
+      );
+
+      log.info("literature_bulk_sanitization_success", {
+        service: "positioning",
+        data: { sanitizedCount: sanitized.length },
+      });
     }
 
+    // ── Step 6: DB persist ──
+    log.info("positioning_db_transaction_start", {
+      service: "positioning",
+      data: { context: "Persisting positioning report to database" },
+    });
     await savePositioningReportTransaction(
       session.userId,
       validated,
-      report,
-      log,
+      juryResult,
     );
-
-    log.info("save_positioning_report_success", {
+    log.info("positioning_db_transaction_success", {
       service: "positioning",
-      filePath: "src/app/(onboarding)/onboarding/positioning/actions.ts",
-      durationMs: performance.now() - startTime,
+      data: { context: "Positioning report saved" },
+    });
+
+    // ── Pipeline total ──
+    log.info("positioning_toplam", {
+      service: "positioning",
+      data: { durationMs: Math.round(performance.now() - pipelineStart) },
     });
 
     return { success: true };
   } catch (error) {
-    log.error("save_positioning_report_failed", {
+    log.error("positioning_pipeline_failed", {
       service: "positioning",
-      filePath: "src/app/(onboarding)/onboarding/positioning/actions.ts",
-      durationMs: performance.now() - startTime,
       error,
+      data: { context: "Positioning pipeline failed" },
     });
     return {
-      error: "Rapor kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.",
+      error:
+        "Konumlandırma analizi sırasında bir hata oluştu. Lütfen tekrar deneyin.",
     };
   }
 }

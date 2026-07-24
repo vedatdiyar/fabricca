@@ -194,7 +194,7 @@ export async function generateStructuredContent<T>(
   const thinkingLevel = options?.thinkingConfig?.thinkingLevel;
   const callLabel = options?.payloadStage ?? "gemini";
 
-  if (!options?.quiet) {
+  if (options?.quiet === false) {
     logger?.info(`${callLabel}_start`, {
       service: "gemini",
       data: {
@@ -359,7 +359,7 @@ export async function generateStructuredContent<T>(
     const payloadStage = options?.payloadStage ?? "gemini";
     logger?.saveDebugPayload(payloadStage, modelName, prompt, text);
 
-    if (!options?.quiet) {
+    if (options?.quiet === false) {
       logger?.info(`${callLabel}_success`, {
         service: "gemini",
         durationMs,

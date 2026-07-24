@@ -58,14 +58,6 @@ export async function rerankWithCohere(
     }));
   }
 
-  const startTime = performance.now();
-
-  logger?.info("cohere_rerank_start", {
-    service: "cohere",
-    filePath: "src/lib/services/cohere.ts",
-    data: { model, candidateCount: documents.length },
-  });
-
   try {
     const payload = {
       model,
@@ -117,7 +109,6 @@ export async function rerankWithCohere(
       },
     );
 
-    const durationMs = performance.now() - startTime;
     const rawResults = response.results ?? [];
 
     const mapped: CohereRerankResult[] = rawResults.map((r) => ({
@@ -125,24 +116,11 @@ export async function rerankWithCohere(
       relevanceScore: r.relevance_score ?? r.relevanceScore ?? 0,
     }));
 
-    logger?.info("cohere_rerank_success", {
-      service: "cohere",
-      filePath: "src/lib/services/cohere.ts",
-      durationMs,
-      data: {
-        model,
-        candidateCount: documents.length,
-        returnedCount: mapped.length,
-      },
-    });
-
     return mapped;
   } catch (error) {
-    const durationMs = performance.now() - startTime;
     logger?.error("cohere_rerank_failed", {
       service: "cohere",
       filePath: "src/lib/services/cohere.ts",
-      durationMs,
       error,
       data: { model, candidateCount: documents.length },
     });
