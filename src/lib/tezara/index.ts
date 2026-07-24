@@ -48,6 +48,9 @@ async function meiliSearch(
   step?: string,
 ): Promise<{ hits: Record<string, unknown>[] } | null> {
   const startTime = performance.now();
+  const timeoutMs = 30_000;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(`${MEILI_URL}/indexes/theses/search`, {
       method: "POST",
@@ -56,7 +59,10 @@ async function meiliSearch(
         Authorization: `Bearer ${MEILI_KEY}`,
       },
       body: JSON.stringify(body),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!res.ok) {
       const durationMs = performance.now() - startTime;
@@ -72,6 +78,7 @@ async function meiliSearch(
 
     return (await res.json()) as { hits: Record<string, unknown>[] };
   } catch (err) {
+    clearTimeout(timeoutId);
     const durationMs = performance.now() - startTime;
     logger?.error("search_filtered", {
       service: "tezara",

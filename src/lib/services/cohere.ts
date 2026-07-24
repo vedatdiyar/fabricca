@@ -68,29 +68,38 @@ export async function rerankWithCohere(
 
     const response = await withRetry(
       async () => {
-        const res = await fetch(COHERE_RERANK_URL, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15_000);
+        try {
+          const res = await fetch(COHERE_RERANK_URL, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
 
-        if (!res.ok) {
-          const errorText = await res.text().catch(() => "");
-          throw new Error(
-            `Cohere Rerank API returned status ${res.status}: ${errorText}`,
-          );
-        }
+          if (!res.ok) {
+            const errorText = await res.text().catch(() => "");
+            throw new Error(
+              `Cohere Rerank API returned status ${res.status}: ${errorText}`,
+            );
+          }
 
-        return res.json() as Promise<{
-          results?: Array<{
-            index: number;
-            relevance_score?: number;
-            relevanceScore?: number;
+          return res.json() as Promise<{
+            results?: Array<{
+              index: number;
+              relevance_score?: number;
+              relevanceScore?: number;
+            }>;
           }>;
-        }>;
+        } catch (err) {
+          clearTimeout(timeoutId);
+          throw err;
+        }
       },
       {
         maxRetries: 2,
@@ -101,7 +110,8 @@ export async function rerankWithCohere(
               error.message.includes("429") ||
               error.message.includes("503") ||
               error.message.includes("500") ||
-              error.message.includes("fetch failed")
+              error.message.includes("fetch failed") ||
+              error.name === "AbortError"
             );
           }
           return false;

@@ -29,7 +29,11 @@ import {
   setLiteratureCancelledAction,
 } from "../literature-review/actions";
 import type { SubBoxInput } from "../literature-review/_services/literature-review-papers";
-import { runPositioningPipelineAction } from "../positioning/actions";
+import {
+  runPositioningSearchAction,
+  runPositioningJuryAction,
+  persistPositioningReportAction,
+} from "../positioning/actions";
 
 /**
  * Central onboarding orchestrator hook that coordinates all cross-feature
@@ -114,15 +118,37 @@ export function useOnboardingNavigation() {
 
         await completeStep(0, steps);
 
-        const pipelineRes = await runPositioningPipelineAction(matrixInput);
-        if ("error" in pipelineRes) {
+        const searchResult = await runPositioningSearchAction(matrixInput);
+        if ("error" in searchResult) {
           hideLoading();
-          toast.error(pipelineRes.error);
-          return { success: false, error: pipelineRes.error };
+          toast.error(searchResult.error);
+          return { success: false, error: searchResult.error };
         }
 
         await completeStep(1, steps);
+
+        const juryResult = await runPositioningJuryAction(
+          matrixInput,
+          searchResult.theses,
+        );
+        if ("error" in juryResult) {
+          hideLoading();
+          toast.error(juryResult.error);
+          return { success: false, error: juryResult.error };
+        }
+
         await completeStep(2, steps);
+
+        const persistResult = await persistPositioningReportAction(
+          matrixInput,
+          juryResult.juryResult,
+        );
+        if ("error" in persistResult) {
+          hideLoading();
+          toast.error(persistResult.error);
+          return { success: false, error: persistResult.error };
+        }
+
         await completeStep(3, steps);
 
         queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
@@ -202,14 +228,7 @@ export function useOnboardingNavigation() {
         };
       }
     },
-    [
-      router,
-      showLoading,
-      hideLoading,
-      completeStep,
-      updateLoadingStep,
-      queryClient,
-    ],
+    [router, showLoading, hideLoading, completeStep, queryClient],
   );
 
   /**
