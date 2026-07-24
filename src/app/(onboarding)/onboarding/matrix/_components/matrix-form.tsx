@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useMemo, memo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -14,14 +13,12 @@ import {
   Target,
 } from "lucide-react";
 
-import { getErrorDisplay } from "@/lib/error-utils";
+import type { ThesisMatrix } from "@/db/schema";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { LoadingSpinner } from "@/components/loading-spinner";
 import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
-import { fetchThesisMatrixFresh } from "../../_services/fetch-actions";
 
 type FormState = {
   researchCore: string;
@@ -152,7 +149,7 @@ const MatrixCard = memo(function MatrixCard({
   onChange,
 }: MatrixCardProps) {
   return (
-    <Card className="space-y-3 p-4 hover:border-primary/20 rounded-md transition-all shadow-xs">
+    <Card className="space-y-3 p-6 hover:border-primary/20 rounded-md transition-all shadow-xs">
       <div className="space-y-1">
         <div className="flex items-center gap-2">
           <span className="inline-flex h-5 w-7 items-center justify-center rounded bg-primary/10 text-[10px] font-bold tracking-wider text-primary">
@@ -187,8 +184,11 @@ const MatrixCard = memo(function MatrixCard({
 
 /**
  * MatrixForm — onboarding step 1. Renders the thesis matrix as a 5-field,
- * 2-section academic form. Persists to the database and navigates to the risk
- * analysis step.
+ * 2-section academic form. Persists to the database and navigates to the
+ * positioning step. Uses server-side fetched initialData, so there is no
+ * client-side loading state — the parent page already resolves the data.
+ *
+ * @param props.initialMatrix - Pre-fetched thesis matrix data (nullable).
  */
 const EMPTY_VALUES: FormState = {
   researchCore: "",
@@ -198,21 +198,15 @@ const EMPTY_VALUES: FormState = {
   mainClaim: "",
 };
 
-export function MatrixForm() {
+interface MatrixFormProps {
+  initialMatrix?: ThesisMatrix | null;
+}
+
+export function MatrixForm({ initialMatrix }: MatrixFormProps) {
   const { submitMatrix } = useOnboardingNavigation();
 
   const [isPending, setIsPending] = useState(false);
   const [editedValues, setEditedValues] = useState<Partial<FormState>>({});
-
-  const {
-    data: initialMatrix,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["thesis-matrix"],
-    queryFn: fetchThesisMatrixFresh,
-    staleTime: 0,
-  });
 
   const formState = useMemo((): FormState => {
     const base = initialMatrix ?? EMPTY_VALUES;
@@ -246,25 +240,13 @@ export function MatrixForm() {
         mainClaim: formState.mainClaim,
       });
     } catch (error) {
-      const display = getErrorDisplay(error);
-      toast.error(`${display.title}: ${display.description}`);
+      const message =
+        error instanceof Error ? error.message : "Beklenmeyen bir hata oluştu.";
+      toast.error(message);
     } finally {
       setIsPending(false);
     }
   };
-
-  if (isLoading) {
-    return <LoadingSpinner variant="card" />;
-  }
-
-  if (error) {
-    const display = getErrorDisplay(error);
-    return (
-      <div className="text-destructive text-center py-8">
-        {display.title}: {display.description}
-      </div>
-    );
-  }
 
   return (
     <form onSubmit={handleSubmit} className="w-full space-y-8">

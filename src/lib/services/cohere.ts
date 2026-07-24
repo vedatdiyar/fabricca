@@ -60,6 +60,12 @@ export async function rerankWithCohere(
 
   const startTime = performance.now();
 
+  logger?.info("cohere_rerank_start", {
+    service: "cohere",
+    filePath: "src/lib/services/cohere.ts",
+    data: { model, candidateCount: documents.length },
+  });
+
   try {
     const payload = {
       model,

@@ -1,12 +1,11 @@
 "use server";
 
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { thesisPositioning, thesisMatrices } from "@/db/schema";
 import type { ThesisPositioning } from "@/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
-import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
 import { positioningMatrixSchema } from "./_lib/validation";
 import {
   generatePositioningQueries,
@@ -18,76 +17,7 @@ import {
   type JuryAnalysisResult,
 } from "./_services/analysis";
 import { savePositioningReportTransaction } from "./_services/decision-engine";
-
-/**
- * Saves or updates the positioning matrix input for the authenticated user,
- * invalidating downstream caches.
- *
- * @param data - Raw input data submitted from the positioning form
- * @returns Object indicating success or error message
- */
-export async function savePositioningMatrixAction(
-  data: unknown,
-): Promise<{ success: true } | { error: string }> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-  const startTime = performance.now();
-
-  const parsed = positioningMatrixSchema.safeParse(data);
-  if (!parsed.success) {
-    const firstIssue = parsed.error.issues[0];
-    const msg = firstIssue
-      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
-      : "Form doğrulaması başarısız.";
-    return { error: msg };
-  }
-
-  const validated = parsed.data;
-
-  log.info("positioning_matrix_save_start", {
-    service: "db",
-    data: { context: "Saving positioning matrix" },
-  });
-
-  try {
-    const session = await getSession();
-    if (!session) {
-      return { error: SESSION_ERROR_MSG };
-    }
-
-    await db
-      .insert(thesisPositioning)
-      .values({
-        userId: session.userId,
-        matrixInput: validated,
-        updatedAt: sql`now()`,
-      })
-      .onConflictDoUpdate({
-        target: thesisPositioning.userId,
-        set: {
-          matrixInput: validated,
-          updatedAt: sql`now()`,
-        },
-      });
-
-    invalidateOnboardingStepCache("positioning");
-
-    log.info("positioning_matrix_save_success", {
-      service: "db",
-      durationMs: performance.now() - startTime,
-      data: { context: "Saving positioning matrix" },
-    });
-
-    return { success: true };
-  } catch (error) {
-    log.error("positioning_matrix_save_failed", {
-      service: "db",
-      error,
-      data: { context: "Saving positioning matrix" },
-    });
-    return { error: "Konumlandırma matrisi veritabanına kaydedilemedi." };
-  }
-}
+import { clearDownstreamDbAction } from "../actions";
 
 /**
  * Fetches the existing positioning record for the authenticated user.
@@ -223,8 +153,9 @@ export async function executePositioningSearchAction(
  * 1. Validates user's 5-field positioning matrix input.
  * 2. Runs FAZ 3 search & sifting (Gemini queries -> Tezara parallel search with limit 150 -> Cohere Rerank v4 Pro).
  * 3. Applies empirical threshold filtering (0.75 score bar, Min 10, Max 15) and runs Gemini Flash-Lite LLM Jury evaluation.
- * 4. Persists report data to `thesis_positioning` table in DB via transaction and invalidates step cache.
- * 5. Returns full analysis report, generated queries, and sifted theses to client.
+ * 4. Clears downstream data (boxes, literature) to ensure a clean state.
+ * 5. Persists report data to `thesis_positioning` table in DB via transaction and invalidates step cache.
+ * 6. Returns full analysis report, generated queries, and sifted theses to client.
  *
  * @param data - Raw form payload submitted from client.
  * @returns Object containing success flag, report, queries, and sifted theses, or error string.
@@ -274,7 +205,13 @@ export async function runPositioningPipelineAction(data: unknown): Promise<
     // Step 3: FAZ 4 - LLM Jury Analysis with empirical filter (0.75 threshold, Min 10, Max 15)
     const report = await analyzePositioningJury(validated, theses, log);
 
-    // Step 4: FAZ 4 - Save transaction to DB and invalidate cache
+    // Step 4: Clear downstream data (boxes, literature) before saving new report
+    const clearResult = await clearDownstreamDbAction("positioning");
+    if ("error" in clearResult) {
+      return { error: clearResult.error };
+    }
+
+    // Step 5: FAZ 4 - Save transaction to DB and invalidate cache
     await savePositioningReportTransaction(
       session.userId,
       validated,

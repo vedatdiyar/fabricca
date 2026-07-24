@@ -24,12 +24,11 @@ export default async function OnboardingPositioningPage() {
         <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
           <div className="flex flex-col space-y-1 text-left">
             <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
-              Evrensel Tez Matrisi ve Konumlandırma
+              Akademik Konumlandırma Raporu
             </h1>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Çalışmanızın odağını, kuramsal çerçevesini, yöntemini ve
-              sınırlarını tanımlayarak literatürdeki özgün konumunuzu
-              belirleyin.
+              Çalışmanızın odağı, yöntemi ve kapsamı literatürdeki mevcut
+              tezlerle karşılaştırılarak özgünlük boşluğunuz analiz edildi.
             </p>
           </div>
           <div className="flex items-center self-end sm:self-center">

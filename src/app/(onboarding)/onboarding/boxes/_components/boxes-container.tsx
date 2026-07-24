@@ -148,7 +148,7 @@ export function BoxesContainer() {
         description="Tez matrisinizin çözümlenmesi başarıyla tamamlandı. Aşağıdaki her bir konu kutusu, literatür taraması sürecinde bağımsız olarak taranacaktır."
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 auto-rows-min">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-min">
         {sortedBoxes.map((box, idx) => (
           <BoxCard
             key={box.title}

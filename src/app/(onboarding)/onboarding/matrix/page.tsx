@@ -2,10 +2,12 @@ import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/session";
 import { MatrixForm } from "./_components/matrix-form";
 import { StartOverButton } from "../_components/start-over-button";
+import { fetchThesisMatrixFresh } from "../_services/fetch-actions";
 
 /**
  * Onboarding sürecinin 1. adımı: Çalışma Matrisi Formu (Server Component).
- * Kullanıcıyı yetkilendirme durumuna göre korur ve formu gösterir.
+ * Kullanıcıyı yetkilendirme durumuna göre korur ve mevcut matris verisini
+ * server-side fetch ederek form bileşenine iletir.
  */
 export default async function OnboardingMatrixPage() {
   const profile = await getProfile();
@@ -13,6 +15,8 @@ export default async function OnboardingMatrixPage() {
   if (profile.onboardingCompleted) {
     redirect("/dashboard");
   }
+
+  const initialMatrix = await fetchThesisMatrixFresh();
 
   return (
     <div className="flex flex-col items-center justify-center p-4 pt-10 pb-4">
@@ -32,7 +36,7 @@ export default async function OnboardingMatrixPage() {
           </div>
         </div>
 
-        <MatrixForm />
+        <MatrixForm initialMatrix={initialMatrix} />
       </div>
     </div>
   );

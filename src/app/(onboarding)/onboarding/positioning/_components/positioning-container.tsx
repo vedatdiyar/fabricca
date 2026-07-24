@@ -1,268 +1,42 @@
 "use client";
 
-import { useState, useCallback, useEffect, memo } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import type { LucideIcon } from "lucide-react";
-import {
-  Loader2,
-  Target,
-  Boxes,
-  Compass,
-  MapPin,
-  CheckCircle2,
-  AlertTriangle,
-  HelpCircle,
-  Sparkles,
-  Lightbulb,
-  ArrowRight,
-  BookOpen,
-  ExternalLink,
-  Search,
-  Check,
-} from "lucide-react";
+import { Loader2, BookOpen, Sparkles, Search } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import type { ThesisPositioning } from "@/db/schema";
-import { runPositioningPipelineAction } from "../actions";
-import { positioningMatrixSchema } from "../_lib/validation";
-import type {
-  PositioningMatrixInput,
-  PositioningGlobalStatus,
-} from "../_lib/validation";
+import type { PositioningGlobalStatus } from "../_lib/validation";
 import type { JuryAnalysisResult } from "../_services/analysis";
-import { PositioningMarkdownRenderer } from "./positioning-markdown-renderer";
-
-type FieldKey = keyof PositioningMatrixInput;
-
-interface FieldConfig {
-  key: FieldKey;
-  id: string;
-  number: string;
-  Icon: LucideIcon;
-  label: string;
-  description: string;
-  placeholder: string;
-  rows: number;
-  minLength: number;
-}
-
-interface SectionConfig {
-  id: string;
-  title: string;
-  fields: FieldConfig[];
-}
-
-const POSITIONING_SECTIONS: SectionConfig[] = [
-  {
-    id: "odakVeTeori",
-    title: "Çalışma Odağı ve Teorik Altyapı",
-    fields: [
-      {
-        key: "subjectAndProblem",
-        id: "subjectAndProblem",
-        number: "01",
-        Icon: Target,
-        label: "Çalışmanın Odağı & Problemi",
-        description:
-          "Neyi, hangi temel problemi çözmek veya hangi hipotezi test etmek için inceliyorsun?",
-        placeholder:
-          "Çalışmanızın odağını, çözmeyi hedeflediğiniz temel problemi ve araştırma hipotezlerinizi detaylandırın...",
-        rows: 4,
-        minLength: 3,
-      },
-      {
-        key: "theoreticalFramework",
-        id: "theoreticalFramework",
-        number: "02",
-        Icon: Compass,
-        label: "Teorik / Kavramsal Çerçeve",
-        description:
-          "Çalışmanı hangi teorik mercekle, modelle veya kavramsal yaklaşımla ele alıyorsun?",
-        placeholder:
-          "Temel aldığınız teorik merceği, kavramsal modelleri ve analitik yaklaşımınızı açıklayın...",
-        rows: 4,
-        minLength: 3,
-      },
-    ],
-  },
-  {
-    id: "analizYontemKapsam",
-    title: "Analiz Birimi, Metodoloji ve Kapsam Sınırları",
-    fields: [
-      {
-        key: "unitOfAnalysis",
-        id: "unitOfAnalysis",
-        number: "03",
-        Icon: Boxes,
-        label: "Analiz Birimi / Aktörler / Odak Nesne",
-        description:
-          "Veriyi nereden topluyorsun? Kimi, hangi veri kümesini, materyali veya aktörleri inceliyorsun?",
-        placeholder:
-          "İncelediğiniz aktörleri, veri setlerini, materyalleri veya odak nesnelerinizi tanımlayın...",
-        rows: 3,
-        minLength: 3,
-      },
-      {
-        key: "methodology",
-        id: "methodology",
-        number: "04",
-        Icon: BookOpen,
-        label: "Metodoloji & Yöntem",
-        description:
-          "Veriyi nasıl topluyor, işliyor veya ölçüyorsun? (Nitel, nicel, deneysel, simülasyon vb.)",
-        placeholder:
-          "Veri toplama, veri işleme ve analiz yöntemlerinizi (nitel/nicel/deneysel/simülasyon) detaylandırın...",
-        rows: 3,
-        minLength: 3,
-      },
-      {
-        key: "scopeAndContext",
-        id: "scopeAndContext",
-        number: "05",
-        Icon: MapPin,
-        label: "Kapsam & Sınırlar",
-        description:
-          "Çalışmanın zaman, mekan, sektör, örneklem veya coğrafi sınırları nedir?",
-        placeholder:
-          "Çalışmanızın dönemsel, coğrafi, sektörel veya örneklem sınırlarını belirteyin...",
-        rows: 3,
-        minLength: 3,
-      },
-    ],
-  },
-];
-
-const INITIAL_STATE: PositioningMatrixInput = {
-  subjectAndProblem: "",
-  theoreticalFramework: "",
-  unitOfAnalysis: "",
-  methodology: "",
-  scopeAndContext: "",
-};
-
-interface PositioningCardProps {
-  fieldKey: FieldKey;
-  id: string;
-  number: string;
-  Icon: LucideIcon;
-  label: string;
-  description: string;
-  placeholder: string;
-  value: string;
-  rows: number;
-  minLength: number;
-  error?: string;
-  onChange: (key: FieldKey, value: string) => void;
-}
-
-/**
- * Academic form field card for the positioning matrix with real-time character limit count.
- */
-const PositioningCard = memo(function PositioningCard({
-  fieldKey,
-  id,
-  number,
-  Icon,
-  label,
-  description,
-  placeholder,
-  value,
-  rows,
-  minLength,
-  error,
-  onChange,
-}: PositioningCardProps) {
-  const charCount = (value || "").trim().length;
-  const isSatisfied = charCount >= minLength;
-
-  return (
-    <Card className="space-y-3 p-4 hover:border-primary/30 rounded-md transition-all shadow-xs">
-      <div className="space-y-1">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-5 w-7 items-center justify-center rounded bg-primary/10 text-[10px] font-bold tracking-wider text-primary">
-              {number}
-            </span>
-            <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-            <Label
-              htmlFor={id}
-              className="cursor-pointer text-sm font-semibold text-foreground"
-            >
-              {label}
-            </Label>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs">
-            <span
-              className={`font-mono text-[11px] ${
-                isSatisfied
-                  ? "text-emerald-600 dark:text-emerald-400 font-medium"
-                  : "text-muted-foreground"
-              }`}
-            >
-              {charCount} / {minLength} min
-            </span>
-            {isSatisfied && (
-              <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            )}
-          </div>
-        </div>
-        {description && (
-          <p className="text-xs text-muted-foreground pl-9 leading-relaxed">
-            {description}
-          </p>
-        )}
-      </div>
-      <Textarea
-        id={id}
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(fieldKey, e.target.value)}
-        rows={rows}
-        className="textarea-academic border-border focus-visible:ring-primary/20 text-sm leading-relaxed"
-      />
-      {error && (
-        <p className="text-xs text-destructive mt-1 font-medium">{error}</p>
-      )}
-    </Card>
-  );
-});
+import { runPositioningPipelineAction } from "../actions";
+import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
+import { PositioningReportView } from "./positioning-report-view";
 
 interface PositioningContainerProps {
   initialRecord?: ThesisPositioning | null;
 }
 
-type ViewMode = "form" | "loading" | "report";
-
 /**
  * PositioningContainer Component (FAZ 5 UI/UX).
- * Controls the 3 primary UI states: form -> loading -> report.
+ * The positioning pipeline runs during the matrix submit flow. This component
+ * reads the pre-existing report from the DB and renders it. If no report
+ * exists yet (fallback), it auto-triggers the pipeline and shows a loading
+ * indicator while waiting.
  */
 export function PositioningContainer({
   initialRecord,
 }: PositioningContainerProps) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { proceedFromPositioning } = useOnboardingNavigation();
+  const pipelineStartedRef = useRef(false);
 
-  // Determine initial state from pre-existing DB record
   const hasExistingReport = !!(
     initialRecord &&
     initialRecord.globalStatus &&
     initialRecord.gapAnalysisSummary
   );
 
-  const [viewMode, setViewMode] = useState<ViewMode>(
-    hasExistingReport ? "report" : "loading",
-  );
-
-  const [formState, setFormState] = useState<PositioningMatrixInput>(
-    initialRecord?.matrixInput ?? INITIAL_STATE,
-  );
-
-  const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
   const [reportData, setReportData] = useState<JuryAnalysisResult | null>(
     hasExistingReport
       ? {
@@ -280,395 +54,101 @@ export function PositioningContainer({
       : null,
   );
 
-  // Auto-trigger the AI positioning pipeline on initial mount if no report exists yet
   useEffect(() => {
-    if (!hasExistingReport) {
-      let isMounted = true;
+    if (hasExistingReport || pipelineStartedRef.current) return;
+    pipelineStartedRef.current = true;
 
-      const executePipeline = async () => {
-        const parsed = positioningMatrixSchema.safeParse(formState);
-        if (!parsed.success) {
-          if (isMounted) {
-            setViewMode("form");
-            toast.error(
-              "Lütfen konumlandırma matrisi alanlarını doldurup tekrar deneyin.",
-            );
-          }
-          return;
+    let isMounted = true;
+
+    const executePipeline = async () => {
+      const matrixInput = initialRecord?.matrixInput;
+      if (!matrixInput) {
+        if (isMounted) {
+          toast.error(
+            "Konumlandırma matrisi bulunamadı. Lütfen çalışma matrisine geri dönün.",
+          );
         }
+        return;
+      }
 
-        try {
-          const res = await runPositioningPipelineAction(parsed.data);
-          if (!isMounted) return;
+      try {
+        const res = await runPositioningPipelineAction(matrixInput);
+        if (!isMounted) return;
 
-          if ("error" in res && res.error) {
-            toast.error(res.error);
-            setViewMode("form");
-          } else if ("success" in res && res.success) {
-            toast.success(
-              "Konumlandırma analizi ve jüri değerlendirmesi tamamlandı!",
-            );
-            setReportData(res.report);
-            setViewMode("report");
-          }
-        } catch {
-          if (isMounted) {
-            toast.error("Bir hata oluştu. Lütfen tekrar deneyin.");
-            setViewMode("form");
-          }
+        if ("error" in res && res.error) {
+          toast.error(res.error);
+        } else if ("success" in res && res.success) {
+          toast.success(
+            "Konumlandırma analizi ve jüri değerlendirmesi tamamlandı!",
+          );
+          setReportData(res.report);
+          queryClient.invalidateQueries({
+            queryKey: ["onboarding-steps"],
+          });
         }
-      };
-
-      void executePipeline();
-
-      return () => {
-        isMounted = false;
-      };
-    }
-  }, [hasExistingReport, formState]);
-
-  const handleFieldChange = useCallback((key: FieldKey, value: string) => {
-    setFormState((prev) => ({ ...prev, [key]: value }));
-    setErrors((prev) => ({ ...prev, [key]: undefined }));
-  }, []);
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    const parsed = positioningMatrixSchema.safeParse(formState);
-    if (!parsed.success) {
-      const formattedErrors: Partial<Record<FieldKey, string>> = {};
-      for (const issue of parsed.error.issues) {
-        const field = issue.path[0] as FieldKey;
-        if (field && !formattedErrors[field]) {
-          formattedErrors[field] = issue.message;
+      } catch {
+        if (isMounted) {
+          toast.error("Bir hata oluştu. Lütfen tekrar deneyin.");
         }
       }
-      setErrors(formattedErrors);
-      toast.error(
-        "Lütfen formdaki tüm alanları eksiksiz ve geçerli şekilde doldurun.",
-      );
-      return;
-    }
+    };
 
-    const validatedData = parsed.data;
-    setViewMode("loading");
+    void executePipeline();
 
-    try {
-      const res = await runPositioningPipelineAction(validatedData);
-      if ("error" in res && res.error) {
-        toast.error(res.error);
-        setViewMode("form");
-      } else if ("success" in res && res.success) {
-        toast.success(
-          "Konumlandırma analizi ve jüri değerlendirmesi tamamlandı!",
-        );
-        setReportData(res.report);
-        setViewMode("report");
-      }
-    } catch {
-      toast.error("Bir hata oluştu. Lütfen tekrar deneyin.");
-      setViewMode("form");
-    }
-  };
+    return () => {
+      isMounted = false;
+    };
+  }, [hasExistingReport, initialRecord, queryClient]);
 
-  const handleConfirmAndProceed = useCallback(() => {
-    toast.success("Konumlandırma onaylandı. Konu kutuları oluşturuluyor...");
-    router.push("/onboarding/boxes");
-  }, [router]);
-
-  // Render Loading Overlay View
-  if (viewMode === "loading") {
+  if (reportData) {
     return (
-      <Card className="w-full p-8 my-6 flex flex-col items-center justify-center space-y-6 text-center border-primary/20 bg-card/50 backdrop-blur-sm shadow-md">
-        <div className="relative flex items-center justify-center">
-          <div className="absolute h-20 w-20 rounded-full border-4 border-primary/20 animate-ping" />
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        </div>
-
-        <div className="space-y-2 max-w-lg">
-          <h3 className="font-serif text-lg font-bold text-foreground">
-            Akademik Konumlandırma & Jüri Analizi Çalıştırılıyor
-          </h3>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Literatür taranıyor, Cohere ile anlamsal süzme yapılıyor ve özgünlük
-            boşluğu analiz ediliyor...
-          </p>
-        </div>
-
-        <div className="w-full max-w-md space-y-3 pt-4 border-t border-border/60 text-left">
-          <div className="flex items-center gap-3 text-xs text-foreground/80">
-            <Search className="h-4 w-4 text-primary animate-pulse shrink-0" />
-            <span>
-              1. 3 katmanlı akademik arama sorguları üretiliyor (Gemini
-              Flash-Lite)
-            </span>
-          </div>
-          <div className="flex items-center gap-3 text-xs text-foreground/80">
-            <BookOpen className="h-4 w-4 text-primary animate-pulse shrink-0" />
-            <span>
-              2. Tezara veritabanı taranıyor & Cohere Rerank ile süzülüyor
-            </span>
-          </div>
-          <div className="flex items-center gap-3 text-xs text-foreground/80">
-            <Sparkles className="h-4 w-4 text-primary animate-pulse shrink-0" />
-            <span>
-              3. Akademik jüri özgünlük boşluğu ve sentez raporunu hazırlıyor
-            </span>
-          </div>
-        </div>
-      </Card>
+      <PositioningReportView
+        reportData={reportData}
+        onConfirm={proceedFromPositioning}
+      />
     );
   }
 
-  // Render Report View
-  if (viewMode === "report" && reportData) {
-    const isNovelGap = reportData.globalStatus === "NOVEL_GAP_IDENTIFIED";
-    const isDirectOverlap = reportData.globalStatus === "DIRECT_OVERLAP";
-
-    return (
-      <div className="w-full space-y-8 pb-12">
-        {/* Top Section: Global Status Badge & Summary Header */}
-        <Card className="p-6 space-y-4 border-border shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
-            <div className="space-y-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Jüri Değerlendirme Sonucu
-              </span>
-              <h2 className="font-serif text-xl font-bold text-foreground">
-                Akademik Konumlandırma & Özgün Katkı Raporu
-              </h2>
-            </div>
-
-            <div>
-              {isNovelGap && (
-                <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  Özgün Katkı / Akademik Boşluk Bulundu
-                </Badge>
-              )}
-              {isDirectOverlap && (
-                <Badge
-                  variant="destructive"
-                  className="bg-destructive/10 text-destructive border-destructive/30 px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5"
-                >
-                  <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
-                  Doğrudan Çakışma Riski
-                </Badge>
-              )}
-              {!isNovelGap && !isDirectOverlap && (
-                <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5">
-                  <HelpCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                  Sınırlı Literatür / Bağlam Genişletilmeli
-                </Badge>
-              )}
-            </div>
-          </div>
-
-          {/* Subtitle Message based on status */}
-          {isNovelGap && (
-            <div className="p-4 rounded-md bg-emerald-500/5 border border-emerald-500/20 border-l-2 border-l-emerald-500">
-              <p className="text-sm leading-relaxed text-card-foreground">
-                <CheckCircle2 className="h-4 w-4 inline-block mr-2 text-emerald-600 dark:text-emerald-400 shrink-0 align-text-top" />
-                Çalışmanızın odağı, yöntemi ve kapsamı literatürdeki mevcut
-                tezlerden belirgin biçimde ayrışmakta ve özgün bir akademik
-                boşluk doldurmaktadır.
-              </p>
-            </div>
-          )}
-          {isDirectOverlap && (
-            <div className="p-4 rounded-md bg-destructive/5 border border-destructive/20 border-l-2 border-l-destructive">
-              <p className="text-sm leading-relaxed text-card-foreground">
-                <AlertTriangle className="h-4 w-4 inline-block mr-2 text-destructive shrink-0 align-text-top" />
-                Çalışmanızın odağı literatürdeki mevcut tezlerle yüksek oranda
-                çakışmaktadır. Jüri önerileri doğrultusunda teorik çerçeve veya
-                yönteminizi güncellemeniz tavsiye edilir.
-              </p>
-            </div>
-          )}
-          {!isNovelGap && !isDirectOverlap && (
-            <div className="p-4 rounded-md bg-amber-500/5 border border-amber-500/20 border-l-2 border-l-amber-500">
-              <p className="text-sm leading-relaxed text-card-foreground">
-                <HelpCircle className="h-4 w-4 inline-block mr-2 text-amber-600 dark:text-amber-400 shrink-0 align-text-top" />
-                Doğrudan eşleşen tez sayısı sınırlıdır. Kavramsal çerçevenizi
-                veya arama sınırlarınızı genişleterek tekrar
-                değerlendirebilirsiniz.
-              </p>
-            </div>
-          )}
-        </Card>
-
-        {/* Academic Jury Synthesis Section */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2.5 pb-2 border-b border-border">
-            <Sparkles className="h-5 w-5 text-primary shrink-0" />
-            <h2 className="font-serif text-lg font-bold text-foreground">
-              Akademik Jüri Sentezi
-            </h2>
-          </div>
-
-          <PositioningMarkdownRenderer
-            content={reportData.gapAnalysisSummary}
-          />
-        </div>
-
-        {/* Guiding Thesis Cards Section */}
-        {reportData.recommendedTheses &&
-          reportData.recommendedTheses.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="h-px flex-1 bg-border" />
-                <span className="px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                  Stratejik Rehber Tez Kartları (
-                  {reportData.recommendedTheses.length})
-                </span>
-                <div className="h-px flex-1 bg-border" />
-              </div>
-
-              <div className="grid grid-cols-1 gap-4">
-                {reportData.recommendedTheses.map((thesis, idx) => {
-                  const thesisId = thesis.externalThesisId || `thesis-${idx}`;
-                  return (
-                    <Card
-                      key={thesisId}
-                      className="p-4 space-y-3 hover:border-primary/30 transition-all"
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                        <div className="space-y-1">
-                          <h4 className="font-serif text-sm font-bold text-foreground leading-snug">
-                            {thesis.title}
-                          </h4>
-                          <p className="text-xs text-muted-foreground">
-                            {[thesis.author, thesis.year, thesis.university]
-                              .filter(Boolean)
-                              .join(" • ")}
-                          </p>
-                        </div>
-                        {thesis.doi && (
-                          <a
-                            href={
-                              thesis.doi.startsWith("http")
-                                ? thesis.doi
-                                : `https://doi.org/${thesis.doi}`
-                            }
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0 self-start"
-                          >
-                            DOI <ExternalLink className="h-3 w-3" />
-                          </a>
-                        )}
-                      </div>
-
-                      {(thesis.contributionArea || thesis.relevanceReason) && (
-                        <div className="p-3 rounded bg-card border border-border/40 space-y-3 text-xs">
-                          {thesis.contributionArea && (
-                            <div className="space-y-1">
-                              <span className="flex items-center gap-1.5 font-semibold text-primary">
-                                <Target className="h-3.5 w-3.5 shrink-0" />
-                                Katkı / Odak Alanı:
-                              </span>
-                              <span className="text-foreground leading-relaxed block">
-                                {thesis.contributionArea}
-                              </span>
-                            </div>
-                          )}
-
-                          {thesis.relevanceReason && thesis.contributionArea && (
-                            <div className="border-t border-border/40" />
-                          )}
-
-                          {thesis.relevanceReason && (
-                            <div className="space-y-1">
-                              <span className="flex items-center gap-1.5 font-semibold text-foreground">
-                                <Lightbulb className="h-3.5 w-3.5 shrink-0" />
-                                İlişki ve Ayrışma Sebebi:
-                              </span>
-                              <span className="text-muted-foreground leading-relaxed block">
-                                {thesis.relevanceReason}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-        {/* Bottom Action Controls */}
-        <div className="flex justify-end pt-6">
-          <Button
-            type="button"
-            size="lg"
-            onClick={handleConfirmAndProceed}
-            className="w-full sm:w-auto font-semibold"
-          >
-            Konumlandırmayı Onayla ve İlerle
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Render Form View (Default)
   return (
-    <form onSubmit={handleSubmit} className="w-full space-y-8 pb-8">
-      {POSITIONING_SECTIONS.map((section) => (
-        <div key={section.id} className="space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-border" />
-            <span className="px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              {section.title}
-            </span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4">
-            {section.fields.map(
-              ({
-                key,
-                id,
-                number,
-                Icon,
-                label,
-                description,
-                placeholder,
-                rows,
-                minLength,
-              }) => (
-                <PositioningCard
-                  key={id}
-                  fieldKey={key}
-                  id={id}
-                  number={number}
-                  Icon={Icon}
-                  label={label}
-                  description={description}
-                  placeholder={placeholder}
-                  value={formState[key] || ""}
-                  rows={rows}
-                  minLength={minLength}
-                  error={errors[key]}
-                  onChange={handleFieldChange}
-                />
-              ),
-            )}
-          </div>
+    <Card className="w-full p-8 my-6 flex flex-col items-center justify-center space-y-6 text-center border-primary/20 bg-card/50 backdrop-blur-sm shadow-md">
+      <div className="relative flex items-center justify-center">
+        <div className="absolute h-20 w-20 rounded-full border-4 border-primary/20 animate-ping" />
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <Loader2 className="h-8 w-8 animate-spin" />
         </div>
-      ))}
-
-      <div className="flex justify-end mt-8 pb-8">
-        <Button type="submit" size="lg" className="font-semibold">
-          <Sparkles className="w-4 h-4 mr-2" />
-          Konumlandırmayı Analiz Et ve Jüri Değerlendirmesine Gönder
-        </Button>
       </div>
-    </form>
+
+      <div className="space-y-2 max-w-lg">
+        <h3 className="font-serif text-lg font-bold text-foreground">
+          Akademik Konumlandırma & Jüri Analizi Çalıştırılıyor
+        </h3>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Literatür taranıyor, Cohere ile anlamsal süzme yapılıyor ve özgünlük
+          boşluğu analiz ediliyor...
+        </p>
+      </div>
+
+      <div className="w-full max-w-md space-y-3 pt-4 border-t border-border/60 text-left">
+        <div className="flex items-center gap-3 text-xs text-foreground/80">
+          <Search className="h-4 w-4 text-primary animate-pulse shrink-0" />
+          <span>
+            1. 3 katmanlı akademik arama sorguları üretiliyor (Gemini
+            Flash-Lite)
+          </span>
+        </div>
+        <div className="flex items-center gap-3 text-xs text-foreground/80">
+          <BookOpen className="h-4 w-4 text-primary animate-pulse shrink-0" />
+          <span>
+            2. Tezara veritabanı taranıyor & Cohere Rerank ile süzülüyor
+          </span>
+        </div>
+        <div className="flex items-center gap-3 text-xs text-foreground/80">
+          <Sparkles className="h-4 w-4 text-primary animate-pulse shrink-0" />
+          <span>
+            3. Akademik jüri özgünlük boşluğu ve sentez raporunu hazırlıyor
+          </span>
+        </div>
+      </div>
+    </Card>
   );
 }

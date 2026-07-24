@@ -120,9 +120,6 @@ export async function searchAndSiftTheses(
     searchTezara(cleanConceptual, logger, { limit: 150 }),
   ]);
 
-  const rawTotalHits =
-    directHits.length + expandedHits.length + conceptualHits.length;
-
   // Step 2: Deduplicate candidate theses by thesis ID
   const candidateMap = new Map<number, TezaraThesisDetails>();
   for (const thesis of [...directHits, ...expandedHits, ...conceptualHits]) {
@@ -143,18 +140,6 @@ export async function searchAndSiftTheses(
     if (!isValidLang) return false;
 
     return true;
-  });
-
-  logger?.info("sifting_filtering_complete", {
-    service: "tezara",
-    filePath:
-      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
-    durationMs: performance.now() - startTime,
-    data: {
-      rawTotalHits,
-      uniqueCandidatesCount: uniqueCandidates.length,
-      filteredCandidatesCount: filteredCandidates.length,
-    },
   });
 
   if (filteredCandidates.length === 0) {
@@ -197,7 +182,7 @@ export async function searchAndSiftTheses(
 
   const topResults = siftedTheses.slice(0, topN);
 
-  logger?.info("sifting_success", {
+  logger?.info("sifting_parallel_search_success", {
     service: "positioning",
     filePath:
       "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",

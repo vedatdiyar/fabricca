@@ -135,6 +135,17 @@ export async function clearDownstreamDbAction(
         const matrix = matrixResult[0];
         if (matrix) {
           await tx
+            .delete(libraryResources)
+            .where(
+              inArray(
+                libraryResources.thesisBoxId,
+                tx
+                  .select({ id: thesisBoxes.id })
+                  .from(thesisBoxes)
+                  .where(eq(thesisBoxes.thesisMatrixId, matrix.id)),
+              ),
+            );
+          await tx
             .delete(thesisBoxes)
             .where(eq(thesisBoxes.thesisMatrixId, matrix.id));
         }

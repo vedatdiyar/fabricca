@@ -6,7 +6,9 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLoadingOverlay } from "@/providers/loading-overlay-provider";
 import {
+  MATRIX_SUBMIT_STEPS,
   LITERATURE_PIPELINE_STEPS,
+  POSITIONING_PIPELINE_STEPS,
   STEP_MIN_DURATION_MS,
   isNavigationStepText,
   type LoadingStep,
@@ -29,6 +31,9 @@ import {
   setLiteratureCancelledAction,
 } from "../literature-review/actions";
 import type { SubBoxInput } from "../literature-review/_services/literature-review-papers";
+import { runPositioningPipelineAction } from "../positioning/actions";
+import type { PositioningMatrixInput } from "../positioning/_lib/validation";
+import type { JuryAnalysisResult } from "../positioning/_services/analysis";
 
 /**
  * Central onboarding orchestrator hook that coordinates all cross-feature
@@ -77,8 +82,9 @@ export function useOnboardingNavigation() {
   );
 
   /**
-   * Saves the thesis matrix to the database, purges downstream data,
-   * and navigates to the positioning page.
+   * Saves the thesis matrix to the database, runs the positioning AI pipeline
+   * (query generation → Tezara search → Cohere rerank → jury analysis),
+   * and navigates to the positioning report page.
    *
    * @param matrixInput - The thesis matrix fields to persist.
    */
@@ -86,32 +92,67 @@ export function useOnboardingNavigation() {
     async (
       matrixInput: ThesisMatrix,
     ): Promise<{ success: boolean; error?: string }> => {
+      const steps = MATRIX_SUBMIT_STEPS.map((s) => ({ ...s }));
+      steps[0].status = "active";
+
+      showLoading(
+        "Çalışma Matrisi Kaydediliyor & Konumlandırma Analizi Çalıştırılıyor",
+        "Tez matrisiniz kaydediliyor, akademik arama sorguları üretiliyor ve jüri analizi yapılıyor.",
+        steps,
+      );
+
       try {
         const clearResult = await clearDownstreamDbAction("matrix");
         if ("error" in clearResult) {
+          hideLoading();
           toast.error(clearResult.error);
           return { success: false, error: clearResult.error };
         }
 
+        await completeStep(0, steps);
+
         const saveResult = await saveThesisMatrixAction(matrixInput);
         if ("error" in saveResult) {
+          hideLoading();
           toast.error(saveResult.error);
           return { success: false, error: saveResult.error };
         }
 
+        const positioningInput: PositioningMatrixInput = {
+          subjectAndProblem: matrixInput.researchCore,
+          theoreticalFramework: matrixInput.framework,
+          unitOfAnalysis: matrixInput.targetActors,
+          methodology: matrixInput.mainClaim,
+          scopeAndContext: matrixInput.context,
+        };
+
+        const pipelineRes =
+          await runPositioningPipelineAction(positioningInput);
+        if ("error" in pipelineRes) {
+          hideLoading();
+          toast.error(pipelineRes.error);
+          return { success: false, error: pipelineRes.error };
+        }
+
+        await completeStep(1, steps);
+        await completeStep(2, steps);
+        await completeStep(3, steps);
+
         queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
 
+        hideLoading();
         router.push("/onboarding/positioning");
 
         return { success: true };
       } catch (err) {
+        hideLoading();
         const message =
           err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
         toast.error(message);
         return { success: false, error: message };
       }
     },
-    [router, queryClient],
+    [router, queryClient, showLoading, hideLoading, completeStep],
   );
 
   /**
@@ -274,6 +315,75 @@ export function useOnboardingNavigation() {
   }, [queryClient, runLiteraturePipeline, hideLoading]);
 
   /**
+   * Runs the full positioning pipeline: clears downstream data, generates search
+   * queries, sifts theses, runs jury analysis, and persists the report.
+   * Shows the global loading overlay with step progress during execution.
+   *
+   * @param matrixInput - The validated 5-field positioning matrix input.
+   * @returns The analysis report on success, or an error string.
+   */
+  const submitPositioning = useCallback(
+    async (
+      matrixInput: PositioningMatrixInput,
+    ): Promise<{
+      success: boolean;
+      report?: JuryAnalysisResult;
+      error?: string;
+    }> => {
+      const steps = POSITIONING_PIPELINE_STEPS.map((s) => ({ ...s }));
+      steps[0].status = "active";
+
+      showLoading(
+        "Konumlandırma Analizi Çalıştırılıyor",
+        "Arama sorguları üretiliyor, tezler süzülüyor ve jüri değerlendirmesi yapılıyor.",
+        steps,
+      );
+
+      try {
+        const clearResult = await clearDownstreamDbAction("positioning");
+        if ("error" in clearResult) {
+          hideLoading();
+          toast.error(clearResult.error);
+          return { success: false, error: clearResult.error };
+        }
+
+        await completeStep(0, steps);
+
+        const res = await runPositioningPipelineAction(matrixInput);
+        if ("error" in res) {
+          hideLoading();
+          toast.error(res.error);
+          return { success: false, error: res.error };
+        }
+
+        await completeStep(1, steps);
+        await completeStep(2, steps);
+
+        queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
+        hideLoading();
+
+        return { success: true, report: res.report };
+      } catch (err) {
+        hideLoading();
+        const message =
+          err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
+        toast.error(message);
+        return { success: false, error: message };
+      }
+    },
+    [showLoading, hideLoading, completeStep, queryClient],
+  );
+
+  /**
+   * Confirms the positioning report and navigates to the boxes step.
+   */
+  const proceedFromPositioning = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
+    toast.success("Konumlandırma onaylandı. Konu kutuları oluşturuluyor...");
+    router.push("/onboarding/boxes");
+  }, [router, queryClient]);
+
+  /**
    * Finalizes the onboarding process: persists any manual archive entries,
    * sets the onboardingCompleted flag, invalidates all caches, and navigates
    * to the dashboard.  No loading overlay — caller (literature review page)
@@ -323,8 +433,10 @@ export function useOnboardingNavigation() {
 
   return {
     submitMatrix,
+    submitPositioning,
     proceedFromBoxes,
     runLiteraturePipeline,
+    proceedFromPositioning,
     finalizeLiterature,
   };
 }
