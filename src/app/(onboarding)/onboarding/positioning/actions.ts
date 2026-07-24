@@ -53,34 +53,17 @@ export async function runPositioningSearchAction(
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
 
-    log.info("generate_positioning_queries_start", {
-      service: "positioning",
-      data: {
-        context: "3-tier academic search query generation",
-      },
-    });
+    log.info("generate_positioning_queries_start");
     const queries = await generatePositioningQueries(validated, log);
-    log.info("generate_positioning_queries_success", {
-      service: "positioning",
-      data: { directQuery: queries.directQuery },
-    });
+    log.info("generate_positioning_queries_success");
 
-    log.info("sifting_parallel_search_start", {
-      service: "tezara",
-      data: { context: "Parallel Meilisearch + Cohere Rerank" },
-    });
     const theses = await searchAndSiftTheses(queries, validated, log);
-    log.info("sifting_parallel_search_success", {
-      service: "tezara",
-      data: { candidateCount: theses.length },
-    });
 
     return { success: true, theses };
   } catch (error) {
     log.error("positioning_search_failed", {
       service: "positioning",
       error,
-      data: { context: "Positioning search failed" },
     });
     return {
       error:
@@ -128,22 +111,15 @@ export async function runPositioningJuryAction(
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
 
-    log.info("positioning_jury_analysis_start", {
-      service: "positioning",
-      data: { context: "LLM jury analysis on sifted theses" },
-    });
+    log.info("positioning_jury_analysis_start");
     const juryResult = await analyzePositioningJury(validated, theses, log);
-    log.info("positioning_jury_analysis_success", {
-      service: "positioning",
-      data: { globalStatus: juryResult.globalStatus },
-    });
+    log.info("positioning_jury_analysis_success");
 
     return { success: true, juryResult };
   } catch (error) {
     log.error("positioning_jury_failed", {
       service: "positioning",
       error,
-      data: { context: "Positioning jury analysis failed" },
     });
     return {
       error:
@@ -163,6 +139,7 @@ export async function runPositioningJuryAction(
 export async function persistPositioningReportAction(
   matrixInput: ThesisMatrix,
   juryResult: JuryAnalysisResult,
+  pipelineStart?: number,
 ): Promise<{ success: true } | { error: string }> {
   const flowId = createFlowId();
   const log = new Logger(flowId);
@@ -185,12 +162,8 @@ export async function persistPositioningReportAction(
     }
     const validated = parsed.data;
 
-    // ── Sanitization ──
     if (juryResult.recommendedTheses.length > 0) {
-      log.info("literature_bulk_sanitization_start", {
-        service: "positioning",
-        data: { count: juryResult.recommendedTheses.length },
-      });
+      log.info("literature_bulk_sanitization_start");
 
       const itemsToSanitize = juryResult.recommendedTheses.map((t) => ({
         title: t.title || "",
@@ -205,33 +178,28 @@ export async function persistPositioningReportAction(
         }),
       );
 
-      log.info("literature_bulk_sanitization_success", {
-        service: "positioning",
-        data: { sanitizedCount: sanitized.length },
-      });
+      log.info("literature_bulk_sanitization_success");
     }
 
-    // ── DB persist ──
-    log.info("positioning_db_transaction_start", {
-      service: "positioning",
-      data: { context: "Persisting positioning report to database" },
-    });
+    log.info("positioning_db_transaction_start");
     await savePositioningReportTransaction(
       session.userId,
       validated,
       juryResult,
     );
-    log.info("positioning_db_transaction_success", {
-      service: "positioning",
-      data: { context: "Positioning report saved" },
-    });
+    log.info("positioning_db_transaction_success");
+
+    if (pipelineStart != null) {
+      log.info("positioning_toplam", {
+        data: { durationMs: Math.round(performance.now() - pipelineStart) },
+      });
+    }
 
     return { success: true };
   } catch (error) {
     log.error("positioning_persist_failed", {
       service: "positioning",
       error,
-      data: { context: "Positioning persist failed" },
     });
     return {
       error:

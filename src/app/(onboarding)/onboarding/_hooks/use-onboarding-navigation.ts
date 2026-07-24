@@ -118,6 +118,8 @@ export function useOnboardingNavigation() {
 
         await completeStep(0, steps);
 
+        const pipelineStart = Date.now();
+
         const searchResult = await runPositioningSearchAction(matrixInput);
         if ("error" in searchResult) {
           hideLoading();
@@ -142,6 +144,7 @@ export function useOnboardingNavigation() {
         const persistResult = await persistPositioningReportAction(
           matrixInput,
           juryResult.juryResult,
+          pipelineStart,
         );
         if ("error" in persistResult) {
           hideLoading();

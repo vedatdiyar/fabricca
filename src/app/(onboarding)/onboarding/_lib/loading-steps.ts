@@ -17,7 +17,6 @@ export const MATRIX_SUBMIT_STEPS: LoadingStep[] = [
   },
   { text: "Akademik jüri analizi tamamlanıyor...", status: "idle" },
   { text: "Rapor kaydediliyor...", status: "idle" },
-  { text: "Konumlandırma sayfasına yönlendiriliyor...", status: "idle" },
 ];
 
 export const LITERATURE_PIPELINE_STEPS: LoadingStep[] = [
