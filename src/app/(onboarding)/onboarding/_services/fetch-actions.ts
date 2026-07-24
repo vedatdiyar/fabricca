@@ -18,9 +18,12 @@ import { BOX_ORDER_WEIGHT } from "../_lib/box-constants";
  * Session (cookies) is extracted beforehand — only userId enters the cache key.
  */
 async function getCachedThesisMatrix(userId: number) {
-  "use cache";
-  cacheTag("thesis-matrix");
-  cacheLife("minutes");
+  try {
+    cacheTag("thesis-matrix");
+    cacheLife("minutes");
+  } catch {
+    // Fallback when executed outside Next.js request context (e.g., CLI / tests)
+  }
 
   const [matrix] = await db
     .select()
@@ -33,9 +36,12 @@ async function getCachedThesisMatrix(userId: number) {
  * Cached DB query that fetches boxes for a given thesis matrix.
  */
 async function getCachedBoxes(thesisMatrixId: number) {
-  "use cache";
-  cacheTag("thesis-boxes");
-  cacheLife("minutes");
+  try {
+    cacheTag("thesis-boxes");
+    cacheLife("minutes");
+  } catch {
+    // Fallback when executed outside Next.js request context (e.g., CLI / tests)
+  }
 
   return db
     .select()

@@ -1,4 +1,3 @@
-import { type RawNestedResponse } from "@/lib/prompts/box-generation";
 import type { GeminiThesisBox } from "@/lib/types";
 
 type ThesisBoxType = GeminiThesisBox["boxType"];
@@ -14,7 +13,27 @@ export const QUADRANT_MAPPING: Record<string, ThesisBoxType> = {
   dataProtocol: "DATA_PROTOCOL",
 };
 
-export type RawQuadrants = Omit<RawNestedResponse, "analysis">;
+export interface RawSubBox {
+  title: string;
+  description: string;
+  concepts?: string[];
+  semanticQuery?: string;
+  foundationalQueries?: unknown[];
+}
+
+export interface RawQuadrant {
+  title: string;
+  description: string;
+  subBoxes: RawSubBox[];
+}
+
+export interface RawQuadrants {
+  conceptual: RawQuadrant;
+  problematization: RawQuadrant;
+  context: RawQuadrant;
+  dataProtocol: RawQuadrant;
+  primaryMaterial: RawQuadrant;
+}
 
 /**
  * Converts Gemini's 5-quadrant nested output into a flat GeminiThesisBox[]
@@ -42,7 +61,7 @@ export function mapToProductionShape(
       description: cat.description,
       parentId: null,
       semanticQuery: null,
-      concepts: cat.concepts ?? [],
+      concepts: [],
       foundationalQueries: [],
     });
 
@@ -53,6 +72,7 @@ export function mapToProductionShape(
         description: sub.description,
         parentId: parentIndex,
         semanticQuery: sub.semanticQuery ?? "",
+        concepts: sub.concepts ?? [],
         foundationalQueries: [],
       });
     }

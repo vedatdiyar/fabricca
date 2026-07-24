@@ -37,7 +37,7 @@ export async function resetOnboardingAction(): Promise<
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
-  log.info("reset_onboarding_start", { service: "flow" });
+  log.info("reset_onboarding_start");
 
   try {
     const session = await getSession();
@@ -79,16 +79,11 @@ export async function resetOnboardingAction(): Promise<
     revalidatePath("/onboarding/matrix");
     invalidateOnboardingCache();
 
-    log.info("reset_onboarding_success", { service: "flow" });
+    log.info("reset_onboarding_success");
     return { success: true };
   } catch (error) {
     log.error("reset_onboarding_failed", {
-      service: "flow",
       error,
-      data: {
-        errorCode: "SYSTEM_ERROR",
-        message: error instanceof Error ? error.message : String(error),
-      },
     });
     return { error: "Sıfırlama işlemi gerçekleştirilirken bir hata oluştu." };
   }

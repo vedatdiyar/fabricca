@@ -62,7 +62,6 @@ export async function runPositioningSearchAction(
     return { success: true, theses };
   } catch (error) {
     log.error("positioning_search_failed", {
-      service: "positioning",
       error,
     });
     return {
@@ -118,7 +117,6 @@ export async function runPositioningJuryAction(
     return { success: true, juryResult };
   } catch (error) {
     log.error("positioning_jury_failed", {
-      service: "positioning",
       error,
     });
     return {
@@ -198,7 +196,6 @@ export async function persistPositioningReportAction(
     return { success: true };
   } catch (error) {
     log.error("positioning_persist_failed", {
-      service: "positioning",
       error,
     });
     return {
@@ -299,18 +296,13 @@ export async function runPositioningPipelineAction(
   const log = new Logger(flowId);
   const pipelineStart = performance.now();
 
-  log.info("positioning_pipeline_start", {
-    service: "positioning",
-    data: { context: "Full positioning pipeline started" },
-  });
+  log.info("positioning_pipeline_start");
 
   // ── Step 1: Search ──
   const searchResult = await runPositioningSearchAction(matrixInput);
   if ("error" in searchResult) {
     log.error("positioning_pipeline_failed", {
-      service: "positioning",
       error: searchResult.error,
-      data: { context: "Search step failed" },
     });
     return { error: searchResult.error };
   }
@@ -322,9 +314,7 @@ export async function runPositioningPipelineAction(
   );
   if ("error" in juryResult) {
     log.error("positioning_pipeline_failed", {
-      service: "positioning",
       error: juryResult.error,
-      data: { context: "Jury step failed" },
     });
     return { error: juryResult.error };
   }
@@ -336,15 +326,12 @@ export async function runPositioningPipelineAction(
   );
   if ("error" in persistResult) {
     log.error("positioning_pipeline_failed", {
-      service: "positioning",
       error: persistResult.error,
-      data: { context: "Persist step failed" },
     });
     return { error: persistResult.error };
   }
 
   log.info("positioning_toplam", {
-    service: "positioning",
     data: { durationMs: Math.round(performance.now() - pipelineStart) },
   });
 

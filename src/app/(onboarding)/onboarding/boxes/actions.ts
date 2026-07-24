@@ -12,15 +12,20 @@ import { createFlowId, Logger } from "@/lib/logger";
 import { updateTag } from "next/cache";
 import { CACHE_TAGS, revalidateOnboardingPaths } from "@/lib/cache-tags";
 import {
-  buildThesisBoxGenerationSystemInstruction,
-  buildThesisBoxGenerationPrompt,
-  thesisBoxGenerationSchema,
-  thesisBoxGenerationJsonSchema,
-  type RawNestedResponse,
+  buildBoxStructureSystemInstruction,
+  buildBoxStructureUserPrompt,
+  boxStructureSchema,
+  boxStructureJsonSchema,
+  buildSemanticQueriesSystemInstruction,
+  buildSemanticQueriesUserPrompt,
+  semanticQueriesSchema,
+  semanticQueriesJsonSchema,
+  combineStructureAndQueries,
+  type RawBoxStructureResponse,
+  type RawSemanticQueriesResponse,
 } from "@/lib/prompts/box-generation";
-import { type OnboardingActionResult } from "@/lib/types";
+import { type OnboardingActionResult, type GeminiThesisBox } from "@/lib/types";
 import { mapToProductionShape } from "../_lib/box-mapper";
-
 import { fetchThesisMatrix } from "../_services/fetch-actions";
 
 const confirmBoxesSchema = z.array(
@@ -53,16 +58,13 @@ const confirmBoxesSchema = z.array(
 );
 
 /**
- * Generates the 5-quadrant epistemological box structure and semanticQuery
- * fields in a single Gemini 3.5 Flash-Lite call. The nested API response is
- * flattened through the adapter and a RELATED_THESES box is appended from the
- * originality report.
+ * Phase 1 Server Action: Generates the 5-quadrant Turkish academic box structure
+ * (titles, descriptions, concepts, and sub-boxes) based on the user's thesis matrix.
  *
- * @returns The generated flat box array or a safe user-facing error message
+ * @returns Phase 1 box structure or error string
  */
-export async function generateBoxesStructureAction(): Promise<
-  | { success: true; boxes: import("@/lib/types").GeminiThesisBox[] }
-  | { error: string }
+export async function runBoxStructureAction(): Promise<
+  { success: true; structure: RawBoxStructureResponse } | { error: string }
 > {
   const flowId = createFlowId();
   const log = new Logger(flowId);
@@ -73,17 +75,14 @@ export async function generateBoxesStructureAction(): Promise<
     if (!session) return { error: SESSION_ERROR_MSG };
 
     const matrix = await fetchThesisMatrix();
-
     if (!matrix) return { error: "Thesis matrix not found." };
 
     log.info("box_structure_generation_start", {
       service: "boxes",
-      data: {
-        context: "Single-call box structure + semanticQuery (3.5 Flash-Lite)",
-      },
+      filePath: "src/app/(onboarding)/onboarding/boxes/actions.ts",
     });
 
-    const geminiPrompt = buildThesisBoxGenerationPrompt({
+    const prompt = buildBoxStructureUserPrompt({
       researchCore: matrix.researchCore,
       targetActors: matrix.targetActors,
       context: matrix.context,
@@ -91,221 +90,67 @@ export async function generateBoxesStructureAction(): Promise<
       mainClaim: matrix.mainClaim,
     });
 
-    const generationResult = await generateStructuredContent<RawNestedResponse>(
+    const structure = await generateStructuredContent<RawBoxStructureResponse>(
       FLASH_LITE_31,
-      buildThesisBoxGenerationSystemInstruction(),
-      geminiPrompt,
-      thesisBoxGenerationJsonSchema,
+      buildBoxStructureSystemInstruction(),
+      prompt,
+      boxStructureJsonSchema,
       log,
       {
         thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
-        zodSchema: thesisBoxGenerationSchema,
+        zodSchema: boxStructureSchema,
         seed: GEMINI_SEED,
         thesisMatrix: matrix,
-        payloadStage: "box_generation",
+        payloadStage: "box_structure_generation",
         quiet: true,
       },
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { analysis, ...quadrantsOnly } = generationResult;
-    const normalizedBoxes = mapToProductionShape(quadrantsOnly);
-
-    const parentCount = normalizedBoxes.filter(
-      (b) => b.parentId === null,
-    ).length;
-    const childCount = normalizedBoxes.filter(
-      (b) => b.parentId !== null,
-    ).length;
-
     log.info("box_structure_generation_success", {
       service: "boxes",
-      durationMs: performance.now() - startTime,
-      data: {
-        parentCount,
-        childCount,
-        context: "Single call including semanticQuery",
-      },
+      durationMs: Math.round(performance.now() - startTime),
     });
 
-    return { success: true, boxes: normalizedBoxes };
+    return { success: true, structure };
   } catch (err) {
     log.error("box_structure_generation_failed", {
       service: "boxes",
       error: err instanceof Error ? err : new Error(String(err)),
     });
     return {
-      error: "An unexpected error occurred while generating subject boxes.",
+      error: "Konu kutusu yapısı oluşturulurken beklenmeyen bir hata oluştu.",
     };
   }
 }
 
 /**
- * Persists the generated (and user-edited) subject boxes to the thesis_boxes
- * table. Existing boxes are deleted and the flat hierarchy is re-inserted.
+ * Phase 2 Server Action: Takes Phase 1 box structure and generates high-precision,
+ * quadrant-isolated OpenAlex GTE Large EN vector search paragraphs (semanticQuery).
+ * Combines structure and queries, then returns flattened GeminiThesisBox[].
  *
- * @param boxes - The GeminiThesisBox array to persist
- * @returns Success or error response
+ * @param structure - Phase 1 generated box structure response.
+ * @returns Array of production-shaped GeminiThesisBox items or error string.
  */
-export async function confirmBoxesAction(
-  boxes: unknown,
-): Promise<OnboardingActionResult> {
+export async function runSemanticQueriesAction(
+  structure: RawBoxStructureResponse,
+): Promise<{ success: true; boxes: GeminiThesisBox[] } | { error: string }> {
   const flowId = createFlowId();
   const log = new Logger(flowId);
   const startTime = performance.now();
 
-  log.info("boxes_confirm_start", {
-    service: "boxes",
-    data: { context: "Persisting subject boxes" },
-  });
-
-  const parsed = confirmBoxesSchema.safeParse(boxes);
-  if (!parsed.success) {
-    log.error("boxes_confirm_validation_failed", {
-      service: "boxes",
-      error: parsed.error,
-    });
-    return { error: "Invalid box data received." };
-  }
-
-  const validBoxes = parsed.data;
-
   try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const matrix = await fetchThesisMatrix();
-
-    if (!matrix) return { error: "Thesis matrix not found." };
-
-    const thesisMatrixId = matrix.id;
-
-    await db.transaction(async (tx) => {
-      // Delete existing boxes
-      await tx
-        .delete(thesisBoxes)
-        .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
-
-      // Step 1: Collect parent flat indices (original array positions)
-      const parentFlatIndices: number[] = [];
-      for (let i = 0; i < validBoxes.length; i++) {
-        if (validBoxes[i].parentId === null) {
-          parentFlatIndices.push(i);
-        }
-      }
-
-      // Step 2: Insert parent boxes first (preserving flat order)
-      const parentValues = parentFlatIndices.map((i) => ({
-        thesisMatrixId,
-        title: validBoxes[i].title,
-        boxType: validBoxes[i].boxType,
-        description: validBoxes[i].description || "",
-        parentId: null,
-        semanticQuery: null,
-        foundationalQueries: validBoxes[i].foundationalQueries || [],
-        concepts: validBoxes[i].concepts || [],
-      }));
-
-      let insertedParents: { id: number }[] = [];
-
-      if (parentValues.length > 0) {
-        insertedParents = await tx
-          .insert(thesisBoxes)
-          .values(parentValues)
-          .returning({ id: thesisBoxes.id });
-      }
-
-      // Step 3: Map original flat index → database ID
-      // (child boxes reference the original flat array index in parentId)
-      const dbParentIdMap = new Map<number, number>();
-      for (let j = 0; j < parentFlatIndices.length; j++) {
-        const dbId = insertedParents[j]?.id;
-        if (dbId !== undefined) {
-          dbParentIdMap.set(parentFlatIndices[j], dbId);
-        }
-      }
-
-      // Step 4: Insert child boxes with correct FK parentId
-      const childValues: (typeof thesisBoxes.$inferInsert)[] = [];
-
-      for (let i = 0; i < validBoxes.length; i++) {
-        const box = validBoxes[i];
-        if (box.parentId === null) continue;
-
-        const mappedParentId = dbParentIdMap.get(box.parentId) ?? null;
-        childValues.push({
-          thesisMatrixId,
-          title: box.title,
-          boxType: box.boxType,
-          description: box.description || "",
-          parentId: mappedParentId,
-          semanticQuery: box.semanticQuery || "",
-          foundationalQueries: box.foundationalQueries ?? [],
-          concepts: box.concepts ?? [],
-        });
-      }
-
-      if (childValues.length > 0) {
-        await tx.insert(thesisBoxes).values(childValues);
-      }
-    });
-
-    revalidateOnboardingPaths();
-    updateTag(CACHE_TAGS.thesisBoxes);
-
-    const parentCount = validBoxes.filter((b) => b.parentId === null).length;
-    const childCount = validBoxes.filter((b) => b.parentId !== null).length;
-
-    log.info("boxes_confirm_success", {
-      service: "boxes",
-      durationMs: performance.now() - startTime,
-      data: {
-        parentCount,
-        childCount,
-        context: "Persisting subject boxes",
-      },
-    });
-    return { success: true };
-  } catch (err) {
-    log.error("boxes_confirm_failed", {
-      service: "boxes",
-      error: err instanceof Error ? err : new Error(String(err)),
-      data: { context: "Persisting subject boxes" },
-    });
-    return { error: "Failed to save subject boxes to the database." };
-  }
-}
-
-/**
- * Runs the full boxes pipeline: box structure generation via Gemini → DB
- * persistence. Logs START/SUCCESS for each sub-step and a top-level total.
- *
- * @returns The generated box array on success or a user-facing error message
- */
-export async function runBoxesPipelineAction(): Promise<
-  | { success: true; boxes: import("@/lib/types").GeminiThesisBox[] }
-  | { error: string }
-> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-  const pipelineStart = performance.now();
-
-  try {
-    // ── Step 1: Generate box structure ────────────────────────────────────
-    log.info("box_structure_generation_start", {
-      service: "boxes",
-      data: {
-        context: "Single-call box structure + semanticQuery (3.5 Flash-Lite)",
-      },
-    });
-
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
 
     const matrix = await fetchThesisMatrix();
     if (!matrix) return { error: "Thesis matrix not found." };
 
-    const geminiPrompt = buildThesisBoxGenerationPrompt({
+    log.info("box_semantic_queries_start", {
+      service: "boxes",
+      filePath: "src/app/(onboarding)/onboarding/boxes/actions.ts",
+    });
+
+    const prompt = buildSemanticQueriesUserPrompt(structure, {
       researchCore: matrix.researchCore,
       targetActors: matrix.targetActors,
       context: matrix.context,
@@ -313,47 +158,75 @@ export async function runBoxesPipelineAction(): Promise<
       mainClaim: matrix.mainClaim,
     });
 
-    const generationResult = await generateStructuredContent<RawNestedResponse>(
+    const queries = await generateStructuredContent<RawSemanticQueriesResponse>(
       FLASH_LITE_31,
-      buildThesisBoxGenerationSystemInstruction(),
-      geminiPrompt,
-      thesisBoxGenerationJsonSchema,
+      buildSemanticQueriesSystemInstruction(),
+      prompt,
+      semanticQueriesJsonSchema,
       log,
       {
-        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
-        zodSchema: thesisBoxGenerationSchema,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        zodSchema: semanticQueriesSchema,
         seed: GEMINI_SEED,
         thesisMatrix: matrix,
-        payloadStage: "box_generation",
+        payloadStage: "box_semantic_queries_generation",
         quiet: true,
       },
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { analysis, ...quadrantsOnly } = generationResult;
-    const normalizedBoxes = mapToProductionShape(quadrantsOnly);
+    const combined = combineStructureAndQueries(structure, queries);
+    const normalizedBoxes = mapToProductionShape(combined);
 
-    log.info("box_structure_generation_success", {
+    log.info("box_semantic_queries_success", {
       service: "boxes",
-      data: {
-        parentCount: normalizedBoxes.filter((b) => b.parentId === null).length,
-        childCount: normalizedBoxes.filter((b) => b.parentId !== null).length,
-      },
+      durationMs: Math.round(performance.now() - startTime),
     });
 
-    // ── Step 2: Persist box hierarchy ────────────────────────────────────
-    log.info("boxes_confirm_start", {
+    return { success: true, boxes: normalizedBoxes };
+  } catch (err) {
+    log.error("box_semantic_queries_failed", {
       service: "boxes",
-      data: { context: "Persisting subject boxes" },
+      error: err instanceof Error ? err : new Error(String(err)),
+    });
+    return {
+      error: "Vektör arama sorguları üretilirken beklenmeyen bir hata oluştu.",
+    };
+  }
+}
+
+/**
+ * Phase 3 Server Action: Persists the generated (and user-edited) subject boxes
+ * to the thesis_boxes table within a transaction and invalidates caches.
+ *
+ * @param boxes - The GeminiThesisBox array to persist.
+ * @returns Success or error response.
+ */
+export async function persistBoxesAction(
+  boxes: unknown,
+): Promise<OnboardingActionResult> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+  const startTime = performance.now();
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const matrix = await fetchThesisMatrix();
+    if (!matrix) return { error: "Thesis matrix not found." };
+
+    log.info("boxes_persist_start", {
+      service: "boxes",
+      filePath: "src/app/(onboarding)/onboarding/boxes/actions.ts",
     });
 
-    const parsed = confirmBoxesSchema.safeParse(normalizedBoxes);
+    const parsed = confirmBoxesSchema.safeParse(boxes);
     if (!parsed.success) {
-      log.error("boxes_confirm_validation_failed", {
+      log.error("boxes_persist_validation_failed", {
         service: "boxes",
         error: parsed.error,
       });
-      return { error: "Invalid box data received." };
+      return { error: "Geçersiz konu kutusu verisi alındı." };
     }
 
     const validBoxes = parsed.data;
@@ -420,35 +293,84 @@ export async function runBoxesPipelineAction(): Promise<
       }
     });
 
-    revalidateOnboardingPaths();
-    updateTag(CACHE_TAGS.thesisBoxes);
+    try {
+      revalidateOnboardingPaths();
+      updateTag(CACHE_TAGS.thesisBoxes);
+    } catch {
+      // Fallback when executed outside Next.js request context (e.g., CLI / tests)
+    }
 
-    log.info("boxes_confirm_success", {
+    log.info("boxes_persist_success", {
       service: "boxes",
-      data: {
-        parentCount: validBoxes.filter((b) => b.parentId === null).length,
-        childCount: validBoxes.filter((b) => b.parentId !== null).length,
-      },
+      durationMs: Math.round(performance.now() - startTime),
     });
 
-    // ── Toplam ───────────────────────────────────────────────────────────
-    log.info("boxes_toplam", {
-      service: "boxes",
-      durationMs: performance.now() - pipelineStart,
-      data: {
-        parentCount: validBoxes.filter((b) => b.parentId === null).length,
-        childCount: validBoxes.filter((b) => b.parentId !== null).length,
-      },
-    });
-
-    return { success: true, boxes: normalizedBoxes };
+    return { success: true };
   } catch (err) {
-    log.error("boxes_pipeline_failed", {
+    log.error("boxes_persist_failed", {
+      service: "boxes",
+      error: err instanceof Error ? err : new Error(String(err)),
+    });
+    return { error: "Konu kutuları veritabanına kaydedilemedi." };
+  }
+}
+
+/**
+ * Legacy alias for persistBoxesAction to ensure full backward compatibility.
+ */
+export const confirmBoxesAction = persistBoxesAction;
+
+/**
+ * Full Server Pipeline Action: Runs Phase 1 (Structure) -> Phase 2 (Semantic Queries) -> Phase 3 (DB Persistence)
+ * in sequence when called from server context.
+ *
+ * @returns Generated boxes array or error response.
+ */
+export async function runBoxesPipelineAction(): Promise<
+  { success: true; boxes: GeminiThesisBox[] } | { error: string }
+> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+  const pipelineStart = performance.now();
+
+  try {
+    log.info("boxes_full_pipeline_start", {
+      service: "boxes",
+      filePath: "src/app/(onboarding)/onboarding/boxes/actions.ts",
+    });
+
+    // Step 1: Generate Turkish box structure
+    const structRes = await runBoxStructureAction();
+    if ("error" in structRes) return structRes;
+
+    // Step 2: Generate English OpenAlex semanticQueries
+    const queryRes = await runSemanticQueriesAction(structRes.structure);
+    if ("error" in queryRes) return queryRes;
+
+    // Step 3: Persist to database
+    const persistRes = await persistBoxesAction(queryRes.boxes);
+    if ("error" in persistRes && persistRes.error) {
+      return { error: persistRes.error };
+    }
+
+    log.info("boxes_full_pipeline_success", {
+      service: "boxes",
+      durationMs: Math.round(performance.now() - pipelineStart),
+    });
+
+    return { success: true, boxes: queryRes.boxes };
+  } catch (err) {
+    log.error("boxes_full_pipeline_failed", {
       service: "boxes",
       error: err instanceof Error ? err : new Error(String(err)),
     });
     return {
-      error: "An unexpected error occurred while generating subject boxes.",
+      error: "Konu kutuları oluşturulurken beklenmeyen bir hata oluştu.",
     };
   }
 }
+
+/**
+ * Legacy alias for runBoxesPipelineAction.
+ */
+export const generateBoxesStructureAction = runBoxesPipelineAction;

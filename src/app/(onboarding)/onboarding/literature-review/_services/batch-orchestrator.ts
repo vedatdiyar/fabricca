@@ -120,11 +120,7 @@ export async function orchestrateBatchProcess(
   }
 
   // ── PHASE 1: PARALLEL CANDIDATE COMPILATION ─────────────────────────────
-  logger.info("literature_openalex_search_start", {
-    service: "literature",
-    filePath: "onboarding/literature-review/_services/batch-orchestrator.ts",
-    data: { jobCount: activeJobs.length },
-  });
+  logger.info("literature_openalex_search_start");
 
   const phase1Results = await Promise.allSettled(
     activeJobs.map(({ box, subBox }) =>
@@ -233,24 +229,13 @@ export async function orchestrateBatchProcess(
           ? result.reason.message
           : String(result.reason);
       logger.error("literature_phase1_subbox_failed", {
-        service: "literature",
-        filePath:
-          "onboarding/literature-review/_services/batch-orchestrator.ts",
         error: errorMsg,
       });
       throw result.reason;
     }
   }
 
-  logger.info("literature_openalex_search_success", {
-    service: "literature",
-    filePath: "onboarding/literature-review/_services/batch-orchestrator.ts",
-    data: {
-      total: activeJobs.length,
-      succeeded: fulfilledResults.length,
-      failed: activeJobs.length - fulfilledResults.length,
-    },
-  });
+  logger.info("literature_openalex_search_success");
 
   // ── PHASE 2: BULK FOUNDATIONAL WORK SELECTION ───────────────────────────
   const selectionInput = fulfilledResults
@@ -276,11 +261,7 @@ export async function orchestrateBatchProcess(
   }[] = [];
 
   if (selectionInput.length > 0) {
-    logger.info("literature_foundational_selection_start", {
-      service: "literature",
-      filePath: "onboarding/literature-review/_services/batch-orchestrator.ts",
-      data: { activeSubBoxCount: selectionInput.length },
-    });
+    logger.info("literature_foundational_selection_start");
 
     try {
       const bulkResult = await selectFoundationalWorksBulk(
@@ -289,17 +270,9 @@ export async function orchestrateBatchProcess(
       );
       bulkSelections = bulkResult.selections;
 
-      logger.info("literature_foundational_selection_success", {
-        service: "literature",
-        filePath:
-          "onboarding/literature-review/_services/batch-orchestrator.ts",
-        data: { selectedCount: bulkSelections.length },
-      });
+      logger.info("literature_foundational_selection_success");
     } catch (err) {
       logger.error("literature_bulk_foundational_selection_failed", {
-        service: "literature",
-        filePath:
-          "onboarding/literature-review/_services/batch-orchestrator.ts",
         error: err instanceof Error ? err.message : String(err),
       });
       throw err;
@@ -315,11 +288,7 @@ export async function orchestrateBatchProcess(
     top3Related: JuryArticle[];
   }[] = [];
 
-  logger.info("literature_related_selection_start", {
-    service: "literature",
-    filePath: "onboarding/literature-review/_services/batch-orchestrator.ts",
-    data: { subBoxCount: fulfilledResults.length },
-  });
+  logger.info("literature_related_selection_start");
 
   for (const r of fulfilledResults) {
     if (checkCancelled?.()) break;
@@ -407,10 +376,6 @@ export async function orchestrateBatchProcess(
           }
         } catch (err) {
           logger.error("literature_author_healing_failed", {
-            service: "literature",
-            filePath:
-              "onboarding/literature-review/_services/batch-orchestrator.ts",
-            data: { title: art.title },
             error: err instanceof Error ? err.message : String(err),
           });
           throw err;
@@ -427,11 +392,7 @@ export async function orchestrateBatchProcess(
     });
   }
 
-  logger.info("literature_related_selection_success", {
-    service: "literature",
-    filePath: "onboarding/literature-review/_services/batch-orchestrator.ts",
-    data: { totalSubBoxes: subBoxResultsToPersist.length },
-  });
+  logger.info("literature_related_selection_success");
 
   // Bulk sanitization of all selected articles in a single LLM call
   const allArticlesToSanitize: JuryArticle[] = [];
@@ -441,12 +402,7 @@ export async function orchestrateBatchProcess(
 
   if (allArticlesToSanitize.length > 0 && !checkCancelled?.()) {
     try {
-      logger.info("literature_sanitization_start", {
-        service: "literature",
-        filePath:
-          "onboarding/literature-review/_services/batch-orchestrator.ts",
-        data: { count: allArticlesToSanitize.length },
-      });
+      logger.info("literature_sanitization_start");
 
       const sanitized = await sanitizeAcademicDataBulk(
         allArticlesToSanitize.map((a) => ({
@@ -466,16 +422,9 @@ export async function orchestrateBatchProcess(
         }
       }
 
-      logger.info("literature_sanitization_success", {
-        service: "literature",
-        filePath:
-          "onboarding/literature-review/_services/batch-orchestrator.ts",
-      });
+      logger.info("literature_sanitization_success");
     } catch (err) {
       logger.error("literature_bulk_sanitization_failed", {
-        service: "literature",
-        filePath:
-          "onboarding/literature-review/_services/batch-orchestrator.ts",
         error: err instanceof Error ? err.message : String(err),
       });
       throw err;
@@ -497,10 +446,6 @@ export async function orchestrateBatchProcess(
         await persistSubBox(item.thesisBoxId, item.articles);
       } catch (err) {
         logger.error("literature_progressive_save_failed", {
-          service: "literature",
-          filePath:
-            "onboarding/literature-review/_services/batch-orchestrator.ts",
-          data: { subBoxTitle: item.subBoxTitle },
           error: err instanceof Error ? err.message : String(err),
         });
         throw err;

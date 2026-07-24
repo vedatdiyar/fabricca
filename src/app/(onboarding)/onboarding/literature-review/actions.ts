@@ -92,8 +92,6 @@ export async function processAllBoxesAction(
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unexpected error";
     logger.error("literature_batch_process_failed", {
-      service: "literature",
-      filePath: "onboarding/literature-review/actions.ts",
       error: err,
     });
     return { error: message };
@@ -107,7 +105,7 @@ export async function confirmLiteratureAction(args: {
   const log = new Logger(flowId);
   const startTime = performance.now();
 
-  log.info("confirm_literature_start", { service: "literature" });
+  log.info("confirm_literature_start");
 
   try {
     const session = await getSession();
@@ -140,20 +138,12 @@ export async function confirmLiteratureAction(args: {
     invalidateOnboardingCache();
 
     log.info("confirm_literature_success", {
-      service: "literature",
       durationMs: performance.now() - startTime,
-      data: {
-        resultCount: literaturePool.reduce(
-          (sum, entry) => sum + entry.articles.length,
-          0,
-        ),
-      },
     });
 
     return { success: true };
   } catch (err) {
     log.error("confirm_literature_failed", {
-      service: "literature",
       error: err,
     });
     return {
@@ -191,7 +181,7 @@ export async function appendArchiveEntriesAction(args: {
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
-  log.info("append_archive_start", { service: "literature" });
+  log.info("append_archive_start");
 
   try {
     const session = await getSession();
@@ -202,8 +192,8 @@ export async function appendArchiveEntriesAction(args: {
       return { error: "No archive entries found to append." };
     }
 
-    await persistArchiveEntries(entries, (msg, data) => {
-      log.warn(msg, { service: "literature", data });
+    await persistArchiveEntries(entries, (msg) => {
+      log.warn(msg);
     });
 
     try {
@@ -214,12 +204,11 @@ export async function appendArchiveEntriesAction(args: {
 
     invalidateOnboardingCache();
 
-    log.info("append_archive_success", { service: "literature" });
+    log.info("append_archive_success");
 
     return { success: true };
   } catch (err) {
     log.error("append_archive_failed", {
-      service: "literature",
       error: err,
     });
     return {
@@ -232,7 +221,7 @@ export async function appendArchiveEntriesAction(args: {
 export async function finalizeOnboardingAction(): Promise<OnboardingActionResult> {
   const log = new Logger(createFlowId());
 
-  log.info("finalize_onboarding_start", { service: "literature" });
+  log.info("finalize_onboarding_start");
 
   try {
     const session = await getSession();
@@ -274,12 +263,11 @@ export async function finalizeOnboardingAction(): Promise<OnboardingActionResult
 
     invalidateOnboardingCache();
 
-    log.info("finalize_onboarding_success", { service: "literature" });
+    log.info("finalize_onboarding_success");
 
     return { success: true };
   } catch (err) {
     log.error("finalize_onboarding_failed", {
-      service: "literature",
       error: err,
     });
     return {
@@ -319,9 +307,7 @@ export async function runLiteraturePipelineAction(
     _cancelFlags.set(userId, false);
 
     // ── Step 1: DB kontrol ──────────────────────────────────────────────
-    logger.info("literature_db_kontrol_start", {
-      service: "literature",
-    });
+    logger.info("literature_db_kontrol_start");
 
     const [matrix] = await db
       .select({ id: thesisMatrices.id })
@@ -332,34 +318,16 @@ export async function runLiteraturePipelineAction(
 
     const existingPool = await fetchPreloadedPool(matrix.id);
     if (existingPool && existingPool.length > 0) {
-      logger.info("literature_db_kontrol_success", {
-        service: "literature",
-        data: { poolFound: true, entryCount: existingPool.length },
-      });
-
-      // Pool already exists — no need to re-run pipeline
-      logger.info("literature_db_write_start", {
-        service: "literature",
-        data: { context: "Skipping — pool already persisted" },
-      });
-      logger.info("literature_db_write_success", {
-        service: "literature",
-        data: { entryCount: existingPool.length },
-      });
-
+      logger.info("literature_db_kontrol_success");
+      logger.info("literature_db_write_success");
       logger.info("literature_toplam", {
-        service: "literature",
-        durationMs: performance.now() - pipelineStart,
-        data: { entryCount: existingPool.length, source: "preloaded" },
+        data: { durationMs: Math.round(performance.now() - pipelineStart) },
       });
 
       return { data: existingPool };
     }
 
-    logger.info("literature_db_kontrol_success", {
-      service: "literature",
-      data: { poolFound: false },
-    });
+    logger.info("literature_db_kontrol_success");
 
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
 
@@ -377,16 +345,7 @@ export async function runLiteraturePipelineAction(
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
 
     // ── Step 6: DB write ────────────────────────────────────────────────
-    logger.info("literature_db_write_start", {
-      service: "literature",
-      data: {
-        subBoxCount: poolEntries.length,
-        totalArticles: poolEntries.reduce(
-          (sum, e) => sum + e.articles.length,
-          0,
-        ),
-      },
-    });
+    logger.info("literature_db_write_start");
 
     await persistLiteraturePool(poolEntries);
 
@@ -397,36 +356,17 @@ export async function runLiteraturePipelineAction(
     }
     invalidateOnboardingCache();
 
-    logger.info("literature_db_write_success", {
-      service: "literature",
-      data: {
-        subBoxCount: poolEntries.length,
-        totalArticles: poolEntries.reduce(
-          (sum, e) => sum + e.articles.length,
-          0,
-        ),
-      },
-    });
+    logger.info("literature_db_write_success");
 
     // ── Toplam ──────────────────────────────────────────────────────────
     logger.info("literature_toplam", {
-      service: "literature",
-      durationMs: performance.now() - pipelineStart,
-      data: {
-        subBoxCount: poolEntries.length,
-        totalArticles: poolEntries.reduce(
-          (sum, e) => sum + e.articles.length,
-          0,
-        ),
-      },
+      data: { durationMs: Math.round(performance.now() - pipelineStart) },
     });
 
     return { data: poolEntries };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unexpected error";
     logger.error("literature_pipeline_failed", {
-      service: "literature",
-      filePath: "onboarding/literature-review/actions.ts",
       error: err,
     });
     return { error: message };

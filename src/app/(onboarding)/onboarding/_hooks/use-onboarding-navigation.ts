@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useLoadingOverlay } from "@/providers/loading-overlay-provider";
 import {
   MATRIX_SUBMIT_STEPS,
+  BOX_GENERATION_STEPS,
   LITERATURE_PIPELINE_STEPS,
   STEP_MIN_DURATION_MS,
   isNavigationStepText,
@@ -21,7 +22,11 @@ import { getStepTanStackKeys } from "@/lib/onboarding-cache";
 import { clearDownstreamDbAction } from "@/app/(onboarding)/onboarding/actions";
 import { saveThesisMatrixAction } from "../matrix/actions";
 import { fetchBoxesWithFullShape } from "../_services/fetch-actions";
-import { runBoxesPipelineAction } from "../boxes/actions";
+import {
+  runBoxStructureAction,
+  runSemanticQueriesAction,
+  persistBoxesAction,
+} from "../boxes/actions";
 import {
   runLiteraturePipelineAction,
   appendArchiveEntriesAction,
@@ -302,27 +307,44 @@ export function useOnboardingNavigation() {
    * structure via global loader, then navigates to the boxes page.
    */
   const proceedFromPositioning = useCallback(async () => {
-    const steps: LoadingStep[] = [
-      { text: "Konu kutusu yapısı oluşturuluyor...", status: "active" },
-      { text: "Kutular kaydediliyor...", status: "idle" },
-    ];
+    const steps = BOX_GENERATION_STEPS.map((s) => ({ ...s }));
+    steps[0].status = "active";
 
     showLoading(
       "Konu Kutuları Oluşturuluyor",
-      "Tez matrisiniz çözümlenerek akademik konu kutuları oluşturuluyor.",
+      "Tez matrisiniz çözümlenerek 5 kadranlı konu kutuları ve izole vektör arama sorguları üretiliyor.",
       steps,
     );
 
     try {
-      const pipelineResult = await runBoxesPipelineAction();
-      if ("error" in pipelineResult) {
+      // Step 1: Generate Turkish Box Structure
+      const structResult = await runBoxStructureAction();
+      if ("error" in structResult) {
         hideLoading();
-        toast.error(pipelineResult.error);
+        toast.error(structResult.error);
         return;
       }
-
       await completeStep(0, steps);
+
+      // Step 2: Generate OpenAlex Semantic Queries
+      const queriesResult = await runSemanticQueriesAction(
+        structResult.structure,
+      );
+      if ("error" in queriesResult) {
+        hideLoading();
+        toast.error(queriesResult.error);
+        return;
+      }
       await completeStep(1, steps);
+
+      // Step 3: Persist Boxes to DB
+      const persistResult = await persistBoxesAction(queriesResult.boxes);
+      if ("error" in persistResult) {
+        hideLoading();
+        toast.error(persistResult.error);
+        return;
+      }
+      await completeStep(2, steps);
 
       queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
       hideLoading();

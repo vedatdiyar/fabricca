@@ -52,10 +52,7 @@ export async function saveThesisMatrixAction(
 
   const validated = parsed.data;
 
-  log.info("matrix_save_start", {
-    service: "db",
-    data: { context: "Saving thesis matrix" },
-  });
+  log.info("matrix_save_start");
 
   try {
     const session = await getSession();
@@ -115,17 +112,13 @@ export async function saveThesisMatrixAction(
     invalidateOnboardingStepCache("matrix");
 
     log.info("matrix_save_success", {
-      service: "db",
       durationMs: performance.now() - startTime,
-      data: { context: "Saving thesis matrix" },
     });
 
     return { success: true };
   } catch (error) {
     log.error("matrix_save_failed", {
-      service: "db",
       error,
-      data: { context: "Saving thesis matrix" },
     });
     return { error: "Failed to save thesis matrix to the database." };
   }

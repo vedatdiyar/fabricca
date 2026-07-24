@@ -19,6 +19,18 @@ export const MATRIX_SUBMIT_STEPS: LoadingStep[] = [
   { text: "Rapor kaydediliyor...", status: "idle" },
 ];
 
+export const BOX_GENERATION_STEPS: LoadingStep[] = [
+  {
+    text: "5 Kadranlı Konu Kutusu Yapısı ve Kavramlar Oluşturuluyor...",
+    status: "active",
+  },
+  {
+    text: "OpenAlex AI Vektör Arama Motoru İçin İzole Sorgular Üretiliyor...",
+    status: "idle",
+  },
+  { text: "Konu Kutuları Kaydediliyor...", status: "idle" },
+];
+
 export const LITERATURE_PIPELINE_STEPS: LoadingStep[] = [
   { text: "Mevcut literatür havuzu kontrol ediliyor...", status: "active" },
   { text: "Akademik kaynaklar taranıyor...", status: "idle" },
