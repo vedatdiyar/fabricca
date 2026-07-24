@@ -1,3 +1,4 @@
+import { ThinkingLevel } from "@google/genai";
 import { z } from "zod";
 import { FLASH_LITE_31, GEMINI_SEED } from "@/lib/constants";
 import {
@@ -230,6 +231,7 @@ Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"} | Cohere Skoru: ${t
       zodSchema: juryAnalysisResultSchema,
       payloadStage: "positioning_jury_analysis",
       seed: GEMINI_SEED,
+      thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
       thesisMatrix: { input, filteredThesesCount: filteredTheses.length },
     },
   );
