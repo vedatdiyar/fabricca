@@ -339,7 +339,6 @@ export class Logger implements LoggerInstance {
         devLogCount++;
         return;
       }
-
       // ── Status-süz event: minimal tek satır ──
       const timeTag = this.timestamp();
       const levelLabel =
@@ -348,12 +347,12 @@ export class Logger implements LoggerInstance {
         p?.data && typeof p.data === "object" && "durationMs" in p.data
           ? (p.data as Record<string, unknown>).durationMs
           : undefined;
+      const durMs = p?.durationMs != null ? p.durationMs : durMsFromData;
       const durStrInfo =
-        durMsFromData != null
-          ? ` (${formatDuration(durMsFromData as number)})`
-          : "";
-      console.log(`${timeTag} ${levelLabel} ${event}${durStrInfo}`);
+        durMs != null ? ` (${formatDuration(durMs as number)})` : "";
+      if (devLogCount > 0) console.log("");
       devLogCount++;
+      console.log(`${timeTag} ${levelLabel} ${event}${durStrInfo}`);
       return;
     }
 

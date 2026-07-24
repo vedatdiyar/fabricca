@@ -83,9 +83,10 @@ export const juryAnalysisResultSchema = z.object({
   gapAnalysisSummary: gapAnalysisStructuredSchema,
   recommendedTheses: z
     .array(juryRecommendedThesisSchema)
-    .min(4)
     .max(6)
-    .describe("Kullanıcının tez yazarken faydalanabileceği 4-6 rehber tez"),
+    .describe(
+      "Kullanıcının tez matrisiyle doğrudan bağı olan 0-6 adet rehber tez. Yapay sayı zorlaması yapılmaz.",
+    ),
 });
 
 /** Inferred TypeScript type for LLM Jury Analysis Result. */
@@ -140,12 +141,12 @@ export const juryAnalysisResultJsonSchema: JsonSchema = {
           contributionArea: {
             type: "string",
             description:
-              "Tezin kullanıcının çalışmasına katkı sunduğu özel alan",
+              "Tezin kullanıcının matrisinde AÇIKÇA TANIMLANAN odağıyla doğrudan örtüşen özel alanı",
           },
           relevanceReason: {
             type: "string",
             description:
-              "Tezin çalışmada kaynak olarak nasıl kullanılacağına dair yönlendirici rehber açıklama",
+              "Tezin çalışmada tez matrisindeki sınırlar çerçevesinde dürüstçe nasıl kaynak olarak kullanılacağına dair rehber açıklama. Asla matriste yer almayan varsayımsal veri kaynakları uydurulmaz.",
           },
         },
         required: [
@@ -159,7 +160,8 @@ export const juryAnalysisResultJsonSchema: JsonSchema = {
         ],
         additionalProperties: false,
       },
-      description: "Süzülen tezler arasından seçilen 4-6 adet rehber tez",
+      description:
+        "Süzülen tezler arasından seçilen ve tez matrisiyle doğrudan örtüşen 0-6 adet dürüst rehber tez",
     },
   },
   required: ["globalStatus", "gapAnalysisSummary", "recommendedTheses"],
