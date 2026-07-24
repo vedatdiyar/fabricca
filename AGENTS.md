@@ -95,7 +95,7 @@ Proje, Next.js App Router'ın rota gruplama (route groups) özelliğini kullanar
 
 Bu bölüm altındaki detaylı kurallar (sayfa genişlikleri, padding/margin standartları, buton animasyonları, opaklık kısıtlamaları ve otomatik akışı olmayan kutular için yönlendirici kart yapıları) merkezi stil dokümantasyonuna taşınmıştır.
 
-- Arayüz geliştirmeleri ve stillendirme kuralları için bkz: [docs/UI_RULES.md](file:///Users/vedatdiyar/Desktop/Fabricca/docs/UI_RULES.md)
+- Arayüz geliştirmeleri ve stillendirme kuralları için bkz: [docs/UI_RULES.md](docs/UI_RULES.md)
 
 ## 6. Geliştirme, Veri Tabanı ve Yapay Zeka Kuralları (Development Patterns)
 
@@ -117,19 +117,19 @@ Bu bölüm altındaki detaylı kurallar (sayfa genişlikleri, padding/margin sta
 
 Drizzle ORM şema kuralları, şema senkronizasyon disiplini (`db:push`) ve onboarding adımlarının veritabanına aşamalı kaydedilmesini sağlayan Progressive Save kuralları ayrı bir dokümantasyona taşınmıştır.
 
-- Detaylı veri tabanı kuralları ve aşamalı kayıt mimarisi için bkz: [docs/DATABASE_RULES.md](file:///Users/vedatdiyar/Desktop/Fabricca/docs/DATABASE_RULES.md)
+- Detaylı veri tabanı kuralları ve aşamalı kayıt mimarisi için bkz: [docs/DATABASE_RULES.md](docs/DATABASE_RULES.md)
 
 ### 6.4. Genel Geliştirme ve Kod Standartları
 
 Dosya boyutları (600 satır kuralı), Single Responsibility prensipleri, Next.js klasör/dosya isimlendirme hassasiyetleri, hata maskeleme ve yapılandırılmış loglama standartları ayrı bir dokümantasyona taşınmıştır.
 
-- Genel kod kalitesi ve geliştirme kuralları için bkz: [docs/DEVELOPMENT_STANDARDS.md](file:///Users/vedatdiyar/Desktop/Fabricca/docs/DEVELOPMENT_STANDARDS.md)
+- Genel kod kalitesi ve geliştirme kuralları için bkz: [docs/DEVELOPMENT_STANDARDS.md](docs/DEVELOPMENT_STANDARDS.md)
 
 ### 6.5. Yapay Zeka Entegrasyon Kuralları (AI Integration)
 
 Google Gemini SDK standartları, thinkingConfig seviyeleri, prompt hiyerarşisi, XML prompt şablonları ve vanilla JSON Schema kuralları ayrı bir dokümantasyona taşınmıştır.
 
-- Gemini API entegrasyonu ve prompt standartları için bkz: [docs/LLM_INTEGRATION.md](file:///Users/vedatdiyar/Desktop/Fabricca/docs/LLM_INTEGRATION.md)
+- Gemini API entegrasyonu ve prompt standartları için bkz: [docs/LLM_INTEGRATION.md](docs/LLM_INTEGRATION.md)
 
 ### 6.6. Yasaklar (YAPMA)
 
@@ -148,7 +148,7 @@ Google Gemini SDK standartları, thinkingConfig seviyeleri, prompt hiyerarşisi,
 
 Arayüz, veritabanı veya LLM mekanizmalarıyla ilgili bir geliştirme yapmadan önce, KESİNLİKLE ilgili docs/*.md dosyasını oku, projenin mevcut kod tabanını tarayarak tasarım dilini keşfet ve o kurallara istisnasız itaat et:
 
-1. **Stil ve Kullanıcı Arayüzü Kuralları:** [docs/UI_RULES.md](file:///Users/vedatdiyar/Desktop/Fabricca/docs/UI_RULES.md)
-2. **Veri Tabanı ve ORM Kuralları (Progressive Save):** [docs/DATABASE_RULES.md](file:///Users/vedatdiyar/Desktop/Fabricca/docs/DATABASE_RULES.md)
-3. **Büyük Dil Modeli (Gemini) ve Entegrasyon Kuralları:** [docs/LLM_INTEGRATION.md](file:///Users/vedatdiyar/Desktop/Fabricca/docs/LLM_INTEGRATION.md)
-4. **Genel Geliştirme ve Kod Standartları:** [docs/DEVELOPMENT_STANDARDS.md](file:///Users/vedatdiyar/Desktop/Fabricca/docs/DEVELOPMENT_STANDARDS.md)
+1. **Stil ve Kullanıcı Arayüzü Kuralları:** [docs/UI_RULES.md](docs/UI_RULES.md)
+2. **Veri Tabanı ve ORM Kuralları (Progressive Save):** [docs/DATABASE_RULES.md](docs/DATABASE_RULES.md)
+3. **Büyük Dil Modeli (Gemini) ve Entegrasyon Kuralları:** [docs/LLM_INTEGRATION.md](docs/LLM_INTEGRATION.md)
+4. **Genel Geliştirme ve Kod Standartları:** [docs/DEVELOPMENT_STANDARDS.md](docs/DEVELOPMENT_STANDARDS.md)
