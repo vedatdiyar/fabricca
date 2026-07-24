@@ -17,7 +17,6 @@ import {
   type JuryAnalysisResult,
 } from "./_services/analysis";
 import { savePositioningReportTransaction } from "./_services/decision-engine";
-import { clearDownstreamDbAction } from "../actions";
 
 /**
  * Fetches the existing positioning record for the authenticated user.
@@ -38,32 +37,51 @@ export async function getPositioningAction(): Promise<ThesisPositioning | null> 
       .from(thesisPositioning)
       .where(eq(thesisPositioning.userId, session.userId));
 
-    if (record) {
-      return record;
-    }
-
     const [matrix] = await db
       .select()
       .from(thesisMatrices)
       .where(eq(thesisMatrices.userId, session.userId));
 
     if (matrix) {
+      const currentMatrixInput = {
+        subjectAndProblem: matrix.researchCore || "",
+        theoreticalFramework: matrix.framework || "",
+        unitOfAnalysis: matrix.targetActors || "",
+        methodology: matrix.mainClaim || "",
+        scopeAndContext: matrix.context || "",
+      };
+
+      if (record) {
+        const recordInput = record.matrixInput as Record<string, string> | null;
+        const isMatching =
+          recordInput &&
+          recordInput.subjectAndProblem ===
+            currentMatrixInput.subjectAndProblem &&
+          recordInput.theoreticalFramework ===
+            currentMatrixInput.theoreticalFramework &&
+          recordInput.unitOfAnalysis === currentMatrixInput.unitOfAnalysis &&
+          recordInput.methodology === currentMatrixInput.methodology &&
+          recordInput.scopeAndContext === currentMatrixInput.scopeAndContext;
+
+        if (isMatching) {
+          return record;
+        }
+      }
+
       return {
-        id: "prefilled-from-matrix",
+        id: record ? record.id : "prefilled-from-matrix",
         userId: session.userId,
-        matrixInput: {
-          subjectAndProblem: matrix.researchCore || "",
-          theoreticalFramework: matrix.framework || "",
-          unitOfAnalysis: matrix.targetActors || "",
-          methodology: matrix.mainClaim || "",
-          scopeAndContext: matrix.context || "",
-        },
+        matrixInput: currentMatrixInput,
         globalStatus: null,
         gapAnalysisSummary: null,
         recommendedTheses: [],
         createdAt: matrix.createdAt,
         updatedAt: matrix.updatedAt,
       } as ThesisPositioning;
+    }
+
+    if (record) {
+      return record;
     }
 
     return null;
@@ -149,23 +167,20 @@ export async function executePositioningSearchAction(
 }
 
 /**
- * Server Action executing FAZ 4 end-to-end positioning pipeline:
- * 1. Validates user's 5-field positioning matrix input.
- * 2. Runs FAZ 3 search & sifting (Gemini queries -> Tezara parallel search with limit 150 -> Cohere Rerank v4 Pro).
- * 3. Applies empirical threshold filtering (0.75 score bar, Min 10, Max 15) and runs Gemini Flash-Lite LLM Jury evaluation.
- * 4. Clears downstream data (boxes, literature) to ensure a clean state.
- * 5. Persists report data to `thesis_positioning` table in DB via transaction and invalidates step cache.
- * 6. Returns full analysis report, generated queries, and sifted theses to client.
+ * Server Action that runs FAZ 4 LLM Jury analysis on pre-sifted theses.
+ * Validates the matrix input, then runs Gemini Flash-Lite jury evaluation.
  *
- * @param data - Raw form payload submitted from client.
- * @returns Object containing success flag, report, queries, and sifted theses, or error string.
+ * @param data - Raw positioning matrix payload.
+ * @param theses - Pre-sifted theses from executePositioningSearchAction.
+ * @returns The jury analysis report on success, or an error string.
  */
-export async function runPositioningPipelineAction(data: unknown): Promise<
+export async function runPositioningJuryAction(
+  data: unknown,
+  theses: SiftedThesis[],
+): Promise<
   | {
       success: true;
       report: JuryAnalysisResult;
-      queries: GeneratedQueries;
-      theses: SiftedThesis[];
     }
   | { error: string }
 > {
@@ -184,10 +199,10 @@ export async function runPositioningPipelineAction(data: unknown): Promise<
 
   const validated = parsed.data;
 
-  log.info("run_positioning_pipeline_start", {
+  log.info("run_positioning_jury_start", {
     service: "positioning",
     filePath: "src/app/(onboarding)/onboarding/positioning/actions.ts",
-    data: { context: "Executing full positioning pipeline (FAZ 3 + FAZ 4)" },
+    data: { context: "Running LLM jury analysis on sifted theses" },
   });
 
   try {
@@ -196,30 +211,9 @@ export async function runPositioningPipelineAction(data: unknown): Promise<
       return { error: SESSION_ERROR_MSG };
     }
 
-    // Step 1: FAZ 3 - Generate 3-tier search queries
-    const queries = await generatePositioningQueries(validated, log);
-
-    // Step 2: FAZ 3 - Search and Cohere rerank theses
-    const theses = await searchAndSiftTheses(queries, validated, log);
-
-    // Step 3: FAZ 4 - LLM Jury Analysis with empirical filter (0.75 threshold, Min 10, Max 15)
     const report = await analyzePositioningJury(validated, theses, log);
 
-    // Step 4: Clear downstream data (boxes, literature) before saving new report
-    const clearResult = await clearDownstreamDbAction("positioning");
-    if ("error" in clearResult) {
-      return { error: clearResult.error };
-    }
-
-    // Step 5: FAZ 4 - Save transaction to DB and invalidate cache
-    await savePositioningReportTransaction(
-      session.userId,
-      validated,
-      report,
-      log,
-    );
-
-    log.info("run_positioning_pipeline_success", {
+    log.info("run_positioning_jury_success", {
       service: "positioning",
       filePath: "src/app/(onboarding)/onboarding/positioning/actions.ts",
       durationMs: performance.now() - startTime,
@@ -229,22 +223,83 @@ export async function runPositioningPipelineAction(data: unknown): Promise<
       },
     });
 
-    return {
-      success: true,
-      report,
-      queries,
-      theses,
-    };
+    return { success: true, report };
   } catch (error) {
-    log.error("run_positioning_pipeline_failed", {
+    log.error("run_positioning_jury_failed", {
       service: "positioning",
       filePath: "src/app/(onboarding)/onboarding/positioning/actions.ts",
       durationMs: performance.now() - startTime,
       error,
     });
     return {
-      error:
-        "Konumlandırma analizi ve jüri değerlendirmesi sırasında bir hata oluştu. Lütfen tekrar deneyin.",
+      error: "Jüri analizi sırasında bir hata oluştu. Lütfen tekrar deneyin.",
+    };
+  }
+}
+
+/**
+ * Server Action that persists the positioning report to the database and
+ * invalidates the onboarding step cache. Does NOT clear downstream data
+ * (the caller is responsible for that before calling this action).
+ *
+ * @param data - Raw positioning matrix payload.
+ * @param report - The jury analysis result to persist.
+ * @returns Success flag or error string.
+ */
+export async function savePositioningReportAction(
+  data: unknown,
+  report: JuryAnalysisResult,
+): Promise<{ success: true } | { error: string }> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+  const startTime = performance.now();
+
+  const parsed = positioningMatrixSchema.safeParse(data);
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0];
+    const msg = firstIssue
+      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
+      : "Form doğrulaması başarısız.";
+    return { error: msg };
+  }
+
+  const validated = parsed.data;
+
+  log.info("save_positioning_report_start", {
+    service: "positioning",
+    filePath: "src/app/(onboarding)/onboarding/positioning/actions.ts",
+    data: { context: "Persisting positioning report to database" },
+  });
+
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { error: SESSION_ERROR_MSG };
+    }
+
+    await savePositioningReportTransaction(
+      session.userId,
+      validated,
+      report,
+      log,
+    );
+
+    log.info("save_positioning_report_success", {
+      service: "positioning",
+      filePath: "src/app/(onboarding)/onboarding/positioning/actions.ts",
+      durationMs: performance.now() - startTime,
+    });
+
+    return { success: true };
+  } catch (error) {
+    log.error("save_positioning_report_failed", {
+      service: "positioning",
+      filePath: "src/app/(onboarding)/onboarding/positioning/actions.ts",
+      durationMs: performance.now() - startTime,
+      error,
+    });
+    return {
+      error: "Rapor kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.",
     };
   }
 }

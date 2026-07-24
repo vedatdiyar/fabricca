@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, memo, useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useMemo, memo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   CheckCircle2,
   Box,
@@ -11,17 +11,12 @@ import {
   WholeWord,
   Archive,
   Loader2,
-  RefreshCw,
-  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useLoadingOverlay } from "@/providers/loading-overlay-provider";
 import { Card, CardTitle } from "@/components/ui/card";
 import { AIBanner } from "@/components/ai-banner";
-import { LoadingSpinner } from "@/components/loading-spinner";
 import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
 import { fetchBoxesWithFullShape } from "../../_services/fetch-actions";
-import { generateBoxesStructureAction, confirmBoxesAction } from "../actions";
 import { BOX_ORDER_WEIGHT, BOX_TYPE_LABELS } from "../../_lib/box-constants";
 import type { GeminiThesisBox } from "@/lib/types";
 
@@ -36,24 +31,14 @@ function isFullWidthBox(idx: number, totalBoxes: number): boolean {
 
 export function BoxesContainer() {
   const { proceedFromBoxes } = useOnboardingNavigation();
-  const queryClient = useQueryClient();
 
-  const {
-    data: boxes,
-    isLoading: loading,
-    refetch,
-  } = useQuery({
+  const { data: boxes, isLoading: loading } = useQuery({
     queryKey: ["boxes"],
-    queryFn: async (): Promise<GeminiThesisBox[]> => {
-      const existing = await fetchBoxesWithFullShape();
-      if (existing.length > 0) return existing;
-      return [];
-    },
+    queryFn: fetchBoxesWithFullShape,
     staleTime: 0,
   });
 
   const [proceeding, setProceeding] = useState(false);
-  const [retrying, setRetrying] = useState(false);
 
   const handleProceed = useCallback(async () => {
     if (proceeding) return;
@@ -64,33 +49,6 @@ export function BoxesContainer() {
       setProceeding(false);
     }
   }, [proceedFromBoxes, proceeding]);
-
-  const handleRetry = useCallback(async () => {
-    if (retrying) return;
-    setRetrying(true);
-    try {
-      const structResult = await generateBoxesStructureAction();
-      if ("error" in structResult) {
-        return;
-      }
-      const saveResult = await confirmBoxesAction(structResult.boxes);
-      if ("error" in saveResult) {
-        return;
-      }
-      queryClient.setQueryData(["boxes"], structResult.boxes);
-      await refetch();
-    } finally {
-      setRetrying(false);
-    }
-  }, [retrying, queryClient, refetch]);
-
-  const { hideLoading } = useLoadingOverlay();
-
-  useEffect(() => {
-    if (!loading && boxes && boxes.length > 0) {
-      hideLoading();
-    }
-  }, [loading, boxes, hideLoading]);
 
   const sortedBoxes = useMemo(() => {
     if (!boxes) return [];
@@ -105,37 +63,9 @@ export function BoxesContainer() {
   }, [boxes]);
 
   if (loading) {
-    return <LoadingSpinner variant="full" message="Kutular yükleniyor..." />;
-  }
-
-  if (!boxes || boxes.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 space-y-6">
-        <div className="rounded-full bg-destructive/10 p-4">
-          <AlertTriangle className="w-8 h-8 text-destructive" />
-        </div>
-        <div className="text-center space-y-2">
-          <h2 className="text-lg font-semibold text-foreground">
-            Kutular Oluşturulamadı
-          </h2>
-          <p className="text-sm text-muted-foreground max-w-md">
-            Konu kutuları oluşturulurken bir hata oluştu. Lütfen tekrar deneyin
-            veya tekrar deneyin.
-          </p>
-        </div>
-        <Button onClick={handleRetry} disabled={retrying} size="lg">
-          {retrying ? (
-            <span className="flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Yeniden oluşturuluyor...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              <RefreshCw className="w-4 h-4" />
-              Yeniden Dene
-            </span>
-          )}
-        </Button>
+      <div className="flex items-center justify-center min-h-[40vh]">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
       </div>
     );
   }

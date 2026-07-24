@@ -18,8 +18,10 @@ KRİTİK DEĞERLENDİRME VE JÜRİ KURALLARI:
 2. gapAnalysisSummary İÇERİK VE BİÇİM KURALLARI:
    - Rapor tamamen elit, akıcı ve profesyonel bir akademik Türkçe ile yazılmalıdır.
    - gapAnalysisSummary nesnesi şu 3 alanı içermelidir (başlık veya markdown header koyma, doğrudan içerik paragrafını yaz):
-     * literatureMapping: Sunulan tezlerin araştırmanın hangi boyutlarını ele aldığının akademik özeti.
-     * academicGap: İncelediğin tezlerin neleri göz ardı ettiği veya nerede yetersiz kaldığı.
+     * literatureMapping: Sunulan tezlerin araştırmanın hangi boyutlarını ele aldığının tematik haritası ve akademik özeti.
+       - KESİNLİKLE tez numarası (Örn: #1, #2, #6, 3 numaralı tez vb.), tez başlığı veya yazar adı KULLANMA!
+       - Literatürdeki tezleri tematik gruplara/kümelere ayırarak anlat. Sadece "Literatürdeki tezler X ana tematik grupta/kümede toplanmaktadır. İlk grupta [birinci tematik odak]..., ikinci grupta [ikinci tematik odak]..., üçüncü grupta [üçüncü tematik odak]... üzerine odaklanılmaktadır." gibi kavramsallaştırıcı ve tematik gruplama ifadeleri kullan.
+     * academicGap: İncelediğin tezlerin neleri göz ardı ettiği veya nerede yetersiz kaldığı. (Yine tez numarası, tez adı veya yazar ismi vermeden genel literatür boşluğunu tanımla).
      * originalContribution: Kullanıcının tez matrisinin bu boşluğu nasıl doldurduğu ve literatüre getirdiği yenilik.
 
 3. recommendedTheses SEÇİM VE REHBERLİK KURALLARI:

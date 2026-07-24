@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/session";
 import { BoxesContainer } from "./_components/boxes-container";
 import { StartOverButton } from "../_components/start-over-button";
+import { fetchBoxesWithFullShape } from "../_services/fetch-actions";
 
 /**
  * Onboarding sürecinin dördüncü adımı: Konu Kutuları (Server Component).
@@ -12,6 +13,11 @@ export default async function OnboardingBoxesPage() {
 
   if (profile.onboardingCompleted) {
     redirect("/dashboard");
+  }
+
+  const boxes = await fetchBoxesWithFullShape();
+  if (!boxes || boxes.length === 0) {
+    redirect("/onboarding/positioning");
   }
 
   return (

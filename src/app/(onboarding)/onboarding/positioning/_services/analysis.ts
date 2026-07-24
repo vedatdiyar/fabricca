@@ -10,6 +10,7 @@ import {
   POSITIONING_JURY_SYSTEM_INSTRUCTION,
   buildPositioningJuryUserPrompt,
 } from "@/lib/prompts";
+import { sanitizeAcademicDataBulk } from "@/lib/services/academic-sanitizer";
 import type { SiftedThesis } from "./sifting";
 import {
   gapAnalysisStructuredSchema,
@@ -107,7 +108,7 @@ export const juryAnalysisResultJsonSchema: JsonSchema = {
         literatureMapping: {
           type: "string",
           description:
-            "Mevcut Literatürün Haritalandırılması: Sunulan tezlerin araştırmanın hangi boyutlarını ele aldığının akademik özeti",
+            "Mevcut Literatürün Haritalandırılması: Sunulan tezlerin araştırmanın hangi boyutlarını ele aldığının tematik haritası ve akademik özeti. KESİNLİKLE tez numarası (#1, #2 vb.), tez adı veya yazar adı kullanma! Tezleri tematik gruplara ayırarak 'Literatürdeki tezler X grupta kümelenmektedir. İlk grupta..., ikinci grupta...' şeklinde tematik özetle.",
         },
         academicGap: {
           type: "string",
@@ -235,6 +236,28 @@ Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"} | Cohere Skoru: ${t
       thesisMatrix: { input, filteredThesesCount: filteredTheses.length },
     },
   );
+
+  if (result.recommendedTheses && result.recommendedTheses.length > 0) {
+    try {
+      const itemsToSanitize = result.recommendedTheses.map((t) => ({
+        title: t.title || "",
+        author: t.author || "",
+      }));
+      const sanitized = await sanitizeAcademicDataBulk(itemsToSanitize, logger);
+      result.recommendedTheses = result.recommendedTheses.map((t, idx) => ({
+        ...t,
+        title: sanitized[idx]?.title || t.title,
+        author: sanitized[idx]?.author || t.author,
+      }));
+    } catch (err) {
+      logger?.warn("positioning_jury_sanitization_fallback", {
+        service: "positioning",
+        filePath:
+          "src/app/(onboarding)/onboarding/positioning/_services/analysis.ts",
+        error: err,
+      });
+    }
+  }
 
   return result;
 }

@@ -1,12 +1,20 @@
 "use server";
 
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { thesisMatrices, thesisBoxes } from "@/db/schema";
+import {
+  thesisMatrices,
+  thesisPositioning,
+  thesisBoxes,
+  libraryResources,
+} from "@/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
-import { invalidateOnboardingCache } from "@/lib/cache-tags";
+import {
+  invalidateOnboardingCache,
+  invalidateOnboardingStepCache,
+} from "@/lib/cache-tags";
 
 const MIN_LENGTH = 3;
 const MAX_LENGTH = 4000;
@@ -82,12 +90,29 @@ export async function saveThesisMatrixAction(
 
       if (matrixRow) {
         await tx
+          .delete(thesisPositioning)
+          .where(eq(thesisPositioning.userId, session.userId));
+
+        await tx
+          .delete(libraryResources)
+          .where(
+            inArray(
+              libraryResources.thesisBoxId,
+              tx
+                .select({ id: thesisBoxes.id })
+                .from(thesisBoxes)
+                .where(eq(thesisBoxes.thesisMatrixId, matrixRow.id)),
+            ),
+          );
+
+        await tx
           .delete(thesisBoxes)
           .where(eq(thesisBoxes.thesisMatrixId, matrixRow.id));
       }
     });
 
     invalidateOnboardingCache();
+    invalidateOnboardingStepCache("matrix");
 
     log.info("matrix_save_success", {
       service: "db",

@@ -18,6 +18,10 @@ export default async function OnboardingPositioningPage() {
 
   const record = await getPositioningAction();
 
+  if (!record || !record.globalStatus) {
+    redirect("/onboarding/matrix");
+  }
+
   return (
     <div className="flex flex-col items-center justify-center p-4 pt-10 pb-4">
       <div className="mx-auto flex w-full max-w-5xl flex-col items-center space-y-4">

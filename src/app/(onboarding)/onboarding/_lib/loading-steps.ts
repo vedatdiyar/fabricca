@@ -11,9 +11,12 @@ export function isNavigationStepText(text: string): boolean {
 
 export const MATRIX_SUBMIT_STEPS: LoadingStep[] = [
   { text: "Çalışma matrisi kaydediliyor...", status: "active" },
-  { text: "3 katmanlı akademik arama sorguları üretiliyor...", status: "idle" },
-  { text: "Tezara taranıyor & Cohere Rerank ile süzülüyor...", status: "idle" },
+  {
+    text: "Akademik arama sorguları üretiliyor ve tezler taranıyor...",
+    status: "idle",
+  },
   { text: "Akademik jüri analizi tamamlanıyor...", status: "idle" },
+  { text: "Rapor kaydediliyor...", status: "idle" },
   { text: "Konumlandırma sayfasına yönlendiriliyor...", status: "idle" },
 ];
 
@@ -21,13 +24,4 @@ export const LITERATURE_PIPELINE_STEPS: LoadingStep[] = [
   { text: "Mevcut literatür havuzu kontrol ediliyor...", status: "active" },
   { text: "Akademik kaynaklar taranıyor...", status: "idle" },
   { text: "Literatür havuzu onaylanıp kaydediliyor...", status: "idle" },
-];
-
-export const POSITIONING_PIPELINE_STEPS: LoadingStep[] = [
-  { text: "Downstream veriler temizleniyor...", status: "active" },
-  {
-    text: "Akademik arama ve jüri analizi çalıştırılıyor...",
-    status: "idle",
-  },
-  { text: "Rapor kaydediliyor ve cache temizleniyor...", status: "idle" },
 ];
