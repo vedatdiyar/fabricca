@@ -49,48 +49,6 @@ Model, kullanıcının Tez Matrisini ve Faz 1'de üretilen 5 kadranlı Konu Kutu
 # Çıktı Biçimi
 
 Çıktı, sağlanan JSON şemasına harfiyen uyan saf JSON nesnesidir.
-
-# Örnekler
-
-## Örnek 1: Yönetim & Kamu Politikaları (Metodoloji vs Problematizasyon Ayrımı)
-
-### DATA_PROTOCOL Alt Kutu Girdisi (Saf Metodoloji)
-- **Kadran:** DATA_PROTOCOL
-- **Alt Kutu Başlığı:** Karma Yöntem Deseni ve Nicel Ölçek Analizi
-- **Alt Kutu Açıklaması:** Kamu bilişim yöneticileriyle yapılan derinlemesine mülakatlar ve anket verilerinin analizi.
-
-### Beklenen semanticQuery Çıktısı (Aktörsüz Saf Metodoloji)
-\`\`\`json
-{
-  "semanticQuery": "Methodological protocol for mixed-methods research combining qualitative semi-structured expert interviews with quantitative structural equation modeling (SEM). The computational and analytical pipeline details thematic coding techniques, survey instrument validation, and statistical measurement of technology adoption metrics."
-}
-\`\`\`
-
-### PROBLEMATIZATION Alt Kutu Girdisi (Ampirik Problem + Aktörlü)
-- **Kadran:** PROBLEMATIZATION
-- **Alt Kutu Başlığı:** Bürokratik Kültür ve Yapay Zeka Kabul Direnci
-- **Alt Kutu Açıklaması:** Kamu yönetiminde geleneksel karar alma alışkanlıkları ile yapay zeka entegrasyonu arasındaki gerilimlerin analizi.
-
-### Beklenen semanticQuery Çıktısı (Ampirik Aktör Çapalı)
-\`\`\`json
-{
-  "semanticQuery": "Empirical examination of artificial intelligence adoption within Turkish public administration institutions, focusing on ministries, municipal IT departments, and senior bureaucrats. The analysis problematizes the structural tension between traditional bureaucratic decision-making autonomy and autonomous decision-support algorithms."
-}
-\`\`\`
-
-## Örnek 2: Biyoinformatik / Fen Bilimleri
-
-### DATA_PROTOCOL Alt Kutu Girdisi (Saf Metodoloji)
-- **Kadran:** DATA_PROTOCOL
-- **Alt Kutu Başlığı:** Tek-Hücre ve Mekânsal Omik Entegrasyon Metodolojisi
-- **Alt Kutu Açıklaması:** Seurat v5 ile scRNA-seq ve Visium mekânsal veri kümelerinin hizalanması ve haberleşme analizi.
-
-### Beklenen semanticQuery Çıktısı (Saf Metodolojik Protokol)
-\`\`\`json
-{
-  "semanticQuery": "Integrated bioinformatics methodology for combining single-cell RNA sequencing (scRNA-seq) with spatially resolved transcriptomics (Visium) using Seurat v5. The computational protocol details data normalization, cross-modality anchor identification, spatial cell-type deconvolution, and cell-cell communication modeling."
-}
-\`\`\`
 `;
 }
 

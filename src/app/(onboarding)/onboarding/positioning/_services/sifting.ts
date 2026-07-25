@@ -77,11 +77,14 @@ function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
 }
 
 /**
- * Executes 3-tier parallel Meilisearch queries on Tezara, deduplicates and sifts results
- * through abstract length and language filters, and ranks candidates using Cohere Rerank v4 Pro
- * formatted as structured YAML to select the TOP 12 most relevant theses.
+ * Executes 6 parallel Meilisearch queries on Tezara (3 matrix fields × TR + EN,
+ * each query exactly 3 focused keywords), deduplicates results, applies abstract
+ * length and language filters, then ranks candidates using Cohere Rerank v4 Pro.
  *
- * @param queries - Generated 3-tier search queries (direct, expanded, conceptual).
+ * Fields queried: subjectAndProblem, theoreticalFramework, unitOfAnalysis.
+ * Methodology and scopeAndContext are excluded to reduce noise in BM25 scoring.
+ *
+ * @param queries - Generated 6-query object (3 fields × TR + EN).
  * @param matrixInput - The 5-field positioning matrix input used as target context for reranking.
  * @param logger - Optional Logger instance for step telemetry.
  * @param options - Optional configuration options including topN (default 12).
@@ -95,9 +98,12 @@ export async function searchAndSiftTheses(
 ): Promise<SiftedThesis[]> {
   const topN = options?.topN ?? 12;
 
-  const cleanDirect = sanitizeMeiliQuery(queries.directQuery);
-  const cleanExpanded = sanitizeMeiliQuery(queries.expandedQuery);
-  const cleanConceptual = sanitizeMeiliQuery(queries.conceptualQuery);
+  const cleanSubjectTr = sanitizeMeiliQuery(queries.subjectTr);
+  const cleanSubjectEn = sanitizeMeiliQuery(queries.subjectEn);
+  const cleanTheoryTr = sanitizeMeiliQuery(queries.theoryTr);
+  const cleanTheoryEn = sanitizeMeiliQuery(queries.theoryEn);
+  const cleanActorsTr = sanitizeMeiliQuery(queries.actorsTr);
+  const cleanActorsEn = sanitizeMeiliQuery(queries.actorsEn);
 
   const searchStart = performance.now();
 
@@ -107,29 +113,51 @@ export async function searchAndSiftTheses(
       "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     data: {
       queries: {
-        directQuery: cleanDirect,
-        expandedQuery: cleanExpanded,
-        conceptualQuery: cleanConceptual,
+        subjectTr: cleanSubjectTr,
+        subjectEn: cleanSubjectEn,
+        theoryTr: cleanTheoryTr,
+        theoryEn: cleanTheoryEn,
+        actorsTr: cleanActorsTr,
+        actorsEn: cleanActorsEn,
       },
     },
   });
 
-  // Step 1: Parallel search on Tezara with Meilisearch-sanitized queries (limit: 150 per query)
-  const [directHits, expandedHits, conceptualHits] = await Promise.all([
-    searchTezara(cleanDirect, logger, { limit: 150 }),
-    searchTezara(cleanExpanded, logger, { limit: 150 }),
-    searchTezara(cleanConceptual, logger, { limit: 150 }),
+  // Step 1: 6 parallel Meilisearch searches (limit: 100 per query)
+  const [
+    subjectTrHits,
+    subjectEnHits,
+    theoryTrHits,
+    theoryEnHits,
+    actorsTrHits,
+    actorsEnHits,
+  ] = await Promise.all([
+    searchTezara(cleanSubjectTr, logger, { limit: 100 }),
+    searchTezara(cleanSubjectEn, logger, { limit: 100 }),
+    searchTezara(cleanTheoryTr, logger, { limit: 100 }),
+    searchTezara(cleanTheoryEn, logger, { limit: 100 }),
+    searchTezara(cleanActorsTr, logger, { limit: 100 }),
+    searchTezara(cleanActorsEn, logger, { limit: 100 }),
   ]);
 
-  // Step 2: Deduplicate candidate theses by thesis ID
+  // Step 2: Deduplicate by thesis ID — sort by ID for deterministic Cohere index mapping
   const candidateMap = new Map<number, TezaraThesisDetails>();
-  for (const thesis of [...directHits, ...expandedHits, ...conceptualHits]) {
+  for (const thesis of [
+    ...subjectTrHits,
+    ...subjectEnHits,
+    ...theoryTrHits,
+    ...theoryEnHits,
+    ...actorsTrHits,
+    ...actorsEnHits,
+  ]) {
     if (thesis && thesis.id && !candidateMap.has(thesis.id)) {
       candidateMap.set(thesis.id, thesis);
     }
   }
 
-  const uniqueCandidates = Array.from(candidateMap.values());
+  const uniqueCandidates = Array.from(candidateMap.values()).sort(
+    (a, b) => a.id - b.id,
+  );
 
   // Step 3: Apply Abstract length (>= 100 chars) and Language filters (TR & EN only)
   const filteredCandidates = uniqueCandidates.filter((thesis) => {
@@ -148,7 +176,7 @@ export async function searchAndSiftTheses(
       service: "tezara",
       filePath:
         "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
-      data: { cleanDirect, cleanExpanded, cleanConceptual },
+      data: { cleanSubjectTr, cleanTheoryTr, cleanActorsTr },
     });
     return [];
   }

@@ -1,31 +1,31 @@
 import type { PositioningMatrixInput } from "@/app/(onboarding)/onboarding/positioning/_lib/validation";
 
-/** System instruction for FAZ 3 3-tier positioning query generation. */
+/**
+ * System instruction for 3-field × TR+EN positioning query generation.
+ * Produces 6 focused, exactly-3-keyword Meilisearch queries:
+ * subject (odak/problem), theory (teorik çerçeve), actors (analiz birimi/aktörler).
+ */
 export const POSITIONING_QUERIES_SYSTEM_INSTRUCTION = `# Rol ve Uzmanlık
 
-Akademik tez veritabanlarında (Meilisearch) arama yapmak için yüksek duyarlılıklı ve geniş kapsayıcılıklı arama sorguları üreten uzman bir Bilgi Erişim (Information Retrieval) ve Arama Motoru Uzmanısınız.
+Akademik tez veritabanlarında (Meilisearch) arama yapmak için yüksek hassasiyetli, kısa ve odaklı arama sorguları üreten uzman bir Bilgi Erişim (Information Retrieval) Uzmanısınız.
 
 # Birincil Görev
 
-Sana sunulan 5 bileşenli Tez Konumlandırma Matrisini inceleyerek Meilisearch arama motorunda en alakalı yüksek lisans/doktora tezlerini eksiksiz yakalamak için 3 birbirini tamamlayan kulvarda (\`directQuery\`, \`expandedQuery\`, \`conceptualQuery\`) meilisearch uyumlu akademik arama kelime dizileri üretmektir.
+Sana sunulan 5 bileşenli Tez Konumlandırma Matrisinin YALNIZCA üç bileşeni için (Odak/Problem, Teorik Çerçeve, Analiz Birimi/Aktörler) birer Türkçe birer İngilizce olmak üzere 6 kısa arama sorgusu üretmektir.
 
-# Kurallar ve Sınırlamalar
+# Kesin Kurallar
 
-1. **directQuery (Ana Konu & Aktör & Bağlam Sorgusu):**
-   - Çalışmanın temel odağını, araştırmanın öz nesnesini, ampirik aktörlerini/kurumlarını ve dönemsel/coğrafi/biyolojik bağlamını doğrudan hedefleyen net terimlerden oluşur.
+1. **Sorgu uzunluğu: KESİNLİKLE 3 kelime.** Ne 2, ne 4 — tam olarak 3 kelime. Daha kısa veya daha uzun sorgular Meilisearch BM25 skorlamasını bozar.
 
-2. **expandedQuery (Genişletilmiş Strateji & Söylem & Tematik Sorgu):**
-   - Çalışmanın kapsadığı daha geniş politik, stratejik, söylemsel, kurumsal dönüşüm veya hücresel süreç terimlerini içerir.
+2. **Alan izolasyonu:** Her sorgu YALNIZCA o matris alanının özüne ait en ayırt edici 3 anahtar kelimeyi içermelidir. Diğer alanlardan terim karıştırılmaz.
 
-3. **conceptualQuery (Kuramsal Çerçeve & Metodolojik Sorgu):**
-   - Teorik yaklaşım, analitik kavramlar, biyoinformatik algoritmalar ve yöntemsel tekniklerden oluşur.
+3. **Meilisearch uyumluluğu:** 'OR', 'AND', 'NOT' ve '+', '-', '*', '?', '"', ':', '~', '=', '{', '}', '[', ']', '(', ')' karakterleri KESİNLİKLE kullanılmaz. Sadece düz kelimeler, aralarında boşluk bırakılarak yazılır.
 
-4. **Kritik Meilisearch Uyumluluk Kuralları:**
-   - Meilisearch tam metin aramasında 'OR', 'AND', 'NOT' kelimeleri arama terimi (literal word) olarak işlenir! Sorgularda KESİNLİKLE 'OR', 'AND', 'NOT' veya '+', '-' gibi sözdizimi karakterleri KULLANMAYIN.
-   - Tüm kelimeleri sadece aralarında birer boşluk bırakarak sade, küçük harfli meilisearch dizesi şeklinde yazın.
+4. **Dil:**
+   - \`trQuery\`: Türkçe akademik terminolojiyle tam 3 kelime
+   - \`enQuery\`: İngilizce akademik terminolojiyle tam 3 kelime
 
-5. **Tez Matrisi Katı Sınır İlkesi:**
-   - Tez matrisinde açıkça yer almayan hiçbir ampirik aktör, veri kaynağı veya kuramsal terim sorguya eklenemez.
+5. **Tez Matrisi Katı Sınır İlkesi:** Her sorguda yalnızca ilgili matris alanında açıkça geçen kavramlar kullanılır.
 
 # Çıktı Biçimi
 
@@ -33,45 +33,47 @@ Sana sunulan 5 bileşenli Tez Konumlandırma Matrisini inceleyerek Meilisearch a
 
 # Örnekler
 
-## Örnek 1: Kamu Yönetimi / Sosyal Bilimler
+## Örnek 1: Kamu Yönetimi
 
-### Girdi Matrisi
-- **subjectAndProblem:** Türkiye kamu sektöründe yapay zeka karar destek sistemlerinin bürokratik karar alma süreçlerine entegrasyonu ve kurum içi uyum gerilimleri.
-- **theoreticalFramework:** Teknoloji Kabul Modeli (TAM) ve Kurumsal İzamorfizma Kuramı.
-- **unitOfAnalysis:** T.C. Bakanlıklar bilişim daire başkanlıkları ve kıdemli bürokratlar.
-- **methodology:** Nitel yarı yapılandırılmış mülakatlar ve yapısal eşitlik modellemesi.
-- **scopeAndContext:** 2020-2025 yılları arası Türk kamu yönetimi.
+### Girdi
+- **subjectAndProblem:** Türkiye kamu sektöründe yapay zeka karar destek sistemlerinin bürokratik karar alma süreçlerine entegrasyonu
+- **theoreticalFramework:** Teknoloji Kabul Modeli (TAM) ve Kurumsal İzamorfizma
+- **unitOfAnalysis:** Bakanlıklar bilişim daire başkanlıkları ve kıdemli bürokratlar
 
 ### Beklenen Çıktı
 \`\`\`json
 {
-  "directQuery": "yapay zeka karar destek sistemleri kamu yönetimi bakanlıklar bürokrasi 2020-2025 turkey",
-  "expandedQuery": "dijital dönüşüm organizasyonel adaptasyon bürokratik direnç teknoloji kabulü kamu sektörü",
-  "conceptualQuery": "teknoloji kabul modeli kurumsal izamorfizma nitel mülakat yapısal eşitlik modellemesi sem"
+  "subjectTr": "yapay zeka bürokrasi",
+  "subjectEn": "AI decision support",
+  "theoryTr": "teknoloji kabul izamorfizma",
+  "theoryEn": "technology acceptance institutional",
+  "actorsTr": "kamu bakanlık bürokrasi",
+  "actorsEn": "public ministry bureaucracy"
 }
 \`\`\`
 
-## Örnek 2: Biyoinformatik / Kanser Biyolojisi
+## Örnek 2: Siyaset Bilimi
 
-### Girdi Matrisi
-- **subjectAndProblem:** Glioblastoma tümör mikroçevresinde CD8+ T-hücre bitkinliğinin tek-hücre transkriptomik ve mekânsal verilerle haritalanması.
-- **theoreticalFramework:** İmmün Checkpoint Sinyal Yolları ve Reseptör-Ligand Etkileşim Modeli.
-- **unitOfAnalysis:** Glioblastoma biyopsi kesitleri, CD8+ infiltrasyon T-hücreleri.
-- **methodology:** Single-cell RNA-seq (scRNA-seq), Visium mekânsal transkriptomik ve Seurat v5 analizi.
-- **scopeAndContext:** Primer glioblastoma klinik kohort verileri.
+### Girdi
+- **subjectAndProblem:** Kürt Özgürlük Hareketi 1991-1999 stratejik dönüşüm silahlı siyasi mücadele
+- **theoreticalFramework:** Gramsci manevra savaşı mevzi savaşı karşı-hegemonya
+- **unitOfAnalysis:** HEP DEP HADEP parti programları söylemsel pratikler
 
 ### Beklenen Çıktı
 \`\`\`json
 {
-  "directQuery": "glioblastoma cd8 t cell exhaustion tumor microenvironment single cell spatial transcriptomics",
-  "expandedQuery": "immune checkpoint suppression pd1 receptor ligand cellular signaling immunosuppression",
-  "conceptualQuery": "scrna seq visium spatial transcriptomics cell cell communication seurat deconvolution"
+  "subjectTr": "Kürt hareketi dönüşümü",
+  "subjectEn": "Kurdish movement transformation",
+  "theoryTr": "Gramsci mevzi hegemonya",
+  "theoryEn": "Gramsci war position",
+  "actorsTr": "HEP DEP HADEP",
+  "actorsEn": "Kurdish legal parties"
 }
 \`\`\`
 `;
 
 /**
- * Builds user prompt for 3-tier positioning query generation.
+ * Builds user prompt for 3-field × TR+EN positioning query generation (6 queries total).
  *
  * @param input - Positioning matrix input fields.
  * @returns Formatted prompt string.
@@ -79,11 +81,9 @@ Sana sunulan 5 bileşenli Tez Konumlandırma Matrisini inceleyerek Meilisearch a
 export function buildPositioningQueriesUserPrompt(
   input: PositioningMatrixInput,
 ): string {
-  return `Aşağıdaki 5 bileşenli Tez Konumlandırma Matrisini analiz ederek 3 meilisearch uyumlu arama sorgusu üret:
+  return `Aşağıdaki matris alanları için tam 3 kelimelik Türkçe ve İngilizce Meilisearch sorguları üret:
 
-1. Çalışmanın Odağı ve Problemi: ${input.subjectAndProblem}
-2. Teorik ve Kavramsal Çerçeve: ${input.theoreticalFramework}
-3. Analiz Birimleri ve Aktörler: ${input.unitOfAnalysis}
-4. Metodoloji: ${input.methodology}
-5. Kapsam ve Sınırlar: ${input.scopeAndContext}`;
+1. Çalışmanın Odağı ve Problemi (subjectTr / subjectEn): ${input.subjectAndProblem}
+2. Teorik ve Kavramsal Çerçeve (theoryTr / theoryEn): ${input.theoreticalFramework}
+3. Analiz Birimleri ve Aktörler (actorsTr / actorsEn): ${input.unitOfAnalysis}`;
 }
