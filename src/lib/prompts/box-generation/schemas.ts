@@ -15,7 +15,7 @@ const subBoxStructureSchema = z.object({
     .min(3)
     .max(5)
     .describe(
-      "Sub-box seviyesinde KESİNLİKLE EN AZ 3, EN FAZLA 5 ELEMANDAN oluşan 1 veya 2 kelimelik nokta atışı akademik Türkçe terimler (örn: 'Mevzi Savaşı', 'Hegemonya', 'Yasal Parti').",
+      "Sub-box seviyesinde KESİNLİKLE EN AZ 3, EN FAZLA 5 ELEMANDAN oluşan 1 veya 2 kelimelik nokta atışı akademik Türkçe terimler (örn: 'Kurumsal Adaptasyon', 'Teknoloji Kabulü', 'Performans Etkisi').",
     ),
 });
 

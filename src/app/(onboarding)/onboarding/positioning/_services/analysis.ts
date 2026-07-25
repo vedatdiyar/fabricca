@@ -63,7 +63,7 @@ export const juryRecommendedThesisSchema = z.object({
   contributionArea: z
     .string()
     .describe(
-      "Tezin kullanıcının çalışmasına doğrudan katkı sunduğu alan (Örn: B Aktörünün Söylem Analizi)",
+      "Tezin kullanıcının çalışmasına doğrudan katkı sunduğu alan (Örn: Metodolojik Karşılaştırma / Kuramsal Çerçeve Metodolojisi)",
     ),
   relevanceReason: z
     .string()
