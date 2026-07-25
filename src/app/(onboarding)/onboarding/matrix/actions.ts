@@ -21,10 +21,10 @@ const MAX_LENGTH = 4000;
 
 const thesisMatrixSchema = z.object({
   researchCore: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
-  targetActors: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
-  context: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
   framework: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
-  mainClaim: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+  analysisActors: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+  methodology: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+  researchScope: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
 });
 
 /**
@@ -66,20 +66,20 @@ export async function saveThesisMatrixAction(
         .values({
           userId: session.userId,
           researchCore: validated.researchCore,
-          targetActors: validated.targetActors,
-          context: validated.context,
           framework: validated.framework,
-          mainClaim: validated.mainClaim,
+          analysisActors: validated.analysisActors,
+          methodology: validated.methodology,
+          researchScope: validated.researchScope,
           updatedAt: sql`now()`,
         })
         .onConflictDoUpdate({
           target: thesisMatrices.userId,
           set: {
             researchCore: validated.researchCore,
-            targetActors: validated.targetActors,
-            context: validated.context,
             framework: validated.framework,
-            mainClaim: validated.mainClaim,
+            analysisActors: validated.analysisActors,
+            methodology: validated.methodology,
+            researchScope: validated.researchScope,
             updatedAt: sql`now()`,
           },
         })

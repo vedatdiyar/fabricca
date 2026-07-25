@@ -55,9 +55,8 @@ export type NewUser = InferInsertModel<typeof users>;
 
 /**
  * Thesis Matrix table.
- * Stores the working title, research question, main claim, methodology,
- * theoretical framework, and temporal/spatial scope filled by the user
- * during the first step of onboarding.
+ * Stores researchCore, framework, analysisActors, methodology and researchScope
+ * filled by the user during the first step of onboarding.
  */
 export const thesisMatrices = pgTable("thesis_matrices", {
   id: serial().primaryKey(),
@@ -66,10 +65,10 @@ export const thesisMatrices = pgTable("thesis_matrices", {
     .references(() => users.id, { onDelete: "cascade" })
     .unique(),
   researchCore: text().notNull(),
-  targetActors: text("target_actors").notNull(),
-  context: text("context").notNull(),
+  analysisActors: text("analysis_actors").notNull(),
   framework: text("framework").notNull(),
-  mainClaim: text("main_claim").notNull(),
+  methodology: text("methodology").notNull(),
+  researchScope: text("research_scope").notNull(),
   createdAt: timestamp().defaultNow().notNull(),
   updatedAt: timestamp().defaultNow().notNull(),
 });

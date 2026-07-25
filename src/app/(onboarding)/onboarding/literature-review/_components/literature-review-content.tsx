@@ -192,12 +192,17 @@ function SubBoxDone({
                   {/* Added archive entries / documents for this child box */}
                   {subArticles.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                      {subArticles.map((article, aIdx) => (
-                        <LiteratureArticleCard
-                          key={`${article.title}-${aIdx}`}
-                          article={article}
-                        />
-                      ))}
+                      {[...subArticles]
+                        .sort(
+                          (a, b) =>
+                            Number(b.isFoundational) - Number(a.isFoundational),
+                        )
+                        .map((article, aIdx) => (
+                          <LiteratureArticleCard
+                            key={`${article.title}-${aIdx}`}
+                            article={article}
+                          />
+                        ))}
                     </div>
                   ) : (
                     <div className="p-3 text-center border border-dashed border-border/40 rounded-md bg-card/10">
@@ -223,12 +228,17 @@ function SubBoxDone({
             />
             {entry && entry.articles.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {entry.articles.map((article, idx) => (
-                  <LiteratureArticleCard
-                    key={`${article.title}-${idx}`}
-                    article={article}
-                  />
-                ))}
+                {[...entry.articles]
+                  .sort(
+                    (a, b) =>
+                      Number(b.isFoundational) - Number(a.isFoundational),
+                  )
+                  .map((article, idx) => (
+                    <LiteratureArticleCard
+                      key={`${article.title}-${idx}`}
+                      article={article}
+                    />
+                  ))}
               </div>
             )}
           </div>
@@ -249,12 +259,14 @@ function SubBoxDone({
     return (
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {entry.articles.map((article, idx) => (
-            <LiteratureArticleCard
-              key={`${article.title}-${idx}`}
-              article={article}
-            />
-          ))}
+          {[...entry.articles]
+            .sort((a, b) => Number(b.isFoundational) - Number(a.isFoundational))
+            .map((article, idx) => (
+              <LiteratureArticleCard
+                key={`${article.title}-${idx}`}
+                article={article}
+              />
+            ))}
         </div>
       </div>
     );
@@ -274,12 +286,14 @@ function SubBoxDone({
     return (
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {entry.articles.map((article, idx) => (
-            <LiteratureArticleCard
-              key={`${article.title}-${idx}`}
-              article={article}
-            />
-          ))}
+          {[...entry.articles]
+            .sort((a, b) => Number(b.isFoundational) - Number(a.isFoundational))
+            .map((article, idx) => (
+              <LiteratureArticleCard
+                key={`${article.title}-${idx}`}
+                article={article}
+              />
+            ))}
         </div>
       </div>
     );
@@ -325,12 +339,17 @@ function SubBoxDone({
               {/* Sub-box Articles */}
               {subArticles.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-                  {subArticles.map((article, aIdx) => (
-                    <LiteratureArticleCard
-                      key={`${article.title}-${aIdx}`}
-                      article={article}
-                    />
-                  ))}
+                  {[...subArticles]
+                    .sort(
+                      (a, b) =>
+                        Number(b.isFoundational) - Number(a.isFoundational),
+                    )
+                    .map((article, aIdx) => (
+                      <LiteratureArticleCard
+                        key={`${article.title}-${aIdx}`}
+                        article={article}
+                      />
+                    ))}
                 </div>
               ) : (
                 <div className="p-3 text-center border border-dashed border-border/40 rounded-md bg-card/10">

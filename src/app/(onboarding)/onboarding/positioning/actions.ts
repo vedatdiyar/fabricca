@@ -33,9 +33,9 @@ export async function runPositioningSearchAction(
   const positioningInput: Record<string, string> = {
     subjectAndProblem: matrixInput.researchCore ?? "",
     theoreticalFramework: matrixInput.framework ?? "",
-    unitOfAnalysis: matrixInput.targetActors ?? "",
-    methodology: matrixInput.mainClaim ?? "",
-    scopeAndContext: matrixInput.context ?? "",
+    unitOfAnalysis: matrixInput.analysisActors ?? "",
+    methodology: matrixInput.methodology ?? "",
+    scopeAndContext: matrixInput.researchScope ?? "",
   };
 
   const parsed = positioningMatrixSchema.safeParse(positioningInput);
@@ -90,9 +90,9 @@ export async function runPositioningJuryAction(
   const positioningInput: Record<string, string> = {
     subjectAndProblem: matrixInput.researchCore ?? "",
     theoreticalFramework: matrixInput.framework ?? "",
-    unitOfAnalysis: matrixInput.targetActors ?? "",
-    methodology: matrixInput.mainClaim ?? "",
-    scopeAndContext: matrixInput.context ?? "",
+    unitOfAnalysis: matrixInput.analysisActors ?? "",
+    methodology: matrixInput.methodology ?? "",
+    scopeAndContext: matrixInput.researchScope ?? "",
   };
 
   const parsed = positioningMatrixSchema.safeParse(positioningInput);
@@ -149,9 +149,9 @@ export async function persistPositioningReportAction(
     const positioningInput: Record<string, string> = {
       subjectAndProblem: matrixInput.researchCore ?? "",
       theoreticalFramework: matrixInput.framework ?? "",
-      unitOfAnalysis: matrixInput.targetActors ?? "",
-      methodology: matrixInput.mainClaim ?? "",
-      scopeAndContext: matrixInput.context ?? "",
+      unitOfAnalysis: matrixInput.analysisActors ?? "",
+      methodology: matrixInput.methodology ?? "",
+      scopeAndContext: matrixInput.researchScope ?? "",
     };
 
     const parsed = positioningMatrixSchema.safeParse(positioningInput);
@@ -233,9 +233,9 @@ export async function getPositioningAction(): Promise<ThesisPositioning | null> 
       const currentMatrixInput = {
         subjectAndProblem: matrix.researchCore || "",
         theoreticalFramework: matrix.framework || "",
-        unitOfAnalysis: matrix.targetActors || "",
-        methodology: matrix.mainClaim || "",
-        scopeAndContext: matrix.context || "",
+        unitOfAnalysis: matrix.analysisActors || "",
+        methodology: matrix.methodology || "",
+        scopeAndContext: matrix.researchScope || "",
       };
 
       if (record) {

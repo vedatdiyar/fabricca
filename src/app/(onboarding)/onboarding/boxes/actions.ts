@@ -84,10 +84,10 @@ export async function runBoxStructureAction(): Promise<
 
     const prompt = buildBoxStructureUserPrompt({
       researchCore: matrix.researchCore,
-      targetActors: matrix.targetActors,
-      context: matrix.context,
       framework: matrix.framework,
-      mainClaim: matrix.mainClaim,
+      analysisActors: matrix.analysisActors,
+      methodology: matrix.methodology,
+      researchScope: matrix.researchScope,
     });
 
     const structure = await generateStructuredContent<RawBoxStructureResponse>(
@@ -152,10 +152,10 @@ export async function runSemanticQueriesAction(
 
     const prompt = buildSemanticQueriesUserPrompt(structure, {
       researchCore: matrix.researchCore,
-      targetActors: matrix.targetActors,
-      context: matrix.context,
       framework: matrix.framework,
-      mainClaim: matrix.mainClaim,
+      analysisActors: matrix.analysisActors,
+      methodology: matrix.methodology,
+      researchScope: matrix.researchScope,
     });
 
     const queries = await generateStructuredContent<RawSemanticQueriesResponse>(

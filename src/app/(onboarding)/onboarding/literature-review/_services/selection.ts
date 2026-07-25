@@ -13,7 +13,7 @@ interface QueueItem {
   boxDescription: string;
   candidates: {
     title: string;
-    authors: string;
+    authors: string[];
     year: number | null;
     openAlexId: string;
     doi: string | null;

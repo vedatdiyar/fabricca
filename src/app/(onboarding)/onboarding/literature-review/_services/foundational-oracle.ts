@@ -9,15 +9,17 @@ import { z } from "zod";
 
 export interface CandidateWork {
   title: string;
-  authors: string;
+  authors: string[];
   year: number | null;
   openAlexId: string;
   doi: string | null;
   publisher: string | null;
+  thesisBoxId: number;
 }
 
 export interface BulkSelectionResult {
   selections: {
+    thesisBoxId: number;
     subBoxTitle: string;
     selectedIndex: number;
     reasoning: string;
@@ -32,6 +34,7 @@ const bulkSelectSchema: JsonSchema = {
       items: {
         type: "object",
         properties: {
+          thesisBoxId: { type: "integer" },
           subBoxTitle: { type: "string" },
           selectedIndex: {
             type: "integer",
@@ -44,7 +47,7 @@ const bulkSelectSchema: JsonSchema = {
               "Brief reasoning in Turkish explaining the choice (shown to the user in the UI).",
           },
         },
-        required: ["subBoxTitle", "selectedIndex", "reasoning"],
+        required: ["thesisBoxId", "subBoxTitle", "selectedIndex", "reasoning"],
       },
     },
   },
@@ -54,6 +57,7 @@ const bulkSelectSchema: JsonSchema = {
 const zodBulkSelectSchema = z.object({
   selections: z.array(
     z.object({
+      thesisBoxId: z.number().int().min(0),
       subBoxTitle: z.string(),
       selectedIndex: z.number().int().min(0),
       reasoning: z.string().min(1),
@@ -74,7 +78,6 @@ Aday yayınlar içerisinden her bir tez alt kutusu (sub-box) için en doğrudan,
 1. **CONCEPTUAL (Kavramsal) Kutusu:** Kuramsal çerçeveyi kuran birincil orijinal kaynağı seçin. Orijinal birincil eser adaylar arasındayken asla ikincil yorumları, eleştirileri veya uygulamalı çalışmaları seçmeyin.
 2. **PROBLEMATIZATION / CONTEXT / DATA_PROTOCOL Kutuları:** Kutu başlığı ve açıklamasıyla doğrudan örtüşen ampirik çalışmaları, saha araştırmalarını, tarihsel analizleri veya metodolojik mihenk taşlarını seçin. Soyut genel teorik eserleri bu kutular için seçmeyin.
 3. **Dil Tercihi:** İngilizce veya Türkçe yazılmış akademik eserleri tercih edin.
-4. **Küresel Sıralı Tekilleştirme (Deduplication):** Seçimleri sırayla yapın (Alt Kutu [0] -> [1] -> [2]...). Önceki alt kutular için seçilmiş olan bir eseri mevcut aday listesinde görünse dahi kesinlikle tekrar seçmeyin.
 
 # Çıktı Biçimi
 
@@ -124,7 +127,7 @@ Her alt kutu için \`subBoxTitle\`, \`selectedIndex\` (0-tabanlı tam sayı) ve 
 /**
  * Calls Gemini to select the most appropriate foundational work for
  * multiple sub-boxes simultaneously. Uses ThinkingLevel.LOW for optimized
- * performance and global deduplication.
+ * performance. Server-side deduplication is handled by the caller.
  *
  * @param subBoxes - List of sub-boxes along with their compiled candidates
  * @param logger - Optional Logger instance for structured LLM call logging
@@ -136,6 +139,7 @@ export async function selectFoundationalWorksBulk(
     title: string;
     boxType: string;
     description: string;
+    thesisBoxId: number;
     candidates: CandidateWork[];
   }[],
   logger?: Logger,
@@ -150,9 +154,10 @@ export async function selectFoundationalWorksBulk(
 Title: ${subBox.title}
 Box Type: ${subBox.boxType}
 Description: ${subBox.description ?? ""}
+Thesis Box ID: ${subBox.thesisBoxId}
 
 Candidate Works:
-${subBox.candidates.map((c, idx) => `${idx}. [${c.year}] "${c.title}" - Author(s): ${c.authors}`).join("\n")}
+${subBox.candidates.map((c, idx) => `${idx}. [${c.year}] "${c.title}" - Author(s): ${c.authors.join(", ")}`).join("\n")}
 `;
     })
     .join("\n---\n\n");

@@ -30,10 +30,10 @@ export interface TezaraThesisDetails {
 
 export interface ThesisMatrix {
   researchCore: string;
-  targetActors: string;
-  context: string;
   framework: string;
-  mainClaim: string;
+  analysisActors: string;
+  methodology: string;
+  researchScope: string;
 }
 
 export interface FoundationalQuery {

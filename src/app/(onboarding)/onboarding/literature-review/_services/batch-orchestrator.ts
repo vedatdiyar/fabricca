@@ -171,7 +171,7 @@ export async function orchestrateBatchProcess(
             const chosen = sortedMembers[0];
             return {
               title: chosen.title,
-              authors: chosen.authors.join(", "),
+              authors: chosen.authors,
               year: null,
               openAlexId: chosen.id,
               doi: chosen.doi ? extractCleanDoi(chosen.doi) : null,
@@ -191,7 +191,7 @@ export async function orchestrateBatchProcess(
             .slice(0, 5)
             .map((p) => ({
               title: p.title!,
-              authors: p.authors.join(", "),
+              authors: p.authors,
               year: p.year,
               openAlexId: p.openAlexId ?? "",
               doi: p.doi ? extractCleanDoi(p.doi) : null,
@@ -244,6 +244,7 @@ export async function orchestrateBatchProcess(
       title: r.subBox.title,
       boxType: r.boxType,
       description: r.boxDescription,
+      thesisBoxId: r.thesisBoxId,
       candidates: r.candidates.map((c) => ({
         title: c.title,
         authors: c.authors,
@@ -251,10 +252,12 @@ export async function orchestrateBatchProcess(
         openAlexId: c.openAlexId,
         doi: c.doi,
         publisher: c.publisher,
+        thesisBoxId: r.thesisBoxId,
       })),
     }));
 
   let bulkSelections: {
+    thesisBoxId: number;
     subBoxTitle: string;
     selectedIndex: number;
     reasoning: string;
@@ -305,7 +308,8 @@ export async function orchestrateBatchProcess(
       let chosenCandidate: (typeof activeCandidates)[number] | null = null;
 
       const matchedSelection = bulkSelections.find(
-        (s) => s.subBoxTitle === r.subBox.title,
+        (s) =>
+          s.thesisBoxId === r.thesisBoxId && s.subBoxTitle === r.subBox.title,
       );
 
       if (matchedSelection && matchedSelection.selectedIndex >= 0) {
@@ -332,7 +336,7 @@ export async function orchestrateBatchProcess(
           doi: chosenCandidate.doi,
           publisher: chosenCandidate.publisher,
           publicationYear: chosenCandidate.year,
-          authors: chosenCandidate.authors.split(", ").map((a) => a.trim()),
+          authors: chosenCandidate.authors,
           isFoundational: true,
           relevanceScore: 100,
         };

@@ -119,12 +119,12 @@ export function buildSemanticQueriesUserPrompt(
 
   return `Aşağıda araştırmacının Tez Matrisi ve Faz 1'de oluşturulan 5 kadranlı Türkçe Konu Kutusu Yapısı sunulmuştur:
 
-=== TEZ MATRİSİ ÖZETİ ===
-Odağı: ${matrix.researchCore}
-Teori: ${matrix.framework}
-Aktörler: ${matrix.targetActors}
-Kapsam: ${matrix.context}
-Yöntem: ${matrix.framework}
+=== TEZ MATRİSİ ===
+1. Çalışmanın Odağı ve Problemi: ${matrix.researchCore}
+2. Teorik ve Kavramsal Çerçeve: ${matrix.framework}
+3. Analiz Birimleri ve Aktörler: ${matrix.analysisActors}
+4. Metodoloji: ${matrix.methodology}
+5. Kapsam ve Sınırlar: ${matrix.researchScope}
 
 === FAZ 1 KONU KUTUSU HİYERARŞİSİ ===
 ${structureSummary}

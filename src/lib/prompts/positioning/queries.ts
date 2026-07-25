@@ -81,9 +81,9 @@ export function buildPositioningQueriesUserPrompt(
 ): string {
   return `Aşağıdaki 5 bileşenli Tez Konumlandırma Matrisini analiz ederek 3 meilisearch uyumlu arama sorgusu üret:
 
-1. Çalışmanın Odağı & Problemi: ${input.subjectAndProblem}
-2. Teorik / Kavramsal Çerçeve: ${input.theoreticalFramework}
-3. Analiz Birimi / Aktörler / Odak Nesne: ${input.unitOfAnalysis}
-4. Metodoloji & Yöntem: ${input.methodology}
-5. Kapsam & Sınırlar: ${input.scopeAndContext}`;
+1. Çalışmanın Odağı ve Problemi: ${input.subjectAndProblem}
+2. Teorik ve Kavramsal Çerçeve: ${input.theoreticalFramework}
+3. Analiz Birimleri ve Aktörler: ${input.unitOfAnalysis}
+4. Metodoloji: ${input.methodology}
+5. Kapsam ve Sınırlar: ${input.scopeAndContext}`;
 }

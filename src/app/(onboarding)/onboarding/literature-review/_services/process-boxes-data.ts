@@ -5,9 +5,10 @@ import { thesisMatrices } from "@/db/schema";
 export interface LoadedMatrixData {
   id: number;
   researchCore: string;
-  context: string;
   framework: string;
-  mainClaim: string;
+  analysisActors: string;
+  methodology: string;
+  researchScope: string;
 }
 
 /**
@@ -20,9 +21,10 @@ export async function loadThesisMatrixAndBoxes(userId: number): Promise<{
     .select({
       id: thesisMatrices.id,
       researchCore: thesisMatrices.researchCore,
-      context: thesisMatrices.context,
       framework: thesisMatrices.framework,
-      mainClaim: thesisMatrices.mainClaim,
+      analysisActors: thesisMatrices.analysisActors,
+      methodology: thesisMatrices.methodology,
+      researchScope: thesisMatrices.researchScope,
     })
     .from(thesisMatrices)
     .where(eq(thesisMatrices.userId, userId));

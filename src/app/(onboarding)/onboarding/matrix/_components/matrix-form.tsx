@@ -22,10 +22,10 @@ import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation"
 
 type FormState = {
   researchCore: string;
-  targetActors: string;
-  context: string;
   framework: string;
-  mainClaim: string;
+  analysisActors: string;
+  methodology: string;
+  researchScope: string;
 };
 
 type FieldConfig = {
@@ -55,7 +55,7 @@ const MATRIX_SECTIONS: SectionConfig[] = [
         id: "researchCore",
         number: "01",
         Icon: Target,
-        label: "Çalışmanın Odağı & Problemi",
+        label: "Çalışmanın Odağı ve Problemi",
         description:
           "Neyi, hangi temel problemi çözmek veya hangi hipotezi test etmek için inceliyorsun?",
         placeholder:
@@ -67,7 +67,7 @@ const MATRIX_SECTIONS: SectionConfig[] = [
         id: "framework",
         number: "02",
         Icon: Compass,
-        label: "Teorik / Kavramsal Çerçeve",
+        label: "Teorik ve Kavramsal Çerçeve",
         description:
           "Çalışmanı hangi teorik mercekle, modelle veya kavramsal yaklaşımla ele alıyorsun?",
         placeholder:
@@ -81,11 +81,11 @@ const MATRIX_SECTIONS: SectionConfig[] = [
     title: "Analiz Birimi, Metodoloji ve Kapsam Sınırları",
     fields: [
       {
-        key: "targetActors",
-        id: "targetActors",
+        key: "analysisActors",
+        id: "analysisActors",
         number: "03",
         Icon: Boxes,
-        label: "Analiz Birimi / Aktörler / Odak Nesne",
+        label: "Analiz Birimleri ve Aktörler",
         description:
           "Veriyi nereden topluyorsun? Kimi, hangi veri kümesini, materyali veya aktörleri inceliyorsun?",
         placeholder:
@@ -93,11 +93,11 @@ const MATRIX_SECTIONS: SectionConfig[] = [
         rows: 6,
       },
       {
-        key: "mainClaim",
-        id: "mainClaim",
+        key: "methodology",
+        id: "methodology",
         number: "04",
         Icon: BookOpen,
-        label: "Metodoloji & Yöntem",
+        label: "Metodoloji",
         description:
           "Veriyi nasıl topluyor, işliyor veya ölçüyorsun? (Nitel, nicel, deneysel, simülasyon vb.)",
         placeholder:
@@ -105,11 +105,11 @@ const MATRIX_SECTIONS: SectionConfig[] = [
         rows: 6,
       },
       {
-        key: "context",
-        id: "context",
+        key: "researchScope",
+        id: "researchScope",
         number: "05",
         Icon: MapPin,
-        label: "Kapsam & Sınırlar",
+        label: "Kapsam ve Sınırlar",
         description:
           "Çalışmanın zaman, mekan, sektör, örneklem veya coğrafi sınırları nedir?",
         placeholder:
@@ -192,10 +192,10 @@ const MatrixCard = memo(function MatrixCard({
  */
 const EMPTY_VALUES: FormState = {
   researchCore: "",
-  targetActors: "",
-  context: "",
   framework: "",
-  mainClaim: "",
+  analysisActors: "",
+  methodology: "",
+  researchScope: "",
 };
 
 interface MatrixFormProps {
@@ -212,10 +212,10 @@ export function MatrixForm({ initialMatrix }: MatrixFormProps) {
     const base = initialMatrix ?? EMPTY_VALUES;
     return {
       researchCore: editedValues.researchCore ?? base.researchCore,
-      targetActors: editedValues.targetActors ?? base.targetActors,
-      context: editedValues.context ?? base.context,
       framework: editedValues.framework ?? base.framework,
-      mainClaim: editedValues.mainClaim ?? base.mainClaim,
+      analysisActors: editedValues.analysisActors ?? base.analysisActors,
+      methodology: editedValues.methodology ?? base.methodology,
+      researchScope: editedValues.researchScope ?? base.researchScope,
     };
   }, [initialMatrix, editedValues]);
 
@@ -234,10 +234,10 @@ export function MatrixForm({ initialMatrix }: MatrixFormProps) {
     try {
       await submitMatrix({
         researchCore: formState.researchCore,
-        targetActors: formState.targetActors,
-        context: formState.context,
         framework: formState.framework,
-        mainClaim: formState.mainClaim,
+        analysisActors: formState.analysisActors,
+        methodology: formState.methodology,
+        researchScope: formState.researchScope,
       });
     } catch (error) {
       const message =

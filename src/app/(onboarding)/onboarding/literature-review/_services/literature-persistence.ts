@@ -91,9 +91,11 @@ export async function persistSubBoxEntry(
       .where(eq(thesisBoxes.id, thesisBoxId));
 
     const limit = box?.boxType === "RELATED_THESES" ? undefined : 4;
-    const sorted = [...articles].sort(
-      (a, b) => b.relevanceScore - a.relevanceScore,
-    );
+    const sorted = [...articles].sort((a, b) => {
+      if (a.isFoundational && !b.isFoundational) return -1;
+      if (!a.isFoundational && b.isFoundational) return 1;
+      return b.relevanceScore - a.relevanceScore;
+    });
     const sliced = limit !== undefined ? sorted.slice(0, limit) : sorted;
 
     const { toInsert } = await insertLiteratureBatch(tx, thesisBoxId, sliced);
