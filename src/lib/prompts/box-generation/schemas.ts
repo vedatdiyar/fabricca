@@ -14,13 +14,13 @@ const subBoxSchema = z.object({
     .describe("Alt kutu açıklaması. Kesinlikle akademik Türkçe olmalıdır."),
   concepts: z
     .array(z.string())
-    .min(3)
-    .max(5)
     .describe(
-      "Sub-box seviyesinde KESİNLİKLE EN AZ 3, EN FAZLA 5 ELEMANDAN oluşan 1 veya 2 kelimelik nokta atışı akademik Türkçe terimler (örn: 'Kurumsal Adaptasyon', 'Teknoloji Kabulü', 'Performans Etkisi').",
+      "Sub-box seviyesinde 1 veya 2 kelimelik nokta atışı akademik Türkçe terimler. Her sub-box için ideal kavram sayısına sen karar ver (örn: 'Kurumsal Adaptasyon', 'Teknoloji Kabulü', 'Performans Etkisi').",
     ),
   semanticQuery: z
     .string()
+    .optional()
+    .default("")
     .describe(
       "PRIMARY_MATERIAL kadranı için boş string (''). Diğer kadranlar (SUBJECT_PROBLEM, THEORETICAL_FRAMEWORK, ANALYSIS_ACTORS, METHODOLOGY) için OpenAlex GTE Large EN vektör aramasına özel, 300-1000 karakter, kadran izolasyon kurallarına uyan İngilizce akademik paragraf.",
     ),
@@ -79,9 +79,7 @@ function buildQuadrantJsonSchema(
       type: "array",
       items: { type: "string" },
       description:
-        "En az 3, en fazla 5 adet 1-2 kelimelik nokta atışı akademik Türkçe terim",
-      minItems: 3,
-      maxItems: 5,
+        "1-2 kelimelik nokta atışı akademik Türkçe terimler. Her sub-box için ideal kavram sayısına sen karar ver.",
     },
   };
 
