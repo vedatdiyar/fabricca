@@ -60,19 +60,18 @@ function formatThesisToYaml(thesis: TezaraThesisDetails): string {
 }
 
 /**
- * Converts user's 5-field positioning matrix into a structured YAML query string
+ * Converts user's 4-field positioning matrix into a structured YAML query string
  * for Cohere Rerank v4.0 Pro.
  *
- * @param input - The validated 5-field positioning matrix input.
+ * @param input - The validated 4-field positioning matrix input.
  * @returns Structured YAML query string.
  */
 function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
   return [
-    `SubjectAndProblem: ${input.subjectAndProblem}`,
+    `SubjectProblem: ${input.subjectProblem}`,
     `TheoreticalFramework: ${input.theoreticalFramework}`,
-    `UnitOfAnalysis: ${input.unitOfAnalysis}`,
+    `AnalysisActors: ${input.analysisActors}`,
     `Methodology: ${input.methodology}`,
-    `ScopeAndContext: ${input.scopeAndContext}`,
   ].join("\n");
 }
 
@@ -81,11 +80,11 @@ function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
  * each query exactly 3 focused keywords), deduplicates results, applies abstract
  * length and language filters, then ranks candidates using Cohere Rerank v4 Pro.
  *
- * Fields queried: subjectAndProblem, theoreticalFramework, unitOfAnalysis.
- * Methodology and scopeAndContext are excluded to reduce noise in BM25 scoring.
+ * Fields queried: subjectProblem, theoreticalFramework, analysisActors.
+ * Methodology is excluded to reduce noise in BM25 scoring.
  *
  * @param queries - Generated 6-query object (3 fields × TR + EN).
- * @param matrixInput - The 5-field positioning matrix input used as target context for reranking.
+ * @param matrixInput - The 4-field positioning matrix input used as target context for reranking.
  * @param logger - Optional Logger instance for step telemetry.
  * @param options - Optional configuration options including topN (default 12).
  * @returns Promise resolving to an array of up to topN sifted and ranked theses.

@@ -75,8 +75,8 @@ Aday yayınlar içerisinden her bir tez alt kutusu (sub-box) için en doğrudan,
 
 # Kurallar ve Sınırlamalar
 
-1. **CONCEPTUAL (Kavramsal) Kutusu:** Kuramsal çerçeveyi kuran birincil orijinal kaynağı seçin. Orijinal birincil eser adaylar arasındayken asla ikincil yorumları, eleştirileri veya uygulamalı çalışmaları seçmeyin.
-2. **PROBLEMATIZATION / CONTEXT / DATA_PROTOCOL Kutuları:** Kutu başlığı ve açıklamasıyla doğrudan örtüşen ampirik çalışmaları, saha araştırmalarını, tarihsel analizleri veya metodolojik mihenk taşlarını seçin. Soyut genel teorik eserleri bu kutular için seçmeyin.
+1. **THEORETICAL_FRAMEWORK (Teori) Kutusu:** Kuramsal çerçeveyi kuran birincil orijinal kaynağı seçin. Orijinal birincil eser adaylar arasındayken asla ikincil yorumları, eleştirileri veya uygulamalı çalışmaları seçmeyin.
+2. **SUBJECT_PROBLEM / ANALYSIS_ACTORS / METHODOLOGY Kutuları:** Kutu başlığı ve açıklamasıyla doğrudan örtüşen ampirik çalışmaları, saha araştırmalarını, tarihsel analizleri veya metodolojik mihenk taşlarını seçin. Soyut genel teorik eserleri bu kutular için seçmeyin.
 3. **Dil Tercihi:** İngilizce veya Türkçe yazılmış akademik eserleri tercih edin.
 
 # Çıktı Biçimi
@@ -85,9 +85,9 @@ Her alt kutu için \`subBoxTitle\`, \`selectedIndex\` (0-tabanlı tam sayı) ve 
 
 # Örnekler
 
-## Örnek 1: Sosyal Bilimler / Kavramsal Kutusu (CONCEPTUAL)
+## Örnek 1: Sosyal Bilimler / Teori Kutusu (THEORETICAL_FRAMEWORK)
 ### Girdi
-- **Sub-Box:** Gramscian Mevzi ve Manevra Savaşı Diyalektiği (CONCEPTUAL)
+- **Sub-Box:** Gramscian Mevzi ve Manevra Savaşı Diyalektiği (THEORETICAL_FRAMEWORK)
 - **Adaylar:**
   0. [1971] "Selections from the Prison Notebooks" - Author(s): Antonio Gramsci
   1. [2015] "Gramsci in Political Theory" - Author(s): John Smith
@@ -104,9 +104,9 @@ Her alt kutu için \`subBoxTitle\`, \`selectedIndex\` (0-tabanlı tam sayı) ve 
 }
 \`\`\`
 
-## Örnek 2: Biyoinformatik / Yöntem Protokolü (DATA_PROTOCOL)
+## Örnek 2: Biyoinformatik / Yöntem Kutusu (METHODOLOGY)
 ### Girdi
-- **Sub-Box:** Single-Cell RNA-seq Kalite ve Kümeleme Protokolü (DATA_PROTOCOL)
+- **Sub-Box:** Single-Cell RNA-seq Kalite ve Kümeleme Protokolü (METHODOLOGY)
 - **Adaylar:**
   0. [2021] "Integrated single-cell analysis of multicellular immunodynamics with Seurat v4" - Author(s): Yuhan Hao et al.
   1. [2018] "General Biology Principles" - Author(s): Jane Doe

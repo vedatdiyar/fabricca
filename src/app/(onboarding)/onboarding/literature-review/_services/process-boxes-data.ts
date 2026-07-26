@@ -4,11 +4,11 @@ import { thesisMatrices } from "@/db/schema";
 
 export interface LoadedMatrixData {
   id: number;
-  researchCore: string;
-  framework: string;
-  analysisActors: string;
+  subjectProblem: string;
+  theoreticalFramework: string;
+  analysisActors: string | null;
+  primaryMaterial: string | null;
   methodology: string;
-  researchScope: string;
 }
 
 /**
@@ -20,11 +20,11 @@ export async function loadThesisMatrixAndBoxes(userId: number): Promise<{
   const [matrix] = await db
     .select({
       id: thesisMatrices.id,
-      researchCore: thesisMatrices.researchCore,
-      framework: thesisMatrices.framework,
+      subjectProblem: thesisMatrices.subjectProblem,
+      theoreticalFramework: thesisMatrices.theoreticalFramework,
       analysisActors: thesisMatrices.analysisActors,
+      primaryMaterial: thesisMatrices.primaryMaterial,
       methodology: thesisMatrices.methodology,
-      researchScope: thesisMatrices.researchScope,
     })
     .from(thesisMatrices)
     .where(eq(thesisMatrices.userId, userId));

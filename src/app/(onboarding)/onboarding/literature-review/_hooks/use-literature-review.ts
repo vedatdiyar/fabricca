@@ -12,12 +12,11 @@ import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation"
 import { fetchPreloadedLiteraturePool } from "../actions";
 
 const boxOrderWeight: Record<string, number> = {
-  PROBLEMATIZATION: 1,
-  CONCEPTUAL: 2,
-  CONTEXT: 3,
-  DATA_PROTOCOL: 4,
-  PRIMARY_MATERIAL: 5,
-  RELATED_THESES: 6,
+  SUBJECT_PROBLEM: 1,
+  THEORETICAL_FRAMEWORK: 2,
+  ANALYSIS_ACTORS: 3,
+  PRIMARY_MATERIAL: 4,
+  METHODOLOGY: 5,
 };
 
 /** Processing status of a single sub-box within the literature review grid. */
@@ -119,10 +118,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   const archivalBoxes = useMemo(() => {
     const archivalSet = new Set<string>();
     for (const box of subBoxes) {
-      if (
-        box.boxType === "PRIMARY_MATERIAL" ||
-        box.boxType === "RELATED_THESES"
-      ) {
+      if (box.boxType === "PRIMARY_MATERIAL") {
         archivalSet.add(box.title);
       }
     }

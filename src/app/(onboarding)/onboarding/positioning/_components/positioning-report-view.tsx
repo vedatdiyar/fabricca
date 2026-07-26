@@ -159,33 +159,35 @@ export function PositioningReportView({
 
                     {(thesis.contributionArea || thesis.relevanceReason) && (
                       <div className="space-y-3 pt-3 border-t border-border/40 text-xs">
-                        {thesis.contributionArea && (
-                          <div className="space-y-1">
-                            <span className="flex items-center gap-1.5 font-semibold text-primary">
-                              <Target className="h-3.5 w-3.5 shrink-0" />
-                              Katkı / Odak Alanı:
-                            </span>
-                            <span className="text-foreground leading-relaxed block">
-                              {thesis.contributionArea}
-                            </span>
-                          </div>
-                        )}
+                        <div className="space-y-1">
+                          <span className="flex items-center gap-1.5 font-semibold text-primary">
+                            <Target className="h-3.5 w-3.5 shrink-0" />
+                            Katkı / Odak Alanı:
+                          </span>
+                          <span className="text-foreground leading-relaxed block">
+                            {thesis.contributionArea || (
+                              <span className="text-muted-foreground italic">
+                                —
+                              </span>
+                            )}
+                          </span>
+                        </div>
 
-                        {thesis.relevanceReason && thesis.contributionArea && (
-                          <div className="border-t border-border/40" />
-                        )}
+                        <div className="border-t border-border/40" />
 
-                        {thesis.relevanceReason && (
-                          <div className="space-y-1">
-                            <span className="flex items-center gap-1.5 font-semibold text-foreground">
-                              <Lightbulb className="h-3.5 w-3.5 shrink-0" />
-                              İlişki ve Ayrışma Sebebi:
-                            </span>
-                            <span className="text-muted-foreground leading-relaxed block">
-                              {thesis.relevanceReason}
-                            </span>
-                          </div>
-                        )}
+                        <div className="space-y-1">
+                          <span className="flex items-center gap-1.5 font-semibold text-foreground">
+                            <Lightbulb className="h-3.5 w-3.5 shrink-0" />
+                            İlişki ve Ayrışma Sebebi:
+                          </span>
+                          <span className="text-muted-foreground leading-relaxed block">
+                            {thesis.relevanceReason || (
+                              <span className="text-muted-foreground italic">
+                                —
+                              </span>
+                            )}
+                          </span>
+                        </div>
                       </div>
                     )}
                   </Card>

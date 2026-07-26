@@ -85,20 +85,12 @@ export async function orchestrateBatchProcess(
     if (checkCancelled?.()) break;
     const box = boxes[i];
 
-    if (
-      box.boxType === "PRIMARY_MATERIAL" ||
-      box.boxType === "RELATED_THESES"
-    ) {
+    if (box.boxType === "PRIMARY_MATERIAL") {
       archivalBoxTitles.push(box.title);
-      const articles =
-        box.boxType === "RELATED_THESES"
-          ? (thesisArticlesMap?.get(box.title) ?? [])
-          : [];
-
       poolEntries.push({
         subBoxTitle: box.title,
         thesisBoxId: box.id,
-        articles,
+        articles: [],
       });
     }
   }
@@ -107,8 +99,7 @@ export async function orchestrateBatchProcess(
   const activeJobs: { box: SubBoxInput; subBox: SubBoxItem }[] = [];
   for (const box of boxes) {
     if (!box.subBoxes || box.subBoxes.length === 0) continue;
-    if (box.boxType === "PRIMARY_MATERIAL" || box.boxType === "RELATED_THESES")
-      continue;
+    if (box.boxType === "PRIMARY_MATERIAL") continue;
 
     for (const subBox of box.subBoxes) {
       activeJobs.push({ box, subBox });

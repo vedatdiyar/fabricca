@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { thesisBoxes, libraryResources } from "@/db/schema";
 import { normalizeTitle } from "@/lib/academic/utils";
@@ -85,12 +85,7 @@ export async function persistSubBoxEntry(
   articles: JuryArticle[],
 ): Promise<void> {
   await db.transaction(async (tx) => {
-    const [box] = await tx
-      .select({ boxType: thesisBoxes.boxType })
-      .from(thesisBoxes)
-      .where(eq(thesisBoxes.id, thesisBoxId));
-
-    const limit = box?.boxType === "RELATED_THESES" ? undefined : 4;
+    const limit = 4;
     const sorted = [...articles].sort((a, b) => {
       if (a.isFoundational && !b.isFoundational) return -1;
       if (!a.isFoundational && b.isFoundational) return 1;
@@ -115,29 +110,13 @@ export async function persistSubBoxEntry(
 export async function persistLiteraturePool(
   literaturePool: LiteraturePoolEntry[],
 ): Promise<void> {
-  const boxIds = literaturePool.map((e) => e.thesisBoxId);
-  const boxes =
-    boxIds.length > 0
-      ? await db
-          .select({ id: thesisBoxes.id, boxType: thesisBoxes.boxType })
-          .from(thesisBoxes)
-          .where(inArray(thesisBoxes.id, boxIds))
-      : [];
-
-  const boxTypeMap = new Map<number, string | null>(
-    boxes.map((b) => [b.id, b.boxType]),
-  );
-
   const allTopArticles: { entry: LiteraturePoolEntry; article: JuryArticle }[] =
     [];
   for (const entry of literaturePool) {
-    const boxType = boxTypeMap.get(entry.thesisBoxId);
-    const limit = boxType === "RELATED_THESES" ? undefined : 4;
     const sorted = [...entry.articles].sort(
       (a, b) => b.relevanceScore - a.relevanceScore,
     );
-    const sliced = limit !== undefined ? sorted.slice(0, limit) : sorted;
-
+    const sliced = sorted.slice(0, 4);
     for (const article of sliced) {
       allTopArticles.push({ entry, article });
     }
@@ -258,7 +237,7 @@ export async function fetchPreloadedPool(
 
   for (const [, group] of grouped) {
     group.articles.sort((a, b) => b.relevanceScore - a.relevanceScore);
-    if (group.boxType !== "RELATED_THESES" && group.articles.length > 4) {
+    if (group.articles.length > 4) {
       group.articles.length = 4;
     }
   }

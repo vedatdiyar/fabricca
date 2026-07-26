@@ -31,11 +31,10 @@ export async function runPositioningSearchAction(
   const log = new Logger(flowId);
 
   const positioningInput: Record<string, string> = {
-    subjectAndProblem: matrixInput.researchCore ?? "",
-    theoreticalFramework: matrixInput.framework ?? "",
-    unitOfAnalysis: matrixInput.analysisActors ?? "",
+    subjectProblem: matrixInput.subjectProblem ?? "",
+    theoreticalFramework: matrixInput.theoreticalFramework ?? "",
+    analysisActors: matrixInput.analysisActors ?? "",
     methodology: matrixInput.methodology ?? "",
-    scopeAndContext: matrixInput.researchScope ?? "",
   };
 
   const parsed = positioningMatrixSchema.safeParse(positioningInput);
@@ -88,11 +87,10 @@ export async function runPositioningJuryAction(
   const log = new Logger(flowId);
 
   const positioningInput: Record<string, string> = {
-    subjectAndProblem: matrixInput.researchCore ?? "",
-    theoreticalFramework: matrixInput.framework ?? "",
-    unitOfAnalysis: matrixInput.analysisActors ?? "",
+    subjectProblem: matrixInput.subjectProblem ?? "",
+    theoreticalFramework: matrixInput.theoreticalFramework ?? "",
+    analysisActors: matrixInput.analysisActors ?? "",
     methodology: matrixInput.methodology ?? "",
-    scopeAndContext: matrixInput.researchScope ?? "",
   };
 
   const parsed = positioningMatrixSchema.safeParse(positioningInput);
@@ -147,11 +145,10 @@ export async function persistPositioningReportAction(
     if (!session) return { error: SESSION_ERROR_MSG };
 
     const positioningInput: Record<string, string> = {
-      subjectAndProblem: matrixInput.researchCore ?? "",
-      theoreticalFramework: matrixInput.framework ?? "",
-      unitOfAnalysis: matrixInput.analysisActors ?? "",
+      subjectProblem: matrixInput.subjectProblem ?? "",
+      theoreticalFramework: matrixInput.theoreticalFramework ?? "",
+      analysisActors: matrixInput.analysisActors ?? "",
       methodology: matrixInput.methodology ?? "",
-      scopeAndContext: matrixInput.researchScope ?? "",
     };
 
     const parsed = positioningMatrixSchema.safeParse(positioningInput);
@@ -231,24 +228,21 @@ export async function getPositioningAction(): Promise<ThesisPositioning | null> 
 
     if (matrix) {
       const currentMatrixInput = {
-        subjectAndProblem: matrix.researchCore || "",
-        theoreticalFramework: matrix.framework || "",
-        unitOfAnalysis: matrix.analysisActors || "",
+        subjectProblem: matrix.subjectProblem || "",
+        theoreticalFramework: matrix.theoreticalFramework || "",
+        analysisActors: matrix.analysisActors || "",
         methodology: matrix.methodology || "",
-        scopeAndContext: matrix.researchScope || "",
       };
 
       if (record) {
         const recordInput = record.matrixInput as Record<string, string> | null;
         const isMatching =
           recordInput &&
-          recordInput.subjectAndProblem ===
-            currentMatrixInput.subjectAndProblem &&
+          recordInput.subjectProblem === currentMatrixInput.subjectProblem &&
           recordInput.theoreticalFramework ===
             currentMatrixInput.theoreticalFramework &&
-          recordInput.unitOfAnalysis === currentMatrixInput.unitOfAnalysis &&
-          recordInput.methodology === currentMatrixInput.methodology &&
-          recordInput.scopeAndContext === currentMatrixInput.scopeAndContext;
+          recordInput.analysisActors === currentMatrixInput.analysisActors &&
+          recordInput.methodology === currentMatrixInput.methodology;
 
         if (isMatching) {
           return record;

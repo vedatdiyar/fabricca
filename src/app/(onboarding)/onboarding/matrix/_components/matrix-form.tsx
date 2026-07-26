@@ -7,13 +7,14 @@ import {
   Loader2,
   Table,
   BookOpen,
-  Boxes,
   Compass,
-  MapPin,
   Target,
+  Users,
+  Database,
 } from "lucide-react";
 
-import type { ThesisMatrix } from "@/db/schema";
+import type { ThesisMatrix as ThesisMatrixSchema } from "@/db/schema";
+import type { ThesisMatrix } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -21,11 +22,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
 
 type FormState = {
-  researchCore: string;
-  framework: string;
+  subjectProblem: string;
+  theoreticalFramework: string;
   analysisActors: string;
+  primaryMaterial: string;
   methodology: string;
-  researchScope: string;
 };
 
 type FieldConfig = {
@@ -48,23 +49,23 @@ type SectionConfig = {
 const MATRIX_SECTIONS: SectionConfig[] = [
   {
     id: "odakVeTeori",
-    title: "Çalışma Odağı ve Teorik Altyapı",
+    title: "Çalışma Odağı ve Kuramsal Altyapı",
     fields: [
       {
-        key: "researchCore",
-        id: "researchCore",
+        key: "subjectProblem",
+        id: "subjectProblem",
         number: "01",
         Icon: Target,
-        label: "Çalışmanın Odağı ve Problemi",
+        label: "Araştırma Problemi ve Odağı",
         description:
           "Neyi, hangi temel problemi çözmek veya hangi hipotezi test etmek için inceliyorsun?",
         placeholder:
           "Çalışmanızın odağını, çözmeyi hedeflediğiniz temel problemi ve araştırma sorularınızı detaylandırın...",
-        rows: 6,
+        rows: 4,
       },
       {
-        key: "framework",
-        id: "framework",
+        key: "theoreticalFramework",
+        id: "theoreticalFramework",
         number: "02",
         Icon: Compass,
         label: "Teorik ve Kavramsal Çerçeve",
@@ -72,49 +73,49 @@ const MATRIX_SECTIONS: SectionConfig[] = [
           "Çalışmanı hangi teorik mercekle, modelle veya kavramsal yaklaşımla ele alıyorsun?",
         placeholder:
           "Temel aldığınız teorik merceği, kavramsal modelleri ve analitik yaklaşımınızı açıklayın...",
-        rows: 6,
+        rows: 4,
       },
-    ],
-  },
-  {
-    id: "analizYontemKapsam",
-    title: "Analiz Birimi, Metodoloji ve Kapsam Sınırları",
-    fields: [
       {
         key: "analysisActors",
         id: "analysisActors",
         number: "03",
-        Icon: Boxes,
-        label: "Analiz Birimleri ve Aktörler",
+        Icon: Users,
+        label: "Aktörler / Analiz Birimi",
         description:
-          "Veriyi nereden topluyorsun? Kimi, hangi veri kümesini, materyali veya aktörleri inceliyorsun?",
+          "Çalışmanda hangi aktörleri, grupları, kurumları veya analiz birimini mercek altına alıyorsun?",
         placeholder:
-          "İncelediğiniz aktörleri, veri setlerini, materyalleri veya odak nesnelerinizi tanımlayın...",
-        rows: 6,
+          "İncelediğiniz aktörleri, grupları, kurumları, metinleri veya analiz biriminizi tanımlayın...",
+        rows: 4,
+      },
+    ],
+  },
+  {
+    id: "veriVeYontem",
+    title: "Veri Kaynağı ve Yöntem",
+    fields: [
+      {
+        key: "primaryMaterial",
+        id: "primaryMaterial",
+        number: "04",
+        Icon: Database,
+        label: "Veri Kaynağı / Birincil Malzeme",
+        description:
+          "Hangi birincil kaynakları, veri setlerini veya arşiv malzemelerini kullanacaksın? (mülakat, anket, gazete, arşiv belgeleri, mahkeme kararları vb.)",
+        placeholder:
+          "Kullanacağınız veri kaynaklarını, birincil malzemeleri veya arşiv belgelerini tanımlayın...",
+        rows: 4,
       },
       {
         key: "methodology",
         id: "methodology",
-        number: "04",
+        number: "05",
         Icon: BookOpen,
         label: "Metodoloji",
         description:
           "Veriyi nasıl topluyor, işliyor veya ölçüyorsun? (Nitel, nicel, deneysel, simülasyon vb.)",
         placeholder:
           "Veri toplama, veri işleme ve analiz yöntemlerinizi (nitel/nicel/deneysel/simülasyon) ve temel argümanınızı açıklayın...",
-        rows: 6,
-      },
-      {
-        key: "researchScope",
-        id: "researchScope",
-        number: "05",
-        Icon: MapPin,
-        label: "Kapsam ve Sınırlar",
-        description:
-          "Çalışmanın zaman, mekan, sektör, örneklem veya coğrafi sınırları nedir?",
-        placeholder:
-          "Çalışmanızın dönemsel, coğrafi, sektörel veya örneklem sınırlarını belirtin...",
-        rows: 6,
+        rows: 4,
       },
     ],
   },
@@ -191,15 +192,15 @@ const MatrixCard = memo(function MatrixCard({
  * @param props.initialMatrix - Pre-fetched thesis matrix data (nullable).
  */
 const EMPTY_VALUES: FormState = {
-  researchCore: "",
-  framework: "",
+  subjectProblem: "",
+  theoreticalFramework: "",
   analysisActors: "",
+  primaryMaterial: "",
   methodology: "",
-  researchScope: "",
 };
 
 interface MatrixFormProps {
-  initialMatrix?: ThesisMatrix | null;
+  initialMatrix?: ThesisMatrixSchema | null;
 }
 
 export function MatrixForm({ initialMatrix }: MatrixFormProps) {
@@ -211,11 +212,13 @@ export function MatrixForm({ initialMatrix }: MatrixFormProps) {
   const formState = useMemo((): FormState => {
     const base = initialMatrix ?? EMPTY_VALUES;
     return {
-      researchCore: editedValues.researchCore ?? base.researchCore,
-      framework: editedValues.framework ?? base.framework,
-      analysisActors: editedValues.analysisActors ?? base.analysisActors,
+      subjectProblem: editedValues.subjectProblem ?? base.subjectProblem,
+      theoreticalFramework:
+        editedValues.theoreticalFramework ?? base.theoreticalFramework,
+      analysisActors: editedValues.analysisActors ?? base.analysisActors ?? "",
+      primaryMaterial:
+        editedValues.primaryMaterial ?? base.primaryMaterial ?? "",
       methodology: editedValues.methodology ?? base.methodology,
-      researchScope: editedValues.researchScope ?? base.researchScope,
     };
   }, [initialMatrix, editedValues]);
 
@@ -233,12 +236,12 @@ export function MatrixForm({ initialMatrix }: MatrixFormProps) {
 
     try {
       await submitMatrix({
-        researchCore: formState.researchCore,
-        framework: formState.framework,
+        subjectProblem: formState.subjectProblem,
+        theoreticalFramework: formState.theoreticalFramework,
         analysisActors: formState.analysisActors,
+        primaryMaterial: formState.primaryMaterial,
         methodology: formState.methodology,
-        researchScope: formState.researchScope,
-      });
+      } as ThesisMatrix);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Beklenmeyen bir hata oluştu.";

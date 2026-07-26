@@ -23,8 +23,7 @@ import { clearDownstreamDbAction } from "@/app/(onboarding)/onboarding/actions";
 import { saveThesisMatrixAction } from "../matrix/actions";
 import { fetchBoxesWithFullShape } from "../_services/fetch-actions";
 import {
-  runBoxStructureAction,
-  runSemanticQueriesAction,
+  generateAndMapBoxesAction,
   persistBoxesAction,
 } from "../boxes/actions";
 import {
@@ -101,8 +100,8 @@ export function useOnboardingNavigation() {
       steps[0].status = "active";
 
       showLoading(
-        "Çalışma Matrisi Kaydediliyor & Konumlandırma Analizi Çalıştırılıyor",
-        "Tez matrisiniz kaydediliyor, akademik arama sorguları üretiliyor ve jüri analizi yapılıyor.",
+        "Çalışma Matrisi Kaydediliyor & Konumlandırma Raporu Hazırlanıyor",
+        "Tez matrisiniz kaydediliyor, akademik veri tabanlarında tezler taranıyor ve jüri analizi ile konumlandırma raporu oluşturuluyor.",
         steps,
       );
 
@@ -196,7 +195,7 @@ export function useOnboardingNavigation() {
 
       showLoading(
         "Literatür Taraması Yapılıyor",
-        "Yapay zeka asistanınız her bir konu kutusu için akademik kaynakları tarıyor.",
+        "Yapay zeka asistanınız her konu kutusu için akademik kaynakları araştırıyor ve literatür havuzunuzu oluşturuyor.",
         steps,
         () => {
           isCancelled = true;
@@ -311,40 +310,29 @@ export function useOnboardingNavigation() {
     steps[0].status = "active";
 
     showLoading(
-      "Konu Kutuları Oluşturuluyor",
-      "Tez matrisiniz çözümlenerek 5 kadranlı konu kutuları ve izole vektör arama sorguları üretiliyor.",
+      "Altyapısal Konu Kutuları Oluşturuluyor",
+      "Tez matrisiniz çözümlenerek altyapısal konu kutuları oluşturuluyor ve her kutu için literatür tarama sorguları üretiliyor.",
       steps,
     );
 
     try {
-      // Step 1: Generate Turkish Box Structure
-      const structResult = await runBoxStructureAction();
-      if ("error" in structResult) {
+      // Step 1: Generate Turkish Box Structure + OpenAlex Semantic Queries (single phase)
+      const genResult = await generateAndMapBoxesAction();
+      if ("error" in genResult) {
         hideLoading();
-        toast.error(structResult.error);
+        toast.error(genResult.error);
         return;
       }
       await completeStep(0, steps);
 
-      // Step 2: Generate OpenAlex Semantic Queries
-      const queriesResult = await runSemanticQueriesAction(
-        structResult.structure,
-      );
-      if ("error" in queriesResult) {
-        hideLoading();
-        toast.error(queriesResult.error);
-        return;
-      }
-      await completeStep(1, steps);
-
-      // Step 3: Persist Boxes to DB
-      const persistResult = await persistBoxesAction(queriesResult.boxes);
+      // Step 2: Persist Boxes to DB
+      const persistResult = await persistBoxesAction(genResult.boxes);
       if ("error" in persistResult) {
         hideLoading();
         toast.error(persistResult.error);
         return;
       }
-      await completeStep(2, steps);
+      await completeStep(1, steps);
 
       queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
       hideLoading();

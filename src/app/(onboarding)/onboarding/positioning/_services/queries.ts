@@ -112,12 +112,12 @@ import {
 
 /**
  * Generates 6 short academic search queries (3 matrix fields × TR + EN, each exactly 3 keywords)
- * from the user's 5-field positioning matrix using Gemini Flash-Lite.
+ * from the user's 4-field positioning matrix using Gemini Flash-Lite.
  *
- * Fields used: subjectAndProblem, theoreticalFramework, unitOfAnalysis.
- * Methodology and scopeAndContext are intentionally excluded to reduce noise.
+ * Fields used: subjectProblem, theoreticalFramework, analysisActors.
+ * Methodology is intentionally excluded to reduce noise.
  *
- * @param input - The validated 5-field positioning matrix input.
+ * @param input - The validated 4-field positioning matrix input.
  * @param logger - Optional Logger instance for structured telemetry.
  * @returns Object containing 6 sanitized 3-keyword Meilisearch queries.
  */

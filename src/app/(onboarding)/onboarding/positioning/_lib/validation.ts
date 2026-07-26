@@ -3,17 +3,18 @@ import { z } from "zod";
 /**
  * Zod validation schema for universal thesis positioning matrix.
  * Enforces mandatory minimum length constraints across 5 core academic fields.
+ * Only fields relevant to positioning are included.
  */
 export const positioningMatrixSchema = z.object({
-  subjectAndProblem: z
+  subjectProblem: z
     .string()
     .trim()
-    .min(3, "Çalışmanın odağı ve problemi en az 3 karakter olmalıdır."),
+    .min(3, "Araştırma problemi en az 3 karakter olmalıdır."),
   theoreticalFramework: z
     .string()
     .trim()
     .min(3, "Teorik veya kavramsal çerçeve en az 3 karakter olmalıdır."),
-  unitOfAnalysis: z
+  analysisActors: z
     .string()
     .trim()
     .min(
@@ -24,10 +25,6 @@ export const positioningMatrixSchema = z.object({
     .string()
     .trim()
     .min(3, "Metodoloji ve yöntem en az 3 karakter olmalıdır."),
-  scopeAndContext: z
-    .string()
-    .trim()
-    .min(3, "Kapsam ve sınırlar en az 3 karakter olmalıdır."),
 });
 
 /** Input payload type inferred from the positioning matrix Zod schema. */

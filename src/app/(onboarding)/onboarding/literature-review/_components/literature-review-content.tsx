@@ -247,32 +247,7 @@ function SubBoxDone({
     );
   }
 
-  /* RELATED_THESES show their entries directly */
-  if (subBox.boxType === "RELATED_THESES") {
-    if (!entry || entry.articles.length === 0) {
-      return (
-        <div className="p-6 text-center border border-dashed border-border rounded-md bg-card/20">
-          <p className="text-sm text-muted-foreground">Kaynak bulunamadı.</p>
-        </div>
-      );
-    }
-    return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {[...entry.articles]
-            .sort((a, b) => Number(b.isFoundational) - Number(a.isFoundational))
-            .map((article, idx) => (
-              <LiteratureArticleCard
-                key={`${article.title}-${idx}`}
-                article={article}
-              />
-            ))}
-        </div>
-      </div>
-    );
-  }
-
-  /* Standard boxes (CONCEPTUAL, PROBLEMATIZATION, DATA_PROTOCOL, CONTEXT):
+  /* Standard boxes (TOPIC, THEORY, METHODOLOGY):
      Render sub-boxes hierarchically and distribute parent entry articles to them */
   const childBoxes = subBox.subBoxes ?? [];
   if (childBoxes.length === 0) {
@@ -386,12 +361,11 @@ export function LiteratureReviewContent() {
   } = useLiteratureReview();
 
   const boxTypeLabels: Record<string, string> = {
-    CONCEPTUAL: "Teorik Çatı",
-    PROBLEMATIZATION: "Problematizasyon",
-    PRIMARY_MATERIAL: "Birincil Malzeme",
-    CONTEXT: "Bağlam",
-    DATA_PROTOCOL: "Metodoloji",
-    RELATED_THESES: "İlişkisel Tezler",
+    SUBJECT_PROBLEM: "Araştırma Problemi",
+    THEORETICAL_FRAMEWORK: "Teorik Çerçeve",
+    ANALYSIS_ACTORS: "Aktörler / Analiz Birimi",
+    PRIMARY_MATERIAL: "Veri Kaynağı",
+    METHODOLOGY: "Yöntem",
   };
 
   if (loading) {

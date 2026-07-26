@@ -36,9 +36,9 @@ Sana sunulan 5 bileşenli Tez Konumlandırma Matrisinin YALNIZCA üç bileşeni 
 ## Örnek 1: Kamu Yönetimi
 
 ### Girdi
-- **subjectAndProblem:** Türkiye kamu sektöründe yapay zeka karar destek sistemlerinin bürokratik karar alma süreçlerine entegrasyonu
+- **subjectProblem:** Türkiye kamu sektöründe yapay zeka karar destek sistemlerinin bürokratik karar alma süreçlerine entegrasyonu
 - **theoreticalFramework:** Teknoloji Kabul Modeli (TAM) ve Kurumsal İzamorfizma
-- **unitOfAnalysis:** Bakanlıklar bilişim daire başkanlıkları ve kıdemli bürokratlar
+- **analysisActors:** Bakanlıklar bilişim daire başkanlıkları ve kıdemli bürokratlar
 
 ### Beklenen Çıktı
 \`\`\`json
@@ -55,9 +55,9 @@ Sana sunulan 5 bileşenli Tez Konumlandırma Matrisinin YALNIZCA üç bileşeni 
 ## Örnek 2: Siyaset Bilimi
 
 ### Girdi
-- **subjectAndProblem:** Kürt Özgürlük Hareketi 1991-1999 stratejik dönüşüm silahlı siyasi mücadele
+- **subjectProblem:** Kürt Özgürlük Hareketi 1991-1999 stratejik dönüşüm silahlı siyasi mücadele
 - **theoreticalFramework:** Gramsci manevra savaşı mevzi savaşı karşı-hegemonya
-- **unitOfAnalysis:** HEP DEP HADEP parti programları söylemsel pratikler
+- **analysisActors:** HEP DEP HADEP parti programları söylemsel pratikler
 
 ### Beklenen Çıktı
 \`\`\`json
@@ -83,7 +83,7 @@ export function buildPositioningQueriesUserPrompt(
 ): string {
   return `Aşağıdaki matris alanları için tam 3 kelimelik Türkçe ve İngilizce Meilisearch sorguları üret:
 
-1. Çalışmanın Odağı ve Problemi (subjectTr / subjectEn): ${input.subjectAndProblem}
+1. Araştırma Problemi ve Odağı (subjectTr / subjectEn): ${input.subjectProblem}
 2. Teorik ve Kavramsal Çerçeve (theoryTr / theoryEn): ${input.theoreticalFramework}
-3. Analiz Birimleri ve Aktörler (actorsTr / actorsEn): ${input.unitOfAnalysis}`;
+3. Analiz Birimleri ve Aktörler (actorsTr / actorsEn): ${input.analysisActors}`;
 }

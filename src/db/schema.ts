@@ -55,8 +55,8 @@ export type NewUser = InferInsertModel<typeof users>;
 
 /**
  * Thesis Matrix table.
- * Stores researchCore, framework, analysisActors, methodology and researchScope
- * filled by the user during the first step of onboarding.
+ * Stores subjectProblem, theoreticalFramework, analysisActors, primaryMaterial,
+ * and methodology filled by the user during the first step of onboarding.
  */
 export const thesisMatrices = pgTable("thesis_matrices", {
   id: serial().primaryKey(),
@@ -64,11 +64,11 @@ export const thesisMatrices = pgTable("thesis_matrices", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" })
     .unique(),
-  researchCore: text().notNull(),
-  analysisActors: text("analysis_actors").notNull(),
-  framework: text("framework").notNull(),
+  subjectProblem: text("subject_problem").notNull(),
+  theoreticalFramework: text("theoretical_framework").notNull(),
+  analysisActors: text("analysis_actors"),
+  primaryMaterial: text("primary_material"),
   methodology: text("methodology").notNull(),
-  researchScope: text("research_scope").notNull(),
   createdAt: timestamp().defaultNow().notNull(),
   updatedAt: timestamp().defaultNow().notNull(),
 });
@@ -129,12 +129,11 @@ export type NewThesisPositioning = InferInsertModel<typeof thesisPositioning>;
 // ============================================================================
 
 export const boxTypeEnum = pgEnum("box_type_enum", [
-  "PROBLEMATIZATION",
-  "CONCEPTUAL",
-  "DATA_PROTOCOL",
+  "SUBJECT_PROBLEM",
+  "THEORETICAL_FRAMEWORK",
+  "ANALYSIS_ACTORS",
   "PRIMARY_MATERIAL",
-  "CONTEXT",
-  "RELATED_THESES",
+  "METHODOLOGY",
 ]);
 
 /**

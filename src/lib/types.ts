@@ -29,11 +29,11 @@ export interface TezaraThesisDetails {
 }
 
 export interface ThesisMatrix {
-  researchCore: string;
-  framework: string;
+  subjectProblem: string;
+  theoreticalFramework: string;
   analysisActors: string;
+  primaryMaterial: string;
   methodology: string;
-  researchScope: string;
 }
 
 export interface FoundationalQuery {
@@ -60,12 +60,11 @@ export interface GeminiThesisBox {
   id?: number;
   parentId: number | null;
   boxType:
-    | "PROBLEMATIZATION"
-    | "CONCEPTUAL"
-    | "DATA_PROTOCOL"
+    | "SUBJECT_PROBLEM"
+    | "THEORETICAL_FRAMEWORK"
+    | "ANALYSIS_ACTORS"
     | "PRIMARY_MATERIAL"
-    | "CONTEXT"
-    | "RELATED_THESES";
+    | "METHODOLOGY";
   title: string;
   description: string;
   semanticQuery: string | null;

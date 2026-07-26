@@ -189,7 +189,7 @@ export async function analyzePositioningJury(
       service: "positioning",
       filePath:
         "src/app/(onboarding)/onboarding/positioning/_services/analysis.ts",
-      data: { inputSubject: input.subjectAndProblem },
+      data: { inputSubject: input.subjectProblem },
     });
 
     return {
@@ -236,6 +236,11 @@ Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"} | Cohere Skoru: ${t
       thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
       thesisMatrix: { input, filteredThesesCount: filteredTheses.length },
     },
+  );
+
+  // Deterministic sorting: sort by externalThesisId to ensure consistent output order
+  result.recommendedTheses.sort(
+    (a, b) => Number(a.externalThesisId) - Number(b.externalThesisId),
   );
 
   return result;

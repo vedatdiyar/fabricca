@@ -16,13 +16,7 @@ import {
   buildBoxStructureUserPrompt,
   boxStructureSchema,
   boxStructureJsonSchema,
-  buildSemanticQueriesSystemInstruction,
-  buildSemanticQueriesUserPrompt,
-  semanticQueriesSchema,
-  semanticQueriesJsonSchema,
-  combineStructureAndQueries,
   type RawBoxStructureResponse,
-  type RawSemanticQueriesResponse,
 } from "@/lib/prompts/box-generation";
 import { type OnboardingActionResult, type GeminiThesisBox } from "@/lib/types";
 import { mapToProductionShape } from "../_lib/box-mapper";
@@ -32,12 +26,11 @@ const confirmBoxesSchema = z.array(
   z.object({
     title: z.string().min(1),
     boxType: z.enum([
-      "CONCEPTUAL",
-      "PROBLEMATIZATION",
+      "SUBJECT_PROBLEM",
+      "THEORETICAL_FRAMEWORK",
+      "ANALYSIS_ACTORS",
       "PRIMARY_MATERIAL",
-      "CONTEXT",
-      "DATA_PROTOCOL",
-      "RELATED_THESES",
+      "METHODOLOGY",
     ]),
     description: z.string().optional().default(""),
     parentId: z.number().nullable(),
@@ -58,10 +51,12 @@ const confirmBoxesSchema = z.array(
 );
 
 /**
- * Phase 1 Server Action: Generates the 5-quadrant Turkish academic box structure
- * (titles, descriptions, concepts, and sub-boxes) based on the user's thesis matrix.
+ * Single-phase server action: generates the 5-quadrant Turkish box structure
+ * AND quadrant-isolated English OpenAlex semanticQuery paragraphs in one call.
+ * Each quadrant sees only its own relevant matrix field(s) — no cross-quadrant
+ * context leaks into the query generation.
  *
- * @returns Phase 1 box structure or error string
+ * @returns Raw box structure with inline semanticQuery fields, or error.
  */
 export async function runBoxStructureAction(): Promise<
   { success: true; structure: RawBoxStructureResponse } | { error: string }
@@ -83,11 +78,11 @@ export async function runBoxStructureAction(): Promise<
     });
 
     const prompt = buildBoxStructureUserPrompt({
-      researchCore: matrix.researchCore,
-      framework: matrix.framework,
-      analysisActors: matrix.analysisActors,
+      subjectProblem: matrix.subjectProblem,
+      theoreticalFramework: matrix.theoreticalFramework,
+      analysisActors: matrix.analysisActors ?? "",
+      primaryMaterial: matrix.primaryMaterial ?? "",
       methodology: matrix.methodology,
-      researchScope: matrix.researchScope,
     });
 
     const structure = await generateStructuredContent<RawBoxStructureResponse>(
@@ -124,74 +119,60 @@ export async function runBoxStructureAction(): Promise<
 }
 
 /**
- * Phase 2 Server Action: Takes Phase 1 box structure and generates high-precision,
- * quadrant-isolated OpenAlex GTE Large EN vector search paragraphs (semanticQuery).
- * Combines structure and queries, then returns flattened GeminiThesisBox[].
- *
- * @param structure - Phase 1 generated box structure response.
- * @returns Array of production-shaped GeminiThesisBox items or error string.
+ * Converts a RawBoxStructureResponse (5 quadrants + analysis) to the RawQuadrants
+ * shape expected by mapToProductionShape. Each sub-box carries its own semanticQuery
+ * inline (generated in the single-phase call).
  */
-export async function runSemanticQueriesAction(
+function structureToQuadrants(
   structure: RawBoxStructureResponse,
-): Promise<{ success: true; boxes: GeminiThesisBox[] } | { error: string }> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-  const startTime = performance.now();
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const matrix = await fetchThesisMatrix();
-    if (!matrix) return { error: "Thesis matrix not found." };
-
-    log.info("box_semantic_queries_start", {
-      service: "boxes",
-      filePath: "src/app/(onboarding)/onboarding/boxes/actions.ts",
-    });
-
-    const prompt = buildSemanticQueriesUserPrompt(structure, {
-      researchCore: matrix.researchCore,
-      framework: matrix.framework,
-      analysisActors: matrix.analysisActors,
-      methodology: matrix.methodology,
-      researchScope: matrix.researchScope,
-    });
-
-    const queries = await generateStructuredContent<RawSemanticQueriesResponse>(
-      FLASH_LITE_31,
-      buildSemanticQueriesSystemInstruction(),
-      prompt,
-      semanticQueriesJsonSchema,
-      log,
-      {
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-        zodSchema: semanticQueriesSchema,
-        seed: GEMINI_SEED,
-        thesisMatrix: matrix,
-        payloadStage: "box_semantic_queries_generation",
-        quiet: true,
-      },
-    );
-
-    const combined = combineStructureAndQueries(structure, queries);
-    const normalizedBoxes = mapToProductionShape(combined);
-
-    log.info("box_semantic_queries_success", {
-      service: "boxes",
-      durationMs: Math.round(performance.now() - startTime),
-    });
-
-    return { success: true, boxes: normalizedBoxes };
-  } catch (err) {
-    log.error("box_semantic_queries_failed", {
-      service: "boxes",
-      error: err instanceof Error ? err : new Error(String(err)),
-    });
+): import("../_lib/box-mapper").RawQuadrants {
+  const mapQuadrant = (
+    key:
+      | "subjectProblem"
+      | "theoreticalFramework"
+      | "analysisActors"
+      | "primaryMaterial"
+      | "methodology",
+  ) => {
+    const q = structure[key];
     return {
-      error: "Vektör arama sorguları üretilirken beklenmeyen bir hata oluştu.",
+      title: q.title,
+      description: q.description,
+      subBoxes: q.subBoxes.map((sb) => ({
+        title: sb.title,
+        description: sb.description,
+        concepts: sb.concepts,
+        semanticQuery: sb.semanticQuery ?? "",
+        foundationalQueries: [],
+      })),
     };
-  }
+  };
+
+  return {
+    subjectProblem: mapQuadrant("subjectProblem"),
+    theoreticalFramework: mapQuadrant("theoreticalFramework"),
+    analysisActors: mapQuadrant("analysisActors"),
+    primaryMaterial: mapQuadrant("primaryMaterial"),
+    methodology: mapQuadrant("methodology"),
+  };
+}
+
+/**
+ * Generates box structure (with inline semantic queries) and converts to
+ * GeminiThesisBox[] for persistence. Used by the pipeline action.
+ *
+ * @returns Production-shaped boxes array or error.
+ */
+export async function generateAndMapBoxesAction(): Promise<
+  { success: true; boxes: GeminiThesisBox[] } | { error: string }
+> {
+  const structRes = await runBoxStructureAction();
+  if ("error" in structRes) return structRes;
+
+  const quadrants = structureToQuadrants(structRes.structure);
+  const boxes = mapToProductionShape(quadrants);
+
+  return { success: true, boxes };
 }
 
 /**
@@ -321,8 +302,8 @@ export async function persistBoxesAction(
 export const confirmBoxesAction = persistBoxesAction;
 
 /**
- * Full Server Pipeline Action: Runs Phase 1 (Structure) -> Phase 2 (Semantic Queries) -> Phase 3 (DB Persistence)
- * in sequence when called from server context.
+ * Full Server Pipeline Action: Generates boxes (with inline semanticQuery)
+ * in a single phase, then persists to the database.
  *
  * @returns Generated boxes array or error response.
  */
@@ -339,16 +320,12 @@ export async function runBoxesPipelineAction(): Promise<
       filePath: "src/app/(onboarding)/onboarding/boxes/actions.ts",
     });
 
-    // Step 1: Generate Turkish box structure
-    const structRes = await runBoxStructureAction();
-    if ("error" in structRes) return structRes;
+    // Single phase: generate structure + semanticQuery in one call
+    const genRes = await generateAndMapBoxesAction();
+    if ("error" in genRes) return genRes;
 
-    // Step 2: Generate English OpenAlex semanticQueries
-    const queryRes = await runSemanticQueriesAction(structRes.structure);
-    if ("error" in queryRes) return queryRes;
-
-    // Step 3: Persist to database
-    const persistRes = await persistBoxesAction(queryRes.boxes);
+    // Persist to database
+    const persistRes = await persistBoxesAction(genRes.boxes);
     if ("error" in persistRes && persistRes.error) {
       return { error: persistRes.error };
     }
@@ -358,7 +335,7 @@ export async function runBoxesPipelineAction(): Promise<
       durationMs: Math.round(performance.now() - pipelineStart),
     });
 
-    return { success: true, boxes: queryRes.boxes };
+    return { success: true, boxes: genRes.boxes };
   } catch (err) {
     log.error("boxes_full_pipeline_failed", {
       service: "boxes",

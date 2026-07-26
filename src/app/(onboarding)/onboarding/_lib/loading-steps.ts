@@ -12,27 +12,23 @@ export function isNavigationStepText(text: string): boolean {
 export const MATRIX_SUBMIT_STEPS: LoadingStep[] = [
   { text: "Çalışma matrisi kaydediliyor...", status: "active" },
   {
-    text: "Akademik arama sorguları üretiliyor ve tezler taranıyor...",
+    text: "Tezler bulunuyor…",
     status: "idle",
   },
-  { text: "Akademik jüri analizi tamamlanıyor...", status: "idle" },
+  { text: "Literatür inceleniyor…", status: "idle" },
   { text: "Rapor kaydediliyor...", status: "idle" },
 ];
 
 export const BOX_GENERATION_STEPS: LoadingStep[] = [
   {
-    text: "5 Kadranlı Konu Kutusu Yapısı ve Kavramlar Oluşturuluyor...",
+    text: "Altyapısal kutular ve tarama sorguları oluşturuluyor…",
     status: "active",
   },
-  {
-    text: "OpenAlex AI Vektör Arama Motoru İçin İzole Sorgular Üretiliyor...",
-    status: "idle",
-  },
-  { text: "Konu Kutuları Kaydediliyor...", status: "idle" },
+  { text: "Kutular Kaydediliyor...", status: "idle" },
 ];
 
 export const LITERATURE_PIPELINE_STEPS: LoadingStep[] = [
   { text: "Mevcut literatür havuzu kontrol ediliyor...", status: "active" },
   { text: "Akademik kaynaklar taranıyor...", status: "idle" },
-  { text: "Literatür havuzu onaylanıp kaydediliyor...", status: "idle" },
+  { text: "Literatür havuzu kaydediliyor...", status: "idle" },
 ];

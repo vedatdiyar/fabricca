@@ -222,24 +222,6 @@ const PrimaryMaterialSection = memo(function PrimaryMaterialSection() {
   );
 });
 
-/**
- * Renders the RELATED_THESES box info section.
- */
-const RelatedThesesSection = memo(function RelatedThesesSection() {
-  return (
-    <div className="pt-4 space-y-3 mt-5">
-      <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-        <Archive className="w-3.5 h-3.5 text-muted-foreground" />
-        Sınırdaş Tez Havuzu
-      </h4>
-      <p className="text-xs text-muted-foreground leading-relaxed">
-        Bu kutu, özgünlük analizinde tespit edilen sınırdaş tez çalışmalarını
-        barındırır.
-      </p>
-    </div>
-  );
-});
-
 const BoxCard = memo(function BoxCard({
   box,
   index,
@@ -297,10 +279,9 @@ const BoxCard = memo(function BoxCard({
 
       {box.subBoxes && box.subBoxes.length > 0 ? (
         <SubBoxSection subBoxes={box.subBoxes} />
-      ) : box.boxType === "PRIMARY_MATERIAL" ? (
+      ) : box.boxType === "PRIMARY_MATERIAL" ||
+        box.boxType === "ANALYSIS_ACTORS" ? (
         <PrimaryMaterialSection />
-      ) : box.boxType === "RELATED_THESES" ? (
-        <RelatedThesesSection />
       ) : null}
     </Card>
   );

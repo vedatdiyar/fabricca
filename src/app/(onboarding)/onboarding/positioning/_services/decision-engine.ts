@@ -13,7 +13,7 @@ import type { JuryAnalysisResult } from "./analysis";
  * to the `thesis_positioning` database table within a transaction and invalidates step cache.
  *
  * @param userId - ID of the authenticated user.
- * @param input - The validated 5-field positioning matrix input.
+ * @param input - The validated 4-field positioning matrix input.
  * @param analysisResult - The LLM Jury analysis result.
  * @returns Promise resolving to the saved thesisPositioning record.
  */

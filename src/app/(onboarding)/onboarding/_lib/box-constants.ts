@@ -4,19 +4,17 @@
  */
 
 export const BOX_ORDER_WEIGHT: Record<string, number> = {
-  PROBLEMATIZATION: 1,
-  CONCEPTUAL: 2,
-  CONTEXT: 3,
-  DATA_PROTOCOL: 4,
-  PRIMARY_MATERIAL: 5,
-  RELATED_THESES: 6,
+  SUBJECT_PROBLEM: 1,
+  THEORETICAL_FRAMEWORK: 2,
+  ANALYSIS_ACTORS: 3,
+  PRIMARY_MATERIAL: 4,
+  METHODOLOGY: 5,
 };
 
 export const BOX_TYPE_LABELS: Record<string, string> = {
-  CONCEPTUAL: "Teorik Çatı",
-  PROBLEMATIZATION: "Problematizasyon",
-  PRIMARY_MATERIAL: "Birincil Malzeme",
-  CONTEXT: "Bağlam",
-  DATA_PROTOCOL: "Metodoloji",
-  RELATED_THESES: "İlişkisel Tezler",
+  SUBJECT_PROBLEM: "Araştırma Problemi",
+  THEORETICAL_FRAMEWORK: "Teorik Çerçeve",
+  ANALYSIS_ACTORS: "Aktörler / Analiz Birimi",
+  PRIMARY_MATERIAL: "Veri Kaynağı",
+  METHODOLOGY: "Yöntem",
 };

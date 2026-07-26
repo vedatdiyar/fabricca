@@ -49,12 +49,11 @@ async function getCachedBoxes(thesisMatrixId: number) {
     .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId))
     .orderBy(
       sql`CASE ${thesisBoxes.boxType}
-        WHEN 'PROBLEMATIZATION' THEN 1
-        WHEN 'CONCEPTUAL' THEN 2
-        WHEN 'CONTEXT' THEN 3
-        WHEN 'DATA_PROTOCOL' THEN 4
-        WHEN 'PRIMARY_MATERIAL' THEN 5
-        WHEN 'RELATED_THESES' THEN 6
+        WHEN 'SUBJECT_PROBLEM' THEN 1
+        WHEN 'THEORETICAL_FRAMEWORK' THEN 2
+        WHEN 'ANALYSIS_ACTORS' THEN 3
+        WHEN 'PRIMARY_MATERIAL' THEN 4
+        WHEN 'METHODOLOGY' THEN 5
         ELSE 99
       END`,
     );
@@ -112,8 +111,7 @@ export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
       list.push({
         id: r.id,
         title: r.title,
-        boxType:
-          (r.boxType as GeminiThesisBox["boxType"]) ?? "PROBLEMATIZATION",
+        boxType: (r.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
         description: r.description ?? "",
         parentId: r.parentId,
         semanticQuery: r.semanticQuery,
@@ -128,7 +126,7 @@ export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
   const boxes: GeminiThesisBox[] = parentRows.map((b) => ({
     id: b.id,
     title: b.title,
-    boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "PROBLEMATIZATION",
+    boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
     description: b.description ?? "",
     parentId: null,
     semanticQuery: null,
