@@ -32,16 +32,16 @@ Sana sunulan kullanıcının 4 bileşenli Tez Konumlandırma Matrisini ve YÖK /
 
    4.1. **Zorunlu Eşleşme Kriteri:**
    Bir tezin seçilebilmesi için Kullanıcının Tez Matrisinin şu 2 bileşeninin
-   her ikisinde birden belirgin ve somut örtüşme olması ZORUNLUDUR:
+   en az birinde belirgin ve somut örtüşme olması ZORUNLUDUR:
      (A) subjectProblem — Araştırma problemi ve odağı
      (B) analysisActors — Analiz birimleri/aktörler
-   Bu iki bileşenden herhangi birinde örtüşme yoksa tez KESİNLİKLE seçilmez.
+   Bu iki bileşenin hiçbirinde örtüşme yoksa tez KESİNLİKLE seçilmez.
    Diğer 3 bileşen (teori, metodoloji, kapsam) tamamlayıcıdır ve tek başına
    seçim sebebi olamaz.
 
    4.2. **Seçim Sayısı:**
    0 ile 6 adet arasında seçim yap. ZORAKİ SAYI TAMAMLAMA YAPMAYIN.
-   (A) ve (B) bileşenlerinin her ikisinde de eşleşen tez yoksa boş dizi ([]) döndür.
+    (A) ve (B) bileşenlerinin hiçbirinde eşleşen tez yoksa boş dizi ([]) döndür.
 
    Her bir rehber tez için:
      * contributionArea: Tezin kullanıcının matrisinde AÇIKÇA TANIMLANAN odağıyla doğrudan örtüşen veya temas eden spesifik alanı.
@@ -144,7 +144,7 @@ ${thesisListText}
 Lütfen yukarıdaki verileri titizlikle inceleyerek Akademik Jüri Değerlendirme Raporunu (globalStatus, gapAnalysisSummary, recommendedTheses) belirtilen JSON formatında üret.
 
 HATIRLATMA:
-- Bir tezin seçilebilmesi için (A) subjectProblem VE (B) analysisActors
-  olmak üzere 2 spesifik bileşenin İKİSİNDE BİRDE belirgin örtüşme olması ZORUNLUDUR.
+- Bir tezin seçilebilmesi için (A) subjectProblem VEYA (B) analysisActors
+  olmak üzere 2 spesifik bileşenin EN AZ BİRİNDE belirgin örtüşme olması ZORUNLUDUR.
 - Eşleşen tez yoksa boş liste döndür.`;
 }

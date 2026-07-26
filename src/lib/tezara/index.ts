@@ -5,6 +5,13 @@ const MEILI_URL = "https://meili.tezara.org";
 const MEILI_KEY =
   "70e96aa1342ee1ab1ce3d6e2f40e290252ea702f1def87f4071834d034f54831";
 
+/** Additional Meilisearch search parameters for precision tuning. */
+export interface MeiliSearchParams {
+  rankingScoreThreshold?: number;
+  filter?: string;
+  attributesToSearchOn?: string[];
+}
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
@@ -103,17 +110,32 @@ async function meiliSearch(
  *
  * @param query - The search query term.
  * @param logger - Optional Logger instance.
- * @param options - Optional options such as search result limit.
+ * @param options - Optional options such as search result limit and Meilisearch params.
  * @returns A list of thesis details with abstracts.
  */
 export async function searchTezara(
   query: string,
   logger?: Logger,
-  options?: { limit?: number },
+  options?: {
+    limit?: number;
+    rankingScoreThreshold?: number;
+    filter?: string;
+    attributesToSearchOn?: string[];
+  },
 ): Promise<TezaraThesisDetails[]> {
   const startTime = performance.now();
   const limit = options?.limit ?? 100;
-  const data = await meiliSearch({ q: query, limit }, logger, "search_meili");
+  const body: Record<string, unknown> = { q: query, limit };
+  if (options?.rankingScoreThreshold !== undefined) {
+    body.rankingScoreThreshold = options.rankingScoreThreshold;
+  }
+  if (options?.filter !== undefined) {
+    body.filter = options.filter;
+  }
+  if (options?.attributesToSearchOn !== undefined) {
+    body.attributesToSearchOn = options.attributesToSearchOn;
+  }
+  const data = await meiliSearch(body, logger, "search_meili");
   const durationMs = performance.now() - startTime;
 
   if (!data) return [];

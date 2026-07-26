@@ -39,15 +39,19 @@ export function filterThesesForJury(
     (t) => (t.relevanceScore ?? 0) >= RELEVANCE_THRESHOLD,
   );
 
+  let result: SiftedThesis[];
+
   if (filtered.length > MAX_THESES) {
-    return filtered.slice(0, MAX_THESES);
+    result = filtered.slice(0, MAX_THESES);
+  } else if (filtered.length < MIN_THESES) {
+    result = siftedTheses.slice(0, Math.min(MIN_THESES, siftedTheses.length));
+  } else {
+    result = filtered;
   }
 
-  if (filtered.length < MIN_THESES) {
-    return siftedTheses.slice(0, Math.min(MIN_THESES, siftedTheses.length));
-  }
-
-  return filtered;
+  // Sort by thesis ID to ensure deterministic [Tez #] labelling
+  // regardless of Cohere score fluctuations
+  return result.sort((a, b) => a.id - b.id);
 }
 
 /** Zod schema for individual recommended guiding thesis items. */

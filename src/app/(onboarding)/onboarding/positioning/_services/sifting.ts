@@ -21,6 +21,20 @@ const ALLOWED_LANGUAGES = new Set([
   "ingilizce",
 ]);
 
+/** Meilisearch filter to pre-filter results to Turkish or English only. */
+const LANG_FILTER = "language=Türkçe OR language=English";
+
+/** Fields to search within for relevance (title + abstract). */
+const SEARCH_FIELDS = [
+  "title_original",
+  "title_translated",
+  "abstract_original",
+  "abstract_translated",
+];
+
+/** Minimum Meilisearch ranking score threshold to filter low-relevance hits. */
+const RANKING_SCORE_THRESHOLD = 0.3;
+
 /**
  * Validates whether a thesis language tag matches allowed languages (Turkish or English).
  * If no language tag is provided in metadata, the thesis is retained by default.
@@ -76,14 +90,14 @@ function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
 }
 
 /**
- * Executes 6 parallel Meilisearch queries on Tezara (3 matrix fields × TR + EN,
- * each query exactly 3 focused keywords), deduplicates results, applies abstract
+ * Executes 8 parallel Meilisearch queries on Tezara (2 matrix fields × TR + EN × 2 alternatives,
+ * each query 2-4 focused keywords), deduplicates results, applies abstract
  * length and language filters, then ranks candidates using Cohere Rerank v4 Pro.
  *
- * Fields queried: subjectProblem, theoreticalFramework, analysisActors.
- * Methodology is excluded to reduce noise in BM25 scoring.
+ * Fields queried: subjectProblem, analysisActors.
+ * Methodology and theoreticalFramework are intentionally excluded.
  *
- * @param queries - Generated 6-query object (3 fields × TR + EN).
+ * @param queries - Generated 8-query object (2 fields × TR + EN × 2 alternatives).
  * @param matrixInput - The 4-field positioning matrix input used as target context for reranking.
  * @param logger - Optional Logger instance for step telemetry.
  * @param options - Optional configuration options including topN (default 12).
@@ -97,12 +111,16 @@ export async function searchAndSiftTheses(
 ): Promise<SiftedThesis[]> {
   const topN = options?.topN ?? 12;
 
-  const cleanSubjectTr = sanitizeMeiliQuery(queries.subjectTr);
-  const cleanSubjectEn = sanitizeMeiliQuery(queries.subjectEn);
-  const cleanTheoryTr = sanitizeMeiliQuery(queries.theoryTr);
-  const cleanTheoryEn = sanitizeMeiliQuery(queries.theoryEn);
-  const cleanActorsTr = sanitizeMeiliQuery(queries.actorsTr);
-  const cleanActorsEn = sanitizeMeiliQuery(queries.actorsEn);
+  const allQueries: string[] = [
+    sanitizeMeiliQuery(queries.subjectTr_alt1),
+    sanitizeMeiliQuery(queries.subjectTr_alt2),
+    sanitizeMeiliQuery(queries.subjectEn_alt1),
+    sanitizeMeiliQuery(queries.subjectEn_alt2),
+    sanitizeMeiliQuery(queries.actorsTr_alt1),
+    sanitizeMeiliQuery(queries.actorsTr_alt2),
+    sanitizeMeiliQuery(queries.actorsEn_alt1),
+    sanitizeMeiliQuery(queries.actorsEn_alt2),
+  ];
 
   const searchStart = performance.now();
 
@@ -110,47 +128,28 @@ export async function searchAndSiftTheses(
     service: "tezara",
     filePath:
       "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
-    data: {
-      queries: {
-        subjectTr: cleanSubjectTr,
-        subjectEn: cleanSubjectEn,
-        theoryTr: cleanTheoryTr,
-        theoryEn: cleanTheoryEn,
-        actorsTr: cleanActorsTr,
-        actorsEn: cleanActorsEn,
-      },
-    },
+    data: { queries: allQueries },
   });
 
-  // Step 1: 6 parallel Meilisearch searches (limit: 100 per query)
-  const [
-    subjectTrHits,
-    subjectEnHits,
-    theoryTrHits,
-    theoryEnHits,
-    actorsTrHits,
-    actorsEnHits,
-  ] = await Promise.all([
-    searchTezara(cleanSubjectTr, logger, { limit: 100 }),
-    searchTezara(cleanSubjectEn, logger, { limit: 100 }),
-    searchTezara(cleanTheoryTr, logger, { limit: 100 }),
-    searchTezara(cleanTheoryEn, logger, { limit: 100 }),
-    searchTezara(cleanActorsTr, logger, { limit: 100 }),
-    searchTezara(cleanActorsEn, logger, { limit: 100 }),
-  ]);
+  // Step 1: 8 parallel Meilisearch searches with precision params
+  const searchParams = {
+    limit: 100,
+    rankingScoreThreshold: RANKING_SCORE_THRESHOLD,
+    filter: LANG_FILTER,
+    attributesToSearchOn: SEARCH_FIELDS,
+  };
+
+  const hitArrays = await Promise.all(
+    allQueries.map((q) => searchTezara(q, logger, searchParams)),
+  );
 
   // Step 2: Deduplicate by thesis ID — sort by ID for deterministic Cohere index mapping
   const candidateMap = new Map<number, TezaraThesisDetails>();
-  for (const thesis of [
-    ...subjectTrHits,
-    ...subjectEnHits,
-    ...theoryTrHits,
-    ...theoryEnHits,
-    ...actorsTrHits,
-    ...actorsEnHits,
-  ]) {
-    if (thesis && thesis.id && !candidateMap.has(thesis.id)) {
-      candidateMap.set(thesis.id, thesis);
+  for (const hits of hitArrays) {
+    for (const thesis of hits) {
+      if (thesis && thesis.id && !candidateMap.has(thesis.id)) {
+        candidateMap.set(thesis.id, thesis);
+      }
     }
   }
 
@@ -175,7 +174,7 @@ export async function searchAndSiftTheses(
       service: "tezara",
       filePath:
         "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
-      data: { cleanSubjectTr, cleanTheoryTr, cleanActorsTr },
+      data: { queries: allQueries },
     });
     return [];
   }

@@ -122,7 +122,7 @@ export function useOnboardingNavigation() {
 
         await completeStep(0, steps);
 
-        const pipelineStart = Date.now();
+        const pipelineStart = performance.now();
 
         const searchResult = await runPositioningSearchAction(matrixInput);
         if ("error" in searchResult) {
