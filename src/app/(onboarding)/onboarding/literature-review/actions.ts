@@ -278,15 +278,56 @@ export async function finalizeOnboardingAction(): Promise<OnboardingActionResult
 }
 
 /**
+ * Quick server action that checks whether a literature pool already exists
+ * in the database for the current user. Used by the loading-steps overlay
+ * to advance Step 0 ("Mevcut literatür havuzu kontrol ediliyor...").
+ *
+ * @returns `{ exists: true, data }` when a pool is found,
+ *          `{ exists: false }` otherwise,
+ *          or `{ exists: false, error }` on failure.
+ */
+export async function checkLiteraturePoolAction(): Promise<{
+  data?: LiteraturePoolEntry[];
+  exists: boolean;
+  error?: string;
+}> {
+  try {
+    const session = await getSession();
+    if (!session) return { exists: false, error: SESSION_ERROR_MSG };
+
+    const [matrix] = await db
+      .select({ id: thesisMatrices.id })
+      .from(thesisMatrices)
+      .where(eq(thesisMatrices.userId, session.userId));
+
+    if (!matrix) return { exists: false, error: "Thesis matrix not found." };
+
+    const pool = await fetchPreloadedPool(matrix.id);
+    if (pool && pool.length > 0) {
+      return { data: pool, exists: true };
+    }
+
+    return { exists: false };
+  } catch (err) {
+    return {
+      exists: false,
+      error: err instanceof Error ? err.message : "Unexpected error",
+    };
+  }
+}
+
+/**
  * Runs the full literature review pipeline as a single server action with
  * 6 sequential sub-steps + a final top-level total log:
- *   1. literature_db_kontrol      — check for pre-existing literature pool
- *   2. literature_openalex_search — OpenAlex parallel search + clustering
- *   3. literature_foundational_selection — bulk foundational-work selection (Gemini)
- *   4. literature_related_selection — related-article assignment per sub-box
- *   5. literature_sanitization    — bulk title/author cleanup (LLM)
- *   6. literature_db_write        — persist the full literature pool
- *   7. literature_toplam          — final total duration and summary
+ *   1. literature_openalex_search — OpenAlex parallel search + clustering
+ *   2. literature_foundational_selection — bulk foundational-work selection (Gemini)
+ *   3. literature_related_selection — related-article assignment per sub-box
+ *   4. literature_sanitization    — bulk title/author cleanup (LLM)
+ *   5. literature_db_write        — persist the full literature pool
+ *   6. literature_toplam          — final total duration and summary
+ *
+ * NOTE: The DB pre-check has been moved to {@link checkLiteraturePoolAction}.
+ *       Call that first and only invoke this action when the pool does NOT exist.
  *
  * @param boxes   Sub-box inputs to feed the AI pipeline
  * @param thesisArticlesMap  Optional pre-loaded RELATED_THESES articles
@@ -306,32 +347,9 @@ export async function runLiteraturePipelineAction(
     const userId = session.userId;
     _cancelFlags.set(userId, false);
 
-    // ── Step 1: DB kontrol ──────────────────────────────────────────────
-    logger.info("literature_db_kontrol_start");
-
-    const [matrix] = await db
-      .select({ id: thesisMatrices.id })
-      .from(thesisMatrices)
-      .where(eq(thesisMatrices.userId, userId));
-
-    if (!matrix) return { error: "Thesis matrix not found." };
-
-    const existingPool = await fetchPreloadedPool(matrix.id);
-    if (existingPool && existingPool.length > 0) {
-      logger.info("literature_db_kontrol_success");
-      logger.info("literature_db_write_success");
-      logger.info("literature_toplam", {
-        data: { durationMs: Math.round(performance.now() - pipelineStart) },
-      });
-
-      return { data: existingPool };
-    }
-
-    logger.info("literature_db_kontrol_success");
-
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
 
-    // ── Steps 2-5: orchestrateBatchProcess (logs internally) ────────────
+    // ── Steps 1-4: orchestrateBatchProcess (logs internally) ────────────
     const { poolEntries } = await orchestrateBatchProcess(
       boxes,
       logger,
@@ -344,7 +362,7 @@ export async function runLiteraturePipelineAction(
 
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
 
-    // ── Step 6: DB write ────────────────────────────────────────────────
+    // ── Step 5: DB write ────────────────────────────────────────────────
     logger.info("literature_db_write_start");
 
     await persistLiteraturePool(poolEntries);

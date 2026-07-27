@@ -28,13 +28,9 @@ export interface Cluster {
  * cluster. Returns clusters sorted by combined citedByCount descending.
  *
  * @param refMetadata - Full metadata for candidate references
- * @param _refToModernIdx - Ignored (interface compatibility kept)
  * @returns Sorted clusters of unique works
  */
-export function clusterRefMetadata(
-  refMetadata: RefMetadata[],
-  _refToModernIdx?: Map<string, number[]>,
-): Cluster[] {
+export function clusterRefMetadata(refMetadata: RefMetadata[]): Cluster[] {
   const validRefs = refMetadata.filter(
     (ref) => ref.title?.trim() && ref.authors.length > 0,
   );

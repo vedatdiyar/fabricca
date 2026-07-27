@@ -133,8 +133,7 @@ export async function runBoxStructureAction(): Promise<
 export async function generateSemanticQueriesAction(
   structure: RawBoxStructureResponse,
 ): Promise<
-  | { success: true; queries: Map<string, string> }
-  | { error: string }
+  { success: true; queries: Map<string, string> } | { error: string }
 > {
   const flowId = createFlowId();
   const log = new Logger(flowId);
@@ -150,17 +149,26 @@ export async function generateSemanticQueriesAction(
     });
 
     // Collect all sub-boxes with their context (skip PRIMARY_MATERIAL)
-    const subBoxEntries: { title: string; boxType: string; description: string }[] = [];
-    for (const key of ["subjectProblem", "theoreticalFramework", "methodology"] as const) {
+    const subBoxEntries: {
+      title: string;
+      boxType: string;
+      description: string;
+    }[] = [];
+    for (const key of [
+      "subjectProblem",
+      "theoreticalFramework",
+      "methodology",
+    ] as const) {
       const quadrant = structure[key];
       for (const sb of quadrant.subBoxes) {
         subBoxEntries.push({
           title: sb.title,
-          boxType: key === "subjectProblem"
-            ? "SUBJECT_PROBLEM"
-            : key === "theoreticalFramework"
-              ? "THEORETICAL_FRAMEWORK"
-              : "METHODOLOGY",
+          boxType:
+            key === "subjectProblem"
+              ? "SUBJECT_PROBLEM"
+              : key === "theoreticalFramework"
+                ? "THEORETICAL_FRAMEWORK"
+                : "METHODOLOGY",
           description: sb.description ?? "",
         });
       }
@@ -206,7 +214,8 @@ export async function generateSemanticQueriesAction(
       error: err instanceof Error ? err : new Error(String(err)),
     });
     return {
-      error: "Semantik arama sorguları oluşturulurken beklenmeyen bir hata oluştu.",
+      error:
+        "Semantik arama sorguları oluşturulurken beklenmeyen bir hata oluştu.",
     };
   }
 }

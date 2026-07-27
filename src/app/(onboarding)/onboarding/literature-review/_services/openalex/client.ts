@@ -83,7 +83,6 @@ export async function searchOpenAlex(
   const trimmedQuery = query.substring(0, 1000);
   const params = new URLSearchParams({
     "search.semantic": trimmedQuery,
-    filter: "language:en|tr",
     per_page: String(perPage),
     select:
       "id,title,type,authorships,relevance_score,doi,referenced_works,language",

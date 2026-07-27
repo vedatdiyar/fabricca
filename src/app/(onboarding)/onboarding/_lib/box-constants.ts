@@ -9,8 +9,8 @@
 export const BOX_ORDER_WEIGHT: Record<string, number> = {
   SUBJECT_PROBLEM: 1,
   THEORETICAL_FRAMEWORK: 2,
-  PRIMARY_MATERIAL: 3,
-  METHODOLOGY: 4,
+  METHODOLOGY: 3,
+  PRIMARY_MATERIAL: 4,
 };
 
 export const BOX_TYPE_LABELS: Record<string, string> = {

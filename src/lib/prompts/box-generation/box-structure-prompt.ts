@@ -43,6 +43,10 @@ Araştırmada kullanılan teorik çerçeveyi, kuramsal kavramları ve modelleri 
 ### Tanım
 Araştırmada kullanılan birincil kaynakları ve ham veri malzemelerini tanımlar.
 
+### Alt Kutu (Sub-box) Alokasyon İlkeleri
+- **Bütünleşik Veri Seti (N=1):** Tüm birincil kaynaklar aynı tür/arşivden geliyorsa veya tek bir kaynak türü varsa TEK BİR ALT KUTU (N=1) yeterlidir.
+- **Ayrık Kaynak Türleri (N>=2):** Farklı arşivler, belge türleri veya veri setleri (ör. resmi belgeler, sözlü tarih görüşmeleri, gazete arşivleri) varsa her biri KESİNLİKLE AYRI BİR ALT KUTU (N>=2) olarak yapılandırılmalıdır.
+
 ---
 
 ## KADRAN 4: METHODOLOGY (Yöntem)

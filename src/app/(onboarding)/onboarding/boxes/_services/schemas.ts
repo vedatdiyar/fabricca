@@ -72,11 +72,13 @@ function buildStructureQuadrantJsonSchema(): JsonSchemaProperty {
           properties: {
             title: {
               type: "string",
-              description: "Alt kutu başlığı (Kesinlikle akademik Türkçe olmalıdır)",
+              description:
+                "Alt kutu başlığı (Kesinlikle akademik Türkçe olmalıdır)",
             },
             description: {
               type: "string",
-              description: "Alt kutu açıklaması (Kesinlikle akademik Türkçe olmalıdır)",
+              description:
+                "Alt kutu açıklaması (Kesinlikle akademik Türkçe olmalıdır)",
             },
             concepts: {
               type: "array",

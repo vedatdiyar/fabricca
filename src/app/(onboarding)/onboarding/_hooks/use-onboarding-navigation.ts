@@ -27,6 +27,7 @@ import {
   persistBoxesAction,
 } from "../boxes/actions";
 import {
+  checkLiteraturePoolAction,
   runLiteraturePipelineAction,
   appendArchiveEntriesAction,
   finalizeOnboardingAction,
@@ -176,10 +177,18 @@ export function useOnboardingNavigation() {
   );
 
   /**
-   * Runs the full literature review AI pipeline as a single server action.
-   * The pipeline handles DB pre-check, OpenAlex search, foundational
-   * selection, related-article assignment, sanitization, and persistence.
-   * Hides the loading overlay on completion or error.
+   * Runs the literature review pipeline with a 3-phase loading overlay.
+   *
+   * Phase 0 (Step 0 — "Mevcut literatür havuzu kontrol ediliyor..."):
+   *   Quick DB check. If a pool already exists, phases 1 & 2 are skipped.
+   *
+   * Phase 1 (Step 1 — "Akademik kaynaklar taranıyor..."):
+   *   OpenAlex search, foundational selection, related-article assignment,
+   *   sanitization, and progressive DB saves.
+   *
+   * Phase 2 (Step 2 — "Literatür havuzu kaydediliyor..."):
+   *   Final persistence (persist happens inside the pipeline action, so this
+   *   step is marked complete immediately after the action returns).
    *
    * @param subBoxInputs - The sub-box inputs to feed to the AI pipeline.
    * @returns The literature pool entries on success, or an error string.
@@ -211,6 +220,26 @@ export function useOnboardingNavigation() {
       );
 
       try {
+        // ── Phase 0: DB pool check ──────────────────────────────────────
+        const checkResult = await checkLiteraturePoolAction();
+        if (isCancelled) return { error: "cancelled" };
+        if (checkResult.error) {
+          hideLoading();
+          return { error: checkResult.error };
+        }
+
+        if (checkResult.exists) {
+          // Pool exists — skip search and persist steps
+          await completeStep(0, steps);
+          await completeStep(1, steps);
+          await completeStep(2, steps);
+          hideLoading();
+          return { data: checkResult.data! };
+        }
+
+        await completeStep(0, steps);
+
+        // ── Phase 1: Full search pipeline ───────────────────────────────
         const pipelineResult = await runLiteraturePipelineAction(subBoxInputs);
         if (isCancelled) return { error: "cancelled" };
         if (pipelineResult.error) {
@@ -218,8 +247,9 @@ export function useOnboardingNavigation() {
           return { error: pipelineResult.error };
         }
 
-        await completeStep(0, steps);
         await completeStep(1, steps);
+
+        // ── Phase 2: Persist (completed inside pipeline action) ─────────
         await completeStep(2, steps);
         hideLoading();
 
@@ -334,7 +364,10 @@ export function useOnboardingNavigation() {
       }
       await completeStep(1, steps);
 
-      queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
+      const boxesTqKeys = getStepTanStackKeys("boxes");
+      for (const key of boxesTqKeys)
+        queryClient.invalidateQueries({ queryKey: key });
+
       hideLoading();
       router.push("/onboarding/boxes");
     } catch (err) {

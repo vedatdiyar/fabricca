@@ -130,7 +130,7 @@ export async function orchestrateBatchProcess(
           };
         }
 
-        let rawPapers = await searchOpenAlex(query, 50, checkCancelled);
+        const rawPapers = await searchOpenAlex(query, 25, checkCancelled);
 
         const activeWorks = rawPapers.filter(
           (p) =>
@@ -142,15 +142,12 @@ export async function orchestrateBatchProcess(
         const subBoxCandidates: QueueItem["candidates"] = [];
 
         if (N > 0) {
-          const { leaderIds, refToModernIdx } = analyzeReferenceFrequencies(
-            activeWorks,
-            N,
-          );
+          const { leaderIds } = analyzeReferenceFrequencies(activeWorks, N);
           const refMetadata = await fetchOpenAlexMetadataBatch(
             leaderIds,
             checkCancelled,
           );
-          const clusters = clusterRefMetadata(refMetadata, refToModernIdx);
+          const clusters = clusterRefMetadata(refMetadata);
 
           const mappedCandidates = clusters.slice(0, 5).map((c) => {
             const sortedMembers = [...c.members].sort((a, b) => {
