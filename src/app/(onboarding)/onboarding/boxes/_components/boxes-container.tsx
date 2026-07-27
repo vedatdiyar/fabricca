@@ -279,8 +279,7 @@ const BoxCard = memo(function BoxCard({
 
       {box.subBoxes && box.subBoxes.length > 0 ? (
         <SubBoxSection subBoxes={box.subBoxes} />
-      ) : box.boxType === "PRIMARY_MATERIAL" ||
-        box.boxType === "ANALYSIS_ACTORS" ? (
+      ) : box.boxType === "PRIMARY_MATERIAL" ? (
         <PrimaryMaterialSection />
       ) : null}
     </Card>

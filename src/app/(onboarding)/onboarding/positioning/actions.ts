@@ -33,7 +33,6 @@ export async function runPositioningSearchAction(
   const positioningInput: Record<string, string> = {
     subjectProblem: matrixInput.subjectProblem ?? "",
     theoreticalFramework: matrixInput.theoreticalFramework ?? "",
-    analysisActors: matrixInput.analysisActors ?? "",
     methodology: matrixInput.methodology ?? "",
   };
 
@@ -89,7 +88,6 @@ export async function runPositioningJuryAction(
   const positioningInput: Record<string, string> = {
     subjectProblem: matrixInput.subjectProblem ?? "",
     theoreticalFramework: matrixInput.theoreticalFramework ?? "",
-    analysisActors: matrixInput.analysisActors ?? "",
     methodology: matrixInput.methodology ?? "",
   };
 
@@ -147,7 +145,6 @@ export async function persistPositioningReportAction(
     const positioningInput: Record<string, string> = {
       subjectProblem: matrixInput.subjectProblem ?? "",
       theoreticalFramework: matrixInput.theoreticalFramework ?? "",
-      analysisActors: matrixInput.analysisActors ?? "",
       methodology: matrixInput.methodology ?? "",
     };
 
@@ -230,7 +227,6 @@ export async function getPositioningAction(): Promise<ThesisPositioning | null> 
       const currentMatrixInput = {
         subjectProblem: matrix.subjectProblem || "",
         theoreticalFramework: matrix.theoreticalFramework || "",
-        analysisActors: matrix.analysisActors || "",
         methodology: matrix.methodology || "",
       };
 
@@ -241,7 +237,6 @@ export async function getPositioningAction(): Promise<ThesisPositioning | null> 
           recordInput.subjectProblem === currentMatrixInput.subjectProblem &&
           recordInput.theoreticalFramework ===
             currentMatrixInput.theoreticalFramework &&
-          recordInput.analysisActors === currentMatrixInput.analysisActors &&
           recordInput.methodology === currentMatrixInput.methodology;
 
         if (isMatching) {

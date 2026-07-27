@@ -9,7 +9,6 @@ type ThesisBoxType = GeminiThesisBox["boxType"];
 export const QUADRANT_MAPPING: Record<string, ThesisBoxType> = {
   subjectProblem: "SUBJECT_PROBLEM",
   theoreticalFramework: "THEORETICAL_FRAMEWORK",
-  analysisActors: "ANALYSIS_ACTORS",
   primaryMaterial: "PRIMARY_MATERIAL",
   methodology: "METHODOLOGY",
 };
@@ -31,7 +30,6 @@ export interface RawQuadrant {
 export interface RawQuadrants {
   subjectProblem: RawQuadrant;
   theoreticalFramework: RawQuadrant;
-  analysisActors: RawQuadrant;
   primaryMaterial: RawQuadrant;
   methodology: RawQuadrant;
 }

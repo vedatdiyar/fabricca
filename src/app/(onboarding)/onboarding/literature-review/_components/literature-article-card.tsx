@@ -10,7 +10,7 @@ export function LiteratureArticleCard({ article }: LiteratureArticleCardProps) {
     <Card className="bg-card border border-border hover:border-primary/20 transition-all">
       <CardHeader className="pb-2 pt-3 px-3">
         <div className="flex items-start justify-between gap-2">
-          <CardTitle className="text-sm font-medium text-foreground leading-snug line-clamp-2 break-words hyphens-auto min-w-0">
+          <CardTitle className="text-sm font-medium text-foreground leading-snug break-words hyphens-auto min-w-0">
             {article.title}
           </CardTitle>
           <div className="shrink-0 flex items-center gap-2">

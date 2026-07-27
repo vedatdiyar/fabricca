@@ -22,7 +22,6 @@ const MAX_LENGTH = 4000;
 const thesisMatrixSchema = z.object({
   subjectProblem: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
   theoreticalFramework: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
-  analysisActors: z.string().trim().max(MAX_LENGTH).optional().default(""),
   primaryMaterial: z.string().trim().max(MAX_LENGTH).optional().default(""),
   methodology: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
 });
@@ -67,7 +66,6 @@ export async function saveThesisMatrixAction(
           userId: session.userId,
           subjectProblem: validated.subjectProblem,
           theoreticalFramework: validated.theoreticalFramework,
-          analysisActors: validated.analysisActors,
           primaryMaterial: validated.primaryMaterial,
           methodology: validated.methodology,
           updatedAt: sql`now()`,
@@ -77,7 +75,6 @@ export async function saveThesisMatrixAction(
           set: {
             subjectProblem: validated.subjectProblem,
             theoreticalFramework: validated.theoreticalFramework,
-            analysisActors: validated.analysisActors,
             primaryMaterial: validated.primaryMaterial,
             methodology: validated.methodology,
             updatedAt: sql`now()`,

@@ -9,7 +9,6 @@ import {
   BookOpen,
   Compass,
   Target,
-  Users,
   Database,
 } from "lucide-react";
 
@@ -24,7 +23,6 @@ import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation"
 type FormState = {
   subjectProblem: string;
   theoreticalFramework: string;
-  analysisActors: string;
   primaryMaterial: string;
   methodology: string;
 };
@@ -56,12 +54,12 @@ const MATRIX_SECTIONS: SectionConfig[] = [
         id: "subjectProblem",
         number: "01",
         Icon: Target,
-        label: "Araştırma Problemi ve Odağı",
+        label: "Araştırma Problemi, Aktörler ve Odak",
         description:
-          "Neyi, hangi temel problemi çözmek veya hangi hipotezi test etmek için inceliyorsun?",
+          "Neyi, hangi temel problemi çözmek veya hangi hipotezi test etmek için inceliyorsun? Hangi aktörleri, grupları, kurumları mercek altına alıyorsun? Bir araştırma konusu ile onu oluşturan aktörler birbirinden ayrıksı değildir.",
         placeholder:
-          "Çalışmanızın odağını, çözmeyi hedeflediğiniz temel problemi ve araştırma sorularınızı detaylandırın...",
-        rows: 4,
+          "Çalışmanızın araştırma problemini, odağını, incelediğiniz aktörleri/grupları/kurumları ve araştırma sorularınızı bütünleşik olarak detaylandırın...",
+        rows: 5,
       },
       {
         key: "theoreticalFramework",
@@ -75,18 +73,6 @@ const MATRIX_SECTIONS: SectionConfig[] = [
           "Temel aldığınız teorik merceği, kavramsal modelleri ve analitik yaklaşımınızı açıklayın...",
         rows: 4,
       },
-      {
-        key: "analysisActors",
-        id: "analysisActors",
-        number: "03",
-        Icon: Users,
-        label: "Aktörler / Analiz Birimi",
-        description:
-          "Çalışmanda hangi aktörleri, grupları, kurumları veya analiz birimini mercek altına alıyorsun?",
-        placeholder:
-          "İncelediğiniz aktörleri, grupları, kurumları, metinleri veya analiz biriminizi tanımlayın...",
-        rows: 4,
-      },
     ],
   },
   {
@@ -96,7 +82,7 @@ const MATRIX_SECTIONS: SectionConfig[] = [
       {
         key: "primaryMaterial",
         id: "primaryMaterial",
-        number: "04",
+        number: "03",
         Icon: Database,
         label: "Veri Kaynağı / Birincil Malzeme",
         description:
@@ -108,7 +94,7 @@ const MATRIX_SECTIONS: SectionConfig[] = [
       {
         key: "methodology",
         id: "methodology",
-        number: "05",
+        number: "04",
         Icon: BookOpen,
         label: "Metodoloji",
         description:
@@ -184,17 +170,20 @@ const MatrixCard = memo(function MatrixCard({
 });
 
 /**
- * MatrixForm — onboarding step 1. Renders the thesis matrix as a 5-field,
+ * MatrixForm — onboarding step 1. Renders the thesis matrix as a 4-field,
  * 2-section academic form. Persists to the database and navigates to the
  * positioning step. Uses server-side fetched initialData, so there is no
  * client-side loading state — the parent page already resolves the data.
+ *
+ * Note: ANALYSIS_ACTORS has been removed. Actors and the research subject
+ * are now unified in the subjectProblem field, reflecting that in social
+ * science research the topic and its actors are epistemologically inseparable.
  *
  * @param props.initialMatrix - Pre-fetched thesis matrix data (nullable).
  */
 const EMPTY_VALUES: FormState = {
   subjectProblem: "",
   theoreticalFramework: "",
-  analysisActors: "",
   primaryMaterial: "",
   methodology: "",
 };
@@ -215,7 +204,6 @@ export function MatrixForm({ initialMatrix }: MatrixFormProps) {
       subjectProblem: editedValues.subjectProblem ?? base.subjectProblem,
       theoreticalFramework:
         editedValues.theoreticalFramework ?? base.theoreticalFramework,
-      analysisActors: editedValues.analysisActors ?? base.analysisActors ?? "",
       primaryMaterial:
         editedValues.primaryMaterial ?? base.primaryMaterial ?? "",
       methodology: editedValues.methodology ?? base.methodology,
@@ -238,7 +226,6 @@ export function MatrixForm({ initialMatrix }: MatrixFormProps) {
       await submitMatrix({
         subjectProblem: formState.subjectProblem,
         theoreticalFramework: formState.theoreticalFramework,
-        analysisActors: formState.analysisActors,
         primaryMaterial: formState.primaryMaterial,
         methodology: formState.methodology,
       } as ThesisMatrix);

@@ -14,9 +14,8 @@ import { fetchPreloadedLiteraturePool } from "../actions";
 const boxOrderWeight: Record<string, number> = {
   SUBJECT_PROBLEM: 1,
   THEORETICAL_FRAMEWORK: 2,
-  ANALYSIS_ACTORS: 3,
-  PRIMARY_MATERIAL: 4,
-  METHODOLOGY: 5,
+  PRIMARY_MATERIAL: 3,
+  METHODOLOGY: 4,
 };
 
 /** Processing status of a single sub-box within the literature review grid. */

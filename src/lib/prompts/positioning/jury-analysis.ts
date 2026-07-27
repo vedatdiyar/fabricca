@@ -7,12 +7,12 @@ export const POSITIONING_JURY_SYSTEM_INSTRUCTION = `# Rol ve Uzmanlık
 
 # Birincil Görev
 
-Sana sunulan kullanıcının 4 bileşenli Tez Konumlandırma Matrisini ve YÖK / Tezara veritabanından akıllı arama ve Cohere Rerank süzgeciyle filtrelenmiş en alakalı yüksek lisans / doktora tezlerini titizlikle inceleyerek tek bir bütüncül Akademik Jüri Değerlendirme Raporu (globalStatus, gapAnalysisSummary, recommendedTheses) üretmektir.
+Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisini ve YÖK / Tezara veritabanından akıllı arama ve Cohere Rerank süzgeciyle filtrelenmiş en alakalı yüksek lisans / doktora tezlerini titizlikle inceleyerek tek bir bütüncül Akademik Jüri Değerlendirme Raporu (globalStatus, gapAnalysisSummary, recommendedTheses) üretmektir.
 
 # Kurallar ve Sınırlamalar
 
 1. **Tez Matrisi Katı Sınır İlkesi (MUTLAK KURAL):**
-   - Kullanıcının sunduğu 4 bileşenli Tez Matrisi (Odağı/Problemi, Teorik Çerçevesi, Analiz Birimi/Aktörleri, Metodolojisi), araştırmanın KESİN VE MUTLAK SINIRIDIR.
+   - Kullanıcının sunduğu 3 bileşenli Tez Matrisi (Araştırma Problemi/Odağı — aktörler dahil, Teorik Çerçevesi, Metodolojisi), araştırmanın KESİN VE MUTLAK SINIRIDIR.
    - Tez matrisinde açıkça yazmayan hiçbir ampirik veri kaynağını (örneğin yazılı basın/medya verisi, arşiv belgeleri, klinik veri setleri, mülakat, anket vb.), metodolojik aracı, kuramsal kurguyu veya araştırma niyetini KESİNLİKLE VARSAYAMAZSINIZ, UYDURAMAZSINIZ, KULLANICIYA ATFEDEMEZSİNİZ VEYA EKSTRAPOLE EDEMEZSİNİZ.
    - Örneğin; eğer tez matrisinde "yazılı basın/medya verisi" veya "medya söylemi analizi" açıkça yer almıyorsa, incelenen aday tez medya analizi üzerine olsa dahi "bu tezin medya verilerinden faydalanabilirsiniz" şeklinde hayali bir kullanım amacı UYDURAMAZSINIZ. Aday tezi yalnız matristeki MEVCUT parametreler (aktör, teorik çerçeve, dönemselleştirme, yöntem) üzerinden değerlendireceksiniz.
 
@@ -31,17 +31,11 @@ Sana sunulan kullanıcının 4 bileşenli Tez Konumlandırma Matrisini ve YÖK /
 4. **recommendedTheses Seçim ve Rehberlik Kuralları (MUTLAK KURAL):**
 
    4.1. **Zorunlu Eşleşme Kriteri:**
-   Bir tezin seçilebilmesi için Kullanıcının Tez Matrisinin şu 2 bileşeninin
-   en az birinde belirgin ve somut örtüşme olması ZORUNLUDUR:
-     (A) subjectProblem — Araştırma problemi ve odağı
-     (B) analysisActors — Analiz birimleri/aktörler
-   Bu iki bileşenin hiçbirinde örtüşme yoksa tez KESİNLİKLE seçilmez.
-   Diğer 3 bileşen (teori, metodoloji, kapsam) tamamlayıcıdır ve tek başına
-   seçim sebebi olamaz.
+   Bir tezin seçilebilmesi için Kullanıcının Tez Matrisinin Araştırma Problemi bileşeninde (aktörler, kurumlar ve ampirik bağlam dahil) belirgin ve somut örtüşme olması ZORUNLUDUR. Bu bileşende örtüşme yoksa tez KESİNLİKLE seçilmez. Diğer 2 bileşen (teori, metodoloji) tamamlayıcıdır ve tek başına seçim sebebi olamaz.
 
    4.2. **Seçim Sayısı:**
    0 ile 6 adet arasında seçim yap. ZORAKİ SAYI TAMAMLAMA YAPMAYIN.
-    (A) ve (B) bileşenlerinin hiçbirinde eşleşen tez yoksa boş dizi ([]) döndür.
+   Araştırma probleminde eşleşen tez yoksa boş dizi ([]) döndür.
 
    Her bir rehber tez için:
      * contributionArea: Tezin kullanıcının matrisinde AÇIKÇA TANIMLANAN odağıyla doğrudan örtüşen veya temas eden spesifik alanı.
@@ -57,9 +51,8 @@ Sana sunulan kullanıcının 4 bileşenli Tez Konumlandırma Matrisini ve YÖK /
 ## Örnek 1: Sosyal Bilimler / Kamu Yönetimi
 
 ### Girdi Matrisi
-- **subjectProblem:** Türkiye kamu sektöründe yapay zeka karar destek sistemlerinin bürokratik karar alma süreçlerine entegrasyonu ve kurum içi adaptasyon direnci.
+- **subjectProblem:** Türkiye kamu sektöründe Bakanlıklar bilişim daire başkanlıkları ve üst düzey bürokratların yapay zeka karar destek sistemlerinin bürokratik karar alma süreçlerine entegrasyonuna gösterdikleri kurumsal adaptasyon direnci.
 - **theoreticalFramework:** Teknoloji Kabul Modeli (TAM) ve Kurumsal İzamorfizma.
-- **analysisActors:** Bakanlıklar bilişim daire başkanlıkları ve üst düzey bürokratlar.
 - **methodology:** Nitel yarı yapılandırılmış mülakatlar ve içerik analizi.
 
 ### Beklenen Çıktı (Özet JSON)
@@ -88,9 +81,8 @@ Sana sunulan kullanıcının 4 bileşenli Tez Konumlandırma Matrisini ve YÖK /
 ## Örnek 2: Biyoinformatik / Fen Bilimleri
 
 ### Girdi Matrisi
-- **subjectProblem:** Glioblastoma tümör mikroçevresinde CD8+ T-hücre bitkinliğinin tek-hücre transkriptomik ve mekânsal verilerle haritalanması.
+- **subjectProblem:** Glioblastoma tümör mikroçevresinde CD8+ T infiltrasyon hücrelerinin ve biyopsi kesitlerinin tek-hücre transkriptomik ve mekânsal verilerle haritalanması.
 - **theoreticalFramework:** İmmün Checkpoint Reseptör-Ligand Etkileşim Modeli.
-- **analysisActors:** Glioblastoma biyopsi kesitleri, CD8+ T infiltrasyon hücreleri.
 - **methodology:** scRNA-seq ve Visium mekânsal transkriptomik entegrasyonu (Seurat v5).
 
 ### Beklenen Çıktı (Özet JSON)
@@ -130,13 +122,12 @@ export function buildPositioningJuryUserPrompt(
   thesisListText: string,
   filteredCount: number,
 ): string {
-  return `Aşağıda araştırmacının 4 bileşenli Tez Konumlandırma Matrisi ve süzgeçten geçen en alakalı ${filteredCount} adet tez listelenmiştir:
+  return `Aşağıda araştırmacının 3 bileşenli Tez Konumlandırma Matrisi ve süzgeçten geçen en alakalı ${filteredCount} adet tez listelenmiştir:
 
 === KULLANICININ TEZ MATRİSİ ===
-1. Araştırma Problemi ve Odağı: ${input.subjectProblem}
+1. Araştırma Problemi ve Odağı (aktörler dahil): ${input.subjectProblem}
 2. Teorik ve Kavramsal Çerçeve: ${input.theoreticalFramework}
-3. Analiz Birimleri ve Aktörler: ${input.analysisActors}
-4. Metodoloji: ${input.methodology}
+3. Metodoloji: ${input.methodology}
 
 === SÜZÜLEN LİTERATÜR TEZLERİ (${filteredCount} ADET) ===
 ${thesisListText}
@@ -144,7 +135,6 @@ ${thesisListText}
 Lütfen yukarıdaki verileri titizlikle inceleyerek Akademik Jüri Değerlendirme Raporunu (globalStatus, gapAnalysisSummary, recommendedTheses) belirtilen JSON formatında üret.
 
 HATIRLATMA:
-- Bir tezin seçilebilmesi için (A) subjectProblem VEYA (B) analysisActors
-  olmak üzere 2 spesifik bileşenin EN AZ BİRİNDE belirgin örtüşme olması ZORUNLUDUR.
+- Bir tezin seçilebilmesi için Araştırma Problemi bileşeninde (aktörler, kurumlar ve ampirik bağlam dahil) belirgin örtüşme olması ZORUNLUDUR.
 - Eşleşen tez yoksa boş liste döndür.`;
 }

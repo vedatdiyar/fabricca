@@ -31,7 +31,6 @@ export interface TezaraThesisDetails {
 export interface ThesisMatrix {
   subjectProblem: string;
   theoreticalFramework: string;
-  analysisActors: string;
   primaryMaterial: string;
   methodology: string;
 }
@@ -62,7 +61,6 @@ export interface GeminiThesisBox {
   boxType:
     | "SUBJECT_PROBLEM"
     | "THEORETICAL_FRAMEWORK"
-    | "ANALYSIS_ACTORS"
     | "PRIMARY_MATERIAL"
     | "METHODOLOGY";
   title: string;

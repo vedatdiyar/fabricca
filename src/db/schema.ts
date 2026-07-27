@@ -55,7 +55,7 @@ export type NewUser = InferInsertModel<typeof users>;
 
 /**
  * Thesis Matrix table.
- * Stores subjectProblem, theoreticalFramework, analysisActors, primaryMaterial,
+ * Stores subjectProblem, theoreticalFramework, primaryMaterial,
  * and methodology filled by the user during the first step of onboarding.
  */
 export const thesisMatrices = pgTable("thesis_matrices", {
@@ -66,7 +66,6 @@ export const thesisMatrices = pgTable("thesis_matrices", {
     .unique(),
   subjectProblem: text("subject_problem").notNull(),
   theoreticalFramework: text("theoretical_framework").notNull(),
-  analysisActors: text("analysis_actors"),
   primaryMaterial: text("primary_material"),
   methodology: text("methodology").notNull(),
   createdAt: timestamp().defaultNow().notNull(),
@@ -131,7 +130,6 @@ export type NewThesisPositioning = InferInsertModel<typeof thesisPositioning>;
 export const boxTypeEnum = pgEnum("box_type_enum", [
   "SUBJECT_PROBLEM",
   "THEORETICAL_FRAMEWORK",
-  "ANALYSIS_ACTORS",
   "PRIMARY_MATERIAL",
   "METHODOLOGY",
 ]);

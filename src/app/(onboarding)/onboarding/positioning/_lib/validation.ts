@@ -2,7 +2,8 @@ import { z } from "zod";
 
 /**
  * Zod validation schema for universal thesis positioning matrix.
- * Enforces mandatory minimum length constraints across 5 core academic fields.
+ * Enforces mandatory minimum length constraints across 3 core academic fields.
+ * ANALYSIS_ACTORS has been removed — actors are now part of subjectProblem.
  * Only fields relevant to positioning are included.
  */
 export const positioningMatrixSchema = z.object({
@@ -14,13 +15,6 @@ export const positioningMatrixSchema = z.object({
     .string()
     .trim()
     .min(3, "Teorik veya kavramsal çerçeve en az 3 karakter olmalıdır."),
-  analysisActors: z
-    .string()
-    .trim()
-    .min(
-      3,
-      "Analiz birimi, aktörler veya odak nesne en az 3 karakter olmalıdır.",
-    ),
   methodology: z
     .string()
     .trim()

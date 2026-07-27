@@ -84,17 +84,18 @@ function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
   return [
     `SubjectProblem: ${input.subjectProblem}`,
     `TheoreticalFramework: ${input.theoreticalFramework}`,
-    `AnalysisActors: ${input.analysisActors}`,
     `Methodology: ${input.methodology}`,
   ].join("\n");
 }
 
 /**
- * Executes 8 parallel Meilisearch queries on Tezara (2 matrix fields × TR + EN × 2 alternatives,
- * each query 2-4 focused keywords), deduplicates results, applies abstract
- * length and language filters, then ranks candidates using Cohere Rerank v4 Pro.
+ * Executes 8 parallel Meilisearch queries on Tezara (single field: subjectProblem
+ * × TR + EN × 4 alternatives, each query 2-4 focused keywords), deduplicates
+ * results, applies abstract length and language filters, then ranks candidates
+ * using Cohere Rerank v4 Pro.
  *
- * Fields queried: subjectProblem, analysisActors.
+ * Fields queried: subjectProblem (actors and empirical context are now integral
+ * to this field; ANALYSIS_ACTORS has been removed).
  * Methodology and theoreticalFramework are intentionally excluded.
  *
  * @param queries - Generated 8-query object (2 fields × TR + EN × 2 alternatives).
@@ -114,12 +115,12 @@ export async function searchAndSiftTheses(
   const allQueries: string[] = [
     sanitizeMeiliQuery(queries.subjectTr_alt1),
     sanitizeMeiliQuery(queries.subjectTr_alt2),
+    sanitizeMeiliQuery(queries.subjectTr_alt3),
+    sanitizeMeiliQuery(queries.subjectTr_alt4),
     sanitizeMeiliQuery(queries.subjectEn_alt1),
     sanitizeMeiliQuery(queries.subjectEn_alt2),
-    sanitizeMeiliQuery(queries.actorsTr_alt1),
-    sanitizeMeiliQuery(queries.actorsTr_alt2),
-    sanitizeMeiliQuery(queries.actorsEn_alt1),
-    sanitizeMeiliQuery(queries.actorsEn_alt2),
+    sanitizeMeiliQuery(queries.subjectEn_alt3),
+    sanitizeMeiliQuery(queries.subjectEn_alt4),
   ];
 
   const searchStart = performance.now();

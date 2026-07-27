@@ -6,7 +6,6 @@ export interface LoadedMatrixData {
   id: number;
   subjectProblem: string;
   theoreticalFramework: string;
-  analysisActors: string | null;
   primaryMaterial: string | null;
   methodology: string;
 }
@@ -22,7 +21,6 @@ export async function loadThesisMatrixAndBoxes(userId: number): Promise<{
       id: thesisMatrices.id,
       subjectProblem: thesisMatrices.subjectProblem,
       theoreticalFramework: thesisMatrices.theoreticalFramework,
-      analysisActors: thesisMatrices.analysisActors,
       primaryMaterial: thesisMatrices.primaryMaterial,
       methodology: thesisMatrices.methodology,
     })

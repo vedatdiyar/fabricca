@@ -51,9 +51,8 @@ async function getCachedBoxes(thesisMatrixId: number) {
       sql`CASE ${thesisBoxes.boxType}
         WHEN 'SUBJECT_PROBLEM' THEN 1
         WHEN 'THEORETICAL_FRAMEWORK' THEN 2
-        WHEN 'ANALYSIS_ACTORS' THEN 3
-        WHEN 'PRIMARY_MATERIAL' THEN 4
-        WHEN 'METHODOLOGY' THEN 5
+        WHEN 'PRIMARY_MATERIAL' THEN 3
+        WHEN 'METHODOLOGY' THEN 4
         ELSE 99
       END`,
     );

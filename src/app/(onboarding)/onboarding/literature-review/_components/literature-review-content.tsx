@@ -363,7 +363,6 @@ export function LiteratureReviewContent() {
   const boxTypeLabels: Record<string, string> = {
     SUBJECT_PROBLEM: "Araştırma Problemi",
     THEORETICAL_FRAMEWORK: "Teorik Çerçeve",
-    ANALYSIS_ACTORS: "Aktörler / Analiz Birimi",
     PRIMARY_MATERIAL: "Veri Kaynağı",
     METHODOLOGY: "Yöntem",
   };

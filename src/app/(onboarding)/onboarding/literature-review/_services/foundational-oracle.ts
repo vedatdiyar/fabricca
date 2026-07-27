@@ -76,7 +76,7 @@ Aday yayınlar içerisinden her bir tez alt kutusu (sub-box) için en doğrudan,
 # Kurallar ve Sınırlamalar
 
 1. **THEORETICAL_FRAMEWORK (Teori) Kutusu:** Kuramsal çerçeveyi kuran birincil orijinal kaynağı seçin. Orijinal birincil eser adaylar arasındayken asla ikincil yorumları, eleştirileri veya uygulamalı çalışmaları seçmeyin.
-2. **SUBJECT_PROBLEM / ANALYSIS_ACTORS / METHODOLOGY Kutuları:** Kutu başlığı ve açıklamasıyla doğrudan örtüşen ampirik çalışmaları, saha araştırmalarını, tarihsel analizleri veya metodolojik mihenk taşlarını seçin. Soyut genel teorik eserleri bu kutular için seçmeyin.
+2. **SUBJECT_PROBLEM / METHODOLOGY Kutuları:** Kutu başlığı ve açıklamasıyla doğrudan örtüşen ampirik çalışmaları, saha araştırmalarını, tarihsel analizleri veya metodolojik mihenk taşlarını seçin. Soyut genel teorik eserleri bu kutular için seçmeyin.
 3. **Dil Tercihi:** İngilizce veya Türkçe yazılmış akademik eserleri tercih edin.
 
 # Çıktı Biçimi
@@ -177,7 +177,7 @@ Yukarıdaki bağlamda yer alan her bir alt kutu için belirtilen seçim ve tekil
     {
       seed: GEMINI_SEED,
       thinkingConfig: {
-        thinkingLevel: ThinkingLevel.LOW,
+        thinkingLevel: ThinkingLevel.HIGH,
       },
       zodSchema: zodBulkSelectSchema,
       payloadStage: "literature_bulk_foundational_selection",

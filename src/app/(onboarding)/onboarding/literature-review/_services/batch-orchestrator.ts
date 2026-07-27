@@ -130,7 +130,8 @@ export async function orchestrateBatchProcess(
           };
         }
 
-        const rawPapers = await searchOpenAlex(query, 25, checkCancelled);
+        let rawPapers = await searchOpenAlex(query, 50, checkCancelled);
+
         const activeWorks = rawPapers.filter(
           (p) =>
             p.referencedWorks &&
@@ -188,7 +189,8 @@ export async function orchestrateBatchProcess(
               doi: p.doi ? extractCleanDoi(p.doi) : null,
               publisher: p.publisher,
               cluster: {
-                surname: p.authors[0] ?? "Unknown",
+                id: p.openAlexId ?? "",
+                canonicalTitle: p.title ?? "",
                 members: [],
                 combinedFrequency: 1,
                 citingModernIndices: [],
