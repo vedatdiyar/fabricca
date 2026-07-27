@@ -18,13 +18,7 @@ export function parseOpenAlexResults(
     return isArticleOrBook && isAllowedLang;
   });
 
-  const rawScores = results.map(
-    (work) => (work.relevance_score as number) ?? 0,
-  );
-  const maxScore = Math.max(...rawScores, 0);
-  const safeMax = maxScore > 0 ? maxScore : 1;
-
-  return results.map((work, i) => {
+  return results.map((work) => {
     const topics = work.topics as
       | {
           display_name?: string;
@@ -67,7 +61,7 @@ export function parseOpenAlexResults(
       publisher: null,
       openAlexId: (work.id as string) ?? null,
       isFoundational: false,
-      relevanceScore: (rawScores[i] ?? 0) / safeMax,
+      relevanceScore: (work.relevance_score as number) ?? 0,
       referencedWorks: Array.isArray(work.referenced_works)
         ? (work.referenced_works as string[])
         : [],

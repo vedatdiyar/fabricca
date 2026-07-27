@@ -1,9 +1,10 @@
 /**
  * Batch orchestrator — coordinates the full multi-box literature review pipeline.
  *
- * Implements the "Universal Single-Call OpenAlex Reverse Citation Engineering"
- * pipeline. Sub-boxes are processed in parallel via a concurrency limiter,
- * and each sub-box result is progressively persisted to the database.
+ * Implements the "Entity-First Query + Batch LLM Jury" pipeline:
+ *   Phase 1 — Parallel OpenAlex search with rate-limited concurrency
+ *   Phase 2 — Single batch LLM jury evaluation + title/author cleaning (combined)
+ *   Phase 3 — Jury-based filtering, scoring, deduplication, progressive save
  */
 
 import { Logger } from "@/lib/logger";
@@ -20,14 +21,16 @@ import {
   healAuthorsByTitle,
 } from "./openalex/client";
 import { extractCleanDoi, normalizeCleanTitle } from "@/lib/academic/utils";
-import { selectFoundationalWorksBulk } from "./foundational-oracle";
-import { clusterRefMetadata, type Cluster } from "./clustering";
+import { clusterRefMetadata } from "./clustering";
 import {
   analyzeReferenceFrequencies,
-  selectRelatedArticles,
   type QueueItem,
 } from "./selection";
-import { sanitizeAcademicDataBulk } from "@/lib/services/academic-sanitizer";
+import {
+  evaluateBatchJury,
+  type JuryBoxContext,
+  type JuryInputItem,
+} from "./batch-jury";
 
 // ============================================================================
 // Public interface
@@ -52,15 +55,15 @@ interface SubBoxResult {
 // Core Pipeline Orchestrator
 // ============================================================================
 
-/**
- * Runs the full multi-box literature review pipeline:
- *   Phase 1 — Parallel OpenAlex search + frequency analysis + clustering
- *   Phase 2 — Bulk foundational work selection (Gemini)
- *   Phase 3 — Per-sub-box related-article selection + progressive save
+  /**
+   * Runs the full multi-box literature review pipeline:
+   *   Phase 1 — Parallel OpenAlex search + frequency analysis + clustering
+   *   Phase 2 — Single batch LLM jury evaluation + title/author cleaning (combined)
+   *   Phase 3 — Jury-based selection, deduplication, progressive save
  *
  * @param boxes - All sub-box inputs grouped by parent box
  * @param logger - Logger instance
- * @param thesisArticlesMap - Preloaded RELATED_THESES articles (optional)
+ * @param thesisMatrixSubject - Thesis subject problem string (ana tez konusu)
  * @param checkCancelled - Cancellation check callback
  * @param persistSubBox - Callback for progressive per-sub-box persistence
  * @returns Aggregated pool entries and archival titles
@@ -68,7 +71,7 @@ interface SubBoxResult {
 export async function orchestrateBatchProcess(
   boxes: SubBoxInput[],
   logger: Logger,
-  thesisArticlesMap?: Map<string, JuryArticle[]>,
+  thesisMatrixSubject?: string,
   checkCancelled?: () => boolean,
   persistSubBox?: (
     thesisBoxId: number,
@@ -172,8 +175,7 @@ export async function orchestrateBatchProcess(
           subBoxCandidates.push(...mappedCandidates);
         }
 
-        // Fallback: If co-citation clustering yields 0 candidates (e.g., OpenAlex lacks referencedWorks trees),
-        // populate candidates directly from top rawPapers so Gemini Jury can select a Foundational Work.
+        // Fallback: If co-citation clustering yields 0 candidates
         if (subBoxCandidates.length === 0 && rawPapers.length > 0) {
           const fallbackCandidates = rawPapers
             .filter((p) => p.title?.trim())
@@ -227,140 +229,128 @@ export async function orchestrateBatchProcess(
 
   logger.info("literature_openalex_search_success");
 
-  // ── PHASE 2: BULK FOUNDATIONAL WORK SELECTION ───────────────────────────
-  const selectionInput = fulfilledResults
-    .filter((r) => r.candidates.length > 0)
-    .map((r) => ({
-      title: r.subBox.title,
-      boxType: r.boxType,
-      description: r.boxDescription,
-      thesisBoxId: r.thesisBoxId,
-      candidates: r.candidates.map((c) => ({
-        title: c.title,
-        authors: c.authors,
-        year: c.year,
-        openAlexId: c.openAlexId,
-        doi: c.doi,
-        publisher: c.publisher,
-        thesisBoxId: r.thesisBoxId,
-      })),
-    }));
+  // ── PHASE 2: SINGLE BATCH LLM JURY EVALUATION ───────────────────────────
+  logger.info("literature_batch_jury_start");
 
-  let bulkSelections: {
+  const juryInputs: JuryInputItem[] = [];
+  for (const r of fulfilledResults) {
+    if (r.rawPapers.length === 0) continue;
+    juryInputs.push({
+      box: {
+        thesisBoxId: r.thesisBoxId,
+        subBoxTitle: r.subBox.title,
+        boxType: r.boxType,
+        description: r.boxDescription,
+      },
+      articles: r.rawPapers,
+    });
+  }
+
+  let juryEvaluations: {
     thesisBoxId: number;
     subBoxTitle: string;
-    selectedIndex: number;
-    reasoning: string;
+    articleTitle: string;
+    openAlexId: string | null;
+    isRelevant: boolean;
+    relevanceScore: number;
+    reason: string;
+    cleanedTitle: string;
+    cleanedAuthors: string;
   }[] = [];
 
-  if (selectionInput.length > 0) {
-    logger.info("literature_foundational_selection_start");
-
+  if (juryInputs.length > 0) {
     try {
-      const bulkResult = await selectFoundationalWorksBulk(
-        selectionInput,
+      const subjectProblem = thesisMatrixSubject ?? "";
+      const juryResult = await evaluateBatchJury(
+        subjectProblem,
+        juryInputs,
         logger,
       );
-      bulkSelections = bulkResult.selections;
+      juryEvaluations = juryResult.evaluations;
 
-      logger.info("literature_foundational_selection_success");
+      logger.info("literature_batch_jury_success", {
+        data: { evaluationCount: juryEvaluations.length },
+      });
     } catch (err) {
-      logger.error("literature_bulk_foundational_selection_failed", {
+      logger.error("literature_batch_jury_failed", {
         error: err instanceof Error ? err.message : String(err),
       });
       throw err;
     }
+  } else {
+    logger.info("literature_batch_jury_skipped_no_inputs");
   }
 
-  // ── PHASE 3: FINAL ASSIGNMENT, BULK SANITIZATION, AND PROGRESSIVE SAVE ────────────────────────
+  // ── PHASE 3: JURY-BASED SELECTION, DEDUPLICATION, AND SAVE ──────────────
+  // Title/author cleaning is already embedded inside Phase 2 (combined jury+cleaning).
   const subBoxResultsToPersist: {
     subBoxTitle: string;
     thesisBoxId: number;
     articles: JuryArticle[];
-    foundationalArticle: JuryArticle | null;
-    top3Related: JuryArticle[];
   }[] = [];
 
-  logger.info("literature_related_selection_start");
+  logger.info("literature_jury_selection_start");
+
+  // Build lookup: (thesisBoxId + normalized title) → jury evaluation
+  const evalLookup = new Map<string, typeof juryEvaluations[0]>();
+  for (const ev of juryEvaluations) {
+    const normTitle = normalizeCleanTitle(ev.articleTitle);
+    const key = `${ev.thesisBoxId}::${normTitle}`;
+    if (!evalLookup.has(key)) {
+      evalLookup.set(key, ev);
+    }
+  }
 
   for (const r of fulfilledResults) {
     if (checkCancelled?.()) break;
 
     const subBoxArticles: JuryArticle[] = [];
-    let foundationalArticle: JuryArticle | null = null;
-    let topCluster: Cluster | null = null;
 
-    const activeCandidates = r.candidates.filter(
-      (c) => !assignedTitles.has(normalizeCleanTitle(c.title)),
-    );
+    // Collect all jury evaluations for this sub-box, filter relevant
+    const boxEvals = juryEvaluations
+      .filter((ev) => ev.thesisBoxId === r.thesisBoxId && ev.isRelevant)
+      .sort((a, b) => b.relevanceScore - a.relevanceScore);
 
-    if (activeCandidates.length > 0) {
-      let chosenCandidate: (typeof activeCandidates)[number] | null = null;
+    if (boxEvals.length === 0) {
+      subBoxResultsToPersist.push({
+        subBoxTitle: r.subBox.title,
+        thesisBoxId: r.thesisBoxId,
+        articles: [],
+      });
+      continue;
+    }
 
-      const matchedSelection = bulkSelections.find(
-        (s) =>
-          s.thesisBoxId === r.thesisBoxId && s.subBoxTitle === r.subBox.title,
+    // Match evaluations to rawPapers to get full metadata
+    const rawPaperByNormTitle = new Map<string, RawPaper>();
+    for (const p of r.rawPapers) {
+      if (!p.title) continue;
+      rawPaperByNormTitle.set(normalizeCleanTitle(p.title), p);
+    }
+
+    for (const ev of boxEvals) {
+      if (assignedTitles.has(normalizeCleanTitle(ev.articleTitle))) continue;
+
+      const rawPaper = rawPaperByNormTitle.get(
+        normalizeCleanTitle(ev.articleTitle),
       );
 
-      if (matchedSelection && matchedSelection.selectedIndex >= 0) {
-        const fullSelectedCandidate =
-          r.candidates[matchedSelection.selectedIndex];
-        if (
-          fullSelectedCandidate &&
-          !assignedTitles.has(normalizeCleanTitle(fullSelectedCandidate.title))
-        ) {
-          chosenCandidate = fullSelectedCandidate;
-        }
-      }
+      subBoxArticles.push({
+        title: ev.cleanedTitle,
+        authors: ev.cleanedAuthors.split("; ").filter(Boolean),
+        publisher: null,
+        publicationYear: null,
+        doi: rawPaper?.doi ?? null,
+        url: ev.openAlexId ?? rawPaper?.openAlexId ?? "",
+        relevanceScore: ev.relevanceScore,
+        badge: null,
+        comparisonNote: ev.reason,
+        isFoundational: subBoxArticles.length === 0,
+      });
 
-      if (!chosenCandidate) {
-        chosenCandidate = activeCandidates[0];
-      }
-
-      if (chosenCandidate) {
-        foundationalArticle = {
-          title: chosenCandidate.title,
-          comparisonNote: null,
-          badge: null,
-          url: chosenCandidate.openAlexId,
-          doi: chosenCandidate.doi,
-          publisher: chosenCandidate.publisher,
-          publicationYear: chosenCandidate.year,
-          authors: chosenCandidate.authors,
-          isFoundational: true,
-          relevanceScore: 100,
-        };
-        assignedTitles.add(normalizeCleanTitle(chosenCandidate.title));
-        topCluster = chosenCandidate.cluster;
-      }
+      assignedTitles.add(normalizeCleanTitle(ev.articleTitle));
     }
 
-    const queueItem: QueueItem = {
-      subBoxTitle: r.subBox.title,
-      boxType: r.boxType,
-      boxDescription: r.boxDescription,
-      candidates: r.candidates,
-      activeWorks: r.activeWorks,
-      rawPapers: r.rawPapers,
-    };
-
-    const top3Related = selectRelatedArticles(
-      queueItem,
-      topCluster,
-      assignedTitles,
-      foundationalArticle?.title,
-    );
-
-    for (const art of top3Related) {
-      assignedTitles.add(normalizeCleanTitle(art.title));
-    }
-
-    if (foundationalArticle) {
-      subBoxArticles.push(foundationalArticle);
-    }
-    subBoxArticles.push(...top3Related);
-
-    // Programmatic Author Healing for any selected article with empty authors
+    // Programmatic Author Healing for articles with empty authors
     for (const art of subBoxArticles) {
       if (art.authors.length === 0 && !checkCancelled?.()) {
         try {
@@ -372,7 +362,7 @@ export async function orchestrateBatchProcess(
           logger.error("literature_author_healing_failed", {
             error: err instanceof Error ? err.message : String(err),
           });
-          throw err;
+          // Non-fatal: continue with empty authors
         }
       }
     }
@@ -381,51 +371,12 @@ export async function orchestrateBatchProcess(
       subBoxTitle: r.subBox.title,
       thesisBoxId: r.thesisBoxId,
       articles: subBoxArticles,
-      foundationalArticle,
-      top3Related,
     });
   }
 
-  logger.info("literature_related_selection_success");
+  logger.info("literature_jury_selection_success");
 
-  // Bulk sanitization of all selected articles in a single LLM call
-  const allArticlesToSanitize: JuryArticle[] = [];
-  for (const item of subBoxResultsToPersist) {
-    allArticlesToSanitize.push(...item.articles);
-  }
-
-  if (allArticlesToSanitize.length > 0 && !checkCancelled?.()) {
-    try {
-      logger.info("literature_sanitization_start");
-
-      const sanitized = await sanitizeAcademicDataBulk(
-        allArticlesToSanitize.map((a) => ({
-          title: a.title,
-          author: a.authors.join(", "),
-        })),
-        logger,
-      );
-
-      for (let k = 0; k < allArticlesToSanitize.length; k++) {
-        if (sanitized[k]) {
-          allArticlesToSanitize[k].title = sanitized[k].title;
-          allArticlesToSanitize[k].authors = sanitized[k].author
-            .split(", ")
-            .map((s) => s.trim())
-            .filter(Boolean);
-        }
-      }
-
-      logger.info("literature_sanitization_success");
-    } catch (err) {
-      logger.error("literature_bulk_sanitization_failed", {
-        error: err instanceof Error ? err.message : String(err),
-      });
-      throw err;
-    }
-  }
-
-  // Progressive save loops with already-sanitized articles
+  // ── PROGRESSIVE SAVE ─────────────────────────────────────────────────────
   for (const item of subBoxResultsToPersist) {
     if (checkCancelled?.()) break;
 

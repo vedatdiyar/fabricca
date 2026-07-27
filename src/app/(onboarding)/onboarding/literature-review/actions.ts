@@ -70,16 +70,10 @@ export async function processAllBoxesAction(
     if (!matrix) return { error: "Thesis matrix not found." };
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
 
-    const thesisArticlesMap = new Map<
-      string,
-      import("@/lib/types").JuryArticle[]
-    >();
-    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
-
     const { poolEntries } = await orchestrateBatchProcess(
       boxes,
       logger,
-      thesisArticlesMap,
+      matrix.subjectProblem,
       () => isLiteratureCancelled(userId),
       async (thesisBoxId, articles) => {
         await persistSubBoxEntry(thesisBoxId, articles);
@@ -318,24 +312,21 @@ export async function checkLiteraturePoolAction(): Promise<{
 
 /**
  * Runs the full literature review pipeline as a single server action with
- * 6 sequential sub-steps + a final top-level total log:
+ * 5 sequential sub-steps + a final top-level total log:
  *   1. literature_openalex_search — OpenAlex parallel search + clustering
- *   2. literature_foundational_selection — bulk foundational-work selection (Gemini)
- *   3. literature_related_selection — related-article assignment per sub-box
- *   4. literature_sanitization    — bulk title/author cleanup (LLM)
- *   5. literature_db_write        — persist the full literature pool
- *   6. literature_toplam          — final total duration and summary
+ *   2. literature_batch_jury — single batch LLM jury + title/author cleaning (combined)
+ *   3. literature_jury_selection — jury-based filtering, scoring, dedup
+ *   4. literature_db_write      — persist the full literature pool
+ *   5. literature_toplam        — final total duration and summary
  *
  * NOTE: The DB pre-check has been moved to {@link checkLiteraturePoolAction}.
  *       Call that first and only invoke this action when the pool does NOT exist.
  *
  * @param boxes   Sub-box inputs to feed the AI pipeline
- * @param thesisArticlesMap  Optional pre-loaded RELATED_THESES articles
  * @returns The literature pool entries or a user-facing error message
  */
 export async function runLiteraturePipelineAction(
   boxes: SubBoxInput[],
-  thesisArticlesMap?: Map<string, import("@/lib/types").JuryArticle[]>,
 ): Promise<{ data?: LiteraturePoolEntry[]; error?: string }> {
   const logger = new Logger(createFlowId());
   const pipelineStart = performance.now();
@@ -350,10 +341,13 @@ export async function runLiteraturePipelineAction(
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
 
     // ── Steps 1-4: orchestrateBatchProcess (logs internally) ────────────
+    const { matrix } = await loadThesisMatrixAndBoxes(userId);
+    const subjectProblem = matrix?.subjectProblem ?? "";
+
     const { poolEntries } = await orchestrateBatchProcess(
       boxes,
       logger,
-      thesisArticlesMap ?? new Map(),
+      subjectProblem,
       () => isLiteratureCancelled(userId),
       async (thesisBoxId, articles) => {
         await persistSubBoxEntry(thesisBoxId, articles);
