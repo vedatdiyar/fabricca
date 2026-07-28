@@ -3,6 +3,7 @@ import {
   type JsonSchema,
 } from "@/lib/services/gemini";
 import { FLASH_LITE_31, GEMINI_SEED } from "@/lib/constants";
+import { buildJurySystemInstruction, buildJuryUserPrompt } from "@/lib/prompts";
 import { ThinkingLevel, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { Logger } from "@/lib/logger";
 import { z } from "zod";
@@ -147,8 +148,6 @@ export async function evaluateSingleBoxJury(
     return { thesisBoxId: box.thesisBoxId, evaluations: [] };
   }
 
-  const isSubjectProblem = box.boxType === "SUBJECT_PROBLEM";
-
   const articlesText = articles
     .map(
       (a, idx) =>
@@ -159,60 +158,23 @@ export async function evaluateSingleBoxJury(
     )
     .join("\n\n");
 
-  const boxTypeInstruction = isSubjectProblem
-    ? `⚠️ ÖNEMLİ — VAKA KUTUSU (SUBJECT_PROBLEM):
-Bu kutu TEZİN SPESİFİK VAKASINI analiz eden bir VAKA KUTUSUDUR.
-Tez Konusu: "${thesisSubject}" | Kutu Bağlamı: "${box.subBoxTitle}" - ${box.description}.
-Makalelerin MUTLAKA yukarıda belirtilen tez konusunun ve kutu bağlamının spesifik aktörlerini, tarihsel/coğrafi bağlamını ve vakasını işlemesi ŞARTTIR.
-Genel/jenerik teorileri veya başka ülke/toplumsal hareket vakalarını öne çıkaran makaleler bu kutu için ALAKASIZDIR ve elenmelidir.`
-    : `- **THEORETICAL_FRAMEWORK / METHODOLOGY türündeki kutular için:** Makalenin bizzat tezin spesifik vakasını işlemesi zorunlu değildir. Ancak bu kutularda alanın literatürde kabul görmüş üst düzey, saygın, metodolojik/teorik el kitapları ve kurucu metinleri önceliklendirilmeli; tezin vaka analiziyle ilişkilendirilemeyecek marjinal, dar kapsamlı spesifik vaka incelemeleri (örneğin alakasız toplumsal hareketler) elenmelidir.`;
+  const systemInstruction = buildJurySystemInstruction(
+    box.boxType,
+    box.subBoxTitle,
+    box.description,
+    box.thesisBoxId,
+    thesisSubject,
+  );
 
-  const systemInstruction = `# Rol ve Uzmanlık
-
-Sen, OpenAlex'ten dönen akademik makaleleri belirli bir tez alt kutusu bağlamında değerlendiren uzman bir akademik jüri üyesisin.
-
-# Birincil Görev
-
-Her bir makaleyi, içinde bulunduğu alt kutunun türü, başlığı ve açıklaması ile karşılaştırarak değerlendir. Makalenin kutu bağlamıyla doğrudan alakalı olup olmadığına karar ver, 0-100 arası gerçek alaka skoru belirle, kurucu eser (foundational work) olup olmadığını işaretle ve 1 cümlelik Türkçe gerekçe yaz.
-
-# Kutu Türü ve Değerlendirme Kuralı
-
-Bu kutu türü: **${box.boxType}**
-Kutu Başlığı: ${box.subBoxTitle}
-Kutu Açıklaması: ${box.description}
-
-${boxTypeInstruction}
-
-# Değerlendirme Kriterleri
-
-- Her makale için başlık, abstract metni ve OpenAlex relevance_score bilgisi verilmiştir.
-- Makalenin kutu bağlamına uygunluğunu değerlendir.
-- Sadece gerçekten kurucu metinler için isFoundational=true kullan.
-
-# Çıktı Biçimi
-
-Her değerlendirme için aşağıdaki alanları içeren JSON nesneleri dizisi döndürün:
-- thesisBoxId: ${box.thesisBoxId}
-- subBoxTitle: "${box.subBoxTitle}"
-- articleTitle: makale başlığı (aynen)
-- isRelevant: boolean
-- relevanceScore: 0-100 arası tam sayı
-- isFoundational: boolean
-- reasoning: Türkçe 1 cümlelik gerekçe`;
-
-  const prompt = `# Girdi Bağlamı
-
-Tez Konusu (Subject Problem): ${thesisSubject}
-
-Kutu: [Box ${box.thesisBoxId}] "${box.subBoxTitle}" (${box.boxType})
-Açıklama: ${box.description}
-
-Makaleler:
-${articlesText}
-
-# İşlem
-
-Yukarıdaki ${articles.length} makaleyi değerlendir ve her biri için thesisBoxId, subBoxTitle, articleTitle, isRelevant, relevanceScore (0-100), isFoundational, reasoning (Türkçe) alanlarını içeren JSON dizisi döndür.`;
+  const prompt = buildJuryUserPrompt(
+    thesisSubject,
+    box.thesisBoxId,
+    box.subBoxTitle,
+    box.boxType,
+    box.description,
+    articlesText,
+    articles.length,
+  );
 
   const raw = await generateStructuredContent<{
     evaluations: JuryEvaluation[];

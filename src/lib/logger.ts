@@ -331,6 +331,7 @@ export class Logger implements LoggerInstance {
         if (p?.error != null) {
           console.log(`  ↳ reason: ${extractReason(p.error)}`);
         }
+        console.log("");
         return;
       }
       // ── Status-süz event: minimal tek satır ──
