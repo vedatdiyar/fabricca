@@ -124,3 +124,36 @@ export async function sanitizeAcademicDataBulk(
 
   return result.items;
 }
+
+/**
+ * Lightweight targeted sanitization for the final selected ~12 articles.
+ * Uses thinkingBudget: 0 for maximum speed — no deep reasoning needed for
+ * Title Case normalisation and Turkish character repair.
+ *
+ * @param items - Array of academic items with raw title and author fields
+ * @param logger - Optional Logger instance
+ * @returns Array with sanitised title and author fields in the same order
+ */
+export async function sanitizeTargetedArticles(
+  items: AcademicItem[],
+  logger?: Logger,
+): Promise<AcademicItem[]> {
+  if (items.length === 0) return items;
+
+  const result = await generateStructuredContent<SanitizeResponse>(
+    FLASH_LITE_31,
+    SYSTEM_INSTRUCTION,
+    JSON.stringify(items),
+    SANITIZE_RESPONSE_SCHEMA,
+    logger,
+    {
+      zodSchema: sanitizeResponseSchema,
+      thinkingConfig: { thinkingBudget: 0 },
+      seed: GEMINI_SEED,
+      payloadStage: "literature_targeted_sanitization",
+      quiet: true,
+    },
+  );
+
+  return result.items;
+}

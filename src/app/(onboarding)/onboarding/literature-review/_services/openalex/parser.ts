@@ -1,5 +1,8 @@
 import { cleanHtmlTags } from "@/lib/services/academic-sanitizer";
-import { extractCleanDoi } from "@/lib/academic/utils";
+import {
+  extractCleanDoi,
+  resolveAbstractInvertedIndex,
+} from "@/lib/academic/utils";
 import type { RawPaper, RefMetadata } from "../literature-review-papers";
 
 /**
@@ -47,10 +50,15 @@ export function parseOpenAlexResults(
       metadataParts.push(`Hierarchy: ${hierarchyParts.join(" > ")}`);
     const metadata = metadataParts.length > 0 ? metadataParts.join(". ") : null;
 
+    const abstractInvertedIndex = work.abstract_inverted_index as Record<
+      string,
+      number[]
+    > | null;
+
     return {
       source: "openalex" as const,
       title: cleanHtmlTags((work.title as string) ?? ""),
-      abstract: null,
+      abstract: resolveAbstractInvertedIndex(abstractInvertedIndex),
       metadata,
       doi: extractCleanDoi(work.doi as string | null | undefined),
       url: null,

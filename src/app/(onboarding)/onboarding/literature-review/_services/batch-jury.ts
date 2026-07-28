@@ -31,12 +31,12 @@ export interface JuryEvaluation {
   openAlexId: string | null;
   isRelevant: boolean;
   relevanceScore: number;
-  reason: string;
-  cleanedTitle: string;
-  cleanedAuthors: string;
+  isFoundational: boolean;
+  reasoning: string;
 }
 
-export interface BatchJuryResult {
+export interface SingleBoxJuryResult {
+  thesisBoxId: number;
   evaluations: JuryEvaluation[];
 }
 
@@ -51,12 +51,11 @@ const juryEvaluationSchema = z.object({
   openAlexId: z.string().nullable(),
   isRelevant: z.boolean(),
   relevanceScore: z.number().int().min(0).max(100),
-  reason: z.string().min(1),
-  cleanedTitle: z.string().min(1),
-  cleanedAuthors: z.string().min(1),
+  isFoundational: z.boolean(),
+  reasoning: z.string().min(1),
 });
 
-const batchJuryOutputSchema = z.object({
+const singleBoxJuryOutputSchema = z.object({
   evaluations: z.array(juryEvaluationSchema),
 });
 
@@ -64,7 +63,7 @@ const batchJuryOutputSchema = z.object({
 // Vanilla JSON Schema (for Gemini responseJsonSchema)
 // ============================================================================
 
-const batchJuryJsonSchema: JsonSchema = {
+const juryJsonSchema: JsonSchema = {
   type: "object",
   properties: {
     evaluations: {
@@ -86,17 +85,14 @@ const batchJuryJsonSchema: JsonSchema = {
             maximum: 100,
             description: "0-100 arası alaka skoru",
           },
-          reason: {
+          isFoundational: {
+            type: "boolean",
+            description:
+              "Box konusunda literatürün temel/kurucu referans noktası mı?",
+          },
+          reasoning: {
             type: "string",
             description: "Türkçe 1 cümlelik kabul/ret gerekçesi",
-          },
-          cleanedTitle: {
-            type: "string",
-            description: "APA formatında temizlenmiş başlık",
-          },
-          cleanedAuthors: {
-            type: "string",
-            description: "Soyadı, A. B. formatında temizlenmiş yazarlar",
           },
         },
         required: [
@@ -106,9 +102,8 @@ const batchJuryJsonSchema: JsonSchema = {
           "openAlexId",
           "isRelevant",
           "relevanceScore",
-          "reason",
-          "cleanedTitle",
-          "cleanedAuthors",
+          "isFoundational",
+          "reasoning",
         ],
       },
     },
@@ -117,133 +112,135 @@ const batchJuryJsonSchema: JsonSchema = {
 };
 
 // ============================================================================
-// Prompt
-// ============================================================================
-
-const BATCH_JURY_SYSTEM_INSTRUCTION = `# Rol ve Uzmanlık
-Sen, OpenAlex'ten dönen akademik makaleleri tez alt kutuları bağlamında topluca değerlendiren uzman bir akademik jüri üyesisin.
-
-# Birincil Görev
-Her bir makaleyi, ait olduğu alt kutunun türü, başlığı ve açıklaması ile karşılaştırarak değerlendir. Makalenin tez/box bağlamıyla doğrudan alakalı olup olmadığına karar ver, 0-100 arası gerçek alaka skoru belirle ve 1 cümlelik Türkçe gerekçe yaz.
-
-# Kurallar ve Sınırlamalar
-- SUBJECT_PROBLEM türündeki kutular için: Makalenin tezin spesifik vakasını, tarihsel bağlamını ve aktörlerini işlemesi beklenir. Vaka uyumu ve kavramsal örtüşme birlikte değerlendirilir.
-- THEORETICAL_FRAMEWORK türündeki kutular için: Makalenin tezin spesifik vakasını (Kürt hareketi, Türkiye vb.) işlemesi beklenmez. Teoriyi veya kavramsal çerçeveyi saf ve güçlü bir şekilde işleyen temel makaleler 90-100 puan almalıdır.
-- METHODOLOGY türündeki kutular için: Makalenin tezin spesifik vakasını işlemesi beklenmez. Yöntemi veya analitik yaklaşımı saf ve güçlü şekilde işleyen metodolojik makaleler 90-100 puan almalıdır.
-- Her makale için sadece başlık ve box açıklaması ile değerlendirme yapılır.
-
-# Metin Temizleme Kuralları
-Her makale için aşağıdaki temizleme işlemlerini de yap:
-- \`cleanedTitle\`: Başlığı APA başlık formatına (cümle düzeni / sentence case) göre düzenle. İlk kelime ve özel isimler dışında küçük harf kullan. Türkçe karakterleri (ı, İ, ş, ç, ö, ü, ğ, Ş, Ç, Ö, Ü, İ, Ğ) düzelt. Gereksiz boşlukları ve noktalama hatalarını temizle.
-- \`cleanedAuthors\`: Yazar isimlerini "Soyadı, A. B." formatında standartlaştır. Birden çok yazar varsa "; " ile ayır. Baş harf kısaltmalarını noktalı formata çevir. Türkçe karakterleri düzelt.
-
-# Çıktı Biçimi
-Her değerlendirme için \`thesisBoxId\`, \`subBoxTitle\`, \`articleTitle\`, \`openAlexId\`, \`isRelevant\`, \`relevanceScore\` (0-100 tam sayı), \`reason\` (Türkçe), \`cleanedTitle\` (string) ve \`cleanedAuthors\` (string) alanlarını içeren JSON nesneleri dizisi döndürün.`;
-
-// ============================================================================
-// Main Function
+// Single-Box Jury Call
 // ============================================================================
 
 /**
- * Evaluates all candidate articles from all active sub-boxes in a single
- * batch LLM call. Uses Gemini Flash-Lite with High thinking budget and
- * BLOCK_ONLY_HIGH safety settings.
+ * Runs an isolated jury evaluation for a SINGLE sub-box.
+ * Each box gets its own tailored prompt with box-type-specific instructions.
  *
- * The jury applies type-aware isolation rules:
- * - SUBJECT_PROBLEM: case-specific relevance expected
- * - THEORETICAL_FRAMEWORK / METHODOLOGY: pure theory/method focus rewarded
+ * SUBJECT_PROBLEM boxes receive a dynamic warning derived from thesisSubject,
+ * box title, and box description — requiring case-specific works and rejecting
+ * general theories unrelated to the thesis context.
+ *
+ * THEORETICAL_FRAMEWORK / METHODOLOGY boxes prioritise respected handbooks
+ * and foundational texts, filtering narrow case studies.
+ *
+ * Per-article payload: title, authors (first 3 + et al.), abstract (120 words),
+ * and OpenAlex relevance_score. No OpenAlex ID or URL is sent.
+ *
+ * Uses Gemini Flash-Lite with High thinking level and BLOCK_ONLY_HIGH safety settings.
  *
  * @param thesisSubject - The thesis subject problem text (ana tez konusu)
- * @param inputs - Array of box contexts with their raw OpenAlex articles
+ * @param input - Single box context with its article pool
  * @param logger - Optional Logger instance
- * @returns BatchJuryResult with evaluations for every article
+ * @returns SingleBoxJuryResult with evaluations for every article in this box
  */
-export async function evaluateBatchJury(
+export async function evaluateSingleBoxJury(
   thesisSubject: string,
-  inputs: JuryInputItem[],
+  input: JuryInputItem,
   logger?: Logger,
-): Promise<BatchJuryResult> {
-  if (inputs.length === 0) {
-    return { evaluations: [] };
+): Promise<SingleBoxJuryResult> {
+  const { box, articles } = input;
+
+  if (articles.length === 0) {
+    return { thesisBoxId: box.thesisBoxId, evaluations: [] };
   }
 
-  const allArticles = inputs.reduce((sum, i) => sum + i.articles.length, 0);
-  if (allArticles === 0) {
-    return { evaluations: [] };
-  }
+  const isSubjectProblem = box.boxType === "SUBJECT_PROBLEM";
 
-  const boxSection = inputs
+  const articlesText = articles
     .map(
-      (input) => {
-        const box = input.box;
-        const articlesText = input.articles
-          .map(
-            (a, idx) =>
-              `  Makale ${idx + 1}: "${a.title ?? "(başlık yok)"}"\n     Authors: ${a.authors.slice(0, 3).join(", ") || "(bilinmiyor)"}${a.authors.length > 3 ? " et al." : ""}\n     OpenAlex ID: ${a.openAlexId ?? "(yok)"}\n     İlgili özet/bağlam: ${a.metadata ?? "(özet yok)"}`,
-          )
-          .join("\n\n");
-
-        return `[Box ${box.thesisBoxId}] "${box.subBoxTitle}" (${box.boxType})
-Açıklama: ${box.description ?? "(yok)"}
-
-Makaleler:
-${articlesText}`;
-      },
+      (a, idx) =>
+        `  Makale ${idx + 1}: "${a.title ?? "(başlık yok)"}"\n` +
+        `     Authors: ${a.authors.slice(0, 3).join(", ") || "(bilinmiyor)"}${a.authors.length > 3 ? " et al." : ""}\n` +
+        `     Abstract: ${a.abstract ?? "(özet yok)"}\n` +
+        `     OpenAlex Relevance Score: ${(a.relevanceScore ?? 0).toFixed(4)}`,
     )
-    .join("\n\n---\n\n");
+    .join("\n\n");
+
+  const boxTypeInstruction = isSubjectProblem
+    ? `⚠️ ÖNEMLİ — VAKA KUTUSU (SUBJECT_PROBLEM):
+Bu kutu TEZİN SPESİFİK VAKASINI analiz eden bir VAKA KUTUSUDUR.
+Tez Konusu: "${thesisSubject}" | Kutu Bağlamı: "${box.subBoxTitle}" - ${box.description}.
+Makalelerin MUTLAKA yukarıda belirtilen tez konusunun ve kutu bağlamının spesifik aktörlerini, tarihsel/coğrafi bağlamını ve vakasını işlemesi ŞARTTIR.
+Genel/jenerik teorileri veya başka ülke/toplumsal hareket vakalarını öne çıkaran makaleler bu kutu için ALAKASIZDIR ve elenmelidir.`
+    : `- **THEORETICAL_FRAMEWORK / METHODOLOGY türündeki kutular için:** Makalenin bizzat tezin spesifik vakasını işlemesi zorunlu değildir. Ancak bu kutularda alanın literatürde kabul görmüş üst düzey, saygın, metodolojik/teorik el kitapları ve kurucu metinleri önceliklendirilmeli; tezin vaka analiziyle ilişkilendirilemeyecek marjinal, dar kapsamlı spesifik vaka incelemeleri (örneğin alakasız toplumsal hareketler) elenmelidir.`;
+
+  const systemInstruction = `# Rol ve Uzmanlık
+
+Sen, OpenAlex'ten dönen akademik makaleleri belirli bir tez alt kutusu bağlamında değerlendiren uzman bir akademik jüri üyesisin.
+
+# Birincil Görev
+
+Her bir makaleyi, içinde bulunduğu alt kutunun türü, başlığı ve açıklaması ile karşılaştırarak değerlendir. Makalenin kutu bağlamıyla doğrudan alakalı olup olmadığına karar ver, 0-100 arası gerçek alaka skoru belirle, kurucu eser (foundational work) olup olmadığını işaretle ve 1 cümlelik Türkçe gerekçe yaz.
+
+# Kutu Türü ve Değerlendirme Kuralı
+
+Bu kutu türü: **${box.boxType}**
+Kutu Başlığı: ${box.subBoxTitle}
+Kutu Açıklaması: ${box.description}
+
+${boxTypeInstruction}
+
+# Değerlendirme Kriterleri
+
+- Her makale için başlık, abstract metni ve OpenAlex relevance_score bilgisi verilmiştir.
+- Makalenin kutu bağlamına uygunluğunu değerlendir.
+- Sadece gerçekten kurucu metinler için isFoundational=true kullan.
+
+# Çıktı Biçimi
+
+Her değerlendirme için aşağıdaki alanları içeren JSON nesneleri dizisi döndürün:
+- thesisBoxId: ${box.thesisBoxId}
+- subBoxTitle: "${box.subBoxTitle}"
+- articleTitle: makale başlığı (aynen)
+- isRelevant: boolean
+- relevanceScore: 0-100 arası tam sayı
+- isFoundational: boolean
+- reasoning: Türkçe 1 cümlelik gerekçe`;
 
   const prompt = `# Girdi Bağlamı
 
 Tez Konusu (Subject Problem): ${thesisSubject}
 
-Kutular ve Makaleler:
-${boxSection}
+Kutu: [Box ${box.thesisBoxId}] "${box.subBoxTitle}" (${box.boxType})
+Açıklama: ${box.description}
 
-# İşlem Adımları
-1. Her bir kutunun türünü belirle (SUBJECT_PROBLEM, THEORETICAL_FRAMEWORK, METHODOLOGY).
-2. Her makaleyi kendi kutusunun türüne uygun değerlendirme kriteriyle analiz et:
-   - SUBJECT_PROBLEM: vaka ve kavramsal uyum ara.
-   - THEORETICAL_FRAMEWORK: saf teori gücüne bak, vaka arama.
-   - METHODOLOGY: yöntemsel değere bak, vaka arama.
-3. Alakasız makaleleri isRelevant=false ile işaretle.
-4. Alakalı makalelere 0-100 arası gerçek skor ver.
-5. Her makale için başlık ve yazar isimlerini temizle (cleanedTitle, cleanedAuthors).
+Makaleler:
+${articlesText}
 
-# Birincil Görev
-Tüm makaleler için değerlendirme sonuçlarını JSON dizisi olarak döndür.`;
+# İşlem
 
-  const result = await generateStructuredContent<BatchJuryResult>(
-    FLASH_LITE_31,
-    BATCH_JURY_SYSTEM_INSTRUCTION,
-    prompt,
-    batchJuryJsonSchema,
-    logger,
-    {
-      thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
-      zodSchema: batchJuryOutputSchema,
-      seed: GEMINI_SEED,
-      safetySettings: [
-        {
-          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-        },
-      ],
-      payloadStage: "literature_batch_jury_evaluation",
-      quiet: true,
-    },
-  );
+Yukarıdaki ${articles.length} makaleyi değerlendir ve her biri için thesisBoxId, subBoxTitle, articleTitle, isRelevant, relevanceScore (0-100), isFoundational, reasoning (Türkçe) alanlarını içeren JSON dizisi döndür.`;
 
-  return result;
+  const raw = await generateStructuredContent<{
+    evaluations: JuryEvaluation[];
+  }>(FLASH_LITE_31, systemInstruction, prompt, juryJsonSchema, logger, {
+    thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+    zodSchema: singleBoxJuryOutputSchema,
+    seed: GEMINI_SEED,
+    safetySettings: [
+      {
+        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+        threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+        threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+        threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+        threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+      },
+    ],
+    payloadStage: "literature_single_box_jury",
+    quiet: true,
+  });
+
+  return { thesisBoxId: box.thesisBoxId, evaluations: raw.evaluations ?? [] };
 }

@@ -176,6 +176,7 @@ export async function generateStructuredContent<T>(
   options?: {
     thinkingConfig?: {
       thinkingLevel?: ThinkingLevel;
+      thinkingBudget?: number;
     } | null;
     payloadStage?: string;
     zodSchema?: z.ZodType<T>;

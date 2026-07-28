@@ -76,6 +76,84 @@ export function sortLibraryResources<T extends SortableResource>(
   });
 }
 
+/**
+ * Tokenizes a title for containment comparison: lowercase, strip punctuation,
+ * split by whitespace, keep only tokens ≥ 3 characters.
+ */
+function tokenizeForContainment(title: string): Set<string> {
+  return new Set(
+    title
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, "")
+      .split(/\s+/)
+      .filter((t) => t.length >= 3),
+  );
+}
+
+/**
+ * Containment similarity: intersection / min(len(A), len(B)).
+ * Score = 1.0 when the shorter title is a complete subset of the longer one.
+ * Ideal for catching edition/version duplicates where one title
+ * appends extra info (e.g. "of Antonio Gramsci", subtitles, etc.).
+ */
+export function containmentSimilarity(titleA: string, titleB: string): number {
+  const tokensA = tokenizeForContainment(titleA);
+  const tokensB = tokenizeForContainment(titleB);
+
+  if (tokensA.size === 0 && tokensB.size === 0) return 1.0;
+  if (tokensA.size === 0 || tokensB.size === 0) return 0.0;
+
+  const smaller = tokensA.size <= tokensB.size ? tokensA : tokensB;
+  const larger = tokensA.size <= tokensB.size ? tokensB : tokensA;
+
+  let intersection = 0;
+  for (const token of smaller) {
+    if (larger.has(token)) intersection++;
+  }
+
+  return intersection / Math.min(tokensA.size, tokensB.size);
+}
+
+/**
+ * Returns true when the containment similarity between two titles meets
+ * or exceeds the given threshold. Used for edition/version deduplication.
+ *
+ * @param titleA - First title to compare
+ * @param titleB - Second title to compare
+ * @param threshold - Minimum similarity score (0.0–1.0) to consider them duplicates
+ * @returns True if the titles are considered sufficiently similar
+ */
+export function areTitlesSimilar(
+  titleA: string,
+  titleB: string,
+  threshold = 0.8,
+): boolean {
+  return containmentSimilarity(titleA, titleB) >= threshold;
+}
+
+/**
+ * Resolves OpenAlex abstract_inverted_index back to plain text.
+ * Each word is placed at its position index, returning the reconstituted text.
+ * Returns null if the index is empty or null.
+ * Limited to the first 120 words for token efficiency.
+ */
+export function resolveAbstractInvertedIndex(
+  invertedIndex: Record<string, number[]> | null | undefined,
+): string | null {
+  if (!invertedIndex) return null;
+  const entries = Object.entries(invertedIndex);
+  if (entries.length === 0) return null;
+  const maxPos = Math.max(...entries.flatMap(([, positions]) => positions));
+  const words: string[] = new Array(maxPos + 1).fill("");
+  for (const [word, positions] of entries) {
+    for (const pos of positions) {
+      if (pos >= 0 && pos <= maxPos) words[pos] = word;
+    }
+  }
+  const fullText = words.join(" ").replace(/\s+/g, " ").trim();
+  return fullText.split(/\s+/).slice(0, 120).join(" ");
+}
+
 export function normalizeTitle(
   title: string | null | undefined,
   maxLength?: number,

@@ -39,6 +39,7 @@ export interface RefMetadata {
 export interface RawPaper {
   source: "openalex";
   title: string | null;
+  abstract?: string | null;
   metadata: string | null;
   doi: string | null;
   url: string | null;
