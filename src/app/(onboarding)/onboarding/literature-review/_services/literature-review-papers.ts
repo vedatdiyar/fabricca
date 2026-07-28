@@ -8,8 +8,11 @@ import type { FoundationalQuery } from "@/lib/types";
 // Types
 // ============================================================================
 
+/** One sub-box with its own title and description (not the parent box's). */
 export interface SubBoxItem {
   title: string;
+  /** Sub-box's own description — this is what the jury evaluates against. */
+  description: string;
   thesisBoxId: number;
   semanticQuery: string;
   foundationalQueries: FoundationalQuery[];
@@ -51,4 +54,6 @@ export interface RawPaper {
   relevanceScore: number;
   referencedWorks?: string[];
   citedByCount?: number;
+  isCoCitationLeader?: boolean;
+  ccFreq?: number;
 }

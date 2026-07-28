@@ -297,6 +297,7 @@ export function useOnboardingNavigation() {
         boxType: box.boxType,
         subBoxes: (box.subBoxes ?? []).map((sb) => ({
           title: sb.title,
+          description: sb.description,
           thesisBoxId: sb.id ?? 0,
           semanticQuery: sb.semanticQuery ?? "",
           foundationalQueries: sb.foundationalQueries ?? [],

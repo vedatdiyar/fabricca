@@ -1,12 +1,6 @@
 /**
- * Builds the box-type-specific instruction block embedded in the system instruction.
- *
- * SUBJECT_PROBLEM boxes receive a dynamic warning derived from thesisSubject,
- * box title, and box description — requiring case-specific works and rejecting
- * general theories unrelated to the thesis context.
- *
- * THEORETICAL_FRAMEWORK / METHODOLOGY boxes prioritise respected handbooks
- * and foundational texts, filtering narrow case studies.
+ * Builds the box-type context block embedded in the system instruction.
+ * Provides the thesis subject, box title, and description for context.
  */
 function buildBoxTypeInstruction(
   boxType: string,
@@ -14,23 +8,89 @@ function buildBoxTypeInstruction(
   description: string,
   thesisSubject: string,
 ): string {
-  const isSubjectProblem = boxType === "SUBJECT_PROBLEM";
+  return `Kutu Türü: ${boxType}
+Kutu Başlığı: ${subBoxTitle}
+Kutu Açıklaması: ${description}
+Tez Konusu: ${thesisSubject}`;
+}
 
-  return isSubjectProblem
-    ? `⚠️ ÖNEMLİ — VAKA KUTUSU (SUBJECT_PROBLEM):
-Bu kutu TEZİN SPESİFİK VAKASINI analiz eden bir VAKA KUTUSUDUR.
-Tez Konusu: "${thesisSubject}" | Kutu Bağlamı: "${subBoxTitle}" - ${description}.
-Makalelerin MUTLAKA yukarıda belirtilen tez konusunun ve kutu bağlamının spesifik aktörlerini, tarihsel/coğrafi bağlamını ve vakasını işlemesi ŞARTTIR.
-Genel/jenerik teorileri veya başka ülke/toplumsal hareket vakalarını öne çıkaran makaleler bu kutu için ALAKASIZDIR ve elenmelidir.`
-    : `- **THEORETICAL_FRAMEWORK / METHODOLOGY türündeki kutular için:** Makalenin bizzat tezin spesifik vakasını işlemesi zorunlu değildir. Ancak bu kutularda alanın literatürde kabul görmüş üst düzey, saygın, metodolojik/teorik el kitapları ve kurucu metinleri önceliklendirilmeli; tezin vaka analiziyle ilişkilendirilemeyecek marjinal, dar kapsamlı spesifik vaka incelemeleri (örneğin alakasız toplumsal hareketler) elenmelidir.`;
+/**
+ * Builds box-type-specific evaluation guidelines for the jury.
+ * Each quadrant has tailored acceptance/rejection criteria reflecting
+ * its role in the thesis structure.
+ *
+ * @param boxType - Box type (SUBJECT_PROBLEM, THEORETICAL_FRAMEWORK, METHODOLOGY)
+ * @returns Formatted quadrant-specific rehber string, or empty if PRIMARY_MATERIAL
+ */
+function buildQuadrantSpecificInstruction(boxType: string): string {
+  switch (boxType) {
+    case "SUBJECT_PROBLEM":
+      return `
+═══════════════════════════════════════════════════════════════════════════════
+KUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — VAKA / KONU KUTUSU (SUBJECT_PROBLEM)
+═══════════════════════════════════════════════════════════════════════════════
+
+Amaç: Bu kutu tezin doğrudan incelediği ampirik vakaya, spesifik tarihsel
+döneme ve aktörlere odaklanır.
+
+## KABUL KRİTERİ
+Tezin kapsadığı tarihsel dönemi ve vaka alanını doğrudan işleyen ampirik monografiler,
+saha araştırmaları ve vaka analizleri yüksek puan (80-95+) almalıdır.
+Temel monografiler "çok genel" diye cezalandırılamaz; isFoundational: true
+için bu ampirik temel eserler önceliklendirilmelidir.
+
+## ZORUNLU ELEME (RED) KRİTERLERİ
+isRelevant: false, score < 30, isFoundational: false
+
+1. Tezin kapsadığı olgusal/tarihsel dönemin DIŞINDAKİ başka bir döneme veya
+   olaya (örneğin tezin kapsadığı yıllar dışındaki başka bir barış sürecine
+   veya savaş kesitine) odaklanan çalışmalar.
+
+2. Soyut, genel ve zamansız teorik/kuramsal eserler (Örn: genel iç savaş
+   şiddeti teorileri, Foucault veya Gramsci gibi düşünürlerin genel teorileri)
+   ve metodoloji el kitapları. Bu eserler teorik/yöntemsel zenginlik taşısalar
+   bile Vaka/Konu Kutusu (SUBJECT_PROBLEM) için TAMAMEN ALAKASIZDIR.`;
+
+    case "THEORETICAL_FRAMEWORK":
+      return `
+═══════════════════════════════════════════════════════════════════════════════
+KUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — TEORİK ÇERÇEVE KUTUSU (THEORETICAL_FRAMEWORK)
+═══════════════════════════════════════════════════════════════════════════════
+
+Amaç: Bu kutu tezin ampirik vakasını anlamlandırmada kullanılan soyut
+kuramlar, teorik kavramlar ve modellemelere odaklanır.
+
+## KABUL KRİTERİ
+İlgili kuramcıların birincil kuramsal metinleri ve bu teorileri tartışan
+literatür yüksek puan almalıdır.
+
+## RED KRİTERİ
+Teorisiz sadece ampirik vaka anlatan veya teknik metodoloji sunan eserler
+düşük puan almalıdır.`;
+
+    case "METHODOLOGY":
+      return `
+═══════════════════════════════════════════════════════════════════════════════
+KUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — YÖNTEM KUTUSU (METHODOLOGY)
+═══════════════════════════════════════════════════════════════════════════════
+
+Amaç: Bu kutu metodolojik, analitik ve yöntemsel eserlere odaklanır.
+
+Metodolojik yaklaşımları, analitik çerçeveleri ve araştırma yöntemlerini
+detaylandıran eserler yüksek puan almalıdır.`;
+
+    default:
+      return "";
+  }
 }
 
 /**
  * Builds the system instruction for the single-box jury LLM call.
+ * Combines the general role definition with quadrant-specific guidelines.
  *
  * @param boxType - Box type (SUBJECT_PROBLEM, THEORETICAL_FRAMEWORK, METHODOLOGY)
  * @param subBoxTitle - Sub-box title
- * @param description - Box description
+ * @param description - Sub-box's own description
  * @param thesisBoxId - Box database ID
  * @param thesisSubject - The thesis subject problem text (ana tez konusu)
  * @returns Formatted system instruction string
@@ -49,27 +109,38 @@ export function buildJurySystemInstruction(
     thesisSubject,
   );
 
+  const quadrantBlock = buildQuadrantSpecificInstruction(boxType);
+
   return `# Rol ve Uzmanlık
 
-Sen, OpenAlex'ten dönen akademik makaleleri belirli bir tez alt kutusu bağlamında değerlendiren uzman bir akademik jüri üyesisin.
+Sen, akademik makaleleri belirli bir tez alt kutusu bağlamında değerlendiren uzman bir akademik jüri üyesisin.
 
 # Birincil Görev
 
 Her bir makaleyi, içinde bulunduğu alt kutunun türü, başlığı ve açıklaması ile karşılaştırarak değerlendir. Makalenin kutu bağlamıyla doğrudan alakalı olup olmadığına karar ver, 0-100 arası gerçek alaka skoru belirle, kurucu eser (foundational work) olup olmadığını işaretle ve 1 cümlelik Türkçe gerekçe yaz.
 
-# Kutu Türü ve Değerlendirme Kuralı
-
-Bu kutu türü: **${boxType}**
-Kutu Başlığı: ${subBoxTitle}
-Kutu Açıklaması: ${description}
+# Kutu Bağlamı
 
 ${boxTypeInstruction}
+
+# Genel Değerlendirme Kuralları
+
+Sadece soyut teorik/kavramsal benzerliklere odaklanma. Makalenin incelediği spesifik olgunun, aktörlerin ve tarihsel kesitin; Sub-Box bağlamı ve tezin kapsadığı olgusal/tarihsel çerçeve ile bütünsel olarak örtüşüp örtüşmediğini değerlendir.
+
+Eğer bir makale açıkça tezin ve kutunun kapsadığı tarihsel/olgusal dönemin DIŞINDAKİ başka bir döneme veya olaya odaklanıyorsa; kavramlar ne kadar benzer olursa olsun BU TEZ İÇİN ALAKASIZDIR.
+
+Tezin kapsadığı tarihsel dönemi ve vaka alanını doğrudan işleyen kapsayıcı temel monografileri ve saha çalışmalarını "çok genel" diyerek cezalandırma. Bu eserler tezin ampirik ve tarihsel zeminini oluşturduğu için yüksek relevans puanı (80-95+) almalıdır.${quadrantBlock}
+
+# Ko-Atıf Lideri Notu
+
+isCoCitationLeader=true olan eserler, taranan makalelerin ortak kaynakçasında en çok atıf yapılan temel referans adaylarıdır. Değerlendirirken bu akademik bağlamsal ağırlığı göz önünde bulundur.
 
 # Değerlendirme Kriterleri
 
 - Her makale için başlık, abstract metni ve OpenAlex relevance_score bilgisi verilmiştir.
 - Makalenin kutu bağlamına uygunluğunu değerlendir.
 - Sadece gerçekten kurucu metinler için isFoundational=true kullan.
+- Dönemsel sapma gösteren çalışmalar kesinlikle düşük puan almalıdır.
 
 # Çıktı Biçimi
 

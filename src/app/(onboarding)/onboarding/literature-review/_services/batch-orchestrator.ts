@@ -41,9 +41,13 @@ export interface BatchOrchestrationResult {
   archivalBoxTitles: string[];
 }
 
+/**
+ * Aggregated result for one active sub-box after Phase 1.
+ * Fields hold the sub-box's own data (not the parent's).
+ */
 interface SubBoxResult {
   boxType: string;
-  boxDescription: string;
+  subBoxDescription: string;
   subBox: SubBoxItem;
   thesisBoxId: number;
   candidates: QueueItem["candidates"];
@@ -67,9 +71,11 @@ function candidateToRawPaper(c: QueueItem["candidates"][0]): RawPaper {
     year: c.year,
     publisher: c.publisher,
     openAlexId: c.openAlexId,
-    isFoundational: true,
+    isFoundational: false,
     relevanceScore: 0,
     citedByCount: c.cluster.combinedFrequency,
+    isCoCitationLeader: true,
+    ccFreq: c.cluster.combinedFrequency,
   };
 }
 
@@ -106,9 +112,11 @@ function buildPool(r: SubBoxResult): PoolItem[] {
  *   Phase 4 — Progressive save to database
  *
  * Pool capping limits LLM input to the 12 best candidates per box (co-citation prioritised,
- * then relevance_score descending, then citedByCount as tiebreaker). The strict 1+3 quota
- * guarantees exactly 4 articles per box — the highest-scored article is forced as foundational
- * (isFoundational=true), the next 3 as related (isFoundational=false). Dedup uses both exact-match
+ * then relevance_score descending, then citedByCount as tiebreaker). Hard dedup (normalized title +
+ * DOI) runs before jury to eliminate duplicates. The strict 1+3 selection uses pure jury ranking
+ * authority — the top-scored `isRelevant=true` article becomes foundational (isFoundational=true);
+ * the next 3 become related (isFoundational=false). If fewer than 4 relevant, the pool is
+ * replenished deterministically from eliminated candidates by score. Dedup uses both exact-match
  * (normalizeCleanTitle) and containment similarity (areTitlesSimilar, threshold 0.80) to catch
  * edition/version duplicates like "Selections from the Prison Notebooks" vs "...of Antonio Gramsci".
  *
@@ -179,7 +187,7 @@ export async function orchestrateBatchProcess(
         if (!query) {
           return {
             boxType: box.boxType ?? "PROBLEMATIZATION",
-            boxDescription: box.description ?? "",
+            subBoxDescription: subBox.description ?? "",
             subBox,
             thesisBoxId: subBox.thesisBoxId,
             candidates: [],
@@ -254,7 +262,7 @@ export async function orchestrateBatchProcess(
 
         return {
           boxType: box.boxType ?? "PROBLEMATIZATION",
-          boxDescription: box.description ?? "",
+          subBoxDescription: subBox.description ?? "",
           subBox,
           thesisBoxId: subBox.thesisBoxId,
           candidates: subBoxCandidates,
@@ -292,16 +300,36 @@ export async function orchestrateBatchProcess(
   const juryInputs: JuryInputItem[] = [];
 
   // Build unified pool per box: raw articles + co-citation candidates
-  // then cap at max 12 per box (co-citation prioritised, then relevance_score, then citedByCount)
+  // then hard-dedup by normalized title and DOI, cap at max 12 per box
+  // (co-citation prioritised, then relevance_score, then citedByCount)
   const poolByBox = new Map<number, PoolItem[]>();
   for (const r of fulfilledResults) {
-    const pool = buildPool(r);
+    let pool = buildPool(r);
     if (pool.length === 0) continue;
+
+    // Hard dedup: remove exact duplicates by normalized title and DOI
+    const seenNormTitles = new Set<string>();
+    const seenDois = new Set<string>();
+    pool = pool.filter((item) => {
+      const normTitle = normalizeCleanTitle(item.rawPaper.title ?? "");
+      const doi = extractCleanDoi(item.rawPaper.doi ?? "");
+      if (doi) {
+        if (seenDois.has(doi)) return false;
+        seenDois.add(doi);
+      }
+      if (normTitle) {
+        if (seenNormTitles.has(normTitle)) return false;
+        seenNormTitles.add(normTitle);
+      }
+      return true;
+    });
 
     const capped = pool
       .sort((a, b) => {
-        if (a.rawPaper.isFoundational && !b.rawPaper.isFoundational) return -1;
-        if (!a.rawPaper.isFoundational && b.rawPaper.isFoundational) return 1;
+        if (a.rawPaper.isCoCitationLeader && !b.rawPaper.isCoCitationLeader)
+          return -1;
+        if (!a.rawPaper.isCoCitationLeader && b.rawPaper.isCoCitationLeader)
+          return 1;
         const relDiff = b.rawPaper.relevanceScore - a.rawPaper.relevanceScore;
         if (Math.abs(relDiff) > 0.0001) return relDiff > 0 ? 1 : -1;
         return (b.rawPaper.citedByCount ?? 0) - (a.rawPaper.citedByCount ?? 0);
@@ -314,7 +342,7 @@ export async function orchestrateBatchProcess(
         thesisBoxId: r.thesisBoxId,
         subBoxTitle: r.subBox.title,
         boxType: r.boxType,
-        description: r.boxDescription,
+        description: r.subBoxDescription,
       },
       articles: capped.map((p) => p.rawPaper),
     });
@@ -363,7 +391,7 @@ export async function orchestrateBatchProcess(
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // PHASE 3: STRICT 1+3 SELECTION PER BOX + GLOBAL DEDUP → TARGETED SANITIZATION
+  // PHASE 3: JURY RANKING AUTHORITY 1+3 SELECTION + GLOBAL DEDUP → TARGETED SANITIZATION
   // ══════════════════════════════════════════════════════════════════════════
   const subBoxResultsToPersist: {
     subBoxTitle: string;
@@ -401,8 +429,9 @@ export async function orchestrateBatchProcess(
   for (const r of fulfilledResults) {
     if (checkCancelled?.()) break;
 
+    // All evaluations for this box, sorted by relevance score descending
     const boxEvals = juryEvaluations
-      .filter((ev) => ev.thesisBoxId === r.thesisBoxId && ev.isRelevant)
+      .filter((ev) => ev.thesisBoxId === r.thesisBoxId)
       .sort((a, b) => b.relevanceScore - a.relevanceScore);
 
     if (boxEvals.length === 0) {
@@ -414,9 +443,11 @@ export async function orchestrateBatchProcess(
       continue;
     }
 
-    // ── 1+3 Quota Algorithm with Containment Dedup ────────────────────
-    // Returns true when a candidate title collides with any previously
-    // selected title via either exact-match or containment similarity.
+    // Separate relevant from eliminated (non-relevant)
+    const relevantEvals = boxEvals.filter((ev) => ev.isRelevant);
+    const eliminatedEvals = boxEvals.filter((ev) => !ev.isRelevant);
+
+    // ── Global Containment Dedup + 1+3 Selection ────────────────────
     const isDuplicate = (title: string): boolean => {
       const normTitle = normalizeCleanTitle(title);
       if (assignedTitles.has(normTitle)) return true;
@@ -433,44 +464,49 @@ export async function orchestrateBatchProcess(
 
     const selectedEvals: typeof boxEvals = [];
 
-    // Step 1: pick exactly 1 foundational (isFoundational=true, highest score)
-    //   with containment-aware dedup + pool lookup check
-    const foundationalCandidates = boxEvals.filter((ev) => ev.isFoundational);
-
-    for (const ev of foundationalCandidates) {
-      if (selectedEvals.length >= 1) break;
-      if (isDuplicate(ev.articleTitle)) continue;
+    const tryAdd = (ev: (typeof boxEvals)[0]): boolean => {
+      if (selectedEvals.length >= 4) return false;
+      if (isDuplicate(ev.articleTitle)) return false;
       const poolKey = `${ev.thesisBoxId}::${normalizeCleanTitle(ev.articleTitle)}`;
-      if (!poolLookup.has(poolKey)) continue;
+      if (!poolLookup.has(poolKey)) return false;
       markSelected(ev.articleTitle);
       selectedEvals.push(ev);
-    }
+      return true;
+    };
 
-    // Step 2: pick exactly 3 related from the remaining pool
-    const selectedNormTitles = new Set(
-      selectedEvals.map((e) => normalizeCleanTitle(e.articleTitle)),
-    );
-    const remainingCandidates = boxEvals.filter(
-      (ev) => !selectedNormTitles.has(normalizeCleanTitle(ev.articleTitle)),
-    );
-
-    for (const ev of remainingCandidates) {
+    // Step 1: Select from relevant articles in score order (jury ranking authority)
+    for (const ev of relevantEvals) {
       if (selectedEvals.length >= 4) break;
-      if (isDuplicate(ev.articleTitle)) continue;
-      const poolKey = `${ev.thesisBoxId}::${normalizeCleanTitle(ev.articleTitle)}`;
-      if (!poolLookup.has(poolKey)) continue;
-      markSelected(ev.articleTitle);
-      selectedEvals.push(ev);
+      tryAdd(ev);
     }
 
-    // Map selected evaluations to pool items, forcing isFoundational:
-    // position 0 → true (even if no jury candidate was marked foundational,
-    // the best available article takes the foundational role to guarantee 1:3 split)
+    // Step 2: Deterministic replenishment — if fewer than 4 relevant,
+    //          fill from eliminated (non-relevant) by score
+    if (selectedEvals.length < 4) {
+      for (const ev of eliminatedEvals) {
+        if (selectedEvals.length >= 4) break;
+        tryAdd(ev);
+      }
+    }
+
+    if (selectedEvals.length === 0) {
+      subBoxResultsToPersist.push({
+        subBoxTitle: r.subBox.title,
+        thesisBoxId: r.thesisBoxId,
+        articles: [],
+      });
+      continue;
+    }
+
+    // Map to allSelectedArticles — position 0 → foundational (isFoundational=true),
+    // positions 1-3 → related (isFoundational=false)
     for (let idx = 0; idx < selectedEvals.length; idx++) {
       const ev = selectedEvals[idx];
       const normTitle = normalizeCleanTitle(ev.articleTitle);
       const poolKey = `${ev.thesisBoxId}::${normTitle}`;
-      const poolItem = poolLookup.get(poolKey)!;
+      const poolItem = poolLookup.get(poolKey);
+
+      if (!poolItem) continue;
 
       allSelectedArticles.push({
         thesisBoxId: ev.thesisBoxId,
