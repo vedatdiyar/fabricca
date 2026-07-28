@@ -18,36 +18,27 @@ import {
 
 /** Threshold constant for Cohere relevance score filter. */
 export const RELEVANCE_THRESHOLD = 0.75;
-/** Minimum target candidate count for jury analysis. */
-export const MIN_THESES = 10;
 /** Maximum candidate thesis cap passed to LLM jury prompt. */
 export const MAX_THESES = 15;
 
 /**
- * Applies empirical threshold filtering (0.75 score bar, Min 10, Max 15) to Cohere-reranked theses.
+ * Applies Hard Floor (0.75) + Safety Cap (15) filtering to Cohere-reranked theses.
  *
  * @param siftedTheses - Ordered array of thesis candidates from Cohere Rerank.
- * @returns Array of 10 to 15 filtered candidates tailored for LLM jury evaluation.
+ * @returns Array of up to 15 filtered candidates tailored for LLM jury evaluation.
  */
 export function filterThesesForJury(
   siftedTheses: SiftedThesis[],
 ): SiftedThesis[] {
   if (siftedTheses.length === 0) return [];
 
-  // Filter candidates with relevance score >= 0.75
+  // Hard Floor: only keep theses with score >= 0.75
   const filtered = siftedTheses.filter(
     (t) => (t.relevanceScore ?? 0) >= RELEVANCE_THRESHOLD,
   );
 
-  let result: SiftedThesis[];
-
-  if (filtered.length > MAX_THESES) {
-    result = filtered.slice(0, MAX_THESES);
-  } else if (filtered.length < MIN_THESES) {
-    result = siftedTheses.slice(0, Math.min(MIN_THESES, siftedTheses.length));
-  } else {
-    result = filtered;
-  }
+  // Safety Cap: take top 15 by score
+  const result = filtered.slice(0, MAX_THESES);
 
   // Sort by thesis ID to ensure deterministic [Tez #] labelling
   // regardless of Cohere score fluctuations
@@ -112,7 +103,7 @@ export const juryAnalysisResultJsonSchema: JsonSchema = {
         literatureMapping: {
           type: "string",
           description:
-            "Mevcut Literatürün Haritalandırılması: Sunulan tezlerin araştırmanın hangi boyutlarını ele aldığının tematik haritası ve akademik özeti. KESİNLİKLE tez numarası (#1, #2 vb.), tez adı veya yazar adı kullanma! Tezleri tematik gruplara ayırarak 'Literatürdeki tezler X grupta kümelenmektedir. İlk grupta..., ikinci grupta...' şeklinde tematik özetle.",
+            "Mevcut Literatürün Haritalandırılması: Sunulan tezlerin araştırmanın hangi boyutlarını ele aldığının tematik haritası ve akademik özeti. Tezleri tematik gruplara ayırarak 'Literatürdeki tezler X grupta kümelenmektedir. İlk grupta..., ikinci grupta...' şeklinde tematik özetle. Her tezden alıntı yaparken mutlaka APA formatında atıf ver: (Yazar, Yıl).",
         },
         academicGap: {
           type: "string",

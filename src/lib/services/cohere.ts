@@ -69,7 +69,7 @@ export async function rerankWithCohere(
     const response = await withRetry(
       async () => {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15_000);
+        const timeoutId = setTimeout(() => controller.abort(), 30_000);
         try {
           const res = await fetch(COHERE_RERANK_URL, {
             method: "POST",

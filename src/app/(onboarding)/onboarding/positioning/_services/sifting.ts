@@ -55,22 +55,14 @@ function isAllowedLanguage(lang?: string): boolean {
 }
 
 /**
- * Converts a thesis candidate object into a structured YAML string for optimal performance
- * with Cohere Rerank v4.0 Pro per official Cohere documentation.
+ * Converts a thesis candidate object into a compact YAML string (title + abstract only)
+ * for Cohere Rerank v4.0 Pro. Light payload reduces latency and token usage.
  *
  * @param thesis - The candidate thesis object.
  * @returns Structured YAML string representation.
  */
 function formatThesisToYaml(thesis: TezaraThesisDetails): string {
-  return [
-    `Title: ${thesis.title}`,
-    `Author: ${thesis.author || "N/A"}`,
-    `University: ${thesis.university || "N/A"}`,
-    `Year: ${thesis.year || "N/A"}`,
-    `ThesisType: ${thesis.thesisType || "N/A"}`,
-    `Department: ${thesis.department || "N/A"}`,
-    `Abstract: ${thesis.abstract}`,
-  ].join("\n");
+  return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
 }
 
 /**
@@ -101,7 +93,7 @@ function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
  * @param queries - Generated 8-query object (2 fields × TR + EN × 2 alternatives).
  * @param matrixInput - The 4-field positioning matrix input used as target context for reranking.
  * @param logger - Optional Logger instance for step telemetry.
- * @param options - Optional configuration options including topN (default 12).
+ * @param options - Optional configuration options including topN (default 50).
  * @returns Promise resolving to an array of up to topN sifted and ranked theses.
  */
 export async function searchAndSiftTheses(
@@ -110,7 +102,7 @@ export async function searchAndSiftTheses(
   logger?: Logger,
   options?: { topN?: number },
 ): Promise<SiftedThesis[]> {
-  const topN = options?.topN ?? 12;
+  const topN = options?.topN ?? 50;
 
   const allQueries: string[] = [
     sanitizeMeiliQuery(queries.subjectTr_alt1),
@@ -134,7 +126,7 @@ export async function searchAndSiftTheses(
 
   // Step 1: 8 parallel Meilisearch searches with precision params
   const searchParams = {
-    limit: 100,
+    limit: 50,
     rankingScoreThreshold: RANKING_SCORE_THRESHOLD,
     filter: LANG_FILTER,
     attributesToSearchOn: SEARCH_FIELDS,
