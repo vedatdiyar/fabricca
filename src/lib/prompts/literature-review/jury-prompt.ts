@@ -74,10 +74,33 @@ düşük puan almalıdır.`;
 KUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — YÖNTEM KUTUSU (METHODOLOGY)
 ═══════════════════════════════════════════════════════════════════════════════
 
-Amaç: Bu kutu metodolojik, analitik ve yöntemsel eserlere odaklanır.
+Amaç: Bu kutu metodolojik, analitik ve yöntemsel eserlere odaklanır. Makaleler
+aşağıdaki üç tipte sınıflandırılır ve puanlanır.
 
-Metodolojik yaklaşımları, analitik çerçeveleri ve araştırma yöntemlerini
-detaylandıran eserler yüksek puan almalıdır.`;
+────────────────────────────────────────────────────
+(A) BİRİNCİL ÖNCELİK — Metodolojik Kılavuz (PUAN: 80-100)
+────────────────────────────────────────────────────
+Doğrudan yöntemin adımlarını, kodlama prosedürünü, analiz tekniklerini ve
+araştırma tasarımını anlatan el kitapları (handbook/manual), yöntem kitapları
+(methodology textbooks/guides), araştırma tasarımı makaleleri ve uygulamalı
+analiz prosedürü kılavuzları EN YÜKSEK PUANI (80-100) almalıdır. Bu eserler
+isFoundational=true olarak işaretlenebilir.
+
+────────────────────────────────────────────────────
+(B) İKİNCİL ÖNCELİK — Emsal Uygulama (PUAN: 60-79)
+────────────────────────────────────────────────────
+Yöntemi doğrudan kılavuz olarak anlatmasa da yöntemi ilgili disiplindeki emsal
+bir vakaya metodolojik derinlikle uygulayan nitelikli çalışmalar ORTA-YÜKSEK
+PUAN (60-79) almalıdır. Yöntemin sınırlarını ve uygulama inceliklerini tartışan
+eserler bu kategoride değerlendirilir. isFoundanical=false.
+
+────────────────────────────────────────────────────
+(C) KESİN RED / DÜŞÜK ÖNCELİK — Felsefi/Genel Kuramlar & Yüzeysel Çalışmalar (PUAN: 0-40)
+────────────────────────────────────────────────────
+Foucault, Butler, Derrida gibi düşünürlerin salt felsefi/soyut teorik eserleri,
+yöntemin inceliklerini anlatmayan düz ampirik yazılar (sadece sonuç raporu,
+yöntemsiz vaka anlatısı) ve metodoloji içermeyen genel sosyal teori metinleri
+DÜŞÜK PUAN (0-40) almalıdır. Bu eserler isRelevant=false olarak işaretlenmelidir.`;
 
     default:
       return "";

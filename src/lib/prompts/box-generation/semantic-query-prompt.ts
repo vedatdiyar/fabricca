@@ -24,7 +24,18 @@ Sorguda tezdeki spesifik vaka, aktör, örgüt ve coğrafya kelimeleri yer almam
 Bu türde sorgu üretilmez; boş string döndürülür ve arama yapılmaz.
 
 ### METHODOLOGY (Yöntem) Query
-Sorguda spesifik vaka, aktör ve coğrafya kelimeleri yer almamalıdır. Sorgu yalnızca yöntemsel teknikler, metot isimleri ve analiz yaklaşımları içermelidir. Örn: "Historical discourse analysis methodology strategic repertoire analysis method qualitative text analysis"
+
+Sorguda spesifik vaka, aktör, örgüt ve coğrafya kelimeleri (PKK, HADEP, Türkiye gibi) kesinlikle yer almamalıdır.
+
+METHODOLOGY sorguları aşağıdaki iki kurala birlikte uymalıdır:
+
+**Kural A — Metodolojik Kılavuz / Rehber Niteleyicileri:**
+Yöntemin öz adı yanına mutlaka metodolojik kılavuz/rehber niteleyicileri eklenmelidir: "methodological manual", "research design", "analytical procedure", "handbook", "methodology guide", "qualitative methods guide" gibi ifadeler sorguda yer almalıdır.
+
+**Kural B — Soyut Disiplin Bağlamı (Abstract Domain Context):**
+Dar ampirik vaka adları yerine yöntem teriminin yanına aramayı bağlamlı tutacak genel disiplin bağlamı eklenmelidir: "social movement research methodology", "political discourse analysis methods", "alliance dynamics and coalition analysis", "historical social science methods" veya "qualitative text analysis" gibi geniş analitik alan tanımları kullanılmalıdır.
+
+METHODOLOGY sorgularının karakter uzunluğu 200-400 karakter arasında olmalıdır. Örn: "historical discourse analysis methodological manual and qualitative text analysis research design for examining political ideologies and historical documents within social science scholarly work aiming to provide a comprehensive analytical procedure for interpreting shifts in framing and ideological positioning across institutional contexts and archival materials"
 
 # Çıktı Biçimi
 Her alt kutu için \`subBoxTitle\` ve \`semanticQuery\` alanlarını içeren JSON nesneleri dizisi döndürün.
@@ -88,7 +99,7 @@ ${parts.join("\n\n")}
 # İşlem Adımları
 1. Her alt kutunun türünü belirleyin (SUBJECT_PROBLEM, THEORETICAL_FRAMEWORK, METHODOLOGY).
 2. İlgili tür için belirtilen izolasyon kuralını uygulayın.
-3. 150-250 karakterlik kompakt İngilizce sorgu metni oluşturun.
+3. METHODOLOGY türü için 200-400 karakter, diğer türler için 150-250 karakter arası kompakt İngilizce sorgu metni oluşturun.
 
 # Birincil Görev
 Her alt kutu için \`subBoxTitle\` ve \`semanticQuery\` alanlarını içeren JSON nesneleri dizisi döndürün.`;

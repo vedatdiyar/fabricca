@@ -142,19 +142,6 @@ function SubBoxDone({
     const childBoxes = subBox.subBoxes ?? [];
     return (
       <div className="space-y-4">
-        <div className="p-4 rounded-md bg-primary/10 border border-primary/20 leading-relaxed">
-          <p className="font-semibold text-foreground text-sm mb-1">
-            Birincil Malzeme Alanı
-          </p>
-          <p className="text-muted-foreground text-xs leading-relaxed font-light">
-            Bu alan, yapacağınız saha çalışması verileri (mülakat deşifreleri,
-            anketler) veya kütüphanelerden toplayacağınız birincil kaynaklar
-            (gazete, doküman, arşiv belgeleri) için ayrılmış size özel bir veri
-            havuzudur. Aşağıdaki her bir alt konu başlığı için elinizdeki
-            kaynakları/belgeleri giriniz.
-          </p>
-        </div>
-
         {childBoxes.length > 0 ? (
           <div className="relative border-l border-primary/20 pl-4 ml-2.5 space-y-6 pt-2">
             {childBoxes.map((sub, idx) => {
