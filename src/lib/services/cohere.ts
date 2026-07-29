@@ -142,3 +142,82 @@ export async function rerankWithCohere(
     }));
   }
 }
+
+const COHERE_EMBED_URL = "https://api.cohere.com/v1/embed";
+const DEFAULT_EMBED_MODEL = "embed-multilingual-v3.0";
+
+/**
+ * Generates 1024-dimensional vector embeddings using Cohere Embed API (`embed-multilingual-v3.0`).
+ *
+ * @param texts Array of string chunks to embed
+ * @param inputType "search_document" for indexing chunks into DB, "search_query" for user search queries
+ * @param logger Optional Logger instance
+ * @returns Array of 1024-float vector arrays matching input texts order
+ */
+export async function generateCohereEmbeddings(
+  texts: string[],
+  inputType: "search_document" | "search_query" = "search_document",
+  logger?: Logger,
+): Promise<number[][]> {
+  if (texts.length === 0) return [];
+
+  const apiKey = process.env.COHERE_API_KEY;
+  if (!apiKey) {
+    logger?.warn("cohere_embed_key_missing", {
+      service: "cohere",
+      data: { message: "COHERE_API_KEY is not defined in environment." },
+    });
+    return texts.map(() => new Array(1024).fill(0));
+  }
+
+  try {
+    const batchSize = 96;
+    const allEmbeddings: number[][] = [];
+
+    for (let i = 0; i < texts.length; i += batchSize) {
+      const batchTexts = texts.slice(i, i + batchSize);
+
+      const response = await fetch(COHERE_EMBED_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          texts: batchTexts,
+          model: DEFAULT_EMBED_MODEL,
+          input_type: inputType,
+          embedding_types: ["float"],
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text().catch(() => "");
+        throw new Error(
+          `Cohere Embed API returned status ${response.status}: ${errText}`,
+        );
+      }
+
+      const data = (await response.json()) as {
+        embeddings?: { float?: number[][] } | number[][];
+      };
+
+      const floatEmbeddings =
+        (data.embeddings && "float" in data.embeddings
+          ? data.embeddings.float
+          : (data.embeddings as number[][])) || [];
+
+      allEmbeddings.push(...floatEmbeddings);
+    }
+
+    return allEmbeddings;
+  } catch (error) {
+    logger?.error("cohere_embed_failed", {
+      service: "cohere",
+      error,
+      data: { textCount: texts.length },
+    });
+
+    return texts.map(() => new Array(1024).fill(0));
+  }
+}

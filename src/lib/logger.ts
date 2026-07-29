@@ -21,6 +21,7 @@ type ServiceName =
   | "crossref"
   | "dashboard"
   | "cohere"
+  | "ilovepdf"
   | "positioning";
 
 export interface LogParams {

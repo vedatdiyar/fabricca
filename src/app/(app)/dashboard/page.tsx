@@ -1,8 +1,5 @@
 import { redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { getSession } from "@/lib/session";
-import { Button } from "@/components/ui/button";
-import { reopenOnboardingAction } from "@/app/(app)/actions";
 import { getUsersMatrixAndBoxesWithResources } from "@/app/(app)/_services/box-service";
 import { getTasksAction } from "./actions";
 import { DashboardContent } from "./_components/dashboard-content";
@@ -43,31 +40,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="w-full space-y-8">
-      {/* Page Header */}
-      <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
-        <div>
-          <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
-            Genel Özet
-          </h1>
-          <p className="font-sans text-sm text-muted-foreground mt-1">
-            Akademik araştırma sürecinizi, konu kutularınızı ve güncel
-            hedeflerinizi tek bir panelden yönetin.
-          </p>
-        </div>
-        <form action={reopenOnboardingAction}>
-          <Button
-            type="submit"
-            variant="outline"
-            size="sm"
-            className="gap-2 shrink-0"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Onboarding&rsquo;e Dön
-          </Button>
-        </form>
-      </div>
-
-      {/* Main dashboard content (interactive) */}
       <DashboardContent
         initialBoxes={dbBoxes}
         initialResources={dbResources}

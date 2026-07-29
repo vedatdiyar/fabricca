@@ -13,6 +13,7 @@ import {
   uniqueIndex,
   foreignKey,
   uuid,
+  vector,
 } from "drizzle-orm/pg-core";
 import {
   relations,
@@ -178,6 +179,19 @@ export type NewThesisBox = InferInsertModel<typeof thesisBoxes>;
 // E) LIBRARY RESOURCES
 // ============================================================================
 
+export const pdfStatusEnum = pgEnum("pdf_status_enum", [
+  "NOT_UPLOADED",
+  "PROCESSING",
+  "READY",
+  "FAILED",
+]);
+
+export const noteTypeEnum = pgEnum("note_type_enum", [
+  "DIRECT_QUOTE",
+  "PARAPHRASE",
+  "PERSONAL_NOTE",
+]);
+
 /**
  * Library Resources table.
  * Stores recommended / approved / rejected academic sources
@@ -201,6 +215,11 @@ export const libraryResources = pgTable(
     comparisonNote: text(),
     isRead: boolean().default(false).notNull(),
     isFoundational: boolean().default(false).notNull(),
+    pdfUrl: text("pdf_url"),
+    pdfFileName: text("pdf_file_name"),
+    pdfFileSize: integer("pdf_file_size"),
+    pdfStatus: pdfStatusEnum("pdf_status").default("NOT_UPLOADED").notNull(),
+    pageCount: integer("page_count"),
     createdAt: timestamp().defaultNow().notNull(),
     updatedAt: timestamp().defaultNow().notNull(),
   },
@@ -221,6 +240,75 @@ export type LibraryResource = InferSelectModel<typeof libraryResources>;
 
 /** LibraryResource type for insert queries. */
 export type NewLibraryResource = InferInsertModel<typeof libraryResources>;
+
+/**
+ * Library Resource Notes table.
+ * Stores academic notes, page-numbered citations, and personal notes.
+ */
+export const libraryResourceNotes = pgTable(
+  "library_resource_notes",
+  {
+    id: serial().primaryKey(),
+    libraryResourceId: integer("library_resource_id")
+      .notNull()
+      .references(() => libraryResources.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    pageNumber: varchar("page_number", { length: 50 }).notNull(),
+    noteType: noteTypeEnum("note_type").notNull(),
+    content: text("content").notNull(),
+    sentToCardIndex: boolean("sent_to_card_index").default(true).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_library_resource_notes_resource_id").on(table.libraryResourceId),
+    index("idx_library_resource_notes_user_id").on(table.userId),
+  ],
+);
+
+/** LibraryResourceNote type for select queries. */
+export type DbLibraryResourceNote = InferSelectModel<
+  typeof libraryResourceNotes
+>;
+
+/** NewLibraryResourceNote type for insert queries. */
+export type NewDbLibraryResourceNote = InferInsertModel<
+  typeof libraryResourceNotes
+>;
+
+/**
+ * Resource Embeddings table.
+ */
+export const resourceEmbeddings = pgTable(
+  "resource_embeddings",
+  {
+    id: serial().primaryKey(),
+    libraryResourceId: integer("library_resource_id")
+      .notNull()
+      .references(() => libraryResources.id, { onDelete: "cascade" }),
+    chunkIndex: integer("chunk_index").notNull(),
+    pageNumber: integer("page_number"),
+    content: text("content").notNull(),
+    tokenCount: integer("token_count"),
+    embedding: vector("embedding", { dimensions: 1024 }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_resource_embeddings_resource_id").on(table.libraryResourceId),
+    index("idx_resource_embeddings_embedding").using(
+      "hnsw",
+      table.embedding.op("vector_cosine_ops"),
+    ),
+  ],
+);
+
+/** ResourceEmbedding type for select queries. */
+export type ResourceEmbedding = InferSelectModel<typeof resourceEmbeddings>;
+
+/** NewResourceEmbedding type for insert queries. */
+export type NewResourceEmbedding = InferInsertModel<typeof resourceEmbeddings>;
 
 // ============================================================================
 // F) TASKS

@@ -28,13 +28,15 @@ Projede kullanılacak teknolojiler kesin olarak belirlenmiştir. Yapay zeka, gel
 - **Veri Tabanı & ORM:** Neon Serverless PostgreSQL, Drizzle ORM
 - **Vektör Veri Tabanı (RAG):** Neon DB içinde entegre `pgvector` eklentisi
 - **LLM Modeli:** Google Gemini Flash-Lite (`FLASH_LITE_31` sabiti — tüm metin üretimi ve analiz işlemleri için)
-- **Embedding Model:** Cloudflare Workers AI (`@cf/qwen/qwen3-embedding-0.6b`)
+- **Embedding Model:** Cohere Embed API (`embed-multilingual-v3.0` — 1024 boyutlu vektörler)
+- **PDF Parçalama ve Metadata Çıkarımı:** Unstructured API (REST - hi_res & by_title hiyerarşik parçalama), Crossref API (DOI ile metadata çözümleme), Gemini Flash-Lite (DOI bulunamadığında metin tabanlı metadata çıkarımı)
 - **AI Orkestrasyon:** Google Gen AI SDK (`@google/genai` - Doğrudan entegrasyon)
 - **Kimlik Doğrulama (Auth):** Drizzle tabanlı yerel `users` tablosu, `bcrypt-ts` ile şifreleme ve `src/lib/session.ts` üzerinden Cookies tabanlı hafif session yönetimi
 - **Runtime Doğrulama:** Zod v4 (`z.email()`, `z.enum()`, `safeParse`) — Server Action girdi validasyonu ve LLM çıktı şema kontrolü
 - **İstemci Cache & State Yönetimi:** `@tanstack/react-query` — Sunucu verisi önbellekleme, optimistik güncellemeler ve mutasyon yönetimi
 - **Akademik Yayın Veri Kaynağı:** OpenAlex API (REST)
 - **DOI ve Yayın Çözümleme:** Crossref API (REST)
+- **PDF Sıkıştırma Servisi:** iLovePDF API (REST - Yüksek boyutlu PDF sıkıştırma)
 - **API İstek Sınırlandırma:** `@/lib/rate-limiter` — `createConcurrencyLimiter` ve `createGapEnforcedQueue`
 
 ### 3.1. Çevre Değişkenleri (Environment Variables)
@@ -44,13 +46,16 @@ Projenin çalışması ve dış servislerle entegrasyonu için aşağıdaki çev
 - `DATABASE_URL`: Neon Serverless PostgreSQL bağlantı adresi (pooler/sslmode=verify-full dahil).
 - `GEMINI_API_KEY`: Google Gemini API anahtarı.
 - `CLOUDFLARE_ACCOUNT_ID` & `CLOUDFLARE_API_TOKEN`: Cloudflare Workers AI embedding üretimi için hesap ve API token bilgileri.
-- `COHERE_API_KEY`: Cohere Rerank API anahtarı.
+- `COHERE_API_KEY`: Cohere Rerank ve Embedding API anahtarı.
 - `OPENALEX_API_KEY`: OpenAlex API istek limitlerini artırmak için kullanılan anahtar.
 - `CROSSREF_CONTACT_EMAIL`: Crossref API isteklerinde "polite pool"a dahil olmak için kullanılan iletişim e-postası.
 - `TAVILY_API_KEY`: Tavily arama API anahtarı (literatür taraması).
 - `EXA_API_KEY`: Exa arama API anahtarı.
 - `SEMANTIC_SCHOLAR_API_KEY`: Semantic Scholar API anahtarı.
 - `SEED_USER1_PASSWORD` & `SEED_USER2_PASSWORD`: Seed edilmiş kullanıcı hesaplarının şifreleri.
+- `ILOVEPDF_PUBLIC_KEY` & `ILOVEPDF_SECRET_KEY`: iLovePDF API erişim anahtarları.
+- `PDF_COMPRESS_THRESHOLD_BYTES`: PDF otomatik sıkıştırma için boyut eşiği (varsayılan: 2097152 / 2MB).
+- `UNSTRUCTURED_API_KEY` & `UNSTRUCTURED_API_URL`: Unstructured PDF parçalama (partition & chunking) API bilgileri.
 
 ## 4. Klasör Yapısı (Folder Structure)
 
