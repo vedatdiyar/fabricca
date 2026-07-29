@@ -2,7 +2,6 @@
 
 import { useState, useMemo, memo } from "react";
 import {
-  ChevronRight,
   Activity,
   Clock,
   CheckCircle2,
@@ -53,21 +52,6 @@ const COLUMNS = [
   { id: "DONE", label: "Bitti", icon: CheckCircle2, iconColor: "text-success" },
 ] as const;
 
-const priorityStyles: Record<string, { badge: string; text: string }> = {
-  HIGH: {
-    badge: "bg-destructive/15 border-destructive/20 text-destructive",
-    text: "Yüksek",
-  },
-  MEDIUM: {
-    badge: "bg-warning/15 border-warning/20 text-warning",
-    text: "Orta",
-  },
-  LOW: {
-    badge: "bg-success/15 border-success/20 text-success",
-    text: "Düşük",
-  },
-};
-
 interface KanbanCardProps {
   task: KanbanTask;
   onDragStart: (e: React.DragEvent, taskId: string) => void;
@@ -83,10 +67,6 @@ const KanbanCard = memo(function KanbanCard({
   onEdit,
   onDelete,
 }: KanbanCardProps) {
-  const priority = priorityStyles[task.priority] || {
-    badge: "bg-secondary text-secondary-foreground",
-    text: task.priority,
-  };
   const isReading = task.isReadingTask;
 
   return (
@@ -98,14 +78,6 @@ const KanbanCard = memo(function KanbanCard({
     >
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
-          <span
-            className={cn(
-              "inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase",
-              priority.badge,
-            )}
-          >
-            {priority.text}
-          </span>
           {!isReading && (
             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
@@ -166,10 +138,6 @@ const KanbanCard = memo(function KanbanCard({
               </div>
             )}
           </div>
-        </div>
-
-        <div className="flex justify-end pt-1 border-t border-border/40">
-          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
       </div>
     </Card>
