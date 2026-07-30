@@ -1,9 +1,6 @@
 import { z } from "zod";
-import {
-  generateStructuredContent,
-  type JsonSchema,
-} from "@/lib/services/gemini";
-import { FLASH_LITE_31 } from "@/lib/constants";
+import { generateStructuredContent } from "@/lib/services/cerebras";
+import { CEREBRAS_MODEL } from "@/lib/constants";
 import { CROSSREF_USER_AGENT } from "@/lib/api-utils";
 import { formatAuthorList, extractCrossrefYear } from "@/lib/academic/utils";
 import type { Logger } from "@/lib/logger";
@@ -23,6 +20,41 @@ const DOI_REGEX = /10\.\d{4,}\/[-._;()/:A-Z0-9]+/i;
 function extractDoiFromText(text: string): string | null {
   const match = text.match(DOI_REGEX);
   return match ? match[0].replace(/\.$/, "") : null;
+}
+
+function findDoiInChunks(chunks: UnstructuredChunk[]): string | null {
+  for (const chunk of chunks) {
+    const doi = extractDoiFromText(chunk.content);
+    if (doi) return doi;
+  }
+  return null;
+}
+
+function extractIsbnFromText(text: string): string | null {
+  const match = text.match(
+    /\b(?:ISBN(?:-1[03])?[:\s]*)?(97[89]\d{10}|\d{9}[\dX])\b/i,
+  );
+  if (!match) return null;
+  const cleaned = match[1].replace(/[-\s]/g, "").toUpperCase();
+  if (/^\d{13}$/.test(cleaned) && /^97[89]/.test(cleaned)) return cleaned;
+  if (/^\d{9}[\dX]$/.test(cleaned)) return cleaned;
+  return null;
+}
+
+function findIsbnInChunks(chunks: UnstructuredChunk[]): string | null {
+  for (const chunk of chunks) {
+    const isbn = extractIsbnFromText(chunk.content);
+    if (isbn) return isbn;
+  }
+  return null;
+}
+
+function buildMetadataText(chunks: UnstructuredChunk[]): string {
+  return chunks
+    .slice(0, 5)
+    .map((c) => c.content)
+    .join("\n\n")
+    .slice(0, 4000);
 }
 
 function fallbackMetadataFromFileName(fileName: string): PdfMetadataResult {
@@ -62,7 +94,10 @@ async function fetchCrossrefByDoi(
       message.author as { given?: string; family?: string }[] | undefined,
     );
     const year = extractCrossrefYear(message) || new Date().getFullYear();
-    const publisher = (message.publisher as string) || undefined;
+    const containerTitle =
+      ((message["container-title"] as string[])?.[0] as string) || undefined;
+    const publisher =
+      containerTitle || (message.publisher as string) || undefined;
     const abstractText = (message.abstract as string) || undefined;
 
     return {
@@ -78,16 +113,57 @@ async function fetchCrossrefByDoi(
   }
 }
 
-const geminiMetadataSchema = z.object({
+interface OpenLibraryBook {
+  title?: string;
+  authors?: { key: string; name: string }[];
+  publishers?: { name: string }[];
+  publish_date?: string;
+}
+
+async function fetchOpenLibraryByIsbn(
+  isbn: string,
+): Promise<PdfMetadataResult | null> {
+  const url = `https://openlibrary.org/isbn/${encodeURIComponent(isbn)}.json`;
+
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": CROSSREF_USER_AGENT },
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!response.ok) return null;
+
+    const data = (await response.json()) as OpenLibraryBook;
+    if (!data.title) return null;
+
+    const yearMatch = data.publish_date?.match(/\d{4}/);
+    const year = yearMatch
+      ? parseInt(yearMatch[0], 10)
+      : new Date().getFullYear();
+
+    return {
+      title: data.title,
+      authors: data.authors?.map((a) => a.name).filter(Boolean) || [
+        "Bilinmeyen Yazar",
+      ],
+      publicationYear: year,
+      publisher: data.publishers?.[0]?.name || undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+const metadataSchema = z.object({
   title: z.string().min(1).describe("Makalenin tam başlığı"),
-  authors: z.array(z.string()).min(1).describe("Yazar listesi (ad soyad)"),
+  authors: z.array(z.string()).describe("Yazar listesi (ad soyad)"),
   publicationYear: z.number().int().min(1900).max(2100).describe("Yayın yılı"),
   publisher: z.string().optional().describe("Yayınevi veya dergi adı"),
   doi: z.string().optional().describe("DOI numarası (varsa)"),
   abstract: z.string().optional().describe("Makale özeti (varsa)"),
 });
 
-const geminiMetadataJsonSchema: JsonSchema = {
+const metadataJsonSchema = {
   type: "object",
   properties: {
     title: { type: "string", description: "Makalenin tam başlığı" },
@@ -102,11 +178,12 @@ const geminiMetadataJsonSchema: JsonSchema = {
     abstract: { type: "string", description: "Makale özeti (varsa)" },
   },
   required: ["title", "authors", "publicationYear"],
+  additionalProperties: false,
 };
 
-type GeminiMetadataResponse = z.infer<typeof geminiMetadataSchema>;
+type MetadataResponse = z.infer<typeof metadataSchema>;
 
-async function extractMetadataWithGemini(
+async function extractMetadataWithCerebras(
   chunkText: string,
   log: Logger,
 ): Promise<PdfMetadataResult | null> {
@@ -120,22 +197,22 @@ async function extractMetadataWithGemini(
     chunkText.slice(0, 4000);
 
   try {
-    const result = await generateStructuredContent<GeminiMetadataResponse>(
-      FLASH_LITE_31,
+    const result = await generateStructuredContent<MetadataResponse>(
+      CEREBRAS_MODEL,
       systemInstruction,
       prompt,
-      geminiMetadataJsonSchema,
+      metadataJsonSchema,
       log,
       {
         payloadStage: "pdf_metadata_extract",
-        zodSchema: geminiMetadataSchema,
-        quiet: true,
+        zodSchema: metadataSchema,
       },
     );
 
     return {
       title: result.title,
-      authors: result.authors,
+      authors:
+        result.authors.length > 0 ? result.authors : ["Bilinmeyen Yazar"],
       publicationYear: result.publicationYear,
       publisher: result.publisher || undefined,
       doi: result.doi || undefined,
@@ -151,9 +228,9 @@ export async function extractPdfMetadata(
   fileName: string,
   log: Logger,
 ): Promise<PdfMetadataResult> {
-  const firstChunkText = chunks[0]?.content || "";
+  const metadataText = buildMetadataText(chunks);
 
-  const doi = extractDoiFromText(firstChunkText);
+  const doi = findDoiInChunks(chunks);
   if (doi) {
     log.info("pdf_metadata_doi_found", {
       service: "library",
@@ -175,19 +252,41 @@ export async function extractPdfMetadata(
     });
   }
 
-  if (firstChunkText.length > 50) {
-    log.info("pdf_metadata_gemini_start", {
+  const isbn = findIsbnInChunks(chunks);
+  if (isbn) {
+    log.info("pdf_metadata_isbn_found", {
       service: "library",
-      data: { textLength: firstChunkText.length, hasDoi: !!doi },
+      data: { isbn },
     });
 
-    const geminiResult = await extractMetadataWithGemini(firstChunkText, log);
-    if (geminiResult) {
-      log.info("pdf_metadata_gemini_success", {
+    const openLibResult = await fetchOpenLibraryByIsbn(isbn);
+    if (openLibResult) {
+      log.info("pdf_metadata_openlibrary_success", {
         service: "library",
-        data: { title: geminiResult.title },
+        data: { title: openLibResult.title, isbn },
       });
-      return geminiResult;
+      return openLibResult;
+    }
+
+    log.warn("pdf_metadata_openlibrary_failed", {
+      service: "library",
+      data: { isbn },
+    });
+  }
+
+  if (metadataText.length > 50) {
+    log.info("pdf_metadata_cerebras_start", {
+      service: "library",
+      data: { textLength: metadataText.length, hasDoi: !!doi },
+    });
+
+    const cerebrasResult = await extractMetadataWithCerebras(metadataText, log);
+    if (cerebrasResult) {
+      log.info("pdf_metadata_cerebras_success", {
+        service: "library",
+        data: { title: cerebrasResult.title },
+      });
+      return cerebrasResult;
     }
   }
 

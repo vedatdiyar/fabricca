@@ -1,8 +1,10 @@
 import {
   S3Client,
   PutObjectCommand,
+  GetObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createFlowId, Logger } from "@/lib/logger";
 
 /**
@@ -120,4 +122,71 @@ export async function deletePdfFromR2(apaFileName: string): Promise<void> {
       "PDF dosyası Cloudflare R2 sisteminden silinirken bir hata oluştu.",
     );
   }
+}
+
+/**
+ * Generates a presigned upload URL for direct browser-to-R2 upload.
+ * The URL is valid for 15 minutes and allows PUT requests with the given content type.
+ *
+ * @param r2Key - The target key in the R2 bucket (e.g. "temp/<uuid>.pdf").
+ * @param contentType - MIME type of the file being uploaded.
+ * @returns A presigned URL string.
+ */
+export async function generatePresignedUploadUrl(
+  r2Key: string,
+  contentType: string,
+): Promise<string> {
+  const bucketName = process.env.R2_BUCKET_NAME || "fabricca";
+  const s3Client = getR2Client();
+
+  const command = new PutObjectCommand({
+    Bucket: bucketName,
+    Key: r2Key,
+    ContentType: contentType,
+  });
+
+  return getSignedUrl(s3Client, command, { expiresIn: 900 });
+}
+
+/**
+ * Fetches a PDF file buffer from R2 by its key.
+ *
+ * @param r2Key - The R2 object key (e.g. "pdfs/Yilmaz_2024_Turk_Edebiyati.pdf").
+ * @returns The file buffer.
+ */
+export async function getPdfFromR2(r2Key: string): Promise<Buffer> {
+  const bucketName = process.env.R2_BUCKET_NAME || "fabricca";
+  const s3Client = getR2Client();
+
+  const response = await s3Client.send(
+    new GetObjectCommand({
+      Bucket: bucketName,
+      Key: r2Key,
+    }),
+  );
+
+  const body = response.Body;
+  if (!body) {
+    throw new Error(`R2 object ${r2Key} returned empty body.`);
+  }
+
+  const bytes = await body.transformToByteArray();
+  return Buffer.from(bytes);
+}
+
+/**
+ * Deletes an object from R2 by its full key.
+ *
+ * @param r2Key - The R2 object key to delete.
+ */
+export async function deleteR2Object(r2Key: string): Promise<void> {
+  const bucketName = process.env.R2_BUCKET_NAME || "fabricca";
+  const s3Client = getR2Client();
+
+  await s3Client.send(
+    new DeleteObjectCommand({
+      Bucket: bucketName,
+      Key: r2Key,
+    }),
+  );
 }

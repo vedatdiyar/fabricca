@@ -10,13 +10,15 @@ import { LoadingSpinner } from "@/components/loading-spinner";
 import { toast } from "sonner";
 import {
   getLibraryResourcesAction,
-  createResourceFromPdfAction,
-  uploadResourcePdfAction,
   deleteResourcePdfAction,
   createResourceNoteAction,
   deleteResourceNoteAction,
   toggleResourceReadStatusAction,
   deleteLibraryResourceAction,
+  requestResourcePdfUploadAction,
+  completeResourcePdfUploadAction,
+  requestPdfCreateUploadAction,
+  completePdfCreateUploadAction,
 } from "./actions";
 import type {
   LibraryResourceItem,
@@ -125,52 +127,133 @@ function LibraryPageContent() {
 
   /**
    * Handles creating a new resource via PDF upload with metadata extraction.
+   * Uses presigned URL flow to bypass Vercel's 4.5MB serverless body limit.
    */
   const handleCreateResourceFromPdf = async (
     file: File,
     boxType: Exclude<ThesisBoxType, "ALL">,
   ) => {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("boxType", boxType);
+    console.log("[DEBUG] handleCreateResourceFromPdf started", {
+      fileName: file.name,
+      size: file.size,
+      boxType,
+    });
+    try {
+      // Step 1: Get presigned upload URL
+      const requestRes = await requestPdfCreateUploadAction(boxType);
+      if (!requestRes.success) {
+        toast.error(requestRes.error || "Yükleme bağlantısı oluşturulamadı.");
+        return;
+      }
 
-    const res = await createResourceFromPdfAction(formData);
-    if (res.success && res.data) {
-      setResources((prev) => [res.data, ...prev]);
-      handleSelectResource(res.data.id);
-    } else {
-      toast.error(res.error || "Eser PDF'den yüklenirken hata oluştu.");
-      throw new Error(res.error);
+      // Step 2: Upload PDF directly to R2 from browser
+      console.log("[DEBUG] Step 2 starting — PUT to presigned URL");
+      let uploadRes: Response;
+      try {
+        uploadRes = await fetch(requestRes.presignedUrl, {
+          method: "PUT",
+          body: file,
+          headers: { "Content-Type": "application/pdf" },
+        });
+        console.log("[DEBUG] Step 2 fetch done — status:", uploadRes.status);
+      } catch (networkErr) {
+        console.error(
+          "[DEBUG] Step 2 fetch threw (CORS / network):",
+          networkErr,
+        );
+        toast.error(
+          "PDF buluta gönderilirken ağ hatası oluştu. Tarayıcı konsoluna bakınız.",
+        );
+        return;
+      }
+      if (!uploadRes.ok) {
+        const uploadErrorText = await uploadRes.text().catch(() => "unknown");
+        console.error(
+          "[handleCreateResourceFromPdf] R2 presigned PUT failed:",
+          uploadRes.status,
+          uploadErrorText,
+        );
+        toast.error("PDF dosyası bulut depolamaya yüklenirken hata oluştu.");
+        return;
+      }
+      console.log("[DEBUG] Step 2 complete — PDF uploaded to R2 temp key");
+
+      // Step 3: Complete the upload — fetch from R2, extract metadata, create resource, run pipeline
+      console.log("[DEBUG] Step 3 starting — completePdfCreateUploadAction");
+      const completeRes = await completePdfCreateUploadAction(
+        requestRes.tempKey,
+        file.name,
+      );
+      if (!completeRes.success) {
+        console.error("[DEBUG] Step 3 failed —", completeRes.error);
+        toast.error(
+          completeRes.error || "Eser PDF'den yüklenirken hata oluştu.",
+        );
+        throw new Error(completeRes.error);
+      }
+      console.log(
+        "[DEBUG] Step 3 complete — resource created:",
+        completeRes.data?.id,
+      );
+      setResources((prev) => [completeRes.data, ...prev]);
+      handleSelectResource(completeRes.data.id);
+    } catch (err) {
+      console.error(
+        "[DEBUG] handleCreateResourceFromPdf UNEXPECTED ERROR:",
+        err,
+      );
+      throw err;
     }
   };
 
   /**
    * Handles PDF upload and RAG vectorization for selected resource.
+   * Uses presigned URL flow to bypass Vercel's 4.5MB serverless body limit.
    */
   const handleUploadPdf = async (file: File) => {
     if (!selectedResourceId) return;
 
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const res = await uploadResourcePdfAction(selectedResourceId, formData);
-    if (res.success && res.data) {
-      setResources((prev) =>
-        prev.map((item) =>
-          item.id === selectedResourceId
-            ? {
-                ...item,
-                pdfUrl: res.data.pdfUrl,
-                pdfFileName: res.data.pdfFileName,
-                pdfStatus: "READY" as const,
-              }
-            : item,
-        ),
-      );
-    } else {
-      toast.error(res.error || "PDF yüklenirken hata oluştu.");
-      throw new Error(res.error);
+    // Step 1: Get presigned upload URL
+    const requestRes = await requestResourcePdfUploadAction(selectedResourceId);
+    if (!requestRes.success) {
+      toast.error(requestRes.error || "Yükleme bağlantısı oluşturulamadı.");
+      return;
     }
+
+    // Step 2: Upload PDF directly to R2 from browser
+    const uploadRes = await fetch(requestRes.presignedUrl, {
+      method: "PUT",
+      body: file,
+      headers: { "Content-Type": "application/pdf" },
+    });
+    if (!uploadRes.ok) {
+      const uploadErrorText = await uploadRes.text().catch(() => "unknown");
+      console.error(
+        "[handleUploadPdf] R2 presigned PUT failed:",
+        uploadRes.status,
+        uploadErrorText,
+      );
+      toast.error("PDF dosyası bulut depolamaya yüklenirken hata oluştu.");
+      return;
+    }
+
+    // Step 3: Complete the upload — fetch from R2, extract metadata, run pipeline
+    const completeRes = await completeResourcePdfUploadAction(
+      selectedResourceId,
+      requestRes.tempKey,
+      file.name,
+    );
+    if (!completeRes.success) {
+      toast.error(completeRes.error || "PDF yüklenirken hata oluştu.");
+      throw new Error(completeRes.error);
+    }
+    setResources((prev) =>
+      prev.map((item) =>
+        item.id === selectedResourceId
+          ? { ...item, ...completeRes.data }
+          : item,
+      ),
+    );
   };
 
   /**

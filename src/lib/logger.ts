@@ -22,7 +22,9 @@ type ServiceName =
   | "dashboard"
   | "cohere"
   | "ilovepdf"
-  | "positioning";
+  | "positioning"
+  | "cerebras"
+  | "pdf-parser";
 
 export interface LogParams {
   service?: ServiceName;

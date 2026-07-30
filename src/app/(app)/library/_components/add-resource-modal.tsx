@@ -197,7 +197,7 @@ export function AddResourceModal({
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {statusMessage ||
-                          "PDF künyesi çıkarılıp Cloudflare R2'ye yükleniyor, Cohere & Neon pgvector ile vektörleştiriliyor."}
+                          "PDF künyesi çıkarılıp Cloudflare R2'ye yükleniyor, Cloudflare AI & Neon pgvector ile vektörleştiriliyor."}
                       </p>
                     </div>
                   </div>

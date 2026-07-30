@@ -1,6 +1,6 @@
 import { searchTezara } from "@/lib/tezara";
 import type { TezaraThesisDetails } from "@/lib/types";
-import { rerankWithCohere } from "@/lib/services/cohere";
+import { rerankWithCloudflare } from "@/lib/services/cloudflare-ai";
 import type { Logger } from "@/lib/logger";
 import type { PositioningMatrixInput } from "../_lib/validation";
 import { sanitizeMeiliQuery, type GeneratedQueries } from "./queries";
@@ -180,30 +180,29 @@ export async function searchAndSiftTheses(
     data: { candidateCount: filteredCandidates.length },
   });
 
-  // Step 4: Format target query as structured YAML string for Cohere Rerank v4.0 Pro
+  // Step 4: Format target query as structured YAML string for Cloudflare Workers AI Rerank
   const targetYamlQuery = formatMatrixToYamlQuery(matrixInput);
 
-  // Step 5: Format candidate documents as structured YAML strings for Cohere Rerank v4.0 Pro
+  // Step 5: Format candidate documents as structured YAML strings for Cloudflare Workers AI Rerank
   const candidateYamlDocs = filteredCandidates.map(formatThesisToYaml);
 
   const rerankStart = performance.now();
 
-  logger?.info("cohere_rerank_start", {
-    service: "cohere",
+  logger?.info("cloudflare_rerank_start", {
+    service: "cloudflare",
     filePath:
       "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     data: {
-      model: "rerank-v4.0-pro",
+      model: "@cf/baai/bge-reranker-base",
       candidateCount: filteredCandidates.length,
     },
   });
 
-  // Step 6: Invoke Cohere Rerank v4 Pro API with structured YAML payload
-  const rerankResults = await rerankWithCohere({
+  // Step 6: Invoke Cloudflare Workers AI Rerank API (@cf/baai/bge-reranker-base)
+  const rerankResults = await rerankWithCloudflare({
     query: targetYamlQuery,
     documents: candidateYamlDocs,
     topN,
-    model: "rerank-v4.0-pro",
     logger,
   });
 

@@ -135,7 +135,7 @@ export async function getLibraryResourcesAction() {
         "THEORETICAL_FRAMEWORK") as Exclude<ThesisBoxType, "ALL">,
       title: r.title,
       authors: r.authors || ["Bilinmeyen Yazar"],
-      publisher: r.publisher || "Akademik Yayın",
+      publisher: r.publisher || "Belirtilmemiş",
       publicationYear: r.publicationYear || new Date().getFullYear(),
       doi: r.doi || undefined,
       url: r.url || undefined,
@@ -246,7 +246,7 @@ export async function createLibraryResourceAction(input: {
         title: input.title.trim(),
         authors:
           input.authors.length > 0 ? input.authors : ["Bilinmeyen Yazar"],
-        publisher: input.publisher?.trim() || "Akademik Yayın",
+        publisher: input.publisher?.trim() || "Belirtilmemiş",
         publicationYear: input.publicationYear || new Date().getFullYear(),
         doi: input.doi?.trim() || null,
         url: input.url?.trim() || null,

@@ -42,28 +42,53 @@ export async function deleteLibraryResourceAction(resourceId: number) {
 }
 
 /**
- * Server Action: Uploads a PDF file for an existing resource, extracts text, chunks it, and vectorizes embeddings.
- */
-export async function uploadResourcePdfAction(
-  resourceId: number,
-  formData: FormData,
-) {
-  return pdfActions.uploadResourcePdfAction(resourceId, formData);
-}
-
-/**
- * Server Action: Uploads a PDF file, extracts metadata via Unstructured + DOI/Crossref/Gemini,
- * creates a new library resource item, and runs the full RAG pipeline.
- */
-export async function createResourceFromPdfAction(formData: FormData) {
-  return pdfActions.createResourceFromPdfAction(formData);
-}
-
-/**
  * Server Action: Deletes a resource's PDF file from Cloudflare R2 and resets DB PDF status.
  */
 export async function deleteResourcePdfAction(resourceId: number) {
   return pdfActions.deleteResourcePdfAction(resourceId);
+}
+
+/**
+ * Server Action (Step 1 of 2): Requests a presigned upload URL for direct browser-to-R2 PDF upload.
+ */
+export async function requestResourcePdfUploadAction(resourceId: number) {
+  return pdfActions.requestResourcePdfUploadAction(resourceId);
+}
+
+/**
+ * Server Action (Step 2 of 2): Completes PDF upload — fetches from R2 temp key, extracts metadata,
+ * and runs the full RAG ingestion pipeline for an existing resource.
+ */
+export async function completeResourcePdfUploadAction(
+  resourceId: number,
+  tempKey: string,
+  originalFileName: string,
+) {
+  return pdfActions.completeResourcePdfUploadAction(
+    resourceId,
+    tempKey,
+    originalFileName,
+  );
+}
+
+/**
+ * Server Action (Step 1 of 2): Requests a presigned upload URL for creating a new resource from a PDF.
+ */
+export async function requestPdfCreateUploadAction(
+  boxType: Exclude<ThesisBoxType, "ALL">,
+) {
+  return pdfActions.requestPdfCreateUploadAction(boxType);
+}
+
+/**
+ * Server Action (Step 2 of 2): Completes PDF creation — fetches from R2 temp key, extracts metadata,
+ * creates a new resource, and runs the full RAG pipeline.
+ */
+export async function completePdfCreateUploadAction(
+  tempKey: string,
+  originalFileName: string,
+) {
+  return pdfActions.completePdfCreateUploadAction(tempKey, originalFileName);
 }
 
 /**

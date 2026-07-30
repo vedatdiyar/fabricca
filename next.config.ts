@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   logging: false,
   experimental: {
     serverActions: {
-      bodySizeLimit: "4mb",
+      bodySizeLimit: "4.5mb",
     },
   },
 };
