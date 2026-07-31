@@ -10,9 +10,6 @@ import {
   CheckCircle2,
   Circle,
   Sparkles,
-  BookOpen,
-  ChevronDown,
-  ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -99,7 +96,6 @@ export function ResourceDetail({
 
   // Deletion confirmation modal state
   const [noteToDeleteId, setNoteToDeleteId] = useState<number | null>(null);
-  const [isAbstractExpanded, setIsAbstractExpanded] = useState(false);
 
   const boxBadge = getBoxTypeBadgeConfig(resource.boxType);
 
@@ -245,67 +241,6 @@ export function ResourceDetail({
             </div>
           )}
         </div>
-
-        {/* 1.5. ABSTRACT SECTION / AKADEMİK ÖZET */}
-        {resource.abstract ? (
-          <div className="rounded-md border border-border/80 bg-muted/20 p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-primary" />
-                <h3 className="font-serif text-sm font-semibold text-foreground">
-                  {resource.boxType === "PRIMARY_MATERIAL"
-                    ? "Birincil Materyal Özeti"
-                    : "Akademik Özet"}
-                </h3>
-              </div>
-              <Badge
-                variant="outline"
-                className="text-[10px] bg-primary/5 text-primary border-primary/20"
-              >
-                {resource.boxType === "PRIMARY_MATERIAL"
-                  ? "Manuel Özet"
-                  : resource.abstractSource?.includes("TRANSLATED") ||
-                      resource.abstractSource?.includes("OPENALEX")
-                    ? "Akademik Özet"
-                    : resource.abstractSource === "LLM_GENERATED"
-                      ? "AI Sentez Özet"
-                      : "Özet"}
-              </Badge>
-            </div>
-
-            <div className="text-sm text-muted-foreground leading-relaxed space-y-2">
-              <p
-                className={
-                  !isAbstractExpanded && resource.abstract.length > 300
-                    ? "line-clamp-4"
-                    : ""
-                }
-              >
-                {resource.abstract}
-              </p>
-              {resource.abstract.length > 300 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsAbstractExpanded(!isAbstractExpanded)}
-                  className="h-6 px-0 text-xs text-primary hover:bg-transparent font-medium flex items-center gap-1"
-                >
-                  {isAbstractExpanded ? (
-                    <>
-                      <span>Daralt</span>
-                      <ChevronUp className="h-3 w-3" />
-                    </>
-                  ) : (
-                    <>
-                      <span>Devamını Göster</span>
-                      <ChevronDown className="h-3 w-3" />
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
-          </div>
-        ) : null}
       </div>
 
       {/* 2. PDF UPLOAD DROPZONE IF NOT YET READY */}

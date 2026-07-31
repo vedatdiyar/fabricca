@@ -1,3 +1,5 @@
+import { cleanAbstractPrefix } from "./abstract-cleaner";
+
 export function extractCleanDoi(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const trimmed = raw.trim();
@@ -151,7 +153,7 @@ export function resolveAbstractInvertedIndex(
     }
   }
   const fullText = words.join(" ").replace(/\s+/g, " ").trim();
-  return fullText.split(/\s+/).slice(0, 120).join(" ");
+  return cleanAbstractPrefix(fullText);
 }
 
 export function normalizeTitle(

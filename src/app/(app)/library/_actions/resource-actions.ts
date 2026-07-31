@@ -146,8 +146,6 @@ export async function getLibraryResourcesAction() {
       pdfFileName: r.pdfFileName || undefined,
       pdfStatus: r.pdfStatus || "NOT_UPLOADED",
       sourceOrigin: "LITERATURE_EXPANSION" as const,
-      abstract: r.abstract || r.comparisonNote || undefined,
-      abstractSource: r.abstractSource || undefined,
       createdAt: r.createdAt.toISOString(),
     }));
 

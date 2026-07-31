@@ -12,7 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { AIBanner } from "@/components/ai-banner";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
@@ -29,17 +28,15 @@ import {
 function ArchiveEntryForm({
   onAddEntry,
 }: {
-  onAddEntry: (title: string, description: string) => void;
+  onAddEntry: (title: string) => void;
 }) {
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
 
   const handleAdd = () => {
     const trimmedTitle = title.trim();
     if (!trimmedTitle) return;
-    onAddEntry(trimmedTitle, description.trim());
+    onAddEntry(trimmedTitle);
     setTitle("");
-    setDescription("");
   };
 
   return (
@@ -69,13 +66,6 @@ function ArchiveEntryForm({
           Ekle
         </Button>
       </div>
-      <Textarea
-        rows={5}
-        placeholder="Özet (isteğe bağlı)"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        className="resize-none overflow-y-auto text-sm"
-      />
     </div>
   );
 }
@@ -133,7 +123,7 @@ function SubBoxDone({
   onAddArchiveEntry: (
     subBoxTitle: string,
     thesisBoxId: number,
-    entry: { title: string; description?: string },
+    entry: { title: string },
   ) => void;
 }) {
   const entry = literaturePool.find((e) => e.subBoxTitle === subBox.title);
@@ -169,11 +159,8 @@ function SubBoxDone({
 
                   {/* Input form for this child box */}
                   <ArchiveEntryForm
-                    onAddEntry={(title, desc) =>
-                      onAddArchiveEntry(sub.title, sub.id ?? 0, {
-                        title,
-                        description: desc,
-                      })
+                    onAddEntry={(title) =>
+                      onAddArchiveEntry(sub.title, sub.id ?? 0, { title })
                     }
                   />
 
@@ -207,11 +194,8 @@ function SubBoxDone({
           /* Fallback when no child boxes exist */
           <div className="space-y-4">
             <ArchiveEntryForm
-              onAddEntry={(title, desc) =>
-                onAddArchiveEntry(subBox.title, subBox.id ?? 0, {
-                  title,
-                  description: desc,
-                })
+              onAddEntry={(title) =>
+                onAddArchiveEntry(subBox.title, subBox.id ?? 0, { title })
               }
             />
             {entry && entry.articles.length > 0 && (

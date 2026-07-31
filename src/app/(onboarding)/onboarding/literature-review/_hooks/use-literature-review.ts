@@ -137,14 +137,10 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   }, [subBoxes, literaturePool]);
 
   const addArchiveEntry = useCallback(
-    (
-      subBoxTitle: string,
-      thesisBoxId: number,
-      entry: { title: string; description?: string },
-    ) => {
+    (subBoxTitle: string, thesisBoxId: number, entry: { title: string }) => {
       const archiveArticle: JuryArticle = {
         title: entry.title,
-        comparisonNote: entry.description?.trim() || null,
+        comparisonNote: null,
         badge: null,
         url: "",
         doi: null as string | null,

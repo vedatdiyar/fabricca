@@ -57,7 +57,6 @@ async function insertLiteratureBatch(
     toInsert.push({
       boxId: thesisBoxId,
       title: article.title,
-      abstract: article.abstract ?? article.comparisonNote ?? null,
       comparisonNote: article.comparisonNote ?? null,
       badge: article.badge ?? null,
       url: article.url ?? null,
@@ -196,7 +195,6 @@ export async function fetchPreloadedPool(
       boxTitle: boxes.title,
       boxType: boxes.boxType,
       title: sources.title,
-      abstract: sources.abstract,
       comparisonNote: sources.comparisonNote,
       badge: sources.badge,
       url: sources.url,
@@ -221,7 +219,6 @@ export async function fetchPreloadedPool(
     list.push({
       title: row.title,
       comparisonNote: row.comparisonNote ?? null,
-      abstract: row.abstract ?? row.comparisonNote ?? null,
       badge: row.badge ?? null,
       url: row.url ?? "",
       doi: row.doi,

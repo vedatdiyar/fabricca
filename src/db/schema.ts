@@ -222,8 +222,6 @@ export const sources = pgTable(
     pdfFileSize: integer("pdf_file_size"),
     pdfStatus: pdfStatusEnum("pdf_status").default("NOT_UPLOADED").notNull(),
     pageCount: integer("page_count"),
-    abstract: text("abstract"),
-    abstractSource: varchar("abstract_source", { length: 50 }),
     createdAt: timestamp().defaultNow().notNull(),
     updatedAt: timestamp().defaultNow().notNull(),
   },
