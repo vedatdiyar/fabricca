@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { libraryResources, resourceEmbeddings } from "@/db/schema";
 import { uploadPdfToR2 } from "@/lib/services/r2";
 import { parsePdfWithHybridRouter } from "@/lib/services/pdf-parser";
-import type { UnstructuredChunk } from "@/lib/services/unstructured";
+import type { DocumentChunk } from "@/lib/services/llamaparse";
 import { generateVectorEmbeddings } from "@/lib/services/cloudflare-ai";
 import type { Logger } from "@/lib/logger";
 
@@ -12,15 +12,15 @@ interface ProcessPdfPipelineOptions {
   fileName: string;
   buffer: Buffer;
   log: Logger;
-  precomputedChunks?: UnstructuredChunk[];
+  precomputedChunks?: DocumentChunk[];
 }
 
 /**
  * Service Helper: Shared PDF RAG Ingestion Pipeline.
  *
  * Uses the smart hybrid PDF router:
- * - Single-column / plain text → fast local unpdf extraction (milliseconds)
- * - Multi-column / scanned / complex layout → Unstructured API fallback
+ * - Single/Multi-column text → fast local unpdf extraction (milliseconds)
+ * - Scanned / chaotic layout → LlamaParse API OCR
  *
  * Then uploads to R2 storage, generates Cloudflare Workers AI vector embeddings,
  * batch-inserts into Neon pgvector, and updates resource DB status.
@@ -34,7 +34,7 @@ export async function processResourcePdfPipeline(
   const { resourceId, fileName, log, buffer } = options;
 
   // ── 1. PDF Parsing via Hybrid Router ──
-  let chunks: UnstructuredChunk[];
+  let chunks: DocumentChunk[];
   if (options.precomputedChunks && options.precomputedChunks.length > 0) {
     chunks = options.precomputedChunks;
     log.info("pdf_parse_using_precomputed_chunks_start", {

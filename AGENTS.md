@@ -29,7 +29,7 @@ Projede kullanılacak teknolojiler kesin olarak belirlenmiştir. Yapay zeka, gel
 - **Vektör Veri Tabanı (RAG):** Neon DB içinde entegre `pgvector` eklentisi
 - **LLM Modeli:** Google Gemini Flash-Lite (`FLASH_LITE_31` sabiti — tüm metin üretimi ve analiz işlemleri için)
 - **Embedding Model:** Cohere Embed API (`embed-multilingual-v3.0` — 1024 boyutlu vektörler)
-- **PDF Parçalama ve Metadata Çıkarımı:** `unstructured-client` SDK (hi_res partitioning + splitPdfPage 15x concurrency + local chunking with Title context & Header/Footer filtering), Crossref API (DOI ile metadata çözümleme), Gemini Flash-Lite (DOI bulunamadığında metin tabanlı metadata çıkarımı)
+- **PDF Parçalama ve Metadata Çıkarımı:** `unpdf` + dinamik $N$-sütunlu yerel ayrıştırıcı (seçilebilir/metin PDF'leri için ultra hızlı <200ms yol) + LlamaParse API (taranmış/görsel PDF'ler için OCR ve bozuk düzen çözücü), Crossref API (DOI ile metadata çözümleme), Gemini Flash-Lite (DOI bulunamadığında metin tabanlı metadata çıkarımı)
 - **AI Orkestrasyon:** Google Gen AI SDK (`@google/genai` - Doğrudan entegrasyon), Cerebras API (OpenAI-compatible, metadata extraction için Gemma 4 31B)
 - **Kimlik Doğrulama (Auth):** Drizzle tabanlı yerel `users` tablosu, `bcrypt-ts` ile şifreleme ve `src/lib/session.ts` üzerinden Cookies tabanlı hafif session yönetimi
 - **Runtime Doğrulama:** Zod v4 (`z.email()`, `z.enum()`, `safeParse`) — Server Action girdi validasyonu ve LLM çıktı şema kontrolü
@@ -55,7 +55,7 @@ Projenin çalışması ve dış servislerle entegrasyonu için aşağıdaki çev
 - `SEED_USER1_PASSWORD` & `SEED_USER2_PASSWORD`: Seed edilmiş kullanıcı hesaplarının şifreleri.
 - `ILOVEPDF_PUBLIC_KEY` & `ILOVEPDF_SECRET_KEY`: iLovePDF API erişim anahtarları.
 - `PDF_COMPRESS_THRESHOLD_BYTES`: PDF otomatik sıkıştırma için boyut eşiği (varsayılan: 2097152 / 2MB).
-- `UNSTRUCTURED_API_KEY` & `UNSTRUCTURED_API_URL`: Unstructured PDF parçalama (partition & chunking) API bilgileri.
+- `LLAMA_CLOUD_API_KEY`: LlamaParse (LlamaIndex) cloud API anahtarı (taranmış ve karmaşık PDF'ler için OCR ve markdown dönüşümü).
 - `CEREBRAS_API_KEY`: Cerebras API anahtarı (Gemma 4 31B ile metadata çıkarımı için).
 
 ## 4. Klasör Yapısı (Folder Structure)

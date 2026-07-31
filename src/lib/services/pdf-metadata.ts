@@ -4,7 +4,7 @@ import { CEREBRAS_MODEL } from "@/lib/constants";
 import { CROSSREF_USER_AGENT } from "@/lib/api-utils";
 import { formatAuthorList, extractCrossrefYear } from "@/lib/academic/utils";
 import type { Logger } from "@/lib/logger";
-import type { UnstructuredChunk } from "@/lib/services/unstructured";
+import type { DocumentChunk } from "@/lib/services/llamaparse";
 
 export interface PdfMetadataResult {
   title: string;
@@ -23,7 +23,7 @@ function extractDoiFromText(text: string): string | null {
   return match ? match[0].replace(/\.$/, "") : null;
 }
 
-function findDoiInChunks(chunks: UnstructuredChunk[]): string | null {
+function findDoiInChunks(chunks: DocumentChunk[]): string | null {
   for (const chunk of chunks) {
     const doi = extractDoiFromText(chunk.content);
     if (doi) return doi;
@@ -44,7 +44,7 @@ function extractIsbnFromText(text: string): string | null {
   return null;
 }
 
-function findIsbnInChunks(chunks: UnstructuredChunk[]): string | null {
+function findIsbnInChunks(chunks: DocumentChunk[]): string | null {
   for (const chunk of chunks) {
     const isbn = extractIsbnFromText(chunk.content);
     if (isbn) return isbn;
@@ -52,7 +52,7 @@ function findIsbnInChunks(chunks: UnstructuredChunk[]): string | null {
   return null;
 }
 
-function buildMetadataText(chunks: UnstructuredChunk[]): string {
+function buildMetadataText(chunks: DocumentChunk[]): string {
   return chunks
     .slice(0, 15)
     .map((c) => c.content)
@@ -241,7 +241,7 @@ async function extractMetadataWithCerebras(
 }
 
 export async function extractPdfMetadata(
-  chunks: UnstructuredChunk[],
+  chunks: DocumentChunk[],
   fileName: string,
   log: Logger,
 ): Promise<PdfMetadataResult> {
