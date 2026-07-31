@@ -8,10 +8,12 @@ async function reset() {
 
   // Drop tables in reverse dependency order
   await db.execute(`DROP TABLE IF EXISTS tasks CASCADE`);
-  await db.execute(`DROP TABLE IF EXISTS library_resources CASCADE`);
-  await db.execute(`DROP TABLE IF EXISTS thesis_boxes CASCADE`);
-  await db.execute(`DROP TABLE IF EXISTS thesis_positioning CASCADE`);
-  await db.execute(`DROP TABLE IF EXISTS thesis_matrices CASCADE`);
+  await db.execute(`DROP TABLE IF EXISTS notes CASCADE`);
+  await db.execute(`DROP TABLE IF EXISTS chunks CASCADE`);
+  await db.execute(`DROP TABLE IF EXISTS sources CASCADE`);
+  await db.execute(`DROP TABLE IF EXISTS boxes CASCADE`);
+  await db.execute(`DROP TABLE IF EXISTS positioning CASCADE`);
+  await db.execute(`DROP TABLE IF EXISTS matrices CASCADE`);
   await db.execute(`DROP TABLE IF EXISTS users CASCADE`);
 
   // Drop enums

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ThesisBox } from "@/db/schema";
+import type { Box } from "@/db/schema";
 import type { KanbanTask } from "../_types";
 import { TaskFormModal } from "./task-form-modal";
 
@@ -8,7 +8,7 @@ interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (task: Omit<KanbanTask, "id">) => void;
-  boxes: ThesisBox[];
+  boxes: Box[];
 }
 
 /**

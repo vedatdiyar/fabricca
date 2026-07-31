@@ -3,7 +3,7 @@
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { thesisBoxes } from "@/db/schema";
+import { boxes as boxRows } from "@/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { generateStructuredContent } from "@/lib/services/gemini";
 import { FLASH_LITE_31, GEMINI_SEED } from "@/lib/constants";
@@ -288,7 +288,7 @@ export async function generateAndMapBoxesAction(): Promise<
 }
 
 /**
- * Persists the generated (and user-edited) subject boxes to the thesis_boxes
+ * Persists the generated (and user-edited) subject boxes to the `boxes`
  * table within a transaction and invalidates caches.
  *
  * @param boxes - The GeminiThesisBox array to persist.
@@ -326,9 +326,7 @@ export async function persistBoxesAction(
     const thesisMatrixId = matrix.id;
 
     await db.transaction(async (tx) => {
-      await tx
-        .delete(thesisBoxes)
-        .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
+      await tx.delete(boxRows).where(eq(boxRows.matrixId, thesisMatrixId));
 
       const parentFlatIndices: number[] = [];
       for (let i = 0; i < validBoxes.length; i++) {
@@ -338,7 +336,7 @@ export async function persistBoxesAction(
       }
 
       const parentValues = parentFlatIndices.map((i) => ({
-        thesisMatrixId,
+        matrixId: thesisMatrixId,
         title: validBoxes[i].title,
         boxType: validBoxes[i].boxType,
         description: validBoxes[i].description || "",
@@ -351,9 +349,9 @@ export async function persistBoxesAction(
       let insertedParents: { id: number }[] = [];
       if (parentValues.length > 0) {
         insertedParents = await tx
-          .insert(thesisBoxes)
+          .insert(boxRows)
           .values(parentValues)
-          .returning({ id: thesisBoxes.id });
+          .returning({ id: boxRows.id });
       }
 
       const dbParentIdMap = new Map<number, number>();
@@ -364,13 +362,13 @@ export async function persistBoxesAction(
         }
       }
 
-      const childValues: (typeof thesisBoxes.$inferInsert)[] = [];
+      const childValues: (typeof boxRows.$inferInsert)[] = [];
       for (let i = 0; i < validBoxes.length; i++) {
         const box = validBoxes[i];
         if (box.parentId === null) continue;
         const mappedParentId = dbParentIdMap.get(box.parentId) ?? null;
         childValues.push({
-          thesisMatrixId,
+          matrixId: thesisMatrixId,
           title: box.title,
           boxType: box.boxType,
           description: box.description || "",
@@ -382,7 +380,7 @@ export async function persistBoxesAction(
       }
 
       if (childValues.length > 0) {
-        await tx.insert(thesisBoxes).values(childValues);
+        await tx.insert(boxRows).values(childValues);
       }
     });
 

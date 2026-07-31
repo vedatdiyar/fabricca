@@ -3,12 +3,7 @@
 import { eq, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
-import {
-  thesisMatrices,
-  thesisPositioning,
-  thesisBoxes,
-  libraryResources,
-} from "@/db/schema";
+import { matrices, positioning, boxes, sources } from "@/db/schema";
 import type { GeminiThesisBox } from "@/lib/types";
 import { getSession } from "@/lib/session";
 import { BOX_ORDER_WEIGHT } from "../_lib/box-constants";
@@ -27,8 +22,8 @@ async function getCachedThesisMatrix(userId: number) {
 
   const [matrix] = await db
     .select()
-    .from(thesisMatrices)
-    .where(eq(thesisMatrices.userId, userId));
+    .from(matrices)
+    .where(eq(matrices.userId, userId));
   return matrix ?? null;
 }
 
@@ -45,10 +40,10 @@ async function getCachedBoxes(thesisMatrixId: number) {
 
   return db
     .select()
-    .from(thesisBoxes)
-    .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId))
+    .from(boxes)
+    .where(eq(boxes.matrixId, thesisMatrixId))
     .orderBy(
-      sql`CASE ${thesisBoxes.boxType}
+      sql`CASE ${boxes.boxType}
         WHEN 'SUBJECT_PROBLEM' THEN 1
         WHEN 'THEORETICAL_FRAMEWORK' THEN 2
         WHEN 'PRIMARY_MATERIAL' THEN 3
@@ -82,8 +77,8 @@ export async function fetchThesisMatrixFresh() {
 
   const [matrix] = await db
     .select()
-    .from(thesisMatrices)
-    .where(eq(thesisMatrices.userId, session.userId));
+    .from(matrices)
+    .where(eq(matrices.userId, session.userId));
   return matrix ?? null;
 }
 
@@ -122,7 +117,7 @@ export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
     }
   }
 
-  const boxes: GeminiThesisBox[] = parentRows.map((b) => ({
+  const mappedBoxes: GeminiThesisBox[] = parentRows.map((b) => ({
     id: b.id,
     title: b.title,
     boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
@@ -134,7 +129,7 @@ export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
     concepts: b.concepts ?? [],
   }));
 
-  return boxes.sort((a, b) => {
+  return mappedBoxes.sort((a, b) => {
     const weightA = BOX_ORDER_WEIGHT[a.boxType] ?? 99;
     const weightB = BOX_ORDER_WEIGHT[b.boxType] ?? 99;
     return weightA - weightB;
@@ -157,9 +152,9 @@ export async function checkStepsDataAction(): Promise<Record<
   const userId = session.userId;
 
   const [matrix] = await db
-    .select({ id: thesisMatrices.id })
-    .from(thesisMatrices)
-    .where(eq(thesisMatrices.userId, userId));
+    .select({ id: matrices.id })
+    .from(matrices)
+    .where(eq(matrices.userId, userId));
 
   const hasMatrix = !!matrix;
 
@@ -171,25 +166,22 @@ export async function checkStepsDataAction(): Promise<Record<
     const [posResult, boxResult, litResult] = await Promise.all([
       db
         .select({
-          id: thesisPositioning.id,
-          globalStatus: thesisPositioning.globalStatus,
+          id: positioning.id,
+          globalStatus: positioning.globalStatus,
         })
-        .from(thesisPositioning)
-        .where(eq(thesisPositioning.userId, userId))
+        .from(positioning)
+        .where(eq(positioning.userId, userId))
         .limit(1),
       db
-        .select({ id: thesisBoxes.id })
-        .from(thesisBoxes)
-        .where(eq(thesisBoxes.thesisMatrixId, matrix.id))
+        .select({ id: boxes.id })
+        .from(boxes)
+        .where(eq(boxes.matrixId, matrix.id))
         .limit(1),
       db
-        .select({ id: libraryResources.id })
-        .from(libraryResources)
-        .innerJoin(
-          thesisBoxes,
-          eq(libraryResources.thesisBoxId, thesisBoxes.id),
-        )
-        .where(eq(thesisBoxes.thesisMatrixId, matrix.id))
+        .select({ id: sources.id })
+        .from(sources)
+        .innerJoin(boxes, eq(sources.boxId, boxes.id))
+        .where(eq(boxes.matrixId, matrix.id))
         .limit(1),
     ]);
 

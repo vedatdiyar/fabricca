@@ -421,6 +421,7 @@ export async function orchestrateBatchProcess(
     url: string;
     publisher: string | null;
     publicationYear: number | null;
+    originalAbstract: string | null;
     poolItem: PoolItem;
   }[] = [];
 
@@ -518,12 +519,11 @@ export async function orchestrateBatchProcess(
         url: ev.openAlexId ?? poolItem.rawPaper.openAlexId ?? "",
         publisher: poolItem.rawPaper.publisher,
         publicationYear: poolItem.rawPaper.year,
+        originalAbstract: poolItem.rawPaper.abstract ?? null,
         poolItem,
       });
     }
   }
-
-  logger.info("literature_targeted_sanitization_start");
 
   if (allSelectedArticles.length > 0) {
     const sanitizeInput = allSelectedArticles.map((a) => ({
@@ -554,8 +554,6 @@ export async function orchestrateBatchProcess(
     }
   }
 
-  logger.info("literature_targeted_sanitization_success");
-
   // ── Build JuryArticle[] + Author Healing (in-memory — not logged) ─────
   const selectedByBox = new Map<number, typeof allSelectedArticles>();
 
@@ -582,6 +580,7 @@ export async function orchestrateBatchProcess(
         relevanceScore: art.relevanceScore,
         badge: null,
         comparisonNote: art.reasoning,
+        abstract: art.originalAbstract ?? null,
         isFoundational: art.isFoundational,
       };
 

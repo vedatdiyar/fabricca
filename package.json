@@ -11,6 +11,7 @@
     "check:full": "npm run lint && npm run typecheck && npx prettier --write .",
     "db:push": "drizzle-kit push --force",
     "db:seed": "tsx src/db/seed.ts",
+    "test:rag": "npx tsx tests/rag/run-tests.ts",
     "run:analysis": "npx tsx scripts/run-analysis.ts",
     "test:stress": "npx tsx tests/stress/run-integration-tests.ts",
     "validate:ingestion": "npx tsx scripts/validate-ingestion-fidelity.ts"

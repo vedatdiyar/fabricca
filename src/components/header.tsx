@@ -14,7 +14,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { logoutAction, resetOnboardingAction } from "@/app/(app)/actions";
+import { logoutAction, reopenOnboardingAction } from "@/app/(app)/actions";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -42,15 +42,15 @@ export function Header({ userName }: { userName: string }) {
     });
   }
 
-  function handleReset() {
+  function handleReopenOnboarding() {
     if (
       window.confirm(
-        "Onboarding sürecini sıfırlamak istediğinize emin misiniz? Tüm verileriniz silinecek ve başa döneceksiniz.",
+        "Verileriniz silinmeden onboarding adımlarınızı kaldığınız yerden gözden geçirmek istiyor musunuz?",
       )
     ) {
       startTransition(async () => {
         queryClient.clear();
-        await resetOnboardingAction();
+        await reopenOnboardingAction();
       });
     }
   }
@@ -105,8 +105,8 @@ export function Header({ userName }: { userName: string }) {
               variant="ghost"
               size="icon"
               className="text-muted-foreground"
-              onClick={handleReset}
-              title="Süreci Sıfırla"
+              onClick={handleReopenOnboarding}
+              title="Onboarding'i Gözden Geçir"
             >
               <RotateCcw className="h-4 w-4" />
             </Button>
@@ -146,11 +146,11 @@ export function Header({ userName }: { userName: string }) {
           })}
           <button
             className="flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground"
-            onClick={handleReset}
-            title="Süreci Sıfırla"
+            onClick={handleReopenOnboarding}
+            title="Onboarding'i Gözden Geçir"
           >
             <RotateCcw className="h-5 w-5" />
-            <span className="text-xs">Sıfırla</span>
+            <span className="text-xs">Onboarding</span>
           </button>
           <button
             className="flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground"

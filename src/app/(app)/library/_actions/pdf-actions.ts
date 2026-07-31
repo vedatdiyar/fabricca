@@ -3,11 +3,11 @@
 import { eq, and } from "drizzle-orm";
 import { db } from "@/db";
 import {
-  thesisMatrices,
-  thesisBoxes,
-  libraryResources,
-  resourceEmbeddings,
-  libraryResourceNotes,
+  matrices,
+  boxes,
+  sources,
+  chunks as chunkRows,
+  notes,
 } from "@/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
@@ -40,8 +40,8 @@ export async function deleteResourcePdfAction(resourceId: number) {
       return { success: false, error: "Oturum bulunamadı." };
     }
 
-    const resource = await db.query.libraryResources.findFirst({
-      where: eq(libraryResources.id, resourceId),
+    const resource = await db.query.sources.findFirst({
+      where: eq(sources.id, resourceId),
     });
 
     if (!resource) {
@@ -56,23 +56,19 @@ export async function deleteResourcePdfAction(resourceId: number) {
       }
     }
 
-    await db
-      .delete(resourceEmbeddings)
-      .where(eq(resourceEmbeddings.libraryResourceId, resourceId));
+    await db.delete(chunkRows).where(eq(chunkRows.sourceId, resourceId));
+
+    await db.delete(notes).where(eq(notes.sourceId, resourceId));
 
     await db
-      .delete(libraryResourceNotes)
-      .where(eq(libraryResourceNotes.libraryResourceId, resourceId));
-
-    await db
-      .update(libraryResources)
+      .update(sources)
       .set({
         pdfUrl: null,
         pdfFileName: null,
         pdfFileSize: null,
         pdfStatus: "NOT_UPLOADED",
       })
-      .where(eq(libraryResources.id, resourceId));
+      .where(eq(sources.id, resourceId));
 
     log.info("delete_resource_pdf_success", {
       service: "library",
@@ -111,8 +107,8 @@ export async function requestResourcePdfUploadAction(
       return { success: false, error: "Oturum bulunamadı." };
     }
 
-    const resource = await db.query.libraryResources.findFirst({
-      where: eq(libraryResources.id, resourceId),
+    const resource = await db.query.sources.findFirst({
+      where: eq(sources.id, resourceId),
     });
 
     if (!resource) {
@@ -189,9 +185,9 @@ export async function completeResourcePdfUploadAction(
       };
     }
 
-    const resource = await db.query.libraryResources.findFirst({
-      where: eq(libraryResources.id, resourceId),
-      with: { thesisBox: true },
+    const resource = await db.query.sources.findFirst({
+      where: eq(sources.id, resourceId),
+      with: { box: true },
     });
 
     if (!resource) {
@@ -241,7 +237,7 @@ export async function completeResourcePdfUploadAction(
 
     // 4. Overwrite existing resource metadata
     await db
-      .update(libraryResources)
+      .update(sources)
       .set({
         title: metadata.title,
         authors: metadata.authors,
@@ -249,7 +245,7 @@ export async function completeResourcePdfUploadAction(
         publicationYear: metadata.publicationYear,
         doi: metadata.doi || null,
       })
-      .where(eq(libraryResources.id, resourceId));
+      .where(eq(sources.id, resourceId));
 
     // 5. Generate APA filename
     const apaFileName = formatApaPdfFileName(
@@ -259,10 +255,10 @@ export async function completeResourcePdfUploadAction(
     );
 
     // 6. Check for duplicate filename
-    const existingDuplicate = await db.query.libraryResources.findFirst({
+    const existingDuplicate = await db.query.sources.findFirst({
       where: and(
-        eq(libraryResources.pdfFileName, apaFileName),
-        eq(libraryResources.pdfStatus, "READY"),
+        eq(sources.pdfFileName, apaFileName),
+        eq(sources.pdfStatus, "READY"),
       ),
     });
 
@@ -275,9 +271,9 @@ export async function completeResourcePdfUploadAction(
 
     // Update status to PROCESSING
     await db
-      .update(libraryResources)
+      .update(sources)
       .set({ pdfStatus: "PROCESSING" })
-      .where(eq(libraryResources.id, resourceId));
+      .where(eq(sources.id, resourceId));
 
     // 7. Run shared pipeline (uploads to final APA-named key, generates embeddings)
     const pipelineResult = await processResourcePdfPipeline({
@@ -315,7 +311,7 @@ export async function completeResourcePdfUploadAction(
       success: true,
       data: {
         id: resource.id,
-        boxType: resource.thesisBox.boxType as Exclude<ThesisBoxType, "ALL">,
+        boxType: resource.box.boxType as Exclude<ThesisBoxType, "ALL">,
         title: metadata.title,
         authors: metadata.authors,
         publisher: metadata.publisher || "Belirtilmemiş",
@@ -338,9 +334,9 @@ export async function completeResourcePdfUploadAction(
     });
 
     await db
-      .update(libraryResources)
+      .update(sources)
       .set({ pdfStatus: "FAILED" })
-      .where(eq(libraryResources.id, resourceId));
+      .where(eq(sources.id, resourceId));
 
     return {
       success: false,
@@ -464,17 +460,17 @@ export async function completePdfCreateUploadAction(
     }
 
     // 4. Find or create target thesis box
-    const matrix = await db.query.thesisMatrices.findFirst({
-      where: eq(thesisMatrices.userId, session.userId),
-      with: { thesisBoxes: true },
+    const matrix = await db.query.matrices.findFirst({
+      where: eq(matrices.userId, session.userId),
+      with: { boxes: true },
     });
 
-    let targetBox = matrix?.thesisBoxes.find((b) => b.boxType === boxType);
+    let targetBox = matrix?.boxes.find((b) => b.boxType === boxType);
     if (!targetBox) {
       let matrixId = matrix?.id;
       if (!matrixId) {
         const [newM] = await db
-          .insert(thesisMatrices)
+          .insert(matrices)
           .values({
             userId: session.userId,
             subjectProblem: "Genel Konu ve Problem",
@@ -486,9 +482,9 @@ export async function completePdfCreateUploadAction(
       }
 
       const [newBox] = await db
-        .insert(thesisBoxes)
+        .insert(boxes)
         .values({
-          thesisMatrixId: matrixId,
+          matrixId: matrixId,
           boxType: boxType,
           title: getBoxDefaultTitle(boxType),
         })
@@ -499,9 +495,9 @@ export async function completePdfCreateUploadAction(
 
     // 7. Create library resource record
     const [newResource] = await db
-      .insert(libraryResources)
+      .insert(sources)
       .values({
-        thesisBoxId: targetBox.id,
+        boxId: targetBox.id,
         title: metadata.title,
         authors: metadata.authors,
         publisher: metadata.publisher || "Belirtilmemiş",
@@ -521,10 +517,10 @@ export async function completePdfCreateUploadAction(
     );
 
     // 9. Check for duplicate filename
-    const existingDuplicate = await db.query.libraryResources.findFirst({
+    const existingDuplicate = await db.query.sources.findFirst({
       where: and(
-        eq(libraryResources.pdfFileName, apaFileName),
-        eq(libraryResources.pdfStatus, "READY"),
+        eq(sources.pdfFileName, apaFileName),
+        eq(sources.pdfStatus, "READY"),
       ),
     });
 

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/session";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { thesisMatrices } from "@/db/schema";
+import { matrices } from "@/db/schema";
 import { LiteratureReviewContent } from "./_components/literature-review-content";
 import { StartOverButton } from "../_components/start-over-button";
 import { fetchBoxesWithFullShape } from "../_services/fetch-actions";
@@ -14,9 +14,9 @@ export default async function LiteratureReviewPage() {
   const profile = await getProfile();
 
   const [matrix] = await db
-    .select({ id: thesisMatrices.id })
-    .from(thesisMatrices)
-    .where(eq(thesisMatrices.userId, profile.id));
+    .select({ id: matrices.id })
+    .from(matrices)
+    .where(eq(matrices.userId, profile.id));
 
   if (!matrix) {
     redirect("/onboarding/matrix");

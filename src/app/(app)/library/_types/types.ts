@@ -47,6 +47,10 @@ export interface LibraryResourceItem {
   pageCount?: number;
   /** Source origin tag (e.g., Onboarding, OpenAlex, Crossref) */
   sourceOrigin: "ONBOARDING" | "LITERATURE_EXPANSION";
+  /** Academic abstract text */
+  abstract?: string;
+  /** Origin of abstract (e.g., OPENALEX, LLM_GENERATED, MANUAL) */
+  abstractSource?: string;
   /** Creation timestamp formatted ISO string */
   createdAt: string;
 }

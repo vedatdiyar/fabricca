@@ -81,6 +81,7 @@ export interface JuryArticle {
   relevanceScore: number;
   badge: string | null;
   comparisonNote: string | null;
+  abstract?: string | null;
   isFoundational: boolean;
   subBoxId?: string;
 }

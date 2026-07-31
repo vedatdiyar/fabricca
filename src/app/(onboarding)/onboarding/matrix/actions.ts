@@ -3,12 +3,7 @@
 import { eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import {
-  thesisMatrices,
-  thesisPositioning,
-  thesisBoxes,
-  libraryResources,
-} from "@/db/schema";
+import { matrices, positioning, boxes, sources } from "@/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import {
@@ -60,7 +55,7 @@ export async function saveThesisMatrixAction(
 
     await db.transaction(async (tx) => {
       const [matrixRow] = await tx
-        .insert(thesisMatrices)
+        .insert(matrices)
         .values({
           userId: session.userId,
           subjectProblem: validated.subjectProblem,
@@ -70,7 +65,7 @@ export async function saveThesisMatrixAction(
           updatedAt: sql`now()`,
         })
         .onConflictDoUpdate({
-          target: thesisMatrices.userId,
+          target: matrices.userId,
           set: {
             subjectProblem: validated.subjectProblem,
             theoreticalFramework: validated.theoreticalFramework,
@@ -79,28 +74,26 @@ export async function saveThesisMatrixAction(
             updatedAt: sql`now()`,
           },
         })
-        .returning({ id: thesisMatrices.id });
+        .returning({ id: matrices.id });
 
       if (matrixRow) {
         await tx
-          .delete(thesisPositioning)
-          .where(eq(thesisPositioning.userId, session.userId));
+          .delete(positioning)
+          .where(eq(positioning.userId, session.userId));
 
         await tx
-          .delete(libraryResources)
+          .delete(sources)
           .where(
             inArray(
-              libraryResources.thesisBoxId,
+              sources.boxId,
               tx
-                .select({ id: thesisBoxes.id })
-                .from(thesisBoxes)
-                .where(eq(thesisBoxes.thesisMatrixId, matrixRow.id)),
+                .select({ id: boxes.id })
+                .from(boxes)
+                .where(eq(boxes.matrixId, matrixRow.id)),
             ),
           );
 
-        await tx
-          .delete(thesisBoxes)
-          .where(eq(thesisBoxes.thesisMatrixId, matrixRow.id));
+        await tx.delete(boxes).where(eq(boxes.matrixId, matrixRow.id));
       }
     });
 

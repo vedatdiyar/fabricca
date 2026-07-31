@@ -14,8 +14,10 @@ import {
   foreignKey,
   uuid,
   vector,
+  customType,
 } from "drizzle-orm/pg-core";
 import {
+  sql,
   relations,
   type InferSelectModel,
   type InferInsertModel,
@@ -59,7 +61,7 @@ export type NewUser = InferInsertModel<typeof users>;
  * Stores subjectProblem, theoreticalFramework, primaryMaterial,
  * and methodology filled by the user during the first step of onboarding.
  */
-export const thesisMatrices = pgTable("thesis_matrices", {
+export const matrices = pgTable("matrices", {
   id: serial().primaryKey(),
   userId: integer()
     .notNull()
@@ -73,11 +75,11 @@ export const thesisMatrices = pgTable("thesis_matrices", {
   updatedAt: timestamp().defaultNow().notNull(),
 });
 
-/** ThesisMatrix type for select queries. */
-export type ThesisMatrix = InferSelectModel<typeof thesisMatrices>;
+/** Matrix type for select queries. */
+export type Matrix = InferSelectModel<typeof matrices>;
 
-/** ThesisMatrix type for insert queries. */
-export type NewThesisMatrix = InferInsertModel<typeof thesisMatrices>;
+/** Matrix type for insert queries. */
+export type NewMatrix = InferInsertModel<typeof matrices>;
 
 // ============================================================================
 // C) THESIS POSITIONING
@@ -94,8 +96,8 @@ export const positioningGlobalStatusEnum = pgEnum("positioning_global_status", [
  * Stores universal positioning matrix input, AI gap analysis synthesis,
  * global positioning status, and recommended guiding theses.
  */
-export const thesisPositioning = pgTable(
-  "thesis_positioning",
+export const positioning = pgTable(
+  "positioning",
   {
     id: uuid("id").defaultRandom().primaryKey(),
     userId: integer("user_id")
@@ -115,14 +117,14 @@ export const thesisPositioning = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
-  (table) => [uniqueIndex("idx_thesis_positioning_user_id").on(table.userId)],
+  (table) => [uniqueIndex("idx_positioning_user_id").on(table.userId)],
 );
 
-/** ThesisPositioning type for select queries. */
-export type ThesisPositioning = InferSelectModel<typeof thesisPositioning>;
+/** Positioning type for select queries. */
+export type Positioning = InferSelectModel<typeof positioning>;
 
-/** NewThesisPositioning type for insert queries. */
-export type NewThesisPositioning = InferInsertModel<typeof thesisPositioning>;
+/** NewPositioning type for insert queries. */
+export type NewPositioning = InferInsertModel<typeof positioning>;
 
 // ============================================================================
 // D) THESIS BOXES
@@ -139,13 +141,13 @@ export const boxTypeEnum = pgEnum("box_type_enum", [
  * Thesis Boxes table.
  * Stores topic boxes linked to a thesis matrix in a flat structure.
  */
-export const thesisBoxes = pgTable(
-  "thesis_boxes",
+export const boxes = pgTable(
+  "boxes",
   {
     id: serial().primaryKey(),
-    thesisMatrixId: integer()
+    matrixId: integer()
       .notNull()
-      .references(() => thesisMatrices.id, { onDelete: "cascade" }),
+      .references(() => matrices.id, { onDelete: "cascade" }),
     parentId: integer(),
     boxType: boxTypeEnum("box_type"),
     title: text().notNull(),
@@ -160,8 +162,8 @@ export const thesisBoxes = pgTable(
     updatedAt: timestamp().defaultNow().notNull(),
   },
   (table) => [
-    index("idx_thesis_boxes_matrix_id").on(table.thesisMatrixId),
-    index("idx_thesis_boxes_parent_id").on(table.parentId),
+    index("idx_boxes_matrix_id").on(table.matrixId),
+    index("idx_boxes_parent_id").on(table.parentId),
     foreignKey({
       columns: [table.parentId],
       foreignColumns: [table.id],
@@ -169,11 +171,11 @@ export const thesisBoxes = pgTable(
   ],
 );
 
-/** ThesisBox type for select queries. */
-export type ThesisBox = InferSelectModel<typeof thesisBoxes>;
+/** Box type for select queries. */
+export type Box = InferSelectModel<typeof boxes>;
 
-/** ThesisBox type for insert queries. */
-export type NewThesisBox = InferInsertModel<typeof thesisBoxes>;
+/** Box type for insert queries. */
+export type NewBox = InferInsertModel<typeof boxes>;
 
 // ============================================================================
 // E) LIBRARY RESOURCES
@@ -197,13 +199,13 @@ export const noteTypeEnum = pgEnum("note_type_enum", [
  * Stores recommended / approved / rejected academic sources
  * (articles, books, theses, etc.) linked to each thesis box.
  */
-export const libraryResources = pgTable(
-  "library_resources",
+export const sources = pgTable(
+  "sources",
   {
     id: serial().primaryKey(),
-    thesisBoxId: integer()
+    boxId: integer()
       .notNull()
-      .references(() => thesisBoxes.id, { onDelete: "cascade" }),
+      .references(() => boxes.id, { onDelete: "cascade" }),
     title: text().notNull(),
     authors: text().array(),
     publisher: text(),
@@ -220,38 +222,34 @@ export const libraryResources = pgTable(
     pdfFileSize: integer("pdf_file_size"),
     pdfStatus: pdfStatusEnum("pdf_status").default("NOT_UPLOADED").notNull(),
     pageCount: integer("page_count"),
+    abstract: text("abstract"),
+    abstractSource: varchar("abstract_source", { length: 50 }),
     createdAt: timestamp().defaultNow().notNull(),
     updatedAt: timestamp().defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex("idx_library_resources_box_doi").on(
-      table.thesisBoxId,
-      table.doi,
-    ),
-    uniqueIndex("idx_library_resources_box_title").on(
-      table.thesisBoxId,
-      table.title,
-    ),
+    uniqueIndex("idx_sources_box_doi").on(table.boxId, table.doi),
+    uniqueIndex("idx_sources_box_title").on(table.boxId, table.title),
   ],
 );
 
-/** LibraryResource type for select queries. */
-export type LibraryResource = InferSelectModel<typeof libraryResources>;
+/** Source type for select queries. */
+export type Source = InferSelectModel<typeof sources>;
 
-/** LibraryResource type for insert queries. */
-export type NewLibraryResource = InferInsertModel<typeof libraryResources>;
+/** Source type for insert queries. */
+export type NewSource = InferInsertModel<typeof sources>;
 
 /**
- * Library Resource Notes table.
+ * Notes table.
  * Stores academic notes, page-numbered citations, and personal notes.
  */
-export const libraryResourceNotes = pgTable(
-  "library_resource_notes",
+export const notes = pgTable(
+  "notes",
   {
     id: serial().primaryKey(),
-    libraryResourceId: integer("library_resource_id")
+    sourceId: integer("source_id")
       .notNull()
-      .references(() => libraryResources.id, { onDelete: "cascade" }),
+      .references(() => sources.id, { onDelete: "cascade" }),
     userId: integer("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -263,31 +261,45 @@ export const libraryResourceNotes = pgTable(
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => [
-    index("idx_library_resource_notes_resource_id").on(table.libraryResourceId),
-    index("idx_library_resource_notes_user_id").on(table.userId),
+    index("idx_notes_source_id").on(table.sourceId),
+    index("idx_notes_user_id").on(table.userId),
   ],
 );
 
-/** LibraryResourceNote type for select queries. */
-export type DbLibraryResourceNote = InferSelectModel<
-  typeof libraryResourceNotes
->;
+/** Note type for select queries. */
+export type Note = InferSelectModel<typeof notes>;
 
-/** NewLibraryResourceNote type for insert queries. */
-export type NewDbLibraryResourceNote = InferInsertModel<
-  typeof libraryResourceNotes
->;
+/** NewNote type for insert queries. */
+export type NewNote = InferInsertModel<typeof notes>;
 
 /**
- * Resource Embeddings table.
+ * PostgreSQL `tsvector` custom type.
+ * Drizzle ORM 0.43 does not ship a native tsvector column, so it is declared
+ * via `customType` for the generated `search_vector` column on the chunks table.
  */
-export const resourceEmbeddings = pgTable(
-  "resource_embeddings",
+const tsvector = customType<{ data: string }>({
+  dataType() {
+    return "tsvector";
+  },
+});
+
+/**
+ * Chunks table.
+ * Stores PDF text chunks with embeddings for RAG retrieval.
+ *
+ * `search_vector` is a stored generated column driving the lexical branch of the
+ * hybrid RAG pipeline. It is language-neutral (`simple` config — no stemming) so
+ * Turkish/English mixed corpora are handled deterministically while preserving
+ * exact lexical signals (names, institutions, acronyms, dates, DOIs, terms).
+ * Weighting: B = section title, C = chunk content.
+ */
+export const chunks = pgTable(
+  "chunks",
   {
     id: serial().primaryKey(),
-    libraryResourceId: integer("library_resource_id")
+    sourceId: integer("source_id")
       .notNull()
-      .references(() => libraryResources.id, { onDelete: "cascade" }),
+      .references(() => sources.id, { onDelete: "cascade" }),
     chunkIndex: integer("chunk_index").notNull(),
     printedPageNumber: integer("printed_page_number"),
     pdfPageNumber: integer("pdf_page_number"),
@@ -296,22 +308,26 @@ export const resourceEmbeddings = pgTable(
     parentContent: text("parent_content"),
     tokenCount: integer("token_count"),
     embedding: vector("embedding", { dimensions: 1024 }),
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      sql`setweight(to_tsvector('simple', coalesce("section_title", '')), 'B') || setweight(to_tsvector('simple', "content"), 'C')`,
+    ),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
-    index("idx_resource_embeddings_resource_id").on(table.libraryResourceId),
-    index("idx_resource_embeddings_embedding").using(
+    index("idx_chunks_source_id").on(table.sourceId),
+    index("idx_chunks_embedding").using(
       "hnsw",
       table.embedding.op("vector_cosine_ops"),
     ),
+    index("idx_chunks_search_vector").using("gin", table.searchVector),
   ],
 );
 
-/** ResourceEmbedding type for select queries. */
-export type ResourceEmbedding = InferSelectModel<typeof resourceEmbeddings>;
+/** Chunk type for select queries. */
+export type Chunk = InferSelectModel<typeof chunks>;
 
-/** NewResourceEmbedding type for insert queries. */
-export type NewResourceEmbedding = InferInsertModel<typeof resourceEmbeddings>;
+/** NewChunk type for insert queries. */
+export type NewChunk = InferInsertModel<typeof chunks>;
 
 // ============================================================================
 // H) TASKS
@@ -331,7 +347,7 @@ export const taskPriorityEnum = pgEnum("task_priority", [
 /**
  * Kanban Tasks table.
  * Stores academic tasks manually added by the user.
- * Dynamically linked to thesis boxes via thesisBoxId;
+ * Dynamically linked to boxes via boxId;
  * when a box is deleted, the task is preserved (SET NULL).
  */
 export const tasks = pgTable(
@@ -341,7 +357,7 @@ export const tasks = pgTable(
     userId: integer()
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    thesisBoxId: integer().references(() => thesisBoxes.id, {
+    boxId: integer().references(() => boxes.id, {
       onDelete: "set null",
     }),
     title: text().notNull(),
@@ -353,7 +369,7 @@ export const tasks = pgTable(
   },
   (table) => [
     index("idx_tasks_user_id").on(table.userId),
-    index("idx_tasks_thesis_box_id").on(table.thesisBoxId),
+    index("idx_tasks_box_id").on(table.boxId),
   ],
 );
 
@@ -368,66 +384,57 @@ export type NewTask = InferInsertModel<typeof tasks>;
 // ============================================================================
 
 export const usersRelations = relations(users, ({ one, many }) => ({
-  thesisMatrix: one(thesisMatrices),
-  thesisPositioning: one(thesisPositioning),
+  matrix: one(matrices),
+  positioning: one(positioning),
   tasks: many(tasks),
 }));
 
-export const thesisPositioningRelations = relations(
-  thesisPositioning,
-  ({ one }) => ({
-    user: one(users, {
-      fields: [thesisPositioning.userId],
-      references: [users.id],
-    }),
+export const positioningRelations = relations(positioning, ({ one }) => ({
+  user: one(users, {
+    fields: [positioning.userId],
+    references: [users.id],
   }),
-);
+}));
 
-export const thesisMatricesRelations = relations(
-  thesisMatrices,
-  ({ one, many }) => ({
-    user: one(users, {
-      fields: [thesisMatrices.userId],
-      references: [users.id],
-    }),
-    thesisBoxes: many(thesisBoxes),
+export const matricesRelations = relations(matrices, ({ one, many }) => ({
+  user: one(users, {
+    fields: [matrices.userId],
+    references: [users.id],
   }),
-);
+  boxes: many(boxes),
+}));
 
-export const thesisBoxesRelations = relations(thesisBoxes, ({ one, many }) => ({
-  thesisMatrix: one(thesisMatrices, {
-    fields: [thesisBoxes.thesisMatrixId],
-    references: [thesisMatrices.id],
+export const boxesRelations = relations(boxes, ({ one, many }) => ({
+  matrix: one(matrices, {
+    fields: [boxes.matrixId],
+    references: [matrices.id],
   }),
-  parent: one(thesisBoxes, {
-    fields: [thesisBoxes.parentId],
-    references: [thesisBoxes.id],
+  parent: one(boxes, {
+    fields: [boxes.parentId],
+    references: [boxes.id],
     relationName: "boxHierarchy",
   }),
-  children: many(thesisBoxes, {
+  children: many(boxes, {
     relationName: "boxHierarchy",
   }),
-  libraryResources: many(libraryResources),
+  sources: many(sources),
   tasks: many(tasks),
 }));
 
-export const libraryResourcesRelations = relations(
-  libraryResources,
-  ({ one }) => ({
-    thesisBox: one(thesisBoxes, {
-      fields: [libraryResources.thesisBoxId],
-      references: [thesisBoxes.id],
-    }),
+export const sourcesRelations = relations(sources, ({ one }) => ({
+  box: one(boxes, {
+    fields: [sources.boxId],
+    references: [boxes.id],
   }),
-);
+}));
 
 export const tasksRelations = relations(tasks, ({ one }) => ({
   user: one(users, {
     fields: [tasks.userId],
     references: [users.id],
   }),
-  thesisBox: one(thesisBoxes, {
-    fields: [tasks.thesisBoxId],
-    references: [thesisBoxes.id],
+  box: one(boxes, {
+    fields: [tasks.boxId],
+    references: [boxes.id],
   }),
 }));

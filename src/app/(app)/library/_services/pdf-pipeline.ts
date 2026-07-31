@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { libraryResources, resourceEmbeddings } from "@/db/schema";
+import { sources, chunks as chunkRows } from "@/db/schema";
 import { uploadPdfToR2 } from "@/lib/services/r2";
 import { parsePdfWithHybridRouter } from "@/lib/services/pdf-parser";
 import type { DocumentChunk } from "@/lib/services/llamaparse";
@@ -50,8 +50,8 @@ export async function processResourcePdfPipeline(
   }
 
   // ── 2 & 3. Fetch Resource Metadata for Header Context ──
-  const resource = await db.query.libraryResources.findFirst({
-    where: eq(libraryResources.id, resourceId),
+  const resource = await db.query.sources.findFirst({
+    where: eq(sources.id, resourceId),
   });
 
   const resourceTitle = resource?.title || fileName;
@@ -92,13 +92,11 @@ export async function processResourcePdfPipeline(
   });
 
   const dbStart = performance.now();
-  await db
-    .delete(resourceEmbeddings)
-    .where(eq(resourceEmbeddings.libraryResourceId, resourceId));
+  await db.delete(chunkRows).where(eq(chunkRows.sourceId, resourceId));
 
   if (chunks.length > 0) {
     const recordsToInsert = chunks.map((chunk, index) => ({
-      libraryResourceId: resourceId,
+      sourceId: resourceId,
       chunkIndex: chunk.chunkIndex,
       printedPageNumber: chunk.printedPageNumber,
       pdfPageNumber: chunk.pdfPageNumber,
@@ -113,7 +111,7 @@ export async function processResourcePdfPipeline(
     const insertPromises = [];
     for (let i = 0; i < recordsToInsert.length; i += batchSize) {
       const batch = recordsToInsert.slice(i, i + batchSize);
-      insertPromises.push(db.insert(resourceEmbeddings).values(batch));
+      insertPromises.push(db.insert(chunkRows).values(batch));
     }
     await Promise.all(insertPromises);
   }
@@ -135,14 +133,14 @@ export async function processResourcePdfPipeline(
 
   const updateStart = performance.now();
   await db
-    .update(libraryResources)
+    .update(sources)
     .set({
       pdfUrl: r2Url,
       pdfFileName: fileName,
       pdfFileSize: buffer.length,
       pdfStatus: "READY",
     })
-    .where(eq(libraryResources.id, resourceId));
+    .where(eq(sources.id, resourceId));
 
   log.info("pdf_db_status_update_success", {
     service: "library",

@@ -4,8 +4,9 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { createFlowId, Logger } from "@/lib/logger";
 import { db } from "@/db";
-import { tasks, thesisBoxes, libraryResources } from "@/db/schema";
+import { tasks, boxes, sources } from "@/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
+import { deleteLibraryResourceAction as deleteLibraryResource } from "@/app/(app)/library/actions";
 import {
   AddTaskSchema,
   UpdateTaskSchema,
@@ -39,13 +40,13 @@ export async function getTasksAction(): Promise<{
         description: tasks.description,
         status: tasks.status,
         priority: tasks.priority,
-        thesisBoxId: tasks.thesisBoxId,
-        boxTitle: thesisBoxes.title,
+        thesisBoxId: tasks.boxId,
+        boxTitle: boxes.title,
         createdAt: tasks.createdAt,
         updatedAt: tasks.updatedAt,
       })
       .from(tasks)
-      .leftJoin(thesisBoxes, eq(tasks.thesisBoxId, thesisBoxes.id))
+      .leftJoin(boxes, eq(tasks.boxId, boxes.id))
       .where(eq(tasks.userId, session.userId))
       .orderBy(tasks.createdAt);
 
@@ -96,16 +97,16 @@ export async function addTaskAction(input: TaskInput): Promise<{
         description: valid.description ?? null,
         status: valid.status ?? "TODO",
         priority: valid.priority ?? "MEDIUM",
-        thesisBoxId: valid.thesisBoxId ?? null,
+        boxId: valid.thesisBoxId ?? null,
       })
       .returning();
 
     let boxTitle: string | null = null;
-    if (inserted.thesisBoxId) {
+    if (inserted.boxId) {
       const [box] = await db
-        .select({ title: thesisBoxes.title })
-        .from(thesisBoxes)
-        .where(eq(thesisBoxes.id, inserted.thesisBoxId));
+        .select({ title: boxes.title })
+        .from(boxes)
+        .where(eq(boxes.id, inserted.boxId));
       boxTitle = box?.title ?? null;
     }
 
@@ -115,6 +116,7 @@ export async function addTaskAction(input: TaskInput): Promise<{
       success: true,
       data: {
         ...inserted,
+        thesisBoxId: inserted.boxId,
         boxTitle,
       },
     };
@@ -175,8 +177,7 @@ export async function updateTaskAction(
       updateValues.description = valid.description;
     if (valid.status !== undefined) updateValues.status = valid.status;
     if (valid.priority !== undefined) updateValues.priority = valid.priority;
-    if (valid.thesisBoxId !== undefined)
-      updateValues.thesisBoxId = valid.thesisBoxId;
+    if (valid.thesisBoxId !== undefined) updateValues.boxId = valid.thesisBoxId;
 
     const [updated] = await db
       .update(tasks)
@@ -185,17 +186,20 @@ export async function updateTaskAction(
       .returning();
 
     let boxTitle: string | null = null;
-    if (updated.thesisBoxId) {
+    if (updated.boxId) {
       const [box] = await db
-        .select({ title: thesisBoxes.title })
-        .from(thesisBoxes)
-        .where(eq(thesisBoxes.id, updated.thesisBoxId));
+        .select({ title: boxes.title })
+        .from(boxes)
+        .where(eq(boxes.id, updated.boxId));
       boxTitle = box?.title ?? null;
     }
 
     revalidatePath("/dashboard");
 
-    return { success: true, data: { ...updated, boxTitle } };
+    return {
+      success: true,
+      data: { ...updated, thesisBoxId: updated.boxId, boxTitle },
+    };
   } catch (err) {
     log.error("task_update_failed", {
       service: "dashboard",
@@ -302,6 +306,25 @@ export async function deleteTaskAction(taskId: number): Promise<{
 }
 
 /**
+ * Permanently deletes a library resource (article) from the dashboard topic boxes.
+ * Delegates to the library server action and revalidates both routes on success.
+ *
+ * @param resourceId - The resource ID to delete
+ * @returns Success or error result
+ */
+export async function deleteLibraryResourceAction(resourceId: number): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const res = await deleteLibraryResource(resourceId);
+  if (res.success) {
+    revalidatePath("/dashboard");
+    revalidatePath("/library");
+  }
+  return res;
+}
+
+/**
  * Toggles the isRead flag on a single library resource.
  * Used by Dashboard reading tasks.
  *
@@ -321,9 +344,9 @@ export async function toggleResourceReadStatusAction(
     if (!session) return { success: false, error: SESSION_ERROR_MSG };
 
     const [res] = await db
-      .select({ badge: libraryResources.badge })
-      .from(libraryResources)
-      .where(eq(libraryResources.id, resourceId));
+      .select({ badge: sources.badge })
+      .from(sources)
+      .where(eq(sources.id, resourceId));
 
     if (res?.badge === "CRITICAL_OVERLAP") {
       return {
@@ -333,10 +356,7 @@ export async function toggleResourceReadStatusAction(
       };
     }
 
-    await db
-      .update(libraryResources)
-      .set({ isRead })
-      .where(eq(libraryResources.id, resourceId));
+    await db.update(sources).set({ isRead }).where(eq(sources.id, resourceId));
 
     return { success: true };
   } catch (err) {

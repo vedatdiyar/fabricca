@@ -16,15 +16,26 @@ import {
   type PositioningMatrixInput,
 } from "../_lib/validation";
 
-/** Threshold constant for Cohere relevance score filter. */
-export const RELEVANCE_THRESHOLD = 0.75;
+/**
+ * Minimum relevance score ratio relative to the best candidate.
+ *
+ * Rerank relevance scores (Cohere `rerank-v4.0-pro`) are query-dependent, not
+ * calibrated probabilities: the absolute value varies per query and candidate
+ * pool. A fixed absolute floor therefore drops relevant theses.
+ */
+const RELATIVE_SCORE_FLOOR_RATIO = 0.5;
+
 /** Maximum candidate thesis cap passed to LLM jury prompt. */
 export const MAX_THESES = 15;
 
 /**
- * Applies Hard Floor (0.75) + Safety Cap (15) filtering to Cohere-reranked theses.
+ * Applies Relative Score Floor (50% of the best candidate) + Safety Cap (15)
+ * filtering to reranked theses. Since rerank scores are query-dependent,
+ * candidates scoring below half of the top candidate's score are treated as
+ * noise, while genuinely relevant theses survive regardless of the absolute
+ * score scale.
  *
- * @param siftedTheses - Ordered array of thesis candidates from Cohere Rerank.
+ * @param siftedTheses - Ordered array of thesis candidates from the reranker.
  * @returns Array of up to 15 filtered candidates tailored for LLM jury evaluation.
  */
 export function filterThesesForJury(
@@ -32,16 +43,21 @@ export function filterThesesForJury(
 ): SiftedThesis[] {
   if (siftedTheses.length === 0) return [];
 
-  // Hard Floor: only keep theses with score >= 0.75
-  const filtered = siftedTheses.filter(
-    (t) => (t.relevanceScore ?? 0) >= RELEVANCE_THRESHOLD,
+  // Sort descending so the best-scoring candidate defines the relative floor
+  const ranked = [...siftedTheses].sort(
+    (a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0),
   );
 
-  // Safety Cap: take top 15 by score
-  const result = filtered.slice(0, MAX_THESES);
+  const topScore = ranked[0]?.relevanceScore ?? 0;
+  const floor = topScore * RELATIVE_SCORE_FLOOR_RATIO;
+
+  // Relative Floor + Safety Cap: keep candidates at/above half of the top score
+  const result = ranked
+    .filter((t) => (t.relevanceScore ?? 0) >= floor)
+    .slice(0, MAX_THESES);
 
   // Sort by thesis ID to ensure deterministic [Tez #] labelling
-  // regardless of Cohere score fluctuations
+  // regardless of score fluctuations
   return result.sort((a, b) => a.id - b.id);
 }
 

@@ -144,9 +144,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     ) => {
       const archiveArticle: JuryArticle = {
         title: entry.title,
-        comparisonNote:
-          entry.description ??
-          "Birincil arşiv belgesi — kullanıcı tarafından el ile girilmiştir.",
+        comparisonNote: entry.description?.trim() || null,
         badge: null,
         url: "",
         doi: null as string | null,

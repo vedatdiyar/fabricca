@@ -1,6 +1,6 @@
 "use client";
 
-import type { ThesisBox } from "@/db/schema";
+import type { Box } from "@/db/schema";
 import type { KanbanTask } from "../_types";
 import { TaskFormModal } from "./task-form-modal";
 
@@ -15,7 +15,7 @@ interface EditTaskModalProps {
       thesisBoxId?: number | null;
     },
   ) => Promise<boolean>;
-  boxes: ThesisBox[];
+  boxes: Box[];
 }
 
 /**

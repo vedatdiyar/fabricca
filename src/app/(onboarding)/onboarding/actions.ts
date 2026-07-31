@@ -4,13 +4,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import {
-  thesisMatrices,
-  thesisPositioning,
-  users,
-  thesisBoxes,
-  libraryResources,
-} from "@/db/schema";
+import { matrices, positioning, users, boxes, sources } from "@/db/schema";
 import {
   getSession,
   SESSION_COOKIE_NAME,
@@ -26,8 +20,8 @@ import {
 
 /**
  * Resets the onboarding process for the currently authenticated user.
- * Deletes all onboarding data (thesis_matrices, thesis_positioning cascades to thesis_boxes
- * and library_resources) and sets onboardingCompleted to false.
+ * Deletes all onboarding data (matrices, positioning cascades to boxes
+ * and sources) and sets onboardingCompleted to false.
  *
  * @returns Success status or a user-safe error message
  */
@@ -48,10 +42,8 @@ export async function resetOnboardingAction(): Promise<
     // All destructive operations run inside a single transaction so that
     // a failure in any step rolls the entire reset back.
     await db.transaction(async (tx) => {
-      await tx.delete(thesisMatrices).where(eq(thesisMatrices.userId, userId));
-      await tx
-        .delete(thesisPositioning)
-        .where(eq(thesisPositioning.userId, userId));
+      await tx.delete(matrices).where(eq(matrices.userId, userId));
+      await tx.delete(positioning).where(eq(positioning.userId, userId));
       await tx
         .update(users)
         .set({ onboardingCompleted: false })
@@ -106,64 +98,58 @@ export async function clearDownstreamDbAction(
   try {
     await db.transaction(async (tx) => {
       if (fromStep === "matrix") {
-        await tx
-          .delete(thesisPositioning)
-          .where(eq(thesisPositioning.userId, userId));
+        await tx.delete(positioning).where(eq(positioning.userId, userId));
 
         const matrixResult = await tx
-          .select({ id: thesisMatrices.id })
-          .from(thesisMatrices)
-          .where(eq(thesisMatrices.userId, userId));
+          .select({ id: matrices.id })
+          .from(matrices)
+          .where(eq(matrices.userId, userId));
 
         const matrix = matrixResult[0];
         if (matrix) {
-          await tx
-            .delete(thesisBoxes)
-            .where(eq(thesisBoxes.thesisMatrixId, matrix.id));
+          await tx.delete(boxes).where(eq(boxes.matrixId, matrix.id));
         }
       } else if (fromStep === "positioning") {
         const matrixResult = await tx
-          .select({ id: thesisMatrices.id })
-          .from(thesisMatrices)
-          .where(eq(thesisMatrices.userId, userId));
+          .select({ id: matrices.id })
+          .from(matrices)
+          .where(eq(matrices.userId, userId));
 
         const matrix = matrixResult[0];
         if (matrix) {
           await tx
-            .delete(libraryResources)
+            .delete(sources)
             .where(
               inArray(
-                libraryResources.thesisBoxId,
+                sources.boxId,
                 tx
-                  .select({ id: thesisBoxes.id })
-                  .from(thesisBoxes)
-                  .where(eq(thesisBoxes.thesisMatrixId, matrix.id)),
+                  .select({ id: boxes.id })
+                  .from(boxes)
+                  .where(eq(boxes.matrixId, matrix.id)),
               ),
             );
-          await tx
-            .delete(thesisBoxes)
-            .where(eq(thesisBoxes.thesisMatrixId, matrix.id));
+          await tx.delete(boxes).where(eq(boxes.matrixId, matrix.id));
         }
       } else if (fromStep === "boxes") {
-        // Clear all library resources (including YÖK theses) so the
+        // Clear all sources (including YÖK theses) so the
         // server-side stepsData check returns hasLiterature:false,
         // keeping the literature-review stepper locked.
         const [matrix] = await tx
-          .select({ id: thesisMatrices.id })
-          .from(thesisMatrices)
-          .where(eq(thesisMatrices.userId, userId));
+          .select({ id: matrices.id })
+          .from(matrices)
+          .where(eq(matrices.userId, userId));
 
         if (matrix) {
           // Single delete statement using subquery for better database performance
           await tx
-            .delete(libraryResources)
+            .delete(sources)
             .where(
               inArray(
-                libraryResources.thesisBoxId,
+                sources.boxId,
                 tx
-                  .select({ id: thesisBoxes.id })
-                  .from(thesisBoxes)
-                  .where(eq(thesisBoxes.thesisMatrixId, matrix.id)),
+                  .select({ id: boxes.id })
+                  .from(boxes)
+                  .where(eq(boxes.matrixId, matrix.id)),
               ),
             );
         }

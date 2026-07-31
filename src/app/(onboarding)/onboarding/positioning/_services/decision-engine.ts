@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
-import { thesisPositioning } from "@/db/schema";
+import { positioning } from "@/db/schema";
 import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
 import type {
   PositioningMatrixInput,
@@ -10,12 +10,12 @@ import type { JuryAnalysisResult } from "./analysis";
 
 /**
  * Persists the positioning report (input matrix, LLM jury analysis result, and recommended guide theses)
- * to the `thesis_positioning` database table within a transaction and invalidates step cache.
+ * to the `positioning` database table within a transaction and invalidates step cache.
  *
  * @param userId - ID of the authenticated user.
  * @param input - The validated 4-field positioning matrix input.
  * @param analysisResult - The LLM Jury analysis result.
- * @returns Promise resolving to the saved thesisPositioning record.
+ * @returns Promise resolving to the saved positioning record.
  */
 export async function savePositioningReportTransaction(
   userId: number,
@@ -37,7 +37,7 @@ export async function savePositioningReportTransaction(
 
   const savedRecord = await db.transaction(async (tx) => {
     const [row] = await tx
-      .insert(thesisPositioning)
+      .insert(positioning)
       .values({
         userId,
         matrixInput: input,
@@ -47,7 +47,7 @@ export async function savePositioningReportTransaction(
         updatedAt: sql`now()`,
       })
       .onConflictDoUpdate({
-        target: thesisPositioning.userId,
+        target: positioning.userId,
         set: {
           matrixInput: input,
           globalStatus: analysisResult.globalStatus,

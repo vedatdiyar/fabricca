@@ -1,9 +1,9 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { thesisBoxes, libraryResources } from "@/db/schema";
+import { boxes, sources } from "@/db/schema";
 import { normalizeTitle } from "@/lib/academic/utils";
 import type { LiteraturePoolEntry, JuryArticle } from "@/lib/types";
-import type { NewLibraryResource } from "@/db/schema";
+import type { NewSource } from "@/db/schema";
 
 export type TxClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -20,11 +20,11 @@ async function insertLiteratureBatch(
   tx: TxClient,
   thesisBoxId: number,
   articles: JuryArticle[],
-): Promise<{ toInsert: NewLibraryResource[]; skipped: number }> {
+): Promise<{ toInsert: NewSource[]; skipped: number }> {
   const existingRecords = await tx
-    .select({ title: libraryResources.title, doi: libraryResources.doi })
-    .from(libraryResources)
-    .where(eq(libraryResources.thesisBoxId, thesisBoxId));
+    .select({ title: sources.title, doi: sources.doi })
+    .from(sources)
+    .where(eq(sources.boxId, thesisBoxId));
 
   const existingTitleSet = new Set(
     existingRecords.map((r) => normalizeTitle(r.title)).filter(Boolean),
@@ -35,7 +35,7 @@ async function insertLiteratureBatch(
       .filter((d): d is string => !!d),
   );
 
-  const toInsert: NewLibraryResource[] = [];
+  const toInsert: NewSource[] = [];
   let skipped = 0;
 
   for (const article of articles) {
@@ -55,8 +55,9 @@ async function insertLiteratureBatch(
     if (doiKey) existingDoiSet.add(doiKey);
 
     toInsert.push({
-      thesisBoxId,
+      boxId: thesisBoxId,
       title: article.title,
+      abstract: article.abstract ?? article.comparisonNote ?? null,
       comparisonNote: article.comparisonNote ?? null,
       badge: article.badge ?? null,
       url: article.url ?? null,
@@ -96,7 +97,7 @@ export async function persistSubBoxEntry(
     const { toInsert } = await insertLiteratureBatch(tx, thesisBoxId, sliced);
 
     if (toInsert.length > 0) {
-      await tx.insert(libraryResources).values(toInsert);
+      await tx.insert(sources).values(toInsert);
     }
   });
 }
@@ -141,7 +142,7 @@ export async function persistLiteraturePool(
         );
 
         if (toInsert.length > 0) {
-          await tx.insert(libraryResources).values(toInsert);
+          await tx.insert(sources).values(toInsert);
         }
       }),
     );
@@ -165,7 +166,7 @@ export async function persistArchiveEntries(
         );
 
         if (toInsert.length > 0) {
-          await tx.insert(libraryResources).values(toInsert);
+          await tx.insert(sources).values(toInsert);
         }
 
         return skipped;
@@ -191,23 +192,24 @@ export async function fetchPreloadedPool(
 ): Promise<LiteraturePoolEntry[]> {
   const rows = await db
     .select({
-      thesisBoxId: libraryResources.thesisBoxId,
-      boxTitle: thesisBoxes.title,
-      boxType: thesisBoxes.boxType,
-      title: libraryResources.title,
-      comparisonNote: libraryResources.comparisonNote,
-      badge: libraryResources.badge,
-      url: libraryResources.url,
-      doi: libraryResources.doi,
-      publisher: libraryResources.publisher,
-      publicationYear: libraryResources.publicationYear,
-      authors: libraryResources.authors,
-      isFoundational: libraryResources.isFoundational,
-      relevanceScore: libraryResources.relevanceScore,
+      thesisBoxId: sources.boxId,
+      boxTitle: boxes.title,
+      boxType: boxes.boxType,
+      title: sources.title,
+      abstract: sources.abstract,
+      comparisonNote: sources.comparisonNote,
+      badge: sources.badge,
+      url: sources.url,
+      doi: sources.doi,
+      publisher: sources.publisher,
+      publicationYear: sources.publicationYear,
+      authors: sources.authors,
+      isFoundational: sources.isFoundational,
+      relevanceScore: sources.relevanceScore,
     })
-    .from(libraryResources)
-    .innerJoin(thesisBoxes, eq(libraryResources.thesisBoxId, thesisBoxes.id))
-    .where(eq(thesisBoxes.thesisMatrixId, thesisMatrixId));
+    .from(sources)
+    .innerJoin(boxes, eq(sources.boxId, boxes.id))
+    .where(eq(boxes.matrixId, thesisMatrixId));
 
   const grouped = new Map<
     number,
@@ -219,6 +221,7 @@ export async function fetchPreloadedPool(
     list.push({
       title: row.title,
       comparisonNote: row.comparisonNote ?? null,
+      abstract: row.abstract ?? row.comparisonNote ?? null,
       badge: row.badge ?? null,
       url: row.url ?? "",
       doi: row.doi,

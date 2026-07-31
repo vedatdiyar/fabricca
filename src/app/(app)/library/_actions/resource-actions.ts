@@ -3,10 +3,10 @@
 import { eq, desc, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
-  thesisMatrices,
-  thesisBoxes,
-  libraryResources,
-  libraryResourceNotes,
+  matrices,
+  boxes as boxRows,
+  sources,
+  notes as noteRows,
 } from "@/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
@@ -32,19 +32,19 @@ export async function getLibraryResourcesAction() {
     }
 
     // Get user's thesis matrix
-    const matrix = await db.query.thesisMatrices.findFirst({
-      where: eq(thesisMatrices.userId, session.userId),
+    const matrix = await db.query.matrices.findFirst({
+      where: eq(matrices.userId, session.userId),
       with: {
-        thesisBoxes: true,
+        boxes: true,
       },
     });
 
-    let boxes = matrix?.thesisBoxes || [];
+    let boxes = matrix?.boxes || [];
 
     // If user has no thesis boxes yet, create a default set for the user's matrix
     if (!matrix) {
       const [newMatrix] = await db
-        .insert(thesisMatrices)
+        .insert(matrices)
         .values({
           userId: session.userId,
           subjectProblem: "Akademik Araştırma ve Literatür İncelemesi",
@@ -55,53 +55,53 @@ export async function getLibraryResourcesAction() {
 
       const defaultBoxes = [
         {
-          thesisMatrixId: newMatrix.id,
+          matrixId: newMatrix.id,
           boxType: "SUBJECT_PROBLEM" as const,
           title: "Konu ve Problem",
         },
         {
-          thesisMatrixId: newMatrix.id,
+          matrixId: newMatrix.id,
           boxType: "THEORETICAL_FRAMEWORK" as const,
           title: "Kuramsal Çerçeve",
         },
         {
-          thesisMatrixId: newMatrix.id,
+          matrixId: newMatrix.id,
           boxType: "PRIMARY_MATERIAL" as const,
           title: "Birincil Malzeme",
         },
         {
-          thesisMatrixId: newMatrix.id,
+          matrixId: newMatrix.id,
           boxType: "METHODOLOGY" as const,
           title: "Metodoloji",
         },
       ];
 
-      boxes = await db.insert(thesisBoxes).values(defaultBoxes).returning();
+      boxes = await db.insert(boxRows).values(defaultBoxes).returning();
     } else if (boxes.length === 0) {
       const defaultBoxes = [
         {
-          thesisMatrixId: matrix.id,
+          matrixId: matrix.id,
           boxType: "SUBJECT_PROBLEM" as const,
           title: "Konu ve Problem",
         },
         {
-          thesisMatrixId: matrix.id,
+          matrixId: matrix.id,
           boxType: "THEORETICAL_FRAMEWORK" as const,
           title: "Kuramsal Çerçeve",
         },
         {
-          thesisMatrixId: matrix.id,
+          matrixId: matrix.id,
           boxType: "PRIMARY_MATERIAL" as const,
           title: "Birincil Malzeme",
         },
         {
-          thesisMatrixId: matrix.id,
+          matrixId: matrix.id,
           boxType: "METHODOLOGY" as const,
           title: "Metodoloji",
         },
       ];
 
-      boxes = await db.insert(thesisBoxes).values(defaultBoxes).returning();
+      boxes = await db.insert(boxRows).values(defaultBoxes).returning();
     }
 
     const boxIds = boxes.map((b) => b.id);
@@ -109,9 +109,9 @@ export async function getLibraryResourcesAction() {
     // Fetch resources belonging to user's boxes
     const dbResources =
       boxIds.length > 0
-        ? await db.query.libraryResources.findMany({
-            where: inArray(libraryResources.thesisBoxId, boxIds),
-            orderBy: [desc(libraryResources.createdAt)],
+        ? await db.query.sources.findMany({
+            where: inArray(sources.boxId, boxIds),
+            orderBy: [desc(sources.createdAt)],
           })
         : [];
 
@@ -120,9 +120,9 @@ export async function getLibraryResourcesAction() {
     // Fetch notes belonging to user's resources
     const dbNotes =
       resourceIds.length > 0
-        ? await db.query.libraryResourceNotes.findMany({
-            where: inArray(libraryResourceNotes.libraryResourceId, resourceIds),
-            orderBy: [desc(libraryResourceNotes.createdAt)],
+        ? await db.query.notes.findMany({
+            where: inArray(noteRows.sourceId, resourceIds),
+            orderBy: [desc(noteRows.createdAt)],
           })
         : [];
 
@@ -131,8 +131,10 @@ export async function getLibraryResourcesAction() {
 
     const resources = dbResources.map((r) => ({
       id: r.id,
-      boxType: (boxMap.get(r.thesisBoxId) ||
-        "THEORETICAL_FRAMEWORK") as Exclude<ThesisBoxType, "ALL">,
+      boxType: (boxMap.get(r.boxId) || "THEORETICAL_FRAMEWORK") as Exclude<
+        ThesisBoxType,
+        "ALL"
+      >,
       title: r.title,
       authors: r.authors || ["Bilinmeyen Yazar"],
       publisher: r.publisher || "Belirtilmemiş",
@@ -144,12 +146,14 @@ export async function getLibraryResourcesAction() {
       pdfFileName: r.pdfFileName || undefined,
       pdfStatus: r.pdfStatus || "NOT_UPLOADED",
       sourceOrigin: "LITERATURE_EXPANSION" as const,
+      abstract: r.abstract || r.comparisonNote || undefined,
+      abstractSource: r.abstractSource || undefined,
       createdAt: r.createdAt.toISOString(),
     }));
 
     const notes = dbNotes.map((n) => ({
       id: n.id,
-      resourceId: n.libraryResourceId,
+      resourceId: n.sourceId,
       pageNumber: n.pageNumber,
       noteType: n.noteType as NoteType,
       content: n.content,
@@ -198,20 +202,18 @@ export async function createLibraryResourceAction(input: {
     }
 
     // Find or create thesis box corresponding to boxType
-    const matrix = await db.query.thesisMatrices.findFirst({
-      where: eq(thesisMatrices.userId, session.userId),
-      with: { thesisBoxes: true },
+    const matrix = await db.query.matrices.findFirst({
+      where: eq(matrices.userId, session.userId),
+      with: { boxes: true },
     });
 
-    let targetBox = matrix?.thesisBoxes.find(
-      (b) => b.boxType === input.boxType,
-    );
+    let targetBox = matrix?.boxes.find((b) => b.boxType === input.boxType);
 
     if (!targetBox) {
       let matrixId = matrix?.id;
       if (!matrixId) {
         const [newM] = await db
-          .insert(thesisMatrices)
+          .insert(matrices)
           .values({
             userId: session.userId,
             subjectProblem: "Genel Konu ve Problem",
@@ -223,9 +225,9 @@ export async function createLibraryResourceAction(input: {
       }
 
       const [newBox] = await db
-        .insert(thesisBoxes)
+        .insert(boxRows)
         .values({
-          thesisMatrixId: matrixId,
+          matrixId: matrixId,
           boxType: input.boxType,
           title: getBoxDefaultTitle(input.boxType),
         })
@@ -235,9 +237,9 @@ export async function createLibraryResourceAction(input: {
     }
 
     const [newResource] = await db
-      .insert(libraryResources)
+      .insert(sources)
       .values({
-        thesisBoxId: targetBox.id,
+        boxId: targetBox.id,
         title: input.title.trim(),
         authors:
           input.authors.length > 0 ? input.authors : ["Bilinmeyen Yazar"],
@@ -297,8 +299,8 @@ export async function toggleResourceReadStatusAction(resourceId: number) {
       return { success: false, error: "Oturum bulunamadı." };
     }
 
-    const resource = await db.query.libraryResources.findFirst({
-      where: eq(libraryResources.id, resourceId),
+    const resource = await db.query.sources.findFirst({
+      where: eq(sources.id, resourceId),
     });
 
     if (!resource) {
@@ -308,9 +310,9 @@ export async function toggleResourceReadStatusAction(resourceId: number) {
     const newIsRead = !resource.isRead;
 
     await db
-      .update(libraryResources)
+      .update(sources)
       .set({ isRead: newIsRead })
-      .where(eq(libraryResources.id, resourceId));
+      .where(eq(sources.id, resourceId));
 
     log.info("toggle_resource_read_status_success", {
       service: "library",
@@ -346,8 +348,8 @@ export async function deleteLibraryResourceAction(resourceId: number) {
       return { success: false, error: "Oturum bulunamadı." };
     }
 
-    const resource = await db.query.libraryResources.findFirst({
-      where: eq(libraryResources.id, resourceId),
+    const resource = await db.query.sources.findFirst({
+      where: eq(sources.id, resourceId),
     });
 
     if (!resource) {
@@ -367,9 +369,7 @@ export async function deleteLibraryResourceAction(resourceId: number) {
       }
     }
 
-    await db
-      .delete(libraryResources)
-      .where(eq(libraryResources.id, resourceId));
+    await db.delete(sources).where(eq(sources.id, resourceId));
 
     return { success: true };
   } catch (err) {

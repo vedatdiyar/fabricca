@@ -12,7 +12,7 @@ import {
   Database,
 } from "lucide-react";
 
-import type { ThesisMatrix as ThesisMatrixSchema } from "@/db/schema";
+import type { Matrix } from "@/db/schema";
 import type { ThesisMatrix } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -189,7 +189,7 @@ const EMPTY_VALUES: FormState = {
 };
 
 interface MatrixFormProps {
-  initialMatrix?: ThesisMatrixSchema | null;
+  initialMatrix?: Matrix | null;
 }
 
 export function MatrixForm({ initialMatrix }: MatrixFormProps) {

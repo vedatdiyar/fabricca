@@ -17,7 +17,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { ThesisBox } from "@/db/schema";
+import type { Box } from "@/db/schema";
 import type { KanbanTask } from "../_types";
 import { AddTaskModal } from "./add-task-modal";
 import { EditTaskModal } from "./edit-task-modal";
@@ -38,7 +38,7 @@ interface KanbanBoardProps {
     },
   ) => Promise<boolean>;
   onDeleteTask: (taskId: string) => Promise<void>;
-  boxes: ThesisBox[];
+  boxes: Box[];
 }
 
 const COLUMNS = [

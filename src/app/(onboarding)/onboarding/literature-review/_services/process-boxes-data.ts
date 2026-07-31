@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { thesisMatrices } from "@/db/schema";
+import { matrices } from "@/db/schema";
 
 export interface LoadedMatrixData {
   id: number;
@@ -18,14 +18,14 @@ export async function loadThesisMatrixAndBoxes(userId: number): Promise<{
 }> {
   const [matrix] = await db
     .select({
-      id: thesisMatrices.id,
-      subjectProblem: thesisMatrices.subjectProblem,
-      theoreticalFramework: thesisMatrices.theoreticalFramework,
-      primaryMaterial: thesisMatrices.primaryMaterial,
-      methodology: thesisMatrices.methodology,
+      id: matrices.id,
+      subjectProblem: matrices.subjectProblem,
+      theoreticalFramework: matrices.theoreticalFramework,
+      primaryMaterial: matrices.primaryMaterial,
+      methodology: matrices.methodology,
     })
-    .from(thesisMatrices)
-    .where(eq(thesisMatrices.userId, userId));
+    .from(matrices)
+    .where(eq(matrices.userId, userId));
 
   return { matrix };
 }

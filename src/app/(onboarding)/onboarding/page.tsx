@@ -1,12 +1,7 @@
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import {
-  thesisMatrices,
-  thesisPositioning,
-  thesisBoxes,
-  libraryResources,
-} from "@/db/schema";
+import { matrices, positioning, boxes, sources } from "@/db/schema";
 import { getProfile } from "@/lib/session";
 
 /**
@@ -27,32 +22,32 @@ export default async function OnboardingPage() {
 
   // Step 1: Check matrix
   const [matrix] = await db
-    .select({ id: thesisMatrices.id })
-    .from(thesisMatrices)
-    .where(eq(thesisMatrices.userId, profile.id));
+    .select({ id: matrices.id })
+    .from(matrices)
+    .where(eq(matrices.userId, profile.id));
 
   if (!matrix) {
     redirect("/onboarding/matrix");
   }
 
   // Step 2: Check positioning report
-  const [positioning] = await db
+  const [positioningRow] = await db
     .select({
-      id: thesisPositioning.id,
-      globalStatus: thesisPositioning.globalStatus,
+      id: positioning.id,
+      globalStatus: positioning.globalStatus,
     })
-    .from(thesisPositioning)
-    .where(eq(thesisPositioning.userId, profile.id));
+    .from(positioning)
+    .where(eq(positioning.userId, profile.id));
 
-  if (!positioning || !positioning.globalStatus) {
+  if (!positioningRow || !positioningRow.globalStatus) {
     redirect("/onboarding/positioning");
   }
 
   // Step 3: Check if boxes exist
   const [box] = await db
-    .select({ id: thesisBoxes.id })
-    .from(thesisBoxes)
-    .where(eq(thesisBoxes.thesisMatrixId, matrix.id))
+    .select({ id: boxes.id })
+    .from(boxes)
+    .where(eq(boxes.matrixId, matrix.id))
     .limit(1);
 
   if (!box) {
@@ -61,10 +56,10 @@ export default async function OnboardingPage() {
 
   // Step 4: Check if literature review exists (library resources)
   const [lit] = await db
-    .select({ id: libraryResources.id })
-    .from(libraryResources)
-    .innerJoin(thesisBoxes, eq(libraryResources.thesisBoxId, thesisBoxes.id))
-    .where(eq(thesisBoxes.thesisMatrixId, matrix.id))
+    .select({ id: sources.id })
+    .from(sources)
+    .innerJoin(boxes, eq(sources.boxId, boxes.id))
+    .where(eq(boxes.matrixId, matrix.id))
     .limit(1);
 
   if (!lit) {

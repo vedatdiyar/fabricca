@@ -2,7 +2,7 @@
 
 import { eq, and } from "drizzle-orm";
 import { db } from "@/db";
-import { libraryResourceNotes } from "@/db/schema";
+import { notes } from "@/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import type { NoteType } from "../_types/types";
@@ -32,9 +32,9 @@ export async function createResourceNoteAction(input: {
     }
 
     const [newNote] = await db
-      .insert(libraryResourceNotes)
+      .insert(notes)
       .values({
-        libraryResourceId: input.resourceId,
+        sourceId: input.resourceId,
         userId: session.userId,
         pageNumber: input.pageNumber.trim(),
         noteType: input.noteType,
@@ -52,7 +52,7 @@ export async function createResourceNoteAction(input: {
       success: true,
       data: {
         id: newNote.id,
-        resourceId: newNote.libraryResourceId,
+        resourceId: newNote.sourceId,
         pageNumber: newNote.pageNumber,
         noteType: newNote.noteType as NoteType,
         content: newNote.content,
@@ -85,13 +85,8 @@ export async function deleteResourceNoteAction(noteId: number) {
     }
 
     await db
-      .delete(libraryResourceNotes)
-      .where(
-        and(
-          eq(libraryResourceNotes.id, noteId),
-          eq(libraryResourceNotes.userId, session.userId),
-        ),
-      );
+      .delete(notes)
+      .where(and(eq(notes.id, noteId), eq(notes.userId, session.userId)));
 
     log.info("delete_resource_note_success", {
       service: "library",

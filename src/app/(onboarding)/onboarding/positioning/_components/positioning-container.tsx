@@ -1,13 +1,13 @@
 "use client";
 
-import type { ThesisPositioning } from "@/db/schema";
+import type { Positioning } from "@/db/schema";
 import type { PositioningGlobalStatus } from "../_lib/validation";
 import type { JuryAnalysisResult } from "../_services/analysis";
 import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
 import { PositioningReportView } from "./positioning-report-view";
 
 interface PositioningContainerProps {
-  initialRecord?: ThesisPositioning | null;
+  initialRecord?: Positioning | null;
 }
 
 /**

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { ThesisBox } from "@/db/schema";
+import type { Box } from "@/db/schema";
 
 interface TaskFormModalProps {
   mode: "add" | "edit";
@@ -17,7 +17,7 @@ interface TaskFormModalProps {
     thesisBoxId?: number | null;
   }) => Promise<boolean>;
   onClose: () => void;
-  boxes: ThesisBox[];
+  boxes: Box[];
 }
 
 /**

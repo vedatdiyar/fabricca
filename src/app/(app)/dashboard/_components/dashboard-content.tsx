@@ -1,16 +1,17 @@
 "use client";
 
-import type { ThesisBox, LibraryResource } from "@/db/schema";
+import type { Box, Source } from "@/db/schema";
 import type { TaskRow } from "../_lib/schemas";
 import { BoxCard } from "./box-card";
 import { KanbanBoard } from "./kanban-board";
 import { useDashboard } from "../_hooks/use-dashboard";
 
 interface DashboardContentProps {
-  initialBoxes: ThesisBox[];
-  initialResources: LibraryResource[];
+  initialBoxes: Box[];
+  initialResources: Source[];
   initialTasks: TaskRow[];
   childIdToParentId: Map<number, number>;
+  allBoxRows: Box[];
 }
 
 export function DashboardContent({
@@ -18,6 +19,7 @@ export function DashboardContent({
   initialResources,
   initialTasks,
   childIdToParentId,
+  allBoxRows,
 }: DashboardContentProps) {
   const {
     topicBoxes,
@@ -26,11 +28,13 @@ export function DashboardContent({
     handleAddTask,
     handleEditTask,
     handleDeleteTask,
+    handleDeleteArticle,
   } = useDashboard(
     initialBoxes,
     initialResources,
     initialTasks,
     childIdToParentId,
+    allBoxRows,
   );
 
   return (
@@ -38,7 +42,7 @@ export function DashboardContent({
       <section className="space-y-4">
         <div>
           <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
-            Konu Kutuları ve Başlangıç Paketleri
+            Konu Kutuları ve Okuma Listeleri
           </h2>
           <p className="font-sans text-sm text-muted-foreground mt-1">
             Araştırma alanlarınıza önerilen akademik kaynaklar. Okundukça yerini
@@ -56,7 +60,11 @@ export function DashboardContent({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {topicBoxes.map((box) => (
-              <BoxCard key={box.id} box={box} />
+              <BoxCard
+                key={box.id}
+                box={box}
+                onDeleteArticle={handleDeleteArticle}
+              />
             ))}
           </div>
         )}

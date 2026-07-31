@@ -255,4 +255,3 @@ export function extractColumnAwareText(
     .filter(Boolean)
     .join("\n\n");
 }
-

@@ -2,8 +2,8 @@
 
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { thesisPositioning, thesisMatrices } from "@/db/schema";
-import type { ThesisPositioning } from "@/db/schema";
+import { positioning, matrices } from "@/db/schema";
+import type { Positioning } from "@/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import type { ThesisMatrix } from "@/lib/types";
@@ -22,13 +22,14 @@ import type { JuryAnalysisResult } from "./_services/analysis";
  * dahil değildir; ayrı Server Action'larda handle edilir.
  *
  * @param matrixInput - Kullanıcının tez matrisi (5 alan)
- * @param log - Parent Logger instance (inject edilir)
+ * @param flowId - Bu akışa ait ortak Logger flow ID'si
  * @returns Süzülen ve sıralanmış tez listesi veya hata mesajı
  */
 export async function runPositioningSearchAction(
   matrixInput: ThesisMatrix,
-  log: Logger,
+  flowId: string,
 ): Promise<{ success: true; theses: SiftedThesis[] } | { error: string }> {
+  const log = new Logger(flowId);
   const positioningInput: Record<string, string> = {
     subjectProblem: matrixInput.subjectProblem ?? "",
     theoreticalFramework: matrixInput.theoreticalFramework ?? "",
@@ -54,9 +55,7 @@ export async function runPositioningSearchAction(
     const queries = await generatePositioningQueries(validated, log);
     log.info("generate_positioning_queries_success");
 
-    log.info("search_sift_theses_start");
     const theses = await searchAndSiftTheses(queries, validated, log);
-    log.info("search_sift_theses_success");
 
     return { success: true, theses };
   } catch (error) {
@@ -75,16 +74,17 @@ export async function runPositioningSearchAction(
  *
  * @param matrixInput - Kullanıcının tez matrisi (5 alan)
  * @param theses - Cohere Rerank sonucu süzülen tez listesi
- * @param log - Parent Logger instance (inject edilir)
+ * @param flowId - Bu akışa ait ortak Logger flow ID'si
  * @returns Jüri analizi sonucu veya hata mesajı
  */
 export async function runPositioningJuryAction(
   matrixInput: ThesisMatrix,
   theses: SiftedThesis[],
-  log: Logger,
+  flowId: string,
 ): Promise<
   { success: true; juryResult: JuryAnalysisResult } | { error: string }
 > {
+  const log = new Logger(flowId);
   const positioningInput: Record<string, string> = {
     subjectProblem: matrixInput.subjectProblem ?? "",
     theoreticalFramework: matrixInput.theoreticalFramework ?? "",
@@ -128,14 +128,15 @@ export async function runPositioningJuryAction(
  *
  * @param matrixInput - Kullanıcının tez matrisi (5 alan)
  * @param juryResult - Jüri analizi sonucu
- * @param log - Parent Logger instance (inject edilir)
+ * @param flowId - Bu akışa ait ortak Logger flow ID'si
  * @returns Başarılıysa { success: true }, hatalıysa { error: string }
  */
 export async function persistPositioningReportAction(
   matrixInput: ThesisMatrix,
   juryResult: JuryAnalysisResult,
-  log: Logger,
+  flowId: string,
 ): Promise<{ success: true } | { error: string }> {
+  const log = new Logger(flowId);
   try {
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
@@ -153,8 +154,6 @@ export async function persistPositioningReportAction(
     const validated = parsed.data;
 
     if (juryResult.recommendedTheses.length > 0) {
-      log.info("literature_bulk_sanitization_start");
-
       const itemsToSanitize = juryResult.recommendedTheses.map((t) => ({
         title: t.title || "",
         author: t.author || "",
@@ -167,8 +166,6 @@ export async function persistPositioningReportAction(
           author: sanitized[idx]?.author || t.author,
         }),
       );
-
-      log.info("literature_bulk_sanitization_success");
     }
 
     log.info("positioning_db_transaction_start");
@@ -198,7 +195,7 @@ export async function persistPositioningReportAction(
  *
  * @returns The user's positioning record or null if not found
  */
-export async function getPositioningAction(): Promise<ThesisPositioning | null> {
+export async function getPositioningAction(): Promise<Positioning | null> {
   const session = await getSession();
   if (!session) {
     return null;
@@ -207,13 +204,13 @@ export async function getPositioningAction(): Promise<ThesisPositioning | null> 
   try {
     const [record] = await db
       .select()
-      .from(thesisPositioning)
-      .where(eq(thesisPositioning.userId, session.userId));
+      .from(positioning)
+      .where(eq(positioning.userId, session.userId));
 
     const [matrix] = await db
       .select()
-      .from(thesisMatrices)
-      .where(eq(thesisMatrices.userId, session.userId));
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
 
     if (matrix) {
       const currentMatrixInput = {
@@ -245,7 +242,7 @@ export async function getPositioningAction(): Promise<ThesisPositioning | null> 
         recommendedTheses: [],
         createdAt: matrix.createdAt,
         updatedAt: matrix.updatedAt,
-      } as ThesisPositioning;
+      } as Positioning;
     }
 
     if (record) {
@@ -278,7 +275,10 @@ export async function runPositioningPipelineAction(
   const pipelineStart = performance.now();
 
   // ── Step 1: Search ──
-  const searchResult = await runPositioningSearchAction(matrixInput, log);
+  const searchResult = await runPositioningSearchAction(
+    matrixInput,
+    log.flowId,
+  );
   if ("error" in searchResult) {
     log.error("positioning_pipeline_failed", {
       error: searchResult.error,
@@ -290,7 +290,7 @@ export async function runPositioningPipelineAction(
   const juryResult = await runPositioningJuryAction(
     matrixInput,
     searchResult.theses,
-    log,
+    log.flowId,
   );
   if ("error" in juryResult) {
     log.error("positioning_pipeline_failed", {
@@ -303,7 +303,7 @@ export async function runPositioningPipelineAction(
   const persistResult = await persistPositioningReportAction(
     matrixInput,
     juryResult.juryResult,
-    log,
+    log.flowId,
   );
   if ("error" in persistResult) {
     log.error("positioning_pipeline_failed", {

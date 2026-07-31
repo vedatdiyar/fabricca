@@ -10,7 +10,6 @@ interface ArticleState {
   year: number;
   isRead: boolean;
   isFoundational: boolean;
-  isInInitialStarterPack: boolean;
   boxId: string;
   boxTitle: string;
 }
@@ -62,9 +61,19 @@ export function useDashboardReadingStatus(
     [readingTaskStatuses],
   );
 
+  const removeReadingTask = useCallback((articleId: string) => {
+    setReadingTaskStatuses((prev) => {
+      if (!(articleId in prev)) return prev;
+      const next = { ...prev };
+      delete next[articleId];
+      return next;
+    });
+  }, []);
+
   return {
     readingTaskStatuses,
     setReadingTaskStatuses,
     getActiveReadingTasks,
+    removeReadingTask,
   };
 }

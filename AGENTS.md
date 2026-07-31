@@ -29,6 +29,7 @@ Projede kullanılacak teknolojiler kesin olarak belirlenmiştir. Yapay zeka, gel
 - **Vektör Veri Tabanı (RAG):** Neon DB içinde entegre `pgvector` eklentisi
 - **LLM Modeli:** Google Gemini Flash-Lite (`FLASH_LITE_31` sabiti — tüm metin üretimi ve analiz işlemleri için)
 - **Embedding Model:** Cohere Embed API (`embed-multilingual-v3.0` — 1024 boyutlu vektörler)
+- **Rerank Modeli (Semantik Sıralama):** Cohere Rerank API (`rerank-v4.0-pro` — çok dilli, Türkçe dahil; YAML yapılandırılmış girdi desteği)
 - **PDF Parçalama ve Metadata Çıkarımı:** `unpdf` + dinamik $N$-sütunlu yerel ayrıştırıcı (seçilebilir/metin PDF'leri için ultra hızlı <200ms yol) + LlamaParse API (taranmış/görsel PDF'ler için OCR ve bozuk düzen çözücü), Crossref API (DOI ile metadata çözümleme), Gemini Flash-Lite (DOI bulunamadığında metin tabanlı metadata çıkarımı)
 - **AI Orkestrasyon:** Google Gen AI SDK (`@google/genai` - Doğrudan entegrasyon), Cerebras API (OpenAI-compatible, metadata extraction için Gemma 4 31B)
 - **Kimlik Doğrulama (Auth):** Drizzle tabanlı yerel `users` tablosu, `bcrypt-ts` ile şifreleme ve `src/lib/session.ts` üzerinden Cookies tabanlı hafif session yönetimi

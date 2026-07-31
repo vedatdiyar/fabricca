@@ -35,6 +35,7 @@ export default async function DashboardPage() {
     parentBoxes: dbBoxes,
     resources: dbResources,
     childIdToParentId,
+    allBoxRows,
   } = boxResult.data;
   const dbTasks = tasksResult.success ? (tasksResult.data ?? []) : [];
 
@@ -45,6 +46,7 @@ export default async function DashboardPage() {
         initialResources={dbResources}
         initialTasks={dbTasks}
         childIdToParentId={childIdToParentId}
+        allBoxRows={allBoxRows}
       />
     </div>
   );

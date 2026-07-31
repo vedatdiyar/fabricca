@@ -7,7 +7,7 @@ import {
   revalidateOnboardingPaths,
   invalidateOnboardingCache,
 } from "@/lib/cache-tags";
-import { thesisMatrices, users } from "@/db/schema";
+import { matrices, users } from "@/db/schema";
 import { Logger, createFlowId } from "@/lib/logger";
 import {
   getSession,
@@ -113,9 +113,9 @@ export async function confirmLiteratureAction(args: {
     }
 
     const [matrix] = await db
-      .select({ id: thesisMatrices.id })
-      .from(thesisMatrices)
-      .where(eq(thesisMatrices.userId, session.userId));
+      .select({ id: matrices.id })
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
 
     if (!matrix) {
       return { error: "Thesis matrix not found." };
@@ -155,9 +155,9 @@ export async function fetchPreloadedLiteraturePool(): Promise<{
   if (!session) return { error: SESSION_ERROR_MSG };
 
   const [matrix] = await db
-    .select({ id: thesisMatrices.id })
-    .from(thesisMatrices)
-    .where(eq(thesisMatrices.userId, session.userId));
+    .select({ id: matrices.id })
+    .from(matrices)
+    .where(eq(matrices.userId, session.userId));
 
   if (!matrix) return { error: "Thesis matrix not found." };
 
@@ -290,9 +290,9 @@ export async function checkLiteraturePoolAction(): Promise<{
     if (!session) return { exists: false, error: SESSION_ERROR_MSG };
 
     const [matrix] = await db
-      .select({ id: thesisMatrices.id })
-      .from(thesisMatrices)
-      .where(eq(thesisMatrices.userId, session.userId));
+      .select({ id: matrices.id })
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
 
     if (!matrix) return { exists: false, error: "Thesis matrix not found." };
 

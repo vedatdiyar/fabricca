@@ -70,10 +70,11 @@ function ArchiveEntryForm({
         </Button>
       </div>
       <Textarea
-        placeholder="Açıklama veya ek referans bilgisi (isteğe bağlı)"
+        rows={5}
+        placeholder="Özet (isteğe bağlı)"
         value={description}
         onChange={(e) => setDescription(e.target.value)}
-        className="min-h-[60px] resize-none overflow-y-auto text-sm"
+        className="resize-none overflow-y-auto text-sm"
       />
     </div>
   );

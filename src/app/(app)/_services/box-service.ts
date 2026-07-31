@@ -1,16 +1,16 @@
 import { eq, asc, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { thesisMatrices, thesisBoxes, libraryResources } from "@/db/schema";
+import { matrices, boxes, sources } from "@/db/schema";
 
 export interface UserBoxData {
-  matrix: typeof thesisMatrices.$inferSelect;
-  parentBoxes: (typeof thesisBoxes.$inferSelect)[];
+  matrix: typeof matrices.$inferSelect;
+  parentBoxes: (typeof boxes.$inferSelect)[];
   childIdToParentId: Map<number, number>;
-  allBoxRows: (typeof thesisBoxes.$inferSelect)[];
+  allBoxRows: (typeof boxes.$inferSelect)[];
 }
 
 export interface UserBoxDataWithResources extends UserBoxData {
-  resources: (typeof libraryResources.$inferSelect)[];
+  resources: (typeof sources.$inferSelect)[];
 }
 
 /**
@@ -25,8 +25,8 @@ export async function getUsersMatrixAndBoxes(
 ): Promise<{ data: UserBoxData } | { error: string }> {
   const [matrix] = await db
     .select()
-    .from(thesisMatrices)
-    .where(eq(thesisMatrices.userId, userId));
+    .from(matrices)
+    .where(eq(matrices.userId, userId));
 
   if (!matrix) {
     return { error: "Thesis matrix not found." };
@@ -34,9 +34,9 @@ export async function getUsersMatrixAndBoxes(
 
   const allBoxRows = await db
     .select()
-    .from(thesisBoxes)
-    .where(eq(thesisBoxes.thesisMatrixId, matrix.id))
-    .orderBy(asc(thesisBoxes.id));
+    .from(boxes)
+    .where(eq(boxes.matrixId, matrix.id))
+    .orderBy(asc(boxes.id));
 
   const parentBoxes = allBoxRows.filter((b) => b.parentId === null);
 
@@ -60,10 +60,10 @@ export async function getUsersMatrixAndBoxes(
 /**
  * Fetches the thesis matrix, box hierarchy, and all associated library
  * resources for a given user. Resources are now stored directly on their
- * parent thesisBoxId — no remapping needed.
+ * parent boxId — no remapping needed.
  *
  * @param userId - The authenticated user's ID
- * @returns Extended data including resources with original thesisBoxId
+ * @returns Extended data including resources with original boxId
  */
 export async function getUsersMatrixAndBoxesWithResources(
   userId: number,
@@ -76,15 +76,15 @@ export async function getUsersMatrixAndBoxesWithResources(
 
   const { allBoxRows } = boxResult.data;
 
-  let resources: (typeof libraryResources.$inferSelect)[] = [];
+  let resources: (typeof sources.$inferSelect)[] = [];
 
   if (allBoxRows.length > 0) {
     const allBoxIds = allBoxRows.map((b) => b.id);
 
     resources = await db
       .select()
-      .from(libraryResources)
-      .where(inArray(libraryResources.thesisBoxId, allBoxIds));
+      .from(sources)
+      .where(inArray(sources.boxId, allBoxIds));
   }
 
   return {
