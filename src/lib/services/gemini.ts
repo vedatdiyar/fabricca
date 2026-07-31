@@ -158,7 +158,7 @@ export async function logRawLlmCall(params: {
     );
   } catch (err) {
     const log = new Logger(createFlowId());
-    log.error("failed_to_write_llm_log", {
+    log.error("write_llm_log_failed", {
       service: "gemini",
       data: { error: String(err) },
     });
@@ -284,7 +284,7 @@ export async function generateStructuredContent<T>(
         },
         onRetry: (attempt, delay, error) => {
           const httpStatus = extractHttpStatus(error);
-          logger?.warn("ai_retry_attempt", {
+          logger?.info("ai_retry_attempt", {
             service: "gemini",
             filePath: "src/lib/gemini.ts",
             step: `retry_attempt_${attempt}`,

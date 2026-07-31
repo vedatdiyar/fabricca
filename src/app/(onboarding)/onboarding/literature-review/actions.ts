@@ -187,7 +187,7 @@ export async function appendArchiveEntriesAction(args: {
     }
 
     await persistArchiveEntries(entries, (msg) => {
-      log.warn(msg);
+      log.info(msg);
     });
 
     try {
@@ -356,10 +356,10 @@ export async function runLiteraturePipelineAction(
 
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
 
-    // ── Step 5: DB write ────────────────────────────────────────────────
-    logger.info("literature_db_write_start");
-
+    // ── Final persistence ──────────────────────────────────────────────
+    logger.info("literature_pool_persist_start");
     await persistLiteraturePool(poolEntries);
+    logger.info("literature_pool_persist_success");
 
     try {
       revalidateOnboardingPaths();
@@ -368,10 +368,8 @@ export async function runLiteraturePipelineAction(
     }
     invalidateOnboardingCache();
 
-    logger.info("literature_db_write_success");
-
-    // ── Toplam ──────────────────────────────────────────────────────────
-    logger.info("literature_toplam", {
+    // ── Pipeline total ────────────────────────────────────────────────
+    logger.info("literature_pipeline_success", {
       data: { durationMs: Math.round(performance.now() - pipelineStart) },
     });
 

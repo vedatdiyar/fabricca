@@ -21,10 +21,10 @@ type ServiceName =
   | "crossref"
   | "dashboard"
   | "cohere"
-  | "ilovepdf"
   | "positioning"
   | "cerebras"
-  | "pdf-parser";
+  | "pdf-parser"
+  | "rag-search";
 
 export interface LogParams {
   service?: ServiceName;
@@ -42,7 +42,6 @@ export interface LoggerInstance {
   lastTokens?: TokenUsage;
   lastPayloadPath?: string;
   info(arg1: string | Record<string, unknown>, params?: LogParams): void;
-  warn(arg1: string | Record<string, unknown>, params?: LogParams): void;
   error(arg1: string | Record<string, unknown>, params?: LogParams): void;
   step(n: string, m?: Record<string, unknown>): void;
   file(r: string): void;
@@ -169,15 +168,6 @@ export class Logger implements LoggerInstance {
   }
 
   /**
-   * warn seviyesinde log üretir.
-   * @param arg1 Event adı (string) veya direkt payload (object).
-   * @param p Opsiyonel log parametreleri.
-   */
-  warn(arg1: string | Record<string, unknown>, p?: LogParams): void {
-    this.write("warn", arg1, p);
-  }
-
-  /**
    * error seviyesinde log üretir.
    * @param arg1 Event adı (string) veya direkt payload (object).
    * @param p Opsiyonel log parametreleri.
@@ -284,7 +274,7 @@ export class Logger implements LoggerInstance {
    * @param p Opsiyonel log parametreleri.
    */
   private write(
-    level: "info" | "warn" | "error",
+    level: "info" | "error",
     arg1: string | Record<string, unknown>,
     p?: LogParams,
   ): void {
@@ -317,11 +307,19 @@ export class Logger implements LoggerInstance {
           "",
         );
         const startTime = this._starts.get(baseEvent);
-        const durStr =
-          startTime != null
-            ? ` (${formatDuration(performance.now() - startTime)})`
-            : "";
-        if (startTime != null) this._starts.delete(baseEvent);
+        let durStr = "";
+        if (startTime != null) {
+          durStr = ` (${formatDuration(performance.now() - startTime)})`;
+          this._starts.delete(baseEvent);
+        } else if (p?.durationMs != null) {
+          durStr = ` (${formatDuration(p.durationMs)})`;
+        } else if (
+          p?.data &&
+          typeof p.data === "object" &&
+          "durationMs" in p.data
+        ) {
+          durStr = ` (${formatDuration((p.data as Record<string, unknown>).durationMs as number)})`;
+        }
 
         const icon = statusIcon(status);
         const color = statusColor(status);
@@ -337,18 +335,7 @@ export class Logger implements LoggerInstance {
         console.log("");
         return;
       }
-      // ── Status-süz event: minimal tek satır ──
-      const timeTag = this.timestamp();
-      const levelLabel =
-        level === "info" ? "INFO" : level === "warn" ? "WARN" : "ERROR";
-      const durMsFromData =
-        p?.data && typeof p.data === "object" && "durationMs" in p.data
-          ? (p.data as Record<string, unknown>).durationMs
-          : undefined;
-      const durMs = p?.durationMs != null ? p.durationMs : durMsFromData;
-      const durStrInfo =
-        durMs != null ? ` (${formatDuration(durMs as number)})` : "";
-      console.log(`${timeTag} ${levelLabel} ${event}${durStrInfo}`);
+      // ── Soneksiz event dev modunda sessizce yutulur ──
       return;
     }
 

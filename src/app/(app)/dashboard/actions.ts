@@ -49,11 +49,6 @@ export async function getTasksAction(): Promise<{
       .where(eq(tasks.userId, session.userId))
       .orderBy(tasks.createdAt);
 
-    log.info("tasks_fetched", {
-      service: "dashboard",
-      data: { count: rows.length },
-    });
-
     return { success: true, data: rows };
   } catch (err) {
     log.error("tasks_fetch_failed", {
@@ -115,11 +110,6 @@ export async function addTaskAction(input: TaskInput): Promise<{
     }
 
     revalidatePath("/dashboard");
-
-    log.info("task_created", {
-      service: "dashboard",
-      data: { taskId: inserted.id },
-    });
 
     return {
       success: true,
@@ -205,11 +195,6 @@ export async function updateTaskAction(
 
     revalidatePath("/dashboard");
 
-    log.info("task_updated", {
-      service: "dashboard",
-      data: { taskId: updated.id },
-    });
-
     return { success: true, data: { ...updated, boxTitle } };
   } catch (err) {
     log.error("task_update_failed", {
@@ -263,11 +248,6 @@ export async function updateTaskStatusAction(
 
     revalidatePath("/dashboard");
 
-    log.info("task_status_updated", {
-      service: "dashboard",
-      data: { taskId, newStatus },
-    });
-
     return { success: true };
   } catch (err) {
     log.error("task_status_update_failed", {
@@ -310,11 +290,6 @@ export async function deleteTaskAction(taskId: number): Promise<{
     await db.delete(tasks).where(eq(tasks.id, taskId));
 
     revalidatePath("/dashboard");
-
-    log.info("task_deleted", {
-      service: "dashboard",
-      data: { taskId },
-    });
 
     return { success: true };
   } catch (err) {

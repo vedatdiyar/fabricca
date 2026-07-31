@@ -21,7 +21,7 @@ export async function generateCloudflareEmbeddings(
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
 
   if (!accountId || !apiToken) {
-    logger?.warn("cloudflare_embed_key_missing", {
+    logger?.info("cloudflare_embed_key_missing", {
       service: "cloudflare",
       data: {
         message: "CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN missing.",
@@ -114,7 +114,7 @@ export async function rerankWithCloudflare(
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
 
   if (!accountId || !apiToken) {
-    logger?.warn("cloudflare_rerank_key_missing", {
+    logger?.info("cloudflare_rerank_key_missing", {
       service: "cloudflare",
       data: {
         message: "CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN missing.",
@@ -192,7 +192,6 @@ export async function rerankWithCloudflare(
  */
 export async function generateVectorEmbeddings(
   texts: string[],
-  _inputType: "search_document" | "search_query" = "search_document",
   logger?: Logger,
 ): Promise<number[][]> {
   if (texts.length === 0) return [];

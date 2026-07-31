@@ -163,7 +163,7 @@ export async function searchAndSiftTheses(
   });
 
   if (filteredCandidates.length === 0) {
-    logger?.warn("sifting_no_candidates_remaining", {
+    logger?.info("sifting_no_candidates_remaining", {
       service: "tezara",
       filePath:
         "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",

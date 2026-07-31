@@ -8,7 +8,6 @@ import {
   libraryResources,
   resourceEmbeddings,
   libraryResourceNotes,
-  pendingUploads,
 } from "@/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
@@ -19,6 +18,7 @@ import {
   deleteR2Object,
 } from "@/lib/services/r2";
 import { extractPdfMetadata } from "@/lib/services/pdf-metadata";
+import { sanitizeAcademicDataBulk } from "@/lib/services/academic-sanitizer";
 import { parsePdfWithHybridRouter } from "@/lib/services/pdf-parser";
 import { formatApaPdfFileName } from "@/lib/academic/utils";
 import { processResourcePdfPipeline } from "../_services/pdf-pipeline";
@@ -52,7 +52,7 @@ export async function deleteResourcePdfAction(resourceId: number) {
       try {
         await deletePdfFromR2(resource.pdfFileName);
       } catch (err) {
-        log.warn("r2_delete_file_warning", { service: "library", error: err });
+        log.info("r2_delete_file_info", { service: "library", error: err });
       }
     }
 
@@ -127,13 +127,18 @@ export async function requestResourcePdfUploadAction(
       };
     }
 
+    log.info("request_resource_pdf_upload_url_start", {
+      service: "library",
+      data: { resourceId },
+    });
+
     const tempKey = `temp/${crypto.randomUUID()}.pdf`;
     const presignedUrl = await generatePresignedUploadUrl(
       tempKey,
       "application/pdf",
     );
 
-    log.info("request_resource_pdf_upload_url", {
+    log.info("request_resource_pdf_upload_url_success", {
       service: "library",
       data: { resourceId, tempKey },
     });
@@ -201,18 +206,20 @@ export async function completeResourcePdfUploadAction(
       };
     }
 
+    const pipelineStart = performance.now();
+
     // 1. Fetch PDF buffer from R2 temp key
-    log.info("complete_resource_pdf_fetch_from_r2", {
+    log.info("complete_resource_pdf_fetch_from_r2_start", {
       service: "library",
       data: { resourceId, tempKey },
     });
     const buffer = await getPdfFromR2(tempKey);
-
-    // 2. Parse via Hybrid Router (local pdfjs-dist or Unstructured fallback)
-    log.info("complete_resource_pdf_hybrid_parse_start", {
+    log.info("complete_resource_pdf_fetch_from_r2_success", {
       service: "library",
-      data: { fileName: originalFileName, size: buffer.length, resourceId },
+      data: { resourceId, size: buffer.length },
     });
+
+    // 2. Parse via Hybrid Router (local unpdf or Unstructured fallback)
     const chunks = await parsePdfWithHybridRouter(
       buffer,
       originalFileName,
@@ -221,6 +228,16 @@ export async function completeResourcePdfUploadAction(
 
     // 3. Extract metadata
     const metadata = await extractPdfMetadata(chunks, originalFileName, log);
+
+    // 3b. Sanitize metadata — Cerebras zaten sanitize eder, API yolları eder
+    if (metadata.source !== "cerebras") {
+      const [sanitizedMeta] = await sanitizeAcademicDataBulk(
+        [{ title: metadata.title, author: metadata.authors.join(", ") }],
+        log,
+      );
+      metadata.title = sanitizedMeta.title;
+      metadata.authors = sanitizedMeta.author.split(", ").filter(Boolean);
+    }
 
     // 4. Overwrite existing resource metadata
     await db
@@ -275,7 +292,7 @@ export async function completeResourcePdfUploadAction(
     try {
       await deleteR2Object(tempKey);
     } catch {
-      log.warn("complete_resource_pdf_temp_delete_warning", {
+      log.info("complete_resource_pdf_temp_delete_info", {
         service: "library",
         data: { tempKey },
       });
@@ -290,6 +307,7 @@ export async function completeResourcePdfUploadAction(
         initialSize: buffer.length,
         finalSize: pipelineResult.finalSize,
         chunkCount: pipelineResult.chunkCount,
+        durationMs: Math.round(performance.now() - pipelineStart),
       },
     });
 
@@ -336,12 +354,9 @@ export async function completeResourcePdfUploadAction(
  * Server Action (Step 1 of 2): Generates a presigned upload URL for creating a new
  * resource from a PDF. The client uploads directly to R2, then calls completePdfCreateUploadAction.
  *
- * @param boxType - Target thesis box type for the new resource.
  * @returns Presigned URL and temporary R2 key.
  */
-export async function requestPdfCreateUploadAction(
-  boxType: Exclude<ThesisBoxType, "ALL">,
-): Promise<
+export async function requestPdfCreateUploadAction(): Promise<
   | { success: true; presignedUrl: string; tempKey: string }
   | { success: false; error: string }
 > {
@@ -354,22 +369,19 @@ export async function requestPdfCreateUploadAction(
       return { success: false, error: "Oturum bulunamadı." };
     }
 
+    log.info("request_pdf_create_upload_url_start", {
+      service: "library",
+    });
+
     const tempKey = `temp/${crypto.randomUUID()}.pdf`;
     const presignedUrl = await generatePresignedUploadUrl(
       tempKey,
       "application/pdf",
     );
 
-    await db.insert(pendingUploads).values({
-      userId: session.userId,
-      tempKey,
-      boxType,
-      contentType: "application/pdf",
-    });
-
-    log.info("request_pdf_create_upload_url", {
+    log.info("request_pdf_create_upload_url_success", {
       service: "library",
-      data: { boxType, tempKey },
+      data: { tempKey },
     });
 
     return { success: true, presignedUrl, tempKey };
@@ -391,11 +403,13 @@ export async function requestPdfCreateUploadAction(
  *
  * @param tempKey - Temporary R2 key where the client uploaded the PDF.
  * @param originalFileName - Original file name (for Unstructured fallback).
+ * @param boxType - Target thesis box type for the new resource.
  * @returns The newly created resource data.
  */
 export async function completePdfCreateUploadAction(
   tempKey: string,
   originalFileName: string,
+  boxType: Exclude<ThesisBoxType, "ALL">,
 ): Promise<
   | { success: true; data: LibraryResourceItem }
   | { success: false; error: string }
@@ -416,19 +430,20 @@ export async function completePdfCreateUploadAction(
       };
     }
 
+    const pipelineStart = performance.now();
+
     // 1. Fetch PDF buffer from R2 temp key
-    log.info("complete_pdf_create_fetch_from_r2", {
+    log.info("complete_pdf_create_fetch_from_r2_start", {
       service: "library",
       data: { tempKey },
     });
     const buffer = await getPdfFromR2(tempKey);
-    const initialSize = buffer.length;
-
-    // 2. Parse via Hybrid Router (local pdfjs-dist or Unstructured fallback)
-    log.info("complete_pdf_create_hybrid_parse_start", {
+    log.info("complete_pdf_create_fetch_from_r2_success", {
       service: "library",
-      data: { fileName: originalFileName, size: initialSize },
+      data: { size: buffer.length },
     });
+
+    // 2. Parse via Hybrid Router (local unpdf or Unstructured fallback)
     const chunks = await parsePdfWithHybridRouter(
       buffer,
       originalFileName,
@@ -438,29 +453,17 @@ export async function completePdfCreateUploadAction(
     // 3. Extract metadata
     const metadata = await extractPdfMetadata(chunks, originalFileName, log);
 
-    // 4. Read boxType from the pending upload record created in Step 1
-    const [pending] = await db
-      .select()
-      .from(pendingUploads)
-      .where(
-        and(
-          eq(pendingUploads.tempKey, tempKey),
-          eq(pendingUploads.userId, session.userId),
-        ),
-      )
-      .limit(1);
-
-    if (!pending || !pending.boxType) {
-      return {
-        success: false,
-        error:
-          "Yükleme oturumu bulunamadı. Lütfen PDF'i tekrar yüklemeyi deneyiniz.",
-      };
+    // 3b. Sanitize metadata — Cerebras zaten sanitize eder, API yolları eder
+    if (metadata.source !== "cerebras") {
+      const [sanitizedMeta] = await sanitizeAcademicDataBulk(
+        [{ title: metadata.title, author: metadata.authors.join(", ") }],
+        log,
+      );
+      metadata.title = sanitizedMeta.title;
+      metadata.authors = sanitizedMeta.author.split(", ").filter(Boolean);
     }
 
-    const boxType = pending.boxType as Exclude<ThesisBoxType, "ALL">;
-
-    // 5. Find or create target thesis box
+    // 4. Find or create target thesis box
     const matrix = await db.query.thesisMatrices.findFirst({
       where: eq(thesisMatrices.userId, session.userId),
       with: { thesisBoxes: true },
@@ -538,21 +541,11 @@ export async function completePdfCreateUploadAction(
       precomputedChunks: chunks,
     });
 
-    // 11. Clean up temp file and pending upload record
+    // 11. Clean up temp file
     try {
       await deleteR2Object(tempKey);
     } catch {
-      log.warn("complete_pdf_create_temp_delete_warning", {
-        service: "library",
-        data: { tempKey },
-      });
-    }
-    try {
-      await db
-        .delete(pendingUploads)
-        .where(eq(pendingUploads.tempKey, tempKey));
-    } catch {
-      log.warn("complete_pdf_create_pending_delete_warning", {
+      log.info("complete_pdf_create_temp_delete_info", {
         service: "library",
         data: { tempKey },
       });
@@ -566,6 +559,7 @@ export async function completePdfCreateUploadAction(
         finalFileName,
         pdfUrl: pipelineResult.r2Url,
         chunkCount: pipelineResult.chunkCount,
+        durationMs: Math.round(performance.now() - pipelineStart),
       },
     });
 
@@ -596,7 +590,10 @@ export async function completePdfCreateUploadAction(
     });
     return {
       success: false,
-      error: "PDF yüklenirken ve künye bilgileri çıkarılırken bir hata oluştu.",
+      error:
+        err instanceof Error
+          ? err.message
+          : "PDF yüklenirken ve künye bilgileri çıkarılırken bir hata oluştu.",
     };
   }
 }

@@ -170,10 +170,6 @@ export async function checkOnboardingStatus(): Promise<OnboardingStatusResult> {
     const session = await getSessionWithOnboarding();
 
     if (!session) {
-      log.info("flow_complete", {
-        service: "auth",
-        data: { reason: "Oturum bulunamadı" },
-      });
       return { error: SESSION_ERROR_MSG };
     }
 
@@ -181,7 +177,7 @@ export async function checkOnboardingStatus(): Promise<OnboardingStatusResult> {
       onboardingCompleted: session.onboardingCompleted,
     };
   } catch {
-    log.info("login_failed", {
+    log.error("login_check_failed", {
       service: "auth",
       data: { reason: "Onboarding durumu sorgulanamadı" },
     });

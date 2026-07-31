@@ -74,10 +74,8 @@ export async function completeResourcePdfUploadAction(
 /**
  * Server Action (Step 1 of 2): Requests a presigned upload URL for creating a new resource from a PDF.
  */
-export async function requestPdfCreateUploadAction(
-  boxType: Exclude<ThesisBoxType, "ALL">,
-) {
-  return pdfActions.requestPdfCreateUploadAction(boxType);
+export async function requestPdfCreateUploadAction() {
+  return pdfActions.requestPdfCreateUploadAction();
 }
 
 /**
@@ -87,8 +85,13 @@ export async function requestPdfCreateUploadAction(
 export async function completePdfCreateUploadAction(
   tempKey: string,
   originalFileName: string,
+  boxType: Exclude<ThesisBoxType, "ALL">,
 ) {
-  return pdfActions.completePdfCreateUploadAction(tempKey, originalFileName);
+  return pdfActions.completePdfCreateUploadAction(
+    tempKey,
+    originalFileName,
+    boxType,
+  );
 }
 
 /**

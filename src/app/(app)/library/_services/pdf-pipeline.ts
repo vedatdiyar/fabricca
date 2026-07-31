@@ -19,7 +19,7 @@ interface ProcessPdfPipelineOptions {
  * Service Helper: Shared PDF RAG Ingestion Pipeline.
  *
  * Uses the smart hybrid PDF router:
- * - Single-column / plain text → fast local pdfjs-dist extraction (milliseconds)
+ * - Single-column / plain text → fast local unpdf extraction (milliseconds)
  * - Multi-column / scanned / complex layout → Unstructured API fallback
  *
  * Then uploads to R2 storage, generates Cloudflare Workers AI vector embeddings,
@@ -37,7 +37,11 @@ export async function processResourcePdfPipeline(
   let chunks: UnstructuredChunk[];
   if (options.precomputedChunks && options.precomputedChunks.length > 0) {
     chunks = options.precomputedChunks;
-    log.info("pdf_parse_skipped_using_precomputed_chunks", {
+    log.info("pdf_parse_using_precomputed_chunks_start", {
+      service: "library",
+      data: { resourceId, chunkCount: chunks.length },
+    });
+    log.info("pdf_parse_using_precomputed_chunks_success", {
       service: "library",
       data: { resourceId, chunkCount: chunks.length },
     });
@@ -45,19 +49,49 @@ export async function processResourcePdfPipeline(
     chunks = await parsePdfWithHybridRouter(buffer, fileName, log);
   }
 
-  // ── 2 & 3. Upload to R2 and Generate Cloudflare Vector Embeddings in Parallel ──
-  const chunkTexts = chunks.map((c) => c.content);
-  log.info("pdf_r2_and_embed_parallel_start", {
-    service: "library",
-    data: { resourceId, chunkCount: chunkTexts.length },
+  // ── 2 & 3. Fetch Resource Metadata for Header Context ──
+  const resource = await db.query.libraryResources.findFirst({
+    where: eq(libraryResources.id, resourceId),
   });
 
+  const resourceTitle = resource?.title || fileName;
+  const resourceAuthors = resource?.authors?.join(", ") || "Bilinmeyen Yazar";
+
+  // Prepare texts for vector embedding with injected Header Context
+  const embeddingTexts = chunks.map((c) => {
+    const pageNum = c.printedPageNumber ?? c.pdfPageNumber ?? 1;
+    const sectionStr = c.sectionTitle ? ` | Bölüm: ${c.sectionTitle}` : "";
+    const headerContext = `[Eser: ${resourceTitle} | Yazar: ${resourceAuthors} | Sayfa: ${pageNum}${sectionStr}]\n`;
+    return headerContext + c.content;
+  });
+
+  log.info("pdf_r2_and_embed_parallel_start", {
+    service: "library",
+    data: { resourceId, chunkCount: embeddingTexts.length },
+  });
+
+  const r2AndEmbedStart = performance.now();
   const [{ r2Url }, embeddings] = await Promise.all([
     uploadPdfToR2(buffer, resourceId, fileName),
-    generateVectorEmbeddings(chunkTexts, "search_document", log),
+    generateVectorEmbeddings(embeddingTexts, log),
   ]);
 
+  log.info("pdf_r2_and_embed_parallel_success", {
+    service: "library",
+    data: {
+      resourceId,
+      chunkCount: embeddingTexts.length,
+      durationMs: Math.round(performance.now() - r2AndEmbedStart),
+    },
+  });
+
   // ── 4. Batch Insert into pgvector (300 rows per query in parallel) ──
+  log.info("pdf_db_batch_insert_start", {
+    service: "library",
+    data: { resourceId },
+  });
+
+  const dbStart = performance.now();
   await db
     .delete(resourceEmbeddings)
     .where(eq(resourceEmbeddings.libraryResourceId, resourceId));
@@ -66,7 +100,11 @@ export async function processResourcePdfPipeline(
     const recordsToInsert = chunks.map((chunk, index) => ({
       libraryResourceId: resourceId,
       chunkIndex: chunk.chunkIndex,
+      printedPageNumber: chunk.printedPageNumber,
+      pdfPageNumber: chunk.pdfPageNumber,
+      sectionTitle: chunk.sectionTitle,
       content: chunk.content,
+      parentContent: chunk.parentContent || chunk.content,
       tokenCount: chunk.tokenCount,
       embedding: embeddings[index] || new Array(1024).fill(0),
     }));
@@ -80,7 +118,22 @@ export async function processResourcePdfPipeline(
     await Promise.all(insertPromises);
   }
 
+  log.info("pdf_db_batch_insert_success", {
+    service: "library",
+    data: {
+      resourceId,
+      chunkCount: chunks.length,
+      durationMs: Math.round(performance.now() - dbStart),
+    },
+  });
+
   // ── 5. Update Resource Status ──
+  log.info("pdf_db_status_update_start", {
+    service: "library",
+    data: { resourceId },
+  });
+
+  const updateStart = performance.now();
   await db
     .update(libraryResources)
     .set({
@@ -90,6 +143,14 @@ export async function processResourcePdfPipeline(
       pdfStatus: "READY",
     })
     .where(eq(libraryResources.id, resourceId));
+
+  log.info("pdf_db_status_update_success", {
+    service: "library",
+    data: {
+      resourceId,
+      durationMs: Math.round(performance.now() - updateStart),
+    },
+  });
 
   return {
     r2Url,

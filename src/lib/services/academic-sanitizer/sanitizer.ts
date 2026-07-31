@@ -1,16 +1,14 @@
-import { ThinkingLevel } from "@google/genai";
 import { z } from "zod";
-import { generateStructuredContent } from "../gemini";
-import type { JsonSchema } from "../gemini";
+import { generateStructuredContent } from "../cerebras";
 import { Logger } from "../../logger";
-import { FLASH_LITE_31, GEMINI_SEED } from "../../constants";
+import { CEREBRAS_MODEL } from "../../constants";
 import { LITERATURE_SANITIZE_SYSTEM_INSTRUCTION } from "../../prompts";
 
 // ============================================================================
 // Vanilla JSON Schema — LLM_INTEGRATION.md Rule 7
 // ============================================================================
 
-const SANITIZE_RESPONSE_SCHEMA: JsonSchema = {
+const SANITIZE_RESPONSE_SCHEMA = {
   type: "object",
   properties: {
     items: {
@@ -59,17 +57,14 @@ export async function sanitizeAcademicDataBulk(
   if (items.length === 0) return items;
 
   const result = await generateStructuredContent<SanitizeResponse>(
-    FLASH_LITE_31,
+    CEREBRAS_MODEL,
     LITERATURE_SANITIZE_SYSTEM_INSTRUCTION,
     JSON.stringify(items),
     SANITIZE_RESPONSE_SCHEMA,
     logger,
     {
       zodSchema: sanitizeResponseSchema,
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      seed: GEMINI_SEED,
       payloadStage: "literature_bulk_sanitization",
-      quiet: true,
     },
   );
 
@@ -92,17 +87,14 @@ export async function sanitizeTargetedArticles(
   if (items.length === 0) return items;
 
   const result = await generateStructuredContent<SanitizeResponse>(
-    FLASH_LITE_31,
+    CEREBRAS_MODEL,
     LITERATURE_SANITIZE_SYSTEM_INSTRUCTION,
     JSON.stringify(items),
     SANITIZE_RESPONSE_SCHEMA,
     logger,
     {
       zodSchema: sanitizeResponseSchema,
-      thinkingConfig: { thinkingBudget: 0 },
-      seed: GEMINI_SEED,
       payloadStage: "literature_targeted_sanitization",
-      quiet: true,
     },
   );
 

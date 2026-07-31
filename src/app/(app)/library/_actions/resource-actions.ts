@@ -157,11 +157,6 @@ export async function getLibraryResourcesAction() {
       createdAt: n.createdAt.toISOString(),
     }));
 
-    log.info("library_resources_fetched", {
-      service: "library",
-      data: { resourceCount: resources.length, noteCount: notes.length },
-    });
-
     return { success: true, data: { resources, notes } };
   } catch (err) {
     log.error("get_library_resources_failed", {
@@ -364,7 +359,7 @@ export async function deleteLibraryResourceAction(resourceId: number) {
       try {
         await deletePdfFromR2(resource.pdfFileName);
       } catch (err) {
-        log.warn("r2_delete_file_warning", {
+        log.info("r2_delete_file_info", {
           service: "library",
           error: err,
           data: { resourceId, pdfFileName: resource.pdfFileName },
@@ -375,11 +370,6 @@ export async function deleteLibraryResourceAction(resourceId: number) {
     await db
       .delete(libraryResources)
       .where(eq(libraryResources.id, resourceId));
-
-    log.info("delete_library_resource_success", {
-      service: "library",
-      data: { resourceId, hadPdf: !!resource.pdfFileName },
-    });
 
     return { success: true };
   } catch (err) {

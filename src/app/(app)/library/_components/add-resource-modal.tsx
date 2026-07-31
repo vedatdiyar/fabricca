@@ -148,8 +148,8 @@ export function AddResourceModal({
                   onClick={() => setBoxType(opt.id)}
                   className={
                     boxType === opt.id
-                      ? "px-3 py-2 text-xs font-semibold rounded-md border border-primary/60 bg-accent text-foreground shadow-sm"
-                      : "px-3 py-2 text-xs font-medium rounded-md border border-border bg-background text-muted-foreground hover:bg-muted"
+                      ? "px-3 py-2 text-xs font-semibold rounded-md border border-primary/60 bg-accent text-foreground shadow-sm cursor-pointer"
+                      : "px-3 py-2 text-xs font-medium rounded-md border border-border bg-background text-muted-foreground hover:bg-muted cursor-pointer"
                   }
                 >
                   {opt.label}

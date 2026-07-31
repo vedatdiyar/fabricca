@@ -150,6 +150,14 @@ Google Gemini SDK standartları, thinkingConfig seviyeleri, prompt hiyerarşisi,
 
 - **Senkronizasyon Zorunluluğu:** Projeye yeni bir kütüphane, harici servis veya dosya eklendiğinde ya da kaldırıldığında, bu durum anında ve zorunlu olarak `AGENTS.md` dökümanındaki ilgili kısımlara (Teknoloji Yığını, Klasör Yapısı) işlenmeli ve döküman güncel tutulmalıdır.
 
+### 6.9. Loglama Kuralları (Logging Convention)
+
+- **Sadece START ve SUCCESS:** Konsola yalnızca `[HH:MM:SS] START ⏳ event` ve `[HH:MM:SS] SUCCESS ✓ event (süre)` formatında satırlar basılır. `INFO`, `WARN`, `ERROR` gibi seviye etiketleri asla kullanılmaz.
+- **Her adım bir START/SUCCESS çiftidir:** İstisnasız her işlem adımı `_start` ile başlar, `_success` veya `_failed` ile biter. Araya başka log girmez.
+- **Adımlar arası boşluk:** Her SUCCESS satırından sonra otomatik bir boş satır gelir. START ile SUCCESS arasında boş satır olmaz.
+- **Toplam süre:** Pipeline son satırı, `data.durationMs` parametresiyle `_success` soneki kullanılarak yazılır (ayrı `_start` gerekmez). Örn: `[HH:MM:SS] SUCCESS ✓ positioning_pipeline (17.8s)`
+- **Soneksiz log üretmez:** `_start`/`_success`/`_failed` dışındaki event'ler dev modunda sessizce yutulur, üretimde JSON olarak yazılmaya devam eder.
+
 ## 7. Modüler Görev Sözleşmeleri (Referans Linkleri)
 
 Arayüz, veritabanı veya LLM mekanizmalarıyla ilgili bir geliştirme yapmadan önce, KESİNLİKLE ilgili docs/*.md dosyasını oku, projenin mevcut kod tabanını tarayarak tasarım dilini keşfet ve o kurallara istisnasız itaat et:

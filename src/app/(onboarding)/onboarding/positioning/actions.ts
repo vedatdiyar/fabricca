@@ -22,14 +22,13 @@ import type { JuryAnalysisResult } from "./_services/analysis";
  * dahil değildir; ayrı Server Action'larda handle edilir.
  *
  * @param matrixInput - Kullanıcının tez matrisi (5 alan)
+ * @param log - Parent Logger instance (inject edilir)
  * @returns Süzülen ve sıralanmış tez listesi veya hata mesajı
  */
 export async function runPositioningSearchAction(
   matrixInput: ThesisMatrix,
+  log: Logger,
 ): Promise<{ success: true; theses: SiftedThesis[] } | { error: string }> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
   const positioningInput: Record<string, string> = {
     subjectProblem: matrixInput.subjectProblem ?? "",
     theoreticalFramework: matrixInput.theoreticalFramework ?? "",
@@ -55,7 +54,9 @@ export async function runPositioningSearchAction(
     const queries = await generatePositioningQueries(validated, log);
     log.info("generate_positioning_queries_success");
 
+    log.info("search_sift_theses_start");
     const theses = await searchAndSiftTheses(queries, validated, log);
+    log.info("search_sift_theses_success");
 
     return { success: true, theses };
   } catch (error) {
@@ -74,17 +75,16 @@ export async function runPositioningSearchAction(
  *
  * @param matrixInput - Kullanıcının tez matrisi (5 alan)
  * @param theses - Cohere Rerank sonucu süzülen tez listesi
+ * @param log - Parent Logger instance (inject edilir)
  * @returns Jüri analizi sonucu veya hata mesajı
  */
 export async function runPositioningJuryAction(
   matrixInput: ThesisMatrix,
   theses: SiftedThesis[],
+  log: Logger,
 ): Promise<
   { success: true; juryResult: JuryAnalysisResult } | { error: string }
 > {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
   const positioningInput: Record<string, string> = {
     subjectProblem: matrixInput.subjectProblem ?? "",
     theoreticalFramework: matrixInput.theoreticalFramework ?? "",
@@ -128,16 +128,14 @@ export async function runPositioningJuryAction(
  *
  * @param matrixInput - Kullanıcının tez matrisi (5 alan)
  * @param juryResult - Jüri analizi sonucu
+ * @param log - Parent Logger instance (inject edilir)
  * @returns Başarılıysa { success: true }, hatalıysa { error: string }
  */
 export async function persistPositioningReportAction(
   matrixInput: ThesisMatrix,
   juryResult: JuryAnalysisResult,
-  pipelineStart?: number,
+  log: Logger,
 ): Promise<{ success: true } | { error: string }> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
   try {
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
@@ -180,12 +178,6 @@ export async function persistPositioningReportAction(
       juryResult,
     );
     log.info("positioning_db_transaction_success");
-
-    if (pipelineStart != null) {
-      log.info("positioning_toplam", {
-        data: { durationMs: Math.round(performance.now() - pipelineStart) },
-      });
-    }
 
     return { success: true };
   } catch (error) {
@@ -272,8 +264,8 @@ export async function getPositioningAction(): Promise<ThesisPositioning | null> 
  *   2. runPositioningJuryAction — jüri analizi
  *   3. persistPositioningReportAction — sanitizasyon + DB kaydı
  *
- * Her adım START/SUCCESS logu üretir; pipeline sonunda positioning_toplam
- * satırı tüm sürecin toplam süresini gösterir.
+ * Her alt-action ortak Logger ile çalışır; pipeline sonunda
+ * positioning_pipeline_success satırı tüm sürecin toplam süresini gösterir.
  *
  * @param matrixInput - Kullanıcının tez matrisi (5 alan)
  * @returns Başarılıysa { success: true }, hatalıysa { error: string }
@@ -285,10 +277,8 @@ export async function runPositioningPipelineAction(
   const log = new Logger(flowId);
   const pipelineStart = performance.now();
 
-  log.info("positioning_pipeline_start");
-
   // ── Step 1: Search ──
-  const searchResult = await runPositioningSearchAction(matrixInput);
+  const searchResult = await runPositioningSearchAction(matrixInput, log);
   if ("error" in searchResult) {
     log.error("positioning_pipeline_failed", {
       error: searchResult.error,
@@ -300,6 +290,7 @@ export async function runPositioningPipelineAction(
   const juryResult = await runPositioningJuryAction(
     matrixInput,
     searchResult.theses,
+    log,
   );
   if ("error" in juryResult) {
     log.error("positioning_pipeline_failed", {
@@ -312,6 +303,7 @@ export async function runPositioningPipelineAction(
   const persistResult = await persistPositioningReportAction(
     matrixInput,
     juryResult.juryResult,
+    log,
   );
   if ("error" in persistResult) {
     log.error("positioning_pipeline_failed", {
@@ -320,7 +312,7 @@ export async function runPositioningPipelineAction(
     return { error: persistResult.error };
   }
 
-  log.info("positioning_toplam", {
+  log.info("positioning_pipeline_success", {
     data: { durationMs: Math.round(performance.now() - pipelineStart) },
   });
 

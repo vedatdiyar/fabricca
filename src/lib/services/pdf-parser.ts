@@ -1,6 +1,5 @@
-import { createRequire } from "module";
-import { dirname, join } from "path";
-import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
+import "@/lib/polyfills/math-sum-precise";
+import { getDocumentProxy } from "unpdf";
 import {
   parsePdfWithUnstructured,
   type UnstructuredChunk,
@@ -22,64 +21,94 @@ const MAX_CHUNK_CHARS = 1200; // ~300 tokens, guaranteeing all chunks stay well 
 // ...
 
 /**
- * Splits a long text block into sentence-aligned sub-chunks under maxLen characters.
- *
- * @param text - Input text block to split
- * @param maxLen - Maximum character length threshold
- * @returns Array of sentence-aligned text strings
- */
-function splitLongText(text: string, maxLen: number): string[] {
-  if (text.length <= maxLen) return [text];
-  const parts: string[] = [];
-  const sentences = text.match(/[^.!?;]+[.!?;]+|\S+/g) || [text];
-  let current = "";
-
-  for (const sentence of sentences) {
-    if ((current + sentence).length > maxLen && current.length > 0) {
-      parts.push(current.trim());
-      current = sentence;
-    } else {
-      current += (current ? " " : "") + sentence.trim();
-    }
-  }
-  if (current.trim().length > 0) {
-    parts.push(current.trim());
-  }
-  return parts;
-}
-
-/**
  * Splitting full text into structured chunks strictly capped at MAX_CHUNK_CHARS length.
  *
  * @param fullText - Full text string extracted from PDF
  * @returns Array of structured document chunks
  */
+function isValidSectionTitle(text: string): boolean {
+  const trimmed = text.trim();
+  if (trimmed.length < 3 || trimmed.length > 120) return false;
+
+  const letters = trimmed.match(/[\p{L}]/gu) || [];
+  if (letters.length < 3) return false;
+
+  const nonSpaceChars = trimmed.replace(/\s/g, "");
+  const letterRatio = letters.length / nonSpaceChars.length;
+  if (letterRatio < 0.6) return false;
+
+  if (/^[0-9\s.,;:*+\-/=<>(){}#%&"'^]+$/.test(trimmed)) return false;
+
+  const isNumberedHeading = /^\d+(\.\d+)*\s+[\p{L}]/u.test(trimmed);
+  const isCleanUppercase =
+    trimmed === trimmed.toUpperCase() && letters.length >= 3;
+
+  return isNumberedHeading || isCleanUppercase;
+}
+
+function mergeMicroChunks(chunks: UnstructuredChunk[]): UnstructuredChunk[] {
+  if (chunks.length <= 1) return chunks;
+
+  const result: UnstructuredChunk[] = [];
+  const MIN_CHARS = 150;
+
+  for (let i = 0; i < chunks.length; i++) {
+    const current = chunks[i];
+    if (current.content.length < MIN_CHARS && result.length > 0) {
+      const prev = result[result.length - 1];
+      if (
+        prev.sectionTitle === current.sectionTitle &&
+        (prev.printedPageNumber === current.printedPageNumber ||
+          current.printedPageNumber === null)
+      ) {
+        prev.content = `${prev.content}\n\n${current.content}`;
+        prev.tokenCount = Math.ceil(prev.content.length / 4);
+        continue;
+      }
+    }
+    result.push({ ...current });
+  }
+
+  return result.map((c, idx) => ({ ...c, chunkIndex: idx }));
+}
+
+function applyParentChildContext(
+  chunks: UnstructuredChunk[],
+): UnstructuredChunk[] {
+  const WINDOW = 3;
+  return chunks.map((c, idx) => {
+    const start = Math.max(0, idx - 1);
+    const end = Math.min(chunks.length, idx + WINDOW);
+    const parentText = chunks
+      .slice(start, end)
+      .map((item) => item.content)
+      .join("\n\n");
+
+    return {
+      ...c,
+      parentContent: parentText,
+    };
+  });
+}
+
 function buildLocalChunks(fullText: string): UnstructuredChunk[] {
-  const chunks: UnstructuredChunk[] = [];
+  const rawChunks: UnstructuredChunk[] = [];
   let chunkIndex = 0;
   const paragraphs = fullText.split("\n");
   let buffer: string[] = [];
   let bufferLen = 0;
+  let currentSection: string | null = null;
+  let currentPrintedPage: number | null = null;
 
   function flush() {
     if (buffer.length === 0) return;
-    const content = buffer.join("\n");
-    if (content.length > MAX_CHUNK_CHARS) {
-      const subParts = splitLongText(content, MAX_CHUNK_CHARS);
-      for (const part of subParts) {
-        if (part.trim()) {
-          chunks.push({
-            chunkIndex: chunkIndex++,
-            pageNumber: null,
-            content: part.trim(),
-            tokenCount: Math.ceil(part.trim().length / 4),
-          });
-        }
-      }
-    } else {
-      chunks.push({
+    const content = buffer.join("\n").trim();
+    if (content) {
+      rawChunks.push({
         chunkIndex: chunkIndex++,
-        pageNumber: null,
+        pdfPageNumber: null,
+        printedPageNumber: currentPrintedPage,
+        sectionTitle: currentSection,
         content,
         tokenCount: Math.ceil(content.length / 4),
       });
@@ -94,43 +123,27 @@ function buildLocalChunks(fullText: string): UnstructuredChunk[] {
       flush();
       continue;
     }
+
+    const pageMatch = trimmed.match(/\[Sayfa (\d+)\]/i);
+    if (pageMatch) {
+      currentPrintedPage = parseInt(pageMatch[1], 10);
+    }
+
+    if (isValidSectionTitle(trimmed)) {
+      flush();
+      currentSection = trimmed;
+    }
+
     if (bufferLen + trimmed.length > MAX_CHUNK_CHARS && buffer.length > 0) {
       flush();
-    }
-    if (trimmed.length > MAX_CHUNK_CHARS) {
-      flush();
-      const subParts = splitLongText(trimmed, MAX_CHUNK_CHARS);
-      for (const part of subParts) {
-        if (part.trim()) {
-          chunks.push({
-            chunkIndex: chunkIndex++,
-            pageNumber: null,
-            content: part.trim(),
-            tokenCount: Math.ceil(part.trim().length / 4),
-          });
-        }
-      }
-      continue;
     }
     buffer.push(trimmed);
     bufferLen += trimmed.length;
   }
   flush();
 
-  return chunks;
-}
-
-// pdfjs-dist standard fontlar için yol çözümleme
-let standardFontDir = "";
-try {
-  const _require = createRequire(import.meta.url);
-  standardFontDir =
-    join(
-      dirname(_require.resolve("pdfjs-dist/package.json")),
-      "standard_fonts",
-    ) + "/";
-} catch {
-  standardFontDir = "";
+  const merged = mergeMicroChunks(rawChunks);
+  return applyParentChildContext(merged);
 }
 
 // ────────────────────────────────────────────────────────────
@@ -257,8 +270,45 @@ function analyzePageLayout(
     totalLineStarts > 0 ? rightLineStarts / totalLineStarts : 0;
 
   // Double Column if at least 20% of lines start in the right column region
-  const columnCount =
-    totalLineStarts >= 5 && ratioRightLineStarts >= 0.2 ? 2 : 1;
+  let columnCount = totalLineStarts >= 5 && ratioRightLineStarts >= 0.2 ? 2 : 1;
+
+  // Additional detection: intra-line gap with right-column consistency filter.
+  // Catches side-by-side or split-page layouts where a single Y-band contains
+  // two text fragments at very different X positions (e.g. Italian magazine:
+  // left fragment at x≈33, right fragment at x≈316-429).
+  // The IQR (inter-quartile range) of the right-column X positions must be
+  // tight (< 15% of page width) to reject false positives from headers,
+  // footers, or justified text artifacts.
+  if (columnCount === 1) {
+    let gapLineCount = 0;
+    let scannedLineCount = 0;
+    const rightColXs: number[] = [];
+
+    for (const [, items] of lineMap) {
+      const sortedX = [...items].sort((a, b) => a - b);
+      if (sortedX.length < 2) continue;
+      scannedLineCount++;
+
+      for (let i = 1; i < sortedX.length; i++) {
+        if (sortedX[i] - sortedX[i - 1] > 80) {
+          gapLineCount++;
+          rightColXs.push(sortedX[i]);
+          break;
+        }
+      }
+    }
+
+    if (gapLineCount >= 3 && gapLineCount / scannedLineCount >= 0.15) {
+      const sorted = [...rightColXs].sort((a, b) => a - b);
+      const q1 = sorted[Math.floor(sorted.length * 0.25)];
+      const q3 = sorted[Math.floor(sorted.length * 0.75)];
+      const iqr = q3 - q1;
+
+      if (iqr < pageWidth * 0.15) {
+        columnCount = 2;
+      }
+    }
+  }
 
   // Scatter detection for complex mixed layouts
   let scatteredLines = 0;
@@ -300,11 +350,7 @@ function analyzePageLayout(
  */
 async function analyzePdfLayout(buffer: Buffer): Promise<PdfLayoutAnalysis> {
   const data = new Uint8Array(buffer);
-  const docParams: { data: Uint8Array; standardFontDataUrl?: string } = {
-    data,
-  };
-  if (standardFontDir) docParams.standardFontDataUrl = standardFontDir;
-  const doc = await pdfjs.getDocument(docParams).promise;
+  const doc = await getDocumentProxy(data);
 
   const pageCount = doc.numPages;
   const sampledPageCount = Math.min(SAMPLE_PAGE_LIMIT, pageCount);
@@ -483,11 +529,11 @@ async function extractRawTextFast(
   const fallbackStart = performance.now();
 
   const freshData = new Uint8Array(buffer);
-  let doc: Awaited<ReturnType<typeof pdfjs.getDocument>["promise"]>;
+  let doc: Awaited<ReturnType<typeof getDocumentProxy>>;
   let pageCount = 0;
 
   try {
-    doc = await pdfjs.getDocument({ data: freshData }).promise;
+    doc = await getDocumentProxy(freshData);
     pageCount = doc.numPages;
   } catch (err) {
     log.error("pdf_fast_fallback_local_doc_open_failed", {
@@ -588,19 +634,12 @@ export async function parsePdfWithHybridRouter(
   try {
     analysis = await analyzePdfLayout(buffer);
   } catch (err) {
-    log.warn("pdf_hybrid_layout_analysis_failed", {
+    log.error("pdf_hybrid_layout_analysis_failed", {
       service: "pdf-parser",
       error: err,
       data: { fileName, bufferSize: buffer.length },
     });
 
-    log.info("pdf_fast_fallback_local_triggered", {
-      service: "pdf-parser",
-      data: {
-        fileName,
-        reason: "Layout analysis crashed, using fast local fallback",
-      },
-    });
     return extractRawTextFast(buffer, fileName, log);
   }
 
@@ -629,19 +668,7 @@ export async function parsePdfWithHybridRouter(
 
   // ── 2. Route Decision ──
   if (analysis.route === "unstructured-fallback") {
-    log.info("fallback_to_unstructured_due_to_layout", {
-      service: "pdf-parser",
-      data: {
-        fileName,
-        reason: analysis.reason,
-        multiColPageCount: analysis.multiColPageIndices.length,
-        multiColPages: analysis.multiColPageIndices,
-        scatterPageCount: analysis.scatterPageIndices.length,
-        totalChars: analysis.totalChars,
-        avgCharsPerPage: Math.round(analysis.avgCharsPerPage),
-      },
-    });
-    return parsePdfWithUnstructured(buffer, fileName);
+    return parsePdfWithUnstructured(buffer, fileName, log);
   }
 
   // ── 3. Local Fast Path ──

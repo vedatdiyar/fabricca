@@ -39,6 +39,7 @@ import {
   runPositioningJuryAction,
   persistPositioningReportAction,
 } from "../positioning/actions";
+import { Logger, createFlowId } from "@/lib/logger";
 
 /**
  * Central onboarding orchestrator hook that coordinates all cross-feature
@@ -123,9 +124,11 @@ export function useOnboardingNavigation() {
 
         await completeStep(0, steps);
 
-        const pipelineStart = performance.now();
-
-        const searchResult = await runPositioningSearchAction(matrixInput);
+        const flowLogger = new Logger(createFlowId());
+        const searchResult = await runPositioningSearchAction(
+          matrixInput,
+          flowLogger,
+        );
         if ("error" in searchResult) {
           hideLoading();
           toast.error(searchResult.error);
@@ -137,6 +140,7 @@ export function useOnboardingNavigation() {
         const juryResult = await runPositioningJuryAction(
           matrixInput,
           searchResult.theses,
+          flowLogger,
         );
         if ("error" in juryResult) {
           hideLoading();
@@ -149,7 +153,7 @@ export function useOnboardingNavigation() {
         const persistResult = await persistPositioningReportAction(
           matrixInput,
           juryResult.juryResult,
-          pipelineStart,
+          flowLogger,
         );
         if ("error" in persistResult) {
           hideLoading();

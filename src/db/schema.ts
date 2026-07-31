@@ -289,7 +289,11 @@ export const resourceEmbeddings = pgTable(
       .notNull()
       .references(() => libraryResources.id, { onDelete: "cascade" }),
     chunkIndex: integer("chunk_index").notNull(),
+    printedPageNumber: integer("printed_page_number"),
+    pdfPageNumber: integer("pdf_page_number"),
+    sectionTitle: text("section_title"),
     content: text("content").notNull(),
+    parentContent: text("parent_content"),
     tokenCount: integer("token_count"),
     embedding: vector("embedding", { dimensions: 1024 }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -308,41 +312,6 @@ export type ResourceEmbedding = InferSelectModel<typeof resourceEmbeddings>;
 
 /** NewResourceEmbedding type for insert queries. */
 export type NewResourceEmbedding = InferInsertModel<typeof resourceEmbeddings>;
-
-// ============================================================================
-// G) PENDING UPLOADS (presigned URL flow — Vercel Hobby 4.5MB bypass)
-// ============================================================================
-
-/**
- * Pending Uploads table.
- * Stores metadata for in-progress direct-to-R2 uploads.
- * Records are created in Step 1 (request upload URL) and consumed in Step 2 (complete upload).
- * Expired records are cleaned up by the complete action after successful processing.
- */
-export const pendingUploads = pgTable(
-  "pending_uploads",
-  {
-    id: serial().primaryKey(),
-    userId: integer()
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    tempKey: text("temp_key").notNull().unique(),
-    boxType: text("box_type"),
-    originalFileName: text("original_file_name"),
-    contentType: text("content_type").default("application/pdf").notNull(),
-    createdAt: timestamp().defaultNow().notNull(),
-  },
-  (table) => [
-    index("idx_pending_uploads_user_id").on(table.userId),
-    index("idx_pending_uploads_temp_key").on(table.tempKey),
-  ],
-);
-
-/** PendingUpload type for select queries. */
-export type PendingUpload = InferSelectModel<typeof pendingUploads>;
-
-/** PendingUpload type for insert queries. */
-export type NewPendingUpload = InferInsertModel<typeof pendingUploads>;
 
 // ============================================================================
 // H) TASKS

@@ -5,7 +5,6 @@ import {
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { createFlowId, Logger } from "@/lib/logger";
 
 /**
  * Singleton Cloudflare R2 S3 Client instance.
@@ -44,9 +43,6 @@ export async function uploadPdfToR2(
   resourceId: number,
   apaFileName: string,
 ): Promise<{ r2Url: string; r2Key: string }> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
   const bucketName = process.env.R2_BUCKET_NAME || "fabricca";
   const publicDomain =
     process.env.R2_PUBLIC_DOMAIN ||
@@ -54,36 +50,20 @@ export async function uploadPdfToR2(
 
   const r2Key = `pdfs/${apaFileName}`;
 
-  try {
-    const s3Client = getR2Client();
+  const s3Client = getR2Client();
 
-    await s3Client.send(
-      new PutObjectCommand({
-        Bucket: bucketName,
-        Key: r2Key,
-        Body: buffer,
-        ContentType: "application/pdf",
-      }),
-    );
+  await s3Client.send(
+    new PutObjectCommand({
+      Bucket: bucketName,
+      Key: r2Key,
+      Body: buffer,
+      ContentType: "application/pdf",
+    }),
+  );
 
-    const r2Url = `${publicDomain.replace(/\/$/, "")}/${r2Key}`;
+  const r2Url = `${publicDomain.replace(/\/$/, "")}/${r2Key}`;
 
-    log.info("r2_upload_success", {
-      service: "cloudflare",
-      data: { resourceId, r2Key, r2Url, size: buffer.length },
-    });
-
-    return { r2Url, r2Key };
-  } catch (err) {
-    log.error("r2_upload_failed", {
-      service: "cloudflare",
-      error: err,
-      data: { resourceId, r2Key },
-    });
-    throw new Error(
-      "PDF dosyası Cloudflare R2 sistemine yüklenirken bir hata oluştu.",
-    );
-  }
+  return { r2Url, r2Key };
 }
 
 /**
@@ -92,36 +72,17 @@ export async function uploadPdfToR2(
  * @param apaFileName APA-styled standardized filename (e.g. Yilmaz_2024_Turk_Edebiyati.pdf)
  */
 export async function deletePdfFromR2(apaFileName: string): Promise<void> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
   const bucketName = process.env.R2_BUCKET_NAME || "fabricca";
   const r2Key = `pdfs/${apaFileName}`;
 
-  try {
-    const s3Client = getR2Client();
+  const s3Client = getR2Client();
 
-    await s3Client.send(
-      new DeleteObjectCommand({
-        Bucket: bucketName,
-        Key: r2Key,
-      }),
-    );
-
-    log.info("r2_delete_success", {
-      service: "cloudflare",
-      data: { r2Key },
-    });
-  } catch (err) {
-    log.error("r2_delete_failed", {
-      service: "cloudflare",
-      error: err,
-      data: { r2Key },
-    });
-    throw new Error(
-      "PDF dosyası Cloudflare R2 sisteminden silinirken bir hata oluştu.",
-    );
-  }
+  await s3Client.send(
+    new DeleteObjectCommand({
+      Bucket: bucketName,
+      Key: r2Key,
+    }),
+  );
 }
 
 /**

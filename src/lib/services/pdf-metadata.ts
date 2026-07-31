@@ -13,6 +13,7 @@ export interface PdfMetadataResult {
   publicationYear: number;
   doi?: string;
   abstract?: string;
+  source: "crossref" | "openlibrary" | "cerebras";
 }
 
 const DOI_REGEX = /10\.\d{4,}\/[-._;()/:A-Z0-9]+/i;
@@ -31,12 +32,14 @@ function findDoiInChunks(chunks: UnstructuredChunk[]): string | null {
 }
 
 function extractIsbnFromText(text: string): string | null {
+  // Match ISBN prefix + number or bare ISBN-like number
+  // Allows hyphens/spaces within digits (e.g. 978-605-4412-11-2, 0 87068 693 3)
   const match = text.match(
-    /\b(?:ISBN(?:-1[03])?[:\s]*)?(97[89]\d{10}|\d{9}[\dX])\b/i,
+    /\b(?:ISBN(?:-1[03])?[:\s]*)?(\d[\d\s-]{8,}[\dX])\b/i,
   );
   if (!match) return null;
-  const cleaned = match[1].replace(/[-\s]/g, "").toUpperCase();
-  if (/^\d{13}$/.test(cleaned) && /^97[89]/.test(cleaned)) return cleaned;
+  const cleaned = match[1].replace(/[\s-]/g, "").toUpperCase();
+  if (/^97[89]\d{10}$/.test(cleaned)) return cleaned;
   if (/^\d{9}[\dX]$/.test(cleaned)) return cleaned;
   return null;
 }
@@ -51,23 +54,10 @@ function findIsbnInChunks(chunks: UnstructuredChunk[]): string | null {
 
 function buildMetadataText(chunks: UnstructuredChunk[]): string {
   return chunks
-    .slice(0, 5)
+    .slice(0, 15)
     .map((c) => c.content)
     .join("\n\n")
-    .slice(0, 4000);
-}
-
-function fallbackMetadataFromFileName(fileName: string): PdfMetadataResult {
-  const title =
-    fileName
-      .replace(/\.pdf$/i, "")
-      .replace(/[-_]/g, " ")
-      .trim() || "İsimsiz Akademik Eser";
-  return {
-    title,
-    authors: ["Bilinmeyen Yazar"],
-    publicationYear: new Date().getFullYear(),
-  };
+    .slice(0, 12000);
 }
 
 async function fetchCrossrefByDoi(
@@ -107,6 +97,7 @@ async function fetchCrossrefByDoi(
       publisher,
       doi,
       abstract: abstractText,
+      source: "crossref",
     };
   } catch {
     return null;
@@ -148,6 +139,7 @@ async function fetchOpenLibraryByIsbn(
       ],
       publicationYear: year,
       publisher: data.publishers?.[0]?.name || undefined,
+      source: "openlibrary",
     };
   } catch {
     return null;
@@ -157,10 +149,19 @@ async function fetchOpenLibraryByIsbn(
 const metadataSchema = z.object({
   title: z.string().min(1).describe("Makalenin tam başlığı"),
   authors: z.array(z.string()).describe("Yazar listesi (ad soyad)"),
-  publicationYear: z.number().int().min(1900).max(2100).describe("Yayın yılı"),
-  publisher: z.string().optional().describe("Yayınevi veya dergi adı"),
-  doi: z.string().optional().describe("DOI numarası (varsa)"),
-  abstract: z.string().optional().describe("Makale özeti (varsa)"),
+  publicationYear: z.coerce
+    .number()
+    .int()
+    .min(1800)
+    .max(2100)
+    .describe("Yayın yılı"),
+  publisher: z
+    .string()
+    .nullable()
+    .optional()
+    .describe("Yayınevi veya dergi adı"),
+  doi: z.string().nullable().optional().describe("DOI numarası (varsa)"),
+  abstract: z.string().nullable().optional().describe("Makale özeti (varsa)"),
 });
 
 const metadataJsonSchema = {
@@ -173,11 +174,27 @@ const metadataJsonSchema = {
       description: "Yazar listesi",
     },
     publicationYear: { type: "number", description: "Yayın yılı" },
-    publisher: { type: "string", description: "Yayınevi veya dergi adı" },
-    doi: { type: "string", description: "DOI numarası (varsa)" },
-    abstract: { type: "string", description: "Makale özeti (varsa)" },
+    publisher: {
+      type: ["string", "null"],
+      description: "Yayınevi veya dergi adı (bulunamazsa null)",
+    },
+    doi: {
+      type: ["string", "null"],
+      description: "DOI numarası (bulunamazsa null)",
+    },
+    abstract: {
+      type: ["string", "null"],
+      description: "Makale özeti (bulunamazsa null)",
+    },
   },
-  required: ["title", "authors", "publicationYear"],
+  required: [
+    "title",
+    "authors",
+    "publicationYear",
+    "publisher",
+    "doi",
+    "abstract",
+  ],
   additionalProperties: false,
 };
 
@@ -188,39 +205,39 @@ async function extractMetadataWithCerebras(
   log: Logger,
 ): Promise<PdfMetadataResult | null> {
   const systemInstruction =
-    "Sen akademik bir makalenin ilk sayfasındaki metni okuyarak bibliyografik metadata çıkaran bir asistansın. " +
+    "Sen akademik bir makale veya kitabın ilk sayfalarındaki metni okuyarak bibliyografik metadata çıkaran bir asistansın. " +
     "Yanıtını her zaman belirtilen JSON şemasına uygun olarak ver. " +
-    "Yazar isimlerini 'Ad Soyad' formatında, birden fazla varsa dizi olarak döndür.";
+    "Yazar isimlerini 'Ad Soyad' formatında, birden fazla varsa dizi olarak döndür. " +
+    "Bulamadığın alanlar için 'null' değerini döndür. " +
+    "Ek olarak, çıkardığın başlıkları APA Title Case formatına getir (bağlaçlar hariç her kelimenin ilk harfi büyük). " +
+    "Türkçe karakterleri düzelt (I→İ, O→Ö, U→Ü, G→Ğ, S→Ş, C→Ç gibi bozulmuş karakterleri onar). " +
+    "Yazar isimlerini Proper Case'e çevir (örn. 'AHMET YILMAZ' → 'Ahmet Yılmaz').";
 
   const prompt =
-    "Aşağıdaki akademik makale metninden başlık, yazarlar, yayın yılı, yayınevi/dergi, DOI ve özet bilgilerini çıkar.\n\n" +
-    chunkText.slice(0, 4000);
+    "Aşağıdaki akademik eser metninden başlık, yazarlar, yayın yılı, yayınevi/dergi, DOI ve özet bilgilerini çıkar.\n\n" +
+    chunkText.slice(0, 12000);
 
-  try {
-    const result = await generateStructuredContent<MetadataResponse>(
-      CEREBRAS_MODEL,
-      systemInstruction,
-      prompt,
-      metadataJsonSchema,
-      log,
-      {
-        payloadStage: "pdf_metadata_extract",
-        zodSchema: metadataSchema,
-      },
-    );
+  const result = await generateStructuredContent<MetadataResponse>(
+    CEREBRAS_MODEL,
+    systemInstruction,
+    prompt,
+    metadataJsonSchema,
+    log,
+    {
+      payloadStage: "pdf_metadata_extract",
+      zodSchema: metadataSchema,
+    },
+  );
 
-    return {
-      title: result.title,
-      authors:
-        result.authors.length > 0 ? result.authors : ["Bilinmeyen Yazar"],
-      publicationYear: result.publicationYear,
-      publisher: result.publisher || undefined,
-      doi: result.doi || undefined,
-      abstract: result.abstract || undefined,
-    };
-  } catch {
-    return null;
-  }
+  return {
+    title: result.title,
+    authors: result.authors.length > 0 ? result.authors : ["Bilinmeyen Yazar"],
+    publicationYear: result.publicationYear,
+    publisher: result.publisher || undefined,
+    doi: result.doi || undefined,
+    abstract: result.abstract || undefined,
+    source: "cerebras",
+  };
 }
 
 export async function extractPdfMetadata(
@@ -230,70 +247,95 @@ export async function extractPdfMetadata(
 ): Promise<PdfMetadataResult> {
   const metadataText = buildMetadataText(chunks);
 
+  log.info("pdf_metadata_crossref_start", {
+    service: "library",
+    data: {},
+  });
+
+  const crossrefStart = performance.now();
   const doi = findDoiInChunks(chunks);
+  let crossrefResult: PdfMetadataResult | null = null;
+
   if (doi) {
-    log.info("pdf_metadata_doi_found", {
+    crossrefResult = await fetchCrossrefByDoi(doi);
+  }
+
+  if (crossrefResult) {
+    log.info("pdf_metadata_crossref_success", {
       service: "library",
-      data: { doi },
+      data: {
+        title: crossrefResult.title,
+        doi,
+        durationMs: Math.round(performance.now() - crossrefStart),
+      },
     });
+    return crossrefResult;
+  }
 
-    const crossrefResult = await fetchCrossrefByDoi(doi);
-    if (crossrefResult) {
-      log.info("pdf_metadata_crossref_success", {
-        service: "library",
-        data: { title: crossrefResult.title, doi },
-      });
-      return crossrefResult;
-    }
-
-    log.warn("pdf_metadata_crossref_failed", {
+  const crossrefDuration = performance.now() - crossrefStart;
+  if (doi) {
+    log.info("pdf_metadata_crossref_failed", {
       service: "library",
-      data: { doi },
+      data: { doi, durationMs: Math.round(crossrefDuration) },
+    });
+  } else {
+    log.info("pdf_metadata_crossref_success", {
+      service: "library",
+      data: { doi: null, durationMs: Math.round(crossrefDuration) },
     });
   }
 
+  log.info("pdf_metadata_openlibrary_start", {
+    service: "library",
+    data: {},
+  });
+
+  const olStart = performance.now();
   const isbn = findIsbnInChunks(chunks);
+  let openLibResult: PdfMetadataResult | null = null;
+
   if (isbn) {
-    log.info("pdf_metadata_isbn_found", {
+    openLibResult = await fetchOpenLibraryByIsbn(isbn);
+  }
+
+  if (openLibResult) {
+    log.info("pdf_metadata_openlibrary_success", {
       service: "library",
-      data: { isbn },
+      data: {
+        title: openLibResult.title,
+        isbn,
+        durationMs: Math.round(performance.now() - olStart),
+      },
     });
+    return openLibResult;
+  }
 
-    const openLibResult = await fetchOpenLibraryByIsbn(isbn);
-    if (openLibResult) {
-      log.info("pdf_metadata_openlibrary_success", {
-        service: "library",
-        data: { title: openLibResult.title, isbn },
-      });
-      return openLibResult;
-    }
-
-    log.warn("pdf_metadata_openlibrary_failed", {
+  const olDuration = performance.now() - olStart;
+  if (isbn) {
+    log.info("pdf_metadata_openlibrary_failed", {
       service: "library",
-      data: { isbn },
+      data: { isbn, durationMs: Math.round(olDuration) },
+    });
+  } else {
+    log.info("pdf_metadata_openlibrary_success", {
+      service: "library",
+      data: { isbn: null, durationMs: Math.round(olDuration) },
     });
   }
 
   if (metadataText.length > 50) {
-    log.info("pdf_metadata_cerebras_start", {
-      service: "library",
-      data: { textLength: metadataText.length, hasDoi: !!doi },
-    });
-
     const cerebrasResult = await extractMetadataWithCerebras(metadataText, log);
     if (cerebrasResult) {
-      log.info("pdf_metadata_cerebras_success", {
-        service: "library",
-        data: { title: cerebrasResult.title },
-      });
       return cerebrasResult;
     }
   }
 
-  log.warn("pdf_metadata_fallback_used", {
+  log.error("pdf_metadata_extraction_failed", {
     service: "library",
-    data: { fileName },
+    data: { fileName, textLength: metadataText.length },
   });
 
-  return fallbackMetadataFromFileName(fileName);
+  throw new Error(
+    `PDF dosyasından akademik metadata (başlık, yazar, yayın yılı) otomatik çıkarılamadı: ${fileName}`,
+  );
 }

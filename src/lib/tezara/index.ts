@@ -73,7 +73,7 @@ async function meiliSearch(
 
     if (!res.ok) {
       const durationMs = performance.now() - startTime;
-      logger?.warn("search_filtered", {
+      logger?.info("search_filtered", {
         service: "tezara",
         filePath: "src/lib/tezara/index.ts",
         step: step ?? "meili_search",
@@ -149,7 +149,7 @@ export async function searchTezara(
   }
 
   if (results.length === 0) {
-    logger?.warn("search_empty", {
+    logger?.info("search_empty", {
       service: "tezara",
       filePath: "src/lib/tezara/index.ts",
       step: "search_meili",

@@ -180,7 +180,7 @@ export async function analyzePositioningJury(
   const filteredTheses = filterThesesForJury(siftedTheses);
 
   if (filteredTheses.length === 0) {
-    logger?.warn("positioning_jury_no_theses", {
+    logger?.info("positioning_jury_no_theses", {
       service: "positioning",
       filePath:
         "src/app/(onboarding)/onboarding/positioning/_services/analysis.ts",

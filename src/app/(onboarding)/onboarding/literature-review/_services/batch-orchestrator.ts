@@ -386,8 +386,6 @@ export async function orchestrateBatchProcess(
       });
       throw err;
     }
-  } else {
-    logger.info("literature_batch_jury_skipped_no_inputs");
   }
 
   // ══════════════════════════════════════════════════════════════════════════

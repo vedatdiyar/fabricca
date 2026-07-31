@@ -38,7 +38,8 @@ export async function saveThesisMatrixAction(
 ): Promise<{ success: true } | { error: string }> {
   const flowId = createFlowId();
   const log = new Logger(flowId);
-  const startTime = performance.now();
+
+  log.info("matrix_save_start");
 
   const parsed = thesisMatrixSchema.safeParse(data);
   if (!parsed.success) {
@@ -50,8 +51,6 @@ export async function saveThesisMatrixAction(
   }
 
   const validated = parsed.data;
-
-  log.info("matrix_save_start");
 
   try {
     const session = await getSession();
@@ -108,9 +107,7 @@ export async function saveThesisMatrixAction(
     invalidateOnboardingCache();
     invalidateOnboardingStepCache("matrix");
 
-    log.info("matrix_save_success", {
-      durationMs: performance.now() - startTime,
-    });
+    log.info("matrix_save_success");
 
     return { success: true };
   } catch (error) {

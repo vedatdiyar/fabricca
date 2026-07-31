@@ -86,16 +86,16 @@ function LibraryPageContent() {
           setResources(res.data.resources);
           setNotes(res.data.notes);
 
-          // Keep currently selected resource if valid, otherwise fallback to first resource
+          // Select resource from URL param if present; otherwise show empty state
           const currentId = initialIdRef.current;
-          const targetResource = currentId
-            ? res.data.resources.find((r) => r.id === currentId)
-            : null;
-          const activeId = targetResource
-            ? targetResource.id
-            : res.data.resources[0].id;
-
-          handleSelectResource(activeId);
+          if (currentId) {
+            const targetResource = res.data.resources.find(
+              (r) => r.id === currentId,
+            );
+            if (targetResource) {
+              setSelectedResourceId(targetResource.id);
+            }
+          }
         }
       } catch {
         // DB not reachable — leave empty state
@@ -117,11 +117,20 @@ function LibraryPageContent() {
     (note) => note.resourceId === selectedResourceId,
   );
 
-  // Sort resources: PDF-READY items first, then by createdAt descending
+  // Sort resources: PDF uploaded first → subjectProblem → theoreticalFramework → methodology → primaryMaterial → createdAt
+  const BOX_SORT_ORDER: Record<string, number> = {
+    SUBJECT_PROBLEM: 0,
+    THEORETICAL_FRAMEWORK: 1,
+    METHODOLOGY: 2,
+    PRIMARY_MATERIAL: 3,
+  };
   const sortedResources = [...resources].sort((a, b) => {
-    const aReady = a.pdfStatus === "READY" ? 1 : 0;
-    const bReady = b.pdfStatus === "READY" ? 1 : 0;
-    if (aReady !== bReady) return bReady - aReady;
+    const aHasPdf = a.pdfStatus && a.pdfStatus !== "NOT_UPLOADED" ? 0 : 1;
+    const bHasPdf = b.pdfStatus && b.pdfStatus !== "NOT_UPLOADED" ? 0 : 1;
+    if (aHasPdf !== bHasPdf) return aHasPdf - bHasPdf;
+    const orderA = BOX_SORT_ORDER[a.boxType] ?? 99;
+    const orderB = BOX_SORT_ORDER[b.boxType] ?? 99;
+    if (orderA !== orderB) return orderA - orderB;
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
@@ -133,21 +142,15 @@ function LibraryPageContent() {
     file: File,
     boxType: Exclude<ThesisBoxType, "ALL">,
   ) => {
-    console.log("[DEBUG] handleCreateResourceFromPdf started", {
-      fileName: file.name,
-      size: file.size,
-      boxType,
-    });
     try {
       // Step 1: Get presigned upload URL
-      const requestRes = await requestPdfCreateUploadAction(boxType);
+      const requestRes = await requestPdfCreateUploadAction();
       if (!requestRes.success) {
         toast.error(requestRes.error || "Yükleme bağlantısı oluşturulamadı.");
         return;
       }
 
       // Step 2: Upload PDF directly to R2 from browser
-      console.log("[DEBUG] Step 2 starting — PUT to presigned URL");
       let uploadRes: Response;
       try {
         uploadRes = await fetch(requestRes.presignedUrl, {
@@ -155,53 +158,32 @@ function LibraryPageContent() {
           body: file,
           headers: { "Content-Type": "application/pdf" },
         });
-        console.log("[DEBUG] Step 2 fetch done — status:", uploadRes.status);
-      } catch (networkErr) {
-        console.error(
-          "[DEBUG] Step 2 fetch threw (CORS / network):",
-          networkErr,
-        );
+      } catch {
         toast.error(
           "PDF buluta gönderilirken ağ hatası oluştu. Tarayıcı konsoluna bakınız.",
         );
         return;
       }
       if (!uploadRes.ok) {
-        const uploadErrorText = await uploadRes.text().catch(() => "unknown");
-        console.error(
-          "[handleCreateResourceFromPdf] R2 presigned PUT failed:",
-          uploadRes.status,
-          uploadErrorText,
-        );
         toast.error("PDF dosyası bulut depolamaya yüklenirken hata oluştu.");
         return;
       }
-      console.log("[DEBUG] Step 2 complete — PDF uploaded to R2 temp key");
 
       // Step 3: Complete the upload — fetch from R2, extract metadata, create resource, run pipeline
-      console.log("[DEBUG] Step 3 starting — completePdfCreateUploadAction");
       const completeRes = await completePdfCreateUploadAction(
         requestRes.tempKey,
         file.name,
+        boxType,
       );
       if (!completeRes.success) {
-        console.error("[DEBUG] Step 3 failed —", completeRes.error);
         toast.error(
           completeRes.error || "Eser PDF'den yüklenirken hata oluştu.",
         );
         throw new Error(completeRes.error);
       }
-      console.log(
-        "[DEBUG] Step 3 complete — resource created:",
-        completeRes.data?.id,
-      );
       setResources((prev) => [completeRes.data, ...prev]);
       handleSelectResource(completeRes.data.id);
     } catch (err) {
-      console.error(
-        "[DEBUG] handleCreateResourceFromPdf UNEXPECTED ERROR:",
-        err,
-      );
       throw err;
     }
   };
@@ -372,7 +354,7 @@ function LibraryPageContent() {
     <div className="flex flex-col w-full space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start">
         {/* Left Column: Sidebar Work List (4/12) */}
-        <div className="lg:col-span-4 lg:sticky lg:top-[7rem] lg:h-[calc(100vh-8.5rem)] flex flex-col min-h-0">
+        <div className="lg:col-span-4 lg:sticky lg:top-[calc(7rem+1px)] lg:h-[calc(100vh-8.5rem-1px)] flex flex-col min-h-0">
           <SidebarWorkList
             resources={sortedResources}
             selectedResourceId={selectedResourceId}

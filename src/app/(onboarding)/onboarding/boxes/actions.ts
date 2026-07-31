@@ -80,7 +80,6 @@ export async function runBoxStructureAction(): Promise<
 
     log.info("box_structure_generation_start", {
       service: "boxes",
-      filePath: "src/app/(onboarding)/onboarding/boxes/actions.ts",
     });
 
     const prompt = buildBoxStructureUserPrompt({
@@ -428,11 +427,6 @@ export async function runBoxesPipelineAction(): Promise<
   const pipelineStart = performance.now();
 
   try {
-    log.info("boxes_full_pipeline_start", {
-      service: "boxes",
-      filePath: "src/app/(onboarding)/onboarding/boxes/actions.ts",
-    });
-
     // Phase 1 + Phase 2
     const genRes = await generateAndMapBoxesAction();
     if ("error" in genRes) return genRes;

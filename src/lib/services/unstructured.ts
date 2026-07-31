@@ -1,4 +1,4 @@
-import { createFlowId, Logger } from "@/lib/logger";
+import type { Logger } from "@/lib/logger";
 import { UnstructuredClient } from "unstructured-client";
 import { Strategy } from "unstructured-client/sdk/models/shared";
 import { PDFDocument } from "pdf-lib";
@@ -9,8 +9,11 @@ const PARALLEL_CONCURRENCY = 10;
 
 export interface UnstructuredChunk {
   chunkIndex: number;
-  pageNumber: number | null;
+  pdfPageNumber: number | null;
+  printedPageNumber: number | null;
+  sectionTitle: string | null;
   content: string;
+  parentContent?: string;
   tokenCount: number;
   elementType?: string;
 }
@@ -31,7 +34,6 @@ const EXCLUDED_TYPES = new Set(["Header", "Footer", "PageBreak", "PageNumber"]);
 /**
  * Extracts a leading printed page number from a Header element.
  * Matches patterns like "121", "120 Mesut Yeğen" → 120.
- * Only used for internal tracking — the value is embedded into chunk content as [Sayfa X].
  */
 function extractLeadingNumber(text: string): number | null {
   const match = text.trim().match(/^(\d{1,4})/);
@@ -42,30 +44,72 @@ function extractLeadingNumber(text: string): number | null {
   return null;
 }
 
+function mergeMicroChunks(chunks: UnstructuredChunk[]): UnstructuredChunk[] {
+  if (chunks.length <= 1) return chunks;
+
+  const result: UnstructuredChunk[] = [];
+  const MIN_CHARS = 150;
+
+  for (let i = 0; i < chunks.length; i++) {
+    const current = chunks[i];
+    if (current.content.length < MIN_CHARS && result.length > 0) {
+      const prev = result[result.length - 1];
+      // Merge strictly within the SAME section and SAME printed page
+      if (
+        prev.sectionTitle === current.sectionTitle &&
+        (prev.printedPageNumber === current.printedPageNumber ||
+          current.printedPageNumber === null)
+      ) {
+        prev.content = `${prev.content}\n\n${current.content}`;
+        prev.tokenCount = Math.ceil(prev.content.length / 4);
+        continue;
+      }
+    }
+    result.push({ ...current });
+  }
+
+  return result.map((c, idx) => ({ ...c, chunkIndex: idx }));
+}
+
+function applyParentChildContext(
+  chunks: UnstructuredChunk[],
+): UnstructuredChunk[] {
+  const WINDOW = 3;
+  return chunks.map((c, idx) => {
+    const start = Math.max(0, idx - 1);
+    const end = Math.min(chunks.length, idx + WINDOW);
+    const parentText = chunks
+      .slice(start, end)
+      .map((item) => item.content)
+      .join("\n\n");
+
+    return {
+      ...c,
+      parentContent: parentText,
+    };
+  });
+}
+
 function buildChunksFromRawElements(
   elements: UnstructuredRawElement[],
 ): UnstructuredChunk[] {
-  const chunks: UnstructuredChunk[] = [];
+  const rawChunks: UnstructuredChunk[] = [];
   let chunkIndex = 0;
-  let currentSection = "";
+  let currentSection: string | null = null;
   let buffer: string[] = [];
   let bufferLen = 0;
-  let lastPage: number | null = null;
+  let lastPdfPage: number | null = null;
   let currentPrintedPage: number | null = null;
   const MAX_CHARS = 1500;
 
   function flush() {
     if (buffer.length === 0) return;
-    let prefix = currentSection ? `[${currentSection}]` : "";
-    const pageSuffix =
-      currentPrintedPage !== null ? ` [Sayfa ${currentPrintedPage}]` : "";
-    if (prefix || pageSuffix) {
-      prefix = prefix + pageSuffix + "\n";
-    }
-    const text = prefix + buffer.join("\n\n");
-    chunks.push({
+    const text = buffer.join("\n\n");
+    rawChunks.push({
       chunkIndex: chunkIndex++,
-      pageNumber: lastPage,
+      pdfPageNumber: lastPdfPage,
+      printedPageNumber: currentPrintedPage ?? lastPdfPage,
+      sectionTitle: currentSection,
       content: text,
       tokenCount: Math.ceil(text.length / 4),
     });
@@ -79,7 +123,7 @@ function buildChunksFromRawElements(
     if (!text) continue;
 
     if (EXCLUDED_TYPES.has(type)) {
-      if (type === "Header") {
+      if (type === "Header" || type === "Footer") {
         const pp = extractLeadingNumber(text);
         if (pp !== null) currentPrintedPage = pp;
       }
@@ -87,7 +131,16 @@ function buildChunksFromRawElements(
     }
 
     const page = el.metadata?.page_number ?? null;
-    if (page !== null) lastPage = page;
+    if (page !== null) {
+      if (
+        lastPdfPage !== null &&
+        page > lastPdfPage &&
+        currentPrintedPage !== null
+      ) {
+        currentPrintedPage = currentPrintedPage + (page - lastPdfPage);
+      }
+      lastPdfPage = page;
+    }
 
     if (type === "Title") {
       flush();
@@ -114,7 +167,8 @@ function buildChunksFromRawElements(
 
   flush();
 
-  return chunks;
+  const merged = mergeMicroChunks(rawChunks);
+  return applyParentChildContext(merged);
 }
 
 /**
@@ -218,13 +272,11 @@ async function partitionSingleChunk(
 export async function parsePdfWithUnstructured(
   buffer: Buffer,
   fileName: string,
+  log: Logger,
 ): Promise<UnstructuredChunk[]> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
   const apiKey = process.env.UNSTRUCTURED_API_KEY;
   if (!apiKey) {
-    log.error("unstructured_missing_key", {
+    log.error("pdf_unstructured_partition_failed", {
       service: "library",
       data: {
         message:
@@ -251,7 +303,7 @@ export async function parsePdfWithUnstructured(
 
   const isMultiChunk = pdfChunks.length > 1;
 
-  log.info("unstructured_sdk_partition_start", {
+  log.info("pdf_unstructured_partition_start", {
     service: "library",
     data: {
       fileName,
@@ -262,6 +314,8 @@ export async function parsePdfWithUnstructured(
       pagesPerChunk: isMultiChunk ? CHUNK_PAGES : "full",
     },
   });
+
+  const partitionStart = performance.now();
 
   // --- Step 2: Process all chunks (parallel if multi-chunk) ---
   let allElements: UnstructuredRawElement[];
@@ -291,7 +345,7 @@ export async function parsePdfWithUnstructured(
   }
 
   if (!Array.isArray(allElements) || allElements.length === 0) {
-    log.error("unstructured_empty_elements", {
+    log.error("pdf_unstructured_partition_failed", {
       service: "library",
       data: { fileName },
     });
@@ -300,12 +354,24 @@ export async function parsePdfWithUnstructured(
     );
   }
 
-  log.info("unstructured_sdk_partition_success", {
+  const partitionDuration = performance.now() - partitionStart;
+
+  log.info("pdf_unstructured_partition_success", {
     service: "library",
-    data: { fileName, rawElementCount: allElements.length },
+    data: {
+      fileName,
+      rawElementCount: allElements.length,
+      durationMs: Math.round(partitionDuration),
+    },
   });
 
   // --- Step 3: Local chunking ---
+  log.info("pdf_unstructured_chunking_start", {
+    service: "library",
+    data: { fileName },
+  });
+
+  const chunkingStart = performance.now();
   const chunks = buildChunksFromRawElements(allElements);
 
   if (chunks.length === 0) {
@@ -314,9 +380,15 @@ export async function parsePdfWithUnstructured(
     );
   }
 
-  log.info("unstructured_local_chunking_success", {
+  const chunkingDuration = performance.now() - chunkingStart;
+
+  log.info("pdf_unstructured_chunking_success", {
     service: "library",
-    data: { fileName, chunkCount: chunks.length },
+    data: {
+      fileName,
+      chunkCount: chunks.length,
+      durationMs: Math.round(chunkingDuration),
+    },
   });
 
   return chunks;

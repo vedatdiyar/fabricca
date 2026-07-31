@@ -92,8 +92,8 @@ export function PdfUploadDropzone({
                 PDF Dokümanı İşleniyor ve Yükleniyor...
               </p>
               <p className="text-xs text-muted-foreground">
-                Boyut kontrolü yapılıyor, gerekirse iLovePDF ile optimize edilip
-                R2 bulut depolamaya aktarılıyor.
+                Doküman ayrıştırılıyor, Cloudflare R2 bulut depolamaya
+                aktarılıyor ve AI vektörleştirme yapılıyor.
               </p>
             </div>
           </div>
