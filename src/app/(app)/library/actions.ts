@@ -28,6 +28,21 @@ export async function createLibraryResourceAction(input: {
 }
 
 /**
+ * Server Action: Updates metadata (title, authors, publisher, publication year, doi, box) for a library resource.
+ */
+export async function updateLibraryResourceAction(input: {
+  resourceId: number;
+  title: string;
+  authors: string[];
+  publisher?: string;
+  publicationYear: number;
+  doi?: string;
+  boxId?: number;
+}) {
+  return resourceActions.updateLibraryResourceAction(input);
+}
+
+/**
  * Server Action: Toggles the read status of a library resource.
  */
 export async function toggleResourceReadStatusAction(resourceId: number) {

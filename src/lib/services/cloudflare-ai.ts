@@ -31,55 +31,59 @@ export async function generateCloudflareEmbeddings(
   }
 
   const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${BGE_M3_MODEL}`;
-  const batchSize = 100;
-  const allEmbeddings: number[][] = [];
+  const batchSize = 50;
+  const batches: string[][] = [];
 
   for (let i = 0; i < texts.length; i += batchSize) {
-    const batchTexts = texts.slice(i, i + batchSize);
-
-    try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          text: batchTexts,
-        }),
-      });
-
-      if (!response.ok) {
-        const errText = await response.text().catch(() => "");
-        throw new Error(
-          `Cloudflare AI API returned ${response.status}: ${errText}`,
-        );
-      }
-
-      const data = (await response.json()) as {
-        result?: { data?: number[][] };
-        success?: boolean;
-      };
-
-      if (!data.success || !data.result?.data) {
-        throw new Error(
-          `Cloudflare AI response invalid: ${JSON.stringify(data)}`,
-        );
-      }
-
-      allEmbeddings.push(...data.result.data);
-    } catch (error) {
-      logger?.error("cloudflare_embed_batch_failed", {
-        service: "cloudflare",
-        error,
-        data: { batchIndex: i, textCount: batchTexts.length },
-      });
-      // Fill fallback 1024-zero vectors for failed batch
-      allEmbeddings.push(...batchTexts.map(() => new Array(1024).fill(0)));
-    }
+    batches.push(texts.slice(i, i + batchSize));
   }
 
-  return allEmbeddings;
+  const batchResults = await Promise.all(
+    batches.map(async (batchTexts, batchIndex) => {
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            text: batchTexts,
+          }),
+        });
+
+        if (!response.ok) {
+          const errText = await response.text().catch(() => "");
+          throw new Error(
+            `Cloudflare AI API returned ${response.status}: ${errText}`,
+          );
+        }
+
+        const data = (await response.json()) as {
+          result?: { data?: number[][] };
+          success?: boolean;
+        };
+
+        if (!data.success || !data.result?.data) {
+          throw new Error(
+            `Cloudflare AI response invalid: ${JSON.stringify(data)}`,
+          );
+        }
+
+        return data.result.data;
+      } catch (error) {
+        logger?.error("cloudflare_embed_batch_failed", {
+          service: "cloudflare",
+          error,
+          data: { batchIndex, textCount: batchTexts.length },
+        });
+        // Fill fallback 1024-zero vectors for failed batch
+        return batchTexts.map(() => new Array(1024).fill(0));
+      }
+    }),
+  );
+
+  return batchResults.flat();
 }
 
 /**

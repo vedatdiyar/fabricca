@@ -5,6 +5,7 @@ import {
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import type { LoggerInstance } from "@/lib/logger";
 
 /**
  * Singleton Cloudflare R2 S3 Client instance.
@@ -113,25 +114,46 @@ export async function generatePresignedUploadUrl(
  * Fetches a PDF file buffer from R2 by its key.
  *
  * @param r2Key - The R2 object key (e.g. "pdfs/Yilmaz_2024_Turk_Edebiyati.pdf").
+ * @param log - Optional logger to trace the S3 fetch and body-read sub-steps.
  * @returns The file buffer.
  */
-export async function getPdfFromR2(r2Key: string): Promise<Buffer> {
+export async function getPdfFromR2(
+  r2Key: string,
+  log?: LoggerInstance,
+): Promise<Buffer> {
   const bucketName = process.env.R2_BUCKET_NAME || "fabricca";
   const s3Client = getR2Client();
 
+  log?.info("r2_get_object_start", {
+    service: "library",
+    data: { key: r2Key },
+  });
   const response = await s3Client.send(
     new GetObjectCommand({
       Bucket: bucketName,
       Key: r2Key,
     }),
   );
+  log?.info("r2_get_object_success", {
+    service: "library",
+    data: { key: r2Key },
+  });
 
   const body = response.Body;
   if (!body) {
     throw new Error(`R2 object ${r2Key} returned empty body.`);
   }
 
+  log?.info("r2_body_to_buffer_start", {
+    service: "library",
+    data: { key: r2Key },
+  });
   const bytes = await body.transformToByteArray();
+  log?.info("r2_body_to_buffer_success", {
+    service: "library",
+    data: { key: r2Key, size: bytes.length },
+  });
+
   return Buffer.from(bytes);
 }
 

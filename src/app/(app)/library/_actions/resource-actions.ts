@@ -386,3 +386,127 @@ export async function deleteLibraryResourceAction(resourceId: number) {
     return { success: false, error: "Eser silinirken bir hata oluştu." };
   }
 }
+
+/**
+ * Server Action: Updates metadata (title, authors, publisher, publication year, doi, box) for a library resource.
+ *
+ * @param input - Metadata fields to update for target resource.
+ */
+export async function updateLibraryResourceAction(input: {
+  resourceId: number;
+  title: string;
+  authors: string[];
+  publisher?: string;
+  publicationYear: number;
+  doi?: string;
+  boxId?: number;
+}) {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { success: false, error: "Oturum bulunamadı." };
+    }
+
+    if (!input.title.trim()) {
+      return { success: false, error: "Lütfen eser başlığını giriniz." };
+    }
+
+    const existingResource = await db.query.sources.findFirst({
+      where: eq(sources.id, input.resourceId),
+    });
+
+    if (!existingResource) {
+      return { success: false, error: "Eser bulunamadı." };
+    }
+
+    // Verify user ownership via matrix boxes
+    const matrix = await db.query.matrices.findFirst({
+      where: eq(matrices.userId, session.userId),
+      with: { boxes: true },
+    });
+
+    const userBoxes = matrix?.boxes || [];
+    const userBoxIds = userBoxes.map((b) => b.id);
+
+    if (!userBoxIds.includes(existingResource.boxId)) {
+      return {
+        success: false,
+        error: "Bu eseri düzenleme yetkiniz bulunmamaktadır.",
+      };
+    }
+
+    let targetBoxId = existingResource.boxId;
+    if (input.boxId && userBoxIds.includes(input.boxId)) {
+      targetBoxId = input.boxId;
+    }
+
+    const [updated] = await db
+      .update(sources)
+      .set({
+        boxId: targetBoxId,
+        title: input.title.trim(),
+        authors:
+          input.authors.length > 0
+            ? input.authors.map((a) => a.trim()).filter(Boolean)
+            : ["Bilinmeyen Yazar"],
+        publisher: input.publisher?.trim() || "Belirtilmemiş",
+        publicationYear: input.publicationYear || new Date().getFullYear(),
+        doi: input.doi?.trim() || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(sources.id, input.resourceId))
+      .returning();
+
+    // Map box information
+    const targetBox = userBoxes.find((b) => b.id === updated.boxId);
+    const linkedBoxParentId = targetBox?.parentId ?? null;
+    const isSubBox = linkedBoxParentId !== null;
+    const parentBox = isSubBox
+      ? userBoxes.find((b) => b.id === linkedBoxParentId)
+      : targetBox;
+
+    const boxType = (parentBox?.boxType ||
+      targetBox?.boxType ||
+      "THEORETICAL_FRAMEWORK") as Exclude<ThesisBoxType, "ALL">;
+
+    log.info("update_library_resource_success", {
+      service: "library",
+      data: { resourceId: updated.id, title: updated.title },
+    });
+
+    return {
+      success: true,
+      data: {
+        id: updated.id,
+        boxType,
+        subBoxId: isSubBox ? updated.boxId : undefined,
+        subBoxTitle: isSubBox ? (targetBox?.title ?? undefined) : undefined,
+        title: updated.title,
+        authors: updated.authors || ["Bilinmeyen Yazar"],
+        publisher: updated.publisher || "Belirtilmemiş",
+        publicationYear: updated.publicationYear || new Date().getFullYear(),
+        doi: updated.doi || undefined,
+        openalexId: updated.openalexId || undefined,
+        isRead: updated.isRead,
+        pdfUrl: updated.pdfUrl || undefined,
+        pdfFileName: updated.pdfFileName || undefined,
+        pdfFileSize: updated.pdfFileSize || undefined,
+        pdfStatus: updated.pdfStatus || "NOT_UPLOADED",
+        sourceOrigin: "LITERATURE_EXPANSION" as const,
+        createdAt: updated.createdAt.toISOString(),
+      },
+    };
+  } catch (err) {
+    log.error("update_library_resource_failed", {
+      service: "library",
+      error: err,
+    });
+    return {
+      success: false,
+      error: "Eser metadataları güncellenirken bir hata oluştu.",
+    };
+  }
+}

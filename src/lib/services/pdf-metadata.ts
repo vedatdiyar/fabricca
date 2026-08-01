@@ -13,7 +13,7 @@ export interface PdfMetadataResult {
   publicationYear: number;
   doi?: string;
   abstract?: string;
-  source: "crossref" | "openlibrary" | "cerebras";
+  source: "crossref" | "openlibrary" | "googlebooks" | "cerebras";
 }
 
 const DOI_REGEX = /10\.\d{4,}\/[-._;()/:A-Z0-9]+/i;
@@ -58,6 +58,16 @@ function buildMetadataText(chunks: DocumentChunk[]): string {
     .map((c) => c.content)
     .join("\n\n")
     .slice(0, 12000);
+}
+
+function isMetadataComplete(result: PdfMetadataResult): boolean {
+  const hasValidAuthor =
+    result.authors.length > 0 &&
+    result.authors[0] !== "Bilinmeyen Yazar" &&
+    result.authors[0].trim().length > 0;
+  const hasValidPublisher =
+    Boolean(result.publisher) && result.publisher!.trim().length > 0;
+  return Boolean(result.title) && hasValidAuthor && hasValidPublisher;
 }
 
 async function fetchCrossrefByDoi(
@@ -106,8 +116,8 @@ async function fetchCrossrefByDoi(
 
 interface OpenLibraryBook {
   title?: string;
-  authors?: { key: string; name: string }[];
-  publishers?: { name: string }[];
+  authors?: ({ key?: string; name?: string } | string)[];
+  publishers?: (string | { name?: string })[];
   publish_date?: string;
 }
 
@@ -132,14 +142,102 @@ async function fetchOpenLibraryByIsbn(
       ? parseInt(yearMatch[0], 10)
       : new Date().getFullYear();
 
+    // 1. Extract Publisher (supports string array or object array)
+    let publisher: string | undefined;
+    if (Array.isArray(data.publishers) && data.publishers.length > 0) {
+      const p = data.publishers[0];
+      publisher = typeof p === "string" ? p : p.name;
+    }
+
+    // 2. Extract Authors (fetches author name via key if name property is omitted)
+    const authors: string[] = [];
+    if (Array.isArray(data.authors)) {
+      for (const a of data.authors) {
+        if (typeof a === "string") {
+          authors.push(a);
+        } else if (a.name) {
+          authors.push(a.name);
+        } else if (a.key) {
+          try {
+            const authorRes = await fetch(
+              `https://openlibrary.org${a.key}.json`,
+              {
+                headers: { "User-Agent": CROSSREF_USER_AGENT },
+                signal: AbortSignal.timeout(5000),
+              },
+            );
+            if (authorRes.ok) {
+              const authorData = (await authorRes.json()) as { name?: string };
+              if (authorData.name) authors.push(authorData.name);
+            }
+          } catch {
+            /* ignore author key fetch failure */
+          }
+        }
+      }
+    }
+
     return {
       title: data.title,
-      authors: data.authors?.map((a) => a.name).filter(Boolean) || [
-        "Bilinmeyen Yazar",
-      ],
+      authors: authors.length > 0 ? authors : ["Bilinmeyen Yazar"],
       publicationYear: year,
-      publisher: data.publishers?.[0]?.name || undefined,
+      publisher: publisher || undefined,
       source: "openlibrary",
+    };
+  } catch {
+    return null;
+  }
+}
+
+interface GoogleBooksItem {
+  volumeInfo?: {
+    title?: string;
+    authors?: string[];
+    publisher?: string;
+    publishedDate?: string;
+  };
+}
+
+async function fetchGoogleBooksByIsbn(
+  isbn: string,
+): Promise<PdfMetadataResult | null> {
+  const apiKey = process.env.GOOGLE_BOOKS_API_KEY;
+  const keyParam = apiKey ? `&key=${encodeURIComponent(apiKey)}` : "";
+  const url = `https://www.googleapis.com/books/v1/volumes?q=isbn:${encodeURIComponent(isbn)}${keyParam}`;
+
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": CROSSREF_USER_AGENT },
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!response.ok) return null;
+
+    const data = (await response.json()) as {
+      totalItems?: number;
+      items?: GoogleBooksItem[];
+    };
+    if (!data.items || data.items.length === 0) return null;
+
+    const volume = data.items[0].volumeInfo;
+    if (!volume?.title) return null;
+
+    const yearMatch = volume.publishedDate?.match(/\d{4}/);
+    const year = yearMatch
+      ? parseInt(yearMatch[0], 10)
+      : new Date().getFullYear();
+
+    const authors =
+      Array.isArray(volume.authors) && volume.authors.length > 0
+        ? volume.authors
+        : ["Bilinmeyen Yazar"];
+
+    return {
+      title: volume.title,
+      authors,
+      publicationYear: year,
+      publisher: volume.publisher || undefined,
+      source: "googlebooks",
     };
   } catch {
     return null;
@@ -249,8 +347,8 @@ export async function extractPdfMetadata(
 ): Promise<PdfMetadataResult> {
   const metadataText = buildMetadataText(chunks);
 
+  // 1. DOI Path (Academic Papers)
   const doi = findDoiInChunks(chunks);
-
   if (doi) {
     log.info("pdf_metadata_crossref_start", {
       service: "library",
@@ -260,7 +358,7 @@ export async function extractPdfMetadata(
     const crossrefStart = performance.now();
     const crossrefResult = await fetchCrossrefByDoi(doi);
 
-    if (crossrefResult) {
+    if (crossrefResult && isMetadataComplete(crossrefResult)) {
       log.info("pdf_metadata_crossref_success", {
         service: "library",
         data: {
@@ -278,9 +376,12 @@ export async function extractPdfMetadata(
     });
   }
 
+  // 2. ISBN Path (Books)
   const isbn = findIsbnInChunks(chunks);
+  let partialResult: PdfMetadataResult | null = null;
 
   if (isbn) {
+    // Step 2a: OpenLibrary
     log.info("pdf_metadata_openlibrary_start", {
       service: "library",
       data: { isbn },
@@ -290,28 +391,81 @@ export async function extractPdfMetadata(
     const openLibResult = await fetchOpenLibraryByIsbn(isbn);
 
     if (openLibResult) {
-      log.info("pdf_metadata_openlibrary_success", {
-        service: "library",
-        data: {
-          title: openLibResult.title,
-          isbn,
-          durationMs: Math.round(performance.now() - olStart),
-        },
-      });
-      return openLibResult;
+      if (isMetadataComplete(openLibResult)) {
+        log.info("pdf_metadata_openlibrary_success", {
+          service: "library",
+          data: {
+            title: openLibResult.title,
+            isbn,
+            durationMs: Math.round(performance.now() - olStart),
+          },
+        });
+        return openLibResult;
+      }
+      partialResult = openLibResult;
     }
 
     log.info("pdf_metadata_openlibrary_failed", {
       service: "library",
       data: { isbn, durationMs: Math.round(performance.now() - olStart) },
     });
+
+    // Step 2b: Google Books Fallback
+    log.info("pdf_metadata_googlebooks_start", {
+      service: "library",
+      data: { isbn },
+    });
+
+    const gbStart = performance.now();
+    const googleBooksResult = await fetchGoogleBooksByIsbn(isbn);
+
+    if (googleBooksResult) {
+      if (isMetadataComplete(googleBooksResult)) {
+        log.info("pdf_metadata_googlebooks_success", {
+          service: "library",
+          data: {
+            title: googleBooksResult.title,
+            isbn,
+            durationMs: Math.round(performance.now() - gbStart),
+          },
+        });
+        return googleBooksResult;
+      }
+      if (!partialResult) partialResult = googleBooksResult;
+    }
+
+    log.info("pdf_metadata_googlebooks_failed", {
+      service: "library",
+      data: { isbn, durationMs: Math.round(performance.now() - gbStart) },
+    });
   }
 
+  // 3. Cerebras LLM Fallback (Enrich partial metadata or full extraction)
   if (metadataText.length > 50) {
     const cerebrasResult = await extractMetadataWithCerebras(metadataText, log);
     if (cerebrasResult) {
+      if (partialResult) {
+        return {
+          title: partialResult.title || cerebrasResult.title,
+          authors:
+            partialResult.authors.length > 0 &&
+            partialResult.authors[0] !== "Bilinmeyen Yazar"
+              ? partialResult.authors
+              : cerebrasResult.authors,
+          publicationYear:
+            partialResult.publicationYear || cerebrasResult.publicationYear,
+          publisher: partialResult.publisher || cerebrasResult.publisher,
+          doi: partialResult.doi || cerebrasResult.doi,
+          abstract: cerebrasResult.abstract,
+          source: partialResult.source,
+        };
+      }
       return cerebrasResult;
     }
+  }
+
+  if (partialResult) {
+    return partialResult;
   }
 
   log.error("pdf_metadata_extraction_failed", {

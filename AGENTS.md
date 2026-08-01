@@ -21,23 +21,23 @@ Bu uygulama, yüksek lisans ve doktora öğrencilerinin akademik araştırma, te
 
 ## 3. Teknoloji Yığını (The Stack)
 
-Projede kullanılacak teknolojiler kesin olarak belirlenmiştir. Yapay zeka, geliştirme süreci boyunca bu yığının dışına çıkamaz ve alternatif kütüphaneler öneremez:
+Projede kullanılacak teknolojiler kesin olarak belirlenmiştir. Yapay zeka, kullanıcıdan açık onay almadığı sürece bu yığının dışına çıkamaz ve alternatif kütüphaneler ekleyemez:
 
 - **Frontend & Backend Framework:** Next.js (App Router, Server Actions)
 - **Stil & UI Bileşenleri:** Tailwind CSS, Shadcn UI, Lucide React (İkonlar için), `sonner` (Toast bildirimleri), `next-themes` (Karanlık tema)
 - **Veri Tabanı & ORM:** Neon Serverless PostgreSQL, Drizzle ORM
 - **Vektör Veri Tabanı (RAG):** Neon DB içinde entegre `pgvector` eklentisi
 - **LLM Modeli:** Google Gemini Flash-Lite (`FLASH_LITE_31` sabiti — tüm metin üretimi ve analiz işlemleri için)
-- **Embedding Model:** Cohere Embed API (`embed-multilingual-v3.0` — 1024 boyutlu vektörler)
-- **Rerank Modeli (Semantik Sıralama):** Cohere Rerank API (`rerank-v4.0-pro` — çok dilli, Türkçe dahil; YAML yapılandırılmış girdi desteği)
-- **PDF Parçalama ve Metadata Çıkarımı:** `unpdf` + dinamik $N$-sütunlu yerel ayrıştırıcı (seçilebilir/metin PDF'leri için ultra hızlı <200ms yol) + LlamaParse API (taranmış/görsel PDF'ler için OCR ve bozuk düzen çözücü), Crossref API (DOI ile metadata çözümleme), Gemini Flash-Lite (DOI bulunamadığında metin tabanlı metadata çıkarımı)
+- **Embedding Model:** Cloudflare Workers AI (`@cf/baai/bge-m3` — 1024 boyutlu vektörler, 100K günlük ücretsiz istek). Tek kaynak embedding motorudur; Cohere veya ikincil bir fallback yoktur.
+- **Rerank Modeli (Semantik Sıralama):** Cohere Rerank API (`rerank-v4.0-pro` — çok dilli, Türkçe dahil; YAML yapılandırılmış girdi desteği). Cohere yalnızca Rerank işlemleri için kullanılır.
+- **PDF Parçalama ve Metadata Çıkarımı:** `unpdf` + dinamik N-sütunlu yerel ayrıştırıcı (seçilebilir/metin PDF'leri için ultra hızlı <200ms yol) + LlamaParse API (taranmış/görsel PDF'ler için OCR ve bozuk düzen çözücü), Crossref API (DOI ile metadata çözümleme), Gemini Flash-Lite (DOI bulunamadığında metin tabanlı metadata çıkarımı). Taranmış veya karmaşık düzene sahip PDF'lerde "unstructured-fallback" rotası doğrudan LlamaParse servislerine yönlendirilir.
+- **PDF Depolama (Storage):** Cloudflare R2 / AWS S3 mimarisi (`@aws-sdk/client-s3` ve `@aws-sdk/s3-request-presigner`) — yüklenen PDF'ler ve dosya nesneleri R2 kovalarında saklanır.
 - **AI Orkestrasyon:** Google Gen AI SDK (`@google/genai` - Doğrudan entegrasyon), Cerebras API (OpenAI-compatible, metadata extraction için Gemma 4 31B)
 - **Kimlik Doğrulama (Auth):** Drizzle tabanlı yerel `users` tablosu, `bcrypt-ts` ile şifreleme ve `src/lib/session.ts` üzerinden Cookies tabanlı hafif session yönetimi
 - **Runtime Doğrulama:** Zod v4 (`z.email()`, `z.enum()`, `safeParse`) — Server Action girdi validasyonu ve LLM çıktı şema kontrolü
 - **İstemci Cache & State Yönetimi:** `@tanstack/react-query` — Sunucu verisi önbellekleme, optimistik güncellemeler ve mutasyon yönetimi
-- **Akademik Yayın Veri Kaynağı:** OpenAlex API (REST)
+- **Akademik Yayın Veri Kaynağı & Literatür Taraması:** OpenAlex API (REST) — literatür taraması ve akademik veri erişimi yalnızca OpenAlex servisleri üzerinden yürütülür.
 - **DOI ve Yayın Çözümleme:** Crossref API (REST)
-- **PDF Sıkıştırma Servisi:** iLovePDF API (REST - Yüksek boyutlu PDF sıkıştırma)
 - **API İstek Sınırlandırma:** `@/lib/rate-limiter` — `createConcurrencyLimiter` ve `createGapEnforcedQueue`
 
 ### 3.1. Çevre Değişkenleri (Environment Variables)
@@ -46,53 +46,60 @@ Projenin çalışması ve dış servislerle entegrasyonu için aşağıdaki çev
 
 - `DATABASE_URL`: Neon Serverless PostgreSQL bağlantı adresi (pooler/sslmode=verify-full dahil).
 - `GEMINI_API_KEY`: Google Gemini API anahtarı.
-- `CLOUDFLARE_ACCOUNT_ID` & `CLOUDFLARE_API_TOKEN`: Cloudflare Workers AI embedding üretimi için hesap ve API token bilgileri.
-- `COHERE_API_KEY`: Cohere Rerank ve Embedding API anahtarı.
+- `CLOUDFLARE_ACCOUNT_ID` & `CLOUDFLARE_API_TOKEN`: Cloudflare Workers AI embedding üretimi (`@cf/baai/bge-m3`) için hesap ve API token bilgileri.
+- `COHERE_API_KEY`: Cohere Rerank API anahtarı.
 - `OPENALEX_API_KEY`: OpenAlex API istek limitlerini artırmak için kullanılan anahtar.
 - `CROSSREF_CONTACT_EMAIL`: Crossref API isteklerinde "polite pool"a dahil olmak için kullanılan iletişim e-postası.
-- `TAVILY_API_KEY`: Tavily arama API anahtarı (literatür taraması).
-- `EXA_API_KEY`: Exa arama API anahtarı.
-- `SEMANTIC_SCHOLAR_API_KEY`: Semantic Scholar API anahtarı.
 - `SEED_USER1_PASSWORD` & `SEED_USER2_PASSWORD`: Seed edilmiş kullanıcı hesaplarının şifreleri.
-- `ILOVEPDF_PUBLIC_KEY` & `ILOVEPDF_SECRET_KEY`: iLovePDF API erişim anahtarları.
-- `PDF_COMPRESS_THRESHOLD_BYTES`: PDF otomatik sıkıştırma için boyut eşiği (varsayılan: 2097152 / 2MB).
+- `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID` & `R2_SECRET_ACCESS_KEY`: Cloudflare R2 (S3-compatible) nesne depolama erişim kimlik bilgileri.
+- `R2_BUCKET_NAME` & `R2_PUBLIC_DOMAIN`: R2 kova adı ve public erişim alan adı.
 - `LLAMA_CLOUD_API_KEY`: LlamaParse (LlamaIndex) cloud API anahtarı (taranmış ve karmaşık PDF'ler için OCR ve markdown dönüşümü).
 - `CEREBRAS_API_KEY`: Cerebras API anahtarı (Gemma 4 31B ile metadata çıkarımı için).
+- `GOOGLE_BOOKS_API_KEY`: Google Books API anahtarı (ISBN ile kitap metadata fallback çözümü için).
 
 ## 4. Klasör Yapısı (Folder Structure)
 
 Proje, Next.js App Router'ın rota gruplama (route groups) özelliğini kullanarak tamamen "Özellik/Sayfa Tabanlı" (Feature-driven) olarak organize edilmiştir. Projenin ana mimari düzeni şu şekildedir:
 
 ```
-├── src/
-│   ├── app/                          # Next.js App Router rotaları ve sayfaları
-│   │   ├── layout.tsx                # Kök layout (fontlar, QueryProvider, vb.)
-│   │   ├── page.tsx                  # Kök yönlendirici (/login veya /dashboard)
-│   │   ├── (auth)/                   # Kimlik doğrulama rotaları (Örn: /login)
-│   │   ├── (onboarding)/             # İlk kurulum / onboarding adımları (Örn: /onboarding)
-│   │   │   └── onboarding/
-│   │   │       ├── matrix/           # Adım 1: Tez Matrisi
-│   │   │       ├── risk/             # Adım 2: Risk Analizi
-│   │   │       ├── boxes/            # Adım 3: Konu Kutuları
-│   │   │       └── literature-review/# Adım 4: Literatür Tarama
-│   │   └── (app)/                    # Giriş sonrası ana uygulama rotaları (Layout paylaşımlı)
-│   │       ├── _services/            # Route-group seviyesinde paylaşılan servisler
-│   │       ├── dashboard/            # Ana panel -> /dashboard
-│   │       ├── card-index/           # Kartoteks -> /card-index
-│   │       ├── advisor/              # Danışman Odası (RAG Chat) -> /advisor
-│   │       └── library/              # Kütüphane -> /library
-│   ├── components/                   # Ortak kullanılan genel arayüz bileşenleri
-│   │   ├── ui/                       # Shadcn UI temel bileşenleri (Dokunulmaz — Ancak dead code temizliği ve React 19 forwardRef gibi zorunlu framework uyumluluk düzeltmeleri bu kuralın istisnasıdır)
-│   ├── db/                           # Veritabanı ve ORM katmanı (Neon / Drizzle)
-│   │   ├── schema.ts                 # Tablo şemaları
-│   │   └── seed.ts                   # Seed verisi
-│   └── lib/                          # Ortak kütüphaneler ve servis entegrasyonları
-│       ├── logger.ts                 # Yapılandırılmış Logger sınıfı
-│       ├── error-utils.ts            # Hata maskeleme ve sınıflandırma yardımcıları
-│       ├── services/                 # Harici API servis istemcileri (gemini, cohere, vb.) — barrel export: index.ts
-│       ├── tezara/                   # Tezara / Meilisearch tez veritabanı entegrasyonu (harici servis)
-│       ├── academic/                 # Akademik veri yardımcıları (DOI temizleme, CrossRef dönüşümleri)
-│       └── prompts/                  # Gemini ve diğer modeller için prompt şablonları
+src/
+├── app/                                  # Next.js App Router rotaları ve sayfaları
+│   ├── layout.tsx                        # Kök layout (fontlar, QueryProvider, vb.)
+│   ├── page.tsx                          # Kök yönlendirici (/login veya /dashboard)
+│   ├── (auth)/                           # Kimlik doğrulama rotaları (Örn: /login)
+│   ├── (onboarding)/                     # İlk kurulum / onboarding adımları (Örn: /onboarding)
+│   │   └── onboarding/
+│   │       ├── matrix/                   # Adım 1: Çalışma Matrisi
+│   │       ├── positioning/              # Adım 2: Akademik Konumlandırma (stepper etiketi: "Konumlandırma")
+│   │       ├── boxes/                    # Adım 3: Konu Kutuları
+│   │       └── literature-review/        # Adım 4: Literatür Tarama
+│   ├── (app)/                            # Giriş sonrası ana uygulama rotaları (Layout paylaşımlı)
+│   │   ├── _services/                    # Route-group seviyesinde paylaşılan servisler
+│   │   ├── dashboard/                    # Ana panel -> /dashboard
+│   │   ├── card-index/                   # Kartoteks -> /card-index
+│   │   ├── advisor/                      # Danışman Odası (RAG Chat) -> /advisor
+│   │   └── library/                      # Kütüphane -> /library
+│   └── api/                              # API route handler'ları
+├── components/                           # Ortak kullanılan genel arayüz bileşenleri
+│   ├── ui/                               # Shadcn UI temel bileşenleri (Dokunulmaz — Ancak dead code temizliği ve React 19 forwardRef gibi zorunlu framework uyumluluk düzeltmeleri bu kuralın istisnasıdır)
+│   └── ...                               # Genel bileşenler (header, error-display, vb.)
+├── db/                                   # Veritabanı ve ORM katmanı (Neon / Drizzle)
+│   ├── schema.ts                         # Tablo şemaları
+│   ├── seed.ts                           # Seed verisi
+│   ├── index.ts                          # Drizzle client kurulumu
+│   └── reset.ts                          # Geliştirme amaçlı şema sıfırlama
+├── lib/                                  # Ortak kütüphaneler ve servis entegrasyonları
+│   ├── constants.ts                      # Model sabitleri (FLASH_LITE_31, GEMINI_SEED, CEREBRAS_MODEL)
+│   ├── logger.ts                         # Yapılandırılmış Logger sınıfı
+│   ├── error-utils.ts                    # Hata maskeleme ve sınıflandırma yardımcıları
+│   ├── rate-limiter.ts                   # API istek sınırlandırma
+│   ├── session.ts                        # Cookies tabanlı oturum yönetimi
+│   ├── services/                         # Harici API servis istemcileri (gemini, cohere, cloudflare-ai, r2, vb.) — barrel export: index.ts
+│   ├── academic/                         # Akademik veri yardımcıları (DOI temizleme, CrossRef dönüşümleri)
+│   ├── tezara/                           # Tezara / Meilisearch tez veritabanı entegrasyonu (harici servis)
+│   ├── prompts/                          # Gemini ve diğer modeller için prompt şablonları
+│   └── polyfills/                        # Polyfill'ler (math-sum-precise, vb.)
+└── providers/                            # React context sağlayıcıları (QueryProvider, LoadingOverlay)
 ```
 
 - **Bölüm/Modül Bağımsızlığı:** Giriş sonrası sayfalar birbiriyle aynı hiyerarşide, bağımsız rotalardır. Her bir özelliğin kendi `actions.ts`, `_components/` ve `_hooks/` dosyaları doğrudan o özelliğin klasörü altında tutulur.
@@ -109,16 +116,16 @@ Bu bölüm altındaki detaylı kurallar (sayfa genişlikleri, padding/margin sta
 ### 6.1. Geliştirme Kuralları (YAP)
 
 - **Daima JSDoc Kullanımı:** Yazılan tüm fonksiyonlar, server action'lar, custom hook'lar ve kritik bileşenler için **eksiksiz JSDoc dökümantasyonu** yazılmalıdır. Fonksiyonun ne işe yaradığı, parametreleri (`@param`) ve dönüş tipi (`@returns`) açıkça belirtilmelidir.
-- **İzin İsteme Kuralı:** Projenin teknoloji yığınında listelenmeyen yeni bir npm paketi kurmadan önce **her zaman** kullanıcıdan onay al.
+- **İzin İsteme Kuralı:** Projenin teknoloji yığınında listelenmeyen yeni bir npm paketi kurmadan veya harici kütüphane eklemeden önce **her zaman** kullanıcıdan onay al.
 - **Eksiksiz Dosya İşleme İlkesi:** Ajan, proje dosyalarını doğrudan kendisi yazıp güncellediği için, dosya içeriklerinde asla eksik, yarım veya placeholders (`// TODO`, `// ... eski kodlar ...`) bırakamaz. Değişiklik yaptığı tüm dosyaları işlevsel, derlenebilir ve eksiksiz bir şekilde sisteme işlemekle yükümlüdür.
 - **Sıkı Tip Güvenliği (TypeScript):** Kod tabanında `any` tipi kullanmak kesinlikle yasaktır. Tüm veri yapıları, Drizzle şemalarından türetilen tiplerle (`InferSelectModel`, `InferInsertModel`) veya açık arayüzlerle (interface/type) kesin olarak tiplendirilmelidir.
 - **Güvenli Server Actions:** Veri tabanına dokunan tüm Server Action yapıları `try-catch` blokları içine alınmalı, girdi validasyonları sıkı tutulmalı ve işlem sonucu istemciye (frontend) net hata/başarı mesajleriyle dönmelidir.
-- **Doğrulama (Lint & TypeScript):** Her kod değişikliği sonrası, işi teslim etmeden önce `npm run check:full` komutu çalıştırılarak lint ve TypeScript hataları kontrol edilmelidir. Hata varsa düzeltilmeden iş tamamlanmış sayılmaz. Eğer önceki değişimlerdeki hatalar kalmışsa onları da temizleyeceksin!
+- **Doğrulama (Lint & TypeScript):** Her kod değişikliği sonrası, işi teslim etmeden önce `npm run check:full` komutu çalıştırılarak lint ve TypeScript hataları kontrol edilmelidir. Hata varsa düzeltilmeden iş tamamlanmış sayılmaz. Eğer önceki değişimlerdeki hatalar kalmışsa onlar da temizlenecektir.
 
 ### 6.2. The Golden Boundary Rule
 
 - **Backend ve Mantık Katmanı (%100 İngilizce):** Tüm veritabanı kolon isimleri, fonksiyon adları, local değişkenler, Zod şemaları, API payload'ları ve Logger event/step stringleri tamamen profesyonel bilgisayar bilimi İngilizcesi (camelCase veya snake_case) ile yazılacaktır. Türkçe karakter içermesi kesinlikle yasaktır.
-- **Kullanıcı Arayüzü (UI) ve Çıktılar (%100 Türkçe):** Kullanıcının ekranda gördüğü tüm bileşenler, butonlar, tablo başlıkları, kart açıklamaları ve Gemini'nin ürettiği metinsel akademik analiz/tavsiyeler (strategicRecommendations) tamamen akıcı, elit bir akademik Türkçe ile yazılacak; Türkçe karakterler eksiksiz işlenecektir. Backend'den gelen İngilizce enum'lar (HIGH_RISK, OVERLAPPING) UI katmanında `getUiBadgeConfig()` gibi merkezi bir dönüşüm fonksiyonu üzerinden Türkçeye çevrilerek render edilecektir (bkz: `risk/_lib/constants.ts`).
+- **Kullanıcı Arayüzü (UI) ve Çıktılar (%100 Türkçe):** Kullanıcının ekranda gördüğü tüm bileşenler, butonlar, tablo başlıkları, kart açıklamaları ve Gemini'nin ürettiği metinsel akademik analiz/tavsiyeler (strategicRecommendations) tamamen akıcı, elit bir akademik Türkçe ile yazılacak; Türkçe karakterler eksiksiz işlenecektir. Backend'den gelen İngilizce enum'lar (HIGH_RISK, OVERLAPPING) UI katmanında merkezi bir dönüşüm fonksiyonu üzerinden Türkçeye çevrilerek render edilecektir (bkz: `positioning/_lib/validation.ts`).
 
 ### 6.3. Veri Tabanı ve ORM Kuralları
 
@@ -141,7 +148,8 @@ Google Gemini SDK standartları, thinkingConfig seviyeleri, prompt hiyerarşisi,
 ### 6.6. Yasaklar (YAPMA)
 
 - **Yarım Bırakma:** Kod üretirken veya refaktör yaparken asla `// ... eski kodlar buraya gelecek ...` veya `// TODO:` şeklinde geçici/yarım bırakılmış yorum satırları kullanma. Ancak, ileride geliştirilecek sayfalar için (örneğin placeholder sayfalar) mecburen minimal `<div />` bırakılması bu kuralın istisnasıdır.
-- **Dosya Yollarını Karıştırma:** Rota grubu olan `(app)` klasörünü linkleme yaparken kullanma. Navigasyon her zaman doğrudan URL rotasına (`/dashboard`, `/card-index`) yapılmalıdır.
+- **Dosya Yollarını Karıştırma:** Rota grubu olan `(app)` veya `(auth)` ifadelerini linkleme yaparken kullanma. Navigasyon her zaman doğrudan görünür URL rotasına (`/dashboard`, `/card-index`) yapılmalıdır.
+- **Gizli/Sabit Değişken Sızdırma:** `.env` dosyalarını, gizli anahtarları veya hassas API token'larını hiçbir koşulda istemci tarafındaki (client-side) koda veya kod deposuna gömme.
 
 ### 6.7. AGENTS.md Güncelleme Protokolü
 
@@ -153,7 +161,7 @@ Google Gemini SDK standartları, thinkingConfig seviyeleri, prompt hiyerarşisi,
 
 ### 6.9. Loglama Kuralları (Logging Convention)
 
-- **Sadece START ve SUCCESS:** Konsola yalnızca `[HH:MM:SS] START ⏳ event` ve `[HH:MM:SS] SUCCESS ✓ event (süre)` formatında satırlar basılır. `INFO`, `WARN`, `ERROR` gibi seviye etiketleri asla kullanılmaz.
+- **Sadece START ve SUCCESS:** Konsola yalnızca `[HH:MM:SS] START ⏳ event` ve `[HH:MM:SS] SUCCESS ✓ event (süre)` formatında satırlar basılır. `INFO`, `WARN`, `ERROR` gibi seviye etiketleri konsol çıktısında görünmez (merkezi `src/lib/logger.ts` üzerinden kontrol edilir).
 - **Her adım bir START/SUCCESS çiftidir:** İstisnasız her işlem adımı `_start` ile başlar, `_success` veya `_failed` ile biter. Araya başka log girmez.
 - **Adımlar arası boşluk:** Her SUCCESS satırından sonra otomatik bir boş satır gelir. START ile SUCCESS arasında boş satır olmaz.
 - **Toplam süre:** Pipeline son satırı, `data.durationMs` parametresiyle `_success` soneki kullanılarak yazılır (ayrı `_start` gerekmez). Örn: `[HH:MM:SS] SUCCESS ✓ positioning_pipeline (17.8s)`
@@ -161,7 +169,7 @@ Google Gemini SDK standartları, thinkingConfig seviyeleri, prompt hiyerarşisi,
 
 ## 7. Modüler Görev Sözleşmeleri (Referans Linkleri)
 
-Arayüz, veritabanı veya LLM mekanizmalarıyla ilgili bir geliştirme yapmadan önce, KESİNLİKLE ilgili docs/*.md dosyasını oku, projenin mevcut kod tabanını tarayarak tasarım dilini keşfet ve o kurallara istisnasız itaat et:
+Arayüz, veritabanı veya LLM mekanizmalarıyla ilgili bir geliştirme yapmadan önce, KESİNLİKLE ilgili `docs/*.md` dosyasını oku, projenin mevcut kod tabanını tarayarak tasarım dilini keşfet ve o kurallara istisnasız itaat et:
 
 1. **Stil ve Kullanıcı Arayüzü Kuralları:** [docs/UI_RULES.md](docs/UI_RULES.md)
 2. **Veri Tabanı ve ORM Kuralları (Progressive Save):** [docs/DATABASE_RULES.md](docs/DATABASE_RULES.md)

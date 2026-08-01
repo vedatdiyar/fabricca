@@ -77,7 +77,7 @@ export async function processResourcePdfPipeline(
     },
   });
 
-  // ── 4. Batch Insert into pgvector (300 rows per query in parallel) ──
+  // ── 4. Batch Insert into pgvector (50 rows per query in parallel) ──
   log.info("pdf_db_batch_insert_start", {
     service: "library",
     data: { resourceId },
@@ -99,7 +99,7 @@ export async function processResourcePdfPipeline(
       embedding: embeddings[index] || new Array(1024).fill(0),
     }));
 
-    const batchSize = 300;
+    const batchSize = 50;
     const insertPromises = [];
     for (let i = 0; i < recordsToInsert.length; i += batchSize) {
       const batch = recordsToInsert.slice(i, i + batchSize);

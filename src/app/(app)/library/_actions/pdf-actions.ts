@@ -19,6 +19,26 @@ import { processResourcePdfPipeline } from "../_services/pdf-pipeline";
 import type { ThesisBoxType, LibraryResourceItem } from "../_types/types";
 
 /**
+ * Best-effort cleanup of a temporary R2 object (e.g. "temp/<uuid>.pdf").
+ * Never throws: failures are logged and swallowed so the main flow can
+ * return its real error without being interrupted by a cleanup failure.
+ *
+ * @param tempKey - R2 key of the temporary object to delete.
+ * @param log - Logger instance for the current flow.
+ */
+async function cleanupTempKey(tempKey: string, log: Logger): Promise<void> {
+  if (!tempKey) return;
+  try {
+    await deleteR2Object(tempKey);
+  } catch {
+    log.info("r2_temp_cleanup_failed", {
+      service: "library",
+      data: { tempKey },
+    });
+  }
+}
+
+/**
  * Server Action: Deletes a resource's PDF file from Cloudflare R2 and resets DB PDF status.
  *
  * @param resourceId - Target resource ID.
@@ -168,10 +188,12 @@ export async function completeResourcePdfUploadAction(
   try {
     const session = await getSession();
     if (!session) {
+      await cleanupTempKey(tempKey, log);
       return { success: false, error: "Oturum bulunamadı." };
     }
 
     if (!originalFileName.toLowerCase().endsWith(".pdf")) {
+      await cleanupTempKey(tempKey, log);
       return {
         success: false,
         error: "Yalnızca PDF formatındaki dosyalar yüklenebilir.",
@@ -184,10 +206,12 @@ export async function completeResourcePdfUploadAction(
     });
 
     if (!resource) {
+      await cleanupTempKey(tempKey, log);
       return { success: false, error: "İlgili akademik eser bulunamadı." };
     }
 
     if (resource.pdfStatus === "READY" && resource.pdfUrl) {
+      await cleanupTempKey(tempKey, log);
       return {
         success: false,
         error:
@@ -202,7 +226,7 @@ export async function completeResourcePdfUploadAction(
       service: "library",
       data: { resourceId, tempKey },
     });
-    const buffer = await getPdfFromR2(tempKey);
+    const buffer = await getPdfFromR2(tempKey, log);
     log.info("complete_resource_pdf_fetch_from_r2_success", {
       service: "library",
       data: { resourceId, size: buffer.length },
@@ -256,6 +280,7 @@ export async function completeResourcePdfUploadAction(
     });
 
     if (existingDuplicate && existingDuplicate.id !== resourceId) {
+      await cleanupTempKey(tempKey, log);
       return {
         success: false,
         error: `Bu akademik yayın PDF'i (${apaFileName}) sistemde başka bir kayıtta zaten mevcut. Kopya kayıtlara izin verilmemektedir.`,
@@ -278,14 +303,7 @@ export async function completeResourcePdfUploadAction(
     });
 
     // 8. Clean up temp file from R2
-    try {
-      await deleteR2Object(tempKey);
-    } catch {
-      log.info("complete_resource_pdf_temp_delete_info", {
-        service: "library",
-        data: { tempKey },
-      });
-    }
+    await cleanupTempKey(tempKey, log);
 
     log.info("complete_resource_pdf_success", {
       service: "library",
@@ -327,6 +345,8 @@ export async function completeResourcePdfUploadAction(
       service: "library",
       error: err,
     });
+
+    await cleanupTempKey(tempKey, log);
 
     await db
       .update(sources)
@@ -408,13 +428,18 @@ export async function completePdfCreateUploadAction(
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
+  let createdResourceId: number | undefined;
+  let uploadedPdfFileName: string | undefined;
+
   try {
     const session = await getSession();
     if (!session) {
+      await cleanupTempKey(tempKey, log);
       return { success: false, error: "Oturum bulunamadı." };
     }
 
     if (!originalFileName.toLowerCase().endsWith(".pdf")) {
+      await cleanupTempKey(tempKey, log);
       return {
         success: false,
         error: "Yalnızca PDF formatındaki dosyalar yüklenebilir.",
@@ -428,7 +453,7 @@ export async function completePdfCreateUploadAction(
       service: "library",
       data: { tempKey },
     });
-    const buffer = await getPdfFromR2(tempKey);
+    const buffer = await getPdfFromR2(tempKey, log);
     log.info("complete_pdf_create_fetch_from_r2_success", {
       service: "library",
       data: { size: buffer.length },
@@ -461,6 +486,7 @@ export async function completePdfCreateUploadAction(
     });
 
     if (!targetBox || targetBox.matrix.userId !== session.userId) {
+      await cleanupTempKey(tempKey, log);
       return {
         success: false,
         error: "Seçilen konu kutusu bulunamadı veya bu kullanıcıya ait değil.",
@@ -481,6 +507,7 @@ export async function completePdfCreateUploadAction(
         pdfStatus: "PROCESSING",
       })
       .returning();
+    createdResourceId = newResource.id;
 
     // 8. Generate APA filename
     const apaFileName = formatApaPdfFileName(
@@ -501,6 +528,8 @@ export async function completePdfCreateUploadAction(
       ? `${apaFileName.replace(/\.pdf$/i, "")}_${newResource.id}.pdf`
       : apaFileName;
 
+    uploadedPdfFileName = finalFileName;
+
     // 10. Run shared RAG pipeline
     const pipelineResult = await processResourcePdfPipeline({
       resourceId: newResource.id,
@@ -511,14 +540,7 @@ export async function completePdfCreateUploadAction(
     });
 
     // 11. Clean up temp file
-    try {
-      await deleteR2Object(tempKey);
-    } catch {
-      log.info("complete_pdf_create_temp_delete_info", {
-        service: "library",
-        data: { tempKey },
-      });
-    }
+    await cleanupTempKey(tempKey, log);
 
     log.info("complete_pdf_create_success", {
       service: "library",
@@ -562,6 +584,23 @@ export async function completePdfCreateUploadAction(
       service: "library",
       error: err,
     });
+
+    await cleanupTempKey(tempKey, log);
+
+    if (createdResourceId != null) {
+      if (uploadedPdfFileName) {
+        try {
+          await deletePdfFromR2(uploadedPdfFileName);
+        } catch {
+          log.info("r2_orphan_pdf_cleanup_failed", {
+            service: "library",
+            data: { uploadedPdfFileName },
+          });
+        }
+      }
+      await db.delete(sources).where(eq(sources.id, createdResourceId));
+    }
+
     return {
       success: false,
       error:

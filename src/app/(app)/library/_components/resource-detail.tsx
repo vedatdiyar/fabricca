@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Circle,
   Sparkles,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,6 +31,7 @@ import { toast } from "sonner";
 import { getBoxTypeBadgeConfig } from "./sidebar-work-list";
 import { cn } from "@/lib/utils";
 import { PdfUploadDropzone } from "./pdf-upload-dropzone";
+import { EditResourceModal } from "./edit-resource-modal";
 import type {
   LibraryResourceItem,
   LibraryResourceNote,
@@ -49,6 +51,8 @@ interface ResourceDetailProps {
   onDeleteNote: (noteId: number) => void;
   /** Callback to toggle read status of resource */
   onToggleReadStatus: (resourceId: number) => void;
+  /** Callback to update metadata of resource */
+  onUpdateResource?: (updatedResource: LibraryResourceItem) => void;
   /** Callback to upload PDF file for this resource */
   onUploadPdf?: (file: File) => Promise<void>;
   /** Callback to delete PDF file for this resource */
@@ -87,6 +91,7 @@ export function ResourceDetail({
   onAddNote,
   onDeleteNote,
   onToggleReadStatus,
+  onUpdateResource,
   onUploadPdf,
   onDeletePdf,
 }: ResourceDetailProps) {
@@ -97,6 +102,9 @@ export function ResourceDetail({
 
   // Deletion confirmation modal state
   const [noteToDeleteId, setNoteToDeleteId] = useState<number | null>(null);
+
+  // Metadata edit modal state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const boxBadge = getBoxTypeBadgeConfig(resource.boxType);
 
@@ -165,32 +173,44 @@ export function ResourceDetail({
             )}
           </div>
 
-          {/* Toggle Read Status Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              onToggleReadStatus(resource.id);
-              toast.success(
-                resource.isRead
-                  ? "Eser 'Okunacak' olarak işaretlendi."
-                  : "Eser 'Okundu' olarak işaretlendi.",
-              );
-            }}
-            className="gap-2 text-xs font-medium"
-          >
-            {resource.isRead ? (
-              <>
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                <span>Okundu</span>
-              </>
-            ) : (
-              <>
-                <Circle className="h-4 w-4 text-muted-foreground" />
-                <span>Okundu Olarak İşaretle</span>
-              </>
-            )}
-          </Button>
+          {/* Action Buttons: Edit Metadata & Toggle Read Status */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditModalOpen(true)}
+              className="gap-1.5 text-xs font-medium border-border hover:bg-muted"
+            >
+              <Pencil className="h-3.5 w-3.5 text-primary" />
+              <span>Künyeyi Düzenle</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                onToggleReadStatus(resource.id);
+                toast.success(
+                  resource.isRead
+                    ? "Eser 'Okunacak' olarak işaretlendi."
+                    : "Eser 'Okundu' olarak işaretlendi.",
+                );
+              }}
+              className="gap-2 text-xs font-medium"
+            >
+              {resource.isRead ? (
+                <>
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  <span>Okundu</span>
+                </>
+              ) : (
+                <>
+                  <Circle className="h-4 w-4 text-muted-foreground" />
+                  <span>Okundu Olarak İşaretle</span>
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
         {/* Title */}
@@ -205,9 +225,7 @@ export function ResourceDetail({
             {resource.authors.join(", ")}
           </div>
           <div>
-            <span className="font-medium text-foreground">
-              Yayıncı / Mecra:{" "}
-            </span>
+            <span className="font-medium text-foreground">Yayıncı: </span>
             {resource.publisher} ({resource.publicationYear})
           </div>
           {resource.doi && (
@@ -478,6 +496,16 @@ export function ResourceDetail({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 5. EDIT RESOURCE METADATA MODAL */}
+      <EditResourceModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        resource={resource}
+        onUpdateSuccess={(updatedResource) => {
+          onUpdateResource?.(updatedResource);
+        }}
+      />
     </div>
   );
 }

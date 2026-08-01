@@ -72,7 +72,7 @@ export async function extractRawTextFast(
   }
 
   const fullText = rawTexts.join("\n\n");
-  const chunks = buildLocalChunks(fullText);
+  const chunks = await buildLocalChunks(fullText);
   const totalDuration = performance.now() - fallbackStart;
   const totalTokens = chunks.reduce((s, c) => s + c.tokenCount, 0);
 

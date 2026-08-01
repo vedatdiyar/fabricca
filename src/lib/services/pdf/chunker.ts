@@ -1,6 +1,14 @@
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { type DocumentChunk } from "@/lib/services/llamaparse";
 
-const MAX_CHUNK_CHARS = 1200; // ~300 tokens, guaranteeing all chunks stay well below Cohere's 512 token limit
+const TARGET_CHUNK_SIZE = 1000;
+const CHUNK_OVERLAP = 200;
+
+const textSplitter = new RecursiveCharacterTextSplitter({
+  chunkSize: TARGET_CHUNK_SIZE,
+  chunkOverlap: CHUNK_OVERLAP,
+  separators: ["\n\n", "\n", ". ", "? ", "! ", " ", ""],
+});
 
 /**
  * Validates whether a text line qualifies as a section title/heading in an academic document.
@@ -86,48 +94,84 @@ export function applyParentChildContext(
 }
 
 /**
- * Splits full extracted PDF text into structured document chunks strictly capped at MAX_CHUNK_CHARS length.
+ * Helper to identify trivial noise chunks like standalone horizontal rules (***, ---, ___),
+ * markdown page dividers, or empty/junk symbols.
+ */
+export function isNoiseChunk(content: string): boolean {
+  const trimmed = content.trim();
+  if (trimmed.length < 5) {
+    if (!/[\p{L}0-9]/u.test(trimmed)) return true;
+  }
+  // Standalone horizontal rules or dividers like ***, ---, ___, * * *, - - -
+  if (/^[*\-_\s]{3,}$/.test(trimmed)) return true;
+  return false;
+}
+
+/**
+ * Splits full extracted PDF text into structured document chunks using LangChain's RecursiveCharacterTextSplitter.
+ * Grouped logically by section and page markers to preserve document metadata.
  *
  * @param fullText - Full text extracted from PDF
  * @returns Array of structured document chunks with section titles and page numbers
  */
-export function buildLocalChunks(fullText: string): DocumentChunk[] {
+export async function buildLocalChunks(
+  fullText: string,
+): Promise<DocumentChunk[]> {
   const rawChunks: DocumentChunk[] = [];
   let chunkIndex = 0;
-  const paragraphs = fullText.split("\n");
-  let buffer: string[] = [];
-  let bufferLen = 0;
+  const lines = fullText.split("\n");
+
   let currentSection: string | null = null;
   let currentPdfPage: number | null = null;
   let currentPrintedPage: number | null = null;
+  let currentBuffer: string[] = [];
 
-  function flush() {
-    if (buffer.length === 0) return;
-    const content = buffer.join("\n").trim();
-    if (content) {
-      rawChunks.push({
-        chunkIndex: chunkIndex++,
-        pdfPageNumber: currentPdfPage,
-        printedPageNumber: currentPrintedPage ?? currentPdfPage,
-        sectionTitle: currentSection,
-        content,
-        tokenCount: Math.ceil(content.length / 4),
-      });
+  async function processBuffer() {
+    if (currentBuffer.length === 0) return;
+    const textBlock = currentBuffer.join("\n").trim();
+    if (!textBlock) {
+      currentBuffer = [];
+      return;
     }
-    buffer = [];
-    bufferLen = 0;
+
+    if (textBlock.length <= TARGET_CHUNK_SIZE) {
+      if (!isNoiseChunk(textBlock)) {
+        rawChunks.push({
+          chunkIndex: chunkIndex++,
+          pdfPageNumber: currentPdfPage,
+          printedPageNumber: currentPrintedPage ?? currentPdfPage,
+          sectionTitle: currentSection,
+          content: textBlock,
+          tokenCount: Math.ceil(textBlock.length / 4),
+        });
+      }
+    } else {
+      // Split large text blocks using RecursiveCharacterTextSplitter with overlap
+      const subTexts = await textSplitter.splitText(textBlock);
+      for (const subText of subTexts) {
+        const clean = subText.trim();
+        if (clean && !isNoiseChunk(clean)) {
+          rawChunks.push({
+            chunkIndex: chunkIndex++,
+            pdfPageNumber: currentPdfPage,
+            printedPageNumber: currentPrintedPage ?? currentPdfPage,
+            sectionTitle: currentSection,
+            content: clean,
+            tokenCount: Math.ceil(clean.length / 4),
+          });
+        }
+      }
+    }
+    currentBuffer = [];
   }
 
-  for (const para of paragraphs) {
-    const trimmed = para.trim();
-    if (!trimmed) {
-      flush();
-      continue;
-    }
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
 
     const pdfPageMatch = trimmed.match(/^\[PDFSayfa (\d+)\]/i);
     if (pdfPageMatch) {
-      flush();
+      await processBuffer();
       currentPdfPage = parseInt(pdfPageMatch[1], 10);
       continue;
     }
@@ -138,17 +182,13 @@ export function buildLocalChunks(fullText: string): DocumentChunk[] {
     }
 
     if (isValidSectionTitle(trimmed)) {
-      flush();
+      await processBuffer();
       currentSection = trimmed;
     }
 
-    if (bufferLen + trimmed.length > MAX_CHUNK_CHARS && buffer.length > 0) {
-      flush();
-    }
-    buffer.push(trimmed);
-    bufferLen += trimmed.length;
+    currentBuffer.push(trimmed);
   }
-  flush();
+  await processBuffer();
 
   const merged = mergeMicroChunks(rawChunks);
   return applyParentChildContext(merged);

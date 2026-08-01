@@ -116,7 +116,7 @@ export async function parsePdfWithHybridRouter(
   });
 
   const localStart = performance.now();
-  const chunks = buildLocalChunks(analysis.fullText);
+  const chunks = await buildLocalChunks(analysis.fullText);
   const localDuration = performance.now() - localStart;
 
   log.info("pdf_local_extraction_success", {

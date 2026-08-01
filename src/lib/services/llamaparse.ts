@@ -1,7 +1,14 @@
+import { MarkdownTextSplitter } from "@langchain/textsplitters";
 import type { Logger } from "@/lib/logger";
+import { isNoiseChunk } from "./pdf/chunker";
 
 const LLAMAPARSE_JOB_POLL_INTERVAL_MS = 1000;
 const LLAMAPARSE_JOB_MAX_WAIT_MS = 3 * 60 * 1000; // 3 min max wait
+
+const markdownSplitter = new MarkdownTextSplitter({
+  chunkSize: 1000,
+  chunkOverlap: 200,
+});
 
 export interface DocumentChunk {
   chunkIndex: number;
@@ -192,38 +199,37 @@ async function fetchLlamaParseResult(
 
 /**
  * Converts Markdown page items into structured RAG chunks with parent-child windowing context.
+ * Uses LangChain's MarkdownTextSplitter with noise filtering and table preservation.
  */
-function buildChunksFromLlamaMarkdown(
+async function buildChunksFromLlamaMarkdown(
   pages: Array<{ pageNumber: number; text: string }>,
-): LlamaParseChunk[] {
-  const chunks: LlamaParseChunk[] = [];
+): Promise<LlamaParseChunk[]> {
+  const rawChunks: LlamaParseChunk[] = [];
   let chunkIdx = 0;
 
   for (const page of pages) {
     const rawText = page.text.trim();
     if (!rawText) continue;
 
-    // Split page text into paragraphs or section headers
-    const blocks = rawText.split(/\n{2,}/);
-    let currentSection: string | null = null;
+    // Split page markdown using LangChain's MarkdownTextSplitter
+    const subBlocks = await markdownSplitter.splitText(rawText);
+    let currentSectionTitle: string | null = null;
 
-    for (const block of blocks) {
+    for (const block of subBlocks) {
       const cleanBlock = block.trim();
-      if (!cleanBlock) continue;
+      if (!cleanBlock || isNoiseChunk(cleanBlock)) continue;
 
-      if (cleanBlock.startsWith("#")) {
-        currentSection = cleanBlock
-          .replace(/^#+\s*/, "")
-          .slice(0, 120)
-          .replace(/\n/g, " ");
-        continue;
+      // Detect header line if block starts with #
+      const headerMatch = cleanBlock.match(/^#+\s+(.+)$/m);
+      if (headerMatch) {
+        currentSectionTitle = headerMatch[1].slice(0, 120).trim();
       }
 
-      chunks.push({
+      rawChunks.push({
         chunkIndex: chunkIdx++,
         pdfPageNumber: page.pageNumber,
         printedPageNumber: page.pageNumber,
-        sectionTitle: currentSection,
+        sectionTitle: currentSectionTitle,
         content: cleanBlock,
         tokenCount: Math.ceil(cleanBlock.length / 4),
       });
@@ -232,10 +238,10 @@ function buildChunksFromLlamaMarkdown(
 
   // Apply parent-child window context
   const WINDOW = 3;
-  return chunks.map((c, idx) => {
+  return rawChunks.map((c, idx) => {
     const start = Math.max(0, idx - 1);
-    const end = Math.min(chunks.length, idx + WINDOW);
-    const parentText = chunks
+    const end = Math.min(rawChunks.length, idx + WINDOW);
+    const parentText = rawChunks
       .slice(start, end)
       .map((item) => item.content)
       .join("\n\n");
@@ -306,7 +312,7 @@ export async function parsePdfWithLlamaParse(
     data: { fileName, jobId },
   });
   const resultPages = await fetchLlamaParseResult(jobId);
-  const chunks = buildChunksFromLlamaMarkdown(resultPages);
+  const chunks = await buildChunksFromLlamaMarkdown(resultPages);
 
   log.info("pdf_llamaparse_chunking_success", {
     service: "library",

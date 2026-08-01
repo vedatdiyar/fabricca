@@ -349,6 +349,17 @@ function LibraryPageContent() {
     }
   };
 
+  /**
+   * Handles updating resource metadata in local state.
+   */
+  const handleUpdateResource = (updatedResource: LibraryResourceItem) => {
+    setResources((prev) =>
+      prev.map((item) =>
+        item.id === updatedResource.id ? updatedResource : item,
+      ),
+    );
+  };
+
   if (isLoading) {
     return <LoadingSpinner variant="full" />;
   }
@@ -380,6 +391,7 @@ function LibraryPageContent() {
               onAddNote={handleAddNote}
               onDeleteNote={handleDeleteNote}
               onToggleReadStatus={handleToggleReadStatus}
+              onUpdateResource={handleUpdateResource}
               onUploadPdf={handleUploadPdf}
               onDeletePdf={handleDeletePdf}
             />
