@@ -6,6 +6,7 @@ import { FLASH_LITE_31, GEMINI_SEED } from "@/lib/constants";
 import { buildJurySystemInstruction, buildJuryUserPrompt } from "@/lib/prompts";
 import { ThinkingLevel, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { Logger } from "@/lib/logger";
+import { extractOpenAlexId } from "@/lib/academic/utils";
 import { z } from "zod";
 import type { RawPaper } from "./literature-review-papers";
 
@@ -49,7 +50,10 @@ const juryEvaluationSchema = z.object({
   thesisBoxId: z.number().int().min(0),
   subBoxTitle: z.string().min(1),
   articleTitle: z.string().min(1),
-  openAlexId: z.string().nullable(),
+  openAlexId: z
+    .string()
+    .nullable()
+    .transform((v) => extractOpenAlexId(v)),
   isRelevant: z.boolean(),
   relevanceScore: z.number().int().min(0).max(100),
   isFoundational: z.boolean(),
@@ -75,7 +79,11 @@ const juryJsonSchema: JsonSchema = {
           thesisBoxId: { type: "integer", description: "Tez kutusu ID" },
           subBoxTitle: { type: "string", description: "Alt kutu başlığı" },
           articleTitle: { type: "string", description: "Makale başlığı" },
-          openAlexId: { type: "string", description: "OpenAlex ID veya null" },
+          openAlexId: {
+            type: "string",
+            description:
+              "Makalenin gerçek OpenAlex ID'si (W... formatında). Bilinmiyorsa string 'null' değil, JSON null gönder.",
+          },
           isRelevant: {
             type: "boolean",
             description: "Makale box bağlamıyla alakalı mı?",

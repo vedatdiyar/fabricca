@@ -24,6 +24,7 @@ export interface PageLayoutReport {
  */
 export interface PdfLayoutAnalysis {
   route: "local" | "unstructured-fallback";
+  tier?: "fast" | "cost_effective" | "agentic";
   reason: string;
   fullText: string;
   pageCount: number;

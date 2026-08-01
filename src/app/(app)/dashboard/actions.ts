@@ -343,19 +343,6 @@ export async function toggleResourceReadStatusAction(
     const session = await getSession();
     if (!session) return { success: false, error: SESSION_ERROR_MSG };
 
-    const [res] = await db
-      .select({ badge: sources.badge })
-      .from(sources)
-      .where(eq(sources.id, resourceId));
-
-    if (res?.badge === "CRITICAL_OVERLAP") {
-      return {
-        success: false,
-        error:
-          "Kritik çakışma riski taşıyan tez adayları için okuma durumu değiştirilemez.",
-      };
-    }
-
     await db.update(sources).set({ isRead }).where(eq(sources.id, resourceId));
 
     return { success: true };

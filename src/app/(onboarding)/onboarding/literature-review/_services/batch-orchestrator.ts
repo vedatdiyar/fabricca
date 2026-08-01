@@ -25,6 +25,7 @@ import {
 } from "./openalex/client";
 import {
   extractCleanDoi,
+  extractOpenAlexId,
   normalizeCleanTitle,
   areTitlesSimilar,
 } from "@/lib/academic/utils";
@@ -66,11 +67,10 @@ function candidateToRawPaper(c: QueueItem["candidates"][0]): RawPaper {
     title: c.title,
     metadata: `(kurucu eser adayı, atıf sıklığı: ${c.cluster.combinedFrequency})`,
     doi: c.doi,
-    url: c.openAlexId,
     authors: c.authors,
     year: c.year,
     publisher: c.publisher,
-    openAlexId: c.openAlexId,
+    openAlexId: extractOpenAlexId(c.openAlexId),
     isFoundational: false,
     relevanceScore: 0,
     citedByCount: c.cluster.combinedFrequency,
@@ -418,7 +418,7 @@ export async function orchestrateBatchProcess(
     isFoundational: boolean;
     reasoning: string;
     doi: string | null;
-    url: string;
+    openalexId: string | null;
     publisher: string | null;
     publicationYear: number | null;
     originalAbstract: string | null;
@@ -516,7 +516,10 @@ export async function orchestrateBatchProcess(
         isFoundational: idx === 0,
         reasoning: ev.reasoning,
         doi: poolItem.rawPaper.doi,
-        url: ev.openAlexId ?? poolItem.rawPaper.openAlexId ?? "",
+        openalexId:
+          extractOpenAlexId(poolItem.rawPaper.openAlexId) ??
+          extractOpenAlexId(ev.openAlexId) ??
+          null,
         publisher: poolItem.rawPaper.publisher,
         publicationYear: poolItem.rawPaper.year,
         originalAbstract: poolItem.rawPaper.abstract ?? null,
@@ -576,9 +579,8 @@ export async function orchestrateBatchProcess(
         publisher: art.publisher,
         publicationYear: art.publicationYear,
         doi: art.doi,
-        url: art.url,
+        openalexId: art.openalexId,
         relevanceScore: art.relevanceScore,
-        badge: null,
         comparisonNote: art.reasoning,
         abstract: art.originalAbstract ?? null,
         isFoundational: art.isFoundational,

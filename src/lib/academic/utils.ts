@@ -7,6 +7,24 @@ export function extractCleanDoi(raw: string | null | undefined): string | null {
   return match ? match[0].replace(/\.$/, "") : null;
 }
 
+/**
+ * Extracts the canonical short OpenAlex work ID from a raw value.
+ * Accepts full ID URLs ("https://openalex.org/W2741809807"), plain
+ * IDs ("W2741809807"), or falsy/junk values. Returns the short `W...` ID,
+ * or `null` when nothing valid is present (e.g. literal "null" strings
+ * occasionally produced by LLM outputs).
+ */
+export function extractOpenAlexId(
+  raw: string | null | undefined,
+): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim().replace(/\/+$/, "");
+  if (trimmed === "" || trimmed === "null") return null;
+  const match = trimmed.match(/(?:^|\/)(W\d+)$/i);
+  if (match) return match[1];
+  return /^W\d+$/i.test(trimmed) ? trimmed : null;
+}
+
 export interface CrossrefPerson {
   given?: string;
   family?: string;
@@ -48,13 +66,12 @@ interface SortableResource {
   isFoundational: boolean | null;
   relevanceScore: number | null;
   id: number;
-  badge?: string | null;
 }
 
 /**
- * Shared academic sort: foundational first, then thesis (has a badge),
- * then relevanceScore descending, then id ascending.
- * Used by both library actions and dashboard to keep sort order consistent.
+ * Shared academic sort: foundational first, then relevanceScore descending,
+ * then id ascending. Used by both library actions and dashboard to keep sort
+ * order consistent.
  */
 export function sortLibraryResources<T extends SortableResource>(
   items: T[],
@@ -62,13 +79,6 @@ export function sortLibraryResources<T extends SortableResource>(
   return [...items].sort((a, b) => {
     if (a.isFoundational && !b.isFoundational) return -1;
     if (!a.isFoundational && b.isFoundational) return 1;
-
-    if (!a.isFoundational && !b.isFoundational) {
-      const isThesisA = !!a.badge;
-      const isThesisB = !!b.badge;
-      if (isThesisA && !isThesisB) return -1;
-      if (!isThesisA && isThesisB) return 1;
-    }
 
     const scoreA = a.relevanceScore ?? 0;
     const scoreB = b.relevanceScore ?? 0;

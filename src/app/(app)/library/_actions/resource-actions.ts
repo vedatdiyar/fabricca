@@ -128,26 +128,36 @@ export async function getLibraryResourcesAction() {
 
     // Map box type helper
     const boxMap = new Map(boxes.map((b) => [b.id, b.boxType]));
+    const boxTitleMap = new Map(boxes.map((b) => [b.id, b.title]));
+    const boxParentMap = new Map(boxes.map((b) => [b.id, b.parentId]));
 
-    const resources = dbResources.map((r) => ({
-      id: r.id,
-      boxType: (boxMap.get(r.boxId) || "THEORETICAL_FRAMEWORK") as Exclude<
-        ThesisBoxType,
-        "ALL"
-      >,
-      title: r.title,
-      authors: r.authors || ["Bilinmeyen Yazar"],
-      publisher: r.publisher || "Belirtilmemiş",
-      publicationYear: r.publicationYear || new Date().getFullYear(),
-      doi: r.doi || undefined,
-      url: r.url || undefined,
-      isRead: r.isRead,
-      pdfUrl: r.pdfUrl || undefined,
-      pdfFileName: r.pdfFileName || undefined,
-      pdfStatus: r.pdfStatus || "NOT_UPLOADED",
-      sourceOrigin: "LITERATURE_EXPANSION" as const,
-      createdAt: r.createdAt.toISOString(),
-    }));
+    const resources = dbResources.map((r) => {
+      const linkedBoxParentId = boxParentMap.get(r.boxId) ?? null;
+      const isSubBox = linkedBoxParentId !== null;
+      return {
+        id: r.id,
+        boxType: (boxMap.get(r.boxId) || "THEORETICAL_FRAMEWORK") as Exclude<
+          ThesisBoxType,
+          "ALL"
+        >,
+        subBoxId: isSubBox ? r.boxId : undefined,
+        subBoxTitle: isSubBox
+          ? (boxTitleMap.get(r.boxId) ?? undefined)
+          : undefined,
+        title: r.title,
+        authors: r.authors || ["Bilinmeyen Yazar"],
+        publisher: r.publisher || "Belirtilmemiş",
+        publicationYear: r.publicationYear || new Date().getFullYear(),
+        doi: r.doi || undefined,
+        openalexId: r.openalexId || undefined,
+        isRead: r.isRead,
+        pdfUrl: r.pdfUrl || undefined,
+        pdfFileName: r.pdfFileName || undefined,
+        pdfStatus: r.pdfStatus || "NOT_UPLOADED",
+        sourceOrigin: "LITERATURE_EXPANSION" as const,
+        createdAt: r.createdAt.toISOString(),
+      };
+    });
 
     const notes = dbNotes.map((n) => ({
       id: n.id,
@@ -175,7 +185,7 @@ export async function getLibraryResourcesAction() {
 /**
  * Server Action: Creates a new library resource item in the database.
  *
- * @param input - Title, authors, publisher, year, doi, url, and box type.
+ * @param input - Title, authors, publisher, year, doi, and box type.
  */
 export async function createLibraryResourceAction(input: {
   title: string;
@@ -183,7 +193,6 @@ export async function createLibraryResourceAction(input: {
   publisher?: string;
   publicationYear: number;
   doi?: string;
-  url?: string;
   boxType: Exclude<ThesisBoxType, "ALL">;
 }) {
   const flowId = createFlowId();
@@ -244,7 +253,6 @@ export async function createLibraryResourceAction(input: {
         publisher: input.publisher?.trim() || "Belirtilmemiş",
         publicationYear: input.publicationYear || new Date().getFullYear(),
         doi: input.doi?.trim() || null,
-        url: input.url?.trim() || null,
         isRead: false,
         pdfStatus: "NOT_UPLOADED",
       })
@@ -266,7 +274,7 @@ export async function createLibraryResourceAction(input: {
         publicationYear:
           newResource.publicationYear || new Date().getFullYear(),
         doi: newResource.doi || undefined,
-        url: newResource.url || undefined,
+        openalexId: newResource.openalexId || undefined,
         isRead: false,
         pdfStatus: "NOT_UPLOADED" as const,
         sourceOrigin: "LITERATURE_EXPANSION" as const,

@@ -1,6 +1,7 @@
 import { cleanHtmlTags } from "@/lib/services/academic-sanitizer";
 import {
   extractCleanDoi,
+  extractOpenAlexId,
   resolveAbstractInvertedIndex,
 } from "@/lib/academic/utils";
 import type { RawPaper, RefMetadata } from "../literature-review-papers";
@@ -61,13 +62,12 @@ export function parseOpenAlexResults(
       abstract: resolveAbstractInvertedIndex(abstractInvertedIndex),
       metadata,
       doi: extractCleanDoi(work.doi as string | null | undefined),
-      url: null,
       authors:
         authorships?.map((a) => a.author?.display_name ?? "").filter(Boolean) ??
         [],
       year: null,
       publisher: null,
-      openAlexId: (work.id as string) ?? null,
+      openAlexId: extractOpenAlexId(work.id as string | null | undefined),
       isFoundational: false,
       relevanceScore: (work.relevance_score as number) ?? 0,
       referencedWorks: Array.isArray(work.referenced_works)

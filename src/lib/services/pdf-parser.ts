@@ -79,7 +79,13 @@ export async function parsePdfWithHybridRouter(
   // ── 2. Route Decision ──
   if (analysis.route === "unstructured-fallback") {
     try {
-      const llamaChunks = await parsePdfWithLlamaParse(buffer, fileName, log);
+      const tier = analysis.tier || "fast";
+      const llamaChunks = await parsePdfWithLlamaParse(
+        buffer,
+        fileName,
+        log,
+        tier,
+      );
       return llamaChunks.map((c) => ({
         chunkIndex: c.chunkIndex,
         pdfPageNumber: c.pdfPageNumber,
@@ -95,8 +101,7 @@ export async function parsePdfWithHybridRouter(
         error: llamaErr,
         data: { fileName },
       });
-      // Fallback to local raw text if LlamaParse fails or has network timeout
-      return extractRawTextFast(buffer, fileName, log);
+      throw llamaErr;
     }
   }
 

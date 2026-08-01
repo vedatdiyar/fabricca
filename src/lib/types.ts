@@ -77,9 +77,8 @@ export interface JuryArticle {
   publisher: string | null;
   publicationYear: number | null;
   doi: string | null;
-  url: string;
+  openalexId: string | null;
   relevanceScore: number;
-  badge: string | null;
   comparisonNote: string | null;
   abstract?: string | null;
   isFoundational: boolean;

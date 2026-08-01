@@ -241,8 +241,39 @@ export function SidebarWorkList({
                 )}
               >
                 <CardContent className="p-0 space-y-2">
-                  {/* Top Row: Box Badge + Read Status */}
-                  <div className="flex items-center justify-between gap-2">
+                  {/* Top Row: Title + Read Status & Actions */}
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-sans text-sm font-semibold text-foreground line-clamp-2 leading-snug flex-1 min-w-0">
+                      {item.title}
+                    </h3>
+                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
+                      {onDeleteResource && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setResourceToDeleteId(item.id);
+                          }}
+                          title="Eseri Sil"
+                          className="flex items-center gap-1 px-1 py-0.5 text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      {item.isRead ? (
+                        <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Okundu
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
+                          <Circle className="h-3.5 w-3.5" /> Okunacak
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Box Badge(s) — above the author line */}
+                  <div className="flex flex-wrap items-center gap-1 min-w-0">
                     <Badge
                       variant="outline"
                       className={cn(
@@ -252,36 +283,18 @@ export function SidebarWorkList({
                     >
                       {badgeConfig.label}
                     </Badge>
-                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                      {onDeleteResource && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setResourceToDeleteId(item.id);
-                          }}
-                          title="Eseri Sil"
-                          className="flex items-center gap-1 px-1 py-0.5 text-muted-foreground/50 hover:text-destructive transition-colors cursor-pointer"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      )}
-                      {item.isRead ? (
-                        <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
-                          <CheckCircle2 className="h-3 w-3" /> Okundu
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-muted-foreground">
-                          <Circle className="h-3 w-3" /> Okunacak
-                        </span>
-                      )}
-                    </div>
+                    {item.subBoxTitle && (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "max-w-full text-[10px] px-1.5 py-0.5 border font-medium",
+                          badgeConfig.className,
+                        )}
+                      >
+                        <span className="truncate">{item.subBoxTitle}</span>
+                      </Badge>
+                    )}
                   </div>
-
-                  {/* Title */}
-                  <h3 className="font-sans text-sm font-semibold text-foreground line-clamp-2 leading-snug">
-                    {item.title}
-                  </h3>
 
                   {/* Authors & Year */}
                   <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/40">

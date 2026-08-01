@@ -21,6 +21,10 @@ export interface LibraryResourceItem {
   id: number;
   /** Linked thesis box type */
   boxType: Exclude<ThesisBoxType, "ALL">;
+  /** ID of the linked sub-box (only when the resource is attached to a child box) */
+  subBoxId?: number;
+  /** Title of the linked sub-box (only when the resource is attached to a child box) */
+  subBoxTitle?: string;
   /** Title of the paper, book, or thesis */
   title: string;
   /** Array of author names */
@@ -31,8 +35,8 @@ export interface LibraryResourceItem {
   publicationYear: number;
   /** Digital Object Identifier (DOI) if available */
   doi?: string;
-  /** Direct URL link to the resource or PDF */
-  url?: string;
+  /** OpenAlex work ID (short W... form) if available */
+  openalexId?: string;
   /** Whether the user has marked this resource as read */
   isRead: boolean;
   /** PDF storage URL if uploaded */
@@ -43,8 +47,6 @@ export interface LibraryResourceItem {
   pdfFileSize?: number;
   /** PDF processing & vectorization status */
   pdfStatus?: "NOT_UPLOADED" | "PROCESSING" | "READY" | "FAILED";
-  /** Total page count of PDF */
-  pageCount?: number;
   /** Source origin tag (e.g., Onboarding, OpenAlex, Crossref) */
   sourceOrigin: "ONBOARDING" | "LITERATURE_EXPANSION";
   /** Creation timestamp formatted ISO string */

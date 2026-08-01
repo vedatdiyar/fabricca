@@ -5,7 +5,7 @@
 import type { JuryArticle } from "@/lib/types";
 import type { RawPaper } from "./literature-review-papers";
 import type { Cluster } from "./clustering";
-import { normalizeCleanTitle } from "@/lib/academic/utils";
+import { normalizeCleanTitle, extractOpenAlexId } from "@/lib/academic/utils";
 
 interface QueueItem {
   subBoxTitle: string;
@@ -163,8 +163,7 @@ export function selectRelatedArticles(
       ({
         title: it.paper.title!,
         comparisonNote: null,
-        badge: null,
-        url: it.paper.openAlexId ?? "",
+        openalexId: extractOpenAlexId(it.paper.openAlexId),
         doi: it.paper.doi,
         publisher: null,
         publicationYear: null,

@@ -87,29 +87,23 @@ export async function analyzePdfLayout(
     scatterPages.length >= sampledPageCount * COMPLEX_LAYOUT_PAGE_RATIO;
 
   let route: "local" | "unstructured-fallback";
+  let tier: "cost_effective" | "agentic" | undefined;
   let reason: string;
 
   if (isScanned) {
     route = "unstructured-fallback";
+    tier = "agentic";
     reason = `Scanned PDF (OCR Required): ${avgCharsPerPage.toFixed(1)} chars/page < ${SCAN_THRESHOLD} threshold (sampled ${sampledPageCount} pages)`;
-  } else if (
-    hasComplexLayout &&
-    scatterPages.length >= sampledPageCount * 0.5
-  ) {
-    // Extreme line scatter across >50% pages indicates corrupted or chaotic PDF vector text
+  } else if (isMultiColumn || hasComplexLayout) {
+    const pagesStr = (
+      isMultiColumn ? multiColPageIndices : scatterPageIndices
+    ).join(",");
     route = "unstructured-fallback";
-    reason = `Chaotic/Broken Layout (LlamaParse Required): ${scatterPages.length}/${sampledPageCount} pages have extreme line scatter`;
-  } else if (isMultiColumn) {
-    const pagesStr = multiColPageIndices.join(",");
-    reason = `Multi-column local extraction: ${multiColPages.length}/${sampledPageCount} sampled pages — pages: [${pagesStr}]`;
-    route = "local";
-  } else if (hasComplexLayout) {
-    const pagesStr = scatterPageIndices.join(",");
-    reason = `Complex layout local extraction: ${scatterPages.length}/${sampledPageCount} sampled pages — pages: [${pagesStr}]`;
-    route = "local";
+    tier = "cost_effective";
+    reason = `Multi-column / Complex Layout (LlamaParse Cost-Effective Tier): ${multiColPages.length} multi-col, ${scatterPages.length} scatter sampled pages — pages: [${pagesStr}]`;
   } else {
     route = "local";
-    reason = `Single-column: ${pageCount} total pages, sampled ${sampledPageCount} pages, ${avgCharsPerPage.toFixed(1)} chars/page avg`;
+    reason = `Single-column digital text (Local Fast <200ms): ${pageCount} total pages, sampled ${sampledPageCount} pages, ${avgCharsPerPage.toFixed(1)} chars/page avg`;
   }
 
   // If fallback route is chosen, destroy doc immediately without extracting remaining pages
@@ -122,6 +116,7 @@ export async function analyzePdfLayout(
     }
     return {
       route,
+      tier,
       reason,
       fullText: "",
       pageCount,

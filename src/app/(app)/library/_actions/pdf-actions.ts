@@ -2,13 +2,7 @@
 
 import { eq, and } from "drizzle-orm";
 import { db } from "@/db";
-import {
-  matrices,
-  boxes,
-  sources,
-  chunks as chunkRows,
-  notes,
-} from "@/db/schema";
+import { boxes, sources, chunks as chunkRows, notes } from "@/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import {
@@ -22,7 +16,6 @@ import { sanitizeAcademicDataBulk } from "@/lib/services/academic-sanitizer";
 import { parsePdfWithHybridRouter } from "@/lib/services/pdf-parser";
 import { formatApaPdfFileName } from "@/lib/academic/utils";
 import { processResourcePdfPipeline } from "../_services/pdf-pipeline";
-import { getBoxDefaultTitle } from "../_services/helpers";
 import type { ThesisBoxType, LibraryResourceItem } from "../_types/types";
 
 /**
@@ -312,12 +305,14 @@ export async function completeResourcePdfUploadAction(
       data: {
         id: resource.id,
         boxType: resource.box.boxType as Exclude<ThesisBoxType, "ALL">,
+        subBoxId: resource.box.parentId ? resource.box.id : undefined,
+        subBoxTitle: resource.box.parentId ? resource.box.title : undefined,
         title: metadata.title,
         authors: metadata.authors,
         publisher: metadata.publisher || "Belirtilmemiş",
         publicationYear: metadata.publicationYear,
         doi: metadata.doi || undefined,
-        url: resource.url || undefined,
+        openalexId: resource.openalexId || undefined,
         isRead: resource.isRead,
         pdfUrl: pipelineResult.r2Url,
         pdfFileName: apaFileName,
@@ -399,13 +394,13 @@ export async function requestPdfCreateUploadAction(): Promise<
  *
  * @param tempKey - Temporary R2 key where the client uploaded the PDF.
  * @param originalFileName - Original file name (for Unstructured fallback).
- * @param boxType - Target thesis box type for the new resource.
+ * @param boxId - Target thesis box ID (a sub-box when the parent has sub-boxes, otherwise the parent box).
  * @returns The newly created resource data.
  */
 export async function completePdfCreateUploadAction(
   tempKey: string,
   originalFileName: string,
-  boxType: Exclude<ThesisBoxType, "ALL">,
+  boxId: number,
 ): Promise<
   | { success: true; data: LibraryResourceItem }
   | { success: false; error: string }
@@ -459,38 +454,17 @@ export async function completePdfCreateUploadAction(
       metadata.authors = sanitizedMeta.author.split(", ").filter(Boolean);
     }
 
-    // 4. Find or create target thesis box
-    const matrix = await db.query.matrices.findFirst({
-      where: eq(matrices.userId, session.userId),
-      with: { boxes: true },
+    // 4. Resolve target thesis box by ID and verify ownership
+    const targetBox = await db.query.boxes.findFirst({
+      where: eq(boxes.id, boxId),
+      with: { matrix: true },
     });
 
-    let targetBox = matrix?.boxes.find((b) => b.boxType === boxType);
-    if (!targetBox) {
-      let matrixId = matrix?.id;
-      if (!matrixId) {
-        const [newM] = await db
-          .insert(matrices)
-          .values({
-            userId: session.userId,
-            subjectProblem: "Genel Konu ve Problem",
-            theoreticalFramework: "Kuramsal Çerçeve",
-            methodology: "Yöntem",
-          })
-          .returning();
-        matrixId = newM.id;
-      }
-
-      const [newBox] = await db
-        .insert(boxes)
-        .values({
-          matrixId: matrixId,
-          boxType: boxType,
-          title: getBoxDefaultTitle(boxType),
-        })
-        .returning();
-
-      targetBox = newBox;
+    if (!targetBox || targetBox.matrix.userId !== session.userId) {
+      return {
+        success: false,
+        error: "Seçilen konu kutusu bulunamadı veya bu kullanıcıya ait değil.",
+      };
     }
 
     // 7. Create library resource record
@@ -503,7 +477,6 @@ export async function completePdfCreateUploadAction(
         publisher: metadata.publisher || "Belirtilmemiş",
         publicationYear: metadata.publicationYear,
         doi: metadata.doi || null,
-        url: null,
         isRead: false,
         pdfStatus: "PROCESSING",
       })
@@ -563,14 +536,19 @@ export async function completePdfCreateUploadAction(
       success: true,
       data: {
         id: newResource.id,
-        boxType,
+        boxType: (targetBox.boxType || "THEORETICAL_FRAMEWORK") as Exclude<
+          ThesisBoxType,
+          "ALL"
+        >,
+        subBoxId: targetBox.parentId ? targetBox.id : undefined,
+        subBoxTitle: targetBox.parentId ? targetBox.title : undefined,
         title: newResource.title,
         authors: newResource.authors || ["Bilinmeyen Yazar"],
         publisher: newResource.publisher || "Belirtilmemiş",
         publicationYear:
           newResource.publicationYear || new Date().getFullYear(),
         doi: newResource.doi || undefined,
-        url: undefined,
+        openalexId: newResource.openalexId || undefined,
         isRead: false,
         pdfUrl: pipelineResult.r2Url,
         pdfFileName: finalFileName,

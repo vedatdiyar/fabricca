@@ -141,8 +141,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
       const archiveArticle: JuryArticle = {
         title: entry.title,
         comparisonNote: null,
-        badge: null,
-        url: "",
+        openalexId: null,
         doi: null as string | null,
         publisher: "",
         publicationYear: 0,

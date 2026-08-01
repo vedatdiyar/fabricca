@@ -206,12 +206,14 @@ async function extractMetadataWithCerebras(
 ): Promise<PdfMetadataResult | null> {
   const systemInstruction =
     "Sen akademik bir makale veya kitabın ilk sayfalarındaki metni okuyarak bibliyografik metadata çıkaran bir asistansın. " +
-    "Yanıtını her zaman belirtilen JSON şemasına uygun olarak ver. " +
-    "Yazar isimlerini 'Ad Soyad' formatında, birden fazla varsa dizi olarak döndür. " +
-    "Bulamadığın alanlar için 'null' değerini döndür. " +
-    "Ek olarak, çıkardığın başlıkları APA Title Case formatına getir (bağlaçlar hariç her kelimenin ilk harfi büyük). " +
-    "Türkçe karakterleri düzelt (I→İ, O→Ö, U→Ü, G→Ğ, S→Ş, C→Ç gibi bozulmuş karakterleri onar). " +
-    "Yazar isimlerini Proper Case'e çevir (örn. 'AHMET YILMAZ' → 'Ahmet Yılmaz').";
+    "Yanıtını her zaman belirtilen JSON şemasına uygun olarak ver.\n" +
+    "ÖNEMLİ KURALLAR:\n" +
+    "1. ANA MAKALE BAŞLIĞI VE YAZARLARI: Yalnızca sayfanın en üstündeki ana makale başlığını ve ana yazar adını al. Sayfa altındaki DİPNOTLARDA (footnote) veya kaynakça atıflarında geçen başlıkları (örneğin İngilizce tırnak içindeki 'Idle souls.regulated emotions...' gibi makale isimlerini) ve dipnotlardaki kişileri (ör. 'Beşir Fuat') KESİNLİKLE ana makale başlığı veya yazarı olarak ALMA.\n" +
+    "2. KATEGORİ ETİKETLERİ: Dergi bölüm/kategori başlıklarını ('DOSYA', 'MAKALELER', 'ARAŞTIRMA', 'ÇEVİRİ') yazar adı veya soyadı olarak ALMA.\n" +
+    "3. Yazar isimlerini 'Ad Soyad' formatında, birden fazla varsa dizi olarak döndür.\n" +
+    "4. Çıkardığın başlıkları APA Title Case formatına getir (bağlaçlar hariç her kelimenin ilk harfi büyük).\n" +
+    "5. Türkçe karakterleri düzelt (I→İ, O→Ö, U→Ü, G→Ğ, S→Ş, C→Ç gibi bozulmuş karakterleri onar; örn. 'EYMA' → 'Şeyma').\n" +
+    "6. Yazar isimlerini Proper Case'e çevir (örn. 'AHMET YILMAZ' → 'Ahmet Yılmaz').";
 
   const prompt =
     "Aşağıdaki akademik eser metninden başlık, yazarlar, yayın yılı, yayınevi/dergi, DOI ve özet bilgilerini çıkar.\n\n" +
@@ -247,79 +249,61 @@ export async function extractPdfMetadata(
 ): Promise<PdfMetadataResult> {
   const metadataText = buildMetadataText(chunks);
 
-  log.info("pdf_metadata_crossref_start", {
-    service: "library",
-    data: {},
-  });
-
-  const crossrefStart = performance.now();
   const doi = findDoiInChunks(chunks);
-  let crossrefResult: PdfMetadataResult | null = null;
 
   if (doi) {
-    crossrefResult = await fetchCrossrefByDoi(doi);
-  }
-
-  if (crossrefResult) {
-    log.info("pdf_metadata_crossref_success", {
+    log.info("pdf_metadata_crossref_start", {
       service: "library",
-      data: {
-        title: crossrefResult.title,
-        doi,
-        durationMs: Math.round(performance.now() - crossrefStart),
-      },
+      data: { doi },
     });
-    return crossrefResult;
-  }
 
-  const crossrefDuration = performance.now() - crossrefStart;
-  if (doi) {
+    const crossrefStart = performance.now();
+    const crossrefResult = await fetchCrossrefByDoi(doi);
+
+    if (crossrefResult) {
+      log.info("pdf_metadata_crossref_success", {
+        service: "library",
+        data: {
+          title: crossrefResult.title,
+          doi,
+          durationMs: Math.round(performance.now() - crossrefStart),
+        },
+      });
+      return crossrefResult;
+    }
+
     log.info("pdf_metadata_crossref_failed", {
       service: "library",
-      data: { doi, durationMs: Math.round(crossrefDuration) },
-    });
-  } else {
-    log.info("pdf_metadata_crossref_success", {
-      service: "library",
-      data: { doi: null, durationMs: Math.round(crossrefDuration) },
+      data: { doi, durationMs: Math.round(performance.now() - crossrefStart) },
     });
   }
 
-  log.info("pdf_metadata_openlibrary_start", {
-    service: "library",
-    data: {},
-  });
-
-  const olStart = performance.now();
   const isbn = findIsbnInChunks(chunks);
-  let openLibResult: PdfMetadataResult | null = null;
 
   if (isbn) {
-    openLibResult = await fetchOpenLibraryByIsbn(isbn);
-  }
-
-  if (openLibResult) {
-    log.info("pdf_metadata_openlibrary_success", {
+    log.info("pdf_metadata_openlibrary_start", {
       service: "library",
-      data: {
-        title: openLibResult.title,
-        isbn,
-        durationMs: Math.round(performance.now() - olStart),
-      },
+      data: { isbn },
     });
-    return openLibResult;
-  }
 
-  const olDuration = performance.now() - olStart;
-  if (isbn) {
+    const olStart = performance.now();
+    const openLibResult = await fetchOpenLibraryByIsbn(isbn);
+
+    if (openLibResult) {
+      log.info("pdf_metadata_openlibrary_success", {
+        service: "library",
+        data: {
+          title: openLibResult.title,
+          isbn,
+          durationMs: Math.round(performance.now() - olStart),
+        },
+      });
+      return openLibResult;
+    }
+
     log.info("pdf_metadata_openlibrary_failed", {
       service: "library",
-      data: { isbn, durationMs: Math.round(olDuration) },
-    });
-  } else {
-    log.info("pdf_metadata_openlibrary_success", {
-      service: "library",
-      data: { isbn: null, durationMs: Math.round(olDuration) },
+      data: { isbn, durationMs: Math.round(performance.now() - olStart) },
     });
   }
 

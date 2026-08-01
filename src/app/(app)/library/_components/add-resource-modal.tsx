@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   UploadCloud,
   X,
@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import type { ThesisBoxType } from "../_types/types";
+import { getBoxHierarchyForLibraryAction } from "../actions";
+import type { LibraryParentBoxOption } from "../_actions/box-actions";
 
 interface AddResourceModalProps {
   /** Whether the modal is open */
@@ -21,21 +22,12 @@ interface AddResourceModalProps {
   /** Callback to close modal */
   onClose: () => void;
   /** Callback to submit new resource via PDF upload with metadata extraction */
-  onSubmitPdf: (
-    file: File,
-    boxType: Exclude<ThesisBoxType, "ALL">,
-  ) => Promise<void>;
+  onSubmitPdf: (file: File, boxId: number) => Promise<void>;
 }
-
-const BOX_OPTIONS: { id: Exclude<ThesisBoxType, "ALL">; label: string }[] = [
-  { id: "THEORETICAL_FRAMEWORK", label: "Kuramsal Çerçeve" },
-  { id: "METHODOLOGY", label: "Metodoloji" },
-  { id: "SUBJECT_PROBLEM", label: "Konu ve Problem" },
-  { id: "PRIMARY_MATERIAL", label: "Birincil Malzeme" },
-];
 
 /**
  * Modal component for adding new academic literature resources by uploading PDF documents.
+ * User selects a parent thesis box and, when sub-boxes exist, a specific sub-box.
  * Extracts metadata (title, authors, publication year, publisher, DOI) via Unstructured + Crossref/Gemini
  * and vectorizes content through the RAG pipeline.
  */
@@ -45,15 +37,59 @@ export function AddResourceModal({
   onSubmitPdf,
 }: AddResourceModalProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [boxType, setBoxType] = useState<Exclude<ThesisBoxType, "ALL">>(
-    "THEORETICAL_FRAMEWORK",
+  const [hierarchy, setHierarchy] = useState<LibraryParentBoxOption[] | null>(
+    null,
   );
+  const [hierarchyError, setHierarchyError] = useState<string | null>(null);
+  const [selectedParentId, setSelectedParentId] = useState<number | null>(null);
+  const [selectedSubBoxId, setSelectedSubBoxId] = useState<number | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Load real box hierarchy whenever the modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let cancelled = false;
+
+    async function loadHierarchy() {
+      const res = await getBoxHierarchyForLibraryAction();
+      if (cancelled) return;
+
+      if (res.success) {
+        setHierarchy(res.data);
+        setHierarchyError(null);
+        const firstParent = res.data[0];
+        if (firstParent) {
+          setSelectedParentId(firstParent.id);
+          setSelectedSubBoxId(
+            firstParent.children.length > 0 ? firstParent.children[0].id : null,
+          );
+        } else {
+          setSelectedParentId(null);
+          setSelectedSubBoxId(null);
+        }
+      } else {
+        setHierarchyError(res.error || "Kutu listesi yüklenirken hata oluştu.");
+      }
+    }
+
+    loadHierarchy();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
+  const isLoadingBoxes = hierarchy === null && hierarchyError === null;
+  const parentBoxes = hierarchy ?? [];
+  const selectedParent =
+    parentBoxes.find((b) => b.id === selectedParentId) ?? null;
+  const hasSubBoxes = !!selectedParent && selectedParent.children.length > 0;
 
   const handleFileChange = (file: File) => {
     if (!file.name.toLowerCase().endsWith(".pdf")) {
@@ -77,6 +113,14 @@ export function AddResourceModal({
     }
   };
 
+  const handleParentChange = (parentId: number) => {
+    setSelectedParentId(parentId);
+    const parent = parentBoxes.find((b) => b.id === parentId);
+    setSelectedSubBoxId(
+      parent && parent.children.length > 0 ? parent.children[0].id : null,
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -85,11 +129,26 @@ export function AddResourceModal({
       return;
     }
 
+    if (!selectedParentId) {
+      toast.error("Lütfen bir konu kutusu seçiniz.");
+      return;
+    }
+
+    if (hasSubBoxes && selectedSubBoxId === null) {
+      toast.error("Lütfen kaynağın ait olduğu alt kutuyu (sub-box) seçiniz.");
+      return;
+    }
+
+    // Target box: sub-box when the parent has sub-boxes, otherwise the parent itself
+    const targetBoxId = hasSubBoxes
+      ? (selectedSubBoxId as number)
+      : selectedParentId;
+
     try {
       setIsSubmitting(true);
       setStatusMessage("PDF künye bilgileri çıkarılıyor...");
 
-      await onSubmitPdf(selectedFile, boxType);
+      await onSubmitPdf(selectedFile, targetBoxId);
 
       toast.success("Akademik eser başarıyla eklendi ve vektörleştirildi.");
       setSelectedFile(null);
@@ -116,17 +175,13 @@ export function AddResourceModal({
               <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
                 Yeni Akademik PDF Yükle
               </h2>
-              <p className="text-xs text-muted-foreground">
-                Unstructured + Crossref/Gemini ile otomatik künye (yazar,
-                başlık, yıl, DOI) ayıklama
-              </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="rounded-sm opacity-70 hover:opacity-100 p-1 text-muted-foreground hover:bg-muted disabled:pointer-events-none"
+            className="rounded-sm opacity-70 hover:opacity-100 p-1 text-muted-foreground hover:bg-muted cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
@@ -134,29 +189,73 @@ export function AddResourceModal({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Konu Kutusu (Box Type) Select */}
+          {/* Konu Kutusu (Parent Box) Select */}
           <div className="space-y-1">
             <Label className="text-xs text-foreground font-medium">
-              Konu Kutusu (Box) *
+              Konu Kutusu
             </Label>
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              {BOX_OPTIONS.map((opt) => (
-                <button
-                  type="button"
-                  key={opt.id}
-                  disabled={isSubmitting}
-                  onClick={() => setBoxType(opt.id)}
-                  className={
-                    boxType === opt.id
-                      ? "px-3 py-2 text-xs font-semibold rounded-md border border-primary/60 bg-accent text-foreground shadow-sm cursor-pointer"
-                      : "px-3 py-2 text-xs font-medium rounded-md border border-border bg-background text-muted-foreground hover:bg-muted cursor-pointer"
-                  }
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+            {isLoadingBoxes ? (
+              <div className="flex items-center gap-2 py-3 text-xs text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Kutular yükleniyor...
+              </div>
+            ) : hierarchyError ? (
+              <div className="flex items-center gap-2 p-3 rounded-md bg-muted/40 border border-border text-xs text-muted-foreground">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {hierarchyError}
+              </div>
+            ) : parentBoxes.length === 0 ? (
+              <div className="flex items-center gap-2 p-3 rounded-md bg-muted/40 border border-border text-xs text-muted-foreground">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                Henüz tanımlı bir konu kutunuz bulunmuyor. Lütfen onboarding
+                adımlarını tamamlayın.
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                {parentBoxes.map((parent) => (
+                  <button
+                    type="button"
+                    key={parent.id}
+                    disabled={isSubmitting}
+                    onClick={() => handleParentChange(parent.id)}
+                    className={
+                      selectedParentId === parent.id
+                        ? "px-3 py-2 text-xs font-semibold rounded-md border border-primary/60 bg-accent text-foreground shadow-sm cursor-pointer text-left"
+                        : "px-3 py-2 text-xs font-medium rounded-md border border-border bg-background text-muted-foreground hover:bg-muted cursor-pointer text-left"
+                    }
+                  >
+                    {parent.title}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
+
+          {/* Sub-Box Select (shown when the selected parent has sub-boxes) */}
+          {hasSubBoxes && (
+            <div className="space-y-1">
+              <Label className="text-xs text-foreground font-medium">
+                Alt Kutu
+              </Label>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                {selectedParent?.children.map((child) => (
+                  <button
+                    type="button"
+                    key={child.id}
+                    disabled={isSubmitting}
+                    onClick={() => setSelectedSubBoxId(child.id)}
+                    className={
+                      selectedSubBoxId === child.id
+                        ? "px-3 py-2 text-xs font-semibold rounded-md border border-primary/60 bg-accent text-foreground shadow-sm cursor-pointer text-left"
+                        : "px-3 py-2 text-xs font-medium rounded-md border border-border bg-background text-muted-foreground hover:bg-muted cursor-pointer text-left"
+                    }
+                  >
+                    {child.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* PDF Dropzone */}
           <div className="space-y-1">
@@ -254,17 +353,6 @@ export function AddResourceModal({
             </Card>
           </div>
 
-          {/* Info Notice */}
-          <div className="flex items-start gap-2 p-3 rounded-md bg-muted/40 border border-border text-xs text-muted-foreground">
-            <AlertCircle className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-            <p className="leading-relaxed">
-              Yüklenen PDF dokümanı <strong>Unstructured</strong> ile taranıp
-              Crossref/Gemini ile künye bilgileri (başlık, yazarlar, yayın yılı,
-              mecrası) otomatik ayıklanacak; ardından RAG sohbeti için
-              vektörleştirilecektir.
-            </p>
-          </div>
-
           {/* Buttons */}
           <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
             <Button
@@ -281,7 +369,13 @@ export function AddResourceModal({
               type="submit"
               variant="default"
               size="sm"
-              disabled={isSubmitting || !selectedFile}
+              disabled={
+                isSubmitting ||
+                !selectedFile ||
+                isLoadingBoxes ||
+                !selectedParentId ||
+                (hasSubBoxes && selectedSubBoxId === null)
+              }
               className="gap-2 text-xs font-medium"
             >
               {isSubmitting ? (

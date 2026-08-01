@@ -45,7 +45,6 @@ export interface RawPaper {
   abstract?: string | null;
   metadata: string | null;
   doi: string | null;
-  url: string | null;
   authors: string[];
   year: number | null;
   publisher: string | null;

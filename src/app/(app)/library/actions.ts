@@ -3,6 +3,7 @@
 import * as resourceActions from "./_actions/resource-actions";
 import * as pdfActions from "./_actions/pdf-actions";
 import * as noteActions from "./_actions/note-actions";
+import * as boxActions from "./_actions/box-actions";
 import type { ThesisBoxType, NoteType } from "./_types/types";
 
 /**
@@ -21,7 +22,6 @@ export async function createLibraryResourceAction(input: {
   publisher?: string;
   publicationYear: number;
   doi?: string;
-  url?: string;
   boxType: Exclude<ThesisBoxType, "ALL">;
 }) {
   return resourceActions.createLibraryResourceAction(input);
@@ -85,13 +85,21 @@ export async function requestPdfCreateUploadAction() {
 export async function completePdfCreateUploadAction(
   tempKey: string,
   originalFileName: string,
-  boxType: Exclude<ThesisBoxType, "ALL">,
+  boxId: number,
 ) {
   return pdfActions.completePdfCreateUploadAction(
     tempKey,
     originalFileName,
-    boxType,
+    boxId,
   );
+}
+
+/**
+ * Server Action: Fetches the current user's real thesis box hierarchy
+ * (parent boxes with their sub-boxes) for the PDF upload selector.
+ */
+export async function getBoxHierarchyForLibraryAction() {
+  return boxActions.getBoxHierarchyForLibraryAction();
 }
 
 /**

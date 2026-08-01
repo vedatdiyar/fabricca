@@ -34,6 +34,7 @@ function getLlamaApiKey(): string {
 async function uploadToLlamaParse(
   buffer: Buffer,
   fileName: string,
+  tier: "fast" | "cost_effective" | "agentic" = "cost_effective",
 ): Promise<string> {
   const apiKey = getLlamaApiKey();
   const formData = new FormData();
@@ -45,6 +46,20 @@ async function uploadToLlamaParse(
   formData.append("result_type", "markdown");
   formData.append("split_by_page", "true");
   formData.append("page_separator", "\n\n--- Page {page_number} ---\n\n");
+  formData.append("tier", tier);
+  formData.append("version", "latest");
+  formData.append("language", "tr");
+  formData.append("language", "en");
+  formData.append(
+    "parsing_instruction",
+    "Bu belge akademik bir makale veya kitaptır. Ayrıştırma yaparken aşağıdaki genel akademik kurallara uyunuz:\n" +
+      "1. DÜZEN VE SÜTUN HİYERARŞİSİ: Belge çok sütunlu (multi-column) olsa dahi metin akışını soldan sağa ve yukarıdan aşağıya doğru anlamsal bütünlük içinde birleştirin. Sütunları birbirine karıştırmayın.\n" +
+      "2. KATEGORİ VE TASARIM ETİKETLERİ: Sayfa üst ve alt bilgilerini (header/footer), sayfa numaralarını ve 'DOSYA', 'MAKALELER', 'ARAŞTIRMA', 'ÇEVİRİ', 'EDİTÖRDEN', 'GİRİŞ', 'KİTAP ELEŞTİRİSİ' gibi dergi/bölüm kategorilerini yazar ismi veya başlık parçası sanıp ana metne karıştırmayın.\n" +
+      "3. YAZAR VE BAŞLIK BÜTÜNLÜĞÜ: Makalenin ana başlığını ve yazar adlarını ilk sayfada en üstte tam ve eksiksiz tutun.\n" +
+      "4. DİPNOTLAR (FOOTNOTES): Sayfa altındaki dipnotları, atıfları ve dipnot numaralarını ana metin başlığından ve ana makale gövdesinden ayrı tutun, sayfa sonuna 'Footnotes:' başlığı altında yerleştirin.\n" +
+      "5. TABLOLAR VE FORMÜLLER: Tabloları temiz Markdown tablo formatında (| col1 | col2 |) çıkarın.\n" +
+      "6. TÜRKÇE KARAKTERLER: Metni orijinal dilinde tutun ve Türkçe karakterleri (Ş, İ, Ğ, Ç, Ü, Ö, ı) eksiksiz koruyun, diyakritik harfleri düşürmeyin.",
+  );
 
   const response = await fetch(
     "https://api.cloud.llamaindex.ai/api/parsing/upload",
@@ -240,16 +255,16 @@ export async function parsePdfWithLlamaParse(
   buffer: Buffer,
   fileName: string,
   log: Logger,
+  tier: "fast" | "cost_effective" | "agentic" = "cost_effective",
 ): Promise<LlamaParseChunk[]> {
   log.info("pdf_llamaparse_upload_start", {
     service: "library",
-    data: { fileName, bufferSize: buffer.length },
+    data: { fileName, bufferSize: buffer.length, tier },
   });
 
-  const uploadStart = performance.now();
   let jobId: string;
   try {
-    jobId = await uploadToLlamaParse(buffer, fileName);
+    jobId = await uploadToLlamaParse(buffer, fileName, tier);
   } catch (err) {
     log.error("pdf_llamaparse_upload_failed", {
       service: "library",
@@ -261,15 +276,14 @@ export async function parsePdfWithLlamaParse(
 
   log.info("pdf_llamaparse_upload_success", {
     service: "library",
-    data: {
-      fileName,
-      jobId,
-      durationMs: Math.round(performance.now() - uploadStart),
-    },
+    data: { fileName, jobId },
   });
 
   // Poll until terminal status
-  const pollStart = performance.now();
+  log.info("pdf_llamaparse_poll_start", {
+    service: "library",
+    data: { fileName, jobId },
+  });
   try {
     await pollLlamaParseJob(jobId);
   } catch (err) {
@@ -283,14 +297,14 @@ export async function parsePdfWithLlamaParse(
 
   log.info("pdf_llamaparse_poll_success", {
     service: "library",
-    data: {
-      fileName,
-      jobId,
-      durationMs: Math.round(performance.now() - pollStart),
-    },
+    data: { fileName, jobId },
   });
 
   // Fetch results
+  log.info("pdf_llamaparse_chunking_start", {
+    service: "library",
+    data: { fileName, jobId },
+  });
   const resultPages = await fetchLlamaParseResult(jobId);
   const chunks = buildChunksFromLlamaMarkdown(resultPages);
 

@@ -37,14 +37,6 @@ export async function processResourcePdfPipeline(
   let chunks: DocumentChunk[];
   if (options.precomputedChunks && options.precomputedChunks.length > 0) {
     chunks = options.precomputedChunks;
-    log.info("pdf_parse_using_precomputed_chunks_start", {
-      service: "library",
-      data: { resourceId, chunkCount: chunks.length },
-    });
-    log.info("pdf_parse_using_precomputed_chunks_success", {
-      service: "library",
-      data: { resourceId, chunkCount: chunks.length },
-    });
   } else {
     chunks = await parsePdfWithHybridRouter(buffer, fileName, log);
   }

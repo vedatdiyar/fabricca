@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { getBoxTypeBadgeConfig } from "./sidebar-work-list";
+import { cn } from "@/lib/utils";
 import { PdfUploadDropzone } from "./pdf-upload-dropzone";
 import type {
   LibraryResourceItem,
@@ -146,11 +147,22 @@ export function ResourceDetail({
       {/* 1. TOP METADATA HEADER / KÜNYE */}
       <div className="space-y-4 border-b border-border pb-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          {/* Box Badge */}
-          <div className="flex items-center gap-2">
+          {/* Box Badge(s) */}
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline" className={boxBadge.className}>
               {boxBadge.label}
             </Badge>
+            {resource.subBoxTitle && (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "max-w-full text-[10px] px-1.5 py-0.5 border font-medium",
+                  boxBadge.className,
+                )}
+              >
+                <span className="truncate">{resource.subBoxTitle}</span>
+              </Badge>
+            )}
           </div>
 
           {/* Toggle Read Status Button */}

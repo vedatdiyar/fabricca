@@ -74,6 +74,19 @@ function LibraryPageContent() {
     }
   };
 
+  /**
+   * Clears the active selection and removes the ?id= query param from the URL.
+   * Used after deleting the currently selected resource.
+   */
+  const handleClearSelection = () => {
+    setSelectedResourceId(null);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("id");
+      window.history.replaceState({}, "", url.toString());
+    }
+  };
+
   // Load resources & notes from Neon PostgreSQL DB on mount
   useEffect(() => {
     async function loadData() {
@@ -138,10 +151,7 @@ function LibraryPageContent() {
    * Handles creating a new resource via PDF upload with metadata extraction.
    * Uses presigned URL flow to bypass Vercel's 4.5MB serverless body limit.
    */
-  const handleCreateResourceFromPdf = async (
-    file: File,
-    boxType: Exclude<ThesisBoxType, "ALL">,
-  ) => {
+  const handleCreateResourceFromPdf = async (file: File, boxId: number) => {
     try {
       // Step 1: Get presigned upload URL
       const requestRes = await requestPdfCreateUploadAction();
@@ -173,7 +183,7 @@ function LibraryPageContent() {
       const completeRes = await completePdfCreateUploadAction(
         requestRes.tempKey,
         file.name,
-        boxType,
+        boxId,
       );
       if (!completeRes.success) {
         toast.error(
@@ -307,16 +317,9 @@ function LibraryPageContent() {
     if (res.success) {
       setResources((prev) => prev.filter((r) => r.id !== resourceId));
 
-      // If the deleted resource was selected, move to the next available
+      // If the deleted resource was selected, clear the selection and remove the URL id param
       if (selectedResourceId === resourceId) {
-        const remaining = resources.filter((r) => r.id !== resourceId);
-        if (remaining.length > 0) {
-          const deletedIndex = resources.findIndex((r) => r.id === resourceId);
-          const nextIndex = Math.min(deletedIndex, remaining.length - 1);
-          handleSelectResource(remaining[nextIndex].id);
-        } else {
-          setSelectedResourceId(null);
-        }
+        handleClearSelection();
       }
 
       toast.success("Eser ve tüm ilişkili veriler kalıcı olarak silindi.");
