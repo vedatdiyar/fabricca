@@ -149,32 +149,38 @@ async function fetchOpenLibraryByIsbn(
       publisher = typeof p === "string" ? p : p.name;
     }
 
-    // 2. Extract Authors (fetches author name via key if name property is omitted)
-    const authors: string[] = [];
+    // 2. Extract Authors (fetches author name via key concurrently if name property is omitted)
+    let authors: string[] = [];
     if (Array.isArray(data.authors)) {
-      for (const a of data.authors) {
-        if (typeof a === "string") {
-          authors.push(a);
-        } else if (a.name) {
-          authors.push(a.name);
-        } else if (a.key) {
-          try {
-            const authorRes = await fetch(
-              `https://openlibrary.org${a.key}.json`,
-              {
-                headers: { "User-Agent": CROSSREF_USER_AGENT },
-                signal: AbortSignal.timeout(5000),
-              },
-            );
-            if (authorRes.ok) {
-              const authorData = (await authorRes.json()) as { name?: string };
-              if (authorData.name) authors.push(authorData.name);
+      const authorPromises = data.authors.map(
+        async (a: string | { name?: string; key?: string }) => {
+          if (typeof a === "string") return a;
+          if (a.name) return a.name;
+          if (a.key) {
+            try {
+              const authorRes = await fetch(
+                `https://openlibrary.org${a.key}.json`,
+                {
+                  headers: { "User-Agent": CROSSREF_USER_AGENT },
+                  signal: AbortSignal.timeout(5000),
+                },
+              );
+              if (authorRes.ok) {
+                const authorData = (await authorRes.json()) as {
+                  name?: string;
+                };
+                if (authorData.name) return authorData.name;
+              }
+            } catch {
+              /* ignore author key fetch failure */
             }
-          } catch {
-            /* ignore author key fetch failure */
           }
-        }
-      }
+          return null;
+        },
+      );
+
+      const resolved = await Promise.all(authorPromises);
+      authors = resolved.filter((name): name is string => Boolean(name));
     }
 
     return {

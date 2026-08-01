@@ -3,11 +3,21 @@
 import { z } from "zod";
 import type { Logger } from "@/lib/logger";
 import { withRetry, HttpError, DEFAULT_MAX_DELAY } from "@/lib/api-utils";
+import { createConcurrencyLimiter } from "@/lib/rate-limiter";
 
 const CEREBRAS_BASE_URL = "https://api.cerebras.ai/v1";
 
+/**
+ * Module-level singleton queue — enforces a single in-flight Cerebras HTTP
+ * request at a time. The Free Trial tier exposes a tight per-minute request
+ * ceiling; serializing our own traffic prevents the server-side
+ * `queue_exceeded` burst before it happens. Retry sleeps happen outside this
+ * queue, so a waiting call can proceed while another call is backing off.
+ */
+const cerebrasRequestQueue = createConcurrencyLimiter(1);
+
 const CEREBRAS_RETRY_CONFIG = {
-  maxRetries: 3,
+  maxRetries: 5,
   baseDelay: 500,
   maxDelay: DEFAULT_MAX_DELAY,
   isRetryable: (error: unknown) => {
@@ -28,8 +38,9 @@ const CEREBRAS_RETRY_CONFIG = {
 
 /**
  * Sends a chat completion request to the Cerebras API with structured JSON output
- * enforcement (json_schema + strict mode) and Full Jitter retry on 429/5xx.
- * Returns the parsed, type-safe result.
+ * enforcement (json_schema + strict mode), Full Jitter retry on 429/5xx, and a
+ * module-level concurrency cap (max 1 in-flight request) to stay within the
+ * Free Trial per-minute limit. Returns the parsed, type-safe result.
  *
  * @param modelName - Cerebras model ID (e.g. "gemma-4-31b")
  * @param systemInstruction - System-level instruction / persona
@@ -68,30 +79,32 @@ export async function generateStructuredContent<T>(
     async () => {
       attempts++;
 
-      const response = await fetch(`${CEREBRAS_BASE_URL}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: modelName,
-          messages: [
-            { role: "system", content: systemInstruction },
-            { role: "user", content: prompt },
-          ],
-          response_format: {
-            type: "json_schema",
-            json_schema: {
-              name: stage,
-              strict: true,
-              schema: jsonSchema,
-            },
+      const response = await cerebrasRequestQueue.exec(() =>
+        fetch(`${CEREBRAS_BASE_URL}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
           },
-          temperature: 0,
-          max_tokens: 1024,
+          body: JSON.stringify({
+            model: modelName,
+            messages: [
+              { role: "system", content: systemInstruction },
+              { role: "user", content: prompt },
+            ],
+            response_format: {
+              type: "json_schema",
+              json_schema: {
+                name: stage,
+                strict: true,
+                schema: jsonSchema,
+              },
+            },
+            temperature: 0,
+            max_tokens: 1024,
+          }),
         }),
-      });
+      );
 
       if (!response.ok) {
         const errorBody = await response.text().catch(() => "");

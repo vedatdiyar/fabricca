@@ -226,7 +226,7 @@ export async function completeResourcePdfUploadAction(
       service: "library",
       data: { resourceId, tempKey },
     });
-    const buffer = await getPdfFromR2(tempKey, log);
+    const buffer = await getPdfFromR2(tempKey);
     log.info("complete_resource_pdf_fetch_from_r2_success", {
       service: "library",
       data: { resourceId, size: buffer.length },
@@ -453,7 +453,7 @@ export async function completePdfCreateUploadAction(
       service: "library",
       data: { tempKey },
     });
-    const buffer = await getPdfFromR2(tempKey, log);
+    const buffer = await getPdfFromR2(tempKey);
     log.info("complete_pdf_create_fetch_from_r2_success", {
       service: "library",
       data: { size: buffer.length },

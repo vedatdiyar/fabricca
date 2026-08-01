@@ -31,44 +31,60 @@ export async function analyzePdfLayout(
   const pageTexts: string[] = new Array<string>(pageCount);
   let sampledTotalChars = 0;
 
-  // 1. Sample first 20 pages for layout analysis and text extraction
-  for (let i = 1; i <= sampledPageCount; i++) {
-    try {
-      const page = await doc.getPage(i);
-      const viewport = page.getViewport({ scale: 1.0 });
-      const textContent = await page.getTextContent();
+  // 1. Sample first 20 pages in parallel for layout analysis and text extraction
+  const sampleIndices = Array.from(
+    { length: sampledPageCount },
+    (_, idx) => idx + 1,
+  );
 
-      const items: TextItem[] = textContent.items
-        .filter((it: Record<string, unknown>) => typeof it.str === "string")
-        .map((it: Record<string, unknown>) => ({
-          str: (it.str as string) || "",
-          x: (it.transform as number[])[4] || 0,
-          y: (it.transform as number[])[5] || 0,
-        }));
+  const sampleResults = await Promise.all(
+    sampleIndices.map(async (i) => {
+      try {
+        const page = await doc.getPage(i);
+        const viewport = page.getViewport({ scale: 1.0 });
+        const textContent = await page.getTextContent();
 
-      const report = analyzePageLayout(items, viewport.width, i);
-      layoutReports.push(report);
-      sampledTotalChars += report.charCount;
+        const items: TextItem[] = textContent.items
+          .filter((it: Record<string, unknown>) => typeof it.str === "string")
+          .map((it: Record<string, unknown>) => ({
+            str: (it.str as string) || "",
+            x: (it.transform as number[])[4] || 0,
+            y: (it.transform as number[])[5] || 0,
+          }));
 
-      const textExtracted = extractColumnAwareText(
-        items,
-        viewport.width,
-        viewport.height,
-      );
-      pageTexts[i - 1] = textExtracted
-        ? `[PDFSayfa ${i}]\n${textExtracted}`
-        : "";
-    } catch {
-      layoutReports.push({
-        pageIndex: i,
-        columnCount: 1,
-        hasLineScatter: false,
-        itemCount: 0,
-        charCount: 0,
-        gapThreshold: null,
-      });
-      pageTexts[i - 1] = "";
-    }
+        const report = analyzePageLayout(items, viewport.width, i);
+        const textExtracted = extractColumnAwareText(
+          items,
+          viewport.width,
+          viewport.height,
+        );
+        const pageText = textExtracted
+          ? `[PDFSayfa ${i}]\n${textExtracted}`
+          : "";
+
+        return { i, report, pageText, charCount: report.charCount };
+      } catch {
+        return {
+          i,
+          report: {
+            pageIndex: i,
+            columnCount: 1 as const,
+            hasLineScatter: false,
+            itemCount: 0,
+            charCount: 0,
+            gapThreshold: null,
+          },
+          pageText: "",
+          charCount: 0,
+        };
+      }
+    }),
+  );
+
+  for (const res of sampleResults) {
+    layoutReports.push(res.report);
+    pageTexts[res.i - 1] = res.pageText;
+    sampledTotalChars += res.charCount;
   }
 
   const avgCharsPerPage =
@@ -132,28 +148,42 @@ export async function analyzePdfLayout(
   }
 
   // 2. Local path: extract text for remaining pages (sampledPageCount + 1 ... pageCount)
-  for (let i = sampledPageCount + 1; i <= pageCount; i++) {
-    try {
-      const page = await doc.getPage(i);
-      const viewport = page.getViewport({ scale: 1.0 });
-      const textContent = await page.getTextContent();
-      const items: TextItem[] = textContent.items
-        .filter((it: Record<string, unknown>) => typeof it.str === "string")
-        .map((it: Record<string, unknown>) => ({
-          str: (it.str as string) || "",
-          x: (it.transform as number[])[4] || 0,
-          y: (it.transform as number[])[5] || 0,
-        }));
-      const textExtracted = extractColumnAwareText(
-        items,
-        viewport.width,
-        viewport.height,
+  if (pageCount > sampledPageCount) {
+    const remainingIndices = Array.from(
+      { length: pageCount - sampledPageCount },
+      (_, idx) => sampledPageCount + 1 + idx,
+    );
+    const chunkSize = 10;
+    for (let c = 0; c < remainingIndices.length; c += chunkSize) {
+      const pageChunk = remainingIndices.slice(c, c + chunkSize);
+      await Promise.all(
+        pageChunk.map(async (i) => {
+          try {
+            const page = await doc.getPage(i);
+            const viewport = page.getViewport({ scale: 1.0 });
+            const textContent = await page.getTextContent();
+            const items: TextItem[] = textContent.items
+              .filter(
+                (it: Record<string, unknown>) => typeof it.str === "string",
+              )
+              .map((it: Record<string, unknown>) => ({
+                str: (it.str as string) || "",
+                x: (it.transform as number[])[4] || 0,
+                y: (it.transform as number[])[5] || 0,
+              }));
+            const textExtracted = extractColumnAwareText(
+              items,
+              viewport.width,
+              viewport.height,
+            );
+            pageTexts[i - 1] = textExtracted
+              ? `[PDFSayfa ${i}]\n${textExtracted}`
+              : "";
+          } catch {
+            pageTexts[i - 1] = "";
+          }
+        }),
       );
-      pageTexts[i - 1] = textExtracted
-        ? `[PDFSayfa ${i}]\n${textExtracted}`
-        : "";
-    } catch {
-      pageTexts[i - 1] = "";
     }
   }
 

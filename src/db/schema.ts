@@ -309,14 +309,7 @@ export const chunks = pgTable(
     ),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => [
-    index("idx_chunks_source_id").on(table.sourceId),
-    index("idx_chunks_embedding").using(
-      "hnsw",
-      table.embedding.op("vector_cosine_ops"),
-    ),
-    index("idx_chunks_search_vector").using("gin", table.searchVector),
-  ],
+  (table) => [index("idx_chunks_source_id").on(table.sourceId)],
 );
 
 /** Chunk type for select queries. */

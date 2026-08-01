@@ -38,50 +38,59 @@ export async function generateCloudflareEmbeddings(
     batches.push(texts.slice(i, i + batchSize));
   }
 
-  const batchResults = await Promise.all(
-    batches.map(async (batchTexts, batchIndex) => {
-      try {
-        const response = await fetch(url, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            text: batchTexts,
-          }),
-        });
+  // Execute batches with controlled concurrency (max 5 parallel HTTP requests) to prevent GPU queue delays
+  const batchResults: number[][][] = [];
+  const maxConcurrency = 5;
 
-        if (!response.ok) {
-          const errText = await response.text().catch(() => "");
-          throw new Error(
-            `Cloudflare AI API returned ${response.status}: ${errText}`,
-          );
+  for (let i = 0; i < batches.length; i += maxConcurrency) {
+    const chunk = batches.slice(i, i + maxConcurrency);
+    const chunkResults = await Promise.all(
+      chunk.map(async (batchTexts, batchOffset) => {
+        const batchIndex = i + batchOffset;
+        try {
+          const response = await fetch(url, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              text: batchTexts,
+            }),
+          });
+
+          if (!response.ok) {
+            const errText = await response.text().catch(() => "");
+            throw new Error(
+              `Cloudflare AI API returned ${response.status}: ${errText}`,
+            );
+          }
+
+          const data = (await response.json()) as {
+            result?: { data?: number[][] };
+            success?: boolean;
+          };
+
+          if (!data.success || !data.result?.data) {
+            throw new Error(
+              `Cloudflare AI response invalid: ${JSON.stringify(data)}`,
+            );
+          }
+
+          return data.result.data;
+        } catch (error) {
+          logger?.error("cloudflare_embed_batch_failed", {
+            service: "cloudflare",
+            error,
+            data: { batchIndex, textCount: batchTexts.length },
+          });
+          // Fill fallback 1024-zero vectors for failed batch
+          return batchTexts.map(() => new Array(1024).fill(0));
         }
-
-        const data = (await response.json()) as {
-          result?: { data?: number[][] };
-          success?: boolean;
-        };
-
-        if (!data.success || !data.result?.data) {
-          throw new Error(
-            `Cloudflare AI response invalid: ${JSON.stringify(data)}`,
-          );
-        }
-
-        return data.result.data;
-      } catch (error) {
-        logger?.error("cloudflare_embed_batch_failed", {
-          service: "cloudflare",
-          error,
-          data: { batchIndex, textCount: batchTexts.length },
-        });
-        // Fill fallback 1024-zero vectors for failed batch
-        return batchTexts.map(() => new Array(1024).fill(0));
-      }
-    }),
-  );
+      }),
+    );
+    batchResults.push(...chunkResults);
+  }
 
   return batchResults.flat();
 }

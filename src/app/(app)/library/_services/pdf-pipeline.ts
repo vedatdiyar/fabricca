@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { sources, chunks as chunkRows } from "@/db/schema";
 import { uploadPdfToR2 } from "@/lib/services/r2";
@@ -77,36 +77,77 @@ export async function processResourcePdfPipeline(
     },
   });
 
-  // ── 4. Batch Insert into pgvector (50 rows per query in parallel) ──
+  // ── 4. High-Performance Batch Insert into pgvector via PostgreSQL UNNEST ──
   log.info("pdf_db_batch_insert_start", {
     service: "library",
     data: { resourceId },
   });
 
   const dbStart = performance.now();
-  await db.delete(chunkRows).where(eq(chunkRows.sourceId, resourceId));
+  await db.transaction(async (tx) => {
+    await tx.delete(chunkRows).where(eq(chunkRows.sourceId, resourceId));
 
-  if (chunks.length > 0) {
-    const recordsToInsert = chunks.map((chunk, index) => ({
-      sourceId: resourceId,
-      chunkIndex: chunk.chunkIndex,
-      printedPageNumber: chunk.printedPageNumber,
-      pdfPageNumber: chunk.pdfPageNumber,
-      sectionTitle: chunk.sectionTitle,
-      content: chunk.content,
-      parentContent: chunk.parentContent || chunk.content,
-      tokenCount: chunk.tokenCount,
-      embedding: embeddings[index] || new Array(1024).fill(0),
-    }));
+    if (chunks.length > 0) {
+      const batchSize = 300;
+      const batches = [];
+      for (let i = 0; i < chunks.length; i += batchSize) {
+        batches.push({
+          batchChunks: chunks.slice(i, i + batchSize),
+          batchEmbeddings: embeddings.slice(i, i + batchSize),
+        });
+      }
 
-    const batchSize = 50;
-    const insertPromises = [];
-    for (let i = 0; i < recordsToInsert.length; i += batchSize) {
-      const batch = recordsToInsert.slice(i, i + batchSize);
-      insertPromises.push(db.insert(chunkRows).values(batch));
+      await Promise.all(
+        batches.map(async ({ batchChunks, batchEmbeddings }) => {
+          const sourceIds = batchChunks.map(() => resourceId);
+          const chunkIndexes = batchChunks.map((c) => c.chunkIndex);
+          const printedPageNumbers = batchChunks.map((c) =>
+            c.printedPageNumber != null ? c.printedPageNumber : "NULL",
+          );
+          const pdfPageNumbers = batchChunks.map((c) =>
+            c.pdfPageNumber != null ? c.pdfPageNumber : "NULL",
+          );
+          const sectionTitles = batchChunks.map((c) =>
+            c.sectionTitle
+              ? `'${c.sectionTitle.replace(/\0/g, "").replace(/'/g, "''")}'`
+              : "NULL",
+          );
+          const contents = batchChunks.map(
+            (c) => `'${c.content.replace(/\0/g, "").replace(/'/g, "''")}'`,
+          );
+          const parentContents = batchChunks.map(
+            (c) =>
+              `'${(c.parentContent || c.content).replace(/\0/g, "").replace(/'/g, "''")}'`,
+          );
+          const tokenCounts = batchChunks.map((c) => c.tokenCount ?? 0);
+          const embeddingStrings = batchChunks.map((_, index) => {
+            const emb = batchEmbeddings[index] || new Array(1024).fill(0);
+            return `'[${emb.join(",")}]'::vector`;
+          });
+
+          const query = sql.raw(`
+            INSERT INTO chunks (
+              source_id, chunk_index, printed_page_number, pdf_page_number, 
+              section_title, content, parent_content, token_count, embedding
+            )
+            SELECT * FROM UNNEST(
+              ARRAY[${sourceIds.join(",")}]::int[],
+              ARRAY[${chunkIndexes.join(",")}]::int[],
+              ARRAY[${printedPageNumbers.join(",")}]::int[],
+              ARRAY[${pdfPageNumbers.join(",")}]::int[],
+              ARRAY[${sectionTitles.join(",")}]::text[],
+              ARRAY[${contents.join(",")}]::text[],
+              ARRAY[${parentContents.join(",")}]::text[],
+              ARRAY[${tokenCounts.join(",")}]::int[],
+              ARRAY[${embeddingStrings.join(",")}]
+            )
+          `);
+
+          await tx.execute(query);
+        }),
+      );
     }
-    await Promise.all(insertPromises);
-  }
+  });
 
   log.info("pdf_db_batch_insert_success", {
     service: "library",
