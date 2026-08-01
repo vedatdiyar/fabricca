@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense, useRef } from "react";
+import React, { useState, useEffect, Suspense, useRef, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { BookMarked } from "lucide-react";
 import { SidebarWorkList } from "./_components/sidebar-work-list";
@@ -38,7 +38,7 @@ export default function LibraryPage() {
 /**
  * Digital Library Page component.
  * Manages database-backed academic literature resources, PDF uploads, RAG vectorization,
- * note taking, and Kartoteks card index integration.
+ * note taking, and citation card integration.
  */
 function LibraryPageContent() {
   const searchParams = useSearchParams();
@@ -131,21 +131,23 @@ function LibraryPageContent() {
   );
 
   // Sort resources: PDF uploaded first → subjectProblem → theoreticalFramework → methodology → primaryMaterial → createdAt
-  const BOX_SORT_ORDER: Record<string, number> = {
-    SUBJECT_PROBLEM: 0,
-    THEORETICAL_FRAMEWORK: 1,
-    METHODOLOGY: 2,
-    PRIMARY_MATERIAL: 3,
-  };
-  const sortedResources = [...resources].sort((a, b) => {
-    const aHasPdf = a.pdfStatus && a.pdfStatus !== "NOT_UPLOADED" ? 0 : 1;
-    const bHasPdf = b.pdfStatus && b.pdfStatus !== "NOT_UPLOADED" ? 0 : 1;
-    if (aHasPdf !== bHasPdf) return aHasPdf - bHasPdf;
-    const orderA = BOX_SORT_ORDER[a.boxType] ?? 99;
-    const orderB = BOX_SORT_ORDER[b.boxType] ?? 99;
-    if (orderA !== orderB) return orderA - orderB;
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
+  const sortedResources = useMemo(() => {
+    const BOX_SORT_ORDER: Record<string, number> = {
+      SUBJECT_PROBLEM: 0,
+      THEORETICAL_FRAMEWORK: 1,
+      METHODOLOGY: 2,
+      PRIMARY_MATERIAL: 3,
+    };
+    return [...resources].sort((a, b) => {
+      const aHasPdf = a.pdfStatus && a.pdfStatus !== "NOT_UPLOADED" ? 0 : 1;
+      const bHasPdf = b.pdfStatus && b.pdfStatus !== "NOT_UPLOADED" ? 0 : 1;
+      if (aHasPdf !== bHasPdf) return aHasPdf - bHasPdf;
+      const orderA = BOX_SORT_ORDER[a.boxType] ?? 99;
+      const orderB = BOX_SORT_ORDER[b.boxType] ?? 99;
+      if (orderA !== orderB) return orderA - orderB;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [resources]);
 
   /**
    * Handles creating a new resource via PDF upload with metadata extraction.
@@ -290,7 +292,7 @@ function LibraryPageContent() {
 
     if (res.success && res.data) {
       setNotes((prev) => [res.data, ...prev]);
-      toast.success("Not ve kartoteks fişi kaydedildi.");
+      toast.success("Not ve alıntı fişi kaydedildi.");
     } else {
       toast.error(res.error || "Not kaydedilirken hata oluştu.");
     }

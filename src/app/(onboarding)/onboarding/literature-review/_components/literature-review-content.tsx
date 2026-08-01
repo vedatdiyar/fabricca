@@ -20,6 +20,7 @@ import {
   useLiteratureReview,
   type BoxStatus,
 } from "../_hooks/use-literature-review";
+import { getBoxTypeLabel } from "@/lib/box-constants";
 
 /**
  * Renders a manual entry form for archival/empirical boxes so the user can
@@ -332,13 +333,6 @@ export function LiteratureReviewContent() {
     handleFinalize,
   } = useLiteratureReview();
 
-  const boxTypeLabels: Record<string, string> = {
-    SUBJECT_PROBLEM: "Araştırma Problemi",
-    THEORETICAL_FRAMEWORK: "Teorik Çerçeve",
-    PRIMARY_MATERIAL: "Veri Kaynağı",
-    METHODOLOGY: "Yöntem",
-  };
-
   if (loading) {
     return (
       <LoadingSpinner variant="full" message="Konu kutuları yükleniyor..." />
@@ -377,7 +371,7 @@ export function LiteratureReviewContent() {
                 </h2>
                 {subBox.boxType && (
                   <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary ml-auto">
-                    {boxTypeLabels[subBox.boxType] ?? subBox.boxType}
+                    {getBoxTypeLabel(subBox.boxType)}
                   </span>
                 )}
               </div>

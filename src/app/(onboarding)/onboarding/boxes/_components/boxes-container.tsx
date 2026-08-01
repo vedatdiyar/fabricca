@@ -17,7 +17,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { AIBanner } from "@/components/ai-banner";
 import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
 import { fetchBoxesWithFullShape } from "../../_services/fetch-actions";
-import { BOX_ORDER_WEIGHT, BOX_TYPE_LABELS } from "../../_lib/box-constants";
+import { BOX_ORDER_WEIGHT, BOX_TYPE_LABELS } from "@/lib/box-constants";
 import type { GeminiThesisBox } from "@/lib/types";
 
 /**
@@ -211,7 +211,7 @@ const PrimaryMaterialSection = memo(function PrimaryMaterialSection() {
     <div className="pt-4 space-y-2 mt-5">
       <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
         <Archive className="w-3.5 h-3.5 text-muted-foreground" />
-        Arşiv / Birincil Malzeme Alanı
+        Arşiv / Birincil Kaynak Alanı
       </h4>
       <p className="text-xs text-muted-foreground leading-relaxed">
         Bu kutu, saha çalışması verileri ve birincil kaynaklar için ayrılmıştır.

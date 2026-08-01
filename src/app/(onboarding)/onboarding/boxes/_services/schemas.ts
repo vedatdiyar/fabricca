@@ -47,8 +47,8 @@ export const boxStructureSchema = z.object({
   }),
   subjectProblem: structureQuadrantSchema,
   theoreticalFramework: structureQuadrantSchema,
-  primaryMaterial: structureQuadrantSchema,
   methodology: structureQuadrantSchema,
+  primaryMaterial: structureQuadrantSchema,
 });
 
 export type RawBoxStructureResponse = z.infer<typeof boxStructureSchema>;
@@ -115,15 +115,15 @@ export const boxStructureJsonSchema: JsonSchema = {
     },
     subjectProblem: buildStructureQuadrantJsonSchema(),
     theoreticalFramework: buildStructureQuadrantJsonSchema(),
-    primaryMaterial: buildStructureQuadrantJsonSchema(),
     methodology: buildStructureQuadrantJsonSchema(),
+    primaryMaterial: buildStructureQuadrantJsonSchema(),
   },
   required: [
     "analysis",
     "subjectProblem",
     "theoreticalFramework",
-    "primaryMaterial",
     "methodology",
+    "primaryMaterial",
   ],
 };
 

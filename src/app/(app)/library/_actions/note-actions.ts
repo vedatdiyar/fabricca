@@ -39,7 +39,7 @@ export async function createResourceNoteAction(input: {
         pageNumber: input.pageNumber.trim(),
         noteType: input.noteType,
         content: input.content.trim(),
-        sentToCardIndex: true,
+        sentToCitationCards: true,
       })
       .returning();
 
@@ -56,7 +56,7 @@ export async function createResourceNoteAction(input: {
         pageNumber: newNote.pageNumber,
         noteType: newNote.noteType as NoteType,
         content: newNote.content,
-        sentToCardIndex: newNote.sentToCardIndex,
+        sentToCitationCards: newNote.sentToCitationCards,
         createdAt: newNote.createdAt.toISOString(),
       },
     };

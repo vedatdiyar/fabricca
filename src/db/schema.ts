@@ -252,7 +252,9 @@ export const notes = pgTable(
     pageNumber: varchar("page_number", { length: 50 }).notNull(),
     noteType: noteTypeEnum("note_type").notNull(),
     content: text("content").notNull(),
-    sentToCardIndex: boolean("sent_to_card_index").default(true).notNull(),
+    sentToCitationCards: boolean("sent_to_citation_cards")
+      .default(true)
+      .notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },

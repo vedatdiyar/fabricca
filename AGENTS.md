@@ -16,7 +16,7 @@ Bu uygulama, yüksek lisans ve doktora öğrencilerinin akademik araştırma, te
 - **Proje dışarıdan serbest kayda tamamen kapalıdır.** Yalnızca veri tabanında seed edilmiş izinli iki kullanıcının kullanımına açık, özel akademik bir platformdur.
 - Sistem, birbirini görmeyen bağımsız araştırmacıların bireysel olarak kullanacağı bir yapıya sahiptir.
 - Temel odak noktası; akademik makalelerin sisteme yüklenmesi, bu makalelerin RAG (Retrieval-Augmented Generation) ve vektör tabanlı bir "Danışman Odası" chat sistemiyle sorgulanabilmesi, yapay zeka destekli literatür taraması ve özgünlük analizlerinin yapılmasıdır.
-- Ayrıca geleneksel akademik çalışma yöntemlerinden olan "Kartoteks" sistemini dijitalleştirerek; makalelerden notlar çıkarma, alıntıları fişleme ve bunları ilgili konu kutularına (box) yerleştirme imkanı sunar.
+- Ayrıca geleneksel akademik çalışma yöntemlerinden olan "Kartoteks" sistemini dijitalleştirerek; makalelerden notlar çıkarma, alıntıları fişleme ve bunları ilgili konu kutularına (box) yerleştirme imkanı sunar. Bu dijital kartoteks alanı ürün içinde **"Alıntı Fişleri"** olarak adlandırılır.
 - Arka planda amaca ve özelliğe göre özelleştirilmiş farklı Büyük Dil Modelleri (LLM) ve ajanlar görev yapar.
 
 ## 3. Teknoloji Yığını (The Stack)
@@ -76,7 +76,7 @@ src/
 │   ├── (app)/                            # Giriş sonrası ana uygulama rotaları (Layout paylaşımlı)
 │   │   ├── _services/                    # Route-group seviyesinde paylaşılan servisler
 │   │   ├── dashboard/                    # Ana panel -> /dashboard
-│   │   ├── card-index/                   # Kartoteks -> /card-index
+│   │   ├── citation-cards/              # Alıntı Fişleri -> /citation-cards
 │   │   ├── advisor/                      # Danışman Odası (RAG Chat) -> /advisor
 │   │   └── library/                      # Kütüphane -> /library
 │   └── api/                              # API route handler'ları
@@ -90,6 +90,7 @@ src/
 │   └── reset.ts                          # Geliştirme amaçlı şema sıfırlama
 ├── lib/                                  # Ortak kütüphaneler ve servis entegrasyonları
 │   ├── constants.ts                      # Model sabitleri (FLASH_LITE_31, GEMINI_SEED, CEREBRAS_MODEL)
+│   ├── box-constants.ts                  # Konu kutusu türleri için tek kanonik kaynak (etiketler + BOX_ORDER_WEIGHT + DEFAULT_PARENT_BOXES)
 │   ├── logger.ts                         # Yapılandırılmış Logger sınıfı
 │   ├── error-utils.ts                    # Hata maskeleme ve sınıflandırma yardımcıları
 │   ├── rate-limiter.ts                   # API istek sınırlandırma
@@ -148,7 +149,7 @@ Google Gemini SDK standartları, thinkingConfig seviyeleri, prompt hiyerarşisi,
 ### 6.6. Yasaklar (YAPMA)
 
 - **Yarım Bırakma:** Kod üretirken veya refaktör yaparken asla `// ... eski kodlar buraya gelecek ...` veya `// TODO:` şeklinde geçici/yarım bırakılmış yorum satırları kullanma. Ancak, ileride geliştirilecek sayfalar için (örneğin placeholder sayfalar) mecburen minimal `<div />` bırakılması bu kuralın istisnasıdır.
-- **Dosya Yollarını Karıştırma:** Rota grubu olan `(app)` veya `(auth)` ifadelerini linkleme yaparken kullanma. Navigasyon her zaman doğrudan görünür URL rotasına (`/dashboard`, `/card-index`) yapılmalıdır.
+- **Dosya Yollarını Karıştırma:** Rota grubu olan `(app)` veya `(auth)` ifadelerini linkleme yaparken kullanma. Navigasyon her zaman doğrudan görünür URL rotasına (`/dashboard`, `/citation-cards`) yapılmalıdır.
 - **Gizli/Sabit Değişken Sızdırma:** `.env` dosyalarını, gizli anahtarları veya hassas API token'larını hiçbir koşulda istemci tarafındaki (client-side) koda veya kod deposuna gömme.
 
 ### 6.7. AGENTS.md Güncelleme Protokolü

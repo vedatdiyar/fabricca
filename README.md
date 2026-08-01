@@ -60,7 +60,7 @@ taraması yapar:
 Makalelerinizin vektör embedding'leri (Cloudflare Workers AI / Qwen3) üzerinden
 RAG tabanlı sorgulanabildiği yapay zeka sohbet arayüzü.
 
-### 6. Kartoteks — Geliştirme Aşamasında
+### 6. Alıntı Fişleri — Geliştirme Aşamasında
 
 Geleneksel akademik kartoteks sisteminin dijital versiyonu. Makalelerden not
 çıkarma, alıntı fişleme ve konu kutularına yerleştirme imkanı sunar.
@@ -133,7 +133,7 @@ src/
 │       ├── dashboard/               # /dashboard — Genel Özet
 │       ├── library/                 # /library — Kütüphane
 │       ├── advisor/                 # /advisor — Danışman Odası (placeholder)
-│       └── card-index/              # /card-index — Kartoteks (placeholder)
+│       └── citation-cards/          # /citation-cards — Alıntı Fişleri (placeholder)
 ├── components/                      # Ortak bileşenler
 │   ├── header.tsx                   # Üst navigasyon
 │   ├── literature-reader.tsx        # Literatür okuyucu

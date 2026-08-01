@@ -1,7 +1,7 @@
 /**
- * Kartoteks sayfası.
+ * Alıntı Fişleri sayfası.
  * Fişleme ve kutu yönetimi için placeholder.
  */
-export default function CardIndexPage() {
+export default function CitationCardsPage() {
   return <div />;
 }

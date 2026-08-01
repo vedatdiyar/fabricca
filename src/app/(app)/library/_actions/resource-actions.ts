@@ -12,6 +12,7 @@ import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import { deletePdfFromR2 } from "@/lib/services/r2";
 import { getBoxDefaultTitle } from "../_services/helpers";
+import { DEFAULT_PARENT_BOXES } from "@/lib/box-constants";
 import type { ThesisBoxType, NoteType } from "../_types/types";
 
 /**
@@ -53,53 +54,19 @@ export async function getLibraryResourcesAction() {
         })
         .returning();
 
-      const defaultBoxes = [
-        {
-          matrixId: newMatrix.id,
-          boxType: "SUBJECT_PROBLEM" as const,
-          title: "Konu ve Problem",
-        },
-        {
-          matrixId: newMatrix.id,
-          boxType: "THEORETICAL_FRAMEWORK" as const,
-          title: "Kuramsal Çerçeve",
-        },
-        {
-          matrixId: newMatrix.id,
-          boxType: "PRIMARY_MATERIAL" as const,
-          title: "Birincil Malzeme",
-        },
-        {
-          matrixId: newMatrix.id,
-          boxType: "METHODOLOGY" as const,
-          title: "Metodoloji",
-        },
-      ];
+      const defaultBoxes = DEFAULT_PARENT_BOXES.map((b) => ({
+        matrixId: newMatrix.id,
+        boxType: b.boxType,
+        title: b.title,
+      }));
 
       boxes = await db.insert(boxRows).values(defaultBoxes).returning();
     } else if (boxes.length === 0) {
-      const defaultBoxes = [
-        {
-          matrixId: matrix.id,
-          boxType: "SUBJECT_PROBLEM" as const,
-          title: "Konu ve Problem",
-        },
-        {
-          matrixId: matrix.id,
-          boxType: "THEORETICAL_FRAMEWORK" as const,
-          title: "Kuramsal Çerçeve",
-        },
-        {
-          matrixId: matrix.id,
-          boxType: "PRIMARY_MATERIAL" as const,
-          title: "Birincil Malzeme",
-        },
-        {
-          matrixId: matrix.id,
-          boxType: "METHODOLOGY" as const,
-          title: "Metodoloji",
-        },
-      ];
+      const defaultBoxes = DEFAULT_PARENT_BOXES.map((b) => ({
+        matrixId: matrix.id,
+        boxType: b.boxType,
+        title: b.title,
+      }));
 
       boxes = await db.insert(boxRows).values(defaultBoxes).returning();
     }
@@ -165,7 +132,7 @@ export async function getLibraryResourcesAction() {
       pageNumber: n.pageNumber,
       noteType: n.noteType as NoteType,
       content: n.content,
-      sentToCardIndex: n.sentToCardIndex,
+      sentToCitationCards: n.sentToCitationCards,
       createdAt: n.createdAt.toISOString(),
     }));
 

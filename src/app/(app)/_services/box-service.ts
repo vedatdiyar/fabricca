@@ -1,6 +1,7 @@
 import { eq, asc, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { matrices, boxes, sources } from "@/db/schema";
+import { compareBoxTypes } from "@/lib/box-constants";
 
 export interface UserBoxData {
   matrix: typeof matrices.$inferSelect;
@@ -38,7 +39,9 @@ export async function getUsersMatrixAndBoxes(
     .where(eq(boxes.matrixId, matrix.id))
     .orderBy(asc(boxes.id));
 
-  const parentBoxes = allBoxRows.filter((b) => b.parentId === null);
+  const parentBoxes = allBoxRows
+    .filter((b) => b.parentId === null)
+    .sort((a, b) => compareBoxTypes(a.boxType, b.boxType));
 
   const childIdToParentId = new Map<number, number>();
   for (const row of allBoxRows) {

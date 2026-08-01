@@ -67,8 +67,8 @@ export interface LibraryResourceNote {
   noteType: NoteType;
   /** Content of the note or direct quote */
   content: string;
-  /** Whether this note has been exported to the Card Index (Kartoteks) */
-  sentToCardIndex: boolean;
+  /** Whether this note has been exported as a citation card */
+  sentToCitationCards: boolean;
   /** Timestamp when the note was recorded */
   createdAt: string;
 }

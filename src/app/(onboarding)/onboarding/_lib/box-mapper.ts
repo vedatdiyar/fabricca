@@ -5,12 +5,13 @@ type ThesisBoxType = GeminiThesisBox["boxType"];
 /**
  * Quadrant key → production BoxType mapping (adapter).
  * Keys match the JSON field names produced by Gemini (Phase 1 & 2 schemas).
+ * Order follows the canonical display order: SP → TF → METHOD → PM.
  */
 export const QUADRANT_MAPPING: Record<string, ThesisBoxType> = {
   subjectProblem: "SUBJECT_PROBLEM",
   theoreticalFramework: "THEORETICAL_FRAMEWORK",
-  primaryMaterial: "PRIMARY_MATERIAL",
   methodology: "METHODOLOGY",
+  primaryMaterial: "PRIMARY_MATERIAL",
 };
 
 export interface RawSubBox {
@@ -30,8 +31,8 @@ export interface RawQuadrant {
 export interface RawQuadrants {
   subjectProblem: RawQuadrant;
   theoreticalFramework: RawQuadrant;
-  primaryMaterial: RawQuadrant;
   methodology: RawQuadrant;
+  primaryMaterial: RawQuadrant;
 }
 
 /**

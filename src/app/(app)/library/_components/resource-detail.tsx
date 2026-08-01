@@ -45,7 +45,7 @@ interface ResourceDetailProps {
   notes: LibraryResourceNote[];
   /** Callback to add a new note */
   onAddNote: (
-    note: Omit<LibraryResourceNote, "id" | "createdAt" | "sentToCardIndex">,
+    note: Omit<LibraryResourceNote, "id" | "createdAt" | "sentToCitationCards">,
   ) => void;
   /** Callback to delete a note */
   onDeleteNote: (noteId: number) => void;
@@ -83,7 +83,7 @@ function getNoteTypeBadgeConfig(noteType: NoteType) {
 }
 
 /**
- * Detailed view component for selected library resource with note taking and automatic Kartoteks integration.
+ * Detailed view component for selected library resource with note taking and automatic citation card integration.
  */
 export function ResourceDetail({
   resource,
@@ -136,7 +136,7 @@ export function ResourceDetail({
     setPageNumber("");
     setNoteType("DIRECT_QUOTE");
 
-    toast.success("Not kaydedildi ve Kartoteks'e fiş olarak eklendi.");
+    toast.success("Not kaydedildi ve alıntı fişi olarak eklendi.");
   };
 
   /**
@@ -173,13 +173,14 @@ export function ResourceDetail({
             )}
           </div>
 
-          {/* Action Buttons: Edit Metadata & Toggle Read Status */}
-          <div className="flex items-center gap-2">
+          {/* Action Buttons: Edit Metadata, Toggle Read Status & Delete PDF */}
+          <div className="flex items-center gap-1.5">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsEditModalOpen(true)}
-              className="gap-1.5 text-xs font-medium border-border hover:bg-muted"
+              title="Künyeyi Düzenle"
+              className="h-8 gap-1.5 text-xs font-medium border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted"
             >
               <Pencil className="h-3.5 w-3.5 text-primary" />
               <span>Künyeyi Düzenle</span>
@@ -196,20 +197,45 @@ export function ResourceDetail({
                     : "Eser 'Okundu' olarak işaretlendi.",
                 );
               }}
-              className="gap-2 text-xs font-medium"
+              title={
+                resource.isRead ? "Okunacak Yap" : "Okundu Olarak İşaretle"
+              }
+              className="h-8 gap-1.5 text-xs font-medium border-border/80"
             >
               {resource.isRead ? (
                 <>
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                  <span>Okundu</span>
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                    Okundu
+                  </span>
                 </>
               ) : (
                 <>
-                  <Circle className="h-4 w-4 text-muted-foreground" />
-                  <span>Okundu Olarak İşaretle</span>
+                  <Circle className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-muted-foreground">
+                    Okundu Olarak İşaretle
+                  </span>
                 </>
               )}
             </Button>
+
+            {resource.pdfStatus === "READY" && onDeletePdf && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    await onDeletePdf(resource.id);
+                  } catch {
+                    // Handled in parent
+                  }
+                }}
+                title="PDF'i Sil"
+                className="h-8 w-8 p-0 border-border/80 text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </div>
         </div>
 
@@ -218,57 +244,49 @@ export function ResourceDetail({
           {resource.title}
         </h2>
 
-        {/* Authors, Publisher, Year & DOI */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-muted-foreground bg-muted/30 p-3 rounded-md border border-border/40">
-          <div>
-            <span className="font-medium text-foreground">Yazarlar: </span>
-            {resource.authors.join(", ")}
+        {/* Authors, Publisher, Year, DOI & PDF Status — Clean Inline Layout */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground pt-1">
+          <div className="flex items-center gap-1">
+            <span className="font-medium text-foreground">Yazarlar:</span>
+            <span>{resource.authors.join(", ")}</span>
           </div>
-          <div>
-            <span className="font-medium text-foreground">Yayıncı: </span>
-            {resource.publisher} ({resource.publicationYear})
+          <span className="text-muted-foreground font-bold select-none">•</span>
+          <div className="flex items-center gap-1">
+            <span className="font-medium text-foreground">Yayıncı:</span>
+            <span>
+              {resource.publisher} ({resource.publicationYear})
+            </span>
           </div>
           {resource.doi && (
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-foreground">DOI: </span>
-              <a
-                href={`https://doi.org/${resource.doi}`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1 text-primary hover:underline font-mono text-xs"
-              >
-                {resource.doi}
-                <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
+            <>
+              <span className="text-muted-foreground font-bold select-none">
+                •
+              </span>
+              <div className="flex items-center gap-1">
+                <span className="font-medium text-foreground">DOI:</span>
+                <a
+                  href={`https://doi.org/${resource.doi}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1 text-primary hover:underline font-mono"
+                >
+                  {resource.doi}
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+            </>
           )}
           {resource.pdfStatus === "READY" && (
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-foreground">
-                  PDF Durumu:{" "}
-                </span>
-                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+            <>
+              <span className="text-muted-foreground font-bold select-none">
+                •
+              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                   PDF Yüklendi
                 </span>
               </div>
-              {onDeletePdf && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={async () => {
-                    try {
-                      await onDeletePdf(resource.id);
-                    } catch {
-                      // Handled in parent
-                    }
-                  }}
-                  className="h-6 text-[11px] px-2 text-destructive hover:text-destructive hover:bg-destructive/10 gap-1 font-normal"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              )}
-            </div>
+            </>
           )}
         </div>
       </div>
@@ -364,7 +382,7 @@ export function ResourceDetail({
             </CardContent>
           </Card>
 
-          {/* SAVED NOTES & CITATION CARDS LIST (KARTOTEKS FİŞ FORMATI) */}
+          {/* SAVED NOTES & CITATION CARDS LIST (ALINTI FİŞ FORMATI) */}
           <div className="space-y-4 pt-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -377,7 +395,7 @@ export function ResourceDetail({
                 variant="outline"
                 className="text-xs font-medium border-border"
               >
-                {notes.length} Kartoteks Fişi
+                {notes.length} Alıntı Fişi
               </Badge>
             </div>
 
@@ -403,7 +421,7 @@ export function ResourceDetail({
                       className="border border-border bg-background transition-all hover:border-primary/40"
                     >
                       <CardContent className="p-4 space-y-3">
-                        {/* Header: Page Badge + Type Badge + Automatic Kartoteks Status */}
+                        {/* Header: Page Badge + Type Badge + Automatic Citation Card Status */}
                         <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
                           <div className="flex items-center gap-2">
                             <Badge
@@ -422,7 +440,7 @@ export function ResourceDetail({
 
                           <span className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
                             <BookmarkCheck className="h-3.5 w-3.5" />{" "}
-                            {"Kartoteks Fişi"}
+                            {"Alıntı Fişi"}
                           </span>
                         </div>
 
@@ -479,7 +497,7 @@ export function ResourceDetail({
               Notu Silmek İstediğinize Emin Misiniz?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm text-muted-foreground">
-              Bu akademik not ve alıntı Kartoteks fişlerinizden kalıcı olarak
+              Bu akademik not ve alıntı fişlerinizden kalıcı olarak
               silinecektir. Bu işlem geri alınamaz.
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -2,31 +2,12 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { matrices, boxes } from "@/db/schema";
 import type { ThesisBoxType } from "../_types/types";
+import { DEFAULT_PARENT_BOXES, getBoxTypeLabel } from "@/lib/box-constants";
 
 /** Helper to provide default titles for thesis box types */
 export function getBoxDefaultTitle(boxType: Exclude<ThesisBoxType, "ALL">) {
-  switch (boxType) {
-    case "THEORETICAL_FRAMEWORK":
-      return "Kuramsal Çerçeve";
-    case "METHODOLOGY":
-      return "Metodoloji";
-    case "SUBJECT_PROBLEM":
-      return "Konu ve Problem";
-    case "PRIMARY_MATERIAL":
-      return "Birincil Malzeme";
-  }
+  return getBoxTypeLabel(boxType);
 }
-
-/** Default parent box definitions for users without a completed onboarding. */
-const DEFAULT_PARENT_BOXES: {
-  boxType: Exclude<ThesisBoxType, "ALL">;
-  title: string;
-}[] = [
-  { boxType: "SUBJECT_PROBLEM", title: "Konu ve Problem" },
-  { boxType: "THEORETICAL_FRAMEWORK", title: "Kuramsal Çerçeve" },
-  { boxType: "PRIMARY_MATERIAL", title: "Birincil Malzeme" },
-  { boxType: "METHODOLOGY", title: "Metodoloji" },
-];
 
 /**
  * Ensures the user has a thesis matrix and at least the 4 default parent boxes.

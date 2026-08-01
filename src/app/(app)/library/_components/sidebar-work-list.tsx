@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Search,
   BookOpen,
@@ -9,6 +9,7 @@ import {
   Layers,
   Plus,
   Trash2,
+  FileText,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -25,36 +26,49 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { LibraryResourceItem, ThesisBoxType } from "../_types/types";
+import { getBoxTypeLabel, BOX_TYPE_SHORT_LABELS } from "@/lib/box-constants";
 
 /**
  * UI Badge configuration helper for thesis box types.
  */
 export function getBoxTypeBadgeConfig(boxType: Exclude<ThesisBoxType, "ALL">) {
+  const base = {
+    label: getBoxTypeLabel(boxType),
+  };
   switch (boxType) {
     case "THEORETICAL_FRAMEWORK":
       return {
-        label: "Kuramsal Çerçeve",
-        className: "bg-purple-500/10 text-purple-600 border-purple-500/20",
+        ...base,
+        className:
+          "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+        dotClassName: "bg-purple-500",
       };
     case "METHODOLOGY":
       return {
-        label: "Metodoloji",
-        className: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+        ...base,
+        className:
+          "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+        dotClassName: "bg-blue-500",
       };
     case "SUBJECT_PROBLEM":
       return {
-        label: "Konu - Problem",
-        className: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+        ...base,
+        className:
+          "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+        dotClassName: "bg-amber-500",
       };
     case "PRIMARY_MATERIAL":
       return {
-        label: "Birincil Malzeme",
-        className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+        ...base,
+        className:
+          "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+        dotClassName: "bg-emerald-500",
       };
     default:
       return {
         label: "Genel",
         className: "bg-muted text-muted-foreground border-border",
+        dotClassName: "bg-muted-foreground",
       };
   }
 }
@@ -64,10 +78,13 @@ export function getBoxTypeBadgeConfig(boxType: Exclude<ThesisBoxType, "ALL">) {
  */
 const BOX_TABS: { id: ThesisBoxType; label: string }[] = [
   { id: "ALL", label: "Tümü" },
-  { id: "SUBJECT_PROBLEM", label: "Problem" },
-  { id: "THEORETICAL_FRAMEWORK", label: "Teori" },
-  { id: "PRIMARY_MATERIAL", label: "Birincil" },
-  { id: "METHODOLOGY", label: "Yöntem" },
+  { id: "SUBJECT_PROBLEM", label: BOX_TYPE_SHORT_LABELS.SUBJECT_PROBLEM },
+  {
+    id: "THEORETICAL_FRAMEWORK",
+    label: BOX_TYPE_SHORT_LABELS.THEORETICAL_FRAMEWORK,
+  },
+  { id: "METHODOLOGY", label: BOX_TYPE_SHORT_LABELS.METHODOLOGY },
+  { id: "PRIMARY_MATERIAL", label: BOX_TYPE_SHORT_LABELS.PRIMARY_MATERIAL },
 ];
 
 interface SidebarWorkListProps {
@@ -120,27 +137,37 @@ export function SidebarWorkList({
     }
   };
 
-  // Filter resources based on active tab and search query
-  const filteredResources = resources.filter((item) => {
-    const matchesTab = activeTab === "ALL" || item.boxType === activeTab;
-    const matchesSearch =
-      searchQuery.trim() === "" ||
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.authors.some((author) =>
-        author.toLowerCase().includes(searchQuery.toLowerCase()),
-      );
-    return matchesTab && matchesSearch;
-  });
+  // Filter resources based on active tab and search query (memoized so the
+  // scroll effect below only re-runs when the visible list actually changes)
+  const filteredResources = useMemo(
+    () =>
+      resources.filter((item) => {
+        const matchesTab = activeTab === "ALL" || item.boxType === activeTab;
+        const matchesSearch =
+          searchQuery.trim() === "" ||
+          item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.authors.some((author) =>
+            author.toLowerCase().includes(searchQuery.toLowerCase()),
+          );
+        return matchesTab && matchesSearch;
+      }),
+    [resources, activeTab, searchQuery],
+  );
 
-  // Scroll the selected resource card into view whenever selection or filtered list changes
+  // Scroll the selected resource card into view whenever selection or filtered list changes.
+  // Scoped strictly to the sidebar list container so the page window never scrolls.
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!scrollRef.current || selectedResourceId === null) return;
-    const selectedEl = scrollRef.current.querySelector(
+    const container = scrollRef.current;
+    const selectedEl = container.querySelector(
       `[data-resource-id="${selectedResourceId}"]`,
     );
     if (selectedEl) {
-      selectedEl.scrollIntoView({ block: "start", behavior: "smooth" });
+      const containerRect = container.getBoundingClientRect();
+      const targetRect = selectedEl.getBoundingClientRect();
+      const top = targetRect.top - containerRect.top + container.scrollTop;
+      container.scrollTo({ top, behavior: "smooth" });
     }
   }, [selectedResourceId, filteredResources]);
 
@@ -199,7 +226,7 @@ export function SidebarWorkList({
               className={cn(
                 "w-full text-center px-1 py-1 text-xs font-medium rounded-md transition-all cursor-pointer truncate",
                 isActive
-                  ? "bg-background text-foreground shadow-sm font-semibold border border-border/60"
+                  ? "bg-background text-foreground font-semibold border border-border/60"
                   : "text-muted-foreground hover:text-foreground hover:bg-background/50",
               )}
             >
@@ -227,6 +254,7 @@ export function SidebarWorkList({
           filteredResources.map((item) => {
             const isSelected = item.id === selectedResourceId;
             const badgeConfig = getBoxTypeBadgeConfig(item.boxType);
+            const hasPdf = item.pdfStatus === "READY" || Boolean(item.pdfUrl);
 
             return (
               <Card
@@ -234,19 +262,43 @@ export function SidebarWorkList({
                 data-resource-id={item.id}
                 onClick={() => onSelectResource(item.id)}
                 className={cn(
-                  "cursor-pointer transition-all border p-3 hover:border-primary/40",
+                  "group relative cursor-pointer transition-all border p-3 hover:border-primary/40",
                   isSelected
-                    ? "bg-accent border-primary/60 shadow-sm"
-                    : "bg-background border-border hover:bg-accent/40",
+                    ? "bg-accent/80 border-primary/60"
+                    : "bg-background border-border hover:bg-accent/30",
                 )}
               >
                 <CardContent className="p-0 space-y-2">
-                  {/* Top Row: Title + Read Status & Actions */}
+                  {/* Top Row: Title + Indicators & Delete (hover only) */}
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-sans text-sm font-semibold text-foreground line-clamp-2 leading-snug flex-1 min-w-0">
                       {item.title}
                     </h3>
-                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
+                    <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
+                      {hasPdf && (
+                        <span
+                          title="Tam metin PDF mevcut"
+                          className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20"
+                        >
+                          <FileText className="h-2.5 w-2.5" />
+                          <span>PDF</span>
+                        </span>
+                      )}
+                      {item.isRead ? (
+                        <span
+                          title="Okundu"
+                          className="flex items-center text-emerald-600 dark:text-emerald-400"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                        </span>
+                      ) : (
+                        <span
+                          title="Okunacak"
+                          className="flex items-center text-amber-600 dark:text-amber-400"
+                        >
+                          <Circle className="h-3.5 w-3.5 opacity-60" />
+                        </span>
+                      )}
                       {onDeleteResource && (
                         <button
                           type="button"
@@ -255,53 +307,34 @@ export function SidebarWorkList({
                             setResourceToDeleteId(item.id);
                           }}
                           title="Eseri Sil"
-                          className="flex items-center gap-1 px-1 py-0.5 text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                          className="opacity-0 group-hover:opacity-100 flex items-center p-0.5 text-muted-foreground hover:text-destructive transition-all cursor-pointer rounded hover:bg-destructive/10"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       )}
-                      {item.isRead ? (
-                        <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
-                          <CheckCircle2 className="h-3.5 w-3.5" /> Okundu
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
-                          <Circle className="h-3.5 w-3.5" /> Okunacak
-                        </span>
-                      )}
                     </div>
                   </div>
 
-                  {/* Box Badge(s) — above the author line */}
-                  <div className="flex flex-wrap items-center gap-1 min-w-0">
-                    <Badge
-                      variant="outline"
+                  {/* Sleek Dot Indicator + Category Text */}
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span
                       className={cn(
-                        "text-[10px] px-1.5 py-0.5 border font-medium",
-                        badgeConfig.className,
+                        "h-2 w-2 rounded-full shrink-0",
+                        badgeConfig.dotClassName,
                       )}
-                    >
+                    />
+                    <span className="text-[11px] font-medium text-muted-foreground truncate">
                       {badgeConfig.label}
-                    </Badge>
-                    {item.subBoxTitle && (
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "max-w-full text-[10px] px-1.5 py-0.5 border font-medium",
-                          badgeConfig.className,
-                        )}
-                      >
-                        <span className="truncate">{item.subBoxTitle}</span>
-                      </Badge>
-                    )}
+                      {item.subBoxTitle ? ` • ${item.subBoxTitle}` : ""}
+                    </span>
                   </div>
 
                   {/* Authors & Year */}
-                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/40">
-                    <span className="truncate max-w-[180px]">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-1.5 border-t border-border/40">
+                    <span className="truncate max-w-[180px] font-normal text-muted-foreground">
                       {item.authors.join(", ")}
                     </span>
-                    <span className="font-mono text-[10px]">
+                    <span className="font-mono text-[10px] text-muted-foreground">
                       {item.publicationYear}
                     </span>
                   </div>

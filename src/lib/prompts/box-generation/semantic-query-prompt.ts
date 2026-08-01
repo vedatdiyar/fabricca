@@ -20,9 +20,6 @@ Sorgu, vakanın aktörlerini, tarihlerini ve coğrafyasını içermelidir. Forma
 ### THEORETICAL_FRAMEWORK (Teorik Çerçeve) Query
 Sorguda tezdeki spesifik vaka, aktör, örgüt ve coğrafya kelimeleri yer almamalıdır. Sorgu yalnızca soyut kuramcı adlarını ve teorik kavramları içermelidir. Örn: "Antonio Gramsci war of position war of maneuver counter hegemony agency structure dialectic"
 
-### PRIMARY_MATERIAL (Veri Kaynağı) Query
-Bu türde sorgu üretilmez; boş string döndürülür ve arama yapılmaz.
-
 ### METHODOLOGY (Yöntem) Query
 
 Sorguda spesifik vaka, aktör, örgüt ve coğrafya kelimeleri (PKK, HADEP, Türkiye gibi) kesinlikle yer almamalıdır.
@@ -36,6 +33,9 @@ Yöntemin öz adı yanına mutlaka metodolojik kılavuz/rehber niteleyicileri ek
 Dar ampirik vaka adları yerine yöntem teriminin yanına aramayı bağlamlı tutacak genel disiplin bağlamı eklenmelidir: "social movement research methodology", "political discourse analysis methods", "alliance dynamics and coalition analysis", "historical social science methods" veya "qualitative text analysis" gibi geniş analitik alan tanımları kullanılmalıdır.
 
 METHODOLOGY sorgularının karakter uzunluğu 200-400 karakter arasında olmalıdır. Örn: "historical discourse analysis methodological manual and qualitative text analysis research design for examining political ideologies and historical documents within social science scholarly work aiming to provide a comprehensive analytical procedure for interpreting shifts in framing and ideological positioning across institutional contexts and archival materials"
+
+### PRIMARY_MATERIAL (Birincil Kaynak) Query
+Bu türde sorgu üretilmez; boş string döndürülür ve arama yapılmaz.
 
 # Çıktı Biçimi
 Her alt kutu için \`subBoxTitle\` ve \`semanticQuery\` alanlarını içeren JSON nesneleri dizisi döndürün.

@@ -10,13 +10,7 @@ import type {
 import { fetchBoxesWithFullShape } from "../../_services/fetch-actions";
 import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
 import { fetchPreloadedLiteraturePool } from "../actions";
-
-const boxOrderWeight: Record<string, number> = {
-  SUBJECT_PROBLEM: 1,
-  THEORETICAL_FRAMEWORK: 2,
-  METHODOLOGY: 3,
-  PRIMARY_MATERIAL: 4,
-};
+import { BOX_ORDER_WEIGHT } from "@/lib/box-constants";
 
 /** Processing status of a single sub-box within the literature review grid. */
 export type BoxStatus = "idle" | "loading" | "done" | "error";
@@ -85,8 +79,10 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   const subBoxes = useMemo(() => {
     if (!allBoxes) return [];
     return [...allBoxes].sort((a, b) => {
-      const weightA = boxOrderWeight[a.boxType] ?? 99;
-      const weightB = boxOrderWeight[b.boxType] ?? 99;
+      const weightA =
+        BOX_ORDER_WEIGHT[a.boxType as keyof typeof BOX_ORDER_WEIGHT] ?? 99;
+      const weightB =
+        BOX_ORDER_WEIGHT[b.boxType as keyof typeof BOX_ORDER_WEIGHT] ?? 99;
       return weightA - weightB;
     });
   }, [allBoxes]);

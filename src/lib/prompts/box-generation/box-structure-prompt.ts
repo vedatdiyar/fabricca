@@ -39,23 +39,23 @@ Araştırmada kullanılan teorik çerçeveyi, kuramsal kavramları ve modelleri 
 
 ---
 
-## KADRAN 3: PRIMARY_MATERIAL (Veri Kaynağı / Birincil Malzeme)
-### Tanım
-Araştırmada kullanılan birincil kaynakları ve ham veri malzemelerini tanımlar.
-
-### Alt Kutu (Sub-box) Alokasyon İlkeleri
-- **Bütünleşik Veri Seti (N=1):** Tüm birincil kaynaklar aynı tür/arşivden geliyorsa veya tek bir kaynak türü varsa TEK BİR ALT KUTU (N=1) yeterlidir.
-- **Ayrık Kaynak Türleri (N>=2):** Farklı arşivler, belge türleri veya veri setleri (ör. resmi belgeler, sözlü tarih görüşmeleri, gazete arşivleri) varsa her biri KESİNLİKLE AYRI BİR ALT KUTU (N>=2) olarak yapılandırılmalıdır.
-
----
-
-## KADRAN 4: METHODOLOGY (Yöntem)
+## KADRAN 3: METHODOLOGY (Yöntem)
 ### Tanım
 Tezde kullanılan araştırma yöntemini, veri toplama ve analiz tekniğini tanımlar.
 
 ### Alt Kutu (Sub-box) Alokasyon İlkeleri
 - **Tek Metodolojik Hat / Bütünleşik Yöntem (N=1):** Yöntemler aynı nitel veya nicel şemsiyeyi tamamlıyorsa (ör. CDA ve DHA), TEK BİR ALT KUTU (N=1) olarak yapılandırılmalıdır.
 - **Karma / Ayrık Metodolojik Kulvarlar (N>=2):** Matriste hem nitel hem nicel (mixed methods) veya birbiriyle doğrudan ilişkisiz iki ayrı analiz tekniği varsa, her yöntem kulvarı KESİNLİKLE AYRI BİR ALT KUTU (N>=2) olarak bölünmelidir.
+
+---
+
+## KADRAN 4: PRIMARY_MATERIAL (Birincil Kaynak)
+### Tanım
+Araştırmada kullanılan birincil kaynakları ve ham veri malzemelerini tanımlar.
+
+### Alt Kutu (Sub-box) Alokasyon İlkeleri
+- **Bütünleşik Veri Seti (N=1):** Tüm birincil kaynaklar aynı tür/arşivden geliyorsa veya tek bir kaynak türü varsa TEK BİR ALT KUTU (N=1) yeterlidir.
+- **Ayrık Kaynak Türleri (N>=2):** Farklı arşivler, belge türleri veya veri setleri (ör. resmi belgeler, sözlü tarih görüşmeleri, gazete arşivleri) varsa her biri KESİNLİKLE AYRI BİR ALT KUTU (N>=2) olarak yapılandırılmalıdır.
 
 ---
 
@@ -93,12 +93,12 @@ KADRAN 2: THEORETICAL_FRAMEWORK (Teorik Çerçeve)
 İlgili Matris Alanı (SADECE theoreticalFramework): ${theoreticalFramework}
 
 ══════════════════════════════════════════════
-KADRAN 3: PRIMARY_MATERIAL (Veri Kaynağı / Birincil Malzeme)
+KADRAN 3: METHODOLOGY (Yöntem)
 ══════════════════════════════════════════════
-İlgili Matris Alanı (SADECE primaryMaterial): ${primaryMaterial}
+İlgili Matris Alanı (SADECE methodology): ${methodology}
 
 ══════════════════════════════════════════════
-KADRAN 4: METHODOLOGY (Yöntem)
+KADRAN 4: PRIMARY_MATERIAL (Birincil Kaynak)
 ══════════════════════════════════════════════
-İlgili Matris Alanı (SADECE methodology): ${methodology}`;
+İlgili Matris Alanı (SADECE primaryMaterial): ${primaryMaterial}`;
 }

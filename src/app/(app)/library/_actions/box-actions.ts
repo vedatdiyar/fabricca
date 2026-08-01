@@ -3,6 +3,7 @@
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import { ensureUserMatrixAndBoxes } from "../_services/helpers";
+import { compareBoxTypes } from "@/lib/box-constants";
 import type { ThesisBoxType } from "../_types/types";
 
 /** One sub-box option for the PDF upload selector. */
@@ -41,7 +42,9 @@ export async function getBoxHierarchyForLibraryAction(): Promise<
 
     const { boxes } = await ensureUserMatrixAndBoxes(session.userId);
 
-    const parentBoxes = boxes.filter((b) => b.parentId === null);
+    const parentBoxes = boxes
+      .filter((b) => b.parentId === null)
+      .sort((a, b) => compareBoxTypes(a.boxType, b.boxType));
 
     const hierarchy: LibraryParentBoxOption[] = parentBoxes.map((parent) => ({
       id: parent.id,

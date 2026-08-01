@@ -37,8 +37,8 @@ const confirmBoxesSchema = z.array(
     boxType: z.enum([
       "SUBJECT_PROBLEM",
       "THEORETICAL_FRAMEWORK",
-      "PRIMARY_MATERIAL",
       "METHODOLOGY",
+      "PRIMARY_MATERIAL",
     ]),
     description: z.string().optional().default(""),
     parentId: z.number().nullable(),
@@ -251,8 +251,8 @@ function structureToQuadrants(
   return {
     subjectProblem: mapQuadrant("subjectProblem"),
     theoreticalFramework: mapQuadrant("theoreticalFramework"),
-    primaryMaterial: mapQuadrant("primaryMaterial"),
     methodology: mapQuadrant("methodology"),
+    primaryMaterial: mapQuadrant("primaryMaterial"),
   };
 }
 

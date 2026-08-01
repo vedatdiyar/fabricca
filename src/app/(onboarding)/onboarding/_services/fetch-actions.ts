@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { matrices, positioning, boxes, sources } from "@/db/schema";
 import type { GeminiThesisBox } from "@/lib/types";
 import { getSession } from "@/lib/session";
-import { BOX_ORDER_WEIGHT } from "../_lib/box-constants";
+import { BOX_ORDER_WEIGHT } from "@/lib/box-constants";
 
 /**
  * Cached DB query that returns the user's thesis matrix.
@@ -46,8 +46,8 @@ async function getCachedBoxes(thesisMatrixId: number) {
       sql`CASE ${boxes.boxType}
         WHEN 'SUBJECT_PROBLEM' THEN 1
         WHEN 'THEORETICAL_FRAMEWORK' THEN 2
-        WHEN 'PRIMARY_MATERIAL' THEN 3
-        WHEN 'METHODOLOGY' THEN 4
+        WHEN 'METHODOLOGY' THEN 3
+        WHEN 'PRIMARY_MATERIAL' THEN 4
         ELSE 99
       END`,
     );
