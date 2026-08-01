@@ -4,6 +4,7 @@ import { buildLocalChunks } from "./pdf/chunker";
 import { extractRawTextFast } from "./pdf/fast-extractor";
 import { analyzePdfLayout } from "./pdf/layout-sampling";
 import type { PdfLayoutAnalysis } from "./pdf/types";
+import { normalizeTurkishText } from "./pdf/turkish-normalizer";
 
 export type { DocumentChunk };
 export type { PdfLayoutAnalysis };
@@ -19,8 +20,8 @@ export type { PdfLayoutAnalysis };
  * 1) Genuinely scanned / image-based PDFs (avgCharsPerPage < 50).
  * 2) Severely broken/chaotic layouts (scatter ratio > 50%).
  *
- * **Layer 3 — Fast Local Fallback:** If layout analysis fails (font crash, memory issue),
- * extracts raw text locally without layout analysis.
+ * **Layer 3 — Fast Local Fallback (pdf2md + Turkish normalization):**
+ * Local Markdown extraction with unicode diacritic restoration.
  *
  * @param buffer - Raw PDF file buffer
  * @param fileName - Original PDF file name (for logging / LlamaParse fallback)
@@ -77,7 +78,7 @@ export async function parsePdfWithHybridRouter(
   });
 
   // ── 2. Route Decision ──
-  if (analysis.route === "unstructured-fallback") {
+  if (analysis.route === "llamaparse-fallback") {
     try {
       const tier = analysis.tier || "fast";
       const llamaChunks = await parsePdfWithLlamaParse(
@@ -91,8 +92,10 @@ export async function parsePdfWithHybridRouter(
         pdfPageNumber: c.pdfPageNumber,
         printedPageNumber: c.printedPageNumber,
         sectionTitle: c.sectionTitle,
-        content: c.content,
-        parentContent: c.parentContent,
+        content: normalizeTurkishText(c.content),
+        parentContent: c.parentContent
+          ? normalizeTurkishText(c.parentContent)
+          : undefined,
         tokenCount: c.tokenCount,
       }));
     } catch (llamaErr) {
@@ -116,7 +119,8 @@ export async function parsePdfWithHybridRouter(
   });
 
   const localStart = performance.now();
-  const chunks = await buildLocalChunks(analysis.fullText);
+  const normalizedText = normalizeTurkishText(analysis.fullText);
+  const chunks = await buildLocalChunks(normalizedText);
   const localDuration = performance.now() - localStart;
 
   log.info("pdf_local_extraction_success", {

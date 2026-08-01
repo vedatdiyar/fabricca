@@ -22,13 +22,13 @@ interface AddResourceModalProps {
   /** Callback to close modal */
   onClose: () => void;
   /** Callback to submit new resource via PDF upload with metadata extraction */
-  onSubmitPdf: (file: File, boxId: number) => Promise<void>;
+  onSubmitPdf: (file: File, boxId: number) => Promise<boolean>;
 }
 
 /**
  * Modal component for adding new academic literature resources by uploading PDF documents.
  * User selects a parent thesis box and, when sub-boxes exist, a specific sub-box.
- * Extracts metadata (title, authors, publication year, publisher, DOI) via Unstructured + Crossref/Gemini
+ * Extracts metadata (title, authors, publication year, publisher, DOI) via LlamaParse + Crossref/Gemini
  * and vectorizes content through the RAG pipeline.
  */
 export function AddResourceModal({
@@ -148,14 +148,15 @@ export function AddResourceModal({
       setIsSubmitting(true);
       setStatusMessage("PDF künye bilgileri çıkarılıyor...");
 
-      await onSubmitPdf(selectedFile, targetBoxId);
+      const isSuccess = await onSubmitPdf(selectedFile, targetBoxId);
+      if (!isSuccess) {
+        return;
+      }
 
       toast.success("Akademik eser başarıyla eklendi ve vektörleştirildi.");
       setSelectedFile(null);
       setStatusMessage("");
       onClose();
-    } catch {
-      toast.error("PDF yükleme ve künye çıkarma sırasında bir hata oluştu.");
     } finally {
       setIsSubmitting(false);
       setStatusMessage("");

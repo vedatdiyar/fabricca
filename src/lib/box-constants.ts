@@ -85,3 +85,52 @@ export function compareBoxTypes(
   const weightB = BOX_ORDER_WEIGHT[boxTypeB as ThesisBoxType] ?? 99;
   return weightA - weightB;
 }
+
+/**
+ * UI badge configuration (Tailwind classes + label) for a thesis box type.
+ * Shared by the library sidebar and resource detail badge renders.
+ *
+ * @param boxType - The thesis box type value
+ * @returns Badge display config with label and styling class names
+ */
+export function getBoxTypeBadgeConfig(boxType: ThesisBoxType) {
+  const base = {
+    label: getBoxTypeLabel(boxType),
+  };
+  switch (boxType) {
+    case "THEORETICAL_FRAMEWORK":
+      return {
+        ...base,
+        className:
+          "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+        dotClassName: "bg-purple-500",
+      };
+    case "METHODOLOGY":
+      return {
+        ...base,
+        className:
+          "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+        dotClassName: "bg-blue-500",
+      };
+    case "SUBJECT_PROBLEM":
+      return {
+        ...base,
+        className:
+          "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+        dotClassName: "bg-amber-500",
+      };
+    case "PRIMARY_MATERIAL":
+      return {
+        ...base,
+        className:
+          "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+        dotClassName: "bg-emerald-500",
+      };
+    default:
+      return {
+        label: "Genel",
+        className: "bg-muted text-muted-foreground border-border",
+        dotClassName: "bg-muted-foreground",
+      };
+  }
+}

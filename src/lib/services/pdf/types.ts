@@ -23,7 +23,7 @@ export interface PageLayoutReport {
  * Result of full PDF layout analysis and routing decision.
  */
 export interface PdfLayoutAnalysis {
-  route: "local" | "unstructured-fallback";
+  route: "local" | "llamaparse-fallback";
   tier?: "fast" | "cost_effective" | "agentic";
   reason: string;
   fullText: string;

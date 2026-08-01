@@ -12,7 +12,7 @@ interface PdfUploadDropzoneProps {
   /** Current PDF status */
   pdfStatus?: "NOT_UPLOADED" | "PROCESSING" | "READY" | "FAILED";
   /** Callback fired when user selects and submits a PDF file */
-  onUploadPdf: (file: File) => Promise<void>;
+  onUploadPdf: (file: File) => Promise<boolean>;
 }
 
 /**
@@ -40,12 +40,13 @@ export function PdfUploadDropzone({
 
     try {
       setIsUploading(true);
-      await onUploadPdf(file);
+      const isSuccess = await onUploadPdf(file);
+      if (!isSuccess) {
+        return;
+      }
       toast.success(
         "PDF başarıyla yüklendi, metin ayrıştırıldı ve RAG için vektörleştirildi.",
       );
-    } catch {
-      toast.error("PDF yüklenirken bir hata oluştu.");
     } finally {
       setIsUploading(false);
     }

@@ -4,27 +4,13 @@ import * as resourceActions from "./_actions/resource-actions";
 import * as pdfActions from "./_actions/pdf-actions";
 import * as noteActions from "./_actions/note-actions";
 import * as boxActions from "./_actions/box-actions";
-import type { ThesisBoxType, NoteType } from "./_types/types";
+import type { NoteType } from "./_types/types";
 
 /**
  * Server Action: Fetches all library resources and notes for the current user.
  */
 export async function getLibraryResourcesAction() {
   return resourceActions.getLibraryResourcesAction();
-}
-
-/**
- * Server Action: Creates a new library resource item in the database.
- */
-export async function createLibraryResourceAction(input: {
-  title: string;
-  authors: string[];
-  publisher?: string;
-  publicationYear: number;
-  doi?: string;
-  boxType: Exclude<ThesisBoxType, "ALL">;
-}) {
-  return resourceActions.createLibraryResourceAction(input);
 }
 
 /**

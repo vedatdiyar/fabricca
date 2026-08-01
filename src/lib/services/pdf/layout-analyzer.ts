@@ -115,11 +115,7 @@ export function analyzePageLayout(
     (it) => it.x > 20 && it.x < pageWidth - 20,
   );
 
-  const starts = collectLineStartPositions(horizontalItems, 8, 20);
-  const columnCenters = clusterColumnCenters(starts, 25, 4);
-  const columnCount = Math.max(1, columnCenters.length);
-
-  // Line scatter check
+  // Group items by vertical line (Y coordinate)
   const lineMap = new Map<number, TextItem[]>();
   for (const item of horizontalItems) {
     const yKey = Math.round(item.y / 8) * 8;
@@ -127,17 +123,89 @@ export function analyzePageLayout(
     lineMap.get(yKey)!.push(item);
   }
 
-  let scatteredLines = 0;
-  let totalLines = 0;
-  for (const [, lineItems] of lineMap) {
-    if (lineItems.length < 2) continue;
-    totalLines++;
-    const minX = Math.min(...lineItems.map((i) => i.x));
-    const maxX = Math.max(...lineItems.map((i) => i.x));
-    if (maxX - minX > 300) scatteredLines++;
+  const totalLines = lineMap.size;
+  if (totalLines < 4) {
+    return {
+      pageIndex,
+      columnCount: 1,
+      hasLineScatter: false,
+      itemCount: clean.length,
+      charCount: totalChars,
+      gapThreshold: null,
+    };
   }
 
-  const hasLineScatter = totalLines > 0 && scatteredLines / totalLines > 0.35;
+  // 1. Gutter (Vertical Gap) Analysis for 2-Column Layouts:
+  // In a 2-column page, the center zone [0.44 * pageWidth, 0.56 * pageWidth] is free of text,
+  // while substantial content exists on both the left (x < 0.42 * width) and right (x > 0.58 * width).
+  const centerMinX = pageWidth * 0.44;
+  const centerMaxX = pageWidth * 0.56;
+
+  let linesOverlappingCenter = 0;
+  let linesWithLeftContent = 0;
+  let linesWithRightContent = 0;
+
+  for (const [, lineItems] of lineMap) {
+    let hasLeft = false;
+    let hasRight = false;
+    let overlapsCenter = false;
+
+    for (const item of lineItems) {
+      const itemEndX = item.x + item.str.length * 5;
+      if (item.x < pageWidth * 0.42) hasLeft = true;
+      if (item.x > pageWidth * 0.58) hasRight = true;
+
+      if (item.x < centerMaxX && itemEndX > centerMinX) {
+        overlapsCenter = true;
+      }
+    }
+
+    if (hasLeft) linesWithLeftContent++;
+    if (hasRight) linesWithRightContent++;
+    if (overlapsCenter) linesOverlappingCenter++;
+  }
+
+  const centerOverlapRatio = linesOverlappingCenter / totalLines;
+  const isGutterPresent =
+    centerOverlapRatio < 0.15 &&
+    linesWithLeftContent / totalLines > 0.3 &&
+    linesWithRightContent / totalLines > 0.3;
+
+  // 2. Line Start Clustering:
+  // Collect line starts (only considering gaps > 40pt as potential new column starts)
+  const lineStartXs: number[] = [];
+  for (const [, lineItems] of lineMap) {
+    const sorted = [...lineItems].sort((a, b) => a.x - b.x);
+    if (sorted.length > 0) lineStartXs.push(sorted[0].x);
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i].x - sorted[i - 1].x > 40) {
+        lineStartXs.push(sorted[i].x);
+      }
+    }
+  }
+
+  const columnCenters = clusterColumnCenters(lineStartXs, 35, 6);
+  let columnCount = 1;
+
+  // A page is only multi-column if a clear vertical gutter (gap) is present between columns
+  if (isGutterPresent) {
+    columnCount = Math.max(2, columnCenters.length);
+  }
+
+  // 3. Line Scatter Check:
+  // A line is scattered if it contains 3+ large internal gaps (>35pt), indicating table grids or chaotic forms
+  let scatteredLineCount = 0;
+  for (const [, lineItems] of lineMap) {
+    const sorted = [...lineItems].sort((a, b) => a.x - b.x);
+    let gapCount = 0;
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i].x - sorted[i - 1].x > 35) gapCount++;
+    }
+    if (gapCount >= 3) scatteredLineCount++;
+  }
+
+  const hasLineScatter =
+    totalLines > 0 && scatteredLineCount / totalLines > 0.3;
 
   return {
     pageIndex,

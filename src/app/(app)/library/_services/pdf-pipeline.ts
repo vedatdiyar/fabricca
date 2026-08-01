@@ -1,6 +1,7 @@
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { sources, chunks as chunkRows } from "@/db/schema";
+import type { NewChunk } from "@/db/schema";
 import { uploadPdfToR2 } from "@/lib/services/r2";
 import { parsePdfWithHybridRouter } from "@/lib/services/pdf-parser";
 import type { DocumentChunk } from "@/lib/services/llamaparse";
@@ -77,7 +78,7 @@ export async function processResourcePdfPipeline(
     },
   });
 
-  // ── 4. High-Performance Batch Insert into pgvector via PostgreSQL UNNEST ──
+  // ── 4. High-Performance Batch Insert into pgvector via Drizzle multi-row insert ──
   log.info("pdf_db_batch_insert_start", {
     service: "library",
     data: { resourceId },
@@ -99,51 +100,19 @@ export async function processResourcePdfPipeline(
 
       await Promise.all(
         batches.map(async ({ batchChunks, batchEmbeddings }) => {
-          const sourceIds = batchChunks.map(() => resourceId);
-          const chunkIndexes = batchChunks.map((c) => c.chunkIndex);
-          const printedPageNumbers = batchChunks.map((c) =>
-            c.printedPageNumber != null ? c.printedPageNumber : "NULL",
-          );
-          const pdfPageNumbers = batchChunks.map((c) =>
-            c.pdfPageNumber != null ? c.pdfPageNumber : "NULL",
-          );
-          const sectionTitles = batchChunks.map((c) =>
-            c.sectionTitle
-              ? `'${c.sectionTitle.replace(/\0/g, "").replace(/'/g, "''")}'`
-              : "NULL",
-          );
-          const contents = batchChunks.map(
-            (c) => `'${c.content.replace(/\0/g, "").replace(/'/g, "''")}'`,
-          );
-          const parentContents = batchChunks.map(
-            (c) =>
-              `'${(c.parentContent || c.content).replace(/\0/g, "").replace(/'/g, "''")}'`,
-          );
-          const tokenCounts = batchChunks.map((c) => c.tokenCount ?? 0);
-          const embeddingStrings = batchChunks.map((_, index) => {
-            const emb = batchEmbeddings[index] || new Array(1024).fill(0);
-            return `'[${emb.join(",")}]'::vector`;
-          });
+          const rows: NewChunk[] = batchChunks.map((c, index) => ({
+            sourceId: resourceId,
+            chunkIndex: c.chunkIndex,
+            printedPageNumber: c.printedPageNumber ?? null,
+            pdfPageNumber: c.pdfPageNumber ?? null,
+            sectionTitle: c.sectionTitle ?? null,
+            content: c.content,
+            parentContent: c.parentContent || c.content,
+            tokenCount: c.tokenCount ?? 0,
+            embedding: batchEmbeddings[index] || new Array(1024).fill(0),
+          }));
 
-          const query = sql.raw(`
-            INSERT INTO chunks (
-              source_id, chunk_index, printed_page_number, pdf_page_number, 
-              section_title, content, parent_content, token_count, embedding
-            )
-            SELECT * FROM UNNEST(
-              ARRAY[${sourceIds.join(",")}]::int[],
-              ARRAY[${chunkIndexes.join(",")}]::int[],
-              ARRAY[${printedPageNumbers.join(",")}]::int[],
-              ARRAY[${pdfPageNumbers.join(",")}]::int[],
-              ARRAY[${sectionTitles.join(",")}]::text[],
-              ARRAY[${contents.join(",")}]::text[],
-              ARRAY[${parentContents.join(",")}]::text[],
-              ARRAY[${tokenCounts.join(",")}]::int[],
-              ARRAY[${embeddingStrings.join(",")}]
-            )
-          `);
-
-          await tx.execute(query);
+          await tx.insert(chunkRows).values(rows);
         }),
       );
     }

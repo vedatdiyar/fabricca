@@ -2,18 +2,13 @@
 
 import { eq, desc, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import {
-  matrices,
-  boxes as boxRows,
-  sources,
-  notes as noteRows,
-} from "@/db/schema";
+import { sources, notes as noteRows } from "@/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import { deletePdfFromR2 } from "@/lib/services/r2";
-import { getBoxDefaultTitle } from "../_services/helpers";
-import { DEFAULT_PARENT_BOXES } from "@/lib/box-constants";
-import type { ThesisBoxType, NoteType } from "../_types/types";
+import { ensureUserMatrixAndBoxes, getOwnedSource } from "../_services/helpers";
+import { mapSourceToResource } from "../_services/resource-mapper";
+import type { NoteType } from "../_types/types";
 
 /**
  * Server Action: Fetches all library resources and notes for the current user.
@@ -32,44 +27,8 @@ export async function getLibraryResourcesAction() {
       };
     }
 
-    // Get user's thesis matrix
-    const matrix = await db.query.matrices.findFirst({
-      where: eq(matrices.userId, session.userId),
-      with: {
-        boxes: true,
-      },
-    });
-
-    let boxes = matrix?.boxes || [];
-
-    // If user has no thesis boxes yet, create a default set for the user's matrix
-    if (!matrix) {
-      const [newMatrix] = await db
-        .insert(matrices)
-        .values({
-          userId: session.userId,
-          subjectProblem: "Akademik Araştırma ve Literatür İncelemesi",
-          theoreticalFramework: "Kuramsal Temeller ve Metodolojik Yaklaşım",
-          methodology: "Nitel ve Nicel Analiz Yöntemleri",
-        })
-        .returning();
-
-      const defaultBoxes = DEFAULT_PARENT_BOXES.map((b) => ({
-        matrixId: newMatrix.id,
-        boxType: b.boxType,
-        title: b.title,
-      }));
-
-      boxes = await db.insert(boxRows).values(defaultBoxes).returning();
-    } else if (boxes.length === 0) {
-      const defaultBoxes = DEFAULT_PARENT_BOXES.map((b) => ({
-        matrixId: matrix.id,
-        boxType: b.boxType,
-        title: b.title,
-      }));
-
-      boxes = await db.insert(boxRows).values(defaultBoxes).returning();
-    }
+    // Ensure the user has a thesis matrix and at least the default parent boxes
+    const { boxes } = await ensureUserMatrixAndBoxes(session.userId);
 
     const boxIds = boxes.map((b) => b.id);
 
@@ -98,33 +57,13 @@ export async function getLibraryResourcesAction() {
     const boxTitleMap = new Map(boxes.map((b) => [b.id, b.title]));
     const boxParentMap = new Map(boxes.map((b) => [b.id, b.parentId]));
 
-    const resources = dbResources.map((r) => {
-      const linkedBoxParentId = boxParentMap.get(r.boxId) ?? null;
-      const isSubBox = linkedBoxParentId !== null;
-      return {
-        id: r.id,
-        boxType: (boxMap.get(r.boxId) || "THEORETICAL_FRAMEWORK") as Exclude<
-          ThesisBoxType,
-          "ALL"
-        >,
-        subBoxId: isSubBox ? r.boxId : undefined,
-        subBoxTitle: isSubBox
-          ? (boxTitleMap.get(r.boxId) ?? undefined)
-          : undefined,
-        title: r.title,
-        authors: r.authors || ["Bilinmeyen Yazar"],
-        publisher: r.publisher || "Belirtilmemiş",
-        publicationYear: r.publicationYear || new Date().getFullYear(),
-        doi: r.doi || undefined,
-        openalexId: r.openalexId || undefined,
-        isRead: r.isRead,
-        pdfUrl: r.pdfUrl || undefined,
-        pdfFileName: r.pdfFileName || undefined,
-        pdfStatus: r.pdfStatus || "NOT_UPLOADED",
-        sourceOrigin: "LITERATURE_EXPANSION" as const,
-        createdAt: r.createdAt.toISOString(),
-      };
-    });
+    const resources = dbResources.map((r) =>
+      mapSourceToResource(r, {
+        boxType: boxMap.get(r.boxId) ?? null,
+        title: boxTitleMap.get(r.boxId) ?? "Genel",
+        parentId: boxParentMap.get(r.boxId) ?? null,
+      }),
+    );
 
     const notes = dbNotes.map((n) => ({
       id: n.id,
@@ -150,114 +89,6 @@ export async function getLibraryResourcesAction() {
 }
 
 /**
- * Server Action: Creates a new library resource item in the database.
- *
- * @param input - Title, authors, publisher, year, doi, and box type.
- */
-export async function createLibraryResourceAction(input: {
-  title: string;
-  authors: string[];
-  publisher?: string;
-  publicationYear: number;
-  doi?: string;
-  boxType: Exclude<ThesisBoxType, "ALL">;
-}) {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  try {
-    const session = await getSession();
-    if (!session) {
-      return { success: false, error: "Oturum bulunamadı." };
-    }
-
-    if (!input.title.trim()) {
-      return { success: false, error: "Lütfen eser başlığını giriniz." };
-    }
-
-    // Find or create thesis box corresponding to boxType
-    const matrix = await db.query.matrices.findFirst({
-      where: eq(matrices.userId, session.userId),
-      with: { boxes: true },
-    });
-
-    let targetBox = matrix?.boxes.find((b) => b.boxType === input.boxType);
-
-    if (!targetBox) {
-      let matrixId = matrix?.id;
-      if (!matrixId) {
-        const [newM] = await db
-          .insert(matrices)
-          .values({
-            userId: session.userId,
-            subjectProblem: "Genel Konu ve Problem",
-            theoreticalFramework: "Kuramsal Çerçeve",
-            methodology: "Yöntem",
-          })
-          .returning();
-        matrixId = newM.id;
-      }
-
-      const [newBox] = await db
-        .insert(boxRows)
-        .values({
-          matrixId: matrixId,
-          boxType: input.boxType,
-          title: getBoxDefaultTitle(input.boxType),
-        })
-        .returning();
-
-      targetBox = newBox;
-    }
-
-    const [newResource] = await db
-      .insert(sources)
-      .values({
-        boxId: targetBox.id,
-        title: input.title.trim(),
-        authors:
-          input.authors.length > 0 ? input.authors : ["Bilinmeyen Yazar"],
-        publisher: input.publisher?.trim() || "Belirtilmemiş",
-        publicationYear: input.publicationYear || new Date().getFullYear(),
-        doi: input.doi?.trim() || null,
-        isRead: false,
-        pdfStatus: "NOT_UPLOADED",
-      })
-      .returning();
-
-    log.info("create_library_resource_success", {
-      service: "library",
-      data: { resourceId: newResource.id, title: newResource.title },
-    });
-
-    return {
-      success: true,
-      data: {
-        id: newResource.id,
-        boxType: input.boxType,
-        title: newResource.title,
-        authors: newResource.authors || [],
-        publisher: newResource.publisher || "",
-        publicationYear:
-          newResource.publicationYear || new Date().getFullYear(),
-        doi: newResource.doi || undefined,
-        openalexId: newResource.openalexId || undefined,
-        isRead: false,
-        pdfStatus: "NOT_UPLOADED" as const,
-        sourceOrigin: "LITERATURE_EXPANSION" as const,
-        createdAt: newResource.createdAt.toISOString(),
-      },
-    };
-  } catch (err) {
-    log.error("create_library_resource_failed", {
-      service: "library",
-      error: err,
-    });
-    return { success: false, error: "Yeni eser eklenirken bir hata oluştu." };
-  }
-}
-
-/**
  * Server Action: Toggles the read status of a library resource.
  *
  * @param resourceId - Target resource ID.
@@ -272,13 +103,11 @@ export async function toggleResourceReadStatusAction(resourceId: number) {
       return { success: false, error: "Oturum bulunamadı." };
     }
 
-    const resource = await db.query.sources.findFirst({
-      where: eq(sources.id, resourceId),
-    });
-
-    if (!resource) {
-      return { success: false, error: "Eser bulunamadı." };
+    const owned = await getOwnedSource(resourceId, session.userId);
+    if ("error" in owned) {
+      return { success: false, error: owned.error };
     }
+    const resource = owned.source;
 
     const newIsRead = !resource.isRead;
 
@@ -321,13 +150,11 @@ export async function deleteLibraryResourceAction(resourceId: number) {
       return { success: false, error: "Oturum bulunamadı." };
     }
 
-    const resource = await db.query.sources.findFirst({
-      where: eq(sources.id, resourceId),
-    });
-
-    if (!resource) {
-      return { success: false, error: "Eser bulunamadı." };
+    const owned = await getOwnedSource(resourceId, session.userId);
+    if ("error" in owned) {
+      return { success: false, error: owned.error };
     }
+    const resource = owned.source;
 
     // Attempt R2 PDF deletion — log warning but never block the DB cleanup
     if (resource.pdfFileName) {
@@ -381,29 +208,15 @@ export async function updateLibraryResourceAction(input: {
       return { success: false, error: "Lütfen eser başlığını giriniz." };
     }
 
-    const existingResource = await db.query.sources.findFirst({
-      where: eq(sources.id, input.resourceId),
-    });
-
-    if (!existingResource) {
-      return { success: false, error: "Eser bulunamadı." };
+    const owned = await getOwnedSource(input.resourceId, session.userId);
+    if ("error" in owned) {
+      return { success: false, error: owned.error };
     }
+    const existingResource = owned.source;
 
-    // Verify user ownership via matrix boxes
-    const matrix = await db.query.matrices.findFirst({
-      where: eq(matrices.userId, session.userId),
-      with: { boxes: true },
-    });
-
-    const userBoxes = matrix?.boxes || [];
+    // Ensure the user's boxes are seeded, then validate any requested box relocation below.
+    const { boxes: userBoxes } = await ensureUserMatrixAndBoxes(session.userId);
     const userBoxIds = userBoxes.map((b) => b.id);
-
-    if (!userBoxIds.includes(existingResource.boxId)) {
-      return {
-        success: false,
-        error: "Bu eseri düzenleme yetkiniz bulunmamaktadır.",
-      };
-    }
 
     let targetBoxId = existingResource.boxId;
     if (input.boxId && userBoxIds.includes(input.boxId)) {
@@ -429,15 +242,6 @@ export async function updateLibraryResourceAction(input: {
 
     // Map box information
     const targetBox = userBoxes.find((b) => b.id === updated.boxId);
-    const linkedBoxParentId = targetBox?.parentId ?? null;
-    const isSubBox = linkedBoxParentId !== null;
-    const parentBox = isSubBox
-      ? userBoxes.find((b) => b.id === linkedBoxParentId)
-      : targetBox;
-
-    const boxType = (parentBox?.boxType ||
-      targetBox?.boxType ||
-      "THEORETICAL_FRAMEWORK") as Exclude<ThesisBoxType, "ALL">;
 
     log.info("update_library_resource_success", {
       service: "library",
@@ -446,25 +250,11 @@ export async function updateLibraryResourceAction(input: {
 
     return {
       success: true,
-      data: {
-        id: updated.id,
-        boxType,
-        subBoxId: isSubBox ? updated.boxId : undefined,
-        subBoxTitle: isSubBox ? (targetBox?.title ?? undefined) : undefined,
-        title: updated.title,
-        authors: updated.authors || ["Bilinmeyen Yazar"],
-        publisher: updated.publisher || "Belirtilmemiş",
-        publicationYear: updated.publicationYear || new Date().getFullYear(),
-        doi: updated.doi || undefined,
-        openalexId: updated.openalexId || undefined,
-        isRead: updated.isRead,
-        pdfUrl: updated.pdfUrl || undefined,
-        pdfFileName: updated.pdfFileName || undefined,
-        pdfFileSize: updated.pdfFileSize || undefined,
-        pdfStatus: updated.pdfStatus || "NOT_UPLOADED",
-        sourceOrigin: "LITERATURE_EXPANSION" as const,
-        createdAt: updated.createdAt.toISOString(),
-      },
+      data: mapSourceToResource(updated, {
+        boxType: targetBox?.boxType ?? null,
+        title: targetBox?.title ?? "Genel",
+        parentId: targetBox?.parentId ?? null,
+      }),
     };
   } catch (err) {
     log.error("update_library_resource_failed", {

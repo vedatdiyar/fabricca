@@ -8,6 +8,7 @@ import { ResourceDetail } from "./_components/resource-detail";
 import { AddResourceModal } from "./_components/add-resource-modal";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { toast } from "sonner";
+import { BOX_ORDER_WEIGHT } from "@/lib/box-constants";
 import {
   getLibraryResourcesAction,
   deleteResourcePdfAction,
@@ -132,18 +133,12 @@ function LibraryPageContent() {
 
   // Sort resources: PDF uploaded first → subjectProblem → theoreticalFramework → methodology → primaryMaterial → createdAt
   const sortedResources = useMemo(() => {
-    const BOX_SORT_ORDER: Record<string, number> = {
-      SUBJECT_PROBLEM: 0,
-      THEORETICAL_FRAMEWORK: 1,
-      METHODOLOGY: 2,
-      PRIMARY_MATERIAL: 3,
-    };
     return [...resources].sort((a, b) => {
       const aHasPdf = a.pdfStatus && a.pdfStatus !== "NOT_UPLOADED" ? 0 : 1;
       const bHasPdf = b.pdfStatus && b.pdfStatus !== "NOT_UPLOADED" ? 0 : 1;
       if (aHasPdf !== bHasPdf) return aHasPdf - bHasPdf;
-      const orderA = BOX_SORT_ORDER[a.boxType] ?? 99;
-      const orderB = BOX_SORT_ORDER[b.boxType] ?? 99;
+      const orderA = BOX_ORDER_WEIGHT[a.boxType] ?? 99;
+      const orderB = BOX_ORDER_WEIGHT[b.boxType] ?? 99;
       if (orderA !== orderB) return orderA - orderB;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
@@ -153,13 +148,16 @@ function LibraryPageContent() {
    * Handles creating a new resource via PDF upload with metadata extraction.
    * Uses presigned URL flow to bypass Vercel's 4.5MB serverless body limit.
    */
-  const handleCreateResourceFromPdf = async (file: File, boxId: number) => {
+  const handleCreateResourceFromPdf = async (
+    file: File,
+    boxId: number,
+  ): Promise<boolean> => {
     try {
       // Step 1: Get presigned upload URL
       const requestRes = await requestPdfCreateUploadAction();
       if (!requestRes.success) {
         toast.error(requestRes.error || "Yükleme bağlantısı oluşturulamadı.");
-        return;
+        return false;
       }
 
       // Step 2: Upload PDF directly to R2 from browser
@@ -174,11 +172,11 @@ function LibraryPageContent() {
         toast.error(
           "PDF buluta gönderilirken ağ hatası oluştu. Tarayıcı konsoluna bakınız.",
         );
-        return;
+        return false;
       }
       if (!uploadRes.ok) {
         toast.error("PDF dosyası bulut depolamaya yüklenirken hata oluştu.");
-        return;
+        return false;
       }
 
       // Step 3: Complete the upload — fetch from R2, extract metadata, create resource, run pipeline
@@ -191,12 +189,14 @@ function LibraryPageContent() {
         toast.error(
           completeRes.error || "Eser PDF'den yüklenirken hata oluştu.",
         );
-        throw new Error(completeRes.error);
+        return false;
       }
       setResources((prev) => [completeRes.data, ...prev]);
       handleSelectResource(completeRes.data.id);
-    } catch (err) {
-      throw err;
+      return true;
+    } catch {
+      toast.error("PDF yükleme sırasında beklenmeyen bir hata oluştu.");
+      return false;
     }
   };
 
@@ -204,50 +204,57 @@ function LibraryPageContent() {
    * Handles PDF upload and RAG vectorization for selected resource.
    * Uses presigned URL flow to bypass Vercel's 4.5MB serverless body limit.
    */
-  const handleUploadPdf = async (file: File) => {
-    if (!selectedResourceId) return;
+  const handleUploadPdf = async (file: File): Promise<boolean> => {
+    if (!selectedResourceId) return false;
 
-    // Step 1: Get presigned upload URL
-    const requestRes = await requestResourcePdfUploadAction(selectedResourceId);
-    if (!requestRes.success) {
-      toast.error(requestRes.error || "Yükleme bağlantısı oluşturulamadı.");
-      return;
-    }
+    try {
+      // Step 1: Get presigned upload URL
+      const requestRes =
+        await requestResourcePdfUploadAction(selectedResourceId);
+      if (!requestRes.success) {
+        toast.error(requestRes.error || "Yükleme bağlantısı oluşturulamadı.");
+        return false;
+      }
 
-    // Step 2: Upload PDF directly to R2 from browser
-    const uploadRes = await fetch(requestRes.presignedUrl, {
-      method: "PUT",
-      body: file,
-      headers: { "Content-Type": "application/pdf" },
-    });
-    if (!uploadRes.ok) {
-      const uploadErrorText = await uploadRes.text().catch(() => "unknown");
-      console.error(
-        "[handleUploadPdf] R2 presigned PUT failed:",
-        uploadRes.status,
-        uploadErrorText,
+      // Step 2: Upload PDF directly to R2 from browser
+      const uploadRes = await fetch(requestRes.presignedUrl, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": "application/pdf" },
+      });
+      if (!uploadRes.ok) {
+        const uploadErrorText = await uploadRes.text().catch(() => "unknown");
+        console.error(
+          "[handleUploadPdf] R2 presigned PUT failed:",
+          uploadRes.status,
+          uploadErrorText,
+        );
+        toast.error("PDF dosyası bulut depolamaya yüklenirken hata oluştu.");
+        return false;
+      }
+
+      // Step 3: Complete the upload — fetch from R2, extract metadata, run pipeline
+      const completeRes = await completeResourcePdfUploadAction(
+        selectedResourceId,
+        requestRes.tempKey,
+        file.name,
       );
-      toast.error("PDF dosyası bulut depolamaya yüklenirken hata oluştu.");
-      return;
+      if (!completeRes.success) {
+        toast.error(completeRes.error || "PDF yüklenirken hata oluştu.");
+        return false;
+      }
+      setResources((prev) =>
+        prev.map((item) =>
+          item.id === selectedResourceId
+            ? { ...item, ...completeRes.data }
+            : item,
+        ),
+      );
+      return true;
+    } catch {
+      toast.error("PDF yükleme sırasında beklenmeyen bir hata oluştu.");
+      return false;
     }
-
-    // Step 3: Complete the upload — fetch from R2, extract metadata, run pipeline
-    const completeRes = await completeResourcePdfUploadAction(
-      selectedResourceId,
-      requestRes.tempKey,
-      file.name,
-    );
-    if (!completeRes.success) {
-      toast.error(completeRes.error || "PDF yüklenirken hata oluştu.");
-      throw new Error(completeRes.error);
-    }
-    setResources((prev) =>
-      prev.map((item) =>
-        item.id === selectedResourceId
-          ? { ...item, ...completeRes.data }
-          : item,
-      ),
-    );
   };
 
   /**
@@ -345,6 +352,11 @@ function LibraryPageContent() {
         prev.map((item) =>
           item.id === resourceId ? { ...item, isRead: nextStatus } : item,
         ),
+      );
+      toast.success(
+        nextStatus
+          ? "Eser 'Okundu' olarak işaretlendi."
+          : "Eser 'Okunacak' olarak işaretlendi.",
       );
     } else {
       toast.error(res.error || "Okuma durumu güncellenemedi.");

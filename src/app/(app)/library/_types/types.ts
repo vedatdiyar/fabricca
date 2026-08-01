@@ -47,8 +47,6 @@ export interface LibraryResourceItem {
   pdfFileSize?: number;
   /** PDF processing & vectorization status */
   pdfStatus?: "NOT_UPLOADED" | "PROCESSING" | "READY" | "FAILED";
-  /** Source origin tag (e.g., Onboarding, OpenAlex, Crossref) */
-  sourceOrigin: "ONBOARDING" | "LITERATURE_EXPANSION";
   /** Creation timestamp formatted ISO string */
   createdAt: string;
 }

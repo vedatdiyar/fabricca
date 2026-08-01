@@ -1,213 +1,69 @@
 import "@/lib/polyfills/math-sum-precise";
-import { getDocumentProxy } from "unpdf";
-import type { PageLayoutReport, PdfLayoutAnalysis, TextItem } from "./types";
-import { analyzePageLayout, extractColumnAwareText } from "./layout-analyzer";
+import pdf2md from "@opendocsg/pdf2md";
+import type { PdfLayoutAnalysis } from "./types";
+import { normalizeTurkishText } from "./turkish-normalizer";
 
-const SAMPLE_PAGE_LIMIT = 20;
-const SCAN_THRESHOLD = 50;
-const MULTI_COLUMN_PAGE_RATIO = 0.4;
-const COMPLEX_LAYOUT_PAGE_RATIO = 0.3;
+const SCAN_THRESHOLD_CHARS = 300;
 
 /**
- * Analyzes PDF layout structure using a fast 20-page sampling window.
+ * Analyzes PDF layout structure and extracts Markdown using pdf2md + Turkish character normalization.
  *
- * Samples the first 20 pages to inspect line-start coordinates and text density.
- * Text PDFs (single or multi-column) are extracted locally with column awareness in <200ms.
- * Scanned PDFs (avgCharsPerPage < SCAN_THRESHOLD) route to LlamaParse API for high-precision OCR.
+ * Scanned/Image PDFs with very low text yield (<300 chars) route automatically to LlamaParse API.
+ * Digital text PDFs are parsed locally into rich Markdown with restored Turkish diacritics in <300ms.
  *
  * @param buffer - PDF binary buffer
- * @returns PdfLayoutAnalysis object containing routing decision and extracted text
+ * @returns PdfLayoutAnalysis object containing routing decision and extracted fullText
  */
 export async function analyzePdfLayout(
   buffer: Buffer,
 ): Promise<PdfLayoutAnalysis> {
-  const data = new Uint8Array(buffer);
-  const doc = await getDocumentProxy(data);
-
-  const pageCount = doc.numPages;
-  const sampledPageCount = Math.min(SAMPLE_PAGE_LIMIT, pageCount);
-
-  const layoutReports: PageLayoutReport[] = [];
-  const pageTexts: string[] = new Array<string>(pageCount);
-  let sampledTotalChars = 0;
-
-  // 1. Sample first 20 pages in parallel for layout analysis and text extraction
-  const sampleIndices = Array.from(
-    { length: sampledPageCount },
-    (_, idx) => idx + 1,
-  );
-
-  const sampleResults = await Promise.all(
-    sampleIndices.map(async (i) => {
-      try {
-        const page = await doc.getPage(i);
-        const viewport = page.getViewport({ scale: 1.0 });
-        const textContent = await page.getTextContent();
-
-        const items: TextItem[] = textContent.items
-          .filter((it: Record<string, unknown>) => typeof it.str === "string")
-          .map((it: Record<string, unknown>) => ({
-            str: (it.str as string) || "",
-            x: (it.transform as number[])[4] || 0,
-            y: (it.transform as number[])[5] || 0,
-          }));
-
-        const report = analyzePageLayout(items, viewport.width, i);
-        const textExtracted = extractColumnAwareText(
-          items,
-          viewport.width,
-          viewport.height,
-        );
-        const pageText = textExtracted
-          ? `[PDFSayfa ${i}]\n${textExtracted}`
-          : "";
-
-        return { i, report, pageText, charCount: report.charCount };
-      } catch {
-        return {
-          i,
-          report: {
-            pageIndex: i,
-            columnCount: 1 as const,
-            hasLineScatter: false,
-            itemCount: 0,
-            charCount: 0,
-            gapThreshold: null,
-          },
-          pageText: "",
-          charCount: 0,
-        };
-      }
-    }),
-  );
-
-  for (const res of sampleResults) {
-    layoutReports.push(res.report);
-    pageTexts[res.i - 1] = res.pageText;
-    sampledTotalChars += res.charCount;
+  let rawMd = "";
+  try {
+    rawMd = await pdf2md(new Uint8Array(buffer));
+  } catch {
+    rawMd = "";
   }
 
-  const avgCharsPerPage =
-    sampledPageCount > 0 ? sampledTotalChars / sampledPageCount : 0;
-  const isScanned = avgCharsPerPage < SCAN_THRESHOLD;
+  const normalizedMd = normalizeTurkishText(rawMd);
+  const totalChars = normalizedMd.trim().length;
 
-  const multiColPages = layoutReports.filter((r) => r.columnCount >= 2);
-  const scatterPages = layoutReports.filter((r) => r.hasLineScatter);
+  // Detect page count markers inserted by pdf2md (<!-- PAGE_BREAK -->)
+  const pageBreakMatches = normalizedMd.match(/<!-- PAGE_BREAK -->/g) || [];
+  const estimatedPageCount = pageBreakMatches.length + 1;
+  const avgCharsPerPage = totalChars / (estimatedPageCount || 1);
 
-  const multiColPageIndices = multiColPages.map((r) => r.pageIndex);
-  const scatterPageIndices = scatterPages.map((r) => r.pageIndex);
-
-  const isMultiColumn =
-    multiColPages.length >= sampledPageCount * MULTI_COLUMN_PAGE_RATIO;
-  const hasComplexLayout =
-    scatterPages.length >= sampledPageCount * COMPLEX_LAYOUT_PAGE_RATIO;
-
-  let route: "local" | "unstructured-fallback";
-  let tier: "cost_effective" | "agentic" | undefined;
-  let reason: string;
+  const isScanned = totalChars < SCAN_THRESHOLD_CHARS || avgCharsPerPage < 50;
 
   if (isScanned) {
-    route = "unstructured-fallback";
-    tier = "agentic";
-    reason = `Scanned PDF (OCR Required): ${avgCharsPerPage.toFixed(1)} chars/page < ${SCAN_THRESHOLD} threshold (sampled ${sampledPageCount} pages)`;
-  } else if (isMultiColumn || hasComplexLayout) {
-    const pagesStr = (
-      isMultiColumn ? multiColPageIndices : scatterPageIndices
-    ).join(",");
-    route = "unstructured-fallback";
-    tier = "cost_effective";
-    reason = `Multi-column / Complex Layout (LlamaParse Cost-Effective Tier): ${multiColPages.length} multi-col, ${scatterPages.length} scatter sampled pages — pages: [${pagesStr}]`;
-  } else {
-    route = "local";
-    reason = `Single-column digital text (Local Fast <200ms): ${pageCount} total pages, sampled ${sampledPageCount} pages, ${avgCharsPerPage.toFixed(1)} chars/page avg`;
-  }
-
-  // If fallback route is chosen, destroy doc immediately without extracting remaining pages
-  if (route === "unstructured-fallback") {
-    try {
-      const docAny = doc as unknown as { destroy: () => Promise<void> };
-      await docAny.destroy();
-    } catch {
-      /* ignore */
-    }
     return {
-      route,
-      tier,
-      reason,
+      route: "llamaparse-fallback",
+      tier: "agentic",
+      reason: `Scanned PDF / Low Text Yield (OCR Required): ${totalChars} total chars, avg ${Math.round(avgCharsPerPage)} chars/page`,
       fullText: "",
-      pageCount,
-      sampledPageCount,
-      totalChars: sampledTotalChars,
+      pageCount: estimatedPageCount,
+      sampledPageCount: estimatedPageCount,
+      totalChars,
       avgCharsPerPage,
-      isScanned,
-      isMultiColumn,
-      hasComplexLayout,
-      multiColPageIndices,
-      scatterPageIndices,
+      isScanned: true,
+      isMultiColumn: false,
+      hasComplexLayout: false,
+      multiColPageIndices: [],
+      scatterPageIndices: [],
     };
   }
 
-  // 2. Local path: extract text for remaining pages (sampledPageCount + 1 ... pageCount)
-  if (pageCount > sampledPageCount) {
-    const remainingIndices = Array.from(
-      { length: pageCount - sampledPageCount },
-      (_, idx) => sampledPageCount + 1 + idx,
-    );
-    const chunkSize = 10;
-    for (let c = 0; c < remainingIndices.length; c += chunkSize) {
-      const pageChunk = remainingIndices.slice(c, c + chunkSize);
-      await Promise.all(
-        pageChunk.map(async (i) => {
-          try {
-            const page = await doc.getPage(i);
-            const viewport = page.getViewport({ scale: 1.0 });
-            const textContent = await page.getTextContent();
-            const items: TextItem[] = textContent.items
-              .filter(
-                (it: Record<string, unknown>) => typeof it.str === "string",
-              )
-              .map((it: Record<string, unknown>) => ({
-                str: (it.str as string) || "",
-                x: (it.transform as number[])[4] || 0,
-                y: (it.transform as number[])[5] || 0,
-              }));
-            const textExtracted = extractColumnAwareText(
-              items,
-              viewport.width,
-              viewport.height,
-            );
-            pageTexts[i - 1] = textExtracted
-              ? `[PDFSayfa ${i}]\n${textExtracted}`
-              : "";
-          } catch {
-            pageTexts[i - 1] = "";
-          }
-        }),
-      );
-    }
-  }
-
-  try {
-    const docAny = doc as unknown as { destroy: () => Promise<void> };
-    await docAny.destroy();
-  } catch {
-    /* ignore */
-  }
-
-  const fullText = pageTexts.join("\n\n");
-
   return {
-    route,
-    reason,
-    fullText,
-    pageCount,
-    sampledPageCount,
-    totalChars: fullText.length,
+    route: "local",
+    reason: `Digital Text PDF (Local pdf2md Fast <300ms): ${estimatedPageCount} pages, ${totalChars} chars`,
+    fullText: normalizedMd,
+    pageCount: estimatedPageCount,
+    sampledPageCount: estimatedPageCount,
+    totalChars,
     avgCharsPerPage,
-    isScanned,
-    isMultiColumn,
-    hasComplexLayout,
-    multiColPageIndices,
-    scatterPageIndices,
+    isScanned: false,
+    isMultiColumn: false,
+    hasComplexLayout: false,
+    multiColPageIndices: [],
+    scatterPageIndices: [],
   };
 }

@@ -8,15 +8,14 @@ import { createFlowId, Logger } from "@/lib/logger";
 import {
   deletePdfFromR2,
   generatePresignedUploadUrl,
-  getPdfFromR2,
   deleteR2Object,
 } from "@/lib/services/r2";
-import { extractPdfMetadata } from "@/lib/services/pdf-metadata";
-import { sanitizeAcademicDataBulk } from "@/lib/services/academic-sanitizer";
-import { parsePdfWithHybridRouter } from "@/lib/services/pdf-parser";
 import { formatApaPdfFileName } from "@/lib/academic/utils";
 import { processResourcePdfPipeline } from "../_services/pdf-pipeline";
-import type { ThesisBoxType, LibraryResourceItem } from "../_types/types";
+import { fetchAndExtractPdf } from "../_services/pdf-upload";
+import { getOwnedSource } from "../_services/helpers";
+import { mapSourceToResource } from "../_services/resource-mapper";
+import type { LibraryResourceItem } from "../_types/types";
 
 /**
  * Best-effort cleanup of a temporary R2 object (e.g. "temp/<uuid>.pdf").
@@ -39,6 +38,44 @@ async function cleanupTempKey(tempKey: string, log: Logger): Promise<void> {
 }
 
 /**
+ * Generates a presigned upload URL pointing at a fresh temporary R2 key.
+ *
+ * @returns The presigned URL and its matching temporary R2 key.
+ */
+async function generateTempPdfUploadUrl() {
+  const tempKey = `temp/${crypto.randomUUID()}.pdf`;
+  const presignedUrl = await generatePresignedUploadUrl(
+    tempKey,
+    "application/pdf",
+  );
+  return { presignedUrl, tempKey };
+}
+
+/**
+ * Returns the READY source that already holds the given APA PDF filename,
+ * or null when the filename is free.
+ *
+ * @param apaFileName - Target APA-styled PDF filename.
+ */
+async function findReadySourceByPdfName(apaFileName: string) {
+  return db.query.sources.findFirst({
+    where: and(
+      eq(sources.pdfFileName, apaFileName),
+      eq(sources.pdfStatus, "READY"),
+    ),
+  });
+}
+
+/**
+ * Canonical duplicate-PDF rejection message (strict copy prevention policy).
+ *
+ * @param apaFileName - The conflicting APA-styled PDF filename.
+ */
+function buildDuplicatePdfError(apaFileName: string) {
+  return `Bu akademik yayın PDF'i (${apaFileName}) sistemde başka bir kayıtta zaten mevcut. Kopya kayıtlara izin verilmemektedir.`;
+}
+
+/**
  * Server Action: Deletes a resource's PDF file from Cloudflare R2 and resets DB PDF status.
  *
  * @param resourceId - Target resource ID.
@@ -53,13 +90,11 @@ export async function deleteResourcePdfAction(resourceId: number) {
       return { success: false, error: "Oturum bulunamadı." };
     }
 
-    const resource = await db.query.sources.findFirst({
-      where: eq(sources.id, resourceId),
-    });
-
-    if (!resource) {
-      return { success: false, error: "Eser bulunamadı." };
+    const owned = await getOwnedSource(resourceId, session.userId);
+    if ("error" in owned) {
+      return { success: false, error: owned.error };
     }
+    const resource = owned.source;
 
     if (resource.pdfFileName) {
       try {
@@ -120,13 +155,11 @@ export async function requestResourcePdfUploadAction(
       return { success: false, error: "Oturum bulunamadı." };
     }
 
-    const resource = await db.query.sources.findFirst({
-      where: eq(sources.id, resourceId),
-    });
-
-    if (!resource) {
-      return { success: false, error: "İlgili akademik eser bulunamadı." };
+    const owned = await getOwnedSource(resourceId, session.userId);
+    if ("error" in owned) {
+      return { success: false, error: owned.error };
     }
+    const resource = owned.source;
 
     if (resource.pdfStatus === "READY" && resource.pdfUrl) {
       return {
@@ -141,11 +174,7 @@ export async function requestResourcePdfUploadAction(
       data: { resourceId },
     });
 
-    const tempKey = `temp/${crypto.randomUUID()}.pdf`;
-    const presignedUrl = await generatePresignedUploadUrl(
-      tempKey,
-      "application/pdf",
-    );
+    const { presignedUrl, tempKey } = await generateTempPdfUploadUrl();
 
     log.info("request_resource_pdf_upload_url_success", {
       service: "library",
@@ -171,7 +200,7 @@ export async function requestResourcePdfUploadAction(
  *
  * @param resourceId - Target resource ID.
  * @param tempKey - Temporary R2 key where the client uploaded the PDF.
- * @param originalFileName - Original file name (for Unstructured fallback).
+ * @param originalFileName - Original file name (for LlamaParse fallback).
  * @returns The updated resource data.
  */
 export async function completeResourcePdfUploadAction(
@@ -200,15 +229,12 @@ export async function completeResourcePdfUploadAction(
       };
     }
 
-    const resource = await db.query.sources.findFirst({
-      where: eq(sources.id, resourceId),
-      with: { box: true },
-    });
-
-    if (!resource) {
+    const owned = await getOwnedSource(resourceId, session.userId);
+    if ("error" in owned) {
       await cleanupTempKey(tempKey, log);
-      return { success: false, error: "İlgili akademik eser bulunamadı." };
+      return { success: false, error: owned.error };
     }
+    const resource = owned.source;
 
     if (resource.pdfStatus === "READY" && resource.pdfUrl) {
       await cleanupTempKey(tempKey, log);
@@ -221,36 +247,12 @@ export async function completeResourcePdfUploadAction(
 
     const pipelineStart = performance.now();
 
-    // 1. Fetch PDF buffer from R2 temp key
-    log.info("complete_resource_pdf_fetch_from_r2_start", {
-      service: "library",
-      data: { resourceId, tempKey },
-    });
-    const buffer = await getPdfFromR2(tempKey);
-    log.info("complete_resource_pdf_fetch_from_r2_success", {
-      service: "library",
-      data: { resourceId, size: buffer.length },
-    });
-
-    // 2. Parse via Hybrid Router (local unpdf or Unstructured fallback)
-    const chunks = await parsePdfWithHybridRouter(
-      buffer,
+    // 1-3. Fetch, parse and extract metadata via shared prologue
+    const { buffer, chunks, metadata } = await fetchAndExtractPdf(
+      tempKey,
       originalFileName,
       log,
     );
-
-    // 3. Extract metadata
-    const metadata = await extractPdfMetadata(chunks, originalFileName, log);
-
-    // 3b. Sanitize metadata — Cerebras zaten sanitize eder, API yolları eder
-    if (metadata.source !== "cerebras") {
-      const [sanitizedMeta] = await sanitizeAcademicDataBulk(
-        [{ title: metadata.title, author: metadata.authors.join(", ") }],
-        log,
-      );
-      metadata.title = sanitizedMeta.title;
-      metadata.authors = sanitizedMeta.author.split(", ").filter(Boolean);
-    }
 
     // 4. Overwrite existing resource metadata
     await db
@@ -271,19 +273,13 @@ export async function completeResourcePdfUploadAction(
       metadata.title,
     );
 
-    // 6. Check for duplicate filename
-    const existingDuplicate = await db.query.sources.findFirst({
-      where: and(
-        eq(sources.pdfFileName, apaFileName),
-        eq(sources.pdfStatus, "READY"),
-      ),
-    });
-
+    // 6. Strict duplicate policy — reject instead of creating a copy
+    const existingDuplicate = await findReadySourceByPdfName(apaFileName);
     if (existingDuplicate && existingDuplicate.id !== resourceId) {
       await cleanupTempKey(tempKey, log);
       return {
         success: false,
-        error: `Bu akademik yayın PDF'i (${apaFileName}) sistemde başka bir kayıtta zaten mevcut. Kopya kayıtlara izin verilmemektedir.`,
+        error: buildDuplicatePdfError(apaFileName),
       };
     }
 
@@ -320,25 +316,25 @@ export async function completeResourcePdfUploadAction(
 
     return {
       success: true,
-      data: {
-        id: resource.id,
-        boxType: resource.box.boxType as Exclude<ThesisBoxType, "ALL">,
-        subBoxId: resource.box.parentId ? resource.box.id : undefined,
-        subBoxTitle: resource.box.parentId ? resource.box.title : undefined,
-        title: metadata.title,
-        authors: metadata.authors,
-        publisher: metadata.publisher || "Belirtilmemiş",
-        publicationYear: metadata.publicationYear,
-        doi: metadata.doi || undefined,
-        openalexId: resource.openalexId || undefined,
-        isRead: resource.isRead,
-        pdfUrl: pipelineResult.r2Url,
-        pdfFileName: apaFileName,
-        pdfFileSize: pipelineResult.finalSize,
-        pdfStatus: "READY" as const,
-        sourceOrigin: "LITERATURE_EXPANSION" as const,
-        createdAt: resource.createdAt.toISOString(),
-      },
+      data: mapSourceToResource(
+        resource,
+        {
+          boxType: resource.box.boxType,
+          title: resource.box.title,
+          parentId: resource.box.parentId,
+        },
+        {
+          title: metadata.title,
+          authors: metadata.authors,
+          publisher: metadata.publisher || "Belirtilmemiş",
+          publicationYear: metadata.publicationYear,
+          doi: metadata.doi || undefined,
+          pdfUrl: pipelineResult.r2Url,
+          pdfFileName: apaFileName,
+          pdfFileSize: pipelineResult.finalSize,
+          pdfStatus: "READY",
+        },
+      ),
     };
   } catch (err) {
     log.error("complete_resource_pdf_failed", {
@@ -384,11 +380,7 @@ export async function requestPdfCreateUploadAction(): Promise<
       service: "library",
     });
 
-    const tempKey = `temp/${crypto.randomUUID()}.pdf`;
-    const presignedUrl = await generatePresignedUploadUrl(
-      tempKey,
-      "application/pdf",
-    );
+    const { presignedUrl, tempKey } = await generateTempPdfUploadUrl();
 
     log.info("request_pdf_create_upload_url_success", {
       service: "library",
@@ -413,7 +405,7 @@ export async function requestPdfCreateUploadAction(): Promise<
  * creates a new library resource, runs the full RAG pipeline, and cleans up the temp file.
  *
  * @param tempKey - Temporary R2 key where the client uploaded the PDF.
- * @param originalFileName - Original file name (for Unstructured fallback).
+ * @param originalFileName - Original file name (for LlamaParse fallback).
  * @param boxId - Target thesis box ID (a sub-box when the parent has sub-boxes, otherwise the parent box).
  * @returns The newly created resource data.
  */
@@ -448,36 +440,12 @@ export async function completePdfCreateUploadAction(
 
     const pipelineStart = performance.now();
 
-    // 1. Fetch PDF buffer from R2 temp key
-    log.info("complete_pdf_create_fetch_from_r2_start", {
-      service: "library",
-      data: { tempKey },
-    });
-    const buffer = await getPdfFromR2(tempKey);
-    log.info("complete_pdf_create_fetch_from_r2_success", {
-      service: "library",
-      data: { size: buffer.length },
-    });
-
-    // 2. Parse via Hybrid Router (local unpdf or Unstructured fallback)
-    const chunks = await parsePdfWithHybridRouter(
-      buffer,
+    // 1-3. Fetch, parse and extract metadata via shared prologue
+    const { buffer, chunks, metadata } = await fetchAndExtractPdf(
+      tempKey,
       originalFileName,
       log,
     );
-
-    // 3. Extract metadata
-    const metadata = await extractPdfMetadata(chunks, originalFileName, log);
-
-    // 3b. Sanitize metadata — Cerebras zaten sanitize eder, API yolları eder
-    if (metadata.source !== "cerebras") {
-      const [sanitizedMeta] = await sanitizeAcademicDataBulk(
-        [{ title: metadata.title, author: metadata.authors.join(", ") }],
-        log,
-      );
-      metadata.title = sanitizedMeta.title;
-      metadata.authors = sanitizedMeta.author.split(", ").filter(Boolean);
-    }
 
     // 4. Resolve target thesis box by ID and verify ownership
     const targetBox = await db.query.boxes.findFirst({
@@ -493,7 +461,7 @@ export async function completePdfCreateUploadAction(
       };
     }
 
-    // 7. Create library resource record
+    // 5. Create library resource record
     const [newResource] = await db
       .insert(sources)
       .values({
@@ -509,37 +477,36 @@ export async function completePdfCreateUploadAction(
       .returning();
     createdResourceId = newResource.id;
 
-    // 8. Generate APA filename
+    // 6. Generate APA filename
     const apaFileName = formatApaPdfFileName(
       newResource.authors,
       newResource.publicationYear,
       newResource.title,
     );
 
-    // 9. Check for duplicate filename
-    const existingDuplicate = await db.query.sources.findFirst({
-      where: and(
-        eq(sources.pdfFileName, apaFileName),
-        eq(sources.pdfStatus, "READY"),
-      ),
-    });
+    // 7. Strict duplicate policy — reject instead of creating a copy
+    const existingDuplicate = await findReadySourceByPdfName(apaFileName);
+    if (existingDuplicate) {
+      await cleanupTempKey(tempKey, log);
+      await db.delete(sources).where(eq(sources.id, createdResourceId));
+      return {
+        success: false,
+        error: buildDuplicatePdfError(apaFileName),
+      };
+    }
 
-    const finalFileName = existingDuplicate
-      ? `${apaFileName.replace(/\.pdf$/i, "")}_${newResource.id}.pdf`
-      : apaFileName;
+    uploadedPdfFileName = apaFileName;
 
-    uploadedPdfFileName = finalFileName;
-
-    // 10. Run shared RAG pipeline
+    // 8. Run shared RAG pipeline
     const pipelineResult = await processResourcePdfPipeline({
       resourceId: newResource.id,
-      fileName: finalFileName,
+      fileName: apaFileName,
       buffer,
       log,
       precomputedChunks: chunks,
     });
 
-    // 11. Clean up temp file
+    // 9. Clean up temp file
     await cleanupTempKey(tempKey, log);
 
     log.info("complete_pdf_create_success", {
@@ -547,7 +514,7 @@ export async function completePdfCreateUploadAction(
       data: {
         resourceId: newResource.id,
         title: newResource.title,
-        finalFileName,
+        finalFileName: apaFileName,
         pdfUrl: pipelineResult.r2Url,
         chunkCount: pipelineResult.chunkCount,
         durationMs: Math.round(performance.now() - pipelineStart),
@@ -556,28 +523,21 @@ export async function completePdfCreateUploadAction(
 
     return {
       success: true,
-      data: {
-        id: newResource.id,
-        boxType: (targetBox.boxType || "THEORETICAL_FRAMEWORK") as Exclude<
-          ThesisBoxType,
-          "ALL"
-        >,
-        subBoxId: targetBox.parentId ? targetBox.id : undefined,
-        subBoxTitle: targetBox.parentId ? targetBox.title : undefined,
-        title: newResource.title,
-        authors: newResource.authors || ["Bilinmeyen Yazar"],
-        publisher: newResource.publisher || "Belirtilmemiş",
-        publicationYear:
-          newResource.publicationYear || new Date().getFullYear(),
-        doi: newResource.doi || undefined,
-        openalexId: newResource.openalexId || undefined,
-        isRead: false,
-        pdfUrl: pipelineResult.r2Url,
-        pdfFileName: finalFileName,
-        pdfStatus: "READY" as const,
-        sourceOrigin: "LITERATURE_EXPANSION" as const,
-        createdAt: newResource.createdAt.toISOString(),
-      },
+      data: mapSourceToResource(
+        newResource,
+        {
+          boxType: targetBox.boxType,
+          title: targetBox.title,
+          parentId: targetBox.parentId,
+        },
+        {
+          isRead: false,
+          pdfUrl: pipelineResult.r2Url,
+          pdfFileName: apaFileName,
+          pdfFileSize: pipelineResult.finalSize,
+          pdfStatus: "READY",
+        },
+      ),
     };
   } catch (err) {
     log.error("complete_pdf_create_failed", {
@@ -603,10 +563,7 @@ export async function completePdfCreateUploadAction(
 
     return {
       success: false,
-      error:
-        err instanceof Error
-          ? err.message
-          : "PDF yüklenirken ve künye bilgileri çıkarılırken bir hata oluştu.",
+      error: "PDF yüklenirken ve künye bilgileri çıkarılırken bir hata oluştu.",
     };
   }
 }

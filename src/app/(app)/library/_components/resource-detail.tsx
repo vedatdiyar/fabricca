@@ -28,7 +28,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { getBoxTypeBadgeConfig } from "./sidebar-work-list";
+import { getBoxTypeBadgeConfig } from "@/lib/box-constants";
 import { cn } from "@/lib/utils";
 import { PdfUploadDropzone } from "./pdf-upload-dropzone";
 import { EditResourceModal } from "./edit-resource-modal";
@@ -54,7 +54,7 @@ interface ResourceDetailProps {
   /** Callback to update metadata of resource */
   onUpdateResource?: (updatedResource: LibraryResourceItem) => void;
   /** Callback to upload PDF file for this resource */
-  onUploadPdf?: (file: File) => Promise<void>;
+  onUploadPdf?: (file: File) => Promise<boolean>;
   /** Callback to delete PDF file for this resource */
   onDeletePdf?: (resourceId: number) => Promise<void>;
 }
@@ -135,8 +135,6 @@ export function ResourceDetail({
     setContent("");
     setPageNumber("");
     setNoteType("DIRECT_QUOTE");
-
-    toast.success("Not kaydedildi ve alıntı fişi olarak eklendi.");
   };
 
   /**
@@ -146,7 +144,6 @@ export function ResourceDetail({
     if (noteToDeleteId !== null) {
       onDeleteNote(noteToDeleteId);
       setNoteToDeleteId(null);
-      toast.info("Not başarıyla silindi.");
     }
   };
 
@@ -157,14 +154,17 @@ export function ResourceDetail({
         <div className="flex flex-wrap items-center justify-between gap-2">
           {/* Box Badge(s) */}
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className={boxBadge.className}>
+            <Badge
+              variant="outline"
+              className={cn("text-[11px]", boxBadge.className)}
+            >
               {boxBadge.label}
             </Badge>
             {resource.subBoxTitle && (
               <Badge
                 variant="outline"
                 className={cn(
-                  "max-w-full text-[10px] px-1.5 py-0.5 border font-medium",
+                  "max-w-full text-[11px] px-1.5 py-0.5 border font-medium",
                   boxBadge.className,
                 )}
               >
@@ -180,7 +180,7 @@ export function ResourceDetail({
               size="sm"
               onClick={() => setIsEditModalOpen(true)}
               title="Künyeyi Düzenle"
-              className="h-8 gap-1.5 text-xs font-medium border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted"
+              className="h-8 gap-1.5 text-[11px] font-medium border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted"
             >
               <Pencil className="h-3.5 w-3.5 text-primary" />
               <span>Künyeyi Düzenle</span>
@@ -189,18 +189,11 @@ export function ResourceDetail({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                onToggleReadStatus(resource.id);
-                toast.success(
-                  resource.isRead
-                    ? "Eser 'Okunacak' olarak işaretlendi."
-                    : "Eser 'Okundu' olarak işaretlendi.",
-                );
-              }}
+              onClick={() => onToggleReadStatus(resource.id)}
               title={
                 resource.isRead ? "Okunacak Yap" : "Okundu Olarak İşaretle"
               }
-              className="h-8 gap-1.5 text-xs font-medium border-border/80"
+              className="h-8 gap-1.5 text-[11px] font-medium border-border/80"
             >
               {resource.isRead ? (
                 <>

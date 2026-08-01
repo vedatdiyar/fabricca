@@ -1,12 +1,13 @@
 import "@/lib/polyfills/math-sum-precise";
-import { getDocumentProxy } from "unpdf";
+import pdf2md from "@opendocsg/pdf2md";
 import type { Logger } from "@/lib/logger";
 import type { DocumentChunk } from "@/lib/services/llamaparse";
 import { buildLocalChunks } from "./chunker";
+import { normalizeTurkishText } from "./turkish-normalizer";
 
 /**
- * Extracts raw text from a PDF buffer without layout analysis or font dependencies.
- * Used as a fast local fallback when layout analysis fails or crashes.
+ * Extracts rich Markdown text from a PDF buffer using pdf2md + Turkish character normalization.
+ * Used for local single-column text extraction and fast fallback when LlamaParse is not required.
  *
  * @param buffer - Raw PDF file buffer
  * @param fileName - Original PDF file name (for logging)
@@ -24,55 +25,21 @@ export async function extractRawTextFast(
   });
 
   const fallbackStart = performance.now();
-
-  const freshData = new Uint8Array(buffer);
-  let doc: Awaited<ReturnType<typeof getDocumentProxy>>;
-  let pageCount = 0;
+  let markdownText = "";
 
   try {
-    doc = await getDocumentProxy(freshData);
-    pageCount = doc.numPages;
+    const rawMd = await pdf2md(new Uint8Array(buffer));
+    markdownText = normalizeTurkishText(rawMd);
   } catch (err) {
-    log.error("pdf_fast_fallback_local_doc_open_failed", {
+    log.error("pdf_fast_fallback_pdf2md_failed", {
       service: "pdf-parser",
       error: err,
       data: { fileName },
     });
-    throw new Error(
-      `Fast local fallback: PDF cannot be opened — ${(err as Error).message}`,
-    );
+    throw new Error(`Fast local extraction failed: ${(err as Error).message}`);
   }
 
-  const rawTexts: string[] = [];
-  let failCount = 0;
-
-  for (let i = 1; i <= pageCount; i++) {
-    try {
-      const page = await doc.getPage(i);
-      const textContent = await page.getTextContent();
-      const rawPageItems: string[] = [];
-      for (const it of textContent.items) {
-        const maybe = it as Record<string, unknown>;
-        if (typeof maybe.str === "string") {
-          const s = (maybe.str as string).trim();
-          if (s) rawPageItems.push(s);
-        }
-      }
-      rawTexts.push(rawPageItems.join(" "));
-    } catch {
-      failCount++;
-      rawTexts.push("");
-    }
-  }
-
-  try {
-    await (doc as unknown as { destroy: () => Promise<void> }).destroy();
-  } catch {
-    /* ignore */
-  }
-
-  const fullText = rawTexts.join("\n\n");
-  const chunks = await buildLocalChunks(fullText);
+  const chunks = await buildLocalChunks(markdownText);
   const totalDuration = performance.now() - fallbackStart;
   const totalTokens = chunks.reduce((s, c) => s + c.tokenCount, 0);
 
@@ -80,12 +47,10 @@ export async function extractRawTextFast(
     service: "pdf-parser",
     data: {
       fileName,
-      pageCount,
       chunkCount: chunks.length,
       totalTokens,
-      failedPages: failCount,
       durationMs: Math.round(totalDuration),
-      source: "fast-local-fallback",
+      source: "fast-local-pdf2md",
     },
   });
 

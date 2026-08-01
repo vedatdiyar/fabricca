@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { notes } from "@/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
+import { getOwnedSource } from "../_services/helpers";
 import type { NoteType } from "../_types/types";
 
 /**
@@ -29,6 +30,11 @@ export async function createResourceNoteAction(input: {
 
     if (!input.content.trim()) {
       return { success: false, error: "Lütfen not metnini giriniz." };
+    }
+
+    const owned = await getOwnedSource(input.resourceId, session.userId);
+    if ("error" in owned) {
+      return { success: false, error: owned.error };
     }
 
     const [newNote] = await db
