@@ -237,6 +237,10 @@ export const chunks = pgTable(
     chunkIndex: integer("chunk_index").notNull(),
     content: text("content").notNull(),
     parentContent: text("parent_content"),
+    section: text("section"),
+    pageStart: integer("page_start"),
+    pageEnd: integer("page_end"),
+    contentHash: text("content_hash"),
     metadata: jsonb("metadata").default({}).notNull(),
     tokenCount: integer("token_count"),
     embedding: vector("embedding", { dimensions: 1024 }),
@@ -250,6 +254,11 @@ export const chunks = pgTable(
     index("idx_chunks_source_id_chunk_index").on(
       table.sourceId,
       table.chunkIndex,
+    ),
+    index("idx_chunks_source_id_section").on(table.sourceId, table.section),
+    index("idx_chunks_source_id_content_hash").on(
+      table.sourceId,
+      table.contentHash,
     ),
     index("idx_chunks_search_vector").using("gin", table.searchVector),
     index("idx_chunks_embedding_hnsw").using(

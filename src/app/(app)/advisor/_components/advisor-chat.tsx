@@ -251,8 +251,16 @@ export function AdvisorChat() {
                       {isExpanded && (
                         <div className="p-3 space-y-2.5 border-t border-border/40 bg-card/60">
                           {msg.sources.map((src, sIdx) => {
-                            const pageNum =
-                              src.printedPageNumber || src.pdfPageNumber;
+                            const pageSpan = src.pageStart ?? null;
+                            const pageEnd = src.pageEnd ?? pageSpan;
+                            const pageRef =
+                              pageSpan != null && pageEnd != null
+                                ? pageSpan === pageEnd
+                                  ? `s. ${pageSpan}`
+                                  : `ss. ${pageSpan}\u00e2\u0080\u0093${pageEnd}`
+                                : src.printedPageNumber || src.pdfPageNumber
+                                  ? `s. ${src.printedPageNumber || src.pdfPageNumber}`
+                                  : null;
                             return (
                               <div
                                 key={sIdx}
@@ -275,7 +283,7 @@ export function AdvisorChat() {
                                   <span>
                                     Yazar: {src.resourceAuthors.join(", ")}
                                   </span>
-                                  {pageNum && <span>Sayfa: {pageNum}</span>}
+                                  {pageRef && <span>Sayfa: {pageRef}</span>}
                                   {src.sectionTitle && (
                                     <span className="truncate">
                                       Bölüm: {src.sectionTitle}

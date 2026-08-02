@@ -33,6 +33,8 @@ export interface RagSearchResultItem {
   chunkIndex: number;
   printedPageNumber: number | null;
   pdfPageNumber: number | null;
+  pageStart: number | null;
+  pageEnd: number | null;
   sectionTitle: string | null;
   content: string;
   parentContent: string;
@@ -253,6 +255,9 @@ export async function performHybridRagSearch(
         typeof meta.printedPageNumber === "number"
           ? meta.printedPageNumber
           : pageNum;
+      const pageStart =
+        typeof meta.pageStart === "number" ? meta.pageStart : null;
+      const pageEnd = typeof meta.pageEnd === "number" ? meta.pageEnd : null;
       const secTitle =
         typeof meta.sectionTitle === "string" ? meta.sectionTitle : null;
 
@@ -272,6 +277,8 @@ export async function performHybridRagSearch(
         chunkIndex: candidate.chunkIndex,
         printedPageNumber: printedNum,
         pdfPageNumber: pageNum,
+        pageStart,
+        pageEnd,
         sectionTitle: secTitle,
         content: candidate.content,
         parentContent: candidate.parentContent || candidate.content,

@@ -31,6 +31,20 @@ export interface AdvisorResponse {
 }
 
 /**
+ * Formats a retrieval source page reference using Turkish academic APA conventions.
+ *
+ * @param source - The RAG retrieval result whose page span should be rendered.
+ * @returns The page reference string ("Bilinmeyen Sayfa" when no page info exists).
+ */
+function formatPageReference(source: RagSearchResultItem): string {
+  const printed = source.printedPageNumber ?? source.pdfPageNumber;
+  if (printed == null) return "Bilinmeyen Sayfa";
+  const pageSpan = source.pageStart ?? printed;
+  const range = source.pageEnd ?? printed;
+  return pageSpan === range ? `s. ${pageSpan}.` : `ss. ${pageSpan}–${range}.`;
+}
+
+/**
  * Server Action executing hybrid RAG retrieval and generating an academic response using Gemini Flash-Lite.
  *
  * @param input - The search query and conversation history container.
@@ -82,10 +96,7 @@ export async function sendAdvisorQueryAction(input: {
     if (sources.length > 0) {
       contextText = sources
         .map((s, idx) => {
-          const pageStr =
-            s.printedPageNumber || s.pdfPageNumber
-              ? `Sayfa ${s.printedPageNumber || s.pdfPageNumber}`
-              : "Bilinmeyen Sayfa";
+          const pageStr = formatPageReference(s);
           const secStr = s.sectionTitle ? ` | Bölüm: ${s.sectionTitle}` : "";
           const authors = s.resourceAuthors.join(", ");
           return `--- KAYNAK PARÇASI #${idx + 1} ---
@@ -107,7 +118,7 @@ ${contextText}
 TALİMATLAR VE KURALLAR:
 1. Yalnızca kütüphaneden çekilen yukarıdaki RAG bağlamındaki bilgilere ve bulgulara dayanarak akademik yanıt üret.
 2. Bağlamda yeterli veya doğrudan bilgi yoksa bunu dürüstçe ve açıkça ifade et.
-3. Metin içerisinde bilgi aktarırken mutlaka [Eser Adı, Sayfa X] formatında atıfta bulun.
+3. Metin içerisinde bilgi aktarırken mutlaka [Eser Adı, s. X] veya çok sayfalı aktarımlarda [Eser Adı, ss. X–Y] formatında atıfta bulun.
 4. Yanıtını net başlıklar, maddeler ve akıcı paragraflarla yapılandır.
 5. Kullanıcının sorusuna doğrudan, özgüvenli ve bilimsel metodolojiye uygun cevap ver.`;
 
