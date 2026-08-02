@@ -10,21 +10,23 @@ import type { DocumentChunk } from "@/lib/services/pdf/chunker";
 export interface ExtractedPdfContent {
   /** Raw PDF bytes fetched from the temporary R2 key. */
   buffer: Buffer;
-  /** Parsed text chunks produced by LlamaParse v2. */
+  /** Parsed text chunks produced by Unstructured API. */
   chunks: DocumentChunk[];
   /** Optional raw references section text. */
   rawReferences: string | null;
+  /** Document title extracted from the parsed elements, if any. */
+  titleFromDocument: string | null;
   /** Extracted (and sanitized) bibliographic metadata. */
   metadata: PdfMetadataResult;
 }
 
 /**
- * Shared PDF ingestion prologue: fetches the uploaded file from its temporary R2 key, parses it via LlamaParse v2 cloud API, extracts bibliographic metadata and sanitizes it.
+ * Shared PDF ingestion prologue: fetches the uploaded file from its temporary R2 key, parses it via Unstructured API, extracts bibliographic metadata and sanitizes it.
  *
  * @param tempKey - Temporary R2 key where the client uploaded the PDF.
  * @param originalFileName - Original file name.
  * @param log - Logger instance.
- * @returns The PDF buffer, parsed chunks, rawReferences, and sanitized metadata.
+ * @returns The PDF buffer, parsed chunks, rawReferences, extracted title and sanitized metadata.
  */
 export async function fetchAndExtractPdf(
   tempKey: string,
@@ -41,13 +43,18 @@ export async function fetchAndExtractPdf(
     data: { tempKey, size: buffer.length },
   });
 
-  const { chunks, rawReferences } = await parsePdfDocument(
+  const { chunks, rawReferences, titleFromDocument } = await parsePdfDocument(
     buffer,
     originalFileName,
     log,
   );
 
-  const metadata = await extractPdfMetadata(chunks, originalFileName, log);
+  const metadata = await extractPdfMetadata(
+    chunks,
+    originalFileName,
+    log,
+    titleFromDocument,
+  );
 
   if (metadata.source !== "cerebras") {
     const [sanitizedMeta] = await sanitizeAcademicDataBulk(
@@ -58,5 +65,5 @@ export async function fetchAndExtractPdf(
     metadata.authors = sanitizedMeta.author.split(", ").filter(Boolean);
   }
 
-  return { buffer, chunks, rawReferences, metadata };
+  return { buffer, chunks, rawReferences, titleFromDocument, metadata };
 }

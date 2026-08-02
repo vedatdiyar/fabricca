@@ -1,4 +1,4 @@
-import { sql, eq, cosineDistance, desc } from "drizzle-orm";
+import { sql, eq, innerProduct, asc } from "drizzle-orm";
 import { db } from "@/db";
 import { chunks, sources } from "@/db/schema";
 import { generateVectorEmbeddings } from "@/lib/services/cloudflare-ai";
@@ -128,8 +128,6 @@ export async function performHybridRagSearch(
 
   let denseCandidates: DenseCandidate[] = [];
   if (queryEmbedding && !isZeroVector(queryEmbedding)) {
-    const similarityScore = sql<number>`1 - (${cosineDistance(chunks.embedding, queryEmbedding)})`;
-
     const denseQuery = db
       .select({
         id: chunks.id,
@@ -150,7 +148,7 @@ export async function performHybridRagSearch(
 
     try {
       const rows = await denseQuery
-        .orderBy(desc(similarityScore))
+        .orderBy(asc(innerProduct(chunks.embedding, queryEmbedding)))
         .limit(RAG_CONFIG.denseTopK);
       denseCandidates = rows as DenseCandidate[];
     } catch (error) {

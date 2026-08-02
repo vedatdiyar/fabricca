@@ -5,12 +5,12 @@ import type { UnstructuredParseResult } from "./unstructured";
 export type PdfParseResult = UnstructuredParseResult;
 
 /**
- * Parses a PDF document into RAG-ready chunks and raw references using Unstructured VLM Serverless API.
+ * Parses a PDF document into RAG-ready chunks, raw references and the extracted title using Unstructured VLM Serverless API.
  *
  * @param buffer - The raw PDF file content as a byte buffer.
  * @param fileName - The original file name of the PDF.
  * @param log - Logger instance for structured pipeline logging.
- * @returns The extracted RAG-ready document chunks and optional raw references text.
+ * @returns The extracted RAG-ready document chunks, optional raw references text and document title.
  */
 export async function parsePdfDocument(
   buffer: Buffer,

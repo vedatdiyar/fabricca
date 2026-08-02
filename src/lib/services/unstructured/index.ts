@@ -19,6 +19,7 @@ export type { UnstructuredElement } from "./client";
 export interface UnstructuredParseResult {
   chunks: DocumentChunk[];
   rawReferences: string | null;
+  titleFromDocument: string | null;
 }
 
 /**
@@ -27,7 +28,7 @@ export interface UnstructuredParseResult {
  * @param buffer - The raw PDF file content as a byte buffer.
  * @param fileName - The original file name of the PDF.
  * @param log - Logger instance for structured pipeline logging.
- * @returns Result containing RAG chunks and raw references text.
+ * @returns Result containing RAG chunks, raw references text, and extracted document title.
  */
 export async function parsePdfWithUnstructured(
   buffer: Buffer,
@@ -86,6 +87,11 @@ export async function parsePdfWithUnstructured(
 
   const pageMarkdown = elementsToPageMarkdown(elements);
 
+  const titleElement = elements.find(
+    (e) => e.type === "Title" && (e.metadata?.page_number ?? 1) <= 2,
+  );
+  const titleFromDocument = titleElement?.text?.trim() || null;
+
   // Mark page boundaries explicitly in full text for exact document-wide reference truncation
   const pagesWithMarkers = pageMarkdown
     .map((page) => `--- PAGE_MARKER_${page.pageNumber} ---\n${page.text}`)
@@ -126,5 +132,5 @@ export async function parsePdfWithUnstructured(
     },
   });
 
-  return { chunks, rawReferences };
+  return { chunks, rawReferences, titleFromDocument };
 }

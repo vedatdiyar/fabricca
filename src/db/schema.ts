@@ -27,6 +27,7 @@ import type {
   RecommendedThesisItem,
   GapAnalysisStructured,
 } from "@/app/(onboarding)/onboarding/positioning/_lib/validation";
+import type { ParsedReference } from "@/lib/services/pdf/reference-parser";
 
 /** Users table — email is unique, password is bcrypt-hashed, onboardingCompleted tracks onboarding state. */
 export const users = pgTable("users", {
@@ -174,6 +175,7 @@ export const sources = pgTable(
     pdfFileSize: integer("pdf_file_size"),
     pdfStatus: pdfStatusEnum("pdf_status").default("NOT_UPLOADED").notNull(),
     rawReferences: text("raw_references"),
+    parsedReferences: jsonb("parsed_references").$type<ParsedReference[]>(),
     createdAt: timestamp().defaultNow().notNull(),
     updatedAt: timestamp().defaultNow().notNull(),
   },
@@ -252,7 +254,7 @@ export const chunks = pgTable(
     index("idx_chunks_search_vector").using("gin", table.searchVector),
     index("idx_chunks_embedding_hnsw").using(
       "hnsw",
-      table.embedding.op("vector_cosine_ops"),
+      table.embedding.op("vector_ip_ops"),
     ),
   ],
 );

@@ -76,8 +76,6 @@ function elementToMarkdown(element: UnstructuredElement): string {
   switch (type) {
     case "Title":
       return text ? `# ${text}` : "";
-    case "Header":
-      return text ? `## ${text}` : "";
     case "Subtitle":
       return text ? `### ${text}` : "";
     case "ListItem":
@@ -90,6 +88,7 @@ function elementToMarkdown(element: UnstructuredElement): string {
       return text;
     }
     case "Footer":
+    case "Header":
     case "PageNumber":
     case "PageBreak":
     case "Image":

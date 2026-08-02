@@ -4,14 +4,12 @@ import { sources, chunks as chunkRows } from "@/db/schema";
 import type { NewChunk } from "@/db/schema";
 import { uploadPdfToR2 } from "@/lib/services/r2";
 import { parsePdfDocument } from "@/lib/services/pdf-parser";
-import {
-  buildChunkContextPrefix,
-  type DocumentChunk,
-} from "@/lib/services/pdf/chunker";
+import { parseAndSaveReferences } from "@/lib/services/pdf/reference-parser";
+import type { DocumentChunk } from "@/lib/services/pdf/chunker";
 import { generateVectorEmbeddings } from "@/lib/services/cloudflare-ai";
 import type { Logger } from "@/lib/logger";
 
-interface ProcessPdfPipelineOptions {
+interface ProcessPdfOptions {
   resourceId: number;
   fileName: string;
   buffer: Buffer;
@@ -21,14 +19,12 @@ interface ProcessPdfPipelineOptions {
 }
 
 /**
- * Shared PDF RAG ingestion pipeline: parses via LlamaParse v2 Agentic tier, uploads to R2, generates embeddings, batch-inserts chunks into pgvector, and updates resource metadata.
+ * Shared PDF RAG ingestion pipeline: parses via Unstructured Transform API, uploads to R2, generates embeddings, batch-inserts chunks into pgvector, extracts raw references and updates resource metadata.
  *
  * @param options - The pipeline options.
  * @returns The R2 URL, final file name, final size, and chunk count.
  */
-export async function processResourcePdfPipeline(
-  options: ProcessPdfPipelineOptions,
-) {
+export async function processResourcePdfPipeline(options: ProcessPdfOptions) {
   const { resourceId, fileName, log, buffer } = options;
 
   let chunks: DocumentChunk[];
@@ -42,18 +38,9 @@ export async function processResourcePdfPipeline(
     rawReferences = parsed.rawReferences;
   }
 
-  const resource = await db.query.sources.findFirst({
-    where: eq(sources.id, resourceId),
-  });
-
-  const resourceTitle = resource?.title || fileName;
-  const resourceAuthors = resource?.authors?.join(", ") || "Bilinmeyen Yazar";
-
-  const embeddingTexts = chunks.map((c) => {
-    const prefix = buildChunkContextPrefix(c.metadata);
-    const headerContext = `[Eser: ${resourceTitle} | Yazar: ${resourceAuthors}]\n${prefix}`;
-    return headerContext + c.content;
-  });
+  // Embed only the raw content — metadata prefixes are excluded from the
+  // embedding text to preserve semantic fidelity in the vector space.
+  const embeddingTexts = chunks.map((c) => c.content);
 
   log.info("pdf_r2_and_embed_parallel_start", {
     service: "library",
@@ -151,6 +138,15 @@ export async function processResourcePdfPipeline(
       durationMs: Math.round(performance.now() - updateStart),
     },
   });
+
+  log.info("pdf_references_parse_start", {
+    service: "library",
+    data: { resourceId, hasReferences: rawReferences !== null },
+  });
+
+  if (rawReferences) {
+    await parseAndSaveReferences(resourceId, rawReferences, log);
+  }
 
   return {
     r2Url,

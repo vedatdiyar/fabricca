@@ -2,7 +2,11 @@ import { z } from "zod";
 import { generateStructuredContent } from "@/lib/services/cerebras";
 import { CEREBRAS_MODEL } from "@/lib/constants";
 import { CROSSREF_USER_AGENT } from "@/lib/api-utils";
-import { formatAuthorList, extractCrossrefYear } from "@/lib/academic/utils";
+import {
+  formatAuthorList,
+  extractCrossrefYear,
+  extractCleanDoi,
+} from "@/lib/academic/utils";
 import type { Logger } from "@/lib/logger";
 import type { DocumentChunk } from "@/lib/services/pdf/chunker";
 
@@ -14,7 +18,7 @@ export interface PdfMetadataResult {
   publicationYear: number;
   doi?: string;
   abstract?: string;
-  source: "crossref" | "openlibrary" | "googlebooks" | "cerebras";
+  source: "crossref" | "openlibrary" | "googlebooks" | "openalex" | "cerebras";
 }
 
 const DOI_REGEX = /10\.\d{4,}\/[-._;()/:A-Z0-9]+/i;
@@ -150,6 +154,138 @@ async function fetchCrossrefByDoi(
       abstract: abstractText,
       source: "crossref",
     };
+  } catch {
+    return null;
+  }
+}
+
+interface OpenAlexWorkItem {
+  title?: string | null;
+  display_name?: string | null;
+  publication_year?: number | null;
+  doi?: string | null;
+  cited_by_count?: number;
+  authorships?: { author?: { display_name?: string } }[];
+  primary_location?: { source?: { display_name?: string } } | null;
+  abstract_inverted_index?: Record<string, number[]> | null;
+}
+
+/**
+ * Maps a raw OpenAlex work record into PdfMetadataResult.
+ *
+ * @param work - The OpenAlex work record.
+ * @returns The mapped bibliographic metadata.
+ */
+function mapOpenAlexWork(work: OpenAlexWorkItem): PdfMetadataResult {
+  const title = work.title || work.display_name || "";
+  const authors =
+    work.authorships
+      ?.map((a) => a.author?.display_name ?? "")
+      .filter((name) => name.length > 0) ?? [];
+  const abstractWords = work.abstract_inverted_index
+    ? reconstructAbstract(work.abstract_inverted_index)
+    : undefined;
+  const year =
+    work.publication_year && work.publication_year > 0
+      ? work.publication_year
+      : new Date().getFullYear();
+
+  return {
+    title,
+    authors: authors.length > 0 ? authors : ["Bilinmeyen Yazar"],
+    publicationYear: year,
+    publisher: work.primary_location?.source?.display_name || undefined,
+    doi: extractCleanDoi(work.doi) || undefined,
+    abstract: abstractWords || undefined,
+    source: "openalex",
+  };
+}
+
+/**
+ * Reconstructs an OpenAlex inverted-index abstract into plain text.
+ *
+ * @param invertedIndex - The word-to-position map.
+ * @returns The reconstructed abstract, or null when empty.
+ */
+function reconstructAbstract(
+  invertedIndex: Record<string, number[]>,
+): string | null {
+  const positions = Object.values(invertedIndex).flat();
+  if (positions.length === 0) return null;
+  const maxPos = Math.max(...positions);
+  const words: string[] = new Array(maxPos + 1).fill("");
+  for (const [word, indices] of Object.entries(invertedIndex)) {
+    for (const pos of indices) {
+      if (pos >= 0 && pos <= maxPos) words[pos] = word;
+    }
+  }
+  const text = words.join(" ").replace(/\s+/g, " ").trim();
+  return text || null;
+}
+
+/**
+ * Resolves metadata for a DOI via the OpenAlex API.
+ *
+ * @param doi - The DOI to resolve.
+ * @returns The resolved metadata, or null on failure.
+ */
+async function fetchOpenAlexByDoi(
+  doi: string,
+): Promise<PdfMetadataResult | null> {
+  const url = `https://api.openalex.org/works/https://doi.org/${encodeURIComponent(doi)}`;
+
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": CROSSREF_USER_AGENT },
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!response.ok) return null;
+
+    const work = (await response.json()) as OpenAlexWorkItem;
+    if (!work.title && !work.display_name) return null;
+    return mapOpenAlexWork(work);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolves metadata by searching the OpenAlex title index.
+ *
+ * @param title - The document title to search for.
+ * @returns The most-cited matching metadata, or null on failure.
+ */
+async function fetchOpenAlexByTitle(
+  title: string,
+): Promise<PdfMetadataResult | null> {
+  const params = new URLSearchParams({
+    filter: `title.search:${title}`,
+    per_page: "5",
+    sort: "cited_by_count:desc",
+  });
+  const apiKey = process.env.OPENALEX_API_KEY;
+  if (apiKey) params.set("api_key", apiKey);
+  const url = `https://api.openalex.org/works?${params.toString().replace(/\+/g, "%20")}`;
+
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": CROSSREF_USER_AGENT },
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!response.ok) return null;
+
+    const data = (await response.json()) as {
+      results?: OpenAlexWorkItem[];
+    };
+    if (!data.results || data.results.length === 0) return null;
+
+    const best = data.results.sort(
+      (a, b) => (b.cited_by_count ?? 0) - (a.cited_by_count ?? 0),
+    )[0];
+    if (!best) return null;
+    return mapOpenAlexWork(best);
   } catch {
     return null;
   }
@@ -403,17 +539,19 @@ async function extractMetadataWithCerebras(
 }
 
 /**
- * Extracts PDF metadata via DOI (Crossref), ISBN (OpenLibrary / Google Books), then a Cerebras LLM fallback.
+ * Extracts PDF metadata via DOI (Crossref / OpenAlex), ISBN (OpenLibrary / Google Books), OpenAlex title search, then a Cerebras LLM fallback.
  *
  * @param chunks - The parsed document chunks to scan for identifiers and text.
  * @param fileName - The original file name of the PDF.
  * @param log - Logger instance for structured extraction logging.
+ * @param titleFromDocument - Optional document title captured from parsed elements, used for OpenAlex title search.
  * @returns The extracted bibliographic metadata.
  */
 export async function extractPdfMetadata(
   chunks: DocumentChunk[],
   fileName: string,
   log: Logger,
+  titleFromDocument?: string | null,
 ): Promise<PdfMetadataResult> {
   const metadataText = buildMetadataText(chunks);
   const doi = findDoiInChunks(chunks);
@@ -421,11 +559,11 @@ export async function extractPdfMetadata(
 
   log.info("pdf_metadata_search_identifiers", {
     service: "library",
-    data: { fileName, doi, isbn },
+    data: { fileName, doi, isbn, titleFromDocument },
   });
 
   const apiTasks: Array<{
-    name: "crossref" | "openlibrary" | "googlebooks";
+    name: "crossref" | "openlibrary" | "googlebooks" | "openalex";
     task: Promise<PdfMetadataResult | null>;
   }> = [];
 
@@ -433,6 +571,10 @@ export async function extractPdfMetadata(
     apiTasks.push({
       name: "crossref",
       task: fetchCrossrefByDoi(doi),
+    });
+    apiTasks.push({
+      name: "openalex",
+      task: fetchOpenAlexByDoi(doi),
     });
   }
 
@@ -476,6 +618,32 @@ export async function extractPdfMetadata(
           partialResult = metadata;
         }
       }
+    }
+  }
+
+  if (
+    !partialResult &&
+    typeof titleFromDocument === "string" &&
+    titleFromDocument.trim().length >= 10
+  ) {
+    log.info("pdf_metadata_openalex_title_search_start", {
+      service: "library",
+      data: { fileName, title: titleFromDocument },
+    });
+
+    const openalexTitleResult = await fetchOpenAlexByTitle(
+      titleFromDocument.trim(),
+    );
+    if (openalexTitleResult) {
+      log.info("pdf_metadata_openalex_title_search_success", {
+        service: "library",
+        data: {
+          fileName,
+          title: openalexTitleResult.title,
+          source: "openalex",
+        },
+      });
+      return openalexTitleResult;
     }
   }
 
