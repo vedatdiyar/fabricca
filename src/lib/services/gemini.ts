@@ -46,6 +46,11 @@ export interface JsonSchema {
 
 let aiInstance: GoogleGenAI | null = null;
 
+/**
+ * Returns a lazily-initialized GoogleGenAI client built from the GEMINI_API_KEY environment variable.
+ *
+ * @returns The shared GoogleGenAI instance.
+ */
 export function getAi(): GoogleGenAI {
   if (!aiInstance) {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -58,8 +63,10 @@ export function getAi(): GoogleGenAI {
 }
 
 /**
- * Hatadan HTTP durum kodunu ve açıklamasını ayıklar.
- * Örn: "429 (RESOURCE_EXHAUSTED)" veya "503 (UNAVAILABLE)"
+ * Extracts a human-readable HTTP status label from a thrown Gemini error.
+ *
+ * @param error - The thrown error to inspect.
+ * @returns The formatted HTTP status string, or "unknown" when it cannot be determined.
  */
 function extractHttpStatus(error: unknown): string {
   if (error instanceof Error) {
@@ -73,7 +80,6 @@ function extractHttpStatus(error: unknown): string {
     if (status) return `${code} (${status})`;
     if (code) return `${code}`;
 
-    // Fallback: message içinden tara
     if (error.message.includes("429") || error.message.includes("quota"))
       return "429 (RESOURCE_EXHAUSTED)";
     if (error.message.includes("503") || error.message.includes("UNAVAILABLE"))
@@ -83,10 +89,10 @@ function extractHttpStatus(error: unknown): string {
 }
 
 /**
- * Ham metin yanıtından markdown kod bloklarını temizler ve JSON olarak parse eder.
+ * Strips markdown code fences from a raw text response and parses it as JSON.
  *
- * @param text - Gemini'den gelen ham metin yanıtı
- * @returns Parse edilmiş JSON nesnesi
+ * @param text - The raw model response text.
+ * @returns The parsed JSON value cast to type T.
  */
 export function sanitizeAndParseJson<T>(text: string): T {
   let cleaned = text.trim();
@@ -101,16 +107,16 @@ export function sanitizeAndParseJson<T>(text: string): T {
 }
 
 /**
- * Gemini modelinden yapılandırılmış JSON çıktısı almak için generic yardımcı.
- * Yanıt, verilen JSON şemasına göre JSON olarak parse edilir.
+ * In development, persists a hashed record of LLM inputs to `.next/logs/llm_inputs` for debugging.
  *
- * @param modelName - Kullanılacak Gemini model adı (örn. FLASH_LITE_31 sabiti)
- * @param systemInstruction - Sistem talimatı (persona + kurallar)
- * @param prompt - Kullanıcı promptu
- * @param schema - Yanıtın doğrulanacağı JSON şeması
- * @param logger - Opsiyonel Logger instance'ı (AI event logları için)
- * @param options - Opsiyonel Gemini konfigürasyon seçenekleri
- * @returns Şemaya uygun olarak parse edilmiş tip güvenli nesne
+ * @param params - Object containing the model name, prompts, payload, thesis matrix, and optional stage label.
+ * @param params.modelName - The Gemini model identifier used for the call.
+ * @param params.systemInstruction - The system-level instructions sent to the model.
+ * @param params.userPrompt - The user prompt sent to the model.
+ * @param params.payload - The raw request payload sent to the model.
+ * @param params.thesisMatrix - The thesis matrix context included in the log.
+ * @param params.stage - Optional label identifying the pipeline stage.
+ * @returns The SHA-256 hash of the logged inputs, or undefined when logging is skipped.
  */
 export async function logRawLlmCall(params: {
   modelName: string;
@@ -167,6 +173,24 @@ export async function logRawLlmCall(params: {
   return hash;
 }
 
+/**
+ * Requests structured JSON output from Gemini via responseJsonSchema, with retry on 429/5xx and optional Zod validation.
+ *
+ * @param modelName - The Gemini model identifier to call.
+ * @param systemInstruction - The system-level instructions for the model.
+ * @param prompt - The user prompt to send to the model.
+ * @param schema - The JSON schema constraining the response shape.
+ * @param logger - Optional logger for structured output and error events.
+ * @param options - Optional settings for the request.
+ * @param options.thinkingConfig - Optional thinking level and budget configuration.
+ * @param options.payloadStage - Optional label identifying the pipeline stage.
+ * @param options.zodSchema - Optional Zod schema used to validate the response.
+ * @param options.seed - Optional random seed for deterministic output.
+ * @param options.thesisMatrix - Optional thesis matrix context for the model.
+ * @param options.safetySettings - Optional safety category and threshold overrides.
+ * @param options.quiet - When false, logs start/success events to the logger.
+ * @returns The parsed and validated structured output of type T.
+ */
 export async function generateStructuredContent<T>(
   modelName: string,
   systemInstruction: string,
@@ -309,7 +333,6 @@ export async function generateStructuredContent<T>(
 
     const parsed = sanitizeAndParseJson<T>(text);
 
-    // 3. Runtime Zod schema validation (if provided)
     const zodSchema = options?.zodSchema;
     if (zodSchema) {
       const validationResult = zodSchema.safeParse(parsed);
@@ -356,7 +379,6 @@ export async function generateStructuredContent<T>(
 
     attempts = retryCount;
 
-    // Save debug payload
     const payloadStage = options?.payloadStage ?? "gemini";
     logger?.saveDebugPayload(payloadStage, modelName, prompt, text);
 
@@ -377,7 +399,6 @@ export async function generateStructuredContent<T>(
     const durationMs = performance.now() - startTime;
     const scenario = classifyError(error);
 
-    // Save debug payload even on failure
     const payloadStage = options?.payloadStage ?? "gemini";
     logger?.saveDebugPayload(payloadStage, modelName, prompt);
 

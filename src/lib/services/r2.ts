@@ -7,7 +7,9 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 /**
- * Singleton Cloudflare R2 S3 Client instance.
+ * Returns a singleton S3 client configured for Cloudflare R2.
+ *
+ * @returns Configured S3 client instance.
  */
 function getR2Client(): S3Client {
   const accountId = process.env.R2_ACCOUNT_ID;
@@ -31,12 +33,12 @@ function getR2Client(): S3Client {
 }
 
 /**
- * Uploads a PDF file buffer directly to Cloudflare R2 Bucket.
+ * Uploads a PDF file buffer to a Cloudflare R2 bucket.
  *
- * @param buffer Raw PDF file buffer
- * @param resourceId ID of the linked library resource
- * @param apaFileName APA-styled standardized filename (e.g. Yilmaz_2024_Turk_Edebiyati.pdf)
- * @returns Object containing public URL and R2 Key
+ * @param buffer - Raw PDF file buffer.
+ * @param resourceId - ID of the linked library resource.
+ * @param apaFileName - APA-styled standardized filename (e.g. Yilmaz_2024_Turk_Edebiyati.pdf).
+ * @returns Object containing the public URL and R2 key.
  */
 export async function uploadPdfToR2(
   buffer: Buffer,
@@ -67,9 +69,9 @@ export async function uploadPdfToR2(
 }
 
 /**
- * Deletes a PDF file from Cloudflare R2 Bucket by its APA filename.
+ * Deletes a PDF file from Cloudflare R2 by its APA filename.
  *
- * @param apaFileName APA-styled standardized filename (e.g. Yilmaz_2024_Turk_Edebiyati.pdf)
+ * @param apaFileName - APA-styled standardized filename (e.g. Yilmaz_2024_Turk_Edebiyati.pdf).
  */
 export async function deletePdfFromR2(apaFileName: string): Promise<void> {
   const bucketName = process.env.R2_BUCKET_NAME || "fabricca";
@@ -86,8 +88,7 @@ export async function deletePdfFromR2(apaFileName: string): Promise<void> {
 }
 
 /**
- * Generates a presigned upload URL for direct browser-to-R2 upload.
- * The URL is valid for 15 minutes and allows PUT requests with the given content type.
+ * Generates a 15-minute presigned upload URL for direct browser-to-R2 upload.
  *
  * @param r2Key - The target key in the R2 bucket (e.g. "temp/<uuid>.pdf").
  * @param contentType - MIME type of the file being uploaded.

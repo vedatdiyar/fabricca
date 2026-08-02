@@ -59,10 +59,7 @@ const confirmBoxesSchema = z.array(
 );
 
 /**
- * Phase 1: Generates the 4-quadrant Turkish box structure ONLY.
- * No semanticQuery generation — that happens in a separate Phase 2 call.
- *
- * @returns Raw box structure (without semanticQuery fields), or error.
+ * Phase 1: generates the 4-quadrant Turkish box structure only (no semantic queries).
  */
 export async function runBoxStructureAction(): Promise<
   { success: true; structure: RawBoxStructureResponse } | { error: string }
@@ -123,11 +120,7 @@ export async function runBoxStructureAction(): Promise<
 }
 
 /**
- * Phase 2: Generates natural English semanticQuery for each sub-box
- * in a single bulk Gemini call. Requires Phase 1 to have completed.
- *
- * @param structure - Raw box structure from Phase 1
- * @returns Bulk of semantic queries mapped by sub-box title
+ * Phase 2: generates English semantic queries for every sub-box in a single Gemini call.
  */
 export async function generateSemanticQueriesAction(
   structure: RawBoxStructureResponse,
@@ -147,7 +140,6 @@ export async function generateSemanticQueriesAction(
       filePath: "src/app/(onboarding)/onboarding/boxes/actions.ts",
     });
 
-    // Collect all sub-boxes with their context (skip PRIMARY_MATERIAL)
     const subBoxEntries: {
       title: string;
       boxType: string;
@@ -194,7 +186,6 @@ export async function generateSemanticQueriesAction(
       },
     );
 
-    // Build map: title → semanticQuery
     const queries = new Map<string, string>();
     for (const entry of result.semanticQueries) {
       queries.set(entry.subBoxTitle, entry.semanticQuery);
@@ -220,9 +211,7 @@ export async function generateSemanticQueriesAction(
 }
 
 /**
- * Converts a RawBoxStructureResponse (4 quadrants + analysis) to the RawQuadrants
- * shape expected by mapToProductionShape. Sub-boxes carry empty semanticQuery
- * at this stage — they are filled in Phase 2.
+ * Converts the raw box structure to the RawQuadrants shape expected by mapToProductionShape.
  */
 function structureToQuadrants(
   structure: RawBoxStructureResponse,
@@ -257,27 +246,20 @@ function structureToQuadrants(
 }
 
 /**
- * Generates box structure (Phase 1) + semantic queries (Phase 2) in two
- * separate Gemini calls, then converts to GeminiThesisBox[] for persistence.
- *
- * @returns Production-shaped boxes array or error.
+ * Runs Phase 1 + Phase 2 and maps the result to production-shaped boxes.
  */
 export async function generateAndMapBoxesAction(): Promise<
   { success: true; boxes: GeminiThesisBox[] } | { error: string }
 > {
-  // Phase 1: Box structure
   const structRes = await runBoxStructureAction();
   if ("error" in structRes) return structRes;
 
-  // Phase 2: Semantic queries
   const queryRes = await generateSemanticQueriesAction(structRes.structure);
   if ("error" in queryRes) return queryRes;
 
-  // Merge
   const quadrants = structureToQuadrants(structRes.structure);
   const boxes = mapToProductionShape(quadrants);
 
-  // Apply semantic queries to matching sub-boxes
   for (const box of boxes) {
     if (box.parentId !== null && queryRes.queries.has(box.title)) {
       box.semanticQuery = queryRes.queries.get(box.title) ?? "";
@@ -288,11 +270,7 @@ export async function generateAndMapBoxesAction(): Promise<
 }
 
 /**
- * Persists the generated (and user-edited) subject boxes to the `boxes`
- * table within a transaction and invalidates caches.
- *
- * @param boxes - The GeminiThesisBox array to persist.
- * @returns Success or error response.
+ * Persists the boxes to the database in a single transaction and invalidates caches.
  */
 export async function persistBoxesAction(
   boxes: unknown,
@@ -387,9 +365,7 @@ export async function persistBoxesAction(
     try {
       revalidateOnboardingPaths();
       updateTag(CACHE_TAGS.thesisBoxes);
-    } catch {
-      // Fallback when executed outside Next.js request context (e.g., CLI / tests)
-    }
+    } catch {}
 
     log.info("boxes_persist_success", {
       service: "boxes",
@@ -407,15 +383,12 @@ export async function persistBoxesAction(
 }
 
 /**
- * Legacy alias for persistBoxesAction to ensure full backward compatibility.
+ * Legacy alias for persistBoxesAction.
  */
 export const confirmBoxesAction = persistBoxesAction;
 
 /**
- * Full Server Pipeline Action: Generates boxes (Phase 1) + semantic queries
- * (Phase 2) in separate Gemini calls, then persists to the database.
- *
- * @returns Generated boxes array or error response.
+ * Runs the full boxes pipeline: generation (Phase 1 + 2) and persistence.
  */
 export async function runBoxesPipelineAction(): Promise<
   { success: true; boxes: GeminiThesisBox[] } | { error: string }
@@ -425,11 +398,9 @@ export async function runBoxesPipelineAction(): Promise<
   const pipelineStart = performance.now();
 
   try {
-    // Phase 1 + Phase 2
     const genRes = await generateAndMapBoxesAction();
     if ("error" in genRes) return genRes;
 
-    // Persist to database
     const persistRes = await persistBoxesAction(genRes.boxes);
     if ("error" in persistRes && persistRes.error) {
       return { error: persistRes.error };

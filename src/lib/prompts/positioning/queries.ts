@@ -1,14 +1,6 @@
 import type { PositioningMatrixInput } from "@/app/(onboarding)/onboarding/positioning/_lib/validation";
 
-/**
- * System instruction for single-field × TR+EN positioning query generation.
- * Produces 8 focused Meilisearch queries (4 alternatives × 2 languages) from
- * the subjectProblem field — which now incorporates actors as an integral part
- * of the research topic.
- *
- * Fields used: subjectProblem (araştırma problemi, aktörler ve ampirik bağlam).
- * Methodology and theoreticalFramework are intentionally excluded.
- */
+/** System instruction for single-field × TR+EN positioning query generation — 8 Meilisearch queries (4 alternatives × 2 languages) from subjectProblem only. */
 export const POSITIONING_QUERIES_SYSTEM_INSTRUCTION = `# Rol ve Uzmanlık
 
 Akademik tez veritabanlarında (Meilisearch) arama yapmak için yüksek hassasiyetli, doğal dil arama sorguları üreten uzman bir Bilgi Erişim (Information Retrieval) Uzmanısınız.
@@ -57,10 +49,10 @@ Sana sunulan Tez Konumlandırma Matrisinin Araştırma Problemi bileşeni (aktö
 \`\`\``;
 
 /**
- * Builds user prompt for single-field × TR+EN positioning query generation (8 queries total).
+ * Builds the user prompt for single-field TR+EN positioning query generation.
  *
- * @param input - Positioning matrix input fields.
- * @returns Formatted prompt string.
+ * @param input - Three-component positioning matrix input of the researcher.
+ * @returns The formatted user prompt for the positioning queries LLM call.
  */
 export function buildPositioningQueriesUserPrompt(
   input: PositioningMatrixInput,

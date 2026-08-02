@@ -3,13 +3,11 @@ import { Logger } from "../logger";
 const BGE_M3_MODEL = "@cf/baai/bge-m3";
 
 /**
- * Generates 1024-dimensional vector embeddings using Cloudflare Workers AI (`@cf/baai/bge-m3`).
- * 100% Vercel compatible, 1024-d output matching Neon DB pgvector schema.
- * Free tier includes 100,000 requests/day.
+ * Generates 1024-d embeddings via Cloudflare Workers AI (`@cf/baai/bge-m3`), batching with concurrency 5.
  *
- * @param texts Array of string chunks to embed
- * @param logger Optional Logger instance
- * @returns Array of 1024-float vector arrays matching input texts order
+ * @param texts - The texts to embed.
+ * @param logger - Optional logger for embedding events.
+ * @returns A 1024-dimensional embedding vector per input text.
  */
 export async function generateCloudflareEmbeddings(
   texts: string[],
@@ -38,7 +36,6 @@ export async function generateCloudflareEmbeddings(
     batches.push(texts.slice(i, i + batchSize));
   }
 
-  // Execute batches with controlled concurrency (max 5 parallel HTTP requests) to prevent GPU queue delays
   const batchResults: number[][][] = [];
   const maxConcurrency = 5;
 
@@ -84,7 +81,6 @@ export async function generateCloudflareEmbeddings(
             error,
             data: { batchIndex, textCount: batchTexts.length },
           });
-          // Fill fallback 1024-zero vectors for failed batch
           return batchTexts.map(() => new Array(1024).fill(0));
         }
       }),
@@ -96,14 +92,11 @@ export async function generateCloudflareEmbeddings(
 }
 
 /**
- * Single Source Vector Embedding Engine (1024-d):
- * Always uses Cloudflare Workers AI (`@cf/baai/bge-m3`) for 100k free daily requests.
- * No Cohere or secondary fallbacks.
+ * Single-source 1024-d embedding engine backed by Cloudflare Workers AI.
  *
- * @param texts Array of string chunks to embed
- * @param _inputType Unused (kept for API signature compatibility)
- * @param logger Optional Logger instance
- * @returns Array of 1024-float vector arrays
+ * @param texts - The texts to embed.
+ * @param logger - Optional logger for embedding events.
+ * @returns A 1024-dimensional embedding vector per input text.
  */
 export async function generateVectorEmbeddings(
   texts: string[],

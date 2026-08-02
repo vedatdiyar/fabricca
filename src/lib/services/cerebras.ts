@@ -7,13 +7,7 @@ import { createConcurrencyLimiter } from "@/lib/rate-limiter";
 
 const CEREBRAS_BASE_URL = "https://api.cerebras.ai/v1";
 
-/**
- * Module-level singleton queue — enforces a single in-flight Cerebras HTTP
- * request at a time. The Free Trial tier exposes a tight per-minute request
- * ceiling; serializing our own traffic prevents the server-side
- * `queue_exceeded` burst before it happens. Retry sleeps happen outside this
- * queue, so a waiting call can proceed while another call is backing off.
- */
+/** Serializes Cerebras requests (max 1 in-flight) to stay within the Free Trial per-minute request ceiling. */
 const cerebrasRequestQueue = createConcurrencyLimiter(1);
 
 const CEREBRAS_RETRY_CONFIG = {
@@ -22,12 +16,10 @@ const CEREBRAS_RETRY_CONFIG = {
   maxDelay: DEFAULT_MAX_DELAY,
   isRetryable: (error: unknown) => {
     if (error instanceof HttpError) {
-      // 429 is retryable (rate limit), 5xx is retryable (server fault)
       if (error.status === 429) return true;
       if (error.status >= 500) return true;
       return false;
     }
-    // Network / empty-response errors: retry once
     return true;
   },
   getRetryAfter: (error: unknown) => {
@@ -37,18 +29,17 @@ const CEREBRAS_RETRY_CONFIG = {
 };
 
 /**
- * Sends a chat completion request to the Cerebras API with structured JSON output
- * enforcement (json_schema + strict mode), Full Jitter retry on 429/5xx, and a
- * module-level concurrency cap (max 1 in-flight request) to stay within the
- * Free Trial per-minute limit. Returns the parsed, type-safe result.
+ * Sends a chat completion to Cerebras with strict json_schema output, Full Jitter retry on 429/5xx, and a 1-in-flight concurrency cap.
  *
- * @param modelName - Cerebras model ID (e.g. "gemma-4-31b")
- * @param systemInstruction - System-level instruction / persona
- * @param prompt - User prompt
- * @param jsonSchema - JSON Schema object for structured output (must include additionalProperties: false for strict mode)
- * @param log - Optional Logger instance
- * @param options - Optional payload stage label and Zod schema for post-hoc validation
- * @returns Parsed response matching the expected type T
+ * @param modelName - The Cerebras model identifier to call.
+ * @param systemInstruction - The system-level instructions for the model.
+ * @param prompt - The user prompt to send to the model.
+ * @param jsonSchema - The JSON schema constraining the structured response.
+ * @param log - Optional logger for structured output and error events.
+ * @param options - Optional settings for the request.
+ * @param options.payloadStage - Optional label identifying the pipeline stage.
+ * @param options.zodSchema - Optional Zod schema used to validate the response.
+ * @returns The parsed and validated structured output of type T.
  */
 export async function generateStructuredContent<T>(
   modelName: string,
@@ -174,8 +165,10 @@ export async function generateStructuredContent<T>(
 }
 
 /**
- * Parses the `Retry-After` response header (RFC 9110 §10.2.3).
- * Returns a duration in milliseconds, or `null` when absent.
+ * Parses the `Retry-After` header into milliseconds, or null when absent or in HTTP-date format.
+ *
+ * @param response - The HTTP response whose Retry-After header is read.
+ * @returns The retry delay in milliseconds, or null when the header is absent or unusable.
  */
 function parseRetryAfter(response: Response): number | null {
   const header = response.headers.get("Retry-After");
@@ -186,6 +179,5 @@ function parseRetryAfter(response: Response): number | null {
     return seconds * 1000;
   }
 
-  // HTTP-date format — fall back to null
   return null;
 }

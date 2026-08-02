@@ -1,139 +1,188 @@
 import type { Logger } from "@/lib/logger";
-import { parsePdfWithLlamaParse, type DocumentChunk } from "./llamaparse";
-import { buildLocalChunks } from "./pdf/chunker";
-import { extractRawTextFast } from "./pdf/fast-extractor";
-import { analyzePdfLayout } from "./pdf/layout-sampling";
-import type { PdfLayoutAnalysis } from "./pdf/types";
+import type { DocumentChunk } from "./llamaparse";
+import { classifyAllPages } from "./pdf/page-classifier";
+import { buildBatches } from "./pdf/batch-builder";
+import { executeBatches } from "./pdf/batch-executor";
+import { stitchPageMarkdowns } from "./pdf/markdown-stitcher";
+import { normalizeMarkdownStyle } from "./pdf/markdown-normalizer";
 import { normalizeTurkishText } from "./pdf/turkish-normalizer";
+import { buildLocalChunksFromMarkdown } from "./pdf/chunker";
 
 export type { DocumentChunk };
-export type { PdfLayoutAnalysis };
 
 /**
- * Parses a PDF buffer using a smart hybrid router with 20-page sampling for layout analysis:
+ * Parses a PDF into RAG-ready chunks through a 4-step hybrid engine: classify, batch, stitch, and normalize.
  *
- * **Layer 1 — 20-Page Layout Sampling:** Samples the first 20 pages (1..min(20, N))
- * to detect single-column vs multi-column/scanned layouts in ~700ms.
- * - Single/Multi-column text → fast local extraction with N-column clustering (<200ms).
- *
- * **Layer 2 — LlamaParse API:** Triggers automatically for:
- * 1) Genuinely scanned / image-based PDFs (avgCharsPerPage < 50).
- * 2) Severely broken/chaotic layouts (scatter ratio > 50%).
- *
- * **Layer 3 — Fast Local Fallback (pdf2md + Turkish normalization):**
- * Local Markdown extraction with unicode diacritic restoration.
- *
- * @param buffer - Raw PDF file buffer
- * @param fileName - Original PDF file name (for logging / LlamaParse fallback)
- * @param log - Logger instance for structured logging
- * @returns Array of structured document chunks
+ * @param buffer - The raw PDF file content as a byte buffer.
+ * @param fileName - The original file name of the PDF.
+ * @param log - Logger instance for structured pipeline logging.
+ * @returns The extracted RAG-ready document chunks.
  */
 export async function parsePdfWithHybridRouter(
   buffer: Buffer,
   fileName: string,
   log: Logger,
 ): Promise<DocumentChunk[]> {
-  // ── 1. Layout Analysis (20-Page Sampling) ──
-  log.info("pdf_hybrid_layout_analysis_start", {
+  const pipelineStart = performance.now();
+
+  log.info("pdf_hybrid_step1_classify_start", {
     service: "pdf-parser",
     data: { fileName, bufferSize: buffer.length },
   });
 
-  const analysisStart = performance.now();
-  let analysis: PdfLayoutAnalysis;
+  const step1Start = performance.now();
+  let fullScan: Awaited<ReturnType<typeof classifyAllPages>>;
 
   try {
-    analysis = await analyzePdfLayout(buffer);
+    fullScan = await classifyAllPages(buffer);
   } catch (err) {
-    log.error("pdf_hybrid_layout_analysis_failed", {
+    log.error("pdf_hybrid_step1_classify_failed", {
       service: "pdf-parser",
       error: err,
-      data: { fileName, bufferSize: buffer.length },
+      data: { fileName },
     });
-
-    return extractRawTextFast(buffer, fileName, log);
+    throw err;
   }
 
-  const analysisDuration = performance.now() - analysisStart;
-
-  log.info("pdf_hybrid_layout_analysis_success", {
+  log.info("pdf_hybrid_step1_classify_success", {
     service: "pdf-parser",
     data: {
       fileName,
-      route: analysis.route,
-      reason: analysis.reason,
-      pageCount: analysis.pageCount,
-      sampledPageCount: analysis.sampledPageCount,
-      totalChars: analysis.totalChars,
-      avgCharsPerPage: Math.round(analysis.avgCharsPerPage),
-      isScanned: analysis.isScanned,
-      isMultiColumn: analysis.isMultiColumn,
-      hasComplexLayout: analysis.hasComplexLayout,
-      multiColPageCount: analysis.multiColPageIndices.length,
-      multiColPages: analysis.multiColPageIndices,
-      scatterPageCount: analysis.scatterPageIndices.length,
-      scatterPages: analysis.scatterPageIndices,
-      analysisDurationMs: Math.round(analysisDuration),
+      pageCount: fullScan.pageCount,
+      classA: fullScan.labelSummary.classA,
+      classB: fullScan.labelSummary.classB,
+      classC: fullScan.labelSummary.classC,
+      scanDurationMs: fullScan.scanDurationMs,
+      step1DurationMs: Math.round(performance.now() - step1Start),
     },
   });
 
-  // ── 2. Route Decision ──
-  if (analysis.route === "llamaparse-fallback") {
-    try {
-      const tier = analysis.tier || "fast";
-      const llamaChunks = await parsePdfWithLlamaParse(
-        buffer,
-        fileName,
-        log,
-        tier,
-      );
-      return llamaChunks.map((c) => ({
-        chunkIndex: c.chunkIndex,
-        pdfPageNumber: c.pdfPageNumber,
-        printedPageNumber: c.printedPageNumber,
-        sectionTitle: c.sectionTitle,
-        content: normalizeTurkishText(c.content),
-        parentContent: c.parentContent
-          ? normalizeTurkishText(c.parentContent)
-          : undefined,
-        tokenCount: c.tokenCount,
-      }));
-    } catch (llamaErr) {
-      log.error("pdf_llamaparse_fallback_failed", {
-        service: "pdf-parser",
-        error: llamaErr,
-        data: { fileName },
-      });
-      throw llamaErr;
-    }
-  }
+  const batches = buildBatches(fullScan.classifications);
 
-  // ── 3. Local Fast Path ──
-  log.info("pdf_local_extraction_start", {
+  log.info("pdf_hybrid_step2_batches_built", {
     service: "pdf-parser",
     data: {
       fileName,
-      pageCount: analysis.pageCount,
-      totalChars: analysis.totalChars,
+      batchCount: batches.length,
+      batchSummary: batches.map((b) => ({
+        label: b.label,
+        pages: `${b.startPage}-${b.endPage}`,
+        count: b.pageCount,
+        tier: b.llamaParseTier,
+      })),
     },
   });
 
-  const localStart = performance.now();
-  const normalizedText = normalizeTurkishText(analysis.fullText);
-  const chunks = await buildLocalChunks(normalizedText);
-  const localDuration = performance.now() - localStart;
+  log.info("pdf_hybrid_step2_execute_start", {
+    service: "pdf-parser",
+    data: { fileName, batchCount: batches.length },
+  });
 
-  log.info("pdf_local_extraction_success", {
+  const step2Start = performance.now();
+  let batchResult: Awaited<ReturnType<typeof executeBatches>>;
+
+  try {
+    batchResult = await executeBatches(
+      batches,
+      buffer,
+      fileName,
+      fullScan.pageCount,
+      log,
+    );
+  } catch (err) {
+    log.error("pdf_hybrid_step2_execute_failed", {
+      service: "pdf-parser",
+      error: err,
+      data: { fileName },
+    });
+    throw err;
+  }
+
+  log.info("pdf_hybrid_step2_execute_success", {
     service: "pdf-parser",
     data: {
       fileName,
-      route: "local",
-      pageCount: analysis.pageCount,
+      outputPageCount: batchResult.pages.length,
+      ...batchResult.batchStats,
+      step2DurationMs: Math.round(performance.now() - step2Start),
+    },
+  });
+
+  log.info("pdf_hybrid_step3_stitch_start", {
+    service: "pdf-parser",
+    data: { fileName, pageCount: batchResult.pages.length },
+  });
+
+  const step3Start = performance.now();
+  const stitched = stitchPageMarkdowns(batchResult.pages);
+
+  log.info("pdf_hybrid_step3_stitch_success", {
+    service: "pdf-parser",
+    data: {
+      fileName,
+      ...stitched.repairsApplied,
+      outputLength: stitched.fullMarkdown.length,
+      step3DurationMs: Math.round(performance.now() - step3Start),
+    },
+  });
+
+  log.info("pdf_hybrid_step4_normalize_start", {
+    service: "pdf-parser",
+    data: { fileName },
+  });
+
+  const step4Start = performance.now();
+  const normalized = normalizeMarkdownStyle(stitched.fullMarkdown);
+  const finalMarkdown = normalizeTurkishText(normalized.markdown);
+
+  log.info("pdf_hybrid_step4_normalize_success", {
+    service: "pdf-parser",
+    data: {
+      fileName,
+      ...normalized.normalizationsApplied,
+      step4DurationMs: Math.round(performance.now() - step4Start),
+    },
+  });
+
+  log.info("pdf_hybrid_chunking_start", {
+    service: "pdf-parser",
+    data: { fileName, markdownLength: finalMarkdown.length },
+  });
+
+  const chunkStart = performance.now();
+  let chunks: DocumentChunk[];
+
+  try {
+    chunks = await buildLocalChunksFromMarkdown(finalMarkdown);
+  } catch (err) {
+    log.error("pdf_hybrid_chunking_failed", {
+      service: "pdf-parser",
+      error: err,
+      data: { fileName },
+    });
+    throw err;
+  }
+
+  if (chunks.length === 0) {
+    throw new Error(
+      `Hibrit PDF parser hiç chunk üretemedi. Dosya: ${fileName} (${fullScan.pageCount} sayfa, ${fullScan.labelSummary.classA}A+${fullScan.labelSummary.classB}B+${fullScan.labelSummary.classC}C)`,
+    );
+  }
+
+  const totalDurationMs = Math.round(performance.now() - pipelineStart);
+
+  log.info("pdf_hybrid_pipeline_success", {
+    service: "pdf-parser",
+    data: {
+      fileName,
+      pageCount: fullScan.pageCount,
+      classA: fullScan.labelSummary.classA,
+      classB: fullScan.labelSummary.classB,
+      classC: fullScan.labelSummary.classC,
       chunkCount: chunks.length,
       totalTokens: chunks.reduce((s, c) => s + c.tokenCount, 0),
-      extractionDurationMs: Math.round(localDuration),
-      analysisDurationMs: Math.round(analysisDuration),
-      totalDurationMs: Math.round(analysisDuration + localDuration),
+      chunkDurationMs: Math.round(performance.now() - chunkStart),
+      totalDurationMs,
     },
   });
 

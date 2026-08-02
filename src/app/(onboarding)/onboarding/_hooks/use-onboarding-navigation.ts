@@ -42,17 +42,7 @@ import {
 import { createFlowId } from "@/lib/logger";
 
 /**
- * Central onboarding orchestrator hook that coordinates all cross-feature
- * flows (matrix → risk → boxes → literature → finalize) under a single
- * standard architecture:
- *
- *   showLoading() → Server Actions → updateLoadingStep() → router.push()
- *   (hideLoading is never called mid-step; the target page hides it)
- *
- * All functions share:
- *   - isCancelled flag + cancel callback for early termination
- *   - updateLoadingStep for per-step progress
- *   - try-catch with toast.error for user-facing errors
+ * Central hook orchestrating all cross-feature onboarding flows under a shared loading overlay.
  */
 export function useOnboardingNavigation() {
   const router = useRouter();
@@ -88,11 +78,7 @@ export function useOnboardingNavigation() {
   );
 
   /**
-   * Saves the thesis matrix to the database, runs the positioning AI pipeline
-   * (query generation → Tezara search → Cohere rerank → jury analysis),
-   * and navigates to the positioning report page.
-   *
-   * @param matrixInput - The thesis matrix fields to persist.
+   * Saves the matrix, runs the positioning AI pipeline, and navigates to the positioning report.
    */
   const submitMatrix = useCallback(
     async (
@@ -182,20 +168,6 @@ export function useOnboardingNavigation() {
 
   /**
    * Runs the literature review pipeline with a 3-phase loading overlay.
-   *
-   * Phase 0 (Step 0 — "Mevcut literatür havuzu kontrol ediliyor..."):
-   *   Quick DB check. If a pool already exists, phases 1 & 2 are skipped.
-   *
-   * Phase 1 (Step 1 — "Akademik kaynaklar taranıyor..."):
-   *   OpenAlex search, foundational selection, related-article assignment,
-   *   sanitization, and progressive DB saves.
-   *
-   * Phase 2 (Step 2 — "Literatür havuzu kaydediliyor..."):
-   *   Final persistence (persist happens inside the pipeline action, so this
-   *   step is marked complete immediately after the action returns).
-   *
-   * @param subBoxInputs - The sub-box inputs to feed to the AI pipeline.
-   * @returns The literature pool entries on success, or an error string.
    */
   const runLiteraturePipeline = useCallback(
     async (
@@ -224,7 +196,6 @@ export function useOnboardingNavigation() {
       );
 
       try {
-        // ── Phase 0: DB pool check ──────────────────────────────────────
         const checkResult = await checkLiteraturePoolAction();
         if (isCancelled) return { error: "cancelled" };
         if (checkResult.error) {
@@ -233,7 +204,6 @@ export function useOnboardingNavigation() {
         }
 
         if (checkResult.exists) {
-          // Pool exists — skip search and persist steps
           await completeStep(0, steps);
           await completeStep(1, steps);
           await completeStep(2, steps);
@@ -243,7 +213,6 @@ export function useOnboardingNavigation() {
 
         await completeStep(0, steps);
 
-        // ── Phase 1: Full search pipeline ───────────────────────────────
         const pipelineResult = await runLiteraturePipelineAction(subBoxInputs);
         if (isCancelled) return { error: "cancelled" };
         if (pipelineResult.error) {
@@ -253,7 +222,6 @@ export function useOnboardingNavigation() {
 
         await completeStep(1, steps);
 
-        // ── Phase 2: Persist (completed inside pipeline action) ─────────
         await completeStep(2, steps);
         hideLoading();
 
@@ -281,7 +249,6 @@ export function useOnboardingNavigation() {
     error?: string;
   }> => {
     try {
-      // Step 1: Downstream cleanup
       const clearResult = await clearDownstreamDbAction("boxes");
       if ("error" in clearResult) {
         toast.error(clearResult.error);
@@ -292,7 +259,6 @@ export function useOnboardingNavigation() {
       for (const key of boxesTqKeys)
         queryClient.invalidateQueries({ queryKey: key });
 
-      // Step 2: Fetch boxes
       const boxes = await fetchBoxesWithFullShape();
       const subBoxInputs: SubBoxInput[] = boxes.map((box) => ({
         id: box.id ?? 0,
@@ -311,13 +277,11 @@ export function useOnboardingNavigation() {
         ),
       }));
 
-      // Step 3: Run literature review pipeline
       const litResult = await runLiteraturePipeline(subBoxInputs);
       if (litResult.error) {
         return { success: false, error: litResult.error };
       }
 
-      // Step 4: Navigation
       queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
       if (litResult.data) {
         queryClient.setQueryData(["literature-pool"], litResult.data);
@@ -351,7 +315,6 @@ export function useOnboardingNavigation() {
     );
 
     try {
-      // Step 1: Generate Turkish Box Structure + OpenAlex Semantic Queries (single phase)
       const genResult = await generateAndMapBoxesAction();
       if ("error" in genResult) {
         hideLoading();
@@ -360,7 +323,6 @@ export function useOnboardingNavigation() {
       }
       await completeStep(0, steps);
 
-      // Step 2: Persist Boxes to DB
       const persistResult = await persistBoxesAction(genResult.boxes);
       if ("error" in persistResult) {
         hideLoading();
@@ -384,12 +346,7 @@ export function useOnboardingNavigation() {
   }, [router, queryClient, showLoading, hideLoading, completeStep]);
 
   /**
-   * Finalizes the onboarding process: persists any manual archive entries,
-   * sets the onboardingCompleted flag, invalidates all caches, and navigates
-   * to the dashboard.  No loading overlay — caller (literature review page)
-   * handles the button's disabled/spinner state.
-   *
-   * @param archiveEntries - Manual archive entries (empty array if none).
+   * Persists manual archive entries, finalizes onboarding, and navigates to the dashboard.
    */
   const finalizeLiterature = useCallback(
     async (

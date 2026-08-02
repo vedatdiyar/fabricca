@@ -14,14 +14,10 @@ import {
 } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 
-/* ---------- Validation Schema ---------- */
-
 const LoginSchema = z.object({
   email: z.string().email("Geçerli bir e-posta adresi girin.").max(255),
   password: z.string().min(1, "Şifre gereklidir.").max(128, "Şifre çok uzun."),
 });
-
-/* ---------- Brute-Force Protection ---------- */
 
 const LOGIN_MAX_ATTEMPTS = 5;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
@@ -45,8 +41,6 @@ function checkRateLimit(email: string): boolean {
   return true;
 }
 
-/* ---------- Result Types ---------- */
-
 export type LoginResult =
   { success: true; error?: never } | { success?: never; error: string };
 
@@ -54,17 +48,7 @@ export type OnboardingStatusResult =
   | { onboardingCompleted: boolean; error?: never }
   | { onboardingCompleted?: never; error: string };
 
-/* ---------- Server Actions ---------- */
-
-/**
- * E-posta ve şifre ile kullanıcı girişini doğrular.
- * Başarılıysa fabricca_session cookie'si oluşturur.
- * Hata mesajları kullanıcı dostudur ve hassas detay içermez.
- *
- * @param email - Kullanıcı e-posta adresi
- * @param password - Kullanıcı şifresi (düz metin, bcrypt ile karşılaştırılır)
- * @returns Başarılıysa { success: true }, hatalıysa { error: string }
- */
+/** Validates email and password; on success creates the session cookie. Error messages are user-friendly and hide sensitive details. */
 export async function loginAction(
   email: string,
   password: string,
@@ -72,7 +56,6 @@ export async function loginAction(
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
-  // 1. Zod validasyonu
   const parsed = LoginSchema.safeParse({ email, password });
   if (!parsed.success) {
     const msg = parsed.error.issues[0]?.message ?? "Geçersiz giriş bilgileri.";
@@ -83,7 +66,6 @@ export async function loginAction(
     return { error: msg };
   }
 
-  // 2. Brute-force kontrolü
   if (!checkRateLimit(parsed.data.email)) {
     log.info("login_failed", {
       service: "auth",
@@ -156,12 +138,7 @@ export async function loginAction(
   return { success: true };
 }
 
-/**
- * Mevcut oturumdaki kullanıcının onboarding tamamlanma durumunu sorgular.
- * DRY: getSessionWithOnboarding fonksiyonunu kullanır.
- *
- * @returns { onboardingCompleted: boolean } veya hata durumunda { error: string }
- */
+/** Queries the onboarding completion status of the current session. */
 export async function checkOnboardingStatus(): Promise<OnboardingStatusResult> {
   const flowId = createFlowId();
   const log = new Logger(flowId);

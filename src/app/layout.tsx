@@ -43,11 +43,7 @@ export const metadata: Metadata = {
   },
 };
 
-/**
- * Global root layout.
- * Tüm sayfaları saran üst yapıdır.
- * Sonner Toaster tüm sayfalarda görünebilmesi için buraya eklenmiştir.
- */
+/** Global root layout wrapping all pages; mounts the Sonner Toaster. */
 export default function RootLayout({
   children,
 }: Readonly<{

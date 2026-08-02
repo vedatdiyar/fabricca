@@ -10,10 +10,6 @@ import { extractOpenAlexId } from "@/lib/academic/utils";
 import { z } from "zod";
 import type { RawPaper } from "./literature-review-papers";
 
-// ============================================================================
-// Types
-// ============================================================================
-
 export interface JuryBoxContext {
   thesisBoxId: number;
   subBoxTitle: string;
@@ -42,10 +38,6 @@ export interface SingleBoxJuryResult {
   evaluations: JuryEvaluation[];
 }
 
-// ============================================================================
-// Zod Schema (Runtime Validation)
-// ============================================================================
-
 const juryEvaluationSchema = z.object({
   thesisBoxId: z.number().int().min(0),
   subBoxTitle: z.string().min(1),
@@ -63,10 +55,6 @@ const juryEvaluationSchema = z.object({
 const singleBoxJuryOutputSchema = z.object({
   evaluations: z.array(juryEvaluationSchema),
 });
-
-// ============================================================================
-// Vanilla JSON Schema (for Gemini responseJsonSchema)
-// ============================================================================
 
 const juryJsonSchema: JsonSchema = {
   type: "object",
@@ -120,30 +108,8 @@ const juryJsonSchema: JsonSchema = {
   required: ["evaluations"],
 };
 
-// ============================================================================
-// Single-Box Jury Call
-// ============================================================================
-
 /**
- * Runs an isolated jury evaluation for a SINGLE sub-box.
- * Each box gets its own tailored prompt with box-type-specific instructions.
- *
- * SUBJECT_PROBLEM boxes receive a dynamic warning derived from thesisSubject,
- * box title, and box description — requiring case-specific works and rejecting
- * general theories unrelated to the thesis context.
- *
- * THEORETICAL_FRAMEWORK / METHODOLOGY boxes prioritise respected handbooks
- * and foundational texts, filtering narrow case studies.
- *
- * Per-article payload: title, authors (first 3 + et al.), abstract (120 words),
- * and OpenAlex relevance_score. No OpenAlex ID or URL is sent.
- *
- * Uses Gemini Flash-Lite with High thinking level and BLOCK_ONLY_HIGH safety settings.
- *
- * @param thesisSubject - The thesis subject problem text (ana tez konusu)
- * @param input - Single box context with its article pool
- * @param logger - Optional Logger instance
- * @returns SingleBoxJuryResult with evaluations for every article in this box
+ * Runs a jury evaluation for a single sub-box with a box-type-specific prompt.
  */
 export async function evaluateSingleBoxJury(
   thesisSubject: string,

@@ -15,13 +15,9 @@ import type { LibraryParentBoxOption } from "../_actions/box-actions";
 import type { LibraryResourceItem } from "../_types/types";
 
 interface EditResourceModalProps {
-  /** Whether the modal is open */
   isOpen: boolean;
-  /** Callback to close the modal */
   onClose: () => void;
-  /** Target resource item to edit */
   resource: LibraryResourceItem;
-  /** Callback when resource metadata is successfully updated */
   onUpdateSuccess: (updatedResource: LibraryResourceItem) => void;
 }
 
@@ -31,15 +27,11 @@ interface EditResourceFormProps {
   onUpdateSuccess: (updatedResource: LibraryResourceItem) => void;
 }
 
-/**
- * Inner form component that initializes state directly from resource props when mounted.
- */
 function EditResourceForm({
   onClose,
   resource,
   onUpdateSuccess,
 }: EditResourceFormProps) {
-  // Form fields state pre-filled directly from target resource prop
   const [title, setTitle] = useState(resource.title);
   const [authorsText, setAuthorsText] = useState(resource.authors.join(", "));
   const [publisher, setPublisher] = useState(resource.publisher || "");
@@ -48,7 +40,6 @@ function EditResourceForm({
   );
   const [doi, setDoi] = useState(resource.doi || "");
 
-  // Box selection hierarchy
   const [hierarchy, setHierarchy] = useState<LibraryParentBoxOption[] | null>(
     null,
   );
@@ -57,7 +48,6 @@ function EditResourceForm({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Load real box hierarchy when form mounts
   useEffect(() => {
     let cancelled = false;
 
@@ -68,7 +58,6 @@ function EditResourceForm({
       if (res.success) {
         setHierarchy(res.data);
 
-        // Determine matching parent and subbox based on resource boxType / subBoxId
         let foundParent: LibraryParentBoxOption | undefined;
         let foundSubId: number | null = null;
 
@@ -177,7 +166,6 @@ function EditResourceForm({
 
   return (
     <Card className="max-w-xl w-full border border-border bg-card shadow-2xl rounded-xl overflow-hidden max-h-[90vh] flex flex-col">
-      {/* Modal Header */}
       <div className="flex items-center justify-between border-b border-border p-5 bg-muted/20">
         <div className="flex items-center gap-2">
           <div className="p-2 rounded-lg bg-primary/10 text-primary">
@@ -203,12 +191,10 @@ function EditResourceForm({
         </Button>
       </div>
 
-      {/* Form Body */}
       <form
         onSubmit={handleSubmit}
         className="p-6 space-y-4 overflow-y-auto flex-1"
       >
-        {/* Eser Başlığı */}
         <div className="space-y-1.5">
           <Label htmlFor="edit-title" className="text-xs font-semibold">
             Eser Başlığı <span className="text-destructive">*</span>
@@ -223,7 +209,6 @@ function EditResourceForm({
           />
         </div>
 
-        {/* Yazarlar */}
         <div className="space-y-1.5">
           <Label htmlFor="edit-authors" className="text-xs font-semibold">
             Yazarlar <span className="text-destructive">*</span>
@@ -241,7 +226,6 @@ function EditResourceForm({
           />
         </div>
 
-        {/* Yayıncı & Yayın Yılı */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label htmlFor="edit-publisher" className="text-xs font-semibold">
@@ -276,7 +260,6 @@ function EditResourceForm({
           </div>
         </div>
 
-        {/* DOI */}
         <div className="space-y-1.5">
           <Label htmlFor="edit-doi" className="text-xs font-semibold">
             DOI (Digital Object Identifier)
@@ -290,7 +273,6 @@ function EditResourceForm({
           />
         </div>
 
-        {/* Konu Kutusu Seçimi */}
         {parentBoxes.length > 0 && (
           <div className="space-y-3 pt-2 border-t border-border/60">
             <div className="flex items-center gap-1.5">
@@ -300,7 +282,6 @@ function EditResourceForm({
               </Label>
             </div>
 
-            {/* Ana Kutu Seçimi */}
             <div className="grid grid-cols-2 gap-2">
               {parentBoxes.map((parent) => {
                 const isSelected = selectedParentId === parent.id;
@@ -321,7 +302,6 @@ function EditResourceForm({
               })}
             </div>
 
-            {/* Alt Kutu Seçimi */}
             {hasSubBoxes && selectedParent && (
               <div className="space-y-1.5 pt-1">
                 <Label className="text-[11px] font-medium text-muted-foreground">
@@ -347,7 +327,6 @@ function EditResourceForm({
           </div>
         )}
 
-        {/* Form Actions */}
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
           <Button
             type="button"
@@ -380,9 +359,7 @@ function EditResourceForm({
   );
 }
 
-/**
- * Modal component for editing library resource metadata (Title, Authors, Publisher, Year, DOI, Box).
- */
+/** Modal component for editing library resource metadata (title, authors, publisher, year, DOI, box). */
 export function EditResourceModal({
   isOpen,
   onClose,

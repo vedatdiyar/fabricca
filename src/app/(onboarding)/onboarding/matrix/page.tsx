@@ -5,9 +5,7 @@ import { StartOverButton } from "../_components/start-over-button";
 import { fetchThesisMatrixFresh } from "../_services/fetch-actions";
 
 /**
- * Onboarding sürecinin 1. adımı: Çalışma Matrisi Formu (Server Component).
- * Kullanıcıyı yetkilendirme durumuna göre korur ve mevcut matris verisini
- * server-side fetch ederek form bileşenine iletir.
+ * Onboarding step 1: thesis matrix form page that fetches and passes the existing matrix to the form.
  */
 export default async function OnboardingMatrixPage() {
   const profile = await getProfile();

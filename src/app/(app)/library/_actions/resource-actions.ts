@@ -10,10 +10,7 @@ import { ensureUserMatrixAndBoxes, getOwnedSource } from "../_services/helpers";
 import { mapSourceToResource } from "../_services/resource-mapper";
 import type { NoteType } from "../_types/types";
 
-/**
- * Server Action: Fetches all library resources and notes for the current user.
- * Ensures default thesis boxes are seeded if not present.
- */
+/** Server Action: Fetches all library resources and notes for the current user, seeding default boxes if absent. */
 export async function getLibraryResourcesAction() {
   const flowId = createFlowId();
   const log = new Logger(flowId);
@@ -27,12 +24,10 @@ export async function getLibraryResourcesAction() {
       };
     }
 
-    // Ensure the user has a thesis matrix and at least the default parent boxes
     const { boxes } = await ensureUserMatrixAndBoxes(session.userId);
 
     const boxIds = boxes.map((b) => b.id);
 
-    // Fetch resources belonging to user's boxes
     const dbResources =
       boxIds.length > 0
         ? await db.query.sources.findMany({
@@ -43,7 +38,6 @@ export async function getLibraryResourcesAction() {
 
     const resourceIds = dbResources.map((r) => r.id);
 
-    // Fetch notes belonging to user's resources
     const dbNotes =
       resourceIds.length > 0
         ? await db.query.notes.findMany({
@@ -52,7 +46,6 @@ export async function getLibraryResourcesAction() {
           })
         : [];
 
-    // Map box type helper
     const boxMap = new Map(boxes.map((b) => [b.id, b.boxType]));
     const boxTitleMap = new Map(boxes.map((b) => [b.id, b.title]));
     const boxParentMap = new Map(boxes.map((b) => [b.id, b.parentId]));
@@ -88,11 +81,7 @@ export async function getLibraryResourcesAction() {
   }
 }
 
-/**
- * Server Action: Toggles the read status of a library resource.
- *
- * @param resourceId - Target resource ID.
- */
+/** Server Action: Toggles the read status of a library resource. */
 export async function toggleResourceReadStatusAction(resourceId: number) {
   const flowId = createFlowId();
   const log = new Logger(flowId);
@@ -134,12 +123,7 @@ export async function toggleResourceReadStatusAction(resourceId: number) {
   }
 }
 
-/**
- * Server Action: Permanently deletes a library resource along with its
- * Cloudflare R2 PDF file (if any), DB cascade handles embeddings & notes cleanup.
- *
- * @param resourceId - Target resource ID.
- */
+/** Server Action: Permanently deletes a resource, its R2 PDF, and all related data. */
 export async function deleteLibraryResourceAction(resourceId: number) {
   const flowId = createFlowId();
   const log = new Logger(flowId);
@@ -156,7 +140,6 @@ export async function deleteLibraryResourceAction(resourceId: number) {
     }
     const resource = owned.source;
 
-    // Attempt R2 PDF deletion — log warning but never block the DB cleanup
     if (resource.pdfFileName) {
       try {
         await deletePdfFromR2(resource.pdfFileName);
@@ -181,11 +164,7 @@ export async function deleteLibraryResourceAction(resourceId: number) {
   }
 }
 
-/**
- * Server Action: Updates metadata (title, authors, publisher, publication year, doi, box) for a library resource.
- *
- * @param input - Metadata fields to update for target resource.
- */
+/** Server Action: Updates a resource's metadata (title, authors, publisher, year, DOI, box). */
 export async function updateLibraryResourceAction(input: {
   resourceId: number;
   title: string;
@@ -214,7 +193,6 @@ export async function updateLibraryResourceAction(input: {
     }
     const existingResource = owned.source;
 
-    // Ensure the user's boxes are seeded, then validate any requested box relocation below.
     const { boxes: userBoxes } = await ensureUserMatrixAndBoxes(session.userId);
     const userBoxIds = userBoxes.map((b) => b.id);
 
@@ -240,7 +218,6 @@ export async function updateLibraryResourceAction(input: {
       .where(eq(sources.id, input.resourceId))
       .returning();
 
-    // Map box information
     const targetBox = userBoxes.find((b) => b.id === updated.boxId);
 
     log.info("update_library_resource_success", {

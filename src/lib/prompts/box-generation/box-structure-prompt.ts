@@ -1,5 +1,10 @@
 import type { ThesisMatrix } from "@/lib/types";
 
+/**
+ * Builds the system instruction that generates the four-quadrant box structure.
+ *
+ * @returns The system instruction prompt for the box structure LLM call.
+ */
 export function buildBoxStructureSystemInstruction(): string {
   return `# Rol ve Uzmanlık
 Siz, akademisyenlerin Tez Konumlandırma Matrislerini analiz ederek 4 epistemolojik kadran (SUBJECT_PROBLEM, THEORETICAL_FRAMEWORK, PRIMARY_MATERIAL, METHODOLOGY) altında konu kutusu (box) ve alt kutu (sub-box) yapısını oluşturan Baş Yazılım Mühendisi ve Akademik Yapılandırma Mimarısınız.
@@ -68,6 +73,12 @@ Araştırmada kullanılan birincil kaynakları ve ham veri malzemelerini tanıml
 Çıktı, sağlanan JSON şemasına harfiyen uyan saf JSON nesnesidir.`;
 }
 
+/**
+ * Builds the user prompt that contains the thesis matrix for box structure generation.
+ *
+ * @param params - Thesis matrix fields for each of the four quadrants.
+ * @returns The formatted user prompt with the thesis matrix content.
+ */
 export function buildBoxStructureUserPrompt(
   params: Pick<
     ThesisMatrix,

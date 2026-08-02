@@ -17,14 +17,6 @@ import { getOwnedSource } from "../_services/helpers";
 import { mapSourceToResource } from "../_services/resource-mapper";
 import type { LibraryResourceItem } from "../_types/types";
 
-/**
- * Best-effort cleanup of a temporary R2 object (e.g. "temp/<uuid>.pdf").
- * Never throws: failures are logged and swallowed so the main flow can
- * return its real error without being interrupted by a cleanup failure.
- *
- * @param tempKey - R2 key of the temporary object to delete.
- * @param log - Logger instance for the current flow.
- */
 async function cleanupTempKey(tempKey: string, log: Logger): Promise<void> {
   if (!tempKey) return;
   try {
@@ -37,11 +29,6 @@ async function cleanupTempKey(tempKey: string, log: Logger): Promise<void> {
   }
 }
 
-/**
- * Generates a presigned upload URL pointing at a fresh temporary R2 key.
- *
- * @returns The presigned URL and its matching temporary R2 key.
- */
 async function generateTempPdfUploadUrl() {
   const tempKey = `temp/${crypto.randomUUID()}.pdf`;
   const presignedUrl = await generatePresignedUploadUrl(
@@ -51,12 +38,6 @@ async function generateTempPdfUploadUrl() {
   return { presignedUrl, tempKey };
 }
 
-/**
- * Returns the READY source that already holds the given APA PDF filename,
- * or null when the filename is free.
- *
- * @param apaFileName - Target APA-styled PDF filename.
- */
 async function findReadySourceByPdfName(apaFileName: string) {
   return db.query.sources.findFirst({
     where: and(
@@ -66,20 +47,11 @@ async function findReadySourceByPdfName(apaFileName: string) {
   });
 }
 
-/**
- * Canonical duplicate-PDF rejection message (strict copy prevention policy).
- *
- * @param apaFileName - The conflicting APA-styled PDF filename.
- */
 function buildDuplicatePdfError(apaFileName: string) {
   return `Bu akademik yayın PDF'i (${apaFileName}) sistemde başka bir kayıtta zaten mevcut. Kopya kayıtlara izin verilmemektedir.`;
 }
 
-/**
- * Server Action: Deletes a resource's PDF file from Cloudflare R2 and resets DB PDF status.
- *
- * @param resourceId - Target resource ID.
- */
+/** Server Action: Deletes a resource's PDF from Cloudflare R2 and resets its DB status. */
 export async function deleteResourcePdfAction(resourceId: number) {
   const flowId = createFlowId();
   const log = new Logger(flowId);
@@ -133,13 +105,7 @@ export async function deleteResourcePdfAction(resourceId: number) {
   }
 }
 
-/**
- * Server Action (Step 1 of 2): Validates the resource and returns a presigned upload URL
- * so the client can upload the PDF directly to R2, bypassing Vercel's 4.5MB body limit.
- *
- * @param resourceId - Target resource ID.
- * @returns Presigned URL and temporary R2 key.
- */
+/** Server Action (Step 1 of 2): Validates the resource and returns a presigned R2 upload URL. */
 export async function requestResourcePdfUploadAction(
   resourceId: number,
 ): Promise<
@@ -195,13 +161,8 @@ export async function requestResourcePdfUploadAction(
 }
 
 /**
- * Server Action (Step 2 of 2): Fetches the PDF from R2 by its temp key, runs the full
- * metadata extraction + RAG pipeline, and cleans up the temp file.
- *
- * @param resourceId - Target resource ID.
- * @param tempKey - Temporary R2 key where the client uploaded the PDF.
- * @param originalFileName - Original file name (for LlamaParse fallback).
- * @returns The updated resource data.
+ * Server Action (Step 2 of 2): Fetches the PDF from R2, runs the metadata
+ * extraction + RAG pipeline, and cleans up the temp file.
  */
 export async function completeResourcePdfUploadAction(
   resourceId: number,
@@ -247,14 +208,12 @@ export async function completeResourcePdfUploadAction(
 
     const pipelineStart = performance.now();
 
-    // 1-3. Fetch, parse and extract metadata via shared prologue
     const { buffer, chunks, metadata } = await fetchAndExtractPdf(
       tempKey,
       originalFileName,
       log,
     );
 
-    // 4. Overwrite existing resource metadata
     await db
       .update(sources)
       .set({
@@ -266,14 +225,12 @@ export async function completeResourcePdfUploadAction(
       })
       .where(eq(sources.id, resourceId));
 
-    // 5. Generate APA filename
     const apaFileName = formatApaPdfFileName(
       metadata.authors,
       metadata.publicationYear,
       metadata.title,
     );
 
-    // 6. Strict duplicate policy — reject instead of creating a copy
     const existingDuplicate = await findReadySourceByPdfName(apaFileName);
     if (existingDuplicate && existingDuplicate.id !== resourceId) {
       await cleanupTempKey(tempKey, log);
@@ -283,13 +240,11 @@ export async function completeResourcePdfUploadAction(
       };
     }
 
-    // Update status to PROCESSING
     await db
       .update(sources)
       .set({ pdfStatus: "PROCESSING" })
       .where(eq(sources.id, resourceId));
 
-    // 7. Run shared pipeline (uploads to final APA-named key, generates embeddings)
     const pipelineResult = await processResourcePdfPipeline({
       resourceId,
       fileName: apaFileName,
@@ -298,7 +253,6 @@ export async function completeResourcePdfUploadAction(
       precomputedChunks: chunks,
     });
 
-    // 8. Clean up temp file from R2
     await cleanupTempKey(tempKey, log);
 
     log.info("complete_resource_pdf_success", {
@@ -357,12 +311,7 @@ export async function completeResourcePdfUploadAction(
   }
 }
 
-/**
- * Server Action (Step 1 of 2): Generates a presigned upload URL for creating a new
- * resource from a PDF. The client uploads directly to R2, then calls completePdfCreateUploadAction.
- *
- * @returns Presigned URL and temporary R2 key.
- */
+/** Server Action (Step 1 of 2): Generates a presigned upload URL for creating a new resource from a PDF. */
 export async function requestPdfCreateUploadAction(): Promise<
   | { success: true; presignedUrl: string; tempKey: string }
   | { success: false; error: string }
@@ -401,13 +350,9 @@ export async function requestPdfCreateUploadAction(): Promise<
 }
 
 /**
- * Server Action (Step 2 of 2): Fetches the PDF from R2 by its temp key, extracts metadata,
- * creates a new library resource, runs the full RAG pipeline, and cleans up the temp file.
- *
- * @param tempKey - Temporary R2 key where the client uploaded the PDF.
- * @param originalFileName - Original file name (for LlamaParse fallback).
- * @param boxId - Target thesis box ID (a sub-box when the parent has sub-boxes, otherwise the parent box).
- * @returns The newly created resource data.
+ * Server Action (Step 2 of 2): Fetches the PDF from R2, creates a new resource,
+ * runs the full RAG pipeline, and cleans up the temp file. Targets a sub-box when
+ * the parent has sub-boxes, otherwise the parent box.
  */
 export async function completePdfCreateUploadAction(
   tempKey: string,
@@ -440,14 +385,12 @@ export async function completePdfCreateUploadAction(
 
     const pipelineStart = performance.now();
 
-    // 1-3. Fetch, parse and extract metadata via shared prologue
     const { buffer, chunks, metadata } = await fetchAndExtractPdf(
       tempKey,
       originalFileName,
       log,
     );
 
-    // 4. Resolve target thesis box by ID and verify ownership
     const targetBox = await db.query.boxes.findFirst({
       where: eq(boxes.id, boxId),
       with: { matrix: true },
@@ -461,7 +404,6 @@ export async function completePdfCreateUploadAction(
       };
     }
 
-    // 5. Create library resource record
     const [newResource] = await db
       .insert(sources)
       .values({
@@ -477,14 +419,12 @@ export async function completePdfCreateUploadAction(
       .returning();
     createdResourceId = newResource.id;
 
-    // 6. Generate APA filename
     const apaFileName = formatApaPdfFileName(
       newResource.authors,
       newResource.publicationYear,
       newResource.title,
     );
 
-    // 7. Strict duplicate policy — reject instead of creating a copy
     const existingDuplicate = await findReadySourceByPdfName(apaFileName);
     if (existingDuplicate) {
       await cleanupTempKey(tempKey, log);
@@ -497,7 +437,6 @@ export async function completePdfCreateUploadAction(
 
     uploadedPdfFileName = apaFileName;
 
-    // 8. Run shared RAG pipeline
     const pipelineResult = await processResourcePdfPipeline({
       resourceId: newResource.id,
       fileName: apaFileName,
@@ -506,7 +445,6 @@ export async function completePdfCreateUploadAction(
       precomputedChunks: chunks,
     });
 
-    // 9. Clean up temp file
     await cleanupTempKey(tempKey, log);
 
     log.info("complete_pdf_create_success", {

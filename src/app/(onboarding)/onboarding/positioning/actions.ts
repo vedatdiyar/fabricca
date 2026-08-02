@@ -17,13 +17,7 @@ import { sanitizeAcademicDataBulk } from "@/lib/services/academic-sanitizer";
 import type { JuryAnalysisResult } from "./_services/analysis";
 
 /**
- * Sadece 3 kademeli sorgu üretimi + Tezara Meilisearch araması +
- * Cohere Rerank adımlarını çalıştırır. Jüri analizi ve DB kaydı
- * dahil değildir; ayrı Server Action'larda handle edilir.
- *
- * @param matrixInput - Kullanıcının tez matrisi (5 alan)
- * @param flowId - Bu akışa ait ortak Logger flow ID'si
- * @returns Süzülen ve sıralanmış tez listesi veya hata mesajı
+ * Runs query generation, Tezara search, and Cohere rerank; jury analysis and DB writes run separately.
  */
 export async function runPositioningSearchAction(
   matrixInput: ThesisMatrix,
@@ -70,12 +64,7 @@ export async function runPositioningSearchAction(
 }
 
 /**
- * Süzülen tez listesi üzerinde Gemini LLM ile jüri analizi çalıştırır.
- *
- * @param matrixInput - Kullanıcının tez matrisi (5 alan)
- * @param theses - Cohere Rerank sonucu süzülen tez listesi
- * @param flowId - Bu akışa ait ortak Logger flow ID'si
- * @returns Jüri analizi sonucu veya hata mesajı
+ * Runs Gemini jury analysis over the sifted thesis list.
  */
 export async function runPositioningJuryAction(
   matrixInput: ThesisMatrix,
@@ -123,13 +112,7 @@ export async function runPositioningJuryAction(
 }
 
 /**
- * Jüri analizi sonucunu temizler, akademik veriyi sanitize eder ve
- * veritabanına kalıcı olarak yazar.
- *
- * @param matrixInput - Kullanıcının tez matrisi (5 alan)
- * @param juryResult - Jüri analizi sonucu
- * @param flowId - Bu akışa ait ortak Logger flow ID'si
- * @returns Başarılıysa { success: true }, hatalıysa { error: string }
+ * Sanitizes the jury result and persists the positioning report to the database.
  */
 export async function persistPositioningReportAction(
   matrixInput: ThesisMatrix,
@@ -189,11 +172,7 @@ export async function persistPositioningReportAction(
 }
 
 /**
- * Fetches the existing positioning record for the authenticated user.
- * If no positioning record exists yet, attempts to pre-fill matrixInput
- * from the user's thesis_matrices record.
- *
- * @returns The user's positioning record or null if not found
+ * Returns the user's positioning record, pre-filling matrixInput from the matrix when missing.
  */
 export async function getPositioningAction(): Promise<Positioning | null> {
   const session = await getSession();
@@ -256,16 +235,7 @@ export async function getPositioningAction(): Promise<Positioning | null> {
 }
 
 /**
- * Tek bir pipeline'da positioning sürecinin tüm adımlarını çalıştırır:
- *   1. runPositioningSearchAction — sorgu üretimi + arama + filtreleme + rerank
- *   2. runPositioningJuryAction — jüri analizi
- *   3. persistPositioningReportAction — sanitizasyon + DB kaydı
- *
- * Her alt-action ortak Logger ile çalışır; pipeline sonunda
- * positioning_pipeline_success satırı tüm sürecin toplam süresini gösterir.
- *
- * @param matrixInput - Kullanıcının tez matrisi (5 alan)
- * @returns Başarılıysa { success: true }, hatalıysa { error: string }
+ * Runs the full positioning pipeline: search, jury analysis, and persistence.
  */
 export async function runPositioningPipelineAction(
   matrixInput: ThesisMatrix,
@@ -274,7 +244,6 @@ export async function runPositioningPipelineAction(
   const log = new Logger(flowId);
   const pipelineStart = performance.now();
 
-  // ── Step 1: Search ──
   const searchResult = await runPositioningSearchAction(
     matrixInput,
     log.flowId,
@@ -286,7 +255,6 @@ export async function runPositioningPipelineAction(
     return { error: searchResult.error };
   }
 
-  // ── Step 2: Jury Analysis ──
   const juryResult = await runPositioningJuryAction(
     matrixInput,
     searchResult.theses,
@@ -299,7 +267,6 @@ export async function runPositioningPipelineAction(
     return { error: juryResult.error };
   }
 
-  // ── Step 3: Persist ──
   const persistResult = await persistPositioningReportAction(
     matrixInput,
     juryResult.juryResult,

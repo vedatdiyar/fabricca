@@ -17,33 +17,21 @@ import {
 } from "../_lib/validation";
 
 /**
- * Minimum relevance score ratio relative to the best candidate.
- *
- * Rerank relevance scores (Cohere `rerank-v4.0-pro`) are query-dependent, not
- * calibrated probabilities: the absolute value varies per query and candidate
- * pool. A fixed absolute floor therefore drops relevant theses.
+ * Minimum relevance score ratio relative to the best candidate, since rerank scores are not calibrated probabilities.
  */
 const RELATIVE_SCORE_FLOOR_RATIO = 0.5;
 
-/** Maximum candidate thesis cap passed to LLM jury prompt. */
+/** Maximum candidate thesis cap passed to the LLM jury prompt. */
 export const MAX_THESES = 15;
 
 /**
- * Applies Relative Score Floor (50% of the best candidate) + Safety Cap (15)
- * filtering to reranked theses. Since rerank scores are query-dependent,
- * candidates scoring below half of the top candidate's score are treated as
- * noise, while genuinely relevant theses survive regardless of the absolute
- * score scale.
- *
- * @param siftedTheses - Ordered array of thesis candidates from the reranker.
- * @returns Array of up to 15 filtered candidates tailored for LLM jury evaluation.
+ * Filters reranked theses to the relative-score floor and safety cap for jury evaluation.
  */
 export function filterThesesForJury(
   siftedTheses: SiftedThesis[],
 ): SiftedThesis[] {
   if (siftedTheses.length === 0) return [];
 
-  // Sort descending so the best-scoring candidate defines the relative floor
   const ranked = [...siftedTheses].sort(
     (a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0),
   );
@@ -51,17 +39,14 @@ export function filterThesesForJury(
   const topScore = ranked[0]?.relevanceScore ?? 0;
   const floor = topScore * RELATIVE_SCORE_FLOOR_RATIO;
 
-  // Relative Floor + Safety Cap: keep candidates at/above half of the top score
   const result = ranked
     .filter((t) => (t.relevanceScore ?? 0) >= floor)
     .slice(0, MAX_THESES);
 
-  // Sort by thesis ID to ensure deterministic [Tez #] labelling
-  // regardless of score fluctuations
   return result.sort((a, b) => a.id - b.id);
 }
 
-/** Zod schema for individual recommended guiding thesis items. */
+/** Zod schema for an individual recommended guiding thesis. */
 export const juryRecommendedThesisSchema = z.object({
   externalThesisId: z
     .union([z.string(), z.number()])
@@ -84,7 +69,7 @@ export const juryRecommendedThesisSchema = z.object({
   doi: z.string().optional().describe("Tezin DOI adresi (varsa)"),
 });
 
-/** Zod schema for LLM Jury Analysis Output. */
+/** Zod schema for the LLM jury analysis output. */
 export const juryAnalysisResultSchema = z.object({
   globalStatus: z.enum([
     "DIRECT_OVERLAP",
@@ -100,10 +85,10 @@ export const juryAnalysisResultSchema = z.object({
     ),
 });
 
-/** Inferred TypeScript type for LLM Jury Analysis Result. */
+/** Inferred type for the LLM jury analysis result. */
 export type JuryAnalysisResult = z.infer<typeof juryAnalysisResultSchema>;
 
-/** JSON Schema specification for Gemini structured outputs. */
+/** JSON Schema for Gemini structured outputs. */
 export const juryAnalysisResultJsonSchema: JsonSchema = {
   type: "object",
   properties: {
@@ -180,13 +165,7 @@ export const juryAnalysisResultJsonSchema: JsonSchema = {
 };
 
 /**
- * Conducts unified LLM Jury Analysis on filtered positioning theses using Gemini 3.1 Flash-Lite in a SINGLE API call.
- * Produces global status, gap analysis markdown summary, and 4-6 recommended guide theses simultaneously.
- *
- * @param input - The validated 5-field positioning matrix input.
- * @param siftedTheses - Candidates returned by searchAndSiftTheses.
- * @param logger - Optional Logger instance for telemetry.
- * @returns Promise resolving to unified JuryAnalysisResult.
+ * Runs unified LLM jury analysis over the filtered theses in a single Gemini call.
  */
 export async function analyzePositioningJury(
   input: PositioningMatrixInput,
@@ -249,7 +228,6 @@ Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"} | Cohere Skoru: ${t
     },
   );
 
-  // Deterministic sorting: sort by externalThesisId to ensure consistent output order
   result.recommendedTheses.sort(
     (a, b) => Number(a.externalThesisId) - Number(b.externalThesisId),
   );

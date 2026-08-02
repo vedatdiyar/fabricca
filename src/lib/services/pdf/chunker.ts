@@ -1,4 +1,7 @@
-import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+import {
+  MarkdownTextSplitter,
+  RecursiveCharacterTextSplitter,
+} from "@langchain/textsplitters";
 import { type DocumentChunk } from "@/lib/services/llamaparse";
 
 const TARGET_CHUNK_SIZE = 1000;
@@ -10,11 +13,16 @@ const textSplitter = new RecursiveCharacterTextSplitter({
   separators: ["\n\n", "\n", ". ", "? ", "! ", " ", ""],
 });
 
+const markdownSplitter = new MarkdownTextSplitter({
+  chunkSize: TARGET_CHUNK_SIZE,
+  chunkOverlap: CHUNK_OVERLAP,
+});
+
 /**
- * Validates whether a text line qualifies as a section title/heading in an academic document.
+ * Whether a text line qualifies as a section title or heading in an academic document.
  *
- * @param text - Raw text string to check
- * @returns True if text is a valid section heading, false otherwise
+ * @param text - Text line to evaluate.
+ * @returns True if the line looks like a section title.
  */
 export function isValidSectionTitle(text: string): boolean {
   const trimmed = text.trim();
@@ -39,8 +47,8 @@ export function isValidSectionTitle(text: string): boolean {
 /**
  * Merges short adjacent micro-chunks within the same section and page.
  *
- * @param chunks - Raw document chunks
- * @returns Array of merged chunks with re-indexed chunk numbers
+ * @param chunks - Document chunks to merge.
+ * @returns Merged chunks with recomputed chunk indices.
  */
 export function mergeMicroChunks(chunks: DocumentChunk[]): DocumentChunk[] {
   if (chunks.length <= 1) return chunks;
@@ -69,10 +77,10 @@ export function mergeMicroChunks(chunks: DocumentChunk[]): DocumentChunk[] {
 }
 
 /**
- * Enriches chunks with overlapping parent context windows for enhanced RAG retrieval.
+ * Enriches chunks with overlapping parent context windows for better RAG retrieval.
  *
- * @param chunks - Document chunks
- * @returns Chunks enriched with parentContent field
+ * @param chunks - Document chunks to enrich.
+ * @returns Chunks with parent context content attached.
  */
 export function applyParentChildContext(
   chunks: DocumentChunk[],
@@ -94,25 +102,25 @@ export function applyParentChildContext(
 }
 
 /**
- * Helper to identify trivial noise chunks like standalone horizontal rules (***, ---, ___),
- * markdown page dividers, or empty/junk symbols.
+ * Whether a chunk is trivial noise, such as standalone horizontal rules or junk symbols.
+ *
+ * @param content - Chunk content to evaluate.
+ * @returns True if the chunk is noise.
  */
 export function isNoiseChunk(content: string): boolean {
   const trimmed = content.trim();
   if (trimmed.length < 5) {
     if (!/[\p{L}0-9]/u.test(trimmed)) return true;
   }
-  // Standalone horizontal rules or dividers like ***, ---, ___, * * *, - - -
   if (/^[*\-_\s]{3,}$/.test(trimmed)) return true;
   return false;
 }
 
 /**
- * Splits full extracted PDF text into structured document chunks using LangChain's RecursiveCharacterTextSplitter.
- * Grouped logically by section and page markers to preserve document metadata.
+ * Splits full extracted PDF text into document chunks grouped by section titles and page markers.
  *
- * @param fullText - Full text extracted from PDF
- * @returns Array of structured document chunks with section titles and page numbers
+ * @param fullText - Full extracted PDF text.
+ * @returns A promise resolving to the merged and enriched document chunks.
  */
 export async function buildLocalChunks(
   fullText: string,
@@ -126,6 +134,7 @@ export async function buildLocalChunks(
   let currentPrintedPage: number | null = null;
   let currentBuffer: string[] = [];
 
+  /** Flushes the current buffered lines into chunks, splitting long blocks. */
   async function processBuffer() {
     if (currentBuffer.length === 0) return;
     const textBlock = currentBuffer.join("\n").trim();
@@ -146,7 +155,6 @@ export async function buildLocalChunks(
         });
       }
     } else {
-      // Split large text blocks using RecursiveCharacterTextSplitter with overlap
       const subTexts = await textSplitter.splitText(textBlock);
       for (const subText of subTexts) {
         const clean = subText.trim();
@@ -189,6 +197,76 @@ export async function buildLocalChunks(
     currentBuffer.push(trimmed);
   }
   await processBuffer();
+
+  const merged = mergeMicroChunks(rawChunks);
+  return applyParentChildContext(merged);
+}
+
+/**
+ * Builds chunks from normalized Markdown using heading structure rather than page markers.
+ *
+ * @param normalizedMarkdown - Normalized Markdown to chunk.
+ * @returns A promise resolving to the merged and enriched document chunks.
+ */
+export async function buildLocalChunksFromMarkdown(
+  normalizedMarkdown: string,
+): Promise<DocumentChunk[]> {
+  if (!normalizedMarkdown.trim()) return [];
+
+  const rawChunks: DocumentChunk[] = [];
+  let chunkIdx = 0;
+  let currentSectionTitle: string | null = null;
+  let currentPageNum: number | null = null;
+
+  const blocks = await markdownSplitter.splitText(normalizedMarkdown);
+
+  for (const block of blocks) {
+    const cleanBlock = block.trim();
+    if (!cleanBlock || isNoiseChunk(cleanBlock)) continue;
+
+    const headerMatch = cleanBlock.match(/^(#{1,4})\s+(.+)$/m);
+    if (headerMatch) {
+      currentSectionTitle = headerMatch[2].slice(0, 120).trim();
+    }
+
+    if (
+      currentSectionTitle &&
+      /^(index|dizin)(\s+|$)/i.test(currentSectionTitle)
+    ) {
+      continue;
+    }
+
+    const pageMatch = cleanBlock.match(/\[PDFSayfa\s+(\d+)\]/i);
+    if (pageMatch) {
+      currentPageNum = parseInt(pageMatch[1], 10);
+    }
+
+    if (cleanBlock.length > TARGET_CHUNK_SIZE) {
+      const subTexts = await textSplitter.splitText(cleanBlock);
+      for (const subText of subTexts) {
+        const clean = subText.trim();
+        if (clean && !isNoiseChunk(clean)) {
+          rawChunks.push({
+            chunkIndex: chunkIdx++,
+            pdfPageNumber: currentPageNum,
+            printedPageNumber: currentPageNum,
+            sectionTitle: currentSectionTitle,
+            content: clean,
+            tokenCount: Math.ceil(clean.length / 4),
+          });
+        }
+      }
+    } else {
+      rawChunks.push({
+        chunkIndex: chunkIdx++,
+        pdfPageNumber: currentPageNum,
+        printedPageNumber: currentPageNum,
+        sectionTitle: currentSectionTitle,
+        content: cleanBlock,
+        tokenCount: Math.ceil(cleanBlock.length / 4),
+      });
+    }
+  }
 
   const merged = mergeMicroChunks(rawChunks);
   return applyParentChildContext(merged);

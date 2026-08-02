@@ -1,6 +1,11 @@
 /**
  * Builds the box-type context block embedded in the system instruction.
- * Provides the thesis subject, box title, and description for context.
+ *
+ * @param boxType - Box type identifier of the thesis sub-box.
+ * @param subBoxTitle - Title of the thesis sub-box.
+ * @param description - Description of the thesis sub-box.
+ * @param thesisSubject - Subject of the thesis.
+ * @returns The formatted box context block for the jury prompt.
  */
 function buildBoxTypeInstruction(
   boxType: string,
@@ -15,12 +20,10 @@ Tez Konusu: ${thesisSubject}`;
 }
 
 /**
- * Builds box-type-specific evaluation guidelines for the jury.
- * Each quadrant has tailored acceptance/rejection criteria reflecting
- * its role in the thesis structure.
+ * Builds box-type-specific acceptance and rejection guidelines for the jury.
  *
- * @param boxType - Box type (SUBJECT_PROBLEM, THEORETICAL_FRAMEWORK, METHODOLOGY)
- * @returns Formatted quadrant-specific rehber string, or empty if PRIMARY_MATERIAL
+ * @param boxType - Box type identifier used to select the matching guideline block.
+ * @returns The quadrant-specific evaluation guideline text, or an empty string when unsupported.
  */
 function buildQuadrantSpecificInstruction(boxType: string): string {
   switch (boxType) {
@@ -109,14 +112,13 @@ DÜŞÜK PUAN (0-40) almalıdır. Bu eserler isRelevant=false olarak işaretlenm
 
 /**
  * Builds the system instruction for the single-box jury LLM call.
- * Combines the general role definition with quadrant-specific guidelines.
  *
- * @param boxType - Box type (SUBJECT_PROBLEM, THEORETICAL_FRAMEWORK, METHODOLOGY)
- * @param subBoxTitle - Sub-box title
- * @param description - Sub-box's own description
- * @param thesisBoxId - Box database ID
- * @param thesisSubject - The thesis subject problem text (ana tez konusu)
- * @returns Formatted system instruction string
+ * @param boxType - Box type identifier of the thesis sub-box.
+ * @param subBoxTitle - Title of the thesis sub-box.
+ * @param description - Description of the thesis sub-box.
+ * @param thesisBoxId - Identifier of the thesis sub-box in the database.
+ * @param thesisSubject - Subject of the thesis.
+ * @returns The full system instruction prompt for the jury LLM call.
  */
 export function buildJurySystemInstruction(
   boxType: string,
@@ -180,14 +182,14 @@ Her değerlendirme için aşağıdaki alanları içeren JSON nesneleri dizisi d�
 /**
  * Builds the user prompt for the single-box jury LLM call.
  *
- * @param thesisSubject - The thesis subject problem text
- * @param thesisBoxId - Box database ID
- * @param subBoxTitle - Sub-box title
- * @param boxType - Box type
- * @param description - Box description
- * @param articlesText - Serialized article list (title, authors, abstract, relevance_score)
- * @param articleCount - Number of articles being evaluated
- * @returns Formatted user prompt string
+ * @param thesisSubject - Subject of the thesis.
+ * @param thesisBoxId - Identifier of the thesis sub-box in the database.
+ * @param subBoxTitle - Title of the thesis sub-box.
+ * @param boxType - Box type identifier of the thesis sub-box.
+ * @param description - Description of the thesis sub-box.
+ * @param articlesText - Serialized text of the articles to evaluate.
+ * @param articleCount - Number of articles included in the prompt.
+ * @returns The formatted user prompt for the jury LLM call.
  */
 export function buildJuryUserPrompt(
   thesisSubject: string,

@@ -20,13 +20,7 @@ export interface LibraryParentBoxOption {
   children: LibrarySubBoxOption[];
 }
 
-/**
- * Server Action: Fetches the current user's real thesis box hierarchy
- * (parent boxes with their sub-boxes) for the "Yeni Akademik PDF Yükle" modal.
- * Ensures default boxes exist when onboarding is incomplete.
- *
- * @returns The parent box hierarchy or an error message.
- */
+/** Server Action: Fetches the user's thesis box hierarchy (parent boxes with sub-boxes) for the PDF upload modal, seeding default boxes when onboarding is incomplete. */
 export async function getBoxHierarchyForLibraryAction(): Promise<
   | { success: true; data: LibraryParentBoxOption[] }
   | { success: false; error: string }

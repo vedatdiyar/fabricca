@@ -1,9 +1,8 @@
 import { Logger } from "../logger";
 
-/** Cohere Rerank model ID — multilingual (100+ dil, Türkçe dahil), 32.768 token context. */
+/** Multilingual (incl. Turkish) Cohere Rerank model ID — 32,768-token context. */
 const COHERE_RERANK_MODEL = "rerank-v4.0-pro";
 
-/** Cohere Rerank v2 REST endpoint. */
 const COHERE_RERANK_URL = "https://api.cohere.com/v2/rerank";
 
 /** Individual rerank result returned from Cohere Rerank. */
@@ -21,17 +20,10 @@ export interface RerankParams {
 }
 
 /**
- * Invokes Cohere Rerank API (`rerank-v4.0-pro`) to compute semantic relevance
- * scores for candidate documents against a search query. The model is
- * multilingual (Turkish included) and natively supports structured YAML
- * documents, so callers can pass either plain text or YAML-formatted strings.
+ * Reranks documents against a query via Cohere rerank-v4.0-pro; falls back to input order on missing key or request failure.
  *
- * On missing API key or request failure, a degraded fallback preserving the
- * input order with descending synthetic scores is returned so downstream
- * pipelines can continue without crashing.
- *
- * @param params - Configuration object including query, documents, topN, and optional logger.
- * @returns Sorted array (descending by relevance) of reranked results with index and score.
+ * @param params - Object containing the query, documents, optional topN limit, and optional logger.
+ * @returns The reranked results sorted by descending relevance score.
  */
 export async function rerankWithCohere(
   params: RerankParams,

@@ -10,8 +10,6 @@ import type { NoteType } from "../_types/types";
 
 /**
  * Server Action: Creates a new note / page-numbered citation linked to a library resource.
- *
- * @param input - Resource ID, page number, note type, and content.
  */
 export async function createResourceNoteAction(input: {
   resourceId: number;
@@ -75,11 +73,7 @@ export async function createResourceNoteAction(input: {
   }
 }
 
-/**
- * Server Action: Deletes a note by ID for the logged in user.
- *
- * @param noteId - Target note ID.
- */
+/** Server Action: Deletes a note by ID for the logged in user. */
 export async function deleteResourceNoteAction(noteId: number) {
   const flowId = createFlowId();
   const log = new Logger(flowId);

@@ -22,10 +22,7 @@ import {
 } from "../_hooks/use-literature-review";
 import { getBoxTypeLabel } from "@/lib/box-constants";
 
-/**
- * Renders a manual entry form for archival/empirical boxes so the user can
- * input primary archive fund codes (e.g. BCA, TBMM Zabıtları) directly.
- */
+/** Renders a manual entry form for archival/empirical boxes. */
 function ArchiveEntryForm({
   onAddEntry,
 }: {
@@ -71,10 +68,7 @@ function ArchiveEntryForm({
   );
 }
 
-/**
- * Renders a single sub-box's transient processing states (loading skeleton,
- * error, idle) while the review pipeline runs.
- */
+/** Renders a sub-box's transient processing states while the pipeline runs. */
 function SubBoxQuery({
   status,
   errorMessage,
@@ -110,9 +104,7 @@ function SubBoxQuery({
 }
 
 /**
- * Renders the completed results for a sub-box. For archival/empirical boxes,
- * shows a manual entry form (if empty) or the list of manually-entered archive
- * entries. For standard boxes, renders the starter pack and reserved pool.
+ * Renders completed sub-box results: manual entry forms for archival boxes, article grids otherwise.
  */
 function SubBoxDone({
   subBox,
@@ -129,7 +121,6 @@ function SubBoxDone({
 }) {
   const entry = literaturePool.find((e) => e.subBoxTitle === subBox.title);
 
-  /* PRIMARY_MATERIAL box: render generated sub-boxes with individual input forms */
   if (subBox.boxType === "PRIMARY_MATERIAL") {
     const childBoxes = subBox.subBoxes ?? [];
     return (
@@ -143,10 +134,8 @@ function SubBoxDone({
               const subArticles = subEntry?.articles ?? [];
               return (
                 <div key={`${sub.title}-${idx}`} className="relative space-y-3">
-                  {/* Timeline Indicator */}
                   <span className="absolute -left-[21.5px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-primary bg-background" />
 
-                  {/* Sub-box Header */}
                   <div className="space-y-1">
                     <h3 className="font-serif text-lg font-medium tracking-tight text-foreground leading-snug">
                       {sub.title}
@@ -158,14 +147,12 @@ function SubBoxDone({
                     )}
                   </div>
 
-                  {/* Input form for this child box */}
                   <ArchiveEntryForm
                     onAddEntry={(title) =>
                       onAddArchiveEntry(sub.title, sub.id ?? 0, { title })
                     }
                   />
 
-                  {/* Added archive entries / documents for this child box */}
                   {subArticles.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
                       {[...subArticles]
@@ -192,7 +179,6 @@ function SubBoxDone({
             })}
           </div>
         ) : (
-          /* Fallback when no child boxes exist */
           <div className="space-y-4">
             <ArchiveEntryForm
               onAddEntry={(title) =>
@@ -220,8 +206,6 @@ function SubBoxDone({
     );
   }
 
-  /* Standard boxes (TOPIC, THEORY, METHODOLOGY):
-     Render sub-boxes hierarchically and distribute parent entry articles to them */
   const childBoxes = subBox.subBoxes ?? [];
   if (childBoxes.length === 0) {
     if (!entry || entry.articles.length === 0) {
@@ -257,10 +241,8 @@ function SubBoxDone({
           const subArticles = subEntry?.articles ?? [];
           return (
             <div key={`${sub.title}-${idx}`} className="relative space-y-3">
-              {/* Timeline Indicator */}
               <span className="absolute -left-[21.5px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-primary bg-background" />
 
-              {/* Sub-box Header */}
               <div className="space-y-1">
                 <h3 className="font-serif text-lg font-medium tracking-tight text-foreground leading-snug">
                   {sub.title}
@@ -284,7 +266,6 @@ function SubBoxDone({
                 )}
               </div>
 
-              {/* Sub-box Articles */}
               {subArticles.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
                   {[...subArticles]
@@ -315,10 +296,7 @@ function SubBoxDone({
 }
 
 /**
- * Top-level literature-review container. Delegates all orchestration (box
- * loading, chunked parallel review pipeline, finalize flow) to the
- * {@link useLiteratureReview} hook and only renders the grid of sub-boxes and
- * the action buttons.
+ * Top-level literature-review container delegating orchestration to the useLiteratureReview hook.
  */
 export function LiteratureReviewContent() {
   const {

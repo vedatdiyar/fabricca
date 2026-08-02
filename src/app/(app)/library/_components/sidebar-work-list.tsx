@@ -31,9 +31,6 @@ import {
   BOX_TYPE_SHORT_LABELS,
 } from "@/lib/box-constants";
 
-/**
- * Tab configuration list for thesis box filtering.
- */
 const BOX_TABS: { id: ThesisBoxType; label: string }[] = [
   { id: "ALL", label: "Tümü" },
   { id: "SUBJECT_PROBLEM", label: BOX_TYPE_SHORT_LABELS.SUBJECT_PROBLEM },
@@ -46,29 +43,18 @@ const BOX_TABS: { id: ThesisBoxType; label: string }[] = [
 ];
 
 interface SidebarWorkListProps {
-  /** Array of library resources to render */
   resources: LibraryResourceItem[];
-  /** Currently selected resource ID */
   selectedResourceId: number | null;
-  /** Callback fired when a resource item is selected */
   onSelectResource: (id: number) => void;
-  /** Active box tab filter state */
   activeTab: ThesisBoxType;
-  /** Callback to change active box tab filter */
   onTabChange: (tab: ThesisBoxType) => void;
-  /** Search query state string */
   searchQuery: string;
-  /** Callback to update search query */
   onSearchChange: (query: string) => void;
-  /** Callback to open the add new resource modal */
   onOpenAddModal?: () => void;
-  /** Callback to permanently delete a resource with its PDF and all related data */
   onDeleteResource?: (resourceId: number) => Promise<void>;
 }
 
-/**
- * Sidebar component listing academic literature items with box tabs and search.
- */
+/** Sidebar component listing academic literature items with box tabs and search. */
 export function SidebarWorkList({
   resources,
   selectedResourceId,
@@ -80,14 +66,10 @@ export function SidebarWorkList({
   onOpenAddModal,
   onDeleteResource,
 }: SidebarWorkListProps) {
-  // Deletion confirmation modal state
   const [resourceToDeleteId, setResourceToDeleteId] = useState<number | null>(
     null,
   );
 
-  /**
-   * Confirms and deletes the selected resource.
-   */
   const handleConfirmDelete = async () => {
     if (resourceToDeleteId !== null && onDeleteResource) {
       await onDeleteResource(resourceToDeleteId);
@@ -95,8 +77,6 @@ export function SidebarWorkList({
     }
   };
 
-  // Filter resources based on active tab and search query (memoized so the
-  // scroll effect below only re-runs when the visible list actually changes)
   const filteredResources = useMemo(
     () =>
       resources.filter((item) => {
@@ -112,8 +92,6 @@ export function SidebarWorkList({
     [resources, activeTab, searchQuery],
   );
 
-  // Scroll the selected resource card into view whenever selection or filtered list changes.
-  // Scoped strictly to the sidebar list container so the page window never scrolls.
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!scrollRef.current || selectedResourceId === null) return;
@@ -131,7 +109,6 @@ export function SidebarWorkList({
 
   return (
     <div className="flex h-full w-full flex-col min-h-0 space-y-4 rounded-md border border-border bg-card p-4">
-      {/* Header Title & Add Resource Action */}
       <div className="flex items-center justify-between pb-2 border-b border-border">
         <div className="flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-primary" />
@@ -161,7 +138,6 @@ export function SidebarWorkList({
         </div>
       </div>
 
-      {/* Search Input */}
       <div className="relative w-full">
         <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
@@ -173,7 +149,6 @@ export function SidebarWorkList({
         />
       </div>
 
-      {/* Box Filter Tabs */}
       <div className="grid grid-cols-5 gap-1 rounded-md bg-muted p-1 border border-border/40">
         {BOX_TABS.map((tab) => {
           const isActive = activeTab === tab.id;
@@ -194,7 +169,6 @@ export function SidebarWorkList({
         })}
       </div>
 
-      {/* Work Cards List Container */}
       <div
         ref={scrollRef}
         className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1"
@@ -227,7 +201,6 @@ export function SidebarWorkList({
                 )}
               >
                 <CardContent className="p-0 space-y-2">
-                  {/* Top Row: Title + Indicators & Delete (hover only) */}
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-sans text-sm font-semibold text-foreground line-clamp-2 leading-snug flex-1 min-w-0">
                       {item.title}
@@ -273,7 +246,6 @@ export function SidebarWorkList({
                     </div>
                   </div>
 
-                  {/* Sleek Dot Indicator + Category Text */}
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span
                       className={cn(
@@ -287,7 +259,6 @@ export function SidebarWorkList({
                     </span>
                   </div>
 
-                  {/* Authors & Year */}
                   <div className="flex items-center justify-between text-xs text-muted-foreground pt-1.5 border-t border-border/40">
                     <span className="truncate max-w-[180px] font-normal text-muted-foreground">
                       {item.authors.join(", ")}
@@ -303,7 +274,6 @@ export function SidebarWorkList({
         )}
       </div>
 
-      {/* Delete Resource Confirmation Dialog */}
       <AlertDialog
         open={resourceToDeleteId !== null}
         onOpenChange={(open) => {

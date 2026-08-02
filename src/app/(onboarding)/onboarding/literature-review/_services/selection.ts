@@ -1,7 +1,3 @@
-/**
- * Candidate analysis and article selection for the literature pipeline.
- */
-
 import type { JuryArticle } from "@/lib/types";
 import type { RawPaper } from "./literature-review-papers";
 import type { Cluster } from "./clustering";
@@ -30,12 +26,7 @@ export interface AnalyzeResult {
 }
 
 /**
- * Analyzes reference frequencies across active works and identifies
- * leader IDs for batch metadata fetch.
- *
- * @param activeWorks - Works with populated referencedWorks
- * @param N - Number of active works (passed separately for clarity)
- * @returns Leader IDs and reference-to-modern-index mapping
+ * Analyzes reference frequencies across active works and returns leader IDs for metadata fetch.
  */
 export function analyzeReferenceFrequencies(
   activeWorks: RawPaper[],
@@ -100,14 +91,7 @@ export function analyzeReferenceFrequencies(
 }
 
 /**
- * Scores and selects the top 3 related articles from the candidate pool,
- * preferring works that cite the top cluster and globally deduplicating titles.
- *
- * @param item - The sub-box queue item with active works and raw papers
- * @param topCluster - The top co-citation cluster (may be null)
- * @param assignedTitles - Global set of already assigned normalized titles (optional)
- * @param foundationalTitle - Title of the selected foundational work for this box (optional)
- * @returns Up to 3 JuryArticle entries sorted by relevance
+ * Scores candidates and selects up to 3 related articles, deduplicating titles globally.
  */
 export function selectRelatedArticles(
   item: QueueItem,
@@ -126,7 +110,6 @@ export function selectRelatedArticles(
 
   const selected: typeof scoredCandidates = [];
 
-  // Try to pick globally unique candidates first, skipping the foundational work of the current box
   for (const it of scoredCandidates) {
     const normTitle = normalizeCleanTitle(it.paper.title!);
     if (normTitle === normalizedFoundational) {
@@ -140,7 +123,6 @@ export function selectRelatedArticles(
     if (selected.length === 3) break;
   }
 
-  // Fallback: if we have fewer than 3 candidates after filtering, relax the global deduplication check
   if (selected.length < 3) {
     for (const it of scoredCandidates) {
       const normTitle = normalizeCleanTitle(it.paper.title!);

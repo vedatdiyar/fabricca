@@ -23,11 +23,7 @@ function mapTaskRow(task: TaskRow): KanbanTask {
   };
 }
 
-/**
- * Manages user-created Kanban task CRUD operations (add, edit, delete, status change).
- * Optimistic updates use a functional updater with closure-captured previous value
- * for race-safe rollback on error.
- */
+/** Manages user-created Kanban task CRUD with optimistic updates and race-safe rollback. */
 export function useDashboardTasks(initialTasks: TaskRow[]) {
   const [userTasks, setUserTasks] = useState<KanbanTask[]>(() =>
     initialTasks.map(mapTaskRow),
@@ -120,8 +116,6 @@ export function useDashboardTasks(initialTasks: TaskRow[]) {
           throw new Error(res.error);
         }
       } catch (err) {
-        // Race-safe rollback: restore the specific task using the closure-captured
-        // previousTask value, preserving any concurrent updates to other tasks.
         setUserTasks((prev) =>
           prev.map((task) =>
             task.id === taskId && previousTask ? previousTask : task,
@@ -158,7 +152,6 @@ export function useDashboardTasks(initialTasks: TaskRow[]) {
       }
       toast.success("Task deleted successfully.");
     } catch (err) {
-      // Restore the deleted task only if it is still absent (concurrent safety).
       setUserTasks((prev) =>
         prev.some((t) => t.id === taskId)
           ? prev

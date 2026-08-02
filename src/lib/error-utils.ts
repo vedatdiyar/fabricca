@@ -1,25 +1,10 @@
-/**
- * Merkezi Hata Maskeleme ve Kullanıcı Dostu Hata Gösterim Kütüphanesi.
- *
- * Hiçbir teknik detay, stack trace veya JSON objesi bu katmandan
- * son kullanıcıya sızmaz. Her hata, önceden tanımlı üç senaryodan
- * birine maskelenerek güvenli ve anlaşılır bir metin çiftine
- * (Başlık + Açıklama) dönüştürülür.
- *
- * Kullanıcı ne görürse görsün, geliştirici Logger ile orijinal hatayı
- * terminalde görmeye devam eder.
- */
-
 export type ErrorScenario = "quota" | "network" | "system";
 
+/** Safe, user-ready error display derived from a masked internal scenario. */
 export interface ErrorDisplay {
-  /** Kullanıcıya gösterilecek kısa başlık (örn: "Bağlantı Kesildi") */
   title: string;
-  /** Kullanıcıya gösterilecek açıklama metni */
   description: string;
-  /** Hangi senaryoya ait olduğu (icon/border seçimi için) */
   scenario: ErrorScenario;
-  /** "Yeniden Dene" butonu gösterilip gösterilmeyeceği */
   canRetry: boolean;
 }
 
@@ -47,15 +32,10 @@ const ERROR_DISPLAY_MAP: Record<
 };
 
 /**
- * Hata içeriğini analiz ederek hangi senaryoya ait olduğunu belirler.
+ * Classifies any error into a user-facing scenario (quota, network, or system).
  *
- * @param error - Analiz edilecek hata (Error, string, Record, null, undefined)
- * @returns Tespit edilen hata senaryosu
- *
- * @example
- *   classifyError(new Error("429 Too Many Requests")) // "quota"
- *   classifyError("fetch failed")                     // "network"
- *   classifyError("Bilinmeyen hata")                   // "system"
+ * @param error - The error value to classify.
+ * @returns The matched error scenario.
  */
 export function classifyError(error: unknown): ErrorScenario {
   const message = extractMessage(error);
@@ -63,7 +43,6 @@ export function classifyError(error: unknown): ErrorScenario {
 
   const lower = message.toLowerCase();
 
-  // Senaryo A — Kota / Aşım Hatası
   if (
     lower.includes("429") ||
     lower.includes("resource_exhausted") ||
@@ -73,7 +52,6 @@ export function classifyError(error: unknown): ErrorScenario {
     return "quota";
   }
 
-  // Senaryo B — Bağlantı / İnternet Hatası
   if (
     lower.includes("fetch failed") ||
     lower.includes("network") ||
@@ -88,19 +66,14 @@ export function classifyError(error: unknown): ErrorScenario {
     return "network";
   }
 
-  // Senaryo C — Bilinmeyen / Sistem Hatası (Fallback)
   return "system";
 }
 
 /**
- * Herhangi bir tipteki hatayı güvenli bir ekran metnine dönüştürür.
- * Orijinal hata detayı ASLA dönüş değerine sızmaz.
+ * Maps an error to a safe, user-ready display; raw details never leak to the output.
  *
- * @param error - Maskelenecek hata (Error, string, Record, null, undefined)
- * @returns Kullanıcıya gösterilmeye hazır güvenli metin çifti
- *
- * @example
- *   const display = getErrorDisplay(err);
+ * @param error - The error value to map.
+ * @returns The user-ready error display.
  */
 export function getErrorDisplay(error: unknown): ErrorDisplay {
   const scenario = classifyError(error);
@@ -115,12 +88,10 @@ export function getErrorDisplay(error: unknown): ErrorDisplay {
 }
 
 /**
- * Hata değerinden okunabilir bir string mesaj çıkarır.
- * Bu fonksiyon sadece classifyError için kullanılır;
- * UI katmanı asla bu çıktıyı kullanmaz.
+ * Extracts a readable string message from any error value.
  *
- * @param error - Herhangi bir hata değeri
- * @returns normalize edilmiş string mesaj veya boş string
+ * @param error - The error value to extract a message from.
+ * @returns The extracted message, or an empty string.
  */
 export function extractMessage(error: unknown): string {
   if (typeof error === "string") {
@@ -132,18 +103,14 @@ export function extractMessage(error: unknown): string {
   }
 
   if (error && typeof error === "object") {
-    // { error: "..." } desenindeki hataları yakala
     const obj = error as Record<string, unknown>;
     if (typeof obj.error === "string") return obj.error;
     if (typeof obj.message === "string") return obj.message;
 
-    // JSON.stringify benzeri içeriği tara
     try {
       const serialized = JSON.stringify(error);
       if (serialized && serialized !== "{}") return serialized;
-    } catch {
-      // Circular reference durumunda sessizce devam et
-    }
+    } catch {}
   }
 
   return "";

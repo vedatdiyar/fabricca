@@ -25,27 +25,15 @@ import type { TopicBox } from "../_types";
 
 interface BoxCardProps {
   box: TopicBox;
-  /** Callback to permanently delete a library article linked to this box */
   onDeleteArticle: (articleId: string) => Promise<void>;
 }
 
-/**
- * Akademik Konu Kutusu (Topic Box) kart bileşeni.
- * Kutunun adını, açıklamasını ve içindeki makalelerin (Okuma Listesi) listesini okunma durumlarıyla sergiler.
- * Makaleye tıklanınca Kütüphane'de ilgili esere yönlendirir; her makalenin yanında kalıcı silme butonu sunar.
- *
- * @param props.box - Görüntülenecek konu kutusu verisi
- * @param props.onDeleteArticle - Makalenin kalıcı olarak silinmesi için çağrılan callback
- */
+/** Topic box card showing the box name, description, and its reading list with read status; links to the library and offers per-article deletion. */
 export function BoxCard({ box, onDeleteArticle }: BoxCardProps) {
-  // Deletion confirmation modal state
   const [articleToDeleteId, setArticleToDeleteId] = useState<string | null>(
     null,
   );
 
-  /**
-   * Confirms and permanently deletes the selected article.
-   */
   const handleConfirmDelete = async () => {
     if (articleToDeleteId !== null) {
       await onDeleteArticle(articleToDeleteId);
@@ -138,7 +126,6 @@ export function BoxCard({ box, onDeleteArticle }: BoxCardProps) {
         </CardContent>
       </Card>
 
-      {/* Delete Article Confirmation Dialog */}
       <AlertDialog
         open={articleToDeleteId !== null}
         onOpenChange={(open) => {

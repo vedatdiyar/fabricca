@@ -59,9 +59,10 @@ export interface LoggerInstance {
 }
 
 /**
- * Tek bir event adından, event sonekine bakarak durumu türetir.
- * @param event Event adı (örn. "matrix_save_start").
- * @returns START | SUCCESS | FAILED | "" (durum belirsiz).
+ * Derives START, SUCCESS, or FAILED status from an event name's suffix.
+ *
+ * @param event - Event name possibly ending with a status suffix.
+ * @returns The derived status, or empty string when none matches.
  */
 function deriveStatus(event: string): string {
   if (event.endsWith("_start")) return "START";
@@ -83,9 +84,10 @@ const C_RED = "\x1b[31m";
 const C_YELLOW = "\x1b[33m";
 
 /**
- * Status'e karşılık gelen ikonu döndürür.
- * @param s START | SUCCESS | FAILED | RETRY
- * @returns Tek karakterlik ikon.
+ * Returns the icon corresponding to a status.
+ *
+ * @param s - Status string (START, SUCCESS, FAILED, or RETRY).
+ * @returns The matching icon.
  */
 function statusIcon(s: string): string {
   return s === "START"
@@ -100,9 +102,10 @@ function statusIcon(s: string): string {
 }
 
 /**
- * Status için ANSI renk kodu döndürür.
- * @param s START | SUCCESS | FAILED
- * @returns ANSI escape kodu (boş dönebilir).
+ * Returns the ANSI color code for a status.
+ *
+ * @param s - Status string.
+ * @returns The matching ANSI color code.
  */
 function statusColor(s: string): string {
   if (s === "SUCCESS") return C_GREEN;
@@ -112,11 +115,10 @@ function statusColor(s: string): string {
 }
 
 /**
- * Milisaniye cinsinden süreyi sıkıştırılmış bir string olarak biçimlendirir:
- *   <1000 ms → "497ms"
- *   ≥1000 ms → "1.5s" / "12.3s" (ondalık değil tam ise "12s")
- * @param ms Süre (ms).
- * @returns Kompakt süre string'i.
+ * Formats a millisecond duration compactly ("497ms" or "1.5s").
+ *
+ * @param ms - Duration in milliseconds.
+ * @returns Compact duration string.
  */
 function formatDuration(ms: number): string {
   const safe = Math.max(0, ms);
@@ -127,9 +129,10 @@ function formatDuration(ms: number): string {
 }
 
 /**
- * Hata değerini kısa ve okunabilir bir mesaj string'ine çevirir.
- * @param error Yakalanmamış hata, Error örneği veya arbitrary nesne.
- * @returns Hata mesajı.
+ * Converts an unknown error value into a short readable message.
+ *
+ * @param error - Error value of any type.
+ * @returns Short readable message.
  */
 function extractReason(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -146,83 +149,99 @@ export class Logger implements LoggerInstance {
   public lastTokens?: TokenUsage;
   public lastPayloadPath?: string;
 
-  /** Per-instance zamanlayıcılar — her Logger kendi başlangıç zamanlarını tutar. */
   private _starts = new Map<string, number>();
   private readonly devMode = isDev();
 
   /**
-   * Yeni bir Logger örneği oluşturur.
-   * @param flowId Akış (flow) tanımlayıcısı — tüm log satırlarına eklenir.
+   * Creates a logger whose flowId is attached to every log line.
+   *
+   * @param flowId - Identifier attached to every log line.
    */
   constructor(flowId: string) {
     this.flowId = flowId;
   }
 
   /**
-   * info seviyesinde log üretir.
-   * @param arg1 Event adı (string) veya direkt payload (object).
-   * @param p Opsiyonel log parametreleri.
+   * Logs an info-level entry.
+   *
+   * @param arg1 - Event name or structured payload.
+   * @param p - Optional log parameters.
    */
   info(arg1: string | Record<string, unknown>, p?: LogParams): void {
     this.write("info", arg1, p);
   }
 
   /**
-   * error seviyesinde log üretir.
-   * @param arg1 Event adı (string) veya direkt payload (object).
-   * @param p Opsiyonel log parametreleri.
+   * Logs an error-level entry.
+   *
+   * @param arg1 - Event name or structured payload.
+   * @param p - Optional log parameters.
    */
   error(arg1: string | Record<string, unknown>, p?: LogParams): void {
     this.write("error", arg1, p);
   }
 
   /**
-   * Yardımcı adım metodu — sessiz (no-op).
+   * Records a step marker in the current flow.
+   *
+   * @param n - Step name.
+   * @param m - Optional step metadata.
    */
   step(n: string, m?: Record<string, unknown>): void {
     void n;
     void m;
-    /* no-op — alt kırılım çıktısı üretmez */
   }
 
   /**
-   * Yardımcı dosya yolu metodu — sessiz (no-op).
+   * Records a file reference for the current flow.
+   *
+   * @param r - File path.
    */
   file(r: string): void {
     void r;
-    /* no-op */
   }
 
   /**
-   * Yardımcı veri metodu — sessiz (no-op).
+   * Records a labeled data snapshot for the current flow.
+   *
+   * @param l - Snapshot label.
+   * @param v - Snapshot value.
    */
   data(l: string, v: unknown): void {
     void l;
     void v;
-    /* no-op */
   }
 
   /**
-   * Yardımcı önizleme metodu — sessiz (no-op).
+   * Records a labeled preview for the current flow.
+   *
+   * @param l - Preview label.
+   * @param v - Preview value.
    */
   preview(l: string, v: unknown): void {
     void l;
     void v;
-    /* no-op */
   }
 
   /**
-   * Yardımcı prompt metodu — sessiz (no-op).
+   * Records a prompt message for the current flow.
+   *
+   * @param m - Prompt message.
+   * @param c - Contextual label.
    */
   prompt(m: string, c: string): void {
     void m;
     void c;
-    /* no-op */
   }
 
   /**
-   * Yardımcı debug-payload kaydı — sessiz (no-op).
-   * Her zaman undefined döndürür — payload ID artık üretilmez.
+   * Saves a debug payload for later inspection.
+   *
+   * @param s - Payload stage.
+   * @param m - Payload message.
+   * @param p - Payload path.
+   * @param r - Optional request identifier.
+   * @returns Path of the saved payload, or undefined when not saved.
    */
   saveDebugPayload(
     s: string,
@@ -238,25 +257,29 @@ export class Logger implements LoggerInstance {
   }
 
   /**
-   * Görsel grup başı — no-op (lineer modda gruplar render edilmez).
+   * Marks the start of a log group.
+   *
+   * @param event - Group event name.
    */
   groupStart(event: string): void {
     void event;
-    /* no-op */
   }
 
   /**
-   * Görsel grubu sonu — no-op.
+   * Marks the end of a log group.
+   *
+   * @param event - Group event name.
+   * @param durationMs - Duration of the group in milliseconds.
    */
   groupEnd(event: string, durationMs: number): void {
     void event;
     void durationMs;
-    /* no-op */
   }
 
   /**
-   * Saat:dakika:saniye olarak geçerli zaman damgasını döndürür.
-   * @returns "[HH:MM:SS]" formatında string.
+   * Returns the current time as "[HH:MM:SS]".
+   *
+   * @returns Current time string.
    */
   private timestamp(): string {
     const d = new Date();
@@ -264,14 +287,11 @@ export class Logger implements LoggerInstance {
   }
 
   /**
-   * Tek satır log üretir. START/SUCCESS/FAILED eventleri için özel
-   * işlem yapılır; diğer eventler minimal düz bir satır olarak basılır.
+   * Writes a single log line in dev or production format.
    *
-   * Üretim modunda tek bir JSON satırı yazılır.
-   *
-   * @param level info | warn | error
-   * @param arg1 Event adı (string) veya direkt payload (object).
-   * @param p Opsiyonel log parametreleri.
+   * @param level - Log level (info or error).
+   * @param arg1 - Event name or structured payload.
+   * @param p - Optional log parameters.
    */
   private write(
     level: "info" | "error",
@@ -286,7 +306,6 @@ export class Logger implements LoggerInstance {
 
       const status = deriveStatus(event);
 
-      // ── START: timer başlat + minimal tek satır START yaz ──
       if (status === "START") {
         const baseEvent = event.replace(/_(start)$/, "");
         this._starts.set(baseEvent, performance.now());
@@ -300,7 +319,6 @@ export class Logger implements LoggerInstance {
         return;
       }
 
-      // ── SUCCESS / FAILED: _starts'tan elapsed oku, tek satır yaz ──
       if (status === "SUCCESS" || status === "FAILED") {
         const baseEvent = event.replace(
           /_(success|failed|filtered|empty)$/,
@@ -335,11 +353,9 @@ export class Logger implements LoggerInstance {
         console.log("");
         return;
       }
-      // ── Soneksiz event dev modunda sessizce yutulur ──
       return;
     }
 
-    // ── Production: JSON tek satır ──
     if (typeof arg1 === "object" && arg1 !== null) {
       const entry: Record<string, unknown> = { flowId: this.flowId, ...arg1 };
       console[level](
@@ -375,9 +391,9 @@ export class Logger implements LoggerInstance {
 }
 
 /**
- * Yeni bir akış (flow) için benzersiz bir tanımlayıcı üretir.
- * Format: `fl_<timestamp36>_<random>`.
- * @returns Akış ID string'i.
+ * Generates a unique flow identifier in the form fl_<timestamp36>_<random>.
+ *
+ * @returns Unique flow identifier string.
  */
 export function createFlowId(): string {
   return `fl_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`;

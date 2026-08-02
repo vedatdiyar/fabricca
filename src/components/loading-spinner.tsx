@@ -8,14 +8,7 @@ interface LoadingSpinnerProps {
   message?: string;
 }
 
-/**
- * LoadingSpinner — merkezi yükleme bileşeni.
- * Kart içi (min-h-[40vh]) veya tam sayfa (min-h-[60vh]) varyasyonları ile
- * tüm asenkron yükleme durumlarını tek bir bileşende toplar.
- *
- * @param props.variant - "card" (varsayılan) veya "full"
- * @param props.message - Spinner altında gösterilecek metin (opsiyonel)
- */
+/** Central loading component with card or full-page variants for all async loading states. */
 export function LoadingSpinner({
   variant = "card",
   message,

@@ -26,13 +26,7 @@ const NAV_ITEMS = [
   { href: "/advisor", label: "Danışman Odası", icon: MessageSquareCode },
 ] as const;
 
-/**
- * Ana uygulamanin üst navigasyon çubuğu (Header).
- * Desktop'ta yatay nav linkleri, mobil/tablet'te alt navigation bar (Bottom Nav) olarak çalışir.
- * Aktif rota usePathname ile tespit edilir.
- *
- * @param userName - Giriş yapan kullanicinin adi
- */
+/** Top navigation bar for the main app: horizontal nav links on desktop, bottom nav on mobile/tablet. Active route is detected with usePathname. */
 export function Header({ userName }: { userName: string }) {
   const pathname = usePathname();
   const queryClient = useQueryClient();
@@ -99,7 +93,6 @@ export function Header({ userName }: { userName: string }) {
             })}
           </nav>
 
-          {/* User Menu Dropdown */}
           <UserMenu
             userName={userName}
             onReopenOnboarding={handleReopenOnboarding}
@@ -151,9 +144,6 @@ export function Header({ userName }: { userName: string }) {
   );
 }
 
-/**
- * Kullanıcı profil ve hızlı aksiyonlar dropdown menü bileşeni.
- */
 function UserMenu({
   userName,
   onReopenOnboarding,
@@ -166,7 +156,6 @@ function UserMenu({
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Click outside ve Escape tuş dinleyicisi
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -188,7 +177,6 @@ function UserMenu({
     };
   }, [isOpen]);
 
-  // İsmin baş harflerini alma (ör: "Vedat Diyar" -> "VD")
   const initials = userName
     .split(" ")
     .filter(Boolean)
@@ -206,12 +194,10 @@ function UserMenu({
           isOpen && "bg-accent border-primary/40",
         )}
       >
-        {/* User Avatar Circle */}
         <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary font-mono text-[10px] font-semibold border border-primary/20 shrink-0">
           {initials || <User className="h-3 w-3" />}
         </div>
 
-        {/* User Name */}
         <span className="max-w-[130px] truncate text-xs font-medium text-foreground hidden sm:block">
           {userName}
         </span>
@@ -224,10 +210,8 @@ function UserMenu({
         />
       </button>
 
-      {/* Dropdown Menu Box */}
       {isOpen && (
         <div className="absolute right-0 top-full mt-2 w-56 rounded-md border border-border bg-card p-1.5 shadow-lg z-50 animate-in fade-in-0 zoom-in-95">
-          {/* Header Info inside Dropdown */}
           <div className="flex items-center gap-2.5 p-2 border-b border-border/40 pb-2.5 mb-1">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-mono text-xs font-semibold border border-primary/20 shrink-0">
               {initials || <User className="h-4 w-4" />}
@@ -242,7 +226,6 @@ function UserMenu({
             </div>
           </div>
 
-          {/* Menu Action: Reopen Onboarding */}
           <button
             type="button"
             onClick={() => {
@@ -257,7 +240,6 @@ function UserMenu({
             </div>
           </button>
 
-          {/* Menu Action: Logout */}
           <button
             type="button"
             onClick={() => {

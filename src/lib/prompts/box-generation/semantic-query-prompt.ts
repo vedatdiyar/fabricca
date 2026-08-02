@@ -1,3 +1,8 @@
+/**
+ * Builds the system instruction for generating OpenAlex semantic search queries per thesis sub-box type.
+ *
+ * @returns The system instruction prompt for the semantic query LLM call.
+ */
 export function buildSemanticQuerySystemInstruction(): string {
   return `# Rol ve Uzmanlık
 Siz, tez alt kutuları (sub-box) için OpenAlex \`search.semantic\` endpoint'ine gönderilecek yoğun İngilizce arama sorguları üreten akademik bilgi bilimi uzmanısınız.
@@ -81,6 +86,12 @@ Açıklama: Gramsci'nin hegemonya kavramı ve rıza inşası mekanizmalarının 
 \`\`\``;
 }
 
+/**
+ * Builds the user prompt that generates an OpenAlex semantic query per thesis sub-box.
+ *
+ * @param subBoxes - Sub-box metadata including title, box type, and description.
+ * @returns The formatted user prompt for the semantic query LLM call.
+ */
 export function buildSemanticQueryUserPrompt(
   subBoxes: { title: string; boxType: string; description: string }[],
 ): string {

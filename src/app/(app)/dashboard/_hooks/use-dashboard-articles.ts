@@ -64,21 +64,11 @@ function buildArticleState(
   return mapped;
 }
 
-/**
- * Balanced round-robin merge of unread articles across sub-box groups.
- * Rotates through each group (S1, S2, ..., Sn, S1, ...) so every sub-box is
- * represented in the reading list instead of letting a single dominant
- * sub-box occupy the whole list. Duplicate articles (cross-sub-box) are skipped.
- *
- * @param boxArticles - All articles belonging to a main box (academically sorted per sub-box)
- * @param capacity - Maximum number of articles to collect
- * @returns The balanced visible reading list
- */
+/** Round-robin merge of unread articles across sub-box groups so every sub-box is represented in the reading list. */
 function buildVisibleReadingList(
   boxArticles: ArticleState[],
   capacity: number,
 ): ArticleState[] {
-  // Group by sub-box, preserving the academic sort order within each group
   const groups = new Map<string, ArticleState[]>();
   for (const art of boxArticles) {
     const list = groups.get(art.subBoxId) ?? [];
@@ -86,7 +76,6 @@ function buildVisibleReadingList(
     groups.set(art.subBoxId, list);
   }
 
-  // Only unread articles are candidates for the reading list
   const unreadGroups = [...groups.values()]
     .map((group) => group.filter((a) => !a.isRead))
     .filter((group) => group.length > 0);
@@ -123,10 +112,7 @@ function buildVisibleReadingList(
   return result;
 }
 
-/**
- * Manages article (library resource) state, visibility algorithms,
- * and topic box derivation for the dashboard.
- */
+/** Manages article state, visibility algorithms, and topic box derivation for the dashboard. */
 export function useDashboardArticles(
   initialBoxes: Box[],
   initialResources: Source[],

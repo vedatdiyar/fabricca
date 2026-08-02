@@ -3,13 +3,9 @@ import { redirect } from "next/navigation";
 import { getSessionWithOnboarding } from "@/lib/session";
 
 /**
- * Kimlik doğrulama sayfaları için layout.
- * Oturum açıksa onboarding durumuna göre kullanıcıyı
- * /onboarding (tamamlanmamış) veya /dashboard (tamamlanmış)
- * sayfasına yönlendirir.
- *
- * cacheComponents (PPR) gereği layout'un kendisi cookies() gibi runtime
- * API'lere erişemez; auth kontrolü Suspense-wrapped iç bileşene taşınmıştır.
+ * Layout for authentication pages; redirects signed-in users to /onboarding or /dashboard
+ * based on onboarding status. Auth check lives in a Suspense-wrapped inner component
+ * because PPR forbids runtime APIs like cookies() in the layout itself.
  */
 export default function AuthLayout({
   children,

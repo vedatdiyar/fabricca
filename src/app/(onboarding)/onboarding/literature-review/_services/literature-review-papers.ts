@@ -1,12 +1,4 @@
-/**
- * Shared types and utilities for literature review paper processing.
- */
-
 import type { FoundationalQuery } from "@/lib/types";
-
-// ============================================================================
-// Types
-// ============================================================================
 
 /** One sub-box with its own title and description (not the parent box's). */
 export interface SubBoxItem {

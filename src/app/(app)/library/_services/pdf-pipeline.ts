@@ -16,25 +16,12 @@ interface ProcessPdfPipelineOptions {
   precomputedChunks?: DocumentChunk[];
 }
 
-/**
- * Service Helper: Shared PDF RAG Ingestion Pipeline.
- *
- * Uses the smart hybrid PDF router:
- * - Single/Multi-column text → fast local unpdf extraction (milliseconds)
- * - Scanned / chaotic layout → LlamaParse API OCR
- *
- * Then uploads to R2 storage, generates Cloudflare Workers AI vector embeddings,
- * batch-inserts into Neon pgvector, and updates resource DB status.
- *
- * @param options - Resource ID, target filename, PDF file buffer, Logger instance, optional precomputed chunks.
- * @returns Object containing r2Url, finalFileName, chunkCount, and maxPage.
- */
+/** Shared PDF RAG ingestion pipeline: parses via the hybrid router, uploads to R2, generates embeddings, batch-inserts chunks into pgvector, and updates the resource DB status. */
 export async function processResourcePdfPipeline(
   options: ProcessPdfPipelineOptions,
 ) {
   const { resourceId, fileName, log, buffer } = options;
 
-  // ── 1. PDF Parsing via Hybrid Router ──
   let chunks: DocumentChunk[];
   if (options.precomputedChunks && options.precomputedChunks.length > 0) {
     chunks = options.precomputedChunks;
@@ -42,7 +29,6 @@ export async function processResourcePdfPipeline(
     chunks = await parsePdfWithHybridRouter(buffer, fileName, log);
   }
 
-  // ── 2 & 3. Fetch Resource Metadata for Header Context ──
   const resource = await db.query.sources.findFirst({
     where: eq(sources.id, resourceId),
   });
@@ -50,7 +36,6 @@ export async function processResourcePdfPipeline(
   const resourceTitle = resource?.title || fileName;
   const resourceAuthors = resource?.authors?.join(", ") || "Bilinmeyen Yazar";
 
-  // Prepare texts for vector embedding with injected Header Context
   const embeddingTexts = chunks.map((c) => {
     const pageNum = c.printedPageNumber ?? c.pdfPageNumber ?? 1;
     const sectionStr = c.sectionTitle ? ` | Bölüm: ${c.sectionTitle}` : "";
@@ -78,7 +63,6 @@ export async function processResourcePdfPipeline(
     },
   });
 
-  // ── 4. High-Performance Batch Insert into pgvector via Drizzle multi-row insert ──
   log.info("pdf_db_batch_insert_start", {
     service: "library",
     data: { resourceId },
@@ -127,7 +111,6 @@ export async function processResourcePdfPipeline(
     },
   });
 
-  // ── 5. Update Resource Status ──
   log.info("pdf_db_status_update_start", {
     service: "library",
     data: { resourceId },

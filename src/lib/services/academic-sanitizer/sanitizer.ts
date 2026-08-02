@@ -4,10 +4,6 @@ import { Logger } from "../../logger";
 import { CEREBRAS_MODEL } from "../../constants";
 import { LITERATURE_SANITIZE_SYSTEM_INSTRUCTION } from "../../prompts";
 
-// ============================================================================
-// Vanilla JSON Schema — LLM_INTEGRATION.md Rule 7
-// ============================================================================
-
 const SANITIZE_RESPONSE_SCHEMA = {
   type: "object",
   properties: {
@@ -42,13 +38,11 @@ type SanitizeResponse = z.infer<typeof sanitizeResponseSchema>;
 type AcademicItem = { title: string; author: string };
 
 /**
- * Sanitize an array of academic items (title + author) in a single
- * LLM call. Performs APA Title Case normalisation, author name
- * proper-casing, acronym preservation, and Turkish character repair.
+ * Sanitizes academic items (title and author) in a single LLM call.
  *
- * @param items - Array of academic items with raw title and author fields
- * @param logger - Optional Logger instance for structured LLM call logging
- * @returns Array with sanitised title and author fields in the same order
+ * @param items - Academic items to sanitize.
+ * @param logger - Optional logger for observability.
+ * @returns Sanitized academic items.
  */
 export async function sanitizeAcademicDataBulk(
   items: AcademicItem[],
@@ -72,13 +66,11 @@ export async function sanitizeAcademicDataBulk(
 }
 
 /**
- * Lightweight targeted sanitization for the final selected ~12 articles.
- * Uses thinkingBudget: 0 for maximum speed — no deep reasoning needed for
- * Title Case normalisation and Turkish character repair.
+ * Lightweight sanitization for a small set of final articles.
  *
- * @param items - Array of academic items with raw title and author fields
- * @param logger - Optional Logger instance
- * @returns Array with sanitised title and author fields in the same order
+ * @param items - Academic items to sanitize.
+ * @param logger - Optional logger for observability.
+ * @returns Sanitized academic items.
  */
 export async function sanitizeTargetedArticles(
   items: AcademicItem[],

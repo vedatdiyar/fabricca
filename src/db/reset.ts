@@ -6,7 +6,6 @@ async function reset() {
 
   const { db } = await import("./index");
 
-  // Drop tables in reverse dependency order
   await db.execute(`DROP TABLE IF EXISTS tasks CASCADE`);
   await db.execute(`DROP TABLE IF EXISTS notes CASCADE`);
   await db.execute(`DROP TABLE IF EXISTS chunks CASCADE`);
@@ -16,7 +15,6 @@ async function reset() {
   await db.execute(`DROP TABLE IF EXISTS matrices CASCADE`);
   await db.execute(`DROP TABLE IF EXISTS users CASCADE`);
 
-  // Drop enums
   await db.execute(`DROP TYPE IF EXISTS task_status CASCADE`);
   await db.execute(`DROP TYPE IF EXISTS task_priority CASCADE`);
   await db.execute(`DROP TYPE IF EXISTS box_type_enum CASCADE`);

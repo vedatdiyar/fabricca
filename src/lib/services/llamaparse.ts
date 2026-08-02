@@ -1,9 +1,16 @@
 import { MarkdownTextSplitter } from "@langchain/textsplitters";
 import type { Logger } from "@/lib/logger";
+import { withRetry, HttpError, DEFAULT_MAX_DELAY } from "@/lib/api-utils";
 import { isNoiseChunk } from "./pdf/chunker";
+import type { PageMarkdown } from "./pdf/types";
 
 const LLAMAPARSE_JOB_POLL_INTERVAL_MS = 1000;
-const LLAMAPARSE_JOB_MAX_WAIT_MS = 3 * 60 * 1000; // 3 min max wait
+const LLAMAPARSE_JOB_MAX_WAIT_MS = 3 * 60 * 1000;
+
+/** Max total attempts per HTTP request (1 initial + 2 retries) for transient failures. */
+const LLAMAPARSE_MAX_RETRIES = 3;
+/** Base exponential backoff delay for LlamaParse retries (Full Jitter applied by withRetry). */
+const LLAMAPARSE_RETRY_BASE_DELAY_MS = 500;
 
 const markdownSplitter = new MarkdownTextSplitter({
   chunkSize: 1000,
@@ -23,7 +30,9 @@ export interface DocumentChunk {
 export type LlamaParseChunk = DocumentChunk;
 
 /**
- * Resolves the LLAMA_CLOUD_API_KEY environment variable.
+ * Returns the LlamaParse API key from the environment, throwing when it is missing.
+ *
+ * @returns The LLAMA_CLOUD_API_KEY value.
  */
 function getLlamaApiKey(): string {
   const apiKey = process.env.LLAMA_CLOUD_API_KEY;
@@ -36,12 +45,101 @@ function getLlamaApiKey(): string {
 }
 
 /**
- * Uploads a PDF file to LlamaParse API with best-practice parsing parameters.
+ * Parses the `Retry-After` header into milliseconds, or null when absent or in HTTP-date format.
+ *
+ * @param response - The HTTP response whose Retry-After header is read.
+ * @returns The retry delay in milliseconds, or null when the header is absent or unusable.
+ */
+function parseRetryAfterHeader(response: Response): number | null {
+  const header = response.headers.get("Retry-After");
+  if (!header) return null;
+
+  const seconds = parseInt(header, 10);
+  if (!isNaN(seconds) && seconds > 0) {
+    return seconds * 1000;
+  }
+
+  return null;
+}
+
+/**
+ * Performs a LlamaParse HTTP request with exponential backoff retry on transient failures only.
+ *
+ * @param url - The LlamaParse endpoint URL to request.
+ * @param init - The fetch request options.
+ * @param log - Optional logger for retry events.
+ * @param logPrefix - Prefix used for retry event labels.
+ * @returns The fetch Response when the request succeeds.
+ */
+function llamaFetchWithRetry(
+  url: string,
+  init: RequestInit,
+  log: Logger | undefined,
+  logPrefix: string,
+): Promise<Response> {
+  return withRetry(
+    async () => {
+      const response = await fetch(url, init);
+      if (!response.ok) {
+        const errorBody = (await response.text()).slice(0, 200);
+        throw new HttpError(
+          response.status,
+          errorBody,
+          parseRetryAfterHeader(response),
+        );
+      }
+      return response;
+    },
+    {
+      maxRetries: LLAMAPARSE_MAX_RETRIES,
+      baseDelay: LLAMAPARSE_RETRY_BASE_DELAY_MS,
+      maxDelay: DEFAULT_MAX_DELAY,
+      isRetryable: (error) => {
+        if (error instanceof HttpError) {
+          return error.status === 429 || error.status >= 500;
+        }
+        return true;
+      },
+      getRetryAfter: (error) =>
+        error instanceof HttpError ? error.retryAfter : null,
+      onRetry: (attempt, delayMs, error) => {
+        const httpStatus =
+          error instanceof HttpError ? error.status : undefined;
+        const retryAfter =
+          error instanceof HttpError ? error.retryAfter : undefined;
+        log?.info(`${logPrefix}_retry`, {
+          service: "library",
+          data: {
+            attempt,
+            maxRetries: LLAMAPARSE_MAX_RETRIES,
+            delayMs: Math.round(delayMs),
+            httpStatus,
+            retryAfter,
+            errorMessage:
+              error instanceof Error ? error.message : String(error),
+          },
+        });
+      },
+    },
+  );
+}
+
+/**
+ * Uploads a PDF buffer to LlamaParse and returns the created job ID.
+ *
+ * @param buffer - The PDF file contents to upload.
+ * @param fileName - The original PDF file name.
+ * @param tier - The LlamaParse parsing tier to use.
+ * @param log - Optional logger for upload events.
+ * @param logPrefix - Prefix used for retry event labels.
+ * @returns The LlamaParse job ID for the uploaded document.
  */
 async function uploadToLlamaParse(
   buffer: Buffer,
   fileName: string,
-  tier: "fast" | "cost_effective" | "agentic" = "cost_effective",
+  tier: "fast" | "cost_effective" | "agentic",
+  log: Logger | undefined,
+  logPrefix: string,
 ): Promise<string> {
   const apiKey = getLlamaApiKey();
   const formData = new FormData();
@@ -68,7 +166,7 @@ async function uploadToLlamaParse(
       "6. TÜRKÇE KARAKTERLER: Metni orijinal dilinde tutun ve Türkçe karakterleri (Ş, İ, Ğ, Ç, Ü, Ö, ı) eksiksiz koruyun, diyakritik harfleri düşürmeyin.",
   );
 
-  const response = await fetch(
+  const response = await llamaFetchWithRetry(
     "https://api.cloud.llamaindex.ai/api/parsing/upload",
     {
       method: "POST",
@@ -78,14 +176,9 @@ async function uploadToLlamaParse(
       },
       body: formData,
     },
+    log,
+    logPrefix,
   );
-
-  if (!response.ok) {
-    const errorBody = (await response.text()).slice(0, 200);
-    throw new Error(
-      `LlamaParse dosya yükleme başarısız oldu (HTTP ${response.status}): ${errorBody}`,
-    );
-  }
 
   const json = (await response.json()) as { id?: string };
   if (!json.id) {
@@ -95,14 +188,22 @@ async function uploadToLlamaParse(
 }
 
 /**
- * Polls the status of a LlamaParse job until completion.
+ * Polls a LlamaParse job until it succeeds, fails, or times out.
+ *
+ * @param jobId - The LlamaParse job ID to poll.
+ * @param log - Optional logger for poll events.
+ * @param logPrefix - Prefix used for retry event labels.
  */
-async function pollLlamaParseJob(jobId: string): Promise<void> {
+async function pollLlamaParseJob(
+  jobId: string,
+  log: Logger | undefined,
+  logPrefix: string,
+): Promise<void> {
   const apiKey = getLlamaApiKey();
   const startTime = performance.now();
 
   while (true) {
-    const response = await fetch(
+    const response = await llamaFetchWithRetry(
       `https://api.cloud.llamaindex.ai/api/parsing/job/${jobId}`,
       {
         method: "GET",
@@ -111,14 +212,9 @@ async function pollLlamaParseJob(jobId: string): Promise<void> {
           accept: "application/json",
         },
       },
+      log,
+      logPrefix,
     );
-
-    if (!response.ok) {
-      const errorBody = (await response.text()).slice(0, 200);
-      throw new Error(
-        `LlamaParse durum sorgulama başarısız (HTTP ${response.status}): ${errorBody}`,
-      );
-    }
 
     const json = (await response.json()) as { status?: string };
     const status = json.status;
@@ -144,15 +240,21 @@ async function pollLlamaParseJob(jobId: string): Promise<void> {
 }
 
 /**
- * Downloads the resulting Markdown output per page or combined from LlamaParse.
+ * Downloads the parsed page results for a completed LlamaParse job.
+ *
+ * @param jobId - The LlamaParse job ID whose result is fetched.
+ * @param log - Optional logger for result events.
+ * @param logPrefix - Prefix used for retry event labels.
+ * @returns The parsed pages as page number and markdown text pairs.
  */
 async function fetchLlamaParseResult(
   jobId: string,
+  log: Logger | undefined,
+  logPrefix: string,
 ): Promise<Array<{ pageNumber: number; text: string }>> {
   const apiKey = getLlamaApiKey();
 
-  // Fetch JSON pages result
-  const response = await fetch(
+  const response = await llamaFetchWithRetry(
     `https://api.cloud.llamaindex.ai/api/parsing/job/${jobId}/result/json`,
     {
       method: "GET",
@@ -161,11 +263,12 @@ async function fetchLlamaParseResult(
         accept: "application/json",
       },
     },
+    log,
+    logPrefix,
   );
 
   if (!response.ok) {
-    // Fallback to raw markdown if json endpoint is unavailable
-    const rawResponse = await fetch(
+    const rawResponse = await llamaFetchWithRetry(
       `https://api.cloud.llamaindex.ai/api/parsing/job/${jobId}/result/markdown`,
       {
         method: "GET",
@@ -174,6 +277,8 @@ async function fetchLlamaParseResult(
           accept: "application/json",
         },
       },
+      log,
+      logPrefix,
     );
     if (!rawResponse.ok) {
       throw new Error("LlamaParse sonuç çıktısı indirilemedi.");
@@ -198,8 +303,10 @@ async function fetchLlamaParseResult(
 }
 
 /**
- * Converts Markdown page items into structured RAG chunks with parent-child windowing context.
- * Uses LangChain's MarkdownTextSplitter with noise filtering and table preservation.
+ * Splits parsed page markdown into RAG chunks with section titles and parent context.
+ *
+ * @param pages - The parsed pages as page number and markdown text pairs.
+ * @returns The list of RAG chunks ready for embedding.
  */
 async function buildChunksFromLlamaMarkdown(
   pages: Array<{ pageNumber: number; text: string }>,
@@ -211,7 +318,6 @@ async function buildChunksFromLlamaMarkdown(
     const rawText = page.text.trim();
     if (!rawText) continue;
 
-    // Split page markdown using LangChain's MarkdownTextSplitter
     const subBlocks = await markdownSplitter.splitText(rawText);
     let currentSectionTitle: string | null = null;
 
@@ -219,7 +325,6 @@ async function buildChunksFromLlamaMarkdown(
       const cleanBlock = block.trim();
       if (!cleanBlock || isNoiseChunk(cleanBlock)) continue;
 
-      // Detect header line if block starts with #
       const headerMatch = cleanBlock.match(/^#+\s+(.+)$/m);
       if (headerMatch) {
         currentSectionTitle = headerMatch[1].slice(0, 120).trim();
@@ -236,7 +341,6 @@ async function buildChunksFromLlamaMarkdown(
     }
   }
 
-  // Apply parent-child window context
   const WINDOW = 3;
   return rawChunks.map((c, idx) => {
     const start = Math.max(0, idx - 1);
@@ -254,8 +358,13 @@ async function buildChunksFromLlamaMarkdown(
 }
 
 /**
- * High-level service method to parse a PDF file with LlamaParse.
- * Used for OCR (scanned image PDFs) and complex scattered layouts.
+ * Parses a PDF with LlamaParse for OCR (scanned images) and complex layouts, returning RAG chunks.
+ *
+ * @param buffer - The PDF file contents to parse.
+ * @param fileName - The original PDF file name.
+ * @param log - Logger used for pipeline progress events.
+ * @param tier - The LlamaParse parsing tier to use.
+ * @returns The list of RAG chunks extracted from the PDF.
  */
 export async function parsePdfWithLlamaParse(
   buffer: Buffer,
@@ -270,7 +379,13 @@ export async function parsePdfWithLlamaParse(
 
   let jobId: string;
   try {
-    jobId = await uploadToLlamaParse(buffer, fileName, tier);
+    jobId = await uploadToLlamaParse(
+      buffer,
+      fileName,
+      tier,
+      log,
+      "pdf_llamaparse_upload",
+    );
   } catch (err) {
     log.error("pdf_llamaparse_upload_failed", {
       service: "library",
@@ -285,13 +400,12 @@ export async function parsePdfWithLlamaParse(
     data: { fileName, jobId },
   });
 
-  // Poll until terminal status
   log.info("pdf_llamaparse_poll_start", {
     service: "library",
     data: { fileName, jobId },
   });
   try {
-    await pollLlamaParseJob(jobId);
+    await pollLlamaParseJob(jobId, log, "pdf_llamaparse_poll");
   } catch (err) {
     log.error("pdf_llamaparse_poll_failed", {
       service: "library",
@@ -306,12 +420,15 @@ export async function parsePdfWithLlamaParse(
     data: { fileName, jobId },
   });
 
-  // Fetch results
   log.info("pdf_llamaparse_chunking_start", {
     service: "library",
     data: { fileName, jobId },
   });
-  const resultPages = await fetchLlamaParseResult(jobId);
+  const resultPages = await fetchLlamaParseResult(
+    jobId,
+    log,
+    "pdf_llamaparse_result",
+  );
   const chunks = await buildChunksFromLlamaMarkdown(resultPages);
 
   log.info("pdf_llamaparse_chunking_success", {
@@ -325,4 +442,110 @@ export async function parsePdfWithLlamaParse(
   });
 
   return chunks;
+}
+
+/**
+ * Sends a pre-sliced mini PDF buffer to LlamaParse and maps the returned pages back to their original document indices.
+ *
+ * @param slicedBuffer - Buffer already sliced down to exactly the requested pages.
+ * @param fileName - Original PDF file name (used for logging and the upload form).
+ * @param startPage - Original 1-based index of the first page in the slice.
+ * @param endPage - Original 1-based index of the last page in the slice.
+ * @param tier - The LlamaParse parsing tier to use.
+ * @param log - Logger used for batch pipeline progress events.
+ * @returns The parsed pages mapped to their original document page indices.
+ */
+export async function parsePdfPageBatchWithLlamaParse(
+  slicedBuffer: Buffer,
+  fileName: string,
+  startPage: number,
+  endPage: number,
+  tier: "cost_effective" | "agentic",
+  log: Logger,
+): Promise<PageMarkdown[]> {
+  const slicePageCount = endPage - startPage + 1;
+
+  log.info("pdf_llamaparse_batch_upload_start", {
+    service: "pdf-parser",
+    data: {
+      fileName,
+      startPage,
+      endPage,
+      tier,
+      bufferSize: slicedBuffer.length,
+    },
+  });
+
+  let jobId: string;
+  try {
+    jobId = await uploadToLlamaParse(
+      slicedBuffer,
+      fileName,
+      tier,
+      log,
+      "pdf_llamaparse_batch_upload",
+    );
+  } catch (err) {
+    log.error("pdf_llamaparse_batch_upload_failed", {
+      service: "pdf-parser",
+      error: err,
+      data: { fileName, startPage, endPage, tier },
+    });
+    throw err;
+  }
+
+  log.info("pdf_llamaparse_batch_upload_success", {
+    service: "pdf-parser",
+    data: { fileName, jobId, startPage, endPage, tier },
+  });
+
+  log.info("pdf_llamaparse_batch_poll_start", {
+    service: "pdf-parser",
+    data: { fileName, jobId },
+  });
+  try {
+    await pollLlamaParseJob(jobId, log, "pdf_llamaparse_batch_poll");
+  } catch (err) {
+    log.error("pdf_llamaparse_batch_poll_failed", {
+      service: "pdf-parser",
+      error: err,
+      data: { fileName, jobId },
+    });
+    throw err;
+  }
+
+  log.info("pdf_llamaparse_batch_poll_success", {
+    service: "pdf-parser",
+    data: { fileName, jobId },
+  });
+
+  const allPages = await fetchLlamaParseResult(
+    jobId,
+    log,
+    "pdf_llamaparse_batch_result",
+  );
+
+  const label = tier === "agentic" ? "C" : "B";
+  const filtered: PageMarkdown[] = allPages
+    .filter((p) => p.pageNumber >= 1 && p.pageNumber <= slicePageCount)
+    .map((p) => ({
+      pageIndex: startPage + p.pageNumber - 1,
+      markdown: p.text.trim(),
+      source: "llamaparse" as const,
+      label: label as "B" | "C",
+    }));
+
+  log.info("pdf_llamaparse_batch_filter_success", {
+    service: "pdf-parser",
+    data: {
+      fileName,
+      jobId,
+      requestedRange: `${startPage}-${endPage}`,
+      slicePageCount,
+      totalPagesInJob: allPages.length,
+      filteredPageCount: filtered.length,
+    },
+  });
+
+  return filtered;
 }

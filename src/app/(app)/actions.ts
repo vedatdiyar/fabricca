@@ -16,10 +16,7 @@ import {
   invalidateOnboardingCache,
 } from "@/lib/cache-tags";
 
-/**
- * Ends the current session.
- * Clears the fabricca_session cookie and redirects to /login.
- */
+/** Ends the current session, clearing the session cookie and redirecting to /login. */
 export async function logoutAction() {
   const flowId = createFlowId();
   const log = new Logger(flowId);
@@ -49,11 +46,7 @@ export async function logoutAction() {
   redirect("/login");
 }
 
-/**
- * Returns to the onboarding flow without deleting any data.
- * Only sets the onboardingCompleted flag to false so the user can
- * review the onboarding steps again.
- */
+/** Returns to the onboarding flow without deleting data by setting onboardingCompleted to false. */
 export async function reopenOnboardingAction() {
   const flowId = createFlowId();
   const log = new Logger(flowId);
@@ -102,15 +95,7 @@ export async function reopenOnboardingAction() {
   redirect("/onboarding");
 }
 
-/**
- * Resets the entire onboarding process.
- * Deletes tasks, originality reports, and thesis matrices for the user,
- * sets onboardingCompleted to false, updates the session cookie, and
- * redirects to /onboarding.
- *
- * Used by:
- *  - The "Süreci Sıfırla" button in the header
- */
+/** Resets the entire onboarding process: deletes tasks, originality reports, and thesis matrices, then redirects to /onboarding. */
 export async function resetOnboardingAction() {
   const flowId = createFlowId();
   const log = new Logger(flowId);

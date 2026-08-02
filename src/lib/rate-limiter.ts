@@ -1,36 +1,20 @@
 /**
- * rate-limiter.ts
- *
- * Service-based isolated queues for API rate-limit management.
- *
- * Two primitives:
- *   1. `createGapEnforcedQueue` — ensures a minimum wall-clock gap (ms)
- *      between successive task completions. Used for OpenAlex (1 req/s).
- *   2. `createConcurrencyLimiter` — caps the number of in-flight tasks.
- *      Used for Crossref enrichment (max 3 concurrent).
- *
- * Both are promise-based, re-entrant-safe singletons.
+ * Service-based isolated queues for API rate-limit management:
+ * gap-enforced queue (e.g. OpenAlex 1 req/s) and concurrency limiter (e.g. Crossref max 3).
  */
 
-// ============================================================================
-// Gap-enforced queue (strict serialization + min gap between completions)
-// ============================================================================
-
 export interface GapEnforcedQueue<T> {
-  /** Enqueue a task; returns its result. Tasks run one-at-a-time with minGap. */
+  /** Runs tasks one-at-a-time with a minimum gap (ms) between completions. */
   exec(fn: () => Promise<T>): Promise<T>;
-  /** Number of tasks waiting or in-flight. */
   size: number;
-  /** Resolves when the queue is empty and the last task has finished its gap. */
   waitForIdle(): Promise<void>;
 }
 
 /**
- * Creates a queue that runs at most one task at a time and enforces a minimum
- * gap (ms) between the completion of one task and the start of the next.
+ * Creates a queue that runs at most one task at a time with a minimum gap (ms) between completions.
  *
- * Retries are considered part of the same logical task — the gap only applies
- * *after* the task resolves (success or final failure).
+ * @param minGapMs - The minimum delay between task completions.
+ * @returns The gap-enforced queue instance.
  */
 export function createGapEnforcedQueue<T>(
   minGapMs: number,
@@ -43,6 +27,9 @@ export function createGapEnforcedQueue<T>(
     reject: (e: unknown) => void;
   }> = [];
 
+  /**
+   * Processes all pending tasks sequentially, enforcing the minimum completion gap.
+   */
   async function drain(): Promise<void> {
     while (pending.length > 0) {
       const elapsed = Date.now() - lastCompletion;
@@ -63,6 +50,12 @@ export function createGapEnforcedQueue<T>(
   }
 
   return {
+    /**
+     * Runs a task in the queue, waiting for the minimum gap to elapse.
+     *
+     * @param fn - The task to run.
+     * @returns A promise resolving to the task's result.
+     */
     exec(fn: () => Promise<T>): Promise<T> {
       return new Promise<T>((resolve, reject) => {
         pending.push({ fn, resolve, reject });
@@ -76,28 +69,27 @@ export function createGapEnforcedQueue<T>(
       return pending.length;
     },
 
+    /**
+     * Resolves once all currently queued tasks have completed.
+     */
     async waitForIdle(): Promise<void> {
       await running;
     },
   };
 }
 
-// ============================================================================
-// Concurrency-limited executor (max N in-flight, no gap enforcement)
-// ============================================================================
-
 export interface ConcurrencyLimiter {
-  /** Run fn with the guarantee that ≤ concurrency tasks are in-flight. */
+  /** Runs fn with at most `concurrency` tasks in-flight. */
   exec<T>(fn: () => Promise<T>): Promise<T>;
-  /** Number of tasks waiting or in-flight. */
   size: number;
-  /** Resolves when all tasks are done. */
   waitForIdle(): Promise<void>;
 }
 
 /**
- * Creates a simple promise-based semaphore that caps the number of
- * concurrently executing tasks at `concurrency`. No gap enforcement.
+ * Creates a promise-based semaphore capping the number of concurrently executing tasks.
+ *
+ * @param concurrency - The maximum number of tasks allowed to run concurrently.
+ * @returns The concurrency limiter instance.
  */
 export function createConcurrencyLimiter(
   concurrency: number,
@@ -110,6 +102,9 @@ export function createConcurrencyLimiter(
     reject: (e: unknown) => void;
   }> = [];
 
+  /**
+   * Dispatches queued tasks while the concurrency budget allows.
+   */
   async function drain(): Promise<void> {
     while (pending.length > 0 && active < concurrency) {
       const item = pending.shift()!;
@@ -129,6 +124,12 @@ export function createConcurrencyLimiter(
   }
 
   return {
+    /**
+     * Runs a task when a concurrency slot becomes available.
+     *
+     * @param fn - The task to run.
+     * @returns A promise resolving to the task's result.
+     */
     exec<T>(fn: () => Promise<T>): Promise<T> {
       return new Promise<T>((resolve, reject) => {
         pending.push({
@@ -146,6 +147,9 @@ export function createConcurrencyLimiter(
       return pending.length + active;
     },
 
+    /**
+     * Resolves once all currently running and queued tasks have completed.
+     */
     async waitForIdle(): Promise<void> {
       await running;
     },

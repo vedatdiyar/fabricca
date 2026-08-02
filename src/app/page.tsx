@@ -1,10 +1,6 @@
 import { redirect } from "next/navigation";
 
-/**
- * Kök sayfa yönlendiricisi.
- * Oturum kontrolü henüz implemente edilmemiştir.
- * Geçici olarak /login sayfasına yönlendirir.
- */
+/** Root page redirector — temporarily redirects to /login. */
 export default function RootPage() {
   redirect("/login");
 }

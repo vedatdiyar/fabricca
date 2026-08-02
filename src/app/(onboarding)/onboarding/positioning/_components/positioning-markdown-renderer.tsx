@@ -8,9 +8,7 @@ interface PositioningMarkdownRendererProps {
   className?: string;
 }
 
-/**
- * Parses inline markdown formatting (bold, italic, inline code).
- */
+/** Parses inline markdown formatting (bold, italic, inline code). */
 function parseInlineMarkdown(text: string): React.ReactNode[] {
   if (!text) return [];
   const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
@@ -44,8 +42,7 @@ function parseInlineMarkdown(text: string): React.ReactNode[] {
 }
 
 /**
- * Normalizes input payload into a structured GapAnalysisStructured object.
- * Supports structured objects, JSON strings, and legacy markdown strings.
+ * Normalizes structured, JSON, or legacy markdown payloads into GapAnalysisStructured.
  */
 function normalizeGapAnalysis(
   content: GapAnalysisStructured | string | unknown,
@@ -58,7 +55,6 @@ function normalizeGapAnalysis(
     };
   }
 
-  // Direct structured object
   if (
     typeof content === "object" &&
     content !== null &&
@@ -74,7 +70,6 @@ function normalizeGapAnalysis(
     };
   }
 
-  // String payload (JSON or legacy Markdown)
   if (typeof content === "string") {
     const trimmed = content.trim();
     if (trimmed.startsWith("{")) {
@@ -87,12 +82,9 @@ function normalizeGapAnalysis(
             originalContribution: String(parsed.originalContribution ?? ""),
           };
         }
-      } catch {
-        // Fallback to legacy markdown parsing below
-      }
+      } catch {}
     }
 
-    // Legacy Markdown parser for older database entries
     return parseLegacyMarkdown(trimmed);
   }
 
@@ -146,8 +138,7 @@ function parseLegacyMarkdown(markdown: string): GapAnalysisStructured {
 }
 
 /**
- * Pure, structured renderer for the 3 fixed Academic Jury Synthesis sections.
- * Directly renders cards with designated icons without fuzzy matching or regex.
+ * Renders the 3 fixed jury synthesis sections as cards with designated icons.
  */
 export function PositioningMarkdownRenderer({
   content,
@@ -159,7 +150,6 @@ export function PositioningMarkdownRenderer({
 
   return (
     <div className={`space-y-4 ${className}`}>
-      {/* 1. Mevcut Literatürün Haritalandırılması */}
       <Card className="p-6 space-y-3 border-border shadow-sm bg-card hover:border-border/80 transition-colors">
         <div className="flex items-center gap-2 pb-2 border-b border-border">
           <Compass className="h-4 w-4 text-sky-600 dark:text-sky-400 shrink-0" />
@@ -174,7 +164,6 @@ export function PositioningMarkdownRenderer({
         </div>
       </Card>
 
-      {/* 2. Literatürdeki Boşluk */}
       <Card className="p-6 space-y-3 border-border shadow-sm bg-card hover:border-border/80 transition-colors">
         <div className="flex items-center gap-2 pb-2 border-b border-border">
           <ScanEye className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
@@ -189,7 +178,6 @@ export function PositioningMarkdownRenderer({
         </div>
       </Card>
 
-      {/* 3. Çalışmanın Özgün Katkısı */}
       <Card className="p-6 space-y-3 border-border shadow-sm bg-card hover:border-border/80 transition-colors">
         <div className="flex items-center gap-2 pb-2 border-b border-border">
           <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />

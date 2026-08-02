@@ -3,10 +3,9 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-/** Session cookie adı (Next.js cookie store key) */
+
 export const SESSION_COOKIE_NAME = "fabricca_session";
 
-/** Session cookie maksimum yaşam süresi (saniye) — 7 gün */
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 /** Error message shown when the session is not found. */
@@ -22,20 +21,15 @@ export type SessionWithOnboarding = SessionUser & {
   onboardingCompleted: boolean;
 };
 
-/**
- * Session cookie'sinden kullanıcı bilgisini okur.
- * Geçersiz veya eksik cookie durumunda null döner.
- *
- * Kullanıldığı yerler:
- *  - (app)/layout.tsx (korumalı sayfalar)
- *  - (auth)/layout.tsx (giriş/onboarding sayfaları)
- *
- * @returns SessionUser nesnesi veya null
- */
 declare const global: {
   __mockSession?: SessionUser | null;
 } & typeof globalThis;
 
+/**
+ * Reads the session user from the session cookie; returns null when the cookie is invalid or missing.
+ *
+ * @returns The session user, or null when there is no valid session.
+ */
 export async function getSession(): Promise<SessionUser | null> {
   if (typeof global !== "undefined" && global.__mockSession) {
     return global.__mockSession;
@@ -83,14 +77,9 @@ export async function getSession(): Promise<SessionUser | null> {
 }
 
 /**
- * Returns the session together with the user's onboarding status.
- * If the user record is not found, onboardingCompleted defaults to false.
+ * Returns the session with the user's onboarding status (defaults to false when the user record is missing).
  *
- * Used by:
- *  - (app)/layout.tsx (onboarding guard)
- *  - (auth)/layout.tsx (onboarding redirect)
- *
- * @returns SessionWithOnboarding object or null if no session
+ * @returns The session with onboarding status, or null when there is no valid session.
  */
 export async function getSessionWithOnboarding(): Promise<SessionWithOnboarding | null> {
   const session = await getSession();
@@ -125,10 +114,9 @@ export async function getSessionWithOnboarding(): Promise<SessionWithOnboarding 
 }
 
 /**
- * Returns the authenticated user's profile information (including onboarding status).
- * Redirects to /login if there is no valid session or the user is not found.
+ * Returns the authenticated user's profile; redirects to /login when there is no valid session or user.
  *
- * @returns User profile object
+ * @returns The authenticated user's profile data.
  */
 export async function getProfile() {
   const session = await getSession();

@@ -1,5 +1,11 @@
 import { cleanAbstractPrefix } from "./abstract-cleaner";
 
+/**
+ * Extracts a clean DOI string from a raw value.
+ *
+ * @param raw - Raw DOI value from any source.
+ * @returns The normalized DOI, or null when no DOI is present.
+ */
 export function extractCleanDoi(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const trimmed = raw.trim();
@@ -8,11 +14,10 @@ export function extractCleanDoi(raw: string | null | undefined): string | null {
 }
 
 /**
- * Extracts the canonical short OpenAlex work ID from a raw value.
- * Accepts full ID URLs ("https://openalex.org/W2741809807"), plain
- * IDs ("W2741809807"), or falsy/junk values. Returns the short `W...` ID,
- * or `null` when nothing valid is present (e.g. literal "null" strings
- * occasionally produced by LLM outputs).
+ * Extracts the canonical short OpenAlex work ID from a URL, plain ID, or junk value.
+ *
+ * @param raw - Raw OpenAlex identifier or URL.
+ * @returns The extracted W... ID, or null when the input is invalid.
  */
 export function extractOpenAlexId(
   raw: string | null | undefined,
@@ -30,10 +35,22 @@ export interface CrossrefPerson {
   family?: string;
 }
 
+/**
+ * Formats a person's given and family names into a single trimmed string.
+ *
+ * @param person - Crossref person record.
+ * @returns Combined full name.
+ */
 export function formatAuthorName(person: CrossrefPerson): string {
   return `${(person.given ?? "").trim()} ${(person.family ?? "").trim()}`.trim();
 }
 
+/**
+ * Maps a list of Crossref persons to formatted full names, dropping empty entries.
+ *
+ * @param persons - Optional Crossref person records.
+ * @returns Array of formatted author names.
+ */
 export function formatAuthorList(
   persons: CrossrefPerson[] | undefined,
 ): string[] {
@@ -41,6 +58,12 @@ export function formatAuthorList(
   return persons.map(formatAuthorName).filter(Boolean);
 }
 
+/**
+ * Extracts the issued or published year from a Crossref record.
+ *
+ * @param obj - Crossref record object.
+ * @returns The publication year, or null when unavailable.
+ */
 export function extractCrossrefYear(
   obj: Record<string, unknown>,
 ): number | null {
@@ -52,9 +75,10 @@ export function extractCrossrefYear(
 }
 
 /**
- * Strips the alternative language title from a bilingual thesis title.
- * TEZARA returns titles in "Türkçe Başlık / English Title" format.
- * Returns only the primary (Turkish) portion.
+ * Strips the alternate-language portion from a bilingual thesis title (TEZARA "TR / EN" format).
+ *
+ * @param title - Raw thesis title in "TR / EN" format.
+ * @returns The primary-language title.
  */
 export function stripAltTitle(title: string | null | undefined): string {
   if (!title) return "";
@@ -69,9 +93,10 @@ interface SortableResource {
 }
 
 /**
- * Shared academic sort: foundational first, then relevanceScore descending,
- * then id ascending. Used by both library actions and dashboard to keep sort
- * order consistent.
+ * Sorts academic resources: foundational first, then by relevance score, then by id.
+ *
+ * @param items - Resources to sort.
+ * @returns A new array sorted by the shared academic ordering.
  */
 export function sortLibraryResources<T extends SortableResource>(
   items: T[],
@@ -89,8 +114,10 @@ export function sortLibraryResources<T extends SortableResource>(
 }
 
 /**
- * Tokenizes a title for containment comparison: lowercase, strip punctuation,
- * split by whitespace, keep only tokens ≥ 3 characters.
+ * Tokenizes a title into normalized lowercase tokens for containment matching.
+ *
+ * @param title - Raw title string.
+ * @returns Set of normalized tokens.
  */
 function tokenizeForContainment(title: string): Set<string> {
   return new Set(
@@ -103,10 +130,11 @@ function tokenizeForContainment(title: string): Set<string> {
 }
 
 /**
- * Containment similarity: intersection / min(len(A), len(B)).
- * Score = 1.0 when the shorter title is a complete subset of the longer one.
- * Ideal for catching edition/version duplicates where one title
- * appends extra info (e.g. "of Antonio Gramsci", subtitles, etc.).
+ * Computes containment similarity as intersection divided by the shorter title's token count.
+ *
+ * @param titleA - First title.
+ * @param titleB - Second title.
+ * @returns Similarity score between 0 and 1.
  */
 export function containmentSimilarity(titleA: string, titleB: string): number {
   const tokensA = tokenizeForContainment(titleA);
@@ -127,13 +155,12 @@ export function containmentSimilarity(titleA: string, titleB: string): number {
 }
 
 /**
- * Returns true when the containment similarity between two titles meets
- * or exceeds the given threshold. Used for edition/version deduplication.
+ * Returns whether the containment similarity between two titles meets a threshold.
  *
- * @param titleA - First title to compare
- * @param titleB - Second title to compare
- * @param threshold - Minimum similarity score (0.0–1.0) to consider them duplicates
- * @returns True if the titles are considered sufficiently similar
+ * @param titleA - First title.
+ * @param titleB - Second title.
+ * @param threshold - Minimum similarity required (default 0.8).
+ * @returns True when similarity is at or above the threshold.
  */
 export function areTitlesSimilar(
   titleA: string,
@@ -144,10 +171,10 @@ export function areTitlesSimilar(
 }
 
 /**
- * Resolves OpenAlex abstract_inverted_index back to plain text.
- * Each word is placed at its position index, returning the reconstituted text.
- * Returns null if the index is empty or null.
- * Limited to the first 120 words for token efficiency.
+ * Reconstitutes an OpenAlex abstract inverted index into plain text.
+ *
+ * @param invertedIndex - OpenAlex abstract word-position map.
+ * @returns Reconstructed abstract text, or null when empty.
  */
 export function resolveAbstractInvertedIndex(
   invertedIndex: Record<string, number[]> | null | undefined,
@@ -166,6 +193,13 @@ export function resolveAbstractInvertedIndex(
   return cleanAbstractPrefix(fullText);
 }
 
+/**
+ * Normalizes a title into a lowercase, punctuation-stripped string for matching.
+ *
+ * @param title - Raw title.
+ * @param maxLength - Optional maximum length to keep.
+ * @returns Normalized title string.
+ */
 export function normalizeTitle(
   title: string | null | undefined,
   maxLength?: number,
@@ -183,9 +217,11 @@ export function normalizeTitle(
 }
 
 /**
- * Strips subtitles (separated by ':', '/', or ' - ') to extract the core title,
- * then normalizes it. Useful for cross-edition / duplicate matching where subtitles
- * may differ (e.g. "Security as Practice: Discourse Analysis..." vs "Security as Practice").
+ * Strips the subtitle from a title, then normalizes the core title for duplicate matching.
+ *
+ * @param title - Raw title with optional subtitle.
+ * @param maxLength - Optional maximum length to keep.
+ * @returns Normalized core title.
  */
 export function normalizeCleanTitle(
   title: string | null | undefined,
@@ -201,12 +237,12 @@ export function normalizeCleanTitle(
 }
 
 /**
- * Formats an academic resource into an APA-style PDF filename for storage.
- * APA convention: [Authors]_[Year]_[ShortTitle].pdf
- * Examples:
- * - Single Author: Yilmaz_2024_Turk_Edebiyati.pdf
- * - Two Authors: Yilmaz_and_Kaya_2024_Turk_Edebiyati.pdf
- * - 3+ Authors: Yilmaz_et_al_2024_Turk_Edebiyati.pdf
+ * Formats an academic resource into an APA-style PDF filename.
+ *
+ * @param authors - Author names.
+ * @param publicationYear - Publication year.
+ * @param title - Resource title.
+ * @returns APA-styled filename string.
  */
 export function formatApaPdfFileName(
   authors: string[] | null | undefined,
@@ -243,6 +279,12 @@ export function formatApaPdfFileName(
   return `${authorPart}_${year}_${titlePart}.pdf`;
 }
 
+/**
+ * Extracts the surname from a full name.
+ *
+ * @param fullName - Full name string.
+ * @returns Surname, or "Anonim" when none can be derived.
+ */
 function extractSurname(fullName: string): string {
   const parts = fullName.split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "Anonim";
@@ -250,6 +292,12 @@ function extractSurname(fullName: string): string {
   return toAsciiWord(rawSurname) || "Anonim";
 }
 
+/**
+ * Converts a word into an ASCII-safe, Turkish-normalized alphanumeric form.
+ *
+ * @param str - Input word.
+ * @returns ASCII-converted alphanumeric string.
+ */
 function toAsciiWord(str: string): string {
   const turkishMap: Record<string, string> = {
     ç: "c",

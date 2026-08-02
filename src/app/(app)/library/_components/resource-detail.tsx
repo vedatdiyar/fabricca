@@ -39,29 +39,18 @@ import type {
 } from "../_types/types";
 
 interface ResourceDetailProps {
-  /** Selected library resource object */
   resource: LibraryResourceItem;
-  /** Notes associated with this resource */
   notes: LibraryResourceNote[];
-  /** Callback to add a new note */
   onAddNote: (
     note: Omit<LibraryResourceNote, "id" | "createdAt" | "sentToCitationCards">,
   ) => void;
-  /** Callback to delete a note */
   onDeleteNote: (noteId: number) => void;
-  /** Callback to toggle read status of resource */
   onToggleReadStatus: (resourceId: number) => void;
-  /** Callback to update metadata of resource */
   onUpdateResource?: (updatedResource: LibraryResourceItem) => void;
-  /** Callback to upload PDF file for this resource */
   onUploadPdf?: (file: File) => Promise<boolean>;
-  /** Callback to delete PDF file for this resource */
   onDeletePdf?: (resourceId: number) => Promise<void>;
 }
 
-/**
- * Returns badge styling for individual note classification types.
- */
 function getNoteTypeBadgeConfig(noteType: NoteType) {
   switch (noteType) {
     case "DIRECT_QUOTE":
@@ -82,9 +71,7 @@ function getNoteTypeBadgeConfig(noteType: NoteType) {
   }
 }
 
-/**
- * Detailed view component for selected library resource with note taking and automatic citation card integration.
- */
+/** Detailed view for a selected library resource with note taking and automatic citation card integration. */
 export function ResourceDetail({
   resource,
   notes,
@@ -95,22 +82,16 @@ export function ResourceDetail({
   onUploadPdf,
   onDeletePdf,
 }: ResourceDetailProps) {
-  // Form state
   const [content, setContent] = useState("");
   const [pageNumber, setPageNumber] = useState("");
   const [noteType, setNoteType] = useState<NoteType>("DIRECT_QUOTE");
 
-  // Deletion confirmation modal state
   const [noteToDeleteId, setNoteToDeleteId] = useState<number | null>(null);
 
-  // Metadata edit modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const boxBadge = getBoxTypeBadgeConfig(resource.boxType);
 
-  /**
-   * Handles submitting the inline note form.
-   */
   const handleSaveNote = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -131,15 +112,11 @@ export function ResourceDetail({
       content: content.trim(),
     });
 
-    // Reset form
     setContent("");
     setPageNumber("");
     setNoteType("DIRECT_QUOTE");
   };
 
-  /**
-   * Confirms and deletes the selected note.
-   */
   const handleConfirmDelete = () => {
     if (noteToDeleteId !== null) {
       onDeleteNote(noteToDeleteId);
@@ -149,10 +126,8 @@ export function ResourceDetail({
 
   return (
     <div className="flex h-full w-full flex-col space-y-6 rounded-md border border-border bg-card p-6">
-      {/* 1. TOP METADATA HEADER / KÜNYE */}
       <div className="space-y-4 border-b border-border pb-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          {/* Box Badge(s) */}
           <div className="flex flex-wrap items-center gap-2">
             <Badge
               variant="outline"
@@ -173,7 +148,6 @@ export function ResourceDetail({
             )}
           </div>
 
-          {/* Action Buttons: Edit Metadata, Toggle Read Status & Delete PDF */}
           <div className="flex items-center gap-1.5">
             <Button
               variant="outline"
@@ -219,9 +193,7 @@ export function ResourceDetail({
                 onClick={async () => {
                   try {
                     await onDeletePdf(resource.id);
-                  } catch {
-                    // Handled in parent
-                  }
+                  } catch {}
                 }}
                 title="PDF'i Sil"
                 className="h-8 w-8 p-0 border-border/80 text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30"
@@ -232,12 +204,10 @@ export function ResourceDetail({
           </div>
         </div>
 
-        {/* Title */}
         <h2 className="font-serif text-2xl font-semibold tracking-tight text-foreground leading-tight">
           {resource.title}
         </h2>
 
-        {/* Authors, Publisher, Year, DOI & PDF Status — Clean Inline Layout */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground pt-1">
           <div className="flex items-center gap-1">
             <span className="font-medium text-foreground">Yazarlar:</span>
@@ -284,7 +254,6 @@ export function ResourceDetail({
         </div>
       </div>
 
-      {/* 2. PDF UPLOAD DROPZONE IF NOT YET READY */}
       {resource.pdfStatus !== "READY" && onUploadPdf && (
         <PdfUploadDropzone
           resourceTitle={resource.title}
@@ -293,10 +262,8 @@ export function ResourceDetail({
         />
       )}
 
-      {/* 3. NOTE TAKING AND CITATIONS (ONLY WHEN PDF IS READY) */}
       {resource.pdfStatus === "READY" && (
         <>
-          {/* INLINE NOTE / CITATION ADDITION FORM */}
           <Card className="border border-border bg-background">
             <CardContent className="p-4 space-y-4">
               <div className="flex items-center gap-2">
@@ -307,7 +274,6 @@ export function ResourceDetail({
               </div>
 
               <form onSubmit={handleSaveNote} className="space-y-4">
-                {/* Note Content Textarea */}
                 <div className="space-y-1">
                   <Textarea
                     placeholder="Eserden doğrudan alıntı veya kişisel notunuzu buraya yazınız..."
@@ -318,10 +284,8 @@ export function ResourceDetail({
                   />
                 </div>
 
-                {/* Controls Row: Sayfa No + Note Type Select + Submit Button */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
                   <div className="flex items-center gap-3">
-                    {/* Sayfa No Input */}
                     <div className="w-28">
                       <Input
                         type="text"
@@ -332,7 +296,6 @@ export function ResourceDetail({
                       />
                     </div>
 
-                    {/* Note Type Select Pills */}
                     <div className="flex items-center gap-1 bg-muted p-1 rounded-md border border-border/40">
                       {(
                         [
@@ -361,7 +324,6 @@ export function ResourceDetail({
                     </div>
                   </div>
 
-                  {/* Action Button */}
                   <Button
                     type="submit"
                     variant="default"
@@ -375,7 +337,6 @@ export function ResourceDetail({
             </CardContent>
           </Card>
 
-          {/* SAVED NOTES & CITATION CARDS LIST (ALINTI FİŞ FORMATI) */}
           <div className="space-y-4 pt-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -414,7 +375,6 @@ export function ResourceDetail({
                       className="border border-border bg-background transition-all hover:border-primary/40"
                     >
                       <CardContent className="p-4 space-y-3">
-                        {/* Header: Page Badge + Type Badge + Automatic Citation Card Status */}
                         <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
                           <div className="flex items-center gap-2">
                             <Badge
@@ -437,12 +397,10 @@ export function ResourceDetail({
                           </span>
                         </div>
 
-                        {/* Content Text */}
                         <p className="font-sans text-sm text-foreground leading-relaxed whitespace-pre-wrap">
                           {note.content}
                         </p>
 
-                        {/* Footer Actions */}
                         <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs">
                           <span className="text-[10px] text-muted-foreground font-mono">
                             {new Date(note.createdAt).toLocaleDateString(
@@ -456,7 +414,6 @@ export function ResourceDetail({
                           </span>
 
                           <div className="flex items-center gap-2">
-                            {/* Delete Action (Triggers Confirmation Dialog) */}
                             <Button
                               variant="ghost"
                               size="sm"
@@ -477,7 +434,6 @@ export function ResourceDetail({
         </>
       )}
 
-      {/* 4. DELETE CONFIRMATION DIALOG */}
       <AlertDialog
         open={noteToDeleteId !== null}
         onOpenChange={(open) => {
@@ -508,7 +464,6 @@ export function ResourceDetail({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* 5. EDIT RESOURCE METADATA MODAL */}
       <EditResourceModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}

@@ -28,15 +28,7 @@ import type {
   GapAnalysisStructured,
 } from "@/app/(onboarding)/onboarding/positioning/_lib/validation";
 
-// ============================================================================
-// A) USERS
-// ============================================================================
-
-/**
- * Users table.
- * Email is unique and the password is hashed using bcrypt-ts.
- * The onboardingCompleted field indicates whether the user has completed onboarding.
- */
+/** Users table — email is unique, password is bcrypt-hashed, onboardingCompleted tracks onboarding state. */
 export const users = pgTable("users", {
   id: serial().primaryKey(),
   email: varchar({ length: 255 }).notNull().unique(),
@@ -46,21 +38,11 @@ export const users = pgTable("users", {
   createdAt: timestamp().defaultNow().notNull(),
 });
 
-/** User type for select queries. */
 export type User = InferSelectModel<typeof users>;
 
-/** User type for insert queries. */
 export type NewUser = InferInsertModel<typeof users>;
 
-// ============================================================================
-// B) THESIS MATRICES
-// ============================================================================
-
-/**
- * Thesis Matrix table.
- * Stores subjectProblem, theoreticalFramework, primaryMaterial,
- * and methodology filled by the user during the first step of onboarding.
- */
+/** Thesis Matrix table — stores subjectProblem, theoreticalFramework, primaryMaterial, and methodology from the first onboarding step. */
 export const matrices = pgTable("matrices", {
   id: serial().primaryKey(),
   userId: integer()
@@ -75,15 +57,9 @@ export const matrices = pgTable("matrices", {
   updatedAt: timestamp().defaultNow().notNull(),
 });
 
-/** Matrix type for select queries. */
 export type Matrix = InferSelectModel<typeof matrices>;
 
-/** Matrix type for insert queries. */
 export type NewMatrix = InferInsertModel<typeof matrices>;
-
-// ============================================================================
-// C) THESIS POSITIONING
-// ============================================================================
 
 export const positioningGlobalStatusEnum = pgEnum("positioning_global_status", [
   "DIRECT_OVERLAP",
@@ -91,11 +67,7 @@ export const positioningGlobalStatusEnum = pgEnum("positioning_global_status", [
   "NO_RELATED_LITERATURE",
 ]);
 
-/**
- * Thesis Positioning table.
- * Stores universal positioning matrix input, AI gap analysis synthesis,
- * global positioning status, and recommended guiding theses.
- */
+/** Thesis Positioning table — stores matrix input, AI gap analysis, global status, and recommended guiding theses. */
 export const positioning = pgTable(
   "positioning",
   {
@@ -120,15 +92,9 @@ export const positioning = pgTable(
   (table) => [uniqueIndex("idx_positioning_user_id").on(table.userId)],
 );
 
-/** Positioning type for select queries. */
 export type Positioning = InferSelectModel<typeof positioning>;
 
-/** NewPositioning type for insert queries. */
 export type NewPositioning = InferInsertModel<typeof positioning>;
-
-// ============================================================================
-// D) THESIS BOXES
-// ============================================================================
 
 export const boxTypeEnum = pgEnum("box_type_enum", [
   "SUBJECT_PROBLEM",
@@ -137,10 +103,7 @@ export const boxTypeEnum = pgEnum("box_type_enum", [
   "METHODOLOGY",
 ]);
 
-/**
- * Thesis Boxes table.
- * Stores topic boxes linked to a thesis matrix in a flat structure.
- */
+/** Thesis Boxes table — stores topic boxes linked to a thesis matrix in a flat structure. */
 export const boxes = pgTable(
   "boxes",
   {
@@ -171,15 +134,9 @@ export const boxes = pgTable(
   ],
 );
 
-/** Box type for select queries. */
 export type Box = InferSelectModel<typeof boxes>;
 
-/** Box type for insert queries. */
 export type NewBox = InferInsertModel<typeof boxes>;
-
-// ============================================================================
-// E) LIBRARY RESOURCES
-// ============================================================================
 
 export const pdfStatusEnum = pgEnum("pdf_status_enum", [
   "NOT_UPLOADED",
@@ -194,11 +151,7 @@ export const noteTypeEnum = pgEnum("note_type_enum", [
   "PERSONAL_NOTE",
 ]);
 
-/**
- * Library Resources table.
- * Stores recommended / approved / rejected academic sources
- * (articles, books, theses, etc.) linked to each thesis box.
- */
+/** Library Resources table — stores recommended / approved / rejected academic sources linked to each thesis box. */
 export const sources = pgTable(
   "sources",
   {
@@ -229,16 +182,11 @@ export const sources = pgTable(
   ],
 );
 
-/** Source type for select queries. */
 export type Source = InferSelectModel<typeof sources>;
 
-/** Source type for insert queries. */
 export type NewSource = InferInsertModel<typeof sources>;
 
-/**
- * Notes table.
- * Stores academic notes, page-numbered citations, and personal notes.
- */
+/** Notes table — stores academic notes, page-numbered citations, and personal notes. */
 export const notes = pgTable(
   "notes",
   {
@@ -264,33 +212,18 @@ export const notes = pgTable(
   ],
 );
 
-/** Note type for select queries. */
 export type Note = InferSelectModel<typeof notes>;
 
-/** NewNote type for insert queries. */
 export type NewNote = InferInsertModel<typeof notes>;
 
-/**
- * PostgreSQL `tsvector` custom type.
- * Drizzle ORM 0.43 does not ship a native tsvector column, so it is declared
- * via `customType` for the generated `search_vector` column on the chunks table.
- */
+/** PostgreSQL tsvector via customType — Drizzle 0.43 ships no native tsvector column. */
 const tsvector = customType<{ data: string }>({
   dataType() {
     return "tsvector";
   },
 });
 
-/**
- * Chunks table.
- * Stores PDF text chunks with embeddings for RAG retrieval.
- *
- * `search_vector` is a stored generated column driving the lexical branch of the
- * hybrid RAG pipeline. It is language-neutral (`simple` config — no stemming) so
- * Turkish/English mixed corpora are handled deterministically while preserving
- * exact lexical signals (names, institutions, acronyms, dates, DOIs, terms).
- * Weighting: B = section title, C = chunk content.
- */
+/** Chunks table — PDF text chunks with embeddings for RAG; search_vector drives the lexical branch (simple config, no stemming; B = section title, C = content). */
 export const chunks = pgTable(
   "chunks",
   {
@@ -314,15 +247,9 @@ export const chunks = pgTable(
   (table) => [index("idx_chunks_source_id").on(table.sourceId)],
 );
 
-/** Chunk type for select queries. */
 export type Chunk = InferSelectModel<typeof chunks>;
 
-/** NewChunk type for insert queries. */
 export type NewChunk = InferInsertModel<typeof chunks>;
-
-// ============================================================================
-// H) TASKS
-// ============================================================================
 
 export const taskStatusEnum = pgEnum("task_status", [
   "TODO",
@@ -335,12 +262,7 @@ export const taskPriorityEnum = pgEnum("task_priority", [
   "LOW",
 ]);
 
-/**
- * Kanban Tasks table.
- * Stores academic tasks manually added by the user.
- * Dynamically linked to boxes via boxId;
- * when a box is deleted, the task is preserved (SET NULL).
- */
+/** Kanban Tasks table — user-added academic tasks linked to boxes; preserved (SET NULL) when a box is deleted. */
 export const tasks = pgTable(
   "tasks",
   {
@@ -364,15 +286,9 @@ export const tasks = pgTable(
   ],
 );
 
-/** Task type for select queries. */
 export type Task = InferSelectModel<typeof tasks>;
 
-/** Task type for insert queries. */
 export type NewTask = InferInsertModel<typeof tasks>;
-
-// ============================================================================
-// RELATIONS
-// ============================================================================
 
 export const usersRelations = relations(users, ({ one, many }) => ({
   matrix: one(matrices),

@@ -9,16 +9,13 @@ import { getSession } from "@/lib/session";
 import { BOX_ORDER_WEIGHT } from "@/lib/box-constants";
 
 /**
- * Cached DB query that returns the user's thesis matrix.
- * Session (cookies) is extracted beforehand — only userId enters the cache key.
+ * Cached DB query returning the user's thesis matrix (userId-keyed).
  */
 async function getCachedThesisMatrix(userId: number) {
   try {
     cacheTag("thesis-matrix");
     cacheLife("minutes");
-  } catch {
-    // Fallback when executed outside Next.js request context (e.g., CLI / tests)
-  }
+  } catch {}
 
   const [matrix] = await db
     .select()
@@ -28,15 +25,13 @@ async function getCachedThesisMatrix(userId: number) {
 }
 
 /**
- * Cached DB query that fetches boxes for a given thesis matrix.
+ * Cached DB query fetching boxes for a given thesis matrix.
  */
 async function getCachedBoxes(thesisMatrixId: number) {
   try {
     cacheTag("thesis-boxes");
     cacheLife("minutes");
-  } catch {
-    // Fallback when executed outside Next.js request context (e.g., CLI / tests)
-  }
+  } catch {}
 
   return db
     .select()
@@ -54,10 +49,7 @@ async function getCachedBoxes(thesisMatrixId: number) {
 }
 
 /**
- * Server Action: extracts the session, then delegates to the cached thesis
- * matrix query.
- *
- * @returns The user's thesis matrix row or null
+ * Returns the current user's thesis matrix or null.
  */
 export async function fetchThesisMatrix() {
   const session = await getSession();
@@ -66,10 +58,7 @@ export async function fetchThesisMatrix() {
 }
 
 /**
- * Server Action: fetches the thesis matrix directly from the DB, bypassing
- * the Next.js cache. Used after onboarding reset to prevent stale cache data.
- *
- * @returns The user's thesis matrix row or null
+ * Fetches the thesis matrix directly from the DB, bypassing the cache.
  */
 export async function fetchThesisMatrixFresh() {
   const session = await getSession();
@@ -83,11 +72,7 @@ export async function fetchThesisMatrixFresh() {
 }
 
 /**
- * Server Action: fetches boxes and maps each row to the full GeminiThesisBox
- * structure expected by client components. The DB is used as the single source
- * of truth.
- *
- * @returns GeminiThesisBox[] from the DB (empty array if no matrix)
+ * Fetches boxes mapped to the full GeminiThesisBox shape expected by clients.
  */
 export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
   const session = await getSession();
@@ -96,7 +81,6 @@ export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
   if (!matrix) return [];
   const rows = await getCachedBoxes(matrix.id);
 
-  // Group flat rows into a parent → child tree
   const parentRows = rows.filter((r) => r.parentId === null);
   const subBoxMap = new Map<number, GeminiThesisBox[]>();
   for (const r of rows) {
@@ -137,10 +121,7 @@ export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
 }
 
 /**
- * Server Action: checks which onboarding steps have data in the database
- * for the current user.
- *
- * @returns A step-key → boolean record or null
+ * Returns which onboarding steps have data for the current user.
  */
 export async function checkStepsDataAction(): Promise<Record<
   string,

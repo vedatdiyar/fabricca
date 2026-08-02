@@ -12,11 +12,7 @@ import { useDashboardArticles } from "./use-dashboard-articles";
 import { useDashboardTasks } from "./use-dashboard-tasks";
 import { useDashboardReadingStatus } from "./use-dashboard-reading-status";
 
-/**
- * Facade hook that composes useDashboardArticles, useDashboardTasks,
- * and useDashboardReadingStatus into a single unified dashboard API.
- * Handles cross-cutting orchestration (reading task → article update).
- */
+/** Facade hook composing useDashboardArticles, useDashboardTasks, and useDashboardReadingStatus into a unified dashboard API. */
 export function useDashboard(
   initialBoxes: Box[],
   initialResources: Source[],
@@ -61,11 +57,9 @@ export function useDashboard(
     async (taskId: string, newStatus: "TODO" | "IN_PROGRESS" | "DONE") => {
       if (taskId.startsWith("read-task-")) {
         const articleId = taskId.replace("read-task-", "");
-        // Capture the current (pre-mutation) reading status for safe rollback
         const previousStatus = readingTaskStatuses[articleId] || "TODO";
         const previousIsRead = previousStatus === "DONE";
 
-        // Optimistic UI update
         setReadingTaskStatuses((prev) => ({
           ...prev,
           [articleId]: newStatus,
@@ -86,7 +80,6 @@ export function useDashboard(
               : "Resource reverted to unread.",
           );
         } catch (err) {
-          // Rollback both states using captured previous values
           setReadingTaskStatuses((prev) => ({
             ...prev,
             [articleId]: previousStatus,
@@ -115,10 +108,8 @@ export function useDashboard(
       const articleExists = articles.some((a) => a.id === articleId);
       if (!articleExists) return;
 
-      // Capture the removed article for race-safe rollback
       const removedArticle = articles.find((a) => a.id === articleId);
 
-      // Optimistic UI update
       removeArticle(articleId);
       removeReadingTask(articleId);
 
@@ -129,7 +120,6 @@ export function useDashboard(
         }
         toast.success("Eser Kütüphane'den kalıcı olarak silindi.");
       } catch (err) {
-        // Rollback both states using the captured article
         if (removedArticle) {
           setArticles((prev) =>
             prev.some((a) => a.id === articleId)

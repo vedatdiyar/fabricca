@@ -5,16 +5,14 @@ import type { OnboardingStep } from "./onboarding-cache";
 export { CACHE_TAGS, TQ_KEYS } from "./onboarding-cache";
 export type { OnboardingStep } from "./onboarding-cache";
 
-/** Revalidates paths that display onboarding data. */
+/**
+ * Revalidates all onboarding layout routes.
+ */
 export function revalidateOnboardingPaths(): void {
   revalidatePath("/onboarding", "layout");
 }
 
-/**
- * Invalidates every onboarding cache tag so the next cached read fetches
- * fresh data from the database.  Call without arguments for a full reset
- * (e.g. "Baştan Başla" or onboarding finalisation).
- */
+/** Invalidates all onboarding cache tags so the next cached read fetches fresh data (full reset or onboarding finalisation). */
 export function invalidateOnboardingCache(): void {
   updateTag(CACHE_TAGS.thesisMatrix);
   updateTag(CACHE_TAGS.positioning);
@@ -22,11 +20,9 @@ export function invalidateOnboardingCache(): void {
 }
 
 /**
- * Invalidates only the Next.js cache tags that belong to the given step
- * and all of its downstream steps.  Use this when a step is re-submitted
- * so that sibling / ancestor caches are preserved.
+ * Invalidates cache tags for the given step and all downstream steps (e.g. on step re-submission).
  *
- * @param fromStep - The step being re-submitted
+ * @param fromStep - The step whose cache and downstream caches to invalidate.
  */
 export function invalidateOnboardingStepCache(fromStep: OnboardingStep): void {
   const deps = STEP_CACHE_DEPENDENCIES[fromStep];

@@ -36,11 +36,6 @@ export default function LibraryPage() {
   );
 }
 
-/**
- * Digital Library Page component.
- * Manages database-backed academic literature resources, PDF uploads, RAG vectorization,
- * note taking, and citation card integration.
- */
 function LibraryPageContent() {
   const searchParams = useSearchParams();
   const urlResourceId = searchParams.get("id");
@@ -50,22 +45,16 @@ function LibraryPageContent() {
   const [notes, setNotes] = useState<LibraryResourceNote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Active selection & filter state — initialized from URL query param (?id=...)
   const [selectedResourceId, setSelectedResourceId] = useState<number | null>(
     initialSelectedId,
   );
   const [activeTab, setActiveTab] = useState<ThesisBoxType>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Add Resource Modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // Stable ref for the initial URL-derived ID; used inside useEffect without deps
   const initialIdRef = useRef(initialSelectedId);
 
-  /**
-   * Selects a resource and synchronizes the active selection with URL query params (?id=...).
-   */
   const handleSelectResource = (id: number) => {
     setSelectedResourceId(id);
     if (typeof window !== "undefined") {
@@ -75,10 +64,6 @@ function LibraryPageContent() {
     }
   };
 
-  /**
-   * Clears the active selection and removes the ?id= query param from the URL.
-   * Used after deleting the currently selected resource.
-   */
   const handleClearSelection = () => {
     setSelectedResourceId(null);
     if (typeof window !== "undefined") {
@@ -88,7 +73,6 @@ function LibraryPageContent() {
     }
   };
 
-  // Load resources & notes from Neon PostgreSQL DB on mount
   useEffect(() => {
     async function loadData() {
       try {
@@ -100,7 +84,6 @@ function LibraryPageContent() {
           setResources(res.data.resources);
           setNotes(res.data.notes);
 
-          // Select resource from URL param if present; otherwise show empty state
           const currentId = initialIdRef.current;
           if (currentId) {
             const targetResource = res.data.resources.find(
@@ -112,7 +95,6 @@ function LibraryPageContent() {
           }
         }
       } catch {
-        // DB not reachable — leave empty state
       } finally {
         setIsLoading(false);
       }
@@ -121,17 +103,14 @@ function LibraryPageContent() {
     loadData();
   }, []);
 
-  // Get currently selected resource object
   const selectedResource = resources.find(
     (item) => item.id === selectedResourceId,
   );
 
-  // Get notes for currently selected resource
   const selectedResourceNotes = notes.filter(
     (note) => note.resourceId === selectedResourceId,
   );
 
-  // Sort resources: PDF uploaded first → subjectProblem → theoreticalFramework → methodology → primaryMaterial → createdAt
   const sortedResources = useMemo(() => {
     return [...resources].sort((a, b) => {
       const aHasPdf = a.pdfStatus && a.pdfStatus !== "NOT_UPLOADED" ? 0 : 1;
@@ -144,23 +123,17 @@ function LibraryPageContent() {
     });
   }, [resources]);
 
-  /**
-   * Handles creating a new resource via PDF upload with metadata extraction.
-   * Uses presigned URL flow to bypass Vercel's 4.5MB serverless body limit.
-   */
   const handleCreateResourceFromPdf = async (
     file: File,
     boxId: number,
   ): Promise<boolean> => {
     try {
-      // Step 1: Get presigned upload URL
       const requestRes = await requestPdfCreateUploadAction();
       if (!requestRes.success) {
         toast.error(requestRes.error || "Yükleme bağlantısı oluşturulamadı.");
         return false;
       }
 
-      // Step 2: Upload PDF directly to R2 from browser
       let uploadRes: Response;
       try {
         uploadRes = await fetch(requestRes.presignedUrl, {
@@ -179,7 +152,6 @@ function LibraryPageContent() {
         return false;
       }
 
-      // Step 3: Complete the upload — fetch from R2, extract metadata, create resource, run pipeline
       const completeRes = await completePdfCreateUploadAction(
         requestRes.tempKey,
         file.name,
@@ -200,15 +172,10 @@ function LibraryPageContent() {
     }
   };
 
-  /**
-   * Handles PDF upload and RAG vectorization for selected resource.
-   * Uses presigned URL flow to bypass Vercel's 4.5MB serverless body limit.
-   */
   const handleUploadPdf = async (file: File): Promise<boolean> => {
     if (!selectedResourceId) return false;
 
     try {
-      // Step 1: Get presigned upload URL
       const requestRes =
         await requestResourcePdfUploadAction(selectedResourceId);
       if (!requestRes.success) {
@@ -216,7 +183,6 @@ function LibraryPageContent() {
         return false;
       }
 
-      // Step 2: Upload PDF directly to R2 from browser
       const uploadRes = await fetch(requestRes.presignedUrl, {
         method: "PUT",
         body: file,
@@ -233,7 +199,6 @@ function LibraryPageContent() {
         return false;
       }
 
-      // Step 3: Complete the upload — fetch from R2, extract metadata, run pipeline
       const completeRes = await completeResourcePdfUploadAction(
         selectedResourceId,
         requestRes.tempKey,
@@ -257,9 +222,6 @@ function LibraryPageContent() {
     }
   };
 
-  /**
-   * Handles deleting PDF file for selected resource.
-   */
   const handleDeletePdf = async (resourceId: number) => {
     const res = await deleteResourcePdfAction(resourceId);
     if (res.success) {
@@ -282,9 +244,6 @@ function LibraryPageContent() {
     }
   };
 
-  /**
-   * Handles adding a new note linked to selected resource.
-   */
   const handleAddNote = async (input: {
     pageNumber: string;
     noteType: NoteType;
@@ -305,9 +264,6 @@ function LibraryPageContent() {
     }
   };
 
-  /**
-   * Handles deleting a note.
-   */
   const handleDeleteNote = async (noteId: number) => {
     const res = await deleteResourceNoteAction(noteId);
     if (res.success) {
@@ -318,15 +274,11 @@ function LibraryPageContent() {
     }
   };
 
-  /**
-   * Handles permanently deleting a library resource and all its related data.
-   */
   const handleDeleteResource = async (resourceId: number) => {
     const res = await deleteLibraryResourceAction(resourceId);
     if (res.success) {
       setResources((prev) => prev.filter((r) => r.id !== resourceId));
 
-      // If the deleted resource was selected, clear the selection and remove the URL id param
       if (selectedResourceId === resourceId) {
         handleClearSelection();
       }
@@ -337,9 +289,6 @@ function LibraryPageContent() {
     }
   };
 
-  /**
-   * Handles toggling read status for selected resource.
-   */
   const handleToggleReadStatus = async (resourceId: number) => {
     const target = resources.find((r) => r.id === resourceId);
     if (!target) return;
@@ -363,9 +312,6 @@ function LibraryPageContent() {
     }
   };
 
-  /**
-   * Handles updating resource metadata in local state.
-   */
   const handleUpdateResource = (updatedResource: LibraryResourceItem) => {
     setResources((prev) =>
       prev.map((item) =>
@@ -381,7 +327,6 @@ function LibraryPageContent() {
   return (
     <div className="flex flex-col w-full space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start">
-        {/* Left Column: Sidebar Work List (4/12) */}
         <div className="lg:col-span-4 lg:sticky lg:top-[calc(7rem+1px)] lg:h-[calc(100vh-8.5rem-1px)] flex flex-col min-h-0">
           <SidebarWorkList
             resources={sortedResources}
@@ -396,7 +341,6 @@ function LibraryPageContent() {
           />
         </div>
 
-        {/* Right Column: Resource Detail & Note Taking (8/12) */}
         <div className="lg:col-span-8 h-full min-h-0">
           {selectedResource ? (
             <ResourceDetail
@@ -424,7 +368,6 @@ function LibraryPageContent() {
         </div>
       </div>
 
-      {/* Add Resource Modal */}
       <AddResourceModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}

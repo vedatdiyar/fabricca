@@ -24,13 +24,13 @@ export class HttpError extends Error {
 }
 
 /**
- * Full Jitter — uniformly random between 0 and the exponential cap
- * (`min(maxDelay, baseDelay × 2^(attempt-1))`).
+ * Computes a Full Jitter delay with exponential backoff, optionally shifted by a Retry-After floor.
  *
- * When a `retryAfter` floor is present the window shifts:
- *   `[retryAfter, min(maxDelay, retryAfter + cap)]`
- * preventing the herd from retrying in lockstep even when every client
- * receives the same Retry-After value.
+ * @param baseDelay - The base delay in milliseconds.
+ * @param attempt - The current 1-based retry attempt number.
+ * @param maxDelay - The maximum allowed delay in milliseconds.
+ * @param retryAfter - A Retry-After floor in milliseconds, or null to ignore.
+ * @returns The randomized delay in milliseconds.
  */
 export function fullJitterDelay(
   baseDelay: number,
@@ -58,13 +58,11 @@ export interface RetryOptions {
 }
 
 /**
- * Retries `fn` up to `maxRetries` times using Full Jitter exponential backoff.
+ * Retries a task up to the configured limit using Full Jitter exponential backoff.
  *
- * - Errors are passed to `isRetryable` (default: retry everything).
- * - When `getRetryAfter` extracts a positive number the delay is
- *   `retryAfter + random(0, cap)` so the herd spreads.
- * - The total time budget is roughly `baseDelay × 2^maxRetries` or `maxDelay`,
- *   whichever is hit first.
+ * @param fn - The async task to retry.
+ * @param options - Retry configuration including limits and callbacks.
+ * @returns A promise resolving to the task's eventual result.
  */
 export async function withRetry<T>(
   fn: () => Promise<T>,

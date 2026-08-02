@@ -12,13 +12,11 @@ export interface MeiliSearchParams {
   attributesToSearchOn?: string[];
 }
 
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
 /**
- * Extracts the best available abstract from a Meilisearch hit.
- * Prefers original Turkish abstract; falls back to translated.
+ * Extracts the most reliable abstract text from a raw Meilisearch hit.
+ *
+ * @param hit - Raw Meilisearch hit record.
+ * @returns Abstract string, preferring the original over the translated text.
  */
 function extractAbstract(hit: Record<string, unknown>): string {
   let abstract = String(hit.abstract_original ?? "").trim();
@@ -28,7 +26,12 @@ function extractAbstract(hit: Record<string, unknown>): string {
   return abstract;
 }
 
-/** @internal Maps a single Meilisearch hit to a TezaraThesisDetails. */
+/**
+ * Maps a raw Meilisearch hit to thesis details.
+ *
+ * @param hit - Raw Meilisearch hit record.
+ * @returns Thesis details.
+ */
 function mapHitToDetails(hit: Record<string, unknown>): TezaraThesisDetails {
   const title = hit.title_translated
     ? `${hit.title_original} / ${hit.title_translated}`
@@ -48,7 +51,14 @@ function mapHitToDetails(hit: Record<string, unknown>): TezaraThesisDetails {
   };
 }
 
-/** @internal Executes a Meilisearch search POST and returns the raw JSON or null. */
+/**
+ * Executes a request against the Tezara Meilisearch instance.
+ *
+ * @param body - Meilisearch search request body.
+ * @param logger - Optional logger for observability.
+ * @param step - Optional step name for log events.
+ * @returns Matching hits, or null on failure.
+ */
 async function meiliSearch(
   body: Record<string, unknown>,
   logger?: Logger,
@@ -99,19 +109,17 @@ async function meiliSearch(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
 /**
- * Searches Tezara via the Meilisearch JSON API and returns full thesis
- * details (including abstract and YÖK PDF URL) in a single round-trip.
- * No separate fetchThesisDetails call needed.
+ * Searches Tezara via the Meilisearch JSON API in a single round-trip.
  *
- * @param query - The search query term.
- * @param logger - Optional Logger instance.
- * @param options - Optional options such as search result limit and Meilisearch params.
- * @returns A list of thesis details with abstracts.
+ * @param query - Search query string.
+ * @param logger - Optional logger for observability.
+ * @param options - Optional search precision settings.
+ * @param options.limit - Maximum number of results to return.
+ * @param options.rankingScoreThreshold - Minimum ranking score threshold.
+ * @param options.filter - Meilisearch filter expression.
+ * @param options.attributesToSearchOn - Attributes to restrict the search to.
+ * @returns Matching thesis details.
  */
 export async function searchTezara(
   query: string,

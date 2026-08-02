@@ -17,19 +17,15 @@ import { getBoxHierarchyForLibraryAction } from "../actions";
 import type { LibraryParentBoxOption } from "../_actions/box-actions";
 
 interface AddResourceModalProps {
-  /** Whether the modal is open */
   isOpen: boolean;
-  /** Callback to close modal */
   onClose: () => void;
-  /** Callback to submit new resource via PDF upload with metadata extraction */
   onSubmitPdf: (file: File, boxId: number) => Promise<boolean>;
 }
 
 /**
- * Modal component for adding new academic literature resources by uploading PDF documents.
- * User selects a parent thesis box and, when sub-boxes exist, a specific sub-box.
- * Extracts metadata (title, authors, publication year, publisher, DOI) via LlamaParse + Crossref/Gemini
- * and vectorizes content through the RAG pipeline.
+ * Modal for adding a new academic literature resource by uploading a PDF.
+ * The user selects a parent thesis box (and a sub-box when present); metadata
+ * is extracted and content is vectorized through the RAG pipeline.
  */
 export function AddResourceModal({
   isOpen,
@@ -48,7 +44,6 @@ export function AddResourceModal({
   const [statusMessage, setStatusMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load real box hierarchy whenever the modal opens
   useEffect(() => {
     if (!isOpen) return;
 
@@ -139,7 +134,6 @@ export function AddResourceModal({
       return;
     }
 
-    // Target box: sub-box when the parent has sub-boxes, otherwise the parent itself
     const targetBoxId = hasSubBoxes
       ? (selectedSubBoxId as number)
       : selectedParentId;
@@ -166,7 +160,6 @@ export function AddResourceModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 animate-in fade-in-0 duration-200">
       <div className="relative w-full max-w-lg rounded-md border border-border bg-background p-6 shadow-lg space-y-4">
-        {/* Header */}
         <div className="flex items-center justify-between border-b border-border pb-4">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-md bg-primary/10 border border-primary/20 text-primary">
@@ -188,9 +181,7 @@ export function AddResourceModal({
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Konu Kutusu (Parent Box) Select */}
           <div className="space-y-1">
             <Label className="text-xs text-foreground font-medium">
               Konu Kutusu
@@ -232,7 +223,6 @@ export function AddResourceModal({
             )}
           </div>
 
-          {/* Sub-Box Select (shown when the selected parent has sub-boxes) */}
           {hasSubBoxes && (
             <div className="space-y-1">
               <Label className="text-xs text-foreground font-medium">
@@ -258,7 +248,6 @@ export function AddResourceModal({
             </div>
           )}
 
-          {/* PDF Dropzone */}
           <div className="space-y-1">
             <Label className="text-xs text-foreground font-medium">
               Akademik PDF Dokümanı *
@@ -354,7 +343,6 @@ export function AddResourceModal({
             </Card>
           </div>
 
-          {/* Buttons */}
           <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
             <Button
               type="button"

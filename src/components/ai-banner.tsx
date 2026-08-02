@@ -22,16 +22,7 @@ const iconColors: Record<string, string> = {
   warning: "text-warning",
 };
 
-/**
- * AIBanner — merkezi AI bilgilendirme banner'ı.
- * Yapay zeka işlemleri hakkında kullanıcıyı bilgilendirmek için
- * onboarding sayfalarında kullanılır.
- *
- * @param props.variant - "info" (varsayılan), "success" veya "warning"
- * @param props.icon - Lucide ikonu (varsayılan: Sparkles)
- * @param props.title - Banner başlığı
- * @param props.description - Banner açıklama metni
- */
+/** Central AI informational banner used on onboarding pages to inform the user about AI operations. */
 export function AIBanner({
   variant = "info",
   icon: Icon = Sparkles,

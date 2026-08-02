@@ -3,10 +3,7 @@ import { redirect } from "next/navigation";
 import { getSessionWithOnboarding } from "@/lib/session";
 
 /**
- * Onboarding route group layout.
- * Güvenlik kontrolü yapar:
- * - Oturum yoksa /login sayfasına yönlendirir.
- * - Oturum varsa ve onboarding zaten tamamlanmışsa /dashboard sayfasına yönlendirir.
+ * Guards onboarding routes: redirects unauthenticated users to /login and completed users to /dashboard.
  */
 export default function OnboardingGroupLayout({
   children,

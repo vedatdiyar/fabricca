@@ -5,8 +5,7 @@ import { StartOverButton } from "../_components/start-over-button";
 import { fetchBoxesWithFullShape } from "../_services/fetch-actions";
 
 /**
- * Onboarding sürecinin dördüncü adımı: Konu Kutuları (Server Component).
- * Kullanıcının oturum yetkisini denetler ve kutuları gösterir.
+ * Onboarding step 4: subject boxes page that verifies auth and renders the boxes.
  */
 export default async function OnboardingBoxesPage() {
   const profile = await getProfile();

@@ -1,8 +1,6 @@
 import { z } from "zod";
 import type { JsonSchema, JsonSchemaProperty } from "@/lib/services/gemini";
 
-// ── Phase 1: Structure-only (NO semanticQuery) ──────────────────────────
-
 const structureSubBoxSchema = z.object({
   title: z
     .string()
@@ -126,8 +124,6 @@ export const boxStructureJsonSchema: JsonSchema = {
     "primaryMaterial",
   ],
 };
-
-// ── Phase 2: Bulk semanticQuery generation ──────────────────────────────
 
 export const semanticQueryEntrySchema = z.object({
   subBoxTitle: z

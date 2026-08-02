@@ -19,11 +19,7 @@ import {
 } from "@/lib/cache-tags";
 
 /**
- * Resets the onboarding process for the currently authenticated user.
- * Deletes all onboarding data (matrices, positioning cascades to boxes
- * and sources) and sets onboardingCompleted to false.
- *
- * @returns Success status or a user-safe error message
+ * Deletes all onboarding data and sets onboardingCompleted to false.
  */
 export async function resetOnboardingAction(): Promise<
   { success: boolean } | { error: string }
@@ -39,8 +35,6 @@ export async function resetOnboardingAction(): Promise<
 
     const userId = session.userId;
 
-    // All destructive operations run inside a single transaction so that
-    // a failure in any step rolls the entire reset back.
     await db.transaction(async (tx) => {
       await tx.delete(matrices).where(eq(matrices.userId, userId));
       await tx.delete(positioning).where(eq(positioning.userId, userId));
@@ -82,10 +76,7 @@ export async function resetOnboardingAction(): Promise<
 }
 
 /**
- * Dynamically clears all downstream step data in the database.
- *
- * @param fromStep - The step from which to clear downstream data
- * @returns Success status or a user-safe error message
+ * Clears all downstream step data from the given step onward.
  */
 export async function clearDownstreamDbAction(
   fromStep: "matrix" | "positioning" | "boxes",
@@ -131,16 +122,12 @@ export async function clearDownstreamDbAction(
           await tx.delete(boxes).where(eq(boxes.matrixId, matrix.id));
         }
       } else if (fromStep === "boxes") {
-        // Clear all sources (including YÖK theses) so the
-        // server-side stepsData check returns hasLiterature:false,
-        // keeping the literature-review stepper locked.
         const [matrix] = await tx
           .select({ id: matrices.id })
           .from(matrices)
           .where(eq(matrices.userId, userId));
 
         if (matrix) {
-          // Single delete statement using subquery for better database performance
           await tx
             .delete(sources)
             .where(

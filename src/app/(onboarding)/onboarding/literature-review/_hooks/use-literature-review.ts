@@ -41,13 +41,7 @@ export interface UseLiteratureReviewResult {
 }
 
 /**
- * Orchestrates the literature-review step. On mount, checks whether
- * literature data already exists in the database. If it does, loads it
- * into state. Otherwise runs the full review pipeline (AI search across
- * all sub-boxes), persists results to the database, and displays them.
- *
- * Once the user is satisfied, {@link handleFinalize} sets the
- * `onboardingCompleted` flag and redirects to `/dashboard`.
+ * Orchestrates the literature-review step: loads existing data or runs the review pipeline.
  */
 export function useLiteratureReview(): UseLiteratureReviewResult {
   const { finalizeLiterature } = useOnboardingNavigation();
@@ -60,13 +54,11 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   const [boxErrors, setBoxErrors] = useState<Record<string, string>>({});
   const [allProcessed, setAllProcessed] = useState(false);
 
-  // Fetch boxes from DB via TanStack Query
   const { data: allBoxes, isLoading: boxesLoading } = useQuery({
     queryKey: ["boxes-full"],
     queryFn: fetchBoxesWithFullShape,
   });
 
-  // Fetch literature pool from DB via TanStack Query
   const { data: initialPool, isLoading: poolLoading } = useQuery({
     queryKey: ["literature-pool"],
     queryFn: async () => {
@@ -75,7 +67,6 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     },
   });
 
-  // Derive sorted subBoxes directly from the query result
   const subBoxes = useMemo(() => {
     if (!allBoxes) return [];
     return [...allBoxes].sort((a, b) => {
@@ -87,10 +78,8 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     });
   }, [allBoxes]);
 
-  // Loading: true while the query is still in flight
   const loading = boxesLoading || poolLoading || allBoxes === undefined;
 
-  // Merge initial pool with manually added entries
   const literaturePool = useMemo(() => {
     const pool = initialPool
       ? (JSON.parse(JSON.stringify(initialPool)) as LiteraturePoolEntry[])
@@ -109,7 +98,6 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     return pool;
   }, [initialPool, manualEntries]);
 
-  // Derive archivalBoxes
   const archivalBoxes = useMemo(() => {
     const archivalSet = new Set<string>();
     for (const box of subBoxes) {
@@ -120,7 +108,6 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     return archivalSet;
   }, [subBoxes]);
 
-  // Derive statuses
   const boxStatuses = useMemo(() => {
     const statuses: Record<string, BoxStatus> = {};
     for (const box of subBoxes) {

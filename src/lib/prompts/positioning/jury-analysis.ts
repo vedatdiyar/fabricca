@@ -46,7 +46,7 @@ Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisini ve YÖK /
     - gapAnalysisSummary içinde (literatureMapping ve academicGap alanlarında) asla tez listesinde fiilen bulunmayan bir yazar adı, yıl veya eser başlığı kullanmayın.
     - Sadece sana verilen süzülmüş tez listesindeki yazar ve yıl bilgilerini kullan. Uydurma atıf kesinlikle yasaktır.
     - Bir tezi APA formatında (Yazar, Yıl) olarak kaynak gösterdiğinde, o yazar ve yılın tez listesinde mevcut olduğundan emin ol.
- 
+  
  # Çıktı Biçimi
 
 Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir.
@@ -115,12 +115,12 @@ Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisini ve YÖK /
 `;
 
 /**
- * Builds user prompt for unified FAZ 4 LLM Jury Analysis.
+ * Builds the user prompt for the unified FAZ 4 LLM jury analysis.
  *
- * @param input - Positioning matrix input fields.
- * @param thesisListText - Formatted candidate theses text (10-15 filtered theses).
- * @param filteredCount - Count of candidate theses.
- * @returns Formatted prompt string.
+ * @param input - Three-component positioning matrix input of the researcher.
+ * @param thesisListText - Serialized text of the filtered theses to evaluate.
+ * @param filteredCount - Number of theses included in the prompt.
+ * @returns The formatted user prompt for the jury analysis LLM call.
  */
 export function buildPositioningJuryUserPrompt(
   input: PositioningMatrixInput,

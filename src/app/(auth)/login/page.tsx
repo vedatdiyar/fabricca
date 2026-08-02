@@ -18,14 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginAction, checkOnboardingStatus } from "./actions";
 
-/**
- * Kullanıcı giriş sayfası.
- * E-posta ve şifre ile kimlik doğrulama formunu içerir.
- * Başarılı giriş durumunda onboarding durumuna göre
- * /onboarding veya /dashboard sayfasına yönlendirilir.
- *
- * @returns Giriş sayfası bileşeni
- */
+/** Login page with an email/password authentication form; redirects to /onboarding or /dashboard based on onboarding status. */
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -33,15 +26,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isPending, setIsPending] = useState(false);
 
-  /**
-   * Form gönderimini yönetir.
-   * Server action'ı startTransition ile güvenli şekilde tetikler,
-   * sonucu toast bildirimi olarak gösterir.
-   * Başarılı giriş sonrası onboarding durumunu sorgulayarak
-   * uygun sayfaya yönlendirme yapar.
-   *
-   * @param e - Form submit olayı
-   */
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setIsPending(true);
@@ -71,12 +55,10 @@ export default function LoginPage() {
 
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center bg-background p-4 overflow-hidden">
-      {/* Arka plan derinlik efekti (Ambient glow) */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none" />
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
 
       <div className="relative mx-auto flex w-full max-w-sm flex-col items-center space-y-6 z-10">
-        {/* Logo ve Başlık Bölümü */}
         <div className="flex flex-row items-center gap-6 text-left justify-center w-full">
           <Image
             src="/logo.svg"
@@ -96,7 +78,6 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Giriş Kartı */}
         <Card className="w-full border border-border/60 bg-card/85 backdrop-blur-md">
           <CardHeader className="space-y-1 pb-4">
             <CardTitle className="font-serif text-xl font-semibold tracking-tight text-foreground">
@@ -198,7 +179,6 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            {/* Erişim Kısıtlaması Bilgilendirmesi */}
             <div className="flex gap-2 p-3 bg-muted/10 border border-border/40 rounded-md text-xs text-muted-foreground leading-relaxed select-none">
               <ShieldAlert className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
               <span>
@@ -210,7 +190,6 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        {/* Sayfa Alt Bilgisi */}
         <span className="text-[10px] text-muted-foreground select-none">
           Fabricca v1.0.0 • Kapalı Akademik Sistem
         </span>

@@ -26,13 +26,9 @@ import {
 } from "./_services/literature-persistence";
 import { loadThesisMatrixAndBoxes } from "./_services/process-boxes-data";
 
-// ============================================================================
-// Session-based cancellation flags — keyed by userId so concurrent users
-// do not interfere with each other's pipeline.
-// ============================================================================
 const _cancelFlags = new Map<number, boolean>();
 
-/** Called by the client cancel callback to signal the running pipeline to stop. */
+/** Signals the running pipeline to stop, called from the client cancel callback. */
 export async function setLiteratureCancelledAction(): Promise<void> {
   const session = await getSession();
   if (session) {
@@ -40,7 +36,7 @@ export async function setLiteratureCancelledAction(): Promise<void> {
   }
 }
 
-/** Called by the client to reset the flag before a fresh pipeline run. */
+/** Resets the cancel flag before a fresh pipeline run. */
 export async function resetLiteratureCancelledAction(): Promise<void> {
   const session = await getSession();
   if (session) {
@@ -52,6 +48,7 @@ function isLiteratureCancelled(userId: number): boolean {
   return _cancelFlags.get(userId) ?? false;
 }
 
+/** Processes all sub-boxes through the batch literature pipeline. */
 export async function processAllBoxesAction(
   boxes: SubBoxInput[],
 ): Promise<{ data?: LiteraturePoolEntry[]; error?: string }> {
@@ -92,6 +89,7 @@ export async function processAllBoxesAction(
   }
 }
 
+/** Persists the confirmed literature pool to the database. */
 export async function confirmLiteratureAction(args: {
   literaturePool: LiteraturePoolEntry[];
 }): Promise<OnboardingActionResult> {
@@ -125,9 +123,7 @@ export async function confirmLiteratureAction(args: {
 
     try {
       revalidateOnboardingPaths();
-    } catch {
-      // Revalidation path skipped
-    }
+    } catch {}
 
     invalidateOnboardingCache();
 
@@ -147,6 +143,7 @@ export async function confirmLiteratureAction(args: {
   }
 }
 
+/** Returns the preloaded literature pool for the current user. */
 export async function fetchPreloadedLiteraturePool(): Promise<{
   data?: LiteraturePoolEntry[];
   error?: string;
@@ -166,6 +163,7 @@ export async function fetchPreloadedLiteraturePool(): Promise<{
   return { data: pool };
 }
 
+/** Persists manual archive entries to the database. */
 export async function appendArchiveEntriesAction(args: {
   entries: {
     thesisBoxId: number;
@@ -192,9 +190,7 @@ export async function appendArchiveEntriesAction(args: {
 
     try {
       revalidateOnboardingPaths();
-    } catch {
-      // Revalidation path skipped
-    }
+    } catch {}
 
     invalidateOnboardingCache();
 
@@ -212,6 +208,7 @@ export async function appendArchiveEntriesAction(args: {
   }
 }
 
+/** Marks onboarding as completed for the current user and updates the session cookie. */
 export async function finalizeOnboardingAction(): Promise<OnboardingActionResult> {
   const log = new Logger(createFlowId());
 
@@ -245,15 +242,11 @@ export async function finalizeOnboardingAction(): Promise<OnboardingActionResult
           maxAge: SESSION_MAX_AGE_SECONDS,
         },
       );
-    } catch {
-      // Session cookie update skipped
-    }
+    } catch {}
 
     try {
       revalidateOnboardingPaths();
-    } catch {
-      // Revalidation path skipped
-    }
+    } catch {}
 
     invalidateOnboardingCache();
 
@@ -272,13 +265,7 @@ export async function finalizeOnboardingAction(): Promise<OnboardingActionResult
 }
 
 /**
- * Quick server action that checks whether a literature pool already exists
- * in the database for the current user. Used by the loading-steps overlay
- * to advance Step 0 ("Mevcut literatür havuzu kontrol ediliyor...").
- *
- * @returns `{ exists: true, data }` when a pool is found,
- *          `{ exists: false }` otherwise,
- *          or `{ exists: false, error }` on failure.
+ * Checks whether a literature pool already exists for the current user.
  */
 export async function checkLiteraturePoolAction(): Promise<{
   data?: LiteraturePoolEntry[];
@@ -311,19 +298,7 @@ export async function checkLiteraturePoolAction(): Promise<{
 }
 
 /**
- * Runs the full literature review pipeline as a single server action with
- * 5 sequential sub-steps + a final top-level total log:
- *   1. literature_openalex_search — OpenAlex parallel search + clustering
- *   2. literature_batch_jury — single batch LLM jury + title/author cleaning (combined)
- *   3. literature_jury_selection — jury-based filtering, scoring, dedup
- *   4. literature_db_write      — persist the full literature pool
- *   5. literature_toplam        — final total duration and summary
- *
- * NOTE: The DB pre-check has been moved to {@link checkLiteraturePoolAction}.
- *       Call that first and only invoke this action when the pool does NOT exist.
- *
- * @param boxes   Sub-box inputs to feed the AI pipeline
- * @returns The literature pool entries or a user-facing error message
+ * Runs the full literature pipeline (search, jury, selection, persistence) and returns the pool.
  */
 export async function runLiteraturePipelineAction(
   boxes: SubBoxInput[],
@@ -340,7 +315,6 @@ export async function runLiteraturePipelineAction(
 
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
 
-    // ── Steps 1-4: orchestrateBatchProcess (logs internally) ────────────
     const { matrix } = await loadThesisMatrixAndBoxes(userId);
     const subjectProblem = matrix?.subjectProblem ?? "";
 
@@ -356,19 +330,15 @@ export async function runLiteraturePipelineAction(
 
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
 
-    // ── Final persistence ──────────────────────────────────────────────
     logger.info("literature_pool_persist_start");
     await persistLiteraturePool(poolEntries);
     logger.info("literature_pool_persist_success");
 
     try {
       revalidateOnboardingPaths();
-    } catch {
-      // Revalidation path skipped
-    }
+    } catch {}
     invalidateOnboardingCache();
 
-    // ── Pipeline total ────────────────────────────────────────────────
     logger.info("literature_pipeline_success", {
       data: { durationMs: Math.round(performance.now() - pipelineStart) },
     });

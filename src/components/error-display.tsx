@@ -8,17 +8,7 @@ import {
 } from "@/lib/error-utils";
 
 interface ErrorDisplayProps {
-  /**
-   * Maskelenecek orijinal hata.
-   * Error, string veya herhangi bir obje olabilir.
-   * Logger ile terminale yazılır ama kullanıcıya sızmaz.
-   */
   error: unknown;
-  /**
-   * "Yeniden Dene" butonuna tıklandığında çağrılacak callback.
-   * canRetry === false ise buton render edilmez.
-   * undefined ise buton render edilmez.
-   */
   onRetry?: () => void;
 }
 
@@ -55,17 +45,7 @@ const SCENARIO_CONFIG: Record<
   },
 };
 
-/**
- * Global Hata Maskeleme Bileşeni.
- *
- * Herhangi bir hata nesnesini alır, otomatik olarak sınıflandırır
- * ve kullanıcıya güvenli, anlaşılır bir başlık + açıklama çifti
- * olarak gösterir. Orijinal hata detayı asla ekrana sızmaz;
- * sadece console.error ile terminale yazılır.
- *
- * @example
- *   <ErrorDisplay error={someError} onRetry={handleRetry} />
- */
+/** Global error masking component: classifies an error and renders a safe title + description; the original error never leaks to the screen. */
 export function ErrorDisplay({ error, onRetry }: ErrorDisplayProps) {
   const display = getErrorDisplay(error);
   const config = SCENARIO_CONFIG[display.scenario];

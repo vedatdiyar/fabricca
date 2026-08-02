@@ -6,6 +6,7 @@ import { formatAuthorList, extractCrossrefYear } from "@/lib/academic/utils";
 import type { Logger } from "@/lib/logger";
 import type { DocumentChunk } from "@/lib/services/llamaparse";
 
+/** Structured bibliographic metadata extracted from an uploaded academic PDF. */
 export interface PdfMetadataResult {
   title: string;
   authors: string[];
@@ -18,11 +19,23 @@ export interface PdfMetadataResult {
 
 const DOI_REGEX = /10\.\d{4,}\/[-._;()/:A-Z0-9]+/i;
 
+/**
+ * Extracts the first DOI from a text snippet.
+ *
+ * @param text - The text to search for a DOI.
+ * @returns The found DOI, or null when none matches.
+ */
 function extractDoiFromText(text: string): string | null {
   const match = text.match(DOI_REGEX);
   return match ? match[0].replace(/\.$/, "") : null;
 }
 
+/**
+ * Searches the document chunks for the first DOI.
+ *
+ * @param chunks - The document chunks to scan.
+ * @returns The found DOI, or null when none matches.
+ */
 function findDoiInChunks(chunks: DocumentChunk[]): string | null {
   for (const chunk of chunks) {
     const doi = extractDoiFromText(chunk.content);
@@ -31,9 +44,13 @@ function findDoiInChunks(chunks: DocumentChunk[]): string | null {
   return null;
 }
 
+/**
+ * Extracts a valid ISBN-10 or ISBN-13 from a text snippet.
+ *
+ * @param text - The text to search for an ISBN.
+ * @returns The cleaned ISBN, or null when no valid ISBN matches.
+ */
 function extractIsbnFromText(text: string): string | null {
-  // Match ISBN prefix + number or bare ISBN-like number
-  // Allows hyphens/spaces within digits (e.g. 978-605-4412-11-2, 0 87068 693 3)
   const match = text.match(
     /\b(?:ISBN(?:-1[03])?[:\s]*)?(\d[\d\s-]{8,}[\dX])\b/i,
   );
@@ -44,6 +61,12 @@ function extractIsbnFromText(text: string): string | null {
   return null;
 }
 
+/**
+ * Searches the document chunks for the first valid ISBN.
+ *
+ * @param chunks - The document chunks to scan.
+ * @returns The found ISBN, or null when none matches.
+ */
 function findIsbnInChunks(chunks: DocumentChunk[]): string | null {
   for (const chunk of chunks) {
     const isbn = extractIsbnFromText(chunk.content);
@@ -52,6 +75,12 @@ function findIsbnInChunks(chunks: DocumentChunk[]): string | null {
   return null;
 }
 
+/**
+ * Builds a compact text preview from the leading document chunks for metadata extraction.
+ *
+ * @param chunks - The document chunks to concatenate.
+ * @returns The concatenated preview text, capped in length.
+ */
 function buildMetadataText(chunks: DocumentChunk[]): string {
   return chunks
     .slice(0, 15)
@@ -60,6 +89,12 @@ function buildMetadataText(chunks: DocumentChunk[]): string {
     .slice(0, 12000);
 }
 
+/**
+ * Checks whether the metadata result has a title, a valid author, and a publisher.
+ *
+ * @param result - The metadata result to validate.
+ * @returns Whether the metadata is considered complete.
+ */
 function isMetadataComplete(result: PdfMetadataResult): boolean {
   const hasValidAuthor =
     result.authors.length > 0 &&
@@ -70,6 +105,12 @@ function isMetadataComplete(result: PdfMetadataResult): boolean {
   return Boolean(result.title) && hasValidAuthor && hasValidPublisher;
 }
 
+/**
+ * Resolves metadata for a DOI via the Crossref REST API.
+ *
+ * @param doi - The DOI to resolve.
+ * @returns The resolved metadata, or null on failure.
+ */
 async function fetchCrossrefByDoi(
   doi: string,
 ): Promise<PdfMetadataResult | null> {
@@ -121,6 +162,12 @@ interface OpenLibraryBook {
   publish_date?: string;
 }
 
+/**
+ * Resolves metadata for an ISBN via the OpenLibrary API.
+ *
+ * @param isbn - The ISBN to resolve.
+ * @returns The resolved metadata, or null on failure.
+ */
 async function fetchOpenLibraryByIsbn(
   isbn: string,
 ): Promise<PdfMetadataResult | null> {
@@ -142,14 +189,12 @@ async function fetchOpenLibraryByIsbn(
       ? parseInt(yearMatch[0], 10)
       : new Date().getFullYear();
 
-    // 1. Extract Publisher (supports string array or object array)
     let publisher: string | undefined;
     if (Array.isArray(data.publishers) && data.publishers.length > 0) {
       const p = data.publishers[0];
       publisher = typeof p === "string" ? p : p.name;
     }
 
-    // 2. Extract Authors (fetches author name via key concurrently if name property is omitted)
     let authors: string[] = [];
     if (Array.isArray(data.authors)) {
       const authorPromises = data.authors.map(
@@ -171,9 +216,7 @@ async function fetchOpenLibraryByIsbn(
                 };
                 if (authorData.name) return authorData.name;
               }
-            } catch {
-              /* ignore author key fetch failure */
-            }
+            } catch {}
           }
           return null;
         },
@@ -204,6 +247,12 @@ interface GoogleBooksItem {
   };
 }
 
+/**
+ * Resolves metadata for an ISBN via the Google Books API.
+ *
+ * @param isbn - The ISBN to resolve.
+ * @returns The resolved metadata, or null on failure.
+ */
 async function fetchGoogleBooksByIsbn(
   isbn: string,
 ): Promise<PdfMetadataResult | null> {
@@ -304,6 +353,13 @@ const metadataJsonSchema = {
 
 type MetadataResponse = z.infer<typeof metadataSchema>;
 
+/**
+ * Extracts bibliographic metadata from a text preview using the Cerebras LLM.
+ *
+ * @param chunkText - The document text to analyze.
+ * @param log - Logger instance for structured extraction logging.
+ * @returns The extracted metadata, or null on failure.
+ */
 async function extractMetadataWithCerebras(
   chunkText: string,
   log: Logger,
@@ -346,6 +402,14 @@ async function extractMetadataWithCerebras(
   };
 }
 
+/**
+ * Extracts PDF metadata via DOI (Crossref), ISBN (OpenLibrary / Google Books), then a Cerebras LLM fallback.
+ *
+ * @param chunks - The parsed document chunks to scan for identifiers and text.
+ * @param fileName - The original file name of the PDF, used for error reporting.
+ * @param log - Logger instance for structured extraction logging.
+ * @returns The extracted bibliographic metadata.
+ */
 export async function extractPdfMetadata(
   chunks: DocumentChunk[],
   fileName: string,
@@ -353,7 +417,6 @@ export async function extractPdfMetadata(
 ): Promise<PdfMetadataResult> {
   const metadataText = buildMetadataText(chunks);
 
-  // 1. DOI Path (Academic Papers)
   const doi = findDoiInChunks(chunks);
   if (doi) {
     log.info("pdf_metadata_crossref_start", {
@@ -382,12 +445,10 @@ export async function extractPdfMetadata(
     });
   }
 
-  // 2. ISBN Path (Books)
   const isbn = findIsbnInChunks(chunks);
   let partialResult: PdfMetadataResult | null = null;
 
   if (isbn) {
-    // Step 2a: OpenLibrary
     log.info("pdf_metadata_openlibrary_start", {
       service: "library",
       data: { isbn },
@@ -416,7 +477,6 @@ export async function extractPdfMetadata(
       data: { isbn, durationMs: Math.round(performance.now() - olStart) },
     });
 
-    // Step 2b: Google Books Fallback
     log.info("pdf_metadata_googlebooks_start", {
       service: "library",
       data: { isbn },
@@ -446,7 +506,6 @@ export async function extractPdfMetadata(
     });
   }
 
-  // 3. Cerebras LLM Fallback (Enrich partial metadata or full extraction)
   if (metadataText.length > 50) {
     const cerebrasResult = await extractMetadataWithCerebras(metadataText, log);
     if (cerebrasResult) {
