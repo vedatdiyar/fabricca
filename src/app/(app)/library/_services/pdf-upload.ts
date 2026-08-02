@@ -3,28 +3,28 @@ import { getPdfFromR2 } from "@/lib/services/r2";
 import { extractPdfMetadata } from "@/lib/services/pdf-metadata";
 import type { PdfMetadataResult } from "@/lib/services/pdf-metadata";
 import { sanitizeAcademicDataBulk } from "@/lib/services/academic-sanitizer";
-import { parsePdfWithHybridRouter } from "@/lib/services/pdf-parser";
-import type { DocumentChunk } from "@/lib/services/llamaparse";
+import { parsePdfDocument } from "@/lib/services/pdf-parser";
+import type { DocumentChunk } from "@/lib/services/pdf/chunker";
 
 /** Extracted PDF content shared by all upload completion flows. */
 export interface ExtractedPdfContent {
   /** Raw PDF bytes fetched from the temporary R2 key. */
   buffer: Buffer;
-  /** Parsed text chunks produced by the hybrid router. */
+  /** Parsed text chunks produced by LlamaParse v2. */
   chunks: DocumentChunk[];
+  /** Optional raw references section text. */
+  rawReferences: string | null;
   /** Extracted (and sanitized) bibliographic metadata. */
   metadata: PdfMetadataResult;
 }
 
 /**
- * Shared PDF ingestion prologue: fetches the uploaded file from its temporary
- * R2 key, parses it via the hybrid router, extracts bibliographic metadata and
- * sanitizes it (Cerebras output is already clean and is skipped).
+ * Shared PDF ingestion prologue: fetches the uploaded file from its temporary R2 key, parses it via LlamaParse v2 cloud API, extracts bibliographic metadata and sanitizes it.
  *
  * @param tempKey - Temporary R2 key where the client uploaded the PDF.
- * @param originalFileName - Original file name (used by parser/metadata fallbacks).
- * @param log - Logger instance for the current flow.
- * @returns The PDF buffer, parsed chunks and sanitized metadata.
+ * @param originalFileName - Original file name.
+ * @param log - Logger instance.
+ * @returns The PDF buffer, parsed chunks, rawReferences, and sanitized metadata.
  */
 export async function fetchAndExtractPdf(
   tempKey: string,
@@ -41,7 +41,11 @@ export async function fetchAndExtractPdf(
     data: { tempKey, size: buffer.length },
   });
 
-  const chunks = await parsePdfWithHybridRouter(buffer, originalFileName, log);
+  const { chunks, rawReferences } = await parsePdfDocument(
+    buffer,
+    originalFileName,
+    log,
+  );
 
   const metadata = await extractPdfMetadata(chunks, originalFileName, log);
 
@@ -54,5 +58,5 @@ export async function fetchAndExtractPdf(
     metadata.authors = sanitizedMeta.author.split(", ").filter(Boolean);
   }
 
-  return { buffer, chunks, metadata };
+  return { buffer, chunks, rawReferences, metadata };
 }

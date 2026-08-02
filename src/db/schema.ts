@@ -173,6 +173,7 @@ export const sources = pgTable(
     pdfFileName: text("pdf_file_name"),
     pdfFileSize: integer("pdf_file_size"),
     pdfStatus: pdfStatusEnum("pdf_status").default("NOT_UPLOADED").notNull(),
+    rawReferences: text("raw_references"),
     createdAt: timestamp().defaultNow().notNull(),
     updatedAt: timestamp().defaultNow().notNull(),
   },
@@ -223,7 +224,7 @@ const tsvector = customType<{ data: string }>({
   },
 });
 
-/** Chunks table — PDF text chunks with embeddings for RAG; search_vector drives the lexical branch (simple config, no stemming; B = section title, C = content). */
+/** Chunks table — PDF text chunks with embeddings and JSONB metadata for RAG; search_vector drives the lexical branch. */
 export const chunks = pgTable(
   "chunks",
   {
@@ -232,19 +233,28 @@ export const chunks = pgTable(
       .notNull()
       .references(() => sources.id, { onDelete: "cascade" }),
     chunkIndex: integer("chunk_index").notNull(),
-    printedPageNumber: integer("printed_page_number"),
-    pdfPageNumber: integer("pdf_page_number"),
-    sectionTitle: text("section_title"),
     content: text("content").notNull(),
     parentContent: text("parent_content"),
+    metadata: jsonb("metadata").default({}).notNull(),
     tokenCount: integer("token_count"),
     embedding: vector("embedding", { dimensions: 1024 }),
     searchVector: tsvector("search_vector").generatedAlwaysAs(
-      sql`setweight(to_tsvector('simple', coalesce("section_title", '')), 'B') || setweight(to_tsvector('simple', "content"), 'C')`,
+      sql`to_tsvector('simple', "content")`,
     ),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => [index("idx_chunks_source_id").on(table.sourceId)],
+  (table) => [
+    index("idx_chunks_source_id").on(table.sourceId),
+    index("idx_chunks_source_id_chunk_index").on(
+      table.sourceId,
+      table.chunkIndex,
+    ),
+    index("idx_chunks_search_vector").using("gin", table.searchVector),
+    index("idx_chunks_embedding_hnsw").using(
+      "hnsw",
+      table.embedding.op("vector_cosine_ops"),
+    ),
+  ],
 );
 
 export type Chunk = InferSelectModel<typeof chunks>;

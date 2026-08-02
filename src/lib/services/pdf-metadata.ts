@@ -4,7 +4,7 @@ import { CEREBRAS_MODEL } from "@/lib/constants";
 import { CROSSREF_USER_AGENT } from "@/lib/api-utils";
 import { formatAuthorList, extractCrossrefYear } from "@/lib/academic/utils";
 import type { Logger } from "@/lib/logger";
-import type { DocumentChunk } from "@/lib/services/llamaparse";
+import type { DocumentChunk } from "@/lib/services/pdf/chunker";
 
 /** Structured bibliographic metadata extracted from an uploaded academic PDF. */
 export interface PdfMetadataResult {

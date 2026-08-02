@@ -15,6 +15,7 @@ import {
   searchLexical,
   type LexicalCandidate,
 } from "@/lib/services/rag/lexical";
+import { buildChunkContextPrefix } from "@/lib/services/pdf/chunker";
 
 /** Per-candidate retrieval debug metadata (only exposed when `debug: true`). */
 export interface RagSearchDebug {
@@ -36,6 +37,7 @@ export interface RagSearchResultItem {
   content: string;
   parentContent: string;
   relevanceScore: number;
+  metadata: Record<string, unknown>;
   /** Retrieval provenance — only present when `options.debug` is enabled. */
   debug?: RagSearchDebug;
 }
@@ -55,9 +57,7 @@ interface DenseCandidate {
   id: number;
   resourceId: number;
   chunkIndex: number;
-  printedPageNumber: number | null;
-  pdfPageNumber: number | null;
-  sectionTitle: string | null;
+  metadata: Record<string, unknown>;
   content: string;
   parentContent: string | null;
   title: string;
@@ -75,10 +75,10 @@ function isZeroVector(vector: number[]): boolean {
 }
 
 /**
- * Runs hybrid RAG retrieval by fusing dense and lexical branches via RRF and reranking with Cohere.
+ * Runs hybrid RAG retrieval by fusing dense (pgvector HNSW) and lexical (tsvector GIN) branches via RRF and reranking with Cohere.
  *
  * @param options - Hybrid search options (query, filters, and debug flags).
- * @returns Ranked RAG result items.
+ * @returns Ranked RAG result items (Top 5 by default).
  */
 export async function performHybridRagSearch(
   options: RagSearchOptions,
@@ -135,9 +135,7 @@ export async function performHybridRagSearch(
         id: chunks.id,
         resourceId: chunks.sourceId,
         chunkIndex: chunks.chunkIndex,
-        printedPageNumber: chunks.printedPageNumber,
-        pdfPageNumber: chunks.pdfPageNumber,
-        sectionTitle: chunks.sectionTitle,
+        metadata: chunks.metadata,
         content: chunks.content,
         parentContent: chunks.parentContent,
         title: sources.title,
@@ -151,9 +149,10 @@ export async function performHybridRagSearch(
     }
 
     try {
-      denseCandidates = await denseQuery
+      const rows = await denseQuery
         .orderBy(desc(similarityScore))
         .limit(RAG_CONFIG.denseTopK);
+      denseCandidates = rows as DenseCandidate[];
     } catch (error) {
       logger?.error("rag_dense_failed", {
         service: "rag-search",
@@ -194,7 +193,9 @@ export async function performHybridRagSearch(
 
   const documentsToRerank = rrfPool.map((entry) => {
     const candidate = candidateMap.get(entry.id)!;
-    return `[Eser: ${candidate.title} | Sayfa: ${candidate.printedPageNumber ?? candidate.pdfPageNumber ?? 1}${candidate.sectionTitle ? ` | Bölüm: ${candidate.sectionTitle}` : ""}]\n${candidate.content}`;
+    const meta = candidate.metadata || {};
+    const prefix = buildChunkContextPrefix(meta);
+    return `[Eser: ${candidate.title}]\n${prefix}${candidate.content}`;
   });
 
   interface RankedEntry {
@@ -246,6 +247,16 @@ export async function performHybridRagSearch(
     .slice(0, topK)
     .map(({ rrf, relevanceScore, rerankScore }) => {
       const candidate = candidateMap.get(rrf.id)!;
+      const meta = candidate.metadata || {};
+
+      const pageNum =
+        typeof meta.pageNumber === "number" ? meta.pageNumber : null;
+      const printedNum =
+        typeof meta.printedPageNumber === "number"
+          ? meta.printedPageNumber
+          : pageNum;
+      const secTitle =
+        typeof meta.sectionTitle === "string" ? meta.sectionTitle : null;
 
       const debugMeta: RagSearchDebug | undefined = debug
         ? {
@@ -261,12 +272,13 @@ export async function performHybridRagSearch(
         resourceTitle: candidate.title,
         resourceAuthors: candidate.authors || ["Bilinmeyen Yazar"],
         chunkIndex: candidate.chunkIndex,
-        printedPageNumber: candidate.printedPageNumber,
-        pdfPageNumber: candidate.pdfPageNumber,
-        sectionTitle: candidate.sectionTitle,
+        printedPageNumber: printedNum,
+        pdfPageNumber: pageNum,
+        sectionTitle: secTitle,
         content: candidate.content,
         parentContent: candidate.parentContent || candidate.content,
         relevanceScore,
+        metadata: meta,
         ...(debugMeta ? { debug: debugMeta } : {}),
       };
     });

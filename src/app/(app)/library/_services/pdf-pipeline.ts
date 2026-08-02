@@ -3,8 +3,11 @@ import { db } from "@/db";
 import { sources, chunks as chunkRows } from "@/db/schema";
 import type { NewChunk } from "@/db/schema";
 import { uploadPdfToR2 } from "@/lib/services/r2";
-import { parsePdfWithHybridRouter } from "@/lib/services/pdf-parser";
-import type { DocumentChunk } from "@/lib/services/llamaparse";
+import { parsePdfDocument } from "@/lib/services/pdf-parser";
+import {
+  buildChunkContextPrefix,
+  type DocumentChunk,
+} from "@/lib/services/pdf/chunker";
 import { generateVectorEmbeddings } from "@/lib/services/cloudflare-ai";
 import type { Logger } from "@/lib/logger";
 
@@ -14,17 +17,13 @@ interface ProcessPdfPipelineOptions {
   buffer: Buffer;
   log: Logger;
   precomputedChunks?: DocumentChunk[];
+  precomputedReferences?: string | null;
 }
 
 /**
- * Shared PDF RAG ingestion pipeline: parses via the hybrid router, uploads to R2, generates embeddings, batch-inserts chunks into pgvector, and updates the resource DB status.
+ * Shared PDF RAG ingestion pipeline: parses via LlamaParse v2 Agentic tier, uploads to R2, generates embeddings, batch-inserts chunks into pgvector, and updates resource metadata.
  *
  * @param options - The pipeline options.
- * @param options.resourceId - The ID of the resource being processed.
- * @param options.fileName - The target PDF file name in R2.
- * @param options.buffer - The raw PDF file buffer.
- * @param options.log - The structured logger instance.
- * @param options.precomputedChunks - Optional pre-parsed document chunks to reuse instead of parsing.
  * @returns The R2 URL, final file name, final size, and chunk count.
  */
 export async function processResourcePdfPipeline(
@@ -33,10 +32,14 @@ export async function processResourcePdfPipeline(
   const { resourceId, fileName, log, buffer } = options;
 
   let chunks: DocumentChunk[];
+  let rawReferences: string | null = options.precomputedReferences ?? null;
+
   if (options.precomputedChunks && options.precomputedChunks.length > 0) {
     chunks = options.precomputedChunks;
   } else {
-    chunks = await parsePdfWithHybridRouter(buffer, fileName, log);
+    const parsed = await parsePdfDocument(buffer, fileName, log);
+    chunks = parsed.chunks;
+    rawReferences = parsed.rawReferences;
   }
 
   const resource = await db.query.sources.findFirst({
@@ -47,9 +50,8 @@ export async function processResourcePdfPipeline(
   const resourceAuthors = resource?.authors?.join(", ") || "Bilinmeyen Yazar";
 
   const embeddingTexts = chunks.map((c) => {
-    const pageNum = c.printedPageNumber ?? c.pdfPageNumber ?? 1;
-    const sectionStr = c.sectionTitle ? ` | Bölüm: ${c.sectionTitle}` : "";
-    const headerContext = `[Eser: ${resourceTitle} | Yazar: ${resourceAuthors} | Sayfa: ${pageNum}${sectionStr}]\n`;
+    const prefix = buildChunkContextPrefix(c.metadata);
+    const headerContext = `[Eser: ${resourceTitle} | Yazar: ${resourceAuthors}]\n${prefix}`;
     return headerContext + c.content;
   });
 
@@ -92,31 +94,27 @@ export async function processResourcePdfPipeline(
         });
       }
 
-      await Promise.all(
-        batches.map(async ({ batchChunks, batchEmbeddings }) => {
-          const rows: NewChunk[] = batchChunks.map((c, index) => {
-            const emb = batchEmbeddings[index];
-            if (!emb) {
-              throw new Error(
-                `Chunk ${c.chunkIndex} için embedding vektörü üretilemedi.`,
-              );
-            }
-            return {
-              sourceId: resourceId,
-              chunkIndex: c.chunkIndex,
-              printedPageNumber: c.printedPageNumber ?? null,
-              pdfPageNumber: c.pdfPageNumber ?? null,
-              sectionTitle: c.sectionTitle ?? null,
-              content: c.content,
-              parentContent: c.parentContent || c.content,
-              tokenCount: c.tokenCount ?? 0,
-              embedding: emb,
-            };
-          });
+      for (const { batchChunks, batchEmbeddings } of batches) {
+        const rows: NewChunk[] = batchChunks.map((c, index) => {
+          const emb = batchEmbeddings[index];
+          if (!emb) {
+            throw new Error(
+              `Chunk ${c.chunkIndex} için embedding vektörü üretilemedi.`,
+            );
+          }
+          return {
+            sourceId: resourceId,
+            chunkIndex: c.chunkIndex,
+            content: c.content,
+            parentContent: c.parentContent || c.content,
+            metadata: c.metadata,
+            tokenCount: c.tokenCount ?? 0,
+            embedding: emb,
+          };
+        });
 
-          await tx.insert(chunkRows).values(rows);
-        }),
-      );
+        await tx.insert(chunkRows).values(rows);
+      }
     }
   });
 
@@ -142,6 +140,7 @@ export async function processResourcePdfPipeline(
       pdfFileName: fileName,
       pdfFileSize: buffer.length,
       pdfStatus: "READY",
+      rawReferences: rawReferences,
     })
     .where(eq(sources.id, resourceId));
 
