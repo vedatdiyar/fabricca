@@ -11,6 +11,12 @@ import {
   updateTaskAction,
 } from "@/app/(app)/dashboard/actions";
 
+/**
+ * Maps a database task row into a Kanban task model.
+ *
+ * @param task - The database task row to convert.
+ * @returns The corresponding Kanban task.
+ */
 function mapTaskRow(task: TaskRow): KanbanTask {
   return {
     id: String(task.id),
@@ -23,7 +29,12 @@ function mapTaskRow(task: TaskRow): KanbanTask {
   };
 }
 
-/** Manages user-created Kanban task CRUD with optimistic updates and race-safe rollback. */
+/**
+ * Manages user-created Kanban task CRUD with optimistic updates and race-safe rollback.
+ *
+ * @param initialTasks - User tasks loaded from the server.
+ * @returns User tasks and handlers for add, edit, status change, and delete operations.
+ */
 export function useDashboardTasks(initialTasks: TaskRow[]) {
   const [userTasks, setUserTasks] = useState<KanbanTask[]>(() =>
     initialTasks.map(mapTaskRow),

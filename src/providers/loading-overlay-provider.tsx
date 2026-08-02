@@ -36,6 +36,13 @@ interface LoadingOverlayState {
 
 const LoadingOverlayContext = createContext<LoadingOverlayState | null>(null);
 
+/**
+ * Provides the loading overlay state and controls to its children.
+ *
+ * @param root0 - Provider props.
+ * @param root0.children - The React tree that consumes the overlay context.
+ * @returns The loading overlay context provider markup.
+ */
 export function LoadingOverlayProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingTitle, setLoadingTitle] = useState("");
@@ -113,6 +120,11 @@ export function LoadingOverlayProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Returns the loading overlay state and controls; throws when used outside the provider.
+ *
+ * @returns The loading overlay context value.
+ */
 export function useLoadingOverlay(): LoadingOverlayState {
   const ctx = useContext(LoadingOverlayContext);
   if (!ctx) {

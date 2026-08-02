@@ -22,7 +22,16 @@ const iconColors: Record<string, string> = {
   warning: "text-warning",
 };
 
-/** Central AI informational banner used on onboarding pages to inform the user about AI operations. */
+/**
+ * Central AI informational banner used on onboarding pages to inform the user about AI operations.
+ *
+ * @param root0 - Component props.
+ * @param root0.variant - Visual style variant of the banner.
+ * @param root0.icon - Optional icon rendered at the start of the banner.
+ * @param root0.title - Bold title text of the banner.
+ * @param root0.description - Supporting description text of the banner.
+ * @returns The banner markup.
+ */
 export function AIBanner({
   variant = "info",
   icon: Icon = Sparkles,

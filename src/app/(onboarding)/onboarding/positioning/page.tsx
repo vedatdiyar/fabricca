@@ -5,9 +5,11 @@ import { PositioningContainer } from "./_components/positioning-container";
 import { StartOverButton } from "../_components/start-over-button";
 
 /**
- * Server Component for the Universal Positioning Matrix onboarding page.
- * Guards unauthorized access and completed onboarding profiles, rendering
- * the 5-field positioning matrix form, loading overlay, or gap analysis report.
+ * Server Component for the Universal Positioning Matrix onboarding page that guards
+ * unauthorized access and completed onboarding profiles, rendering the 5-field
+ * positioning matrix form, loading overlay, or gap analysis report.
+ *
+ * @returns The positioning report page or a redirect to dashboard or matrix.
  */
 export default async function OnboardingPositioningPage() {
   const profile = await getProfile();

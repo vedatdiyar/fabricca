@@ -43,6 +43,8 @@ import { createFlowId } from "@/lib/logger";
 
 /**
  * Central hook orchestrating all cross-feature onboarding flows under a shared loading overlay.
+ *
+ * @returns An object exposing the onboarding flow handlers.
  */
 export function useOnboardingNavigation() {
   const router = useRouter();
@@ -79,6 +81,9 @@ export function useOnboardingNavigation() {
 
   /**
    * Saves the matrix, runs the positioning AI pipeline, and navigates to the positioning report.
+   *
+   * @param matrixInput - The thesis matrix to save and analyze.
+   * @returns A success flag with an optional error message.
    */
   const submitMatrix = useCallback(
     async (
@@ -168,6 +173,9 @@ export function useOnboardingNavigation() {
 
   /**
    * Runs the literature review pipeline with a 3-phase loading overlay.
+   *
+   * @param subBoxInputs - The sub-box inputs to scan the literature for.
+   * @returns The literature pool entries or an error message.
    */
   const runLiteraturePipeline = useCallback(
     async (
@@ -243,6 +251,8 @@ export function useOnboardingNavigation() {
   /**
    * Clears downstream data for the boxes step, runs the literature review
    * AI pipeline, and then navigates to the literature review page.
+   *
+   * @returns A success flag with an optional error message.
    */
   const proceedFromBoxes = useCallback(async (): Promise<{
     success: boolean;
@@ -347,6 +357,9 @@ export function useOnboardingNavigation() {
 
   /**
    * Persists manual archive entries, finalizes onboarding, and navigates to the dashboard.
+   *
+   * @param archiveEntries - The manual archive entries to persist.
+   * @returns A success flag with an optional error message.
    */
   const finalizeLiterature = useCallback(
     async (

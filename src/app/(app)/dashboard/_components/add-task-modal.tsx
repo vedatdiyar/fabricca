@@ -13,6 +13,13 @@ interface AddTaskModalProps {
 
 /**
  * Thin wrapper around TaskFormModal for the "add task" flow.
+ *
+ * @param root0 - Component props.
+ * @param root0.isOpen - Whether the modal is visible.
+ * @param root0.onClose - Callback invoked when the modal is closed.
+ * @param root0.onAdd - Callback invoked with the created task.
+ * @param root0.boxes - Topic boxes available for task assignment.
+ * @returns The rendered add-task modal.
  */
 export function AddTaskModal({
   isOpen,

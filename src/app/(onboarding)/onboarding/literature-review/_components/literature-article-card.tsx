@@ -5,6 +5,13 @@ interface LiteratureArticleCardProps {
   article: JuryArticle;
 }
 
+/**
+ * Renders a compact card summarizing a single jury article.
+ *
+ * @param root0 - Component props.
+ * @param root0.article - The jury article to display.
+ * @returns The article card UI.
+ */
 export function LiteratureArticleCard({ article }: LiteratureArticleCardProps) {
   return (
     <Card className="bg-card border border-border hover:border-primary/20 transition-all">

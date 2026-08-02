@@ -4,10 +4,10 @@ import { matrices, boxes, sources } from "@/db/schema";
 import { DEFAULT_PARENT_BOXES } from "@/lib/box-constants";
 
 /**
- * Fetches a source row together with its linked box and owning matrix.
- * Extracted so the full nested relation type can be derived for callers.
+ * Fetches a source row together with its linked box and owning matrix so callers can derive the full nested relation type.
  *
  * @param resourceId - Target source ID.
+ * @returns The source row with its linked box and owning matrix, or undefined when not found.
  */
 async function findSourceWithBox(resourceId: number) {
   return db.query.sources.findFirst({
@@ -20,13 +20,11 @@ async function findSourceWithBox(resourceId: number) {
 type OwnedSource = NonNullable<Awaited<ReturnType<typeof findSourceWithBox>>>;
 
 /**
- * Fetches a library source only if it belongs to the given user.
- * Ownership is verified through the chain: source → box → matrix → user.
- * Callers must check for the `error` branch before using the returned source.
+ * Fetches a library source only if it belongs to the given user, verifying ownership through the source → box → matrix → user chain and requiring callers to check the returned error branch before using the source.
  *
  * @param resourceId - Target source ID.
  * @param userId - The authenticated user's ID.
- * @returns The owned source (with its linked box and matrix) or an error message.
+ * @returns The owned source with its linked box and matrix, or an error message when ownership fails.
  */
 export async function getOwnedSource(
   resourceId: number,
@@ -48,11 +46,10 @@ export async function getOwnedSource(
 }
 
 /**
- * Ensures the user has a thesis matrix and at least the 4 default parent boxes.
- * Idempotent — returns the existing matrix/boxes when available, otherwise seeds defaults.
+ * Ensures the user has a thesis matrix and the default parent boxes, seeding them when absent and otherwise returning the existing rows.
  *
- * @param userId - The authenticated user's ID
- * @returns The user's matrix and all box rows (parents and children)
+ * @param userId - The authenticated user's ID.
+ * @returns The user's matrix and all box rows (parents and children).
  */
 export async function ensureUserMatrixAndBoxes(userId: number) {
   const matrix = await db.query.matrices.findFirst({

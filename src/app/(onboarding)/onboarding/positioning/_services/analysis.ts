@@ -26,6 +26,9 @@ export const MAX_THESES = 15;
 
 /**
  * Filters reranked theses to the relative-score floor and safety cap for jury evaluation.
+ *
+ * @param siftedTheses - The reranked thesis candidates to filter.
+ * @returns The filtered thesis list ordered by ascending id.
  */
 export function filterThesesForJury(
   siftedTheses: SiftedThesis[],
@@ -166,6 +169,11 @@ export const juryAnalysisResultJsonSchema: JsonSchema = {
 
 /**
  * Runs unified LLM jury analysis over the filtered theses in a single Gemini call.
+ *
+ * @param input - The validated positioning matrix input.
+ * @param siftedTheses - The sifted thesis candidates to evaluate.
+ * @param logger - Optional structured logger for pipeline events.
+ * @returns The structured jury analysis result.
  */
 export async function analyzePositioningJury(
   input: PositioningMatrixInput,

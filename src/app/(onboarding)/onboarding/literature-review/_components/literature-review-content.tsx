@@ -22,7 +22,13 @@ import {
 } from "../_hooks/use-literature-review";
 import { getBoxTypeLabel } from "@/lib/box-constants";
 
-/** Renders a manual entry form for archival/empirical boxes. */
+/**
+ * Renders a manual entry form for archival/empirical boxes.
+ *
+ * @param root0 - Component props.
+ * @param root0.onAddEntry - Callback invoked with the entered title.
+ * @returns The archive entry form UI.
+ */
 function ArchiveEntryForm({
   onAddEntry,
 }: {
@@ -68,7 +74,14 @@ function ArchiveEntryForm({
   );
 }
 
-/** Renders a sub-box's transient processing states while the pipeline runs. */
+/**
+ * Renders a sub-box's transient processing states while the pipeline runs.
+ *
+ * @param root0 - Component props.
+ * @param root0.status - The current processing status of the sub-box.
+ * @param root0.errorMessage - Optional error message shown on failure.
+ * @returns The processing state UI or null when idle.
+ */
 function SubBoxQuery({
   status,
   errorMessage,
@@ -105,6 +118,12 @@ function SubBoxQuery({
 
 /**
  * Renders completed sub-box results: manual entry forms for archival boxes, article grids otherwise.
+ *
+ * @param root0 - Component props.
+ * @param root0.subBox - The completed sub-box data.
+ * @param root0.literaturePool - The current literature pool entries.
+ * @param root0.onAddArchiveEntry - Callback invoked when a manual archive entry is added.
+ * @returns The completed sub-box results UI.
  */
 function SubBoxDone({
   subBox,
@@ -297,6 +316,8 @@ function SubBoxDone({
 
 /**
  * Top-level literature-review container delegating orchestration to the useLiteratureReview hook.
+ *
+ * @returns The literature review content UI.
  */
 export function LiteratureReviewContent() {
   const {

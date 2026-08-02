@@ -27,6 +27,15 @@ interface EditResourceFormProps {
   onUpdateSuccess: (updatedResource: LibraryResourceItem) => void;
 }
 
+/**
+ * Form for editing a library resource's metadata.
+ *
+ * @param root0 - Component props.
+ * @param root0.onClose - Callback invoked when the form is closed.
+ * @param root0.resource - Resource being edited.
+ * @param root0.onUpdateSuccess - Callback invoked with the updated resource after a successful save.
+ * @returns The edit resource form markup.
+ */
 function EditResourceForm({
   onClose,
   resource,
@@ -51,6 +60,9 @@ function EditResourceForm({
   useEffect(() => {
     let cancelled = false;
 
+    /**
+     * Loads the parent box hierarchy and restores the resource's box selection.
+     */
     async function loadHierarchy() {
       const res = await getBoxHierarchyForLibraryAction();
       if (cancelled) return;
@@ -359,7 +371,16 @@ function EditResourceForm({
   );
 }
 
-/** Modal component for editing library resource metadata (title, authors, publisher, year, DOI, box). */
+/**
+ * Modal component for editing library resource metadata (title, authors, publisher, year, DOI, box).
+ *
+ * @param root0 - Component props.
+ * @param root0.isOpen - Whether the modal is visible.
+ * @param root0.onClose - Callback invoked when the modal is closed.
+ * @param root0.resource - Resource being edited.
+ * @param root0.onUpdateSuccess - Callback invoked with the updated resource after a successful save.
+ * @returns The edit resource modal markup, or null when closed.
+ */
 export function EditResourceModal({
   isOpen,
   onClose,

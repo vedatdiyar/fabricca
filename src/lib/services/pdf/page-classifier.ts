@@ -4,25 +4,15 @@ import { analyzePageLayout } from "./layout-analyzer";
 import { analyzePageVisualSignals } from "./layout-signals";
 import { analyzeTextQuality } from "./quality-signals";
 import type {
-  FullScanResult,
-  PageClassification,
-  PageLabel,
+  DocumentStrategyResult,
   SampledPageReport,
   TextItem,
 } from "./types";
 
 /** Class C: max char count for a purely scanned image page. */
-const CLASS_C_SCAN_CHAR_LIMIT = 50;
+const SCANNED_CHAR_LIMIT = 50;
 /** Class C: min image area ratio for a purely scanned image page. */
-const CLASS_C_SCAN_IMAGE_RATIO = 0.5;
-/** Class C: max char count for dense vector/diagram content. */
-const CLASS_C_VECTOR_CHAR_LIMIT = 30;
-/** Class B: min image area ratio for sidecar detection. */
-const CLASS_B_SIDECAR_IMAGE_RATIO = 0.5;
-/** Class B: min text area ratio for sidecar detection. */
-const CLASS_B_SIDECAR_TEXT_RATIO_MIN = 0.05;
-/** Parallel page analysis chunk size (memory/CPU balance). */
-const PARALLEL_CHUNK_SIZE = 20;
+const SCANNED_IMAGE_RATIO = 0.5;
 
 /**
  * Extracts the combined signal report (layout, visual, and quality) for one page.
@@ -65,146 +55,47 @@ async function extractPageReport(
 }
 
 /**
- * Labels a single page report as A, B, or C based on the first matching rule.
+ * Selects representative sample page indices for document-level strategy classification.
  *
- * @param report - Combined signal report for the page.
- * @param totalPageCount - Total number of pages in the document.
- * @returns The assigned page label and its reason.
+ * @param pageCount - Total number of pages in the PDF document.
+ * @returns An array of 1-based page indices to sample.
  */
-function classifyPage(
-  report: SampledPageReport,
-  totalPageCount: number,
-): {
-  label: PageLabel;
-  reason: string;
-} {
-  const {
-    pageIndex,
-    charCount,
-    imageAreaRatio,
-    textAreaRatio,
-    textUnreliable,
-    hasInvisibleText,
-    hasLineScatter,
-    columnCount,
-  } = report;
-
-  const isOuterCoverPage = pageIndex === 1 || pageIndex === totalPageCount;
-  if (
-    isOuterCoverPage &&
-    charCount < CLASS_C_SCAN_CHAR_LIMIT &&
-    imageAreaRatio > CLASS_C_SCAN_IMAGE_RATIO
-  ) {
-    return {
-      label: "A",
-      reason: `Dekoratif ön/arka kapak (sayfa ${pageIndex}/${totalPageCount}, yerel pass)`,
-    };
+function getSampledPageIndices(pageCount: number): number[] {
+  if (pageCount <= 5) {
+    return Array.from({ length: pageCount }, (_, i) => i + 1);
   }
 
-  if (
-    charCount < CLASS_C_SCAN_CHAR_LIMIT &&
-    imageAreaRatio > CLASS_C_SCAN_IMAGE_RATIO
-  ) {
-    return {
-      label: "C",
-      reason: `Saf taranmış resim (charCount=${charCount} < ${CLASS_C_SCAN_CHAR_LIMIT}, imageArea=${(imageAreaRatio * 100).toFixed(0)}%)`,
-    };
-  }
+  const indices = [
+    1,
+    2,
+    Math.floor(pageCount / 2),
+    Math.floor((3 * pageCount) / 4),
+    pageCount,
+  ];
 
-  if (textUnreliable) {
-    return {
-      label: "C",
-      reason: `Bozuk/okunamaz metin katmanı (cid/fffd/PUA oranı > %5)`,
-    };
-  }
-
-  if (hasInvisibleText && textUnreliable) {
-    return {
-      label: "C",
-      reason: `Görünmez metin katmanı (Render Mode 3) + bozuk metin`,
-    };
-  }
-
-  if (charCount < CLASS_C_VECTOR_CHAR_LIMIT && hasLineScatter) {
-    return {
-      label: "C",
-      reason: `Yoğun vektörel/şema içeriği (charCount=${charCount} < ${CLASS_C_VECTOR_CHAR_LIMIT}, lineScatter=true)`,
-    };
-  }
-
-  if (columnCount >= 2) {
-    return {
-      label: "B",
-      reason: `Çok sütunlu düzen (columnCount=${columnCount})`,
-    };
-  }
-
-  if (hasLineScatter) {
-    return {
-      label: "B",
-      reason: `Tablo/grid/scatter düzeni (hasLineScatter=true)`,
-    };
-  }
-
-  if (
-    imageAreaRatio > CLASS_B_SIDECAR_IMAGE_RATIO &&
-    textAreaRatio >= CLASS_B_SIDECAR_TEXT_RATIO_MIN &&
-    !textUnreliable
-  ) {
-    return {
-      label: "B",
-      reason: `Sidecar düzen: görsel yoğun (imageArea=${(imageAreaRatio * 100).toFixed(0)}%) + temiz metin katmanı (textArea=${(textAreaRatio * 100).toFixed(0)}%)`,
-    };
-  }
-
-  return {
-    label: "A",
-    reason: `Temiz dijital metin (charCount=${charCount}, cols=${columnCount}, imageArea=${(imageAreaRatio * 100).toFixed(0)}%)`,
-  };
+  return Array.from(new Set(indices)).sort((a, b) => a - b);
 }
 
 /**
- * Scans every page with unpdf and assigns an A, B, or C label in parallel chunks.
+ * Samples key pages of a PDF document to determine a single processing engine strategy (PDF2MD vs LlamaParse).
  *
- * @param buffer - Raw PDF file buffer.
- * @returns Full scan result with per-page classifications and summary.
+ * @param buffer - The raw PDF file content as a byte buffer.
+ * @returns Document strategy classification result including reason and page statistics.
  */
-export async function classifyAllPages(
+export async function classifyDocumentStrategy(
   buffer: Buffer,
-): Promise<FullScanResult> {
+): Promise<DocumentStrategyResult> {
   const scanStart = performance.now();
 
   const data = new Uint8Array(buffer);
   const doc = await getDocumentProxy(data);
   const pageCount = doc.numPages;
 
-  const allIndices = Array.from({ length: pageCount }, (_, i) => i + 1);
-  const classifications: PageClassification[] = [];
+  const sampledPages = getSampledPageIndices(pageCount);
 
-  for (let i = 0; i < allIndices.length; i += PARALLEL_CHUNK_SIZE) {
-    const chunkIndices = allIndices.slice(i, i + PARALLEL_CHUNK_SIZE);
-
-    const chunkResults = await Promise.all(
-      chunkIndices.map(async (pageIndex) => {
-        try {
-          const report = await extractPageReport(doc, pageIndex);
-          const { label, reason } = classifyPage(report, pageCount);
-          return {
-            pageIndex,
-            label,
-            reason,
-            signals: report,
-          } satisfies PageClassification;
-        } catch (err) {
-          throw new Error(
-            `Sayfa sınıflandırması başarısız (sayfa ${pageIndex}): ${(err as Error).message}`,
-          );
-        }
-      }),
-    );
-
-    classifications.push(...chunkResults);
-  }
+  const reports = await Promise.all(
+    sampledPages.map((pageIndex) => extractPageReport(doc, pageIndex)),
+  );
 
   try {
     const docAny = doc as unknown as { destroy: () => Promise<void> };
@@ -213,26 +104,38 @@ export async function classifyAllPages(
     /* ignore */
   }
 
-  const scannedCount = classifications.filter(
-    (c) => c.signals.charCount < 50 || c.signals.textUnreliable,
-  ).length;
-  const scannedRatio = scannedCount / pageCount;
+  let scannedCount = 0;
+  let unreliableCount = 0;
 
-  if (scannedRatio >= 0.8 && pageCount > 1) {
-    classifications.forEach((c) => {
-      c.label = "C";
-      c.reason = `Tamamen taranmış resim PDF (${(scannedRatio * 100).toFixed(0)}% taranmış, doğrudan LlamaParse OCR)`;
-    });
+  for (const r of reports) {
+    const isScannedPage =
+      r.charCount < SCANNED_CHAR_LIMIT &&
+      r.imageAreaRatio > SCANNED_IMAGE_RATIO;
+    if (isScannedPage) {
+      scannedCount++;
+    }
+    if (r.textUnreliable) {
+      unreliableCount++;
+    }
   }
 
-  const classA = classifications.filter((c) => c.label === "A").length;
-  const classB = classifications.filter((c) => c.label === "B").length;
-  const classC = classifications.filter((c) => c.label === "C").length;
+  const scannedRatio = scannedCount / sampledPages.length;
+  const unreliableTextRatio = unreliableCount / sampledPages.length;
+
+  const isLlamaParseNeeded = scannedRatio >= 0.4 || unreliableTextRatio >= 0.3;
+
+  const strategy = isLlamaParseNeeded ? "LLAMAPARSE" : "PDF2MD";
+  const reason = isLlamaParseNeeded
+    ? `Doküman taranmış görsel veya bozuk metin içeriyor (taranmış sayfa oranı: %${Math.round(scannedRatio * 100)}, bozuk metin oranı: %${Math.round(unreliableTextRatio * 100)})`
+    : `Temiz dijital metin katmanı tespit edildi (${sampledPages.length} sayfa örneklemesi)`;
 
   return {
+    strategy,
     pageCount,
-    classifications,
-    labelSummary: { classA, classB, classC },
+    sampledPages,
+    reason,
+    scannedRatio,
+    unreliableTextRatio,
     scanDurationMs: Math.round(performance.now() - scanStart),
   };
 }

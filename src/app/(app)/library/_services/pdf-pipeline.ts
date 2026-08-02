@@ -16,7 +16,17 @@ interface ProcessPdfPipelineOptions {
   precomputedChunks?: DocumentChunk[];
 }
 
-/** Shared PDF RAG ingestion pipeline: parses via the hybrid router, uploads to R2, generates embeddings, batch-inserts chunks into pgvector, and updates the resource DB status. */
+/**
+ * Shared PDF RAG ingestion pipeline: parses via the hybrid router, uploads to R2, generates embeddings, batch-inserts chunks into pgvector, and updates the resource DB status.
+ *
+ * @param options - The pipeline options.
+ * @param options.resourceId - The ID of the resource being processed.
+ * @param options.fileName - The target PDF file name in R2.
+ * @param options.buffer - The raw PDF file buffer.
+ * @param options.log - The structured logger instance.
+ * @param options.precomputedChunks - Optional pre-parsed document chunks to reuse instead of parsing.
+ * @returns The R2 URL, final file name, final size, and chunk count.
+ */
 export async function processResourcePdfPipeline(
   options: ProcessPdfPipelineOptions,
 ) {
@@ -84,17 +94,25 @@ export async function processResourcePdfPipeline(
 
       await Promise.all(
         batches.map(async ({ batchChunks, batchEmbeddings }) => {
-          const rows: NewChunk[] = batchChunks.map((c, index) => ({
-            sourceId: resourceId,
-            chunkIndex: c.chunkIndex,
-            printedPageNumber: c.printedPageNumber ?? null,
-            pdfPageNumber: c.pdfPageNumber ?? null,
-            sectionTitle: c.sectionTitle ?? null,
-            content: c.content,
-            parentContent: c.parentContent || c.content,
-            tokenCount: c.tokenCount ?? 0,
-            embedding: batchEmbeddings[index] || new Array(1024).fill(0),
-          }));
+          const rows: NewChunk[] = batchChunks.map((c, index) => {
+            const emb = batchEmbeddings[index];
+            if (!emb) {
+              throw new Error(
+                `Chunk ${c.chunkIndex} için embedding vektörü üretilemedi.`,
+              );
+            }
+            return {
+              sourceId: resourceId,
+              chunkIndex: c.chunkIndex,
+              printedPageNumber: c.printedPageNumber ?? null,
+              pdfPageNumber: c.pdfPageNumber ?? null,
+              sectionTitle: c.sectionTitle ?? null,
+              content: c.content,
+              parentContent: c.parentContent || c.content,
+              tokenCount: c.tokenCount ?? 0,
+              embedding: emb,
+            };
+          });
 
           await tx.insert(chunkRows).values(rows);
         }),

@@ -110,6 +110,11 @@ const juryJsonSchema: JsonSchema = {
 
 /**
  * Runs a jury evaluation for a single sub-box with a box-type-specific prompt.
+ *
+ * @param thesisSubject - The thesis subject problem statement.
+ * @param input - The sub-box context and raw articles to evaluate.
+ * @param logger - Optional logger for pipeline events.
+ * @returns The jury evaluation results for the sub-box.
  */
 export async function evaluateSingleBoxJury(
   thesisSubject: string,

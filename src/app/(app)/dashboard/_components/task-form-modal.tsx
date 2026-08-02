@@ -21,8 +21,18 @@ interface TaskFormModalProps {
 }
 
 /**
- * Shared form modal for both add and edit task flows.
- * Eliminates ~80% HTML/CSS duplication between AddTaskModal and EditTaskModal.
+ * Shared form modal for both the add and edit task flows.
+ *
+ * @param root0 - Component props.
+ * @param root0.mode - Whether the modal operates in add or edit mode.
+ * @param root0.open - Whether the modal is visible.
+ * @param root0.initialTitle - Optional initial value for the task title.
+ * @param root0.initialPriority - Optional initial value for the task priority.
+ * @param root0.initialBoxId - Optional initial thesis box id for the task.
+ * @param root0.onSave - Async callback invoked with the form data on submit.
+ * @param root0.onClose - Callback invoked when the modal is closed.
+ * @param root0.boxes - Topic boxes available for task assignment.
+ * @returns The rendered task form modal.
  */
 export function TaskFormModal({
   mode,

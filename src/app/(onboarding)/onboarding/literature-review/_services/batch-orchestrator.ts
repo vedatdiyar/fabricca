@@ -38,6 +38,12 @@ interface SubBoxResult {
   rawPapers: RawPaper[];
 }
 
+/**
+ * Converts a co-citation candidate into a raw paper record.
+ *
+ * @param c - The co-citation candidate queue item.
+ * @returns The raw paper representation.
+ */
 function candidateToRawPaper(c: QueueItem["candidates"][0]): RawPaper {
   return {
     source: "openalex",
@@ -62,6 +68,12 @@ interface PoolItem {
   citationCount?: number;
 }
 
+/**
+ * Builds the jury pool for a sub-box from raw papers and co-citation candidates.
+ *
+ * @param r - The sub-box phase 1 result.
+ * @returns The pooled items available for jury evaluation.
+ */
 function buildPool(r: SubBoxResult): PoolItem[] {
   const raw: PoolItem[] = r.rawPapers.map((p) => ({
     type: "raw" as const,
@@ -76,12 +88,14 @@ function buildPool(r: SubBoxResult): PoolItem[] {
 }
 
 /**
- * Runs the full multi-box literature review pipeline:
- * Phase 1 parallel OpenAlex search + co-citation clustering, Phase 2 per-box
- * jury pools capped at 12 sorted by (co-citation → relevance → citedByCount),
- * Phase 3 strict 1+3 selection (1 foundational + 3 related) with containment
- * dedup and targeted sanitization, Phase 4 progressive save. If fewer than 4
- * relevant articles remain, the pool is replenished from eliminated ones by score.
+ * Runs the full multi-box literature review pipeline across search, jury, selection and persistence phases.
+ *
+ * @param boxes - The sub-box inputs to process.
+ * @param logger - The pipeline logger instance.
+ * @param thesisMatrixSubject - Optional thesis subject problem for jury context.
+ * @param checkCancelled - Optional callback to abort the pipeline.
+ * @param persistSubBox - Optional callback to persist articles per sub-box.
+ * @returns The orchestrated pool entries and archival box titles.
  */
 export async function orchestrateBatchProcess(
   boxes: SubBoxInput[],

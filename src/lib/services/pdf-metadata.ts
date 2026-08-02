@@ -406,7 +406,7 @@ async function extractMetadataWithCerebras(
  * Extracts PDF metadata via DOI (Crossref), ISBN (OpenLibrary / Google Books), then a Cerebras LLM fallback.
  *
  * @param chunks - The parsed document chunks to scan for identifiers and text.
- * @param fileName - The original file name of the PDF, used for error reporting.
+ * @param fileName - The original file name of the PDF.
  * @param log - Logger instance for structured extraction logging.
  * @returns The extracted bibliographic metadata.
  */
@@ -416,97 +416,75 @@ export async function extractPdfMetadata(
   log: Logger,
 ): Promise<PdfMetadataResult> {
   const metadataText = buildMetadataText(chunks);
-
   const doi = findDoiInChunks(chunks);
+  const isbn = findIsbnInChunks(chunks);
+
+  log.info("pdf_metadata_search_identifiers", {
+    service: "library",
+    data: { fileName, doi, isbn },
+  });
+
+  const apiTasks: Array<{
+    name: "crossref" | "openlibrary" | "googlebooks";
+    task: Promise<PdfMetadataResult | null>;
+  }> = [];
+
   if (doi) {
-    log.info("pdf_metadata_crossref_start", {
-      service: "library",
-      data: { doi },
-    });
-
-    const crossrefStart = performance.now();
-    const crossrefResult = await fetchCrossrefByDoi(doi);
-
-    if (crossrefResult && isMetadataComplete(crossrefResult)) {
-      log.info("pdf_metadata_crossref_success", {
-        service: "library",
-        data: {
-          title: crossrefResult.title,
-          doi,
-          durationMs: Math.round(performance.now() - crossrefStart),
-        },
-      });
-      return crossrefResult;
-    }
-
-    log.info("pdf_metadata_crossref_failed", {
-      service: "library",
-      data: { doi, durationMs: Math.round(performance.now() - crossrefStart) },
+    apiTasks.push({
+      name: "crossref",
+      task: fetchCrossrefByDoi(doi),
     });
   }
 
-  const isbn = findIsbnInChunks(chunks);
+  if (isbn) {
+    apiTasks.push({
+      name: "openlibrary",
+      task: fetchOpenLibraryByIsbn(isbn),
+    });
+    apiTasks.push({
+      name: "googlebooks",
+      task: fetchGoogleBooksByIsbn(isbn),
+    });
+  }
+
   let partialResult: PdfMetadataResult | null = null;
 
-  if (isbn) {
-    log.info("pdf_metadata_openlibrary_start", {
-      service: "library",
-      data: { isbn },
-    });
+  if (apiTasks.length > 0) {
+    const results = await Promise.allSettled(apiTasks.map((t) => t.task));
 
-    const olStart = performance.now();
-    const openLibResult = await fetchOpenLibraryByIsbn(isbn);
+    for (let i = 0; i < apiTasks.length; i++) {
+      const taskMeta = apiTasks[i];
+      const res = results[i];
 
-    if (openLibResult) {
-      if (isMetadataComplete(openLibResult)) {
-        log.info("pdf_metadata_openlibrary_success", {
-          service: "library",
-          data: {
-            title: openLibResult.title,
-            isbn,
-            durationMs: Math.round(performance.now() - olStart),
-          },
-        });
-        return openLibResult;
+      if (res.status === "fulfilled" && res.value) {
+        const metadata = res.value;
+
+        if (isMetadataComplete(metadata)) {
+          log.info("pdf_metadata_api_success", {
+            service: "library",
+            data: {
+              source: taskMeta.name,
+              title: metadata.title,
+              doi,
+              isbn,
+            },
+          });
+          return metadata;
+        }
+
+        if (!partialResult) {
+          partialResult = metadata;
+        }
       }
-      partialResult = openLibResult;
     }
-
-    log.info("pdf_metadata_openlibrary_failed", {
-      service: "library",
-      data: { isbn, durationMs: Math.round(performance.now() - olStart) },
-    });
-
-    log.info("pdf_metadata_googlebooks_start", {
-      service: "library",
-      data: { isbn },
-    });
-
-    const gbStart = performance.now();
-    const googleBooksResult = await fetchGoogleBooksByIsbn(isbn);
-
-    if (googleBooksResult) {
-      if (isMetadataComplete(googleBooksResult)) {
-        log.info("pdf_metadata_googlebooks_success", {
-          service: "library",
-          data: {
-            title: googleBooksResult.title,
-            isbn,
-            durationMs: Math.round(performance.now() - gbStart),
-          },
-        });
-        return googleBooksResult;
-      }
-      if (!partialResult) partialResult = googleBooksResult;
-    }
-
-    log.info("pdf_metadata_googlebooks_failed", {
-      service: "library",
-      data: { isbn, durationMs: Math.round(performance.now() - gbStart) },
-    });
   }
 
   if (metadataText.length > 50) {
+    log.info("pdf_metadata_cerebras_fallback_start", {
+      service: "library",
+      data: { fileName },
+    });
+
     const cerebrasResult = await extractMetadataWithCerebras(metadataText, log);
     if (cerebrasResult) {
       if (partialResult) {

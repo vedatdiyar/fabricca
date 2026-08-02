@@ -2,7 +2,6 @@ import { MarkdownTextSplitter } from "@langchain/textsplitters";
 import type { Logger } from "@/lib/logger";
 import { withRetry, HttpError, DEFAULT_MAX_DELAY } from "@/lib/api-utils";
 import { isNoiseChunk } from "./pdf/chunker";
-import type { PageMarkdown } from "./pdf/types";
 
 const LLAMAPARSE_JOB_POLL_INTERVAL_MS = 1000;
 const LLAMAPARSE_JOB_MAX_WAIT_MS = 3 * 60 * 1000;
@@ -442,110 +441,4 @@ export async function parsePdfWithLlamaParse(
   });
 
   return chunks;
-}
-
-/**
- * Sends a pre-sliced mini PDF buffer to LlamaParse and maps the returned pages back to their original document indices.
- *
- * @param slicedBuffer - Buffer already sliced down to exactly the requested pages.
- * @param fileName - Original PDF file name (used for logging and the upload form).
- * @param startPage - Original 1-based index of the first page in the slice.
- * @param endPage - Original 1-based index of the last page in the slice.
- * @param tier - The LlamaParse parsing tier to use.
- * @param log - Logger used for batch pipeline progress events.
- * @returns The parsed pages mapped to their original document page indices.
- */
-export async function parsePdfPageBatchWithLlamaParse(
-  slicedBuffer: Buffer,
-  fileName: string,
-  startPage: number,
-  endPage: number,
-  tier: "cost_effective" | "agentic",
-  log: Logger,
-): Promise<PageMarkdown[]> {
-  const slicePageCount = endPage - startPage + 1;
-
-  log.info("pdf_llamaparse_batch_upload_start", {
-    service: "pdf-parser",
-    data: {
-      fileName,
-      startPage,
-      endPage,
-      tier,
-      bufferSize: slicedBuffer.length,
-    },
-  });
-
-  let jobId: string;
-  try {
-    jobId = await uploadToLlamaParse(
-      slicedBuffer,
-      fileName,
-      tier,
-      log,
-      "pdf_llamaparse_batch_upload",
-    );
-  } catch (err) {
-    log.error("pdf_llamaparse_batch_upload_failed", {
-      service: "pdf-parser",
-      error: err,
-      data: { fileName, startPage, endPage, tier },
-    });
-    throw err;
-  }
-
-  log.info("pdf_llamaparse_batch_upload_success", {
-    service: "pdf-parser",
-    data: { fileName, jobId, startPage, endPage, tier },
-  });
-
-  log.info("pdf_llamaparse_batch_poll_start", {
-    service: "pdf-parser",
-    data: { fileName, jobId },
-  });
-  try {
-    await pollLlamaParseJob(jobId, log, "pdf_llamaparse_batch_poll");
-  } catch (err) {
-    log.error("pdf_llamaparse_batch_poll_failed", {
-      service: "pdf-parser",
-      error: err,
-      data: { fileName, jobId },
-    });
-    throw err;
-  }
-
-  log.info("pdf_llamaparse_batch_poll_success", {
-    service: "pdf-parser",
-    data: { fileName, jobId },
-  });
-
-  const allPages = await fetchLlamaParseResult(
-    jobId,
-    log,
-    "pdf_llamaparse_batch_result",
-  );
-
-  const label = tier === "agentic" ? "C" : "B";
-  const filtered: PageMarkdown[] = allPages
-    .filter((p) => p.pageNumber >= 1 && p.pageNumber <= slicePageCount)
-    .map((p) => ({
-      pageIndex: startPage + p.pageNumber - 1,
-      markdown: p.text.trim(),
-      source: "llamaparse" as const,
-      label: label as "B" | "C",
-    }));
-
-  log.info("pdf_llamaparse_batch_filter_success", {
-    service: "pdf-parser",
-    data: {
-      fileName,
-      jobId,
-      requestedRange: `${startPage}-${endPage}`,
-      slicePageCount,
-      totalPagesInJob: allPages.length,
-      filteredPageCount: filtered.length,
-    },
-  });
-
-  return filtered;
 }

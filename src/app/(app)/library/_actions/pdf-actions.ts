@@ -17,6 +17,12 @@ import { getOwnedSource } from "../_services/helpers";
 import { mapSourceToResource } from "../_services/resource-mapper";
 import type { LibraryResourceItem } from "../_types/types";
 
+/**
+ * Deletes a temporary R2 object best-effort, logging rather than throwing when deletion fails.
+ *
+ * @param tempKey - The R2 temp object key to clean up.
+ * @param log - The structured logger instance.
+ */
 async function cleanupTempKey(tempKey: string, log: Logger): Promise<void> {
   if (!tempKey) return;
   try {
@@ -29,6 +35,11 @@ async function cleanupTempKey(tempKey: string, log: Logger): Promise<void> {
   }
 }
 
+/**
+ * Generates a presigned R2 upload URL for a new temp PDF object.
+ *
+ * @returns The presigned upload URL and the associated temp object key.
+ */
 async function generateTempPdfUploadUrl() {
   const tempKey = `temp/${crypto.randomUUID()}.pdf`;
   const presignedUrl = await generatePresignedUploadUrl(
@@ -38,6 +49,12 @@ async function generateTempPdfUploadUrl() {
   return { presignedUrl, tempKey };
 }
 
+/**
+ * Finds a source with READY PDF status whose PDF file name matches the given APA file name.
+ *
+ * @param apaFileName - The APA-formatted PDF file name to search for.
+ * @returns The matching source row, or undefined when not found.
+ */
 async function findReadySourceByPdfName(apaFileName: string) {
   return db.query.sources.findFirst({
     where: and(
@@ -47,11 +64,22 @@ async function findReadySourceByPdfName(apaFileName: string) {
   });
 }
 
+/**
+ * Builds the Turkish error message for a duplicate APA-formatted PDF file name.
+ *
+ * @param apaFileName - The duplicate APA-formatted PDF file name.
+ * @returns The duplicate PDF error message.
+ */
 function buildDuplicatePdfError(apaFileName: string) {
   return `Bu akademik yayın PDF'i (${apaFileName}) sistemde başka bir kayıtta zaten mevcut. Kopya kayıtlara izin verilmemektedir.`;
 }
 
-/** Server Action: Deletes a resource's PDF from Cloudflare R2 and resets its DB status. */
+/**
+ * Server Action: Deletes a resource's PDF from Cloudflare R2 and resets its DB status.
+ *
+ * @param resourceId - The ID of the resource whose PDF will be deleted.
+ * @returns A success flag, or an error message on failure.
+ */
 export async function deleteResourcePdfAction(resourceId: number) {
   const flowId = createFlowId();
   const log = new Logger(flowId);
@@ -105,7 +133,12 @@ export async function deleteResourcePdfAction(resourceId: number) {
   }
 }
 
-/** Server Action (Step 1 of 2): Validates the resource and returns a presigned R2 upload URL. */
+/**
+ * Server Action (Step 1 of 2): Validates the resource and returns a presigned R2 upload URL.
+ *
+ * @param resourceId - The ID of the resource receiving the PDF upload.
+ * @returns The presigned upload URL and temp key on success, or an error message on failure.
+ */
 export async function requestResourcePdfUploadAction(
   resourceId: number,
 ): Promise<
@@ -161,8 +194,12 @@ export async function requestResourcePdfUploadAction(
 }
 
 /**
- * Server Action (Step 2 of 2): Fetches the PDF from R2, runs the metadata
- * extraction + RAG pipeline, and cleans up the temp file.
+ * Server Action (Step 2 of 2): Fetches the PDF from R2, runs the metadata extraction and RAG pipeline, and cleans up the temp file.
+ *
+ * @param resourceId - The ID of the resource to attach the processed PDF to.
+ * @param tempKey - The R2 temp object key of the uploaded PDF.
+ * @param originalFileName - The original file name of the uploaded PDF.
+ * @returns The updated resource item on success, or an error message on failure.
  */
 export async function completeResourcePdfUploadAction(
   resourceId: number,
@@ -311,7 +348,11 @@ export async function completeResourcePdfUploadAction(
   }
 }
 
-/** Server Action (Step 1 of 2): Generates a presigned upload URL for creating a new resource from a PDF. */
+/**
+ * Server Action (Step 1 of 2): Generates a presigned upload URL for creating a new resource from a PDF.
+ *
+ * @returns The presigned upload URL and temp key on success, or an error message on failure.
+ */
 export async function requestPdfCreateUploadAction(): Promise<
   | { success: true; presignedUrl: string; tempKey: string }
   | { success: false; error: string }
@@ -350,9 +391,12 @@ export async function requestPdfCreateUploadAction(): Promise<
 }
 
 /**
- * Server Action (Step 2 of 2): Fetches the PDF from R2, creates a new resource,
- * runs the full RAG pipeline, and cleans up the temp file. Targets a sub-box when
- * the parent has sub-boxes, otherwise the parent box.
+ * Server Action (Step 2 of 2): Fetches the PDF from R2, creates a new resource, runs the full RAG pipeline, and cleans up the temp file.
+ *
+ * @param tempKey - The R2 temp object key of the uploaded PDF.
+ * @param originalFileName - The original file name of the uploaded PDF.
+ * @param boxId - The ID of the box the new resource will be placed in.
+ * @returns The created resource item on success, or an error message on failure.
  */
 export async function completePdfCreateUploadAction(
   tempKey: string,

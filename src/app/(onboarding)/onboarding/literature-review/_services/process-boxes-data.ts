@@ -12,6 +12,9 @@ export interface LoadedMatrixData {
 
 /**
  * Loads the thesis matrix from the database.
+ *
+ * @param userId - The database ID of the user.
+ * @returns The loaded thesis matrix or null when not found.
  */
 export async function loadThesisMatrixAndBoxes(userId: number): Promise<{
   matrix: LoadedMatrixData | null;

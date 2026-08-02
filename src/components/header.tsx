@@ -26,11 +26,18 @@ const NAV_ITEMS = [
   { href: "/advisor", label: "Danışman Odası", icon: MessageSquareCode },
 ] as const;
 
-/** Top navigation bar for the main app: horizontal nav links on desktop, bottom nav on mobile/tablet. Active route is detected with usePathname. */
+/**
+ * Top navigation bar for the main app: horizontal nav links on desktop, bottom nav on mobile/tablet.
+ *
+ * @param root0 - Component props.
+ * @param root0.userName - Display name of the signed-in user.
+ * @returns The header markup.
+ */
 export function Header({ userName }: { userName: string }) {
   const pathname = usePathname();
   const queryClient = useQueryClient();
 
+  /** Clears the client query cache and signs the user out. */
   function handleLogout() {
     startTransition(async () => {
       queryClient.clear();
@@ -38,6 +45,7 @@ export function Header({ userName }: { userName: string }) {
     });
   }
 
+  /** Asks for confirmation and reopens the onboarding flow without clearing user data. */
   function handleReopenOnboarding() {
     if (
       window.confirm(
@@ -144,6 +152,15 @@ export function Header({ userName }: { userName: string }) {
   );
 }
 
+/**
+ * Dropdown menu showing the user identity and the logout/reopen onboarding actions.
+ *
+ * @param root0 - Component props.
+ * @param root0.userName - Display name of the signed-in user.
+ * @param root0.onReopenOnboarding - Callback invoked when reopening the onboarding flow.
+ * @param root0.onLogout - Callback invoked when signing out.
+ * @returns The user menu markup.
+ */
 function UserMenu({
   userName,
   onReopenOnboarding,
@@ -157,11 +174,19 @@ function UserMenu({
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    /** Closes the menu when a click lands outside of it.
+     *
+     * @param event - The mouse down event to inspect.
+     */
     function handleClickOutside(event: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     }
+    /** Closes the menu when the Escape key is pressed.
+     *
+     * @param event - The key down event to inspect.
+     */
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setIsOpen(false);

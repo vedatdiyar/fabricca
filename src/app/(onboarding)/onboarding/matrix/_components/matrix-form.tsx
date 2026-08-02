@@ -122,6 +122,19 @@ interface MatrixCardProps {
 
 /**
  * A memoized form card containing a single text area field to limit re-renders.
+ *
+ * @param root0 - The matrix card props.
+ * @param root0.fieldKey - The form state key bound to the text area.
+ * @param root0.id - The field id used for label and text area association.
+ * @param root0.number - The numbered badge shown on the card.
+ * @param root0.Icon - The icon rendered next to the label.
+ * @param root0.label - The field label.
+ * @param root0.description - The helper description shown below the label.
+ * @param root0.placeholder - The text area placeholder text.
+ * @param root0.value - The current text area value.
+ * @param root0.rows - The text area row count.
+ * @param root0.onChange - The change handler receiving the field key and the new value.
+ * @returns The rendered matrix card.
  */
 const MatrixCard = memo(function MatrixCard({
   fieldKey,
@@ -169,18 +182,6 @@ const MatrixCard = memo(function MatrixCard({
   );
 });
 
-/**
- * MatrixForm — onboarding step 1. Renders the thesis matrix as a 4-field,
- * 2-section academic form. Persists to the database and navigates to the
- * positioning step. Uses server-side fetched initialData, so there is no
- * client-side loading state — the parent page already resolves the data.
- *
- * Note: ANALYSIS_ACTORS has been removed. Actors and the research subject
- * are now unified in the subjectProblem field, reflecting that in social
- * science research the topic and its actors are epistemologically inseparable.
- *
- * @param props.initialMatrix - Pre-fetched thesis matrix data (nullable).
- */
 const EMPTY_VALUES: FormState = {
   subjectProblem: "",
   theoreticalFramework: "",
@@ -192,6 +193,13 @@ interface MatrixFormProps {
   initialMatrix?: Matrix | null;
 }
 
+/**
+ * Renders the thesis matrix onboarding form and persists the submitted values to the database.
+ *
+ * @param root0 - The matrix form props.
+ * @param root0.initialMatrix - Pre-fetched thesis matrix data (nullable).
+ * @returns The rendered matrix form.
+ */
 export function MatrixForm({ initialMatrix }: MatrixFormProps) {
   const { submitMatrix } = useOnboardingNavigation();
 

@@ -8,7 +8,7 @@ export interface DashboardJuryArticle {
   author: string;
   year: number;
   isRead: boolean;
-  /** Title of the sub-box this article belongs to, when linked to a child box */
+  /** Title of the sub-box this article belongs to, when linked to a child box. */
   subBoxTitle?: string;
 }
 

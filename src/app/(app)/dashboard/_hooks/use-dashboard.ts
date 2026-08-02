@@ -12,7 +12,16 @@ import { useDashboardArticles } from "./use-dashboard-articles";
 import { useDashboardTasks } from "./use-dashboard-tasks";
 import { useDashboardReadingStatus } from "./use-dashboard-reading-status";
 
-/** Facade hook composing useDashboardArticles, useDashboardTasks, and useDashboardReadingStatus into a unified dashboard API. */
+/**
+ * Facade hook composing the article, task, and reading status hooks into a unified dashboard API.
+ *
+ * @param initialBoxes - Parent topic boxes loaded from the server.
+ * @param initialResources - Library resources loaded from the server.
+ * @param initialTasks - User tasks loaded from the server.
+ * @param childIdToParentId - Mapping from child box ids to their parent box ids.
+ * @param allBoxRows - All box rows including child boxes.
+ * @returns Derived topic boxes, combined tasks, and dashboard mutation handlers.
+ */
 export function useDashboard(
   initialBoxes: Box[],
   initialResources: Source[],

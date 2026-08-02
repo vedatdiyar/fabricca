@@ -1,10 +1,9 @@
 import { z } from "zod";
 
 /**
- * Zod validation schema for universal thesis positioning matrix.
- * Enforces mandatory minimum length constraints across 3 core academic fields.
- * ANALYSIS_ACTORS has been removed — actors are now part of subjectProblem.
- * Only fields relevant to positioning are included.
+ * Zod validation schema for the universal thesis positioning matrix that enforces
+ * mandatory minimum length constraints across 3 core academic fields, excludes
+ * ANALYSIS_ACTORS (now part of subjectProblem), and includes only positioning fields.
  */
 export const positioningMatrixSchema = z.object({
   subjectProblem: z

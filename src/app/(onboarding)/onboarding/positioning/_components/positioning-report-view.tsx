@@ -23,6 +23,11 @@ interface PositioningReportViewProps {
 /**
  * Renders the full positioning gap analysis report including global status badge,
  * structured jury synthesis sections, and recommended thesis cards.
+ *
+ * @param root0 - The component props.
+ * @param root0.reportData - The jury analysis result to display.
+ * @param root0.onConfirm - Callback invoked when the user confirms the positioning.
+ * @returns The rendered positioning report view.
  */
 export function PositioningReportView({
   reportData,

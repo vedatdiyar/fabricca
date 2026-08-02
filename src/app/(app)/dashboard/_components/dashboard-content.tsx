@@ -14,6 +14,17 @@ interface DashboardContentProps {
   allBoxRows: Box[];
 }
 
+/**
+ * Renders the interactive dashboard with topic boxes and the Kanban board.
+ *
+ * @param root0 - Component props.
+ * @param root0.initialBoxes - Parent topic boxes loaded from the server.
+ * @param root0.initialResources - Library resources loaded from the server.
+ * @param root0.initialTasks - User tasks loaded from the server.
+ * @param root0.childIdToParentId - Mapping from child box ids to their parent box ids.
+ * @param root0.allBoxRows - All box rows including child boxes.
+ * @returns The rendered dashboard content.
+ */
 export function DashboardContent({
   initialBoxes,
   initialResources,

@@ -4,19 +4,24 @@ import type { RawPaper, RefMetadata } from "../literature-review-papers";
 import { CROSSREF_USER_AGENT, withRetry } from "@/lib/api-utils";
 
 /**
- * Queue for semantic search (search.semantic).
- * OpenAlex enforces 1 req/s for this endpoint.
+ * Queue for semantic search, since OpenAlex enforces 1 req/s for this endpoint.
  */
 const semanticQueue = createGapEnforcedQueue<unknown>(1000);
 
 /**
- * Queue for list/filter calls (metadata batch, author healing).
- * OpenAlex allows up to 100 req/s for these endpoints.
+ * Queue for list/filter calls, since OpenAlex allows up to 100 req/s for these endpoints.
  */
 const openAlexQueue = createGapEnforcedQueue<unknown>(100);
 
 const OPENALEX_RETRYABLE = "OPENALEX_RETRYABLE_ERROR";
 
+/**
+ * Queries the OpenAlex works endpoint with retry and cancellation support.
+ *
+ * @param params - The URL query parameters for the request.
+ * @param checkCancelled - Optional callback to abort the request.
+ * @returns The parsed raw papers from the query.
+ */
 async function queryOpenAlexWorks(
   params: URLSearchParams,
   checkCancelled?: () => boolean,
@@ -75,6 +80,14 @@ async function queryOpenAlexWorks(
   }
 }
 
+/**
+ * Performs a semantic search against OpenAlex for the given query.
+ *
+ * @param query - The semantic search query text.
+ * @param perPage - The number of results to request.
+ * @param checkCancelled - Optional callback to abort the request.
+ * @returns The matching raw papers.
+ */
 export async function searchOpenAlex(
   query: string,
   perPage: number,
@@ -100,6 +113,13 @@ export async function searchOpenAlex(
 
 export type { RefMetadata };
 
+/**
+ * Fetches reference metadata for a batch of OpenAlex work IDs.
+ *
+ * @param ids - The OpenAlex work IDs to fetch metadata for.
+ * @param checkCancelled - Optional callback to abort the request.
+ * @returns The fetched reference metadata records.
+ */
 export async function fetchOpenAlexMetadataBatch(
   ids: string[],
   checkCancelled?: () => boolean,
@@ -203,12 +223,10 @@ interface OpenAlexHealCandidate {
 }
 
 /**
- * Resolves the correct author(s) for a given academic work title programmatically.
- * Queries OpenAlex duplicates, filters out book reviews/empty authors,
- * and selects the author associated with the highest cumulative citation count.
+ * Resolves the author(s) of an academic work title by querying OpenAlex duplicates and selecting the most cited candidate.
  *
- * @param title - Raw title of the academic work
- * @returns Array of resolved author names
+ * @param title - The raw title of the academic work.
+ * @returns The resolved author names.
  */
 export async function healAuthorsByTitle(title: string): Promise<string[]> {
   const cleanSearchTitle = title

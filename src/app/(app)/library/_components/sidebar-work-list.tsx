@@ -54,7 +54,21 @@ interface SidebarWorkListProps {
   onDeleteResource?: (resourceId: number) => Promise<void>;
 }
 
-/** Sidebar component listing academic literature items with box tabs and search. */
+/**
+ * Sidebar component listing academic literature items with box tabs and search.
+ *
+ * @param root0 - Component props.
+ * @param root0.resources - List of library resources to display.
+ * @param root0.selectedResourceId - Id of the currently selected resource.
+ * @param root0.onSelectResource - Callback invoked when a resource is selected.
+ * @param root0.activeTab - Currently active box tab filter.
+ * @param root0.onTabChange - Callback invoked when the active tab changes.
+ * @param root0.searchQuery - Current search query text.
+ * @param root0.onSearchChange - Callback invoked when the search query changes.
+ * @param root0.onOpenAddModal - Optional callback to open the add resource modal.
+ * @param root0.onDeleteResource - Optional callback to delete a resource by id.
+ * @returns The sidebar work list markup.
+ */
 export function SidebarWorkList({
   resources,
   selectedResourceId,

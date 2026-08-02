@@ -20,6 +20,8 @@ import {
 
 /**
  * Deletes all onboarding data and sets onboardingCompleted to false.
+ *
+ * @returns A success flag or an error message.
  */
 export async function resetOnboardingAction(): Promise<
   { success: boolean } | { error: string }
@@ -77,6 +79,9 @@ export async function resetOnboardingAction(): Promise<
 
 /**
  * Clears all downstream step data from the given step onward.
+ *
+ * @param fromStep - The step from which downstream data is cleared.
+ * @returns A success flag or an error message.
  */
 export async function clearDownstreamDbAction(
   fromStep: "matrix" | "positioning" | "boxes",

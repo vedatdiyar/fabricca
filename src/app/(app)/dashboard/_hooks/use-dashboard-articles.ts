@@ -17,12 +17,21 @@ interface ArticleState {
   isFoundational: boolean;
   boxId: string;
   boxTitle: string;
-  /** Actual thesisBoxId the resource belongs to (sub-box or the main box itself) */
+  /** Actual thesisBoxId the resource belongs to (sub-box or the main box itself). */
   subBoxId: string;
-  /** Title of the sub-box, present only when the resource is linked to a child box */
+  /** Title of the sub-box, present only when the resource is linked to a child box. */
   subBoxTitle?: string;
 }
 
+/**
+ * Builds the article state list by mapping each library resource to its effective parent box.
+ *
+ * @param initialBoxes - Parent topic boxes loaded from the server.
+ * @param initialResources - Library resources loaded from the server.
+ * @param childIdToParentId - Mapping from child box ids to their parent box ids.
+ * @param boxIdToTitle - Mapping from box ids to their titles.
+ * @returns The flattened article state entries grouped by parent box.
+ */
 function buildArticleState(
   initialBoxes: Box[],
   initialResources: Source[],
@@ -64,7 +73,13 @@ function buildArticleState(
   return mapped;
 }
 
-/** Round-robin merge of unread articles across sub-box groups so every sub-box is represented in the reading list. */
+/**
+ * Round-robin merges unread articles across sub-box groups so every sub-box is represented in the reading list.
+ *
+ * @param boxArticles - Articles belonging to a single topic box.
+ * @param capacity - Maximum number of articles to include.
+ * @returns The selected reading list entries.
+ */
 function buildVisibleReadingList(
   boxArticles: ArticleState[],
   capacity: number,
@@ -112,7 +127,15 @@ function buildVisibleReadingList(
   return result;
 }
 
-/** Manages article state, visibility algorithms, and topic box derivation for the dashboard. */
+/**
+ * Manages article state, visibility algorithms, and topic box derivation for the dashboard.
+ *
+ * @param initialBoxes - Parent topic boxes loaded from the server.
+ * @param initialResources - Library resources loaded from the server.
+ * @param childIdToParentId - Mapping from child box ids to their parent box ids.
+ * @param allBoxRows - All box rows including child boxes.
+ * @returns The article state, derived topic boxes, and article mutation helpers.
+ */
 export function useDashboardArticles(
   initialBoxes: Box[],
   initialResources: Source[],

@@ -42,6 +42,8 @@ export interface UseLiteratureReviewResult {
 
 /**
  * Orchestrates the literature-review step: loads existing data or runs the review pipeline.
+ *
+ * @returns The literature review state and control helpers.
  */
 export function useLiteratureReview(): UseLiteratureReviewResult {
   const { finalizeLiterature } = useOnboardingNavigation();

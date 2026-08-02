@@ -24,6 +24,11 @@ const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 
 const attemptMap = new Map<string, { count: number; windowStart: number }>();
 
+/** Enforces a sliding-window brute-force rate limit for a single email address.
+ *
+ * @param email - The email address to check against the rate limit.
+ * @returns True when the request is allowed, false when the limit was reached.
+ */
 function checkRateLimit(email: string): boolean {
   const now = Date.now();
   const record = attemptMap.get(email);
@@ -48,7 +53,13 @@ export type OnboardingStatusResult =
   | { onboardingCompleted: boolean; error?: never }
   | { onboardingCompleted?: never; error: string };
 
-/** Validates email and password; on success creates the session cookie. Error messages are user-friendly and hide sensitive details. */
+/**
+ * Validates email and password; on success creates the session cookie.
+ *
+ * @param email - The user's email address.
+ * @param password - The user's plaintext password.
+ * @returns The login result, either a success marker or a user-friendly error message.
+ */
 export async function loginAction(
   email: string,
   password: string,
@@ -138,7 +149,11 @@ export async function loginAction(
   return { success: true };
 }
 
-/** Queries the onboarding completion status of the current session. */
+/**
+ * Queries the onboarding completion status of the current session.
+ *
+ * @returns The onboarding status or a user-friendly error message.
+ */
 export async function checkOnboardingStatus(): Promise<OnboardingStatusResult> {
   const flowId = createFlowId();
   const log = new Logger(flowId);

@@ -28,10 +28,10 @@ export type ResourceFieldOverrides = Partial<
 >;
 
 /**
- * Maps a library source row (with its attached box context) into the
- * client-facing LibraryResourceItem DTO. The box context derives the badge
- * type and optional sub-box metadata; overrides let pipeline flows substitute
- * freshly extracted metadata or PDF results.
+ * Maps a library source row (with its attached box context) into the client-facing
+ * LibraryResourceItem DTO, deriving the badge type and optional sub-box metadata from
+ * the box context while overrides let pipeline flows substitute freshly extracted
+ * metadata or PDF results.
  *
  * @param source - The source row to map.
  * @param box - Box context for the attached box (boxType, title, parentId).

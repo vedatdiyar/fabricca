@@ -10,7 +10,11 @@ import { ensureUserMatrixAndBoxes, getOwnedSource } from "../_services/helpers";
 import { mapSourceToResource } from "../_services/resource-mapper";
 import type { NoteType } from "../_types/types";
 
-/** Server Action: Fetches all library resources and notes for the current user, seeding default boxes if absent. */
+/**
+ * Server Action: Fetches all library resources and notes for the current user, seeding default boxes if absent.
+ *
+ * @returns The resources and notes on success, or an error message on failure.
+ */
 export async function getLibraryResourcesAction() {
   const flowId = createFlowId();
   const log = new Logger(flowId);
@@ -81,7 +85,12 @@ export async function getLibraryResourcesAction() {
   }
 }
 
-/** Server Action: Toggles the read status of a library resource. */
+/**
+ * Server Action: Toggles the read status of a library resource.
+ *
+ * @param resourceId - The ID of the resource to toggle.
+ * @returns The new read status on success, or an error message on failure.
+ */
 export async function toggleResourceReadStatusAction(resourceId: number) {
   const flowId = createFlowId();
   const log = new Logger(flowId);
@@ -123,7 +132,12 @@ export async function toggleResourceReadStatusAction(resourceId: number) {
   }
 }
 
-/** Server Action: Permanently deletes a resource, its R2 PDF, and all related data. */
+/**
+ * Server Action: Permanently deletes a resource, its R2 PDF, and all related data.
+ *
+ * @param resourceId - The ID of the resource to delete.
+ * @returns A success flag, or an error message on failure.
+ */
 export async function deleteLibraryResourceAction(resourceId: number) {
   const flowId = createFlowId();
   const log = new Logger(flowId);
@@ -164,7 +178,19 @@ export async function deleteLibraryResourceAction(resourceId: number) {
   }
 }
 
-/** Server Action: Updates a resource's metadata (title, authors, publisher, year, DOI, box). */
+/**
+ * Server Action: Updates a resource's metadata (title, authors, publisher, year, DOI, box).
+ *
+ * @param input - The metadata update payload.
+ * @param input.resourceId - The ID of the resource to update.
+ * @param input.title - The new resource title.
+ * @param input.authors - The new list of author names.
+ * @param input.publisher - The optional publisher name.
+ * @param input.publicationYear - The new publication year.
+ * @param input.doi - The optional DOI.
+ * @param input.boxId - The optional ID of the box to move the resource into.
+ * @returns The updated resource on success, or an error message on failure.
+ */
 export async function updateLibraryResourceAction(input: {
   resourceId: number;
   title: string;

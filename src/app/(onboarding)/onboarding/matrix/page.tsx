@@ -6,6 +6,8 @@ import { fetchThesisMatrixFresh } from "../_services/fetch-actions";
 
 /**
  * Onboarding step 1: thesis matrix form page that fetches and passes the existing matrix to the form.
+ *
+ * @returns The rendered matrix onboarding page.
  */
 export default async function OnboardingMatrixPage() {
   const profile = await getProfile();

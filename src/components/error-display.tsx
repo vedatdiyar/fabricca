@@ -45,7 +45,14 @@ const SCENARIO_CONFIG: Record<
   },
 };
 
-/** Global error masking component: classifies an error and renders a safe title + description; the original error never leaks to the screen. */
+/**
+ * Global error masking component that classifies an error and renders a safe title and description.
+ *
+ * @param root0 - Component props.
+ * @param root0.error - The unknown error to classify and display safely.
+ * @param root0.onRetry - Optional callback invoked when the user requests a retry.
+ * @returns The error display markup.
+ */
 export function ErrorDisplay({ error, onRetry }: ErrorDisplayProps) {
   const display = getErrorDisplay(error);
   const config = SCENARIO_CONFIG[display.scenario];

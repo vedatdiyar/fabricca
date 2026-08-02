@@ -7,8 +7,10 @@ import {
 import type { RawPaper, RefMetadata } from "../literature-review-papers";
 
 /**
- * Parses an array of OpenAlex work records into RawPaper objects.
- * Filters by type (article/book-chapter/book) and language (en/tr).
+ * Parses OpenAlex work records into RawPaper objects, filtering by type and language.
+ *
+ * @param results - The raw OpenAlex work records to parse.
+ * @returns The parsed raw papers.
  */
 export function parseOpenAlexResults(
   results: Record<string, unknown>[],
@@ -79,8 +81,10 @@ export function parseOpenAlexResults(
 }
 
 /**
- * Parses an array of OpenAlex work records into RefMetadata objects.
- * Does NOT filter by type — includes all work types for reference resolution.
+ * Parses OpenAlex work records into RefMetadata objects without filtering by type.
+ *
+ * @param results - The raw OpenAlex work records to parse.
+ * @returns The parsed reference metadata records.
  */
 export function parseOpenAlexMetadataResults(
   results: Record<string, unknown>[],

@@ -8,13 +8,12 @@ import type { NewSource } from "@/db/schema";
 export type TxClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 /**
- * Loads existing records for a single box, deduplicates new articles
- * by title/DOI, and returns the list of records ready to insert.
+ * Loads existing records for a box, deduplicates new articles by title/DOI, and returns the records ready to insert.
  *
- * @param tx - Transaction client
- * @param thesisBoxId - The target box's DB id
- * @param articles - Articles to filter and prepare
- * @returns Prepared insert records and skip count
+ * @param tx - The transaction client used for the insert.
+ * @param thesisBoxId - The target box's database ID.
+ * @param articles - The articles to filter and prepare.
+ * @returns The prepared insert records and the count of skipped duplicates.
  */
 async function insertLiteratureBatch(
   tx: TxClient,
@@ -73,11 +72,10 @@ async function insertLiteratureBatch(
 }
 
 /**
- * Persists articles directly to the target box using its DB id.
- * No title-based lookup — the thesisBoxId is passed directly and safely.
+ * Persists articles directly to the target box using its database ID.
  *
- * @param thesisBoxId - The target sub-box's database ID
- * @param articles - Articles to persist
+ * @param thesisBoxId - The target sub-box's database ID.
+ * @param articles - The articles to persist.
  */
 export async function persistSubBoxEntry(
   thesisBoxId: number,
@@ -101,10 +99,9 @@ export async function persistSubBoxEntry(
 }
 
 /**
- * Confirms the entire literature pool by persisting all entries in a single
- * transaction. Uses thesisBoxId directly from each pool entry — no title lookup.
+ * Confirms the entire literature pool by persisting all entries in a single transaction.
  *
- * @param literaturePool - Pool entries with thesisBoxId
+ * @param literaturePool - The pool entries to persist with their thesis box IDs.
  */
 export async function persistLiteraturePool(
   literaturePool: LiteraturePoolEntry[],
@@ -148,7 +145,10 @@ export async function persistLiteraturePool(
 }
 
 /**
- * Persists archive entries using thesisBoxId directly — no title lookup.
+ * Persists archive entries using thesisBoxId directly, with no title lookup.
+ *
+ * @param entries - The archive entries to persist per thesis box.
+ * @param onWarn - Optional callback invoked when duplicate entries are skipped.
  */
 export async function persistArchiveEntries(
   entries: { thesisBoxId: number; articles: JuryArticle[] }[],
@@ -184,6 +184,9 @@ export async function persistArchiveEntries(
 
 /**
  * Loads previously saved library resources in pool format.
+ *
+ * @param thesisMatrixId - The thesis matrix ID to load resources for.
+ * @returns The literature pool entries grouped by thesis box.
  */
 export async function fetchPreloadedPool(
   thesisMatrixId: number,

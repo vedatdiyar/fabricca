@@ -13,6 +13,9 @@ export interface Cluster {
 
 /**
  * Deduplicates references into clusters of unique works, sorted by combined citations.
+ *
+ * @param refMetadata - The reference metadata records to cluster.
+ * @returns The deduplicated clusters sorted by combined citations.
  */
 export function clusterRefMetadata(refMetadata: RefMetadata[]): Cluster[] {
   const validRefs = refMetadata.filter(

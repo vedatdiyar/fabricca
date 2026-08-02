@@ -21,6 +21,13 @@ const STEPS = [
   },
 ];
 
+/**
+ * Renders the onboarding step navigation with completion and lock states.
+ *
+ * @param root0 - The stepper props object.
+ * @param root0.initialData - Initial per-step completion flags used as seed data.
+ * @returns The step navigation markup.
+ */
 export function OnboardingStepper({
   initialData,
 }: {

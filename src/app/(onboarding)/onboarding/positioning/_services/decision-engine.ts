@@ -10,6 +10,11 @@ import type { JuryAnalysisResult } from "./analysis";
 
 /**
  * Persists the positioning report within a transaction and invalidates the step cache.
+ *
+ * @param userId - The id of the user the report belongs to.
+ * @param input - The validated positioning matrix input.
+ * @param analysisResult - The jury analysis result to persist.
+ * @returns The saved positioning report record.
  */
 export async function savePositioningReportTransaction(
   userId: number,

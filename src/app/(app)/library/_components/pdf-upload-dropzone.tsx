@@ -7,16 +7,22 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 interface PdfUploadDropzoneProps {
-  /** Resource title */
+  /** Resource title. */
   resourceTitle: string;
-  /** Current PDF status */
+  /** Current PDF status. */
   pdfStatus?: "NOT_UPLOADED" | "PROCESSING" | "READY" | "FAILED";
-  /** Callback fired when user selects and submits a PDF file */
+  /** Callback fired when user selects and submits a PDF file. */
   onUploadPdf: (file: File) => Promise<boolean>;
 }
 
 /**
  * Dropzone component for uploading PDF documents and triggering RAG vectorization.
+ *
+ * @param root0 - Component props.
+ * @param root0.resourceTitle - Title of the resource the PDF belongs to.
+ * @param root0.pdfStatus - Current PDF upload status.
+ * @param root0.onUploadPdf - Callback invoked with the selected file for upload.
+ * @returns The PDF upload dropzone markup.
  */
 export function PdfUploadDropzone({
   resourceTitle,

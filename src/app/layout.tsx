@@ -43,7 +43,13 @@ export const metadata: Metadata = {
   },
 };
 
-/** Global root layout wrapping all pages; mounts the Sonner Toaster. */
+/**
+ * Global root layout that wraps all pages and mounts the Sonner Toaster.
+ *
+ * @param root0 - Layout props.
+ * @param root0.children - The page content to render.
+ * @returns The root HTML document markup.
+ */
 export default function RootLayout({
   children,
 }: Readonly<{

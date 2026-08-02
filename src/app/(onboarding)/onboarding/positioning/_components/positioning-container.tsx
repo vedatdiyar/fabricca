@@ -11,8 +11,12 @@ interface PositioningContainerProps {
 }
 
 /**
- * Minimal wrapper that renders the positioning gap analysis report.
- * The report is always pre-generated server-side; no pipeline runs client-side.
+ * Minimal wrapper that renders the positioning gap analysis report, which is always
+ * pre-generated server-side with no pipeline running client-side.
+ *
+ * @param root0 - The component props.
+ * @param root0.initialRecord - Optional pre-generated positioning record.
+ * @returns The rendered positioning report view.
  */
 export function PositioningContainer({
   initialRecord,

@@ -6,6 +6,8 @@ import { fetchBoxesWithFullShape } from "../_services/fetch-actions";
 
 /**
  * Onboarding step 4: subject boxes page that verifies auth and renders the boxes.
+ *
+ * @returns The subject boxes page markup.
  */
 export default async function OnboardingBoxesPage() {
   const profile = await getProfile();

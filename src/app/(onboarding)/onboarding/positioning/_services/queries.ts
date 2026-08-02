@@ -124,6 +124,9 @@ export const generatedQueriesJsonSchema: JsonSchema = {
 
 /**
  * Removes boolean operators and punctuation syntax for strict Meilisearch compatibility.
+ *
+ * @param rawQuery - The raw query string to sanitize.
+ * @returns The cleaned query string safe for Meilisearch.
  */
 export function sanitizeMeiliQuery(rawQuery: string): string {
   if (!rawQuery) return "";
@@ -141,6 +144,10 @@ import {
 
 /**
  * Generates 8 sanitized TR+EN search queries from the positioning matrix via Gemini.
+ *
+ * @param input - The validated positioning matrix input.
+ * @param logger - Optional structured logger for pipeline events.
+ * @returns The sanitized generated queries object.
  */
 export async function generatePositioningQueries(
   input: PositioningMatrixInput,

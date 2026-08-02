@@ -19,6 +19,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { resetOnboardingAction } from "@/app/(onboarding)/onboarding/actions";
 
+/**
+ * Renders a confirmation dialog that resets the entire onboarding process.
+ *
+ * @param root0 - The button props object.
+ * @param root0.className - Additional CSS classes for the trigger button.
+ * @returns The reset confirmation dialog trigger button.
+ */
 export function StartOverButton({ className, ...props }: ButtonProps) {
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);

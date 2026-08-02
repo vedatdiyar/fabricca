@@ -4,6 +4,10 @@ import { checkStepsDataAction } from "./_services/fetch-actions";
 
 /**
  * Wraps all onboarding pages with the step navigation sidebar and content area.
+ *
+ * @param root0 - The layout props object.
+ * @param root0.children - The active onboarding step page content.
+ * @returns The onboarding layout markup with the step navigation.
  */
 export default async function OnboardingLayout({
   children,

@@ -10,6 +10,9 @@ import { BOX_ORDER_WEIGHT } from "@/lib/box-constants";
 
 /**
  * Cached DB query returning the user's thesis matrix (userId-keyed).
+ *
+ * @param userId - The id of the user to load the matrix for.
+ * @returns The user's thesis matrix or null.
  */
 async function getCachedThesisMatrix(userId: number) {
   try {
@@ -26,6 +29,9 @@ async function getCachedThesisMatrix(userId: number) {
 
 /**
  * Cached DB query fetching boxes for a given thesis matrix.
+ *
+ * @param thesisMatrixId - The id of the thesis matrix to load boxes for.
+ * @returns The ordered box rows for the thesis matrix.
  */
 async function getCachedBoxes(thesisMatrixId: number) {
   try {
@@ -50,6 +56,8 @@ async function getCachedBoxes(thesisMatrixId: number) {
 
 /**
  * Returns the current user's thesis matrix or null.
+ *
+ * @returns The current user's thesis matrix or null.
  */
 export async function fetchThesisMatrix() {
   const session = await getSession();
@@ -59,6 +67,8 @@ export async function fetchThesisMatrix() {
 
 /**
  * Fetches the thesis matrix directly from the DB, bypassing the cache.
+ *
+ * @returns The current user's thesis matrix or null.
  */
 export async function fetchThesisMatrixFresh() {
   const session = await getSession();
@@ -73,6 +83,8 @@ export async function fetchThesisMatrixFresh() {
 
 /**
  * Fetches boxes mapped to the full GeminiThesisBox shape expected by clients.
+ *
+ * @returns The current user's boxes in production shape, or an empty array.
  */
 export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
   const session = await getSession();
@@ -122,6 +134,8 @@ export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
 
 /**
  * Returns which onboarding steps have data for the current user.
+ *
+ * @returns A record mapping step keys to data presence, or null.
  */
 export async function checkStepsDataAction(): Promise<Record<
   string,

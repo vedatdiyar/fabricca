@@ -60,6 +60,8 @@ const confirmBoxesSchema = z.array(
 
 /**
  * Phase 1: generates the 4-quadrant Turkish box structure only (no semantic queries).
+ *
+ * @returns The generated box structure or an error message.
  */
 export async function runBoxStructureAction(): Promise<
   { success: true; structure: RawBoxStructureResponse } | { error: string }
@@ -121,6 +123,9 @@ export async function runBoxStructureAction(): Promise<
 
 /**
  * Phase 2: generates English semantic queries for every sub-box in a single Gemini call.
+ *
+ * @param structure - The raw box structure generated in phase 1.
+ * @returns The semantic queries keyed by sub-box title, or an error message.
  */
 export async function generateSemanticQueriesAction(
   structure: RawBoxStructureResponse,
@@ -212,6 +217,9 @@ export async function generateSemanticQueriesAction(
 
 /**
  * Converts the raw box structure to the RawQuadrants shape expected by mapToProductionShape.
+ *
+ * @param structure - The raw box structure to convert.
+ * @returns The quadrants shaped for production mapping.
  */
 function structureToQuadrants(
   structure: RawBoxStructureResponse,
@@ -247,6 +255,8 @@ function structureToQuadrants(
 
 /**
  * Runs Phase 1 + Phase 2 and maps the result to production-shaped boxes.
+ *
+ * @returns The production-shaped boxes or an error message.
  */
 export async function generateAndMapBoxesAction(): Promise<
   { success: true; boxes: GeminiThesisBox[] } | { error: string }
@@ -271,6 +281,9 @@ export async function generateAndMapBoxesAction(): Promise<
 
 /**
  * Persists the boxes to the database in a single transaction and invalidates caches.
+ *
+ * @param boxes - The boxes payload to validate and persist.
+ * @returns An onboarding action result with a success flag or an error message.
  */
 export async function persistBoxesAction(
   boxes: unknown,
@@ -389,6 +402,8 @@ export const confirmBoxesAction = persistBoxesAction;
 
 /**
  * Runs the full boxes pipeline: generation (Phase 1 + 2) and persistence.
+ *
+ * @returns The generated boxes or an error message.
  */
 export async function runBoxesPipelineAction(): Promise<
   { success: true; boxes: GeminiThesisBox[] } | { error: string }

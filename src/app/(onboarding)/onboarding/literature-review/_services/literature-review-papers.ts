@@ -11,7 +11,7 @@ export interface SubBoxItem {
 }
 
 export interface SubBoxInput {
-  /** Parent box DB id — used for archival bypass entries */
+  /** Parent box DB id — used for archival bypass entries. */
   id: number;
   title: string;
   description: string;

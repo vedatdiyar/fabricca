@@ -51,6 +51,11 @@ export const boxStructureSchema = z.object({
 
 export type RawBoxStructureResponse = z.infer<typeof boxStructureSchema>;
 
+/**
+ * Builds the JSON schema for a single box structure quadrant.
+ *
+ * @returns The quadrant JSON schema property.
+ */
 function buildStructureQuadrantJsonSchema(): JsonSchemaProperty {
   return {
     type: "object",

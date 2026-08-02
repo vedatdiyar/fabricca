@@ -13,6 +13,13 @@ export class HttpError extends Error {
   public readonly retryAfter: number | null;
   public readonly responseBody: string;
 
+  /**
+   * Creates an HTTP error carrying a status code, raw response body, and optional Retry-After floor.
+   *
+   * @param status - The HTTP status code.
+   * @param responseBody - The raw response body text.
+   * @param retryAfter - A Retry-After value used as a delay floor, or null when absent.
+   */
   constructor(status: number, responseBody: string, retryAfter: number | null) {
     const msg = `HTTP ${status}: ${responseBody.slice(0, 200)}`;
     super(msg);

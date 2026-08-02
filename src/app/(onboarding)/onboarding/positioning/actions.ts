@@ -18,6 +18,10 @@ import type { JuryAnalysisResult } from "./_services/analysis";
 
 /**
  * Runs query generation, Tezara search, and Cohere rerank; jury analysis and DB writes run separately.
+ *
+ * @param matrixInput - The thesis matrix used to derive the search queries.
+ * @param flowId - The log flow identifier for structured logging.
+ * @returns The sifted thesis list on success or an error message on failure.
  */
 export async function runPositioningSearchAction(
   matrixInput: ThesisMatrix,
@@ -65,6 +69,11 @@ export async function runPositioningSearchAction(
 
 /**
  * Runs Gemini jury analysis over the sifted thesis list.
+ *
+ * @param matrixInput - The thesis matrix used for the jury evaluation.
+ * @param theses - The sifted thesis candidates to analyze.
+ * @param flowId - The log flow identifier for structured logging.
+ * @returns The jury analysis result on success or an error message on failure.
  */
 export async function runPositioningJuryAction(
   matrixInput: ThesisMatrix,
@@ -113,6 +122,11 @@ export async function runPositioningJuryAction(
 
 /**
  * Sanitizes the jury result and persists the positioning report to the database.
+ *
+ * @param matrixInput - The thesis matrix used for the positioning report.
+ * @param juryResult - The jury analysis result to persist.
+ * @param flowId - The log flow identifier for structured logging.
+ * @returns A success marker or an error message on failure.
  */
 export async function persistPositioningReportAction(
   matrixInput: ThesisMatrix,
@@ -173,6 +187,8 @@ export async function persistPositioningReportAction(
 
 /**
  * Returns the user's positioning record, pre-filling matrixInput from the matrix when missing.
+ *
+ * @returns The matching positioning record, a matrix-prefilled placeholder, or null.
  */
 export async function getPositioningAction(): Promise<Positioning | null> {
   const session = await getSession();
@@ -236,6 +252,9 @@ export async function getPositioningAction(): Promise<Positioning | null> {
 
 /**
  * Runs the full positioning pipeline: search, jury analysis, and persistence.
+ *
+ * @param matrixInput - The thesis matrix driving the whole pipeline.
+ * @returns A success marker or an error message on failure.
  */
 export async function runPositioningPipelineAction(
   matrixInput: ThesisMatrix,

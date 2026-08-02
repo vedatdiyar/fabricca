@@ -18,7 +18,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginAction, checkOnboardingStatus } from "./actions";
 
-/** Login page with an email/password authentication form; redirects to /onboarding or /dashboard based on onboarding status. */
+/**
+ * Login page with an email/password authentication form; redirects to /onboarding or /dashboard based on onboarding status.
+ *
+ * @returns The login page markup.
+ */
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -26,6 +30,11 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isPending, setIsPending] = useState(false);
 
+  /**
+   * Submits the credentials to the server and navigates to the correct destination on success.
+   *
+   * @param e - The form submission event.
+   */
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setIsPending(true);

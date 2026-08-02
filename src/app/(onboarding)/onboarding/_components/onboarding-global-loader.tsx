@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { useLoadingOverlay } from "@/providers/loading-overlay-provider";
 
 /**
- * Global onboarding loading screen rendered inside the blur overlay.
- * Uses a segmented progress bar mapped exactly to the length of the
- * `loadingSteps` array — no infinite spinners. Each step transitions
- * rhythmically so the user can visually catch green checkmarks.
- * The active step shows a "Thinking Mode" indicator sub-text.
+ * Global onboarding loading screen rendered inside the blur overlay, using a segmented
+ * progress bar mapped exactly to the length of the `loadingSteps` array so each step
+ * transitions rhythmically for the user to catch green checkmarks and the active step
+ * shows a "Thinking Mode" indicator sub-text instead of an infinite spinner.
+ *
+ * @returns The global loading screen markup.
  */
 export function OnboardingGlobalLoader() {
   const {

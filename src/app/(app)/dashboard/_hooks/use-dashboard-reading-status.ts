@@ -15,8 +15,10 @@ interface ArticleState {
 }
 
 /**
- * Manages reading task status tracking (which articles are read/unread)
- * and generates reading task entries for the Kanban board.
+ * Manages reading task status tracking and generates reading task entries for the Kanban board.
+ *
+ * @param initialResources - Initial library resources with their read status.
+ * @returns Reading task statuses, their setter, and reading task helpers.
  */
 export function useDashboardReadingStatus(
   initialResources: { id: number; isRead: boolean | null }[],

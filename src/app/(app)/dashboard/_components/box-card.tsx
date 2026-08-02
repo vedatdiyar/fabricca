@@ -28,7 +28,14 @@ interface BoxCardProps {
   onDeleteArticle: (articleId: string) => Promise<void>;
 }
 
-/** Topic box card showing the box name, description, and its reading list with read status; links to the library and offers per-article deletion. */
+/**
+ * Renders a topic box card with its reading list and per-article deletion.
+ *
+ * @param root0 - Component props.
+ * @param root0.box - The topic box data to display.
+ * @param root0.onDeleteArticle - Async callback invoked when an article is deleted.
+ * @returns The rendered box card.
+ */
 export function BoxCard({ box, onDeleteArticle }: BoxCardProps) {
   const [articleToDeleteId, setArticleToDeleteId] = useState<string | null>(
     null,

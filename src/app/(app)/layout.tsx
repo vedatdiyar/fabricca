@@ -4,12 +4,15 @@ import { getSessionWithOnboarding } from "@/lib/session";
 import { Header } from "@/components/header";
 
 /**
- * Authenticated app layout.
- * Validates the session and onboarding status, then renders the header
- * and page content within a max-w-7xl container.
+ * Authenticated app layout that validates the session and onboarding status and then
+ * renders the header and page content within a max-w-7xl container.
  *
  * PPR/cache compatibility: the layout itself cannot access cookies() directly;
  * auth is delegated to a Suspense-wrapped inner component.
+ *
+ * @param root0 - Component props.
+ * @param root0.children - Page content rendered within the layout.
+ * @returns The authenticated app layout markup.
  */
 export default function AppLayout({
   children,
@@ -23,6 +26,13 @@ export default function AppLayout({
   );
 }
 
+/**
+ * Inner authenticated layout validating the session and onboarding state.
+ *
+ * @param root0 - Component props.
+ * @param root0.children - Page content rendered within the layout.
+ * @returns The app layout markup after session validation.
+ */
 async function AppLayoutInner({
   children,
 }: Readonly<{

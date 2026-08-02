@@ -15,8 +15,8 @@ export interface UserBoxDataWithResources extends UserBoxData {
 }
 
 /**
- * Fetches the thesis matrix and box hierarchy for a given user.
- * Constructs a child-to-parent ID map for sub-box → master box remapping.
+ * Fetches the thesis matrix and box hierarchy for a given user, constructing
+ * a child-to-parent ID map for sub-box → master box remapping.
  *
  * @param userId - The authenticated user's ID
  * @returns The matrix, parent boxes, child-parent map, and all box rows
@@ -62,8 +62,8 @@ export async function getUsersMatrixAndBoxes(
 
 /**
  * Fetches the thesis matrix, box hierarchy, and all associated library
- * resources for a given user. Resources are now stored directly on their
- * parent boxId — no remapping needed.
+ * resources for a given user, with resources stored directly on their
+ * parent boxId so no remapping is needed.
  *
  * @param userId - The authenticated user's ID
  * @returns Extended data including resources with original boxId

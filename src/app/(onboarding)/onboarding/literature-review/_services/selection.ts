@@ -27,6 +27,10 @@ export interface AnalyzeResult {
 
 /**
  * Analyzes reference frequencies across active works and returns leader IDs for metadata fetch.
+ *
+ * @param activeWorks - The active works with referenced works to analyze.
+ * @param N - The number of active works to consider.
+ * @returns The leader reference IDs and the reference-to-work index mapping.
  */
 export function analyzeReferenceFrequencies(
   activeWorks: RawPaper[],
@@ -92,6 +96,12 @@ export function analyzeReferenceFrequencies(
 
 /**
  * Scores candidates and selects up to 3 related articles, deduplicating titles globally.
+ *
+ * @param item - The queue item containing candidate papers.
+ * @param _topCluster - The top cluster, reserved for future use.
+ * @param assignedTitles - Optional set of titles already assigned elsewhere.
+ * @param foundationalTitle - Optional foundational title to exclude from selection.
+ * @returns The selected related articles as jury articles.
  */
 export function selectRelatedArticles(
   item: QueueItem,

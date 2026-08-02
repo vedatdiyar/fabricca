@@ -20,7 +20,11 @@ export interface LibraryParentBoxOption {
   children: LibrarySubBoxOption[];
 }
 
-/** Server Action: Fetches the user's thesis box hierarchy (parent boxes with sub-boxes) for the PDF upload modal, seeding default boxes when onboarding is incomplete. */
+/**
+ * Server Action: Fetches the user's thesis box hierarchy (parent boxes with sub-boxes) for the PDF upload modal, seeding default boxes when onboarding is incomplete.
+ *
+ * @returns The parent box hierarchy for the PDF upload selector, or an error message on failure.
+ */
 export async function getBoxHierarchyForLibraryAction(): Promise<
   | { success: true; data: LibraryParentBoxOption[] }
   | { success: false; error: string }

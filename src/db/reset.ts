@@ -1,6 +1,11 @@
 import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 
+/**
+ * Drops all application tables and enums to reset the database schema.
+ *
+ * @returns A promise that resolves when the reset operation finishes.
+ */
 async function reset() {
   console.log("🗑️  Dropping all tables...");
 

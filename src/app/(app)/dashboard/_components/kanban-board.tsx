@@ -144,6 +144,18 @@ const KanbanCard = memo(function KanbanCard({
   );
 });
 
+/**
+ * Renders the Kanban board with task columns, drag-and-drop, and add/edit modals.
+ *
+ * @param root0 - Component props.
+ * @param root0.tasks - All tasks to display on the board.
+ * @param root0.onTaskStatusChange - Callback invoked when a task is moved to a new status.
+ * @param root0.onAddTask - Callback invoked when a new task is added.
+ * @param root0.onEditTask - Async callback invoked when a task is edited.
+ * @param root0.onDeleteTask - Async callback invoked when a task is deleted.
+ * @param root0.boxes - Topic boxes available for task assignment.
+ * @returns The rendered Kanban board.
+ */
 export function KanbanBoard({
   tasks,
   onTaskStatusChange,

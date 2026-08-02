@@ -32,51 +32,18 @@ export interface PageLayoutReport {
 export interface SampledPageReport
   extends PageLayoutReport, PageVisualSignals, PageTextQuality {}
 
-/** Result of full PDF layout analysis and routing decision. */
-export interface PdfLayoutAnalysis {
-  route: "local" | "llamaparse-fallback";
-  tier?: "fast" | "cost_effective" | "agentic";
-  reason: string;
-  fullText: string;
+/** Primary processing engine strategy selected for a PDF document. */
+export type DocumentStrategyType = "PDF2MD" | "LLAMAPARSE";
+
+/** Result of document-level sampling and strategy classification. */
+export interface DocumentStrategyResult {
+  strategy: DocumentStrategyType;
   pageCount: number;
-  sampledPageCount: number;
-  totalChars: number;
-  avgCharsPerPage: number;
-  isScanned: boolean;
-  isMultiColumn: boolean;
-  hasComplexLayout: boolean;
-  isImageDominated: boolean;
-  hasInvisibleText: boolean;
-  hasUnreliableText: boolean;
-  multiColPageIndices: number[];
-  scatterPageIndices: number[];
-  imageDominatedPageIndices: number[];
-  invisibleTextPageIndices: number[];
-  unreliableTextPageIndices: number[];
-}
-
-/**
- * Page label for the 4-step hybrid engine:
- * A = free local pdf2md, B = light LlamaParse cost_effective, C = heavy LlamaParse agentic.
- */
-export type PageLabel = "A" | "B" | "C";
-
-/** Classification result for a single page. */
-export interface PageClassification {
-  pageIndex: number;
-  label: PageLabel;
+  sampledPages: number[];
   reason: string;
-  signals: SampledPageReport;
-}
-
-/** Consecutive group of pages sharing the same label. */
-export interface PageBatch {
-  label: PageLabel;
-  startPage: number;
-  endPage: number;
-  pageCount: number;
-  /** Only for B/C batches; 'agentic' is used for a single combined job when both exist. */
-  llamaParseTier?: "cost_effective" | "agentic";
+  scannedRatio: number;
+  unreliableTextRatio: number;
+  scanDurationMs: number;
 }
 
 /** Markdown output for a single page. */
@@ -84,48 +51,10 @@ export interface PageMarkdown {
   pageIndex: number;
   markdown: string;
   source: "local" | "llamaparse";
-  label: PageLabel;
+  label: "A" | "B" | "C";
 }
 
-/** Step 1 output: classification of every page. */
-export interface FullScanResult {
-  pageCount: number;
-  classifications: PageClassification[];
-  labelSummary: {
-    classA: number;
-    classB: number;
-    classC: number;
-  };
-  scanDurationMs: number;
-}
-
-/** Step 2 output: result of processing all batches in parallel. */
-export interface BatchProcessingResult {
-  pages: PageMarkdown[];
-  batchStats: {
-    localBatchCount: number;
-    apiBatchCount: number;
-    localPageCount: number;
-    apiPageCount: number;
-    totalDurationMs: number;
-    /** Total bytes of PDF payload uploaded to the API after page slicing. */
-    apiPayloadBytes?: number;
-    /** Bytes saved versus uploading the full PDF once per API batch. */
-    savedPayloadBytes?: number;
-  };
-}
-
-/** Step 3 output: Markdown merged, repaired, and cleaned across engines. */
-export interface StitchedMarkdown {
-  fullMarkdown: string;
-  repairsApplied: {
-    paragraphJoins: number;
-    hyphenRepairs: number;
-    headerFooterRemovals: number;
-  };
-}
-
-/** Step 4 output: final Markdown after style normalization. */
+/** Output of style normalization applied to Markdown. */
 export interface NormalizedMarkdown {
   markdown: string;
   normalizationsApplied: {
@@ -133,13 +62,4 @@ export interface NormalizedMarkdown {
     listSymbolFixes: number;
     footnoteConversions: number;
   };
-}
-
-/** Full output of the 4-step hybrid pipeline, returned by pdf-parser for logging. */
-export interface HybridPipelineAnalysis {
-  fullScan: FullScanResult;
-  batchStats: BatchProcessingResult["batchStats"];
-  repairsApplied: StitchedMarkdown["repairsApplied"];
-  normalizationsApplied: NormalizedMarkdown["normalizationsApplied"];
-  totalDurationMs: number;
 }

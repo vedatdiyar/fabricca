@@ -10,6 +10,11 @@ import { StartOverButton } from "../_components/start-over-button";
 import { fetchBoxesWithFullShape } from "../_services/fetch-actions";
 import { fetchPreloadedLiteraturePool } from "./actions";
 
+/**
+ * Renders the literature review onboarding step for the authenticated user.
+ *
+ * @returns The literature review page UI.
+ */
 export default async function LiteratureReviewPage() {
   const profile = await getProfile();
 

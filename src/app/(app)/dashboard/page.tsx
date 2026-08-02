@@ -5,9 +5,9 @@ import { getTasksAction } from "./actions";
 import { DashboardContent } from "./_components/dashboard-content";
 
 /**
- * Dashboard overview page.
- * Fetches the thesis matrix, box hierarchy (with child→parent resource remap),
- * and user tasks in parallel, then renders the interactive DashboardContent.
+ * Renders the dashboard overview page with topic boxes, reading lists, and the Kanban board.
+ *
+ * @returns The rendered dashboard page.
  */
 export default async function DashboardPage() {
   const session = await getSession();

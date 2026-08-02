@@ -3,6 +3,11 @@ dotenv.config({ path: ".env.local" });
 
 import { hash } from "bcrypt-ts";
 
+/**
+ * Seeds the database with the two authorized user accounts.
+ *
+ * @returns A promise that resolves when the seeding operation finishes.
+ */
 async function seed() {
   console.log("🌱 Seeding database started...");
 

@@ -44,11 +44,22 @@ export async function resetLiteratureCancelledAction(): Promise<void> {
   }
 }
 
+/**
+ * Checks whether a cancellation has been requested for the given user.
+ *
+ * @param userId - The database ID of the user.
+ * @returns True when cancellation is requested, false otherwise.
+ */
 function isLiteratureCancelled(userId: number): boolean {
   return _cancelFlags.get(userId) ?? false;
 }
 
-/** Processes all sub-boxes through the batch literature pipeline. */
+/**
+ * Processes all sub-boxes through the batch literature pipeline.
+ *
+ * @param boxes - The sub-box inputs to process.
+ * @returns The persisted literature pool entries or an error message.
+ */
 export async function processAllBoxesAction(
   boxes: SubBoxInput[],
 ): Promise<{ data?: LiteraturePoolEntry[]; error?: string }> {
@@ -89,7 +100,13 @@ export async function processAllBoxesAction(
   }
 }
 
-/** Persists the confirmed literature pool to the database. */
+/**
+ * Persists the confirmed literature pool to the database.
+ *
+ * @param args - The confirmation payload.
+ * @param args.literaturePool - The literature pool entries to persist.
+ * @returns The action result indicating success or an error.
+ */
 export async function confirmLiteratureAction(args: {
   literaturePool: LiteraturePoolEntry[];
 }): Promise<OnboardingActionResult> {
@@ -143,7 +160,11 @@ export async function confirmLiteratureAction(args: {
   }
 }
 
-/** Returns the preloaded literature pool for the current user. */
+/**
+ * Returns the preloaded literature pool for the current user.
+ *
+ * @returns The preloaded pool entries or an error message.
+ */
 export async function fetchPreloadedLiteraturePool(): Promise<{
   data?: LiteraturePoolEntry[];
   error?: string;
@@ -163,7 +184,13 @@ export async function fetchPreloadedLiteraturePool(): Promise<{
   return { data: pool };
 }
 
-/** Persists manual archive entries to the database. */
+/**
+ * Persists manual archive entries to the database.
+ *
+ * @param args - The archive append payload.
+ * @param args.entries - The archive entries to persist per thesis box.
+ * @returns The action result indicating success or an error.
+ */
 export async function appendArchiveEntriesAction(args: {
   entries: {
     thesisBoxId: number;
@@ -208,7 +235,11 @@ export async function appendArchiveEntriesAction(args: {
   }
 }
 
-/** Marks onboarding as completed for the current user and updates the session cookie. */
+/**
+ * Marks onboarding as completed for the current user and updates the session cookie.
+ *
+ * @returns The action result indicating success or an error.
+ */
 export async function finalizeOnboardingAction(): Promise<OnboardingActionResult> {
   const log = new Logger(createFlowId());
 
@@ -266,6 +297,8 @@ export async function finalizeOnboardingAction(): Promise<OnboardingActionResult
 
 /**
  * Checks whether a literature pool already exists for the current user.
+ *
+ * @returns The existing pool entries and whether a pool exists, or an error.
  */
 export async function checkLiteraturePoolAction(): Promise<{
   data?: LiteraturePoolEntry[];
@@ -299,6 +332,9 @@ export async function checkLiteraturePoolAction(): Promise<{
 
 /**
  * Runs the full literature pipeline (search, jury, selection, persistence) and returns the pool.
+ *
+ * @param boxes - The sub-box inputs to process.
+ * @returns The persisted literature pool entries or an error message.
  */
 export async function runLiteraturePipelineAction(
   boxes: SubBoxInput[],

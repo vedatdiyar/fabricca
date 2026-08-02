@@ -3,9 +3,9 @@ import type { GeminiThesisBox } from "@/lib/types";
 type ThesisBoxType = GeminiThesisBox["boxType"];
 
 /**
- * Quadrant key → production BoxType mapping (adapter).
- * Keys match the JSON field names produced by Gemini (Phase 1 & 2 schemas).
- * Order follows the canonical display order: SP → TF → METHOD → PM.
+ * Quadrant key → production BoxType mapping (adapter) whose keys match the JSON field
+ * names produced by Gemini (Phase 1 & 2 schemas) and whose order follows the canonical
+ * display order: SP → TF → METHOD → PM.
  */
 export const QUADRANT_MAPPING: Record<string, ThesisBoxType> = {
   subjectProblem: "SUBJECT_PROBLEM",
@@ -36,10 +36,10 @@ export interface RawQuadrants {
 }
 
 /**
- * Converts Gemini's 4-quadrant nested output into a flat GeminiThesisBox[]
- * structure. Each category becomes a parent box (parentId: null); its subBoxes
- * carry the parent's flat array index as parentId.
- * The 'semanticQuery' value is assigned directly as received from the LLM.
+ * Converts Gemini's 4-quadrant nested output into a flat GeminiThesisBox[] structure,
+ * turning each category into a parent box (parentId: null) whose subBoxes carry the
+ * parent's flat array index as parentId and assigning the 'semanticQuery' value
+ * directly as received from the LLM.
  *
  * @param apiResponse - The 4-quadrant nested JSON object from Gemini
  * @returns A flat GeminiThesisBox array

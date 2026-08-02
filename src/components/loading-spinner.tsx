@@ -8,7 +8,14 @@ interface LoadingSpinnerProps {
   message?: string;
 }
 
-/** Central loading component with card or full-page variants for all async loading states. */
+/**
+ * Central loading component with card or full-page variants for all async loading states.
+ *
+ * @param root0 - Component props.
+ * @param root0.variant - Size variant of the loading area.
+ * @param root0.message - Optional message displayed below the spinner.
+ * @returns The loading spinner markup.
+ */
 export function LoadingSpinner({
   variant = "card",
   message,

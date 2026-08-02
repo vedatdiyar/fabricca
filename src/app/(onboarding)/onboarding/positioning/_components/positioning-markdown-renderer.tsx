@@ -8,7 +8,12 @@ interface PositioningMarkdownRendererProps {
   className?: string;
 }
 
-/** Parses inline markdown formatting (bold, italic, inline code). */
+/**
+ * Parses inline markdown formatting (bold, italic, inline code).
+ *
+ * @param text - The raw text to parse.
+ * @returns The parsed React nodes with applied formatting.
+ */
 function parseInlineMarkdown(text: string): React.ReactNode[] {
   if (!text) return [];
   const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
@@ -43,6 +48,9 @@ function parseInlineMarkdown(text: string): React.ReactNode[] {
 
 /**
  * Normalizes structured, JSON, or legacy markdown payloads into GapAnalysisStructured.
+ *
+ * @param content - The raw content payload to normalize.
+ * @returns The normalized structured gap analysis data.
  */
 function normalizeGapAnalysis(
   content: GapAnalysisStructured | string | unknown,
@@ -97,6 +105,9 @@ function normalizeGapAnalysis(
 
 /**
  * Legacy parser for un-migrated database records saved in Markdown format.
+ *
+ * @param markdown - The legacy markdown content to parse.
+ * @returns The parsed structured gap analysis data.
  */
 function parseLegacyMarkdown(markdown: string): GapAnalysisStructured {
   const result: GapAnalysisStructured = {
@@ -139,6 +150,11 @@ function parseLegacyMarkdown(markdown: string): GapAnalysisStructured {
 
 /**
  * Renders the 3 fixed jury synthesis sections as cards with designated icons.
+ *
+ * @param root0 - The component props.
+ * @param root0.content - The gap analysis content to render.
+ * @param root0.className - Optional extra CSS class for the wrapper.
+ * @returns The rendered synthesis section cards or null.
  */
 export function PositioningMarkdownRenderer({
   content,

@@ -28,6 +28,11 @@ import type {
   NoteType,
 } from "./_types/types";
 
+/**
+ * Library page with a sidebar work list and a resource detail panel.
+ *
+ * @returns The library page markup.
+ */
 export default function LibraryPage() {
   return (
     <Suspense fallback={<LoadingSpinner variant="full" />}>
@@ -36,6 +41,11 @@ export default function LibraryPage() {
   );
 }
 
+/**
+ * Library page content managing resources, notes and selection state.
+ *
+ * @returns The library page content markup.
+ */
 function LibraryPageContent() {
   const searchParams = useSearchParams();
   const urlResourceId = searchParams.get("id");
@@ -74,6 +84,9 @@ function LibraryPageContent() {
   };
 
   useEffect(() => {
+    /**
+     * Loads library resources and notes from the server.
+     */
     async function loadData() {
       try {
         setIsLoading(true);

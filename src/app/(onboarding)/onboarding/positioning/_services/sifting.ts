@@ -35,7 +35,12 @@ const SEARCH_FIELDS = [
 /** Minimum Meilisearch ranking score threshold to filter low-relevance hits. */
 const RANKING_SCORE_THRESHOLD = 0.3;
 
-/** Whether a thesis language tag matches Turkish or English; missing tags are kept. */
+/**
+ * Whether a thesis language tag matches Turkish or English; missing tags are kept.
+ *
+ * @param lang - The thesis language tag to check.
+ * @returns True when the language is allowed or the tag is missing.
+ */
 function isAllowedLanguage(lang?: string): boolean {
   if (!lang || !lang.trim()) {
     return true;
@@ -48,10 +53,22 @@ function isAllowedLanguage(lang?: string): boolean {
   return ALLOWED_LANGUAGES.has(normalized);
 }
 
+/**
+ * Formats a thesis's title and abstract into a YAML document for reranking.
+ *
+ * @param thesis - The thesis to format.
+ * @returns The formatted YAML string.
+ */
 function formatThesisToYaml(thesis: TezaraThesisDetails): string {
   return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
 }
 
+/**
+ * Formats the positioning matrix input into a YAML query for reranking.
+ *
+ * @param input - The validated positioning matrix input.
+ * @returns The formatted YAML query string.
+ */
 function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
   return [
     `SubjectProblem: ${input.subjectProblem}`,
@@ -63,8 +80,15 @@ function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
 /**
  * Runs 8 parallel Meilisearch queries on Tezara, deduplicates results, applies
  * abstract length and language filters, then ranks candidates via Cohere Rerank
- * v4 Pro. Only subjectProblem is queried; methodology and theoreticalFramework
- * are intentionally excluded.
+ * v4 Pro while querying only subjectProblem and intentionally excluding methodology
+ * and theoreticalFramework.
+ *
+ * @param queries - The generated TR+EN search queries to run.
+ * @param matrixInput - The validated positioning matrix input.
+ * @param logger - Optional structured logger for pipeline events.
+ * @param options - Optional settings for the sifting process.
+ * @param options.topN - The maximum number of top-ranked theses to return.
+ * @returns The sifted theses ranked by relevance score.
  */
 export async function searchAndSiftTheses(
   queries: GeneratedQueries,

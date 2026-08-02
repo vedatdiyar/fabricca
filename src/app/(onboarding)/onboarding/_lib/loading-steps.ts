@@ -5,6 +5,12 @@ export interface LoadingStep {
 
 export const STEP_MIN_DURATION_MS = 1200;
 
+/**
+ * Determines whether a loading step text marks a navigation step.
+ *
+ * @param text - The loading step text to inspect.
+ * @returns True when the step is a navigation step.
+ */
 export function isNavigationStepText(text: string): boolean {
   return text.includes("yönlendiriliyor");
 }

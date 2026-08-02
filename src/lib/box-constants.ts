@@ -70,8 +70,7 @@ export function getBoxTypeLabel(
 }
 
 /**
- * Comparator for sorting boxes into the canonical display order.
- * Unknown box types sort last.
+ * Comparator for sorting boxes into the canonical display order with unknown box types sorted last.
  *
  * @param boxTypeA - First box type
  * @param boxTypeB - Second box type
@@ -87,8 +86,8 @@ export function compareBoxTypes(
 }
 
 /**
- * UI badge configuration (Tailwind classes + label) for a thesis box type.
- * Shared by the library sidebar and resource detail badge renders.
+ * UI badge configuration (Tailwind classes + label) for a thesis box type, shared by
+ * the library sidebar and resource detail badge renders.
  *
  * @param boxType - The thesis box type value
  * @returns Badge display config with label and styling class names

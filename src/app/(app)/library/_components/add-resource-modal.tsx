@@ -23,9 +23,15 @@ interface AddResourceModalProps {
 }
 
 /**
- * Modal for adding a new academic literature resource by uploading a PDF.
- * The user selects a parent thesis box (and a sub-box when present); metadata
- * is extracted and content is vectorized through the RAG pipeline.
+ * Modal for adding a new academic literature resource by uploading a PDF, where the
+ * user selects a parent thesis box (and a sub-box when present) and metadata is
+ * extracted and content is vectorized through the RAG pipeline.
+ *
+ * @param root0 - Component props.
+ * @param root0.isOpen - Whether the modal is visible.
+ * @param root0.onClose - Callback invoked when the modal is closed.
+ * @param root0.onSubmitPdf - Callback that uploads the selected PDF into the target box.
+ * @returns The add resource modal markup, or null when closed.
  */
 export function AddResourceModal({
   isOpen,
@@ -49,6 +55,9 @@ export function AddResourceModal({
 
     let cancelled = false;
 
+    /**
+     * Loads the parent box hierarchy for the library.
+     */
     async function loadHierarchy() {
       const res = await getBoxHierarchyForLibraryAction();
       if (cancelled) return;

@@ -6,6 +6,10 @@ import { useLoadingOverlay } from "@/providers/loading-overlay-provider";
 
 /**
  * Inner content that reads loading state from context.
+ *
+ * @param root0 - The content props object.
+ * @param root0.children - The onboarding step content to render.
+ * @returns The onboarding content markup with the optional global loader overlay.
  */
 function OnboardingInner({
   children,
@@ -29,9 +33,13 @@ function OnboardingInner({
 }
 
 /**
- * Client wrapper that provides the loading overlay context to all onboarding
- * pages. Renders children always underneath and conditionally overlays the
- * global loading screen on top when isLoading is true.
+ * Client wrapper that provides the loading overlay context to all onboarding pages,
+ * rendering children always underneath and conditionally overlaying the global
+ * loading screen on top when isLoading is true.
+ *
+ * @param root0 - The content props object.
+ * @param root0.children - The onboarding step content to render.
+ * @returns The loading overlay provider wrapper markup.
  */
 export function OnboardingContent({
   children,

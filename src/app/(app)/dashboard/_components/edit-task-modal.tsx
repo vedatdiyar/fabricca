@@ -20,7 +20,13 @@ interface EditTaskModalProps {
 
 /**
  * Thin wrapper around TaskFormModal for the "edit task" flow.
- * The key={editingTask?.id ?? "none"} on the parent ensures remount.
+ *
+ * @param root0 - Component props.
+ * @param root0.task - The task being edited, or null when no task is selected.
+ * @param root0.onClose - Callback invoked when the modal is closed.
+ * @param root0.onEdit - Async callback invoked with the updated task data.
+ * @param root0.boxes - Topic boxes available for task assignment.
+ * @returns The rendered edit-task modal.
  */
 export function EditTaskModal({
   task,

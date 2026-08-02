@@ -1,7 +1,6 @@
 /**
- * Client-safe onboarding cache primitives — no Next.js server-only imports.
- * Server actions import these via `@/lib/cache-tags` (which re-exports).
- * Client components import directly from here.
+ * Client-safe onboarding cache primitives with no Next.js server-only imports, imported
+ * by server actions via `@/lib/cache-tags` (which re-exports) and directly by client components.
  */
 
 export const CACHE_TAGS = {
@@ -11,8 +10,8 @@ export const CACHE_TAGS = {
 } as const;
 
 /**
- * TanStack Query key constants used across the onboarding flow.
- * Server actions return these to let the client invalidate its query cache.
+ * TanStack Query key constants used across the onboarding flow that server actions
+ * return to let the client invalidate its query cache.
  */
 export const TQ_KEYS = {
   onboardingSteps: ["onboarding-steps"] as const,
@@ -24,9 +23,9 @@ export const TQ_KEYS = {
 export type OnboardingStep = "matrix" | "positioning" | "boxes";
 
 /**
- * Maps each onboarding step to the cache entries that become stale when
- * that step is re-submitted.  Dependencies are hierarchical — a step
- * invalidates its own data plus everything downstream.
+ * Maps each onboarding step to the cache entries that become stale when that step is
+ * re-submitted, with hierarchical dependencies where a step invalidates its own data
+ * plus everything downstream.
  */
 export const STEP_CACHE_DEPENDENCIES: Record<
   OnboardingStep,
@@ -59,9 +58,9 @@ export const STEP_CACHE_DEPENDENCIES: Record<
 };
 
 /**
- * Returns the TanStack Query key arrays that should be invalidated on the
- * client when the given step is re-submitted.  Server actions call this
- * and return the keys so the client can run `queryClient.invalidateQueries`.
+ * Returns the TanStack Query key arrays that should be invalidated on the client when
+ * the given step is re-submitted, which server actions call and return so the client
+ * can run `queryClient.invalidateQueries`.
  *
  * @param fromStep - The step being re-submitted
  * @returns Deep-cloned key arrays safe for direct use with TanStack Query

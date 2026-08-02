@@ -21,14 +21,23 @@ import { BOX_ORDER_WEIGHT, BOX_TYPE_LABELS } from "@/lib/box-constants";
 import type { GeminiThesisBox } from "@/lib/types";
 
 /**
- * Determines whether a box card should span the full grid width.
- * Cards beyond index 4 take the full width (third row in a 2-col grid
- * where items 5+ render as stacked full-width cards).
+ * Determines whether a box card should span the full grid width, with cards beyond
+ * index 4 taking the full width (third row in a 2-col grid where items 5+ render
+ * as stacked full-width cards).
+ *
+ * @param idx - The index of the box within the grid.
+ * @param totalBoxes - The total number of top-level boxes.
+ * @returns True when the box card should span the full grid width.
  */
 function isFullWidthBox(idx: number, totalBoxes: number): boolean {
   return (totalBoxes % 2 !== 0 && idx === totalBoxes - 1) || idx >= 4;
 }
 
+/**
+ * Renders the subject boxes overview with a proceed-to-literature action.
+ *
+ * @returns The boxes container markup.
+ */
 export function BoxesContainer() {
   const { proceedFromBoxes } = useOnboardingNavigation();
 
@@ -112,6 +121,10 @@ export function BoxesContainer() {
 
 /**
  * Renders a single foundational-source query card inside a sub-box.
+ *
+ * @param root0 - The card props object.
+ * @param root0.query - The foundational source query to display.
+ * @returns The foundational query card markup.
  */
 const FoundationalQueryCard = memo(function FoundationalQueryCard({
   query,
@@ -141,6 +154,10 @@ const FoundationalQueryCard = memo(function FoundationalQueryCard({
 
 /**
  * Renders the sub-box nested section (timeline + cards).
+ *
+ * @param root0 - The section props object.
+ * @param root0.subBoxes - The sub-boxes to render.
+ * @returns The sub-box section markup.
  */
 const SubBoxSection = memo(function SubBoxSection({
   subBoxes,
@@ -205,6 +222,8 @@ const SubBoxSection = memo(function SubBoxSection({
 
 /**
  * Renders the PRIMARY_MATERIAL box info section.
+ *
+ * @returns The primary material info section markup.
  */
 const PrimaryMaterialSection = memo(function PrimaryMaterialSection() {
   return (
@@ -222,6 +241,15 @@ const PrimaryMaterialSection = memo(function PrimaryMaterialSection() {
   );
 });
 
+/**
+ * Renders a single box card with its sub-boxes and metadata.
+ *
+ * @param root0 - The card props object.
+ * @param root0.box - The thesis box to render.
+ * @param root0.index - The index of the box within the grid.
+ * @param root0.isFullWidth - Whether the card spans the full grid width.
+ * @returns The box card markup.
+ */
 const BoxCard = memo(function BoxCard({
   box,
   index,

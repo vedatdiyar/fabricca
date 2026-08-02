@@ -1,9 +1,30 @@
 import { Logger } from "../logger";
+import { withRetry, HttpError, DEFAULT_MAX_DELAY } from "@/lib/api-utils";
 
 const BGE_M3_MODEL = "@cf/baai/bge-m3";
+const MAX_EMBEDDING_RETRIES = 3;
+const RETRY_BASE_DELAY_MS = 500;
 
 /**
- * Generates 1024-d embeddings via Cloudflare Workers AI (`@cf/baai/bge-m3`), batching with concurrency 5.
+ * Parses the `Retry-After` header from a Cloudflare API response into milliseconds.
+ *
+ * @param response - The HTTP response to inspect.
+ * @returns The retry delay in milliseconds, or null when absent or unparseable.
+ */
+function parseRetryAfterHeader(response: Response): number | null {
+  const header = response.headers.get("Retry-After");
+  if (!header) return null;
+
+  const seconds = parseInt(header, 10);
+  if (!isNaN(seconds) && seconds > 0) {
+    return seconds * 1000;
+  }
+
+  return null;
+}
+
+/**
+ * Generates 1024-d embeddings via Cloudflare Workers AI (`@cf/baai/bge-m3`), batching with concurrency 5 and exponential backoff retry.
  *
  * @param texts - The texts to embed.
  * @param logger - Optional logger for embedding events.
@@ -19,13 +40,15 @@ export async function generateCloudflareEmbeddings(
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
 
   if (!accountId || !apiToken) {
-    logger?.info("cloudflare_embed_key_missing", {
+    logger?.error("cloudflare_embed_key_missing", {
       service: "cloudflare",
       data: {
         message: "CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN missing.",
       },
     });
-    return texts.map(() => new Array(1024).fill(0));
+    throw new Error(
+      "Cloudflare AI API anahtarları (CLOUDFLARE_ACCOUNT_ID veya CLOUDFLARE_API_TOKEN) .env.local dosyasında eksik.",
+    );
   }
 
   const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${BGE_M3_MODEL}`;
@@ -44,45 +67,71 @@ export async function generateCloudflareEmbeddings(
     const chunkResults = await Promise.all(
       chunk.map(async (batchTexts, batchOffset) => {
         const batchIndex = i + batchOffset;
-        try {
-          const response = await fetch(url, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${apiToken}`,
-              "Content-Type": "application/json",
+
+        return withRetry(
+          async () => {
+            const response = await fetch(url, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${apiToken}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                text: batchTexts,
+              }),
+            });
+
+            if (!response.ok) {
+              const errText = await response.text().catch(() => "");
+              throw new HttpError(
+                response.status,
+                errText,
+                parseRetryAfterHeader(response),
+              );
+            }
+
+            const data = (await response.json()) as {
+              result?: { data?: number[][] };
+              success?: boolean;
+            };
+
+            if (!data.success || !data.result?.data) {
+              throw new Error(
+                `Cloudflare AI response invalid: ${JSON.stringify(data)}`,
+              );
+            }
+
+            return data.result.data;
+          },
+          {
+            maxRetries: MAX_EMBEDDING_RETRIES,
+            baseDelay: RETRY_BASE_DELAY_MS,
+            maxDelay: DEFAULT_MAX_DELAY,
+            isRetryable: (error) => {
+              if (error instanceof HttpError) {
+                return error.status === 429 || error.status >= 500;
+              }
+              return true;
             },
-            body: JSON.stringify({
-              text: batchTexts,
-            }),
-          });
-
-          if (!response.ok) {
-            const errText = await response.text().catch(() => "");
-            throw new Error(
-              `Cloudflare AI API returned ${response.status}: ${errText}`,
-            );
-          }
-
-          const data = (await response.json()) as {
-            result?: { data?: number[][] };
-            success?: boolean;
-          };
-
-          if (!data.success || !data.result?.data) {
-            throw new Error(
-              `Cloudflare AI response invalid: ${JSON.stringify(data)}`,
-            );
-          }
-
-          return data.result.data;
-        } catch (error) {
-          logger?.error("cloudflare_embed_batch_failed", {
-            service: "cloudflare",
-            error,
-            data: { batchIndex, textCount: batchTexts.length },
-          });
-          return batchTexts.map(() => new Array(1024).fill(0));
-        }
+            getRetryAfter: (error) =>
+              error instanceof HttpError ? error.retryAfter : null,
+            onRetry: (attempt, delayMs, error) => {
+              const status =
+                error instanceof HttpError ? error.status : undefined;
+              logger?.info("cloudflare_embed_retry", {
+                service: "cloudflare",
+                data: {
+                  batchIndex,
+                  attempt,
+                  delayMs: Math.round(delayMs),
+                  status,
+                  message:
+                    error instanceof Error ? error.message : String(error),
+                },
+              });
+            },
+          },
+        );
       }),
     );
     batchResults.push(...chunkResults);

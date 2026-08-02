@@ -210,8 +210,7 @@ export async function updateTaskAction(
 }
 
 /**
- * Updates a task's status (TODO / IN_PROGRESS / DONE).
- * Used by the Kanban drag-and-drop flow.
+ * Updates a task's status (TODO / IN_PROGRESS / DONE) for the Kanban drag-and-drop flow.
  *
  * @param taskId - The task ID to update
  * @param newStatus - The new status value
@@ -306,8 +305,8 @@ export async function deleteTaskAction(taskId: number): Promise<{
 }
 
 /**
- * Permanently deletes a library resource (article) from the dashboard topic boxes.
- * Delegates to the library server action and revalidates both routes on success.
+ * Permanently deletes a library resource (article) from the dashboard topic boxes,
+ * delegating to the library server action and revalidating both routes on success.
  *
  * @param resourceId - The resource ID to delete
  * @returns Success or error result
@@ -325,8 +324,7 @@ export async function deleteLibraryResourceAction(resourceId: number): Promise<{
 }
 
 /**
- * Toggles the isRead flag on a single library resource.
- * Used by Dashboard reading tasks.
+ * Toggles the isRead flag on a single library resource for the Dashboard reading tasks.
  *
  * @param resourceId - The resource ID to update
  * @param isRead - New boolean read state

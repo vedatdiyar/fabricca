@@ -8,6 +8,8 @@ import type { NoteType } from "./_types/types";
 
 /**
  * Server Action: Fetches all library resources and notes for the current user.
+ *
+ * @returns The resources and notes on success, or an error message on failure.
  */
 export async function getLibraryResourcesAction() {
   return resourceActions.getLibraryResourcesAction();
@@ -15,6 +17,16 @@ export async function getLibraryResourcesAction() {
 
 /**
  * Server Action: Updates metadata (title, authors, publisher, publication year, doi, box) for a library resource.
+ *
+ * @param input - The metadata update payload.
+ * @param input.resourceId - The ID of the resource to update.
+ * @param input.title - The new resource title.
+ * @param input.authors - The new list of author names.
+ * @param input.publisher - The optional publisher name.
+ * @param input.publicationYear - The new publication year.
+ * @param input.doi - The optional DOI.
+ * @param input.boxId - The optional ID of the box to move the resource into.
+ * @returns The updated resource on success, or an error message on failure.
  */
 export async function updateLibraryResourceAction(input: {
   resourceId: number;
@@ -30,6 +42,9 @@ export async function updateLibraryResourceAction(input: {
 
 /**
  * Server Action: Toggles the read status of a library resource.
+ *
+ * @param resourceId - The ID of the resource to toggle.
+ * @returns The new read status on success, or an error message on failure.
  */
 export async function toggleResourceReadStatusAction(resourceId: number) {
   return resourceActions.toggleResourceReadStatusAction(resourceId);
@@ -37,6 +52,9 @@ export async function toggleResourceReadStatusAction(resourceId: number) {
 
 /**
  * Server Action: Permanently deletes a library resource, its R2 PDF, and cascaded data.
+ *
+ * @param resourceId - The ID of the resource to delete.
+ * @returns A success flag, or an error message on failure.
  */
 export async function deleteLibraryResourceAction(resourceId: number) {
   return resourceActions.deleteLibraryResourceAction(resourceId);
@@ -44,6 +62,9 @@ export async function deleteLibraryResourceAction(resourceId: number) {
 
 /**
  * Server Action: Deletes a resource's PDF file from Cloudflare R2 and resets DB PDF status.
+ *
+ * @param resourceId - The ID of the resource whose PDF will be deleted.
+ * @returns A success flag, or an error message on failure.
  */
 export async function deleteResourcePdfAction(resourceId: number) {
   return pdfActions.deleteResourcePdfAction(resourceId);
@@ -51,14 +72,21 @@ export async function deleteResourcePdfAction(resourceId: number) {
 
 /**
  * Server Action (Step 1 of 2): Requests a presigned upload URL for direct browser-to-R2 PDF upload.
+ *
+ * @param resourceId - The ID of the resource receiving the PDF upload.
+ * @returns The presigned upload URL and temp key on success, or an error message on failure.
  */
 export async function requestResourcePdfUploadAction(resourceId: number) {
   return pdfActions.requestResourcePdfUploadAction(resourceId);
 }
 
 /**
- * Server Action (Step 2 of 2): Completes PDF upload — fetches from R2 temp key, extracts metadata,
- * and runs the full RAG ingestion pipeline for an existing resource.
+ * Server Action (Step 2 of 2): Completes PDF upload — fetches from R2 temp key, extracts metadata, and runs the full RAG ingestion pipeline for an existing resource.
+ *
+ * @param resourceId - The ID of the resource to attach the processed PDF to.
+ * @param tempKey - The R2 temp object key of the uploaded PDF.
+ * @param originalFileName - The original file name of the uploaded PDF.
+ * @returns The updated resource item on success, or an error message on failure.
  */
 export async function completeResourcePdfUploadAction(
   resourceId: number,
@@ -74,14 +102,20 @@ export async function completeResourcePdfUploadAction(
 
 /**
  * Server Action (Step 1 of 2): Requests a presigned upload URL for creating a new resource from a PDF.
+ *
+ * @returns The presigned upload URL and temp key on success, or an error message on failure.
  */
 export async function requestPdfCreateUploadAction() {
   return pdfActions.requestPdfCreateUploadAction();
 }
 
 /**
- * Server Action (Step 2 of 2): Completes PDF creation — fetches from R2 temp key, extracts metadata,
- * creates a new resource, and runs the full RAG pipeline.
+ * Server Action (Step 2 of 2): Completes PDF creation — fetches from R2 temp key, extracts metadata, creates a new resource, and runs the full RAG pipeline.
+ *
+ * @param tempKey - The R2 temp object key of the uploaded PDF.
+ * @param originalFileName - The original file name of the uploaded PDF.
+ * @param boxId - The ID of the box the new resource will be placed in.
+ * @returns The created resource item on success, or an error message on failure.
  */
 export async function completePdfCreateUploadAction(
   tempKey: string,
@@ -96,8 +130,9 @@ export async function completePdfCreateUploadAction(
 }
 
 /**
- * Server Action: Fetches the current user's real thesis box hierarchy
- * (parent boxes with their sub-boxes) for the PDF upload selector.
+ * Server Action: Fetches the current user's real thesis box hierarchy (parent boxes with their sub-boxes) for the PDF upload selector.
+ *
+ * @returns The parent box hierarchy for the PDF upload selector, or an error message on failure.
  */
 export async function getBoxHierarchyForLibraryAction() {
   return boxActions.getBoxHierarchyForLibraryAction();
@@ -105,6 +140,13 @@ export async function getBoxHierarchyForLibraryAction() {
 
 /**
  * Server Action: Creates a new note / page-numbered citation linked to a library resource.
+ *
+ * @param input - The note data to create.
+ * @param input.resourceId - The ID of the resource the note is linked to.
+ * @param input.pageNumber - The page number the note refers to.
+ * @param input.noteType - The type of the note.
+ * @param input.content - The note text.
+ * @returns The created note data on success, or an error message on failure.
  */
 export async function createResourceNoteAction(input: {
   resourceId: number;
@@ -117,6 +159,9 @@ export async function createResourceNoteAction(input: {
 
 /**
  * Server Action: Deletes a note by ID for the logged in user.
+ *
+ * @param noteId - The ID of the note to delete.
+ * @returns A success flag, or an error message on failure.
  */
 export async function deleteResourceNoteAction(noteId: number) {
   return noteActions.deleteResourceNoteAction(noteId);

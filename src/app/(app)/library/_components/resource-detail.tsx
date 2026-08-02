@@ -51,6 +51,12 @@ interface ResourceDetailProps {
   onDeletePdf?: (resourceId: number) => Promise<void>;
 }
 
+/**
+ * Returns badge label and className for a given note type.
+ *
+ * @param noteType - Type of the note.
+ * @returns Badge configuration with label and className.
+ */
 function getNoteTypeBadgeConfig(noteType: NoteType) {
   switch (noteType) {
     case "DIRECT_QUOTE":
@@ -71,7 +77,20 @@ function getNoteTypeBadgeConfig(noteType: NoteType) {
   }
 }
 
-/** Detailed view for a selected library resource with note taking and automatic citation card integration. */
+/**
+ * Detailed view for a selected library resource with note taking and automatic citation card integration.
+ *
+ * @param root0 - Component props.
+ * @param root0.resource - Selected library resource.
+ * @param root0.notes - Notes associated with the resource.
+ * @param root0.onAddNote - Callback to add a new note to the resource.
+ * @param root0.onDeleteNote - Callback to delete a note by id.
+ * @param root0.onToggleReadStatus - Callback to toggle the read status of a resource.
+ * @param root0.onUpdateResource - Optional callback invoked after the resource metadata is updated.
+ * @param root0.onUploadPdf - Optional callback that uploads a PDF for the resource.
+ * @param root0.onDeletePdf - Optional callback that deletes the resource PDF.
+ * @returns The resource detail markup.
+ */
 export function ResourceDetail({
   resource,
   notes,
