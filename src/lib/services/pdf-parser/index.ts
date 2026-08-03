@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { withRetry, HttpError } from "@/lib/api-utils";
+import { createConcurrencyLimiter } from "@/lib/rate-limiter";
 import type { Logger } from "@/lib/logger";
 import { sanitizeAndParseJson } from "@/lib/services/gemini";
 import { buildChunksFromPageAnalysis } from "@/lib/services/pdf/chunker";
@@ -25,6 +26,8 @@ export {
 
 const PDF_PARSER_MODEL = "gemini-3.1-flash-lite" as const;
 const BATCH_SIZE = 5;
+/** Max concurrent Gemini parse requests. Tuned to stay under the 15 RPM rate limit (~12.7s per batch). */
+const PDF_PARSE_CONCURRENCY = 3;
 
 const SYSTEM_INSTRUCTION = `You are an expert academic PDF parser. Analyze the provided PDF pages and return structured output.
 
@@ -156,6 +159,10 @@ async function parseBatch(
 /**
  * Parses a PDF document into structured page-level markdown, metadata, and references via Gemini batch processing.
  *
+ * Batches are submitted with bounded concurrency (see `PDF_PARSE_CONCURRENCY`); pages are
+ * merged and re-sorted by page number and references are sorted alphabetically, so result
+ * order stays deterministic regardless of batch completion order.
+ *
  * @param pdfBuffer - The raw PDF file content.
  * @param fileName - Original file name (used for logging).
  * @param startPage - 1-based inclusive start page (default: 1).
@@ -186,73 +193,82 @@ export async function parsePdfToDocumentAnalysis(
     },
   });
 
+  const firstStart = Math.max(1, startPage);
+  const totalBatches = Math.ceil((safeEnd - firstStart + 1) / BATCH_SIZE);
+  const batches = Array.from({ length: totalBatches }, (_, batchIndex) => {
+    const currentStart = firstStart + batchIndex * BATCH_SIZE;
+    const currentEnd = Math.min(currentStart + BATCH_SIZE - 1, safeEnd);
+    return {
+      startPage: currentStart,
+      endPage: currentEnd,
+      batchPageCount: currentEnd - currentStart + 1,
+      isLastBatch: batchIndex === totalBatches - 1,
+    };
+  });
+
+  const limiter = createConcurrencyLimiter(PDF_PARSE_CONCURRENCY);
+
+  const batchResults = await Promise.all(
+    batches.map((batch) =>
+      limiter.exec(async () => {
+        logger?.info("pdf_parser_batch_start", {
+          service: "pdf-parser",
+          data: {
+            batchStart: batch.startPage,
+            batchEnd: batch.endPage,
+            batchPageCount: batch.batchPageCount,
+          },
+        });
+
+        const batchBuffer = await extractBatchFromDoc(
+          loadedDoc,
+          batch.startPage,
+          batch.endPage,
+        );
+        const base64Data = batchBuffer.toString("base64");
+
+        const batchResult = await parseBatch(
+          base64Data,
+          batch.startPage,
+          batch.batchPageCount,
+          batch.isLastBatch,
+          logger,
+        );
+
+        logger?.info("pdf_parser_batch_success", {
+          service: "pdf-parser",
+          data: {
+            batchStart: batch.startPage,
+            batchEnd: batch.endPage,
+            pagesReturned: batchResult.pages.length,
+            referencesReturned: batchResult.references?.length ?? 0,
+          },
+        });
+
+        return batchResult;
+      }),
+    ),
+  );
+
   let metadata: DocumentAnalysisResult["metadata"] | null = null;
   const allPages: PageAnalysis[] = [];
   const allReferences: DocumentAnalysisResult["references"] = [];
 
-  let currentStart = Math.max(1, startPage);
-  let batchIndex = 0;
-  const totalBatches = Math.ceil((safeEnd - currentStart + 1) / BATCH_SIZE);
-
-  while (currentStart <= safeEnd) {
-    const currentEnd = Math.min(currentStart + BATCH_SIZE - 1, safeEnd);
-    const batchPageCount = currentEnd - currentStart + 1;
-    const isLastBatch = batchIndex === totalBatches - 1;
-
-    logger?.info("pdf_parser_batch_start", {
-      service: "pdf-parser",
-      data: {
-        batchStart: currentStart,
-        batchEnd: currentEnd,
-        batchPageCount,
-      },
-    });
-
-    let batchBuffer: Buffer | null = await extractBatchFromDoc(
-      loadedDoc,
-      currentStart,
-      currentEnd,
-    );
-    let base64Data = batchBuffer.toString("base64");
-    batchBuffer = null;
-
-    const batchResult = await parseBatch(
-      base64Data,
-      currentStart,
-      batchPageCount,
-      isLastBatch,
-      logger,
-    );
-    base64Data = "";
-
+  for (const batchResult of batchResults) {
     // Merge metadata from the first batch that provides it
     if (!metadata && batchResult.metadata) {
       metadata = batchResult.metadata;
     }
 
-    // Merge pages
     allPages.push(...batchResult.pages);
 
-    // Merge references from all batches
     if (batchResult.references?.length) {
       allReferences.push(...batchResult.references);
     }
-
-    logger?.info("pdf_parser_batch_success", {
-      service: "pdf-parser",
-      data: {
-        batchStart: currentStart,
-        batchEnd: currentEnd,
-        pagesReturned: batchResult.pages.length,
-        referencesReturned: batchResult.references?.length ?? 0,
-      },
-    });
-
-    currentStart = currentEnd + 1;
-    batchIndex++;
   }
 
   allPages.sort((a, b) => a.pageNumber - b.pageNumber);
+  allReferences.sort((a, b) => a.raw.localeCompare(b.raw));
 
   // Fallback metadata if Gemini didn't extract it
   if (!metadata) {

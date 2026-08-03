@@ -13,8 +13,10 @@ export interface DocumentChunk {
   tokenCount: number;
 }
 
-const TARGET_CHUNK_SIZE = 1000;
-const CHUNK_OVERLAP = 200;
+const TARGET_CHUNK_SIZE_CHARS = 1536;
+const CHUNK_OVERLAP_CHARS = 225;
+const SOFT_LIMIT_CHARS = 1800;
+const MIN_CHUNK_TOKENS = 100;
 
 const HEADING_RE = /^(#{1,3})\s+(.+?)\s*$/;
 
@@ -83,6 +85,39 @@ function buildHeaderHierarchy(state: HeaderState): string[] {
  */
 function getSectionTitle(state: HeaderState): string | null {
   return state.h3 || state.h2 || state.h1 || null;
+}
+
+/**
+ * Estimates token count for Turkish/multilingual text using BGE-M3's
+ * SentencePiece tokenizer ratio (~3 chars/token).
+ *
+ * @param text - The text to estimate token count for.
+ * @returns Estimated token count.
+ */
+function estimateTokenCount(text: string): number {
+  return Math.ceil(text.length / 3);
+}
+
+/**
+ * Finds the nearest sentence boundary (. ? ! \n\n) scanning backwards
+ * from the given position for clean overlap transitions.
+ *
+ * @param text - The full buffer text.
+ * @param fromPos - Position to scan backwards from.
+ * @returns The position where the overlap should start.
+ */
+function findSentenceBoundary(text: string, fromPos: number): number {
+  const boundaries = [". ", "? ", "! ", "\n\n"];
+  let bestPos = -1;
+  let bestLen = 0;
+  for (const b of boundaries) {
+    const pos = text.lastIndexOf(b, fromPos);
+    if (pos > bestPos && pos > 0) {
+      bestPos = pos;
+      bestLen = b.length;
+    }
+  }
+  return bestPos > 0 ? bestPos + bestLen : Math.max(0, fromPos);
 }
 
 /**
@@ -170,6 +205,10 @@ class ChunkBuilder {
   private bufferChars = 0;
   private bufferFootnotes: string[] = [];
 
+  private overlapRemainder: string = "";
+  private overlapStartPage: number | null = null;
+  private overlapFootnotes: string[] = [];
+
   /**
    * Reports the current accumulated character count of the in-progress buffer.
    *
@@ -213,6 +252,18 @@ class ChunkBuilder {
   ): void {
     if (this.bufferStartPage === null) {
       this.bufferStartPage = pageNumber;
+
+      if (this.overlapRemainder) {
+        this.bufferParts.push(this.overlapRemainder);
+        this.bufferChars += this.overlapRemainder.length;
+        if (this.overlapStartPage !== null) {
+          this.bufferStartPage = this.overlapStartPage;
+        }
+        this.bufferFootnotes.push(...this.overlapFootnotes);
+        this.overlapRemainder = "";
+        this.overlapStartPage = null;
+        this.overlapFootnotes = [];
+      }
     }
     this.bufferParts.push(text);
     this.bufferChars += text.length;
@@ -222,17 +273,58 @@ class ChunkBuilder {
     }
   }
 
-  /** Finishes the current buffer and clears the accumulated state, pushing any meaningful content as a chunk. */
   flush(): void {
-    const content = this.bufferParts.join("\n\n").trim();
+    let content = this.bufferParts.join("\n\n").trim();
     const footnotes = [...this.bufferFootnotes];
     const startPage = this.bufferStartPage;
     const endPage = this.bufferEndPage;
     const section = this.currentSection;
     const hierarchy = this.currentHierarchy;
-    this.clearBuffer();
 
-    if (!content || content.length < 5) return;
+    if (!content || content.length < 5) {
+      this.clearBuffer();
+      return;
+    }
+
+    let tokenCount = estimateTokenCount(content);
+
+    if (tokenCount < MIN_CHUNK_TOKENS && this.chunks.length > 0) {
+      const prev = this.chunks[this.chunks.length - 1];
+      const mergedTokens = prev.tokenCount + tokenCount;
+
+      if (mergedTokens <= SOFT_LIMIT_CHARS / 3 && prev.section === section) {
+        prev.content = `${prev.content}\n\n${content}`;
+        prev.tokenCount = mergedTokens;
+        prev.pageEnd = endPage;
+        prev.printedPageNumber = formatPrintedPageNumber(
+          prev.pageStart,
+          endPage,
+        );
+        this.clearBuffer();
+        return;
+      }
+    }
+
+    const overlapCharTarget = CHUNK_OVERLAP_CHARS;
+
+    if (content.length > overlapCharTarget * 2) {
+      const overlapStart = findSentenceBoundary(
+        content,
+        content.length - overlapCharTarget,
+      );
+      const overlapText = content.slice(overlapStart).trim();
+
+      if (overlapText.length > 10) {
+        this.overlapRemainder = overlapText;
+        this.overlapStartPage = endPage;
+        this.overlapFootnotes = [...footnotes];
+
+        content = content.slice(0, overlapStart).trim();
+        tokenCount = estimateTokenCount(content);
+      }
+    }
+
+    this.clearBuffer();
 
     this.chunks.push({
       chunkIndex: this.chunks.length,
@@ -243,7 +335,7 @@ class ChunkBuilder {
       pageEnd: endPage,
       printedPageNumber: formatPrintedPageNumber(startPage, endPage),
       footnotes,
-      tokenCount: Math.ceil(content.length / 4),
+      tokenCount,
     });
   }
 
@@ -265,8 +357,8 @@ class ChunkBuilder {
     let first = true;
     while (remainder.length > 0) {
       const take = first
-        ? TARGET_CHUNK_SIZE
-        : TARGET_CHUNK_SIZE - CHUNK_OVERLAP;
+        ? TARGET_CHUNK_SIZE_CHARS
+        : TARGET_CHUNK_SIZE_CHARS - CHUNK_OVERLAP_CHARS;
       let size = Math.min(take, remainder.length);
       if (size < remainder.length) {
         const boundary = Math.max(
@@ -295,12 +387,11 @@ class ChunkBuilder {
         printedPageNumber:
           printedPageNumber ?? formatPrintedPageNumber(pageNumber, pageNumber),
         footnotes: footnotes ?? [],
-        tokenCount: Math.ceil(part.length / 4),
+        tokenCount: estimateTokenCount(part),
       });
     }
   }
 
-  /** Clears the current accumulation state. */
   private clearBuffer(): void {
     this.bufferParts.length = 0;
     this.bufferStartPage = null;
@@ -352,16 +443,10 @@ export async function buildChunksFromPageAnalysis(
       const headingMatch = HEADING_RE.exec(block);
       if (headingMatch) {
         builder.handleHeading(block);
-        builder.pushBlock(
-          block,
-          page.pageNumber,
-          page.printedPageNumber,
-          page.footnotes ?? [],
-        );
         continue;
       }
 
-      if (block.length > TARGET_CHUNK_SIZE) {
+      if (block.length > TARGET_CHUNK_SIZE_CHARS) {
         builder.emitOversized(
           block,
           page.pageNumber,
@@ -378,7 +463,7 @@ export async function buildChunksFromPageAnalysis(
         page.footnotes ?? [],
       );
 
-      if (builder.bufferCharCount >= TARGET_CHUNK_SIZE) {
+      if (builder.bufferCharCount >= TARGET_CHUNK_SIZE_CHARS) {
         builder.flush();
       }
     }
