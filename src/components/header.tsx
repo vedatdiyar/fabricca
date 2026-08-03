@@ -215,7 +215,7 @@ function UserMenu({
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         className={cn(
-          "flex items-center gap-2 rounded-md border border-border/80 bg-background px-2.5 py-1.5 transition-all hover:bg-accent/60 cursor-pointer",
+          "flex items-center gap-2 rounded-md border border-border/80 bg-background px-2.5 py-1.5 transition-all hover:bg-accent/60",
           isOpen && "bg-accent border-primary/40",
         )}
       >
@@ -257,7 +257,7 @@ function UserMenu({
               setIsOpen(false);
               onReopenOnboarding();
             }}
-            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           >
             <RotateCcw className="h-4 w-4 text-primary shrink-0" />
             <div className="flex flex-col text-left">
@@ -271,7 +271,7 @@ function UserMenu({
               setIsOpen(false);
               onLogout();
             }}
-            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors cursor-pointer mt-0.5"
+            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors mt-0.5"
           >
             <LogOut className="h-4 w-4 shrink-0" />
             <span>Çıkış Yap</span>

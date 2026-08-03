@@ -105,10 +105,10 @@
     @apply text-base leading-relaxed tracking-normal;
   }
   .header-nav-item {
-    @apply flex items-center px-3 py-2 cursor-pointer;
+    @apply flex items-center px-3 py-2;
   }
   .bottom-nav-item {
-    @apply flex flex-col items-center gap-2 px-3 py-1 text-xs font-medium transition-colors cursor-pointer;
+    @apply flex flex-col items-center gap-2 px-3 py-1 text-xs font-medium transition-colors;
   }
   /* Küresel Modern Scrollbar */
   * {
@@ -132,6 +132,14 @@
 
   .textarea-academic {
     @apply overflow-y-auto resize-none leading-relaxed text-foreground font-normal bg-background/40 hover:bg-background/60 focus:bg-background/80 transition-all border border-border/40 hover:border-border focus:border-primary/20;
+  }
+
+  button,
+  a,
+  [role="button"],
+  [role="tab"],
+  [role="link"] {
+    cursor: pointer;
   }
 
   /* Global Error Display Styles */

@@ -362,3 +362,54 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
     references: [boxes.id],
   }),
 }));
+
+/** Chat Sessions table — stores advisor conversation threads per user. */
+export const chatSessions = pgTable(
+  "chat_sessions",
+  {
+    id: serial().primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: varchar({ length: 255 }).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [index("idx_chat_sessions_user_id").on(table.userId)],
+);
+
+export type ChatSession = InferSelectModel<typeof chatSessions>;
+
+export type NewChatSession = InferInsertModel<typeof chatSessions>;
+
+/** Chat Messages table — stores individual messages within a chat session. */
+export const chatMessages = pgTable(
+  "chat_messages",
+  {
+    id: serial().primaryKey(),
+    sessionId: integer("session_id")
+      .notNull()
+      .references(() => chatSessions.id, { onDelete: "cascade" }),
+    role: varchar({ length: 10 }).notNull(),
+    content: text("content").notNull(),
+    sources: jsonb("sources").$type<RagSearchResultItem[]>(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [index("idx_chat_messages_session_id").on(table.sessionId)],
+);
+
+export type ChatMessage = InferSelectModel<typeof chatMessages>;
+
+export type NewChatMessage = InferInsertModel<typeof chatMessages>;
+
+/** Lightweight type for RAG source references stored in chat messages. */
+export interface RagSearchResultItem {
+  resourceTitle: string;
+  resourceAuthors: string[];
+  content: string;
+  relevanceScore: number;
+  pageStart: number | null;
+  pageEnd: number | null;
+  printedPageNumber: string | null;
+  sectionTitle: string | null;
+}

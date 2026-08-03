@@ -113,7 +113,7 @@ export function BoxCard({ box, onDeleteArticle }: BoxCardProps) {
                       onClick={() => setArticleToDeleteId(article.id)}
                       title="Eseri Sil"
                       aria-label="Eseri Sil"
-                      className="flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background text-muted-foreground shadow-sm hover:text-destructive hover:border-destructive/40 hover:bg-destructive/10 transition-colors cursor-pointer"
+                      className="flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background text-muted-foreground shadow-sm hover:text-destructive hover:border-destructive/40 hover:bg-destructive/10 transition-colors"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>

@@ -184,7 +184,7 @@ export function AddResourceModal({
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="rounded-sm opacity-70 hover:opacity-100 p-1 text-muted-foreground hover:bg-muted cursor-pointer"
+            className="rounded-sm opacity-70 hover:opacity-100 p-1 text-muted-foreground hover:bg-muted"
           >
             <X className="h-4 w-4" />
           </button>
@@ -221,8 +221,8 @@ export function AddResourceModal({
                     onClick={() => handleParentChange(parent.id)}
                     className={
                       selectedParentId === parent.id
-                        ? "px-3 py-2 text-xs font-semibold rounded-md border border-primary/60 bg-accent text-foreground shadow-sm cursor-pointer text-left"
-                        : "px-3 py-2 text-xs font-medium rounded-md border border-border bg-background text-muted-foreground hover:bg-muted cursor-pointer text-left"
+                        ? "px-3 py-2 text-xs font-semibold rounded-md border border-primary/60 bg-accent text-foreground shadow-sm text-left"
+                        : "px-3 py-2 text-xs font-medium rounded-md border border-border bg-background text-muted-foreground hover:bg-muted text-left"
                     }
                   >
                     {parent.title}
@@ -246,8 +246,8 @@ export function AddResourceModal({
                     onClick={() => setSelectedSubBoxId(child.id)}
                     className={
                       selectedSubBoxId === child.id
-                        ? "px-3 py-2 text-xs font-semibold rounded-md border border-primary/60 bg-accent text-foreground shadow-sm cursor-pointer text-left"
-                        : "px-3 py-2 text-xs font-medium rounded-md border border-border bg-background text-muted-foreground hover:bg-muted cursor-pointer text-left"
+                        ? "px-3 py-2 text-xs font-semibold rounded-md border border-primary/60 bg-accent text-foreground shadow-sm text-left"
+                        : "px-3 py-2 text-xs font-medium rounded-md border border-border bg-background text-muted-foreground hover:bg-muted text-left"
                     }
                   >
                     {child.title}

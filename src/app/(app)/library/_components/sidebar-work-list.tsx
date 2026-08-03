@@ -137,7 +137,7 @@ export function SidebarWorkList({
               type="button"
               onClick={onOpenAddModal}
               title="Yeni Kaynak Ekle"
-              className="flex items-center gap-1 text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 px-2 py-1 rounded border border-primary/20 transition-all cursor-pointer"
+              className="flex items-center gap-1 text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 px-2 py-1 rounded border border-primary/20 transition-all"
             >
               <Plus className="h-3.5 w-3.5" />
               <span>Yeni Ekle</span>
@@ -171,7 +171,7 @@ export function SidebarWorkList({
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
               className={cn(
-                "w-full text-center px-1 py-1 text-xs font-medium rounded-md transition-all cursor-pointer truncate",
+                "w-full text-center px-1 py-1 text-xs font-medium rounded-md transition-all truncate",
                 isActive
                   ? "bg-background text-foreground font-semibold border border-border/60"
                   : "text-muted-foreground hover:text-foreground hover:bg-background/50",
@@ -252,7 +252,7 @@ export function SidebarWorkList({
                             setResourceToDeleteId(item.id);
                           }}
                           title="Eseri Sil"
-                          className="opacity-0 group-hover:opacity-100 flex items-center p-0.5 text-muted-foreground hover:text-destructive transition-all cursor-pointer rounded hover:bg-destructive/10"
+                          className="opacity-0 group-hover:opacity-100 flex items-center p-0.5 text-muted-foreground hover:text-destructive transition-all rounded hover:bg-destructive/10"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>

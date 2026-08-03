@@ -332,8 +332,8 @@ export function ResourceDetail({
                             onClick={() => setNoteType(type)}
                             className={
                               isActive
-                                ? "px-2 py-1 text-xs font-semibold rounded bg-background text-foreground shadow-sm border border-border/60 cursor-pointer"
-                                : "px-2 py-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                                ? "px-2 py-1 text-xs font-semibold rounded bg-background text-foreground shadow-sm border border-border/60"
+                                : "px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
                             }
                           >
                             {badgeInfo.label}

@@ -183,9 +183,13 @@ export async function parsePdfToDocumentAnalysis(
   const totalPages = getPdfPageCount(loadedDoc);
   const safeEnd = endPage ?? totalPages;
 
+  const firstStart = Math.max(1, startPage);
+  const totalBatches = Math.ceil((safeEnd - firstStart + 1) / BATCH_SIZE);
+
   logger?.info("pdf_parser_gemini_start", {
     service: "pdf-parser",
     data: {
+      summary: `${totalBatches} batch, ${totalPages} sayfa`,
       totalPages,
       startPage,
       endPage: safeEnd,
@@ -193,8 +197,6 @@ export async function parsePdfToDocumentAnalysis(
     },
   });
 
-  const firstStart = Math.max(1, startPage);
-  const totalBatches = Math.ceil((safeEnd - firstStart + 1) / BATCH_SIZE);
   const batches = Array.from({ length: totalBatches }, (_, batchIndex) => {
     const currentStart = firstStart + batchIndex * BATCH_SIZE;
     const currentEnd = Math.min(currentStart + BATCH_SIZE - 1, safeEnd);
@@ -211,15 +213,6 @@ export async function parsePdfToDocumentAnalysis(
   const batchResults = await Promise.all(
     batches.map((batch) =>
       limiter.exec(async () => {
-        logger?.info("pdf_parser_batch_start", {
-          service: "pdf-parser",
-          data: {
-            batchStart: batch.startPage,
-            batchEnd: batch.endPage,
-            batchPageCount: batch.batchPageCount,
-          },
-        });
-
         const batchBuffer = await extractBatchFromDoc(
           loadedDoc,
           batch.startPage,
@@ -227,25 +220,13 @@ export async function parsePdfToDocumentAnalysis(
         );
         const base64Data = batchBuffer.toString("base64");
 
-        const batchResult = await parseBatch(
+        return parseBatch(
           base64Data,
           batch.startPage,
           batch.batchPageCount,
           batch.isLastBatch,
           logger,
         );
-
-        logger?.info("pdf_parser_batch_success", {
-          service: "pdf-parser",
-          data: {
-            batchStart: batch.startPage,
-            batchEnd: batch.endPage,
-            pagesReturned: batchResult.pages.length,
-            referencesReturned: batchResult.references?.length ?? 0,
-          },
-        });
-
-        return batchResult;
       }),
     ),
   );
@@ -318,6 +299,11 @@ export async function parsePdfToChunks(
   fileName: string,
   logger?: Logger,
 ): Promise<PdfChunkParseResult> {
+  logger?.info("pdf_parse_to_chunks_start", {
+    service: "pdf-parser",
+    data: { fileName },
+  });
+
   const analysis = await parsePdfToDocumentAnalysis(
     pdfBuffer,
     fileName,

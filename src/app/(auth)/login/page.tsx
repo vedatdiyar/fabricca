@@ -138,7 +138,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    className="absolute right-3 text-muted-foreground hover:text-foreground transition-colors"
                     tabIndex={-1}
                     aria-label={
                       showPassword ? "Şifreyi gizle" : "Şifreyi göster"

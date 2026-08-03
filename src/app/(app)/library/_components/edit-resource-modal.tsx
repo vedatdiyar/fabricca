@@ -304,8 +304,8 @@ function EditResourceForm({
                     onClick={() => handleParentChange(parent.id)}
                     className={
                       isSelected
-                        ? "p-2.5 rounded-lg border-2 border-primary bg-primary/5 text-left text-xs font-semibold text-foreground shadow-sm transition-all cursor-pointer"
-                        : "p-2.5 rounded-lg border border-border/60 bg-background hover:bg-muted/40 text-left text-xs font-normal text-muted-foreground transition-all cursor-pointer"
+                        ? "p-2.5 rounded-lg border-2 border-primary bg-primary/5 text-left text-xs font-semibold text-foreground shadow-sm transition-all"
+                        : "p-2.5 rounded-lg border border-border/60 bg-background hover:bg-muted/40 text-left text-xs font-normal text-muted-foreground transition-all"
                     }
                   >
                     {parent.title}

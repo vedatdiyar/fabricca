@@ -32,7 +32,7 @@ export async function fetchAndExtractPdf(
 ): Promise<ExtractedPdfContent> {
   log.info("pdf_fetch_from_r2_start", {
     service: "library",
-    data: { tempKey },
+    data: { summary: "R2'den PDF alınıyor", tempKey },
   });
   const buffer = await getPdfFromR2(tempKey);
   log.info("pdf_fetch_from_r2_success", {

@@ -71,7 +71,7 @@ export function OnboardingStepper({
                 }}
                 className={cn(
                   "flex items-center gap-4 w-full py-3 rounded-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20",
-                  !isDisabled && "cursor-pointer hover:text-foreground",
+                  !isDisabled && "hover:text-foreground",
                   isDisabled && "cursor-not-allowed opacity-40",
                   isActive && "text-primary font-medium",
                   !isActive && "text-muted-foreground",
