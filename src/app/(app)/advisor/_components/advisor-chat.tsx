@@ -254,13 +254,12 @@ export function AdvisorChat() {
                             const pageSpan = src.pageStart ?? null;
                             const pageEnd = src.pageEnd ?? pageSpan;
                             const pageRef =
-                              pageSpan != null && pageEnd != null
+                              src.printedPageNumber ??
+                              (pageSpan != null && pageEnd != null
                                 ? pageSpan === pageEnd
                                   ? `s. ${pageSpan}`
                                   : `ss. ${pageSpan}\u00e2\u0080\u0093${pageEnd}`
-                                : src.printedPageNumber || src.pdfPageNumber
-                                  ? `s. ${src.printedPageNumber || src.pdfPageNumber}`
-                                  : null;
+                                : null);
                             return (
                               <div
                                 key={sIdx}

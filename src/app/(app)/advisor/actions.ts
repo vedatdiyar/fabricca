@@ -37,10 +37,10 @@ export interface AdvisorResponse {
  * @returns The page reference string ("Bilinmeyen Sayfa" when no page info exists).
  */
 function formatPageReference(source: RagSearchResultItem): string {
-  const printed = source.printedPageNumber ?? source.pdfPageNumber;
-  if (printed == null) return "Bilinmeyen Sayfa";
-  const pageSpan = source.pageStart ?? printed;
-  const range = source.pageEnd ?? printed;
+  if (source.printedPageNumber) return `${source.printedPageNumber}.`;
+  const pageSpan = source.pageStart;
+  const range = source.pageEnd;
+  if (pageSpan == null) return "Bilinmeyen Sayfa";
   return pageSpan === range ? `s. ${pageSpan}.` : `ss. ${pageSpan}–${range}.`;
 }
 

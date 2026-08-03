@@ -9,9 +9,13 @@ export interface LexicalCandidate {
   id: number;
   resourceId: number;
   chunkIndex: number;
-  metadata: Record<string, unknown>;
   content: string;
   parentContent: string | null;
+  section: string | null;
+  headerHierarchy: string[] | null;
+  pageStart: number | null;
+  pageEnd: number | null;
+  printedPageNumber: string | null;
   title: string;
   authors: string[] | null;
 }
@@ -49,9 +53,13 @@ export async function searchLexical(
       id: chunks.id,
       resourceId: chunks.sourceId,
       chunkIndex: chunks.chunkIndex,
-      metadata: chunks.metadata,
       content: chunks.content,
       parentContent: chunks.parentContent,
+      section: chunks.section,
+      headerHierarchy: chunks.headerHierarchy,
+      pageStart: chunks.pageStart,
+      pageEnd: chunks.pageEnd,
+      printedPageNumber: chunks.printedPageNumber,
       title: sources.title,
       authors: sources.authors,
     })

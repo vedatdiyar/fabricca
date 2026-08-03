@@ -31,15 +31,13 @@ export interface RagSearchResultItem {
   resourceTitle: string;
   resourceAuthors: string[];
   chunkIndex: number;
-  printedPageNumber: number | null;
-  pdfPageNumber: number | null;
+  printedPageNumber: string | null;
   pageStart: number | null;
   pageEnd: number | null;
   sectionTitle: string | null;
   content: string;
   parentContent: string;
   relevanceScore: number;
-  metadata: Record<string, unknown>;
   /** Retrieval provenance — only present when `options.debug` is enabled. */
   debug?: RagSearchDebug;
 }
@@ -59,9 +57,13 @@ interface DenseCandidate {
   id: number;
   resourceId: number;
   chunkIndex: number;
-  metadata: Record<string, unknown>;
   content: string;
   parentContent: string | null;
+  section: string | null;
+  headerHierarchy: string[] | null;
+  pageStart: number | null;
+  pageEnd: number | null;
+  printedPageNumber: string | null;
   title: string;
   authors: string[] | null;
 }
@@ -135,9 +137,13 @@ export async function performHybridRagSearch(
         id: chunks.id,
         resourceId: chunks.sourceId,
         chunkIndex: chunks.chunkIndex,
-        metadata: chunks.metadata,
         content: chunks.content,
         parentContent: chunks.parentContent,
+        section: chunks.section,
+        headerHierarchy: chunks.headerHierarchy,
+        pageStart: chunks.pageStart,
+        pageEnd: chunks.pageEnd,
+        printedPageNumber: chunks.printedPageNumber,
         title: sources.title,
         authors: sources.authors,
       })
@@ -193,8 +199,11 @@ export async function performHybridRagSearch(
 
   const documentsToRerank = rrfPool.map((entry) => {
     const candidate = candidateMap.get(entry.id)!;
-    const meta = candidate.metadata || {};
-    const prefix = buildChunkContextPrefix(meta);
+    const prefix = buildChunkContextPrefix(
+      candidate.headerHierarchy ?? [],
+      candidate.section,
+      candidate.printedPageNumber,
+    );
     return `[Eser: ${candidate.title}]\n${prefix}${candidate.content}`;
   });
 
@@ -247,19 +256,6 @@ export async function performHybridRagSearch(
     .slice(0, topK)
     .map(({ rrf, relevanceScore, rerankScore }) => {
       const candidate = candidateMap.get(rrf.id)!;
-      const meta = candidate.metadata || {};
-
-      const pageNum =
-        typeof meta.pageNumber === "number" ? meta.pageNumber : null;
-      const printedNum =
-        typeof meta.printedPageNumber === "number"
-          ? meta.printedPageNumber
-          : pageNum;
-      const pageStart =
-        typeof meta.pageStart === "number" ? meta.pageStart : null;
-      const pageEnd = typeof meta.pageEnd === "number" ? meta.pageEnd : null;
-      const secTitle =
-        typeof meta.sectionTitle === "string" ? meta.sectionTitle : null;
 
       const debugMeta: RagSearchDebug | undefined = debug
         ? {
@@ -275,15 +271,13 @@ export async function performHybridRagSearch(
         resourceTitle: candidate.title,
         resourceAuthors: candidate.authors || ["Bilinmeyen Yazar"],
         chunkIndex: candidate.chunkIndex,
-        printedPageNumber: printedNum,
-        pdfPageNumber: pageNum,
-        pageStart,
-        pageEnd,
-        sectionTitle: secTitle,
+        printedPageNumber: candidate.printedPageNumber,
+        pageStart: candidate.pageStart,
+        pageEnd: candidate.pageEnd,
+        sectionTitle: candidate.section ?? null,
         content: candidate.content,
         parentContent: candidate.parentContent || candidate.content,
         relevanceScore,
-        metadata: meta,
         ...(debugMeta ? { debug: debugMeta } : {}),
       };
     });

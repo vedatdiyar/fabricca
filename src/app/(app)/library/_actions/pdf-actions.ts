@@ -245,11 +245,8 @@ export async function completeResourcePdfUploadAction(
 
     const pipelineStart = performance.now();
 
-    const { buffer, chunks, metadata } = await fetchAndExtractPdf(
-      tempKey,
-      originalFileName,
-      log,
-    );
+    const { buffer, chunks, metadata, parsedReferences } =
+      await fetchAndExtractPdf(tempKey, originalFileName, log);
 
     await db
       .update(sources)
@@ -257,7 +254,7 @@ export async function completeResourcePdfUploadAction(
         title: metadata.title,
         authors: metadata.authors,
         publisher: metadata.publisher || "Belirtilmemiş",
-        publicationYear: metadata.publicationYear,
+        publicationYear: metadata.publicationYear ?? null,
         doi: metadata.doi || null,
       })
       .where(eq(sources.id, resourceId));
@@ -288,6 +285,8 @@ export async function completeResourcePdfUploadAction(
       buffer,
       log,
       precomputedChunks: chunks,
+      precomputedMetadata: metadata,
+      precomputedReferences: parsedReferences,
     });
 
     await cleanupTempKey(tempKey, log);
@@ -429,11 +428,8 @@ export async function completePdfCreateUploadAction(
 
     const pipelineStart = performance.now();
 
-    const { buffer, chunks, metadata } = await fetchAndExtractPdf(
-      tempKey,
-      originalFileName,
-      log,
-    );
+    const { buffer, chunks, metadata, parsedReferences } =
+      await fetchAndExtractPdf(tempKey, originalFileName, log);
 
     const targetBox = await db.query.boxes.findFirst({
       where: eq(boxes.id, boxId),
@@ -455,7 +451,7 @@ export async function completePdfCreateUploadAction(
         title: metadata.title,
         authors: metadata.authors,
         publisher: metadata.publisher || "Belirtilmemiş",
-        publicationYear: metadata.publicationYear,
+        publicationYear: metadata.publicationYear ?? null,
         doi: metadata.doi || null,
         isRead: false,
         pdfStatus: "PROCESSING",
@@ -487,6 +483,8 @@ export async function completePdfCreateUploadAction(
       buffer,
       log,
       precomputedChunks: chunks,
+      precomputedMetadata: metadata,
+      precomputedReferences: parsedReferences,
     });
 
     await cleanupTempKey(tempKey, log);

@@ -27,7 +27,16 @@ import type {
   RecommendedThesisItem,
   GapAnalysisStructured,
 } from "@/app/(onboarding)/onboarding/positioning/_lib/validation";
-import type { ParsedReference } from "@/lib/services/pdf/reference-parser";
+
+/** A single parsed bibliographic reference extracted from a resource's reference list. */
+export interface ParsedReference {
+  raw: string;
+  title: string | null;
+  authors: string[];
+  year: number | null;
+  journal: string | null;
+  resolved: boolean;
+}
 
 /** Users table — email is unique, password is bcrypt-hashed, onboardingCompleted tracks onboarding state. */
 export const users = pgTable("users", {
@@ -174,15 +183,11 @@ export const sources = pgTable(
     pdfFileName: text("pdf_file_name"),
     pdfFileSize: integer("pdf_file_size"),
     pdfStatus: pdfStatusEnum("pdf_status").default("NOT_UPLOADED").notNull(),
-    rawReferences: text("raw_references"),
     parsedReferences: jsonb("parsed_references").$type<ParsedReference[]>(),
     createdAt: timestamp().defaultNow().notNull(),
     updatedAt: timestamp().defaultNow().notNull(),
   },
-  (table) => [
-    uniqueIndex("idx_sources_box_doi").on(table.boxId, table.doi),
-    uniqueIndex("idx_sources_box_title").on(table.boxId, table.title),
-  ],
+  (table) => [index("idx_sources_box_id").on(table.boxId)],
 );
 
 export type Source = InferSelectModel<typeof sources>;
@@ -226,7 +231,7 @@ const tsvector = customType<{ data: string }>({
   },
 });
 
-/** Chunks table — PDF text chunks with embeddings and JSONB metadata for RAG; search_vector drives the lexical branch. */
+/** Chunks table — PDF text chunks with embeddings for RAG; search_vector drives the lexical branch. */
 export const chunks = pgTable(
   "chunks",
   {
@@ -238,28 +243,19 @@ export const chunks = pgTable(
     content: text("content").notNull(),
     parentContent: text("parent_content"),
     section: text("section"),
+    headerHierarchy: text("header_hierarchy").array(),
     pageStart: integer("page_start"),
     pageEnd: integer("page_end"),
-    contentHash: text("content_hash"),
-    metadata: jsonb("metadata").default({}).notNull(),
+    printedPageNumber: text("printed_page_number"),
     tokenCount: integer("token_count"),
     embedding: vector("embedding", { dimensions: 1024 }),
     searchVector: tsvector("search_vector").generatedAlwaysAs(
-      sql`to_tsvector('simple', "content")`,
+      sql`to_tsvector('simple', "content") || to_tsvector('english', "content")`,
     ),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
     index("idx_chunks_source_id").on(table.sourceId),
-    index("idx_chunks_source_id_chunk_index").on(
-      table.sourceId,
-      table.chunkIndex,
-    ),
-    index("idx_chunks_source_id_section").on(table.sourceId, table.section),
-    index("idx_chunks_source_id_content_hash").on(
-      table.sourceId,
-      table.contentHash,
-    ),
     index("idx_chunks_search_vector").using("gin", table.searchVector),
     index("idx_chunks_embedding_hnsw").using(
       "hnsw",

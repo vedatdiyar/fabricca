@@ -56,11 +56,6 @@ export async function getBoxHierarchyForLibraryAction(): Promise<
         .map((child) => ({ id: child.id, title: child.title })),
     }));
 
-    log.info("get_box_hierarchy_success", {
-      service: "library",
-      data: { parentCount: hierarchy.length },
-    });
-
     return { success: true, data: hierarchy };
   } catch (err) {
     log.error("get_box_hierarchy_failed", {

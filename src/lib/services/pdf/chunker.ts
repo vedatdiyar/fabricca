@@ -1,101 +1,136 @@
-import { createHash } from "crypto";
-
-export interface ChunkMetadata {
-  pageNumber?: number | null;
-  printedPageNumber?: number | null;
-  sectionTitle?: string | null;
-  pageStart?: number | null;
-  pageEnd?: number | null;
-  headerHierarchy?: string[];
-  [key: string]: unknown;
-}
+import type { PageAnalysis } from "@/lib/services/pdf-parser/schema";
 
 export interface DocumentChunk {
   chunkIndex: number;
   content: string;
   parentContent?: string;
   section: string | null;
+  headerHierarchy: string[];
   pageStart: number | null;
   pageEnd: number | null;
-  contentHash: string;
-  metadata: ChunkMetadata;
+  printedPageNumber: string | null;
+  footnotes: string[];
   tokenCount: number;
 }
 
 const TARGET_CHUNK_SIZE = 1000;
 const CHUNK_OVERLAP = 200;
 
-/** Level-1 / level-2 markdown heading — hard section boundary. */
-const SECTION_HEADING_RE = /^(#{1,2})\s+(.+?)\s*$/;
+const HEADING_RE = /^(#{1,3})\s+(.+?)\s*$/;
+
+interface HeaderState {
+  h1: string | null;
+  h2: string | null;
+  h3: string | null;
+}
+
+const INITIAL_HEADER_STATE: HeaderState = { h1: null, h2: null, h3: null };
 
 /**
- * Computes a stable SHA-256 content fingerprint for a chunk.
+ * Computes the printed page number display string for a chunk.
  *
- * @param content - The chunk content to fingerprint.
- * @returns The hex SHA-256 digest.
+ * @param pageStart - Start page number.
+ * @param pageEnd - End page number.
+ * @returns The formatted string (e.g. "s. 12" or "ss. 12-17").
  */
-function contentHash(content: string): string {
-  return createHash("sha256").update(content).digest("hex");
+export function formatPrintedPageNumber(
+  pageStart: number | null,
+  pageEnd: number | null,
+): string | null {
+  if (pageStart === null) return null;
+  if (pageEnd === null || pageStart === pageEnd) return `s. ${pageStart}`;
+  return `ss. ${pageStart}-${pageEnd}`;
+}
+
+/**
+ * Updates the header state when a markdown heading block is encountered.
+ *
+ * @param state - Current header state.
+ * @param block - The markdown block to check.
+ * @returns Updated header state.
+ */
+function updateHeaderState(state: HeaderState, block: string): HeaderState {
+  const match = HEADING_RE.exec(block);
+  if (!match) return state;
+
+  const level = match[1].length;
+  const title = match[2].slice(0, 120).trim();
+
+  if (level === 1) return { h1: title, h2: null, h3: null };
+  if (level === 2) return { ...state, h2: title, h3: null };
+  return { ...state, h3: title };
+}
+
+/**
+ * Builds the header hierarchy array from the current state.
+ *
+ * @param state - Current header state.
+ * @returns Array of active heading titles from H1 down to the deepest level.
+ */
+function buildHeaderHierarchy(state: HeaderState): string[] {
+  const hierarchy: string[] = [];
+  if (state.h1) hierarchy.push(state.h1);
+  if (state.h2) hierarchy.push(state.h2);
+  if (state.h3) hierarchy.push(state.h3);
+  return hierarchy;
+}
+
+/**
+ * Returns the deepest section title from the header state.
+ *
+ * @param state - Current header state.
+ * @returns The most specific section title, or null when no heading has been seen.
+ */
+function getSectionTitle(state: HeaderState): string | null {
+  return state.h3 || state.h2 || state.h1 || null;
 }
 
 /**
  * Builds a runtime prefix containing page and section context for vector embedding and reranking.
  *
- * @param metadata - The chunk's metadata object.
+ * @param headerHierarchy - The heading hierarchy array.
+ * @param section - The section title.
+ * @param printedPageNumber - The formatted page number string.
  * @returns The context prefix string to prepend to the content.
  */
-export function buildChunkContextPrefix(metadata: ChunkMetadata): string {
+export function buildChunkContextPrefix(
+  headerHierarchy: string[],
+  section: string | null,
+  printedPageNumber: string | null,
+): string {
   const parts: string[] = [];
-  if (metadata.sectionTitle) {
-    parts.push(`[Bölüm: ${metadata.sectionTitle}]`);
+  if (headerHierarchy.length > 0) {
+    parts.push(`[Bölüm: ${headerHierarchy.join(" > ")}]`);
+  } else if (section) {
+    parts.push(`[Bölüm: ${section}]`);
   }
-  if (metadata.pageNumber) {
-    parts.push(`[Sayfa: ${metadata.pageNumber}]`);
+  if (printedPageNumber) {
+    parts.push(`[Sayfa: ${printedPageNumber}]`);
   }
   return parts.length > 0 ? `${parts.join(" ")}\n` : "";
 }
 
 /**
- * Detects and extracts bibliography / references section from markdown text.
+ * Builds the text to send to the embedding model — includes context prefix but preserves raw content separately.
  *
- * @param fullMarkdown - Full document markdown text.
- * @returns Object with mainBody markdown and optional rawReferences text.
+ * @param content - The raw chunk content.
+ * @param headerHierarchy - The heading hierarchy array.
+ * @param section - The section title.
+ * @param printedPageNumber - The formatted page number string.
+ * @returns The prefixed text for embedding.
  */
-export function extractReferencesFromMarkdown(fullMarkdown: string): {
-  mainBody: string;
-  rawReferences: string | null;
-} {
-  const refPattern =
-    /\n(?=(?:#{1,4}\s+)?(?:KAYNAKÇA|KAYNAKLAR|REFERENCES|BIBLIOGRAPHY|KAYNAK DİZİNİ)\b)/i;
-  const match = fullMarkdown.match(refPattern);
-
-  if (!match || match.index === undefined) {
-    return { mainBody: fullMarkdown, rawReferences: null };
-  }
-
-  const mainBody = fullMarkdown.slice(0, match.index).trim();
-  const rawReferences = fullMarkdown
-    .slice(match.index)
-    .replace(/--- PAGE_MARKER_\d+ ---\n?/g, "")
-    .trim();
-
-  return {
-    mainBody,
-    rawReferences: rawReferences.length > 0 ? rawReferences : null,
-  };
-}
-
-/**
- * Checks whether a chunk string is trivial noise (formatting lines, junk symbols).
- *
- * @param content - Chunk content string.
- * @returns True if noise.
- */
-export function isNoiseChunk(content: string): boolean {
-  const trimmed = content.trim();
-  if (trimmed.length < 5 && !/[\p{L}0-9]/u.test(trimmed)) return true;
-  if (/^[*\-_\s]{3,}$/.test(trimmed)) return true;
-  return false;
+export function buildEmbeddingText(
+  content: string,
+  headerHierarchy: string[],
+  section: string | null,
+  printedPageNumber: string | null,
+): string {
+  const prefix = buildChunkContextPrefix(
+    headerHierarchy,
+    section,
+    printedPageNumber,
+  );
+  return `${prefix}${content}`;
 }
 
 /**
@@ -124,15 +159,16 @@ export function applyParentChildContext(
 }
 
 /**
- * Builder that accumulates blocks into section-bounded chunks across page boundaries.
+ * Accumulates blocks into section-bounded chunks across page boundaries.
  */
 class ChunkBuilder {
   private readonly chunks: DocumentChunk[] = [];
-  private section: string | null = null;
+  private headerState: HeaderState = { ...INITIAL_HEADER_STATE };
   private readonly bufferParts: string[] = [];
   private bufferStartPage: number | null = null;
   private bufferEndPage: number | null = null;
   private bufferChars = 0;
+  private bufferFootnotes: string[] = [];
 
   /**
    * Reports the current accumulated character count of the in-progress buffer.
@@ -144,52 +180,87 @@ class ChunkBuilder {
   }
 
   /**
-   * Pushes a block onto the current buffer, tracking the page span.
+   * Returns the current section title derived from header state.
+   *
+   * @returns The deepest section title, or null when no heading has been seen.
+   */
+  get currentSection(): string | null {
+    return getSectionTitle(this.headerState);
+  }
+
+  /**
+   * Returns the current header hierarchy.
+   *
+   * @returns Array of active heading titles from H1 down to the deepest level.
+   */
+  get currentHierarchy(): string[] {
+    return buildHeaderHierarchy(this.headerState);
+  }
+
+  /**
+   * Pushes a block onto the current buffer, tracking the page span and footnotes.
    *
    * @param text - The block text to buffer.
    * @param pageNumber - The page the block belongs to.
+   * @param printedPageNumber - Optional printed page number string.
+   * @param footnotes - Optional footnotes from the source page.
    */
-  pushBlock(text: string, pageNumber: number): void {
+  pushBlock(
+    text: string,
+    pageNumber: number,
+    printedPageNumber?: string,
+    footnotes?: string[],
+  ): void {
     if (this.bufferStartPage === null) {
       this.bufferStartPage = pageNumber;
     }
     this.bufferParts.push(text);
     this.bufferChars += text.length;
     this.bufferEndPage = pageNumber;
+    if (footnotes?.length) {
+      this.bufferFootnotes.push(...footnotes);
+    }
   }
 
   /** Finishes the current buffer and clears the accumulated state, pushing any meaningful content as a chunk. */
   flush(): void {
     const content = this.bufferParts.join("\n\n").trim();
+    const footnotes = [...this.bufferFootnotes];
+    const startPage = this.bufferStartPage;
+    const endPage = this.bufferEndPage;
+    const section = this.currentSection;
+    const hierarchy = this.currentHierarchy;
     this.clearBuffer();
 
-    if (!content || isNoiseChunk(content)) return;
+    if (!content || content.length < 5) return;
 
     this.chunks.push({
       chunkIndex: this.chunks.length,
       content,
-      section: this.section,
-      pageStart: this.bufferStartPage,
-      pageEnd: this.bufferEndPage,
-      contentHash: contentHash(content),
-      metadata: {
-        pageNumber: this.bufferStartPage,
-        printedPageNumber: this.bufferStartPage,
-        sectionTitle: this.section,
-        pageStart: this.bufferStartPage,
-        pageEnd: this.bufferEndPage,
-      },
+      section,
+      headerHierarchy: hierarchy,
+      pageStart: startPage,
+      pageEnd: endPage,
+      printedPageNumber: formatPrintedPageNumber(startPage, endPage),
+      footnotes,
       tokenCount: Math.ceil(content.length / 4),
     });
   }
 
   /**
-   * Splits an oversized block into paragraph-aligned segments and emits each as its own chunk, keeping a small overlap.
+   * Splits an oversized block into paragraph-aligned segments and emits each as its own chunk.
    *
    * @param content - The oversized block content.
    * @param pageNumber - The page the block belongs to.
+   * @param printedPageNumber - Optional printed page number string.
+   * @param footnotes - Optional footnotes from the source page.
    */
-  emitOversized(content: string, pageNumber: number): void {
+  emitOversized(
+    content: string,
+    pageNumber: number,
+    printedPageNumber?: string,
+    footnotes?: string[],
+  ): void {
     let remainder = content.trim();
     let first = true;
     while (remainder.length > 0) {
@@ -212,22 +283,18 @@ class ChunkBuilder {
       remainder = remainder.slice(size).trim();
       first = false;
 
-      if (!part || isNoiseChunk(part)) continue;
+      if (!part || part.length < 5) continue;
 
       this.chunks.push({
         chunkIndex: this.chunks.length,
         content: part,
-        section: this.section,
+        section: this.currentSection,
+        headerHierarchy: this.currentHierarchy,
         pageStart: pageNumber,
         pageEnd: pageNumber,
-        contentHash: contentHash(part),
-        metadata: {
-          pageNumber,
-          printedPageNumber: pageNumber,
-          sectionTitle: this.section,
-          pageStart: pageNumber,
-          pageEnd: pageNumber,
-        },
+        printedPageNumber:
+          printedPageNumber ?? formatPrintedPageNumber(pageNumber, pageNumber),
+        footnotes: footnotes ?? [],
         tokenCount: Math.ceil(part.length / 4),
       });
     }
@@ -239,18 +306,24 @@ class ChunkBuilder {
     this.bufferStartPage = null;
     this.bufferEndPage = null;
     this.bufferChars = 0;
+    this.bufferFootnotes.length = 0;
   }
 
   /**
-   * Marks a new section boundary and flushes any pending content.
+   * Marks a new section boundary by updating header state and flushing pending content.
    *
-   * @param title - The normalized section title to begin.
+   * @param block - The heading block that triggered the section change.
    */
-  startSection(title: string): void {
+  handleHeading(block: string): void {
     this.flush();
-    this.section = title;
+    this.headerState = updateHeaderState(this.headerState, block);
   }
 
+  /**
+   * Returns the processed chunks.
+   *
+   * @returns The array of processed document chunks.
+   */
   get results(): DocumentChunk[] {
     return this.chunks;
   }
@@ -259,43 +332,51 @@ class ChunkBuilder {
 /**
  * Splits page markdown into RAG chunks that span both section and page boundaries.
  *
- * Section titles and page ranges persist across pages instead of resetting per page, so a multi-page chunk carries an accurate pageStart/pageEnd range and sections no longer lose their heading when they cross a page break. Chunks close at every level-1/2 heading and when a chunk exceeds the target size; each chunk receives a stable SHA-256 hash.
+ * Section titles and page ranges persist across pages instead of resetting per page, so a multi-page chunk carries an accurate pageStart/pageEnd range and sections no longer lose their heading when they cross a page break. Chunks close at every heading and when a chunk exceeds the target size.
  *
- * @param pages - Array of page number and page markdown pairs, in document order.
+ * @param pages - PageAnalysis array from the Gemini PDF parser, containing pageNumber, markdownContent, and footnotes.
  * @returns Processed document chunks ready for embedding.
  */
-export async function buildChunksFromPageMarkdown(
-  pages: Array<{ pageNumber: number; text: string }>,
+export async function buildChunksFromPageAnalysis(
+  pages: PageAnalysis[],
 ): Promise<DocumentChunk[]> {
   const builder = new ChunkBuilder();
 
   for (const page of pages) {
-    const blocks = page.text
+    const blocks = page.markdownContent
       .split(/\n{2,}/)
       .map((b) => b.trim())
       .filter((b) => b.length > 0);
 
     for (const block of blocks) {
-      if (isNoiseChunk(block)) continue;
-
-      const headingMatch = SECTION_HEADING_RE.exec(block);
+      const headingMatch = HEADING_RE.exec(block);
       if (headingMatch) {
-        const title = headingMatch[2].slice(0, 120).trim();
-        if (/^(index|dizin)(\s+|$)/i.test(title)) {
-          builder.flush();
-          continue;
-        }
-        builder.startSection(title);
-        builder.pushBlock(block, page.pageNumber);
+        builder.handleHeading(block);
+        builder.pushBlock(
+          block,
+          page.pageNumber,
+          page.printedPageNumber,
+          page.footnotes ?? [],
+        );
         continue;
       }
 
       if (block.length > TARGET_CHUNK_SIZE) {
-        builder.emitOversized(block, page.pageNumber);
+        builder.emitOversized(
+          block,
+          page.pageNumber,
+          page.printedPageNumber,
+          page.footnotes ?? [],
+        );
         continue;
       }
 
-      builder.pushBlock(block, page.pageNumber);
+      builder.pushBlock(
+        block,
+        page.pageNumber,
+        page.printedPageNumber,
+        page.footnotes ?? [],
+      );
 
       if (builder.bufferCharCount >= TARGET_CHUNK_SIZE) {
         builder.flush();

@@ -3,11 +3,13 @@ import { db } from "@/db";
 import { sources, chunks as chunkRows } from "@/db/schema";
 import type { NewChunk } from "@/db/schema";
 import { uploadPdfToR2 } from "@/lib/services/r2";
-import { parsePdfDocument } from "@/lib/services/pdf-parser";
-import { parseAndSaveReferences } from "@/lib/services/pdf/reference-parser";
+import { parsePdfToChunks } from "@/lib/services/pdf-parser";
 import type { DocumentChunk } from "@/lib/services/pdf/chunker";
+import { buildEmbeddingText } from "@/lib/services/pdf/chunker";
 import { generateVectorEmbeddings } from "@/lib/services/cloudflare-ai";
 import type { Logger } from "@/lib/logger";
+import type { DocumentAnalysisResult } from "@/lib/services/pdf-parser/schema";
+import type { ParsedReference } from "@/db/schema";
 
 interface ProcessPdfOptions {
   resourceId: number;
@@ -15,32 +17,44 @@ interface ProcessPdfOptions {
   buffer: Buffer;
   log: Logger;
   precomputedChunks?: DocumentChunk[];
-  precomputedReferences?: string | null;
+  precomputedMetadata?: DocumentAnalysisResult["metadata"];
+  precomputedReferences?: ParsedReference[];
 }
 
 /**
- * Shared PDF RAG ingestion pipeline: parses via Unstructured Transform API, uploads to R2, generates embeddings, batch-inserts chunks into pgvector, extracts raw references and updates resource metadata.
+ * Shared PDF RAG ingestion pipeline: embeds chunks, uploads to R2, batch-inserts into pgvector, and updates source metadata in a single transaction.
  *
  * @param options - The pipeline options.
  * @returns The R2 URL, final file name, final size, and chunk count.
  */
 export async function processResourcePdfPipeline(options: ProcessPdfOptions) {
-  const { resourceId, fileName, log, buffer } = options;
+  const {
+    resourceId,
+    fileName,
+    log,
+    buffer,
+    precomputedMetadata,
+    precomputedReferences,
+  } = options;
 
   let chunks: DocumentChunk[];
-  let rawReferences: string | null = options.precomputedReferences ?? null;
 
   if (options.precomputedChunks && options.precomputedChunks.length > 0) {
     chunks = options.precomputedChunks;
   } else {
-    const parsed = await parsePdfDocument(buffer, fileName, log);
+    const parsed = await parsePdfToChunks(buffer, fileName, log);
     chunks = parsed.chunks;
-    rawReferences = parsed.rawReferences;
   }
 
-  // Embed only the raw content — metadata prefixes are excluded from the
-  // embedding text to preserve semantic fidelity in the vector space.
-  const embeddingTexts = chunks.map((c) => c.content);
+  // Embed with context prefix — [Bölüm: ...] [Sayfa: ...] + raw content
+  const embeddingTexts = chunks.map((c) =>
+    buildEmbeddingText(
+      c.content,
+      c.headerHierarchy,
+      c.section,
+      c.printedPageNumber,
+    ),
+  );
 
   log.info("pdf_r2_and_embed_parallel_start", {
     service: "library",
@@ -95,10 +109,11 @@ export async function processResourcePdfPipeline(options: ProcessPdfOptions) {
             content: c.content,
             parentContent: c.parentContent || c.content,
             section: c.section ?? null,
+            headerHierarchy:
+              c.headerHierarchy.length > 0 ? c.headerHierarchy : null,
             pageStart: c.pageStart ?? null,
             pageEnd: c.pageEnd ?? null,
-            contentHash: c.contentHash,
-            metadata: c.metadata,
+            printedPageNumber: c.printedPageNumber ?? null,
             tokenCount: c.tokenCount ?? 0,
             embedding: emb,
           };
@@ -107,6 +122,25 @@ export async function processResourcePdfPipeline(options: ProcessPdfOptions) {
         await tx.insert(chunkRows).values(rows);
       }
     }
+
+    // Single update: metadata + references + pdf status
+    await tx
+      .update(sources)
+      .set({
+        pdfUrl: r2Url,
+        pdfFileName: fileName,
+        pdfFileSize: buffer.length,
+        pdfStatus: "READY",
+        parsedReferences: precomputedReferences ?? [],
+        ...(precomputedMetadata && {
+          title: precomputedMetadata.title,
+          authors: precomputedMetadata.authors,
+          publisher: precomputedMetadata.publisher ?? null,
+          publicationYear: precomputedMetadata.publicationYear ?? null,
+          doi: precomputedMetadata.doi ?? null,
+        }),
+      })
+      .where(eq(sources.id, resourceId));
   });
 
   log.info("pdf_db_batch_insert_success", {
@@ -117,40 +151,6 @@ export async function processResourcePdfPipeline(options: ProcessPdfOptions) {
       durationMs: Math.round(performance.now() - dbStart),
     },
   });
-
-  log.info("pdf_db_status_update_start", {
-    service: "library",
-    data: { resourceId },
-  });
-
-  const updateStart = performance.now();
-  await db
-    .update(sources)
-    .set({
-      pdfUrl: r2Url,
-      pdfFileName: fileName,
-      pdfFileSize: buffer.length,
-      pdfStatus: "READY",
-      rawReferences: rawReferences,
-    })
-    .where(eq(sources.id, resourceId));
-
-  log.info("pdf_db_status_update_success", {
-    service: "library",
-    data: {
-      resourceId,
-      durationMs: Math.round(performance.now() - updateStart),
-    },
-  });
-
-  log.info("pdf_references_parse_start", {
-    service: "library",
-    data: { resourceId, hasReferences: rawReferences !== null },
-  });
-
-  if (rawReferences) {
-    await parseAndSaveReferences(resourceId, rawReferences, log);
-  }
 
   return {
     r2Url,

@@ -13,7 +13,7 @@ import fs from "fs/promises";
 import path from "path";
 
 export interface JsonSchemaProperty {
-  type: string;
+  type: string | string[];
   items?:
     | JsonSchemaProperty
     | {

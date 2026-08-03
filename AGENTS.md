@@ -30,7 +30,7 @@ Projede kullanılacak teknolojiler kesin olarak belirlenmiştir. Yapay zeka, kul
 - **LLM Modeli:** Google Gemini Flash-Lite (`FLASH_LITE_31` sabiti — tüm metin üretimi ve analiz işlemleri için)
 - **Embedding Model:** Cloudflare Workers AI (`@cf/baai/bge-m3` — 1024 boyutlu vektörler, 100K günlük ücretsiz istek). Tek kaynak embedding motorudur; Cohere veya ikincil bir fallback yoktur.
 - **Rerank Modeli (Semantik Sıralama):** Cohere Rerank API (`rerank-v4.0-pro` — çok dilli, Türkçe dahil; YAML yapılandırılmış girdi desteği). Cohere yalnızca Rerank işlemleri için kullanılır.
-- **PDF Parçalama ve Metadata Çıkarımı:** Unstructured Transform Serverless API (`strategy: "auto"`, `provider: "vertexai"`, `model: "gemini-2.5-flash"` ile ayda 15.000 sayfa cömert ücretsiz VLM parçalama; geçici ağ hataları/429/5xx için `@/lib/api-utils` `withRetry` ile exponential backoff) + `normalizeTurkishText` (Unicode Türkçe diyakritik onarımı), Crossref / OpenLibrary / Google Books API (paralel metadata çözümleme) + Cerebras LLM fallback.
+- **PDF Parçalama ve Metadata Çıkarımı:** Gemini 3.1 Flash Lite (`pdf-parser/` modülü — `pdf-lib` ile sayfa bazlı split, `inlineData` ile Gemini structured output; `PageAnalysisSchema` ile pageNumber/markdownContent/footnotes çıkarma; batch boyutu 5 sayfa; ayrı API key ile çalışır) + Crossref / OpenLibrary / Google Books API (paralel metadata çözümleme) + Cerebras LLM fallback.
 - **PDF Depolama (Storage):** Cloudflare R2 / AWS S3 mimarisi (`@aws-sdk/client-s3` ve `@aws-sdk/s3-request-presigner`) — yüklenen PDF'ler ve dosya nesneleri R2 kovalarında saklanır.
 - **AI Orkestrasyon:** Google Gen AI SDK (`@google/genai` - Doğrundan entegrasyon), Cerebras API (OpenAI-compatible, metadata extraction için Gemma 4 31B)
 - **Kimlik Doğrulama (Auth):** Drizzle tabanlı yerel `users` tablosu, `bcrypt-ts` ile şifreleme ve `src/lib/session.ts` üzerinden Cookies tabanlı hafif session yönetimi
@@ -53,7 +53,7 @@ Projenin çalışması ve dış servislerle entegrasyonu için aşağıdaki çev
 - `SEED_USER1_PASSWORD` & `SEED_USER2_PASSWORD`: Seed edilmiş kullanıcı hesaplarının şifreleri.
 - `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID` & `R2_SECRET_ACCESS_KEY`: Cloudflare R2 (S3-compatible) nesne depolama erişim kimlik bilgileri.
 - `R2_BUCKET_NAME` & `R2_PUBLIC_DOMAIN`: R2 kova adı ve public erişim alan adı.
-- `UNSTRUCTURED_API_KEY` & `UNSTRUCTURED_API_URL`: Unstructured Serverless VLM API erişim bilgileri (ayda 15.000 sayfa ücretsiz).
+- `PDF_PARSER_GEMINI_API_KEY`: PDF parser için ayrı Google Gemini API anahtarı (Gemini 3.1 Flash Lite ile sayfa bazlı PDF analizi).
 - `CEREBRAS_API_KEY`: Cerebras API anahtarı (Gemma 4 31B ile metadata çıkarımı için).
 - `GOOGLE_BOOKS_API_KEY`: Google Books API anahtarı (ISBN ile kitap metadata fallback çözümü için).
 
@@ -95,11 +95,10 @@ src/
 │   ├── error-utils.ts                    # Hata maskeleme ve sınıflandırma yardımcıları
 │   ├── rate-limiter.ts                   # API istek sınırlandırma
 │   ├── session.ts                        # Cookies tabanlı oturum yönetimi
-│   ├── services/                         # Harici API servis istemcileri (gemini, cohere, cloudflare-ai, r2, vb.) — barrel export: index.ts
+│   ├── services/                         # Harici API servis istemcileri (gemini, cohere, cloudflare-ai, pdf-parser, pdf-metadata, r2, vb.) — barrel export: index.ts
 │   ├── academic/                         # Akademik veri yardımcıları (DOI temizleme, CrossRef dönüşümleri)
 │   ├── tezara/                           # Tezara / Meilisearch tez veritabanı entegrasyonu (harici servis)
 │   ├── prompts/                          # Gemini ve diğer modeller için prompt şablonları
-│   └── polyfills/                        # Polyfill'ler (math-sum-precise, vb.)
 └── providers/                            # React context sağlayıcıları (QueryProvider, LoadingOverlay)
 ```
 
