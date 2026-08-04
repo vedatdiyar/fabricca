@@ -91,22 +91,26 @@ function getPdfParserClient(): GoogleGenAI {
  * @param base64Data - Base64-encoded mini-PDF string for the batch.
  * @param startPage - 1-based start page number of this batch in the original document.
  * @param batchPageCount - Number of pages in this batch.
- * @param isLastBatch - Whether this is the final batch (used to request metadata + references only once).
+ * @param isFirstBatch - Whether this is the first batch of the document (metadata is requested only here).
+ * @param onMetric - Callback invoked with per-batch diagnostics.
  * @param logger - Optional logger instance.
- * @returns Parsed batch result with pages, and optionally metadata and references.
+ * @returns Parsed batch result with pages, and references found on these pages.
  */
 async function parseBatch(
   base64Data: string,
   startPage: number,
   batchPageCount: number,
-  isLastBatch: boolean,
+  isFirstBatch: boolean,
   onMetric: (m: Omit<PdfBatchMetric, "startPage" | "endPage">) => void,
   logger?: Logger,
 ): Promise<DocumentAnalysisResult> {
   const endPage = startPage + batchPageCount - 1;
   const batchStart = performance.now();
   let attempts = 1;
-  const prompt = `Analyze pages ${startPage} to ${endPage} of the provided PDF document.${isLastBatch ? " Return metadata, page analyses, and all references found in the document." : " Return page analyses and any references found on these pages."}`;
+  const metadataClause = isFirstBatch
+    ? "Fill the metadata object with the document's title and authors (plus optional publicationYear, publisher, and DOI). "
+    : "";
+  const prompt = `The provided PDF contains ${batchPageCount} pages (original document pages ${startPage}-${endPage}). Analyze every page without skipping any. ${metadataClause}Return one page analysis per page, in reading order, with pageNumber starting at 1 for the first page of the provided PDF. Return every bibliography (references) entry that appears on these pages.`;
 
   const payload = {
     model: PDF_PARSER_MODEL,
@@ -210,15 +214,17 @@ async function parseBatch(
 /**
  * Parses a PDF document into structured page-level markdown, metadata, and references via Gemini batch processing.
  *
- * Batches are submitted with bounded concurrency (see `PDF_PARSE_CONCURRENCY`); pages are
- * merged and re-sorted by page number and references are sorted alphabetically, so result
- * order stays deterministic regardless of batch completion order.
+ * Metadata is requested only from the first batch; every batch extracts only the bibliography entries on its own
+ * pages. Batches are submitted with bounded concurrency (see `PDF_PARSE_CONCURRENCY`). Page numbers are re-mapped
+ * from batch-relative (1..N) back to original document pages, duplicates are dropped, and a coverage guard throws
+ * if any page in the requested range is missing. References are deduplicated by raw text and sorted alphabetically,
+ * so the result order stays deterministic regardless of batch completion order.
  *
  * @param pdfBuffer - The raw PDF file content.
  * @param fileName - Original file name (used for logging).
  * @param options - Optional driver settings (page range, batch size, concurrency, metric collector).
  * @param logger - Optional logger instance.
- * @returns Merged DocumentAnalysisResult with metadata from first batch, all pages, and all references.
+ * @returns Merged DocumentAnalysisResult with metadata from the first valid batch, all pages, and deduplicated references.
  */
 export async function parsePdfToDocumentAnalysis(
   pdfBuffer: Buffer,
@@ -259,7 +265,7 @@ export async function parsePdfToDocumentAnalysis(
       startPage: currentStart,
       endPage: currentEnd,
       batchPageCount: currentEnd - currentStart + 1,
-      isLastBatch: batchIndex === totalBatches - 1,
+      isFirstBatch: batchIndex === 0,
     };
   });
 
@@ -279,9 +285,13 @@ export async function parsePdfToDocumentAnalysis(
           base64Data,
           batch.startPage,
           batch.batchPageCount,
-          batch.isLastBatch,
+          batch.isFirstBatch,
           (metric) => {
-            metrics?.push({ startPage: batch.startPage, endPage: batch.endPage, ...metric });
+            metrics?.push({
+              startPage: batch.startPage,
+              endPage: batch.endPage,
+              ...metric,
+            });
           },
           logger,
         );
@@ -292,24 +302,70 @@ export async function parsePdfToDocumentAnalysis(
   );
 
   let metadata: DocumentAnalysisResult["metadata"] | null = null;
-  const allPages: PageAnalysis[] = [];
-  const allReferences: DocumentAnalysisResult["references"] = [];
+  const pageMap = new Map<number, PageAnalysis>();
+  const referenceMap = new Map<
+    string,
+    DocumentAnalysisResult["references"][number]
+  >();
 
-  for (const batchResult of batchResults) {
-    // Merge metadata from the first batch that provides it
-    if (!metadata && batchResult.metadata) {
+  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+    const batch = batches[batchIndex];
+    const batchResult = batchResults[batchIndex];
+
+    // Metadata is guaranteed to come only from the first batch that provides a valid one.
+    if (!metadata && batchResult.metadata?.title) {
       metadata = batchResult.metadata;
     }
 
-    allPages.push(...batchResult.pages);
+    if (batchResult.pages.length !== batch.batchPageCount) {
+      logger?.info("pdf_parser_batch_page_count_mismatch", {
+        service: "pdf-parser",
+        data: {
+          expectedPages: batch.batchPageCount,
+          returnedPages: batchResult.pages.length,
+          pages: `${batch.startPage}-${batch.endPage}`,
+        },
+      });
+    }
 
-    if (batchResult.references?.length) {
-      allReferences.push(...batchResult.references);
+    // Re-map batch-relative page numbers (1..N inside the mini-PDF) back to original document pages.
+    for (const page of batchResult.pages) {
+      const originalPage = batch.startPage + page.pageNumber - 1;
+      if (!pageMap.has(originalPage)) {
+        pageMap.set(originalPage, { ...page, pageNumber: originalPage });
+      }
+    }
+
+    for (const ref of batchResult.references ?? []) {
+      const key = ref.raw.trim();
+      if (key && !referenceMap.has(key)) {
+        referenceMap.set(key, ref);
+      }
     }
   }
 
-  allPages.sort((a, b) => a.pageNumber - b.pageNumber);
-  allReferences.sort((a, b) => a.raw.localeCompare(b.raw));
+  // Page-loss guard: every page in the requested range must have been analyzed exactly once.
+  const expectedPages = Array.from(
+    { length: safeEnd - firstStart + 1 },
+    (_, i) => firstStart + i,
+  );
+  const missingPages = expectedPages.filter((page) => !pageMap.has(page));
+  if (missingPages.length > 0) {
+    logger?.info("pdf_parser_missing_pages", {
+      service: "pdf-parser",
+      data: { missingPages, startPage: firstStart, endPage: safeEnd },
+    });
+    throw new Error(
+      `PDF parsing dropped ${missingPages.length} page(s): ${missingPages.join(", ")}.`,
+    );
+  }
+
+  const allPages = Array.from(pageMap.values()).sort(
+    (a, b) => a.pageNumber - b.pageNumber,
+  );
+  const allReferences = Array.from(referenceMap.values()).sort((a, b) =>
+    a.raw.localeCompare(b.raw),
+  );
 
   // Fallback metadata if Gemini didn't extract it
   if (!metadata) {

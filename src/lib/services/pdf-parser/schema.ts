@@ -65,7 +65,8 @@ export const DocumentAnalysisSchema: JsonSchema = {
         properties: {
           pageNumber: {
             type: "number",
-            description: "1-based page number in the document.",
+            description:
+              "1-based page number within the provided PDF, starting at 1 for the first page of the submitted PDF.",
           },
           printedPageNumber: {
             type: ["string", "null"],
