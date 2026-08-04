@@ -1,5 +1,4 @@
 import { GoogleGenAI } from "@google/genai";
-import { withRetry, HttpError } from "@/lib/api-utils";
 import { createConcurrencyLimiter } from "@/lib/rate-limiter";
 import type { Logger } from "@/lib/logger";
 import { sanitizeAndParseJson } from "@/lib/services/gemini";
@@ -28,8 +27,97 @@ export {
 
 const PDF_PARSER_MODEL = "gemini-3.1-flash-lite" as const;
 const BATCH_SIZE = 5;
-/** Max concurrent Gemini parse requests. Tuned to stay under the 15 RPM rate limit (~12.7s per batch). */
-const PDF_PARSE_CONCURRENCY = 3;
+/**
+ * All batches are fired concurrently up to this limit.
+ * 429 responses carry a `retryDelay` that pauses the entire gate, so we can
+ * safely use the full RPM headroom without a conservative fixed concurrency.
+ */
+const PDF_PARSE_CONCURRENCY = 15;
+
+/**
+ * A shared pause gate used by all concurrent batch workers for a single PDF parse run.
+ * When any worker encounters a 429, it sets the gate so every other worker waits
+ * for the server-specified `retryDelay` before dispatching the next request.
+ */
+interface PauseGate {
+  /** Resolves immediately when no pause is active; blocks while a 429 pause is in effect. */
+  wait(): Promise<void>;
+  /** Activates a pause for `ms` milliseconds. Subsequent calls extend the pause if longer. */
+  pause(ms: number): void;
+}
+
+/**
+ * Creates a shared pause gate for coordinating 429 backoff across concurrent workers.
+ *
+ * @returns A PauseGate instance.
+ */
+function createPauseGate(): PauseGate {
+  let pauseUntil = 0;
+  let gatePromise: Promise<void> | null = null;
+
+  return {
+    wait(): Promise<void> {
+      if (gatePromise) return gatePromise;
+      const remaining = pauseUntil - Date.now();
+      if (remaining > 0) {
+        gatePromise = new Promise((resolve) =>
+          setTimeout(() => {
+            gatePromise = null;
+            resolve();
+          }, remaining),
+        );
+        return gatePromise;
+      }
+      return Promise.resolve();
+    },
+
+    pause(ms: number): void {
+      const until = Date.now() + ms;
+      if (until > pauseUntil) {
+        pauseUntil = until;
+        gatePromise = null; // reset so next wait() re-reads the updated pauseUntil
+      }
+    },
+  };
+}
+
+/**
+ * Parses Gemini's `retryDelay` from a 429 error response body.
+ * The value is embedded in `error.details[]` under `type.googleapis.com/google.rpc.RetryInfo`
+ * as a string like `"42s"`.
+ *
+ * @param error - The caught error from the Gemini SDK.
+ * @returns Delay in milliseconds, or null when not present.
+ */
+function parseRetryDelayMs(error: unknown): number | null {
+  if (!(error instanceof Error)) return null;
+
+  // The SDK surfaces the raw JSON body in error.message for 429s.
+  // Attempt to extract retryDelay from the structured details array.
+  try {
+    const bodyMatch = error.message.match(/\{[\s\S]*\}/);
+    if (!bodyMatch) return null;
+    const body = JSON.parse(bodyMatch[0]) as {
+      error?: {
+        details?: Array<Record<string, unknown>>;
+      };
+    };
+    const details = body?.error?.details ?? [];
+    for (const detail of details) {
+      if (
+        detail["@type"] === "type.googleapis.com/google.rpc.RetryInfo" &&
+        typeof detail["retryDelay"] === "string"
+      ) {
+        const match = (detail["retryDelay"] as string).match(/^(\d+)s$/);
+        if (match) return parseInt(match[1], 10) * 1000;
+      }
+    }
+  } catch {
+    // Body was not JSON — fall through
+  }
+
+  return null;
+}
 
 /** Per-batch parse diagnostics collected for tuning and observability. */
 export interface PdfBatchMetric {
@@ -87,11 +175,14 @@ function getPdfParserClient(): GoogleGenAI {
 
 /**
  * Parses a batch of PDF pages via Gemini structured output.
+ * On 429, activates the shared pause gate for the server-specified `retryDelay`
+ * so all concurrent sibling batches also wait before their next dispatch.
  *
  * @param base64Data - Base64-encoded mini-PDF string for the batch.
  * @param startPage - 1-based start page number of this batch in the original document.
  * @param batchPageCount - Number of pages in this batch.
  * @param isFirstBatch - Whether this is the first batch of the document (metadata is requested only here).
+ * @param gate - Shared pause gate coordinating 429 backoff across all concurrent batches.
  * @param onMetric - Callback invoked with per-batch diagnostics.
  * @param logger - Optional logger instance.
  * @returns Parsed batch result with pages, and references found on these pages.
@@ -101,12 +192,12 @@ async function parseBatch(
   startPage: number,
   batchPageCount: number,
   isFirstBatch: boolean,
+  gate: PauseGate,
   onMetric: (m: Omit<PdfBatchMetric, "startPage" | "endPage">) => void,
   logger?: Logger,
 ): Promise<DocumentAnalysisResult> {
   const endPage = startPage + batchPageCount - 1;
   const batchStart = performance.now();
-  let attempts = 1;
   const metadataClause = isFirstBatch
     ? "Fill the metadata object with the document's title and authors (plus optional publicationYear, publisher, and DOI). "
     : "";
@@ -136,79 +227,86 @@ async function parseBatch(
     },
   };
 
-  const response = await withRetry(
-    async () => {
-      const res = await getPdfParserClient().models.generateContent(payload);
-      return res;
-    },
-    {
-      maxRetries: 3,
-      baseDelay: 1000,
-      isRetryable: (error) => {
-        if (error instanceof HttpError) {
-          return error.status === 429 || error.status >= 500;
-        }
-        if (error instanceof Error) {
-          return (
-            error.message.includes("429") ||
-            error.message.includes("503") ||
-            error.message.includes("UNAVAILABLE")
-          );
-        }
-        return false;
-      },
-      onRetry: (attempt, delay, error) => {
-        attempts++;
-        const status =
-          error instanceof HttpError ? `${error.status}` : "unknown";
-        logger?.info("pdf_parser_gemini_retry", {
-          service: "pdf-parser",
-          data: {
-            attempt,
-            delayMs: Math.round(delay),
-            status,
-            pages: `${startPage}-${endPage}`,
-          },
-        });
-      },
-    },
-  );
+  const MAX_ATTEMPTS = 5;
+  let attempts = 0;
 
-  const text = response.text;
-  if (!text) {
-    throw new Error(
-      `Gemini boş yanıt döndürdü. Sayfa aralığı: ${startPage}-${endPage}`,
-    );
-  }
+  while (true) {
+    // Honour any active global pause before dispatching.
+    await gate.wait();
 
-  const usageMetadata = (
-    response as unknown as {
-      usageMetadata?: {
-        promptTokenCount?: number;
-        candidatesTokenCount?: number;
-        totalTokenCount?: number;
-      };
-    }
-  )?.usageMetadata;
+    attempts++;
+    try {
+      const response =
+        await getPdfParserClient().models.generateContent(payload);
 
-  const finishReason =
-    (
-      response as unknown as {
-        candidates?: Array<{ finishReason?: string }>;
+      const text = response.text;
+      if (!text) {
+        throw new Error(
+          `Gemini boş yanıt döndürdü. Sayfa aralığı: ${startPage}-${endPage}`,
+        );
       }
-    )?.candidates?.[0]?.finishReason ?? undefined;
 
-  onMetric({
-    durationMs: Math.round(performance.now() - batchStart),
-    attempts,
-    inputTokens: usageMetadata?.promptTokenCount,
-    outputTokens: usageMetadata?.candidatesTokenCount,
-    totalTokens: usageMetadata?.totalTokenCount,
-    finishReason,
-  });
+      const usageMetadata = (
+        response as unknown as {
+          usageMetadata?: {
+            promptTokenCount?: number;
+            candidatesTokenCount?: number;
+            totalTokenCount?: number;
+          };
+        }
+      )?.usageMetadata;
 
-  const parsed = sanitizeAndParseJson<DocumentAnalysisResult>(text);
-  return parsed;
+      const finishReason =
+        (
+          response as unknown as {
+            candidates?: Array<{ finishReason?: string }>;
+          }
+        )?.candidates?.[0]?.finishReason ?? undefined;
+
+      onMetric({
+        durationMs: Math.round(performance.now() - batchStart),
+        attempts,
+        inputTokens: usageMetadata?.promptTokenCount,
+        outputTokens: usageMetadata?.candidatesTokenCount,
+        totalTokens: usageMetadata?.totalTokenCount,
+        finishReason,
+      });
+
+      return sanitizeAndParseJson<DocumentAnalysisResult>(text);
+    } catch (error) {
+      const is429 =
+        error instanceof Error &&
+        (error.message.includes("429") ||
+          error.message.includes("RESOURCE_EXHAUSTED"));
+      const is5xx =
+        error instanceof Error &&
+        (error.message.includes("503") ||
+          error.message.includes("UNAVAILABLE") ||
+          error.message.includes("500"));
+
+      if ((is429 || is5xx) && attempts < MAX_ATTEMPTS) {
+        if (is429) {
+          // Parse Gemini's server-side retryDelay and pause all workers for exactly that long.
+          const retryDelayMs = parseRetryDelayMs(error) ?? 30_000;
+          gate.pause(retryDelayMs);
+          logger?.info("pdf_parser_gemini_rate_limit", {
+            service: "pdf-parser",
+            data: {
+              pages: `${startPage}-${endPage}`,
+              attempt: attempts,
+              pauseMs: retryDelayMs,
+            },
+          });
+        } else {
+          // 5xx: short fixed wait without touching the global gate.
+          await new Promise((r) => setTimeout(r, 2_000 * attempts));
+        }
+        continue;
+      }
+
+      throw error;
+    }
+  }
 }
 
 /**
@@ -270,6 +368,7 @@ export async function parsePdfToDocumentAnalysis(
   });
 
   const limiter = createConcurrencyLimiter(concurrency);
+  const gate = createPauseGate();
 
   const batchResults = await Promise.all(
     batches.map((batch) =>
@@ -286,6 +385,7 @@ export async function parsePdfToDocumentAnalysis(
           batch.startPage,
           batch.batchPageCount,
           batch.isFirstBatch,
+          gate,
           (metric) => {
             metrics?.push({
               startPage: batch.startPage,
