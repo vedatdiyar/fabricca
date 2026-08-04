@@ -5,6 +5,7 @@ import type { Logger } from "@/lib/logger";
 import { sanitizeAndParseJson } from "@/lib/services/gemini";
 import { buildChunksFromPageAnalysis } from "@/lib/services/pdf/chunker";
 import type { DocumentChunk } from "@/lib/services/pdf/chunker";
+import { PDF_PARSER_SYSTEM_INSTRUCTION } from "@/lib/prompts";
 import {
   loadPdfSource,
   getPdfPageCount,
@@ -28,21 +29,6 @@ const PDF_PARSER_MODEL = "gemini-3.1-flash-lite" as const;
 const BATCH_SIZE = 5;
 /** Max concurrent Gemini parse requests. Tuned to stay under the 15 RPM rate limit (~12.7s per batch). */
 const PDF_PARSE_CONCURRENCY = 3;
-
-const SYSTEM_INSTRUCTION = `You are an expert academic PDF parser. Analyze the provided PDF pages and return structured output.
-
-RULES:
-1. METADATA: Extract title, authors, publication year, publisher, and DOI from the first pages.
-2. MARKDOWN: Convert each page to clean markdown. Preserve:
-   - Heading hierarchy: H1 (#), H2 (##), H3 (###)
-   - If a page starts with a sub-heading and the parent heading was on the previous page,
-     maintain its semantic level (## or ###) — do not reset to #.
-   - Numbered/bulleted lists, tables (pipe-delimited), inline emphasis.
-   - Mathematical notation in standard text.
-3. FOOTNOTES: Inline footnotes at the end of the relevant paragraph as [^n].
-4. REFERENCES: Parse the bibliography section. Each reference as a separate object with raw text, and optionally extracted title, authors, year.
-5. Do NOT hallucinate content. Return in the SAME LANGUAGE as the source.
-6. Strip running headers, footers, standalone page numbers.`;
 
 let pdfParserClient: GoogleGenAI | null = null;
 
@@ -101,7 +87,7 @@ async function parseBatch(
       },
     ],
     config: {
-      systemInstruction: SYSTEM_INSTRUCTION,
+      systemInstruction: PDF_PARSER_SYSTEM_INSTRUCTION,
       responseMimeType: "application/json",
       responseJsonSchema: DocumentAnalysisSchema,
       temperature: 0,

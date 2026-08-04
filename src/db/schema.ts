@@ -408,6 +408,8 @@ export interface RagSearchResultItem {
   resourceAuthors: string[];
   content: string;
   relevanceScore: number;
+  denseScore: number;
+  isPartialMatch: boolean;
   pageStart: number | null;
   pageEnd: number | null;
   printedPageNumber: string | null;

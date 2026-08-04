@@ -23,6 +23,7 @@ export interface RagSearchDebug {
   lexicalRank?: number;
   rrfScore: number;
   rerankScore: number;
+  denseScore: number;
 }
 
 /** Final RAG result item with source metadata, content, and parent-child context. */
@@ -30,6 +31,7 @@ export interface RagSearchResultItem {
   resourceId: number;
   resourceTitle: string;
   resourceAuthors: string[];
+  resourceYear: number | null;
   chunkIndex: number;
   printedPageNumber: string | null;
   pageStart: number | null;
@@ -38,6 +40,9 @@ export interface RagSearchResultItem {
   content: string;
   parentContent: string;
   relevanceScore: number;
+  denseScore: number;
+  /** When true, this chunk did not pass the dual-score gate but was included as the closest partial match (0-chunk fallback). */
+  isPartialMatch: boolean;
   /** Retrieval provenance — only present when `options.debug` is enabled. */
   debug?: RagSearchDebug;
 }
@@ -66,6 +71,8 @@ interface DenseCandidate {
   printedPageNumber: string | null;
   title: string;
   authors: string[] | null;
+  publicationYear: number | null;
+  embedding: number[];
 }
 
 /**
@@ -146,6 +153,8 @@ export async function performHybridRagSearch(
         printedPageNumber: chunks.printedPageNumber,
         title: sources.title,
         authors: sources.authors,
+        publicationYear: sources.publicationYear,
+        embedding: chunks.embedding,
       })
       .from(chunks)
       .innerJoin(sources, eq(chunks.sourceId, sources.id));
@@ -197,6 +206,17 @@ export async function performHybridRagSearch(
   for (const candidate of lexicalCandidates)
     candidateMap.set(candidate.id, candidate);
 
+  const denseScoreMap = new Map<number, number>();
+  if (queryEmbedding && !isZeroVector(queryEmbedding)) {
+    for (const candidate of denseCandidates) {
+      const score = queryEmbedding.reduce(
+        (sum, val, i) => sum + val * (candidate.embedding[i] ?? 0),
+        0,
+      );
+      denseScoreMap.set(candidate.id, score);
+    }
+  }
+
   const documentsToRerank = rrfPool.map((entry) => {
     const candidate = candidateMap.get(entry.id)!;
     const prefix = buildChunkContextPrefix(
@@ -211,6 +231,7 @@ export async function performHybridRagSearch(
     rrf: RrfScoredCandidate;
     relevanceScore: number;
     rerankScore: number;
+    denseScore: number;
   }
 
   let rankedPool: RankedEntry[];
@@ -226,6 +247,7 @@ export async function performHybridRagSearch(
         rrf: rrfPool[result.index],
         relevanceScore: result.relevanceScore,
         rerankScore: result.relevanceScore,
+        denseScore: denseScoreMap.get(rrfPool[result.index].id) ?? 0,
       }));
     } catch (error) {
       logger?.error("rag_rerank_failed", {
@@ -236,6 +258,7 @@ export async function performHybridRagSearch(
         rrf: entry,
         relevanceScore: entry.rrfScore,
         rerankScore: entry.rrfScore,
+        denseScore: denseScoreMap.get(entry.id) ?? 0,
       }));
     }
   } else {
@@ -249,27 +272,63 @@ export async function performHybridRagSearch(
       rrf: entry,
       relevanceScore: entry.rrfScore,
       rerankScore: entry.rrfScore,
+      denseScore: denseScoreMap.get(entry.id) ?? 0,
     }));
   }
 
-  const finalResults: RagSearchResultItem[] = rankedPool
-    .slice(0, topK)
-    .map(({ rrf, relevanceScore, rerankScore }) => {
-      const candidate = candidateMap.get(rrf.id)!;
+  const filtered = rankedPool.filter(
+    ({ rerankScore, denseScore }) =>
+      rerankScore >= RAG_CONFIG.rerankScoreThreshold &&
+      denseScore >= RAG_CONFIG.denseScoreThreshold,
+  );
 
+  const filteredOut = rankedPool.filter(
+    ({ rerankScore, denseScore }) =>
+      rerankScore < RAG_CONFIG.rerankScoreThreshold ||
+      denseScore < RAG_CONFIG.denseScoreThreshold,
+  );
+
+  logger?.info("rag_dual_score_filter", {
+    service: "rag-search",
+    data: {
+      totalCandidates: rankedPool.length,
+      passedFilter: filtered.length,
+      filteredOut: filteredOut.length,
+      kept: filtered.map(({ rrf, rerankScore, denseScore }) => ({
+        chunkId: rrf.id,
+        section: candidateMap.get(rrf.id)?.section ?? null,
+        rerankScore,
+        denseScore,
+      })),
+      dropped: filteredOut.map(({ rrf, rerankScore, denseScore }) => ({
+        chunkId: rrf.id,
+        section: candidateMap.get(rrf.id)?.section ?? null,
+        rerankScore,
+        denseScore,
+      })),
+    },
+  });
+
+  const toResultItems = (
+    entries: RankedEntry[],
+    partial: boolean,
+  ): RagSearchResultItem[] =>
+    entries.map(({ rrf, relevanceScore, rerankScore, denseScore }) => {
+      const candidate = candidateMap.get(rrf.id)!;
       const debugMeta: RagSearchDebug | undefined = debug
         ? {
             denseRank: rrf.denseRank,
             lexicalRank: rrf.lexicalRank,
             rrfScore: rrf.rrfScore,
             rerankScore,
+            denseScore,
           }
         : undefined;
-
       return {
         resourceId: candidate.resourceId,
         resourceTitle: candidate.title,
         resourceAuthors: candidate.authors || ["Bilinmeyen Yazar"],
+        resourceYear: candidate.publicationYear ?? null,
         chunkIndex: candidate.chunkIndex,
         printedPageNumber: candidate.printedPageNumber,
         pageStart: candidate.pageStart,
@@ -278,9 +337,28 @@ export async function performHybridRagSearch(
         content: candidate.content,
         parentContent: candidate.parentContent || candidate.content,
         relevanceScore,
+        denseScore,
+        isPartialMatch: partial,
         ...(debugMeta ? { debug: debugMeta } : {}),
       };
     });
+
+  let finalResults: RagSearchResultItem[];
+  if (filtered.length > 0) {
+    finalResults = toResultItems(filtered.slice(0, topK), false);
+  } else {
+    const fallback = rankedPool
+      .sort((a, b) => b.rerankScore - a.rerankScore)
+      .slice(0, 2);
+    finalResults = toResultItems(fallback, true);
+    logger?.info("rag_dual_score_fallback_partial", {
+      service: "rag-search",
+      data: {
+        fallbackCount: finalResults.length,
+        topRerankScore: fallback[0]?.rerankScore ?? 0,
+      },
+    });
+  }
 
   logger?.info("rag_hybrid_search_success", {
     service: "rag-search",

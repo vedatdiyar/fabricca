@@ -1,20 +1,16 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import {
-  Sparkles,
-  Send,
-  BookOpen,
-  ChevronDown,
-  ChevronUp,
-  Bot,
-  User,
-  FileText,
-  Search,
-} from "lucide-react";
+import { Sparkles, Send, User, FileText, Copy, Check } from "lucide-react";
+import Image from "next/image";
 import { toast } from "sonner";
 import {
-  sendAdvisorQueryAction,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   getChatSessions,
   createChatSession,
   deleteChatSession,
@@ -24,6 +20,7 @@ import {
 } from "../actions";
 import type { RagSearchResultItem } from "@/lib/services/rag-search";
 import { ChatSidebar } from "./chat-sidebar";
+import { MarkdownRenderer } from "./markdown-renderer";
 
 interface Message {
   id: string;
@@ -33,12 +30,71 @@ interface Message {
   timestamp: string;
 }
 
-const RECOMMENDED_PROMPTS = [
-  "Kütüphanemdeki makalelerin temel hipotezlerini ve ortak bulgularını özetle.",
-  "Yüklediğim çalışmalardaki metodolojik yaklaşımları karşılaştır.",
-  "Tez konumla ilgili anahtar kavramların literatürdeki farklı tanımları nelerdir?",
-  "Kütüphanedeki kaynaklarda tespit edilen araştırma boşluklarını (research gaps) listele.",
-];
+interface CitationPopoverContentProps {
+  source: RagSearchResultItem;
+}
+
+/**
+ * Renders the academic source details as an inline citation panel.
+ *
+ * @param root0 - Component props.
+ * @param root0.source - The RAG source item to display.
+ * @returns The citation detail markup.
+ */
+function CitationPopoverContent({ source }: CitationPopoverContentProps) {
+  const pageSpan = source.pageStart ?? null;
+  const pageEnd = source.pageEnd ?? pageSpan;
+  const pageRef =
+    source.printedPageNumber ??
+    (pageSpan != null && pageEnd != null
+      ? pageSpan === pageEnd
+        ? `s. ${pageSpan}`
+        : `ss. ${pageSpan}–${pageEnd}`
+      : null);
+
+  return (
+    <div className="text-sm space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <FileText className="size-4 text-primary shrink-0" />
+          <span className="font-medium text-foreground break-words">
+            {source.resourceTitle}
+          </span>
+        </div>
+        <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[11px] shrink-0">
+          %{(source.relevanceScore * 100).toFixed(0)} Alaka
+        </span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <span>{source.resourceAuthors.join(", ")}</span>
+        {pageRef && <span>{pageRef}</span>}
+        {source.sectionTitle && (
+          <span className="truncate">Bölüm: {source.sectionTitle}</span>
+        )}
+      </div>
+
+      <div className="text-sm text-foreground/80 leading-relaxed space-y-3 pl-3 border-l-2 border-primary/20">
+        {source.content.split("\n\n").map((paragraph, i) => {
+          const lines = paragraph.split("\n");
+          const hasNumberedItems = lines.some((l) =>
+            /^\d+[.)]\s/.test(l.trim()),
+          );
+          if (hasNumberedItems) {
+            return (
+              <ol key={i} className="list-decimal list-inside space-y-1">
+                {lines.map((line, j) => (
+                  <li key={j}>{line.trim().replace(/^\d+[.)]\s*/, "")}</li>
+                ))}
+              </ol>
+            );
+          }
+          return <p key={i}>{paragraph}</p>;
+        })}
+      </div>
+    </div>
+  );
+}
 
 /**
  * Interactive Advisor Chat component delivering an academic AI conversation backed by Hybrid RAG & Cohere Rerank with persistent chat history sidebar.
@@ -49,13 +105,21 @@ export function AdvisorChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputQuery, setInputQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [expandedSources, setExpandedSources] = useState<
-    Record<string, boolean>
-  >({});
+  const [activeCitation, setActiveCitation] = useState<{
+    messageId: string;
+    sourceIndex: number;
+  } | null>(null);
 
   const [sessions, setSessions] = useState<ChatSessionListItem[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
+  const [streamingText, setStreamingText] = useState("");
+  const [streamingSources, setStreamingSources] = useState<
+    RagSearchResultItem[] | undefined
+  >(undefined);
+  const [isStreamingDone, setIsStreamingDone] = useState(false);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
+  const isSendingRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -101,7 +165,7 @@ export function AdvisorChat() {
     } else {
       setMessages([]);
     }
-    setExpandedSources({});
+    setActiveCitation(null);
   }, []);
 
   const handleSelectSession = useCallback(
@@ -117,7 +181,7 @@ export function AdvisorChat() {
     if (res.success && res.sessionId) {
       setActiveSessionId(res.sessionId);
       setMessages([]);
-      setExpandedSources({});
+      setActiveCitation(null);
       await loadSessions();
     } else {
       toast.error(res.error || "Sohbet oluşturulamadı.");
@@ -131,7 +195,7 @@ export function AdvisorChat() {
         if (activeSessionId === sessionId) {
           setActiveSessionId(null);
           setMessages([]);
-          setExpandedSources({});
+          setActiveCitation(null);
         }
         await loadSessions();
         toast.success("Sohbet silindi.");
@@ -143,8 +207,11 @@ export function AdvisorChat() {
   );
 
   const handleSend = async (overrideQuery?: string) => {
+    if (isSendingRef.current) return;
     const queryToSend = (overrideQuery || inputQuery).trim();
     if (!queryToSend || isLoading) return;
+
+    isSendingRef.current = true;
 
     let sessionId = activeSessionId;
 
@@ -156,6 +223,7 @@ export function AdvisorChat() {
       const createRes = await createChatSession(title);
       if (!createRes.success || !createRes.sessionId) {
         toast.error(createRes.error || "Sohbet oluşturulamadı.");
+        isSendingRef.current = false;
         return;
       }
       sessionId = createRes.sessionId;
@@ -177,6 +245,9 @@ export function AdvisorChat() {
     setMessages((prev) => [...prev, userMsg]);
     if (!overrideQuery) setInputQuery("");
     setIsLoading(true);
+    setStreamingText("");
+    setStreamingSources(undefined);
+    setIsStreamingDone(false);
 
     await saveChatMessage(sessionId, "user", queryToSend);
 
@@ -186,52 +257,102 @@ export function AdvisorChat() {
         content: m.content,
       }));
 
-      const res = await sendAdvisorQueryAction({
-        query: queryToSend,
-        history: historyPayload,
+      const response = await fetch("/api/advisor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: queryToSend, history: historyPayload }),
       });
 
-      if (!res.success || !res.answer) {
-        toast.error(res.error || "Yanıt alınamadı.");
+      if (!response.ok) {
+        toast.error("Yanıt alınamadı.");
         return;
       }
 
-      const modelMessageId = `model-${crypto.randomUUID()}`;
-      const modelMsg: Message = {
-        id: modelMessageId,
-        role: "model",
-        content: res.answer,
-        sources: res.sources,
-        timestamp: new Date().toLocaleTimeString("tr-TR", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      };
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
 
-      setMessages((prev) => [...prev, modelMsg]);
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      if (sessionId) {
-        await saveChatMessage(
-          sessionId,
-          "model",
-          res.answer,
-          res.sources ?? undefined,
-        );
-        await loadSessions();
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data: ")) continue;
+          const data = trimmed.slice(6);
+          if (data === "[DONE]") continue;
+
+          try {
+            const event = JSON.parse(data);
+            if (event.type === "delta") {
+              setStreamingText((prev) => prev + event.text);
+            } else if (event.type === "done") {
+              setStreamingSources(event.sources);
+              setIsStreamingDone(true);
+
+              const modelMessageId = `model-${crypto.randomUUID()}`;
+              const modelMsg: Message = {
+                id: modelMessageId,
+                role: "model",
+                content: event.text,
+                sources: event.sources,
+                timestamp: new Date().toLocaleTimeString("tr-TR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
+              };
+              setMessages((prev) => [...prev, modelMsg]);
+
+              if (sessionId) {
+                await saveChatMessage(
+                  sessionId,
+                  "model",
+                  event.text,
+                  event.sources ?? undefined,
+                );
+                await loadSessions();
+              }
+            } else if (event.type === "error") {
+              toast.error(event.error || "Yanıt üretilirken hata oluştu.");
+            }
+          } catch {
+            // Skip malformed SSE lines
+          }
+        }
       }
     } catch {
       toast.error("İletişim hatası oluştu.");
     } finally {
       setIsLoading(false);
+      setStreamingText("");
+      setStreamingSources(undefined);
+      setIsStreamingDone(false);
+      isSendingRef.current = false;
     }
   };
 
-  const toggleSourceExpand = (messageId: string) => {
-    setExpandedSources((prev) => ({
-      ...prev,
-      [messageId]: !prev[messageId],
-    }));
-  };
+  const handleCitationPosition = useCallback(
+    (messageId: string, sourceIndex: number) => {
+      setActiveCitation((prev) => {
+        if (prev?.messageId === messageId && prev.sourceIndex === sourceIndex) {
+          return null;
+        }
+        return { messageId, sourceIndex };
+      });
+    },
+    [],
+  );
+
+  const activeSource =
+    activeCitation &&
+    (() => {
+      const msg = messages.find((m) => m.id === activeCitation.messageId);
+      return msg?.sources?.[activeCitation.sourceIndex] ?? null;
+    })();
 
   return (
     <div className="fixed inset-x-0 top-20 bottom-16 md:bottom-0 z-10 flex max-w-7xl mx-auto p-4 sm:p-6 gap-6">
@@ -253,38 +374,29 @@ export function AdvisorChat() {
           className={`flex-1 min-h-0 p-4 sm:p-6 bg-card/40 border border-border/40 rounded-2xl space-y-6 shadow-inner ${messages.length > 0 ? "overflow-y-auto" : "overflow-hidden"}`}
         >
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full py-12 text-center space-y-6">
+            <div className="flex flex-col items-center justify-center h-full py-12 text-center space-y-5">
               <div className="p-4 bg-primary/10 rounded-2xl text-primary">
-                <Bot className="w-12 h-12" />
+                <Image
+                  src="/logo.svg"
+                  alt="Fabricca"
+                  width={48}
+                  height={48}
+                  className="shrink-0"
+                />
               </div>
               <div className="max-w-md space-y-2">
                 <h2 className="text-lg font-semibold text-foreground">
                   Akademik Danışmanınıza Hoş Geldiniz
                 </h2>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Yüklediğiniz tüm PDF makaleler LlamaParse ile ayrıştırılmış ve
-                  vektörleştirilmiştir. Teziniz hakkında soru sorarak akademik
-                  analiz alabilirsiniz.
+                  Kütüphanenizdeki makaleler üzerine yapay zeka destekli
+                  akademik analizler alın.
                 </p>
-              </div>
-
-              <div className="w-full max-w-2xl grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4 text-left">
-                {RECOMMENDED_PROMPTS.map((prompt, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSend(prompt)}
-                    className="p-3.5 text-xs font-medium bg-card hover:bg-accent hover:text-accent-foreground border border-border/60 rounded-xl transition-all shadow-sm hover:shadow text-foreground flex items-start space-x-2"
-                  >
-                    <Search className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                    <span>{prompt}</span>
-                  </button>
-                ))}
               </div>
             </div>
           ) : (
             messages.map((msg) => {
               const isUser = msg.role === "user";
-              const isExpanded = expandedSources[msg.id] ?? false;
 
               return (
                 <div
@@ -292,8 +404,13 @@ export function AdvisorChat() {
                   className={`flex space-x-3 ${isUser ? "justify-end" : "justify-start"}`}
                 >
                   {!isUser && (
-                    <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-1">
-                      <Bot className="w-4 h-4" />
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1 overflow-hidden">
+                      <Image
+                        src="/logo.svg"
+                        alt="Fabricca"
+                        width={20}
+                        height={20}
+                      />
                     </div>
                   )}
 
@@ -307,92 +424,51 @@ export function AdvisorChat() {
                           : "bg-card border border-border/60 text-card-foreground rounded-tl-none shadow-sm"
                       }`}
                     >
-                      <div className="whitespace-pre-wrap">{msg.content}</div>
+                      {isUser ? (
+                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                      ) : (
+                        <MarkdownRenderer
+                          content={msg.content}
+                          sources={msg.sources}
+                          onCitationClick={(sourceIndex) =>
+                            handleCitationPosition(msg.id, sourceIndex)
+                          }
+                        />
+                      )}
 
-                      <div
-                        className={`text-[10px] mt-2 text-right ${
-                          isUser
-                            ? "text-primary-foreground/70"
-                            : "text-muted-foreground"
-                        }`}
-                      >
-                        {msg.timestamp}
-                      </div>
-                    </div>
-
-                    {/* Cited RAG Sources Badge */}
-                    {!isUser && msg.sources && msg.sources.length > 0 && (
-                      <div className="mt-2 bg-muted/40 border border-border/50 rounded-xl overflow-hidden text-xs">
+                      <div className="flex items-center justify-between mt-2">
                         <button
-                          onClick={() => toggleSourceExpand(msg.id)}
-                          className="w-full flex items-center justify-between p-2.5 px-3 bg-muted/30 hover:bg-muted/60 transition-colors text-muted-foreground font-medium"
+                          type="button"
+                          onClick={() => {
+                            void navigator.clipboard.writeText(msg.content);
+                            setCopiedMessageId(msg.id);
+                            setTimeout(() => setCopiedMessageId(null), 1500);
+                          }}
+                          className={`transition-colors ${
+                            isUser
+                              ? "text-primary-foreground/70 hover:text-primary-foreground"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
                         >
-                          <div className="flex items-center space-x-2">
-                            <BookOpen className="w-3.5 h-3.5 text-primary" />
-                            <span>
-                              Atıfta Bulunulan Kaynaklar ({msg.sources.length}{" "}
-                              RAG Bağlamı)
-                            </span>
-                          </div>
-                          {isExpanded ? (
-                            <ChevronUp className="w-4 h-4" />
+                          {copiedMessageId === msg.id ? (
+                            <Check
+                              className={`w-3.5 h-3.5 ${isUser ? "text-primary-foreground" : "text-green-500"}`}
+                            />
                           ) : (
-                            <ChevronDown className="w-4 h-4" />
+                            <Copy className="w-3.5 h-3.5" />
                           )}
                         </button>
-
-                        {isExpanded && (
-                          <div className="p-3 space-y-2.5 border-t border-border/40 bg-card/60">
-                            {msg.sources.map((src, sIdx) => {
-                              const pageSpan = src.pageStart ?? null;
-                              const pageEnd = src.pageEnd ?? pageSpan;
-                              const pageRef =
-                                src.printedPageNumber ??
-                                (pageSpan != null && pageEnd != null
-                                  ? pageSpan === pageEnd
-                                    ? `s. ${pageSpan}`
-                                    : `ss. ${pageSpan}\u00e2\u0080\u0093${pageEnd}`
-                                  : null);
-                              return (
-                                <div
-                                  key={sIdx}
-                                  className="p-2.5 bg-background/80 border border-border/50 rounded-lg space-y-1 text-xs"
-                                >
-                                  <div className="flex items-center justify-between font-semibold text-foreground">
-                                    <div className="flex items-center space-x-1.5 truncate max-w-md">
-                                      <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
-                                      <span className="truncate">
-                                        {src.resourceTitle}
-                                      </span>
-                                    </div>
-                                    <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[10px]">
-                                      %{(src.relevanceScore * 100).toFixed(0)}{" "}
-                                      Alaka
-                                    </span>
-                                  </div>
-
-                                  <div className="flex items-center space-x-3 text-[11px] text-muted-foreground">
-                                    <span>
-                                      Yazar: {src.resourceAuthors.join(", ")}
-                                    </span>
-                                    {pageRef && <span>Sayfa: {pageRef}</span>}
-                                    {src.sectionTitle && (
-                                      <span className="truncate">
-                                        Bölüm: {src.sectionTitle}
-                                      </span>
-                                    )}
-                                  </div>
-
-                                  <p className="text-[11px] text-muted-foreground/90 italic bg-muted/30 p-1.5 rounded border border-border/30 line-clamp-2">
-                                    &quot;{src.content}&quot;
-                                  </p>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
+                        <div
+                          className={`text-[10px] ${
+                            isUser
+                              ? "text-primary-foreground/70"
+                              : "text-muted-foreground"
+                          } ${isUser ? "ml-auto" : ""}`}
+                        >
+                          {msg.timestamp}
+                        </div>
                       </div>
-                    )}
+                    </div>
                   </div>
 
                   {isUser && (
@@ -405,7 +481,29 @@ export function AdvisorChat() {
             })
           )}
 
-          {isLoading && (
+          {isLoading && streamingText && !isStreamingDone && (
+            <div className="flex space-x-3 justify-start">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1 overflow-hidden">
+                <Image src="/logo.svg" alt="Fabricca" width={20} height={20} />
+              </div>
+              <div className="max-w-3xl space-y-2 items-start">
+                <div className="p-4 rounded-2xl text-sm leading-relaxed bg-card border border-border/60 text-card-foreground rounded-tl-none shadow-sm">
+                  <MarkdownRenderer
+                    content={streamingText}
+                    sources={streamingSources}
+                    onCitationClick={(sourceIndex) =>
+                      handleCitationPosition(
+                        `streaming-${activeSessionId}`,
+                        sourceIndex,
+                      )
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isLoading && !streamingText && (
             <div className="flex items-center space-x-3 text-muted-foreground text-xs py-2">
               <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 animate-spin">
                 <Sparkles className="w-4 h-4" />
@@ -446,6 +544,23 @@ export function AdvisorChat() {
           </button>
         </div>
       </div>
+
+      {/* Citation Dialog */}
+      <Dialog
+        open={activeCitation !== null}
+        onOpenChange={(open) => {
+          if (!open) setActiveCitation(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-base">
+              {activeSource?.resourceTitle ?? "Kaynak Detayı"}
+            </DialogTitle>
+          </DialogHeader>
+          {activeSource && <CitationPopoverContent source={activeSource} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

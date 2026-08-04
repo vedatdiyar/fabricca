@@ -18,6 +18,7 @@ export interface LexicalCandidate {
   printedPageNumber: string | null;
   title: string;
   authors: string[] | null;
+  publicationYear: number | null;
 }
 
 /** Options controlling the lexical search query. */
@@ -62,6 +63,7 @@ export async function searchLexical(
       printedPageNumber: chunks.printedPageNumber,
       title: sources.title,
       authors: sources.authors,
+      publicationYear: sources.publicationYear,
     })
     .from(chunks)
     .innerJoin(sources, eq(chunks.sourceId, sources.id))
