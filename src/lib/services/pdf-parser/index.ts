@@ -3,6 +3,7 @@ import { withRetry, HttpError } from "@/lib/api-utils";
 import { createConcurrencyLimiter } from "@/lib/rate-limiter";
 import type { Logger } from "@/lib/logger";
 import { sanitizeAndParseJson } from "@/lib/services/gemini";
+import { GEMINI_SEED } from "@/lib/constants";
 import { buildChunksFromPageAnalysis } from "@/lib/services/pdf/chunker";
 import type { DocumentChunk } from "@/lib/services/pdf/chunker";
 import { PDF_PARSER_SYSTEM_INSTRUCTION } from "@/lib/prompts";
@@ -29,6 +30,40 @@ const PDF_PARSER_MODEL = "gemini-3.1-flash-lite" as const;
 const BATCH_SIZE = 5;
 /** Max concurrent Gemini parse requests. Tuned to stay under the 15 RPM rate limit (~12.7s per batch). */
 const PDF_PARSE_CONCURRENCY = 3;
+
+/** Per-batch parse diagnostics collected for tuning and observability. */
+export interface PdfBatchMetric {
+  /** 1-based inclusive start page of the batch. */
+  startPage: number;
+  /** 1-based inclusive end page of the batch. */
+  endPage: number;
+  /** Wall-clock latency of the batch, in milliseconds. */
+  durationMs: number;
+  /** Total number of Gemini attempts (1 + retries) for the batch. */
+  attempts: number;
+  /** Prompt (input) token count reported by the model, when available. */
+  inputTokens?: number;
+  /** Candidate (output) token count reported by the model, when available. */
+  outputTokens?: number;
+  /** Total token count reported by the model, when available. */
+  totalTokens?: number;
+  /** Raw finishReason reported by the model, when available. */
+  finishReason?: string;
+}
+
+/** Tunable options for the PDF parsing driver. All fields are optional and fall back to production defaults. */
+export interface PdfParseOptions {
+  /** 1-based inclusive start page (default: 1). */
+  startPage?: number;
+  /** 1-based inclusive end page (default: last page). */
+  endPage?: number;
+  /** Number of pages submitted per Gemini request (default: BATCH_SIZE). */
+  batchSize?: number;
+  /** Maximum concurrent in-flight Gemini requests (default: PDF_PARSE_CONCURRENCY). */
+  concurrency?: number;
+  /** When provided, the driver appends one entry per completed batch. */
+  metrics?: PdfBatchMetric[];
+}
 
 let pdfParserClient: GoogleGenAI | null = null;
 
@@ -65,9 +100,12 @@ async function parseBatch(
   startPage: number,
   batchPageCount: number,
   isLastBatch: boolean,
+  onMetric: (m: Omit<PdfBatchMetric, "startPage" | "endPage">) => void,
   logger?: Logger,
 ): Promise<DocumentAnalysisResult> {
   const endPage = startPage + batchPageCount - 1;
+  const batchStart = performance.now();
+  let attempts = 1;
   const prompt = `Analyze pages ${startPage} to ${endPage} of the provided PDF document.${isLastBatch ? " Return metadata, page analyses, and all references found in the document." : " Return page analyses and any references found on these pages."}`;
 
   const payload = {
@@ -90,7 +128,7 @@ async function parseBatch(
       systemInstruction: PDF_PARSER_SYSTEM_INSTRUCTION,
       responseMimeType: "application/json",
       responseJsonSchema: DocumentAnalysisSchema,
-      temperature: 0,
+      seed: GEMINI_SEED,
     },
   };
 
@@ -116,6 +154,7 @@ async function parseBatch(
         return false;
       },
       onRetry: (attempt, delay, error) => {
+        attempts++;
         const status =
           error instanceof HttpError ? `${error.status}` : "unknown";
         logger?.info("pdf_parser_gemini_retry", {
@@ -138,6 +177,32 @@ async function parseBatch(
     );
   }
 
+  const usageMetadata = (
+    response as unknown as {
+      usageMetadata?: {
+        promptTokenCount?: number;
+        candidatesTokenCount?: number;
+        totalTokenCount?: number;
+      };
+    }
+  )?.usageMetadata;
+
+  const finishReason =
+    (
+      response as unknown as {
+        candidates?: Array<{ finishReason?: string }>;
+      }
+    )?.candidates?.[0]?.finishReason ?? undefined;
+
+  onMetric({
+    durationMs: Math.round(performance.now() - batchStart),
+    attempts,
+    inputTokens: usageMetadata?.promptTokenCount,
+    outputTokens: usageMetadata?.candidatesTokenCount,
+    totalTokens: usageMetadata?.totalTokenCount,
+    finishReason,
+  });
+
   const parsed = sanitizeAndParseJson<DocumentAnalysisResult>(text);
   return parsed;
 }
@@ -151,41 +216,45 @@ async function parseBatch(
  *
  * @param pdfBuffer - The raw PDF file content.
  * @param fileName - Original file name (used for logging).
- * @param startPage - 1-based inclusive start page (default: 1).
- * @param endPage - 1-based inclusive end page (default: last page).
+ * @param options - Optional driver settings (page range, batch size, concurrency, metric collector).
  * @param logger - Optional logger instance.
  * @returns Merged DocumentAnalysisResult with metadata from first batch, all pages, and all references.
  */
 export async function parsePdfToDocumentAnalysis(
   pdfBuffer: Buffer,
   fileName: string,
-  startPage: number = 1,
-  endPage?: number,
+  options: PdfParseOptions = {},
   logger?: Logger,
 ): Promise<DocumentAnalysisResult> {
   const pipelineStart = performance.now();
+  const {
+    batchSize = BATCH_SIZE,
+    concurrency = PDF_PARSE_CONCURRENCY,
+    metrics,
+  } = options;
 
   const loadedDoc = await loadPdfSource(pdfBuffer);
   const totalPages = getPdfPageCount(loadedDoc);
-  const safeEnd = endPage ?? totalPages;
-
-  const firstStart = Math.max(1, startPage);
-  const totalBatches = Math.ceil((safeEnd - firstStart + 1) / BATCH_SIZE);
+  const firstStart = Math.max(1, options.startPage ?? 1);
+  const safeEnd = options.endPage ?? totalPages;
+  const totalBatches = Math.ceil((safeEnd - firstStart + 1) / batchSize);
 
   logger?.info("pdf_parser_gemini_start", {
     service: "pdf-parser",
     data: {
       summary: `${totalBatches} batch, ${totalPages} sayfa`,
       totalPages,
-      startPage,
+      startPage: firstStart,
       endPage: safeEnd,
+      batchSize,
+      concurrency,
       bufferSize: pdfBuffer.length,
     },
   });
 
   const batches = Array.from({ length: totalBatches }, (_, batchIndex) => {
-    const currentStart = firstStart + batchIndex * BATCH_SIZE;
-    const currentEnd = Math.min(currentStart + BATCH_SIZE - 1, safeEnd);
+    const currentStart = firstStart + batchIndex * batchSize;
+    const currentEnd = Math.min(currentStart + batchSize - 1, safeEnd);
     return {
       startPage: currentStart,
       endPage: currentEnd,
@@ -194,7 +263,7 @@ export async function parsePdfToDocumentAnalysis(
     };
   });
 
-  const limiter = createConcurrencyLimiter(PDF_PARSE_CONCURRENCY);
+  const limiter = createConcurrencyLimiter(concurrency);
 
   const batchResults = await Promise.all(
     batches.map((batch) =>
@@ -206,13 +275,18 @@ export async function parsePdfToDocumentAnalysis(
         );
         const base64Data = batchBuffer.toString("base64");
 
-        return parseBatch(
+        const result = await parseBatch(
           base64Data,
           batch.startPage,
           batch.batchPageCount,
           batch.isLastBatch,
+          (metric) => {
+            metrics?.push({ startPage: batch.startPage, endPage: batch.endPage, ...metric });
+          },
           logger,
         );
+
+        return result;
       }),
     ),
   );
@@ -293,8 +367,7 @@ export async function parsePdfToChunks(
   const analysis = await parsePdfToDocumentAnalysis(
     pdfBuffer,
     fileName,
-    1,
-    undefined,
+    {},
     logger,
   );
 
