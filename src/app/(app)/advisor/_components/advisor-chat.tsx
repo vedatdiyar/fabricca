@@ -16,6 +16,7 @@ import {
   deleteChatSession,
   getChatMessages,
   saveChatMessage,
+  generateChatTitleAction,
   type ChatSessionListItem,
 } from "../actions";
 import type { RagSearchResultItem } from "@/lib/services/rag-search";
@@ -248,6 +249,13 @@ export function AdvisorChat() {
       sessionId = createRes.sessionId;
       setActiveSessionId(sessionId);
       await loadSessions();
+
+      // Asynchronously generate smart topic title via Cerebras Gemma 4
+      void generateChatTitleAction(sessionId, queryToSend).then((titleRes) => {
+        if (titleRes.success) {
+          void loadSessions();
+        }
+      });
     }
 
     const userMessageId = `user-${crypto.randomUUID()}`;

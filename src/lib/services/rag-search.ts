@@ -242,6 +242,10 @@ export async function performHybridRagSearch(
     return `[Eser: ${candidate.title}]\n${prefix}${candidate.content}`;
   });
 
+  const rerankQueryText = hydeExpansion
+    ? `${query}\n\n${hydeExpansion.targetTranslation}`
+    : query;
+
   interface RankedEntry {
     rrf: RrfScoredCandidate;
     relevanceScore: number;
@@ -253,7 +257,7 @@ export async function performHybridRagSearch(
   if (process.env.COHERE_API_KEY) {
     try {
       const reranked = await rerankWithCohere({
-        query,
+        query: rerankQueryText,
         documents: documentsToRerank,
         topN: documentsToRerank.length,
         logger,

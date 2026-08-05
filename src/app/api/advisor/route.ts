@@ -67,8 +67,8 @@ export async function POST(request: Request) {
 
   let contextText = "";
   if (sources.length > 0) {
-    const hasPartial = sources.some((s) => s.isPartialMatch);
-    if (hasPartial) {
+    const allPartial = sources.every((s) => s.isPartialMatch);
+    if (allPartial) {
       contextText +=
         "NOT: Aşağıdaki kaynaklar doğrudan eşleşmemektedir, yalnızca dolaylı olarak ilgili olabilirler. Bu bilgileri ihtiyatla kullanın.\n\n";
     }

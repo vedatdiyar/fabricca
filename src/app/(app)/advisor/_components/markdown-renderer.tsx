@@ -62,29 +62,64 @@ function formatContent(
       const pagePart = pageRef ? `, ${pageRef}` : "";
       const badgeLabel = `(${authorStr}, ${year}${pagePart})`;
 
-      let sourceIdx = -1;
-      for (let i = 0; i < sources.length; i++) {
-        if (
-          matchesAuthor(authorStr, sources[i].resourceAuthors) &&
-          sources[i].resourceTitle.toLowerCase().includes(match.toLowerCase())
-        ) {
-          sourceIdx = i;
-          break;
+      const citedPages: number[] = [];
+      if (pageRef) {
+        const pageNums = pageRef.match(/\d+/g);
+        if (pageNums) {
+          citedPages.push(...pageNums.map((n) => parseInt(n, 10)));
         }
       }
-      if (sourceIdx === -1) {
-        for (let i = 0; i < sources.length; i++) {
-          if (matchesAuthor(authorStr, sources[i].resourceAuthors)) {
-            sourceIdx = i;
-            break;
+      const citedYear = parseInt(year, 10);
+
+      let bestIdx = -1;
+      let maxScore = -1;
+
+      for (let i = 0; i < sources.length; i++) {
+        const source = sources[i];
+        let score = 0;
+
+        if (!matchesAuthor(authorStr, source.resourceAuthors)) {
+          continue;
+        }
+        score += 10;
+
+        if (source.resourceYear === citedYear) {
+          score += 10;
+        }
+
+        if (citedPages.length > 0) {
+          const sStart = source.pageStart;
+          const sEnd = source.pageEnd;
+
+          if (sStart != null && sEnd != null) {
+            const citedStart = citedPages[0];
+            const citedEnd = citedPages[citedPages.length - 1];
+
+            if (citedStart === sStart && citedEnd === sEnd) {
+              score += 100;
+            } else if (citedStart >= sStart && citedEnd <= sEnd) {
+              score += 80;
+            } else if (citedStart <= sEnd && citedEnd >= sStart) {
+              score += 50;
+            }
+          } else if (source.printedPageNumber) {
+            const printedStr = source.printedPageNumber;
+            if (citedPages.some((p) => printedStr.includes(String(p)))) {
+              score += 40;
+            }
           }
+        }
+
+        if (score > maxScore) {
+          maxScore = score;
+          bestIdx = i;
         }
       }
 
-      if (sourceIdx === -1) {
+      if (bestIdx === -1) {
         return `<span class="${CITATION_BADGE_CLASS}">${badgeLabel}</span>`;
       }
-      return `<span class="${CITATION_BADGE_CLASS}" ${CITATION_ATTR}="${sourceIdx}">${badgeLabel}</span>`;
+      return `<span class="${CITATION_BADGE_CLASS}" ${CITATION_ATTR}="${bestIdx}">${badgeLabel}</span>`;
     },
   );
 }
