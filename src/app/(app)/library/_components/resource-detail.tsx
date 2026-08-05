@@ -28,6 +28,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { formatPageNumber } from "@/lib/academic/utils";
 import { getBoxTypeBadgeConfig } from "@/lib/box-constants";
 import { cn } from "@/lib/utils";
 import { PdfUploadDropzone } from "./pdf-upload-dropzone";
@@ -127,7 +128,7 @@ export function ResourceDetail({
 
     onAddNote({
       resourceId: resource.id,
-      pageNumber: pageNumber.trim(),
+      pageNumber: formatPageNumber(pageNumber),
       noteType,
       content: content.trim(),
     });
@@ -303,10 +304,10 @@ export function ResourceDetail({
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
                   <div className="flex items-center gap-3">
-                    <div className="w-28">
+                    <div className="w-36">
                       <Input
                         type="text"
-                        placeholder="Sayfa No"
+                        placeholder="Örn: 15 veya 15-17"
                         value={pageNumber}
                         onChange={(e) => setPageNumber(e.target.value)}
                         className="text-xs bg-background border-border"

@@ -382,9 +382,9 @@ export function AdvisorChat() {
     })();
 
   return (
-    <div className="fixed inset-x-0 top-20 bottom-16 md:bottom-0 z-10 flex max-w-7xl mx-auto p-4 sm:p-6 gap-6">
+    <div className="w-full flex gap-6 min-h-0 h-[calc(100vh-8.5rem)]">
       {/* Sidebar */}
-      <div className="hidden lg:flex lg:col-span-4 lg:sticky lg:top-[calc(7rem+1px)] lg:h-[calc(100vh-8.5rem-1px)] flex-col min-h-0 w-72 shrink-0">
+      <div className="hidden lg:flex flex-col min-h-0 w-72 shrink-0 h-full">
         <ChatSidebar
           sessions={sessions}
           activeSessionId={activeSessionId}

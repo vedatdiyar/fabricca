@@ -69,8 +69,8 @@
   --info-foreground: #ffffff;
 
   /* --- Keskin Sınırlar --- */
-  --border: #20302a; /* Yeşilin tonlarında, kartları jilet gibi ayıran ara çizgi */
-  --input: #121a17;
+  --border: #24362f; /* Yeşilin tonlarında, kartları jilet gibi ayıran ara çizgi */
+  --input: #3e5a4f; /* Form girdilerinin açık renk, kristal netliğinde sınır çizgisi */
   --ring: #10b981;
 }
 

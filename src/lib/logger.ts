@@ -25,7 +25,8 @@ type ServiceName =
   | "cerebras"
   | "pdf-parser"
   | "rag-search"
-  | "advisor";
+  | "advisor"
+  | "citation-cards";
 
 export interface LogParams {
   service?: ServiceName;
