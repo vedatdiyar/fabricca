@@ -278,7 +278,7 @@ export function SidebarWorkList({
                       {item.authors.join(", ")}
                     </span>
                     <span className="font-mono text-[10px] text-muted-foreground">
-                      {item.publicationYear}
+                      {item.publicationYear ?? ""}
                     </span>
                   </div>
                 </CardContent>

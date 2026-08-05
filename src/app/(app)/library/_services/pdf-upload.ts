@@ -32,7 +32,7 @@ export async function fetchAndExtractPdf(
 ): Promise<ExtractedPdfContent> {
   log.info("pdf_fetch_from_r2_start", {
     service: "library",
-    data: { summary: "R2'den PDF alınıyor", tempKey },
+    data: { tempKey },
   });
   const buffer = await getPdfFromR2(tempKey);
   log.info("pdf_fetch_from_r2_success", {
@@ -48,11 +48,15 @@ export async function fetchAndExtractPdf(
 
   const parsedReferences: ParsedReference[] = references.map((ref) => ({
     raw: ref.raw,
+    footnoteNumber: ref.footnoteNumber ?? null,
+    documentType: ref.documentType ?? null,
     title: ref.title ?? null,
+    containerTitle: ref.containerTitle ?? null,
     authors: ref.authors ?? [],
     year: ref.year ?? null,
-    journal: null,
-    resolved: Boolean(ref.title),
+    publisher: ref.publisher ?? null,
+    publisherPlace: ref.publisherPlace ?? null,
+    resolved: Boolean(ref.title ?? ref.year ?? ref.containerTitle),
   }));
 
   return { buffer, chunks, parsedReferences, metadata };

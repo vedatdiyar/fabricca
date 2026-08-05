@@ -330,7 +330,6 @@ export async function parsePdfToDocumentAnalysis(
   options: PdfParseOptions = {},
   logger?: Logger,
 ): Promise<DocumentAnalysisResult> {
-  const pipelineStart = performance.now();
   const {
     batchSize = BATCH_SIZE,
     concurrency = PDF_PARSE_CONCURRENCY,
@@ -342,19 +341,6 @@ export async function parsePdfToDocumentAnalysis(
   const firstStart = Math.max(1, options.startPage ?? 1);
   const safeEnd = options.endPage ?? totalPages;
   const totalBatches = Math.ceil((safeEnd - firstStart + 1) / batchSize);
-
-  logger?.info("pdf_parser_gemini_start", {
-    service: "pdf-parser",
-    data: {
-      summary: `${totalBatches} batch, ${totalPages} sayfa`,
-      totalPages,
-      startPage: firstStart,
-      endPage: safeEnd,
-      batchSize,
-      concurrency,
-      bufferSize: pdfBuffer.length,
-    },
-  });
 
   const batches = Array.from({ length: totalBatches }, (_, batchIndex) => {
     const currentStart = firstStart + batchIndex * batchSize;
@@ -474,19 +460,6 @@ export async function parsePdfToDocumentAnalysis(
       authors: [],
     };
   }
-
-  const totalDurationMs = Math.round(performance.now() - pipelineStart);
-
-  logger?.info("pdf_parser_gemini_success", {
-    service: "pdf-parser",
-    durationMs: totalDurationMs,
-    data: {
-      totalPages,
-      pagesParsed: allPages.length,
-      referencesParsed: allReferences.length,
-      metadataTitle: metadata.title,
-    },
-  });
 
   return {
     metadata,

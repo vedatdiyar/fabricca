@@ -170,7 +170,7 @@ export async function requestResourcePdfUploadAction(
 
     log.info("request_resource_pdf_upload_url_start", {
       service: "library",
-      data: { summary: "Presigned URL oluşturuluyor", resourceId },
+      data: { resourceId },
     });
 
     const { presignedUrl, tempKey } = await generateTempPdfUploadUrl();
@@ -243,8 +243,6 @@ export async function completeResourcePdfUploadAction(
       };
     }
 
-    const pipelineStart = performance.now();
-
     const { buffer, chunks, metadata, parsedReferences } =
       await fetchAndExtractPdf(tempKey, originalFileName, log);
 
@@ -279,10 +277,7 @@ export async function completeResourcePdfUploadAction(
       .set({ pdfStatus: "PROCESSING" })
       .where(eq(sources.id, resourceId));
 
-    log.info("complete_resource_pdf_start", {
-      service: "library",
-      data: { summary: "PDF işleniyor", resourceId },
-    });
+    const pipelineStart = performance.now();
 
     const pipelineResult = await processResourcePdfPipeline({
       resourceId,
@@ -372,7 +367,6 @@ export async function requestPdfCreateUploadAction(): Promise<
 
     log.info("request_pdf_create_upload_url_start", {
       service: "library",
-      data: { summary: "Presigned URL oluşturuluyor" },
     });
 
     const { presignedUrl, tempKey } = await generateTempPdfUploadUrl();
@@ -432,8 +426,6 @@ export async function completePdfCreateUploadAction(
       };
     }
 
-    const pipelineStart = performance.now();
-
     const { buffer, chunks, metadata, parsedReferences } =
       await fetchAndExtractPdf(tempKey, originalFileName, log);
 
@@ -483,10 +475,7 @@ export async function completePdfCreateUploadAction(
 
     uploadedPdfFileName = apaFileName;
 
-    log.info("complete_pdf_create_start", {
-      service: "library",
-      data: { summary: "PDF işleniyor", resourceId: newResource.id },
-    });
+    const pipelineStart = performance.now();
 
     const pipelineResult = await processResourcePdfPipeline({
       resourceId: newResource.id,

@@ -74,9 +74,9 @@ export function mapSourceToResource(
     authors: overrides.authors ?? source.authors ?? ["Bilinmeyen Yazar"],
     publisher: overrides.publisher ?? source.publisher ?? "Belirtilmemiş",
     publicationYear:
-      overrides.publicationYear ??
-      source.publicationYear ??
-      new Date().getFullYear(),
+      overrides.publicationYear !== undefined
+        ? overrides.publicationYear
+        : (source.publicationYear ?? null),
     doi: overrides.doi ?? source.doi ?? undefined,
     openalexId: source.openalexId ?? undefined,
     isRead: overrides.isRead ?? source.isRead,

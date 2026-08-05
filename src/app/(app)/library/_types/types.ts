@@ -18,7 +18,7 @@ export interface LibraryResourceItem {
   title: string;
   authors: string[];
   publisher: string;
-  publicationYear: number;
+  publicationYear: number | null;
   doi?: string;
   openalexId?: string;
   isRead: boolean;

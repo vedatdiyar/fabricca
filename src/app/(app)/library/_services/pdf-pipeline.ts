@@ -59,7 +59,6 @@ export async function processResourcePdfPipeline(options: ProcessPdfOptions) {
   log.info("pdf_r2_and_embed_parallel_start", {
     service: "library",
     data: {
-      summary: `${embeddingTexts.length} chunk`,
       resourceId,
       chunkCount: embeddingTexts.length,
     },
@@ -82,7 +81,7 @@ export async function processResourcePdfPipeline(options: ProcessPdfOptions) {
 
   log.info("pdf_db_batch_insert_start", {
     service: "library",
-    data: { summary: `${chunks.length} chunk`, resourceId },
+    data: { resourceId },
   });
 
   const dbStart = performance.now();

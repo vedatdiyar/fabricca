@@ -106,6 +106,7 @@ export function ResourceDetail({
   const [noteType, setNoteType] = useState<NoteType>("DIRECT_QUOTE");
 
   const [noteToDeleteId, setNoteToDeleteId] = useState<number | null>(null);
+  const [pdfToDeleteId, setPdfToDeleteId] = useState<number | null>(null);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -209,11 +210,7 @@ export function ResourceDetail({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={async () => {
-                  try {
-                    await onDeletePdf(resource.id);
-                  } catch {}
-                }}
+                onClick={() => setPdfToDeleteId(resource.id)}
                 title="PDF'i Sil"
                 className="h-8 w-8 p-0 border-border/80 text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30"
               >
@@ -236,7 +233,8 @@ export function ResourceDetail({
           <div className="flex items-center gap-1">
             <span className="font-medium text-foreground">Yayıncı:</span>
             <span>
-              {resource.publisher} ({resource.publicationYear})
+              {resource.publisher}
+              {resource.publicationYear ? ` (${resource.publicationYear})` : ""}
             </span>
           </div>
           {resource.doi && (
@@ -475,6 +473,43 @@ export function ResourceDetail({
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-medium"
+            >
+              Evet, Sil
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={pdfToDeleteId !== null}
+        onOpenChange={(open) => {
+          if (!open) setPdfToDeleteId(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-serif text-lg font-semibold text-foreground">
+              PDF&apos;i Silmek İstediğinize Emin Misiniz?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-muted-foreground">
+              Bu PDF ve ilişkili tüm vektör verileri kalıcı olarak silinecektir.
+              Bu işlem geri alınamaz.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-xs font-medium">
+              Vazgeç
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (pdfToDeleteId && onDeletePdf) {
+                  try {
+                    await onDeletePdf(pdfToDeleteId);
+                  } catch {}
+                }
+                setPdfToDeleteId(null);
+              }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-medium"
             >
               Evet, Sil

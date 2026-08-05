@@ -196,7 +196,7 @@ export async function updateLibraryResourceAction(input: {
   title: string;
   authors: string[];
   publisher?: string;
-  publicationYear: number;
+  publicationYear?: number | null;
   doi?: string;
   boxId?: number;
 }) {
@@ -237,7 +237,7 @@ export async function updateLibraryResourceAction(input: {
             ? input.authors.map((a) => a.trim()).filter(Boolean)
             : ["Bilinmeyen Yazar"],
         publisher: input.publisher?.trim() || "Belirtilmemiş",
-        publicationYear: input.publicationYear || new Date().getFullYear(),
+        publicationYear: input.publicationYear ?? null,
         doi: input.doi?.trim() || null,
         updatedAt: new Date(),
       })

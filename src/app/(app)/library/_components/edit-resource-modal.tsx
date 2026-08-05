@@ -45,7 +45,7 @@ function EditResourceForm({
   const [authorsText, setAuthorsText] = useState(resource.authors.join(", "));
   const [publisher, setPublisher] = useState(resource.publisher || "");
   const [publicationYear, setPublicationYear] = useState<number | "">(
-    resource.publicationYear || new Date().getFullYear(),
+    resource.publicationYear ?? "",
   );
   const [doi, setDoi] = useState(resource.doi || "");
 
@@ -155,9 +155,7 @@ function EditResourceForm({
         authors: parsedAuthors,
         publisher: publisher.trim() || undefined,
         publicationYear:
-          typeof publicationYear === "number"
-            ? publicationYear
-            : new Date().getFullYear(),
+          typeof publicationYear === "number" ? publicationYear : null,
         doi: doi.trim() || undefined,
         boxId: targetBoxId,
       });

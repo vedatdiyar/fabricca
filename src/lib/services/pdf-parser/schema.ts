@@ -16,9 +16,18 @@ export interface DocumentAnalysisResult {
   }>;
   references: Array<{
     raw: string;
-    title?: string;
-    authors?: string[];
-    year?: number;
+    footnoteNumber?: number | null;
+    documentType?:
+      "article-journal" | "book" | "chapter" | "thesis" | "other" | null;
+    title?: string | null;
+    containerTitle?: string | null;
+    authors?: Array<{
+      name: string;
+      role: "author" | "editor" | "translator";
+    }>;
+    year?: number | null;
+    publisher?: string | null;
+    publisherPlace?: string | null;
   }>;
 }
 
@@ -76,7 +85,7 @@ export const DocumentAnalysisSchema: JsonSchema = {
           markdownContent: {
             type: "string",
             description:
-              "Full page content converted to clean markdown. Preserve heading hierarchy (H1/H2/H3), numbered/bulleted lists, tables, emphasis. Strip running headers, footers, standalone page numbers. Inline footnotes at the end of the relevant paragraph as [^n].",
+              "Full page content converted to clean markdown. Preserve heading hierarchy (H1/H2/H3), numbered/bulleted lists, tables, emphasis. Strip running headers, footers, standalone page numbers. Do NOT output footnote callout tags like [^n] in paragraph text.",
           },
         },
         required: ["pageNumber", "markdownContent"],
@@ -84,25 +93,70 @@ export const DocumentAnalysisSchema: JsonSchema = {
     },
     references: {
       type: "array",
+      description:
+        "Formal bibliographic entries extracted ONLY from reference list sections (References, Kaynakça, Bibliography, Notes). Do NOT include ibid/a.g.e. shorthand or body prose.",
       items: {
         type: "object",
         properties: {
           raw: {
             type: "string",
-            description: "Ham referans satırı",
+            description:
+              'The complete reference text copied VERBATIM from the source, preserving all diacritics and punctuation exactly as printed. Strip leading entry numbers ("1 ", "10 ").',
+          },
+          footnoteNumber: {
+            type: ["number", "null"],
+            description:
+              "The integer entry number when the section numbers its list entries (e.g. 1, 10). Null if unnumbered.",
+          },
+          documentType: {
+            type: ["string", "null"],
+            enum: ["article-journal", "book", "chapter", "thesis", "other"],
+            description:
+              "Bibliographic item type: 'article-journal' for journal articles, 'book' for standalone books, 'chapter' for edited book chapters, 'thesis' for academic dissertations, 'other' for miscellaneous.",
           },
           title: {
             type: ["string", "null"],
-            description: "Çıkarılan başlık (varsa)",
+            description:
+              "Title of the cited article, book, or chapter. VERBATIM copy. Null only if absent.",
+          },
+          containerTitle: {
+            type: ["string", "null"],
+            description:
+              "Journal name (for articles) or edited book title (for chapters). Null for standalone books.",
           },
           authors: {
             type: "array",
-            items: { type: "string" },
-            description: "Yazar listesi (varsa)",
+            description: "Contributors list with explicit role.",
+            items: {
+              type: "object",
+              properties: {
+                name: {
+                  type: "string",
+                  description: "Full name (Given Family or Family Given)",
+                },
+                role: {
+                  type: "string",
+                  enum: ["author", "editor", "translator"],
+                  description: "Contributor role.",
+                },
+              },
+              required: ["name", "role"],
+            },
           },
           year: {
             type: ["number", "null"],
-            description: "Yayın yılı (varsa)",
+            description:
+              "4-digit original publication year (e.g. 1913 in '2012 [1913]', 1910 in '1326/1910'). Null if not explicitly specified.",
+          },
+          publisher: {
+            type: ["string", "null"],
+            description:
+              "Publishing house or publisher name (e.g. 'Fol Kitap', 'Oxford University Press').",
+          },
+          publisherPlace: {
+            type: ["string", "null"],
+            description:
+              "City or location of publication (e.g. 'İstanbul', 'London', 'Chicago').",
           },
         },
         required: ["raw"],

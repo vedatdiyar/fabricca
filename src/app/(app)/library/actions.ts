@@ -33,7 +33,7 @@ export async function updateLibraryResourceAction(input: {
   title: string;
   authors: string[];
   publisher?: string;
-  publicationYear: number;
+  publicationYear?: number | null;
   doi?: string;
   boxId?: number;
 }) {

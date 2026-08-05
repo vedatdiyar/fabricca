@@ -31,10 +31,18 @@ import type {
 /** A single parsed bibliographic reference extracted from a resource's reference list. */
 export interface ParsedReference {
   raw: string;
+  footnoteNumber: number | null;
+  documentType:
+    "article-journal" | "book" | "chapter" | "thesis" | "other" | null;
   title: string | null;
-  authors: string[];
+  containerTitle: string | null;
+  authors: Array<{
+    name: string;
+    role: "author" | "editor" | "translator";
+  }>;
   year: number | null;
-  journal: string | null;
+  publisher: string | null;
+  publisherPlace: string | null;
   resolved: boolean;
 }
 
