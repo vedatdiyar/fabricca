@@ -1,4 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
+import {
+  processPdf as processPdfInspector,
+  extractPagesMarkdown as extractPdfInspectorPages,
+} from "@firecrawl/pdf-inspector";
 import { createConcurrencyLimiter } from "@/lib/rate-limiter";
 import type { Logger } from "@/lib/logger";
 import { sanitizeAndParseJson } from "@/lib/services/gemini";
@@ -27,23 +31,21 @@ export {
 
 const PDF_PARSER_MODEL = "gemini-3.1-flash-lite" as const;
 const BATCH_SIZE = 5;
-/**
- * All batches are fired concurrently up to this limit.
- * 429 responses carry a `retryDelay` that pauses the entire gate, so we can
- * safely use the full RPM headroom without a conservative fixed concurrency.
- */
-const PDF_PARSE_CONCURRENCY = 15;
 
 /**
- * A shared pause gate used by all concurrent batch workers for a single PDF parse run.
- * When any worker encounters a 429, it sets the gate so every other worker waits
- * for the server-specified `retryDelay` before dispatching the next request.
+ * A shared pause gate used by a worker for Gemini requests.
+ * When a worker encounters a 429, it sets the gate so subsequent requests wait
+ * for the server-specified `retryDelay` before dispatching.
  */
 interface PauseGate {
   /** Resolves immediately when no pause is active; blocks while a 429 pause is in effect. */
   wait(): Promise<void>;
   /** Activates a pause for `ms` milliseconds. Subsequent calls extend the pause if longer. */
   pause(ms: number): void;
+  /** Returns true if the gate is currently unpaused and ready. */
+  isReady(): boolean;
+  /** Returns the timestamp in ms until which this gate is paused. */
+  getPauseUntil(): number;
 }
 
 /**
@@ -77,6 +79,14 @@ function createPauseGate(): PauseGate {
         pauseUntil = until;
         gatePromise = null; // reset so next wait() re-reads the updated pauseUntil
       }
+    },
+
+    isReady(): boolean {
+      return Date.now() >= pauseUntil;
+    },
+
+    getPauseUntil(): number {
+      return pauseUntil;
     },
   };
 }
@@ -147,78 +157,185 @@ export interface PdfParseOptions {
   endPage?: number;
   /** Number of pages submitted per Gemini request (default: BATCH_SIZE). */
   batchSize?: number;
-  /** Maximum concurrent in-flight Gemini requests (default: PDF_PARSE_CONCURRENCY). */
+  /** Maximum concurrent in-flight Gemini requests (default: pool size x 15). */
   concurrency?: number;
   /** When provided, the driver appends one entry per completed batch. */
   metrics?: PdfBatchMetric[];
 }
 
-let pdfParserClient: GoogleGenAI | null = null;
-
-/**
- * Returns a lazily-initialized GoogleGenAI client for the PDF parser using a dedicated API key.
- *
- * @returns The shared PDF parser GoogleGenAI instance.
- */
-function getPdfParserClient(): GoogleGenAI {
-  if (!pdfParserClient) {
-    const apiKey = process.env.PDF_PARSER_GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error(
-        "PDF_PARSER_GEMINI_API_KEY environment variable is not defined.",
-      );
-    }
-    pdfParserClient = new GoogleGenAI({ apiKey });
-  }
-  return pdfParserClient;
+interface KeyWorker {
+  keyIndex: number;
+  apiKey: string;
+  client: GoogleGenAI;
+  gate: PauseGate;
 }
 
 /**
- * Parses a batch of PDF pages via Gemini structured output.
- * On 429, activates the shared pause gate for the server-specified `retryDelay`
- * so all concurrent sibling batches also wait before their next dispatch.
+ * Resolves all configured Gemini API keys for PDF parsing from environment variables.
+ * Supports `PDF_PARSER_GEMINI_API_KEY`, `PDF_PARSER_GEMINI_API_KEY_1`, `PDF_PARSER_GEMINI_API_KEY_2`, etc.,
+ * as well as comma-separated values.
  *
- * @param base64Data - Base64-encoded mini-PDF string for the batch.
- * @param startPage - 1-based start page number of this batch in the original document.
- * @param batchPageCount - Number of pages in this batch.
- * @param isFirstBatch - Whether this is the first batch of the document (metadata is requested only here).
- * @param gate - Shared pause gate coordinating 429 backoff across all concurrent batches.
+ * @returns Array of unique non-empty API key strings.
+ */
+function getPdfParserApiKeys(): string[] {
+  const keys: string[] = [];
+  const envVarNames = [
+    "PDF_PARSER_GEMINI_API_KEY",
+    "PDF_PARSER_GEMINI_API_KEY_1",
+    "PDF_PARSER_GEMINI_API_KEY_2",
+    "PDF_PARSER_GEMINI_API_KEY_3",
+    "PDF_PARSER_GEMINI_API_KEY_4",
+    "PDF_PARSER_GEMINI_API_KEY_5",
+  ];
+
+  for (const name of envVarNames) {
+    const val = process.env[name];
+    if (val) {
+      const parts = val
+        .split(",")
+        .map((k) => k.trim())
+        .filter(Boolean);
+      keys.push(...parts);
+    }
+  }
+
+  const uniqueKeys = Array.from(new Set(keys));
+  if (uniqueKeys.length === 0) {
+    throw new Error(
+      "PDF_PARSER_GEMINI_API_KEY environment variable is not defined.",
+    );
+  }
+  return uniqueKeys;
+}
+
+let keyWorkerPool: KeyWorker[] | null = null;
+
+/**
+ * Returns the lazily-initialized worker pool containing a GoogleGenAI client and PauseGate for each API key.
+ *
+ * @returns Array of KeyWorker instances.
+ */
+function getPdfParserKeyPool(): KeyWorker[] {
+  if (!keyWorkerPool) {
+    const keys = getPdfParserApiKeys();
+    keyWorkerPool = keys.map((apiKey, index) => ({
+      keyIndex: index + 1,
+      apiKey,
+      client: new GoogleGenAI({ apiKey }),
+      gate: createPauseGate(),
+    }));
+  }
+  return keyWorkerPool;
+}
+
+/**
+ * Calculates the preferred key index (0-based) for a batch given total batch count and pool size.
+ * When totalBatches > 15, batches are split into equal contiguous partitions across keys
+ * (e.g. 20 batches -> 10 to Key 1, 10 to Key 2; 30 batches -> 15 to Key 1, 15 to Key 2).
+ * When totalBatches <= 15, batches are assigned via round-robin.
+ *
+ * @param batchIndex - 0-based index of the current batch.
+ * @param totalBatches - Total number of batches in the document.
+ * @param poolSize - Number of available API key workers.
+ * @returns Preferred 0-based key index.
+ */
+function getPreferredKeyIndex(
+  batchIndex: number,
+  totalBatches: number,
+  poolSize: number,
+): number {
+  if (poolSize <= 1) return 0;
+
+  if (totalBatches > 15) {
+    const chunkSize = Math.ceil(totalBatches / poolSize);
+    const partition = Math.floor(batchIndex / chunkSize);
+    return Math.min(partition, poolSize - 1);
+  }
+
+  return batchIndex % poolSize;
+}
+
+/**
+ * Selects the optimal KeyWorker for a batch attempt.
+ *
+ * 1. Checks if the preferred KeyWorker for this batch is ready (not paused/exhausted).
+ *    If ready, returns the preferred worker.
+ * 2. If the preferred worker is paused/exhausted (e.g. 429 or daily quota limit hit),
+ *    checks if any other worker in the pool is ready and active.
+ *    If an active worker exists, automatically redirects (fails over) to that worker!
+ * 3. If ALL workers in the pool are currently paused/exhausted, returns the worker
+ *    whose pause timer expires earliest so execution can resume as soon as any key cools down.
+ *
+ * @param pool - Array of initialized key workers.
+ * @param preferredKeyIndex - The initially assigned 0-based key index for this batch.
+ * @param attempt - 1-based attempt number.
+ * @returns Selected KeyWorker instance.
+ */
+function selectWorker(
+  pool: KeyWorker[],
+  preferredKeyIndex: number,
+  attempt: number,
+): KeyWorker {
+  if (pool.length === 0) {
+    throw new Error("No API key workers available.");
+  }
+
+  const targetIndex = (preferredKeyIndex + attempt - 1) % pool.length;
+  const targetWorker = pool[targetIndex];
+
+  if (targetWorker.gate.isReady()) {
+    return targetWorker;
+  }
+
+  // Preferred worker is paused/exhausted! Fail over to any available ready worker
+  const readyWorkers = pool.filter((w) => w.gate.isReady());
+  if (readyWorkers.length > 0) {
+    return readyWorkers[0];
+  }
+
+  // All workers paused: return worker with earliest pause expiry
+  return pool.reduce((earliest, curr) =>
+    curr.gate.getPauseUntil() < earliest.gate.getPauseUntil() ? curr : earliest,
+  );
+}
+
+/**
+ * Parses a batch of text-extracted PDF pages via Gemini structured output.
+ *
+ * @param pageTexts - List of page numbers and extracted markdown text for this batch.
+ * @param batchIndex - 0-based batch index.
+ * @param preferredKeyIndex - Initially assigned 0-based key index.
+ * @param isFirstBatch - Whether this is the first batch of the document (metadata requested only here).
+ * @param pool - Multi-key worker pool.
  * @param onMetric - Callback invoked with per-batch diagnostics.
  * @param logger - Optional logger instance.
- * @returns Parsed batch result with pages, and references found on these pages.
+ * @returns Parsed batch result with pages and references found on these pages.
  */
-async function parseBatch(
-  base64Data: string,
-  startPage: number,
-  batchPageCount: number,
+async function parseBatchText(
+  pageTexts: Array<{ pageNumber: number; text: string }>,
+  batchIndex: number,
+  preferredKeyIndex: number,
   isFirstBatch: boolean,
-  gate: PauseGate,
+  pool: KeyWorker[],
   onMetric: (m: Omit<PdfBatchMetric, "startPage" | "endPage">) => void,
   logger?: Logger,
 ): Promise<DocumentAnalysisResult> {
-  const endPage = startPage + batchPageCount - 1;
+  const startPage = pageTexts[0].pageNumber;
+  const endPage = pageTexts[pageTexts.length - 1].pageNumber;
   const batchStart = performance.now();
   const metadataClause = isFirstBatch
     ? "Fill the metadata object with the document's title and authors (plus optional publicationYear, publisher, and DOI). "
     : "";
-  const prompt = `The provided PDF contains ${batchPageCount} pages (original document pages ${startPage}-${endPage}). Analyze every page without skipping any. ${metadataClause}Return one page analysis per page, in reading order, with pageNumber starting at 1 for the first page of the provided PDF. Return every bibliography (references) entry that appears on these pages.`;
+
+  const pagesFormattedText = pageTexts
+    .map((p) => `=== PAGE ${p.pageNumber} ===\n${p.text}`)
+    .join("\n\n");
+
+  const prompt = `Analyze all ${pageTexts.length} provided pages below. Format into clean markdown per page with pageNumber matching the page header. ${metadataClause}Extract bibliography entries.\n\n${pagesFormattedText}`;
 
   const payload = {
     model: PDF_PARSER_MODEL,
-    contents: [
-      {
-        role: "user",
-        parts: [
-          {
-            inlineData: {
-              mimeType: "application/pdf",
-              data: base64Data,
-            },
-          },
-          { text: prompt },
-        ],
-      },
-    ],
+    contents: prompt,
     config: {
       systemInstruction: PDF_PARSER_SYSTEM_INSTRUCTION,
       responseMimeType: "application/json",
@@ -231,13 +348,24 @@ async function parseBatch(
   let attempts = 0;
 
   while (true) {
-    // Honour any active global pause before dispatching.
-    await gate.wait();
-
     attempts++;
+    const worker = selectWorker(pool, preferredKeyIndex, attempts);
+    await worker.gate.wait();
+
+    if (worker.keyIndex - 1 !== preferredKeyIndex) {
+      logger?.info("pdf_parser_key_failover", {
+        service: "pdf-parser",
+        data: {
+          batchIndex,
+          preferredKeyIndex: preferredKeyIndex + 1,
+          assignedKeyIndex: worker.keyIndex,
+          pages: `${startPage}-${endPage}`,
+        },
+      });
+    }
+
     try {
-      const response =
-        await getPdfParserClient().models.generateContent(payload);
+      const response = await worker.client.models.generateContent(payload);
 
       const text = response.text;
       if (!text) {
@@ -277,7 +405,8 @@ async function parseBatch(
       const is429 =
         error instanceof Error &&
         (error.message.includes("429") ||
-          error.message.includes("RESOURCE_EXHAUSTED"));
+          error.message.includes("RESOURCE_EXHAUSTED") ||
+          error.message.includes("Quota exceeded"));
       const is5xx =
         error instanceof Error &&
         (error.message.includes("503") ||
@@ -286,19 +415,167 @@ async function parseBatch(
 
       if ((is429 || is5xx) && attempts < MAX_ATTEMPTS) {
         if (is429) {
-          // Parse Gemini's server-side retryDelay and pause all workers for exactly that long.
           const retryDelayMs = parseRetryDelayMs(error) ?? 30_000;
-          gate.pause(retryDelayMs);
+          worker.gate.pause(retryDelayMs);
           logger?.info("pdf_parser_gemini_rate_limit", {
             service: "pdf-parser",
             data: {
               pages: `${startPage}-${endPage}`,
+              keyIndex: worker.keyIndex,
               attempt: attempts,
               pauseMs: retryDelayMs,
             },
           });
         } else {
-          // 5xx: short fixed wait without touching the global gate.
+          await new Promise((r) => setTimeout(r, 2_000 * attempts));
+        }
+        continue;
+      }
+
+      throw error;
+    }
+  }
+}
+
+/**
+ * Parses a batch of scanned PDF pages via Gemini Vision structured output.
+ *
+ * @param base64Data - Base64-encoded mini-PDF string for the batch.
+ * @param startPage - 1-based start page number of this batch in the original document.
+ * @param batchPageCount - Number of pages in this batch.
+ * @param batchIndex - 0-based batch index.
+ * @param preferredKeyIndex - Initially assigned 0-based key index.
+ * @param isFirstBatch - Whether this is the first batch of the document.
+ * @param pool - Multi-key worker pool.
+ * @param onMetric - Callback invoked with per-batch diagnostics.
+ * @param logger - Optional logger instance.
+ * @returns Parsed batch result with pages and references found on these pages.
+ */
+async function parseBatchVision(
+  base64Data: string,
+  startPage: number,
+  batchPageCount: number,
+  batchIndex: number,
+  preferredKeyIndex: number,
+  isFirstBatch: boolean,
+  pool: KeyWorker[],
+  onMetric: (m: Omit<PdfBatchMetric, "startPage" | "endPage">) => void,
+  logger?: Logger,
+): Promise<DocumentAnalysisResult> {
+  const endPage = startPage + batchPageCount - 1;
+  const batchStart = performance.now();
+  const metadataClause = isFirstBatch
+    ? "Fill the metadata object with the document's title and authors (plus optional publicationYear, publisher, and DOI). "
+    : "";
+  const prompt = `The provided PDF contains ${batchPageCount} pages (original document pages ${startPage}-${endPage}). Analyze every page without skipping any. ${metadataClause}Return one page analysis per page, in reading order, with pageNumber starting at 1 for the first page of the provided PDF. Return every bibliography (references) entry that appears on these pages.`;
+
+  const payload = {
+    model: PDF_PARSER_MODEL,
+    contents: [
+      {
+        role: "user",
+        parts: [
+          {
+            inlineData: {
+              mimeType: "application/pdf",
+              data: base64Data,
+            },
+          },
+          { text: prompt },
+        ],
+      },
+    ],
+    config: {
+      systemInstruction: PDF_PARSER_SYSTEM_INSTRUCTION,
+      responseMimeType: "application/json",
+      responseJsonSchema: DocumentAnalysisSchema,
+      seed: GEMINI_SEED,
+    },
+  };
+
+  const MAX_ATTEMPTS = 5;
+  let attempts = 0;
+
+  while (true) {
+    attempts++;
+    const worker = selectWorker(pool, preferredKeyIndex, attempts);
+    await worker.gate.wait();
+
+    if (worker.keyIndex - 1 !== preferredKeyIndex) {
+      logger?.info("pdf_parser_key_failover", {
+        service: "pdf-parser",
+        data: {
+          batchIndex,
+          preferredKeyIndex: preferredKeyIndex + 1,
+          assignedKeyIndex: worker.keyIndex,
+          pages: `${startPage}-${endPage}`,
+        },
+      });
+    }
+
+    try {
+      const response = await worker.client.models.generateContent(payload);
+
+      const text = response.text;
+      if (!text) {
+        throw new Error(
+          `Gemini boş yanıt döndürdü. Sayfa aralığı: ${startPage}-${endPage}`,
+        );
+      }
+
+      const usageMetadata = (
+        response as unknown as {
+          usageMetadata?: {
+            promptTokenCount?: number;
+            candidatesTokenCount?: number;
+            totalTokenCount?: number;
+          };
+        }
+      )?.usageMetadata;
+
+      const finishReason =
+        (
+          response as unknown as {
+            candidates?: Array<{ finishReason?: string }>;
+          }
+        )?.candidates?.[0]?.finishReason ?? undefined;
+
+      onMetric({
+        durationMs: Math.round(performance.now() - batchStart),
+        attempts,
+        inputTokens: usageMetadata?.promptTokenCount,
+        outputTokens: usageMetadata?.candidatesTokenCount,
+        totalTokens: usageMetadata?.totalTokenCount,
+        finishReason,
+      });
+
+      return sanitizeAndParseJson<DocumentAnalysisResult>(text);
+    } catch (error) {
+      const is429 =
+        error instanceof Error &&
+        (error.message.includes("429") ||
+          error.message.includes("RESOURCE_EXHAUSTED") ||
+          error.message.includes("Quota exceeded"));
+      const is5xx =
+        error instanceof Error &&
+        (error.message.includes("503") ||
+          error.message.includes("UNAVAILABLE") ||
+          error.message.includes("500"));
+
+      if ((is429 || is5xx) && attempts < MAX_ATTEMPTS) {
+        if (is429) {
+          const retryDelayMs = parseRetryDelayMs(error) ?? 30_000;
+          worker.gate.pause(retryDelayMs);
+          logger?.info("pdf_parser_gemini_rate_limit", {
+            service: "pdf-parser",
+            data: {
+              pages: `${startPage}-${endPage}`,
+              keyIndex: worker.keyIndex,
+              attempt: attempts,
+              pauseMs: retryDelayMs,
+            },
+          });
+        } else {
           await new Promise((r) => setTimeout(r, 2_000 * attempts));
         }
         continue;
@@ -342,83 +619,28 @@ function isFormalBibliographicEntry(raw: string): boolean {
 }
 
 /**
- * Parses a PDF document into structured page-level markdown, metadata, and references via Gemini batch processing.
+ * Merges raw batch results into a consolidated DocumentAnalysisResult.
  *
- * Metadata is requested only from the first batch; every batch extracts only the bibliography entries on its own
- * pages. Batches are submitted with bounded concurrency (see `PDF_PARSE_CONCURRENCY`). Page numbers are re-mapped
- * from batch-relative (1..N) back to original document pages, duplicates are dropped, and a coverage guard throws
- * if any page in the requested range is missing. References are deduplicated by raw text and sorted alphabetically,
- * so the result order stays deterministic regardless of batch completion order.
- *
- * @param pdfBuffer - The raw PDF file content.
- * @param fileName - Original file name (used for logging).
- * @param options - Optional driver settings (page range, batch size, concurrency, metric collector).
+ * @param batches - List of batch page boundaries.
+ * @param batchResults - List of parsed batch result objects.
+ * @param fileName - Original file name for metadata fallback.
+ * @param firstStart - 1-based start page of the requested parse range.
+ * @param safeEnd - 1-based end page of the requested parse range.
  * @param logger - Optional logger instance.
- * @returns Merged DocumentAnalysisResult with metadata from the first valid batch, all pages, and deduplicated references.
+ * @returns Merged DocumentAnalysisResult object.
  */
-export async function parsePdfToDocumentAnalysis(
-  pdfBuffer: Buffer,
+function mergeBatchResults(
+  batches: Array<{
+    startPage: number;
+    endPage: number;
+    batchPageCount: number;
+  }>,
+  batchResults: DocumentAnalysisResult[],
   fileName: string,
-  options: PdfParseOptions = {},
+  firstStart: number,
+  safeEnd: number,
   logger?: Logger,
-): Promise<DocumentAnalysisResult> {
-  const {
-    batchSize = BATCH_SIZE,
-    concurrency = PDF_PARSE_CONCURRENCY,
-    metrics,
-  } = options;
-
-  const loadedDoc = await loadPdfSource(pdfBuffer);
-  const totalPages = getPdfPageCount(loadedDoc);
-  const firstStart = Math.max(1, options.startPage ?? 1);
-  const safeEnd = options.endPage ?? totalPages;
-  const totalBatches = Math.ceil((safeEnd - firstStart + 1) / batchSize);
-
-  const batches = Array.from({ length: totalBatches }, (_, batchIndex) => {
-    const currentStart = firstStart + batchIndex * batchSize;
-    const currentEnd = Math.min(currentStart + batchSize - 1, safeEnd);
-    return {
-      startPage: currentStart,
-      endPage: currentEnd,
-      batchPageCount: currentEnd - currentStart + 1,
-      isFirstBatch: batchIndex === 0,
-    };
-  });
-
-  const limiter = createConcurrencyLimiter(concurrency);
-  const gate = createPauseGate();
-
-  const batchResults = await Promise.all(
-    batches.map((batch) =>
-      limiter.exec(async () => {
-        const batchBuffer = await extractBatchFromDoc(
-          loadedDoc,
-          batch.startPage,
-          batch.endPage,
-        );
-        const base64Data = batchBuffer.toString("base64");
-
-        const result = await parseBatch(
-          base64Data,
-          batch.startPage,
-          batch.batchPageCount,
-          batch.isFirstBatch,
-          gate,
-          (metric) => {
-            metrics?.push({
-              startPage: batch.startPage,
-              endPage: batch.endPage,
-              ...metric,
-            });
-          },
-          logger,
-        );
-
-        return result;
-      }),
-    ),
-  );
-
+): DocumentAnalysisResult {
   let metadata: DocumentAnalysisResult["metadata"] | null = null;
   const pageMap = new Map<number, PageAnalysis>();
   const referenceMap = new Map<
@@ -430,7 +652,6 @@ export async function parsePdfToDocumentAnalysis(
     const batch = batches[batchIndex];
     const batchResult = batchResults[batchIndex];
 
-    // Metadata is guaranteed to come only from the first batch that provides a valid one.
     if (!metadata && batchResult.metadata?.title) {
       metadata = batchResult.metadata;
     }
@@ -446,7 +667,6 @@ export async function parsePdfToDocumentAnalysis(
       });
     }
 
-    // Re-map batch-relative page numbers (1..N inside the mini-PDF) back to original document pages.
     for (const page of batchResult.pages) {
       const originalPage = batch.startPage + page.pageNumber - 1;
       if (!pageMap.has(originalPage)) {
@@ -462,7 +682,6 @@ export async function parsePdfToDocumentAnalysis(
     }
   }
 
-  // Page-loss guard: every page in the requested range must have been analyzed exactly once.
   const expectedPages = Array.from(
     { length: safeEnd - firstStart + 1 },
     (_, i) => firstStart + i,
@@ -485,7 +704,6 @@ export async function parsePdfToDocumentAnalysis(
     a.raw.localeCompare(b.raw),
   );
 
-  // Fallback metadata if Gemini didn't extract it
   if (!metadata) {
     metadata = {
       title: fileName.replace(/\.pdf$/i, ""),
@@ -498,6 +716,161 @@ export async function parsePdfToDocumentAnalysis(
     pages: allPages,
     references: allReferences,
   };
+}
+
+/**
+ * Parses a PDF document into structured page-level markdown, metadata, and references via pdf-inspector + Gemini.
+ *
+ * Uses `@firecrawl/pdf-inspector` to inspect the PDF in <100ms. If the PDF contains native text, extracts markdown
+ * pages locally and dispatches text-only prompts concurrently to Gemini Flash Lite. If the PDF is scanned or image-based,
+ * falls back to Gemini Vision OCR batching.
+ *
+ * @param pdfBuffer - The raw PDF file content.
+ * @param fileName - Original file name (used for logging).
+ * @param options - Optional driver settings (page range, batch size, concurrency, metric collector).
+ * @param logger - Optional logger instance.
+ * @returns Merged DocumentAnalysisResult with metadata, pages, and deduplicated references.
+ */
+export async function parsePdfToDocumentAnalysis(
+  pdfBuffer: Buffer,
+  fileName: string,
+  options: PdfParseOptions = {},
+  logger?: Logger,
+): Promise<DocumentAnalysisResult> {
+  const pool = getPdfParserKeyPool();
+  const defaultConcurrency = pool.length * 15;
+  const {
+    batchSize = BATCH_SIZE,
+    concurrency = options.concurrency ?? defaultConcurrency,
+    metrics,
+  } = options;
+
+  // Step 1: Inspect PDF via pdf-inspector in <100ms
+  const inspection = processPdfInspector(pdfBuffer);
+  const isScannedOrOcr =
+    inspection.pdfType === "Scanned" ||
+    (inspection.pagesNeedingOcr && inspection.pagesNeedingOcr.length > 0);
+
+  const limiter = createConcurrencyLimiter(concurrency);
+
+  if (isScannedOrOcr) {
+    // Scanned fallback: Vision base64 PDF batching
+    const loadedDoc = await loadPdfSource(pdfBuffer);
+    const totalPages = getPdfPageCount(loadedDoc);
+    const firstStart = Math.max(1, options.startPage ?? 1);
+    const safeEnd = options.endPage ?? totalPages;
+    const totalBatches = Math.ceil((safeEnd - firstStart + 1) / batchSize);
+
+    const batches = Array.from({ length: totalBatches }, (_, batchIndex) => {
+      const currentStart = firstStart + batchIndex * batchSize;
+      const currentEnd = Math.min(currentStart + batchSize - 1, safeEnd);
+      return {
+        startPage: currentStart,
+        endPage: currentEnd,
+        batchPageCount: currentEnd - currentStart + 1,
+        isFirstBatch: batchIndex === 0,
+      };
+    });
+
+    const batchResults = await Promise.all(
+      batches.map((batch, batchIndex) =>
+        limiter.exec(async () => {
+          const batchBuffer = await extractBatchFromDoc(
+            loadedDoc,
+            batch.startPage,
+            batch.endPage,
+          );
+          const base64Data = batchBuffer.toString("base64");
+
+          return parseBatchVision(
+            base64Data,
+            batch.startPage,
+            batch.batchPageCount,
+            batchIndex,
+            getPreferredKeyIndex(batchIndex, totalBatches, pool.length),
+            batch.isFirstBatch,
+            pool,
+            (metric) => {
+              metrics?.push({
+                startPage: batch.startPage,
+                endPage: batch.endPage,
+                ...metric,
+              });
+            },
+            logger,
+          );
+        }),
+      ),
+    );
+
+    return mergeBatchResults(
+      batches,
+      batchResults,
+      fileName,
+      firstStart,
+      safeEnd,
+      logger,
+    );
+  }
+
+  // Text-based PDF: ultra-fast local text extraction via pdf-inspector
+  const extracted = extractPdfInspectorPages(pdfBuffer);
+  const totalPages = extracted.pages.length;
+  const firstStart = Math.max(1, options.startPage ?? 1);
+  const safeEnd = options.endPage ?? totalPages;
+
+  const targetPages = extracted.pages
+    .slice(firstStart - 1, safeEnd)
+    .map((p) => ({ pageNumber: p.page + 1, text: p.markdown }));
+
+  const totalBatches = Math.ceil(targetPages.length / batchSize);
+
+  const textBatches = Array.from({ length: totalBatches }, (_, batchIndex) => {
+    const slice = targetPages.slice(
+      batchIndex * batchSize,
+      (batchIndex + 1) * batchSize,
+    );
+    const currentStart = slice[0].pageNumber;
+    const currentEnd = slice[slice.length - 1].pageNumber;
+    return {
+      startPage: currentStart,
+      endPage: currentEnd,
+      batchPageCount: slice.length,
+      slice,
+      isFirstBatch: batchIndex === 0,
+    };
+  });
+
+  const batchResults = await Promise.all(
+    textBatches.map((batch, batchIndex) =>
+      limiter.exec(async () => {
+        return parseBatchText(
+          batch.slice,
+          batchIndex,
+          getPreferredKeyIndex(batchIndex, totalBatches, pool.length),
+          batch.isFirstBatch,
+          pool,
+          (metric) => {
+            metrics?.push({
+              startPage: batch.startPage,
+              endPage: batch.endPage,
+              ...metric,
+            });
+          },
+          logger,
+        );
+      }),
+    ),
+  );
+
+  return mergeBatchResults(
+    textBatches,
+    batchResults,
+    fileName,
+    firstStart,
+    safeEnd,
+    logger,
+  );
 }
 
 /** Result shape for the high-level parsePdfToChunks adapter. */

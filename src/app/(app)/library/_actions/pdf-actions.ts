@@ -213,6 +213,8 @@ export async function completeResourcePdfUploadAction(
   const log = new Logger(flowId);
 
   try {
+    const pipelineStart = performance.now();
+
     const session = await getSession();
     if (!session) {
       await cleanupTempKey(tempKey, log);
@@ -276,8 +278,6 @@ export async function completeResourcePdfUploadAction(
       .update(sources)
       .set({ pdfStatus: "PROCESSING" })
       .where(eq(sources.id, resourceId));
-
-    const pipelineStart = performance.now();
 
     const pipelineResult = await processResourcePdfPipeline({
       resourceId,
@@ -412,6 +412,8 @@ export async function completePdfCreateUploadAction(
   let uploadedPdfFileName: string | undefined;
 
   try {
+    const pipelineStart = performance.now();
+
     const session = await getSession();
     if (!session) {
       await cleanupTempKey(tempKey, log);
@@ -474,8 +476,6 @@ export async function completePdfCreateUploadAction(
     }
 
     uploadedPdfFileName = apaFileName;
-
-    const pipelineStart = performance.now();
 
     const pipelineResult = await processResourcePdfPipeline({
       resourceId: newResource.id,

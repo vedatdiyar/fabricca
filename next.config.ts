@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["@firecrawl/pdf-inspector"],
   cacheComponents: true,
   turbopack: {
     root: process.cwd(),

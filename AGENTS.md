@@ -53,7 +53,7 @@ Projenin çalışması ve dış servislerle entegrasyonu için aşağıdaki çev
 - `SEED_USER1_PASSWORD` & `SEED_USER2_PASSWORD`: Seed edilmiş kullanıcı hesaplarının şifreleri.
 - `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID` & `R2_SECRET_ACCESS_KEY`: Cloudflare R2 (S3-compatible) nesne depolama erişim kimlik bilgileri.
 - `R2_BUCKET_NAME` & `R2_PUBLIC_DOMAIN`: R2 kova adı ve public erişim alan adı.
-- `PDF_PARSER_GEMINI_API_KEY`: PDF parser için ayrı Google Gemini API anahtarı (Gemini 3.1 Flash Lite ile sayfa bazlı PDF analizi).
+- `PDF_PARSER_GEMINI_API_KEY` & `PDF_PARSER_GEMINI_API_KEY_2`: PDF parser için ayrı Google Gemini API anahtarları (çoklu key havuzu ile round-robin / rate-limit yük dağıtımı).
 - `CEREBRAS_API_KEY`: Cerebras API anahtarı (Gemma 4 31B ile metadata çıkarımı için).
 - `GOOGLE_BOOKS_API_KEY`: Google Books API anahtarı (ISBN ile kitap metadata fallback çözümü için).
 
