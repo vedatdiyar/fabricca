@@ -69,6 +69,7 @@ export function Header({ userName }: { userName: string }) {
               alt="Fabricca"
               width={55}
               height={55}
+              priority
               className="shrink-0"
             />
             <span className="badge-brand text-xl font-normal tracking-widest text-foreground">
