@@ -8,6 +8,7 @@ import { z } from "zod";
 import { Logger, createFlowId } from "../logger";
 import { classifyError } from "../error-utils";
 import { withRetry } from "../api-utils";
+import { GEMINI_SEED } from "../constants";
 import crypto from "crypto";
 import fs from "fs/promises";
 import path from "path";
@@ -260,7 +261,7 @@ export async function generateStructuredContent<T>(
       responseMimeType: "application/json",
       responseJsonSchema: schema,
       thinkingConfig: options?.thinkingConfig ?? undefined,
-      seed: options?.seed ?? undefined,
+      seed: options?.seed ?? GEMINI_SEED,
       safetySettings,
     },
   };

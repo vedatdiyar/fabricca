@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { Logger } from "@/lib/logger";
 import { withRetry, HttpError, DEFAULT_MAX_DELAY } from "@/lib/api-utils";
 import { createConcurrencyLimiter } from "@/lib/rate-limiter";
+import { CEREBRAS_SEED } from "../constants";
 
 const CEREBRAS_BASE_URL = "https://api.cerebras.ai/v1";
 
@@ -39,6 +40,10 @@ const CEREBRAS_RETRY_CONFIG = {
  * @param options - Optional settings for the request.
  * @param options.payloadStage - Optional label identifying the pipeline stage.
  * @param options.zodSchema - Optional Zod schema used to validate the response.
+ * @param options.temperature - Sampling temperature (0-2.0); defaults to 0 for deterministic greedy decoding.
+ * @param options.seed - Fixed seed for best-effort deterministic sampling; defaults to CEREBRAS_SEED.
+ * @param options.maxTokens - Maximum output tokens; defaults to 1024.
+ * @param options.topP - Optional nucleus sampling threshold (0-1); omitted by default.
  * @returns The parsed and validated structured output of type T.
  */
 export async function generateStructuredContent<T>(
@@ -50,6 +55,10 @@ export async function generateStructuredContent<T>(
   options?: {
     payloadStage?: string;
     zodSchema?: z.ZodType<T>;
+    temperature?: number;
+    seed?: number;
+    maxTokens?: number;
+    topP?: number;
   },
 ): Promise<T> {
   const apiKey = process.env.CEREBRAS_API_KEY;
@@ -59,9 +68,20 @@ export async function generateStructuredContent<T>(
 
   const stage = options?.payloadStage || "cerebras";
 
+  const temperature = options?.temperature ?? 0;
+  const seed = options?.seed ?? CEREBRAS_SEED;
+  const maxTokens = options?.maxTokens ?? 1024;
+  const topP = options?.topP;
+
   log?.info(`${stage}_start`, {
     service: "cerebras",
-    data: { model: modelName, promptLength: prompt.length },
+    data: {
+      model: modelName,
+      promptLength: prompt.length,
+      temperature,
+      seed,
+      maxTokens,
+    },
   });
 
   let attempts = 0;
@@ -91,8 +111,10 @@ export async function generateStructuredContent<T>(
                 schema: jsonSchema,
               },
             },
-            temperature: 0,
-            max_tokens: 1024,
+            temperature,
+            max_tokens: maxTokens,
+            seed,
+            top_p: topP,
           }),
         }),
       );
