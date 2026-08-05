@@ -16,7 +16,6 @@ export interface DocumentAnalysisResult {
   }>;
   references: Array<{
     raw: string;
-    footnoteNumber?: number | null;
     documentType?:
       "article-journal" | "book" | "chapter" | "thesis" | "other" | null;
     title?: string | null;
@@ -94,7 +93,7 @@ export const DocumentAnalysisSchema: JsonSchema = {
     references: {
       type: "array",
       description:
-        "Formal bibliographic entries extracted ONLY from reference list sections (References, Kaynakça, Bibliography, Notes). Do NOT include ibid/a.g.e. shorthand or body prose.",
+        "Formal bibliographic entries extracted ONLY from dedicated reference list sections (References, Kaynakça, Bibliography). Do NOT include ibid/a.g.e. shorthand, page-bottom footnotes, or body prose.",
       items: {
         type: "object",
         properties: {
@@ -102,11 +101,6 @@ export const DocumentAnalysisSchema: JsonSchema = {
             type: "string",
             description:
               'The complete reference text copied VERBATIM from the source, preserving all diacritics and punctuation exactly as printed. Strip leading entry numbers ("1 ", "10 ").',
-          },
-          footnoteNumber: {
-            type: ["number", "null"],
-            description:
-              "The integer entry number when the section numbers its list entries (e.g. 1, 10). Null if unnumbered.",
           },
           documentType: {
             type: ["string", "null"],

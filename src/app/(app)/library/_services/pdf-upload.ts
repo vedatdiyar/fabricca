@@ -48,7 +48,6 @@ export async function fetchAndExtractPdf(
 
   const parsedReferences: ParsedReference[] = references.map((ref) => ({
     raw: ref.raw,
-    footnoteNumber: ref.footnoteNumber ?? null,
     documentType: ref.documentType ?? null,
     title: ref.title ?? null,
     containerTitle: ref.containerTitle ?? null,

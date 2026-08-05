@@ -310,6 +310,38 @@ async function parseBatch(
 }
 
 /**
+ * Filters out non-bibliographic entries such as inline body quotes or running commentary.
+ *
+ * @param raw - The raw reference string.
+ * @returns True if the string appears to be a formal bibliographic entry.
+ */
+function isFormalBibliographicEntry(raw: string): boolean {
+  const trimmed = raw.trim();
+  if (!trimmed) return false;
+
+  // Filter out entries that start with prose transitions
+  if (
+    /^(It was|During|According to|As noted|He claims|She notes|This process|We can see|See also|Quoted in)\b/i.test(
+      trimmed,
+    )
+  ) {
+    return false;
+  }
+
+  // Filter out long prose paragraphs (over 300 chars ending with body citations in parens)
+  if (trimmed.length > 350 && trimmed.includes("(") && trimmed.includes(")")) {
+    return false;
+  }
+
+  // Filter out inline page-number citations ending in ", p. 123", ", s. 45" or ", s. 45."
+  if (/,\s*(?:[pP]{1,2}|[sS]{1,2})\.\s*\d+\.?$/i.test(trimmed)) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * Parses a PDF document into structured page-level markdown, metadata, and references via Gemini batch processing.
  *
  * Metadata is requested only from the first batch; every batch extracts only the bibliography entries on its own
@@ -424,7 +456,7 @@ export async function parsePdfToDocumentAnalysis(
 
     for (const ref of batchResult.references ?? []) {
       const key = ref.raw.trim();
-      if (key && !referenceMap.has(key)) {
+      if (key && !referenceMap.has(key) && isFormalBibliographicEntry(key)) {
         referenceMap.set(key, ref);
       }
     }

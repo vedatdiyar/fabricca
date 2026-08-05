@@ -19,14 +19,15 @@ RULES:
    - Strip running headers, footers, standalone page numbers.
    - Do NOT insert footnote callout tags like [^n] into the body markdown text.
 
-3. REFERENCES: Extract ONLY formal bibliographic entries from reference list sections (e.g. Kaynakça,
-   References, Bibliography, Notes/Dipnotlar at the end of the document or chapter).
+3. REFERENCES: Extract ONLY formal bibliographic entries from dedicated reference list sections (e.g. Kaynakça,
+   References, Bibliography at the end of the document or chapter).
+   If the provided pages do NOT contain a formal Bibliography / References section, return an empty array ([]) for references.
 
    STRICT EXCLUSIONS & DELETIONS:
+   - DO NOT extract page-bottom footnotes, inline quote citations, explanatory notes, or parenthetical citations embedded inside body text (e.g. "Bozarslan, 2002, s. 852" or "Fanon, p. 223").
    - SKIP and DELETE any entry that is purely shorthand or a same-work indicator (e.g. "ibid.", "op. cit.",
      "loc. cit.", "a.g.e.", "a.g.m.", "idem"). Do NOT include these in the references array under any circumstance.
-   - DO NOT extract inline parenthetical citations embedded inside body text (e.g. "Bozarslan, 2002, s. 852").
-   - DO NOT extract running prose or explanatory body paragraphs.
+   - DO NOT extract running prose, quotes, or explanatory body paragraphs.
 
    PAGE-SPANNING ENTRIES: If the very first line(s) of the first page in this batch appear to be the
    tail of a reference entry that began on the previous page (starting with a publication city,
@@ -36,21 +37,20 @@ RULES:
    a) raw            — Copy the complete reference text VERBATIM, character-for-character, preserving all
                        diacritics, archaic spellings, and punctuation exactly as printed. Do NOT attempt to
                        correct spelling or transliteration. Strip any leading entry number (e.g. remove "14 " from "14 Author...").
-   b) footnoteNumber — Integer entry number if the section numbers its entries (e.g. 1, 10). Null if unnumbered.
-   c) documentType   — Classify item type: "article-journal" (journal article), "book" (authored book),
+   b) documentType   — Classify item type: "article-journal" (journal article), "book" (authored book),
                        "chapter" (chapter in an edited volume), "thesis" (dissertation), or "other".
-   d) title          — Title of the cited work (article title, book title, or chapter title). VERBATIM copy.
-   e) containerTitle — Journal name (for articles) or edited book title (for chapters). Null for standalone books.
-   f) authors        — List of contributors with explicit roles:
+   c) title          — Title of the cited work (article title, book title, or chapter title). VERBATIM copy.
+   d) containerTitle — Journal name (for articles) or edited book title (for chapters). Null for standalone books.
+   e) authors        — List of contributors with explicit roles:
                        [{ "name": "Full Name", "role": "author" | "editor" | "translator" }]
                        - Assign "translator" for translators (e.g. "çev.", "trans.").
                        - Assign "editor" for volume editors (e.g. "(ed.)", "(eds)").
                        - Assign "author" for primary authors.
-   g) year           — PUBLICATION YEAR OF CITED EDITION: Extract the publication year of the cited edition.
+   f) year           — PUBLICATION YEAR OF CITED EDITION: Extract the publication year of the cited edition.
                        - For reprint formats with bracketed dates like "2012 [1913]" or "2012 [1908]", ALWAYS extract the UNBRACKETED outer publication year (e.g. 2012), as that is the year of the actual edition published by the cited publisher.
                        - For dual Ottoman/Gregorian dates like "1326/1910", ALWAYS extract the 4-digit Gregorian year (e.g. 1910).
                        - Single year: use as-is. Null if not specified in text.
-   h) publisher      — Publishing house or publisher name explicitly printed in text (e.g. "Fol Kitap", "Oxford University Press"). Null if not printed.
-   i) publisherPlace — City or location of publication explicitly printed in text (e.g. "İstanbul", "London", "Chicago"). Null if not printed.
+   g) publisher      — Publishing house or publisher name explicitly printed in text (e.g. "Fol Kitap", "Oxford University Press"). Null if not printed.
+   h) publisherPlace — City or location of publication explicitly printed in text (e.g. "İstanbul", "London", "Chicago"). Null if not printed.
 
 4. Do NOT hallucinate content. Return in the SAME LANGUAGE as the source.`;

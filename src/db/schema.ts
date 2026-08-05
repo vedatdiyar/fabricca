@@ -31,7 +31,6 @@ import type {
 /** A single parsed bibliographic reference extracted from a resource's reference list. */
 export interface ParsedReference {
   raw: string;
-  footnoteNumber: number | null;
   documentType:
     "article-journal" | "book" | "chapter" | "thesis" | "other" | null;
   title: string | null;
