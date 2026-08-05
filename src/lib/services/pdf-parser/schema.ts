@@ -145,12 +145,12 @@ export const DocumentAnalysisSchema: JsonSchema = {
           publisher: {
             type: ["string", "null"],
             description:
-              "Publishing house or publisher name (e.g. 'Fol Kitap', 'Oxford University Press').",
+              "Publishing house or publisher name (e.g. 'Brill', 'Frank Cass', 'İletişim'). For 'City: Publisher' citations (e.g. 'Leiden: Brill', 'İstanbul: İletişim'), extract the publisher after the colon.",
           },
           publisherPlace: {
             type: ["string", "null"],
             description:
-              "City or location of publication (e.g. 'İstanbul', 'London', 'Chicago').",
+              "City or location of publication (e.g. 'Leiden', 'London', 'İstanbul'). For 'City: Publisher' citations (e.g. 'Leiden: Brill', 'İstanbul: İletişim'), extract the city before the colon.",
           },
         },
         required: ["raw"],
@@ -158,5 +158,15 @@ export const DocumentAnalysisSchema: JsonSchema = {
     },
   },
   required: ["metadata", "pages", "references"],
+  additionalProperties: false,
+};
+
+/** JSON Schema for Gemini structured output — references extraction only. */
+export const ReferencesOnlySchema: JsonSchema = {
+  type: "object",
+  properties: {
+    references: DocumentAnalysisSchema.properties!.references,
+  },
+  required: ["references"],
   additionalProperties: false,
 };

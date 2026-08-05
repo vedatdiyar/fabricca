@@ -50,7 +50,7 @@ RULES:
                        - For reprint formats with bracketed dates like "2012 [1913]" or "2012 [1908]", ALWAYS extract the UNBRACKETED outer publication year (e.g. 2012), as that is the year of the actual edition published by the cited publisher.
                        - For dual Ottoman/Gregorian dates like "1326/1910", ALWAYS extract the 4-digit Gregorian year (e.g. 1910).
                        - Single year: use as-is. Null if not specified in text.
-   g) publisher      — Publishing house or publisher name explicitly printed in text (e.g. "Fol Kitap", "Oxford University Press"). Null if not printed.
-   h) publisherPlace — City or location of publication explicitly printed in text (e.g. "İstanbul", "London", "Chicago"). Null if not printed.
+   g) publisher      — Publishing house or publisher name explicitly printed in text (e.g. "Brill", "Frank Cass", "İletişim", "Oxford University Press"). For entries formatted as "City: Publisher" (e.g. "Leiden: Brill", "London: Frank Cass", "İstanbul: İletişim", "Ankara: Beybun Yayınları"), ALWAYS extract the publisher name after the colon into publisher. Null if not printed.
+   h) publisherPlace — City or location of publication explicitly printed in text (e.g. "Leiden", "London", "İstanbul", "Chicago"). For entries formatted as "City: Publisher" (e.g. "Leiden: Brill", "London: Frank Cass", "İstanbul: İletişim"), ALWAYS extract the city/place before the colon into publisherPlace. Null if not printed.
 
 4. Do NOT hallucinate content. Return in the SAME LANGUAGE as the source.`;
