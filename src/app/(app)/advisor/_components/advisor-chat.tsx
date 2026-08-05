@@ -447,7 +447,7 @@ export function AdvisorChat() {
                     <div
                       className={`p-4 rounded-2xl text-sm leading-relaxed ${
                         isUser
-                          ? "bg-primary text-primary-foreground rounded-tr-none shadow-md"
+                          ? "bg-primary/10 border border-primary/20 text-foreground rounded-tr-none"
                           : "bg-card border border-border/60 text-card-foreground rounded-tl-none shadow-sm"
                       }`}
                     >
@@ -471,26 +471,20 @@ export function AdvisorChat() {
                             setCopiedMessageId(msg.id);
                             setTimeout(() => setCopiedMessageId(null), 1500);
                           }}
-                          className={`transition-colors ${
-                            isUser
-                              ? "text-primary-foreground/70 hover:text-primary-foreground"
-                              : "text-muted-foreground hover:text-foreground"
-                          }`}
+                          className="transition-colors text-muted-foreground hover:text-foreground"
                         >
                           {copiedMessageId === msg.id ? (
                             <Check
-                              className={`w-3.5 h-3.5 ${isUser ? "text-primary-foreground" : "text-green-500"}`}
+                              className={`w-3.5 h-3.5 ${isUser ? "text-primary" : "text-success"}`}
                             />
                           ) : (
                             <Copy className="w-3.5 h-3.5" />
                           )}
                         </button>
                         <div
-                          className={`text-[10px] ${
-                            isUser
-                              ? "text-primary-foreground/70"
-                              : "text-muted-foreground"
-                          } ${isUser ? "ml-auto" : ""}`}
+                          className={`text-[10px] text-muted-foreground ${
+                            isUser ? "ml-auto" : ""
+                          }`}
                         >
                           {msg.timestamp}
                         </div>
