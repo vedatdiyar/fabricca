@@ -16,6 +16,7 @@ import {
   type LexicalCandidate,
 } from "@/lib/services/rag/lexical";
 import { buildChunkContextPrefix } from "@/lib/services/pdf/chunker";
+import { expandAndTranslateQuery } from "@/lib/services/rag/hyde";
 
 /** Per-candidate retrieval debug metadata (only exposed when `debug: true`). */
 export interface RagSearchDebug {
@@ -87,6 +88,7 @@ function isZeroVector(vector: number[]): boolean {
 
 /**
  * Runs hybrid RAG retrieval by fusing dense (pgvector HNSW) and lexical (tsvector GIN) branches via RRF and reranking with Cohere.
+ * Utilizes Cerebras Gemma 4 (31B) for bidirectional cross-lingual HyDE query expansion.
  *
  * @param options - Hybrid search options (query, filters, and debug flags).
  * @returns Ranked RAG result items (Top 5 by default).
@@ -105,9 +107,22 @@ export async function performHybridRagSearch(
 
   const searchStart = performance.now();
 
-  const tsQuery = buildLexicalTsQuery(query, RAG_CONFIG.lexicalMaxQueryTokens);
+  const hydeExpansion = await expandAndTranslateQuery(query, logger);
 
-  const embeddingPromise = generateVectorEmbeddings([query], logger)
+  const lexicalQueryText = hydeExpansion
+    ? `${query} ${hydeExpansion.targetTranslation} ${hydeExpansion.targetKeywords.join(" ")}`
+    : query;
+
+  const denseQueryText = hydeExpansion
+    ? `${query}\n\n${hydeExpansion.targetTranslation}\n\nContext: ${hydeExpansion.hypotheticalSnippet}`
+    : query;
+
+  const tsQuery = buildLexicalTsQuery(
+    lexicalQueryText,
+    RAG_CONFIG.lexicalMaxQueryTokens,
+  );
+
+  const embeddingPromise = generateVectorEmbeddings([denseQueryText], logger)
     .then((vectors) => vectors[0])
     .catch((error) => {
       logger?.error("rag_dense_embed_failed", {

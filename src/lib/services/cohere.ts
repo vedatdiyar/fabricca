@@ -5,6 +5,9 @@ const COHERE_RERANK_MODEL = "rerank-v4.0-pro";
 
 const COHERE_RERANK_URL = "https://api.cohere.com/v2/rerank";
 
+/** Hard timeout for a single Cohere Rerank request before it is aborted. */
+const COHERE_RERANK_TIMEOUT_MS = 3000;
+
 /** Individual rerank result returned from Cohere Rerank. */
 export interface RerankResult {
   index: number;
@@ -20,7 +23,7 @@ export interface RerankParams {
 }
 
 /**
- * Reranks documents against a query via Cohere rerank-v4.0-pro; falls back to input order on missing key or request failure.
+ * Reranks documents against a query via Cohere rerank-v4.0-pro; falls back to input-order scores on missing key, request failure, or a 3-second timeout.
  *
  * @param params - Object containing the query, documents, optional topN limit, and optional logger.
  * @returns The reranked results sorted by descending relevance score.
@@ -48,6 +51,12 @@ export async function rerankWithCohere(
     }));
   }
 
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    COHERE_RERANK_TIMEOUT_MS,
+  );
+
   try {
     const response = await fetch(COHERE_RERANK_URL, {
       method: "POST",
@@ -61,6 +70,7 @@ export async function rerankWithCohere(
         documents,
         top_n: topN,
       }),
+      signal: controller.signal,
     });
 
     if (!response.ok) {
@@ -96,5 +106,7 @@ export async function rerankWithCohere(
       index,
       relevanceScore: 1 - index * 0.01,
     }));
+  } finally {
+    clearTimeout(timeout);
   }
 }

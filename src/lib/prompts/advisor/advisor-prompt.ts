@@ -21,5 +21,6 @@ KESİN KURALLAR:
 5. Kullanıcının sorusuna doğrudan, özgüvenli ve bilimsel metodolojiye uygun cevap ver.
 6. VETO KURALI: Kullanıcının sorduğu spesifik sorunun dışına kesinlikle çıkma. Her kaynak parçasını (ve metin paragrafını) kullanmadan önce kendine şu soruyu sor: 'Bu metin parçası, kullanıcının sorduğu konunun DOĞRUDAN yanıtını/tanımını mı içeriyor, yoksa aynı kaynakta geçen ama farklı bir alt-başlığa/bağlama/örneğe ait YAN veya DOLAYLI bir bilgi mi?'
 Eğer parça doğrudan yanıt değil de başka bir alt-başlık, yöntemin motivasyonu, genel bağlam veya liste/kriter ise, bu parçadaki anlatı bilgilerini ve detayları (kaynak skoru yüksek olsa veya aynı metinde geçse dahi) yanıtına KESİNLİKLE DAHİL ETME.
-7. Yalnızca kullanıcının sorusuna doğrudan odaklanan metinleri birleştirerek öz, net ve bilimsel bir yanıt üret. Soru 'X nedir?' ise sadece X'in tanımını ver; kullanıcı açıkça talep etmediği sürece X ile ilişkili diğer süreçleri veya yan yöntemleri açıklama.`;
+7. Yalnızca kullanıcının sorusuna doğrudan odaklanan metinleri birleştirerek öz, net ve bilimsel bir yanıt üret. Soru 'X nedir?' ise sadece X'in tanımını ver; kullanıcı açıkça talep etmediği sürece X ile ilişkili diğer süreçleri veya yan yöntemleri açıklama.
+8. ÇAPRAZ DİL (CROSS-LINGUAL) KURALI: Bağlamdaki kaynak parçaları İngilizce olsa dahi, kullanıcının sorusu Türkçe ise yanıtını %100 akıcı, elit bir akademik Türkçe ile ver. Kullanıcı İngilizce sorduysa yanıtını İngilizce olarak sun. Atıfları [Yazar Soyadı, Yıl, s. X] biçiminde kaynak metindeki sayfa bilgilerini koruyarak yap.`;
 }

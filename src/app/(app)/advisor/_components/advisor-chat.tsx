@@ -121,6 +121,7 @@ export function AdvisorChat() {
 
   const isSendingRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -129,6 +130,24 @@ export function AdvisorChat() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isLoading]);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [inputQuery]);
+
+  useEffect(() => {
+    const resize = () => {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+    };
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
+  }, []);
 
   const loadSessions = useCallback(async () => {
     const list = await getChatSessions();
@@ -522,6 +541,7 @@ export function AdvisorChat() {
         {/* Input Box */}
         <div className="mt-4 p-2 bg-card border border-border/60 rounded-2xl shadow-md flex items-end space-x-2">
           <textarea
+            ref={textareaRef}
             value={inputQuery}
             onChange={(e) => setInputQuery(e.target.value)}
             onKeyDown={(e) => {
@@ -532,7 +552,7 @@ export function AdvisorChat() {
             }}
             placeholder="Akademik danışmanınıza kütüphanenizle ilgili bir soru sorun..."
             rows={1}
-            className="flex-1 p-3 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none resize-none max-h-32 min-h-[44px]"
+            className="flex-1 p-3 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none resize-none overflow-y-auto max-h-[200px] min-h-[44px]"
           />
 
           <button
