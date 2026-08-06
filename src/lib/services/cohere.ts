@@ -1,7 +1,11 @@
 import { Logger } from "../logger";
 
-/** Multilingual (incl. Turkish) Cohere Rerank model ID — 32,768-token context. */
+/** Multilingual (incl. Turkish) Cohere Rerank primary model ID — 32,768-token context. */
 const COHERE_RERANK_MODEL = "rerank-v4.0-pro";
+/** Fast multilingual fallback model ID if primary model times out or fails. */
+const COHERE_RERANK_FALLBACK_MODEL = "rerank-v4.0-fast";
+/** Maximum duration to wait for a Cohere Rerank response before aborting. */
+const COHERE_TIMEOUT_MS = 8000;
 
 const COHERE_RERANK_URL = "https://api.cohere.com/v2/rerank";
 /** Individual rerank result returned from Cohere Rerank. */
@@ -19,7 +23,7 @@ export interface RerankParams {
 }
 
 /**
- * Reranks documents against a query via Cohere rerank-v4.0-pro; falls back to input-order scores on missing key or request failure.
+ * Reranks documents against a query via Cohere rerank-v4.0-pro; falls back to rerank-v4.0-fast (8s timeout) or input-order scores on failure.
  *
  * @param params - Object containing the query, documents, optional topN limit, and optional logger.
  * @returns The reranked results sorted by descending relevance score.
@@ -47,53 +51,86 @@ export async function rerankWithCohere(
     }));
   }
 
-  try {
-    const response = await fetch(COHERE_RERANK_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: COHERE_RERANK_MODEL,
-        query,
-        documents,
-        top_n: topN,
-      }),
-    });
+  const tryRerank = async (model: string): Promise<RerankResult[] | null> => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), COHERE_TIMEOUT_MS);
 
-    if (!response.ok) {
-      const errText = await response.text().catch(() => "");
-      throw new Error(
-        `Cohere Rerank API returned ${response.status}: ${errText}`,
-      );
+    try {
+      const response = await fetch(COHERE_RERANK_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          query,
+          documents,
+          top_n: topN,
+        }),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const errText = await response.text().catch(() => "");
+        throw new Error(
+          `Cohere Rerank API returned ${response.status}: ${errText}`,
+        );
+      }
+
+      const data = (await response.json()) as {
+        results?: Array<{ index: number; relevance_score?: number }>;
+        message?: string;
+      };
+
+      if (!data.results) {
+        throw new Error(
+          `Cohere Rerank response missing results: ${data.message || JSON.stringify(data)}`,
+        );
+      }
+
+      return data.results
+        .map((item) => ({
+          index: item.index,
+          relevanceScore: item.relevance_score ?? 0,
+        }))
+        .sort((a, b) => b.relevanceScore - a.relevanceScore);
+    } catch (error) {
+      logger?.error("cohere_rerank_attempt_failed", {
+        service: "cohere",
+        error,
+        data: { model },
+      });
+      return null;
+    } finally {
+      clearTimeout(timer);
     }
+  };
 
-    const data = (await response.json()) as {
-      results?: Array<{ index: number; relevance_score?: number }>;
-    };
+  // Try primary model (rerank-v4.0-pro)
+  const primaryResult = await tryRerank(COHERE_RERANK_MODEL);
+  if (primaryResult) return primaryResult;
 
-    if (!data.results) {
-      throw new Error(
-        `Cohere Rerank response invalid: ${JSON.stringify(data)}`,
-      );
-    }
+  // Fallback to secondary model (rerank-v4.0-fast)
+  logger?.info("cohere_rerank_switching_to_fallback", {
+    service: "cohere",
+    data: {
+      message: `Primary model ${COHERE_RERANK_MODEL} failed or timed out — trying ${COHERE_RERANK_FALLBACK_MODEL}.`,
+    },
+  });
+  const fallbackResult = await tryRerank(COHERE_RERANK_FALLBACK_MODEL);
+  if (fallbackResult) return fallbackResult;
 
-    return data.results
-      .map((item) => ({
-        index: item.index,
-        relevanceScore: item.relevance_score ?? 0,
-      }))
-      .sort((a, b) => b.relevanceScore - a.relevanceScore);
-  } catch (error) {
-    logger?.error("cohere_rerank_failed", {
-      service: "cohere",
-      error,
-    });
+  // Final fallback to input order if all models fail or time out
+  logger?.info("cohere_rerank_fallback_input_order", {
+    service: "cohere",
+    data: {
+      message: "Both Cohere models failed or timed out — using input order.",
+    },
+  });
 
-    return documents.slice(0, topN).map((_, index) => ({
-      index,
-      relevanceScore: 1 - index * 0.01,
-    }));
-  }
+  return documents.slice(0, topN).map((_, index) => ({
+    index,
+    relevanceScore: 1 - index * 0.01,
+  }));
 }

@@ -8,7 +8,9 @@ import {
 import type { Logger } from "@/lib/logger";
 import {
   PER_THESIS_EVALUATION_SYSTEM_INSTRUCTION,
+  BATCH_PER_THESIS_EVALUATION_SYSTEM_INSTRUCTION,
   buildPerThesisEvaluationUserPrompt,
+  buildBatchPerThesisEvaluationUserPrompt,
 } from "@/lib/prompts";
 import type { PositioningMatrixInput } from "../_lib/validation";
 import type { SiftedThesis } from "./sifting";
@@ -42,6 +44,16 @@ export const perThesisEvaluationSchema = z.object({
 
 /** Inferred type for a single-thesis evaluation result. */
 export type PerThesisEvaluation = z.infer<typeof perThesisEvaluationSchema>;
+
+/** Zod schema for batched per-thesis evaluation outputs. */
+export const batchPerThesisEvaluationSchema = z.object({
+  evaluations: z.array(perThesisEvaluationSchema),
+});
+
+/** Inferred type for batched per-thesis evaluation output. */
+export type BatchPerThesisEvaluation = z.infer<
+  typeof batchPerThesisEvaluationSchema
+>;
 
 /** JSON Schema for Gemini structured outputs of the per-thesis evaluation. */
 export const perThesisEvaluationJsonSchema: JsonSchema = {
@@ -88,6 +100,20 @@ export const perThesisEvaluationJsonSchema: JsonSchema = {
   additionalProperties: false,
 };
 
+/** JSON Schema for Gemini structured outputs of batched per-thesis evaluation. */
+export const batchPerThesisEvaluationJsonSchema: JsonSchema = {
+  type: "object",
+  properties: {
+    evaluations: {
+      type: "array",
+      items: perThesisEvaluationJsonSchema,
+      description: "Listedeki her bir tez için değerlendirme çıktısı dizisi.",
+    },
+  },
+  required: ["evaluations"],
+  additionalProperties: false,
+};
+
 /**
  * Evaluates a single thesis against the user's thesis matrix via the 3-stage decision chain.
  *
@@ -125,6 +151,45 @@ export async function evaluateSingleThesis(
   return result;
 }
 
+/**
+ * Evaluates a batch chunk of thesis candidates against the user's matrix.
+ *
+ * @param input - The validated positioning matrix input.
+ * @param theses - The chunk of candidate theses to evaluate.
+ * @param apiKey - Optional Gemini API key override for multi-key load distribution.
+ * @param logger - Optional structured logger for pipeline events.
+ * @returns The array of structured per-thesis evaluations for the batch.
+ */
+export async function evaluateBatchTheses(
+  input: PositioningMatrixInput,
+  theses: SiftedThesis[],
+  apiKey?: string,
+  logger?: Logger,
+): Promise<PerThesisEvaluation[]> {
+  if (theses.length === 0) return [];
+
+  const prompt = buildBatchPerThesisEvaluationUserPrompt(input, theses);
+
+  const result = await generateStructuredContent<BatchPerThesisEvaluation>(
+    FLASH_LITE_35,
+    BATCH_PER_THESIS_EVALUATION_SYSTEM_INSTRUCTION,
+    prompt,
+    batchPerThesisEvaluationJsonSchema,
+    logger,
+    {
+      zodSchema: batchPerThesisEvaluationSchema,
+      payloadStage: "positioning_per_thesis_evaluation_batch",
+      seed: GEMINI_SEED,
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      thesisMatrix: input,
+      apiKey,
+      quiet: true,
+    },
+  );
+
+  return result.evaluations || [];
+}
+
 /** A thesis paired with its per-thesis evaluation result. */
 export interface EvaluatedThesis {
   thesis: SiftedThesis;
@@ -135,8 +200,7 @@ export interface EvaluatedThesis {
 export const PER_THESIS_CHUNK_SIZE = 10;
 
 /**
- * Runs the per-thesis evaluations for all candidates, distributing the theses in
- * chunks of 10 across the grouped Gemini key pool (GEMINI_API_KEY_1, _2, _3).
+ * Runs the per-thesis evaluations for all candidates in parallel batches of 10, distributing across the API key pool.
  *
  * @param input - The validated positioning matrix input.
  * @param theses - The full list of candidate theses to evaluate.
@@ -165,39 +229,94 @@ export async function evaluateThesesInParallel(
     data: {
       total: theses.length,
       keyCount: apiKeys.length,
+      chunkSize: PER_THESIS_CHUNK_SIZE,
     },
   });
 
+  const chunks: SiftedThesis[][] = [];
+  for (let i = 0; i < theses.length; i += PER_THESIS_CHUNK_SIZE) {
+    chunks.push(theses.slice(i, i + PER_THESIS_CHUNK_SIZE));
+  }
+
   const settled = await Promise.allSettled(
-    theses.map(async (thesis, idx) => {
-      if (idx > 0) {
-        await new Promise((resolve) => setTimeout(resolve, idx * 150));
-      }
-      return evaluateSingleThesis(
+    chunks.map((chunk, chunkIdx) =>
+      evaluateBatchTheses(
         input,
-        thesis,
-        apiKeys[idx % apiKeys.length],
+        chunk,
+        apiKeys[chunkIdx % apiKeys.length],
         logger,
-      );
-    }),
+      ),
+    ),
   );
 
-  const allEvaluated: EvaluatedThesis[] = [];
+  const evaluationMap = new Map<string, PerThesisEvaluation>();
+
   for (let idx = 0; idx < settled.length; idx++) {
     const res = settled[idx];
-    const thesis = theses[idx];
+    const chunk = chunks[idx];
     if (res.status === "fulfilled") {
-      allEvaluated.push({ thesis, evaluation: res.value });
+      for (const ev of res.value) {
+        if (ev && ev.externalThesisId) {
+          evaluationMap.set(String(ev.externalThesisId), ev);
+        }
+      }
     } else {
       logger?.error("positioning_per_thesis_evaluation_failed", {
         service: "positioning",
         filePath:
           "src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts",
-        data: { thesisId: thesis.id, thesisTitle: thesis.title },
+        data: { chunkIndex: idx, chunkSize: chunk.length },
         error: res.reason,
       });
     }
   }
+
+  const allEvaluated: EvaluatedThesis[] = [];
+  const missingTheses: SiftedThesis[] = [];
+
+  for (const thesis of theses) {
+    const ev = evaluationMap.get(String(thesis.id));
+    if (ev) {
+      allEvaluated.push({ thesis, evaluation: ev });
+    } else {
+      missingTheses.push(thesis);
+    }
+  }
+
+  if (missingTheses.length > 0) {
+    logger?.info("positioning_per_thesis_evaluation_fallback_missing", {
+      service: "positioning",
+      filePath:
+        "src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts",
+      data: { missingCount: missingTheses.length },
+    });
+
+    const fallbackResults = await Promise.allSettled(
+      missingTheses.map((thesis, idx) =>
+        evaluateSingleThesis(
+          input,
+          thesis,
+          apiKeys[idx % apiKeys.length],
+          logger,
+        ),
+      ),
+    );
+
+    for (let i = 0; i < fallbackResults.length; i++) {
+      const res = fallbackResults[i];
+      const thesis = missingTheses[i];
+      if (res.status === "fulfilled") {
+        allEvaluated.push({ thesis, evaluation: res.value });
+      }
+    }
+  }
+
+  const thesisOrderMap = new Map(theses.map((t, idx) => [String(t.id), idx]));
+  allEvaluated.sort(
+    (a, b) =>
+      (thesisOrderMap.get(String(a.thesis.id)) ?? 0) -
+      (thesisOrderMap.get(String(b.thesis.id)) ?? 0),
+  );
 
   logger?.info("positioning_per_thesis_evaluation_success", {
     service: "positioning",

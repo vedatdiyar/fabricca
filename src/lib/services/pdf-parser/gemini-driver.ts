@@ -1,6 +1,6 @@
 import type { Logger } from "@/lib/logger";
 import { sanitizeAndParseJson } from "@/lib/services/gemini";
-import { GEMINI_SEED } from "@/lib/constants";
+import { GEMINI_SEED, FLASH_LITE_35 } from "@/lib/constants";
 import { PDF_PARSER_SYSTEM_INSTRUCTION } from "@/lib/prompts";
 import {
   DocumentAnalysisSchema,
@@ -10,7 +10,7 @@ import {
 import type { KeyWorker, PdfBatchMetric } from "./types";
 import { selectWorker, parseRetryDelayMs } from "./key-pool";
 
-const PDF_PARSER_MODEL = "gemini-3.5-flash-lite" as const;
+const PDF_PARSER_MODEL = FLASH_LITE_35;
 
 /**
  * Filters out non-bibliographic entries such as inline body quotes.

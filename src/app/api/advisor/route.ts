@@ -3,7 +3,7 @@ import { z } from "zod";
 import { performHybridRagSearch } from "@/lib/services/rag-search";
 import type { RagSearchResultItem } from "@/lib/services/rag-search";
 import { getAi } from "@/lib/services/gemini";
-import { FLASH_LITE_31, GEMINI_SEED } from "@/lib/constants";
+import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 import { getSession } from "@/lib/session";
 import { buildAdvisorSystemInstruction } from "@/lib/prompts";
 
@@ -108,7 +108,7 @@ ${s.content}`;
   contents.push({ role: "user", parts: [{ text: query }] });
 
   const stream = await ai.models.generateContentStream({
-    model: FLASH_LITE_31,
+    model: FLASH_LITE_35,
     contents,
     config: { systemInstruction, seed: GEMINI_SEED },
   });
