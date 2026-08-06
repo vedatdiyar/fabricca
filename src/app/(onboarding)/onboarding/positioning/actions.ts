@@ -11,6 +11,7 @@ import { positioningMatrixSchema } from "./_lib/validation";
 import type { SiftedThesis } from "./_services/sifting";
 import { generatePositioningQueries } from "./_services/queries";
 import { searchAndSiftTheses } from "./_services/sifting";
+import { evaluateThesesInParallel } from "./_services/per-thesis-evaluation";
 import { analyzePositioningJury } from "./_services/analysis";
 import { savePositioningReportTransaction } from "./_services/decision-engine";
 import { sanitizeAcademicDataBulk } from "@/lib/services/academic-sanitizer";
@@ -68,7 +69,8 @@ export async function runPositioningSearchAction(
 }
 
 /**
- * Runs Gemini jury analysis over the sifted thesis list.
+ * Runs the per-thesis relevance/originality evaluations in parallel and then the
+ * final synthesis jury LLM over the relevant evaluated theses.
  *
  * @param matrixInput - The thesis matrix used for the jury evaluation.
  * @param theses - The sifted thesis candidates to analyze.
@@ -104,8 +106,24 @@ export async function runPositioningJuryAction(
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
 
+    log.info("positioning_per_thesis_evaluation_start");
+    const evaluatedTheses = await evaluateThesesInParallel(
+      validated,
+      theses,
+      log,
+    );
+    log.info("positioning_per_thesis_evaluation_success");
+
+    const relevantTheses = evaluatedTheses.filter(
+      (ev) => ev.evaluation.isRelevant,
+    );
+
     log.info("positioning_jury_analysis_start");
-    const juryResult = await analyzePositioningJury(validated, theses, log);
+    const juryResult = await analyzePositioningJury(
+      validated,
+      relevantTheses,
+      log,
+    );
     log.info("positioning_jury_analysis_success");
 
     return { success: true, juryResult };

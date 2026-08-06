@@ -1,6 +1,6 @@
 import { ThinkingLevel } from "@google/genai";
 import { z } from "zod";
-import { FLASH_LITE_31, GEMINI_SEED } from "@/lib/constants";
+import { FLASH_36, GEMINI_SEED } from "@/lib/constants";
 import {
   generateStructuredContent,
   type JsonSchema,
@@ -10,44 +10,11 @@ import {
   POSITIONING_JURY_SYSTEM_INSTRUCTION,
   buildPositioningJuryUserPrompt,
 } from "@/lib/prompts";
-import type { SiftedThesis } from "./sifting";
+import type { EvaluatedThesis } from "./per-thesis-evaluation";
 import {
   gapAnalysisStructuredSchema,
   type PositioningMatrixInput,
 } from "../_lib/validation";
-
-/**
- * Minimum relevance score ratio relative to the best candidate, since rerank scores are not calibrated probabilities.
- */
-const RELATIVE_SCORE_FLOOR_RATIO = 0.5;
-
-/** Maximum candidate thesis cap passed to the LLM jury prompt. */
-export const MAX_THESES = 15;
-
-/**
- * Filters reranked theses to the relative-score floor and safety cap for jury evaluation.
- *
- * @param siftedTheses - The reranked thesis candidates to filter.
- * @returns The filtered thesis list ordered by ascending id.
- */
-export function filterThesesForJury(
-  siftedTheses: SiftedThesis[],
-): SiftedThesis[] {
-  if (siftedTheses.length === 0) return [];
-
-  const ranked = [...siftedTheses].sort(
-    (a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0),
-  );
-
-  const topScore = ranked[0]?.relevanceScore ?? 0;
-  const floor = topScore * RELATIVE_SCORE_FLOOR_RATIO;
-
-  const result = ranked
-    .filter((t) => (t.relevanceScore ?? 0) >= floor)
-    .slice(0, MAX_THESES);
-
-  return result.sort((a, b) => a.id - b.id);
-}
 
 /** Zod schema for an individual recommended guiding thesis. */
 export const juryRecommendedThesisSchema = z.object({
@@ -168,21 +135,23 @@ export const juryAnalysisResultJsonSchema: JsonSchema = {
 };
 
 /**
- * Runs unified LLM jury analysis over the filtered theses in a single Gemini call.
+ * Runs the final synthesis jury LLM over the relevant evaluated theses in a single Gemini call.
  *
  * @param input - The validated positioning matrix input.
- * @param siftedTheses - The sifted thesis candidates to evaluate.
+ * @param evaluatedTheses - The relevant evaluated theses to synthesize (irrelevant ones already dropped).
  * @param logger - Optional structured logger for pipeline events.
  * @returns The structured jury analysis result.
  */
 export async function analyzePositioningJury(
   input: PositioningMatrixInput,
-  siftedTheses: SiftedThesis[],
+  evaluatedTheses: EvaluatedThesis[],
   logger?: Logger,
 ): Promise<JuryAnalysisResult> {
-  const filteredTheses = filterThesesForJury(siftedTheses);
+  const overlapping = evaluatedTheses.some(
+    (ev) => ev.evaluation.isDirectOverlap,
+  );
 
-  if (filteredTheses.length === 0) {
+  if (evaluatedTheses.length === 0) {
     logger?.info("positioning_jury_no_theses", {
       service: "positioning",
       filePath:
@@ -204,25 +173,31 @@ export async function analyzePositioningJury(
     };
   }
 
-  const thesisListText = filteredTheses
-    .map(
-      (t, idx) => `[Tez #${idx + 1}] ID: ${t.id}
+  const thesisListText = evaluatedTheses
+    .map((ev, idx) => {
+      const t = ev.thesis;
+      const e = ev.evaluation;
+      return `[Tez #${idx + 1}] ID: ${t.id}
 Başlık: ${t.title}
 Yazar: ${t.author || "Bilinmiyor"} (${t.year || "N/A"})
 Üniversite/Bölüm: ${t.university || "N/A"} - ${t.department || "N/A"}
-Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"} | Cohere Skoru: ${t.relevanceScore?.toFixed(4) || "N/A"}
-Özet: ${t.abstract}`,
-    )
+Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"}
+Birebir Örtüşme: ${e.isDirectOverlap ? "EVET" : "HAYIR"}
+Katkı Alanları: ${e.contributionAreas.join(", ") || "Yok"}
+Kullanım Rehberi: ${e.relevanceReason || "Yok"}
+Literatür Konumu: ${e.literaturePosition || "Yok"}
+Özet: ${t.abstract}`;
+    })
     .join("\n\n---\n\n");
 
   const userPrompt = buildPositioningJuryUserPrompt(
     input,
     thesisListText,
-    filteredTheses.length,
+    evaluatedTheses.length,
   );
 
   const result = await generateStructuredContent<JuryAnalysisResult>(
-    FLASH_LITE_31,
+    FLASH_36,
     POSITIONING_JURY_SYSTEM_INSTRUCTION,
     userPrompt,
     juryAnalysisResultJsonSchema,
@@ -231,10 +206,15 @@ Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"} | Cohere Skoru: ${t
       zodSchema: juryAnalysisResultSchema,
       payloadStage: "positioning_jury_analysis",
       seed: GEMINI_SEED,
-      thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
-      thesisMatrix: { input, filteredThesesCount: filteredTheses.length },
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      thesisMatrix: { input, filteredThesesCount: evaluatedTheses.length },
+      apiKey: process.env.GEMINI_API_KEY_3 || process.env.GEMINI_API_KEY_1,
     },
   );
+
+  if (overlapping) {
+    result.globalStatus = "DIRECT_OVERLAP";
+  }
 
   result.recommendedTheses.sort(
     (a, b) => Number(a.externalThesisId) - Number(b.externalThesisId),

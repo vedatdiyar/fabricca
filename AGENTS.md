@@ -27,10 +27,10 @@ Projede kullanılacak teknolojiler kesin olarak belirlenmiştir. Yapay zeka, kul
 - **Stil & UI Bileşenleri:** Tailwind CSS, Shadcn UI, Lucide React (İkonlar için), `sonner` (Toast bildirimleri), `next-themes` (Karanlık tema)
 - **Veri Tabanı & ORM:** Neon Serverless PostgreSQL, Drizzle ORM
 - **Vektör Veri Tabanı (RAG):** Neon DB içinde entegre `pgvector` eklentisi
-- **LLM Modeli:** Google Gemini Flash-Lite (`FLASH_LITE_31` sabiti — tüm metin üretimi ve analiz işlemleri için)
+- **LLM Modeli:** Google Gemini Flash ailesi — `FLASH_LITE_31` (`gemini-3.1-flash-lite`, query çıkarma ve legacy metin üretimi), `FLASH_LITE_35` (`gemini-3.5-flash-lite`, tez başına özgünlük/ilgililik değerlendirmeleri — 10'ar parçaya bölünerek GEMINI_API_KEY_1/2/3 hesap havuzuna dağıtılır — LOW thinking), `FLASH_36` (`gemini-3.6-flash`, nihai jüri sentezi — HIGH thinking)
 - **Embedding Model:** Cloudflare Workers AI (`@cf/baai/bge-m3` — 1024 boyutlu vektörler, 100K günlük ücretsiz istek). Tek kaynak embedding motorudur; Cohere veya ikincil bir fallback yoktur.
 - **Rerank Modeli (Semantik Sıralama):** Cohere Rerank API (`rerank-v4.0-pro` — çok dilli, Türkçe dahil; YAML yapılandırılmış girdi desteği). Cohere yalnızca Rerank işlemleri için kullanılır.
-- **PDF Parçalama ve Metadata Çıkarımı:** Gemini 3.1 Flash Lite (`pdf-parser/` modülü — `pdf-lib` ile sayfa bazlı split, `inlineData` ile Gemini structured output; `PageAnalysisSchema` ile pageNumber/markdownContent/footnotes çıkarma; batch boyutu 5 sayfa; ayrı API key ile çalışır) + Crossref / OpenLibrary / Google Books API (paralel metadata çözümleme) + Cerebras LLM fallback.
+- **PDF Parçalama ve Metadata Çıkarımı:** Gemini 3.5 Flash Lite (`pdf-parser/` modülü — `pdf-lib` ile sayfa bazlı split, `inlineData` ile Gemini structured output; `PageAnalysisSchema` ile pageNumber/markdownContent/footnotes çıkarma; batch boyutu 5 sayfa; ayrı API key ile çalışır) + Crossref / OpenLibrary / Google Books API (paralel metadata çözümleme) + Cerebras LLM fallback.
 - **PDF Depolama (Storage):** Cloudflare R2 / AWS S3 mimarisi (`@aws-sdk/client-s3` ve `@aws-sdk/s3-request-presigner`) — yüklenen PDF'ler ve dosya nesneleri R2 kovalarında saklanır.
 - **AI Orkestrasyon:** Google Gen AI SDK (`@google/genai` - Doğrundan entegrasyon), Cerebras API (OpenAI-compatible, metadata extraction için Gemma 4 31B)
 - **Kimlik Doğrulama (Auth):** Drizzle tabanlı yerel `users` tablosu, `bcrypt-ts` ile şifreleme ve `src/lib/session.ts` üzerinden Cookies tabanlı hafif session yönetimi
@@ -45,7 +45,7 @@ Projede kullanılacak teknolojiler kesin olarak belirlenmiştir. Yapay zeka, kul
 Projenin çalışması ve dış servislerle entegrasyonu için aşağıdaki çevre değişkenleri gereklidir. Geliştirme yaparken bu değişkenlerin `.env.local` dosyasında tanımlı olduğundan emin olunmalıdır:
 
 - `DATABASE_URL`: Neon Serverless PostgreSQL bağlantı adresi (pooler/sslmode=verify-full dahil).
-- `GEMINI_API_KEY`: Google Gemini API anahtarı.
+- `GEMINI_API_KEY_1`, `GEMINI_API_KEY_2` & `GEMINI_API_KEY_3`: Gruplandırılmış Google Gemini API anahtar havuzu. Ana LLM (metin üretimi/analiz) ve PDF parser dahil tüm Gemini işlemleri aynı havuzdan çoklu key round-robin / rate-limit yük dağıtımıyla kullanılır.
 - `CLOUDFLARE_ACCOUNT_ID` & `CLOUDFLARE_API_TOKEN`: Cloudflare Workers AI embedding üretimi (`@cf/baai/bge-m3`) için hesap ve API token bilgileri.
 - `COHERE_API_KEY`: Cohere Rerank API anahtarı.
 - `OPENALEX_API_KEY`: OpenAlex API istek limitlerini artırmak için kullanılan anahtar.
@@ -53,7 +53,6 @@ Projenin çalışması ve dış servislerle entegrasyonu için aşağıdaki çev
 - `SEED_USER1_PASSWORD` & `SEED_USER2_PASSWORD`: Seed edilmiş kullanıcı hesaplarının şifreleri.
 - `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID` & `R2_SECRET_ACCESS_KEY`: Cloudflare R2 (S3-compatible) nesne depolama erişim kimlik bilgileri.
 - `R2_BUCKET_NAME` & `R2_PUBLIC_DOMAIN`: R2 kova adı ve public erişim alan adı.
-- `PDF_PARSER_GEMINI_API_KEY` & `PDF_PARSER_GEMINI_API_KEY_2`: PDF parser için ayrı Google Gemini API anahtarları (çoklu key havuzu ile round-robin / rate-limit yük dağıtımı).
 - `CEREBRAS_API_KEY`: Cerebras API anahtarı (Gemma 4 31B ile metadata çıkarımı için).
 - `GOOGLE_BOOKS_API_KEY`: Google Books API anahtarı (ISBN ile kitap metadata fallback çözümü için).
 
@@ -89,7 +88,7 @@ src/
 │   ├── index.ts                          # Drizzle client kurulumu
 │   └── reset.ts                          # Geliştirme amaçlı şema sıfırlama
 ├── lib/                                  # Ortak kütüphaneler ve servis entegrasyonları
-│   ├── constants.ts                      # Model sabitleri (FLASH_LITE_31, GEMINI_SEED, CEREBRAS_MODEL)
+│   ├── constants.ts                      # Model sabitleri (FLASH_LITE_31, FLASH_LITE_35, FLASH_36, GEMINI_SEED, CEREBRAS_MODEL)
 │   ├── box-constants.ts                  # Konu kutusu türleri için tek kanonik kaynak (etiketler + BOX_ORDER_WEIGHT + DEFAULT_PARENT_BOXES)
 │   ├── logger.ts                         # Yapılandırılmış Logger sınıfı
 │   ├── error-utils.ts                    # Hata maskeleme ve sınıflandırma yardımcıları

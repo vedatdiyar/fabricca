@@ -79,22 +79,22 @@ merkezi yönetim ekranı.
 
 ## Kullanılan Teknolojiler
 
-| Kategori               | Teknoloji                                             |
-| ---------------------- | ----------------------------------------------------- |
-| **Frontend & Backend** | Next.js 16 (App Router, Server Actions, PPR)          |
-| **UI Bileşenleri**     | Tailwind CSS v4, Shadcn UI, Lucide React              |
-| **Veri Tabanı**        | Neon Serverless PostgreSQL                            |
-| **ORM**                | Drizzle ORM (snake_case)                              |
-| **Vektör DB (RAG)**    | pgvector (Neon içinde)                                |
-| **LLM**                | Google Gemini (`FLASH_LITE_31`)                       |
-| **Embedding**          | Cloudflare Workers AI (Qwen3-Embedding-0.6B, 768 dim) |
-| **Rerank**             | Cohere Rerank v4.0 Pro                                |
-| **Tez Veri Kaynağı**   | TEZARA (YÖK Tez)                                      |
-| **Akademik Veri**      | OpenAlex, CrossRef, Exa, Semantic Scholar             |
-| **State Yönetimi**     | TanStack Query                                        |
-| **Auth**               | bcrypt-ts + Cookie tabanlı hafif session              |
-| **Derleyici**          | Turbopack                                             |
-| **Lint / Format**      | ESLint, Prettier                                      |
+| Kategori               | Teknoloji                                                                 |
+| ---------------------- | ------------------------------------------------------------------------- |
+| **Frontend & Backend** | Next.js 16 (App Router, Server Actions, PPR)                              |
+| **UI Bileşenleri**     | Tailwind CSS v4, Shadcn UI, Lucide React                                  |
+| **Veri Tabanı**        | Neon Serverless PostgreSQL                                                |
+| **ORM**                | Drizzle ORM (snake_case)                                                  |
+| **Vektör DB (RAG)**    | pgvector (Neon içinde)                                                    |
+| **LLM**                | Google Gemini Flash ailesi (`FLASH_LITE_31`, `FLASH_LITE_35`, `FLASH_36`) |
+| **Embedding**          | Cloudflare Workers AI (Qwen3-Embedding-0.6B, 768 dim)                     |
+| **Rerank**             | Cohere Rerank v4.0 Pro                                                    |
+| **Tez Veri Kaynağı**   | TEZARA (YÖK Tez)                                                          |
+| **Akademik Veri**      | OpenAlex, CrossRef, Exa, Semantic Scholar                                 |
+| **State Yönetimi**     | TanStack Query                                                            |
+| **Auth**               | bcrypt-ts + Cookie tabanlı hafif session                                  |
+| **Derleyici**          | Turbopack                                                                 |
+| **Lint / Format**      | ESLint, Prettier                                                          |
 
 ---
 
@@ -217,7 +217,9 @@ tanımlanır:
 | Değişken                   | Hizmet                          |
 | -------------------------- | ------------------------------- |
 | `DATABASE_URL`             | Neon PostgreSQL bağlantı dizesi |
-| `GEMINI_API_KEY`           | Google Gemini API               |
+| `GEMINI_API_KEY_1`         | Google Gemini API (anahtar 1)   |
+| `GEMINI_API_KEY_2`         | Google Gemini API (anahtar 2)   |
+| `GEMINI_API_KEY_3`         | Google Gemini API (anahtar 3)   |
 | `CLOUDFLARE_ACCOUNT_ID`    | Cloudflare Workers AI hesap ID  |
 | `CLOUDFLARE_API_TOKEN`     | Cloudflare Workers AI API token |
 | `OPENALEX_API_KEY`         | OpenAlex Academic API           |

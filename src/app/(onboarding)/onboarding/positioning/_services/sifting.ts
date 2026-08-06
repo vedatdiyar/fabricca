@@ -96,7 +96,7 @@ export async function searchAndSiftTheses(
   logger?: Logger,
   options?: { topN?: number },
 ): Promise<SiftedThesis[]> {
-  const topN = options?.topN ?? 50;
+  const topN = options?.topN ?? 30;
 
   const allQueries: string[] = [
     sanitizeMeiliQuery(queries.subjectTr_alt1),

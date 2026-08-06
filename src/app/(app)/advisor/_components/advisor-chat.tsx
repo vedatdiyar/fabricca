@@ -94,12 +94,18 @@ function CitationPopoverContent({ source }: CitationPopoverContentProps) {
   );
 }
 
+interface AdvisorChatProps {
+  initialSessionId?: number;
+}
+
 /**
  * Interactive Advisor Chat component delivering an academic AI conversation backed by Hybrid RAG & Cohere Rerank with persistent chat history sidebar.
  *
+ * @param root0 - Component props.
+ * @param root0.initialSessionId - The session id to restore on mount, if any.
  * @returns The AdvisorChat UI element.
  */
-export function AdvisorChat() {
+export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputQuery, setInputQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -120,6 +126,7 @@ export function AdvisorChat() {
   const isSendingRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const initialSessionIdRef = useRef(initialSessionId);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -152,19 +159,6 @@ export function AdvisorChat() {
     setSessions(list);
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    /** Loads the initial session list on mount. */
-    async function loadInitialSessions() {
-      const list = await getChatSessions();
-      if (!cancelled) setSessions(list);
-    }
-    loadInitialSessions();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   const loadMessages = useCallback(async (sessionId: number) => {
     const res = await getChatMessages(sessionId);
     if (res.success && res.messages) {
@@ -185,25 +179,56 @@ export function AdvisorChat() {
     setActiveCitation(null);
   }, []);
 
+  const syncUrlSession = useCallback((sessionId: number | null) => {
+    const url = new URL(window.location.href);
+    if (sessionId !== null) {
+      url.searchParams.set("session", String(sessionId));
+    } else {
+      url.searchParams.delete("session");
+    }
+    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    /** Restores the active session on mount when a valid session id is present in the URL. */
+    async function loadInitialSession() {
+      const list = await getChatSessions();
+      if (cancelled) return;
+      setSessions(list);
+
+      const initialId = initialSessionIdRef.current;
+      const targetId =
+        initialId !== undefined && list.some((s) => s.id === initialId)
+          ? initialId
+          : null;
+
+      if (targetId !== null) {
+        setActiveSessionId(targetId);
+        if (!cancelled) await loadMessages(targetId);
+      }
+    }
+    loadInitialSession();
+    return () => {
+      cancelled = true;
+    };
+  }, [loadMessages]);
+
   const handleSelectSession = useCallback(
     async (sessionId: number) => {
       setActiveSessionId(sessionId);
       await loadMessages(sessionId);
+      syncUrlSession(sessionId);
     },
-    [loadMessages],
+    [loadMessages, syncUrlSession],
   );
 
-  const handleCreateSession = useCallback(async () => {
-    const res = await createChatSession("Yeni Sohbet");
-    if (res.success && res.sessionId) {
-      setActiveSessionId(res.sessionId);
-      setMessages([]);
-      setActiveCitation(null);
-      await loadSessions();
-    } else {
-      toast.error(res.error || "Sohbet oluşturulamadı.");
-    }
-  }, [loadSessions]);
+  const handleCreateSession = useCallback(() => {
+    setActiveSessionId(null);
+    setMessages([]);
+    setActiveCitation(null);
+    syncUrlSession(null);
+  }, [syncUrlSession]);
 
   const handleDeleteSession = useCallback(
     async (sessionId: number) => {
@@ -213,14 +238,17 @@ export function AdvisorChat() {
           setActiveSessionId(null);
           setMessages([]);
           setActiveCitation(null);
+          await loadSessions();
+          syncUrlSession(null);
+        } else {
+          await loadSessions();
         }
-        await loadSessions();
         toast.success("Sohbet silindi.");
       } else {
         toast.error(res.error || "Sohbet silinemedi.");
       }
     },
-    [activeSessionId, loadSessions],
+    [activeSessionId, loadSessions, syncUrlSession],
   );
 
   const handleSend = async (overrideQuery?: string) => {
@@ -246,6 +274,7 @@ export function AdvisorChat() {
       sessionId = createRes.sessionId;
       setActiveSessionId(sessionId);
       await loadSessions();
+      syncUrlSession(sessionId);
 
       // Asynchronously generate smart topic title via Cerebras Gemma 4
       void generateChatTitleAction(sessionId, queryToSend).then((titleRes) => {

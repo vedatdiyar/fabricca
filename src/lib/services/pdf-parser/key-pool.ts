@@ -86,12 +86,12 @@ export function parseRetryDelayMs(error: unknown): number | null {
 export function getPdfParserApiKeys(): string[] {
   const keys: string[] = [];
   const envVarNames = [
-    "PDF_PARSER_GEMINI_API_KEY",
-    "PDF_PARSER_GEMINI_API_KEY_1",
-    "PDF_PARSER_GEMINI_API_KEY_2",
-    "PDF_PARSER_GEMINI_API_KEY_3",
-    "PDF_PARSER_GEMINI_API_KEY_4",
-    "PDF_PARSER_GEMINI_API_KEY_5",
+    "GEMINI_API_KEY_1",
+    "GEMINI_API_KEY_2",
+    "GEMINI_API_KEY_3",
+    "GEMINI_API_KEY_4",
+    "GEMINI_API_KEY_5",
+    "GEMINI_API_KEY_6",
   ];
 
   for (const name of envVarNames) {
@@ -107,11 +107,7 @@ export function getPdfParserApiKeys(): string[] {
 
   const uniqueKeys = Array.from(new Set(keys));
   if (uniqueKeys.length === 0) {
-    const fallbackKey = process.env.GEMINI_API_KEY;
-    if (fallbackKey) return [fallbackKey];
-    throw new Error(
-      "PDF_PARSER_GEMINI_API_KEY environment variable is not defined.",
-    );
+    throw new Error("GEMINI_API_KEY_1 environment variable is not defined.");
   }
   return uniqueKeys;
 }

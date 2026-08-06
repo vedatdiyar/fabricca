@@ -4,7 +4,6 @@ import { withRetry, HttpError, DEFAULT_MAX_DELAY } from "@/lib/api-utils";
 const BGE_M3_MODEL = "@cf/baai/bge-m3";
 const MAX_EMBEDDING_RETRIES = 3;
 const RETRY_BASE_DELAY_MS = 500;
-const EMBEDDING_FETCH_TIMEOUT_MS = 3000;
 
 /**
  * Parses the `Retry-After` header from a Cloudflare API response into milliseconds.
@@ -25,7 +24,7 @@ function parseRetryAfterHeader(response: Response): number | null {
 }
 
 /**
- * Generates 1024-d embeddings via Cloudflare Workers AI (`@cf/baai/bge-m3`), batching with concurrency 5, a 3-second hard fetch timeout, and exponential backoff retry.
+ * Generates 1024-d embeddings via Cloudflare Workers AI (`@cf/baai/bge-m3`), batching with concurrency 5 and exponential backoff retry.
  *
  * @param texts - The texts to embed.
  * @param logger - Optional logger for embedding events.
@@ -71,58 +70,44 @@ export async function generateCloudflareEmbeddings(
 
         return withRetry(
           async () => {
-            const controller = new AbortController();
-            const timeout = setTimeout(
-              () => controller.abort(),
-              EMBEDDING_FETCH_TIMEOUT_MS,
-            );
+            const response = await fetch(url, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${apiToken}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                text: batchTexts,
+              }),
+            });
 
-            try {
-              const response = await fetch(url, {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${apiToken}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  text: batchTexts,
-                }),
-                signal: controller.signal,
-              });
-
-              if (!response.ok) {
-                const errText = await response.text().catch(() => "");
-                throw new HttpError(
-                  response.status,
-                  errText,
-                  parseRetryAfterHeader(response),
-                );
-              }
-
-              const data = (await response.json()) as {
-                result?: { data?: number[][] };
-                success?: boolean;
-              };
-
-              if (!data.success || !data.result?.data) {
-                throw new Error(
-                  `Cloudflare AI response invalid: ${JSON.stringify(data)}`,
-                );
-              }
-
-              return data.result.data;
-            } finally {
-              clearTimeout(timeout);
+            if (!response.ok) {
+              const errText = await response.text().catch(() => "");
+              throw new HttpError(
+                response.status,
+                errText,
+                parseRetryAfterHeader(response),
+              );
             }
+
+            const data = (await response.json()) as {
+              result?: { data?: number[][] };
+              success?: boolean;
+            };
+
+            if (!data.success || !data.result?.data) {
+              throw new Error(
+                `Cloudflare AI response invalid: ${JSON.stringify(data)}`,
+              );
+            }
+
+            return data.result.data;
           },
           {
             maxRetries: MAX_EMBEDDING_RETRIES,
             baseDelay: RETRY_BASE_DELAY_MS,
             maxDelay: DEFAULT_MAX_DELAY,
             isRetryable: (error) => {
-              if (error instanceof Error && error.name === "AbortError") {
-                return false;
-              }
               if (error instanceof HttpError) {
                 return error.status === 429 || error.status >= 500;
               }

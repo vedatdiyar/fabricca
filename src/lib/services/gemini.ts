@@ -47,20 +47,32 @@ export interface JsonSchema {
 
 let aiInstance: GoogleGenAI | null = null;
 
+const aiInstancesByKey = new Map<string, GoogleGenAI>();
+
 /**
- * Returns a lazily-initialized GoogleGenAI client built from the GEMINI_API_KEY environment variable.
+ * Returns a lazily-initialized GoogleGenAI client, defaulting to the GEMINI_API_KEY_1
+ * environment variable or a per-key cached client when an explicit key is provided.
  *
+ * @param apiKey - Optional Gemini API key override for multi-key load distribution.
  * @returns The shared GoogleGenAI instance.
  */
-export function getAi(): GoogleGenAI {
-  if (!aiInstance) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error("GEMINI_API_KEY environment variable is not defined");
+export function getAi(apiKey?: string): GoogleGenAI {
+  if (!apiKey) {
+    if (!aiInstance) {
+      const envKey = process.env.GEMINI_API_KEY_1;
+      if (!envKey) {
+        throw new Error("GEMINI_API_KEY_1 environment variable is not defined");
+      }
+      aiInstance = new GoogleGenAI({ apiKey: envKey });
     }
-    aiInstance = new GoogleGenAI({ apiKey });
+    return aiInstance;
   }
-  return aiInstance;
+
+  const cached = aiInstancesByKey.get(apiKey);
+  if (cached) return cached;
+  const client = new GoogleGenAI({ apiKey });
+  aiInstancesByKey.set(apiKey, client);
+  return client;
 }
 
 /**
@@ -190,6 +202,7 @@ export async function logRawLlmCall(params: {
  * @param options.thesisMatrix - Optional thesis matrix context for the model.
  * @param options.safetySettings - Optional safety category and threshold overrides.
  * @param options.quiet - When false, logs start/success events to the logger.
+ * @param options.apiKey - Optional Gemini API key override for multi-key load distribution.
  * @returns The parsed and validated structured output of type T.
  */
 export async function generateStructuredContent<T>(
@@ -212,6 +225,7 @@ export async function generateStructuredContent<T>(
       threshold: HarmBlockThreshold;
     }>;
     quiet?: boolean;
+    apiKey?: string;
   },
 ): Promise<T> {
   const startTime = performance.now();
@@ -281,7 +295,7 @@ export async function generateStructuredContent<T>(
     const response = await withRetry(
       async () => {
         retryCount++;
-        return getAi().models.generateContent(payload);
+        return getAi(options?.apiKey).models.generateContent(payload);
       },
       {
         maxRetries: 3,

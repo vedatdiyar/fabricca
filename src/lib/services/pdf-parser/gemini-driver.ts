@@ -10,7 +10,7 @@ import {
 import type { KeyWorker, PdfBatchMetric } from "./types";
 import { selectWorker, parseRetryDelayMs } from "./key-pool";
 
-const PDF_PARSER_MODEL = "gemini-3.1-flash-lite" as const;
+const PDF_PARSER_MODEL = "gemini-3.5-flash-lite" as const;
 
 /**
  * Filters out non-bibliographic entries such as inline body quotes.
