@@ -10,33 +10,33 @@ Akademik tez karşılaştırma ve özgünlük analizi konusunda uzmanlaşmış b
 
 Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisi ile YÖK / Tezara veritabanından gelen TEK BİR tezi titizlikle karşılaştırarak aşağıdaki 3 aşamalı karar zincirini uygulayıp yapılandırılmış bir değerlendirme çıktısı üretmektir.
 
-# 3 Aşamalı Karar Zinciri (MUTLAK KURAL)
+# İşlem Adımları (3 Aşamalı Karar Zinciri)
 
 ## Aşama 1 — Alakalılık Değerlendirmesi (isRelevant)
 
 - Kullanıcının tezi ile bu tez arasında anlamlı bir akademik ilişki var mı? (Aynı problem, aktör, dönem, kavram, kuram veya yöntem alanına dokunuyor mu?)
-- Eğer tez, kullanıcının tez matrisiyle kayda değer bir örtüşme göstermiyorsa \`isRelevant: false\` döndür ve DİĞER ALANLARI BOŞ BIRAK (isDirectOverlap: false, contributionAreas: [], relevanceReason: "", literaturePosition: ""). İlgisiz tezlerle ilgili başka hiçbir analiz yapılmaz.
-- Eğer alakalıysa \`isRelevant: true\` döndür ve Aşama 2'ye geç.
+- Eğer tez, kullanıcının tez matrisiyle kayda değer bir örtüşme göstermiyorsa \`isRelevant: false\` döndürün ve diğer alanları boş bırakın (isDirectOverlap: false, contributionAreas: [], relevanceReason: "", literaturePosition: ""). İlgisiz tezlerle ilgili sadece alakalılık durumu bildirilir.
+- Eğer alakalıysa \`isRelevant: true\` döndürün ve Aşama 2'ye geçin.
 
 ## Aşama 2 — Birebir Örtüşme / Özgünlük Değerlendirmesi (isDirectOverlap)
 
 - Kullanıcının tezi ile bu tez Araştırma Konusu/Soruları + Kuramsal/Metodolojik Çerçeve + Aktörler açısından BİREBİR AYNI mı? Yani kullanıcının tezi, bu tezin bir kopyası sayılacak kadar örtüşüyor mu?
-- Eğer BİREBİR örtüşme varsa \`isDirectOverlap: true\` döndür. Bu durumda kullanıcının tezi ÖZGÜN DEĞİLDİR ve \`contributionAreas\` / \`relevanceReason\` alanları boş bırakılır. \`literaturePosition\` ise yine doldurulur (tezin literatürdeki yeri yine belirlenir).
-- Eğer benzerlik var ama birebir örtüşme yoksa \`isDirectOverlap: false\` döndür (kullanıcının tezi özgündür) ve Aşama 3'e geç.
+- Eğer BİREBİR örtüşme varsa \`isDirectOverlap: true\` döndürün. Bu durumda kullanıcının tezi özgün değildir ve \`contributionAreas\` / \`relevanceReason\` alanları boş bırakılır. \`literaturePosition\` ise doldurulur.
+- Eğer benzerlik var ama birebir örtüşme yoksa \`isDirectOverlap: false\` döndürün (kullanıcının tezi özgündür) ve Aşama 3'e geçin.
 
-## Aşama 3 — Katkı ve Benzerlik Açıları + Literatür Konumu
+## Aşama 3 — Katkı ve Benzerlik Açıları + Literatür Konumu (Özet Odaklı)
 
-Tez özgün ve benziyor olduğuna göre:
+Tez özgün ve alakalı olduğuna göre:
 
-- \`contributionAreas\`: Tez, kullanıcının tezine TAM OLARAK hangi açılardan benziyor / katkı sağlıyor? (örn. "Metodolojik Karşılaştırma", "Kuramsal Çerçeve Metodolojisi", "Dönemselleştirme", "Aktör Analizi", "Kavramsal Çatma"). Somut, spesifik ve matristeki MEVCUT parametrelerle sınırlı olmalıdır.
-- \`relevanceReason\`: Kullanıcının bu tezi kendi tezinde nasıl kullanacağına dair somut ve dürüst rehber not. Asla matriste yer almayan varsayımsal veri kaynakları veya niyetler uydurma.
-- \`literaturePosition\`: İlgili tez genel olarak literatürün neresinde duruyor? Yani tezin asıl "derdi" ne? Bu tezin literatür haritasındaki yeri ve temel sorunsalı nedir?
+- \`contributionAreas\`: Tez, kullanıcının tezine TAM OLARAK hangi açılardan benziyor / katkı sağlıyor? En fazla 2 ile 3 adet nokta atışı spesifik etiket döndürün (örn. ["Metodolojik Karşılaştırma", "Aktör Analizi"]).
+- \`relevanceReason\`: Kullanıcının bu tezi kendi tezinde nasıl kullanacağına dair EN FAZLA 1 ile 2 cümlelik net, somut ve nokta atışı rehber not (gereksiz detay ve dolgu cümlelerinden arındırılmış).
+- \`literaturePosition\`: İlgili tezin literatürdeki temel odağını ve sorunsalını belirten EN FAZLA 1 cümlelik özet literatür notu.
 
-# Sıfır Hallüsinasyon Kuralı (MUTLAK)
+# Veri Sadakati ve Doğruluk İlkesi
 
-- Tez matrisinde açıkça yazmayan hiçbir ampirik veri kaynağını, metodolojik aracı, kuramsal kurguyu veya araştırma niyetini KESİNLİKLE varsayma, uydurma veya kullanıcıya atfetme.
-- Tez hakkında yalnızca sana verilen başlık ve özet bilgilerini kullan. Tezin özetinde olmayan bir içeriği iddia etme.
-- İlgisiz tezlerde \`contributionAreas\` ve \`relevanceReason\` alanlarını asla doldurma.
+- Yalnızca Tez Matrisinde ve ilgili tez metninde açıkça belirtilen somut ampirik verilere, yöntemlere ve kavramsal kurgulara temellenin.
+- Tez hakkında yalnızca sana verilen başlık ve özet bilgilerini kullanın.
+- İlgisiz tezlerde \`contributionAreas\` ve \`relevanceReason\` alanlarını boş tutun.
 
 # Çıktı Biçimi
 
@@ -51,37 +51,37 @@ Akademik tez karşılaştırma ve özgünlük analizi konusunda uzmanlaşmış b
 
 Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisi ile YÖK / Tezara veritabanından gelen TEZ LİSTESİNDEKİ HER BİR TEZİ SADECE KULLANICININ TEZ MATRİSİ İLE TEK TEK KARŞILAŞTIRARAK aşağıdaki 3 aşamalı karar zincirini uygulayıp yapılandırılmış bir değerlendirme dizisi (\`evaluations\`) üretmektir.
 
-# MUTLAK BAĞLAM İZOLASYONU KURALI
+# Bağlam İzolasyon İlkesi
 
-Listede birden fazla tez sunulmaktadır. Her bir tezi SADECE kullanıcının Tez Matrisi ile kıyaslayacaksın. Tezleri KESİNLİKLE kendi aralarında kıyaslama veya birbirine göre bağıntılı değerlendirme yapma!
+Listede birden fazla tez sunulmaktadır. Her bir tezi bağımsız bir akademik çalışma olarak ele alıp SADECE kullanıcının Tez Matrisi parametreleri (Araştırma Problemi, Teorik Çerçeve, Metodoloji) ile doğrudan karşılaştırın. Değerlendirme çıktısı her tez için tamamen müstakil olarak yapılandırılmalıdır.
 
-# 3 Aşamalı Karar Zinciri (MUTLAK KURAL)
+# İşlem Adımları (3 Aşamalı Karar Zinciri)
 
 ## Aşama 1 — Alakalılık Değerlendirmesi (isRelevant)
 
 - Kullanıcının tezi ile bu tez arasında anlamlı bir akademik ilişki var mı? (Aynı problem, aktör, dönem, kavram, kuram veya yöntem alanına dokunuyor mu?)
-- Eğer tez, kullanıcının tez matrisiyle kayda değer bir örtüşme göstermiyorsa \`isRelevant: false\` döndür ve DİĞER ALANLARI BOŞ BIRAK (isDirectOverlap: false, contributionAreas: [], relevanceReason: "", literaturePosition: ""). İlgisiz tezlerle ilgili başka hiçbir analiz yapılmaz.
-- Eğer alakalıysa \`isRelevant: true\` döndür ve Aşama 2'ye geç.
+- Eğer tez, kullanıcının tez matrisiyle kayda değer bir örtüşme göstermiyorsa \`isRelevant: false\` döndürün ve diğer alanları boş bırakın (isDirectOverlap: false, contributionAreas: [], relevanceReason: "", literaturePosition: ""). İlgisiz tezlerle ilgili sadece alakalılık durumu bildirilir.
+- Eğer alakalıysa \`isRelevant: true\` döndürün ve Aşama 2'ye geçin.
 
 ## Aşama 2 — Birebir Örtüşme / Özgünlük Değerlendirmesi (isDirectOverlap)
 
 - Kullanıcının tezi ile bu tez Araştırma Konusu/Soruları + Kuramsal/Metodolojik Çerçeve + Aktörler açısından BİREBİR AYNI mı? Yani kullanıcının tezi, bu tezin bir kopyası sayılacak kadar örtüşüyor mu?
-- Eğer BİREBİR örtüşme varsa \`isDirectOverlap: true\` döndür. Bu durumda kullanıcının tezi ÖZGÜN DEĞİLDİR ve \`contributionAreas\` / \`relevanceReason\` alanları boş bırakılır. \`literaturePosition\` ise yine doldurulur (tezin literatürdeki yeri yine belirlenir).
-- Eğer benzerlik var ama birebir örtüşme yoksa \`isDirectOverlap: false\` döndür (kullanıcının tezi özgündür) ve Aşama 3'e geç.
+- Eğer BİREBİR örtüşme varsa \`isDirectOverlap: true\` döndürün. Bu durumda kullanıcının tezi özgün değildir ve \`contributionAreas\` / \`relevanceReason\` alanları boş bırakılır. \`literaturePosition\` ise doldurulur.
+- Eğer benzerlik var ama birebir örtüşme yoksa \`isDirectOverlap: false\` döndürün (kullanıcının tezi özgündür) ve Aşama 3'e geçin.
 
-## Aşama 3 — Katkı ve Benzerlik Açıları + Literatür Konumu
+## Aşama 3 — Katkı ve Benzerlik Açıları + Literatür Konumu (Özet Odaklı)
 
-Tez özgün ve benziyor olduğuna göre:
+Tez özgün ve alakalı olduğuna göre:
 
-- \`contributionAreas\`: Tez, kullanıcının tezine TAM OLARAK hangi açılardan benziyor / katkı sağlıyor? (örn. "Metodolojik Karşılaştırma", "Kuramsal Çerçeve Metodolojisi", "Dönemselleştirme", "Aktör Analizi", "Kavramsal Çatma"). Somut, spesifik ve matristeki MEVCUT parametrelerle sınırlı olmalıdır.
-- \`relevanceReason\`: Kullanıcının bu tezi kendi tezinde nasıl kullanacağına dair somut ve dürüst rehber not. Asla matriste yer almayan varsayımsal veri kaynakları veya niyetler uydurma.
-- \`literaturePosition\`: İlgili tez genel olarak literatürün neresinde duruyor? Yani tezin asıl "derdi" ne? Bu tezin literatür haritasındaki yeri ve temel sorunsalı nedir?
+- \`contributionAreas\`: Tez, kullanıcının tezine TAM OLARAK hangi açılardan benziyor / katkı sağlıyor? En fazla 2 ile 3 adet nokta atışı spesifik etiket döndürün (örn. ["Metodolojik Karşılaştırma", "Aktör Analizi"]).
+- \`relevanceReason\`: Kullanıcının bu tezi kendi tezinde nasıl kullanacağına dair EN FAZLA 1 ile 2 cümlelik net, somut ve nokta atışı rehber not (gereksiz detay ve dolgu cümlelerinden arındırılmış).
+- \`literaturePosition\`: İlgili tezin literatürdeki temel odağını ve sorunsalını belirten EN FAZLA 1 cümlelik özet literatür notu.
 
-# Sıfır Hallüsinasyon Kuralı (MUTLAK)
+# Veri Sadakati ve Doğruluk İlkesi
 
-- Tez matrisinde açıkça yazmayan hiçbir ampirik veri kaynağını, metodolojik aracı, kuramsal kurguyu veya araştırma niyetini KESİNLİKLE varsayma, uydurma veya kullanıcıya atfetme.
-- Tez hakkında yalnızca sana verilen başlık ve özet bilgilerini kullan. Tezin özetinde olmayan bir içeriği iddia etme.
-- İlgisiz tezlerde \`contributionAreas\` ve \`relevanceReason\` alanlarını asla doldurma.
+- Yalnızca Tez Matrisinde ve ilgili tez metninde açıkça belirtilen somut ampirik verilere, yöntemlere ve kavramsal kurgulara temellenin.
+- Tez hakkında yalnızca sana verilen başlık ve özet bilgilerini kullanın.
+- İlgisiz tezlerde \`contributionAreas\` ve \`relevanceReason\` alanlarını boş tutun.
 
 # Çıktı Biçimi
 
@@ -113,7 +113,7 @@ Yazar: ${thesis.author || "Bilinmiyor"} (${thesis.year || "N/A"})
 Tür: ${thesis.thesisType || "N/A"} | Dil: ${thesis.language || "N/A"}
 Özet: ${thesis.abstract}
 
-Lütfen yukarıdaki tek tezi 3 aşamalı karar zincirine göre değerlendir ve belirtilen JSON formatında çıktı üret.`;
+Lütfen yukarıdaki tek tezi 3 aşamalı karar zincirine göre değerlendir ve özet odaklı JSON formatında çıktı üret.`;
 }
 
 /**
@@ -148,5 +148,5 @@ Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"}
 === DEĞERLENDİRİLECEK TEZLER ===
 ${formattedTheses}
 
-Lütfen listedeki her bir tezi SADECE kullanıcının Tez Matrisi ile 3 aşamalı karar zincirine göre tek tek değerlendir ve JSON \`evaluations\` dizisi olarak çıktı üret.`;
+Lütfen listedeki her bir tezi SADECE kullanıcının Tez Matrisi ile 3 aşamalı karar zincirine göre tek tek değerlendir ve özet odaklı JSON \`evaluations\` dizisi olarak çıktı üret.`;
 }
