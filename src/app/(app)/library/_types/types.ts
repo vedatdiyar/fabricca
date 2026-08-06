@@ -36,6 +36,7 @@ export interface LibraryResourceNote {
   pageNumber: string;
   noteType: NoteType;
   content: string;
+  comment?: string;
   sentToCitationCards: boolean;
   createdAt: string;
 }

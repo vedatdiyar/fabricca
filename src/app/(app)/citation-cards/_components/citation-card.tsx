@@ -4,15 +4,16 @@ import {
   BookOpen,
   Copy,
   Check,
+  Pencil,
   Trash2,
   Quote,
   Sparkles,
   Bookmark,
   FolderInput,
+  MessageSquareQuote,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -49,6 +50,7 @@ export function getNoteTypeBadgeConfig(noteType: CitationNoteType) {
         icon: Quote,
         className:
           "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20",
+        textClassName: "text-amber-700 dark:text-amber-300",
       };
     case "PARAPHRASE":
       return {
@@ -56,6 +58,7 @@ export function getNoteTypeBadgeConfig(noteType: CitationNoteType) {
         icon: Sparkles,
         className:
           "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20",
+        textClassName: "text-blue-700 dark:text-blue-300",
       };
     case "PERSONAL_NOTE":
       return {
@@ -63,12 +66,14 @@ export function getNoteTypeBadgeConfig(noteType: CitationNoteType) {
         icon: Bookmark,
         className:
           "bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20",
+        textClassName: "text-purple-700 dark:text-purple-300",
       };
     default:
       return {
         label: "Not",
         icon: BookOpen,
         className: "bg-muted text-muted-foreground border-border",
+        textClassName: "text-muted-foreground",
       };
   }
 }
@@ -76,21 +81,21 @@ export function getNoteTypeBadgeConfig(noteType: CitationNoteType) {
 /** Props for CitationCard component. */
 export interface CitationCardProps {
   card: CitationCardItem;
-  viewMode: "grid" | "list";
   availableBoxes: BoxItem[];
+  onView: (card: CitationCardItem) => void;
   onEdit: (card: CitationCardItem) => void;
   onDelete: (id: number) => void;
   onMoveBox: (cardId: number, targetBoxId: number) => void;
 }
 
 /**
- * Renders an individual academic citation card. Clicking the card opens the edit modal.
+ * Renders an individual academic citation card. Clicking the card opens the read-only view modal.
  *
  * @param props - Component props containing card data and callbacks.
  * @returns Rendered citation card component markup.
  */
 export function CitationCard(props: CitationCardProps) {
-  const { card, viewMode, availableBoxes, onEdit, onDelete, onMoveBox } = props;
+  const { card, availableBoxes, onView, onEdit, onDelete, onMoveBox } = props;
   const [copied, setCopied] = useState(false);
 
   const noteConfig = getNoteTypeBadgeConfig(card.noteType);
@@ -121,125 +126,28 @@ export function CitationCard(props: CitationCardProps) {
       ? `${card.sourceAuthors[0]} ve diğerleri`
       : card.sourceAuthors.join(" & ");
 
-  if (viewMode === "list") {
-    return (
-      <Card
-        onClick={() => onEdit(card)}
-        className="cursor-pointer rounded-md border border-border bg-card p-4 transition-all hover:border-primary/50 backdrop-blur-sm group"
-      >
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex flex-1 flex-col gap-2 min-w-0">
-            {/* Top row: Compact badges and page number */}
-            <div className="flex flex-row items-center gap-1.5 min-w-0 overflow-hidden">
-              <Badge
-                variant="outline"
-                className={`flex items-center gap-1 text-[10px] py-0.5 px-1.5 font-medium shrink-0 whitespace-nowrap ${noteConfig.className}`}
-              >
-                <NoteIcon className="h-3 w-3 shrink-0" />
-                {noteConfig.label}
-              </Badge>
-
-              <Badge
-                variant="outline"
-                className={`flex items-center gap-1 text-[10px] py-0.5 px-1.5 font-medium shrink-0 min-w-0 ${boxConfig.className}`}
-                title={card.boxTitle}
-              >
-                <span
-                  className={`h-1.5 w-1.5 rounded-full shrink-0 ${boxConfig.dotClassName}`}
-                />
-                <span className="truncate max-w-[140px] md:max-w-[190px]">
-                  {card.boxTitle}
-                </span>
-              </Badge>
-
-              <span className="font-mono text-xs font-semibold text-foreground bg-muted border border-border px-2 py-0.5 rounded-md shrink-0 ml-auto md:ml-0">
-                {card.pageNumber}
-              </span>
-            </div>
-
-            <p className="text-sm leading-relaxed text-foreground font-serif line-clamp-2">
-              {card.content}
-            </p>
-
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <BookOpen className="h-3.5 w-3.5 text-primary shrink-0" />
-              <span className="font-medium text-foreground truncate">
-                {card.sourceTitle}
-              </span>
-              <span>•</span>
-              <span>
-                {authorsDisplay} ({card.sourceYear})
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1 shrink-0 self-end md:self-center pt-2 md:pt-0 border-t md:border-t-0 border-border/40 w-full md:w-auto justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCopyCitation}
-              className="h-8 gap-1.5 text-xs whitespace-nowrap"
-            >
-              {copied ? (
-                <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-              ) : (
-                <Copy className="h-3.5 w-3.5 shrink-0" />
-              )}
-              Atıf Kopyala
-            </Button>
-
-            <MoveBoxDropdown
-              card={card}
-              availableBoxes={availableBoxes}
-              onMoveBox={onMoveBox}
-            />
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(card.id);
-              }}
-              className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
-              title="Fişi Sil"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </Card>
-    );
-  }
-
   return (
     <Card
-      onClick={() => onEdit(card)}
+      onClick={() => onView(card)}
       className="cursor-pointer rounded-md border border-border bg-card p-5 transition-all duration-200 hover:border-primary/50 flex flex-col justify-between backdrop-blur-sm group"
     >
-      <CardHeader className="p-0 mb-3 flex-row items-center justify-between gap-2 space-y-0">
-        {/* Left: Compact Note Type & Topic Box Badges side-by-side */}
-        <div className="flex flex-row items-center gap-1 min-w-0 overflow-hidden">
-          <Badge
-            variant="outline"
-            className={`flex items-center gap-1 text-[10px] py-0.5 px-1.5 font-medium shrink-0 whitespace-nowrap ${noteConfig.className}`}
+      <CardHeader className="p-0 pb-3 mb-3 border-b border-border/40 flex-row items-start justify-between gap-2 space-y-0">
+        {/* Left: Metadata rows (note type & topic box) */}
+        <div className="flex flex-col gap-1 min-w-0 pt-0.5">
+          <span
+            className={`flex items-center gap-1.5 text-xs font-medium whitespace-nowrap ${noteConfig.textClassName}`}
           >
-            <NoteIcon className="h-3 w-3 shrink-0" />
+            <NoteIcon className="h-3.5 w-3.5 shrink-0" />
             {noteConfig.label}
-          </Badge>
+          </span>
 
-          <Badge
-            variant="outline"
-            className={`flex items-center gap-1 text-[10px] py-0.5 px-1.5 font-medium shrink-0 min-w-0 ${boxConfig.className}`}
+          <span
+            className={`flex items-center gap-1.5 text-xs font-medium min-w-0 ${boxConfig.textClassName}`}
             title={card.boxTitle}
           >
-            <span
-              className={`h-1.5 w-1.5 rounded-full shrink-0 ${boxConfig.dotClassName}`}
-            />
-            <span className="truncate max-w-[130px] sm:max-w-[170px]">
-              {card.boxTitle}
-            </span>
-          </Badge>
+            <FolderInput className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{card.boxTitle}</span>
+          </span>
         </div>
 
         {/* Right: Quick Action icons */}
@@ -254,6 +162,18 @@ export function CitationCard(props: CitationCardProps) {
             size="icon"
             onClick={(e) => {
               e.stopPropagation();
+              onEdit(card);
+            }}
+            className="h-7 w-7 text-muted-foreground hover:text-foreground shrink-0"
+            title="Fişi Düzenle"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
               onDelete(card.id);
             }}
             className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
@@ -263,11 +183,19 @@ export function CitationCard(props: CitationCardProps) {
           </Button>
         </div>
       </CardHeader>
-
       <CardContent className="p-0 my-2 flex-1">
-        <blockquote className="relative border-l-2 border-primary/40 pl-3 text-sm leading-relaxed text-foreground font-serif">
+        <blockquote className="relative border-l-2 border-primary/40 pl-3 text-sm leading-relaxed text-foreground font-serif line-clamp-4">
           {card.content}
         </blockquote>
+
+        {card.comment && (
+          <div className="mt-3 flex gap-2 rounded-md border border-border/40 border-l-2 border-l-primary/40 bg-muted/40 px-2.5 py-2">
+            <MessageSquareQuote className="h-3 w-3 text-primary/70 shrink-0 mt-0.5" />
+            <p className="text-[11px] text-foreground/75 leading-relaxed whitespace-pre-wrap line-clamp-3">
+              {card.comment}
+            </p>
+          </div>
+        )}
       </CardContent>
 
       <CardFooter className="p-0 mt-4 pt-3 border-t border-border/40 flex items-center justify-between gap-3 text-xs">

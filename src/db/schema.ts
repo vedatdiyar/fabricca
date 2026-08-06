@@ -215,6 +215,7 @@ export const notes = pgTable(
     pageNumber: varchar("page_number", { length: 50 }).notNull(),
     noteType: noteTypeEnum("note_type").notNull(),
     content: text("content").notNull(),
+    comment: text("comment"),
     sentToCitationCards: boolean("sent_to_citation_cards")
       .default(true)
       .notNull(),

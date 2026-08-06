@@ -19,6 +19,7 @@ export interface CitationCardItem {
   pageNumber: string;
   noteType: CitationNoteType;
   content: string;
+  comment?: string;
   sentToCitationCards: boolean;
   createdAt: string;
   updatedAt: string;

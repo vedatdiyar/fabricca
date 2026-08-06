@@ -68,6 +68,7 @@ export async function getLibraryResourcesAction() {
       pageNumber: n.pageNumber,
       noteType: n.noteType as NoteType,
       content: n.content,
+      comment: n.comment ?? undefined,
       sentToCitationCards: n.sentToCitationCards,
       createdAt: n.createdAt.toISOString(),
     }));

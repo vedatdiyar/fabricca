@@ -4,8 +4,6 @@ import {
   BookOpen,
   Plus,
   Search,
-  Grid,
-  List as ListIcon,
   Sparkles,
   Quote,
   Bookmark,
@@ -25,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { compareBoxTypes } from "@/lib/box-constants";
 import { CitationCard } from "./_components/citation-card";
 import { CitationCardDialog } from "./_components/citation-card-dialog";
 import { CitationSidebar } from "./_components/citation-sidebar";
@@ -62,10 +61,10 @@ export default function CitationCardsPage() {
   const [activeNoteTypeTab, setActiveNoteTypeTab] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [sortBy, setSortBy] = useState<string>("NEWEST");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   // Modal State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"view" | "edit">("view");
   const [cardToEdit, setCardToEdit] = useState<CitationCardItem | null>(null);
 
   /**
@@ -143,6 +142,14 @@ export default function CitationCardsPage() {
         return true;
       })
       .sort((a, b) => {
+        // Primary sort: box category order (Problem → Teori → Yöntem → Birincil)
+        // when viewing all boxes/sources (sidebar "Tümü" state).
+        if (selectedBoxId === null && selectedSourceId === null) {
+          const boxOrder = compareBoxTypes(a.boxType, b.boxType);
+          if (boxOrder !== 0) return boxOrder;
+        }
+
+        // Secondary / existing sort
         if (sortBy === "NEWEST") {
           return (
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -177,11 +184,19 @@ export default function CitationCardsPage() {
    */
   const handleOpenAddDialog = () => {
     setCardToEdit(null);
+    setDialogMode("edit");
+    setIsDialogOpen(true);
+  };
+
+  const handleOpenViewDialog = (card: CitationCardItem) => {
+    setCardToEdit(card);
+    setDialogMode("view");
     setIsDialogOpen(true);
   };
 
   const handleOpenEditDialog = (card: CitationCardItem) => {
     setCardToEdit(card);
+    setDialogMode("edit");
     setIsDialogOpen(true);
   };
 
@@ -199,6 +214,7 @@ export default function CitationCardsPage() {
         noteType: cardData.noteType,
         pageNumber: cardData.pageNumber,
         content: cardData.content,
+        comment: cardData.comment,
       });
 
       if (res.success) {
@@ -215,6 +231,7 @@ export default function CitationCardsPage() {
         noteType: cardData.noteType,
         pageNumber: cardData.pageNumber,
         content: cardData.content,
+        comment: cardData.comment,
       });
 
       if (res.success) {
@@ -260,26 +277,6 @@ export default function CitationCardsPage() {
 
   return (
     <div className="flex flex-col gap-6 w-full">
-      {/* Top Header & Intro */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
-              Alıntı Fişleri
-            </h1>
-          </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            Akademik tez kaynaklarınızdan çıkardığınız doğrudan alıntıları,
-            açımlamaları ve kişisel fişlerinizi organize edin.
-          </p>
-        </div>
-
-        <Button onClick={handleOpenAddDialog} className="gap-2 shrink-0">
-          <Plus className="h-4 w-4" />
-          <span>Yeni Alıntı Fişi</span>
-        </Button>
-      </div>
-
       {/* Overview Metric Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="p-3.5 rounded-md border border-border bg-card backdrop-blur-sm">
@@ -367,26 +364,14 @@ export default function CitationCardsPage() {
                   </SelectContent>
                 </Select>
 
-                <div className="flex items-center rounded-md border border-border/60 p-0.5 bg-muted/40">
-                  <Button
-                    variant={viewMode === "grid" ? "secondary" : "ghost"}
-                    size="sm"
-                    onClick={() => setViewMode("grid")}
-                    className="h-8 w-8 p-0"
-                    title="Izgara Görünümü"
-                  >
-                    <Grid className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === "list" ? "secondary" : "ghost"}
-                    size="sm"
-                    onClick={() => setViewMode("list")}
-                    className="h-8 w-8 p-0"
-                    title="Liste Görünümü"
-                  >
-                    <ListIcon className="h-4 w-4" />
-                  </Button>
-                </div>
+                <Button
+                  onClick={handleOpenAddDialog}
+                  size="sm"
+                  className="gap-1.5 h-8 px-3 shrink-0"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Yeni Fiş</span>
+                </Button>
               </div>
             </div>
 
@@ -419,7 +404,7 @@ export default function CitationCardsPage() {
             </div>
           </div>
 
-          {/* Cards Display Grid / List */}
+          {/* Cards Display Grid */}
           {filteredCards.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-12 rounded-md border border-dashed border-border bg-card/20 text-center">
               <BookOpen className="h-10 w-10 text-muted-foreground mb-3 opacity-50" />
@@ -454,28 +439,14 @@ export default function CitationCardsPage() {
                 </Button>
               </div>
             </div>
-          ) : viewMode === "grid" ? (
+          ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {filteredCards.map((card) => (
                 <CitationCard
                   key={card.id}
                   card={card}
-                  viewMode="grid"
                   availableBoxes={boxes}
-                  onEdit={handleOpenEditDialog}
-                  onDelete={handleDeleteCard}
-                  onMoveBox={handleMoveBox}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {filteredCards.map((card) => (
-                <CitationCard
-                  key={card.id}
-                  card={card}
-                  viewMode="list"
-                  availableBoxes={boxes}
+                  onView={handleOpenViewDialog}
                   onEdit={handleOpenEditDialog}
                   onDelete={handleDeleteCard}
                   onMoveBox={handleMoveBox}
@@ -491,6 +462,7 @@ export default function CitationCardsPage() {
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         cardToEdit={cardToEdit}
+        mode={dialogMode}
         sources={sources}
         boxes={boxes}
         onSave={handleSaveCard}

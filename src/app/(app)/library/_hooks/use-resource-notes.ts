@@ -46,6 +46,7 @@ export function useResourceNotes({
       pageNumber: string;
       noteType: NoteType;
       content: string;
+      comment?: string;
     }) => {
       if (!selectedResourceId) return;
 

@@ -103,6 +103,7 @@ export function getBoxTypeBadgeConfig(boxType: ThesisBoxType) {
         className:
           "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
         dotClassName: "bg-purple-500",
+        textClassName: "text-purple-600 dark:text-purple-400",
       };
     case "METHODOLOGY":
       return {
@@ -110,6 +111,7 @@ export function getBoxTypeBadgeConfig(boxType: ThesisBoxType) {
         className:
           "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
         dotClassName: "bg-blue-500",
+        textClassName: "text-blue-600 dark:text-blue-400",
       };
     case "SUBJECT_PROBLEM":
       return {
@@ -117,6 +119,7 @@ export function getBoxTypeBadgeConfig(boxType: ThesisBoxType) {
         className:
           "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
         dotClassName: "bg-amber-500",
+        textClassName: "text-amber-600 dark:text-amber-400",
       };
     case "PRIMARY_MATERIAL":
       return {
@@ -124,12 +127,14 @@ export function getBoxTypeBadgeConfig(boxType: ThesisBoxType) {
         className:
           "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
         dotClassName: "bg-emerald-500",
+        textClassName: "text-emerald-600 dark:text-emerald-400",
       };
     default:
       return {
         label: "Genel",
         className: "bg-muted text-muted-foreground border-border",
         dotClassName: "bg-muted-foreground",
+        textClassName: "text-muted-foreground",
       };
   }
 }

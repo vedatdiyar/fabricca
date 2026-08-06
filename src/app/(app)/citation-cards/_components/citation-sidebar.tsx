@@ -1,12 +1,32 @@
 "use client";
 
-import { Folder, Layers, FileText } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Layers, FileText, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { getBoxTypeBadgeConfig } from "@/lib/box-constants";
+import {
+  getBoxTypeBadgeConfig,
+  BOX_TYPE_SHORT_LABELS,
+  type ThesisBoxType,
+} from "@/lib/box-constants";
+import { cn } from "@/lib/utils";
 import type { CitationCardItem, BoxItem, SourceItem } from "../_lib/types";
+
+/** Tab structure for box type filters. */
+const BOX_TYPE_TABS: { id: ThesisBoxType | "ALL"; label: string }[] = [
+  { id: "ALL", label: "Tümü" },
+  { id: "SUBJECT_PROBLEM", label: BOX_TYPE_SHORT_LABELS.SUBJECT_PROBLEM },
+  {
+    id: "THEORETICAL_FRAMEWORK",
+    label: BOX_TYPE_SHORT_LABELS.THEORETICAL_FRAMEWORK,
+  },
+  { id: "METHODOLOGY", label: BOX_TYPE_SHORT_LABELS.METHODOLOGY },
+  { id: "PRIMARY_MATERIAL", label: BOX_TYPE_SHORT_LABELS.PRIMARY_MATERIAL },
+];
 
 /** Props for CitationSidebar component. */
 export interface CitationSidebarProps {
@@ -20,8 +40,8 @@ export interface CitationSidebarProps {
 }
 
 /**
- * Sidebar component displaying topic boxes and linked sources.
- * Features sticky positioning and overflow-protected item truncation.
+ * Sidebar component displaying topic boxes and linked sources with search and box-type tabs.
+ * Features sticky positioning, compact cards, and instant filtering.
  *
  * @param props - Sidebar props with boxes, sources, and selection handlers.
  * @returns Sidebar markup.
@@ -37,133 +57,200 @@ export function CitationSidebar(props: CitationSidebarProps) {
     onSelectSource,
   } = props;
 
-  // Filter sources belonging to the selected box if a box is selected
-  const availableSources = selectedBoxId
-    ? sources.filter((s) => s.boxId === selectedBoxId)
-    : sources;
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<ThesisBoxType | "ALL">("ALL");
+
+  // Filter boxes based on active tab and search query
+  const filteredBoxes = useMemo(() => {
+    return boxes.filter((box) => {
+      const matchesTab = activeTab === "ALL" || box.boxType === activeTab;
+      const matchesQuery =
+        searchQuery.trim() === "" ||
+        box.title.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesTab && matchesQuery;
+    });
+  }, [boxes, activeTab, searchQuery]);
+
+  // Filter sources belonging to the selected box if a box is selected, and search query
+  const filteredSources = useMemo(() => {
+    const scopeSources = selectedBoxId
+      ? sources.filter((s) => s.boxId === selectedBoxId)
+      : sources;
+
+    if (!searchQuery.trim()) return scopeSources;
+
+    return scopeSources.filter((s) =>
+      s.title.toLowerCase().includes(searchQuery.toLowerCase()),
+    );
+  }, [sources, selectedBoxId, searchQuery]);
 
   const totalCards = cards.length;
+  const isFilterActive =
+    selectedBoxId !== null ||
+    selectedSourceId !== null ||
+    activeTab !== "ALL" ||
+    searchQuery.trim() !== "";
+
+  const handleResetFilters = () => {
+    onSelectBox(null);
+    onSelectSource(null);
+    setActiveTab("ALL");
+    setSearchQuery("");
+  };
 
   return (
-    <aside className="w-full lg:w-72 shrink-0 flex flex-col rounded-md border border-border bg-card/40 backdrop-blur-md lg:sticky lg:top-[92px] lg:max-h-[calc(100vh-7rem)] min-w-0">
+    <aside className="w-full lg:w-96 shrink-0 flex flex-col rounded-md border border-border bg-card p-3 lg:sticky lg:top-[92px] lg:max-h-[calc(100vh-7rem)] min-w-0 space-y-3">
       {/* Sidebar Header */}
-      <div className="p-3.5 border-b border-border/60 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2 font-semibold text-xs text-foreground uppercase tracking-wider min-w-0">
+      <div className="flex items-center justify-between pb-2 border-b border-border shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
           <Layers className="h-4 w-4 text-primary shrink-0" />
-          <span className="truncate">Alıntı Fişleri</span>
+          <h3 className="font-serif text-lg font-semibold tracking-tight text-foreground truncate">
+            Alıntı Fişleri
+          </h3>
         </div>
-        {(selectedBoxId !== null || selectedSourceId !== null) && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              onSelectBox(null);
-              onSelectSource(null);
-            }}
-            className="h-7 text-xs text-muted-foreground hover:text-foreground shrink-0"
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Badge
+            variant="outline"
+            className="text-xs font-medium text-muted-foreground border-border"
           >
-            Filtreyi Temizle
-          </Button>
-        )}
+            {totalCards}
+          </Badge>
+          {isFilterActive && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleResetFilters}
+              title="Filtreleri Temizle"
+              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
       </div>
 
-      <ScrollArea className="flex-1 min-h-0 p-3">
-        <div className="space-y-4 min-w-0">
-          {/* All Boxes Option */}
-          <button
-            type="button"
-            onClick={() => {
-              onSelectBox(null);
-              onSelectSource(null);
-            }}
-            className={`w-full flex items-center justify-between p-2.5 rounded-md text-xs font-medium transition-all min-w-0 ${
-              selectedBoxId === null
-                ? "bg-primary/10 border border-primary/20"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            }`}
-          >
-            <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
-              <Folder className="h-4 w-4 shrink-0" />
-              <span className="truncate text-left">Tüm Konu Kutuları</span>
-            </div>
-            <Badge
-              variant={selectedBoxId === null ? "outline" : "secondary"}
-              className="text-[10px] px-1.5 py-0 shrink-0"
+      {/* Search Input */}
+      <div className="relative w-full shrink-0">
+        <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="Kutu veya kaynak ara..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-8 text-xs h-8 bg-background border-border"
+        />
+      </div>
+
+      {/* Box Type Tabs Grid */}
+      <div className="grid grid-cols-5 gap-1 rounded-md bg-muted p-1 border border-border/40 shrink-0">
+        {BOX_TYPE_TABS.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "w-full text-center py-1 text-[10px] font-medium rounded transition-all truncate px-0.5",
+                isActive
+                  ? "bg-background text-foreground font-semibold border border-border/60"
+                  : "text-muted-foreground hover:text-foreground hover:bg-background/50",
+              )}
             >
-              {totalCards}
-            </Badge>
-          </button>
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
 
-          <Separator />
-
+      {/* Scrollable Items Area */}
+      <ScrollArea className="flex-1 min-h-0 pr-1">
+        <div className="space-y-3 min-w-0">
           {/* List of Topic Boxes */}
           <div className="space-y-1.5 min-w-0">
-            <div className="px-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-              Tez Konu Kutuları
+            <div className="px-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider flex items-center justify-between">
+              <span>Tez Konu Kutuları</span>
             </div>
 
-            {boxes.map((box) => {
-              const isSelected = selectedBoxId === box.id;
-              const boxConfig = getBoxTypeBadgeConfig(box.boxType);
-              const boxCardCount = cards.filter(
-                (c) => c.boxId === box.id,
-              ).length;
+            {filteredBoxes.length === 0 ? (
+              <div className="px-2 py-3 text-center text-xs text-muted-foreground italic bg-muted/30 rounded-md border border-border/40">
+                Kutu bulunamadı.
+              </div>
+            ) : (
+              filteredBoxes.map((box) => {
+                const isSelected = selectedBoxId === box.id;
+                const boxConfig = getBoxTypeBadgeConfig(box.boxType);
+                const boxCardCount = cards.filter(
+                  (c) => c.boxId === box.id,
+                ).length;
 
-              return (
-                <button
-                  key={box.id}
-                  type="button"
-                  onClick={() => {
-                    onSelectBox(isSelected ? null : box.id);
-                    onSelectSource(null);
-                  }}
-                  className={`w-full text-left p-2.5 rounded-md text-xs transition-all min-w-0 ${
-                    isSelected
-                      ? "bg-muted border border-border"
-                      : "hover:bg-muted/50 border border-transparent"
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-1 mb-1 min-w-0">
-                    <Badge
-                      variant="outline"
-                      className={`text-[10px] px-1.5 py-0 shrink-0 ${boxConfig.className}`}
-                    >
-                      {boxConfig.label}
-                    </Badge>
-                    <span className="inline-flex items-center rounded-md border border-border bg-muted/60 px-1.5 py-0 text-[10px] font-mono text-muted-foreground shrink-0">
-                      {boxCardCount}
-                    </span>
-                  </div>
-                  <div
-                    className="font-medium text-foreground truncate min-w-0"
-                    title={box.title}
+                return (
+                  <Card
+                    key={box.id}
+                    onClick={() => {
+                      onSelectBox(isSelected ? null : box.id);
+                      onSelectSource(null);
+                    }}
+                    className={cn(
+                      "cursor-pointer transition-all border p-2 text-left hover:border-primary/40",
+                      isSelected
+                        ? "bg-accent/80 border-primary/60"
+                        : "bg-background border-border hover:bg-accent/30",
+                    )}
                   >
-                    {box.title}
-                  </div>
-                </button>
-              );
-            })}
+                    <CardContent className="p-0 space-y-1">
+                      <div className="flex items-center justify-between gap-1 min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span
+                            className={cn(
+                              "h-2 w-2 rounded-full shrink-0",
+                              boxConfig.dotClassName,
+                            )}
+                          />
+                          <span className="text-[10px] font-medium text-muted-foreground truncate">
+                            {boxConfig.label}
+                          </span>
+                        </div>
+                        <span className="inline-flex items-center rounded-md border border-border bg-muted/60 px-1.5 py-0 text-[10px] font-mono text-muted-foreground shrink-0">
+                          {boxCardCount}
+                        </span>
+                      </div>
+                      <div
+                        className="text-xs font-medium text-foreground truncate min-w-0"
+                        title={box.title}
+                      >
+                        {box.title}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
           </div>
 
-          <Separator />
+          <Separator className="bg-border/40" />
 
-          {/* Sources under selected scope */}
-          <div className="space-y-1.5 min-w-0">
-            <div className="px-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wider flex items-center justify-between">
+          {/* Sources Section */}
+          <div className="space-y-1.5 min-w-0 pb-2">
+            <div className="px-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider flex items-center justify-between">
               <span>Kaynaklar</span>
-              {selectedBoxId && (
+              {selectedBoxId ? (
                 <span className="text-[10px] font-normal text-muted-foreground">
-                  (Kutuya Özel)
+                  (Seçili Kutuya Özel)
+                </span>
+              ) : (
+                <span className="font-mono text-[10px]">
+                  ({filteredSources.length})
                 </span>
               )}
             </div>
 
-            {availableSources.length === 0 ? (
-              <div className="px-2 text-xs text-muted-foreground italic">
+            {filteredSources.length === 0 ? (
+              <div className="px-2 py-3 text-center text-xs text-muted-foreground italic bg-muted/30 rounded-md border border-border/40">
                 Kaynak bulunamadı.
               </div>
             ) : (
-              availableSources.map((source) => {
+              filteredSources.map((source) => {
                 const isSourceSelected = selectedSourceId === source.id;
                 const sourceCardCount = cards.filter(
                   (c) => c.sourceId === source.id,
@@ -176,11 +263,12 @@ export function CitationSidebar(props: CitationSidebarProps) {
                     onClick={() =>
                       onSelectSource(isSourceSelected ? null : source.id)
                     }
-                    className={`w-full text-left p-2 rounded-md text-xs flex items-center justify-between gap-2 transition-all min-w-0 ${
+                    className={cn(
+                      "w-full text-left p-2 rounded-md text-xs flex items-center justify-between gap-2 transition-all min-w-0 border",
                       isSourceSelected
-                        ? "bg-primary/10 text-primary font-medium border border-primary/20"
-                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                    }`}
+                        ? "bg-primary/10 text-primary font-medium border-primary/20"
+                        : "bg-background border-border text-muted-foreground hover:bg-accent/40 hover:text-foreground",
+                    )}
                   >
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       <FileText className="h-3.5 w-3.5 shrink-0 opacity-70" />

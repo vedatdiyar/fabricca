@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ExternalLink,
   Plus,
@@ -11,11 +11,13 @@ import {
   Circle,
   Sparkles,
   Pencil,
+  MessageSquareQuote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
@@ -29,6 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { formatPageNumber } from "@/lib/academic/utils";
+import { normalizePastedText } from "@/lib/text-utils";
 import { getBoxTypeBadgeConfig } from "@/lib/box-constants";
 import { cn } from "@/lib/utils";
 import { PdfUploadDropzone } from "./pdf-upload-dropzone";
@@ -67,7 +70,7 @@ function getNoteTypeBadgeConfig(noteType: NoteType) {
       };
     case "PARAPHRASE":
       return {
-        label: "Parafraz",
+        label: "Dolaylı Alıntı",
         className: "bg-amber-500/10 text-amber-600 border-amber-500/20",
       };
     case "PERSONAL_NOTE":
@@ -103,6 +106,7 @@ export function ResourceDetail({
   onDeletePdf,
 }: ResourceDetailProps) {
   const [content, setContent] = useState("");
+  const [comment, setComment] = useState("");
   const [pageNumber, setPageNumber] = useState("");
   const [noteType, setNoteType] = useState<NoteType>("DIRECT_QUOTE");
 
@@ -110,6 +114,41 @@ export function ResourceDetail({
   const [pdfToDeleteId, setPdfToDeleteId] = useState<number | null>(null);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const contentRef = useRef<HTMLTextAreaElement>(null);
+  const commentRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+
+    el.style.height = "auto";
+
+    const style = getComputedStyle(el);
+    const lineHeight = parseFloat(style.lineHeight) || 20;
+    const verticalPadding =
+      (parseFloat(style.paddingTop) || 0) +
+      (parseFloat(style.paddingBottom) || 0);
+    const maxHeight = lineHeight * 8 + verticalPadding;
+
+    el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
+  }, [content]);
+
+  useEffect(() => {
+    const el = commentRef.current;
+    if (!el) return;
+
+    el.style.height = "auto";
+
+    const style = getComputedStyle(el);
+    const lineHeight = parseFloat(style.lineHeight) || 20;
+    const verticalPadding =
+      (parseFloat(style.paddingTop) || 0) +
+      (parseFloat(style.paddingBottom) || 0);
+    const maxHeight = lineHeight * 5 + verticalPadding;
+
+    el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
+  }, [comment]);
 
   const boxBadge = getBoxTypeBadgeConfig(resource.boxType);
 
@@ -131,9 +170,11 @@ export function ResourceDetail({
       pageNumber: formatPageNumber(pageNumber),
       noteType,
       content: content.trim(),
+      comment: comment.trim() || undefined,
     });
 
     setContent("");
+    setComment("");
     setPageNumber("");
     setNoteType("DIRECT_QUOTE");
   };
@@ -143,6 +184,25 @@ export function ResourceDetail({
       onDeleteNote(noteToDeleteId);
       setNoteToDeleteId(null);
     }
+  };
+
+  const handleContentPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const raw = e.clipboardData.getData("text/plain");
+    if (!raw) return;
+
+    const cleaned = normalizePastedText(raw);
+    if (cleaned === raw) return;
+
+    e.preventDefault();
+    const el = e.currentTarget;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const next = el.value.slice(0, start) + cleaned + el.value.slice(end);
+
+    setContent(next);
+    requestAnimationFrame(() => {
+      el.selectionStart = el.selectionEnd = start + cleaned.length;
+    });
   };
 
   return (
@@ -287,18 +347,40 @@ export function ResourceDetail({
               <div className="flex items-center gap-2">
                 <Plus className="h-4 w-4 text-primary" />
                 <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
-                  Yeni Not / Sayfa Numaralı Alıntı Ekle
+                  Yeni Not veya Alıntı Ekle
                 </h3>
               </div>
 
               <form onSubmit={handleSaveNote} className="space-y-4">
                 <div className="space-y-1">
                   <Textarea
+                    ref={contentRef}
                     placeholder="Eserden doğrudan alıntı veya kişisel notunuzu buraya yazınız..."
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
-                    rows={3}
-                    className="textarea-academic text-sm"
+                    onPaste={handleContentPaste}
+                    rows={5}
+                    className="textarea-academic text-sm resize-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <MessageSquareQuote className="h-3.5 w-3.5 text-primary/70" />
+                    <Label className="text-xs text-foreground font-medium">
+                      Düşünce / Şerh
+                    </Label>
+                    <span className="text-[10px] text-muted-foreground font-normal">
+                      (Opsiyonel)
+                    </span>
+                  </div>
+                  <Textarea
+                    ref={commentRef}
+                    placeholder="Bu alıntıyı tez çalışmanızda nasıl değerlendirdiğinizi, kendi şerh veya yorumunuzu buraya ekleyin..."
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    rows={2}
+                    className="textarea-academic text-sm resize-none"
                   />
                 </div>
 
@@ -418,6 +500,20 @@ export function ResourceDetail({
                         <p className="font-sans text-sm text-foreground leading-relaxed whitespace-pre-wrap">
                           {note.content}
                         </p>
+
+                        {note.comment && (
+                          <div className="flex gap-2 rounded-md border border-border/40 border-l-2 border-l-primary/40 bg-muted/40 px-3 py-2.5">
+                            <MessageSquareQuote className="h-3.5 w-3.5 text-primary/70 shrink-0 mt-0.5" />
+                            <div className="space-y-1 min-w-0">
+                              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                Kişisel Yorum / Şerh
+                              </p>
+                              <p className="text-xs text-foreground/80 leading-relaxed whitespace-pre-wrap">
+                                {note.comment}
+                              </p>
+                            </div>
+                          </div>
+                        )}
 
                         <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs">
                           <span className="text-[10px] text-muted-foreground font-mono">

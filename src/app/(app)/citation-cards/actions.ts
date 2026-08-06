@@ -10,7 +10,7 @@ import {
   ensureUserMatrixAndBoxes,
   getOwnedSource,
 } from "../library/_services/helpers";
-import type { ThesisBoxType } from "@/lib/box-constants";
+import { compareBoxTypes, type ThesisBoxType } from "@/lib/box-constants";
 import type {
   BoxItem,
   CitationCardItem,
@@ -28,6 +28,11 @@ const createCitationCardSchema = z.object({
   noteType: noteTypeSchema,
   pageNumber: z.string().min(1, "Sayfa numarası gereklidir."),
   content: z.string().min(1, "Fiş içeriği boş olamaz."),
+  comment: z
+    .string()
+    .trim()
+    .max(4000, "Yorum en fazla 4000 karakter olabilir.")
+    .optional(),
 });
 
 /** Schema for updating an existing citation card. */
@@ -116,19 +121,22 @@ export async function getCitationCardsDataAction(): Promise<
         pageNumber: noteRow.pageNumber,
         noteType: noteRow.noteType as CitationNoteType,
         content: noteRow.content,
+        comment: noteRow.comment ?? undefined,
         sentToCitationCards: noteRow.sentToCitationCards,
         createdAt: noteRow.createdAt.toISOString(),
         updatedAt: noteRow.updatedAt.toISOString(),
       });
     }
 
-    const formattedBoxes: BoxItem[] = userBoxes.map((b) => ({
-      id: b.id,
-      boxType: (b.boxType ?? "SUBJECT_PROBLEM") as ThesisBoxType,
-      title: b.title,
-      description: b.description ?? "",
-      cardCount: cardCountMap.get(b.id) ?? 0,
-    }));
+    const formattedBoxes: BoxItem[] = userBoxes
+      .map((b) => ({
+        id: b.id,
+        boxType: (b.boxType ?? "SUBJECT_PROBLEM") as ThesisBoxType,
+        title: b.title,
+        description: b.description ?? "",
+        cardCount: cardCountMap.get(b.id) ?? 0,
+      }))
+      .sort((a, b) => compareBoxTypes(a.boxType, b.boxType));
 
     const formattedSources: SourceItem[] = dbSources.map((s) => ({
       id: s.id,
@@ -179,6 +187,7 @@ export async function getCitationCardsDataAction(): Promise<
  * @param input.noteType - The academic note type enum value.
  * @param input.pageNumber - The page number or page range string.
  * @param input.content - The citation note content.
+ * @param input.comment - Optional personal meta-comment / annotation attached to the card.
  * @returns The created citation card on success, or an error message on failure.
  */
 export async function createCitationCardAction(input: {
@@ -187,6 +196,7 @@ export async function createCitationCardAction(input: {
   noteType: CitationNoteType;
   pageNumber: string;
   content: string;
+  comment?: string;
 }): Promise<
   { success: true; data: CitationCardItem } | { success: false; error: string }
 > {
@@ -237,6 +247,7 @@ export async function createCitationCardAction(input: {
         noteType: parsed.data
           .noteType as (typeof noteTypeEnum.enumValues)[number],
         content: parsed.data.content.trim(),
+        comment: parsed.data.comment?.trim() || null,
         sentToCitationCards: true,
       })
       .returning();
@@ -263,6 +274,7 @@ export async function createCitationCardAction(input: {
         pageNumber: newNote.pageNumber,
         noteType: newNote.noteType as CitationNoteType,
         content: newNote.content,
+        comment: newNote.comment ?? undefined,
         sentToCitationCards: newNote.sentToCitationCards,
         createdAt: newNote.createdAt.toISOString(),
         updatedAt: newNote.updatedAt.toISOString(),
@@ -287,6 +299,7 @@ export async function createCitationCardAction(input: {
  * @param input.noteType - The academic note type enum value.
  * @param input.pageNumber - The page number or page range string.
  * @param input.content - The citation note content.
+ * @param input.comment - Optional personal meta-comment / annotation attached to the card.
  * @returns The updated citation card on success, or an error message on failure.
  */
 export async function updateCitationCardAction(input: {
@@ -296,6 +309,7 @@ export async function updateCitationCardAction(input: {
   noteType: CitationNoteType;
   pageNumber: string;
   content: string;
+  comment?: string;
 }): Promise<
   { success: true; data: CitationCardItem } | { success: false; error: string }
 > {
@@ -356,6 +370,7 @@ export async function updateCitationCardAction(input: {
         noteType: parsed.data
           .noteType as (typeof noteTypeEnum.enumValues)[number],
         content: parsed.data.content.trim(),
+        comment: parsed.data.comment?.trim() || null,
         updatedAt: new Date(),
       })
       .where(
@@ -385,6 +400,7 @@ export async function updateCitationCardAction(input: {
         pageNumber: updatedNote.pageNumber,
         noteType: updatedNote.noteType as CitationNoteType,
         content: updatedNote.content,
+        comment: updatedNote.comment ?? undefined,
         sentToCitationCards: updatedNote.sentToCitationCards,
         createdAt: updatedNote.createdAt.toISOString(),
         updatedAt: updatedNote.updatedAt.toISOString(),

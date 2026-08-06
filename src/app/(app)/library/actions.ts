@@ -146,6 +146,7 @@ export async function getBoxHierarchyForLibraryAction() {
  * @param input.pageNumber - The page number the note refers to.
  * @param input.noteType - The type of the note.
  * @param input.content - The note text.
+ * @param input.comment - Optional personal meta-comment / annotation attached to the note.
  * @returns The created note data on success, or an error message on failure.
  */
 export async function createResourceNoteAction(input: {
@@ -153,6 +154,7 @@ export async function createResourceNoteAction(input: {
   pageNumber: string;
   noteType: NoteType;
   content: string;
+  comment?: string;
 }) {
   return noteActions.createResourceNoteAction(input);
 }
