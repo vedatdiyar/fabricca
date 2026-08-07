@@ -168,7 +168,7 @@ export function AddResourceModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 animate-in fade-in-0 duration-200">
-      <div className="relative w-full max-w-lg rounded-md border border-border bg-background p-6 shadow-lg space-y-4">
+      <div className="relative w-full max-w-2xl rounded-md border border-border bg-background p-6 shadow-lg space-y-4">
         <div className="flex items-center justify-between border-b border-border pb-4">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-md bg-primary/10 border border-primary/20 text-primary">

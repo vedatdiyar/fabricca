@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { BookOpen, FolderArchive, Trash2 } from "lucide-react";
+import { FolderArchive, Trash2 } from "lucide-react";
 import {
   Card,
   CardHeader,
@@ -73,8 +73,8 @@ export function BoxCard({ box, onDeleteArticle }: BoxCardProps) {
           </h4>
           {box.articles.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-6 px-3 rounded-md border border-dashed border-border/40 bg-secondary/10 text-center">
-              <p className="text-xs text-success font-medium">
-                Tüm kaynak okumaları tamamlandı!
+              <p className="text-xs text-muted-foreground font-medium">
+                İlgili kutuda okunacak materyal şu aşamada bulunmamaktadır.
               </p>
             </div>
           ) : (
@@ -117,14 +117,6 @@ export function BoxCard({ box, onDeleteArticle }: BoxCardProps) {
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
-                    {article.isRead && (
-                      <span
-                        className="flex h-5 w-5 items-center justify-center rounded-full bg-success/15 border border-success/20 text-success"
-                        title="Okundu"
-                      >
-                        <BookOpen className="h-3 w-3" />
-                      </span>
-                    )}
                   </div>
                 </li>
               ))}

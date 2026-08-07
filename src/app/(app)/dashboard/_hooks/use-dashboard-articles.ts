@@ -4,6 +4,8 @@ import { useState, useCallback, useMemo } from "react";
 import type { Box, Source } from "@/db/schema";
 import type { TopicBox } from "../_types";
 import { sortLibraryResources } from "@/lib/academic/utils";
+import { formatAuthorDisplayString } from "@/lib/academic/author-formatter";
+import { BOX_TYPE_DESCRIPTIONS, type ThesisBoxType } from "@/lib/box-constants";
 
 /** Maximum number of articles shown in a topic box's reading list. */
 const BOX_READING_LIST_CAPACITY = 4;
@@ -53,10 +55,11 @@ function buildArticleState(
       mapped.push({
         id: String(res.id),
         title: res.title,
-        author:
-          res.authors && res.authors.length > 0
-            ? res.authors.join(", ")
-            : "Bilinmeyen Yazar",
+        author: formatAuthorDisplayString({
+          authors: res.authors,
+          publisher: res.publisher,
+          boxType: box.boxType,
+        }),
         year: res.publicationYear ?? 0,
         isRead: res.isRead ?? false,
         isFoundational: res.isFoundational,
@@ -84,27 +87,30 @@ function buildVisibleReadingList(
   boxArticles: ArticleState[],
   capacity: number,
 ): ArticleState[] {
+  const unreadArticles = boxArticles.filter((a) => !a.isRead);
+  if (unreadArticles.length === 0) {
+    return [];
+  }
+
   const groups = new Map<string, ArticleState[]>();
-  for (const art of boxArticles) {
+  for (const art of unreadArticles) {
     const list = groups.get(art.subBoxId) ?? [];
     list.push(art);
     groups.set(art.subBoxId, list);
   }
 
-  const unreadGroups = [...groups.values()]
-    .map((group) => group.filter((a) => !a.isRead))
-    .filter((group) => group.length > 0);
+  const activeGroups = [...groups.values()];
 
   const result: ArticleState[] = [];
-  const pointers = unreadGroups.map(() => 0);
+  const pointers = activeGroups.map(() => 0);
   const seen = new Set<string>();
   let placed = 0;
 
   while (placed < capacity) {
     let advanced = false;
 
-    for (let gi = 0; gi < unreadGroups.length; gi++) {
-      const group = unreadGroups[gi];
+    for (let gi = 0; gi < activeGroups.length; gi++) {
+      const group = activeGroups[gi];
       while (pointers[gi] < group.length && seen.has(group[pointers[gi]].id)) {
         pointers[gi]++;
       }
@@ -165,7 +171,10 @@ export function useDashboardArticles(
       initialBoxes.map((box) => ({
         id: String(box.id),
         title: box.title,
-        description: box.description ?? "",
+        description:
+          box.description && box.description.trim().length > 0
+            ? box.description
+            : (BOX_TYPE_DESCRIPTIONS[box.boxType as ThesisBoxType] ?? ""),
         articles: getVisibleArticlesForBox(String(box.id)).map((art) => ({
           id: art.id,
           title: art.title,

@@ -51,11 +51,9 @@ export async function parsePdfToDocumentAnalysis(
 ): Promise<DocumentAnalysisResult> {
   const pool = getPdfParserKeyPool();
   const inspection = processPdfInspector(pdfBuffer);
-  const isScannedOrOcr =
-    inspection.pdfType === "Scanned" ||
-    (inspection.pagesNeedingOcr && inspection.pagesNeedingOcr.length > 0);
+  const isScanned = inspection.pdfType === "Scanned";
 
-  if (isScannedOrOcr) {
+  if (isScanned) {
     // Scanned fallback: Vision base64 PDF batching via Gemini 3.1 Flash-Lite
     const loadedDoc = await loadPdfSource(pdfBuffer);
     const totalPages = getPdfPageCount(loadedDoc);
@@ -151,9 +149,9 @@ export async function parsePdfToDocumentAnalysis(
   let bibStartPageIndex = -1;
   const searchStart = Math.floor(targetPages.length * 0.6);
   const bibHeadingRegex =
-    /(^|\n)#+\s*(Kaynakça|Kaynaklar|Kaynak\s+Dizini|Yararlanılan\s+Kaynaklar|Başvurulan\s+Kaynaklar|Referanslar|Atıfta\s+Bulunulan\s+Kaynaklar|Kaynak\s+Listesi|References(\s+and\s+Notes)?|Reference\s+List|Bibliography|Works\s+Cited|Works\s+Consulted|Literature\s+Cited|Cited\s+Literature|Selected\s+(Bibliography|References)|Literaturverzeichnis|Literatur|Références|Bibliographie|Referencias|Bibliografía)\b/i;
+    /(^|\n)(#+\s*|\b)(Kaynakça|Kaynaklar|Kaynak\s+Dizini|Yararlanılan\s+Kaynaklar|Başvurulan\s+Kaynaklar|Referanslar|Atıfta\s+Bulunulan\s+Kaynaklar|Kaynak\s+Listesi|References(\s+and\s+Notes)?|Reference\s+List|Bibliography|Works\s+Cited|Works\s+Consulted|Literature\s+Cited|Cited\s+Literature|Selected\s+(Bibliography|References)|Literaturverzeichnis|Literatur|Références|Bibliographie|Referencias|Bibliografía)\b/i;
 
-  for (let i = targetPages.length - 1; i >= searchStart; i--) {
+  for (let i = searchStart; i < targetPages.length; i++) {
     if (bibHeadingRegex.test(targetPages[i].markdown)) {
       bibStartPageIndex = i;
       break;
@@ -175,11 +173,10 @@ export async function parsePdfToDocumentAnalysis(
 
   let bibEndPageIndex = targetPages.length;
   if (bibStartPageIndex !== -1) {
-    const bibStopRegex =
-      /(^|\n)#+\s*(Ekler?|EK[-_\s]*[A-Z0-9]+|EKLER|Appendix|Appendices|Supplementary\s+(Material|Materials|Information)|Supplemental\s+(Material|Materials|Information)|Annex(es)?|Addend(um|a)|Özgeçmiş|Yazar\s+Hakkında|Yazarın\s+Özgeçmişi|Curriculum\s+Vitae|\bCV\b|Biography|Biographies|Author\s+Biograph(y|ies)|About\s+the\s+Author(s)?|Dizin|Kavram\s+Dizin(i)?|Terimler\s+Sözlüğü|Index|Subject\s+Index|Glossary|Anhang)\b/i;
+    const anyNextHeadingRegex = /(^|\n)#{1,4}\s+\S+/;
 
     for (let i = bibStartPageIndex + 1; i < targetPages.length; i++) {
-      if (bibStopRegex.test(targetPages[i].markdown)) {
+      if (anyNextHeadingRegex.test(targetPages[i].markdown)) {
         bibEndPageIndex = i;
         break;
       }

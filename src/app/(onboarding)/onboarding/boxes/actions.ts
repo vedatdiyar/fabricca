@@ -408,7 +408,22 @@ export async function persistBoxesAction(
 export const confirmBoxesAction = persistBoxesAction;
 
 /**
- * Runs the full boxes pipeline: generation (Phase 1 + 2) and persistence.
+ * Emits the final pipeline total-duration SUCCESS log line.
+ *
+ * @param durationMs - Total pipeline duration in milliseconds.
+ */
+export async function logBoxesPipelineSuccessAction(
+  durationMs: number,
+): Promise<void> {
+  const log = new Logger(createFlowId());
+  log.info("boxes_full_pipeline_success", {
+    service: "boxes",
+    data: { durationMs: Math.round(durationMs) },
+  });
+}
+
+/**
+ * Runs the full legacy pipeline: generation (Phase 1 + 2) and persistence.
  *
  * @returns The generated boxes or an error message.
  */

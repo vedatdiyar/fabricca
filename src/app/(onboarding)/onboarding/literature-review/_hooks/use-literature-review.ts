@@ -39,6 +39,12 @@ export interface UseLiteratureReviewResult {
     thesisBoxId: number,
     entry: { title: string; description?: string },
   ) => void;
+  removeArchiveEntry: (subBoxTitle: string, articleTitle: string) => void;
+  editArchiveEntry: (
+    subBoxTitle: string,
+    oldTitle: string,
+    newTitle: string,
+  ) => void;
   handleFinalize: () => Promise<void>;
   retryReview: () => Promise<void>;
   setProcessing: (processing: boolean) => void;
@@ -249,6 +255,41 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     [],
   );
 
+  const removeArchiveEntry = useCallback(
+    (subBoxTitle: string, articleTitle: string) => {
+      setManualEntries((prev) =>
+        prev
+          .map((entry) => {
+            if (entry.subBoxTitle !== subBoxTitle) return entry;
+            return {
+              ...entry,
+              articles: entry.articles.filter((a) => a.title !== articleTitle),
+            };
+          })
+          .filter((entry) => entry.articles.length > 0),
+      );
+    },
+    [],
+  );
+
+  const editArchiveEntry = useCallback(
+    (subBoxTitle: string, oldTitle: string, newTitle: string) => {
+      if (!newTitle.trim()) return;
+      setManualEntries((prev) =>
+        prev.map((entry) => {
+          if (entry.subBoxTitle !== subBoxTitle) return entry;
+          return {
+            ...entry,
+            articles: entry.articles.map((a) =>
+              a.title === oldTitle ? { ...a, title: newTitle.trim() } : a,
+            ),
+          };
+        }),
+      );
+    },
+    [],
+  );
+
   const handleFinalize = useCallback(async () => {
     setAllProcessed(true);
 
@@ -275,6 +316,8 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     literaturePool,
     archivalBoxes,
     addArchiveEntry,
+    removeArchiveEntry,
+    editArchiveEntry,
     handleFinalize,
     retryReview,
     setProcessing,

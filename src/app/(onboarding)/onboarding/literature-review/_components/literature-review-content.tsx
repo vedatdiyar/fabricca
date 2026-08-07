@@ -5,7 +5,6 @@ import {
   Loader2,
   AlertCircle,
   BookOpen,
-  Archive,
   Plus,
   CheckCircle,
 } from "lucide-react";
@@ -48,14 +47,6 @@ function ArchiveEntryForm({
 
   return (
     <div className="space-y-3 border border-dashed border-border rounded-md bg-card/20 p-4">
-      <div className="flex items-center gap-2 text-sm font-medium text-card-foreground">
-        <Archive className="w-4 h-4 text-card-foreground" />
-        <span>Birincil Kaynak / Veri Ekle</span>
-      </div>
-      <p className="text-xs text-card-foreground leading-relaxed font-light">
-        Çalışmanızda kullandığınız birincil kaynak, mülakat, arşiv belgesi veya
-        verinin adını girin.
-      </p>
       <div className="flex gap-2">
         <Input
           placeholder="Kaynak / belge / mülakat adı veya referansı"
@@ -124,12 +115,16 @@ function SubBoxQuery({
  * @param root0.subBox - The completed sub-box data.
  * @param root0.literaturePool - The current literature pool entries.
  * @param root0.onAddArchiveEntry - Callback invoked when a manual archive entry is added.
+ * @param root0.onRemoveArchiveEntry - Optional callback invoked when a manual archive entry is removed.
+ * @param root0.onEditArchiveEntry - Optional callback invoked when a manual archive entry is edited.
  * @returns The completed sub-box results UI.
  */
 function SubBoxDone({
   subBox,
   literaturePool,
   onAddArchiveEntry,
+  onRemoveArchiveEntry,
+  onEditArchiveEntry,
 }: {
   subBox: GeminiThesisBox;
   literaturePool: LiteraturePoolEntry[];
@@ -137,6 +132,12 @@ function SubBoxDone({
     subBoxTitle: string,
     thesisBoxId: number,
     entry: { title: string },
+  ) => void;
+  onRemoveArchiveEntry?: (subBoxTitle: string, articleTitle: string) => void;
+  onEditArchiveEntry?: (
+    subBoxTitle: string,
+    oldTitle: string,
+    newTitle: string,
   ) => void;
 }) {
   const entry = literaturePool.find((e) => e.subBoxTitle === subBox.title);
@@ -184,6 +185,25 @@ function SubBoxDone({
                           <LiteratureArticleCard
                             key={`${article.title}-${aIdx}`}
                             article={article}
+                            onDelete={
+                              onRemoveArchiveEntry
+                                ? () =>
+                                    onRemoveArchiveEntry(
+                                      sub.title,
+                                      article.title,
+                                    )
+                                : undefined
+                            }
+                            onEdit={
+                              onEditArchiveEntry
+                                ? (newTitle) =>
+                                    onEditArchiveEntry(
+                                      sub.title,
+                                      article.title,
+                                      newTitle,
+                                    )
+                                : undefined
+                            }
                           />
                         ))}
                     </div>
@@ -216,6 +236,22 @@ function SubBoxDone({
                     <LiteratureArticleCard
                       key={`${article.title}-${idx}`}
                       article={article}
+                      onDelete={
+                        onRemoveArchiveEntry
+                          ? () =>
+                              onRemoveArchiveEntry(subBox.title, article.title)
+                          : undefined
+                      }
+                      onEdit={
+                        onEditArchiveEntry
+                          ? (newTitle) =>
+                              onEditArchiveEntry(
+                                subBox.title,
+                                article.title,
+                                newTitle,
+                              )
+                          : undefined
+                      }
                     />
                   ))}
               </div>
@@ -330,6 +366,8 @@ export function LiteratureReviewContent() {
     archivalBoxes,
     literaturePool,
     addArchiveEntry,
+    removeArchiveEntry,
+    editArchiveEntry,
     handleFinalize,
   } = useLiteratureReview();
 
@@ -393,6 +431,8 @@ export function LiteratureReviewContent() {
                   subBox={subBox}
                   literaturePool={literaturePool}
                   onAddArchiveEntry={addArchiveEntry}
+                  onRemoveArchiveEntry={removeArchiveEntry}
+                  onEditArchiveEntry={editArchiveEntry}
                 />
               ) : (
                 <SubBoxQuery
@@ -427,6 +467,8 @@ export function LiteratureReviewContent() {
             subBox={relatedBox}
             literaturePool={literaturePool}
             onAddArchiveEntry={addArchiveEntry}
+            onRemoveArchiveEntry={removeArchiveEntry}
+            onEditArchiveEntry={editArchiveEntry}
           />
         </Card>
       )}

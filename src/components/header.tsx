@@ -16,6 +16,16 @@ import {
   User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { logoutAction, reopenOnboardingAction } from "@/app/(app)/actions";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +46,7 @@ const NAV_ITEMS = [
 export function Header({ userName }: { userName: string }) {
   const pathname = usePathname();
   const queryClient = useQueryClient();
+  const [showReopenDialog, setShowReopenDialog] = useState(false);
 
   /** Clears the client query cache and signs the user out. */
   function handleLogout() {
@@ -45,18 +56,13 @@ export function Header({ userName }: { userName: string }) {
     });
   }
 
-  /** Asks for confirmation and reopens the onboarding flow without clearing user data. */
-  function handleReopenOnboarding() {
-    if (
-      window.confirm(
-        "Verileriniz silinmeden onboarding adımlarınızı kaldığınız yerden gözden geçirmek istiyor musunuz?",
-      )
-    ) {
-      startTransition(async () => {
-        queryClient.clear();
-        await reopenOnboardingAction();
-      });
-    }
+  /** Reopens the onboarding flow without clearing user data. */
+  function handleConfirmReopen() {
+    setShowReopenDialog(false);
+    startTransition(async () => {
+      queryClient.clear();
+      await reopenOnboardingAction();
+    });
   }
 
   return (
@@ -104,7 +110,7 @@ export function Header({ userName }: { userName: string }) {
 
           <UserMenu
             userName={userName}
-            onReopenOnboarding={handleReopenOnboarding}
+            onReopenOnboarding={() => setShowReopenDialog(true)}
             onLogout={handleLogout}
           />
         </div>
@@ -133,7 +139,7 @@ export function Header({ userName }: { userName: string }) {
           })}
           <button
             className="flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground"
-            onClick={handleReopenOnboarding}
+            onClick={() => setShowReopenDialog(true)}
             title="Onboarding'i Gözden Geçir"
           >
             <RotateCcw className="h-5 w-5" />
@@ -149,6 +155,31 @@ export function Header({ userName }: { userName: string }) {
           </button>
         </div>
       </nav>
+
+      <AlertDialog open={showReopenDialog} onOpenChange={setShowReopenDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-serif text-lg font-semibold text-foreground">
+              Onboarding Adımlarına Dön
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-muted-foreground">
+              Mevcut akademik verileriniz silinmeden onboarding kurulum
+              adımlarını kaldığınız yerden gözden geçirmek istiyor musunuz?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-xs font-medium">
+              Vazgeç
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmReopen}
+              className="text-xs font-medium"
+            >
+              Evet, Devam Et
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

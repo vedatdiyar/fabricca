@@ -26,6 +26,7 @@ const BOX_TYPE_TABS: { id: ThesisBoxType | "ALL"; label: string }[] = [
   },
   { id: "METHODOLOGY", label: BOX_TYPE_SHORT_LABELS.METHODOLOGY },
   { id: "PRIMARY_MATERIAL", label: BOX_TYPE_SHORT_LABELS.PRIMARY_MATERIAL },
+  { id: "RELATED_THESES", label: BOX_TYPE_SHORT_LABELS.RELATED_THESES },
 ];
 
 /** Props for CitationSidebar component. */
@@ -142,7 +143,7 @@ export function CitationSidebar(props: CitationSidebarProps) {
       </div>
 
       {/* Box Type Tabs Grid */}
-      <div className="grid grid-cols-5 gap-1 rounded-md bg-muted p-1 border border-border/40 shrink-0">
+      <div className="grid grid-cols-6 gap-1 rounded-md bg-muted p-1 border border-border/40 shrink-0">
         {BOX_TYPE_TABS.map((tab) => {
           const isActive = activeTab === tab.id;
           return (

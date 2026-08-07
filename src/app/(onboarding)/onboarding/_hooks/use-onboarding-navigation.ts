@@ -25,6 +25,7 @@ import { fetchUncachedBoxesWithFullShape } from "../_services/fetch-actions";
 import {
   generateAndMapBoxesAction,
   persistBoxesAction,
+  logBoxesPipelineSuccessAction,
 } from "../boxes/actions";
 import {
   checkLiteraturePoolAction,
@@ -331,6 +332,8 @@ export function useOnboardingNavigation() {
       steps,
     );
 
+    const pipelineStart = performance.now();
+
     try {
       const genResult = await generateAndMapBoxesAction();
       if ("error" in genResult) {
@@ -347,6 +350,8 @@ export function useOnboardingNavigation() {
         return;
       }
       await completeStep(1, steps);
+
+      await logBoxesPipelineSuccessAction(performance.now() - pipelineStart);
 
       const boxesTqKeys = getStepTanStackKeys("boxes");
       for (const key of boxesTqKeys)

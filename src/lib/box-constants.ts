@@ -39,7 +39,21 @@ export const BOX_TYPE_SHORT_LABELS: Record<ThesisBoxType, string> = {
   THEORETICAL_FRAMEWORK: "Teori",
   PRIMARY_MATERIAL: "Birincil",
   METHODOLOGY: "Yöntem",
-  RELATED_THESES: "İlgili",
+  RELATED_THESES: "Tezler",
+};
+
+/** Canonical default descriptions for thesis box types. */
+export const BOX_TYPE_DESCRIPTIONS: Record<ThesisBoxType, string> = {
+  SUBJECT_PROBLEM:
+    "Araştırmanızın ana konusunu, kapsamını ve yanıt aradığı temel problemi inceleyen kaynaklar.",
+  THEORETICAL_FRAMEWORK:
+    "Çalışmanızın dayandığı teorik modelleri, kavramsal yaklaşımları ve literatür zeminini oluşturan eserler.",
+  METHODOLOGY:
+    "Araştırma yöntemlerini, veri toplama ve analiz tekniklerini ele alan metodolojik kaynaklar.",
+  PRIMARY_MATERIAL:
+    "Doğrudan analiz edilen birincil belgeler, arşiv derlemleri ve ampirik veri materyalleri.",
+  RELATED_THESES:
+    "Tez konunuz ve konumlandırmanız ile doğrudan ilişkili, incelenmesi önerilen YÖK ve akademik tez çalışmaları.",
 };
 
 /** Default parent box definitions (canonical order) for users without completed onboarding. */

@@ -236,7 +236,7 @@ export async function updateLibraryResourceAction(input: {
         authors:
           input.authors.length > 0
             ? input.authors.map((a) => a.trim()).filter(Boolean)
-            : ["Bilinmeyen Yazar"],
+            : null,
         publisher: input.publisher?.trim() || "Belirtilmemiş",
         publicationYear: input.publicationYear ?? null,
         doi: input.doi?.trim() || null,

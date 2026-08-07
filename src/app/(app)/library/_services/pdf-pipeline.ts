@@ -106,6 +106,9 @@ export async function processResourcePdfPipeline(options: ProcessPdfOptions) {
               `Chunk ${c.chunkIndex} için embedding vektörü üretilemedi.`,
             );
           }
+          const quantizedEmbedding = emb.map((value) =>
+            Number(value.toFixed(4)),
+          );
           return {
             sourceId: resourceId,
             chunkIndex: c.chunkIndex,
@@ -118,7 +121,7 @@ export async function processResourcePdfPipeline(options: ProcessPdfOptions) {
             pageEnd: c.pageEnd ?? null,
             printedPageNumber: c.printedPageNumber ?? null,
             tokenCount: c.tokenCount ?? 0,
-            embedding: emb,
+            embedding: quantizedEmbedding,
           };
         });
 

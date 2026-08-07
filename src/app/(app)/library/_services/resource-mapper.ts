@@ -1,4 +1,5 @@
 import type { sources } from "@/db/schema";
+import { formatResourceAuthors } from "@/lib/academic/author-formatter";
 import type { ThesisBoxType, LibraryResourceItem } from "../_types/types";
 
 type SourceRow = typeof sources.$inferSelect;
@@ -65,14 +66,21 @@ export function mapSourceToResource(
     "ALL"
   >;
 
+  const rawAuthors = overrides.authors ?? source.authors;
+  const rawPublisher = overrides.publisher ?? source.publisher;
+
   return {
     id: source.id,
     boxType,
     subBoxId: isSubBox ? source.boxId : undefined,
     subBoxTitle: isSubBox ? box.title : undefined,
     title: overrides.title ?? source.title,
-    authors: overrides.authors ?? source.authors ?? ["Bilinmeyen Yazar"],
-    publisher: overrides.publisher ?? source.publisher ?? "Belirtilmemiş",
+    authors: formatResourceAuthors({
+      authors: rawAuthors,
+      publisher: rawPublisher,
+      boxType,
+    }),
+    publisher: rawPublisher ?? "Belirtilmemiş",
     publicationYear:
       overrides.publicationYear !== undefined
         ? overrides.publicationYear

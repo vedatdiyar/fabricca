@@ -4,7 +4,8 @@ export type ThesisBoxType =
   | "SUBJECT_PROBLEM"
   | "THEORETICAL_FRAMEWORK"
   | "PRIMARY_MATERIAL"
-  | "METHODOLOGY";
+  | "METHODOLOGY"
+  | "RELATED_THESES";
 
 /** Note types for individual citations and academic notes. */
 export type NoteType = "DIRECT_QUOTE" | "PARAPHRASE" | "PERSONAL_NOTE";

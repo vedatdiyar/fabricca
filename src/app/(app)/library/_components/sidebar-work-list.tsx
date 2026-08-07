@@ -40,6 +40,7 @@ const BOX_TABS: { id: ThesisBoxType; label: string }[] = [
   },
   { id: "METHODOLOGY", label: BOX_TYPE_SHORT_LABELS.METHODOLOGY },
   { id: "PRIMARY_MATERIAL", label: BOX_TYPE_SHORT_LABELS.PRIMARY_MATERIAL },
+  { id: "RELATED_THESES", label: BOX_TYPE_SHORT_LABELS.RELATED_THESES },
 ];
 
 interface SidebarWorkListProps {
@@ -163,15 +164,16 @@ export function SidebarWorkList({
         />
       </div>
 
-      <div className="grid grid-cols-5 gap-1 rounded-md bg-muted p-1 border border-border/40">
+      <div className="grid grid-cols-6 gap-1 rounded-md bg-muted p-1 border border-border/40">
         {BOX_TABS.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
+              type="button"
               onClick={() => onTabChange(tab.id)}
               className={cn(
-                "w-full text-center px-1 py-1 text-xs font-medium rounded-md transition-all truncate",
+                "w-full text-center py-1 text-[10px] font-medium rounded transition-all truncate px-0.5",
                 isActive
                   ? "bg-background text-foreground font-semibold border border-border/60"
                   : "text-muted-foreground hover:text-foreground hover:bg-background/50",

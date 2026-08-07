@@ -10,7 +10,8 @@ import {
   ensureUserMatrixAndBoxes,
   getOwnedSource,
 } from "../library/_services/helpers";
-import { compareBoxTypes, type ThesisBoxType } from "@/lib/box-constants";
+import { type ThesisBoxType } from "@/lib/box-constants";
+import { formatResourceAuthors } from "@/lib/academic/author-formatter";
 import type {
   BoxItem,
   CitationCardItem,
@@ -110,10 +111,11 @@ export async function getCitationCardsDataAction(): Promise<
         id: noteRow.id,
         sourceId: sourceRow.id,
         sourceTitle: sourceRow.title,
-        sourceAuthors:
-          sourceRow.authors && sourceRow.authors.length > 0
-            ? sourceRow.authors
-            : ["Bilinmeyen Yazar"],
+        sourceAuthors: formatResourceAuthors({
+          authors: sourceRow.authors,
+          publisher: sourceRow.publisher,
+          boxType: boxRow.boxType,
+        }),
         sourceYear: sourceRow.publicationYear ?? new Date().getFullYear(),
         boxId: boxRow.id,
         boxType: (boxRow.boxType ?? "SUBJECT_PROBLEM") as ThesisBoxType,
@@ -128,22 +130,22 @@ export async function getCitationCardsDataAction(): Promise<
       });
     }
 
-    const formattedBoxes: BoxItem[] = userBoxes
-      .map((b) => ({
-        id: b.id,
-        boxType: (b.boxType ?? "SUBJECT_PROBLEM") as ThesisBoxType,
-        title: b.title,
-        description: b.description ?? "",
-        cardCount: cardCountMap.get(b.id) ?? 0,
-      }))
-      .sort((a, b) => compareBoxTypes(a.boxType, b.boxType));
-
+    const formattedBoxes: BoxItem[] = userBoxes.map((b) => ({
+      id: b.id,
+      boxType: (b.boxType ?? "SUBJECT_PROBLEM") as ThesisBoxType,
+      title: b.title,
+      description: b.description ?? "",
+      cardCount: cardCountMap.get(b.id) ?? 0,
+    }));
     const formattedSources: SourceItem[] = dbSources.map((s) => ({
       id: s.id,
       boxId: s.boxId,
       title: s.title,
-      authors:
-        s.authors && s.authors.length > 0 ? s.authors : ["Bilinmeyen Yazar"],
+      authors: formatResourceAuthors({
+        authors: s.authors,
+        publisher: s.publisher,
+        boxType: boxMap.get(s.boxId)?.boxType,
+      }),
       publisher: s.publisher ?? "Belirtilmemiş",
       publicationYear: s.publicationYear ?? new Date().getFullYear(),
     }));
@@ -263,10 +265,11 @@ export async function createCitationCardAction(input: {
         id: newNote.id,
         sourceId: sourceRow.id,
         sourceTitle: sourceRow.title,
-        sourceAuthors:
-          sourceRow.authors && sourceRow.authors.length > 0
-            ? sourceRow.authors
-            : ["Bilinmeyen Yazar"],
+        sourceAuthors: formatResourceAuthors({
+          authors: sourceRow.authors,
+          publisher: sourceRow.publisher,
+          boxType: targetBox.boxType,
+        }),
         sourceYear: sourceRow.publicationYear ?? new Date().getFullYear(),
         boxId: targetBox.id,
         boxType: (targetBox.boxType ?? "SUBJECT_PROBLEM") as ThesisBoxType,
@@ -389,10 +392,11 @@ export async function updateCitationCardAction(input: {
         id: updatedNote.id,
         sourceId: sourceRow.id,
         sourceTitle: sourceRow.title,
-        sourceAuthors:
-          sourceRow.authors && sourceRow.authors.length > 0
-            ? sourceRow.authors
-            : ["Bilinmeyen Yazar"],
+        sourceAuthors: formatResourceAuthors({
+          authors: sourceRow.authors,
+          publisher: sourceRow.publisher,
+          boxType: targetBox.boxType,
+        }),
         sourceYear: sourceRow.publicationYear ?? new Date().getFullYear(),
         boxId: targetBox.id,
         boxType: (targetBox.boxType ?? "SUBJECT_PROBLEM") as ThesisBoxType,

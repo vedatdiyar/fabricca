@@ -52,11 +52,29 @@ export async function generateCloudflareEmbeddings(
   }
 
   const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${BGE_M3_MODEL}`;
-  const batchSize = 50;
+  const MAX_BATCH_TOKENS = 15000;
+  const MAX_BATCH_TEXT_COUNT = 50;
   const batches: string[][] = [];
+  let currentBatch: string[] = [];
+  let currentBatchTokens = 0;
 
-  for (let i = 0; i < texts.length; i += batchSize) {
-    batches.push(texts.slice(i, i + batchSize));
+  for (const text of texts) {
+    const estimatedTokens = Math.ceil(text.length / 4);
+    if (
+      currentBatch.length > 0 &&
+      (currentBatchTokens + estimatedTokens > MAX_BATCH_TOKENS ||
+        currentBatch.length >= MAX_BATCH_TEXT_COUNT)
+    ) {
+      batches.push(currentBatch);
+      currentBatch = [];
+      currentBatchTokens = 0;
+    }
+    currentBatch.push(text);
+    currentBatchTokens += estimatedTokens;
+  }
+
+  if (currentBatch.length > 0) {
+    batches.push(currentBatch);
   }
 
   const batchResults: number[][][] = [];

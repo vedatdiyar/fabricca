@@ -172,7 +172,7 @@ export async function extractDocumentMetadata(
   const worker = selectWorker(pool, 0, 1);
   await worker.gate.wait();
 
-  const prompt = `Analyze the provided first pages of the document below. Extract document metadata: title, authors (with name and role), publicationYear, publisher, and DOI if explicitly present.\n\n${firstPagesText}`;
+  const prompt = `Analyze the provided first pages of the document below. Extract document metadata: title, authors (with name and role), publicationYear, publisher, and DOI if explicitly present. Standardize the document title into standard Academic Title Case (even if printed in ALL CAPS) and author names into Proper Case, preserving acronyms (NATO, YÖK, PKK, DOI, IMF, etc.) in uppercase.\n\n${firstPagesText}`;
 
   try {
     const response = await worker.client.models.generateContent({

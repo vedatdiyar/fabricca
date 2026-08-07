@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { boxes, matrices, positioning, sources } from "@/db/schema";
+import { BOX_TYPE_DESCRIPTIONS } from "@/lib/box-constants";
 import { normalizeTitle } from "@/lib/academic/utils";
 import type { LiteraturePoolEntry, JuryArticle } from "@/lib/types";
 import type { NewSource } from "@/db/schema";
@@ -70,7 +71,7 @@ export async function persistRelatedTheses(userId: number): Promise<void> {
         parentId: null,
         boxType: "RELATED_THESES",
         title: RELATED_THESES_TITLE,
-        description: null,
+        description: BOX_TYPE_DESCRIPTIONS.RELATED_THESES,
         semanticQuery: null,
         concepts: [],
         foundationalQueries: [],
@@ -97,8 +98,9 @@ export async function persistRelatedTheses(userId: number): Promise<void> {
       [t.contributionArea, t.relevanceReason]
         .filter((s) => s && s.trim().length > 0)
         .join("\n") || null,
-    isRead: true,
+    isRead: false,
     isFoundational: false,
+    relevanceScore: 100,
   }));
 
   if (toInsert.length > 0) {

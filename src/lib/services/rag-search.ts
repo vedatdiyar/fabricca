@@ -17,6 +17,7 @@ import {
 } from "@/lib/services/rag/lexical";
 import { buildChunkContextPrefix } from "@/lib/services/pdf/chunker";
 import { expandAndTranslateQuery } from "@/lib/services/rag/hyde";
+import { formatResourceAuthors } from "@/lib/academic/author-formatter";
 
 /** Per-candidate retrieval debug metadata (only exposed when `debug: true`). */
 export interface RagSearchDebug {
@@ -349,7 +350,9 @@ export async function performHybridRagSearch(
       return {
         resourceId: candidate.resourceId,
         resourceTitle: candidate.title,
-        resourceAuthors: candidate.authors || ["Bilinmeyen Yazar"],
+        resourceAuthors: formatResourceAuthors({
+          authors: candidate.authors,
+        }),
         resourceYear: candidate.publicationYear ?? null,
         chunkIndex: candidate.chunkIndex,
         printedPageNumber: candidate.printedPageNumber,

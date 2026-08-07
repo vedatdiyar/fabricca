@@ -13,9 +13,9 @@ export interface DocumentChunk {
   tokenCount: number;
 }
 
-const TARGET_CHUNK_SIZE_CHARS = 1536;
-const CHUNK_OVERLAP_CHARS = 225;
-const SOFT_LIMIT_CHARS = 1800;
+const TARGET_CHUNK_SIZE_CHARS = 2000;
+const CHUNK_OVERLAP_CHARS = 300;
+const SOFT_LIMIT_CHARS = 2200;
 const MIN_CHUNK_TOKENS = 100;
 
 const HEADING_RE = /^(#{1,3})\s+(.+?)\s*$/;
