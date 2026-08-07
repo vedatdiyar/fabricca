@@ -38,6 +38,7 @@ import {
   runPositioningSearchAction,
   runPositioningJuryAction,
   persistPositioningReportAction,
+  logPositioningPipelineSuccessAction,
 } from "../positioning/actions";
 import { createFlowId } from "@/lib/logger";
 

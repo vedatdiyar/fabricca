@@ -202,6 +202,22 @@ export async function persistPositioningReportAction(
 }
 
 /**
+ * Emits the final pipeline total-duration SUCCESS log line.
+ *
+ * @param flowId - The pipeline flow identifier.
+ * @param durationMs - Total pipeline duration in milliseconds.
+ */
+export async function logPositioningPipelineSuccessAction(
+  flowId: string,
+  durationMs: number,
+): Promise<void> {
+  const log = new Logger(flowId);
+  log.info("positioning_pipeline_success", {
+    data: { durationMs: Math.round(durationMs) },
+  });
+}
+
+/**
  * Returns the user's positioning record, pre-filling matrixInput from the matrix when missing.
  *
  * @returns The matching positioning record, a matrix-prefilled placeholder, or null.
