@@ -117,6 +117,7 @@ export function useOnboardingNavigation() {
         await completeStep(0, steps);
 
         const flowId = createFlowId();
+        const pipelineStart = performance.now();
         const searchResult = await runPositioningSearchAction(
           matrixInput,
           flowId,
@@ -154,6 +155,11 @@ export function useOnboardingNavigation() {
         }
 
         await completeStep(3, steps);
+
+        await logPositioningPipelineSuccessAction(
+          flowId,
+          performance.now() - pipelineStart,
+        );
 
         queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
 
