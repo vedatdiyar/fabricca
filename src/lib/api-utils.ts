@@ -62,6 +62,7 @@ export interface RetryOptions {
   getRetryAfter?: (error: unknown) => number | null;
   onRetry?: (attempt: number, delayMs: number, error: unknown) => void;
   isRetryable?: (error: unknown, attempt: number) => boolean;
+  getDelay?: (attempt: number, error: unknown, defaultDelay: number) => number;
 }
 
 /**
@@ -82,6 +83,7 @@ export async function withRetry<T>(
     isRetryable,
     onRetry,
     getRetryAfter,
+    getDelay,
   } = options;
   const shouldRetry = isRetryable ?? (() => true);
   let attempt = 0;
@@ -95,7 +97,15 @@ export async function withRetry<T>(
       if (!shouldRetry(error, attempt)) throw error;
       if (attempt >= maxRetries) break;
       const retryAfter = getRetryAfter?.(error) ?? null;
-      const delay = fullJitterDelay(baseDelay, attempt, maxDelay, retryAfter);
+      const defaultDelay = fullJitterDelay(
+        baseDelay,
+        attempt,
+        maxDelay,
+        retryAfter,
+      );
+      const delay = getDelay
+        ? getDelay(attempt, error, defaultDelay)
+        : defaultDelay;
       onRetry?.(attempt, delay, error);
       await new Promise((resolve) => setTimeout(resolve, delay));
     }

@@ -62,7 +62,8 @@ export interface GeminiThesisBox {
     | "SUBJECT_PROBLEM"
     | "THEORETICAL_FRAMEWORK"
     | "PRIMARY_MATERIAL"
-    | "METHODOLOGY";
+    | "METHODOLOGY"
+    | "RELATED_THESES";
   title: string;
   description: string;
   semanticQuery: string | null;

@@ -12,7 +12,8 @@ export type ThesisBoxType =
   | "SUBJECT_PROBLEM"
   | "THEORETICAL_FRAMEWORK"
   | "METHODOLOGY"
-  | "PRIMARY_MATERIAL";
+  | "PRIMARY_MATERIAL"
+  | "RELATED_THESES";
 
 /** Canonical display ordering: SUBJECT_PROBLEM → THEORETICAL_FRAMEWORK → METHODOLOGY → PRIMARY_MATERIAL. */
 export const BOX_ORDER_WEIGHT: Record<ThesisBoxType, number> = {
@@ -20,6 +21,7 @@ export const BOX_ORDER_WEIGHT: Record<ThesisBoxType, number> = {
   THEORETICAL_FRAMEWORK: 2,
   METHODOLOGY: 3,
   PRIMARY_MATERIAL: 4,
+  RELATED_THESES: 5,
 };
 
 /** Canonical full (long) Turkish labels. */
@@ -28,6 +30,7 @@ export const BOX_TYPE_LABELS: Record<ThesisBoxType, string> = {
   THEORETICAL_FRAMEWORK: "Teorik Çerçeve",
   PRIMARY_MATERIAL: "Birincil Kaynak",
   METHODOLOGY: "Yöntem",
+  RELATED_THESES: "İlgili Tezler",
 };
 
 /** Canonical short Turkish labels (tabs, compact badges). */
@@ -36,6 +39,7 @@ export const BOX_TYPE_SHORT_LABELS: Record<ThesisBoxType, string> = {
   THEORETICAL_FRAMEWORK: "Teori",
   PRIMARY_MATERIAL: "Birincil",
   METHODOLOGY: "Yöntem",
+  RELATED_THESES: "İlgili",
 };
 
 /** Default parent box definitions (canonical order) for users without completed onboarding. */
@@ -128,6 +132,14 @@ export function getBoxTypeBadgeConfig(boxType: ThesisBoxType) {
           "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
         dotClassName: "bg-emerald-500",
         textClassName: "text-emerald-600 dark:text-emerald-400",
+      };
+    case "RELATED_THESES":
+      return {
+        ...base,
+        className:
+          "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+        dotClassName: "bg-rose-500",
+        textClassName: "text-rose-600 dark:text-rose-400",
       };
     default:
       return {

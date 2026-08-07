@@ -5,6 +5,7 @@ import {
   generateStructuredContent,
   type JsonSchema,
 } from "@/lib/services/gemini";
+import { getGeminiKeyPool } from "@/lib/services/gemini-key-pool";
 import type { Logger } from "@/lib/logger";
 import {
   PER_THESIS_EVALUATION_SYSTEM_INSTRUCTION,
@@ -214,11 +215,7 @@ export async function evaluateThesesInParallel(
 ): Promise<EvaluatedThesis[]> {
   if (theses.length === 0) return [];
 
-  const apiKeys = [
-    process.env.GEMINI_API_KEY_1 || undefined,
-    process.env.GEMINI_API_KEY_2 || process.env.GEMINI_API_KEY_1 || undefined,
-    process.env.GEMINI_API_KEY_3 || process.env.GEMINI_API_KEY_1 || undefined,
-  ].filter(Boolean) as string[];
+  const apiKeys = getGeminiKeyPool().keys;
 
   const startTime = performance.now();
 

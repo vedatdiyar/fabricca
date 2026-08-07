@@ -9,6 +9,7 @@ import { Logger, createFlowId } from "../logger";
 import { classifyError } from "../error-utils";
 import { withRetry } from "../api-utils";
 import { GEMINI_SEED } from "../constants";
+import { getGeminiKeyPool, nextKeyPosition } from "./gemini-key-pool";
 import crypto from "crypto";
 import fs from "fs/promises";
 import path from "path";
@@ -59,10 +60,7 @@ const aiInstancesByKey = new Map<string, GoogleGenAI>();
 export function getAi(apiKey?: string): GoogleGenAI {
   if (!apiKey) {
     if (!aiInstance) {
-      const envKey = process.env.GEMINI_API_KEY_1;
-      if (!envKey) {
-        throw new Error("GEMINI_API_KEY_1 environment variable is not defined");
-      }
+      const envKey = getGeminiKeyPool().keys[0];
       aiInstance = new GoogleGenAI({ apiKey: envKey });
     }
     return aiInstance;
@@ -99,6 +97,60 @@ function extractHttpStatus(error: unknown): string {
       return "503 (UNAVAILABLE)";
   }
   return "unknown";
+}
+
+/**
+ * Determines whether a thrown Gemini error is a rate-limit (RPM/RPD/quota) failure.
+ *
+ * @param error - The thrown error to inspect.
+ * @returns True when the error indicates the current key exhausted its rate limit.
+ */
+function isRateLimitError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const err = error as unknown as Record<string, unknown>;
+  const status = typeof err.status === "string" ? err.status : "";
+  const code = typeof err.code === "number" ? err.code : 0;
+  if (status === "RESOURCE_EXHAUSTED" || code === 429) return true;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("429") ||
+    message.includes("quota") ||
+    message.includes("rate limit") ||
+    message.includes("rpd") ||
+    message.includes("rpm")
+  );
+}
+
+/**
+ * Determines whether a thrown Gemini error is a server-side overload (503 / UNAVAILABLE)
+ * that affects all keys and is best handled with a long backoff rather than key rotation.
+ *
+ * @param error - The thrown error to inspect.
+ * @returns True when the error indicates a server-side overload.
+ */
+function isServerOverloadError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const err = error as unknown as Record<string, unknown>;
+  const status = typeof err.status === "string" ? err.status : "";
+  const code = typeof err.code === "number" ? err.code : 0;
+  if (code === 503 || status === "UNAVAILABLE") return true;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("503") ||
+    message.includes("unavailable") ||
+    message.includes("high demand")
+  );
+}
+
+/**
+ * Computes a long exponential backoff plus small jitter for server overload (503) retries.
+ *
+ * @param attempt - The 1-based retry attempt number.
+ * @returns The delay in milliseconds, capped at 45s with a small jitter.
+ */
+function serverOverloadDelay(attempt: number): number {
+  const capped = Math.min(45_000, 1000 * Math.pow(3, attempt - 1));
+  return capped + Math.random() * Math.min(2000, capped * 0.25);
 }
 
 /**
@@ -291,15 +343,26 @@ export async function generateStructuredContent<T>(
 
   let retryCount = 0;
 
+  const keyPool = getGeminiKeyPool();
+  const startingKey = options?.apiKey ?? keyPool.keys[0];
+  let activePosition = Math.max(0, keyPool.keys.indexOf(startingKey));
+  let activeKey = keyPool.keys[activePosition];
+  const maxRetries = Math.max(3, keyPool.keys.length);
+
   try {
     const response = await withRetry(
       async () => {
         retryCount++;
-        return getAi(options?.apiKey).models.generateContent(payload);
+        return getAi(activeKey).models.generateContent(payload);
       },
       {
-        maxRetries: 3,
+        maxRetries,
         baseDelay: 1000,
+        getDelay: (attempt, error, defaultDelay) => {
+          if (isServerOverloadError(error)) return serverOverloadDelay(attempt);
+          if (isRateLimitError(error)) return 0;
+          return defaultDelay;
+        },
         isRetryable: (error) => {
           if (error instanceof Error) {
             if (
@@ -322,6 +385,13 @@ export async function generateStructuredContent<T>(
           return false;
         },
         onRetry: (attempt, delay, error) => {
+          if (isRateLimitError(error) && keyPool.keys.length > 1) {
+            activePosition = nextKeyPosition(
+              activePosition,
+              keyPool.keys.length,
+            );
+            activeKey = keyPool.keys[activePosition];
+          }
           const httpStatus = extractHttpStatus(error);
           logger?.info("ai_retry_attempt", {
             service: "gemini",
@@ -330,7 +400,9 @@ export async function generateStructuredContent<T>(
             durationMs: delay,
             data: {
               attempt,
-              maxRetries: 3,
+              maxRetries,
+              keyPositions: keyPool.keys.length,
+              activePosition,
               delayMs: Math.round(delay),
               httpStatus,
               errorMessage:

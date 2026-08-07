@@ -22,6 +22,9 @@ import {
 } from "../_hooks/use-literature-review";
 import { getBoxTypeLabel } from "@/lib/box-constants";
 
+/** Title of the dedicated related-theses box rendered at the bottom of the grid. */
+const RELATED_THESES_TITLE = "İlgili Tezler";
+
 /**
  * Renders a manual entry form for archival/empirical boxes.
  *
@@ -332,6 +335,14 @@ export function LiteratureReviewContent() {
     handleFinalize,
   } = useLiteratureReview();
 
+  const regularBoxes = subBoxes.filter(
+    (box) => box.title !== RELATED_THESES_TITLE,
+  );
+  const relatedBox = subBoxes.find(
+    (box) =>
+      box.boxType === "RELATED_THESES" || box.title === RELATED_THESES_TITLE,
+  );
+
   if (loading) {
     return (
       <LoadingSpinner variant="full" message="Konu kutuları yükleniyor..." />
@@ -346,7 +357,7 @@ export function LiteratureReviewContent() {
       />
 
       <div className="grid grid-cols-1 gap-4">
-        {subBoxes.map((subBox) => {
+        {regularBoxes.map((subBox) => {
           const isArchival = archivalBoxes.has(subBox.title);
           const isCompleted = archivalBoxes.has(subBox.title)
             ? false
@@ -395,6 +406,32 @@ export function LiteratureReviewContent() {
           );
         })}
       </div>
+
+      {relatedBox && (
+        <Card className="p-6 space-y-4 rounded-md">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-6 rounded-full bg-primary/20" />
+            <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
+              {relatedBox.title || RELATED_THESES_TITLE}
+            </h2>
+            {relatedBox.boxType && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary ml-auto">
+                {getBoxTypeLabel(relatedBox.boxType)}
+              </span>
+            )}
+          </div>
+          {relatedBox.description && (
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {relatedBox.description}
+            </p>
+          )}
+          <SubBoxDone
+            subBox={relatedBox}
+            literaturePool={literaturePool}
+            onAddArchiveEntry={addArchiveEntry}
+          />
+        </Card>
+      )}
 
       <div className="flex justify-end mt-8 pb-8">
         <Button onClick={handleFinalize} disabled={confirming} size="lg">

@@ -94,7 +94,7 @@ src/
 │   ├── error-utils.ts                    # Hata maskeleme ve sınıflandırma yardımcıları
 │   ├── rate-limiter.ts                   # API istek sınırlandırma
 │   ├── session.ts                        # Cookies tabanlı oturum yönetimi
-│   ├── services/                         # Harici API servis istemcileri (gemini, cohere, cloudflare-ai, pdf-parser, pdf-metadata, r2, vb.) — barrel export: index.ts
+│   ├── services/                         # Harici API servis istemcileri (gemini, gemini-key-pool, cohere, cloudflare-ai, pdf-parser, pdf-metadata, r2, vb.)
 │   ├── academic/                         # Akademik veri yardımcıları (DOI temizleme, CrossRef dönüşümleri)
 │   ├── tezara/                           # Tezara / Meilisearch tez veritabanı entegrasyonu (harici servis)
 │   ├── prompts/                          # Gemini ve diğer modeller için prompt şablonları

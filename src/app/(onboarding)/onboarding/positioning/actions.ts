@@ -106,13 +106,11 @@ export async function runPositioningJuryAction(
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
 
-    log.info("positioning_per_thesis_evaluation_start");
     const evaluatedTheses = await evaluateThesesInParallel(
       validated,
       theses,
       log,
     );
-    log.info("positioning_per_thesis_evaluation_success");
 
     const relevantTheses = evaluatedTheses.filter(
       (ev) => ev.evaluation.isRelevant,

@@ -1,6 +1,7 @@
 import { ThinkingLevel } from "@google/genai";
 import { z } from "zod";
 import { FLASH_36, GEMINI_SEED } from "@/lib/constants";
+import { getGeminiKeyPool } from "@/lib/services/gemini-key-pool";
 import {
   generateStructuredContent,
   type JsonSchema,
@@ -208,7 +209,7 @@ Literatür Konumu: ${e.literaturePosition || "Yok"}
       seed: GEMINI_SEED,
       thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       thesisMatrix: { input, filteredThesesCount: evaluatedTheses.length },
-      apiKey: process.env.GEMINI_API_KEY_3 || process.env.GEMINI_API_KEY_1,
+      apiKey: getGeminiKeyPool().keys[2] ?? getGeminiKeyPool().keys[0],
     },
   );
 

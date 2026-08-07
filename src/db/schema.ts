@@ -118,6 +118,7 @@ export const boxTypeEnum = pgEnum("box_type_enum", [
   "THEORETICAL_FRAMEWORK",
   "PRIMARY_MATERIAL",
   "METHODOLOGY",
+  "RELATED_THESES",
 ]);
 
 /** Thesis Boxes table — stores topic boxes linked to a thesis matrix in a flat structure. */

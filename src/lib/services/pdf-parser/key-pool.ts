@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { getGeminiKeyPool } from "../gemini-key-pool";
 import type { KeyWorker, PauseGate } from "./types";
 
 /**
@@ -79,37 +80,12 @@ export function parseRetryDelayMs(error: unknown): number | null {
 }
 
 /**
- * Resolves all configured Gemini API keys for PDF parsing from environment variables.
+ * Resolves all configured Gemini API keys for PDF parsing from the shared key pool.
  *
  * @returns Array of unique non-empty API key strings.
  */
 export function getPdfParserApiKeys(): string[] {
-  const keys: string[] = [];
-  const envVarNames = [
-    "GEMINI_API_KEY_1",
-    "GEMINI_API_KEY_2",
-    "GEMINI_API_KEY_3",
-    "GEMINI_API_KEY_4",
-    "GEMINI_API_KEY_5",
-    "GEMINI_API_KEY_6",
-  ];
-
-  for (const name of envVarNames) {
-    const val = process.env[name];
-    if (val) {
-      const parts = val
-        .split(",")
-        .map((k) => k.trim())
-        .filter(Boolean);
-      keys.push(...parts);
-    }
-  }
-
-  const uniqueKeys = Array.from(new Set(keys));
-  if (uniqueKeys.length === 0) {
-    throw new Error("GEMINI_API_KEY_1 environment variable is not defined.");
-  }
-  return uniqueKeys;
+  return [...getGeminiKeyPool().keys];
 }
 
 let keyWorkerPool: KeyWorker[] | null = null;
