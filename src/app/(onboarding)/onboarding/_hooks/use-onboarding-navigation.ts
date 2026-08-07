@@ -21,7 +21,7 @@ import type {
 import { getStepTanStackKeys } from "@/lib/onboarding-cache";
 import { clearDownstreamDbAction } from "@/app/(onboarding)/onboarding/actions";
 import { saveThesisMatrixAction } from "../matrix/actions";
-import { fetchBoxesWithFullShape } from "../_services/fetch-actions";
+import { fetchUncachedBoxesWithFullShape } from "../_services/fetch-actions";
 import {
   generateAndMapBoxesAction,
   persistBoxesAction,
@@ -276,7 +276,7 @@ export function useOnboardingNavigation() {
       for (const key of boxesTqKeys)
         queryClient.invalidateQueries({ queryKey: key });
 
-      const boxes = await fetchBoxesWithFullShape();
+      const boxes = await fetchUncachedBoxesWithFullShape();
       const subBoxInputs: SubBoxInput[] = boxes.map((box) => ({
         id: box.id ?? 0,
         title: box.title,

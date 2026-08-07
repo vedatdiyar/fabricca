@@ -76,6 +76,7 @@ export interface JuryArticle {
   title: string;
   authors: string[];
   publisher: string | null;
+  thesisType?: string | null;
   publicationYear: number | null;
   doi: string | null;
   openalexId: string | null;

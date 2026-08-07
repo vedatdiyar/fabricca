@@ -62,7 +62,7 @@ export function BoxesContainer() {
   const sortedBoxes = useMemo(() => {
     if (!boxes) return [];
     return [...boxes]
-      .filter((b) => b.parentId === null)
+      .filter((b) => b.parentId === null && b.boxType !== "RELATED_THESES")
       .sort((a, b) => {
         return (
           (BOX_ORDER_WEIGHT[a.boxType] || 99) -

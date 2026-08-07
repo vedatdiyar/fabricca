@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { boxes as boxRows } from "@/db/schema";
@@ -317,7 +317,14 @@ export async function persistBoxesAction(
     const thesisMatrixId = matrix.id;
 
     await db.transaction(async (tx) => {
-      await tx.delete(boxRows).where(eq(boxRows.matrixId, thesisMatrixId));
+      await tx
+        .delete(boxRows)
+        .where(
+          and(
+            eq(boxRows.matrixId, thesisMatrixId),
+            ne(boxRows.boxType, "RELATED_THESES"),
+          ),
+        );
 
       const parentFlatIndices: number[] = [];
       for (let i = 0; i < validBoxes.length; i++) {

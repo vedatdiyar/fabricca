@@ -1,6 +1,6 @@
 "use server";
 
-import { eq, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
 import { matrices, positioning, boxes, sources } from "@/db/schema";
@@ -133,6 +133,72 @@ export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
 }
 
 /**
+ * Fetches boxes mapped to the full GeminiThesisBox shape directly from the database without caching.
+ *
+ * @returns The current user's boxes in production shape directly from DB, or an empty array.
+ */
+export async function fetchUncachedBoxesWithFullShape(): Promise<
+  GeminiThesisBox[]
+> {
+  const session = await getSession();
+  if (!session) return [];
+  const matrix = await fetchThesisMatrixFresh();
+  if (!matrix) return [];
+
+  const rows = await db
+    .select()
+    .from(boxes)
+    .where(eq(boxes.matrixId, matrix.id))
+    .orderBy(
+      sql`CASE ${boxes.boxType}
+        WHEN 'SUBJECT_PROBLEM' THEN 1
+        WHEN 'THEORETICAL_FRAMEWORK' THEN 2
+        WHEN 'METHODOLOGY' THEN 3
+        WHEN 'PRIMARY_MATERIAL' THEN 4
+        ELSE 99
+      END`,
+    );
+
+  const parentRows = rows.filter((r) => r.parentId === null);
+  const subBoxMap = new Map<number, GeminiThesisBox[]>();
+  for (const r of rows) {
+    if (r.parentId !== null) {
+      const list = subBoxMap.get(r.parentId) ?? [];
+      list.push({
+        id: r.id,
+        title: r.title,
+        boxType: (r.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
+        description: r.description ?? "",
+        parentId: r.parentId,
+        semanticQuery: r.semanticQuery,
+        subBoxes: undefined,
+        foundationalQueries: r.foundationalQueries ?? [],
+        concepts: r.concepts ?? [],
+      });
+      subBoxMap.set(r.parentId, list);
+    }
+  }
+
+  const mappedBoxes: GeminiThesisBox[] = parentRows.map((b) => ({
+    id: b.id,
+    title: b.title,
+    boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
+    description: b.description ?? "",
+    parentId: null,
+    semanticQuery: null,
+    subBoxes: subBoxMap.get(b.id),
+    foundationalQueries: b.foundationalQueries ?? [],
+    concepts: b.concepts ?? [],
+  }));
+
+  return mappedBoxes.sort((a, b) => {
+    const weightA = BOX_ORDER_WEIGHT[a.boxType] ?? 99;
+    const weightB = BOX_ORDER_WEIGHT[b.boxType] ?? 99;
+    return weightA - weightB;
+  });
+}
+
+/**
  * Returns which onboarding steps have data for the current user.
  *
  * @returns A record mapping step keys to data presence, or null.
@@ -176,7 +242,12 @@ export async function checkStepsDataAction(): Promise<Record<
         .select({ id: sources.id })
         .from(sources)
         .innerJoin(boxes, eq(sources.boxId, boxes.id))
-        .where(eq(boxes.matrixId, matrix.id))
+        .where(
+          and(
+            eq(boxes.matrixId, matrix.id),
+            ne(boxes.boxType, "RELATED_THESES"),
+          ),
+        )
         .limit(1),
     ]);
 

@@ -22,6 +22,7 @@ import {
   persistLiteraturePool,
   persistArchiveEntries,
   persistSubBoxEntry,
+  persistRelatedTheses,
   fetchPreloadedPool,
 } from "./_services/literature-persistence";
 import { loadThesisMatrixAndBoxes } from "./_services/process-boxes-data";
@@ -369,6 +370,8 @@ export async function runLiteraturePipelineAction(
     logger.info("literature_pool_persist_start");
     await persistLiteraturePool(poolEntries);
     logger.info("literature_pool_persist_success");
+
+    await persistRelatedTheses(userId);
 
     try {
       revalidateOnboardingPaths();

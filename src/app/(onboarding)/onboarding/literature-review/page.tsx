@@ -8,7 +8,6 @@ import { matrices } from "@/db/schema";
 import { LiteratureReviewContent } from "./_components/literature-review-content";
 import { StartOverButton } from "../_components/start-over-button";
 import { fetchBoxesWithFullShape } from "../_services/fetch-actions";
-import { fetchPreloadedLiteraturePool } from "./actions";
 
 /**
  * Renders the literature review onboarding step for the authenticated user.
@@ -30,11 +29,6 @@ export default async function LiteratureReviewPage() {
   const boxes = await fetchBoxesWithFullShape();
   if (!boxes || boxes.length === 0) {
     redirect("/onboarding/positioning");
-  }
-
-  const pool = await fetchPreloadedLiteraturePool();
-  if (!pool.data || pool.data.length === 0) {
-    redirect("/onboarding/boxes");
   }
 
   return (

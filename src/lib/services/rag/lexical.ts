@@ -1,6 +1,6 @@
 import { sql, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { chunks, sources } from "@/db/schema";
+import { chunks, sources, boxes } from "@/db/schema";
 
 export { buildLexicalTsQuery } from "./tsquery";
 
@@ -42,6 +42,7 @@ export async function searchLexical(
 
   const conditions = [
     sql`${chunks.searchVector} @@ to_tsquery('simple', ${tsQuery})`,
+    sql`${boxes.boxType} <> 'RELATED_THESES'`,
   ];
   if (resourceIds && resourceIds.length > 0) {
     conditions.push(sql`${chunks.sourceId} IN ${resourceIds}`);
@@ -67,6 +68,7 @@ export async function searchLexical(
     })
     .from(chunks)
     .innerJoin(sources, eq(chunks.sourceId, sources.id))
+    .innerJoin(boxes, eq(sources.boxId, boxes.id))
     .where(sql.join(conditions, sql` AND `))
     .orderBy(sql`${rankExpression} DESC`)
     .limit(topK);

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { db } from "@/db";
 import { matrices, positioning, users, boxes, sources } from "@/db/schema";
 import {
@@ -133,15 +133,31 @@ export async function clearDownstreamDbAction(
           .where(eq(matrices.userId, userId));
 
         if (matrix) {
+          const [relatedBox] = await tx
+            .select({ id: boxes.id })
+            .from(boxes)
+            .where(
+              and(
+                eq(boxes.matrixId, matrix.id),
+                eq(boxes.boxType, "RELATED_THESES"),
+              ),
+            )
+            .limit(1);
+
           await tx
             .delete(sources)
             .where(
-              inArray(
-                sources.boxId,
-                tx
-                  .select({ id: boxes.id })
-                  .from(boxes)
-                  .where(eq(boxes.matrixId, matrix.id)),
+              and(
+                inArray(
+                  sources.boxId,
+                  tx
+                    .select({ id: boxes.id })
+                    .from(boxes)
+                    .where(eq(boxes.matrixId, matrix.id)),
+                ),
+                relatedBox
+                  ? notInArray(sources.boxId, [relatedBox.id])
+                  : undefined,
               ),
             );
         }

@@ -1,15 +1,23 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import type {
   GeminiThesisBox,
   LiteraturePoolEntry,
   JuryArticle,
 } from "@/lib/types";
-import { fetchBoxesWithFullShape } from "../../_services/fetch-actions";
+import {
+  fetchBoxesWithFullShape,
+  fetchUncachedBoxesWithFullShape,
+} from "../../_services/fetch-actions";
 import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
-import { fetchPreloadedLiteraturePool } from "../actions";
+import {
+  fetchPreloadedLiteraturePool,
+  runLiteraturePipelineAction,
+} from "../actions";
+import type { SubBoxInput } from "../_services/literature-review-papers";
 import { BOX_ORDER_WEIGHT } from "@/lib/box-constants";
 
 /** Processing status of a single sub-box within the literature review grid. */
@@ -32,6 +40,7 @@ export interface UseLiteratureReviewResult {
     entry: { title: string; description?: string },
   ) => void;
   handleFinalize: () => Promise<void>;
+  retryReview: () => Promise<void>;
   setProcessing: (processing: boolean) => void;
   setBoxErrors: (
     errors:
@@ -47,9 +56,11 @@ export interface UseLiteratureReviewResult {
  */
 export function useLiteratureReview(): UseLiteratureReviewResult {
   const { finalizeLiterature } = useOnboardingNavigation();
+  const queryClient = useQueryClient();
 
   const [processing, setProcessing] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const hasTriggeredRef = useRef(false);
   const [manualEntries, setManualEntries] = useState<
     { subBoxTitle: string; thesisBoxId: number; articles: JuryArticle[] }[]
   >([]);
@@ -114,12 +125,94 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     const statuses: Record<string, BoxStatus> = {};
     for (const box of subBoxes) {
       const hasEntry = literaturePool.some(
-        (entry) => entry.subBoxTitle === box.title,
+        (entry) => entry.subBoxTitle === box.title && entry.articles.length > 0,
       );
-      statuses[box.title] = hasEntry ? "done" : "idle";
+      if (hasEntry) {
+        statuses[box.title] = "done";
+      } else if (processing) {
+        statuses[box.title] = "loading";
+      } else {
+        statuses[box.title] = "idle";
+      }
     }
     return statuses;
-  }, [subBoxes, literaturePool]);
+  }, [subBoxes, literaturePool, processing]);
+
+  const runPipeline = useCallback(async () => {
+    if (processing) return;
+    setProcessing(true);
+    try {
+      const freshBoxes = await fetchUncachedBoxesWithFullShape();
+      const targetBoxes = freshBoxes.length > 0 ? freshBoxes : subBoxes;
+      const subBoxInputs: SubBoxInput[] = targetBoxes.map((box) => ({
+        id: box.id ?? 0,
+        title: box.title,
+        description: box.description,
+        boxType: box.boxType,
+        subBoxes: (box.subBoxes ?? []).map((sb) => ({
+          title: sb.title,
+          description: sb.description,
+          thesisBoxId: sb.id ?? 0,
+          semanticQuery: sb.semanticQuery ?? "",
+          foundationalQueries: sb.foundationalQueries ?? [],
+        })),
+        foundationalQueries: (box.subBoxes ?? []).flatMap(
+          (sb) => sb.foundationalQueries ?? [],
+        ),
+      }));
+
+      const res = await runLiteraturePipelineAction(subBoxInputs);
+      if (res.data) {
+        queryClient.invalidateQueries({ queryKey: ["literature-pool"] });
+        queryClient.setQueryData(["literature-pool"], res.data);
+      } else if (res.error) {
+        toast.error("Literatür taraması hatası: " + res.error);
+      }
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Tarama çalıştırılamadı.";
+      toast.error(msg);
+    } finally {
+      setProcessing(false);
+    }
+  }, [processing, subBoxes, queryClient]);
+
+  useEffect(() => {
+    if (loading || processing || hasTriggeredRef.current) return;
+
+    const regularBoxes = subBoxes.filter(
+      (b) => b.boxType !== "PRIMARY_MATERIAL" && b.boxType !== "RELATED_THESES",
+    );
+
+    if (regularBoxes.length === 0) return;
+
+    const hasMissingLiterature = regularBoxes.some((box) => {
+      const children = box.subBoxes ?? [];
+      if (children.length > 0) {
+        return children.some(
+          (child) =>
+            !literaturePool.some(
+              (e) => e.subBoxTitle === child.title && e.articles.length > 0,
+            ),
+        );
+      }
+      return !literaturePool.some(
+        (e) => e.subBoxTitle === box.title && e.articles.length > 0,
+      );
+    });
+
+    if (hasMissingLiterature) {
+      hasTriggeredRef.current = true;
+      setTimeout(() => {
+        void runPipeline();
+      }, 0);
+    }
+  }, [loading, processing, subBoxes, literaturePool, runPipeline]);
+
+  const retryReview = useCallback(async () => {
+    hasTriggeredRef.current = true;
+    await runPipeline();
+  }, [runPipeline]);
 
   const addArchiveEntry = useCallback(
     (subBoxTitle: string, thesisBoxId: number, entry: { title: string }) => {
@@ -183,6 +276,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     archivalBoxes,
     addArchiveEntry,
     handleFinalize,
+    retryReview,
     setProcessing,
     setBoxErrors,
   };

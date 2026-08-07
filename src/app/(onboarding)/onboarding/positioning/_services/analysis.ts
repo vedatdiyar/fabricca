@@ -38,6 +38,10 @@ export const juryRecommendedThesisSchema = z.object({
       "Kullanıcının bu tezi kendi tezinde nasıl birincil/ikincil kaynak olarak kullanacağına dair rehber not",
     ),
   doi: z.string().optional().describe("Tezin DOI adresi (varsa)"),
+  thesisType: z
+    .string()
+    .optional()
+    .describe("Tezin türü (Örn: Yüksek Lisans veya Doktora)"),
 });
 
 /** Zod schema for the LLM jury analysis output. */

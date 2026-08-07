@@ -124,6 +124,14 @@ export async function runPositioningJuryAction(
     );
     log.info("positioning_jury_analysis_success");
 
+    const thesisTypeById = new Map<string, string>(
+      relevantTheses.map((ev) => [String(ev.thesis.id), ev.thesis.thesisType]),
+    );
+    juryResult.recommendedTheses = juryResult.recommendedTheses.map((rec) => ({
+      ...rec,
+      thesisType: thesisTypeById.get(String(rec.externalThesisId)) || undefined,
+    }));
+
     return { success: true, juryResult };
   } catch (error) {
     log.error("positioning_jury_failed", {

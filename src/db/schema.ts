@@ -180,6 +180,7 @@ export const sources = pgTable(
     title: text().notNull(),
     authors: text().array(),
     publisher: text(),
+    thesisType: text("thesis_type"),
     publicationYear: integer(),
     doi: text(),
     openalexId: text("openalex_id"),

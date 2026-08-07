@@ -92,9 +92,7 @@ function SubBoxQuery({
   status: BoxStatus;
   errorMessage?: string;
 }) {
-  if (status === "idle") return null;
-
-  if (status === "loading") {
+  if (status === "idle" || status === "loading") {
     return (
       <div className="space-y-3 animate-pulse">
         <div className="h-5 w-3/4 rounded bg-muted" />
@@ -416,7 +414,7 @@ export function LiteratureReviewContent() {
             </h2>
             {relatedBox.boxType && (
               <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary ml-auto">
-                {getBoxTypeLabel(relatedBox.boxType)}
+                Literatür
               </span>
             )}
           </div>

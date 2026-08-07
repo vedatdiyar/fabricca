@@ -38,6 +38,7 @@ export interface RecommendedThesisItem {
   contributionArea: string;
   relevanceReason: string;
   doi?: string;
+  thesisType?: string;
 }
 
 /** Zod validation schema for the 3 structured gap analysis sections. */

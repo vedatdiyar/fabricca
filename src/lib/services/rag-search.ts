@@ -1,6 +1,6 @@
-import { sql, eq, innerProduct, asc } from "drizzle-orm";
+import { sql, eq, innerProduct, asc, and } from "drizzle-orm";
 import { db } from "@/db";
-import { chunks, sources } from "@/db/schema";
+import { chunks, sources, boxes } from "@/db/schema";
 import { generateVectorEmbeddings } from "@/lib/services/cloudflare-ai";
 import { rerankWithCohere } from "@/lib/services/cohere";
 import type { Logger } from "@/lib/logger";
@@ -172,11 +172,14 @@ export async function performHybridRagSearch(
         embedding: chunks.embedding,
       })
       .from(chunks)
-      .innerJoin(sources, eq(chunks.sourceId, sources.id));
+      .innerJoin(sources, eq(chunks.sourceId, sources.id))
+      .innerJoin(boxes, eq(sources.boxId, boxes.id));
 
+    const denseConditions = [sql`${boxes.boxType} <> 'RELATED_THESES'`];
     if (resourceIds && resourceIds.length > 0) {
-      denseQuery.where(sql`${chunks.sourceId} IN ${resourceIds}`);
+      denseConditions.push(sql`${chunks.sourceId} IN ${resourceIds}`);
     }
+    denseQuery.where(and(...denseConditions));
 
     try {
       const rows = await denseQuery
