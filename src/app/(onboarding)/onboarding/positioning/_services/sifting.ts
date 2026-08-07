@@ -77,18 +77,21 @@ function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
   ].join("\n");
 }
 
+/** Difference threshold under which two relevance scores are treated as a tie. */
+const SCORE_EPSILON = 1e-4;
+
 /**
  * Runs 8 parallel Meilisearch queries on Tezara, deduplicates results, applies
- * abstract length and language filters, then ranks candidates via Cohere Rerank
- * v4 Pro while querying only subjectProblem and intentionally excluding methodology
- * and theoreticalFramework.
+ * abstract length and language filters, ranks candidates via Cohere Rerank
+ * v4 Pro (full score list), then deterministically selects the top-N by
+ * (relevanceScore desc, ID asc) for reproducible downstream evaluation.
  *
  * @param queries - The generated TR+EN search queries to run.
  * @param matrixInput - The validated positioning matrix input.
  * @param logger - Optional structured logger for pipeline events.
  * @param options - Optional settings for the sifting process.
  * @param options.topN - The maximum number of top-ranked theses to return.
- * @returns The sifted theses ranked by relevance score.
+ * @returns The selected theses sorted ascending by thesis ID.
  */
 export async function searchAndSiftTheses(
   queries: GeneratedQueries,
@@ -189,11 +192,10 @@ export async function searchAndSiftTheses(
   const rerankResults = await rerankWithCohere({
     query: targetYamlQuery,
     documents: candidateYamlDocs,
-    topN,
     logger,
   });
 
-  const siftedTheses: SiftedThesis[] = rerankResults.map((res) => {
+  const scoredTheses: SiftedThesis[] = rerankResults.map((res) => {
     const candidate = filteredCandidates[res.index];
     return {
       ...candidate,
@@ -201,11 +203,15 @@ export async function searchAndSiftTheses(
     };
   });
 
-  siftedTheses.sort(
-    (a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0),
-  );
+  scoredTheses.sort((a, b) => {
+    const delta = (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
+    if (Math.abs(delta) > SCORE_EPSILON) return delta;
+    return a.id - b.id;
+  });
 
-  const topResults = siftedTheses.slice(0, topN);
+  const selected = scoredTheses.slice(0, topN);
+
+  const topResults = selected.slice().sort((a, b) => a.id - b.id);
 
   logger?.info("cohere_rerank_success", {
     service: "cohere",
