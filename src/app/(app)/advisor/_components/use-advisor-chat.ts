@@ -82,16 +82,11 @@ export function useAdvisorChat(initialSessionId?: number) {
     setActiveCitation(null);
   }, []);
 
-  const syncUrlSession = useCallback(
-    (sessionId: number | null) => {
-      if (sessionId !== null) {
-        router.push(`/advisor?session=${sessionId}`);
-      } else {
-        router.push("/advisor");
-      }
-    },
-    [router],
-  );
+  const syncUrlSession = useCallback((sessionId: number | null) => {
+    const url =
+      sessionId !== null ? `/advisor?session=${sessionId}` : "/advisor";
+    window.history.replaceState(null, "", url);
+  }, []);
 
   const prevInitialSessionIdRef = useRef<number | undefined>(initialSessionId);
 
@@ -100,6 +95,7 @@ export function useAdvisorChat(initialSessionId?: number) {
     let cancelled = false;
     /** Loads the initial list of chat sessions and loads messages for initialSessionId if provided. */
     async function init() {
+      if (isSendingRef.current) return;
       const list = await getChatSessions();
       if (cancelled) return;
       setSessions(list);
@@ -129,6 +125,7 @@ export function useAdvisorChat(initialSessionId?: number) {
     let cancelled = false;
     /** Syncs state when the initialSessionId prop changes due to route navigation. */
     async function syncFromProp() {
+      if (isSendingRef.current) return;
       const list = await getChatSessions();
       if (cancelled) return;
       setSessions(list);

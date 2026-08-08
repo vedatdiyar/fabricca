@@ -34,8 +34,8 @@ function PersonaBadge({
   }
 
   return (
-    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary border border-primary/20 mb-2.5 shadow-xs">
-      <BookOpen className="w-3.5 h-3.5 shrink-0" />
+    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 mb-2.5 shadow-xs">
+      <BookOpen className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
       <span>Tez Asistanı</span>
     </div>
   );
@@ -160,18 +160,13 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
                       className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 overflow-hidden transition-all ${
                         isSocratic
                           ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-2 ring-amber-500/40"
-                          : "bg-primary/10 text-primary"
+                          : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 ring-2 ring-emerald-500/40"
                       }`}
                     >
                       {isSocratic ? (
                         <GraduationCap className="w-4 h-4" />
                       ) : (
-                        <Image
-                          src="/logo.svg"
-                          alt="Fabricca"
-                          width={20}
-                          height={20}
-                        />
+                        <BookOpen className="w-4 h-4" />
                       )}
                     </div>
                   )}
@@ -185,7 +180,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
                           ? "bg-primary/10 border border-primary/20 text-foreground rounded-tr-none"
                           : isSocratic
                             ? "bg-amber-500/5 dark:bg-amber-500/10 border-2 border-amber-500/40 dark:border-amber-400/40 text-card-foreground rounded-tl-none shadow-sm"
-                            : "bg-card border border-border/40 text-card-foreground rounded-tl-none"
+                            : "bg-emerald-500/5 dark:bg-emerald-500/10 border-2 border-emerald-500/30 dark:border-emerald-400/30 text-card-foreground rounded-tl-none shadow-sm"
                       }`}
                     >
                       {isUser ? (
@@ -258,18 +253,13 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
                 className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 overflow-hidden transition-all ${
                   streamingPersona === "SOCRATIC_ADVISOR"
                     ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-2 ring-amber-500/40"
-                    : "bg-primary/10 text-primary"
+                    : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 ring-2 ring-emerald-500/40"
                 }`}
               >
                 {streamingPersona === "SOCRATIC_ADVISOR" ? (
                   <GraduationCap className="w-4 h-4" />
                 ) : (
-                  <Image
-                    src="/logo.svg"
-                    alt="Fabricca"
-                    width={20}
-                    height={20}
-                  />
+                  <BookOpen className="w-4 h-4" />
                 )}
               </div>
               <div className="space-y-2 items-start flex-1 max-w-4xl">
@@ -277,7 +267,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
                   className={`p-4 rounded-md text-sm leading-relaxed rounded-tl-none transition-all ${
                     streamingPersona === "SOCRATIC_ADVISOR"
                       ? "bg-amber-500/5 dark:bg-amber-500/10 border-2 border-amber-500/40 dark:border-amber-400/40 text-card-foreground shadow-sm"
-                      : "bg-card border border-border/40 text-card-foreground"
+                      : "bg-emerald-500/5 dark:bg-emerald-500/10 border-2 border-emerald-500/30 dark:border-emerald-400/30 text-card-foreground shadow-sm"
                   }`}
                 >
                   <PersonaBadge persona={streamingPersona} />
