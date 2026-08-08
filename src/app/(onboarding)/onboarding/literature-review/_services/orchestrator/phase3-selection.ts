@@ -15,6 +15,17 @@ import type {
   SubBoxResultToPersist,
 } from "./types";
 
+/**
+ * Executes Phase 3 selection, filtering jury evaluations into the final articles
+ * to persist for each sub-box.
+ *
+ * @param fulfilledResults - The Phase 1 search results per sub-box.
+ * @param poolByBox - The per-box candidate pools built during Phase 2.
+ * @param juryEvaluations - The jury evaluations produced during Phase 2.
+ * @param logger - The shared flow logger.
+ * @param checkCancelled - Optional cancellation predicate; stops selection when true.
+ * @returns The final selected article records per sub-box.
+ */
 export async function executePhase3Selection(
   fulfilledResults: SubBoxResult[],
   poolByBox: Map<number, PoolItem[]>,

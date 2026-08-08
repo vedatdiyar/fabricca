@@ -48,24 +48,21 @@ export function getNoteTypeBadgeConfig(noteType: CitationNoteType) {
       return {
         label: "Doğrudan Alıntı",
         icon: Quote,
-        className:
-          "bg-success/10 text-success border-success/20",
+        className: "bg-success/10 text-success border-success/20",
         textClassName: "text-success",
       };
     case "PARAPHRASE":
       return {
         label: "Dolaylı Alıntı",
         icon: Sparkles,
-        className:
-          "bg-info/10 text-info border-info/20",
+        className: "bg-info/10 text-info border-info/20",
         textClassName: "text-info",
       };
     case "PERSONAL_NOTE":
       return {
         label: "Kişisel Not",
         icon: Bookmark,
-        className:
-          "bg-warning/10 text-warning border-warning/20",
+        className: "bg-warning/10 text-warning border-warning/20",
         textClassName: "text-warning",
       };
     default:

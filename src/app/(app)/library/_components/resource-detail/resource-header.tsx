@@ -1,7 +1,13 @@
 "use client";
 
 import React from "react";
-import { ExternalLink, Pencil, CheckCircle2, Circle, Trash2 } from "lucide-react";
+import {
+  ExternalLink,
+  Pencil,
+  CheckCircle2,
+  Circle,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getBoxTypeBadgeConfig } from "@/lib/box-constants";
@@ -72,17 +78,13 @@ export function ResourceHeader({
             variant="outline"
             size="sm"
             onClick={() => onToggleReadStatus(resource.id)}
-            title={
-              resource.isRead ? "Okunacak Yap" : "Okundu Olarak İşaretle"
-            }
+            title={resource.isRead ? "Okunacak Yap" : "Okundu Olarak İşaretle"}
             className="h-8 gap-2 text-[11px] font-medium border-border/40"
           >
             {resource.isRead ? (
               <>
                 <CheckCircle2 className="h-3.5 w-3.5 text-success" />
-                <span className="text-success font-semibold">
-                  Okundu
-                </span>
+                <span className="text-success font-semibold">Okundu</span>
               </>
             ) : (
               <>
@@ -150,9 +152,7 @@ export function ResourceHeader({
               •
             </span>
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-success">
-                PDF Yüklendi
-              </span>
+              <span className="font-semibold text-success">PDF Yüklendi</span>
             </div>
           </>
         )}

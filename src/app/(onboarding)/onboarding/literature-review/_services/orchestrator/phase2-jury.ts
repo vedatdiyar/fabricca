@@ -4,6 +4,15 @@ import { evaluateSingleBoxJury, type JuryInputItem } from "../batch-jury";
 import type { SubBoxResult, PoolItem, JuryEvalResult } from "./types";
 import { buildPool } from "./phase1-search";
 
+/**
+ * Executes Phase 2 jury evaluation over the de-duplicated candidate pools,
+ * batching each sub-box pool into a single jury evaluation.
+ *
+ * @param fulfilledResults - The Phase 1 search results per sub-box.
+ * @param logger - The shared flow logger.
+ * @param thesisMatrixSubject - Optional thesis matrix subject used to guide the jury.
+ * @returns The per-box candidate pools and the pooled jury evaluations.
+ */
 export async function executePhase2Jury(
   fulfilledResults: SubBoxResult[],
   logger: Logger,

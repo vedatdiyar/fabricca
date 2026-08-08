@@ -162,7 +162,9 @@ export async function POST(request: Request) {
           contextText += sources
             .map((s, idx) => {
               const pageStr = formatPageReference(s);
-              const secStr = s.sectionTitle ? ` | Bölüm: ${s.sectionTitle}` : "";
+              const secStr = s.sectionTitle
+                ? ` | Bölüm: ${s.sectionTitle}`
+                : "";
               const authors = s.resourceAuthors.join(", ");
               const yearStr = s.resourceYear
                 ? `Yıl: ${s.resourceYear}`

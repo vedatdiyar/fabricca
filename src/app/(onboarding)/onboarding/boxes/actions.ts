@@ -31,7 +31,24 @@ import { type OnboardingActionResult, type GeminiThesisBox } from "@/lib/types";
 import { mapToProductionShape } from "../_lib/box-mapper";
 import { fetchThesisMatrix } from "../_services/fetch-actions";
 
-const confirmBoxesSchema = z.array(
+const confirmBoxSchema: z.ZodType<{
+  title: string;
+  boxType:
+    | "SUBJECT_PROBLEM"
+    | "THEORETICAL_FRAMEWORK"
+    | "METHODOLOGY"
+    | "PRIMARY_MATERIAL";
+  description?: string;
+  parentId: number | null;
+  semanticQuery: string | null;
+  subBoxes?: unknown;
+  concepts?: string[];
+  foundationalQueries?: {
+    title: string;
+    author: string;
+    publicationYear: number;
+  }[];
+}> = z.lazy(() =>
   z.object({
     title: z.string().min(1),
     boxType: z.enum([
@@ -43,7 +60,7 @@ const confirmBoxesSchema = z.array(
     description: z.string().optional().default(""),
     parentId: z.number().nullable(),
     semanticQuery: z.string().nullable(),
-    subBoxes: z.any().optional(),
+    subBoxes: z.array(confirmBoxSchema).optional(),
     concepts: z.array(z.string()).optional().default([]),
     foundationalQueries: z
       .array(
@@ -57,6 +74,8 @@ const confirmBoxesSchema = z.array(
       .default([]),
   }),
 );
+
+const confirmBoxesSchema = z.array(confirmBoxSchema);
 
 /**
  * Phase 1: generates the 4-quadrant Turkish box structure only (no semantic queries).

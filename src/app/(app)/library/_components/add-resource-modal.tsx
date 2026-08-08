@@ -207,10 +207,10 @@ export function AddResourceModal({
               </div>
             ) : parentBoxes.length === 0 ? (
               <div className="flex items-center gap-2 p-3 rounded-md bg-muted/20 border border-border text-xs text-muted-foreground">
-                      <AlertCircle className="h-4 w-4 shrink-0" />
-                      Henüz tanımlı bir konu kutunuz bulunmuyor. Lütfen onboarding
-                      adımlarını tamamlayın.
-                    </div>
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                Henüz tanımlı bir konu kutunuz bulunmuyor. Lütfen onboarding
+                adımlarını tamamlayın.
+              </div>
             ) : (
               <div className="grid grid-cols-2 gap-2 pt-1">
                 {parentBoxes.map((parent) => (

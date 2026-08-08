@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, X, Database, Loader2, Sparkles, RotateCcw, ArrowRight } from "lucide-react";
+import { Check, X, Database, Loader2, Sparkles, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export interface PendingToolCall {
@@ -40,6 +40,9 @@ interface ComparisonRow {
 
 /**
  * Maps function tool call parameters and optional previous state into a structured list of Old vs New state rows.
+ *
+ * @param toolCall - The pending tool call containing parameters and optional previous state.
+ * @returns The list of comparison rows.
  */
 function getComparisonRows(toolCall: PendingToolCall): ComparisonRow[] {
   const { name, args, previousState } = toolCall;
@@ -93,7 +96,7 @@ function getComparisonRows(toolCall: PendingToolCall): ComparisonRow[] {
         rows.push({
           fieldLabel: "Açıklama",
           oldValue: "—",
-          newValue: (args.description as string),
+          newValue: args.description as string,
         });
       }
       break;
@@ -109,7 +112,8 @@ function getComparisonRows(toolCall: PendingToolCall): ComparisonRow[] {
         rows.push({
           fieldLabel: "Kutu Başlığı",
           oldValue:
-            (previousState?.title as string) || "(Değiştirilmedi / Mevcut Başlık)",
+            (previousState?.title as string) ||
+            "(Değiştirilmedi / Mevcut Başlık)",
           newValue: (args.title as string) || "—",
         });
       }
@@ -140,7 +144,8 @@ function getComparisonRows(toolCall: PendingToolCall): ComparisonRow[] {
         rows.push({
           fieldLabel: "Konu ve Problem",
           oldValue:
-            (previousState?.subjectProblem as string) || "(Henüz Girilmemiş / Boş)",
+            (previousState?.subjectProblem as string) ||
+            "(Henüz Girilmemiş / Boş)",
           newValue: (args.subjectProblem as string) || "(Temizlenecek)",
         });
       }
@@ -166,7 +171,8 @@ function getComparisonRows(toolCall: PendingToolCall): ComparisonRow[] {
         rows.push({
           fieldLabel: "Yöntem & Metodoloji",
           oldValue:
-            (previousState?.methodology as string) || "(Henüz Girilmemiş / Boş)",
+            (previousState?.methodology as string) ||
+            "(Henüz Girilmemiş / Boş)",
           newValue: (args.methodology as string) || "(Temizlenecek)",
         });
       }
@@ -208,7 +214,7 @@ function getComparisonRows(toolCall: PendingToolCall): ComparisonRow[] {
         rows.push({
           fieldLabel: "Not / Alıntı İçeriği",
           oldValue: "(Yok - Yeni Not)",
-          newValue: (args.content as string),
+          newValue: args.content as string,
         });
       }
       break;
@@ -217,7 +223,8 @@ function getComparisonRows(toolCall: PendingToolCall): ComparisonRow[] {
     case "deleteSource": {
       rows.push({
         fieldLabel: `Kaynak #${args.sourceId}`,
-        oldValue: (previousState?.title as string) || `Kaynak #${args.sourceId}`,
+        oldValue:
+          (previousState?.title as string) || `Kaynak #${args.sourceId}`,
         newValue: "Kütüphaneden Silinecek ⚠️",
         isWarning: true,
       });
@@ -251,6 +258,9 @@ function getComparisonRows(toolCall: PendingToolCall): ComparisonRow[] {
 
 /**
  * Returns a Turkish human-readable category badge label for a tool name.
+ *
+ * @param name - The function tool name.
+ * @returns The Turkish category label.
  */
 function getToolCategoryLabel(name: string): string {
   switch (name) {
@@ -277,6 +287,13 @@ function getToolCategoryLabel(name: string): string {
 /**
  * Interactive full-width card component that displays an AI database mutation request
  * with a detailed Old State vs New State comparison table, allowing explicit Approval/Rejection.
+ *
+ * @param root0 - Component props.
+ * @param root0.toolCall - The pending tool call payload to display and act on.
+ * @param root0.onApprove - Async callback invoked when the mutation is approved.
+ * @param root0.onReject - Callback invoked when the mutation is rejected.
+ * @param root0.onUndo - Optional async callback invoked to revert a previously executed mutation.
+ * @returns The rendered tool confirmation card.
  */
 export function ToolConfirmationCard({
   toolCall,
@@ -490,4 +507,3 @@ export function ToolConfirmationCard({
     </div>
   );
 }
-

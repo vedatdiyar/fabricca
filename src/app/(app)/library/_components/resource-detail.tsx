@@ -9,10 +9,7 @@ import { ResourceHeader } from "./resource-detail/resource-header";
 import { NoteForm } from "./resource-detail/note-form";
 import { NoteItem, getNoteTypeBadgeConfig } from "./resource-detail/note-item";
 import { DeleteConfirmDialog } from "./resource-detail/delete-confirm-dialog";
-import type {
-  LibraryResourceItem,
-  LibraryResourceNote,
-} from "../_types/types";
+import type { LibraryResourceItem, LibraryResourceNote } from "../_types/types";
 
 export { getNoteTypeBadgeConfig };
 

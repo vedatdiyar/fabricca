@@ -172,12 +172,12 @@ export function SidebarWorkList({
               key={tab.id}
               type="button"
               onClick={() => onTabChange(tab.id)}
-className={cn(
-                  "w-full text-center py-1 text-[10px] font-medium rounded transition-all truncate px-1",
-                  isActive
-                    ? "bg-background text-foreground font-semibold border border-border/40"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/20",
-                )}
+              className={cn(
+                "w-full text-center py-1 text-[10px] font-medium rounded transition-all truncate px-1",
+                isActive
+                  ? "bg-background text-foreground font-semibold border border-border/40"
+                  : "text-muted-foreground hover:text-foreground hover:bg-background/20",
+              )}
             >
               {tab.label}
             </button>

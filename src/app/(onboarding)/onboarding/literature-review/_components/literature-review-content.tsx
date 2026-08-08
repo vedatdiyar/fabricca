@@ -48,7 +48,10 @@ function ArchiveEntryForm({
   return (
     <div className="space-y-3 border border-dashed border-border rounded-md bg-card/20 p-4">
       <p className="text-xs text-muted-foreground">
-        Bu arşiv kutusu altına spesifik belge veya dergi sayılarını (ör. <em>Sayı 3</em>, <em>1994 Tüzük Metni</em>) ekleyebilirsiniz. PDF dosyalarını onboarding sonrasında Kütüphane ekranından yükleyebilirsiniz.
+        Bu arşiv kutusu altına spesifik belge veya dergi sayılarını (ör.{" "}
+        <em>Sayı 3</em>, <em>1994 Tüzük Metni</em>) ekleyebilirsiniz. PDF
+        dosyalarını onboarding sonrasında Kütüphane ekranından
+        yükleyebilirsiniz.
       </p>
       <div className="flex gap-2">
         <Input

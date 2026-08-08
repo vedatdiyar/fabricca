@@ -5,10 +5,7 @@ import type {
   SubBoxItem,
   RawPaper,
 } from "../literature-review-papers";
-import {
-  searchOpenAlex,
-  fetchOpenAlexMetadataBatch,
-} from "../openalex/client";
+import { searchOpenAlex, fetchOpenAlexMetadataBatch } from "../openalex/client";
 import { extractCleanDoi, extractOpenAlexId } from "@/lib/academic/utils";
 import { clusterRefMetadata } from "../clustering";
 import { analyzeReferenceFrequencies, type QueueItem } from "../selection";
@@ -20,9 +17,7 @@ import type { SubBoxResult, PoolItem } from "./types";
  * @param c - The co-citation candidate queue item.
  * @returns The raw paper representation.
  */
-export function candidateToRawPaper(
-  c: QueueItem["candidates"][0],
-): RawPaper {
+export function candidateToRawPaper(c: QueueItem["candidates"][0]): RawPaper {
   return {
     source: "openalex",
     title: c.title,
@@ -62,6 +57,11 @@ export function buildPool(r: SubBoxResult): PoolItem[] {
 /**
  * Executes Phase 1 search across sub-boxes using OpenAlex search,
  * reference frequency analysis, and fallback candidate generation.
+ *
+ * @param activeJobs - The list of box sub-box jobs to search.
+ * @param logger - The shared flow logger.
+ * @param checkCancelled - Optional cancellation predicate checked during execution.
+ * @returns The phase 1 results for every processed sub-box.
  */
 export async function executePhase1Search(
   activeJobs: { box: SubBoxInput; subBox: SubBoxItem }[],

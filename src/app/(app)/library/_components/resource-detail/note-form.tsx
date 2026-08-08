@@ -96,9 +96,7 @@ export function NoteForm({ resourceId, onAddNote }: NoteFormProps) {
     setNoteType("DIRECT_QUOTE");
   };
 
-  const handleContentPaste = (
-    e: React.ClipboardEvent<HTMLTextAreaElement>,
-  ) => {
+  const handleContentPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const raw = e.clipboardData.getData("text/plain");
     if (!raw) return;
 
@@ -174,11 +172,7 @@ export function NoteForm({ resourceId, onAddNote }: NoteFormProps) {
 
               <div className="flex items-center gap-1 bg-muted p-1 rounded-md border border-border/40">
                 {(
-                  [
-                    "DIRECT_QUOTE",
-                    "PARAPHRASE",
-                    "PERSONAL_NOTE",
-                  ] as NoteType[]
+                  ["DIRECT_QUOTE", "PARAPHRASE", "PERSONAL_NOTE"] as NoteType[]
                 ).map((type) => {
                   const isActive = noteType === type;
                   const badgeInfo = getNoteTypeBadgeConfig(type);
