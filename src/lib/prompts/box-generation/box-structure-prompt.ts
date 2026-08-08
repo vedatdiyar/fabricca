@@ -60,7 +60,7 @@ Araştırmada kullanılan birincil kaynakları ve ham veri malzemelerini tanıml
 
 ### Alt Kutu (Sub-box) Alokasyon İlkeleri
 - **Bütünleşik Veri Seti (N=1):** Tüm birincil kaynaklar aynı tür/arşivden geliyorsa veya tek bir kaynak türü varsa TEK BİR ALT KUTU (N=1) yeterlidir.
-- **Ayrık Kaynak Türleri (N>=2):** Farklı arşivler, belge türleri veya veri setleri (ör. resmi belgeler, sözlü tarih görüşmeleri, gazete arşivleri) varsa her biri KESİNLİKLE AYRI BİR ALT KUTU (N>=2) olarak yapılandırılmalıdır.
+- **Ayrık Kaynak Türleri ve Koleksiyonlar (N>=2):** Matriste farklı arşivler, spesifik süreli yayınlar, dergi koleksiyonları veya belge grupları (ör. Serxwebûn dergisi, HADEP tüzükleri, sözlü tarih görüşmeleri) belirtilmişse, her yayın veya belge türü KESİNLİKLE müstakil bir ALT KUTU (sub-box) olarak yapılandırılmalıdır (ör. 'Serxwebûn Dergi Arşivi', 'HADEP Tüzük ve Resmi Belgeleri'). Kullanıcı kütüphane aşamasında bu kutuların altına ilgili sayıları ve belgeleri ayrı ayrı yükleyecektir.
 
 ---
 

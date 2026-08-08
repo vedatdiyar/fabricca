@@ -65,7 +65,7 @@ export default function LoginPage() {
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center bg-background p-4 overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none" />
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative mx-auto flex w-full max-w-sm flex-col items-center space-y-6 z-10">
         <div className="flex flex-row items-center gap-6 text-left justify-center w-full">
@@ -87,7 +87,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <Card className="w-full border border-border/60 bg-card/85 backdrop-blur-md">
+        <Card className="w-full border border-border/40 bg-card">
           <CardHeader className="space-y-1 pb-4">
             <CardTitle className="font-serif text-xl font-semibold tracking-tight text-foreground">
               Giriş Yap
@@ -101,7 +101,7 @@ export default function LoginPage() {
               <div className="space-y-2">
                 <Label
                   htmlFor="email"
-                  className="text-xs font-medium text-muted-foreground flex items-center gap-1.5"
+                  className="text-xs font-medium text-muted-foreground flex items-center gap-2"
                 >
                   <Mail className="h-3.5 w-3.5" />
                   E-posta
@@ -114,13 +114,13 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   autoComplete="email"
-                  className="bg-background/40 border-border/60 focus:bg-background/80 transition-all duration-200"
+                  className="bg-background/20 border-border/40 transition-all duration-200"
                 />
               </div>
               <div className="space-y-2">
                 <Label
                   htmlFor="password"
-                  className="text-xs font-medium text-muted-foreground flex items-center gap-1.5"
+                  className="text-xs font-medium text-muted-foreground flex items-center gap-2"
                 >
                   <Lock className="h-3.5 w-3.5" />
                   Şifre
@@ -133,7 +133,7 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     autoComplete="current-password"
-                    className="bg-background/40 border-border/60 focus:bg-background/80 transition-all duration-200 pr-10"
+                    className="bg-background/20 border-border/40 transition-all duration-200 pr-10"
                   />
                   <button
                     type="button"
@@ -155,7 +155,7 @@ export default function LoginPage() {
 
               <Button
                 type="submit"
-                className="w-full mt-2 transition-all duration-200 active:scale-[0.98]"
+                className="w-full mt-2 transition-all duration-200 active:scale-95"
                 disabled={isPending}
               >
                 {isPending ? (
@@ -189,7 +189,7 @@ export default function LoginPage() {
             </form>
 
             <div className="flex gap-2 p-3 bg-muted/10 border border-border/40 rounded-md text-xs text-muted-foreground leading-relaxed select-none">
-              <ShieldAlert className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+              <ShieldAlert className="h-4 w-4 text-warning shrink-0 mt-0.5" />
               <span>
                 <strong>Erişim Kısıtlaması:</strong> Bu platform dışarıdan kayda
                 kapalıdır. Yalnızca yetkilendirilmiş akademisyenler giriş

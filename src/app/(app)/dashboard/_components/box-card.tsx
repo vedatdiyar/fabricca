@@ -82,7 +82,7 @@ export function BoxCard({ box, onDeleteArticle }: BoxCardProps) {
               {box.articles.map((article) => (
                 <li
                   key={article.id}
-                  className="flex items-start justify-between gap-3 group rounded-md p-2 hover:bg-secondary/50 transition-colors"
+                  className="flex items-start justify-between gap-3 group rounded-md p-2 hover:bg-secondary/20 transition-colors"
                 >
                   <Link
                     href={`/library?id=${article.id}`}
@@ -101,19 +101,19 @@ export function BoxCard({ box, onDeleteArticle }: BoxCardProps) {
                     {article.subBoxTitle && (
                       <Badge
                         variant="outline"
-                        className="mt-1.5 max-w-full border-primary/25 bg-primary/10 px-2 py-0.5 font-sans text-[10px] font-semibold text-primary"
+                        className="mt-2 max-w-full border-primary/20 bg-primary/10 px-2 py-1 font-sans text-[10px] font-semibold text-primary"
                       >
                         <span className="truncate">{article.subBoxTitle}</span>
                       </Badge>
                     )}
                   </Link>
-                  <div className="flex items-center gap-1.5 pt-0.5 shrink-0">
+                  <div className="flex items-center gap-2 pt-1 shrink-0">
                     <button
                       type="button"
                       onClick={() => setArticleToDeleteId(article.id)}
                       title="Eseri Sil"
                       aria-label="Eseri Sil"
-                      className="flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background text-muted-foreground shadow-sm hover:text-destructive hover:border-destructive/40 hover:bg-destructive/10 transition-colors"
+                      className="flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-destructive hover:border-destructive/20 hover:bg-destructive/10 transition-colors"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>

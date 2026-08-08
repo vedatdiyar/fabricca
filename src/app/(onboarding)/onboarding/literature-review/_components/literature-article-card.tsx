@@ -92,7 +92,7 @@ export function LiteratureArticleCard({
 
   if (isEditing) {
     return (
-      <Card className="bg-card border border-primary/40 p-3 flex items-center gap-2 transition-all">
+      <Card className="bg-card border border-primary/20 p-3 flex items-center gap-2 transition-all">
         <Input
           value={editedTitle}
           onChange={(e) => setEditedTitle(e.target.value)}

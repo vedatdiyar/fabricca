@@ -27,7 +27,7 @@ function parseInlineMarkdown(text: string): React.ReactNode[] {
     }
     if (part.startsWith("*") && part.endsWith("*")) {
       return (
-        <em key={idx} className="italic text-foreground/90">
+        <em key={idx} className="italic text-foreground">
           {part.slice(1, -1)}
         </em>
       );
@@ -36,7 +36,7 @@ function parseInlineMarkdown(text: string): React.ReactNode[] {
       return (
         <code
           key={idx}
-          className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-primary"
+          className="rounded bg-muted px-2 py-1 font-mono text-xs text-primary"
         >
           {part.slice(1, -1)}
         </code>
@@ -166,42 +166,42 @@ export function PositioningMarkdownRenderer({
 
   return (
     <div className={`space-y-4 ${className}`}>
-      <Card className="p-6 space-y-3 border-border shadow-sm bg-card hover:border-border/80 transition-colors">
+      <Card className="p-6 space-y-3 border-border bg-card hover:border-border/40 transition-colors">
         <div className="flex items-center gap-2 pb-2 border-b border-border">
-          <Compass className="h-4 w-4 text-sky-600 dark:text-sky-400 shrink-0" />
+          <Compass className="h-4 w-4 text-info shrink-0" />
           <h3 className="font-serif text-base font-bold text-foreground">
             Mevcut Literatürün Haritalandırılması
           </h3>
         </div>
-        <div className="text-sm leading-relaxed text-foreground/90 space-y-2 pt-1">
+        <div className="text-sm leading-relaxed text-foreground space-y-2 pt-1">
           {data.literatureMapping.split("\n\n").map((para, idx) => (
             <p key={idx}>{parseInlineMarkdown(para)}</p>
           ))}
         </div>
       </Card>
 
-      <Card className="p-6 space-y-3 border-border shadow-sm bg-card hover:border-border/80 transition-colors">
+      <Card className="p-6 space-y-3 border-border bg-card hover:border-border/40 transition-colors">
         <div className="flex items-center gap-2 pb-2 border-b border-border">
-          <ScanEye className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+          <ScanEye className="h-4 w-4 text-warning shrink-0" />
           <h3 className="font-serif text-base font-bold text-foreground">
             Literatürdeki Boşluk
           </h3>
         </div>
-        <div className="text-sm leading-relaxed text-foreground/90 space-y-2 pt-1">
+        <div className="text-sm leading-relaxed text-foreground space-y-2 pt-1">
           {data.academicGap.split("\n\n").map((para, idx) => (
             <p key={idx}>{parseInlineMarkdown(para)}</p>
           ))}
         </div>
       </Card>
 
-      <Card className="p-6 space-y-3 border-border shadow-sm bg-card hover:border-border/80 transition-colors">
+      <Card className="p-6 space-y-3 border-border bg-card hover:border-border/40 transition-colors">
         <div className="flex items-center gap-2 pb-2 border-b border-border">
-          <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <Sparkles className="h-4 w-4 text-success shrink-0" />
           <h3 className="font-serif text-base font-bold text-foreground">
             Çalışmanın Özgün Katkısı
           </h3>
         </div>
-        <div className="text-sm leading-relaxed text-foreground/90 space-y-2 pt-1">
+        <div className="text-sm leading-relaxed text-foreground space-y-2 pt-1">
           {data.originalContribution.split("\n\n").map((para, idx) => (
             <p key={idx}>{parseInlineMarkdown(para)}</p>
           ))}

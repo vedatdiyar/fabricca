@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { getUsersMatrixAndBoxesWithResources } from "@/app/(app)/_services/box-service";
 import { getTasksAction } from "./actions";
 import { DashboardContent } from "./_components/dashboard-content";
+import { LoadingSpinner } from "@/components/loading-spinner";
 
 /**
  * Renders the dashboard overview page with topic boxes, reading lists, and the Kanban board.
@@ -22,12 +23,10 @@ export default async function DashboardPage() {
 
   if ("error" in boxResult) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <p className="text-muted-foreground">
-          Henüz bir tez matrisi oluşturulmamış. Lütfen onboarding adımlarını
-          tamamlayın.
-        </p>
-      </div>
+      <LoadingSpinner
+        variant="full"
+        message="Henüz bir tez matrisi oluşturulmamış. Lütfen onboarding adımlarını tamamlayın."
+      />
     );
   }
 

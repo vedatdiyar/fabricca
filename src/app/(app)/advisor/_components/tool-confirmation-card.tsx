@@ -316,11 +316,11 @@ export function ToolConfirmationCard({
   const comparisonRows = getComparisonRows(toolCall);
 
   return (
-    <div className="my-3 w-full rounded-2xl border border-primary/25 bg-card/80 p-5 shadow-md backdrop-blur-md space-y-4 transition-all">
+    <div className="my-3 w-full rounded-md border border-primary/20 bg-card p-4 space-y-4 transition-all">
       {/* Header Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-primary/10 text-primary shrink-0">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-3">
+        <div className="flex items-center gap-2">
+          <div className="p-2 rounded-md bg-primary/10 text-primary shrink-0">
             <Database className="size-4" />
           </div>
           <div>
@@ -334,25 +334,25 @@ export function ToolConfirmationCard({
         </div>
 
         {toolCall.status === "pending" && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+          <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
             <Sparkles className="size-3.5" />
             Onay Bekliyor
           </span>
         )}
         {toolCall.status === "approved" && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+          <span className="inline-flex items-center gap-2 rounded-full bg-success/10 px-3 py-1 text-xs font-semibold text-success">
             <Check className="size-3.5" />
             Uygulandı
           </span>
         )}
         {toolCall.status === "undone" && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-600 dark:text-amber-400">
+          <span className="inline-flex items-center gap-2 rounded-full bg-warning/10 px-3 py-1 text-xs font-semibold text-warning">
             <RotateCcw className="size-3.5" />
             Geri Alındı
           </span>
         )}
         {toolCall.status === "rejected" && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
+          <span className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
             <X className="size-3.5" />
             İptal Edildi
           </span>
@@ -366,10 +366,10 @@ export function ToolConfirmationCard({
 
       {/* Full-width Old State vs New State Comparison Table */}
       {comparisonRows.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-border/70 bg-background/60 shadow-inner">
+        <div className="overflow-hidden rounded-md border border-border/40 bg-background/20">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs table-fixed">
-              <thead className="bg-muted/80 text-muted-foreground uppercase text-[10px] tracking-wider border-b border-border/60">
+              <thead className="bg-muted text-muted-foreground uppercase text-[10px] tracking-wider border-b border-border/40">
                 <tr>
                   <th className="py-2.5 px-4 font-semibold w-[20%]">
                     Alan / Nesne
@@ -386,7 +386,7 @@ export function ToolConfirmationCard({
               </thead>
               <tbody className="divide-y divide-border/40">
                 {comparisonRows.map((row, idx) => (
-                  <tr key={idx} className="hover:bg-muted/30 transition-colors">
+                  <tr key={idx} className="hover:bg-muted/20 transition-colors">
                     <td className="py-3 px-4 font-semibold text-foreground align-top break-words">
                       {row.fieldLabel}
                     </td>
@@ -397,7 +397,7 @@ export function ToolConfirmationCard({
                       className={`py-3 px-4 font-mono text-[11px] leading-relaxed break-words align-top ${
                         row.isWarning
                           ? "text-destructive font-bold bg-destructive/10"
-                          : "text-foreground font-semibold bg-primary/5"
+                          : "text-foreground font-semibold bg-primary/10"
                       }`}
                     >
                       {row.newValue}
@@ -418,7 +418,7 @@ export function ToolConfirmationCard({
             variant="outline"
             onClick={() => onReject(toolCall.toolCallId)}
             disabled={isExecuting}
-            className="h-9 px-4 gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground border-border/80"
+            className="h-9 px-4 gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground border-border/40"
           >
             <X className="size-3.5" />
             İptal Et
@@ -427,7 +427,7 @@ export function ToolConfirmationCard({
             size="sm"
             onClick={handleApprove}
             disabled={isExecuting}
-            className="h-9 px-5 gap-2 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+            className="h-9 px-5 gap-2 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {isExecuting ? (
               <>
@@ -446,7 +446,7 @@ export function ToolConfirmationCard({
 
       {toolCall.status === "approved" && (
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+          <div className="flex items-center gap-2 text-xs font-semibold text-success">
             <Check className="size-4 shrink-0" />
             <span>Veritabanı değişikliği uygulandı.</span>
           </div>
@@ -456,7 +456,7 @@ export function ToolConfirmationCard({
               variant="outline"
               onClick={handleUndo}
               disabled={isUndoing}
-              className="h-8 px-3 gap-1.5 text-xs font-semibold border-amber-500/40 text-amber-600 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+              className="h-8 px-3 gap-2 text-xs font-semibold border-warning/20 text-warning hover:bg-warning/10"
             >
               {isUndoing ? (
                 <>
@@ -475,14 +475,14 @@ export function ToolConfirmationCard({
       )}
 
       {toolCall.status === "undone" && (
-        <div className="flex items-center gap-1.5 pt-2 text-xs font-semibold text-amber-600 dark:text-amber-400 border-t border-border/40">
+        <div className="flex items-center gap-2 pt-2 text-xs font-semibold text-warning border-t border-border/40">
           <RotateCcw className="size-4 shrink-0" />
           <span>İşlem kullanıcı tarafından geri alındı.</span>
         </div>
       )}
 
       {toolCall.status === "rejected" && (
-        <div className="flex items-center gap-1.5 pt-2 text-xs font-semibold text-muted-foreground border-t border-border/40">
+        <div className="flex items-center gap-2 pt-2 text-xs font-semibold text-muted-foreground border-t border-border/40">
           <X className="size-4 shrink-0" />
           <span>İşlem kullanıcı tarafından iptal edildi.</span>
         </div>

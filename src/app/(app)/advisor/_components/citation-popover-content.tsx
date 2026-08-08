@@ -24,14 +24,14 @@ export function CitationPopoverContent({
   return (
     <div className="text-sm space-y-4">
       <div className="flex items-center justify-between gap-2 mt-4">
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
           <FileText className="size-4 text-primary shrink-0" />
           <span className="font-medium text-foreground break-words">
             {source.resourceTitle}
           </span>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[11px] shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="px-2 py-1 bg-primary/10 text-primary rounded-full text-[11px] shrink-0">
             %{(source.relevanceScore * 100).toFixed(0)} Alaka
           </span>
         </div>
@@ -45,7 +45,7 @@ export function CitationPopoverContent({
         )}
       </div>
 
-      <div className="text-sm text-foreground/80 leading-relaxed space-y-3 pl-3 border-l-2 border-primary/20">
+      <div className="text-sm text-foreground leading-relaxed space-y-3 pl-3 border-l-2 border-primary/20">
         {source.content.split("\n\n").map((paragraph, i) => {
           const lines = paragraph.split("\n");
           const hasNumberedItems = lines.some((l) =>

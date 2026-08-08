@@ -247,15 +247,15 @@ function UserMenu({
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         className={cn(
-          "flex items-center gap-2 rounded-md border border-border/80 bg-background px-2.5 py-1.5 transition-all hover:bg-accent/60",
-          isOpen && "bg-accent border-primary/40",
+          "flex items-center gap-2 rounded-md border border-border/40 bg-background px-3 py-2 transition-all hover:bg-accent/20",
+          isOpen && "bg-accent/20 border-primary/20",
         )}
       >
         <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary font-mono text-[10px] font-semibold border border-primary/20 shrink-0">
           {initials || <User className="h-3 w-3" />}
         </div>
 
-        <span className="max-w-[130px] truncate text-xs font-medium text-foreground hidden sm:block">
+        <span className="max-w-32 truncate text-xs font-medium text-foreground hidden sm:block">
           {userName}
         </span>
 
@@ -268,8 +268,8 @@ function UserMenu({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-56 rounded-md border border-border bg-card p-1.5 shadow-lg z-50 animate-in fade-in-0 zoom-in-95">
-          <div className="flex items-center gap-2.5 p-2 border-b border-border/40 pb-2.5 mb-1">
+        <div className="absolute right-0 top-full mt-2 w-56 rounded-md border border-border bg-card p-2 z-50 animate-in fade-in-0 zoom-in-95">
+          <div className="flex items-center gap-2 p-2 border-b border-border/40 pb-2 mb-1">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-mono text-xs font-semibold border border-primary/20 shrink-0">
               {initials || <User className="h-4 w-4" />}
             </div>
@@ -289,7 +289,7 @@ function UserMenu({
               setIsOpen(false);
               onReopenOnboarding();
             }}
-            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           >
             <RotateCcw className="h-4 w-4 text-primary shrink-0" />
             <div className="flex flex-col text-left">
@@ -303,7 +303,7 @@ function UserMenu({
               setIsOpen(false);
               onLogout();
             }}
-            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors mt-0.5"
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors mt-1"
           >
             <LogOut className="h-4 w-4 shrink-0" />
             <span>Çıkış Yap</span>

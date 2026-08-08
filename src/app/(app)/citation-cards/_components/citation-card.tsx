@@ -49,24 +49,24 @@ export function getNoteTypeBadgeConfig(noteType: CitationNoteType) {
         label: "Doğrudan Alıntı",
         icon: Quote,
         className:
-          "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20",
-        textClassName: "text-amber-700 dark:text-amber-300",
+          "bg-success/10 text-success border-success/20",
+        textClassName: "text-success",
       };
     case "PARAPHRASE":
       return {
         label: "Dolaylı Alıntı",
         icon: Sparkles,
         className:
-          "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20",
-        textClassName: "text-blue-700 dark:text-blue-300",
+          "bg-info/10 text-info border-info/20",
+        textClassName: "text-info",
       };
     case "PERSONAL_NOTE":
       return {
         label: "Kişisel Not",
         icon: Bookmark,
         className:
-          "bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20",
-        textClassName: "text-purple-700 dark:text-purple-300",
+          "bg-warning/10 text-warning border-warning/20",
+        textClassName: "text-warning",
       };
     default:
       return {
@@ -129,20 +129,20 @@ export function CitationCard(props: CitationCardProps) {
   return (
     <Card
       onClick={() => onView(card)}
-      className="cursor-pointer rounded-md border border-border bg-card p-5 transition-all duration-200 hover:border-primary/50 flex flex-col justify-between backdrop-blur-sm group"
+      className="cursor-pointer rounded-md border border-border bg-card p-5 transition-all duration-200 hover:border-primary/20 flex flex-col justify-between group"
     >
       <CardHeader className="p-0 pb-3 mb-3 border-b border-border/40 flex-row items-start justify-between gap-2 space-y-0">
         {/* Left: Metadata rows (note type & topic box) */}
         <div className="flex flex-col gap-1 min-w-0 pt-0.5">
           <span
-            className={`flex items-center gap-1.5 text-xs font-medium whitespace-nowrap ${noteConfig.textClassName}`}
+            className={`flex items-center gap-2 text-xs font-medium whitespace-nowrap ${noteConfig.textClassName}`}
           >
             <NoteIcon className="h-3.5 w-3.5 shrink-0" />
             {noteConfig.label}
           </span>
 
           <span
-            className={`flex items-center gap-1.5 text-xs font-medium min-w-0 ${boxConfig.textClassName}`}
+            className={`flex items-center gap-2 text-xs font-medium min-w-0 ${boxConfig.textClassName}`}
             title={card.boxTitle}
           >
             <FolderInput className="h-3.5 w-3.5 shrink-0" />
@@ -184,14 +184,14 @@ export function CitationCard(props: CitationCardProps) {
         </div>
       </CardHeader>
       <CardContent className="p-0 my-2 flex-1">
-        <blockquote className="relative border-l-2 border-primary/40 pl-3 text-sm leading-relaxed text-foreground font-serif line-clamp-4">
+        <blockquote className="relative border-l-2 border-primary/20 pl-3 text-sm leading-relaxed text-foreground font-serif line-clamp-4">
           {card.content}
         </blockquote>
 
         {card.comment && (
-          <div className="mt-3 flex gap-2 rounded-md border border-border/40 border-l-2 border-l-primary/40 bg-muted/40 px-2.5 py-2">
-            <MessageSquareQuote className="h-3 w-3 text-primary/70 shrink-0 mt-0.5" />
-            <p className="text-[11px] text-foreground/75 leading-relaxed whitespace-pre-wrap line-clamp-3">
+          <div className="mt-3 flex gap-2 rounded-md border border-border/40 border-l-2 border-l-primary/20 bg-muted/20 px-3 py-2">
+            <MessageSquareQuote className="h-3 w-3 text-primary shrink-0 mt-0.5" />
+            <p className="text-[10px] text-foreground leading-relaxed whitespace-pre-wrap line-clamp-3">
               {card.comment}
             </p>
           </div>
@@ -211,8 +211,8 @@ export function CitationCard(props: CitationCardProps) {
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className="font-mono text-xs font-semibold text-foreground bg-muted border border-border px-2 py-0.5 rounded-md">
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="font-mono text-xs font-semibold text-foreground bg-muted border border-border px-2 py-1 rounded-md">
             {card.pageNumber}
           </span>
           <Button
@@ -223,7 +223,7 @@ export function CitationCard(props: CitationCardProps) {
             title="Atıf Metnini Kopyala"
           >
             {copied ? (
-              <Check className="h-3.5 w-3.5 text-emerald-500" />
+              <Check className="h-3.5 w-3.5 text-success" />
             ) : (
               <Copy className="h-3.5 w-3.5" />
             )}
@@ -277,7 +277,7 @@ function MoveBoxDropdown(props: MoveBoxDropdownProps) {
               e.stopPropagation();
               onMoveBox(card.id, box.id);
             }}
-            className="flex items-center justify-between text-xs cursor-pointer px-2.5 py-1.5"
+            className="flex items-center justify-between text-xs cursor-pointer px-3 py-2"
           >
             <span className="truncate">{box.title}</span>
             {box.id === card.boxId && (

@@ -77,7 +77,7 @@ export const SelectTrigger = React.forwardRef<
       type="button"
       onClick={() => ctx?.setOpen((prev) => !prev)}
       className={cn(
-        "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background/80 px-3 py-2 text-xs shadow-xs ring-offset-background placeholder:text-muted-foreground hover:border-primary/50 focus:outline-hidden focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 transition-colors text-left",
+        "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-xs shadow-xs ring-offset-background placeholder:text-muted-foreground hover:border-primary/20 focus:outline-hidden focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 transition-colors text-left",
         className,
       )}
       {...rest}

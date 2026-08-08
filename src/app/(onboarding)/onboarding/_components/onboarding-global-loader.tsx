@@ -40,7 +40,7 @@ export function OnboardingGlobalLoader() {
             return (
               <div
                 key={`${step.text}-${index}`}
-                className="flex-1 min-w-[140px] max-w-[200px] flex flex-col items-center gap-3"
+                className="flex-1 min-w-35 max-w-50 flex flex-col items-center gap-3"
               >
                 <div className="w-full h-2 rounded-full bg-border/40 overflow-hidden">
                   <div

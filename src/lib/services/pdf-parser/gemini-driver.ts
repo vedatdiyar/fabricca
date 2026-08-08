@@ -110,7 +110,7 @@ export async function parseBatchVision(
       const text = response.text;
       if (!text) {
         throw new Error(
-          `Gemini boş yanıt döndürdü. Sayfa aralığı: ${startPage}-${endPage}`,
+          `Gemini returned an empty response. Page range: ${startPage}-${endPage}`,
         );
       }
 

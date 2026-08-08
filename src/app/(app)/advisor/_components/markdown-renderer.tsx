@@ -9,7 +9,7 @@ import type { RagSearchResultItem } from "@/lib/services/rag-search";
 
 /** Tailwind classes for clickable citation badges. */
 const CITATION_BADGE_CLASS =
-  "inline-flex items-center gap-0.5 bg-primary/10 text-primary border border-primary/20 rounded-full px-2 py-0.5 text-xs font-medium cursor-pointer hover:bg-primary/20 transition-colors select-none";
+  "inline-flex items-center gap-1 bg-primary/10 text-primary border border-primary/20 rounded-full px-2 py-1 text-xs font-medium cursor-pointer hover:bg-primary/20 transition-colors select-none";
 
 const CITATION_ATTR = "data-source-index";
 
@@ -212,7 +212,7 @@ const components: Components = {
     const isBlock = className?.includes("language-");
     if (isBlock) {
       return (
-        <pre className="bg-muted/60 border border-border/50 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre my-2">
+        <pre className="bg-muted/20 border border-border/40 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre my-2">
           <code className={className} {...props}>
             {children}
           </code>
@@ -221,7 +221,7 @@ const components: Components = {
     }
     return (
       <code
-        className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono text-primary"
+        className="bg-muted px-2 py-1 rounded text-xs font-mono text-primary"
         {...props}
       >
         {children}
@@ -233,7 +233,7 @@ const components: Components = {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-primary underline underline-offset-2 hover:text-primary/80"
+      className="text-primary underline underline-offset-2 transition-colors"
       {...props}
     >
       {children}
@@ -241,7 +241,7 @@ const components: Components = {
   ),
   blockquote: ({ children, ...props }) => (
     <blockquote
-      className="border-l-2 border-primary/40 pl-3 italic text-muted-foreground my-3"
+      className="border-l-2 border-primary/20 pl-3 italic text-muted-foreground my-3"
       {...props}
     >
       {children}
@@ -255,7 +255,7 @@ const components: Components = {
     </div>
   ),
   thead: ({ children, ...props }) => (
-    <thead className="bg-muted/40" {...props}>
+    <thead className="bg-muted/20" {...props}>
       {children}
     </thead>
   ),

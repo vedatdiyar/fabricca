@@ -8,8 +8,8 @@ export const SESSION_COOKIE_NAME = "fabricca_session";
 
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
-/** Error message shown when the session is not found. */
-export const SESSION_ERROR_MSG = "Session not found. Please log in again.";
+/** User-facing error message shown when the session is not found. */
+export const SESSION_ERROR_MSG = "Oturum bulunamadı. Lütfen tekrar giriş yapın.";
 
 export type SessionUser = {
   userId: number;

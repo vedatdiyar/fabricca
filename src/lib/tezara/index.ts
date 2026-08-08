@@ -1,9 +1,8 @@
 import type { Logger } from "../logger";
 import type { TezaraThesisDetails } from "../types";
 
-const MEILI_URL = "https://meili.tezara.org";
-const MEILI_KEY =
-  "70e96aa1342ee1ab1ce3d6e2f40e290252ea702f1def87f4071834d034f54831";
+const MEILI_URL = process.env.TEZARA_MEILI_URL ?? "";
+const MEILI_KEY = process.env.TEZARA_MEILI_KEY ?? "";
 
 /** Additional Meilisearch search parameters for precision tuning. */
 export interface MeiliSearchParams {
@@ -64,6 +63,12 @@ async function meiliSearch(
   logger?: Logger,
   step?: string,
 ): Promise<{ hits: Record<string, unknown>[] } | null> {
+  if (!MEILI_URL || !MEILI_KEY) {
+    throw new Error(
+      "TEZARA_MEILI_URL and TEZARA_MEILI_KEY environment variables are not defined.",
+    );
+  }
+
   const startTime = performance.now();
   const timeoutMs = 30_000;
   const controller = new AbortController();

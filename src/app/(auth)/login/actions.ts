@@ -72,7 +72,7 @@ export async function loginAction(
     const msg = parsed.error.issues[0]?.message ?? "Geçersiz giriş bilgileri.";
     log.info("login_failed", {
       service: "auth",
-      data: { reason: "Validasyon hatası" },
+      data: { reason: "validation_failure" },
     });
     return { error: msg };
   }
@@ -80,7 +80,7 @@ export async function loginAction(
   if (!checkRateLimit(parsed.data.email)) {
     log.info("login_failed", {
       service: "auth",
-      data: { reason: "Rate limit aşıldı" },
+      data: { reason: "rate_limit_exceeded" },
     });
     return {
       error:
@@ -102,7 +102,7 @@ export async function loginAction(
     if (!user) {
       log.info("login_failed", {
         service: "auth",
-        data: { reason: "Kullanıcı bulunamadı" },
+        data: { reason: "user_not_found" },
       });
       return { error: "E-posta veya şifre hatalı." };
     }
@@ -112,7 +112,7 @@ export async function loginAction(
     if (!passwordMatch) {
       log.info("login_failed", {
         service: "auth",
-        data: { reason: "Şifre eşleşmedi" },
+        data: { reason: "password_mismatch" },
       });
       return { error: "E-posta veya şifre hatalı." };
     }
@@ -141,7 +141,7 @@ export async function loginAction(
   } catch {
     log.info("login_failed", {
       service: "auth",
-      data: { reason: "Sunucu hatası" },
+      data: { reason: "server_error" },
     });
     return { error: "Bir hata oluştu. Lütfen tekrar deneyin." };
   }

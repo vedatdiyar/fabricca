@@ -175,7 +175,7 @@ function EditResourceForm({
   };
 
   return (
-    <Card className="max-w-xl w-full border border-border bg-card shadow-2xl rounded-xl overflow-hidden max-h-[90vh] flex flex-col">
+    <Card className="max-w-xl w-full border border-border bg-card rounded-md overflow-hidden max-h-[85vh] flex flex-col">
       <div className="flex items-center justify-between border-b border-border p-5 bg-muted/20">
         <div className="flex items-center gap-2">
           <div className="p-2 rounded-lg bg-primary/10 text-primary">
@@ -284,8 +284,8 @@ function EditResourceForm({
         </div>
 
         {parentBoxes.length > 0 && (
-          <div className="space-y-3 pt-2 border-t border-border/60">
-            <div className="flex items-center gap-1.5">
+          <div className="space-y-3 pt-2 border-t border-border/40">
+            <div className="flex items-center gap-2">
               <Sparkles className="h-3.5 w-3.5 text-primary" />
               <Label className="text-xs font-semibold text-foreground">
                 Bağlı Konu Kutusu (Box)
@@ -302,8 +302,8 @@ function EditResourceForm({
                     onClick={() => handleParentChange(parent.id)}
                     className={
                       isSelected
-                        ? "p-2.5 rounded-lg border-2 border-primary bg-primary/5 text-left text-xs font-semibold text-foreground shadow-sm transition-all"
-                        : "p-2.5 rounded-lg border border-border/60 bg-background hover:bg-muted/40 text-left text-xs font-normal text-muted-foreground transition-all"
+                        ? "p-2 rounded-md border-2 border-primary bg-primary/10 text-left text-xs font-semibold text-foreground transition-all"
+                        : "p-2 rounded-md border border-border/40 bg-background hover:bg-muted/20 text-left text-xs font-normal text-muted-foreground transition-all"
                     }
                   >
                     {parent.title}

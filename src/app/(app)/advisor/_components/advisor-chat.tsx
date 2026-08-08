@@ -90,11 +90,11 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
       <div className="flex-1 flex flex-col min-h-0 min-w-0">
         {/* Chat Window */}
         <div
-          className={`flex-1 min-h-0 p-4 sm:p-6 bg-card/40 border border-border/40 rounded-2xl space-y-6 shadow-inner ${messages.length > 0 ? "overflow-y-auto" : "overflow-hidden"}`}
+          className={`flex-1 min-h-0 p-4 sm:p-6 bg-card border border-border/40 rounded-md space-y-6 ${messages.length > 0 ? "overflow-y-auto" : "overflow-hidden"}`}
         >
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-12 text-center space-y-5">
-              <div className="p-4 bg-primary/10 rounded-2xl text-primary">
+              <div className="p-4 bg-primary/10 rounded-md text-primary">
                 <Image
                   src="/logo.svg"
                   alt="Fabricca"
@@ -137,10 +137,10 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
                     className={`space-y-2 ${isUser ? "items-end max-w-3xl" : "items-start flex-1 max-w-4xl"}`}
                   >
                     <div
-                      className={`p-4 rounded-2xl text-sm leading-relaxed ${
+                      className={`p-4 rounded-md text-sm leading-relaxed ${
                         isUser
                           ? "bg-primary/10 border border-primary/20 text-foreground rounded-tr-none"
-                          : "bg-card border border-border/60 text-card-foreground rounded-tl-none shadow-sm"
+                          : "bg-card border border-border/40 text-card-foreground rounded-tl-none"
                       }`}
                     >
                       {isUser ? (
@@ -179,7 +179,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
                         >
                           {copiedMessageId === msg.id ? (
                             <Check
-                              className={`w-3.5 h-3.5 ${isUser ? "text-primary" : "text-emerald-500"}`}
+                              className={`w-3.5 h-3.5 ${isUser ? "text-primary" : "text-success"}`}
                             />
                           ) : (
                             <Copy className="w-3.5 h-3.5" />
@@ -212,7 +212,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
                 <Image src="/logo.svg" alt="Fabricca" width={20} height={20} />
               </div>
               <div className="space-y-2 items-start flex-1 max-w-4xl">
-                <div className="p-4 rounded-2xl text-sm leading-relaxed bg-card border border-border/60 text-card-foreground rounded-tl-none shadow-sm">
+                <div className="p-4 rounded-md text-sm leading-relaxed bg-card border border-border/40 text-card-foreground rounded-tl-none">
                   {streamingText && (
                     <MarkdownRenderer
                       content={streamingText}
@@ -244,7 +244,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
               <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 animate-spin">
                 <Sparkles className="w-4 h-4" />
               </div>
-              <div className="flex items-center space-x-2 bg-card border border-border/60 p-3 rounded-2xl shadow-sm">
+              <div className="flex items-center space-x-2 bg-card border border-border/40 p-3 rounded-md">
                 <span className="font-medium">
                   Akademik danışmanınız yanıt hazırlıyor...
                 </span>
@@ -256,7 +256,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
         </div>
 
         {/* Input Box */}
-        <div className="mt-4 p-2 bg-card border border-border/60 rounded-2xl shadow-md flex items-end space-x-2">
+        <div className="mt-4 p-2 bg-card border border-border/40 rounded-lg flex items-end space-x-2">
           <textarea
             ref={textareaRef}
             value={inputQuery}
@@ -269,13 +269,13 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
             }}
             placeholder="Akademik danışmanınıza kütüphaneniz veya tez yapınızla ilgili bir soru sorun..."
             rows={1}
-            className="flex-1 p-3 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none resize-none overflow-y-auto max-h-[200px] min-h-[44px]"
+            className="flex-1 p-3 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none resize-none overflow-y-auto max-h-50 min-h-11"
           />
 
           <button
             onClick={() => handleSend()}
             disabled={isLoading || !inputQuery.trim()}
-            className="p-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow"
+            className="p-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             <Send className="w-4 h-4" />
           </button>

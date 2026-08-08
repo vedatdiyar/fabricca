@@ -47,7 +47,7 @@ export function ResourceHeader({
             <Badge
               variant="outline"
               className={cn(
-                "max-w-full text-[11px] px-1.5 py-0.5 border font-medium",
+                "max-w-full text-[11px] px-2 py-1 border font-medium",
                 boxBadge.className,
               )}
             >
@@ -56,13 +56,13 @@ export function ResourceHeader({
           )}
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={onOpenEditModal}
             title="Künyeyi Düzenle"
-            className="h-8 gap-1.5 text-[11px] font-medium border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted"
+            className="h-8 gap-2 text-[11px] font-medium border-border/40 text-muted-foreground hover:text-foreground hover:bg-muted"
           >
             <Pencil className="h-3.5 w-3.5 text-primary" />
             <span>Künyeyi Düzenle</span>
@@ -75,12 +75,12 @@ export function ResourceHeader({
             title={
               resource.isRead ? "Okunacak Yap" : "Okundu Olarak İşaretle"
             }
-            className="h-8 gap-1.5 text-[11px] font-medium border-border/80"
+            className="h-8 gap-2 text-[11px] font-medium border-border/40"
           >
             {resource.isRead ? (
               <>
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+                <span className="text-success font-semibold">
                   Okundu
                 </span>
               </>
@@ -100,7 +100,7 @@ export function ResourceHeader({
               size="sm"
               onClick={onDeletePdfClick}
               title="PDF'i Sil"
-              className="h-8 w-8 p-0 border-border/80 text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30"
+              className="h-8 w-8 p-0 border-border/40 text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/20"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
@@ -112,7 +112,7 @@ export function ResourceHeader({
         {resource.title}
       </h2>
 
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground pt-1">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground pt-2">
         <div className="flex items-center gap-1">
           <span className="font-medium text-foreground">Yazarlar:</span>
           <span>{resource.authors.join(", ")}</span>
@@ -149,8 +149,8 @@ export function ResourceHeader({
             <span className="text-muted-foreground font-bold select-none">
               •
             </span>
-            <div className="flex items-center gap-1.5">
-              <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-success">
                 PDF Yüklendi
               </span>
             </div>

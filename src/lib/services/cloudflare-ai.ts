@@ -47,7 +47,7 @@ export async function generateCloudflareEmbeddings(
       },
     });
     throw new Error(
-      "Cloudflare AI API anahtarları (CLOUDFLARE_ACCOUNT_ID veya CLOUDFLARE_API_TOKEN) .env.local dosyasında eksik.",
+      "CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN environment variables are not defined.",
     );
   }
 

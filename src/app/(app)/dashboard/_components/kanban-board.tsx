@@ -74,7 +74,7 @@ const KanbanCard = memo(function KanbanCard({
       draggable="true"
       onDragStart={(e) => onDragStart(e, task.id)}
       onDragEnd={onDragEnd}
-      className="group rounded-md border border-border bg-card text-card-foreground p-4 transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:relative hover:z-50 cursor-grab active:cursor-grabbing"
+      className="group rounded-md border border-border bg-card text-card-foreground p-4 transition-all duration-200 hover:-translate-y-1 hover:border-primary/20 hover:relative hover:z-50 cursor-grab active:cursor-grabbing"
     >
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
@@ -128,10 +128,10 @@ const KanbanCard = memo(function KanbanCard({
               </p>
             )}
             {task.boxTitle && (
-              <div className="pt-1.5">
+              <div className="pt-2">
                 <Badge
                   variant="outline"
-                  className="text-[10px] font-medium px-2 py-0 border-primary/20 bg-primary/5 text-primary rounded-md"
+                  className="text-[10px] font-medium px-2 py-1 border-primary/20 bg-primary/10 text-primary rounded-md"
                 >
                   {task.boxTitle}
                 </Badge>
@@ -258,10 +258,10 @@ export function KanbanBoard({
               onDragEnter={(e) => handleDragEnter(e, col.id)}
               onDrop={(e) => handleDrop(e, col.id)}
               className={cn(
-                "flex flex-col gap-4 rounded-md border p-4 min-h-[500px] transition-all duration-200",
+                "flex flex-col gap-4 rounded-md border p-4 min-h-125 transition-all duration-200",
                 isDragActive
-                  ? "border-primary/60 bg-secondary/35 scale-[1.01]"
-                  : "border-border/40 bg-background/40",
+                  ? "border-primary/20 bg-secondary/20 scale-[1.01]"
+                  : "border-border/40 bg-background/20",
               )}
             >
               {/* Column Header */}
@@ -274,7 +274,7 @@ export function KanbanBoard({
                 </div>
                 <Badge
                   variant="secondary"
-                  className="bg-secondary text-secondary-foreground font-sans text-xs px-2 py-0.5 rounded-md"
+                  className="bg-secondary text-secondary-foreground font-sans text-xs px-2 py-1 rounded-md"
                 >
                   {colTasks.length}
                 </Badge>
@@ -309,7 +309,7 @@ export function KanbanBoard({
                           className={cn(
                             "flex flex-col gap-3 transition-all duration-300 ease-in-out overflow-hidden",
                             showAllDone
-                              ? "max-h-[2000px] opacity-100 mt-1"
+                              ? "max-h-max opacity-100 mt-1"
                               : "max-h-0 opacity-0 pointer-events-none",
                           )}
                         >
@@ -328,7 +328,7 @@ export function KanbanBoard({
                         <Button
                           variant="outline"
                           onClick={() => setShowAllDone(!showAllDone)}
-                          className="w-full mt-2 border-dashed border-border/40 text-muted-foreground hover:text-foreground text-xs font-sans rounded-md py-2 flex items-center justify-center gap-1.5"
+                          className="w-full mt-2 border-dashed border-border/40 text-muted-foreground hover:text-foreground text-xs font-sans rounded-md py-2 flex items-center justify-center gap-2"
                         >
                           {showAllDone ? (
                             <>

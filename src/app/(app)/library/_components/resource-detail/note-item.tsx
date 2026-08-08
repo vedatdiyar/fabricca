@@ -23,17 +23,17 @@ export function getNoteTypeBadgeConfig(noteType: NoteType) {
     case "DIRECT_QUOTE":
       return {
         label: "Doğrudan Alıntı",
-        className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+        className: "bg-success/10 text-success border-success/20",
       };
     case "PARAPHRASE":
       return {
         label: "Dolaylı Alıntı",
-        className: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+        className: "bg-warning/10 text-warning border-warning/20",
       };
     case "PERSONAL_NOTE":
       return {
         label: "Kişisel Not",
-        className: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+        className: "bg-info/10 text-info border-info/20",
       };
   }
 }
@@ -50,13 +50,13 @@ export function NoteItem({ note, onDeleteNoteClick }: NoteItemProps) {
   const noteBadge = getNoteTypeBadgeConfig(note.noteType);
 
   return (
-    <Card className="border border-border bg-background transition-all hover:border-primary/40">
+    <Card className="border border-border bg-background transition-all hover:border-primary/20">
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
           <div className="flex items-center gap-2">
             <Badge
               variant="secondary"
-              className="font-mono text-xs font-semibold bg-muted text-foreground border border-border/60"
+              className="font-mono text-xs font-semibold bg-muted text-foreground border border-border/40"
             >
               {note.pageNumber}
             </Badge>
@@ -68,7 +68,7 @@ export function NoteItem({ note, onDeleteNoteClick }: NoteItemProps) {
             </Badge>
           </div>
 
-          <span className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+          <span className="flex items-center gap-2 text-[10px] text-success font-medium">
             <BookmarkCheck className="h-3.5 w-3.5" /> {"Alıntı Fişi"}
           </span>
         </div>
@@ -78,13 +78,13 @@ export function NoteItem({ note, onDeleteNoteClick }: NoteItemProps) {
         </p>
 
         {note.comment && (
-          <div className="flex gap-2 rounded-md border border-border/40 border-l-2 border-l-primary/40 bg-muted/40 px-3 py-2.5">
-            <MessageSquareQuote className="h-3.5 w-3.5 text-primary/70 shrink-0 mt-0.5" />
+          <div className="flex gap-2 rounded-md border border-border/40 border-l-2 border-l-primary/20 bg-muted/20 px-3 py-2">
+            <MessageSquareQuote className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
             <div className="space-y-1 min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Kişisel Yorum / Şerh
               </p>
-              <p className="text-xs text-foreground/80 leading-relaxed whitespace-pre-wrap">
+              <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">
                 {note.comment}
               </p>
             </div>

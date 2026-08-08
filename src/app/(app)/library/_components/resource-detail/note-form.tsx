@@ -141,8 +141,8 @@ export function NoteForm({ resourceId, onAddNote }: NoteFormProps) {
           </div>
 
           <div className="space-y-1">
-            <div className="flex items-center gap-1.5">
-              <MessageSquareQuote className="h-3.5 w-3.5 text-primary/70" />
+            <div className="flex items-center gap-2">
+              <MessageSquareQuote className="h-3.5 w-3.5 text-primary" />
               <Label className="text-xs text-foreground font-medium">
                 Düşünce / Şerh
               </Label>
@@ -189,8 +189,8 @@ export function NoteForm({ resourceId, onAddNote }: NoteFormProps) {
                       onClick={() => setNoteType(type)}
                       className={
                         isActive
-                          ? "px-2 py-1 text-xs font-semibold rounded bg-background text-foreground shadow-sm border border-border/60"
-                          : "px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                          ? "px-2 py-2 text-xs font-semibold rounded bg-background text-foreground border border-border/40"
+                          : "px-2 py-2 text-xs text-muted-foreground hover:text-foreground"
                       }
                     >
                       {badgeInfo.label}

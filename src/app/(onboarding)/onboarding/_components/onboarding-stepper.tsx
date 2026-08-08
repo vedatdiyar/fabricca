@@ -84,7 +84,7 @@ export function OnboardingStepper({
                     isActive &&
                       "bg-primary text-primary-foreground border-primary scale-110 ring-4 ring-primary/10",
                     isCompleted &&
-                      "border-primary/20 text-primary bg-primary/5",
+                      "border-primary/20 text-primary bg-primary/10",
                     !isActive &&
                       !isCompleted &&
                       "border-border text-muted-foreground",

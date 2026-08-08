@@ -47,9 +47,12 @@ function ArchiveEntryForm({
 
   return (
     <div className="space-y-3 border border-dashed border-border rounded-md bg-card/20 p-4">
+      <p className="text-xs text-muted-foreground">
+        Bu arşiv kutusu altına spesifik belge veya dergi sayılarını (ör. <em>Sayı 3</em>, <em>1994 Tüzük Metni</em>) ekleyebilirsiniz. PDF dosyalarını onboarding sonrasında Kütüphane ekranından yükleyebilirsiniz.
+      </p>
       <div className="flex gap-2">
         <Input
-          placeholder="Kaynak / belge / mülakat adı veya referansı"
+          placeholder="Örn: Serxwebûn Sayı 3 veya HADEP 1994 Tüzüğü"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className="flex-1"
@@ -309,7 +312,7 @@ function SubBoxDone({
                   </p>
                 )}
                 {sub.concepts && sub.concepts.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
+                  <div className="flex flex-wrap gap-2 pt-1">
                     {sub.concepts.map((concept, cIdx) => (
                       <span
                         key={`${concept}-${cIdx}`}

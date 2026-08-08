@@ -2,30 +2,25 @@ import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 
 /**
- * Drops all application tables and enums to reset the database schema.
+ * Drops the entire public schema (CASCADE) and recreates it empty, removing all
+ * application tables, enums, and indexes in a single deterministic operation.
+ * This supersedes any table-by-table reset because it stays correct regardless
+ * of how the schema evolves over time.
  *
  * @returns A promise that resolves when the reset operation finishes.
  */
 async function reset() {
-  console.log("🗑️  Dropping all tables...");
+  console.log("🗑️  Dropping public schema (CASCADE)...");
 
   const { db } = await import("./index");
 
-  await db.execute(`DROP TABLE IF EXISTS tasks CASCADE`);
-  await db.execute(`DROP TABLE IF EXISTS notes CASCADE`);
-  await db.execute(`DROP TABLE IF EXISTS chunks CASCADE`);
-  await db.execute(`DROP TABLE IF EXISTS sources CASCADE`);
-  await db.execute(`DROP TABLE IF EXISTS boxes CASCADE`);
-  await db.execute(`DROP TABLE IF EXISTS positioning CASCADE`);
-  await db.execute(`DROP TABLE IF EXISTS matrices CASCADE`);
-  await db.execute(`DROP TABLE IF EXISTS users CASCADE`);
+  await db.execute(`DROP SCHEMA IF EXISTS public CASCADE`);
+  await db.execute(`CREATE SCHEMA public`);
+  await db.execute(`CREATE EXTENSION IF NOT EXISTS vector`);
 
-  await db.execute(`DROP TYPE IF EXISTS task_status CASCADE`);
-  await db.execute(`DROP TYPE IF EXISTS task_priority CASCADE`);
-  await db.execute(`DROP TYPE IF EXISTS box_type_enum CASCADE`);
-  await db.execute(`DROP TYPE IF EXISTS positioning_global_status CASCADE`);
-
-  console.log("✅ All tables dropped. Ready for drizzle-kit push.");
+  console.log(
+    "✅ Schema reset complete. Run `npm run db:push` then `npm run db:seed`.",
+  );
 }
 
 reset().catch((err) => {

@@ -2,7 +2,7 @@ import {
   generateStructuredContent,
   type JsonSchema,
 } from "@/lib/services/gemini";
-import { FLASH_LITE_31, GEMINI_SEED } from "@/lib/constants";
+import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 import { buildJurySystemInstruction, buildJuryUserPrompt } from "@/lib/prompts";
 import { ThinkingLevel, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { Logger } from "@/lib/logger";
@@ -160,8 +160,8 @@ export async function evaluateSingleBoxJury(
 
   const raw = await generateStructuredContent<{
     evaluations: JuryEvaluation[];
-  }>(FLASH_LITE_31, systemInstruction, prompt, juryJsonSchema, logger, {
-    thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+  }>(FLASH_LITE_35, systemInstruction, prompt, juryJsonSchema, logger, {
+    thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
     zodSchema: singleBoxJuryOutputSchema,
     seed: GEMINI_SEED,
     safetySettings: [

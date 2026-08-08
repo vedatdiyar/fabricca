@@ -76,7 +76,7 @@ export function PdfUploadDropzone({
         onDragLeave={() => setIsDragOver(false)}
         onDrop={handleDrop}
         className={`flex flex-col items-center justify-center p-8 text-center transition-all ${
-          isDragOver ? "bg-accent/60 border-primary" : ""
+          isDragOver ? "bg-accent/20 border-primary/20" : ""
         }`}
       >
         <input
@@ -124,7 +124,7 @@ export function PdfUploadDropzone({
             </div>
 
             {pdfStatus === "FAILED" && (
-              <div className="flex items-center gap-1.5 text-xs text-destructive bg-destructive/10 p-2 rounded-md border border-destructive/20">
+              <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 p-2 rounded-md border border-destructive/20">
                 <AlertCircle className="h-4 w-4" />
                 <span>
                   Son yükleme denemesi başarısız oldu. Lütfen tekrar deneyiniz.

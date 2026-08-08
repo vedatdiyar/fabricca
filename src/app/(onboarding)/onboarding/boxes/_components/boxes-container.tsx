@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { AIBanner } from "@/components/ai-banner";
+import { LoadingSpinner } from "@/components/loading-spinner";
 import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
 import { fetchBoxesWithFullShape } from "../../_services/fetch-actions";
 import { BOX_ORDER_WEIGHT, BOX_TYPE_LABELS } from "@/lib/box-constants";
@@ -72,11 +73,7 @@ export function BoxesContainer() {
   }, [boxes]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[40vh]">
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-      </div>
-    );
+    return <LoadingSpinner variant="card" />;
   }
 
   return (
@@ -140,7 +137,7 @@ const FoundationalQueryCard = memo(function FoundationalQueryCard({
   const displayYear = isDummy ? "" : ` (${query.publicationYear})`;
 
   return (
-    <div className="p-2.5 rounded bg-background/60 border border-border/60 text-xs text-muted-foreground leading-relaxed space-y-1">
+    <div className="p-3 rounded bg-background/20 border border-border/40 text-xs text-muted-foreground leading-relaxed space-y-1">
       <div className="text-foreground font-semibold font-serif line-clamp-2 break-words hyphens-auto">
         {displayTitle}
       </div>
@@ -170,11 +167,11 @@ const SubBoxSection = memo(function SubBoxSection({
         <Library className="w-3.5 h-3.5 text-primary" />
         Alt Konu Kutuları
       </h4>
-      <div className="relative border-l border-primary/20 pl-4 ml-2.5 space-y-4 mt-2">
+      <div className="relative border-l border-primary/20 pl-4 ml-3 space-y-4 mt-2">
         {subBoxes.map((subBox, sbIdx) => (
           <div key={`${subBox.title}-${sbIdx}`} className="relative">
             <span className="absolute -left-[21.5px] top-[21px] h-2.5 w-2.5 rounded-full border-2 border-primary bg-background" />
-            <div className="p-4 rounded-md border border-border bg-card/40 hover:bg-card/75 hover:border-primary/20 transition-all duration-200 space-y-2">
+            <div className="p-4 rounded-md border border-border bg-card hover:border-primary/20 transition-all duration-200 space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <h5 className="font-serif text-sm font-semibold text-foreground leading-snug line-clamp-2 break-words hyphens-auto">
                   {subBox.title}
@@ -186,7 +183,7 @@ const SubBoxSection = memo(function SubBoxSection({
                 </p>
               )}
               {subBox.concepts && subBox.concepts.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pt-1">
+                <div className="flex flex-wrap gap-2 pt-1">
                   {subBox.concepts.map((concept, cIdx) => (
                     <span
                       key={`${concept}-${cIdx}`}
@@ -200,7 +197,7 @@ const SubBoxSection = memo(function SubBoxSection({
               {subBox.foundationalQueries &&
                 subBox.foundationalQueries.length > 0 && (
                   <div className="pt-3 mt-3 border-t border-border/40 space-y-2">
-                    <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    <div className="flex items-center gap-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                       <FileText className="w-3.5 h-3.5 text-primary" />
                       <span>Temel Akademik Kaynak</span>
                     </div>
@@ -269,12 +266,12 @@ const BoxCard = memo(function BoxCard({
         <div className="flex items-center gap-2 text-muted-foreground text-xs">
           <PlusCircle className="w-3 h-3" />
           <span>Kutu {index + 1}</span>
-          <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-secondary text-secondary-foreground border border-border/40">
+          <span className="ml-auto inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-secondary text-secondary-foreground border border-border/40">
             {BOX_TYPE_LABELS[box.boxType]}
           </span>
         </div>
         <div className="flex items-start gap-3">
-          <span className="relative mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-primary" />
+          <span className="relative mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-primary" />
           <CardTitle className="text-lg font-semibold text-foreground leading-snug line-clamp-2 break-words hyphens-auto">
             {box.title}
           </CardTitle>

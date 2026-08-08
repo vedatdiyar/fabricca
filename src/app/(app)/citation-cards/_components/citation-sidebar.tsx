@@ -109,7 +109,7 @@ export function CitationSidebar(props: CitationSidebarProps) {
             Alıntı Fişleri
           </h3>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <Badge
             variant="outline"
             className="text-xs font-medium text-muted-foreground border-border"
@@ -151,12 +151,12 @@ export function CitationSidebar(props: CitationSidebarProps) {
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                "w-full text-center py-1 text-[10px] font-medium rounded transition-all truncate px-0.5",
-                isActive
-                  ? "bg-background text-foreground font-semibold border border-border/60"
-                  : "text-muted-foreground hover:text-foreground hover:bg-background/50",
-              )}
+className={cn(
+                  "w-full text-center py-1 text-[10px] font-medium rounded transition-all truncate px-1",
+                  isActive
+                    ? "bg-background text-foreground font-semibold border border-border/40"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background/20",
+                )}
             >
               {tab.label}
             </button>
@@ -193,15 +193,15 @@ export function CitationSidebar(props: CitationSidebarProps) {
                       onSelectSource(null);
                     }}
                     className={cn(
-                      "cursor-pointer transition-all border p-2 text-left hover:border-primary/40",
+                      "cursor-pointer transition-all border p-2 text-left hover:border-primary/20",
                       isSelected
-                        ? "bg-accent/80 border-primary/60"
-                        : "bg-background border-border hover:bg-accent/30",
+                        ? "bg-accent/20 border-primary/20"
+                        : "bg-background border-border hover:bg-accent/20",
                     )}
                   >
                     <CardContent className="p-0 space-y-1">
                       <div className="flex items-center justify-between gap-1 min-w-0">
-                        <div className="flex items-center gap-1.5 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0">
                           <span
                             className={cn(
                               "h-2 w-2 rounded-full shrink-0",
@@ -212,7 +212,7 @@ export function CitationSidebar(props: CitationSidebarProps) {
                             {boxConfig.label}
                           </span>
                         </div>
-                        <span className="inline-flex items-center rounded-md border border-border bg-muted/60 px-1.5 py-0 text-[10px] font-mono text-muted-foreground shrink-0">
+                        <span className="inline-flex items-center rounded-md border border-border bg-muted/20 px-2 py-0 text-[10px] font-mono text-muted-foreground shrink-0">
                           {boxCardCount}
                         </span>
                       </div>
@@ -247,7 +247,7 @@ export function CitationSidebar(props: CitationSidebarProps) {
             </div>
 
             {filteredSources.length === 0 ? (
-              <div className="px-2 py-3 text-center text-xs text-muted-foreground italic bg-muted/30 rounded-md border border-border/40">
+              <div className="px-2 py-3 text-center text-xs text-muted-foreground italic bg-muted/20 rounded-md border border-border/40">
                 Kaynak bulunamadı.
               </div>
             ) : (
@@ -268,7 +268,7 @@ export function CitationSidebar(props: CitationSidebarProps) {
                       "w-full text-left p-2 rounded-md text-xs flex items-center justify-between gap-2 transition-all min-w-0 border",
                       isSourceSelected
                         ? "bg-primary/10 text-primary font-medium border-primary/20"
-                        : "bg-background border-border text-muted-foreground hover:bg-accent/40 hover:text-foreground",
+                        : "bg-background border-border text-muted-foreground hover:bg-accent/20 hover:text-foreground",
                     )}
                   >
                     <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -280,7 +280,7 @@ export function CitationSidebar(props: CitationSidebarProps) {
                         {source.title}
                       </span>
                     </div>
-                    <span className="inline-flex items-center rounded-md border border-border bg-muted/60 px-1.5 py-0 text-[10px] font-mono text-muted-foreground shrink-0">
+                    <span className="inline-flex items-center rounded-md border border-border bg-muted/20 px-2 py-0 text-[10px] font-mono text-muted-foreground shrink-0">
                       {sourceCardCount}
                     </span>
                   </button>

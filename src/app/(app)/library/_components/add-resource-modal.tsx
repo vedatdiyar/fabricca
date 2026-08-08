@@ -168,7 +168,7 @@ export function AddResourceModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 animate-in fade-in-0 duration-200">
-      <div className="relative w-full max-w-2xl rounded-md border border-border bg-background p-6 shadow-lg space-y-4">
+      <div className="relative w-full max-w-2xl rounded-lg border border-border bg-background p-6 space-y-4">
         <div className="flex items-center justify-between border-b border-border pb-4">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-md bg-primary/10 border border-primary/20 text-primary">
@@ -201,16 +201,16 @@ export function AddResourceModal({
                 Kutular yükleniyor...
               </div>
             ) : hierarchyError ? (
-              <div className="flex items-center gap-2 p-3 rounded-md bg-muted/40 border border-border text-xs text-muted-foreground">
+              <div className="flex items-center gap-2 p-3 rounded-md bg-muted/20 border border-border text-xs text-muted-foreground">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 {hierarchyError}
               </div>
             ) : parentBoxes.length === 0 ? (
-              <div className="flex items-center gap-2 p-3 rounded-md bg-muted/40 border border-border text-xs text-muted-foreground">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                Henüz tanımlı bir konu kutunuz bulunmuyor. Lütfen onboarding
-                adımlarını tamamlayın.
-              </div>
+              <div className="flex items-center gap-2 p-3 rounded-md bg-muted/20 border border-border text-xs text-muted-foreground">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      Henüz tanımlı bir konu kutunuz bulunmuyor. Lütfen onboarding
+                      adımlarını tamamlayın.
+                    </div>
             ) : (
               <div className="grid grid-cols-2 gap-2 pt-1">
                 {parentBoxes.map((parent) => (
@@ -221,7 +221,7 @@ export function AddResourceModal({
                     onClick={() => handleParentChange(parent.id)}
                     className={
                       selectedParentId === parent.id
-                        ? "px-3 py-2 text-xs font-semibold rounded-md border border-primary/60 bg-accent text-foreground shadow-sm text-left"
+                        ? "px-3 py-2 text-xs font-semibold rounded-md border border-primary/20 bg-accent/20 text-foreground text-left"
                         : "px-3 py-2 text-xs font-medium rounded-md border border-border bg-background text-muted-foreground hover:bg-muted text-left"
                     }
                   >
@@ -246,7 +246,7 @@ export function AddResourceModal({
                     onClick={() => setSelectedSubBoxId(child.id)}
                     className={
                       selectedSubBoxId === child.id
-                        ? "px-3 py-2 text-xs font-semibold rounded-md border border-primary/60 bg-accent text-foreground shadow-sm text-left"
+                        ? "px-3 py-2 text-xs font-semibold rounded-md border border-primary/20 bg-accent/20 text-foreground text-left"
                         : "px-3 py-2 text-xs font-medium rounded-md border border-border bg-background text-muted-foreground hover:bg-muted text-left"
                     }
                   >
@@ -270,7 +270,7 @@ export function AddResourceModal({
                 onDragLeave={() => setIsDragOver(false)}
                 onDrop={handleDrop}
                 className={`flex flex-col items-center justify-center p-6 text-center transition-all ${
-                  isDragOver ? "bg-accent/60 border-primary" : ""
+                  isDragOver ? "bg-accent/20 border-primary" : ""
                 }`}
               >
                 <input
@@ -301,7 +301,7 @@ export function AddResourceModal({
                   </div>
                 ) : selectedFile ? (
                   <div className="flex flex-col items-center space-y-2 py-1">
-                    <div className="p-3 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600">
+                    <div className="p-3 rounded-full bg-success/10 border border-success/20 text-success">
                       <FileText className="h-7 w-7" />
                     </div>
                     <div className="space-y-0.5">

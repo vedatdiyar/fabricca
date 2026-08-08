@@ -36,7 +36,7 @@ export type { PdfBatchMetric, PdfParseOptions, PdfChunkParseResult };
 const BATCH_SIZE = 5;
 
 /**
- * Parses a PDF document into structured page-level markdown, metadata, and references via Gemini 3.1 Flash-Lite.
+ * Parses a PDF document into structured page-level markdown, metadata, and references via Gemini 3.5 Flash-Lite.
  *
  * @param pdfBuffer - Raw PDF file content buffer.
  * @param fileName - Original file name (used for logging and fallback title).
@@ -55,7 +55,7 @@ export async function parsePdfToDocumentAnalysis(
   const isScanned = inspection.pdfType === "Scanned";
 
   if (isScanned) {
-    // Scanned fallback: Vision base64 PDF batching via Gemini 3.1 Flash-Lite
+    // Scanned fallback: Vision base64 PDF batching via Gemini 3.5 Flash-Lite
     const loadedDoc = await loadPdfSource(pdfBuffer);
     const totalPages = getPdfPageCount(loadedDoc);
     const firstStart = Math.max(1, options.startPage ?? 1);
@@ -192,7 +192,7 @@ export async function parsePdfToDocumentAnalysis(
         )
       : [];
 
-  // Step 3: Parallel Gemini 3.1 Flash-Lite Extraction (Metadata + 1-Page Chunked References)
+  // Step 3: Parallel Gemini 3.5 Flash-Lite Extraction (Metadata + 1-Page Chunked References)
   const metadataPromise = extractDocumentMetadata(
     first5PagesText,
     pool,
@@ -244,7 +244,7 @@ export async function parsePdfToDocumentAnalysis(
 }
 
 /**
- * Parses a PDF via Gemini 3.1 Flash-Lite, building RAG chunks with header tracking.
+ * Parses a PDF via Gemini 3.5 Flash-Lite, building RAG chunks with header tracking.
  *
  * @param pdfBuffer - Raw PDF file content buffer.
  * @param fileName - Original file name (used for logging).

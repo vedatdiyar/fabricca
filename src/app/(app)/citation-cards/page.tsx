@@ -334,7 +334,7 @@ export default function CitationCardsPage() {
         {/* Right Main Area */}
         <div className="flex-1 flex flex-col gap-4 w-full min-w-0">
           {/* Main Controls: Search, Tabs, Sort & View Mode */}
-          <div className="relative z-20 flex flex-col gap-3 rounded-md border border-border bg-card/40 p-4 backdrop-blur-sm">
+          <div className="relative z-20 flex flex-col gap-3 rounded-md border border-border bg-card p-4">
             <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
               {/* Search Bar */}
               <div className="relative flex-1">
@@ -367,7 +367,7 @@ export default function CitationCardsPage() {
                 <Button
                   onClick={handleOpenAddDialog}
                   size="sm"
-                  className="gap-1.5 h-8 px-3 shrink-0"
+                  className="gap-2 h-8 px-3 shrink-0"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   <span>Yeni Fiş</span>

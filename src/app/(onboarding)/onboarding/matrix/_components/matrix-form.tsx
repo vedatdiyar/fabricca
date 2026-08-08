@@ -149,7 +149,7 @@ const MatrixCard = memo(function MatrixCard({
   onChange,
 }: MatrixCardProps) {
   return (
-    <Card className="space-y-3 p-6 hover:border-primary/20 rounded-md transition-all shadow-xs">
+    <Card className="space-y-3 p-6 hover:border-primary/20 rounded-md transition-all">
       <div className="space-y-1">
         <div className="flex items-center gap-2">
           <span className="inline-flex h-5 w-7 items-center justify-center rounded bg-primary/10 text-[10px] font-bold tracking-wider text-primary">

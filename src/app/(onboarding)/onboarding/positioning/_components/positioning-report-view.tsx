@@ -38,7 +38,7 @@ export function PositioningReportView({
 
   return (
     <div className="w-full space-y-8">
-      <Card className="p-6 space-y-4 border-border shadow-sm">
+      <Card className="p-6 space-y-4 border-border bg-card">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
           <div className="space-y-1">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -51,23 +51,23 @@ export function PositioningReportView({
 
           <div>
             {isNovelGap && (
-              <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <Badge className="bg-success/10 text-success border-success/20 px-3 py-2 text-xs font-semibold flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
                 Özgün Katkı / Akademik Boşluk Bulundu
               </Badge>
             )}
             {isDirectOverlap && (
               <Badge
                 variant="destructive"
-                className="bg-destructive/10 text-destructive border-destructive/30 px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5"
+                className="bg-destructive/10 text-destructive border-destructive/20 px-3 py-2 text-xs font-semibold flex items-center gap-2"
               >
                 <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
                 Doğrudan Çakışma Riski
               </Badge>
             )}
             {!isNovelGap && !isDirectOverlap && (
-              <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5">
-                <HelpCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <Badge className="bg-warning/10 text-warning border-warning/20 px-3 py-2 text-xs font-semibold flex items-center gap-2">
+                <HelpCircle className="h-4 w-4 text-warning shrink-0" />
                 Sınırlı Literatür / Bağlam Genişletilmeli
               </Badge>
             )}
@@ -76,7 +76,7 @@ export function PositioningReportView({
 
         {isNovelGap && (
           <p className="text-sm leading-relaxed text-muted-foreground">
-            <CheckCircle2 className="h-4 w-4 inline-block mr-2 text-emerald-600 dark:text-emerald-400 shrink-0 align-text-top" />
+            <CheckCircle2 className="h-4 w-4 inline-block mr-2 text-success shrink-0 align-text-top" />
             Çalışmanızın odağı, yöntemi ve kapsamı literatürdeki mevcut
             tezlerden belirgin biçimde ayrışmakta ve özgün bir akademik boşluk
             doldurmaktadır.
@@ -93,9 +93,9 @@ export function PositioningReportView({
           </div>
         )}
         {!isNovelGap && !isDirectOverlap && (
-          <div className="p-4 rounded-md bg-amber-500/5 border border-amber-500/20 border-l-2 border-l-amber-500">
+          <div className="p-4 rounded-md bg-warning/10 border border-warning/20 border-l-2 border-l-warning">
             <p className="text-sm leading-relaxed text-card-foreground">
-              <HelpCircle className="h-4 w-4 inline-block mr-2 text-amber-600 dark:text-amber-400 shrink-0 align-text-top" />
+              <HelpCircle className="h-4 w-4 inline-block mr-2 text-warning shrink-0 align-text-top" />
               Doğrudan eşleşen tez sayısı sınırlıdır. Kavramsal çerçevenizi veya
               arama sınırlarınızı genişleterek tekrar değerlendirebilirsiniz.
             </p>
@@ -133,7 +133,7 @@ export function PositioningReportView({
                 return (
                   <Card
                     key={thesisId}
-                    className="p-6 space-y-3 border-border shadow-sm bg-card hover:border-border/80 transition-colors"
+                    className="p-6 space-y-3 border-border bg-card hover:border-border/40 transition-colors"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                       <div className="space-y-1">
@@ -165,7 +165,7 @@ export function PositioningReportView({
                     {(thesis.contributionArea || thesis.relevanceReason) && (
                       <div className="space-y-3 pt-3 border-t border-border/40 text-xs">
                         <div className="space-y-1">
-                          <span className="flex items-center gap-1.5 font-semibold text-primary">
+                          <span className="flex items-center gap-2 font-semibold text-primary">
                             <Target className="h-3.5 w-3.5 shrink-0" />
                             Katkı / Odak Alanı:
                           </span>
@@ -181,7 +181,7 @@ export function PositioningReportView({
                         <div className="border-t border-border/40" />
 
                         <div className="space-y-1">
-                          <span className="flex items-center gap-1.5 font-semibold text-foreground">
+                          <span className="flex items-center gap-2 font-semibold text-foreground">
                             <Lightbulb className="h-3.5 w-3.5 shrink-0" />
                             İlişki ve Ayrışma Sebebi:
                           </span>

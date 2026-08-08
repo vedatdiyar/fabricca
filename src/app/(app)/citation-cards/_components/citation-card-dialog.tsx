@@ -231,7 +231,7 @@ function CitationCardView(props: CitationCardViewProps) {
       {/* Fiş İçeriği */}
       <div className="space-y-2">
         <Label className="text-xs">Fiş İçeriği (Metin)</Label>
-        <blockquote className="rounded-md border-l-2 border-primary/40 bg-muted/40 p-3 font-serif text-sm leading-relaxed text-foreground whitespace-pre-wrap">
+        <blockquote className="rounded-md border-l-2 border-primary/20 bg-muted/20 p-3 font-serif text-sm leading-relaxed text-foreground whitespace-pre-wrap">
           {card.content}
         </blockquote>
       </div>
@@ -239,8 +239,8 @@ function CitationCardView(props: CitationCardViewProps) {
       {/* Kişisel Yorum / Şerh (Opsiyonel) */}
       {card.comment && (
         <div className="space-y-2">
-          <div className="flex items-center gap-1.5">
-            <MessageSquareQuote className="h-3.5 w-3.5 text-primary/70" />
+          <div className="flex items-center gap-2">
+            <MessageSquareQuote className="h-3.5 w-3.5 text-primary" />
             <Label className="text-sm font-medium">Düşünce / Şerh</Label>
           </div>
           <p className="rounded-md border border-border/40 bg-card p-3 text-sm leading-relaxed text-foreground whitespace-pre-wrap">
@@ -263,7 +263,7 @@ function CitationCardView(props: CitationCardViewProps) {
           type="button"
           size="sm"
           onClick={onEdit}
-          className="h-8 w-24 gap-1.5"
+          className="h-8 w-24 gap-2"
         >
           <Pencil className="h-3.5 w-3.5" />
           Düzenle
@@ -483,14 +483,14 @@ function CitationCardForm(props: CitationCardFormProps) {
           value={content}
           onChange={(e) => setContent(e.target.value)}
           onPaste={handleContentPaste}
-          className="font-serif leading-relaxed resize-none overflow-y-auto min-h-[140px]"
+          className="font-serif leading-relaxed resize-none overflow-y-auto min-h-35"
         />
       </div>
 
       {/* Kişisel Yorum / Şerh (Opsiyonel) */}
       <div className="space-y-2">
-        <div className="flex items-center gap-1.5">
-          <MessageSquareQuote className="h-3.5 w-3.5 text-primary/70" />
+        <div className="flex items-center gap-2">
+          <MessageSquareQuote className="h-3.5 w-3.5 text-primary" />
           <Label htmlFor="comment-textarea" className="text-sm font-medium">
             Düşünce / Şerh
           </Label>

@@ -172,12 +172,12 @@ export function SidebarWorkList({
               key={tab.id}
               type="button"
               onClick={() => onTabChange(tab.id)}
-              className={cn(
-                "w-full text-center py-1 text-[10px] font-medium rounded transition-all truncate px-0.5",
-                isActive
-                  ? "bg-background text-foreground font-semibold border border-border/60"
-                  : "text-muted-foreground hover:text-foreground hover:bg-background/50",
-              )}
+className={cn(
+                  "w-full text-center py-1 text-[10px] font-medium rounded transition-all truncate px-1",
+                  isActive
+                    ? "bg-background text-foreground font-semibold border border-border/40"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background/20",
+                )}
             >
               {tab.label}
             </button>
@@ -210,10 +210,10 @@ export function SidebarWorkList({
                 data-resource-id={item.id}
                 onClick={() => onSelectResource(item.id)}
                 className={cn(
-                  "group relative cursor-pointer transition-all border p-3 hover:border-primary/40",
+                  "group relative cursor-pointer transition-all border p-3 hover:border-primary/20",
                   isSelected
-                    ? "bg-accent/80 border-primary/60"
-                    : "bg-background border-border hover:bg-accent/30",
+                    ? "bg-accent/20 border-primary/20"
+                    : "bg-background border-border hover:bg-accent/20",
                 )}
               >
                 <CardContent className="p-0 space-y-2">
@@ -221,11 +221,11 @@ export function SidebarWorkList({
                     <h3 className="font-sans text-sm font-semibold text-foreground line-clamp-2 leading-snug flex-1 min-w-0">
                       {item.title}
                     </h3>
-                    <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
+                    <div className="flex items-center gap-2 shrink-0 pt-1">
                       {hasPdf && (
                         <span
                           title="Tam metin PDF mevcut"
-                          className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20"
+                          className="flex items-center gap-1 text-[10px] text-success font-semibold bg-success/10 px-2 py-1 rounded border border-success/20"
                         >
                           <FileText className="h-2.5 w-2.5" />
                           <span>PDF</span>
@@ -234,16 +234,16 @@ export function SidebarWorkList({
                       {item.isRead ? (
                         <span
                           title="Okundu"
-                          className="flex items-center text-emerald-600 dark:text-emerald-400"
+                          className="flex items-center text-success"
                         >
                           <CheckCircle2 className="h-3.5 w-3.5" />
                         </span>
                       ) : (
                         <span
                           title="Okunacak"
-                          className="flex items-center text-amber-600 dark:text-amber-400"
+                          className="flex items-center text-warning"
                         >
-                          <Circle className="h-3.5 w-3.5 opacity-60" />
+                          <Circle className="h-3.5 w-3.5" />
                         </span>
                       )}
                       {onDeleteResource && (
@@ -262,21 +262,21 @@ export function SidebarWorkList({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
                     <span
                       className={cn(
                         "h-2 w-2 rounded-full shrink-0",
                         badgeConfig.dotClassName,
                       )}
                     />
-                    <span className="text-[11px] font-medium text-muted-foreground truncate">
+                    <span className="text-[10px] font-medium text-muted-foreground truncate">
                       {badgeConfig.label}
                       {item.subBoxTitle ? ` • ${item.subBoxTitle}` : ""}
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-1.5 border-t border-border/40">
-                    <span className="truncate max-w-[180px] font-normal text-muted-foreground">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/40">
+                    <span className="truncate max-w-45 font-normal text-muted-foreground">
                       {item.authors.join(", ")}
                     </span>
                     <span className="font-mono text-[10px] text-muted-foreground">
