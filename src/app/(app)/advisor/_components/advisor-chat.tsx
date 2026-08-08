@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Sparkles, Send, User, FileText, Copy, Check } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
@@ -106,6 +107,7 @@ interface AdvisorChatProps {
  * @returns The AdvisorChat UI element.
  */
 export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
+  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputQuery, setInputQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -126,7 +128,6 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
   const isSendingRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const initialSessionIdRef = useRef(initialSessionId);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -179,40 +180,48 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
     setActiveCitation(null);
   }, []);
 
-  const syncUrlSession = useCallback((sessionId: number | null) => {
-    const url = new URL(window.location.href);
-    if (sessionId !== null) {
-      url.searchParams.set("session", String(sessionId));
-    } else {
-      url.searchParams.delete("session");
-    }
-    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
-  }, []);
+  const syncUrlSession = useCallback(
+    (sessionId: number | null) => {
+      if (sessionId !== null) {
+        router.push(`/advisor?session=${sessionId}`);
+      } else {
+        router.push("/advisor");
+      }
+    },
+    [router],
+  );
 
   useEffect(() => {
     let cancelled = false;
-    /** Restores the active session on mount when a valid session id is present in the URL. */
-    async function loadInitialSession() {
+    /** Syncs active chat session with the initialSessionId route parameter. */
+    async function syncSession() {
       const list = await getChatSessions();
       if (cancelled) return;
       setSessions(list);
 
-      const initialId = initialSessionIdRef.current;
       const targetId =
-        initialId !== undefined && list.some((s) => s.id === initialId)
-          ? initialId
+        initialSessionId !== undefined && list.some((s) => s.id === initialSessionId)
+          ? initialSessionId
           : null;
 
       if (targetId !== null) {
-        setActiveSessionId(targetId);
-        if (!cancelled) await loadMessages(targetId);
+        if (activeSessionId !== targetId) {
+          setActiveSessionId(targetId);
+          if (!cancelled) await loadMessages(targetId);
+        }
+      } else {
+        if (activeSessionId !== null) {
+          setActiveSessionId(null);
+          setMessages([]);
+          setActiveCitation(null);
+        }
       }
     }
-    loadInitialSession();
+    void syncSession();
     return () => {
       cancelled = true;
     };
-  }, [loadMessages]);
+  }, [initialSessionId, activeSessionId, loadMessages]);
 
   const handleSelectSession = useCallback(
     async (sessionId: number) => {
