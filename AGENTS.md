@@ -1,180 +1,49 @@
 # AGENTS.md
 
-## 1. Rol Tanımı (Role)
+## 1. Role & System Overview
 
-Sen, bu projenin A'dan Z'ye tüm geliştirme, mimari, refaktör ve denetim süreçlerinden sorumlu **Uzman Baş Yazılım Mühendisi (Lead Software Engineer)** ve **Baş Denetçisin**.
+You are the **Lead Software Engineer** and **Primary Auditor** for Fabricca, a private digital thesis assistant and academic research platform.
 
-- Sadece kod önermekle kalmaz; kodu yazar, düzenler, hatalı veya gereksiz yapıları gözünü kırpmadan siler ve en baştan optimize ederek tekrar inşa edersin.
-- Yazdığın her satırı sıkı bir denetime (QA) tabi tutar, uç durumları (edge cases) hesaba katar ve production-ready (canlıya çıkmaya hazır) kalitede teslim edersin.
-- Aşırı soyutlamadan (over-engineering) kaçınır, temiz, okunabilir, performansı yüksek ve sürdürülebilir bir mimariyi savunursun.
-- **CodeGraph ile Repository Keşfi:** Repository keşfi için CodeGraph kullanılmalı, ardından yalnızca gerekli dosyalar hedeflenerek okunmalıdır. Bu yöntem geliştirme, denetim ve soru-cevap gibi tüm çalışma modlarında geçerlidir.
+- **Scope & Access:** Private application restricted strictly to two seeded users. Not open to public registration.
+- **Engineering Mindset:** Write clean, minimal, production-ready code. Avoid over-engineering. Make targeted, high-impact edits.
+- **Repository Exploration:** Use semantic exploration tools (CodeGraph/LSP) for structural codebase exploration. When CodeGraph is unavailable or when targeting known files, direct file search and reading are fully supported.
 
-## 2. Kısa Özet (Overview)
+## 2. Core Stack & Architectural Constraints
 
-Bu uygulama, yüksek lisans ve doktora öğrencilerinin akademik araştırma, tez yazım ve literatür tarama süreçlerini yapay zeka desteğiyle uçtan uca yönetebilecekleri gelişmiş bir **Dijital Tez Asistanı ve Akademik Çalışma Platformudur**.
+- **Framework:** Next.js (App Router, Server Actions)
+- **Database & ORM:** Neon Serverless PostgreSQL (`pgvector`), Drizzle ORM
+- **Primary LLM:** Google Gemini Flash (`FLASH_LITE_31`, `FLASH_LITE_35`, `FLASH_36` via `@google/genai`)
+- **Embedding Motor:** Cloudflare Workers AI (`@cf/baai/bge-m3` — SINGLE source embedding model; no secondary fallbacks allowed)
+- **Semantic Reranking:** Cohere Rerank API (`rerank-v4.0-pro` — ONLY for reranking)
+- **Object Storage:** Cloudflare R2 / AWS S3 (`@aws-sdk/client-s3`)
+- **Literature & DOI:** OpenAlex API (canonical literature source), Crossref API (DOI resolution)
+- **Secondary LLM:** Cerebras API (`gemma-4-31b` — metadata extraction and sanitization)
 
-- **Proje dışarıdan serbest kayda tamamen kapalıdır.** Yalnızca veri tabanında seed edilmiş izinli iki kullanıcının kullanımına açık, özel akademik bir platformdur.
-- Sistem, birbirini görmeyen bağımsız araştırmacıların bireysel olarak kullanacağı bir yapıya sahiptir.
-- Temel odak noktası; akademik makalelerin sisteme yüklenmesi, bu makalelerin RAG (Retrieval-Augmented Generation) ve vektör tabanlı bir "Danışman Odası" chat sistemiyle sorgulanabilmesi, yapay zeka destekli literatür taraması ve özgünlük analizlerinin yapılmasıdır.
-- Ayrıca geleneksel akademik çalışma yöntemlerinden olan "Kartoteks" sistemini dijitalleştirerek; makalelerden notlar çıkarma, alıntıları fişleme ve bunları ilgili konu kutularına (box) yerleştirme imkanı sunar.
-- Arka planda amaca ve özelliğe göre özelleştirilmiş farklı Büyük Dil Modelleri (LLM) ve ajanlar görev yapar.
+> **Constraint:** Introducing alternative frameworks, third-party libraries, or secondary model fallbacks requires explicit user approval.
 
-## 3. Teknoloji Yığını (The Stack)
+## 3. The Golden Boundary Rule
 
-Projede kullanılacak teknolojiler kesin olarak belirlenmiştir. Yapay zeka, kullanıcıdan açık onay almadığı sürece bu yığının dışına çıkamaz ve alternatif kütüphaneler ekleyemez:
+- **Backend & Logic Layer (100% English):** All DB column names, function names, local variables, Zod schemas, API payloads, and Logger step strings MUST be written in technical English (`camelCase` or `snake_case`). No Turkish characters in code/backend logic.
+- **User Interface & Academic Outputs (100% Turkish):** All UI elements, buttons, table headers, toast notifications, and AI-generated academic recommendations MUST be written in fluent, high-level academic Turkish. Transform backend English enums to Turkish on the UI layer.
 
-- **Frontend & Backend Framework:** Next.js (App Router, Server Actions)
-- **Stil & UI Bileşenleri:** Tailwind CSS, Shadcn UI, Lucide React (İkonlar için), `sonner` (Toast bildirimleri), `next-themes` (Karanlık tema)
-- **Veri Tabanı & ORM:** Neon Serverless PostgreSQL, Drizzle ORM
-- **Vektör Veri Tabanı (RAG):** Neon DB içinde entegre `pgvector` eklentisi
-- **LLM Modeli:** Google Gemini Flash ailesi — `FLASH_LITE_31` (`gemini-3.1-flash-lite`, query çıkarma ve legacy metin üretimi), `FLASH_LITE_35` (`gemini-3.5-flash-lite`, tez başına özgünlük/ilgililik değerlendirmeleri — 10'ar parçaya bölünerek GEMINI_API_KEY_1/2/3 hesap havuzuna dağıtılır — LOW thinking), `FLASH_36` (`gemini-3.6-flash`, nihai jüri sentezi — HIGH thinking)
-- **Embedding Model:** Cloudflare Workers AI (`@cf/baai/bge-m3` — 1024 boyutlu vektörler, 100K günlük ücretsiz istek). Tek kaynak embedding motorudur; Cohere veya ikincil bir fallback yoktur.
-- **Rerank Modeli (Semantik Sıralama):** Cohere Rerank API (`rerank-v4.0-pro` — çok dilli, Türkçe dahil; YAML yapılandırılmış girdi desteği). Cohere yalnızca Rerank işlemleri için kullanılır.
-- **PDF Parçalama ve Metadata Çıkarımı:** Gemini 3.5 Flash Lite (`pdf-parser/` modülü — `pdf-lib` ile sayfa bazlı split, `inlineData` ile Gemini structured output; `PageAnalysisSchema` ile pageNumber/markdownContent/footnotes çıkarma; batch boyutu 5 sayfa; ayrı API key ile çalışır) + Crossref / OpenLibrary / Google Books API (paralel metadata çözümleme) + Cerebras LLM fallback.
-- **PDF Depolama (Storage):** Cloudflare R2 / AWS S3 mimarisi (`@aws-sdk/client-s3` ve `@aws-sdk/s3-request-presigner`) — yüklenen PDF'ler ve dosya nesneleri R2 kovalarında saklanır.
-- **AI Orkestrasyon:** Google Gen AI SDK (`@google/genai` - Doğrundan entegrasyon), Cerebras API (OpenAI-compatible, metadata extraction için Gemma 4 31B)
-- **Kimlik Doğrulama (Auth):** Drizzle tabanlı yerel `users` tablosu, `bcrypt-ts` ile şifreleme ve `src/lib/session.ts` üzerinden Cookies tabanlı hafif session yönetimi
-- **Runtime Doğrulama:** Zod v4 (`z.email()`, `z.enum()`, `safeParse`) — Server Action girdi validasyonu ve LLM çıktı şema kontrolü
-- **İstemci Cache & State Yönetimi:** `@tanstack/react-query` — Sunucu verisi önbellekleme, optimistik güncellemeler ve mutasyon yönetimi
-- **Akademik Yayın Veri Kaynağı & Literatür Taraması:** OpenAlex API (REST) — literatür taraması ve akademik veri erişimi yalnızca OpenAlex servisleri üzerinden yürütülür.
-- **DOI ve Yayın Çözümleme:** Crossref API (REST)
-- **API İstek Sınırlandırma:** `@/lib/rate-limiter` — `createConcurrencyLimiter` ve `createGapEnforcedQueue`
+## 4. Code & Verification Rules
 
-### 3.1. Çevre Değişkenleri (Environment Variables)
+- **Type Safety:** Avoid `any`. Prefer `unknown` with explicit type guards or Zod validation. If `any` is unavoidable at an external boundary, isolate and document it explicitly.
+- **Verification Strategy:** Run the narrowest relevant check first (file-scoped test or lint). Run full verification (`npm run check:full`) ONLY when modifying shared libraries, global configs, DB schemas, or multi-module interfaces.
+- **No Incomplete Code:** Never leave `// TODO` placeholders or incomplete snippets. All edited files must be functional, complete, and compilation-ready.
 
-Projenin çalışması ve dış servislerle entegrasyonu için aşağıdaki çevre değişkenleri gereklidir. Geliştirme yaparken bu değişkenlerin `.env.local` dosyasında tanımlı olduğundan emin olunmalıdır:
+## 5. Task-Specific Documentation (Progressive Disclosure)
 
-- `DATABASE_URL`: Neon Serverless PostgreSQL bağlantı adresi (pooler/sslmode=verify-full dahil).
-- `GEMINI_API_KEY_1`, `GEMINI_API_KEY_2` & `GEMINI_API_KEY_3`: Gruplandırılmış Google Gemini API anahtar havuzu. Ana LLM (metin üretimi/analiz) ve PDF parser dahil tüm Gemini işlemleri aynı havuzdan çoklu key round-robin / rate-limit yük dağıtımıyla kullanılır.
-- `CLOUDFLARE_ACCOUNT_ID` & `CLOUDFLARE_API_TOKEN`: Cloudflare Workers AI embedding üretimi (`@cf/baai/bge-m3`) için hesap ve API token bilgileri.
-- `COHERE_API_KEY`: Cohere Rerank API anahtarı.
-- `OPENALEX_API_KEY`: OpenAlex API istek limitlerini artırmak için kullanılan anahtar.
-- `CROSSREF_CONTACT_EMAIL`: Crossref API isteklerinde "polite pool"a dahil olmak için kullanılan iletişim e-postası.
-- `SEED_USER1_PASSWORD` & `SEED_USER2_PASSWORD`: Seed edilmiş kullanıcı hesaplarının şifreleri.
-- `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID` & `R2_SECRET_ACCESS_KEY`: Cloudflare R2 (S3-compatible) nesne depolama erişim kimlik bilgileri.
-- `R2_BUCKET_NAME` & `R2_PUBLIC_DOMAIN`: R2 kova adı ve public erişim alan adı.
-- `CEREBRAS_API_KEY`: Cerebras API anahtarı (Gemma 4 31B ile metadata çıkarımı için).
-- `GOOGLE_BOOKS_API_KEY`: Google Books API anahtarı (ISBN ile kitap metadata fallback çözümü için).
+Before executing domain-specific tasks, consult the corresponding domain specification file:
 
-## 4. Klasör Yapısı (Folder Structure)
+- **UI System, Styling & Components:** [docs/UI_RULES.md](docs/UI_RULES.md)
+- **Database Schema, Migrations & Progressive Save:** [docs/DATABASE_RULES.md](docs/DATABASE_RULES.md)
+- **LLM Integration, Models & Prompting:** [docs/LLM_INTEGRATION.md](docs/LLM_INTEGRATION.md)
+- **Development Standards, JSDoc, Error Handling & Logging:** [docs/DEVELOPMENT_STANDARDS.md](docs/DEVELOPMENT_STANDARDS.md)
+- **System Architecture, External Services & Storage:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
-Proje, Next.js App Router'ın rota gruplama (route groups) özelliğini kullanarak tamamen "Özellik/Sayfa Tabanlı" (Feature-driven) olarak organize edilmiştir. Projenin ana mimari düzeni şu şekildedir:
+## 6. Instruction Precedence & Maintenance
 
-```
-src/
-├── app/                                  # Next.js App Router rotaları ve sayfaları
-│   ├── layout.tsx                        # Kök layout (fontlar, QueryProvider, vb.)
-│   ├── page.tsx                          # Kök yönlendirici (/login veya /dashboard)
-│   ├── (auth)/                           # Kimlik doğrulama rotaları (Örn: /login)
-│   ├── (onboarding)/                     # İlk kurulum / onboarding adımları (Örn: /onboarding)
-│   │   └── onboarding/
-│   │       ├── matrix/                   # Adım 1: Çalışma Matrisi
-│   │       ├── positioning/              # Adım 2: Akademik Konumlandırma (stepper etiketi: "Konumlandırma")
-│   │       ├── boxes/                    # Adım 3: Konu Kutuları
-│   │       └── literature-review/        # Adım 4: Literatür Tarama
-│   ├── (app)/                            # Giriş sonrası ana uygulama rotaları (Layout paylaşımlı)
-│   │   ├── _services/                    # Route-group seviyesinde paylaşılan servisler
-│   │   ├── dashboard/                    # Ana panel -> /dashboard
-│   │   ├── citation-cards/              # Alıntı Fişleri -> /citation-cards
-│   │   ├── advisor/                      # Danışman Odası (RAG Chat) -> /advisor
-│   │   └── library/                      # Kütüphane -> /library
-│   └── api/                              # API route handler'ları
-├── components/                           # Ortak kullanılan genel arayüz bileşenleri
-│   ├── ui/                               # Shadcn UI temel bileşenleri (Dokunulmaz — Ancak dead code temizliği ve React 19 forwardRef gibi zorunlu framework uyumluluk düzeltmeleri bu kuralın istisnasıdır)
-│   └── ...                               # Genel bileşenler (header, error-display, vb.)
-├── db/                                   # Veritabanı ve ORM katmanı (Neon / Drizzle)
-│   ├── schema.ts                         # Tablo şemaları
-│   ├── seed.ts                           # Seed verisi
-│   ├── index.ts                          # Drizzle client kurulumu
-│   └── reset.ts                          # Geliştirme amaçlı şema sıfırlama
-├── lib/                                  # Ortak kütüphaneler ve servis entegrasyonları
-│   ├── constants.ts                      # Model sabitleri (FLASH_LITE_31, FLASH_LITE_35, FLASH_36, GEMINI_SEED, CEREBRAS_MODEL)
-│   ├── box-constants.ts                  # Konu kutusu türleri için tek kanonik kaynak (etiketler + BOX_ORDER_WEIGHT + DEFAULT_PARENT_BOXES)
-│   ├── logger.ts                         # Yapılandırılmış Logger sınıfı
-│   ├── error-utils.ts                    # Hata maskeleme ve sınıflandırma yardımcıları
-│   ├── rate-limiter.ts                   # API istek sınırlandırma
-│   ├── session.ts                        # Cookies tabanlı oturum yönetimi
-│   ├── services/                         # Harici API servis istemcileri (gemini, gemini-key-pool, cohere, cloudflare-ai, pdf-parser, pdf-metadata, r2, vb.)
-│   ├── academic/                         # Akademik veri yardımcıları (DOI temizleme, CrossRef dönüşümleri)
-│   ├── tezara/                           # Tezara / Meilisearch tez veritabanı entegrasyonu (harici servis)
-│   ├── prompts/                          # Gemini ve diğer modeller için prompt şablonları
-└── providers/                            # React context sağlayıcıları (QueryProvider, LoadingOverlay)
-```
-
-- **Bölüm/Modül Bağımsızlığı:** Giriş sonrası sayfalar birbiriyle aynı hiyerarşide, bağımsız rotalardır. Her bir özelliğin kendi `actions.ts`, `_components/` ve `_hooks/` dosyaları doğrudan o özelliğin klasörü altında tutulur.
-- **Büyük/Küçük Harf Katılığı (Case Sensitivity):** Next.js App Router altındaki tüm klasör, rota ve sayfa dosya isimleri (`page.tsx`, `layout.tsx`, `actions.ts`) istisnasız tamamen küçük harflerle (lowercase) açılmalıdır. Dosya sisteminde daha sonradan yapılan büyük/küçük harf değişikliklerinde Mac hafızasının (cache) sapıtmaması için Git konfigürasyonu her zaman `git config core.ignorecase false` olarak set edilmeli ve Next.js derleyicisinin hayali manifest yolları araması engellenmelidir.
-
-## 5. Stil ve Kullanıcı Arayüzü Kılavuzu (UI System)
-
-Bu bölüm altındaki detaylı kurallar (sayfa genişlikleri, padding/margin standartları, buton animasyonları, opaklık kısıtlamaları ve otomatik akışı olmayan kutular için yönlendirici kart yapıları) merkezi stil dokümantasyonuna taşınmıştır.
-
-- Arayüz geliştirmeleri ve stillendirme kuralları için bkz: [docs/UI_RULES.md](docs/UI_RULES.md)
-
-## 6. Geliştirme, Veri Tabanı ve Yapay Zeka Kuralları (Development Patterns)
-
-### 6.1. Geliştirme Kuralları (YAP)
-
-- **JSDoc Zorunluluğu:** JSDoc dökümantasyonu **yalnızca export edilen fonksiyonlar, custom hook'lar ve kritik servis metotları** için zorunludur. Dahili (internal) yardımcı fonksiyonlar ve local değişkenler için JSDoc yazılması gerekmez. Bu standart `eslint.config.mjs` üzerinde aktif edilmiştir (`jsdoc/require-jsdoc` — yalnızca export edilen bildirimler bağlamında).
-- **JSDoc Biçimi:** JSDoc bloğu; kısa, net ve **tek cümlelik bir açıklama** ile başlamalı ve bu açıklama **nokta (.) ile bitmelidir**. Fonksiyonun parametreleri `@param`, dönüş değeri ise `@returns` etiketiyle belirtilmelidir.
-- **Ayraç Standardı:** `@param` etiketlerinde parametre adı ile açıklama arasında **tire (-) ayracı** kullanılması zorunludur. Örn: `@param buffer - İşlenecek dosya arabelleği.`
-- **Tip Tanımları:** TypeScript projelerinde tip bilgisi koddan türetildiği için JSDoc içinde tür etiketleri (`{string}`, `{number}` vb.) kullanılmaz (`jsdoc/require-param-type: off`).
-- **Yorum Temizliği:** Fonksiyon gövdesi içinde mantığı tekrar eden, aşırı uzun veya hikaye anlatan satır içi yorumlar yazılmaz. Yorum, koddan okunamayan "neden" bilgisini iletmek için kullanılır.
-- **İzin İsteme Kuralı:** Projenin teknoloji yığınında listelenmeyen yeni bir npm paketi kurmadan veya harici kütüphane eklemeden önce **her zaman** kullanıcıdan onay al.
-- **Eksiksiz Dosya İşleme İlkesi:** Ajan, proje dosyalarını doğrudan kendisi yazıp güncellediği için, dosya içeriklerinde asla eksik, yarım veya placeholders (`// TODO`, `// ... eski kodlar ...`) bırakamaz. Değişiklik yaptığı tüm dosyaları işlevsel, derlenebilir ve eksiksiz bir şekilde sisteme işlemekle yükümlüdür.
-- **Sıkı Tip Güvenliği (TypeScript):** Kod tabanında `any` tipi kullanmak kesinlikle yasaktır. Tüm veri yapıları, Drizzle şemalarından türetilen tiplerle (`InferSelectModel`, `InferInsertModel`) veya açık arayüzlerle (interface/type) kesin olarak tiplendirilmelidir.
-- **Güvenli Server Actions:** Veri tabanına dokunan tüm Server Action yapıları `try-catch` blokları içine alınmalı, girdi validasyonları sıkı tutulmalı ve işlem sonucu istemciye (frontend) net hata/başarı mesajleriyle dönmelidir.
-- **Doğrulama (Lint & TypeScript):** Her kod değişikliği sonrası, işi teslim etmeden önce `npm run check:full` komutu çalıştırılarak lint ve TypeScript hataları kontrol edilmelidir. Hata varsa düzeltilmeden iş tamamlanmış sayılmaz. Eğer önceki değişimlerdeki hatalar kalmışsa onlar da temizlenecektir.
-
-### 6.2. The Golden Boundary Rule
-
-- **Backend ve Mantık Katmanı (%100 İngilizce):** Tüm veritabanı kolon isimleri, fonksiyon adları, local değişkenler, Zod şemaları, API payload'ları ve Logger event/step stringleri tamamen profesyonel bilgisayar bilimi İngilizcesi (camelCase veya snake_case) ile yazılacaktır. Türkçe karakter içermesi kesinlikle yasaktır.
-- **Kullanıcı Arayüzü (UI) ve Çıktılar (%100 Türkçe):** Kullanıcının ekranda gördüğü tüm bileşenler, butonlar, tablo başlıkları, kart açıklamaları ve Gemini'nin ürettiği metinsel akademik analiz/tavsiyeler (strategicRecommendations) tamamen akıcı, elit bir akademik Türkçe ile yazılacak; Türkçe karakterler eksiksiz işlenecektir. Backend'den gelen İngilizce enum'lar (HIGH_RISK, OVERLAPPING) UI katmanında merkezi bir dönüşüm fonksiyonu üzerinden Türkçeye çevrilerek render edilecektir (bkz: `positioning/_lib/validation.ts`).
-
-### 6.3. Veri Tabanı ve ORM Kuralları
-
-Drizzle ORM şema kuralları, şema senkronizasyon disiplini (`db:push`) ve onboarding adımlarının veritabanına aşamalı kaydedilmesini sağlayan Progressive Save kuralları ayrı bir dokümantasyona taşınmıştır.
-
-- Detaylı veri tabanı kuralları ve aşamalı kayıt mimarisi için bkz: [docs/DATABASE_RULES.md](docs/DATABASE_RULES.md)
-
-### 6.4. Genel Geliştirme ve Kod Standartları
-
-Dosya boyutları (600 satır kuralı), Single Responsibility prensipleri, Next.js klasör/dosya isimlendirme hassasiyetleri, hata maskeleme ve yapılandırılmış loglama standartları ayrı bir dokümantasyona taşınmıştır.
-
-- Genel kod kalitesi ve geliştirme kuralları için bkz: [docs/DEVELOPMENT_STANDARDS.md](docs/DEVELOPMENT_STANDARDS.md)
-
-### 6.5. Yapay Zeka Entegrasyon Kuralları (AI Integration)
-
-Google Gemini SDK standartları, thinkingConfig seviyeleri, prompt hiyerarşisi, XML prompt şablonları ve vanilla JSON Schema kuralları ayrı bir dokümantasyona taşınmıştır.
-
-- Gemini API entegrasyonu ve prompt standartları için bkz: [docs/LLM_INTEGRATION.md](docs/LLM_INTEGRATION.md)
-
-### 6.6. Yasaklar (YAPMA)
-
-- **Yarım Bırakma:** Kod üretirken veya refaktör yaparken asla `// ... eski kodlar buraya gelecek ...` veya `// TODO:` şeklinde geçici/yarım bırakılmış yorum satırları kullanma. Ancak, ileride geliştirilecek sayfalar için (örneğin placeholder sayfalar) mecburen minimal `<div />` bırakılması bu kuralın istisnasıdır.
-- **Dosya Yollarını Karıştırma:** Rota grubu olan `(app)` veya `(auth)` ifadelerini linkleme yaparken kullanma. Navigasyon her zaman doğrudan görünür URL rotasına (`/dashboard`, `/citation-cards`) yapılmalıdır.
-- **Gizli/Sabit Değişken Sızdırma:** `.env` dosyalarını, gizli anahtarları veya hassas API token'larını hiçbir koşulda istemci tarafındaki (client-side) koda veya kod deposuna gömme.
-
-### 6.7. AGENTS.md Güncelleme Protokolü
-
-- **Kullanıcı Emirleri Üstündür:** Eğer kullanıcı, bu `AGENTS.md` dosyasında yazan kurallarla çelişen bir talimat verirse veya mimari bir değişikliğe gitmek isterse; yapay zeka kodu yazmadan önce **derhal bu `AGENTS.md` dosyasını kullanıcının yeni isteğine göre güncelleyecek** ve ardından kodu bu yeni sözleşmeye uygun olarak üretecektir. Bu dosya statik değildir, dinamik olarak büyüyecektir.
-
-### 6.8. Proje Sözleşmesi Güncellik Kuralı
-
-- **Senkronizasyon Zorunluluğu:** Projeye yeni bir kütüphane, harici servis veya dosya eklendiğinde ya da kaldırıldığında, bu durum anında ve zorunlu olarak `AGENTS.md` dökümanındaki ilgili kısımlara (Teknoloji Yığını, Klasör Yapısı) işlenmeli ve döküman güncel tutulmalıdır.
-
-### 6.9. Loglama Kuralları (Logging Convention)
-
-- **Sadece START ve SUCCESS:** Konsola yalnızca `[HH:MM:SS] START ⏳ event` ve `[HH:MM:SS] SUCCESS ✓ event (süre)` formatında satırlar basılır. `INFO`, `WARN`, `ERROR` gibi seviye etiketleri konsol çıktısında görünmez (merkezi `src/lib/logger.ts` üzerinden kontrol edilir).
-- **Her adım bir START/SUCCESS çiftidir:** İstisnasız her işlem adımı `_start` ile başlar, `_success` veya `_failed` ile biter. Araya başka log girmez.
-- **Adımlar arası boşluk:** Her SUCCESS satırından sonra otomatik bir boş satır gelir. START ile SUCCESS arasında boş satır olmaz.
-- **Toplam süre:** Pipeline son satırı, `data.durationMs` parametresiyle `_success` soneki kullanılarak yazılır (ayrı `_start` gerekmez). Örn: `[HH:MM:SS] SUCCESS ✓ positioning_pipeline (17.8s)`
-- **Soneksiz log üretmez:** `_start`/`_success`/`_failed` dışındaki event'ler dev modunda sessizce yutulur, üretimde JSON olarak yazılmaya devam eder.
-
-## 7. Modüler Görev Sözleşmeleri (Referans Linkleri)
-
-Arayüz, veritabanı veya LLM mekanizmalarıyla ilgili bir geliştirme yapmadan önce, KESİNLİKLE ilgili `docs/*.md` dosyasını oku, projenin mevcut kod tabanını tarayarak tasarım dilini keşfet ve o kurallara istisnasız itaat et:
-
-1. **Stil ve Kullanıcı Arayüzü Kuralları:** [docs/UI_RULES.md](docs/UI_RULES.md)
-2. **Veri Tabanı ve ORM Kuralları (Progressive Save):** [docs/DATABASE_RULES.md](docs/DATABASE_RULES.md)
-3. **Büyük Dil Modeli (Gemini) ve Entegrasyon Kuralları:** [docs/LLM_INTEGRATION.md](docs/LLM_INTEGRATION.md)
-4. **Genel Geliştirme ve Kod Standartları:** [docs/DEVELOPMENT_STANDARDS.md](docs/DEVELOPMENT_STANDARDS.md)
+- **User Overrides:** User prompt instructions strictly override any rules in this repository for the current task.
+- **No Temporary Edits:** Do NOT modify `AGENTS.md` for one-off task overrides.
+- **Minimalist Specification:** Keep `AGENTS.md` minimal (~120–150 lines). Update it ONLY when making permanent repository-wide architectural policy changes.
