@@ -1,0 +1,34 @@
+/**
+ * Candidate source item normalized across backward parsing, OpenAlex, and Semantic Scholar.
+ */
+export interface CandidateSource {
+  title: string;
+  authors: string[];
+  publisher?: string;
+  publicationYear?: number;
+  doi?: string;
+  openalexId?: string;
+  corpusId?: number;
+  relevanceScore?: number;
+  isFoundational?: boolean;
+  pdfUrl?: string;
+  sourceOrigin: "backward" | "forward_openalex" | "forward_s2";
+  citationCount?: number;
+  influentialCitationCount?: number;
+  rawParsedRef?: string;
+}
+
+/**
+ * Result returned by the Literature Expansion Orchestrator.
+ */
+export interface ExpansionResult {
+  boxId: number;
+  expansionCycle: number;
+  previousActiveSeedIds: number[];
+  newActiveSeedIds: number[];
+  addedSources: {
+    id: number;
+    title: string;
+    sourceOrigin: string;
+  }[];
+}

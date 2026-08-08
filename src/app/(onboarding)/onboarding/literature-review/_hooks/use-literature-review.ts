@@ -3,11 +3,7 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import type {
-  GeminiThesisBox,
-  LiteraturePoolEntry,
-  JuryArticle,
-} from "@/lib/types";
+import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
 import {
   fetchBoxesWithFullShape,
   fetchUncachedBoxesWithFullShape,
@@ -34,17 +30,6 @@ export interface UseLiteratureReviewResult {
   allProcessed: boolean;
   literaturePool: LiteraturePoolEntry[];
   archivalBoxes: Set<string>;
-  addArchiveEntry: (
-    subBoxTitle: string,
-    thesisBoxId: number,
-    entry: { title: string; description?: string },
-  ) => void;
-  removeArchiveEntry: (subBoxTitle: string, articleTitle: string) => void;
-  editArchiveEntry: (
-    subBoxTitle: string,
-    oldTitle: string,
-    newTitle: string,
-  ) => void;
   handleFinalize: () => Promise<void>;
   retryReview: () => Promise<void>;
   setProcessing: (processing: boolean) => void;
@@ -67,9 +52,6 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   const [processing, setProcessing] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const hasTriggeredRef = useRef(false);
-  const [manualEntries, setManualEntries] = useState<
-    { subBoxTitle: string; thesisBoxId: number; articles: JuryArticle[] }[]
-  >([]);
   const [boxErrors, setBoxErrors] = useState<Record<string, string>>({});
   const [allProcessed, setAllProcessed] = useState(false);
 
@@ -100,22 +82,10 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   const loading = boxesLoading || poolLoading || allBoxes === undefined;
 
   const literaturePool = useMemo(() => {
-    const pool = initialPool
+    return initialPool
       ? (JSON.parse(JSON.stringify(initialPool)) as LiteraturePoolEntry[])
       : [];
-    for (const manual of manualEntries) {
-      const idx = pool.findIndex((e) => e.subBoxTitle === manual.subBoxTitle);
-      if (idx >= 0) {
-        pool[idx] = {
-          ...pool[idx],
-          articles: [...pool[idx].articles, ...manual.articles],
-        };
-      } else {
-        pool.push(manual);
-      }
-    }
-    return pool;
-  }, [initialPool, manualEntries]);
+  }, [initialPool]);
 
   const archivalBoxes = useMemo(() => {
     const archivalSet = new Set<string>();
@@ -220,76 +190,6 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     await runPipeline();
   }, [runPipeline]);
 
-  const addArchiveEntry = useCallback(
-    (subBoxTitle: string, thesisBoxId: number, entry: { title: string }) => {
-      const archiveArticle: JuryArticle = {
-        title: entry.title,
-        comparisonNote: null,
-        openalexId: null,
-        doi: null as string | null,
-        publisher: "",
-        publicationYear: 0,
-        authors: [],
-        isFoundational: true,
-        relevanceScore: 100,
-      };
-
-      setManualEntries((prev) => {
-        const existingIndex = prev.findIndex(
-          (e) => e.thesisBoxId === thesisBoxId,
-        );
-        if (existingIndex >= 0) {
-          const updated = [...prev];
-          updated[existingIndex] = {
-            ...updated[existingIndex],
-            articles: [...updated[existingIndex].articles, archiveArticle],
-          };
-          return updated;
-        }
-        return [
-          ...prev,
-          { subBoxTitle, thesisBoxId, articles: [archiveArticle] },
-        ];
-      });
-    },
-    [],
-  );
-
-  const removeArchiveEntry = useCallback(
-    (subBoxTitle: string, articleTitle: string) => {
-      setManualEntries((prev) =>
-        prev
-          .map((entry) => {
-            if (entry.subBoxTitle !== subBoxTitle) return entry;
-            return {
-              ...entry,
-              articles: entry.articles.filter((a) => a.title !== articleTitle),
-            };
-          })
-          .filter((entry) => entry.articles.length > 0),
-      );
-    },
-    [],
-  );
-
-  const editArchiveEntry = useCallback(
-    (subBoxTitle: string, oldTitle: string, newTitle: string) => {
-      if (!newTitle.trim()) return;
-      setManualEntries((prev) =>
-        prev.map((entry) => {
-          if (entry.subBoxTitle !== subBoxTitle) return entry;
-          return {
-            ...entry,
-            articles: entry.articles.map((a) =>
-              a.title === oldTitle ? { ...a, title: newTitle.trim() } : a,
-            ),
-          };
-        }),
-      );
-    },
-    [],
-  );
-
   const handleFinalize = useCallback(async () => {
     setAllProcessed(true);
 
@@ -297,13 +197,11 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
 
     setConfirming(true);
 
-    const archiveEntries = manualEntries;
-
-    const result = await finalizeLiterature(archiveEntries);
+    const result = await finalizeLiterature();
     setConfirming(false);
 
     if ("error" in result && result.error) return;
-  }, [literaturePool, manualEntries, finalizeLiterature]);
+  }, [literaturePool, finalizeLiterature]);
 
   return {
     subBoxes,
@@ -315,9 +213,6 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     allProcessed,
     literaturePool,
     archivalBoxes,
-    addArchiveEntry,
-    removeArchiveEntry,
-    editArchiveEntry,
     handleFinalize,
     retryReview,
     setProcessing,

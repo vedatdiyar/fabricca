@@ -135,10 +135,11 @@ export const boxes = pgTable(
     description: text(),
     semanticQuery: text(),
     concepts: jsonb().$type<string[]>().default([]).notNull(),
-    foundationalQueries: jsonb()
-      .$type<{ author: string; title: string; publicationYear: number }[]>()
+    activeSeedIds: jsonb("active_seed_ids")
+      .$type<number[]>()
       .default([])
       .notNull(),
+    expansionCycle: integer("expansion_cycle").default(1).notNull(),
     createdAt: timestamp().defaultNow().notNull(),
     updatedAt: timestamp().defaultNow().notNull(),
   },

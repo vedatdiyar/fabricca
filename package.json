@@ -11,7 +11,8 @@
     "check:full": "npm run lint && npm run typecheck && npx prettier --write .",
     "db:push": "drizzle-kit push --force",
     "db:reset": "tsx src/db/reset.ts",
-    "db:seed": "tsx src/db/seed.ts"
+    "db:seed": "tsx src/db/seed.ts",
+    "test:expansion": "tsx --env-file=.env.local scripts/test-expansion.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1097.0",

@@ -20,7 +20,6 @@ import type { SubBoxInput } from "./_services/literature-review-papers";
 import { orchestrateBatchProcess } from "./_services/batch-orchestrator";
 import {
   persistLiteraturePool,
-  persistArchiveEntries,
   persistSubBoxEntry,
   persistRelatedTheses,
   fetchPreloadedPool,
@@ -183,57 +182,6 @@ export async function fetchPreloadedLiteraturePool(): Promise<{
   const pool = await fetchPreloadedPool(matrix.id);
 
   return { data: pool };
-}
-
-/**
- * Persists manual archive entries to the database.
- *
- * @param args - The archive append payload.
- * @param args.entries - The archive entries to persist per thesis box.
- * @returns The action result indicating success or an error.
- */
-export async function appendArchiveEntriesAction(args: {
-  entries: {
-    thesisBoxId: number;
-    articles: import("@/lib/types").JuryArticle[];
-  }[];
-}): Promise<OnboardingActionResult> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  log.info("append_archive_start");
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const { entries } = args;
-    if (!entries || entries.length === 0) {
-      return { error: "No archive entries found to append." };
-    }
-
-    await persistArchiveEntries(entries, (msg) => {
-      log.info(msg);
-    });
-
-    try {
-      revalidateOnboardingPaths();
-    } catch {}
-
-    invalidateOnboardingCache();
-
-    log.info("append_archive_success");
-
-    return { success: true };
-  } catch (err) {
-    log.error("append_archive_failed", {
-      error: err,
-    });
-    return {
-      error:
-        err instanceof Error ? err.message : "An unexpected error occurred.",
-    };
-  }
 }
 
 /**

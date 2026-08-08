@@ -13,11 +13,7 @@ import {
   isNavigationStepText,
   type LoadingStep,
 } from "../_lib/loading-steps";
-import type {
-  ThesisMatrix,
-  LiteraturePoolEntry,
-  JuryArticle,
-} from "@/lib/types";
+import type { ThesisMatrix, LiteraturePoolEntry } from "@/lib/types";
 import { getStepTanStackKeys } from "@/lib/onboarding-cache";
 import { clearDownstreamDbAction } from "@/app/(onboarding)/onboarding/actions";
 import { saveThesisMatrixAction } from "../matrix/actions";
@@ -30,7 +26,6 @@ import {
 import {
   checkLiteraturePoolAction,
   runLiteraturePipelineAction,
-  appendArchiveEntriesAction,
   finalizeOnboardingAction,
   setLiteratureCancelledAction,
 } from "../literature-review/actions";
@@ -368,50 +363,33 @@ export function useOnboardingNavigation() {
   }, [router, queryClient, showLoading, hideLoading, completeStep]);
 
   /**
-   * Persists manual archive entries, finalizes onboarding, and navigates to the dashboard.
+   * Finalizes onboarding, then navigates to the dashboard.
    *
-   * @param archiveEntries - The manual archive entries to persist.
    * @returns A success flag with an optional error message.
    */
-  const finalizeLiterature = useCallback(
-    async (
-      archiveEntries: {
-        subBoxTitle: string;
-        thesisBoxId: number;
-        articles: JuryArticle[];
-      }[],
-    ): Promise<{ success: boolean; error?: string }> => {
-      try {
-        if (archiveEntries.length > 0) {
-          const archiveResult = await appendArchiveEntriesAction({
-            entries: archiveEntries,
-          });
-          if ("error" in archiveResult && archiveResult.error) {
-            toast.error(archiveResult.error);
-            return { success: false, error: archiveResult.error };
-          }
-        }
-
-        const finalizeResult = await finalizeOnboardingAction();
-        if ("error" in finalizeResult && finalizeResult.error) {
-          toast.error(finalizeResult.error);
-          return { success: false, error: finalizeResult.error };
-        }
-
-        queryClient.invalidateQueries();
-        toast.success("Tebrikler! Onboarding süreciniz tamamlandı.");
-        window.location.href = "/dashboard";
-
-        return { success: true };
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
-        toast.error(message);
-        return { success: false, error: message };
+  const finalizeLiterature = useCallback(async (): Promise<{
+    success: boolean;
+    error?: string;
+  }> => {
+    try {
+      const finalizeResult = await finalizeOnboardingAction();
+      if ("error" in finalizeResult && finalizeResult.error) {
+        toast.error(finalizeResult.error);
+        return { success: false, error: finalizeResult.error };
       }
-    },
-    [queryClient],
-  );
+
+      queryClient.invalidateQueries();
+      toast.success("Tebrikler! Onboarding süreciniz tamamlandı.");
+      window.location.href = "/dashboard";
+
+      return { success: true };
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
+      toast.error(message);
+      return { success: false, error: message };
+    }
+  }, [queryClient]);
 
   return {
     submitMatrix,

@@ -391,7 +391,6 @@ export async function persistBoxesAction(
           description: box.description || "",
           parentId: mappedParentId,
           semanticQuery: box.semanticQuery || "",
-          foundationalQueries: box.foundationalQueries ?? [],
           concepts: box.concepts ?? [],
         });
       }

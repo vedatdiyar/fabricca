@@ -74,7 +74,6 @@ export async function persistRelatedTheses(userId: number): Promise<void> {
         description: BOX_TYPE_DESCRIPTIONS.RELATED_THESES,
         semanticQuery: null,
         concepts: [],
-        foundationalQueries: [],
       })
       .returning({ id: boxes.id });
     relatedBox = inserted;
@@ -242,44 +241,6 @@ export async function persistLiteraturePool(
         }
       }),
     );
-  });
-}
-
-/**
- * Persists archive entries using thesisBoxId directly, with no title lookup.
- *
- * @param entries - The archive entries to persist per thesis box.
- * @param onWarn - Optional callback invoked when duplicate entries are skipped.
- */
-export async function persistArchiveEntries(
-  entries: { thesisBoxId: number; articles: JuryArticle[] }[],
-  onWarn?: (message: string, data?: Record<string, unknown>) => void,
-): Promise<void> {
-  await db.transaction(async (tx) => {
-    const skippedResults = await Promise.all(
-      entries.map(async (entry) => {
-        const { toInsert, skipped } = await insertLiteratureBatch(
-          tx,
-          entry.thesisBoxId,
-          entry.articles,
-        );
-
-        if (toInsert.length > 0) {
-          await tx.insert(sources).values(toInsert);
-        }
-
-        return skipped;
-      }),
-    );
-
-    const totalSkipped = skippedResults.reduce(
-      (sum, current) => sum + current,
-      0,
-    );
-
-    if (totalSkipped > 0) {
-      onWarn?.("append_archive_duplicate_skipped", { totalSkipped });
-    }
   });
 }
 

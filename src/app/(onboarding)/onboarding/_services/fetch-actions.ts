@@ -106,7 +106,6 @@ export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
         parentId: r.parentId,
         semanticQuery: r.semanticQuery,
         subBoxes: undefined,
-        foundationalQueries: r.foundationalQueries ?? [],
         concepts: r.concepts ?? [],
       });
       subBoxMap.set(r.parentId, list);
@@ -121,7 +120,6 @@ export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
     parentId: null,
     semanticQuery: null,
     subBoxes: subBoxMap.get(b.id),
-    foundationalQueries: b.foundationalQueries ?? [],
     concepts: b.concepts ?? [],
   }));
 
@@ -172,7 +170,6 @@ export async function fetchUncachedBoxesWithFullShape(): Promise<
         parentId: r.parentId,
         semanticQuery: r.semanticQuery,
         subBoxes: undefined,
-        foundationalQueries: r.foundationalQueries ?? [],
         concepts: r.concepts ?? [],
       });
       subBoxMap.set(r.parentId, list);
@@ -187,7 +184,6 @@ export async function fetchUncachedBoxesWithFullShape(): Promise<
     parentId: null,
     semanticQuery: null,
     subBoxes: subBoxMap.get(b.id),
-    foundationalQueries: b.foundationalQueries ?? [],
     concepts: b.concepts ?? [],
   }));
 

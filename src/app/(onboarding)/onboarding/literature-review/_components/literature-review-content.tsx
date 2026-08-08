@@ -1,16 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import {
-  Loader2,
-  AlertCircle,
-  BookOpen,
-  Plus,
-  CheckCircle,
-} from "lucide-react";
+import { Loader2, AlertCircle, BookOpen, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { AIBanner } from "@/components/ai-banner";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
@@ -23,56 +15,6 @@ import { getBoxTypeLabel } from "@/lib/box-constants";
 
 /** Title of the dedicated related-theses box rendered at the bottom of the grid. */
 const RELATED_THESES_TITLE = "İlgili Tezler";
-
-/**
- * Renders a manual entry form for archival/empirical boxes.
- *
- * @param root0 - Component props.
- * @param root0.onAddEntry - Callback invoked with the entered title.
- * @returns The archive entry form UI.
- */
-function ArchiveEntryForm({
-  onAddEntry,
-}: {
-  onAddEntry: (title: string) => void;
-}) {
-  const [title, setTitle] = useState("");
-
-  const handleAdd = () => {
-    const trimmedTitle = title.trim();
-    if (!trimmedTitle) return;
-    onAddEntry(trimmedTitle);
-    setTitle("");
-  };
-
-  return (
-    <div className="space-y-3 border border-dashed border-border rounded-md bg-card/20 p-4">
-      <p className="text-xs text-muted-foreground">
-        Bu arşiv kutusu altına spesifik belge veya dergi sayılarını (ör.{" "}
-        <em>Sayı 3</em>, <em>1994 Tüzük Metni</em>) ekleyebilirsiniz. PDF
-        dosyalarını onboarding sonrasında Kütüphane ekranından
-        yükleyebilirsiniz.
-      </p>
-      <div className="flex gap-2">
-        <Input
-          placeholder="Örn: Serxwebûn Sayı 3 veya HADEP 1994 Tüzüğü"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="flex-1"
-        />
-        <Button
-          type="button"
-          size="sm"
-          onClick={handleAdd}
-          disabled={!title.trim()}
-        >
-          <Plus className="w-4 h-4 mr-1" />
-          Ekle
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 /**
  * Renders a sub-box's transient processing states while the pipeline runs.
@@ -115,36 +57,19 @@ function SubBoxQuery({
 }
 
 /**
- * Renders completed sub-box results: manual entry forms for archival boxes, article grids otherwise.
+ * Renders completed sub-box results as article grids.
  *
  * @param root0 - Component props.
  * @param root0.subBox - The completed sub-box data.
  * @param root0.literaturePool - The current literature pool entries.
- * @param root0.onAddArchiveEntry - Callback invoked when a manual archive entry is added.
- * @param root0.onRemoveArchiveEntry - Optional callback invoked when a manual archive entry is removed.
- * @param root0.onEditArchiveEntry - Optional callback invoked when a manual archive entry is edited.
  * @returns The completed sub-box results UI.
  */
 function SubBoxDone({
   subBox,
   literaturePool,
-  onAddArchiveEntry,
-  onRemoveArchiveEntry,
-  onEditArchiveEntry,
 }: {
   subBox: GeminiThesisBox;
   literaturePool: LiteraturePoolEntry[];
-  onAddArchiveEntry: (
-    subBoxTitle: string,
-    thesisBoxId: number,
-    entry: { title: string },
-  ) => void;
-  onRemoveArchiveEntry?: (subBoxTitle: string, articleTitle: string) => void;
-  onEditArchiveEntry?: (
-    subBoxTitle: string,
-    oldTitle: string,
-    newTitle: string,
-  ) => void;
 }) {
   const entry = literaturePool.find((e) => e.subBoxTitle === subBox.title);
 
@@ -174,13 +99,7 @@ function SubBoxDone({
                     )}
                   </div>
 
-                  <ArchiveEntryForm
-                    onAddEntry={(title) =>
-                      onAddArchiveEntry(sub.title, sub.id ?? 0, { title })
-                    }
-                  />
-
-                  {subArticles.length > 0 ? (
+                  {subArticles.length > 0 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
                       {[...subArticles]
                         .sort(
@@ -191,33 +110,8 @@ function SubBoxDone({
                           <LiteratureArticleCard
                             key={`${article.title}-${aIdx}`}
                             article={article}
-                            onDelete={
-                              onRemoveArchiveEntry
-                                ? () =>
-                                    onRemoveArchiveEntry(
-                                      sub.title,
-                                      article.title,
-                                    )
-                                : undefined
-                            }
-                            onEdit={
-                              onEditArchiveEntry
-                                ? (newTitle) =>
-                                    onEditArchiveEntry(
-                                      sub.title,
-                                      article.title,
-                                      newTitle,
-                                    )
-                                : undefined
-                            }
                           />
                         ))}
-                    </div>
-                  ) : (
-                    <div className="p-3 text-center border border-dashed border-border/40 rounded-md bg-card/10">
-                      <p className="text-xs text-muted-foreground font-light">
-                        Bu alt başlık için henüz birincil belge/veri girilmedi.
-                      </p>
                     </div>
                   )}
                 </div>
@@ -225,44 +119,21 @@ function SubBoxDone({
             })}
           </div>
         ) : (
-          <div className="space-y-4">
-            <ArchiveEntryForm
-              onAddEntry={(title) =>
-                onAddArchiveEntry(subBox.title, subBox.id ?? 0, { title })
-              }
-            />
-            {entry && entry.articles.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {[...entry.articles]
-                  .sort(
-                    (a, b) =>
-                      Number(b.isFoundational) - Number(a.isFoundational),
-                  )
-                  .map((article, idx) => (
-                    <LiteratureArticleCard
-                      key={`${article.title}-${idx}`}
-                      article={article}
-                      onDelete={
-                        onRemoveArchiveEntry
-                          ? () =>
-                              onRemoveArchiveEntry(subBox.title, article.title)
-                          : undefined
-                      }
-                      onEdit={
-                        onEditArchiveEntry
-                          ? (newTitle) =>
-                              onEditArchiveEntry(
-                                subBox.title,
-                                article.title,
-                                newTitle,
-                              )
-                          : undefined
-                      }
-                    />
-                  ))}
-              </div>
-            )}
-          </div>
+          entry &&
+          entry.articles.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {[...entry.articles]
+                .sort(
+                  (a, b) => Number(b.isFoundational) - Number(a.isFoundational),
+                )
+                .map((article, idx) => (
+                  <LiteratureArticleCard
+                    key={`${article.title}-${idx}`}
+                    article={article}
+                  />
+                ))}
+            </div>
+          )
         )}
       </div>
     );
@@ -371,9 +242,6 @@ export function LiteratureReviewContent() {
     boxErrors,
     archivalBoxes,
     literaturePool,
-    addArchiveEntry,
-    removeArchiveEntry,
-    editArchiveEntry,
     handleFinalize,
   } = useLiteratureReview();
 
@@ -401,7 +269,7 @@ export function LiteratureReviewContent() {
       <div className="grid grid-cols-1 gap-4">
         {regularBoxes.map((subBox) => {
           const isArchival = archivalBoxes.has(subBox.title);
-          const isCompleted = archivalBoxes.has(subBox.title)
+          const isCompleted = isArchival
             ? false
             : (subBox.subBoxes?.length ?? 0) > 0
               ? subBox.subBoxes!.some((child) =>
@@ -433,13 +301,7 @@ export function LiteratureReviewContent() {
                 </p>
               )}
               {isCompleted || isArchival ? (
-                <SubBoxDone
-                  subBox={subBox}
-                  literaturePool={literaturePool}
-                  onAddArchiveEntry={addArchiveEntry}
-                  onRemoveArchiveEntry={removeArchiveEntry}
-                  onEditArchiveEntry={editArchiveEntry}
-                />
+                <SubBoxDone subBox={subBox} literaturePool={literaturePool} />
               ) : (
                 <SubBoxQuery
                   status={boxStatuses[subBox.title] ?? "idle"}
@@ -469,13 +331,7 @@ export function LiteratureReviewContent() {
               {relatedBox.description}
             </p>
           )}
-          <SubBoxDone
-            subBox={relatedBox}
-            literaturePool={literaturePool}
-            onAddArchiveEntry={addArchiveEntry}
-            onRemoveArchiveEntry={removeArchiveEntry}
-            onEditArchiveEntry={editArchiveEntry}
-          />
+          <SubBoxDone subBox={relatedBox} literaturePool={literaturePool} />
         </Card>
       )}
 
