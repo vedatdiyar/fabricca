@@ -2,7 +2,10 @@
 
 import { z } from "zod";
 import { getSession } from "@/lib/session";
-import { executeMutationTool } from "@/lib/services/advisor-tools";
+import {
+  executeMutationTool,
+  undoMutationTool,
+} from "@/lib/services/advisor-tools";
 
 const toolActionSchema = z.object({
   toolName: z.string().min(1, "Tool name is required."),
@@ -13,6 +16,7 @@ export interface ExecuteAdvisorToolResult {
   success: boolean;
   message: string;
   data?: unknown;
+  previousState?: Record<string, unknown>;
 }
 
 /**
@@ -54,6 +58,49 @@ export async function executeAdvisorToolAction(payload: {
     return {
       success: false,
       message: `İşlem gerçekleştirilirken hata oluştu: ${errorMsg}`,
+    };
+  }
+}
+
+/**
+ * Server Action that reverts (undoes) a previously approved and executed tool action.
+ *
+ * @param payload - Payload containing execution parameters and previous state.
+ * @param payload.toolName - Name of the tool.
+ * @param payload.args - Original tool arguments.
+ * @param payload.executionResult - Result output from original execution (e.g. created record).
+ * @param payload.previousState - Snapshot of state before original execution.
+ * @returns Structured result with success status and user-facing Turkish message.
+ */
+export async function undoAdvisorToolAction(payload: {
+  toolName: string;
+  args: Record<string, unknown>;
+  executionResult?: unknown;
+  previousState?: Record<string, unknown>;
+}): Promise<{ success: boolean; message: string }> {
+  const session = await getSession();
+  if (!session) {
+    return {
+      success: false,
+      message: "Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.",
+    };
+  }
+
+  try {
+    const result = await undoMutationTool(
+      payload.toolName,
+      payload.args,
+      payload.executionResult,
+      payload.previousState,
+      session.userId,
+    );
+    return result;
+  } catch (error) {
+    const errorMsg =
+      error instanceof Error ? error.message : "Bilinmeyen sunucu hatası.";
+    return {
+      success: false,
+      message: `İşlem geri alınırken hata oluştu: ${errorMsg}`,
     };
   }
 }

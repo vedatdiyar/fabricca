@@ -79,6 +79,35 @@ function formatToolExplanation(
 }
 
 /**
+ * Detects whether a query is a direct database action/mutation command
+ * (e.g. creating/updating/deleting boxes, tasks, notes, or matrix fields)
+ * that does not require academic literature retrieval.
+ *
+ * @param query - User input text.
+ * @returns True when the query represents an explicit action/tool call.
+ */
+function isActionQuery(query: string): boolean {
+  const lower = query.toLowerCase().trim();
+
+  const hasTarget =
+    /\b(kutu|kutusu|kutular|kutuları|görev|görevi|görevler|görevleri|not|notu|notlar|notları|alıntı|matris|matrisi|tez matrisi|kaynak|kaynağı|kaynaklar)\b/i.test(
+      lower,
+    );
+  const hasActionVerb =
+    /\b(ekle|eklesene|oluştur|oluştursana|sil|silsene|güncelle|güncellesene|değiştir|düzenle|tamamla|listele|göster|getir)\b/i.test(
+      lower,
+    );
+
+  if (hasTarget && hasActionVerb) return true;
+
+  if (/\b(ekle|oluştur|sil|güncelle)\b/i.test(lower) && lower.length < 60) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Handles POST requests for streaming advisor queries via SSE with Function Calling support.
  *
  * @param request - The incoming HTTP request with query and optional history.
@@ -103,70 +132,77 @@ export async function POST(request: Request) {
   }
 
   const { query, history } = parseResult.data;
-
-  const rawSources = await performHybridRagSearch({ query, topK: 7 });
-  const sources = rawSources;
-
-  let contextText = "";
-  if (sources.length > 0) {
-    const allPartial = sources.every((s) => s.isPartialMatch);
-    if (allPartial) {
-      contextText +=
-        "NOT: Aşağıdaki kaynaklar doğrudan eşleşmemektedir, yalnızca dolaylı olarak ilgili olabilirler. Bu bilgileri ihtiyatla kullanın.\n\n";
-    }
-    const emittedParagraphs = new Set<string>();
-    contextText += sources
-      .map((s, idx) => {
-        const pageStr = formatPageReference(s);
-        const secStr = s.sectionTitle ? ` | Bölüm: ${s.sectionTitle}` : "";
-        const authors = s.resourceAuthors.join(", ");
-        const yearStr = s.resourceYear
-          ? `Yıl: ${s.resourceYear}`
-          : "Yıl bilinmiyor";
-        const partialTag = s.isPartialMatch ? " [DOLAYLI İLGİLİ]" : "";
-        const windowText =
-          s.parentContent && s.parentContent.length > 0
-            ? s.parentContent
-            : s.content;
-        const paragraphText = windowText
-          .split(/\n{2,}/)
-          .map((p) => p.trim())
-          .filter((p) => p.length > 0)
-          .filter((p) => {
-            if (emittedParagraphs.has(p)) return false;
-            emittedParagraphs.add(p);
-            return true;
-          })
-          .join("\n\n");
-        return `--- KAYNAK PARÇASI #${idx + 1}${partialTag} ---
-[Eser: "${s.resourceTitle}" | Yazar: ${authors} | ${yearStr} | ${pageStr}${secStr} | Alakalılık Skoru: ${(s.relevanceScore * 100).toFixed(1)}%]
-${paragraphText}`;
-      })
-      .join("\n\n");
-  } else {
-    contextText =
-      "Kütüphanenizde bu sorguyla doğrudan eşleşen veya yeterince alakalı bir kaynak bulunamadı. Lütfen sorgunuzu kütüphanenizdeki mevcut konulara yönelik olarak yeniden formüle edin.";
-  }
-
-  const systemInstruction = buildAdvisorSystemInstruction(contextText);
-
-  const ai = getAi();
-  const contents: Array<Record<string, unknown>> = [];
-
-  if (history && history.length > 0) {
-    for (const msg of history.slice(-6)) {
-      contents.push({ role: msg.role, parts: [{ text: msg.content }] });
-    }
-  }
-
-  contents.push({ role: "user", parts: [{ text: query }] });
-
-  let fullText = "";
+  const isAction = isActionQuery(query);
   const encoder = new TextEncoder();
 
   const readable = new ReadableStream({
     async start(controller) {
       try {
+        let sources: RagSearchResultItem[] = [];
+
+        // Fast-Path: Skip heavy RAG literature search for direct database action queries
+        if (!isAction) {
+          sources = await performHybridRagSearch({ query, topK: 7 });
+        }
+
+        let contextText = "";
+        if (sources.length > 0) {
+          const allPartial = sources.every((s) => s.isPartialMatch);
+          if (allPartial) {
+            contextText +=
+              "NOT: Aşağıdaki kaynaklar doğrudan eşleşmemektedir, yalnızca dolaylı olarak ilgili olabilirler. Bu bilgileri ihtiyatla kullanın.\n\n";
+          }
+          const emittedParagraphs = new Set<string>();
+          contextText += sources
+            .map((s, idx) => {
+              const pageStr = formatPageReference(s);
+              const secStr = s.sectionTitle ? ` | Bölüm: ${s.sectionTitle}` : "";
+              const authors = s.resourceAuthors.join(", ");
+              const yearStr = s.resourceYear
+                ? `Yıl: ${s.resourceYear}`
+                : "Yıl bilinmiyor";
+              const partialTag = s.isPartialMatch ? " [DOLAYLI İLGİLİ]" : "";
+              const windowText =
+                s.parentContent && s.parentContent.length > 0
+                  ? s.parentContent
+                  : s.content;
+              const paragraphText = windowText
+                .split(/\n{2,}/)
+                .map((p) => p.trim())
+                .filter((p) => p.length > 0)
+                .filter((p) => {
+                  if (emittedParagraphs.has(p)) return false;
+                  emittedParagraphs.add(p);
+                  return true;
+                })
+                .join("\n\n");
+              return `--- KAYNAK PARÇASI #${idx + 1}${partialTag} ---
+[Eser: "${s.resourceTitle}" | Yazar: ${authors} | ${yearStr} | ${pageStr}${secStr} | Alakalılık Skoru: ${(s.relevanceScore * 100).toFixed(1)}%]
+${paragraphText}`;
+            })
+            .join("\n\n");
+        } else if (isAction) {
+          contextText =
+            "Kullanıcı doğrudan bir veritabanı/araç işlemi gerçekleştirmek istemektedir. İlgili aracı (function call) uygun parametrelerle hemen çağırın.";
+        } else {
+          contextText =
+            "Kütüphanenizde bu sorguyla doğrudan eşleşen veya yeterince alakalı bir kaynak bulunamadı. Lütfen sorgunuzu kütüphanenizdeki mevcut konulara yönelik olarak yeniden formüle edin.";
+        }
+
+        const systemInstruction = buildAdvisorSystemInstruction(contextText);
+
+        const ai = getAi();
+        const contents: Array<Record<string, unknown>> = [];
+
+        if (history && history.length > 0) {
+          for (const msg of history.slice(-6)) {
+            contents.push({ role: msg.role, parts: [{ text: msg.content }] });
+          }
+        }
+
+        contents.push({ role: "user", parts: [{ text: query }] });
+
+        let fullText = "";
         let maxTurns = 5;
         let continueLoop = true;
 

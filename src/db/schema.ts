@@ -398,7 +398,9 @@ export interface ChatToolCall {
   name: string;
   args: Record<string, unknown>;
   explanation: string;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "undone";
+  executionResult?: unknown;
+  previousState?: Record<string, unknown>;
 }
 
 /** Chat Messages table — stores individual messages within a chat session. */

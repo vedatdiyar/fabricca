@@ -16,7 +16,10 @@ import {
   generateChatTitleAction,
   type ChatSessionListItem,
 } from "../actions";
-import { executeAdvisorToolAction } from "../tool-actions";
+import {
+  executeAdvisorToolAction,
+  undoAdvisorToolAction,
+} from "../tool-actions";
 import {
   ToolConfirmationCard,
   type PendingToolCall,
@@ -44,7 +47,7 @@ interface CitationPopoverContentProps {
  *
  * @param root0 - Component props.
  * @param root0.source - The RAG source item to display.
- * @returns The citation detail markup.
+ * @returns Citation popup card element.
  */
 function CitationPopoverContent({ source }: CitationPopoverContentProps) {
   const pageSpan = source.pageStart ?? null;
@@ -324,7 +327,60 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
 
           targetDbId = msg.dbId;
           updatedToolCalls = msg.toolCalls.map((tc) =>
-            tc.toolCallId === toolCallId ? { ...tc, status: "approved" } : tc,
+            tc.toolCallId === toolCallId
+              ? {
+                  ...tc,
+                  status: "approved",
+                  executionResult: res.data,
+                  previousState: res.previousState,
+                }
+              : tc,
+          );
+          return {
+            ...msg,
+            toolCalls: updatedToolCalls,
+          };
+        }),
+      );
+
+      if (targetDbId) {
+        await updateChatMessageToolCalls(targetDbId, updatedToolCalls);
+      }
+    } else {
+      toast.error(res.message);
+    }
+  };
+
+  const handleUndoToolCall = async (
+    toolCallId: string,
+    name: string,
+    args: Record<string, unknown>,
+    executionResult?: unknown,
+    previousState?: Record<string, unknown>,
+  ) => {
+    const res = await undoAdvisorToolAction({
+      toolName: name,
+      args,
+      executionResult,
+      previousState,
+    });
+
+    if (res.success) {
+      toast.success(res.message);
+      let targetDbId: number | undefined;
+      let updatedToolCalls: PendingToolCall[] = [];
+
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (!msg.toolCalls) return msg;
+          const hasCall = msg.toolCalls.some(
+            (tc) => tc.toolCallId === toolCallId,
+          );
+          if (!hasCall) return msg;
+
+          targetDbId = msg.dbId;
+          updatedToolCalls = msg.toolCalls.map((tc) =>
+            tc.toolCallId === toolCallId ? { ...tc, status: "undone" } : tc,
           );
           return {
             ...msg,
@@ -639,6 +695,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
                               toolCall={tc}
                               onApprove={handleApproveToolCall}
                               onReject={handleRejectToolCall}
+                              onUndo={handleUndoToolCall}
                             />
                           ))}
                         </>
@@ -708,6 +765,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
                       toolCall={tc}
                       onApprove={handleApproveToolCall}
                       onReject={handleRejectToolCall}
+                      onUndo={handleUndoToolCall}
                     />
                   ))}
                 </div>
