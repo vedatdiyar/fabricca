@@ -72,6 +72,7 @@ export async function POST(request: Request) {
       contextText +=
         "NOT: Aşağıdaki kaynaklar doğrudan eşleşmemektedir, yalnızca dolaylı olarak ilgili olabilirler. Bu bilgileri ihtiyatla kullanın.\n\n";
     }
+    const emittedParagraphs = new Set<string>();
     contextText += sources
       .map((s, idx) => {
         const pageStr = formatPageReference(s);
@@ -81,9 +82,23 @@ export async function POST(request: Request) {
           ? `Yıl: ${s.resourceYear}`
           : "Yıl bilinmiyor";
         const partialTag = s.isPartialMatch ? " [DOLAYLI İLGİLİ]" : "";
+        const windowText =
+          s.parentContent && s.parentContent.length > 0
+            ? s.parentContent
+            : s.content;
+        const paragraphText = windowText
+          .split(/\n{2,}/)
+          .map((p) => p.trim())
+          .filter((p) => p.length > 0)
+          .filter((p) => {
+            if (emittedParagraphs.has(p)) return false;
+            emittedParagraphs.add(p);
+            return true;
+          })
+          .join("\n\n");
         return `--- KAYNAK PARÇASI #${idx + 1}${partialTag} ---
 [Eser: "${s.resourceTitle}" | Yazar: ${authors} | ${yearStr} | ${pageStr}${secStr} | Alakalılık Skoru: ${(s.relevanceScore * 100).toFixed(1)}%]
-${s.content}`;
+${paragraphText}`;
       })
       .join("\n\n");
   } else {

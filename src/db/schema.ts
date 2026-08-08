@@ -260,7 +260,7 @@ export const chunks = pgTable(
     tokenCount: integer("token_count"),
     embedding: vector("embedding", { dimensions: 1024 }),
     searchVector: tsvector("search_vector").generatedAlwaysAs(
-      sql`to_tsvector('simple', "content") || to_tsvector('english', "content")`,
+      sql`to_tsvector('turkish', "content") || to_tsvector('english', "content")`,
     ),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },

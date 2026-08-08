@@ -30,12 +30,11 @@ export interface DocumentAnalysisResult {
   }>;
 }
 
-/** Per-page analysis shape used internally by the chunk builder (extends Gemini output with footnotes). */
+/** Per-page analysis shape used by the chunk builder. */
 export interface PageAnalysis {
   pageNumber: number;
   printedPageNumber?: string;
   markdownContent: string;
-  footnotes?: string[];
 }
 
 /** JSON Schema for Gemini structured output — each batch analysis entry. */
@@ -84,7 +83,7 @@ export const DocumentAnalysisSchema: JsonSchema = {
           markdownContent: {
             type: "string",
             description:
-              "Full page content converted to clean markdown. Preserve heading hierarchy (H1/H2/H3), numbered/bulleted lists, tables, emphasis. Strip running headers, footers, standalone page numbers. Do NOT output footnote callout tags like [^n] in paragraph text.",
+              "Full page content converted to clean markdown, including page-bottom footnotes appended inline as natural paragraphs. Preserve heading hierarchy (H1/H2/H3), numbered/bulleted lists, tables, emphasis. Strip running headers, footers, standalone page numbers. Do NOT output footnote callout tags like [^n] in paragraph text.",
           },
         },
         required: ["pageNumber", "markdownContent"],

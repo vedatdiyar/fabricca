@@ -41,14 +41,14 @@ export async function searchLexical(
   const { resourceIds, topK = 30 } = options;
 
   const conditions = [
-    sql`${chunks.searchVector} @@ to_tsquery('simple', ${tsQuery})`,
+    sql`${chunks.searchVector} @@ (to_tsquery('turkish', ${tsQuery}) OR to_tsquery('english', ${tsQuery}))`,
     sql`${boxes.boxType} <> 'RELATED_THESES'`,
   ];
   if (resourceIds && resourceIds.length > 0) {
     conditions.push(sql`${chunks.sourceId} IN ${resourceIds}`);
   }
 
-  const rankExpression = sql`ts_rank(${chunks.searchVector}, to_tsquery('simple', ${tsQuery}))`;
+  const rankExpression = sql`ts_rank(${chunks.searchVector}, (to_tsquery('turkish', ${tsQuery}) OR to_tsquery('english', ${tsQuery})))`;
 
   const rows = await db
     .select({

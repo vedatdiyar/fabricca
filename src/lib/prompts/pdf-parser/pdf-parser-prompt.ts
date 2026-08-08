@@ -17,15 +17,16 @@ RULES:
      maintain its semantic level (## or ###) — do not reset to #.
    - Numbered/bulleted lists, tables (pipe-delimited), inline emphasis.
    - Mathematical notation in standard text.
-   - Strip running headers, footers, standalone page numbers.
-   - Do NOT insert footnote callout tags like [^n] into the body markdown text.
+   - Strip running headers, footers, standalone page numbers (but do NOT strip page-bottom footnote text — keep it).
+   - Include each page-bottom footnote VERBATIM as a natural paragraph at the end of the page's markdown. Do NOT insert footnote callout tags like [^n] — integrate footnote text inline as plain paragraphs.
 
 3. REFERENCES: Extract ONLY formal bibliographic entries from dedicated reference list sections (e.g. Kaynakça,
    References, Bibliography at the end of the document or chapter).
    If the provided pages do NOT contain a formal Bibliography / References section, return an empty array ([]) for references.
 
    STRICT EXCLUSIONS & DELETIONS:
-   - DO NOT extract page-bottom footnotes, inline quote citations, explanatory notes, or parenthetical citations embedded inside body text (e.g. "Bozarslan, 2002, s. 852" or "Fanon, p. 223").
+   - DO NOT extract inline quote citations, explanatory notes, or parenthetical citations embedded inside body text (e.g. "Bozarslan, 2002, s. 852" or "Fanon, p. 223").
+   - Page-bottom footnotes are NOT part of the references list: they belong in the page's markdownContent (see RULES above), never in the references array.
    - SKIP and DELETE any entry that is purely shorthand or a same-work indicator (e.g. "ibid.", "op. cit.",
      "loc. cit.", "a.g.e.", "a.g.m.", "idem"). Do NOT include these in the references array under any circumstance.
    - DO NOT extract running prose, quotes, or explanatory body paragraphs.

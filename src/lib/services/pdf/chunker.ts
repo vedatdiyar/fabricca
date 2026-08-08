@@ -10,7 +10,6 @@ export interface DocumentChunk {
   pageStart: number | null;
   pageEnd: number | null;
   printedPageNumber: string | null;
-  footnotes: string[];
   tokenCount: number;
 }
 
@@ -258,11 +257,9 @@ class ChunkBuilder {
   private bufferStartPage: number | null = null;
   private bufferEndPage: number | null = null;
   private bufferChars = 0;
-  private bufferFootnotes: string[] = [];
 
   private overlapRemainder: string = "";
   private overlapStartPage: number | null = null;
-  private overlapFootnotes: string[] = [];
 
   /**
    * Reports the current accumulated character count of the in-progress buffer.
@@ -292,19 +289,12 @@ class ChunkBuilder {
   }
 
   /**
-   * Pushes a block onto the current buffer, tracking the page span and footnotes.
+   * Pushes a block onto the current buffer, tracking the page span.
    *
    * @param text - The block text to buffer.
    * @param pageNumber - The page the block belongs to.
-   * @param printedPageNumber - Optional printed page number string.
-   * @param footnotes - Optional footnotes from the source page.
    */
-  pushBlock(
-    text: string,
-    pageNumber: number,
-    printedPageNumber?: string,
-    footnotes?: string[],
-  ): void {
+  pushBlock(text: string, pageNumber: number): void {
     if (this.bufferStartPage === null) {
       this.bufferStartPage = pageNumber;
 
@@ -314,23 +304,17 @@ class ChunkBuilder {
         if (this.overlapStartPage !== null) {
           this.bufferStartPage = this.overlapStartPage;
         }
-        this.bufferFootnotes.push(...this.overlapFootnotes);
         this.overlapRemainder = "";
         this.overlapStartPage = null;
-        this.overlapFootnotes = [];
       }
     }
     this.bufferParts.push(text);
     this.bufferChars += text.length;
     this.bufferEndPage = pageNumber;
-    if (footnotes?.length) {
-      this.bufferFootnotes.push(...footnotes);
-    }
   }
 
   flush(): void {
     let content = this.bufferParts.join("\n\n").trim();
-    const footnotes = [...this.bufferFootnotes];
     const startPage = this.bufferStartPage;
     const endPage = this.bufferEndPage;
     const section = this.currentSection;
@@ -372,7 +356,6 @@ class ChunkBuilder {
       if (overlapText.length > 10) {
         this.overlapRemainder = overlapText;
         this.overlapStartPage = endPage;
-        this.overlapFootnotes = [...footnotes];
 
         content = content.slice(0, overlapStart).trim();
         tokenCount = estimateTokenCount(content);
@@ -389,7 +372,6 @@ class ChunkBuilder {
       pageStart: startPage,
       pageEnd: endPage,
       printedPageNumber: formatPrintedPageNumber(startPage, endPage),
-      footnotes,
       tokenCount,
     });
   }
@@ -400,13 +382,11 @@ class ChunkBuilder {
    * @param content - The oversized block content.
    * @param pageNumber - The page the block belongs to.
    * @param printedPageNumber - Optional printed page number string.
-   * @param footnotes - Optional footnotes from the source page.
    */
   emitOversized(
     content: string,
     pageNumber: number,
     printedPageNumber?: string,
-    footnotes?: string[],
   ): void {
     let remainder = content.trim();
     let first = true;
@@ -441,7 +421,6 @@ class ChunkBuilder {
         pageEnd: pageNumber,
         printedPageNumber:
           printedPageNumber ?? formatPrintedPageNumber(pageNumber, pageNumber),
-        footnotes: footnotes ?? [],
         tokenCount: estimateTokenCount(part),
       });
     }
@@ -452,7 +431,6 @@ class ChunkBuilder {
     this.bufferStartPage = null;
     this.bufferEndPage = null;
     this.bufferChars = 0;
-    this.bufferFootnotes.length = 0;
   }
 
   /**
@@ -480,7 +458,9 @@ class ChunkBuilder {
  *
  * Section titles and page ranges persist across pages instead of resetting per page, so a multi-page chunk carries an accurate pageStart/pageEnd range and sections no longer lose their heading when they cross a page break. Chunks close at every heading and when a chunk exceeds the target size.
  *
- * @param pages - PageAnalysis array from the Gemini PDF parser, containing pageNumber, markdownContent, and footnotes.
+ * Footnotes are included inside each page's markdownContent (as natural paragraphs) by the parser, so they flow through chunking as regular blocks.
+ *
+ * @param pages - PageAnalysis array from the Gemini PDF parser, containing pageNumber and markdownContent.
  * @returns Processed document chunks ready for embedding.
  */
 export async function buildChunksFromPageAnalysis(
@@ -503,21 +483,11 @@ export async function buildChunksFromPageAnalysis(
       }
 
       if (block.length > TARGET_CHUNK_SIZE_CHARS) {
-        builder.emitOversized(
-          block,
-          page.pageNumber,
-          page.printedPageNumber,
-          page.footnotes ?? [],
-        );
+        builder.emitOversized(block, page.pageNumber, page.printedPageNumber);
         continue;
       }
 
-      builder.pushBlock(
-        block,
-        page.pageNumber,
-        page.printedPageNumber,
-        page.footnotes ?? [],
-      );
+      builder.pushBlock(block, page.pageNumber);
 
       if (builder.bufferCharCount >= TARGET_CHUNK_SIZE_CHARS) {
         builder.flush();
