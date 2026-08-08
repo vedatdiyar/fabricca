@@ -10,7 +10,42 @@ import {
   ADVISOR_TOOL_DECLARATIONS,
   isReadTool,
   executeReadTool,
+  getToolPreviousState,
 } from "@/lib/services/advisor-tools";
+
+/**
+ * Detects whether a query is a direct database action/mutation command
+ * (e.g. creating/updating/deleting boxes, tasks, notes, or matrix fields)
+ * that does not require academic literature retrieval.
+ *
+ * @param query - User input text.
+ * @returns True when the query represents an explicit action/tool call.
+ */
+function isActionQuery(query: string): boolean {
+  const lower = query.toLowerCase().trim();
+
+  const hasTarget =
+    /\b(kutu\w*|görev\w*|not\w*|matris\w*|kaynak\w*|kaynağı\w*|açıklam\w*|başlı\w*|alıntı\w*)\b/i.test(
+      lower,
+    );
+  const hasActionVerb =
+    /\b(ekle\w*|oluştur\w*|sil\w*|güncelle\w*|değiştir\w*|düzenle\w*|tamamla\w*|listele\w*|göster\w*|getir\w*|kaldır\w*|işaretle\w*)\b/i.test(
+      lower,
+    );
+
+  if (hasTarget && hasActionVerb) return true;
+
+  if (
+    /\b(ekle\w*|oluştur\w*|sil\w*|güncelle\w*|değiştir\w*|listele\w*|göster\w*)\b/i.test(
+      lower,
+    ) &&
+    lower.length < 80
+  ) {
+    return true;
+  }
+
+  return false;
+}
 
 const requestSchema = z.object({
   query: z
@@ -76,35 +111,6 @@ function formatToolExplanation(
     default:
       return `${name} veritabanı değişikliği gerçekleştirilecek.`;
   }
-}
-
-/**
- * Detects whether a query is a direct database action/mutation command
- * (e.g. creating/updating/deleting boxes, tasks, notes, or matrix fields)
- * that does not require academic literature retrieval.
- *
- * @param query - User input text.
- * @returns True when the query represents an explicit action/tool call.
- */
-function isActionQuery(query: string): boolean {
-  const lower = query.toLowerCase().trim();
-
-  const hasTarget =
-    /\b(kutu|kutusu|kutular|kutuları|görev|görevi|görevler|görevleri|not|notu|notlar|notları|alıntı|matris|matrisi|tez matrisi|kaynak|kaynağı|kaynaklar)\b/i.test(
-      lower,
-    );
-  const hasActionVerb =
-    /\b(ekle|eklesene|oluştur|oluştursana|sil|silsene|güncelle|güncellesene|değiştir|düzenle|tamamla|listele|göster|getir)\b/i.test(
-      lower,
-    );
-
-  if (hasTarget && hasActionVerb) return true;
-
-  if (/\b(ekle|oluştur|sil|güncelle)\b/i.test(lower) && lower.length < 60) {
-    return true;
-  }
-
-  return false;
 }
 
 /**
@@ -296,6 +302,11 @@ ${paragraphText}`;
                   const toolCallId = `tool-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
                   const args = (call.args as Record<string, unknown>) ?? {};
                   const explanation = formatToolExplanation(call.name, args);
+                  const previousState = await getToolPreviousState(
+                    call.name,
+                    args,
+                    session.userId,
+                  );
 
                   controller.enqueue(
                     encoder.encode(
@@ -305,6 +316,7 @@ ${paragraphText}`;
                         name: call.name,
                         args,
                         explanation,
+                        previousState,
                       })}\n\n`,
                     ),
                   );

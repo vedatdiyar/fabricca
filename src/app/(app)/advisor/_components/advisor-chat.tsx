@@ -1,114 +1,15 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { Sparkles, Send, User, FileText, Copy, Check } from "lucide-react";
+import { useRef, useEffect } from "react";
+import { Sparkles, Send, User, Copy, Check } from "lucide-react";
 import Image from "next/image";
-import { toast } from "sonner";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import {
-  getChatSessions,
-  createChatSession,
-  deleteChatSession,
-  getChatMessages,
-  saveChatMessage,
-  updateChatMessageToolCalls,
-  generateChatTitleAction,
-  type ChatSessionListItem,
-} from "../actions";
-import {
-  executeAdvisorToolAction,
-  undoAdvisorToolAction,
-} from "../tool-actions";
-import {
-  ToolConfirmationCard,
-  type PendingToolCall,
-} from "./tool-confirmation-card";
-import type { RagSearchResultItem } from "@/lib/services/rag-search";
+import { ToolConfirmationCard } from "./tool-confirmation-card";
 import { ChatSidebar } from "./chat-sidebar";
 import { MarkdownRenderer } from "./markdown-renderer";
-
-interface Message {
-  id: string;
-  dbId?: number;
-  role: "user" | "model";
-  content: string;
-  sources?: RagSearchResultItem[];
-  toolCalls?: PendingToolCall[];
-  timestamp: string;
-}
-
-interface CitationPopoverContentProps {
-  source: RagSearchResultItem;
-}
-
-/**
- * Renders the academic source details as an inline citation panel.
- *
- * @param root0 - Component props.
- * @param root0.source - The RAG source item to display.
- * @returns Citation popup card element.
- */
-function CitationPopoverContent({ source }: CitationPopoverContentProps) {
-  const pageSpan = source.pageStart ?? null;
-  const pageEnd = source.pageEnd ?? pageSpan;
-  const pageRef =
-    source.printedPageNumber ??
-    (pageSpan != null && pageEnd != null
-      ? pageSpan === pageEnd
-        ? `s. ${pageSpan}`
-        : `ss. ${pageSpan}–${pageEnd}`
-      : null);
-
-  return (
-    <div className="text-sm space-y-4">
-      <div className="flex items-center justify-between gap-2 mt-4">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <FileText className="size-4 text-primary shrink-0" />
-          <span className="font-medium text-foreground break-words">
-            {source.resourceTitle}
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[11px] shrink-0">
-            %{(source.relevanceScore * 100).toFixed(0)} Alaka
-          </span>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-        <span>{source.resourceAuthors.join(", ")}</span>
-        {pageRef && <span>{pageRef}</span>}
-        {source.sectionTitle && (
-          <span className="truncate">Bölüm: {source.sectionTitle}</span>
-        )}
-      </div>
-
-      <div className="text-sm text-foreground/80 leading-relaxed space-y-3 pl-3 border-l-2 border-primary/20">
-        {source.content.split("\n\n").map((paragraph, i) => {
-          const lines = paragraph.split("\n");
-          const hasNumberedItems = lines.some((l) =>
-            /^\d+[.)]\s/.test(l.trim()),
-          );
-          if (hasNumberedItems) {
-            return (
-              <ol key={i} className="list-decimal list-inside space-y-1">
-                {lines.map((line, j) => (
-                  <li key={j}>{line.trim().replace(/^\d+[.)]\s*/, "")}</li>
-                ))}
-              </ol>
-            );
-          }
-          return <p key={i}>{paragraph}</p>;
-        })}
-      </div>
-    </div>
-  );
-}
-
-interface AdvisorChatProps {
-  initialSessionId?: number;
-}
+import { CitationPopoverContent } from "./citation-popover-content";
+import { useAdvisorChat } from "./use-advisor-chat";
+import type { AdvisorChatProps } from "./types";
 
 /**
  * Interactive Advisor Chat component delivering an academic AI conversation backed by Hybrid RAG & Cohere Rerank with persistent chat history sidebar and Function Calling database tools.
@@ -118,27 +19,31 @@ interface AdvisorChatProps {
  * @returns The AdvisorChat UI element.
  */
 export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
-  const router = useRouter();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [inputQuery, setInputQuery] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [activeCitation, setActiveCitation] = useState<{
-    messageId: string;
-    sourceIndex: number;
-  } | null>(null);
+  const {
+    messages,
+    inputQuery,
+    setInputQuery,
+    isLoading,
+    activeCitation,
+    setActiveCitation,
+    sessions,
+    activeSessionId,
+    streamingText,
+    streamingSources,
+    streamingToolCalls,
+    copiedMessageId,
+    setCopiedMessageId,
+    activeSource,
+    handleSelectSession,
+    handleCreateSession,
+    handleDeleteSession,
+    handleApproveToolCall,
+    handleUndoToolCall,
+    handleRejectToolCall,
+    handleSend,
+    handleCitationPosition,
+  } = useAdvisorChat(initialSessionId);
 
-  const [sessions, setSessions] = useState<ChatSessionListItem[]>([]);
-  const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
-  const [streamingText, setStreamingText] = useState("");
-  const [streamingSources, setStreamingSources] = useState<
-    RagSearchResultItem[] | undefined
-  >(undefined);
-  const [streamingToolCalls, setStreamingToolCalls] = useState<
-    PendingToolCall[] | undefined
-  >(undefined);
-  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
-
-  const isSendingRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -167,445 +72,6 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
   }, []);
-
-  const loadSessions = useCallback(async () => {
-    const list = await getChatSessions();
-    setSessions(list);
-  }, []);
-
-  const loadMessages = useCallback(async (sessionId: number) => {
-    const res = await getChatMessages(sessionId);
-    if (res.success && res.messages) {
-      const mapped: Message[] = res.messages.map((m) => ({
-        id: `msg-${m.id}`,
-        dbId: m.id,
-        role: m.role as "user" | "model",
-        content: m.content,
-        sources: (m.sources as RagSearchResultItem[] | undefined) ?? undefined,
-        toolCalls: (m.toolCalls as PendingToolCall[] | undefined) ?? undefined,
-        timestamp: m.createdAt.toLocaleTimeString("tr-TR", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      }));
-      setMessages(mapped);
-    } else {
-      setMessages([]);
-    }
-    setActiveCitation(null);
-  }, []);
-
-  const syncUrlSession = useCallback(
-    (sessionId: number | null) => {
-      if (sessionId !== null) {
-        router.push(`/advisor?session=${sessionId}`);
-      } else {
-        router.push("/advisor");
-      }
-    },
-    [router],
-  );
-
-  const prevInitialSessionIdRef = useRef<number | undefined>(initialSessionId);
-
-  // Initial load of sessions list and active session on mount
-  useEffect(() => {
-    let cancelled = false;
-    /** Loads the initial list of chat sessions and loads messages for initialSessionId if provided. */
-    async function init() {
-      const list = await getChatSessions();
-      if (cancelled) return;
-      setSessions(list);
-
-      const targetId =
-        initialSessionId !== undefined &&
-        list.some((s) => s.id === initialSessionId)
-          ? initialSessionId
-          : null;
-
-      if (targetId !== null) {
-        setActiveSessionId(targetId);
-        await loadMessages(targetId);
-      }
-    }
-    void init();
-    return () => {
-      cancelled = true;
-    };
-  }, [initialSessionId, loadMessages]);
-
-  // Sync when initialSessionId route parameter changes (e.g. browser navigation)
-  useEffect(() => {
-    if (prevInitialSessionIdRef.current === initialSessionId) return;
-    prevInitialSessionIdRef.current = initialSessionId;
-
-    let cancelled = false;
-    /** Syncs state when the initialSessionId prop changes due to route navigation. */
-    async function syncFromProp() {
-      const list = await getChatSessions();
-      if (cancelled) return;
-      setSessions(list);
-
-      const targetId =
-        initialSessionId !== undefined &&
-        list.some((s) => s.id === initialSessionId)
-          ? initialSessionId
-          : null;
-
-      if (targetId !== null) {
-        if (activeSessionId !== targetId) {
-          setActiveSessionId(targetId);
-          await loadMessages(targetId);
-        }
-      } else if (activeSessionId !== null) {
-        setActiveSessionId(null);
-        setMessages([]);
-        setActiveCitation(null);
-      }
-    }
-    void syncFromProp();
-    return () => {
-      cancelled = true;
-    };
-  }, [initialSessionId, activeSessionId, loadMessages]);
-
-  const handleSelectSession = useCallback(
-    async (sessionId: number) => {
-      setActiveSessionId(sessionId);
-      await loadMessages(sessionId);
-      syncUrlSession(sessionId);
-    },
-    [loadMessages, syncUrlSession],
-  );
-
-  const handleCreateSession = useCallback(() => {
-    setActiveSessionId(null);
-    setMessages([]);
-    setActiveCitation(null);
-    syncUrlSession(null);
-  }, [syncUrlSession]);
-
-  const handleDeleteSession = useCallback(
-    async (sessionId: number) => {
-      const res = await deleteChatSession(sessionId);
-      if (res.success) {
-        if (activeSessionId === sessionId) {
-          setActiveSessionId(null);
-          setMessages([]);
-          setActiveCitation(null);
-          await loadSessions();
-          syncUrlSession(null);
-        } else {
-          await loadSessions();
-        }
-        toast.success("Sohbet silindi.");
-      } else {
-        toast.error(res.error || "Sohbet silinemedi.");
-      }
-    },
-    [activeSessionId, loadSessions, syncUrlSession],
-  );
-
-  const handleApproveToolCall = async (
-    toolCallId: string,
-    name: string,
-    args: Record<string, unknown>,
-  ) => {
-    const res = await executeAdvisorToolAction({ toolName: name, args });
-    if (res.success) {
-      toast.success(res.message);
-      let targetDbId: number | undefined;
-      let updatedToolCalls: PendingToolCall[] = [];
-
-      setMessages((prev) =>
-        prev.map((msg) => {
-          if (!msg.toolCalls) return msg;
-          const hasCall = msg.toolCalls.some(
-            (tc) => tc.toolCallId === toolCallId,
-          );
-          if (!hasCall) return msg;
-
-          targetDbId = msg.dbId;
-          updatedToolCalls = msg.toolCalls.map((tc) =>
-            tc.toolCallId === toolCallId
-              ? {
-                  ...tc,
-                  status: "approved",
-                  executionResult: res.data,
-                  previousState: res.previousState,
-                }
-              : tc,
-          );
-          return {
-            ...msg,
-            toolCalls: updatedToolCalls,
-          };
-        }),
-      );
-
-      if (targetDbId) {
-        await updateChatMessageToolCalls(targetDbId, updatedToolCalls);
-      }
-    } else {
-      toast.error(res.message);
-    }
-  };
-
-  const handleUndoToolCall = async (
-    toolCallId: string,
-    name: string,
-    args: Record<string, unknown>,
-    executionResult?: unknown,
-    previousState?: Record<string, unknown>,
-  ) => {
-    const res = await undoAdvisorToolAction({
-      toolName: name,
-      args,
-      executionResult,
-      previousState,
-    });
-
-    if (res.success) {
-      toast.success(res.message);
-      let targetDbId: number | undefined;
-      let updatedToolCalls: PendingToolCall[] = [];
-
-      setMessages((prev) =>
-        prev.map((msg) => {
-          if (!msg.toolCalls) return msg;
-          const hasCall = msg.toolCalls.some(
-            (tc) => tc.toolCallId === toolCallId,
-          );
-          if (!hasCall) return msg;
-
-          targetDbId = msg.dbId;
-          updatedToolCalls = msg.toolCalls.map((tc) =>
-            tc.toolCallId === toolCallId ? { ...tc, status: "undone" } : tc,
-          );
-          return {
-            ...msg,
-            toolCalls: updatedToolCalls,
-          };
-        }),
-      );
-
-      if (targetDbId) {
-        await updateChatMessageToolCalls(targetDbId, updatedToolCalls);
-      }
-    } else {
-      toast.error(res.message);
-    }
-  };
-
-  const handleRejectToolCall = async (toolCallId: string) => {
-    toast.info("Veritabanı işlemi iptal edildi.");
-    let targetDbId: number | undefined;
-    let updatedToolCalls: PendingToolCall[] = [];
-
-    setMessages((prev) =>
-      prev.map((msg) => {
-        if (!msg.toolCalls) return msg;
-        const hasCall = msg.toolCalls.some(
-          (tc) => tc.toolCallId === toolCallId,
-        );
-        if (!hasCall) return msg;
-
-        targetDbId = msg.dbId;
-        updatedToolCalls = msg.toolCalls.map((tc) =>
-          tc.toolCallId === toolCallId ? { ...tc, status: "rejected" } : tc,
-        );
-        return {
-          ...msg,
-          toolCalls: updatedToolCalls,
-        };
-      }),
-    );
-
-    if (targetDbId) {
-      await updateChatMessageToolCalls(targetDbId, updatedToolCalls);
-    }
-  };
-
-  const handleSend = async (overrideQuery?: string) => {
-    if (isSendingRef.current) return;
-    const queryToSend = (overrideQuery || inputQuery).trim();
-    if (!queryToSend || isLoading) return;
-
-    isSendingRef.current = true;
-    let sessionId = activeSessionId;
-
-    if (!sessionId) {
-      const title =
-        queryToSend.length > 60
-          ? queryToSend.slice(0, 60) + "..."
-          : queryToSend;
-      const createRes = await createChatSession(title);
-      if (!createRes.success || !createRes.sessionId) {
-        toast.error(createRes.error || "Sohbet oluşturulamadı.");
-        isSendingRef.current = false;
-        return;
-      }
-      sessionId = createRes.sessionId;
-      setActiveSessionId(sessionId);
-      await loadSessions();
-      syncUrlSession(sessionId);
-
-      void generateChatTitleAction(sessionId, queryToSend).then((titleRes) => {
-        if (titleRes.success) {
-          void loadSessions();
-        }
-      });
-    }
-
-    const userMessageId = `user-${crypto.randomUUID()}`;
-    const userMsg: Message = {
-      id: userMessageId,
-      role: "user",
-      content: queryToSend,
-      timestamp: new Date().toLocaleTimeString("tr-TR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    };
-
-    setMessages((prev) => [...prev, userMsg]);
-    if (!overrideQuery) setInputQuery("");
-    setIsLoading(true);
-    setStreamingText("");
-    setStreamingSources(undefined);
-    setStreamingToolCalls(undefined);
-
-    await saveChatMessage(sessionId, "user", queryToSend);
-
-    try {
-      const historyPayload = messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
-
-      const response = await fetch("/api/advisor", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: queryToSend, history: historyPayload }),
-      });
-
-      if (!response.ok) {
-        toast.error("Yanıt alınamadı.");
-        return;
-      }
-
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let accumulatedToolCalls: PendingToolCall[] = [];
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed.startsWith("data: ")) continue;
-          const data = trimmed.slice(6);
-          if (data === "[DONE]") continue;
-
-          try {
-            const event = JSON.parse(data);
-            if (event.type === "delta") {
-              setStreamingText((prev) => prev + event.text);
-            } else if (event.type === "tool_call_request") {
-              const newToolCall: PendingToolCall = {
-                toolCallId: event.toolCallId,
-                name: event.name,
-                args: event.args,
-                explanation: event.explanation,
-                status: "pending",
-              };
-              accumulatedToolCalls = [...accumulatedToolCalls, newToolCall];
-              setStreamingToolCalls([...accumulatedToolCalls]);
-            } else if (event.type === "done") {
-              setStreamingSources(event.sources);
-
-              const modelMessageId = `model-${crypto.randomUUID()}`;
-              const finalContent =
-                event.text.trim() ||
-                (accumulatedToolCalls.length > 0
-                  ? "Aşağıdaki veritabanı işlemini gerçekleştirmek için onayınız isteniyor:"
-                  : "");
-
-              const modelMsg: Message = {
-                id: modelMessageId,
-                role: "model",
-                content: finalContent,
-                sources: event.sources,
-                toolCalls:
-                  accumulatedToolCalls.length > 0
-                    ? accumulatedToolCalls
-                    : undefined,
-                timestamp: new Date().toLocaleTimeString("tr-TR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }),
-              };
-
-              if (sessionId) {
-                const saveRes = await saveChatMessage(
-                  sessionId,
-                  "model",
-                  finalContent,
-                  event.sources ?? undefined,
-                  accumulatedToolCalls.length > 0
-                    ? accumulatedToolCalls
-                    : undefined,
-                );
-                if (saveRes.success && saveRes.messageId) {
-                  modelMsg.dbId = saveRes.messageId;
-                }
-                await loadSessions();
-              }
-
-              setMessages((prev) => [...prev, modelMsg]);
-            } else if (event.type === "error") {
-              toast.error(event.error || "Yanıt üretilirken hata oluştu.");
-            }
-          } catch {
-            // Skip malformed SSE lines
-          }
-        }
-      }
-    } catch {
-      toast.error("İletişim hatası oluştu.");
-    } finally {
-      setIsLoading(false);
-      setStreamingText("");
-      setStreamingSources(undefined);
-      setStreamingToolCalls(undefined);
-      isSendingRef.current = false;
-    }
-  };
-
-  const handleCitationPosition = useCallback(
-    (messageId: string, sourceIndex: number) => {
-      setActiveCitation((prev) => {
-        if (prev?.messageId === messageId && prev.sourceIndex === sourceIndex) {
-          return null;
-        }
-        return { messageId, sourceIndex };
-      });
-    },
-    [],
-  );
-
-  const activeSource =
-    activeCitation &&
-    (() => {
-      const msg = messages.find((m) => m.id === activeCitation.messageId);
-      return msg?.sources?.[activeCitation.sourceIndex] ?? null;
-    })();
 
   return (
     <div className="w-full flex gap-6 min-h-0 h-[calc(100vh-8.5rem)]">
@@ -668,7 +134,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
                   )}
 
                   <div
-                    className={`max-w-3xl space-y-2 ${isUser ? "items-end" : "items-start"}`}
+                    className={`space-y-2 ${isUser ? "items-end max-w-3xl" : "items-start flex-1 max-w-4xl"}`}
                   >
                     <div
                       className={`p-4 rounded-2xl text-sm leading-relaxed ${
@@ -745,7 +211,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1 overflow-hidden">
                 <Image src="/logo.svg" alt="Fabricca" width={20} height={20} />
               </div>
-              <div className="max-w-3xl space-y-2 items-start">
+              <div className="space-y-2 items-start flex-1 max-w-4xl">
                 <div className="p-4 rounded-2xl text-sm leading-relaxed bg-card border border-border/60 text-card-foreground rounded-tl-none shadow-sm">
                   {streamingText && (
                     <MarkdownRenderer
@@ -780,8 +246,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
               </div>
               <div className="flex items-center space-x-2 bg-card border border-border/60 p-3 rounded-2xl shadow-sm">
                 <span className="font-medium">
-                  Kütüphaneniz taranıyor ve veritabanı araçları
-                  değerlendiriliyor...
+                  Akademik danışmanınız yanıt hazırlıyor...
                 </span>
               </div>
             </div>
