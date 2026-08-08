@@ -62,7 +62,7 @@ export async function POST(request: Request) {
 
   const { query, history } = parseResult.data;
 
-  const rawSources = await performHybridRagSearch({ query, topK: 5 });
+  const rawSources = await performHybridRagSearch({ query, topK: 7 });
   const sources = rawSources;
 
   let contextText = "";

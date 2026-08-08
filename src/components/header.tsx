@@ -7,9 +7,9 @@ import { usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   LayoutDashboard,
-  BookOpen,
-  Layers,
-  MessageSquareCode,
+  Library,
+  Quote,
+  Briefcase,
   LogOut,
   RotateCcw,
   ChevronDown,
@@ -31,9 +31,9 @@ import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Genel Özet", icon: LayoutDashboard },
-  { href: "/library", label: "Kütüphane", icon: BookOpen },
-  { href: "/citation-cards", label: "Alıntı Fişleri", icon: Layers },
-  { href: "/advisor", label: "Danışman Odası", icon: MessageSquareCode },
+  { href: "/library", label: "Kütüphane", icon: Library },
+  { href: "/citation-cards", label: "Alıntı Fişleri", icon: Quote },
+  { href: "/advisor", label: "Danışman Odası", icon: Briefcase },
 ] as const;
 
 /**

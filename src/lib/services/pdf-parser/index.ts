@@ -5,6 +5,7 @@ import {
 import { createConcurrencyLimiter } from "@/lib/rate-limiter";
 import type { Logger } from "@/lib/logger";
 import { buildChunksFromPageAnalysis } from "@/lib/services/pdf/chunker";
+import { normalizeAcademicText } from "@/lib/services/pdf/normalizer";
 import {
   loadPdfSource,
   getPdfPageCount,
@@ -137,7 +138,7 @@ export async function parsePdfToDocumentAnalysis(
   // Step 1: Instant page mapping from local markdown
   const pages: PageAnalysis[] = targetPages.map((p) => ({
     pageNumber: p.page + 1,
-    markdownContent: p.markdown,
+    markdownContent: normalizeAcademicText(p.markdown),
   }));
 
   // Step 2: Prepare Text for Metadata & Bibliography

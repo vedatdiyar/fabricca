@@ -56,9 +56,21 @@ function formatContent(
   content: string,
   sources: RagSearchResultItem[],
 ): string {
-  return content.replace(
-    /\[([A-Za-zÇçĞğİıÖöŞşÜü\s.]+?),\s*(\d{4})(?:,\s*(s\.\s*\d+|ss\.\s*\d+[\s–-]+\d+))?\]/g,
-    (match, authorStr: string, year: string, pageRef: string | undefined) => {
+  // Escape numbers at start of lines followed by century words so Markdown doesn't parse them as <ol>
+  const sanitizedContent = content.replace(
+    /(^|\n)(\s*)(\d{1,2})\.\s+(yüzyıl|yy|asır)/gi,
+    "$1$2$3\\. $4",
+  );
+
+  return sanitizedContent.replace(
+    /([\[\(])([A-Za-zÇçĞğİıÖöŞşÜü\s.]+?),\s*(\d{4})(?:,\s*((?:s\.|ss\.)\s*[\d\s,–-]+))?([\]\)])/g,
+    (
+      match,
+      _openDelim: string,
+      authorStr: string,
+      year: string,
+      pageRef: string | undefined,
+    ) => {
       const pagePart = pageRef ? `, ${pageRef}` : "";
       const badgeLabel = `(${authorStr}, ${year}${pagePart})`;
 
@@ -159,7 +171,7 @@ const components: Components = {
   ),
   ul: ({ children, ...props }) => (
     <ul
-      className="list-disc list-inside space-y-1.5 text-[15px] text-card-foreground font-light mb-3"
+      className="list-disc list-outside pl-5 space-y-2 text-[15px] text-card-foreground font-light mb-3"
       {...props}
     >
       {children}
@@ -167,14 +179,17 @@ const components: Components = {
   ),
   ol: ({ children, ...props }) => (
     <ol
-      className="list-decimal list-inside space-y-1.5 text-[15px] text-card-foreground font-light mb-3"
+      className="list-decimal list-outside pl-5 space-y-2 text-[15px] text-card-foreground font-light mb-3"
       {...props}
     >
       {children}
     </ol>
   ),
   li: ({ children, ...props }) => (
-    <li className="text-[15px] text-card-foreground font-light" {...props}>
+    <li
+      className="text-[15px] leading-relaxed text-card-foreground font-light [&>p]:inline [&>p]:mb-0"
+      {...props}
+    >
       {children}
     </li>
   ),
