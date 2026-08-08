@@ -6,6 +6,11 @@ import { getAi } from "@/lib/services/gemini";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 import { getSession } from "@/lib/session";
 import { buildAdvisorSystemInstruction } from "@/lib/prompts";
+import {
+  ADVISOR_TOOL_DECLARATIONS,
+  isReadTool,
+  executeReadTool,
+} from "@/lib/services/advisor-tools";
 
 const requestSchema = z.object({
   query: z
@@ -37,10 +42,47 @@ function formatPageReference(source: RagSearchResultItem): string {
 }
 
 /**
- * Handles POST requests for streaming advisor queries via SSE.
+ * Generates a human-readable Turkish explanation string for pending mutation tool calls.
+ *
+ * @param name - The function name.
+ * @param args - The argument record.
+ * @returns The formatted Turkish description for the UI card.
+ */
+function formatToolExplanation(
+  name: string,
+  args: Record<string, unknown>,
+): string {
+  switch (name) {
+    case "updateThesisMatrix":
+      return "Tez matrisi alanlarınız güncellenecek.";
+    case "createBox":
+      return `"${(args.title as string) || "Yeni Kutu"}" başlıklı yeni bir tez kutusu eklenecek.`;
+    case "updateBox":
+      return `Kutu #${args.boxId} bilgileri güncellenecek.`;
+    case "deleteBox":
+      return `Kutu #${args.boxId} veritabanından silinecek.`;
+    case "updateSource":
+      return `Kaynak #${args.sourceId} bilgileri güncellenecek.`;
+    case "deleteSource":
+      return `Kaynak #${args.sourceId} kütüphanenizden silinecek.`;
+    case "addNote":
+      return `Kaynak #${args.sourceId} için s. ${args.pageNumber || ""} numaralı yeni bir not/alıntı kaydedilecek.`;
+    case "deleteNote":
+      return `Not #${args.noteId} silinecek.`;
+    case "createTask":
+      return `"${(args.title as string) || "Yeni Görev"}" başlıklı çalışma görevi Kanban panosuna eklenecek.`;
+    case "updateTaskStatus":
+      return `Görev #${args.taskId} durumu "${args.status}" olarak güncellenecek.`;
+    default:
+      return `${name} veritabanı değişikliği gerçekleştirilecek.`;
+  }
+}
+
+/**
+ * Handles POST requests for streaming advisor queries via SSE with Function Calling support.
  *
  * @param request - The incoming HTTP request with query and optional history.
- * @returns A streaming SSE response with delta events and a final done event.
+ * @returns A streaming SSE response with delta, tool call, and done events.
  */
 export async function POST(request: Request) {
   const session = await getSession();
@@ -109,10 +151,7 @@ ${paragraphText}`;
   const systemInstruction = buildAdvisorSystemInstruction(contextText);
 
   const ai = getAi();
-  const contents: Array<{
-    role: "user" | "model";
-    parts: Array<{ text: string }>;
-  }> = [];
+  const contents: Array<Record<string, unknown>> = [];
 
   if (history && history.length > 0) {
     for (const msg of history.slice(-6)) {
@@ -122,27 +161,120 @@ ${paragraphText}`;
 
   contents.push({ role: "user", parts: [{ text: query }] });
 
-  const stream = await ai.models.generateContentStream({
-    model: FLASH_LITE_35,
-    contents,
-    config: { systemInstruction, seed: GEMINI_SEED },
-  });
-
   let fullText = "";
-
   const encoder = new TextEncoder();
+
   const readable = new ReadableStream({
     async start(controller) {
       try {
-        for await (const chunk of stream) {
-          const text = chunk.text ?? "";
-          if (text) {
-            fullText += text;
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({ type: "delta", text })}\n\n`,
-              ),
-            );
+        let maxTurns = 5;
+        let continueLoop = true;
+
+        while (continueLoop && maxTurns > 0) {
+          maxTurns--;
+          continueLoop = false;
+          const turnModelParts: Array<Record<string, unknown>> = [];
+
+          const stream = await ai.models.generateContentStream({
+            model: FLASH_LITE_35,
+            contents: contents as unknown as Parameters<
+              typeof ai.models.generateContentStream
+            >[0]["contents"],
+            config: {
+              systemInstruction,
+              seed: GEMINI_SEED,
+              tools: [{ functionDeclarations: ADVISOR_TOOL_DECLARATIONS }],
+            },
+          });
+
+          for await (const chunk of stream) {
+            if (chunk.candidates?.[0]?.content?.parts) {
+              for (const part of chunk.candidates[0].content.parts) {
+                turnModelParts.push(part as unknown as Record<string, unknown>);
+              }
+            }
+
+            let text = "";
+            try {
+              if (chunk.candidates?.[0]?.content?.parts) {
+                for (const part of chunk.candidates[0].content.parts) {
+                  if (part.text) text += part.text;
+                }
+              } else {
+                text = chunk.text ?? "";
+              }
+            } catch {
+              text = "";
+            }
+
+            if (text) {
+              fullText += text;
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({ type: "delta", text })}\n\n`,
+                ),
+              );
+            }
+
+            let funcCalls = chunk.functionCalls;
+            if (!funcCalls && chunk.candidates?.[0]?.content?.parts) {
+              const callParts = chunk.candidates[0].content.parts.filter(
+                (p) => p.functionCall,
+              );
+              if (callParts.length > 0) {
+                funcCalls = callParts.map((p) => p.functionCall!);
+              }
+            }
+            if (funcCalls && funcCalls.length > 0) {
+              for (const call of funcCalls) {
+                if (!call.name) continue;
+
+                if (isReadTool(call.name)) {
+                  const readResult = await executeReadTool(
+                    call.name,
+                    (call.args as Record<string, unknown>) ?? {},
+                    session.userId,
+                  );
+
+                  contents.push({
+                    role: "model",
+                    parts:
+                      turnModelParts.length > 0
+                        ? turnModelParts
+                        : [{ functionCall: call }],
+                  });
+                  contents.push({
+                    role: "user",
+                    parts: [
+                      {
+                        functionResponse: {
+                          name: call.name,
+                          response: { result: readResult },
+                        },
+                      },
+                    ],
+                  });
+
+                  continueLoop = true;
+                } else {
+                  const toolCallId = `tool-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+                  const args = (call.args as Record<string, unknown>) ?? {};
+                  const explanation = formatToolExplanation(call.name, args);
+
+                  controller.enqueue(
+                    encoder.encode(
+                      `data: ${JSON.stringify({
+                        type: "tool_call_request",
+                        toolCallId,
+                        name: call.name,
+                        args,
+                        explanation,
+                      })}\n\n`,
+                    ),
+                  );
+                }
+              }
+            }
           }
         }
 
@@ -153,7 +285,9 @@ ${paragraphText}`;
         );
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();
-      } catch {
+      } catch (err) {
+        const errorDetail = err instanceof Error ? err.message : String(err);
+        console.error("Advisor API error:", errorDetail);
         controller.enqueue(
           encoder.encode(
             `data: ${JSON.stringify({ type: "error", error: "Yanıt üretilirken hata oluştu." })}\n\n`,

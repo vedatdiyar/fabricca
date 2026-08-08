@@ -3,7 +3,12 @@
 import { z } from "zod";
 import { eq, desc } from "drizzle-orm";
 import { db } from "@/db";
-import { chatSessions, chatMessages, type ChatMessage } from "@/db/schema";
+import {
+  chatSessions,
+  chatMessages,
+  type ChatMessage,
+  type ChatToolCall,
+} from "@/db/schema";
 import { getSession } from "@/lib/session";
 import type { RagSearchResultItem } from "@/lib/services/rag-search";
 import { generateStructuredContent } from "@/lib/services/cerebras";
@@ -145,28 +150,56 @@ export async function getChatMessages(
  * @param role - Message role (user or model).
  * @param content - The message content.
  * @param sources - Optional RAG sources for model messages.
- * @returns Operation result.
+ * @param toolCalls - Optional stored tool calls.
+ * @returns Operation result with created message ID.
  */
 export async function saveChatMessage(
   sessionId: number,
   role: "user" | "model",
   content: string,
   sources?: RagSearchResultItem[],
-): Promise<{ success: boolean; error?: string }> {
+  toolCalls?: ChatToolCall[],
+): Promise<{ success: boolean; messageId?: number; error?: string }> {
   const session = await getSession();
   if (!session) return { success: false, error: "Oturum süreniz dolmuş." };
 
-  await db.insert(chatMessages).values({
-    sessionId,
-    role,
-    content,
-    sources: sources ?? undefined,
-  });
+  const [inserted] = await db
+    .insert(chatMessages)
+    .values({
+      sessionId,
+      role,
+      content,
+      sources: sources ?? undefined,
+      toolCalls: toolCalls ?? undefined,
+    })
+    .returning({ id: chatMessages.id });
 
   await db
     .update(chatSessions)
     .set({ updatedAt: new Date() })
     .where(eq(chatSessions.id, sessionId));
+
+  return { success: true, messageId: inserted.id };
+}
+
+/**
+ * Updates the tool calls approval/rejection status for a stored chat message.
+ *
+ * @param messageId - The chat message ID to update.
+ * @param toolCalls - The updated list of tool calls with new statuses.
+ * @returns Operation result.
+ */
+export async function updateChatMessageToolCalls(
+  messageId: number,
+  toolCalls: ChatToolCall[],
+): Promise<{ success: boolean; error?: string }> {
+  const session = await getSession();
+  if (!session) return { success: false, error: "Oturum süreniz dolmuş." };
+
+  await db
+    .update(chatMessages)
+    .set({ toolCalls })
+    .where(eq(chatMessages.id, messageId));
 
   return { success: true };
 }

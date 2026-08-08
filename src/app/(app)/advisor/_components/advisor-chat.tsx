@@ -12,18 +12,26 @@ import {
   deleteChatSession,
   getChatMessages,
   saveChatMessage,
+  updateChatMessageToolCalls,
   generateChatTitleAction,
   type ChatSessionListItem,
 } from "../actions";
+import { executeAdvisorToolAction } from "../tool-actions";
+import {
+  ToolConfirmationCard,
+  type PendingToolCall,
+} from "./tool-confirmation-card";
 import type { RagSearchResultItem } from "@/lib/services/rag-search";
 import { ChatSidebar } from "./chat-sidebar";
 import { MarkdownRenderer } from "./markdown-renderer";
 
 interface Message {
   id: string;
+  dbId?: number;
   role: "user" | "model";
   content: string;
   sources?: RagSearchResultItem[];
+  toolCalls?: PendingToolCall[];
   timestamp: string;
 }
 
@@ -100,7 +108,7 @@ interface AdvisorChatProps {
 }
 
 /**
- * Interactive Advisor Chat component delivering an academic AI conversation backed by Hybrid RAG & Cohere Rerank with persistent chat history sidebar.
+ * Interactive Advisor Chat component delivering an academic AI conversation backed by Hybrid RAG & Cohere Rerank with persistent chat history sidebar and Function Calling database tools.
  *
  * @param root0 - Component props.
  * @param root0.initialSessionId - The session id to restore on mount, if any.
@@ -122,7 +130,9 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
   const [streamingSources, setStreamingSources] = useState<
     RagSearchResultItem[] | undefined
   >(undefined);
-  const [isStreamingDone, setIsStreamingDone] = useState(false);
+  const [streamingToolCalls, setStreamingToolCalls] = useState<
+    PendingToolCall[] | undefined
+  >(undefined);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
   const isSendingRef = useRef(false);
@@ -135,7 +145,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isLoading]);
+  }, [messages, isLoading, streamingToolCalls]);
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -165,9 +175,11 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
     if (res.success && res.messages) {
       const mapped: Message[] = res.messages.map((m) => ({
         id: `msg-${m.id}`,
+        dbId: m.id,
         role: m.role as "user" | "model",
         content: m.content,
         sources: (m.sources as RagSearchResultItem[] | undefined) ?? undefined,
+        toolCalls: (m.toolCalls as PendingToolCall[] | undefined) ?? undefined,
         timestamp: m.createdAt.toLocaleTimeString("tr-TR", {
           hour: "2-digit",
           minute: "2-digit",
@@ -191,33 +203,64 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
     [router],
   );
 
+  const prevInitialSessionIdRef = useRef<number | undefined>(initialSessionId);
+
+  // Initial load of sessions list and active session on mount
   useEffect(() => {
     let cancelled = false;
-    /** Syncs active chat session with the initialSessionId route parameter. */
-    async function syncSession() {
+    /** Loads the initial list of chat sessions and loads messages for initialSessionId if provided. */
+    async function init() {
       const list = await getChatSessions();
       if (cancelled) return;
       setSessions(list);
 
       const targetId =
-        initialSessionId !== undefined && list.some((s) => s.id === initialSessionId)
+        initialSessionId !== undefined &&
+        list.some((s) => s.id === initialSessionId)
+          ? initialSessionId
+          : null;
+
+      if (targetId !== null) {
+        setActiveSessionId(targetId);
+        await loadMessages(targetId);
+      }
+    }
+    void init();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialSessionId, loadMessages]);
+
+  // Sync when initialSessionId route parameter changes (e.g. browser navigation)
+  useEffect(() => {
+    if (prevInitialSessionIdRef.current === initialSessionId) return;
+    prevInitialSessionIdRef.current = initialSessionId;
+
+    let cancelled = false;
+    /** Syncs state when the initialSessionId prop changes due to route navigation. */
+    async function syncFromProp() {
+      const list = await getChatSessions();
+      if (cancelled) return;
+      setSessions(list);
+
+      const targetId =
+        initialSessionId !== undefined &&
+        list.some((s) => s.id === initialSessionId)
           ? initialSessionId
           : null;
 
       if (targetId !== null) {
         if (activeSessionId !== targetId) {
           setActiveSessionId(targetId);
-          if (!cancelled) await loadMessages(targetId);
+          await loadMessages(targetId);
         }
-      } else {
-        if (activeSessionId !== null) {
-          setActiveSessionId(null);
-          setMessages([]);
-          setActiveCitation(null);
-        }
+      } else if (activeSessionId !== null) {
+        setActiveSessionId(null);
+        setMessages([]);
+        setActiveCitation(null);
       }
     }
-    void syncSession();
+    void syncFromProp();
     return () => {
       cancelled = true;
     };
@@ -260,13 +303,79 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
     [activeSessionId, loadSessions, syncUrlSession],
   );
 
+  const handleApproveToolCall = async (
+    toolCallId: string,
+    name: string,
+    args: Record<string, unknown>,
+  ) => {
+    const res = await executeAdvisorToolAction({ toolName: name, args });
+    if (res.success) {
+      toast.success(res.message);
+      let targetDbId: number | undefined;
+      let updatedToolCalls: PendingToolCall[] = [];
+
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (!msg.toolCalls) return msg;
+          const hasCall = msg.toolCalls.some(
+            (tc) => tc.toolCallId === toolCallId,
+          );
+          if (!hasCall) return msg;
+
+          targetDbId = msg.dbId;
+          updatedToolCalls = msg.toolCalls.map((tc) =>
+            tc.toolCallId === toolCallId ? { ...tc, status: "approved" } : tc,
+          );
+          return {
+            ...msg,
+            toolCalls: updatedToolCalls,
+          };
+        }),
+      );
+
+      if (targetDbId) {
+        await updateChatMessageToolCalls(targetDbId, updatedToolCalls);
+      }
+    } else {
+      toast.error(res.message);
+    }
+  };
+
+  const handleRejectToolCall = async (toolCallId: string) => {
+    toast.info("Veritabanı işlemi iptal edildi.");
+    let targetDbId: number | undefined;
+    let updatedToolCalls: PendingToolCall[] = [];
+
+    setMessages((prev) =>
+      prev.map((msg) => {
+        if (!msg.toolCalls) return msg;
+        const hasCall = msg.toolCalls.some(
+          (tc) => tc.toolCallId === toolCallId,
+        );
+        if (!hasCall) return msg;
+
+        targetDbId = msg.dbId;
+        updatedToolCalls = msg.toolCalls.map((tc) =>
+          tc.toolCallId === toolCallId ? { ...tc, status: "rejected" } : tc,
+        );
+        return {
+          ...msg,
+          toolCalls: updatedToolCalls,
+        };
+      }),
+    );
+
+    if (targetDbId) {
+      await updateChatMessageToolCalls(targetDbId, updatedToolCalls);
+    }
+  };
+
   const handleSend = async (overrideQuery?: string) => {
     if (isSendingRef.current) return;
     const queryToSend = (overrideQuery || inputQuery).trim();
     if (!queryToSend || isLoading) return;
 
     isSendingRef.current = true;
-
     let sessionId = activeSessionId;
 
     if (!sessionId) {
@@ -285,7 +394,6 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
       await loadSessions();
       syncUrlSession(sessionId);
 
-      // Asynchronously generate smart topic title via Cerebras Gemma 4
       void generateChatTitleAction(sessionId, queryToSend).then((titleRes) => {
         if (titleRes.success) {
           void loadSessions();
@@ -309,7 +417,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
     setIsLoading(true);
     setStreamingText("");
     setStreamingSources(undefined);
-    setIsStreamingDone(false);
+    setStreamingToolCalls(undefined);
 
     await saveChatMessage(sessionId, "user", queryToSend);
 
@@ -333,6 +441,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
       const reader = response.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let accumulatedToolCalls: PendingToolCall[] = [];
 
       while (true) {
         const { done, value } = await reader.read();
@@ -352,32 +461,58 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
             const event = JSON.parse(data);
             if (event.type === "delta") {
               setStreamingText((prev) => prev + event.text);
+            } else if (event.type === "tool_call_request") {
+              const newToolCall: PendingToolCall = {
+                toolCallId: event.toolCallId,
+                name: event.name,
+                args: event.args,
+                explanation: event.explanation,
+                status: "pending",
+              };
+              accumulatedToolCalls = [...accumulatedToolCalls, newToolCall];
+              setStreamingToolCalls([...accumulatedToolCalls]);
             } else if (event.type === "done") {
               setStreamingSources(event.sources);
-              setIsStreamingDone(true);
 
               const modelMessageId = `model-${crypto.randomUUID()}`;
+              const finalContent =
+                event.text.trim() ||
+                (accumulatedToolCalls.length > 0
+                  ? "Aşağıdaki veritabanı işlemini gerçekleştirmek için onayınız isteniyor:"
+                  : "");
+
               const modelMsg: Message = {
                 id: modelMessageId,
                 role: "model",
-                content: event.text,
+                content: finalContent,
                 sources: event.sources,
+                toolCalls:
+                  accumulatedToolCalls.length > 0
+                    ? accumulatedToolCalls
+                    : undefined,
                 timestamp: new Date().toLocaleTimeString("tr-TR", {
                   hour: "2-digit",
                   minute: "2-digit",
                 }),
               };
-              setMessages((prev) => [...prev, modelMsg]);
 
               if (sessionId) {
-                await saveChatMessage(
+                const saveRes = await saveChatMessage(
                   sessionId,
                   "model",
-                  event.text,
+                  finalContent,
                   event.sources ?? undefined,
+                  accumulatedToolCalls.length > 0
+                    ? accumulatedToolCalls
+                    : undefined,
                 );
+                if (saveRes.success && saveRes.messageId) {
+                  modelMsg.dbId = saveRes.messageId;
+                }
                 await loadSessions();
               }
+
+              setMessages((prev) => [...prev, modelMsg]);
             } else if (event.type === "error") {
               toast.error(event.error || "Yanıt üretilirken hata oluştu.");
             }
@@ -392,7 +527,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
       setIsLoading(false);
       setStreamingText("");
       setStreamingSources(undefined);
-      setIsStreamingDone(false);
+      setStreamingToolCalls(undefined);
       isSendingRef.current = false;
     }
   };
@@ -452,7 +587,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
                 </h2>
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   Kütüphanenizdeki makaleler üzerine yapay zeka destekli
-                  akademik analizler alın.
+                  akademik analizler alın ve tez matrisinizi doğrudan yönetin.
                 </p>
               </div>
             </div>
@@ -489,13 +624,24 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
                       {isUser ? (
                         <div className="whitespace-pre-wrap">{msg.content}</div>
                       ) : (
-                        <MarkdownRenderer
-                          content={msg.content}
-                          sources={msg.sources}
-                          onCitationClick={(sourceIndex) =>
-                            handleCitationPosition(msg.id, sourceIndex)
-                          }
-                        />
+                        <>
+                          <MarkdownRenderer
+                            content={msg.content}
+                            sources={msg.sources}
+                            onCitationClick={(sourceIndex) =>
+                              handleCitationPosition(msg.id, sourceIndex)
+                            }
+                          />
+
+                          {msg.toolCalls?.map((tc) => (
+                            <ToolConfirmationCard
+                              key={tc.toolCallId}
+                              toolCall={tc}
+                              onApprove={handleApproveToolCall}
+                              onReject={handleRejectToolCall}
+                            />
+                          ))}
+                        </>
                       )}
 
                       <div className="flex items-center justify-between mt-2">
@@ -510,7 +656,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
                         >
                           {copiedMessageId === msg.id ? (
                             <Check
-                              className={`w-3.5 h-3.5 ${isUser ? "text-primary" : "text-success"}`}
+                              className={`w-3.5 h-3.5 ${isUser ? "text-primary" : "text-emerald-500"}`}
                             />
                           ) : (
                             <Copy className="w-3.5 h-3.5" />
@@ -537,36 +683,47 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
             })
           )}
 
-          {isLoading && streamingText && !isStreamingDone && (
+          {isLoading && (streamingText || streamingToolCalls) && (
             <div className="flex space-x-3 justify-start">
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1 overflow-hidden">
                 <Image src="/logo.svg" alt="Fabricca" width={20} height={20} />
               </div>
               <div className="max-w-3xl space-y-2 items-start">
                 <div className="p-4 rounded-2xl text-sm leading-relaxed bg-card border border-border/60 text-card-foreground rounded-tl-none shadow-sm">
-                  <MarkdownRenderer
-                    content={streamingText}
-                    sources={streamingSources}
-                    onCitationClick={(sourceIndex) =>
-                      handleCitationPosition(
-                        `streaming-${activeSessionId}`,
-                        sourceIndex,
-                      )
-                    }
-                  />
+                  {streamingText && (
+                    <MarkdownRenderer
+                      content={streamingText}
+                      sources={streamingSources}
+                      onCitationClick={(sourceIndex) =>
+                        handleCitationPosition(
+                          `streaming-${activeSessionId}`,
+                          sourceIndex,
+                        )
+                      }
+                    />
+                  )}
+                  {streamingToolCalls?.map((tc) => (
+                    <ToolConfirmationCard
+                      key={tc.toolCallId}
+                      toolCall={tc}
+                      onApprove={handleApproveToolCall}
+                      onReject={handleRejectToolCall}
+                    />
+                  ))}
                 </div>
               </div>
             </div>
           )}
 
-          {isLoading && !streamingText && (
+          {isLoading && !streamingText && !streamingToolCalls && (
             <div className="flex items-center space-x-3 text-muted-foreground text-xs py-2">
               <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 animate-spin">
                 <Sparkles className="w-4 h-4" />
               </div>
               <div className="flex items-center space-x-2 bg-card border border-border/60 p-3 rounded-2xl shadow-sm">
                 <span className="font-medium">
-                  Kütüphaneniz taranıyor ve yanıt hazırlanıyor...
+                  Kütüphaneniz taranıyor ve veritabanı araçları
+                  değerlendiriliyor...
                 </span>
               </div>
             </div>
@@ -587,7 +744,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
                 handleSend();
               }
             }}
-            placeholder="Akademik danışmanınıza kütüphanenizle ilgili bir soru sorun..."
+            placeholder="Akademik danışmanınıza kütüphaneniz veya tez yapınızla ilgili bir soru sorun..."
             rows={1}
             className="flex-1 p-3 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none resize-none overflow-y-auto max-h-[200px] min-h-[44px]"
           />

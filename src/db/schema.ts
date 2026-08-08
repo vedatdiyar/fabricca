@@ -392,6 +392,15 @@ export type ChatSession = InferSelectModel<typeof chatSessions>;
 
 export type NewChatSession = InferInsertModel<typeof chatSessions>;
 
+/** Structure for stored tool call requests in chat messages. */
+export interface ChatToolCall {
+  toolCallId: string;
+  name: string;
+  args: Record<string, unknown>;
+  explanation: string;
+  status: "pending" | "approved" | "rejected";
+}
+
 /** Chat Messages table — stores individual messages within a chat session. */
 export const chatMessages = pgTable(
   "chat_messages",
@@ -403,6 +412,7 @@ export const chatMessages = pgTable(
     role: varchar({ length: 10 }).notNull(),
     content: text("content").notNull(),
     sources: jsonb("sources").$type<RagSearchResultItem[]>(),
+    toolCalls: jsonb("tool_calls").$type<ChatToolCall[]>(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [index("idx_chat_messages_session_id").on(table.sessionId)],
