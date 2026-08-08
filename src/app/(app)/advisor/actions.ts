@@ -159,6 +159,7 @@ export async function saveChatMessage(
   content: string,
   sources?: RagSearchResultItem[],
   toolCalls?: ChatToolCall[],
+  persona?: string,
 ): Promise<{ success: boolean; messageId?: number; error?: string }> {
   const session = await getSession();
   if (!session) return { success: false, error: "Oturum süreniz dolmuş." };
@@ -168,6 +169,7 @@ export async function saveChatMessage(
     .values({
       sessionId,
       role,
+      persona: persona ?? undefined,
       content,
       sources: sources ?? undefined,
       toolCalls: toolCalls ?? undefined,

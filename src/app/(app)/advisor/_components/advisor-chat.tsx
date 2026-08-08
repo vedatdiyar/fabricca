@@ -1,7 +1,15 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import { Sparkles, Send, User, Copy, Check } from "lucide-react";
+import {
+  Sparkles,
+  Send,
+  User,
+  Copy,
+  Check,
+  GraduationCap,
+  BookOpen,
+} from "lucide-react";
 import Image from "next/image";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ToolConfirmationCard } from "./tool-confirmation-card";
@@ -10,6 +18,28 @@ import { MarkdownRenderer } from "./markdown-renderer";
 import { CitationPopoverContent } from "./citation-popover-content";
 import { useAdvisorChat } from "./use-advisor-chat";
 import type { AdvisorChatProps } from "./types";
+
+function PersonaBadge({
+  persona,
+}: {
+  persona?: "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT";
+}) {
+  if (persona === "SOCRATIC_ADVISOR") {
+    return (
+      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 mb-2.5 shadow-xs">
+        <GraduationCap className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+        <span>Akademik Danışman</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary border border-primary/20 mb-2.5 shadow-xs">
+      <BookOpen className="w-3.5 h-3.5 shrink-0" />
+      <span>Tez Asistanı</span>
+    </div>
+  );
+}
 
 /**
  * Interactive Advisor Chat component delivering an academic AI conversation backed by Hybrid RAG & Cohere Rerank with persistent chat history sidebar and Function Calling database tools.
@@ -31,6 +61,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
     streamingText,
     streamingSources,
     streamingToolCalls,
+    streamingPersona,
     copiedMessageId,
     setCopiedMessageId,
     activeSource,
@@ -108,14 +139,16 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
                   Akademik Danışmanınıza Hoş Geldiniz
                 </h2>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Kütüphanenizdeki makaleler üzerine yapay zeka destekli
-                  akademik analizler alın ve tez matrisinizi doğrudan yönetin.
+                  Kütüphanenizdeki makaleler üzerine Sokratik akademik
+                  yönlendirmeler alın, araştırma asistanınızla doğrudan çalışın
+                  ve tez matrisinizi yönetin.
                 </p>
               </div>
             </div>
           ) : (
             messages.map((msg) => {
               const isUser = msg.role === "user";
+              const isSocratic = msg.persona === "SOCRATIC_ADVISOR";
 
               return (
                 <div
@@ -123,13 +156,23 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
                   className={`flex space-x-3 ${isUser ? "justify-end" : "justify-start"}`}
                 >
                   {!isUser && (
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1 overflow-hidden">
-                      <Image
-                        src="/logo.svg"
-                        alt="Fabricca"
-                        width={20}
-                        height={20}
-                      />
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 overflow-hidden transition-all ${
+                        isSocratic
+                          ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-2 ring-amber-500/40"
+                          : "bg-primary/10 text-primary"
+                      }`}
+                    >
+                      {isSocratic ? (
+                        <GraduationCap className="w-4 h-4" />
+                      ) : (
+                        <Image
+                          src="/logo.svg"
+                          alt="Fabricca"
+                          width={20}
+                          height={20}
+                        />
+                      )}
                     </div>
                   )}
 
@@ -137,16 +180,19 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
                     className={`space-y-2 ${isUser ? "items-end max-w-3xl" : "items-start flex-1 max-w-4xl"}`}
                   >
                     <div
-                      className={`p-4 rounded-md text-sm leading-relaxed ${
+                      className={`p-4 rounded-md text-sm leading-relaxed transition-all ${
                         isUser
                           ? "bg-primary/10 border border-primary/20 text-foreground rounded-tr-none"
-                          : "bg-card border border-border/40 text-card-foreground rounded-tl-none"
+                          : isSocratic
+                            ? "bg-amber-500/5 dark:bg-amber-500/10 border-2 border-amber-500/40 dark:border-amber-400/40 text-card-foreground rounded-tl-none shadow-sm"
+                            : "bg-card border border-border/40 text-card-foreground rounded-tl-none"
                       }`}
                     >
                       {isUser ? (
                         <div className="whitespace-pre-wrap">{msg.content}</div>
                       ) : (
                         <>
+                          <PersonaBadge persona={msg.persona} />
                           <MarkdownRenderer
                             content={msg.content}
                             sources={msg.sources}
@@ -208,11 +254,33 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
 
           {isLoading && (streamingText || streamingToolCalls) && (
             <div className="flex space-x-3 justify-start">
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1 overflow-hidden">
-                <Image src="/logo.svg" alt="Fabricca" width={20} height={20} />
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 overflow-hidden transition-all ${
+                  streamingPersona === "SOCRATIC_ADVISOR"
+                    ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-2 ring-amber-500/40"
+                    : "bg-primary/10 text-primary"
+                }`}
+              >
+                {streamingPersona === "SOCRATIC_ADVISOR" ? (
+                  <GraduationCap className="w-4 h-4" />
+                ) : (
+                  <Image
+                    src="/logo.svg"
+                    alt="Fabricca"
+                    width={20}
+                    height={20}
+                  />
+                )}
               </div>
               <div className="space-y-2 items-start flex-1 max-w-4xl">
-                <div className="p-4 rounded-md text-sm leading-relaxed bg-card border border-border/40 text-card-foreground rounded-tl-none">
+                <div
+                  className={`p-4 rounded-md text-sm leading-relaxed rounded-tl-none transition-all ${
+                    streamingPersona === "SOCRATIC_ADVISOR"
+                      ? "bg-amber-500/5 dark:bg-amber-500/10 border-2 border-amber-500/40 dark:border-amber-400/40 text-card-foreground shadow-sm"
+                      : "bg-card border border-border/40 text-card-foreground"
+                  }`}
+                >
+                  <PersonaBadge persona={streamingPersona} />
                   {streamingText && (
                     <MarkdownRenderer
                       content={streamingText}

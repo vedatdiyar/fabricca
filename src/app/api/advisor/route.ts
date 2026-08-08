@@ -6,6 +6,7 @@ import { getAi } from "@/lib/services/gemini";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 import { getSession } from "@/lib/session";
 import { buildAdvisorSystemInstruction } from "@/lib/prompts";
+import { classifyAdvisorIntent } from "@/lib/services/advisor-classifier";
 import {
   ADVISOR_TOOL_DECLARATIONS,
   isReadTool,
@@ -138,12 +139,23 @@ export async function POST(request: Request) {
   }
 
   const { query, history } = parseResult.data;
-  const isAction = isActionQuery(query);
   const encoder = new TextEncoder();
 
   const readable = new ReadableStream({
     async start(controller) {
       try {
+        // Fast Cerebras Gemma-4 classification for intent & persona
+        const classification = await classifyAdvisorIntent(query, history);
+        const persona = classification.persona;
+        const isAction = isActionQuery(query) || classification.isActionQuery;
+
+        // Immediately inform UI client of assigned persona
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({ type: "persona_assigned", persona })}\n\n`,
+          ),
+        );
+
         let sources: RagSearchResultItem[] = [];
 
         // Fast-Path: Skip heavy RAG literature search for direct database action queries
@@ -197,7 +209,10 @@ ${paragraphText}`;
             "Kütüphanenizde bu sorguyla doğrudan eşleşen veya yeterince alakalı bir kaynak bulunamadı. Lütfen sorgunuzu kütüphanenizdeki mevcut konulara yönelik olarak yeniden formüle edin.";
         }
 
-        const systemInstruction = buildAdvisorSystemInstruction(contextText);
+        const systemInstruction = buildAdvisorSystemInstruction(
+          contextText,
+          persona,
+        );
 
         const ai = getAi();
         const contents: Array<Record<string, unknown>> = [];
@@ -330,7 +345,7 @@ ${paragraphText}`;
 
         controller.enqueue(
           encoder.encode(
-            `data: ${JSON.stringify({ type: "done", text: fullText, sources })}\n\n`,
+            `data: ${JSON.stringify({ type: "done", text: fullText, sources, persona })}\n\n`,
           ),
         );
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));

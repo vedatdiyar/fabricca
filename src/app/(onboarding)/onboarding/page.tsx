@@ -1,3 +1,5 @@
+export const instant = false;
+
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";

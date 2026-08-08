@@ -5,6 +5,7 @@ export interface Message {
   id: string;
   dbId?: number;
   role: "user" | "model";
+  persona?: "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT";
   content: string;
   sources?: RagSearchResultItem[];
   toolCalls?: PendingToolCall[];

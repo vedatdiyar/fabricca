@@ -1,3 +1,5 @@
+export const instant = false;
+
 import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/session";
 import { BoxesContainer } from "./_components/boxes-container";

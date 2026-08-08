@@ -1,3 +1,5 @@
+export const instant = false;
+
 import { AdvisorChat } from "./_components/advisor-chat";
 
 interface AdvisorPageProps {

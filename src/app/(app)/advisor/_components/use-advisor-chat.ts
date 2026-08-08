@@ -45,6 +45,9 @@ export function useAdvisorChat(initialSessionId?: number) {
   const [streamingToolCalls, setStreamingToolCalls] = useState<
     PendingToolCall[] | undefined
   >(undefined);
+  const [streamingPersona, setStreamingPersona] = useState<
+    "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT" | undefined
+  >(undefined);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
   const isSendingRef = useRef(false);
@@ -61,6 +64,9 @@ export function useAdvisorChat(initialSessionId?: number) {
         id: `msg-${m.id}`,
         dbId: m.id,
         role: m.role as "user" | "model",
+        persona:
+          (m.persona as "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT" | undefined) ??
+          undefined,
         content: m.content,
         sources: (m.sources as RagSearchResultItem[] | undefined) ?? undefined,
         toolCalls: (m.toolCalls as PendingToolCall[] | undefined) ?? undefined,
@@ -355,6 +361,7 @@ export function useAdvisorChat(initialSessionId?: number) {
     setStreamingText("");
     setStreamingSources(undefined);
     setStreamingToolCalls(undefined);
+    setStreamingPersona(undefined);
 
     await saveChatMessage(sessionId, "user", queryToSend);
 
@@ -379,6 +386,8 @@ export function useAdvisorChat(initialSessionId?: number) {
       const decoder = new TextDecoder();
       let buffer = "";
       let accumulatedToolCalls: PendingToolCall[] = [];
+      let assignedPersona: "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT" | undefined =
+        undefined;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -396,7 +405,10 @@ export function useAdvisorChat(initialSessionId?: number) {
 
           try {
             const event = JSON.parse(data);
-            if (event.type === "delta") {
+            if (event.type === "persona_assigned") {
+              assignedPersona = event.persona;
+              setStreamingPersona(event.persona);
+            } else if (event.type === "delta") {
               setStreamingText((prev) => prev + event.text);
             } else if (event.type === "tool_call_request") {
               const newToolCall: PendingToolCall = {
@@ -411,6 +423,7 @@ export function useAdvisorChat(initialSessionId?: number) {
               setStreamingToolCalls([...accumulatedToolCalls]);
             } else if (event.type === "done") {
               setStreamingSources(event.sources);
+              const finalPersona = event.persona || assignedPersona;
 
               const modelMessageId = `model-${crypto.randomUUID()}`;
               const finalContent =
@@ -422,6 +435,7 @@ export function useAdvisorChat(initialSessionId?: number) {
               const modelMsg: Message = {
                 id: modelMessageId,
                 role: "model",
+                persona: finalPersona,
                 content: finalContent,
                 sources: event.sources,
                 toolCalls:
@@ -443,6 +457,7 @@ export function useAdvisorChat(initialSessionId?: number) {
                   accumulatedToolCalls.length > 0
                     ? accumulatedToolCalls
                     : undefined,
+                  finalPersona,
                 );
                 if (saveRes.success && saveRes.messageId) {
                   modelMsg.dbId = saveRes.messageId;
@@ -466,6 +481,7 @@ export function useAdvisorChat(initialSessionId?: number) {
       setStreamingText("");
       setStreamingSources(undefined);
       setStreamingToolCalls(undefined);
+      setStreamingPersona(undefined);
       isSendingRef.current = false;
     }
   };
@@ -502,6 +518,7 @@ export function useAdvisorChat(initialSessionId?: number) {
     streamingText,
     streamingSources,
     streamingToolCalls,
+    streamingPersona,
     copiedMessageId,
     setCopiedMessageId,
     activeSource,

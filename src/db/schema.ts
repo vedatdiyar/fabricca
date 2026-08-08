@@ -413,6 +413,7 @@ export const chatMessages = pgTable(
       .notNull()
       .references(() => chatSessions.id, { onDelete: "cascade" }),
     role: varchar({ length: 10 }).notNull(),
+    persona: varchar("persona", { length: 30 }),
     content: text("content").notNull(),
     sources: jsonb("sources").$type<RagSearchResultItem[]>(),
     toolCalls: jsonb("tool_calls").$type<ChatToolCall[]>(),
