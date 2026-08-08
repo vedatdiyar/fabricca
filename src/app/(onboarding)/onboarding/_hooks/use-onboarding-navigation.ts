@@ -301,7 +301,7 @@ export function useOnboardingNavigation() {
       }
 
       hideLoading();
-      window.location.href = "/onboarding/literature-review";
+      router.push("/onboarding/literature-review");
 
       return { success: true };
     } catch (err) {
@@ -311,7 +311,7 @@ export function useOnboardingNavigation() {
       toast.error(message);
       return { success: false, error: message };
     }
-  }, [queryClient, runLiteraturePipeline, hideLoading]);
+  }, [queryClient, runLiteraturePipeline, hideLoading, router]);
 
   /**
    * Confirms the positioning report, generates and persists the thesis box
@@ -380,7 +380,7 @@ export function useOnboardingNavigation() {
 
       queryClient.invalidateQueries();
       toast.success("Tebrikler! Onboarding süreciniz tamamlandı.");
-      window.location.href = "/dashboard";
+      router.push("/dashboard");
 
       return { success: true };
     } catch (err) {
@@ -389,7 +389,7 @@ export function useOnboardingNavigation() {
       toast.error(message);
       return { success: false, error: message };
     }
-  }, [queryClient]);
+  }, [queryClient, router]);
 
   return {
     submitMatrix,

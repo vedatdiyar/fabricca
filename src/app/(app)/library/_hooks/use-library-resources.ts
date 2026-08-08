@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { BOX_ORDER_WEIGHT } from "@/lib/box-constants";
 import {
@@ -14,13 +13,10 @@ import type { LibraryResourceItem, ThesisBoxType } from "../_types/types";
 /**
  * Manages library resource list, selection state, CRUD operations, and data loading.
  *
+ * @param initialSelectedId - Resource id read from the URL `id` search param to preselect on load.
  * @returns Resource state, sorted list, selection handlers, and mutation callbacks.
  */
-export function useLibraryResources() {
-  const searchParams = useSearchParams();
-  const urlResourceId = searchParams.get("id");
-  const initialSelectedId = urlResourceId ? parseInt(urlResourceId, 10) : null;
-
+export function useLibraryResources(initialSelectedId: number | null) {
   const [resources, setResources] = useState<LibraryResourceItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedResourceId, setSelectedResourceId] = useState<number | null>(

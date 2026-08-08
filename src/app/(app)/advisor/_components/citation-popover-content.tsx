@@ -1,5 +1,24 @@
+"use client";
+
+import { useMemo } from "react";
 import { FileText } from "lucide-react";
 import type { CitationPopoverContentProps } from "./types";
+
+/**
+ * Derives a stable key for a paragraph from its leading plain text so the
+ * reconciliation does not rely on array index.
+ *
+ * @param paragraph - The paragraph content.
+ * @returns A deterministic content-based key.
+ */
+function paragraphKey(paragraph: string): string {
+  const head = paragraph
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, 48)
+    .toLowerCase();
+  return head.length > 0 ? head : "empty-paragraph";
+}
 
 /**
  * Renders the academic source details as an inline citation panel.
@@ -20,6 +39,11 @@ export function CitationPopoverContent({
         ? `s. ${pageSpan}`
         : `ss. ${pageSpan}–${pageEnd}`
       : null);
+
+  const paragraphs = useMemo(
+    () => source.content.split("\n\n"),
+    [source.content],
+  );
 
   return (
     <div className="text-sm space-y-4">
@@ -46,21 +70,24 @@ export function CitationPopoverContent({
       </div>
 
       <div className="text-sm text-foreground leading-relaxed space-y-3 pl-3 border-l-2 border-primary/20">
-        {source.content.split("\n\n").map((paragraph, i) => {
+        {paragraphs.map((paragraph) => {
+          const pKey = paragraphKey(paragraph);
           const lines = paragraph.split("\n");
           const hasNumberedItems = lines.some((l) =>
             /^\d+[.)]\s/.test(l.trim()),
           );
           if (hasNumberedItems) {
             return (
-              <ol key={i} className="list-decimal list-inside space-y-1">
+              <ol key={pKey} className="list-decimal list-inside space-y-1">
                 {lines.map((line, j) => (
-                  <li key={j}>{line.trim().replace(/^\d+[.)]\s*/, "")}</li>
+                  <li key={`${pKey}-line-${j}`}>
+                    {line.trim().replace(/^\d+[.)]\s*/, "")}
+                  </li>
                 ))}
               </ol>
             );
           }
-          return <p key={i}>{paragraph}</p>;
+          return <p key={pKey}>{paragraph}</p>;
         })}
       </div>
     </div>

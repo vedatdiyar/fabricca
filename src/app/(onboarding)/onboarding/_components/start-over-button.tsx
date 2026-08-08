@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { RotateCcw, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -27,6 +28,7 @@ import { resetOnboardingAction } from "@/app/(onboarding)/onboarding/actions";
  * @returns The reset confirmation dialog trigger button.
  */
 export function StartOverButton({ className, ...props }: ButtonProps) {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -41,7 +43,7 @@ export function StartOverButton({ className, ...props }: ButtonProps) {
           queryClient.invalidateQueries();
           toast.success("Onboarding süreci başarıyla sıfırlandı.");
           setIsOpen(false);
-          window.location.href = "/onboarding/matrix";
+          router.push("/onboarding/matrix");
         }
       } catch {
         toast.error(

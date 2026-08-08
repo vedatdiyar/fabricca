@@ -129,9 +129,9 @@ function formatContent(
       }
 
       if (bestIdx === -1) {
-        return `<span class="${CITATION_BADGE_CLASS}">${badgeLabel}</span>`;
+        return `<span class="${CITATION_BADGE_CLASS}" role="button" tabindex="0" aria-label="${badgeLabel}">${badgeLabel}</span>`;
       }
-      return `<span class="${CITATION_BADGE_CLASS}" ${CITATION_ATTR}="${bestIdx}">${badgeLabel}</span>`;
+      return `<span class="${CITATION_BADGE_CLASS}" role="button" tabindex="0" aria-label="${badgeLabel}" ${CITATION_ATTR}="${bestIdx}">${badgeLabel}</span>`;
     },
   );
 }
@@ -275,6 +275,7 @@ const components: Components = {
       type="checkbox"
       checked={props.checked}
       readOnly
+      aria-label="İşaretli onay kutusu"
       className="mr-1 accent-primary"
     />
   ),
@@ -314,8 +315,24 @@ export function MarkdownRenderer({
     [onCitationClick],
   );
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const target = e.target as HTMLElement;
+      const badge = target.closest(`[${CITATION_ATTR}]`);
+      if (badge) {
+        e.preventDefault();
+        const idx = parseInt(badge.getAttribute(CITATION_ATTR) ?? "-1", 10);
+        if (idx >= 0 && onCitationClick) {
+          onCitationClick(idx);
+        }
+      }
+    },
+    [onCitationClick],
+  );
+
   return (
-    <div onClick={handleClick}>
+    <div role="presentation" onClick={handleClick} onKeyDown={handleKeyDown}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw]}

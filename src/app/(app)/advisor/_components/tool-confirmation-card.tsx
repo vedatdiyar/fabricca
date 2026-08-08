@@ -402,8 +402,11 @@ export function ToolConfirmationCard({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
-                {comparisonRows.map((row, idx) => (
-                  <tr key={idx} className="hover:bg-muted/20 transition-colors">
+                {comparisonRows.map((row) => (
+                  <tr
+                    key={row.fieldLabel}
+                    className="hover:bg-muted/20 transition-colors"
+                  >
                     <td className="py-3 px-4 font-semibold text-foreground align-top break-words">
                       {row.fieldLabel}
                     </td>

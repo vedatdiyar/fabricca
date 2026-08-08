@@ -137,9 +137,21 @@ export const SelectContent = React.forwardRef<
   return (
     <>
       {/* Backdrop for closing */}
-      <div className="fixed inset-0 z-40" onClick={() => ctx.setOpen(false)} />
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-hidden="true"
+        className="fixed inset-0 z-40"
+        onClick={() => ctx.setOpen(false)}
+      />
       <div
         ref={ref}
+        role="listbox"
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            ctx?.setOpen(false);
+          }
+        }}
         className={cn(
           "absolute left-0 top-full mt-1 z-50 max-h-60 w-full min-w-[8rem] overflow-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md backdrop-blur-md animate-in fade-in-80",
           className,
@@ -181,6 +193,18 @@ export const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
         ref={ref}
         role="option"
         aria-selected={isSelected}
+        tabIndex={disabled ? -1 : 0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            if (disabled) return;
+            ctx?.onValueChange?.(value);
+            ctx?.setOpen(false);
+            onClick?.(e as unknown as React.MouseEvent<HTMLDivElement>);
+          } else if (e.key === "Escape") {
+            ctx?.setOpen(false);
+          }
+        }}
         onClick={(e) => {
           if (disabled) return;
           ctx?.onValueChange?.(value);

@@ -84,6 +84,7 @@ export function PdfUploadDropzone({
           ref={fileInputRef}
           accept="application/pdf"
           className="hidden"
+          aria-label="PDF dosyası seçin"
           onChange={(e) => {
             if (e.target.files && e.target.files.length > 0) {
               handleFileSelect(e.target.files[0]);

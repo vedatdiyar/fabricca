@@ -89,9 +89,21 @@ export const DropdownMenuContent = React.forwardRef<
 
   return (
     <>
-      <div className="fixed inset-0 z-40" onClick={() => ctx.setOpen(false)} />
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-hidden="true"
+        className="fixed inset-0 z-40"
+        onClick={() => ctx.setOpen(false)}
+      />
       <div
         ref={ref}
+        role="menu"
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            ctx?.setOpen(false);
+          }
+        }}
         className={cn(
           "absolute mt-1 z-50 min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md backdrop-blur-md animate-in fade-in-80",
           align === "end" ? "right-0" : "left-0",
@@ -128,6 +140,17 @@ export const DropdownMenuItem = React.forwardRef<
     <div
       ref={ref}
       role="menuitem"
+      tabIndex={disabled ? -1 : 0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          if (disabled) return;
+          ctx?.setOpen(false);
+          onClick?.(e as unknown as React.MouseEvent<HTMLDivElement>);
+        } else if (e.key === "Escape") {
+          ctx?.setOpen(false);
+        }
+      }}
       onClick={(e) => {
         if (disabled) return;
         ctx?.setOpen(false);
@@ -223,6 +246,18 @@ export const DropdownMenuSubTrigger = React.forwardRef<
   return (
     <div
       ref={ref}
+      role="menuitem"
+      tabIndex={0}
+      aria-haspopup="true"
+      aria-expanded={ctx?.subOpen ?? false}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          ctx?.setSubOpen((prev) => !prev);
+        } else if (e.key === "Escape") {
+          ctx?.setSubOpen(false);
+        }
+      }}
       onClick={() => ctx?.setSubOpen((prev) => !prev)}
       className={cn(
         "flex cursor-pointer select-none items-center justify-between rounded-sm px-2 py-1.5 text-xs outline-hidden hover:bg-accent hover:text-accent-foreground",

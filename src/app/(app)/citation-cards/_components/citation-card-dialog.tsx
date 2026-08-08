@@ -296,43 +296,49 @@ function CitationCardForm(props: CitationCardFormProps) {
   const { cardToEdit, sources, boxes, onSave, onClose } = props;
   const isEditing = Boolean(cardToEdit);
 
-  const [selectedSourceId, setSelectedSourceId] = useState<string>(
-    cardToEdit
+  const [formFields, setFormFields] = useState({
+    selectedSourceId: cardToEdit
       ? String(cardToEdit.sourceId)
       : sources[0]
         ? String(sources[0].id)
         : "",
-  );
-  const [selectedBoxId, setSelectedBoxId] = useState<string>(
-    cardToEdit ? String(cardToEdit.boxId) : boxes[0] ? String(boxes[0].id) : "",
-  );
-  const [noteType, setNoteType] = useState<CitationNoteType>(
-    cardToEdit ? cardToEdit.noteType : "DIRECT_QUOTE",
-  );
-  const [pageNumber, setPageNumber] = useState<string>(
-    cardToEdit ? cleanPageNumberInput(cardToEdit.pageNumber) : "1",
-  );
-  const [content, setContent] = useState<string>(
-    cardToEdit ? cardToEdit.content : "",
-  );
-  const [comment, setComment] = useState<string>(
-    cardToEdit ? (cardToEdit.comment ?? "") : "",
-  );
+    selectedBoxId: cardToEdit
+      ? String(cardToEdit.boxId)
+      : boxes[0]
+        ? String(boxes[0].id)
+        : "",
+    noteType: (cardToEdit ? cardToEdit.noteType : "DIRECT_QUOTE") as
+      | CitationNoteType,
+    pageNumber: cardToEdit
+      ? cleanPageNumberInput(cardToEdit.pageNumber)
+      : "1",
+    content: cardToEdit ? cardToEdit.content : "",
+    comment: cardToEdit ? (cardToEdit.comment ?? "") : "",
+  });
+
+  const setField = <K extends keyof typeof formFields>(
+    key: K,
+    value: (typeof formFields)[K],
+  ) => {
+    setFormFields((prev) => ({ ...prev, [key]: value }));
+  };
 
   const selectedSourceObj = sources.find(
-    (s) => s.id === Number(selectedSourceId),
+    (s) => s.id === Number(formFields.selectedSourceId),
   );
-  const selectedBoxObj = boxes.find((b) => b.id === Number(selectedBoxId));
+  const selectedBoxObj = boxes.find(
+    (b) => b.id === Number(formFields.selectedBoxId),
+  );
 
   /**
    * Handles form submission and triggers onSave callback with filled data.
    *
    * @param e - Form submit event.
    */
-  const handleSubmit = (e: React.FormEvent) => {
+const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!content.trim()) {
+    if (!formFields.content.trim()) {
       toast.error("Lütfen alıntı veya not içeriğini doldurun.");
       return;
     }
@@ -361,10 +367,10 @@ function CitationCardForm(props: CitationCardFormProps) {
       boxId: boxObj.id,
       boxType: boxObj.boxType,
       boxTitle: boxObj.title,
-      pageNumber: formatPageNumber(pageNumber),
-      noteType,
-      content: content.trim(),
-      comment: comment.trim() || undefined,
+      pageNumber: formatPageNumber(formFields.pageNumber),
+      noteType: formFields.noteType,
+      content: formFields.content.trim(),
+      comment: formFields.comment.trim() || undefined,
       sentToCitationCards: true,
     });
 
@@ -389,7 +395,7 @@ function CitationCardForm(props: CitationCardFormProps) {
     const end = el.selectionEnd;
     const next = el.value.slice(0, start) + cleaned + el.value.slice(end);
 
-    setContent(next);
+    setField("content", next);
     requestAnimationFrame(() => {
       el.selectionStart = el.selectionEnd = start + cleaned.length;
     });
@@ -401,7 +407,10 @@ function CitationCardForm(props: CitationCardFormProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="source-select">Akademik Kaynak</Label>
-          <Select value={selectedSourceId} onValueChange={setSelectedSourceId}>
+          <Select
+            value={formFields.selectedSourceId}
+            onValueChange={(v) => setField("selectedSourceId", v)}
+          >
             <SelectTrigger id="source-select">
               <SelectValue placeholder="Kaynak Seçin">
                 {selectedSourceObj
@@ -422,7 +431,10 @@ function CitationCardForm(props: CitationCardFormProps) {
 
         <div className="space-y-2">
           <Label htmlFor="box-select">Bağlı Konu Kutusu</Label>
-          <Select value={selectedBoxId} onValueChange={setSelectedBoxId}>
+          <Select
+            value={formFields.selectedBoxId}
+            onValueChange={(v) => setField("selectedBoxId", v)}
+          >
             <SelectTrigger id="box-select">
               <SelectValue placeholder="Kutu Seçin">
                 {selectedBoxObj
@@ -446,13 +458,15 @@ function CitationCardForm(props: CitationCardFormProps) {
         <div className="space-y-2">
           <Label htmlFor="note-type-select">Not Türü</Label>
           <Select
-            value={noteType}
+            value={formFields.noteType}
             onValueChange={(val: string) =>
-              setNoteType(val as CitationNoteType)
+              setField("noteType", val as CitationNoteType)
             }
           >
             <SelectTrigger id="note-type-select">
-              <SelectValue>{NOTE_TYPE_DISPLAY_LABELS[noteType]}</SelectValue>
+              <SelectValue>
+                {NOTE_TYPE_DISPLAY_LABELS[formFields.noteType]}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="DIRECT_QUOTE">Doğrudan Alıntı</SelectItem>
@@ -467,8 +481,8 @@ function CitationCardForm(props: CitationCardFormProps) {
           <Input
             id="page-number-input"
             placeholder="Örn: 15 veya 15-17"
-            value={pageNumber}
-            onChange={(e) => setPageNumber(e.target.value)}
+            value={formFields.pageNumber}
+            onChange={(e) => setField("pageNumber", e.target.value)}
           />
         </div>
       </div>
@@ -480,8 +494,8 @@ function CitationCardForm(props: CitationCardFormProps) {
           id="content-textarea"
           rows={6}
           placeholder="Alıntılanan metni, kendi cümlenizle açımlamayı veya tez notunuzu buraya yazın..."
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
+          value={formFields.content}
+          onChange={(e) => setField("content", e.target.value)}
           onPaste={handleContentPaste}
           className="font-serif leading-relaxed resize-none overflow-y-auto min-h-35"
         />
@@ -502,8 +516,8 @@ function CitationCardForm(props: CitationCardFormProps) {
           id="comment-textarea"
           rows={2}
           placeholder="Bu fişi tez çalışmanızda nasıl değerlendireceğinize dair kendi şerh veya yorumunuzu ekleyin..."
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
+          value={formFields.comment}
+          onChange={(e) => setField("comment", e.target.value)}
           className="text-sm leading-relaxed resize-none"
         />
       </div>

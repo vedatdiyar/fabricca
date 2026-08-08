@@ -1,5 +1,6 @@
+"use client";
+
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   getChatSessions,
@@ -19,6 +20,9 @@ import type { PendingToolCall } from "./tool-confirmation-card";
 import type { RagSearchResultItem } from "@/lib/services/rag-search";
 import type { Message } from "./types";
 
+/** Sentinel used to trigger the initial session sync on mount regardless of the initial id value. */
+const PREV_SESSION_SENTINEL = Symbol("prev-session-sentinel");
+
 /**
  * Custom React hook managing Advisor Chat state, session switching, streaming SSE API interactions,
  * and database tool execution confirmations.
@@ -27,34 +31,77 @@ import type { Message } from "./types";
  * @returns State values and event handlers for the advisor chat component.
  */
 export function useAdvisorChat(initialSessionId?: number) {
-  const router = useRouter();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [inputQuery, setInputQuery] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [activeCitation, setActiveCitation] = useState<{
-    messageId: string;
-    sourceIndex: number;
-  } | null>(null);
+  const [session, setSession] = useState<{
+    messages: Message[];
+    isLoading: boolean;
+    sessions: ChatSessionListItem[];
+    activeSessionId: number | null;
+  }>({
+    messages: [],
+    isLoading: false,
+    sessions: [],
+    activeSessionId: null,
+  });
+  const { messages, isLoading, sessions, activeSessionId } = session;
 
-  const [sessions, setSessions] = useState<ChatSessionListItem[]>([]);
-  const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
-  const [streamingText, setStreamingText] = useState("");
-  const [streamingSources, setStreamingSources] = useState<
-    RagSearchResultItem[] | undefined
-  >(undefined);
-  const [streamingToolCalls, setStreamingToolCalls] = useState<
-    PendingToolCall[] | undefined
-  >(undefined);
-  const [streamingPersona, setStreamingPersona] = useState<
-    "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT" | undefined
-  >(undefined);
-  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [ui, setUi] = useState<{
+    activeCitation: {
+      messageId: string;
+      sourceIndex: number;
+    } | null;
+    copiedMessageId: string | null;
+  }>({ activeCitation: null, copiedMessageId: null });
+  const { activeCitation, copiedMessageId } = ui;
+
+  const [streaming, setStreaming] = useState<{
+    text: string;
+    sources: RagSearchResultItem[] | undefined;
+    toolCalls: PendingToolCall[] | undefined;
+    persona: "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT" | undefined;
+  }>({
+    text: "",
+    sources: undefined,
+    toolCalls: undefined,
+    persona: undefined,
+  });
+
+  const setMessages = useCallback(
+    (updater: Message[] | ((prev: Message[]) => Message[])) => {
+      setSession((prev) => ({
+        ...prev,
+        messages: typeof updater === "function" ? updater(prev.messages) : updater,
+      }));
+    },
+    [],
+  );
+
+  const setActiveCitation = useCallback(
+    (
+      updater:
+        | { messageId: string; sourceIndex: number }
+        | null
+        | ((
+            prev: { messageId: string; sourceIndex: number } | null,
+          ) => { messageId: string; sourceIndex: number } | null),
+    ) => {
+      setUi((prev) => ({
+        ...prev,
+        activeCitation:
+          typeof updater === "function" ? updater(prev.activeCitation) : updater,
+      }));
+    },
+    [],
+  );
+
+  const setCopiedMessageId = useCallback((value: string | null) => {
+    setUi((prev) => ({ ...prev, copiedMessageId: value }));
+  }, []);
 
   const isSendingRef = useRef(false);
 
   const loadSessions = useCallback(async () => {
     const list = await getChatSessions();
-    setSessions(list);
+    setSession((prev) => ({ ...prev, sessions: list }));
   }, []);
 
   const loadMessages = useCallback(async (sessionId: number) => {
@@ -80,7 +127,7 @@ export function useAdvisorChat(initialSessionId?: number) {
       setMessages([]);
     }
     setActiveCitation(null);
-  }, []);
+  }, [setMessages, setActiveCitation]);
 
   const syncUrlSession = useCallback((sessionId: number | null) => {
     const url =
@@ -88,47 +135,22 @@ export function useAdvisorChat(initialSessionId?: number) {
     window.history.replaceState(null, "", url);
   }, []);
 
-  const prevInitialSessionIdRef = useRef<number | undefined>(initialSessionId);
+  const prevInitialSessionIdRef = useRef<number | undefined | symbol>(
+    PREV_SESSION_SENTINEL,
+  );
 
-  // Initial load of sessions list and active session on mount
-  useEffect(() => {
-    let cancelled = false;
-    /** Loads the initial list of chat sessions and loads messages for initialSessionId if provided. */
-    async function init() {
-      if (isSendingRef.current) return;
-      const list = await getChatSessions();
-      if (cancelled) return;
-      setSessions(list);
-
-      const targetId =
-        initialSessionId !== undefined &&
-        list.some((s) => s.id === initialSessionId)
-          ? initialSessionId
-          : null;
-
-      if (targetId !== null) {
-        setActiveSessionId(targetId);
-        await loadMessages(targetId);
-      }
-    }
-    void init();
-    return () => {
-      cancelled = true;
-    };
-  }, [initialSessionId, loadMessages]);
-
-  // Sync when initialSessionId route parameter changes (e.g. browser navigation)
+  // Load sessions and the active session on mount, and resync when the initialSessionId route parameter changes (e.g. browser navigation)
   useEffect(() => {
     if (prevInitialSessionIdRef.current === initialSessionId) return;
     prevInitialSessionIdRef.current = initialSessionId;
 
     let cancelled = false;
-    /** Syncs state when the initialSessionId prop changes due to route navigation. */
+    /** Loads the session list and messages for the target session id if provided. */
     async function syncFromProp() {
       if (isSendingRef.current) return;
       const list = await getChatSessions();
       if (cancelled) return;
-      setSessions(list);
+      setSession((prev) => ({ ...prev, sessions: list }));
 
       const targetId =
         initialSessionId !== undefined &&
@@ -138,12 +160,15 @@ export function useAdvisorChat(initialSessionId?: number) {
 
       if (targetId !== null) {
         if (activeSessionId !== targetId) {
-          setActiveSessionId(targetId);
+          setSession((prev) => ({ ...prev, activeSessionId: targetId }));
           await loadMessages(targetId);
         }
       } else if (activeSessionId !== null) {
-        setActiveSessionId(null);
-        setMessages([]);
+        setSession((prev) => ({
+          ...prev,
+          activeSessionId: null,
+          messages: [],
+        }));
         setActiveCitation(null);
       }
     }
@@ -151,11 +176,11 @@ export function useAdvisorChat(initialSessionId?: number) {
     return () => {
       cancelled = true;
     };
-  }, [initialSessionId, activeSessionId, loadMessages]);
+  }, [initialSessionId, activeSessionId, loadMessages, setActiveCitation]);
 
   const handleSelectSession = useCallback(
     async (sessionId: number) => {
-      setActiveSessionId(sessionId);
+      setSession((prev) => ({ ...prev, activeSessionId: sessionId }));
       await loadMessages(sessionId);
       syncUrlSession(sessionId);
     },
@@ -163,19 +188,21 @@ export function useAdvisorChat(initialSessionId?: number) {
   );
 
   const handleCreateSession = useCallback(() => {
-    setActiveSessionId(null);
-    setMessages([]);
+    setSession((prev) => ({ ...prev, activeSessionId: null, messages: [] }));
     setActiveCitation(null);
     syncUrlSession(null);
-  }, [syncUrlSession]);
+  }, [syncUrlSession, setActiveCitation]);
 
   const handleDeleteSession = useCallback(
     async (sessionId: number) => {
       const res = await deleteChatSession(sessionId);
       if (res.success) {
         if (activeSessionId === sessionId) {
-          setActiveSessionId(null);
-          setMessages([]);
+          setSession((prev) => ({
+            ...prev,
+            activeSessionId: null,
+            messages: [],
+          }));
           setActiveCitation(null);
           await loadSessions();
           syncUrlSession(null);
@@ -187,7 +214,7 @@ export function useAdvisorChat(initialSessionId?: number) {
         toast.error(res.error || "Sohbet silinemedi.");
       }
     },
-    [activeSessionId, loadSessions, syncUrlSession],
+    [activeSessionId, loadSessions, syncUrlSession, setActiveCitation],
   );
 
   const handleApproveToolCall = async (
@@ -312,7 +339,7 @@ export function useAdvisorChat(initialSessionId?: number) {
 
   const handleSend = async (overrideQuery?: string) => {
     if (isSendingRef.current) return;
-    const queryToSend = (overrideQuery || inputQuery).trim();
+    const queryToSend = (overrideQuery ?? "").trim();
     if (!queryToSend || isLoading) return;
 
     isSendingRef.current = true;
@@ -330,7 +357,7 @@ export function useAdvisorChat(initialSessionId?: number) {
         return;
       }
       sessionId = createRes.sessionId;
-      setActiveSessionId(sessionId);
+      setSession((prev) => ({ ...prev, activeSessionId: sessionId }));
       await loadSessions();
       syncUrlSession(sessionId);
 
@@ -353,12 +380,13 @@ export function useAdvisorChat(initialSessionId?: number) {
     };
 
     setMessages((prev) => [...prev, userMsg]);
-    if (!overrideQuery) setInputQuery("");
-    setIsLoading(true);
-    setStreamingText("");
-    setStreamingSources(undefined);
-    setStreamingToolCalls(undefined);
-    setStreamingPersona(undefined);
+    setSession((prev) => ({ ...prev, isLoading: true }));
+    setStreaming({
+      text: "",
+      sources: undefined,
+      toolCalls: undefined,
+      persona: undefined,
+    });
 
     await saveChatMessage(sessionId, "user", queryToSend);
 
@@ -404,9 +432,12 @@ export function useAdvisorChat(initialSessionId?: number) {
             const event = JSON.parse(data);
             if (event.type === "persona_assigned") {
               assignedPersona = event.persona;
-              setStreamingPersona(event.persona);
+              setStreaming((prev) => ({ ...prev, persona: event.persona }));
             } else if (event.type === "delta") {
-              setStreamingText((prev) => prev + event.text);
+              setStreaming((prev) => ({
+                ...prev,
+                text: prev.text + event.text,
+              }));
             } else if (event.type === "tool_call_request") {
               const newToolCall: PendingToolCall = {
                 toolCallId: event.toolCallId,
@@ -417,9 +448,12 @@ export function useAdvisorChat(initialSessionId?: number) {
                 previousState: event.previousState,
               };
               accumulatedToolCalls = [...accumulatedToolCalls, newToolCall];
-              setStreamingToolCalls([...accumulatedToolCalls]);
+              setStreaming((prev) => ({
+                ...prev,
+                toolCalls: [...accumulatedToolCalls],
+              }));
             } else if (event.type === "done") {
-              setStreamingSources(event.sources);
+              setStreaming((prev) => ({ ...prev, sources: event.sources }));
               const finalPersona = event.persona || assignedPersona;
 
               const modelMessageId = `model-${crypto.randomUUID()}`;
@@ -474,11 +508,13 @@ export function useAdvisorChat(initialSessionId?: number) {
     } catch {
       toast.error("İletişim hatası oluştu.");
     } finally {
-      setIsLoading(false);
-      setStreamingText("");
-      setStreamingSources(undefined);
-      setStreamingToolCalls(undefined);
-      setStreamingPersona(undefined);
+      setSession((prev) => ({ ...prev, isLoading: false }));
+      setStreaming({
+        text: "",
+        sources: undefined,
+        toolCalls: undefined,
+        persona: undefined,
+      });
       isSendingRef.current = false;
     }
   };
@@ -492,7 +528,7 @@ export function useAdvisorChat(initialSessionId?: number) {
         return { messageId, sourceIndex };
       });
     },
-    [],
+    [setActiveCitation],
   );
 
   const activeSource =
@@ -505,17 +541,15 @@ export function useAdvisorChat(initialSessionId?: number) {
   return {
     messages,
     setMessages,
-    inputQuery,
-    setInputQuery,
     isLoading,
     activeCitation,
     setActiveCitation,
     sessions,
     activeSessionId,
-    streamingText,
-    streamingSources,
-    streamingToolCalls,
-    streamingPersona,
+    streamingText: streaming.text,
+    streamingSources: streaming.sources,
+    streamingToolCalls: streaming.toolCalls,
+    streamingPersona: streaming.persona,
     copiedMessageId,
     setCopiedMessageId,
     activeSource,

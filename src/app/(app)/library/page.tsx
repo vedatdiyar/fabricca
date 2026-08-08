@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { BookMarked } from "lucide-react";
 import { SidebarWorkList } from "./_components/sidebar-work-list";
 import { ResourceDetail } from "./_components/resource-detail";
@@ -31,6 +32,10 @@ export default function LibraryPage() {
 function LibraryPageContent() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
+  const searchParams = useSearchParams();
+  const urlResourceId = searchParams.get("id");
+  const initialSelectedId = urlResourceId ? parseInt(urlResourceId, 10) : null;
+
   const {
     resources,
     setResources,
@@ -45,7 +50,7 @@ function LibraryPageContent() {
     handleDeleteResource,
     handleToggleReadStatus,
     handleUpdateResource,
-  } = useLibraryResources();
+  } = useLibraryResources(initialSelectedId);
 
   const { notes, setNotes, handleAddNote, handleDeleteNote } = useResourceNotes(
     { selectedResourceId },

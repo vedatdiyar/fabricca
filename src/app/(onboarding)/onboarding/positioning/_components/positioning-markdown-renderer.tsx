@@ -20,14 +20,17 @@ function parseInlineMarkdown(text: string): React.ReactNode[] {
   return parts.map((part, idx) => {
     if (part.startsWith("**") && part.endsWith("**")) {
       return (
-        <strong key={idx} className="font-semibold text-foreground">
+        <strong
+          key={`strong-${idx}-${part}`}
+          className="font-semibold text-foreground"
+        >
           {part.slice(2, -2)}
         </strong>
       );
     }
     if (part.startsWith("*") && part.endsWith("*")) {
       return (
-        <em key={idx} className="italic text-foreground">
+        <em key={`em-${idx}-${part}`} className="italic text-foreground">
           {part.slice(1, -1)}
         </em>
       );
@@ -35,7 +38,7 @@ function parseInlineMarkdown(text: string): React.ReactNode[] {
     if (part.startsWith("`") && part.endsWith("`")) {
       return (
         <code
-          key={idx}
+          key={`code-${idx}-${part}`}
           className="rounded bg-muted px-2 py-1 font-mono text-xs text-primary"
         >
           {part.slice(1, -1)}
@@ -149,6 +152,17 @@ function parseLegacyMarkdown(markdown: string): GapAnalysisStructured {
 }
 
 /**
+ * Derives a stable key for a rendered paragraph from its leading text.
+ *
+ * @param paragraph - The paragraph content.
+ * @returns A deterministic content-based key.
+ */
+function paragraphKey(paragraph: string): string {
+  const head = paragraph.trim().replace(/\s+/g, " ").slice(0, 48).toLowerCase();
+  return head.length > 0 ? head : "empty-paragraph";
+}
+
+/**
  * Renders the 3 fixed jury synthesis sections as cards with designated icons.
  *
  * @param root0 - The component props.
@@ -174,8 +188,8 @@ export function PositioningMarkdownRenderer({
           </h3>
         </div>
         <div className="text-sm leading-relaxed text-foreground space-y-2 pt-1">
-          {data.literatureMapping.split("\n\n").map((para, idx) => (
-            <p key={idx}>{parseInlineMarkdown(para)}</p>
+          {data.literatureMapping.split("\n\n").map((para) => (
+            <p key={paragraphKey(para)}>{parseInlineMarkdown(para)}</p>
           ))}
         </div>
       </Card>
@@ -188,8 +202,8 @@ export function PositioningMarkdownRenderer({
           </h3>
         </div>
         <div className="text-sm leading-relaxed text-foreground space-y-2 pt-1">
-          {data.academicGap.split("\n\n").map((para, idx) => (
-            <p key={idx}>{parseInlineMarkdown(para)}</p>
+          {data.academicGap.split("\n\n").map((para) => (
+            <p key={paragraphKey(para)}>{parseInlineMarkdown(para)}</p>
           ))}
         </div>
       </Card>
@@ -202,8 +216,8 @@ export function PositioningMarkdownRenderer({
           </h3>
         </div>
         <div className="text-sm leading-relaxed text-foreground space-y-2 pt-1">
-          {data.originalContribution.split("\n\n").map((para, idx) => (
-            <p key={idx}>{parseInlineMarkdown(para)}</p>
+          {data.originalContribution.split("\n\n").map((para) => (
+            <p key={paragraphKey(para)}>{parseInlineMarkdown(para)}</p>
           ))}
         </div>
       </Card>

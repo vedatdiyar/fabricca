@@ -1,0 +1,188 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+import Image from "next/image";
+import { Sparkles, GraduationCap, BookOpen } from "lucide-react";
+import { ChatMessageItem, PersonaBadge } from "./ChatMessageItem";
+import { MarkdownRenderer } from "./markdown-renderer";
+import { ToolConfirmationCard } from "./tool-confirmation-card";
+import type { Message } from "./types";
+import type { PendingToolCall } from "./tool-confirmation-card";
+import type { RagSearchResultItem } from "@/lib/services/rag-search";
+
+interface ChatMessageListProps {
+  messages: Message[];
+  isLoading: boolean;
+  streamingText: string;
+  streamingSources?: RagSearchResultItem[];
+  streamingToolCalls?: PendingToolCall[];
+  streamingPersona?: "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT";
+  activeSessionId: number | null;
+  copiedMessageId: string | null;
+  onCopyMessage: (messageId: string, content: string) => void;
+  onCitationPosition: (messageId: string, sourceIndex: number) => void;
+  onApproveToolCall: (
+    toolCallId: string,
+    name: string,
+    args: Record<string, unknown>,
+  ) => Promise<void>;
+  onRejectToolCall: (toolCallId: string) => void;
+  onUndoToolCall: (
+    toolCallId: string,
+    name: string,
+    args: Record<string, unknown>,
+    executionResult?: unknown,
+    previousState?: Record<string, unknown>,
+  ) => Promise<void>;
+}
+
+/**
+ * Renders the chat message window: the empty welcome state, the message list,
+ * the streaming assistant bubble, the loading indicator and the auto-scroll
+ * anchor.
+ *
+ * @param root0 - Component props.
+ * @param root0.messages - The list of persisted chat messages.
+ * @param root0.isLoading - Whether the assistant is currently responding.
+ * @param root0.streamingText - Accumulated streaming assistant text.
+ * @param root0.streamingSources - RAG sources for the streaming message.
+ * @param root0.streamingToolCalls - Pending tool calls for the streaming message.
+ * @param root0.streamingPersona - Persona of the streaming message.
+ * @param root0.activeSessionId - The currently active chat session id.
+ * @param root0.copiedMessageId - Id of the message currently showing a copied indicator.
+ * @param root0.onCopyMessage - Callback invoked when a copy button is clicked.
+ * @param root0.onCitationPosition - Callback invoked when a citation badge is clicked.
+ * @param root0.onApproveToolCall - Callback to approve a pending tool call.
+ * @param root0.onRejectToolCall - Callback to reject a pending tool call.
+ * @param root0.onUndoToolCall - Callback to undo an executed tool call.
+ * @returns The chat message list markup.
+ */
+export function ChatMessageList({
+  messages,
+  isLoading,
+  streamingText,
+  streamingSources,
+  streamingToolCalls,
+  streamingPersona,
+  activeSessionId,
+  copiedMessageId,
+  onCopyMessage,
+  onCitationPosition,
+  onApproveToolCall,
+  onRejectToolCall,
+  onUndoToolCall,
+}: ChatMessageListProps) {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading, streamingToolCalls]);
+
+  return (
+    <div
+      className={`flex-1 min-h-0 p-4 sm:p-6 bg-card border border-border/40 rounded-md space-y-6 ${messages.length > 0 ? "overflow-y-auto" : "overflow-hidden"}`}
+    >
+      {messages.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-full py-12 text-center space-y-5">
+          <div className="p-4 bg-primary/10 rounded-md text-primary">
+            <Image
+              src="/logo.svg"
+              alt="Fabricca"
+              width={48}
+              height={48}
+              className="shrink-0"
+            />
+          </div>
+          <div className="max-w-md space-y-2">
+            <h2 className="text-lg font-semibold text-foreground">
+              Akademik Danışmanınıza Hoş Geldiniz
+            </h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Kütüphanenizdeki makaleler üzerine Sokratik akademik
+              yönlendirmeler alın, araştırma asistanınızla doğrudan çalışın ve
+              tez matrisinizi yönetin.
+            </p>
+          </div>
+        </div>
+      ) : (
+        messages.map((msg) => (
+          <ChatMessageItem
+            key={msg.id}
+            msg={msg}
+            copiedMessageId={copiedMessageId}
+            onCopyMessage={onCopyMessage}
+            onCitationClick={onCitationPosition}
+            onApproveToolCall={onApproveToolCall}
+            onRejectToolCall={onRejectToolCall}
+            onUndoToolCall={onUndoToolCall}
+          />
+        ))
+      )}
+
+      {isLoading && (streamingText || streamingToolCalls) && (
+        <div className="flex space-x-3 justify-start">
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 overflow-hidden transition-all ${
+              streamingPersona === "SOCRATIC_ADVISOR"
+                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-2 ring-amber-500/40"
+                : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 ring-2 ring-emerald-500/40"
+            }`}
+          >
+            {streamingPersona === "SOCRATIC_ADVISOR" ? (
+              <GraduationCap className="w-4 h-4" />
+            ) : (
+              <BookOpen className="w-4 h-4" />
+            )}
+          </div>
+          <div className="space-y-2 items-start flex-1 max-w-4xl">
+            <div
+              className={`p-4 rounded-md text-sm leading-relaxed rounded-tl-none transition-all ${
+                streamingPersona === "SOCRATIC_ADVISOR"
+                  ? "bg-amber-500/5 dark:bg-amber-500/10 border-2 border-amber-500/40 dark:border-amber-400/40 text-card-foreground shadow-sm"
+                  : "bg-emerald-500/5 dark:bg-emerald-500/10 border-2 border-emerald-500/30 dark:border-emerald-400/30 text-card-foreground shadow-sm"
+              }`}
+            >
+              <PersonaBadge persona={streamingPersona} />
+              {streamingText && (
+                <MarkdownRenderer
+                  content={streamingText}
+                  sources={streamingSources}
+                  onCitationClick={(sourceIndex) =>
+                    onCitationPosition(
+                      `streaming-${activeSessionId}`,
+                      sourceIndex,
+                    )
+                  }
+                />
+              )}
+              {streamingToolCalls?.map((tc) => (
+                <ToolConfirmationCard
+                  key={tc.toolCallId}
+                  toolCall={tc}
+                  onApprove={onApproveToolCall}
+                  onReject={onRejectToolCall}
+                  onUndo={onUndoToolCall}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isLoading && !streamingText && !streamingToolCalls && (
+        <div className="flex items-center space-x-3 text-muted-foreground text-xs py-2">
+          <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 animate-spin">
+            <Sparkles className="w-4 h-4" />
+          </div>
+          <div className="flex items-center space-x-2 bg-card border border-border/40 p-3 rounded-md">
+            <span className="font-medium">
+              Akademik danışmanınız yanıt hazırlıyor...
+            </span>
+          </div>
+        </div>
+      )}
+
+      <div ref={messagesEndRef} />
+    </div>
+  );
+}
