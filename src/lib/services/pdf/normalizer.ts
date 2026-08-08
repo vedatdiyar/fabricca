@@ -2,6 +2,9 @@
  * Comprehensive normalization for Academic PDF extracts (Turkish & English).
  * Cleans Unicode artifacts, ligatures, OCR diacritic splits, punctuation boundaries,
  * and dash line-breaks.
+ *
+ * @param text - Raw input academic text to normalize.
+ * @returns The cleaned, normalized academic text string.
  */
 export function normalizeAcademicText(text: string): string {
   if (!text) return text;
@@ -35,13 +38,19 @@ export function normalizeAcademicText(text: string): string {
     .replace(/[\u201C\u201D\u201E\u201F]/g, '"');
 
   // Normalize Unicode superscripts to space-separated digits (e.g., "massa⁴" -> "massa ⁴")
-  normalized = normalized.replace(/([\p{L}])([\u00B2\u00B3\u00B9\u2070-\u2079]+)/gu, "$1 $2");
+  normalized = normalized.replace(
+    /([\p{L}])([\u00B2\u00B3\u00B9\u2070-\u2079]+)/gu,
+    "$1 $2",
+  );
 
   // ==========================================
   // 2. LINE-BREAK & HYPHEN REPAIRS
   // ==========================================
   // Fix line-break hyphens for all dash types (-, –, —, ‑): "kelime-\n kelime" -> "kelimekelime"
-  normalized = normalized.replace(/([\p{L}]+)[-\u2013\u2014\u2011]\s*\n\s*([\p{L}]+)/gu, "$1$2");
+  normalized = normalized.replace(
+    /([\p{L}]+)[-\u2013\u2014\u2011]\s*\n\s*([\p{L}]+)/gu,
+    "$1$2",
+  );
 
   // Fix inline hyphens with spaces: "ba- ğımsız" -> "bağımsız", "multi- level" -> "multilevel"
   normalized = normalized.replace(/([\p{L}]+)[-\u2011]\s+([\p{L}]+)/gu, "$1$2");
@@ -53,7 +62,10 @@ export function normalizeAcademicText(text: string): string {
   // 3. ENGLISH SPECIFIC FIXES
   // ==========================================
   // Fix spaces before English contractions & possessives: "don 't" -> "don't", "author 's" -> "author's"
-  normalized = normalized.replace(/([\p{L}]+)\s+'(s|t|re|ve|m|ll|d)\b/giu, "$1'$2");
+  normalized = normalized.replace(
+    /([\p{L}]+)\s+'(s|t|re|ve|m|ll|d)\b/giu,
+    "$1'$2",
+  );
 
   // Fix common OCR artifact: isolated 'ı' inside English words (e.g., "unıversıty" -> "university")
   // Converts 'ı' to 'i' if surrounded by Latin ASCII letters
@@ -112,7 +124,10 @@ export function normalizeAcademicText(text: string): string {
   // ==========================================
   // Insert space after period/comma/colon if directly followed by an uppercase letter
   // Fixes: "yapılmıştır.Bu" -> "yapılmıştır. Bu", "analysis.The" -> "analysis. The"
-  normalized = normalized.replace(/([\p{Ll}\d])([\.?!:])([\p{Lu}])/gu, "$1$2 $3");
+  normalized = normalized.replace(
+    /([\p{Ll}\d])([\.?!:])([\p{Lu}])/gu,
+    "$1$2 $3",
+  );
 
   // Fix space-less words at lowercase-to-uppercase boundary ("Üniversitesiİ.İ.B.F." -> "Üniversitesi İ.İ.B.F.")
   normalized = normalized.replace(/([\p{Ll}])([\p{Lu}])/gu, "$1 $2");
