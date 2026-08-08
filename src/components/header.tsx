@@ -12,6 +12,7 @@ import {
   Briefcase,
   LogOut,
   RotateCcw,
+  Trash2,
   ChevronDown,
   User,
 } from "lucide-react";
@@ -26,7 +27,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { logoutAction, reopenOnboardingAction } from "@/app/(app)/actions";
+import {
+  logoutAction,
+  reopenOnboardingAction,
+  resetOnboardingAction,
+} from "@/app/(app)/actions";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -47,6 +52,7 @@ export function Header({ userName }: { userName: string }) {
   const pathname = usePathname();
   const queryClient = useQueryClient();
   const [showReopenDialog, setShowReopenDialog] = useState(false);
+  const [showResetDialog, setShowResetDialog] = useState(false);
 
   /** Clears the client query cache and signs the user out. */
   function handleLogout() {
@@ -62,6 +68,15 @@ export function Header({ userName }: { userName: string }) {
     startTransition(async () => {
       queryClient.clear();
       await reopenOnboardingAction();
+    });
+  }
+
+  /** Deletes all user data and resets onboarding. */
+  function handleConfirmResetAll() {
+    setShowResetDialog(false);
+    startTransition(async () => {
+      queryClient.clear();
+      await resetOnboardingAction();
     });
   }
 
@@ -111,6 +126,7 @@ export function Header({ userName }: { userName: string }) {
           <UserMenu
             userName={userName}
             onReopenOnboarding={() => setShowReopenDialog(true)}
+            onResetAllData={() => setShowResetDialog(true)}
             onLogout={handleLogout}
           />
         </div>
@@ -156,6 +172,7 @@ export function Header({ userName }: { userName: string }) {
         </div>
       </nav>
 
+      {/* Reopen Onboarding Dialog (Data Preserved) */}
       <AlertDialog open={showReopenDialog} onOpenChange={setShowReopenDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -180,26 +197,57 @@ export function Header({ userName }: { userName: string }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Reset All Data Dialog (Full Wipe) */}
+      <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+        <AlertDialogContent className="border-destructive/30">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-serif text-lg font-semibold text-destructive">
+              Tüm Verileri Sıfırla ve Baştan Başla
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-muted-foreground leading-relaxed">
+              Bu işlem Tez Matrisi, Konumlandırma, Kütüphane Kaynakları, Alıntı
+              Fişleri, Danışman Sohbetleri ve Görevler dahil tüm akademik
+              verilerinizi kalıcı olarak siler. Bu işlem geri alınamaz. Devam
+              etmek istiyor musunuz?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-xs font-medium">
+              Vazgeç
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmResetAll}
+              className="text-xs font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Evet, Her Şeyi Sil
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
 
 /**
- * Dropdown menu showing the user identity and the logout/reopen onboarding actions.
+ * Dropdown menu showing the user identity and the logout/reopen/reset onboarding actions.
  *
  * @param root0 - Component props.
  * @param root0.userName - Display name of the signed-in user.
  * @param root0.onReopenOnboarding - Callback invoked when reopening the onboarding flow.
+ * @param root0.onResetAllData - Callback invoked when resetting all user data.
  * @param root0.onLogout - Callback invoked when signing out.
  * @returns The user menu markup.
  */
 function UserMenu({
   userName,
   onReopenOnboarding,
+  onResetAllData,
   onLogout,
 }: {
   userName: string;
   onReopenOnboarding: () => void;
+  onResetAllData: () => void;
   onLogout: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -301,9 +349,21 @@ function UserMenu({
             type="button"
             onClick={() => {
               setIsOpen(false);
-              onLogout();
+              onResetAllData();
             }}
             className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors mt-1"
+          >
+            <Trash2 className="h-4 w-4 shrink-0" />
+            <span>Tüm Verileri Sıfırla</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setIsOpen(false);
+              onLogout();
+            }}
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors mt-1 border-t border-border/40 pt-2"
           >
             <LogOut className="h-4 w-4 shrink-0" />
             <span>Çıkış Yap</span>

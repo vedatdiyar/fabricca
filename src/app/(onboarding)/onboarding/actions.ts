@@ -4,7 +4,16 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { db } from "@/db";
-import { matrices, positioning, users, boxes, sources } from "@/db/schema";
+import {
+  matrices,
+  positioning,
+  users,
+  boxes,
+  sources,
+  tasks,
+  chatSessions,
+} from "@/db/schema";
+import { deletePdfFromR2 } from "@/lib/services/r2";
 import {
   getSession,
   SESSION_COOKIE_NAME,
@@ -19,7 +28,7 @@ import {
 } from "@/lib/cache-tags";
 
 /**
- * Deletes all onboarding data and sets onboardingCompleted to false.
+ * Deletes all onboarding and user data and sets onboardingCompleted to false.
  *
  * @returns A success flag or an error message.
  */
@@ -37,9 +46,40 @@ export async function resetOnboardingAction(): Promise<
 
     const userId = session.userId;
 
+    // Fetch PDF filenames to clean up from R2 before deleting database records
+    try {
+      const userSources = await db
+        .select({ pdfFileName: sources.pdfFileName })
+        .from(sources)
+        .innerJoin(boxes, eq(sources.boxId, boxes.id))
+        .innerJoin(matrices, eq(boxes.matrixId, matrices.id))
+        .where(eq(matrices.userId, userId));
+
+      for (const s of userSources) {
+        if (s.pdfFileName) {
+          try {
+            await deletePdfFromR2(s.pdfFileName);
+          } catch (r2Err) {
+            log.error("reset_onboarding_r2_delete_failed", {
+              service: "db",
+              error: r2Err,
+              data: { pdfFileName: s.pdfFileName },
+            });
+          }
+        }
+      }
+    } catch (fetchErr) {
+      log.error("reset_onboarding_sources_fetch_failed", {
+        service: "db",
+        error: fetchErr,
+      });
+    }
+
     await db.transaction(async (tx) => {
-      await tx.delete(matrices).where(eq(matrices.userId, userId));
+      await tx.delete(chatSessions).where(eq(chatSessions.userId, userId));
+      await tx.delete(tasks).where(eq(tasks.userId, userId));
       await tx.delete(positioning).where(eq(positioning.userId, userId));
+      await tx.delete(matrices).where(eq(matrices.userId, userId));
       await tx
         .update(users)
         .set({ onboardingCompleted: false })
