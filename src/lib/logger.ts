@@ -37,6 +37,8 @@ export interface LogParams {
   tokens?: TokenUsage;
   filePath?: string;
   status?: "START" | "SUCCESS" | "FAILED" | "RETRY";
+  blank?: "after" | "before" | "none";
+  silentStart?: boolean;
 }
 
 export interface LoggerInstance {
@@ -311,6 +313,9 @@ export class Logger implements LoggerInstance {
       if (status === "START") {
         const baseEvent = event.replace(/_(start)$/, "");
         this._starts.set(baseEvent, performance.now());
+        if (p?.silentStart) {
+          return;
+        }
         const timeTag = this.timestamp();
         const icon = statusIcon("START");
         const color = statusColor("START");
@@ -345,6 +350,12 @@ export class Logger implements LoggerInstance {
         const color = statusColor(status);
         const timeTag = this.timestamp();
 
+        const blank = p?.blank ?? "after";
+
+        if (blank === "before") {
+          console.log("");
+        }
+
         console.log(
           `${timeTag} ${status} ${color}${icon}${C_RESET} ${baseEvent}${durStr}`,
         );
@@ -352,7 +363,9 @@ export class Logger implements LoggerInstance {
         if (p?.error != null) {
           console.log(`  ↳ reason: ${extractReason(p.error)}`);
         }
-        console.log("");
+        if (blank === "after") {
+          console.log("");
+        }
         return;
       }
       return;

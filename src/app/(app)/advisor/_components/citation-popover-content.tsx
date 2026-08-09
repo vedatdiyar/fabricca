@@ -12,11 +12,7 @@ import type { CitationPopoverContentProps } from "./types";
  * @returns A deterministic content-based key.
  */
 function paragraphKey(paragraph: string): string {
-  const head = paragraph
-    .trim()
-    .replace(/\s+/g, " ")
-    .slice(0, 48)
-    .toLowerCase();
+  const head = paragraph.trim().replace(/\s+/g, " ").slice(0, 48).toLowerCase();
   return head.length > 0 ? head : "empty-paragraph";
 }
 

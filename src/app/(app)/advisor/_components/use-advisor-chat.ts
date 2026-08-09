@@ -69,7 +69,8 @@ export function useAdvisorChat(initialSessionId?: number) {
     (updater: Message[] | ((prev: Message[]) => Message[])) => {
       setSession((prev) => ({
         ...prev,
-        messages: typeof updater === "function" ? updater(prev.messages) : updater,
+        messages:
+          typeof updater === "function" ? updater(prev.messages) : updater,
       }));
     },
     [],
@@ -87,7 +88,9 @@ export function useAdvisorChat(initialSessionId?: number) {
       setUi((prev) => ({
         ...prev,
         activeCitation:
-          typeof updater === "function" ? updater(prev.activeCitation) : updater,
+          typeof updater === "function"
+            ? updater(prev.activeCitation)
+            : updater,
       }));
     },
     [],
@@ -104,30 +107,35 @@ export function useAdvisorChat(initialSessionId?: number) {
     setSession((prev) => ({ ...prev, sessions: list }));
   }, []);
 
-  const loadMessages = useCallback(async (sessionId: number) => {
-    const res = await getChatMessages(sessionId);
-    if (res.success && res.messages) {
-      const mapped: Message[] = res.messages.map((m) => ({
-        id: `msg-${m.id}`,
-        dbId: m.id,
-        role: m.role as "user" | "model",
-        persona:
-          (m.persona as "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT" | undefined) ??
-          undefined,
-        content: m.content,
-        sources: (m.sources as RagSearchResultItem[] | undefined) ?? undefined,
-        toolCalls: (m.toolCalls as PendingToolCall[] | undefined) ?? undefined,
-        timestamp: m.createdAt.toLocaleTimeString("tr-TR", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      }));
-      setMessages(mapped);
-    } else {
-      setMessages([]);
-    }
-    setActiveCitation(null);
-  }, [setMessages, setActiveCitation]);
+  const loadMessages = useCallback(
+    async (sessionId: number) => {
+      const res = await getChatMessages(sessionId);
+      if (res.success && res.messages) {
+        const mapped: Message[] = res.messages.map((m) => ({
+          id: `msg-${m.id}`,
+          dbId: m.id,
+          role: m.role as "user" | "model",
+          persona:
+            (m.persona as "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT" | undefined) ??
+            undefined,
+          content: m.content,
+          sources:
+            (m.sources as RagSearchResultItem[] | undefined) ?? undefined,
+          toolCalls:
+            (m.toolCalls as PendingToolCall[] | undefined) ?? undefined,
+          timestamp: m.createdAt.toLocaleTimeString("tr-TR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        }));
+        setMessages(mapped);
+      } else {
+        setMessages([]);
+      }
+      setActiveCitation(null);
+    },
+    [setMessages, setActiveCitation],
+  );
 
   const syncUrlSession = useCallback((sessionId: number | null) => {
     const url =

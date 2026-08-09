@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { LiteratureExpansionButton } from "@/components/literature-expansion-button";
 import {
@@ -28,6 +27,7 @@ import type { TopicBox } from "../_types";
 interface BoxCardProps {
   box: TopicBox;
   onDeleteArticle: (articleId: string) => Promise<void>;
+  onExpansionSuccess: () => void;
 }
 
 /**
@@ -36,10 +36,14 @@ interface BoxCardProps {
  * @param root0 - Component props.
  * @param root0.box - The topic box data to display.
  * @param root0.onDeleteArticle - Async callback invoked when an article is deleted.
+ * @param root0.onExpansionSuccess - Callback invoked after literature expansion completes.
  * @returns The rendered box card.
  */
-export function BoxCard({ box, onDeleteArticle }: BoxCardProps) {
-  const router = useRouter();
+export function BoxCard({
+  box,
+  onDeleteArticle,
+  onExpansionSuccess,
+}: BoxCardProps) {
   const [articleToDeleteId, setArticleToDeleteId] = useState<string | null>(
     null,
   );
@@ -64,16 +68,14 @@ export function BoxCard({ box, onDeleteArticle }: BoxCardProps) {
                 {box.description}
               </CardDescription>
             </div>
-            {box.isReadyToExpand && (
-              <div className="flex shrink-0 items-start">
-                <LiteratureExpansionButton
-                  boxId={Number(box.id)}
-                  expansionCycle={box.expansionCycle}
-                  isReadyToExpand={box.isReadyToExpand}
-                  onSuccess={() => router.refresh()}
-                />
-              </div>
-            )}
+            <div className="flex shrink-0 items-start">
+              <LiteratureExpansionButton
+                boxId={Number(box.id)}
+                expansionCycle={box.expansionCycle}
+                isReadyToExpand={box.isReadyToExpand}
+                onSuccess={onExpansionSuccess}
+              />
+            </div>
           </div>
         </CardHeader>
         <CardContent className="flex-1 p-4 pt-0">

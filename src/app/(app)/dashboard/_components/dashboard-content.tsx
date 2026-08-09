@@ -40,6 +40,7 @@ export function DashboardContent({
     handleEditTask,
     handleDeleteTask,
     handleDeleteArticle,
+    handleExpansionSuccess,
   } = useDashboard(
     initialBoxes,
     initialResources,
@@ -75,6 +76,7 @@ export function DashboardContent({
                 key={box.id}
                 box={box}
                 onDeleteArticle={handleDeleteArticle}
+                onExpansionSuccess={handleExpansionSuccess}
               />
             ))}
           </div>

@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { boxes, matrices, sources } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import type { CandidateSource } from "./types";
+import type { Logger } from "@/lib/logger";
 import { fetchOpenAlexForwardCitations } from "./openalex-expansion-client";
 import { fetchSemanticScholarRecommendations } from "./semantic-scholar-client";
 import { rerankWithCohere } from "@/lib/services/cohere";
@@ -36,12 +37,14 @@ function normalizeTitle(title: string): string {
  * @param boxId - Target Sub-Box ID.
  * @param activeSeedIds - List of active seed source IDs.
  * @param targetCount - Number of forward candidates required (2 + shortfall).
+ * @param logger - Optional logger for structured event tracking.
  * @returns Array of selected CandidateSource items.
  */
 export async function executeForwardExpansion(
   boxId: number,
   activeSeedIds: number[],
   targetCount: number,
+  logger?: Logger,
 ): Promise<CandidateSource[]> {
   if (targetCount <= 0 || activeSeedIds.length === 0) return [];
 
@@ -103,6 +106,16 @@ export async function executeForwardExpansion(
       openAlexSeedIds.push(s.openalexId);
     }
   }
+
+  logger?.info("forward_expansion_start", {
+    service: "literature",
+    data: {
+      boxId,
+      targetCount,
+      doiSeedCount: seedDois.length,
+      openAlexSeedCount: openAlexSeedIds.length,
+    },
+  });
 
   // 3. Fetch existing sources in box to deduplicate
   const existingBoxSources = await db
@@ -188,7 +201,17 @@ export async function executeForwardExpansion(
 
   const jointCandidateList = Array.from(jointCandidateMap.values());
 
-  if (jointCandidateList.length === 0) return [];
+  if (jointCandidateList.length === 0) {
+    logger?.info("forward_expansion_success", {
+      service: "literature",
+      blank: "none",
+      data: { boxId, poolSize: 0, selectedCount: 0, reason: "empty_pool" },
+    });
+    return [];
+  }
+
+  let selectedCandidates: CandidateSource[] = [];
+  let rerankUsed = false;
 
   // 6. Rerank joint candidate pool using Cohere Rerank v4.0 Pro
   if (process.env.COHERE_API_KEY) {
@@ -222,19 +245,44 @@ export async function executeForwardExpansion(
 
       scoredList.sort((a, b) => b.finalScore - a.finalScore);
 
-      return scoredList.slice(0, targetCount).map((s) => s.candidate);
+      selectedCandidates = scoredList
+        .slice(0, targetCount)
+        .map((s) => s.candidate);
+      rerankUsed = true;
     } catch {
       // Fallback to sorting by intersection and citation count if Cohere is offline
     }
   }
 
-  // Pure intersection & citation count ranking fallback
-  jointCandidateList.sort((a, b) => {
-    if (a.isIntersected !== b.isIntersected) {
-      return a.isIntersected ? -1 : 1;
-    }
-    return (b.candidate.citationCount ?? 0) - (a.candidate.citationCount ?? 0);
+  if (!rerankUsed) {
+    // Pure intersection & citation count ranking fallback
+    jointCandidateList.sort((a, b) => {
+      if (a.isIntersected !== b.isIntersected) {
+        return a.isIntersected ? -1 : 1;
+      }
+      return (
+        (b.candidate.citationCount ?? 0) - (a.candidate.citationCount ?? 0)
+      );
+    });
+
+    selectedCandidates = jointCandidateList
+      .slice(0, targetCount)
+      .map((item) => item.candidate);
+  }
+
+  logger?.info("forward_expansion_success", {
+    service: "literature",
+    blank: "none",
+    data: {
+      boxId,
+      openAlexCandidates: openAlexCandidates.length,
+      s2Candidates: s2Candidates.length,
+      intersected: jointCandidateList.filter((i) => i.isIntersected).length,
+      poolSize: jointCandidateList.length,
+      rerank: rerankUsed ? "cohere" : "fallback",
+      selectedCount: selectedCandidates.length,
+    },
   });
 
-  return jointCandidateList.slice(0, targetCount).map((item) => item.candidate);
+  return selectedCandidates;
 }

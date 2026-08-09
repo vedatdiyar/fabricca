@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { boxes, sources, type NewSource } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { boxes, expansionHistory, sources, type NewSource } from "@/db/schema";
+import { eq, inArray } from "drizzle-orm";
 import { Logger, createFlowId } from "@/lib/logger";
 import type { ExpansionResult } from "./types";
 import { executeBackwardExpansion } from "./backward-expansion";
@@ -8,8 +8,10 @@ import { executeForwardExpansion } from "./forward-expansion";
 
 /**
  * Main orchestrator for Sub-Box automatic literature expansion.
- * Executes 2 backward + 2 forward expansion algorithm, inserts new sources into DB,
- * updates box activeSeedIds, and increments expansionCycle.
+ * Executes backward + forward expansion algorithm, inserts new sources into DB,
+ * updates box activeSeedIds, and increments expansionCycle. When the active seed
+ * sources expose no usable identifiers (DOI / OpenAlex ID), only backward
+ * expansion runs and all candidates come from the parsed reference lists.
  *
  * @param boxId - Sub-Box ID to expand literature for.
  * @returns ExpansionResult detailing previous and new active seed source IDs.
@@ -23,6 +25,7 @@ export async function runLiteratureExpansion(
   logger.info("literature_expansion_start", {
     service: "literature",
     status: "START",
+    silentStart: true,
     data: { boxId },
   });
 
@@ -59,21 +62,36 @@ export async function runLiteratureExpansion(
     activeSeedIds = existingSources.map((s) => s.id);
   }
 
-  // 2. Execute Backward Expansion (Target: 2)
+  // Determine whether any active seed exposes a usable identifier for
+  // forward expansion (OpenAlex / Semantic Scholar). If not, only backward
+  // expansion runs and every candidate must come from the parsed references.
+  const seedIdentifierRows = await db
+    .select({ doi: sources.doi, openalexId: sources.openalexId })
+    .from(sources)
+    .where(inArray(sources.id, activeSeedIds));
+
+  const hasUsableIdentifiers = seedIdentifierRows.some(
+    (s) => s.doi || s.openalexId,
+  );
+
+  // 2. Execute Backward Expansion (Target: 2, or 4 when no usable identifiers)
   const backwardResult = await executeBackwardExpansion(
     boxId,
     activeSeedIds,
-    2,
+    hasUsableIdentifiers ? 2 : 4,
+    logger,
   );
 
-  // 3. Execute Forward Expansion (Target: 2 + backward shortfall)
-  const forwardTargetCount = 2 + backwardResult.shortfall;
-
-  const forwardCandidates = await executeForwardExpansion(
-    boxId,
-    activeSeedIds,
-    forwardTargetCount,
-  );
+  // 3. Execute Forward Expansion (Target: 2 + backward shortfall) only when seeds
+  // carry usable identifiers; otherwise all sources must come from backward.
+  const forwardCandidates = hasUsableIdentifiers
+    ? await executeForwardExpansion(
+        boxId,
+        activeSeedIds,
+        2 + backwardResult.shortfall,
+        logger,
+      )
+    : [];
 
   // Combine candidates (Total target: 4)
   const allSelectedCandidates = [
@@ -106,30 +124,63 @@ export async function runLiteratureExpansion(
     pdfStatus: c.pdfUrl ? "PROCESSING" : "NOT_UPLOADED",
   }));
 
-  const insertedSources = await db
-    .insert(sources)
-    .values(newSourceRecords)
-    .returning({
-      id: sources.id,
-      title: sources.title,
-    });
+  logger.info("literature_db_write_start", {
+    service: "literature",
+    status: "START",
+    data: { boxId, insertCount: newSourceRecords.length },
+  });
 
-  const newActiveSeedIds = insertedSources.map((s) => s.id);
   const nextCycle = (box.expansionCycle ?? 1) + 1;
 
-  // 5. Update Sub-Box activeSeedIds and expansionCycle
-  await db
-    .update(boxes)
-    .set({
-      activeSeedIds: newActiveSeedIds,
-      expansionCycle: nextCycle,
-      updatedAt: new Date(),
-    })
-    .where(eq(boxes.id, boxId));
+  const insertedSources = await db.transaction(async (tx) => {
+    const created = await tx
+      .insert(sources)
+      .values(newSourceRecords)
+      .returning({
+        id: sources.id,
+        title: sources.title,
+      });
+
+    const newActiveSeedIds = created.map((s) => s.id);
+
+    // Update Sub-Box activeSeedIds and expansionCycle
+    await tx
+      .update(boxes)
+      .set({
+        activeSeedIds: newActiveSeedIds,
+        expansionCycle: nextCycle,
+        updatedAt: new Date(),
+      })
+      .where(eq(boxes.id, boxId));
+
+    // Persist history so the latest cycle can be undone
+    await tx.insert(expansionHistory).values({
+      boxId,
+      cycle: nextCycle,
+      previousActiveSeedIds: activeSeedIds,
+      newActiveSeedIds,
+    });
+
+    return created;
+  });
+
+  const newActiveSeedIds = insertedSources.map((s) => s.id);
+
+  logger.info("literature_db_write_success", {
+    service: "literature",
+    status: "SUCCESS",
+    blank: "none",
+    data: {
+      boxId,
+      insertedCount: insertedSources.length,
+      nextCycle,
+    },
+  });
 
   logger.info("literature_expansion_success", {
     service: "literature",
     status: "SUCCESS",
+    blank: "before",
     data: {
       boxId,
       newCycle: nextCycle,

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import {
   toggleResourceReadStatusAction,
   deleteLibraryResourceAction as deleteLibraryResource,
+  refreshDashboardDataAction,
 } from "@/app/(app)/dashboard/actions";
 import type { Box, Source } from "@/db/schema";
 import type { TaskRow } from "../_lib/schemas";
@@ -35,6 +36,7 @@ export function useDashboard(
     updateArticleReadStatus,
     removeArticle,
     setArticles,
+    reloadResources,
   } = useDashboardArticles(
     initialBoxes,
     initialResources,
@@ -146,6 +148,22 @@ export function useDashboard(
     [articles, removeArticle, removeReadingTask, setArticles],
   );
 
+  const handleExpansionSuccess = useCallback(async () => {
+    try {
+      const res = await refreshDashboardDataAction();
+      if (!res.success) {
+        throw new Error(res.error);
+      }
+      reloadResources(res.data.parentBoxes, res.data.resources);
+    } catch (err) {
+      toast.error(
+        `Literatür genişletme sonrası veriler güncellenemedi: ${
+          err instanceof Error ? err.message : "Bağlantı hatası."
+        }`,
+      );
+    }
+  }, [reloadResources]);
+
   return {
     topicBoxes,
     combinedTasks,
@@ -154,5 +172,6 @@ export function useDashboard(
     handleEditTask,
     handleDeleteTask,
     handleDeleteArticle,
+    handleExpansionSuccess,
   };
 }

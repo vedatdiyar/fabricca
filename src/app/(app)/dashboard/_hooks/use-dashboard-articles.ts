@@ -148,6 +148,7 @@ export function useDashboardArticles(
   childIdToParentId: Map<number, number>,
   allBoxRows: Box[],
 ) {
+  const [boxes, setBoxes] = useState<Box[]>(initialBoxes);
   const [articles, setArticles] = useState<ArticleState[]>(() =>
     buildArticleState(
       initialBoxes,
@@ -166,12 +167,25 @@ export function useDashboardArticles(
     [articles],
   );
 
+  const reloadResources = useCallback(
+    (nextBoxes: Box[], nextResources: Source[]) => {
+      setBoxes(nextBoxes);
+      setArticles(
+        buildArticleState(
+          nextBoxes,
+          nextResources,
+          childIdToParentId,
+          new Map(allBoxRows.map((b) => [b.id, b.title])),
+        ),
+      );
+    },
+    [childIdToParentId, allBoxRows],
+  );
+
   const topicBoxes: TopicBox[] = useMemo(
     () =>
-      initialBoxes.map((box) => {
-        const boxArticles = articles.filter(
-          (a) => a.boxId === String(box.id),
-        );
+      boxes.map((box) => {
+        const boxArticles = articles.filter((a) => a.boxId === String(box.id));
         return {
           id: String(box.id),
           title: box.title,
@@ -192,7 +206,7 @@ export function useDashboardArticles(
           })),
         };
       }),
-    [initialBoxes, getVisibleArticlesForBox, articles],
+    [boxes, getVisibleArticlesForBox, articles],
   );
 
   const updateArticleReadStatus = useCallback(
@@ -215,5 +229,6 @@ export function useDashboardArticles(
     updateArticleReadStatus,
     removeArticle,
     setArticles,
+    reloadResources,
   };
 }

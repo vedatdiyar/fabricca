@@ -204,6 +204,31 @@ export type Source = InferSelectModel<typeof sources>;
 
 export type NewSource = InferInsertModel<typeof sources>;
 
+/**
+ * Expansion history table — records each automatic literature expansion per sub-box
+ * so the latest cycle can be undone (delete added sources and restore box seed state).
+ */
+export const expansionHistory = pgTable(
+  "expansion_history",
+  {
+    id: serial().primaryKey(),
+    boxId: integer("box_id")
+      .notNull()
+      .references(() => boxes.id, { onDelete: "cascade" }),
+    cycle: integer().notNull(),
+    previousActiveSeedIds: jsonb("previous_active_seed_ids")
+      .$type<number[]>()
+      .notNull(),
+    newActiveSeedIds: jsonb("new_active_seed_ids").$type<number[]>().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [index("idx_expansion_history_box_id").on(table.boxId)],
+);
+
+export type ExpansionHistory = InferSelectModel<typeof expansionHistory>;
+
+export type NewExpansionHistory = InferInsertModel<typeof expansionHistory>;
+
 /** Notes table — stores academic notes, page-numbered citations, and personal notes. */
 export const notes = pgTable(
   "notes",
@@ -354,11 +379,19 @@ export const boxesRelations = relations(boxes, ({ one, many }) => ({
   }),
   sources: many(sources),
   tasks: many(tasks),
+  expansionHistory: many(expansionHistory),
 }));
 
 export const sourcesRelations = relations(sources, ({ one }) => ({
   box: one(boxes, {
     fields: [sources.boxId],
+    references: [boxes.id],
+  }),
+}));
+
+export const expansionHistoryRelations = relations(expansionHistory, ({ one }) => ({
+  box: one(boxes, {
+    fields: [expansionHistory.boxId],
     references: [boxes.id],
   }),
 }));

@@ -307,11 +307,10 @@ function CitationCardForm(props: CitationCardFormProps) {
       : boxes[0]
         ? String(boxes[0].id)
         : "",
-    noteType: (cardToEdit ? cardToEdit.noteType : "DIRECT_QUOTE") as
-      | CitationNoteType,
-    pageNumber: cardToEdit
-      ? cleanPageNumberInput(cardToEdit.pageNumber)
-      : "1",
+    noteType: (cardToEdit
+      ? cardToEdit.noteType
+      : "DIRECT_QUOTE") as CitationNoteType,
+    pageNumber: cardToEdit ? cleanPageNumberInput(cardToEdit.pageNumber) : "1",
     content: cardToEdit ? cardToEdit.content : "",
     comment: cardToEdit ? (cardToEdit.comment ?? "") : "",
   });
@@ -335,7 +334,7 @@ function CitationCardForm(props: CitationCardFormProps) {
    *
    * @param e - Form submit event.
    */
-const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formFields.content.trim()) {
