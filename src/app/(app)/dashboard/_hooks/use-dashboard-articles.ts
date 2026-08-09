@@ -168,23 +168,31 @@ export function useDashboardArticles(
 
   const topicBoxes: TopicBox[] = useMemo(
     () =>
-      initialBoxes.map((box) => ({
-        id: String(box.id),
-        title: box.title,
-        description:
-          box.description && box.description.trim().length > 0
-            ? box.description
-            : (BOX_TYPE_DESCRIPTIONS[box.boxType as ThesisBoxType] ?? ""),
-        articles: getVisibleArticlesForBox(String(box.id)).map((art) => ({
-          id: art.id,
-          title: art.title,
-          author: art.author,
-          year: art.year,
-          isRead: art.isRead,
-          subBoxTitle: art.subBoxTitle,
-        })),
-      })),
-    [initialBoxes, getVisibleArticlesForBox],
+      initialBoxes.map((box) => {
+        const boxArticles = articles.filter(
+          (a) => a.boxId === String(box.id),
+        );
+        return {
+          id: String(box.id),
+          title: box.title,
+          description:
+            box.description && box.description.trim().length > 0
+              ? box.description
+              : (BOX_TYPE_DESCRIPTIONS[box.boxType as ThesisBoxType] ?? ""),
+          expansionCycle: box.expansionCycle ?? 1,
+          isReadyToExpand:
+            boxArticles.length > 0 && boxArticles.every((a) => a.isRead),
+          articles: getVisibleArticlesForBox(String(box.id)).map((art) => ({
+            id: art.id,
+            title: art.title,
+            author: art.author,
+            year: art.year,
+            isRead: art.isRead,
+            subBoxTitle: art.subBoxTitle,
+          })),
+        };
+      }),
+    [initialBoxes, getVisibleArticlesForBox, articles],
   );
 
   const updateArticleReadStatus = useCallback(

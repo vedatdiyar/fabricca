@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { FolderArchive, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Trash2 } from "lucide-react";
+import { LiteratureExpansionButton } from "@/components/literature-expansion-button";
 import {
   Card,
   CardHeader,
@@ -37,6 +39,7 @@ interface BoxCardProps {
  * @returns The rendered box card.
  */
 export function BoxCard({ box, onDeleteArticle }: BoxCardProps) {
+  const router = useRouter();
   const [articleToDeleteId, setArticleToDeleteId] = useState<string | null>(
     null,
   );
@@ -61,9 +64,16 @@ export function BoxCard({ box, onDeleteArticle }: BoxCardProps) {
                 {box.description}
               </CardDescription>
             </div>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-secondary text-primary">
-              <FolderArchive className="h-4 w-4" />
-            </div>
+            {box.isReadyToExpand && (
+              <div className="flex shrink-0 items-start">
+                <LiteratureExpansionButton
+                  boxId={Number(box.id)}
+                  expansionCycle={box.expansionCycle}
+                  isReadyToExpand={box.isReadyToExpand}
+                  onSuccess={() => router.refresh()}
+                />
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent className="flex-1 p-4 pt-0">

@@ -16,6 +16,8 @@ export interface TopicBox {
   id: string;
   title: string;
   description: string;
+  expansionCycle: number;
+  isReadyToExpand: boolean;
   articles: DashboardJuryArticle[];
 }
 

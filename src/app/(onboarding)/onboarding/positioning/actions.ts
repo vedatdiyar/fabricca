@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { positioning, matrices } from "@/db/schema";
 import type { Positioning } from "@/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
-import { createFlowId, Logger } from "@/lib/logger";
+import { Logger } from "@/lib/logger";
 import type { ThesisMatrix } from "@/lib/types";
 import { positioningMatrixSchema } from "./_lib/validation";
 import type { SiftedThesis } from "./_services/sifting";
@@ -290,57 +290,3 @@ export async function getPositioningAction(): Promise<Positioning | null> {
   }
 }
 
-/**
- * Runs the full positioning pipeline: search, jury analysis, and persistence.
- *
- * @param matrixInput - The thesis matrix driving the whole pipeline.
- * @returns A success marker or an error message on failure.
- */
-export async function runPositioningPipelineAction(
-  matrixInput: ThesisMatrix,
-): Promise<{ success: true } | { error: string }> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-  const pipelineStart = performance.now();
-
-  const searchResult = await runPositioningSearchAction(
-    matrixInput,
-    log.flowId,
-  );
-  if ("error" in searchResult) {
-    log.error("positioning_pipeline_failed", {
-      error: searchResult.error,
-    });
-    return { error: searchResult.error };
-  }
-
-  const juryResult = await runPositioningJuryAction(
-    matrixInput,
-    searchResult.theses,
-    log.flowId,
-  );
-  if ("error" in juryResult) {
-    log.error("positioning_pipeline_failed", {
-      error: juryResult.error,
-    });
-    return { error: juryResult.error };
-  }
-
-  const persistResult = await persistPositioningReportAction(
-    matrixInput,
-    juryResult.juryResult,
-    log.flowId,
-  );
-  if ("error" in persistResult) {
-    log.error("positioning_pipeline_failed", {
-      error: persistResult.error,
-    });
-    return { error: persistResult.error };
-  }
-
-  log.info("positioning_pipeline_success", {
-    data: { durationMs: Math.round(performance.now() - pipelineStart) },
-  });
-
-  return { success: true };
-}

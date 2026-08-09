@@ -88,6 +88,7 @@ export function useOnboardingNavigation() {
     ): Promise<{ success: boolean; error?: string }> => {
       const steps = MATRIX_SUBMIT_STEPS.map((s) => ({ ...s }));
       steps[0].status = "active";
+      stepActiveSinceRef.current.set(0, Date.now());
 
       showLoading(
         "Çalışma Matrisi Kaydediliyor & Konumlandırma Raporu Hazırlanıyor",
@@ -96,6 +97,7 @@ export function useOnboardingNavigation() {
       );
 
       try {
+        const pipelineStart = performance.now();
         const clearResult = await clearDownstreamDbAction("matrix");
         if ("error" in clearResult) {
           hideLoading();
@@ -113,7 +115,6 @@ export function useOnboardingNavigation() {
         await completeStep(0, steps);
 
         const flowId = createFlowId();
-        const pipelineStart = performance.now();
         const searchResult = await runPositioningSearchAction(
           matrixInput,
           flowId,
@@ -186,6 +187,7 @@ export function useOnboardingNavigation() {
     ): Promise<{ data?: LiteraturePoolEntry[]; error?: string }> => {
       const steps = LITERATURE_PIPELINE_STEPS.map((s) => ({ ...s }));
       steps[0].status = "active";
+      stepActiveSinceRef.current.set(0, Date.now());
 
       let isCancelled = false;
 
@@ -320,6 +322,7 @@ export function useOnboardingNavigation() {
   const proceedFromPositioning = useCallback(async () => {
     const steps = BOX_GENERATION_STEPS.map((s) => ({ ...s }));
     steps[0].status = "active";
+    stepActiveSinceRef.current.set(0, Date.now());
 
     showLoading(
       "Altyapısal Konu Kutuları Oluşturuluyor",

@@ -67,7 +67,7 @@ export function LiteratureExpansionButton({
   return (
     <div className={cn("inline-flex items-center gap-1.5", className)}>
       <span
-        className="text-[10px] font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded border border-border"
+        className="inline-flex h-7 items-center px-2 text-[10px] font-semibold text-muted-foreground bg-muted rounded-md border border-border"
         title="Literatür Genişletme Döngü Sayısı"
       >
         Döngü #{expansionCycle}
@@ -83,22 +83,16 @@ export function LiteratureExpansionButton({
             : "Genişletmeyi tetiklemek için aktif 4 seed kaynağın hazır olması gerekir."
         }
         className={cn(
-          "inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-all duration-200 border",
+          "inline-flex h-7 w-7 items-center justify-center rounded-md border transition-all duration-200",
           isReadyToExpand && !loading
             ? "bg-primary/10 text-primary border-primary/30 hover:bg-primary/20 active:scale-95 cursor-pointer"
             : "bg-muted/50 text-muted-foreground/60 border-border cursor-not-allowed opacity-70",
         )}
       >
         {loading ? (
-          <>
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-            <span className="text-[11px]">Genişletiliyor...</span>
-          </>
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
         ) : (
-          <>
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            <span className="text-[11px] font-medium">Literatürü Genişlet</span>
-          </>
+          <Sparkles className="h-4 w-4 text-primary" />
         )}
       </button>
     </div>

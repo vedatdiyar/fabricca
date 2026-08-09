@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   getBoxTypeBadgeConfig,
   BOX_TYPE_SHORT_LABELS,
+  compareBoxTypes,
   type ThesisBoxType,
 } from "@/lib/box-constants";
 import { cn } from "@/lib/utils";
@@ -61,15 +62,19 @@ export function CitationSidebar(props: CitationSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<ThesisBoxType | "ALL">("ALL");
 
-  // Filter boxes based on active tab and search query
+  // Filter boxes based on active tab and search query, then sort into the
+  // canonical type order (SP → TF → METHOD → PM → RELATED_THESES) so that
+  // boxes of the same type are grouped one below the other.
   const filteredBoxes = useMemo(() => {
-    return boxes.filter((box) => {
-      const matchesTab = activeTab === "ALL" || box.boxType === activeTab;
-      const matchesQuery =
-        searchQuery.trim() === "" ||
-        box.title.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesTab && matchesQuery;
-    });
+    return boxes
+      .filter((box) => {
+        const matchesTab = activeTab === "ALL" || box.boxType === activeTab;
+        const matchesQuery =
+          searchQuery.trim() === "" ||
+          box.title.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesTab && matchesQuery;
+      })
+      .sort((a, b) => compareBoxTypes(a.boxType, b.boxType));
   }, [boxes, activeTab, searchQuery]);
 
   // Filter sources belonging to the selected box if a box is selected, and search query
@@ -100,7 +105,7 @@ export function CitationSidebar(props: CitationSidebarProps) {
   };
 
   return (
-    <aside className="w-full lg:w-96 shrink-0 flex flex-col rounded-md border border-border bg-card p-3 lg:sticky lg:top-[92px] lg:max-h-[calc(100vh-7rem)] min-w-0 space-y-3">
+    <aside className="w-full lg:w-96 shrink-0 flex flex-col rounded-md border border-border bg-card p-3 lg:sticky lg:top-[92px] lg:h-[calc(100vh-7rem)] lg:overflow-hidden min-w-0 space-y-3">
       {/* Sidebar Header */}
       <div className="flex items-center justify-between pb-2 border-b border-border shrink-0">
         <div className="flex items-center gap-2 min-w-0">
