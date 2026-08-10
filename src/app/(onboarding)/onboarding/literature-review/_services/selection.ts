@@ -1,111 +1,24 @@
 import type { JuryArticle } from "@/lib/types";
 import type { RawPaper } from "./literature-review-papers";
-import type { Cluster } from "./clustering";
 import { normalizeCleanTitle, extractOpenAlexId } from "@/lib/academic/utils";
 
 interface QueueItem {
   subBoxTitle: string;
   boxType: string;
   boxDescription: string;
-  candidates: {
-    title: string;
-    authors: string[];
-    year: number | null;
-    openAlexId: string;
-    doi: string | null;
-    publisher: string | null;
-    cluster: Cluster;
-  }[];
-  activeWorks: RawPaper[];
   rawPapers: RawPaper[];
-}
-
-export interface AnalyzeResult {
-  leaderIds: string[];
-  refToModernIdx: Map<string, number[]>;
-}
-
-/**
- * Analyzes reference frequencies across active works and returns leader IDs for metadata fetch.
- *
- * @param activeWorks - The active works with referenced works to analyze.
- * @param N - The number of active works to consider.
- * @returns The leader reference IDs and the reference-to-work index mapping.
- */
-export function analyzeReferenceFrequencies(
-  activeWorks: RawPaper[],
-  N: number,
-): AnalyzeResult {
-  const refToModernIdx = new Map<string, number[]>();
-
-  for (let mi = 0; mi < N; mi++) {
-    const refs = activeWorks[mi].referencedWorks || [];
-    for (const refId of refs) {
-      if (!refToModernIdx.has(refId)) {
-        refToModernIdx.set(refId, []);
-      }
-      refToModernIdx.get(refId)!.push(mi);
-    }
-  }
-
-  const refFrequencies = new Map<string, number>();
-  for (const refId of refToModernIdx.keys()) {
-    refFrequencies.set(refId, 0);
-  }
-  for (let mi = 0; mi < N; mi++) {
-    const refs = activeWorks[mi].referencedWorks || [];
-    for (const refId of refs) {
-      if (refFrequencies.has(refId)) {
-        refFrequencies.set(refId, refFrequencies.get(refId)! + 1);
-      }
-    }
-  }
-
-  let maxFreq = 0;
-  for (const freq of refFrequencies.values()) {
-    if (freq > maxFreq) maxFreq = freq;
-  }
-
-  let leaderIds: string[] = [];
-  if (maxFreq >= 3) {
-    for (const [refId, freq] of refFrequencies.entries()) {
-      if (freq === maxFreq || freq === maxFreq - 1) {
-        leaderIds.push(refId);
-      }
-    }
-  } else if (maxFreq === 2) {
-    for (const [refId, freq] of refFrequencies.entries()) {
-      if (freq === 2) {
-        leaderIds.push(refId);
-      }
-    }
-  } else {
-    const fallbackIds = new Set<string>();
-    const fallbackLimit = Math.min(N, 3);
-    for (let mi = 0; mi < fallbackLimit; mi++) {
-      const refs = activeWorks[mi].referencedWorks || [];
-      for (const refId of refs) {
-        fallbackIds.add(refId);
-      }
-    }
-    leaderIds = Array.from(fallbackIds);
-  }
-
-  return { leaderIds, refToModernIdx };
 }
 
 /**
  * Scores candidates and selects up to 3 related articles, deduplicating titles globally.
  *
- * @param item - The queue item containing candidate papers.
- * @param _topCluster - The top cluster, reserved for future use.
+ * @param item - The queue item containing raw papers.
  * @param assignedTitles - Optional set of titles already assigned elsewhere.
  * @param foundationalTitle - Optional foundational title to exclude from selection.
  * @returns The selected related articles as jury articles.
  */
 export function selectRelatedArticles(
   item: QueueItem,
-  _topCluster: Cluster | null,
   assignedTitles?: Set<string>,
   foundationalTitle?: string,
 ): JuryArticle[] {

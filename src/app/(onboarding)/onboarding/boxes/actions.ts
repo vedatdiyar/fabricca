@@ -43,11 +43,6 @@ const confirmBoxSchema: z.ZodType<{
   semanticQuery: string | null;
   subBoxes?: unknown;
   concepts?: string[];
-  foundationalQueries?: {
-    title: string;
-    author: string;
-    publicationYear: number;
-  }[];
 }> = z.lazy(() =>
   z.object({
     title: z.string().min(1),
@@ -62,16 +57,6 @@ const confirmBoxSchema: z.ZodType<{
     semanticQuery: z.string().nullable(),
     subBoxes: z.array(confirmBoxSchema).optional(),
     concepts: z.array(z.string()).optional().default([]),
-    foundationalQueries: z
-      .array(
-        z.object({
-          title: z.string(),
-          author: z.string(),
-          publicationYear: z.number(),
-        }),
-      )
-      .optional()
-      .default([]),
   }),
 );
 
@@ -259,7 +244,6 @@ function structureToQuadrants(
         description: sb.description,
         concepts: sb.concepts,
         semanticQuery: "",
-        foundationalQueries: [],
       })),
     };
   };
@@ -359,7 +343,6 @@ export async function persistBoxesAction(
         description: validBoxes[i].description || "",
         parentId: null,
         semanticQuery: null,
-        foundationalQueries: validBoxes[i].foundationalQueries || [],
         concepts: validBoxes[i].concepts || [],
       }));
 

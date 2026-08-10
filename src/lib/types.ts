@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 export type OnboardingActionResult =
   | { success: true; isProcessing?: boolean; error?: never }
   | { success?: never; error: string };
@@ -35,26 +33,6 @@ export interface ThesisMatrix {
   methodology: string;
 }
 
-export interface FoundationalQuery {
-  author: string;
-  title: string;
-  publicationYear: number;
-  doi?: string | null;
-  publisher?: string | null;
-}
-
-export const FoundationalQuerySchema = z.object({
-  author: z.string().min(1, "Yazar adı boş olamaz"),
-  title: z.preprocess(
-    (v) =>
-      typeof v === "string" && v.trim().length === 0 ? "İsimsiz Kaynak" : v,
-    z.string().min(1, "Eser başlığı boş olamaz"),
-  ),
-  publicationYear: z.coerce.number().int().min(0, "Yayın yılı geçersiz"),
-  doi: z.string().nullable().optional(),
-  publisher: z.string().nullable().optional(),
-});
-
 export interface GeminiThesisBox {
   id?: number;
   parentId: number | null;
@@ -68,7 +46,6 @@ export interface GeminiThesisBox {
   description: string;
   semanticQuery: string | null;
   subBoxes?: GeminiThesisBox[];
-  foundationalQueries?: FoundationalQuery[];
   concepts?: string[];
 }
 

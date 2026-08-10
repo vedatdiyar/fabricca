@@ -19,7 +19,6 @@ export interface RawSubBox {
   description: string;
   concepts?: string[];
   semanticQuery?: string;
-  foundationalQueries?: unknown[];
 }
 
 export interface RawQuadrant {
@@ -62,7 +61,6 @@ export function mapToProductionShape(
       parentId: null,
       semanticQuery: null,
       concepts: [],
-      foundationalQueries: [],
     });
 
     for (const sub of cat.subBoxes) {
@@ -73,7 +71,6 @@ export function mapToProductionShape(
         parentId: parentIndex,
         semanticQuery: sub.semanticQuery ?? "",
         concepts: sub.concepts ?? [],
-        foundationalQueries: [],
       });
     }
   }

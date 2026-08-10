@@ -2,7 +2,19 @@ import { Logger } from "@/lib/logger";
 import { normalizeCleanTitle, extractCleanDoi } from "@/lib/academic/utils";
 import { evaluateSingleBoxJury, type JuryInputItem } from "../batch-jury";
 import type { SubBoxResult, PoolItem, JuryEvalResult } from "./types";
-import { buildPool } from "./phase1-search";
+
+/**
+ * Builds the jury pool for a sub-box from raw papers only.
+ *
+ * @param r - The sub-box phase 1 result.
+ * @returns The pooled items available for jury evaluation.
+ */
+function buildPool(r: SubBoxResult): PoolItem[] {
+  return r.rawPapers.map((p) => ({
+    type: "raw" as const,
+    rawPaper: p,
+  }));
+}
 
 /**
  * Executes Phase 2 jury evaluation over the de-duplicated candidate pools,
@@ -47,15 +59,11 @@ export async function executePhase2Jury(
     });
 
     const capped = pool
-      .sort((a, b) => {
-        if (a.rawPaper.isCoCitationLeader && !b.rawPaper.isCoCitationLeader)
-          return -1;
-        if (!a.rawPaper.isCoCitationLeader && b.rawPaper.isCoCitationLeader)
-          return 1;
-        const relDiff = b.rawPaper.relevanceScore - a.rawPaper.relevanceScore;
-        if (Math.abs(relDiff) > 0.0001) return relDiff > 0 ? 1 : -1;
-        return (b.rawPaper.citedByCount ?? 0) - (a.rawPaper.citedByCount ?? 0);
-      })
+      .sort(
+        (a, b) =>
+          b.rawPaper.relevanceScore - a.rawPaper.relevanceScore ||
+          (b.rawPaper.citedByCount ?? 0) - (a.rawPaper.citedByCount ?? 0),
+      )
       .slice(0, 12);
 
     poolByBox.set(r.thesisBoxId, capped);

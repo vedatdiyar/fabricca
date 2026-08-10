@@ -130,12 +130,9 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
           description: sb.description,
           thesisBoxId: sb.id ?? 0,
           semanticQuery: sb.semanticQuery ?? "",
-          foundationalQueries: sb.foundationalQueries ?? [],
         })),
-        foundationalQueries: (box.subBoxes ?? []).flatMap(
-          (sb) => sb.foundationalQueries ?? [],
-        ),
       }));
+
 
       const res = await runLiteraturePipelineAction(subBoxInputs);
       if (res.data) {

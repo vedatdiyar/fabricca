@@ -1,6 +1,5 @@
 import type { LiteraturePoolEntry, JuryArticle } from "@/lib/types";
 import type { SubBoxItem, RawPaper } from "../literature-review-papers";
-import type { QueueItem } from "../selection";
 
 export interface BatchOrchestrationResult {
   poolEntries: LiteraturePoolEntry[];
@@ -13,15 +12,12 @@ export interface SubBoxResult {
   subBoxDescription: string;
   subBox: SubBoxItem;
   thesisBoxId: number;
-  candidates: QueueItem["candidates"];
-  activeWorks: RawPaper[];
   rawPapers: RawPaper[];
 }
 
 export interface PoolItem {
-  type: "raw" | "cocitation";
+  type: "raw";
   rawPaper: RawPaper;
-  citationCount?: number;
 }
 
 export interface JuryEvalResult {

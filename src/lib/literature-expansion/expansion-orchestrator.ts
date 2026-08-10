@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { boxes, expansionHistory, sources, type NewSource } from "@/db/schema";
+import { boxes, expansions, sources, type NewSource } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { Logger, createFlowId } from "@/lib/logger";
 import type { ExpansionResult } from "./types";
@@ -154,7 +154,7 @@ export async function runLiteratureExpansion(
       .where(eq(boxes.id, boxId));
 
     // Persist history so the latest cycle can be undone
-    await tx.insert(expansionHistory).values({
+    await tx.insert(expansions).values({
       boxId,
       cycle: nextCycle,
       previousActiveSeedIds: activeSeedIds,

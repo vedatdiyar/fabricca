@@ -205,11 +205,11 @@ export type Source = InferSelectModel<typeof sources>;
 export type NewSource = InferInsertModel<typeof sources>;
 
 /**
- * Expansion history table — records each automatic literature expansion per sub-box
+ * Expansions table — records each automatic literature expansion per sub-box
  * so the latest cycle can be undone (delete added sources and restore box seed state).
  */
-export const expansionHistory = pgTable(
-  "expansion_history",
+export const expansions = pgTable(
+  "expansions",
   {
     id: serial().primaryKey(),
     boxId: integer("box_id")
@@ -222,16 +222,16 @@ export const expansionHistory = pgTable(
     newActiveSeedIds: jsonb("new_active_seed_ids").$type<number[]>().notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => [index("idx_expansion_history_box_id").on(table.boxId)],
+  (table) => [index("idx_expansions_box_id").on(table.boxId)],
 );
 
-export type ExpansionHistory = InferSelectModel<typeof expansionHistory>;
+export type Expansion = InferSelectModel<typeof expansions>;
 
-export type NewExpansionHistory = InferInsertModel<typeof expansionHistory>;
+export type NewExpansion = InferInsertModel<typeof expansions>;
 
-/** Notes table — stores academic notes, page-numbered citations, and personal notes. */
-export const notes = pgTable(
-  "notes",
+/** Annotations table — reading notebook storing page-numbered citations, personal notes, and meta-comments per library source. */
+export const annotations = pgTable(
+  "annotations",
   {
     id: serial().primaryKey(),
     sourceId: integer("source_id")
@@ -251,14 +251,41 @@ export const notes = pgTable(
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => [
-    index("idx_notes_source_id").on(table.sourceId),
-    index("idx_notes_user_id").on(table.userId),
+    index("idx_annotations_source_id").on(table.sourceId),
+    index("idx_annotations_user_id").on(table.userId),
   ],
 );
 
-export type Note = InferSelectModel<typeof notes>;
+export type Annotation = InferSelectModel<typeof annotations>;
 
-export type NewNote = InferInsertModel<typeof notes>;
+export type NewAnnotation = InferInsertModel<typeof annotations>;
+
+/** Critiques table — 1:1 article analysis (research question, theoretical framework, methodology, main argument, literature gap) per library source. */
+export const critiques = pgTable(
+  "critiques",
+  {
+    id: serial().primaryKey(),
+    sourceId: integer("source_id")
+      .notNull()
+      .references(() => sources.id, { onDelete: "cascade" })
+      .unique(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    researchQuestion: text("research_question"),
+    theoreticalFramework: text("theoretical_framework"),
+    methodology: text("methodology"),
+    mainArgument: text("main_argument"),
+    literatureGap: text("literature_gap"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [index("idx_critiques_source_id").on(table.sourceId)],
+);
+
+export type Critique = InferSelectModel<typeof critiques>;
+
+export type NewCritique = InferInsertModel<typeof critiques>;
 
 /** PostgreSQL tsvector via customType — Drizzle 0.43 ships no native tsvector column. */
 const tsvector = customType<{ data: string }>({
@@ -379,7 +406,7 @@ export const boxesRelations = relations(boxes, ({ one, many }) => ({
   }),
   sources: many(sources),
   tasks: many(tasks),
-  expansionHistory: many(expansionHistory),
+  expansions: many(expansions),
 }));
 
 export const sourcesRelations = relations(sources, ({ one }) => ({
@@ -387,13 +414,24 @@ export const sourcesRelations = relations(sources, ({ one }) => ({
     fields: [sources.boxId],
     references: [boxes.id],
   }),
+  critique: one(critiques, {
+    fields: [sources.id],
+    references: [critiques.sourceId],
+  }),
 }));
 
-export const expansionHistoryRelations = relations(
-  expansionHistory,
+export const critiquesRelations = relations(critiques, ({ one }) => ({
+  source: one(sources, {
+    fields: [critiques.sourceId],
+    references: [sources.id],
+  }),
+}));
+
+export const expansionsRelations = relations(
+  expansions,
   ({ one }) => ({
     box: one(boxes, {
-      fields: [expansionHistory.boxId],
+      fields: [expansions.boxId],
       references: [boxes.id],
     }),
   }),

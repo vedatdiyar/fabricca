@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   Box,
   Library,
-  FileText,
   PlusCircle,
   WholeWord,
   Archive,
@@ -117,39 +116,6 @@ export function BoxesContainer() {
 }
 
 /**
- * Renders a single foundational-source query card inside a sub-box.
- *
- * @param root0 - The card props object.
- * @param root0.query - The foundational source query to display.
- * @returns The foundational query card markup.
- */
-const FoundationalQueryCard = memo(function FoundationalQueryCard({
-  query,
-}: {
-  query: { title: string; author: string; publicationYear: number };
-}) {
-  const isDummy =
-    query.publicationYear === 0 || query.author === "Primary Source Repository";
-  const displayAuthor = isDummy ? "Birincil Kaynak Havuzu" : query.author;
-  const displayTitle = isDummy
-    ? "Saha Çalışması Belgeleri ve Ampirik Veri Kaynakları"
-    : query.title;
-  const displayYear = isDummy ? "" : ` (${query.publicationYear})`;
-
-  return (
-    <div className="p-3 rounded bg-background/20 border border-border/40 text-xs text-muted-foreground leading-relaxed space-y-1">
-      <div className="text-foreground font-semibold font-serif line-clamp-2 break-words hyphens-auto">
-        {displayTitle}
-      </div>
-      <div className="text-[10px] text-muted-foreground truncate">
-        {displayAuthor}
-        {displayYear && ` · ${displayYear}`}
-      </div>
-    </div>
-  );
-});
-
-/**
  * Renders the sub-box nested section (timeline + cards).
  *
  * @param root0 - The section props object.
@@ -194,21 +160,6 @@ const SubBoxSection = memo(function SubBoxSection({
                   ))}
                 </div>
               )}
-              {subBox.foundationalQueries &&
-                subBox.foundationalQueries.length > 0 && (
-                  <div className="pt-3 mt-3 border-t border-border/40 space-y-2">
-                    <div className="flex items-center gap-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                      <FileText className="w-3.5 h-3.5 text-primary" />
-                      <span>Temel Akademik Kaynak</span>
-                    </div>
-                    {subBox.foundationalQueries.map((fq, fqIdx) => (
-                      <FoundationalQueryCard
-                        key={`${fq.title}-${fqIdx}`}
-                        query={fq}
-                      />
-                    ))}
-                  </div>
-                )}
             </div>
           </div>
         ))}

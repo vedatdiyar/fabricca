@@ -133,10 +133,7 @@ export async function evaluateSingleBoxJury(
         `  Makale ${idx + 1}: "${a.title ?? "(başlık yok)"}"\n` +
         `     Authors: ${a.authors.slice(0, 3).join(", ") || "(bilinmiyor)"}${a.authors.length > 3 ? " et al." : ""}\n` +
         `     Abstract: ${a.abstract ?? "(özet yok)"}\n` +
-        `     OpenAlex Relevance Score: ${(a.relevanceScore ?? 0).toFixed(4)}` +
-        (a.isCoCitationLeader
-          ? `\n     Ko-Atıf Lideri: Evet (Atıf Sıklığı: ${a.ccFreq})`
-          : ""),
+        `     OpenAlex Relevance Score: ${(a.relevanceScore ?? 0).toFixed(4)}`,
     )
     .join("\n\n");
 

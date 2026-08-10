@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { boxes, expansionHistory, sources } from "@/db/schema";
+import { boxes, expansions, sources } from "@/db/schema";
 import { desc, eq, inArray } from "drizzle-orm";
 import { deletePdfFromR2 } from "@/lib/services/r2";
 import { Logger, createFlowId } from "@/lib/logger";
@@ -41,9 +41,9 @@ export async function undoLiteratureExpansion(
 
   const historyRow = await db
     .select()
-    .from(expansionHistory)
-    .where(eq(expansionHistory.boxId, boxId))
-    .orderBy(desc(expansionHistory.id))
+    .from(expansions)
+    .where(eq(expansions.boxId, boxId))
+    .orderBy(desc(expansions.id))
     .limit(1);
 
   const history = historyRow[0];
@@ -97,8 +97,8 @@ export async function undoLiteratureExpansion(
       .where(eq(boxes.id, boxId));
 
     await tx
-      .delete(expansionHistory)
-      .where(eq(expansionHistory.id, history.id));
+      .delete(expansions)
+      .where(eq(expansions.id, history.id));
   });
 
   logger.info("literature_undo_success", {

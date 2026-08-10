@@ -1,5 +1,3 @@
-import type { FoundationalQuery } from "@/lib/types";
-
 /** One sub-box with its own title and description (not the parent box's). */
 export interface SubBoxItem {
   title: string;
@@ -7,7 +5,6 @@ export interface SubBoxItem {
   description: string;
   thesisBoxId: number;
   semanticQuery: string;
-  foundationalQueries: FoundationalQuery[];
 }
 
 export interface SubBoxInput {
@@ -17,8 +14,8 @@ export interface SubBoxInput {
   description: string;
   boxType?: string;
   subBoxes: SubBoxItem[];
-  foundationalQueries: FoundationalQuery[];
 }
+
 
 export interface RefMetadata {
   id: string;
@@ -43,8 +40,5 @@ export interface RawPaper {
   openAlexId: string | null;
   isFoundational: boolean;
   relevanceScore: number;
-  referencedWorks?: string[];
   citedByCount?: number;
-  isCoCitationLeader?: boolean;
-  ccFreq?: number;
 }
