@@ -25,24 +25,36 @@ export interface ExtractedPdfContent {
  * @param tempKey - Temporary R2 key where the client uploaded the PDF.
  * @param originalFileName - Original file name.
  * @param log - Logger instance.
+ * @param preloadedBuffer - Optional pre-fetched PDF buffer (skips R2 read when provided).
  * @returns The PDF buffer, parsed chunks, parsed references, and extracted metadata.
  */
 export async function fetchAndExtractPdf(
   tempKey: string,
   originalFileName: string,
   log: Logger,
+  preloadedBuffer?: Buffer,
 ): Promise<ExtractedPdfContent> {
-  log.info("pdf_fetch_from_r2_start", {
-    service: "library",
-    data: { tempKey },
-  });
-  const buffer = await getPdfFromR2(tempKey);
-  log.info("pdf_fetch_from_r2_success", {
-    service: "library",
-    data: { tempKey, size: buffer.length },
-  });
+  let buffer: Buffer;
 
-  // tempKey is already an R2 key — reused directly for Mistral OCR presigned URL.
+  if (preloadedBuffer) {
+    buffer = preloadedBuffer;
+    log.info("pdf_buffer_preloaded_skip_r2_fetch", {
+      service: "library",
+      data: { tempKey, size: buffer.length },
+    });
+  } else {
+    log.info("pdf_fetch_from_r2_start", {
+      service: "library",
+      data: { tempKey },
+    });
+    buffer = await getPdfFromR2(tempKey);
+    log.info("pdf_fetch_from_r2_success", {
+      service: "library",
+      data: { tempKey, size: buffer.length },
+    });
+  }
+
+  // tempKey is always used for Mistral OCR presigned URL (file is in R2 regardless of read path).
   const { chunks, references, metadata } = await parsePdfToChunks(
     buffer,
     originalFileName,

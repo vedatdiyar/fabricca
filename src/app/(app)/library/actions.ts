@@ -81,11 +81,16 @@ export async function requestResourcePdfUploadAction(resourceId: number) {
 }
 
 /**
- * Server Action (Step 2 of 2): Completes PDF upload — fetches from R2 temp key, extracts metadata, and runs the full RAG ingestion pipeline for an existing resource.
+ * Server Action (Step 2 of 2): Completes PDF upload — processes metadata, runs the full RAG ingestion pipeline, and cleans up the temp file.
+ *
+ * When `pdfBuffer` is provided the server skips the R2 re-fetch round-trip.
  *
  * @param resourceId - The ID of the resource to attach the processed PDF to.
  * @param tempKey - The R2 temp object key of the uploaded PDF.
  * @param originalFileName - The original file name of the uploaded PDF.
+ * @param flowId - Optional flow identifier.
+ * @param uploadStartedAt - Optional timestamp when the upload started.
+ * @param pdfBuffer - Optional Uint8Array-serializable buffer that skips the R2 read.
  * @returns The updated resource item on success, or an error message on failure.
  */
 export async function completeResourcePdfUploadAction(
@@ -94,6 +99,7 @@ export async function completeResourcePdfUploadAction(
   originalFileName: string,
   flowId?: string,
   uploadStartedAt?: number,
+  pdfBuffer?: number[],
 ) {
   return pdfActions.completeResourcePdfUploadAction(
     resourceId,
@@ -101,6 +107,7 @@ export async function completeResourcePdfUploadAction(
     originalFileName,
     flowId,
     uploadStartedAt,
+    pdfBuffer,
   );
 }
 
@@ -114,11 +121,16 @@ export async function requestPdfCreateUploadAction() {
 }
 
 /**
- * Server Action (Step 2 of 2): Completes PDF creation — fetches from R2 temp key, extracts metadata, creates a new resource, and runs the full RAG pipeline.
+ * Server Action (Step 2 of 2): Completes PDF creation — processes metadata, creates a new resource, and runs the full RAG pipeline.
+ *
+ * When `pdfBuffer` is provided the server skips the R2 re-fetch round-trip.
  *
  * @param tempKey - The R2 temp object key of the uploaded PDF.
  * @param originalFileName - The original file name of the uploaded PDF.
  * @param boxId - The ID of the box the new resource will be placed in.
+ * @param flowId - Optional flow identifier.
+ * @param uploadStartedAt - Optional timestamp when the upload started.
+ * @param pdfBuffer - Optional Uint8Array-serializable buffer that skips the R2 read.
  * @returns The created resource item on success, or an error message on failure.
  */
 export async function completePdfCreateUploadAction(
@@ -127,6 +139,7 @@ export async function completePdfCreateUploadAction(
   boxId: number,
   flowId?: string,
   uploadStartedAt?: number,
+  pdfBuffer?: number[],
 ) {
   return pdfActions.completePdfCreateUploadAction(
     tempKey,
@@ -134,6 +147,7 @@ export async function completePdfCreateUploadAction(
     boxId,
     flowId,
     uploadStartedAt,
+    pdfBuffer,
   );
 }
 

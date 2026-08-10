@@ -198,11 +198,17 @@ export async function requestResourcePdfUploadAction(
 }
 
 /**
- * Server Action (Step 2 of 2): Fetches the PDF from R2, runs the metadata extraction and RAG pipeline, and cleans up the temp file.
+ * Server Action (Step 2 of 2): Processes the uploaded PDF — extracts metadata, runs the RAG pipeline, and cleans up the temp file.
+ *
+ * When `pdfBuffer` is provided the server skips the R2 re-fetch round-trip
+ * (the client already uploaded via presigned URL and passes the buffer directly).
  *
  * @param resourceId - The ID of the resource to attach the processed PDF to.
  * @param tempKey - The R2 temp object key of the uploaded PDF.
  * @param originalFileName - The original file name of the uploaded PDF.
+ * @param flowId - Optional flow identifier for logging.
+ * @param uploadStartedAt - Optional timestamp when the upload started (for duration logging).
+ * @param pdfBuffer - Optional pre-loaded PDF buffer (Uint8Array-serializable) that skips the R2 read.
  * @returns The updated resource item on success, or an error message on failure.
  */
 export async function completeResourcePdfUploadAction(
@@ -211,6 +217,7 @@ export async function completeResourcePdfUploadAction(
   originalFileName: string,
   flowId?: string,
   uploadStartedAt?: number,
+  pdfBuffer?: number[],
 ): Promise<
   | { success: true; data: LibraryResourceItem }
   | { success: false; error: string }
@@ -231,12 +238,12 @@ export async function completeResourcePdfUploadAction(
 
     const session = await getSession();
     if (!session) {
-      await cleanupTempKey(tempKey, log);
+      cleanupTempKey(tempKey, log);
       return { success: false, error: "Oturum bulunamadı." };
     }
 
     if (!originalFileName.toLowerCase().endsWith(".pdf")) {
-      await cleanupTempKey(tempKey, log);
+      cleanupTempKey(tempKey, log);
       return {
         success: false,
         error: "Yalnızca PDF formatındaki dosyalar yüklenebilir.",
@@ -245,13 +252,13 @@ export async function completeResourcePdfUploadAction(
 
     const owned = await getOwnedSource(resourceId, session.userId);
     if ("error" in owned) {
-      await cleanupTempKey(tempKey, log);
+      cleanupTempKey(tempKey, log);
       return { success: false, error: owned.error };
     }
     const resource = owned.source;
 
     if (resource.pdfStatus === "READY" && resource.pdfUrl) {
-      await cleanupTempKey(tempKey, log);
+      cleanupTempKey(tempKey, log);
       return {
         success: false,
         error:
@@ -259,8 +266,10 @@ export async function completeResourcePdfUploadAction(
       };
     }
 
+    const preloadedBuffer = pdfBuffer ? Buffer.from(pdfBuffer) : undefined;
+
     const { buffer, chunks, metadata, parsedReferences } =
-      await fetchAndExtractPdf(tempKey, originalFileName, log);
+      await fetchAndExtractPdf(tempKey, originalFileName, log, preloadedBuffer);
 
     await db
       .update(sources)
@@ -281,7 +290,7 @@ export async function completeResourcePdfUploadAction(
 
     const existingDuplicate = await findReadySourceByPdfName(apaFileName);
     if (existingDuplicate && existingDuplicate.id !== resourceId) {
-      await cleanupTempKey(tempKey, log);
+      cleanupTempKey(tempKey, log);
       return {
         success: false,
         error: buildDuplicatePdfError(apaFileName),
@@ -303,7 +312,7 @@ export async function completeResourcePdfUploadAction(
       precomputedReferences: parsedReferences,
     });
 
-    await cleanupTempKey(tempKey, log);
+    cleanupTempKey(tempKey, log);
 
     log.total(
       "complete_resource_pdf",
@@ -349,7 +358,7 @@ export async function completeResourcePdfUploadAction(
       error: err,
     });
 
-    await cleanupTempKey(tempKey, log);
+    cleanupTempKey(tempKey, log);
 
     await db
       .update(sources)
@@ -411,11 +420,16 @@ export async function requestPdfCreateUploadAction(): Promise<
 }
 
 /**
- * Server Action (Step 2 of 2): Fetches the PDF from R2, creates a new resource, runs the full RAG pipeline, and cleans up the temp file.
+ * Server Action (Step 2 of 2): Processes the uploaded PDF — creates a new resource, runs the full RAG pipeline, and cleans up the temp file.
+ *
+ * When `pdfBuffer` is provided the server skips the R2 re-fetch round-trip.
  *
  * @param tempKey - The R2 temp object key of the uploaded PDF.
  * @param originalFileName - The original file name of the uploaded PDF.
  * @param boxId - The ID of the box the new resource will be placed in.
+ * @param flowId - Optional flow identifier for logging.
+ * @param uploadStartedAt - Optional timestamp when the upload started.
+ * @param pdfBuffer - Optional pre-loaded PDF buffer (Uint8Array-serializable) that skips the R2 read.
  * @returns The created resource item on success, or an error message on failure.
  */
 export async function completePdfCreateUploadAction(
@@ -424,6 +438,7 @@ export async function completePdfCreateUploadAction(
   boxId: number,
   flowId?: string,
   uploadStartedAt?: number,
+  pdfBuffer?: number[],
 ): Promise<
   | { success: true; data: LibraryResourceItem }
   | { success: false; error: string }
@@ -447,20 +462,22 @@ export async function completePdfCreateUploadAction(
 
     const session = await getSession();
     if (!session) {
-      await cleanupTempKey(tempKey, log);
+      cleanupTempKey(tempKey, log);
       return { success: false, error: "Oturum bulunamadı." };
     }
 
     if (!originalFileName.toLowerCase().endsWith(".pdf")) {
-      await cleanupTempKey(tempKey, log);
+      cleanupTempKey(tempKey, log);
       return {
         success: false,
         error: "Yalnızca PDF formatındaki dosyalar yüklenebilir.",
       };
     }
 
+    const preloadedBuffer = pdfBuffer ? Buffer.from(pdfBuffer) : undefined;
+
     const { buffer, chunks, metadata, parsedReferences } =
-      await fetchAndExtractPdf(tempKey, originalFileName, log);
+      await fetchAndExtractPdf(tempKey, originalFileName, log, preloadedBuffer);
 
     const targetBox = await db.query.boxes.findFirst({
       where: eq(boxes.id, boxId),
@@ -468,7 +485,7 @@ export async function completePdfCreateUploadAction(
     });
 
     if (!targetBox || targetBox.matrix.userId !== session.userId) {
-      await cleanupTempKey(tempKey, log);
+      cleanupTempKey(tempKey, log);
       return {
         success: false,
         error: "Seçilen konu kutusu bulunamadı veya bu kullanıcıya ait değil.",
@@ -498,7 +515,7 @@ export async function completePdfCreateUploadAction(
 
     const existingDuplicate = await findReadySourceByPdfName(apaFileName);
     if (existingDuplicate) {
-      await cleanupTempKey(tempKey, log);
+      cleanupTempKey(tempKey, log);
       await db.delete(sources).where(eq(sources.id, createdResourceId));
       return {
         success: false,
@@ -518,7 +535,7 @@ export async function completePdfCreateUploadAction(
       precomputedReferences: parsedReferences,
     });
 
-    await cleanupTempKey(tempKey, log);
+    cleanupTempKey(tempKey, log);
 
     log.total(
       "complete_pdf_create",
@@ -559,7 +576,7 @@ export async function completePdfCreateUploadAction(
       error: err,
     });
 
-    await cleanupTempKey(tempKey, log);
+    cleanupTempKey(tempKey, log);
 
     if (createdResourceId != null) {
       if (uploadedPdfFileName) {

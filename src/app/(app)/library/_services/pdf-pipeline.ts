@@ -66,10 +66,12 @@ export async function processResourcePdfPipeline(options: ProcessPdfOptions) {
 
   const r2AndEmbedStart = performance.now();
 
-  // R2 upload must happen before embedding so we can pass r2Key to parsePdfToChunks
-  // (needed for Mistral OCR presigned URL on scanned PDFs).
-  const { r2Url, r2Key } = await uploadPdfToR2(buffer, resourceId, fileName);
-  const embeddings = await generateVectorEmbeddings(embeddingTexts, log);
+  const [r2Result, embeddings] = await Promise.all([
+    uploadPdfToR2(buffer, resourceId, fileName),
+    generateVectorEmbeddings(embeddingTexts, log),
+  ]);
+
+  const { r2Url } = r2Result;
 
   log.info("pdf_r2_and_embed_parallel_success", {
     service: "library",

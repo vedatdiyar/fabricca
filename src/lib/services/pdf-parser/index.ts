@@ -18,6 +18,61 @@ export { DocumentAnalysisSchema, ReferencesOnlySchema } from "./schema";
 export type { PdfParseOptions, PdfChunkParseResult };
 
 /**
+ * Number of bibliography pages grouped into a single Gemini reference-extraction call.
+ * Batching 4 pages per call was benchmarked as the fastest reliable configuration.
+ */
+const REFERENCES_BATCH_SIZE = 4 as const;
+
+/**
+ * Groups bibliography pages into fixed-size batches and joins each batch into a
+ * single page-marked text block, so each group shares one Gemini reference call
+ * instead of firing a request per page.
+ *
+ * @param pages - Bibliography pages to process.
+ * @param toPageText - Converts one page into its page-marked text block.
+ * @param batchSize - Pages per batch (defaults to REFERENCES_BATCH_SIZE).
+ * @returns Combined batch texts, one per reference-extraction call.
+ */
+function buildReferenceBatches<T>(
+  pages: T[],
+  toPageText: (page: T) => string,
+  batchSize = REFERENCES_BATCH_SIZE,
+): string[] {
+  const batches: string[] = [];
+  for (let i = 0; i < pages.length; i += batchSize) {
+    batches.push(
+      pages
+        .slice(i, i + batchSize)
+        .map(toPageText)
+        .join("\n\n"),
+    );
+  }
+  return batches;
+}
+
+/**
+ * Flattens per-batch reference results and removes duplicates keyed by raw text.
+ *
+ * @param results - Reference arrays returned by each batch extraction call.
+ * @returns Unique references preserving first-seen order.
+ */
+function dedupeReferences(
+  results: DocumentAnalysisResult["references"][],
+): DocumentAnalysisResult["references"] {
+  const merged = results.flat();
+  const refMap = new Map<
+    string,
+    DocumentAnalysisResult["references"][number]
+  >();
+  for (const r of merged) {
+    if (r.raw && !refMap.has(r.raw)) {
+      refMap.set(r.raw, r);
+    }
+  }
+  return Array.from(refMap.values());
+}
+
+/**
  * Parses a PDF document into structured page-level markdown, metadata, and references.
  *
  * - **Scanned PDF:** Markdown extracted via Mistral OCR (R2 presigned URL → server-to-server fetch).
@@ -126,24 +181,17 @@ export async function parsePdfToDocumentAnalysis(
       Promise.resolve([]);
 
     if (bibPages.length > 0) {
-      const chunkPromises = bibPages.map((p) => {
-        const pageText = `=== PAGE ${p.pageNumber} ===\n${p.markdownContent}`;
-        return extractDocumentReferences(pageText, logger);
-      });
+      const batches = buildReferenceBatches(
+        bibPages,
+        (p) => `=== PAGE ${p.pageNumber} ===\n${p.markdownContent}`,
+      );
+      const chunkPromises = batches.map((batchText) =>
+        extractDocumentReferences(batchText, logger),
+      );
 
-      referencesPromise = Promise.all(chunkPromises).then((results) => {
-        const merged = results.flat();
-        const refMap = new Map<
-          string,
-          DocumentAnalysisResult["references"][number]
-        >();
-        for (const r of merged) {
-          if (r.raw && !refMap.has(r.raw)) {
-            refMap.set(r.raw, r);
-          }
-        }
-        return Array.from(refMap.values());
-      });
+      referencesPromise = Promise.all(chunkPromises).then((results) =>
+        dedupeReferences(results),
+      );
     }
 
     const [extractedMetadata, extractedReferences] = await Promise.all([
@@ -248,24 +296,17 @@ export async function parsePdfToDocumentAnalysis(
     Promise.resolve([]);
 
   if (bibPages.length > 0) {
-    const chunkPromises = bibPages.map((p) => {
-      const pageText = `=== PAGE ${p.page + 1} ===\n${p.markdown}`;
-      return extractDocumentReferences(pageText, logger);
-    });
+    const batches = buildReferenceBatches(
+      bibPages,
+      (p) => `=== PAGE ${p.page + 1} ===\n${p.markdown}`,
+    );
+    const chunkPromises = batches.map((batchText) =>
+      extractDocumentReferences(batchText, logger),
+    );
 
-    referencesPromise = Promise.all(chunkPromises).then((results) => {
-      const merged = results.flat();
-      const refMap = new Map<
-        string,
-        DocumentAnalysisResult["references"][number]
-      >();
-      for (const r of merged) {
-        if (r.raw && !refMap.has(r.raw)) {
-          refMap.set(r.raw, r);
-        }
-      }
-      return Array.from(refMap.values());
-    });
+    referencesPromise = Promise.all(chunkPromises).then((results) =>
+      dedupeReferences(results),
+    );
   }
 
   const [extractedMetadata, extractedReferences] = await Promise.all([
