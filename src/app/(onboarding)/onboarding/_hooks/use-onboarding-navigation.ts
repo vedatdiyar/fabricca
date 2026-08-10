@@ -288,7 +288,6 @@ export function useOnboardingNavigation() {
         })),
       }));
 
-
       const litResult = await runLiteraturePipeline(subBoxInputs);
       if (litResult.error) {
         return { success: false, error: litResult.error };

@@ -6,19 +6,27 @@ import { Badge } from "@/components/ui/badge";
 import { PdfUploadDropzone } from "./pdf-upload-dropzone";
 import { EditResourceModal } from "./edit-resource-modal";
 import { ResourceHeader } from "./resource-detail/resource-header";
+import { CritiqueSection } from "./resource-detail/critique-section";
 import { NoteForm } from "./resource-detail/note-form";
 import { NoteItem, getNoteTypeBadgeConfig } from "./resource-detail/note-item";
 import { DeleteConfirmDialog } from "./resource-detail/delete-confirm-dialog";
-import type { LibraryResourceItem, LibraryResourceNote } from "../_lib/types";
+import type {
+  LibraryResourceItem,
+  LibraryResourceNote,
+  LibraryResourceCritique,
+} from "../_lib/types";
+import type { CritiqueFormInput } from "../_hooks/use-resource-critique";
 
 export { getNoteTypeBadgeConfig };
 
 export interface ResourceDetailProps {
   resource: LibraryResourceItem;
   notes: LibraryResourceNote[];
+  critique?: LibraryResourceCritique;
   onAddNote: (
     note: Omit<LibraryResourceNote, "id" | "createdAt" | "sentToCitationCards">,
   ) => void;
+  onSaveCritique: (input: CritiqueFormInput) => void | Promise<void>;
   onDeleteNote: (noteId: number) => void;
   onToggleReadStatus: (resourceId: number) => void;
   onUpdateResource?: (updatedResource: LibraryResourceItem) => void;
@@ -43,7 +51,9 @@ export interface ResourceDetailProps {
 export function ResourceDetail({
   resource,
   notes,
+  critique,
   onAddNote,
+  onSaveCritique,
   onDeleteNote,
   onToggleReadStatus,
   onUpdateResource,
@@ -91,6 +101,11 @@ export function ResourceDetail({
 
       {resource.pdfStatus === "READY" && (
         <>
+          <CritiqueSection
+            critique={critique}
+            onSaveCritique={onSaveCritique}
+          />
+
           <NoteForm resourceId={resource.id} onAddNote={onAddNote} />
 
           <div className="space-y-4 pt-2">

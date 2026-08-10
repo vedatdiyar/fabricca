@@ -16,7 +16,6 @@ export interface SubBoxInput {
   subBoxes: SubBoxItem[];
 }
 
-
 export interface RefMetadata {
   id: string;
   title: string;

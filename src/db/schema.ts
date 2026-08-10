@@ -427,15 +427,12 @@ export const critiquesRelations = relations(critiques, ({ one }) => ({
   }),
 }));
 
-export const expansionsRelations = relations(
-  expansions,
-  ({ one }) => ({
-    box: one(boxes, {
-      fields: [expansions.boxId],
-      references: [boxes.id],
-    }),
+export const expansionsRelations = relations(expansions, ({ one }) => ({
+  box: one(boxes, {
+    fields: [expansions.boxId],
+    references: [boxes.id],
   }),
-);
+}));
 
 export const tasksRelations = relations(tasks, ({ one }) => ({
   user: one(users, {

@@ -3,13 +3,13 @@
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { notes } from "@/db/schema";
+import { annotations } from "@/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import { getOwnedSource } from "./_services/helpers";
 import type { NoteType } from "./_lib/types";
 
-/** Note type validation enum matching notes.noteTypeEnum. */
+/** Note type validation enum matching annotations.noteTypeEnum. */
 const noteTypeSchema = z.enum(["DIRECT_QUOTE", "PARAPHRASE", "PERSONAL_NOTE"]);
 
 /** Validation schema for creating a new library note / citation. */
@@ -71,7 +71,7 @@ export async function createResourceNoteAction(input: {
     const comment = valid.comment?.trim() || null;
 
     const [newNote] = await db
-      .insert(notes)
+      .insert(annotations)
       .values({
         sourceId: valid.resourceId,
         userId: session.userId,
@@ -127,8 +127,10 @@ export async function deleteResourceNoteAction(noteId: number) {
     }
 
     await db
-      .delete(notes)
-      .where(and(eq(notes.id, noteId), eq(notes.userId, session.userId)));
+      .delete(annotations)
+      .where(
+        and(eq(annotations.id, noteId), eq(annotations.userId, session.userId)),
+      );
 
     log.info("delete_resource_note_success", {
       service: "library",

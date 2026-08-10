@@ -3,6 +3,7 @@
 import * as resourceActions from "./resource-actions";
 import * as pdfActions from "./pdf-actions";
 import * as noteActions from "./note-actions";
+import * as critiqueActions from "./critique-actions";
 import * as boxActions from "./box-actions";
 import type { NoteType } from "./_lib/types";
 
@@ -189,4 +190,21 @@ export async function createResourceNoteAction(input: {
  */
 export async function deleteResourceNoteAction(noteId: number) {
   return noteActions.deleteResourceNoteAction(noteId);
+}
+
+/**
+ * Server Action: Upserts the 1:1 article analysis for a library source.
+ *
+ * @param input - The critique payload (resourceId and the 5 analysis fields).
+ * @returns The saved critique on success, or an error message on failure.
+ */
+export async function saveResourceCritiqueAction(input: {
+  resourceId: number;
+  researchQuestion?: string;
+  theoreticalFramework?: string;
+  methodology?: string;
+  mainArgument?: string;
+  literatureGap?: string;
+}) {
+  return critiqueActions.saveResourceCritiqueAction(input);
 }

@@ -2,7 +2,7 @@
 
 import { eq, and } from "drizzle-orm";
 import { db } from "@/db";
-import { boxes, sources, chunks as chunkRows, notes } from "@/db/schema";
+import { boxes, sources, chunks as chunkRows, annotations } from "@/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import {
@@ -106,7 +106,7 @@ export async function deleteResourcePdfAction(resourceId: number) {
 
     await db.delete(chunkRows).where(eq(chunkRows.sourceId, resourceId));
 
-    await db.delete(notes).where(eq(notes.sourceId, resourceId));
+    await db.delete(annotations).where(eq(annotations.sourceId, resourceId));
 
     await db
       .update(sources)

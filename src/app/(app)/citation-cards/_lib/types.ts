@@ -1,11 +1,11 @@
 import type { ThesisBoxType } from "@/lib/box-constants";
 
-/** Academic note type enum values matching notes.noteTypeEnum in schema.ts. */
+/** Academic note type enum values matching annotations.noteTypeEnum in schema.ts. */
 export type CitationNoteType = "DIRECT_QUOTE" | "PARAPHRASE" | "PERSONAL_NOTE";
 
 /**
  * Card item representing an academic citation card (Alıntı Fişi),
- * matching DB schema tables `notes`, `sources`, and `boxes`.
+ * matching DB schema tables `annotations`, `sources`, and `boxes`.
  */
 export interface CitationCardItem {
   id: number;

@@ -2,7 +2,7 @@
 
 import { eq, desc, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { sources, notes as noteRows } from "@/db/schema";
+import { sources, annotations } from "@/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import { deletePdfFromR2 } from "@/lib/services/r2";
@@ -37,6 +37,7 @@ export async function getLibraryResourcesAction() {
         ? await db.query.sources.findMany({
             where: inArray(sources.boxId, boxIds),
             orderBy: [desc(sources.createdAt)],
+            with: { critique: true },
           })
         : [];
 
@@ -44,9 +45,9 @@ export async function getLibraryResourcesAction() {
 
     const dbNotes =
       resourceIds.length > 0
-        ? await db.query.notes.findMany({
-            where: inArray(noteRows.sourceId, resourceIds),
-            orderBy: [desc(noteRows.createdAt)],
+        ? await db.query.annotations.findMany({
+            where: inArray(annotations.sourceId, resourceIds),
+            orderBy: [desc(annotations.createdAt)],
           })
         : [];
 
@@ -73,7 +74,20 @@ export async function getLibraryResourcesAction() {
       createdAt: n.createdAt.toISOString(),
     }));
 
-    return { success: true, data: { resources, notes } };
+    const critiques = dbResources
+      .map((r) => r.critique)
+      .filter((c): c is NonNullable<typeof c> => c !== null)
+      .map((c) => ({
+        resourceId: c.sourceId,
+        researchQuestion: c.researchQuestion ?? undefined,
+        theoreticalFramework: c.theoreticalFramework ?? undefined,
+        methodology: c.methodology ?? undefined,
+        mainArgument: c.mainArgument ?? undefined,
+        literatureGap: c.literatureGap ?? undefined,
+        updatedAt: c.updatedAt.toISOString(),
+      }));
+
+    return { success: true, data: { resources, notes, critiques } };
   } catch (err) {
     log.error("get_library_resources_failed", {
       service: "library",

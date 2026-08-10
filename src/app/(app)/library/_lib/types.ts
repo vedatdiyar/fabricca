@@ -41,3 +41,14 @@ export interface LibraryResourceNote {
   sentToCitationCards: boolean;
   createdAt: string;
 }
+
+/** The 1:1 article analysis (Eser Analizi) stored per library source. */
+export interface LibraryResourceCritique {
+  resourceId: number;
+  researchQuestion?: string;
+  theoreticalFramework?: string;
+  methodology?: string;
+  mainArgument?: string;
+  literatureGap?: string;
+  updatedAt?: string;
+}

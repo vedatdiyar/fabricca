@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { matrices, boxes, notes, tasks } from "@/db/schema";
+import { matrices, boxes, annotations, tasks } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 
 const READ_TOOL_NAMES = new Set([
@@ -96,13 +96,16 @@ export async function executeReadTool(
     case "listNotes": {
       const sourceId = typeof args.sourceId === "number" ? args.sourceId : null;
       if (sourceId) {
-        return await db.query.notes.findMany({
-          where: and(eq(notes.userId, userId), eq(notes.sourceId, sourceId)),
+        return await db.query.annotations.findMany({
+          where: and(
+            eq(annotations.userId, userId),
+            eq(annotations.sourceId, sourceId),
+          ),
           limit: 20,
         });
       }
-      return await db.query.notes.findMany({
-        where: eq(notes.userId, userId),
+      return await db.query.annotations.findMany({
+        where: eq(annotations.userId, userId),
         limit: 15,
       });
     }

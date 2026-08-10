@@ -10,6 +10,7 @@ import { LibrarySkeleton } from "./_components/library-skeleton";
 import { useLibraryResources } from "./_hooks/use-library-resources";
 import { usePdfUpload } from "./_hooks/use-pdf-upload";
 import { useResourceNotes } from "./_hooks/use-resource-notes";
+import { useResourceCritique } from "./_hooks/use-resource-critique";
 
 /**
  * Library page with a sidebar work list and a resource detail panel.
@@ -56,6 +57,10 @@ function LibraryPageContent() {
     { selectedResourceId },
   );
 
+  const { getCritiqueFor, handleSaveCritique } = useResourceCritique({
+    selectedResourceId,
+  });
+
   const { handleCreateResourceFromPdf, handleUploadPdf, handleDeletePdf } =
     usePdfUpload({
       selectedResourceId,
@@ -71,6 +76,8 @@ function LibraryPageContent() {
   const selectedResourceNotes = notes.filter(
     (note) => note.resourceId === selectedResourceId,
   );
+
+  const selectedCritique = getCritiqueFor(selectedResourceId);
 
   if (isLoading) {
     return <LibrarySkeleton />;
@@ -98,7 +105,9 @@ function LibraryPageContent() {
             <ResourceDetail
               resource={selectedResource}
               notes={selectedResourceNotes}
+              critique={selectedCritique}
               onAddNote={handleAddNote}
+              onSaveCritique={handleSaveCritique}
               onDeleteNote={handleDeleteNote}
               onToggleReadStatus={handleToggleReadStatus}
               onUpdateResource={handleUpdateResource}

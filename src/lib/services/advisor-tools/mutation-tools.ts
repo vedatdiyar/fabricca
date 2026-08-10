@@ -3,11 +3,11 @@ import {
   matrices,
   boxes,
   sources,
-  notes,
+  annotations,
   tasks,
   type Box,
   type Source,
-  type Note,
+  type Annotation,
   type Task,
   type Matrix,
 } from "@/db/schema";
@@ -107,8 +107,8 @@ export async function getToolPreviousState(
               ? Number(args.noteId)
               : 0;
         if (!noteId) return undefined;
-        const noteItem = await db.query.notes.findFirst({
-          where: eq(notes.id, noteId),
+        const noteItem = await db.query.annotations.findFirst({
+          where: eq(annotations.id, noteId),
         });
         if (!noteItem) return undefined;
         return {
@@ -326,12 +326,12 @@ export async function executeMutationTool(
     case "addNote": {
       const sourceId = args.sourceId as number;
       const pageNumber = args.pageNumber as string;
-      const noteType = args.noteType as Note["noteType"];
+      const noteType = args.noteType as Annotation["noteType"];
       const content = args.content as string;
       const comment = (args.comment as string | undefined) ?? null;
 
       const [newNote] = await db
-        .insert(notes)
+        .insert(annotations)
         .values({
           sourceId,
           userId,
@@ -350,8 +350,8 @@ export async function executeMutationTool(
     }
     case "deleteNote": {
       const noteId = args.noteId as number;
-      const existingNote = await db.query.notes.findFirst({
-        where: and(eq(notes.id, noteId), eq(notes.userId, userId)),
+      const existingNote = await db.query.annotations.findFirst({
+        where: and(eq(annotations.id, noteId), eq(annotations.userId, userId)),
       });
       if (!existingNote) {
         return { success: false, message: "Silinecek not bulunamadı." };
@@ -367,8 +367,8 @@ export async function executeMutationTool(
       };
 
       await db
-        .delete(notes)
-        .where(and(eq(notes.id, noteId), eq(notes.userId, userId)));
+        .delete(annotations)
+        .where(and(eq(annotations.id, noteId), eq(annotations.userId, userId)));
 
       return { success: true, message: "Not silindi.", previousState };
     }

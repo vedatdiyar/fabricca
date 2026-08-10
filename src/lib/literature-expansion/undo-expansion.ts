@@ -96,9 +96,7 @@ export async function undoLiteratureExpansion(
       })
       .where(eq(boxes.id, boxId));
 
-    await tx
-      .delete(expansions)
-      .where(eq(expansions.id, history.id));
+    await tx.delete(expansions).where(eq(expansions.id, history.id));
   });
 
   logger.info("literature_undo_success", {

@@ -3,7 +3,7 @@
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { notes, sources, type noteTypeEnum } from "@/db/schema";
+import { annotations, sources, type noteTypeEnum } from "@/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import {
@@ -42,7 +42,7 @@ const updateCitationCardSchema = createCitationCardSchema.extend({
 });
 
 /**
- * Server Action: Fetches all topic boxes, sources, and citation notes for the logged-in user.
+ * Server Action: Fetches all topic boxes, sources, and citation annotations for the logged-in user.
  *
  * @returns The user's citation cards, boxes, and sources data on success, or an error message on failure.
  */
@@ -83,9 +83,9 @@ export async function getCitationCardsDataAction(): Promise<
           })
         : [];
 
-    const dbNotes = await db.query.notes.findMany({
-      where: eq(notes.userId, session.userId),
-      orderBy: [desc(notes.createdAt)],
+    const dbNotes = await db.query.annotations.findMany({
+      where: eq(annotations.userId, session.userId),
+      orderBy: [desc(annotations.createdAt)],
     });
 
     const boxMap = new Map(userBoxes.map((b) => [b.id, b]));
@@ -241,7 +241,7 @@ export async function createCitationCardAction(input: {
     }
 
     const [newNote] = await db
-      .insert(notes)
+      .insert(annotations)
       .values({
         sourceId: sourceRow.id,
         userId: session.userId,
@@ -334,10 +334,10 @@ export async function updateCitationCardAction(input: {
       return { success: false, error: "Oturum bulunamadı." };
     }
 
-    const existingNote = await db.query.notes.findFirst({
+    const existingNote = await db.query.annotations.findFirst({
       where: and(
-        eq(notes.id, parsed.data.id),
-        eq(notes.userId, session.userId),
+        eq(annotations.id, parsed.data.id),
+        eq(annotations.userId, session.userId),
       ),
     });
 
@@ -366,7 +366,7 @@ export async function updateCitationCardAction(input: {
     }
 
     const [updatedNote] = await db
-      .update(notes)
+      .update(annotations)
       .set({
         sourceId: sourceRow.id,
         pageNumber: parsed.data.pageNumber.trim(),
@@ -377,7 +377,10 @@ export async function updateCitationCardAction(input: {
         updatedAt: new Date(),
       })
       .where(
-        and(eq(notes.id, parsed.data.id), eq(notes.userId, session.userId)),
+        and(
+          eq(annotations.id, parsed.data.id),
+          eq(annotations.userId, session.userId),
+        ),
       )
       .returning();
 
@@ -441,9 +444,11 @@ export async function deleteCitationCardAction(
     }
 
     const deleted = await db
-      .delete(notes)
-      .where(and(eq(notes.id, cardId), eq(notes.userId, session.userId)))
-      .returning({ id: notes.id });
+      .delete(annotations)
+      .where(
+        and(eq(annotations.id, cardId), eq(annotations.userId, session.userId)),
+      )
+      .returning({ id: annotations.id });
 
     if (deleted.length === 0) {
       return { success: false, error: "Silinecek alıntı fişi bulunamadı." };
@@ -485,8 +490,11 @@ export async function moveCitationCardBoxAction(input: {
       return { success: false, error: "Oturum bulunamadı." };
     }
 
-    const targetNote = await db.query.notes.findFirst({
-      where: and(eq(notes.id, input.cardId), eq(notes.userId, session.userId)),
+    const targetNote = await db.query.annotations.findFirst({
+      where: and(
+        eq(annotations.id, input.cardId),
+        eq(annotations.userId, session.userId),
+      ),
     });
 
     if (!targetNote) {

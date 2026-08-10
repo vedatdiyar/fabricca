@@ -3,11 +3,11 @@ import {
   matrices,
   boxes,
   sources,
-  notes,
+  annotations,
   tasks,
   type Box,
   type Source,
-  type Note,
+  type Annotation,
   type Task,
   type Matrix,
 } from "@/db/schema";
@@ -166,25 +166,25 @@ export async function undoMutationTool(
       return { success: true, message: "Silinen kaynak geri yüklendi." };
     }
     case "addNote": {
-      const createdNote = executionResult as Note | undefined;
+      const createdNote = executionResult as Annotation | undefined;
       const noteId = createdNote?.id ?? (args.noteId as number | undefined);
       if (!noteId || !userId) {
         return { success: false, message: "Silinecek not kimliği bulunamadı." };
       }
       await db
-        .delete(notes)
-        .where(and(eq(notes.id, noteId), eq(notes.userId, userId)));
+        .delete(annotations)
+        .where(and(eq(annotations.id, noteId), eq(annotations.userId, userId)));
       return { success: true, message: "Eklenecek not geri alındı (silindi)." };
     }
     case "deleteNote": {
       if (!previousState || !userId) {
         return { success: false, message: "Silinen not yedeği bulunamadı." };
       }
-      await db.insert(notes).values({
+      await db.insert(annotations).values({
         sourceId: previousState.sourceId as number,
         userId,
         pageNumber: previousState.pageNumber as string,
-        noteType: previousState.noteType as Note["noteType"],
+        noteType: previousState.noteType as Annotation["noteType"],
         content: previousState.content as string,
         comment: (previousState.comment as string | null) ?? null,
         sentToCitationCards:

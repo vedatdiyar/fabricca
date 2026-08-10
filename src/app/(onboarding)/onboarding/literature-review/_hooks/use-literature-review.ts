@@ -133,7 +133,6 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
         })),
       }));
 
-
       const res = await runLiteraturePipelineAction(subBoxInputs);
       if (res.data) {
         queryClient.invalidateQueries({ queryKey: ["literature-pool"] });
