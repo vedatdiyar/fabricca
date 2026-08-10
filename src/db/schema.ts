@@ -389,12 +389,15 @@ export const sourcesRelations = relations(sources, ({ one }) => ({
   }),
 }));
 
-export const expansionHistoryRelations = relations(expansionHistory, ({ one }) => ({
-  box: one(boxes, {
-    fields: [expansionHistory.boxId],
-    references: [boxes.id],
+export const expansionHistoryRelations = relations(
+  expansionHistory,
+  ({ one }) => ({
+    box: one(boxes, {
+      fields: [expansionHistory.boxId],
+      references: [boxes.id],
+    }),
   }),
-}));
+);
 
 export const tasksRelations = relations(tasks, ({ one }) => ({
   user: one(users, {

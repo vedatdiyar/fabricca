@@ -18,7 +18,9 @@ export interface ExtractedPdfContent {
 }
 
 /**
- * Shared PDF ingestion prologue: fetches the uploaded file from its temporary R2 key, parses it via the Gemini PDF parser, and extracts structured metadata and references.
+ * Shared PDF ingestion prologue: fetches the uploaded file from its temporary R2 key,
+ * parses it via pdf-inspector (born-digital) or Mistral OCR (scanned), and extracts
+ * structured metadata and references.
  *
  * @param tempKey - Temporary R2 key where the client uploaded the PDF.
  * @param originalFileName - Original file name.
@@ -40,9 +42,11 @@ export async function fetchAndExtractPdf(
     data: { tempKey, size: buffer.length },
   });
 
+  // tempKey is already an R2 key — reused directly for Mistral OCR presigned URL.
   const { chunks, references, metadata } = await parsePdfToChunks(
     buffer,
     originalFileName,
+    tempKey,
     log,
   );
 

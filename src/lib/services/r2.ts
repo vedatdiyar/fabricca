@@ -88,6 +88,28 @@ export async function deletePdfFromR2(apaFileName: string): Promise<void> {
 }
 
 /**
+ * Generates a presigned GET URL for a private R2 object.
+ * Used to give Mistral OCR temporary read access without making the bucket public.
+ *
+ * @param r2Key - The R2 object key (e.g. "pdfs/Yilmaz_2024_Turk_Edebiyati.pdf").
+ * @param expiresIn - URL validity in seconds (default: 300 s = 5 min).
+ * @returns A presigned URL string valid for the specified duration.
+ */
+export async function generatePresignedReadUrl(
+  r2Key: string,
+  expiresIn = 300,
+): Promise<string> {
+  const bucketName = process.env.R2_BUCKET_NAME || "fabricca";
+  const s3Client = getR2Client();
+
+  return getSignedUrl(
+    s3Client,
+    new GetObjectCommand({ Bucket: bucketName, Key: r2Key }),
+    { expiresIn },
+  );
+}
+
+/**
  * Generates a 15-minute presigned upload URL for direct browser-to-R2 upload.
  *
  * @param r2Key - The target key in the R2 bucket (e.g. "temp/<uuid>.pdf").

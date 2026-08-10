@@ -67,7 +67,8 @@ export async function triggerLiteratureExpansionAction(
 export async function undoLiteratureExpansionAction(
   boxId: number,
 ): Promise<
-  { success: true; data: UndoExpansionResult } | { success: false; error: string }
+  | { success: true; data: UndoExpansionResult }
+  | { success: false; error: string }
 > {
   const flowId = createFlowId();
   const log = new Logger(flowId);
