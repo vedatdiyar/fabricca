@@ -45,9 +45,7 @@ export function isFormalBibliographicEntry(raw: string): boolean {
 function createGeminiClient(): GoogleGenAI {
   const apiKey = process.env.GEMINI_API_KEY_1;
   if (!apiKey) {
-    throw new Error(
-      "GEMINI_API_KEY_1 environment variable is not set.",
-    );
+    throw new Error("GEMINI_API_KEY_1 environment variable is not set.");
   }
   return new GoogleGenAI({ apiKey });
 }

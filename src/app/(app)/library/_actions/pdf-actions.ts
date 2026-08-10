@@ -142,7 +142,7 @@ export async function deleteResourcePdfAction(resourceId: number) {
 export async function requestResourcePdfUploadAction(
   resourceId: number,
 ): Promise<
-  | { success: true; presignedUrl: string; tempKey: string }
+  | { success: true; presignedUrl: string; tempKey: string; flowId: string }
   | { success: false; error: string }
 > {
   const flowId = createFlowId();
@@ -180,7 +180,11 @@ export async function requestResourcePdfUploadAction(
       data: { resourceId, tempKey },
     });
 
-    return { success: true, presignedUrl, tempKey };
+    log.info("pdf_browser_upload_start", {
+      service: "library",
+    });
+
+    return { success: true, presignedUrl, tempKey, flowId };
   } catch (err) {
     log.error("request_resource_pdf_upload_url_failed", {
       service: "library",
@@ -205,15 +209,25 @@ export async function completeResourcePdfUploadAction(
   resourceId: number,
   tempKey: string,
   originalFileName: string,
+  flowId?: string,
+  uploadStartedAt?: number,
 ): Promise<
   | { success: true; data: LibraryResourceItem }
   | { success: false; error: string }
 > {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
+  const resolvedFlowId = flowId ?? createFlowId();
+  const log = new Logger(resolvedFlowId);
 
   try {
     const pipelineStart = performance.now();
+
+    log.info("pdf_browser_upload_success", {
+      service: "library",
+      data: {
+        durationMs:
+          uploadStartedAt != null ? Date.now() - uploadStartedAt : undefined,
+      },
+    });
 
     const session = await getSession();
     if (!session) {
@@ -291,18 +305,21 @@ export async function completeResourcePdfUploadAction(
 
     await cleanupTempKey(tempKey, log);
 
-    log.info("complete_resource_pdf_success", {
-      service: "library",
-      data: {
-        resourceId,
-        apaFileName,
-        pdfUrl: pipelineResult.r2Url,
-        initialSize: buffer.length,
-        finalSize: pipelineResult.finalSize,
-        chunkCount: pipelineResult.chunkCount,
-        durationMs: Math.round(performance.now() - pipelineStart),
+    log.total(
+      "complete_resource_pdf",
+      Math.round(performance.now() - pipelineStart),
+      {
+        service: "library",
+        data: {
+          resourceId,
+          apaFileName,
+          pdfUrl: pipelineResult.r2Url,
+          initialSize: buffer.length,
+          finalSize: pipelineResult.finalSize,
+          chunkCount: pipelineResult.chunkCount,
+        },
       },
-    });
+    );
 
     return {
       success: true,
@@ -353,7 +370,7 @@ export async function completeResourcePdfUploadAction(
  * @returns The presigned upload URL and temp key on success, or an error message on failure.
  */
 export async function requestPdfCreateUploadAction(): Promise<
-  | { success: true; presignedUrl: string; tempKey: string }
+  | { success: true; presignedUrl: string; tempKey: string; flowId: string }
   | { success: false; error: string }
 > {
   const flowId = createFlowId();
@@ -376,7 +393,11 @@ export async function requestPdfCreateUploadAction(): Promise<
       data: { tempKey },
     });
 
-    return { success: true, presignedUrl, tempKey };
+    log.info("pdf_browser_upload_start", {
+      service: "library",
+    });
+
+    return { success: true, presignedUrl, tempKey, flowId };
   } catch (err) {
     log.error("request_pdf_create_upload_url_failed", {
       service: "library",
@@ -401,18 +422,28 @@ export async function completePdfCreateUploadAction(
   tempKey: string,
   originalFileName: string,
   boxId: number,
+  flowId?: string,
+  uploadStartedAt?: number,
 ): Promise<
   | { success: true; data: LibraryResourceItem }
   | { success: false; error: string }
 > {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
+  const resolvedFlowId = flowId ?? createFlowId();
+  const log = new Logger(resolvedFlowId);
 
   let createdResourceId: number | undefined;
   let uploadedPdfFileName: string | undefined;
 
   try {
     const pipelineStart = performance.now();
+
+    log.info("pdf_browser_upload_success", {
+      service: "library",
+      data: {
+        durationMs:
+          uploadStartedAt != null ? Date.now() - uploadStartedAt : undefined,
+      },
+    });
 
     const session = await getSession();
     if (!session) {
@@ -489,17 +520,20 @@ export async function completePdfCreateUploadAction(
 
     await cleanupTempKey(tempKey, log);
 
-    log.info("complete_pdf_create_success", {
-      service: "library",
-      data: {
-        resourceId: newResource.id,
-        title: newResource.title,
-        finalFileName: apaFileName,
-        pdfUrl: pipelineResult.r2Url,
-        chunkCount: pipelineResult.chunkCount,
-        durationMs: Math.round(performance.now() - pipelineStart),
+    log.total(
+      "complete_pdf_create",
+      Math.round(performance.now() - pipelineStart),
+      {
+        service: "library",
+        data: {
+          resourceId: newResource.id,
+          title: newResource.title,
+          finalFileName: apaFileName,
+          pdfUrl: pipelineResult.r2Url,
+          chunkCount: pipelineResult.chunkCount,
+        },
       },
-    });
+    );
 
     return {
       success: true,

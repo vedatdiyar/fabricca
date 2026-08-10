@@ -29,9 +29,7 @@ export async function runMistralOcr(
 ): Promise<string[]> {
   const apiKey = process.env.MISTRAL_OCR_API_KEY;
   if (!apiKey) {
-    throw new Error(
-      "MISTRAL_OCR_API_KEY environment variable is not set.",
-    );
+    throw new Error("MISTRAL_OCR_API_KEY environment variable is not set.");
   }
 
   // Generate a presigned read URL (~6ms, local HMAC signing — no network call)

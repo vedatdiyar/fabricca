@@ -92,11 +92,15 @@ export async function completeResourcePdfUploadAction(
   resourceId: number,
   tempKey: string,
   originalFileName: string,
+  flowId?: string,
+  uploadStartedAt?: number,
 ) {
   return pdfActions.completeResourcePdfUploadAction(
     resourceId,
     tempKey,
     originalFileName,
+    flowId,
+    uploadStartedAt,
   );
 }
 
@@ -121,11 +125,15 @@ export async function completePdfCreateUploadAction(
   tempKey: string,
   originalFileName: string,
   boxId: number,
+  flowId?: string,
+  uploadStartedAt?: number,
 ) {
   return pdfActions.completePdfCreateUploadAction(
     tempKey,
     originalFileName,
     boxId,
+    flowId,
+    uploadStartedAt,
   );
 }
 

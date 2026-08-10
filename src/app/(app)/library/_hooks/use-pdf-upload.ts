@@ -43,6 +43,8 @@ export function usePdfUpload({
           return false;
         }
 
+        const uploadStartedAt = Date.now();
+
         let uploadRes: Response;
         try {
           uploadRes = await fetch(requestRes.presignedUrl, {
@@ -65,6 +67,8 @@ export function usePdfUpload({
           requestRes.tempKey,
           file.name,
           boxId,
+          requestRes.flowId,
+          uploadStartedAt,
         );
         if (!completeRes.success) {
           toast.error(
@@ -95,6 +99,8 @@ export function usePdfUpload({
           return false;
         }
 
+        const uploadStartedAt = Date.now();
+
         const uploadRes = await fetch(requestRes.presignedUrl, {
           method: "PUT",
           body: file,
@@ -115,6 +121,8 @@ export function usePdfUpload({
           selectedResourceId,
           requestRes.tempKey,
           file.name,
+          requestRes.flowId,
+          uploadStartedAt,
         );
         if (!completeRes.success) {
           toast.error(completeRes.error || "PDF yüklenirken hata oluştu.");

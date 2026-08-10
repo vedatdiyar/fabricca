@@ -39,6 +39,7 @@ export interface LogParams {
   status?: "START" | "SUCCESS" | "FAILED" | "RETRY";
   blank?: "after" | "before" | "none";
   silentStart?: boolean;
+  hidden?: boolean;
 }
 
 export interface LoggerInstance {
@@ -60,6 +61,11 @@ export interface LoggerInstance {
   ): string | undefined;
   groupStart(event: string): void;
   groupEnd(event: string, durationMs: number): void;
+  total(
+    event: string,
+    durationMs: number,
+    p?: { service?: ServiceName; data?: Record<string, unknown> },
+  ): void;
 }
 
 /**
@@ -281,6 +287,39 @@ export class Logger implements LoggerInstance {
   }
 
   /**
+   * Prints a total-duration summary line for a completed flow.
+   *
+   * @param event - Flow-level event name.
+   * @param durationMs - Total duration in milliseconds.
+   * @param p - Optional service and data metadata.
+   */
+  total(
+    event: string,
+    durationMs: number,
+    p?: { service?: ServiceName; data?: Record<string, unknown> },
+  ): void {
+    if (this.devMode) {
+      const timeTag = this.timestamp();
+      console.log(
+        `${timeTag} ${C_GREEN}✓${C_RESET} TOTAL ${event} (${formatDuration(durationMs)})`,
+      );
+      return;
+    }
+
+    const entry: Record<string, unknown> = {
+      timestamp: new Date().toISOString(),
+      level: "info",
+      event: `${event}_total`,
+      flowId: this.flowId,
+      service: p?.service ?? "flow",
+      status: "TOTAL",
+      durationMs: Math.round(durationMs),
+    };
+    if (p?.data) entry.data = p.data;
+    console.info(JSON.stringify(entry));
+  }
+
+  /**
    * Returns the current time as "[HH:MM:SS]".
    *
    * @returns Current time string.
@@ -313,7 +352,7 @@ export class Logger implements LoggerInstance {
       if (status === "START") {
         const baseEvent = event.replace(/_(start)$/, "");
         this._starts.set(baseEvent, performance.now());
-        if (p?.silentStart) {
+        if (p?.silentStart || p?.hidden) {
           return;
         }
         const timeTag = this.timestamp();
@@ -349,6 +388,10 @@ export class Logger implements LoggerInstance {
         const icon = statusIcon(status);
         const color = statusColor(status);
         const timeTag = this.timestamp();
+
+        if (p?.hidden) {
+          return;
+        }
 
         const blank = p?.blank ?? "after";
 

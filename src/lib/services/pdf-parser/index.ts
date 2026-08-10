@@ -48,9 +48,15 @@ export async function parsePdfToDocumentAnalysis(
     logger?.info("pdf_parser_scanned_mistral_start", {
       service: "pdf-parser",
       data: { fileName, r2Key },
+      hidden: true,
     });
 
     const pageMarkdowns = await runMistralOcr(r2Key, logger);
+
+    logger?.info("pdf_parse_content_start", {
+      service: "pdf-parser",
+      data: { fileName },
+    });
 
     const firstStart = Math.max(1, options.startPage ?? 1);
     const safeEnd = options.endPage ?? pageMarkdowns.length;
@@ -148,6 +154,7 @@ export async function parsePdfToDocumentAnalysis(
     logger?.info("pdf_parser_scanned_mistral_success", {
       service: "pdf-parser",
       data: { fileName, pageCount: pages.length },
+      hidden: true,
     });
 
     return {
@@ -230,6 +237,11 @@ export async function parsePdfToDocumentAnalysis(
       : [];
 
   // Step 3: Parallel Gemini Flash-Lite extraction (Metadata + 1-Page Chunked References)
+  logger?.info("pdf_parse_content_start", {
+    service: "pdf-parser",
+    data: { fileName },
+  });
+
   const metadataPromise = extractDocumentMetadata(first5PagesText, logger);
 
   let referencesPromise: Promise<DocumentAnalysisResult["references"]> =
@@ -291,11 +303,6 @@ export async function parsePdfToChunks(
   r2Key: string,
   logger?: Logger,
 ): Promise<PdfChunkParseResult> {
-  logger?.info("pdf_parse_to_chunks_start", {
-    service: "pdf-parser",
-    data: { fileName },
-  });
-
   const analysis = await parsePdfToDocumentAnalysis(
     pdfBuffer,
     fileName,
@@ -306,7 +313,7 @@ export async function parsePdfToChunks(
 
   const chunks = await buildChunksFromPageAnalysis(analysis.pages);
 
-  logger?.info("pdf_parse_to_chunks_success", {
+  logger?.info("pdf_parse_content_success", {
     service: "pdf-parser",
     data: {
       fileName,
