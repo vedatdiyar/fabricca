@@ -3,7 +3,7 @@
 import { Check, Copy, User, GraduationCap, BookOpen } from "lucide-react";
 import { MarkdownRenderer } from "./markdown-renderer";
 import { ToolConfirmationCard } from "./tool-confirmation-card";
-import type { Message } from "./types";
+import type { Message } from "../_lib/types";
 
 /**
  * Renders the persona badge pill shown above advisor messages.

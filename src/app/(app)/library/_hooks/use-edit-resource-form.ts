@@ -4,7 +4,7 @@ import { useCallback, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { updateLibraryResourceAction } from "../actions";
 import { useBoxHierarchySelection } from "./use-box-hierarchy-selection";
-import type { LibraryResourceItem } from "../_types/types";
+import type { LibraryResourceItem } from "../_lib/types";
 
 /** Form field values for the edit resource metadata form. */
 export interface EditResourceFormFields {

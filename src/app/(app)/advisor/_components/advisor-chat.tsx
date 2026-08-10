@@ -5,7 +5,7 @@ import { ChatMessageList } from "./ChatMessageList";
 import { AdvisorChatInput } from "./AdvisorChatInput";
 import { AdvisorCitationDialog } from "./AdvisorCitationDialog";
 import { useAdvisorChat } from "./use-advisor-chat";
-import type { AdvisorChatProps } from "./types";
+import type { AdvisorChatProps } from "../_lib/types";
 
 /**
  * Interactive Advisor Chat component delivering an academic AI conversation backed by Hybrid RAG & Cohere Rerank with persistent chat history sidebar and Function Calling database tools.

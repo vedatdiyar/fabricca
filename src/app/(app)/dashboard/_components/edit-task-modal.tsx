@@ -1,7 +1,7 @@
 "use client";
 
 import type { Box } from "@/db/schema";
-import type { KanbanTask } from "../_types";
+import type { KanbanTask } from "../_lib/types";
 import { TaskFormModal } from "./task-form-modal";
 
 interface EditTaskModalProps {

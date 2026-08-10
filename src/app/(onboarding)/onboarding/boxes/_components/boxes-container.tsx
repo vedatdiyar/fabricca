@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { AIBanner } from "@/components/ai-banner";
-import { LoadingSpinner } from "@/components/loading-spinner";
+import { BoxesSkeleton } from "./boxes-skeleton";
 import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
 import { fetchBoxesWithFullShape } from "../../_services/fetch-actions";
 import { BOX_ORDER_WEIGHT, BOX_TYPE_LABELS } from "@/lib/box-constants";
@@ -73,7 +73,7 @@ export function BoxesContainer() {
   }, [boxes]);
 
   if (loading) {
-    return <LoadingSpinner variant="card" />;
+    return <BoxesSkeleton />;
   }
 
   return (

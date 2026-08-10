@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
-import type { KanbanTask } from "../_types";
+import type { KanbanTask } from "../_lib/types";
 import type { TaskRow } from "../_lib/schemas";
 import {
   addTaskAction,

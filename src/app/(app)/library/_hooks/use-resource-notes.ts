@@ -7,7 +7,7 @@ import {
   createResourceNoteAction,
   deleteResourceNoteAction,
 } from "../actions";
-import type { LibraryResourceNote, NoteType } from "../_types/types";
+import type { LibraryResourceNote, NoteType } from "../_lib/types";
 
 interface UseResourceNotesParams {
   selectedResourceId: number | null;

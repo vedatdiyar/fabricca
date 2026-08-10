@@ -25,7 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { LibraryResourceItem, ThesisBoxType } from "../_types/types";
+import type { LibraryResourceItem, ThesisBoxType } from "../_lib/types";
 import {
   getBoxTypeBadgeConfig,
   BOX_TYPE_SHORT_LABELS,

@@ -6,7 +6,7 @@ import { BookMarked } from "lucide-react";
 import { SidebarWorkList } from "./_components/sidebar-work-list";
 import { ResourceDetail } from "./_components/resource-detail";
 import { AddResourceModal } from "./_components/add-resource-modal";
-import { LoadingSpinner } from "@/components/loading-spinner";
+import { LibrarySkeleton } from "./_components/library-skeleton";
 import { useLibraryResources } from "./_hooks/use-library-resources";
 import { usePdfUpload } from "./_hooks/use-pdf-upload";
 import { useResourceNotes } from "./_hooks/use-resource-notes";
@@ -18,7 +18,7 @@ import { useResourceNotes } from "./_hooks/use-resource-notes";
  */
 export default function LibraryPage() {
   return (
-    <Suspense fallback={<LoadingSpinner variant="full" />}>
+    <Suspense fallback={<LibrarySkeleton />}>
       <LibraryPageContent />
     </Suspense>
   );
@@ -73,7 +73,7 @@ function LibraryPageContent() {
   );
 
   if (isLoading) {
-    return <LoadingSpinner variant="full" />;
+    return <LibrarySkeleton />;
   }
 
   return (

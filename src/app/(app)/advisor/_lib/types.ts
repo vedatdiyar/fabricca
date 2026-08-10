@@ -1,5 +1,5 @@
 import type { RagSearchResultItem } from "@/lib/services/rag-search";
-import type { PendingToolCall } from "./tool-confirmation-card";
+import type { PendingToolCall } from "../_components/tool-confirmation-card";
 
 export interface Message {
   id: string;

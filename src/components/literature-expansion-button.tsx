@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import {
   triggerLiteratureExpansionAction,
   undoLiteratureExpansionAction,
-} from "@/app/(app)/library/_actions/expansion-actions";
+} from "@/app/(app)/library/expansion-actions";
 import {
   AlertDialog,
   AlertDialogAction,

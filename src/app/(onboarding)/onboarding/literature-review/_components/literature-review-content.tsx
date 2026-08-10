@@ -4,7 +4,7 @@ import { Loader2, AlertCircle, BookOpen, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { AIBanner } from "@/components/ai-banner";
-import { LoadingSpinner } from "@/components/loading-spinner";
+import { LiteratureReviewSkeleton } from "./literature-review-skeleton";
 import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
 import { LiteratureArticleCard } from "./literature-article-card";
 import {
@@ -254,9 +254,7 @@ export function LiteratureReviewContent() {
   );
 
   if (loading) {
-    return (
-      <LoadingSpinner variant="full" message="Konu kutuları yükleniyor..." />
-    );
+    return <LiteratureReviewSkeleton />;
   }
   return (
     <div className="w-full space-y-8">

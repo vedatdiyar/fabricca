@@ -22,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { TopicBox } from "../_types";
+import type { TopicBox } from "../_lib/types";
 
 interface BoxCardProps {
   box: TopicBox;

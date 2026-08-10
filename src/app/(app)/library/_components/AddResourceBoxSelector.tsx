@@ -3,7 +3,7 @@
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { BoxSelectionGrid } from "./BoxSelectionGrid";
-import type { LibraryParentBoxOption } from "../_actions/box-actions";
+import type { LibraryParentBoxOption } from "../box-actions";
 
 interface AddResourceBoxSelectorProps {
   parentBoxes: LibraryParentBoxOption[];

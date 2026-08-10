@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { formatPageNumber } from "@/lib/academic/utils";
 import { normalizePastedText } from "@/lib/text-utils";
 import { getNoteTypeBadgeConfig } from "./note-item";
-import type { LibraryResourceNote, NoteType } from "../../_types/types";
+import type { LibraryResourceNote, NoteType } from "../../_lib/types";
 
 interface NoteFormProps {
   resourceId: number;

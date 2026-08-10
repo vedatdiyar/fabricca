@@ -11,11 +11,11 @@ import {
   deleteR2Object,
 } from "@/lib/services/r2";
 import { formatApaPdfFileName } from "@/lib/academic/utils";
-import { processResourcePdfPipeline } from "../_services/pdf-pipeline";
-import { fetchAndExtractPdf } from "../_services/pdf-upload";
-import { getOwnedSource } from "../_services/helpers";
-import { mapSourceToResource } from "../_services/resource-mapper";
-import type { LibraryResourceItem } from "../_types/types";
+import { processResourcePdfPipeline } from "./_services/pdf-pipeline";
+import { fetchAndExtractPdf } from "./_services/pdf-upload";
+import { getOwnedSource } from "./_services/helpers";
+import { mapSourceToResource } from "./_services/resource-mapper";
+import type { LibraryResourceItem } from "./_lib/types";
 
 /**
  * Deletes a temporary R2 object best-effort, logging rather than throwing when deletion fails.

@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getBoxHierarchyForLibraryAction } from "../actions";
-import type { LibraryParentBoxOption } from "../_actions/box-actions";
-import type { ThesisBoxType } from "../_types/types";
+import type { LibraryParentBoxOption } from "../box-actions";
+import type { ThesisBoxType } from "../_lib/types";
 
 interface UseBoxHierarchySelectionParams {
   /** Preferred sub-box id to restore once the hierarchy is loaded (edit flow). */

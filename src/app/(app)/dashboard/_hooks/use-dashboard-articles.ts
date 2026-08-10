@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from "react";
 import type { Box, Source } from "@/db/schema";
-import type { TopicBox } from "../_types";
+import type { TopicBox } from "../_lib/types";
 import { sortLibraryResources } from "@/lib/academic/utils";
 import { formatAuthorDisplayString } from "@/lib/academic/author-formatter";
 import { BOX_TYPE_DESCRIPTIONS, type ThesisBoxType } from "@/lib/box-constants";

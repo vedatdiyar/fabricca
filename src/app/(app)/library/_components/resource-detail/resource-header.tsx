@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getBoxTypeBadgeConfig } from "@/lib/box-constants";
 import { cn } from "@/lib/utils";
-import type { LibraryResourceItem } from "../../_types/types";
+import type { LibraryResourceItem } from "../../_lib/types";
 
 interface ResourceHeaderProps {
   resource: LibraryResourceItem;

@@ -6,7 +6,7 @@ import { Sparkles, GraduationCap, BookOpen } from "lucide-react";
 import { ChatMessageItem, PersonaBadge } from "./ChatMessageItem";
 import { MarkdownRenderer } from "./markdown-renderer";
 import { ToolConfirmationCard } from "./tool-confirmation-card";
-import type { Message } from "./types";
+import type { Message } from "../_lib/types";
 import type { PendingToolCall } from "./tool-confirmation-card";
 import type { RagSearchResultItem } from "@/lib/services/rag-search";
 

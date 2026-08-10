@@ -9,7 +9,7 @@ import {
   requestPdfCreateUploadAction,
   completePdfCreateUploadAction,
 } from "../actions";
-import type { LibraryResourceItem, LibraryResourceNote } from "../_types/types";
+import type { LibraryResourceItem, LibraryResourceNote } from "../_lib/types";
 
 interface UsePdfUploadParams {
   selectedResourceId: number | null;

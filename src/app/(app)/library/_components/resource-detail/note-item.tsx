@@ -5,7 +5,7 @@ import { BookmarkCheck, MessageSquareQuote, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { LibraryResourceNote, NoteType } from "../../_types/types";
+import type { LibraryResourceNote, NoteType } from "../../_lib/types";
 
 interface NoteItemProps {
   note: LibraryResourceNote;

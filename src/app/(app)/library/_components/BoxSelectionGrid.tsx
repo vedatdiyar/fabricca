@@ -2,7 +2,7 @@
 
 import { Sparkles } from "lucide-react";
 import { Label } from "@/components/ui/label";
-import type { LibraryParentBoxOption } from "../_actions/box-actions";
+import type { LibraryParentBoxOption } from "../box-actions";
 
 interface BoxSelectionGridProps {
   parentBoxes: LibraryParentBoxOption[];

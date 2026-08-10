@@ -6,9 +6,9 @@ import { sources, notes as noteRows } from "@/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import { deletePdfFromR2 } from "@/lib/services/r2";
-import { ensureUserMatrixAndBoxes, getOwnedSource } from "../_services/helpers";
-import { mapSourceToResource } from "../_services/resource-mapper";
-import type { NoteType } from "../_types/types";
+import { ensureUserMatrixAndBoxes, getOwnedSource } from "./_services/helpers";
+import { mapSourceToResource } from "./_services/resource-mapper";
+import type { NoteType } from "./_lib/types";
 
 /**
  * Server Action: Fetches all library resources and notes for the current user, seeding default boxes if absent.

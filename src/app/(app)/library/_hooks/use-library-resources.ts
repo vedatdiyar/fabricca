@@ -8,7 +8,7 @@ import {
   toggleResourceReadStatusAction,
   deleteLibraryResourceAction,
 } from "../actions";
-import type { LibraryResourceItem, ThesisBoxType } from "../_types/types";
+import type { LibraryResourceItem, ThesisBoxType } from "../_lib/types";
 
 /**
  * Manages library resource list, selection state, CRUD operations, and data loading.

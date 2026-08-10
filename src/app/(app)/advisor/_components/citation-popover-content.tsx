@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { FileText } from "lucide-react";
-import type { CitationPopoverContentProps } from "./types";
+import type { CitationPopoverContentProps } from "../_lib/types";
 
 /**
  * Derives a stable key for a paragraph from its leading plain text so the

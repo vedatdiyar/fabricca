@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { KanbanTask } from "../_types";
+import type { KanbanTask } from "../_lib/types";
 
 interface ArticleState {
   id: string;

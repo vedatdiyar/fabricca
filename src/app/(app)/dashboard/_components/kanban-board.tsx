@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Box } from "@/db/schema";
-import type { KanbanTask } from "../_types";
+import type { KanbanTask } from "../_lib/types";
 import { AddTaskModal } from "./add-task-modal";
 import { EditTaskModal } from "./edit-task-modal";
 

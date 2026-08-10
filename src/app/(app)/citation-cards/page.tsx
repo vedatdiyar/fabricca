@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { LoadingSpinner } from "@/components/loading-spinner";
+import { CitationCardsSkeleton } from "./_components/citation-cards-skeleton";
 import { useCitationCardsFilter } from "./_hooks/use-citation-cards-filter";
 import { CitationCard } from "./_components/citation-card";
 import { CitationCardDialog } from "./_components/citation-card-dialog";
@@ -161,7 +161,7 @@ export default function CitationCardsPage() {
   };
 
   if (isLoading) {
-    return <LoadingSpinner variant="full" />;
+    return <CitationCardsSkeleton />;
   }
 
   return (

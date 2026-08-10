@@ -1,10 +1,10 @@
 "use server";
 
-import * as resourceActions from "./_actions/resource-actions";
-import * as pdfActions from "./_actions/pdf-actions";
-import * as noteActions from "./_actions/note-actions";
-import * as boxActions from "./_actions/box-actions";
-import type { NoteType } from "./_types/types";
+import * as resourceActions from "./resource-actions";
+import * as pdfActions from "./pdf-actions";
+import * as noteActions from "./note-actions";
+import * as boxActions from "./box-actions";
+import type { NoteType } from "./_lib/types";
 
 /**
  * Server Action: Fetches all library resources and notes for the current user.

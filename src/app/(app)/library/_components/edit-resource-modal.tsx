@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { useEditResourceForm } from "../_hooks/use-edit-resource-form";
 import { BoxSelectionGrid } from "./BoxSelectionGrid";
 import { ResourceMetadataFields } from "./ResourceMetadataFields";
-import type { LibraryResourceItem } from "../_types/types";
+import type { LibraryResourceItem } from "../_lib/types";
 
 interface EditResourceModalProps {
   isOpen: boolean;

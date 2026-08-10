@@ -18,7 +18,7 @@ import {
 } from "../tool-actions";
 import type { PendingToolCall } from "./tool-confirmation-card";
 import type { RagSearchResultItem } from "@/lib/services/rag-search";
-import type { Message } from "./types";
+import type { Message } from "../_lib/types";
 
 /** Sentinel used to trigger the initial session sync on mount regardless of the initial id value. */
 const PREV_SESSION_SENTINEL = Symbol("prev-session-sentinel");

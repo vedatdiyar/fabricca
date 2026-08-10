@@ -6,8 +6,8 @@ import { db } from "@/db";
 import { notes } from "@/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
-import { getOwnedSource } from "../_services/helpers";
-import type { NoteType } from "../_types/types";
+import { getOwnedSource } from "./_services/helpers";
+import type { NoteType } from "./_lib/types";
 
 /** Note type validation enum matching notes.noteTypeEnum. */
 const noteTypeSchema = z.enum(["DIRECT_QUOTE", "PARAPHRASE", "PERSONAL_NOTE"]);
