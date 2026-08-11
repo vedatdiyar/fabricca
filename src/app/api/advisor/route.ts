@@ -16,40 +16,7 @@ import {
 } from "@/lib/services/advisor-tools";
 import { formatToolExplanation } from "@/lib/services/advisor-tools/format-tool";
 import { runPipelineTurn } from "@/lib/services/advisor-pipeline/orchestrator";
-
-/**
- * Detects whether a query is a direct database action/mutation command
- * (e.g. creating/updating/deleting boxes, tasks, notes, or matrix fields)
- * that does not require academic literature retrieval.
- *
- * @param query - User input text.
- * @returns True when the query represents an explicit action/tool call.
- */
-function isActionQuery(query: string): boolean {
-  const lower = query.toLowerCase().trim();
-
-  const hasTarget =
-    /\b(kutu\w*|görev\w*|not\w*|matris\w*|kaynak\w*|kaynağı\w*|açıklam\w*|başlı\w*|alıntı\w*)\b/i.test(
-      lower,
-    );
-  const hasActionVerb =
-    /\b(ekle\w*|oluştur\w*|sil\w*|güncelle\w*|değiştir\w*|düzenle\w*|tamamla\w*|listele\w*|göster\w*|getir\w*|kaldır\w*|işaretle\w*)\b/i.test(
-      lower,
-    );
-
-  if (hasTarget && hasActionVerb) return true;
-
-  if (
-    /\b(ekle\w*|oluştur\w*|sil\w*|güncelle\w*|değiştir\w*|listele\w*|göster\w*)\b/i.test(
-      lower,
-    ) &&
-    lower.length < 80
-  ) {
-    return true;
-  }
-
-  return false;
-}
+import { formatRagSourceContext } from "@/lib/services/advisor-pipeline/context";
 
 const requestSchema = z.object({
   query: z
@@ -64,29 +31,7 @@ const requestSchema = z.object({
       }),
     )
     .optional(),
-  /** Active 3-stage pipeline context forwarded by the client to continue an open Socratic discussion. */
-  pipelineState: z
-    .object({
-      active: z.boolean(),
-      cycle: z.number().int().min(1),
-      originalDraft: z.string().max(1000).optional(),
-    })
-    .optional(),
 });
-
-/**
- * Formats a retrieval source page reference using Turkish academic APA conventions.
- *
- * @param source - The RAG retrieval result whose page span should be rendered.
- * @returns The page reference string ("Bilinmeyen Sayfa" when no page info exists).
- */
-function formatPageReference(source: RagSearchResultItem): string {
-  if (source.printedPageNumber) return `${source.printedPageNumber}.`;
-  const pageSpan = source.pageStart;
-  const range = source.pageEnd;
-  if (pageSpan == null) return "Bilinmeyen Sayfa";
-  return pageSpan === range ? `s. ${pageSpan}.` : `ss. ${pageSpan}–${range}.`;
-}
 
 /**
  * Handles POST requests for streaming advisor queries via SSE with Function Calling support.
@@ -112,7 +57,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { query, history, pipelineState } = parseResult.data;
+  const { query, history } = parseResult.data;
   const encoder = new TextEncoder();
 
   const readable = new ReadableStream({
@@ -122,13 +67,8 @@ export async function POST(request: Request) {
         const classification = await classifyAdvisorIntent(query, history);
         const persona = classification.persona;
 
-        // Pipeline is triggered by a fresh draft paragraph (classifier), or by an
-        // explicit client continuation of an open Socratic discussion when the
-        // incoming message is a direct answer rather than a new draft.
-        const isPipelineContinuation =
-          pipelineState?.active === true && classification.mode === "DIRECT";
-        const isPipelineTurn =
-          isPipelineContinuation || classification.mode === "PIPELINE";
+        // Heavy Flow is triggered by a fresh draft paragraph as classified by the intent classifier.
+        const isPipelineTurn = classification.mode === "PIPELINE";
 
         // Immediately inform UI client of assigned persona
         controller.enqueue(
@@ -138,14 +78,6 @@ export async function POST(request: Request) {
         );
 
         if (isPipelineTurn) {
-          const originalDraft =
-            pipelineState?.originalDraft?.trim() && isPipelineContinuation
-              ? pipelineState.originalDraft.trim()
-              : query;
-          const cycle = isPipelineContinuation
-            ? Math.min(3, (pipelineState?.cycle ?? 0) + 1)
-            : 1;
-
           const writer = {
             send(type: string, payload: Record<string, unknown>) {
               controller.enqueue(
@@ -165,16 +97,16 @@ export async function POST(request: Request) {
 
           const { text, sources, pipeline } = await runPipelineTurn(writer, {
             userId: session.userId,
-            query,
-            originalDraft,
-            isContinuation: isPipelineContinuation,
-            cycle,
-            history: history ?? [],
+            originalDraft: query,
           });
+
+          const responsePersona = !pipeline.audit
+            ? "SOCRATIC_ADVISOR"
+            : persona;
 
           controller.enqueue(
             encoder.encode(
-              `data: ${JSON.stringify({ type: "done", text: sanitizeModelStreamText(text), sources, persona, pipeline })}\n\n`,
+              `data: ${JSON.stringify({ type: "done", text: sanitizeModelStreamText(text), sources, persona: responsePersona, pipeline })}\n\n`,
             ),
           );
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
@@ -182,7 +114,7 @@ export async function POST(request: Request) {
           return;
         }
 
-        const isAction = isActionQuery(query) || classification.isActionQuery;
+        const isAction = classification.isActionQuery;
 
         let sources: RagSearchResultItem[] = [];
 
@@ -193,42 +125,9 @@ export async function POST(request: Request) {
 
         let contextText = "";
         if (sources.length > 0) {
-          const allPartial = sources.every((s) => s.isPartialMatch);
-          if (allPartial) {
-            contextText +=
-              "NOT: Aşağıdaki kaynaklar doğrudan eşleşmemektedir, yalnızca dolaylı olarak ilgili olabilirler. Bu bilgileri ihtiyatla kullanın.\n\n";
-          }
-          const emittedParagraphs = new Set<string>();
-          contextText += sources
-            .map((s, idx) => {
-              const pageStr = formatPageReference(s);
-              const secStr = s.sectionTitle
-                ? ` | Bölüm: ${s.sectionTitle}`
-                : "";
-              const authors = s.resourceAuthors.join(", ");
-              const yearStr = s.resourceYear
-                ? `Yıl: ${s.resourceYear}`
-                : "Yıl bilinmiyor";
-              const partialTag = s.isPartialMatch ? " [DOLAYLI İLGİLİ]" : "";
-              const windowText =
-                s.parentContent && s.parentContent.length > 0
-                  ? s.parentContent
-                  : s.content;
-              const paragraphText = windowText
-                .split(/\n{2,}/)
-                .map((p) => p.trim())
-                .filter((p) => p.length > 0)
-                .filter((p) => {
-                  if (emittedParagraphs.has(p)) return false;
-                  emittedParagraphs.add(p);
-                  return true;
-                })
-                .join("\n\n");
-              return `--- KAYNAK PARÇASI #${idx + 1}${partialTag} ---
-[Eser: "${s.resourceTitle}" | Yazar: ${authors} | ${yearStr} | ${pageStr}${secStr} | Alakalılık Skoru: ${(s.relevanceScore * 100).toFixed(1)}%]
-${paragraphText}`;
-            })
-            .join("\n\n");
+          contextText = formatRagSourceContext(sources, {
+            includePartialNotice: true,
+          });
         } else if (isAction) {
           contextText =
             "Kullanıcı doğrudan bir veritabanı/araç işlemi gerçekleştirmek istemektedir. İlgili aracı (function call) uygun parametrelerle hemen çağırın.";
@@ -358,6 +257,7 @@ ${paragraphText}`;
                     encoder.encode(
                       `data: ${JSON.stringify({
                         type: "tool_call_request",
+                        status: "pending",
                         toolCallId,
                         name: call.name,
                         args,

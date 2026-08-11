@@ -88,7 +88,10 @@ function groupRows(
     }
     rowItems.sort((a, b) => a.x - b.x);
     rows.push({
-      text: rowItems.map((it) => it.text.trim()).join(" ").replace(/\s+/g, " "),
+      text: rowItems
+        .map((it) => it.text.trim())
+        .join(" ")
+        .replace(/\s+/g, " "),
       x: rowItems[0].x,
     });
   }
@@ -147,10 +150,7 @@ function resolveAnchorChain(
 
   for (let page = 0; page <= maxPage; page++) {
     if (printed.has(page)) continue;
-    const prev = Math.max(
-      ...[...printed.keys()].filter((p) => p < page),
-      -1,
-    );
+    const prev = Math.max(...[...printed.keys()].filter((p) => p < page), -1);
     if (prev === -1) continue;
     const gap = page - prev;
     const prevVal = printed.get(prev)!;
@@ -177,7 +177,11 @@ function resolveAnchorChain(
 export function detectPrintedPageNumbers(
   items: PositionedTextItemInput[],
 ): PrintedPageDetection {
-  const empty = { printedByPage: new Map<number, number>(), offset: null, chainStartPage: null };
+  const empty = {
+    printedByPage: new Map<number, number>(),
+    offset: null,
+    chainStartPage: null,
+  };
   if (items.length === 0) return empty;
 
   const height = Math.max(...items.map((it) => it.y + it.height));
@@ -302,7 +306,11 @@ export function parseRunningHeadNumber(
  * @returns A map populated with a printed page number per 0-based page index.
  */
 export function resolveMistralPrintedPages(
-  pages: Array<{ index: number; header?: string | null; footer?: string | null }>,
+  pages: Array<{
+    index: number;
+    header?: string | null;
+    footer?: string | null;
+  }>,
 ): Map<number, number> {
   const candidateByPage = new Map<number, Set<number>>();
   let maxPage = 0;

@@ -5,6 +5,7 @@ import { Send } from "lucide-react";
 
 interface AdvisorChatInputProps {
   disabled?: boolean;
+  isLocked?: boolean;
   onSend: (message: string) => void;
 }
 
@@ -20,6 +21,7 @@ interface AdvisorChatInputProps {
  */
 export function AdvisorChatInput({
   disabled = false,
+  isLocked = false,
   onSend,
 }: AdvisorChatInputProps) {
   const [inputQuery, setInputQuery] = useState("");
@@ -63,9 +65,14 @@ export function AdvisorChatInput({
             handleSend();
           }
         }}
-        placeholder="Akademik danışmanınıza kütüphaneniz veya tez yapınızla ilgili bir soru sorun..."
+        placeholder={
+          isLocked
+            ? "Denetimde kritik sorunlar tespit edildi. Taslağınızı revize ederek yeniden gönderin."
+            : "Akademik danışmanınıza kütüphaneniz veya tez yapınızla ilgili bir soru sorun..."
+        }
         rows={1}
-        className="flex-1 p-3 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none resize-none overflow-y-auto max-h-50 min-h-11"
+        disabled={disabled}
+        className="flex-1 p-3 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none resize-none overflow-y-auto max-h-50 min-h-11 disabled:opacity-50 disabled:cursor-not-allowed"
       />
 
       <button

@@ -12,17 +12,11 @@ import {
 import type { PendingToolCall } from "../_components/tool-confirmation-card";
 import type { RagSearchResultItem } from "@/lib/services/rag-search";
 import type { PipelineResult } from "@/lib/services/advisor-pipeline/types";
+import type { AdvisorPersona } from "@/lib/services/advisor-classifier";
 import type { Message } from "../_lib/types";
 
 /** Sentinel used to trigger the initial session sync on mount regardless of the initial id value. */
 const PREV_SESSION_SENTINEL = Symbol("prev-session-sentinel");
-
-/** Tracks an in-progress Socratic discussion so the next user turn continues the pipeline. */
-export interface AdvisorPipelineContext {
-  active: boolean;
-  cycle: number;
-  originalDraft: string;
-}
 
 type CitationUpdater =
   | { messageId: string; sourceIndex: number }
@@ -33,7 +27,6 @@ type CitationUpdater =
 
 interface UseAdvisorSessionsParams {
   initialSessionId?: number;
-  pipelineContextRef: { current: AdvisorPipelineContext | null };
   isSendingRef: { current: boolean };
   setActiveCitation: (updater: CitationUpdater) => void;
 }
@@ -43,14 +36,12 @@ interface UseAdvisorSessionsParams {
  *
  * @param root0 - Hook dependencies.
  * @param root0.initialSessionId - Session id to restore on mount, if any.
- * @param root0.pipelineContextRef - Shared ref tracking an in-progress Socratic discussion.
  * @param root0.isSendingRef - Shared ref signalling an in-flight message send.
  * @param root0.setActiveCitation - Resets the active UI citation on session switches.
  * @returns Session state and session lifecycle handlers.
  */
 export function useAdvisorSessions({
   initialSessionId,
-  pipelineContextRef,
   isSendingRef,
   setActiveCitation,
 }: UseAdvisorSessionsParams) {
@@ -86,9 +77,7 @@ export function useAdvisorSessions({
           id: `msg-${m.id}`,
           dbId: m.id,
           role: m.role as "user" | "model",
-          persona:
-            (m.persona as "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT" | undefined) ??
-            undefined,
+          persona: (m.persona as AdvisorPersona | undefined) ?? undefined,
           content: m.content,
           sources:
             (m.sources as RagSearchResultItem[] | undefined) ?? undefined,
@@ -101,36 +90,22 @@ export function useAdvisorSessions({
           }),
         }));
         setMessages(mapped);
-        // Restore an open Socratic discussion so the next user turn resumes the pipeline.
-        const lastPipelineMessage = [...mapped]
-          .reverse()
-          .find(
-            (msg) => msg.role === "model" && msg.pipeline?.stage === "socratic",
-          );
-        if (
-          lastPipelineMessage?.pipeline &&
-          lastPipelineMessage.pipeline.stage === "socratic" &&
-          !lastPipelineMessage.pipeline.diff
-        ) {
-          pipelineContextRef.current = {
-            active: true,
-            cycle: lastPipelineMessage.pipeline.cycle,
-            originalDraft: lastPipelineMessage.pipeline.originalDraft ?? "",
-          };
-        }
       } else {
         setMessages([]);
       }
       setActiveCitation(null);
     },
-    [setMessages, setActiveCitation, pipelineContextRef],
+    [setMessages, setActiveCitation],
   );
 
   const prevInitialSessionIdRef = useRef<number | undefined | symbol>(
     PREV_SESSION_SENTINEL,
   );
+  const activeSessionIdRef = useRef(activeSessionId);
+  activeSessionIdRef.current = activeSessionId;
 
-  // Load sessions and the active session on mount, and resync when the initialSessionId route parameter changes (e.g. browser navigation)
+  // Load sessions and the active session on mount, and resync when the initialSessionId route parameter changes (e.g. browser navigation).
+  // activeSessionId is intentionally excluded from deps to prevent the sidebar click (which sets activeSessionId) from re-triggering syncFromProp and racing against handleSelectSession.
   useEffect(() => {
     if (prevInitialSessionIdRef.current === initialSessionId) return;
     prevInitialSessionIdRef.current = initialSessionId;
@@ -150,11 +125,11 @@ export function useAdvisorSessions({
           : null;
 
       if (targetId !== null) {
-        if (activeSessionId !== targetId) {
+        if (activeSessionIdRef.current !== targetId) {
           setActiveSessionId(targetId);
           await loadMessages(targetId);
         }
-      } else if (activeSessionId !== null) {
+      } else if (activeSessionIdRef.current !== null) {
         setActiveSessionId(null);
         setMessages([]);
         setActiveCitation(null);
@@ -163,40 +138,31 @@ export function useAdvisorSessions({
     void syncFromProp();
     return () => {
       cancelled = true;
+      prevInitialSessionIdRef.current = PREV_SESSION_SENTINEL;
     };
-  }, [
-    initialSessionId,
-    activeSessionId,
-    loadMessages,
-    setMessages,
-    setActiveCitation,
-    isSendingRef,
-  ]);
+  }, [initialSessionId, loadMessages, setMessages, setActiveCitation, isSendingRef]);
 
   const handleSelectSession = useCallback(
     async (sessionId: number) => {
-      pipelineContextRef.current = null;
       setActiveSessionId(sessionId);
       await loadMessages(sessionId);
       syncUrlSession(sessionId);
     },
-    [loadMessages, syncUrlSession, pipelineContextRef],
+    [loadMessages, syncUrlSession],
   );
 
   const handleCreateSession = useCallback(() => {
-    pipelineContextRef.current = null;
     setActiveSessionId(null);
     setMessages([]);
     setActiveCitation(null);
     syncUrlSession(null);
-  }, [setMessages, setActiveCitation, syncUrlSession, pipelineContextRef]);
+  }, [setMessages, setActiveCitation, syncUrlSession]);
 
   const handleDeleteSession = useCallback(
     async (sessionId: number) => {
       const res = await deleteChatSession(sessionId);
       if (res.success) {
         if (activeSessionId === sessionId) {
-          pipelineContextRef.current = null;
           setActiveSessionId(null);
           setMessages([]);
           setActiveCitation(null);
@@ -216,7 +182,6 @@ export function useAdvisorSessions({
       loadSessions,
       syncUrlSession,
       setActiveCitation,
-      pipelineContextRef,
     ],
   );
 

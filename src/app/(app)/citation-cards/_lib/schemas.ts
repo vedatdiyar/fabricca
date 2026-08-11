@@ -27,11 +27,7 @@ export const updateCitationCardSchema = createCitationCardSchema.extend({
 });
 
 /** Input payload type for creating a citation card. */
-export type CreateCitationCardInput = z.infer<
-  typeof createCitationCardSchema
->;
+export type CreateCitationCardInput = z.infer<typeof createCitationCardSchema>;
 
 /** Input payload type for updating a citation card. */
-export type UpdateCitationCardInput = z.infer<
-  typeof updateCitationCardSchema
->;
+export type UpdateCitationCardInput = z.infer<typeof updateCitationCardSchema>;

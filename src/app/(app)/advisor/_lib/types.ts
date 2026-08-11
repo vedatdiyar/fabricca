@@ -1,5 +1,6 @@
 import type { RagSearchResultItem } from "@/lib/services/rag-search";
 import type { PipelineResult } from "@/lib/services/advisor-pipeline/types";
+import type { AdvisorPersona } from "@/lib/services/advisor-classifier";
 
 export interface PendingToolCall {
   toolCallId: string;
@@ -15,7 +16,7 @@ export interface Message {
   id: string;
   dbId?: number;
   role: "user" | "model";
-  persona?: "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT";
+  persona?: AdvisorPersona;
   content: string;
   sources?: RagSearchResultItem[];
   toolCalls?: PendingToolCall[];

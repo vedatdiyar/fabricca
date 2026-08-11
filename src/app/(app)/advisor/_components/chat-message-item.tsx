@@ -3,7 +3,8 @@
 import { Check, Copy, User, GraduationCap, BookOpen } from "lucide-react";
 import { MarkdownRenderer } from "./markdown-renderer";
 import { ToolConfirmationCard } from "./tool-confirmation-card";
-import { AuditBanner, PipelineResultView } from "./pipeline-result-view";
+import { PipelineResultView } from "./pipeline-result-view";
+import type { AdvisorPersona } from "@/lib/services/advisor-classifier";
 import type { Message } from "../_lib/types";
 
 /**
@@ -13,11 +14,7 @@ import type { Message } from "../_lib/types";
  * @param root0.persona - The message persona.
  * @returns The persona badge markup.
  */
-export function PersonaBadge({
-  persona,
-}: {
-  persona?: "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT";
-}) {
+export function PersonaBadge({ persona }: { persona?: AdvisorPersona }) {
   if (persona === "SOCRATIC_ADVISOR") {
     return (
       <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 mb-2.5 shadow-xs">
@@ -53,6 +50,7 @@ interface ChatMessageItemProps {
     executionResult?: unknown,
     previousState?: Record<string, unknown>,
   ) => Promise<void>;
+  onApprovePipeline?: () => void;
 }
 
 /**
@@ -77,6 +75,7 @@ export function ChatMessageItem({
   onApproveToolCall,
   onRejectToolCall,
   onUndoToolCall,
+  onApprovePipeline,
 }: ChatMessageItemProps) {
   const isUser = msg.role === "user";
   const isSocratic = msg.persona === "SOCRATIC_ADVISOR";
@@ -84,11 +83,11 @@ export function ChatMessageItem({
 
   return (
     <div
-      className={`flex space-x-3 max-w-full overflow-hidden ${isUser ? "justify-end" : "justify-start"}`}
+      className={`flex space-x-3 max-w-full ${isUser ? "justify-end" : "justify-start"}`}
     >
       {!isUser && (
         <div
-          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 overflow-hidden transition-all ${
+          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 transition-all ${
             isSocratic
               ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-2 ring-amber-500/40"
               : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 ring-2 ring-emerald-500/40"
@@ -106,9 +105,6 @@ export function ChatMessageItem({
         className={`space-y-2 min-w-0 ${isUser ? "items-end max-w-3xl" : "items-start flex-1 max-w-4xl"}`}
       >
         {!isUser && <PersonaBadge persona={msg.persona} />}
-        {!isUser && msg.pipeline?.audit && (
-          <AuditBanner audit={msg.pipeline.audit} />
-        )}
         <div
           className={`p-4 rounded-md text-sm leading-relaxed break-words min-w-0 transition-all ${
             isUser
@@ -165,8 +161,13 @@ export function ChatMessageItem({
           </div>
         </div>
 
-        {!isUser && msg.pipeline && (
-          <PipelineResultView pipeline={msg.pipeline} />
+        {!isUser && msg.pipeline?.audit?.hasCriticalIssues && (
+          <div className="mt-2">
+            <PipelineResultView
+              pipeline={msg.pipeline}
+              onApprove={onApprovePipeline}
+            />
+          </div>
         )}
       </div>
 

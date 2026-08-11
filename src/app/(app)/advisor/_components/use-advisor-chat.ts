@@ -3,14 +3,13 @@
 import { useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import { saveChatMessage, generateChatTitleAction } from "../actions";
-import {
-  useAdvisorSessions,
-  type AdvisorPipelineContext,
-} from "../_hooks/use-advisor-sessions";
+import { useAdvisorSessions } from "../_hooks/use-advisor-sessions";
 import { useAdvisorToolHandler } from "../_hooks/use-advisor-tool-handler";
+import type { AdvisorPersona } from "@/lib/services/advisor-classifier";
 import type { PendingToolCall } from "./tool-confirmation-card";
 import type { RagSearchResultItem } from "@/lib/services/rag-search";
 import type { PipelineResult } from "@/lib/services/advisor-pipeline/types";
+import type { PipelineResultData } from "@/db/schema";
 import type { Message } from "../_lib/types";
 
 /**
@@ -34,7 +33,7 @@ export function useAdvisorChat(initialSessionId?: number) {
     text: string;
     sources: RagSearchResultItem[] | undefined;
     toolCalls: PendingToolCall[] | undefined;
-    persona: "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT" | undefined;
+    persona: AdvisorPersona | undefined;
     pipeline: PipelineResult | undefined;
   }>({
     text: "",
@@ -45,9 +44,9 @@ export function useAdvisorChat(initialSessionId?: number) {
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
 
-  /** Tracks an in-progress Socratic discussion so the next user turn continues the pipeline. */
-  const pipelineContextRef = useRef<AdvisorPipelineContext | null>(null);
+  const isSendingRef = useRef(false);
 
   const setActiveCitation = useCallback(
     (
@@ -73,24 +72,29 @@ export function useAdvisorChat(initialSessionId?: number) {
     setUi((prev) => ({ ...prev, copiedMessageId: value }));
   }, []);
 
-  const isSendingRef = useRef(false);
-
   const {
     messages,
     setMessages,
     sessions,
     activeSessionId,
     loadSessions,
-    handleSelectSession,
+    handleSelectSession: selectSessionRaw,
     handleCreateSession,
     handleDeleteSession,
     createChatSessionAndActivate,
   } = useAdvisorSessions({
     initialSessionId,
-    pipelineContextRef,
     isSendingRef,
     setActiveCitation,
   });
+
+  const handleSelectSession = useCallback(
+    async (sessionId: number) => {
+      setIsLocked(false);
+      await selectSessionRaw(sessionId);
+    },
+    [selectSessionRaw],
+  );
 
   const { handleApproveToolCall, handleUndoToolCall, handleRejectToolCall } =
     useAdvisorToolHandler({ setMessages });
@@ -102,6 +106,7 @@ export function useAdvisorChat(initialSessionId?: number) {
 
     isSendingRef.current = true;
     let sessionId = activeSessionId;
+    setIsLocked(false);
 
     if (!sessionId) {
       const title =
@@ -156,7 +161,6 @@ export function useAdvisorChat(initialSessionId?: number) {
         body: JSON.stringify({
           query: queryToSend,
           history: historyPayload,
-          pipelineState: pipelineContextRef.current ?? undefined,
         }),
       });
 
@@ -168,8 +172,7 @@ export function useAdvisorChat(initialSessionId?: number) {
       const decoder = new TextDecoder();
       let buffer = "";
       let accumulatedToolCalls: PendingToolCall[] = [];
-      let assignedPersona: "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT" | undefined =
-        undefined;
+      let assignedPersona: AdvisorPersona | undefined = undefined;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -193,11 +196,19 @@ export function useAdvisorChat(initialSessionId?: number) {
             } else if (event.type === "stage_start") {
               setStreaming((prev) => ({
                 ...prev,
-                pipeline: {
-                  stage: event.stage,
-                  cycle: pipelineContextRef.current?.cycle ?? 1,
-                },
+                pipeline: { stage: event.stage },
               }));
+            } else if (event.type === "stage_done") {
+              setStreaming((prev) => ({
+                ...prev,
+                pipeline: { stage: event.stage, audit: event.payload },
+              }));
+              if (
+                event.stage === "audit" &&
+                event.payload?.hasCriticalIssues === true
+              ) {
+                setIsLocked(true);
+              }
             } else if (event.type === "delta") {
               setStreaming((prev) => ({
                 ...prev,
@@ -223,26 +234,14 @@ export function useAdvisorChat(initialSessionId?: number) {
               const pipelineResult = event.pipeline as
                 PipelineResult | undefined;
 
-              if (
-                pipelineResult &&
-                pipelineResult.stage === "socratic" &&
-                !pipelineResult.diff
-              ) {
-                pipelineContextRef.current = {
-                  active: true,
-                  cycle: pipelineResult.cycle,
-                  originalDraft:
-                    pipelineContextRef.current?.originalDraft ?? queryToSend,
-                };
-              } else if (
-                pipelineResult &&
-                pipelineResult.stage === "redaction"
-              ) {
-                pipelineContextRef.current = null;
+              if (pipelineResult) {
                 setStreaming((prev) => ({
                   ...prev,
                   pipeline: pipelineResult,
                 }));
+                if (pipelineResult.audit?.hasCriticalIssues) {
+                  setIsLocked(true);
+                }
               }
 
               const modelMessageId = `model-${crypto.randomUUID()}`;
@@ -270,6 +269,9 @@ export function useAdvisorChat(initialSessionId?: number) {
               };
 
               if (sessionId) {
+                const pipelineData: PipelineResultData | null = pipelineResult
+                  ? { ...pipelineResult, cycle: 1 }
+                  : null;
                 const saveRes = await saveChatMessage(
                   sessionId,
                   "model",
@@ -279,7 +281,7 @@ export function useAdvisorChat(initialSessionId?: number) {
                     ? accumulatedToolCalls
                     : undefined,
                   finalPersona,
-                  pipelineResult,
+                  pipelineData,
                 );
                 if (saveRes.success && saveRes.messageId) {
                   modelMsg.dbId = saveRes.messageId;
@@ -332,10 +334,15 @@ export function useAdvisorChat(initialSessionId?: number) {
       return msg?.sources?.[activeCitation.sourceIndex] ?? null;
     })();
 
+  const handleApprovePipeline = useCallback(() => {
+    setIsLocked(false);
+  }, []);
+
   return {
     messages,
     setMessages,
     isLoading,
+    isLocked,
     activeCitation,
     setActiveCitation,
     sessions,
@@ -354,6 +361,7 @@ export function useAdvisorChat(initialSessionId?: number) {
     handleApproveToolCall,
     handleUndoToolCall,
     handleRejectToolCall,
+    handleApprovePipeline,
     handleSend,
     handleCitationPosition,
   };

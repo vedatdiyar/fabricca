@@ -1,62 +1,81 @@
-/** Pipeline stage identifiers emitted over the advisor SSE stream. */
-export type PipelineStage = "audit" | "socratic" | "redaction";
+import { z } from "zod";
+import type { JsonSchema } from "@/lib/services/gemini";
+
+/** Pipeline stage identifiers emitted over the advisor SSE stream (Heavy Flow runs Stage 1 Audit only). */
+export type PipelineStage = "audit";
 
 /** Severity classification for a single audit finding. */
 export type AuditFindingSeverity = "CRITICAL" | "WARNING" | "NOTE";
 
+/** Zod schema for a single audit finding verifying citation accuracy against RAG context. */
+export const auditFindingSchema = z.object({
+  message: z.string(),
+  severity: z.enum(["CRITICAL", "WARNING", "NOTE"]),
+  sourceTitle: z.string().optional(),
+  citedPages: z.string().optional(),
+});
+
 /** A single audit finding verifying citation accuracy and claim consistency against RAG context. */
-export interface AuditFinding {
-  /** Human-readable Turkish description of the issue or confirmation. */
-  message: string;
-  severity: AuditFindingSeverity;
-  /** The resource title this finding is related to, when applicable. */
-  sourceTitle?: string;
-  /** The page reference occurrence cited in the draft, e.g. "s. 45". */
-  citedPages?: string;
-}
+export type AuditFinding = z.infer<typeof auditFindingSchema>;
+
+/** Zod schema for the structured output of the Stage 1 strict audit layer. */
+export const auditReportSchema = z.object({
+  summary: z.string(),
+  findings: z.array(auditFindingSchema),
+  hasCriticalIssues: z.boolean(),
+});
 
 /** Structured output of the Stage 1 strict audit layer. */
-export interface AuditReport {
-  /** Turkish summary of the overall audit verdict. */
-  summary: string;
-  findings: AuditFinding[];
-  /** True when at least one CRITICAL citation/page discrepancy was found. */
-  hasCriticalIssues: boolean;
-}
+export type AuditReport = z.infer<typeof auditReportSchema>;
 
-/** Internal evaluation state reached at the end of a Socratic discussion cycle. */
-export type SocraticState = "REQUIRES_ANSWER" | "COMPLETE";
+/** JSON schema used for Gemini structured content generation of the Stage 1 audit report. */
+export const auditReportJsonSchema: JsonSchema = {
+  type: "object",
+  properties: {
+    summary: {
+      type: "string",
+      description: "Turkish summary of the overall Stage 1 audit verdict.",
+    },
+    findings: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          message: {
+            type: "string",
+            description:
+              "Turkish description of the audit finding or confirmation.",
+          },
+          severity: {
+            type: "string",
+            enum: ["CRITICAL", "WARNING", "NOTE"],
+          },
+          sourceTitle: {
+            type: "string",
+            description: "Related library resource title when applicable.",
+          },
+          citedPages: {
+            type: "string",
+            description:
+              "The page reference occurrence cited in the draft (e.g. s. 45).",
+          },
+        },
+        required: ["message", "severity"],
+        additionalProperties: false,
+      },
+    },
+    hasCriticalIssues: {
+      type: "boolean",
+      description:
+        "True when at least one CRITICAL citation/page inconsistency was found.",
+    },
+  },
+  required: ["summary", "findings", "hasCriticalIssues"],
+  additionalProperties: false,
+};
 
-/** Structured Socratic evaluation output that prevents infinite looping or immediate concession. */
-export interface SocraticVerdict {
-  state: SocraticState;
-  /** Turkish summary of the internal evaluation across logic, thesis consistency and counter-arguments. */
-  summary: string;
-  /** Internal readiness score (0-100) indicating how close the draft is to being convincingly defended. */
-  readinessScore: number;
-}
-
-/** Side-by-side diff visualisation payload shipped to the client. */
-export interface PipelineDiff {
-  original: string;
-  polished: string;
-}
-
-/** Persisted pipeline state attached to a chat message. */
+/** Persisted pipeline result attached to a chat message (Heavy Flow Stage 1 audit outcome). */
 export interface PipelineResult {
   stage: PipelineStage;
-  /** Total discussion cycles elapsed (drives the anti-infinite-loop cap). */
-  cycle: number;
-  /** The original draft paragraph that initiated the pipeline, retained for continuation turns. */
-  originalDraft?: string;
   audit?: AuditReport;
-  verdict?: SocraticVerdict;
-  diff?: PipelineDiff;
-}
-
-/** In-memory streaming state for a running pipeline turn. */
-export interface PipelineTurnState {
-  pipeline: PipelineResult;
-  pendingToolCalls: unknown[];
-  fullText: string;
 }

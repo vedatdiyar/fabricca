@@ -254,7 +254,8 @@ export async function parsePdfToDocumentAnalysis(
     ) {
       const value = pageIndex0 + pageDetection.offset;
       const distance = pageDetection.chainStartPage - pageIndex0;
-      if (distance <= MAX_BACKWARD_EXTRAP_PAGES && value >= 1) return String(value);
+      if (distance <= MAX_BACKWARD_EXTRAP_PAGES && value >= 1)
+        return String(value);
     }
     return undefined;
   };

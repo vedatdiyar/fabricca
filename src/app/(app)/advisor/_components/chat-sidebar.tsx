@@ -118,10 +118,10 @@ export function ChatSidebar({
                 key={item.id}
                 onClick={() => onSelectSession(item.id)}
                 className={cn(
-                  "group relative cursor-pointer transition-all border p-3 hover:border-primary/20",
+                  "group relative cursor-pointer transition-all border p-3",
                   isSelected
-                    ? "bg-accent/20 border-primary/20"
-                    : "bg-background border-border hover:bg-accent/20",
+                    ? "bg-primary/10 border-primary/20 text-foreground font-semibold"
+                    : "bg-card/50 border-border/40 hover:bg-accent/20 text-muted-foreground hover:border-primary/20",
                 )}
               >
                 <CardContent className="p-0 space-y-1.5">

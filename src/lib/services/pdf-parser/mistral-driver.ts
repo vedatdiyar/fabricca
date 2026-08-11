@@ -129,7 +129,11 @@ export async function runMistralOcr(
       // Resolve printed numbers from the isolated header/footer strings using
       // the same +1 anchor chain as the born-digital path.
       const printedByPage = resolveMistralPrintedPages(
-        rawPages.map((p) => ({ index: p.index, header: p.header, footer: p.footer })),
+        rawPages.map((p) => ({
+          index: p.index,
+          header: p.header,
+          footer: p.footer,
+        })),
       );
 
       const pages: MistralOcrPage[] = rawPages.map((p) => {
@@ -140,7 +144,9 @@ export async function runMistralOcr(
         return {
           index: p.index,
           markdown,
-          ...(printed !== undefined ? { printedPageNumber: String(printed) } : {}),
+          ...(printed !== undefined
+            ? { printedPageNumber: String(printed) }
+            : {}),
         };
       });
 

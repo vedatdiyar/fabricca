@@ -18,6 +18,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
   const {
     messages,
     isLoading,
+    isLocked,
     activeCitation,
     setActiveCitation,
     sessions,
@@ -36,6 +37,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
     handleApproveToolCall,
     handleUndoToolCall,
     handleRejectToolCall,
+    handleApprovePipeline,
     handleSend,
     handleCitationPosition,
   } = useAdvisorChat(initialSessionId);
@@ -77,10 +79,15 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
           onApproveToolCall={handleApproveToolCall}
           onRejectToolCall={handleRejectToolCall}
           onUndoToolCall={handleUndoToolCall}
+          onApprovePipeline={handleApprovePipeline}
         />
 
         {/* Input Box */}
-        <AdvisorChatInput onSend={handleSend} disabled={isLoading} />
+        <AdvisorChatInput
+          onSend={handleSend}
+          disabled={isLoading}
+          isLocked={isLocked}
+        />
       </div>
 
       {/* Citation Dialog */}

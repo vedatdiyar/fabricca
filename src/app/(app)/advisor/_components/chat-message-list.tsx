@@ -6,7 +6,8 @@ import { Sparkles, GraduationCap, BookOpen } from "lucide-react";
 import { ChatMessageItem, PersonaBadge } from "./chat-message-item";
 import { MarkdownRenderer } from "./markdown-renderer";
 import { ToolConfirmationCard } from "./tool-confirmation-card";
-import { AuditBanner, PipelineResultView } from "./pipeline-result-view";
+import { PipelineResultView } from "./pipeline-result-view";
+import type { AdvisorPersona } from "@/lib/services/advisor-classifier";
 import type { Message } from "../_lib/types";
 import type { PendingToolCall } from "./tool-confirmation-card";
 import type { RagSearchResultItem } from "@/lib/services/rag-search";
@@ -18,7 +19,7 @@ interface ChatMessageListProps {
   streamingText: string;
   streamingSources?: RagSearchResultItem[];
   streamingToolCalls?: PendingToolCall[];
-  streamingPersona?: "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT";
+  streamingPersona?: AdvisorPersona;
   streamingPipeline?: PipelineResult;
   activeSessionId: number | null;
   copiedMessageId: string | null;
@@ -37,6 +38,7 @@ interface ChatMessageListProps {
     executionResult?: unknown,
     previousState?: Record<string, unknown>,
   ) => Promise<void>;
+  onApprovePipeline?: () => void;
 }
 
 /**
@@ -75,12 +77,28 @@ export function ChatMessageList({
   onApproveToolCall,
   onRejectToolCall,
   onUndoToolCall,
+  onApprovePipeline,
 }: ChatMessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const prevSessionIdRef = useRef<number | null>(null);
+
+  const isStreaming = isLoading || streamingToolCalls;
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading, streamingToolCalls]);
+    if (!messagesEndRef.current) return;
+
+    if (prevSessionIdRef.current !== activeSessionId) {
+      prevSessionIdRef.current = activeSessionId;
+      if (isStreaming) {
+        messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      }
+      return;
+    }
+
+    if (isStreaming) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, isStreaming, activeSessionId]);
 
   return (
     <div
@@ -119,14 +137,15 @@ export function ChatMessageList({
             onApproveToolCall={onApproveToolCall}
             onRejectToolCall={onRejectToolCall}
             onUndoToolCall={onUndoToolCall}
+            onApprovePipeline={onApprovePipeline}
           />
         ))
       )}
 
       {isLoading && (streamingText || streamingToolCalls) && (
-        <div className="flex space-x-3 justify-start max-w-full overflow-hidden">
+        <div className="flex space-x-3 justify-start max-w-full">
           <div
-            className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 overflow-hidden transition-all ${
+            className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 transition-all ${
               streamingPersona === "SOCRATIC_ADVISOR"
                 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-2 ring-amber-500/40"
                 : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 ring-2 ring-emerald-500/40"
@@ -140,9 +159,6 @@ export function ChatMessageList({
           </div>
           <div className="space-y-2 items-start flex-1 max-w-4xl min-w-0">
             <PersonaBadge persona={streamingPersona} />
-            {streamingPipeline?.audit && (
-              <AuditBanner audit={streamingPipeline.audit} />
-            )}
             <div
               className={`p-4 rounded-md text-sm leading-relaxed rounded-tl-none break-words min-w-0 transition-all ${
                 streamingPersona === "SOCRATIC_ADVISOR"
@@ -172,9 +188,18 @@ export function ChatMessageList({
                 />
               ))}
             </div>
-            {streamingPipeline && (
-              <PipelineResultView pipeline={streamingPipeline} />
-            )}
+          </div>
+        </div>
+      )}
+
+      {isLoading && streamingPipeline?.audit && (
+        <div className="flex space-x-3 justify-start max-w-full">
+          <div className="w-8 shrink-0" />
+          <div className="flex-1 max-w-4xl min-w-0">
+            <PipelineResultView
+              pipeline={streamingPipeline}
+              onApprove={onApprovePipeline}
+            />
           </div>
         </div>
       )}

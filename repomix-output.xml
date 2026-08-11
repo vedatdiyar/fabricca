@@ -61,7 +61,6 @@ src/
           citation-popover-content.tsx
           markdown-renderer.tsx
           pipeline-result-view.tsx
-          side-by-side-diff.tsx
           tool-confirmation-card.tsx
           use-advisor-chat.ts
         _hooks/
@@ -328,10 +327,9 @@ src/
         sanitizer.ts
         utils.ts
       advisor-pipeline/
+        context.ts
         orchestrator.ts
         stage1-audit.ts
-        stage2-socratic.ts
-        stage3-redaction.ts
         types.ts
       advisor-tools/
         declarations.ts
@@ -955,6 +953,108 @@ const Toaster = ({ ...props }: ToasterProps) => {
 export { Toaster };
 </file>
 
+<file path="src/lib/services/advisor-pipeline/context.ts">
+import type { RagSearchResultItem } from "@/lib/services/rag-search";
+
+/**
+ * Formats a RAG source page reference using Turkish academic APA conventions.
+ *
+ * @param source - The RAG retrieval result whose page span should be rendered.
+ * @returns The page reference string ("Bilinmeyen Sayfa" when no page info exists).
+ */
+export function formatPageReference(source: RagSearchResultItem): string {
+  if (source.printedPageNumber) return `${source.printedPageNumber}.`;
+  const pageSpan = source.pageStart;
+  const range = source.pageEnd;
+  if (pageSpan == null) return "Bilinmeyen Sayfa";
+  return pageSpan === range ? `s. ${pageSpan}.` : `ss. ${pageSpan}–${range}.`;
+}
+
+/**
+ * Builds an explicit in-range note for the audit grounding when a source spans
+ * multiple published pages, so any cited page inside the span (e.g. s. 126 in
+ * ss. 119-151) is recognized as a valid match instead of a "not found" finding.
+ *
+ * @param source - The RAG retrieval result.
+ * @returns The Turkish range note string, or "" when the source is single-page.
+ */
+function buildRangeNote(source: RagSearchResultItem): string {
+  const printed = source.printedPageNumber;
+  if (!printed) return "";
+  const match = /(\d{1,4})\s*[-–]\s*(\d{1,4})/.exec(printed);
+  if (!match) return "";
+  const start = Number(match[1]);
+  const end = Number(match[2]);
+  if (end - start < 1) return "";
+  return ` [Kaynak ${match[1]}-${match[2]} aralığındadır; bu aralıktaki her sayfa (ör. s. ${start + 1}) kaynakla EŞLEŞİR ve geçerlidir]`;
+}
+
+/** Options controlling how a RAG source context block is rendered. */
+export interface RagSourceContextOptions {
+  /** Prepend a caution note when every retrieved source is only a partial/indirect match. */
+  includePartialNotice?: boolean;
+  /** Append the explicit in-range page validation note used by the strict audit gate. */
+  includeRangeNote?: boolean;
+}
+
+/**
+ * Renders a unified Turkish RAG context block ("--- KAYNAK PARÇASI ---") for a
+ * list of retrieved sources, deduplicating repeated paragraphs across blocks.
+ *
+ * @param sources - The RAG retrieval results to render.
+ * @param options - Optional rendering controls.
+ * @returns The joined source context block, or "" when no sources are provided.
+ */
+export function formatRagSourceContext(
+  sources: RagSearchResultItem[],
+  options: RagSourceContextOptions = {},
+): string {
+  if (sources.length === 0) return "";
+
+  let context = "";
+  if (options.includePartialNotice && sources.every((s) => s.isPartialMatch)) {
+    context +=
+      "NOT: Aşağıdaki kaynaklar doğrudan eşleşmemektedir, yalnızca dolaylı olarak ilgili olabilirler. Bu bilgileri ihtiyatla kullanın.\n\n";
+  }
+
+  const emittedParagraphs = new Set<string>();
+
+  context += sources
+    .map((source, idx) => {
+      const authors = source.resourceAuthors.join(", ");
+      const year = source.resourceYear
+        ? `Yıl: ${source.resourceYear}`
+        : "Yıl bilinmiyor";
+      const pageRef = formatPageReference(source);
+      const rangeNote = options.includeRangeNote ? buildRangeNote(source) : "";
+      const sectionStr = source.sectionTitle
+        ? ` | Bölüm: ${source.sectionTitle}`
+        : "";
+      const partialTag = source.isPartialMatch ? " [DOLAYLI İLGİLİ]" : "";
+      const windowText =
+        source.parentContent && source.parentContent.length > 0
+          ? source.parentContent
+          : source.content;
+      const paragraphText = windowText
+        .split(/\n{2,}/)
+        .map((paragraph) => paragraph.trim())
+        .filter((paragraph) => paragraph.length > 0)
+        .filter((paragraph) => {
+          if (emittedParagraphs.has(paragraph)) return false;
+          emittedParagraphs.add(paragraph);
+          return true;
+        })
+        .join("\n\n");
+      return `--- KAYNAK PARÇASI #${idx + 1}${partialTag} ---
+[Eser: "${source.resourceTitle}" | Yazar: ${authors} | ${year} | ${pageRef}${rangeNote}${sectionStr} | Alakalılık Skoru: ${(source.relevanceScore * 100).toFixed(1)}%]
+${paragraphText}`;
+    })
+    .join("\n\n");
+
+  return context;
+}
+</file>
+
 <file path="components.json">
 {
   "$schema": "https://ui.shadcn.com/schema.json",
@@ -1053,6 +1153,7 @@ import { Send } from "lucide-react";
 
 interface AdvisorChatInputProps {
   disabled?: boolean;
+  isLocked?: boolean;
   onSend: (message: string) => void;
 }
 
@@ -1068,6 +1169,7 @@ interface AdvisorChatInputProps {
  */
 export function AdvisorChatInput({
   disabled = false,
+  isLocked = false,
   onSend,
 }: AdvisorChatInputProps) {
   const [inputQuery, setInputQuery] = useState("");
@@ -1111,9 +1213,14 @@ export function AdvisorChatInput({
             handleSend();
           }
         }}
-        placeholder="Akademik danışmanınıza kütüphaneniz veya tez yapınızla ilgili bir soru sorun..."
+        placeholder={
+          isLocked
+            ? "Denetimde kritik sorunlar tespit edildi. Taslağınızı revize ederek yeniden gönderin."
+            : "Akademik danışmanınıza kütüphaneniz veya tez yapınızla ilgili bir soru sorun..."
+        }
         rows={1}
-        className="flex-1 p-3 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none resize-none overflow-y-auto max-h-50 min-h-11"
+        disabled={disabled}
+        className="flex-1 p-3 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none resize-none overflow-y-auto max-h-50 min-h-11 disabled:opacity-50 disabled:cursor-not-allowed"
       />
 
       <button
@@ -1235,10 +1342,10 @@ export function AdvisorSkeleton() {
 <file path="src/app/(app)/advisor/_components/pipeline-result-view.tsx">
 "use client";
 
-import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ShieldCheck } from "lucide-react";
 
-import { SideBySideDiff } from "./side-by-side-diff";
 import type {
+  AuditFindingSeverity,
   AuditReport,
   PipelineResult,
 } from "@/lib/services/advisor-pipeline/types";
@@ -1246,6 +1353,19 @@ import type {
 interface AuditBannerProps {
   audit: AuditReport;
 }
+
+const SEVERITY_LABELS: Record<AuditFindingSeverity, string> = {
+  CRITICAL: "Kritik",
+  WARNING: "Uyarı",
+  NOTE: "Not",
+};
+
+const SEVERITY_CLASSES: Record<AuditFindingSeverity, string> = {
+  CRITICAL: "bg-destructive/10 text-destructive border-destructive/20",
+  WARNING:
+    "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
+  NOTE: "bg-muted/40 text-muted-foreground border-border/30",
+};
 
 /**
  * Renders the compact one-line audit summary banner shown above an advisor bubble.
@@ -1282,164 +1402,78 @@ export function AuditBanner({ audit }: AuditBannerProps) {
 
 interface PipelineResultViewProps {
   pipeline: PipelineResult;
+  onApprove?: () => void;
 }
 
 /**
- * Renders the structured redaction diff when the final pipeline stage has been
- * reached. Pipeline progress and Socratic verdict blocks are intentionally
- * omitted from the chat UI so bubbles stay clean and conversational.
+ * Renders the Heavy Flow pipeline result attached to an advisor message: the
+ * Stage 1 audit banner plus, when the Strict Verification Gate halted the run,
+ * the critical finding list that must be resolved before processing continues.
  *
  * @param root0 - Component props.
  * @param root0.pipeline - The persisted pipeline result attached to a message.
- * @returns The redaction diff markup, or null for non-redaction stages.
+ * @param root0.onApprove - Optional callback invoked when the user approves continuing despite critical issues.
+ * @returns The audit summary markup, or null when no Stage 1 audit is present.
  */
-export function PipelineResultView({ pipeline }: PipelineResultViewProps) {
-  if (pipeline.stage !== "redaction" || !pipeline.diff) return null;
-  return (
-    <SideBySideDiff
-      original={pipeline.diff.original}
-      polished={pipeline.diff.polished}
-    />
-  );
-}
-</file>
-
-<file path="src/app/(app)/advisor/_components/side-by-side-diff.tsx">
-"use client";
-
-import { useMemo } from "react";
-import { FileText } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { computeDiff, type DiffSegment } from "@/lib/diff";
-
-/**
- * Renders aligned word tokens with inline change highlighting.
- *
- * @param root0 - Segment props.
- * @param root0.segments - The aligned diff segments for one column.
- * @param root0.isPolished - Whether this column is the polished (right) side.
- * @returns The token stream markup with highlights.
- */
-function DiffLine({
-  segments,
-  isPolished,
-}: {
-  segments: DiffSegment[];
-  isPolished: boolean;
-}) {
-  return (
-    <p className="whitespace-pre-wrap text-[15px] leading-relaxed font-light text-foreground">
-      {segments.map((segment, index) => {
-        if (segment.type === "same") {
-          return <span key={index}>{segment.value}</span>;
-        }
-        if (segment.type === "insert") {
-          return (
-            <span
-              key={index}
-              className={`rounded-sm bg-success/15 px-0.5 text-success ${isPolished ? "" : "opacity-40"}`}
-            >
-              {segment.value}
-            </span>
-          );
-        }
-        return (
-          <span
-            key={index}
-            className={`rounded-sm bg-destructive/15 px-0.5 text-destructive line-through ${isPolished ? "opacity-40" : ""}`}
-          >
-            {segment.value}
-          </span>
-        );
-      })}
-    </p>
-  );
-}
-
-interface SideBySideDiffProps {
-  original: string;
-  polished: string;
-}
-
-/**
- * Side-by-side diff view of the original and polished academic text with
- * word-level insertion and deletion highlighting.
- *
- * @param root0 - Component props.
- * @param root0.original - The user's original draft paragraph.
- * @param root0.polished - The redacted and polished paragraph.
- * @returns The side-by-side diff markup.
- */
-export function SideBySideDiff({ original, polished }: SideBySideDiffProps) {
-  const segments = useMemo(
-    () => computeDiff(original, polished),
-    [original, polished],
-  );
-
-  // Split aligned segments into left (originals surviving) and right (final) columns.
-  const leftSegments: DiffSegment[] = useMemo(
-    () =>
-      segments
-        .filter((segment) => segment.type !== "insert")
-        .map((segment) =>
-          segment.type === "delete"
-            ? segment
-            : { type: "same" as const, value: segment.value },
-        ),
-    [segments],
-  );
-  const rightSegments: DiffSegment[] = useMemo(
-    () =>
-      segments
-        .filter((segment) => segment.type !== "delete")
-        .map((segment) =>
-          segment.type === "insert"
-            ? segment
-            : { type: "same" as const, value: segment.value },
-        ),
-    [segments],
-  );
+export function PipelineResultView({
+  pipeline,
+  onApprove,
+}: PipelineResultViewProps) {
+  const audit = pipeline.audit;
+  if (!audit) return null;
 
   return (
-    <Card className="my-4 rounded-md border border-border">
-      <CardHeader className="flex flex-row items-center gap-2 pb-3">
-        <div className="p-2 rounded-md bg-primary/10 text-primary shrink-0">
-          <FileText className="size-4" />
-        </div>
-        <div>
-          <CardTitle className="text-base">Metin Redaksiyonu</CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Orijinal ile düzeltilmiş metnin yan yana karşılaştırması
+    <div className="space-y-2">
+      <AuditBanner audit={audit} />
+      {audit.findings.length > 0 && (
+        <div
+          className={`rounded-md border p-3 text-xs ${
+            audit.hasCriticalIssues
+              ? "border-destructive/25 bg-destructive/5 text-destructive"
+              : "border-border/40 bg-muted/20 text-foreground"
+          }`}
+        >
+          <p className="font-semibold mb-1.5">
+            {audit.hasCriticalIssues
+              ? "Denetim Durduruldu — Bulgular"
+              : "Denetim Bulguları"}
           </p>
+          <ul className="space-y-1.5">
+            {audit.findings.map((finding, index) => (
+              <li key={index} className="flex gap-2">
+                <span
+                  className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-sm border ${SEVERITY_CLASSES[finding.severity]}`}
+                >
+                  {SEVERITY_LABELS[finding.severity]}
+                </span>
+                <span className="flex-1 min-w-0 break-words whitespace-pre-wrap font-light">
+                  {finding.message}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {audit.hasCriticalIssues && (
+            <>
+              <p className="mt-2 font-light">
+                Devam etmeden önce bu bulguları gidermek için taslağınızı revize
+                ederek yeniden gönderebilir veya onay vererek devam
+                edebilirsiniz.
+              </p>
+              {onApprove && (
+                <button
+                  type="button"
+                  onClick={onApprove}
+                  className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-destructive/15 text-destructive border border-destructive/30 hover:bg-destructive/25 transition-colors cursor-pointer"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  Onay Ver &amp; Devam Et
+                </button>
+              )}
+            </>
+          )}
         </div>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="rounded-md border border-border/40 bg-muted/20 p-4 min-h-0 overflow-y-auto max-h-80">
-            <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-              Orijinal Metin
-            </h4>
-            <DiffLine segments={leftSegments} isPolished={false} />
-          </div>
-          <div className="rounded-md border border-success/40 bg-card p-4 min-h-0 overflow-y-auto max-h-80">
-            <h4 className="text-[10px] font-semibold uppercase tracking-wider text-success mb-2">
-              Düzeltilmiş Metin
-            </h4>
-            <DiffLine segments={rightSegments} isPolished={true} />
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-4 mt-3 text-[10px] text-muted-foreground">
-          <span className="inline-flex items-center gap-1">
-            <span className="inline-block w-2 h-2 rounded-sm bg-success/20 border border-success/40" />
-            Ekleme
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <span className="inline-block w-2 h-2 rounded-sm bg-destructive/20 border border-destructive/40" />
-            Çıkarma
-          </span>
-        </div>
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 }
 </file>
@@ -1459,17 +1493,11 @@ import {
 import type { PendingToolCall } from "../_components/tool-confirmation-card";
 import type { RagSearchResultItem } from "@/lib/services/rag-search";
 import type { PipelineResult } from "@/lib/services/advisor-pipeline/types";
+import type { AdvisorPersona } from "@/lib/services/advisor-classifier";
 import type { Message } from "../_lib/types";
 
 /** Sentinel used to trigger the initial session sync on mount regardless of the initial id value. */
 const PREV_SESSION_SENTINEL = Symbol("prev-session-sentinel");
-
-/** Tracks an in-progress Socratic discussion so the next user turn continues the pipeline. */
-export interface AdvisorPipelineContext {
-  active: boolean;
-  cycle: number;
-  originalDraft: string;
-}
 
 type CitationUpdater =
   | { messageId: string; sourceIndex: number }
@@ -1480,7 +1508,6 @@ type CitationUpdater =
 
 interface UseAdvisorSessionsParams {
   initialSessionId?: number;
-  pipelineContextRef: { current: AdvisorPipelineContext | null };
   isSendingRef: { current: boolean };
   setActiveCitation: (updater: CitationUpdater) => void;
 }
@@ -1490,14 +1517,12 @@ interface UseAdvisorSessionsParams {
  *
  * @param root0 - Hook dependencies.
  * @param root0.initialSessionId - Session id to restore on mount, if any.
- * @param root0.pipelineContextRef - Shared ref tracking an in-progress Socratic discussion.
  * @param root0.isSendingRef - Shared ref signalling an in-flight message send.
  * @param root0.setActiveCitation - Resets the active UI citation on session switches.
  * @returns Session state and session lifecycle handlers.
  */
 export function useAdvisorSessions({
   initialSessionId,
-  pipelineContextRef,
   isSendingRef,
   setActiveCitation,
 }: UseAdvisorSessionsParams) {
@@ -1533,9 +1558,7 @@ export function useAdvisorSessions({
           id: `msg-${m.id}`,
           dbId: m.id,
           role: m.role as "user" | "model",
-          persona:
-            (m.persona as "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT" | undefined) ??
-            undefined,
+          persona: (m.persona as AdvisorPersona | undefined) ?? undefined,
           content: m.content,
           sources:
             (m.sources as RagSearchResultItem[] | undefined) ?? undefined,
@@ -1548,36 +1571,22 @@ export function useAdvisorSessions({
           }),
         }));
         setMessages(mapped);
-        // Restore an open Socratic discussion so the next user turn resumes the pipeline.
-        const lastPipelineMessage = [...mapped]
-          .reverse()
-          .find(
-            (msg) => msg.role === "model" && msg.pipeline?.stage === "socratic",
-          );
-        if (
-          lastPipelineMessage?.pipeline &&
-          lastPipelineMessage.pipeline.stage === "socratic" &&
-          !lastPipelineMessage.pipeline.diff
-        ) {
-          pipelineContextRef.current = {
-            active: true,
-            cycle: lastPipelineMessage.pipeline.cycle,
-            originalDraft: lastPipelineMessage.pipeline.originalDraft ?? "",
-          };
-        }
       } else {
         setMessages([]);
       }
       setActiveCitation(null);
     },
-    [setMessages, setActiveCitation, pipelineContextRef],
+    [setMessages, setActiveCitation],
   );
 
   const prevInitialSessionIdRef = useRef<number | undefined | symbol>(
     PREV_SESSION_SENTINEL,
   );
+  const activeSessionIdRef = useRef(activeSessionId);
+  activeSessionIdRef.current = activeSessionId;
 
-  // Load sessions and the active session on mount, and resync when the initialSessionId route parameter changes (e.g. browser navigation)
+  // Load sessions and the active session on mount, and resync when the initialSessionId route parameter changes (e.g. browser navigation).
+  // activeSessionId is intentionally excluded from deps to prevent the sidebar click (which sets activeSessionId) from re-triggering syncFromProp and racing against handleSelectSession.
   useEffect(() => {
     if (prevInitialSessionIdRef.current === initialSessionId) return;
     prevInitialSessionIdRef.current = initialSessionId;
@@ -1597,11 +1606,11 @@ export function useAdvisorSessions({
           : null;
 
       if (targetId !== null) {
-        if (activeSessionId !== targetId) {
+        if (activeSessionIdRef.current !== targetId) {
           setActiveSessionId(targetId);
           await loadMessages(targetId);
         }
-      } else if (activeSessionId !== null) {
+      } else if (activeSessionIdRef.current !== null) {
         setActiveSessionId(null);
         setMessages([]);
         setActiveCitation(null);
@@ -1610,40 +1619,31 @@ export function useAdvisorSessions({
     void syncFromProp();
     return () => {
       cancelled = true;
+      prevInitialSessionIdRef.current = PREV_SESSION_SENTINEL;
     };
-  }, [
-    initialSessionId,
-    activeSessionId,
-    loadMessages,
-    setMessages,
-    setActiveCitation,
-    isSendingRef,
-  ]);
+  }, [initialSessionId, loadMessages, setMessages, setActiveCitation, isSendingRef]);
 
   const handleSelectSession = useCallback(
     async (sessionId: number) => {
-      pipelineContextRef.current = null;
       setActiveSessionId(sessionId);
       await loadMessages(sessionId);
       syncUrlSession(sessionId);
     },
-    [loadMessages, syncUrlSession, pipelineContextRef],
+    [loadMessages, syncUrlSession],
   );
 
   const handleCreateSession = useCallback(() => {
-    pipelineContextRef.current = null;
     setActiveSessionId(null);
     setMessages([]);
     setActiveCitation(null);
     syncUrlSession(null);
-  }, [setMessages, setActiveCitation, syncUrlSession, pipelineContextRef]);
+  }, [setMessages, setActiveCitation, syncUrlSession]);
 
   const handleDeleteSession = useCallback(
     async (sessionId: number) => {
       const res = await deleteChatSession(sessionId);
       if (res.success) {
         if (activeSessionId === sessionId) {
-          pipelineContextRef.current = null;
           setActiveSessionId(null);
           setMessages([]);
           setActiveCitation(null);
@@ -1663,7 +1663,6 @@ export function useAdvisorSessions({
       loadSessions,
       syncUrlSession,
       setActiveCitation,
-      pipelineContextRef,
     ],
   );
 
@@ -3085,14 +3084,10 @@ export const updateCitationCardSchema = createCitationCardSchema.extend({
 });
 
 /** Input payload type for creating a citation card. */
-export type CreateCitationCardInput = z.infer<
-  typeof createCitationCardSchema
->;
+export type CreateCitationCardInput = z.infer<typeof createCitationCardSchema>;
 
 /** Input payload type for updating a citation card. */
-export type UpdateCitationCardInput = z.infer<
-  typeof updateCitationCardSchema
->;
+export type UpdateCitationCardInput = z.infer<typeof updateCitationCardSchema>;
 </file>
 
 <file path="src/app/(app)/citation-cards/_services/citation-cards-service.ts">
@@ -4413,10 +4408,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { sources } from "@/db/schema";
 import type { Logger } from "@/lib/logger";
-import {
-  deleteR2Object,
-  generatePresignedUploadUrl,
-} from "@/lib/services/r2";
+import { deleteR2Object, generatePresignedUploadUrl } from "@/lib/services/r2";
 
 /**
  * Deletes a temporary R2 object best-effort, logging rather than throwing when deletion fails.
@@ -6574,22 +6566,12 @@ export function cleanHtmlTags(text: string): string {
 </file>
 
 <file path="src/lib/services/advisor-pipeline/orchestrator.ts">
-import { getAi } from "@/lib/services/gemini";
-import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
-import { buildPipelineStage2SocraticSystemInstruction } from "@/lib/prompts";
-import {
-  ADVISOR_TOOL_DECLARATIONS,
-  isReadTool,
-  executeReadTool,
-  getToolPreviousState,
-} from "@/lib/services/advisor-tools";
-import { formatToolExplanation } from "@/lib/services/advisor-tools/format-tool";
-
-import { runStage1Audit, loadThesisStructureContext } from "./stage1-audit";
-import { evaluateSocraticDiscussion } from "./stage2-socratic";
-import { runStage3Redaction } from "./stage3-redaction";
-import type { PipelineResult, SocraticVerdict } from "./types";
+import { runStage1Audit } from "./stage1-audit";
+import type { AuditReport, PipelineResult } from "./types";
 import type { RagSearchResultItem } from "@/lib/services/rag-search";
+import { getAi } from "@/lib/services/gemini";
+import { buildSocraticAdvisorSystemInstruction } from "@/lib/prompts";
+import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 
 /** SSE event emission and text streaming interface used by the pipeline orchestrator. */
 export interface PipelineSseWriter {
@@ -6597,16 +6579,10 @@ export interface PipelineSseWriter {
   delta(text: string): void;
 }
 
-/** Inputs driving a single pipeline turn. */
+/** Inputs driving a single Heavy Flow pipeline turn. */
 export interface PipelineTurnInput {
   userId: number;
-  query: string;
   originalDraft: string;
-  /** When true, this turn is a continuation answering the previous Socratic critique. */
-  isContinuation: boolean;
-  /** 1-based discussion cycle to run during this turn. */
-  cycle: number;
-  history: Array<{ role: string; content: string }>;
 }
 
 /** Output produced by a full pipeline turn. */
@@ -6617,63 +6593,74 @@ export interface PipelineTurnOutput {
 }
 
 /**
- * Assembles the Gemini conversation contents for the Socratic streaming turn.
+ * Renders the Turkish findings list of a Stage 1 audit report.
  *
- * @param input - The pipeline turn input.
- * @param history - The trimmed chat history.
- * @returns Gemini contents array including the draft and latest elaboration.
+ * @param audit - The Stage 1 audit report.
+ * @returns The rendered bulleted findings list, or the audit summary when empty.
  */
-function buildSocraticContents(
-  input: PipelineTurnInput,
-  history: Array<{ role: string; content: string }>,
-): Array<Record<string, unknown>> {
-  const contents: Array<Record<string, unknown>> = [];
-  for (const msg of history.slice(-6)) {
-    contents.push({ role: msg.role, parts: [{ text: msg.content }] });
-  }
+function formatAuditFindings(audit: AuditReport): string {
+  if (audit.findings.length === 0) return audit.summary;
 
-  const promptSection = input.isContinuation
-    ? `Orijinal Taslak Metni:\n"""\n${input.originalDraft}\n"""\n\nKullanıcının Önceki Sokratik Sorulara Yanıtı:\n"""\n${input.query}\n"""`
-    : `Öğrencinin Taslak Metni (tartışılacak ve eleştirilecek paragraf):\n"""\n${input.originalDraft}\n"""`;
+  const SEVERITY_LABELS: Record<string, string> = {
+    CRITICAL: "Kritik",
+    WARNING: "Uyarı",
+    NOTE: "Not",
+  };
 
-  contents.push({ role: "user", parts: [{ text: promptSection }] });
-  return contents;
+  return audit.findings
+    .map((finding) => {
+      const label = SEVERITY_LABELS[finding.severity] ?? finding.severity;
+      return `- **${label}:** ${finding.message}`;
+    })
+    .join("\n");
 }
 
 /**
- * Streams the Turkish Socratic critique turn over SSE, handling read-tool loops
- * inline and emitting mutation tool confirmation events for the UI card.
+ * Runs the Heavy Flow for a single chat turn: executes the Stage 1 strict audit
+ * and applies the Strict Verification Gate. When critical issues are detected
+ * the process halts immediately so the user can revise the draft, instead of
+ * proceeding to any subsequent processing step.
  *
- * @param writer - The SSE writer used to stream deltas and tool call requests.
- * @param input - The pipeline turn input.
- * @returns The accumulated critique text.
+ * @param writer - The SSE writer.
+ * @param input - The pipeline turn input containing the draft paragraph to audit.
+ * @returns The turn output including the audit verdict text, grounded sources and pipeline result.
  */
-async function streamSocraticTurn(
+export async function runPipelineTurn(
   writer: PipelineSseWriter,
   input: PipelineTurnInput,
-  auditSummary: string,
-  history: Array<{ role: string; content: string }>,
-): Promise<string> {
-  const { matrixContext, boxContext } = await loadThesisStructureContext(
+): Promise<PipelineTurnOutput> {
+  writer.send("stage_start", { stage: "audit" });
+  const { audit, sources, sourceContext } = await runStage1Audit(
     input.userId,
+    input.originalDraft,
   );
-  const systemInstruction = buildPipelineStage2SocraticSystemInstruction(
-    matrixContext,
-    boxContext,
-    auditSummary,
-  );
+  writer.send("stage_done", { stage: "audit", payload: audit });
 
-  const contents = buildSocraticContents(input, history);
-  const ai = getAi();
+  const findingsText = formatAuditFindings(audit);
+  const pipeline: PipelineResult = audit.hasCriticalIssues
+    ? { stage: "audit", audit }
+    : { stage: "audit" };
 
-  let fullText = "";
-  let maxTurns = 4;
-  let continueLoop = true;
+  if (audit.hasCriticalIssues) {
+    // Strict Verification Gate: halt immediately, no subsequent steps.
+    const text =
+      "### Denetim Durduruldu — Kritik Bulgular\n\n" +
+      "Taslak paragrafındaki kaynak atıflarında kritik uyumsuzluklar tespit edildi:\n\n" +
+      findingsText +
+      "\n\n> Devam etmeden önce bu bulguları gidermek için taslağınızı revize ederek yeniden gönderebilir veya onay vererek devam edebilirsiniz.";
 
-  while (continueLoop && maxTurns > 0) {
-    maxTurns--;
-    continueLoop = false;
-    const turnModelParts: Array<Record<string, unknown>> = [];
+    writer.delta(text);
+    return { text, sources, pipeline };
+  }
+
+  // Audit passed — stream Socratic Advisor response
+  try {
+    const systemInstruction =
+      buildSocraticAdvisorSystemInstruction(sourceContext);
+    const ai = getAi();
+    const contents = [{ role: "user", parts: [{ text: input.originalDraft }] }];
+
+    let fullText = "";
 
     const stream = await ai.models.generateContentStream({
       model: FLASH_LITE_35,
@@ -6683,17 +6670,10 @@ async function streamSocraticTurn(
       config: {
         systemInstruction,
         seed: GEMINI_SEED,
-        tools: [{ functionDeclarations: ADVISOR_TOOL_DECLARATIONS }],
       },
     });
 
     for await (const chunk of stream) {
-      if (chunk.candidates?.[0]?.content?.parts) {
-        for (const part of chunk.candidates[0].content.parts) {
-          turnModelParts.push(part as unknown as Record<string, unknown>);
-        }
-      }
-
       let text = "";
       try {
         if (chunk.candidates?.[0]?.content?.parts) {
@@ -6711,362 +6691,42 @@ async function streamSocraticTurn(
         fullText += text;
         writer.delta(text);
       }
-
-      let funcCalls = chunk.functionCalls;
-      if (!funcCalls && chunk.candidates?.[0]?.content?.parts) {
-        const callParts = chunk.candidates[0].content.parts.filter(
-          (p) => p.functionCall,
-        );
-        if (callParts.length > 0) {
-          funcCalls = callParts.map((p) => p.functionCall!);
-        }
-      }
-
-      if (funcCalls && funcCalls.length > 0) {
-        for (const call of funcCalls) {
-          if (!call.name) continue;
-
-          if (isReadTool(call.name)) {
-            const readResult = await executeReadTool(
-              call.name,
-              (call.args as Record<string, unknown>) ?? {},
-              input.userId,
-            );
-
-            contents.push({
-              role: "model",
-              parts:
-                turnModelParts.length > 0
-                  ? turnModelParts
-                  : [{ functionCall: call }],
-            });
-            contents.push({
-              role: "user",
-              parts: [
-                {
-                  functionResponse: {
-                    name: call.name,
-                    response: { result: readResult },
-                  },
-                },
-              ],
-            });
-
-            continueLoop = true;
-          } else {
-            const toolCallId = `tool-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-            const args = (call.args as Record<string, unknown>) ?? {};
-            const explanation = formatToolExplanation(call.name, args);
-            const previousState = await getToolPreviousState(
-              call.name,
-              args,
-              input.userId,
-            );
-
-            writer.send("tool_call_request", {
-              toolCallId,
-              name: call.name,
-              args,
-              explanation,
-              previousState,
-            });
-          }
-        }
-      }
-    }
-  }
-
-  return fullText;
-}
-
-/**
- * Runs the interactive 3-stage academic pipeline (Audit -> Socratic Discussion -> Redaction)
- * for a single chat turn and streams the results over SSE.
- *
- * On the first (non-continuation) turn the Stage 1 Audit and the Socratic streaming call
- * run concurrently so that text reaches the user immediately without a blocking audit wait.
- * For continuation turns the audit runs first since the Socratic verdict evaluation needs
- * the audit findings to determine REQUIRES_ANSWER vs COMPLETE.
- *
- * @param writer - The SSE writer.
- * @param input - The pipeline turn input containing query, draft, cycle and history.
- * @returns The turn output including full text, grounded sources and the pipeline result.
- */
-export async function runPipelineTurn(
-  writer: PipelineSseWriter,
-  input: PipelineTurnInput,
-): Promise<PipelineTurnOutput> {
-  // ── CONTINUATION TURN ───────────────────────────────────────────────────────
-  // Run audit first so the Socratic verdict evaluation has full findings context.
-  if (input.isContinuation) {
-    writer.send("stage_start", { stage: "audit" });
-    const { audit, sources } = await runStage1Audit(
-      input.userId,
-      input.originalDraft,
-    );
-    writer.send("stage_done", { stage: "audit", payload: audit });
-
-    const auditSummary =
-      audit.findings.length > 0
-        ? audit.findings
-            .map((finding) => `- [${finding.severity}] ${finding.message}`)
-            .join("\n")
-        : audit.summary;
-
-    writer.send("stage_start", { stage: "socratic" });
-    const verdict = await evaluateSocraticDiscussion(
-      input.userId,
-      input.originalDraft,
-      audit,
-      input.query,
-      input.cycle,
-    );
-
-    if (verdict.state === "COMPLETE") {
-      const socraticText = await streamSocraticTurn(
-        writer,
-        input,
-        auditSummary,
-        input.history,
-      );
-      writer.send("stage_done", { stage: "socratic", payload: verdict });
-
-      writer.send("stage_start", { stage: "redaction" });
-      const diff = await runStage3Redaction(input.originalDraft, audit);
-      writer.send("stage_done", { stage: "redaction", payload: diff });
-      writer.send("diff", { original: diff.original, polished: diff.polished });
-
-      const completionText =
-        socraticText.length > 0
-          ? `${socraticText}\n\n### Redaksiyon Tamamlandı\nMetniniz, denetim bulgularına dayalı olarak gramer, akademik üslup ve APA 7 standartları açısından redakte edildi. Aşağıdaki yan yana görünümde orijinal ile düzeltilmiş metni karşılaştırabilirsiniz.`
-          : "### Redaksiyon Tamamlandı\nMetniniz, denetim bulgularına dayalı olarak gramer, akademik üslup ve APA 7 standartları açısından redakte edildi. Aşağıdaki yan yana görünümde orijinal ile düzeltilmiş metni karşılaştırabilirsiniz.";
-
-      return {
-        text: completionText,
-        sources,
-        pipeline: {
-          stage: "redaction",
-          cycle: input.cycle,
-          originalDraft: input.originalDraft,
-          audit,
-          verdict,
-          diff,
-        },
-      };
     }
 
-    const socraticText = await streamSocraticTurn(
-      writer,
-      input,
-      auditSummary,
-      input.history,
-    );
-    writer.send("stage_done", { stage: "socratic", payload: verdict });
+    return { text: fullText, sources, pipeline };
+  } catch {
+    // Fallback: brief acknowledgment if Socratic generation fails
+    const fallbackText =
+      "### Denetim Başarılı\n\n" +
+      "Taslak paragrafınız kaynak ve alıntı doğruluğu açısından denetlendi; " +
+      "kritik düzeyde bir tutarsızlık tespit edilmedi.\n\n" +
+      "Şimdi tezinizin metodolojik çerçevesini ve teorik temellerini eleştirel bir şekilde değerlendirelim: " +
+      "Bu taslağınızda kullandığınız kaynakları hangi ölçüte göre seçtiniz ve neden bu kaynakları diğer alternatiflerin üzerine tercih ettiniz?";
 
-    return {
-      text: socraticText,
-      sources,
-      pipeline: {
-        stage: "socratic",
-        cycle: input.cycle,
-        originalDraft: input.originalDraft,
-        audit,
-        verdict,
-      },
-    };
+    writer.delta(fallbackText);
+    return { text: fallbackText, sources, pipeline };
   }
-
-  // ── FIRST TURN (parallel) ────────────────────────────────────────────────────
-  // The verdict is always REQUIRES_ANSWER on turn 1, so we do not need to wait
-  // for the audit before starting the Socratic stream. Fire both concurrently.
-  const staticVerdict: SocraticVerdict = {
-    state: "REQUIRES_ANSWER" as const,
-    summary:
-      "İlk tur eleştirisi sunulan taslağa dair keskin sorularla başladı.",
-    readinessScore: 0,
-  };
-
-  // Signal both stages as starting simultaneously so the UI progress bar advances.
-  writer.send("stage_start", { stage: "audit" });
-  writer.send("stage_start", { stage: "socratic" });
-
-  const [{ audit, sources }, socraticText] = await Promise.all([
-    runStage1Audit(input.userId, input.originalDraft),
-    // Stream starts immediately; audit context is not needed for this first turn
-    // since verdict is always REQUIRES_ANSWER and Stage 3 is not triggered.
-    streamSocraticTurn(writer, input, "", input.history),
-  ]);
-
-  writer.send("stage_done", { stage: "audit", payload: audit });
-  writer.send("stage_done", { stage: "socratic", payload: staticVerdict });
-
-  return {
-    text: socraticText,
-    sources,
-    pipeline: {
-      stage: "socratic",
-      cycle: input.cycle,
-      originalDraft: input.originalDraft,
-      audit,
-      verdict: staticVerdict,
-    },
-  };
 }
 </file>
 
 <file path="src/lib/services/advisor-pipeline/stage1-audit.ts">
 import { eq, desc, and } from "drizzle-orm";
-import { z } from "zod";
 import { db } from "@/db";
-import { annotations, sources, matrices, boxes } from "@/db/schema";
+import { annotations, sources } from "@/db/schema";
 import {
   performHybridRagSearch,
   type RagSearchResultItem,
 } from "@/lib/services/rag-search";
 import { ThinkingLevel } from "@google/genai";
-import {
-  generateStructuredContent,
-  type JsonSchema,
-} from "@/lib/services/gemini";
+import { generateStructuredContent } from "@/lib/services/gemini";
 import { FLASH_LITE_35 } from "@/lib/constants";
 import { buildPipelineStage1AuditSystemInstruction } from "@/lib/prompts";
-import type { AuditFinding, AuditReport } from "./types";
-
-const auditFindingSchema = z.object({
-  message: z.string(),
-  severity: z.enum(["CRITICAL", "WARNING", "NOTE"]),
-  sourceTitle: z.string().optional(),
-  citedPages: z.string().optional(),
-});
-
-const auditReportSchema = z.object({
-  summary: z.string(),
-  findings: z.array(auditFindingSchema),
-  hasCriticalIssues: z.boolean(),
-});
-
-const auditReportJsonSchema: JsonSchema = {
-  type: "object",
-  properties: {
-    summary: {
-      type: "string",
-      description: "Turkish summary of the overall Stage 1 audit verdict.",
-    },
-    findings: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          message: {
-            type: "string",
-            description:
-              "Turkish description of the audit finding or confirmation.",
-          },
-          severity: {
-            type: "string",
-            enum: ["CRITICAL", "WARNING", "NOTE"],
-          },
-          sourceTitle: {
-            type: "string",
-            description: "Related library resource title when applicable.",
-          },
-          citedPages: {
-            type: "string",
-            description:
-              "The page reference occurrence cited in the draft (e.g. s. 45).",
-          },
-        },
-        required: ["message", "severity"],
-        additionalProperties: false,
-      },
-    },
-    hasCriticalIssues: {
-      type: "boolean",
-      description:
-        "True when at least one CRITICAL citation/page inconsistency was found.",
-    },
-  },
-  required: ["summary", "findings", "hasCriticalIssues"],
-  additionalProperties: false,
-};
-
-/**
- * Formats a RAG source page reference using Turkish academic APA conventions.
- *
- * @param source - The RAG retrieval result whose page span should be rendered.
- * @returns The page reference string ("Bilinmeyen Sayfa" when no page info exists).
- */
-function formatPageReference(source: RagSearchResultItem): string {
-  if (source.printedPageNumber) return `${source.printedPageNumber}.`;
-  const pageSpan = source.pageStart;
-  const range = source.pageEnd;
-  if (pageSpan == null) return "Bilinmeyen Sayfa";
-  return pageSpan === range ? `s. ${pageSpan}.` : `ss. ${pageSpan}–${range}.`;
-}
-
-/**
- * Builds an explicit in-range note for the audit grounding when a source spans
- * multiple published pages, so any cited page inside the span (e.g. s. 126 in
- * ss. 119-151) is recognized as a valid match instead of a "not found" finding.
- *
- * @param source - The RAG retrieval result.
- * @returns The Turkish range note string, or "" when the source is single-page.
- */
-function buildRangeNote(source: RagSearchResultItem): string {
-  const printed = source.printedPageNumber;
-  if (!printed) return "";
-  const match = /(\d{1,4})\s*[-–]\s*(\d{1,4})/.exec(printed);
-  if (!match) return "";
-  const start = Number(match[1]);
-  const end = Number(match[2]);
-  if (end - start < 1) return "";
-  return ` [Kaynak ${match[1]}-${match[2]} aralığındadır; bu aralıktaki her sayfa (ör. s. ${start + 1}) kaynakla EŞLEŞİR ve geçerlidir]`;
-}
-
-/**
- * Loads the user's thesis matrix and boxes to enrich the Stage 2 continuation context.
- *
- * @param userId - The ID of the authenticated user.
- * @returns Object containing the matrix and box rendering context.
- */
-export async function loadThesisStructureContext(userId: number): Promise<{
-  matrixContext: string;
-  boxContext: string;
-}> {
-  const matrix = await db.query.matrices.findFirst({
-    where: eq(matrices.userId, userId),
-  });
-  if (!matrix) {
-    return {
-      matrixContext: "Henüz tez matrisi oluşturulmamış.",
-      boxContext: "Henüz tez kutusu oluşturulmamış.",
-    };
-  }
-
-  const matrixContext =
-    `- Konu ve Problem: ${matrix.subjectProblem}\n` +
-    `- Kuramsal Çerçeve: ${matrix.theoreticalFramework}\n` +
-    `- Birincil Materyal: ${matrix.primaryMaterial ?? "Belirtilmedi"}\n` +
-    `- Yöntem: ${matrix.methodology}`;
-
-  const boxList = await db.query.boxes.findMany({
-    where: eq(boxes.matrixId, matrix.id),
-  });
-
-  const boxContext =
-    boxList.length === 0
-      ? "Henüz tez kutusu oluşturulmamış."
-      : boxList
-          .map(
-            (box) =>
-              `- [${box.boxType ?? "TANIMSIZ"}] "${box.title}"${
-                box.description ? ` — ${box.description}` : ""
-              }`,
-          )
-          .join("\n");
-
-  return { matrixContext, boxContext };
-}
+import {
+  auditReportJsonSchema,
+  auditReportSchema,
+  type AuditReport,
+} from "./types";
+import { formatRagSourceContext } from "./context";
 
 /**
  * Loads recent user annotations joined with their source metadata for grounding.
@@ -7122,29 +6782,10 @@ export async function runStage1Audit(
 }> {
   const sources = await performHybridRagSearch({ query: draft, topK: 7 });
 
-  const emittedParagraphs = new Set<string>();
   const sourceContext =
     sources.length === 0
       ? "Kütüphanenizde bu taslakla ilgili doğrudan eşleşen kaynak bulunamadı."
-      : sources
-          .map((source, idx) => {
-            const authors = source.resourceAuthors.join(", ");
-            const year = source.resourceYear
-              ? `Yıl: ${source.resourceYear}`
-              : "Yıl bilinmiyor";
-            const paragraphText = source.parentContent
-              .split(/\n{2,}/)
-              .map((paragraph) => paragraph.trim())
-              .filter((paragraph) => paragraph.length > 0)
-              .filter((paragraph) => {
-                if (emittedParagraphs.has(paragraph)) return false;
-                emittedParagraphs.add(paragraph);
-                return true;
-              })
-              .join("\n\n");
-            return `--- KAYNAK PARÇASI #${idx + 1} ---\n[Eser: "${source.resourceTitle}" | Yazar: ${authors} | ${year} | ${formatPageReference(source)}${buildRangeNote(source)}]\n${paragraphText}`;
-          })
-          .join("\n\n");
+      : formatRagSourceContext(sources, { includeRangeNote: true });
 
   const annotationContext = await loadAnnotationContext(userId);
 
@@ -7163,237 +6804,89 @@ export async function runStage1Audit(
 
   return { audit, sources, sourceContext, annotationContext };
 }
-
-export type { AuditFinding };
-</file>
-
-<file path="src/lib/services/advisor-pipeline/stage2-socratic.ts">
-import { z } from "zod";
-import { ThinkingLevel } from "@google/genai";
-import {
-  generateStructuredContent,
-  type JsonSchema,
-} from "@/lib/services/gemini";
-import { FLASH_LITE_35 } from "@/lib/constants";
-import { buildPipelineStage2SocraticSystemInstruction } from "@/lib/prompts";
-import type { AuditReport, SocraticVerdict } from "./types";
-
-import { loadThesisStructureContext } from "./stage1-audit";
-
-/** Maximum discussion cycles before the pipeline is forced to conclude, preventing infinite looping. */
-export const MAX_DISCUSSION_CYCLES = 3;
-
-const socraticVerdictSchema = z.object({
-  state: z.enum(["REQUIRES_ANSWER", "COMPLETE"]),
-  summary: z.string(),
-  readinessScore: z.number().min(0).max(100),
-});
-
-const socraticVerdictJsonSchema: JsonSchema = {
-  type: "object",
-  properties: {
-    state: {
-      type: "string",
-      enum: ["REQUIRES_ANSWER", "COMPLETE"],
-      description:
-        "REQUIRES_ANSWER when the user's latest answer leaves open critique dimensions that must be resolved through further Socratic dialogue. COMPLETE when the argument is convincingly defended.",
-    },
-    summary: {
-      type: "string",
-      description:
-        "Turkish summary of the internal evaluation across logic, thesis consistency and counter-arguments.",
-    },
-    readinessScore: {
-      type: "number",
-      description:
-        "Internal readiness score (0-100) indicating how close the draft is to being convincingly defended.",
-    },
-  },
-  required: ["state", "summary", "readinessScore"],
-  additionalProperties: false,
-};
-
-/**
- * Runs the internal Socratic evaluation structure on the user's latest elaboration.
- * The evaluation resolves the discussion to either a further critique turn (REQUIRES_ANSWER)
- * or completion (COMPLETE), with a hard cycle cap to prevent infinite looping.
- *
- * @param userId - The ID of the authenticated user.
- * @param originalDraft - The original draft paragraph text that started the pipeline.
- * @param audit - The Stage 1 audit report for the draft.
- * @param elaboration - The user's latest answer to the previous Socratic critique.
- * @param cycle - The current discussion cycle number (1-based).
- * @returns The structured Socratic verdict.
- */
-export async function evaluateSocraticDiscussion(
-  userId: number,
-  originalDraft: string,
-  audit: AuditReport,
-  elaboration: string,
-  cycle: number,
-): Promise<SocraticVerdict> {
-  const { matrixContext, boxContext } =
-    await loadThesisStructureContext(userId);
-
-  const auditContext =
-    audit.findings
-      .map((finding) => `- [${finding.severity}] ${finding.message}`)
-      .join("\n") || audit.summary;
-
-  const maxCyclesNote =
-    cycle >= MAX_DISCUSSION_CYCLES
-      ? `\nBu tartışmanın son turudur (tur ${MAX_DISCUSSION_CYCLES}). Kalan açık noktaları özetleyip mutlaka "state": "COMPLETE" dön.`
-      : "";
-
-  const prompt =
-    `Orijinal Taslak Metin:\n"""\n${originalDraft}\n"""\n\n` +
-    `Denetim Bulguları:\n${auditContext}\n\n` +
-    `Kullanıcının Son Yanıtı:\n"""\n${elaboration}\n"""\n\n` +
-    `Mevcut Tartışma Turu: ${cycle}${maxCyclesNote}`;
-
-  return generateStructuredContent<SocraticVerdict>(
-    FLASH_LITE_35,
-    buildPipelineStage2SocraticSystemInstruction(
-      matrixContext,
-      boxContext,
-      auditContext,
-    ),
-    prompt,
-    socraticVerdictJsonSchema,
-    undefined,
-    {
-      zodSchema: socraticVerdictSchema,
-      payloadStage: "advisor_pipeline_stage2_socratic",
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-    },
-  );
-}
-</file>
-
-<file path="src/lib/services/advisor-pipeline/stage3-redaction.ts">
-import { z } from "zod";
-import { ThinkingLevel } from "@google/genai";
-import {
-  generateStructuredContent,
-  type JsonSchema,
-} from "@/lib/services/gemini";
-import { FLASH_LITE_35 } from "@/lib/constants";
-import { buildPipelineStage3RedactionSystemInstruction } from "@/lib/prompts";
-import type { AuditReport, PipelineDiff } from "./types";
-
-const redactionSchema = z.object({
-  polishedText: z.string(),
-});
-
-const redactionJsonSchema: JsonSchema = {
-  type: "object",
-  properties: {
-    polishedText: {
-      type: "string",
-      description:
-        "The fully polished English text preserving the core meaning with APA 7 citations applied.",
-    },
-  },
-  required: ["polishedText"],
-  additionalProperties: false,
-};
-
-/**
- * Runs Stage 3 of the academic pipeline: polishes the user's English draft for grammar,
- * academic style and APA 7 without rewriting heavily, then packages it for the diff view.
- *
- * @param originalDraft - The user's original English draft paragraph.
- * @param audit - The Stage 1 audit report whose flagged corrections must be applied.
- * @returns The side-by-side diff payload (original and polished text).
- */
-export async function runStage3Redaction(
-  originalDraft: string,
-  audit: AuditReport,
-): Promise<PipelineDiff> {
-  const auditContext =
-    audit.findings
-      .map((finding) => `- [${finding.severity}] ${finding.message}`)
-      .join("\n") || audit.summary;
-
-  const result = await generateStructuredContent<{ polishedText: string }>(
-    FLASH_LITE_35,
-    buildPipelineStage3RedactionSystemInstruction(auditContext),
-    `Cilalanacak Orijinal İngilizce Metin:\n"""\n${originalDraft}\n"""`,
-    redactionJsonSchema,
-    undefined,
-    {
-      zodSchema: redactionSchema,
-      payloadStage: "advisor_pipeline_stage3_redaction",
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-    },
-  );
-
-  return { original: originalDraft, polished: result.polishedText };
-}
 </file>
 
 <file path="src/lib/services/advisor-pipeline/types.ts">
-/** Pipeline stage identifiers emitted over the advisor SSE stream. */
-export type PipelineStage = "audit" | "socratic" | "redaction";
+import { z } from "zod";
+import type { JsonSchema } from "@/lib/services/gemini";
+
+/** Pipeline stage identifiers emitted over the advisor SSE stream (Heavy Flow runs Stage 1 Audit only). */
+export type PipelineStage = "audit";
 
 /** Severity classification for a single audit finding. */
 export type AuditFindingSeverity = "CRITICAL" | "WARNING" | "NOTE";
 
+/** Zod schema for a single audit finding verifying citation accuracy against RAG context. */
+export const auditFindingSchema = z.object({
+  message: z.string(),
+  severity: z.enum(["CRITICAL", "WARNING", "NOTE"]),
+  sourceTitle: z.string().optional(),
+  citedPages: z.string().optional(),
+});
+
 /** A single audit finding verifying citation accuracy and claim consistency against RAG context. */
-export interface AuditFinding {
-  /** Human-readable Turkish description of the issue or confirmation. */
-  message: string;
-  severity: AuditFindingSeverity;
-  /** The resource title this finding is related to, when applicable. */
-  sourceTitle?: string;
-  /** The page reference occurrence cited in the draft, e.g. "s. 45". */
-  citedPages?: string;
-}
+export type AuditFinding = z.infer<typeof auditFindingSchema>;
+
+/** Zod schema for the structured output of the Stage 1 strict audit layer. */
+export const auditReportSchema = z.object({
+  summary: z.string(),
+  findings: z.array(auditFindingSchema),
+  hasCriticalIssues: z.boolean(),
+});
 
 /** Structured output of the Stage 1 strict audit layer. */
-export interface AuditReport {
-  /** Turkish summary of the overall audit verdict. */
-  summary: string;
-  findings: AuditFinding[];
-  /** True when at least one CRITICAL citation/page discrepancy was found. */
-  hasCriticalIssues: boolean;
-}
+export type AuditReport = z.infer<typeof auditReportSchema>;
 
-/** Internal evaluation state reached at the end of a Socratic discussion cycle. */
-export type SocraticState = "REQUIRES_ANSWER" | "COMPLETE";
+/** JSON schema used for Gemini structured content generation of the Stage 1 audit report. */
+export const auditReportJsonSchema: JsonSchema = {
+  type: "object",
+  properties: {
+    summary: {
+      type: "string",
+      description: "Turkish summary of the overall Stage 1 audit verdict.",
+    },
+    findings: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          message: {
+            type: "string",
+            description:
+              "Turkish description of the audit finding or confirmation.",
+          },
+          severity: {
+            type: "string",
+            enum: ["CRITICAL", "WARNING", "NOTE"],
+          },
+          sourceTitle: {
+            type: "string",
+            description: "Related library resource title when applicable.",
+          },
+          citedPages: {
+            type: "string",
+            description:
+              "The page reference occurrence cited in the draft (e.g. s. 45).",
+          },
+        },
+        required: ["message", "severity"],
+        additionalProperties: false,
+      },
+    },
+    hasCriticalIssues: {
+      type: "boolean",
+      description:
+        "True when at least one CRITICAL citation/page inconsistency was found.",
+    },
+  },
+  required: ["summary", "findings", "hasCriticalIssues"],
+  additionalProperties: false,
+};
 
-/** Structured Socratic evaluation output that prevents infinite looping or immediate concession. */
-export interface SocraticVerdict {
-  state: SocraticState;
-  /** Turkish summary of the internal evaluation across logic, thesis consistency and counter-arguments. */
-  summary: string;
-  /** Internal readiness score (0-100) indicating how close the draft is to being convincingly defended. */
-  readinessScore: number;
-}
-
-/** Side-by-side diff visualisation payload shipped to the client. */
-export interface PipelineDiff {
-  original: string;
-  polished: string;
-}
-
-/** Persisted pipeline state attached to a chat message. */
+/** Persisted pipeline result attached to a chat message (Heavy Flow Stage 1 audit outcome). */
 export interface PipelineResult {
   stage: PipelineStage;
-  /** Total discussion cycles elapsed (drives the anti-infinite-loop cap). */
-  cycle: number;
-  /** The original draft paragraph that initiated the pipeline, retained for continuation turns. */
-  originalDraft?: string;
   audit?: AuditReport;
-  verdict?: SocraticVerdict;
-  diff?: PipelineDiff;
-}
-
-/** In-memory streaming state for a running pipeline turn. */
-export interface PipelineTurnState {
-  pipeline: PipelineResult;
-  pendingToolCalls: unknown[];
-  fullText: string;
 }
 </file>
 
@@ -7840,7 +7333,10 @@ function groupRows(
     }
     rowItems.sort((a, b) => a.x - b.x);
     rows.push({
-      text: rowItems.map((it) => it.text.trim()).join(" ").replace(/\s+/g, " "),
+      text: rowItems
+        .map((it) => it.text.trim())
+        .join(" ")
+        .replace(/\s+/g, " "),
       x: rowItems[0].x,
     });
   }
@@ -7899,10 +7395,7 @@ function resolveAnchorChain(
 
   for (let page = 0; page <= maxPage; page++) {
     if (printed.has(page)) continue;
-    const prev = Math.max(
-      ...[...printed.keys()].filter((p) => p < page),
-      -1,
-    );
+    const prev = Math.max(...[...printed.keys()].filter((p) => p < page), -1);
     if (prev === -1) continue;
     const gap = page - prev;
     const prevVal = printed.get(prev)!;
@@ -7929,7 +7422,11 @@ function resolveAnchorChain(
 export function detectPrintedPageNumbers(
   items: PositionedTextItemInput[],
 ): PrintedPageDetection {
-  const empty = { printedByPage: new Map<number, number>(), offset: null, chainStartPage: null };
+  const empty = {
+    printedByPage: new Map<number, number>(),
+    offset: null,
+    chainStartPage: null,
+  };
   if (items.length === 0) return empty;
 
   const height = Math.max(...items.map((it) => it.y + it.height));
@@ -8054,7 +7551,11 @@ export function parseRunningHeadNumber(
  * @returns A map populated with a printed page number per 0-based page index.
  */
 export function resolveMistralPrintedPages(
-  pages: Array<{ index: number; header?: string | null; footer?: string | null }>,
+  pages: Array<{
+    index: number;
+    header?: string | null;
+    footer?: string | null;
+  }>,
 ): Map<number, number> {
   const candidateByPage = new Map<number, Set<number>>();
   let maxPage = 0;
@@ -9097,7 +8598,8 @@ skills-lock.json
 import { Check, Copy, User, GraduationCap, BookOpen } from "lucide-react";
 import { MarkdownRenderer } from "./markdown-renderer";
 import { ToolConfirmationCard } from "./tool-confirmation-card";
-import { AuditBanner, PipelineResultView } from "./pipeline-result-view";
+import { PipelineResultView } from "./pipeline-result-view";
+import type { AdvisorPersona } from "@/lib/services/advisor-classifier";
 import type { Message } from "../_lib/types";
 
 /**
@@ -9107,11 +8609,7 @@ import type { Message } from "../_lib/types";
  * @param root0.persona - The message persona.
  * @returns The persona badge markup.
  */
-export function PersonaBadge({
-  persona,
-}: {
-  persona?: "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT";
-}) {
+export function PersonaBadge({ persona }: { persona?: AdvisorPersona }) {
   if (persona === "SOCRATIC_ADVISOR") {
     return (
       <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 mb-2.5 shadow-xs">
@@ -9147,6 +8645,7 @@ interface ChatMessageItemProps {
     executionResult?: unknown,
     previousState?: Record<string, unknown>,
   ) => Promise<void>;
+  onApprovePipeline?: () => void;
 }
 
 /**
@@ -9171,6 +8670,7 @@ export function ChatMessageItem({
   onApproveToolCall,
   onRejectToolCall,
   onUndoToolCall,
+  onApprovePipeline,
 }: ChatMessageItemProps) {
   const isUser = msg.role === "user";
   const isSocratic = msg.persona === "SOCRATIC_ADVISOR";
@@ -9178,11 +8678,11 @@ export function ChatMessageItem({
 
   return (
     <div
-      className={`flex space-x-3 max-w-full overflow-hidden ${isUser ? "justify-end" : "justify-start"}`}
+      className={`flex space-x-3 max-w-full ${isUser ? "justify-end" : "justify-start"}`}
     >
       {!isUser && (
         <div
-          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 overflow-hidden transition-all ${
+          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 transition-all ${
             isSocratic
               ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-2 ring-amber-500/40"
               : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 ring-2 ring-emerald-500/40"
@@ -9200,9 +8700,6 @@ export function ChatMessageItem({
         className={`space-y-2 min-w-0 ${isUser ? "items-end max-w-3xl" : "items-start flex-1 max-w-4xl"}`}
       >
         {!isUser && <PersonaBadge persona={msg.persona} />}
-        {!isUser && msg.pipeline?.audit && (
-          <AuditBanner audit={msg.pipeline.audit} />
-        )}
         <div
           className={`p-4 rounded-md text-sm leading-relaxed break-words min-w-0 transition-all ${
             isUser
@@ -9259,8 +8756,13 @@ export function ChatMessageItem({
           </div>
         </div>
 
-        {!isUser && msg.pipeline && (
-          <PipelineResultView pipeline={msg.pipeline} />
+        {!isUser && msg.pipeline?.audit?.hasCriticalIssues && (
+          <div className="mt-2">
+            <PipelineResultView
+              pipeline={msg.pipeline}
+              onApprove={onApprovePipeline}
+            />
+          </div>
         )}
       </div>
 
@@ -9283,7 +8785,8 @@ import { Sparkles, GraduationCap, BookOpen } from "lucide-react";
 import { ChatMessageItem, PersonaBadge } from "./chat-message-item";
 import { MarkdownRenderer } from "./markdown-renderer";
 import { ToolConfirmationCard } from "./tool-confirmation-card";
-import { AuditBanner, PipelineResultView } from "./pipeline-result-view";
+import { PipelineResultView } from "./pipeline-result-view";
+import type { AdvisorPersona } from "@/lib/services/advisor-classifier";
 import type { Message } from "../_lib/types";
 import type { PendingToolCall } from "./tool-confirmation-card";
 import type { RagSearchResultItem } from "@/lib/services/rag-search";
@@ -9295,7 +8798,7 @@ interface ChatMessageListProps {
   streamingText: string;
   streamingSources?: RagSearchResultItem[];
   streamingToolCalls?: PendingToolCall[];
-  streamingPersona?: "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT";
+  streamingPersona?: AdvisorPersona;
   streamingPipeline?: PipelineResult;
   activeSessionId: number | null;
   copiedMessageId: string | null;
@@ -9314,6 +8817,7 @@ interface ChatMessageListProps {
     executionResult?: unknown,
     previousState?: Record<string, unknown>,
   ) => Promise<void>;
+  onApprovePipeline?: () => void;
 }
 
 /**
@@ -9352,12 +8856,28 @@ export function ChatMessageList({
   onApproveToolCall,
   onRejectToolCall,
   onUndoToolCall,
+  onApprovePipeline,
 }: ChatMessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const prevSessionIdRef = useRef<number | null>(null);
+
+  const isStreaming = isLoading || streamingToolCalls;
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading, streamingToolCalls]);
+    if (!messagesEndRef.current) return;
+
+    if (prevSessionIdRef.current !== activeSessionId) {
+      prevSessionIdRef.current = activeSessionId;
+      if (isStreaming) {
+        messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      }
+      return;
+    }
+
+    if (isStreaming) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, isStreaming, activeSessionId]);
 
   return (
     <div
@@ -9396,14 +8916,15 @@ export function ChatMessageList({
             onApproveToolCall={onApproveToolCall}
             onRejectToolCall={onRejectToolCall}
             onUndoToolCall={onUndoToolCall}
+            onApprovePipeline={onApprovePipeline}
           />
         ))
       )}
 
       {isLoading && (streamingText || streamingToolCalls) && (
-        <div className="flex space-x-3 justify-start max-w-full overflow-hidden">
+        <div className="flex space-x-3 justify-start max-w-full">
           <div
-            className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 overflow-hidden transition-all ${
+            className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 transition-all ${
               streamingPersona === "SOCRATIC_ADVISOR"
                 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-2 ring-amber-500/40"
                 : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 ring-2 ring-emerald-500/40"
@@ -9417,9 +8938,6 @@ export function ChatMessageList({
           </div>
           <div className="space-y-2 items-start flex-1 max-w-4xl min-w-0">
             <PersonaBadge persona={streamingPersona} />
-            {streamingPipeline?.audit && (
-              <AuditBanner audit={streamingPipeline.audit} />
-            )}
             <div
               className={`p-4 rounded-md text-sm leading-relaxed rounded-tl-none break-words min-w-0 transition-all ${
                 streamingPersona === "SOCRATIC_ADVISOR"
@@ -9449,9 +8967,18 @@ export function ChatMessageList({
                 />
               ))}
             </div>
-            {streamingPipeline && (
-              <PipelineResultView pipeline={streamingPipeline} />
-            )}
+          </div>
+        </div>
+      )}
+
+      {isLoading && streamingPipeline?.audit && (
+        <div className="flex space-x-3 justify-start max-w-full">
+          <div className="w-8 shrink-0" />
+          <div className="flex-1 max-w-4xl min-w-0">
+            <PipelineResultView
+              pipeline={streamingPipeline}
+              onApprove={onApprovePipeline}
+            />
           </div>
         </div>
       )}
@@ -9596,10 +9123,10 @@ export function ChatSidebar({
                 key={item.id}
                 onClick={() => onSelectSession(item.id)}
                 className={cn(
-                  "group relative cursor-pointer transition-all border p-3 hover:border-primary/20",
+                  "group relative cursor-pointer transition-all border p-3",
                   isSelected
-                    ? "bg-accent/20 border-primary/20"
-                    : "bg-background border-border hover:bg-accent/20",
+                    ? "bg-primary/10 border-primary/20 text-foreground font-semibold"
+                    : "bg-card/50 border-border/40 hover:bg-accent/20 text-muted-foreground hover:border-primary/20",
                 )}
               >
                 <CardContent className="p-0 space-y-1.5">
@@ -12404,9 +11931,8 @@ export interface ExpansionResult {
 <file path="src/lib/prompts/advisor/index.ts">
 export {
   buildAdvisorSystemInstruction,
+  buildSocraticAdvisorSystemInstruction,
   buildPipelineStage1AuditSystemInstruction,
-  buildPipelineStage2SocraticSystemInstruction,
-  buildPipelineStage3RedactionSystemInstruction,
 } from "./advisor-prompt";
 </file>
 
@@ -12879,6 +12405,7 @@ export async function getUsersMatrixAndBoxesWithResources(
 <file path="src/app/(app)/advisor/_lib/types.ts">
 import type { RagSearchResultItem } from "@/lib/services/rag-search";
 import type { PipelineResult } from "@/lib/services/advisor-pipeline/types";
+import type { AdvisorPersona } from "@/lib/services/advisor-classifier";
 
 export interface PendingToolCall {
   toolCallId: string;
@@ -12894,7 +12421,7 @@ export interface Message {
   id: string;
   dbId?: number;
   role: "user" | "model";
-  persona?: "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT";
+  persona?: AdvisorPersona;
   content: string;
   sources?: RagSearchResultItem[];
   toolCalls?: PendingToolCall[];
@@ -16787,7 +16314,11 @@ export async function runMistralOcr(
       // Resolve printed numbers from the isolated header/footer strings using
       // the same +1 anchor chain as the born-digital path.
       const printedByPage = resolveMistralPrintedPages(
-        rawPages.map((p) => ({ index: p.index, header: p.header, footer: p.footer })),
+        rawPages.map((p) => ({
+          index: p.index,
+          header: p.header,
+          footer: p.footer,
+        })),
       );
 
       const pages: MistralOcrPage[] = rawPages.map((p) => {
@@ -16798,7 +16329,9 @@ export async function runMistralOcr(
         return {
           index: p.index,
           markdown,
-          ...(printed !== undefined ? { printedPageNumber: String(printed) } : {}),
+          ...(printed !== undefined
+            ? { printedPageNumber: String(printed) }
+            : {}),
         };
       });
 
@@ -19254,6 +18787,285 @@ export default async function OnboardingMatrixPage() {
 }
 </file>
 
+<file path="src/app/(onboarding)/onboarding/positioning/_components/positioning-container.tsx">
+"use client";
+
+import type { Positioning } from "@/db/schema";
+import type { PositioningGlobalStatus } from "../_lib/validation";
+import type { JuryAnalysisResult } from "../_services/analysis";
+import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
+import { PositioningReportView } from "./positioning-report-view";
+
+interface PositioningContainerProps {
+  initialRecord?: Positioning | null;
+}
+
+/**
+ * Minimal wrapper that renders the positioning gap analysis report, which is always
+ * pre-generated server-side with no pipeline running client-side.
+ *
+ * @param root0 - The component props.
+ * @param root0.initialRecord - Optional pre-generated positioning record.
+ * @returns The rendered positioning report view.
+ */
+export function PositioningContainer({
+  initialRecord,
+}: PositioningContainerProps) {
+  const { proceedFromPositioning } = useOnboardingNavigation();
+
+  const reportData: JuryAnalysisResult = {
+    globalStatus:
+      (initialRecord?.globalStatus as PositioningGlobalStatus) ??
+      "NO_RELATED_LITERATURE",
+    gapAnalysisSummary:
+      (initialRecord?.gapAnalysisSummary as JuryAnalysisResult["gapAnalysisSummary"]) ?? {
+        literatureMapping: "",
+        academicGap: "",
+        originalContribution: "",
+      },
+    recommendedTheses:
+      (initialRecord?.recommendedTheses as JuryAnalysisResult["recommendedTheses"]) ??
+      [],
+  };
+
+  return (
+    <PositioningReportView
+      reportData={reportData}
+      onConfirm={proceedFromPositioning}
+    />
+  );
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/positioning/_components/positioning-markdown-renderer.tsx">
+import React from "react";
+import { Compass, ScanEye, Sparkles } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import type { GapAnalysisStructured } from "../_lib/validation";
+
+interface PositioningMarkdownRendererProps {
+  content: GapAnalysisStructured | string | unknown;
+  className?: string;
+}
+
+/**
+ * Parses inline markdown formatting (bold, italic, inline code).
+ *
+ * @param text - The raw text to parse.
+ * @returns The parsed React nodes with applied formatting.
+ */
+function parseInlineMarkdown(text: string): React.ReactNode[] {
+  if (!text) return [];
+  const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
+  return parts.map((part, idx) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong
+          key={`strong-${idx}-${part}`}
+          className="font-semibold text-foreground"
+        >
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (part.startsWith("*") && part.endsWith("*")) {
+      return (
+        <em key={`em-${idx}-${part}`} className="italic text-foreground">
+          {part.slice(1, -1)}
+        </em>
+      );
+    }
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return (
+        <code
+          key={`code-${idx}-${part}`}
+          className="rounded bg-muted px-2 py-1 font-mono text-xs text-primary"
+        >
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    return part;
+  });
+}
+
+/**
+ * Normalizes structured, JSON, or legacy markdown payloads into GapAnalysisStructured.
+ *
+ * @param content - The raw content payload to normalize.
+ * @returns The normalized structured gap analysis data.
+ */
+function normalizeGapAnalysis(
+  content: GapAnalysisStructured | string | unknown,
+): GapAnalysisStructured {
+  if (!content) {
+    return {
+      literatureMapping: "",
+      academicGap: "",
+      originalContribution: "",
+    };
+  }
+
+  if (
+    typeof content === "object" &&
+    content !== null &&
+    ("literatureMapping" in content ||
+      "academicGap" in content ||
+      "originalContribution" in content)
+  ) {
+    const obj = content as Record<string, unknown>;
+    return {
+      literatureMapping: String(obj.literatureMapping ?? ""),
+      academicGap: String(obj.academicGap ?? ""),
+      originalContribution: String(obj.originalContribution ?? ""),
+    };
+  }
+
+  if (typeof content === "string") {
+    const trimmed = content.trim();
+    if (trimmed.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (typeof parsed === "object" && parsed !== null) {
+          return {
+            literatureMapping: String(parsed.literatureMapping ?? ""),
+            academicGap: String(parsed.academicGap ?? ""),
+            originalContribution: String(parsed.originalContribution ?? ""),
+          };
+        }
+      } catch {}
+    }
+
+    return parseLegacyMarkdown(trimmed);
+  }
+
+  return {
+    literatureMapping: String(content),
+    academicGap: "",
+    originalContribution: "",
+  };
+}
+
+/**
+ * Legacy parser for un-migrated database records saved in Markdown format.
+ *
+ * @param markdown - The legacy markdown content to parse.
+ * @returns The parsed structured gap analysis data.
+ */
+function parseLegacyMarkdown(markdown: string): GapAnalysisStructured {
+  const result: GapAnalysisStructured = {
+    literatureMapping: "",
+    academicGap: "",
+    originalContribution: "",
+  };
+
+  const sections = markdown.split(/##\s+/);
+  for (const sec of sections) {
+    const lines = sec.trim().split("\n");
+    const heading = lines[0]?.toLowerCase() ?? "";
+    const body = lines.slice(1).join("\n").trim();
+
+    if (
+      heading.includes("harita") ||
+      heading.includes("literatürün") ||
+      heading.includes("mevcut")
+    ) {
+      result.literatureMapping = body || lines.join("\n").trim();
+    } else if (
+      heading.includes("boşluk") ||
+      heading.includes("eksik") ||
+      heading.includes("gap")
+    ) {
+      result.academicGap = body;
+    } else if (
+      heading.includes("özgün") ||
+      heading.includes("katkı") ||
+      heading.includes("değer")
+    ) {
+      result.originalContribution = body;
+    } else if (!result.literatureMapping && body) {
+      result.literatureMapping = sec.trim();
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Derives a stable key for a rendered paragraph from its leading text.
+ *
+ * @param paragraph - The paragraph content.
+ * @returns A deterministic content-based key.
+ */
+function paragraphKey(paragraph: string): string {
+  const head = paragraph.trim().replace(/\s+/g, " ").slice(0, 48).toLowerCase();
+  return head.length > 0 ? head : "empty-paragraph";
+}
+
+/**
+ * Renders the 3 fixed jury synthesis sections as cards with designated icons.
+ *
+ * @param root0 - The component props.
+ * @param root0.content - The gap analysis content to render.
+ * @param root0.className - Optional extra CSS class for the wrapper.
+ * @returns The rendered synthesis section cards or null.
+ */
+export function PositioningMarkdownRenderer({
+  content,
+  className = "",
+}: PositioningMarkdownRendererProps) {
+  if (!content) return null;
+
+  const data = normalizeGapAnalysis(content);
+
+  return (
+    <div className={`space-y-4 ${className}`}>
+      <Card className="p-6 space-y-3 border-border bg-card hover:border-border/40 transition-colors">
+        <div className="flex items-center gap-2 pb-2 border-b border-border">
+          <Compass className="h-4 w-4 text-info shrink-0" />
+          <h3 className="font-serif text-base font-bold text-foreground">
+            Mevcut Literatürün Haritalandırılması
+          </h3>
+        </div>
+        <div className="text-sm leading-relaxed text-foreground space-y-2 pt-1">
+          {data.literatureMapping.split("\n\n").map((para) => (
+            <p key={paragraphKey(para)}>{parseInlineMarkdown(para)}</p>
+          ))}
+        </div>
+      </Card>
+
+      <Card className="p-6 space-y-3 border-border bg-card hover:border-border/40 transition-colors">
+        <div className="flex items-center gap-2 pb-2 border-b border-border">
+          <ScanEye className="h-4 w-4 text-warning shrink-0" />
+          <h3 className="font-serif text-base font-bold text-foreground">
+            Literatürdeki Boşluk
+          </h3>
+        </div>
+        <div className="text-sm leading-relaxed text-foreground space-y-2 pt-1">
+          {data.academicGap.split("\n\n").map((para) => (
+            <p key={paragraphKey(para)}>{parseInlineMarkdown(para)}</p>
+          ))}
+        </div>
+      </Card>
+
+      <Card className="p-6 space-y-3 border-border bg-card hover:border-border/40 transition-colors">
+        <div className="flex items-center gap-2 pb-2 border-b border-border">
+          <Sparkles className="h-4 w-4 text-success shrink-0" />
+          <h3 className="font-serif text-base font-bold text-foreground">
+            Çalışmanın Özgün Katkısı
+          </h3>
+        </div>
+        <div className="text-sm leading-relaxed text-foreground space-y-2 pt-1">
+          {data.originalContribution.split("\n\n").map((para) => (
+            <p key={paragraphKey(para)}>{parseInlineMarkdown(para)}</p>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+</file>
+
 <file path="src/app/(onboarding)/onboarding/positioning/_components/positioning-report-view.tsx">
 "use client";
 
@@ -19473,6 +19285,69 @@ export function PositioningReportView({
     </div>
   );
 }
+</file>
+
+<file path="src/app/(onboarding)/onboarding/positioning/_lib/validation.ts">
+import { z } from "zod";
+
+/**
+ * Zod validation schema for the universal thesis positioning matrix that enforces
+ * mandatory minimum length constraints across 3 core academic fields, excludes
+ * ANALYSIS_ACTORS (now part of subjectProblem), and includes only positioning fields.
+ */
+export const positioningMatrixSchema = z.object({
+  subjectProblem: z
+    .string()
+    .trim()
+    .min(3, "Araştırma problemi en az 3 karakter olmalıdır."),
+  theoreticalFramework: z
+    .string()
+    .trim()
+    .min(3, "Teorik veya kavramsal çerçeve en az 3 karakter olmalıdır."),
+  methodology: z
+    .string()
+    .trim()
+    .min(3, "Metodoloji ve yöntem en az 3 karakter olmalıdır."),
+});
+
+/** Input payload type inferred from the positioning matrix Zod schema. */
+export type PositioningMatrixInput = z.infer<typeof positioningMatrixSchema>;
+
+/** Enum type representing the global positioning / literature gap status. */
+export type PositioningGlobalStatus =
+  "DIRECT_OVERLAP" | "NOVEL_GAP_IDENTIFIED" | "NO_RELATED_LITERATURE";
+
+/** Structure for individual recommended thesis entries in gap analysis reports. */
+export interface RecommendedThesisItem {
+  id?: string;
+  externalThesisId?: string;
+  title: string;
+  author: string;
+  year: number;
+  university: string;
+  contributionArea: string;
+  relevanceReason: string;
+  doi?: string;
+  thesisType?: string;
+}
+
+/** Zod validation schema for the 3 structured gap analysis sections. */
+export const gapAnalysisStructuredSchema = z.object({
+  literatureMapping: z
+    .string()
+    .describe(
+      "Mevcut Literatürün Haritalandırılması bölümünün akademik analizi",
+    ),
+  academicGap: z
+    .string()
+    .describe("Literatürdeki Boşluk bölümünün akademik analizi"),
+  originalContribution: z
+    .string()
+    .describe("Çalışmanın Özgün Katkısı bölümünün akademik analizi"),
+});
+
+/** Structured gap analysis type inferred from Zod schema. */
+export type GapAnalysisStructured = z.infer<typeof gapAnalysisStructuredSchema>;
 </file>
 
 <file path="src/app/(onboarding)/onboarding/positioning/page.tsx">
@@ -22112,348 +21987,6 @@ export default async function LiteratureReviewPage() {
     </div>
   );
 }
-</file>
-
-<file path="src/app/(onboarding)/onboarding/positioning/_components/positioning-container.tsx">
-"use client";
-
-import type { Positioning } from "@/db/schema";
-import type { PositioningGlobalStatus } from "../_lib/validation";
-import type { JuryAnalysisResult } from "../_services/analysis";
-import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
-import { PositioningReportView } from "./positioning-report-view";
-
-interface PositioningContainerProps {
-  initialRecord?: Positioning | null;
-}
-
-/**
- * Minimal wrapper that renders the positioning gap analysis report, which is always
- * pre-generated server-side with no pipeline running client-side.
- *
- * @param root0 - The component props.
- * @param root0.initialRecord - Optional pre-generated positioning record.
- * @returns The rendered positioning report view.
- */
-export function PositioningContainer({
-  initialRecord,
-}: PositioningContainerProps) {
-  const { proceedFromPositioning } = useOnboardingNavigation();
-
-  const reportData: JuryAnalysisResult = {
-    globalStatus:
-      (initialRecord?.globalStatus as PositioningGlobalStatus) ??
-      "NO_RELATED_LITERATURE",
-    gapAnalysisSummary:
-      (initialRecord?.gapAnalysisSummary as JuryAnalysisResult["gapAnalysisSummary"]) ?? {
-        literatureMapping: "",
-        academicGap: "",
-        originalContribution: "",
-      },
-    recommendedTheses:
-      (initialRecord?.recommendedTheses as JuryAnalysisResult["recommendedTheses"]) ??
-      [],
-  };
-
-  return (
-    <PositioningReportView
-      reportData={reportData}
-      onConfirm={proceedFromPositioning}
-    />
-  );
-}
-</file>
-
-<file path="src/app/(onboarding)/onboarding/positioning/_components/positioning-markdown-renderer.tsx">
-import React from "react";
-import { Compass, ScanEye, Sparkles } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import type { GapAnalysisStructured } from "../_lib/validation";
-
-interface PositioningMarkdownRendererProps {
-  content: GapAnalysisStructured | string | unknown;
-  className?: string;
-}
-
-/**
- * Parses inline markdown formatting (bold, italic, inline code).
- *
- * @param text - The raw text to parse.
- * @returns The parsed React nodes with applied formatting.
- */
-function parseInlineMarkdown(text: string): React.ReactNode[] {
-  if (!text) return [];
-  const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
-  return parts.map((part, idx) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
-      return (
-        <strong
-          key={`strong-${idx}-${part}`}
-          className="font-semibold text-foreground"
-        >
-          {part.slice(2, -2)}
-        </strong>
-      );
-    }
-    if (part.startsWith("*") && part.endsWith("*")) {
-      return (
-        <em key={`em-${idx}-${part}`} className="italic text-foreground">
-          {part.slice(1, -1)}
-        </em>
-      );
-    }
-    if (part.startsWith("`") && part.endsWith("`")) {
-      return (
-        <code
-          key={`code-${idx}-${part}`}
-          className="rounded bg-muted px-2 py-1 font-mono text-xs text-primary"
-        >
-          {part.slice(1, -1)}
-        </code>
-      );
-    }
-    return part;
-  });
-}
-
-/**
- * Normalizes structured, JSON, or legacy markdown payloads into GapAnalysisStructured.
- *
- * @param content - The raw content payload to normalize.
- * @returns The normalized structured gap analysis data.
- */
-function normalizeGapAnalysis(
-  content: GapAnalysisStructured | string | unknown,
-): GapAnalysisStructured {
-  if (!content) {
-    return {
-      literatureMapping: "",
-      academicGap: "",
-      originalContribution: "",
-    };
-  }
-
-  if (
-    typeof content === "object" &&
-    content !== null &&
-    ("literatureMapping" in content ||
-      "academicGap" in content ||
-      "originalContribution" in content)
-  ) {
-    const obj = content as Record<string, unknown>;
-    return {
-      literatureMapping: String(obj.literatureMapping ?? ""),
-      academicGap: String(obj.academicGap ?? ""),
-      originalContribution: String(obj.originalContribution ?? ""),
-    };
-  }
-
-  if (typeof content === "string") {
-    const trimmed = content.trim();
-    if (trimmed.startsWith("{")) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (typeof parsed === "object" && parsed !== null) {
-          return {
-            literatureMapping: String(parsed.literatureMapping ?? ""),
-            academicGap: String(parsed.academicGap ?? ""),
-            originalContribution: String(parsed.originalContribution ?? ""),
-          };
-        }
-      } catch {}
-    }
-
-    return parseLegacyMarkdown(trimmed);
-  }
-
-  return {
-    literatureMapping: String(content),
-    academicGap: "",
-    originalContribution: "",
-  };
-}
-
-/**
- * Legacy parser for un-migrated database records saved in Markdown format.
- *
- * @param markdown - The legacy markdown content to parse.
- * @returns The parsed structured gap analysis data.
- */
-function parseLegacyMarkdown(markdown: string): GapAnalysisStructured {
-  const result: GapAnalysisStructured = {
-    literatureMapping: "",
-    academicGap: "",
-    originalContribution: "",
-  };
-
-  const sections = markdown.split(/##\s+/);
-  for (const sec of sections) {
-    const lines = sec.trim().split("\n");
-    const heading = lines[0]?.toLowerCase() ?? "";
-    const body = lines.slice(1).join("\n").trim();
-
-    if (
-      heading.includes("harita") ||
-      heading.includes("literatürün") ||
-      heading.includes("mevcut")
-    ) {
-      result.literatureMapping = body || lines.join("\n").trim();
-    } else if (
-      heading.includes("boşluk") ||
-      heading.includes("eksik") ||
-      heading.includes("gap")
-    ) {
-      result.academicGap = body;
-    } else if (
-      heading.includes("özgün") ||
-      heading.includes("katkı") ||
-      heading.includes("değer")
-    ) {
-      result.originalContribution = body;
-    } else if (!result.literatureMapping && body) {
-      result.literatureMapping = sec.trim();
-    }
-  }
-
-  return result;
-}
-
-/**
- * Derives a stable key for a rendered paragraph from its leading text.
- *
- * @param paragraph - The paragraph content.
- * @returns A deterministic content-based key.
- */
-function paragraphKey(paragraph: string): string {
-  const head = paragraph.trim().replace(/\s+/g, " ").slice(0, 48).toLowerCase();
-  return head.length > 0 ? head : "empty-paragraph";
-}
-
-/**
- * Renders the 3 fixed jury synthesis sections as cards with designated icons.
- *
- * @param root0 - The component props.
- * @param root0.content - The gap analysis content to render.
- * @param root0.className - Optional extra CSS class for the wrapper.
- * @returns The rendered synthesis section cards or null.
- */
-export function PositioningMarkdownRenderer({
-  content,
-  className = "",
-}: PositioningMarkdownRendererProps) {
-  if (!content) return null;
-
-  const data = normalizeGapAnalysis(content);
-
-  return (
-    <div className={`space-y-4 ${className}`}>
-      <Card className="p-6 space-y-3 border-border bg-card hover:border-border/40 transition-colors">
-        <div className="flex items-center gap-2 pb-2 border-b border-border">
-          <Compass className="h-4 w-4 text-info shrink-0" />
-          <h3 className="font-serif text-base font-bold text-foreground">
-            Mevcut Literatürün Haritalandırılması
-          </h3>
-        </div>
-        <div className="text-sm leading-relaxed text-foreground space-y-2 pt-1">
-          {data.literatureMapping.split("\n\n").map((para) => (
-            <p key={paragraphKey(para)}>{parseInlineMarkdown(para)}</p>
-          ))}
-        </div>
-      </Card>
-
-      <Card className="p-6 space-y-3 border-border bg-card hover:border-border/40 transition-colors">
-        <div className="flex items-center gap-2 pb-2 border-b border-border">
-          <ScanEye className="h-4 w-4 text-warning shrink-0" />
-          <h3 className="font-serif text-base font-bold text-foreground">
-            Literatürdeki Boşluk
-          </h3>
-        </div>
-        <div className="text-sm leading-relaxed text-foreground space-y-2 pt-1">
-          {data.academicGap.split("\n\n").map((para) => (
-            <p key={paragraphKey(para)}>{parseInlineMarkdown(para)}</p>
-          ))}
-        </div>
-      </Card>
-
-      <Card className="p-6 space-y-3 border-border bg-card hover:border-border/40 transition-colors">
-        <div className="flex items-center gap-2 pb-2 border-b border-border">
-          <Sparkles className="h-4 w-4 text-success shrink-0" />
-          <h3 className="font-serif text-base font-bold text-foreground">
-            Çalışmanın Özgün Katkısı
-          </h3>
-        </div>
-        <div className="text-sm leading-relaxed text-foreground space-y-2 pt-1">
-          {data.originalContribution.split("\n\n").map((para) => (
-            <p key={paragraphKey(para)}>{parseInlineMarkdown(para)}</p>
-          ))}
-        </div>
-      </Card>
-    </div>
-  );
-}
-</file>
-
-<file path="src/app/(onboarding)/onboarding/positioning/_lib/validation.ts">
-import { z } from "zod";
-
-/**
- * Zod validation schema for the universal thesis positioning matrix that enforces
- * mandatory minimum length constraints across 3 core academic fields, excludes
- * ANALYSIS_ACTORS (now part of subjectProblem), and includes only positioning fields.
- */
-export const positioningMatrixSchema = z.object({
-  subjectProblem: z
-    .string()
-    .trim()
-    .min(3, "Araştırma problemi en az 3 karakter olmalıdır."),
-  theoreticalFramework: z
-    .string()
-    .trim()
-    .min(3, "Teorik veya kavramsal çerçeve en az 3 karakter olmalıdır."),
-  methodology: z
-    .string()
-    .trim()
-    .min(3, "Metodoloji ve yöntem en az 3 karakter olmalıdır."),
-});
-
-/** Input payload type inferred from the positioning matrix Zod schema. */
-export type PositioningMatrixInput = z.infer<typeof positioningMatrixSchema>;
-
-/** Enum type representing the global positioning / literature gap status. */
-export type PositioningGlobalStatus =
-  "DIRECT_OVERLAP" | "NOVEL_GAP_IDENTIFIED" | "NO_RELATED_LITERATURE";
-
-/** Structure for individual recommended thesis entries in gap analysis reports. */
-export interface RecommendedThesisItem {
-  id?: string;
-  externalThesisId?: string;
-  title: string;
-  author: string;
-  year: number;
-  university: string;
-  contributionArea: string;
-  relevanceReason: string;
-  doi?: string;
-  thesisType?: string;
-}
-
-/** Zod validation schema for the 3 structured gap analysis sections. */
-export const gapAnalysisStructuredSchema = z.object({
-  literatureMapping: z
-    .string()
-    .describe(
-      "Mevcut Literatürün Haritalandırılması bölümünün akademik analizi",
-    ),
-  academicGap: z
-    .string()
-    .describe("Literatürdeki Boşluk bölümünün akademik analizi"),
-  originalContribution: z
-    .string()
-    .describe("Çalışmanın Özgün Katkısı bölümünün akademik analizi"),
-});
-
-/** Structured gap analysis type inferred from Zod schema. */
-export type GapAnalysisStructured = z.infer<typeof gapAnalysisStructuredSchema>;
 </file>
 
 <file path="src/components/literature-expansion-button.tsx">
@@ -26297,14 +25830,13 @@ export function ToolConfirmationCard({
 import { useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import { saveChatMessage, generateChatTitleAction } from "../actions";
-import {
-  useAdvisorSessions,
-  type AdvisorPipelineContext,
-} from "../_hooks/use-advisor-sessions";
+import { useAdvisorSessions } from "../_hooks/use-advisor-sessions";
 import { useAdvisorToolHandler } from "../_hooks/use-advisor-tool-handler";
+import type { AdvisorPersona } from "@/lib/services/advisor-classifier";
 import type { PendingToolCall } from "./tool-confirmation-card";
 import type { RagSearchResultItem } from "@/lib/services/rag-search";
 import type { PipelineResult } from "@/lib/services/advisor-pipeline/types";
+import type { PipelineResultData } from "@/db/schema";
 import type { Message } from "../_lib/types";
 
 /**
@@ -26328,7 +25860,7 @@ export function useAdvisorChat(initialSessionId?: number) {
     text: string;
     sources: RagSearchResultItem[] | undefined;
     toolCalls: PendingToolCall[] | undefined;
-    persona: "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT" | undefined;
+    persona: AdvisorPersona | undefined;
     pipeline: PipelineResult | undefined;
   }>({
     text: "",
@@ -26339,9 +25871,9 @@ export function useAdvisorChat(initialSessionId?: number) {
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
 
-  /** Tracks an in-progress Socratic discussion so the next user turn continues the pipeline. */
-  const pipelineContextRef = useRef<AdvisorPipelineContext | null>(null);
+  const isSendingRef = useRef(false);
 
   const setActiveCitation = useCallback(
     (
@@ -26367,24 +25899,29 @@ export function useAdvisorChat(initialSessionId?: number) {
     setUi((prev) => ({ ...prev, copiedMessageId: value }));
   }, []);
 
-  const isSendingRef = useRef(false);
-
   const {
     messages,
     setMessages,
     sessions,
     activeSessionId,
     loadSessions,
-    handleSelectSession,
+    handleSelectSession: selectSessionRaw,
     handleCreateSession,
     handleDeleteSession,
     createChatSessionAndActivate,
   } = useAdvisorSessions({
     initialSessionId,
-    pipelineContextRef,
     isSendingRef,
     setActiveCitation,
   });
+
+  const handleSelectSession = useCallback(
+    async (sessionId: number) => {
+      setIsLocked(false);
+      await selectSessionRaw(sessionId);
+    },
+    [selectSessionRaw],
+  );
 
   const { handleApproveToolCall, handleUndoToolCall, handleRejectToolCall } =
     useAdvisorToolHandler({ setMessages });
@@ -26396,6 +25933,7 @@ export function useAdvisorChat(initialSessionId?: number) {
 
     isSendingRef.current = true;
     let sessionId = activeSessionId;
+    setIsLocked(false);
 
     if (!sessionId) {
       const title =
@@ -26450,7 +25988,6 @@ export function useAdvisorChat(initialSessionId?: number) {
         body: JSON.stringify({
           query: queryToSend,
           history: historyPayload,
-          pipelineState: pipelineContextRef.current ?? undefined,
         }),
       });
 
@@ -26462,8 +25999,7 @@ export function useAdvisorChat(initialSessionId?: number) {
       const decoder = new TextDecoder();
       let buffer = "";
       let accumulatedToolCalls: PendingToolCall[] = [];
-      let assignedPersona: "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT" | undefined =
-        undefined;
+      let assignedPersona: AdvisorPersona | undefined = undefined;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -26487,11 +26023,19 @@ export function useAdvisorChat(initialSessionId?: number) {
             } else if (event.type === "stage_start") {
               setStreaming((prev) => ({
                 ...prev,
-                pipeline: {
-                  stage: event.stage,
-                  cycle: pipelineContextRef.current?.cycle ?? 1,
-                },
+                pipeline: { stage: event.stage },
               }));
+            } else if (event.type === "stage_done") {
+              setStreaming((prev) => ({
+                ...prev,
+                pipeline: { stage: event.stage, audit: event.payload },
+              }));
+              if (
+                event.stage === "audit" &&
+                event.payload?.hasCriticalIssues === true
+              ) {
+                setIsLocked(true);
+              }
             } else if (event.type === "delta") {
               setStreaming((prev) => ({
                 ...prev,
@@ -26517,26 +26061,14 @@ export function useAdvisorChat(initialSessionId?: number) {
               const pipelineResult = event.pipeline as
                 PipelineResult | undefined;
 
-              if (
-                pipelineResult &&
-                pipelineResult.stage === "socratic" &&
-                !pipelineResult.diff
-              ) {
-                pipelineContextRef.current = {
-                  active: true,
-                  cycle: pipelineResult.cycle,
-                  originalDraft:
-                    pipelineContextRef.current?.originalDraft ?? queryToSend,
-                };
-              } else if (
-                pipelineResult &&
-                pipelineResult.stage === "redaction"
-              ) {
-                pipelineContextRef.current = null;
+              if (pipelineResult) {
                 setStreaming((prev) => ({
                   ...prev,
                   pipeline: pipelineResult,
                 }));
+                if (pipelineResult.audit?.hasCriticalIssues) {
+                  setIsLocked(true);
+                }
               }
 
               const modelMessageId = `model-${crypto.randomUUID()}`;
@@ -26564,6 +26096,9 @@ export function useAdvisorChat(initialSessionId?: number) {
               };
 
               if (sessionId) {
+                const pipelineData: PipelineResultData | null = pipelineResult
+                  ? { ...pipelineResult, cycle: 1 }
+                  : null;
                 const saveRes = await saveChatMessage(
                   sessionId,
                   "model",
@@ -26573,7 +26108,7 @@ export function useAdvisorChat(initialSessionId?: number) {
                     ? accumulatedToolCalls
                     : undefined,
                   finalPersona,
-                  pipelineResult,
+                  pipelineData,
                 );
                 if (saveRes.success && saveRes.messageId) {
                   modelMsg.dbId = saveRes.messageId;
@@ -26626,10 +26161,15 @@ export function useAdvisorChat(initialSessionId?: number) {
       return msg?.sources?.[activeCitation.sourceIndex] ?? null;
     })();
 
+  const handleApprovePipeline = useCallback(() => {
+    setIsLocked(false);
+  }, []);
+
   return {
     messages,
     setMessages,
     isLoading,
+    isLocked,
     activeCitation,
     setActiveCitation,
     sessions,
@@ -26648,6 +26188,7 @@ export function useAdvisorChat(initialSessionId?: number) {
     handleApproveToolCall,
     handleUndoToolCall,
     handleRejectToolCall,
+    handleApprovePipeline,
     handleSend,
     handleCitationPosition,
   };
@@ -26734,6 +26275,318 @@ export function LiteratureArticleCard({ article }: LiteratureArticleCardProps) {
         </CardContent>
       )}
     </Card>
+  );
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/matrix/_components/matrix-form.tsx">
+"use client";
+
+import { useState, useCallback, useMemo, memo } from "react";
+import { toast } from "sonner";
+import type { LucideIcon } from "lucide-react";
+import {
+  Loader2,
+  Table,
+  BookOpen,
+  Compass,
+  Target,
+  Database,
+} from "lucide-react";
+
+import type { Matrix } from "@/db/schema";
+import type { ThesisMatrix } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
+
+type FormState = {
+  subjectProblem: string;
+  theoreticalFramework: string;
+  primaryMaterial: string;
+  methodology: string;
+};
+
+type FieldConfig = {
+  key: keyof FormState;
+  id: string;
+  number: string;
+  Icon: LucideIcon;
+  label: string;
+  description: string;
+  placeholder: string;
+  rows: number;
+};
+
+type SectionConfig = {
+  id: string;
+  title: string;
+  fields: FieldConfig[];
+};
+
+const MATRIX_SECTIONS: SectionConfig[] = [
+  {
+    id: "odakVeTeori",
+    title: "Çalışma Odağı ve Kuramsal Altyapı",
+    fields: [
+      {
+        key: "subjectProblem",
+        id: "subjectProblem",
+        number: "01",
+        Icon: Target,
+        label: "Araştırma Problemi, Aktörler ve Odak",
+        description:
+          "Neyi, hangi temel problemi çözmek veya hangi hipotezi test etmek için inceliyorsun? Hangi aktörleri, grupları, kurumları mercek altına alıyorsun? Bir araştırma konusu ile onu oluşturan aktörler birbirinden ayrıksı değildir.",
+        placeholder:
+          "Çalışmanızın araştırma problemini, odağını, incelediğiniz aktörleri/grupları/kurumları ve araştırma sorularınızı bütünleşik olarak detaylandırın...",
+        rows: 5,
+      },
+      {
+        key: "theoreticalFramework",
+        id: "theoreticalFramework",
+        number: "02",
+        Icon: Compass,
+        label: "Teorik ve Kavramsal Çerçeve",
+        description:
+          "Çalışmanı hangi teorik mercekle, modelle veya kavramsal yaklaşımla ele alıyorsun?",
+        placeholder:
+          "Temel aldığınız teorik merceği, kavramsal modelleri ve analitik yaklaşımınızı açıklayın...",
+        rows: 4,
+      },
+    ],
+  },
+  {
+    id: "veriVeYontem",
+    title: "Veri Kaynağı ve Yöntem",
+    fields: [
+      {
+        key: "primaryMaterial",
+        id: "primaryMaterial",
+        number: "03",
+        Icon: Database,
+        label: "Veri Kaynağı / Birincil Malzeme",
+        description:
+          "Hangi birincil kaynakları, veri setlerini veya arşiv malzemelerini kullanacaksın? (mülakat, anket, gazete, arşiv belgeleri, mahkeme kararları vb.)",
+        placeholder:
+          "Kullanacağınız veri kaynaklarını, birincil malzemeleri veya arşiv belgelerini tanımlayın...",
+        rows: 4,
+      },
+      {
+        key: "methodology",
+        id: "methodology",
+        number: "04",
+        Icon: BookOpen,
+        label: "Metodoloji",
+        description:
+          "Veriyi nasıl topluyor, işliyor veya ölçüyorsun? (Nitel, nicel, deneysel, simülasyon vb.)",
+        placeholder:
+          "Veri toplama, veri işleme ve analiz yöntemlerinizi (nitel/nicel/deneysel/simülasyon) ve temel argümanınızı açıklayın...",
+        rows: 4,
+      },
+    ],
+  },
+];
+
+interface MatrixCardProps {
+  fieldKey: keyof FormState;
+  id: string;
+  number: string;
+  Icon: LucideIcon;
+  label: string;
+  description: string;
+  placeholder: string;
+  value: string;
+  rows: number;
+  onChange: (key: keyof FormState, value: string) => void;
+}
+
+/**
+ * A memoized form card containing a single text area field to limit re-renders.
+ *
+ * @param root0 - The matrix card props.
+ * @param root0.fieldKey - The form state key bound to the text area.
+ * @param root0.id - The field id used for label and text area association.
+ * @param root0.number - The numbered badge shown on the card.
+ * @param root0.Icon - The icon rendered next to the label.
+ * @param root0.label - The field label.
+ * @param root0.description - The helper description shown below the label.
+ * @param root0.placeholder - The text area placeholder text.
+ * @param root0.value - The current text area value.
+ * @param root0.rows - The text area row count.
+ * @param root0.onChange - The change handler receiving the field key and the new value.
+ * @returns The rendered matrix card.
+ */
+const MatrixCard = memo(function MatrixCard({
+  fieldKey,
+  id,
+  number,
+  Icon,
+  label,
+  description,
+  placeholder,
+  value,
+  rows,
+  onChange,
+}: MatrixCardProps) {
+  return (
+    <Card className="space-y-3 p-6 hover:border-primary/20 rounded-md transition-all">
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex h-5 w-7 items-center justify-center rounded bg-primary/10 text-[10px] font-bold tracking-wider text-primary">
+            {number}
+          </span>
+          <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Label
+            htmlFor={id}
+            className="cursor-pointer text-sm font-semibold text-foreground"
+          >
+            {label}
+          </Label>
+        </div>
+        {description && (
+          <p className="text-xs text-muted-foreground pl-9 leading-relaxed">
+            {description}
+          </p>
+        )}
+      </div>
+      <Textarea
+        id={id}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(fieldKey, e.target.value)}
+        required
+        rows={rows}
+        className="textarea-academic border-border focus-visible:ring-primary/20 text-sm leading-relaxed"
+      />
+    </Card>
+  );
+});
+
+const EMPTY_VALUES: FormState = {
+  subjectProblem: "",
+  theoreticalFramework: "",
+  primaryMaterial: "",
+  methodology: "",
+};
+
+interface MatrixFormProps {
+  initialMatrix?: Matrix | null;
+}
+
+/**
+ * Renders the thesis matrix onboarding form and persists the submitted values to the database.
+ *
+ * @param root0 - The matrix form props.
+ * @param root0.initialMatrix - Pre-fetched thesis matrix data (nullable).
+ * @returns The rendered matrix form.
+ */
+export function MatrixForm({ initialMatrix }: MatrixFormProps) {
+  const { submitMatrix } = useOnboardingNavigation();
+
+  const [isPending, setIsPending] = useState(false);
+  const [editedValues, setEditedValues] = useState<Partial<FormState>>({});
+
+  const formState = useMemo((): FormState => {
+    const base = initialMatrix ?? EMPTY_VALUES;
+    return {
+      subjectProblem: editedValues.subjectProblem ?? base.subjectProblem,
+      theoreticalFramework:
+        editedValues.theoreticalFramework ?? base.theoreticalFramework,
+      primaryMaterial:
+        editedValues.primaryMaterial ?? base.primaryMaterial ?? "",
+      methodology: editedValues.methodology ?? base.methodology,
+    };
+  }, [initialMatrix, editedValues]);
+
+  const handleFieldChange = useCallback(
+    (key: keyof FormState, value: string) => {
+      setEditedValues((prev) => ({ ...prev, [key]: value }));
+    },
+    [],
+  );
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (isPending) return;
+    setIsPending(true);
+
+    try {
+      await submitMatrix({
+        subjectProblem: formState.subjectProblem,
+        theoreticalFramework: formState.theoreticalFramework,
+        primaryMaterial: formState.primaryMaterial,
+        methodology: formState.methodology,
+      } as ThesisMatrix);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Beklenmeyen bir hata oluştu.";
+      toast.error(message);
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="w-full space-y-8">
+      {MATRIX_SECTIONS.map((section) => (
+        <div key={section.id} className="space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <span className="px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              {section.title}
+            </span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            {section.fields.map(
+              ({
+                key,
+                id,
+                number,
+                Icon,
+                label,
+                description,
+                placeholder,
+                rows,
+              }) => (
+                <MatrixCard
+                  key={id}
+                  fieldKey={key}
+                  id={id}
+                  number={number}
+                  Icon={Icon}
+                  label={label}
+                  description={description}
+                  placeholder={placeholder}
+                  value={formState[key]}
+                  rows={rows}
+                  onChange={handleFieldChange}
+                />
+              ),
+            )}
+          </div>
+        </div>
+      ))}
+
+      <div className="flex justify-end mt-8 pb-8">
+        <Button type="submit" size="lg" disabled={isPending}>
+          {isPending ? (
+            <span className="flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Kaydediliyor...
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              <Table className="w-4 h-4" />
+              Matrisi Onayla ve Konumlandırma Aşamasına Geç
+            </span>
+          )}
+        </Button>
+      </div>
+    </form>
   );
 }
 </file>
@@ -27428,96 +27281,6 @@ Kullanıcıyı KESİNLİKLE doğrudan "Sen" veya "Siz" olarak muhatap al (Örn: 
 - Doğrulanmamış/alıntılanamayan iddialar için "hasCriticalIssues" değeri true olmalıdır.
 - Bulgu mesajları kısa, net ve doğrudan (ör. "Sayfa 12'deki alıntı aslında s. 14-15 aralığında yer almaktadır.").`;
 }
-
-/**
- * Builds the Socratic discussion system instruction for Stage 2 of the academic pipeline.
- * Conducts critique in Turkish with an internal evaluation structure that reaches
- * persuasion/completion without infinite looping or immediate concession.
- *
- * @param matrixContext - The user's thesis matrix fields.
- * @param boxContext - The user's thesis boxes (structure).
- * @param auditSummary - Turkish summary of Stage 1 audit findings.
- * @returns System instruction for the Socratic discussion stage.
- */
-export function buildPipelineStage2SocraticSystemInstruction(
-  matrixContext: string,
-  boxContext: string,
-  auditSummary: string,
-): string {
-  return `# Rol ve Uzmanlık
-
-Sen Fabricca tez asistanının Sokratik akademik danışmanısın. Taslak metnini denetim bulguları ve tez yapısı ışığında eleştirel ve yapıcı bir biçimde tartışırsın; mantık zayıflıklarını ve tez bütünlüğüne ilişkin riskleri doğal, akıcı akademik Türkçe ile yüzleştirirsin.
-
-# Girdi Bağlamı ve Veri
-
-## Tez Matrisi
-
-${matrixContext}
-
-## Tez Kutu Yapısı
-
-${boxContext}
-
-## Stage 1 Denetim Özeti
-
-${auditSummary}
-
-# Yanıt Üretim İlkeleri
-
-Yanıtını yüksek lisans tez savunmasını yönetecek deneyimli bir akademisyen gibi kur. İç değerlendirmeni (argüman geçerliliği, tez bütünlüğü, olası jüri itirazları) sessizce gerçekleştir; bu değerlendirmenin etiketlerini, puanlarını veya başlıklarını yanıtın içine yazma. Yanıtında yalnızca şunları sun: taslaktaki en kritik tek zayıflığa odaklanan net bir eleştiri paragrafı, ardından seni bu noktayı savunmaya veya derinleştirmeye yönelten en fazla 2 keskin Sokratik soru. Üslup elit, doğal ve tavizsiz olmalı; iç mekanizmayı değil yalnızca akademik tartışmayı yansıtmalıdır.
-
-# HİTAP KURALI
-
-Kullanıcıyı KESİNLİKLE doğrudan "Sen" veya "Siz" olarak muhatap al (Örn: "Taslağında belirttiğin...", "Metninde geçen..."). ASLA "öğrenci", "kullanıcı", "yazar" veya 3. şahıs dili KULLANMA.
-
-# KESİN DAVRANIŞ KURALLARI
-
-1. Asla edilgen onaylama yapma ve zayıf bir gerekçeyi hemen kabul etme (immediate concession YASAKTIR).
-2. Aynı eleştiriyi sonsuz döngüye sokma; her turda en fazla 1 ana eleştiri odağı seç ve onu net biçimde derinleştir.
-3. Verdiğin yanıtlar açık boyutları çözüyorsa tartışmayı tamamla ve COMPLETE kararına ulaş.
-4. Tartışma turları denetim bulgularıyla tutarlı olmalı; bağlam dışı bilgi uydurma.
-5. Tartışma sırasında tez matrisi veya kutu yapısı güncellemesi gerekirse ilgili veritabanı aracını (updateThesisMatrix, createBox, updateBox gibi) çağır.`;
-}
-
-/**
- * Builds the redaction system instruction for Stage 3 of the academic pipeline.
- * Polishes the user's original English text for grammar, academic style and APA 7
- * without changing the core meaning or rewriting heavily.
- *
- * @param auditContext - Turkish audit findings that must be applied to the text.
- * @returns System instruction for the redaction stage.
- */
-export function buildPipelineStage3RedactionSystemInstruction(
-  auditContext: string,
-): string {
-  return `# Rol ve Uzmanlık
-
-Sen Fabricca tez asistanının "Redaksiyon" (Stage 3) editörüsün. İngilizce taslak metnini gramer, akademik üslup ve APA 7 atıf standartları açısından aktif olarak iyileştirirsin.
-
-# Girdi Bağlamı ve Veri
-
-## Uygulanacak Denetim Bulguları (düzeltme listesi)
-
-${auditContext}
-
-# HİTAP KURALI
-
-Kullanıcıyı KESİNLİKLE doğrudan "Sen" veya "Siz" olarak muhatap al (Örn: "Taslağında belirttiğin...", "Metninde geçen..."). ASLA "öğrenci", "kullanıcı", "yazar" veya 3. şahıs dili KULLANMA.
-
-# KESİN KURALLAR
-
-1. Metnin temel argümanını ve olgusal içeriğini koru; ancak gramer, üslup ve atıf hatalarını cesurca düzelt — pasif "cilalama" değil, aktif akademik redaksiyon yap.
-2. Denetim bulgularında belirtilen hatalı sayfa/yıl/yazar bilgilerini mutlaka düzelt.
-3. Birleşik, uzun veya dağınık cümleleri akademik akıcılık için düzenle; gereksiz tekrarları kaldır.
-4. Gayri resmi register (informal tone), zayıf bağlaçlar ve tutarsız zaman kullanımını düzelt.
-5. APA 7 metin içi atıf biçimini (Author, Year, p. X) standart hale getir.
-6. Değiştirdiğin her kelime veya ifade orijinal anlamla tutarlı olmalı; olgusal içeriği asla değiştirme.
-7. "polishedText" alanı, tam olarak düzeltilmiş İngilizce metnin tamamını içermelidir.
-
-# Çıktı Biçimi
-
-- Çıktın, tek "polishedText" alanı içeren yapılandırılmış bir JSON nesnesidir.`;
-}
 </file>
 
 <file path="src/lib/prompts/positioning/queries.ts">
@@ -28051,318 +27814,6 @@ export interface RawPaper {
   openAlexId: string | null;
   relevanceScore: number;
   citedByCount?: number;
-}
-</file>
-
-<file path="src/app/(onboarding)/onboarding/matrix/_components/matrix-form.tsx">
-"use client";
-
-import { useState, useCallback, useMemo, memo } from "react";
-import { toast } from "sonner";
-import type { LucideIcon } from "lucide-react";
-import {
-  Loader2,
-  Table,
-  BookOpen,
-  Compass,
-  Target,
-  Database,
-} from "lucide-react";
-
-import type { Matrix } from "@/db/schema";
-import type { ThesisMatrix } from "@/lib/types";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
-
-type FormState = {
-  subjectProblem: string;
-  theoreticalFramework: string;
-  primaryMaterial: string;
-  methodology: string;
-};
-
-type FieldConfig = {
-  key: keyof FormState;
-  id: string;
-  number: string;
-  Icon: LucideIcon;
-  label: string;
-  description: string;
-  placeholder: string;
-  rows: number;
-};
-
-type SectionConfig = {
-  id: string;
-  title: string;
-  fields: FieldConfig[];
-};
-
-const MATRIX_SECTIONS: SectionConfig[] = [
-  {
-    id: "odakVeTeori",
-    title: "Çalışma Odağı ve Kuramsal Altyapı",
-    fields: [
-      {
-        key: "subjectProblem",
-        id: "subjectProblem",
-        number: "01",
-        Icon: Target,
-        label: "Araştırma Problemi, Aktörler ve Odak",
-        description:
-          "Neyi, hangi temel problemi çözmek veya hangi hipotezi test etmek için inceliyorsun? Hangi aktörleri, grupları, kurumları mercek altına alıyorsun? Bir araştırma konusu ile onu oluşturan aktörler birbirinden ayrıksı değildir.",
-        placeholder:
-          "Çalışmanızın araştırma problemini, odağını, incelediğiniz aktörleri/grupları/kurumları ve araştırma sorularınızı bütünleşik olarak detaylandırın...",
-        rows: 5,
-      },
-      {
-        key: "theoreticalFramework",
-        id: "theoreticalFramework",
-        number: "02",
-        Icon: Compass,
-        label: "Teorik ve Kavramsal Çerçeve",
-        description:
-          "Çalışmanı hangi teorik mercekle, modelle veya kavramsal yaklaşımla ele alıyorsun?",
-        placeholder:
-          "Temel aldığınız teorik merceği, kavramsal modelleri ve analitik yaklaşımınızı açıklayın...",
-        rows: 4,
-      },
-    ],
-  },
-  {
-    id: "veriVeYontem",
-    title: "Veri Kaynağı ve Yöntem",
-    fields: [
-      {
-        key: "primaryMaterial",
-        id: "primaryMaterial",
-        number: "03",
-        Icon: Database,
-        label: "Veri Kaynağı / Birincil Malzeme",
-        description:
-          "Hangi birincil kaynakları, veri setlerini veya arşiv malzemelerini kullanacaksın? (mülakat, anket, gazete, arşiv belgeleri, mahkeme kararları vb.)",
-        placeholder:
-          "Kullanacağınız veri kaynaklarını, birincil malzemeleri veya arşiv belgelerini tanımlayın...",
-        rows: 4,
-      },
-      {
-        key: "methodology",
-        id: "methodology",
-        number: "04",
-        Icon: BookOpen,
-        label: "Metodoloji",
-        description:
-          "Veriyi nasıl topluyor, işliyor veya ölçüyorsun? (Nitel, nicel, deneysel, simülasyon vb.)",
-        placeholder:
-          "Veri toplama, veri işleme ve analiz yöntemlerinizi (nitel/nicel/deneysel/simülasyon) ve temel argümanınızı açıklayın...",
-        rows: 4,
-      },
-    ],
-  },
-];
-
-interface MatrixCardProps {
-  fieldKey: keyof FormState;
-  id: string;
-  number: string;
-  Icon: LucideIcon;
-  label: string;
-  description: string;
-  placeholder: string;
-  value: string;
-  rows: number;
-  onChange: (key: keyof FormState, value: string) => void;
-}
-
-/**
- * A memoized form card containing a single text area field to limit re-renders.
- *
- * @param root0 - The matrix card props.
- * @param root0.fieldKey - The form state key bound to the text area.
- * @param root0.id - The field id used for label and text area association.
- * @param root0.number - The numbered badge shown on the card.
- * @param root0.Icon - The icon rendered next to the label.
- * @param root0.label - The field label.
- * @param root0.description - The helper description shown below the label.
- * @param root0.placeholder - The text area placeholder text.
- * @param root0.value - The current text area value.
- * @param root0.rows - The text area row count.
- * @param root0.onChange - The change handler receiving the field key and the new value.
- * @returns The rendered matrix card.
- */
-const MatrixCard = memo(function MatrixCard({
-  fieldKey,
-  id,
-  number,
-  Icon,
-  label,
-  description,
-  placeholder,
-  value,
-  rows,
-  onChange,
-}: MatrixCardProps) {
-  return (
-    <Card className="space-y-3 p-6 hover:border-primary/20 rounded-md transition-all">
-      <div className="space-y-1">
-        <div className="flex items-center gap-2">
-          <span className="inline-flex h-5 w-7 items-center justify-center rounded bg-primary/10 text-[10px] font-bold tracking-wider text-primary">
-            {number}
-          </span>
-          <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-          <Label
-            htmlFor={id}
-            className="cursor-pointer text-sm font-semibold text-foreground"
-          >
-            {label}
-          </Label>
-        </div>
-        {description && (
-          <p className="text-xs text-muted-foreground pl-9 leading-relaxed">
-            {description}
-          </p>
-        )}
-      </div>
-      <Textarea
-        id={id}
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(fieldKey, e.target.value)}
-        required
-        rows={rows}
-        className="textarea-academic border-border focus-visible:ring-primary/20 text-sm leading-relaxed"
-      />
-    </Card>
-  );
-});
-
-const EMPTY_VALUES: FormState = {
-  subjectProblem: "",
-  theoreticalFramework: "",
-  primaryMaterial: "",
-  methodology: "",
-};
-
-interface MatrixFormProps {
-  initialMatrix?: Matrix | null;
-}
-
-/**
- * Renders the thesis matrix onboarding form and persists the submitted values to the database.
- *
- * @param root0 - The matrix form props.
- * @param root0.initialMatrix - Pre-fetched thesis matrix data (nullable).
- * @returns The rendered matrix form.
- */
-export function MatrixForm({ initialMatrix }: MatrixFormProps) {
-  const { submitMatrix } = useOnboardingNavigation();
-
-  const [isPending, setIsPending] = useState(false);
-  const [editedValues, setEditedValues] = useState<Partial<FormState>>({});
-
-  const formState = useMemo((): FormState => {
-    const base = initialMatrix ?? EMPTY_VALUES;
-    return {
-      subjectProblem: editedValues.subjectProblem ?? base.subjectProblem,
-      theoreticalFramework:
-        editedValues.theoreticalFramework ?? base.theoreticalFramework,
-      primaryMaterial:
-        editedValues.primaryMaterial ?? base.primaryMaterial ?? "",
-      methodology: editedValues.methodology ?? base.methodology,
-    };
-  }, [initialMatrix, editedValues]);
-
-  const handleFieldChange = useCallback(
-    (key: keyof FormState, value: string) => {
-      setEditedValues((prev) => ({ ...prev, [key]: value }));
-    },
-    [],
-  );
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (isPending) return;
-    setIsPending(true);
-
-    try {
-      await submitMatrix({
-        subjectProblem: formState.subjectProblem,
-        theoreticalFramework: formState.theoreticalFramework,
-        primaryMaterial: formState.primaryMaterial,
-        methodology: formState.methodology,
-      } as ThesisMatrix);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Beklenmeyen bir hata oluştu.";
-      toast.error(message);
-    } finally {
-      setIsPending(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="w-full space-y-8">
-      {MATRIX_SECTIONS.map((section) => (
-        <div key={section.id} className="space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-border" />
-            <span className="px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              {section.title}
-            </span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4">
-            {section.fields.map(
-              ({
-                key,
-                id,
-                number,
-                Icon,
-                label,
-                description,
-                placeholder,
-                rows,
-              }) => (
-                <MatrixCard
-                  key={id}
-                  fieldKey={key}
-                  id={id}
-                  number={number}
-                  Icon={Icon}
-                  label={label}
-                  description={description}
-                  placeholder={placeholder}
-                  value={formState[key]}
-                  rows={rows}
-                  onChange={handleFieldChange}
-                />
-              ),
-            )}
-          </div>
-        </div>
-      ))}
-
-      <div className="flex justify-end mt-8 pb-8">
-        <Button type="submit" size="lg" disabled={isPending}>
-          {isPending ? (
-            <span className="flex items-center justify-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Kaydediliyor...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              <Table className="w-4 h-4" />
-              Matrisi Onayla ve Konumlandırma Aşamasına Geç
-            </span>
-          )}
-        </Button>
-      </div>
-    </form>
-  );
 }
 </file>
 
@@ -31851,6 +31302,91 @@ function UserMenu({
 }
 </file>
 
+<file path="src/lib/prompts/positioning/jury-analysis.ts">
+import type { PositioningMatrixInput } from "@/app/(onboarding)/onboarding/positioning/_lib/validation";
+
+/** System instruction for unified final LLM Jury Analysis (Status + Gap Analysis + Strategic Guiding Thesis Cards). */
+export const POSITIONING_JURY_SYSTEM_INSTRUCTION = `# Rol ve Uzmanlık
+
+Üniversiteler Üstü Akademik Jüri Başkanı ve İleri Derece Literatür Boşluğu (Gap Analysis) Uzmanısınız.
+
+# Birincil Görev
+
+Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisini ve tek-tez değerlendirmesinden geçmiş, ilgili bulunmuş tezleri (her tezin başlığı, özeti, katkı alanları, ilişki gerekçesi ve literatür konumu dahil) titizlikle inceleyerek tek bir bütüncül Akademik Jüri Değerlendirme Raporu (globalStatus, gapAnalysisSummary, recommendedTheses) üretmektir.
+
+# Kurallar ve Sınırlamalar
+
+1. **Tez Matrisi Katı Sınır İlkesi (MUTLAK KURAL):**
+   - Kullanıcının sunduğu 3 bileşenli Tez Matrisi (Araştırma Problemi/Odağı — aktörler dahil, Teorik Çerçevesi, Metodolojisi), araştırmanın KESİN VE MUTLAK SINIRIDIR.
+   - Tez matrisinde açıkça yazmayan hiçbir ampirik veri kaynağını, metodolojik aracı, kuramsal kurguyu veya araştırma niyetini KESİNLİKLE VARSAYAMAZSINIZ, UYDURAMAZSINIZ, KULLANICIYA ATFEDEMEZSİNİZ VEYA EKSTRAPOLE EDEMEZSİNİZ.
+
+2. **globalStatus Belirleme Kuralı:**
+   - \`DIRECT_OVERLAP\`: Sana verilen ilgili tezlerden en az birinin tek-tez değerlendirmesinde \`isDirectOverlap: true\` olarak işaretlenmesi durumunda KESİNLİKLE verilir. Bu durumda kullanıcının tezi özgün değildir; raporun geri kalanı (literatür haritalaması, boşluk analizi) yine eksiksiz üretilir, yalnızca globalStatus özgünlük yokluğunu yansıtır.
+   - \`NOVEL_GAP_IDENTIFIED\`: İlgili tezler mevcut ancak hiçbiri \`isDirectOverlap: true\` değilse verilir. Kullanıcının çalışması özgün bir açı, yeni bir bağlam, farklı bir dönemselleştirme, özgün bir kavramsal çatma veya yeni metodolojik yaklaşım sunuyor demektir.
+   - \`NO_RELATED_LITERATURE\`: Bu final raporuna hiçbir ilgili tez gelmediyse kullanılır (bu senaryoda önceden doldurulmuş varsayılan metin üretilir).
+
+3. **gapAnalysisSummary İçerik ve Biçim Kuralları:**
+   - Rapor tamamen elit, akıcı ve profesyonel bir akademik Türkçe ile yazılmalıdır.
+   - \`gapAnalysisSummary\` nesnesi şu 3 alanı içermelidir:
+     * \`literatureMapping\`: Sana verilen ilgili tezlerin araştırmanın hangi boyutlarını ele aldığının tematik haritası ve akademik özeti. İlgili tezleri tematik gruplara ayırarak "Literatürdeki tezler X ana tematik grupta kümelenmektedir. İlk grupta [birinci tematik odak]..., ikinci grupta [ikinci tematik odak]..." şeklinde anlatın. Her tezden alıntı yaparken mutlaka APA formatında atıf verin: (Yazar, Yıl). Her tezin sana verilen \`literaturePosition\` (literatürdeki yeri / derdi) bilgisinden yararlanın.
+     * \`academicGap\`: İlgili tezlerin neleri göz ardı ettiği veya nerede yetersiz kaldığı. Her tezden alıntı yaparken mutlaka APA formatında atıf verin: (Yazar, Yıl).
+     * \`originalContribution\`: Kullanıcının tez matrisinin bu boşluğu nasıl doldurduğu ve literatüre getirdiği yenilik. Eğer bir tez \`isDirectOverlap: true\` işaretlendiyse, bu bölümde kullanıcının tezinin söz konusu tezle birebir örtüştüğü ve özgünlük açısından risk altında olduğu dürüstçe belirtilir.
+
+4. **recommendedTheses — Stratejik Rehber Tez Kartları (MUTLAK KURAL):**
+
+   4.1. **Kaynak:** Yalnızca sana verilen ilgili tezler arasından seçim yap. İlgisiz tezler bu listeye hiç gelmemiştir, onları seçmeyin.
+
+   4.2. **\`isDirectOverlap: true\` işaretli tezler:** Bu tezler \`contributionAreas\` ve \`relevanceReason\` alanları boş geldiği için kart olarak önerilmez; literatür haritalamasında çakışma riskini göstermek için kullanılır. Eğer bir tez birebir örtüşüyorsa, öneri kartları listesi boş (\`[]\`) kalabilir.
+
+   4.3. **Seçim Kriteri ve Sayısı:**
+   - Bir tezin kart olarak seçilebilmesi için Kullanıcının Tez Matrisinin Araştırma Problemi bileşeninde belirgin ve somut örtüşme olması ZORUNLUDUR.
+   - 0 ile 6 adet arasında seçim yap. ZORAKİ SAYI TAMAMLAMA YAPMAYIN. Araştırma probleminde eşleşen tez yoksa boş dizi (\`[]\`) döndür.
+
+   Her bir rehber tez için:
+     * contributionArea: Tezin kullanıcının matrisinde AÇIKÇA TANIMLANAN odağıyla doğrudan örtüşen spesifik alanı (tezin tek-tez değerlendirmesindeki \`contributionAreas\` bilgisinden yararlanın).
+     * relevanceReason: Kullanıcının tez matrisindeki MEVCUT sınırlar ve yöntemler çerçevesinde bu tezle nasıl karşılaştırma yapabileceğini açıklayan somut ve dürüst rehber not (tezin \`relevanceReason\` değerlendirmesinden yararlanın). Asla matriste yer almayan varsayımsal veri kaynakları veya niyetler uydurmayın.
+     * externalThesisId: Listedeki tezin ID dizesi.
+
+5. **Sıfır Hallüsinasyon Kuralı (MUTLAK):**
+   - gapAnalysisSummary içinde (literatureMapping ve academicGap alanlarında) asla tez listesinde fiilen bulunmayan bir yazar adı, yıl veya eser başlığı kullanmayın.
+   - Sadece sana verilen ilgili tez listesindeki yazar ve yıl bilgilerini kullan. Uydurma atıf kesinlikle yasaktır.
+   - Bir tezi APA formatında (Yazar, Yıl) olarak kaynak gösterdiğinde, o yazar ve yılın tez listesinde mevcut olduğundan emin ol.
+
+# Çıktı Biçimi
+
+Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir.`;
+
+/**
+ * Builds the user prompt for the unified final LLM jury analysis.
+ *
+ * @param input - Three-component positioning matrix input of the researcher.
+ * @param thesisListText - Serialized text of the relevant theses including per-thesis evaluation metadata.
+ * @param evaluatedCount - Number of theses included in the prompt.
+ * @returns The formatted user prompt for the final jury analysis LLM call.
+ */
+export function buildPositioningJuryUserPrompt(
+  input: PositioningMatrixInput,
+  thesisListText: string,
+  evaluatedCount: number,
+): string {
+  return `Aşağıda araştırmacının 3 bileşenli Tez Konumlandırma Matrisi ve tek-tez değerlendirmesinden geçen ilgili ${evaluatedCount} adet tez listelenmiştir:
+
+=== KULLANICININ TEZ MATRİSİ ===
+1. Araştırma Problemi ve Odağı (aktörler dahil): ${input.subjectProblem}
+2. Teorik ve Kavramsal Çerçeve: ${input.theoreticalFramework}
+3. Metodoloji: ${input.methodology}
+
+=== İLGİLİ LİTERATÜR TEZLERİ (${evaluatedCount} ADET) ===
+${thesisListText}
+
+Lütfen yukarıdaki verileri titizlikle inceleyerek Akademik Jüri Değerlendirme Raporunu (globalStatus, gapAnalysisSummary, recommendedTheses) belirtilen JSON formatında üret.
+
+HATIRLATMA:
+- Herhangi bir tez \`isDirectOverlap: true\` olarak işaretlendiyse globalStatus KESİNLİKLE DIRECT_OVERLAP olmalıdır.
+- Öneri kartları (recommendedTheses) yalnızca ilgili tezler arasından, matrisle belirgin örtüşmesi olanlardan seçilir; eşleşen tez yoksa boş liste döndür.`;
+}
+</file>
+
 <file path="src/app/api/advisor/route.ts">
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -31870,40 +31406,7 @@ import {
 } from "@/lib/services/advisor-tools";
 import { formatToolExplanation } from "@/lib/services/advisor-tools/format-tool";
 import { runPipelineTurn } from "@/lib/services/advisor-pipeline/orchestrator";
-
-/**
- * Detects whether a query is a direct database action/mutation command
- * (e.g. creating/updating/deleting boxes, tasks, notes, or matrix fields)
- * that does not require academic literature retrieval.
- *
- * @param query - User input text.
- * @returns True when the query represents an explicit action/tool call.
- */
-function isActionQuery(query: string): boolean {
-  const lower = query.toLowerCase().trim();
-
-  const hasTarget =
-    /\b(kutu\w*|görev\w*|not\w*|matris\w*|kaynak\w*|kaynağı\w*|açıklam\w*|başlı\w*|alıntı\w*)\b/i.test(
-      lower,
-    );
-  const hasActionVerb =
-    /\b(ekle\w*|oluştur\w*|sil\w*|güncelle\w*|değiştir\w*|düzenle\w*|tamamla\w*|listele\w*|göster\w*|getir\w*|kaldır\w*|işaretle\w*)\b/i.test(
-      lower,
-    );
-
-  if (hasTarget && hasActionVerb) return true;
-
-  if (
-    /\b(ekle\w*|oluştur\w*|sil\w*|güncelle\w*|değiştir\w*|listele\w*|göster\w*)\b/i.test(
-      lower,
-    ) &&
-    lower.length < 80
-  ) {
-    return true;
-  }
-
-  return false;
-}
+import { formatRagSourceContext } from "@/lib/services/advisor-pipeline/context";
 
 const requestSchema = z.object({
   query: z
@@ -31918,29 +31421,7 @@ const requestSchema = z.object({
       }),
     )
     .optional(),
-  /** Active 3-stage pipeline context forwarded by the client to continue an open Socratic discussion. */
-  pipelineState: z
-    .object({
-      active: z.boolean(),
-      cycle: z.number().int().min(1),
-      originalDraft: z.string().max(1000).optional(),
-    })
-    .optional(),
 });
-
-/**
- * Formats a retrieval source page reference using Turkish academic APA conventions.
- *
- * @param source - The RAG retrieval result whose page span should be rendered.
- * @returns The page reference string ("Bilinmeyen Sayfa" when no page info exists).
- */
-function formatPageReference(source: RagSearchResultItem): string {
-  if (source.printedPageNumber) return `${source.printedPageNumber}.`;
-  const pageSpan = source.pageStart;
-  const range = source.pageEnd;
-  if (pageSpan == null) return "Bilinmeyen Sayfa";
-  return pageSpan === range ? `s. ${pageSpan}.` : `ss. ${pageSpan}–${range}.`;
-}
 
 /**
  * Handles POST requests for streaming advisor queries via SSE with Function Calling support.
@@ -31966,7 +31447,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { query, history, pipelineState } = parseResult.data;
+  const { query, history } = parseResult.data;
   const encoder = new TextEncoder();
 
   const readable = new ReadableStream({
@@ -31976,13 +31457,8 @@ export async function POST(request: Request) {
         const classification = await classifyAdvisorIntent(query, history);
         const persona = classification.persona;
 
-        // Pipeline is triggered by a fresh draft paragraph (classifier), or by an
-        // explicit client continuation of an open Socratic discussion when the
-        // incoming message is a direct answer rather than a new draft.
-        const isPipelineContinuation =
-          pipelineState?.active === true && classification.mode === "DIRECT";
-        const isPipelineTurn =
-          isPipelineContinuation || classification.mode === "PIPELINE";
+        // Heavy Flow is triggered by a fresh draft paragraph as classified by the intent classifier.
+        const isPipelineTurn = classification.mode === "PIPELINE";
 
         // Immediately inform UI client of assigned persona
         controller.enqueue(
@@ -31992,14 +31468,6 @@ export async function POST(request: Request) {
         );
 
         if (isPipelineTurn) {
-          const originalDraft =
-            pipelineState?.originalDraft?.trim() && isPipelineContinuation
-              ? pipelineState.originalDraft.trim()
-              : query;
-          const cycle = isPipelineContinuation
-            ? Math.min(3, (pipelineState?.cycle ?? 0) + 1)
-            : 1;
-
           const writer = {
             send(type: string, payload: Record<string, unknown>) {
               controller.enqueue(
@@ -32019,16 +31487,16 @@ export async function POST(request: Request) {
 
           const { text, sources, pipeline } = await runPipelineTurn(writer, {
             userId: session.userId,
-            query,
-            originalDraft,
-            isContinuation: isPipelineContinuation,
-            cycle,
-            history: history ?? [],
+            originalDraft: query,
           });
+
+          const responsePersona = !pipeline.audit
+            ? "SOCRATIC_ADVISOR"
+            : persona;
 
           controller.enqueue(
             encoder.encode(
-              `data: ${JSON.stringify({ type: "done", text: sanitizeModelStreamText(text), sources, persona, pipeline })}\n\n`,
+              `data: ${JSON.stringify({ type: "done", text: sanitizeModelStreamText(text), sources, persona: responsePersona, pipeline })}\n\n`,
             ),
           );
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
@@ -32036,7 +31504,7 @@ export async function POST(request: Request) {
           return;
         }
 
-        const isAction = isActionQuery(query) || classification.isActionQuery;
+        const isAction = classification.isActionQuery;
 
         let sources: RagSearchResultItem[] = [];
 
@@ -32047,42 +31515,9 @@ export async function POST(request: Request) {
 
         let contextText = "";
         if (sources.length > 0) {
-          const allPartial = sources.every((s) => s.isPartialMatch);
-          if (allPartial) {
-            contextText +=
-              "NOT: Aşağıdaki kaynaklar doğrudan eşleşmemektedir, yalnızca dolaylı olarak ilgili olabilirler. Bu bilgileri ihtiyatla kullanın.\n\n";
-          }
-          const emittedParagraphs = new Set<string>();
-          contextText += sources
-            .map((s, idx) => {
-              const pageStr = formatPageReference(s);
-              const secStr = s.sectionTitle
-                ? ` | Bölüm: ${s.sectionTitle}`
-                : "";
-              const authors = s.resourceAuthors.join(", ");
-              const yearStr = s.resourceYear
-                ? `Yıl: ${s.resourceYear}`
-                : "Yıl bilinmiyor";
-              const partialTag = s.isPartialMatch ? " [DOLAYLI İLGİLİ]" : "";
-              const windowText =
-                s.parentContent && s.parentContent.length > 0
-                  ? s.parentContent
-                  : s.content;
-              const paragraphText = windowText
-                .split(/\n{2,}/)
-                .map((p) => p.trim())
-                .filter((p) => p.length > 0)
-                .filter((p) => {
-                  if (emittedParagraphs.has(p)) return false;
-                  emittedParagraphs.add(p);
-                  return true;
-                })
-                .join("\n\n");
-              return `--- KAYNAK PARÇASI #${idx + 1}${partialTag} ---
-[Eser: "${s.resourceTitle}" | Yazar: ${authors} | ${yearStr} | ${pageStr}${secStr} | Alakalılık Skoru: ${(s.relevanceScore * 100).toFixed(1)}%]
-${paragraphText}`;
-            })
-            .join("\n\n");
+          contextText = formatRagSourceContext(sources, {
+            includePartialNotice: true,
+          });
         } else if (isAction) {
           contextText =
             "Kullanıcı doğrudan bir veritabanı/araç işlemi gerçekleştirmek istemektedir. İlgili aracı (function call) uygun parametrelerle hemen çağırın.";
@@ -32212,6 +31647,7 @@ ${paragraphText}`;
                     encoder.encode(
                       `data: ${JSON.stringify({
                         type: "tool_call_request",
+                        status: "pending",
                         toolCallId,
                         name: call.name,
                         args,
@@ -32253,91 +31689,6 @@ ${paragraphText}`;
       Connection: "keep-alive",
     },
   });
-}
-</file>
-
-<file path="src/lib/prompts/positioning/jury-analysis.ts">
-import type { PositioningMatrixInput } from "@/app/(onboarding)/onboarding/positioning/_lib/validation";
-
-/** System instruction for unified final LLM Jury Analysis (Status + Gap Analysis + Strategic Guiding Thesis Cards). */
-export const POSITIONING_JURY_SYSTEM_INSTRUCTION = `# Rol ve Uzmanlık
-
-Üniversiteler Üstü Akademik Jüri Başkanı ve İleri Derece Literatür Boşluğu (Gap Analysis) Uzmanısınız.
-
-# Birincil Görev
-
-Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisini ve tek-tez değerlendirmesinden geçmiş, ilgili bulunmuş tezleri (her tezin başlığı, özeti, katkı alanları, ilişki gerekçesi ve literatür konumu dahil) titizlikle inceleyerek tek bir bütüncül Akademik Jüri Değerlendirme Raporu (globalStatus, gapAnalysisSummary, recommendedTheses) üretmektir.
-
-# Kurallar ve Sınırlamalar
-
-1. **Tez Matrisi Katı Sınır İlkesi (MUTLAK KURAL):**
-   - Kullanıcının sunduğu 3 bileşenli Tez Matrisi (Araştırma Problemi/Odağı — aktörler dahil, Teorik Çerçevesi, Metodolojisi), araştırmanın KESİN VE MUTLAK SINIRIDIR.
-   - Tez matrisinde açıkça yazmayan hiçbir ampirik veri kaynağını, metodolojik aracı, kuramsal kurguyu veya araştırma niyetini KESİNLİKLE VARSAYAMAZSINIZ, UYDURAMAZSINIZ, KULLANICIYA ATFEDEMEZSİNİZ VEYA EKSTRAPOLE EDEMEZSİNİZ.
-
-2. **globalStatus Belirleme Kuralı:**
-   - \`DIRECT_OVERLAP\`: Sana verilen ilgili tezlerden en az birinin tek-tez değerlendirmesinde \`isDirectOverlap: true\` olarak işaretlenmesi durumunda KESİNLİKLE verilir. Bu durumda kullanıcının tezi özgün değildir; raporun geri kalanı (literatür haritalaması, boşluk analizi) yine eksiksiz üretilir, yalnızca globalStatus özgünlük yokluğunu yansıtır.
-   - \`NOVEL_GAP_IDENTIFIED\`: İlgili tezler mevcut ancak hiçbiri \`isDirectOverlap: true\` değilse verilir. Kullanıcının çalışması özgün bir açı, yeni bir bağlam, farklı bir dönemselleştirme, özgün bir kavramsal çatma veya yeni metodolojik yaklaşım sunuyor demektir.
-   - \`NO_RELATED_LITERATURE\`: Bu final raporuna hiçbir ilgili tez gelmediyse kullanılır (bu senaryoda önceden doldurulmuş varsayılan metin üretilir).
-
-3. **gapAnalysisSummary İçerik ve Biçim Kuralları:**
-   - Rapor tamamen elit, akıcı ve profesyonel bir akademik Türkçe ile yazılmalıdır.
-   - \`gapAnalysisSummary\` nesnesi şu 3 alanı içermelidir:
-     * \`literatureMapping\`: Sana verilen ilgili tezlerin araştırmanın hangi boyutlarını ele aldığının tematik haritası ve akademik özeti. İlgili tezleri tematik gruplara ayırarak "Literatürdeki tezler X ana tematik grupta kümelenmektedir. İlk grupta [birinci tematik odak]..., ikinci grupta [ikinci tematik odak]..." şeklinde anlatın. Her tezden alıntı yaparken mutlaka APA formatında atıf verin: (Yazar, Yıl). Her tezin sana verilen \`literaturePosition\` (literatürdeki yeri / derdi) bilgisinden yararlanın.
-     * \`academicGap\`: İlgili tezlerin neleri göz ardı ettiği veya nerede yetersiz kaldığı. Her tezden alıntı yaparken mutlaka APA formatında atıf verin: (Yazar, Yıl).
-     * \`originalContribution\`: Kullanıcının tez matrisinin bu boşluğu nasıl doldurduğu ve literatüre getirdiği yenilik. Eğer bir tez \`isDirectOverlap: true\` işaretlendiyse, bu bölümde kullanıcının tezinin söz konusu tezle birebir örtüştüğü ve özgünlük açısından risk altında olduğu dürüstçe belirtilir.
-
-4. **recommendedTheses — Stratejik Rehber Tez Kartları (MUTLAK KURAL):**
-
-   4.1. **Kaynak:** Yalnızca sana verilen ilgili tezler arasından seçim yap. İlgisiz tezler bu listeye hiç gelmemiştir, onları seçmeyin.
-
-   4.2. **\`isDirectOverlap: true\` işaretli tezler:** Bu tezler \`contributionAreas\` ve \`relevanceReason\` alanları boş geldiği için kart olarak önerilmez; literatür haritalamasında çakışma riskini göstermek için kullanılır. Eğer bir tez birebir örtüşüyorsa, öneri kartları listesi boş (\`[]\`) kalabilir.
-
-   4.3. **Seçim Kriteri ve Sayısı:**
-   - Bir tezin kart olarak seçilebilmesi için Kullanıcının Tez Matrisinin Araştırma Problemi bileşeninde belirgin ve somut örtüşme olması ZORUNLUDUR.
-   - 0 ile 6 adet arasında seçim yap. ZORAKİ SAYI TAMAMLAMA YAPMAYIN. Araştırma probleminde eşleşen tez yoksa boş dizi (\`[]\`) döndür.
-
-   Her bir rehber tez için:
-     * contributionArea: Tezin kullanıcının matrisinde AÇIKÇA TANIMLANAN odağıyla doğrudan örtüşen spesifik alanı (tezin tek-tez değerlendirmesindeki \`contributionAreas\` bilgisinden yararlanın).
-     * relevanceReason: Kullanıcının tez matrisindeki MEVCUT sınırlar ve yöntemler çerçevesinde bu tezle nasıl karşılaştırma yapabileceğini açıklayan somut ve dürüst rehber not (tezin \`relevanceReason\` değerlendirmesinden yararlanın). Asla matriste yer almayan varsayımsal veri kaynakları veya niyetler uydurmayın.
-     * externalThesisId: Listedeki tezin ID dizesi.
-
-5. **Sıfır Hallüsinasyon Kuralı (MUTLAK):**
-   - gapAnalysisSummary içinde (literatureMapping ve academicGap alanlarında) asla tez listesinde fiilen bulunmayan bir yazar adı, yıl veya eser başlığı kullanmayın.
-   - Sadece sana verilen ilgili tez listesindeki yazar ve yıl bilgilerini kullan. Uydurma atıf kesinlikle yasaktır.
-   - Bir tezi APA formatında (Yazar, Yıl) olarak kaynak gösterdiğinde, o yazar ve yılın tez listesinde mevcut olduğundan emin ol.
-
-# Çıktı Biçimi
-
-Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir.`;
-
-/**
- * Builds the user prompt for the unified final LLM jury analysis.
- *
- * @param input - Three-component positioning matrix input of the researcher.
- * @param thesisListText - Serialized text of the relevant theses including per-thesis evaluation metadata.
- * @param evaluatedCount - Number of theses included in the prompt.
- * @returns The formatted user prompt for the final jury analysis LLM call.
- */
-export function buildPositioningJuryUserPrompt(
-  input: PositioningMatrixInput,
-  thesisListText: string,
-  evaluatedCount: number,
-): string {
-  return `Aşağıda araştırmacının 3 bileşenli Tez Konumlandırma Matrisi ve tek-tez değerlendirmesinden geçen ilgili ${evaluatedCount} adet tez listelenmiştir:
-
-=== KULLANICININ TEZ MATRİSİ ===
-1. Araştırma Problemi ve Odağı (aktörler dahil): ${input.subjectProblem}
-2. Teorik ve Kavramsal Çerçeve: ${input.theoreticalFramework}
-3. Metodoloji: ${input.methodology}
-
-=== İLGİLİ LİTERATÜR TEZLERİ (${evaluatedCount} ADET) ===
-${thesisListText}
-
-Lütfen yukarıdaki verileri titizlikle inceleyerek Akademik Jüri Değerlendirme Raporunu (globalStatus, gapAnalysisSummary, recommendedTheses) belirtilen JSON formatında üret.
-
-HATIRLATMA:
-- Herhangi bir tez \`isDirectOverlap: true\` olarak işaretlendiyse globalStatus KESİNLİKLE DIRECT_OVERLAP olmalıdır.
-- Öneri kartları (recommendedTheses) yalnızca ilgili tezler arasından, matrisle belirgin örtüşmesi olanlardan seçilir; eşleşen tez yoksa boş liste döndür.`;
 }
 </file>
 
@@ -35555,6 +34906,238 @@ export async function orchestrateBatchProcess(
 }
 </file>
 
+<file path="src/app/(onboarding)/onboarding/positioning/_services/analysis.ts">
+import { ThinkingLevel } from "@google/genai";
+import { z } from "zod";
+import { FLASH_36, GEMINI_SEED } from "@/lib/constants";
+import { getGeminiKeyPool } from "@/lib/services/gemini-key-pool";
+import {
+  generateStructuredContent,
+  type JsonSchema,
+} from "@/lib/services/gemini";
+import type { Logger } from "@/lib/logger";
+import {
+  POSITIONING_JURY_SYSTEM_INSTRUCTION,
+  buildPositioningJuryUserPrompt,
+} from "@/lib/prompts";
+import type { EvaluatedThesis } from "./per-thesis-evaluation";
+import {
+  gapAnalysisStructuredSchema,
+  type PositioningMatrixInput,
+} from "../_lib/validation";
+
+/** Zod schema for an individual recommended guiding thesis. */
+export const juryRecommendedThesisSchema = z.object({
+  externalThesisId: z
+    .union([z.string(), z.number()])
+    .transform((val) => String(val))
+    .describe("Süzülen tez listesindeki tez ID'si"),
+  title: z.string().describe("Tezin tam akademik başlığı"),
+  author: z.string().describe("Tezin yazarı"),
+  year: z.number().describe("Tezin hazırlanma yılı"),
+  university: z.string().describe("Tezin sunulduğu üniversite"),
+  contributionArea: z
+    .string()
+    .describe(
+      "Tezin kullanıcının çalışmasına doğrudan katkı sunduğu alan (Örn: Metodolojik Karşılaştırma / Kuramsal Çerçeve Metodolojisi)",
+    ),
+  relevanceReason: z
+    .string()
+    .describe(
+      "Kullanıcının bu tezi kendi tezinde nasıl birincil/ikincil kaynak olarak kullanacağına dair rehber not",
+    ),
+  doi: z.string().optional().describe("Tezin DOI adresi (varsa)"),
+  thesisType: z
+    .string()
+    .optional()
+    .describe("Tezin türü (Örn: Yüksek Lisans veya Doktora)"),
+});
+
+/** Zod schema for the LLM jury analysis output. */
+export const juryAnalysisResultSchema = z.object({
+  globalStatus: z.enum([
+    "DIRECT_OVERLAP",
+    "NOVEL_GAP_IDENTIFIED",
+    "NO_RELATED_LITERATURE",
+  ]),
+  gapAnalysisSummary: gapAnalysisStructuredSchema,
+  recommendedTheses: z
+    .array(juryRecommendedThesisSchema)
+    .max(6)
+    .describe(
+      "Kullanıcının tez matrisiyle doğrudan bağı olan 0-6 adet rehber tez. Yapay sayı zorlaması yapılmaz.",
+    ),
+});
+
+/** Inferred type for the LLM jury analysis result. */
+export type JuryAnalysisResult = z.infer<typeof juryAnalysisResultSchema>;
+
+/** JSON Schema for Gemini structured outputs. */
+export const juryAnalysisResultJsonSchema: JsonSchema = {
+  type: "object",
+  properties: {
+    globalStatus: {
+      type: "string",
+      enum: ["DIRECT_OVERLAP", "NOVEL_GAP_IDENTIFIED", "NO_RELATED_LITERATURE"],
+      description:
+        "Yalnızca Konu + Teori + Analiz Birimi BİREBİR aynı ise DIRECT_OVERLAP verilir. Özgün katkı varsa NOVEL_GAP_IDENTIFIED verilir.",
+    },
+    gapAnalysisSummary: {
+      type: "object",
+      properties: {
+        literatureMapping: {
+          type: "string",
+          description:
+            "Mevcut Literatürün Haritalandırılması: Sunulan tezlerin araştırmanın hangi boyutlarını ele aldığının tematik haritası ve akademik özeti. Tezleri tematik gruplara ayırarak 'Literatürdeki tezler X grupta kümelenmektedir. İlk grupta..., ikinci grupta...' şeklinde tematik özetle. Her tezden alıntı yaparken mutlaka APA formatında atıf ver: (Yazar, Yıl).",
+        },
+        academicGap: {
+          type: "string",
+          description:
+            "Literatürdeki Boşluk: İncelediğin tezlerin neleri göz ardı ettiği veya yetersiz kaldığı alanların analizi",
+        },
+        originalContribution: {
+          type: "string",
+          description:
+            "Çalışmanın Özgün Katkısı: Kullanıcının tez matrisinin bu boşluğu nasıl doldurduğu ve literatüre getirdiği yenilik",
+        },
+      },
+      required: ["literatureMapping", "academicGap", "originalContribution"],
+      additionalProperties: false,
+      description: "3 sabit akademik sentez bölümü",
+    },
+    recommendedTheses: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          externalThesisId: {
+            type: "string",
+            description: "Süzülen tez listesindeki tez ID'si",
+          },
+          title: { type: "string", description: "Tezin başlığı" },
+          author: { type: "string", description: "Tezin yazarı" },
+          year: { type: "number", description: "Tezin yılı" },
+          university: { type: "string", description: "Tezin üniversitesi" },
+          contributionArea: {
+            type: "string",
+            description:
+              "Tezin kullanıcının matrisinde AÇIKÇA TANIMLANAN odağıyla doğrudan örtüşen özel alanı",
+          },
+          relevanceReason: {
+            type: "string",
+            description:
+              "Tezin çalışmada tez matrisindeki sınırlar çerçevesinde dürüstçe nasıl kaynak olarak kullanılacağına dair rehber açıklama. Asla matriste yer almayan varsayımsal veri kaynakları uydurulmaz.",
+          },
+        },
+        required: [
+          "externalThesisId",
+          "title",
+          "author",
+          "year",
+          "university",
+          "contributionArea",
+          "relevanceReason",
+        ],
+        additionalProperties: false,
+      },
+      description:
+        "Süzülen tezler arasından seçilen ve tez matrisiyle doğrudan örtüşen 0-6 adet dürüst rehber tez",
+    },
+  },
+  required: ["globalStatus", "gapAnalysisSummary", "recommendedTheses"],
+  additionalProperties: false,
+};
+
+/**
+ * Runs the final synthesis jury LLM over the relevant evaluated theses in a single Gemini call.
+ *
+ * @param input - The validated positioning matrix input.
+ * @param evaluatedTheses - The relevant evaluated theses to synthesize (irrelevant ones already dropped).
+ * @param logger - Optional structured logger for pipeline events.
+ * @returns The structured jury analysis result.
+ */
+export async function analyzePositioningJury(
+  input: PositioningMatrixInput,
+  evaluatedTheses: EvaluatedThesis[],
+  logger?: Logger,
+): Promise<JuryAnalysisResult> {
+  const overlapping = evaluatedTheses.some(
+    (ev) => ev.evaluation.isDirectOverlap,
+  );
+
+  if (evaluatedTheses.length === 0) {
+    logger?.info("positioning_jury_no_theses", {
+      service: "positioning",
+      filePath:
+        "src/app/(onboarding)/onboarding/positioning/_services/analysis.ts",
+      data: { inputSubject: input.subjectProblem },
+    });
+
+    return {
+      globalStatus: "NO_RELATED_LITERATURE",
+      gapAnalysisSummary: {
+        literatureMapping:
+          "Veritabanında girilen tez matrisiyle doğrudan ilişkilendirilebilecek herhangi bir akademik teze rastlanmamıştır.",
+        academicGap:
+          "Doğrudan eşleşen bir çalışma bulunmadığı için mevcut literatürde tespit edilmiş bir çakışma veya doymuşluk alanı bulunmamaktadır.",
+        originalContribution:
+          "Çalışmanız literatürde henüz işlenmemiş son derece bakir ve yüksek özgünlüğe sahip bir alanda konumlanmaktadır.",
+      },
+      recommendedTheses: [],
+    };
+  }
+
+  const thesisListText = evaluatedTheses
+    .map((ev, idx) => {
+      const t = ev.thesis;
+      const e = ev.evaluation;
+      return `[Tez #${idx + 1}] ID: ${t.id}
+Başlık: ${t.title}
+Yazar: ${t.author || "Bilinmiyor"} (${t.year || "N/A"})
+Üniversite/Bölüm: ${t.university || "N/A"} - ${t.department || "N/A"}
+Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"}
+Birebir Örtüşme: ${e.isDirectOverlap ? "EVET" : "HAYIR"}
+Katkı Alanları: ${e.contributionAreas.join(", ") || "Yok"}
+Kullanım Rehberi: ${e.relevanceReason || "Yok"}
+Literatür Konumu: ${e.literaturePosition || "Yok"}
+Özet: ${t.abstract}`;
+    })
+    .join("\n\n---\n\n");
+
+  const userPrompt = buildPositioningJuryUserPrompt(
+    input,
+    thesisListText,
+    evaluatedTheses.length,
+  );
+
+  const result = await generateStructuredContent<JuryAnalysisResult>(
+    FLASH_36,
+    POSITIONING_JURY_SYSTEM_INSTRUCTION,
+    userPrompt,
+    juryAnalysisResultJsonSchema,
+    logger,
+    {
+      zodSchema: juryAnalysisResultSchema,
+      payloadStage: "positioning_jury_analysis",
+      seed: GEMINI_SEED,
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      thesisMatrix: { input, filteredThesesCount: evaluatedTheses.length },
+      apiKey: getGeminiKeyPool().keys[2] ?? getGeminiKeyPool().keys[0],
+    },
+  );
+
+  if (overlapping) {
+    result.globalStatus = "DIRECT_OVERLAP";
+  }
+
+  result.recommendedTheses.sort(
+    (a, b) => Number(a.externalThesisId) - Number(b.externalThesisId),
+  );
+
+  return result;
+}
+</file>
+
 <file path="src/app/(onboarding)/onboarding/boxes/actions.ts">
 "use server";
 
@@ -36023,238 +35606,6 @@ export async function runBoxesPipelineAction(): Promise<
  * Legacy alias for runBoxesPipelineAction.
  */
 export const generateBoxesStructureAction = runBoxesPipelineAction;
-</file>
-
-<file path="src/app/(onboarding)/onboarding/positioning/_services/analysis.ts">
-import { ThinkingLevel } from "@google/genai";
-import { z } from "zod";
-import { FLASH_36, GEMINI_SEED } from "@/lib/constants";
-import { getGeminiKeyPool } from "@/lib/services/gemini-key-pool";
-import {
-  generateStructuredContent,
-  type JsonSchema,
-} from "@/lib/services/gemini";
-import type { Logger } from "@/lib/logger";
-import {
-  POSITIONING_JURY_SYSTEM_INSTRUCTION,
-  buildPositioningJuryUserPrompt,
-} from "@/lib/prompts";
-import type { EvaluatedThesis } from "./per-thesis-evaluation";
-import {
-  gapAnalysisStructuredSchema,
-  type PositioningMatrixInput,
-} from "../_lib/validation";
-
-/** Zod schema for an individual recommended guiding thesis. */
-export const juryRecommendedThesisSchema = z.object({
-  externalThesisId: z
-    .union([z.string(), z.number()])
-    .transform((val) => String(val))
-    .describe("Süzülen tez listesindeki tez ID'si"),
-  title: z.string().describe("Tezin tam akademik başlığı"),
-  author: z.string().describe("Tezin yazarı"),
-  year: z.number().describe("Tezin hazırlanma yılı"),
-  university: z.string().describe("Tezin sunulduğu üniversite"),
-  contributionArea: z
-    .string()
-    .describe(
-      "Tezin kullanıcının çalışmasına doğrudan katkı sunduğu alan (Örn: Metodolojik Karşılaştırma / Kuramsal Çerçeve Metodolojisi)",
-    ),
-  relevanceReason: z
-    .string()
-    .describe(
-      "Kullanıcının bu tezi kendi tezinde nasıl birincil/ikincil kaynak olarak kullanacağına dair rehber not",
-    ),
-  doi: z.string().optional().describe("Tezin DOI adresi (varsa)"),
-  thesisType: z
-    .string()
-    .optional()
-    .describe("Tezin türü (Örn: Yüksek Lisans veya Doktora)"),
-});
-
-/** Zod schema for the LLM jury analysis output. */
-export const juryAnalysisResultSchema = z.object({
-  globalStatus: z.enum([
-    "DIRECT_OVERLAP",
-    "NOVEL_GAP_IDENTIFIED",
-    "NO_RELATED_LITERATURE",
-  ]),
-  gapAnalysisSummary: gapAnalysisStructuredSchema,
-  recommendedTheses: z
-    .array(juryRecommendedThesisSchema)
-    .max(6)
-    .describe(
-      "Kullanıcının tez matrisiyle doğrudan bağı olan 0-6 adet rehber tez. Yapay sayı zorlaması yapılmaz.",
-    ),
-});
-
-/** Inferred type for the LLM jury analysis result. */
-export type JuryAnalysisResult = z.infer<typeof juryAnalysisResultSchema>;
-
-/** JSON Schema for Gemini structured outputs. */
-export const juryAnalysisResultJsonSchema: JsonSchema = {
-  type: "object",
-  properties: {
-    globalStatus: {
-      type: "string",
-      enum: ["DIRECT_OVERLAP", "NOVEL_GAP_IDENTIFIED", "NO_RELATED_LITERATURE"],
-      description:
-        "Yalnızca Konu + Teori + Analiz Birimi BİREBİR aynı ise DIRECT_OVERLAP verilir. Özgün katkı varsa NOVEL_GAP_IDENTIFIED verilir.",
-    },
-    gapAnalysisSummary: {
-      type: "object",
-      properties: {
-        literatureMapping: {
-          type: "string",
-          description:
-            "Mevcut Literatürün Haritalandırılması: Sunulan tezlerin araştırmanın hangi boyutlarını ele aldığının tematik haritası ve akademik özeti. Tezleri tematik gruplara ayırarak 'Literatürdeki tezler X grupta kümelenmektedir. İlk grupta..., ikinci grupta...' şeklinde tematik özetle. Her tezden alıntı yaparken mutlaka APA formatında atıf ver: (Yazar, Yıl).",
-        },
-        academicGap: {
-          type: "string",
-          description:
-            "Literatürdeki Boşluk: İncelediğin tezlerin neleri göz ardı ettiği veya yetersiz kaldığı alanların analizi",
-        },
-        originalContribution: {
-          type: "string",
-          description:
-            "Çalışmanın Özgün Katkısı: Kullanıcının tez matrisinin bu boşluğu nasıl doldurduğu ve literatüre getirdiği yenilik",
-        },
-      },
-      required: ["literatureMapping", "academicGap", "originalContribution"],
-      additionalProperties: false,
-      description: "3 sabit akademik sentez bölümü",
-    },
-    recommendedTheses: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          externalThesisId: {
-            type: "string",
-            description: "Süzülen tez listesindeki tez ID'si",
-          },
-          title: { type: "string", description: "Tezin başlığı" },
-          author: { type: "string", description: "Tezin yazarı" },
-          year: { type: "number", description: "Tezin yılı" },
-          university: { type: "string", description: "Tezin üniversitesi" },
-          contributionArea: {
-            type: "string",
-            description:
-              "Tezin kullanıcının matrisinde AÇIKÇA TANIMLANAN odağıyla doğrudan örtüşen özel alanı",
-          },
-          relevanceReason: {
-            type: "string",
-            description:
-              "Tezin çalışmada tez matrisindeki sınırlar çerçevesinde dürüstçe nasıl kaynak olarak kullanılacağına dair rehber açıklama. Asla matriste yer almayan varsayımsal veri kaynakları uydurulmaz.",
-          },
-        },
-        required: [
-          "externalThesisId",
-          "title",
-          "author",
-          "year",
-          "university",
-          "contributionArea",
-          "relevanceReason",
-        ],
-        additionalProperties: false,
-      },
-      description:
-        "Süzülen tezler arasından seçilen ve tez matrisiyle doğrudan örtüşen 0-6 adet dürüst rehber tez",
-    },
-  },
-  required: ["globalStatus", "gapAnalysisSummary", "recommendedTheses"],
-  additionalProperties: false,
-};
-
-/**
- * Runs the final synthesis jury LLM over the relevant evaluated theses in a single Gemini call.
- *
- * @param input - The validated positioning matrix input.
- * @param evaluatedTheses - The relevant evaluated theses to synthesize (irrelevant ones already dropped).
- * @param logger - Optional structured logger for pipeline events.
- * @returns The structured jury analysis result.
- */
-export async function analyzePositioningJury(
-  input: PositioningMatrixInput,
-  evaluatedTheses: EvaluatedThesis[],
-  logger?: Logger,
-): Promise<JuryAnalysisResult> {
-  const overlapping = evaluatedTheses.some(
-    (ev) => ev.evaluation.isDirectOverlap,
-  );
-
-  if (evaluatedTheses.length === 0) {
-    logger?.info("positioning_jury_no_theses", {
-      service: "positioning",
-      filePath:
-        "src/app/(onboarding)/onboarding/positioning/_services/analysis.ts",
-      data: { inputSubject: input.subjectProblem },
-    });
-
-    return {
-      globalStatus: "NO_RELATED_LITERATURE",
-      gapAnalysisSummary: {
-        literatureMapping:
-          "Veritabanında girilen tez matrisiyle doğrudan ilişkilendirilebilecek herhangi bir akademik teze rastlanmamıştır.",
-        academicGap:
-          "Doğrudan eşleşen bir çalışma bulunmadığı için mevcut literatürde tespit edilmiş bir çakışma veya doymuşluk alanı bulunmamaktadır.",
-        originalContribution:
-          "Çalışmanız literatürde henüz işlenmemiş son derece bakir ve yüksek özgünlüğe sahip bir alanda konumlanmaktadır.",
-      },
-      recommendedTheses: [],
-    };
-  }
-
-  const thesisListText = evaluatedTheses
-    .map((ev, idx) => {
-      const t = ev.thesis;
-      const e = ev.evaluation;
-      return `[Tez #${idx + 1}] ID: ${t.id}
-Başlık: ${t.title}
-Yazar: ${t.author || "Bilinmiyor"} (${t.year || "N/A"})
-Üniversite/Bölüm: ${t.university || "N/A"} - ${t.department || "N/A"}
-Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"}
-Birebir Örtüşme: ${e.isDirectOverlap ? "EVET" : "HAYIR"}
-Katkı Alanları: ${e.contributionAreas.join(", ") || "Yok"}
-Kullanım Rehberi: ${e.relevanceReason || "Yok"}
-Literatür Konumu: ${e.literaturePosition || "Yok"}
-Özet: ${t.abstract}`;
-    })
-    .join("\n\n---\n\n");
-
-  const userPrompt = buildPositioningJuryUserPrompt(
-    input,
-    thesisListText,
-    evaluatedTheses.length,
-  );
-
-  const result = await generateStructuredContent<JuryAnalysisResult>(
-    FLASH_36,
-    POSITIONING_JURY_SYSTEM_INSTRUCTION,
-    userPrompt,
-    juryAnalysisResultJsonSchema,
-    logger,
-    {
-      zodSchema: juryAnalysisResultSchema,
-      payloadStage: "positioning_jury_analysis",
-      seed: GEMINI_SEED,
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      thesisMatrix: { input, filteredThesesCount: evaluatedTheses.length },
-      apiKey: getGeminiKeyPool().keys[2] ?? getGeminiKeyPool().keys[0],
-    },
-  );
-
-  if (overlapping) {
-    result.globalStatus = "DIRECT_OVERLAP";
-  }
-
-  result.recommendedTheses.sort(
-    (a, b) => Number(a.externalThesisId) - Number(b.externalThesisId),
-  );
-
-  return result;
-}
 </file>
 
 <file path="src/app/(app)/library/_components/resource-detail.tsx">
@@ -37037,7 +36388,8 @@ export async function parsePdfToDocumentAnalysis(
     ) {
       const value = pageIndex0 + pageDetection.offset;
       const distance = pageDetection.chainStartPage - pageIndex0;
-      if (distance <= MAX_BACKWARD_EXTRAP_PAGES && value >= 1) return String(value);
+      if (distance <= MAX_BACKWARD_EXTRAP_PAGES && value >= 1)
+        return String(value);
     }
     return undefined;
   };
@@ -37249,254 +36601,6 @@ Before executing domain-specific tasks, consult the corresponding domain specifi
 - **User Overrides:** User prompt instructions strictly override any rules in this repository for the current task.
 - **No Temporary Edits:** Do NOT modify `AGENTS.md` for one-off task overrides.
 - **Minimalist Specification:** Keep `AGENTS.md` minimal (~120–150 lines). Update it ONLY when making permanent repository-wide architectural policy changes.
-</file>
-
-<file path="package.json">
-{
-  "name": "fabricca",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
-    "check:full": "npm run lint && npm run typecheck && npx prettier --write .",
-    "db:push": "drizzle-kit push --force",
-    "db:reset": "tsx src/db/reset.ts",
-    "db:seed": "tsx src/db/seed.ts",
-    "test:expansion": "tsx --env-file=.env.local scripts/test-expansion.ts"
-  },
-  "dependencies": {
-    "@aws-sdk/client-s3": "^3.1097.0",
-    "@aws-sdk/s3-request-presigner": "^3.1097.0",
-    "@firecrawl/pdf-inspector": "^1.12.0",
-    "@google/genai": "^2.8.0",
-    "@neondatabase/serverless": "^1.0.0",
-    "@radix-ui/react-alert-dialog": "^1.1.16",
-    "@radix-ui/react-checkbox": "^1.3.4",
-    "@radix-ui/react-collapsible": "^1.1.17",
-    "@radix-ui/react-dialog": "^1.1.23",
-    "@radix-ui/react-label": "^2.1.9",
-    "@radix-ui/react-popover": "^1.1.23",
-    "@radix-ui/react-scroll-area": "^1.2.11",
-    "@radix-ui/react-slot": "^1.2.5",
-    "@tanstack/react-query": "^5.101.0",
-    "bcrypt-ts": "^6.0.0",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "drizzle-orm": "^0.45.2",
-    "lucide-react": "^0.510.0",
-    "next": "^16.3.0",
-    "next-themes": "^0.4.6",
-    "pdf-lib": "^1.17.1",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "react-markdown": "^10.1.0",
-    "rehype-raw": "^7.0.0",
-    "remark-gfm": "^4.0.1",
-    "sonner": "^2.0.7",
-    "tailwind-merge": "^3.2.0",
-    "tailwindcss-animate": "^1.0.7",
-    "zod": "^4.4.3"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.6",
-    "@types/node": "^22.15.3",
-    "@types/pg": "^8.11.14",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "dotenv": "^16.4.7",
-    "drizzle-kit": "^0.31.10",
-    "eslint": "^9.39.4",
-    "eslint-config-next": "^16.3.0",
-    "postcss": "^8.5.3",
-    "prettier": "^3.9.3",
-    "repomix": "^1.18.0",
-    "tailwindcss": "^4.1.6",
-    "tsx": "^4.22.4",
-    "typescript": "^5.8.3"
-  },
-  "overrides": {
-    "@esbuild-kit/core-utils": {
-      "esbuild": "^0.25.4"
-    }
-  }
-}
-</file>
-
-<file path="src/app/(app)/library/_services/pdf-pipeline.ts">
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { sources, chunks as chunkRows } from "@/db/schema";
-import type { NewChunk } from "@/db/schema";
-import { uploadPdfToR2 } from "@/lib/services/r2";
-import { parsePdfToChunks } from "@/lib/services/pdf-parser";
-import type { DocumentChunk } from "@/lib/services/pdf/chunker";
-import { buildEmbeddingText } from "@/lib/services/pdf/chunker";
-import { generateVectorEmbeddings } from "@/lib/services/cloudflare-ai";
-import type { Logger } from "@/lib/logger";
-import type { DocumentAnalysisResult } from "@/lib/services/pdf-parser/schema";
-import type { ParsedReference } from "@/db/schema";
-
-interface ProcessPdfOptions {
-  resourceId: number;
-  fileName: string;
-  buffer: Buffer;
-  log: Logger;
-  precomputedChunks?: DocumentChunk[];
-  precomputedMetadata?: DocumentAnalysisResult["metadata"];
-  precomputedReferences?: ParsedReference[];
-}
-
-/**
- * Shared PDF RAG ingestion pipeline: embeds chunks, uploads to R2, batch-inserts into pgvector, and updates source metadata in a single transaction.
- *
- * @param options - The pipeline options.
- * @returns The R2 URL, final file name, final size, and chunk count.
- */
-export async function processResourcePdfPipeline(options: ProcessPdfOptions) {
-  const {
-    resourceId,
-    fileName,
-    log,
-    buffer,
-    precomputedMetadata,
-    precomputedReferences,
-  } = options;
-
-  let chunks: DocumentChunk[];
-
-  if (options.precomputedChunks && options.precomputedChunks.length > 0) {
-    chunks = options.precomputedChunks;
-  } else {
-    const parsed = await parsePdfToChunks(buffer, fileName, "", log);
-    chunks = parsed.chunks;
-  }
-
-  // Embed with context prefix — [Bölüm: ...] [Sayfa: ...] + raw content
-  const embeddingTexts = chunks.map((c) =>
-    buildEmbeddingText(
-      c.content,
-      c.headerHierarchy,
-      c.section,
-      c.printedPageNumber,
-    ),
-  );
-
-  log.info("pdf_r2_and_embed_parallel_start", {
-    service: "library",
-    data: {
-      resourceId,
-      chunkCount: embeddingTexts.length,
-    },
-  });
-
-  const r2AndEmbedStart = performance.now();
-
-  const [r2Result, embeddings] = await Promise.all([
-    uploadPdfToR2(buffer, resourceId, fileName),
-    generateVectorEmbeddings(embeddingTexts, log),
-  ]);
-
-  const { r2Url } = r2Result;
-
-  log.info("pdf_r2_and_embed_parallel_success", {
-    service: "library",
-    data: {
-      resourceId,
-      chunkCount: embeddingTexts.length,
-      durationMs: Math.round(performance.now() - r2AndEmbedStart),
-    },
-  });
-
-  log.info("pdf_db_batch_insert_start", {
-    service: "library",
-    data: { resourceId },
-  });
-
-  const dbStart = performance.now();
-  await db.transaction(async (tx) => {
-    await tx.delete(chunkRows).where(eq(chunkRows.sourceId, resourceId));
-
-    if (chunks.length > 0) {
-      const batchSize = 300;
-      const batches = [];
-      for (let i = 0; i < chunks.length; i += batchSize) {
-        batches.push({
-          batchChunks: chunks.slice(i, i + batchSize),
-          batchEmbeddings: embeddings.slice(i, i + batchSize),
-        });
-      }
-
-      for (const { batchChunks, batchEmbeddings } of batches) {
-        const rows: NewChunk[] = batchChunks.map((c, index) => {
-          const emb = batchEmbeddings[index];
-          if (!emb) {
-            throw new Error(
-              `Chunk ${c.chunkIndex} için embedding vektörü üretilemedi.`,
-            );
-          }
-          const quantizedEmbedding = emb.map((value) =>
-            Number(value.toFixed(4)),
-          );
-          return {
-            sourceId: resourceId,
-            chunkIndex: c.chunkIndex,
-            content: c.content,
-            parentContent: c.parentContent || c.content,
-            section: c.section ?? null,
-            headerHierarchy:
-              c.headerHierarchy.length > 0 ? c.headerHierarchy : null,
-            pageStart: c.pageStart ?? null,
-            pageEnd: c.pageEnd ?? null,
-            printedPageNumber: c.printedPageNumber ?? null,
-            tokenCount: c.tokenCount ?? 0,
-            embedding: quantizedEmbedding,
-          };
-        });
-
-        await tx.insert(chunkRows).values(rows);
-      }
-    }
-
-    // Single update: metadata + references + pdf status
-    await tx
-      .update(sources)
-      .set({
-        pdfUrl: r2Url,
-        pdfFileName: fileName,
-        pdfFileSize: buffer.length,
-        pdfStatus: "READY",
-        parsedReferences: precomputedReferences ?? [],
-        ...(precomputedMetadata && {
-          title: precomputedMetadata.title,
-          authors: precomputedMetadata.authors,
-          publisher: precomputedMetadata.publisher ?? null,
-          publicationYear: precomputedMetadata.publicationYear ?? null,
-          doi: precomputedMetadata.doi ?? null,
-        }),
-      })
-      .where(eq(sources.id, resourceId));
-  });
-
-  log.info("pdf_db_batch_insert_success", {
-    service: "library",
-    data: {
-      resourceId,
-      chunkCount: chunks.length,
-      durationMs: Math.round(performance.now() - dbStart),
-    },
-  });
-
-  return {
-    r2Url,
-    finalFileName: fileName,
-    finalSize: buffer.length,
-    chunkCount: chunks.length,
-  };
-}
 </file>
 
 <file path="src/app/(onboarding)/onboarding/positioning/actions.ts">
@@ -37793,6 +36897,254 @@ export async function getPositioningAction(): Promise<Positioning | null> {
 }
 </file>
 
+<file path="package.json">
+{
+  "name": "fabricca",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "check:full": "npm run lint && npm run typecheck && npx prettier --write .",
+    "db:push": "drizzle-kit push --force",
+    "db:reset": "tsx src/db/reset.ts",
+    "db:seed": "tsx src/db/seed.ts",
+    "test:expansion": "tsx --env-file=.env.local scripts/test-expansion.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1097.0",
+    "@aws-sdk/s3-request-presigner": "^3.1097.0",
+    "@firecrawl/pdf-inspector": "^1.12.0",
+    "@google/genai": "^2.8.0",
+    "@neondatabase/serverless": "^1.0.0",
+    "@radix-ui/react-alert-dialog": "^1.1.16",
+    "@radix-ui/react-checkbox": "^1.3.4",
+    "@radix-ui/react-collapsible": "^1.1.17",
+    "@radix-ui/react-dialog": "^1.1.23",
+    "@radix-ui/react-label": "^2.1.9",
+    "@radix-ui/react-popover": "^1.1.23",
+    "@radix-ui/react-scroll-area": "^1.2.11",
+    "@radix-ui/react-slot": "^1.2.5",
+    "@tanstack/react-query": "^5.101.0",
+    "bcrypt-ts": "^6.0.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.45.2",
+    "lucide-react": "^0.510.0",
+    "next": "^16.3.0",
+    "next-themes": "^0.4.6",
+    "pdf-lib": "^1.17.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-markdown": "^10.1.0",
+    "rehype-raw": "^7.0.0",
+    "remark-gfm": "^4.0.1",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.2.0",
+    "tailwindcss-animate": "^1.0.7",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.6",
+    "@types/node": "^22.15.3",
+    "@types/pg": "^8.11.14",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "dotenv": "^16.4.7",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.3.0",
+    "postcss": "^8.5.3",
+    "prettier": "^3.9.3",
+    "repomix": "^1.18.0",
+    "tailwindcss": "^4.1.6",
+    "tsx": "^4.22.4",
+    "typescript": "^5.8.3"
+  },
+  "overrides": {
+    "@esbuild-kit/core-utils": {
+      "esbuild": "^0.25.4"
+    }
+  }
+}
+</file>
+
+<file path="src/app/(app)/library/_services/pdf-pipeline.ts">
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { sources, chunks as chunkRows } from "@/db/schema";
+import type { NewChunk } from "@/db/schema";
+import { uploadPdfToR2 } from "@/lib/services/r2";
+import { parsePdfToChunks } from "@/lib/services/pdf-parser";
+import type { DocumentChunk } from "@/lib/services/pdf/chunker";
+import { buildEmbeddingText } from "@/lib/services/pdf/chunker";
+import { generateVectorEmbeddings } from "@/lib/services/cloudflare-ai";
+import type { Logger } from "@/lib/logger";
+import type { DocumentAnalysisResult } from "@/lib/services/pdf-parser/schema";
+import type { ParsedReference } from "@/db/schema";
+
+interface ProcessPdfOptions {
+  resourceId: number;
+  fileName: string;
+  buffer: Buffer;
+  log: Logger;
+  precomputedChunks?: DocumentChunk[];
+  precomputedMetadata?: DocumentAnalysisResult["metadata"];
+  precomputedReferences?: ParsedReference[];
+}
+
+/**
+ * Shared PDF RAG ingestion pipeline: embeds chunks, uploads to R2, batch-inserts into pgvector, and updates source metadata in a single transaction.
+ *
+ * @param options - The pipeline options.
+ * @returns The R2 URL, final file name, final size, and chunk count.
+ */
+export async function processResourcePdfPipeline(options: ProcessPdfOptions) {
+  const {
+    resourceId,
+    fileName,
+    log,
+    buffer,
+    precomputedMetadata,
+    precomputedReferences,
+  } = options;
+
+  let chunks: DocumentChunk[];
+
+  if (options.precomputedChunks && options.precomputedChunks.length > 0) {
+    chunks = options.precomputedChunks;
+  } else {
+    const parsed = await parsePdfToChunks(buffer, fileName, "", log);
+    chunks = parsed.chunks;
+  }
+
+  // Embed with context prefix — [Bölüm: ...] [Sayfa: ...] + raw content
+  const embeddingTexts = chunks.map((c) =>
+    buildEmbeddingText(
+      c.content,
+      c.headerHierarchy,
+      c.section,
+      c.printedPageNumber,
+    ),
+  );
+
+  log.info("pdf_r2_and_embed_parallel_start", {
+    service: "library",
+    data: {
+      resourceId,
+      chunkCount: embeddingTexts.length,
+    },
+  });
+
+  const r2AndEmbedStart = performance.now();
+
+  const [r2Result, embeddings] = await Promise.all([
+    uploadPdfToR2(buffer, resourceId, fileName),
+    generateVectorEmbeddings(embeddingTexts, log),
+  ]);
+
+  const { r2Url } = r2Result;
+
+  log.info("pdf_r2_and_embed_parallel_success", {
+    service: "library",
+    data: {
+      resourceId,
+      chunkCount: embeddingTexts.length,
+      durationMs: Math.round(performance.now() - r2AndEmbedStart),
+    },
+  });
+
+  log.info("pdf_db_batch_insert_start", {
+    service: "library",
+    data: { resourceId },
+  });
+
+  const dbStart = performance.now();
+  await db.transaction(async (tx) => {
+    await tx.delete(chunkRows).where(eq(chunkRows.sourceId, resourceId));
+
+    if (chunks.length > 0) {
+      const batchSize = 300;
+      const batches = [];
+      for (let i = 0; i < chunks.length; i += batchSize) {
+        batches.push({
+          batchChunks: chunks.slice(i, i + batchSize),
+          batchEmbeddings: embeddings.slice(i, i + batchSize),
+        });
+      }
+
+      for (const { batchChunks, batchEmbeddings } of batches) {
+        const rows: NewChunk[] = batchChunks.map((c, index) => {
+          const emb = batchEmbeddings[index];
+          if (!emb) {
+            throw new Error(
+              `Chunk ${c.chunkIndex} için embedding vektörü üretilemedi.`,
+            );
+          }
+          const quantizedEmbedding = emb.map((value) =>
+            Number(value.toFixed(4)),
+          );
+          return {
+            sourceId: resourceId,
+            chunkIndex: c.chunkIndex,
+            content: c.content,
+            parentContent: c.parentContent || c.content,
+            section: c.section ?? null,
+            headerHierarchy:
+              c.headerHierarchy.length > 0 ? c.headerHierarchy : null,
+            pageStart: c.pageStart ?? null,
+            pageEnd: c.pageEnd ?? null,
+            printedPageNumber: c.printedPageNumber ?? null,
+            tokenCount: c.tokenCount ?? 0,
+            embedding: quantizedEmbedding,
+          };
+        });
+
+        await tx.insert(chunkRows).values(rows);
+      }
+    }
+
+    // Single update: metadata + references + pdf status
+    await tx
+      .update(sources)
+      .set({
+        pdfUrl: r2Url,
+        pdfFileName: fileName,
+        pdfFileSize: buffer.length,
+        pdfStatus: "READY",
+        parsedReferences: precomputedReferences ?? [],
+        ...(precomputedMetadata && {
+          title: precomputedMetadata.title,
+          authors: precomputedMetadata.authors,
+          publisher: precomputedMetadata.publisher ?? null,
+          publicationYear: precomputedMetadata.publicationYear ?? null,
+          doi: precomputedMetadata.doi ?? null,
+        }),
+      })
+      .where(eq(sources.id, resourceId));
+  });
+
+  log.info("pdf_db_batch_insert_success", {
+    service: "library",
+    data: {
+      resourceId,
+      chunkCount: chunks.length,
+      durationMs: Math.round(performance.now() - dbStart),
+    },
+  });
+
+  return {
+    r2Url,
+    finalFileName: fileName,
+    finalSize: buffer.length,
+    chunkCount: chunks.length,
+  };
+}
+</file>
+
 <file path="src/app/(app)/advisor/_components/advisor-chat.tsx">
 "use client";
 
@@ -37814,6 +37166,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
   const {
     messages,
     isLoading,
+    isLocked,
     activeCitation,
     setActiveCitation,
     sessions,
@@ -37832,6 +37185,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
     handleApproveToolCall,
     handleUndoToolCall,
     handleRejectToolCall,
+    handleApprovePipeline,
     handleSend,
     handleCitationPosition,
   } = useAdvisorChat(initialSessionId);
@@ -37873,10 +37227,15 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
           onApproveToolCall={handleApproveToolCall}
           onRejectToolCall={handleRejectToolCall}
           onUndoToolCall={handleUndoToolCall}
+          onApprovePipeline={handleApprovePipeline}
         />
 
         {/* Input Box */}
-        <AdvisorChatInput onSend={handleSend} disabled={isLoading} />
+        <AdvisorChatInput
+          onSend={handleSend}
+          disabled={isLoading}
+          isLocked={isLocked}
+        />
       </div>
 
       {/* Citation Dialog */}
