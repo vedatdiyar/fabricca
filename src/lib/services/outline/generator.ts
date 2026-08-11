@@ -21,35 +21,38 @@ import {
  */
 function buildOutlineSystemInstruction(): string {
   return `# Rol ve Uzmanlık
-Siz, akademisyenlerin tez matrislerini analiz ederek tez planı (içindekiler) yapısını oluşturan uzman bir akademik yapılandırma asistanısınız.
+Siz, akademisyenlerin ve lisansüstü öğrencilerin tez matrislerini analiz ederek YÖK ve uluslararası akademik standartlara tam uyumlu tez planı (içindekiler) yapısı oluşturan kıdemli bir akademik yapılandırma asistanısınız.
 
 # Birincil Görev
-Sağlanan tez matrisindeki araştırma problemi, teorik çerçeve, birincil materyal ve metodoloji bilgilerine dayanarak, tezin bilim dalını tespit edin ve kapsamlı bir bölüm/alt bölüm hiyerarşisi (outline) üretin.
+Sağlanan tez matrisindeki araştırma problemi, teorik çerçeve, birincil materyal ve metodoloji bilgilerine dayanarak tezin bilim dalını tespit edin ve metodolojik açıdan eksiksiz, disipline özgü bir bölüm/alt bölüm hiyerarşisi (outline) üretin.
 
 # Kurallar ve Sınırlamalar
 
-## Bilim Dalı Tespiti
-- Matris içeriğindeki kavramları, teorik çerçeveyi ve yöntemi analiz ederek tezin ait olduğu bilim dalını (academicField) doğru bir şekilde tespit edin.
-- Bilim dalı açık ve net olmalıdır (ör: "İşletme", "Bilgisayar Mühendisliği", "Eğitim Bilimleri", "Hukuk", "Sağlık Bilimleri").
+## 1. Bilim Dalı Tespiti (academicField)
+- Matris içeriğindeki kavramları, teorik çerçeveyi ve yöntemi analiz ederek tezin ait olduğu bilim dalını tespit edin.
+- Bilim dalı açık ve net olmalıdır (örn: "Siyaset Bilimi ve Kamu Yönetimi", "İşletme", "Hukuk", "Bilgisayar Mühendisliği", "Eğitim Bilimleri", "Tıp ve Sağlık Bilimleri").
 
-## Bölüm Yapısı
-- En az 3, en fazla 8 ana bölüm oluşturun.
-- Her bölüm için kısa ve öz bir akademik Türkçe açıklama yazın.
-- Her bölüme ait sortOrder değerini 1'den başlayarak sıralayın.
+## 2. Disipline Özgü Bölüm Yapısı ve Akış
+Tezin mimarisini tespit edilen bilim dalının geleneksel akademik kalıplarına uygun kurgulayın:
+- **Sosyal ve Beşeri Bilimler / İktisadi ve İdari Bilimler:** Giriş ve Araştırma Çerçevesi → Kavramsal ve Teorik Çerçeve → Araştırma Metodolojisi ve Analiz Çerçevesi → Ampirik Bulgular ve Tartışma (Tez konusuna özel bölüm) → Sonuç ve Değerlendirme.
+- **Fen Bilimleri / Mühendislik / Sağlık Bilimleri:** Giriş ve Amaç → Literatür Taraması / Kuramsal Arka Plan → Materyal ve Yöntem → Bulgular ve Tartışma → Sonuç ve Öneriler.
+- **Hukuk Bilimleri:** Giriş → Kavramsal ve Tarihsel Arka Plan → Pozitif Hukuki Düzenlemeler ve Öğreti/Yargı Kararları → Uygulamadaki Sorunlar ve Çözüm Önerileri → Sonuç.
 
-## Alt Bölümler
-- Homojen (tek konulu) bölümler için boş alt bölüm dizisi kullanın.
-- Heterojen (çok konulu) bölümler için en az 2 alt bölüm oluşturun.
-- Alt bölümlerin sortOrder değerleri 1'den başlayarak sıralanmalıdır.
+## 3. Zorunlu Akademik Bölüm Bileşenleri
+Üretilen plan istisnasız şu temel yapı taşlarını kapsamalıdır:
+- **GİRİŞ BÖLÜMÜ:** Tezin konusunu, amacını, önemini ve araştırma sorularını/problemini kapsayan ilk ana bölüm.
+- **METODOLOJİ / YÖNTEM:** Tezin veri toplama, analiz veya teorik yönteminin (matristeki metodoloji bilgisine uygun) işlendiği bölüm veya belirgin alt bölüm.
+- **SONUÇ VE DEĞERLENDİRME:** Tezin ana bulgularını özetleyen ve katkılarını değerlendiren son ana bölüm.
 
-## Dil
-- Tüm başlıklar ve açıklamalar KESİNLİKLE akademik Türkçe olmalıdır.
-- Bölüm başlıkları tezin içeriğini doğrudan yansıtmalıdır.
+## 4. Bölüm ve Alt Bölüm Standartları
+- **Ana Bölüm Sayısı:** En az 3, en fazla 8 ana bölüm oluşturun.
+- **Alt Bölümler (subSections):** Her ana bölümün altında konusunu detaylandıran EN AZ 2 alt bölüm bulunmalıdır. Asla boş alt bölüm dizisi bırakmayın.
+- **Sıralama (sortOrder):** Ana bölümlerde ve her bölümün alt bölümlerinde 1'den başlayan ardışık sayılar kullanın.
+- **Açıklama (description):** Her ana bölüm ve alt bölüm için ne yapılacağını/anlatılacağını açıklayan kısa, net akademik Türkçe açıklamalar yazın.
 
-## Çıktı Formatı
-- JSON formatında çıktı üretin.
-- academicField alanını mutlaka doldurun.
-- sections dizisini en az 3, en fazla 8 bölüm olarak doldurun.`;
+## 5. Dil ve Üslup
+- Tüm başlıklar ve açıklamalar KESİNLİKLE yüksek düzey akademik Türkçe olmalıdır.
+- Bölüm başlıkları tezin özgün konusunu doğrudan yansıtmalıdır (genel geçer basmakalıp başlıklar yerine tez konusuna özel kavramsal ve akademik terimler kullanın).`;
 }
 
 /**
@@ -82,8 +85,9 @@ ${matrix.methodology}
 
 Yukarıdaki tez matrisi verilerini analiz ederek:
 1. Tezin bilim dalını (academicField) tespit edin.
-2. Kapsamlı bir tez planı (içindekiler) yapısı oluşturun.
-3. Her bölüm ve alt bölüm için kısa, öz akademik Türkçe açıklamalar yazın.
+2. Bilim dalına ve tez konusuna uygun, Giriş, Yöntem/Metodoloji, Temel Bulgular/Tartışma ve Sonuç aksını eksiksiz içeren kapsamlı bir tez planı (içindekiler) yapısı oluşturun.
+3. Her ana bölüm altında konusunu detaylandıran en az 2 alt bölüm oluşturun.
+4. Her bölüm ve alt bölüm için kısa, öz akademik Türkçe açıklamalar yazın.
 
 Lütfen JSON formatında çıktı üretin.`;
 }
@@ -167,7 +171,6 @@ export async function persistOutlineAction(
 ): Promise<{ success: true } | { error: string }> {
   const flowId = createFlowId();
   const log = new Logger(flowId);
-  const startTime = performance.now();
 
   try {
     const session = await getSession();
@@ -181,11 +184,6 @@ export async function persistOutlineAction(
     if (!matrix) return { error: "Thesis matrix not found." };
 
     await persistOutlines(session.userId, matrix.id, outline);
-
-    log.info("outline_persist_success", {
-      service: "outline",
-      durationMs: Math.round(performance.now() - startTime),
-    });
 
     return { success: true };
   } catch (err) {

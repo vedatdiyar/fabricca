@@ -1,3 +1,5 @@
+export const instant = false;
+
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
@@ -15,8 +17,12 @@ import { StartOverButton } from "../_components/start-over-button";
 export default async function OutlinePage() {
   const profile = await getProfile();
 
+  if (profile.onboardingCompleted) {
+    redirect("/dashboard");
+  }
+
   const [matrix] = await db
-    .select({ id: matrices.id })
+    .select()
     .from(matrices)
     .where(eq(matrices.userId, profile.id));
 
@@ -34,37 +40,17 @@ export default async function OutlinePage() {
     redirect("/onboarding/boxes");
   }
 
-  return buildOutlinePage(existingOutlines, matrix.id);
-}
-
-/**
- * Builds the outline page from outline rows.
- *
- * @param outlineRows - The outline rows from the database.
- * @param _matrixId - The thesis matrix id (unused, reserved for future).
- * @returns The outline page UI.
- */
-function buildOutlinePage(
-  outlineRows: Array<{
-    id: number;
-    matrixId: number;
-    parentId: number | null;
-    title: string;
-    description: string | null;
-    sortOrder: number;
-    academicField: string | null;
-  }>,
-  _matrixId: number,
-) {
-  const parentRows = outlineRows.filter((r) => r.parentId === null);
-  const childMap = new Map<number, typeof outlineRows>();
-  for (const row of outlineRows) {
+  const parentRows = existingOutlines.filter((r) => r.parentId === null);
+  const childMap = new Map<number, typeof existingOutlines>();
+  for (const row of existingOutlines) {
     if (row.parentId !== null) {
       const list = childMap.get(row.parentId) ?? [];
       list.push(row);
       childMap.set(row.parentId, list);
     }
   }
+
+  const academicField = parentRows[0]?.academicField ?? null;
 
   const sections = parentRows.map((parent) => ({
     title: parent.title,
@@ -83,10 +69,10 @@ function buildOutlinePage(
         <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
           <div className="flex flex-col space-y-1 text-left">
             <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
-              Tez Planı
+              Tez Planı Yapılandırması
             </h1>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Tez matrisinizden otomatik oluşturulan bölüm yapısı.
+              Tez matrisiniz çözümlenerek hazırlanan taslak içindekiler planını inceleyin ve düzenleyin.
             </p>
           </div>
           <div className="flex items-center self-end sm:self-center">
@@ -94,7 +80,10 @@ function buildOutlinePage(
           </div>
         </div>
 
-        <OutlineContainer sections={sections} />
+        <OutlineContainer
+          sections={sections}
+          academicField={academicField}
+        />
       </div>
     </div>
   );

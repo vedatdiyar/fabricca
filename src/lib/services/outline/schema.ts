@@ -42,8 +42,9 @@ const outlineSectionSchema: z.ZodType<{
             .describe("Alt bölümün gösterim sırası."),
         }),
       )
+      .min(2)
       .describe(
-        "Bölümün alt bölümleri. Kavramsal olarak homojen ise boş dizi, heterojen ise en az 2 alt bölüm.",
+        "Bölümün alt bölümleri. Her ana bölümün altında konusunu detaylandıran en az 2 alt bölüm bulunmalıdır.",
       ),
   }),
 );
@@ -55,13 +56,14 @@ export const outlineGenerationSchema = z.object({
   academicField: z
     .string()
     .describe(
-      "Tez çalışmasının bilim dalı (örn: İşletme, Bilgisayar Mühendisliği, Eğitim Bilimleri). Matris içeriğinden otomatik tespit edilmelidir.",
+      "Tez çalışmasının bilim dalı (örn: İşletme, Bilgisayar Mühendisliği, Hukuk, Siyaset Bilimi). Matris içeriğinden otomatik tespit edilmelidir.",
     ),
   sections: z
     .array(outlineSectionSchema)
-    .min(1)
+    .min(3)
+    .max(8)
     .describe(
-      "Tezin ana bölüm başlıkları. En az 3, en fazla 8 ana bölüm olmalıdır.",
+      "Tezin ana bölüm başlıkları (Giriş, Kavramsal Çerçeve, Metodoloji, Ampirik/Uygulamalı Analiz, Sonuç dahil en az 3, en fazla 8 ana bölüm).",
     ),
 });
 
@@ -109,8 +111,9 @@ function buildSectionJsonSchemaProperty(): JsonSchemaProperty {
           required: ["title", "description", "sortOrder"],
           additionalProperties: false,
         },
+        minItems: 2,
         description:
-          "Alt bölümler. Homojen ise boş, heterojen ise en az 2 eleman.",
+          "Alt bölümler. Her ana bölüm altında konusunu detaylandıran en az 2 alt bölüm.",
       },
     },
     required: ["title", "description", "sortOrder", "subSections"],
@@ -126,15 +129,17 @@ export const outlineGenerationJsonSchema: JsonSchema = {
     academicField: {
       type: "string",
       description:
-        "Tezin bilim dalı (matris içeriğinden otomatik tespit, ör: İşletme, Bilgisayar Mühendisliği)",
+        "Tezin bilim dalı (matris içeriğinden otomatik tespit, ör: İşletme, Bilgisayar Mühendisliği, Hukuk, Siyaset Bilimi)",
     },
     sections: {
       type: "array",
       items: buildSectionJsonSchemaProperty(),
-      minItems: 1,
+      minItems: 3,
+      maxItems: 8,
       description:
-        "Tezin ana bölüm başlıkları. En az 3, en fazla 8 ana bölüm.",
+        "Tezin ana bölüm başlıkları (Giriş, Kavramsal Çerçeve, Yöntem, Bulgular, Sonuç dahil en az 3, en fazla 8 ana bölüm).",
     },
   },
   required: ["academicField", "sections"],
 };
+
