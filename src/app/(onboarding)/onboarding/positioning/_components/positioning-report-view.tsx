@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   CheckCircle2,
   AlertTriangle,
@@ -8,6 +9,7 @@ import {
   ArrowRight,
   ExternalLink,
   Target,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -33,8 +35,19 @@ export function PositioningReportView({
   reportData,
   onConfirm,
 }: PositioningReportViewProps) {
+  const [confirming, setConfirming] = useState(false);
   const isNovelGap = reportData.globalStatus === "NOVEL_GAP_IDENTIFIED";
   const isDirectOverlap = reportData.globalStatus === "DIRECT_OVERLAP";
+
+  const handleConfirm = async () => {
+    if (confirming) return;
+    setConfirming(true);
+    try {
+      await onConfirm();
+    } finally {
+      setConfirming(false);
+    }
+  };
 
   return (
     <div className="w-full space-y-8">
@@ -206,11 +219,21 @@ export function PositioningReportView({
         <Button
           type="button"
           size="lg"
-          onClick={onConfirm}
+          onClick={handleConfirm}
+          disabled={confirming}
           className="w-full sm:w-auto font-semibold"
         >
-          Konumlandırmayı Onayla ve İlerle
-          <ArrowRight className="w-4 h-4 ml-2" />
+          {confirming ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Kaydediliyor...
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              Onayla ve Konu Kutuları Adımına Geç
+              <ArrowRight className="w-4 h-4" />
+            </span>
+          )}
         </Button>
       </div>
     </div>

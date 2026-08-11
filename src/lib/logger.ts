@@ -26,7 +26,8 @@ type ServiceName =
   | "pdf-parser"
   | "rag-search"
   | "advisor"
-  | "citation-cards";
+  | "citation-cards"
+  | "outline";
 
 export interface LogParams {
   service?: ServiceName;

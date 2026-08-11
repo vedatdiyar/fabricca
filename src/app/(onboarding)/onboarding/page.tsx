@@ -3,7 +3,7 @@ export const instant = false;
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { matrices, positioning, boxes, sources } from "@/db/schema";
+import { matrices, positioning, boxes, outlines, sources } from "@/db/schema";
 import { getProfile } from "@/lib/session";
 
 /**
@@ -47,6 +47,16 @@ export default async function OnboardingPage() {
     redirect("/onboarding/boxes");
   }
 
+  const [outlineRow] = await db
+    .select({ id: outlines.id })
+    .from(outlines)
+    .where(eq(outlines.matrixId, matrix.id))
+    .limit(1);
+
+  if (!outlineRow) {
+    redirect("/onboarding/outline");
+  }
+
   const [lit] = await db
     .select({ id: sources.id })
     .from(sources)
@@ -55,7 +65,7 @@ export default async function OnboardingPage() {
     .limit(1);
 
   if (!lit) {
-    redirect("/onboarding/boxes");
+    redirect("/onboarding/literature-review");
   }
 
   redirect("/onboarding/literature-review");

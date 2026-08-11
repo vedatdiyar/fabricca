@@ -38,3 +38,11 @@ export const LITERATURE_PIPELINE_STEPS: LoadingStep[] = [
   { text: "Akademik kaynaklar taranıyor...", status: "idle" },
   { text: "Literatür havuzu kaydediliyor...", status: "idle" },
 ];
+
+export const OUTLINE_GENERATION_STEPS: LoadingStep[] = [
+  {
+    text: "Tez planı yapay zeka tarafından oluşturuluyor…",
+    status: "active",
+  },
+  { text: "Plan veritabanına kaydediliyor...", status: "idle" },
+];

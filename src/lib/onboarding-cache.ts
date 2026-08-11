@@ -7,6 +7,7 @@ export const CACHE_TAGS = {
   thesisMatrix: "thesis-matrix",
   positioning: "thesis-positioning",
   thesisBoxes: "thesis-boxes",
+  thesisOutline: "thesis-outline",
 } as const;
 
 /**
@@ -17,10 +18,11 @@ export const TQ_KEYS = {
   onboardingSteps: ["onboarding-steps"] as const,
   positioning: ["thesis-positioning"] as const,
   boxes: ["boxes"] as const,
+  outline: ["thesis-outline"] as const,
   reanalyze: ["reanalyze"] as const,
 } as const;
 
-export type OnboardingStep = "matrix" | "positioning" | "boxes";
+export type OnboardingStep = "matrix" | "positioning" | "boxes" | "outline";
 
 /**
  * Maps each onboarding step to the cache entries that become stale when that step is
@@ -35,25 +37,43 @@ export const STEP_CACHE_DEPENDENCIES: Record<
   }
 > = {
   matrix: {
-    nextJsTags: [CACHE_TAGS.positioning, CACHE_TAGS.thesisBoxes] as const,
+    nextJsTags: [
+      CACHE_TAGS.positioning,
+      CACHE_TAGS.thesisBoxes,
+      CACHE_TAGS.thesisOutline,
+    ] as const,
     tanStackKeys: [
       TQ_KEYS.positioning,
       TQ_KEYS.boxes,
+      TQ_KEYS.outline,
       TQ_KEYS.onboardingSteps,
       TQ_KEYS.reanalyze,
     ] as const,
   },
   positioning: {
-    nextJsTags: [CACHE_TAGS.positioning, CACHE_TAGS.thesisBoxes] as const,
+    nextJsTags: [
+      CACHE_TAGS.positioning,
+      CACHE_TAGS.thesisBoxes,
+      CACHE_TAGS.thesisOutline,
+    ] as const,
     tanStackKeys: [
       TQ_KEYS.positioning,
       TQ_KEYS.boxes,
+      TQ_KEYS.outline,
       TQ_KEYS.onboardingSteps,
     ] as const,
   },
   boxes: {
-    nextJsTags: [CACHE_TAGS.thesisBoxes] as const,
-    tanStackKeys: [TQ_KEYS.boxes, TQ_KEYS.onboardingSteps] as const,
+    nextJsTags: [CACHE_TAGS.thesisBoxes, CACHE_TAGS.thesisOutline] as const,
+    tanStackKeys: [
+      TQ_KEYS.boxes,
+      TQ_KEYS.outline,
+      TQ_KEYS.onboardingSteps,
+    ] as const,
+  },
+  outline: {
+    nextJsTags: [CACHE_TAGS.thesisOutline] as const,
+    tanStackKeys: [TQ_KEYS.outline, TQ_KEYS.onboardingSteps] as const,
   },
 };
 

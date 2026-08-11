@@ -9,6 +9,7 @@ import {
   MATRIX_SUBMIT_STEPS,
   BOX_GENERATION_STEPS,
   LITERATURE_PIPELINE_STEPS,
+  OUTLINE_GENERATION_STEPS,
   STEP_MIN_DURATION_MS,
   isNavigationStepText,
   type LoadingStep,
@@ -36,6 +37,10 @@ import {
   persistPositioningReportAction,
   logPositioningPipelineSuccessAction,
 } from "../positioning/actions";
+import {
+  generateOutlineAction,
+  persistOutlineAction,
+} from "@/lib/services/outline/generator";
 import { createFlowId } from "@/lib/logger";
 
 /**
@@ -254,8 +259,8 @@ export function useOnboardingNavigation() {
   );
 
   /**
-   * Clears downstream data for the boxes step, runs the literature review
-   * AI pipeline, and then navigates to the literature review page.
+   * Clears downstream data for the boxes step, generates the thesis outline
+   * with a loading overlay, then navigates to the outline display page.
    *
    * @returns A success flag with an optional error message.
    */
@@ -263,15 +268,80 @@ export function useOnboardingNavigation() {
     success: boolean;
     error?: string;
   }> => {
+    const steps = OUTLINE_GENERATION_STEPS.map((s) => ({ ...s }));
+    steps[0].status = "active";
+    stepActiveSinceRef.current.set(0, Date.now());
+
+    showLoading(
+      "Tez Planı Oluşturuluyor",
+      "Tez matrisiniz analiz edilerek bilim dalınız tespit ediliyor ve bölüm/alt bölüm yapısı oluşturuluyor.",
+      steps,
+    );
+
     try {
       const clearResult = await clearDownstreamDbAction("boxes");
       if ("error" in clearResult) {
+        hideLoading();
         toast.error(clearResult.error);
         return { success: false, error: clearResult.error };
       }
 
       const boxesTqKeys = getStepTanStackKeys("boxes");
       for (const key of boxesTqKeys)
+        queryClient.invalidateQueries({ queryKey: key });
+
+      const genResult = await generateOutlineAction();
+      if ("error" in genResult) {
+        hideLoading();
+        toast.error(genResult.error);
+        return { success: false, error: genResult.error };
+      }
+
+      await completeStep(0, steps);
+
+      const persistResult = await persistOutlineAction(genResult.outline);
+      if ("error" in persistResult) {
+        hideLoading();
+        toast.error(persistResult.error);
+        return { success: false, error: persistResult.error };
+      }
+
+      await completeStep(1, steps);
+
+      queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
+
+      hideLoading();
+      router.push("/onboarding/outline");
+
+      return { success: true };
+    } catch (err) {
+      hideLoading();
+      const message =
+        err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
+      toast.error(message);
+      return { success: false, error: message };
+    }
+  }, [router, queryClient, showLoading, hideLoading, completeStep]);
+
+  /**
+   * Confirms the outline and runs the literature review pipeline,
+   * then navigates to the literature review page.
+   *
+   * @returns A success flag with an optional error message.
+   */
+  const proceedFromOutline = useCallback(async (): Promise<{
+    success: boolean;
+    error?: string;
+  }> => {
+    try {
+      const clearResult = await clearDownstreamDbAction("outline");
+      if ("error" in clearResult) {
+        toast.error(clearResult.error);
+        return { success: false, error: clearResult.error };
+      }
+
+      const outlineTqKeys = getStepTanStackKeys("outline");
+      for (const key of outlineTqKeys)
         queryClient.invalidateQueries({ queryKey: key });
 
       const boxes = await fetchUncachedBoxesWithFullShape();
@@ -329,6 +399,13 @@ export function useOnboardingNavigation() {
     const pipelineStart = performance.now();
 
     try {
+      const clearResult = await clearDownstreamDbAction("positioning");
+      if ("error" in clearResult) {
+        hideLoading();
+        toast.error(clearResult.error);
+        return;
+      }
+
       const genResult = await generateAndMapBoxesAction();
       if ("error" in genResult) {
         hideLoading();
@@ -393,6 +470,7 @@ export function useOnboardingNavigation() {
   return {
     submitMatrix,
     proceedFromBoxes,
+    proceedFromOutline,
     runLiteraturePipeline,
     proceedFromPositioning,
     finalizeLiterature,

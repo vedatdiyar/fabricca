@@ -157,6 +157,36 @@ export type Box = InferSelectModel<typeof boxes>;
 
 export type NewBox = InferInsertModel<typeof boxes>;
 
+/** Outlines table — stores hierarchical chapter/section structure linked to a thesis matrix. */
+export const outlines = pgTable(
+  "outlines",
+  {
+    id: serial().primaryKey(),
+    matrixId: integer()
+      .notNull()
+      .references(() => matrices.id, { onDelete: "cascade" }),
+    parentId: integer(),
+    title: text().notNull(),
+    description: text(),
+    sortOrder: integer().notNull(),
+    academicField: text("academic_field"),
+    createdAt: timestamp().defaultNow().notNull(),
+    updatedAt: timestamp().defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_outlines_matrix_id").on(table.matrixId),
+    index("idx_outlines_parent_id").on(table.parentId),
+    foreignKey({
+      columns: [table.parentId],
+      foreignColumns: [table.id],
+    }).onDelete("cascade"),
+  ],
+);
+
+export type Outline = InferSelectModel<typeof outlines>;
+
+export type NewOutline = InferInsertModel<typeof outlines>;
+
 export const pdfStatusEnum = pgEnum("pdf_status_enum", [
   "NOT_UPLOADED",
   "PROCESSING",
@@ -388,6 +418,7 @@ export const matricesRelations = relations(matrices, ({ one, many }) => ({
     references: [users.id],
   }),
   boxes: many(boxes),
+  outlines: many(outlines),
 }));
 
 export const boxesRelations = relations(boxes, ({ one, many }) => ({
@@ -406,6 +437,21 @@ export const boxesRelations = relations(boxes, ({ one, many }) => ({
   sources: many(sources),
   tasks: many(tasks),
   expansions: many(expansions),
+}));
+
+export const outlinesRelations = relations(outlines, ({ one, many }) => ({
+  matrix: one(matrices, {
+    fields: [outlines.matrixId],
+    references: [matrices.id],
+  }),
+  parent: one(outlines, {
+    fields: [outlines.parentId],
+    references: [outlines.id],
+    relationName: "outlineHierarchy",
+  }),
+  children: many(outlines, {
+    relationName: "outlineHierarchy",
+  }),
 }));
 
 export const sourcesRelations = relations(sources, ({ one }) => ({

@@ -12,6 +12,7 @@ import {
   sources,
   tasks,
   sessions,
+  outlines,
 } from "@/db/schema";
 import { deletePdfFromR2 } from "@/lib/services/r2";
 import {
@@ -124,7 +125,7 @@ export async function resetOnboardingAction(): Promise<
  * @returns A success flag or an error message.
  */
 export async function clearDownstreamDbAction(
-  fromStep: "matrix" | "positioning" | "boxes",
+  fromStep: "matrix" | "positioning" | "boxes" | "outline",
 ): Promise<{ success: boolean } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: SESSION_ERROR_MSG };
@@ -143,6 +144,7 @@ export async function clearDownstreamDbAction(
 
         const matrix = matrixResult[0];
         if (matrix) {
+          await tx.delete(outlines).where(eq(outlines.matrixId, matrix.id));
           await tx.delete(boxes).where(eq(boxes.matrixId, matrix.id));
         }
       } else if (fromStep === "positioning") {
@@ -164,6 +166,7 @@ export async function clearDownstreamDbAction(
                   .where(eq(boxes.matrixId, matrix.id)),
               ),
             );
+          await tx.delete(outlines).where(eq(outlines.matrixId, matrix.id));
           await tx.delete(boxes).where(eq(boxes.matrixId, matrix.id));
         }
       } else if (fromStep === "boxes") {
@@ -173,33 +176,27 @@ export async function clearDownstreamDbAction(
           .where(eq(matrices.userId, userId));
 
         if (matrix) {
-          const [relatedBox] = await tx
-            .select({ id: boxes.id })
-            .from(boxes)
-            .where(
-              and(
-                eq(boxes.matrixId, matrix.id),
-                eq(boxes.boxType, "RELATED_THESES"),
-              ),
-            )
-            .limit(1);
-
+          await tx.delete(outlines).where(eq(outlines.matrixId, matrix.id));
           await tx
             .delete(sources)
             .where(
-              and(
-                inArray(
-                  sources.boxId,
-                  tx
-                    .select({ id: boxes.id })
-                    .from(boxes)
-                    .where(eq(boxes.matrixId, matrix.id)),
-                ),
-                relatedBox
-                  ? notInArray(sources.boxId, [relatedBox.id])
-                  : undefined,
+              inArray(
+                sources.boxId,
+                tx
+                  .select({ id: boxes.id })
+                  .from(boxes)
+                  .where(eq(boxes.matrixId, matrix.id)),
               ),
             );
+        }
+      } else if (fromStep === "outline") {
+        const [matrix] = await tx
+          .select({ id: matrices.id })
+          .from(matrices)
+          .where(eq(matrices.userId, userId));
+
+        if (matrix) {
+          await tx.delete(outlines).where(eq(outlines.matrixId, matrix.id));
         }
       }
     });

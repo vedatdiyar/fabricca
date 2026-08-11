@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import type { LucideIcon } from "lucide-react";
 import {
   Loader2,
-  Table,
+  ArrowRight,
   BookOpen,
   Compass,
   Target,
@@ -298,8 +298,8 @@ export function MatrixForm({ initialMatrix }: MatrixFormProps) {
             </span>
           ) : (
             <span className="flex items-center gap-2">
-              <Table className="w-4 h-4" />
-              Matrisi Onayla ve Konumlandırma Aşamasına Geç
+              Onayla ve Konumlandırma Adımına Geç
+              <ArrowRight className="w-4 h-4" />
             </span>
           )}
         </Button>

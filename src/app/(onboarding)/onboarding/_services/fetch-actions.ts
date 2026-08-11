@@ -3,7 +3,7 @@
 import { and, eq, ne, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
-import { matrices, positioning, boxes, sources } from "@/db/schema";
+import { matrices, positioning, boxes, sources, outlines } from "@/db/schema";
 import type { GeminiThesisBox } from "@/lib/types";
 import { getSession } from "@/lib/session";
 import { BOX_ORDER_WEIGHT } from "@/lib/box-constants";
@@ -217,10 +217,11 @@ export async function checkStepsDataAction(): Promise<Record<
 
   let hasPositioning = false;
   let hasBoxes = false;
+  let hasOutline = false;
   let hasLiterature = false;
 
   if (hasMatrix) {
-    const [posResult, boxResult, litResult] = await Promise.all([
+    const [posResult, boxResult, outlineResult, litResult] = await Promise.all([
       db
         .select({
           id: positioning.id,
@@ -233,6 +234,11 @@ export async function checkStepsDataAction(): Promise<Record<
         .select({ id: boxes.id })
         .from(boxes)
         .where(eq(boxes.matrixId, matrix.id))
+        .limit(1),
+      db
+        .select({ id: outlines.id })
+        .from(outlines)
+        .where(eq(outlines.matrixId, matrix.id))
         .limit(1),
       db
         .select({ id: sources.id })
@@ -249,6 +255,7 @@ export async function checkStepsDataAction(): Promise<Record<
 
     hasPositioning = posResult.length > 0 && !!posResult[0].globalStatus;
     hasBoxes = boxResult.length > 0;
+    hasOutline = outlineResult.length > 0;
     hasLiterature = litResult.length > 0;
   }
 
@@ -256,6 +263,7 @@ export async function checkStepsDataAction(): Promise<Record<
     matrix: hasMatrix,
     positioning: hasPositioning,
     boxes: hasBoxes,
+    outline: hasOutline,
     "literature-review": hasLiterature,
   };
 }

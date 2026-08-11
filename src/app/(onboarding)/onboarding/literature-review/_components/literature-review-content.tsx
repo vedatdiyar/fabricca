@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, AlertCircle, BookOpen, CheckCircle } from "lucide-react";
+import { Loader2, AlertCircle, BookOpen, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { AIBanner } from "@/components/ai-banner";
@@ -334,8 +334,8 @@ export function LiteratureReviewContent() {
             </span>
           ) : (
             <span className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4" />
-              Süreci Tamamla
+              Onayla ve Tamamla
+              <Check className="w-4 h-4" />
             </span>
           )}
         </Button>

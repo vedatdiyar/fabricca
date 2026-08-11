@@ -17,6 +17,7 @@ export function invalidateOnboardingCache(): void {
   updateTag(CACHE_TAGS.thesisMatrix);
   updateTag(CACHE_TAGS.positioning);
   updateTag(CACHE_TAGS.thesisBoxes);
+  updateTag(CACHE_TAGS.thesisOutline);
 }
 
 /**

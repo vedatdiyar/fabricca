@@ -15,6 +15,11 @@ const STEPS = [
   },
   { key: "boxes", label: "Konu Kutuları", route: "/onboarding/boxes" },
   {
+    key: "outline",
+    label: "Tez Planı",
+    route: "/onboarding/outline",
+  },
+  {
     key: "literature-review",
     label: "Literatür Tarama",
     route: "/onboarding/literature-review",

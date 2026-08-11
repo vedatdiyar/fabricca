@@ -4,7 +4,7 @@ import { useCallback, useMemo, memo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   CheckCircle2,
-  Box,
+  ArrowRight,
   Library,
   PlusCircle,
   WholeWord,
@@ -96,19 +96,17 @@ export function BoxesContainer() {
 
       <div className="flex justify-end mt-8 pb-8">
         <Button onClick={handleProceed} disabled={proceeding} size="lg">
-          <span className="flex items-center gap-2">
-            {proceeding ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Hazırlanıyor...
-              </>
-            ) : (
-              <>
-                <Box className="w-4 h-4" />
-                Literatür Taramasına Geç
-              </>
-            )}
-          </span>
+          {proceeding ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Kaydediliyor...
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              Onayla ve Tez Planı Adımına Geç
+              <ArrowRight className="w-4 h-4" />
+            </span>
+          )}
         </Button>
       </div>
     </div>
