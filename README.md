@@ -12,7 +12,7 @@ Platformudur**.
 
 ## Onboarding (Kayıt) Süreci
 
-Yeni kullanıcı ilk girişinde sırasıyla **4 adımlı** bir onboarding sürecini
+Yeni kullanıcı ilk girişinde sırasıyla **4 adımlı** onboarding sürecini
 tamamlar:
 
 ```
