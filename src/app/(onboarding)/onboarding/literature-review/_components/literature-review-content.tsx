@@ -102,10 +102,7 @@ function SubBoxDone({
                   {subArticles.length > 0 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
                       {[...subArticles]
-                        .sort(
-                          (a, b) =>
-                            Number(b.isFoundational) - Number(a.isFoundational),
-                        )
+                        .sort((a, b) => b.relevanceScore - a.relevanceScore)
                         .map((article, aIdx) => (
                           <LiteratureArticleCard
                             key={`${article.title}-${aIdx}`}
@@ -123,9 +120,7 @@ function SubBoxDone({
           entry.articles.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {[...entry.articles]
-                .sort(
-                  (a, b) => Number(b.isFoundational) - Number(a.isFoundational),
-                )
+                .sort((a, b) => b.relevanceScore - a.relevanceScore)
                 .map((article, idx) => (
                   <LiteratureArticleCard
                     key={`${article.title}-${idx}`}
@@ -152,7 +147,7 @@ function SubBoxDone({
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[...entry.articles]
-            .sort((a, b) => Number(b.isFoundational) - Number(a.isFoundational))
+            .sort((a, b) => b.relevanceScore - a.relevanceScore)
             .map((article, idx) => (
               <LiteratureArticleCard
                 key={`${article.title}-${idx}`}
@@ -202,10 +197,7 @@ function SubBoxDone({
               {subArticles.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
                   {[...subArticles]
-                    .sort(
-                      (a, b) =>
-                        Number(b.isFoundational) - Number(a.isFoundational),
-                    )
+                    .sort((a, b) => b.relevanceScore - a.relevanceScore)
                     .map((article, aIdx) => (
                       <LiteratureArticleCard
                         key={`${article.title}-${aIdx}`}

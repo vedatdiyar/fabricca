@@ -60,7 +60,6 @@ export interface JuryArticle {
   relevanceScore: number;
   comparisonNote: string | null;
   abstract?: string | null;
-  isFoundational: boolean;
   subBoxId?: string;
 }
 

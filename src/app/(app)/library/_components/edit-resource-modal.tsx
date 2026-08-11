@@ -5,8 +5,8 @@ import { X, Loader2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useEditResourceForm } from "../_hooks/use-edit-resource-form";
-import { BoxSelectionGrid } from "./BoxSelectionGrid";
-import { ResourceMetadataFields } from "./ResourceMetadataFields";
+import { BoxSelectionGrid } from "./box-selection-grid";
+import { ResourceMetadataFields } from "./resource-metadata-fields";
 import type { LibraryResourceItem } from "../_lib/types";
 
 interface EditResourceModalProps {

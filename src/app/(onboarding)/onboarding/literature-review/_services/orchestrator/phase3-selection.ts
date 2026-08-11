@@ -131,7 +131,6 @@ export async function executePhase3Selection(
         originalTitle: poolItem.rawPaper.title ?? ev.articleTitle,
         originalAuthors: poolItem.rawPaper.authors,
         relevanceScore: ev.relevanceScore,
-        isFoundational: idx === 0,
         reasoning: ev.reasoning,
         doi: poolItem.rawPaper.doi,
         openalexId:
@@ -198,7 +197,6 @@ export async function executePhase3Selection(
         relevanceScore: art.relevanceScore,
         comparisonNote: art.reasoning,
         abstract: art.originalAbstract ?? null,
-        isFoundational: art.isFoundational,
       };
 
       subBoxArticles.push(juryArticle);

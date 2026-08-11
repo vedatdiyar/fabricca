@@ -87,13 +87,12 @@ export function stripAltTitle(title: string | null | undefined): string {
 }
 
 interface SortableResource {
-  isFoundational: boolean | null;
   relevanceScore: number | null;
   id: number;
 }
 
 /**
- * Sorts academic resources: foundational first, then by relevance score, then by id.
+ * Sorts academic resources by relevance score, then by id.
  *
  * @param items - Resources to sort.
  * @returns A new array sorted by the shared academic ordering.
@@ -102,9 +101,6 @@ export function sortLibraryResources<T extends SortableResource>(
   items: T[],
 ): T[] {
   return [...items].sort((a, b) => {
-    if (a.isFoundational && !b.isFoundational) return -1;
-    if (!a.isFoundational && b.isFoundational) return 1;
-
     const scoreA = a.relevanceScore ?? 0;
     const scoreB = b.relevanceScore ?? 0;
     if (scoreA !== scoreB) return scoreB - scoreA;

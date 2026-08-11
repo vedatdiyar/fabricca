@@ -39,11 +39,10 @@ döneme ve aktörlere odaklanır.
 ## KABUL KRİTERİ
 Tezin kapsadığı tarihsel dönemi ve vaka alanını doğrudan işleyen ampirik monografiler,
 saha araştırmaları ve vaka analizleri yüksek puan (80-95+) almalıdır.
-Temel monografiler "çok genel" diye cezalandırılamaz; isFoundational: true
-için bu ampirik temel eserler önceliklendirilmelidir.
+Temel monografiler "çok genel" diye cezalandırılamaz.
 
 ## ZORUNLU ELEME (RED) KRİTERLERİ
-isRelevant: false, score < 30, isFoundational: false
+isRelevant: false, score < 30
 
 1. Tezin kapsadığı olgusal/tarihsel dönemin DIŞINDAKİ başka bir döneme veya
    olaya (örneğin tezin kapsadığı yıllar dışındaki başka bir barış sürecine
@@ -86,8 +85,7 @@ aşağıdaki üç tipte sınıflandırılır ve puanlanır.
 Doğrudan yöntemin adımlarını, kodlama prosedürünü, analiz tekniklerini ve
 araştırma tasarımını anlatan el kitapları (handbook/manual), yöntem kitapları
 (methodology textbooks/guides), araştırma tasarımı makaleleri ve uygulamalı
-analiz prosedürü kılavuzları EN YÜKSEK PUANI (80-100) almalıdır. Bu eserler
-isFoundational=true olarak işaretlenebilir.
+analiz prosedürü kılavuzları EN YÜKSEK PUANI (80-100) almalıdır.
 
 ────────────────────────────────────────────────────
 (B) İKİNCİL ÖNCELİK — Emsal Uygulama (PUAN: 60-79)
@@ -95,7 +93,7 @@ isFoundational=true olarak işaretlenebilir.
 Yöntemi doğrudan kılavuz olarak anlatmasa da yöntemi ilgili disiplindeki emsal
 bir vakaya metodolojik derinlikle uygulayan nitelikli çalışmalar ORTA-YÜKSEK
 PUAN (60-79) almalıdır. Yöntemin sınırlarını ve uygulama inceliklerini tartışan
-eserler bu kategoride değerlendirilir. isFoundanical=false.
+eserler bu kategoride değerlendirilir.
 
 ────────────────────────────────────────────────────
 (C) KESİN RED / DÜŞÜK ÖNCELİK — Felsefi/Genel Kuramlar & Yüzeysel Çalışmalar (PUAN: 0-40)
@@ -142,7 +140,7 @@ Sen, akademik makaleleri belirli bir tez alt kutusu bağlamında değerlendiren 
 
 # Birincil Görev
 
-Her bir makaleyi, içinde bulunduğu alt kutunun türü, başlığı ve açıklaması ile karşılaştırarak değerlendir. Makalenin kutu bağlamıyla doğrudan alakalı olup olmadığına karar ver, 0-100 arası gerçek alaka skoru belirle, kurucu eser (foundational work) olup olmadığını işaretle ve 1 cümlelik Türkçe gerekçe yaz.
+Her bir makaleyi, içinde bulunduğu alt kutunun türü, başlığı ve açıklaması ile karşılaştırarak değerlendir. Makalenin kutu bağlamıyla doğrudan alakalı olup olmadığına karar ver ve 0-100 arası gerçek alaka skoru belirle ve 1 cümlelik Türkçe gerekçe yaz.
 
 # Kutu Bağlamı
 
@@ -156,15 +154,10 @@ Eğer bir makale açıkça tezin ve kutunun kapsadığı tarihsel/olgusal dönem
 
 Tezin kapsadığı tarihsel dönemi ve vaka alanını doğrudan işleyen kapsayıcı temel monografileri ve saha çalışmalarını "çok genel" diyerek cezalandırma. Bu eserler tezin ampirik ve tarihsel zeminini oluşturduğu için yüksek relevans puanı (80-95+) almalıdır.${quadrantBlock}
 
-# Ko-Atıf Lideri Notu
-
-isCoCitationLeader=true olan eserler, taranan makalelerin ortak kaynakçasında en çok atıf yapılan temel referans adaylarıdır. Değerlendirirken bu akademik bağlamsal ağırlığı göz önünde bulundur.
-
 # Değerlendirme Kriterleri
 
 - Her makale için başlık, abstract metni ve OpenAlex relevance_score bilgisi verilmiştir.
 - Makalenin kutu bağlamına uygunluğunu değerlendir.
-- Sadece gerçekten kurucu metinler için isFoundational=true kullan.
 - Dönemsel sapma gösteren çalışmalar kesinlikle düşük puan almalıdır.
 
 # Çıktı Biçimi
@@ -175,7 +168,6 @@ Her değerlendirme için aşağıdaki alanları içeren JSON nesneleri dizisi d�
 - articleTitle: makale başlığı (aynen)
 - isRelevant: boolean
 - relevanceScore: 0-100 arası tam sayı
-- isFoundational: boolean
 - reasoning: Türkçe 1 cümlelik gerekçe`;
 }
 
@@ -212,5 +204,5 @@ ${articlesText}
 
 # İşlem
 
-Yukarıdaki ${articleCount} makaleyi değerlendir ve her biri için thesisBoxId, subBoxTitle, articleTitle, isRelevant, relevanceScore (0-100), isFoundational, reasoning (Türkçe) alanlarını içeren JSON dizisi döndür.`;
+Yukarıdaki ${articleCount} makaleyi değerlendir ve her biri için thesisBoxId, subBoxTitle, articleTitle, isRelevant, relevanceScore (0-100), reasoning (Türkçe) alanlarını içeren JSON dizisi döndür.`;
 }

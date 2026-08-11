@@ -11,7 +11,7 @@ import {
   boxes,
   sources,
   tasks,
-  chatSessions,
+  sessions,
 } from "@/db/schema";
 import { deletePdfFromR2 } from "@/lib/services/r2";
 import {
@@ -76,7 +76,7 @@ export async function resetOnboardingAction(): Promise<
     }
 
     await db.transaction(async (tx) => {
-      await tx.delete(chatSessions).where(eq(chatSessions.userId, userId));
+      await tx.delete(sessions).where(eq(sessions.userId, userId));
       await tx.delete(tasks).where(eq(tasks.userId, userId));
       await tx.delete(positioning).where(eq(positioning.userId, userId));
       await tx.delete(matrices).where(eq(matrices.userId, userId));

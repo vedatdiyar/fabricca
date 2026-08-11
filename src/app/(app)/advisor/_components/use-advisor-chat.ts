@@ -1,49 +1,26 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
+import { saveChatMessage, generateChatTitleAction } from "../actions";
 import {
-  getChatSessions,
-  createChatSession,
-  deleteChatSession,
-  getChatMessages,
-  saveChatMessage,
-  updateChatMessageToolCalls,
-  generateChatTitleAction,
-  type ChatSessionListItem,
-} from "../actions";
-import {
-  executeAdvisorToolAction,
-  undoAdvisorToolAction,
-} from "../tool-actions";
+  useAdvisorSessions,
+  type AdvisorPipelineContext,
+} from "../_hooks/use-advisor-sessions";
+import { useAdvisorToolHandler } from "../_hooks/use-advisor-tool-handler";
 import type { PendingToolCall } from "./tool-confirmation-card";
 import type { RagSearchResultItem } from "@/lib/services/rag-search";
+import type { PipelineResult } from "@/lib/services/advisor-pipeline/types";
 import type { Message } from "../_lib/types";
 
-/** Sentinel used to trigger the initial session sync on mount regardless of the initial id value. */
-const PREV_SESSION_SENTINEL = Symbol("prev-session-sentinel");
-
 /**
- * Custom React hook managing Advisor Chat state, session switching, streaming SSE API interactions,
- * and database tool execution confirmations.
+ * Custom React hook orchestrating Advisor Chat session state, DB tool confirmations,
+ * UI citations and streaming SSE API interactions.
  *
  * @param initialSessionId - Optional session id to load on mount.
  * @returns State values and event handlers for the advisor chat component.
  */
 export function useAdvisorChat(initialSessionId?: number) {
-  const [session, setSession] = useState<{
-    messages: Message[];
-    isLoading: boolean;
-    sessions: ChatSessionListItem[];
-    activeSessionId: number | null;
-  }>({
-    messages: [],
-    isLoading: false,
-    sessions: [],
-    activeSessionId: null,
-  });
-  const { messages, isLoading, sessions, activeSessionId } = session;
-
   const [ui, setUi] = useState<{
     activeCitation: {
       messageId: string;
@@ -58,23 +35,19 @@ export function useAdvisorChat(initialSessionId?: number) {
     sources: RagSearchResultItem[] | undefined;
     toolCalls: PendingToolCall[] | undefined;
     persona: "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT" | undefined;
+    pipeline: PipelineResult | undefined;
   }>({
     text: "",
     sources: undefined,
     toolCalls: undefined,
     persona: undefined,
+    pipeline: undefined,
   });
 
-  const setMessages = useCallback(
-    (updater: Message[] | ((prev: Message[]) => Message[])) => {
-      setSession((prev) => ({
-        ...prev,
-        messages:
-          typeof updater === "function" ? updater(prev.messages) : updater,
-      }));
-    },
-    [],
-  );
+  const [isLoading, setIsLoading] = useState(false);
+
+  /** Tracks an in-progress Socratic discussion so the next user turn continues the pipeline. */
+  const pipelineContextRef = useRef<AdvisorPipelineContext | null>(null);
 
   const setActiveCitation = useCallback(
     (
@@ -102,248 +75,25 @@ export function useAdvisorChat(initialSessionId?: number) {
 
   const isSendingRef = useRef(false);
 
-  const loadSessions = useCallback(async () => {
-    const list = await getChatSessions();
-    setSession((prev) => ({ ...prev, sessions: list }));
-  }, []);
+  const {
+    messages,
+    setMessages,
+    sessions,
+    activeSessionId,
+    loadSessions,
+    handleSelectSession,
+    handleCreateSession,
+    handleDeleteSession,
+    createChatSessionAndActivate,
+  } = useAdvisorSessions({
+    initialSessionId,
+    pipelineContextRef,
+    isSendingRef,
+    setActiveCitation,
+  });
 
-  const loadMessages = useCallback(
-    async (sessionId: number) => {
-      const res = await getChatMessages(sessionId);
-      if (res.success && res.messages) {
-        const mapped: Message[] = res.messages.map((m) => ({
-          id: `msg-${m.id}`,
-          dbId: m.id,
-          role: m.role as "user" | "model",
-          persona:
-            (m.persona as "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT" | undefined) ??
-            undefined,
-          content: m.content,
-          sources:
-            (m.sources as RagSearchResultItem[] | undefined) ?? undefined,
-          toolCalls:
-            (m.toolCalls as PendingToolCall[] | undefined) ?? undefined,
-          timestamp: m.createdAt.toLocaleTimeString("tr-TR", {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        }));
-        setMessages(mapped);
-      } else {
-        setMessages([]);
-      }
-      setActiveCitation(null);
-    },
-    [setMessages, setActiveCitation],
-  );
-
-  const syncUrlSession = useCallback((sessionId: number | null) => {
-    const url =
-      sessionId !== null ? `/advisor?session=${sessionId}` : "/advisor";
-    window.history.replaceState(null, "", url);
-  }, []);
-
-  const prevInitialSessionIdRef = useRef<number | undefined | symbol>(
-    PREV_SESSION_SENTINEL,
-  );
-
-  // Load sessions and the active session on mount, and resync when the initialSessionId route parameter changes (e.g. browser navigation)
-  useEffect(() => {
-    if (prevInitialSessionIdRef.current === initialSessionId) return;
-    prevInitialSessionIdRef.current = initialSessionId;
-
-    let cancelled = false;
-    /** Loads the session list and messages for the target session id if provided. */
-    async function syncFromProp() {
-      if (isSendingRef.current) return;
-      const list = await getChatSessions();
-      if (cancelled) return;
-      setSession((prev) => ({ ...prev, sessions: list }));
-
-      const targetId =
-        initialSessionId !== undefined &&
-        list.some((s) => s.id === initialSessionId)
-          ? initialSessionId
-          : null;
-
-      if (targetId !== null) {
-        if (activeSessionId !== targetId) {
-          setSession((prev) => ({ ...prev, activeSessionId: targetId }));
-          await loadMessages(targetId);
-        }
-      } else if (activeSessionId !== null) {
-        setSession((prev) => ({
-          ...prev,
-          activeSessionId: null,
-          messages: [],
-        }));
-        setActiveCitation(null);
-      }
-    }
-    void syncFromProp();
-    return () => {
-      cancelled = true;
-    };
-  }, [initialSessionId, activeSessionId, loadMessages, setActiveCitation]);
-
-  const handleSelectSession = useCallback(
-    async (sessionId: number) => {
-      setSession((prev) => ({ ...prev, activeSessionId: sessionId }));
-      await loadMessages(sessionId);
-      syncUrlSession(sessionId);
-    },
-    [loadMessages, syncUrlSession],
-  );
-
-  const handleCreateSession = useCallback(() => {
-    setSession((prev) => ({ ...prev, activeSessionId: null, messages: [] }));
-    setActiveCitation(null);
-    syncUrlSession(null);
-  }, [syncUrlSession, setActiveCitation]);
-
-  const handleDeleteSession = useCallback(
-    async (sessionId: number) => {
-      const res = await deleteChatSession(sessionId);
-      if (res.success) {
-        if (activeSessionId === sessionId) {
-          setSession((prev) => ({
-            ...prev,
-            activeSessionId: null,
-            messages: [],
-          }));
-          setActiveCitation(null);
-          await loadSessions();
-          syncUrlSession(null);
-        } else {
-          await loadSessions();
-        }
-        toast.success("Sohbet silindi.");
-      } else {
-        toast.error(res.error || "Sohbet silinemedi.");
-      }
-    },
-    [activeSessionId, loadSessions, syncUrlSession, setActiveCitation],
-  );
-
-  const handleApproveToolCall = async (
-    toolCallId: string,
-    name: string,
-    args: Record<string, unknown>,
-  ) => {
-    const res = await executeAdvisorToolAction({ toolName: name, args });
-    if (res.success) {
-      toast.success(res.message);
-      let targetDbId: number | undefined;
-      let updatedToolCalls: PendingToolCall[] = [];
-
-      setMessages((prev) =>
-        prev.map((msg) => {
-          if (!msg.toolCalls) return msg;
-          const hasCall = msg.toolCalls.some(
-            (tc) => tc.toolCallId === toolCallId,
-          );
-          if (!hasCall) return msg;
-
-          targetDbId = msg.dbId;
-          updatedToolCalls = msg.toolCalls.map((tc) =>
-            tc.toolCallId === toolCallId
-              ? {
-                  ...tc,
-                  status: "approved",
-                  executionResult: res.data,
-                  previousState: res.previousState,
-                }
-              : tc,
-          );
-          return {
-            ...msg,
-            toolCalls: updatedToolCalls,
-          };
-        }),
-      );
-
-      if (targetDbId) {
-        await updateChatMessageToolCalls(targetDbId, updatedToolCalls);
-      }
-    } else {
-      toast.error(res.message);
-    }
-  };
-
-  const handleUndoToolCall = async (
-    toolCallId: string,
-    name: string,
-    args: Record<string, unknown>,
-    executionResult?: unknown,
-    previousState?: Record<string, unknown>,
-  ) => {
-    const res = await undoAdvisorToolAction({
-      toolName: name,
-      args,
-      executionResult,
-      previousState,
-    });
-
-    if (res.success) {
-      toast.success(res.message);
-      let targetDbId: number | undefined;
-      let updatedToolCalls: PendingToolCall[] = [];
-
-      setMessages((prev) =>
-        prev.map((msg) => {
-          if (!msg.toolCalls) return msg;
-          const hasCall = msg.toolCalls.some(
-            (tc) => tc.toolCallId === toolCallId,
-          );
-          if (!hasCall) return msg;
-
-          targetDbId = msg.dbId;
-          updatedToolCalls = msg.toolCalls.map((tc) =>
-            tc.toolCallId === toolCallId ? { ...tc, status: "undone" } : tc,
-          );
-          return {
-            ...msg,
-            toolCalls: updatedToolCalls,
-          };
-        }),
-      );
-
-      if (targetDbId) {
-        await updateChatMessageToolCalls(targetDbId, updatedToolCalls);
-      }
-    } else {
-      toast.error(res.message);
-    }
-  };
-
-  const handleRejectToolCall = async (toolCallId: string) => {
-    toast.info("Veritabanı işlemi iptal edildi.");
-    let targetDbId: number | undefined;
-    let updatedToolCalls: PendingToolCall[] = [];
-
-    setMessages((prev) =>
-      prev.map((msg) => {
-        if (!msg.toolCalls) return msg;
-        const hasCall = msg.toolCalls.some(
-          (tc) => tc.toolCallId === toolCallId,
-        );
-        if (!hasCall) return msg;
-
-        targetDbId = msg.dbId;
-        updatedToolCalls = msg.toolCalls.map((tc) =>
-          tc.toolCallId === toolCallId ? { ...tc, status: "rejected" } : tc,
-        );
-        return {
-          ...msg,
-          toolCalls: updatedToolCalls,
-        };
-      }),
-    );
-
-    if (targetDbId) {
-      await updateChatMessageToolCalls(targetDbId, updatedToolCalls);
-    }
-  };
+  const { handleApproveToolCall, handleUndoToolCall, handleRejectToolCall } =
+    useAdvisorToolHandler({ setMessages });
 
   const handleSend = async (overrideQuery?: string) => {
     if (isSendingRef.current) return;
@@ -358,16 +108,11 @@ export function useAdvisorChat(initialSessionId?: number) {
         queryToSend.length > 60
           ? queryToSend.slice(0, 60) + "..."
           : queryToSend;
-      const createRes = await createChatSession(title);
-      if (!createRes.success || !createRes.sessionId) {
-        toast.error(createRes.error || "Sohbet oluşturulamadı.");
+      sessionId = await createChatSessionAndActivate(title);
+      if (!sessionId) {
         isSendingRef.current = false;
         return;
       }
-      sessionId = createRes.sessionId;
-      setSession((prev) => ({ ...prev, activeSessionId: sessionId }));
-      await loadSessions();
-      syncUrlSession(sessionId);
 
       void generateChatTitleAction(sessionId, queryToSend).then((titleRes) => {
         if (titleRes.success) {
@@ -388,12 +133,13 @@ export function useAdvisorChat(initialSessionId?: number) {
     };
 
     setMessages((prev) => [...prev, userMsg]);
-    setSession((prev) => ({ ...prev, isLoading: true }));
+    setIsLoading(true);
     setStreaming({
       text: "",
       sources: undefined,
       toolCalls: undefined,
       persona: undefined,
+      pipeline: undefined,
     });
 
     await saveChatMessage(sessionId, "user", queryToSend);
@@ -407,12 +153,15 @@ export function useAdvisorChat(initialSessionId?: number) {
       const response = await fetch("/api/advisor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: queryToSend, history: historyPayload }),
+        body: JSON.stringify({
+          query: queryToSend,
+          history: historyPayload,
+          pipelineState: pipelineContextRef.current ?? undefined,
+        }),
       });
 
       if (!response.ok) {
-        toast.error("Yanıt alınamadı.");
-        return;
+        throw new Error("Yanıt alınamadı.");
       }
 
       const reader = response.body!.getReader();
@@ -441,6 +190,14 @@ export function useAdvisorChat(initialSessionId?: number) {
             if (event.type === "persona_assigned") {
               assignedPersona = event.persona;
               setStreaming((prev) => ({ ...prev, persona: event.persona }));
+            } else if (event.type === "stage_start") {
+              setStreaming((prev) => ({
+                ...prev,
+                pipeline: {
+                  stage: event.stage,
+                  cycle: pipelineContextRef.current?.cycle ?? 1,
+                },
+              }));
             } else if (event.type === "delta") {
               setStreaming((prev) => ({
                 ...prev,
@@ -463,6 +220,30 @@ export function useAdvisorChat(initialSessionId?: number) {
             } else if (event.type === "done") {
               setStreaming((prev) => ({ ...prev, sources: event.sources }));
               const finalPersona = event.persona || assignedPersona;
+              const pipelineResult = event.pipeline as
+                PipelineResult | undefined;
+
+              if (
+                pipelineResult &&
+                pipelineResult.stage === "socratic" &&
+                !pipelineResult.diff
+              ) {
+                pipelineContextRef.current = {
+                  active: true,
+                  cycle: pipelineResult.cycle,
+                  originalDraft:
+                    pipelineContextRef.current?.originalDraft ?? queryToSend,
+                };
+              } else if (
+                pipelineResult &&
+                pipelineResult.stage === "redaction"
+              ) {
+                pipelineContextRef.current = null;
+                setStreaming((prev) => ({
+                  ...prev,
+                  pipeline: pipelineResult,
+                }));
+              }
 
               const modelMessageId = `model-${crypto.randomUUID()}`;
               const finalContent =
@@ -481,6 +262,7 @@ export function useAdvisorChat(initialSessionId?: number) {
                   accumulatedToolCalls.length > 0
                     ? accumulatedToolCalls
                     : undefined,
+                pipeline: pipelineResult,
                 timestamp: new Date().toLocaleTimeString("tr-TR", {
                   hour: "2-digit",
                   minute: "2-digit",
@@ -497,6 +279,7 @@ export function useAdvisorChat(initialSessionId?: number) {
                     ? accumulatedToolCalls
                     : undefined,
                   finalPersona,
+                  pipelineResult,
                 );
                 if (saveRes.success && saveRes.messageId) {
                   modelMsg.dbId = saveRes.messageId;
@@ -513,15 +296,18 @@ export function useAdvisorChat(initialSessionId?: number) {
           }
         }
       }
-    } catch {
-      toast.error("İletişim hatası oluştu.");
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "İletişim hatası oluştu.";
+      toast.error(message);
     } finally {
-      setSession((prev) => ({ ...prev, isLoading: false }));
+      setIsLoading(false);
       setStreaming({
         text: "",
         sources: undefined,
         toolCalls: undefined,
         persona: undefined,
+        pipeline: undefined,
       });
       isSendingRef.current = false;
     }
@@ -558,6 +344,7 @@ export function useAdvisorChat(initialSessionId?: number) {
     streamingSources: streaming.sources,
     streamingToolCalls: streaming.toolCalls,
     streamingPersona: streaming.persona,
+    streamingPipeline: streaming.pipeline,
     copiedMessageId,
     setCopiedMessageId,
     activeSource,

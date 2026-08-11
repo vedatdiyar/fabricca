@@ -10,7 +10,6 @@ export interface CandidateSource {
   openalexId?: string;
   corpusId?: number;
   relevanceScore?: number;
-  isFoundational?: boolean;
   pdfUrl?: string;
   sourceOrigin: "backward" | "forward_openalex" | "forward_s2";
   citationCount?: number;

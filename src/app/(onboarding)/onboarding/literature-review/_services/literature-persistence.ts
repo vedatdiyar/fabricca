@@ -98,7 +98,6 @@ export async function persistRelatedTheses(userId: number): Promise<void> {
         .filter((s) => s && s.trim().length > 0)
         .join("\n") || null,
     isRead: false,
-    isFoundational: false,
     relevanceScore: 100,
   }));
 
@@ -163,7 +162,6 @@ async function insertLiteratureBatch(
       publicationYear: article.publicationYear ?? null,
       authors: article.authors.filter(Boolean) as string[],
       isRead: false,
-      isFoundational: article.isFoundational ?? false,
       relevanceScore: article.relevanceScore ?? 0,
     });
   }
@@ -183,11 +181,9 @@ export async function persistSubBoxEntry(
 ): Promise<void> {
   await db.transaction(async (tx) => {
     const limit = 4;
-    const sorted = [...articles].sort((a, b) => {
-      if (a.isFoundational && !b.isFoundational) return -1;
-      if (!a.isFoundational && b.isFoundational) return 1;
-      return b.relevanceScore - a.relevanceScore;
-    });
+    const sorted = [...articles].sort(
+      (a, b) => b.relevanceScore - a.relevanceScore,
+    );
     const sliced = limit !== undefined ? sorted.slice(0, limit) : sorted;
 
     const { toInsert } = await insertLiteratureBatch(tx, thesisBoxId, sliced);
@@ -266,7 +262,6 @@ export async function fetchPreloadedPool(
       thesisType: sources.thesisType,
       publicationYear: sources.publicationYear,
       authors: sources.authors,
-      isFoundational: sources.isFoundational,
       relevanceScore: sources.relevanceScore,
     })
     .from(sources)
@@ -289,7 +284,6 @@ export async function fetchPreloadedPool(
       thesisType: row.thesisType ?? null,
       publicationYear: row.publicationYear ?? 0,
       authors: (row.authors as string[]) ?? [],
-      isFoundational: row.isFoundational ?? false,
       relevanceScore: row.relevanceScore ?? 0,
     });
     grouped.set(row.thesisBoxId, {

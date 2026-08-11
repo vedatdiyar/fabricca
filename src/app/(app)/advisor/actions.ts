@@ -4,13 +4,14 @@ import { z } from "zod";
 import { eq, desc } from "drizzle-orm";
 import { db } from "@/db";
 import {
-  chatSessions,
-  chatMessages,
-  type ChatMessage,
+  sessions,
+  messages,
+  type Message,
   type ChatToolCall,
 } from "@/db/schema";
 import { getSession } from "@/lib/session";
 import type { RagSearchResultItem } from "@/lib/services/rag-search";
+import type { PipelineResultData } from "@/db/schema";
 import { generateStructuredContent } from "@/lib/services/cerebras";
 import { CEREBRAS_MODEL } from "@/lib/constants";
 
@@ -32,28 +33,28 @@ export async function getChatSessions(): Promise<ChatSessionListItem[]> {
 
   const rows = await db
     .select({
-      id: chatSessions.id,
-      title: chatSessions.title,
-      createdAt: chatSessions.createdAt,
+      id: sessions.id,
+      title: sessions.title,
+      createdAt: sessions.createdAt,
     })
-    .from(chatSessions)
-    .where(eq(chatSessions.userId, session.userId))
-    .orderBy(desc(chatSessions.updatedAt));
+    .from(sessions)
+    .where(eq(sessions.userId, session.userId))
+    .orderBy(desc(sessions.updatedAt));
 
-  const sessions: ChatSessionListItem[] = [];
+  const result: ChatSessionListItem[] = [];
   for (const row of rows) {
     const msgs = await db
-      .select({ count: chatMessages.id })
-      .from(chatMessages)
-      .where(eq(chatMessages.sessionId, row.id));
-    sessions.push({
+      .select({ count: messages.id })
+      .from(messages)
+      .where(eq(messages.sessionId, row.id));
+    result.push({
       id: row.id,
       title: row.title,
       createdAt: row.createdAt.toLocaleDateString("tr-TR"),
       messageCount: msgs.length,
     });
   }
-  return sessions;
+  return result;
 }
 
 /**
@@ -72,9 +73,9 @@ export async function createChatSession(
 
   const trimmed = title.trim().slice(0, 100) || "Yeni Sohbet";
   const [inserted] = await db
-    .insert(chatSessions)
+    .insert(sessions)
     .values({ userId: session.userId, title: trimmed })
-    .returning({ id: chatSessions.id });
+    .returning({ id: sessions.id });
 
   return { success: true, sessionId: inserted.id };
 }
@@ -97,9 +98,9 @@ export async function renameChatSession(
   if (!trimmed) return { success: false, error: "Başlık boş olamaz." };
 
   await db
-    .update(chatSessions)
+    .update(sessions)
     .set({ title: trimmed, updatedAt: new Date() })
-    .where(eq(chatSessions.id, sessionId));
+    .where(eq(sessions.id, sessionId));
 
   return { success: true };
 }
@@ -116,7 +117,7 @@ export async function deleteChatSession(
   const session = await getSession();
   if (!session) return { success: false, error: "Oturum süreniz dolmuş." };
 
-  await db.delete(chatSessions).where(eq(chatSessions.id, sessionId));
+  await db.delete(sessions).where(eq(sessions.id, sessionId));
   return { success: true };
 }
 
@@ -128,7 +129,7 @@ export async function deleteChatSession(
  */
 export async function getChatMessages(
   sessionId: number,
-): Promise<{ success: boolean; messages?: ChatMessage[]; error?: string }> {
+): Promise<{ success: boolean; messages?: Message[]; error?: string }> {
   const session = await getSession();
   if (!session) {
     return { success: false, error: "Oturum süreniz dolmuş." };
@@ -136,9 +137,9 @@ export async function getChatMessages(
 
   const rows = await db
     .select()
-    .from(chatMessages)
-    .where(eq(chatMessages.sessionId, sessionId))
-    .orderBy(chatMessages.createdAt);
+    .from(messages)
+    .where(eq(messages.sessionId, sessionId))
+    .orderBy(messages.createdAt);
 
   return { success: true, messages: rows };
 }
@@ -151,6 +152,8 @@ export async function getChatMessages(
  * @param content - The message content.
  * @param sources - Optional RAG sources for model messages.
  * @param toolCalls - Optional stored tool calls.
+ * @param persona - Optional persona badge for model messages.
+ * @param pipelineData - Optional structured pipeline result for model messages.
  * @returns Operation result with created message ID.
  */
 export async function saveChatMessage(
@@ -160,12 +163,13 @@ export async function saveChatMessage(
   sources?: RagSearchResultItem[],
   toolCalls?: ChatToolCall[],
   persona?: string,
+  pipelineData?: PipelineResultData | null,
 ): Promise<{ success: boolean; messageId?: number; error?: string }> {
   const session = await getSession();
   if (!session) return { success: false, error: "Oturum süreniz dolmuş." };
 
   const [inserted] = await db
-    .insert(chatMessages)
+    .insert(messages)
     .values({
       sessionId,
       role,
@@ -173,13 +177,14 @@ export async function saveChatMessage(
       content,
       sources: sources ?? undefined,
       toolCalls: toolCalls ?? undefined,
+      pipelineData: pipelineData ?? undefined,
     })
-    .returning({ id: chatMessages.id });
+    .returning({ id: messages.id });
 
   await db
-    .update(chatSessions)
+    .update(sessions)
     .set({ updatedAt: new Date() })
-    .where(eq(chatSessions.id, sessionId));
+    .where(eq(sessions.id, sessionId));
 
   return { success: true, messageId: inserted.id };
 }
@@ -199,9 +204,9 @@ export async function updateChatMessageToolCalls(
   if (!session) return { success: false, error: "Oturum süreniz dolmuş." };
 
   await db
-    .update(chatMessages)
+    .update(messages)
     .set({ toolCalls })
-    .where(eq(chatMessages.id, messageId));
+    .where(eq(messages.id, messageId));
 
   return { success: true };
 }

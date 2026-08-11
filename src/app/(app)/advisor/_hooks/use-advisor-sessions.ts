@@ -1,0 +1,257 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import {
+  getChatSessions,
+  getChatMessages,
+  deleteChatSession,
+  createChatSession,
+  type ChatSessionListItem,
+} from "../actions";
+import type { PendingToolCall } from "../_components/tool-confirmation-card";
+import type { RagSearchResultItem } from "@/lib/services/rag-search";
+import type { PipelineResult } from "@/lib/services/advisor-pipeline/types";
+import type { Message } from "../_lib/types";
+
+/** Sentinel used to trigger the initial session sync on mount regardless of the initial id value. */
+const PREV_SESSION_SENTINEL = Symbol("prev-session-sentinel");
+
+/** Tracks an in-progress Socratic discussion so the next user turn continues the pipeline. */
+export interface AdvisorPipelineContext {
+  active: boolean;
+  cycle: number;
+  originalDraft: string;
+}
+
+type CitationUpdater =
+  | { messageId: string; sourceIndex: number }
+  | null
+  | ((
+      prev: { messageId: string; sourceIndex: number } | null,
+    ) => { messageId: string; sourceIndex: number } | null);
+
+interface UseAdvisorSessionsParams {
+  initialSessionId?: number;
+  pipelineContextRef: { current: AdvisorPipelineContext | null };
+  isSendingRef: { current: boolean };
+  setActiveCitation: (updater: CitationUpdater) => void;
+}
+
+/**
+ * Manages the advisor chat session list, the active session and its messages, plus URL sync and session persistence.
+ *
+ * @param root0 - Hook dependencies.
+ * @param root0.initialSessionId - Session id to restore on mount, if any.
+ * @param root0.pipelineContextRef - Shared ref tracking an in-progress Socratic discussion.
+ * @param root0.isSendingRef - Shared ref signalling an in-flight message send.
+ * @param root0.setActiveCitation - Resets the active UI citation on session switches.
+ * @returns Session state and session lifecycle handlers.
+ */
+export function useAdvisorSessions({
+  initialSessionId,
+  pipelineContextRef,
+  isSendingRef,
+  setActiveCitation,
+}: UseAdvisorSessionsParams) {
+  const [sessions, setSessions] = useState<ChatSessionListItem[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
+  const [messages, setMessagesState] = useState<Message[]>([]);
+
+  const setMessages = useCallback(
+    (updater: Message[] | ((prev: Message[]) => Message[])) => {
+      setMessagesState((prev) =>
+        typeof updater === "function" ? updater(prev) : updater,
+      );
+    },
+    [],
+  );
+
+  const loadSessions = useCallback(async () => {
+    const list = await getChatSessions();
+    setSessions(list);
+  }, []);
+
+  const syncUrlSession = useCallback((sessionId: number | null) => {
+    const url =
+      sessionId !== null ? `/advisor?session=${sessionId}` : "/advisor";
+    window.history.replaceState(null, "", url);
+  }, []);
+
+  const loadMessages = useCallback(
+    async (sessionId: number) => {
+      const res = await getChatMessages(sessionId);
+      if (res.success && res.messages) {
+        const mapped: Message[] = res.messages.map((m) => ({
+          id: `msg-${m.id}`,
+          dbId: m.id,
+          role: m.role as "user" | "model",
+          persona:
+            (m.persona as "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT" | undefined) ??
+            undefined,
+          content: m.content,
+          sources:
+            (m.sources as RagSearchResultItem[] | undefined) ?? undefined,
+          toolCalls:
+            (m.toolCalls as PendingToolCall[] | undefined) ?? undefined,
+          pipeline: (m.pipelineData as PipelineResult | undefined) ?? undefined,
+          timestamp: m.createdAt.toLocaleTimeString("tr-TR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        }));
+        setMessages(mapped);
+        // Restore an open Socratic discussion so the next user turn resumes the pipeline.
+        const lastPipelineMessage = [...mapped]
+          .reverse()
+          .find(
+            (msg) => msg.role === "model" && msg.pipeline?.stage === "socratic",
+          );
+        if (
+          lastPipelineMessage?.pipeline &&
+          lastPipelineMessage.pipeline.stage === "socratic" &&
+          !lastPipelineMessage.pipeline.diff
+        ) {
+          pipelineContextRef.current = {
+            active: true,
+            cycle: lastPipelineMessage.pipeline.cycle,
+            originalDraft: lastPipelineMessage.pipeline.originalDraft ?? "",
+          };
+        }
+      } else {
+        setMessages([]);
+      }
+      setActiveCitation(null);
+    },
+    [setMessages, setActiveCitation, pipelineContextRef],
+  );
+
+  const prevInitialSessionIdRef = useRef<number | undefined | symbol>(
+    PREV_SESSION_SENTINEL,
+  );
+
+  // Load sessions and the active session on mount, and resync when the initialSessionId route parameter changes (e.g. browser navigation)
+  useEffect(() => {
+    if (prevInitialSessionIdRef.current === initialSessionId) return;
+    prevInitialSessionIdRef.current = initialSessionId;
+
+    let cancelled = false;
+    /** Loads the session list and messages for the target session id if provided. */
+    async function syncFromProp() {
+      if (isSendingRef.current) return;
+      const list = await getChatSessions();
+      if (cancelled) return;
+      setSessions(list);
+
+      const targetId =
+        initialSessionId !== undefined &&
+        list.some((s) => s.id === initialSessionId)
+          ? initialSessionId
+          : null;
+
+      if (targetId !== null) {
+        if (activeSessionId !== targetId) {
+          setActiveSessionId(targetId);
+          await loadMessages(targetId);
+        }
+      } else if (activeSessionId !== null) {
+        setActiveSessionId(null);
+        setMessages([]);
+        setActiveCitation(null);
+      }
+    }
+    void syncFromProp();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    initialSessionId,
+    activeSessionId,
+    loadMessages,
+    setMessages,
+    setActiveCitation,
+    isSendingRef,
+  ]);
+
+  const handleSelectSession = useCallback(
+    async (sessionId: number) => {
+      pipelineContextRef.current = null;
+      setActiveSessionId(sessionId);
+      await loadMessages(sessionId);
+      syncUrlSession(sessionId);
+    },
+    [loadMessages, syncUrlSession, pipelineContextRef],
+  );
+
+  const handleCreateSession = useCallback(() => {
+    pipelineContextRef.current = null;
+    setActiveSessionId(null);
+    setMessages([]);
+    setActiveCitation(null);
+    syncUrlSession(null);
+  }, [setMessages, setActiveCitation, syncUrlSession, pipelineContextRef]);
+
+  const handleDeleteSession = useCallback(
+    async (sessionId: number) => {
+      const res = await deleteChatSession(sessionId);
+      if (res.success) {
+        if (activeSessionId === sessionId) {
+          pipelineContextRef.current = null;
+          setActiveSessionId(null);
+          setMessages([]);
+          setActiveCitation(null);
+          await loadSessions();
+          syncUrlSession(null);
+        } else {
+          await loadSessions();
+        }
+        toast.success("Sohbet silindi.");
+      } else {
+        toast.error(res.error || "Sohbet silinemedi.");
+      }
+    },
+    [
+      activeSessionId,
+      setMessages,
+      loadSessions,
+      syncUrlSession,
+      setActiveCitation,
+      pipelineContextRef,
+    ],
+  );
+
+  /**
+   * Persists a new chat session, activates it and syncs the URL for the send flow.
+   *
+   * @param title - The display title for the new session.
+   * @returns The created session id, or null when creation failed.
+   */
+  const createChatSessionAndActivate = useCallback(
+    async (title: string): Promise<number | null> => {
+      const createRes = await createChatSession(title);
+      if (!createRes.success || !createRes.sessionId) {
+        toast.error(createRes.error || "Sohbet oluşturulamadı.");
+        return null;
+      }
+      setActiveSessionId(createRes.sessionId);
+      await loadSessions();
+      syncUrlSession(createRes.sessionId);
+      return createRes.sessionId;
+    },
+    [loadSessions, syncUrlSession],
+  );
+
+  return {
+    sessions,
+    activeSessionId,
+    messages,
+    setMessages,
+    loadSessions,
+    loadMessages,
+    handleSelectSession,
+    handleCreateSession,
+    handleDeleteSession,
+    syncUrlSession,
+    createChatSessionAndActivate,
+  };
+}

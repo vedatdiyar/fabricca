@@ -3,12 +3,14 @@
 import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { Sparkles, GraduationCap, BookOpen } from "lucide-react";
-import { ChatMessageItem, PersonaBadge } from "./ChatMessageItem";
+import { ChatMessageItem, PersonaBadge } from "./chat-message-item";
 import { MarkdownRenderer } from "./markdown-renderer";
 import { ToolConfirmationCard } from "./tool-confirmation-card";
+import { AuditBanner, PipelineResultView } from "./pipeline-result-view";
 import type { Message } from "../_lib/types";
 import type { PendingToolCall } from "./tool-confirmation-card";
 import type { RagSearchResultItem } from "@/lib/services/rag-search";
+import type { PipelineResult } from "@/lib/services/advisor-pipeline/types";
 
 interface ChatMessageListProps {
   messages: Message[];
@@ -17,6 +19,7 @@ interface ChatMessageListProps {
   streamingSources?: RagSearchResultItem[];
   streamingToolCalls?: PendingToolCall[];
   streamingPersona?: "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT";
+  streamingPipeline?: PipelineResult;
   activeSessionId: number | null;
   copiedMessageId: string | null;
   onCopyMessage: (messageId: string, content: string) => void;
@@ -64,6 +67,7 @@ export function ChatMessageList({
   streamingSources,
   streamingToolCalls,
   streamingPersona,
+  streamingPipeline,
   activeSessionId,
   copiedMessageId,
   onCopyMessage,
@@ -120,7 +124,7 @@ export function ChatMessageList({
       )}
 
       {isLoading && (streamingText || streamingToolCalls) && (
-        <div className="flex space-x-3 justify-start">
+        <div className="flex space-x-3 justify-start max-w-full overflow-hidden">
           <div
             className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 overflow-hidden transition-all ${
               streamingPersona === "SOCRATIC_ADVISOR"
@@ -134,15 +138,18 @@ export function ChatMessageList({
               <BookOpen className="w-4 h-4" />
             )}
           </div>
-          <div className="space-y-2 items-start flex-1 max-w-4xl">
+          <div className="space-y-2 items-start flex-1 max-w-4xl min-w-0">
+            <PersonaBadge persona={streamingPersona} />
+            {streamingPipeline?.audit && (
+              <AuditBanner audit={streamingPipeline.audit} />
+            )}
             <div
-              className={`p-4 rounded-md text-sm leading-relaxed rounded-tl-none transition-all ${
+              className={`p-4 rounded-md text-sm leading-relaxed rounded-tl-none break-words min-w-0 transition-all ${
                 streamingPersona === "SOCRATIC_ADVISOR"
                   ? "bg-amber-500/5 dark:bg-amber-500/10 border-2 border-amber-500/40 dark:border-amber-400/40 text-card-foreground shadow-sm"
                   : "bg-emerald-500/5 dark:bg-emerald-500/10 border-2 border-emerald-500/30 dark:border-emerald-400/30 text-card-foreground shadow-sm"
               }`}
             >
-              <PersonaBadge persona={streamingPersona} />
               {streamingText && (
                 <MarkdownRenderer
                   content={streamingText}
@@ -165,6 +172,9 @@ export function ChatMessageList({
                 />
               ))}
             </div>
+            {streamingPipeline && (
+              <PipelineResultView pipeline={streamingPipeline} />
+            )}
           </div>
         </div>
       )}

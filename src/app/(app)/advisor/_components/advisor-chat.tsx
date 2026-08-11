@@ -1,9 +1,9 @@
 "use client";
 
 import { ChatSidebar } from "./chat-sidebar";
-import { ChatMessageList } from "./ChatMessageList";
-import { AdvisorChatInput } from "./AdvisorChatInput";
-import { AdvisorCitationDialog } from "./AdvisorCitationDialog";
+import { ChatMessageList } from "./chat-message-list";
+import { AdvisorChatInput } from "./advisor-chat-input";
+import { AdvisorCitationDialog } from "./advisor-citation-dialog";
 import { useAdvisorChat } from "./use-advisor-chat";
 import type { AdvisorChatProps } from "../_lib/types";
 
@@ -26,6 +26,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
     streamingSources,
     streamingToolCalls,
     streamingPersona,
+    streamingPipeline,
     copiedMessageId,
     setCopiedMessageId,
     activeSource,
@@ -68,6 +69,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
           streamingSources={streamingSources}
           streamingToolCalls={streamingToolCalls}
           streamingPersona={streamingPersona}
+          streamingPipeline={streamingPipeline}
           activeSessionId={activeSessionId}
           copiedMessageId={copiedMessageId}
           onCopyMessage={handleCopyMessage}

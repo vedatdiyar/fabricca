@@ -119,7 +119,6 @@ export async function runLiteratureExpansion(
     openalexId: c.openalexId,
     relevanceScore: c.relevanceScore,
     isRead: false,
-    isFoundational: c.isFoundational ?? false,
     pdfUrl: c.pdfUrl,
     pdfStatus: c.pdfUrl ? "PROCESSING" : "NOT_UPLOADED",
   }));

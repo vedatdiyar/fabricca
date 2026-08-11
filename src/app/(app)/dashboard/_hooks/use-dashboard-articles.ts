@@ -16,7 +16,6 @@ interface ArticleState {
   author: string;
   year: number;
   isRead: boolean;
-  isFoundational: boolean;
   boxId: string;
   boxTitle: string;
   /** Actual thesisBoxId the resource belongs to (sub-box or the main box itself). */
@@ -62,7 +61,6 @@ function buildArticleState(
         }),
         year: res.publicationYear ?? 0,
         isRead: res.isRead ?? false,
-        isFoundational: res.isFoundational,
         boxId: String(effectiveParentId),
         boxTitle: box.title,
         subBoxId: String(res.boxId),

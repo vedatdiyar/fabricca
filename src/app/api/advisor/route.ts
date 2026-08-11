@@ -6,6 +6,7 @@ import { getAi } from "@/lib/services/gemini";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 import { getSession } from "@/lib/session";
 import { buildAdvisorSystemInstruction } from "@/lib/prompts";
+import { sanitizeModelStreamText } from "@/lib/text-sanitizer";
 import { classifyAdvisorIntent } from "@/lib/services/advisor-classifier";
 import {
   ADVISOR_TOOL_DECLARATIONS,
@@ -13,6 +14,8 @@ import {
   executeReadTool,
   getToolPreviousState,
 } from "@/lib/services/advisor-tools";
+import { formatToolExplanation } from "@/lib/services/advisor-tools/format-tool";
+import { runPipelineTurn } from "@/lib/services/advisor-pipeline/orchestrator";
 
 /**
  * Detects whether a query is a direct database action/mutation command
@@ -61,6 +64,14 @@ const requestSchema = z.object({
       }),
     )
     .optional(),
+  /** Active 3-stage pipeline context forwarded by the client to continue an open Socratic discussion. */
+  pipelineState: z
+    .object({
+      active: z.boolean(),
+      cycle: z.number().int().min(1),
+      originalDraft: z.string().max(1000).optional(),
+    })
+    .optional(),
 });
 
 /**
@@ -75,43 +86,6 @@ function formatPageReference(source: RagSearchResultItem): string {
   const range = source.pageEnd;
   if (pageSpan == null) return "Bilinmeyen Sayfa";
   return pageSpan === range ? `s. ${pageSpan}.` : `ss. ${pageSpan}–${range}.`;
-}
-
-/**
- * Generates a human-readable Turkish explanation string for pending mutation tool calls.
- *
- * @param name - The function name.
- * @param args - The argument record.
- * @returns The formatted Turkish description for the UI card.
- */
-function formatToolExplanation(
-  name: string,
-  args: Record<string, unknown>,
-): string {
-  switch (name) {
-    case "updateThesisMatrix":
-      return "Tez matrisi alanlarınız güncellenecek.";
-    case "createBox":
-      return `"${(args.title as string) || "Yeni Kutu"}" başlıklı yeni bir tez kutusu eklenecek.`;
-    case "updateBox":
-      return `Kutu #${args.boxId} bilgileri güncellenecek.`;
-    case "deleteBox":
-      return `Kutu #${args.boxId} veritabanından silinecek.`;
-    case "updateSource":
-      return `Kaynak #${args.sourceId} bilgileri güncellenecek.`;
-    case "deleteSource":
-      return `Kaynak #${args.sourceId} kütüphanenizden silinecek.`;
-    case "addNote":
-      return `Kaynak #${args.sourceId} için s. ${args.pageNumber || ""} numaralı yeni bir not/alıntı kaydedilecek.`;
-    case "deleteNote":
-      return `Not #${args.noteId} silinecek.`;
-    case "createTask":
-      return `"${(args.title as string) || "Yeni Görev"}" başlıklı çalışma görevi Kanban panosuna eklenecek.`;
-    case "updateTaskStatus":
-      return `Görev #${args.taskId} durumu "${args.status}" olarak güncellenecek.`;
-    default:
-      return `${name} veritabanı değişikliği gerçekleştirilecek.`;
-  }
 }
 
 /**
@@ -138,7 +112,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { query, history } = parseResult.data;
+  const { query, history, pipelineState } = parseResult.data;
   const encoder = new TextEncoder();
 
   const readable = new ReadableStream({
@@ -147,7 +121,14 @@ export async function POST(request: Request) {
         // Fast Cerebras Gemma-4 classification for intent & persona
         const classification = await classifyAdvisorIntent(query, history);
         const persona = classification.persona;
-        const isAction = isActionQuery(query) || classification.isActionQuery;
+
+        // Pipeline is triggered by a fresh draft paragraph (classifier), or by an
+        // explicit client continuation of an open Socratic discussion when the
+        // incoming message is a direct answer rather than a new draft.
+        const isPipelineContinuation =
+          pipelineState?.active === true && classification.mode === "DIRECT";
+        const isPipelineTurn =
+          isPipelineContinuation || classification.mode === "PIPELINE";
 
         // Immediately inform UI client of assigned persona
         controller.enqueue(
@@ -155,6 +136,53 @@ export async function POST(request: Request) {
             `data: ${JSON.stringify({ type: "persona_assigned", persona })}\n\n`,
           ),
         );
+
+        if (isPipelineTurn) {
+          const originalDraft =
+            pipelineState?.originalDraft?.trim() && isPipelineContinuation
+              ? pipelineState.originalDraft.trim()
+              : query;
+          const cycle = isPipelineContinuation
+            ? Math.min(3, (pipelineState?.cycle ?? 0) + 1)
+            : 1;
+
+          const writer = {
+            send(type: string, payload: Record<string, unknown>) {
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({ type, ...payload })}\n\n`,
+                ),
+              );
+            },
+            delta(text: string) {
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({ type: "delta", text: sanitizeModelStreamText(text) })}\n\n`,
+                ),
+              );
+            },
+          };
+
+          const { text, sources, pipeline } = await runPipelineTurn(writer, {
+            userId: session.userId,
+            query,
+            originalDraft,
+            isContinuation: isPipelineContinuation,
+            cycle,
+            history: history ?? [],
+          });
+
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({ type: "done", text: sanitizeModelStreamText(text), sources, persona, pipeline })}\n\n`,
+            ),
+          );
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+          return;
+        }
+
+        const isAction = isActionQuery(query) || classification.isActionQuery;
 
         let sources: RagSearchResultItem[] = [];
 
@@ -267,10 +295,11 @@ ${paragraphText}`;
             }
 
             if (text) {
-              fullText += text;
+              const clean = sanitizeModelStreamText(text);
+              fullText += clean;
               controller.enqueue(
                 encoder.encode(
-                  `data: ${JSON.stringify({ type: "delta", text })}\n\n`,
+                  `data: ${JSON.stringify({ type: "delta", text: clean })}\n\n`,
                 ),
               );
             }
@@ -345,7 +374,7 @@ ${paragraphText}`;
 
         controller.enqueue(
           encoder.encode(
-            `data: ${JSON.stringify({ type: "done", text: fullText, sources, persona })}\n\n`,
+            `data: ${JSON.stringify({ type: "done", text: sanitizeModelStreamText(fullText), sources, persona })}\n\n`,
           ),
         );
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));

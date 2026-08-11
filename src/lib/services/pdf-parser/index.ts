@@ -1,6 +1,7 @@
 import {
   processPdf as processPdfInspector,
   extractPagesMarkdown as extractPdfInspectorPages,
+  extractTextWithPositions as extractPdfInspectorTextPositions,
 } from "@firecrawl/pdf-inspector";
 import type { Logger } from "@/lib/logger";
 import { buildChunksFromPageAnalysis } from "@/lib/services/pdf/chunker";
@@ -8,6 +9,10 @@ import { normalizeAcademicText } from "@/lib/services/pdf/normalizer";
 import { type DocumentAnalysisResult, type PageAnalysis } from "./schema";
 import type { PdfParseOptions, PdfChunkParseResult } from "./types";
 import { runMistralOcr } from "./mistral-driver";
+import {
+  detectPrintedPageNumbers,
+  MAX_BACKWARD_EXTRAP_PAGES,
+} from "./printed-page-number";
 import {
   extractDocumentMetadata,
   extractDocumentReferences,
@@ -118,9 +123,10 @@ export async function parsePdfToDocumentAnalysis(
 
     const pages: PageAnalysis[] = pageMarkdowns
       .slice(firstStart - 1, safeEnd)
-      .map((markdown, i) => ({
-        pageNumber: firstStart + i,
-        markdownContent: markdown,
+      .map((page) => ({
+        pageNumber: page.index + 1,
+        printedPageNumber: page.printedPageNumber,
+        markdownContent: page.markdown,
       }));
 
     // First 5 pages text for metadata extraction
@@ -227,11 +233,48 @@ export async function parsePdfToDocumentAnalysis(
 
   const targetPages = extracted.pages.slice(firstStart - 1, safeEnd);
 
+  // Printed page number detection: position-based Page-Association + font
+  // filter + 3-page anchor on the full buffer, then backward extrapolation
+  // for cover/front pages that precede the confirmed chain.
+  const positionedItems = extractPdfInspectorTextPositions(pdfBuffer);
+  const pageDetection = positionedItems.some((it) => it.text.trim().length > 0)
+    ? detectPrintedPageNumbers(positionedItems)
+    : null;
+
+  const resolvePrinted = (pageIndex0: number): string | undefined => {
+    if (!pageDetection) return undefined;
+    const direct = pageDetection.printedByPage.get(pageIndex0);
+    if (direct !== undefined) {
+      return String(direct);
+    }
+    if (
+      pageDetection.offset !== null &&
+      pageDetection.chainStartPage !== null &&
+      pageIndex0 < pageDetection.chainStartPage
+    ) {
+      const value = pageIndex0 + pageDetection.offset;
+      const distance = pageDetection.chainStartPage - pageIndex0;
+      if (distance <= MAX_BACKWARD_EXTRAP_PAGES && value >= 1) return String(value);
+    }
+    return undefined;
+  };
+
   // Step 1: Instant page mapping from local markdown
   const pages: PageAnalysis[] = targetPages.map((p) => ({
     pageNumber: p.page + 1,
+    printedPageNumber: resolvePrinted(p.page),
     markdownContent: normalizeAcademicText(p.markdown),
   }));
+
+  logger?.info("pdf_parse_printed_page_detection", {
+    service: "pdf-parser",
+    hidden: true,
+    data: {
+      fileName,
+      detectedPages: pageDetection?.printedByPage.size ?? 0,
+      offset: pageDetection?.offset ?? null,
+    },
+  });
 
   // Step 2: Prepare Text for Metadata & Bibliography
   const first5PagesText = targetPages

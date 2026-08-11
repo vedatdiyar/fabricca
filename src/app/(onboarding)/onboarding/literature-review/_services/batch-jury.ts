@@ -29,7 +29,6 @@ export interface JuryEvaluation {
   openAlexId: string | null;
   isRelevant: boolean;
   relevanceScore: number;
-  isFoundational: boolean;
   reasoning: string;
 }
 
@@ -48,7 +47,6 @@ const juryEvaluationSchema = z.object({
     .transform((v) => extractOpenAlexId(v)),
   isRelevant: z.boolean(),
   relevanceScore: z.number().int().min(0).max(100),
-  isFoundational: z.boolean(),
   reasoning: z.string().min(1),
 });
 
@@ -82,11 +80,6 @@ const juryJsonSchema: JsonSchema = {
             maximum: 100,
             description: "0-100 arası alaka skoru",
           },
-          isFoundational: {
-            type: "boolean",
-            description:
-              "Box konusunda literatürün temel/kurucu referans noktası mı?",
-          },
           reasoning: {
             type: "string",
             description: "Türkçe 1 cümlelik kabul/ret gerekçesi",
@@ -99,7 +92,6 @@ const juryJsonSchema: JsonSchema = {
           "openAlexId",
           "isRelevant",
           "relevanceScore",
-          "isFoundational",
           "reasoning",
         ],
       },

@@ -9,7 +9,6 @@ interface ArticleState {
   author: string;
   year: number;
   isRead: boolean;
-  isFoundational: boolean;
   boxId: string;
   boxTitle: string;
 }

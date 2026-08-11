@@ -78,7 +78,9 @@ export async function getSession(): Promise<SessionUser | null> {
 }
 
 /**
- * Returns the session with the user's onboarding status (defaults to false when the user record is missing).
+ * Returns the session with the user's onboarding status. The database is always
+ * treated as the source of truth; the cookie value is only used as a fallback
+ * when the database query fails (avoids stale-cookie auth bypasses).
  *
  * @returns The session with onboarding status, or null when there is no valid session.
  */
@@ -87,13 +89,6 @@ export async function getSessionWithOnboarding(): Promise<SessionWithOnboarding 
 
   if (!session) {
     return null;
-  }
-
-  if (session.onboardingCompleted) {
-    return {
-      ...session,
-      onboardingCompleted: true,
-    };
   }
 
   try {

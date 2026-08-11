@@ -37,7 +37,6 @@ export interface RawPaper {
   year: number | null;
   publisher: string | null;
   openAlexId: string | null;
-  isFoundational: boolean;
   relevanceScore: number;
   citedByCount?: number;
 }

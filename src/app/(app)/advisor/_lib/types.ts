@@ -1,5 +1,15 @@
 import type { RagSearchResultItem } from "@/lib/services/rag-search";
-import type { PendingToolCall } from "../_components/tool-confirmation-card";
+import type { PipelineResult } from "@/lib/services/advisor-pipeline/types";
+
+export interface PendingToolCall {
+  toolCallId: string;
+  name: string;
+  args: Record<string, unknown>;
+  explanation: string;
+  status: "pending" | "approved" | "rejected" | "undone";
+  executionResult?: unknown;
+  previousState?: Record<string, unknown>;
+}
 
 export interface Message {
   id: string;
@@ -9,6 +19,7 @@ export interface Message {
   content: string;
   sources?: RagSearchResultItem[];
   toolCalls?: PendingToolCall[];
+  pipeline?: PipelineResult;
   timestamp: string;
 }
 

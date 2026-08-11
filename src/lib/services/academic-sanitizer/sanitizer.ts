@@ -1,10 +1,11 @@
 import { z } from "zod";
-import { generateStructuredContent } from "../cerebras";
+import { ThinkingLevel, HarmCategory, HarmBlockThreshold } from "@google/genai";
+import { generateStructuredContent, type JsonSchema } from "../gemini";
 import { Logger } from "../../logger";
-import { CEREBRAS_MODEL } from "../../constants";
+import { FLASH_LITE_35, GEMINI_SEED } from "../../constants";
 import { LITERATURE_SANITIZE_SYSTEM_INSTRUCTION } from "../../prompts";
 
-const SANITIZE_RESPONSE_SCHEMA = {
+const SANITIZE_RESPONSE_SCHEMA: JsonSchema = {
   type: "object",
   properties: {
     items: {
@@ -51,13 +52,33 @@ export async function sanitizeAcademicDataBulk(
   if (items.length === 0) return items;
 
   const result = await generateStructuredContent<SanitizeResponse>(
-    CEREBRAS_MODEL,
+    FLASH_LITE_35,
     LITERATURE_SANITIZE_SYSTEM_INSTRUCTION,
     JSON.stringify(items),
     SANITIZE_RESPONSE_SCHEMA,
     logger,
     {
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       zodSchema: sanitizeResponseSchema,
+      seed: GEMINI_SEED,
+      safetySettings: [
+        {
+          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        },
+      ],
       payloadStage: "literature_bulk_sanitization",
     },
   );
@@ -79,13 +100,33 @@ export async function sanitizeTargetedArticles(
   if (items.length === 0) return items;
 
   const result = await generateStructuredContent<SanitizeResponse>(
-    CEREBRAS_MODEL,
+    FLASH_LITE_35,
     LITERATURE_SANITIZE_SYSTEM_INSTRUCTION,
     JSON.stringify(items),
     SANITIZE_RESPONSE_SCHEMA,
     logger,
     {
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       zodSchema: sanitizeResponseSchema,
+      seed: GEMINI_SEED,
+      safetySettings: [
+        {
+          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        },
+      ],
       payloadStage: "literature_targeted_sanitization",
     },
   );

@@ -27,7 +27,6 @@ export interface JuryEvalResult {
   openAlexId: string | null;
   isRelevant: boolean;
   relevanceScore: number;
-  isFoundational: boolean;
   reasoning: string;
 }
 
@@ -37,7 +36,6 @@ export interface SelectedArticleCandidate {
   originalTitle: string;
   originalAuthors: string[];
   relevanceScore: number;
-  isFoundational: boolean;
   reasoning: string;
   doi: string | null;
   openalexId: string | null;

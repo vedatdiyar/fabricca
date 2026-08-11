@@ -157,7 +157,6 @@ export async function undoMutationTool(
         isRead: previousState.isRead as boolean,
         comparisonNote:
           (previousState.comparisonNote as string | null) ?? undefined,
-        isFoundational: previousState.isFoundational as boolean,
         pdfUrl: (previousState.pdfUrl as string | null) ?? undefined,
         pdfFileName: (previousState.pdfFileName as string | null) ?? undefined,
         pdfFileSize: (previousState.pdfFileSize as number | null) ?? undefined,

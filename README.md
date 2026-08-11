@@ -79,8 +79,7 @@ Kutular iç içe alt kutular (sub-box) barındırabilir; her kutuya temel
 Her bir konu kutusu için **OpenAlex API** üzerinden kaynak taraması yapar;
 
 - **Faz 1 — Arama:** Konu kutusu sorgularıyla OpenAlex'te aday makaleler.
-- **Faz 2 — Jüri:** Gemini ile alaka/`relevanceScore`, kurucu eser
-  (`isFoundational`) ve Türkçe gerekçe kararı.
+- **Faz 2 — Jüri:** Gemini ile alaka/`relevanceScore` ve Türkçe gerekçe kararı.
 - **Faz 3 — Seçim:** Jüri değerlendirmesi sonrası final kaynak havuzunun
   belirlenmesi.
 
@@ -227,7 +226,7 @@ Neon PostgreSQL üzerinde **10 tablo** (Drizzle ORM, snake_case):
 | `matrices`      | Çalışma matrisi                 | userId (unique), subjectProblem, theoreticalFramework, primaryMaterial, methodology              |
 | `positioning`   | Konumlandırma raporu            | userId (unique), matrixInput (jsonb), globalStatus (enum), gapAnalysisSummary, recommendedTheses |
 | `boxes`         | Konu kutuları                   | matrixId, parentId, boxType (enum), title, concepts, foundationalQueries (jsonb)                 |
-| `sources`       | Akademik kaynaklar              | boxId, title, authors, doi, openalexId, isRead, isFoundational, pdf* alanları                    |
+| `sources`       | Akademik kaynaklar              | boxId, title, authors, doi, openalexId, isRead, pdf* alanları                                    |
 | `notes`         | Kaynak notları (alıntı fişleri) | sourceId, pageNumber, noteType (enum), content, sentToCitationCards                              |
 | `chunks`        | PDF metin parçaları (RAG)       | sourceId, chunkIndex, embedding (vector/1024), searchVector (tsvector)                           |
 | `tasks`         | Kanban görevleri                | userId, boxId (delete → set null), status/priority (enum)                                        |

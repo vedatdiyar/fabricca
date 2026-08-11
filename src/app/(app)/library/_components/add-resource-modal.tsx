@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useBoxHierarchySelection } from "../_hooks/use-box-hierarchy-selection";
-import { AddResourceBoxSelector } from "./AddResourceBoxSelector";
-import { PdfDropzone } from "./PdfDropzone";
+import { AddResourceBoxSelector } from "./add-resource-box-selector";
+import { PdfDropzone } from "./pdf-dropzone";
 
 interface AddResourceModalProps {
   isOpen: boolean;

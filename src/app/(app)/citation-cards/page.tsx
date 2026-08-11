@@ -7,9 +7,9 @@ import { useCitationCardsFilter } from "./_hooks/use-citation-cards-filter";
 import { CitationCard } from "./_components/citation-card";
 import { CitationCardDialog } from "./_components/citation-card-dialog";
 import { CitationSidebar } from "./_components/citation-sidebar";
-import { CitationMetricsOverview } from "./_components/CitationMetricsOverview";
-import { CitationCardsToolbar } from "./_components/CitationCardsToolbar";
-import { CitationCardsEmptyState } from "./_components/CitationCardsEmptyState";
+import { CitationMetricsOverview } from "./_components/citation-metrics-overview";
+import { CitationCardsToolbar } from "./_components/citation-cards-toolbar";
+import { CitationCardsEmptyState } from "./_components/citation-cards-empty-state";
 import {
   getCitationCardsDataAction,
   createCitationCardAction,

@@ -1,10 +1,6 @@
 import { Logger } from "@/lib/logger";
 import { createConcurrencyLimiter } from "@/lib/rate-limiter";
-import type {
-  SubBoxInput,
-  SubBoxItem,
-  RawPaper,
-} from "../literature-review-papers";
+import type { SubBoxInput, SubBoxItem } from "../literature-review-papers";
 import { searchOpenAlex } from "../openalex/client";
 import type { SubBoxResult } from "./types";
 

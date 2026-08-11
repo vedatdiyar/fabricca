@@ -188,7 +188,6 @@ export const sources = pgTable(
     relevanceScore: real(),
     comparisonNote: text(),
     isRead: boolean().default(false).notNull(),
-    isFoundational: boolean().default(false).notNull(),
     pdfUrl: text("pdf_url"),
     pdfFileName: text("pdf_file_name"),
     pdfFileSize: integer("pdf_file_size"),
@@ -445,9 +444,9 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
   }),
 }));
 
-/** Chat Sessions table — stores advisor conversation threads per user. */
-export const chatSessions = pgTable(
-  "chat_sessions",
+/** Sessions table — stores advisor conversation threads per user. */
+export const sessions = pgTable(
+  "sessions",
   {
     id: serial().primaryKey(),
     userId: integer("user_id")
@@ -457,12 +456,12 @@ export const chatSessions = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
-  (table) => [index("idx_chat_sessions_user_id").on(table.userId)],
+  (table) => [index("idx_sessions_user_id").on(table.userId)],
 );
 
-export type ChatSession = InferSelectModel<typeof chatSessions>;
+export type Session = InferSelectModel<typeof sessions>;
 
-export type NewChatSession = InferInsertModel<typeof chatSessions>;
+export type NewSession = InferInsertModel<typeof sessions>;
 
 /** Structure for stored tool call requests in chat messages. */
 export interface ChatToolCall {
@@ -475,27 +474,54 @@ export interface ChatToolCall {
   previousState?: Record<string, unknown>;
 }
 
-/** Chat Messages table — stores individual messages within a chat session. */
-export const chatMessages = pgTable(
-  "chat_messages",
+/** Pipeline result type for the three-stage Academic Pipeline stored on chat messages. */
+export interface PipelineResultData {
+  stage: "audit" | "socratic" | "redaction";
+  cycle: number;
+  originalDraft?: string;
+  audit?: {
+    summary: string;
+    findings: Array<{
+      message: string;
+      severity: "CRITICAL" | "WARNING" | "NOTE";
+      sourceTitle?: string;
+      citedPages?: string;
+    }>;
+    hasCriticalIssues: boolean;
+  };
+  verdict?: {
+    state: "REQUIRES_ANSWER" | "COMPLETE";
+    summary: string;
+    readinessScore: number;
+  };
+  diff?: {
+    original: string;
+    polished: string;
+  };
+}
+
+/** Messages table — stores individual messages within a chat session. */
+export const messages = pgTable(
+  "messages",
   {
     id: serial().primaryKey(),
     sessionId: integer("session_id")
       .notNull()
-      .references(() => chatSessions.id, { onDelete: "cascade" }),
+      .references(() => sessions.id, { onDelete: "cascade" }),
     role: varchar({ length: 10 }).notNull(),
     persona: varchar("persona", { length: 30 }),
     content: text("content").notNull(),
     sources: jsonb("sources").$type<RagSearchResultItem[]>(),
     toolCalls: jsonb("tool_calls").$type<ChatToolCall[]>(),
+    pipelineData: jsonb("pipeline_data").$type<PipelineResultData | null>(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => [index("idx_chat_messages_session_id").on(table.sessionId)],
+  (table) => [index("idx_messages_session_id").on(table.sessionId)],
 );
 
-export type ChatMessage = InferSelectModel<typeof chatMessages>;
+export type Message = InferSelectModel<typeof messages>;
 
-export type NewChatMessage = InferInsertModel<typeof chatMessages>;
+export type NewMessage = InferInsertModel<typeof messages>;
 
 /** Lightweight type for RAG source references stored in chat messages. */
 export interface RagSearchResultItem {

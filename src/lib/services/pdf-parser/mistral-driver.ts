@@ -1,6 +1,10 @@
 import type { Logger } from "@/lib/logger";
 import { generatePresignedReadUrl } from "@/lib/services/r2";
 import { normalizeAcademicText } from "@/lib/services/pdf/normalizer";
+import {
+  resolveMistralPrintedPages,
+  type MistralOcrPage,
+} from "./printed-page-number";
 
 const MISTRAL_OCR_URL = "https://api.mistral.ai/v1/ocr";
 const MAX_ATTEMPTS = 2;
@@ -9,24 +13,48 @@ const RETRY_DELAY_MS = 2_000;
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
+/** Minimal structural block shape returned by Mistral OCR `include_blocks`. */
+interface MistralBlock {
+  type?: string;
+  content?: string | null;
+  top_left_x?: number | null;
+  top_left_y?: number | null;
+  bottom_right_x?: number | null;
+  bottom_right_y?: number | null;
+}
+
+/** Minimal OCR page response shape (superset of what we consume). */
+interface MistralOcrResponsePage {
+  index: number;
+  markdown?: string;
+  header?: string | null;
+  footer?: string | null;
+  blocks?: MistralBlock[] | null;
+}
+
 /**
  * Generates a short-lived R2 presigned URL for the PDF, then submits it to
- * Mistral OCR (`mistral-ocr-latest`). Returns page-level markdown strings in
- * page order (index 0 = page 1).
+ * Mistral OCR 4 (`mistral-ocr-latest`) with header/footer block extraction
+ * enabled.
  *
  * The presigned URL approach avoids any Vercel-side upload; Mistral fetches
  * the PDF directly from R2 (server-to-server), reducing total OCR time from
  * ~12 s (base64 inline) to ~1.7 s for a 50-page, 17 MB document.
  *
+ * `include_blocks: true` + `extract_header/footer: true` isolate the running
+ * head so the printed page number can be parsed from it; the same anchor
+ * (+1 consecutive run) logic as the born-digital path rejects years and
+ * decorative digits. Headers/footers are removed from the emitted markdown.
+ *
  * @param r2Key - R2 object key of the already-uploaded PDF (e.g. "pdfs/Foo_2024.pdf").
  * @param logger - Optional logger instance.
- * @returns Array of normalized markdown strings, one per page, in reading order.
+ * @returns Per-page markdown plus a detected printed page number, in page order.
  * @throws When Mistral OCR returns a non-2xx response after all retry attempts.
  */
 export async function runMistralOcr(
   r2Key: string,
   logger?: Logger,
-): Promise<string[]> {
+): Promise<MistralOcrPage[]> {
   const apiKey = process.env.MISTRAL_OCR_API_KEY;
   if (!apiKey) {
     throw new Error("MISTRAL_OCR_API_KEY environment variable is not set.");
@@ -57,6 +85,9 @@ export async function runMistralOcr(
             document_url: documentUrl,
           },
           include_image_base64: false,
+          include_blocks: true,
+          extract_header: true,
+          extract_footer: true,
         }),
       });
 
@@ -81,30 +112,49 @@ export async function runMistralOcr(
       }
 
       const result = (await response.json()) as {
-        pages?: Array<{ index: number; markdown?: string }>;
+        pages?: MistralOcrResponsePage[];
       };
 
-      const pages = result.pages ?? [];
+      const rawPages = result.pages ?? [];
 
-      if (pages.length === 0) {
+      if (rawPages.length === 0) {
         throw new Error(
           `Mistral OCR returned 0 pages for r2Key="${r2Key}". Response may be empty or unsupported format.`,
         );
       }
 
       // Sort by index (API guarantees order, but defensive)
-      pages.sort((a, b) => a.index - b.index);
+      rawPages.sort((a, b) => a.index - b.index);
 
-      const markdowns = pages.map((p) =>
-        normalizeAcademicText(p.markdown ?? ""),
+      // Resolve printed numbers from the isolated header/footer strings using
+      // the same +1 anchor chain as the born-digital path.
+      const printedByPage = resolveMistralPrintedPages(
+        rawPages.map((p) => ({ index: p.index, header: p.header, footer: p.footer })),
       );
+
+      const pages: MistralOcrPage[] = rawPages.map((p) => {
+        const printed = printedByPage.get(p.index);
+        const markdown = normalizeAcademicText(p.markdown ?? "");
+        // Fallback: if the model embedded a trailing page number in the markdown
+        // running head, still prefer the anchor-resolved value when present.
+        return {
+          index: p.index,
+          markdown,
+          ...(printed !== undefined ? { printedPageNumber: String(printed) } : {}),
+        };
+      });
 
       logger?.info("mistral_ocr_success", {
         service: "pdf-parser",
-        data: { r2Key, pageCount: markdowns.length, attempt },
+        data: {
+          r2Key,
+          pageCount: pages.length,
+          printedPagesDetected: printedByPage.size,
+          attempt,
+        },
       });
 
-      return markdowns;
+      return pages;
     } catch (error) {
       lastError = error;
       if (attempt < MAX_ATTEMPTS) {

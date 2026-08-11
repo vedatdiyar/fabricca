@@ -1,45 +1,24 @@
 "use server";
 
-import { eq, and, desc, inArray } from "drizzle-orm";
-import { z } from "zod";
-import { db } from "@/db";
-import { annotations, sources, type noteTypeEnum } from "@/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import {
-  ensureUserMatrixAndBoxes,
-  getOwnedSource,
-} from "../library/_services/helpers";
-import { type ThesisBoxType } from "@/lib/box-constants";
-import { formatResourceAuthors } from "@/lib/academic/author-formatter";
+  createCitationCardSchema,
+  updateCitationCardSchema,
+} from "./_lib/schemas";
+import {
+  createCitationCard,
+  deleteCitationCard,
+  fetchCitationCardsData,
+  moveCitationCardBox,
+  updateCitationCard,
+} from "./_services/citation-cards-service";
 import type {
   BoxItem,
   CitationCardItem,
   CitationNoteType,
   SourceItem,
 } from "./_lib/types";
-
-/** Note type validation schema. */
-const noteTypeSchema = z.enum(["DIRECT_QUOTE", "PARAPHRASE", "PERSONAL_NOTE"]);
-
-/** Schema for creating a new citation card. */
-const createCitationCardSchema = z.object({
-  sourceId: z.number().int().positive("Geçerli bir kaynak seçilmelidir."),
-  boxId: z.number().int().positive("Geçerli bir konu kutusu seçilmelidir."),
-  noteType: noteTypeSchema,
-  pageNumber: z.string().min(1, "Sayfa numarası gereklidir."),
-  content: z.string().min(1, "Fiş içeriği boş olamaz."),
-  comment: z
-    .string()
-    .trim()
-    .max(4000, "Yorum en fazla 4000 karakter olabilir.")
-    .optional(),
-});
-
-/** Schema for updating an existing citation card. */
-const updateCitationCardSchema = createCitationCardSchema.extend({
-  id: z.number().int().positive("Geçerli bir fiş ID'si gereklidir."),
-});
 
 /**
  * Server Action: Fetches all topic boxes, sources, and citation annotations for the logged-in user.
@@ -72,101 +51,21 @@ export async function getCitationCardsDataAction(): Promise<
       };
     }
 
-    const { boxes: userBoxes } = await ensureUserMatrixAndBoxes(session.userId);
-    const boxIds = userBoxes.map((b) => b.id);
-
-    const dbSources =
-      boxIds.length > 0
-        ? await db.query.sources.findMany({
-            where: inArray(sources.boxId, boxIds),
-            orderBy: [desc(sources.createdAt)],
-          })
-        : [];
-
-    const dbNotes = await db.query.annotations.findMany({
-      where: eq(annotations.userId, session.userId),
-      orderBy: [desc(annotations.createdAt)],
-    });
-
-    const boxMap = new Map(userBoxes.map((b) => [b.id, b]));
-    const sourceMap = new Map(dbSources.map((s) => [s.id, s]));
-
-    const cardCountMap = new Map<number, number>();
-    for (const box of userBoxes) {
-      cardCountMap.set(box.id, 0);
-    }
-
-    const cards: CitationCardItem[] = [];
-
-    for (const noteRow of dbNotes) {
-      const sourceRow = sourceMap.get(noteRow.sourceId);
-      if (!sourceRow) continue;
-
-      const boxRow = boxMap.get(sourceRow.boxId);
-      if (!boxRow) continue;
-
-      cardCountMap.set(boxRow.id, (cardCountMap.get(boxRow.id) ?? 0) + 1);
-
-      cards.push({
-        id: noteRow.id,
-        sourceId: sourceRow.id,
-        sourceTitle: sourceRow.title,
-        sourceAuthors: formatResourceAuthors({
-          authors: sourceRow.authors,
-          publisher: sourceRow.publisher,
-          boxType: boxRow.boxType,
-        }),
-        sourceYear: sourceRow.publicationYear ?? new Date().getFullYear(),
-        boxId: boxRow.id,
-        boxType: (boxRow.boxType ?? "SUBJECT_PROBLEM") as ThesisBoxType,
-        boxTitle: boxRow.title,
-        pageNumber: noteRow.pageNumber,
-        noteType: noteRow.noteType as CitationNoteType,
-        content: noteRow.content,
-        comment: noteRow.comment ?? undefined,
-        sentToCitationCards: noteRow.sentToCitationCards,
-        createdAt: noteRow.createdAt.toISOString(),
-        updatedAt: noteRow.updatedAt.toISOString(),
-      });
-    }
-
-    const formattedBoxes: BoxItem[] = userBoxes.map((b) => ({
-      id: b.id,
-      boxType: (b.boxType ?? "SUBJECT_PROBLEM") as ThesisBoxType,
-      title: b.title,
-      description: b.description ?? "",
-      cardCount: cardCountMap.get(b.id) ?? 0,
-    }));
-    const formattedSources: SourceItem[] = dbSources.map((s) => ({
-      id: s.id,
-      boxId: s.boxId,
-      title: s.title,
-      authors: formatResourceAuthors({
-        authors: s.authors,
-        publisher: s.publisher,
-        boxType: boxMap.get(s.boxId)?.boxType,
-      }),
-      publisher: s.publisher ?? "Belirtilmemiş",
-      publicationYear: s.publicationYear ?? new Date().getFullYear(),
-    }));
+    const data = await fetchCitationCardsData(session.userId);
 
     log.info("get_citation_cards_data_success", {
       service: "citation-cards",
       data: {
-        cardsCount: cards.length,
-        boxesCount: formattedBoxes.length,
-        sourcesCount: formattedSources.length,
+        cardsCount: data.cards.length,
+        boxesCount: data.boxes.length,
+        sourcesCount: data.sources.length,
         durationMs: Date.now() - startTime,
       },
     });
 
     return {
       success: true,
-      data: {
-        cards,
-        boxes: formattedBoxes,
-        sources: formattedSources,
-      },
+      data,
     };
   } catch (err) {
     log.error("get_citation_cards_data_failed", {
@@ -220,68 +119,19 @@ export async function createCitationCardAction(input: {
       return { success: false, error: "Oturum bulunamadı." };
     }
 
-    const owned = await getOwnedSource(parsed.data.sourceId, session.userId);
-    if ("error" in owned) {
-      return { success: false, error: owned.error };
+    const result = await createCitationCard(session.userId, parsed.data);
+    if ("error" in result) {
+      return { success: false, error: result.error };
     }
-
-    const sourceRow = owned.source;
-
-    const { boxes: userBoxes } = await ensureUserMatrixAndBoxes(session.userId);
-    const targetBox = userBoxes.find((b) => b.id === parsed.data.boxId);
-    if (!targetBox) {
-      return { success: false, error: "Seçilen konu kutusu bulunamadı." };
-    }
-
-    if (sourceRow.boxId !== parsed.data.boxId) {
-      await db
-        .update(sources)
-        .set({ boxId: parsed.data.boxId, updatedAt: new Date() })
-        .where(eq(sources.id, sourceRow.id));
-    }
-
-    const [newNote] = await db
-      .insert(annotations)
-      .values({
-        sourceId: sourceRow.id,
-        userId: session.userId,
-        pageNumber: parsed.data.pageNumber.trim(),
-        noteType: parsed.data
-          .noteType as (typeof noteTypeEnum.enumValues)[number],
-        content: parsed.data.content.trim(),
-        comment: parsed.data.comment?.trim() || null,
-        sentToCitationCards: true,
-      })
-      .returning();
 
     log.info("create_citation_card_success", {
       service: "citation-cards",
-      data: { noteId: newNote.id, sourceId: sourceRow.id },
+      data: { noteId: result.data.id, sourceId: result.data.sourceId },
     });
 
     return {
       success: true,
-      data: {
-        id: newNote.id,
-        sourceId: sourceRow.id,
-        sourceTitle: sourceRow.title,
-        sourceAuthors: formatResourceAuthors({
-          authors: sourceRow.authors,
-          publisher: sourceRow.publisher,
-          boxType: targetBox.boxType,
-        }),
-        sourceYear: sourceRow.publicationYear ?? new Date().getFullYear(),
-        boxId: targetBox.id,
-        boxType: (targetBox.boxType ?? "SUBJECT_PROBLEM") as ThesisBoxType,
-        boxTitle: targetBox.title,
-        pageNumber: newNote.pageNumber,
-        noteType: newNote.noteType as CitationNoteType,
-        content: newNote.content,
-        comment: newNote.comment ?? undefined,
-        sentToCitationCards: newNote.sentToCitationCards,
-        createdAt: newNote.createdAt.toISOString(),
-        updatedAt: newNote.updatedAt.toISOString(),
-      },
+      data: result.data,
     };
   } catch (err) {
     log.error("create_citation_card_failed", {
@@ -334,84 +184,19 @@ export async function updateCitationCardAction(input: {
       return { success: false, error: "Oturum bulunamadı." };
     }
 
-    const existingNote = await db.query.annotations.findFirst({
-      where: and(
-        eq(annotations.id, parsed.data.id),
-        eq(annotations.userId, session.userId),
-      ),
-    });
-
-    if (!existingNote) {
-      return { success: false, error: "Güncellenecek alıntı fişi bulunamadı." };
+    const result = await updateCitationCard(session.userId, parsed.data);
+    if ("error" in result) {
+      return { success: false, error: result.error };
     }
-
-    const owned = await getOwnedSource(parsed.data.sourceId, session.userId);
-    if ("error" in owned) {
-      return { success: false, error: owned.error };
-    }
-
-    const sourceRow = owned.source;
-
-    const { boxes: userBoxes } = await ensureUserMatrixAndBoxes(session.userId);
-    const targetBox = userBoxes.find((b) => b.id === parsed.data.boxId);
-    if (!targetBox) {
-      return { success: false, error: "Seçilen konu kutusu bulunamadı." };
-    }
-
-    if (sourceRow.boxId !== parsed.data.boxId) {
-      await db
-        .update(sources)
-        .set({ boxId: parsed.data.boxId, updatedAt: new Date() })
-        .where(eq(sources.id, sourceRow.id));
-    }
-
-    const [updatedNote] = await db
-      .update(annotations)
-      .set({
-        sourceId: sourceRow.id,
-        pageNumber: parsed.data.pageNumber.trim(),
-        noteType: parsed.data
-          .noteType as (typeof noteTypeEnum.enumValues)[number],
-        content: parsed.data.content.trim(),
-        comment: parsed.data.comment?.trim() || null,
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(annotations.id, parsed.data.id),
-          eq(annotations.userId, session.userId),
-        ),
-      )
-      .returning();
 
     log.info("update_citation_card_success", {
       service: "citation-cards",
-      data: { noteId: updatedNote.id },
+      data: { noteId: result.data.id },
     });
 
     return {
       success: true,
-      data: {
-        id: updatedNote.id,
-        sourceId: sourceRow.id,
-        sourceTitle: sourceRow.title,
-        sourceAuthors: formatResourceAuthors({
-          authors: sourceRow.authors,
-          publisher: sourceRow.publisher,
-          boxType: targetBox.boxType,
-        }),
-        sourceYear: sourceRow.publicationYear ?? new Date().getFullYear(),
-        boxId: targetBox.id,
-        boxType: (targetBox.boxType ?? "SUBJECT_PROBLEM") as ThesisBoxType,
-        boxTitle: targetBox.title,
-        pageNumber: updatedNote.pageNumber,
-        noteType: updatedNote.noteType as CitationNoteType,
-        content: updatedNote.content,
-        comment: updatedNote.comment ?? undefined,
-        sentToCitationCards: updatedNote.sentToCitationCards,
-        createdAt: updatedNote.createdAt.toISOString(),
-        updatedAt: updatedNote.updatedAt.toISOString(),
-      },
+      data: result.data,
     };
   } catch (err) {
     log.error("update_citation_card_failed", {
@@ -443,15 +228,9 @@ export async function deleteCitationCardAction(
       return { success: false, error: "Oturum bulunamadı." };
     }
 
-    const deleted = await db
-      .delete(annotations)
-      .where(
-        and(eq(annotations.id, cardId), eq(annotations.userId, session.userId)),
-      )
-      .returning({ id: annotations.id });
-
-    if (deleted.length === 0) {
-      return { success: false, error: "Silinecek alıntı fişi bulunamadı." };
+    const result = await deleteCitationCard(cardId, session.userId);
+    if ("error" in result) {
+      return { success: false, error: result.error };
     }
 
     log.info("delete_citation_card_success", {
@@ -490,32 +269,14 @@ export async function moveCitationCardBoxAction(input: {
       return { success: false, error: "Oturum bulunamadı." };
     }
 
-    const targetNote = await db.query.annotations.findFirst({
-      where: and(
-        eq(annotations.id, input.cardId),
-        eq(annotations.userId, session.userId),
-      ),
-    });
-
-    if (!targetNote) {
-      return { success: false, error: "Alıntı fişi bulunamadı." };
+    const result = await moveCitationCardBox(
+      session.userId,
+      input.cardId,
+      input.targetBoxId,
+    );
+    if ("error" in result) {
+      return { success: false, error: result.error };
     }
-
-    const owned = await getOwnedSource(targetNote.sourceId, session.userId);
-    if ("error" in owned) {
-      return { success: false, error: owned.error };
-    }
-
-    const { boxes: userBoxes } = await ensureUserMatrixAndBoxes(session.userId);
-    const targetBox = userBoxes.find((b) => b.id === input.targetBoxId);
-    if (!targetBox) {
-      return { success: false, error: "Hedef konu kutusu bulunamadı." };
-    }
-
-    await db
-      .update(sources)
-      .set({ boxId: input.targetBoxId, updatedAt: new Date() })
-      .where(eq(sources.id, targetNote.sourceId));
 
     log.info("move_citation_card_box_success", {
       service: "citation-cards",

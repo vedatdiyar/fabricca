@@ -73,7 +73,6 @@ export function selectRelatedArticles(
         publisher: null,
         publicationYear: null,
         authors: it.paper.authors,
-        isFoundational: false,
         relevanceScore: Math.round(it.score * 100),
       }) as JuryArticle,
   );

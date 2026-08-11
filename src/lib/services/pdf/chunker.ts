@@ -44,6 +44,42 @@ export function formatPrintedPageNumber(
   return `ss. ${pageStart}-${pageEnd}`;
 }
 
+/** Strips the "s."/"ss." prefix and trailing dots from a parsed printed page token. */
+const PRINTED_PREFIX_RE = /^s{1,2}\.\s*/i;
+
+/**
+ * Normalizes a raw printed page number from the PDF parser into a usable token.
+ *
+ * @param printedPageNumber - The parser's raw printed page number, or null.
+ * @returns The trimmed page token without the "s."/"ss." prefix, or null when absent.
+ */
+function normalizePrintedPage(
+  printedPageNumber: string | null | undefined,
+): string | null {
+  if (!printedPageNumber) return null;
+  const trimmed = printedPageNumber
+    .trim()
+    .replace(/\.+$/g, "")
+    .replace(PRINTED_PREFIX_RE, "")
+    .trim();
+  return trimmed || null;
+}
+
+/**
+ * Renders a printed page range from the ordered page tokens seen in a chunk,
+ * preserving the actual published journal page numbers (e.g. "ss. 119-151").
+ *
+ * @param printedPages - Ordered printed page tokens.
+ * @returns The formatted string ("s. X" / "ss. X-Y"), or null when no token exists.
+ */
+function formatPrintedPageRange(printedPages: string[]): string | null {
+  const pages = printedPages.filter((p) => p.length > 0);
+  if (pages.length === 0) return null;
+  const start = pages[0];
+  const end = pages[pages.length - 1];
+  return start === end ? `s. ${start}` : `ss. ${start}-${end}`;
+}
+
 /**
  * Validates whether a markdown heading candidate is a legitimate academic section header
  * rather than layout noise (e.g. "İdaresi", "Antalya, 2014", standalone page numbers, or short words).
@@ -257,9 +293,12 @@ class ChunkBuilder {
   private bufferStartPage: number | null = null;
   private bufferEndPage: number | null = null;
   private bufferChars = 0;
+  private bufferPrintedPages: string[] = [];
+  private lastFlushedPrintedPages: string[] = [];
 
   private overlapRemainder: string = "";
   private overlapStartPage: number | null = null;
+  private overlapPrintedPages: string[] = [];
 
   /**
    * Reports the current accumulated character count of the in-progress buffer.
@@ -289,12 +328,18 @@ class ChunkBuilder {
   }
 
   /**
-   * Pushes a block onto the current buffer, tracking the page span.
+   * Pushes a block onto the current buffer, tracking the page span and the
+   * actual printed page numbers where available.
    *
    * @param text - The block text to buffer.
-   * @param pageNumber - The page the block belongs to.
+   * @param pageNumber - The sequential PDF page the block belongs to.
+   * @param printedPageNumber - Optional printed page number from the PDF parser.
    */
-  pushBlock(text: string, pageNumber: number): void {
+  pushBlock(
+    text: string,
+    pageNumber: number,
+    printedPageNumber?: string | null,
+  ): void {
     if (this.bufferStartPage === null) {
       this.bufferStartPage = pageNumber;
 
@@ -304,10 +349,24 @@ class ChunkBuilder {
         if (this.overlapStartPage !== null) {
           this.bufferStartPage = this.overlapStartPage;
         }
+        if (this.overlapPrintedPages.length > 0) {
+          this.bufferPrintedPages = this.overlapPrintedPages.slice();
+        }
         this.overlapRemainder = "";
         this.overlapStartPage = null;
+        this.overlapPrintedPages = [];
       }
     }
+
+    const normalizedPrinted = normalizePrintedPage(printedPageNumber);
+    if (
+      normalizedPrinted &&
+      this.bufferPrintedPages[this.bufferPrintedPages.length - 1] !==
+        normalizedPrinted
+    ) {
+      this.bufferPrintedPages.push(normalizedPrinted);
+    }
+
     this.bufferParts.push(text);
     this.bufferChars += text.length;
     this.bufferEndPage = pageNumber;
@@ -335,10 +394,14 @@ class ChunkBuilder {
         prev.content = `${prev.content}\n\n${content}`;
         prev.tokenCount = mergedTokens;
         prev.pageEnd = endPage;
-        prev.printedPageNumber = formatPrintedPageNumber(
-          prev.pageStart,
-          endPage,
-        );
+        const mergedPrintedPages = [
+          ...this.lastFlushedPrintedPages,
+          ...this.bufferPrintedPages,
+        ];
+        prev.printedPageNumber =
+          formatPrintedPageRange(mergedPrintedPages) ??
+          formatPrintedPageNumber(prev.pageStart, endPage);
+        this.lastFlushedPrintedPages = mergedPrintedPages;
         this.clearBuffer();
         return;
       }
@@ -356,13 +419,20 @@ class ChunkBuilder {
       if (overlapText.length > 10) {
         this.overlapRemainder = overlapText;
         this.overlapStartPage = endPage;
+        this.overlapPrintedPages = this.bufferPrintedPages.slice(-1);
 
         content = content.slice(0, overlapStart).trim();
         tokenCount = estimateTokenCount(content);
       }
     }
 
+    const printedPages = this.bufferPrintedPages.slice();
+    const printedPageNumber =
+      formatPrintedPageRange(printedPages) ??
+      formatPrintedPageNumber(startPage, endPage);
+
     this.clearBuffer();
+    this.lastFlushedPrintedPages = printedPages;
 
     this.chunks.push({
       chunkIndex: this.chunks.length,
@@ -371,7 +441,7 @@ class ChunkBuilder {
       headerHierarchy: hierarchy,
       pageStart: startPage,
       pageEnd: endPage,
-      printedPageNumber: formatPrintedPageNumber(startPage, endPage),
+      printedPageNumber,
       tokenCount,
     });
   }
@@ -423,6 +493,9 @@ class ChunkBuilder {
           printedPageNumber ?? formatPrintedPageNumber(pageNumber, pageNumber),
         tokenCount: estimateTokenCount(part),
       });
+      this.lastFlushedPrintedPages = [
+        normalizePrintedPage(printedPageNumber) ?? String(pageNumber),
+      ];
     }
   }
 
@@ -431,6 +504,7 @@ class ChunkBuilder {
     this.bufferStartPage = null;
     this.bufferEndPage = null;
     this.bufferChars = 0;
+    this.bufferPrintedPages = [];
   }
 
   /**
@@ -487,7 +561,7 @@ export async function buildChunksFromPageAnalysis(
         continue;
       }
 
-      builder.pushBlock(block, page.pageNumber);
+      builder.pushBlock(block, page.pageNumber, page.printedPageNumber);
 
       if (builder.bufferCharCount >= TARGET_CHUNK_SIZE_CHARS) {
         builder.flush();

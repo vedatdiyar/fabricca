@@ -309,7 +309,6 @@ export async function executeMutationTool(
         doi: existingSource.doi,
         isRead: existingSource.isRead,
         comparisonNote: existingSource.comparisonNote,
-        isFoundational: existingSource.isFoundational,
         pdfUrl: existingSource.pdfUrl,
         pdfFileName: existingSource.pdfFileName,
         pdfFileSize: existingSource.pdfFileSize,

@@ -70,7 +70,6 @@ export function parseOpenAlexResults(
       year: null,
       publisher: null,
       openAlexId: extractOpenAlexId(work.id as string | null | undefined),
-      isFoundational: false,
       relevanceScore: (work.relevance_score as number) ?? 0,
       referencedWorks: Array.isArray(work.referenced_works)
         ? (work.referenced_works as string[])

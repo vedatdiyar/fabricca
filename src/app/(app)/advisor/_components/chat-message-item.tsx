@@ -3,6 +3,7 @@
 import { Check, Copy, User, GraduationCap, BookOpen } from "lucide-react";
 import { MarkdownRenderer } from "./markdown-renderer";
 import { ToolConfirmationCard } from "./tool-confirmation-card";
+import { AuditBanner, PipelineResultView } from "./pipeline-result-view";
 import type { Message } from "../_lib/types";
 
 /**
@@ -83,7 +84,7 @@ export function ChatMessageItem({
 
   return (
     <div
-      className={`flex space-x-3 ${isUser ? "justify-end" : "justify-start"}`}
+      className={`flex space-x-3 max-w-full overflow-hidden ${isUser ? "justify-end" : "justify-start"}`}
     >
       {!isUser && (
         <div
@@ -102,10 +103,14 @@ export function ChatMessageItem({
       )}
 
       <div
-        className={`space-y-2 ${isUser ? "items-end max-w-3xl" : "items-start flex-1 max-w-4xl"}`}
+        className={`space-y-2 min-w-0 ${isUser ? "items-end max-w-3xl" : "items-start flex-1 max-w-4xl"}`}
       >
+        {!isUser && <PersonaBadge persona={msg.persona} />}
+        {!isUser && msg.pipeline?.audit && (
+          <AuditBanner audit={msg.pipeline.audit} />
+        )}
         <div
-          className={`p-4 rounded-md text-sm leading-relaxed transition-all ${
+          className={`p-4 rounded-md text-sm leading-relaxed break-words min-w-0 transition-all ${
             isUser
               ? "bg-primary/10 border border-primary/20 text-foreground rounded-tr-none"
               : isSocratic
@@ -114,10 +119,9 @@ export function ChatMessageItem({
           }`}
         >
           {isUser ? (
-            <div className="whitespace-pre-wrap">{msg.content}</div>
+            <div className="break-words whitespace-pre-wrap">{msg.content}</div>
           ) : (
             <>
-              <PersonaBadge persona={msg.persona} />
               <MarkdownRenderer
                 content={msg.content}
                 sources={msg.sources}
@@ -160,6 +164,10 @@ export function ChatMessageItem({
             </div>
           </div>
         </div>
+
+        {!isUser && msg.pipeline && (
+          <PipelineResultView pipeline={msg.pipeline} />
+        )}
       </div>
 
       {isUser && (
