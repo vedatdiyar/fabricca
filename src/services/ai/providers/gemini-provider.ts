@@ -1,50 +1,20 @@
+import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
+import { Logger, createFlowId } from "@/lib/logger";
+import { getGeminiKeyPool, nextKeyPosition } from "../gemini-key-pool";
+import { GEMINI_SEED } from "@/lib/constants";
 import {
-  GoogleGenAI,
-  ThinkingLevel,
-  HarmCategory,
-  HarmBlockThreshold,
-} from "@google/genai";
-import { z } from "zod";
-import { Logger, createFlowId } from "../logger";
-import { classifyError } from "../error-utils";
-import { withRetry } from "../api-utils";
-import { GEMINI_SEED } from "../constants";
-import { getGeminiKeyPool, nextKeyPosition } from "./gemini-key-pool";
+  SchemaValidationError,
+  classifyError,
+  extractHttpStatus,
+  isRateLimitError,
+  isServerOverloadError,
+} from "../llm-errors";
+import { withRetry, serverOverloadDelay } from "../llm-retry";
+import { sanitizeAndParseJson, validateStructuredOutput } from "../llm-json";
+import type { JsonSchema, StructuredGenerationOptions } from "../llm-types";
 import crypto from "crypto";
 import fs from "fs/promises";
 import path from "path";
-
-export interface JsonSchemaProperty {
-  type: string | string[];
-  items?:
-    | JsonSchemaProperty
-    | {
-        type: string;
-        enum?: (string | number)[];
-        properties?: Record<string, JsonSchemaProperty>;
-        required?: string[];
-        additionalProperties?: boolean;
-      };
-  properties?: Record<string, JsonSchemaProperty>;
-  required?: string[];
-  enum?: (string | number)[];
-  description?: string;
-  minLength?: number;
-  maxLength?: number;
-  minItems?: number;
-  maxItems?: number;
-  minimum?: number;
-  maximum?: number;
-  additionalProperties?: boolean;
-}
-
-export interface JsonSchema {
-  type: "object" | "array";
-  properties?: Record<string, JsonSchemaProperty>;
-  required?: string[];
-  items?: JsonSchemaProperty | JsonSchema;
-  additionalProperties?: boolean;
-}
 
 let aiInstance: GoogleGenAI | null = null;
 
@@ -71,104 +41,6 @@ export function getAi(apiKey?: string): GoogleGenAI {
   const client = new GoogleGenAI({ apiKey });
   aiInstancesByKey.set(apiKey, client);
   return client;
-}
-
-/**
- * Extracts a human-readable HTTP status label from a thrown Gemini error.
- *
- * @param error - The thrown error to inspect.
- * @returns The formatted HTTP status string, or "unknown" when it cannot be determined.
- */
-function extractHttpStatus(error: unknown): string {
-  if (error instanceof Error) {
-    const err = error as unknown as Record<string, unknown>;
-    const status = typeof err.status === "string" ? err.status : "";
-    const code = typeof err.code === "number" ? err.code : 0;
-
-    if (code === 429 || status === "RESOURCE_EXHAUSTED")
-      return "429 (RESOURCE_EXHAUSTED)";
-    if (code === 503 || status === "UNAVAILABLE") return "503 (UNAVAILABLE)";
-    if (status) return `${code} (${status})`;
-    if (code) return `${code}`;
-
-    if (error.message.includes("429") || error.message.includes("quota"))
-      return "429 (RESOURCE_EXHAUSTED)";
-    if (error.message.includes("503") || error.message.includes("UNAVAILABLE"))
-      return "503 (UNAVAILABLE)";
-  }
-  return "unknown";
-}
-
-/**
- * Determines whether a thrown Gemini error is a rate-limit (RPM/RPD/quota) failure.
- *
- * @param error - The thrown error to inspect.
- * @returns True when the error indicates the current key exhausted its rate limit.
- */
-function isRateLimitError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
-  const err = error as unknown as Record<string, unknown>;
-  const status = typeof err.status === "string" ? err.status : "";
-  const code = typeof err.code === "number" ? err.code : 0;
-  if (status === "RESOURCE_EXHAUSTED" || code === 429) return true;
-  const message = error.message.toLowerCase();
-  return (
-    message.includes("429") ||
-    message.includes("quota") ||
-    message.includes("rate limit") ||
-    message.includes("rpd") ||
-    message.includes("rpm")
-  );
-}
-
-/**
- * Determines whether a thrown Gemini error is a server-side overload (503 / UNAVAILABLE)
- * that affects all keys and is best handled with a long backoff rather than key rotation.
- *
- * @param error - The thrown error to inspect.
- * @returns True when the error indicates a server-side overload.
- */
-function isServerOverloadError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
-  const err = error as unknown as Record<string, unknown>;
-  const status = typeof err.status === "string" ? err.status : "";
-  const code = typeof err.code === "number" ? err.code : 0;
-  if (code === 503 || status === "UNAVAILABLE") return true;
-  const message = error.message.toLowerCase();
-  return (
-    message.includes("503") ||
-    message.includes("unavailable") ||
-    message.includes("high demand")
-  );
-}
-
-/**
- * Computes a long exponential backoff plus small jitter for server overload (503) retries.
- *
- * @param attempt - The 1-based retry attempt number.
- * @returns The delay in milliseconds, capped at 45s with a small jitter.
- */
-function serverOverloadDelay(attempt: number): number {
-  const capped = Math.min(45_000, 1000 * Math.pow(3, attempt - 1));
-  return capped + Math.random() * Math.min(2000, capped * 0.25);
-}
-
-/**
- * Strips markdown code fences from a raw text response and parses it as JSON.
- *
- * @param text - The raw model response text.
- * @returns The parsed JSON value cast to type T.
- */
-export function sanitizeAndParseJson<T>(text: string): T {
-  let cleaned = text.trim();
-  if (cleaned.startsWith("```")) {
-    cleaned = cleaned
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/, "")
-      .replace(/```$/, "")
-      .trim();
-  }
-  return JSON.parse(cleaned) as T;
 }
 
 /**
@@ -247,14 +119,6 @@ export async function logRawLlmCall(params: {
  * @param schema - The JSON schema constraining the response shape.
  * @param logger - Optional logger for structured output and error events.
  * @param options - Optional settings for the request.
- * @param options.thinkingConfig - Optional thinking level and budget configuration.
- * @param options.payloadStage - Optional label identifying the pipeline stage.
- * @param options.zodSchema - Optional Zod schema used to validate the response.
- * @param options.seed - Optional random seed for deterministic output.
- * @param options.thesisMatrix - Optional thesis matrix context for the model.
- * @param options.safetySettings - Optional safety category and threshold overrides.
- * @param options.quiet - When false, logs start/success events to the logger.
- * @param options.apiKey - Optional Gemini API key override for multi-key load distribution.
  * @returns The parsed and validated structured output of type T.
  */
 export async function generateStructuredContent<T>(
@@ -263,22 +127,7 @@ export async function generateStructuredContent<T>(
   prompt: string,
   schema: JsonSchema,
   logger?: Logger,
-  options?: {
-    thinkingConfig?: {
-      thinkingLevel?: ThinkingLevel;
-      thinkingBudget?: number;
-    } | null;
-    payloadStage?: string;
-    zodSchema?: z.ZodType<T>;
-    seed?: number;
-    thesisMatrix?: unknown;
-    safetySettings?: Array<{
-      category: HarmCategory;
-      threshold: HarmBlockThreshold;
-    }>;
-    quiet?: boolean;
-    apiKey?: string;
-  },
+  options?: StructuredGenerationOptions<T>,
 ): Promise<T> {
   const startTime = performance.now();
   let attempts: number | undefined;
@@ -395,7 +244,7 @@ export async function generateStructuredContent<T>(
           const httpStatus = extractHttpStatus(error);
           logger?.info("ai_retry_attempt", {
             service: "gemini",
-            filePath: "src/lib/gemini.ts",
+            filePath: "src/services/ai/providers/gemini-provider.ts",
             step: `retry_attempt_${attempt}`,
             durationMs: delay,
             data: {
@@ -420,29 +269,28 @@ export async function generateStructuredContent<T>(
 
     const parsed = sanitizeAndParseJson<T>(text);
 
-    const zodSchema = options?.zodSchema;
-    if (zodSchema) {
-      const validationResult = zodSchema.safeParse(parsed);
-      if (!validationResult.success) {
+    try {
+      validateStructuredOutput(parsed, options?.zodSchema);
+    } catch (err) {
+      if (err instanceof SchemaValidationError) {
         logger?.error("ai_schema_validation_failed", {
           service: "gemini",
-          filePath: "src/lib/gemini.ts",
+          filePath: "src/services/ai/providers/gemini-provider.ts",
           data: {
             model: modelName,
-            errorCount: validationResult.error.issues.length,
-            issues: validationResult.error.issues.map((i) => ({
+            errorCount: err.zodError.issues.length,
+            issues: err.zodError.issues.map((i) => ({
               path: i.path.join("."),
               message: i.message,
             })),
           },
-          error: new Error(
-            `Zod validation failed: ${validationResult.error.message}`,
-          ),
+          error: new Error(`Zod validation failed: ${err.zodError.message}`),
         });
         throw new Error(
           "AI response did not match the expected structural schema. Please try again.",
         );
       }
+      throw err;
     }
 
     const durationMs = performance.now() - startTime;
@@ -491,7 +339,7 @@ export async function generateStructuredContent<T>(
 
     logger?.error(`${callLabel}_failed`, {
       service: "gemini",
-      filePath: "src/lib/gemini.ts",
+      filePath: "src/services/ai/providers/gemini-provider.ts",
       durationMs,
       data: {
         model: modelName,

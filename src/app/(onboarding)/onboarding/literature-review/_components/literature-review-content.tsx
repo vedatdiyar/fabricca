@@ -3,7 +3,7 @@
 import { Loader2, AlertCircle, BookOpen, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { AIBanner } from "@/components/ai-banner";
+import { AIBanner } from "@/components/shared/ai-banner";
 import { LiteratureReviewSkeleton } from "./literature-review-skeleton";
 import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
 import { LiteratureArticleCard } from "./literature-article-card";

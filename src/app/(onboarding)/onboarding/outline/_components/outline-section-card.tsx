@@ -79,7 +79,10 @@ export function OutlineSectionCard({
   const [dragOverSubIdx, setDragOverSubIdx] = useState<number | null>(null);
 
   const sectionNumber = sectionIndex + 1;
-  const subSections = useMemo(() => section.subSections ?? [], [section.subSections]);
+  const subSections = useMemo(
+    () => section.subSections ?? [],
+    [section.subSections],
+  );
   const hasSubSections = subSections.length > 0;
 
   const handleSaveSectionEdit = useCallback(() => {

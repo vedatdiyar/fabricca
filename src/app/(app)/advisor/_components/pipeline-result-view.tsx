@@ -6,7 +6,7 @@ import type {
   AuditFindingSeverity,
   AuditReport,
   PipelineResult,
-} from "@/lib/services/advisor-pipeline/types";
+} from "@/features/advisor/pipeline/types";
 
 interface AuditBannerProps {
   audit: AuditReport;

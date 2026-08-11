@@ -1,7 +1,7 @@
 import { runStage1Audit } from "./stage1-audit";
 import type { AuditReport, PipelineResult } from "./types";
-import type { RagSearchResultItem } from "@/lib/services/rag-search";
-import { getAi } from "@/lib/services/gemini";
+import type { RagSearchResultItem } from "@/services/search/rag-search";
+import { getAi } from "@/services/ai";
 import { buildSocraticAdvisorSystemInstruction } from "@/lib/prompts";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 

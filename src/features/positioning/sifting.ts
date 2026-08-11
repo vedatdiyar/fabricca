@@ -1,8 +1,8 @@
-import { searchTezara } from "@/lib/tezara";
+import { searchTezara } from "@/features/tezara";
 import type { TezaraThesisDetails } from "@/lib/types";
-import { rerankWithCohere } from "@/lib/services/cohere";
+import { rerankWithCohere } from "@/services/ai/cohere";
 import type { Logger } from "@/lib/logger";
-import type { PositioningMatrixInput } from "../_lib/validation";
+import type { PositioningMatrixInput } from "./validation";
 import { sanitizeMeiliQuery, type GeneratedQueries } from "./queries";
 
 /** Candidate thesis extended with Cohere semantic relevance score. */
@@ -116,8 +116,7 @@ export async function searchAndSiftTheses(
 
   logger?.info("sifting_parallel_search_start", {
     service: "tezara",
-    filePath:
-      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    filePath: "src/features/positioning/sifting.ts",
     data: { queries: allQueries },
   });
 
@@ -159,8 +158,7 @@ export async function searchAndSiftTheses(
   if (filteredCandidates.length === 0) {
     logger?.info("sifting_no_candidates_remaining", {
       service: "tezara",
-      filePath:
-        "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+      filePath: "src/features/positioning/sifting.ts",
       data: { queries: allQueries },
     });
     return [];
@@ -168,8 +166,7 @@ export async function searchAndSiftTheses(
 
   logger?.info("sifting_parallel_search_success", {
     service: "tezara",
-    filePath:
-      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    filePath: "src/features/positioning/sifting.ts",
     durationMs: performance.now() - searchStart,
     data: { candidateCount: filteredCandidates.length },
   });
@@ -181,8 +178,7 @@ export async function searchAndSiftTheses(
 
   logger?.info("cohere_rerank_start", {
     service: "cohere",
-    filePath:
-      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    filePath: "src/features/positioning/sifting.ts",
     data: {
       model: "rerank-v4.0-pro",
       candidateCount: filteredCandidates.length,
@@ -215,8 +211,7 @@ export async function searchAndSiftTheses(
 
   logger?.info("cohere_rerank_success", {
     service: "cohere",
-    filePath:
-      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    filePath: "src/features/positioning/sifting.ts",
     durationMs: performance.now() - rerankStart,
     data: { topCount: topResults.length },
   });

@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { JuryAnalysisResult } from "../_services/analysis";
+import type { JuryAnalysisResult } from "@/features/positioning/analysis";
 import { PositioningMarkdownRenderer } from "./positioning-markdown-renderer";
 
 interface PositioningReportViewProps {

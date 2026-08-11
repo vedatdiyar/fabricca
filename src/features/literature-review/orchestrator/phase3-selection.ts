@@ -1,6 +1,6 @@
 import { Logger } from "@/lib/logger";
 import type { JuryArticle } from "@/lib/types";
-import { sanitizeTargetedArticles } from "@/lib/services/academic-sanitizer";
+import { sanitizeTargetedArticles } from "@/services/academic";
 import { healAuthorsByTitle } from "../openalex/client";
 import {
   extractOpenAlexId,

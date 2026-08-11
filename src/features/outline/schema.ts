@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { JsonSchema, JsonSchemaProperty } from "@/lib/services/gemini";
+import type { JsonSchema, JsonSchemaProperty } from "@/services/ai";
 
 /**
  * Recursive Zod schema for a single outline section (can contain subSections).
@@ -33,13 +33,8 @@ const outlineSectionSchema: z.ZodType<{
           title: z
             .string()
             .describe("Alt bölüm başlığı. Akademik Türkçe olmalıdır."),
-          description: z
-            .string()
-            .describe("Alt bölüm açıklaması."),
-          sortOrder: z
-            .number()
-            .int()
-            .describe("Alt bölümün gösterim sırası."),
+          description: z.string().describe("Alt bölüm açıklaması."),
+          sortOrder: z.number().int().describe("Alt bölümün gösterim sırası."),
         }),
       )
       .min(2)
@@ -67,9 +62,7 @@ export const outlineGenerationSchema = z.object({
     ),
 });
 
-export type OutlineGenerationResponse = z.infer<
-  typeof outlineGenerationSchema
->;
+export type OutlineGenerationResponse = z.infer<typeof outlineGenerationSchema>;
 
 /**
  * Builds the JSON schema property for a single outline section (recursive).
@@ -142,4 +135,3 @@ export const outlineGenerationJsonSchema: JsonSchema = {
   },
   required: ["academicField", "sections"],
 };
-

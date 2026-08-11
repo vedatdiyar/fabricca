@@ -1,4 +1,4 @@
-import type { PositioningMatrixInput } from "@/app/(onboarding)/onboarding/positioning/_lib/validation";
+import type { PositioningMatrixInput } from "@/features/positioning/validation";
 
 /** System instruction for single-field × TR+EN positioning query generation — 8 Meilisearch queries (4 alternatives × 2 languages) from subjectProblem only. */
 export const POSITIONING_QUERIES_SYSTEM_INSTRUCTION = `# Rol ve Uzmanlık

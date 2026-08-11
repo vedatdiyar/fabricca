@@ -1,5 +1,5 @@
-import type { PositioningMatrixInput } from "@/app/(onboarding)/onboarding/positioning/_lib/validation";
-import type { SiftedThesis } from "@/app/(onboarding)/onboarding/positioning/_services/sifting";
+import type { PositioningMatrixInput } from "@/features/positioning/validation";
+import type { SiftedThesis } from "@/features/positioning/sifting";
 
 /** System instruction for the single-thesis relevance/originality/contribution evaluator. */
 export const PER_THESIS_EVALUATION_SYSTEM_INSTRUCTION = `# Rol ve Uzmanlık

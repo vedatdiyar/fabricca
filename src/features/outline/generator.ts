@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { matrices, outlines } from "@/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
-import { generateStructuredContent } from "@/lib/services/gemini";
+import { generateGeminiStructuredContent } from "@/services/ai";
 import { FLASH_36, GEMINI_SEED } from "@/lib/constants";
 import { ThinkingLevel } from "@google/genai";
 import { createFlowId, Logger } from "@/lib/logger";
@@ -126,21 +126,22 @@ export async function generateOutlineAction(): Promise<
       methodology: matrix.methodology,
     });
 
-    const result = await generateStructuredContent<OutlineGenerationResponse>(
-      FLASH_36,
-      buildOutlineSystemInstruction(),
-      prompt,
-      outlineGenerationJsonSchema,
-      log,
-      {
-        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
-        zodSchema: outlineGenerationSchema,
-        seed: GEMINI_SEED,
-        thesisMatrix: matrix,
-        payloadStage: "outline_generation",
-        quiet: true,
-      },
-    );
+    const result =
+      await generateGeminiStructuredContent<OutlineGenerationResponse>(
+        FLASH_36,
+        buildOutlineSystemInstruction(),
+        prompt,
+        outlineGenerationJsonSchema,
+        log,
+        {
+          thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+          zodSchema: outlineGenerationSchema,
+          seed: GEMINI_SEED,
+          thesisMatrix: matrix,
+          payloadStage: "outline_generation",
+          quiet: true,
+        },
+      );
 
     log.info("outline_generation_success", {
       service: "outline",
@@ -154,8 +155,7 @@ export async function generateOutlineAction(): Promise<
       error: err instanceof Error ? err : new Error(String(err)),
     });
     return {
-      error:
-        "Tez planı oluşturulurken beklenmeyen bir hata oluştu.",
+      error: "Tez planı oluşturulurken beklenmeyen bir hata oluştu.",
     };
   }
 }
@@ -192,7 +192,8 @@ export async function persistOutlineAction(
       error: err instanceof Error ? err : new Error(String(err)),
     });
     return {
-      error: "Tez planı veritabanına kaydedilirken beklenmeyen bir hata oluştu.",
+      error:
+        "Tez planı veritabanına kaydedilirken beklenmeyen bir hata oluştu.",
     };
   }
 }

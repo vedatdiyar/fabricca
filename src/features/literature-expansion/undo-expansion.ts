@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { boxes, expansions, sources } from "@/db/schema";
 import { desc, eq, inArray } from "drizzle-orm";
-import { deletePdfFromR2 } from "@/lib/services/r2";
+import { deletePdfFromR2 } from "@/services/storage/r2";
 import { Logger, createFlowId } from "@/lib/logger";
 
 /**

@@ -5,7 +5,7 @@ import { getSession } from "@/lib/session";
 import {
   executeMutationTool,
   undoMutationTool,
-} from "@/lib/services/advisor-tools";
+} from "@/features/advisor/tools";
 
 const toolActionSchema = z.object({
   toolName: z.string().min(1, "Tool name is required."),

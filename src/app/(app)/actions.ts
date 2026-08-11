@@ -14,7 +14,7 @@ import {
   sources,
   sessions,
 } from "@/db/schema";
-import { deletePdfFromR2 } from "@/lib/services/r2";
+import { deletePdfFromR2 } from "@/services/storage/r2";
 import {
   getSession,
   SESSION_COOKIE_NAME,

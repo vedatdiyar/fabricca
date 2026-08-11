@@ -5,10 +5,11 @@ import { toast } from "sonner";
 import { saveChatMessage, generateChatTitleAction } from "../actions";
 import { useAdvisorSessions } from "../_hooks/use-advisor-sessions";
 import { useAdvisorToolHandler } from "../_hooks/use-advisor-tool-handler";
-import type { AdvisorPersona } from "@/lib/services/advisor-classifier";
+import { useAdvisorStream } from "../_hooks/use-advisor-stream";
+import type { AdvisorPersona } from "@/features/advisor/classifier";
 import type { PendingToolCall } from "./tool-confirmation-card";
-import type { RagSearchResultItem } from "@/lib/services/rag-search";
-import type { PipelineResult } from "@/lib/services/advisor-pipeline/types";
+import type { RagSearchResultItem } from "@/services/search/rag-search";
+import type { PipelineResult } from "@/features/advisor/pipeline/types";
 import type { PipelineResultData } from "@/db/schema";
 import type { Message } from "../_lib/types";
 
@@ -99,6 +100,8 @@ export function useAdvisorChat(initialSessionId?: number) {
   const { handleApproveToolCall, handleUndoToolCall, handleRejectToolCall } =
     useAdvisorToolHandler({ setMessages });
 
+  const { readStream } = useAdvisorStream();
+
   const handleSend = async (overrideQuery?: string) => {
     if (isSendingRef.current) return;
     const queryToSend = (overrideQuery ?? "").trim();
@@ -168,136 +171,135 @@ export function useAdvisorChat(initialSessionId?: number) {
         throw new Error("Yanıt alınamadı.");
       }
 
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
       let accumulatedToolCalls: PendingToolCall[] = [];
       let assignedPersona: AdvisorPersona | undefined = undefined;
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      await readStream(response, async (event) => {
+        switch (event.type) {
+          case "persona_assigned": {
+            assignedPersona = event.persona as AdvisorPersona;
+            setStreaming((prev) => ({ ...prev, persona: assignedPersona }));
+            break;
+          }
+          case "stage_start": {
+            setStreaming((prev) => ({
+              ...prev,
+              pipeline: { stage: "audit" },
+            }));
+            break;
+          }
+          case "stage_done": {
+            const payload = event.payload as PipelineResult["audit"];
+            setStreaming((prev) => ({
+              ...prev,
+              pipeline: { stage: "audit", audit: payload },
+            }));
+            if (
+              event.stage === "audit" &&
+              payload?.hasCriticalIssues === true
+            ) {
+              setIsLocked(true);
+            }
+            break;
+          }
+          case "delta": {
+            setStreaming((prev) => ({
+              ...prev,
+              text: prev.text + (event.text as string),
+            }));
+            break;
+          }
+          case "tool_call_request": {
+            const newToolCall: PendingToolCall = {
+              toolCallId: event.toolCallId as string,
+              name: event.name as string,
+              args: event.args as Record<string, unknown>,
+              explanation: event.explanation as string,
+              status: "pending",
+              previousState: event.previousState as
+                Record<string, unknown> | undefined,
+            };
+            accumulatedToolCalls = [...accumulatedToolCalls, newToolCall];
+            setStreaming((prev) => ({
+              ...prev,
+              toolCalls: [...accumulatedToolCalls],
+            }));
+            break;
+          }
+          case "done": {
+            const eventSources = event.sources as
+              RagSearchResultItem[] | undefined;
+            setStreaming((prev) => ({ ...prev, sources: eventSources }));
+            const finalPersona =
+              (event.persona as AdvisorPersona | undefined) || assignedPersona;
+            const pipelineResult = event.pipeline as PipelineResult | undefined;
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed.startsWith("data: ")) continue;
-          const data = trimmed.slice(6);
-          if (data === "[DONE]") continue;
-
-          try {
-            const event = JSON.parse(data);
-            if (event.type === "persona_assigned") {
-              assignedPersona = event.persona;
-              setStreaming((prev) => ({ ...prev, persona: event.persona }));
-            } else if (event.type === "stage_start") {
+            if (pipelineResult) {
               setStreaming((prev) => ({
                 ...prev,
-                pipeline: { stage: event.stage },
+                pipeline: pipelineResult,
               }));
-            } else if (event.type === "stage_done") {
-              setStreaming((prev) => ({
-                ...prev,
-                pipeline: { stage: event.stage, audit: event.payload },
-              }));
-              if (
-                event.stage === "audit" &&
-                event.payload?.hasCriticalIssues === true
-              ) {
+              if (pipelineResult.audit?.hasCriticalIssues) {
                 setIsLocked(true);
               }
-            } else if (event.type === "delta") {
-              setStreaming((prev) => ({
-                ...prev,
-                text: prev.text + event.text,
-              }));
-            } else if (event.type === "tool_call_request") {
-              const newToolCall: PendingToolCall = {
-                toolCallId: event.toolCallId,
-                name: event.name,
-                args: event.args,
-                explanation: event.explanation,
-                status: "pending",
-                previousState: event.previousState,
-              };
-              accumulatedToolCalls = [...accumulatedToolCalls, newToolCall];
-              setStreaming((prev) => ({
-                ...prev,
-                toolCalls: [...accumulatedToolCalls],
-              }));
-            } else if (event.type === "done") {
-              setStreaming((prev) => ({ ...prev, sources: event.sources }));
-              const finalPersona = event.persona || assignedPersona;
-              const pipelineResult = event.pipeline as
-                PipelineResult | undefined;
-
-              if (pipelineResult) {
-                setStreaming((prev) => ({
-                  ...prev,
-                  pipeline: pipelineResult,
-                }));
-                if (pipelineResult.audit?.hasCriticalIssues) {
-                  setIsLocked(true);
-                }
-              }
-
-              const modelMessageId = `model-${crypto.randomUUID()}`;
-              const finalContent =
-                event.text.trim() ||
-                (accumulatedToolCalls.length > 0
-                  ? "Aşağıdaki veritabanı işlemini gerçekleştirmek için onayınız isteniyor:"
-                  : "");
-
-              const modelMsg: Message = {
-                id: modelMessageId,
-                role: "model",
-                persona: finalPersona,
-                content: finalContent,
-                sources: event.sources,
-                toolCalls:
-                  accumulatedToolCalls.length > 0
-                    ? accumulatedToolCalls
-                    : undefined,
-                pipeline: pipelineResult,
-                timestamp: new Date().toLocaleTimeString("tr-TR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }),
-              };
-
-              if (sessionId) {
-                const pipelineData: PipelineResultData | null = pipelineResult
-                  ? { ...pipelineResult, cycle: 1 }
-                  : null;
-                const saveRes = await saveChatMessage(
-                  sessionId,
-                  "model",
-                  finalContent,
-                  event.sources ?? undefined,
-                  accumulatedToolCalls.length > 0
-                    ? accumulatedToolCalls
-                    : undefined,
-                  finalPersona,
-                  pipelineData,
-                );
-                if (saveRes.success && saveRes.messageId) {
-                  modelMsg.dbId = saveRes.messageId;
-                }
-                await loadSessions();
-              }
-
-              setMessages((prev) => [...prev, modelMsg]);
-            } else if (event.type === "error") {
-              toast.error(event.error || "Yanıt üretilirken hata oluştu.");
             }
-          } catch {
-            // Skip malformed SSE lines
+
+            const modelMessageId = `model-${crypto.randomUUID()}`;
+            const finalContent =
+              ((event.text as string) || "").trim() ||
+              (accumulatedToolCalls.length > 0
+                ? "Aşağıdaki veritabanı işlemini gerçekleştirmek için onayınız isteniyor:"
+                : "");
+
+            const modelMsg: Message = {
+              id: modelMessageId,
+              role: "model",
+              persona: finalPersona,
+              content: finalContent,
+              sources: eventSources,
+              toolCalls:
+                accumulatedToolCalls.length > 0
+                  ? accumulatedToolCalls
+                  : undefined,
+              pipeline: pipelineResult,
+              timestamp: new Date().toLocaleTimeString("tr-TR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            };
+
+            if (sessionId) {
+              const pipelineData: PipelineResultData | null = pipelineResult
+                ? { ...pipelineResult, cycle: 1 }
+                : null;
+              const saveRes = await saveChatMessage(
+                sessionId,
+                "model",
+                finalContent,
+                eventSources,
+                accumulatedToolCalls.length > 0
+                  ? accumulatedToolCalls
+                  : undefined,
+                finalPersona,
+                pipelineData,
+              );
+              if (saveRes.success && saveRes.messageId) {
+                modelMsg.dbId = saveRes.messageId;
+              }
+              await loadSessions();
+            }
+
+            setMessages((prev) => [...prev, modelMsg]);
+            break;
+          }
+          case "error": {
+            toast.error(
+              (event.error as string) || "Yanıt üretilirken hata oluştu.",
+            );
+            break;
           }
         }
-      }
+      });
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "İletişim hatası oluştu.";

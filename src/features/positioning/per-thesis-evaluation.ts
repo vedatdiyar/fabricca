@@ -2,10 +2,10 @@ import { z } from "zod";
 import { ThinkingLevel } from "@google/genai";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 import {
-  generateStructuredContent,
+  generateGeminiStructuredContent,
   type JsonSchema,
-} from "@/lib/services/gemini";
-import { getGeminiKeyPool } from "@/lib/services/gemini-key-pool";
+} from "@/services/ai";
+import { getGeminiKeyPool } from "@/services/ai/gemini-key-pool";
 import type { Logger } from "@/lib/logger";
 import {
   PER_THESIS_EVALUATION_SYSTEM_INSTRUCTION,
@@ -13,7 +13,7 @@ import {
   buildPerThesisEvaluationUserPrompt,
   buildBatchPerThesisEvaluationUserPrompt,
 } from "@/lib/prompts";
-import type { PositioningMatrixInput } from "../_lib/validation";
+import type { PositioningMatrixInput } from "./validation";
 import type { SiftedThesis } from "./sifting";
 
 /** Zod schema for the single-thesis relevance/originality/contribution evaluation output. */
@@ -132,7 +132,7 @@ export async function evaluateSingleThesis(
 ): Promise<PerThesisEvaluation> {
   const prompt = buildPerThesisEvaluationUserPrompt(input, thesis);
 
-  const result = await generateStructuredContent<PerThesisEvaluation>(
+  const result = await generateGeminiStructuredContent<PerThesisEvaluation>(
     FLASH_LITE_35,
     PER_THESIS_EVALUATION_SYSTEM_INSTRUCTION,
     prompt,
@@ -171,22 +171,23 @@ export async function evaluateBatchTheses(
 
   const prompt = buildBatchPerThesisEvaluationUserPrompt(input, theses);
 
-  const result = await generateStructuredContent<BatchPerThesisEvaluation>(
-    FLASH_LITE_35,
-    BATCH_PER_THESIS_EVALUATION_SYSTEM_INSTRUCTION,
-    prompt,
-    batchPerThesisEvaluationJsonSchema,
-    logger,
-    {
-      zodSchema: batchPerThesisEvaluationSchema,
-      payloadStage: "positioning_per_thesis_evaluation_batch",
-      seed: GEMINI_SEED,
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      thesisMatrix: input,
-      apiKey,
-      quiet: true,
-    },
-  );
+  const result =
+    await generateGeminiStructuredContent<BatchPerThesisEvaluation>(
+      FLASH_LITE_35,
+      BATCH_PER_THESIS_EVALUATION_SYSTEM_INSTRUCTION,
+      prompt,
+      batchPerThesisEvaluationJsonSchema,
+      logger,
+      {
+        zodSchema: batchPerThesisEvaluationSchema,
+        payloadStage: "positioning_per_thesis_evaluation_batch",
+        seed: GEMINI_SEED,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        thesisMatrix: input,
+        apiKey,
+        quiet: true,
+      },
+    );
 
   return result.evaluations || [];
 }
@@ -221,8 +222,7 @@ export async function evaluateThesesInParallel(
 
   logger?.info("positioning_per_thesis_evaluation_start", {
     service: "positioning",
-    filePath:
-      "src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts",
+    filePath: "src/features/positioning/per-thesis-evaluation.ts",
     data: {
       total: theses.length,
       keyCount: apiKeys.length,
@@ -260,8 +260,7 @@ export async function evaluateThesesInParallel(
     } else {
       logger?.error("positioning_per_thesis_evaluation_failed", {
         service: "positioning",
-        filePath:
-          "src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts",
+        filePath: "src/features/positioning/per-thesis-evaluation.ts",
         data: { chunkIndex: idx, chunkSize: chunk.length },
         error: res.reason,
       });
@@ -283,8 +282,7 @@ export async function evaluateThesesInParallel(
   if (missingTheses.length > 0) {
     logger?.info("positioning_per_thesis_evaluation_fallback_missing", {
       service: "positioning",
-      filePath:
-        "src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts",
+      filePath: "src/features/positioning/per-thesis-evaluation.ts",
       data: { missingCount: missingTheses.length },
     });
 
@@ -317,8 +315,7 @@ export async function evaluateThesesInParallel(
 
   logger?.info("positioning_per_thesis_evaluation_success", {
     service: "positioning",
-    filePath:
-      "src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts",
+    filePath: "src/features/positioning/per-thesis-evaluation.ts",
     durationMs: Math.round(performance.now() - startTime),
     data: { evaluatedCount: allEvaluated.length },
   });

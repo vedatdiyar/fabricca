@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import { and, eq, inArray, notInArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
   matrices,
@@ -14,7 +14,7 @@ import {
   sessions,
   outlines,
 } from "@/db/schema";
-import { deletePdfFromR2 } from "@/lib/services/r2";
+import { deletePdfFromR2 } from "@/services/storage/r2";
 import {
   getSession,
   SESSION_COOKIE_NAME,

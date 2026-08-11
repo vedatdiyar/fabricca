@@ -3,10 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
-import { runLiteratureExpansion } from "@/lib/literature-expansion/expansion-orchestrator";
-import { undoLiteratureExpansion } from "@/lib/literature-expansion/undo-expansion";
-import type { ExpansionResult } from "@/lib/literature-expansion/types";
-import type { UndoExpansionResult } from "@/lib/literature-expansion/undo-expansion";
+import { runLiteratureExpansion } from "@/features/literature-expansion/expansion-orchestrator";
+import { undoLiteratureExpansion } from "@/features/literature-expansion/undo-expansion";
+import type { ExpansionResult } from "@/features/literature-expansion/types";
+import type { UndoExpansionResult } from "@/features/literature-expansion/undo-expansion";
 
 /**
  * Server Action: Triggers automatic literature expansion (2 backward + 2 forward sources) for a Sub-Box.

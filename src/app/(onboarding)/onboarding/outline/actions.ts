@@ -7,7 +7,7 @@ import { matrices, outlines } from "@/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
-import { generateOutlineAction } from "@/lib/services/outline/generator";
+import { generateOutlineAction } from "@/features/outline/generator";
 
 const sectionInputSchema = z.object({
   title: z.string().min(1, "Bölüm başlığı boş olamaz."),

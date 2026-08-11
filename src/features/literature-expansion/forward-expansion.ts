@@ -5,7 +5,7 @@ import type { CandidateSource } from "./types";
 import type { Logger } from "@/lib/logger";
 import { fetchOpenAlexForwardCitations } from "./openalex-expansion-client";
 import { fetchSemanticScholarRecommendations } from "./semantic-scholar-client";
-import { rerankWithCohere } from "@/lib/services/cohere";
+import { rerankWithCohere } from "@/services/ai/cohere";
 
 /**
  * Extended candidate representation carrying joint service presence flags.

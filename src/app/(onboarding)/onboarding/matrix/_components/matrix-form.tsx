@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
+import { useMatrixSubmit } from "../../_hooks/use-matrix-submit";
 
 type FormState = {
   subjectProblem: string;
@@ -201,7 +201,7 @@ interface MatrixFormProps {
  * @returns The rendered matrix form.
  */
 export function MatrixForm({ initialMatrix }: MatrixFormProps) {
-  const { submitMatrix } = useOnboardingNavigation();
+  const { submitMatrix } = useMatrixSubmit();
 
   const [isPending, setIsPending] = useState(false);
   const [editedValues, setEditedValues] = useState<Partial<FormState>>({});

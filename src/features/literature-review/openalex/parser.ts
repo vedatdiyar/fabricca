@@ -1,4 +1,4 @@
-import { cleanHtmlTags } from "@/lib/services/academic-sanitizer";
+import { cleanHtmlTags } from "@/services/academic";
 import {
   extractCleanDoi,
   extractOpenAlexId,

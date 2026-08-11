@@ -26,7 +26,7 @@ import type {
   PositioningMatrixInput,
   RecommendedThesisItem,
   GapAnalysisStructured,
-} from "@/app/(onboarding)/onboarding/positioning/_lib/validation";
+} from "@/features/positioning/validation";
 
 /** A single parsed bibliographic reference extracted from a resource's reference list. */
 export interface ParsedReference {

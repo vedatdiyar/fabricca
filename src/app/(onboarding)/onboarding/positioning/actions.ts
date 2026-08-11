@@ -7,15 +7,15 @@ import type { Positioning } from "@/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { Logger } from "@/lib/logger";
 import type { ThesisMatrix } from "@/lib/types";
-import { positioningMatrixSchema } from "./_lib/validation";
-import type { SiftedThesis } from "./_services/sifting";
-import { generatePositioningQueries } from "./_services/queries";
-import { searchAndSiftTheses } from "./_services/sifting";
-import { evaluateThesesInParallel } from "./_services/per-thesis-evaluation";
-import { analyzePositioningJury } from "./_services/analysis";
-import { savePositioningReportTransaction } from "./_services/decision-engine";
-import { sanitizeAcademicDataBulk } from "@/lib/services/academic-sanitizer";
-import type { JuryAnalysisResult } from "./_services/analysis";
+import { positioningMatrixSchema } from "@/features/positioning/validation";
+import type { SiftedThesis } from "@/features/positioning/sifting";
+import { generatePositioningQueries } from "@/features/positioning/queries";
+import { searchAndSiftTheses } from "@/features/positioning/sifting";
+import { evaluateThesesInParallel } from "@/features/positioning/per-thesis-evaluation";
+import { analyzePositioningJury } from "@/features/positioning/analysis";
+import { savePositioningReportTransaction } from "@/features/positioning/decision-engine";
+import { sanitizeAcademicDataBulk } from "@/services/academic";
+import type { JuryAnalysisResult } from "@/features/positioning/analysis";
 
 /**
  * Runs query generation, Tezara search, and Cohere rerank; jury analysis and DB writes run separately.

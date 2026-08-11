@@ -5,7 +5,7 @@ import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
 import type {
   PositioningMatrixInput,
   RecommendedThesisItem,
-} from "../_lib/validation";
+} from "./validation";
 import type { JuryAnalysisResult } from "./analysis";
 
 /**

@@ -1,4 +1,4 @@
-import { Logger } from "../logger";
+import { Logger } from "@/lib/logger";
 
 /** Multilingual (incl. Turkish) Cohere Rerank model ID — 32,768-token context. */
 const COHERE_RERANK_MODEL = "rerank-v4.0-pro";

@@ -4,8 +4,8 @@ import {
   extractTextWithPositions as extractPdfInspectorTextPositions,
 } from "@firecrawl/pdf-inspector";
 import type { Logger } from "@/lib/logger";
-import { buildChunksFromPageAnalysis } from "@/lib/services/pdf/chunker";
-import { normalizeAcademicText } from "@/lib/services/pdf/normalizer";
+import { buildChunksFromPageAnalysis } from "./chunker";
+import { normalizeAcademicText } from "./normalizer";
 import { type DocumentAnalysisResult, type PageAnalysis } from "./schema";
 import type { PdfParseOptions, PdfChunkParseResult } from "./types";
 import { runMistralOcr } from "./mistral-driver";

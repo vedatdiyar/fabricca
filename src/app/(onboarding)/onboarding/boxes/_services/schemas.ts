@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { JsonSchema, JsonSchemaProperty } from "@/lib/services/gemini";
+import type { JsonSchema, JsonSchemaProperty } from "@/services/ai";
 
 const structureSubBoxSchema = z.object({
   title: z

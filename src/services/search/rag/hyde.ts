@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { generateStructuredContent } from "@/lib/services/cerebras";
+import { generateCerebrasStructuredContent } from "@/services/ai";
 import { CEREBRAS_MODEL } from "@/lib/constants";
 import type { Logger } from "@/lib/logger";
 import { buildHyDeSystemInstruction } from "@/lib/prompts";
@@ -74,7 +74,7 @@ export async function expandAndTranslateQuery(
   if (!trimmed) return null;
 
   try {
-    const result = await generateStructuredContent<HyDeExpansionResult>(
+    const result = await generateCerebrasStructuredContent<HyDeExpansionResult>(
       CEREBRAS_MODEL,
       buildHyDeSystemInstruction(),
       trimmed,

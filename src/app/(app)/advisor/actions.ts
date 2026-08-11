@@ -10,9 +10,9 @@ import {
   type ChatToolCall,
 } from "@/db/schema";
 import { getSession } from "@/lib/session";
-import type { RagSearchResultItem } from "@/lib/services/rag-search";
+import type { RagSearchResultItem } from "@/services/search/rag-search";
 import type { PipelineResultData } from "@/db/schema";
-import { generateStructuredContent } from "@/lib/services/cerebras";
+import { generateCerebrasStructuredContent } from "@/services/ai";
 import { CEREBRAS_MODEL } from "@/lib/constants";
 
 export interface ChatSessionListItem {
@@ -252,7 +252,7 @@ export async function generateChatTitleAction(
       "Sen bir akademik tez asistanısın. Kullanıcının sorduğu soruyu analiz ederek bu sohbet için 3 ila 5 kelimelik, net, öz ve Türkçe bir konu başlığı çıkar. Başlıkta soru eki, tırnak işareti veya ek açıklama yazma. Örnekler: 'David Romano Etnisite Yaklaşımı', 'Primordiyalist Kuram Analizi', 'Söylem Analizi Metodolojisi'.";
     const prompt = `Kullanıcı Sorusu: ${userQuery}`;
 
-    const res = await generateStructuredContent<{ title: string }>(
+    const res = await generateCerebrasStructuredContent<{ title: string }>(
       CEREBRAS_MODEL,
       systemInstruction,
       prompt,

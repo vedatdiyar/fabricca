@@ -1,4 +1,4 @@
-import type { JsonSchema } from "@/lib/services/gemini";
+import type { JsonSchema } from "@/services/ai";
 
 /** Structured result returned by the Gemini PDF parser — metadata, page-level markdown, and parsed references. */
 export interface DocumentAnalysisResult {

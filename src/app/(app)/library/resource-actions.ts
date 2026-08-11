@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { sources, annotations } from "@/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
-import { deletePdfFromR2 } from "@/lib/services/r2";
+import { deletePdfFromR2 } from "@/services/storage/r2";
 import { ensureUserMatrixAndBoxes, getOwnedSource } from "./_services/helpers";
 import { mapSourceToResource } from "./_services/resource-mapper";
 import type { NoteType } from "./_lib/types";
@@ -101,12 +101,16 @@ export async function getLibraryResourcesAction() {
 }
 
 /**
- * Server Action: Toggles the read status of a library resource.
+ * Server Action: Sets (or toggles) the read status of a library resource.
  *
- * @param resourceId - The ID of the resource to toggle.
+ * @param resourceId - The ID of the resource to update.
+ * @param isRead - Optional explicit read state; when omitted the current state is toggled.
  * @returns The new read status on success, or an error message on failure.
  */
-export async function toggleResourceReadStatusAction(resourceId: number) {
+export async function toggleResourceReadStatusAction(
+  resourceId: number,
+  isRead?: boolean,
+) {
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
@@ -122,7 +126,7 @@ export async function toggleResourceReadStatusAction(resourceId: number) {
     }
     const resource = owned.source;
 
-    const newIsRead = !resource.isRead;
+    const newIsRead = isRead ?? !resource.isRead;
 
     await db
       .update(sources)

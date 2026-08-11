@@ -1,7 +1,7 @@
 "use client";
 
 import { BookOpen } from "lucide-react";
-import { AIBanner } from "@/components/ai-banner";
+import { AIBanner } from "@/components/shared/ai-banner";
 
 interface OutlineSection {
   title: string;
@@ -25,8 +25,7 @@ function OutlineSectionNode({
   section: OutlineSection;
   index: number;
 }) {
-  const hasSubSections =
-    section.subSections && section.subSections.length > 0;
+  const hasSubSections = section.subSections && section.subSections.length > 0;
   const sectionNumber = section.sortOrder || index + 1;
 
   return (
@@ -53,7 +52,10 @@ function OutlineSectionNode({
       {hasSubSections && (
         <div className="ml-6 mt-3 pl-4 border-l-2 border-primary/20 flex flex-col gap-2.5">
           {section.subSections!.map((sub, subIdx) => (
-            <div key={`${sub.title}-${subIdx}`} className="flex flex-col gap-0.5">
+            <div
+              key={`${sub.title}-${subIdx}`}
+              className="flex flex-col gap-0.5"
+            >
               <div className="flex items-center gap-2">
                 <span className="font-mono text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded shrink-0">
                   {sectionNumber}.{sub.sortOrder || subIdx + 1}
@@ -75,9 +77,7 @@ function OutlineSectionNode({
   );
 }
 
-export function OutlineTreeView({
-  sections,
-}: OutlineTreeViewProps) {
+export function OutlineTreeView({ sections }: OutlineTreeViewProps) {
   return (
     <div className="w-full flex flex-col gap-6">
       <AIBanner

@@ -1,5 +1,5 @@
-import type { Logger } from "../logger";
-import type { TezaraThesisDetails } from "../types";
+import type { Logger } from "@/lib/logger";
+import type { TezaraThesisDetails } from "@/lib/types";
 
 const MEILI_URL = process.env.TEZARA_MEILI_URL ?? "";
 const MEILI_KEY = process.env.TEZARA_MEILI_KEY ?? "";
@@ -90,7 +90,7 @@ async function meiliSearch(
       const durationMs = performance.now() - startTime;
       logger?.info("search_filtered", {
         service: "tezara",
-        filePath: "src/lib/tezara/index.ts",
+        filePath: "src/features/tezara/index.ts",
         step: step ?? "meili_search",
         durationMs,
         data: { status: res.status, body },
@@ -104,7 +104,7 @@ async function meiliSearch(
     const durationMs = performance.now() - startTime;
     logger?.error("search_filtered", {
       service: "tezara",
-      filePath: "src/lib/tezara/index.ts",
+      filePath: "src/features/tezara/index.ts",
       step: step ?? "meili_search",
       durationMs,
       data: { body },
@@ -164,7 +164,7 @@ export async function searchTezara(
   if (results.length === 0) {
     logger?.info("search_empty", {
       service: "tezara",
-      filePath: "src/lib/tezara/index.ts",
+      filePath: "src/features/tezara/index.ts",
       step: "search_meili",
       durationMs,
       data: { query },

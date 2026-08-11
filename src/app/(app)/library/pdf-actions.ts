@@ -2,21 +2,13 @@
 
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { boxes, sources, chunks as chunkRows, annotations } from "@/db/schema";
+import { sources, chunks as chunkRows, annotations } from "@/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
-import { deletePdfFromR2 } from "@/lib/services/r2";
-import { formatApaPdfFileName } from "@/lib/academic/utils";
-import { processResourcePdfPipeline } from "./_services/pdf-pipeline";
-import { fetchAndExtractPdf } from "./_services/pdf-upload";
+import { deletePdfFromR2 } from "@/services/storage/r2";
+import { generateTempPdfUploadUrl } from "./_services/pdf-service";
 import { getOwnedSource } from "./_services/helpers";
-import { mapSourceToResource } from "./_services/resource-mapper";
-import {
-  cleanupTempKey,
-  generateTempPdfUploadUrl,
-  findReadySourceByPdfName,
-  buildDuplicatePdfError,
-} from "./_services/pdf-service";
+import { completePdfUploadCore } from "./_services/pdf-upload-complete";
 import type { LibraryResourceItem } from "./_lib/types";
 
 /**
@@ -167,155 +159,15 @@ export async function completeResourcePdfUploadAction(
   | { success: true; data: LibraryResourceItem }
   | { success: false; error: string }
 > {
-  const resolvedFlowId = flowId ?? createFlowId();
-  const log = new Logger(resolvedFlowId);
-
-  try {
-    const pipelineStart = performance.now();
-
-    log.info("pdf_browser_upload_success", {
-      service: "library",
-      data: {
-        durationMs:
-          uploadStartedAt != null ? Date.now() - uploadStartedAt : undefined,
-      },
-    });
-
-    const session = await getSession();
-    if (!session) {
-      cleanupTempKey(tempKey, log);
-      return { success: false, error: "Oturum bulunamadı." };
-    }
-
-    if (!originalFileName.toLowerCase().endsWith(".pdf")) {
-      cleanupTempKey(tempKey, log);
-      return {
-        success: false,
-        error: "Yalnızca PDF formatındaki dosyalar yüklenebilir.",
-      };
-    }
-
-    const owned = await getOwnedSource(resourceId, session.userId);
-    if ("error" in owned) {
-      cleanupTempKey(tempKey, log);
-      return { success: false, error: owned.error };
-    }
-    const resource = owned.source;
-
-    if (resource.pdfStatus === "READY" && resource.pdfUrl) {
-      cleanupTempKey(tempKey, log);
-      return {
-        success: false,
-        error:
-          "Bu akademik eser için zaten bir PDF yüklü. Tekil kayıt kuralı gereği tekrar PDF yüklenemez.",
-      };
-    }
-
-    const preloadedBuffer = pdfBuffer ? Buffer.from(pdfBuffer) : undefined;
-
-    const { buffer, chunks, metadata, parsedReferences } =
-      await fetchAndExtractPdf(tempKey, originalFileName, log, preloadedBuffer);
-
-    await db
-      .update(sources)
-      .set({
-        title: metadata.title,
-        authors: metadata.authors,
-        publisher: metadata.publisher || "Belirtilmemiş",
-        publicationYear: metadata.publicationYear ?? null,
-        doi: metadata.doi || null,
-      })
-      .where(eq(sources.id, resourceId));
-
-    const apaFileName = formatApaPdfFileName(
-      metadata.authors,
-      metadata.publicationYear,
-      metadata.title,
-    );
-
-    const existingDuplicate = await findReadySourceByPdfName(apaFileName);
-    if (existingDuplicate && existingDuplicate.id !== resourceId) {
-      cleanupTempKey(tempKey, log);
-      return {
-        success: false,
-        error: buildDuplicatePdfError(apaFileName),
-      };
-    }
-
-    await db
-      .update(sources)
-      .set({ pdfStatus: "PROCESSING" })
-      .where(eq(sources.id, resourceId));
-
-    const pipelineResult = await processResourcePdfPipeline({
-      resourceId,
-      fileName: apaFileName,
-      buffer,
-      log,
-      precomputedChunks: chunks,
-      precomputedMetadata: metadata,
-      precomputedReferences: parsedReferences,
-    });
-
-    cleanupTempKey(tempKey, log);
-
-    log.total(
-      "complete_resource_pdf",
-      Math.round(performance.now() - pipelineStart),
-      {
-        service: "library",
-        data: {
-          resourceId,
-          apaFileName,
-          pdfUrl: pipelineResult.r2Url,
-          initialSize: buffer.length,
-          finalSize: pipelineResult.finalSize,
-          chunkCount: pipelineResult.chunkCount,
-        },
-      },
-    );
-
-    return {
-      success: true,
-      data: mapSourceToResource(
-        resource,
-        {
-          boxType: resource.box.boxType,
-          title: resource.box.title,
-          parentId: resource.box.parentId,
-        },
-        {
-          title: metadata.title,
-          authors: metadata.authors,
-          publisher: metadata.publisher || "Belirtilmemiş",
-          publicationYear: metadata.publicationYear,
-          doi: metadata.doi || undefined,
-          pdfUrl: pipelineResult.r2Url,
-          pdfFileName: apaFileName,
-          pdfFileSize: pipelineResult.finalSize,
-          pdfStatus: "READY",
-        },
-      ),
-    };
-  } catch (err) {
-    log.error("complete_resource_pdf_failed", {
-      service: "library",
-      error: err,
-    });
-
-    cleanupTempKey(tempKey, log);
-
-    await db
-      .update(sources)
-      .set({ pdfStatus: "FAILED" })
-      .where(eq(sources.id, resourceId));
-
-    return {
-      success: false,
-      error:
-        "PDF yüklenirken, metadata çıkarılırken veya vektörleştirilirken bir hata oluştu.",
-    };
-  }
+  return completePdfUploadCore({
+    createMode: false,
+    resourceId,
+    tempKey,
+    fileName: originalFileName,
+    flowId,
+    uploadStartedAt,
+    pdfBuffer,
+  });
 }
 
 /**
@@ -388,158 +240,13 @@ export async function completePdfCreateUploadAction(
   | { success: true; data: LibraryResourceItem }
   | { success: false; error: string }
 > {
-  const resolvedFlowId = flowId ?? createFlowId();
-  const log = new Logger(resolvedFlowId);
-
-  let createdResourceId: number | undefined;
-  let uploadedPdfFileName: string | undefined;
-
-  try {
-    const pipelineStart = performance.now();
-
-    log.info("pdf_browser_upload_success", {
-      service: "library",
-      data: {
-        durationMs:
-          uploadStartedAt != null ? Date.now() - uploadStartedAt : undefined,
-      },
-    });
-
-    const session = await getSession();
-    if (!session) {
-      cleanupTempKey(tempKey, log);
-      return { success: false, error: "Oturum bulunamadı." };
-    }
-
-    if (!originalFileName.toLowerCase().endsWith(".pdf")) {
-      cleanupTempKey(tempKey, log);
-      return {
-        success: false,
-        error: "Yalnızca PDF formatındaki dosyalar yüklenebilir.",
-      };
-    }
-
-    const preloadedBuffer = pdfBuffer ? Buffer.from(pdfBuffer) : undefined;
-
-    const { buffer, chunks, metadata, parsedReferences } =
-      await fetchAndExtractPdf(tempKey, originalFileName, log, preloadedBuffer);
-
-    const targetBox = await db.query.boxes.findFirst({
-      where: eq(boxes.id, boxId),
-      with: { matrix: true },
-    });
-
-    if (!targetBox || targetBox.matrix.userId !== session.userId) {
-      cleanupTempKey(tempKey, log);
-      return {
-        success: false,
-        error: "Seçilen konu kutusu bulunamadı veya bu kullanıcıya ait değil.",
-      };
-    }
-
-    const [newResource] = await db
-      .insert(sources)
-      .values({
-        boxId: targetBox.id,
-        title: metadata.title,
-        authors: metadata.authors,
-        publisher: metadata.publisher || "Belirtilmemiş",
-        publicationYear: metadata.publicationYear ?? null,
-        doi: metadata.doi || null,
-        isRead: false,
-        pdfStatus: "PROCESSING",
-      })
-      .returning();
-    createdResourceId = newResource.id;
-
-    const apaFileName = formatApaPdfFileName(
-      newResource.authors,
-      newResource.publicationYear,
-      newResource.title,
-    );
-
-    const existingDuplicate = await findReadySourceByPdfName(apaFileName);
-    if (existingDuplicate) {
-      cleanupTempKey(tempKey, log);
-      await db.delete(sources).where(eq(sources.id, createdResourceId));
-      return {
-        success: false,
-        error: buildDuplicatePdfError(apaFileName),
-      };
-    }
-
-    uploadedPdfFileName = apaFileName;
-
-    const pipelineResult = await processResourcePdfPipeline({
-      resourceId: newResource.id,
-      fileName: apaFileName,
-      buffer,
-      log,
-      precomputedChunks: chunks,
-      precomputedMetadata: metadata,
-      precomputedReferences: parsedReferences,
-    });
-
-    cleanupTempKey(tempKey, log);
-
-    log.total(
-      "complete_pdf_create",
-      Math.round(performance.now() - pipelineStart),
-      {
-        service: "library",
-        data: {
-          resourceId: newResource.id,
-          title: newResource.title,
-          finalFileName: apaFileName,
-          pdfUrl: pipelineResult.r2Url,
-          chunkCount: pipelineResult.chunkCount,
-        },
-      },
-    );
-
-    return {
-      success: true,
-      data: mapSourceToResource(
-        newResource,
-        {
-          boxType: targetBox.boxType,
-          title: targetBox.title,
-          parentId: targetBox.parentId,
-        },
-        {
-          isRead: false,
-          pdfUrl: pipelineResult.r2Url,
-          pdfFileName: apaFileName,
-          pdfFileSize: pipelineResult.finalSize,
-          pdfStatus: "READY",
-        },
-      ),
-    };
-  } catch (err) {
-    log.error("complete_pdf_create_failed", {
-      service: "library",
-      error: err,
-    });
-
-    cleanupTempKey(tempKey, log);
-
-    if (createdResourceId != null) {
-      if (uploadedPdfFileName) {
-        try {
-          await deletePdfFromR2(uploadedPdfFileName);
-        } catch {
-          log.info("r2_orphan_pdf_cleanup_failed", {
-            service: "library",
-            data: { uploadedPdfFileName },
-          });
-        }
-      }
-      await db.delete(sources).where(eq(sources.id, createdResourceId));
-    }
-
-    return {
-      success: false,
-      error: "PDF yüklenirken ve künye bilgileri çıkarılırken bir hata oluştu.",
-    };
-  }
+  return completePdfUploadCore({
+    createMode: true,
+    boxId,
+    tempKey,
+    fileName: originalFileName,
+    flowId,
+    uploadStartedAt,
+    pdfBuffer,
+  });
 }

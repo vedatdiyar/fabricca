@@ -4,10 +4,13 @@ import { useState, useCallback, useMemo } from "react";
 import { ArrowRight, Loader2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { AIBanner } from "@/components/ai-banner";
-import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
+import { AIBanner } from "@/components/shared/ai-banner";
+import { useOutlineContinue } from "../../_hooks/use-outline-continue";
 import { OutlineStatsBar } from "./outline-stats-bar";
-import { OutlineSectionCard, type OutlineSectionData } from "./outline-section-card";
+import {
+  OutlineSectionCard,
+  type OutlineSectionData,
+} from "./outline-section-card";
 import {
   saveOutlineHierarchyAction,
   regenerateAndPersistOutlineAction,
@@ -30,9 +33,10 @@ export function OutlineContainer({
   sections: initialSections,
   academicField: initialAcademicField,
 }: OutlineContainerProps) {
-  const { proceedFromOutline } = useOnboardingNavigation();
+  const { proceedFromOutline } = useOutlineContinue();
 
-  const [sections, setSections] = useState<OutlineSectionData[]>(initialSections);
+  const [sections, setSections] =
+    useState<OutlineSectionData[]>(initialSections);
   const [academicField, setAcademicField] = useState<string | null>(
     initialAcademicField,
   );
@@ -43,9 +47,9 @@ export function OutlineContainer({
   const [draggedSectionIndex, setDraggedSectionIndex] = useState<number | null>(
     null,
   );
-  const [dragOverSectionIndex, setDragOverSectionIndex] = useState<number | null>(
-    null,
-  );
+  const [dragOverSectionIndex, setDragOverSectionIndex] = useState<
+    number | null
+  >(null);
 
   // Expanded state set for main section indices
   const [expandedIndices, setExpandedIndices] = useState<Set<number>>(
@@ -137,10 +141,7 @@ export function OutlineContainer({
 
   const handleDropSection = useCallback(
     (targetIndex: number) => {
-      if (
-        draggedSectionIndex === null ||
-        draggedSectionIndex === targetIndex
-      ) {
+      if (draggedSectionIndex === null || draggedSectionIndex === targetIndex) {
         setDraggedSectionIndex(null);
         setDragOverSectionIndex(null);
         return;

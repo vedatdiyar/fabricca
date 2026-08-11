@@ -13,9 +13,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
-import { AIBanner } from "@/components/ai-banner";
+import { AIBanner } from "@/components/shared/ai-banner";
 import { BoxesSkeleton } from "./boxes-skeleton";
-import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
+import { useBoxesContinue } from "../../_hooks/use-boxes-continue";
 import { fetchBoxesWithFullShape } from "../../_services/fetch-actions";
 import { BOX_ORDER_WEIGHT, BOX_TYPE_LABELS } from "@/lib/box-constants";
 import type { GeminiThesisBox } from "@/lib/types";
@@ -39,7 +39,7 @@ function isFullWidthBox(idx: number, totalBoxes: number): boolean {
  * @returns The boxes container markup.
  */
 export function BoxesContainer() {
-  const { proceedFromBoxes } = useOnboardingNavigation();
+  const { proceedFromBoxes } = useBoxesContinue();
 
   const { data: boxes, isLoading: loading } = useQuery({
     queryKey: ["boxes"],

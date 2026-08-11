@@ -1,9 +1,9 @@
 "use client";
 
 import type { Positioning } from "@/db/schema";
-import type { PositioningGlobalStatus } from "../_lib/validation";
-import type { JuryAnalysisResult } from "../_services/analysis";
-import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
+import type { PositioningGlobalStatus } from "@/features/positioning/validation";
+import type { JuryAnalysisResult } from "@/features/positioning/analysis";
+import { usePositioningContinue } from "../../_hooks/use-positioning-continue";
 import { PositioningReportView } from "./positioning-report-view";
 
 interface PositioningContainerProps {
@@ -21,7 +21,7 @@ interface PositioningContainerProps {
 export function PositioningContainer({
   initialRecord,
 }: PositioningContainerProps) {
-  const { proceedFromPositioning } = useOnboardingNavigation();
+  const { proceedFromPositioning } = usePositioningContinue();
 
   const reportData: JuryAnalysisResult = {
     globalStatus:

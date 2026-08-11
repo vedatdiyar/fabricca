@@ -1,11 +1,11 @@
 import { ThinkingLevel } from "@google/genai";
 import { z } from "zod";
 import { FLASH_36, GEMINI_SEED } from "@/lib/constants";
-import { getGeminiKeyPool } from "@/lib/services/gemini-key-pool";
+import { getGeminiKeyPool } from "@/services/ai/gemini-key-pool";
 import {
-  generateStructuredContent,
+  generateGeminiStructuredContent,
   type JsonSchema,
-} from "@/lib/services/gemini";
+} from "@/services/ai";
 import type { Logger } from "@/lib/logger";
 import {
   POSITIONING_JURY_SYSTEM_INSTRUCTION,
@@ -15,7 +15,7 @@ import type { EvaluatedThesis } from "./per-thesis-evaluation";
 import {
   gapAnalysisStructuredSchema,
   type PositioningMatrixInput,
-} from "../_lib/validation";
+} from "./validation";
 
 /** Zod schema for an individual recommended guiding thesis. */
 export const juryRecommendedThesisSchema = z.object({
@@ -159,8 +159,7 @@ export async function analyzePositioningJury(
   if (evaluatedTheses.length === 0) {
     logger?.info("positioning_jury_no_theses", {
       service: "positioning",
-      filePath:
-        "src/app/(onboarding)/onboarding/positioning/_services/analysis.ts",
+      filePath: "src/features/positioning/analysis.ts",
       data: { inputSubject: input.subjectProblem },
     });
 
@@ -201,7 +200,7 @@ Literatür Konumu: ${e.literaturePosition || "Yok"}
     evaluatedTheses.length,
   );
 
-  const result = await generateStructuredContent<JuryAnalysisResult>(
+  const result = await generateGeminiStructuredContent<JuryAnalysisResult>(
     FLASH_36,
     POSITIONING_JURY_SYSTEM_INSTRUCTION,
     userPrompt,

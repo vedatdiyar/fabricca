@@ -5,7 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import type { Components } from "react-markdown";
-import type { RagSearchResultItem } from "@/lib/services/rag-search";
+import type { RagSearchResultItem } from "@/services/search/rag-search";
 
 /** Tailwind classes for clickable citation badges. */
 const CITATION_BADGE_CLASS =

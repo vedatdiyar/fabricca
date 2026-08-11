@@ -1,4 +1,4 @@
-import { Logger } from "../logger";
+import { Logger } from "@/lib/logger";
 import { withRetry, HttpError, DEFAULT_MAX_DELAY } from "@/lib/api-utils";
 
 const BGE_M3_MODEL = "@cf/baai/bge-m3";

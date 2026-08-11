@@ -4,9 +4,9 @@ import { annotations, sources } from "@/db/schema";
 import {
   performHybridRagSearch,
   type RagSearchResultItem,
-} from "@/lib/services/rag-search";
+} from "@/services/search/rag-search";
 import { ThinkingLevel } from "@google/genai";
-import { generateStructuredContent } from "@/lib/services/gemini";
+import { generateGeminiStructuredContent } from "@/services/ai";
 import { FLASH_LITE_35 } from "@/lib/constants";
 import { buildPipelineStage1AuditSystemInstruction } from "@/lib/prompts";
 import {
@@ -77,7 +77,7 @@ export async function runStage1Audit(
 
   const annotationContext = await loadAnnotationContext(userId);
 
-  const audit = await generateStructuredContent<AuditReport>(
+  const audit = await generateGeminiStructuredContent<AuditReport>(
     FLASH_LITE_35,
     buildPipelineStage1AuditSystemInstruction(sourceContext, annotationContext),
     `Denetlenecek Taslak Metin:\n"""\n${draft}\n"""`,

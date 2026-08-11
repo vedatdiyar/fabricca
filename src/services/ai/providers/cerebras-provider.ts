@@ -1,10 +1,12 @@
 "use server";
 
-import { z } from "zod";
 import type { Logger } from "@/lib/logger";
-import { withRetry, HttpError, DEFAULT_MAX_DELAY } from "@/lib/api-utils";
 import { createConcurrencyLimiter } from "@/lib/rate-limiter";
-import { CEREBRAS_SEED } from "../constants";
+import { CEREBRAS_SEED } from "@/lib/constants";
+import { HttpError, withRetry, DEFAULT_MAX_DELAY } from "../llm-retry";
+import { validateStructuredOutput } from "../llm-json";
+import { SchemaValidationError } from "../llm-errors";
+import type { StructuredGenerationOptions } from "../llm-types";
 
 const CEREBRAS_BASE_URL = "https://api.cerebras.ai/v1";
 
@@ -38,12 +40,6 @@ const CEREBRAS_RETRY_CONFIG = {
  * @param jsonSchema - The JSON schema constraining the structured response.
  * @param log - Optional logger for structured output and error events.
  * @param options - Optional settings for the request.
- * @param options.payloadStage - Optional label identifying the pipeline stage.
- * @param options.zodSchema - Optional Zod schema used to validate the response.
- * @param options.temperature - Sampling temperature (0-2.0); defaults to 0 for deterministic greedy decoding.
- * @param options.seed - Fixed seed for best-effort deterministic sampling; defaults to CEREBRAS_SEED.
- * @param options.maxTokens - Maximum output tokens; defaults to 1024.
- * @param options.topP - Optional nucleus sampling threshold (0-1); omitted by default.
  * @returns The parsed and validated structured output of type T.
  */
 export async function generateStructuredContent<T>(
@@ -52,14 +48,7 @@ export async function generateStructuredContent<T>(
   prompt: string,
   jsonSchema: object,
   log?: Logger,
-  options?: {
-    payloadStage?: string;
-    zodSchema?: z.ZodType<T>;
-    temperature?: number;
-    seed?: number;
-    maxTokens?: number;
-    topP?: number;
-  },
+  options?: StructuredGenerationOptions<T>,
 ): Promise<T> {
   const apiKey = process.env.CEREBRAS_API_KEY;
   if (!apiKey) {
@@ -135,13 +124,14 @@ export async function generateStructuredContent<T>(
 
       const parsed = JSON.parse(content) as T;
 
-      if (options?.zodSchema) {
-        const validationResult = options.zodSchema.safeParse(parsed);
-        if (!validationResult.success) {
+      try {
+        validateStructuredOutput(parsed, options?.zodSchema);
+      } catch (err) {
+        if (err instanceof SchemaValidationError) {
           log?.error(`${stage}_schema_validation_failed`, {
             service: "cerebras",
             data: {
-              issues: validationResult.error.issues.map((i) => ({
+              issues: err.zodError.issues.map((i) => ({
                 path: i.path.join("."),
                 message: i.message,
               })),
@@ -151,6 +141,7 @@ export async function generateStructuredContent<T>(
             "Cerebras response did not match the expected structural schema.",
           );
         }
+        throw err;
       }
 
       return parsed;

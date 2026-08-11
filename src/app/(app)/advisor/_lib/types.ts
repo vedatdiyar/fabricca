@@ -1,6 +1,6 @@
-import type { RagSearchResultItem } from "@/lib/services/rag-search";
-import type { PipelineResult } from "@/lib/services/advisor-pipeline/types";
-import type { AdvisorPersona } from "@/lib/services/advisor-classifier";
+import type { RagSearchResultItem } from "@/services/search/rag-search";
+import type { PipelineResult } from "@/features/advisor/pipeline/types";
+import type { AdvisorPersona } from "@/features/advisor/classifier";
 
 export interface PendingToolCall {
   toolCallId: string;

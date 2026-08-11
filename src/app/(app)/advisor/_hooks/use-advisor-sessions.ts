@@ -10,9 +10,9 @@ import {
   type ChatSessionListItem,
 } from "../actions";
 import type { PendingToolCall } from "../_components/tool-confirmation-card";
-import type { RagSearchResultItem } from "@/lib/services/rag-search";
-import type { PipelineResult } from "@/lib/services/advisor-pipeline/types";
-import type { AdvisorPersona } from "@/lib/services/advisor-classifier";
+import type { RagSearchResultItem } from "@/services/search/rag-search";
+import type { PipelineResult } from "@/features/advisor/pipeline/types";
+import type { AdvisorPersona } from "@/features/advisor/classifier";
 import type { Message } from "../_lib/types";
 
 /** Sentinel used to trigger the initial session sync on mount regardless of the initial id value. */
@@ -102,7 +102,10 @@ export function useAdvisorSessions({
     PREV_SESSION_SENTINEL,
   );
   const activeSessionIdRef = useRef(activeSessionId);
-  activeSessionIdRef.current = activeSessionId;
+
+  useEffect(() => {
+    activeSessionIdRef.current = activeSessionId;
+  }, [activeSessionId]);
 
   // Load sessions and the active session on mount, and resync when the initialSessionId route parameter changes (e.g. browser navigation).
   // activeSessionId is intentionally excluded from deps to prevent the sidebar click (which sets activeSessionId) from re-triggering syncFromProp and racing against handleSelectSession.
@@ -140,7 +143,13 @@ export function useAdvisorSessions({
       cancelled = true;
       prevInitialSessionIdRef.current = PREV_SESSION_SENTINEL;
     };
-  }, [initialSessionId, loadMessages, setMessages, setActiveCitation, isSendingRef]);
+  }, [
+    initialSessionId,
+    loadMessages,
+    setMessages,
+    setActiveCitation,
+    isSendingRef,
+  ]);
 
   const handleSelectSession = useCallback(
     async (sessionId: number) => {

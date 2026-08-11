@@ -1,22 +1,22 @@
 import { sql, eq, innerProduct, asc, and } from "drizzle-orm";
 import { db } from "@/db";
 import { chunks, sources, boxes } from "@/db/schema";
-import { generateVectorEmbeddings } from "@/lib/services/cloudflare-ai";
-import { rerankWithCohere } from "@/lib/services/cohere";
+import { generateVectorEmbeddings } from "@/services/ai/cloudflare-ai";
+import { rerankWithCohere } from "@/services/ai/cohere";
 import type { Logger } from "@/lib/logger";
-import { RAG_CONFIG } from "@/lib/services/rag/config";
+import { RAG_CONFIG } from "@/services/search/rag/config";
 import {
   computeRrf,
   sortByRrfScore,
   type RrfScoredCandidate,
-} from "@/lib/services/rag/rrf";
+} from "@/services/search/rag/rrf";
 import {
   buildLexicalTsQuery,
   searchLexical,
   type LexicalCandidate,
-} from "@/lib/services/rag/lexical";
-import { buildChunkContextPrefix } from "@/lib/services/pdf/chunker";
-import { expandAndTranslateQuery } from "@/lib/services/rag/hyde";
+} from "@/services/search/rag/lexical";
+import { buildChunkContextPrefix } from "@/services/pdf/chunker";
+import { expandAndTranslateQuery } from "@/services/search/rag/hyde";
 import { formatResourceAuthors } from "@/lib/academic/author-formatter";
 
 /** Per-candidate retrieval debug metadata (only exposed when `debug: true`). */

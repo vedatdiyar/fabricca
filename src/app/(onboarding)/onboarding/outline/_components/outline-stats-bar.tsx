@@ -35,7 +35,9 @@ export function OutlineStatsBar({
           className="flex items-center gap-1.5 bg-primary/10 border-primary/20 text-primary py-1 px-2.5"
         >
           <GraduationCap className="size-3.5" />
-          <span className="font-semibold">{academicField || "Genel Akademik"}</span>
+          <span className="font-semibold">
+            {academicField || "Genel Akademik"}
+          </span>
         </Badge>
 
         <div className="flex items-center gap-2 text-xs text-muted-foreground border-l border-border/60 pl-3 ml-1">
@@ -58,7 +60,9 @@ export function OutlineStatsBar({
           disabled={isRegenerating}
           className="text-xs gap-1 h-7 px-2.5 border-primary/20 text-primary hover:bg-primary/10"
         >
-          <Sparkles className={`size-3 ${isRegenerating ? "animate-spin" : ""}`} />
+          <Sparkles
+            className={`size-3 ${isRegenerating ? "animate-spin" : ""}`}
+          />
           {isRegenerating ? "Yeniden Üretiliyor..." : "Yeniden Üret"}
         </Button>
 

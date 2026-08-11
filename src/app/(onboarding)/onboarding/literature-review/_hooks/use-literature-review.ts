@@ -8,12 +8,12 @@ import {
   fetchBoxesWithFullShape,
   fetchUncachedBoxesWithFullShape,
 } from "../../_services/fetch-actions";
-import { useOnboardingNavigation } from "../../_hooks/use-onboarding-navigation";
+import { useLiteratureContinue } from "../../_hooks/use-literature-continue";
 import {
   fetchPreloadedLiteraturePool,
   runLiteraturePipelineAction,
 } from "../actions";
-import type { SubBoxInput } from "../_services/literature-review-papers";
+import type { SubBoxInput } from "@/features/literature-review/literature-review-papers";
 import { BOX_ORDER_WEIGHT } from "@/lib/box-constants";
 
 /** Processing status of a single sub-box within the literature review grid. */
@@ -46,7 +46,7 @@ export interface UseLiteratureReviewResult {
  * @returns The literature review state and control helpers.
  */
 export function useLiteratureReview(): UseLiteratureReviewResult {
-  const { finalizeLiterature } = useOnboardingNavigation();
+  const { finalizeLiterature } = useLiteratureContinue();
   const queryClient = useQueryClient();
 
   const [processing, setProcessing] = useState(false);

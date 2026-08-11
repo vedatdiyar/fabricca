@@ -1,9 +1,12 @@
 import { z } from "zod";
 import { ThinkingLevel, HarmCategory, HarmBlockThreshold } from "@google/genai";
-import { generateStructuredContent, type JsonSchema } from "../gemini";
-import { Logger } from "../../logger";
-import { FLASH_LITE_35, GEMINI_SEED } from "../../constants";
-import { LITERATURE_SANITIZE_SYSTEM_INSTRUCTION } from "../../prompts";
+import {
+  generateGeminiStructuredContent,
+  type JsonSchema,
+} from "@/services/ai";
+import { Logger } from "@/lib/logger";
+import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
+import { LITERATURE_SANITIZE_SYSTEM_INSTRUCTION } from "@/lib/prompts";
 
 const SANITIZE_RESPONSE_SCHEMA: JsonSchema = {
   type: "object",
@@ -51,7 +54,7 @@ export async function sanitizeAcademicDataBulk(
 ): Promise<AcademicItem[]> {
   if (items.length === 0) return items;
 
-  const result = await generateStructuredContent<SanitizeResponse>(
+  const result = await generateGeminiStructuredContent<SanitizeResponse>(
     FLASH_LITE_35,
     LITERATURE_SANITIZE_SYSTEM_INSTRUCTION,
     JSON.stringify(items),
@@ -99,7 +102,7 @@ export async function sanitizeTargetedArticles(
 ): Promise<AcademicItem[]> {
   if (items.length === 0) return items;
 
-  const result = await generateStructuredContent<SanitizeResponse>(
+  const result = await generateGeminiStructuredContent<SanitizeResponse>(
     FLASH_LITE_35,
     LITERATURE_SANITIZE_SYSTEM_INSTRUCTION,
     JSON.stringify(items),

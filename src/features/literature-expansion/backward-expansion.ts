@@ -31,7 +31,7 @@ import type { Logger } from "@/lib/logger";
 import { filterCandidates, normalizeTurkishChars } from "./fuzzy-dedup";
 import type { SuspiciousEntry } from "./cerebras-selection-client";
 import { selectWithCerebras } from "./cerebras-selection-client";
-import { rerankWithCohere } from "@/lib/services/cohere";
+import { rerankWithCohere } from "@/services/ai/cohere";
 
 export interface BackwardExpansionResult {
   selectedCandidates: CandidateSource[];

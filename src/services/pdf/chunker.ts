@@ -1,5 +1,5 @@
-import type { PageAnalysis } from "@/lib/services/pdf-parser/schema";
-import { normalizeAcademicText } from "@/lib/services/pdf/normalizer";
+import type { PageAnalysis } from "./schema";
+import { normalizeAcademicText } from "./normalizer";
 
 export interface DocumentChunk {
   chunkIndex: number;

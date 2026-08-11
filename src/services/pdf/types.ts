@@ -1,4 +1,4 @@
-import type { DocumentChunk } from "@/lib/services/pdf/chunker";
+import type { DocumentChunk } from "./chunker";
 import type { DocumentAnalysisResult } from "./schema";
 
 /** Tunable options for the PDF parsing driver. */

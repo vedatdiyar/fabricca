@@ -2,7 +2,10 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { sources } from "@/db/schema";
 import type { Logger } from "@/lib/logger";
-import { deleteR2Object, generatePresignedUploadUrl } from "@/lib/services/r2";
+import {
+  deleteR2Object,
+  generatePresignedUploadUrl,
+} from "@/services/storage/r2";
 
 /**
  * Deletes a temporary R2 object best-effort, logging rather than throwing when deletion fails.

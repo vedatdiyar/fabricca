@@ -72,7 +72,8 @@ export default async function OutlinePage() {
               Tez Planı Yapılandırması
             </h1>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Tez matrisiniz çözümlenerek hazırlanan taslak içindekiler planını inceleyin ve düzenleyin.
+              Tez matrisiniz çözümlenerek hazırlanan taslak içindekiler planını
+              inceleyin ve düzenleyin.
             </p>
           </div>
           <div className="flex items-center self-end sm:self-center">
@@ -80,10 +81,7 @@ export default async function OutlinePage() {
           </div>
         </div>
 
-        <OutlineContainer
-          sections={sections}
-          academicField={academicField}
-        />
+        <OutlineContainer sections={sections} academicField={academicField} />
       </div>
     </div>
   );

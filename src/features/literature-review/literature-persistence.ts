@@ -5,7 +5,7 @@ import { BOX_TYPE_DESCRIPTIONS } from "@/lib/box-constants";
 import { normalizeTitle } from "@/lib/academic/utils";
 import type { LiteraturePoolEntry, JuryArticle } from "@/lib/types";
 import type { NewSource } from "@/db/schema";
-import type { RecommendedThesisItem } from "../../positioning/_lib/validation";
+import type { RecommendedThesisItem } from "@/features/positioning/validation";
 
 export type TxClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
 

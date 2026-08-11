@@ -1,4 +1,4 @@
-import type { AdvisorPersona } from "@/lib/services/advisor-classifier";
+import type { AdvisorPersona } from "@/features/advisor/classifier";
 
 /**
  * Builds system instruction for the Socratic Academic Advisor (Tez Danışmanı).

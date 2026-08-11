@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import type { Logger } from "@/lib/logger";
-import { sanitizeAndParseJson, type JsonSchema } from "@/lib/services/gemini";
+import { sanitizeAndParseJson, type JsonSchema } from "@/services/ai";
 import { GEMINI_SEED, FLASH_LITE_35 } from "@/lib/constants";
 import { PDF_PARSER_SYSTEM_INSTRUCTION } from "@/lib/prompts";
 import {

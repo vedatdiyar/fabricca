@@ -1,4 +1,4 @@
-import type { PositioningMatrixInput } from "@/app/(onboarding)/onboarding/positioning/_lib/validation";
+import type { PositioningMatrixInput } from "@/features/positioning/validation";
 
 /** System instruction for unified final LLM Jury Analysis (Status + Gap Analysis + Strategic Guiding Thesis Cards). */
 export const POSITIONING_JURY_SYSTEM_INSTRUCTION = `# Rol ve Uzmanlık

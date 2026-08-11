@@ -7,7 +7,10 @@ import { db } from "@/db";
 import { tasks, boxes, sources } from "@/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { getUsersMatrixAndBoxesWithResources } from "@/app/(app)/_services/box-service";
-import { deleteLibraryResourceAction as deleteLibraryResource } from "@/app/(app)/library/actions";
+import {
+  deleteLibraryResourceAction as deleteLibraryResource,
+  toggleResourceReadStatusAction as toggleResourceReadStatus,
+} from "@/app/(app)/library/actions";
 import {
   AddTaskSchema,
   UpdateTaskSchema,
@@ -370,7 +373,8 @@ export async function deleteLibraryResourceAction(resourceId: number): Promise<{
 }
 
 /**
- * Toggles the isRead flag on a single library resource for the Dashboard reading tasks.
+ * Sets the isRead flag on a single library resource for the Dashboard reading tasks,
+ * delegating to the library server action and revalidating both routes on success.
  *
  * @param resourceId - The resource ID to update
  * @param isRead - New boolean read state
@@ -379,25 +383,11 @@ export async function deleteLibraryResourceAction(resourceId: number): Promise<{
 export async function toggleResourceReadStatusAction(
   resourceId: number,
   isRead: boolean,
-): Promise<{ success: boolean; error?: string }> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  try {
-    const session = await getSession();
-    if (!session) return { success: false, error: SESSION_ERROR_MSG };
-
-    await db.update(sources).set({ isRead }).where(eq(sources.id, resourceId));
-
-    return { success: true };
-  } catch (err) {
-    log.error("toggle_read_status_failed", {
-      service: "dashboard",
-      error: err,
-    });
-    return {
-      success: false,
-      error: "Failed to update read status.",
-    };
+): Promise<{ success: boolean; error?: string; isRead?: boolean }> {
+  const res = await toggleResourceReadStatus(resourceId, isRead);
+  if (res.success) {
+    revalidatePath("/dashboard");
+    revalidatePath("/library");
   }
+  return res;
 }

@@ -16,15 +16,15 @@ import {
   SESSION_ERROR_MSG,
 } from "@/lib/session";
 import type { LiteraturePoolEntry, OnboardingActionResult } from "@/lib/types";
-import type { SubBoxInput } from "./_services/literature-review-papers";
-import { orchestrateBatchProcess } from "./_services/batch-orchestrator";
+import type { SubBoxInput } from "@/features/literature-review/literature-review-papers";
+import { orchestrateBatchProcess } from "@/features/literature-review/batch-orchestrator";
 import {
   persistLiteraturePool,
   persistSubBoxEntry,
   persistRelatedTheses,
   fetchPreloadedPool,
-} from "./_services/literature-persistence";
-import { loadThesisMatrixAndBoxes } from "./_services/process-boxes-data";
+} from "@/features/literature-review/literature-persistence";
+import { loadThesisMatrixAndBoxes } from "@/features/literature-review/process-boxes-data";
 
 const _cancelFlags = new Map<number, boolean>();
 

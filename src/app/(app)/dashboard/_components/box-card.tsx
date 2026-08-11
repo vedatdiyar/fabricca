@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
-import { LiteratureExpansionButton } from "@/components/literature-expansion-button";
+import { LiteratureExpansionButton } from "@/components/shared/literature-expansion-button";
 import {
   Card,
   CardHeader,

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { generateStructuredContent } from "./cerebras";
+import { generateCerebrasStructuredContent } from "@/services/ai";
 import { CEREBRAS_MODEL } from "@/lib/constants";
 
 export type AdvisorPersona = "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT";
@@ -105,7 +105,7 @@ export async function classifyAdvisorIntent(
 
     const prompt = `Kullanıcı Mesajı: "${query}"${historyContext}`;
 
-    const res = await generateStructuredContent<ClassifierResult>(
+    const res = await generateCerebrasStructuredContent<ClassifierResult>(
       CEREBRAS_MODEL,
       SYSTEM_INSTRUCTION,
       prompt,

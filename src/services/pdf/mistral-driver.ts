@@ -1,6 +1,6 @@
 import type { Logger } from "@/lib/logger";
-import { generatePresignedReadUrl } from "@/lib/services/r2";
-import { normalizeAcademicText } from "@/lib/services/pdf/normalizer";
+import { generatePresignedReadUrl } from "@/services/storage/r2";
+import { normalizeAcademicText } from "./normalizer";
 import {
   resolveMistralPrintedPages,
   type MistralOcrPage,
