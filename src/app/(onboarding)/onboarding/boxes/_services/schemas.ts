@@ -136,10 +136,9 @@ export const semanticQueryEntrySchema = z.object({
     .describe("Eşleştirme için alt kutu başlığı (Phase 1'deki ile aynı)."),
   semanticQuery: z
     .string()
-    .min(50)
     .max(2000)
     .describe(
-      "OpenAlex GTE Large EN aramasına özel, 200-600 karakter İngilizce doğal akademik paragraf. Doğal dilde, tırnak/parantez/şablon içermeyen, akıcı bir araştırma odağı metni.",
+      "OpenAlex GTE Large EN aramasına özel, 150-300 karakterlik yoğun İngilizce doğal akademik araştırma cümlesi. Tırnak, ikincil yazar ismi, parantez veya şablon içermeyen akıcı bir metin.",
     ),
 });
 
@@ -167,7 +166,7 @@ export const bulkSemanticQueryJsonSchema: JsonSchema = {
           semanticQuery: {
             type: "string",
             description:
-              "OpenAlex GTE Large EN aramasına özel, 200-600 karakter İngilizce doğal akademik paragraf",
+              "OpenAlex GTE Large EN aramasına özel, 150-300 karakter yoğun İngilizce doğal akademik arama metni",
           },
         },
         required: ["subBoxTitle", "semanticQuery"],

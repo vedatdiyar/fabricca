@@ -275,7 +275,6 @@ export function LiteratureReviewContent() {
           return (
             <Card key={subBox.title} className="p-6 space-y-4 rounded-md">
               <div className="flex items-center gap-2">
-                <div className="w-1.5 h-6 rounded-full bg-primary/20" />
                 <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
                   {subBox.title}
                 </h2>
@@ -306,7 +305,6 @@ export function LiteratureReviewContent() {
       {relatedBox && (
         <Card className="p-6 space-y-4 rounded-md">
           <div className="flex items-center gap-2">
-            <div className="w-1.5 h-6 rounded-full bg-primary/20" />
             <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
               {relatedBox.title || RELATED_THESES_TITLE}
             </h2>

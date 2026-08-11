@@ -28,9 +28,13 @@ export async function executePhase1Search(
         const query = subBox.semanticQuery?.trim();
 
         if (!query) {
-          throw new Error(
-            `semanticQuery is missing for sub-box "${subBox.title}" — aborting pipeline.`,
-          );
+          return {
+            boxType: box.boxType ?? "PRIMARY_MATERIAL",
+            subBoxDescription: subBox.description ?? "",
+            subBox,
+            thesisBoxId: subBox.thesisBoxId,
+            rawPapers: [],
+          };
         }
 
         const rawPapers = await searchOpenAlex(query, 25, checkCancelled);

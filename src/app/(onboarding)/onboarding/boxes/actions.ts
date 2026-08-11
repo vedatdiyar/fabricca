@@ -153,6 +153,7 @@ export async function generateSemanticQueriesAction(
       title: string;
       boxType: string;
       description: string;
+      concepts?: string[];
     }[] = [];
     for (const key of [
       "subjectProblem",
@@ -170,6 +171,7 @@ export async function generateSemanticQueriesAction(
                 ? "THEORETICAL_FRAMEWORK"
                 : "METHODOLOGY",
           description: sb.description ?? "",
+          concepts: sb.concepts ?? [],
         });
       }
     }
@@ -178,7 +180,16 @@ export async function generateSemanticQueriesAction(
       return { success: true, queries: new Map() };
     }
 
-    const prompt = buildSemanticQueryUserPrompt(subBoxEntries);
+    const matrixContext = {
+      subjectProblem: structure.subjectProblem?.description,
+      theoreticalFramework: structure.theoreticalFramework?.description,
+      methodology: structure.methodology?.description,
+    };
+
+    const prompt = buildSemanticQueryUserPrompt({
+      matrix: matrixContext,
+      subBoxes: subBoxEntries,
+    });
 
     const result = await generateStructuredContent<BulkSemanticQueryResponse>(
       FLASH_LITE_31,
