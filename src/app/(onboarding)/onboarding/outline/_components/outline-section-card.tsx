@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   ChevronRight,
   ChevronUp,
@@ -79,7 +79,7 @@ export function OutlineSectionCard({
   const [dragOverSubIdx, setDragOverSubIdx] = useState<number | null>(null);
 
   const sectionNumber = sectionIndex + 1;
-  const subSections = section.subSections ?? [];
+  const subSections = useMemo(() => section.subSections ?? [], [section.subSections]);
   const hasSubSections = subSections.length > 0;
 
   const handleSaveSectionEdit = useCallback(() => {
@@ -406,25 +406,26 @@ export function OutlineSectionCard({
                     </div>
                   ) : (
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-start gap-2 flex-1 min-w-0">
-                        <span
-                          className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground mt-0.5 shrink-0"
-                          title="Sürükleyip Sırasını Değiştirin"
-                        >
-                          <GripVertical className="size-3.5" />
-                        </span>
+                      <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                        {/* Drag Handle & Sub-section Number */}
+                        <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+                          <span
+                            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-0.5"
+                            title="Sürükleyip Sırasını Değiştirin"
+                          >
+                            <GripVertical className="size-3.5" />
+                          </span>
+                          <span className="font-mono text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded font-semibold shrink-0">
+                            {sectionNumber}.{subIdx + 1}
+                          </span>
+                        </div>
 
                         <div className="flex-1 min-w-0 space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded shrink-0">
-                              {sectionNumber}.{subIdx + 1}
-                            </span>
-                            <h4 className="text-sm font-medium text-foreground leading-snug">
-                              {sub.title}
-                            </h4>
-                          </div>
+                          <h4 className="text-sm font-medium text-foreground leading-snug">
+                            {sub.title}
+                          </h4>
                           {sub.description && (
-                            <p className="text-xs text-muted-foreground leading-relaxed pl-8">
+                            <p className="text-xs text-muted-foreground leading-relaxed">
                               {sub.description}
                             </p>
                           )}
