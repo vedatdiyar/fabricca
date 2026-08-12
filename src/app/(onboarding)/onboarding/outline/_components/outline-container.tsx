@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,19 @@ interface OutlineContainerProps {
  * @param props - Component props.
  * @returns The outline container markup.
  */
-export function OutlineContainer({
+export function OutlineContainer({ sections, academicField }: OutlineContainerProps) {
+  const { bfcacheId } = useRouter();
+
+  return (
+    <OutlineEditor
+      key={bfcacheId}
+      sections={sections}
+      academicField={academicField}
+    />
+  );
+}
+
+function OutlineEditor({
   sections: initialSections,
   academicField: initialAcademicField,
 }: OutlineContainerProps) {

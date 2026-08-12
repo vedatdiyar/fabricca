@@ -85,6 +85,16 @@ export function OutlineSectionCard({
   );
   const hasSubSections = subSections.length > 0;
 
+  const isSpecialSection = useMemo(() => {
+    const titleUpper = section.title.toLocaleUpperCase("tr-TR");
+    return (
+      titleUpper.includes("GİRİŞ") ||
+      titleUpper.includes("GIRIS") ||
+      titleUpper.includes("SONUÇ") ||
+      titleUpper.includes("SONUC")
+    );
+  }, [section.title]);
+
   const handleSaveSectionEdit = useCallback(() => {
     if (!editTitle.trim()) return;
     onUpdateSection({
@@ -102,6 +112,7 @@ export function OutlineSectionCard({
   }, [section]);
 
   const handleAddSubSection = useCallback(() => {
+    if (isSpecialSection) return;
     const newSub: OutlineSubSectionData = {
       title: `Yeni Alt Bölüm ${subSections.length + 1}`,
       description: "Alt bölüm kapsamı ve açıklaması...",
@@ -115,7 +126,7 @@ export function OutlineSectionCard({
     if (!isExpanded) {
       onToggleExpand();
     }
-  }, [subSections, section, onUpdateSection, isExpanded, onToggleExpand]);
+  }, [isSpecialSection, subSections, section, onUpdateSection, isExpanded, onToggleExpand]);
 
   const handleDeleteSubSection = useCallback(
     (subIdx: number) => {
@@ -198,51 +209,46 @@ export function OutlineSectionCard({
           {/* Drag Handle & Section Number */}
           <div className="flex items-center gap-1 shrink-0 mt-1">
             <span
-              className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1"
-              title="Sürükleyip Sırasını Değiştirin"
+              className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground p-0.5 rounded transition-colors"
+              title="Bölümü Taşı"
             >
               <GripVertical className="size-4" />
             </span>
-            <button
-              type="button"
-              onClick={onToggleExpand}
-              className="flex size-7 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-xs font-bold text-primary hover:bg-primary/20 transition-colors"
-              title={isExpanded ? "Daralt" : "Genişlet"}
-            >
+            <span className="flex size-7 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-xs font-bold text-primary shrink-0">
               {sectionNumber}
-            </button>
+            </span>
           </div>
 
+          {/* Section Info / Inline Edit */}
           <div className="flex-1 min-w-0">
             {isEditingSection ? (
-              <div className="space-y-3 pr-2">
+              <div className="space-y-2">
                 <Input
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
+                  className="font-serif text-base font-semibold"
                   placeholder="Bölüm başlığı..."
-                  className="font-sans text-base font-semibold"
+                  autoFocus
                 />
                 <Textarea
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
+                  className="text-xs min-h-[60px]"
                   placeholder="Bölüm açıklaması..."
-                  rows={3}
-                  className="textarea-academic text-xs"
                 />
-                <div className="flex items-center gap-2 pt-1">
+                <div className="flex items-center gap-2">
                   <Button
-                    variant="default"
                     size="sm"
                     onClick={handleSaveSectionEdit}
-                    className="text-xs h-7 gap-1"
+                    className="h-7 text-xs gap-1"
                   >
                     <Check className="size-3" /> Kaydet
                   </Button>
                   <Button
-                    variant="ghost"
                     size="sm"
+                    variant="ghost"
                     onClick={handleCancelSectionEdit}
-                    className="text-xs h-7 gap-1"
+                    className="h-7 text-xs gap-1"
                   >
                     <X className="size-3" /> İptal
                   </Button>
@@ -271,7 +277,7 @@ export function OutlineSectionCard({
         </div>
 
         {/* Section Actions */}
-        {!isEditingSection && (
+        {!isEditingSection && !isSpecialSection && (
           <div className="flex items-center gap-1 shrink-0">
             <Button
               variant="ghost"
@@ -323,22 +329,19 @@ export function OutlineSectionCard({
       {isExpanded && (
         <div className="mt-3 space-y-2">
           {subSections.length === 0 ? (
-            <div className="flex items-center justify-between py-2 text-xs text-muted-foreground bg-muted/20 px-3 rounded-md border border-dashed border-border/50">
-              <span>
-                {section.title.toUpperCase().includes("GİRİŞ") ||
-                section.title.toUpperCase().includes("SONUÇ")
-                  ? "Giriş ve Sonuç bölümlerinin akademik standart olarak alt bölümü bulunmamaktadır."
-                  : "Bu bölüm için henüz alt bölüm eklenmedi."}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleAddSubSection}
-                className="text-xs h-7 gap-1 text-primary hover:bg-primary/10 shrink-0"
-              >
-                <Plus className="size-3" /> Alt Bölüm Ekle
-              </Button>
-            </div>
+            !isSpecialSection ? (
+              <div className="flex items-center justify-between py-2 text-xs text-muted-foreground bg-muted/20 px-3 rounded-md border border-dashed border-border/50">
+                <span>Bu bölüm için henüz alt bölüm eklenmedi.</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleAddSubSection}
+                  className="text-xs h-7 gap-1 text-primary hover:bg-primary/10 shrink-0"
+                >
+                  <Plus className="size-3" /> Alt Bölüm Ekle
+                </Button>
+              </div>
+            ) : null
           ) : (
             subSections.map((sub, subIdx) => {
               const isSubEditing = editingSubIndex === subIdx;

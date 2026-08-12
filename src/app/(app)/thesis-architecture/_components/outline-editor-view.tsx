@@ -42,6 +42,16 @@ import {
   ChevronRight,
 } from "lucide-react";
 
+function isIntroOrConclusion(title: string): boolean {
+  const titleUpper = title.toLocaleUpperCase("tr-TR");
+  return (
+    titleUpper.includes("GİRİŞ") ||
+    titleUpper.includes("GIRIS") ||
+    titleUpper.includes("SONUÇ") ||
+    titleUpper.includes("SONUC")
+  );
+}
+
 interface OutlineEditorViewProps {
   outlinesList: Outline[];
   boxesList: Box[];
@@ -213,19 +223,21 @@ export function OutlineEditorView({
                     </div>
 
                     <div className="flex items-center gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setNewParentId(root.id);
-                          setIsAddOpen(true);
-                        }}
-                        title="Alt Bölüm Ekle"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </Button>
+                      {!isIntroOrConclusion(root.title) && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setNewParentId(root.id);
+                            setIsAddOpen(true);
+                          }}
+                          title="Alt Bölüm Ekle"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </div>
                   </div>

@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { matrices, outlines } from "@/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
+import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
 import { generateGeminiStructuredContent } from "@/services/ai";
 import { FLASH_36, GEMINI_SEED } from "@/lib/constants";
 import { ThinkingLevel } from "@google/genai";
@@ -108,6 +109,8 @@ export async function persistOutlineAction(
     if (!matrix) return { error: "Thesis matrix not found." };
 
     await persistOutlines(session.userId, matrix.id, outline);
+
+    invalidateOnboardingStepCache("outline");
 
     return { success: true };
   } catch (err) {
