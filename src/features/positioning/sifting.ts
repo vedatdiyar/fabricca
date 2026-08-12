@@ -32,8 +32,8 @@ const SEARCH_FIELDS = [
   "abstract_translated",
 ];
 
-/** Minimum Meilisearch ranking score threshold to filter low-relevance hits. */
-const RANKING_SCORE_THRESHOLD = 0.3;
+/** Minimum Meilisearch ranking score threshold to maximize candidate search recall. */
+const RANKING_SCORE_THRESHOLD = 0.1;
 
 /**
  * Whether a thesis language tag matches Turkish or English; missing tags are kept.
@@ -99,7 +99,7 @@ export async function searchAndSiftTheses(
   logger?: Logger,
   options?: { topN?: number },
 ): Promise<SiftedThesis[]> {
-  const topN = options?.topN ?? 30;
+  const topN = options?.topN ?? 45;
 
   const allQueries: string[] = [
     sanitizeMeiliQuery(queries.subjectTr_alt1),

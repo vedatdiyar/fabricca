@@ -83,14 +83,16 @@ export const positioningGlobalStatusEnum = pgEnum("positioning_global_status", [
   "NO_RELATED_LITERATURE",
 ]);
 
-/** Thesis Positioning table — stores matrix input, AI gap analysis, global status, and recommended guiding theses. */
+/** Thesis Positioning table — stores AI gap analysis, global status, and recommended guiding theses linked to thesis matrix. */
 export const positioning = pgTable("positioning", {
-  id: uuid("id").defaultRandom().primaryKey(),
+  id: serial().primaryKey(),
   userId: integer("user_id")
     .notNull()
-    .references(() => users.id, { onDelete: "cascade" })
+    .references(() => users.id, { onDelete: "cascade" }),
+  matrixId: integer("matrix_id")
+    .notNull()
+    .references(() => matrices.id, { onDelete: "cascade" })
     .unique(),
-  matrixInput: jsonb("matrix_input").$type<PositioningMatrixInput>().notNull(),
   globalStatus: positioningGlobalStatusEnum("global_status"),
   gapAnalysisSummary: jsonb("gap_analysis_summary").$type<
     GapAnalysisStructured | string
@@ -447,6 +449,10 @@ export const positioningRelations = relations(positioning, ({ one }) => ({
     fields: [positioning.userId],
     references: [users.id],
   }),
+  matrix: one(matrices, {
+    fields: [positioning.matrixId],
+    references: [matrices.id],
+  }),
 }));
 
 export const matricesRelations = relations(matrices, ({ one, many }) => ({
@@ -454,6 +460,7 @@ export const matricesRelations = relations(matrices, ({ one, many }) => ({
     fields: [matrices.userId],
     references: [users.id],
   }),
+  positioning: one(positioning),
   boxes: many(boxes),
   outlines: many(outlines),
 }));

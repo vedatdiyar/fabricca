@@ -217,9 +217,5 @@ Literatür Konumu: ${e.literaturePosition || "Yok"}
     result.globalStatus = "DIRECT_OVERLAP";
   }
 
-  result.recommendedTheses.sort(
-    (a, b) => Number(a.externalThesisId) - Number(b.externalThesisId),
-  );
-
   return result;
 }

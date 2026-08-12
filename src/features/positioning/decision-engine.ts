@@ -18,7 +18,7 @@ import type { JuryAnalysisResult } from "./analysis";
  */
 export async function savePositioningReportTransaction(
   userId: number,
-  input: PositioningMatrixInput,
+  matrixId: number,
   analysisResult: JuryAnalysisResult,
 ) {
   const formattedRecommendedTheses: RecommendedThesisItem[] =
@@ -40,16 +40,15 @@ export async function savePositioningReportTransaction(
       .insert(positioning)
       .values({
         userId,
-        matrixInput: input,
+        matrixId,
         globalStatus: analysisResult.globalStatus,
         gapAnalysisSummary: analysisResult.gapAnalysisSummary,
         recommendedTheses: formattedRecommendedTheses,
         updatedAt: sql`now()`,
       })
       .onConflictDoUpdate({
-        target: positioning.userId,
+        target: positioning.matrixId,
         set: {
-          matrixInput: input,
           globalStatus: analysisResult.globalStatus,
           gapAnalysisSummary: analysisResult.gapAnalysisSummary,
           recommendedTheses: formattedRecommendedTheses,

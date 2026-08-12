@@ -79,7 +79,7 @@ export async function saveThesisMatrixAction(
       if (matrixRow) {
         await tx
           .delete(positioning)
-          .where(eq(positioning.userId, session.userId));
+          .where(eq(positioning.matrixId, matrixRow.id));
 
         await tx
           .delete(sources)

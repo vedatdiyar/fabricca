@@ -189,10 +189,19 @@ export async function persistPositioningReportAction(
       );
     }
 
+    const [matrix] = await db
+      .select({ id: matrices.id })
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+
+    if (!matrix) {
+      return { error: "Tez matrisi bulunamadı." };
+    }
+
     log.info("positioning_db_transaction_start");
     await savePositioningReportTransaction(
       session.userId,
-      validated,
+      matrix.id,
       juryResult,
     );
     log.info("positioning_db_transaction_success");
@@ -226,9 +235,9 @@ export async function logPositioningPipelineSuccessAction(
 }
 
 /**
- * Returns the user's positioning record, pre-filling matrixInput from the matrix when missing.
+ * Returns the user's positioning record linked to their thesis matrix.
  *
- * @returns The matching positioning record, a matrix-prefilled placeholder, or null.
+ * @returns The matching positioning record or null.
  */
 export async function getPositioningAction(): Promise<Positioning | null> {
   const session = await getSession();
@@ -237,54 +246,21 @@ export async function getPositioningAction(): Promise<Positioning | null> {
   }
 
   try {
-    const [record] = await db
-      .select()
-      .from(positioning)
-      .where(eq(positioning.userId, session.userId));
-
     const [matrix] = await db
-      .select()
+      .select({ id: matrices.id })
       .from(matrices)
       .where(eq(matrices.userId, session.userId));
 
-    if (matrix) {
-      const currentMatrixInput = {
-        subjectProblem: matrix.subjectProblem || "",
-        theoreticalFramework: matrix.theoreticalFramework || "",
-        methodology: matrix.methodology || "",
-      };
-
-      if (record) {
-        const recordInput = record.matrixInput as Record<string, string> | null;
-        const isMatching =
-          recordInput &&
-          recordInput.subjectProblem === currentMatrixInput.subjectProblem &&
-          recordInput.theoreticalFramework ===
-            currentMatrixInput.theoreticalFramework &&
-          recordInput.methodology === currentMatrixInput.methodology;
-
-        if (isMatching) {
-          return record;
-        }
-      }
-
-      return {
-        id: record ? record.id : "prefilled-from-matrix",
-        userId: session.userId,
-        matrixInput: currentMatrixInput,
-        globalStatus: null,
-        gapAnalysisSummary: null,
-        recommendedTheses: [],
-        createdAt: matrix.createdAt,
-        updatedAt: matrix.updatedAt,
-      } as Positioning;
+    if (!matrix) {
+      return null;
     }
 
-    if (record) {
-      return record;
-    }
+    const [record] = await db
+      .select()
+      .from(positioning)
+      .where(eq(positioning.matrixId, matrix.id));
 
-    return null;
+    return record ?? null;
   } catch {
     return null;
   }
