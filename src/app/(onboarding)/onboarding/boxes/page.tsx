@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/session";
 import { BoxesContainer } from "./_components/boxes-container";
 import { StartOverButton } from "../_components/start-over-button";
-import { fetchBoxesWithFullShape } from "../_services/fetch-actions";
+import { fetchBoxesWithFullShape } from "@/features/onboarding/services/fetch-actions";
 
 /**
  * Onboarding step 4: subject boxes page that verifies auth and renders the boxes.

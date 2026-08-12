@@ -77,21 +77,39 @@ export function OutlineContainer({
 
   const handleAddSection = useCallback(() => {
     const newSec: OutlineSectionData = {
-      title: `Yeni Bölüm ${sections.length + 1}`,
+      title: `Yeni Gövde Bölümü ${sections.length}`,
       description: "Bu bölümün akademik kapsamı ve amacı...",
-      sortOrder: sections.length + 1,
+      sortOrder: sections.length,
       subSections: [
         {
-          title: "Giriş ve Kavramsal Çerçeve",
+          title: "Kavramsal Çerçeve ve Analiz",
           description: "Bölümün alt konu anlatımı ve detaylandırılması.",
           sortOrder: 1,
         },
       ],
     };
-    const nextSections = [...sections, newSec];
+
+    let nextSections: OutlineSectionData[];
+    let insertIndex: number;
+
+    if (sections.length > 1) {
+      insertIndex = sections.length - 1; // Insert before Sonuç
+      nextSections = [
+        ...sections.slice(0, insertIndex),
+        newSec,
+        ...sections.slice(insertIndex),
+      ].map((sec, i) => ({ ...sec, sortOrder: i + 1 }));
+    } else {
+      insertIndex = sections.length;
+      nextSections = [...sections, newSec].map((sec, i) => ({
+        ...sec,
+        sortOrder: i + 1,
+      }));
+    }
+
     setSections(nextSections);
-    setExpandedIndices((prev) => new Set([...prev, nextSections.length - 1]));
-    toast.success("Yeni bölüm eklendi.");
+    setExpandedIndices((prev) => new Set([...prev, insertIndex]));
+    toast.success("Yeni gövde bölümü eklendi.");
   }, [sections]);
 
   const handleUpdateSection = useCallback(

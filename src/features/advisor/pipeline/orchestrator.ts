@@ -3,7 +3,7 @@ import { runStage1Audit } from "./stage1-audit";
 import type { AuditReport, PipelineResult } from "./types";
 import type { RagSearchResultItem } from "@/services/search/rag-search";
 import { getAi } from "@/services/ai";
-import { buildSocraticAdvisorSystemInstruction } from "@/lib/prompts";
+import { buildAdvisorTurnPromptPayload } from "../prompts/turn.prompt";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 
 /** SSE event emission and text streaming interface used by the pipeline orchestrator. */
@@ -88,14 +88,15 @@ export async function runPipelineTurn(
 
   // Audit passed — stream Socratic Advisor response
   try {
-    const systemInstruction = buildSocraticAdvisorSystemInstruction();
+    const userMessageText = `Kütüphane Kaynak Bağlamı:\n${sourceContext}\n\nKullanıcı Taslağı:\n${input.originalDraft}`;
+    const payload = buildAdvisorTurnPromptPayload("SOCRATIC_ADVISOR", userMessageText);
     const ai = getAi();
     const contents = [
       {
         role: "user",
         parts: [
           {
-            text: `Kütüphane Kaynak Bağlamı:\n${sourceContext}\n\nKullanıcı Taslağı:\n${input.originalDraft}`,
+            text: payload.userPrompt,
           },
         ],
       },
@@ -109,7 +110,7 @@ export async function runPipelineTurn(
         typeof ai.models.generateContentStream
       >[0]["contents"],
       config: {
-        systemInstruction,
+        systemInstruction: payload.systemInstruction,
         seed: GEMINI_SEED,
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         safetySettings: [

@@ -58,7 +58,7 @@ function OutlineSectionNode({
                 <span className="font-mono text-xs text-muted-foreground bg-muted px-2 py-1 rounded shrink-0">
                   {sectionNumber}.{sub.sortOrder || subIdx + 1}
                 </span>
-                <h4 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground leading-snug">
+                <h4 className="font-sans text-xs font-medium text-muted-foreground leading-snug">
                   {sub.title}
                 </h4>
               </div>

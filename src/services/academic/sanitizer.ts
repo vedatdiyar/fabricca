@@ -6,7 +6,7 @@ import {
 } from "@/services/ai";
 import { Logger } from "@/lib/logger";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
-import { LITERATURE_SANITIZE_SYSTEM_INSTRUCTION } from "@/lib/prompts";
+import { buildSanitizePromptPayload } from "@/features/literature-review/prompts/sanitize.prompt";
 
 const SANITIZE_RESPONSE_SCHEMA: JsonSchema = {
   type: "object",
@@ -54,10 +54,12 @@ export async function sanitizeAcademicDataBulk(
 ): Promise<AcademicItem[]> {
   if (items.length === 0) return items;
 
+  const payload = buildSanitizePromptPayload(items);
+
   const result = await generateGeminiStructuredContent<SanitizeResponse>(
     FLASH_LITE_35,
-    LITERATURE_SANITIZE_SYSTEM_INSTRUCTION,
-    JSON.stringify(items),
+    payload.systemInstruction,
+    payload.userPrompt,
     SANITIZE_RESPONSE_SCHEMA,
     logger,
     {
@@ -102,10 +104,12 @@ export async function sanitizeTargetedArticles(
 ): Promise<AcademicItem[]> {
   if (items.length === 0) return items;
 
+  const payload = buildSanitizePromptPayload(items);
+
   const result = await generateGeminiStructuredContent<SanitizeResponse>(
     FLASH_LITE_35,
-    LITERATURE_SANITIZE_SYSTEM_INSTRUCTION,
-    JSON.stringify(items),
+    payload.systemInstruction,
+    payload.userPrompt,
     SANITIZE_RESPONSE_SCHEMA,
     logger,
     {

@@ -8,7 +8,7 @@ import { db } from "@/db";
 import { matrices } from "@/db/schema";
 import { LiteratureReviewContent } from "./_components/literature-review-content";
 import { StartOverButton } from "../_components/start-over-button";
-import { fetchBoxesWithFullShape } from "../_services/fetch-actions";
+import { fetchBoxesWithFullShape } from "@/features/onboarding/services/fetch-actions";
 
 /**
  * Renders the literature review onboarding step for the authenticated user.

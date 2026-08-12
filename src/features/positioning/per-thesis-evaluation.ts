@@ -8,11 +8,9 @@ import {
 import { getGeminiKeyPool } from "@/services/ai/gemini-key-pool";
 import type { Logger } from "@/lib/logger";
 import {
-  PER_THESIS_EVALUATION_SYSTEM_INSTRUCTION,
-  BATCH_PER_THESIS_EVALUATION_SYSTEM_INSTRUCTION,
-  buildPerThesisEvaluationUserPrompt,
-  buildBatchPerThesisEvaluationUserPrompt,
-} from "@/lib/prompts";
+  buildPerThesisEvaluationPromptPayload,
+  buildBatchPerThesisEvaluationPromptPayload,
+} from "./prompts/per-thesis-evaluation.prompt";
 import type { PositioningMatrixInput } from "./validation";
 import type { SiftedThesis } from "./sifting";
 
@@ -130,12 +128,12 @@ export async function evaluateSingleThesis(
   apiKey?: string,
   logger?: Logger,
 ): Promise<PerThesisEvaluation> {
-  const prompt = buildPerThesisEvaluationUserPrompt(input, thesis);
+  const payload = buildPerThesisEvaluationPromptPayload(input, thesis);
 
   const result = await generateGeminiStructuredContent<PerThesisEvaluation>(
     FLASH_LITE_35,
-    PER_THESIS_EVALUATION_SYSTEM_INSTRUCTION,
-    prompt,
+    payload.systemInstruction,
+    payload.userPrompt,
     perThesisEvaluationJsonSchema,
     logger,
     {
@@ -169,13 +167,13 @@ export async function evaluateBatchTheses(
 ): Promise<PerThesisEvaluation[]> {
   if (theses.length === 0) return [];
 
-  const prompt = buildBatchPerThesisEvaluationUserPrompt(input, theses);
+  const payload = buildBatchPerThesisEvaluationPromptPayload(input, theses);
 
   const result =
     await generateGeminiStructuredContent<BatchPerThesisEvaluation>(
       FLASH_LITE_35,
-      BATCH_PER_THESIS_EVALUATION_SYSTEM_INSTRUCTION,
-      prompt,
+      payload.systemInstruction,
+      payload.userPrompt,
       batchPerThesisEvaluationJsonSchema,
       logger,
       {

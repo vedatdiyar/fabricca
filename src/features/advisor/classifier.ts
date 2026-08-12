@@ -49,33 +49,7 @@ const classifierJsonSchema = {
   additionalProperties: false,
 };
 
-const SYSTEM_INSTRUCTION = `# Rol ve Uzmanlık
-
-Sen dijital tez asistanı sisteminin niyet sınıflandırıcısısın (Intent Classifier).
-
-# Birincil Görev
-
-Kullanıcının son mesajını ve sohbet geçmişini inceleyerek devreye girmesi gereken personas (SOCRATIC_ADVISOR / TEZ_ASSISTANT), veritabanı işlem durumu (isActionQuery) ve akış modunu (DIRECT / PIPELINE) belirlemektir.
-
-# Kurallar
-
-1. **Persona Sınıflandırması:**
-   - **"SOCRATIC_ADVISOR":** Kullanıcı tez niyetini, fikrini, hipotezini veya metodoloji tercihlerini belirttiğinde ya da eleştiri/dönüt istediğinde seçilir.
-   - **"TEZ_ASSISTANT":** Kullanıcı doğrudan kavram tanımı, literatür sorgusu, APA kuralı sorduğunda veya veritabanı/tez yapısında güncelleme/işlem istediğinde seçilir.
-
-2. **İşlem Sorgusu (isActionQuery):** Kullanıcı doğrudan veritabanı/araç komutu belirttiğinde \`isActionQuery = true\`, aksi halde \`false\` olarak işaretlenir.
-
-3. **Akış Modu (mode):**
-   - **"PIPELINE":** Kullanıcı denetlenmesi ve eleştirel olarak tartışılması gereken çok cümleli (30+ kelime, paragraf) bir akademik taslak metin veya redaksiyon isteği sunduğunda seçilir.
-   - **"DIRECT":** Kullanıcı tek bir soru (kavram, APA, veritabanı işlemi) sorduğunda veya sohbet geçmişindeki Sokratik sorulara bir yanıt verdiğinde mode "DIRECT" olarak korunur.
-
-# Çıktı Biçimi
-
-Belirtilen JSON şemasına uygun olarak persona, reasoning, isActionQuery ve mode alanlarını döndürün.`;
-
-/**
- * Classifies user intent into SOCRATIC_ADVISOR vs TEZ_ASSISTANT using Cerebras Gemma 4 (gemma-4-31b),
- * and decides whether the message is a standalone question (DIRECT) or a draft paragraph (PIPELINE).
+import { buildClassifierPromptPayload } from "./prompts/classifier.prompt";
 
 /**
  * Classifies user intent into SOCRATIC_ADVISOR vs TEZ_ASSISTANT using Cerebras Gemma 4 (gemma-4-31b),
@@ -90,25 +64,26 @@ export async function classifyAdvisorIntent(
   history?: Array<{ role: string; content: string }>,
 ): Promise<ClassifierResult> {
   try {
-    let historyContext = "";
+    let historyText = "";
     if (history && history.length > 0) {
-      historyContext =
-        "\n\nSon Sohbet Geçmişi:\n" +
-        history
-          .slice(-4)
-          .map(
-            (m) =>
-              `${m.role === "user" ? "Kullanıcı" : "Asistan"}: ${m.content}`,
-          )
-          .join("\n");
+      historyText = history
+        .slice(-4)
+        .map(
+          (m) =>
+            `${m.role === "user" ? "Kullanıcı" : "Asistan"}: ${m.content}`,
+        )
+        .join("\n");
     }
 
-    const prompt = `Kullanıcı Mesajı: "${query}"${historyContext}`;
+    const payload = buildClassifierPromptPayload({
+      userQuery: query,
+      historyText,
+    });
 
     const res = await generateCerebrasStructuredContent<ClassifierResult>(
       CEREBRAS_MODEL,
-      SYSTEM_INSTRUCTION,
-      prompt,
+      payload.systemInstruction,
+      payload.userPrompt,
       classifierJsonSchema,
       undefined,
       {

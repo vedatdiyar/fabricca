@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/session";
 import { MatrixForm } from "./_components/matrix-form";
 import { StartOverButton } from "../_components/start-over-button";
-import { fetchThesisMatrixFresh } from "../_services/fetch-actions";
+import { fetchThesisMatrixFresh } from "@/features/onboarding/services/fetch-actions";
 
 /**
  * Onboarding step 1: thesis matrix form page that fetches and passes the existing matrix to the form.

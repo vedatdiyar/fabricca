@@ -2,7 +2,7 @@ import { z } from "zod";
 import { generateCerebrasStructuredContent } from "@/services/ai";
 import { CEREBRAS_MODEL } from "@/lib/constants";
 import type { Logger } from "@/lib/logger";
-import { buildHyDeSystemInstruction } from "@/lib/prompts";
+import { buildHyDePromptPayload } from "./prompts/hyde.prompt";
 
 /** Structured schema for cross-lingual query expansion and HyDE snippet generation. */
 export const HyDeExpansionSchema = z.object({
@@ -73,11 +73,13 @@ export async function expandAndTranslateQuery(
   const trimmed = query.trim();
   if (!trimmed) return null;
 
+  const payload = buildHyDePromptPayload(trimmed);
+
   try {
     const result = await generateCerebrasStructuredContent<HyDeExpansionResult>(
       CEREBRAS_MODEL,
-      buildHyDeSystemInstruction(),
-      trimmed,
+      payload.systemInstruction,
+      payload.userPrompt,
       JSON_SCHEMA_SPEC,
       logger,
       {

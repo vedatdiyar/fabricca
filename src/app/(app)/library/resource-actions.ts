@@ -11,7 +11,7 @@ import {
   ensureUserMatrixAndBoxes,
   getOwnedSource,
 } from "@/services/box/ownership";
-import { mapSourceToResource } from "./_services/resource-mapper";
+import { mapSourceToResource } from "@/features/library/services/resource-mapper";
 import type { NoteType } from "./_lib/types";
 
 /**

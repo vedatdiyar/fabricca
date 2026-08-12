@@ -37,9 +37,8 @@ const outlineSectionSchema: z.ZodType<{
           sortOrder: z.number().int().describe("Alt bölümün gösterim sırası."),
         }),
       )
-      .min(2)
       .describe(
-        "Bölümün alt bölümleri. Her ana bölümün altında konusunu detaylandıran en az 2 alt bölüm bulunmalıdır.",
+        "Gövde bölümleri için en az 2 alt bölüm. Giriş ve Sonuç bölümleri için boş dizi ([]).",
       ),
   }),
 );
@@ -55,10 +54,10 @@ export const outlineGenerationSchema = z.object({
     ),
   sections: z
     .array(outlineSectionSchema)
-    .min(3)
-    .max(8)
+    .min(4)
+    .max(5)
     .describe(
-      "Tezin ana bölüm başlıkları (Giriş, Kavramsal Çerçeve, Metodoloji, Ampirik/Uygulamalı Analiz, Sonuç dahil en az 3, en fazla 8 ana bölüm).",
+      "Tezin ana bölüm başlıkları (Giriş [alt başlıksız], 2-3 Ana Gövde Bölümü [alt başlıklı], Sonuç ve Değerlendirme [alt başlıksız] olmak üzere toplam 4 veya 5 ana bölüm).",
     ),
 });
 
@@ -104,9 +103,8 @@ function buildSectionJsonSchemaProperty(): JsonSchemaProperty {
           required: ["title", "description", "sortOrder"],
           additionalProperties: false,
         },
-        minItems: 2,
         description:
-          "Alt bölümler. Her ana bölüm altında konusunu detaylandıran en az 2 alt bölüm.",
+          "Alt bölümler. Gövde bölümleri altında en az 2 alt bölüm yer alır. Giriş ve Sonuç bölümleri için boş dizi ([]).",
       },
     },
     required: ["title", "description", "sortOrder", "subSections"],
@@ -127,10 +125,10 @@ export const outlineGenerationJsonSchema: JsonSchema = {
     sections: {
       type: "array",
       items: buildSectionJsonSchemaProperty(),
-      minItems: 3,
-      maxItems: 8,
+      minItems: 4,
+      maxItems: 5,
       description:
-        "Tezin ana bölüm başlıkları (Giriş, Kavramsal Çerçeve, Yöntem, Bulgular, Sonuç dahil en az 3, en fazla 8 ana bölüm).",
+        "Tezin ana bölüm başlıkları (Bölüm 1 Giriş [alt başlıksız], Bölüm 2 ve 3 [veya 4] Ana Gövde Bölümleri [en az 2 alt bölüm], Son Bölüm Sonuç ve Değerlendirme [alt başlıksız] olmak üzere toplam tam olarak 4 veya 5 ana bölüm).",
     },
   },
   required: ["academicField", "sections"],

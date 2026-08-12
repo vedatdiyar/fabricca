@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLoadingOverlay } from "@/providers/loading-overlay-provider";
-import { OUTLINE_GENERATION_STEPS } from "../_lib/loading-steps";
+import { OUTLINE_GENERATION_STEPS } from "@/features/onboarding/loading-steps";
 import { getStepTanStackKeys } from "@/lib/onboarding-cache";
 import { clearDownstreamDbAction } from "../actions";
 import {

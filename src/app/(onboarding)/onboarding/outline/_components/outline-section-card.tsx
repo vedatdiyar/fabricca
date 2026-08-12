@@ -323,13 +323,18 @@ export function OutlineSectionCard({
       {isExpanded && (
         <div className="mt-3 space-y-2">
           {subSections.length === 0 ? (
-            <div className="flex items-center justify-between py-2 text-xs text-muted-foreground">
-              <span>Henüz alt bölüm eklenmedi.</span>
+            <div className="flex items-center justify-between py-2 text-xs text-muted-foreground bg-muted/20 px-3 rounded-md border border-dashed border-border/50">
+              <span>
+                {section.title.toUpperCase().includes("GİRİŞ") ||
+                section.title.toUpperCase().includes("SONUÇ")
+                  ? "Giriş ve Sonuç bölümlerinin akademik standart olarak alt bölümü bulunmamaktadır."
+                  : "Bu bölüm için henüz alt bölüm eklenmedi."}
+              </span>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleAddSubSection}
-                className="text-xs h-7 gap-1 text-primary hover:bg-primary/10"
+                className="text-xs h-7 gap-1 text-primary hover:bg-primary/10 shrink-0"
               >
                 <Plus className="size-3" /> Alt Bölüm Ekle
               </Button>
@@ -424,7 +429,7 @@ export function OutlineSectionCard({
                         </div>
 
                         <div className="flex-1 min-w-0 space-y-1">
-                          <h4 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground leading-snug">
+                          <h4 className="font-sans text-sm font-medium text-foreground leading-snug">
                             {sub.title}
                           </h4>
                           {sub.description && (

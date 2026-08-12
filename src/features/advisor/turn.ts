@@ -1,7 +1,7 @@
 import { HarmCategory, HarmBlockThreshold, ThinkingLevel } from "@google/genai";
 import { getAi } from "@/services/ai";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
-import { buildAdvisorSystemInstruction } from "@/lib/prompts";
+import { buildAdvisorTurnPromptPayload } from "./prompts/turn.prompt";
 import { sanitizeModelStreamText } from "@/lib/text-sanitizer";
 import { classifyAdvisorIntent } from "./classifier";
 import {
@@ -250,7 +250,8 @@ export async function runTurn(
       "Kütüphanenizde bu sorguyla doğrudan eşleşen veya yeterince alakalı bir kaynak bulunamadı. Lütfen sorgunuzu kütüphanenizdeki mevcut konulara yönelik olarak yeniden formüle edin.";
   }
 
-  const systemInstruction = buildAdvisorSystemInstruction(undefined, persona);
+  const userMessageText = `Kütüphane Kaynak Bağlamı:\n${contextText}\n\nKullanıcı Sorgusu:\n${params.query}`;
+  const payload = buildAdvisorTurnPromptPayload(persona, userMessageText);
 
   const ai = getAi();
   const contents: Array<Record<string, unknown>> = [];
@@ -261,12 +262,11 @@ export async function runTurn(
     }
   }
 
-  const userMessageText = `Kütüphane Kaynak Bağlamı:\n${contextText}\n\nKullanıcı Sorgusu:\n${params.query}`;
-  contents.push({ role: "user", parts: [{ text: userMessageText }] });
+  contents.push({ role: "user", parts: [{ text: payload.userPrompt }] });
 
   const fullText = await runAdvisorToolLoop(writer, {
     ai,
-    systemInstruction,
+    systemInstruction: payload.systemInstruction,
     contents,
     userId: params.userId,
   });

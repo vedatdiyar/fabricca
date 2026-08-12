@@ -3,7 +3,7 @@ import {
   type JsonSchema,
 } from "@/services/ai";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
-import { buildJurySystemInstruction, buildJuryUserPrompt } from "@/lib/prompts";
+import { buildJuryPromptPayload } from "./prompts/batch-jury.prompt";
 import { ThinkingLevel, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { Logger } from "@/lib/logger";
 import { extractOpenAlexId } from "@/lib/academic/utils";
@@ -129,21 +129,19 @@ export async function evaluateSingleBoxJury(
     )
     .join("\n\n");
 
-  const systemInstruction = buildJurySystemInstruction(box.boxType);
-
-  const prompt = buildJuryUserPrompt(
+  const payload = buildJuryPromptPayload({
     thesisSubject,
-    box.thesisBoxId,
-    box.subBoxTitle,
-    box.boxType,
-    box.description,
+    thesisBoxId: box.thesisBoxId,
+    subBoxTitle: box.subBoxTitle,
+    boxType: box.boxType,
+    description: box.description,
     articlesText,
-    articles.length,
-  );
+    articleCount: articles.length,
+  });
 
   const raw = await generateGeminiStructuredContent<{
     evaluations: JuryEvaluation[];
-  }>(FLASH_LITE_35, systemInstruction, prompt, juryJsonSchema, logger, {
+  }>(FLASH_LITE_35, payload.systemInstruction, payload.userPrompt, juryJsonSchema, logger, {
     thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
     zodSchema: singleBoxJuryOutputSchema,
     seed: GEMINI_SEED,

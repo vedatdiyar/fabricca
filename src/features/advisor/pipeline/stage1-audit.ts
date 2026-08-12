@@ -8,7 +8,7 @@ import {
 import { ThinkingLevel } from "@google/genai";
 import { generateGeminiStructuredContent } from "@/services/ai";
 import { FLASH_LITE_35 } from "@/lib/constants";
-import { buildPipelineStage1AuditSystemInstruction } from "@/lib/prompts";
+import { buildStage1AuditPromptPayload } from "../prompts/stage1-audit.prompt";
 import {
   auditReportJsonSchema,
   auditReportSchema,
@@ -77,10 +77,16 @@ export async function runStage1Audit(
 
   const annotationContext = await loadAnnotationContext(userId);
 
+  const payload = buildStage1AuditPromptPayload({
+    draftText: draft,
+    ragContext: sourceContext,
+    notesContext: annotationContext,
+  });
+
   const audit = await generateGeminiStructuredContent<AuditReport>(
     FLASH_LITE_35,
-    buildPipelineStage1AuditSystemInstruction(),
-    `Kütüphane Kaynak Bağlamı:\n${sourceContext}\n\nKullanıcı Notları Bağlamı:\n${annotationContext}\n\nDenetlenecek Taslak Metin:\n"""\n${draft}\n"""`,
+    payload.systemInstruction,
+    payload.userPrompt,
     auditReportJsonSchema,
     undefined,
     {

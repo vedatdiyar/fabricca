@@ -137,10 +137,7 @@ export function sanitizeMeiliQuery(rawQuery: string): string {
     .trim();
 }
 
-import {
-  POSITIONING_QUERIES_SYSTEM_INSTRUCTION,
-  buildPositioningQueriesUserPrompt,
-} from "@/lib/prompts";
+import { buildPositioningQueriesPromptPayload } from "./prompts/queries.prompt";
 
 /**
  * Generates 8 sanitized TR+EN search queries from the positioning matrix via Gemini.
@@ -153,12 +150,12 @@ export async function generatePositioningQueries(
   input: PositioningMatrixInput,
   logger?: Logger,
 ): Promise<GeneratedQueries> {
-  const userPrompt = buildPositioningQueriesUserPrompt(input);
+  const payload = buildPositioningQueriesPromptPayload(input);
 
   const result = await generateGeminiStructuredContent<GeneratedQueries>(
     FLASH_LITE_31,
-    POSITIONING_QUERIES_SYSTEM_INSTRUCTION,
-    userPrompt,
+    payload.systemInstruction,
+    payload.userPrompt,
     generatedQueriesJsonSchema,
     logger,
     {

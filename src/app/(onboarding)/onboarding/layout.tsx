@@ -1,6 +1,6 @@
 import { OnboardingStepper } from "./_components/onboarding-stepper";
 import { OnboardingContent } from "./_components/onboarding-content";
-import { checkStepsDataAction } from "./_services/fetch-actions";
+import { checkStepsDataAction } from "@/features/onboarding/services/fetch-actions";
 
 /**
  * Wraps all onboarding pages with the step navigation sidebar and content area.

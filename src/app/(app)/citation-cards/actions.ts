@@ -12,7 +12,7 @@ import {
   fetchCitationCardsData,
   moveCitationCardBox,
   updateCitationCard,
-} from "./_services/citation-cards-service";
+} from "@/features/citation-cards/citation-cards-service";
 import type {
   BoxItem,
   CitationCardItem,

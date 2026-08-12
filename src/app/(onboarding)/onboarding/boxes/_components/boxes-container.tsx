@@ -16,7 +16,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { AIBanner } from "@/components/shared/ai-banner";
 import { BoxesSkeleton } from "./boxes-skeleton";
 import { useBoxesContinue } from "../../_hooks/use-boxes-continue";
-import { fetchBoxesWithFullShape } from "../../_services/fetch-actions";
+import { fetchBoxesWithFullShape } from "@/features/onboarding/services/fetch-actions";
 import { BOX_ORDER_WEIGHT, BOX_TYPE_LABELS } from "@/lib/box-constants";
 import type { GeminiThesisBox } from "@/lib/types";
 

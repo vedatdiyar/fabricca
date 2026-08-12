@@ -6,7 +6,7 @@ import {
   STEP_MIN_DURATION_MS,
   isNavigationStepText,
   type LoadingStep,
-} from "../_lib/loading-steps";
+} from "@/features/onboarding/loading-steps";
 
 /**
  * Shared loading-overlay step helpers used across the onboarding flow hooks.

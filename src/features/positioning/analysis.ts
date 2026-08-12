@@ -7,10 +7,7 @@ import {
   type JsonSchema,
 } from "@/services/ai";
 import type { Logger } from "@/lib/logger";
-import {
-  POSITIONING_JURY_SYSTEM_INSTRUCTION,
-  buildPositioningJuryUserPrompt,
-} from "@/lib/prompts";
+import { buildPositioningJuryPromptPayload } from "./prompts/jury-analysis.prompt";
 import type { EvaluatedThesis } from "./per-thesis-evaluation";
 import {
   gapAnalysisStructuredSchema,
@@ -194,16 +191,16 @@ Literatür Konumu: ${e.literaturePosition || "Yok"}
     })
     .join("\n\n---\n\n");
 
-  const userPrompt = buildPositioningJuryUserPrompt(
+  const payload = buildPositioningJuryPromptPayload({
     input,
     thesisListText,
-    evaluatedTheses.length,
-  );
+    evaluatedCount: evaluatedTheses.length,
+  });
 
   const result = await generateGeminiStructuredContent<JuryAnalysisResult>(
     FLASH_36,
-    POSITIONING_JURY_SYSTEM_INSTRUCTION,
-    userPrompt,
+    payload.systemInstruction,
+    payload.userPrompt,
     juryAnalysisResultJsonSchema,
     logger,
     {

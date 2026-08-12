@@ -76,7 +76,7 @@ export function PositioningReportView({
           </div>
 
           <div className="space-y-1 flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
               <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Jüri Değerlendirme Sonucu
               </span>

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLoadingOverlay } from "@/providers/loading-overlay-provider";
-import { MATRIX_SUBMIT_STEPS } from "../_lib/loading-steps";
+import { MATRIX_SUBMIT_STEPS } from "@/features/onboarding/loading-steps";
 import type { ThesisMatrix } from "@/lib/types";
 import { clearDownstreamDbAction } from "../actions";
 import { saveThesisMatrixAction } from "../matrix/actions";

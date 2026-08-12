@@ -2,7 +2,7 @@ import { ThinkingLevel } from "@google/genai";
 import type { Logger } from "@/lib/logger";
 import { generateGeminiStructuredContent } from "@/services/ai";
 import { GEMINI_SEED, FLASH_LITE_35 } from "@/lib/constants";
-import { PDF_PARSER_SYSTEM_INSTRUCTION } from "@/lib/prompts";
+import { buildPdfParserPromptPayload } from "./prompts/pdf-parser.prompt";
 import {
   DocumentAnalysisSchema,
   DocumentMetadataZodSchema,
@@ -51,15 +51,16 @@ export async function extractDocumentMetadata(
   firstPagesText: string,
   logger?: Logger,
 ): Promise<DocumentAnalysisResult["metadata"]> {
-  const prompt = `Analyze the provided first pages of the document below. Extract document metadata: title, authors (with name and role), publicationYear, publisher, and DOI if explicitly present. Standardize the document title into standard Academic Title Case (even if printed in ALL CAPS) and author names into Proper Case, preserving acronyms (NATO, YÖK, PKK, DOI, IMF, etc.) in uppercase.\n\n${firstPagesText}`;
+  const userPrompt = `Analyze the provided first pages of the document below. Extract document metadata: title, authors (with name and role), publicationYear, publisher, and DOI if explicitly present. Standardize the document title into standard Academic Title Case (even if printed in ALL CAPS) and author names into Proper Case, preserving acronyms (NATO, YÖK, PKK, DOI, IMF, etc.) in uppercase.\n\n${firstPagesText}`;
+  const payload = buildPdfParserPromptPayload(userPrompt);
 
   try {
     const res = await generateGeminiStructuredContent<{
       metadata?: DocumentAnalysisResult["metadata"];
     }>(
       FLASH_LITE_35,
-      PDF_PARSER_SYSTEM_INSTRUCTION,
-      prompt,
+      payload.systemInstruction,
+      payload.userPrompt,
       DocumentAnalysisSchema,
       logger,
       {

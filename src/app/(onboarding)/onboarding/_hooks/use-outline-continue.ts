@@ -7,7 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useLoadingOverlay } from "@/providers/loading-overlay-provider";
 import { getStepTanStackKeys } from "@/lib/onboarding-cache";
 import { clearDownstreamDbAction } from "../actions";
-import { fetchUncachedBoxesWithFullShape } from "../_services/fetch-actions";
+import { fetchUncachedBoxesWithFullShape } from "@/features/onboarding/services/fetch-actions";
 import type { SubBoxInput } from "@/features/literature-review/literature-review-papers";
 import { useLiteratureContinue } from "./use-literature-continue";
 

@@ -7,7 +7,7 @@ import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
 import {
   fetchBoxesWithFullShape,
   fetchUncachedBoxesWithFullShape,
-} from "../../_services/fetch-actions";
+} from "@/features/onboarding/services/fetch-actions";
 import { useLiteratureContinue } from "../../_hooks/use-literature-continue";
 import {
   fetchPreloadedLiteraturePool,
