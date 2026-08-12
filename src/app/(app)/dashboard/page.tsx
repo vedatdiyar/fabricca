@@ -46,7 +46,7 @@ export default async function DashboardPage() {
   const dbTasks = tasksResult.success ? (tasksResult.data ?? []) : [];
 
   return (
-    <div className="w-full space-y-8">
+    <div className="w-full space-y-6">
       <DashboardContent
         initialBoxes={dbBoxes}
         initialResources={dbResources}

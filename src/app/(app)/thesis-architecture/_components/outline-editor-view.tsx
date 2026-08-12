@@ -1,15 +1,13 @@
 "use client";
 
+import { TabActions } from "./tab-actions";
 import { useState } from "react";
+import Link from "next/link";
 import { Outline, Box, Annotation, Source } from "@/db/schema";
 import {
   createOutlineSectionAction,
   updateOutlineSectionAction,
   deleteOutlineSectionAction,
-  pinAnnotationAction,
-  unpinAnnotationAction,
-  linkBoxToOutlineAction,
-  unlinkBoxFromOutlineAction,
 } from "../actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,14 +32,12 @@ import {
   BookOpen,
   Plus,
   Trash2,
-  Edit2,
-  Pin,
-  PinOff,
-  FolderKanban,
-  Quote,
   ChevronRight,
   Pencil,
-  Check,
+  FileText,
+  ExternalLink,
+  Layers,
+  Star,
 } from "lucide-react";
 
 function isIntroOrConclusion(title: string): boolean {
@@ -57,23 +53,22 @@ function isIntroOrConclusion(title: string): boolean {
 interface OutlineEditorViewProps {
   outlinesList: Outline[];
   boxesList: Box[];
+  sourcesList?: Source[];
   annotationsList: (Annotation & { source?: Source })[];
-  pinnedMap: Record<number, number[]>; // outlineId -> annotationId[]
-  linkedBoxMap: Record<number, number[]>; // outlineId -> boxId[]
+  pinnedMap: Record<number, number[]>;
+  linkedBoxMap: Record<number, number[]>;
 }
 
 export function OutlineEditorView({
   outlinesList,
   boxesList,
+  sourcesList = [],
   annotationsList,
-  pinnedMap,
   linkedBoxMap,
 }: OutlineEditorViewProps) {
   const [selectedOutline, setSelectedOutline] = useState<Outline | null>(
     outlinesList.length > 0 ? outlinesList[0] : null,
   );
-
-  const [isEditing, setIsEditing] = useState(false);
 
   // Add new section state
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -85,6 +80,11 @@ export function OutlineEditorView({
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
+
+  // Section focused sources state (outlineId -> set of sourceIds)
+  const [focusedSourceMap, setFocusedSourceMap] = useState<
+    Record<number, number[]>
+  >({});
 
   const isEmpty = outlinesList.length === 0;
 
@@ -144,404 +144,475 @@ export function OutlineEditorView({
     }
   };
 
-  const handleTogglePin = async (outlineId: number, annotationId: number) => {
-    const pinned = pinnedMap[outlineId]?.includes(annotationId);
-    if (pinned) {
-      const res = await unpinAnnotationAction(outlineId, annotationId);
-      if (res.success) toast.success("Alıntı fişi iğnesi kaldırıldı.");
-    } else {
-      const res = await pinAnnotationAction(outlineId, annotationId);
-      if (res.success) toast.success("Alıntı fişi bölüme iğnelendi.");
-    }
-  };
+  const toggleSourceFocus = (outlineId: number, sourceId: number) => {
+    setFocusedSourceMap((prev) => {
+      const current = prev[outlineId] || [];
+      const exists = current.includes(sourceId);
+      const updated = exists
+        ? current.filter((id) => id !== sourceId)
+        : [...current, sourceId];
 
-  const handleToggleBoxLink = async (outlineId: number, boxId: number) => {
-    const linked = linkedBoxMap[outlineId]?.includes(boxId);
-    if (linked) {
-      const res = await unlinkBoxFromOutlineAction(outlineId, boxId);
-      if (res.success) toast.success("Kutu bağı kaldırıldı.");
-    } else {
-      const res = await linkBoxToOutlineAction(outlineId, boxId);
-      if (res.success) toast.success("Kutu bölüme bağlandı.");
-    }
+      if (!exists) {
+        toast.success("Kaynak bu bölüm için öne çıkarıldı.");
+      }
+      return { ...prev, [outlineId]: updated };
+    });
   };
-
-  const activePinnedAnnotationIds = selectedOutline
-    ? (pinnedMap[selectedOutline.id] ?? [])
-    : [];
 
   const activeLinkedBoxIds = selectedOutline
     ? (linkedBoxMap[selectedOutline.id] ?? [])
     : [];
 
+  // Sources belonging to the boxes linked to this selected outline section
+  const sectionSources = sourcesList.filter((s) =>
+    s.boxId ? activeLinkedBoxIds.includes(s.boxId) : false,
+  );
+
+  const activeFocusedSourceIds = selectedOutline
+    ? (focusedSourceMap[selectedOutline.id] ?? [])
+    : [];
+
+  // Sort sources so focused/starred sources appear first
+  const sortedSectionSources = [...sectionSources].sort((a, b) => {
+    const aFocused = activeFocusedSourceIds.includes(a.id);
+    const bFocused = activeFocusedSourceIds.includes(b.id);
+    if (aFocused && !bFocused) return -1;
+    if (!aFocused && bFocused) return 1;
+    return 0;
+  });
+
+  // Count of annotations per source
+  const annotationCountMap = new Map<number, number>();
+  for (const anno of annotationsList) {
+    if (anno.sourceId) {
+      annotationCountMap.set(
+        anno.sourceId,
+        (annotationCountMap.get(anno.sourceId) || 0) + 1,
+      );
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 border-b border-border pb-4 md:flex-row md:items-center">
-        <div>
-          <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-            Tez İçindekiler & Bölüm Planı
-          </h2>
-          <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-            Bölüm planınızı yapılandırın, bölümlere Konu Kutuları bağlayın ve
-            Alıntı Fişlerini kanıt olarak bölümlere iğneleyin.
+      <TabActions>
+        <Button
+          size="sm"
+          onClick={() => {
+            setNewParentId(null);
+            setIsAddOpen(true);
+          }}
+          className="gap-2 shadow-xs"
+        >
+          <Plus className="h-4 w-4" />
+          <span>Yeni Bölüm Ekle</span>
+        </Button>
+      </TabActions>
+
+      {isEmpty ? (
+        <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed border-border bg-card">
+          <BookOpen className="h-10 w-10 text-muted-foreground mb-3" />
+          <h3 className="font-serif text-base font-semibold text-foreground mb-1">
+            Henüz Tez Bölüm Planı Oluşturulmadı
+          </h3>
+          <p className="text-xs text-muted-foreground max-w-md mb-4">
+            Onboarding aşamasındaki tez matrisinize dayanarak otomatik bölüm
+            planı üretebilir veya kendiniz manuel bölümler ekleyebilirsiniz.
           </p>
-        </div>
-        {isEmpty || isEditing ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setNewParentId(null);
-                setIsAddOpen(true);
-              }}
-              className="gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Yeni Bölüm Ekle</span>
-            </Button>
-            {isEditing && (
-              <Button
-                size="sm"
-                onClick={() => setIsEditing(false)}
-                className="gap-2"
-              >
-                <Check className="h-4 w-4" />
-                <span>Düzenlemeyi Bitir</span>
-              </Button>
-            )}
-          </div>
-        ) : (
           <Button
             size="sm"
-            onClick={() => setIsEditing(true)}
+            onClick={() => {
+              setNewParentId(null);
+              setIsAddOpen(true);
+            }}
             className="gap-2"
           >
-            <Pencil className="h-4 w-4" />
-            <span>Düzenle</span>
+            <Plus className="h-4 w-4" />
+            <span>İlk Bölümü Ekle</span>
           </Button>
-        )}
-      </div>
+        </Card>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-12 items-start">
+          {/* Left Column: Outline Sidebar (Library Sidebar Work List Style) */}
+          <div className="lg:col-span-4 space-y-3 sticky top-6">
+            <div className="rounded-xl border border-border/80 bg-card p-3 shadow-xs space-y-3">
+              <div className="flex items-center justify-between px-1 pb-1 border-b border-border/40">
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-primary" />
+                  <h4 className="font-sans text-xs font-semibold uppercase tracking-wider text-foreground">
+                    Bölüm İskeleti
+                  </h4>
+                </div>
+                <span className="font-mono text-[11px] text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full font-medium">
+                  {rootOutlines.length} Ana Bölüm
+                </span>
+              </div>
 
-      <div className="grid gap-6 lg:grid-cols-12">
-        {/* Left Column: Outline Tree */}
-        <div className="space-y-3 lg:col-span-5">
-          <div className="flex items-center justify-between">
-            <h4 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Bölüm İskeleti
-            </h4>
-            <span className="font-mono text-[10px] text-muted-foreground">
-              {rootOutlines.length} Ana Bölüm
-            </span>
-          </div>
+              <div className="space-y-2 max-h-[calc(100vh-230px)] overflow-y-auto pr-1">
+                {rootOutlines.map((root, idx) => {
+                  const subItems = getSubOutlines(root.id);
+                  const isSelected = selectedOutline?.id === root.id;
+                  const rootLinkedBoxIds = linkedBoxMap[root.id] ?? [];
+                  const rootSourceCount = sourcesList.filter((s) =>
+                    s.boxId ? rootLinkedBoxIds.includes(s.boxId) : false,
+                  ).length;
 
-          <div className="space-y-2">
-            {rootOutlines.map((root, idx) => {
-              const subItems = getSubOutlines(root.id);
-              const isSelected = selectedOutline?.id === root.id;
-              const linkedCount = linkedBoxMap[root.id]?.length ?? 0;
-              const pinnedCount = pinnedMap[root.id]?.length ?? 0;
-
-              return (
-                <div key={root.id} className="space-y-1.5">
-                  <div
-                    onClick={() => setSelectedOutline(root)}
-                    className={`flex cursor-pointer items-start justify-between rounded-md border p-3 transition-all ${
-                      isSelected
-                        ? "border-primary/50 bg-primary/10 text-foreground font-semibold"
-                        : "border-border/60 bg-card hover:border-border text-foreground hover:bg-muted/30"
-                    }`}
-                  >
-                    <div className="flex items-start gap-2.5 text-sm font-medium flex-1 pr-2">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary border border-primary/20 text-xs font-bold font-mono">
-                        {idx + 1}
-                      </span>
-                      <div className="space-y-1">
-                        <span className="font-serif text-sm font-semibold leading-snug block">
-                          {root.title}
-                        </span>
-                        <div className="flex items-center gap-2 pt-0.5">
-                          {linkedCount > 0 && (
-                            <span className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
-                              <FolderKanban className="h-3 w-3 text-primary" />
-                              {linkedCount} kutu
-                            </span>
-                          )}
-                          {pinnedCount > 0 && (
-                            <span className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
-                              <Quote className="h-3 w-3 text-primary" />
-                              {pinnedCount} alıntı
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1 shrink-0 pt-0.5">
-                      {isEditing && !isIntroOrConclusion(root.title) && (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setNewParentId(root.id);
-                            setIsAddOpen(true);
-                          }}
-                          title="Alt Bölüm Ekle"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                      <ChevronRight
-                        className={`h-4 w-4 transition-transform ${
+                  return (
+                    <div key={root.id} className="space-y-1">
+                      {/* Root Chapter Item (Full title displayed without truncation) */}
+                      <div
+                        onClick={() => setSelectedOutline(root)}
+                        className={`group relative flex cursor-pointer items-start justify-between rounded-lg border p-3 transition-all ${
                           isSelected
-                            ? "text-primary translate-x-0.5"
-                            : "text-muted-foreground"
+                            ? "border-primary bg-primary/10 text-foreground font-semibold shadow-xs ring-1 ring-primary/20"
+                            : "border-border/60 bg-card hover:border-border text-foreground hover:bg-muted/40"
                         }`}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Sub Outlines */}
-                  {subItems.length > 0 && (
-                    <div className="ml-5 space-y-1.5 border-l-2 border-border/40 pl-3 pt-0.5">
-                      {subItems.map((sub, subIdx) => {
-                        const isSubSelected = selectedOutline?.id === sub.id;
-                        return (
-                          <div
-                            key={sub.id}
-                            onClick={() => setSelectedOutline(sub)}
-                            className={`flex cursor-pointer items-center justify-between rounded-md border p-2.5 text-xs transition-all ${
-                              isSubSelected
-                                ? "border-primary/50 bg-primary/10 text-foreground font-semibold"
-                                : "border-border/40 bg-card/60 hover:border-border text-muted-foreground hover:text-foreground"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-xs font-semibold text-primary/80">
-                                {idx + 1}.{subIdx + 1}
-                              </span>
-                              <span className="font-sans font-medium text-foreground">
-                                {sub.title}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Right Column: Active Section Details, Linked Boxes & Pinned Citations */}
-        <div className="lg:col-span-7">
-          {selectedOutline ? (
-            <Card className="flex flex-col h-full border-border bg-card">
-              <CardHeader className="border-b border-border/40 pb-4 space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1.5">
-                    <Badge
-                      variant="outline"
-                      className="border-primary/20 bg-primary/10 text-primary text-[11px] font-mono"
-                    >
-                      {selectedOutline.parentId ? "Alt Bölüm" : "Ana Bölüm"}
-                    </Badge>
-                    <CardTitle className="font-serif text-lg font-semibold text-foreground leading-snug">
-                      {selectedOutline.title}
-                    </CardTitle>
-                    <CardDescription className="text-xs leading-relaxed text-muted-foreground">
-                      {selectedOutline.description ||
-                        "Bu bölüm için henüz açıklama girilmemiş."}
-                    </CardDescription>
-                  </div>
-                  {isEditing && (
-                    <div className="flex items-center gap-1.5 shrink-0 pt-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setEditTitle(selectedOutline.title);
-                          setEditDescription(selectedOutline.description ?? "");
-                          setIsEditOpen(true);
-                        }}
-                        className="gap-1 text-xs"
                       >
-                        <Edit2 className="h-3.5 w-3.5" />
-                        <span>Düzenle</span>
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleDeleteSection(selectedOutline.id)}
-                        className="gap-1 text-xs"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </CardHeader>
-
-              <CardContent className="space-y-6 pt-5">
-                {/* Linked Boxes */}
-                <div className="space-y-3 rounded-md border border-border/40 bg-muted/20 p-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="flex items-center gap-2 font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      <FolderKanban className="h-4 w-4 text-primary" />
-                      <span>Beslendiği Konu Kutuları</span>
-                    </h4>
-                    <span className="font-mono text-[10px] text-muted-foreground">
-                      {activeLinkedBoxIds.length} Bağlı Kutu
-                    </span>
-                  </div>
-
-                  {isEditing ? (
-                    <div className="flex flex-wrap gap-2">
-                      {boxesList.map((box) => {
-                        const isLinked = activeLinkedBoxIds.includes(box.id);
-                        return (
-                          <Badge
-                            key={box.id}
-                            variant={isLinked ? "default" : "outline"}
-                            className={`cursor-pointer text-xs py-1.5 px-3 transition-all max-w-full truncate ${
-                              isLinked
-                                ? "bg-primary text-primary-foreground border-transparent font-medium"
-                                : "border-dashed border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                            }`}
-                            onClick={() =>
-                              handleToggleBoxLink(selectedOutline.id, box.id)
-                            }
-                          >
-                            <span className="truncate">{box.title}</span>
-                            <span className="ml-1 font-bold">
-                              {isLinked ? "✓" : "+"}
+                        <div className="flex items-start gap-2.5 min-w-0 flex-1 pr-1">
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary border border-primary/20 text-xs font-bold font-mono">
+                            {idx + 1}
+                          </span>
+                          <div className="space-y-1 min-w-0 flex-1">
+                            <span className="font-serif text-sm font-semibold leading-snug block break-words whitespace-normal">
+                              {root.title}
                             </span>
-                          </Badge>
-                        );
-                      })}
-                    </div>
-                  ) : activeLinkedBoxIds.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {boxesList
-                        .filter((box) => activeLinkedBoxIds.includes(box.id))
-                        .map((box) => (
-                          <Badge
-                            key={box.id}
-                            variant="default"
-                            className="bg-primary/10 text-primary border border-primary/20 text-xs py-1 px-2.5 font-medium flex items-center gap-1.5"
-                          >
-                            <FolderKanban className="h-3 w-3 shrink-0" />
-                            <span className="truncate">{box.title}</span>
-                          </Badge>
-                        ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs italic text-muted-foreground">
-                      Bu bölüme henüz konu kutusu bağlanmamış.
-                      &quot;Düzenle&quot; moduna geçerek konu kutusu
-                      bağlayabilirsiniz.
-                    </p>
-                  )}
-                </div>
-
-                {/* Pinned Citation Cards */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between border-b border-border/40 pb-2">
-                    <h4 className="flex items-center gap-2 font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      <Quote className="h-4 w-4 text-primary" />
-                      <span>İğnelenmiş Alıntı Fişleri</span>
-                    </h4>
-                    <Badge
-                      variant="secondary"
-                      className="font-mono text-xs px-2 py-0.5"
-                    >
-                      {activePinnedAnnotationIds.length} Fiş
-                    </Badge>
-                  </div>
-
-                  {annotationsList.length > 0 ? (
-                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
-                      {annotationsList.map((anno) => {
-                        const isPinned = activePinnedAnnotationIds.includes(
-                          anno.id,
-                        );
-                        return (
-                          <div
-                            key={anno.id}
-                            className={`rounded-md border p-3.5 space-y-2.5 text-xs transition-colors ${
-                              isPinned
-                                ? "border-primary/40 bg-primary/5"
-                                : "border-border/60 bg-card hover:border-border"
-                            }`}
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="font-medium text-foreground flex items-center gap-2">
-                                <BookOpen className="h-3.5 w-3.5 text-primary shrink-0" />
-                                <span>{anno.source?.title || "Kaynak"}</span>
-                                <span className="font-mono text-[10px] text-muted-foreground">
-                                  (s. {anno.pageNumber})
+                            {rootSourceCount > 0 && (
+                              <div className="flex items-center gap-1 pt-0.5">
+                                <span className="flex items-center gap-1 font-mono text-[10px] text-primary">
+                                  <FileText className="h-3 w-3 shrink-0" />
+                                  {rootSourceCount} kaynak
                                 </span>
-                              </div>
-                              {isEditing && (
-                                <Button
-                                  size="sm"
-                                  variant={isPinned ? "default" : "secondary"}
-                                  onClick={() =>
-                                    handleTogglePin(selectedOutline.id, anno.id)
-                                  }
-                                  className="h-7 text-xs gap-1.5 px-2.5 shrink-0"
-                                >
-                                  {isPinned ? (
-                                    <>
-                                      <PinOff className="h-3 w-3" />
-                                      <span>İğneyi Kaldır</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Pin className="h-3 w-3" />
-                                      <span>Bölüme İğnele</span>
-                                    </>
-                                  )}
-                                </Button>
-                              )}
-                            </div>
-                            <blockquote className="border-l-2 border-primary/40 pl-3 italic text-muted-foreground leading-relaxed text-xs">
-                              &quot;{anno.content}&quot;
-                            </blockquote>
-                            {anno.comment && (
-                              <div className="rounded-md bg-muted/50 p-2 text-xs text-foreground border border-border/40 font-sans">
-                                💬 <strong>Not:</strong> {anno.comment}
                               </div>
                             )}
                           </div>
-                        );
-                      })}
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0 pt-0.5">
+                          {!isIntroOrConclusion(root.title) && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setNewParentId(root.id);
+                                setIsAddOpen(true);
+                              }}
+                              title="Alt Bölüm Ekle"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          <ChevronRight
+                            className={`h-4 w-4 transition-transform ${
+                              isSelected
+                                ? "text-primary translate-x-0.5"
+                                : "text-muted-foreground/60"
+                            }`}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Sub Outlines (Full title displayed without truncation) */}
+                      {subItems.length > 0 && (
+                        <div className="ml-4 space-y-1 border-l-2 border-primary/25 pl-2.5 pt-0.5">
+                          {subItems.map((sub, subIdx) => {
+                            const isSubSelected =
+                              selectedOutline?.id === sub.id;
+                            const subLinkedBoxIds = linkedBoxMap[sub.id] ?? [];
+                            const subSourceCount = sourcesList.filter((s) =>
+                              s.boxId
+                                ? subLinkedBoxIds.includes(s.boxId)
+                                : false,
+                            ).length;
+
+                            return (
+                              <div
+                                key={sub.id}
+                                onClick={() => setSelectedOutline(sub)}
+                                className={`flex cursor-pointer items-start justify-between rounded-md border p-2.5 text-xs transition-all ${
+                                  isSubSelected
+                                    ? "border-primary/60 bg-primary/10 text-foreground font-semibold ring-1 ring-primary/20"
+                                    : "border-border/40 bg-card/80 hover:border-border text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                                }`}
+                              >
+                                <div className="flex items-start gap-2 min-w-0 flex-1 pr-1">
+                                  <span className="font-mono text-xs font-bold text-primary shrink-0 pt-0.5">
+                                    {idx + 1}.{subIdx + 1}
+                                  </span>
+                                  <span className="font-sans font-medium text-foreground break-words whitespace-normal leading-snug">
+                                    {sub.title}
+                                  </span>
+                                </div>
+                                {subSourceCount > 0 && (
+                                  <span className="font-mono text-[10px] text-primary shrink-0 pt-0.5">
+                                    {subSourceCount}k
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <p className="text-xs italic text-muted-foreground py-2">
-                      Henüz kütüphaneden bir alıntı fişi oluşturulmamış.
-                      Kütüphanedeki PDF okumalarınızdan oluşturduğunuz fişler
-                      burada listelenecektir.
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="flex flex-col items-center justify-center p-8 text-center border-dashed border-border/40 bg-card min-h-[300px]">
-              <BookOpen className="h-8 w-8 text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground font-medium">
-                Detaylarını ve alıntı fişlerini görmek için soldan bir bölüm
-                seçin.
-              </p>
-            </Card>
-          )}
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Selected Section & Linked Sources */}
+          <div className="lg:col-span-8 space-y-6">
+            {selectedOutline ? (
+              <div className="space-y-6">
+                {/* Section Header Card */}
+                <Card className="border-border bg-card shadow-xs">
+                  <CardHeader className="pb-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1.5 min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge
+                            variant="outline"
+                            className="border-primary/30 bg-primary/10 text-primary text-[11px] font-mono"
+                          >
+                            {selectedOutline.parentId
+                              ? "Alt Bölüm"
+                              : "Ana Bölüm"}
+                          </Badge>
+                          {selectedOutline.academicField && (
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px] font-sans"
+                            >
+                              {selectedOutline.academicField}
+                            </Badge>
+                          )}
+                        </div>
+                        <CardTitle className="font-serif text-xl font-semibold text-foreground leading-snug break-words">
+                          {selectedOutline.title}
+                        </CardTitle>
+                        <CardDescription className="text-xs leading-relaxed text-muted-foreground break-words">
+                          {selectedOutline.description ||
+                            "Bu bölümün yazım kapsamı ve odağı henüz tanımlanmamış."}
+                        </CardDescription>
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0 pt-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs gap-1.5"
+                          onClick={() => {
+                            setEditTitle(selectedOutline.title);
+                            setEditDescription(
+                              selectedOutline.description ?? "",
+                            );
+                            setIsEditOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          <span>Düzenle</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          onClick={() =>
+                            handleDeleteSection(selectedOutline.id)
+                          }
+                          title="Bölümü Sil"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                </Card>
+
+                {/* Section: Linked Library Sources */}
+                <Card className="border-border bg-card shadow-xs">
+                  <CardHeader className="pb-3 border-b border-border/40 flex flex-row items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-primary" />
+                      <CardTitle className="text-sm font-semibold font-sans">
+                        Bölüm Okuma Kaynakları
+                      </CardTitle>
+                      <Badge
+                        variant="secondary"
+                        className="font-mono text-xs px-2 py-0.5"
+                      >
+                        {sectionSources.length} Kaynak
+                      </Badge>
+                    </div>
+
+                    <Button
+                      asChild
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1.5"
+                    >
+                      <Link href="/library">
+                        <span>Tüm Kütüphaneyi Aç</span>
+                        <ExternalLink className="h-3 w-3" />
+                      </Link>
+                    </Button>
+                  </CardHeader>
+
+                  <CardContent className="pt-4">
+                    {sortedSectionSources.length > 0 ? (
+                      <div className="space-y-3 max-h-[550px] overflow-y-auto pr-1">
+                        {sortedSectionSources.map((source) => {
+                          const annoCount =
+                            annotationCountMap.get(source.id) || 0;
+                          const isFocused = activeFocusedSourceIds.includes(
+                            source.id,
+                          );
+
+                          return (
+                            <div
+                              key={source.id}
+                              className={`rounded-lg border p-4 space-y-2.5 transition-all ${
+                                isFocused
+                                  ? "border-amber-500/50 bg-amber-500/5 shadow-2xs ring-1 ring-amber-500/20"
+                                  : "border-border/60 bg-card hover:border-border"
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="space-y-1 min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    {isFocused && (
+                                      <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 text-[10px] font-medium flex items-center gap-1">
+                                        <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+                                        <span>Ana Kaynak</span>
+                                      </Badge>
+                                    )}
+                                    {source.publicationYear && (
+                                      <Badge
+                                        variant="outline"
+                                        className="font-mono text-[10px] border-primary/20 text-primary"
+                                      >
+                                        {source.publicationYear}
+                                      </Badge>
+                                    )}
+                                    {source.thesisType && (
+                                      <Badge
+                                        variant="secondary"
+                                        className="text-[10px]"
+                                      >
+                                        {source.thesisType}
+                                      </Badge>
+                                    )}
+                                    {source.pdfStatus === "READY" && (
+                                      <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px]">
+                                        PDF var
+                                      </Badge>
+                                    )}
+                                    {annoCount > 0 && (
+                                      <Badge
+                                        variant="outline"
+                                        className="font-mono text-[10px] text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10"
+                                      >
+                                        {annoCount} Alıntı / Not
+                                      </Badge>
+                                    )}
+                                  </div>
+
+                                  <h5 className="font-serif text-sm font-semibold text-foreground leading-snug break-words pt-0.5">
+                                    {source.title}
+                                  </h5>
+
+                                  {source.authors &&
+                                    source.authors.length > 0 && (
+                                      <p className="text-xs text-muted-foreground">
+                                        {source.authors.join(", ")}
+                                      </p>
+                                    )}
+
+                                  {source.publisher && (
+                                    <p className="text-[11px] text-muted-foreground/80 italic">
+                                      {source.publisher}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
+                                  <Button
+                                    size="icon"
+                                    variant={isFocused ? "default" : "outline"}
+                                    onClick={() =>
+                                      toggleSourceFocus(
+                                        selectedOutline.id,
+                                        source.id,
+                                      )
+                                    }
+                                    className={`h-7 w-7 ${
+                                      isFocused
+                                        ? "bg-amber-500 hover:bg-amber-600 text-white"
+                                        : "text-muted-foreground hover:text-amber-500"
+                                    }`}
+                                    title={
+                                      isFocused
+                                        ? "Odaktan çıkar"
+                                        : "Bu bölüm için öne çıkar / odakla"
+                                    }
+                                  >
+                                    <Star
+                                      className={`h-3.5 w-3.5 ${
+                                        isFocused ? "fill-white" : ""
+                                      }`}
+                                    />
+                                  </Button>
+
+                                  <Button
+                                    asChild
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-xs gap-1 px-2.5"
+                                  >
+                                    <Link href={`/library?id=${source.id}`}>
+                                      <span>Oku</span>
+                                      <ExternalLink className="h-3 w-3" />
+                                    </Link>
+                                  </Button>
+                                </div>
+                              </div>
+
+                              {source.comparisonNote && (
+                                <p className="text-xs text-muted-foreground/90 bg-muted/40 p-2.5 rounded-md border border-border/40 leading-relaxed italic">
+                                  &quot;{source.comparisonNote}&quot;
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="py-10 text-center space-y-2 border border-dashed border-border/60 rounded-lg">
+                        <FileText className="h-8 w-8 text-muted-foreground mx-auto" />
+                        <p className="text-xs text-muted-foreground">
+                          Bu bölüme henüz bağlı bir okuma kaynağı bulunmuyor.
+                          Kütüphanede eklediğiniz kaynaklar otomatik olarak bu
+                          bölüme yansır.
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed border-border bg-card min-h-[350px]">
+                <BookOpen className="h-10 w-10 text-muted-foreground mb-3" />
+                <h4 className="font-serif text-base font-semibold text-foreground mb-1">
+                  Bölüm Detaylarını Görüntüleyin
+                </h4>
+                <p className="text-xs text-muted-foreground max-w-sm">
+                  Detaylarını incelemek ve bağlı okuma kaynaklarını görmek için
+                  soldaki Bölüm İskeletinden bir bölüm seçin.
+                </p>
+              </Card>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Dialog: Add Section */}
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>

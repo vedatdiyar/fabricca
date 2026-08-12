@@ -165,7 +165,7 @@ export default function CitationCardsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 w-full">
+    <div className="w-full space-y-6">
       {/* Overview Metric Cards */}
       <CitationMetricsOverview counts={counts} />
 

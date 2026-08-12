@@ -198,7 +198,7 @@ export const sources = pgTable(
   "sources",
   {
     id: serial().primaryKey(),
-    boxId: integer()
+    boxId: integer("box_id")
       .notNull()
       .references(() => boxes.id, { onDelete: "cascade" }),
     title: text().notNull(),

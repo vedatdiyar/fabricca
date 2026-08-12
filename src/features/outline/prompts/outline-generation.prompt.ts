@@ -42,7 +42,12 @@ Gövde bölümlerinin mimarisini tespit edilen bilim dalının geleneksel akadem
 - **Fen Bilimleri / Mühendislik / Sağlık Bilimleri:** Bölüm 1: Giriş → Bölüm 2: Kuramsal Arka Plan ve Literatür → Bölüm 3: Materyal ve Yöntem → Bölüm 4: Bulgular ve Tartışma → Bölüm 5: Sonuç ve Öneriler.
 - **Hukuk Bilimleri:** Bölüm 1: Giriş → Bölüm 2: Kavramsal ve Tarihsel Arka Plan → Bölüm 3: Pozitif Hukuki Düzenlemeler ve Yargı Kararları → Bölüm 4: Uygulamadaki Sorunlar ve Çözümler → Bölüm 5: Sonuç.
 
-## 4. Sıralama ve Açıklama Standartları
+## 4. Konu Kutusu Eşleştirme (recommendedBoxTypes)
+- Her ana bölüm ve alt bölüm için bu bölümün hangi konu kutuları tarafından besleneceğini belirleyin.
+- Kullanılabilir kutu türleri: "SUBJECT_PROBLEM", "THEORETICAL_FRAMEWORK", "PRIMARY_MATERIAL", "METHODOLOGY".
+- Örnek: Teorik çerçeve bölümü için ["THEORETICAL_FRAMEWORK"], Metodoloji bölümü için ["METHODOLOGY", "PRIMARY_MATERIAL"].
+
+## 5. Sıralama ve Açıklama Standartları
 - **Sıralama (sortOrder):** Ana bölümlerde ve her bölümün alt bölümlerinde 1'den başlayan ardışık sayılar kullanın.
 - **Açıklama (description):** Her ana bölüm ve alt bölüm için ne yapılacağını/anlatılacağını açıklayan kısa, net akademik Türkçe açıklamalar yazın.`,
 
@@ -72,6 +77,6 @@ Yukarıdaki tez matrisi verilerini analiz ederek:
 3. Bölüm 1 KESİNLİKLE "Giriş" olmalı ve subSections: [] (boş dizi) içermelidir.
 4. Son Bölüm KESİNLİKLE "Sonuç ve Değerlendirme" olmalı ve subSections: [] (boş dizi) içermelidir.
 5. Giriş ve Sonuç arasındaki 2 veya 3 gövde bölümünün her biri altında en az 2 alt bölüm oluşturun.
-6. Her bölüm ve alt bölüm için kısa, öz akademik Türkçe açıklamalar yazın.`,
+6. Her bölüm ve alt bölüm için kısa, öz akademik Türkçe açıklamalar ve ilgili recommendedBoxTypes eşleştirmesini yapın.`,
   });
 }

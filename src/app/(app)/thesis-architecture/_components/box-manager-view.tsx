@@ -1,5 +1,6 @@
 "use client";
 
+import { TabActions } from "./tab-actions";
 import { useState } from "react";
 import { Box } from "@/db/schema";
 import {
@@ -14,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { updateBoxAction } from "../actions";
+import { compareBoxTypes } from "@/lib/box-constants";
 import {
   FolderKanban,
   Hash,
@@ -62,14 +64,14 @@ export function BoxManagerView({ boxesList }: BoxManagerViewProps) {
   const [drafts, setDrafts] = useState<Record<number, BoxDraft>>({});
   const [savingId, setSavingId] = useState<number | null>(null);
 
-  const rootBoxes = boxesList.filter(
-    (b) => !b.parentId && b.boxType !== "RELATED_THESES",
-  );
+  const rootBoxes = boxesList
+    .filter((b) => !b.parentId && b.boxType !== "RELATED_THESES")
+    .sort((a, b) => compareBoxTypes(a.boxType, b.boxType));
 
   const getSubBoxes = (parentId: number) =>
-    boxesList.filter(
-      (b) => b.parentId === parentId && b.boxType !== "RELATED_THESES",
-    );
+    boxesList
+      .filter((b) => b.parentId === parentId && b.boxType !== "RELATED_THESES")
+      .sort((a, b) => compareBoxTypes(a.boxType, b.boxType));
 
   const toDraft = (box: Box): BoxDraft => ({
     title: box.title,
@@ -138,42 +140,7 @@ export function BoxManagerView({ boxesList }: BoxManagerViewProps) {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Top Header & Actions */}
-      <div className="flex flex-col justify-between gap-4 border-b border-border pb-4 sm:flex-row sm:items-center">
-        <div>
-          <h2 className="flex items-center gap-2 font-serif text-xl font-semibold tracking-tight text-foreground">
-            <FolderKanban className="h-5 w-5 shrink-0 text-primary" />
-            <span>Konu & Kavram Kutuları</span>
-          </h2>
-          <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-            Tezinizin literatür taramasına yön veren tematik arama kovanları ve
-            bağlı kavram etiketleri.
-          </p>
-        </div>
-        {isGlobalEditing ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={cancelGlobalEdit}
-            className="shrink-0 gap-2"
-          >
-            <X className="h-4 w-4" />
-            <span>Düzenlemeyi Bitir</span>
-          </Button>
-        ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={startGlobalEdit}
-            className="shrink-0 gap-2"
-          >
-            <Pencil className="h-4 w-4" />
-            <span>Tümünü Düzenle</span>
-          </Button>
-        )}
-      </div>
-
+    <div className="w-full space-y-6">
       {/* Grid of Root Boxes */}
       <div className="grid gap-6 md:grid-cols-2">
         {rootBoxes.map((rootBox) => {
@@ -189,10 +156,14 @@ export function BoxManagerView({ boxesList }: BoxManagerViewProps) {
           return (
             <Card
               key={rootBox.id}
-              className="flex flex-col h-full border-border bg-card transition-colors hover:border-border"
+              className={`flex flex-col h-full bg-card transition-all ${
+                isRootEditing
+                  ? "border-primary/40 ring-1 ring-primary/20"
+                  : "border-border hover:border-border/80"
+              }`}
             >
               <CardHeader className="space-y-3 pb-3">
-                {/* Top Metadata Row: Badge & Action */}
+                {/* Top Metadata Row: Badge & Action Icon Buttons */}
                 <div className="flex items-center justify-between gap-2">
                   <Badge
                     variant="outline"
@@ -200,20 +171,53 @@ export function BoxManagerView({ boxesList }: BoxManagerViewProps) {
                   >
                     {typeInfo.label}
                   </Badge>
-                  {!isGlobalEditing && !isRootEditing && (
-                    <button
-                      onClick={() => startSingleEdit(rootBox)}
-                      className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                      title="Başlığı ve açıklamayı düzenle"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                  )}
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {isRootEditing ? (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground gap-1"
+                          onClick={() => cancelSingleEdit(rootBox.id)}
+                          disabled={isRootSaving}
+                          aria-label="İptal"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                          <span>İptal</span>
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="h-7 px-3 text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-medium gap-1"
+                          onClick={() => handleSaveBox(rootBox)}
+                          disabled={isRootSaving}
+                          aria-label="Kaydet"
+                        >
+                          {isRootSaving ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Check className="h-3.5 w-3.5" />
+                          )}
+                          <span>Kaydet</span>
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
+                        onClick={() => startSingleEdit(rootBox)}
+                        aria-label="Düzenle"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Content Row: Full Width Form or Heading */}
                 {isRootEditing ? (
-                  <div className="space-y-2 pt-1">
+                  <div className="space-y-2.5 pt-1">
                     <Input
                       value={rootDraft.title}
                       onChange={(e) =>
@@ -225,8 +229,9 @@ export function BoxManagerView({ boxesList }: BoxManagerViewProps) {
                           },
                         }))
                       }
-                      className="h-9 w-full font-sans text-sm font-medium focus-visible:ring-1 focus-visible:ring-primary"
+                      className="h-9 w-full font-sans text-sm font-medium bg-background/60 border-border/80 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/40 rounded-md transition-all placeholder:text-muted-foreground/50"
                       placeholder="Kutu başlığı..."
+                      autoFocus
                     />
                     <Textarea
                       value={rootDraft.description}
@@ -240,37 +245,9 @@ export function BoxManagerView({ boxesList }: BoxManagerViewProps) {
                         }))
                       }
                       rows={3}
-                      className="textarea-academic w-full text-xs"
+                      className="textarea-academic w-full text-xs leading-relaxed p-2.5 border-border/80 focus:border-primary/40 rounded-md"
                       placeholder="Kutu açıklaması..."
                     />
-                    <div className="flex items-center gap-2 pt-1">
-                      <Button
-                        size="sm"
-                        variant="default"
-                        onClick={() => handleSaveBox(rootBox)}
-                        disabled={isRootSaving}
-                        className="h-7 gap-1.5 px-3 text-xs"
-                      >
-                        {isRootSaving ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Check className="h-3 w-3" />
-                        )}
-                        <span>Kaydet</span>
-                      </Button>
-                      {!isGlobalEditing && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => cancelSingleEdit(rootBox.id)}
-                          disabled={isRootSaving}
-                          className="h-7 gap-1.5 px-3 text-xs"
-                        >
-                          <X className="h-3 w-3" />
-                          <span>İptal</span>
-                        </Button>
-                      )}
-                    </div>
                   </div>
                 ) : (
                   <div className="space-y-1">
@@ -300,70 +277,95 @@ export function BoxManagerView({ boxesList }: BoxManagerViewProps) {
                       return (
                         <div
                           key={subBox.id}
-                          className="space-y-2 rounded-md border border-border/60 bg-muted/20 p-3 transition-colors hover:border-border min-h-[72px] flex flex-col justify-between"
+                          className={`rounded-md border p-3.5 transition-all min-h-[72px] flex flex-col justify-between ${
+                            isSubEditing
+                              ? "border-primary/40 bg-background/80 ring-1 ring-primary/20 shadow-xs space-y-3"
+                              : "border-border/60 bg-muted/20 hover:border-border space-y-2"
+                          }`}
                         >
                           {isSubEditing ? (
-                            <div className="space-y-2">
-                              <Input
-                                value={subDraft.title}
-                                onChange={(e) =>
-                                  setDrafts((prev) => ({
-                                    ...prev,
-                                    [subBox.id]: {
-                                      ...(prev[subBox.id] ?? toDraft(subBox)),
-                                      title: e.target.value,
-                                    },
-                                  }))
-                                }
-                                className="h-8 w-full text-xs font-medium focus-visible:ring-1 focus-visible:ring-primary"
-                                placeholder="Alt konu başlığı..."
-                              />
-                              <Textarea
-                                value={subDraft.description}
-                                onChange={(e) =>
-                                  setDrafts((prev) => ({
-                                    ...prev,
-                                    [subBox.id]: {
-                                      ...(prev[subBox.id] ?? toDraft(subBox)),
-                                      description: e.target.value,
-                                    },
-                                  }))
-                                }
-                                rows={2}
-                                className="textarea-academic w-full text-xs"
-                                placeholder="Alt konu açıklaması..."
-                              />
-                              <div className="flex items-center gap-2 pt-1">
-                                <Button
-                                  size="sm"
-                                  variant="default"
-                                  onClick={() => handleSaveBox(subBox)}
-                                  disabled={isSubSaving}
-                                  className="h-7 gap-1.5 px-2.5 text-xs"
-                                >
-                                  {isSubSaving ? (
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                  ) : (
-                                    <Check className="h-3 w-3" />
-                                  )}
-                                  <span>Kaydet</span>
-                                </Button>
+                            <div className="space-y-3">
+                              <div className="flex items-start gap-2.5">
+                                <FileText className="h-4 w-4 shrink-0 text-primary mt-2" />
+                                <div className="flex-1 space-y-2.5">
+                                  <Input
+                                    value={subDraft.title}
+                                    onChange={(e) =>
+                                      setDrafts((prev) => ({
+                                        ...prev,
+                                        [subBox.id]: {
+                                          ...(prev[subBox.id] ?? toDraft(subBox)),
+                                          title: e.target.value,
+                                        },
+                                      }))
+                                    }
+                                    className="h-8.5 w-full font-sans text-xs font-medium bg-background border-border/80 text-foreground placeholder:text-muted-foreground/50 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/40 rounded-md transition-all"
+                                    placeholder="Alt konu başlığı..."
+                                    autoFocus
+                                  />
+                                  <Textarea
+                                    value={subDraft.description}
+                                    onChange={(e) =>
+                                      setDrafts((prev) => ({
+                                        ...prev,
+                                        [subBox.id]: {
+                                          ...(prev[subBox.id] ?? toDraft(subBox)),
+                                          description: e.target.value,
+                                        },
+                                      }))
+                                    }
+                                    rows={3}
+                                    className="textarea-academic w-full text-xs leading-relaxed p-2.5 border-border/80 focus:border-primary/40 rounded-md"
+                                    placeholder="Alt konu açıklaması..."
+                                  />
+                                  {subBox.concepts &&
+                                    subBox.concepts.length > 0 && (
+                                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                                        {subBox.concepts.map((concept, idx) => (
+                                          <Badge
+                                            key={idx}
+                                            variant="secondary"
+                                            className="gap-1 border border-border/30 bg-muted/40 px-2 py-0.5 font-mono text-[10px] text-muted-foreground/80"
+                                          >
+                                            <Hash className="h-2.5 w-2.5 text-muted-foreground/60" />
+                                            {concept}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/30">
                                 {!isGlobalEditing && (
                                   <Button
                                     size="sm"
                                     variant="ghost"
                                     onClick={() => cancelSingleEdit(subBox.id)}
                                     disabled={isSubSaving}
-                                    className="h-7 gap-1.5 px-2.5 text-xs"
+                                    className="h-7 px-3 text-xs text-muted-foreground hover:text-foreground gap-1.5 rounded-md transition-colors"
                                   >
-                                    <X className="h-3 w-3" />
+                                    <X className="h-3.5 w-3.5" />
                                     <span>İptal</span>
                                   </Button>
                                 )}
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleSaveBox(subBox)}
+                                  disabled={isSubSaving}
+                                  className="h-7 px-3.5 text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-medium gap-1.5 rounded-md shadow-xs transition-all"
+                                >
+                                  {isSubSaving ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Check className="h-3.5 w-3.5" />
+                                  )}
+                                  <span>Kaydet</span>
+                                </Button>
                               </div>
                             </div>
                           ) : (
-                            <div className="group relative space-y-1.5">
+                            <div className="relative space-y-1.5">
                               <div className="flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-2 text-xs font-medium text-foreground">
                                   <FileText className="h-3.5 w-3.5 shrink-0 text-primary" />
@@ -372,7 +374,7 @@ export function BoxManagerView({ boxesList }: BoxManagerViewProps) {
                                 {!isGlobalEditing && (
                                   <button
                                     onClick={() => startSingleEdit(subBox)}
-                                    className="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
+                                    className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                                     title="Alt konuyu düzenle"
                                   >
                                     <Pencil className="h-3 w-3" />

@@ -38,11 +38,8 @@ export async function getCitationCardsDataAction(): Promise<
 > {
   const flowId = createFlowId();
   const log = new Logger(flowId);
-  const startTime = Date.now();
 
   try {
-    log.info("get_citation_cards_data_start", { service: "citation-cards" });
-
     const session = await getSession();
     if (!session) {
       return {
@@ -52,16 +49,6 @@ export async function getCitationCardsDataAction(): Promise<
     }
 
     const data = await fetchCitationCardsData(session.userId);
-
-    log.info("get_citation_cards_data_success", {
-      service: "citation-cards",
-      data: {
-        cardsCount: data.cards.length,
-        boxesCount: data.boxes.length,
-        sourcesCount: data.sources.length,
-        durationMs: Date.now() - startTime,
-      },
-    });
 
     return {
       success: true,

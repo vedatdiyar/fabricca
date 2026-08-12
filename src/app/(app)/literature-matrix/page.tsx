@@ -25,21 +25,7 @@ export default async function LiteratureMatrixPage() {
   const initialBoxes = result.success && result.data ? result.data.boxes : [];
 
   return (
-    <div className="space-y-6">
-      {/* Page Header Area */}
-      <div className="flex flex-col gap-1 pb-4 border-b border-border">
-        <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
-          Literatür Matrisi
-        </h1>
-        <p className="text-xs text-muted-foreground">
-          Tez kütüphanenizdeki tüm eserlerin 5 boyutlu analizlerini (Araştırma
-          Sorusu, Teorik Çerçeve, Metodoloji, Temel Argüman, Literatür Boşluğu)
-          Notion esnekliğinde karşılaştırın ve hücre içi tıklama ile anında
-          düzenleyin.
-        </p>
-      </div>
-
-      {/* Main Workspace Container */}
+    <div className="w-full space-y-6">
       <LiteratureMatrixContainer
         initialRows={initialRows}
         initialBoxes={initialBoxes}

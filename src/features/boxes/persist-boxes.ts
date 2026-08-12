@@ -82,12 +82,7 @@ export async function persistBoxesAction(
     await db.transaction(async (tx) => {
       await tx
         .delete(boxRows)
-        .where(
-          and(
-            eq(boxRows.matrixId, thesisMatrixId),
-            ne(boxRows.boxType, "RELATED_THESES"),
-          ),
-        );
+        .where(eq(boxRows.matrixId, thesisMatrixId));
 
       const parentFlatIndices: number[] = [];
       for (let i = 0; i < validBoxes.length; i++) {

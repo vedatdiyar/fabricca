@@ -85,7 +85,7 @@ function LibraryPageContent() {
   }
 
   return (
-    <div className="flex flex-col w-full space-y-6">
+    <div className="w-full space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start">
         <div className="lg:col-span-4 lg:sticky lg:top-[calc(7rem+1px)] lg:h-[calc(100vh-8.5rem-1px)] flex flex-col min-h-0">
           <SidebarWorkList
