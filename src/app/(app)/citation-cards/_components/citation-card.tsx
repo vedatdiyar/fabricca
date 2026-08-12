@@ -126,11 +126,11 @@ export function CitationCard(props: CitationCardProps) {
   return (
     <Card
       onClick={() => onView(card)}
-      className="cursor-pointer rounded-md border border-border bg-card p-5 transition-all duration-200 hover:border-primary/20 flex flex-col justify-between group"
+      className="cursor-pointer rounded-md p-5 transition-all duration-200 hover:border-primary/20 flex flex-col justify-between group"
     >
       <CardHeader className="p-0 pb-3 mb-3 border-b border-border/40 flex-row items-start justify-between gap-2 space-y-0">
         {/* Left: Metadata rows (note type & topic box) */}
-        <div className="flex flex-col gap-1 min-w-0 pt-0.5">
+        <div className="flex flex-col gap-1 min-w-0 pt-1">
           <span
             className={`flex items-center gap-2 text-xs font-medium whitespace-nowrap ${noteConfig.textClassName}`}
           >
@@ -148,7 +148,7 @@ export function CitationCard(props: CitationCardProps) {
         </div>
 
         {/* Right: Quick Action icons */}
-        <div className="flex items-center gap-0.5 shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
           <MoveBoxDropdown
             card={card}
             availableBoxes={availableBoxes}
@@ -181,13 +181,13 @@ export function CitationCard(props: CitationCardProps) {
         </div>
       </CardHeader>
       <CardContent className="p-0 my-2 flex-1">
-        <blockquote className="relative border-l-2 border-primary/20 pl-3 text-sm leading-relaxed text-foreground font-serif line-clamp-4">
+        <blockquote className="relative border-l-2 border-primary/20 pl-3 text-sm leading-relaxed text-foreground font-sans line-clamp-4">
           {card.content}
         </blockquote>
 
         {card.comment && (
           <div className="mt-3 flex gap-2 rounded-md border border-border/40 border-l-2 border-l-primary/20 bg-muted/20 px-3 py-2">
-            <MessageSquareQuote className="h-3 w-3 text-primary shrink-0 mt-0.5" />
+            <MessageSquareQuote className="h-3 w-3 text-primary shrink-0 mt-1" />
             <p className="text-[10px] text-foreground leading-relaxed whitespace-pre-wrap line-clamp-3">
               {card.comment}
             </p>

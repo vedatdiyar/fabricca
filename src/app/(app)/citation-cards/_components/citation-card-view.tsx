@@ -3,6 +3,7 @@
 import { MessageSquareQuote, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { getBoxTypeBadgeConfig } from "@/lib/box-constants";
@@ -86,7 +87,7 @@ export function CitationCardView(props: CitationCardViewProps) {
       {/* Fiş İçeriği */}
       <div className="space-y-2">
         <Label className="text-xs">Fiş İçeriği (Metin)</Label>
-        <blockquote className="rounded-md border-l-2 border-primary/20 bg-muted/20 p-3 font-serif text-sm leading-relaxed text-foreground whitespace-pre-wrap">
+        <blockquote className="rounded-md border-l-2 border-primary/20 bg-muted/20 p-3 font-sans text-sm leading-relaxed text-foreground whitespace-pre-wrap">
           {card.content}
         </blockquote>
       </div>
@@ -98,9 +99,9 @@ export function CitationCardView(props: CitationCardViewProps) {
             <MessageSquareQuote className="h-3.5 w-3.5 text-primary" />
             <Label className="text-sm font-medium">Düşünce / Şerh</Label>
           </div>
-          <p className="rounded-md border border-border/40 bg-card p-3 text-sm leading-relaxed text-foreground whitespace-pre-wrap">
+          <Card className="rounded-md p-3 text-sm leading-relaxed text-foreground whitespace-pre-wrap">
             {card.comment}
-          </p>
+          </Card>
         </div>
       )}
 

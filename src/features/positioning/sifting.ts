@@ -1,6 +1,6 @@
 import { searchTezara } from "@/features/tezara";
 import type { TezaraThesisDetails } from "@/lib/types";
-import { rerankWithCohere } from "@/services/ai/cohere";
+import { rerankWithCohere, COHERE_RERANK_MODEL } from "@/services/ai/cohere";
 import type { Logger } from "@/lib/logger";
 import type { PositioningMatrixInput } from "./validation";
 import { sanitizeMeiliQuery, type GeneratedQueries } from "./queries";
@@ -180,7 +180,7 @@ export async function searchAndSiftTheses(
     service: "cohere",
     filePath: "src/features/positioning/sifting.ts",
     data: {
-      model: "rerank-v4.0-pro",
+      model: COHERE_RERANK_MODEL,
       candidateCount: filteredCandidates.length,
     },
   });

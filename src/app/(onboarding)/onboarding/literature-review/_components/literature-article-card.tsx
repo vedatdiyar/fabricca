@@ -48,23 +48,23 @@ export function LiteratureArticleCard({ article }: LiteratureArticleCardProps) {
   const hasMetadata = Boolean(authorDisplay);
 
   return (
-    <Card className="bg-card border border-border hover:border-primary/20 transition-all">
+    <Card className="hover:border-primary/20 transition-all">
       <CardHeader
-        className={`p-3.5 ${hasMetadata ? "pb-1.5" : ""} flex flex-row items-center justify-between gap-2 space-y-0`}
+        className={`p-4 ${hasMetadata ? "pb-2" : ""} flex flex-row items-center justify-between gap-2 space-y-0`}
       >
         <CardTitle className="text-sm font-medium text-foreground leading-snug break-words hyphens-auto min-w-0">
           {cleanDisplayTitle(article.title)}
         </CardTitle>
         <div className="shrink-0 flex items-center gap-1">
           {article.thesisType && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary">
+            <span className="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary">
               {getThesisDegreeLabel(article.thesisType)}
             </span>
           )}
         </div>
       </CardHeader>
       {hasMetadata && (
-        <CardContent className="px-3.5 pb-3 pt-0">
+        <CardContent className="px-4 pb-3 pt-0">
           <div className="text-xs text-muted-foreground leading-relaxed truncate">
             <span>{authorDisplay}</span>
             {article.publisher &&

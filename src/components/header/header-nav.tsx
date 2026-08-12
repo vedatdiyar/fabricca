@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
+  Network,
   Library,
   Quote,
   Briefcase,
@@ -15,6 +16,7 @@ import { cn } from "@/lib/utils";
 
 export const NAV_ITEMS = [
   { href: "/dashboard", label: "Genel Özet", icon: LayoutDashboard },
+  { href: "/thesis-architecture", label: "Tez Mimarisi", icon: Network },
   { href: "/library", label: "Kütüphane", icon: Library },
   { href: "/citation-cards", label: "Alıntı Fişleri", icon: Quote },
   { href: "/advisor", label: "Danışman Odası", icon: Briefcase },

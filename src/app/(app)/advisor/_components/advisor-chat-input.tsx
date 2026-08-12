@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Send } from "lucide-react";
+import { Card } from "@/components/ui/card";
 
 interface AdvisorChatInputProps {
   disabled?: boolean;
@@ -53,7 +54,7 @@ export function AdvisorChatInput({
   };
 
   return (
-    <div className="mt-4 p-2 bg-card border border-border/40 rounded-lg flex items-end space-x-2">
+    <Card className="mt-4 p-2 rounded-lg flex items-end space-x-2">
       <textarea
         ref={textareaRef}
         aria-label="Akademik danışmanınıza soracağınız soru"
@@ -84,6 +85,6 @@ export function AdvisorChatInput({
       >
         <Send className="w-4 h-4" />
       </button>
-    </div>
+    </Card>
   );
 }

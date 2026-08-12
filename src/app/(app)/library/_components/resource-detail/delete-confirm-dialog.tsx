@@ -51,7 +51,7 @@ export function DeleteConfirmDialog({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif text-lg font-semibold text-foreground">
+            <AlertDialogTitle className="font-serif text-xl font-semibold text-foreground">
               Notu Silmek İstediğinize Emin Misiniz?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm text-muted-foreground">
@@ -81,7 +81,7 @@ export function DeleteConfirmDialog({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif text-lg font-semibold text-foreground">
+            <AlertDialogTitle className="font-serif text-xl font-semibold text-foreground">
               PDF&apos;i Silmek İstediğinize Emin Misiniz?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm text-muted-foreground">

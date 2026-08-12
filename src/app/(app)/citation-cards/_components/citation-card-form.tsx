@@ -255,7 +255,7 @@ export function CitationCardForm(props: CitationCardFormProps) {
           value={formFields.content}
           onChange={(e) => setField("content", e.target.value)}
           onPaste={handleContentPaste}
-          className="font-serif leading-relaxed resize-none overflow-y-auto min-h-35"
+          className="font-sans leading-relaxed resize-none overflow-y-auto"
         />
       </div>
 
@@ -276,7 +276,7 @@ export function CitationCardForm(props: CitationCardFormProps) {
           placeholder="Bu fişi tez çalışmanızda nasıl değerlendireceğinize dair kendi şerh veya yorumunuzu ekleyin..."
           value={formFields.comment}
           onChange={(e) => setField("comment", e.target.value)}
-          className="text-sm leading-relaxed resize-none"
+          className="text-sm leading-relaxed resize-none overflow-y-auto"
         />
       </div>
 

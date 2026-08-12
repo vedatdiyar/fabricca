@@ -2,6 +2,7 @@
 
 import type { Box, Source } from "@/db/schema";
 import type { TaskRow } from "../_lib/schemas";
+import { Card } from "@/components/ui/card";
 import { BoxCard } from "./box-card";
 import { KanbanBoard } from "./kanban-board";
 import { useDashboard } from "../_hooks/use-dashboard";
@@ -63,12 +64,12 @@ export function DashboardContent({
         </div>
 
         {topicBoxes.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-8 text-center rounded-md border border-dashed border-border/40 bg-card">
+          <Card className="flex flex-col items-center justify-center p-8 text-center rounded-md border border-dashed border-border/40">
             <p className="text-sm text-muted-foreground">
               Henüz tanımlanmış bir konu kutunuz bulunmuyor. Lütfen onboarding
               adımlarını tamamlayın.
             </p>
-          </div>
+          </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {topicBoxes.map((box) => (

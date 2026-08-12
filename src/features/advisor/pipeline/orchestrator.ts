@@ -1,3 +1,4 @@
+import { HarmCategory, HarmBlockThreshold, ThinkingLevel } from "@google/genai";
 import { runStage1Audit } from "./stage1-audit";
 import type { AuditReport, PipelineResult } from "./types";
 import type { RagSearchResultItem } from "@/services/search/rag-search";
@@ -87,10 +88,18 @@ export async function runPipelineTurn(
 
   // Audit passed — stream Socratic Advisor response
   try {
-    const systemInstruction =
-      buildSocraticAdvisorSystemInstruction(sourceContext);
+    const systemInstruction = buildSocraticAdvisorSystemInstruction();
     const ai = getAi();
-    const contents = [{ role: "user", parts: [{ text: input.originalDraft }] }];
+    const contents = [
+      {
+        role: "user",
+        parts: [
+          {
+            text: `Kütüphane Kaynak Bağlamı:\n${sourceContext}\n\nKullanıcı Taslağı:\n${input.originalDraft}`,
+          },
+        ],
+      },
+    ];
 
     let fullText = "";
 
@@ -102,6 +111,25 @@ export async function runPipelineTurn(
       config: {
         systemInstruction,
         seed: GEMINI_SEED,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        safetySettings: [
+          {
+            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+            threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+            threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+            threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+          },
+        ],
       },
     });
 

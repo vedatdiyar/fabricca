@@ -22,7 +22,7 @@ export function OnboardingGlobalLoader() {
   } = useLoadingOverlay();
 
   return (
-    <div className="flex flex-col items-center justify-center space-y-10 max-w-5xl mx-auto text-center px-6 w-full">
+    <div className="flex flex-col items-center justify-center space-y-10 text-center px-6 w-full">
       <div className="space-y-4">
         <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
           {loadingTitle}

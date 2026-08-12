@@ -57,11 +57,11 @@ export function BoxCard({
 
   return (
     <>
-      <Card className="flex flex-col h-full rounded-md border border-border bg-card text-card-foreground">
+      <Card className="flex flex-col h-full rounded-md text-card-foreground">
         <CardHeader className="p-4 pb-3">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1">
-              <CardTitle className="font-serif text-lg font-medium tracking-tight text-foreground">
+              <CardTitle className="font-sans text-lg font-medium tracking-tight text-foreground">
                 {box.title}
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground line-clamp-2">
@@ -145,7 +145,7 @@ export function BoxCard({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif text-lg font-semibold text-foreground">
+            <AlertDialogTitle className="font-serif text-xl font-semibold text-foreground">
               Eseri Silmek İstediğinize Emin Misiniz?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm text-muted-foreground">

@@ -1,26 +1,5 @@
 /**
- * Builds the box-type context block embedded in the system instruction.
- *
- * @param boxType - Box type identifier of the thesis sub-box.
- * @param subBoxTitle - Title of the thesis sub-box.
- * @param description - Description of the thesis sub-box.
- * @param thesisSubject - Subject of the thesis.
- * @returns The formatted box context block for the jury prompt.
- */
-function buildBoxTypeInstruction(
-  boxType: string,
-  subBoxTitle: string,
-  description: string,
-  thesisSubject: string,
-): string {
-  return `Kutu Türü: ${boxType}
-Kutu Başlığı: ${subBoxTitle}
-Kutu Açıklaması: ${description}
-Tez Konusu: ${thesisSubject}`;
-}
-
-/**
- * Builds box-type-specific acceptance and rejection guidelines for the jury.
+ * Builds box-type-specific acceptance and evaluation guidelines for the jury.
  *
  * @param boxType - Box type identifier used to select the matching guideline block.
  * @returns The quadrant-specific evaluation guideline text, or an empty string when unsupported.
@@ -29,6 +8,7 @@ function buildQuadrantSpecificInstruction(boxType: string): string {
   switch (boxType) {
     case "SUBJECT_PROBLEM":
       return `
+
 ═══════════════════════════════════════════════════════════════════════════════
 KUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — VAKA / KONU KUTUSU (SUBJECT_PROBLEM)
 ═══════════════════════════════════════════════════════════════════════════════
@@ -39,22 +19,21 @@ döneme ve aktörlere odaklanır.
 ## KABUL KRİTERİ
 Tezin kapsadığı tarihsel dönemi ve vaka alanını doğrudan işleyen ampirik monografiler,
 saha araştırmaları ve vaka analizleri yüksek puan (80-95+) almalıdır.
-Temel monografiler "çok genel" diye cezalandırılamaz.
+Temel monografilere ampirik zemin sağladıkları için yüksek öncelik verilir.
 
-## ZORUNLU ELEME (RED) KRİTERLERİ
+## DEĞERLENDİRME VE ELEME KRİTERLERİ
 isRelevant: false, score < 30
 
 1. Tezin kapsadığı olgusal/tarihsel dönemin DIŞINDAKİ başka bir döneme veya
-   olaya (örneğin tezin kapsadığı yıllar dışındaki başka bir barış sürecine
-   veya savaş kesitine) odaklanan çalışmalar.
+   olaya odaklanan çalışmalar düşük puanlandırılmalıdır.
 
-2. Soyut, genel ve zamansız teorik/kuramsal eserler (Örn: genel iç savaş
+2. Soyut, genel ve zamansız teorik/kuramsal eserler (ör. genel iç savaş
    şiddeti teorileri, Foucault veya Gramsci gibi düşünürlerin genel teorileri)
-   ve metodoloji el kitapları. Bu eserler teorik/yöntemsel zenginlik taşısalar
-   bile Vaka/Konu Kutusu (SUBJECT_PROBLEM) için TAMAMEN ALAKASIZDIR.`;
+   ve metodoloji el kitapları Vaka/Konu Kutusu (SUBJECT_PROBLEM) için ayrı tutulmalıdır.`;
 
     case "THEORETICAL_FRAMEWORK":
       return `
+
 ═══════════════════════════════════════════════════════════════════════════════
 KUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — TEORİK ÇERÇEVE KUTUSU (THEORETICAL_FRAMEWORK)
 ═══════════════════════════════════════════════════════════════════════════════
@@ -66,12 +45,13 @@ kuramlar, teorik kavramlar ve modellemelere odaklanır.
 İlgili kuramcıların birincil kuramsal metinleri ve bu teorileri tartışan
 literatür yüksek puan almalıdır.
 
-## RED KRİTERİ
+## DÜŞÜK ÖNCELİK KRİTERİ
 Teorisiz sadece ampirik vaka anlatan veya teknik metodoloji sunan eserler
 düşük puan almalıdır.`;
 
     case "METHODOLOGY":
       return `
+
 ═══════════════════════════════════════════════════════════════════════════════
 KUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — YÖNTEM KUTUSU (METHODOLOGY)
 ═══════════════════════════════════════════════════════════════════════════════
@@ -96,7 +76,7 @@ PUAN (60-79) almalıdır. Yöntemin sınırlarını ve uygulama inceliklerini ta
 eserler bu kategoride değerlendirilir.
 
 ────────────────────────────────────────────────────
-(C) KESİN RED / DÜŞÜK ÖNCELİK — Felsefi/Genel Kuramlar & Yüzeysel Çalışmalar (PUAN: 0-40)
+(C) DÜŞÜK ÖNCELİK — Felsefi/Genel Kuramlar & Yüzeysel Çalışmalar (PUAN: 0-40)
 ────────────────────────────────────────────────────
 Foucault, Butler, Derrida gibi düşünürlerin salt felsefi/soyut teorik eserleri,
 yöntemin inceliklerini anlatmayan düz ampirik yazılar (sadece sonuç raporu,
@@ -109,29 +89,12 @@ DÜŞÜK PUAN (0-40) almalıdır. Bu eserler isRelevant=false olarak işaretlenm
 }
 
 /**
- * Builds the system instruction for the single-box jury LLM call.
+ * Builds the static system instruction for the single-box jury LLM call.
  *
  * @param boxType - Box type identifier of the thesis sub-box.
- * @param subBoxTitle - Title of the thesis sub-box.
- * @param description - Description of the thesis sub-box.
- * @param thesisBoxId - Identifier of the thesis sub-box in the database.
- * @param thesisSubject - Subject of the thesis.
- * @returns The full system instruction prompt for the jury LLM call.
+ * @returns The static system instruction prompt for the jury LLM call.
  */
-export function buildJurySystemInstruction(
-  boxType: string,
-  subBoxTitle: string,
-  description: string,
-  thesisBoxId: number,
-  thesisSubject: string,
-): string {
-  const boxTypeInstruction = buildBoxTypeInstruction(
-    boxType,
-    subBoxTitle,
-    description,
-    thesisSubject,
-  );
-
+export function buildJurySystemInstruction(boxType: string): string {
   const quadrantBlock = buildQuadrantSpecificInstruction(boxType);
 
   return `# Rol ve Uzmanlık
@@ -140,31 +103,25 @@ Sen, akademik makaleleri belirli bir tez alt kutusu bağlamında değerlendiren 
 
 # Birincil Görev
 
-Her bir makaleyi, içinde bulunduğu alt kutunun türü, başlığı ve açıklaması ile karşılaştırarak değerlendir. Makalenin kutu bağlamıyla doğrudan alakalı olup olmadığına karar ver ve 0-100 arası gerçek alaka skoru belirle ve 1 cümlelik Türkçe gerekçe yaz.
-
-# Kutu Bağlamı
-
-${boxTypeInstruction}
+Her bir makaleyi, sana verilen alt kutunun türü, başlığı ve açıklaması ile karşılaştırarak değerlendir. Makalenin kutu bağlamıyla doğrudan alakalı olup olmadığına karar ver, 0-100 arası alaka skoru belirle ve 1 cümlelik Türkçe gerekçe yaz.
 
 # Genel Değerlendirme Kuralları
 
-Sadece soyut teorik/kavramsal benzerliklere odaklanma. Makalenin incelediği spesifik olgunun, aktörlerin ve tarihsel kesitin; Sub-Box bağlamı ve tezin kapsadığı olgusal/tarihsel çerçeve ile bütünsel olarak örtüşüp örtüşmediğini değerlendir.
-
-Eğer bir makale açıkça tezin ve kutunun kapsadığı tarihsel/olgusal dönemin DIŞINDAKİ başka bir döneme veya olaya odaklanıyorsa; kavramlar ne kadar benzer olursa olsun BU TEZ İÇİN ALAKASIZDIR.
-
-Tezin kapsadığı tarihsel dönemi ve vaka alanını doğrudan işleyen kapsayıcı temel monografileri ve saha çalışmalarını "çok genel" diyerek cezalandırma. Bu eserler tezin ampirik ve tarihsel zeminini oluşturduğu için yüksek relevans puanı (80-95+) almalıdır.${quadrantBlock}
+1. **Bütünsel Örtüşme:** Soyut teorik benzerliklerin ötesine geçerek makalenin incelediği spesifik olgunun, aktörlerin ve tarihsel kesitin; Sub-Box bağlamı ve tezin kapsadığı olgusal/tarihsel çerçeve ile bütünsel olarak örtüşüp örtüşmediğini değerlendir.
+2. **Dönemsel Uygunluk:** Tezin ve kutunun kapsadığı tarihsel/olgusal dönemin dışındaki başka bir döneme veya olaya odaklanan çalışmalar düşük puanlandırılmalıdır.
+3. **Temel Monografiler:** Tezin kapsadığı tarihsel dönemi ve vaka alanını doğrudan işleyen kapsayıcı temel monografilere ve saha çalışmalarına ampirik ve tarihsel zemin oluşturdukları için yüksek relevans puanı (80-95+) ver.${quadrantBlock}
 
 # Değerlendirme Kriterleri
 
 - Her makale için başlık, abstract metni ve OpenAlex relevance_score bilgisi verilmiştir.
 - Makalenin kutu bağlamına uygunluğunu değerlendir.
-- Dönemsel sapma gösteren çalışmalar kesinlikle düşük puan almalıdır.
+- Dönemsel sapma gösteren çalışmalar düşük puanlandırılmalıdır.
 
 # Çıktı Biçimi
 
 Her değerlendirme için aşağıdaki alanları içeren JSON nesneleri dizisi döndürün:
-- thesisBoxId: ${thesisBoxId}
-- subBoxTitle: "${subBoxTitle}"
+- thesisBoxId: (girdide verilen box id)
+- subBoxTitle: (girdide verilen sub box başlığı)
 - articleTitle: makale başlığı (aynen)
 - isRelevant: boolean
 - relevanceScore: 0-100 arası tam sayı
@@ -196,13 +153,16 @@ export function buildJuryUserPrompt(
 
 Tez Konusu (Subject Problem): ${thesisSubject}
 
-Kutu: [Box ${thesisBoxId}] "${subBoxTitle}" (${boxType})
-Açıklama: ${description}
+Kutu Bağlamı:
+- Kutu ID: [Box ${thesisBoxId}]
+- Kutu Türü: ${boxType}
+- Kutu Başlığı: "${subBoxTitle}"
+- Kutu Açıklaması: ${description}
 
 Makaleler:
 ${articlesText}
 
 # İşlem
 
-Yukarıdaki ${articleCount} makaleyi değerlendir ve her biri için thesisBoxId, subBoxTitle, articleTitle, isRelevant, relevanceScore (0-100), reasoning (Türkçe) alanlarını içeren JSON dizisi döndür.`;
+Yukarıdaki ${articleCount} makaleyi değerlendir ve her biri için thesisBoxId (${thesisBoxId}), subBoxTitle ("${subBoxTitle}"), articleTitle, isRelevant, relevanceScore (0-100), reasoning (Türkçe) alanlarını içeren JSON dizisi döndür.`;
 }

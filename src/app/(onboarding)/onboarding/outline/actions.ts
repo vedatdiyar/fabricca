@@ -65,7 +65,6 @@ export async function saveOutlineHierarchyAction(
     if (!matrix) return { error: "Tez matrisi bulunamadı." };
 
     const { academicField, sections } = parsed.data;
-
     await db.transaction(async (tx) => {
       await tx.delete(outlines).where(eq(outlines.matrixId, matrix.id));
 

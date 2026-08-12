@@ -78,7 +78,7 @@ function SubBoxDone({
     return (
       <div className="space-y-4">
         {childBoxes.length > 0 ? (
-          <div className="relative border-l border-primary/20 pl-4 ml-2.5 space-y-6 pt-2">
+          <div className="relative border-l border-primary/20 pl-4 ml-3 space-y-6 pt-2">
             {childBoxes.map((sub, idx) => {
               const subEntry = literaturePool.find(
                 (e) => e.subBoxTitle === sub.title,
@@ -86,7 +86,7 @@ function SubBoxDone({
               const subArticles = subEntry?.articles ?? [];
               return (
                 <div key={`${sub.title}-${idx}`} className="relative space-y-3">
-                  <span className="absolute -left-[21.5px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-primary bg-background" />
+                  <span className="absolute -left-[21.5px] top-2 h-2.5 w-2.5 rounded-full border-2 border-primary bg-background" />
 
                   <div className="space-y-1">
                     <h3 className="font-serif text-lg font-medium tracking-tight text-foreground leading-snug">
@@ -138,9 +138,9 @@ function SubBoxDone({
   if (childBoxes.length === 0) {
     if (!entry || entry.articles.length === 0) {
       return (
-        <div className="p-6 text-center border border-dashed border-border rounded-md bg-card/20">
+        <Card className="p-6 text-center border border-dashed border-border rounded-md">
           <p className="text-sm text-muted-foreground">Kaynak bulunamadı.</p>
-        </div>
+        </Card>
       );
     }
     return (
@@ -161,7 +161,7 @@ function SubBoxDone({
 
   return (
     <div className="space-y-4 pt-2">
-      <div className="relative border-l border-primary/20 pl-4 ml-2.5 space-y-6">
+      <div className="relative border-l border-primary/20 pl-4 ml-3 space-y-6">
         {childBoxes.map((sub, idx) => {
           const subEntry = literaturePool.find(
             (e) => e.subBoxTitle === sub.title,
@@ -169,7 +169,7 @@ function SubBoxDone({
           const subArticles = subEntry?.articles ?? [];
           return (
             <div key={`${sub.title}-${idx}`} className="relative space-y-3">
-              <span className="absolute -left-[21.5px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-primary bg-background" />
+              <span className="absolute -left-[21.5px] top-2 h-2.5 w-2.5 rounded-full border-2 border-primary bg-background" />
 
               <div className="space-y-1">
                 <h3 className="font-serif text-lg font-medium tracking-tight text-foreground leading-snug">
@@ -185,7 +185,7 @@ function SubBoxDone({
                     {sub.concepts.map((concept, cIdx) => (
                       <span
                         key={`${concept}-${cIdx}`}
-                        className="inline-flex items-center px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20 text-[10px] text-primary font-medium"
+                        className="inline-flex items-center px-2 py-1 rounded bg-primary/10 border border-primary/20 text-[10px] text-primary font-medium"
                       >
                         {concept}
                       </span>
@@ -206,11 +206,11 @@ function SubBoxDone({
                     ))}
                 </div>
               ) : (
-                <div className="p-3 text-center border border-dashed border-border/40 rounded-md bg-card/10">
+                <Card className="p-3 text-center border border-dashed border-border/40 rounded-md">
                   <p className="text-xs text-muted-foreground">
                     Bu alt başlık için kaynak bulunamadı.
                   </p>
-                </div>
+                </Card>
               )}
             </div>
           );
@@ -279,7 +279,7 @@ export function LiteratureReviewContent() {
                   {subBox.title}
                 </h2>
                 {subBox.boxType && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary ml-auto">
+                  <span className="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary ml-auto">
                     {getBoxTypeLabel(subBox.boxType)}
                   </span>
                 )}
@@ -309,7 +309,7 @@ export function LiteratureReviewContent() {
               {relatedBox.title || RELATED_THESES_TITLE}
             </h2>
             {relatedBox.boxType && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary ml-auto">
+              <span className="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary ml-auto">
                 Literatür
               </span>
             )}

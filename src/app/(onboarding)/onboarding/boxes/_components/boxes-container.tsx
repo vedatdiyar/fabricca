@@ -135,9 +135,9 @@ const SubBoxSection = memo(function SubBoxSection({
         {subBoxes.map((subBox, sbIdx) => (
           <div key={`${subBox.title}-${sbIdx}`} className="relative">
             <span className="absolute -left-[21.5px] top-[21px] h-2.5 w-2.5 rounded-full border-2 border-primary bg-background" />
-            <div className="p-4 rounded-md border border-border bg-card hover:border-primary/20 transition-all duration-200 space-y-2">
+            <Card className="p-4 rounded-md border border-border hover:border-primary/20 transition-all duration-200 space-y-2">
               <div className="flex items-start justify-between gap-2">
-                <h5 className="font-serif text-sm font-semibold text-foreground leading-snug line-clamp-2 break-words hyphens-auto">
+                <h5 className="font-sans text-sm font-semibold text-foreground leading-snug line-clamp-2 break-words hyphens-auto">
                   {subBox.title}
                 </h5>
               </div>
@@ -151,14 +151,14 @@ const SubBoxSection = memo(function SubBoxSection({
                   {subBox.concepts.map((concept, cIdx) => (
                     <span
                       key={`${concept}-${cIdx}`}
-                      className="inline-flex items-center px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20 text-[10px] text-primary font-medium"
+                      className="inline-flex items-center px-2 py-1 rounded bg-primary/10 border border-primary/20 text-[10px] text-primary font-medium"
                     >
                       {concept}
                     </span>
                   ))}
                 </div>
               )}
-            </div>
+            </Card>
           </div>
         ))}
       </div>

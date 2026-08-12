@@ -8,10 +8,6 @@ import { tasks, boxes, sources } from "@/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { getUsersMatrixAndBoxesWithResources } from "@/app/(app)/_services/box-service";
 import {
-  deleteLibraryResourceAction as deleteLibraryResource,
-  toggleResourceReadStatusAction as toggleResourceReadStatus,
-} from "@/app/(app)/library/actions";
-import {
   AddTaskSchema,
   UpdateTaskSchema,
   TaskStatusSchema,
@@ -60,7 +56,7 @@ export async function getTasksAction(): Promise<{
       service: "dashboard",
       error: err,
     });
-    return { success: false, error: "Failed to load tasks." };
+    return { success: false, error: "Görevler yüklenirken bir hata oluştu." };
   }
 }
 
@@ -87,7 +83,7 @@ export async function addTaskAction(input: TaskInput): Promise<{
       const firstIssue = parsed.error.issues[0];
       return {
         success: false,
-        error: firstIssue?.message ?? "Invalid input.",
+        error: firstIssue?.message ?? "Geçersiz giriş.",
       };
     }
 
@@ -129,7 +125,7 @@ export async function addTaskAction(input: TaskInput): Promise<{
       service: "dashboard",
       error: err,
     });
-    return { success: false, error: "Failed to create task." };
+    return { success: false, error: "Görev oluşturulurken bir hata oluştu." };
   }
 }
 
@@ -160,7 +156,7 @@ export async function updateTaskAction(
       const firstIssue = parsed.error.issues[0];
       return {
         success: false,
-        error: firstIssue?.message ?? "Invalid input.",
+        error: firstIssue?.message ?? "Geçersiz giriş.",
       };
     }
 
@@ -172,7 +168,7 @@ export async function updateTaskAction(
       .where(eq(tasks.id, taskId));
 
     if (!existing || existing.userId !== session.userId) {
-      return { success: false, error: "Task not found." };
+      return { success: false, error: "Görev bulunamadı." };
     }
 
     const updateValues: Record<string, unknown> = {};
@@ -209,7 +205,7 @@ export async function updateTaskAction(
       service: "dashboard",
       error: err,
     });
-    return { success: false, error: "Failed to update task." };
+    return { success: false, error: "Görev güncellenirken bir hata oluştu." };
   }
 }
 
@@ -236,7 +232,7 @@ export async function updateTaskStatusAction(
 
     const parsed = TaskStatusSchema.safeParse(newStatus);
     if (!parsed.success) {
-      return { success: false, error: "Invalid task status." };
+      return { success: false, error: "Geçersiz görev durumu." };
     }
 
     const [existing] = await db
@@ -245,7 +241,7 @@ export async function updateTaskStatusAction(
       .where(eq(tasks.id, taskId));
 
     if (!existing || existing.userId !== session.userId) {
-      return { success: false, error: "Task not found." };
+      return { success: false, error: "Görev bulunamadı." };
     }
 
     await db
@@ -263,7 +259,7 @@ export async function updateTaskStatusAction(
     });
     return {
       success: false,
-      error: "Failed to update task status.",
+      error: "Görev durumu güncellenirken bir hata oluştu.",
     };
   }
 }
@@ -291,7 +287,7 @@ export async function deleteTaskAction(taskId: number): Promise<{
       .where(eq(tasks.id, taskId));
 
     if (!existing || existing.userId !== session.userId) {
-      return { success: false, error: "Task not found." };
+      return { success: false, error: "Görev bulunamadı." };
     }
 
     await db.delete(tasks).where(eq(tasks.id, taskId));
@@ -304,7 +300,7 @@ export async function deleteTaskAction(taskId: number): Promise<{
       service: "dashboard",
       error: err,
     });
-    return { success: false, error: "Failed to delete task." };
+    return { success: false, error: "Görev silinirken bir hata oluştu." };
   }
 }
 
@@ -349,45 +345,9 @@ export async function refreshDashboardDataAction(): Promise<
       service: "dashboard",
       error: err,
     });
-    return { success: false, error: "Failed to refresh dashboard data." };
+    return {
+      success: false,
+      error: "Panel verileri yenilenirken bir hata oluştu.",
+    };
   }
-}
-
-/**
- * Permanently deletes a library resource (article) from the dashboard topic boxes,
- * delegating to the library server action and revalidating both routes on success.
- *
- * @param resourceId - The resource ID to delete
- * @returns Success or error result
- */
-export async function deleteLibraryResourceAction(resourceId: number): Promise<{
-  success: boolean;
-  error?: string;
-}> {
-  const res = await deleteLibraryResource(resourceId);
-  if (res.success) {
-    revalidatePath("/dashboard");
-    revalidatePath("/library");
-  }
-  return res;
-}
-
-/**
- * Sets the isRead flag on a single library resource for the Dashboard reading tasks,
- * delegating to the library server action and revalidating both routes on success.
- *
- * @param resourceId - The resource ID to update
- * @param isRead - New boolean read state
- * @returns Success or error result
- */
-export async function toggleResourceReadStatusAction(
-  resourceId: number,
-  isRead: boolean,
-): Promise<{ success: boolean; error?: string; isRead?: boolean }> {
-  const res = await toggleResourceReadStatus(resourceId, isRead);
-  if (res.success) {
-    revalidatePath("/dashboard");
-    revalidatePath("/library");
-  }
-  return res;
 }

@@ -1,11 +1,43 @@
 import { Logger } from "@/lib/logger";
+import { HttpError, withRetry, DEFAULT_MAX_DELAY } from "@/lib/api-utils";
+import { createConcurrencyLimiter } from "@/lib/rate-limiter";
 
 /** Multilingual (incl. Turkish) Cohere Rerank model ID — 32,768-token context. */
-const COHERE_RERANK_MODEL = "rerank-v4.0-pro";
+export const COHERE_RERANK_MODEL = "rerank-v4.0-pro";
 /** Maximum duration to wait for a Cohere Rerank response before aborting. */
 const COHERE_TIMEOUT_MS = 30000;
+/** Maximum number of in-flight Cohere Rerank requests across all consumers. */
+const COHERE_MAX_CONCURRENCY = 3;
+/** Maximum retry attempts for transient Cohere failures (429/5xx). */
+const COHERE_MAX_RETRIES = 3;
 
 const COHERE_RERANK_URL = "https://api.cohere.com/v2/rerank";
+
+/**
+ * Serializes Cohere Rerank requests (max 3 in-flight) so parallel pipeline
+ * consumers (RAG search, positioning sifting, literature expansion) do not
+ * exceed the service rate ceiling.
+ */
+const cohereRequestQueue = createConcurrencyLimiter(COHERE_MAX_CONCURRENCY);
+
+/**
+ * Parses the `Retry-After` header from a Cohere API response into milliseconds.
+ *
+ * @param response - The HTTP response to inspect.
+ * @returns The retry delay in milliseconds, or null when absent or unparseable.
+ */
+function parseRetryAfterHeader(response: Response): number | null {
+  const header = response.headers.get("Retry-After");
+  if (!header) return null;
+
+  const seconds = parseInt(header, 10);
+  if (!isNaN(seconds) && seconds > 0) {
+    return seconds * 1000;
+  }
+
+  return null;
+}
+
 /** Individual rerank result returned from Cohere Rerank. */
 export interface RerankResult {
   index: number;
@@ -50,27 +82,65 @@ export async function rerankWithCohere(
   const timer = setTimeout(() => controller.abort(), COHERE_TIMEOUT_MS);
 
   try {
-    const response = await fetch(COHERE_RERANK_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: COHERE_RERANK_MODEL,
-        query,
-        documents,
-        top_n: documents.length,
-      }),
-      signal: controller.signal,
-    });
+    const response = await cohereRequestQueue.exec(() =>
+      withRetry(
+        async (): Promise<Response> => {
+          const res = await fetch(COHERE_RERANK_URL, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: COHERE_RERANK_MODEL,
+              query,
+              documents,
+              top_n: documents.length,
+            }),
+            signal: controller.signal,
+          });
 
-    if (!response.ok) {
-      const errText = await response.text().catch(() => "");
-      throw new Error(
-        `Cohere Rerank API returned ${response.status}: ${errText}`,
-      );
-    }
+          if (!res.ok) {
+            const errText = await res.text().catch(() => "");
+            throw new HttpError(
+              res.status,
+              errText,
+              parseRetryAfterHeader(res),
+            );
+          }
+
+          return res;
+        },
+        {
+          maxRetries: COHERE_MAX_RETRIES,
+          baseDelay: 1000,
+          maxDelay: DEFAULT_MAX_DELAY,
+          isRetryable: (error) => {
+            if (error instanceof HttpError) {
+              return error.status === 429 || error.status >= 500;
+            }
+            return false;
+          },
+          getRetryAfter: (error) =>
+            error instanceof HttpError ? error.retryAfter : null,
+          onRetry: (attempt, delayMs, error) => {
+            const status =
+              error instanceof HttpError ? error.status : undefined;
+            logger?.info("cohere_rerank_retry", {
+              service: "cohere",
+              data: {
+                attempt,
+                maxRetries: COHERE_MAX_RETRIES,
+                delayMs: Math.round(delayMs),
+                status,
+                errorMessage:
+                  error instanceof Error ? error.message : String(error),
+              },
+            });
+          },
+        },
+      ),
+    );
 
     const data = (await response.json()) as {
       results?: Array<{ index: number; relevance_score?: number }>;

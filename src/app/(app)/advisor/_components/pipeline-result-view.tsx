@@ -20,9 +20,8 @@ const SEVERITY_LABELS: Record<AuditFindingSeverity, string> = {
 
 const SEVERITY_CLASSES: Record<AuditFindingSeverity, string> = {
   CRITICAL: "bg-destructive/10 text-destructive border-destructive/20",
-  WARNING:
-    "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
-  NOTE: "bg-muted/40 text-muted-foreground border-border/30",
+  WARNING: "bg-warning/10 text-warning border-warning/20",
+  NOTE: "bg-muted/40 text-muted-foreground border-border/40",
 };
 
 /**
@@ -35,22 +34,22 @@ const SEVERITY_CLASSES: Record<AuditFindingSeverity, string> = {
 export function AuditBanner({ audit }: AuditBannerProps) {
   return (
     <div
-      className={`flex items-start gap-2 max-w-full px-3 py-1.5 rounded-md text-xs border ${
+      className={`flex items-start gap-2 max-w-full px-3 py-2 rounded-md text-xs border ${
         audit.hasCriticalIssues
-          ? "bg-destructive/5 border-destructive/25 text-destructive"
+          ? "bg-destructive/5 border-destructive/20 text-destructive"
           : "bg-muted/30 border-border/40 text-muted-foreground"
       }`}
     >
       {audit.hasCriticalIssues ? (
-        <AlertTriangle className="size-3.5 shrink-0 mt-0.5" />
+        <AlertTriangle className="size-3.5 shrink-0 mt-1" />
       ) : (
-        <CheckCircle2 className="size-3.5 shrink-0 mt-0.5" />
+        <CheckCircle2 className="size-3.5 shrink-0 mt-1" />
       )}
       <span className="flex-1 min-w-0 break-words whitespace-pre-wrap font-light">
         {audit.summary}
       </span>
       {audit.findings.length > 0 && (
-        <span className="shrink-0 mt-0.5 font-semibold tabular-nums px-1.5 py-0.5 rounded-sm text-[10px] bg-primary/10 text-primary">
+        <span className="shrink-0 mt-1 font-semibold tabular-nums px-2 py-1 rounded-sm text-[10px] bg-primary/10 text-primary">
           {audit.findings.length} bulgu
         </span>
       )}
@@ -87,20 +86,20 @@ export function PipelineResultView({
         <div
           className={`rounded-md border p-3 text-xs ${
             audit.hasCriticalIssues
-              ? "border-destructive/25 bg-destructive/5 text-destructive"
+              ? "border-destructive/20 bg-destructive/5 text-destructive"
               : "border-border/40 bg-muted/20 text-foreground"
           }`}
         >
-          <p className="font-semibold mb-1.5">
+          <p className="font-semibold mb-2">
             {audit.hasCriticalIssues
               ? "Denetim Durduruldu — Bulgular"
               : "Denetim Bulguları"}
           </p>
-          <ul className="space-y-1.5">
+          <ul className="space-y-2">
             {audit.findings.map((finding, index) => (
               <li key={index} className="flex gap-2">
                 <span
-                  className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-sm border ${SEVERITY_CLASSES[finding.severity]}`}
+                  className={`shrink-0 text-[10px] font-semibold px-2 py-1 rounded-sm border ${SEVERITY_CLASSES[finding.severity]}`}
                 >
                   {SEVERITY_LABELS[finding.severity]}
                 </span>
@@ -121,7 +120,7 @@ export function PipelineResultView({
                 <button
                   type="button"
                   onClick={onApprove}
-                  className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-destructive/15 text-destructive border border-destructive/30 hover:bg-destructive/25 transition-colors cursor-pointer"
+                  className="mt-2 inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-md bg-destructive/15 text-destructive border border-destructive/30 hover:bg-destructive/25 transition-colors cursor-pointer"
                 >
                   <ShieldCheck className="w-3.5 h-3.5" />
                   Onay Ver &amp; Devam Et

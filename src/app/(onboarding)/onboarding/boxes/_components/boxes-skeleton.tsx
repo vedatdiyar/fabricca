@@ -11,7 +11,7 @@ export function BoxesSkeleton() {
   return (
     <div className="w-full space-y-8">
       <div className="flex w-full items-start gap-3 rounded-md border border-primary/20 bg-primary/10 px-4 py-3">
-        <Skeleton className="mt-0.5 h-4 w-4 shrink-0 rounded-md" />
+        <Skeleton className="mt-1 h-4 w-4 shrink-0 rounded-md" />
         <div className="space-y-2">
           <Skeleton className="h-4 w-64" />
           <Skeleton className="h-3 w-full bg-border/20" />
@@ -27,7 +27,7 @@ export function BoxesSkeleton() {
               <Skeleton className="ml-auto h-6 w-24 rounded-md bg-border/20" />
             </div>
             <div className="flex items-start gap-3">
-              <Skeleton className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-border/20" />
+              <Skeleton className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-border/20" />
               <CardTitle className="w-full space-y-2">
                 <Skeleton className="h-5 w-3/4" />
               </CardTitle>
@@ -48,7 +48,7 @@ export function BoxesSkeleton() {
               <Skeleton className="h-3 w-24 bg-border/20" />
               <div className="relative ml-3 space-y-3 border-l border-border/40 pl-4">
                 {Array.from({ length: 2 }).map((_, subIndex) => (
-                  <div key={subIndex} className="space-y-1.5">
+                  <div key={subIndex} className="space-y-2">
                     <Skeleton className="h-3.5 w-2/3" />
                     <Skeleton className="h-3 w-1/2 bg-border/20" />
                   </div>

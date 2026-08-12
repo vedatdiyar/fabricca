@@ -5,8 +5,8 @@ import { toast } from "sonner";
 import {
   toggleResourceReadStatusAction,
   deleteLibraryResourceAction as deleteLibraryResource,
-  refreshDashboardDataAction,
-} from "@/app/(app)/dashboard/actions";
+} from "@/app/(app)/library/actions";
+import { refreshDashboardDataAction } from "@/app/(app)/dashboard/actions";
 import type { Box, Source } from "@/db/schema";
 import type { TaskRow } from "../_lib/schemas";
 import { useDashboardArticles } from "./use-dashboard-articles";

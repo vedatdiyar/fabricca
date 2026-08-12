@@ -49,29 +49,29 @@ const classifierJsonSchema = {
   additionalProperties: false,
 };
 
-const SYSTEM_INSTRUCTION = `Sen dijital tez asistanı sisteminin niyet sınıflandırıcısısın (Intent Classifier).
-Görevin, kullanıcının son mesajını ve sohbet geçmişini inceleyerek iki ana rolden hangisinin devreye girmesi gerektiğini belirlemektir:
+const SYSTEM_INSTRUCTION = `# Rol ve Uzmanlık
 
-1. "SOCRATIC_ADVISOR" (Akademik Tez Danışmanı - Sokratik Hoca):
-   - Kullanıcı tezine dair bir NİYET, FİKİR, TASLAK, HİPOTEZ veya METODOLOJİ seçimi belirttiğinde (Örn: "Tezimde X konusunu Y yöntemiyle ele alacağım", "3. bölümde şunu tartışmayı düşünüyorum", "Sizce bu yaklaşım mantıklı mı?").
-   - Kullanıcı danışmandan eleştiri, metodolojik değerlendirme, dönüt veya yönlendirme istediğinde.
+Sen dijital tez asistanı sisteminin niyet sınıflandırıcısısın (Intent Classifier).
 
-2. "TEZ_ASSISTANT" (Araştırma & Operatör Asistanı):
-   - Kullanıcı doğrudan bir KAVRAM, TANIM veya LİTERATÜR sorusu sorduğunda (Örn: "Biyo-politika nedir?", "Kütüphanemde X hakkında ne var?", "APA 7 atıf kuralı nedir?").
-   - Kullanıcı veritabanı veya tez yapısı üzerinde İŞLEM / GÜNCELLEME istediğinde (Örn: "Kutu ekle", "Görev oluştur", "Matrisi güncelle", "Not sil").
+# Birincil Görev
 
-Ayrıca mesajın doğrudan veritabanı/araç komutu olup olmadığını "isActionQuery" (true/false) olarak belirt.
+Kullanıcının son mesajını ve sohbet geçmişini inceleyerek devreye girmesi gereken personas (SOCRATIC_ADVISOR / TEZ_ASSISTANT), veritabanı işlem durumu (isActionQuery) ve akış modunu (DIRECT / PIPELINE) belirlemektir.
 
-Son olarak üç aşamalı akademik pipeline (Denetim -> Sokratik Tartışma -> Redaksiyon) için "mode" kararını ver:
+# Kurallar
 
-1. "PIPELINE":
-   - Kullanıcı çok cümleli bir PARAGRAF / TASLAK METİN gönderdiğinde (genellikle İngilizce tez pasajı). Metnin denetlenmesi (kaynak/sayfa doğrulaması), eleştirel olarak tartışılması ve gramer/akademik üslup/APA 7 açısından cilalanması gereken bir metindir.
-   - Kullanıcı açıkça "şu metni düzelt/polish/proofread/redakte eder misin", "paragrafımı gözden geçir" gibi bir gözden geçirme istediğinde.
-   - İpucu: Pragmatik olarak mesaj 30+ kelimeden oluşuyor veya birden fazla noktalı cümle ya da yeni satır içeriyorsa ve tek bir kısa soru değilse bu bir taslak metindir.
+1. **Persona Sınıflandırması:**
+   - **"SOCRATIC_ADVISOR":** Kullanıcı tez niyetini, fikrini, hipotezini veya metodoloji tercihlerini belirttiğinde ya da eleştiri/dönüt istediğinde seçilir.
+   - **"TEZ_ASSISTANT":** Kullanıcı doğrudan kavram tanımı, literatür sorgusu, APA kuralı sorduğunda veya veritabanı/tez yapısında güncelleme/işlem istediğinde seçilir.
 
-2. "DIRECT":
-   - Kullanıcının mesajı tek başına bir SORU olduğunda (APA kuralı, kavram tanımı, literatür sorusu, veritabanı işlemi). Mode değeri PIPELINE'a yalnızca gerçek bir taslak metin/pasaj söz konusu olduğunda ayarlanmalıdır.
-   - ÖNEMLİ: Sohbet geçmişindeki son Asistan mesajı Sokratik sorular sorup kullanıcının yanıtını bekliyorsa ve kullanıcının yeni mesajı bu sorulara verilmiş bir YANITSA (kaç cümle olursa olsun) mode yine "DIRECT" olarak kalmalıdır; yeni bir taslak metin başlatılmamalıdır.`;
+2. **İşlem Sorgusu (isActionQuery):** Kullanıcı doğrudan veritabanı/araç komutu belirttiğinde \`isActionQuery = true\`, aksi halde \`false\` olarak işaretlenir.
+
+3. **Akış Modu (mode):**
+   - **"PIPELINE":** Kullanıcı denetlenmesi ve eleştirel olarak tartışılması gereken çok cümleli (30+ kelime, paragraf) bir akademik taslak metin veya redaksiyon isteği sunduğunda seçilir.
+   - **"DIRECT":** Kullanıcı tek bir soru (kavram, APA, veritabanı işlemi) sorduğunda veya sohbet geçmişindeki Sokratik sorulara bir yanıt verdiğinde mode "DIRECT" olarak korunur.
+
+# Çıktı Biçimi
+
+Belirtilen JSON şemasına uygun olarak persona, reasoning, isActionQuery ve mode alanlarını döndürün.`;
 
 /**
  * Classifies user intent into SOCRATIC_ADVISOR vs TEZ_ASSISTANT using Cerebras Gemma 4 (gemma-4-31b),
@@ -114,7 +114,7 @@ export async function classifyAdvisorIntent(
       {
         zodSchema: classifierZodSchema,
         payloadStage: "advisor_intent_classifier",
-        temperature: 0.1,
+        temperature: 0,
       },
     );
 

@@ -38,6 +38,13 @@ export interface BackwardExpansionResult {
   shortfall: number;
 }
 
+/** A single co-citation entry keyed by normalized title across the seed pool. */
+interface CoCitationEntry {
+  ref: ParsedReference;
+  coCitationCount: number;
+  seedTitles: string[];
+}
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
@@ -53,6 +60,147 @@ function normKey(title: string): string {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]/g, "")
     .trim();
+}
+
+/**
+ * Fetches every source belonging to the given thesis matrix, so the dedup pass
+ * can catch works already present in the library under a different box/title.
+ *
+ * @param matrixId - The user's thesis matrix ID.
+ * @returns All user sources across the matrix boxes.
+ */
+async function fetchUserLibraryForDedup(
+  matrixId: number,
+): Promise<{ title: string; doi: string | null; authors: string[] | null }[]> {
+  const userBoxes = await db
+    .select({ id: boxes.id })
+    .from(boxes)
+    .where(eq(boxes.matrixId, matrixId));
+
+  const userBoxIds = userBoxes.map((b) => b.id);
+  if (userBoxIds.length === 0) return [];
+
+  return db
+    .select({
+      title: sources.title,
+      doi: sources.doi,
+      authors: sources.authors,
+    })
+    .from(sources)
+    .where(inArray(sources.boxId, userBoxIds));
+}
+
+/**
+ * Builds the thesis context used as the rerank query and LLM selection prompt:
+ * the box title/description joined with the matrix subject problem and
+ * theoretical framework.
+ *
+ * @param matrixId - The user's thesis matrix ID (may be null).
+ * @param boxId - The target sub-box ID.
+ * @returns The combined context string.
+ */
+async function buildThesisContext(
+  matrixId: number | null,
+  boxId: number,
+): Promise<string> {
+  let thesisContext = "";
+  if (matrixId) {
+    const [matrixRow] = await db
+      .select({
+        subjectProblem: matrices.subjectProblem,
+        theoreticalFramework: matrices.theoreticalFramework,
+      })
+      .from(matrices)
+      .where(eq(matrices.id, matrixId));
+    if (matrixRow) {
+      thesisContext = `${matrixRow.subjectProblem}. ${matrixRow.theoreticalFramework}`;
+    }
+  }
+
+  const [boxDetail] = await db
+    .select({ title: boxes.title, description: boxes.description })
+    .from(boxes)
+    .where(eq(boxes.id, boxId));
+
+  if (boxDetail) {
+    thesisContext =
+      `${boxDetail.title}. ${boxDetail.description ?? ""}. ${thesisContext}`.trim();
+  }
+
+  return thesisContext;
+}
+
+/**
+ * Aggregates parsed references across all seed sources into a co-citation map,
+ * keyed by normalized title. A single seed listing the same work twice only
+ * counts once.
+ *
+ * @param seedSources - The active seed source rows.
+ * @returns Map of normalized title → co-citation entry.
+ */
+function aggregateCoCitations(
+  seedSources: Array<{ title: string; parsedReferences: unknown }>,
+): Map<string, CoCitationEntry> {
+  const coCitationMap = new Map<string, CoCitationEntry>();
+
+  for (const seed of seedSources) {
+    const parsedList = (seed.parsedReferences as ParsedReference[]) ?? [];
+    const seenInThisSeed = new Set<string>();
+
+    for (const ref of parsedList) {
+      if (!ref.title || ref.title.trim().length < 5) continue;
+
+      const key = normKey(ref.title);
+      if (!key) continue;
+      if (seenInThisSeed.has(key)) continue;
+      seenInThisSeed.add(key);
+
+      const existing = coCitationMap.get(key);
+      if (existing) {
+        existing.coCitationCount += 1;
+        existing.seedTitles.push(seed.title);
+      } else {
+        coCitationMap.set(key, {
+          ref,
+          coCitationCount: 1,
+          seedTitles: [seed.title],
+        });
+      }
+    }
+  }
+
+  return coCitationMap;
+}
+
+/**
+ * Ranks the co-citation map into a CandidateSource array, ordered by
+ * co-citation count (primary) then publication year descending (secondary).
+ *
+ * @param coCitationMap - The aggregated co-citation map.
+ * @returns Ranked backward candidates.
+ */
+function toRankedCandidates(
+  coCitationMap: Map<string, CoCitationEntry>,
+): CandidateSource[] {
+  const sorted = Array.from(coCitationMap.values()).sort((a, b) => {
+    if (b.coCitationCount !== a.coCitationCount) {
+      return b.coCitationCount - a.coCitationCount;
+    }
+    return (b.ref.year ?? 0) - (a.ref.year ?? 0);
+  });
+
+  return sorted.map((item) => {
+    const authors = item.ref.authors.map((a) => a.name).filter(Boolean);
+    return {
+      title: item.ref.title ?? "Untitled Reference",
+      authors: authors.length > 0 ? authors : ["Unknown Author"],
+      publisher: item.ref.publisher ?? item.ref.containerTitle ?? undefined,
+      publicationYear: item.ref.year ?? undefined,
+      relevanceScore: item.coCitationCount,
+      sourceOrigin: "backward",
+      rawParsedRef: item.ref.raw,
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -97,106 +245,29 @@ export async function executeBackwardExpansion(
     return { selectedCandidates: [], shortfall: requiredCount };
   }
 
-  // ── 2. Fetch ALL user sources for cross-library dedup ────────────────────
-  // We need the full user library (across all boxes) to catch cases where the
-  // same work exists under a different title/language in another box.
-  // The user's matrix drives the userId lookup via the box → matrix join.
-  const boxRow = await db
+  // ── 2. Load matrix context + full user library for cross-library dedup ────
+  const [boxRow] = await db
     .select({ matrixId: boxes.matrixId })
     .from(boxes)
     .where(eq(boxes.id, boxId));
 
-  let allUserSources: {
-    title: string;
-    doi: string | null;
-    authors: string[] | null;
-  }[] = [];
+  const matrixId = boxRow?.matrixId ?? null;
 
-  if (boxRow[0]?.matrixId) {
-    // Get all boxes in this matrix, then all sources in those boxes
-    const userBoxes = await db
-      .select({ id: boxes.id })
-      .from(boxes)
-      .where(eq(boxes.matrixId, boxRow[0].matrixId));
+  const [allUserSources, thesisContext] = await Promise.all([
+    matrixId
+      ? fetchUserLibraryForDedup(matrixId)
+      : Promise.resolve(
+          [] as {
+            title: string;
+            doi: string | null;
+            authors: string[] | null;
+          }[],
+        ),
+    buildThesisContext(matrixId, boxId),
+  ]);
 
-    const userBoxIds = userBoxes.map((b) => b.id);
-
-    if (userBoxIds.length > 0) {
-      allUserSources = await db
-        .select({
-          title: sources.title,
-          doi: sources.doi,
-          authors: sources.authors,
-        })
-        .from(sources)
-        .where(inArray(sources.boxId, userBoxIds));
-    }
-  }
-
-  // ── 3. Build thesis context for Cohere + Cerebras ─────────────────────────
-  let thesisContext = "";
-  if (boxRow[0]?.matrixId) {
-    const matrixRows = await db
-      .select({
-        subjectProblem: matrices.subjectProblem,
-        theoreticalFramework: matrices.theoreticalFramework,
-      })
-      .from(matrices)
-      .where(eq(matrices.id, boxRow[0].matrixId));
-
-    const m = matrixRows[0];
-    if (m) {
-      thesisContext = `${m.subjectProblem}. ${m.theoreticalFramework}`;
-    }
-  }
-
-  // Augment with box title/description if available
-  const boxDetailRow = await db
-    .select({ title: boxes.title, description: boxes.description })
-    .from(boxes)
-    .where(eq(boxes.id, boxId));
-
-  const boxDetail = boxDetailRow[0];
-  if (boxDetail) {
-    thesisContext =
-      `${boxDetail.title}. ${boxDetail.description ?? ""}. ${thesisContext}`.trim();
-  }
-
-  // ── 4. Aggregate parsed references → co-citation count map ───────────────
-  // Key: normKey(title) — unique bucket per work regardless of punctuation.
-  // Value: { ref, coCitationCount, seedsWhichCiteIt }
-  const coCitationMap = new Map<
-    string,
-    { ref: ParsedReference; coCitationCount: number; seedTitles: string[] }
-  >();
-
-  for (const seed of seedSources) {
-    const parsedList = (seed.parsedReferences as ParsedReference[]) ?? [];
-    // Track which titles this seed already contributed to avoid double-counting
-    // a single seed that lists the same reference twice.
-    const seenInThisSeed = new Set<string>();
-
-    for (const ref of parsedList) {
-      if (!ref.title || ref.title.trim().length < 5) continue;
-
-      const key = normKey(ref.title);
-      if (!key) continue;
-      if (seenInThisSeed.has(key)) continue;
-      seenInThisSeed.add(key);
-
-      const existing = coCitationMap.get(key);
-      if (existing) {
-        existing.coCitationCount += 1;
-        existing.seedTitles.push(seed.title);
-      } else {
-        coCitationMap.set(key, {
-          ref,
-          coCitationCount: 1,
-          seedTitles: [seed.title],
-        });
-      }
-    }
-  }
+  // ── 3. Aggregate parsed references → co-citation count map ────────────────
+  const coCitationMap = aggregateCoCitations(seedSources);
 
   if (coCitationMap.size === 0) {
     logger?.info("backward_expansion_success", {
@@ -212,31 +283,10 @@ export async function executeBackwardExpansion(
     return { selectedCandidates: [], shortfall: requiredCount };
   }
 
-  // ── 5. Sort by co-citation count (primary), then by year desc (secondary) ─
-  // Year is only a stable tie-breaker before Cohere reranking; it does NOT
-  // influence the final score when Cohere is available.
-  const sorted = Array.from(coCitationMap.values()).sort((a, b) => {
-    if (b.coCitationCount !== a.coCitationCount) {
-      return b.coCitationCount - a.coCitationCount;
-    }
-    return (b.ref.year ?? 0) - (a.ref.year ?? 0);
-  });
+  // ── 4. Sort + map to CandidateSource array ────────────────────────────────
+  const rawCandidates = toRankedCandidates(coCitationMap);
 
-  // ── 6. Convert to CandidateSource array ───────────────────────────────────
-  const rawCandidates: CandidateSource[] = sorted.map((item) => {
-    const authors = item.ref.authors.map((a) => a.name).filter(Boolean);
-    return {
-      title: item.ref.title ?? "Untitled Reference",
-      authors: authors.length > 0 ? authors : ["Unknown Author"],
-      publisher: item.ref.publisher ?? item.ref.containerTitle ?? undefined,
-      publicationYear: item.ref.year ?? undefined,
-      relevanceScore: item.coCitationCount,
-      sourceOrigin: "backward",
-      rawParsedRef: item.ref.raw,
-    };
-  });
-
-  // ── 7. Fuzzy dedup against all user sources ───────────────────────────────
+  // ── 5. Fuzzy dedup against all user sources ───────────────────────────────
   const { confirmed, suspicious, removed } = filterCandidates(
     rawCandidates.map((c) => ({
       title: c.title,
@@ -268,7 +318,7 @@ export async function executeBackwardExpansion(
     suspiciousTitleSet.has(normKey(c.title)),
   );
 
-  // ── 8. Cohere rerank of confirmed pool (tie-breaker within same co-citation tier) ──
+  // ── 6. Cohere rerank of confirmed pool (tie-breaker within same co-citation tier) ──
   // We send requiredCount × 2 candidates to keep context window manageable for Cerebras.
   const poolForCohere = confirmedCandidates.slice(0, requiredCount * 2);
 
@@ -304,7 +354,7 @@ export async function executeBackwardExpansion(
     }
   }
 
-  // ── 9. Cerebras single call: dedup suspicious + final selection ───────────
+  // ── 7. Cerebras single call: dedup suspicious + final selection ───────────
   const allCandidatesForLlm = [...rerankedPool, ...suspiciousCandidates];
 
   const suspiciousEntries: SuspiciousEntry[] = suspicious.map((s) => ({

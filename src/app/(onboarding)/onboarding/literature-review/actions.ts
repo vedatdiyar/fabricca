@@ -75,7 +75,7 @@ export async function processAllBoxesAction(
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
 
     const { matrix } = await loadThesisMatrixAndBoxes(userId);
-    if (!matrix) return { error: "Thesis matrix not found." };
+    if (!matrix) return { error: "Tez matrisi bulunamadı." };
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
 
     const { poolEntries } = await orchestrateBatchProcess(
@@ -92,7 +92,8 @@ export async function processAllBoxesAction(
 
     return { data: poolEntries };
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unexpected error";
+    const message =
+      err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
     logger.error("literature_batch_process_failed", {
       error: err,
     });
@@ -124,7 +125,7 @@ export async function confirmLiteratureAction(args: {
 
     const { literaturePool } = args;
     if (!literaturePool || literaturePool.length === 0) {
-      return { error: "No literature data found to confirm." };
+      return { error: "Onaylanacak literatür verisi bulunamadı." };
     }
 
     const [matrix] = await db
@@ -133,7 +134,7 @@ export async function confirmLiteratureAction(args: {
       .where(eq(matrices.userId, session.userId));
 
     if (!matrix) {
-      return { error: "Thesis matrix not found." };
+      return { error: "Tez matrisi bulunamadı." };
     }
 
     await persistLiteraturePool(literaturePool);
@@ -177,7 +178,7 @@ export async function fetchPreloadedLiteraturePool(): Promise<{
     .from(matrices)
     .where(eq(matrices.userId, session.userId));
 
-  if (!matrix) return { error: "Thesis matrix not found." };
+  if (!matrix) return { error: "Tez matrisi bulunamadı." };
 
   const pool = await fetchPreloadedPool(matrix.id);
 
@@ -263,7 +264,7 @@ export async function checkLiteraturePoolAction(): Promise<{
       .from(matrices)
       .where(eq(matrices.userId, session.userId));
 
-    if (!matrix) return { exists: false, error: "Thesis matrix not found." };
+    if (!matrix) return { exists: false, error: "Tez matrisi bulunamadı." };
 
     const pool = await fetchPreloadedPool(matrix.id);
     if (pool && pool.length > 0) {
@@ -274,7 +275,8 @@ export async function checkLiteraturePoolAction(): Promise<{
   } catch (err) {
     return {
       exists: false,
-      error: err instanceof Error ? err.message : "Unexpected error",
+      error:
+        err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.",
     };
   }
 }
@@ -332,7 +334,8 @@ export async function runLiteraturePipelineAction(
 
     return { data: poolEntries };
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unexpected error";
+    const message =
+      err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
     logger.error("literature_pipeline_failed", {
       error: err,
     });

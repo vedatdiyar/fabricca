@@ -194,11 +194,11 @@ export function OutlineSectionCard({
     >
       {/* Header Row */}
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-2.5 flex-1 min-w-0">
+        <div className="flex items-start gap-3 flex-1 min-w-0">
           {/* Drag Handle & Section Number */}
-          <div className="flex items-center gap-1 shrink-0 mt-0.5">
+          <div className="flex items-center gap-1 shrink-0 mt-1">
             <span
-              className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-0.5"
+              className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1"
               title="Sürükleyip Sırasını Değiştirin"
             >
               <GripVertical className="size-4" />
@@ -220,7 +220,7 @@ export function OutlineSectionCard({
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                   placeholder="Bölüm başlığı..."
-                  className="font-serif text-base font-semibold"
+                  className="font-sans text-base font-semibold"
                 />
                 <Textarea
                   value={editDescription}
@@ -251,11 +251,11 @@ export function OutlineSectionCard({
             ) : (
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-serif text-base font-semibold tracking-tight text-foreground leading-snug">
+                  <h3 className="font-serif text-lg font-medium tracking-tight text-foreground leading-snug">
                     {section.title}
                   </h3>
                   {hasSubSections && (
-                    <span className="text-[10px] font-medium bg-muted text-muted-foreground px-2 py-0.5 rounded-full shrink-0">
+                    <span className="text-[10px] font-medium bg-muted text-muted-foreground px-2 py-1 rounded-full shrink-0">
                       {subSections.length} alt bölüm
                     </span>
                   )}
@@ -366,7 +366,7 @@ export function OutlineSectionCard({
                   className={`group/sub relative rounded-md border bg-muted/40 p-3 transition-colors ${
                     isSubDragging
                       ? "opacity-40 border-primary"
-                      : "border-border/60"
+                      : "border-border/40"
                   } ${
                     isSubDragOver
                       ? "border-primary ring-1 ring-primary/20"
@@ -409,22 +409,22 @@ export function OutlineSectionCard({
                     </div>
                   ) : (
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
                         {/* Drag Handle & Sub-section Number */}
-                        <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+                        <div className="flex items-center gap-2 shrink-0 mt-1">
                           <span
-                            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-0.5"
+                            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1"
                             title="Sürükleyip Sırasını Değiştirin"
                           >
                             <GripVertical className="size-3.5" />
                           </span>
-                          <span className="font-mono text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded font-semibold shrink-0">
+                          <span className="font-mono text-xs text-muted-foreground bg-muted px-2 py-1 rounded font-semibold shrink-0">
                             {sectionNumber}.{subIdx + 1}
                           </span>
                         </div>
 
                         <div className="flex-1 min-w-0 space-y-1">
-                          <h4 className="text-sm font-medium text-foreground leading-snug">
+                          <h4 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground leading-snug">
                             {sub.title}
                           </h4>
                           {sub.description && (

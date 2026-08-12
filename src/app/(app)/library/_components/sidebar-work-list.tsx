@@ -123,7 +123,7 @@ export function SidebarWorkList({
   }, [selectedResourceId, filteredResources]);
 
   return (
-    <div className="flex h-full w-full flex-col min-h-0 space-y-4 rounded-md border border-border bg-card p-4">
+    <Card className="flex h-full w-full flex-col min-h-0 space-y-4 rounded-md p-4">
       <div className="flex items-center justify-between pb-2 border-b border-border">
         <div className="flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-primary" />
@@ -154,7 +154,7 @@ export function SidebarWorkList({
       </div>
 
       <div className="relative w-full">
-        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
         <Input
           type="text"
           placeholder="Eser veya yazar ara..."
@@ -218,7 +218,7 @@ export function SidebarWorkList({
               >
                 <CardContent className="p-0 space-y-2">
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-sans text-sm font-semibold text-foreground line-clamp-2 leading-snug flex-1 min-w-0">
+                    <h3 className="font-serif text-lg font-medium tracking-tight text-foreground line-clamp-2 leading-snug flex-1 min-w-0">
                       {item.title}
                     </h3>
                     <div className="flex items-center gap-2 shrink-0 pt-1">
@@ -254,7 +254,7 @@ export function SidebarWorkList({
                             setResourceToDeleteId(item.id);
                           }}
                           title="Eseri Sil"
-                          className="opacity-0 group-hover:opacity-100 flex items-center p-0.5 text-muted-foreground hover:text-destructive transition-all rounded hover:bg-destructive/10"
+                          className="opacity-0 group-hover:opacity-100 flex items-center p-1 text-muted-foreground hover:text-destructive transition-all rounded hover:bg-destructive/10"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -319,6 +319,6 @@ export function SidebarWorkList({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </Card>
   );
 }

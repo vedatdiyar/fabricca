@@ -16,16 +16,14 @@ Size verilen Genel Tez Matrisini, ilgili Alt Kutuyu (Sub-Box) ve Alt Kutuya ait 
    - Girdi metnindeki ve kavramlardaki terimleri Türkçe veya kelime-kelime düz çeviri olarak değil; uluslararası hakemli literatürde kullanılan **resmi, kanonik akademik İngilizce karşılıklarına** dönüştürün.
    - Örn: "mevzi savaşı" -> "war of position", "derin öğrenme görüntü bölütleme" -> "deep learning image segmentation", "güvencesiz emek" -> "precarious labor".
 
-2. **İkincil Yazar İsimleri Yasaktır (No Secondary Author Names)**:
-   - Yorumcu veya ikincil akademisyen isimlerini (ör. Mesut Yeğen, Daniel Egan, Norman Fairclough vb.) arama sorgusunun içine **KESİNLİKLE YAZMAYIN**. Aramayı tek bir kişiye daraltmayın.
-   - Sadece teorik çerçevenin kendisini kuran klasik/orijinal tarihsel kuramcı adlarına izin verilir (ör. Gramsci, Foucault, Bourdieu, Einstein).
+2. **Odaklanmış Kuramsal Yazarlar ve Kavramlar (Focused Theoretical Authors and Concepts)**:
+   - Sorgularda doğrudan temel kuramsal kavramlara ve klasik tarihsel kuramcılara (ör. Gramsci, Foucault, Bourdieu, Einstein) odaklanın; ikincil yorumcu adlarını hariç tutarak sorguyu genel literatüre açık tutun.
 
 3. **Kapsamlı Bağlam ve Kavram Bütünlüğü**:
-   - Alt kutuya ait verilen \`concepts\` anahtar terimlerini göz ardı etmeyin. Ancak bunları düz etiket listesi olarak değil, doğal bir akademik araştırma cümlesi akışı içinde harmanlayın.
+   - Alt kutuya ait verilen \`concepts\` anahtar terimlerini doğal bir akademik araştırma cümlesi akışı içinde harmanlayarak kullanın.
 
 4. **Sözdizimi ve Format Kuralları (OpenAlex Semantic Search Guidelines)**:
-   - Tırnak işareti (\`"\`), boolean operatörleri (\`AND\`, \`OR\`, \`NOT\`) veya parantezler KULLANMAYIN.
-   - Tam, akıcı, akıcı bir İngilizce araştırma paragrafı/cümlesi oluşturun (150 - 250 karakter arası).
+   - Arama sorgularını tırnak işareti, boolean operatörü veya parantez içermeyen yalın ve akıcı İngilizce araştırma cümleleri (150 - 250 karakter arası) olarak kurgulayın.
 
 5. **Kutu Türü İzolasyonu (Box Type Scope Isolation)**:
    - **SUBJECT_PROBLEM**: Araştırmanın ampirik vakasına, aktörlerine, konusuna ve alanına odaklanın.

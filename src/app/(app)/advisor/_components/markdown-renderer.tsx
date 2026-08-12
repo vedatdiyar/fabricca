@@ -139,7 +139,7 @@ function formatContent(
 const components: Components = {
   h1: ({ children, ...props }) => (
     <h1
-      className="font-serif text-[17px] font-medium text-foreground mt-5 mb-2.5"
+      className="font-serif text-2xl font-bold tracking-tight text-foreground mt-4 mb-2"
       {...props}
     >
       {children}
@@ -147,7 +147,7 @@ const components: Components = {
   ),
   h2: ({ children, ...props }) => (
     <h2
-      className="font-serif text-base font-medium text-foreground mt-4 mb-2"
+      className="font-serif text-xl font-semibold tracking-tight text-foreground mt-4 mb-2"
       {...props}
     >
       {children}
@@ -155,7 +155,7 @@ const components: Components = {
   ),
   h3: ({ children, ...props }) => (
     <h3
-      className="font-serif text-[15px] font-medium text-foreground mt-3 mb-1.5"
+      className="font-serif text-lg font-medium tracking-tight text-foreground mt-3 mb-2"
       {...props}
     >
       {children}
@@ -163,7 +163,7 @@ const components: Components = {
   ),
   p: ({ children, ...props }) => (
     <p
-      className="text-[15px] leading-relaxed text-card-foreground font-light mb-3"
+      className="text-base leading-relaxed text-card-foreground font-light mb-3"
       {...props}
     >
       {children}
@@ -171,7 +171,7 @@ const components: Components = {
   ),
   ul: ({ children, ...props }) => (
     <ul
-      className="list-disc list-outside pl-5 space-y-2 text-[15px] text-card-foreground font-light mb-3"
+      className="list-disc list-outside pl-5 space-y-2 text-base text-card-foreground font-light mb-3"
       {...props}
     >
       {children}
@@ -179,7 +179,7 @@ const components: Components = {
   ),
   ol: ({ children, ...props }) => (
     <ol
-      className="list-decimal list-outside pl-5 space-y-2 text-[15px] text-card-foreground font-light mb-3"
+      className="list-decimal list-outside pl-5 space-y-2 text-base text-card-foreground font-light mb-3"
       {...props}
     >
       {children}
@@ -187,7 +187,7 @@ const components: Components = {
   ),
   li: ({ children, ...props }) => (
     <li
-      className="text-[15px] leading-relaxed text-card-foreground font-light [&>p]:inline [&>p]:mb-0"
+      className="text-base leading-relaxed text-card-foreground font-light [&>p]:inline [&>p]:mb-0"
       {...props}
     >
       {children}

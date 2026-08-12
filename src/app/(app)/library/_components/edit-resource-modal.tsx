@@ -49,14 +49,14 @@ function EditResourceForm({
   } = useEditResourceForm({ resource, onClose, onUpdateSuccess });
 
   return (
-    <Card className="max-w-xl w-full border border-border bg-card rounded-md overflow-hidden max-h-[85vh] flex flex-col">
+    <Card className="max-w-xl w-full rounded-md overflow-hidden max-h-[85vh] flex flex-col">
       <div className="flex items-center justify-between border-b border-border p-5 bg-muted/20">
         <div className="flex items-center gap-2">
           <div className="p-2 rounded-lg bg-primary/10 text-primary">
             <Pencil className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="font-serif text-lg font-semibold tracking-tight text-foreground">
+            <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
               Eser Künyesini Düzenle
             </h3>
             <p className="text-xs text-muted-foreground">

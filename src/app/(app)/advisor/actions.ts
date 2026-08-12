@@ -1,6 +1,5 @@
 "use server";
 
-import { z } from "zod";
 import { eq, desc } from "drizzle-orm";
 import { db } from "@/db";
 import {
@@ -12,8 +11,7 @@ import {
 import { getSession } from "@/lib/session";
 import type { RagSearchResultItem } from "@/services/search/rag-search";
 import type { PipelineResultData } from "@/db/schema";
-import { generateCerebrasStructuredContent } from "@/services/ai";
-import { CEREBRAS_MODEL } from "@/lib/constants";
+import { generateChatTitle } from "@/features/advisor/chat-title";
 
 export interface ChatSessionListItem {
   id: number;
@@ -211,27 +209,6 @@ export async function updateChatMessageToolCalls(
   return { success: true };
 }
 
-const titleZodSchema = z.object({
-  title: z
-    .string()
-    .describe(
-      "3 ila 5 kelimelik, net, öz ve Türkçe bir akademik sohbet başlığı.",
-    ),
-});
-
-const titleJsonSchema = {
-  type: "object",
-  properties: {
-    title: {
-      type: "string",
-      description:
-        "3 ila 5 kelimelik, net, öz ve Türkçe bir akademik sohbet başlığı.",
-    },
-  },
-  required: ["title"],
-  additionalProperties: false,
-};
-
 /**
  * Generates a concise 3-5 word academic topic title using Cerebras Gemma 4 (gemma-4-31b)
  * and updates the chat session title in the database.
@@ -248,28 +225,9 @@ export async function generateChatTitleAction(
   if (!session) return { success: false, error: "Oturum süreniz dolmuş." };
 
   try {
-    const systemInstruction =
-      "Sen bir akademik tez asistanısın. Kullanıcının sorduğu soruyu analiz ederek bu sohbet için 3 ila 5 kelimelik, net, öz ve Türkçe bir konu başlığı çıkar. Başlıkta soru eki, tırnak işareti veya ek açıklama yazma. Örnekler: 'David Romano Etnisite Yaklaşımı', 'Primordiyalist Kuram Analizi', 'Söylem Analizi Metodolojisi'.";
-    const prompt = `Kullanıcı Sorusu: ${userQuery}`;
-
-    const res = await generateCerebrasStructuredContent<{ title: string }>(
-      CEREBRAS_MODEL,
-      systemInstruction,
-      prompt,
-      titleJsonSchema,
-      undefined,
-      {
-        zodSchema: titleZodSchema,
-        payloadStage: "advisor_chat_title",
-      },
-    );
-
-    const title = res.title?.trim().slice(0, 100);
-    if (title) {
-      await renameChatSession(sessionId, title);
-      return { success: true, title };
-    }
-    return { success: false, error: "Başlık üretilemedi." };
+    const title = await generateChatTitle(userQuery);
+    await renameChatSession(sessionId, title);
+    return { success: true, title };
   } catch (error) {
     return {
       success: false,

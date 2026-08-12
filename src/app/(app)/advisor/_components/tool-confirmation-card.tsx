@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, X, Database, Loader2, Sparkles, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import type { PendingToolCall } from "../_lib/types";
 import {
   getComparisonRows,
@@ -77,7 +78,7 @@ export function ToolConfirmationCard({
   const comparisonRows = getComparisonRows(toolCall);
 
   return (
-    <div className="my-3 w-full rounded-md border border-primary/20 bg-card p-4 space-y-4 transition-all">
+    <Card className="my-3 w-full rounded-md border border-primary/20 p-4 space-y-4 transition-all">
       {/* Header Bar */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-3">
         <div className="flex items-center gap-2">
@@ -85,10 +86,10 @@ export function ToolConfirmationCard({
             <Database className="size-4" />
           </div>
           <div>
-            <h4 className="text-xs font-bold tracking-wide uppercase text-foreground">
+            <h4 className="text-xs font-medium tracking-wider uppercase text-muted-foreground">
               {categoryLabel}
             </h4>
-            <p className="text-[11px] text-muted-foreground font-medium">
+            <p className="text-xs text-muted-foreground font-medium">
               Veritabanı Değişikliği Ön İzlemesi
             </p>
           </div>
@@ -132,13 +133,13 @@ export function ToolConfirmationCard({
             <table className="w-full text-left text-xs table-fixed">
               <thead className="bg-muted text-muted-foreground uppercase text-[10px] tracking-wider border-b border-border/40">
                 <tr>
-                  <th className="py-2.5 px-4 font-semibold w-[20%]">
+                  <th className="py-3 px-4 font-semibold w-[20%]">
                     Alan / Nesne
                   </th>
-                  <th className="py-2.5 px-4 font-semibold w-[40%] text-muted-foreground/80">
+                  <th className="py-3 px-4 font-semibold w-[40%] text-muted-foreground/80">
                     Eski Durum (Mevcut)
                   </th>
-                  <th className="py-2.5 px-4 font-semibold w-[40%] text-primary">
+                  <th className="py-3 px-4 font-semibold w-[40%] text-primary">
                     <div className="flex items-center gap-1">
                       <span>Yeni Durum (Önerilen)</span>
                     </div>
@@ -154,11 +155,11 @@ export function ToolConfirmationCard({
                     <td className="py-3 px-4 font-semibold text-foreground align-top break-words">
                       {row.fieldLabel}
                     </td>
-                    <td className="py-3 px-4 text-muted-foreground font-mono text-[11px] leading-relaxed break-words align-top bg-muted/20">
+                    <td className="py-3 px-4 text-muted-foreground font-mono text-xs leading-relaxed break-words align-top bg-muted/20">
                       {row.oldValue}
                     </td>
                     <td
-                      className={`py-3 px-4 font-mono text-[11px] leading-relaxed break-words align-top ${
+                      className={`py-3 px-4 font-mono text-xs leading-relaxed break-words align-top ${
                         row.isWarning
                           ? "text-destructive font-bold bg-destructive/10"
                           : "text-foreground font-semibold bg-primary/10"
@@ -251,6 +252,6 @@ export function ToolConfirmationCard({
           <span>İşlem kullanıcı tarafından iptal edildi.</span>
         </div>
       )}
-    </div>
+    </Card>
   );
 }

@@ -1,10 +1,12 @@
-import { GoogleGenAI } from "@google/genai";
+import { ThinkingLevel } from "@google/genai";
 import type { Logger } from "@/lib/logger";
-import { sanitizeAndParseJson, type JsonSchema } from "@/services/ai";
+import { generateGeminiStructuredContent } from "@/services/ai";
 import { GEMINI_SEED, FLASH_LITE_35 } from "@/lib/constants";
 import { PDF_PARSER_SYSTEM_INSTRUCTION } from "@/lib/prompts";
 import {
   DocumentAnalysisSchema,
+  DocumentMetadataZodSchema,
+  DocumentReferencesZodSchema,
   ReferencesOnlySchema,
   type DocumentAnalysisResult,
 } from "./schema";
@@ -39,57 +41,6 @@ export function isFormalBibliographicEntry(raw: string): boolean {
 }
 
 /**
- * Creates a single-use Gemini Flash-Lite client from the environment.
- * Falls back gracefully when no key is configured.
- */
-function createGeminiClient(): GoogleGenAI {
-  const apiKey = process.env.GEMINI_API_KEY_1;
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY_1 environment variable is not set.");
-  }
-  return new GoogleGenAI({ apiKey });
-}
-
-/**
- * Runs a single structured-output Gemini request.
- *
- * @param prompt - The user prompt text.
- * @param schema - The structured-output JSON schema.
- * @param systemInstruction - The system instruction for the call.
- * @param logger - Optional logger instance.
- * @returns The raw response text, or null if the model returned empty output.
- */
-async function generateStructured(
-  prompt: string,
-  schema: JsonSchema,
-  systemInstruction: string,
-  logger?: Logger,
-): Promise<string | null> {
-  const client = createGeminiClient();
-
-  try {
-    const response = await client.models.generateContent({
-      model: FLASH_LITE_35,
-      contents: prompt,
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json",
-        responseJsonSchema: schema,
-        seed: GEMINI_SEED,
-      },
-    });
-
-    return response.text ?? null;
-  } catch (err) {
-    logger?.info("llm_driver_generate_structured_error", {
-      service: "pdf-parser",
-      error: err,
-    });
-    return null;
-  }
-}
-
-/**
  * Extracts metadata from document first pages via Gemini Flash-Lite.
  *
  * @param firstPagesText - Combined text of document's first pages.
@@ -103,16 +54,25 @@ export async function extractDocumentMetadata(
   const prompt = `Analyze the provided first pages of the document below. Extract document metadata: title, authors (with name and role), publicationYear, publisher, and DOI if explicitly present. Standardize the document title into standard Academic Title Case (even if printed in ALL CAPS) and author names into Proper Case, preserving acronyms (NATO, YÖK, PKK, DOI, IMF, etc.) in uppercase.\n\n${firstPagesText}`;
 
   try {
-    const text = await generateStructured(
+    const res = await generateGeminiStructuredContent<{
+      metadata?: DocumentAnalysisResult["metadata"];
+    }>(
+      FLASH_LITE_35,
+      PDF_PARSER_SYSTEM_INSTRUCTION,
       prompt,
       DocumentAnalysisSchema,
-      PDF_PARSER_SYSTEM_INSTRUCTION,
       logger,
+      {
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        seed: GEMINI_SEED,
+        payloadStage: "pdf_parser_metadata",
+      },
     );
-    if (text) {
-      const parsed = sanitizeAndParseJson<DocumentAnalysisResult>(text);
-      if (parsed.metadata?.title) {
-        return parsed.metadata;
+
+    if (res.metadata?.title) {
+      const validated = DocumentMetadataZodSchema.safeParse(res.metadata);
+      if (validated.success) {
+        return validated.data;
       }
     }
   } catch (err) {
@@ -141,19 +101,20 @@ export async function extractDocumentReferences(
     "You are an expert academic bibliography parser. Extract formal references strictly adhering to the schema. Ensure all Turkish characters (ç, ğ, ı, ö, ş, ü, İ) are normalized, combined, and perfectly formatted without spaces or lost diacritics.";
 
   try {
-    const text = await generateStructured(
-      prompt,
-      ReferencesOnlySchema,
-      systemInstruction,
-      logger,
-    );
-    if (text) {
-      const parsed = sanitizeAndParseJson<{
-        references?: DocumentAnalysisResult["references"];
-      }>(text);
-      return (parsed.references ?? []).filter((r) =>
-        isFormalBibliographicEntry(r.raw),
-      );
+    const res = await generateGeminiStructuredContent<{
+      references?: DocumentAnalysisResult["references"];
+    }>(FLASH_LITE_35, systemInstruction, prompt, ReferencesOnlySchema, logger, {
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      seed: GEMINI_SEED,
+      payloadStage: "pdf_parser_references",
+    });
+
+    if (res.references) {
+      const validated = DocumentReferencesZodSchema.safeParse(res);
+      const refs = validated.success
+        ? validated.data.references
+        : res.references;
+      return (refs ?? []).filter((r) => isFormalBibliographicEntry(r.raw));
     }
   } catch (err) {
     logger?.info("pdf_parser_references_extract_failed", {

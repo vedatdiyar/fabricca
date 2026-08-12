@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { BookMarked, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { PdfUploadDropzone } from "./pdf-upload-dropzone";
 import { EditResourceModal } from "./edit-resource-modal";
 import { ResourceHeader } from "./resource-detail/resource-header";
@@ -81,7 +82,7 @@ export function ResourceDetail({
   };
 
   return (
-    <div className="flex h-full w-full flex-col space-y-6 rounded-md border border-border bg-card p-6">
+    <Card className="flex h-full w-full flex-col space-y-6 rounded-md p-6">
       <ResourceHeader
         resource={resource}
         onOpenEditModal={() => setIsEditModalOpen(true)}
@@ -112,7 +113,7 @@ export function ResourceDetail({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <BookMarked className="h-5 w-5 text-primary" />
-                <h3 className="font-serif text-lg font-semibold tracking-tight text-foreground">
+                <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
                   Akademik Notlarım ve Alıntılarım
                 </h3>
               </div>
@@ -167,6 +168,6 @@ export function ResourceDetail({
           onUpdateResource?.(updatedResource);
         }}
       />
-    </div>
+    </Card>
   );
 }

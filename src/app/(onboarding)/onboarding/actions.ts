@@ -4,17 +4,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import {
-  matrices,
-  positioning,
-  users,
-  boxes,
-  sources,
-  tasks,
-  sessions,
-  outlines,
-} from "@/db/schema";
-import { deletePdfFromR2 } from "@/services/storage/r2";
+import { matrices, positioning, boxes, sources, outlines } from "@/db/schema";
 import {
   getSession,
   SESSION_COOKIE_NAME,
@@ -22,6 +12,7 @@ import {
   SESSION_ERROR_MSG,
 } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
+import { resetUserOnboardingData } from "@/lib/reset-onboarding";
 import {
   revalidateOnboardingPaths,
   invalidateOnboardingCache,
@@ -45,47 +36,7 @@ export async function resetOnboardingAction(): Promise<
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
 
-    const userId = session.userId;
-
-    // Fetch PDF filenames to clean up from R2 before deleting database records
-    try {
-      const userSources = await db
-        .select({ pdfFileName: sources.pdfFileName })
-        .from(sources)
-        .innerJoin(boxes, eq(sources.boxId, boxes.id))
-        .innerJoin(matrices, eq(boxes.matrixId, matrices.id))
-        .where(eq(matrices.userId, userId));
-
-      for (const s of userSources) {
-        if (s.pdfFileName) {
-          try {
-            await deletePdfFromR2(s.pdfFileName);
-          } catch (r2Err) {
-            log.error("reset_onboarding_r2_delete_failed", {
-              service: "db",
-              error: r2Err,
-              data: { pdfFileName: s.pdfFileName },
-            });
-          }
-        }
-      }
-    } catch (fetchErr) {
-      log.error("reset_onboarding_sources_fetch_failed", {
-        service: "db",
-        error: fetchErr,
-      });
-    }
-
-    await db.transaction(async (tx) => {
-      await tx.delete(sessions).where(eq(sessions.userId, userId));
-      await tx.delete(tasks).where(eq(tasks.userId, userId));
-      await tx.delete(positioning).where(eq(positioning.userId, userId));
-      await tx.delete(matrices).where(eq(matrices.userId, userId));
-      await tx
-        .update(users)
-        .set({ onboardingCompleted: false })
-        .where(eq(users.id, userId));
-    });
+    await resetUserOnboardingData(session.userId, log);
 
     const cookieStore = await cookies();
     cookieStore.set(

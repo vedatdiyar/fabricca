@@ -1,3 +1,4 @@
+import { HarmCategory, HarmBlockThreshold, ThinkingLevel } from "@google/genai";
 import { getAi } from "@/services/ai";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 import { buildAdvisorSystemInstruction } from "@/lib/prompts";
@@ -68,6 +69,25 @@ async function runAdvisorToolLoop(
         systemInstruction,
         seed: GEMINI_SEED,
         tools: [{ functionDeclarations: ADVISOR_TOOL_DECLARATIONS }],
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        safetySettings: [
+          {
+            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+            threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+            threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+            threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+          },
+        ],
       },
     });
 
@@ -230,7 +250,7 @@ export async function runTurn(
       "Kütüphanenizde bu sorguyla doğrudan eşleşen veya yeterince alakalı bir kaynak bulunamadı. Lütfen sorgunuzu kütüphanenizdeki mevcut konulara yönelik olarak yeniden formüle edin.";
   }
 
-  const systemInstruction = buildAdvisorSystemInstruction(contextText, persona);
+  const systemInstruction = buildAdvisorSystemInstruction(undefined, persona);
 
   const ai = getAi();
   const contents: Array<Record<string, unknown>> = [];
@@ -241,7 +261,8 @@ export async function runTurn(
     }
   }
 
-  contents.push({ role: "user", parts: [{ text: params.query }] });
+  const userMessageText = `Kütüphane Kaynak Bağlamı:\n${contextText}\n\nKullanıcı Sorgusu:\n${params.query}`;
+  contents.push({ role: "user", parts: [{ text: userMessageText }] });
 
   const fullText = await runAdvisorToolLoop(writer, {
     ai,

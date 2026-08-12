@@ -9,15 +9,18 @@ export const positioningMatrixSchema = z.object({
   subjectProblem: z
     .string()
     .trim()
-    .min(3, "Araştırma problemi en az 3 karakter olmalıdır."),
+    .min(3, "Research problem must be at least 3 characters."),
   theoreticalFramework: z
     .string()
     .trim()
-    .min(3, "Teorik veya kavramsal çerçeve en az 3 karakter olmalıdır."),
+    .min(
+      3,
+      "Theoretical or conceptual framework must be at least 3 characters.",
+    ),
   methodology: z
     .string()
     .trim()
-    .min(3, "Metodoloji ve yöntem en az 3 karakter olmalıdır."),
+    .min(3, "Methodology and method must be at least 3 characters."),
 });
 
 /** Input payload type inferred from the positioning matrix Zod schema. */

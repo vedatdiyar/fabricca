@@ -9,21 +9,21 @@ export const noteTypeSchema = z.enum([
 
 /** Schema for creating a new citation card. */
 export const createCitationCardSchema = z.object({
-  sourceId: z.number().int().positive("Geçerli bir kaynak seçilmelidir."),
-  boxId: z.number().int().positive("Geçerli bir konu kutusu seçilmelidir."),
+  sourceId: z.number().int().positive("A valid source must be selected."),
+  boxId: z.number().int().positive("A valid thesis box must be selected."),
   noteType: noteTypeSchema,
-  pageNumber: z.string().min(1, "Sayfa numarası gereklidir."),
-  content: z.string().min(1, "Fiş içeriği boş olamaz."),
+  pageNumber: z.string().min(1, "Page number is required."),
+  content: z.string().min(1, "Card content cannot be empty."),
   comment: z
     .string()
     .trim()
-    .max(4000, "Yorum en fazla 4000 karakter olabilir.")
+    .max(4000, "Comment can be at most 4000 characters.")
     .optional(),
 });
 
 /** Schema for updating an existing citation card. */
 export const updateCitationCardSchema = createCitationCardSchema.extend({
-  id: z.number().int().positive("Geçerli bir fiş ID'si gereklidir."),
+  id: z.number().int().positive("A valid card ID is required."),
 });
 
 /** Input payload type for creating a citation card. */

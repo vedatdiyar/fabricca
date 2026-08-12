@@ -12,21 +12,18 @@ export function CitationCardsSkeleton() {
     <div className="flex w-full flex-col gap-6">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (
-          <div
-            key={index}
-            className="space-y-3 rounded-md border border-border bg-card p-3.5"
-          >
+          <Card key={index} className="space-y-3 rounded-md p-4">
             <div className="flex items-center justify-between">
               <Skeleton className="h-3 w-20 bg-border/20" />
               <Skeleton className="h-4 w-4 rounded-md bg-border/20" />
             </div>
             <Skeleton className="h-7 w-10" />
-          </div>
+          </Card>
         ))}
       </div>
 
       <div className="flex flex-col items-start gap-6 lg:flex-row">
-        <div className="flex w-full flex-col gap-3 rounded-md border border-border bg-card p-4 lg:w-64 lg:shrink-0">
+        <Card className="flex w-full flex-col gap-3 rounded-md p-4 lg:w-64 lg:shrink-0">
           <div className="flex items-center justify-between border-b border-border pb-2">
             <div className="flex items-center gap-2">
               <Skeleton className="h-5 w-5 rounded-md bg-border/20" />
@@ -40,30 +37,27 @@ export function CitationCardsSkeleton() {
           </div>
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, index) => (
-              <div key={index} className="space-y-1.5 p-2">
+              <div key={index} className="space-y-2 p-2">
                 <Skeleton className="h-3.5 w-4/5" />
                 <Skeleton className="h-3 w-1/2 bg-border/20" />
               </div>
             ))}
           </div>
-        </div>
+        </Card>
 
         <div className="flex min-w-0 w-full flex-1 flex-col gap-4">
-          <div className="flex flex-col gap-3 rounded-md border border-border bg-card p-3 sm:flex-row sm:items-center">
+          <Card className="flex flex-col gap-3 rounded-md p-3 sm:flex-row sm:items-center">
             <Skeleton className="h-9 w-full flex-1 rounded-md sm:max-w-60" />
             <div className="flex items-center gap-2">
               <Skeleton className="h-8 w-24 rounded-md bg-border/20" />
               <Skeleton className="h-8 w-24 rounded-md bg-border/20" />
               <Skeleton className="h-8 w-24 rounded-md bg-border/20" />
             </div>
-          </div>
+          </Card>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {Array.from({ length: 6 }).map((_, index) => (
-              <Card
-                key={index}
-                className="space-y-3 rounded-md border border-border p-4"
-              >
+              <Card key={index} className="space-y-3 rounded-md p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-2">
                     <Skeleton className="h-4 w-2/3" />

@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { UploadCloud, FileText, Loader2, AlertCircle } from "lucide-react";
+import { UploadCloud, FileText, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { toast } from "sonner";
 
 interface PdfUploadDropzoneProps {
@@ -93,8 +94,8 @@ export function PdfUploadDropzone({
         />
 
         {isUploading || pdfStatus === "PROCESSING" ? (
-          <div className="flex flex-col items-center space-y-3">
-            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <div className="flex w-full flex-col items-center">
+            <LoadingSpinner size="sm" className="min-h-0 py-4" />
             <div className="space-y-1">
               <p className="font-sans text-sm font-semibold text-foreground">
                 PDF Dokümanı İşleniyor ve Yükleniyor...
@@ -112,7 +113,7 @@ export function PdfUploadDropzone({
             </div>
 
             <div className="space-y-1 max-w-md">
-              <h3 className="font-serif text-lg font-semibold tracking-tight text-foreground">
+              <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
                 PDF Dokümanı Yükle
               </h3>
               <p className="text-xs text-muted-foreground leading-relaxed">

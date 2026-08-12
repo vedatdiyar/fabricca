@@ -105,12 +105,12 @@ export function CitationSidebar(props: CitationSidebarProps) {
   };
 
   return (
-    <aside className="w-full lg:w-96 shrink-0 flex flex-col rounded-md border border-border bg-card p-3 lg:sticky lg:top-[92px] lg:h-[calc(100vh-7rem)] lg:overflow-hidden min-w-0 space-y-3">
+    <Card className="w-full lg:w-96 shrink-0 flex flex-col rounded-md p-3 lg:sticky lg:top-[92px] lg:h-[calc(100vh-7rem)] lg:overflow-hidden min-w-0 space-y-3">
       {/* Sidebar Header */}
       <div className="flex items-center justify-between pb-2 border-b border-border shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <Layers className="h-4 w-4 text-primary shrink-0" />
-          <h3 className="font-serif text-lg font-semibold tracking-tight text-foreground truncate">
+          <h3 className="font-serif text-lg font-medium tracking-tight text-foreground truncate">
             Alıntı Fişleri
           </h3>
         </div>
@@ -137,7 +137,7 @@ export function CitationSidebar(props: CitationSidebarProps) {
 
       {/* Search Input */}
       <div className="relative w-full shrink-0">
-        <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+        <Search className="absolute left-3 top-3 h-3.5 w-3.5 text-muted-foreground" />
         <Input
           type="text"
           placeholder="Kutu veya kaynak ara..."
@@ -173,7 +173,7 @@ export function CitationSidebar(props: CitationSidebarProps) {
       <ScrollArea className="flex-1 min-h-0 pr-1">
         <div className="space-y-3 min-w-0">
           {/* List of Topic Boxes */}
-          <div className="space-y-1.5 min-w-0">
+          <div className="space-y-2 min-w-0">
             <div className="px-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider flex items-center justify-between">
               <span>Tez Konu Kutuları</span>
             </div>
@@ -237,7 +237,7 @@ export function CitationSidebar(props: CitationSidebarProps) {
           <Separator className="bg-border/40" />
 
           {/* Sources Section */}
-          <div className="space-y-1.5 min-w-0 pb-2">
+          <div className="space-y-2 min-w-0 pb-2">
             <div className="px-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider flex items-center justify-between">
               <span>Kaynaklar</span>
               {selectedBoxId ? (
@@ -295,6 +295,6 @@ export function CitationSidebar(props: CitationSidebarProps) {
           </div>
         </div>
       </ScrollArea>
-    </aside>
+    </Card>
   );
 }

@@ -74,7 +74,7 @@ const KanbanCard = memo(function KanbanCard({
       draggable="true"
       onDragStart={(e) => onDragStart(e, task.id)}
       onDragEnd={onDragEnd}
-      className="group rounded-md border border-border bg-card text-card-foreground p-4 transition-all duration-200 hover:-translate-y-1 hover:border-primary/20 hover:relative hover:z-50 cursor-grab active:cursor-grabbing"
+      className="group rounded-md p-4 transition-all duration-200 hover:-translate-y-1 hover:border-primary/20 hover:relative hover:z-50 cursor-grab active:cursor-grabbing"
     >
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
@@ -112,14 +112,14 @@ const KanbanCard = memo(function KanbanCard({
           )}
         </div>
 
-        <div className="flex items-start gap-2.5">
+        <div className="flex items-start gap-3">
           {isReading ? (
-            <BookOpen className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+            <BookOpen className="h-4 w-4 text-primary mt-1 shrink-0" />
           ) : (
-            <Sparkles className="h-4 w-4 text-accent-foreground mt-0.5 shrink-0" />
+            <Sparkles className="h-4 w-4 text-accent-foreground mt-1 shrink-0" />
           )}
           <div className="space-y-1 min-w-0 flex-1">
-            <h4 className="font-sans text-sm font-semibold leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
+            <h4 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
               {task.title}
             </h4>
             {task.description && (

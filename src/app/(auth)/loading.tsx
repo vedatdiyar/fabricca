@@ -1,4 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card } from "@/components/ui/card";
 
 /**
  * Skeleton loading UI for the authentication group routes.
@@ -8,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function AuthRouteLoading() {
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <div className="w-full max-w-md space-y-5 rounded-md border border-border bg-card p-8">
+      <Card className="w-full max-w-md space-y-5 rounded-md p-8">
         <div className="space-y-2 text-center">
           <Skeleton className="mx-auto h-8 w-40" />
           <Skeleton className="mx-auto h-3 w-60 max-w-full bg-border/20" />
@@ -22,7 +23,7 @@ export default function AuthRouteLoading() {
           <Skeleton className="h-10 w-full rounded-md" />
         </div>
         <Skeleton className="h-10 w-full rounded-md" />
-      </div>
+      </Card>
     </div>
   );
 }

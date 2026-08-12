@@ -51,7 +51,7 @@ export function CitationPopoverContent({
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className="px-2 py-1 bg-primary/10 text-primary rounded-full text-[11px] shrink-0">
+          <span className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs shrink-0">
             %{(source.relevanceScore * 100).toFixed(0)} Alaka
           </span>
         </div>

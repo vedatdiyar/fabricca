@@ -1,6 +1,7 @@
 "use client";
 
 import { BookOpen } from "lucide-react";
+import { Card } from "@/components/ui/card";
 import { AIBanner } from "@/components/shared/ai-banner";
 
 interface OutlineSection {
@@ -29,17 +30,17 @@ function OutlineSectionNode({
   const sectionNumber = section.sortOrder || index + 1;
 
   return (
-    <div className="rounded-lg border border-border/60 bg-card/40 p-4 mb-4">
+    <Card className="rounded-md border border-border/40 p-4 mb-4">
       <div className="flex items-start gap-3">
         <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-xs font-bold text-primary">
           {sectionNumber}
         </span>
         <div className="flex-1 min-w-0">
-          <h3 className="text-base font-semibold text-foreground leading-snug">
+          <h3 className="font-serif text-lg font-medium tracking-tight text-foreground leading-snug">
             {section.title}
           </h3>
           {section.description && (
-            <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
+            <p className="text-xs text-muted-foreground leading-relaxed mt-1">
               {section.description}
             </p>
           )}
@@ -50,22 +51,19 @@ function OutlineSectionNode({
       </div>
 
       {hasSubSections && (
-        <div className="ml-6 mt-3 pl-4 border-l-2 border-primary/20 flex flex-col gap-2.5">
+        <div className="ml-6 mt-3 pl-4 border-l-2 border-primary/20 flex flex-col gap-3">
           {section.subSections!.map((sub, subIdx) => (
-            <div
-              key={`${sub.title}-${subIdx}`}
-              className="flex flex-col gap-0.5"
-            >
+            <div key={`${sub.title}-${subIdx}`} className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded shrink-0">
+                <span className="font-mono text-xs text-muted-foreground bg-muted px-2 py-1 rounded shrink-0">
                   {sectionNumber}.{sub.sortOrder || subIdx + 1}
                 </span>
-                <h4 className="text-sm font-medium text-foreground leading-snug">
+                <h4 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground leading-snug">
                   {sub.title}
                 </h4>
               </div>
               {sub.description && (
-                <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
+                <p className="text-xs text-muted-foreground leading-relaxed mt-1">
                   {sub.description}
                 </p>
               )}
@@ -73,7 +71,7 @@ function OutlineSectionNode({
           ))}
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 

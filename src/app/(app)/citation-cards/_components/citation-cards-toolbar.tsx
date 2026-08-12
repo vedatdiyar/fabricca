@@ -3,6 +3,7 @@
 import { Search, SlidersHorizontal, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -49,7 +50,7 @@ export function CitationCardsToolbar({
   onAddNew,
 }: CitationCardsToolbarProps) {
   return (
-    <div className="relative z-20 flex flex-col gap-3 rounded-md border border-border bg-card p-4">
+    <Card className="relative z-20 flex flex-col gap-3 rounded-md p-4">
       <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
         {/* Search Bar */}
         <div className="relative flex-1">
@@ -119,6 +120,6 @@ export function CitationCardsToolbar({
           {resultCount} sonuç gösteriliyor
         </span>
       </div>
-    </div>
+    </Card>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown, LogOut, RotateCcw, Trash2, User } from "lucide-react";
+import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 /**
@@ -91,7 +92,7 @@ export function UserMenu({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-56 rounded-md border border-border bg-card p-2 z-50 animate-in fade-in-0 zoom-in-95">
+        <Card className="absolute right-0 top-full mt-2 w-56 rounded-md p-2 z-50 animate-in fade-in-0 zoom-in-95">
           <div className="flex items-center gap-2 p-2 border-b border-border/40 pb-2 mb-1">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-mono text-xs font-semibold border border-primary/20 shrink-0">
               {initials || <User className="h-4 w-4" />}
@@ -143,7 +144,7 @@ export function UserMenu({
             <LogOut className="h-4 w-4 shrink-0" />
             <span>Çıkış Yap</span>
           </button>
-        </div>
+        </Card>
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { Logger, createFlowId } from "@/lib/logger";
+import { createConcurrencyLimiter } from "@/lib/rate-limiter";
 import { getGeminiKeyPool, nextKeyPosition } from "../gemini-key-pool";
 import { GEMINI_SEED } from "@/lib/constants";
 import {
@@ -9,7 +10,11 @@ import {
   isRateLimitError,
   isServerOverloadError,
 } from "../llm-errors";
-import { withRetry, serverOverloadDelay } from "../llm-retry";
+import {
+  withRetry,
+  serverOverloadDelay,
+  DEFAULT_MAX_DELAY,
+} from "../llm-retry";
 import { sanitizeAndParseJson, validateStructuredOutput } from "../llm-json";
 import type { JsonSchema, StructuredGenerationOptions } from "../llm-types";
 import crypto from "crypto";
@@ -19,6 +24,13 @@ import path from "path";
 let aiInstance: GoogleGenAI | null = null;
 
 const aiInstancesByKey = new Map<string, GoogleGenAI>();
+
+/**
+ * Caps concurrent in-flight Gemini requests so parallel pipeline stages
+ * (phase-2 jury, per-thesis evaluation, PDF metadata extraction) cannot
+ * exceed the API quota ceiling and trigger 429 responses.
+ */
+const geminiRequestQueue = createConcurrencyLimiter(5);
 
 /**
  * Returns a lazily-initialized GoogleGenAI client, defaulting to the GEMINI_API_KEY_1
@@ -202,14 +214,24 @@ export async function generateStructuredContent<T>(
     const response = await withRetry(
       async () => {
         retryCount++;
-        return getAi(activeKey).models.generateContent(payload);
+        return geminiRequestQueue.exec(() =>
+          getAi(activeKey).models.generateContent(payload),
+        );
       },
       {
         maxRetries,
         baseDelay: 1000,
         getDelay: (attempt, error, defaultDelay) => {
           if (isServerOverloadError(error)) return serverOverloadDelay(attempt);
-          if (isRateLimitError(error)) return 0;
+          if (isRateLimitError(error)) {
+            // Dynamic exponential backoff for quota/rate-limit errors
+            // (1s, 2s, 4s, ...) capped at 30s — no immediate retries.
+            const capped = Math.min(
+              DEFAULT_MAX_DELAY,
+              1000 * Math.pow(2, attempt - 1),
+            );
+            return capped + Math.random() * Math.min(250, capped * 0.1);
+          }
           return defaultDelay;
         },
         isRetryable: (error) => {

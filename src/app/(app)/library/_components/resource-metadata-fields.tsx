@@ -27,7 +27,7 @@ export function ResourceMetadataFields({
 }: ResourceMetadataFieldsProps) {
   return (
     <>
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         <Label htmlFor="edit-title" className="text-xs font-semibold">
           Eser Başlığı <span className="text-destructive">*</span>
         </Label>
@@ -41,7 +41,7 @@ export function ResourceMetadataFields({
         />
       </div>
 
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         <Label htmlFor="edit-authors" className="text-xs font-semibold">
           Yazarlar <span className="text-destructive">*</span>
           <span className="text-xs font-normal text-muted-foreground ml-1">
@@ -59,7 +59,7 @@ export function ResourceMetadataFields({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <Label htmlFor="edit-publisher" className="text-xs font-semibold">
             Yayıncı / Dergi / Mecra
           </Label>
@@ -72,7 +72,7 @@ export function ResourceMetadataFields({
           />
         </div>
 
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <Label htmlFor="edit-year" className="text-xs font-semibold">
             Yayın Yılı <span className="text-destructive">*</span>
           </Label>
@@ -93,7 +93,7 @@ export function ResourceMetadataFields({
         </div>
       </div>
 
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         <Label htmlFor="edit-doi" className="text-xs font-semibold">
           DOI (Digital Object Identifier)
         </Label>

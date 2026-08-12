@@ -180,10 +180,10 @@ export function PositioningMarkdownRenderer({
 
   return (
     <div className={`space-y-4 ${className}`}>
-      <Card className="p-6 space-y-3 border-border bg-card hover:border-border/40 transition-colors">
+      <Card className="p-6 space-y-3 hover:border-border/40 transition-colors">
         <div className="flex items-center gap-2 pb-2 border-b border-border">
           <Compass className="h-4 w-4 text-info shrink-0" />
-          <h3 className="font-serif text-base font-bold text-foreground">
+          <h3 className="font-serif text-lg font-medium text-foreground">
             Mevcut Literatürün Haritalandırılması
           </h3>
         </div>
@@ -194,10 +194,10 @@ export function PositioningMarkdownRenderer({
         </div>
       </Card>
 
-      <Card className="p-6 space-y-3 border-border bg-card hover:border-border/40 transition-colors">
+      <Card className="p-6 space-y-3 hover:border-border/40 transition-colors">
         <div className="flex items-center gap-2 pb-2 border-b border-border">
           <ScanEye className="h-4 w-4 text-warning shrink-0" />
-          <h3 className="font-serif text-base font-bold text-foreground">
+          <h3 className="font-serif text-lg font-medium text-foreground">
             Literatürdeki Boşluk
           </h3>
         </div>
@@ -208,10 +208,10 @@ export function PositioningMarkdownRenderer({
         </div>
       </Card>
 
-      <Card className="p-6 space-y-3 border-border bg-card hover:border-border/40 transition-colors">
+      <Card className="p-6 space-y-3 hover:border-border/40 transition-colors">
         <div className="flex items-center gap-2 pb-2 border-b border-border">
           <Sparkles className="h-4 w-4 text-success shrink-0" />
-          <h3 className="font-serif text-base font-bold text-foreground">
+          <h3 className="font-serif text-lg font-medium text-foreground">
             Çalışmanın Özgün Katkısı
           </h3>
         </div>

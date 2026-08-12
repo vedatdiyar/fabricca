@@ -5,21 +5,13 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { createFlowId, Logger } from "@/lib/logger";
 import { db } from "@/db";
-import {
-  users,
-  matrices,
-  tasks,
-  positioning,
-  boxes,
-  sources,
-  sessions,
-} from "@/db/schema";
-import { deletePdfFromR2 } from "@/services/storage/r2";
+import { users } from "@/db/schema";
 import {
   getSession,
   SESSION_COOKIE_NAME,
   SESSION_MAX_AGE_SECONDS,
 } from "@/lib/session";
+import { resetUserOnboardingData } from "@/lib/reset-onboarding";
 import {
   revalidateOnboardingPaths,
   invalidateOnboardingCache,
@@ -116,48 +108,7 @@ export async function resetOnboardingAction() {
       return;
     }
 
-    const userId = session.userId;
-
-    // 1. Fetch PDF filenames to clean up from R2 before deleting database records
-    try {
-      const userSources = await db
-        .select({ pdfFileName: sources.pdfFileName })
-        .from(sources)
-        .innerJoin(boxes, eq(sources.boxId, boxes.id))
-        .innerJoin(matrices, eq(boxes.matrixId, matrices.id))
-        .where(eq(matrices.userId, userId));
-
-      for (const s of userSources) {
-        if (s.pdfFileName) {
-          try {
-            await deletePdfFromR2(s.pdfFileName);
-          } catch (r2Err) {
-            log.error("reset_onboarding_r2_delete_failed", {
-              service: "db",
-              error: r2Err,
-              data: { pdfFileName: s.pdfFileName },
-            });
-          }
-        }
-      }
-    } catch (fetchErr) {
-      log.error("reset_onboarding_sources_fetch_failed", {
-        service: "db",
-        error: fetchErr,
-      });
-    }
-
-    // 2. Perform complete database deletion for all user-related data
-    await db.transaction(async (tx) => {
-      await tx.delete(sessions).where(eq(sessions.userId, userId));
-      await tx.delete(tasks).where(eq(tasks.userId, userId));
-      await tx.delete(positioning).where(eq(positioning.userId, userId));
-      await tx.delete(matrices).where(eq(matrices.userId, userId));
-      await tx
-        .update(users)
-        .set({ onboardingCompleted: false })
-        .where(eq(users.id, userId));
-    });
+    await resetUserOnboardingData(session.userId, log);
 
     const cookieStore = await cookies();
     cookieStore.set(
@@ -181,7 +132,7 @@ export async function resetOnboardingAction() {
 
     log.info("onboarding_reset_success", {
       service: "auth",
-      data: { userId },
+      data: { userId: session.userId },
     });
   } catch (err) {
     log.error("onboarding_reset_failed", {

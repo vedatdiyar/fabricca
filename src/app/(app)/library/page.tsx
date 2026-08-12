@@ -3,6 +3,7 @@
 import React, { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { BookMarked } from "lucide-react";
+import { Card } from "@/components/ui/card";
 import { SidebarWorkList } from "./_components/sidebar-work-list";
 import { ResourceDetail } from "./_components/resource-detail";
 import { AddResourceModal } from "./_components/add-resource-modal";
@@ -115,7 +116,7 @@ function LibraryPageContent() {
               onDeletePdf={handleDeletePdf}
             />
           ) : (
-            <div className="flex flex-col items-center justify-center h-full rounded-md border border-border bg-card p-8 text-center text-muted-foreground">
+            <Card className="flex flex-col items-center justify-center h-full rounded-md border border-border p-8 text-center text-muted-foreground">
               <BookMarked className="h-10 w-10 opacity-30 mb-3" />
               <h3 className="font-serif text-lg font-medium text-foreground">
                 Eser Seçilmedi
@@ -124,7 +125,7 @@ function LibraryPageContent() {
                 Detayları ve akademik notları görüntülemek için sol menüden bir
                 eser seçiniz.
               </p>
-            </div>
+            </Card>
           )}
         </div>
       </div>

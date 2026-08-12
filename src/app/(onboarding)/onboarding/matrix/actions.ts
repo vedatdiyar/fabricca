@@ -3,7 +3,7 @@
 import { eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { matrices, positioning, boxes, sources } from "@/db/schema";
+import { matrices, positioning, boxes, sources, outlines } from "@/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import {
@@ -23,7 +23,7 @@ const thesisMatrixSchema = z.object({
 
 /**
  * Persists the thesis matrix to the database and clears any downstream analysis
- * data (originality reports and thesis boxes) that may now be stale.
+ * data (positioning report, thesis outline, and thesis boxes) that may now be stale.
  *
  * @param data - The thesis matrix data from the onboarding form
  * @returns Success confirmation or an error message
@@ -41,7 +41,7 @@ export async function saveThesisMatrixAction(
     const firstIssue = parsed.error.issues[0];
     const msg = firstIssue
       ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
-      : "Validation failed.";
+      : "Doğrulama başarısız.";
     return { error: msg };
   }
 
@@ -93,6 +93,8 @@ export async function saveThesisMatrixAction(
             ),
           );
 
+        await tx.delete(outlines).where(eq(outlines.matrixId, matrixRow.id));
+
         await tx.delete(boxes).where(eq(boxes.matrixId, matrixRow.id));
       }
     });
@@ -107,6 +109,6 @@ export async function saveThesisMatrixAction(
     log.error("matrix_save_failed", {
       error,
     });
-    return { error: "Failed to save thesis matrix to the database." };
+    return { error: "Tez matrisi veritabanına kaydedilemedi." };
   }
 }

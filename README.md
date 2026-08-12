@@ -242,25 +242,25 @@ Kutu (`boxes`) ilişkilerinde `onDelete: "cascade"`; görevlerin `boxId` alanın
 
 Gerekli tüm API anahtarları `.env.local` dosyasında tanımlanır:
 
-| Değişken                 | Hizmet                                       |
-| ------------------------ | -------------------------------------------- |
-| `DATABASE_URL`           | Neon PostgreSQL bağlantı dizesi              |
-| `GEMINI_API_KEY_1..3`    | Google Gemini API (en az 1 anahtar gerekli)  |
-| `CEREBRAS_API_KEY`       | Cerebras API (gemma-4-31b)                   |
-| `CLOUDFLARE_ACCOUNT_ID`  | Cloudflare Workers AI hesap ID               |
-| `CLOUDFLARE_API_TOKEN`   | Cloudflare Workers AI API token              |
-| `COHERE_API_KEY`         | Cohere Rerank API                            |
-| `OPENALEX_API_KEY`       | OpenAlex API (isteğe bağlı)                  |
-| `CROSSREF_CONTACT_EMAIL` | Polite pool e-posta (User-Agent)             |
-| `TEZARA_MEILI_URL`       | TEZARA Meilisearch URL                       |
-| `TEZARA_MEILI_KEY`       | TEZARA Meilisearch API key                   |
-| `R2_ACCOUNT_ID`          | Cloudflare R2 hesabı                         |
-| `R2_ACCESS_KEY_ID`       | R2 S3 access key                             |
-| `R2_SECRET_ACCESS_KEY`   | R2 S3 secret key                             |
-| `R2_BUCKET_NAME`         | R2 bucket adı (varsayılan `fabricca`)        |
-| `R2_PUBLIC_DOMAIN`       | R2 public domain (varsayılan `pub-*.r2.dev`) |
-| `SEED_USER1_PASSWORD`    | Seed kullanıcı 1 şifre                       |
-| `SEED_USER2_PASSWORD`    | Seed kullanıcı 2 şifre                       |
+| Değişken                 | Hizmet                                      |
+| ------------------------ | ------------------------------------------- |
+| `DATABASE_URL`           | Neon PostgreSQL bağlantı dizesi             |
+| `GEMINI_API_KEY_1..3`    | Google Gemini API (en az 1 anahtar gerekli) |
+| `CEREBRAS_API_KEY`       | Cerebras API (gemma-4-31b)                  |
+| `CLOUDFLARE_ACCOUNT_ID`  | Cloudflare Workers AI hesap ID              |
+| `CLOUDFLARE_API_TOKEN`   | Cloudflare Workers AI API token             |
+| `COHERE_API_KEY`         | Cohere Rerank API                           |
+| `OPENALEX_API_KEY`       | OpenAlex API (isteğe bağlı)                 |
+| `CROSSREF_CONTACT_EMAIL` | Polite pool e-posta (User-Agent)            |
+| `TEZARA_MEILI_URL`       | TEZARA Meilisearch URL                      |
+| `TEZARA_MEILI_KEY`       | TEZARA Meilisearch API key                  |
+| `R2_ACCOUNT_ID`          | Cloudflare R2 hesabı                        |
+| `R2_ACCESS_KEY_ID`       | R2 S3 access key                            |
+| `R2_SECRET_ACCESS_KEY`   | R2 S3 secret key                            |
+| `R2_BUCKET_NAME`         | R2 bucket adı (varsayılan `fabricca`)       |
+| `R2_PUBLIC_DOMAIN`       | R2 public domain (zorunlu, varsayılan yok)  |
+| `SEED_USER1_PASSWORD`    | Seed kullanıcı 1 şifre                      |
+| `SEED_USER2_PASSWORD`    | Seed kullanıcı 2 şifre                      |
 
 ---
 

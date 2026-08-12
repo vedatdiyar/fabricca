@@ -82,8 +82,8 @@ export function BoxSelectionGrid({
       </div>
 
       {variant === "edit" && hasSubBoxes && selectedParent && (
-        <div className="space-y-1.5 pt-1">
-          <Label className="text-[11px] font-medium text-muted-foreground">
+        <div className="space-y-2 pt-1">
+          <Label className="text-xs font-medium text-muted-foreground">
             Alt Konu Kutusu:
           </Label>
           <select

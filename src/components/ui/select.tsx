@@ -82,7 +82,7 @@ export const SelectTrigger = React.forwardRef<
       )}
       {...rest}
     >
-      <span className="flex items-center gap-1.5 min-w-0 truncate text-left">
+      <span className="flex items-center gap-2 min-w-0 truncate text-left">
         {children}
       </span>
       <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-1" />
@@ -212,7 +212,7 @@ export const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
           onClick?.(e);
         }}
         className={cn(
-          "relative flex w-full cursor-pointer select-none items-center justify-between rounded-sm py-1.5 px-2 text-xs outline-hidden hover:bg-accent hover:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
+          "relative flex w-full cursor-pointer select-none items-center justify-between rounded-sm py-2 px-2 text-xs outline-hidden hover:bg-accent hover:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
           isSelected && "bg-accent/60 font-medium text-accent-foreground",
           disabled && "opacity-50 cursor-not-allowed",
           className,

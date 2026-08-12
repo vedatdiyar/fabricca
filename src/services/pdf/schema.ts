@@ -1,4 +1,46 @@
+import { z } from "zod";
 import type { JsonSchema } from "@/services/ai";
+
+export const DocumentMetadataZodSchema = z.object({
+  title: z.string(),
+  authors: z.array(z.string()),
+  publicationYear: z.number().optional(),
+  publisher: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((v) => v ?? undefined),
+  doi: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((v) => v ?? undefined),
+});
+
+export const DocumentReferencesZodSchema = z.object({
+  references: z.array(
+    z.object({
+      raw: z.string(),
+      documentType: z
+        .enum(["article-journal", "book", "chapter", "thesis", "other"])
+        .nullable()
+        .optional(),
+      title: z.string().nullable().optional(),
+      containerTitle: z.string().nullable().optional(),
+      authors: z
+        .array(
+          z.object({
+            name: z.string(),
+            role: z.enum(["author", "editor", "translator"]),
+          }),
+        )
+        .optional(),
+      year: z.number().nullable().optional(),
+      publisher: z.string().nullable().optional(),
+      publisherPlace: z.string().nullable().optional(),
+    }),
+  ),
+});
 
 /** Structured result returned by the Gemini PDF parser — metadata, page-level markdown, and parsed references. */
 export interface DocumentAnalysisResult {

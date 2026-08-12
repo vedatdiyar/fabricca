@@ -87,9 +87,9 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <Card className="w-full border border-border/40 bg-card">
+        <Card className="w-full">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="font-serif text-xl font-semibold tracking-tight text-foreground">
+            <CardTitle className="font-sans text-xl font-semibold tracking-tight text-foreground">
               Giriş Yap
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
@@ -189,7 +189,7 @@ export default function LoginPage() {
             </form>
 
             <div className="flex gap-2 p-3 bg-muted/10 border border-border/40 rounded-md text-xs text-muted-foreground leading-relaxed select-none">
-              <ShieldAlert className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+              <ShieldAlert className="h-4 w-4 text-warning shrink-0 mt-1" />
               <span>
                 <strong>Erişim Kısıtlaması:</strong> Bu platform dışarıdan kayda
                 kapalıdır. Yalnızca yetkilendirilmiş akademisyenler giriş

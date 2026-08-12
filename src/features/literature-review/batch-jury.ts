@@ -129,13 +129,7 @@ export async function evaluateSingleBoxJury(
     )
     .join("\n\n");
 
-  const systemInstruction = buildJurySystemInstruction(
-    box.boxType,
-    box.subBoxTitle,
-    box.description,
-    box.thesisBoxId,
-    thesisSubject,
-  );
+  const systemInstruction = buildJurySystemInstruction(box.boxType);
 
   const prompt = buildJuryUserPrompt(
     thesisSubject,

@@ -65,7 +65,7 @@ export function OnboardingStepper({
           return (
             <div
               key={step.key}
-              className="relative flex items-center w-full pl-3.5"
+              className="relative flex items-center w-full pl-4"
             >
               <button
                 type="button"

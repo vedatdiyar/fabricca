@@ -79,8 +79,8 @@ export async function runStage1Audit(
 
   const audit = await generateGeminiStructuredContent<AuditReport>(
     FLASH_LITE_35,
-    buildPipelineStage1AuditSystemInstruction(sourceContext, annotationContext),
-    `Denetlenecek Taslak Metin:\n"""\n${draft}\n"""`,
+    buildPipelineStage1AuditSystemInstruction(),
+    `Kütüphane Kaynak Bağlamı:\n${sourceContext}\n\nKullanıcı Notları Bağlamı:\n${annotationContext}\n\nDenetlenecek Taslak Metin:\n"""\n${draft}\n"""`,
     auditReportJsonSchema,
     undefined,
     {

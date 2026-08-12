@@ -1,4 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card } from "@/components/ui/card";
 
 /**
  * Skeleton mirroring the advisor page layout: session sidebar and the chat
@@ -10,20 +11,20 @@ export function AdvisorSkeleton() {
   return (
     <div className="flex w-full min-h-0 gap-6 h-[calc(100vh-8.5rem)]">
       <div className="hidden h-full w-72 min-h-0 shrink-0 flex-col lg:flex">
-        <div className="flex h-full w-full min-h-0 flex-col space-y-4 rounded-md border border-border bg-card p-4">
+        <Card className="flex h-full w-full min-h-0 flex-col space-y-4 rounded-md p-4">
           <Skeleton className="h-10 w-full rounded-md" />
           <div className="min-h-0 flex-1 space-y-3 overflow-hidden">
             {Array.from({ length: 6 }).map((_, index) => (
               <div
                 key={index}
-                className="space-y-1.5 rounded-md border border-border bg-background p-3"
+                className="space-y-2 rounded-md border border-border bg-background p-3"
               >
                 <Skeleton className="h-3.5 w-4/5" />
                 <Skeleton className="h-3 w-2/3 bg-border/20" />
               </div>
             ))}
           </div>
-        </div>
+        </Card>
       </div>
 
       <div className="flex min-w-0 min-h-0 flex-1 flex-col">

@@ -106,7 +106,7 @@ export async function processResourcePdfPipeline(options: ProcessPdfOptions) {
           const emb = batchEmbeddings[index];
           if (!emb) {
             throw new Error(
-              `Chunk ${c.chunkIndex} için embedding vektörü üretilemedi.`,
+              `Failed to generate embedding vector for chunk ${c.chunkIndex}.`,
             );
           }
           const quantizedEmbedding = emb.map((value) =>

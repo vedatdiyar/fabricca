@@ -300,4 +300,70 @@ export const ADVISOR_TOOL_DECLARATIONS: FunctionDeclaration[] = [
       required: ["taskId", "status"],
     },
   },
+  {
+    name: "createOutlineSection",
+    description:
+      "Creates a new chapter or sub-section in the user's thesis outline/table of contents.",
+    parametersJsonSchema: {
+      type: "object",
+      properties: {
+        title: {
+          type: "string",
+          description: "Title of the new chapter or section.",
+        },
+        description: {
+          type: "string",
+          description:
+            "Writing scope or summary of what will be discussed in this section.",
+        },
+        parentId: {
+          type: "integer",
+          description: "Optional parent outline ID to create a sub-section.",
+        },
+      },
+      required: ["title"],
+    },
+  },
+  {
+    name: "updateOutlineSection",
+    description:
+      "Updates the title or writing scope description of an existing thesis outline section.",
+    parametersJsonSchema: {
+      type: "object",
+      properties: {
+        outlineId: {
+          type: "integer",
+          description: "The ID of the outline section to update.",
+        },
+        title: {
+          type: "string",
+          description: "New title for the section.",
+        },
+        description: {
+          type: "string",
+          description: "New writing scope description.",
+        },
+      },
+      required: ["outlineId"],
+    },
+  },
+  {
+    name: "pinAnnotationToOutline",
+    description:
+      "Pins a specific reading citation card (annotation ID) to a thesis outline section as writing evidence.",
+    parametersJsonSchema: {
+      type: "object",
+      properties: {
+        outlineId: {
+          type: "integer",
+          description: "The ID of the outline section.",
+        },
+        annotationId: {
+          type: "integer",
+          description: "The ID of the citation card (annotation).",
+        },
+      },
+      required: ["outlineId", "annotationId"],
+    },
+  },
 ];

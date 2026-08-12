@@ -42,7 +42,7 @@ export function AIBanner({
     <div
       className={`flex items-start gap-3 rounded-md border ${variantStyles[variant]} px-4 py-3 w-full animate-in fade-in slide-in-from-top-2 duration-300`}
     >
-      <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${iconColors[variant]}`} />
+      <Icon className={`mt-1 h-4 w-4 shrink-0 ${iconColors[variant]}`} />
       <div className="space-y-2">
         <p className="text-sm font-semibold text-foreground">{title}</p>
         <p className="text-xs leading-relaxed text-muted-foreground">

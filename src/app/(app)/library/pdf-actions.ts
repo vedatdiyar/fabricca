@@ -41,19 +41,21 @@ export async function deleteResourcePdfAction(resourceId: number) {
       }
     }
 
-    await db.delete(chunkRows).where(eq(chunkRows.sourceId, resourceId));
+    await db.transaction(async (tx) => {
+      await tx.delete(chunkRows).where(eq(chunkRows.sourceId, resourceId));
 
-    await db.delete(annotations).where(eq(annotations.sourceId, resourceId));
+      await tx.delete(annotations).where(eq(annotations.sourceId, resourceId));
 
-    await db
-      .update(sources)
-      .set({
-        pdfUrl: null,
-        pdfFileName: null,
-        pdfFileSize: null,
-        pdfStatus: "NOT_UPLOADED",
-      })
-      .where(eq(sources.id, resourceId));
+      await tx
+        .update(sources)
+        .set({
+          pdfUrl: null,
+          pdfFileName: null,
+          pdfFileSize: null,
+          pdfStatus: "NOT_UPLOADED",
+        })
+        .where(eq(sources.id, resourceId));
+    });
 
     log.info("delete_resource_pdf_success", {
       service: "library",

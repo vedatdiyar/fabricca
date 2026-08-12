@@ -78,6 +78,66 @@ function dedupeReferences(
 }
 
 /**
+ * Locates the bibliography page range inside a parsed document, shared by both
+ * the scanned (Mistral OCR) and born-digital (pdf-inspector) parsing paths.
+ *
+ * Search begins at 60% of the document: it first looks for an explicit
+ * bibliography heading, falls back to a loose keyword match, and stops at the
+ * next heading or a hard cap of 30 pages.
+ *
+ * @param pages - Parsed pages in reading order.
+ * @param getMarkdown - Extracts the markdown text of one page.
+ * @returns The bibliography page slice, or an empty array when none is found.
+ */
+function findBibliographyPages<T>(
+  pages: T[],
+  getMarkdown: (page: T) => string,
+): T[] {
+  const bibHeadingRegex =
+    /(^|\n)(#+\s*|\b)(Kaynakça|Kaynaklar|Kaynak\s+Dizini|Yararlanılan\s+Kaynaklar|Başvurulan\s+Kaynaklar|Referanslar|Atıfta\s+Bulunulan\s+Kaynaklar|Kaynak\s+Listesi|References(\s+and\s+Notes)?|Reference\s+List|Bibliography|Works\s+Cited|Works\s+Consulted|Literature\s+Cited|Cited\s+Literature|Selected\s+(Bibliography|References)|Literaturverzeichnis|Literatur|Références|Bibliographie|Referencias|Bibliografía)\b/i;
+
+  let bibStartPageIndex = -1;
+  const searchStart = Math.floor(pages.length * 0.6);
+
+  for (let i = searchStart; i < pages.length; i++) {
+    if (bibHeadingRegex.test(getMarkdown(pages[i]))) {
+      bibStartPageIndex = i;
+      break;
+    }
+  }
+
+  if (bibStartPageIndex === -1) {
+    for (let i = searchStart; i < pages.length; i++) {
+      if (
+        /(references|bibliography|kaynakça|kaynaklar|referanslar|works\s+cited)/i.test(
+          getMarkdown(pages[i]),
+        )
+      ) {
+        bibStartPageIndex = i;
+        break;
+      }
+    }
+  }
+
+  let bibEndPageIndex = pages.length;
+  if (bibStartPageIndex !== -1) {
+    for (let i = bibStartPageIndex + 1; i < pages.length; i++) {
+      if (/(^|\n)#{1,4}\s+\S+/.test(getMarkdown(pages[i]))) {
+        bibEndPageIndex = i;
+        break;
+      }
+    }
+  }
+
+  return bibStartPageIndex !== -1
+    ? pages.slice(
+        bibStartPageIndex,
+        Math.min(bibEndPageIndex, bibStartPageIndex + 30),
+      )
+    : [];
+}
+
+/**
  * Parses a PDF document into structured page-level markdown, metadata, and references.
  *
  * - **Scanned PDF:** Markdown extracted via Mistral OCR (R2 presigned URL → server-to-server fetch).
@@ -135,50 +195,8 @@ export async function parsePdfToDocumentAnalysis(
       .map((p) => `=== PAGE ${p.pageNumber} ===\n${p.markdownContent}`)
       .join("\n\n");
 
-    // Bibliography detection (same regex as born-digital path)
-    const bibHeadingRegex =
-      /(^|\n)(#+\s*|\b)(Kaynakça|Kaynaklar|Kaynak\s+Dizini|Yararlanılan\s+Kaynaklar|Başvurulan\s+Kaynaklar|Referanslar|Atıfta\s+Bulunulan\s+Kaynaklar|Kaynak\s+Listesi|References(\s+and\s+Notes)?|Reference\s+List|Bibliography|Works\s+Cited|Works\s+Consulted|Literature\s+Cited|Cited\s+Literature|Selected\s+(Bibliography|References)|Literaturverzeichnis|Literatur|Références|Bibliographie|Referencias|Bibliografía)\b/i;
-
-    let bibStartPageIndex = -1;
-    const searchStart = Math.floor(pages.length * 0.6);
-
-    for (let i = searchStart; i < pages.length; i++) {
-      if (bibHeadingRegex.test(pages[i].markdownContent)) {
-        bibStartPageIndex = i;
-        break;
-      }
-    }
-
-    if (bibStartPageIndex === -1) {
-      for (let i = searchStart; i < pages.length; i++) {
-        if (
-          /(references|bibliography|kaynakça|kaynaklar|referanslar|works\s+cited)/i.test(
-            pages[i].markdownContent,
-          )
-        ) {
-          bibStartPageIndex = i;
-          break;
-        }
-      }
-    }
-
-    let bibEndPageIndex = pages.length;
-    if (bibStartPageIndex !== -1) {
-      for (let i = bibStartPageIndex + 1; i < pages.length; i++) {
-        if (/(^|\n)#{1,4}\s+\S+/.test(pages[i].markdownContent)) {
-          bibEndPageIndex = i;
-          break;
-        }
-      }
-    }
-
-    const bibPages =
-      bibStartPageIndex !== -1
-        ? pages.slice(
-            bibStartPageIndex,
-            Math.min(bibEndPageIndex, bibStartPageIndex + 30),
-          )
-        : [];
+    // Bibliography detection (shared with born-digital path)
+    const bibPages = findBibliographyPages(pages, (p) => p.markdownContent);
 
     // Parallel: metadata + references extraction via Gemini Flash-Lite
     const metadataPromise = extractDocumentMetadata(first5PagesText, logger);
@@ -283,50 +301,8 @@ export async function parsePdfToDocumentAnalysis(
     .map((p) => `=== PAGE ${p.page + 1} ===\n${p.markdown}`)
     .join("\n\n");
 
-  let bibStartPageIndex = -1;
-  const searchStart = Math.floor(targetPages.length * 0.6);
-  const bibHeadingRegex =
-    /(^|\n)(#+\s*|\b)(Kaynakça|Kaynaklar|Kaynak\s+Dizini|Yararlanılan\s+Kaynaklar|Başvurulan\s+Kaynaklar|Referanslar|Atıfta\s+Bulunulan\s+Kaynaklar|Kaynak\s+Listesi|References(\s+and\s+Notes)?|Reference\s+List|Bibliography|Works\s+Cited|Works\s+Consulted|Literature\s+Cited|Cited\s+Literature|Selected\s+(Bibliography|References)|Literaturverzeichnis|Literatur|Références|Bibliographie|Referencias|Bibliografía)\b/i;
-
-  for (let i = searchStart; i < targetPages.length; i++) {
-    if (bibHeadingRegex.test(targetPages[i].markdown)) {
-      bibStartPageIndex = i;
-      break;
-    }
-  }
-
-  if (bibStartPageIndex === -1) {
-    for (let i = searchStart; i < targetPages.length; i++) {
-      if (
-        /(references|bibliography|kaynakça|kaynaklar|referanslar|works\s+cited)/i.test(
-          targetPages[i].markdown,
-        )
-      ) {
-        bibStartPageIndex = i;
-        break;
-      }
-    }
-  }
-
-  let bibEndPageIndex = targetPages.length;
-  if (bibStartPageIndex !== -1) {
-    const anyNextHeadingRegex = /(^|\n)#{1,4}\s+\S+/;
-
-    for (let i = bibStartPageIndex + 1; i < targetPages.length; i++) {
-      if (anyNextHeadingRegex.test(targetPages[i].markdown)) {
-        bibEndPageIndex = i;
-        break;
-      }
-    }
-  }
-
-  const bibPages =
-    bibStartPageIndex !== -1
-      ? targetPages.slice(
-          bibStartPageIndex,
-          Math.min(bibEndPageIndex, bibStartPageIndex + 30),
-        )
-      : [];
+  // Bibliography detection (shared with scanned path)
+  const bibPages = findBibliographyPages(targetPages, (p) => p.markdown);
 
   // Step 3: Parallel Gemini Flash-Lite extraction (Metadata + 1-Page Chunked References)
   logger?.info("pdf_parse_content_start", {

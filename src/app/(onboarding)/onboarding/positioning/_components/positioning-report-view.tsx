@@ -51,13 +51,13 @@ export function PositioningReportView({
 
   return (
     <div className="w-full space-y-8">
-      <Card className="p-6 space-y-4 border-border bg-card">
+      <Card className="p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
           <div className="space-y-1">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Jüri Değerlendirme Sonucu
             </span>
-            <h2 className="font-serif text-xl font-bold text-foreground">
+            <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
               Akademik Konumlandırma & Özgün Katkı Raporu
             </h2>
           </div>
@@ -146,11 +146,11 @@ export function PositioningReportView({
                 return (
                   <Card
                     key={thesisId}
-                    className="p-6 space-y-3 border-border bg-card hover:border-border/40 transition-colors"
+                    className="p-6 space-y-3 hover:border-border/40 transition-colors"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                       <div className="space-y-1">
-                        <h4 className="font-serif text-sm font-bold text-foreground leading-snug">
+                        <h4 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground leading-snug">
                           {thesis.title}
                         </h4>
                         <p className="text-xs text-muted-foreground">

@@ -33,7 +33,7 @@ export async function runBoxStructureAction(): Promise<
     if (!session) return { error: SESSION_ERROR_MSG };
 
     const matrix = await fetchThesisMatrix();
-    if (!matrix) return { error: "Thesis matrix not found." };
+    if (!matrix) return { error: "Tez matrisi bulunamadı." };
 
     log.info("box_structure_generation_start", {
       service: "boxes",

@@ -18,10 +18,7 @@ export function DashboardSkeleton() {
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {Array.from({ length: 2 }).map((_, index) => (
-            <Card
-              key={index}
-              className="flex h-full flex-col rounded-md border border-border bg-card text-card-foreground"
-            >
+            <Card key={index} className="flex h-full flex-col rounded-md">
               <CardHeader className="p-4 pb-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1 space-y-2">
@@ -41,7 +38,7 @@ export function DashboardSkeleton() {
                       key={itemIndex}
                       className="flex items-center justify-between gap-3 rounded-md p-2"
                     >
-                      <div className="min-w-0 flex-1 space-y-1.5">
+                      <div className="min-w-0 flex-1 space-y-2">
                         <Skeleton className="h-3.5 w-4/5" />
                         <Skeleton className="h-3 w-1/3 bg-border/20" />
                       </div>

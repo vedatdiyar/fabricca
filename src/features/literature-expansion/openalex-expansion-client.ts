@@ -1,4 +1,5 @@
 import { CROSSREF_USER_AGENT, withRetry } from "@/lib/api-utils";
+import { createGapEnforcedQueue } from "@/lib/rate-limiter";
 import type { CandidateSource } from "./types";
 
 interface OpenAlexWorkItem {
@@ -26,6 +27,62 @@ interface OpenAlexWorkItem {
 }
 
 const OPENALEX_RETRYABLE = "OPENALEX_RETRYABLE_ERROR";
+
+/**
+ * Gap-enforced queue for OpenAlex expansion requests. The forward-citation
+ * endpoint may combine `filter` with a `search` query, so requests are spaced
+ * to the 1 req/s semantic-search cadence to avoid 429 responses.
+ */
+const openAlexExpansionQueue = createGapEnforcedQueue<Response | null>(1000);
+
+/**
+ * Retry policy for OpenAlex expansion requests: retries 429/5xx/network errors
+ * with full-jitter exponential backoff.
+ */
+function buildOpenAlexExpansionRetryOptions() {
+  return {
+    maxRetries: 3,
+    baseDelay: 1500,
+    isRetryable: (err: unknown) => {
+      if (err instanceof Error) {
+        return (
+          err.message === OPENALEX_RETRYABLE ||
+          err instanceof TypeError ||
+          err.name === "AbortError"
+        );
+      }
+      return false;
+    },
+  };
+}
+
+/**
+ * Fetches an OpenAlex URL through the gap-enforced queue, throwing a retryable
+ * error on 429/5xx so the caller's retry policy can back off.
+ *
+ * @param url - The OpenAlex API URL to fetch.
+ * @returns The HTTP response, or null on non-retryable non-2xx.
+ */
+async function fetchOpenAlexUrl(url: string): Promise<Response | null> {
+  const fetchWithRetry = async (): Promise<Response | null> => {
+    const res = await fetch(url, {
+      headers: { "User-Agent": CROSSREF_USER_AGENT },
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (res.status === 429 || res.status >= 500) {
+      throw new Error(OPENALEX_RETRYABLE);
+    }
+
+    if (!res.ok) return null;
+
+    return res;
+  };
+
+  return openAlexExpansionQueue.exec(() =>
+    withRetry(fetchWithRetry, buildOpenAlexExpansionRetryOptions()),
+  );
+}
 
 /**
  * Queries OpenAlex API for works citing a batch of seed works (forward citations).
@@ -71,36 +128,8 @@ export async function fetchOpenAlexForwardCitations(
 
   const url = `https://api.openalex.org/works?${params.toString().replace(/\+/g, "%20")}`;
 
-  const fetchWithRetry = async (): Promise<Response | null> => {
-    const res = await fetch(url, {
-      headers: { "User-Agent": CROSSREF_USER_AGENT },
-      signal: AbortSignal.timeout(30000),
-    });
-
-    if (res.status === 429 || res.status >= 500) {
-      throw new Error(OPENALEX_RETRYABLE);
-    }
-
-    if (!res.ok) return null;
-
-    return res;
-  };
-
   try {
-    const response = await withRetry(fetchWithRetry, {
-      maxRetries: 3,
-      baseDelay: 1500,
-      isRetryable: (err) => {
-        if (err instanceof Error) {
-          return (
-            err.message === OPENALEX_RETRYABLE ||
-            err instanceof TypeError ||
-            err.name === "AbortError"
-          );
-        }
-        return false;
-      },
-    });
+    const response = await fetchOpenAlexUrl(url);
 
     if (!response) return [];
 
@@ -115,12 +144,9 @@ export async function fetchOpenAlexForwardCitations(
       params.delete("search");
       params.set("sort", "cited_by_count:desc");
       const fallbackUrl = `https://api.openalex.org/works?${params.toString().replace(/\+/g, "%20")}`;
-      const fallbackRes = await fetch(fallbackUrl, {
-        headers: { "User-Agent": CROSSREF_USER_AGENT },
-        signal: AbortSignal.timeout(30000),
-      });
+      const fallbackRes = await fetchOpenAlexUrl(fallbackUrl);
 
-      if (fallbackRes.ok) {
+      if (fallbackRes) {
         const fallbackData = (await fallbackRes.json()) as {
           results?: OpenAlexWorkItem[];
         };

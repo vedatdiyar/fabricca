@@ -1,4 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card } from "@/components/ui/card";
 
 /**
  * Skeleton mirroring the updated outline step content: stats bar and section cards.
@@ -12,7 +13,7 @@ export function OutlineSkeleton() {
       <Skeleton className="h-20 w-full rounded-md" />
 
       {/* Stats Bar Skeleton */}
-      <div className="flex flex-col gap-4 rounded-md border border-border bg-card p-4">
+      <Card className="flex flex-col gap-4 rounded-md p-4">
         <div className="flex items-center justify-between border-b border-border/40 pb-3">
           <Skeleton className="h-6 w-48 rounded" />
           <Skeleton className="h-8 w-28 rounded-md" />
@@ -24,15 +25,12 @@ export function OutlineSkeleton() {
             <Skeleton className="h-8 w-32 rounded-md" />
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Section Cards Skeleton */}
       <div className="flex flex-col gap-4">
         {Array.from({ length: 4 }).map((_, sectionIdx) => (
-          <div
-            key={sectionIdx}
-            className="rounded-md border border-border bg-card p-4 space-y-4"
-          >
+          <Card key={sectionIdx} className="rounded-md p-4 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3 flex-1">
                 <Skeleton className="size-7 shrink-0 rounded-full" />
@@ -49,11 +47,11 @@ export function OutlineSkeleton() {
             </div>
 
             {sectionIdx < 2 && (
-              <div className="ml-3.5 pl-4 border-l-2 border-primary/20 space-y-3">
+              <div className="ml-4 pl-4 border-l-2 border-primary/20 space-y-3">
                 {Array.from({ length: 2 }).map((_, subIdx) => (
                   <div
                     key={subIdx}
-                    className="rounded-md border border-border/60 bg-muted/40 p-3 space-y-2"
+                    className="rounded-md border border-border/40 bg-muted/40 p-3 space-y-2"
                   >
                     <div className="flex items-center gap-2">
                       <Skeleton className="h-5 w-10 rounded" />
@@ -64,7 +62,7 @@ export function OutlineSkeleton() {
                 ))}
               </div>
             )}
-          </div>
+          </Card>
         ))}
       </div>
 

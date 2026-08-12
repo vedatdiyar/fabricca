@@ -1,6 +1,7 @@
 "use server";
 
 import { eq, desc, inArray } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { sources, annotations } from "@/db/schema";
 import { getSession } from "@/lib/session";
@@ -138,6 +139,9 @@ export async function toggleResourceReadStatusAction(
       data: { resourceId, isRead: newIsRead },
     });
 
+    revalidatePath("/dashboard");
+    revalidatePath("/library");
+
     return { success: true, isRead: newIsRead };
   } catch (err) {
     log.error("toggle_resource_read_status_failed", {
@@ -186,6 +190,9 @@ export async function deleteLibraryResourceAction(resourceId: number) {
     }
 
     await db.delete(sources).where(eq(sources.id, resourceId));
+
+    revalidatePath("/dashboard");
+    revalidatePath("/library");
 
     return { success: true };
   } catch (err) {

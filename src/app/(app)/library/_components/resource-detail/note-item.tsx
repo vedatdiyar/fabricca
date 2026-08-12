@@ -79,7 +79,7 @@ export function NoteItem({ note, onDeleteNoteClick }: NoteItemProps) {
 
         {note.comment && (
           <div className="flex gap-2 rounded-md border border-border/40 border-l-2 border-l-primary/20 bg-muted/20 px-3 py-2">
-            <MessageSquareQuote className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+            <MessageSquareQuote className="h-3.5 w-3.5 text-primary shrink-0 mt-1" />
             <div className="space-y-1 min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Kişisel Yorum / Şerh

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import type { Box } from "@/db/schema";
 
 interface TaskFormModalProps {
@@ -84,7 +85,7 @@ export function TaskFormModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-md border border-border bg-card p-6 text-card-foreground relative space-y-4">
+      <Card className="w-full max-w-md rounded-md border border-border p-6 relative space-y-4">
         <button
           type="button"
           onClick={() => {
@@ -109,7 +110,7 @@ export function TaskFormModal({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <label
               htmlFor="taskFormTitle"
               className="font-sans text-xs text-muted-foreground"
@@ -129,7 +130,7 @@ export function TaskFormModal({
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <label
                 htmlFor="taskFormPriority"
                 className="font-sans text-xs text-muted-foreground"
@@ -151,7 +152,7 @@ export function TaskFormModal({
               </select>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <label
                 htmlFor="taskFormBoxSelect"
                 className="font-sans text-xs text-muted-foreground"
@@ -197,7 +198,7 @@ export function TaskFormModal({
             </Button>
           </div>
         </form>
-      </div>
+      </Card>
     </div>
   );
 }

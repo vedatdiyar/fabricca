@@ -24,7 +24,7 @@ export default function OnboardingRouteError({
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 text-center">
-      <p className="font-serif text-xl font-semibold tracking-tight text-foreground">
+      <p className="font-sans text-xl font-semibold tracking-tight text-foreground">
         Onboarding sırasında bir hata oluştu.
       </p>
       <p className="max-w-md text-sm leading-relaxed text-muted-foreground">

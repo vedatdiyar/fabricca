@@ -1,4 +1,5 @@
 import { withRetry } from "@/lib/api-utils";
+import { createConcurrencyLimiter } from "@/lib/rate-limiter";
 import type { CandidateSource } from "./types";
 
 interface S2Author {
@@ -37,6 +38,12 @@ interface S2RecommendationsResponse {
 }
 
 const S2_RETRYABLE = "S2_RETRYABLE_ERROR";
+
+/**
+ * Serializes Semantic Scholar recommendation requests (max 1 in-flight) to
+ * stay within the service's rate ceiling and avoid 429 responses.
+ */
+const semanticScholarRequestQueue = createConcurrencyLimiter(1);
 
 /**
  * Queries Semantic Scholar Recommendations API (v1) concurrently alongside OpenAlex.
@@ -99,21 +106,21 @@ export async function fetchSemanticScholarRecommendations(
   };
 
   try {
-    let response = await withRetry(() => executeFetch(true), {
-      maxRetries: 1,
-      baseDelay: 1000,
-      isRetryable: (err) =>
-        err instanceof Error && err.message === S2_RETRYABLE,
-    });
+    const executeQueued = (useKey: boolean): Promise<Response | null> =>
+      semanticScholarRequestQueue.exec(() =>
+        withRetry(() => executeFetch(useKey), {
+          maxRetries: 1,
+          baseDelay: 1000,
+          isRetryable: (err) =>
+            err instanceof Error && err.message === S2_RETRYABLE,
+        }),
+      );
+
+    let response = await executeQueued(true);
 
     if (!response) {
       // Retry once without key if 403 or auth error occurred
-      response = await withRetry(() => executeFetch(false), {
-        maxRetries: 1,
-        baseDelay: 1000,
-        isRetryable: (err) =>
-          err instanceof Error && err.message === S2_RETRYABLE,
-      });
+      response = await executeQueued(false);
     }
 
     if (!response) return [];

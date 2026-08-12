@@ -109,7 +109,7 @@ export function LiteratureExpansionButton({
   const canUndo = expansionCycle > 1;
 
   return (
-    <div className={cn("inline-flex items-center gap-1.5", className)}>
+    <div className={cn("inline-flex items-center gap-2", className)}>
       <span
         className="inline-flex h-7 items-center px-2 text-[10px] font-semibold text-muted-foreground bg-muted rounded-md border border-border"
         title="Literatür Genişletme Döngü Sayısı"
@@ -127,7 +127,7 @@ export function LiteratureExpansionButton({
             "inline-flex h-7 w-7 items-center justify-center rounded-md border transition-all duration-200",
             !loading
               ? "bg-primary/10 text-primary border-primary/30 hover:bg-primary/20 active:scale-95 cursor-pointer"
-              : "bg-muted/50 text-muted-foreground/60 border-border cursor-not-allowed opacity-70",
+              : "bg-muted/20 text-muted-foreground border-border cursor-not-allowed opacity-70",
           )}
         >
           {loading ? (
@@ -161,7 +161,7 @@ export function LiteratureExpansionButton({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif text-lg font-semibold text-foreground">
+            <AlertDialogTitle className="font-serif text-xl font-semibold text-foreground">
               Son Genişletme Döngüsünü Geri Almak İstediğinize Emin Misiniz?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm text-muted-foreground">

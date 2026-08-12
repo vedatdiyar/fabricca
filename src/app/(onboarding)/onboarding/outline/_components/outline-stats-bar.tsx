@@ -3,6 +3,7 @@
 import { Sparkles, Plus, GraduationCap, ListTree } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 
 interface OutlineStatsBarProps {
   academicField: string | null;
@@ -28,11 +29,11 @@ export function OutlineStatsBar({
   isRegenerating,
 }: OutlineStatsBarProps) {
   return (
-    <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 rounded-md border border-border bg-card p-3 sm:p-4">
+    <Card className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 rounded-md border border-border p-4">
       <div className="flex items-center gap-2 flex-wrap">
         <Badge
           variant="outline"
-          className="flex items-center gap-1.5 bg-primary/10 border-primary/20 text-primary py-1 px-2.5"
+          className="flex items-center gap-2 bg-primary/10 border-primary/20 text-primary py-1 px-2"
         >
           <GraduationCap className="size-3.5" />
           <span className="font-semibold">
@@ -40,7 +41,7 @@ export function OutlineStatsBar({
           </span>
         </Badge>
 
-        <div className="flex items-center gap-2 text-xs text-muted-foreground border-l border-border/60 pl-3 ml-1">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground border-l border-border/40 pl-3 ml-1">
           <span className="flex items-center gap-1 font-medium text-foreground">
             <ListTree className="size-3.5 text-primary" />
             {sectionCount} Bölüm
@@ -52,13 +53,13 @@ export function OutlineStatsBar({
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5 flex-wrap w-full lg:w-auto justify-end">
+      <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto justify-end">
         <Button
           variant="outline"
           size="sm"
           onClick={onRegenerate}
           disabled={isRegenerating}
-          className="text-xs gap-1 h-7 px-2.5 border-primary/20 text-primary hover:bg-primary/10"
+          className="text-xs gap-1 h-7 px-2 border-primary/20 text-primary hover:bg-primary/10"
         >
           <Sparkles
             className={`size-3 ${isRegenerating ? "animate-spin" : ""}`}
@@ -70,12 +71,12 @@ export function OutlineStatsBar({
           variant="default"
           size="sm"
           onClick={onAddSection}
-          className="text-xs gap-1 h-7 px-2.5"
+          className="text-xs gap-1 h-7 px-2"
         >
           <Plus className="size-3" />
           Yeni Bölüm Ekle
         </Button>
       </div>
-    </div>
+    </Card>
   );
 }

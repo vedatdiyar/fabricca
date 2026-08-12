@@ -157,7 +157,7 @@ export const DropdownMenuItem = React.forwardRef<
         onClick?.(e);
       }}
       className={cn(
-        "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-xs outline-hidden transition-colors hover:bg-accent hover:text-accent-foreground",
+        "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-2 text-xs outline-hidden transition-colors hover:bg-accent hover:text-accent-foreground",
         disabled && "opacity-50 pointer-events-none cursor-not-allowed",
         className,
       )}
@@ -183,7 +183,7 @@ export function DropdownMenuLabel(props: DropdownMenuLabelProps) {
   return (
     <div
       className={cn(
-        "px-2 py-1.5 text-xs font-semibold text-foreground",
+        "px-2 py-2 text-xs font-semibold text-foreground",
         className,
       )}
       {...rest}
@@ -260,7 +260,7 @@ export const DropdownMenuSubTrigger = React.forwardRef<
       }}
       onClick={() => ctx?.setSubOpen((prev) => !prev)}
       className={cn(
-        "flex cursor-pointer select-none items-center justify-between rounded-sm px-2 py-1.5 text-xs outline-hidden hover:bg-accent hover:text-accent-foreground",
+        "flex cursor-pointer select-none items-center justify-between rounded-sm px-2 py-2 text-xs outline-hidden hover:bg-accent hover:text-accent-foreground",
         className,
       )}
       {...rest}

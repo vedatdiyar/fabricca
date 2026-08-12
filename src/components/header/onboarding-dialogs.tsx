@@ -33,7 +33,7 @@ export function ReopenOnboardingDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle className="font-serif text-lg font-semibold text-foreground">
+          <AlertDialogTitle className="font-serif text-xl font-semibold text-foreground">
             Onboarding Adımlarına Dön
           </AlertDialogTitle>
           <AlertDialogDescription className="text-sm text-muted-foreground">
@@ -77,9 +77,9 @@ export function ResetAllDataDialog({
 }) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="border-destructive/30">
+      <AlertDialogContent className="border-destructive/20">
         <AlertDialogHeader>
-          <AlertDialogTitle className="font-serif text-lg font-semibold text-destructive">
+          <AlertDialogTitle className="font-serif text-xl font-semibold text-destructive">
             Tüm Verileri Sıfırla ve Baştan Başla
           </AlertDialogTitle>
           <AlertDialogDescription className="text-sm text-muted-foreground leading-relaxed">

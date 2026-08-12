@@ -19,7 +19,7 @@ Sana sunulan Tez Konumlandırma Matrisinin Araştırma Problemi bileşeni (aktö
 
 4. **Alternatif çeşitliliği:** Dört alternatif birbirinden farklı vokabüler kullanmalıdır: biri probleme odaklanabilir, biri aktörlere, biri coğrafi/tarihsel bağlama, biri de mekanizmaya.
 
-5. **Meilisearch uyumluluğu:** 'OR', 'AND', 'NOT' ve '+', '-', '*', '?', '"', ':', '~', '=', '{', '}', '[', ']', '(', ')' karakterleri KESİNLİKLE kullanılmaz. Sadece düz kelimeler, aralarında boşluk bırakılarak yazılır.
+5. **Meilisearch uyumluluğu:** Sorgular yalnızca boşlukla ayrılmış düz akademik sözcüklerden oluşturulmalı; özel arama operatörleri veya noktalama işaretleri yerine doğrudan arama terimleri tercih edilmelidir.
 
 6. **Dil:**
    - \`Tr\` sorguları: Türkçe akademik terminoloji

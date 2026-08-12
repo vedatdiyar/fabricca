@@ -11,6 +11,12 @@
  * structured JSON response — no tool use, pure structured output.
  */
 
+import { z } from "zod";
+import { CEREBRAS_MODEL } from "@/lib/constants";
+import {
+  generateCerebrasStructuredContent,
+  type JsonSchema,
+} from "@/services/ai";
 import type { CandidateSource } from "./types";
 
 /** A suspicious candidate that needs LLM verification. */
@@ -42,14 +48,47 @@ interface CerebrasSelectionPayload {
 }
 
 /** Structured response from the LLM. */
-interface CerebrasSelectionResponse {
+const selectionResponseSchema = z.object({
   /** Indices (from confirmedCandidates) to include in final selection. */
-  selectedIndices: number[];
+  selectedIndices: z.array(z.number()),
   /** Suspicious candidates NOT to add (they are duplicates). */
-  suspiciousDuplicates: string[];
+  suspiciousDuplicates: z.array(z.string()),
   /** Suspicious candidates that are NOT duplicates (safe to include). */
-  suspiciousClear: string[];
-}
+  suspiciousClear: z.array(z.string()),
+});
+
+type CerebrasSelectionResponse = z.infer<typeof selectionResponseSchema>;
+
+/** Strict JSON schema constraint for the Cerebras structured selection call. */
+const SELECTION_JSON_SCHEMA: JsonSchema = {
+  type: "object",
+  properties: {
+    selectedIndices: {
+      type: "array",
+      items: { type: "number" },
+      description:
+        "Indices from the confirmed candidates list to include in the final selection.",
+    },
+    suspiciousDuplicates: {
+      type: "array",
+      items: { type: "string" },
+      description:
+        "Candidate titles that ARE true duplicates of existing sources.",
+    },
+    suspiciousClear: {
+      type: "array",
+      items: { type: "string" },
+      description:
+        "Candidate titles that are NOT duplicates and safe to include.",
+    },
+  },
+  required: ["selectedIndices", "suspiciousDuplicates", "suspiciousClear"],
+  additionalProperties: false,
+};
+
+/** System instruction for the structured dedup + selection call. */
+const SELECTION_SYSTEM_INSTRUCTION =
+  "You are an academic librarian assistant curating a literature list for a thesis. Output strict JSON only — no markdown, no explanation.";
 
 function buildPrompt(payload: CerebrasSelectionPayload): string {
   const suspiciousSection =
@@ -112,58 +151,30 @@ export async function selectWithCerebras(
   payload: CerebrasSelectionPayload,
   allCandidates: CandidateSource[],
 ): Promise<CandidateSource[]> {
-  const apiKey = process.env.CEREBRAS_API_KEY;
-  if (!apiKey) {
-    // Fallback: return top-N confirmed candidates without LLM
-    return allCandidates.slice(0, payload.targetCount);
-  }
+  const fallback = () => allCandidates.slice(0, payload.targetCount);
 
   const prompt = buildPrompt(payload);
 
-  let raw: string;
-  try {
-    const response = await fetch(
-      "https://api.cerebras.ai/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: "gemma-4-31b",
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0,
-          max_completion_tokens: 512,
-        }),
-      },
-    );
-
-    if (!response.ok) {
-      throw new Error(`Cerebras API error: ${response.status}`);
-    }
-
-    const json = (await response.json()) as {
-      choices: { message: { content: string } }[];
-    };
-    raw = json.choices[0]?.message?.content ?? "";
-  } catch {
-    // Network/API failure: fall back to top-N order
-    return allCandidates.slice(0, payload.targetCount);
-  }
-
-  // Parse structured JSON from response
+  // Route through the central Cerebras provider (CEREBRAS_MODEL, retries,
+  // structured output + zod validation). Any failure degrades to top-N order.
   let parsed: CerebrasSelectionResponse;
   try {
-    // Strip any markdown fences the model might have added
-    const cleaned = raw
-      .replace(/^```(?:json)?\n?/m, "")
-      .replace(/\n?```$/m, "")
-      .trim();
-    parsed = JSON.parse(cleaned) as CerebrasSelectionResponse;
+    parsed = await generateCerebrasStructuredContent<CerebrasSelectionResponse>(
+      CEREBRAS_MODEL,
+      SELECTION_SYSTEM_INSTRUCTION,
+      prompt,
+      SELECTION_JSON_SCHEMA,
+      undefined,
+      {
+        payloadStage: "backward_expansion_selection",
+        zodSchema: selectionResponseSchema,
+        temperature: 0,
+        maxTokens: 512,
+      },
+    );
   } catch {
-    // Malformed JSON: fall back to top-N order
-    return allCandidates.slice(0, payload.targetCount);
+    // Network/API failure or malformed/off-schema output: fall back to top-N order
+    return fallback();
   }
 
   // Build final selection

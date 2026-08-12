@@ -55,55 +55,57 @@ export async function persistRelatedTheses(userId: number): Promise<void> {
     return;
   }
 
-  let [relatedBox] = await db
-    .select({ id: boxes.id })
-    .from(boxes)
-    .where(
-      and(eq(boxes.matrixId, matrix.id), eq(boxes.boxType, "RELATED_THESES")),
-    )
-    .limit(1);
+  await db.transaction(async (tx) => {
+    let [relatedBox] = await tx
+      .select({ id: boxes.id })
+      .from(boxes)
+      .where(
+        and(eq(boxes.matrixId, matrix.id), eq(boxes.boxType, "RELATED_THESES")),
+      )
+      .limit(1);
 
-  if (!relatedBox) {
-    const [inserted] = await db
-      .insert(boxes)
-      .values({
-        matrixId: matrix.id,
-        parentId: null,
-        boxType: "RELATED_THESES",
-        title: RELATED_THESES_TITLE,
-        description: BOX_TYPE_DESCRIPTIONS.RELATED_THESES,
-        semanticQuery: null,
-        concepts: [],
-      })
-      .returning({ id: boxes.id });
-    relatedBox = inserted;
-  }
+    if (!relatedBox) {
+      const [inserted] = await tx
+        .insert(boxes)
+        .values({
+          matrixId: matrix.id,
+          parentId: null,
+          boxType: "RELATED_THESES",
+          title: RELATED_THESES_TITLE,
+          description: BOX_TYPE_DESCRIPTIONS.RELATED_THESES,
+          semanticQuery: null,
+          concepts: [],
+        })
+        .returning({ id: boxes.id });
+      relatedBox = inserted;
+    }
 
-  if (!relatedBox) {
-    return;
-  }
+    if (!relatedBox) {
+      return;
+    }
 
-  await db.delete(sources).where(eq(sources.boxId, relatedBox.id));
+    await tx.delete(sources).where(eq(sources.boxId, relatedBox.id));
 
-  const toInsert = theses.map((t) => ({
-    boxId: relatedBox.id,
-    title: cleanThesisTitle(t.title),
-    authors: [t.author].filter((a) => a.length > 0),
-    publisher: t.university || null,
-    thesisType: t.thesisType || null,
-    publicationYear: t.year,
-    doi: t.doi || null,
-    comparisonNote:
-      [t.contributionArea, t.relevanceReason]
-        .filter((s) => s && s.trim().length > 0)
-        .join("\n") || null,
-    isRead: false,
-    relevanceScore: 100,
-  }));
+    const toInsert = theses.map((t) => ({
+      boxId: relatedBox.id,
+      title: cleanThesisTitle(t.title),
+      authors: [t.author].filter((a) => a.length > 0),
+      publisher: t.university || null,
+      thesisType: t.thesisType || null,
+      publicationYear: t.year,
+      doi: t.doi || null,
+      comparisonNote:
+        [t.contributionArea, t.relevanceReason]
+          .filter((s) => s && s.trim().length > 0)
+          .join("\n") || null,
+      isRead: false,
+      relevanceScore: 100,
+    }));
 
-  if (toInsert.length > 0) {
-    await db.insert(sources).values(toInsert);
-  }
+    if (toInsert.length > 0) {
+      await tx.insert(sources).values(toInsert);
+    }
+  });
 }
 
 /**

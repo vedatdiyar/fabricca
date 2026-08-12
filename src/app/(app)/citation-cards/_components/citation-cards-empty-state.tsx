@@ -2,6 +2,7 @@
 
 import { BookOpen, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 interface CitationCardsEmptyStateProps {
   onClearFilters: () => void;
@@ -21,9 +22,9 @@ export function CitationCardsEmptyState({
   onAddNew,
 }: CitationCardsEmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center p-12 rounded-md border border-dashed border-border bg-card/20 text-center">
+    <Card className="flex flex-col items-center justify-center p-12 rounded-md border border-dashed border-border/40 text-center">
       <BookOpen className="h-10 w-10 text-muted-foreground mb-3 opacity-50" />
-      <h3 className="font-serif text-base font-semibold text-foreground">
+      <h3 className="font-serif text-lg font-medium text-foreground">
         Kriterlere Uygun Alıntı Fişi Bulunamadı
       </h3>
       <p className="text-xs text-muted-foreground mt-1 max-w-sm">
@@ -44,6 +45,6 @@ export function CitationCardsEmptyState({
           Yeni Fiş Ekle
         </Button>
       </div>
-    </div>
+    </Card>
   );
 }

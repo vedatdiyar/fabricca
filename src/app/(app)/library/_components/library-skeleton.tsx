@@ -1,4 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card } from "@/components/ui/card";
 
 /**
  * Skeleton mirroring the library page layout: sticky sidebar work list on the
@@ -10,7 +11,7 @@ export function LibrarySkeleton() {
   return (
     <div className="grid w-full grid-cols-1 items-start gap-6 lg:grid-cols-12">
       <div className="flex min-h-0 flex-col lg:col-span-4 lg:sticky lg:top-[calc(7rem+1px)] lg:h-[calc(100vh-8.5rem-1px)]">
-        <div className="flex h-full w-full min-h-0 flex-col space-y-4 rounded-md border border-border bg-card p-4">
+        <Card className="flex h-full w-full min-h-0 flex-col space-y-4 rounded-md p-4">
           <div className="flex items-center justify-between border-b border-border pb-2">
             <div className="flex items-center gap-2">
               <Skeleton className="h-5 w-5 rounded-md bg-border/20" />
@@ -42,11 +43,11 @@ export function LibrarySkeleton() {
               </div>
             ))}
           </div>
-        </div>
+        </Card>
       </div>
 
       <div className="h-full min-h-0 lg:col-span-8">
-        <div className="flex h-full min-h-[40vh] w-full flex-col space-y-6 rounded-md border border-border bg-card p-6">
+        <Card className="flex h-full min-h-[40vh] w-full flex-col space-y-6 rounded-md p-6">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1 space-y-2">
               <Skeleton className="h-6 w-3/4" />
@@ -79,7 +80,7 @@ export function LibrarySkeleton() {
               </div>
             </div>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );

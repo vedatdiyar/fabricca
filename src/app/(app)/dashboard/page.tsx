@@ -5,6 +5,7 @@ import { getSession } from "@/lib/session";
 import { getUsersMatrixAndBoxesWithResources } from "@/app/(app)/_services/box-service";
 import { getTasksAction } from "./actions";
 import { DashboardContent } from "./_components/dashboard-content";
+import { Card } from "@/components/ui/card";
 
 /**
  * Renders the dashboard overview page with topic boxes, reading lists, and the Kanban board.
@@ -24,15 +25,15 @@ export default async function DashboardPage() {
 
   if ("error" in boxResult) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-md border border-dashed border-border/40 bg-card p-8 text-center">
-        <p className="font-serif text-lg font-medium tracking-tight text-foreground">
+      <Card className="flex flex-col items-center justify-center rounded-md border border-dashed border-border/40 p-8 text-center">
+        <p className="font-sans text-lg font-medium tracking-tight text-foreground">
           Tez matrisi henüz oluşturulmadı
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
           Henüz bir tez matrisi oluşturulmamış. Lütfen onboarding adımlarını
           tamamlayın.
         </p>
-      </div>
+      </Card>
     );
   }
 

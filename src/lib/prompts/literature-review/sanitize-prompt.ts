@@ -33,14 +33,14 @@ Girdi dizisindeki (array) her bir akademik nesnenin \`title\` ve \`author\` alan
 [{"title": "The Role of NATO in Post-Cold War Era (Vol I)", "author": "Prof. Dr. Ahmet Yılmaz"}]
 \`\`\`
 
-## Örnek 2: Biyoinformatik / Kanser Genomiği
+## Örnek 2: Sosyoloji / Kamu Yönetimi
 ### Girdi
 \`\`\`json
-[{"title": "single-cell rna-seq analysis of homo sapiens tumor microenvironment in vivo", "author": "dr. ayse kaya"}]
+[{"title": "turkiye de kamu yonetiminde dijital donusum ve e-devlet uygulamalarinin kamu hizmeti kalitesine etkisi", "author": "doç. dr. mehmet demir"}]
 \`\`\`
 ### Çıktı
 \`\`\`json
-[{"title": "Single-Cell RNA-Seq Analysis of Homo sapiens Tumor Microenvironment In Vivo", "author": "Dr. Ayşe Kaya"}]
+[{"title": "Türkiye'de Kamu Yönetiminde Dijital Dönüşüm ve E-Devlet Uygulamalarının Kamu Hizmeti Kalitesine Etkisi", "author": "Doç. Dr. Mehmet Demir"}]
 \`\`\`
 
 # Çıktı Biçimi

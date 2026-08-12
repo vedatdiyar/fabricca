@@ -46,9 +46,13 @@ export async function uploadPdfToR2(
   apaFileName: string,
 ): Promise<{ r2Url: string; r2Key: string }> {
   const bucketName = process.env.R2_BUCKET_NAME || "fabricca";
-  const publicDomain =
-    process.env.R2_PUBLIC_DOMAIN ||
-    "https://pub-ad6349c3ea934f3a9a8f6232ae5bf475.r2.dev";
+  const publicDomain = process.env.R2_PUBLIC_DOMAIN;
+
+  if (!publicDomain) {
+    throw new Error(
+      "Cloudflare R2 public domain (R2_PUBLIC_DOMAIN) is missing in environment variables.",
+    );
+  }
 
   const r2Key = `pdfs/${apaFileName}`;
 

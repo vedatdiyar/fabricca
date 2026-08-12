@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { Sparkles, GraduationCap, BookOpen } from "lucide-react";
+import { Card } from "@/components/ui/card";
 import { ChatMessageItem, PersonaBadge } from "./chat-message-item";
 import { MarkdownRenderer } from "./markdown-renderer";
 import { ToolConfirmationCard } from "./tool-confirmation-card";
@@ -101,8 +102,8 @@ export function ChatMessageList({
   }, [messages, isStreaming, activeSessionId]);
 
   return (
-    <div
-      className={`flex-1 min-h-0 p-4 sm:p-6 bg-card border border-border/40 rounded-md space-y-6 ${messages.length > 0 ? "overflow-y-auto" : "overflow-hidden"}`}
+    <Card
+      className={`flex-1 min-h-0 p-4 sm:p-6 rounded-md space-y-6 ${messages.length > 0 ? "overflow-y-auto" : "overflow-hidden"}`}
     >
       {messages.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-full py-12 text-center space-y-5">
@@ -116,7 +117,7 @@ export function ChatMessageList({
             />
           </div>
           <div className="max-w-md space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">
+            <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
               Akademik Danışmanınıza Hoş Geldiniz
             </h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
@@ -147,8 +148,8 @@ export function ChatMessageList({
           <div
             className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 transition-all ${
               streamingPersona === "SOCRATIC_ADVISOR"
-                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-2 ring-amber-500/40"
-                : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 ring-2 ring-emerald-500/40"
+                ? "bg-warning/15 text-warning ring-2 ring-warning/20"
+                : "bg-success/15 text-success ring-2 ring-success/20"
             }`}
           >
             {streamingPersona === "SOCRATIC_ADVISOR" ? (
@@ -162,8 +163,8 @@ export function ChatMessageList({
             <div
               className={`p-4 rounded-md text-sm leading-relaxed rounded-tl-none break-words min-w-0 transition-all ${
                 streamingPersona === "SOCRATIC_ADVISOR"
-                  ? "bg-amber-500/5 dark:bg-amber-500/10 border-2 border-amber-500/40 dark:border-amber-400/40 text-card-foreground shadow-sm"
-                  : "bg-emerald-500/5 dark:bg-emerald-500/10 border-2 border-emerald-500/30 dark:border-emerald-400/30 text-card-foreground shadow-sm"
+                  ? "bg-warning/5 dark:bg-warning/10 border-2 border-warning/20 text-card-foreground"
+                  : "bg-success/5 dark:bg-success/10 border-2 border-success/20 text-card-foreground"
               }`}
             >
               {streamingText && (
@@ -209,15 +210,15 @@ export function ChatMessageList({
           <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 animate-spin">
             <Sparkles className="w-4 h-4" />
           </div>
-          <div className="flex items-center space-x-2 bg-card border border-border/40 p-3 rounded-md">
+          <Card className="flex items-center space-x-2 p-3 rounded-md">
             <span className="font-medium">
               Akademik danışmanınız yanıt hazırlıyor...
             </span>
-          </div>
+          </Card>
         </div>
       )}
 
       <div ref={messagesEndRef} />
-    </div>
+    </Card>
   );
 }

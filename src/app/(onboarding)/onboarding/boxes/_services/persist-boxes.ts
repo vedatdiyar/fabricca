@@ -60,7 +60,7 @@ export async function persistBoxesAction(
     if (!session) return { error: SESSION_ERROR_MSG };
 
     const matrix = await fetchThesisMatrix();
-    if (!matrix) return { error: "Thesis matrix not found." };
+    if (!matrix) return { error: "Tez matrisi bulunamadı." };
 
     log.info("boxes_persist_start", {
       service: "boxes",

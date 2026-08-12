@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import { UploadCloud, FileText, Loader2 } from "lucide-react";
+import { UploadCloud, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
 
 interface PdfDropzoneProps {
   /** Currently selected PDF file, or null when none is chosen. */
@@ -72,8 +73,8 @@ export function PdfDropzone({
         />
 
         {isSubmitting ? (
-          <div className="flex flex-col items-center space-y-3 py-2">
-            <Loader2 className="h-9 w-9 animate-spin text-primary" />
+          <div className="flex w-full flex-col items-center">
+            <LoadingSpinner size="sm" className="min-h-0 py-4" />
             <div className="space-y-1">
               <p className="font-sans text-sm font-semibold text-foreground">
                 Klasik Kaynak Yükleme Pipeline Çalışıyor...
@@ -89,7 +90,7 @@ export function PdfDropzone({
             <div className="p-3 rounded-full bg-success/10 border border-success/20 text-success">
               <FileText className="h-7 w-7" />
             </div>
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               <p className="text-xs font-semibold text-foreground truncate max-w-xs">
                 {selectedFile.name}
               </p>
@@ -102,7 +103,7 @@ export function PdfDropzone({
               variant="ghost"
               size="sm"
               onClick={() => fileInputRef.current?.click()}
-              className="text-[11px] text-primary h-7 px-2 hover:bg-primary/10"
+              className="text-xs text-primary h-7 px-2 hover:bg-primary/10"
             >
               Farklı PDF Seç
             </Button>
@@ -116,7 +117,7 @@ export function PdfDropzone({
               <p className="text-xs font-semibold text-foreground">
                 PDF Dosyasını Buraya Sürükleyin
               </p>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 veya bilgisayarınızdan seçmek için aşağıdaki butona tıklayın.
               </p>
             </div>

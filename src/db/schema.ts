@@ -10,7 +10,6 @@ import {
   pgEnum,
   boolean,
   index,
-  uniqueIndex,
   foreignKey,
   uuid,
   vector,
@@ -85,29 +84,23 @@ export const positioningGlobalStatusEnum = pgEnum("positioning_global_status", [
 ]);
 
 /** Thesis Positioning table — stores matrix input, AI gap analysis, global status, and recommended guiding theses. */
-export const positioning = pgTable(
-  "positioning",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    userId: integer("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" })
-      .unique(),
-    matrixInput: jsonb("matrix_input")
-      .$type<PositioningMatrixInput>()
-      .notNull(),
-    globalStatus: positioningGlobalStatusEnum("global_status"),
-    gapAnalysisSummary: jsonb("gap_analysis_summary").$type<
-      GapAnalysisStructured | string
-    >(),
-    recommendedTheses: jsonb("recommended_theses")
-      .$type<RecommendedThesisItem[]>()
-      .default([]),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  },
-  (table) => [uniqueIndex("idx_positioning_user_id").on(table.userId)],
-);
+export const positioning = pgTable("positioning", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" })
+    .unique(),
+  matrixInput: jsonb("matrix_input").$type<PositioningMatrixInput>().notNull(),
+  globalStatus: positioningGlobalStatusEnum("global_status"),
+  gapAnalysisSummary: jsonb("gap_analysis_summary").$type<
+    GapAnalysisStructured | string
+  >(),
+  recommendedTheses: jsonb("recommended_theses")
+    .$type<RecommendedThesisItem[]>()
+    .default([]),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
 
 export type Positioning = InferSelectModel<typeof positioning>;
 
@@ -288,6 +281,50 @@ export const annotations = pgTable(
 export type Annotation = InferSelectModel<typeof annotations>;
 
 export type NewAnnotation = InferInsertModel<typeof annotations>;
+
+/** Outline Annotations Junction — Links Citation Cards directly to specific Thesis Outline sections as writing evidence. */
+export const outlineAnnotations = pgTable(
+  "outline_annotations",
+  {
+    id: serial().primaryKey(),
+    outlineId: integer("outline_id")
+      .notNull()
+      .references(() => outlines.id, { onDelete: "cascade" }),
+    annotationId: integer("annotation_id")
+      .notNull()
+      .references(() => annotations.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_outline_annotations_outline_id").on(table.outlineId),
+    index("idx_outline_annotations_annotation_id").on(table.annotationId),
+  ],
+);
+
+export type OutlineAnnotation = InferSelectModel<typeof outlineAnnotations>;
+export type NewOutlineAnnotation = InferInsertModel<typeof outlineAnnotations>;
+
+/** Outline Boxes Junction — Links Topic Boxes to specific Thesis Outline sections. */
+export const outlineBoxes = pgTable(
+  "outline_boxes",
+  {
+    id: serial().primaryKey(),
+    outlineId: integer("outline_id")
+      .notNull()
+      .references(() => outlines.id, { onDelete: "cascade" }),
+    boxId: integer("box_id")
+      .notNull()
+      .references(() => boxes.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_outline_boxes_outline_id").on(table.outlineId),
+    index("idx_outline_boxes_box_id").on(table.boxId),
+  ],
+);
+
+export type OutlineBox = InferSelectModel<typeof outlineBoxes>;
+export type NewOutlineBox = InferInsertModel<typeof outlineBoxes>;
 
 /** Critiques table — 1:1 article analysis (research question, theoretical framework, methodology, main argument, literature gap) per library source. */
 export const critiques = pgTable(

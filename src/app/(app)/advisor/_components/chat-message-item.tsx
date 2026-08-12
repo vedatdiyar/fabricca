@@ -17,16 +17,16 @@ import type { Message } from "../_lib/types";
 export function PersonaBadge({ persona }: { persona?: AdvisorPersona }) {
   if (persona === "SOCRATIC_ADVISOR") {
     return (
-      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 mb-2.5 shadow-xs">
-        <GraduationCap className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md text-xs font-semibold bg-warning/15 text-warning border border-warning/20 mb-3">
+        <GraduationCap className="w-3.5 h-3.5 text-warning shrink-0" />
         <span>Akademik Danışman</span>
       </div>
     );
   }
 
   return (
-    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 mb-2.5 shadow-xs">
-      <BookOpen className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md text-xs font-semibold bg-success/15 text-success border border-success/20 mb-3">
+      <BookOpen className="w-3.5 h-3.5 text-success shrink-0" />
       <span>Tez Asistanı</span>
     </div>
   );
@@ -89,8 +89,8 @@ export function ChatMessageItem({
         <div
           className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 transition-all ${
             isSocratic
-              ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-2 ring-amber-500/40"
-              : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 ring-2 ring-emerald-500/40"
+              ? "bg-warning/15 text-warning ring-2 ring-warning/20"
+              : "bg-success/15 text-success ring-2 ring-success/20"
           }`}
         >
           {isSocratic ? (
@@ -110,8 +110,8 @@ export function ChatMessageItem({
             isUser
               ? "bg-primary/10 border border-primary/20 text-foreground rounded-tr-none"
               : isSocratic
-                ? "bg-amber-500/5 dark:bg-amber-500/10 border-2 border-amber-500/40 dark:border-amber-400/40 text-card-foreground rounded-tl-none shadow-sm"
-                : "bg-emerald-500/5 dark:bg-emerald-500/10 border-2 border-emerald-500/30 dark:border-emerald-400/30 text-card-foreground rounded-tl-none shadow-sm"
+                ? "bg-warning/5 dark:bg-warning/10 border-2 border-warning/20 text-card-foreground rounded-tl-none"
+                : "bg-success/5 dark:bg-success/10 border-2 border-success/20 text-card-foreground rounded-tl-none"
           }`}
         >
           {isUser ? (
