@@ -7,7 +7,7 @@ import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import { deletePdfFromR2 } from "@/services/storage/r2";
 import { generateTempPdfUploadUrl } from "./_services/pdf-service";
-import { getOwnedSource } from "./_services/helpers";
+import { getOwnedSource } from "@/services/box/ownership";
 import { completePdfUploadCore } from "./_services/pdf-upload-complete";
 import type { LibraryResourceItem } from "./_lib/types";
 

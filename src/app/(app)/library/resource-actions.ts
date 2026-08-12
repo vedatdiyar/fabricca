@@ -7,7 +7,10 @@ import { sources, annotations } from "@/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import { deletePdfFromR2 } from "@/services/storage/r2";
-import { ensureUserMatrixAndBoxes, getOwnedSource } from "./_services/helpers";
+import {
+  ensureUserMatrixAndBoxes,
+  getOwnedSource,
+} from "@/services/box/ownership";
 import { mapSourceToResource } from "./_services/resource-mapper";
 import type { NoteType } from "./_lib/types";
 

@@ -2,7 +2,7 @@ export const instant = false;
 
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
-import { getUsersMatrixAndBoxesWithResources } from "@/app/(app)/_services/box-service";
+import { getUsersMatrixAndBoxesWithResources } from "./_services/box-service";
 import { getTasksAction } from "./actions";
 import { DashboardContent } from "./_components/dashboard-content";
 import { Card } from "@/components/ui/card";

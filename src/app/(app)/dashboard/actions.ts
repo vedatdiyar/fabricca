@@ -6,7 +6,7 @@ import { createFlowId, Logger } from "@/lib/logger";
 import { db } from "@/db";
 import { tasks, boxes, sources } from "@/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
-import { getUsersMatrixAndBoxesWithResources } from "@/app/(app)/_services/box-service";
+import { getUsersMatrixAndBoxesWithResources } from "./_services/box-service";
 import {
   AddTaskSchema,
   UpdateTaskSchema,

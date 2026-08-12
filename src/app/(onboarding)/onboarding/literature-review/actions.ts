@@ -1,7 +1,6 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { cookies } from "next/headers";
 import { db } from "@/db";
 import {
   revalidateOnboardingPaths,
@@ -11,8 +10,7 @@ import { matrices, users } from "@/db/schema";
 import { Logger, createFlowId } from "@/lib/logger";
 import {
   getSession,
-  SESSION_COOKIE_NAME,
-  SESSION_MAX_AGE_SECONDS,
+  writeSessionCookie,
   SESSION_ERROR_MSG,
 } from "@/lib/session";
 import type { LiteraturePoolEntry, OnboardingActionResult } from "@/lib/types";
@@ -199,30 +197,13 @@ export async function finalizeOnboardingAction(): Promise<OnboardingActionResult
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
 
-    const [, cookieStore] = await Promise.all([
-      db
-        .update(users)
-        .set({ onboardingCompleted: true })
-        .where(eq(users.id, session.userId)),
-      cookies(),
-    ]);
+    await db
+      .update(users)
+      .set({ onboardingCompleted: true })
+      .where(eq(users.id, session.userId));
 
     try {
-      cookieStore.set(
-        SESSION_COOKIE_NAME,
-        JSON.stringify({
-          userId: session.userId,
-          name: session.name,
-          onboardingCompleted: true,
-        }),
-        {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          path: "/",
-          maxAge: SESSION_MAX_AGE_SECONDS,
-        },
-      );
+      await writeSessionCookie(session, true);
     } catch {}
 
     try {

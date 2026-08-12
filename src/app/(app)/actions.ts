@@ -1,6 +1,5 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { createFlowId, Logger } from "@/lib/logger";
@@ -8,10 +7,10 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import {
   getSession,
-  SESSION_COOKIE_NAME,
-  SESSION_MAX_AGE_SECONDS,
+  writeSessionCookie,
+  clearSessionCookie,
 } from "@/lib/session";
-import { resetUserOnboardingData } from "@/lib/reset-onboarding";
+import { resetUserOnboardingData } from "@/features/onboarding/services/reset-onboarding";
 import {
   revalidateOnboardingPaths,
   invalidateOnboardingCache,
@@ -23,14 +22,7 @@ export async function logoutAction() {
   const log = new Logger(flowId);
 
   try {
-    const cookieStore = await cookies();
-    cookieStore.set(SESSION_COOKIE_NAME, "", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 0,
-    });
+    await clearSessionCookie();
 
     log.info("logout_success", {
       service: "auth",
@@ -64,22 +56,7 @@ export async function reopenOnboardingAction() {
       .set({ onboardingCompleted: false })
       .where(eq(users.id, session.userId));
 
-    const cookieStore = await cookies();
-    cookieStore.set(
-      SESSION_COOKIE_NAME,
-      JSON.stringify({
-        userId: session.userId,
-        name: session.name,
-        onboardingCompleted: false,
-      }),
-      {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: SESSION_MAX_AGE_SECONDS,
-      },
-    );
+    await writeSessionCookie(session, false);
 
     log.info("onboarding_reopen_success", {
       service: "auth",
@@ -110,22 +87,7 @@ export async function resetOnboardingAction() {
 
     await resetUserOnboardingData(session.userId, log);
 
-    const cookieStore = await cookies();
-    cookieStore.set(
-      SESSION_COOKIE_NAME,
-      JSON.stringify({
-        userId: session.userId,
-        name: session.name,
-        onboardingCompleted: false,
-      }),
-      {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: SESSION_MAX_AGE_SECONDS,
-      },
-    );
+    await writeSessionCookie(session, false);
 
     revalidateOnboardingPaths();
     invalidateOnboardingCache();

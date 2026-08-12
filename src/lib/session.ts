@@ -78,6 +78,49 @@ export async function getSession(): Promise<SessionUser | null> {
 }
 
 /**
+ * Rewrites the session cookie with the given onboarding completion state.
+ * Central helper shared by every server action that toggles onboarding status.
+ *
+ * @param session - The session user data to persist.
+ * @param onboardingCompleted - The user's onboarding completion flag.
+ */
+export async function writeSessionCookie(
+  session: SessionUser,
+  onboardingCompleted: boolean,
+): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.set(
+    SESSION_COOKIE_NAME,
+    JSON.stringify({
+      userId: session.userId,
+      name: session.name,
+      onboardingCompleted,
+    }),
+    {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: SESSION_MAX_AGE_SECONDS,
+    },
+  );
+}
+
+/**
+ * Clears the session cookie entirely, ending the current session.
+ */
+export async function clearSessionCookie(): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.set(SESSION_COOKIE_NAME, "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
+}
+
+/**
  * Returns the session with the user's onboarding status. The database is always
  * treated as the source of truth; the cookie value is only used as a fallback
  * when the database query fails (avoids stale-cookie auth bypasses).

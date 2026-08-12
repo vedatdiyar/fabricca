@@ -14,6 +14,88 @@ import type { PipelineResultData } from "@/db/schema";
 import type { Message } from "../_lib/types";
 
 /**
+ * Formats the current time as the compact TR-TR timestamp used by chat messages.
+ *
+ * @returns The formatted timestamp string.
+ */
+function formatMessageTimestamp(): string {
+  return new Date().toLocaleTimeString("tr-TR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/**
+ * Builds a new user chat message with a fresh client id and timestamp.
+ *
+ * @param query - The trimmed user query text.
+ * @returns The constructed user message.
+ */
+function buildUserMessage(query: string): Message {
+  return {
+    id: `user-${crypto.randomUUID()}`,
+    role: "user",
+    content: query,
+    timestamp: formatMessageTimestamp(),
+  };
+}
+
+/**
+ * Builds a new model chat message with a fresh client id and timestamp.
+ *
+ * @param params - The model message fields.
+ * @returns The constructed model message.
+ */
+function buildModelMessage(params: {
+  persona?: AdvisorPersona;
+  content: string;
+  sources?: RagSearchResultItem[];
+  toolCalls?: PendingToolCall[];
+  pipeline?: PipelineResult;
+}): Message {
+  return {
+    id: `model-${crypto.randomUUID()}`,
+    role: "model",
+    persona: params.persona,
+    content: params.content,
+    sources: params.sources,
+    toolCalls: params.toolCalls,
+    pipeline: params.pipeline,
+    timestamp: formatMessageTimestamp(),
+  };
+}
+
+/**
+ * Persists a finished model message to the active chat session, returning the
+ * created database message id when the save succeeds.
+ *
+ * @param params - The model message data to persist.
+ * @returns The persisted message id, or undefined on failure.
+ */
+async function persistModelMessage(params: {
+  sessionId: number;
+  content: string;
+  sources?: RagSearchResultItem[];
+  toolCalls?: PendingToolCall[];
+  persona?: AdvisorPersona;
+  pipeline?: PipelineResult | null;
+}): Promise<number | undefined> {
+  const pipelineData: PipelineResultData | null = params.pipeline
+    ? { ...params.pipeline, cycle: 1 }
+    : null;
+  const saveRes = await saveChatMessage(
+    params.sessionId,
+    "model",
+    params.content,
+    params.sources,
+    params.toolCalls,
+    params.persona,
+    pipelineData,
+  );
+  return saveRes.success ? saveRes.messageId : undefined;
+}
+
+/**
  * Custom React hook orchestrating Advisor Chat session state, DB tool confirmations,
  * UI citations and streaming SSE API interactions.
  *
@@ -129,16 +211,7 @@ export function useAdvisorChat(initialSessionId?: number) {
       });
     }
 
-    const userMessageId = `user-${crypto.randomUUID()}`;
-    const userMsg: Message = {
-      id: userMessageId,
-      role: "user",
-      content: queryToSend,
-      timestamp: new Date().toLocaleTimeString("tr-TR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    };
+    const userMsg = buildUserMessage(queryToSend);
 
     setMessages((prev) => [...prev, userMsg]);
     setIsLoading(true);
@@ -244,16 +317,13 @@ export function useAdvisorChat(initialSessionId?: number) {
               }
             }
 
-            const modelMessageId = `model-${crypto.randomUUID()}`;
             const finalContent =
               ((event.text as string) || "").trim() ||
               (accumulatedToolCalls.length > 0
                 ? "Aşağıdaki veritabanı işlemini gerçekleştirmek için onayınız isteniyor:"
                 : "");
 
-            const modelMsg: Message = {
-              id: modelMessageId,
-              role: "model",
+            const modelMsg = buildModelMessage({
               persona: finalPersona,
               content: finalContent,
               sources: eventSources,
@@ -262,29 +332,22 @@ export function useAdvisorChat(initialSessionId?: number) {
                   ? accumulatedToolCalls
                   : undefined,
               pipeline: pipelineResult,
-              timestamp: new Date().toLocaleTimeString("tr-TR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            };
+            });
 
             if (sessionId) {
-              const pipelineData: PipelineResultData | null = pipelineResult
-                ? { ...pipelineResult, cycle: 1 }
-                : null;
-              const saveRes = await saveChatMessage(
+              const messageId = await persistModelMessage({
                 sessionId,
-                "model",
-                finalContent,
-                eventSources,
-                accumulatedToolCalls.length > 0
-                  ? accumulatedToolCalls
-                  : undefined,
-                finalPersona,
-                pipelineData,
-              );
-              if (saveRes.success && saveRes.messageId) {
-                modelMsg.dbId = saveRes.messageId;
+                content: finalContent,
+                sources: eventSources,
+                toolCalls:
+                  accumulatedToolCalls.length > 0
+                    ? accumulatedToolCalls
+                    : undefined,
+                persona: finalPersona,
+                pipeline: pipelineResult,
+              });
+              if (messageId !== undefined) {
+                modelMsg.dbId = messageId;
               }
               await loadSessions();
             }

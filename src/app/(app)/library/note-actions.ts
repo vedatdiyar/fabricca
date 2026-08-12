@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { annotations } from "@/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
-import { getOwnedSource } from "./_services/helpers";
+import { getOwnedSource } from "@/services/box/ownership";
 import type { NoteType } from "./_lib/types";
 
 /** Note type validation enum matching annotations.noteTypeEnum. */

@@ -2,7 +2,7 @@
 
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
-import { ensureUserMatrixAndBoxes } from "./_services/helpers";
+import { ensureUserMatrixAndBoxes } from "@/services/box/ownership";
 import { compareBoxTypes } from "@/lib/box-constants";
 import type { ThesisBoxType } from "./_lib/types";
 

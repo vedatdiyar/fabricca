@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { critiques } from "@/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
-import { getOwnedSource } from "./_services/helpers";
+import { getOwnedSource } from "@/services/box/ownership";
 
 /** Validation schema for saving the 1:1 article analysis of a library source. */
 const saveResourceCritiqueSchema = z.object({

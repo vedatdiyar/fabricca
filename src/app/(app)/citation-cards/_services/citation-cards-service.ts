@@ -13,7 +13,7 @@ import { formatResourceAuthors } from "@/lib/academic/author-formatter";
 import {
   ensureUserMatrixAndBoxes,
   getOwnedSource,
-} from "../../library/_services/helpers";
+} from "@/services/box/ownership";
 import type {
   BoxItem,
   CitationCardItem,

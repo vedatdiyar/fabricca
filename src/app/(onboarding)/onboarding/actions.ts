@@ -1,18 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { matrices, positioning, boxes, sources, outlines } from "@/db/schema";
 import {
   getSession,
-  SESSION_COOKIE_NAME,
-  SESSION_MAX_AGE_SECONDS,
+  writeSessionCookie,
   SESSION_ERROR_MSG,
 } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
-import { resetUserOnboardingData } from "@/lib/reset-onboarding";
+import { resetUserOnboardingData } from "@/features/onboarding/services/reset-onboarding";
 import {
   revalidateOnboardingPaths,
   invalidateOnboardingCache,
@@ -38,22 +36,7 @@ export async function resetOnboardingAction(): Promise<
 
     await resetUserOnboardingData(session.userId, log);
 
-    const cookieStore = await cookies();
-    cookieStore.set(
-      SESSION_COOKIE_NAME,
-      JSON.stringify({
-        userId: session.userId,
-        name: session.name,
-        onboardingCompleted: false,
-      }),
-      {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: SESSION_MAX_AGE_SECONDS,
-      },
-    );
+    await writeSessionCookie(session, false);
 
     revalidateOnboardingPaths();
     revalidatePath("/onboarding/matrix");

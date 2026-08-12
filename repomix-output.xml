@@ -634,108 +634,6 @@ export type TaskRow = {
 };
 </file>
 
-<file path="src/app/(app)/dashboard/_services/box-service.ts">
-import { eq, asc, inArray } from "drizzle-orm";
-import { db } from "@/db";
-import { matrices, boxes, sources } from "@/db/schema";
-import { compareBoxTypes } from "@/lib/box-constants";
-
-export interface UserBoxData {
-  matrix: typeof matrices.$inferSelect;
-  parentBoxes: (typeof boxes.$inferSelect)[];
-  childIdToParentId: Map<number, number>;
-  allBoxRows: (typeof boxes.$inferSelect)[];
-}
-
-export interface UserBoxDataWithResources extends UserBoxData {
-  resources: (typeof sources.$inferSelect)[];
-}
-
-/**
- * Fetches the thesis matrix and box hierarchy for a given user, constructing
- * a child-to-parent ID map for sub-box → master box remapping.
- *
- * @param userId - The authenticated user's ID
- * @returns The matrix, parent boxes, child-parent map, and all box rows
- */
-export async function getUsersMatrixAndBoxes(
-  userId: number,
-): Promise<{ data: UserBoxData } | { error: string }> {
-  const [matrix] = await db
-    .select()
-    .from(matrices)
-    .where(eq(matrices.userId, userId));
-
-  if (!matrix) {
-    return { error: "Thesis matrix not found." };
-  }
-
-  const allBoxRows = await db
-    .select()
-    .from(boxes)
-    .where(eq(boxes.matrixId, matrix.id))
-    .orderBy(asc(boxes.id));
-
-  const parentBoxes = allBoxRows
-    .filter((b) => b.parentId === null)
-    .sort((a, b) => compareBoxTypes(a.boxType, b.boxType));
-
-  const childIdToParentId = new Map<number, number>();
-  for (const row of allBoxRows) {
-    if (row.parentId !== null) {
-      childIdToParentId.set(row.id, row.parentId);
-    }
-  }
-
-  return {
-    data: {
-      matrix,
-      parentBoxes,
-      childIdToParentId,
-      allBoxRows,
-    },
-  };
-}
-
-/**
- * Fetches the thesis matrix, box hierarchy, and all associated library
- * resources for a given user, with resources stored directly on their
- * parent boxId so no remapping is needed.
- *
- * @param userId - The authenticated user's ID
- * @returns Extended data including resources with original boxId
- */
-export async function getUsersMatrixAndBoxesWithResources(
-  userId: number,
-): Promise<{ data: UserBoxDataWithResources } | { error: string }> {
-  const boxResult = await getUsersMatrixAndBoxes(userId);
-
-  if ("error" in boxResult) {
-    return { error: boxResult.error };
-  }
-
-  const { allBoxRows } = boxResult.data;
-
-  let resources: (typeof sources.$inferSelect)[] = [];
-
-  if (allBoxRows.length > 0) {
-    const allBoxIds = allBoxRows.map((b) => b.id);
-
-    resources = await db
-      .select()
-      .from(sources)
-      .where(inArray(sources.boxId, allBoxIds));
-  }
-
-  return {
-    data: {
-      ...boxResult.data,
-      resources,
-    },
-  };
-}
-</file>
-
 <file path="src/app/icon.svg">
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none"><metadata><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:dc="http://purl.org/dc/elements/1.1/"><rdf:Description><dc:creator>RealFaviconGenerator</dc:creator><dc:source>https://realfavicongenerator.net</dc:source></rdf:Description></rdf:RDF></metadata><path d="M258 478C391.101 478 499 375.921 499 250C499 124.079 391.101 22 258 22C124.899 22 17 124.079 17 250C17 375.921 124.899 478 258 478Z" fill="#121917"></path><path d="M246.226 10.8441C247.312 10.7859 248.467 10.7623 249.556 10.7328C314.133 8.98486 373.707 32.4599 420.465 74.4124C471.42 120.716 501.001 184.369 502.722 251.409C504.457 316.684 478.966 379.955 431.827 427.38C388.779 470.713 327.676 499.107 264.687 500.783C203.088 502.658 143.072 482.002 96.9748 443.058C44.8021 399.584 13.1276 338.002 9.04683 272.11C4.95745 205.75 28.379 140.511 74.2776 90.4161C108.502 53.5729 153.749 26.6496 204.406 15.9524C218.852 12.9018 231.611 11.7074 246.226 10.8441ZM36.531 337.479C39.6407 329.177 42.7365 322.945 48.6058 315.931C64.4689 296.976 90.6497 286.696 115.395 295.341C125.913 299.014 135.904 306.422 140.709 316.24C147.352 329.448 144.22 348.226 128.916 354.692C123.705 356.841 117.809 356.926 112.533 354.928C104.814 352.061 99.5814 344.99 102.723 337.057C104.766 331.896 110.715 328.279 116.184 331.184C122.065 334.306 124.02 338.109 124.061 344.31C127.456 343.459 130.467 342.174 132.19 339.102C137.731 329.211 131.131 318.722 121.991 314.059C115.642 310.795 108.173 310.127 101.295 312.207C79.3864 318.647 69.8861 344.483 77.2229 363.927C84.8079 384.029 99.0439 397.133 118.974 406.349C168.744 430.225 228.655 423.426 278.634 403.749C282.576 402.199 286.547 400.677 290.512 399.187C303.254 394.404 316.036 389.725 328.861 385.147C350.175 377.576 369.063 371.772 392.042 370.66C403 370.127 411.45 368.858 422.163 372.824C400.455 379.044 379.485 387.397 359.594 397.747C353.941 400.746 347.938 404.423 342.404 407.691C328.679 415.873 314.712 423.681 300.521 431.107C267.295 448.509 241.248 458.708 202.678 458.431C189.579 458.456 176.522 457.013 163.777 454.127C159.507 453.128 155.255 452.06 151.024 450.923C159.266 455.787 167.804 459.335 176.836 462.508C203.499 471.875 227.93 474.481 255.652 468.085C282.294 461.938 303.956 451.162 326.792 436.618C338.806 428.968 349.017 420.64 360.607 412.666C382.312 397.741 409.063 382.957 435.484 377.336C442.544 375.833 449.408 375.462 456.54 375.156C482.868 330.793 493.561 279.563 487.051 228.986C485.999 220.485 483.907 208.301 481.604 199.843L353.938 172.781C332.31 168.208 309.056 163.692 287.659 158.625C287.742 154.015 287.788 149.405 287.802 144.795L386.7 128.716C404.645 125.763 426.025 122.821 443.54 119.155C439.962 113.625 432.078 104.671 427.551 99.7452C395.666 64.9998 353.293 40.4695 306.22 29.5032C288.527 25.4847 263.691 22.8497 245.409 24.0697C183.677 27.3695 125.909 54.0732 85.0104 98.214C40.8944 146.399 18.511 209.199 22.7153 272.993C24.0838 293.283 29.2654 318.256 36.531 337.479Z" fill="#E8F0FE"></path><path d="M230.204 92.6969C230.512 90.5431 230.777 87.6163 232.812 86.4275C238.108 83.3344 239.306 89.0228 239.905 92.0806C244.422 97.1688 253.613 101.027 259.594 105.598C263.555 108.626 271.482 117.542 275.189 118.855C276.582 119.349 277.813 119.717 278.591 121.004C279.395 122.34 279.167 126.387 278.588 127.82C278.194 128.786 277.568 129.451 276.572 129.879C274.914 130.589 272.283 130.575 270.456 130.742L270.383 168.724C276.476 169.573 275.549 171.134 275.447 176.431C287.861 176.356 286.362 178.397 286.309 189.689C286.289 194.108 277.717 199.772 274.212 202.035C274.216 204.607 274.07 210.506 274.328 212.87C275.212 220.913 275.993 228.882 276.721 236.939L282.172 297.489C282.999 306.992 284.482 320.282 284.734 329.646C277.317 328.956 274.424 328.736 266.872 329.397C265.339 321.123 267.868 310.127 256.052 312.304C253.322 312.808 252.001 313.108 250.251 315.247C249.254 318.581 249.559 326.442 249.221 330.333C248.692 336.398 248.169 343.475 247.011 349.427C255.748 340.526 266.518 333.32 279.749 332.813C286.948 332.539 294.742 334.413 300.127 339.165C303.969 342.498 306.226 347.171 306.389 352.118C306.581 358.825 302.917 364.554 298.171 369.232C297.506 369.885 296.807 370.505 296.076 371.095C301.07 369.239 306.491 366.46 311.873 368.618C314.805 369.793 319.942 373.933 319.531 377.138C318.115 378.524 307.024 381.987 304.34 381.873C302.553 381.804 301.034 379.847 299.369 379.413C292.002 377.541 284.886 376.797 279.399 371.154C274.967 366.595 274.676 359.106 279.849 355.123C286.776 349.792 291.389 356.39 294.176 361.431C304.082 355.615 296.92 346.125 287.467 344.537C282.94 343.758 278.273 344.764 274.54 347.322C262.973 355.281 264.416 368.911 272.273 378.688C276.36 383.776 280.061 386.319 285.899 389.369C266.835 398.689 247.553 403.387 226.577 407.332C187.053 414.758 119.235 410.306 95.1531 374.296C92.34 370.767 90.0686 366.148 88.3681 362.049C91.1197 365.76 94.339 368.728 97.9905 371.614C106.252 376.879 116.608 381.858 126.807 381.996C127.956 382.012 140.464 380.411 141.686 380.09C151.593 377.465 156.693 361.274 167.474 357.95C172.276 356.472 176.112 357.149 180.828 356.459C182.036 346.156 182.734 335.894 183.76 325.575C186.203 300.265 188.774 274.966 191.485 249.679C192.961 235.789 194.318 219.433 196.681 205.782C210.591 204.853 226.666 204.491 240.683 204.122C237.959 201.461 237.201 200.342 235.48 196.992C225.935 197.02 216.387 197.205 206.845 197.545C202.188 197.697 197.22 198.145 192.541 197.935C182.536 197.488 184.21 189.579 184.128 182.702C184.042 175.691 189.221 176.341 194.751 176.423C194.655 171.027 194.013 169.715 200.097 168.826L199.921 143.773C199.901 140.539 200.03 133.807 199.742 130.827C194.219 130.405 191.177 131.014 191.108 124.47C190.36 118.767 194.781 119.615 198.131 117.104C199.544 116.044 202.347 112.824 203.86 111.219C210.466 104.209 223.724 99.1567 230.204 92.6969ZM223.506 168.117C230.006 168.171 236.509 168.179 243.009 168.141L247.073 168.157C247.941 157.544 249.738 144.54 245.002 134.567C244.131 132.732 230.373 133.346 227.888 133.448C227.054 133.53 225.812 133.492 225.389 134.219C220.689 142.276 222.675 159.874 223.506 168.117ZM234.983 234.746C233.732 235.291 232.597 235.791 232.253 237.176C231.422 240.534 231.925 245.259 231.978 248.79L236.678 248.755C238.174 248.753 238.386 249.004 239.388 248.356C239.753 246.585 239.829 244.265 239.739 242.457C239.547 238.598 240.011 234.875 234.983 234.746ZM217.002 167.31C216.926 155.054 216.731 146.023 218.511 133.883C214.656 133.846 210.744 133.777 206.898 133.79C206.812 144.814 206.597 157.195 206.881 168.146C208.602 168.18 215.88 168.576 216.89 167.802L217.002 167.31ZM254.758 168.143L263.549 168.129C263.539 156.929 263.774 144.906 263.496 133.77L260.312 133.748L251.773 133.786C253.815 145.26 253.441 155.316 253.289 166.833C253.276 167.796 253.286 167.587 254 168.085L254.758 168.143Z" fill="#E8F0FE" fill-opacity="0.933333"></path></svg>
 </file>
@@ -1094,270 +992,6 @@ const Toaster = ({ ...props }: ToasterProps) => {
 };
 
 export { Toaster };
-</file>
-
-<file path="src/features/literature-expansion/_components/literature-expansion-button.tsx">
-"use client";
-
-import React, { useState } from "react";
-import { BookPlus, Loader2, Undo2 } from "lucide-react";
-import { toast } from "sonner";
-import {
-  triggerLiteratureExpansionAction,
-  undoLiteratureExpansionAction,
-} from "@/app/(app)/library/expansion-actions";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { cn } from "@/lib/utils";
-
-interface LiteratureExpansionButtonProps {
-  boxId: number;
-  expansionCycle?: number;
-  isReadyToExpand?: boolean;
-  onSuccess?: () => void;
-  className?: string;
-}
-
-/**
- * Minimal top-right action buttons for automatic literature expansion (2 backward
- * + 2 forward sources) and reverting the latest expansion cycle.
- *
- * @param props - Component props.
- * @param props.boxId - Target Sub-Box ID.
- * @param props.expansionCycle - Current literature expansion cycle index.
- * @param props.isReadyToExpand - Whether all active seed sources are parsed and ready.
- * @param props.onSuccess - Optional callback executed on successful expansion or undo.
- * @param props.className - Additional class names for styling.
- * @returns Literature expansion button markup.
- */
-export function LiteratureExpansionButton({
-  boxId,
-  expansionCycle = 1,
-  isReadyToExpand = true,
-  onSuccess,
-  className,
-}: LiteratureExpansionButtonProps) {
-  const [loading, setLoading] = useState(false);
-  const [undoDialogOpen, setUndoDialogOpen] = useState(false);
-
-  const handleExpand = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!isReadyToExpand || loading) return;
-
-    setLoading(true);
-    toast.info("Otomatik Literatür Genişletme başlatılıyor...", {
-      description: "2 geriye + 2 ileriye atıf kaynakları sorgulanıyor.",
-    });
-
-    try {
-      const res = await triggerLiteratureExpansionAction(boxId);
-      if (res.success) {
-        toast.success(`Döngü #${res.data.expansionCycle} Tamamlandı!`, {
-          description: `4 yeni kaynak eklendi (${res.data.addedSources.length} adet).`,
-        });
-        onSuccess?.();
-      } else {
-        toast.error("Literatür genişletme başarısız", {
-          description: res.error,
-        });
-      }
-    } catch {
-      toast.error("Bir hata oluştu", {
-        description: "Literatür genişletme servisi yanıt vermedi.",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUndo = async () => {
-    if (loading) return;
-
-    setLoading(true);
-    setUndoDialogOpen(false);
-
-    try {
-      const res = await undoLiteratureExpansionAction(boxId);
-      if (res.success) {
-        toast.success(`Döngü #${res.data.expansionCycle} geri alındı!`, {
-          description: `${res.data.removedSourceCount} adet kaynak kaldırıldı.`,
-        });
-        onSuccess?.();
-      } else {
-        toast.error("Geri alma başarısız", {
-          description: res.error,
-        });
-      }
-    } catch {
-      toast.error("Bir hata oluştu", {
-        description: "Geri alma servisi yanıt vermedi.",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const canUndo = expansionCycle > 1;
-
-  return (
-    <div className={cn("inline-flex items-center gap-2", className)}>
-      <span
-        className="inline-flex h-7 items-center px-2 text-[10px] font-semibold text-muted-foreground bg-muted rounded-md border border-border"
-        title="Literatür Genişletme Döngü Sayısı"
-      >
-        Döngü #{expansionCycle}
-      </span>
-
-      {isReadyToExpand && (
-        <button
-          type="button"
-          onClick={handleExpand}
-          disabled={loading}
-          title="Otomatik Literatür Genişletmeyi Çalıştır (2 Geriye + 2 İleriye Kaynak)"
-          className={cn(
-            "inline-flex h-7 w-7 items-center justify-center rounded-md border transition-all duration-200",
-            !loading
-              ? "bg-primary/10 text-primary border-primary/30 hover:bg-primary/20 active:scale-95 cursor-pointer"
-              : "bg-muted/20 text-muted-foreground border-border cursor-not-allowed opacity-70",
-          )}
-        >
-          {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin text-primary" />
-          ) : (
-            <BookPlus className="h-4 w-4 text-primary" />
-          )}
-        </button>
-      )}
-
-      {canUndo && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setUndoDialogOpen(true);
-          }}
-          disabled={loading}
-          title="Son Genişletme Döngüsünü Geri Al"
-          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-muted/50 text-muted-foreground hover:text-destructive hover:border-destructive/20 hover:bg-destructive/10 transition-colors"
-        >
-          <Undo2 className="h-4 w-4" />
-        </button>
-      )}
-
-      <AlertDialog
-        open={undoDialogOpen}
-        onOpenChange={(open) => {
-          if (!open) setUndoDialogOpen(false);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif text-xl font-semibold text-foreground">
-              Son Genişletme Döngüsünü Geri Almak İstediğinize Emin Misiniz?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-sm text-muted-foreground">
-              Döngü #{expansionCycle} sırasında eklenen tüm kaynaklar silinecek
-              ve döngü bir önceki hale ({`Döngü #${expansionCycle - 1}`})
-              dönecektir. Bu işlem geri alınamaz.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="text-xs font-medium">
-              Vazgeç
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleUndo}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-medium"
-            >
-              Evet, Geri Al
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-}
-</file>
-
-<file path="src/features/onboarding/services/reset-onboarding.ts">
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import {
-  users,
-  matrices,
-  tasks,
-  positioning,
-  boxes,
-  sources,
-  sessions,
-} from "@/db/schema";
-import { deletePdfFromR2 } from "@/services/storage/r2";
-import type { Logger } from "@/lib/logger";
-
-/**
- * Deletes all onboarding and user data for the given user: removes the user's
- * R2 PDFs, chat sessions, tasks, positioning, and thesis matrix (cascading into
- * boxes, outlines, sources, expansions, annotations, critiques, and chunks), then
- * resets the user's onboardingCompleted flag to false.
- *
- * Central helper shared by the onboarding and app reset actions so the wipe logic
- * has a single source of truth.
- *
- * @param userId - The id of the user whose data should be wiped.
- * @param log - The structured logger for the current flow.
- */
-export async function resetUserOnboardingData(
-  userId: number,
-  log: Logger,
-): Promise<void> {
-  // Fetch PDF filenames to clean up from R2 before deleting database records
-  try {
-    const userSources = await db
-      .select({ pdfFileName: sources.pdfFileName })
-      .from(sources)
-      .innerJoin(boxes, eq(sources.boxId, boxes.id))
-      .innerJoin(matrices, eq(boxes.matrixId, matrices.id))
-      .where(eq(matrices.userId, userId));
-
-    for (const s of userSources) {
-      if (s.pdfFileName) {
-        try {
-          await deletePdfFromR2(s.pdfFileName);
-        } catch (r2Err) {
-          log.error("reset_onboarding_r2_delete_failed", {
-            service: "db",
-            error: r2Err,
-            data: { pdfFileName: s.pdfFileName },
-          });
-        }
-      }
-    }
-  } catch (fetchErr) {
-    log.error("reset_onboarding_sources_fetch_failed", {
-      service: "db",
-      error: fetchErr,
-    });
-  }
-
-  await db.transaction(async (tx) => {
-    await tx.delete(sessions).where(eq(sessions.userId, userId));
-    await tx.delete(tasks).where(eq(tasks.userId, userId));
-    await tx.delete(positioning).where(eq(positioning.userId, userId));
-    await tx.delete(matrices).where(eq(matrices.userId, userId));
-    await tx
-      .update(users)
-      .set({ onboardingCompleted: false })
-      .where(eq(users.id, userId));
-  });
-}
 </file>
 
 <file path="src/services/box/ownership.ts">
@@ -2255,6 +1889,108 @@ export interface KanbanTask {
   articleId?: string;
   thesisBoxId?: number | null;
   boxTitle?: string;
+}
+</file>
+
+<file path="src/app/(app)/dashboard/_services/box-service.ts">
+import { eq, asc, inArray } from "drizzle-orm";
+import { db } from "@/db";
+import { matrices, boxes, sources } from "@/db/schema";
+import { compareBoxTypes } from "@/lib/box-constants";
+
+export interface UserBoxData {
+  matrix: typeof matrices.$inferSelect;
+  parentBoxes: (typeof boxes.$inferSelect)[];
+  childIdToParentId: Map<number, number>;
+  allBoxRows: (typeof boxes.$inferSelect)[];
+}
+
+export interface UserBoxDataWithResources extends UserBoxData {
+  resources: (typeof sources.$inferSelect)[];
+}
+
+/**
+ * Fetches the thesis matrix and box hierarchy for a given user, constructing
+ * a child-to-parent ID map for sub-box → master box remapping.
+ *
+ * @param userId - The authenticated user's ID
+ * @returns The matrix, parent boxes, child-parent map, and all box rows
+ */
+export async function getUsersMatrixAndBoxes(
+  userId: number,
+): Promise<{ data: UserBoxData } | { error: string }> {
+  const [matrix] = await db
+    .select()
+    .from(matrices)
+    .where(eq(matrices.userId, userId));
+
+  if (!matrix) {
+    return { error: "Thesis matrix not found." };
+  }
+
+  const allBoxRows = await db
+    .select()
+    .from(boxes)
+    .where(eq(boxes.matrixId, matrix.id))
+    .orderBy(asc(boxes.id));
+
+  const parentBoxes = allBoxRows
+    .filter((b) => b.parentId === null)
+    .sort((a, b) => compareBoxTypes(a.boxType, b.boxType));
+
+  const childIdToParentId = new Map<number, number>();
+  for (const row of allBoxRows) {
+    if (row.parentId !== null) {
+      childIdToParentId.set(row.id, row.parentId);
+    }
+  }
+
+  return {
+    data: {
+      matrix,
+      parentBoxes,
+      childIdToParentId,
+      allBoxRows,
+    },
+  };
+}
+
+/**
+ * Fetches the thesis matrix, box hierarchy, and all associated library
+ * resources for a given user, with resources stored directly on their
+ * parent boxId so no remapping is needed.
+ *
+ * @param userId - The authenticated user's ID
+ * @returns Extended data including resources with original boxId
+ */
+export async function getUsersMatrixAndBoxesWithResources(
+  userId: number,
+): Promise<{ data: UserBoxDataWithResources } | { error: string }> {
+  const boxResult = await getUsersMatrixAndBoxes(userId);
+
+  if ("error" in boxResult) {
+    return { error: boxResult.error };
+  }
+
+  const { allBoxRows } = boxResult.data;
+
+  let resources: (typeof sources.$inferSelect)[] = [];
+
+  if (allBoxRows.length > 0) {
+    const allBoxIds = allBoxRows.map((b) => b.id);
+
+    resources = await db
+      .select()
+      .from(sources)
+      .where(inArray(sources.boxId, allBoxIds));
+  }
+
+  return {
+    data: {
+      ...boxResult.data,
+      resources,
+    },
+  };
 }
 </file>
 
@@ -7429,6 +7165,197 @@ export function createSseStream(
 }
 </file>
 
+<file path="src/features/literature-expansion/_components/literature-expansion-button.tsx">
+"use client";
+
+import React, { useState } from "react";
+import { BookPlus, Loader2, Undo2 } from "lucide-react";
+import { toast } from "sonner";
+import {
+  triggerLiteratureExpansionAction,
+  undoLiteratureExpansionAction,
+} from "@/app/(app)/library/expansion-actions";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
+
+interface LiteratureExpansionButtonProps {
+  boxId: number;
+  expansionCycle?: number;
+  isReadyToExpand?: boolean;
+  onSuccess?: () => void;
+  className?: string;
+}
+
+/**
+ * Minimal top-right action buttons for automatic literature expansion (2 backward
+ * + 2 forward sources) and reverting the latest expansion cycle.
+ *
+ * @param props - Component props.
+ * @param props.boxId - Target Sub-Box ID.
+ * @param props.expansionCycle - Current literature expansion cycle index.
+ * @param props.isReadyToExpand - Whether all active seed sources are parsed and ready.
+ * @param props.onSuccess - Optional callback executed on successful expansion or undo.
+ * @param props.className - Additional class names for styling.
+ * @returns Literature expansion button markup.
+ */
+export function LiteratureExpansionButton({
+  boxId,
+  expansionCycle = 1,
+  isReadyToExpand = true,
+  onSuccess,
+  className,
+}: LiteratureExpansionButtonProps) {
+  const [loading, setLoading] = useState(false);
+  const [undoDialogOpen, setUndoDialogOpen] = useState(false);
+
+  const handleExpand = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isReadyToExpand || loading) return;
+
+    setLoading(true);
+    toast.info("Otomatik Literatür Genişletme başlatılıyor...", {
+      description: "2 geriye + 2 ileriye atıf kaynakları sorgulanıyor.",
+    });
+
+    try {
+      const res = await triggerLiteratureExpansionAction(boxId);
+      if (res.success) {
+        toast.success(`Döngü #${res.data.expansionCycle} Tamamlandı!`, {
+          description: `4 yeni kaynak eklendi (${res.data.addedSources.length} adet).`,
+        });
+        onSuccess?.();
+      } else {
+        toast.error("Literatür genişletme başarısız", {
+          description: res.error,
+        });
+      }
+    } catch {
+      toast.error("Bir hata oluştu", {
+        description: "Literatür genişletme servisi yanıt vermedi.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUndo = async () => {
+    if (loading) return;
+
+    setLoading(true);
+    setUndoDialogOpen(false);
+
+    try {
+      const res = await undoLiteratureExpansionAction(boxId);
+      if (res.success) {
+        toast.success(`Döngü #${res.data.expansionCycle} geri alındı!`, {
+          description: `${res.data.removedSourceCount} adet kaynak kaldırıldı.`,
+        });
+        onSuccess?.();
+      } else {
+        toast.error("Geri alma başarısız", {
+          description: res.error,
+        });
+      }
+    } catch {
+      toast.error("Bir hata oluştu", {
+        description: "Geri alma servisi yanıt vermedi.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const canUndo = expansionCycle > 1;
+
+  return (
+    <div className={cn("inline-flex items-center gap-2", className)}>
+      <span
+        className="inline-flex h-7 items-center px-2 text-[10px] font-semibold text-muted-foreground bg-muted rounded-md border border-border"
+        title="Literatür Genişletme Döngü Sayısı"
+      >
+        Döngü #{expansionCycle}
+      </span>
+
+      {isReadyToExpand && (
+        <button
+          type="button"
+          onClick={handleExpand}
+          disabled={loading}
+          title="Otomatik Literatür Genişletmeyi Çalıştır (2 Geriye + 2 İleriye Kaynak)"
+          className={cn(
+            "inline-flex h-7 w-7 items-center justify-center rounded-md border transition-all duration-200",
+            !loading
+              ? "bg-primary/10 text-primary border-primary/30 hover:bg-primary/20 active:scale-95 cursor-pointer"
+              : "bg-muted/20 text-muted-foreground border-border cursor-not-allowed opacity-70",
+          )}
+        >
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          ) : (
+            <BookPlus className="h-4 w-4 text-primary" />
+          )}
+        </button>
+      )}
+
+      {canUndo && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setUndoDialogOpen(true);
+          }}
+          disabled={loading}
+          title="Son Genişletme Döngüsünü Geri Al"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-muted/50 text-muted-foreground hover:text-destructive hover:border-destructive/20 hover:bg-destructive/10 transition-colors"
+        >
+          <Undo2 className="h-4 w-4" />
+        </button>
+      )}
+
+      <AlertDialog
+        open={undoDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) setUndoDialogOpen(false);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-serif text-xl font-semibold text-foreground">
+              Son Genişletme Döngüsünü Geri Almak İstediğinize Emin Misiniz?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-muted-foreground">
+              Döngü #{expansionCycle} sırasında eklenen tüm kaynaklar silinecek
+              ve döngü bir önceki hale ({`Döngü #${expansionCycle - 1}`})
+              dönecektir. Bu işlem geri alınamaz.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-xs font-medium">
+              Vazgeç
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleUndo}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-medium"
+            >
+              Evet, Geri Al
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+</file>
+
 <file path="src/features/literature-expansion/expansion-orchestrator.ts">
 import { db } from "@/db";
 import { boxes, expansions, sources, type NewSource } from "@/db/schema";
@@ -8760,6 +8687,79 @@ export async function loadThesisMatrixAndBoxes(userId: number): Promise<{
     .where(eq(matrices.userId, userId));
 
   return { matrix };
+}
+</file>
+
+<file path="src/features/onboarding/services/reset-onboarding.ts">
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import {
+  users,
+  matrices,
+  tasks,
+  positioning,
+  boxes,
+  sources,
+  sessions,
+} from "@/db/schema";
+import { deletePdfFromR2 } from "@/services/storage/r2";
+import type { Logger } from "@/lib/logger";
+
+/**
+ * Deletes all onboarding and user data for the given user: removes the user's
+ * R2 PDFs, chat sessions, tasks, positioning, and thesis matrix (cascading into
+ * boxes, outlines, sources, expansions, annotations, critiques, and chunks), then
+ * resets the user's onboardingCompleted flag to false.
+ *
+ * Central helper shared by the onboarding and app reset actions so the wipe logic
+ * has a single source of truth.
+ *
+ * @param userId - The id of the user whose data should be wiped.
+ * @param log - The structured logger for the current flow.
+ */
+export async function resetUserOnboardingData(
+  userId: number,
+  log: Logger,
+): Promise<void> {
+  // Fetch PDF filenames to clean up from R2 before deleting database records
+  try {
+    const userSources = await db
+      .select({ pdfFileName: sources.pdfFileName })
+      .from(sources)
+      .innerJoin(boxes, eq(sources.boxId, boxes.id))
+      .innerJoin(matrices, eq(boxes.matrixId, matrices.id))
+      .where(eq(matrices.userId, userId));
+
+    for (const s of userSources) {
+      if (s.pdfFileName) {
+        try {
+          await deletePdfFromR2(s.pdfFileName);
+        } catch (r2Err) {
+          log.error("reset_onboarding_r2_delete_failed", {
+            service: "db",
+            error: r2Err,
+            data: { pdfFileName: s.pdfFileName },
+          });
+        }
+      }
+    }
+  } catch (fetchErr) {
+    log.error("reset_onboarding_sources_fetch_failed", {
+      service: "db",
+      error: fetchErr,
+    });
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.delete(sessions).where(eq(sessions.userId, userId));
+    await tx.delete(tasks).where(eq(tasks.userId, userId));
+    await tx.delete(positioning).where(eq(positioning.userId, userId));
+    await tx.delete(matrices).where(eq(matrices.userId, userId));
+    await tx
+      .update(users)
+      .set({ onboardingCompleted: false })
+      .where(eq(users.id, userId));
+  });
 }
 </file>
 
@@ -18348,6 +18348,11 @@ export async function searchTezara(
 }
 </file>
 
+<file path="src/lib/prompts/box-generation/index.ts">
+export * from "./box-structure-prompt";
+export * from "./semantic-query-prompt";
+</file>
+
 <file path="src/lib/prompts/literature-review/sanitize-prompt.ts">
 /**
  * System instruction for academic title/author sanitization.
@@ -22840,6 +22845,57 @@ export function OnboardingGlobalLoader() {
 }
 </file>
 
+<file path="src/app/(onboarding)/onboarding/_lib/loading-steps.ts">
+export interface LoadingStep {
+  text: string;
+  status: "idle" | "active" | "completed";
+}
+
+export const STEP_MIN_DURATION_MS = 1200;
+
+/**
+ * Determines whether a loading step text marks a navigation step.
+ *
+ * @param text - The loading step text to inspect.
+ * @returns True when the step is a navigation step.
+ */
+export function isNavigationStepText(text: string): boolean {
+  return text.includes("yönlendiriliyor");
+}
+
+export const MATRIX_SUBMIT_STEPS: LoadingStep[] = [
+  { text: "Çalışma matrisi kaydediliyor...", status: "active" },
+  {
+    text: "Tezler bulunuyor…",
+    status: "idle",
+  },
+  { text: "Literatür inceleniyor…", status: "idle" },
+  { text: "Rapor kaydediliyor...", status: "idle" },
+];
+
+export const BOX_GENERATION_STEPS: LoadingStep[] = [
+  {
+    text: "Altyapısal kutular ve tarama sorguları oluşturuluyor…",
+    status: "active",
+  },
+  { text: "Kutular Kaydediliyor...", status: "idle" },
+];
+
+export const LITERATURE_PIPELINE_STEPS: LoadingStep[] = [
+  { text: "Mevcut literatür havuzu kontrol ediliyor...", status: "active" },
+  { text: "Akademik kaynaklar taranıyor...", status: "idle" },
+  { text: "Literatür havuzu kaydediliyor...", status: "idle" },
+];
+
+export const OUTLINE_GENERATION_STEPS: LoadingStep[] = [
+  {
+    text: "Tez planı yapay zeka tarafından oluşturuluyor…",
+    status: "active",
+  },
+  { text: "Plan veritabanına kaydediliyor...", status: "idle" },
+];
+</file>
+
 <file path="src/app/(onboarding)/onboarding/outline/_components/outline-container.tsx">
 "use client";
 
@@ -25582,11 +25638,6 @@ export {
 } from "./advisor-prompt";
 </file>
 
-<file path="src/lib/prompts/box-generation/index.ts">
-export * from "./box-structure-prompt";
-export * from "./semantic-query-prompt";
-</file>
-
 <file path="src/lib/prompts/index.ts">
 export * from "./advisor";
 export * from "./box-generation";
@@ -27752,57 +27803,6 @@ export async function checkOnboardingStatus(): Promise<OnboardingStatusResult> {
     return { error: "Onboarding durumu sorgulanırken bir hata oluştu." };
   }
 }
-</file>
-
-<file path="src/app/(onboarding)/onboarding/_lib/loading-steps.ts">
-export interface LoadingStep {
-  text: string;
-  status: "idle" | "active" | "completed";
-}
-
-export const STEP_MIN_DURATION_MS = 1200;
-
-/**
- * Determines whether a loading step text marks a navigation step.
- *
- * @param text - The loading step text to inspect.
- * @returns True when the step is a navigation step.
- */
-export function isNavigationStepText(text: string): boolean {
-  return text.includes("yönlendiriliyor");
-}
-
-export const MATRIX_SUBMIT_STEPS: LoadingStep[] = [
-  { text: "Çalışma matrisi kaydediliyor...", status: "active" },
-  {
-    text: "Tezler bulunuyor…",
-    status: "idle",
-  },
-  { text: "Literatür inceleniyor…", status: "idle" },
-  { text: "Rapor kaydediliyor...", status: "idle" },
-];
-
-export const BOX_GENERATION_STEPS: LoadingStep[] = [
-  {
-    text: "Altyapısal kutular ve tarama sorguları oluşturuluyor…",
-    status: "active",
-  },
-  { text: "Kutular Kaydediliyor...", status: "idle" },
-];
-
-export const LITERATURE_PIPELINE_STEPS: LoadingStep[] = [
-  { text: "Mevcut literatür havuzu kontrol ediliyor...", status: "active" },
-  { text: "Akademik kaynaklar taranıyor...", status: "idle" },
-  { text: "Literatür havuzu kaydediliyor...", status: "idle" },
-];
-
-export const OUTLINE_GENERATION_STEPS: LoadingStep[] = [
-  {
-    text: "Tez planı yapay zeka tarafından oluşturuluyor…",
-    status: "active",
-  },
-  { text: "Plan veritabanına kaydediliyor...", status: "idle" },
-];
 </file>
 
 <file path="src/app/(onboarding)/onboarding/boxes/page.tsx">
@@ -30973,6 +30973,88 @@ export function OnboardingStepper({
 }
 </file>
 
+<file path="src/app/(onboarding)/onboarding/_lib/box-mapper.ts">
+import type { GeminiThesisBox } from "@/lib/types";
+
+type ThesisBoxType = GeminiThesisBox["boxType"];
+
+/**
+ * Quadrant key → production BoxType mapping (adapter) whose keys match the JSON field
+ * names produced by Gemini (Phase 1 & 2 schemas) and whose order follows the canonical
+ * display order: SP → TF → METHOD → PM.
+ */
+export const QUADRANT_MAPPING: Record<string, ThesisBoxType> = {
+  subjectProblem: "SUBJECT_PROBLEM",
+  theoreticalFramework: "THEORETICAL_FRAMEWORK",
+  methodology: "METHODOLOGY",
+  primaryMaterial: "PRIMARY_MATERIAL",
+};
+
+export interface RawSubBox {
+  title: string;
+  description: string;
+  concepts?: string[];
+  semanticQuery?: string;
+}
+
+export interface RawQuadrant {
+  title: string;
+  description: string;
+  subBoxes: RawSubBox[];
+}
+
+export interface RawQuadrants {
+  subjectProblem: RawQuadrant;
+  theoreticalFramework: RawQuadrant;
+  methodology: RawQuadrant;
+  primaryMaterial: RawQuadrant;
+}
+
+/**
+ * Converts Gemini's 4-quadrant nested output into a flat GeminiThesisBox[] structure,
+ * turning each category into a parent box (parentId: null) whose subBoxes carry the
+ * parent's flat array index as parentId and assigning the 'semanticQuery' value
+ * directly as received from the LLM.
+ *
+ * @param apiResponse - The 4-quadrant nested JSON object from Gemini
+ * @returns A flat GeminiThesisBox array
+ */
+export function mapToProductionShape(
+  apiResponse: RawQuadrants,
+): GeminiThesisBox[] {
+  const result: GeminiThesisBox[] = [];
+
+  for (const [category, boxType] of Object.entries(QUADRANT_MAPPING)) {
+    const cat = apiResponse[category as keyof RawQuadrants];
+    if (!cat?.subBoxes || cat.subBoxes.length === 0) continue;
+
+    const parentIndex = result.length;
+
+    result.push({
+      title: cat.title,
+      boxType,
+      description: cat.description,
+      parentId: null,
+      semanticQuery: null,
+      concepts: [],
+    });
+
+    for (const sub of cat.subBoxes) {
+      result.push({
+        title: sub.title,
+        boxType,
+        description: sub.description,
+        parentId: parentIndex,
+        semanticQuery: sub.semanticQuery ?? "",
+        concepts: sub.concepts ?? [],
+      });
+    }
+  }
+
+  return result;
+}
+</file>
+
 <file path="src/app/(onboarding)/onboarding/literature-review/page.tsx">
 export const maxDuration = 300;
 export const instant = false;
@@ -32207,85 +32289,120 @@ export async function completePdfCreateUploadAction(
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/_lib/box-mapper.ts">
-import type { GeminiThesisBox } from "@/lib/types";
+<file path="src/app/(onboarding)/onboarding/matrix/actions.ts">
+"use server";
 
-type ThesisBoxType = GeminiThesisBox["boxType"];
+import { eq, inArray, sql } from "drizzle-orm";
+import { z } from "zod";
+import { db } from "@/db";
+import { matrices, positioning, boxes, sources, outlines } from "@/db/schema";
+import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
+import { createFlowId, Logger } from "@/lib/logger";
+import {
+  invalidateOnboardingCache,
+  invalidateOnboardingStepCache,
+} from "@/lib/cache-tags";
 
-/**
- * Quadrant key → production BoxType mapping (adapter) whose keys match the JSON field
- * names produced by Gemini (Phase 1 & 2 schemas) and whose order follows the canonical
- * display order: SP → TF → METHOD → PM.
- */
-export const QUADRANT_MAPPING: Record<string, ThesisBoxType> = {
-  subjectProblem: "SUBJECT_PROBLEM",
-  theoreticalFramework: "THEORETICAL_FRAMEWORK",
-  methodology: "METHODOLOGY",
-  primaryMaterial: "PRIMARY_MATERIAL",
-};
+const MIN_LENGTH = 3;
+const MAX_LENGTH = 4000;
 
-export interface RawSubBox {
-  title: string;
-  description: string;
-  concepts?: string[];
-  semanticQuery?: string;
-}
-
-export interface RawQuadrant {
-  title: string;
-  description: string;
-  subBoxes: RawSubBox[];
-}
-
-export interface RawQuadrants {
-  subjectProblem: RawQuadrant;
-  theoreticalFramework: RawQuadrant;
-  methodology: RawQuadrant;
-  primaryMaterial: RawQuadrant;
-}
+const thesisMatrixSchema = z.object({
+  subjectProblem: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+  theoreticalFramework: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+  primaryMaterial: z.string().trim().max(MAX_LENGTH).optional().default(""),
+  methodology: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+});
 
 /**
- * Converts Gemini's 4-quadrant nested output into a flat GeminiThesisBox[] structure,
- * turning each category into a parent box (parentId: null) whose subBoxes carry the
- * parent's flat array index as parentId and assigning the 'semanticQuery' value
- * directly as received from the LLM.
+ * Persists the thesis matrix to the database and clears any downstream analysis
+ * data (positioning report, thesis outline, and thesis boxes) that may now be stale.
  *
- * @param apiResponse - The 4-quadrant nested JSON object from Gemini
- * @returns A flat GeminiThesisBox array
+ * @param data - The thesis matrix data from the onboarding form
+ * @returns Success confirmation or an error message
  */
-export function mapToProductionShape(
-  apiResponse: RawQuadrants,
-): GeminiThesisBox[] {
-  const result: GeminiThesisBox[] = [];
+export async function saveThesisMatrixAction(
+  data: unknown,
+): Promise<{ success: true } | { error: string }> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
 
-  for (const [category, boxType] of Object.entries(QUADRANT_MAPPING)) {
-    const cat = apiResponse[category as keyof RawQuadrants];
-    if (!cat?.subBoxes || cat.subBoxes.length === 0) continue;
+  log.info("matrix_save_start");
 
-    const parentIndex = result.length;
-
-    result.push({
-      title: cat.title,
-      boxType,
-      description: cat.description,
-      parentId: null,
-      semanticQuery: null,
-      concepts: [],
-    });
-
-    for (const sub of cat.subBoxes) {
-      result.push({
-        title: sub.title,
-        boxType,
-        description: sub.description,
-        parentId: parentIndex,
-        semanticQuery: sub.semanticQuery ?? "",
-        concepts: sub.concepts ?? [],
-      });
-    }
+  const parsed = thesisMatrixSchema.safeParse(data);
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0];
+    const msg = firstIssue
+      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
+      : "Doğrulama başarısız.";
+    return { error: msg };
   }
 
-  return result;
+  const validated = parsed.data;
+
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { error: SESSION_ERROR_MSG };
+    }
+
+    await db.transaction(async (tx) => {
+      const [matrixRow] = await tx
+        .insert(matrices)
+        .values({
+          userId: session.userId,
+          subjectProblem: validated.subjectProblem,
+          theoreticalFramework: validated.theoreticalFramework,
+          primaryMaterial: validated.primaryMaterial,
+          methodology: validated.methodology,
+          updatedAt: sql`now()`,
+        })
+        .onConflictDoUpdate({
+          target: matrices.userId,
+          set: {
+            subjectProblem: validated.subjectProblem,
+            theoreticalFramework: validated.theoreticalFramework,
+            primaryMaterial: validated.primaryMaterial,
+            methodology: validated.methodology,
+            updatedAt: sql`now()`,
+          },
+        })
+        .returning({ id: matrices.id });
+
+      if (matrixRow) {
+        await tx
+          .delete(positioning)
+          .where(eq(positioning.userId, session.userId));
+
+        await tx
+          .delete(sources)
+          .where(
+            inArray(
+              sources.boxId,
+              tx
+                .select({ id: boxes.id })
+                .from(boxes)
+                .where(eq(boxes.matrixId, matrixRow.id)),
+            ),
+          );
+
+        await tx.delete(outlines).where(eq(outlines.matrixId, matrixRow.id));
+
+        await tx.delete(boxes).where(eq(boxes.matrixId, matrixRow.id));
+      }
+    });
+
+    invalidateOnboardingCache();
+    invalidateOnboardingStepCache("matrix");
+
+    log.info("matrix_save_success");
+
+    return { success: true };
+  } catch (error) {
+    log.error("matrix_save_failed", {
+      error,
+    });
+    return { error: "Tez matrisi veritabanına kaydedilemedi." };
+  }
 }
 </file>
 
@@ -34964,123 +35081,6 @@ export const bulkSemanticQueryJsonSchema: JsonSchema = {
 };
 </file>
 
-<file path="src/app/(onboarding)/onboarding/matrix/actions.ts">
-"use server";
-
-import { eq, inArray, sql } from "drizzle-orm";
-import { z } from "zod";
-import { db } from "@/db";
-import { matrices, positioning, boxes, sources, outlines } from "@/db/schema";
-import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
-import { createFlowId, Logger } from "@/lib/logger";
-import {
-  invalidateOnboardingCache,
-  invalidateOnboardingStepCache,
-} from "@/lib/cache-tags";
-
-const MIN_LENGTH = 3;
-const MAX_LENGTH = 4000;
-
-const thesisMatrixSchema = z.object({
-  subjectProblem: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
-  theoreticalFramework: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
-  primaryMaterial: z.string().trim().max(MAX_LENGTH).optional().default(""),
-  methodology: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
-});
-
-/**
- * Persists the thesis matrix to the database and clears any downstream analysis
- * data (positioning report, thesis outline, and thesis boxes) that may now be stale.
- *
- * @param data - The thesis matrix data from the onboarding form
- * @returns Success confirmation or an error message
- */
-export async function saveThesisMatrixAction(
-  data: unknown,
-): Promise<{ success: true } | { error: string }> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  log.info("matrix_save_start");
-
-  const parsed = thesisMatrixSchema.safeParse(data);
-  if (!parsed.success) {
-    const firstIssue = parsed.error.issues[0];
-    const msg = firstIssue
-      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
-      : "Doğrulama başarısız.";
-    return { error: msg };
-  }
-
-  const validated = parsed.data;
-
-  try {
-    const session = await getSession();
-    if (!session) {
-      return { error: SESSION_ERROR_MSG };
-    }
-
-    await db.transaction(async (tx) => {
-      const [matrixRow] = await tx
-        .insert(matrices)
-        .values({
-          userId: session.userId,
-          subjectProblem: validated.subjectProblem,
-          theoreticalFramework: validated.theoreticalFramework,
-          primaryMaterial: validated.primaryMaterial,
-          methodology: validated.methodology,
-          updatedAt: sql`now()`,
-        })
-        .onConflictDoUpdate({
-          target: matrices.userId,
-          set: {
-            subjectProblem: validated.subjectProblem,
-            theoreticalFramework: validated.theoreticalFramework,
-            primaryMaterial: validated.primaryMaterial,
-            methodology: validated.methodology,
-            updatedAt: sql`now()`,
-          },
-        })
-        .returning({ id: matrices.id });
-
-      if (matrixRow) {
-        await tx
-          .delete(positioning)
-          .where(eq(positioning.userId, session.userId));
-
-        await tx
-          .delete(sources)
-          .where(
-            inArray(
-              sources.boxId,
-              tx
-                .select({ id: boxes.id })
-                .from(boxes)
-                .where(eq(boxes.matrixId, matrixRow.id)),
-            ),
-          );
-
-        await tx.delete(outlines).where(eq(outlines.matrixId, matrixRow.id));
-
-        await tx.delete(boxes).where(eq(boxes.matrixId, matrixRow.id));
-      }
-    });
-
-    invalidateOnboardingCache();
-    invalidateOnboardingStepCache("matrix");
-
-    log.info("matrix_save_success");
-
-    return { success: true };
-  } catch (error) {
-    log.error("matrix_save_failed", {
-      error,
-    });
-    return { error: "Tez matrisi veritabanına kaydedilemedi." };
-  }
-}
-</file>
-
 <file path="src/lib/academic/utils.ts">
 import { cleanAbstractPrefix } from "./abstract-cleaner";
 
@@ -36895,6 +36895,429 @@ export function useAdvisorChat(initialSessionId?: number) {
 }
 </file>
 
+<file path="src/app/(onboarding)/onboarding/_services/fetch-actions.ts">
+"use server";
+
+import { and, eq, ne, sql } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
+import { db } from "@/db";
+import { matrices, positioning, boxes, sources, outlines } from "@/db/schema";
+import type { GeminiThesisBox } from "@/lib/types";
+import { getSession } from "@/lib/session";
+import { BOX_ORDER_WEIGHT } from "@/lib/box-constants";
+
+/**
+ * Cached DB query returning the user's thesis matrix (userId-keyed).
+ *
+ * @param userId - The id of the user to load the matrix for.
+ * @returns The user's thesis matrix or null.
+ */
+async function getCachedThesisMatrix(userId: number) {
+  try {
+    cacheTag("thesis-matrix");
+    cacheLife("minutes");
+  } catch {}
+
+  const [matrix] = await db
+    .select()
+    .from(matrices)
+    .where(eq(matrices.userId, userId));
+  return matrix ?? null;
+}
+
+/**
+ * Cached DB query fetching boxes for a given thesis matrix.
+ *
+ * @param thesisMatrixId - The id of the thesis matrix to load boxes for.
+ * @returns The ordered box rows for the thesis matrix.
+ */
+async function getCachedBoxes(thesisMatrixId: number) {
+  try {
+    cacheTag("thesis-boxes");
+    cacheLife("minutes");
+  } catch {}
+
+  return db
+    .select()
+    .from(boxes)
+    .where(eq(boxes.matrixId, thesisMatrixId))
+    .orderBy(
+      sql`CASE ${boxes.boxType}
+        WHEN 'SUBJECT_PROBLEM' THEN 1
+        WHEN 'THEORETICAL_FRAMEWORK' THEN 2
+        WHEN 'METHODOLOGY' THEN 3
+        WHEN 'PRIMARY_MATERIAL' THEN 4
+        ELSE 99
+      END`,
+    );
+}
+
+/**
+ * Returns the current user's thesis matrix or null.
+ *
+ * @returns The current user's thesis matrix or null.
+ */
+export async function fetchThesisMatrix() {
+  const session = await getSession();
+  if (!session) return null;
+  return getCachedThesisMatrix(session.userId);
+}
+
+/**
+ * Fetches the thesis matrix directly from the DB, bypassing the cache.
+ *
+ * @returns The current user's thesis matrix or null.
+ */
+export async function fetchThesisMatrixFresh() {
+  const session = await getSession();
+  if (!session) return null;
+
+  const [matrix] = await db
+    .select()
+    .from(matrices)
+    .where(eq(matrices.userId, session.userId));
+  return matrix ?? null;
+}
+
+/**
+ * Fetches boxes mapped to the full GeminiThesisBox shape expected by clients.
+ *
+ * @returns The current user's boxes in production shape, or an empty array.
+ */
+export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
+  const session = await getSession();
+  if (!session) return [];
+  const matrix = await getCachedThesisMatrix(session.userId);
+  if (!matrix) return [];
+  const rows = await getCachedBoxes(matrix.id);
+
+  const parentRows = rows.filter((r) => r.parentId === null);
+  const subBoxMap = new Map<number, GeminiThesisBox[]>();
+  for (const r of rows) {
+    if (r.parentId !== null) {
+      const list = subBoxMap.get(r.parentId) ?? [];
+      list.push({
+        id: r.id,
+        title: r.title,
+        boxType: (r.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
+        description: r.description ?? "",
+        parentId: r.parentId,
+        semanticQuery: r.semanticQuery,
+        subBoxes: undefined,
+        concepts: r.concepts ?? [],
+      });
+      subBoxMap.set(r.parentId, list);
+    }
+  }
+
+  const mappedBoxes: GeminiThesisBox[] = parentRows.map((b) => ({
+    id: b.id,
+    title: b.title,
+    boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
+    description: b.description ?? "",
+    parentId: null,
+    semanticQuery: null,
+    subBoxes: subBoxMap.get(b.id),
+    concepts: b.concepts ?? [],
+  }));
+
+  return mappedBoxes.sort((a, b) => {
+    const weightA = BOX_ORDER_WEIGHT[a.boxType] ?? 99;
+    const weightB = BOX_ORDER_WEIGHT[b.boxType] ?? 99;
+    return weightA - weightB;
+  });
+}
+
+/**
+ * Fetches boxes mapped to the full GeminiThesisBox shape directly from the database without caching.
+ *
+ * @returns The current user's boxes in production shape directly from DB, or an empty array.
+ */
+export async function fetchUncachedBoxesWithFullShape(): Promise<
+  GeminiThesisBox[]
+> {
+  const session = await getSession();
+  if (!session) return [];
+  const matrix = await fetchThesisMatrixFresh();
+  if (!matrix) return [];
+
+  const rows = await db
+    .select()
+    .from(boxes)
+    .where(eq(boxes.matrixId, matrix.id))
+    .orderBy(
+      sql`CASE ${boxes.boxType}
+        WHEN 'SUBJECT_PROBLEM' THEN 1
+        WHEN 'THEORETICAL_FRAMEWORK' THEN 2
+        WHEN 'METHODOLOGY' THEN 3
+        WHEN 'PRIMARY_MATERIAL' THEN 4
+        ELSE 99
+      END`,
+    );
+
+  const parentRows = rows.filter((r) => r.parentId === null);
+  const subBoxMap = new Map<number, GeminiThesisBox[]>();
+  for (const r of rows) {
+    if (r.parentId !== null) {
+      const list = subBoxMap.get(r.parentId) ?? [];
+      list.push({
+        id: r.id,
+        title: r.title,
+        boxType: (r.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
+        description: r.description ?? "",
+        parentId: r.parentId,
+        semanticQuery: r.semanticQuery,
+        subBoxes: undefined,
+        concepts: r.concepts ?? [],
+      });
+      subBoxMap.set(r.parentId, list);
+    }
+  }
+
+  const mappedBoxes: GeminiThesisBox[] = parentRows.map((b) => ({
+    id: b.id,
+    title: b.title,
+    boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
+    description: b.description ?? "",
+    parentId: null,
+    semanticQuery: null,
+    subBoxes: subBoxMap.get(b.id),
+    concepts: b.concepts ?? [],
+  }));
+
+  return mappedBoxes.sort((a, b) => {
+    const weightA = BOX_ORDER_WEIGHT[a.boxType] ?? 99;
+    const weightB = BOX_ORDER_WEIGHT[b.boxType] ?? 99;
+    return weightA - weightB;
+  });
+}
+
+/**
+ * Returns which onboarding steps have data for the current user.
+ *
+ * @returns A record mapping step keys to data presence, or null.
+ */
+export async function checkStepsDataAction(): Promise<Record<
+  string,
+  boolean
+> | null> {
+  const session = await getSession();
+  if (!session) return null;
+
+  const userId = session.userId;
+
+  const [matrix] = await db
+    .select({ id: matrices.id })
+    .from(matrices)
+    .where(eq(matrices.userId, userId));
+
+  const hasMatrix = !!matrix;
+
+  let hasPositioning = false;
+  let hasBoxes = false;
+  let hasOutline = false;
+  let hasLiterature = false;
+
+  if (hasMatrix) {
+    const [posResult, boxResult, outlineResult, litResult] = await Promise.all([
+      db
+        .select({
+          id: positioning.id,
+          globalStatus: positioning.globalStatus,
+        })
+        .from(positioning)
+        .where(eq(positioning.userId, userId))
+        .limit(1),
+      db
+        .select({ id: boxes.id })
+        .from(boxes)
+        .where(eq(boxes.matrixId, matrix.id))
+        .limit(1),
+      db
+        .select({ id: outlines.id })
+        .from(outlines)
+        .where(eq(outlines.matrixId, matrix.id))
+        .limit(1),
+      db
+        .select({ id: sources.id })
+        .from(sources)
+        .innerJoin(boxes, eq(sources.boxId, boxes.id))
+        .where(
+          and(
+            eq(boxes.matrixId, matrix.id),
+            ne(boxes.boxType, "RELATED_THESES"),
+          ),
+        )
+        .limit(1),
+    ]);
+
+    hasPositioning = posResult.length > 0 && !!posResult[0].globalStatus;
+    hasBoxes = boxResult.length > 0;
+    hasOutline = outlineResult.length > 0;
+    hasLiterature = litResult.length > 0;
+  }
+
+  return {
+    matrix: hasMatrix,
+    positioning: hasPositioning,
+    boxes: hasBoxes,
+    outline: hasOutline,
+    "literature-review": hasLiterature,
+  };
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/actions.ts">
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { eq, inArray } from "drizzle-orm";
+import { db } from "@/db";
+import { matrices, positioning, boxes, sources, outlines } from "@/db/schema";
+import {
+  getSession,
+  writeSessionCookie,
+  SESSION_ERROR_MSG,
+} from "@/lib/session";
+import { createFlowId, Logger } from "@/lib/logger";
+import { resetUserOnboardingData } from "@/features/onboarding/services/reset-onboarding";
+import {
+  revalidateOnboardingPaths,
+  invalidateOnboardingCache,
+  invalidateOnboardingStepCache,
+} from "@/lib/cache-tags";
+
+/**
+ * Deletes all onboarding and user data and sets onboardingCompleted to false.
+ *
+ * @returns A success flag or an error message.
+ */
+export async function resetOnboardingAction(): Promise<
+  { success: boolean } | { error: string }
+> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  log.info("reset_onboarding_start");
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    await resetUserOnboardingData(session.userId, log);
+
+    await writeSessionCookie(session, false);
+
+    revalidateOnboardingPaths();
+    revalidatePath("/onboarding/matrix");
+    invalidateOnboardingCache();
+
+    log.info("reset_onboarding_success");
+    return { success: true };
+  } catch (error) {
+    log.error("reset_onboarding_failed", {
+      error,
+    });
+    return { error: "Sıfırlama işlemi gerçekleştirilirken bir hata oluştu." };
+  }
+}
+
+/**
+ * Clears all downstream step data from the given step onward.
+ *
+ * @param fromStep - The step from which downstream data is cleared.
+ * @returns A success flag or an error message.
+ */
+export async function clearDownstreamDbAction(
+  fromStep: "matrix" | "positioning" | "boxes" | "outline",
+): Promise<{ success: boolean } | { error: string }> {
+  const session = await getSession();
+  if (!session) return { error: SESSION_ERROR_MSG };
+
+  const userId = session.userId;
+
+  try {
+    await db.transaction(async (tx) => {
+      if (fromStep === "matrix") {
+        await tx.delete(positioning).where(eq(positioning.userId, userId));
+
+        const matrixResult = await tx
+          .select({ id: matrices.id })
+          .from(matrices)
+          .where(eq(matrices.userId, userId));
+
+        const matrix = matrixResult[0];
+        if (matrix) {
+          await tx.delete(outlines).where(eq(outlines.matrixId, matrix.id));
+          await tx.delete(boxes).where(eq(boxes.matrixId, matrix.id));
+        }
+      } else if (fromStep === "positioning") {
+        const matrixResult = await tx
+          .select({ id: matrices.id })
+          .from(matrices)
+          .where(eq(matrices.userId, userId));
+
+        const matrix = matrixResult[0];
+        if (matrix) {
+          await tx
+            .delete(sources)
+            .where(
+              inArray(
+                sources.boxId,
+                tx
+                  .select({ id: boxes.id })
+                  .from(boxes)
+                  .where(eq(boxes.matrixId, matrix.id)),
+              ),
+            );
+          await tx.delete(outlines).where(eq(outlines.matrixId, matrix.id));
+          await tx.delete(boxes).where(eq(boxes.matrixId, matrix.id));
+        }
+      } else if (fromStep === "boxes") {
+        const [matrix] = await tx
+          .select({ id: matrices.id })
+          .from(matrices)
+          .where(eq(matrices.userId, userId));
+
+        if (matrix) {
+          await tx.delete(outlines).where(eq(outlines.matrixId, matrix.id));
+          await tx
+            .delete(sources)
+            .where(
+              inArray(
+                sources.boxId,
+                tx
+                  .select({ id: boxes.id })
+                  .from(boxes)
+                  .where(eq(boxes.matrixId, matrix.id)),
+              ),
+            );
+        }
+      } else if (fromStep === "outline") {
+        const [matrix] = await tx
+          .select({ id: matrices.id })
+          .from(matrices)
+          .where(eq(matrices.userId, userId));
+
+        if (matrix) {
+          await tx.delete(outlines).where(eq(outlines.matrixId, matrix.id));
+        }
+      }
+    });
+
+    invalidateOnboardingStepCache(fromStep);
+    return { success: true };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Sıfırlama işlemi gerçekleştirilirken bir hata oluştu.",
+    };
+  }
+}
+</file>
+
 <file path="src/lib/prompts/positioning/queries.ts">
 import type { PositioningMatrixInput } from "@/features/positioning/validation";
 
@@ -37510,425 +37933,330 @@ export async function fetchAndExtractPdf(
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/_services/fetch-actions.ts">
+<file path="src/app/(onboarding)/onboarding/literature-review/actions.ts">
 "use server";
 
-import { and, eq, ne, sql } from "drizzle-orm";
-import { cacheLife, cacheTag } from "next/cache";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { matrices, positioning, boxes, sources, outlines } from "@/db/schema";
-import type { GeminiThesisBox } from "@/lib/types";
-import { getSession } from "@/lib/session";
-import { BOX_ORDER_WEIGHT } from "@/lib/box-constants";
-
-/**
- * Cached DB query returning the user's thesis matrix (userId-keyed).
- *
- * @param userId - The id of the user to load the matrix for.
- * @returns The user's thesis matrix or null.
- */
-async function getCachedThesisMatrix(userId: number) {
-  try {
-    cacheTag("thesis-matrix");
-    cacheLife("minutes");
-  } catch {}
-
-  const [matrix] = await db
-    .select()
-    .from(matrices)
-    .where(eq(matrices.userId, userId));
-  return matrix ?? null;
-}
-
-/**
- * Cached DB query fetching boxes for a given thesis matrix.
- *
- * @param thesisMatrixId - The id of the thesis matrix to load boxes for.
- * @returns The ordered box rows for the thesis matrix.
- */
-async function getCachedBoxes(thesisMatrixId: number) {
-  try {
-    cacheTag("thesis-boxes");
-    cacheLife("minutes");
-  } catch {}
-
-  return db
-    .select()
-    .from(boxes)
-    .where(eq(boxes.matrixId, thesisMatrixId))
-    .orderBy(
-      sql`CASE ${boxes.boxType}
-        WHEN 'SUBJECT_PROBLEM' THEN 1
-        WHEN 'THEORETICAL_FRAMEWORK' THEN 2
-        WHEN 'METHODOLOGY' THEN 3
-        WHEN 'PRIMARY_MATERIAL' THEN 4
-        ELSE 99
-      END`,
-    );
-}
-
-/**
- * Returns the current user's thesis matrix or null.
- *
- * @returns The current user's thesis matrix or null.
- */
-export async function fetchThesisMatrix() {
-  const session = await getSession();
-  if (!session) return null;
-  return getCachedThesisMatrix(session.userId);
-}
-
-/**
- * Fetches the thesis matrix directly from the DB, bypassing the cache.
- *
- * @returns The current user's thesis matrix or null.
- */
-export async function fetchThesisMatrixFresh() {
-  const session = await getSession();
-  if (!session) return null;
-
-  const [matrix] = await db
-    .select()
-    .from(matrices)
-    .where(eq(matrices.userId, session.userId));
-  return matrix ?? null;
-}
-
-/**
- * Fetches boxes mapped to the full GeminiThesisBox shape expected by clients.
- *
- * @returns The current user's boxes in production shape, or an empty array.
- */
-export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
-  const session = await getSession();
-  if (!session) return [];
-  const matrix = await getCachedThesisMatrix(session.userId);
-  if (!matrix) return [];
-  const rows = await getCachedBoxes(matrix.id);
-
-  const parentRows = rows.filter((r) => r.parentId === null);
-  const subBoxMap = new Map<number, GeminiThesisBox[]>();
-  for (const r of rows) {
-    if (r.parentId !== null) {
-      const list = subBoxMap.get(r.parentId) ?? [];
-      list.push({
-        id: r.id,
-        title: r.title,
-        boxType: (r.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
-        description: r.description ?? "",
-        parentId: r.parentId,
-        semanticQuery: r.semanticQuery,
-        subBoxes: undefined,
-        concepts: r.concepts ?? [],
-      });
-      subBoxMap.set(r.parentId, list);
-    }
-  }
-
-  const mappedBoxes: GeminiThesisBox[] = parentRows.map((b) => ({
-    id: b.id,
-    title: b.title,
-    boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
-    description: b.description ?? "",
-    parentId: null,
-    semanticQuery: null,
-    subBoxes: subBoxMap.get(b.id),
-    concepts: b.concepts ?? [],
-  }));
-
-  return mappedBoxes.sort((a, b) => {
-    const weightA = BOX_ORDER_WEIGHT[a.boxType] ?? 99;
-    const weightB = BOX_ORDER_WEIGHT[b.boxType] ?? 99;
-    return weightA - weightB;
-  });
-}
-
-/**
- * Fetches boxes mapped to the full GeminiThesisBox shape directly from the database without caching.
- *
- * @returns The current user's boxes in production shape directly from DB, or an empty array.
- */
-export async function fetchUncachedBoxesWithFullShape(): Promise<
-  GeminiThesisBox[]
-> {
-  const session = await getSession();
-  if (!session) return [];
-  const matrix = await fetchThesisMatrixFresh();
-  if (!matrix) return [];
-
-  const rows = await db
-    .select()
-    .from(boxes)
-    .where(eq(boxes.matrixId, matrix.id))
-    .orderBy(
-      sql`CASE ${boxes.boxType}
-        WHEN 'SUBJECT_PROBLEM' THEN 1
-        WHEN 'THEORETICAL_FRAMEWORK' THEN 2
-        WHEN 'METHODOLOGY' THEN 3
-        WHEN 'PRIMARY_MATERIAL' THEN 4
-        ELSE 99
-      END`,
-    );
-
-  const parentRows = rows.filter((r) => r.parentId === null);
-  const subBoxMap = new Map<number, GeminiThesisBox[]>();
-  for (const r of rows) {
-    if (r.parentId !== null) {
-      const list = subBoxMap.get(r.parentId) ?? [];
-      list.push({
-        id: r.id,
-        title: r.title,
-        boxType: (r.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
-        description: r.description ?? "",
-        parentId: r.parentId,
-        semanticQuery: r.semanticQuery,
-        subBoxes: undefined,
-        concepts: r.concepts ?? [],
-      });
-      subBoxMap.set(r.parentId, list);
-    }
-  }
-
-  const mappedBoxes: GeminiThesisBox[] = parentRows.map((b) => ({
-    id: b.id,
-    title: b.title,
-    boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
-    description: b.description ?? "",
-    parentId: null,
-    semanticQuery: null,
-    subBoxes: subBoxMap.get(b.id),
-    concepts: b.concepts ?? [],
-  }));
-
-  return mappedBoxes.sort((a, b) => {
-    const weightA = BOX_ORDER_WEIGHT[a.boxType] ?? 99;
-    const weightB = BOX_ORDER_WEIGHT[b.boxType] ?? 99;
-    return weightA - weightB;
-  });
-}
-
-/**
- * Returns which onboarding steps have data for the current user.
- *
- * @returns A record mapping step keys to data presence, or null.
- */
-export async function checkStepsDataAction(): Promise<Record<
-  string,
-  boolean
-> | null> {
-  const session = await getSession();
-  if (!session) return null;
-
-  const userId = session.userId;
-
-  const [matrix] = await db
-    .select({ id: matrices.id })
-    .from(matrices)
-    .where(eq(matrices.userId, userId));
-
-  const hasMatrix = !!matrix;
-
-  let hasPositioning = false;
-  let hasBoxes = false;
-  let hasOutline = false;
-  let hasLiterature = false;
-
-  if (hasMatrix) {
-    const [posResult, boxResult, outlineResult, litResult] = await Promise.all([
-      db
-        .select({
-          id: positioning.id,
-          globalStatus: positioning.globalStatus,
-        })
-        .from(positioning)
-        .where(eq(positioning.userId, userId))
-        .limit(1),
-      db
-        .select({ id: boxes.id })
-        .from(boxes)
-        .where(eq(boxes.matrixId, matrix.id))
-        .limit(1),
-      db
-        .select({ id: outlines.id })
-        .from(outlines)
-        .where(eq(outlines.matrixId, matrix.id))
-        .limit(1),
-      db
-        .select({ id: sources.id })
-        .from(sources)
-        .innerJoin(boxes, eq(sources.boxId, boxes.id))
-        .where(
-          and(
-            eq(boxes.matrixId, matrix.id),
-            ne(boxes.boxType, "RELATED_THESES"),
-          ),
-        )
-        .limit(1),
-    ]);
-
-    hasPositioning = posResult.length > 0 && !!posResult[0].globalStatus;
-    hasBoxes = boxResult.length > 0;
-    hasOutline = outlineResult.length > 0;
-    hasLiterature = litResult.length > 0;
-  }
-
-  return {
-    matrix: hasMatrix,
-    positioning: hasPositioning,
-    boxes: hasBoxes,
-    outline: hasOutline,
-    "literature-review": hasLiterature,
-  };
-}
-</file>
-
-<file path="src/app/(onboarding)/onboarding/actions.ts">
-"use server";
-
-import { revalidatePath } from "next/cache";
-import { eq, inArray } from "drizzle-orm";
-import { db } from "@/db";
-import { matrices, positioning, boxes, sources, outlines } from "@/db/schema";
+import {
+  revalidateOnboardingPaths,
+  invalidateOnboardingCache,
+} from "@/lib/cache-tags";
+import { matrices, users } from "@/db/schema";
+import { Logger, createFlowId } from "@/lib/logger";
 import {
   getSession,
   writeSessionCookie,
   SESSION_ERROR_MSG,
 } from "@/lib/session";
-import { createFlowId, Logger } from "@/lib/logger";
-import { resetUserOnboardingData } from "@/features/onboarding/services/reset-onboarding";
+import type { LiteraturePoolEntry, OnboardingActionResult } from "@/lib/types";
+import type { SubBoxInput } from "@/features/literature-review/literature-review-papers";
+import { orchestrateBatchProcess } from "@/features/literature-review/batch-orchestrator";
 import {
-  revalidateOnboardingPaths,
-  invalidateOnboardingCache,
-  invalidateOnboardingStepCache,
-} from "@/lib/cache-tags";
+  persistLiteraturePool,
+  persistSubBoxEntry,
+  persistRelatedTheses,
+  fetchPreloadedPool,
+} from "@/features/literature-review/literature-persistence";
+import { loadThesisMatrixAndBoxes } from "@/features/literature-review/process-boxes-data";
+
+const _cancelFlags = new Map<number, boolean>();
+
+/** Signals the running pipeline to stop, called from the client cancel callback. */
+export async function setLiteratureCancelledAction(): Promise<void> {
+  const session = await getSession();
+  if (session) {
+    _cancelFlags.set(session.userId, true);
+  }
+}
+
+/** Resets the cancel flag before a fresh pipeline run. */
+export async function resetLiteratureCancelledAction(): Promise<void> {
+  const session = await getSession();
+  if (session) {
+    _cancelFlags.set(session.userId, false);
+  }
+}
 
 /**
- * Deletes all onboarding and user data and sets onboardingCompleted to false.
+ * Checks whether a cancellation has been requested for the given user.
  *
- * @returns A success flag or an error message.
+ * @param userId - The database ID of the user.
+ * @returns True when cancellation is requested, false otherwise.
  */
-export async function resetOnboardingAction(): Promise<
-  { success: boolean } | { error: string }
-> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
+function isLiteratureCancelled(userId: number): boolean {
+  return _cancelFlags.get(userId) ?? false;
+}
 
-  log.info("reset_onboarding_start");
+/**
+ * Processes all sub-boxes through the batch literature pipeline.
+ *
+ * @param boxes - The sub-box inputs to process.
+ * @returns The persisted literature pool entries or an error message.
+ */
+export async function processAllBoxesAction(
+  boxes: SubBoxInput[],
+): Promise<{ data?: LiteraturePoolEntry[]; error?: string }> {
+  const logger = new Logger(createFlowId());
 
   try {
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
 
-    await resetUserOnboardingData(session.userId, log);
+    const userId = session.userId;
+    _cancelFlags.set(userId, false);
 
-    await writeSessionCookie(session, false);
+    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
 
-    revalidateOnboardingPaths();
-    revalidatePath("/onboarding/matrix");
-    invalidateOnboardingCache();
+    const { matrix } = await loadThesisMatrixAndBoxes(userId);
+    if (!matrix) return { error: "Tez matrisi bulunamadı." };
+    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
 
-    log.info("reset_onboarding_success");
-    return { success: true };
-  } catch (error) {
-    log.error("reset_onboarding_failed", {
-      error,
+    const { poolEntries } = await orchestrateBatchProcess(
+      boxes,
+      logger,
+      matrix.subjectProblem,
+      () => isLiteratureCancelled(userId),
+      async (thesisBoxId, articles) => {
+        await persistSubBoxEntry(thesisBoxId, articles);
+      },
+    );
+
+    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
+
+    return { data: poolEntries };
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
+    logger.error("literature_batch_process_failed", {
+      error: err,
     });
-    return { error: "Sıfırlama işlemi gerçekleştirilirken bir hata oluştu." };
+    return { error: message };
   }
 }
 
 /**
- * Clears all downstream step data from the given step onward.
+ * Persists the confirmed literature pool to the database.
  *
- * @param fromStep - The step from which downstream data is cleared.
- * @returns A success flag or an error message.
+ * @param args - The confirmation payload.
+ * @param args.literaturePool - The literature pool entries to persist.
+ * @returns The action result indicating success or an error.
  */
-export async function clearDownstreamDbAction(
-  fromStep: "matrix" | "positioning" | "boxes" | "outline",
-): Promise<{ success: boolean } | { error: string }> {
+export async function confirmLiteratureAction(args: {
+  literaturePool: LiteraturePoolEntry[];
+}): Promise<OnboardingActionResult> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+  const startTime = performance.now();
+
+  log.info("confirm_literature_start");
+
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { error: SESSION_ERROR_MSG };
+    }
+
+    const { literaturePool } = args;
+    if (!literaturePool || literaturePool.length === 0) {
+      return { error: "Onaylanacak literatür verisi bulunamadı." };
+    }
+
+    const [matrix] = await db
+      .select({ id: matrices.id })
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+
+    if (!matrix) {
+      return { error: "Tez matrisi bulunamadı." };
+    }
+
+    await persistLiteraturePool(literaturePool);
+
+    try {
+      revalidateOnboardingPaths();
+    } catch {}
+
+    invalidateOnboardingCache();
+
+    log.info("confirm_literature_success", {
+      durationMs: performance.now() - startTime,
+    });
+
+    return { success: true };
+  } catch (err) {
+    log.error("confirm_literature_failed", {
+      error: err,
+    });
+    return {
+      error:
+        err instanceof Error ? err.message : "An unexpected error occurred.",
+    };
+  }
+}
+
+/**
+ * Returns the preloaded literature pool for the current user.
+ *
+ * @returns The preloaded pool entries or an error message.
+ */
+export async function fetchPreloadedLiteraturePool(): Promise<{
+  data?: LiteraturePoolEntry[];
+  error?: string;
+}> {
   const session = await getSession();
   if (!session) return { error: SESSION_ERROR_MSG };
 
-  const userId = session.userId;
+  const [matrix] = await db
+    .select({ id: matrices.id })
+    .from(matrices)
+    .where(eq(matrices.userId, session.userId));
+
+  if (!matrix) return { error: "Tez matrisi bulunamadı." };
+
+  const pool = await fetchPreloadedPool(matrix.id);
+
+  return { data: pool };
+}
+
+/**
+ * Marks onboarding as completed for the current user and updates the session cookie.
+ *
+ * @returns The action result indicating success or an error.
+ */
+export async function finalizeOnboardingAction(): Promise<OnboardingActionResult> {
+  const log = new Logger(createFlowId());
+
+  log.info("finalize_onboarding_start");
 
   try {
-    await db.transaction(async (tx) => {
-      if (fromStep === "matrix") {
-        await tx.delete(positioning).where(eq(positioning.userId, userId));
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
 
-        const matrixResult = await tx
-          .select({ id: matrices.id })
-          .from(matrices)
-          .where(eq(matrices.userId, userId));
+    await db
+      .update(users)
+      .set({ onboardingCompleted: true })
+      .where(eq(users.id, session.userId));
 
-        const matrix = matrixResult[0];
-        if (matrix) {
-          await tx.delete(outlines).where(eq(outlines.matrixId, matrix.id));
-          await tx.delete(boxes).where(eq(boxes.matrixId, matrix.id));
-        }
-      } else if (fromStep === "positioning") {
-        const matrixResult = await tx
-          .select({ id: matrices.id })
-          .from(matrices)
-          .where(eq(matrices.userId, userId));
+    try {
+      await writeSessionCookie(session, true);
+    } catch {}
 
-        const matrix = matrixResult[0];
-        if (matrix) {
-          await tx
-            .delete(sources)
-            .where(
-              inArray(
-                sources.boxId,
-                tx
-                  .select({ id: boxes.id })
-                  .from(boxes)
-                  .where(eq(boxes.matrixId, matrix.id)),
-              ),
-            );
-          await tx.delete(outlines).where(eq(outlines.matrixId, matrix.id));
-          await tx.delete(boxes).where(eq(boxes.matrixId, matrix.id));
-        }
-      } else if (fromStep === "boxes") {
-        const [matrix] = await tx
-          .select({ id: matrices.id })
-          .from(matrices)
-          .where(eq(matrices.userId, userId));
+    try {
+      revalidateOnboardingPaths();
+    } catch {}
 
-        if (matrix) {
-          await tx.delete(outlines).where(eq(outlines.matrixId, matrix.id));
-          await tx
-            .delete(sources)
-            .where(
-              inArray(
-                sources.boxId,
-                tx
-                  .select({ id: boxes.id })
-                  .from(boxes)
-                  .where(eq(boxes.matrixId, matrix.id)),
-              ),
-            );
-        }
-      } else if (fromStep === "outline") {
-        const [matrix] = await tx
-          .select({ id: matrices.id })
-          .from(matrices)
-          .where(eq(matrices.userId, userId));
+    invalidateOnboardingCache();
 
-        if (matrix) {
-          await tx.delete(outlines).where(eq(outlines.matrixId, matrix.id));
-        }
-      }
-    });
+    log.info("finalize_onboarding_success");
 
-    invalidateOnboardingStepCache(fromStep);
     return { success: true };
-  } catch (error) {
+  } catch (err) {
+    log.error("finalize_onboarding_failed", {
+      error: err,
+    });
     return {
       error:
-        error instanceof Error
-          ? error.message
-          : "Sıfırlama işlemi gerçekleştirilirken bir hata oluştu.",
+        err instanceof Error ? err.message : "An unexpected error occurred.",
     };
+  }
+}
+
+/**
+ * Checks whether a literature pool already exists for the current user.
+ *
+ * @returns The existing pool entries and whether a pool exists, or an error.
+ */
+export async function checkLiteraturePoolAction(): Promise<{
+  data?: LiteraturePoolEntry[];
+  exists: boolean;
+  error?: string;
+}> {
+  try {
+    const session = await getSession();
+    if (!session) return { exists: false, error: SESSION_ERROR_MSG };
+
+    const [matrix] = await db
+      .select({ id: matrices.id })
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+
+    if (!matrix) return { exists: false, error: "Tez matrisi bulunamadı." };
+
+    const pool = await fetchPreloadedPool(matrix.id);
+    if (pool && pool.length > 0) {
+      return { data: pool, exists: true };
+    }
+
+    return { exists: false };
+  } catch (err) {
+    return {
+      exists: false,
+      error:
+        err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.",
+    };
+  }
+}
+
+/**
+ * Runs the full literature pipeline (search, jury, selection, persistence) and returns the pool.
+ *
+ * @param boxes - The sub-box inputs to process.
+ * @returns The persisted literature pool entries or an error message.
+ */
+export async function runLiteraturePipelineAction(
+  boxes: SubBoxInput[],
+): Promise<{ data?: LiteraturePoolEntry[]; error?: string }> {
+  const logger = new Logger(createFlowId());
+  const pipelineStart = performance.now();
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const userId = session.userId;
+    _cancelFlags.set(userId, false);
+
+    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
+
+    const { matrix } = await loadThesisMatrixAndBoxes(userId);
+    const subjectProblem = matrix?.subjectProblem ?? "";
+
+    const { poolEntries } = await orchestrateBatchProcess(
+      boxes,
+      logger,
+      subjectProblem,
+      () => isLiteratureCancelled(userId),
+      async (thesisBoxId, articles) => {
+        await persistSubBoxEntry(thesisBoxId, articles);
+      },
+    );
+
+    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
+
+    logger.info("literature_pool_persist_start");
+    await persistLiteraturePool(poolEntries);
+    logger.info("literature_pool_persist_success");
+
+    await persistRelatedTheses(userId);
+
+    try {
+      revalidateOnboardingPaths();
+    } catch {}
+    invalidateOnboardingCache();
+
+    logger.info("literature_pipeline_success", {
+      data: { durationMs: Math.round(performance.now() - pipelineStart) },
+    });
+
+    return { data: poolEntries };
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
+    logger.error("literature_pipeline_failed", {
+      error: err,
+    });
+    return { error: message };
   }
 }
 </file>
@@ -38819,334 +39147,6 @@ const BoxCard = memo(function BoxCard({
     </Card>
   );
 });
-</file>
-
-<file path="src/app/(onboarding)/onboarding/literature-review/actions.ts">
-"use server";
-
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import {
-  revalidateOnboardingPaths,
-  invalidateOnboardingCache,
-} from "@/lib/cache-tags";
-import { matrices, users } from "@/db/schema";
-import { Logger, createFlowId } from "@/lib/logger";
-import {
-  getSession,
-  writeSessionCookie,
-  SESSION_ERROR_MSG,
-} from "@/lib/session";
-import type { LiteraturePoolEntry, OnboardingActionResult } from "@/lib/types";
-import type { SubBoxInput } from "@/features/literature-review/literature-review-papers";
-import { orchestrateBatchProcess } from "@/features/literature-review/batch-orchestrator";
-import {
-  persistLiteraturePool,
-  persistSubBoxEntry,
-  persistRelatedTheses,
-  fetchPreloadedPool,
-} from "@/features/literature-review/literature-persistence";
-import { loadThesisMatrixAndBoxes } from "@/features/literature-review/process-boxes-data";
-
-const _cancelFlags = new Map<number, boolean>();
-
-/** Signals the running pipeline to stop, called from the client cancel callback. */
-export async function setLiteratureCancelledAction(): Promise<void> {
-  const session = await getSession();
-  if (session) {
-    _cancelFlags.set(session.userId, true);
-  }
-}
-
-/** Resets the cancel flag before a fresh pipeline run. */
-export async function resetLiteratureCancelledAction(): Promise<void> {
-  const session = await getSession();
-  if (session) {
-    _cancelFlags.set(session.userId, false);
-  }
-}
-
-/**
- * Checks whether a cancellation has been requested for the given user.
- *
- * @param userId - The database ID of the user.
- * @returns True when cancellation is requested, false otherwise.
- */
-function isLiteratureCancelled(userId: number): boolean {
-  return _cancelFlags.get(userId) ?? false;
-}
-
-/**
- * Processes all sub-boxes through the batch literature pipeline.
- *
- * @param boxes - The sub-box inputs to process.
- * @returns The persisted literature pool entries or an error message.
- */
-export async function processAllBoxesAction(
-  boxes: SubBoxInput[],
-): Promise<{ data?: LiteraturePoolEntry[]; error?: string }> {
-  const logger = new Logger(createFlowId());
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const userId = session.userId;
-    _cancelFlags.set(userId, false);
-
-    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
-
-    const { matrix } = await loadThesisMatrixAndBoxes(userId);
-    if (!matrix) return { error: "Tez matrisi bulunamadı." };
-    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
-
-    const { poolEntries } = await orchestrateBatchProcess(
-      boxes,
-      logger,
-      matrix.subjectProblem,
-      () => isLiteratureCancelled(userId),
-      async (thesisBoxId, articles) => {
-        await persistSubBoxEntry(thesisBoxId, articles);
-      },
-    );
-
-    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
-
-    return { data: poolEntries };
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
-    logger.error("literature_batch_process_failed", {
-      error: err,
-    });
-    return { error: message };
-  }
-}
-
-/**
- * Persists the confirmed literature pool to the database.
- *
- * @param args - The confirmation payload.
- * @param args.literaturePool - The literature pool entries to persist.
- * @returns The action result indicating success or an error.
- */
-export async function confirmLiteratureAction(args: {
-  literaturePool: LiteraturePoolEntry[];
-}): Promise<OnboardingActionResult> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-  const startTime = performance.now();
-
-  log.info("confirm_literature_start");
-
-  try {
-    const session = await getSession();
-    if (!session) {
-      return { error: SESSION_ERROR_MSG };
-    }
-
-    const { literaturePool } = args;
-    if (!literaturePool || literaturePool.length === 0) {
-      return { error: "Onaylanacak literatür verisi bulunamadı." };
-    }
-
-    const [matrix] = await db
-      .select({ id: matrices.id })
-      .from(matrices)
-      .where(eq(matrices.userId, session.userId));
-
-    if (!matrix) {
-      return { error: "Tez matrisi bulunamadı." };
-    }
-
-    await persistLiteraturePool(literaturePool);
-
-    try {
-      revalidateOnboardingPaths();
-    } catch {}
-
-    invalidateOnboardingCache();
-
-    log.info("confirm_literature_success", {
-      durationMs: performance.now() - startTime,
-    });
-
-    return { success: true };
-  } catch (err) {
-    log.error("confirm_literature_failed", {
-      error: err,
-    });
-    return {
-      error:
-        err instanceof Error ? err.message : "An unexpected error occurred.",
-    };
-  }
-}
-
-/**
- * Returns the preloaded literature pool for the current user.
- *
- * @returns The preloaded pool entries or an error message.
- */
-export async function fetchPreloadedLiteraturePool(): Promise<{
-  data?: LiteraturePoolEntry[];
-  error?: string;
-}> {
-  const session = await getSession();
-  if (!session) return { error: SESSION_ERROR_MSG };
-
-  const [matrix] = await db
-    .select({ id: matrices.id })
-    .from(matrices)
-    .where(eq(matrices.userId, session.userId));
-
-  if (!matrix) return { error: "Tez matrisi bulunamadı." };
-
-  const pool = await fetchPreloadedPool(matrix.id);
-
-  return { data: pool };
-}
-
-/**
- * Marks onboarding as completed for the current user and updates the session cookie.
- *
- * @returns The action result indicating success or an error.
- */
-export async function finalizeOnboardingAction(): Promise<OnboardingActionResult> {
-  const log = new Logger(createFlowId());
-
-  log.info("finalize_onboarding_start");
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    await db
-      .update(users)
-      .set({ onboardingCompleted: true })
-      .where(eq(users.id, session.userId));
-
-    try {
-      await writeSessionCookie(session, true);
-    } catch {}
-
-    try {
-      revalidateOnboardingPaths();
-    } catch {}
-
-    invalidateOnboardingCache();
-
-    log.info("finalize_onboarding_success");
-
-    return { success: true };
-  } catch (err) {
-    log.error("finalize_onboarding_failed", {
-      error: err,
-    });
-    return {
-      error:
-        err instanceof Error ? err.message : "An unexpected error occurred.",
-    };
-  }
-}
-
-/**
- * Checks whether a literature pool already exists for the current user.
- *
- * @returns The existing pool entries and whether a pool exists, or an error.
- */
-export async function checkLiteraturePoolAction(): Promise<{
-  data?: LiteraturePoolEntry[];
-  exists: boolean;
-  error?: string;
-}> {
-  try {
-    const session = await getSession();
-    if (!session) return { exists: false, error: SESSION_ERROR_MSG };
-
-    const [matrix] = await db
-      .select({ id: matrices.id })
-      .from(matrices)
-      .where(eq(matrices.userId, session.userId));
-
-    if (!matrix) return { exists: false, error: "Tez matrisi bulunamadı." };
-
-    const pool = await fetchPreloadedPool(matrix.id);
-    if (pool && pool.length > 0) {
-      return { data: pool, exists: true };
-    }
-
-    return { exists: false };
-  } catch (err) {
-    return {
-      exists: false,
-      error:
-        err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.",
-    };
-  }
-}
-
-/**
- * Runs the full literature pipeline (search, jury, selection, persistence) and returns the pool.
- *
- * @param boxes - The sub-box inputs to process.
- * @returns The persisted literature pool entries or an error message.
- */
-export async function runLiteraturePipelineAction(
-  boxes: SubBoxInput[],
-): Promise<{ data?: LiteraturePoolEntry[]; error?: string }> {
-  const logger = new Logger(createFlowId());
-  const pipelineStart = performance.now();
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const userId = session.userId;
-    _cancelFlags.set(userId, false);
-
-    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
-
-    const { matrix } = await loadThesisMatrixAndBoxes(userId);
-    const subjectProblem = matrix?.subjectProblem ?? "";
-
-    const { poolEntries } = await orchestrateBatchProcess(
-      boxes,
-      logger,
-      subjectProblem,
-      () => isLiteratureCancelled(userId),
-      async (thesisBoxId, articles) => {
-        await persistSubBoxEntry(thesisBoxId, articles);
-      },
-    );
-
-    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
-
-    logger.info("literature_pool_persist_start");
-    await persistLiteraturePool(poolEntries);
-    logger.info("literature_pool_persist_success");
-
-    await persistRelatedTheses(userId);
-
-    try {
-      revalidateOnboardingPaths();
-    } catch {}
-    invalidateOnboardingCache();
-
-    logger.info("literature_pipeline_success", {
-      data: { durationMs: Math.round(performance.now() - pipelineStart) },
-    });
-
-    return { data: poolEntries };
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
-    logger.error("literature_pipeline_failed", {
-      error: err,
-    });
-    return { error: message };
-  }
-}
 </file>
 
 <file path="src/lib/logger.ts">
@@ -40398,226 +40398,6 @@ function LibraryPageContent() {
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/literature-review/_hooks/use-literature-review.ts">
-"use client";
-
-import { useMemo, useState, useCallback, useEffect, useRef } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
-import {
-  fetchBoxesWithFullShape,
-  fetchUncachedBoxesWithFullShape,
-} from "../../_services/fetch-actions";
-import { useLiteratureContinue } from "../../_hooks/use-literature-continue";
-import {
-  fetchPreloadedLiteraturePool,
-  runLiteraturePipelineAction,
-} from "../actions";
-import type { SubBoxInput } from "@/features/literature-review/literature-review-papers";
-import { BOX_ORDER_WEIGHT } from "@/lib/box-constants";
-
-/** Processing status of a single sub-box within the literature review grid. */
-export type BoxStatus = "idle" | "loading" | "done" | "error";
-
-/** Shape returned by {@link useLiteratureReview}. */
-export interface UseLiteratureReviewResult {
-  subBoxes: GeminiThesisBox[];
-  loading: boolean;
-  processing: boolean;
-  confirming: boolean;
-  boxStatuses: Record<string, BoxStatus>;
-  boxErrors: Record<string, string>;
-  allProcessed: boolean;
-  literaturePool: LiteraturePoolEntry[];
-  archivalBoxes: Set<string>;
-  handleFinalize: () => Promise<void>;
-  retryReview: () => Promise<void>;
-  setProcessing: (processing: boolean) => void;
-  setBoxErrors: (
-    errors:
-      | Record<string, string>
-      | ((prev: Record<string, string>) => Record<string, string>),
-  ) => void;
-}
-
-/**
- * Orchestrates the literature-review step: loads existing data or runs the review pipeline.
- *
- * @returns The literature review state and control helpers.
- */
-export function useLiteratureReview(): UseLiteratureReviewResult {
-  const { finalizeLiterature } = useLiteratureContinue();
-  const queryClient = useQueryClient();
-
-  const [processing, setProcessing] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const hasTriggeredRef = useRef(false);
-  const [boxErrors, setBoxErrors] = useState<Record<string, string>>({});
-  const [allProcessed, setAllProcessed] = useState(false);
-
-  const { data: allBoxes, isLoading: boxesLoading } = useQuery({
-    queryKey: ["boxes-full"],
-    queryFn: fetchBoxesWithFullShape,
-  });
-
-  const { data: initialPool, isLoading: poolLoading } = useQuery({
-    queryKey: ["literature-pool"],
-    queryFn: async () => {
-      const res = await fetchPreloadedLiteraturePool();
-      return res.data ?? [];
-    },
-  });
-
-  const subBoxes = useMemo(() => {
-    if (!allBoxes) return [];
-    return [...allBoxes].sort((a, b) => {
-      const weightA =
-        BOX_ORDER_WEIGHT[a.boxType as keyof typeof BOX_ORDER_WEIGHT] ?? 99;
-      const weightB =
-        BOX_ORDER_WEIGHT[b.boxType as keyof typeof BOX_ORDER_WEIGHT] ?? 99;
-      return weightA - weightB;
-    });
-  }, [allBoxes]);
-
-  const loading = boxesLoading || poolLoading || allBoxes === undefined;
-
-  const literaturePool = useMemo(() => {
-    return initialPool
-      ? (JSON.parse(JSON.stringify(initialPool)) as LiteraturePoolEntry[])
-      : [];
-  }, [initialPool]);
-
-  const archivalBoxes = useMemo(() => {
-    const archivalSet = new Set<string>();
-    for (const box of subBoxes) {
-      if (box.boxType === "PRIMARY_MATERIAL") {
-        archivalSet.add(box.title);
-      }
-    }
-    return archivalSet;
-  }, [subBoxes]);
-
-  const boxStatuses = useMemo(() => {
-    const statuses: Record<string, BoxStatus> = {};
-    for (const box of subBoxes) {
-      const hasEntry = literaturePool.some(
-        (entry) => entry.subBoxTitle === box.title && entry.articles.length > 0,
-      );
-      if (hasEntry) {
-        statuses[box.title] = "done";
-      } else if (processing) {
-        statuses[box.title] = "loading";
-      } else {
-        statuses[box.title] = "idle";
-      }
-    }
-    return statuses;
-  }, [subBoxes, literaturePool, processing]);
-
-  const runPipeline = useCallback(async () => {
-    if (processing) return;
-    setProcessing(true);
-    try {
-      const freshBoxes = await fetchUncachedBoxesWithFullShape();
-      const targetBoxes = freshBoxes.length > 0 ? freshBoxes : subBoxes;
-      const subBoxInputs: SubBoxInput[] = targetBoxes.map((box) => ({
-        id: box.id ?? 0,
-        title: box.title,
-        description: box.description,
-        boxType: box.boxType,
-        subBoxes: (box.subBoxes ?? []).map((sb) => ({
-          title: sb.title,
-          description: sb.description,
-          thesisBoxId: sb.id ?? 0,
-          semanticQuery: sb.semanticQuery ?? "",
-        })),
-      }));
-
-      const res = await runLiteraturePipelineAction(subBoxInputs);
-      if (res.data) {
-        queryClient.invalidateQueries({ queryKey: ["literature-pool"] });
-        queryClient.setQueryData(["literature-pool"], res.data);
-      } else if (res.error) {
-        toast.error("Literatür taraması hatası: " + res.error);
-      }
-    } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : "Tarama çalıştırılamadı.";
-      toast.error(msg);
-    } finally {
-      setProcessing(false);
-    }
-  }, [processing, subBoxes, queryClient]);
-
-  useEffect(() => {
-    if (loading || processing || hasTriggeredRef.current) return;
-
-    const regularBoxes = subBoxes.filter(
-      (b) => b.boxType !== "PRIMARY_MATERIAL" && b.boxType !== "RELATED_THESES",
-    );
-
-    if (regularBoxes.length === 0) return;
-
-    const hasMissingLiterature = regularBoxes.some((box) => {
-      const children = box.subBoxes ?? [];
-      if (children.length > 0) {
-        return children.some(
-          (child) =>
-            !literaturePool.some(
-              (e) => e.subBoxTitle === child.title && e.articles.length > 0,
-            ),
-        );
-      }
-      return !literaturePool.some(
-        (e) => e.subBoxTitle === box.title && e.articles.length > 0,
-      );
-    });
-
-    if (hasMissingLiterature) {
-      hasTriggeredRef.current = true;
-      setTimeout(() => {
-        void runPipeline();
-      }, 0);
-    }
-  }, [loading, processing, subBoxes, literaturePool, runPipeline]);
-
-  const retryReview = useCallback(async () => {
-    hasTriggeredRef.current = true;
-    await runPipeline();
-  }, [runPipeline]);
-
-  const handleFinalize = useCallback(async () => {
-    setAllProcessed(true);
-
-    if (literaturePool.length === 0) return;
-
-    setConfirming(true);
-
-    const result = await finalizeLiterature();
-    setConfirming(false);
-
-    if ("error" in result && result.error) return;
-  }, [literaturePool, finalizeLiterature]);
-
-  return {
-    subBoxes,
-    loading,
-    processing,
-    confirming,
-    boxStatuses,
-    boxErrors,
-    allProcessed,
-    literaturePool,
-    archivalBoxes,
-    handleFinalize,
-    retryReview,
-    setProcessing,
-    setBoxErrors,
-  };
-}
-</file>
-
 <file path="src/app/(onboarding)/onboarding/positioning/actions.ts">
 "use server";
 
@@ -40909,6 +40689,226 @@ export async function getPositioningAction(): Promise<Positioning | null> {
   } catch {
     return null;
   }
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/literature-review/_hooks/use-literature-review.ts">
+"use client";
+
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
+import {
+  fetchBoxesWithFullShape,
+  fetchUncachedBoxesWithFullShape,
+} from "../../_services/fetch-actions";
+import { useLiteratureContinue } from "../../_hooks/use-literature-continue";
+import {
+  fetchPreloadedLiteraturePool,
+  runLiteraturePipelineAction,
+} from "../actions";
+import type { SubBoxInput } from "@/features/literature-review/literature-review-papers";
+import { BOX_ORDER_WEIGHT } from "@/lib/box-constants";
+
+/** Processing status of a single sub-box within the literature review grid. */
+export type BoxStatus = "idle" | "loading" | "done" | "error";
+
+/** Shape returned by {@link useLiteratureReview}. */
+export interface UseLiteratureReviewResult {
+  subBoxes: GeminiThesisBox[];
+  loading: boolean;
+  processing: boolean;
+  confirming: boolean;
+  boxStatuses: Record<string, BoxStatus>;
+  boxErrors: Record<string, string>;
+  allProcessed: boolean;
+  literaturePool: LiteraturePoolEntry[];
+  archivalBoxes: Set<string>;
+  handleFinalize: () => Promise<void>;
+  retryReview: () => Promise<void>;
+  setProcessing: (processing: boolean) => void;
+  setBoxErrors: (
+    errors:
+      | Record<string, string>
+      | ((prev: Record<string, string>) => Record<string, string>),
+  ) => void;
+}
+
+/**
+ * Orchestrates the literature-review step: loads existing data or runs the review pipeline.
+ *
+ * @returns The literature review state and control helpers.
+ */
+export function useLiteratureReview(): UseLiteratureReviewResult {
+  const { finalizeLiterature } = useLiteratureContinue();
+  const queryClient = useQueryClient();
+
+  const [processing, setProcessing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const hasTriggeredRef = useRef(false);
+  const [boxErrors, setBoxErrors] = useState<Record<string, string>>({});
+  const [allProcessed, setAllProcessed] = useState(false);
+
+  const { data: allBoxes, isLoading: boxesLoading } = useQuery({
+    queryKey: ["boxes-full"],
+    queryFn: fetchBoxesWithFullShape,
+  });
+
+  const { data: initialPool, isLoading: poolLoading } = useQuery({
+    queryKey: ["literature-pool"],
+    queryFn: async () => {
+      const res = await fetchPreloadedLiteraturePool();
+      return res.data ?? [];
+    },
+  });
+
+  const subBoxes = useMemo(() => {
+    if (!allBoxes) return [];
+    return [...allBoxes].sort((a, b) => {
+      const weightA =
+        BOX_ORDER_WEIGHT[a.boxType as keyof typeof BOX_ORDER_WEIGHT] ?? 99;
+      const weightB =
+        BOX_ORDER_WEIGHT[b.boxType as keyof typeof BOX_ORDER_WEIGHT] ?? 99;
+      return weightA - weightB;
+    });
+  }, [allBoxes]);
+
+  const loading = boxesLoading || poolLoading || allBoxes === undefined;
+
+  const literaturePool = useMemo(() => {
+    return initialPool
+      ? (JSON.parse(JSON.stringify(initialPool)) as LiteraturePoolEntry[])
+      : [];
+  }, [initialPool]);
+
+  const archivalBoxes = useMemo(() => {
+    const archivalSet = new Set<string>();
+    for (const box of subBoxes) {
+      if (box.boxType === "PRIMARY_MATERIAL") {
+        archivalSet.add(box.title);
+      }
+    }
+    return archivalSet;
+  }, [subBoxes]);
+
+  const boxStatuses = useMemo(() => {
+    const statuses: Record<string, BoxStatus> = {};
+    for (const box of subBoxes) {
+      const hasEntry = literaturePool.some(
+        (entry) => entry.subBoxTitle === box.title && entry.articles.length > 0,
+      );
+      if (hasEntry) {
+        statuses[box.title] = "done";
+      } else if (processing) {
+        statuses[box.title] = "loading";
+      } else {
+        statuses[box.title] = "idle";
+      }
+    }
+    return statuses;
+  }, [subBoxes, literaturePool, processing]);
+
+  const runPipeline = useCallback(async () => {
+    if (processing) return;
+    setProcessing(true);
+    try {
+      const freshBoxes = await fetchUncachedBoxesWithFullShape();
+      const targetBoxes = freshBoxes.length > 0 ? freshBoxes : subBoxes;
+      const subBoxInputs: SubBoxInput[] = targetBoxes.map((box) => ({
+        id: box.id ?? 0,
+        title: box.title,
+        description: box.description,
+        boxType: box.boxType,
+        subBoxes: (box.subBoxes ?? []).map((sb) => ({
+          title: sb.title,
+          description: sb.description,
+          thesisBoxId: sb.id ?? 0,
+          semanticQuery: sb.semanticQuery ?? "",
+        })),
+      }));
+
+      const res = await runLiteraturePipelineAction(subBoxInputs);
+      if (res.data) {
+        queryClient.invalidateQueries({ queryKey: ["literature-pool"] });
+        queryClient.setQueryData(["literature-pool"], res.data);
+      } else if (res.error) {
+        toast.error("Literatür taraması hatası: " + res.error);
+      }
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Tarama çalıştırılamadı.";
+      toast.error(msg);
+    } finally {
+      setProcessing(false);
+    }
+  }, [processing, subBoxes, queryClient]);
+
+  useEffect(() => {
+    if (loading || processing || hasTriggeredRef.current) return;
+
+    const regularBoxes = subBoxes.filter(
+      (b) => b.boxType !== "PRIMARY_MATERIAL" && b.boxType !== "RELATED_THESES",
+    );
+
+    if (regularBoxes.length === 0) return;
+
+    const hasMissingLiterature = regularBoxes.some((box) => {
+      const children = box.subBoxes ?? [];
+      if (children.length > 0) {
+        return children.some(
+          (child) =>
+            !literaturePool.some(
+              (e) => e.subBoxTitle === child.title && e.articles.length > 0,
+            ),
+        );
+      }
+      return !literaturePool.some(
+        (e) => e.subBoxTitle === box.title && e.articles.length > 0,
+      );
+    });
+
+    if (hasMissingLiterature) {
+      hasTriggeredRef.current = true;
+      setTimeout(() => {
+        void runPipeline();
+      }, 0);
+    }
+  }, [loading, processing, subBoxes, literaturePool, runPipeline]);
+
+  const retryReview = useCallback(async () => {
+    hasTriggeredRef.current = true;
+    await runPipeline();
+  }, [runPipeline]);
+
+  const handleFinalize = useCallback(async () => {
+    setAllProcessed(true);
+
+    if (literaturePool.length === 0) return;
+
+    setConfirming(true);
+
+    const result = await finalizeLiterature();
+    setConfirming(false);
+
+    if ("error" in result && result.error) return;
+  }, [literaturePool, finalizeLiterature]);
+
+  return {
+    subBoxes,
+    loading,
+    processing,
+    confirming,
+    boxStatuses,
+    boxErrors,
+    allProcessed,
+    literaturePool,
+    archivalBoxes,
+    handleFinalize,
+    retryReview,
+    setProcessing,
+    setBoxErrors,
+  };
 }
 </file>
 
