@@ -1,8 +1,34 @@
 import type { Logger } from "@/lib/logger";
 import type { TezaraThesisDetails } from "@/lib/types";
+import {
+  DEFAULT_MAX_DELAY,
+  HttpError,
+  withRetry,
+} from "@/lib/api-utils";
 
 const MEILI_URL = process.env.TEZARA_MEILI_URL ?? "";
 const MEILI_KEY = process.env.TEZARA_MEILI_KEY ?? "";
+
+/** Maximum number of search attempts for transient Meilisearch failures (429/5xx/network). */
+const MEILI_MAX_RETRIES = 3;
+
+/**
+ * Parses the `Retry-After` header from a Meilisearch response into milliseconds.
+ *
+ * @param response - The HTTP response to inspect.
+ * @returns The retry delay in milliseconds, or null when absent or unparseable.
+ */
+function parseRetryAfterHeader(response: Response): number | null {
+  const header = response.headers.get("Retry-After");
+  if (!header) return null;
+
+  const seconds = parseInt(header, 10);
+  if (!isNaN(seconds) && seconds > 0) {
+    return seconds * 1000;
+  }
+
+  return null;
+}
 
 /** Additional Meilisearch search parameters for precision tuning. */
 export interface MeiliSearchParams {
@@ -51,18 +77,24 @@ function mapHitToDetails(hit: Record<string, unknown>): TezaraThesisDetails {
 }
 
 /**
- * Executes a request against the Tezara Meilisearch instance.
+ * Executes a request against the Tezara Meilisearch instance with retry on
+ * transient failures (429/5xx/network), then either returns the hits or throws.
+ *
+ * A non-2xx response is thrown as an `HttpError` after retries are exhausted,
+ * and network/parse failures are re-thrown — never swallowed — so callers can
+ * stop the pipeline and surface the real cause.
  *
  * @param body - Meilisearch search request body.
  * @param logger - Optional logger for observability.
  * @param step - Optional step name for log events.
- * @returns Matching hits, or null on failure.
+ * @throws When the request fails after all retry attempts.
+ * @returns Matching hits.
  */
 async function meiliSearch(
   body: Record<string, unknown>,
   logger?: Logger,
   step?: string,
-): Promise<{ hits: Record<string, unknown>[] } | null> {
+): Promise<{ hits: Record<string, unknown>[] }> {
   if (!MEILI_URL || !MEILI_KEY) {
     throw new Error(
       "TEZARA_MEILI_URL and TEZARA_MEILI_KEY environment variables are not defined.",
@@ -71,36 +103,68 @@ async function meiliSearch(
 
   const startTime = performance.now();
   const timeoutMs = 30_000;
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
   try {
-    const res = await fetch(`${MEILI_URL}/indexes/theses/search`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${MEILI_KEY}`,
+    return await withRetry(
+      async (): Promise<{ hits: Record<string, unknown>[] }> => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          const res = await fetch(`${MEILI_URL}/indexes/theses/search`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${MEILI_KEY}`,
+            },
+            body: JSON.stringify(body),
+            signal: controller.signal,
+          });
+
+          if (!res.ok) {
+            const errText = await res.text().catch(() => "");
+            throw new HttpError(
+              res.status,
+              errText,
+              parseRetryAfterHeader(res),
+            );
+          }
+
+          return (await res.json()) as { hits: Record<string, unknown>[] };
+        } finally {
+          clearTimeout(timeoutId);
+        }
       },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!res.ok) {
-      const durationMs = performance.now() - startTime;
-      logger?.info("search_filtered", {
-        service: "tezara",
-        filePath: "src/features/tezara/index.ts",
-        step: step ?? "meili_search",
-        durationMs,
-        data: { status: res.status, body },
-      });
-      return null;
-    }
-
-    return (await res.json()) as { hits: Record<string, unknown>[] };
+      {
+        maxRetries: MEILI_MAX_RETRIES,
+        baseDelay: 500,
+        maxDelay: DEFAULT_MAX_DELAY,
+        isRetryable: (error) => {
+          if (error instanceof HttpError) {
+            return error.status === 429 || error.status >= 500;
+          }
+          return true;
+        },
+        getRetryAfter: (error) =>
+          error instanceof HttpError ? error.retryAfter : null,
+        onRetry: (attempt, delayMs, error) => {
+          const status = error instanceof HttpError ? error.status : undefined;
+          logger?.info("search_retry", {
+            service: "tezara",
+            filePath: "src/features/tezara/index.ts",
+            step: step ?? "meili_search",
+            data: {
+              attempt,
+              maxRetries: MEILI_MAX_RETRIES,
+              delayMs: Math.round(delayMs),
+              status,
+              errorMessage:
+                error instanceof Error ? error.message : String(error),
+            },
+          });
+        },
+      },
+    );
   } catch (err) {
-    clearTimeout(timeoutId);
     const durationMs = performance.now() - startTime;
     logger?.error("search_filtered", {
       service: "tezara",
@@ -110,7 +174,7 @@ async function meiliSearch(
       data: { body },
       error: err,
     });
-    return null;
+    throw err;
   }
 }
 
@@ -150,8 +214,6 @@ export async function searchTezara(
   }
   const data = await meiliSearch(body, logger, "search_meili");
   const durationMs = performance.now() - startTime;
-
-  if (!data) return [];
 
   const hits = data.hits ?? [];
   const results: TezaraThesisDetails[] = [];

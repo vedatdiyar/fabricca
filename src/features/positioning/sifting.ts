@@ -81,7 +81,7 @@ function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
 const SCORE_EPSILON = 1e-4;
 
 /**
- * Runs 8 parallel Meilisearch queries on Tezara, deduplicates results, applies
+ * Runs 8 sequential Meilisearch queries on Tezara, deduplicates results, applies
  * abstract length and language filters, ranks candidates via Cohere Rerank
  * v4 Pro (full score list), then deterministically selects the top-N by
  * (relevanceScore desc, ID asc) for reproducible downstream evaluation.
@@ -127,9 +127,10 @@ export async function searchAndSiftTheses(
     attributesToSearchOn: SEARCH_FIELDS,
   };
 
-  const hitArrays = await Promise.all(
-    allQueries.map((q) => searchTezara(q, logger, searchParams)),
-  );
+  const hitArrays: TezaraThesisDetails[][] = [];
+  for (const q of allQueries) {
+    hitArrays.push(await searchTezara(q, logger, searchParams));
+  }
 
   const candidateMap = new Map<number, TezaraThesisDetails>();
   for (const hits of hitArrays) {

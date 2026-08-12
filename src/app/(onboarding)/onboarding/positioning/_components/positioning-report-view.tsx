@@ -150,7 +150,7 @@ export function PositioningReportView({
                   >
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                       <div className="space-y-1">
-                        <h4 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground leading-snug">
+                        <h4 className="font-sans text-sm font-medium text-foreground leading-snug">
                           {thesis.title}
                         </h4>
                         <p className="text-xs text-muted-foreground">
