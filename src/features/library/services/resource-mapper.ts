@@ -1,6 +1,9 @@
 import type { sources } from "@/db/schema";
 import { formatResourceAuthors } from "@/lib/academic/author-formatter";
-import type { ThesisBoxType, LibraryResourceItem } from "@/app/(app)/library/_lib/types";
+import type {
+  ThesisBoxType,
+  LibraryResourceItem,
+} from "@/app/(app)/library/_lib/types";
 
 type SourceRow = typeof sources.$inferSelect;
 

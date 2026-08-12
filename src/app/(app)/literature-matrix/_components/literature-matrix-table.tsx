@@ -79,8 +79,8 @@ export function LiteratureMatrixTable({
           Eşleşen Kaynak Bulunamadı
         </h3>
         <p className="mt-1 text-xs text-muted-foreground max-w-sm">
-          Arama terimlerinizi veya filtreleri değiştirerek veya kütüphanenize yeni
-          kaynaklar ekleyerek matrisi genişletebilirsiniz.
+          Arama terimlerinizi veya filtreleri değiştirerek veya kütüphanenize
+          yeni kaynaklar ekleyerek matrisi genişletebilirsiniz.
         </p>
       </div>
     );
@@ -129,10 +129,10 @@ export function LiteratureMatrixTable({
               </th>
             )}
 
-
-
             {isColVisible("researchQuestion") && (
-              <th className="p-3.5 min-w-[270px] text-left">Araştırma Sorusu</th>
+              <th className="p-3.5 min-w-[270px] text-left">
+                Araştırma Sorusu
+              </th>
             )}
 
             {isColVisible("theoreticalFramework") && (
@@ -148,10 +148,10 @@ export function LiteratureMatrixTable({
             )}
 
             {isColVisible("literatureGap") && (
-              <th className="p-3.5 min-w-[270px] text-left">Literatür Boşluğu</th>
+              <th className="p-3.5 min-w-[270px] text-left">
+                Literatür Boşluğu
+              </th>
             )}
-
-
           </tr>
         </thead>
 
@@ -186,7 +186,9 @@ export function LiteratureMatrixTable({
                         <span>{row.authors.slice(0, 2).join(", ")}</span>
                       )}
                       {row.publicationYear && (
-                        <span className="font-mono">({row.publicationYear})</span>
+                        <span className="font-mono">
+                          ({row.publicationYear})
+                        </span>
                       )}
                     </div>
                     <div className="pt-1 flex justify-start">
@@ -217,8 +219,6 @@ export function LiteratureMatrixTable({
                   )}
                 </td>
               )}
-
-
 
               {/* 5 Critique Fields (Modal Editable) */}
               {isColVisible("researchQuestion") && (
@@ -290,8 +290,6 @@ export function LiteratureMatrixTable({
                   />
                 </td>
               )}
-
-
             </tr>
           ))}
         </tbody>

@@ -2,22 +2,12 @@
 
 import { z } from "zod";
 import { db } from "@/db";
-import {
-  sources,
-  boxes,
-  matrices,
-  critiques,
-  annotations,
-} from "@/db/schema";
+import { sources, boxes, matrices, critiques, annotations } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { getSessionWithOnboarding } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import { getOwnedSource } from "@/services/box/ownership";
-import type {
-  MatrixSourceRow,
-  CritiqueFieldKey,
-  EditableSourceFieldKey,
-} from "./types";
+import type { MatrixSourceRow, CritiqueFieldKey } from "./types";
 
 /** Validation schema for updating a single critique field. */
 const updateCritiqueFieldSchema = z.object({
@@ -206,7 +196,10 @@ export async function updateMatrixCritiqueAction(
 
     if (!parsed.success) {
       const issue = parsed.error.issues[0];
-      return { success: false, error: issue ? issue.message : "Geçersiz veri." };
+      return {
+        success: false,
+        error: issue ? issue.message : "Geçersiz veri.",
+      };
     }
 
     const session = await getSessionWithOnboarding();
@@ -287,7 +280,10 @@ export async function updateMatrixSourceAction(
 
     if (!parsed.success) {
       const issue = parsed.error.issues[0];
-      return { success: false, error: issue ? issue.message : "Geçersiz veri." };
+      return {
+        success: false,
+        error: issue ? issue.message : "Geçersiz veri.",
+      };
     }
 
     const session = await getSessionWithOnboarding();

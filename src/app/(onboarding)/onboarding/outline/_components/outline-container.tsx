@@ -30,7 +30,10 @@ interface OutlineContainerProps {
  * @param props - Component props.
  * @returns The outline container markup.
  */
-export function OutlineContainer({ sections, academicField }: OutlineContainerProps) {
+export function OutlineContainer({
+  sections,
+  academicField,
+}: OutlineContainerProps) {
   const { bfcacheId } = useRouter();
 
   return (

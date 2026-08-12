@@ -1,4 +1,7 @@
-import { buildPromptPayload, type PromptPayload } from "@/lib/ai/prompt-builder";
+import {
+  buildPromptPayload,
+  type PromptPayload,
+} from "@/lib/ai/prompt-builder";
 
 /**
  * Builds the standardized PromptPayload for advisor chat title generation.
@@ -16,8 +19,7 @@ export function buildChatTitlePromptPayload(userQuery: string): PromptPayload {
     rulesAndConstraints: `1. Konu başlığını doğrudan 3-5 kelimelik yalın Türkçe isim tamlaması olarak yaz.
 2. Yalnızca başlık metnini döndür (noktalama, tırnak veya açıklama içermeksizin).`,
 
-    outputFormat:
-      "Çıktı, 'title' alanını içeren saf JSON nesnesidir.",
+    outputFormat: "Çıktı, 'title' alanını içeren saf JSON nesnesidir.",
 
     examples: `## Örnekler
 - David Romano Etnisite Yaklaşımı

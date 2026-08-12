@@ -32,9 +32,10 @@ export default async function LiteratureMatrixPage() {
           Literatür Matrisi
         </h1>
         <p className="text-xs text-muted-foreground">
-          Tez kütüphanenizdeki tüm eserlerin 5 boyutlu analizlerini (Araştırma Sorusu,
-          Teorik Çerçeve, Metodoloji, Temel Argüman, Literatür Boşluğu) Notion esnekliğinde
-          karşılaştırın ve hücre içi tıklama ile anında düzenleyin.
+          Tez kütüphanenizdeki tüm eserlerin 5 boyutlu analizlerini (Araştırma
+          Sorusu, Teorik Çerçeve, Metodoloji, Temel Argüman, Literatür Boşluğu)
+          Notion esnekliğinde karşılaştırın ve hücre içi tıklama ile anında
+          düzenleyin.
         </p>
       </div>
 

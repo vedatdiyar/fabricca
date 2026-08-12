@@ -31,12 +31,12 @@ export function ThesisArchitectureContent({
     <div className="w-full space-y-6">
       <div className="flex flex-col border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary border border-primary/20">
               <Network className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="font-sans text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
                 Tez Mimarisi
               </h1>
               <p className="text-xs text-muted-foreground sm:text-sm">

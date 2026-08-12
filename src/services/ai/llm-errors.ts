@@ -172,7 +172,10 @@ const TURKISH_ERROR_BY_SCENARIO: Record<ErrorScenario, string> = {
  * @param provider - The provider name used for technical diagnostics.
  * @returns An `AiProviderError` instance ready to cross the server boundary.
  */
-export function toAiProviderError(error: unknown, provider: string): AiProviderError {
+export function toAiProviderError(
+  error: unknown,
+  provider: string,
+): AiProviderError {
   if (error instanceof AiProviderError) return error;
 
   const scenario = classifyError(error);

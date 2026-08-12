@@ -238,7 +238,9 @@ export function MatrixForm({ initialMatrix }: MatrixFormProps) {
         methodology: formState.methodology,
       } as ThesisMatrix);
     } catch {
-      toast.error("Matris kaydedilirken beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.");
+      toast.error(
+        "Matris kaydedilirken beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.",
+      );
     } finally {
       setIsPending(false);
     }

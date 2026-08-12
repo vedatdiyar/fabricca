@@ -1,4 +1,7 @@
-import { buildPromptPayload, type PromptPayload } from "@/lib/ai/prompt-builder";
+import {
+  buildPromptPayload,
+  type PromptPayload,
+} from "@/lib/ai/prompt-builder";
 
 export interface Stage1AuditPromptInput {
   draftText: string;
@@ -13,7 +16,7 @@ export interface Stage1AuditPromptInput {
  * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
  */
 export function buildStage1AuditPromptPayload(
-  params: Stage1AuditPromptInput
+  params: Stage1AuditPromptInput,
 ): PromptPayload {
   const { draftText, ragContext, notesContext } = params;
 

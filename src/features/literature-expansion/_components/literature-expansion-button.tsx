@@ -161,7 +161,7 @@ export function LiteratureExpansionButton({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif text-xl font-semibold text-foreground">
+            <AlertDialogTitle className="font-serif text-lg font-semibold text-foreground">
               Son Genişletme Döngüsünü Geri Almak İstediğinize Emin Misiniz?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm text-muted-foreground">

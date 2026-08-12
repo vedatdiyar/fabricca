@@ -1,4 +1,7 @@
-import { buildPromptPayload, type PromptPayload } from "@/lib/ai/prompt-builder";
+import {
+  buildPromptPayload,
+  type PromptPayload,
+} from "@/lib/ai/prompt-builder";
 
 export interface OutlineMatrixInput {
   subjectProblem: string;
@@ -14,7 +17,7 @@ export interface OutlineMatrixInput {
  * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
  */
 export function buildOutlineGenerationPromptPayload(
-  matrix: OutlineMatrixInput
+  matrix: OutlineMatrixInput,
 ): PromptPayload {
   return buildPromptPayload({
     roleAndExpertise:

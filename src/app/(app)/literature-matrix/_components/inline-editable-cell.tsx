@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Loader2, Check, Pencil, Plus, Save } from "lucide-react";
 import {
   Dialog,
@@ -43,9 +43,11 @@ export function InlineEditableCell({
   const [isSaving, setIsSaving] = useState(false);
   const [showSavedFeedback, setShowSavedFeedback] = useState(false);
 
-  useEffect(() => {
+  const [prevValue, setPrevValue] = useState(value);
+  if (value !== prevValue) {
+    setPrevValue(value);
     setCurrentValue(value ?? "");
-  }, [value]);
+  }
 
   const handleOpen = () => {
     setCurrentValue(value ?? "");
@@ -100,7 +102,9 @@ export function InlineEditableCell({
           ) : showSavedFeedback ? (
             <Check className="h-3.5 w-3.5 text-emerald-500" />
           ) : (
-            hasValue && <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+            hasValue && (
+              <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+            )
           )}
         </div>
       </div>

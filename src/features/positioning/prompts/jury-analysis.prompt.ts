@@ -1,4 +1,7 @@
-import { buildPromptPayload, type PromptPayload } from "@/lib/ai/prompt-builder";
+import {
+  buildPromptPayload,
+  type PromptPayload,
+} from "@/lib/ai/prompt-builder";
 import type { PositioningMatrixInput } from "@/features/positioning/validation";
 
 export interface PositioningJuryPromptInput {
@@ -14,7 +17,7 @@ export interface PositioningJuryPromptInput {
  * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
  */
 export function buildPositioningJuryPromptPayload(
-  params: PositioningJuryPromptInput
+  params: PositioningJuryPromptInput,
 ): PromptPayload {
   const { input, thesisListText, evaluatedCount } = params;
 

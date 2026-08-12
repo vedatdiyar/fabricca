@@ -1,4 +1,7 @@
-import { buildPromptPayload, type PromptPayload } from "@/lib/ai/prompt-builder";
+import {
+  buildPromptPayload,
+  type PromptPayload,
+} from "@/lib/ai/prompt-builder";
 
 export interface SemanticQueryInput {
   matrix?: {
@@ -21,7 +24,7 @@ export interface SemanticQueryInput {
  * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
  */
 export function buildSemanticQueryPromptPayload(
-  input: SemanticQueryInput
+  input: SemanticQueryInput,
 ): PromptPayload {
   const matrixContext = input.matrix
     ? `# Girdinin Genel Tez Matrisi Bağlamı:

@@ -24,7 +24,7 @@ export function CitationCardsEmptyState({
   return (
     <Card className="flex flex-col items-center justify-center p-12 rounded-md border border-dashed border-border/40 text-center">
       <BookOpen className="h-10 w-10 text-muted-foreground mb-3 opacity-50" />
-      <h3 className="font-serif text-lg font-medium text-foreground">
+      <h3 className="font-serif text-base font-semibold text-foreground">
         Kriterlere Uygun Alıntı Fişi Bulunamadı
       </h3>
       <p className="text-xs text-muted-foreground mt-1 max-w-sm">

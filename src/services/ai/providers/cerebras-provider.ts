@@ -5,10 +5,7 @@ import { createConcurrencyLimiter } from "@/lib/rate-limiter";
 import { CEREBRAS_SEED } from "@/lib/constants";
 import { HttpError, withRetry, DEFAULT_MAX_DELAY } from "../llm-retry";
 import { validateStructuredOutput } from "../llm-json";
-import {
-  SchemaValidationError,
-  toAiProviderError,
-} from "../llm-errors";
+import { SchemaValidationError, toAiProviderError } from "../llm-errors";
 import type { StructuredGenerationOptions } from "../llm-types";
 
 const CEREBRAS_BASE_URL = "https://api.cerebras.ai/v1";
@@ -81,98 +78,98 @@ export async function generateStructuredContent<T>(
   let result: T;
   try {
     result = await withRetry<T>(
-    async () => {
-      attempts++;
+      async () => {
+        attempts++;
 
-      const response = await cerebrasRequestQueue.exec(() =>
-        fetch(`${CEREBRAS_BASE_URL}/chat/completions`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: modelName,
-            messages: [
-              { role: "system", content: systemInstruction },
-              { role: "user", content: prompt },
-            ],
-            response_format: {
-              type: "json_schema",
-              json_schema: {
-                name: stage,
-                strict: true,
-                schema: jsonSchema,
-              },
+        const response = await cerebrasRequestQueue.exec(() =>
+          fetch(`${CEREBRAS_BASE_URL}/chat/completions`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiKey}`,
             },
-            temperature,
-            max_tokens: maxTokens,
-            seed,
-            top_p: topP,
+            body: JSON.stringify({
+              model: modelName,
+              messages: [
+                { role: "system", content: systemInstruction },
+                { role: "user", content: prompt },
+              ],
+              response_format: {
+                type: "json_schema",
+                json_schema: {
+                  name: stage,
+                  strict: true,
+                  schema: jsonSchema,
+                },
+              },
+              temperature,
+              max_tokens: maxTokens,
+              seed,
+              top_p: topP,
+            }),
           }),
-        }),
-      );
+        );
 
-      if (!response.ok) {
-        const errorBody = await response.text().catch(() => "");
-        const retryAfter = parseRetryAfter(response);
-        throw new HttpError(response.status, errorBody, retryAfter);
-      }
+        if (!response.ok) {
+          const errorBody = await response.text().catch(() => "");
+          const retryAfter = parseRetryAfter(response);
+          throw new HttpError(response.status, errorBody, retryAfter);
+        }
 
-      const data = (await response.json()) as {
-        choices?: { message?: { content?: string } }[];
-      };
-      const content = data?.choices?.[0]?.message?.content;
-      if (!content) {
-        throw new Error("Cerebras returned an empty response.");
-      }
+        const data = (await response.json()) as {
+          choices?: { message?: { content?: string } }[];
+        };
+        const content = data?.choices?.[0]?.message?.content;
+        if (!content) {
+          throw new Error("Cerebras returned an empty response.");
+        }
 
-      const parsed = JSON.parse(content) as T;
+        const parsed = JSON.parse(content) as T;
 
-      try {
-        validateStructuredOutput(parsed, options?.zodSchema);
-      } catch (err) {
-        if (err instanceof SchemaValidationError) {
-          log?.error(`${stage}_schema_validation_failed`, {
+        try {
+          validateStructuredOutput(parsed, options?.zodSchema);
+        } catch (err) {
+          if (err instanceof SchemaValidationError) {
+            log?.error(`${stage}_schema_validation_failed`, {
+              service: "cerebras",
+              data: {
+                issues: err.zodError.issues.map((i) => ({
+                  path: i.path.join("."),
+                  message: i.message,
+                })),
+              },
+            });
+            throw new Error(
+              "Cerebras response did not match the expected structural schema.",
+            );
+          }
+          throw err;
+        }
+
+        return parsed;
+      },
+      {
+        ...CEREBRAS_RETRY_CONFIG,
+        onRetry(attempt, delay, error) {
+          const httpStatus =
+            error instanceof HttpError ? error.status : undefined;
+          const retryAfter =
+            error instanceof HttpError ? error.retryAfter : undefined;
+          log?.info(`${stage}_retry`, {
             service: "cerebras",
             data: {
-              issues: err.zodError.issues.map((i) => ({
-                path: i.path.join("."),
-                message: i.message,
-              })),
+              attempt,
+              maxRetries: CEREBRAS_RETRY_CONFIG.maxRetries,
+              delayMs: Math.round(delay),
+              httpStatus,
+              retryAfter,
+              errorMessage:
+                error instanceof Error ? error.message : String(error),
             },
           });
-          throw new Error(
-            "Cerebras response did not match the expected structural schema.",
-          );
-        }
-        throw err;
-      }
-
-      return parsed;
-    },
-    {
-      ...CEREBRAS_RETRY_CONFIG,
-      onRetry(attempt, delay, error) {
-        const httpStatus =
-          error instanceof HttpError ? error.status : undefined;
-        const retryAfter =
-          error instanceof HttpError ? error.retryAfter : undefined;
-        log?.info(`${stage}_retry`, {
-          service: "cerebras",
-          data: {
-            attempt,
-            maxRetries: CEREBRAS_RETRY_CONFIG.maxRetries,
-            delayMs: Math.round(delay),
-            httpStatus,
-            retryAfter,
-            errorMessage:
-              error instanceof Error ? error.message : String(error),
-          },
-        });
+        },
       },
-    },
-  );
+    );
   } catch (error) {
     throw toAiProviderError(error, "cerebras");
   }

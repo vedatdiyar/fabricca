@@ -3,6 +3,7 @@
 import { db } from "@/db";
 import {
   matrices,
+  boxes,
   outlines,
   outlineAnnotations,
   outlineBoxes,
@@ -53,6 +54,40 @@ export async function updateMatrixAction(data: {
   } catch (err) {
     console.error("updateMatrixAction error:", err);
     return { success: false, error: "Matris güncellenirken bir hata oluştu." };
+  }
+}
+
+/**
+ * Updates a topic box (title/description) post-onboarding.
+ */
+export async function updateBoxAction(data: {
+  id: number;
+  title?: string;
+  description?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, error: "Oturum bulunamadı." };
+
+    const updateData: Partial<typeof boxes.$inferInsert> = {
+      updatedAt: new Date(),
+    };
+    if (typeof data.title === "string" && data.title.trim() !== "")
+      updateData.title = data.title.trim();
+    if (typeof data.description === "string")
+      updateData.description = data.description.trim() || null;
+
+    if (!updateData.title && !updateData.description) {
+      return { success: false, error: "Güncellenecek alan bulunamadı." };
+    }
+
+    await db.update(boxes).set(updateData).where(eq(boxes.id, data.id));
+
+    revalidatePath("/thesis-architecture");
+    return { success: true };
+  } catch (err) {
+    console.error("updateBoxAction error:", err);
+    return { success: false, error: "Kutu güncellenirken bir hata oluştu." };
   }
 }
 

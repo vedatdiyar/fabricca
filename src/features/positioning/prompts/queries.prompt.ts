@@ -1,4 +1,7 @@
-import { buildPromptPayload, type PromptPayload } from "@/lib/ai/prompt-builder";
+import {
+  buildPromptPayload,
+  type PromptPayload,
+} from "@/lib/ai/prompt-builder";
 import type { PositioningMatrixInput } from "@/features/positioning/validation";
 
 /**
@@ -8,7 +11,7 @@ import type { PositioningMatrixInput } from "@/features/positioning/validation";
  * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
  */
 export function buildPositioningQueriesPromptPayload(
-  input: PositioningMatrixInput
+  input: PositioningMatrixInput,
 ): PromptPayload {
   return buildPromptPayload({
     roleAndExpertise:

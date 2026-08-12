@@ -58,7 +58,10 @@ export function Header({ userName }: { userName: string }) {
     <>
       <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/95 backdrop-blur-md">
         <div className="mx-auto flex h-19 sm:h-20 w-full max-w-7xl items-center justify-between px-4 py-4 sm:px-6 sm:py-4.5 lg:px-8">
-          <Link href="/dashboard" className="flex shrink-0 items-center gap-2.5 transition-opacity hover:opacity-90">
+          <Link
+            href="/dashboard"
+            className="flex shrink-0 items-center gap-2.5 transition-opacity hover:opacity-90"
+          >
             <Image
               src="/logo.svg"
               alt="Fabricca"

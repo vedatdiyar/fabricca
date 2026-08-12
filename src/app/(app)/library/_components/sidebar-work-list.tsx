@@ -218,7 +218,7 @@ export function SidebarWorkList({
               >
                 <CardContent className="p-0 space-y-2">
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-serif text-lg font-medium tracking-tight text-foreground line-clamp-2 leading-snug flex-1 min-w-0">
+                    <h3 className="font-sans text-sm font-semibold text-foreground line-clamp-2 leading-snug flex-1 min-w-0">
                       {item.title}
                     </h3>
                     <div className="flex items-center gap-2 shrink-0 pt-1">

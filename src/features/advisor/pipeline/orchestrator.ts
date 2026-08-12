@@ -89,7 +89,10 @@ export async function runPipelineTurn(
   // Audit passed — stream Socratic Advisor response
   try {
     const userMessageText = `Kütüphane Kaynak Bağlamı:\n${sourceContext}\n\nKullanıcı Taslağı:\n${input.originalDraft}`;
-    const payload = buildAdvisorTurnPromptPayload("SOCRATIC_ADVISOR", userMessageText);
+    const payload = buildAdvisorTurnPromptPayload(
+      "SOCRATIC_ADVISOR",
+      userMessageText,
+    );
     const ai = getAi();
     const contents = [
       {

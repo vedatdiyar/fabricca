@@ -30,9 +30,7 @@ export async function persistBoxesAction(boxes: GeminiThesisBox[]) {
   return persistBoxesActionImpl(boxes);
 }
 
-export async function confirmBoxesAction(
-  boxes: GeminiThesisBox[],
-) {
+export async function confirmBoxesAction(boxes: GeminiThesisBox[]) {
   return confirmBoxesActionImpl(boxes);
 }
 

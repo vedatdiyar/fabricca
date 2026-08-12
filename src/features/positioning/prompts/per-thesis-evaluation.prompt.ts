@@ -1,4 +1,7 @@
-import { buildPromptPayload, type PromptPayload } from "@/lib/ai/prompt-builder";
+import {
+  buildPromptPayload,
+  type PromptPayload,
+} from "@/lib/ai/prompt-builder";
 import type { PositioningMatrixInput } from "@/features/positioning/validation";
 import type { SiftedThesis } from "@/features/positioning/sifting";
 
@@ -11,7 +14,7 @@ import type { SiftedThesis } from "@/features/positioning/sifting";
  */
 export function buildPerThesisEvaluationPromptPayload(
   input: PositioningMatrixInput,
-  thesis: SiftedThesis
+  thesis: SiftedThesis,
 ): PromptPayload {
   return buildPromptPayload({
     roleAndExpertise:
@@ -70,7 +73,7 @@ Lütfen yukarıdaki tek tezi 3 aşamalı karar zincirine göre değerlendir ve �
  */
 export function buildBatchPerThesisEvaluationPromptPayload(
   input: PositioningMatrixInput,
-  theses: SiftedThesis[]
+  theses: SiftedThesis[],
 ): PromptPayload {
   const formattedTheses = theses
     .map(
@@ -79,7 +82,7 @@ Başlık: ${t.title}
 Yazar: ${t.author || "Bilinmiyor"} (${t.year || "N/A"})
 Üniversite/Bölüm: ${t.university || "N/A"} - ${t.department || "N/A"}
 Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"}
-Özet: ${t.abstract}`
+Özet: ${t.abstract}`,
     )
     .join("\n\n---\n\n");
 

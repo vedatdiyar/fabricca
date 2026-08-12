@@ -1,10 +1,6 @@
 import type { Logger } from "@/lib/logger";
 import type { TezaraThesisDetails } from "@/lib/types";
-import {
-  DEFAULT_MAX_DELAY,
-  HttpError,
-  withRetry,
-} from "@/lib/api-utils";
+import { DEFAULT_MAX_DELAY, HttpError, withRetry } from "@/lib/api-utils";
 
 const MEILI_URL = process.env.TEZARA_MEILI_URL ?? "";
 const MEILI_KEY = process.env.TEZARA_MEILI_KEY ?? "";

@@ -103,7 +103,7 @@ export function PdfDropzone({
               variant="ghost"
               size="sm"
               onClick={() => fileInputRef.current?.click()}
-              className="text-xs text-primary h-7 px-2 hover:bg-primary/10"
+              className="text-[11px] text-primary h-7 px-2 hover:bg-primary/10"
             >
               Farklı PDF Seç
             </Button>
@@ -117,7 +117,7 @@ export function PdfDropzone({
               <p className="text-xs font-semibold text-foreground">
                 PDF Dosyasını Buraya Sürükleyin
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[11px] text-muted-foreground">
                 veya bilgisayarınızdan seçmek için aşağıdaki butona tıklayın.
               </p>
             </div>

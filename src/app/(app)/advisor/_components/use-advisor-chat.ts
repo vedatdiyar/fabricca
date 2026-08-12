@@ -364,7 +364,9 @@ export function useAdvisorChat(initialSessionId?: number) {
         }
       });
     } catch {
-      toast.error("Yanıt üretilirken beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.");
+      toast.error(
+        "Yanıt üretilirken beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.",
+      );
     } finally {
       setIsLoading(false);
       setStreaming({

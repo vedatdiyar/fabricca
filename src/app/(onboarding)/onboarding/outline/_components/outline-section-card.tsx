@@ -126,7 +126,14 @@ export function OutlineSectionCard({
     if (!isExpanded) {
       onToggleExpand();
     }
-  }, [isSpecialSection, subSections, section, onUpdateSection, isExpanded, onToggleExpand]);
+  }, [
+    isSpecialSection,
+    subSections,
+    section,
+    onUpdateSection,
+    isExpanded,
+    onToggleExpand,
+  ]);
 
   const handleDeleteSubSection = useCallback(
     (subIdx: number) => {
@@ -257,7 +264,7 @@ export function OutlineSectionCard({
             ) : (
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-serif text-lg font-medium tracking-tight text-foreground leading-snug">
+                  <h3 className="font-serif text-base font-semibold tracking-tight text-foreground leading-snug">
                     {section.title}
                   </h3>
                   {hasSubSections && (
@@ -432,7 +439,7 @@ export function OutlineSectionCard({
                         </div>
 
                         <div className="flex-1 min-w-0 space-y-1">
-                          <h4 className="font-sans text-sm font-medium text-foreground leading-snug">
+                          <h4 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground leading-snug">
                             {sub.title}
                           </h4>
                           {sub.description && (

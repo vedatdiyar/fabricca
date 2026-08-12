@@ -68,9 +68,7 @@ export function LiteratureMatrixStats({ stats }: LiteratureMatrixStatsProps) {
                 <p className="font-serif text-2xl font-bold tracking-tight text-foreground">
                   {item.value}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  {item.subtext}
-                </p>
+                <p className="text-xs text-muted-foreground">{item.subtext}</p>
               </div>
               <div
                 className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-md border ${item.colorClass}`}

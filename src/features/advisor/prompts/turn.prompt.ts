@@ -1,4 +1,7 @@
-import { buildPromptPayload, type PromptPayload } from "@/lib/ai/prompt-builder";
+import {
+  buildPromptPayload,
+  type PromptPayload,
+} from "@/lib/ai/prompt-builder";
 import type { AdvisorPersona } from "../classifier";
 
 /**
@@ -10,7 +13,7 @@ import type { AdvisorPersona } from "../classifier";
  */
 export function buildAdvisorTurnPromptPayload(
   persona: AdvisorPersona,
-  userPrompt: string
+  userPrompt: string,
 ): PromptPayload {
   if (persona === "SOCRATIC_ADVISOR") {
     return buildPromptPayload({

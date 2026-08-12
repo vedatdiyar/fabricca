@@ -1,4 +1,7 @@
-import { buildPromptPayload, type PromptPayload } from "@/lib/ai/prompt-builder";
+import {
+  buildPromptPayload,
+  type PromptPayload,
+} from "@/lib/ai/prompt-builder";
 
 function buildQuadrantSpecificInstruction(boxType: string): string {
   switch (boxType) {
@@ -36,7 +39,7 @@ export interface JuryBatchPromptInput {
  * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
  */
 export function buildJuryPromptPayload(
-  params: JuryBatchPromptInput
+  params: JuryBatchPromptInput,
 ): PromptPayload {
   const {
     thesisSubject,

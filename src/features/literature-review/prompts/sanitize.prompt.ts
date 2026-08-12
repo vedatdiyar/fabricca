@@ -1,4 +1,7 @@
-import { buildPromptPayload, type PromptPayload } from "@/lib/ai/prompt-builder";
+import {
+  buildPromptPayload,
+  type PromptPayload,
+} from "@/lib/ai/prompt-builder";
 
 export interface SanitizeItemInput {
   title: string;
@@ -12,7 +15,7 @@ export interface SanitizeItemInput {
  * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
  */
 export function buildSanitizePromptPayload(
-  items: SanitizeItemInput[]
+  items: SanitizeItemInput[],
 ): PromptPayload {
   return buildPromptPayload({
     roleAndExpertise:
@@ -54,7 +57,7 @@ export function buildSanitizePromptPayload(
     inputContext: `Aşağıdaki dizide yer alan nesnelerin title ve author alanlarını kurallara uygun biçimde düzenleyin:\n\n${JSON.stringify(
       items,
       null,
-      2
+      2,
     )}`,
   });
 }

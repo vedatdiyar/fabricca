@@ -34,7 +34,10 @@ export function handleActionError(
   const log = logger ?? new Logger(createFlowId());
 
   if (error instanceof AppError) {
-    const payload = { data: { code: error.code, statusCode: error.statusCode }, error };
+    const payload = {
+      data: { code: error.code, statusCode: error.statusCode },
+      error,
+    };
     if (error.isOperational) {
       log.warn("action_operational_error", payload);
     } else {

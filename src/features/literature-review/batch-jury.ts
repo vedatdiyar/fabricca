@@ -141,31 +141,38 @@ export async function evaluateSingleBoxJury(
 
   const raw = await generateGeminiStructuredContent<{
     evaluations: JuryEvaluation[];
-  }>(FLASH_LITE_35, payload.systemInstruction, payload.userPrompt, juryJsonSchema, logger, {
-    thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-    zodSchema: singleBoxJuryOutputSchema,
-    seed: GEMINI_SEED,
-    safetySettings: [
-      {
-        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-        threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-        threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-        threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-        threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-      },
-    ],
-    payloadStage: "literature_single_box_jury",
-    quiet: true,
-  });
+  }>(
+    FLASH_LITE_35,
+    payload.systemInstruction,
+    payload.userPrompt,
+    juryJsonSchema,
+    logger,
+    {
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      zodSchema: singleBoxJuryOutputSchema,
+      seed: GEMINI_SEED,
+      safetySettings: [
+        {
+          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        },
+      ],
+      payloadStage: "literature_single_box_jury",
+      quiet: true,
+    },
+  );
 
   return { thesisBoxId: box.thesisBoxId, evaluations: raw.evaluations ?? [] };
 }

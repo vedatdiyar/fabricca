@@ -1,4 +1,7 @@
-import { buildPromptPayload, type PromptPayload } from "@/lib/ai/prompt-builder";
+import {
+  buildPromptPayload,
+  type PromptPayload,
+} from "@/lib/ai/prompt-builder";
 import type { ThesisMatrix } from "@/lib/types";
 
 export type BoxStructureMatrixInput = Pick<
@@ -13,7 +16,7 @@ export type BoxStructureMatrixInput = Pick<
  * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
  */
 export function buildBoxStructurePromptPayload(
-  matrix: BoxStructureMatrixInput
+  matrix: BoxStructureMatrixInput,
 ): PromptPayload {
   const { subjectProblem, theoreticalFramework, primaryMaterial, methodology } =
     matrix;

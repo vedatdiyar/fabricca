@@ -130,7 +130,17 @@ export async function clearDownstreamDbAction(
           .where(eq(matrices.userId, userId));
 
         if (matrix) {
-          await tx.delete(outlines).where(eq(outlines.matrixId, matrix.id));
+          await tx
+            .delete(sources)
+            .where(
+              inArray(
+                sources.boxId,
+                tx
+                  .select({ id: boxes.id })
+                  .from(boxes)
+                  .where(eq(boxes.matrixId, matrix.id)),
+              ),
+            );
         }
       }
     });

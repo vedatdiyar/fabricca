@@ -64,7 +64,9 @@ export function useAdvisorToolHandler({
           await updateChatMessageToolCalls(targetDbId, updatedToolCalls);
         }
       } else {
-        toast.error(res.error || "İşlem gerçekleştirilemedi. Lütfen tekrar deneyin.");
+        toast.error(
+          res.error || "İşlem gerçekleştirilemedi. Lütfen tekrar deneyin.",
+        );
       }
     },
     [setMessages],
@@ -113,7 +115,9 @@ export function useAdvisorToolHandler({
           await updateChatMessageToolCalls(targetDbId, updatedToolCalls);
         }
       } else {
-        toast.error(res.error || "İşlem geri alınamadı. Lütfen tekrar deneyin.");
+        toast.error(
+          res.error || "İşlem geri alınamadı. Lütfen tekrar deneyin.",
+        );
       }
     },
     [setMessages],

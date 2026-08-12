@@ -69,8 +69,7 @@ export async function classifyAdvisorIntent(
       historyText = history
         .slice(-4)
         .map(
-          (m) =>
-            `${m.role === "user" ? "Kullanıcı" : "Asistan"}: ${m.content}`,
+          (m) => `${m.role === "user" ? "Kullanıcı" : "Asistan"}: ${m.content}`,
         )
         .join("\n");
     }

@@ -54,7 +54,9 @@ export function buildPromptPayload(input: PromptBuilderInput): PromptPayload {
   ];
 
   if (input.workflowSteps?.trim()) {
-    systemInstructionParts.push(`# İşlem Adımları\n\n${input.workflowSteps.trim()}`);
+    systemInstructionParts.push(
+      `# İşlem Adımları\n\n${input.workflowSteps.trim()}`,
+    );
   }
 
   systemInstructionParts.push(`# Çıktı Biçimi\n\n${input.outputFormat.trim()}`);

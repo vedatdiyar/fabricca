@@ -42,10 +42,7 @@ export type EditableSourceFieldKey = "comparisonNote" | "isRead";
 export type MatrixColumnVisibility = Record<string, boolean>;
 
 /** Available fields for sorting matrix rows. */
-export type MatrixSortField =
-  | "title"
-  | "publicationYear"
-  | "boxTitle";
+export type MatrixSortField = "title" | "publicationYear" | "boxTitle";
 
 /** Direction of table sorting. */
 export type MatrixSortDirection = "asc" | "desc";

@@ -145,7 +145,7 @@ export function BoxCard({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif text-xl font-semibold text-foreground">
+            <AlertDialogTitle className="font-serif text-lg font-semibold text-foreground">
               Eseri Silmek İstediğinize Emin Misiniz?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm text-muted-foreground">

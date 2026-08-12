@@ -45,7 +45,7 @@ export function ResourceHeader({
         <div className="flex flex-wrap items-center gap-2">
           <Badge
             variant="outline"
-            className={cn("text-xs", boxBadge.className)}
+            className={cn("text-[11px]", boxBadge.className)}
           >
             {boxBadge.label}
           </Badge>
@@ -53,7 +53,7 @@ export function ResourceHeader({
             <Badge
               variant="outline"
               className={cn(
-                "max-w-full text-xs px-2 py-1 border font-medium",
+                "max-w-full text-[11px] px-2 py-1 border font-medium",
                 boxBadge.className,
               )}
             >
@@ -68,7 +68,7 @@ export function ResourceHeader({
             size="sm"
             onClick={onOpenEditModal}
             title="Künyeyi Düzenle"
-            className="h-8 gap-2 text-xs font-medium border-border/40 text-muted-foreground hover:text-foreground hover:bg-muted"
+            className="h-8 gap-2 text-[11px] font-medium border-border/40 text-muted-foreground hover:text-foreground hover:bg-muted"
           >
             <Pencil className="h-3.5 w-3.5 text-primary" />
             <span>Künyeyi Düzenle</span>
@@ -79,7 +79,7 @@ export function ResourceHeader({
             size="sm"
             onClick={() => onToggleReadStatus(resource.id)}
             title={resource.isRead ? "Okunacak Yap" : "Okundu Olarak İşaretle"}
-            className="h-8 gap-2 text-xs font-medium border-border/40"
+            className="h-8 gap-2 text-[11px] font-medium border-border/40"
           >
             {resource.isRead ? (
               <>
@@ -110,7 +110,7 @@ export function ResourceHeader({
         </div>
       </div>
 
-      <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground leading-tight">
+      <h2 className="font-serif text-2xl font-semibold tracking-tight text-foreground leading-tight">
         {resource.title}
       </h2>
 

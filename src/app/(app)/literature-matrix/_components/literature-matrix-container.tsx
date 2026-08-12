@@ -185,7 +185,7 @@ export function LiteratureMatrixContainer({
   };
 
   // Toggle source read status
-  const handleToggleReadStatus = async (
+  const _handleToggleReadStatus = async (
     sourceId: number,
     currentStatus: boolean,
   ) => {
@@ -209,7 +209,7 @@ export function LiteratureMatrixContainer({
   };
 
   // Cell edit handler for comparison note
-  const handleSaveComparisonNote = async (
+  const _handleSaveComparisonNote = async (
     sourceId: number,
     newValue: string,
   ) => {

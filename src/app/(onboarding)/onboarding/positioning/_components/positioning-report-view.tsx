@@ -72,7 +72,9 @@ export function PositioningReportView({
           >
             {isNovelGap && <CheckCircle2 className="h-4 w-4" />}
             {isDirectOverlap && <AlertTriangle className="h-4 w-4" />}
-            {!isNovelGap && !isDirectOverlap && <HelpCircle className="h-4 w-4" />}
+            {!isNovelGap && !isDirectOverlap && (
+              <HelpCircle className="h-4 w-4" />
+            )}
           </div>
 
           <div className="space-y-1 flex-1 min-w-0">

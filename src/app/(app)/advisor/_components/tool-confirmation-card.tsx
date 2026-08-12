@@ -89,7 +89,7 @@ export function ToolConfirmationCard({
             <h4 className="text-xs font-medium tracking-wider uppercase text-muted-foreground">
               {categoryLabel}
             </h4>
-            <p className="text-xs text-muted-foreground font-medium">
+            <p className="text-[11px] text-muted-foreground font-medium">
               Veritabanı Değişikliği Ön İzlemesi
             </p>
           </div>
@@ -155,11 +155,11 @@ export function ToolConfirmationCard({
                     <td className="py-3 px-4 font-semibold text-foreground align-top break-words">
                       {row.fieldLabel}
                     </td>
-                    <td className="py-3 px-4 text-muted-foreground font-mono text-xs leading-relaxed break-words align-top bg-muted/20">
+                    <td className="py-3 px-4 text-muted-foreground font-mono text-[11px] leading-relaxed break-words align-top bg-muted/20">
                       {row.oldValue}
                     </td>
                     <td
-                      className={`py-3 px-4 font-mono text-xs leading-relaxed break-words align-top ${
+                      className={`py-3 px-4 font-mono text-[11px] leading-relaxed break-words align-top ${
                         row.isWarning
                           ? "text-destructive font-bold bg-destructive/10"
                           : "text-foreground font-semibold bg-primary/10"

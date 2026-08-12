@@ -103,7 +103,8 @@ export class ForbiddenError extends AppError {
     super({
       message: input.message ?? "Access denied.",
       userMessage:
-        input.userMessage ?? "Bu işlemi gerçekleştirmek için yetkiniz bulunmuyor.",
+        input.userMessage ??
+        "Bu işlemi gerçekleştirmek için yetkiniz bulunmuyor.",
       statusCode: input.statusCode ?? 403,
       code: "FORBIDDEN_ERROR",
       isOperational: input.isOperational ?? true,

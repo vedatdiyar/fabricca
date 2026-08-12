@@ -124,7 +124,9 @@ export function LiteratureMatrixToolbar({
             <SelectValue className="truncate">{boxLabel}</SelectValue>
           </SelectTrigger>
           <SelectContent className="text-sm">
-            <SelectItem value="all">Tüm Temalar ({availableBoxes.length})</SelectItem>
+            <SelectItem value="all">
+              Tüm Temalar ({availableBoxes.length})
+            </SelectItem>
             {availableBoxes.map((box) => (
               <SelectItem key={box.id} value={String(box.id)}>
                 {box.title}
@@ -172,13 +174,19 @@ export function LiteratureMatrixToolbar({
         {/* Column Visibility Popover */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-10 text-sm gap-1.5 px-3.5">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-10 text-sm gap-1.5 px-3.5"
+            >
               <Columns3 className="h-4 w-4" />
               <span>Sütunlar</span>
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-60 p-3.5 text-sm" align="end">
-            <p className="mb-2.5 font-medium text-foreground text-sm">Sütun Görünürlüğü</p>
+            <p className="mb-2.5 font-medium text-foreground text-sm">
+              Sütun Görünürlüğü
+            </p>
             <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
               {allColumns.map((col) => (
                 <div key={col.key} className="flex items-center space-x-2">

@@ -1,4 +1,7 @@
-import { buildPromptPayload, type PromptPayload } from "@/lib/ai/prompt-builder";
+import {
+  buildPromptPayload,
+  type PromptPayload,
+} from "@/lib/ai/prompt-builder";
 
 export interface ClassifierPromptInput {
   userQuery: string;
@@ -12,7 +15,7 @@ export interface ClassifierPromptInput {
  * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
  */
 export function buildClassifierPromptPayload(
-  params: ClassifierPromptInput
+  params: ClassifierPromptInput,
 ): PromptPayload {
   const { userQuery, historyText } = params;
 
