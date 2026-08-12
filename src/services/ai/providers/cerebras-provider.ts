@@ -5,7 +5,10 @@ import { createConcurrencyLimiter } from "@/lib/rate-limiter";
 import { CEREBRAS_SEED } from "@/lib/constants";
 import { HttpError, withRetry, DEFAULT_MAX_DELAY } from "../llm-retry";
 import { validateStructuredOutput } from "../llm-json";
-import { SchemaValidationError } from "../llm-errors";
+import {
+  SchemaValidationError,
+  toAiProviderError,
+} from "../llm-errors";
 import type { StructuredGenerationOptions } from "../llm-types";
 
 const CEREBRAS_BASE_URL = "https://api.cerebras.ai/v1";
@@ -75,7 +78,9 @@ export async function generateStructuredContent<T>(
 
   let attempts = 0;
 
-  const result = await withRetry<T>(
+  let result: T;
+  try {
+    result = await withRetry<T>(
     async () => {
       attempts++;
 
@@ -168,6 +173,9 @@ export async function generateStructuredContent<T>(
       },
     },
   );
+  } catch (error) {
+    throw toAiProviderError(error, "cerebras");
+  }
 
   log?.info(`${stage}_success`, {
     service: "cerebras",

@@ -117,10 +117,10 @@ export function useMatrixSubmit() {
         router.push("/onboarding/positioning");
 
         return { success: true };
-      } catch (err) {
+      } catch {
         hideLoading();
         const message =
-          err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
+          "İşlem sırasında beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.";
         toast.error(message);
         return { success: false, error: message };
       }

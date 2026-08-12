@@ -76,7 +76,7 @@ async function executeUpdateTaskStatus(
     where: and(eq(tasks.id, taskId), eq(tasks.userId, userId)),
   });
   if (!existingTask) {
-    return { success: false, message: "Görev bulunamadı." };
+    return { success: false, error: "Görev bulunamadı." };
   }
 
   const previousState: Record<string, unknown> = {

@@ -3,23 +3,38 @@
 import { createFlowId, Logger } from "@/lib/logger";
 import { type GeminiThesisBox } from "@/lib/types";
 import { mapToProductionShape } from "../_lib/box-mapper";
-import { runBoxStructureAction } from "./_services/structure-generation";
+import { runBoxStructureAction as runBoxStructureActionImpl } from "./_services/structure-generation";
 import {
-  generateSemanticQueriesAction,
+  generateSemanticQueriesAction as generateSemanticQueriesActionImpl,
   structureToQuadrants,
 } from "./_services/semantic-queries";
 import {
-  persistBoxesAction,
-  confirmBoxesAction,
+  persistBoxesAction as persistBoxesActionImpl,
+  confirmBoxesAction as confirmBoxesActionImpl,
 } from "./_services/persist-boxes";
 
 /**
  * Re-exported service actions preserved for backward compatibility.
  */
-export { runBoxStructureAction };
-export { generateSemanticQueriesAction };
-export { persistBoxesAction };
-export { confirmBoxesAction };
+export async function runBoxStructureAction() {
+  return runBoxStructureActionImpl();
+}
+
+export async function generateSemanticQueriesAction(
+  structure: Parameters<typeof generateSemanticQueriesActionImpl>[0],
+) {
+  return generateSemanticQueriesActionImpl(structure);
+}
+
+export async function persistBoxesAction(boxes: GeminiThesisBox[]) {
+  return persistBoxesActionImpl(boxes);
+}
+
+export async function confirmBoxesAction(
+  boxes: GeminiThesisBox[],
+) {
+  return confirmBoxesActionImpl(boxes);
+}
 
 /**
  * Runs Phase 1 + Phase 2 and maps the result to production-shaped boxes.
@@ -103,4 +118,6 @@ export async function runBoxesPipelineAction(): Promise<
 /**
  * Legacy alias for runBoxesPipelineAction.
  */
-export const generateBoxesStructureAction = runBoxesPipelineAction;
+export async function generateBoxesStructureAction() {
+  return runBoxesPipelineAction();
+}

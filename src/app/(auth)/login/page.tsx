@@ -52,7 +52,7 @@ export default function LoginPage() {
 
       const status = await checkOnboardingStatus();
 
-      if ("error" in status) {
+      if (!status.success) {
         toast.error(status.error);
         setIsPending(false);
         return;

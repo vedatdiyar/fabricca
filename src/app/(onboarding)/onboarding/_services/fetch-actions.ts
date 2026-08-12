@@ -7,6 +7,32 @@ import { matrices, positioning, boxes, sources, outlines } from "@/db/schema";
 import type { GeminiThesisBox } from "@/lib/types";
 import { getSession } from "@/lib/session";
 import { BOX_ORDER_WEIGHT } from "@/lib/box-constants";
+import { Logger, createFlowId } from "@/lib/logger";
+import { DatabaseError } from "@/lib/errors/app-error";
+
+/**
+ * Rethrows an already-normalized DatabaseError unchanged, or wraps any other
+ * thrown value into a DatabaseError so downstream callers stop the flow.
+ *
+ * @param err - The thrown value to normalize.
+ * @param message - Internal technical message for the wrapped error.
+ * @param technicalDetails - Optional diagnostic context for the wrapped error.
+ */
+function rethrowAsDatabaseError(
+  err: unknown,
+  message: string,
+  technicalDetails?: Record<string, unknown>,
+): never {
+  if (err instanceof DatabaseError) throw err;
+  throw new DatabaseError({
+    cause: err,
+    message,
+    technicalDetails: technicalDetails ?? {
+      cause:
+        err instanceof Error ? err.message : err === undefined ? "undefined" : String(err),
+    },
+  });
+}
 
 /**
  * Cached DB query returning the user's thesis matrix (userId-keyed).
@@ -15,16 +41,28 @@ import { BOX_ORDER_WEIGHT } from "@/lib/box-constants";
  * @returns The user's thesis matrix or null.
  */
 async function getCachedThesisMatrix(userId: number) {
+  const log = new Logger(createFlowId());
   try {
     cacheTag("thesis-matrix");
     cacheLife("minutes");
-  } catch {}
+  } catch (err) {
+    log.warn("thesis_matrix_cache_hint_failed", {
+      service: "matrix",
+      error: err,
+    });
+  }
 
-  const [matrix] = await db
-    .select()
-    .from(matrices)
-    .where(eq(matrices.userId, userId));
-  return matrix ?? null;
+  try {
+    const [matrix] = await db
+      .select()
+      .from(matrices)
+      .where(eq(matrices.userId, userId));
+    return matrix ?? null;
+  } catch (err) {
+    rethrowAsDatabaseError(err, "Failed to load cached thesis matrix.", {
+      userId,
+    });
+  }
 }
 
 /**
@@ -34,24 +72,36 @@ async function getCachedThesisMatrix(userId: number) {
  * @returns The ordered box rows for the thesis matrix.
  */
 async function getCachedBoxes(thesisMatrixId: number) {
+  const log = new Logger(createFlowId());
   try {
     cacheTag("thesis-boxes");
     cacheLife("minutes");
-  } catch {}
+  } catch (err) {
+    log.warn("thesis_boxes_cache_hint_failed", {
+      service: "boxes",
+      error: err,
+    });
+  }
 
-  return db
-    .select()
-    .from(boxes)
-    .where(eq(boxes.matrixId, thesisMatrixId))
-    .orderBy(
-      sql`CASE ${boxes.boxType}
-        WHEN 'SUBJECT_PROBLEM' THEN 1
-        WHEN 'THEORETICAL_FRAMEWORK' THEN 2
-        WHEN 'METHODOLOGY' THEN 3
-        WHEN 'PRIMARY_MATERIAL' THEN 4
-        ELSE 99
-      END`,
-    );
+  try {
+    return db
+      .select()
+      .from(boxes)
+      .where(eq(boxes.matrixId, thesisMatrixId))
+      .orderBy(
+        sql`CASE ${boxes.boxType}
+          WHEN 'SUBJECT_PROBLEM' THEN 1
+          WHEN 'THEORETICAL_FRAMEWORK' THEN 2
+          WHEN 'METHODOLOGY' THEN 3
+          WHEN 'PRIMARY_MATERIAL' THEN 4
+          ELSE 99
+        END`,
+      );
+  } catch (err) {
+    rethrowAsDatabaseError(err, "Failed to load cached boxes.", {
+      thesisMatrixId,
+    });
+  }
 }
 
 /**
@@ -60,9 +110,13 @@ async function getCachedBoxes(thesisMatrixId: number) {
  * @returns The current user's thesis matrix or null.
  */
 export async function fetchThesisMatrix() {
-  const session = await getSession();
-  if (!session) return null;
-  return getCachedThesisMatrix(session.userId);
+  try {
+    const session = await getSession();
+    if (!session) return null;
+    return getCachedThesisMatrix(session.userId);
+  } catch (err) {
+    rethrowAsDatabaseError(err, "Failed to fetch thesis matrix.");
+  }
 }
 
 /**
@@ -71,14 +125,18 @@ export async function fetchThesisMatrix() {
  * @returns The current user's thesis matrix or null.
  */
 export async function fetchThesisMatrixFresh() {
-  const session = await getSession();
-  if (!session) return null;
+  try {
+    const session = await getSession();
+    if (!session) return null;
 
-  const [matrix] = await db
-    .select()
-    .from(matrices)
-    .where(eq(matrices.userId, session.userId));
-  return matrix ?? null;
+    const [matrix] = await db
+      .select()
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+    return matrix ?? null;
+  } catch (err) {
+    rethrowAsDatabaseError(err, "Failed to fetch fresh thesis matrix.");
+  }
 }
 
 /**
@@ -87,47 +145,51 @@ export async function fetchThesisMatrixFresh() {
  * @returns The current user's boxes in production shape, or an empty array.
  */
 export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
-  const session = await getSession();
-  if (!session) return [];
-  const matrix = await getCachedThesisMatrix(session.userId);
-  if (!matrix) return [];
-  const rows = await getCachedBoxes(matrix.id);
+  try {
+    const session = await getSession();
+    if (!session) return [];
+    const matrix = await getCachedThesisMatrix(session.userId);
+    if (!matrix) return [];
+    const rows = await getCachedBoxes(matrix.id);
 
-  const parentRows = rows.filter((r) => r.parentId === null);
-  const subBoxMap = new Map<number, GeminiThesisBox[]>();
-  for (const r of rows) {
-    if (r.parentId !== null) {
-      const list = subBoxMap.get(r.parentId) ?? [];
-      list.push({
-        id: r.id,
-        title: r.title,
-        boxType: (r.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
-        description: r.description ?? "",
-        parentId: r.parentId,
-        semanticQuery: r.semanticQuery,
-        subBoxes: undefined,
-        concepts: r.concepts ?? [],
-      });
-      subBoxMap.set(r.parentId, list);
+    const parentRows = rows.filter((r) => r.parentId === null);
+    const subBoxMap = new Map<number, GeminiThesisBox[]>();
+    for (const r of rows) {
+      if (r.parentId !== null) {
+        const list = subBoxMap.get(r.parentId) ?? [];
+        list.push({
+          id: r.id,
+          title: r.title,
+          boxType: (r.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
+          description: r.description ?? "",
+          parentId: r.parentId,
+          semanticQuery: r.semanticQuery,
+          subBoxes: undefined,
+          concepts: r.concepts ?? [],
+        });
+        subBoxMap.set(r.parentId, list);
+      }
     }
+
+    const mappedBoxes: GeminiThesisBox[] = parentRows.map((b) => ({
+      id: b.id,
+      title: b.title,
+      boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
+      description: b.description ?? "",
+      parentId: null,
+      semanticQuery: null,
+      subBoxes: subBoxMap.get(b.id),
+      concepts: b.concepts ?? [],
+    }));
+
+    return mappedBoxes.sort((a, b) => {
+      const weightA = BOX_ORDER_WEIGHT[a.boxType] ?? 99;
+      const weightB = BOX_ORDER_WEIGHT[b.boxType] ?? 99;
+      return weightA - weightB;
+    });
+  } catch (err) {
+    rethrowAsDatabaseError(err, "Failed to fetch boxes with full shape.");
   }
-
-  const mappedBoxes: GeminiThesisBox[] = parentRows.map((b) => ({
-    id: b.id,
-    title: b.title,
-    boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
-    description: b.description ?? "",
-    parentId: null,
-    semanticQuery: null,
-    subBoxes: subBoxMap.get(b.id),
-    concepts: b.concepts ?? [],
-  }));
-
-  return mappedBoxes.sort((a, b) => {
-    const weightA = BOX_ORDER_WEIGHT[a.boxType] ?? 99;
-    const weightB = BOX_ORDER_WEIGHT[b.boxType] ?? 99;
-    return weightA - weightB;
-  });
 }
 
 /**
@@ -138,60 +200,64 @@ export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
 export async function fetchUncachedBoxesWithFullShape(): Promise<
   GeminiThesisBox[]
 > {
-  const session = await getSession();
-  if (!session) return [];
-  const matrix = await fetchThesisMatrixFresh();
-  if (!matrix) return [];
+  try {
+    const session = await getSession();
+    if (!session) return [];
+    const matrix = await fetchThesisMatrixFresh();
+    if (!matrix) return [];
 
-  const rows = await db
-    .select()
-    .from(boxes)
-    .where(eq(boxes.matrixId, matrix.id))
-    .orderBy(
-      sql`CASE ${boxes.boxType}
-        WHEN 'SUBJECT_PROBLEM' THEN 1
-        WHEN 'THEORETICAL_FRAMEWORK' THEN 2
-        WHEN 'METHODOLOGY' THEN 3
-        WHEN 'PRIMARY_MATERIAL' THEN 4
-        ELSE 99
-      END`,
-    );
+    const rows = await db
+      .select()
+      .from(boxes)
+      .where(eq(boxes.matrixId, matrix.id))
+      .orderBy(
+        sql`CASE ${boxes.boxType}
+          WHEN 'SUBJECT_PROBLEM' THEN 1
+          WHEN 'THEORETICAL_FRAMEWORK' THEN 2
+          WHEN 'METHODOLOGY' THEN 3
+          WHEN 'PRIMARY_MATERIAL' THEN 4
+          ELSE 99
+        END`,
+      );
 
-  const parentRows = rows.filter((r) => r.parentId === null);
-  const subBoxMap = new Map<number, GeminiThesisBox[]>();
-  for (const r of rows) {
-    if (r.parentId !== null) {
-      const list = subBoxMap.get(r.parentId) ?? [];
-      list.push({
-        id: r.id,
-        title: r.title,
-        boxType: (r.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
-        description: r.description ?? "",
-        parentId: r.parentId,
-        semanticQuery: r.semanticQuery,
-        subBoxes: undefined,
-        concepts: r.concepts ?? [],
-      });
-      subBoxMap.set(r.parentId, list);
+    const parentRows = rows.filter((r) => r.parentId === null);
+    const subBoxMap = new Map<number, GeminiThesisBox[]>();
+    for (const r of rows) {
+      if (r.parentId !== null) {
+        const list = subBoxMap.get(r.parentId) ?? [];
+        list.push({
+          id: r.id,
+          title: r.title,
+          boxType: (r.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
+          description: r.description ?? "",
+          parentId: r.parentId,
+          semanticQuery: r.semanticQuery,
+          subBoxes: undefined,
+          concepts: r.concepts ?? [],
+        });
+        subBoxMap.set(r.parentId, list);
+      }
     }
+
+    const mappedBoxes: GeminiThesisBox[] = parentRows.map((b) => ({
+      id: b.id,
+      title: b.title,
+      boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
+      description: b.description ?? "",
+      parentId: null,
+      semanticQuery: null,
+      subBoxes: subBoxMap.get(b.id),
+      concepts: b.concepts ?? [],
+    }));
+
+    return mappedBoxes.sort((a, b) => {
+      const weightA = BOX_ORDER_WEIGHT[a.boxType] ?? 99;
+      const weightB = BOX_ORDER_WEIGHT[b.boxType] ?? 99;
+      return weightA - weightB;
+    });
+  } catch (err) {
+    rethrowAsDatabaseError(err, "Failed to fetch uncached boxes.");
   }
-
-  const mappedBoxes: GeminiThesisBox[] = parentRows.map((b) => ({
-    id: b.id,
-    title: b.title,
-    boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
-    description: b.description ?? "",
-    parentId: null,
-    semanticQuery: null,
-    subBoxes: subBoxMap.get(b.id),
-    concepts: b.concepts ?? [],
-  }));
-
-  return mappedBoxes.sort((a, b) => {
-    const weightA = BOX_ORDER_WEIGHT[a.boxType] ?? 99;
-    const weightB = BOX_ORDER_WEIGHT[b.boxType] ?? 99;
-    return weightA - weightB;
-  });
 }
 
 /**
@@ -203,67 +269,71 @@ export async function checkStepsDataAction(): Promise<Record<
   string,
   boolean
 > | null> {
-  const session = await getSession();
-  if (!session) return null;
+  try {
+    const session = await getSession();
+    if (!session) return null;
 
-  const userId = session.userId;
+    const userId = session.userId;
 
-  const [matrix] = await db
-    .select({ id: matrices.id })
-    .from(matrices)
-    .where(eq(matrices.userId, userId));
+    const [matrix] = await db
+      .select({ id: matrices.id })
+      .from(matrices)
+      .where(eq(matrices.userId, userId));
 
-  const hasMatrix = !!matrix;
+    const hasMatrix = !!matrix;
 
-  let hasPositioning = false;
-  let hasBoxes = false;
-  let hasOutline = false;
-  let hasLiterature = false;
+    let hasPositioning = false;
+    let hasBoxes = false;
+    let hasOutline = false;
+    let hasLiterature = false;
 
-  if (hasMatrix) {
-    const [posResult, boxResult, outlineResult, litResult] = await Promise.all([
-      db
-        .select({
-          id: positioning.id,
-          globalStatus: positioning.globalStatus,
-        })
-        .from(positioning)
-        .where(eq(positioning.userId, userId))
-        .limit(1),
-      db
-        .select({ id: boxes.id })
-        .from(boxes)
-        .where(eq(boxes.matrixId, matrix.id))
-        .limit(1),
-      db
-        .select({ id: outlines.id })
-        .from(outlines)
-        .where(eq(outlines.matrixId, matrix.id))
-        .limit(1),
-      db
-        .select({ id: sources.id })
-        .from(sources)
-        .innerJoin(boxes, eq(sources.boxId, boxes.id))
-        .where(
-          and(
-            eq(boxes.matrixId, matrix.id),
-            ne(boxes.boxType, "RELATED_THESES"),
-          ),
-        )
-        .limit(1),
-    ]);
+    if (hasMatrix) {
+      const [posResult, boxResult, outlineResult, litResult] = await Promise.all([
+        db
+          .select({
+            id: positioning.id,
+            globalStatus: positioning.globalStatus,
+          })
+          .from(positioning)
+          .where(eq(positioning.userId, userId))
+          .limit(1),
+        db
+          .select({ id: boxes.id })
+          .from(boxes)
+          .where(eq(boxes.matrixId, matrix.id))
+          .limit(1),
+        db
+          .select({ id: outlines.id })
+          .from(outlines)
+          .where(eq(outlines.matrixId, matrix.id))
+          .limit(1),
+        db
+          .select({ id: sources.id })
+          .from(sources)
+          .innerJoin(boxes, eq(sources.boxId, boxes.id))
+          .where(
+            and(
+              eq(boxes.matrixId, matrix.id),
+              ne(boxes.boxType, "RELATED_THESES"),
+            ),
+          )
+          .limit(1),
+      ]);
 
-    hasPositioning = posResult.length > 0 && !!posResult[0].globalStatus;
-    hasBoxes = boxResult.length > 0;
-    hasOutline = outlineResult.length > 0;
-    hasLiterature = litResult.length > 0;
+      hasPositioning = posResult.length > 0 && !!posResult[0].globalStatus;
+      hasBoxes = boxResult.length > 0;
+      hasOutline = outlineResult.length > 0;
+      hasLiterature = litResult.length > 0;
+    }
+
+    return {
+      matrix: hasMatrix,
+      positioning: hasPositioning,
+      boxes: hasBoxes,
+      outline: hasOutline,
+      "literature-review": hasLiterature,
+    };
+  } catch (err) {
+    rethrowAsDatabaseError(err, "Failed to check onboarding step data.");
   }
-
-  return {
-    matrix: hasMatrix,
-    positioning: hasPositioning,
-    boxes: hasBoxes,
-    outline: hasOutline,
-    "literature-review": hasLiterature,
-  };
 }

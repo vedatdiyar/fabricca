@@ -363,6 +363,9 @@ src/
       abstract-cleaner.ts
       author-formatter.ts
       utils.ts
+    errors/
+      app-error.ts
+      handle-error.ts
     prompts/
       advisor/
         advisor-prompt.ts
@@ -861,6 +864,293 @@ const Toaster = ({ ...props }: ToasterProps) => {
 export { Toaster };
 </file>
 
+<file path="src/lib/errors/app-error.ts">
+export type ErrorCode =
+  | "VALIDATION_ERROR"
+  | "AUTHENTICATION_ERROR"
+  | "FORBIDDEN_ERROR"
+  | "NOT_FOUND"
+  | "DATABASE_ERROR"
+  | "AI_PROVIDER_ERROR"
+  | "STORAGE_ERROR"
+  | "EXTERNAL_API_ERROR"
+  | "INTERNAL_ERROR";
+
+export interface AppErrorInput {
+  /** Stable machine-readable error identifier. */
+  code?: ErrorCode;
+  /** Internal, technical message (English). Never shown to the user directly. */
+  message?: string;
+  /** User-facing Turkish message shown in the UI. */
+  userMessage?: string;
+  /** The original error that caused this error, kept for diagnostics. */
+  cause?: unknown;
+  /** Additional diagnostic context, never exposed to the user. */
+  technicalDetails?: unknown;
+  /** When false the error is unexpected and must be logged at error level. */
+  isOperational?: boolean;
+  /** Optional HTTP status override (e.g. AiProviderError 502 vs 503). */
+  statusCode?: number;
+}
+
+/**
+ * Base class for every application error in the system.
+ *
+ * Carries the fields the UI and API layers need to respond consistently:
+ * a stable machine-readable `code`, an HTTP `statusCode`, an
+ * `isOperational` flag separating expected from unexpected failures, and a
+ * `userMessage` never exposing technical details.
+ */
+export class AppError extends Error {
+  public readonly code: ErrorCode;
+  public readonly statusCode: number;
+  public readonly isOperational: boolean;
+  public readonly userMessage: string;
+  public readonly technicalDetails: unknown;
+
+  constructor(input: AppErrorInput) {
+    super(input.message ?? "Application error.");
+    this.name = "AppError";
+    this.code = input.code ?? "INTERNAL_ERROR";
+    this.statusCode = input.statusCode ?? 500;
+    this.isOperational = input.isOperational ?? true;
+    this.userMessage =
+      input.userMessage ?? "Bir hata oluştu. Lütfen tekrar deneyin.";
+    this.technicalDetails = input.technicalDetails ?? input.cause;
+    if (input.cause !== undefined) {
+      this.cause = input.cause;
+    }
+  }
+}
+
+/**
+ * Error raised when submitted data fails validation (Zod or business rules).
+ */
+export class ValidationError extends AppError {
+  constructor(input: AppErrorInput = {}) {
+    super({
+      message: input.message ?? "Validation failed.",
+      userMessage:
+        input.userMessage ??
+        "Gönderilen veriler doğrulanamadı. Lütfen bilgilerinizi kontrol edin.",
+      statusCode: input.statusCode ?? 400,
+      code: "VALIDATION_ERROR",
+      isOperational: input.isOperational ?? true,
+      cause: input.cause,
+      technicalDetails: input.technicalDetails,
+    });
+    this.name = "ValidationError";
+  }
+}
+
+/**
+ * Error raised when there is no valid active session.
+ */
+export class AuthenticationError extends AppError {
+  constructor(input: AppErrorInput = {}) {
+    super({
+      message: input.message ?? "Authentication required.",
+      userMessage:
+        input.userMessage ?? "Oturumunuz sona erdi. Lütfen tekrar giriş yapın.",
+      statusCode: input.statusCode ?? 401,
+      code: "AUTHENTICATION_ERROR",
+      isOperational: input.isOperational ?? true,
+      cause: input.cause,
+      technicalDetails: input.technicalDetails,
+    });
+    this.name = "AuthenticationError";
+  }
+}
+
+/**
+ * Error raised when an authenticated user attempts an unauthorized operation.
+ */
+export class ForbiddenError extends AppError {
+  constructor(input: AppErrorInput = {}) {
+    super({
+      message: input.message ?? "Access denied.",
+      userMessage:
+        input.userMessage ?? "Bu işlemi gerçekleştirmek için yetkiniz bulunmuyor.",
+      statusCode: input.statusCode ?? 403,
+      code: "FORBIDDEN_ERROR",
+      isOperational: input.isOperational ?? true,
+      cause: input.cause,
+      technicalDetails: input.technicalDetails,
+    });
+    this.name = "ForbiddenError";
+  }
+}
+
+/**
+ * Error raised when a requested resource does not exist.
+ */
+export class NotFoundError extends AppError {
+  constructor(input: AppErrorInput = {}) {
+    super({
+      message: input.message ?? "Resource not found.",
+      userMessage: input.userMessage ?? "Aradığınız kaynak bulunamadı.",
+      statusCode: input.statusCode ?? 404,
+      code: "NOT_FOUND",
+      isOperational: input.isOperational ?? true,
+      cause: input.cause,
+      technicalDetails: input.technicalDetails,
+    });
+    this.name = "NotFoundError";
+  }
+}
+
+/**
+ * Error raised when a database operation fails.
+ */
+export class DatabaseError extends AppError {
+  constructor(input: AppErrorInput = {}) {
+    super({
+      message: input.message ?? "Database operation failed.",
+      userMessage:
+        input.userMessage ??
+        "Veritabanı işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.",
+      statusCode: input.statusCode ?? 500,
+      code: "DATABASE_ERROR",
+      isOperational: input.isOperational ?? true,
+      cause: input.cause,
+      technicalDetails: input.technicalDetails,
+    });
+    this.name = "DatabaseError";
+  }
+}
+
+/**
+ * Error raised when an LLM / AI provider fails or is unavailable.
+ */
+export class AiProviderError extends AppError {
+  constructor(input: AppErrorInput = {}) {
+    super({
+      message: input.message ?? "AI provider request failed.",
+      userMessage:
+        input.userMessage ??
+        "Yapay zeka hizmeti şu anda yanıt veremiyor. Lütfen daha sonra tekrar deneyin.",
+      statusCode: input.statusCode ?? 503,
+      code: "AI_PROVIDER_ERROR",
+      isOperational: input.isOperational ?? true,
+      cause: input.cause,
+      technicalDetails: input.technicalDetails,
+    });
+    this.name = "AiProviderError";
+  }
+}
+
+/**
+ * Error raised when object storage (Cloudflare R2) or PDF storage fails.
+ */
+export class StorageError extends AppError {
+  constructor(input: AppErrorInput = {}) {
+    super({
+      message: input.message ?? "Object storage operation failed.",
+      userMessage:
+        input.userMessage ??
+        "Dosya depolama hizmetiyle ilgili bir sorun oluştu. Lütfen tekrar deneyin.",
+      statusCode: input.statusCode ?? 500,
+      code: "STORAGE_ERROR",
+      isOperational: input.isOperational ?? true,
+      cause: input.cause,
+      technicalDetails: input.technicalDetails,
+    });
+    this.name = "StorageError";
+  }
+}
+
+/**
+ * Error raised when an external API (OpenAlex, Crossref, etc.) fails.
+ */
+export class ExternalApiError extends AppError {
+  constructor(input: AppErrorInput = {}) {
+    super({
+      message: input.message ?? "External API request failed.",
+      userMessage:
+        input.userMessage ??
+        "Dış akademik kaynak şu anda yanıt vermiyor. Lütfen tekrar deneyin.",
+      statusCode: input.statusCode ?? 502,
+      code: "EXTERNAL_API_ERROR",
+      isOperational: input.isOperational ?? true,
+      cause: input.cause,
+      technicalDetails: input.technicalDetails,
+    });
+    this.name = "ExternalApiError";
+  }
+}
+</file>
+
+<file path="src/lib/errors/handle-error.ts">
+import { z } from "zod";
+import { Logger, createFlowId } from "@/lib/logger";
+import { AppError, ValidationError } from "./app-error";
+
+export interface ActionErrorResult {
+  success: false;
+  error: string;
+  code: string;
+}
+
+const UNEXPECTED_MESSAGE =
+  "Beklenmeyen bir sistem hatası oluştu. Lütfen tekrar deneyiniz.";
+
+/**
+ * Normalizes any thrown value into the standard `{ success: false }` shape
+ * every server action returns, and logs it through the central Logger.
+ *
+ * - `AppError` instances keep their userMessage and code; operational errors
+ *   are logged at warn level, non-operational ones at error level.
+ * - `z.ZodError` instances are wrapped into a `ValidationError` and their
+ *   first issue message (or a Turkish default) is surfaced to the user.
+ * - Any other value is treated as an unexpected system error: technical
+ *   details are logged at error level but the user only receives a generic
+ *   Turkish message.
+ *
+ * @param error - The thrown value to handle.
+ * @param logger - Optional logger instance; when omitted a fresh flow logger is created.
+ * @returns The standard action error result.
+ */
+export function handleActionError(
+  error: unknown,
+  logger?: Logger,
+): ActionErrorResult {
+  const log = logger ?? new Logger(createFlowId());
+
+  if (error instanceof AppError) {
+    const payload = { data: { code: error.code, statusCode: error.statusCode }, error };
+    if (error.isOperational) {
+      log.warn("action_operational_error", payload);
+    } else {
+      log.error("action_system_error", payload);
+    }
+    return { success: false, error: error.userMessage, code: error.code };
+  }
+
+  if (error instanceof z.ZodError) {
+    const validationError = new ValidationError({
+      cause: error,
+      userMessage: error.issues[0]?.message,
+    });
+    log.warn("action_validation_error", {
+      data: { code: validationError.code, issueCount: error.issues.length },
+      error: validationError,
+    });
+    return {
+      success: false,
+      error: validationError.userMessage,
+      code: validationError.code,
+    };
+  }
+
+  const technical = error instanceof Error ? error.message : String(error);
+  log.error("action_unexpected_error", {
+    data: { message: technical },
+    error,
+  });
+  return { success: false, error: UNEXPECTED_MESSAGE, code: "INTERNAL_ERROR" };
+}
+</file>
+
 <file path="components.json">
 {
   "$schema": "https://ui.shadcn.com/schema.json",
@@ -1096,7 +1386,7 @@ export function useAdvisorToolHandler({
           await updateChatMessageToolCalls(targetDbId, updatedToolCalls);
         }
       } else {
-        toast.error(res.message);
+        toast.error(res.error || "İşlem gerçekleştirilemedi. Lütfen tekrar deneyin.");
       }
     },
     [setMessages],
@@ -1145,7 +1435,7 @@ export function useAdvisorToolHandler({
           await updateChatMessageToolCalls(targetDbId, updatedToolCalls);
         }
       } else {
-        toast.error(res.message);
+        toast.error(res.error || "İşlem geri alınamadı. Lütfen tekrar deneyin.");
       }
     },
     [setMessages],
@@ -2147,7 +2437,9 @@ export function useResourceCritique({
         if (res.success && res.data) {
           setCritiques(res.data.critiques);
         }
-      } catch {}
+      } catch {
+        toast.error("Eser analizleri yüklenirken bir hata oluştu.");
+      }
     }
 
     loadCritiques();
@@ -4112,10 +4404,10 @@ export function useMatrixSubmit() {
         router.push("/onboarding/positioning");
 
         return { success: true };
-      } catch (err) {
+      } catch {
         hideLoading();
         const message =
-          err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
+          "İşlem sırasında beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.";
         toast.error(message);
         return { success: false, error: message };
       }
@@ -5207,7 +5499,7 @@ async function executeCreateBox(
   if (!userMatrix) {
     return {
       success: false,
-      message: "Önce tez matrisi oluşturulmalıdır.",
+      error: "Önce tez matrisi oluşturulmalıdır.",
     };
   }
   const boxType = args.boxType as Box["boxType"];
@@ -5245,7 +5537,7 @@ async function executeUpdateBox(
     where: eq(boxes.id, boxId),
   });
   if (!existingBox) {
-    return { success: false, message: "Kutu bulunamadı." };
+    return { success: false, error: "Kutu bulunamadı." };
   }
 
   const previousState: Record<string, unknown> = {
@@ -5284,7 +5576,7 @@ async function executeDeleteBox(
     where: eq(boxes.id, boxId),
   });
   if (!existingBox) {
-    return { success: false, message: "Silinecek kutu bulunamadı." };
+    return { success: false, error: "Silinecek kutu bulunamadı." };
   }
 
   const previousState: Record<string, unknown> = {
@@ -5406,7 +5698,7 @@ async function executeMatrixUpdate(
     where: eq(matrices.userId, userId),
   });
   if (!userMatrix) {
-    return { success: false, message: "Tez matrisi bulunamadı." };
+    return { success: false, error: "Tez matrisi bulunamadı." };
   }
 
   const previousState: Record<string, unknown> = {
@@ -5451,7 +5743,10 @@ export const matrixMutations: Record<string, MutationToolHandler> = {
 /** Result payload returned by every mutation tool execution. */
 export interface MutationToolResult {
   success: boolean;
-  message: string;
+  /** User-facing Turkish message shown for successful executions. */
+  message?: string;
+  /** User-facing Turkish error message shown when the execution fails. */
+  error?: string;
   data?: unknown;
   previousState?: Record<string, unknown>;
 }
@@ -5563,7 +5858,7 @@ async function executeDeleteNote(
     where: and(eq(annotations.id, noteId), eq(annotations.userId, userId)),
   });
   if (!existingNote) {
-    return { success: false, message: "Silinecek not bulunamadı." };
+    return { success: false, error: "Silinecek not bulunamadı." };
   }
 
   const previousState: Record<string, unknown> = {
@@ -5616,7 +5911,7 @@ async function executeCreateOutlineSection(
     where: eq(matrices.userId, userId),
   });
   if (!userMatrix) {
-    return { success: false, message: "Tez matrisi bulunamadı." };
+    return { success: false, error: "Tez matrisi bulunamadı." };
   }
   const title = args.title as string;
   const description = (args.description as string | undefined) ?? null;
@@ -5662,7 +5957,7 @@ async function executeUpdateOutlineSection(
     where: eq(outlines.id, outlineId),
   });
   if (!existingOutline) {
-    return { success: false, message: "Bölüm bulunamadı." };
+    return { success: false, error: "Bölüm bulunamadı." };
   }
 
   const previousState: Record<string, unknown> = {
@@ -5914,7 +6209,7 @@ async function executeUpdateSource(
     where: eq(sources.id, sourceId),
   });
   if (!existingSource) {
-    return { success: false, message: "Kaynak bulunamadı." };
+    return { success: false, error: "Kaynak bulunamadı." };
   }
 
   const previousState: Record<string, unknown> = {
@@ -5955,7 +6250,7 @@ async function executeDeleteSource(
     where: eq(sources.id, sourceId),
   });
   if (!existingSource) {
-    return { success: false, message: "Silinecek kaynak bulunamadı." };
+    return { success: false, error: "Silinecek kaynak bulunamadı." };
   }
 
   const previousState: Record<string, unknown> = {
@@ -6072,7 +6367,7 @@ async function executeUpdateTaskStatus(
     where: and(eq(tasks.id, taskId), eq(tasks.userId, userId)),
   });
   if (!existingTask) {
-    return { success: false, message: "Görev bulunamadı." };
+    return { success: false, error: "Görev bulunamadı." };
   }
 
   const previousState: Record<string, unknown> = {
@@ -6138,20 +6433,20 @@ export async function undoMutationTool(
   executionResult?: unknown,
   previousState?: Record<string, unknown>,
   userId?: number,
-): Promise<{ success: boolean; message: string }> {
+): Promise<{ success: boolean; message?: string; error?: string }> {
   switch (toolName) {
     case "updateThesisMatrix": {
       if (!previousState || !userId) {
         return {
           success: false,
-          message: "Önceki durum verisine ulaşılamadı.",
+          error: "Önceki durum verisine ulaşılamadı.",
         };
       }
       const userMatrix = await db.query.matrices.findFirst({
         where: eq(matrices.userId, userId),
       });
       if (!userMatrix) {
-        return { success: false, message: "Tez matrisi bulunamadı." };
+        return { success: false, error: "Tez matrisi bulunamadı." };
       }
 
       const updateData: Partial<Matrix> = { updatedAt: new Date() };
@@ -6185,7 +6480,7 @@ export async function undoMutationTool(
       if (!boxId) {
         return {
           success: false,
-          message: "Silinecek kutu kimliği bulunamadı.",
+          error: "Silinecek kutu kimliği bulunamadı.",
         };
       }
       await db.delete(boxes).where(eq(boxes.id, boxId));
@@ -6197,7 +6492,7 @@ export async function undoMutationTool(
     case "updateBox": {
       const boxId = args.boxId as number;
       if (!previousState) {
-        return { success: false, message: "Önceki kutu verisi bulunamadı." };
+        return { success: false, error: "Önceki kutu verisi bulunamadı." };
       }
       const updateData: {
         title?: string;
@@ -6220,7 +6515,7 @@ export async function undoMutationTool(
     }
     case "deleteBox": {
       if (!previousState) {
-        return { success: false, message: "Silinen kutu yedeği bulunamadı." };
+        return { success: false, error: "Silinen kutu yedeği bulunamadı." };
       }
       await db.insert(boxes).values({
         matrixId: previousState.matrixId as number,
@@ -6234,7 +6529,7 @@ export async function undoMutationTool(
     case "updateSource": {
       const sourceId = args.sourceId as number;
       if (!previousState) {
-        return { success: false, message: "Önceki kaynak verisi bulunamadı." };
+        return { success: false, error: "Önceki kaynak verisi bulunamadı." };
       }
       const updateData: Partial<Source> = { updatedAt: new Date() };
       if (typeof previousState.title === "string")
@@ -6254,7 +6549,7 @@ export async function undoMutationTool(
     }
     case "deleteSource": {
       if (!previousState) {
-        return { success: false, message: "Silinen kaynak yedeği bulunamadı." };
+        return { success: false, error: "Silinen kaynak yedeği bulunamadı." };
       }
       await db.insert(sources).values({
         boxId: previousState.boxId as number,
@@ -6277,7 +6572,7 @@ export async function undoMutationTool(
       const createdNote = executionResult as Annotation | undefined;
       const noteId = createdNote?.id ?? (args.noteId as number | undefined);
       if (!noteId || !userId) {
-        return { success: false, message: "Silinecek not kimliği bulunamadı." };
+        return { success: false, error: "Silinecek not kimliği bulunamadı." };
       }
       await db
         .delete(annotations)
@@ -6286,7 +6581,7 @@ export async function undoMutationTool(
     }
     case "deleteNote": {
       if (!previousState || !userId) {
-        return { success: false, message: "Silinen not yedeği bulunamadı." };
+        return { success: false, error: "Silinen not yedeği bulunamadı." };
       }
       await db.insert(annotations).values({
         sourceId: previousState.sourceId as number,
@@ -6306,7 +6601,7 @@ export async function undoMutationTool(
       if (!taskId || !userId) {
         return {
           success: false,
-          message: "Silinecek görev kimliği bulunamadı.",
+          error: "Silinecek görev kimliği bulunamadı.",
         };
       }
       await db
@@ -6320,7 +6615,7 @@ export async function undoMutationTool(
     case "updateTaskStatus": {
       const taskId = args.taskId as number;
       if (!previousState || !userId) {
-        return { success: false, message: "Önceki görev durumu bulunamadı." };
+        return { success: false, error: "Önceki görev durumu bulunamadı." };
       }
       const status = previousState.status as Task["status"];
 
@@ -6337,7 +6632,7 @@ export async function undoMutationTool(
     default:
       return {
         success: false,
-        message: `Bilinmeyen geri alma fonksiyonu: ${toolName}`,
+        error: "İşlem geri alınamadı. Lütfen tekrar deneyin.",
       };
   }
 }
@@ -8638,7 +8933,10 @@ import { createConcurrencyLimiter } from "@/lib/rate-limiter";
 import { CEREBRAS_SEED } from "@/lib/constants";
 import { HttpError, withRetry, DEFAULT_MAX_DELAY } from "../llm-retry";
 import { validateStructuredOutput } from "../llm-json";
-import { SchemaValidationError } from "../llm-errors";
+import {
+  SchemaValidationError,
+  toAiProviderError,
+} from "../llm-errors";
 import type { StructuredGenerationOptions } from "../llm-types";
 
 const CEREBRAS_BASE_URL = "https://api.cerebras.ai/v1";
@@ -8708,7 +9006,9 @@ export async function generateStructuredContent<T>(
 
   let attempts = 0;
 
-  const result = await withRetry<T>(
+  let result: T;
+  try {
+    result = await withRetry<T>(
     async () => {
       attempts++;
 
@@ -8801,6 +9101,9 @@ export async function generateStructuredContent<T>(
       },
     },
   );
+  } catch (error) {
+    throw toAiProviderError(error, "cerebras");
+  }
 
   log?.info(`${stage}_success`, {
     service: "cerebras",
@@ -8914,6 +9217,7 @@ export { generateStructuredContent as generateCerebrasStructuredContent } from "
 
 <file path="src/services/ai/llm-errors.ts">
 import { z } from "zod";
+import { AiProviderError } from "@/lib/errors/app-error";
 
 export type ErrorScenario = "quota" | "network" | "system";
 
@@ -9067,6 +9371,39 @@ export function classifyError(error: unknown): ErrorScenario {
   }
 
   return "system";
+}
+
+const TURKISH_ERROR_BY_SCENARIO: Record<ErrorScenario, string> = {
+  quota:
+    "Yapay zeka hizmetinin anlık kullanım limitine ulaşıldı. Lütfen birkaç dakika sonra tekrar deneyin.",
+  network:
+    "Yapay zeka hizmetine bağlanılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.",
+  system:
+    "Yapay zeka hizmeti şu anda yanıt veremiyor. Lütfen daha sonra tekrar deneyin.",
+};
+
+/**
+ * Wraps any thrown AI provider failure into an `AiProviderError` with a Turkish
+ * scenario-based user message, preserving the original error as the cause.
+ *
+ * @param error - The raw thrown error from the provider call.
+ * @param provider - The provider name used for technical diagnostics.
+ * @returns An `AiProviderError` instance ready to cross the server boundary.
+ */
+export function toAiProviderError(error: unknown, provider: string): AiProviderError {
+  if (error instanceof AiProviderError) return error;
+
+  const scenario = classifyError(error);
+
+  return new AiProviderError({
+    cause: error,
+    technicalDetails: {
+      provider,
+      scenario,
+      httpStatus: extractHttpStatus(error),
+    },
+    userMessage: TURKISH_ERROR_BY_SCENARIO[scenario],
+  });
 }
 </file>
 
@@ -12221,10 +12558,11 @@ export async function completePdfUploadCore(
       if (uploadedPdfFileName) {
         try {
           await deletePdfFromR2(uploadedPdfFileName);
-        } catch {
-          log.info("r2_orphan_pdf_cleanup_failed", {
+        } catch (err) {
+          log.warn("r2_orphan_pdf_cleanup_failed", {
             service: "library",
             data: { uploadedPdfFileName },
+            error: err,
           });
         }
       }
@@ -12975,7 +13313,12 @@ export async function persistBoxesAction(
     try {
       revalidateOnboardingPaths();
       updateTag(CACHE_TAGS.thesisBoxes);
-    } catch {}
+    } catch (err) {
+      log.warn("boxes_revalidate_failed", {
+        service: "boxes",
+        error: err,
+      });
+    }
 
     log.info("boxes_persist_success", {
       service: "boxes",
@@ -14841,6 +15184,7 @@ import { sourceMutations } from "./source-mutations";
 import { noteMutations } from "./note-mutations";
 import { taskMutations } from "./task-mutations";
 import { outlineMutations } from "./outline-mutations";
+import { Logger, createFlowId } from "@/lib/logger";
 
 const MUTATION_TOOL_HANDLERS: Record<string, MutationToolHandler> = {
   ...matrixMutations,
@@ -14869,7 +15213,13 @@ export async function getToolPreviousState(
   if (!handler) return undefined;
   try {
     return await handler.getPreviousState(args, userId);
-  } catch {
+  } catch (err) {
+    const log = new Logger(createFlowId());
+    log.warn("advisor_tool_previous_state_failed", {
+      service: "advisor",
+      data: { toolName: name },
+      error: err,
+    });
     return undefined;
   }
 }
@@ -14891,7 +15241,7 @@ export async function executeMutationTool(
   if (!handler) {
     return {
       success: false,
-      message: `Bilinmeyen veritabanı değişikliği: ${toolName}`,
+      error: `Bilinmeyen veritabanı değişikliği talep edildi.`,
     };
   }
   return handler.execute(args, userId);
@@ -17796,246 +18146,6 @@ export const gapAnalysisStructuredSchema = z.object({
 export type GapAnalysisStructured = z.infer<typeof gapAnalysisStructuredSchema>;
 </file>
 
-<file path="src/features/tezara/index.ts">
-import type { Logger } from "@/lib/logger";
-import type { TezaraThesisDetails } from "@/lib/types";
-import {
-  DEFAULT_MAX_DELAY,
-  HttpError,
-  withRetry,
-} from "@/lib/api-utils";
-
-const MEILI_URL = process.env.TEZARA_MEILI_URL ?? "";
-const MEILI_KEY = process.env.TEZARA_MEILI_KEY ?? "";
-
-/** Maximum number of search attempts for transient Meilisearch failures (429/5xx/network). */
-const MEILI_MAX_RETRIES = 3;
-
-/**
- * Parses the `Retry-After` header from a Meilisearch response into milliseconds.
- *
- * @param response - The HTTP response to inspect.
- * @returns The retry delay in milliseconds, or null when absent or unparseable.
- */
-function parseRetryAfterHeader(response: Response): number | null {
-  const header = response.headers.get("Retry-After");
-  if (!header) return null;
-
-  const seconds = parseInt(header, 10);
-  if (!isNaN(seconds) && seconds > 0) {
-    return seconds * 1000;
-  }
-
-  return null;
-}
-
-/** Additional Meilisearch search parameters for precision tuning. */
-export interface MeiliSearchParams {
-  rankingScoreThreshold?: number;
-  filter?: string;
-  attributesToSearchOn?: string[];
-}
-
-/**
- * Extracts the most reliable abstract text from a raw Meilisearch hit.
- *
- * @param hit - Raw Meilisearch hit record.
- * @returns Abstract string, preferring the original over the translated text.
- */
-function extractAbstract(hit: Record<string, unknown>): string {
-  let abstract = String(hit.abstract_original ?? "").trim();
-  if (!abstract || abstract.length < 10 || /^özet yok\.?$/i.test(abstract)) {
-    abstract = String(hit.abstract_translated ?? "").trim();
-  }
-  return abstract;
-}
-
-/**
- * Maps a raw Meilisearch hit to thesis details.
- *
- * @param hit - Raw Meilisearch hit record.
- * @returns Thesis details.
- */
-function mapHitToDetails(hit: Record<string, unknown>): TezaraThesisDetails {
-  const title = hit.title_translated
-    ? `${hit.title_original} / ${hit.title_translated}`
-    : String(hit.title_original ?? "");
-
-  return {
-    id: hit.id as number,
-    title,
-    author: String(hit.author ?? "N/A"),
-    university: String(hit.university ?? "N/A"),
-    year: parseInt(String(hit.year ?? "0"), 10) || 0,
-    thesisType: String(hit.thesis_type ?? "N/A"),
-    department: String(hit.department ?? "N/A"),
-    language: hit.language ? String(hit.language) : undefined,
-    abstract: extractAbstract(hit),
-    yokPdfUrl: hit.pdf_url ? String(hit.pdf_url) : undefined,
-  };
-}
-
-/**
- * Executes a request against the Tezara Meilisearch instance with retry on
- * transient failures (429/5xx/network), then either returns the hits or throws.
- *
- * A non-2xx response is thrown as an `HttpError` after retries are exhausted,
- * and network/parse failures are re-thrown — never swallowed — so callers can
- * stop the pipeline and surface the real cause.
- *
- * @param body - Meilisearch search request body.
- * @param logger - Optional logger for observability.
- * @param step - Optional step name for log events.
- * @throws When the request fails after all retry attempts.
- * @returns Matching hits.
- */
-async function meiliSearch(
-  body: Record<string, unknown>,
-  logger?: Logger,
-  step?: string,
-): Promise<{ hits: Record<string, unknown>[] }> {
-  if (!MEILI_URL || !MEILI_KEY) {
-    throw new Error(
-      "TEZARA_MEILI_URL and TEZARA_MEILI_KEY environment variables are not defined.",
-    );
-  }
-
-  const startTime = performance.now();
-  const timeoutMs = 30_000;
-
-  try {
-    return await withRetry(
-      async (): Promise<{ hits: Record<string, unknown>[] }> => {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-        try {
-          const res = await fetch(`${MEILI_URL}/indexes/theses/search`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${MEILI_KEY}`,
-            },
-            body: JSON.stringify(body),
-            signal: controller.signal,
-          });
-
-          if (!res.ok) {
-            const errText = await res.text().catch(() => "");
-            throw new HttpError(
-              res.status,
-              errText,
-              parseRetryAfterHeader(res),
-            );
-          }
-
-          return (await res.json()) as { hits: Record<string, unknown>[] };
-        } finally {
-          clearTimeout(timeoutId);
-        }
-      },
-      {
-        maxRetries: MEILI_MAX_RETRIES,
-        baseDelay: 500,
-        maxDelay: DEFAULT_MAX_DELAY,
-        isRetryable: (error) => {
-          if (error instanceof HttpError) {
-            return error.status === 429 || error.status >= 500;
-          }
-          return true;
-        },
-        getRetryAfter: (error) =>
-          error instanceof HttpError ? error.retryAfter : null,
-        onRetry: (attempt, delayMs, error) => {
-          const status = error instanceof HttpError ? error.status : undefined;
-          logger?.info("search_retry", {
-            service: "tezara",
-            filePath: "src/features/tezara/index.ts",
-            step: step ?? "meili_search",
-            data: {
-              attempt,
-              maxRetries: MEILI_MAX_RETRIES,
-              delayMs: Math.round(delayMs),
-              status,
-              errorMessage:
-                error instanceof Error ? error.message : String(error),
-            },
-          });
-        },
-      },
-    );
-  } catch (err) {
-    const durationMs = performance.now() - startTime;
-    logger?.error("search_filtered", {
-      service: "tezara",
-      filePath: "src/features/tezara/index.ts",
-      step: step ?? "meili_search",
-      durationMs,
-      data: { body },
-      error: err,
-    });
-    throw err;
-  }
-}
-
-/**
- * Searches Tezara via the Meilisearch JSON API in a single round-trip.
- *
- * @param query - Search query string.
- * @param logger - Optional logger for observability.
- * @param options - Optional search precision settings.
- * @param options.limit - Maximum number of results to return.
- * @param options.rankingScoreThreshold - Minimum ranking score threshold.
- * @param options.filter - Meilisearch filter expression.
- * @param options.attributesToSearchOn - Attributes to restrict the search to.
- * @returns Matching thesis details.
- */
-export async function searchTezara(
-  query: string,
-  logger?: Logger,
-  options?: {
-    limit?: number;
-    rankingScoreThreshold?: number;
-    filter?: string;
-    attributesToSearchOn?: string[];
-  },
-): Promise<TezaraThesisDetails[]> {
-  const startTime = performance.now();
-  const limit = options?.limit ?? 100;
-  const body: Record<string, unknown> = { q: query, limit };
-  if (options?.rankingScoreThreshold !== undefined) {
-    body.rankingScoreThreshold = options.rankingScoreThreshold;
-  }
-  if (options?.filter !== undefined) {
-    body.filter = options.filter;
-  }
-  if (options?.attributesToSearchOn !== undefined) {
-    body.attributesToSearchOn = options.attributesToSearchOn;
-  }
-  const data = await meiliSearch(body, logger, "search_meili");
-  const durationMs = performance.now() - startTime;
-
-  const hits = data.hits ?? [];
-  const results: TezaraThesisDetails[] = [];
-
-  for (const hit of hits) {
-    if (!hit.id) continue;
-    results.push(mapHitToDetails(hit));
-  }
-
-  if (results.length === 0) {
-    logger?.info("search_empty", {
-      service: "tezara",
-      filePath: "src/features/tezara/index.ts",
-      step: "search_meili",
-      durationMs,
-      data: { query },
-    });
-  }
-
-  return results;
-}
-</file>
-
 <file path="src/lib/prompts/box-generation/index.ts">
 export * from "./box-structure-prompt";
 export * from "./semantic-query-prompt";
@@ -18463,6 +18573,7 @@ import {
   extractHttpStatus,
   isRateLimitError,
   isServerOverloadError,
+  toAiProviderError,
 } from "../llm-errors";
 import {
   withRetry,
@@ -18825,7 +18936,7 @@ export async function generateStructuredContent<T>(
       },
       error,
     });
-    throw error;
+    throw toAiProviderError(error, "gemini");
   }
 }
 </file>
@@ -20472,8 +20583,12 @@ export function useAdvisorSessions({
   );
 
   const loadSessions = useCallback(async () => {
-    const list = await getChatSessions();
-    setSessions(list);
+    const res = await getChatSessions();
+    if (res.success) {
+      setSessions(res.data);
+    } else {
+      toast.error(res.error);
+    }
   }, []);
 
   const syncUrlSession = useCallback((sessionId: number | null) => {
@@ -20530,8 +20645,13 @@ export function useAdvisorSessions({
     /** Loads the session list and messages for the target session id if provided. */
     async function syncFromProp() {
       if (isSendingRef.current) return;
-      const list = await getChatSessions();
+      const res = await getChatSessions();
       if (cancelled) return;
+      if (!res.success) {
+        toast.error(res.error);
+        return;
+      }
+      const list = res.data;
       setSessions(list);
 
       const targetId =
@@ -20653,6 +20773,7 @@ import {
   executeMutationTool,
   undoMutationTool,
 } from "@/features/advisor/tools";
+import { handleActionError } from "@/lib/errors/handle-error";
 
 const toolActionSchema = z.object({
   toolName: z.string().min(1, "Tool name is required."),
@@ -20661,7 +20782,8 @@ const toolActionSchema = z.object({
 
 export interface ExecuteAdvisorToolResult {
   success: boolean;
-  message: string;
+  message?: string;
+  error?: string;
   data?: unknown;
   previousState?: Record<string, unknown>;
 }
@@ -20682,7 +20804,7 @@ export async function executeAdvisorToolAction(payload: {
   if (!session) {
     return {
       success: false,
-      message: "Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.",
+      error: "Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.",
     };
   }
 
@@ -20690,7 +20812,7 @@ export async function executeAdvisorToolAction(payload: {
   if (!parsed.success) {
     return {
       success: false,
-      message: "Geçersiz işlem parametreleri.",
+      error: "Geçersiz işlem parametreleri.",
     };
   }
 
@@ -20700,12 +20822,7 @@ export async function executeAdvisorToolAction(payload: {
     const result = await executeMutationTool(toolName, args, session.userId);
     return result;
   } catch (error) {
-    const errorMsg =
-      error instanceof Error ? error.message : "Bilinmeyen sunucu hatası.";
-    return {
-      success: false,
-      message: `İşlem gerçekleştirilirken hata oluştu: ${errorMsg}`,
-    };
+    return handleActionError(error);
   }
 }
 
@@ -20724,12 +20841,12 @@ export async function undoAdvisorToolAction(payload: {
   args: Record<string, unknown>;
   executionResult?: unknown;
   previousState?: Record<string, unknown>;
-}): Promise<{ success: boolean; message: string }> {
+}): Promise<{ success: boolean; message?: string; error?: string }> {
   const session = await getSession();
   if (!session) {
     return {
       success: false,
-      message: "Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.",
+      error: "Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.",
     };
   }
 
@@ -20743,12 +20860,7 @@ export async function undoAdvisorToolAction(payload: {
     );
     return result;
   } catch (error) {
-    const errorMsg =
-      error instanceof Error ? error.message : "Bilinmeyen sunucu hatası.";
-    return {
-      success: false,
-      message: `İşlem geri alınırken hata oluştu: ${errorMsg}`,
-    };
+    return handleActionError(error);
   }
 }
 </file>
@@ -22457,7 +22569,9 @@ export function useResourceNotes({
         if (res.success && res.data) {
           setNotes(res.data.notes);
         }
-      } catch {}
+      } catch {
+        toast.error("Notlar yüklenirken bir hata oluştu.");
+      }
     }
 
     loadNotes();
@@ -22529,10 +22643,11 @@ export async function cleanupTempKey(
   if (!tempKey) return;
   try {
     await deleteR2Object(tempKey);
-  } catch {
-    log.info("r2_temp_cleanup_failed", {
+  } catch (err) {
+    log.warn("r2_temp_cleanup_failed", {
       service: "library",
       data: { tempKey },
+      error: err,
     });
   }
 }
@@ -25281,227 +25396,243 @@ export async function fetchPreloadedPool(
 }
 </file>
 
-<file path="src/features/positioning/sifting.ts">
-import { searchTezara } from "@/features/tezara";
-import type { TezaraThesisDetails } from "@/lib/types";
-import { rerankWithCohere, COHERE_RERANK_MODEL } from "@/services/ai/cohere";
+<file path="src/features/tezara/index.ts">
 import type { Logger } from "@/lib/logger";
-import type { PositioningMatrixInput } from "./validation";
-import { sanitizeMeiliQuery, type GeneratedQueries } from "./queries";
+import type { TezaraThesisDetails } from "@/lib/types";
+import {
+  DEFAULT_MAX_DELAY,
+  HttpError,
+  withRetry,
+} from "@/lib/api-utils";
 
-/** Candidate thesis extended with Cohere semantic relevance score. */
-export interface SiftedThesis extends TezaraThesisDetails {
-  relevanceScore?: number;
-}
+const MEILI_URL = process.env.TEZARA_MEILI_URL ?? "";
+const MEILI_KEY = process.env.TEZARA_MEILI_KEY ?? "";
 
-const ALLOWED_LANGUAGES = new Set([
-  "tr",
-  "tur",
-  "turkish",
-  "türkçe",
-  "en",
-  "eng",
-  "english",
-  "ingilizce",
-]);
-
-/** Meilisearch filter to pre-filter results to Turkish or English only. */
-const LANG_FILTER = "language=Türkçe OR language=English";
-
-/** Fields to search within for relevance (title + abstract). */
-const SEARCH_FIELDS = [
-  "title_original",
-  "title_translated",
-  "abstract_original",
-  "abstract_translated",
-];
-
-/** Minimum Meilisearch ranking score threshold to filter low-relevance hits. */
-const RANKING_SCORE_THRESHOLD = 0.3;
+/** Maximum number of search attempts for transient Meilisearch failures (429/5xx/network). */
+const MEILI_MAX_RETRIES = 3;
 
 /**
- * Whether a thesis language tag matches Turkish or English; missing tags are kept.
+ * Parses the `Retry-After` header from a Meilisearch response into milliseconds.
  *
- * @param lang - The thesis language tag to check.
- * @returns True when the language is allowed or the tag is missing.
+ * @param response - The HTTP response to inspect.
+ * @returns The retry delay in milliseconds, or null when absent or unparseable.
  */
-function isAllowedLanguage(lang?: string): boolean {
-  if (!lang || !lang.trim()) {
-    return true;
+function parseRetryAfterHeader(response: Response): number | null {
+  const header = response.headers.get("Retry-After");
+  if (!header) return null;
+
+  const seconds = parseInt(header, 10);
+  if (!isNaN(seconds) && seconds > 0) {
+    return seconds * 1000;
   }
-  const normalized = lang
-    .replace(/İ/g, "i")
-    .replace(/I/g, "ı")
-    .toLowerCase()
-    .trim();
-  return ALLOWED_LANGUAGES.has(normalized);
+
+  return null;
+}
+
+/** Additional Meilisearch search parameters for precision tuning. */
+export interface MeiliSearchParams {
+  rankingScoreThreshold?: number;
+  filter?: string;
+  attributesToSearchOn?: string[];
 }
 
 /**
- * Formats a thesis's title and abstract into a YAML document for reranking.
+ * Extracts the most reliable abstract text from a raw Meilisearch hit.
  *
- * @param thesis - The thesis to format.
- * @returns The formatted YAML string.
+ * @param hit - Raw Meilisearch hit record.
+ * @returns Abstract string, preferring the original over the translated text.
  */
-function formatThesisToYaml(thesis: TezaraThesisDetails): string {
-  return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
+function extractAbstract(hit: Record<string, unknown>): string {
+  let abstract = String(hit.abstract_original ?? "").trim();
+  if (!abstract || abstract.length < 10 || /^özet yok\.?$/i.test(abstract)) {
+    abstract = String(hit.abstract_translated ?? "").trim();
+  }
+  return abstract;
 }
 
 /**
- * Formats the positioning matrix input into a YAML query for reranking.
+ * Maps a raw Meilisearch hit to thesis details.
  *
- * @param input - The validated positioning matrix input.
- * @returns The formatted YAML query string.
+ * @param hit - Raw Meilisearch hit record.
+ * @returns Thesis details.
  */
-function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
-  return [
-    `SubjectProblem: ${input.subjectProblem}`,
-    `TheoreticalFramework: ${input.theoreticalFramework}`,
-    `Methodology: ${input.methodology}`,
-  ].join("\n");
-}
+function mapHitToDetails(hit: Record<string, unknown>): TezaraThesisDetails {
+  const title = hit.title_translated
+    ? `${hit.title_original} / ${hit.title_translated}`
+    : String(hit.title_original ?? "");
 
-/** Difference threshold under which two relevance scores are treated as a tie. */
-const SCORE_EPSILON = 1e-4;
-
-/**
- * Runs 8 sequential Meilisearch queries on Tezara, deduplicates results, applies
- * abstract length and language filters, ranks candidates via Cohere Rerank
- * v4 Pro (full score list), then deterministically selects the top-N by
- * (relevanceScore desc, ID asc) for reproducible downstream evaluation.
- *
- * @param queries - The generated TR+EN search queries to run.
- * @param matrixInput - The validated positioning matrix input.
- * @param logger - Optional structured logger for pipeline events.
- * @param options - Optional settings for the sifting process.
- * @param options.topN - The maximum number of top-ranked theses to return.
- * @returns The selected theses sorted ascending by thesis ID.
- */
-export async function searchAndSiftTheses(
-  queries: GeneratedQueries,
-  matrixInput: PositioningMatrixInput,
-  logger?: Logger,
-  options?: { topN?: number },
-): Promise<SiftedThesis[]> {
-  const topN = options?.topN ?? 30;
-
-  const allQueries: string[] = [
-    sanitizeMeiliQuery(queries.subjectTr_alt1),
-    sanitizeMeiliQuery(queries.subjectTr_alt2),
-    sanitizeMeiliQuery(queries.subjectTr_alt3),
-    sanitizeMeiliQuery(queries.subjectTr_alt4),
-    sanitizeMeiliQuery(queries.subjectEn_alt1),
-    sanitizeMeiliQuery(queries.subjectEn_alt2),
-    sanitizeMeiliQuery(queries.subjectEn_alt3),
-    sanitizeMeiliQuery(queries.subjectEn_alt4),
-  ];
-
-  const searchStart = performance.now();
-
-  logger?.info("sifting_parallel_search_start", {
-    service: "tezara",
-    filePath: "src/features/positioning/sifting.ts",
-    data: { queries: allQueries },
-  });
-
-  const searchParams = {
-    limit: 50,
-    rankingScoreThreshold: RANKING_SCORE_THRESHOLD,
-    filter: LANG_FILTER,
-    attributesToSearchOn: SEARCH_FIELDS,
+  return {
+    id: hit.id as number,
+    title,
+    author: String(hit.author ?? "N/A"),
+    university: String(hit.university ?? "N/A"),
+    year: parseInt(String(hit.year ?? "0"), 10) || 0,
+    thesisType: String(hit.thesis_type ?? "N/A"),
+    department: String(hit.department ?? "N/A"),
+    language: hit.language ? String(hit.language) : undefined,
+    abstract: extractAbstract(hit),
+    yokPdfUrl: hit.pdf_url ? String(hit.pdf_url) : undefined,
   };
+}
 
-  const hitArrays: TezaraThesisDetails[][] = [];
-  for (const q of allQueries) {
-    hitArrays.push(await searchTezara(q, logger, searchParams));
+/**
+ * Executes a request against the Tezara Meilisearch instance with retry on
+ * transient failures (429/5xx/network), then either returns the hits or throws.
+ *
+ * A non-2xx response is thrown as an `HttpError` after retries are exhausted,
+ * and network/parse failures are re-thrown — never swallowed — so callers can
+ * stop the pipeline and surface the real cause.
+ *
+ * @param body - Meilisearch search request body.
+ * @param logger - Optional logger for observability.
+ * @param step - Optional step name for log events.
+ * @throws When the request fails after all retry attempts.
+ * @returns Matching hits.
+ */
+async function meiliSearch(
+  body: Record<string, unknown>,
+  logger?: Logger,
+  step?: string,
+): Promise<{ hits: Record<string, unknown>[] }> {
+  if (!MEILI_URL || !MEILI_KEY) {
+    throw new Error(
+      "TEZARA_MEILI_URL and TEZARA_MEILI_KEY environment variables are not defined.",
+    );
   }
 
-  const candidateMap = new Map<number, TezaraThesisDetails>();
-  for (const hits of hitArrays) {
-    for (const thesis of hits) {
-      if (thesis && thesis.id && !candidateMap.has(thesis.id)) {
-        candidateMap.set(thesis.id, thesis);
-      }
-    }
-  }
+  const startTime = performance.now();
+  const timeoutMs = 30_000;
 
-  const uniqueCandidates = Array.from(candidateMap.values()).sort(
-    (a, b) => a.id - b.id,
-  );
+  try {
+    return await withRetry(
+      async (): Promise<{ hits: Record<string, unknown>[] }> => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          const res = await fetch(`${MEILI_URL}/indexes/theses/search`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${MEILI_KEY}`,
+            },
+            body: JSON.stringify(body),
+            signal: controller.signal,
+          });
 
-  const filteredCandidates = uniqueCandidates.filter((thesis) => {
-    const hasSufficientAbstract =
-      thesis.abstract && thesis.abstract.trim().length >= 100;
-    if (!hasSufficientAbstract) return false;
+          if (!res.ok) {
+            const errText = await res.text().catch(() => "");
+            throw new HttpError(
+              res.status,
+              errText,
+              parseRetryAfterHeader(res),
+            );
+          }
 
-    const isValidLang = isAllowedLanguage(thesis.language);
-    if (!isValidLang) return false;
-
-    return true;
-  });
-
-  if (filteredCandidates.length === 0) {
-    logger?.info("sifting_no_candidates_remaining", {
+          return (await res.json()) as { hits: Record<string, unknown>[] };
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      },
+      {
+        maxRetries: MEILI_MAX_RETRIES,
+        baseDelay: 500,
+        maxDelay: DEFAULT_MAX_DELAY,
+        isRetryable: (error) => {
+          if (error instanceof HttpError) {
+            return error.status === 429 || error.status >= 500;
+          }
+          return true;
+        },
+        getRetryAfter: (error) =>
+          error instanceof HttpError ? error.retryAfter : null,
+        onRetry: (attempt, delayMs, error) => {
+          const status = error instanceof HttpError ? error.status : undefined;
+          logger?.info("search_retry", {
+            service: "tezara",
+            filePath: "src/features/tezara/index.ts",
+            step: step ?? "meili_search",
+            data: {
+              attempt,
+              maxRetries: MEILI_MAX_RETRIES,
+              delayMs: Math.round(delayMs),
+              status,
+              errorMessage:
+                error instanceof Error ? error.message : String(error),
+            },
+          });
+        },
+      },
+    );
+  } catch (err) {
+    const durationMs = performance.now() - startTime;
+    logger?.error("search_filtered", {
       service: "tezara",
-      filePath: "src/features/positioning/sifting.ts",
-      data: { queries: allQueries },
+      filePath: "src/features/tezara/index.ts",
+      step: step ?? "meili_search",
+      durationMs,
+      data: { body },
+      error: err,
     });
-    return [];
+    throw err;
+  }
+}
+
+/**
+ * Searches Tezara via the Meilisearch JSON API in a single round-trip.
+ *
+ * @param query - Search query string.
+ * @param logger - Optional logger for observability.
+ * @param options - Optional search precision settings.
+ * @param options.limit - Maximum number of results to return.
+ * @param options.rankingScoreThreshold - Minimum ranking score threshold.
+ * @param options.filter - Meilisearch filter expression.
+ * @param options.attributesToSearchOn - Attributes to restrict the search to.
+ * @returns Matching thesis details.
+ */
+export async function searchTezara(
+  query: string,
+  logger?: Logger,
+  options?: {
+    limit?: number;
+    rankingScoreThreshold?: number;
+    filter?: string;
+    attributesToSearchOn?: string[];
+  },
+): Promise<TezaraThesisDetails[]> {
+  const startTime = performance.now();
+  const limit = options?.limit ?? 100;
+  const body: Record<string, unknown> = { q: query, limit };
+  if (options?.rankingScoreThreshold !== undefined) {
+    body.rankingScoreThreshold = options.rankingScoreThreshold;
+  }
+  if (options?.filter !== undefined) {
+    body.filter = options.filter;
+  }
+  if (options?.attributesToSearchOn !== undefined) {
+    body.attributesToSearchOn = options.attributesToSearchOn;
+  }
+  const data = await meiliSearch(body, logger, "search_meili");
+  const durationMs = performance.now() - startTime;
+
+  const hits = data.hits ?? [];
+  const results: TezaraThesisDetails[] = [];
+
+  for (const hit of hits) {
+    if (!hit.id) continue;
+    results.push(mapHitToDetails(hit));
   }
 
-  logger?.info("sifting_parallel_search_success", {
-    service: "tezara",
-    filePath: "src/features/positioning/sifting.ts",
-    durationMs: performance.now() - searchStart,
-    data: { candidateCount: filteredCandidates.length },
-  });
+  if (results.length === 0) {
+    logger?.info("search_empty", {
+      service: "tezara",
+      filePath: "src/features/tezara/index.ts",
+      step: "search_meili",
+      durationMs,
+      data: { query },
+    });
+  }
 
-  const targetYamlQuery = formatMatrixToYamlQuery(matrixInput);
-  const candidateYamlDocs = filteredCandidates.map(formatThesisToYaml);
-
-  const rerankStart = performance.now();
-
-  logger?.info("cohere_rerank_start", {
-    service: "cohere",
-    filePath: "src/features/positioning/sifting.ts",
-    data: {
-      model: COHERE_RERANK_MODEL,
-      candidateCount: filteredCandidates.length,
-    },
-  });
-
-  const rerankResults = await rerankWithCohere({
-    query: targetYamlQuery,
-    documents: candidateYamlDocs,
-    logger,
-  });
-
-  const scoredTheses: SiftedThesis[] = rerankResults.map((res) => {
-    const candidate = filteredCandidates[res.index];
-    return {
-      ...candidate,
-      relevanceScore: res.relevanceScore,
-    };
-  });
-
-  scoredTheses.sort((a, b) => {
-    const delta = (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
-    if (Math.abs(delta) > SCORE_EPSILON) return delta;
-    return a.id - b.id;
-  });
-
-  const selected = scoredTheses.slice(0, topN);
-
-  const topResults = selected.slice().sort((a, b) => a.id - b.id);
-
-  logger?.info("cohere_rerank_success", {
-    service: "cohere",
-    filePath: "src/features/positioning/sifting.ts",
-    durationMs: performance.now() - rerankStart,
-    data: { topCount: topResults.length },
-  });
-
-  return topResults;
+  return results;
 }
 </file>
 
@@ -25573,6 +25704,7 @@ export const CEREBRAS_SEED = 42 as const;
 import { Logger } from "@/lib/logger";
 import { withRetry, HttpError, DEFAULT_MAX_DELAY } from "@/lib/api-utils";
 import { createConcurrencyLimiter } from "@/lib/rate-limiter";
+import { toAiProviderError } from "./llm-errors";
 
 const BGE_M3_MODEL = "@cf/baai/bge-m3";
 const MAX_EMBEDDING_RETRIES = 3;
@@ -25722,7 +25854,11 @@ export async function generateCloudflareEmbeddings(
     ),
   );
 
-  batchResults.push(...(await Promise.all(queuedBatches)));
+  try {
+    batchResults.push(...(await Promise.all(queuedBatches)));
+  } catch (error) {
+    throw toAiProviderError(error, "cloudflare");
+  }
 
   return batchResults.flat();
 }
@@ -25747,6 +25883,7 @@ export async function generateVectorEmbeddings(
 import { Logger } from "@/lib/logger";
 import { HttpError, withRetry, DEFAULT_MAX_DELAY } from "@/lib/api-utils";
 import { createConcurrencyLimiter } from "@/lib/rate-limiter";
+import { toAiProviderError } from "./llm-errors";
 
 /** Multilingual (incl. Turkish) Cohere Rerank model ID — 32,768-token context. */
 export const COHERE_RERANK_MODEL = "rerank-v4.0-pro";
@@ -25922,7 +26059,7 @@ export async function rerankWithCohere(
       service: "cohere",
       error,
     });
-    throw error;
+    throw toAiProviderError(error, "cohere");
   } finally {
     clearTimeout(timer);
   }
@@ -27736,12 +27873,11 @@ function checkRateLimit(email: string): boolean {
   return true;
 }
 
-export type LoginResult =
-  { success: true; error?: never } | { success?: never; error: string };
+export type LoginResult = { success: boolean; error?: string };
 
 export type OnboardingStatusResult =
-  | { onboardingCompleted: boolean; error?: never }
-  | { onboardingCompleted?: never; error: string };
+  | { success: true; onboardingCompleted: boolean }
+  | { success: false; error: string };
 
 /**
  * Validates email and password; on success creates the session cookie.
@@ -27764,7 +27900,7 @@ export async function loginAction(
       service: "auth",
       data: { reason: "validation_failure" },
     });
-    return { error: msg };
+    return { success: false, error: msg };
   }
 
   if (!checkRateLimit(parsed.data.email)) {
@@ -27773,6 +27909,7 @@ export async function loginAction(
       data: { reason: "rate_limit_exceeded" },
     });
     return {
+      success: false,
       error:
         "Çok fazla başarısız giriş denemesi. Lütfen 15 dakika sonra tekrar deneyin.",
     };
@@ -27794,7 +27931,7 @@ export async function loginAction(
         service: "auth",
         data: { reason: "user_not_found" },
       });
-      return { error: "E-posta veya şifre hatalı." };
+      return { success: false, error: "E-posta veya şifre hatalı." };
     }
 
     const passwordMatch = await compare(parsed.data.password, user.password);
@@ -27804,7 +27941,7 @@ export async function loginAction(
         service: "auth",
         data: { reason: "password_mismatch" },
       });
-      return { error: "E-posta veya şifre hatalı." };
+      return { success: false, error: "E-posta veya şifre hatalı." };
     }
 
     const cookieStore = await cookies();
@@ -27833,7 +27970,7 @@ export async function loginAction(
       service: "auth",
       data: { reason: "server_error" },
     });
-    return { error: "Bir hata oluştu. Lütfen tekrar deneyin." };
+    return { success: false, error: "Bir hata oluştu. Lütfen tekrar deneyin." };
   }
 
   return { success: true };
@@ -27852,10 +27989,11 @@ export async function checkOnboardingStatus(): Promise<OnboardingStatusResult> {
     const session = await getSessionWithOnboarding();
 
     if (!session) {
-      return { error: SESSION_ERROR_MSG };
+      return { success: false, error: SESSION_ERROR_MSG };
     }
 
     return {
+      success: true,
       onboardingCompleted: session.onboardingCompleted,
     };
   } catch {
@@ -27863,7 +28001,10 @@ export async function checkOnboardingStatus(): Promise<OnboardingStatusResult> {
       service: "auth",
       data: { reason: "Onboarding durumu sorgulanamadı" },
     });
-    return { error: "Onboarding durumu sorgulanırken bir hata oluştu." };
+    return {
+      success: false,
+      error: "Onboarding durumu sorgulanırken bir hata oluştu.",
+    };
   }
 }
 </file>
@@ -28835,6 +28976,262 @@ export const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
   },
 );
 SelectItem.displayName = "SelectItem";
+</file>
+
+<file path="src/db/reset.ts">
+import dotenv from "dotenv";
+dotenv.config({ path: ".env.local" });
+
+/**
+ * Drops the entire public schema (CASCADE) and recreates it empty, removing all
+ * application tables, enums, and indexes in a single deterministic operation.
+ * This supersedes any table-by-table reset because it stays correct regardless
+ * of how the schema evolves over time.
+ *
+ * @returns A promise that resolves when the reset operation finishes.
+ */
+async function reset() {
+  console.log("🗑️  Dropping public schema (CASCADE)...");
+
+  const { db } = await import("./index");
+
+  await db.execute(`DROP SCHEMA IF EXISTS public CASCADE`);
+  await db.execute(`CREATE SCHEMA public`);
+  await db.execute(`CREATE EXTENSION IF NOT EXISTS vector`);
+
+  console.log(
+    "✅ Schema reset complete. Run `npm run db:push` then `npm run db:seed`.",
+  );
+}
+
+reset().catch((err) => {
+  console.error("❌ Reset failed:", err);
+  process.exit(1);
+});
+</file>
+
+<file path="src/features/positioning/sifting.ts">
+import { searchTezara } from "@/features/tezara";
+import type { TezaraThesisDetails } from "@/lib/types";
+import { rerankWithCohere, COHERE_RERANK_MODEL } from "@/services/ai/cohere";
+import type { Logger } from "@/lib/logger";
+import type { PositioningMatrixInput } from "./validation";
+import { sanitizeMeiliQuery, type GeneratedQueries } from "./queries";
+
+/** Candidate thesis extended with Cohere semantic relevance score. */
+export interface SiftedThesis extends TezaraThesisDetails {
+  relevanceScore?: number;
+}
+
+const ALLOWED_LANGUAGES = new Set([
+  "tr",
+  "tur",
+  "turkish",
+  "türkçe",
+  "en",
+  "eng",
+  "english",
+  "ingilizce",
+]);
+
+/** Meilisearch filter to pre-filter results to Turkish or English only. */
+const LANG_FILTER = "language=Türkçe OR language=English";
+
+/** Fields to search within for relevance (title + abstract). */
+const SEARCH_FIELDS = [
+  "title_original",
+  "title_translated",
+  "abstract_original",
+  "abstract_translated",
+];
+
+/** Minimum Meilisearch ranking score threshold to filter low-relevance hits. */
+const RANKING_SCORE_THRESHOLD = 0.3;
+
+/**
+ * Whether a thesis language tag matches Turkish or English; missing tags are kept.
+ *
+ * @param lang - The thesis language tag to check.
+ * @returns True when the language is allowed or the tag is missing.
+ */
+function isAllowedLanguage(lang?: string): boolean {
+  if (!lang || !lang.trim()) {
+    return true;
+  }
+  const normalized = lang
+    .replace(/İ/g, "i")
+    .replace(/I/g, "ı")
+    .toLowerCase()
+    .trim();
+  return ALLOWED_LANGUAGES.has(normalized);
+}
+
+/**
+ * Formats a thesis's title and abstract into a YAML document for reranking.
+ *
+ * @param thesis - The thesis to format.
+ * @returns The formatted YAML string.
+ */
+function formatThesisToYaml(thesis: TezaraThesisDetails): string {
+  return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
+}
+
+/**
+ * Formats the positioning matrix input into a YAML query for reranking.
+ *
+ * @param input - The validated positioning matrix input.
+ * @returns The formatted YAML query string.
+ */
+function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
+  return [
+    `SubjectProblem: ${input.subjectProblem}`,
+    `TheoreticalFramework: ${input.theoreticalFramework}`,
+    `Methodology: ${input.methodology}`,
+  ].join("\n");
+}
+
+/** Difference threshold under which two relevance scores are treated as a tie. */
+const SCORE_EPSILON = 1e-4;
+
+/**
+ * Runs 8 sequential Meilisearch queries on Tezara, deduplicates results, applies
+ * abstract length and language filters, ranks candidates via Cohere Rerank
+ * v4 Pro (full score list), then deterministically selects the top-N by
+ * (relevanceScore desc, ID asc) for reproducible downstream evaluation.
+ *
+ * @param queries - The generated TR+EN search queries to run.
+ * @param matrixInput - The validated positioning matrix input.
+ * @param logger - Optional structured logger for pipeline events.
+ * @param options - Optional settings for the sifting process.
+ * @param options.topN - The maximum number of top-ranked theses to return.
+ * @returns The selected theses sorted ascending by thesis ID.
+ */
+export async function searchAndSiftTheses(
+  queries: GeneratedQueries,
+  matrixInput: PositioningMatrixInput,
+  logger?: Logger,
+  options?: { topN?: number },
+): Promise<SiftedThesis[]> {
+  const topN = options?.topN ?? 30;
+
+  const allQueries: string[] = [
+    sanitizeMeiliQuery(queries.subjectTr_alt1),
+    sanitizeMeiliQuery(queries.subjectTr_alt2),
+    sanitizeMeiliQuery(queries.subjectTr_alt3),
+    sanitizeMeiliQuery(queries.subjectTr_alt4),
+    sanitizeMeiliQuery(queries.subjectEn_alt1),
+    sanitizeMeiliQuery(queries.subjectEn_alt2),
+    sanitizeMeiliQuery(queries.subjectEn_alt3),
+    sanitizeMeiliQuery(queries.subjectEn_alt4),
+  ];
+
+  const searchStart = performance.now();
+
+  logger?.info("sifting_parallel_search_start", {
+    service: "tezara",
+    filePath: "src/features/positioning/sifting.ts",
+    data: { queries: allQueries },
+  });
+
+  const searchParams = {
+    limit: 50,
+    rankingScoreThreshold: RANKING_SCORE_THRESHOLD,
+    filter: LANG_FILTER,
+    attributesToSearchOn: SEARCH_FIELDS,
+  };
+
+  const hitArrays: TezaraThesisDetails[][] = [];
+  for (const q of allQueries) {
+    hitArrays.push(await searchTezara(q, logger, searchParams));
+  }
+
+  const candidateMap = new Map<number, TezaraThesisDetails>();
+  for (const hits of hitArrays) {
+    for (const thesis of hits) {
+      if (thesis && thesis.id && !candidateMap.has(thesis.id)) {
+        candidateMap.set(thesis.id, thesis);
+      }
+    }
+  }
+
+  const uniqueCandidates = Array.from(candidateMap.values()).sort(
+    (a, b) => a.id - b.id,
+  );
+
+  const filteredCandidates = uniqueCandidates.filter((thesis) => {
+    const hasSufficientAbstract =
+      thesis.abstract && thesis.abstract.trim().length >= 100;
+    if (!hasSufficientAbstract) return false;
+
+    const isValidLang = isAllowedLanguage(thesis.language);
+    if (!isValidLang) return false;
+
+    return true;
+  });
+
+  if (filteredCandidates.length === 0) {
+    logger?.info("sifting_no_candidates_remaining", {
+      service: "tezara",
+      filePath: "src/features/positioning/sifting.ts",
+      data: { queries: allQueries },
+    });
+    return [];
+  }
+
+  logger?.info("sifting_parallel_search_success", {
+    service: "tezara",
+    filePath: "src/features/positioning/sifting.ts",
+    durationMs: performance.now() - searchStart,
+    data: { candidateCount: filteredCandidates.length },
+  });
+
+  const targetYamlQuery = formatMatrixToYamlQuery(matrixInput);
+  const candidateYamlDocs = filteredCandidates.map(formatThesisToYaml);
+
+  const rerankStart = performance.now();
+
+  logger?.info("cohere_rerank_start", {
+    service: "cohere",
+    filePath: "src/features/positioning/sifting.ts",
+    data: {
+      model: COHERE_RERANK_MODEL,
+      candidateCount: filteredCandidates.length,
+    },
+  });
+
+  const rerankResults = await rerankWithCohere({
+    query: targetYamlQuery,
+    documents: candidateYamlDocs,
+    logger,
+  });
+
+  const scoredTheses: SiftedThesis[] = rerankResults.map((res) => {
+    const candidate = filteredCandidates[res.index];
+    return {
+      ...candidate,
+      relevanceScore: res.relevanceScore,
+    };
+  });
+
+  scoredTheses.sort((a, b) => {
+    const delta = (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
+    if (Math.abs(delta) > SCORE_EPSILON) return delta;
+    return a.id - b.id;
+  });
+
+  const selected = scoredTheses.slice(0, topN);
+
+  const topResults = selected.slice().sort((a, b) => a.id - b.id);
+
+  logger?.info("cohere_rerank_success", {
+    service: "cohere",
+    filePath: "src/features/positioning/sifting.ts",
+    durationMs: performance.now() - rerankStart,
+    data: { topCount: topResults.length },
+  });
+
+  return topResults;
+}
 </file>
 
 <file path="src/lib/prompts/positioning/per-thesis-evaluation.ts">
@@ -30258,7 +30655,7 @@ export default function LoginPage() {
 
       const status = await checkOnboardingStatus();
 
-      if ("error" in status) {
+      if (!status.success) {
         toast.error(status.error);
         setIsPending(false);
         return;
@@ -30682,36 +31079,121 @@ export default async function LiteratureReviewPage() {
 }
 </file>
 
-<file path="src/db/reset.ts">
-import dotenv from "dotenv";
-dotenv.config({ path: ".env.local" });
+<file path="src/app/(onboarding)/onboarding/matrix/actions.ts">
+"use server";
+
+import { eq, inArray, sql } from "drizzle-orm";
+import { z } from "zod";
+import { db } from "@/db";
+import { matrices, positioning, boxes, sources, outlines } from "@/db/schema";
+import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
+import { createFlowId, Logger } from "@/lib/logger";
+import {
+  invalidateOnboardingCache,
+  invalidateOnboardingStepCache,
+} from "@/lib/cache-tags";
+
+const MIN_LENGTH = 3;
+const MAX_LENGTH = 4000;
+
+const thesisMatrixSchema = z.object({
+  subjectProblem: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+  theoreticalFramework: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+  primaryMaterial: z.string().trim().max(MAX_LENGTH).optional().default(""),
+  methodology: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+});
 
 /**
- * Drops the entire public schema (CASCADE) and recreates it empty, removing all
- * application tables, enums, and indexes in a single deterministic operation.
- * This supersedes any table-by-table reset because it stays correct regardless
- * of how the schema evolves over time.
+ * Persists the thesis matrix to the database and clears any downstream analysis
+ * data (positioning report, thesis outline, and thesis boxes) that may now be stale.
  *
- * @returns A promise that resolves when the reset operation finishes.
+ * @param data - The thesis matrix data from the onboarding form
+ * @returns Success confirmation or an error message
  */
-async function reset() {
-  console.log("🗑️  Dropping public schema (CASCADE)...");
+export async function saveThesisMatrixAction(
+  data: unknown,
+): Promise<{ success: true } | { error: string }> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
 
-  const { db } = await import("./index");
+  log.info("matrix_save_start");
 
-  await db.execute(`DROP SCHEMA IF EXISTS public CASCADE`);
-  await db.execute(`CREATE SCHEMA public`);
-  await db.execute(`CREATE EXTENSION IF NOT EXISTS vector`);
+  const parsed = thesisMatrixSchema.safeParse(data);
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0];
+    const msg = firstIssue
+      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
+      : "Doğrulama başarısız.";
+    return { error: msg };
+  }
 
-  console.log(
-    "✅ Schema reset complete. Run `npm run db:push` then `npm run db:seed`.",
-  );
+  const validated = parsed.data;
+
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { error: SESSION_ERROR_MSG };
+    }
+
+    await db.transaction(async (tx) => {
+      const [matrixRow] = await tx
+        .insert(matrices)
+        .values({
+          userId: session.userId,
+          subjectProblem: validated.subjectProblem,
+          theoreticalFramework: validated.theoreticalFramework,
+          primaryMaterial: validated.primaryMaterial,
+          methodology: validated.methodology,
+          updatedAt: sql`now()`,
+        })
+        .onConflictDoUpdate({
+          target: matrices.userId,
+          set: {
+            subjectProblem: validated.subjectProblem,
+            theoreticalFramework: validated.theoreticalFramework,
+            primaryMaterial: validated.primaryMaterial,
+            methodology: validated.methodology,
+            updatedAt: sql`now()`,
+          },
+        })
+        .returning({ id: matrices.id });
+
+      if (matrixRow) {
+        await tx
+          .delete(positioning)
+          .where(eq(positioning.userId, session.userId));
+
+        await tx
+          .delete(sources)
+          .where(
+            inArray(
+              sources.boxId,
+              tx
+                .select({ id: boxes.id })
+                .from(boxes)
+                .where(eq(boxes.matrixId, matrixRow.id)),
+            ),
+          );
+
+        await tx.delete(outlines).where(eq(outlines.matrixId, matrixRow.id));
+
+        await tx.delete(boxes).where(eq(boxes.matrixId, matrixRow.id));
+      }
+    });
+
+    invalidateOnboardingCache();
+    invalidateOnboardingStepCache("matrix");
+
+    log.info("matrix_save_success");
+
+    return { success: true };
+  } catch (error) {
+    log.error("matrix_save_failed", {
+      error,
+    });
+    return { error: "Tez matrisi veritabanına kaydedilemedi." };
+  }
 }
-
-reset().catch((err) => {
-  console.error("❌ Reset failed:", err);
-  process.exit(1);
-});
 </file>
 
 <file path="src/lib/prompts/box-generation/box-structure-prompt.ts">
@@ -32095,123 +32577,6 @@ export async function updateLibraryResourceAction(input: {
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/matrix/actions.ts">
-"use server";
-
-import { eq, inArray, sql } from "drizzle-orm";
-import { z } from "zod";
-import { db } from "@/db";
-import { matrices, positioning, boxes, sources, outlines } from "@/db/schema";
-import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
-import { createFlowId, Logger } from "@/lib/logger";
-import {
-  invalidateOnboardingCache,
-  invalidateOnboardingStepCache,
-} from "@/lib/cache-tags";
-
-const MIN_LENGTH = 3;
-const MAX_LENGTH = 4000;
-
-const thesisMatrixSchema = z.object({
-  subjectProblem: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
-  theoreticalFramework: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
-  primaryMaterial: z.string().trim().max(MAX_LENGTH).optional().default(""),
-  methodology: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
-});
-
-/**
- * Persists the thesis matrix to the database and clears any downstream analysis
- * data (positioning report, thesis outline, and thesis boxes) that may now be stale.
- *
- * @param data - The thesis matrix data from the onboarding form
- * @returns Success confirmation or an error message
- */
-export async function saveThesisMatrixAction(
-  data: unknown,
-): Promise<{ success: true } | { error: string }> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  log.info("matrix_save_start");
-
-  const parsed = thesisMatrixSchema.safeParse(data);
-  if (!parsed.success) {
-    const firstIssue = parsed.error.issues[0];
-    const msg = firstIssue
-      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
-      : "Doğrulama başarısız.";
-    return { error: msg };
-  }
-
-  const validated = parsed.data;
-
-  try {
-    const session = await getSession();
-    if (!session) {
-      return { error: SESSION_ERROR_MSG };
-    }
-
-    await db.transaction(async (tx) => {
-      const [matrixRow] = await tx
-        .insert(matrices)
-        .values({
-          userId: session.userId,
-          subjectProblem: validated.subjectProblem,
-          theoreticalFramework: validated.theoreticalFramework,
-          primaryMaterial: validated.primaryMaterial,
-          methodology: validated.methodology,
-          updatedAt: sql`now()`,
-        })
-        .onConflictDoUpdate({
-          target: matrices.userId,
-          set: {
-            subjectProblem: validated.subjectProblem,
-            theoreticalFramework: validated.theoreticalFramework,
-            primaryMaterial: validated.primaryMaterial,
-            methodology: validated.methodology,
-            updatedAt: sql`now()`,
-          },
-        })
-        .returning({ id: matrices.id });
-
-      if (matrixRow) {
-        await tx
-          .delete(positioning)
-          .where(eq(positioning.userId, session.userId));
-
-        await tx
-          .delete(sources)
-          .where(
-            inArray(
-              sources.boxId,
-              tx
-                .select({ id: boxes.id })
-                .from(boxes)
-                .where(eq(boxes.matrixId, matrixRow.id)),
-            ),
-          );
-
-        await tx.delete(outlines).where(eq(outlines.matrixId, matrixRow.id));
-
-        await tx.delete(boxes).where(eq(boxes.matrixId, matrixRow.id));
-      }
-    });
-
-    invalidateOnboardingCache();
-    invalidateOnboardingStepCache("matrix");
-
-    log.info("matrix_save_success");
-
-    return { success: true };
-  } catch (error) {
-    log.error("matrix_save_failed", {
-      error,
-    });
-    return { error: "Tez matrisi veritabanına kaydedilemedi." };
-  }
-}
-</file>
-
 <file path="src/app/(onboarding)/onboarding/positioning/_components/positioning-markdown-renderer.tsx">
 import React from "react";
 import { Compass, ScanEye, Sparkles } from "lucide-react";
@@ -32436,250 +32801,6 @@ export function PositioningMarkdownRenderer({
           ))}
         </div>
       </Card>
-    </div>
-  );
-}
-</file>
-
-<file path="src/app/(onboarding)/onboarding/positioning/_components/positioning-report-view.tsx">
-"use client";
-
-import { useState } from "react";
-import {
-  CheckCircle2,
-  AlertTriangle,
-  HelpCircle,
-  Lightbulb,
-  ArrowRight,
-  ExternalLink,
-  Target,
-  Loader2,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import type { JuryAnalysisResult } from "@/features/positioning/analysis";
-import { PositioningMarkdownRenderer } from "./positioning-markdown-renderer";
-
-interface PositioningReportViewProps {
-  reportData: JuryAnalysisResult;
-  onConfirm: () => void;
-}
-
-/**
- * Renders the full positioning gap analysis report including global status badge,
- * structured jury synthesis sections, and recommended thesis cards.
- *
- * @param root0 - The component props.
- * @param root0.reportData - The jury analysis result to display.
- * @param root0.onConfirm - Callback invoked when the user confirms the positioning.
- * @returns The rendered positioning report view.
- */
-export function PositioningReportView({
-  reportData,
-  onConfirm,
-}: PositioningReportViewProps) {
-  const [confirming, setConfirming] = useState(false);
-  const isNovelGap = reportData.globalStatus === "NOVEL_GAP_IDENTIFIED";
-  const isDirectOverlap = reportData.globalStatus === "DIRECT_OVERLAP";
-
-  const handleConfirm = async () => {
-    if (confirming) return;
-    setConfirming(true);
-    try {
-      await onConfirm();
-    } finally {
-      setConfirming(false);
-    }
-  };
-
-  return (
-    <div className="w-full space-y-8">
-      <Card className="p-6 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
-          <div className="space-y-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Jüri Değerlendirme Sonucu
-            </span>
-            <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
-              Akademik Konumlandırma & Özgün Katkı Raporu
-            </h2>
-          </div>
-
-          <div>
-            {isNovelGap && (
-              <Badge className="bg-success/10 text-success border-success/20 px-3 py-2 text-xs font-semibold flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
-                Özgün Katkı / Akademik Boşluk Bulundu
-              </Badge>
-            )}
-            {isDirectOverlap && (
-              <Badge
-                variant="destructive"
-                className="bg-destructive/10 text-destructive border-destructive/20 px-3 py-2 text-xs font-semibold flex items-center gap-2"
-              >
-                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
-                Doğrudan Çakışma Riski
-              </Badge>
-            )}
-            {!isNovelGap && !isDirectOverlap && (
-              <Badge className="bg-warning/10 text-warning border-warning/20 px-3 py-2 text-xs font-semibold flex items-center gap-2">
-                <HelpCircle className="h-4 w-4 text-warning shrink-0" />
-                Sınırlı Literatür / Bağlam Genişletilmeli
-              </Badge>
-            )}
-          </div>
-        </div>
-
-        {isNovelGap && (
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            <CheckCircle2 className="h-4 w-4 inline-block mr-2 text-success shrink-0 align-text-top" />
-            Çalışmanızın odağı, yöntemi ve kapsamı literatürdeki mevcut
-            tezlerden belirgin biçimde ayrışmakta ve özgün bir akademik boşluk
-            doldurmaktadır.
-          </p>
-        )}
-        {isDirectOverlap && (
-          <div className="p-4 rounded-md bg-destructive/5 border border-destructive/20 border-l-2 border-l-destructive">
-            <p className="text-sm leading-relaxed text-card-foreground">
-              <AlertTriangle className="h-4 w-4 inline-block mr-2 text-destructive shrink-0 align-text-top" />
-              Çalışmanızın odağı literatürdeki mevcut tezlerle yüksek oranda
-              çakışmaktadır. Jüri önerileri doğrultusunda teorik çerçeve veya
-              yönteminizi güncellemeniz tavsiye edilir.
-            </p>
-          </div>
-        )}
-        {!isNovelGap && !isDirectOverlap && (
-          <div className="p-4 rounded-md bg-warning/10 border border-warning/20 border-l-2 border-l-warning">
-            <p className="text-sm leading-relaxed text-card-foreground">
-              <HelpCircle className="h-4 w-4 inline-block mr-2 text-warning shrink-0 align-text-top" />
-              Doğrudan eşleşen tez sayısı sınırlıdır. Kavramsal çerçevenizi veya
-              arama sınırlarınızı genişleterek tekrar değerlendirebilirsiniz.
-            </p>
-          </div>
-        )}
-      </Card>
-
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="h-px flex-1 bg-border" />
-          <span className="px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-            Akademik Jüri Sentezi
-          </span>
-          <div className="h-px flex-1 bg-border" />
-        </div>
-
-        <PositioningMarkdownRenderer content={reportData.gapAnalysisSummary} />
-      </div>
-
-      {reportData.recommendedTheses &&
-        reportData.recommendedTheses.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="h-px flex-1 bg-border" />
-              <span className="px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                Stratejik Rehber Tez Kartları (
-                {reportData.recommendedTheses.length})
-              </span>
-              <div className="h-px flex-1 bg-border" />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {reportData.recommendedTheses.map((thesis, idx) => {
-                const thesisId = thesis.externalThesisId || `thesis-${idx}`;
-                return (
-                  <Card
-                    key={thesisId}
-                    className="p-6 space-y-3 hover:border-border/40 transition-colors"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                      <div className="space-y-1">
-                        <h4 className="font-sans text-sm font-medium text-foreground leading-snug">
-                          {thesis.title}
-                        </h4>
-                        <p className="text-xs text-muted-foreground">
-                          {[thesis.author, thesis.year, thesis.university]
-                            .filter(Boolean)
-                            .join(" • ")}
-                        </p>
-                      </div>
-                      {thesis.doi && (
-                        <a
-                          href={
-                            thesis.doi.startsWith("http")
-                              ? thesis.doi
-                              : `https://doi.org/${thesis.doi}`
-                          }
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0 self-start"
-                        >
-                          DOI <ExternalLink className="h-3 w-3" />
-                        </a>
-                      )}
-                    </div>
-
-                    {(thesis.contributionArea || thesis.relevanceReason) && (
-                      <div className="space-y-3 pt-3 border-t border-border/40 text-xs">
-                        <div className="space-y-1">
-                          <span className="flex items-center gap-2 font-semibold text-primary">
-                            <Target className="h-3.5 w-3.5 shrink-0" />
-                            Katkı / Odak Alanı:
-                          </span>
-                          <span className="text-foreground leading-relaxed block">
-                            {thesis.contributionArea || (
-                              <span className="text-muted-foreground italic">
-                                —
-                              </span>
-                            )}
-                          </span>
-                        </div>
-
-                        <div className="border-t border-border/40" />
-
-                        <div className="space-y-1">
-                          <span className="flex items-center gap-2 font-semibold text-foreground">
-                            <Lightbulb className="h-3.5 w-3.5 shrink-0" />
-                            İlişki ve Ayrışma Sebebi:
-                          </span>
-                          <span className="text-muted-foreground leading-relaxed block">
-                            {thesis.relevanceReason || (
-                              <span className="text-muted-foreground italic">
-                                —
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </Card>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-      <div className="flex justify-end mt-8 pb-8">
-        <Button
-          type="button"
-          size="lg"
-          onClick={handleConfirm}
-          disabled={confirming}
-          className="w-full sm:w-auto font-semibold"
-        >
-          {confirming ? (
-            <span className="flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Kaydediliyor...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              Onayla ve Konu Kutuları Adımına Geç
-              <ArrowRight className="w-4 h-4" />
-            </span>
-          )}
-        </Button>
-      </div>
     </div>
   );
 }
@@ -34395,6 +34516,557 @@ export const bulkSemanticQueryJsonSchema: JsonSchema = {
 };
 </file>
 
+<file path="src/app/(onboarding)/onboarding/matrix/_components/matrix-form.tsx">
+"use client";
+
+import { useState, useCallback, useMemo, memo } from "react";
+import { toast } from "sonner";
+import type { LucideIcon } from "lucide-react";
+import {
+  Loader2,
+  ArrowRight,
+  BookOpen,
+  Compass,
+  Target,
+  Database,
+} from "lucide-react";
+
+import type { Matrix } from "@/db/schema";
+import type { ThesisMatrix } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useMatrixSubmit } from "../../_hooks/use-matrix-submit";
+
+type FormState = {
+  subjectProblem: string;
+  theoreticalFramework: string;
+  primaryMaterial: string;
+  methodology: string;
+};
+
+type FieldConfig = {
+  key: keyof FormState;
+  id: string;
+  number: string;
+  Icon: LucideIcon;
+  label: string;
+  description: string;
+  placeholder: string;
+  rows: number;
+};
+
+type SectionConfig = {
+  id: string;
+  title: string;
+  fields: FieldConfig[];
+};
+
+const MATRIX_SECTIONS: SectionConfig[] = [
+  {
+    id: "odakVeTeori",
+    title: "Çalışma Odağı ve Kuramsal Altyapı",
+    fields: [
+      {
+        key: "subjectProblem",
+        id: "subjectProblem",
+        number: "01",
+        Icon: Target,
+        label: "Araştırma Problemi, Aktörler ve Odak",
+        description:
+          "Neyi, hangi temel problemi çözmek veya hangi hipotezi test etmek için inceliyorsun? Hangi aktörleri, grupları, kurumları mercek altına alıyorsun? Bir araştırma konusu ile onu oluşturan aktörler birbirinden ayrıksı değildir.",
+        placeholder:
+          "Çalışmanızın araştırma problemini, odağını, incelediğiniz aktörleri/grupları/kurumları ve araştırma sorularınızı bütünleşik olarak detaylandırın...",
+        rows: 5,
+      },
+      {
+        key: "theoreticalFramework",
+        id: "theoreticalFramework",
+        number: "02",
+        Icon: Compass,
+        label: "Teorik ve Kavramsal Çerçeve",
+        description:
+          "Çalışmanı hangi teorik mercekle, modelle veya kavramsal yaklaşımla ele alıyorsun?",
+        placeholder:
+          "Temel aldığınız teorik merceği, kavramsal modelleri ve analitik yaklaşımınızı açıklayın...",
+        rows: 4,
+      },
+    ],
+  },
+  {
+    id: "veriVeYontem",
+    title: "Veri Kaynağı ve Yöntem",
+    fields: [
+      {
+        key: "primaryMaterial",
+        id: "primaryMaterial",
+        number: "03",
+        Icon: Database,
+        label: "Veri Kaynağı / Birincil Malzeme",
+        description:
+          "Hangi birincil kaynakları, veri setlerini veya arşiv malzemelerini kullanacaksın? (mülakat, anket, gazete, arşiv belgeleri, mahkeme kararları vb.)",
+        placeholder:
+          "Kullanacağınız veri kaynaklarını, birincil malzemeleri veya arşiv belgelerini tanımlayın...",
+        rows: 4,
+      },
+      {
+        key: "methodology",
+        id: "methodology",
+        number: "04",
+        Icon: BookOpen,
+        label: "Metodoloji",
+        description:
+          "Veriyi nasıl topluyor, işliyor veya ölçüyorsun? (Nitel, nicel, deneysel, simülasyon vb.)",
+        placeholder:
+          "Veri toplama, veri işleme ve analiz yöntemlerinizi (nitel/nicel/deneysel/simülasyon) ve temel argümanınızı açıklayın...",
+        rows: 4,
+      },
+    ],
+  },
+];
+
+interface MatrixCardProps {
+  fieldKey: keyof FormState;
+  id: string;
+  number: string;
+  Icon: LucideIcon;
+  label: string;
+  description: string;
+  placeholder: string;
+  value: string;
+  rows: number;
+  onChange: (key: keyof FormState, value: string) => void;
+}
+
+/**
+ * A memoized form card containing a single text area field to limit re-renders.
+ *
+ * @param root0 - The matrix card props.
+ * @param root0.fieldKey - The form state key bound to the text area.
+ * @param root0.id - The field id used for label and text area association.
+ * @param root0.number - The numbered badge shown on the card.
+ * @param root0.Icon - The icon rendered next to the label.
+ * @param root0.label - The field label.
+ * @param root0.description - The helper description shown below the label.
+ * @param root0.placeholder - The text area placeholder text.
+ * @param root0.value - The current text area value.
+ * @param root0.rows - The text area row count.
+ * @param root0.onChange - The change handler receiving the field key and the new value.
+ * @returns The rendered matrix card.
+ */
+const MatrixCard = memo(function MatrixCard({
+  fieldKey,
+  id,
+  number,
+  Icon,
+  label,
+  description,
+  placeholder,
+  value,
+  rows,
+  onChange,
+}: MatrixCardProps) {
+  return (
+    <Card className="space-y-3 p-6 hover:border-primary/20 rounded-md transition-all">
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex h-5 w-7 items-center justify-center rounded bg-primary/10 text-[10px] font-bold tracking-wider text-primary">
+            {number}
+          </span>
+          <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Label
+            htmlFor={id}
+            className="cursor-pointer text-sm font-semibold text-foreground"
+          >
+            {label}
+          </Label>
+        </div>
+        {description && (
+          <p className="text-xs text-muted-foreground pl-9 leading-relaxed">
+            {description}
+          </p>
+        )}
+      </div>
+      <Textarea
+        id={id}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(fieldKey, e.target.value)}
+        required
+        rows={rows}
+        className="textarea-academic border-border focus-visible:ring-primary/20 text-sm leading-relaxed"
+      />
+    </Card>
+  );
+});
+
+const EMPTY_VALUES: FormState = {
+  subjectProblem: "",
+  theoreticalFramework: "",
+  primaryMaterial: "",
+  methodology: "",
+};
+
+interface MatrixFormProps {
+  initialMatrix?: Matrix | null;
+}
+
+/**
+ * Renders the thesis matrix onboarding form and persists the submitted values to the database.
+ *
+ * @param root0 - The matrix form props.
+ * @param root0.initialMatrix - Pre-fetched thesis matrix data (nullable).
+ * @returns The rendered matrix form.
+ */
+export function MatrixForm({ initialMatrix }: MatrixFormProps) {
+  const { submitMatrix } = useMatrixSubmit();
+
+  const [isPending, setIsPending] = useState(false);
+  const [editedValues, setEditedValues] = useState<Partial<FormState>>({});
+
+  const formState = useMemo((): FormState => {
+    const base = initialMatrix ?? EMPTY_VALUES;
+    return {
+      subjectProblem: editedValues.subjectProblem ?? base.subjectProblem,
+      theoreticalFramework:
+        editedValues.theoreticalFramework ?? base.theoreticalFramework,
+      primaryMaterial:
+        editedValues.primaryMaterial ?? base.primaryMaterial ?? "",
+      methodology: editedValues.methodology ?? base.methodology,
+    };
+  }, [initialMatrix, editedValues]);
+
+  const handleFieldChange = useCallback(
+    (key: keyof FormState, value: string) => {
+      setEditedValues((prev) => ({ ...prev, [key]: value }));
+    },
+    [],
+  );
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (isPending) return;
+    setIsPending(true);
+
+    try {
+      await submitMatrix({
+        subjectProblem: formState.subjectProblem,
+        theoreticalFramework: formState.theoreticalFramework,
+        primaryMaterial: formState.primaryMaterial,
+        methodology: formState.methodology,
+      } as ThesisMatrix);
+    } catch {
+      toast.error("Matris kaydedilirken beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.");
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="w-full space-y-8">
+      {MATRIX_SECTIONS.map((section) => (
+        <div key={section.id} className="space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <span className="px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              {section.title}
+            </span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            {section.fields.map(
+              ({
+                key,
+                id,
+                number,
+                Icon,
+                label,
+                description,
+                placeholder,
+                rows,
+              }) => (
+                <MatrixCard
+                  key={id}
+                  fieldKey={key}
+                  id={id}
+                  number={number}
+                  Icon={Icon}
+                  label={label}
+                  description={description}
+                  placeholder={placeholder}
+                  value={formState[key]}
+                  rows={rows}
+                  onChange={handleFieldChange}
+                />
+              ),
+            )}
+          </div>
+        </div>
+      ))}
+
+      <div className="flex justify-end mt-8 pb-8">
+        <Button type="submit" size="lg" disabled={isPending}>
+          {isPending ? (
+            <span className="flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Kaydediliyor...
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              Onayla ve Konumlandırma Adımına Geç
+              <ArrowRight className="w-4 h-4" />
+            </span>
+          )}
+        </Button>
+      </div>
+    </form>
+  );
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/positioning/_components/positioning-report-view.tsx">
+"use client";
+
+import { useState } from "react";
+import {
+  CheckCircle2,
+  AlertTriangle,
+  HelpCircle,
+  Lightbulb,
+  ArrowRight,
+  ExternalLink,
+  Target,
+  Loader2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import type { JuryAnalysisResult } from "@/features/positioning/analysis";
+import { PositioningMarkdownRenderer } from "./positioning-markdown-renderer";
+
+interface PositioningReportViewProps {
+  reportData: JuryAnalysisResult;
+  onConfirm: () => void;
+}
+
+/**
+ * Renders the full positioning gap analysis report including global status badge,
+ * structured jury synthesis sections, and recommended thesis cards.
+ *
+ * @param root0 - The component props.
+ * @param root0.reportData - The jury analysis result to display.
+ * @param root0.onConfirm - Callback invoked when the user confirms the positioning.
+ * @returns The rendered positioning report view.
+ */
+export function PositioningReportView({
+  reportData,
+  onConfirm,
+}: PositioningReportViewProps) {
+  const [confirming, setConfirming] = useState(false);
+  const isNovelGap = reportData.globalStatus === "NOVEL_GAP_IDENTIFIED";
+  const isDirectOverlap = reportData.globalStatus === "DIRECT_OVERLAP";
+
+  const handleConfirm = async () => {
+    if (confirming) return;
+    setConfirming(true);
+    try {
+      await onConfirm();
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  return (
+    <div className="w-full space-y-8">
+      <Card
+        className={`p-4 transition-colors ${
+          isNovelGap
+            ? "bg-success/5 border-success/20"
+            : isDirectOverlap
+              ? "bg-destructive/5 border-destructive/20"
+              : "bg-warning/5 border-warning/20"
+        }`}
+      >
+        <div className="flex items-start gap-3.5">
+          <div
+            className={`p-2 rounded-md shrink-0 ${
+              isNovelGap
+                ? "bg-success/10 text-success"
+                : isDirectOverlap
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-warning/10 text-warning"
+            }`}
+          >
+            {isNovelGap && <CheckCircle2 className="h-4 w-4" />}
+            {isDirectOverlap && <AlertTriangle className="h-4 w-4" />}
+            {!isNovelGap && !isDirectOverlap && <HelpCircle className="h-4 w-4" />}
+          </div>
+
+          <div className="space-y-1 flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Jüri Değerlendirme Sonucu
+              </span>
+              {isNovelGap && (
+                <Badge className="bg-success/10 text-success border-success/20 px-2.5 py-0.5 text-xs font-semibold">
+                  Özgün Katkı Bulundu
+                </Badge>
+              )}
+              {isDirectOverlap && (
+                <Badge
+                  variant="destructive"
+                  className="bg-destructive/10 text-destructive border-destructive/20 px-2.5 py-0.5 text-xs font-semibold"
+                >
+                  Doğrudan Çakışma Riski
+                </Badge>
+              )}
+              {!isNovelGap && !isDirectOverlap && (
+                <Badge className="bg-warning/10 text-warning border-warning/20 px-2.5 py-0.5 text-xs font-semibold">
+                  Sınırlı Literatür
+                </Badge>
+              )}
+            </div>
+
+            <p className="text-sm leading-relaxed text-foreground">
+              {isNovelGap &&
+                "Çalışmanızın odağı, yöntemi ve kapsamı literatürdeki mevcut tezlerden belirgin biçimde ayrışmakta ve özgün bir akademik boşluk doldurmaktadır."}
+              {isDirectOverlap &&
+                "Çalışmanızın odağı literatürdeki mevcut tezlerle yüksek oranda çakışmaktadır. Jüri önerileri doğrultusunda teorik çerçeve veya yönteminizi güncellemeniz tavsiye edilir."}
+              {!isNovelGap &&
+                !isDirectOverlap &&
+                "Doğrudan eşleşen tez sayısı sınırlıdır. Kavramsal çerçevenizi veya arama sınırlarınızı genişleterek tekrar değerlendirebilirsiniz."}
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+            Akademik Jüri Sentezi
+          </span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+
+        <PositioningMarkdownRenderer content={reportData.gapAnalysisSummary} />
+      </div>
+
+      {reportData.recommendedTheses &&
+        reportData.recommendedTheses.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Stratejik Rehber Tez Kartları (
+                {reportData.recommendedTheses.length})
+              </span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {reportData.recommendedTheses.map((thesis, idx) => {
+                const thesisId = thesis.externalThesisId || `thesis-${idx}`;
+                return (
+                  <Card
+                    key={thesisId}
+                    className="p-6 space-y-3 hover:border-border/40 transition-colors"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                      <div className="space-y-1">
+                        <h4 className="font-sans text-sm font-medium text-foreground leading-snug">
+                          {thesis.title}
+                        </h4>
+                        <p className="text-xs text-muted-foreground">
+                          {[thesis.author, thesis.year, thesis.university]
+                            .filter(Boolean)
+                            .join(" • ")}
+                        </p>
+                      </div>
+                      {thesis.doi && (
+                        <a
+                          href={
+                            thesis.doi.startsWith("http")
+                              ? thesis.doi
+                              : `https://doi.org/${thesis.doi}`
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0 self-start"
+                        >
+                          DOI <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
+
+                    {(thesis.contributionArea || thesis.relevanceReason) && (
+                      <div className="space-y-3 pt-3 border-t border-border/40 text-xs">
+                        <div className="space-y-1">
+                          <span className="flex items-center gap-2 font-semibold text-primary">
+                            <Target className="h-3.5 w-3.5 shrink-0" />
+                            Katkı / Odak Alanı:
+                          </span>
+                          <span className="text-foreground leading-relaxed block">
+                            {thesis.contributionArea || (
+                              <span className="text-muted-foreground italic">
+                                —
+                              </span>
+                            )}
+                          </span>
+                        </div>
+
+                        <div className="border-t border-border/40" />
+
+                        <div className="space-y-1">
+                          <span className="flex items-center gap-2 font-semibold text-foreground">
+                            <Lightbulb className="h-3.5 w-3.5 shrink-0" />
+                            İlişki ve Ayrışma Sebebi:
+                          </span>
+                          <span className="text-muted-foreground leading-relaxed block">
+                            {thesis.relevanceReason || (
+                              <span className="text-muted-foreground italic">
+                                —
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+      <div className="flex justify-end mt-8 pb-8">
+        <Button
+          type="button"
+          size="lg"
+          onClick={handleConfirm}
+          disabled={confirming}
+          className="w-full sm:w-auto font-semibold"
+        >
+          {confirming ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Kaydediliyor...
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              Onayla ve Konu Kutuları Adımına Geç
+              <ArrowRight className="w-4 h-4" />
+            </span>
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+</file>
+
 <file path="src/lib/academic/utils.ts">
 import { cleanAbstractPrefix } from "./abstract-cleaner";
 
@@ -34880,6 +35552,72 @@ Analyze PDF pages to produce accurate document metadata, page-level markdown con
 # Çıktı Biçimi
 
 Return structured JSON adhering strictly to the provided document schema in the same language as the source.`;
+</file>
+
+<file path="src/lib/prompts/positioning/queries.ts">
+import type { PositioningMatrixInput } from "@/features/positioning/validation";
+
+/** System instruction for single-field × TR+EN positioning query generation — 8 Meilisearch queries (4 alternatives × 2 languages) from subjectProblem only. */
+export const POSITIONING_QUERIES_SYSTEM_INSTRUCTION = `# Rol ve Uzmanlık
+
+Akademik tez veritabanlarında (Meilisearch) arama yapmak için yüksek hassasiyetli, doğal dil arama sorguları üreten uzman bir Bilgi Erişim (Information Retrieval) Uzmanısınız.
+
+# Birincil Görev
+
+Sana sunulan Tez Konumlandırma Matrisinin Araştırma Problemi bileşeni (aktörleri, kurumları ve ampirik bağlamı kapsayan entegre alan) için Türkçe ve İngilizce olmak üzere **her dil için 4 farklı alternatif** içeren toplam 8 kısa arama sorgusu üretmektir.
+
+# Kesin Kurallar
+
+1. **Sorgu uzunluğu: 2 ila 4 kelime arası.** Kısa ve öz olmalı, doğal bir akademik arama ifadesi gibi durmalıdır.
+
+2. **Araştırma problemi odağı:** Her sorgu araştırmanın özüne — problem mekanizması, aktörler, kurumlar veya coğrafi/tarihsel bağlam — ait anahtar kelimeler içermelidir. Dört alternatif bu boyutları farklı açılardan kapsamalıdır.
+
+3. **Tez uyumlu vokabüler:** Kullanıcının matris girdisindeki spesifik veya günlük dildeki ifadeleri, tez başlıklarında ve özetlerinde geçme ihtimali yüksek olan akademik karşılıklarına çevir. Örneğin kullanıcı "Kürt Özgürlük Hareketi" yazmışsa "Kürt siyasal hareketi" veya "Kürt hareketi" gibi tezlerde yaygın kullanılan terimleri tercih et.
+
+4. **Alternatif çeşitliliği:** Dört alternatif birbirinden farklı vokabüler kullanmalıdır: biri probleme odaklanabilir, biri aktörlere, biri coğrafi/tarihsel bağlama, biri de mekanizmaya.
+
+5. **Meilisearch uyumluluğu:** Sorgular yalnızca boşlukla ayrılmış düz akademik sözcüklerden oluşturulmalı; özel arama operatörleri veya noktalama işaretleri yerine doğrudan arama terimleri tercih edilmelidir.
+
+6. **Dil:**
+   - \`Tr\` sorguları: Türkçe akademik terminoloji
+   - \`En\` sorguları: İngilizce akademik terminoloji
+
+# Çıktı Biçimi
+
+Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir. Her dil için \`_alt1\`, \`_alt2\`, \`_alt3\`, \`_alt4\` olmak üzere dört ayrı sorgu üretilir.
+
+# Örnek
+
+## Girdi
+- **subjectProblem:** Kente göç eden ailelerin üçüncü kuşak bireylerinin sosyal entegrasyon sürecinde kültürel uyum ve kimlik aidiyet pratikleri
+
+### Beklenen Çıktı
+\`\`\`json
+{
+  "subjectTr_alt1": "göç kimlik aidiyet",
+  "subjectTr_alt2": "göçmen aile kuşak",
+  "subjectTr_alt3": "kent kültürel uyum",
+  "subjectTr_alt4": "sosyal entegrasyon kimlik",
+  "subjectEn_alt1": "migration identity belonging",
+  "subjectEn_alt2": "immigrant family generations",
+  "subjectEn_alt3": "urban cultural adaptation",
+  "subjectEn_alt4": "social integration identity"
+}
+\`\`\``;
+
+/**
+ * Builds the user prompt for single-field TR+EN positioning query generation.
+ *
+ * @param input - Three-component positioning matrix input of the researcher.
+ * @returns The formatted user prompt for the positioning queries LLM call.
+ */
+export function buildPositioningQueriesUserPrompt(
+  input: PositioningMatrixInput,
+): string {
+  return `Aşağıdaki matris alanı için 2-4 kelimelik Türkçe ve İngilizce Meilisearch sorguları üret (her dil için 4 alternatif, toplam 8 sorgu):
+
+Araştırma Problemi ve Odağı — aktörler, kurumlar ve ampirik bağlam dahil (subjectTr_alt1/2/3/4 / subjectEn_alt1/2/3/4): ${input.subjectProblem}`;
+}
 </file>
 
 <file path="src/app/(app)/advisor/_components/markdown-renderer.tsx">
@@ -36210,656 +36948,6 @@ export function LiteratureArticleCard({ article }: LiteratureArticleCardProps) {
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/matrix/_components/matrix-form.tsx">
-"use client";
-
-import { useState, useCallback, useMemo, memo } from "react";
-import { toast } from "sonner";
-import type { LucideIcon } from "lucide-react";
-import {
-  Loader2,
-  ArrowRight,
-  BookOpen,
-  Compass,
-  Target,
-  Database,
-} from "lucide-react";
-
-import type { Matrix } from "@/db/schema";
-import type { ThesisMatrix } from "@/lib/types";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { useMatrixSubmit } from "../../_hooks/use-matrix-submit";
-
-type FormState = {
-  subjectProblem: string;
-  theoreticalFramework: string;
-  primaryMaterial: string;
-  methodology: string;
-};
-
-type FieldConfig = {
-  key: keyof FormState;
-  id: string;
-  number: string;
-  Icon: LucideIcon;
-  label: string;
-  description: string;
-  placeholder: string;
-  rows: number;
-};
-
-type SectionConfig = {
-  id: string;
-  title: string;
-  fields: FieldConfig[];
-};
-
-const MATRIX_SECTIONS: SectionConfig[] = [
-  {
-    id: "odakVeTeori",
-    title: "Çalışma Odağı ve Kuramsal Altyapı",
-    fields: [
-      {
-        key: "subjectProblem",
-        id: "subjectProblem",
-        number: "01",
-        Icon: Target,
-        label: "Araştırma Problemi, Aktörler ve Odak",
-        description:
-          "Neyi, hangi temel problemi çözmek veya hangi hipotezi test etmek için inceliyorsun? Hangi aktörleri, grupları, kurumları mercek altına alıyorsun? Bir araştırma konusu ile onu oluşturan aktörler birbirinden ayrıksı değildir.",
-        placeholder:
-          "Çalışmanızın araştırma problemini, odağını, incelediğiniz aktörleri/grupları/kurumları ve araştırma sorularınızı bütünleşik olarak detaylandırın...",
-        rows: 5,
-      },
-      {
-        key: "theoreticalFramework",
-        id: "theoreticalFramework",
-        number: "02",
-        Icon: Compass,
-        label: "Teorik ve Kavramsal Çerçeve",
-        description:
-          "Çalışmanı hangi teorik mercekle, modelle veya kavramsal yaklaşımla ele alıyorsun?",
-        placeholder:
-          "Temel aldığınız teorik merceği, kavramsal modelleri ve analitik yaklaşımınızı açıklayın...",
-        rows: 4,
-      },
-    ],
-  },
-  {
-    id: "veriVeYontem",
-    title: "Veri Kaynağı ve Yöntem",
-    fields: [
-      {
-        key: "primaryMaterial",
-        id: "primaryMaterial",
-        number: "03",
-        Icon: Database,
-        label: "Veri Kaynağı / Birincil Malzeme",
-        description:
-          "Hangi birincil kaynakları, veri setlerini veya arşiv malzemelerini kullanacaksın? (mülakat, anket, gazete, arşiv belgeleri, mahkeme kararları vb.)",
-        placeholder:
-          "Kullanacağınız veri kaynaklarını, birincil malzemeleri veya arşiv belgelerini tanımlayın...",
-        rows: 4,
-      },
-      {
-        key: "methodology",
-        id: "methodology",
-        number: "04",
-        Icon: BookOpen,
-        label: "Metodoloji",
-        description:
-          "Veriyi nasıl topluyor, işliyor veya ölçüyorsun? (Nitel, nicel, deneysel, simülasyon vb.)",
-        placeholder:
-          "Veri toplama, veri işleme ve analiz yöntemlerinizi (nitel/nicel/deneysel/simülasyon) ve temel argümanınızı açıklayın...",
-        rows: 4,
-      },
-    ],
-  },
-];
-
-interface MatrixCardProps {
-  fieldKey: keyof FormState;
-  id: string;
-  number: string;
-  Icon: LucideIcon;
-  label: string;
-  description: string;
-  placeholder: string;
-  value: string;
-  rows: number;
-  onChange: (key: keyof FormState, value: string) => void;
-}
-
-/**
- * A memoized form card containing a single text area field to limit re-renders.
- *
- * @param root0 - The matrix card props.
- * @param root0.fieldKey - The form state key bound to the text area.
- * @param root0.id - The field id used for label and text area association.
- * @param root0.number - The numbered badge shown on the card.
- * @param root0.Icon - The icon rendered next to the label.
- * @param root0.label - The field label.
- * @param root0.description - The helper description shown below the label.
- * @param root0.placeholder - The text area placeholder text.
- * @param root0.value - The current text area value.
- * @param root0.rows - The text area row count.
- * @param root0.onChange - The change handler receiving the field key and the new value.
- * @returns The rendered matrix card.
- */
-const MatrixCard = memo(function MatrixCard({
-  fieldKey,
-  id,
-  number,
-  Icon,
-  label,
-  description,
-  placeholder,
-  value,
-  rows,
-  onChange,
-}: MatrixCardProps) {
-  return (
-    <Card className="space-y-3 p-6 hover:border-primary/20 rounded-md transition-all">
-      <div className="space-y-1">
-        <div className="flex items-center gap-2">
-          <span className="inline-flex h-5 w-7 items-center justify-center rounded bg-primary/10 text-[10px] font-bold tracking-wider text-primary">
-            {number}
-          </span>
-          <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-          <Label
-            htmlFor={id}
-            className="cursor-pointer text-sm font-semibold text-foreground"
-          >
-            {label}
-          </Label>
-        </div>
-        {description && (
-          <p className="text-xs text-muted-foreground pl-9 leading-relaxed">
-            {description}
-          </p>
-        )}
-      </div>
-      <Textarea
-        id={id}
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(fieldKey, e.target.value)}
-        required
-        rows={rows}
-        className="textarea-academic border-border focus-visible:ring-primary/20 text-sm leading-relaxed"
-      />
-    </Card>
-  );
-});
-
-const EMPTY_VALUES: FormState = {
-  subjectProblem: "",
-  theoreticalFramework: "",
-  primaryMaterial: "",
-  methodology: "",
-};
-
-interface MatrixFormProps {
-  initialMatrix?: Matrix | null;
-}
-
-/**
- * Renders the thesis matrix onboarding form and persists the submitted values to the database.
- *
- * @param root0 - The matrix form props.
- * @param root0.initialMatrix - Pre-fetched thesis matrix data (nullable).
- * @returns The rendered matrix form.
- */
-export function MatrixForm({ initialMatrix }: MatrixFormProps) {
-  const { submitMatrix } = useMatrixSubmit();
-
-  const [isPending, setIsPending] = useState(false);
-  const [editedValues, setEditedValues] = useState<Partial<FormState>>({});
-
-  const formState = useMemo((): FormState => {
-    const base = initialMatrix ?? EMPTY_VALUES;
-    return {
-      subjectProblem: editedValues.subjectProblem ?? base.subjectProblem,
-      theoreticalFramework:
-        editedValues.theoreticalFramework ?? base.theoreticalFramework,
-      primaryMaterial:
-        editedValues.primaryMaterial ?? base.primaryMaterial ?? "",
-      methodology: editedValues.methodology ?? base.methodology,
-    };
-  }, [initialMatrix, editedValues]);
-
-  const handleFieldChange = useCallback(
-    (key: keyof FormState, value: string) => {
-      setEditedValues((prev) => ({ ...prev, [key]: value }));
-    },
-    [],
-  );
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (isPending) return;
-    setIsPending(true);
-
-    try {
-      await submitMatrix({
-        subjectProblem: formState.subjectProblem,
-        theoreticalFramework: formState.theoreticalFramework,
-        primaryMaterial: formState.primaryMaterial,
-        methodology: formState.methodology,
-      } as ThesisMatrix);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Beklenmeyen bir hata oluştu.";
-      toast.error(message);
-    } finally {
-      setIsPending(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="w-full space-y-8">
-      {MATRIX_SECTIONS.map((section) => (
-        <div key={section.id} className="space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-border" />
-            <span className="px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              {section.title}
-            </span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4">
-            {section.fields.map(
-              ({
-                key,
-                id,
-                number,
-                Icon,
-                label,
-                description,
-                placeholder,
-                rows,
-              }) => (
-                <MatrixCard
-                  key={id}
-                  fieldKey={key}
-                  id={id}
-                  number={number}
-                  Icon={Icon}
-                  label={label}
-                  description={description}
-                  placeholder={placeholder}
-                  value={formState[key]}
-                  rows={rows}
-                  onChange={handleFieldChange}
-                />
-              ),
-            )}
-          </div>
-        </div>
-      ))}
-
-      <div className="flex justify-end mt-8 pb-8">
-        <Button type="submit" size="lg" disabled={isPending}>
-          {isPending ? (
-            <span className="flex items-center justify-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Kaydediliyor...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              Onayla ve Konumlandırma Adımına Geç
-              <ArrowRight className="w-4 h-4" />
-            </span>
-          )}
-        </Button>
-      </div>
-    </form>
-  );
-}
-</file>
-
-<file path="src/lib/prompts/positioning/queries.ts">
-import type { PositioningMatrixInput } from "@/features/positioning/validation";
-
-/** System instruction for single-field × TR+EN positioning query generation — 8 Meilisearch queries (4 alternatives × 2 languages) from subjectProblem only. */
-export const POSITIONING_QUERIES_SYSTEM_INSTRUCTION = `# Rol ve Uzmanlık
-
-Akademik tez veritabanlarında (Meilisearch) arama yapmak için yüksek hassasiyetli, doğal dil arama sorguları üreten uzman bir Bilgi Erişim (Information Retrieval) Uzmanısınız.
-
-# Birincil Görev
-
-Sana sunulan Tez Konumlandırma Matrisinin Araştırma Problemi bileşeni (aktörleri, kurumları ve ampirik bağlamı kapsayan entegre alan) için Türkçe ve İngilizce olmak üzere **her dil için 4 farklı alternatif** içeren toplam 8 kısa arama sorgusu üretmektir.
-
-# Kesin Kurallar
-
-1. **Sorgu uzunluğu: 2 ila 4 kelime arası.** Kısa ve öz olmalı, doğal bir akademik arama ifadesi gibi durmalıdır.
-
-2. **Araştırma problemi odağı:** Her sorgu araştırmanın özüne — problem mekanizması, aktörler, kurumlar veya coğrafi/tarihsel bağlam — ait anahtar kelimeler içermelidir. Dört alternatif bu boyutları farklı açılardan kapsamalıdır.
-
-3. **Tez uyumlu vokabüler:** Kullanıcının matris girdisindeki spesifik veya günlük dildeki ifadeleri, tez başlıklarında ve özetlerinde geçme ihtimali yüksek olan akademik karşılıklarına çevir. Örneğin kullanıcı "Kürt Özgürlük Hareketi" yazmışsa "Kürt siyasal hareketi" veya "Kürt hareketi" gibi tezlerde yaygın kullanılan terimleri tercih et.
-
-4. **Alternatif çeşitliliği:** Dört alternatif birbirinden farklı vokabüler kullanmalıdır: biri probleme odaklanabilir, biri aktörlere, biri coğrafi/tarihsel bağlama, biri de mekanizmaya.
-
-5. **Meilisearch uyumluluğu:** Sorgular yalnızca boşlukla ayrılmış düz akademik sözcüklerden oluşturulmalı; özel arama operatörleri veya noktalama işaretleri yerine doğrudan arama terimleri tercih edilmelidir.
-
-6. **Dil:**
-   - \`Tr\` sorguları: Türkçe akademik terminoloji
-   - \`En\` sorguları: İngilizce akademik terminoloji
-
-# Çıktı Biçimi
-
-Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir. Her dil için \`_alt1\`, \`_alt2\`, \`_alt3\`, \`_alt4\` olmak üzere dört ayrı sorgu üretilir.
-
-# Örnek
-
-## Girdi
-- **subjectProblem:** Kente göç eden ailelerin üçüncü kuşak bireylerinin sosyal entegrasyon sürecinde kültürel uyum ve kimlik aidiyet pratikleri
-
-### Beklenen Çıktı
-\`\`\`json
-{
-  "subjectTr_alt1": "göç kimlik aidiyet",
-  "subjectTr_alt2": "göçmen aile kuşak",
-  "subjectTr_alt3": "kent kültürel uyum",
-  "subjectTr_alt4": "sosyal entegrasyon kimlik",
-  "subjectEn_alt1": "migration identity belonging",
-  "subjectEn_alt2": "immigrant family generations",
-  "subjectEn_alt3": "urban cultural adaptation",
-  "subjectEn_alt4": "social integration identity"
-}
-\`\`\``;
-
-/**
- * Builds the user prompt for single-field TR+EN positioning query generation.
- *
- * @param input - Three-component positioning matrix input of the researcher.
- * @returns The formatted user prompt for the positioning queries LLM call.
- */
-export function buildPositioningQueriesUserPrompt(
-  input: PositioningMatrixInput,
-): string {
-  return `Aşağıdaki matris alanı için 2-4 kelimelik Türkçe ve İngilizce Meilisearch sorguları üret (her dil için 4 alternatif, toplam 8 sorgu):
-
-Araştırma Problemi ve Odağı — aktörler, kurumlar ve ampirik bağlam dahil (subjectTr_alt1/2/3/4 / subjectEn_alt1/2/3/4): ${input.subjectProblem}`;
-}
-</file>
-
-<file path="src/app/(onboarding)/onboarding/_services/fetch-actions.ts">
-"use server";
-
-import { and, eq, ne, sql } from "drizzle-orm";
-import { cacheLife, cacheTag } from "next/cache";
-import { db } from "@/db";
-import { matrices, positioning, boxes, sources, outlines } from "@/db/schema";
-import type { GeminiThesisBox } from "@/lib/types";
-import { getSession } from "@/lib/session";
-import { BOX_ORDER_WEIGHT } from "@/lib/box-constants";
-
-/**
- * Cached DB query returning the user's thesis matrix (userId-keyed).
- *
- * @param userId - The id of the user to load the matrix for.
- * @returns The user's thesis matrix or null.
- */
-async function getCachedThesisMatrix(userId: number) {
-  try {
-    cacheTag("thesis-matrix");
-    cacheLife("minutes");
-  } catch {}
-
-  const [matrix] = await db
-    .select()
-    .from(matrices)
-    .where(eq(matrices.userId, userId));
-  return matrix ?? null;
-}
-
-/**
- * Cached DB query fetching boxes for a given thesis matrix.
- *
- * @param thesisMatrixId - The id of the thesis matrix to load boxes for.
- * @returns The ordered box rows for the thesis matrix.
- */
-async function getCachedBoxes(thesisMatrixId: number) {
-  try {
-    cacheTag("thesis-boxes");
-    cacheLife("minutes");
-  } catch {}
-
-  return db
-    .select()
-    .from(boxes)
-    .where(eq(boxes.matrixId, thesisMatrixId))
-    .orderBy(
-      sql`CASE ${boxes.boxType}
-        WHEN 'SUBJECT_PROBLEM' THEN 1
-        WHEN 'THEORETICAL_FRAMEWORK' THEN 2
-        WHEN 'METHODOLOGY' THEN 3
-        WHEN 'PRIMARY_MATERIAL' THEN 4
-        ELSE 99
-      END`,
-    );
-}
-
-/**
- * Returns the current user's thesis matrix or null.
- *
- * @returns The current user's thesis matrix or null.
- */
-export async function fetchThesisMatrix() {
-  const session = await getSession();
-  if (!session) return null;
-  return getCachedThesisMatrix(session.userId);
-}
-
-/**
- * Fetches the thesis matrix directly from the DB, bypassing the cache.
- *
- * @returns The current user's thesis matrix or null.
- */
-export async function fetchThesisMatrixFresh() {
-  const session = await getSession();
-  if (!session) return null;
-
-  const [matrix] = await db
-    .select()
-    .from(matrices)
-    .where(eq(matrices.userId, session.userId));
-  return matrix ?? null;
-}
-
-/**
- * Fetches boxes mapped to the full GeminiThesisBox shape expected by clients.
- *
- * @returns The current user's boxes in production shape, or an empty array.
- */
-export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
-  const session = await getSession();
-  if (!session) return [];
-  const matrix = await getCachedThesisMatrix(session.userId);
-  if (!matrix) return [];
-  const rows = await getCachedBoxes(matrix.id);
-
-  const parentRows = rows.filter((r) => r.parentId === null);
-  const subBoxMap = new Map<number, GeminiThesisBox[]>();
-  for (const r of rows) {
-    if (r.parentId !== null) {
-      const list = subBoxMap.get(r.parentId) ?? [];
-      list.push({
-        id: r.id,
-        title: r.title,
-        boxType: (r.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
-        description: r.description ?? "",
-        parentId: r.parentId,
-        semanticQuery: r.semanticQuery,
-        subBoxes: undefined,
-        concepts: r.concepts ?? [],
-      });
-      subBoxMap.set(r.parentId, list);
-    }
-  }
-
-  const mappedBoxes: GeminiThesisBox[] = parentRows.map((b) => ({
-    id: b.id,
-    title: b.title,
-    boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
-    description: b.description ?? "",
-    parentId: null,
-    semanticQuery: null,
-    subBoxes: subBoxMap.get(b.id),
-    concepts: b.concepts ?? [],
-  }));
-
-  return mappedBoxes.sort((a, b) => {
-    const weightA = BOX_ORDER_WEIGHT[a.boxType] ?? 99;
-    const weightB = BOX_ORDER_WEIGHT[b.boxType] ?? 99;
-    return weightA - weightB;
-  });
-}
-
-/**
- * Fetches boxes mapped to the full GeminiThesisBox shape directly from the database without caching.
- *
- * @returns The current user's boxes in production shape directly from DB, or an empty array.
- */
-export async function fetchUncachedBoxesWithFullShape(): Promise<
-  GeminiThesisBox[]
-> {
-  const session = await getSession();
-  if (!session) return [];
-  const matrix = await fetchThesisMatrixFresh();
-  if (!matrix) return [];
-
-  const rows = await db
-    .select()
-    .from(boxes)
-    .where(eq(boxes.matrixId, matrix.id))
-    .orderBy(
-      sql`CASE ${boxes.boxType}
-        WHEN 'SUBJECT_PROBLEM' THEN 1
-        WHEN 'THEORETICAL_FRAMEWORK' THEN 2
-        WHEN 'METHODOLOGY' THEN 3
-        WHEN 'PRIMARY_MATERIAL' THEN 4
-        ELSE 99
-      END`,
-    );
-
-  const parentRows = rows.filter((r) => r.parentId === null);
-  const subBoxMap = new Map<number, GeminiThesisBox[]>();
-  for (const r of rows) {
-    if (r.parentId !== null) {
-      const list = subBoxMap.get(r.parentId) ?? [];
-      list.push({
-        id: r.id,
-        title: r.title,
-        boxType: (r.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
-        description: r.description ?? "",
-        parentId: r.parentId,
-        semanticQuery: r.semanticQuery,
-        subBoxes: undefined,
-        concepts: r.concepts ?? [],
-      });
-      subBoxMap.set(r.parentId, list);
-    }
-  }
-
-  const mappedBoxes: GeminiThesisBox[] = parentRows.map((b) => ({
-    id: b.id,
-    title: b.title,
-    boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
-    description: b.description ?? "",
-    parentId: null,
-    semanticQuery: null,
-    subBoxes: subBoxMap.get(b.id),
-    concepts: b.concepts ?? [],
-  }));
-
-  return mappedBoxes.sort((a, b) => {
-    const weightA = BOX_ORDER_WEIGHT[a.boxType] ?? 99;
-    const weightB = BOX_ORDER_WEIGHT[b.boxType] ?? 99;
-    return weightA - weightB;
-  });
-}
-
-/**
- * Returns which onboarding steps have data for the current user.
- *
- * @returns A record mapping step keys to data presence, or null.
- */
-export async function checkStepsDataAction(): Promise<Record<
-  string,
-  boolean
-> | null> {
-  const session = await getSession();
-  if (!session) return null;
-
-  const userId = session.userId;
-
-  const [matrix] = await db
-    .select({ id: matrices.id })
-    .from(matrices)
-    .where(eq(matrices.userId, userId));
-
-  const hasMatrix = !!matrix;
-
-  let hasPositioning = false;
-  let hasBoxes = false;
-  let hasOutline = false;
-  let hasLiterature = false;
-
-  if (hasMatrix) {
-    const [posResult, boxResult, outlineResult, litResult] = await Promise.all([
-      db
-        .select({
-          id: positioning.id,
-          globalStatus: positioning.globalStatus,
-        })
-        .from(positioning)
-        .where(eq(positioning.userId, userId))
-        .limit(1),
-      db
-        .select({ id: boxes.id })
-        .from(boxes)
-        .where(eq(boxes.matrixId, matrix.id))
-        .limit(1),
-      db
-        .select({ id: outlines.id })
-        .from(outlines)
-        .where(eq(outlines.matrixId, matrix.id))
-        .limit(1),
-      db
-        .select({ id: sources.id })
-        .from(sources)
-        .innerJoin(boxes, eq(sources.boxId, boxes.id))
-        .where(
-          and(
-            eq(boxes.matrixId, matrix.id),
-            ne(boxes.boxType, "RELATED_THESES"),
-          ),
-        )
-        .limit(1),
-    ]);
-
-    hasPositioning = posResult.length > 0 && !!posResult[0].globalStatus;
-    hasBoxes = boxResult.length > 0;
-    hasOutline = outlineResult.length > 0;
-    hasLiterature = litResult.length > 0;
-  }
-
-  return {
-    matrix: hasMatrix,
-    positioning: hasPositioning,
-    boxes: hasBoxes,
-    outline: hasOutline,
-    "literature-review": hasLiterature,
-  };
-}
-</file>
-
 <file path="src/lib/prompts/positioning/jury-analysis.ts">
 import type { PositioningMatrixInput } from "@/features/positioning/validation";
 
@@ -37014,6 +37102,348 @@ export interface LiteraturePoolEntry {
   subBoxTitle: string;
   thesisBoxId: number;
   articles: JuryArticle[];
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/_services/fetch-actions.ts">
+"use server";
+
+import { and, eq, ne, sql } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
+import { db } from "@/db";
+import { matrices, positioning, boxes, sources, outlines } from "@/db/schema";
+import type { GeminiThesisBox } from "@/lib/types";
+import { getSession } from "@/lib/session";
+import { BOX_ORDER_WEIGHT } from "@/lib/box-constants";
+import { Logger, createFlowId } from "@/lib/logger";
+import { DatabaseError } from "@/lib/errors/app-error";
+
+/**
+ * Rethrows an already-normalized DatabaseError unchanged, or wraps any other
+ * thrown value into a DatabaseError so downstream callers stop the flow.
+ *
+ * @param err - The thrown value to normalize.
+ * @param message - Internal technical message for the wrapped error.
+ * @param technicalDetails - Optional diagnostic context for the wrapped error.
+ */
+function rethrowAsDatabaseError(
+  err: unknown,
+  message: string,
+  technicalDetails?: Record<string, unknown>,
+): never {
+  if (err instanceof DatabaseError) throw err;
+  throw new DatabaseError({
+    cause: err,
+    message,
+    technicalDetails: technicalDetails ?? {
+      cause:
+        err instanceof Error ? err.message : err === undefined ? "undefined" : String(err),
+    },
+  });
+}
+
+/**
+ * Cached DB query returning the user's thesis matrix (userId-keyed).
+ *
+ * @param userId - The id of the user to load the matrix for.
+ * @returns The user's thesis matrix or null.
+ */
+async function getCachedThesisMatrix(userId: number) {
+  const log = new Logger(createFlowId());
+  try {
+    cacheTag("thesis-matrix");
+    cacheLife("minutes");
+  } catch (err) {
+    log.warn("thesis_matrix_cache_hint_failed", {
+      service: "matrix",
+      error: err,
+    });
+  }
+
+  try {
+    const [matrix] = await db
+      .select()
+      .from(matrices)
+      .where(eq(matrices.userId, userId));
+    return matrix ?? null;
+  } catch (err) {
+    rethrowAsDatabaseError(err, "Failed to load cached thesis matrix.", {
+      userId,
+    });
+  }
+}
+
+/**
+ * Cached DB query fetching boxes for a given thesis matrix.
+ *
+ * @param thesisMatrixId - The id of the thesis matrix to load boxes for.
+ * @returns The ordered box rows for the thesis matrix.
+ */
+async function getCachedBoxes(thesisMatrixId: number) {
+  const log = new Logger(createFlowId());
+  try {
+    cacheTag("thesis-boxes");
+    cacheLife("minutes");
+  } catch (err) {
+    log.warn("thesis_boxes_cache_hint_failed", {
+      service: "boxes",
+      error: err,
+    });
+  }
+
+  try {
+    return db
+      .select()
+      .from(boxes)
+      .where(eq(boxes.matrixId, thesisMatrixId))
+      .orderBy(
+        sql`CASE ${boxes.boxType}
+          WHEN 'SUBJECT_PROBLEM' THEN 1
+          WHEN 'THEORETICAL_FRAMEWORK' THEN 2
+          WHEN 'METHODOLOGY' THEN 3
+          WHEN 'PRIMARY_MATERIAL' THEN 4
+          ELSE 99
+        END`,
+      );
+  } catch (err) {
+    rethrowAsDatabaseError(err, "Failed to load cached boxes.", {
+      thesisMatrixId,
+    });
+  }
+}
+
+/**
+ * Returns the current user's thesis matrix or null.
+ *
+ * @returns The current user's thesis matrix or null.
+ */
+export async function fetchThesisMatrix() {
+  try {
+    const session = await getSession();
+    if (!session) return null;
+    return getCachedThesisMatrix(session.userId);
+  } catch (err) {
+    rethrowAsDatabaseError(err, "Failed to fetch thesis matrix.");
+  }
+}
+
+/**
+ * Fetches the thesis matrix directly from the DB, bypassing the cache.
+ *
+ * @returns The current user's thesis matrix or null.
+ */
+export async function fetchThesisMatrixFresh() {
+  try {
+    const session = await getSession();
+    if (!session) return null;
+
+    const [matrix] = await db
+      .select()
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+    return matrix ?? null;
+  } catch (err) {
+    rethrowAsDatabaseError(err, "Failed to fetch fresh thesis matrix.");
+  }
+}
+
+/**
+ * Fetches boxes mapped to the full GeminiThesisBox shape expected by clients.
+ *
+ * @returns The current user's boxes in production shape, or an empty array.
+ */
+export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
+  try {
+    const session = await getSession();
+    if (!session) return [];
+    const matrix = await getCachedThesisMatrix(session.userId);
+    if (!matrix) return [];
+    const rows = await getCachedBoxes(matrix.id);
+
+    const parentRows = rows.filter((r) => r.parentId === null);
+    const subBoxMap = new Map<number, GeminiThesisBox[]>();
+    for (const r of rows) {
+      if (r.parentId !== null) {
+        const list = subBoxMap.get(r.parentId) ?? [];
+        list.push({
+          id: r.id,
+          title: r.title,
+          boxType: (r.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
+          description: r.description ?? "",
+          parentId: r.parentId,
+          semanticQuery: r.semanticQuery,
+          subBoxes: undefined,
+          concepts: r.concepts ?? [],
+        });
+        subBoxMap.set(r.parentId, list);
+      }
+    }
+
+    const mappedBoxes: GeminiThesisBox[] = parentRows.map((b) => ({
+      id: b.id,
+      title: b.title,
+      boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
+      description: b.description ?? "",
+      parentId: null,
+      semanticQuery: null,
+      subBoxes: subBoxMap.get(b.id),
+      concepts: b.concepts ?? [],
+    }));
+
+    return mappedBoxes.sort((a, b) => {
+      const weightA = BOX_ORDER_WEIGHT[a.boxType] ?? 99;
+      const weightB = BOX_ORDER_WEIGHT[b.boxType] ?? 99;
+      return weightA - weightB;
+    });
+  } catch (err) {
+    rethrowAsDatabaseError(err, "Failed to fetch boxes with full shape.");
+  }
+}
+
+/**
+ * Fetches boxes mapped to the full GeminiThesisBox shape directly from the database without caching.
+ *
+ * @returns The current user's boxes in production shape directly from DB, or an empty array.
+ */
+export async function fetchUncachedBoxesWithFullShape(): Promise<
+  GeminiThesisBox[]
+> {
+  try {
+    const session = await getSession();
+    if (!session) return [];
+    const matrix = await fetchThesisMatrixFresh();
+    if (!matrix) return [];
+
+    const rows = await db
+      .select()
+      .from(boxes)
+      .where(eq(boxes.matrixId, matrix.id))
+      .orderBy(
+        sql`CASE ${boxes.boxType}
+          WHEN 'SUBJECT_PROBLEM' THEN 1
+          WHEN 'THEORETICAL_FRAMEWORK' THEN 2
+          WHEN 'METHODOLOGY' THEN 3
+          WHEN 'PRIMARY_MATERIAL' THEN 4
+          ELSE 99
+        END`,
+      );
+
+    const parentRows = rows.filter((r) => r.parentId === null);
+    const subBoxMap = new Map<number, GeminiThesisBox[]>();
+    for (const r of rows) {
+      if (r.parentId !== null) {
+        const list = subBoxMap.get(r.parentId) ?? [];
+        list.push({
+          id: r.id,
+          title: r.title,
+          boxType: (r.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
+          description: r.description ?? "",
+          parentId: r.parentId,
+          semanticQuery: r.semanticQuery,
+          subBoxes: undefined,
+          concepts: r.concepts ?? [],
+        });
+        subBoxMap.set(r.parentId, list);
+      }
+    }
+
+    const mappedBoxes: GeminiThesisBox[] = parentRows.map((b) => ({
+      id: b.id,
+      title: b.title,
+      boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
+      description: b.description ?? "",
+      parentId: null,
+      semanticQuery: null,
+      subBoxes: subBoxMap.get(b.id),
+      concepts: b.concepts ?? [],
+    }));
+
+    return mappedBoxes.sort((a, b) => {
+      const weightA = BOX_ORDER_WEIGHT[a.boxType] ?? 99;
+      const weightB = BOX_ORDER_WEIGHT[b.boxType] ?? 99;
+      return weightA - weightB;
+    });
+  } catch (err) {
+    rethrowAsDatabaseError(err, "Failed to fetch uncached boxes.");
+  }
+}
+
+/**
+ * Returns which onboarding steps have data for the current user.
+ *
+ * @returns A record mapping step keys to data presence, or null.
+ */
+export async function checkStepsDataAction(): Promise<Record<
+  string,
+  boolean
+> | null> {
+  try {
+    const session = await getSession();
+    if (!session) return null;
+
+    const userId = session.userId;
+
+    const [matrix] = await db
+      .select({ id: matrices.id })
+      .from(matrices)
+      .where(eq(matrices.userId, userId));
+
+    const hasMatrix = !!matrix;
+
+    let hasPositioning = false;
+    let hasBoxes = false;
+    let hasOutline = false;
+    let hasLiterature = false;
+
+    if (hasMatrix) {
+      const [posResult, boxResult, outlineResult, litResult] = await Promise.all([
+        db
+          .select({
+            id: positioning.id,
+            globalStatus: positioning.globalStatus,
+          })
+          .from(positioning)
+          .where(eq(positioning.userId, userId))
+          .limit(1),
+        db
+          .select({ id: boxes.id })
+          .from(boxes)
+          .where(eq(boxes.matrixId, matrix.id))
+          .limit(1),
+        db
+          .select({ id: outlines.id })
+          .from(outlines)
+          .where(eq(outlines.matrixId, matrix.id))
+          .limit(1),
+        db
+          .select({ id: sources.id })
+          .from(sources)
+          .innerJoin(boxes, eq(sources.boxId, boxes.id))
+          .where(
+            and(
+              eq(boxes.matrixId, matrix.id),
+              ne(boxes.boxType, "RELATED_THESES"),
+            ),
+          )
+          .limit(1),
+      ]);
+
+      hasPositioning = posResult.length > 0 && !!posResult[0].globalStatus;
+      hasBoxes = boxResult.length > 0;
+      hasOutline = outlineResult.length > 0;
+      hasLiterature = litResult.length > 0;
+    }
+
+    return {
+      matrix: hasMatrix,
+      positioning: hasPositioning,
+      boxes: hasBoxes,
+      outline: hasOutline,
+      "literature-review": hasLiterature,
+    };
+  } catch (err) {
+    rethrowAsDatabaseError(err, "Failed to check onboarding step data.");
+  }
 }
 </file>
 
@@ -37383,10 +37813,8 @@ export function useAdvisorChat(initialSessionId?: number) {
           }
         }
       });
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "İletişim hatası oluştu.";
-      toast.error(message);
+    } catch {
+      toast.error("Yanıt üretilirken beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.");
     } finally {
       setIsLoading(false);
       setStreaming({
@@ -38069,12 +38497,9 @@ export async function clearDownstreamDbAction(
 
     invalidateOnboardingStepCache(fromStep);
     return { success: true };
-  } catch (error) {
+  } catch {
     return {
-      error:
-        error instanceof Error
-          ? error.message
-          : "Sıfırlama işlemi gerçekleştirilirken bir hata oluştu.",
+      error: "Sıfırlama işlemi gerçekleştirilirken bir hata oluştu.",
     };
   }
 }
@@ -38220,6 +38645,7 @@ import { getSession } from "@/lib/session";
 import type { RagSearchResultItem } from "@/services/search/rag-search";
 import type { PipelineResultData } from "@/db/schema";
 import { generateChatTitle } from "@/features/advisor/chat-title";
+import { handleActionError } from "@/lib/errors/handle-error";
 
 export interface ChatSessionListItem {
   id: number;
@@ -38228,62 +38654,74 @@ export interface ChatSessionListItem {
   messageCount: number;
 }
 
+export type ChatSessionsResult =
+  | { success: true; data: ChatSessionListItem[] }
+  | { success: false; error: string; code: string };
+
 /**
  * Lists all chat sessions for the current user ordered by most recent.
  *
- * @returns The list of chat sessions with message counts.
+ * @returns The session list on success, or the normalized error result on failure.
  */
-export async function getChatSessions(): Promise<ChatSessionListItem[]> {
-  const session = await getSession();
-  if (!session) return [];
+export async function getChatSessions(): Promise<ChatSessionsResult> {
+  try {
+    const session = await getSession();
+    if (!session) return { success: true, data: [] };
 
-  const rows = await db
-    .select({
-      id: sessions.id,
-      title: sessions.title,
-      createdAt: sessions.createdAt,
-    })
-    .from(sessions)
-    .where(eq(sessions.userId, session.userId))
-    .orderBy(desc(sessions.updatedAt));
+    const rows = await db
+      .select({
+        id: sessions.id,
+        title: sessions.title,
+        createdAt: sessions.createdAt,
+      })
+      .from(sessions)
+      .where(eq(sessions.userId, session.userId))
+      .orderBy(desc(sessions.updatedAt));
 
-  const result: ChatSessionListItem[] = [];
-  for (const row of rows) {
-    const msgs = await db
-      .select({ count: messages.id })
-      .from(messages)
-      .where(eq(messages.sessionId, row.id));
-    result.push({
-      id: row.id,
-      title: row.title,
-      createdAt: row.createdAt.toLocaleDateString("tr-TR"),
-      messageCount: msgs.length,
-    });
+    const result: ChatSessionListItem[] = [];
+    for (const row of rows) {
+      const msgs = await db
+        .select({ count: messages.id })
+        .from(messages)
+        .where(eq(messages.sessionId, row.id));
+      result.push({
+        id: row.id,
+        title: row.title,
+        createdAt: row.createdAt.toLocaleDateString("tr-TR"),
+        messageCount: msgs.length,
+      });
+    }
+    return { success: true, data: result };
+  } catch (err) {
+    return handleActionError(err);
   }
-  return result;
 }
 
 /**
  * Creates a new empty chat session for the current user.
  *
  * @param title - The display title for the new session.
- * @returns The newly created session id.
+ * @returns The newly created session id, or the normalized error result.
  */
 export async function createChatSession(
   title: string,
 ): Promise<{ success: boolean; sessionId?: number; error?: string }> {
-  const session = await getSession();
-  if (!session) {
-    return { success: false, error: "Oturum süreniz dolmuş." };
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { success: false, error: "Oturum süreniz dolmuş." };
+    }
+
+    const trimmed = title.trim().slice(0, 100) || "Yeni Sohbet";
+    const [inserted] = await db
+      .insert(sessions)
+      .values({ userId: session.userId, title: trimmed })
+      .returning({ id: sessions.id });
+
+    return { success: true, sessionId: inserted.id };
+  } catch (err) {
+    return handleActionError(err);
   }
-
-  const trimmed = title.trim().slice(0, 100) || "Yeni Sohbet";
-  const [inserted] = await db
-    .insert(sessions)
-    .values({ userId: session.userId, title: trimmed })
-    .returning({ id: sessions.id });
-
-  return { success: true, sessionId: inserted.id };
 }
 
 /**
@@ -38291,63 +38729,75 @@ export async function createChatSession(
  *
  * @param sessionId - The session to rename.
  * @param title - The new title.
- * @returns Operation result.
+ * @returns Operation result or the normalized error result.
  */
 export async function renameChatSession(
   sessionId: number,
   title: string,
 ): Promise<{ success: boolean; error?: string }> {
-  const session = await getSession();
-  if (!session) return { success: false, error: "Oturum süreniz dolmuş." };
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, error: "Oturum süreniz dolmuş." };
 
-  const trimmed = title.trim().slice(0, 100);
-  if (!trimmed) return { success: false, error: "Başlık boş olamaz." };
+    const trimmed = title.trim().slice(0, 100);
+    if (!trimmed) return { success: false, error: "Başlık boş olamaz." };
 
-  await db
-    .update(sessions)
-    .set({ title: trimmed, updatedAt: new Date() })
-    .where(eq(sessions.id, sessionId));
+    await db
+      .update(sessions)
+      .set({ title: trimmed, updatedAt: new Date() })
+      .where(eq(sessions.id, sessionId));
 
-  return { success: true };
+    return { success: true };
+  } catch (err) {
+    return handleActionError(err);
+  }
 }
 
 /**
  * Deletes a chat session and all its messages.
  *
  * @param sessionId - The session to delete.
- * @returns Operation result.
+ * @returns Operation result or the normalized error result.
  */
 export async function deleteChatSession(
   sessionId: number,
 ): Promise<{ success: boolean; error?: string }> {
-  const session = await getSession();
-  if (!session) return { success: false, error: "Oturum süreniz dolmuş." };
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, error: "Oturum süreniz dolmuş." };
 
-  await db.delete(sessions).where(eq(sessions.id, sessionId));
-  return { success: true };
+    await db.delete(sessions).where(eq(sessions.id, sessionId));
+    return { success: true };
+  } catch (err) {
+    return handleActionError(err);
+  }
 }
 
 /**
  * Retrieves all messages for a given chat session.
  *
  * @param sessionId - The session whose messages to load.
- * @returns The messages in chronological order.
+ * @returns The messages or the normalized error result.
  */
 export async function getChatMessages(
   sessionId: number,
 ): Promise<{ success: boolean; messages?: Message[]; error?: string }> {
-  const session = await getSession();
-  if (!session) {
-    return { success: false, error: "Oturum süreniz dolmuş." };
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { success: false, error: "Oturum süreniz dolmuş." };
+    }
+
+    const rows = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.sessionId, sessionId))
+      .orderBy(messages.createdAt);
+
+    return { success: true, messages: rows };
+  } catch (err) {
+    return handleActionError(err);
   }
-
-  const rows = await db
-    .select()
-    .from(messages)
-    .where(eq(messages.sessionId, sessionId))
-    .orderBy(messages.createdAt);
-
-  return { success: true, messages: rows };
 }
 
 /**
@@ -38360,7 +38810,7 @@ export async function getChatMessages(
  * @param toolCalls - Optional stored tool calls.
  * @param persona - Optional persona badge for model messages.
  * @param pipelineData - Optional structured pipeline result for model messages.
- * @returns Operation result with created message ID.
+ * @returns Operation result with created message ID or the normalized error result.
  */
 export async function saveChatMessage(
   sessionId: number,
@@ -38371,28 +38821,32 @@ export async function saveChatMessage(
   persona?: string,
   pipelineData?: PipelineResultData | null,
 ): Promise<{ success: boolean; messageId?: number; error?: string }> {
-  const session = await getSession();
-  if (!session) return { success: false, error: "Oturum süreniz dolmuş." };
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, error: "Oturum süreniz dolmuş." };
 
-  const [inserted] = await db
-    .insert(messages)
-    .values({
-      sessionId,
-      role,
-      persona: persona ?? undefined,
-      content,
-      sources: sources ?? undefined,
-      toolCalls: toolCalls ?? undefined,
-      pipelineData: pipelineData ?? undefined,
-    })
-    .returning({ id: messages.id });
+    const [inserted] = await db
+      .insert(messages)
+      .values({
+        sessionId,
+        role,
+        persona: persona ?? undefined,
+        content,
+        sources: sources ?? undefined,
+        toolCalls: toolCalls ?? undefined,
+        pipelineData: pipelineData ?? undefined,
+      })
+      .returning({ id: messages.id });
 
-  await db
-    .update(sessions)
-    .set({ updatedAt: new Date() })
-    .where(eq(sessions.id, sessionId));
+    await db
+      .update(sessions)
+      .set({ updatedAt: new Date() })
+      .where(eq(sessions.id, sessionId));
 
-  return { success: true, messageId: inserted.id };
+    return { success: true, messageId: inserted.id };
+  } catch (err) {
+    return handleActionError(err);
+  }
 }
 
 /**
@@ -38400,21 +38854,25 @@ export async function saveChatMessage(
  *
  * @param messageId - The chat message ID to update.
  * @param toolCalls - The updated list of tool calls with new statuses.
- * @returns Operation result.
+ * @returns Operation result or the normalized error result.
  */
 export async function updateChatMessageToolCalls(
   messageId: number,
   toolCalls: ChatToolCall[],
 ): Promise<{ success: boolean; error?: string }> {
-  const session = await getSession();
-  if (!session) return { success: false, error: "Oturum süreniz dolmuş." };
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, error: "Oturum süreniz dolmuş." };
 
-  await db
-    .update(messages)
-    .set({ toolCalls })
-    .where(eq(messages.id, messageId));
+    await db
+      .update(messages)
+      .set({ toolCalls })
+      .where(eq(messages.id, messageId));
 
-  return { success: true };
+    return { success: true };
+  } catch (err) {
+    return handleActionError(err);
+  }
 }
 
 /**
@@ -38437,10 +38895,7 @@ export async function generateChatTitleAction(
     await renameChatSession(sessionId, title);
     return { success: true, title };
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Başlık üretilemedi.",
-    };
+    return handleActionError(error);
   }
 }
 </file>
@@ -38720,6 +39175,8 @@ import {
 } from "@/lib/cache-tags";
 import { matrices, users } from "@/db/schema";
 import { Logger, createFlowId } from "@/lib/logger";
+import { DatabaseError } from "@/lib/errors/app-error";
+import { handleActionError } from "@/lib/errors/handle-error";
 import {
   getSession,
   writeSessionCookie,
@@ -38740,17 +39197,31 @@ const _cancelFlags = new Map<number, boolean>();
 
 /** Signals the running pipeline to stop, called from the client cancel callback. */
 export async function setLiteratureCancelledAction(): Promise<void> {
-  const session = await getSession();
-  if (session) {
-    _cancelFlags.set(session.userId, true);
+  try {
+    const session = await getSession();
+    if (session) {
+      _cancelFlags.set(session.userId, true);
+    }
+  } catch (err) {
+    throw new DatabaseError({
+      cause: err,
+      message: "Failed to set literature cancel flag.",
+    });
   }
 }
 
 /** Resets the cancel flag before a fresh pipeline run. */
 export async function resetLiteratureCancelledAction(): Promise<void> {
-  const session = await getSession();
-  if (session) {
-    _cancelFlags.set(session.userId, false);
+  try {
+    const session = await getSession();
+    if (session) {
+      _cancelFlags.set(session.userId, false);
+    }
+  } catch (err) {
+    throw new DatabaseError({
+      cause: err,
+      message: "Failed to reset literature cancel flag.",
+    });
   }
 }
 
@@ -38851,7 +39322,12 @@ export async function confirmLiteratureAction(args: {
 
     try {
       revalidateOnboardingPaths();
-    } catch {}
+    } catch (err) {
+      log.warn("confirm_literature_revalidate_failed", {
+        service: "literature",
+        error: err,
+      });
+    }
 
     invalidateOnboardingCache();
 
@@ -38880,19 +39356,23 @@ export async function fetchPreloadedLiteraturePool(): Promise<{
   data?: LiteraturePoolEntry[];
   error?: string;
 }> {
-  const session = await getSession();
-  if (!session) return { error: SESSION_ERROR_MSG };
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
 
-  const [matrix] = await db
-    .select({ id: matrices.id })
-    .from(matrices)
-    .where(eq(matrices.userId, session.userId));
+    const [matrix] = await db
+      .select({ id: matrices.id })
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
 
-  if (!matrix) return { error: "Tez matrisi bulunamadı." };
+    if (!matrix) return { error: "Tez matrisi bulunamadı." };
 
-  const pool = await fetchPreloadedPool(matrix.id);
+    const pool = await fetchPreloadedPool(matrix.id);
 
-  return { data: pool };
+    return { data: pool };
+  } catch (err) {
+    return handleActionError(err);
+  }
 }
 
 /**
@@ -38916,11 +39396,21 @@ export async function finalizeOnboardingAction(): Promise<OnboardingActionResult
 
     try {
       await writeSessionCookie(session, true);
-    } catch {}
+    } catch (err) {
+      log.warn("finalize_onboarding_cookie_failed", {
+        service: "literature",
+        error: err,
+      });
+    }
 
     try {
       revalidateOnboardingPaths();
-    } catch {}
+    } catch (err) {
+      log.warn("finalize_onboarding_revalidate_failed", {
+        service: "literature",
+        error: err,
+      });
+    }
 
     invalidateOnboardingCache();
 
@@ -39018,7 +39508,12 @@ export async function runLiteraturePipelineAction(
 
     try {
       revalidateOnboardingPaths();
-    } catch {}
+    } catch (err) {
+      logger.warn("literature_pipeline_revalidate_failed", {
+        service: "literature",
+        error: err,
+      });
+    }
     invalidateOnboardingCache();
 
     logger.info("literature_pipeline_success", {
@@ -39089,6 +39584,7 @@ export interface LoggerInstance {
   lastPayloadPath?: string;
   info(arg1: string | Record<string, unknown>, params?: LogParams): void;
   error(arg1: string | Record<string, unknown>, params?: LogParams): void;
+  warn(arg1: string | Record<string, unknown>, params?: LogParams): void;
   step(n: string, m?: Record<string, unknown>): void;
   file(r: string): void;
   data(l: string, v: unknown): void;
@@ -39233,6 +39729,16 @@ export class Logger implements LoggerInstance {
   }
 
   /**
+   * Logs a warning-level entry for recoverable or expected failures.
+   *
+   * @param arg1 - Event name or structured payload.
+   * @param p - Optional log parameters.
+   */
+  warn(arg1: string | Record<string, unknown>, p?: LogParams): void {
+    this.write("warn", arg1, p);
+  }
+
+  /**
    * Records a step marker in the current flow.
    *
    * @param n - Step name.
@@ -39373,12 +39879,12 @@ export class Logger implements LoggerInstance {
   /**
    * Writes a single log line in dev or production format.
    *
-   * @param level - Log level (info or error).
+   * @param level - Log level (info, error, or warn).
    * @param arg1 - Event name or structured payload.
    * @param p - Optional log parameters.
    */
   private write(
-    level: "info" | "error",
+    level: "info" | "error" | "warn",
     arg1: string | Record<string, unknown>,
     p?: LogParams,
   ): void {
@@ -40229,238 +40735,6 @@ export function SidebarWorkList({
 }
 </file>
 
-<file path="src/app/api/advisor/route.ts">
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { getSession } from "@/lib/session";
-import { createSseStream } from "@/features/advisor/stream";
-import { runTurn } from "@/features/advisor/turn";
-
-const requestSchema = z.object({
-  query: z
-    .string()
-    .min(2, "Sorgu en az 2 karakter olmalıdır.")
-    .max(1000, "Sorgu çok uzun."),
-  history: z
-    .array(
-      z.object({
-        role: z.enum(["user", "model"]),
-        content: z.string(),
-      }),
-    )
-    .optional(),
-});
-
-/**
- * Handles POST requests for streaming advisor queries via SSE with Function Calling support.
- *
- * Delegates all turn orchestration (classification, RAG, tool loop, pipeline flow)
- * to {@link runTurn} wrapped in a streaming SSE response.
- *
- * @param request - The incoming HTTP request with query and optional history.
- * @returns A streaming SSE response with delta, tool call, and done events.
- */
-export async function POST(request: Request) {
-  const session = await getSession();
-  if (!session) {
-    return NextResponse.json(
-      { error: "Oturum süreniz dolmuş." },
-      { status: 401 },
-    );
-  }
-
-  const body = await request.json();
-  const parseResult = requestSchema.safeParse(body);
-  if (!parseResult.success) {
-    return NextResponse.json(
-      { error: parseResult.error.issues[0]?.message || "Geçersiz sorgu." },
-      { status: 400 },
-    );
-  }
-
-  const { query, history } = parseResult.data;
-
-  const readable = createSseStream(async ({ writer }) => {
-    await runTurn(writer, { userId: session.userId, query, history });
-  });
-
-  return new Response(readable, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    },
-  });
-}
-</file>
-
-<file path="src/app/(app)/library/actions.ts">
-"use server";
-
-export {
-  getLibraryResourcesAction,
-  updateLibraryResourceAction,
-  toggleResourceReadStatusAction,
-  deleteLibraryResourceAction,
-} from "./resource-actions";
-export {
-  deleteResourcePdfAction,
-  requestResourcePdfUploadAction,
-  completeResourcePdfUploadAction,
-  requestPdfCreateUploadAction,
-  completePdfCreateUploadAction,
-} from "./pdf-actions";
-export { getBoxHierarchyForLibraryAction } from "./box-actions";
-export {
-  createResourceNoteAction,
-  deleteResourceNoteAction,
-} from "./note-actions";
-export { saveResourceCritiqueAction } from "./critique-actions";
-</file>
-
-<file path="src/app/(app)/library/page.tsx">
-"use client";
-
-import React, { useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import { BookMarked } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { SidebarWorkList } from "./_components/sidebar-work-list";
-import { ResourceDetail } from "./_components/resource-detail";
-import { AddResourceModal } from "./_components/add-resource-modal";
-import { LibrarySkeleton } from "./_components/library-skeleton";
-import { useLibraryResources } from "./_hooks/use-library-resources";
-import { usePdfUpload } from "./_hooks/use-pdf-upload";
-import { useResourceNotes } from "./_hooks/use-resource-notes";
-import { useResourceCritique } from "./_hooks/use-resource-critique";
-
-/**
- * Library page with a sidebar work list and a resource detail panel.
- *
- * @returns The library page markup.
- */
-export default function LibraryPage() {
-  return (
-    <Suspense fallback={<LibrarySkeleton />}>
-      <LibraryPageContent />
-    </Suspense>
-  );
-}
-
-/**
- * Library page content composing resource, PDF, and note hooks.
- *
- * @returns The library page content markup.
- */
-function LibraryPageContent() {
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-
-  const searchParams = useSearchParams();
-  const urlResourceId = searchParams.get("id");
-  const initialSelectedId = urlResourceId ? parseInt(urlResourceId, 10) : null;
-
-  const {
-    resources,
-    setResources,
-    isLoading,
-    selectedResourceId,
-    activeTab,
-    setActiveTab,
-    searchQuery,
-    setSearchQuery,
-    sortedResources,
-    handleSelectResource,
-    handleDeleteResource,
-    handleToggleReadStatus,
-    handleUpdateResource,
-  } = useLibraryResources(initialSelectedId);
-
-  const { notes, setNotes, handleAddNote, handleDeleteNote } = useResourceNotes(
-    { selectedResourceId },
-  );
-
-  const { getCritiqueFor, handleSaveCritique } = useResourceCritique({
-    selectedResourceId,
-  });
-
-  const { handleCreateResourceFromPdf, handleUploadPdf, handleDeletePdf } =
-    usePdfUpload({
-      selectedResourceId,
-      setResources,
-      setNotes,
-      handleSelectResource,
-    });
-
-  const selectedResource = resources.find(
-    (item) => item.id === selectedResourceId,
-  );
-
-  const selectedResourceNotes = notes.filter(
-    (note) => note.resourceId === selectedResourceId,
-  );
-
-  const selectedCritique = getCritiqueFor(selectedResourceId);
-
-  if (isLoading) {
-    return <LibrarySkeleton />;
-  }
-
-  return (
-    <div className="flex flex-col w-full space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start">
-        <div className="lg:col-span-4 lg:sticky lg:top-[calc(7rem+1px)] lg:h-[calc(100vh-8.5rem-1px)] flex flex-col min-h-0">
-          <SidebarWorkList
-            resources={sortedResources}
-            selectedResourceId={selectedResourceId}
-            onSelectResource={(id) => handleSelectResource(id)}
-            activeTab={activeTab}
-            onTabChange={(tab) => setActiveTab(tab)}
-            searchQuery={searchQuery}
-            onSearchChange={(q) => setSearchQuery(q)}
-            onOpenAddModal={() => setIsAddModalOpen(true)}
-            onDeleteResource={handleDeleteResource}
-          />
-        </div>
-
-        <div className="lg:col-span-8 h-full min-h-0">
-          {selectedResource ? (
-            <ResourceDetail
-              resource={selectedResource}
-              notes={selectedResourceNotes}
-              critique={selectedCritique}
-              onAddNote={handleAddNote}
-              onSaveCritique={handleSaveCritique}
-              onDeleteNote={handleDeleteNote}
-              onToggleReadStatus={handleToggleReadStatus}
-              onUpdateResource={handleUpdateResource}
-              onUploadPdf={handleUploadPdf}
-              onDeletePdf={handleDeletePdf}
-            />
-          ) : (
-            <Card className="flex flex-col items-center justify-center h-full rounded-md border border-border p-8 text-center text-muted-foreground">
-              <BookMarked className="h-10 w-10 opacity-30 mb-3" />
-              <h3 className="font-serif text-lg font-medium text-foreground">
-                Eser Seçilmedi
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Detayları ve akademik notları görüntülemek için sol menüden bir
-                eser seçiniz.
-              </p>
-            </Card>
-          )}
-        </div>
-      </div>
-
-      <AddResourceModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onSubmitPdf={handleCreateResourceFromPdf}
-      />
-    </div>
-  );
-}
-</file>
-
 <file path="src/app/(onboarding)/onboarding/positioning/actions.ts">
 "use server";
 
@@ -40755,6 +41029,362 @@ export async function getPositioningAction(): Promise<Positioning | null> {
 }
 </file>
 
+<file path="src/app/api/advisor/route.ts">
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { getSession } from "@/lib/session";
+import { createSseStream } from "@/features/advisor/stream";
+import { runTurn } from "@/features/advisor/turn";
+
+const requestSchema = z.object({
+  query: z
+    .string()
+    .min(2, "Sorgu en az 2 karakter olmalıdır.")
+    .max(1000, "Sorgu çok uzun."),
+  history: z
+    .array(
+      z.object({
+        role: z.enum(["user", "model"]),
+        content: z.string(),
+      }),
+    )
+    .optional(),
+});
+
+/**
+ * Handles POST requests for streaming advisor queries via SSE with Function Calling support.
+ *
+ * Delegates all turn orchestration (classification, RAG, tool loop, pipeline flow)
+ * to {@link runTurn} wrapped in a streaming SSE response.
+ *
+ * @param request - The incoming HTTP request with query and optional history.
+ * @returns A streaming SSE response with delta, tool call, and done events.
+ */
+export async function POST(request: Request) {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json(
+      { error: "Oturum süreniz dolmuş." },
+      { status: 401 },
+    );
+  }
+
+  const body = await request.json();
+  const parseResult = requestSchema.safeParse(body);
+  if (!parseResult.success) {
+    return NextResponse.json(
+      { error: parseResult.error.issues[0]?.message || "Geçersiz sorgu." },
+      { status: 400 },
+    );
+  }
+
+  const { query, history } = parseResult.data;
+
+  const readable = createSseStream(async ({ writer }) => {
+    await runTurn(writer, { userId: session.userId, query, history });
+  });
+
+  return new Response(readable, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
+}
+</file>
+
+<file path="src/app/(app)/library/actions.ts">
+export {
+  getLibraryResourcesAction,
+  updateLibraryResourceAction,
+  toggleResourceReadStatusAction,
+  deleteLibraryResourceAction,
+} from "./resource-actions";
+export {
+  deleteResourcePdfAction,
+  requestResourcePdfUploadAction,
+  completeResourcePdfUploadAction,
+  requestPdfCreateUploadAction,
+  completePdfCreateUploadAction,
+} from "./pdf-actions";
+export { getBoxHierarchyForLibraryAction } from "./box-actions";
+export {
+  createResourceNoteAction,
+  deleteResourceNoteAction,
+} from "./note-actions";
+export { saveResourceCritiqueAction } from "./critique-actions";
+</file>
+
+<file path="src/app/(app)/library/page.tsx">
+"use client";
+
+import React, { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { BookMarked } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { SidebarWorkList } from "./_components/sidebar-work-list";
+import { ResourceDetail } from "./_components/resource-detail";
+import { AddResourceModal } from "./_components/add-resource-modal";
+import { LibrarySkeleton } from "./_components/library-skeleton";
+import { useLibraryResources } from "./_hooks/use-library-resources";
+import { usePdfUpload } from "./_hooks/use-pdf-upload";
+import { useResourceNotes } from "./_hooks/use-resource-notes";
+import { useResourceCritique } from "./_hooks/use-resource-critique";
+
+/**
+ * Library page with a sidebar work list and a resource detail panel.
+ *
+ * @returns The library page markup.
+ */
+export default function LibraryPage() {
+  return (
+    <Suspense fallback={<LibrarySkeleton />}>
+      <LibraryPageContent />
+    </Suspense>
+  );
+}
+
+/**
+ * Library page content composing resource, PDF, and note hooks.
+ *
+ * @returns The library page content markup.
+ */
+function LibraryPageContent() {
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  const searchParams = useSearchParams();
+  const urlResourceId = searchParams.get("id");
+  const initialSelectedId = urlResourceId ? parseInt(urlResourceId, 10) : null;
+
+  const {
+    resources,
+    setResources,
+    isLoading,
+    selectedResourceId,
+    activeTab,
+    setActiveTab,
+    searchQuery,
+    setSearchQuery,
+    sortedResources,
+    handleSelectResource,
+    handleDeleteResource,
+    handleToggleReadStatus,
+    handleUpdateResource,
+  } = useLibraryResources(initialSelectedId);
+
+  const { notes, setNotes, handleAddNote, handleDeleteNote } = useResourceNotes(
+    { selectedResourceId },
+  );
+
+  const { getCritiqueFor, handleSaveCritique } = useResourceCritique({
+    selectedResourceId,
+  });
+
+  const { handleCreateResourceFromPdf, handleUploadPdf, handleDeletePdf } =
+    usePdfUpload({
+      selectedResourceId,
+      setResources,
+      setNotes,
+      handleSelectResource,
+    });
+
+  const selectedResource = resources.find(
+    (item) => item.id === selectedResourceId,
+  );
+
+  const selectedResourceNotes = notes.filter(
+    (note) => note.resourceId === selectedResourceId,
+  );
+
+  const selectedCritique = getCritiqueFor(selectedResourceId);
+
+  if (isLoading) {
+    return <LibrarySkeleton />;
+  }
+
+  return (
+    <div className="flex flex-col w-full space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start">
+        <div className="lg:col-span-4 lg:sticky lg:top-[calc(7rem+1px)] lg:h-[calc(100vh-8.5rem-1px)] flex flex-col min-h-0">
+          <SidebarWorkList
+            resources={sortedResources}
+            selectedResourceId={selectedResourceId}
+            onSelectResource={(id) => handleSelectResource(id)}
+            activeTab={activeTab}
+            onTabChange={(tab) => setActiveTab(tab)}
+            searchQuery={searchQuery}
+            onSearchChange={(q) => setSearchQuery(q)}
+            onOpenAddModal={() => setIsAddModalOpen(true)}
+            onDeleteResource={handleDeleteResource}
+          />
+        </div>
+
+        <div className="lg:col-span-8 h-full min-h-0">
+          {selectedResource ? (
+            <ResourceDetail
+              resource={selectedResource}
+              notes={selectedResourceNotes}
+              critique={selectedCritique}
+              onAddNote={handleAddNote}
+              onSaveCritique={handleSaveCritique}
+              onDeleteNote={handleDeleteNote}
+              onToggleReadStatus={handleToggleReadStatus}
+              onUpdateResource={handleUpdateResource}
+              onUploadPdf={handleUploadPdf}
+              onDeletePdf={handleDeletePdf}
+            />
+          ) : (
+            <Card className="flex flex-col items-center justify-center h-full rounded-md border border-border p-8 text-center text-muted-foreground">
+              <BookMarked className="h-10 w-10 opacity-30 mb-3" />
+              <h3 className="font-serif text-lg font-medium text-foreground">
+                Eser Seçilmedi
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Detayları ve akademik notları görüntülemek için sol menüden bir
+                eser seçiniz.
+              </p>
+            </Card>
+          )}
+        </div>
+      </div>
+
+      <AddResourceModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSubmitPdf={handleCreateResourceFromPdf}
+      />
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/boxes/actions.ts">
+"use server";
+
+import { createFlowId, Logger } from "@/lib/logger";
+import { type GeminiThesisBox } from "@/lib/types";
+import { mapToProductionShape } from "../_lib/box-mapper";
+import { runBoxStructureAction as runBoxStructureActionImpl } from "./_services/structure-generation";
+import {
+  generateSemanticQueriesAction as generateSemanticQueriesActionImpl,
+  structureToQuadrants,
+} from "./_services/semantic-queries";
+import {
+  persistBoxesAction as persistBoxesActionImpl,
+  confirmBoxesAction as confirmBoxesActionImpl,
+} from "./_services/persist-boxes";
+
+/**
+ * Re-exported service actions preserved for backward compatibility.
+ */
+export async function runBoxStructureAction() {
+  return runBoxStructureActionImpl();
+}
+
+export async function generateSemanticQueriesAction(
+  structure: Parameters<typeof generateSemanticQueriesActionImpl>[0],
+) {
+  return generateSemanticQueriesActionImpl(structure);
+}
+
+export async function persistBoxesAction(boxes: GeminiThesisBox[]) {
+  return persistBoxesActionImpl(boxes);
+}
+
+export async function confirmBoxesAction(
+  boxes: GeminiThesisBox[],
+) {
+  return confirmBoxesActionImpl(boxes);
+}
+
+/**
+ * Runs Phase 1 + Phase 2 and maps the result to production-shaped boxes.
+ *
+ * @returns The production-shaped boxes or an error message.
+ */
+export async function generateAndMapBoxesAction(): Promise<
+  { success: true; boxes: GeminiThesisBox[] } | { error: string }
+> {
+  const structRes = await runBoxStructureAction();
+  if ("error" in structRes) return structRes;
+
+  const queryRes = await generateSemanticQueriesAction(structRes.structure);
+  if ("error" in queryRes) return queryRes;
+
+  const quadrants = structureToQuadrants(structRes.structure);
+  const boxes = mapToProductionShape(quadrants);
+
+  for (const box of boxes) {
+    if (box.parentId !== null && queryRes.queries.has(box.title)) {
+      box.semanticQuery = queryRes.queries.get(box.title) ?? "";
+    }
+  }
+
+  return { success: true, boxes };
+}
+
+/**
+ * Emits the final pipeline total-duration SUCCESS log line.
+ *
+ * @param durationMs - Total pipeline duration in milliseconds.
+ */
+export async function logBoxesPipelineSuccessAction(
+  durationMs: number,
+): Promise<void> {
+  const log = new Logger(createFlowId());
+  log.info("boxes_full_pipeline_success", {
+    service: "boxes",
+    data: { durationMs: Math.round(durationMs) },
+  });
+}
+
+/**
+ * Runs the full legacy pipeline: generation (Phase 1 + 2) and persistence.
+ *
+ * @returns The generated boxes or an error message.
+ */
+export async function runBoxesPipelineAction(): Promise<
+  { success: true; boxes: GeminiThesisBox[] } | { error: string }
+> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+  const pipelineStart = performance.now();
+
+  try {
+    const genRes = await generateAndMapBoxesAction();
+    if ("error" in genRes) return genRes;
+
+    const persistRes = await persistBoxesAction(genRes.boxes);
+    if ("error" in persistRes && persistRes.error) {
+      return { error: persistRes.error };
+    }
+
+    log.info("boxes_full_pipeline_success", {
+      service: "boxes",
+      durationMs: Math.round(performance.now() - pipelineStart),
+    });
+
+    return { success: true, boxes: genRes.boxes };
+  } catch (err) {
+    log.error("boxes_full_pipeline_failed", {
+      service: "boxes",
+      error: err instanceof Error ? err : new Error(String(err)),
+    });
+    return {
+      error: "Konu kutuları oluşturulurken beklenmeyen bir hata oluştu.",
+    };
+  }
+}
+
+/**
+ * Legacy alias for runBoxesPipelineAction.
+ */
+export async function generateBoxesStructureAction() {
+  return runBoxesPipelineAction();
+}
+</file>
+
 <file path="src/app/(onboarding)/onboarding/literature-review/_hooks/use-literature-review.ts">
 "use client";
 
@@ -40973,115 +41603,6 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     setBoxErrors,
   };
 }
-</file>
-
-<file path="src/app/(onboarding)/onboarding/boxes/actions.ts">
-"use server";
-
-import { createFlowId, Logger } from "@/lib/logger";
-import { type GeminiThesisBox } from "@/lib/types";
-import { mapToProductionShape } from "../_lib/box-mapper";
-import { runBoxStructureAction } from "./_services/structure-generation";
-import {
-  generateSemanticQueriesAction,
-  structureToQuadrants,
-} from "./_services/semantic-queries";
-import {
-  persistBoxesAction,
-  confirmBoxesAction,
-} from "./_services/persist-boxes";
-
-/**
- * Re-exported service actions preserved for backward compatibility.
- */
-export { runBoxStructureAction };
-export { generateSemanticQueriesAction };
-export { persistBoxesAction };
-export { confirmBoxesAction };
-
-/**
- * Runs Phase 1 + Phase 2 and maps the result to production-shaped boxes.
- *
- * @returns The production-shaped boxes or an error message.
- */
-export async function generateAndMapBoxesAction(): Promise<
-  { success: true; boxes: GeminiThesisBox[] } | { error: string }
-> {
-  const structRes = await runBoxStructureAction();
-  if ("error" in structRes) return structRes;
-
-  const queryRes = await generateSemanticQueriesAction(structRes.structure);
-  if ("error" in queryRes) return queryRes;
-
-  const quadrants = structureToQuadrants(structRes.structure);
-  const boxes = mapToProductionShape(quadrants);
-
-  for (const box of boxes) {
-    if (box.parentId !== null && queryRes.queries.has(box.title)) {
-      box.semanticQuery = queryRes.queries.get(box.title) ?? "";
-    }
-  }
-
-  return { success: true, boxes };
-}
-
-/**
- * Emits the final pipeline total-duration SUCCESS log line.
- *
- * @param durationMs - Total pipeline duration in milliseconds.
- */
-export async function logBoxesPipelineSuccessAction(
-  durationMs: number,
-): Promise<void> {
-  const log = new Logger(createFlowId());
-  log.info("boxes_full_pipeline_success", {
-    service: "boxes",
-    data: { durationMs: Math.round(durationMs) },
-  });
-}
-
-/**
- * Runs the full legacy pipeline: generation (Phase 1 + 2) and persistence.
- *
- * @returns The generated boxes or an error message.
- */
-export async function runBoxesPipelineAction(): Promise<
-  { success: true; boxes: GeminiThesisBox[] } | { error: string }
-> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-  const pipelineStart = performance.now();
-
-  try {
-    const genRes = await generateAndMapBoxesAction();
-    if ("error" in genRes) return genRes;
-
-    const persistRes = await persistBoxesAction(genRes.boxes);
-    if ("error" in persistRes && persistRes.error) {
-      return { error: persistRes.error };
-    }
-
-    log.info("boxes_full_pipeline_success", {
-      service: "boxes",
-      durationMs: Math.round(performance.now() - pipelineStart),
-    });
-
-    return { success: true, boxes: genRes.boxes };
-  } catch (err) {
-    log.error("boxes_full_pipeline_failed", {
-      service: "boxes",
-      error: err instanceof Error ? err : new Error(String(err)),
-    });
-    return {
-      error: "Konu kutuları oluşturulurken beklenmeyen bir hata oluştu.",
-    };
-  }
-}
-
-/**
- * Legacy alias for runBoxesPipelineAction.
- */
-export const generateBoxesStructureAction = runBoxesPipelineAction;
 </file>
 
 <file path="AGENTS.md">

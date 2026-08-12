@@ -43,7 +43,7 @@ async function executeCreateBox(
   if (!userMatrix) {
     return {
       success: false,
-      message: "Önce tez matrisi oluşturulmalıdır.",
+      error: "Önce tez matrisi oluşturulmalıdır.",
     };
   }
   const boxType = args.boxType as Box["boxType"];
@@ -81,7 +81,7 @@ async function executeUpdateBox(
     where: eq(boxes.id, boxId),
   });
   if (!existingBox) {
-    return { success: false, message: "Kutu bulunamadı." };
+    return { success: false, error: "Kutu bulunamadı." };
   }
 
   const previousState: Record<string, unknown> = {
@@ -120,7 +120,7 @@ async function executeDeleteBox(
     where: eq(boxes.id, boxId),
   });
   if (!existingBox) {
-    return { success: false, message: "Silinecek kutu bulunamadı." };
+    return { success: false, error: "Silinecek kutu bulunamadı." };
   }
 
   const previousState: Record<string, unknown> = {

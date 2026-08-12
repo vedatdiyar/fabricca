@@ -49,6 +49,7 @@ export interface LoggerInstance {
   lastPayloadPath?: string;
   info(arg1: string | Record<string, unknown>, params?: LogParams): void;
   error(arg1: string | Record<string, unknown>, params?: LogParams): void;
+  warn(arg1: string | Record<string, unknown>, params?: LogParams): void;
   step(n: string, m?: Record<string, unknown>): void;
   file(r: string): void;
   data(l: string, v: unknown): void;
@@ -193,6 +194,16 @@ export class Logger implements LoggerInstance {
   }
 
   /**
+   * Logs a warning-level entry for recoverable or expected failures.
+   *
+   * @param arg1 - Event name or structured payload.
+   * @param p - Optional log parameters.
+   */
+  warn(arg1: string | Record<string, unknown>, p?: LogParams): void {
+    this.write("warn", arg1, p);
+  }
+
+  /**
    * Records a step marker in the current flow.
    *
    * @param n - Step name.
@@ -333,12 +344,12 @@ export class Logger implements LoggerInstance {
   /**
    * Writes a single log line in dev or production format.
    *
-   * @param level - Log level (info or error).
+   * @param level - Log level (info, error, or warn).
    * @param arg1 - Event name or structured payload.
    * @param p - Optional log parameters.
    */
   private write(
-    level: "info" | "error",
+    level: "info" | "error" | "warn",
     arg1: string | Record<string, unknown>,
     p?: LogParams,
   ): void {

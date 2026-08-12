@@ -147,7 +147,12 @@ export async function persistBoxesAction(
     try {
       revalidateOnboardingPaths();
       updateTag(CACHE_TAGS.thesisBoxes);
-    } catch {}
+    } catch (err) {
+      log.warn("boxes_revalidate_failed", {
+        service: "boxes",
+        error: err,
+      });
+    }
 
     log.info("boxes_persist_success", {
       service: "boxes",

@@ -41,7 +41,7 @@ async function executeMatrixUpdate(
     where: eq(matrices.userId, userId),
   });
   if (!userMatrix) {
-    return { success: false, message: "Tez matrisi bulunamadı." };
+    return { success: false, error: "Tez matrisi bulunamadı." };
   }
 
   const previousState: Record<string, unknown> = {

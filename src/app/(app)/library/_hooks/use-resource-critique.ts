@@ -42,7 +42,9 @@ export function useResourceCritique({
         if (res.success && res.data) {
           setCritiques(res.data.critiques);
         }
-      } catch {}
+      } catch {
+        toast.error("Eser analizleri yüklenirken bir hata oluştu.");
+      }
     }
 
     loadCritiques();

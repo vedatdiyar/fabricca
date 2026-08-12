@@ -363,10 +363,8 @@ export function useAdvisorChat(initialSessionId?: number) {
           }
         }
       });
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "İletişim hatası oluştu.";
-      toast.error(message);
+    } catch {
+      toast.error("Yanıt üretilirken beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.");
     } finally {
       setIsLoading(false);
       setStreaming({

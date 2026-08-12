@@ -51,69 +51,66 @@ export function PositioningReportView({
 
   return (
     <div className="w-full space-y-8">
-      <Card className="p-6 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
-          <div className="space-y-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Jüri Değerlendirme Sonucu
-            </span>
-            <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
-              Akademik Konumlandırma & Özgün Katkı Raporu
-            </h2>
+      <Card
+        className={`p-4 transition-colors ${
+          isNovelGap
+            ? "bg-success/5 border-success/20"
+            : isDirectOverlap
+              ? "bg-destructive/5 border-destructive/20"
+              : "bg-warning/5 border-warning/20"
+        }`}
+      >
+        <div className="flex items-start gap-3.5">
+          <div
+            className={`p-2 rounded-md shrink-0 ${
+              isNovelGap
+                ? "bg-success/10 text-success"
+                : isDirectOverlap
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-warning/10 text-warning"
+            }`}
+          >
+            {isNovelGap && <CheckCircle2 className="h-4 w-4" />}
+            {isDirectOverlap && <AlertTriangle className="h-4 w-4" />}
+            {!isNovelGap && !isDirectOverlap && <HelpCircle className="h-4 w-4" />}
           </div>
 
-          <div>
-            {isNovelGap && (
-              <Badge className="bg-success/10 text-success border-success/20 px-3 py-2 text-xs font-semibold flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
-                Özgün Katkı / Akademik Boşluk Bulundu
-              </Badge>
-            )}
-            {isDirectOverlap && (
-              <Badge
-                variant="destructive"
-                className="bg-destructive/10 text-destructive border-destructive/20 px-3 py-2 text-xs font-semibold flex items-center gap-2"
-              >
-                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
-                Doğrudan Çakışma Riski
-              </Badge>
-            )}
-            {!isNovelGap && !isDirectOverlap && (
-              <Badge className="bg-warning/10 text-warning border-warning/20 px-3 py-2 text-xs font-semibold flex items-center gap-2">
-                <HelpCircle className="h-4 w-4 text-warning shrink-0" />
-                Sınırlı Literatür / Bağlam Genişletilmeli
-              </Badge>
-            )}
+          <div className="space-y-1 flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Jüri Değerlendirme Sonucu
+              </span>
+              {isNovelGap && (
+                <Badge className="bg-success/10 text-success border-success/20 px-2.5 py-0.5 text-xs font-semibold">
+                  Özgün Katkı Bulundu
+                </Badge>
+              )}
+              {isDirectOverlap && (
+                <Badge
+                  variant="destructive"
+                  className="bg-destructive/10 text-destructive border-destructive/20 px-2.5 py-0.5 text-xs font-semibold"
+                >
+                  Doğrudan Çakışma Riski
+                </Badge>
+              )}
+              {!isNovelGap && !isDirectOverlap && (
+                <Badge className="bg-warning/10 text-warning border-warning/20 px-2.5 py-0.5 text-xs font-semibold">
+                  Sınırlı Literatür
+                </Badge>
+              )}
+            </div>
+
+            <p className="text-sm leading-relaxed text-foreground">
+              {isNovelGap &&
+                "Çalışmanızın odağı, yöntemi ve kapsamı literatürdeki mevcut tezlerden belirgin biçimde ayrışmakta ve özgün bir akademik boşluk doldurmaktadır."}
+              {isDirectOverlap &&
+                "Çalışmanızın odağı literatürdeki mevcut tezlerle yüksek oranda çakışmaktadır. Jüri önerileri doğrultusunda teorik çerçeve veya yönteminizi güncellemeniz tavsiye edilir."}
+              {!isNovelGap &&
+                !isDirectOverlap &&
+                "Doğrudan eşleşen tez sayısı sınırlıdır. Kavramsal çerçevenizi veya arama sınırlarınızı genişleterek tekrar değerlendirebilirsiniz."}
+            </p>
           </div>
         </div>
-
-        {isNovelGap && (
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            <CheckCircle2 className="h-4 w-4 inline-block mr-2 text-success shrink-0 align-text-top" />
-            Çalışmanızın odağı, yöntemi ve kapsamı literatürdeki mevcut
-            tezlerden belirgin biçimde ayrışmakta ve özgün bir akademik boşluk
-            doldurmaktadır.
-          </p>
-        )}
-        {isDirectOverlap && (
-          <div className="p-4 rounded-md bg-destructive/5 border border-destructive/20 border-l-2 border-l-destructive">
-            <p className="text-sm leading-relaxed text-card-foreground">
-              <AlertTriangle className="h-4 w-4 inline-block mr-2 text-destructive shrink-0 align-text-top" />
-              Çalışmanızın odağı literatürdeki mevcut tezlerle yüksek oranda
-              çakışmaktadır. Jüri önerileri doğrultusunda teorik çerçeve veya
-              yönteminizi güncellemeniz tavsiye edilir.
-            </p>
-          </div>
-        )}
-        {!isNovelGap && !isDirectOverlap && (
-          <div className="p-4 rounded-md bg-warning/10 border border-warning/20 border-l-2 border-l-warning">
-            <p className="text-sm leading-relaxed text-card-foreground">
-              <HelpCircle className="h-4 w-4 inline-block mr-2 text-warning shrink-0 align-text-top" />
-              Doğrudan eşleşen tez sayısı sınırlıdır. Kavramsal çerçevenizi veya
-              arama sınırlarınızı genişleterek tekrar değerlendirebilirsiniz.
-            </p>
-          </div>
-        )}
       </Card>
 
       <div className="space-y-4">

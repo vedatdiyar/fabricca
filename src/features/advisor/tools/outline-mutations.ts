@@ -18,7 +18,7 @@ async function executeCreateOutlineSection(
     where: eq(matrices.userId, userId),
   });
   if (!userMatrix) {
-    return { success: false, message: "Tez matrisi bulunamadı." };
+    return { success: false, error: "Tez matrisi bulunamadı." };
   }
   const title = args.title as string;
   const description = (args.description as string | undefined) ?? null;
@@ -64,7 +64,7 @@ async function executeUpdateOutlineSection(
     where: eq(outlines.id, outlineId),
   });
   if (!existingOutline) {
-    return { success: false, message: "Bölüm bulunamadı." };
+    return { success: false, error: "Bölüm bulunamadı." };
   }
 
   const previousState: Record<string, unknown> = {

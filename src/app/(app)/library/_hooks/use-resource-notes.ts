@@ -35,7 +35,9 @@ export function useResourceNotes({
         if (res.success && res.data) {
           setNotes(res.data.notes);
         }
-      } catch {}
+      } catch {
+        toast.error("Notlar yüklenirken bir hata oluştu.");
+      }
     }
 
     loadNotes();

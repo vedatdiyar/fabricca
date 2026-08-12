@@ -9,6 +9,7 @@ import {
   extractHttpStatus,
   isRateLimitError,
   isServerOverloadError,
+  toAiProviderError,
 } from "../llm-errors";
 import {
   withRetry,
@@ -371,6 +372,6 @@ export async function generateStructuredContent<T>(
       },
       error,
     });
-    throw error;
+    throw toAiProviderError(error, "gemini");
   }
 }

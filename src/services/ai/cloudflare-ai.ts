@@ -1,6 +1,7 @@
 import { Logger } from "@/lib/logger";
 import { withRetry, HttpError, DEFAULT_MAX_DELAY } from "@/lib/api-utils";
 import { createConcurrencyLimiter } from "@/lib/rate-limiter";
+import { toAiProviderError } from "./llm-errors";
 
 const BGE_M3_MODEL = "@cf/baai/bge-m3";
 const MAX_EMBEDDING_RETRIES = 3;
@@ -150,7 +151,11 @@ export async function generateCloudflareEmbeddings(
     ),
   );
 
-  batchResults.push(...(await Promise.all(queuedBatches)));
+  try {
+    batchResults.push(...(await Promise.all(queuedBatches)));
+  } catch (error) {
+    throw toAiProviderError(error, "cloudflare");
+  }
 
   return batchResults.flat();
 }

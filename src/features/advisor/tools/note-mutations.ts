@@ -77,7 +77,7 @@ async function executeDeleteNote(
     where: and(eq(annotations.id, noteId), eq(annotations.userId, userId)),
   });
   if (!existingNote) {
-    return { success: false, message: "Silinecek not bulunamadı." };
+    return { success: false, error: "Silinecek not bulunamadı." };
   }
 
   const previousState: Record<string, unknown> = {

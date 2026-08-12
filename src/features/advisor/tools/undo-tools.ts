@@ -29,20 +29,20 @@ export async function undoMutationTool(
   executionResult?: unknown,
   previousState?: Record<string, unknown>,
   userId?: number,
-): Promise<{ success: boolean; message: string }> {
+): Promise<{ success: boolean; message?: string; error?: string }> {
   switch (toolName) {
     case "updateThesisMatrix": {
       if (!previousState || !userId) {
         return {
           success: false,
-          message: "Önceki durum verisine ulaşılamadı.",
+          error: "Önceki durum verisine ulaşılamadı.",
         };
       }
       const userMatrix = await db.query.matrices.findFirst({
         where: eq(matrices.userId, userId),
       });
       if (!userMatrix) {
-        return { success: false, message: "Tez matrisi bulunamadı." };
+        return { success: false, error: "Tez matrisi bulunamadı." };
       }
 
       const updateData: Partial<Matrix> = { updatedAt: new Date() };
@@ -76,7 +76,7 @@ export async function undoMutationTool(
       if (!boxId) {
         return {
           success: false,
-          message: "Silinecek kutu kimliği bulunamadı.",
+          error: "Silinecek kutu kimliği bulunamadı.",
         };
       }
       await db.delete(boxes).where(eq(boxes.id, boxId));
@@ -88,7 +88,7 @@ export async function undoMutationTool(
     case "updateBox": {
       const boxId = args.boxId as number;
       if (!previousState) {
-        return { success: false, message: "Önceki kutu verisi bulunamadı." };
+        return { success: false, error: "Önceki kutu verisi bulunamadı." };
       }
       const updateData: {
         title?: string;
@@ -111,7 +111,7 @@ export async function undoMutationTool(
     }
     case "deleteBox": {
       if (!previousState) {
-        return { success: false, message: "Silinen kutu yedeği bulunamadı." };
+        return { success: false, error: "Silinen kutu yedeği bulunamadı." };
       }
       await db.insert(boxes).values({
         matrixId: previousState.matrixId as number,
@@ -125,7 +125,7 @@ export async function undoMutationTool(
     case "updateSource": {
       const sourceId = args.sourceId as number;
       if (!previousState) {
-        return { success: false, message: "Önceki kaynak verisi bulunamadı." };
+        return { success: false, error: "Önceki kaynak verisi bulunamadı." };
       }
       const updateData: Partial<Source> = { updatedAt: new Date() };
       if (typeof previousState.title === "string")
@@ -145,7 +145,7 @@ export async function undoMutationTool(
     }
     case "deleteSource": {
       if (!previousState) {
-        return { success: false, message: "Silinen kaynak yedeği bulunamadı." };
+        return { success: false, error: "Silinen kaynak yedeği bulunamadı." };
       }
       await db.insert(sources).values({
         boxId: previousState.boxId as number,
@@ -168,7 +168,7 @@ export async function undoMutationTool(
       const createdNote = executionResult as Annotation | undefined;
       const noteId = createdNote?.id ?? (args.noteId as number | undefined);
       if (!noteId || !userId) {
-        return { success: false, message: "Silinecek not kimliği bulunamadı." };
+        return { success: false, error: "Silinecek not kimliği bulunamadı." };
       }
       await db
         .delete(annotations)
@@ -177,7 +177,7 @@ export async function undoMutationTool(
     }
     case "deleteNote": {
       if (!previousState || !userId) {
-        return { success: false, message: "Silinen not yedeği bulunamadı." };
+        return { success: false, error: "Silinen not yedeği bulunamadı." };
       }
       await db.insert(annotations).values({
         sourceId: previousState.sourceId as number,
@@ -197,7 +197,7 @@ export async function undoMutationTool(
       if (!taskId || !userId) {
         return {
           success: false,
-          message: "Silinecek görev kimliği bulunamadı.",
+          error: "Silinecek görev kimliği bulunamadı.",
         };
       }
       await db
@@ -211,7 +211,7 @@ export async function undoMutationTool(
     case "updateTaskStatus": {
       const taskId = args.taskId as number;
       if (!previousState || !userId) {
-        return { success: false, message: "Önceki görev durumu bulunamadı." };
+        return { success: false, error: "Önceki görev durumu bulunamadı." };
       }
       const status = previousState.status as Task["status"];
 
@@ -228,7 +228,7 @@ export async function undoMutationTool(
     default:
       return {
         success: false,
-        message: `Bilinmeyen geri alma fonksiyonu: ${toolName}`,
+        error: "İşlem geri alınamadı. Lütfen tekrar deneyin.",
       };
   }
 }

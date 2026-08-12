@@ -59,8 +59,12 @@ export function useAdvisorSessions({
   );
 
   const loadSessions = useCallback(async () => {
-    const list = await getChatSessions();
-    setSessions(list);
+    const res = await getChatSessions();
+    if (res.success) {
+      setSessions(res.data);
+    } else {
+      toast.error(res.error);
+    }
   }, []);
 
   const syncUrlSession = useCallback((sessionId: number | null) => {
@@ -117,8 +121,13 @@ export function useAdvisorSessions({
     /** Loads the session list and messages for the target session id if provided. */
     async function syncFromProp() {
       if (isSendingRef.current) return;
-      const list = await getChatSessions();
+      const res = await getChatSessions();
       if (cancelled) return;
+      if (!res.success) {
+        toast.error(res.error);
+        return;
+      }
+      const list = res.data;
       setSessions(list);
 
       const targetId =

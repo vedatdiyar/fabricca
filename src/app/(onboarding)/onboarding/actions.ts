@@ -137,12 +137,9 @@ export async function clearDownstreamDbAction(
 
     invalidateOnboardingStepCache(fromStep);
     return { success: true };
-  } catch (error) {
+  } catch {
     return {
-      error:
-        error instanceof Error
-          ? error.message
-          : "Sıfırlama işlemi gerçekleştirilirken bir hata oluştu.",
+      error: "Sıfırlama işlemi gerçekleştirilirken bir hata oluştu.",
     };
   }
 }

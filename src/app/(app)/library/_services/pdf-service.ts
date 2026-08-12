@@ -20,10 +20,11 @@ export async function cleanupTempKey(
   if (!tempKey) return;
   try {
     await deleteR2Object(tempKey);
-  } catch {
-    log.info("r2_temp_cleanup_failed", {
+  } catch (err) {
+    log.warn("r2_temp_cleanup_failed", {
       service: "library",
       data: { tempKey },
+      error: err,
     });
   }
 }

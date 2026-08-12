@@ -1,7 +1,10 @@
 /** Result payload returned by every mutation tool execution. */
 export interface MutationToolResult {
   success: boolean;
-  message: string;
+  /** User-facing Turkish message shown for successful executions. */
+  message?: string;
+  /** User-facing Turkish error message shown when the execution fails. */
+  error?: string;
   data?: unknown;
   previousState?: Record<string, unknown>;
 }

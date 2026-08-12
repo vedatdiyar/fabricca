@@ -410,10 +410,11 @@ export async function completePdfUploadCore(
       if (uploadedPdfFileName) {
         try {
           await deletePdfFromR2(uploadedPdfFileName);
-        } catch {
-          log.info("r2_orphan_pdf_cleanup_failed", {
+        } catch (err) {
+          log.warn("r2_orphan_pdf_cleanup_failed", {
             service: "library",
             data: { uploadedPdfFileName },
+            error: err,
           });
         }
       }

@@ -1,6 +1,7 @@
 import { Logger } from "@/lib/logger";
 import { HttpError, withRetry, DEFAULT_MAX_DELAY } from "@/lib/api-utils";
 import { createConcurrencyLimiter } from "@/lib/rate-limiter";
+import { toAiProviderError } from "./llm-errors";
 
 /** Multilingual (incl. Turkish) Cohere Rerank model ID — 32,768-token context. */
 export const COHERE_RERANK_MODEL = "rerank-v4.0-pro";
@@ -176,7 +177,7 @@ export async function rerankWithCohere(
       service: "cohere",
       error,
     });
-    throw error;
+    throw toAiProviderError(error, "cohere");
   } finally {
     clearTimeout(timer);
   }

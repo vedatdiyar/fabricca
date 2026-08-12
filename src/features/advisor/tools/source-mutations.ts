@@ -39,7 +39,7 @@ async function executeUpdateSource(
     where: eq(sources.id, sourceId),
   });
   if (!existingSource) {
-    return { success: false, message: "Kaynak bulunamadı." };
+    return { success: false, error: "Kaynak bulunamadı." };
   }
 
   const previousState: Record<string, unknown> = {
@@ -80,7 +80,7 @@ async function executeDeleteSource(
     where: eq(sources.id, sourceId),
   });
   if (!existingSource) {
-    return { success: false, message: "Silinecek kaynak bulunamadı." };
+    return { success: false, error: "Silinecek kaynak bulunamadı." };
   }
 
   const previousState: Record<string, unknown> = {

@@ -8,6 +8,8 @@ import {
 } from "@/lib/cache-tags";
 import { matrices, users } from "@/db/schema";
 import { Logger, createFlowId } from "@/lib/logger";
+import { DatabaseError } from "@/lib/errors/app-error";
+import { handleActionError } from "@/lib/errors/handle-error";
 import {
   getSession,
   writeSessionCookie,
@@ -28,17 +30,31 @@ const _cancelFlags = new Map<number, boolean>();
 
 /** Signals the running pipeline to stop, called from the client cancel callback. */
 export async function setLiteratureCancelledAction(): Promise<void> {
-  const session = await getSession();
-  if (session) {
-    _cancelFlags.set(session.userId, true);
+  try {
+    const session = await getSession();
+    if (session) {
+      _cancelFlags.set(session.userId, true);
+    }
+  } catch (err) {
+    throw new DatabaseError({
+      cause: err,
+      message: "Failed to set literature cancel flag.",
+    });
   }
 }
 
 /** Resets the cancel flag before a fresh pipeline run. */
 export async function resetLiteratureCancelledAction(): Promise<void> {
-  const session = await getSession();
-  if (session) {
-    _cancelFlags.set(session.userId, false);
+  try {
+    const session = await getSession();
+    if (session) {
+      _cancelFlags.set(session.userId, false);
+    }
+  } catch (err) {
+    throw new DatabaseError({
+      cause: err,
+      message: "Failed to reset literature cancel flag.",
+    });
   }
 }
 
@@ -139,7 +155,12 @@ export async function confirmLiteratureAction(args: {
 
     try {
       revalidateOnboardingPaths();
-    } catch {}
+    } catch (err) {
+      log.warn("confirm_literature_revalidate_failed", {
+        service: "literature",
+        error: err,
+      });
+    }
 
     invalidateOnboardingCache();
 
@@ -168,19 +189,23 @@ export async function fetchPreloadedLiteraturePool(): Promise<{
   data?: LiteraturePoolEntry[];
   error?: string;
 }> {
-  const session = await getSession();
-  if (!session) return { error: SESSION_ERROR_MSG };
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
 
-  const [matrix] = await db
-    .select({ id: matrices.id })
-    .from(matrices)
-    .where(eq(matrices.userId, session.userId));
+    const [matrix] = await db
+      .select({ id: matrices.id })
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
 
-  if (!matrix) return { error: "Tez matrisi bulunamadı." };
+    if (!matrix) return { error: "Tez matrisi bulunamadı." };
 
-  const pool = await fetchPreloadedPool(matrix.id);
+    const pool = await fetchPreloadedPool(matrix.id);
 
-  return { data: pool };
+    return { data: pool };
+  } catch (err) {
+    return handleActionError(err);
+  }
 }
 
 /**
@@ -204,11 +229,21 @@ export async function finalizeOnboardingAction(): Promise<OnboardingActionResult
 
     try {
       await writeSessionCookie(session, true);
-    } catch {}
+    } catch (err) {
+      log.warn("finalize_onboarding_cookie_failed", {
+        service: "literature",
+        error: err,
+      });
+    }
 
     try {
       revalidateOnboardingPaths();
-    } catch {}
+    } catch (err) {
+      log.warn("finalize_onboarding_revalidate_failed", {
+        service: "literature",
+        error: err,
+      });
+    }
 
     invalidateOnboardingCache();
 
@@ -306,7 +341,12 @@ export async function runLiteraturePipelineAction(
 
     try {
       revalidateOnboardingPaths();
-    } catch {}
+    } catch (err) {
+      logger.warn("literature_pipeline_revalidate_failed", {
+        service: "literature",
+        error: err,
+      });
+    }
     invalidateOnboardingCache();
 
     logger.info("literature_pipeline_success", {

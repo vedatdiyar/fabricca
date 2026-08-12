@@ -6,6 +6,7 @@ import {
   executeMutationTool,
   undoMutationTool,
 } from "@/features/advisor/tools";
+import { handleActionError } from "@/lib/errors/handle-error";
 
 const toolActionSchema = z.object({
   toolName: z.string().min(1, "Tool name is required."),
@@ -14,7 +15,8 @@ const toolActionSchema = z.object({
 
 export interface ExecuteAdvisorToolResult {
   success: boolean;
-  message: string;
+  message?: string;
+  error?: string;
   data?: unknown;
   previousState?: Record<string, unknown>;
 }
@@ -35,7 +37,7 @@ export async function executeAdvisorToolAction(payload: {
   if (!session) {
     return {
       success: false,
-      message: "Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.",
+      error: "Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.",
     };
   }
 
@@ -43,7 +45,7 @@ export async function executeAdvisorToolAction(payload: {
   if (!parsed.success) {
     return {
       success: false,
-      message: "Geçersiz işlem parametreleri.",
+      error: "Geçersiz işlem parametreleri.",
     };
   }
 
@@ -53,12 +55,7 @@ export async function executeAdvisorToolAction(payload: {
     const result = await executeMutationTool(toolName, args, session.userId);
     return result;
   } catch (error) {
-    const errorMsg =
-      error instanceof Error ? error.message : "Bilinmeyen sunucu hatası.";
-    return {
-      success: false,
-      message: `İşlem gerçekleştirilirken hata oluştu: ${errorMsg}`,
-    };
+    return handleActionError(error);
   }
 }
 
@@ -77,12 +74,12 @@ export async function undoAdvisorToolAction(payload: {
   args: Record<string, unknown>;
   executionResult?: unknown;
   previousState?: Record<string, unknown>;
-}): Promise<{ success: boolean; message: string }> {
+}): Promise<{ success: boolean; message?: string; error?: string }> {
   const session = await getSession();
   if (!session) {
     return {
       success: false,
-      message: "Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.",
+      error: "Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.",
     };
   }
 
@@ -96,11 +93,6 @@ export async function undoAdvisorToolAction(payload: {
     );
     return result;
   } catch (error) {
-    const errorMsg =
-      error instanceof Error ? error.message : "Bilinmeyen sunucu hatası.";
-    return {
-      success: false,
-      message: `İşlem geri alınırken hata oluştu: ${errorMsg}`,
-    };
+    return handleActionError(error);
   }
 }

@@ -5,6 +5,7 @@ import { sourceMutations } from "./source-mutations";
 import { noteMutations } from "./note-mutations";
 import { taskMutations } from "./task-mutations";
 import { outlineMutations } from "./outline-mutations";
+import { Logger, createFlowId } from "@/lib/logger";
 
 const MUTATION_TOOL_HANDLERS: Record<string, MutationToolHandler> = {
   ...matrixMutations,
@@ -33,7 +34,13 @@ export async function getToolPreviousState(
   if (!handler) return undefined;
   try {
     return await handler.getPreviousState(args, userId);
-  } catch {
+  } catch (err) {
+    const log = new Logger(createFlowId());
+    log.warn("advisor_tool_previous_state_failed", {
+      service: "advisor",
+      data: { toolName: name },
+      error: err,
+    });
     return undefined;
   }
 }
@@ -55,7 +62,7 @@ export async function executeMutationTool(
   if (!handler) {
     return {
       success: false,
-      message: `Bilinmeyen veritabanı değişikliği: ${toolName}`,
+      error: `Bilinmeyen veritabanı değişikliği talep edildi.`,
     };
   }
   return handler.execute(args, userId);

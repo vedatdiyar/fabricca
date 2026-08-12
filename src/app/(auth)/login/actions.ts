@@ -46,12 +46,11 @@ function checkRateLimit(email: string): boolean {
   return true;
 }
 
-export type LoginResult =
-  { success: true; error?: never } | { success?: never; error: string };
+export type LoginResult = { success: boolean; error?: string };
 
 export type OnboardingStatusResult =
-  | { onboardingCompleted: boolean; error?: never }
-  | { onboardingCompleted?: never; error: string };
+  | { success: true; onboardingCompleted: boolean }
+  | { success: false; error: string };
 
 /**
  * Validates email and password; on success creates the session cookie.
@@ -74,7 +73,7 @@ export async function loginAction(
       service: "auth",
       data: { reason: "validation_failure" },
     });
-    return { error: msg };
+    return { success: false, error: msg };
   }
 
   if (!checkRateLimit(parsed.data.email)) {
@@ -83,6 +82,7 @@ export async function loginAction(
       data: { reason: "rate_limit_exceeded" },
     });
     return {
+      success: false,
       error:
         "Çok fazla başarısız giriş denemesi. Lütfen 15 dakika sonra tekrar deneyin.",
     };
@@ -104,7 +104,7 @@ export async function loginAction(
         service: "auth",
         data: { reason: "user_not_found" },
       });
-      return { error: "E-posta veya şifre hatalı." };
+      return { success: false, error: "E-posta veya şifre hatalı." };
     }
 
     const passwordMatch = await compare(parsed.data.password, user.password);
@@ -114,7 +114,7 @@ export async function loginAction(
         service: "auth",
         data: { reason: "password_mismatch" },
       });
-      return { error: "E-posta veya şifre hatalı." };
+      return { success: false, error: "E-posta veya şifre hatalı." };
     }
 
     const cookieStore = await cookies();
@@ -143,7 +143,7 @@ export async function loginAction(
       service: "auth",
       data: { reason: "server_error" },
     });
-    return { error: "Bir hata oluştu. Lütfen tekrar deneyin." };
+    return { success: false, error: "Bir hata oluştu. Lütfen tekrar deneyin." };
   }
 
   return { success: true };
@@ -162,10 +162,11 @@ export async function checkOnboardingStatus(): Promise<OnboardingStatusResult> {
     const session = await getSessionWithOnboarding();
 
     if (!session) {
-      return { error: SESSION_ERROR_MSG };
+      return { success: false, error: SESSION_ERROR_MSG };
     }
 
     return {
+      success: true,
       onboardingCompleted: session.onboardingCompleted,
     };
   } catch {
@@ -173,6 +174,9 @@ export async function checkOnboardingStatus(): Promise<OnboardingStatusResult> {
       service: "auth",
       data: { reason: "Onboarding durumu sorgulanamadı" },
     });
-    return { error: "Onboarding durumu sorgulanırken bir hata oluştu." };
+    return {
+      success: false,
+      error: "Onboarding durumu sorgulanırken bir hata oluştu.",
+    };
   }
 }
