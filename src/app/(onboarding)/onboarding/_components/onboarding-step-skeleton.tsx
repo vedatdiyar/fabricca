@@ -19,7 +19,7 @@ export function OnboardingStepSkeleton({
 }: OnboardingStepSkeletonProps) {
   return (
     <div className="flex flex-col items-center justify-center p-4 pt-10 pb-4">
-      <div className="flex w-full flex-col items-center space-y-4">
+      <div className="flex w-full max-w-5xl flex-col items-center space-y-4">
         <div className="flex w-full flex-col items-start justify-between gap-4 border-b border-border pb-6 sm:flex-row sm:items-center">
           <div className="flex w-full max-w-xl flex-col space-y-2 text-left">
             <Skeleton className="h-8 w-64" />

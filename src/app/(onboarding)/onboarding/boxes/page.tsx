@@ -25,7 +25,7 @@ export default async function OnboardingBoxesPage() {
 
   return (
     <div className="flex flex-col items-center justify-center p-4 pt-10 pb-4">
-      <div className="flex w-full flex-col items-center space-y-4">
+      <div className="flex w-full max-w-5xl flex-col items-center space-y-4">
         <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
           <div className="flex flex-col space-y-1 text-left">
             <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
