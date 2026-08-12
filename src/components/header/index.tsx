@@ -56,18 +56,18 @@ export function Header({ userName }: { userName: string }) {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full border-b border-border bg-background">
-        <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/dashboard" className="flex shrink-0 items-center gap-3">
+      <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/95 backdrop-blur-md">
+        <div className="mx-auto flex h-19 sm:h-20 w-full max-w-7xl items-center justify-between px-4 py-4 sm:px-6 sm:py-4.5 lg:px-8">
+          <Link href="/dashboard" className="flex shrink-0 items-center gap-2.5 transition-opacity hover:opacity-90">
             <Image
               src="/logo.svg"
               alt="Fabricca"
-              width={55}
-              height={55}
+              width={46}
+              height={46}
               priority
               className="shrink-0"
             />
-            <span className="badge-brand text-xl font-normal tracking-widest text-foreground">
+            <span className="badge-brand text-lg font-normal tracking-widest text-foreground">
               FABRICCA
             </span>
           </Link>

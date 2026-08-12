@@ -7,6 +7,7 @@ import {
   Network,
   Library,
   Quote,
+  Table,
   Briefcase,
   RotateCcw,
   LogOut,
@@ -18,6 +19,7 @@ export const NAV_ITEMS = [
   { href: "/dashboard", label: "Genel Özet", icon: LayoutDashboard },
   { href: "/thesis-architecture", label: "Tez Mimarisi", icon: Network },
   { href: "/library", label: "Kütüphane", icon: Library },
+  { href: "/literature-matrix", label: "Literatür Matrisi", icon: Table },
   { href: "/citation-cards", label: "Alıntı Fişleri", icon: Quote },
   { href: "/advisor", label: "Danışman Odası", icon: Briefcase },
 ] as const;
@@ -31,27 +33,24 @@ export function HeaderNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="hidden items-center gap-2 md:flex">
+    <nav className="hidden items-center gap-0.5 rounded-full border border-border/50 bg-card/70 p-1 shadow-xs backdrop-blur-sm md:flex">
       {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
         const isActive = pathname === href;
 
         return (
-          <Button
+          <Link
             key={href}
-            variant="ghost"
-            asChild
+            href={href}
             className={cn(
-              "header-nav-item",
+              "flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-all duration-150 select-none",
               isActive
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground",
+                ? "bg-accent text-accent-foreground font-semibold border border-primary/25 shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent/30",
             )}
           >
-            <Link href={href}>
-              <Icon className="h-4 w-4 shrink-0" />
-              <span>{label}</span>
-            </Link>
-          </Button>
+            <Icon className="h-3.5 w-3.5 shrink-0" />
+            <span>{label}</span>
+          </Link>
         );
       })}
     </nav>

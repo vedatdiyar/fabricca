@@ -27,6 +27,7 @@ type ServiceName =
   | "rag-search"
   | "advisor"
   | "citation-cards"
+  | "literature-matrix"
   | "outline";
 
 export interface LogParams {

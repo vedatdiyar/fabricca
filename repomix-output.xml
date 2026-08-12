@@ -151,6 +151,16 @@ src/
         page.tsx
         pdf-actions.ts
         resource-actions.ts
+      literature-matrix/
+        _components/
+          inline-editable-cell.tsx
+          literature-matrix-container.tsx
+          literature-matrix-stats.tsx
+          literature-matrix-table.tsx
+          literature-matrix-toolbar.tsx
+        actions.ts
+        page.tsx
+        types.ts
       thesis-architecture/
         _components/
           box-manager-view.tsx
@@ -501,6 +511,1554 @@ export type TaskRow = {
   createdAt: Date;
   updatedAt: Date;
 };
+</file>
+
+<file path="src/app/(app)/literature-matrix/_components/inline-editable-cell.tsx">
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { Loader2, Check, Pencil, Plus, Save } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+
+interface InlineEditableCellProps {
+  title?: string;
+  sourceTitle?: string;
+  value: string | null;
+  placeholder?: string;
+  onSave: (newValue: string) => Promise<void>;
+}
+
+/**
+ * Table cell component that opens a mini Dialog modal for editing long academic texts cleanly.
+ *
+ * @param root0 - Component props.
+ * @param root0.title - Field title displayed in the modal header (e.g. "Araştırma Sorusu").
+ * @param root0.sourceTitle - Source title shown as context in the modal header.
+ * @param root0.value - Initial or current text value.
+ * @param root0.placeholder - Text shown when the cell is empty.
+ * @param root0.onSave - Async callback triggered to persist edits.
+ * @returns The interactive cell and edit modal markup.
+ */
+export function InlineEditableCell({
+  title = "Metin Düzenle",
+  sourceTitle,
+  value,
+  placeholder = "İçerik ekleyin...",
+  onSave,
+}: InlineEditableCellProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [currentValue, setCurrentValue] = useState(value ?? "");
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSavedFeedback, setShowSavedFeedback] = useState(false);
+
+  useEffect(() => {
+    setCurrentValue(value ?? "");
+  }, [value]);
+
+  const handleOpen = () => {
+    setCurrentValue(value ?? "");
+    setIsOpen(true);
+  };
+
+  const handleSave = async () => {
+    const trimmed = currentValue.trim();
+    setIsSaving(true);
+    try {
+      await onSave(trimmed);
+      setIsOpen(false);
+      setShowSavedFeedback(true);
+      setTimeout(() => setShowSavedFeedback(false), 2000);
+    } catch {
+      setCurrentValue(value ?? "");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      handleSave();
+    }
+  };
+
+  const hasValue = Boolean(value && value.trim().length > 0);
+
+  return (
+    <>
+      {/* Cell Content Trigger */}
+      <div
+        onClick={handleOpen}
+        className="group relative flex min-h-[48px] w-full cursor-pointer items-center justify-between text-left rounded-md border border-transparent p-2 text-sm transition-all hover:border-border hover:bg-accent/40"
+      >
+        {hasValue ? (
+          <div className="line-clamp-3 w-full text-left font-sans leading-relaxed text-foreground/90">
+            {value}
+          </div>
+        ) : (
+          <div className="flex w-full items-center justify-start gap-1.5 rounded-md border border-dashed border-border/80 px-3 py-2 text-xs font-medium text-muted-foreground transition-colors group-hover:border-primary/40 group-hover:bg-primary/5 group-hover:text-primary text-left">
+            <Plus className="h-3.5 w-3.5 shrink-0" />
+            <span>{placeholder}</span>
+          </div>
+        )}
+
+        <div className="ml-1 flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          {isSaving ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+          ) : showSavedFeedback ? (
+            <Check className="h-3.5 w-3.5 text-emerald-500" />
+          ) : (
+            hasValue && <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+          )}
+        </div>
+      </div>
+
+      {/* Mini Edit Dialog Modal */}
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent className="sm:max-w-lg border-border bg-card">
+          <DialogHeader className="space-y-1">
+            <DialogTitle className="font-serif text-lg font-semibold text-foreground">
+              {title}
+            </DialogTitle>
+            {sourceTitle && (
+              <p className="line-clamp-1 text-xs text-muted-foreground">
+                <span className="font-medium text-foreground/80">Kaynak:</span>{" "}
+                {sourceTitle}
+              </p>
+            )}
+          </DialogHeader>
+
+          <div className="py-2 space-y-2">
+            <Textarea
+              value={currentValue}
+              onChange={(e) => setCurrentValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              rows={5}
+              className="w-full resize-none bg-background text-sm leading-relaxed text-foreground focus-visible:ring-1 focus-visible:ring-primary border-border p-3 font-sans"
+              placeholder={`${title} içeriğini buraya detaylıca yazabilirsiniz...`}
+              autoFocus
+            />
+            <p className="text-[11px] text-muted-foreground text-right">
+              ⌘+Enter veya Ctrl+Enter ile kaydedebilirsiniz.
+            </p>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsOpen(false)}
+              disabled={isSaving}
+              className="text-xs"
+            >
+              Vazgeç
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={isSaving}
+              className="text-xs gap-1.5"
+            >
+              {isSaving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Save className="h-3.5 w-3.5" />
+              )}
+              <span>Kaydet</span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+</file>
+
+<file path="src/app/(app)/literature-matrix/_components/literature-matrix-container.tsx">
+"use client";
+
+import React, { useState, useMemo } from "react";
+import { LiteratureMatrixStats } from "./literature-matrix-stats";
+import { LiteratureMatrixToolbar } from "./literature-matrix-toolbar";
+import {
+  LiteratureMatrixTable,
+  MATRIX_COLUMNS,
+} from "./literature-matrix-table";
+import {
+  updateMatrixCritiqueAction,
+  updateMatrixSourceAction,
+} from "../actions";
+import type {
+  MatrixSourceRow,
+  CritiqueFieldKey,
+  MatrixColumnVisibility,
+  MatrixSortField,
+  MatrixSortDirection,
+  MatrixFilterConfig,
+  MatrixStats,
+} from "../types";
+
+interface LiteratureMatrixContainerProps {
+  initialRows: MatrixSourceRow[];
+  initialBoxes: Array<{ id: number; title: string }>;
+}
+
+/**
+ * Main client container managing interactive state, filtering, sorting, inline cell edits, and CSV exports.
+ *
+ * @param root0 - Component props.
+ * @param root0.initialRows - Initial matrix source rows fetched from server.
+ * @param root0.initialBoxes - Initial user topic boxes for filtering.
+ * @returns The container markup.
+ */
+export function LiteratureMatrixContainer({
+  initialRows,
+  initialBoxes,
+}: LiteratureMatrixContainerProps) {
+  const [rows, setRows] = useState<MatrixSourceRow[]>(initialRows);
+  const [boxes] = useState(initialBoxes);
+
+  const [filters, setFilters] = useState<MatrixFilterConfig>({
+    searchTerm: "",
+    boxId: "all",
+    readStatus: "all",
+  });
+
+  const [sortConfig, setSortConfig] = useState<{
+    field: MatrixSortField;
+    direction: MatrixSortDirection;
+  }>({
+    field: "title",
+    direction: "asc",
+  });
+
+  const [columnVisibility, setColumnVisibility] =
+    useState<MatrixColumnVisibility>({
+      title: true,
+      boxTitle: true,
+      researchQuestion: true,
+      theoreticalFramework: true,
+      methodology: true,
+      mainArgument: true,
+      literatureGap: true,
+    });
+
+  // Calculate summary metrics
+  const stats = useMemo<MatrixStats>(() => {
+    const totalSources = rows.length;
+    const readSources = rows.filter((r) => r.isRead).length;
+    const completedCritiques = rows.filter(
+      (r) =>
+        r.critique &&
+        (r.critique.researchQuestion ||
+          r.critique.theoreticalFramework ||
+          r.critique.methodology ||
+          r.critique.mainArgument ||
+          r.critique.literatureGap),
+    ).length;
+    const uniqueBoxes = new Set(rows.map((r) => r.boxId)).size;
+
+    return {
+      totalSources,
+      readSources,
+      completedCritiques,
+      uniqueBoxes,
+    };
+  }, [rows]);
+
+  // Handle header click sorting
+  const handleSortChange = (field: MatrixSortField) => {
+    setSortConfig((prev) => ({
+      field,
+      direction:
+        prev.field === field && prev.direction === "asc" ? "desc" : "asc",
+    }));
+  };
+
+  // Filter and sort matrix rows
+  const processedRows = useMemo(() => {
+    return rows
+      .filter((row) => {
+        // Search term check across title, authors, doi, critique texts
+        if (filters.searchTerm.trim() !== "") {
+          const term = filters.searchTerm.toLowerCase();
+          const matchTitle = row.title.toLowerCase().includes(term);
+          const matchAuthors =
+            row.authors?.some((a) => a.toLowerCase().includes(term)) ?? false;
+          const matchCritique =
+            (row.critique?.researchQuestion?.toLowerCase().includes(term) ??
+              false) ||
+            (row.critique?.theoreticalFramework?.toLowerCase().includes(term) ??
+              false) ||
+            (row.critique?.methodology?.toLowerCase().includes(term) ??
+              false) ||
+            (row.critique?.mainArgument?.toLowerCase().includes(term) ??
+              false) ||
+            (row.critique?.literatureGap?.toLowerCase().includes(term) ??
+              false);
+
+          if (!matchTitle && !matchAuthors && !matchCritique) {
+            return false;
+          }
+        }
+
+        // Box filter
+        if (filters.boxId !== "all" && row.boxId !== filters.boxId) {
+          return false;
+        }
+
+        // Read status filter
+        if (filters.readStatus === "read" && !row.isRead) return false;
+        if (filters.readStatus === "unread" && row.isRead) return false;
+
+        return true;
+      })
+      .sort((a, b) => {
+        const { field, direction } = sortConfig;
+        const factor = direction === "asc" ? 1 : -1;
+
+        if (field === "title") {
+          return a.title.localeCompare(b.title, "tr") * factor;
+        }
+        if (field === "publicationYear") {
+          return ((a.publicationYear ?? 0) - (b.publicationYear ?? 0)) * factor;
+        }
+        if (field === "boxTitle") {
+          return (
+            (a.boxTitle ?? "").localeCompare(b.boxTitle ?? "", "tr") * factor
+          );
+        }
+        return 0;
+      });
+  }, [rows, filters, sortConfig]);
+
+  // Cell edit handler for critique fields
+  const handleSaveCritiqueField = async (
+    sourceId: number,
+    field: CritiqueFieldKey,
+    newValue: string,
+  ) => {
+    const res = await updateMatrixCritiqueAction(sourceId, field, newValue);
+    if (res.success && res.data) {
+      setRows((prev) =>
+        prev.map((row) =>
+          row.id === sourceId
+            ? {
+                ...row,
+                critique: {
+                  ...row.critique,
+                  id: res.data.id,
+                  researchQuestion: res.data.researchQuestion,
+                  theoreticalFramework: res.data.theoreticalFramework,
+                  methodology: res.data.methodology,
+                  mainArgument: res.data.mainArgument,
+                  literatureGap: res.data.literatureGap,
+                },
+              }
+            : row,
+        ),
+      );
+    }
+  };
+
+  // Toggle source read status
+  const handleToggleReadStatus = async (
+    sourceId: number,
+    currentStatus: boolean,
+  ) => {
+    const nextStatus = !currentStatus;
+    // Optimistic UI update
+    setRows((prev) =>
+      prev.map((r) => (r.id === sourceId ? { ...r, isRead: nextStatus } : r)),
+    );
+
+    const res = await updateMatrixSourceAction(sourceId, {
+      isRead: nextStatus,
+    });
+    if (!res.success) {
+      // Revert on failure
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === sourceId ? { ...r, isRead: currentStatus } : r,
+        ),
+      );
+    }
+  };
+
+  // Cell edit handler for comparison note
+  const handleSaveComparisonNote = async (
+    sourceId: number,
+    newValue: string,
+  ) => {
+    const res = await updateMatrixSourceAction(sourceId, {
+      comparisonNote: newValue,
+    });
+    if (res.success) {
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === sourceId ? { ...r, comparisonNote: newValue } : r,
+        ),
+      );
+    }
+  };
+
+  // CSV Export with UTF-8 BOM
+  const handleExportCSV = () => {
+    const headers = [
+      "Kaynak Başlığı",
+      "Yazarlar",
+      "Yıl",
+      "Tema / Kutu",
+      "Araştırma Sorusu",
+      "Teorik Çerçeve",
+      "Metodoloji",
+      "Temel Argüman",
+      "Literatür Boşluğu",
+    ];
+
+    const csvRows = processedRows.map((row) => [
+      `"${(row.title || "").replace(/"/g, '""')}"`,
+      `"${(row.authors?.join(", ") || "").replace(/"/g, '""')}"`,
+      row.publicationYear ?? "",
+      `"${(row.boxTitle || "").replace(/"/g, '""')}"`,
+      `"${(row.critique?.researchQuestion || "").replace(/"/g, '""')}"`,
+      `"${(row.critique?.theoreticalFramework || "").replace(/"/g, '""')}"`,
+      `"${(row.critique?.methodology || "").replace(/"/g, '""')}"`,
+      `"${(row.critique?.mainArgument || "").replace(/"/g, '""')}"`,
+      `"${(row.critique?.literatureGap || "").replace(/"/g, '""')}"`,
+    ]);
+
+    const csvContent =
+      "\uFEFF" +
+      [headers.join(";"), ...csvRows.map((r) => r.join(";"))].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `literatur_matrisi_${new Date().toISOString().slice(0, 10)}.csv`,
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleResetFilters = () => {
+    setFilters({
+      searchTerm: "",
+      boxId: "all",
+      readStatus: "all",
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Top Metrics Cards */}
+      <LiteratureMatrixStats stats={stats} />
+
+      {/* Toolbar & Filters */}
+      <LiteratureMatrixToolbar
+        filters={filters}
+        onFilterChange={setFilters}
+        availableBoxes={boxes}
+        columnVisibility={columnVisibility}
+        allColumns={MATRIX_COLUMNS}
+        onColumnVisibilityChange={setColumnVisibility}
+        onExportCSV={handleExportCSV}
+        onResetFilters={handleResetFilters}
+      />
+
+      {/* Data Table */}
+      <LiteratureMatrixTable
+        rows={processedRows}
+        columnVisibility={columnVisibility}
+        sortField={sortConfig.field}
+        sortDirection={sortConfig.direction}
+        onSortChange={handleSortChange}
+        onSaveCritiqueField={handleSaveCritiqueField}
+      />
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/(app)/literature-matrix/_components/literature-matrix-stats.tsx">
+"use client";
+
+import React from "react";
+import { BookOpen, CheckCircle2, FileText, Layers } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import type { MatrixStats } from "../types";
+
+interface LiteratureMatrixStatsProps {
+  stats: MatrixStats;
+}
+
+/**
+ * Renders summary metrics cards at the top of the Literature Matrix workspace.
+ *
+ * @param root0 - Component props.
+ * @param root0.stats - Matrix summary figures.
+ * @returns The rendered statistics cards markup.
+ */
+export function LiteratureMatrixStats({ stats }: LiteratureMatrixStatsProps) {
+  const statItems = [
+    {
+      label: "Toplam Kaynak",
+      value: stats.totalSources,
+      subtext: "Kütüphanedeki tüm eserler",
+      icon: BookOpen,
+      colorClass: "text-primary bg-primary/10 border-primary/20",
+    },
+    {
+      label: "Okunmuş Kaynaklar",
+      value: `${stats.readSources} / ${stats.totalSources}`,
+      subtext:
+        stats.totalSources > 0
+          ? `%${Math.round((stats.readSources / stats.totalSources) * 100)} okundu`
+          : "Okuma bulunmuyor",
+      icon: CheckCircle2,
+      colorClass: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
+    },
+    {
+      label: "Eser Analizleri",
+      value: `${stats.completedCritiques} / ${stats.totalSources}`,
+      subtext: "5 Boyutlu analiz tamamlandı",
+      icon: FileText,
+      colorClass: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20",
+    },
+    {
+      label: "Kapsanan Temalar",
+      value: stats.uniqueBoxes,
+      subtext: "Tez kutusu eşleşti",
+      icon: Layers,
+      colorClass: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {statItems.map((item) => {
+        const Icon = item.icon;
+        return (
+          <Card
+            key={item.label}
+            className="border border-border bg-card shadow-xs"
+          >
+            <CardContent className="flex items-center justify-between p-4.5">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">
+                  {item.label}
+                </p>
+                <p className="font-serif text-2xl font-bold tracking-tight text-foreground">
+                  {item.value}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {item.subtext}
+                </p>
+              </div>
+              <div
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-md border ${item.colorClass}`}
+              >
+                <Icon className="h-5 w-5" />
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/(app)/literature-matrix/_components/literature-matrix-table.tsx">
+"use client";
+
+import React from "react";
+import Link from "next/link";
+import {
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  BookOpen,
+  FileSpreadsheet,
+  ExternalLink,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { InlineEditableCell } from "./inline-editable-cell";
+import type {
+  MatrixSourceRow,
+  CritiqueFieldKey,
+  MatrixColumnVisibility,
+  MatrixSortField,
+  MatrixSortDirection,
+} from "../types";
+
+export interface ColumnDef {
+  key: string;
+  label: string;
+  sortable?: boolean;
+}
+
+export const MATRIX_COLUMNS: ColumnDef[] = [
+  { key: "title", label: "Kaynak & Künye", sortable: true },
+  { key: "boxTitle", label: "Tema / Kutu", sortable: true },
+  { key: "researchQuestion", label: "Araştırma Sorusu" },
+  { key: "theoreticalFramework", label: "Teorik / Kavramsal Çerçeve" },
+  { key: "methodology", label: "Metodoloji" },
+  { key: "mainArgument", label: "Temel Argüman" },
+  { key: "literatureGap", label: "Literatür Boşluğu" },
+];
+
+interface LiteratureMatrixTableProps {
+  rows: MatrixSourceRow[];
+  columnVisibility: MatrixColumnVisibility;
+  sortField: MatrixSortField;
+  sortDirection: MatrixSortDirection;
+  onSortChange: (field: MatrixSortField) => void;
+  onSaveCritiqueField: (
+    sourceId: number,
+    field: CritiqueFieldKey,
+    newValue: string,
+  ) => Promise<void>;
+}
+
+/**
+ * Renders the Notion-style interactive literature matrix data grid with inline editable cells.
+ *
+ * @param root0 - Component props.
+ * @param root0.rows - Filtered and sorted source rows to display.
+ * @param root0.columnVisibility - Map of column key to visibility boolean.
+ * @param root0.sortField - Currently active sort field.
+ * @param root0.sortDirection - Current sort direction (asc/desc).
+ * @param root0.onSortChange - Callback invoked when a header is clicked to sort.
+ * @param root0.onSaveCritiqueField - Callback to persist critique cell edits.
+ * @param root0.onToggleReadStatus - Callback to toggle source read state.
+ * @param root0.onSaveComparisonNote - Callback to persist custom comparison notes.
+ * @returns The matrix table markup.
+ */
+export function LiteratureMatrixTable({
+  rows,
+  columnVisibility,
+  sortField,
+  sortDirection,
+  onSortChange,
+  onSaveCritiqueField,
+}: LiteratureMatrixTableProps) {
+  if (rows.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border p-12 text-center bg-card">
+        <FileSpreadsheet className="h-12 w-12 text-muted-foreground/50 mb-3" />
+        <h3 className="font-serif text-lg font-medium text-foreground">
+          Eşleşen Kaynak Bulunamadı
+        </h3>
+        <p className="mt-1 text-xs text-muted-foreground max-w-sm">
+          Arama terimlerinizi veya filtreleri değiştirerek veya kütüphanenize yeni
+          kaynaklar ekleyerek matrisi genişletebilirsiniz.
+        </p>
+      </div>
+    );
+  }
+
+  const renderSortIcon = (field: MatrixSortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="ml-1 h-3 w-3 opacity-40" />;
+    }
+    return sortDirection === "asc" ? (
+      <ArrowUp className="ml-1 h-3 w-3 text-primary" />
+    ) : (
+      <ArrowDown className="ml-1 h-3 w-3 text-primary" />
+    );
+  };
+
+  const isColVisible = (colKey: string) => columnVisibility[colKey] !== false;
+
+  return (
+    <div className="relative w-full overflow-x-auto rounded-lg border border-border bg-card shadow-xs scrollbar-thin scrollbar-thumb-border">
+      <table className="w-full text-left border-collapse min-w-[1950px]">
+        <thead>
+          <tr className="border-b border-border bg-muted/50 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            {/* Sticky Header for Source Title */}
+            {isColVisible("title") && (
+              <th
+                onClick={() => onSortChange("title")}
+                className="sticky left-0 z-20 cursor-pointer bg-muted/95 backdrop-blur-md p-3.5 min-w-[300px] max-w-[340px] transition-colors hover:text-foreground border-r border-border/60 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)] text-left"
+              >
+                <div className="flex items-center justify-start gap-1">
+                  <span>Kaynak & Künye</span>
+                  {renderSortIcon("title")}
+                </div>
+              </th>
+            )}
+
+            {isColVisible("boxTitle") && (
+              <th
+                onClick={() => onSortChange("boxTitle")}
+                className="cursor-pointer p-3.5 min-w-[210px] transition-colors hover:text-foreground text-left"
+              >
+                <div className="flex items-center justify-start gap-1">
+                  <span>Tema / Kutu</span>
+                  {renderSortIcon("boxTitle")}
+                </div>
+              </th>
+            )}
+
+
+
+            {isColVisible("researchQuestion") && (
+              <th className="p-3.5 min-w-[270px] text-left">Araştırma Sorusu</th>
+            )}
+
+            {isColVisible("theoreticalFramework") && (
+              <th className="p-3.5 min-w-[270px] text-left">Teorik Çerçeve</th>
+            )}
+
+            {isColVisible("methodology") && (
+              <th className="p-3.5 min-w-[250px] text-left">Metodoloji</th>
+            )}
+
+            {isColVisible("mainArgument") && (
+              <th className="p-3.5 min-w-[270px] text-left">Temel Argüman</th>
+            )}
+
+            {isColVisible("literatureGap") && (
+              <th className="p-3.5 min-w-[270px] text-left">Literatür Boşluğu</th>
+            )}
+
+
+          </tr>
+        </thead>
+
+        <tbody className="divide-y divide-border text-sm font-sans">
+          {rows.map((row) => (
+            <tr
+              key={row.id}
+              className="group transition-colors hover:bg-muted/30"
+            >
+              {/* Sticky Column: Title & Citation metadata */}
+              {isColVisible("title") && (
+                <td className="sticky left-0 z-10 bg-card group-hover:bg-muted/90 p-3.5 align-middle text-left min-w-[300px] max-w-[340px] border-r border-border/60 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)]">
+                  <div className="flex flex-col items-start justify-center text-left space-y-1.5">
+                    <div className="flex items-start justify-between gap-1.5 w-full text-left">
+                      <span className="font-semibold text-foreground text-sm line-clamp-2 leading-snug text-left">
+                        {row.title}
+                      </span>
+                      {row.doi && (
+                        <a
+                          href={`https://doi.org/${row.doi}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="shrink-0 text-muted-foreground hover:text-primary pt-0.5"
+                          title="DOI Bağlantısı"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </a>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground space-x-1.5 text-left">
+                      {row.authors && row.authors.length > 0 && (
+                        <span>{row.authors.slice(0, 2).join(", ")}</span>
+                      )}
+                      {row.publicationYear && (
+                        <span className="font-mono">({row.publicationYear})</span>
+                      )}
+                    </div>
+                    <div className="pt-1 flex justify-start">
+                      <Link
+                        href={`/library?resourceId=${row.id}`}
+                        className="inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline"
+                      >
+                        <BookOpen className="h-3 w-3" />
+                        <span>Kütüphanede Aç</span>
+                      </Link>
+                    </div>
+                  </div>
+                </td>
+              )}
+
+              {/* Box/Theme Badge */}
+              {isColVisible("boxTitle") && (
+                <td className="p-3.5 align-middle text-left">
+                  {row.boxTitle ? (
+                    <Badge
+                      variant="outline"
+                      className="text-xs font-medium border-primary/20 bg-primary/5 text-primary max-w-[200px] whitespace-normal text-left py-1 px-2.5 leading-normal inline-block"
+                    >
+                      {row.boxTitle}
+                    </Badge>
+                  ) : (
+                    <span className="text-muted-foreground text-xs">-</span>
+                  )}
+                </td>
+              )}
+
+
+
+              {/* 5 Critique Fields (Modal Editable) */}
+              {isColVisible("researchQuestion") && (
+                <td className="p-2 align-middle">
+                  <InlineEditableCell
+                    title="Araştırma Sorusu"
+                    sourceTitle={row.title}
+                    value={row.critique?.researchQuestion ?? null}
+                    placeholder="Araştırma sorusu ekleyin..."
+                    onSave={(val) =>
+                      onSaveCritiqueField(row.id, "researchQuestion", val)
+                    }
+                  />
+                </td>
+              )}
+
+              {isColVisible("theoreticalFramework") && (
+                <td className="p-2 align-middle">
+                  <InlineEditableCell
+                    title="Teorik Çerçeve"
+                    sourceTitle={row.title}
+                    value={row.critique?.theoreticalFramework ?? null}
+                    placeholder="Teorik çerçeve ekleyin..."
+                    onSave={(val) =>
+                      onSaveCritiqueField(row.id, "theoreticalFramework", val)
+                    }
+                  />
+                </td>
+              )}
+
+              {isColVisible("methodology") && (
+                <td className="p-2 align-middle">
+                  <InlineEditableCell
+                    title="Metodoloji"
+                    sourceTitle={row.title}
+                    value={row.critique?.methodology ?? null}
+                    placeholder="Metodoloji ekleyin..."
+                    onSave={(val) =>
+                      onSaveCritiqueField(row.id, "methodology", val)
+                    }
+                  />
+                </td>
+              )}
+
+              {isColVisible("mainArgument") && (
+                <td className="p-2 align-middle">
+                  <InlineEditableCell
+                    title="Temel Argüman"
+                    sourceTitle={row.title}
+                    value={row.critique?.mainArgument ?? null}
+                    placeholder="Temel argüman ekleyin..."
+                    onSave={(val) =>
+                      onSaveCritiqueField(row.id, "mainArgument", val)
+                    }
+                  />
+                </td>
+              )}
+
+              {isColVisible("literatureGap") && (
+                <td className="p-2 align-middle">
+                  <InlineEditableCell
+                    title="Literatür Boşluğu"
+                    sourceTitle={row.title}
+                    value={row.critique?.literatureGap ?? null}
+                    placeholder="Literatür boşluğu ekleyin..."
+                    onSave={(val) =>
+                      onSaveCritiqueField(row.id, "literatureGap", val)
+                    }
+                  />
+                </td>
+              )}
+
+
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/(app)/literature-matrix/_components/literature-matrix-toolbar.tsx">
+"use client";
+
+import React from "react";
+import {
+  Search,
+  Filter,
+  Columns3,
+  Download,
+  BookOpenCheck,
+  RotateCcw,
+} from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import type { MatrixFilterConfig, MatrixColumnVisibility } from "../types";
+
+interface ColumnDef {
+  key: string;
+  label: string;
+}
+
+interface LiteratureMatrixToolbarProps {
+  filters: MatrixFilterConfig;
+  onFilterChange: (filters: MatrixFilterConfig) => void;
+  availableBoxes: Array<{ id: number; title: string }>;
+  columnVisibility: MatrixColumnVisibility;
+  allColumns: ColumnDef[];
+  onColumnVisibilityChange: (visibility: MatrixColumnVisibility) => void;
+  onExportCSV: () => void;
+  onResetFilters: () => void;
+}
+
+/**
+ * Toolbar providing real-time search, box filtering, column toggles, and CSV export for the Literature Matrix.
+ *
+ * @param root0 - Component props.
+ * @param root0.filters - Current filter values.
+ * @param root0.onFilterChange - Callback invoked when filters update.
+ * @param root0.availableBoxes - List of available topic boxes for dropdown filtering.
+ * @param root0.columnVisibility - Current visibility map of matrix columns.
+ * @param root0.allColumns - Definitions of all available table columns.
+ * @param root0.onColumnVisibilityChange - Callback invoked when column toggles change.
+ * @param root0.onExportCSV - Callback to trigger CSV file download.
+ * @param root0.onResetFilters - Callback to reset all search/filter states.
+ * @returns The toolbar controls markup.
+ */
+export function LiteratureMatrixToolbar({
+  filters,
+  onFilterChange,
+  availableBoxes,
+  columnVisibility,
+  allColumns,
+  onColumnVisibilityChange,
+  onExportCSV,
+  onResetFilters,
+}: LiteratureMatrixToolbarProps) {
+  const hasActiveFilters =
+    filters.searchTerm.trim() !== "" ||
+    filters.boxId !== "all" ||
+    filters.readStatus !== "all";
+
+  const handleToggleColumn = (columnKey: string, checked: boolean) => {
+    onColumnVisibilityChange({
+      ...columnVisibility,
+      [columnKey]: checked,
+    });
+  };
+
+  const selectedBox =
+    filters.boxId === "all"
+      ? null
+      : availableBoxes.find((b) => b.id === filters.boxId);
+  const boxLabel = selectedBox ? selectedBox.title : "Tüm Temalar";
+
+  const statusLabelMap: Record<string, string> = {
+    all: "Tüm Durumlar",
+    read: "Okunmuş",
+    unread: "Okunmamış",
+  };
+  const statusLabel = statusLabelMap[filters.readStatus] || "Tüm Durumlar";
+
+  return (
+    <div className="flex flex-row items-center justify-between gap-3 rounded-lg border border-border bg-card p-3 shadow-xs overflow-x-auto scrollbar-none">
+      {/* Left Group: Search & Filters strictly side-by-side in single line */}
+      <div className="flex items-center gap-2.5 shrink-0">
+        {/* Realtime Search Input */}
+        <div className="relative w-64 sm:w-72 md:w-80 shrink-0">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Makale başlığı, yazar veya içerik ara..."
+            value={filters.searchTerm}
+            onChange={(e) =>
+              onFilterChange({ ...filters, searchTerm: e.target.value })
+            }
+            className="pl-9.5 text-sm text-foreground bg-background focus-visible:ring-primary h-10 w-full"
+          />
+        </div>
+
+        {/* Box/Theme Filter */}
+        <Select
+          value={filters.boxId === "all" ? "all" : String(filters.boxId)}
+          onValueChange={(val) =>
+            onFilterChange({
+              ...filters,
+              boxId: val === "all" ? "all" : Number(val),
+            })
+          }
+        >
+          <SelectTrigger className="h-10 w-52 text-sm bg-background shrink-0">
+            <Filter className="mr-2 h-4 w-4 text-muted-foreground shrink-0" />
+            <SelectValue className="truncate">{boxLabel}</SelectValue>
+          </SelectTrigger>
+          <SelectContent className="text-sm">
+            <SelectItem value="all">Tüm Temalar ({availableBoxes.length})</SelectItem>
+            {availableBoxes.map((box) => (
+              <SelectItem key={box.id} value={String(box.id)}>
+                {box.title}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Read Status Filter */}
+        <Select
+          value={filters.readStatus}
+          onValueChange={(val) =>
+            onFilterChange({
+              ...filters,
+              readStatus: val as "all" | "read" | "unread",
+            })
+          }
+        >
+          <SelectTrigger className="h-10 w-44 text-sm bg-background shrink-0">
+            <BookOpenCheck className="mr-2 h-4 w-4 text-muted-foreground shrink-0" />
+            <SelectValue>{statusLabel}</SelectValue>
+          </SelectTrigger>
+          <SelectContent className="text-sm">
+            <SelectItem value="all">Tüm Durumlar</SelectItem>
+            <SelectItem value="read">Okunmuş</SelectItem>
+            <SelectItem value="unread">Okunmamış</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onResetFilters}
+            className="h-10 text-sm text-muted-foreground hover:text-foreground shrink-0"
+          >
+            <RotateCcw className="mr-1.5 h-4 w-4" />
+            Sıfırla
+          </Button>
+        )}
+      </div>
+
+      {/* Right Group: Action Buttons */}
+      <div className="flex items-center gap-2 shrink-0">
+        {/* Column Visibility Popover */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="h-10 text-sm gap-1.5 px-3.5">
+              <Columns3 className="h-4 w-4" />
+              <span>Sütunlar</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-60 p-3.5 text-sm" align="end">
+            <p className="mb-2.5 font-medium text-foreground text-sm">Sütun Görünürlüğü</p>
+            <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+              {allColumns.map((col) => (
+                <div key={col.key} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`col-${col.key}`}
+                    checked={columnVisibility[col.key] !== false}
+                    onCheckedChange={(checked) =>
+                      handleToggleColumn(col.key, Boolean(checked))
+                    }
+                  />
+                  <Label
+                    htmlFor={`col-${col.key}`}
+                    className="text-sm font-normal leading-none cursor-pointer"
+                  >
+                    {col.label}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* CSV Export Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onExportCSV}
+          className="h-10 text-sm gap-1.5 px-3.5 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10"
+        >
+          <Download className="h-4 w-4" />
+          <span>CSV İndir</span>
+        </Button>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/(app)/literature-matrix/actions.ts">
+"use server";
+
+import { z } from "zod";
+import { db } from "@/db";
+import {
+  sources,
+  boxes,
+  matrices,
+  critiques,
+  annotations,
+} from "@/db/schema";
+import { eq, sql } from "drizzle-orm";
+import { getSessionWithOnboarding } from "@/lib/session";
+import { createFlowId, Logger } from "@/lib/logger";
+import { getOwnedSource } from "@/services/box/ownership";
+import type {
+  MatrixSourceRow,
+  CritiqueFieldKey,
+  EditableSourceFieldKey,
+} from "./types";
+
+/** Validation schema for updating a single critique field. */
+const updateCritiqueFieldSchema = z.object({
+  sourceId: z.number().int().positive("Geçerli bir kaynak seçilmelidir."),
+  field: z.enum([
+    "researchQuestion",
+    "theoreticalFramework",
+    "methodology",
+    "mainArgument",
+    "literatureGap",
+  ]),
+  value: z.string().trim().max(10000),
+});
+
+/** Validation schema for updating a direct source property in the matrix. */
+const updateSourceFieldSchema = z.object({
+  sourceId: z.number().int().positive("Geçerli bir kaynak seçilmelidir."),
+  isRead: z.boolean().optional(),
+  comparisonNote: z.string().trim().max(10000).optional(),
+});
+
+/**
+ * Server Action: Fetches all literature matrix source rows and topic boxes for the authenticated user.
+ *
+ * @returns Object containing matrix source rows and user boxes on success, or error on failure.
+ */
+export async function getLiteratureMatrixData() {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  try {
+    const session = await getSessionWithOnboarding();
+    if (!session) {
+      return { success: false, error: "Oturum açmanız gerekmektedir." };
+    }
+
+    // 1. Fetch user matrix ID
+    const [userMatrix] = await db
+      .select({ id: matrices.id })
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId))
+      .limit(1);
+
+    if (!userMatrix) {
+      return {
+        success: true,
+        data: { rows: [], boxes: [] },
+      };
+    }
+
+    // 2. Fetch all user boxes
+    const userBoxes = await db
+      .select({
+        id: boxes.id,
+        title: boxes.title,
+        boxType: boxes.boxType,
+      })
+      .from(boxes)
+      .where(eq(boxes.matrixId, userMatrix.id));
+
+    if (userBoxes.length === 0) {
+      return {
+        success: true,
+        data: { rows: [], boxes: [] },
+      };
+    }
+
+    const boxIds = userBoxes.map((b) => b.id);
+    const boxMap = new Map(userBoxes.map((b) => [b.id, b]));
+
+    // 3. Fetch sources for user boxes
+    const rawSources = await db
+      .select()
+      .from(sources)
+      .where(sql`${sources.boxId} IN ${boxIds}`);
+
+    if (rawSources.length === 0) {
+      return {
+        success: true,
+        data: {
+          rows: [],
+          boxes: userBoxes.map((b) => ({ id: b.id, title: b.title })),
+        },
+      };
+    }
+
+    const sourceIds = rawSources.map((s) => s.id);
+
+    // 4. Fetch critiques for user sources
+    const rawCritiques = await db
+      .select()
+      .from(critiques)
+      .where(sql`${critiques.sourceId} IN ${sourceIds}`);
+
+    const critiqueMap = new Map(rawCritiques.map((c) => [c.sourceId, c]));
+
+    // 5. Count annotations per source
+    const rawAnnotationCounts = await db
+      .select({
+        sourceId: annotations.sourceId,
+        count: sql<number>`count(${annotations.id})::int`,
+      })
+      .from(annotations)
+      .where(sql`${annotations.sourceId} IN ${sourceIds}`)
+      .groupBy(annotations.sourceId);
+
+    const annotationCountMap = new Map(
+      rawAnnotationCounts.map((a) => [a.sourceId, a.count]),
+    );
+
+    // 6. Build response rows
+    const rows: MatrixSourceRow[] = rawSources.map((source) => {
+      const box = boxMap.get(source.boxId);
+      const critique = critiqueMap.get(source.id);
+      const annotationCount = annotationCountMap.get(source.id) ?? 0;
+
+      return {
+        id: source.id,
+        title: source.title,
+        authors: source.authors,
+        publicationYear: source.publicationYear,
+        publisher: source.publisher,
+        doi: source.doi,
+        thesisType: source.thesisType,
+        isRead: source.isRead,
+        pdfStatus: source.pdfStatus,
+        comparisonNote: source.comparisonNote,
+        boxId: source.boxId,
+        boxTitle: box ? box.title : null,
+        boxType: box ? box.boxType : null,
+        annotationCount,
+        critique: critique
+          ? {
+              id: critique.id,
+              researchQuestion: critique.researchQuestion,
+              theoreticalFramework: critique.theoreticalFramework,
+              methodology: critique.methodology,
+              mainArgument: critique.mainArgument,
+              literatureGap: critique.literatureGap,
+            }
+          : null,
+      };
+    });
+
+    return {
+      success: true,
+      data: {
+        rows,
+        boxes: userBoxes.map((b) => ({ id: b.id, title: b.title })),
+      },
+    };
+  } catch (error) {
+    log.error("get_literature_matrix_data_failed", {
+      service: "literature-matrix",
+      error,
+    });
+    return {
+      success: false,
+      error: "Literatür matrisi verileri yüklenirken bir hata oluştu.",
+    };
+  }
+}
+
+/**
+ * Server Action: Updates a single critique field for a source in the literature matrix.
+ *
+ * @param sourceId - Target resource ID.
+ * @param field - Critique column key to update.
+ * @param value - New text content.
+ * @returns Success status or error response.
+ */
+export async function updateMatrixCritiqueAction(
+  sourceId: number,
+  field: CritiqueFieldKey,
+  value: string,
+) {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  try {
+    const parsed = updateCritiqueFieldSchema.safeParse({
+      sourceId,
+      field,
+      value,
+    });
+
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      return { success: false, error: issue ? issue.message : "Geçersiz veri." };
+    }
+
+    const session = await getSessionWithOnboarding();
+    if (!session) {
+      return { success: false, error: "Oturum bulunamadı." };
+    }
+
+    const owned = await getOwnedSource(sourceId, session.userId);
+    if ("error" in owned) {
+      return { success: false, error: owned.error };
+    }
+
+    const trimmedValue = value.trim() || null;
+
+    const [updatedCritique] = await db
+      .insert(critiques)
+      .values({
+        sourceId,
+        userId: session.userId,
+        [field]: trimmedValue,
+      })
+      .onConflictDoUpdate({
+        target: critiques.sourceId,
+        set: {
+          [field]: trimmedValue,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+
+    log.info("update_matrix_critique_success", {
+      service: "literature-matrix",
+      data: { sourceId, field, critiqueId: updatedCritique.id },
+    });
+
+    return {
+      success: true,
+      data: {
+        id: updatedCritique.id,
+        researchQuestion: updatedCritique.researchQuestion,
+        theoreticalFramework: updatedCritique.theoreticalFramework,
+        methodology: updatedCritique.methodology,
+        mainArgument: updatedCritique.mainArgument,
+        literatureGap: updatedCritique.literatureGap,
+      },
+    };
+  } catch (error) {
+    log.error("update_matrix_critique_failed", {
+      service: "literature-matrix",
+      error,
+    });
+    return {
+      success: false,
+      error: "Eser analizi hücresi güncellenirken bir hata oluştu.",
+    };
+  }
+}
+
+/**
+ * Server Action: Updates direct properties of a source from the literature matrix grid.
+ *
+ * @param sourceId - Target resource ID.
+ * @param updates - Property changes to apply.
+ * @returns Success status or error response.
+ */
+export async function updateMatrixSourceAction(
+  sourceId: number,
+  updates: { isRead?: boolean; comparisonNote?: string },
+) {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  try {
+    const parsed = updateSourceFieldSchema.safeParse({
+      sourceId,
+      ...updates,
+    });
+
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      return { success: false, error: issue ? issue.message : "Geçersiz veri." };
+    }
+
+    const session = await getSessionWithOnboarding();
+    if (!session) {
+      return { success: false, error: "Oturum bulunamadı." };
+    }
+
+    const owned = await getOwnedSource(sourceId, session.userId);
+    if ("error" in owned) {
+      return { success: false, error: owned.error };
+    }
+
+    const updateSet: Record<string, unknown> = {
+      updatedAt: new Date(),
+    };
+
+    if (typeof updates.isRead === "boolean") {
+      updateSet.isRead = updates.isRead;
+    }
+
+    if (typeof updates.comparisonNote === "string") {
+      updateSet.comparisonNote = updates.comparisonNote.trim() || null;
+    }
+
+    await db.update(sources).set(updateSet).where(eq(sources.id, sourceId));
+
+    log.info("update_matrix_source_success", {
+      service: "literature-matrix",
+      data: { sourceId, updates },
+    });
+
+    return { success: true };
+  } catch (error) {
+    log.error("update_matrix_source_failed", {
+      service: "literature-matrix",
+      error,
+    });
+    return {
+      success: false,
+      error: "Kaynak güncellenirken bir hata oluştu.",
+    };
+  }
+}
+</file>
+
+<file path="src/app/(app)/literature-matrix/page.tsx">
+import { Metadata } from "next";
+import { connection } from "next/server";
+import { getLiteratureMatrixData } from "./actions";
+import { LiteratureMatrixContainer } from "./_components/literature-matrix-container";
+
+export const instant = false;
+
+export const metadata: Metadata = {
+  title: "Literatür Matrisi | Fabricca",
+  description:
+    "Akademik kaynaklarınızı ve 5 boyutlu eser analizlerinizi Notion esnekliğinde karşılaştırmalı matriste yönetin.",
+};
+
+/**
+ * Server page component for the Literature Matrix workspace route (/literature-matrix).
+ *
+ * @returns The page markup containing header title and matrix container.
+ */
+export default async function LiteratureMatrixPage() {
+  await connection();
+
+  const result = await getLiteratureMatrixData();
+
+  const initialRows = result.success && result.data ? result.data.rows : [];
+  const initialBoxes = result.success && result.data ? result.data.boxes : [];
+
+  return (
+    <div className="space-y-6">
+      {/* Page Header Area */}
+      <div className="flex flex-col gap-1 pb-4 border-b border-border">
+        <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
+          Literatür Matrisi
+        </h1>
+        <p className="text-xs text-muted-foreground">
+          Tez kütüphanenizdeki tüm eserlerin 5 boyutlu analizlerini (Araştırma Sorusu,
+          Teorik Çerçeve, Metodoloji, Temel Argüman, Literatür Boşluğu) Notion esnekliğinde
+          karşılaştırın ve hücre içi tıklama ile anında düzenleyin.
+        </p>
+      </div>
+
+      {/* Main Workspace Container */}
+      <LiteratureMatrixContainer
+        initialRows={initialRows}
+        initialBoxes={initialBoxes}
+      />
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/(app)/literature-matrix/types.ts">
+/** 5-dimensional critique structure stored per resource. */
+export interface MatrixCritiqueData {
+  id?: number;
+  researchQuestion: string | null;
+  theoreticalFramework: string | null;
+  methodology: string | null;
+  mainArgument: string | null;
+  literatureGap: string | null;
+}
+
+/** Complete matrix row data joining a source, its box title, citation count, and critique. */
+export interface MatrixSourceRow {
+  id: number;
+  title: string;
+  authors: string[] | null;
+  publicationYear: number | null;
+  publisher: string | null;
+  doi: string | null;
+  thesisType: string | null;
+  isRead: boolean;
+  pdfStatus: string;
+  comparisonNote: string | null;
+  boxId: number;
+  boxTitle: string | null;
+  boxType: string | null;
+  annotationCount: number;
+  critique: MatrixCritiqueData | null;
+}
+
+/** Keys corresponding to editable critique fields in the DB. */
+export type CritiqueFieldKey =
+  | "researchQuestion"
+  | "theoreticalFramework"
+  | "methodology"
+  | "mainArgument"
+  | "literatureGap";
+
+/** Keys corresponding to direct source field updates. */
+export type EditableSourceFieldKey = "comparisonNote" | "isRead";
+
+/** Column visibility state map for the matrix grid. */
+export type MatrixColumnVisibility = Record<string, boolean>;
+
+/** Available fields for sorting matrix rows. */
+export type MatrixSortField =
+  | "title"
+  | "publicationYear"
+  | "boxTitle";
+
+/** Direction of table sorting. */
+export type MatrixSortDirection = "asc" | "desc";
+
+/** Filter options for matrix grid. */
+export interface MatrixFilterConfig {
+  searchTerm: string;
+  boxId: number | "all";
+  readStatus: "all" | "read" | "unread";
+}
+
+/** Summary statistics for matrix header. */
+export interface MatrixStats {
+  totalSources: number;
+  readSources: number;
+  completedCritiques: number;
+  uniqueBoxes: number;
+}
 </file>
 
 <file path="src/app/icon.svg">
@@ -2325,508 +3883,6 @@ export function MatrixEditorView({ initialMatrix }: MatrixEditorViewProps) {
 }
 </file>
 
-<file path="src/app/(app)/thesis-architecture/_components/outline-editor-view.tsx">
-"use client";
-
-import { useState } from "react";
-import { Outline, Box, Annotation, Source } from "@/db/schema";
-import {
-  createOutlineSectionAction,
-  updateOutlineSectionAction,
-  deleteOutlineSectionAction,
-  pinAnnotationAction,
-  unpinAnnotationAction,
-  linkBoxToOutlineAction,
-  unlinkBoxFromOutlineAction,
-} from "../actions";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { toast } from "sonner";
-import {
-  BookOpen,
-  Plus,
-  Trash2,
-  Edit2,
-  Pin,
-  PinOff,
-  FolderKanban,
-  Quote,
-  ChevronRight,
-} from "lucide-react";
-
-function isIntroOrConclusion(title: string): boolean {
-  const titleUpper = title.toLocaleUpperCase("tr-TR");
-  return (
-    titleUpper.includes("GİRİŞ") ||
-    titleUpper.includes("GIRIS") ||
-    titleUpper.includes("SONUÇ") ||
-    titleUpper.includes("SONUC")
-  );
-}
-
-interface OutlineEditorViewProps {
-  outlinesList: Outline[];
-  boxesList: Box[];
-  annotationsList: (Annotation & { source?: Source })[];
-  pinnedMap: Record<number, number[]>; // outlineId -> annotationId[]
-  linkedBoxMap: Record<number, number[]>; // outlineId -> boxId[]
-}
-
-export function OutlineEditorView({
-  outlinesList,
-  boxesList,
-  annotationsList,
-  pinnedMap,
-  linkedBoxMap,
-}: OutlineEditorViewProps) {
-  const [selectedOutline, setSelectedOutline] = useState<Outline | null>(
-    outlinesList.length > 0 ? outlinesList[0] : null,
-  );
-
-  // Add new section state
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [newTitle, setNewTitle] = useState("");
-  const [newDescription, setNewDescription] = useState("");
-  const [newParentId, setNewParentId] = useState<number | null>(null);
-
-  // Edit section state
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [editTitle, setEditTitle] = useState("");
-  const [editDescription, setEditDescription] = useState("");
-
-  const rootOutlines = outlinesList
-    .filter((o) => !o.parentId)
-    .sort((a, b) => a.sortOrder - b.sortOrder);
-
-  const getSubOutlines = (parentId: number) =>
-    outlinesList
-      .filter((o) => o.parentId === parentId)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
-
-  const handleCreateSection = async () => {
-    if (!newTitle.trim()) {
-      toast.error("Lütfen bölüm başlığı girin.");
-      return;
-    }
-    const res = await createOutlineSectionAction({
-      title: newTitle,
-      description: newDescription,
-      parentId: newParentId,
-    });
-    if (res.success) {
-      toast.success("Bölüm eklendi.");
-      setIsAddOpen(false);
-      setNewTitle("");
-      setNewDescription("");
-    } else {
-      toast.error(res.error ?? "Bölüm eklenemedi.");
-    }
-  };
-
-  const handleUpdateSection = async () => {
-    if (!selectedOutline) return;
-    const res = await updateOutlineSectionAction({
-      id: selectedOutline.id,
-      title: editTitle,
-      description: editDescription,
-    });
-    if (res.success) {
-      toast.success("Bölüm güncellendi.");
-      setIsEditOpen(false);
-    } else {
-      toast.error(res.error ?? "Bölüm güncellenemedi.");
-    }
-  };
-
-  const handleDeleteSection = async (id: number) => {
-    const res = await deleteOutlineSectionAction(id);
-    if (res.success) {
-      toast.success("Bölüm silindi.");
-      if (selectedOutline?.id === id) {
-        setSelectedOutline(outlinesList.find((o) => o.id !== id) ?? null);
-      }
-    } else {
-      toast.error(res.error ?? "Bölüm silinemedi.");
-    }
-  };
-
-  const handleTogglePin = async (outlineId: number, annotationId: number) => {
-    const pinned = pinnedMap[outlineId]?.includes(annotationId);
-    if (pinned) {
-      const res = await unpinAnnotationAction(outlineId, annotationId);
-      if (res.success) toast.success("Alıntı fişi iğnesi kaldırıldı.");
-    } else {
-      const res = await pinAnnotationAction(outlineId, annotationId);
-      if (res.success) toast.success("Alıntı fişi bölüme iğnelendi.");
-    }
-  };
-
-  const handleToggleBoxLink = async (outlineId: number, boxId: number) => {
-    const linked = linkedBoxMap[outlineId]?.includes(boxId);
-    if (linked) {
-      const res = await unlinkBoxFromOutlineAction(outlineId, boxId);
-      if (res.success) toast.success("Kutu bağı kaldırıldı.");
-    } else {
-      const res = await linkBoxToOutlineAction(outlineId, boxId);
-      if (res.success) toast.success("Kutu bölüme bağlandı.");
-    }
-  };
-
-  const activePinnedAnnotationIds = selectedOutline
-    ? (pinnedMap[selectedOutline.id] ?? [])
-    : [];
-
-  const activeLinkedBoxIds = selectedOutline
-    ? (linkedBoxMap[selectedOutline.id] ?? [])
-    : [];
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-        <div>
-          <h2 className="font-sans text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            Tez İçindekiler & Bölüm Planı
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Bölüm planınızı yapılandırın, bölümlere Konu Kutuları bağlayın ve
-            Alıntı Fişlerini (`citation-cards`) kanıt olarak bölümlere
-            iğneleyin.
-          </p>
-        </div>
-        <Button
-          onClick={() => {
-            setNewParentId(null);
-            setIsAddOpen(true);
-          }}
-          className="gap-2 shadow-sm"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Yeni Bölüm Ekle</span>
-        </Button>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-12">
-        {/* Left Column: Outline Tree */}
-        <div className="space-y-3 lg:col-span-5">
-          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Bölüm İskeleti
-          </div>
-
-          <div className="space-y-2">
-            {rootOutlines.map((root, idx) => {
-              const subItems = getSubOutlines(root.id);
-              const isSelected = selectedOutline?.id === root.id;
-
-              return (
-                <div key={root.id} className="space-y-1">
-                  <div
-                    onClick={() => setSelectedOutline(root)}
-                    className={`flex cursor-pointer items-center justify-between rounded-lg border p-3 transition-all ${
-                      isSelected
-                        ? "border-primary bg-primary/5 text-primary shadow-xs"
-                        : "border-border/60 bg-card hover:border-border"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 font-medium text-sm">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-md bg-muted text-xs font-bold">
-                        {idx + 1}
-                      </span>
-                      <span>{root.title}</span>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      {!isIntroOrConclusion(root.title) && (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setNewParentId(root.id);
-                            setIsAddOpen(true);
-                          }}
-                          title="Alt Bölüm Ekle"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  </div>
-
-                  {/* Sub Outlines */}
-                  {subItems.length > 0 && (
-                    <div className="ml-6 space-y-1 border-l-2 border-border/40 pl-3 pt-1">
-                      {subItems.map((sub, subIdx) => {
-                        const isSubSelected = selectedOutline?.id === sub.id;
-                        return (
-                          <div
-                            key={sub.id}
-                            onClick={() => setSelectedOutline(sub)}
-                            className={`flex cursor-pointer items-center justify-between rounded-md border p-2.5 text-xs transition-all ${
-                              isSubSelected
-                                ? "border-primary bg-primary/5 text-primary font-medium"
-                                : "border-border/40 bg-card/60 hover:border-border"
-                            }`}
-                          >
-                            <span>
-                              {idx + 1}.{subIdx + 1} {sub.title}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Right Column: Active Section Details, Linked Boxes & Pinned Citations */}
-        <div className="lg:col-span-7">
-          {selectedOutline ? (
-            <Card className="border-border/60 shadow-sm">
-              <CardHeader className="pb-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <CardTitle className="text-lg font-bold">
-                      {selectedOutline.title}
-                    </CardTitle>
-                    <CardDescription className="mt-1 text-xs leading-relaxed">
-                      {selectedOutline.description ||
-                        "Bu bölüm için henüz açıklama girilmemiş."}
-                    </CardDescription>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setEditTitle(selectedOutline.title);
-                        setEditDescription(selectedOutline.description ?? "");
-                        setIsEditOpen(true);
-                      }}
-                      className="gap-1 text-xs"
-                    >
-                      <Edit2 className="h-3.5 w-3.5" />
-                      <span>Düzenle</span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => handleDeleteSection(selectedOutline.id)}
-                      className="gap-1 text-xs"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-
-              <CardContent className="space-y-6 pt-0">
-                {/* Linked Boxes */}
-                <div className="space-y-2.5">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    <FolderKanban className="h-4 w-4 text-primary" />
-                    <span>Beslendiği Konu Kutuları</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {boxesList.map((box) => {
-                      const isLinked = activeLinkedBoxIds.includes(box.id);
-                      return (
-                        <Badge
-                          key={box.id}
-                          variant={isLinked ? "default" : "outline"}
-                          className="cursor-pointer text-xs py-1 px-2.5 transition-all"
-                          onClick={() =>
-                            handleToggleBoxLink(selectedOutline.id, box.id)
-                          }
-                        >
-                          {box.title} {isLinked ? "✓" : "+"}
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Pinned Citation Cards */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      <Quote className="h-4 w-4 text-primary" />
-                      <span>
-                        İğnelenmiş Alıntı Fişleri (
-                        {activePinnedAnnotationIds.length})
-                      </span>
-                    </div>
-                  </div>
-
-                  {annotationsList.length > 0 ? (
-                    <div className="space-y-2.5 max-h-[400px] overflow-y-auto pr-1">
-                      {annotationsList.map((anno) => {
-                        const isPinned = activePinnedAnnotationIds.includes(
-                          anno.id,
-                        );
-                        return (
-                          <div
-                            key={anno.id}
-                            className={`rounded-lg border p-3 space-y-2 text-xs transition-all ${
-                              isPinned
-                                ? "border-primary/50 bg-primary/5"
-                                : "border-border/40 bg-card hover:border-border"
-                            }`}
-                          >
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="font-medium text-foreground">
-                                {anno.source?.title || "Kaynak"} (s.{" "}
-                                {anno.pageNumber})
-                              </div>
-                              <Button
-                                size="sm"
-                                variant={isPinned ? "default" : "secondary"}
-                                onClick={() =>
-                                  handleTogglePin(selectedOutline.id, anno.id)
-                                }
-                                className="h-7 text-xs gap-1 px-2 shrink-0"
-                              >
-                                {isPinned ? (
-                                  <>
-                                    <PinOff className="h-3 w-3" />
-                                    <span>İğneyi Kaldır</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Pin className="h-3 w-3" />
-                                    <span>Bölüme İğnele</span>
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                            <p className="italic text-muted-foreground line-clamp-3">
-                              &quot;{anno.content}&quot;
-                            </p>
-                            {anno.comment && (
-                              <div className="rounded bg-muted/50 p-1.5 text-[11px] text-foreground/80">
-                                💬 <strong>Not:</strong> {anno.comment}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-xs italic text-muted-foreground">
-                      Henüz kütüphaneden bir alıntı fişi oluşturulmamış.
-                      Kütüphanedeki PDF okumalarınızdan oluşturduğunuz fişler
-                      burada listelenecektir.
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="flex flex-col items-center justify-center p-8 text-center border-dashed">
-              <BookOpen className="h-8 w-8 text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">
-                Detaylarını ve alıntı fişlerini görmek için soldan bir bölüm
-                seçin.
-              </p>
-            </Card>
-          )}
-        </div>
-      </div>
-
-      {/* Dialog: Add Section */}
-      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Yeni Tez Bölümü Ekle</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <label className="text-xs font-semibold">Bölüm Başlığı</label>
-              <Input
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="Örn: 1991-1995 Talep İçeriğinin İlk Dönüşümü"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold">
-                Yazım Kapsamı & Açıklama
-              </label>
-              <Textarea
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-                rows={4}
-                placeholder="Bu bölümde ele alınacak ana tartışma ve odak..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddOpen(false)}>
-              İptal
-            </Button>
-            <Button onClick={handleCreateSection}>Ekle</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog: Edit Section */}
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Bölümü Düzenle</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <label className="text-xs font-semibold">Bölüm Başlığı</label>
-              <Input
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold">
-                Yazım Kapsamı & Açıklama
-              </label>
-              <Textarea
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                rows={4}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
-              İptal
-            </Button>
-            <Button onClick={handleUpdateSection}>Kaydet</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-</file>
-
 <file path="src/app/(app)/thesis-architecture/_components/thesis-architecture-content.tsx">
 "use client";
 
@@ -3590,18 +4646,18 @@ export function Header({ userName }: { userName: string }) {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full border-b border-border bg-background">
-        <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/dashboard" className="flex shrink-0 items-center gap-3">
+      <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/95 backdrop-blur-md">
+        <div className="mx-auto flex h-19 sm:h-20 w-full max-w-7xl items-center justify-between px-4 py-4 sm:px-6 sm:py-4.5 lg:px-8">
+          <Link href="/dashboard" className="flex shrink-0 items-center gap-2.5 transition-opacity hover:opacity-90">
             <Image
               src="/logo.svg"
               alt="Fabricca"
-              width={55}
-              height={55}
+              width={46}
+              height={46}
               priority
               className="shrink-0"
             />
-            <span className="badge-brand text-xl font-normal tracking-widest text-foreground">
+            <span className="badge-brand text-lg font-normal tracking-widest text-foreground">
               FABRICCA
             </span>
           </Link>
@@ -8735,83 +9791,6 @@ export const OUTLINE_GENERATION_STEPS: LoadingStep[] = [
 ];
 </file>
 
-<file path="src/features/outline/prompts/outline-generation.prompt.ts">
-import { buildPromptPayload, type PromptPayload } from "@/lib/ai/prompt-builder";
-
-export interface OutlineMatrixInput {
-  subjectProblem: string;
-  theoreticalFramework: string;
-  primaryMaterial: string | null;
-  methodology: string;
-}
-
-/**
- * Builds the standardized PromptPayload for thesis outline generation.
- *
- * @param matrix - The thesis matrix input data.
- * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
- */
-export function buildOutlineGenerationPromptPayload(
-  matrix: OutlineMatrixInput
-): PromptPayload {
-  return buildPromptPayload({
-    roleAndExpertise:
-      "Siz, akademisyenlerin ve lisansüstü öğrencilerin tez matrislerini analiz ederek YÖK ve uluslararası akademik standartlara tam uyumlu tez planı (içindekiler) yapısı oluşturan kıdemli bir akademik yapılandırma asistanısınız.",
-
-    primaryTask:
-      "Sağlanan tez matrisindeki araştırma problemi, teorik çerçeve, birincil materyal ve metodoloji bilgilerine dayanarak tezin bilim dalını tespit edin ve metodolojik açıdan eksiksiz, disipline özgü bir bölüm/alt bölüm hiyerarşisi (outline) üretin.",
-
-    rulesAndConstraints: `## 1. Bilim Dalı Tespiti (academicField)
-- Matris içeriğindeki kavramları, teorik çerçeveyi ve yöntemi analiz ederek tezin ait olduğu bilim dalını tespit edin.
-- Bilim dalı açık ve net olmalıdır (örn: "Siyaset Bilimi ve Kamu Yönetimi", "İşletme", "Hukuk", "Bilgisayar Mühendisliği", "Eğitim Bilimleri", "Tıp ve Sağlık Bilimleri").
-
-## 2. Bölüm Yapısı ve Hiyerarşi Kuralları
-- **Toplam Ana Bölüm Sayısı:** Toplamda TAM OLARAK 4 veya 5 ana bölüm oluşturun. 4'ten az veya 5'ten fazla ana bölüm KESİNLİKLE OLUŞTURMAYIN.
-- **Bölüm 1 (Giriş - Sabit):** İlk ana bölüm KESİNLİKLE "Giriş" başlığını taşımalıdır. Giriş bölümünün alt başlıkları OLAMAZ. subSections dizisi KESİNLİKLE boş dizi [] olmalıdır.
-- **Gövde Bölümleri (Bölüm 2, 3 [ve varsa Bölüm 4]):** Giriş ile Sonuç arasındaki 2 veya 3 bölüm, tezin özgün konusunu, teorik çerçevesini, metodolojisini ve bulgularını inceleyen ana gövde bölümleridir. Her bir gövde bölümünün altında konusunu detaylandıran EN AZ 2 alt bölüm (subSections) yer almalıdır.
-- **Son Bölüm (Sonuç ve Değerlendirme - Sabit):** Son ana bölüm (4. veya 5. bölüm) KESİNLİKLE "Sonuç ve Değerlendirme" (veya "Sonuç") başlığını taşımalıdır. Sonuç bölümünün alt başlıkları OLAMAZ. subSections dizisi KESİNLİKLE boş dizi [] olmalıdır.
-
-## 3. Disipline Özgü Gövde Bölümü Akışı
-Gövde bölümlerinin mimarisini tespit edilen bilim dalının geleneksel akademik kalıplarına uygun kurgulayın:
-- **Sosyal ve Beşeri Bilimler / İktisadi ve İdari Bilimler:** Bölüm 1: Giriş → Bölüm 2: Kavramsal ve Teorik Çerçeve → Bölüm 3: Araştırma Metodolojisi ve Analiz Çerçevesi → Bölüm 4: Ampirik Bulgular ve Tartışma (varsa) → Bölüm 4 veya 5: Sonuç ve Değerlendirme.
-- **Fen Bilimleri / Mühendislik / Sağlık Bilimleri:** Bölüm 1: Giriş → Bölüm 2: Kuramsal Arka Plan ve Literatür → Bölüm 3: Materyal ve Yöntem → Bölüm 4: Bulgular ve Tartışma → Bölüm 5: Sonuç ve Öneriler.
-- **Hukuk Bilimleri:** Bölüm 1: Giriş → Bölüm 2: Kavramsal ve Tarihsel Arka Plan → Bölüm 3: Pozitif Hukuki Düzenlemeler ve Yargı Kararları → Bölüm 4: Uygulamadaki Sorunlar ve Çözümler → Bölüm 5: Sonuç.
-
-## 4. Sıralama ve Açıklama Standartları
-- **Sıralama (sortOrder):** Ana bölümlerde ve her bölümün alt bölümlerinde 1'den başlayan ardışık sayılar kullanın.
-- **Açıklama (description):** Her ana bölüm ve alt bölüm için ne yapılacağını/anlatılacağını açıklayan kısa, net akademik Türkçe açıklamalar yazın.`,
-
-    outputFormat: `- Tüm başlıklar ve açıklamalar KESİNLİKLE yüksek düzey akademik Türkçe olmalıdır.
-- Gövde bölüm başlıkları tezin özgün konusunu doğrudan yansıtmalıdır.
-- Yanıtınızı sağlanan JSON şemasına eksiksiz uyacak şekilde döndürün.`,
-
-    inputContext: `## Tez Matrisi Verileri
-
-### Araştırma Problemi
-${matrix.subjectProblem}
-
-### Teorik Çerçeve
-${matrix.theoreticalFramework}
-
-### Birincil Materyal
-${matrix.primaryMaterial || "Belirtilmemiş"}
-
-### Metodoloji
-${matrix.methodology}
-
----
-
-Yukarıdaki tez matrisi verilerini analiz ederek:
-1. Tezin bilim dalını (academicField) tespit edin.
-2. Tam olarak 4 veya 5 ana bölümden oluşan bir tez planı oluşturun.
-3. Bölüm 1 KESİNLİKLE "Giriş" olmalı ve subSections: [] (boş dizi) içermelidir.
-4. Son Bölüm KESİNLİKLE "Sonuç ve Değerlendirme" olmalı ve subSections: [] (boş dizi) içermelidir.
-5. Giriş ve Sonuç arasındaki 2 veya 3 gövde bölümünün her biri altında en az 2 alt bölüm oluşturun.
-6. Her bölüm ve alt bölüm için kısa, öz akademik Türkçe açıklamalar yazın.`,
-  });
-}
-</file>
-
 <file path="src/features/positioning/prompts/jury-analysis.prompt.ts">
 import { buildPromptPayload, type PromptPayload } from "@/lib/ai/prompt-builder";
 import type { PositioningMatrixInput } from "@/features/positioning/validation";
@@ -13305,6 +14284,508 @@ export async function undoLiteratureExpansionAction(
 }
 </file>
 
+<file path="src/app/(app)/thesis-architecture/_components/outline-editor-view.tsx">
+"use client";
+
+import { useState } from "react";
+import { Outline, Box, Annotation, Source } from "@/db/schema";
+import {
+  createOutlineSectionAction,
+  updateOutlineSectionAction,
+  deleteOutlineSectionAction,
+  pinAnnotationAction,
+  unpinAnnotationAction,
+  linkBoxToOutlineAction,
+  unlinkBoxFromOutlineAction,
+} from "../actions";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
+import {
+  BookOpen,
+  Plus,
+  Trash2,
+  Edit2,
+  Pin,
+  PinOff,
+  FolderKanban,
+  Quote,
+  ChevronRight,
+} from "lucide-react";
+
+function isIntroOrConclusion(title: string): boolean {
+  const titleUpper = title.toLocaleUpperCase("tr-TR");
+  return (
+    titleUpper.includes("GİRİŞ") ||
+    titleUpper.includes("GIRIS") ||
+    titleUpper.includes("SONUÇ") ||
+    titleUpper.includes("SONUC")
+  );
+}
+
+interface OutlineEditorViewProps {
+  outlinesList: Outline[];
+  boxesList: Box[];
+  annotationsList: (Annotation & { source?: Source })[];
+  pinnedMap: Record<number, number[]>; // outlineId -> annotationId[]
+  linkedBoxMap: Record<number, number[]>; // outlineId -> boxId[]
+}
+
+export function OutlineEditorView({
+  outlinesList,
+  boxesList,
+  annotationsList,
+  pinnedMap,
+  linkedBoxMap,
+}: OutlineEditorViewProps) {
+  const [selectedOutline, setSelectedOutline] = useState<Outline | null>(
+    outlinesList.length > 0 ? outlinesList[0] : null,
+  );
+
+  // Add new section state
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newDescription, setNewDescription] = useState("");
+  const [newParentId, setNewParentId] = useState<number | null>(null);
+
+  // Edit section state
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+
+  const rootOutlines = outlinesList
+    .filter((o) => !o.parentId)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+
+  const getSubOutlines = (parentId: number) =>
+    outlinesList
+      .filter((o) => o.parentId === parentId)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+
+  const handleCreateSection = async () => {
+    if (!newTitle.trim()) {
+      toast.error("Lütfen bölüm başlığı girin.");
+      return;
+    }
+    const res = await createOutlineSectionAction({
+      title: newTitle,
+      description: newDescription,
+      parentId: newParentId,
+    });
+    if (res.success) {
+      toast.success("Bölüm eklendi.");
+      setIsAddOpen(false);
+      setNewTitle("");
+      setNewDescription("");
+    } else {
+      toast.error(res.error ?? "Bölüm eklenemedi.");
+    }
+  };
+
+  const handleUpdateSection = async () => {
+    if (!selectedOutline) return;
+    const res = await updateOutlineSectionAction({
+      id: selectedOutline.id,
+      title: editTitle,
+      description: editDescription,
+    });
+    if (res.success) {
+      toast.success("Bölüm güncellendi.");
+      setIsEditOpen(false);
+    } else {
+      toast.error(res.error ?? "Bölüm güncellenemedi.");
+    }
+  };
+
+  const handleDeleteSection = async (id: number) => {
+    const res = await deleteOutlineSectionAction(id);
+    if (res.success) {
+      toast.success("Bölüm silindi.");
+      if (selectedOutline?.id === id) {
+        setSelectedOutline(outlinesList.find((o) => o.id !== id) ?? null);
+      }
+    } else {
+      toast.error(res.error ?? "Bölüm silinemedi.");
+    }
+  };
+
+  const handleTogglePin = async (outlineId: number, annotationId: number) => {
+    const pinned = pinnedMap[outlineId]?.includes(annotationId);
+    if (pinned) {
+      const res = await unpinAnnotationAction(outlineId, annotationId);
+      if (res.success) toast.success("Alıntı fişi iğnesi kaldırıldı.");
+    } else {
+      const res = await pinAnnotationAction(outlineId, annotationId);
+      if (res.success) toast.success("Alıntı fişi bölüme iğnelendi.");
+    }
+  };
+
+  const handleToggleBoxLink = async (outlineId: number, boxId: number) => {
+    const linked = linkedBoxMap[outlineId]?.includes(boxId);
+    if (linked) {
+      const res = await unlinkBoxFromOutlineAction(outlineId, boxId);
+      if (res.success) toast.success("Kutu bağı kaldırıldı.");
+    } else {
+      const res = await linkBoxToOutlineAction(outlineId, boxId);
+      if (res.success) toast.success("Kutu bölüme bağlandı.");
+    }
+  };
+
+  const activePinnedAnnotationIds = selectedOutline
+    ? (pinnedMap[selectedOutline.id] ?? [])
+    : [];
+
+  const activeLinkedBoxIds = selectedOutline
+    ? (linkedBoxMap[selectedOutline.id] ?? [])
+    : [];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+        <div>
+          <h2 className="font-sans text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+            Tez İçindekiler & Bölüm Planı
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Bölüm planınızı yapılandırın, bölümlere Konu Kutuları bağlayın ve
+            Alıntı Fişlerini (`citation-cards`) kanıt olarak bölümlere
+            iğneleyin.
+          </p>
+        </div>
+        <Button
+          onClick={() => {
+            setNewParentId(null);
+            setIsAddOpen(true);
+          }}
+          className="gap-2 shadow-sm"
+        >
+          <Plus className="h-4 w-4" />
+          <span>Yeni Bölüm Ekle</span>
+        </Button>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-12">
+        {/* Left Column: Outline Tree */}
+        <div className="space-y-3 lg:col-span-5">
+          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Bölüm İskeleti
+          </div>
+
+          <div className="space-y-2">
+            {rootOutlines.map((root, idx) => {
+              const subItems = getSubOutlines(root.id);
+              const isSelected = selectedOutline?.id === root.id;
+
+              return (
+                <div key={root.id} className="space-y-1">
+                  <div
+                    onClick={() => setSelectedOutline(root)}
+                    className={`flex cursor-pointer items-center justify-between rounded-lg border p-3 transition-all ${
+                      isSelected
+                        ? "border-primary bg-primary/5 text-primary shadow-xs"
+                        : "border-border/60 bg-card hover:border-border"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 font-medium text-sm">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-md bg-muted text-xs font-bold">
+                        {idx + 1}
+                      </span>
+                      <span>{root.title}</span>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      {!isIntroOrConclusion(root.title) && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setNewParentId(root.id);
+                            setIsAddOpen(true);
+                          }}
+                          title="Alt Bölüm Ekle"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </div>
+
+                  {/* Sub Outlines */}
+                  {subItems.length > 0 && (
+                    <div className="ml-6 space-y-1 border-l-2 border-border/40 pl-3 pt-1">
+                      {subItems.map((sub, subIdx) => {
+                        const isSubSelected = selectedOutline?.id === sub.id;
+                        return (
+                          <div
+                            key={sub.id}
+                            onClick={() => setSelectedOutline(sub)}
+                            className={`flex cursor-pointer items-center justify-between rounded-md border p-2.5 text-xs transition-all ${
+                              isSubSelected
+                                ? "border-primary bg-primary/5 text-primary font-medium"
+                                : "border-border/40 bg-card/60 hover:border-border"
+                            }`}
+                          >
+                            <span>
+                              {idx + 1}.{subIdx + 1} {sub.title}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Right Column: Active Section Details, Linked Boxes & Pinned Citations */}
+        <div className="lg:col-span-7">
+          {selectedOutline ? (
+            <Card className="border-border/60 shadow-sm">
+              <CardHeader className="pb-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-lg font-bold">
+                      {selectedOutline.title}
+                    </CardTitle>
+                    <CardDescription className="mt-1 text-xs leading-relaxed">
+                      {selectedOutline.description ||
+                        "Bu bölüm için henüz açıklama girilmemiş."}
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditTitle(selectedOutline.title);
+                        setEditDescription(selectedOutline.description ?? "");
+                        setIsEditOpen(true);
+                      }}
+                      className="gap-1 text-xs"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                      <span>Düzenle</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleDeleteSection(selectedOutline.id)}
+                      className="gap-1 text-xs"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="space-y-6 pt-0">
+                {/* Linked Boxes */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <FolderKanban className="h-4 w-4 text-primary" />
+                    <span>Beslendiği Konu Kutuları</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {boxesList.map((box) => {
+                      const isLinked = activeLinkedBoxIds.includes(box.id);
+                      return (
+                        <Badge
+                          key={box.id}
+                          variant={isLinked ? "default" : "outline"}
+                          className="cursor-pointer text-xs py-1 px-2.5 transition-all"
+                          onClick={() =>
+                            handleToggleBoxLink(selectedOutline.id, box.id)
+                          }
+                        >
+                          {box.title} {isLinked ? "✓" : "+"}
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Pinned Citation Cards */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <Quote className="h-4 w-4 text-primary" />
+                      <span>
+                        İğnelenmiş Alıntı Fişleri (
+                        {activePinnedAnnotationIds.length})
+                      </span>
+                    </div>
+                  </div>
+
+                  {annotationsList.length > 0 ? (
+                    <div className="space-y-2.5 max-h-[400px] overflow-y-auto pr-1">
+                      {annotationsList.map((anno) => {
+                        const isPinned = activePinnedAnnotationIds.includes(
+                          anno.id,
+                        );
+                        return (
+                          <div
+                            key={anno.id}
+                            className={`rounded-lg border p-3 space-y-2 text-xs transition-all ${
+                              isPinned
+                                ? "border-primary/50 bg-primary/5"
+                                : "border-border/40 bg-card hover:border-border"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="font-medium text-foreground">
+                                {anno.source?.title || "Kaynak"} (s.{" "}
+                                {anno.pageNumber})
+                              </div>
+                              <Button
+                                size="sm"
+                                variant={isPinned ? "default" : "secondary"}
+                                onClick={() =>
+                                  handleTogglePin(selectedOutline.id, anno.id)
+                                }
+                                className="h-7 text-xs gap-1 px-2 shrink-0"
+                              >
+                                {isPinned ? (
+                                  <>
+                                    <PinOff className="h-3 w-3" />
+                                    <span>İğneyi Kaldır</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Pin className="h-3 w-3" />
+                                    <span>Bölüme İğnele</span>
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                            <p className="italic text-muted-foreground line-clamp-3">
+                              &quot;{anno.content}&quot;
+                            </p>
+                            {anno.comment && (
+                              <div className="rounded bg-muted/50 p-1.5 text-[11px] text-foreground/80">
+                                💬 <strong>Not:</strong> {anno.comment}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs italic text-muted-foreground">
+                      Henüz kütüphaneden bir alıntı fişi oluşturulmamış.
+                      Kütüphanedeki PDF okumalarınızdan oluşturduğunuz fişler
+                      burada listelenecektir.
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="flex flex-col items-center justify-center p-8 text-center border-dashed">
+              <BookOpen className="h-8 w-8 text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">
+                Detaylarını ve alıntı fişlerini görmek için soldan bir bölüm
+                seçin.
+              </p>
+            </Card>
+          )}
+        </div>
+      </div>
+
+      {/* Dialog: Add Section */}
+      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Yeni Tez Bölümü Ekle</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold">Bölüm Başlığı</label>
+              <Input
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="Örn: 1991-1995 Talep İçeriğinin İlk Dönüşümü"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold">
+                Yazım Kapsamı & Açıklama
+              </label>
+              <Textarea
+                value={newDescription}
+                onChange={(e) => setNewDescription(e.target.value)}
+                rows={4}
+                placeholder="Bu bölümde ele alınacak ana tartışma ve odak..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddOpen(false)}>
+              İptal
+            </Button>
+            <Button onClick={handleCreateSection}>Ekle</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Edit Section */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bölümü Düzenle</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold">Bölüm Başlığı</label>
+              <Input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold">
+                Yazım Kapsamı & Açıklama
+              </label>
+              <Textarea
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
+              İptal
+            </Button>
+            <Button onClick={handleUpdateSection}>Kaydet</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+</file>
+
 <file path="src/app/(app)/error.tsx">
 "use client";
 
@@ -14576,6 +16057,7 @@ import {
   Network,
   Library,
   Quote,
+  Table,
   Briefcase,
   RotateCcw,
   LogOut,
@@ -14587,6 +16069,7 @@ export const NAV_ITEMS = [
   { href: "/dashboard", label: "Genel Özet", icon: LayoutDashboard },
   { href: "/thesis-architecture", label: "Tez Mimarisi", icon: Network },
   { href: "/library", label: "Kütüphane", icon: Library },
+  { href: "/literature-matrix", label: "Literatür Matrisi", icon: Table },
   { href: "/citation-cards", label: "Alıntı Fişleri", icon: Quote },
   { href: "/advisor", label: "Danışman Odası", icon: Briefcase },
 ] as const;
@@ -14600,27 +16083,24 @@ export function HeaderNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="hidden items-center gap-2 md:flex">
+    <nav className="hidden items-center gap-0.5 rounded-full border border-border/50 bg-card/70 p-1 shadow-xs backdrop-blur-sm md:flex">
       {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
         const isActive = pathname === href;
 
         return (
-          <Button
+          <Link
             key={href}
-            variant="ghost"
-            asChild
+            href={href}
             className={cn(
-              "header-nav-item",
+              "flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-all duration-150 select-none",
               isActive
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground",
+                ? "bg-accent text-accent-foreground font-semibold border border-primary/25 shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent/30",
             )}
           >
-            <Link href={href}>
-              <Icon className="h-4 w-4 shrink-0" />
-              <span>{label}</span>
-            </Link>
-          </Button>
+            <Icon className="h-3.5 w-3.5 shrink-0" />
+            <span>{label}</span>
+          </Link>
         );
       })}
     </nav>
@@ -14871,15 +16351,15 @@ export function UserMenu({
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         className={cn(
-          "flex items-center gap-2 rounded-md border border-border/40 bg-background px-3 py-2 transition-all hover:bg-accent/20",
-          isOpen && "bg-accent/20 border-primary/20",
+          "flex h-8 items-center gap-2 rounded-full border border-border/50 bg-card/70 px-2.5 py-1 transition-all hover:bg-accent/30 hover:border-border",
+          isOpen && "bg-accent/50 border-primary/30",
         )}
       >
-        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary font-mono text-[10px] font-semibold border border-primary/20 shrink-0">
+        <div className="flex h-5.5 w-5.5 items-center justify-center rounded-full bg-primary/15 text-primary font-mono text-[10px] font-semibold border border-primary/20 shrink-0">
           {initials || <User className="h-3 w-3" />}
         </div>
 
-        <span className="max-w-32 truncate text-xs font-medium text-foreground hidden sm:block">
+        <span className="max-w-28 truncate text-xs font-medium text-foreground hidden sm:block">
           {userName}
         </span>
 
@@ -18263,6 +19743,83 @@ export async function executePhase3Selection(
   }
 
   return subBoxResultsToPersist;
+}
+</file>
+
+<file path="src/features/outline/prompts/outline-generation.prompt.ts">
+import { buildPromptPayload, type PromptPayload } from "@/lib/ai/prompt-builder";
+
+export interface OutlineMatrixInput {
+  subjectProblem: string;
+  theoreticalFramework: string;
+  primaryMaterial: string | null;
+  methodology: string;
+}
+
+/**
+ * Builds the standardized PromptPayload for thesis outline generation.
+ *
+ * @param matrix - The thesis matrix input data.
+ * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
+ */
+export function buildOutlineGenerationPromptPayload(
+  matrix: OutlineMatrixInput
+): PromptPayload {
+  return buildPromptPayload({
+    roleAndExpertise:
+      "Siz, akademisyenlerin ve lisansüstü öğrencilerin tez matrislerini analiz ederek YÖK ve uluslararası akademik standartlara tam uyumlu tez planı (içindekiler) yapısı oluşturan kıdemli bir akademik yapılandırma asistanısınız.",
+
+    primaryTask:
+      "Sağlanan tez matrisindeki araştırma problemi, teorik çerçeve, birincil materyal ve metodoloji bilgilerine dayanarak tezin bilim dalını tespit edin ve metodolojik açıdan eksiksiz, disipline özgü bir bölüm/alt bölüm hiyerarşisi (outline) üretin.",
+
+    rulesAndConstraints: `## 1. Bilim Dalı Tespiti (academicField)
+- Matris içeriğindeki kavramları, teorik çerçeveyi ve yöntemi analiz ederek tezin ait olduğu bilim dalını tespit edin.
+- Bilim dalı açık ve net olmalıdır (örn: "Siyaset Bilimi ve Kamu Yönetimi", "İşletme", "Hukuk", "Bilgisayar Mühendisliği", "Eğitim Bilimleri", "Tıp ve Sağlık Bilimleri").
+
+## 2. Bölüm Yapısı ve Hiyerarşi Kuralları
+- **Toplam Ana Bölüm Sayısı:** Toplamda TAM OLARAK 4 veya 5 ana bölüm oluşturun. 4'ten az veya 5'ten fazla ana bölüm KESİNLİKLE OLUŞTURMAYIN.
+- **Bölüm 1 (Giriş - Sabit):** İlk ana bölüm KESİNLİKLE "Giriş" başlığını taşımalıdır. Giriş bölümünün alt başlıkları OLAMAZ. subSections dizisi KESİNLİKLE boş dizi [] olmalıdır.
+- **Gövde Bölümleri (Bölüm 2, 3 [ve varsa Bölüm 4]):** Giriş ile Sonuç arasındaki 2 veya 3 bölüm, tezin özgün konusunu, teorik çerçevesini, metodolojisini ve bulgularını inceleyen ana gövde bölümleridir. Her bir gövde bölümünün altında konusunu detaylandıran EN AZ 2 alt bölüm (subSections) yer almalıdır.
+- **Son Bölüm (Sonuç ve Değerlendirme - Sabit):** Son ana bölüm (4. veya 5. bölüm) KESİNLİKLE "Sonuç ve Değerlendirme" (veya "Sonuç") başlığını taşımalıdır. Sonuç bölümünün alt başlıkları OLAMAZ. subSections dizisi KESİNLİKLE boş dizi [] olmalıdır.
+
+## 3. Disipline Özgü Gövde Bölümü Akışı
+Gövde bölümlerinin mimarisini tespit edilen bilim dalının geleneksel akademik kalıplarına uygun kurgulayın:
+- **Sosyal ve Beşeri Bilimler / İktisadi ve İdari Bilimler:** Bölüm 1: Giriş → Bölüm 2: Kavramsal ve Teorik Çerçeve → Bölüm 3: Araştırma Metodolojisi ve Analiz Çerçevesi → Bölüm 4: Ampirik Bulgular ve Tartışma (varsa) → Bölüm 4 veya 5: Sonuç ve Değerlendirme.
+- **Fen Bilimleri / Mühendislik / Sağlık Bilimleri:** Bölüm 1: Giriş → Bölüm 2: Kuramsal Arka Plan ve Literatür → Bölüm 3: Materyal ve Yöntem → Bölüm 4: Bulgular ve Tartışma → Bölüm 5: Sonuç ve Öneriler.
+- **Hukuk Bilimleri:** Bölüm 1: Giriş → Bölüm 2: Kavramsal ve Tarihsel Arka Plan → Bölüm 3: Pozitif Hukuki Düzenlemeler ve Yargı Kararları → Bölüm 4: Uygulamadaki Sorunlar ve Çözümler → Bölüm 5: Sonuç.
+
+## 4. Sıralama ve Açıklama Standartları
+- **Sıralama (sortOrder):** Ana bölümlerde ve her bölümün alt bölümlerinde 1'den başlayan ardışık sayılar kullanın.
+- **Açıklama (description):** Her ana bölüm ve alt bölüm için ne yapılacağını/anlatılacağını açıklayan kısa, net akademik Türkçe açıklamalar yazın.`,
+
+    outputFormat: `- Tüm başlıklar ve açıklamalar KESİNLİKLE yüksek düzey akademik Türkçe olmalıdır.
+- Gövde bölüm başlıkları tezin özgün konusunu doğrudan yansıtmalıdır.
+- Yanıtınızı sağlanan JSON şemasına eksiksiz uyacak şekilde döndürün.`,
+
+    inputContext: `## Tez Matrisi Verileri
+
+### Araştırma Problemi
+${matrix.subjectProblem}
+
+### Teorik Çerçeve
+${matrix.theoreticalFramework}
+
+### Birincil Materyal
+${matrix.primaryMaterial || "Belirtilmemiş"}
+
+### Metodoloji
+${matrix.methodology}
+
+---
+
+Yukarıdaki tez matrisi verilerini analiz ederek:
+1. Tezin bilim dalını (academicField) tespit edin.
+2. Tam olarak 4 veya 5 ana bölümden oluşan bir tez planı oluşturun.
+3. Bölüm 1 KESİNLİKLE "Giriş" olmalı ve subSections: [] (boş dizi) içermelidir.
+4. Son Bölüm KESİNLİKLE "Sonuç ve Değerlendirme" olmalı ve subSections: [] (boş dizi) içermelidir.
+5. Giriş ve Sonuç arasındaki 2 veya 3 gövde bölümünün her biri altında en az 2 alt bölüm oluşturun.
+6. Her bölüm ve alt bölüm için kısa, öz akademik Türkçe açıklamalar yazın.`,
+  });
 }
 </file>
 
@@ -24027,210 +25584,6 @@ export async function fetchPreloadedPool(
 }
 </file>
 
-<file path="src/features/outline/generator.ts">
-"use server";
-
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { matrices, outlines } from "@/db/schema";
-import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
-import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
-import { generateGeminiStructuredContent } from "@/services/ai";
-import { FLASH_36, GEMINI_SEED } from "@/lib/constants";
-import { ThinkingLevel } from "@google/genai";
-import { createFlowId, Logger } from "@/lib/logger";
-import {
-  outlineGenerationSchema,
-  outlineGenerationJsonSchema,
-  type OutlineGenerationResponse,
-} from "./schema";
-
-import { buildOutlineGenerationPromptPayload } from "./prompts/outline-generation.prompt";
-
-/**
- * Generates the thesis outline via Gemini without persisting it.
- *
- * @returns The generated outline or an error message.
- */
-export async function generateOutlineAction(): Promise<
-  { success: true; outline: OutlineGenerationResponse } | { error: string }
-> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-  const startTime = performance.now();
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const [matrix] = await db
-      .select()
-      .from(matrices)
-      .where(eq(matrices.userId, session.userId));
-
-    if (!matrix) return { error: "Thesis matrix not found." };
-
-    log.info("outline_generation_start", {
-      service: "outline",
-    });
-
-    const payload = buildOutlineGenerationPromptPayload({
-      subjectProblem: matrix.subjectProblem,
-      theoreticalFramework: matrix.theoreticalFramework,
-      primaryMaterial: matrix.primaryMaterial,
-      methodology: matrix.methodology,
-    });
-
-    const result =
-      await generateGeminiStructuredContent<OutlineGenerationResponse>(
-        FLASH_36,
-        payload.systemInstruction,
-        payload.userPrompt,
-        outlineGenerationJsonSchema,
-        log,
-        {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
-          zodSchema: outlineGenerationSchema,
-          seed: GEMINI_SEED,
-          thesisMatrix: matrix,
-          payloadStage: "outline_generation",
-          quiet: true,
-        },
-      );
-
-    log.info("outline_generation_success", {
-      service: "outline",
-      durationMs: Math.round(performance.now() - startTime),
-    });
-
-    return { success: true, outline: result };
-  } catch (err) {
-    log.error("outline_generation_failed", {
-      service: "outline",
-      error: err instanceof Error ? err : new Error(String(err)),
-    });
-    return {
-      error: "Tez planı oluşturulurken beklenmeyen bir hata oluştu.",
-    };
-  }
-}
-
-/**
- * Persists a generated thesis outline to the database.
- *
- * @param outline - The generated outline data from Gemini.
- * @returns A success flag or an error message.
- */
-export async function persistOutlineAction(
-  outline: OutlineGenerationResponse,
-): Promise<{ success: true } | { error: string }> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const [matrix] = await db
-      .select()
-      .from(matrices)
-      .where(eq(matrices.userId, session.userId));
-
-    if (!matrix) return { error: "Thesis matrix not found." };
-
-    await persistOutlines(session.userId, matrix.id, outline);
-
-    invalidateOnboardingStepCache("outline");
-
-    return { success: true };
-  } catch (err) {
-    log.error("outline_persist_failed", {
-      service: "outline",
-      error: err instanceof Error ? err : new Error(String(err)),
-    });
-    return {
-      error:
-        "Tez planı veritabanına kaydedilirken beklenmeyen bir hata oluştu.",
-    };
-  }
-}
-
-/**
- * Persists the outline hierarchy to the database in a single transaction.
- *
- * @param userId - The current user id.
- * @param matrixId - The thesis matrix id.
- * @param outline - The generated outline data from Gemini.
- */
-async function persistOutlines(
-  userId: number,
-  matrixId: number,
-  outline: OutlineGenerationResponse,
-): Promise<void> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  await db.transaction(async (tx) => {
-    await tx.delete(outlines).where(eq(outlines.matrixId, matrixId));
-
-    const parentValues: (typeof outlines.$inferInsert)[] = [];
-    for (const section of outline.sections) {
-      parentValues.push({
-        matrixId,
-        parentId: null,
-        title: section.title,
-        description: section.description,
-        sortOrder: section.sortOrder,
-        academicField: outline.academicField,
-      });
-    }
-
-    if (parentValues.length === 0) return;
-
-    const insertedParents = await tx
-      .insert(outlines)
-      .values(parentValues)
-      .returning({ id: outlines.id });
-
-    const dbParentIdMap = new Map<number, number>();
-    for (let i = 0; i < outline.sections.length; i++) {
-      const dbId = insertedParents[i]?.id;
-      if (dbId !== undefined) {
-        dbParentIdMap.set(i, dbId);
-      }
-    }
-
-    const childValues: (typeof outlines.$inferInsert)[] = [];
-    for (let i = 0; i < outline.sections.length; i++) {
-      const section = outline.sections[i];
-      if (!section.subSections || section.subSections.length === 0) continue;
-
-      const mappedParentId = dbParentIdMap.get(i) ?? null;
-      if (mappedParentId === null) continue;
-
-      for (const sub of section.subSections) {
-        childValues.push({
-          matrixId,
-          parentId: mappedParentId,
-          title: sub.title,
-          description: sub.description,
-          sortOrder: sub.sortOrder,
-          academicField: null,
-        });
-      }
-    }
-
-    if (childValues.length > 0) {
-      await tx.insert(outlines).values(childValues);
-    }
-  });
-
-  log.info("outline_persist_transaction_complete", {
-    service: "outline",
-  });
-}
-</file>
-
 <file path="src/features/outline/schema.ts">
 import { z } from "zod";
 import type { JsonSchema, JsonSchemaProperty } from "@/services/ai";
@@ -28196,313 +29549,6 @@ export async function saveThesisMatrixAction(
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/outline/_components/outline-container.tsx">
-"use client";
-
-import { useState, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowRight, Loader2, BookOpen } from "lucide-react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { AIBanner } from "@/components/shared/ai-banner";
-import { useOutlineContinue } from "../../_hooks/use-outline-continue";
-import { OutlineStatsBar } from "./outline-stats-bar";
-import {
-  OutlineSectionCard,
-  type OutlineSectionData,
-} from "./outline-section-card";
-import {
-  saveOutlineHierarchyAction,
-  regenerateAndPersistOutlineAction,
-} from "../actions";
-
-interface OutlineContainerProps {
-  sections: OutlineSectionData[];
-  academicField: string | null;
-}
-
-/**
- * Client wrapper component managing the thesis outline state, user edits,
- * drag-and-drop section reordering, matrix modal inspection, AI regeneration,
- * and step finalization.
- *
- * @param props - Component props.
- * @returns The outline container markup.
- */
-export function OutlineContainer({ sections, academicField }: OutlineContainerProps) {
-  const { bfcacheId } = useRouter();
-
-  return (
-    <OutlineEditor
-      key={bfcacheId}
-      sections={sections}
-      academicField={academicField}
-    />
-  );
-}
-
-function OutlineEditor({
-  sections: initialSections,
-  academicField: initialAcademicField,
-}: OutlineContainerProps) {
-  const { proceedFromOutline } = useOutlineContinue();
-
-  const [sections, setSections] =
-    useState<OutlineSectionData[]>(initialSections);
-  const [academicField, setAcademicField] = useState<string | null>(
-    initialAcademicField,
-  );
-  const [confirming, setConfirming] = useState(false);
-  const [isRegenerating, setIsRegenerating] = useState(false);
-
-  // Drag & drop state for main sections
-  const [draggedSectionIndex, setDraggedSectionIndex] = useState<number | null>(
-    null,
-  );
-  const [dragOverSectionIndex, setDragOverSectionIndex] = useState<
-    number | null
-  >(null);
-
-  // Expanded state set for main section indices
-  const [expandedIndices, setExpandedIndices] = useState<Set<number>>(
-    () => new Set(initialSections.map((_, i) => i)),
-  );
-
-  const totalSubSections = useMemo(() => {
-    return sections.reduce(
-      (acc, sec) => acc + (sec.subSections?.length ?? 0),
-      0,
-    );
-  }, [sections]);
-
-  const handleToggleSectionExpand = useCallback((index: number) => {
-    setExpandedIndices((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) {
-        next.delete(index);
-      } else {
-        next.add(index);
-      }
-      return next;
-    });
-  }, []);
-
-  const handleAddSection = useCallback(() => {
-    const newSec: OutlineSectionData = {
-      title: `Yeni Gövde Bölümü ${sections.length}`,
-      description: "Bu bölümün akademik kapsamı ve amacı...",
-      sortOrder: sections.length,
-      subSections: [
-        {
-          title: "Kavramsal Çerçeve ve Analiz",
-          description: "Bölümün alt konu anlatımı ve detaylandırılması.",
-          sortOrder: 1,
-        },
-      ],
-    };
-
-    let nextSections: OutlineSectionData[];
-    let insertIndex: number;
-
-    if (sections.length > 1) {
-      insertIndex = sections.length - 1; // Insert before Sonuç
-      nextSections = [
-        ...sections.slice(0, insertIndex),
-        newSec,
-        ...sections.slice(insertIndex),
-      ].map((sec, i) => ({ ...sec, sortOrder: i + 1 }));
-    } else {
-      insertIndex = sections.length;
-      nextSections = [...sections, newSec].map((sec, i) => ({
-        ...sec,
-        sortOrder: i + 1,
-      }));
-    }
-
-    setSections(nextSections);
-    setExpandedIndices((prev) => new Set([...prev, insertIndex]));
-    toast.success("Yeni gövde bölümü eklendi.");
-  }, [sections]);
-
-  const handleUpdateSection = useCallback(
-    (index: number, updated: OutlineSectionData) => {
-      setSections((prev) => {
-        const next = [...prev];
-        next[index] = updated;
-        return next;
-      });
-    },
-    [],
-  );
-
-  const handleDeleteSection = useCallback(
-    (index: number) => {
-      if (sections.length <= 1) {
-        toast.error("Tez planında en az bir bölüm bulunmalıdır.");
-        return;
-      }
-      setSections((prev) => {
-        const next = prev
-          .filter((_, i) => i !== index)
-          .map((sec, i) => ({ ...sec, sortOrder: i + 1 }));
-        return next;
-      });
-      setExpandedIndices((prev) => {
-        const next = new Set<number>();
-        prev.forEach((i) => {
-          if (i < index) next.add(i);
-          else if (i > index) next.add(i - 1);
-        });
-        return next;
-      });
-      toast.info("Bölüm silindi.");
-    },
-    [sections.length],
-  );
-
-  // Main Section Drag & Drop Handlers
-  const handleDragStartSection = useCallback((index: number) => {
-    setDraggedSectionIndex(index);
-  }, []);
-
-  const handleDragOverSection = useCallback((index: number) => {
-    setDragOverSectionIndex(index);
-  }, []);
-
-  const handleDropSection = useCallback(
-    (targetIndex: number) => {
-      if (draggedSectionIndex === null || draggedSectionIndex === targetIndex) {
-        setDraggedSectionIndex(null);
-        setDragOverSectionIndex(null);
-        return;
-      }
-
-      setSections((prev) => {
-        const next = [...prev];
-        const [moved] = next.splice(draggedSectionIndex, 1);
-        next.splice(targetIndex, 0, moved);
-        return next.map((sec, i) => ({ ...sec, sortOrder: i + 1 }));
-      });
-
-      setDraggedSectionIndex(null);
-      setDragOverSectionIndex(null);
-    },
-    [draggedSectionIndex],
-  );
-
-  const handleDragEndSection = useCallback(() => {
-    setDraggedSectionIndex(null);
-    setDragOverSectionIndex(null);
-  }, []);
-
-  const handleRegenerate = useCallback(async () => {
-    if (isRegenerating) return;
-    setIsRegenerating(true);
-    try {
-      const result = await regenerateAndPersistOutlineAction();
-      if ("error" in result) {
-        toast.error(result.error);
-        return;
-      }
-      setAcademicField(result.academicField);
-      setSections(result.sections);
-      setExpandedIndices(new Set(result.sections.map((_, i) => i)));
-      toast.success("Tez planı AI tarafından yeniden oluşturuldu.");
-    } finally {
-      setIsRegenerating(false);
-    }
-  }, [isRegenerating]);
-
-  const handleConfirm = useCallback(async () => {
-    if (confirming) return;
-    setConfirming(true);
-    try {
-      const saveResult = await saveOutlineHierarchyAction({
-        academicField,
-        sections: sections.map((sec, i) => ({
-          title: sec.title,
-          description: sec.description,
-          sortOrder: i + 1,
-          subSections: (sec.subSections || []).map((sub, subIdx) => ({
-            title: sub.title,
-            description: sub.description,
-            sortOrder: subIdx + 1,
-          })),
-        })),
-      });
-
-      if ("error" in saveResult) {
-        toast.error(saveResult.error);
-        return;
-      }
-
-      await proceedFromOutline();
-    } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
-      toast.error(msg);
-    } finally {
-      setConfirming(false);
-    }
-  }, [confirming, academicField, sections, proceedFromOutline]);
-
-  return (
-    <div className="w-full flex flex-col gap-6">
-      <AIBanner
-        icon={BookOpen}
-        title="Tez Planı Yapılandırıldı"
-        description="Tez matrisiniz analiz edilerek tezinizin içindekiler (bölüm ve alt bölüm) yapısı oluşturuldu. Başlıkları düzenleyebilir, yeni bölüm ekleyebilir, sürükleyerek sıralamayı değiştirebilirsiniz."
-      />
-
-      <OutlineStatsBar
-        academicField={academicField}
-        sectionCount={sections.length}
-        subSectionCount={totalSubSections}
-        onAddSection={handleAddSection}
-        onRegenerate={handleRegenerate}
-        isRegenerating={isRegenerating}
-      />
-
-      <div className="flex flex-col gap-4">
-        {sections.map((section, idx) => (
-          <OutlineSectionCard
-            key={`${section.title}-${idx}`}
-            section={section}
-            sectionIndex={idx}
-            isExpanded={expandedIndices.has(idx)}
-            onToggleExpand={() => handleToggleSectionExpand(idx)}
-            onUpdateSection={(updated) => handleUpdateSection(idx, updated)}
-            onDeleteSection={() => handleDeleteSection(idx)}
-            onDragStartSection={handleDragStartSection}
-            onDragOverSection={handleDragOverSection}
-            onDropSection={handleDropSection}
-            onDragEndSection={handleDragEndSection}
-            isDraggingSection={draggedSectionIndex === idx}
-            isDragOverSection={dragOverSectionIndex === idx}
-          />
-        ))}
-      </div>
-
-      <div className="flex justify-end pt-4 pb-8">
-        <Button onClick={handleConfirm} disabled={confirming} size="lg">
-          {confirming ? (
-            <span className="flex items-center gap-2">
-              <Loader2 className="size-4 animate-spin" />
-              Kaydediliyor...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              Onayla ve Literatür Tarama Adımına Geç
-              <ArrowRight className="size-4" />
-            </span>
-          )}
-        </Button>
-      </div>
-    </div>
-  );
-}
-</file>
-
 <file path="src/app/(onboarding)/onboarding/outline/_components/outline-tree-view.tsx">
 "use client";
 
@@ -29614,6 +30660,210 @@ export async function evaluateSingleBoxJury(
   });
 
   return { thesisBoxId: box.thesisBoxId, evaluations: raw.evaluations ?? [] };
+}
+</file>
+
+<file path="src/features/outline/generator.ts">
+"use server";
+
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { matrices, outlines } from "@/db/schema";
+import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
+import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
+import { generateGeminiStructuredContent } from "@/services/ai";
+import { FLASH_36, GEMINI_SEED } from "@/lib/constants";
+import { ThinkingLevel } from "@google/genai";
+import { createFlowId, Logger } from "@/lib/logger";
+import {
+  outlineGenerationSchema,
+  outlineGenerationJsonSchema,
+  type OutlineGenerationResponse,
+} from "./schema";
+
+import { buildOutlineGenerationPromptPayload } from "./prompts/outline-generation.prompt";
+
+/**
+ * Generates the thesis outline via Gemini without persisting it.
+ *
+ * @returns The generated outline or an error message.
+ */
+export async function generateOutlineAction(): Promise<
+  { success: true; outline: OutlineGenerationResponse } | { error: string }
+> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+  const startTime = performance.now();
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const [matrix] = await db
+      .select()
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+
+    if (!matrix) return { error: "Thesis matrix not found." };
+
+    log.info("outline_generation_start", {
+      service: "outline",
+    });
+
+    const payload = buildOutlineGenerationPromptPayload({
+      subjectProblem: matrix.subjectProblem,
+      theoreticalFramework: matrix.theoreticalFramework,
+      primaryMaterial: matrix.primaryMaterial,
+      methodology: matrix.methodology,
+    });
+
+    const result =
+      await generateGeminiStructuredContent<OutlineGenerationResponse>(
+        FLASH_36,
+        payload.systemInstruction,
+        payload.userPrompt,
+        outlineGenerationJsonSchema,
+        log,
+        {
+          thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+          zodSchema: outlineGenerationSchema,
+          seed: GEMINI_SEED,
+          thesisMatrix: matrix,
+          payloadStage: "outline_generation",
+          quiet: true,
+        },
+      );
+
+    log.info("outline_generation_success", {
+      service: "outline",
+      durationMs: Math.round(performance.now() - startTime),
+    });
+
+    return { success: true, outline: result };
+  } catch (err) {
+    log.error("outline_generation_failed", {
+      service: "outline",
+      error: err instanceof Error ? err : new Error(String(err)),
+    });
+    return {
+      error: "Tez planı oluşturulurken beklenmeyen bir hata oluştu.",
+    };
+  }
+}
+
+/**
+ * Persists a generated thesis outline to the database.
+ *
+ * @param outline - The generated outline data from Gemini.
+ * @returns A success flag or an error message.
+ */
+export async function persistOutlineAction(
+  outline: OutlineGenerationResponse,
+): Promise<{ success: true } | { error: string }> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const [matrix] = await db
+      .select()
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+
+    if (!matrix) return { error: "Thesis matrix not found." };
+
+    await persistOutlines(session.userId, matrix.id, outline);
+
+    invalidateOnboardingStepCache("outline");
+
+    return { success: true };
+  } catch (err) {
+    log.error("outline_persist_failed", {
+      service: "outline",
+      error: err instanceof Error ? err : new Error(String(err)),
+    });
+    return {
+      error:
+        "Tez planı veritabanına kaydedilirken beklenmeyen bir hata oluştu.",
+    };
+  }
+}
+
+/**
+ * Persists the outline hierarchy to the database in a single transaction.
+ *
+ * @param userId - The current user id.
+ * @param matrixId - The thesis matrix id.
+ * @param outline - The generated outline data from Gemini.
+ */
+async function persistOutlines(
+  userId: number,
+  matrixId: number,
+  outline: OutlineGenerationResponse,
+): Promise<void> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  await db.transaction(async (tx) => {
+    await tx.delete(outlines).where(eq(outlines.matrixId, matrixId));
+
+    const parentValues: (typeof outlines.$inferInsert)[] = [];
+    for (const section of outline.sections) {
+      parentValues.push({
+        matrixId,
+        parentId: null,
+        title: section.title,
+        description: section.description,
+        sortOrder: section.sortOrder,
+        academicField: outline.academicField,
+      });
+    }
+
+    if (parentValues.length === 0) return;
+
+    const insertedParents = await tx
+      .insert(outlines)
+      .values(parentValues)
+      .returning({ id: outlines.id });
+
+    const dbParentIdMap = new Map<number, number>();
+    for (let i = 0; i < outline.sections.length; i++) {
+      const dbId = insertedParents[i]?.id;
+      if (dbId !== undefined) {
+        dbParentIdMap.set(i, dbId);
+      }
+    }
+
+    const childValues: (typeof outlines.$inferInsert)[] = [];
+    for (let i = 0; i < outline.sections.length; i++) {
+      const section = outline.sections[i];
+      if (!section.subSections || section.subSections.length === 0) continue;
+
+      const mappedParentId = dbParentIdMap.get(i) ?? null;
+      if (mappedParentId === null) continue;
+
+      for (const sub of section.subSections) {
+        childValues.push({
+          matrixId,
+          parentId: mappedParentId,
+          title: sub.title,
+          description: sub.description,
+          sortOrder: sub.sortOrder,
+          academicField: null,
+        });
+      }
+    }
+
+    if (childValues.length > 0) {
+      await tx.insert(outlines).values(childValues);
+    }
+  });
+
+  log.info("outline_persist_transaction_complete", {
+    service: "outline",
+  });
 }
 </file>
 
@@ -31733,481 +32983,309 @@ export default async function OnboardingMatrixPage() {
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/outline/_components/outline-section-card.tsx">
+<file path="src/app/(onboarding)/onboarding/outline/_components/outline-container.tsx">
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import {
-  ChevronRight,
-  ChevronUp,
-  Pencil,
-  Trash2,
-  Plus,
-  Check,
-  X,
-  GripVertical,
-} from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { useRouter } from "next/navigation";
+import { ArrowRight, Loader2, BookOpen } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { AIBanner } from "@/components/shared/ai-banner";
+import { useOutlineContinue } from "../../_hooks/use-outline-continue";
+import { OutlineStatsBar } from "./outline-stats-bar";
+import {
+  OutlineSectionCard,
+  type OutlineSectionData,
+} from "./outline-section-card";
+import {
+  saveOutlineHierarchyAction,
+  regenerateAndPersistOutlineAction,
+} from "../actions";
 
-export interface OutlineSubSectionData {
-  title: string;
-  description: string;
-  sortOrder: number;
-}
-
-export interface OutlineSectionData {
-  title: string;
-  description: string;
-  sortOrder: number;
-  subSections?: OutlineSubSectionData[];
-}
-
-interface OutlineSectionCardProps {
-  section: OutlineSectionData;
-  sectionIndex: number;
-  isExpanded: boolean;
-  onToggleExpand: () => void;
-  onUpdateSection: (updated: OutlineSectionCardProps["section"]) => void;
-  onDeleteSection: () => void;
-  // Drag & drop props for main sections
-  onDragStartSection: (index: number) => void;
-  onDragOverSection: (index: number) => void;
-  onDropSection: (targetIndex: number) => void;
-  onDragEndSection: () => void;
-  isDraggingSection?: boolean;
-  isDragOverSection?: boolean;
+interface OutlineContainerProps {
+  sections: OutlineSectionData[];
+  academicField: string | null;
 }
 
 /**
- * Renders an interactive main section card with inline editing, drag-and-drop reordering
- * for sections and subsections, and subsection management without left border lines.
+ * Client wrapper component managing the thesis outline state, user edits,
+ * drag-and-drop section reordering, matrix modal inspection, AI regeneration,
+ * and step finalization.
  *
  * @param props - Component props.
- * @returns The section card markup.
+ * @returns The outline container markup.
  */
-export function OutlineSectionCard({
-  section,
-  sectionIndex,
-  isExpanded,
-  onToggleExpand,
-  onUpdateSection,
-  onDeleteSection,
-  onDragStartSection,
-  onDragOverSection,
-  onDropSection,
-  onDragEndSection,
-  isDraggingSection = false,
-  isDragOverSection = false,
-}: OutlineSectionCardProps) {
-  const [isEditingSection, setIsEditingSection] = useState(false);
-  const [editTitle, setEditTitle] = useState(section.title);
-  const [editDescription, setEditDescription] = useState(section.description);
+export function OutlineContainer({ sections, academicField }: OutlineContainerProps) {
+  const { bfcacheId } = useRouter();
 
-  const [editingSubIndex, setEditingSubIndex] = useState<number | null>(null);
-  const [subEditTitle, setSubEditTitle] = useState("");
-  const [subEditDescription, setSubEditDescription] = useState("");
-
-  // Sub-section Drag and Drop state
-  const [draggedSubIdx, setDraggedSubIdx] = useState<number | null>(null);
-  const [dragOverSubIdx, setDragOverSubIdx] = useState<number | null>(null);
-
-  const sectionNumber = sectionIndex + 1;
-  const subSections = useMemo(
-    () => section.subSections ?? [],
-    [section.subSections],
+  return (
+    <OutlineEditor
+      key={bfcacheId}
+      sections={sections}
+      academicField={academicField}
+    />
   );
-  const hasSubSections = subSections.length > 0;
+}
 
-  const isSpecialSection = useMemo(() => {
-    const titleUpper = section.title.toLocaleUpperCase("tr-TR");
-    return (
-      titleUpper.includes("GİRİŞ") ||
-      titleUpper.includes("GIRIS") ||
-      titleUpper.includes("SONUÇ") ||
-      titleUpper.includes("SONUC")
+function OutlineEditor({
+  sections: initialSections,
+  academicField: initialAcademicField,
+}: OutlineContainerProps) {
+  const { proceedFromOutline } = useOutlineContinue();
+
+  const [sections, setSections] =
+    useState<OutlineSectionData[]>(initialSections);
+  const [academicField, setAcademicField] = useState<string | null>(
+    initialAcademicField,
+  );
+  const [confirming, setConfirming] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+
+  // Drag & drop state for main sections
+  const [draggedSectionIndex, setDraggedSectionIndex] = useState<number | null>(
+    null,
+  );
+  const [dragOverSectionIndex, setDragOverSectionIndex] = useState<
+    number | null
+  >(null);
+
+  // Expanded state set for main section indices
+  const [expandedIndices, setExpandedIndices] = useState<Set<number>>(
+    () => new Set(initialSections.map((_, i) => i)),
+  );
+
+  const totalSubSections = useMemo(() => {
+    return sections.reduce(
+      (acc, sec) => acc + (sec.subSections?.length ?? 0),
+      0,
     );
-  }, [section.title]);
+  }, [sections]);
 
-  const handleSaveSectionEdit = useCallback(() => {
-    if (!editTitle.trim()) return;
-    onUpdateSection({
-      ...section,
-      title: editTitle.trim(),
-      description: editDescription.trim(),
+  const handleToggleSectionExpand = useCallback((index: number) => {
+    setExpandedIndices((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
     });
-    setIsEditingSection(false);
-  }, [editTitle, editDescription, section, onUpdateSection]);
+  }, []);
 
-  const handleCancelSectionEdit = useCallback(() => {
-    setEditTitle(section.title);
-    setEditDescription(section.description);
-    setIsEditingSection(false);
-  }, [section]);
-
-  const handleAddSubSection = useCallback(() => {
-    if (isSpecialSection) return;
-    const newSub: OutlineSubSectionData = {
-      title: `Yeni Alt Bölüm ${subSections.length + 1}`,
-      description: "Alt bölüm kapsamı ve açıklaması...",
-      sortOrder: subSections.length + 1,
+  const handleAddSection = useCallback(() => {
+    const newSec: OutlineSectionData = {
+      title: `Yeni Gövde Bölümü ${sections.length}`,
+      description: "Bu bölümün akademik kapsamı ve amacı...",
+      sortOrder: sections.length,
+      subSections: [
+        {
+          title: "Kavramsal Çerçeve ve Analiz",
+          description: "Bölümün alt konu anlatımı ve detaylandırılması.",
+          sortOrder: 1,
+        },
+      ],
     };
-    const updatedSubs = [...subSections, newSub];
-    onUpdateSection({
-      ...section,
-      subSections: updatedSubs,
-    });
-    if (!isExpanded) {
-      onToggleExpand();
-    }
-  }, [isSpecialSection, subSections, section, onUpdateSection, isExpanded, onToggleExpand]);
 
-  const handleDeleteSubSection = useCallback(
-    (subIdx: number) => {
-      const updatedSubs = subSections
-        .filter((_, i) => i !== subIdx)
-        .map((sub, i) => ({ ...sub, sortOrder: i + 1 }));
-      onUpdateSection({
-        ...section,
-        subSections: updatedSubs,
+    let nextSections: OutlineSectionData[];
+    let insertIndex: number;
+
+    if (sections.length > 1) {
+      insertIndex = sections.length - 1; // Insert before Sonuç
+      nextSections = [
+        ...sections.slice(0, insertIndex),
+        newSec,
+        ...sections.slice(insertIndex),
+      ].map((sec, i) => ({ ...sec, sortOrder: i + 1 }));
+    } else {
+      insertIndex = sections.length;
+      nextSections = [...sections, newSec].map((sec, i) => ({
+        ...sec,
+        sortOrder: i + 1,
+      }));
+    }
+
+    setSections(nextSections);
+    setExpandedIndices((prev) => new Set([...prev, insertIndex]));
+    toast.success("Yeni gövde bölümü eklendi.");
+  }, [sections]);
+
+  const handleUpdateSection = useCallback(
+    (index: number, updated: OutlineSectionData) => {
+      setSections((prev) => {
+        const next = [...prev];
+        next[index] = updated;
+        return next;
       });
     },
-    [subSections, section, onUpdateSection],
+    [],
   );
 
-  const handleSubDrop = useCallback(
-    (targetIdx: number) => {
-      if (draggedSubIdx === null || draggedSubIdx === targetIdx) {
-        setDraggedSubIdx(null);
-        setDragOverSubIdx(null);
+  const handleDeleteSection = useCallback(
+    (index: number) => {
+      if (sections.length <= 1) {
+        toast.error("Tez planında en az bir bölüm bulunmalıdır.");
+        return;
+      }
+      setSections((prev) => {
+        const next = prev
+          .filter((_, i) => i !== index)
+          .map((sec, i) => ({ ...sec, sortOrder: i + 1 }));
+        return next;
+      });
+      setExpandedIndices((prev) => {
+        const next = new Set<number>();
+        prev.forEach((i) => {
+          if (i < index) next.add(i);
+          else if (i > index) next.add(i - 1);
+        });
+        return next;
+      });
+      toast.info("Bölüm silindi.");
+    },
+    [sections.length],
+  );
+
+  // Main Section Drag & Drop Handlers
+  const handleDragStartSection = useCallback((index: number) => {
+    setDraggedSectionIndex(index);
+  }, []);
+
+  const handleDragOverSection = useCallback((index: number) => {
+    setDragOverSectionIndex(index);
+  }, []);
+
+  const handleDropSection = useCallback(
+    (targetIndex: number) => {
+      if (draggedSectionIndex === null || draggedSectionIndex === targetIndex) {
+        setDraggedSectionIndex(null);
+        setDragOverSectionIndex(null);
         return;
       }
 
-      const newSubs = [...subSections];
-      const [movedItem] = newSubs.splice(draggedSubIdx, 1);
-      newSubs.splice(targetIdx, 0, movedItem);
-
-      const reordered = newSubs.map((s, i) => ({ ...s, sortOrder: i + 1 }));
-      onUpdateSection({
-        ...section,
-        subSections: reordered,
+      setSections((prev) => {
+        const next = [...prev];
+        const [moved] = next.splice(draggedSectionIndex, 1);
+        next.splice(targetIndex, 0, moved);
+        return next.map((sec, i) => ({ ...sec, sortOrder: i + 1 }));
       });
 
-      setDraggedSubIdx(null);
-      setDragOverSubIdx(null);
+      setDraggedSectionIndex(null);
+      setDragOverSectionIndex(null);
     },
-    [draggedSubIdx, subSections, section, onUpdateSection],
+    [draggedSectionIndex],
   );
 
-  const handleStartSubEdit = (subIdx: number) => {
-    setEditingSubIndex(subIdx);
-    setSubEditTitle(subSections[subIdx].title);
-    setSubEditDescription(subSections[subIdx].description);
-  };
+  const handleDragEndSection = useCallback(() => {
+    setDraggedSectionIndex(null);
+    setDragOverSectionIndex(null);
+  }, []);
 
-  const handleSaveSubEdit = (subIdx: number) => {
-    if (!subEditTitle.trim()) return;
-    const updatedSubs = subSections.map((sub, i) =>
-      i === subIdx
-        ? {
-            ...sub,
-            title: subEditTitle.trim(),
-            description: subEditDescription.trim(),
-          }
-        : sub,
-    );
-    onUpdateSection({
-      ...section,
-      subSections: updatedSubs,
-    });
-    setEditingSubIndex(null);
-  };
+  const handleRegenerate = useCallback(async () => {
+    if (isRegenerating) return;
+    setIsRegenerating(true);
+    try {
+      const result = await regenerateAndPersistOutlineAction();
+      if ("error" in result) {
+        toast.error(result.error);
+        return;
+      }
+      setAcademicField(result.academicField);
+      setSections(result.sections);
+      setExpandedIndices(new Set(result.sections.map((_, i) => i)));
+      toast.success("Tez planı AI tarafından yeniden oluşturuldu.");
+    } finally {
+      setIsRegenerating(false);
+    }
+  }, [isRegenerating]);
+
+  const handleConfirm = useCallback(async () => {
+    if (confirming) return;
+    setConfirming(true);
+    try {
+      const saveResult = await saveOutlineHierarchyAction({
+        academicField,
+        sections: sections.map((sec, i) => ({
+          title: sec.title,
+          description: sec.description,
+          sortOrder: i + 1,
+          subSections: (sec.subSections || []).map((sub, subIdx) => ({
+            title: sub.title,
+            description: sub.description,
+            sortOrder: subIdx + 1,
+          })),
+        })),
+      });
+
+      if ("error" in saveResult) {
+        toast.error(saveResult.error);
+        return;
+      }
+
+      await proceedFromOutline();
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
+      toast.error(msg);
+    } finally {
+      setConfirming(false);
+    }
+  }, [confirming, academicField, sections, proceedFromOutline]);
 
   return (
-    <Card
-      draggable={!isEditingSection && editingSubIndex === null}
-      onDragStart={() => onDragStartSection(sectionIndex)}
-      onDragOver={(e) => {
-        e.preventDefault();
-        onDragOverSection(sectionIndex);
-      }}
-      onDrop={() => onDropSection(sectionIndex)}
-      onDragEnd={onDragEndSection}
-      className={`flex flex-col w-full p-4 rounded-md border bg-card transition-all duration-200 ${
-        isDraggingSection ? "opacity-40 border-primary" : "border-border"
-      } ${isDragOverSection ? "border-primary ring-2 ring-primary/10" : "hover:border-primary/20"}`}
-    >
-      {/* Header Row */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3 flex-1 min-w-0">
-          {/* Drag Handle & Section Number */}
-          <div className="flex items-center gap-1 shrink-0 mt-1">
-            <span
-              className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground p-0.5 rounded transition-colors"
-              title="Bölümü Taşı"
-            >
-              <GripVertical className="size-4" />
-            </span>
-            <span className="flex size-7 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-xs font-bold text-primary shrink-0">
-              {sectionNumber}
-            </span>
-          </div>
+    <div className="w-full flex flex-col gap-6">
+      <AIBanner
+        icon={BookOpen}
+        title="Tez Planı Yapılandırıldı"
+        description="Tez matrisiniz analiz edilerek tezinizin içindekiler (bölüm ve alt bölüm) yapısı oluşturuldu. Başlıkları düzenleyebilir, yeni bölüm ekleyebilir, sürükleyerek sıralamayı değiştirebilirsiniz."
+      />
 
-          {/* Section Info / Inline Edit */}
-          <div className="flex-1 min-w-0">
-            {isEditingSection ? (
-              <div className="space-y-2">
-                <Input
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  className="font-serif text-base font-semibold"
-                  placeholder="Bölüm başlığı..."
-                  autoFocus
-                />
-                <Textarea
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  className="text-xs min-h-[60px]"
-                  placeholder="Bölüm açıklaması..."
-                />
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    onClick={handleSaveSectionEdit}
-                    className="h-7 text-xs gap-1"
-                  >
-                    <Check className="size-3" /> Kaydet
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleCancelSectionEdit}
-                    className="h-7 text-xs gap-1"
-                  >
-                    <X className="size-3" /> İptal
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-serif text-lg font-medium tracking-tight text-foreground leading-snug">
-                    {section.title}
-                  </h3>
-                  {hasSubSections && (
-                    <span className="text-[10px] font-medium bg-muted text-muted-foreground px-2 py-1 rounded-full shrink-0">
-                      {subSections.length} alt bölüm
-                    </span>
-                  )}
-                </div>
-                {section.description && (
-                  <p className="text-xs text-muted-foreground leading-relaxed mt-1">
-                    {section.description}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
+      <OutlineStatsBar
+        academicField={academicField}
+        sectionCount={sections.length}
+        subSectionCount={totalSubSections}
+        onAddSection={handleAddSection}
+        onRegenerate={handleRegenerate}
+        isRegenerating={isRegenerating}
+      />
 
-        {/* Section Actions */}
-        {!isEditingSection && !isSpecialSection && (
-          <div className="flex items-center gap-1 shrink-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsEditingSection(true)}
-              className="size-7 text-muted-foreground hover:text-foreground"
-              title="Bölümü Düzenle"
-            >
-              <Pencil className="size-3.5" />
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleAddSubSection}
-              className="size-7 text-primary hover:bg-primary/10"
-              title="Alt Bölüm Ekle"
-            >
-              <Plus className="size-4" />
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onDeleteSection}
-              className="size-7 text-destructive hover:bg-destructive/10"
-              title="Bölümü Sil"
-            >
-              <Trash2 className="size-3.5" />
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onToggleExpand}
-              className="size-7 text-muted-foreground hover:text-foreground"
-            >
-              {isExpanded ? (
-                <ChevronUp className="size-4" />
-              ) : (
-                <ChevronRight className="size-4" />
-              )}
-            </Button>
-          </div>
-        )}
+      <div className="flex flex-col gap-4">
+        {sections.map((section, idx) => (
+          <OutlineSectionCard
+            key={`${section.title}-${idx}`}
+            section={section}
+            sectionIndex={idx}
+            isExpanded={expandedIndices.has(idx)}
+            onToggleExpand={() => handleToggleSectionExpand(idx)}
+            onUpdateSection={(updated) => handleUpdateSection(idx, updated)}
+            onDeleteSection={() => handleDeleteSection(idx)}
+            onDragStartSection={handleDragStartSection}
+            onDragOverSection={handleDragOverSection}
+            onDropSection={handleDropSection}
+            onDragEndSection={handleDragEndSection}
+            isDraggingSection={draggedSectionIndex === idx}
+            isDragOverSection={dragOverSectionIndex === idx}
+          />
+        ))}
       </div>
 
-      {/* Sub-sections tree (WITHOUT LEFT BORDER) */}
-      {isExpanded && (
-        <div className="mt-3 space-y-2">
-          {subSections.length === 0 ? (
-            !isSpecialSection ? (
-              <div className="flex items-center justify-between py-2 text-xs text-muted-foreground bg-muted/20 px-3 rounded-md border border-dashed border-border/50">
-                <span>Bu bölüm için henüz alt bölüm eklenmedi.</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleAddSubSection}
-                  className="text-xs h-7 gap-1 text-primary hover:bg-primary/10 shrink-0"
-                >
-                  <Plus className="size-3" /> Alt Bölüm Ekle
-                </Button>
-              </div>
-            ) : null
+      <div className="flex justify-end pt-4 pb-8">
+        <Button onClick={handleConfirm} disabled={confirming} size="lg">
+          {confirming ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="size-4 animate-spin" />
+              Kaydediliyor...
+            </span>
           ) : (
-            subSections.map((sub, subIdx) => {
-              const isSubEditing = editingSubIndex === subIdx;
-              const isSubDragging = draggedSubIdx === subIdx;
-              const isSubDragOver = dragOverSubIdx === subIdx;
-
-              return (
-                <div
-                  key={`${sub.title}-${subIdx}`}
-                  draggable={!isSubEditing}
-                  onDragStart={(e) => {
-                    e.stopPropagation();
-                    setDraggedSubIdx(subIdx);
-                  }}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setDragOverSubIdx(subIdx);
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleSubDrop(subIdx);
-                  }}
-                  onDragEnd={(e) => {
-                    e.stopPropagation();
-                    setDraggedSubIdx(null);
-                    setDragOverSubIdx(null);
-                  }}
-                  className={`group/sub relative rounded-md border bg-muted/40 p-3 transition-colors ${
-                    isSubDragging
-                      ? "opacity-40 border-primary"
-                      : "border-border/40"
-                  } ${
-                    isSubDragOver
-                      ? "border-primary ring-1 ring-primary/20"
-                      : "hover:border-primary/20"
-                  }`}
-                >
-                  {isSubEditing ? (
-                    <div className="space-y-2">
-                      <Input
-                        value={subEditTitle}
-                        onChange={(e) => setSubEditTitle(e.target.value)}
-                        placeholder="Alt bölüm başlığı..."
-                        className="text-xs font-semibold"
-                      />
-                      <Textarea
-                        value={subEditDescription}
-                        onChange={(e) => setSubEditDescription(e.target.value)}
-                        placeholder="Alt bölüm açıklaması..."
-                        rows={2}
-                        className="textarea-academic text-xs"
-                      />
-                      <div className="flex items-center gap-2 pt-1">
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => handleSaveSubEdit(subIdx)}
-                          className="text-xs h-6 px-2 gap-1"
-                        >
-                          <Check className="size-3" /> Kaydet
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setEditingSubIndex(null)}
-                          className="text-xs h-6 px-2 gap-1"
-                        >
-                          <X className="size-3" /> İptal
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-start gap-3 flex-1 min-w-0">
-                        {/* Drag Handle & Sub-section Number */}
-                        <div className="flex items-center gap-2 shrink-0 mt-1">
-                          <span
-                            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1"
-                            title="Sürükleyip Sırasını Değiştirin"
-                          >
-                            <GripVertical className="size-3.5" />
-                          </span>
-                          <span className="font-mono text-xs text-muted-foreground bg-muted px-2 py-1 rounded font-semibold shrink-0">
-                            {sectionNumber}.{subIdx + 1}
-                          </span>
-                        </div>
-
-                        <div className="flex-1 min-w-0 space-y-1">
-                          <h4 className="font-sans text-sm font-medium text-foreground leading-snug">
-                            {sub.title}
-                          </h4>
-                          {sub.description && (
-                            <p className="text-xs text-muted-foreground leading-relaxed">
-                              {sub.description}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1 opacity-80 group-hover/sub:opacity-100 shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleStartSubEdit(subIdx)}
-                          className="size-6 text-muted-foreground hover:text-foreground"
-                          title="Alt Bölümü Düzenle"
-                        >
-                          <Pencil className="size-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteSubSection(subIdx)}
-                          className="size-6 text-destructive hover:bg-destructive/10"
-                          title="Alt Bölümü Sil"
-                        >
-                          <Trash2 className="size-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })
+            <span className="flex items-center gap-2">
+              Onayla ve Literatür Tarama Adımına Geç
+              <ArrowRight className="size-4" />
+            </span>
           )}
-        </div>
-      )}
-    </Card>
+        </Button>
+      </div>
+    </div>
   );
 }
 </file>
@@ -33267,6 +34345,485 @@ export default async function LiteratureReviewPage() {
         <LiteratureReviewContent />
       </div>
     </div>
+  );
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/outline/_components/outline-section-card.tsx">
+"use client";
+
+import { useState, useCallback, useMemo } from "react";
+import {
+  ChevronRight,
+  ChevronUp,
+  Pencil,
+  Trash2,
+  Plus,
+  Check,
+  X,
+  GripVertical,
+} from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+
+export interface OutlineSubSectionData {
+  title: string;
+  description: string;
+  sortOrder: number;
+}
+
+export interface OutlineSectionData {
+  title: string;
+  description: string;
+  sortOrder: number;
+  subSections?: OutlineSubSectionData[];
+}
+
+interface OutlineSectionCardProps {
+  section: OutlineSectionData;
+  sectionIndex: number;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  onUpdateSection: (updated: OutlineSectionCardProps["section"]) => void;
+  onDeleteSection: () => void;
+  // Drag & drop props for main sections
+  onDragStartSection: (index: number) => void;
+  onDragOverSection: (index: number) => void;
+  onDropSection: (targetIndex: number) => void;
+  onDragEndSection: () => void;
+  isDraggingSection?: boolean;
+  isDragOverSection?: boolean;
+}
+
+/**
+ * Renders an interactive main section card with inline editing, drag-and-drop reordering
+ * for sections and subsections, and subsection management without left border lines.
+ *
+ * @param props - Component props.
+ * @returns The section card markup.
+ */
+export function OutlineSectionCard({
+  section,
+  sectionIndex,
+  isExpanded,
+  onToggleExpand,
+  onUpdateSection,
+  onDeleteSection,
+  onDragStartSection,
+  onDragOverSection,
+  onDropSection,
+  onDragEndSection,
+  isDraggingSection = false,
+  isDragOverSection = false,
+}: OutlineSectionCardProps) {
+  const [isEditingSection, setIsEditingSection] = useState(false);
+  const [editTitle, setEditTitle] = useState(section.title);
+  const [editDescription, setEditDescription] = useState(section.description);
+
+  const [editingSubIndex, setEditingSubIndex] = useState<number | null>(null);
+  const [subEditTitle, setSubEditTitle] = useState("");
+  const [subEditDescription, setSubEditDescription] = useState("");
+
+  // Sub-section Drag and Drop state
+  const [draggedSubIdx, setDraggedSubIdx] = useState<number | null>(null);
+  const [dragOverSubIdx, setDragOverSubIdx] = useState<number | null>(null);
+
+  const sectionNumber = sectionIndex + 1;
+  const subSections = useMemo(
+    () => section.subSections ?? [],
+    [section.subSections],
+  );
+  const hasSubSections = subSections.length > 0;
+
+  const isSpecialSection = useMemo(() => {
+    const titleUpper = section.title.toLocaleUpperCase("tr-TR");
+    return (
+      titleUpper.includes("GİRİŞ") ||
+      titleUpper.includes("GIRIS") ||
+      titleUpper.includes("SONUÇ") ||
+      titleUpper.includes("SONUC")
+    );
+  }, [section.title]);
+
+  const handleSaveSectionEdit = useCallback(() => {
+    if (!editTitle.trim()) return;
+    onUpdateSection({
+      ...section,
+      title: editTitle.trim(),
+      description: editDescription.trim(),
+    });
+    setIsEditingSection(false);
+  }, [editTitle, editDescription, section, onUpdateSection]);
+
+  const handleCancelSectionEdit = useCallback(() => {
+    setEditTitle(section.title);
+    setEditDescription(section.description);
+    setIsEditingSection(false);
+  }, [section]);
+
+  const handleAddSubSection = useCallback(() => {
+    if (isSpecialSection) return;
+    const newSub: OutlineSubSectionData = {
+      title: `Yeni Alt Bölüm ${subSections.length + 1}`,
+      description: "Alt bölüm kapsamı ve açıklaması...",
+      sortOrder: subSections.length + 1,
+    };
+    const updatedSubs = [...subSections, newSub];
+    onUpdateSection({
+      ...section,
+      subSections: updatedSubs,
+    });
+    if (!isExpanded) {
+      onToggleExpand();
+    }
+  }, [isSpecialSection, subSections, section, onUpdateSection, isExpanded, onToggleExpand]);
+
+  const handleDeleteSubSection = useCallback(
+    (subIdx: number) => {
+      const updatedSubs = subSections
+        .filter((_, i) => i !== subIdx)
+        .map((sub, i) => ({ ...sub, sortOrder: i + 1 }));
+      onUpdateSection({
+        ...section,
+        subSections: updatedSubs,
+      });
+    },
+    [subSections, section, onUpdateSection],
+  );
+
+  const handleSubDrop = useCallback(
+    (targetIdx: number) => {
+      if (draggedSubIdx === null || draggedSubIdx === targetIdx) {
+        setDraggedSubIdx(null);
+        setDragOverSubIdx(null);
+        return;
+      }
+
+      const newSubs = [...subSections];
+      const [movedItem] = newSubs.splice(draggedSubIdx, 1);
+      newSubs.splice(targetIdx, 0, movedItem);
+
+      const reordered = newSubs.map((s, i) => ({ ...s, sortOrder: i + 1 }));
+      onUpdateSection({
+        ...section,
+        subSections: reordered,
+      });
+
+      setDraggedSubIdx(null);
+      setDragOverSubIdx(null);
+    },
+    [draggedSubIdx, subSections, section, onUpdateSection],
+  );
+
+  const handleStartSubEdit = (subIdx: number) => {
+    setEditingSubIndex(subIdx);
+    setSubEditTitle(subSections[subIdx].title);
+    setSubEditDescription(subSections[subIdx].description);
+  };
+
+  const handleSaveSubEdit = (subIdx: number) => {
+    if (!subEditTitle.trim()) return;
+    const updatedSubs = subSections.map((sub, i) =>
+      i === subIdx
+        ? {
+            ...sub,
+            title: subEditTitle.trim(),
+            description: subEditDescription.trim(),
+          }
+        : sub,
+    );
+    onUpdateSection({
+      ...section,
+      subSections: updatedSubs,
+    });
+    setEditingSubIndex(null);
+  };
+
+  return (
+    <Card
+      draggable={!isEditingSection && editingSubIndex === null}
+      onDragStart={() => onDragStartSection(sectionIndex)}
+      onDragOver={(e) => {
+        e.preventDefault();
+        onDragOverSection(sectionIndex);
+      }}
+      onDrop={() => onDropSection(sectionIndex)}
+      onDragEnd={onDragEndSection}
+      className={`flex flex-col w-full p-4 rounded-md border bg-card transition-all duration-200 ${
+        isDraggingSection ? "opacity-40 border-primary" : "border-border"
+      } ${isDragOverSection ? "border-primary ring-2 ring-primary/10" : "hover:border-primary/20"}`}
+    >
+      {/* Header Row */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          {/* Drag Handle & Section Number */}
+          <div className="flex items-center gap-1 shrink-0 mt-1">
+            <span
+              className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground p-0.5 rounded transition-colors"
+              title="Bölümü Taşı"
+            >
+              <GripVertical className="size-4" />
+            </span>
+            <span className="flex size-7 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-xs font-bold text-primary shrink-0">
+              {sectionNumber}
+            </span>
+          </div>
+
+          {/* Section Info / Inline Edit */}
+          <div className="flex-1 min-w-0">
+            {isEditingSection ? (
+              <div className="space-y-2">
+                <Input
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="font-serif text-base font-semibold"
+                  placeholder="Bölüm başlığı..."
+                  autoFocus
+                />
+                <Textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="text-xs min-h-[60px]"
+                  placeholder="Bölüm açıklaması..."
+                />
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={handleSaveSectionEdit}
+                    className="h-7 text-xs gap-1"
+                  >
+                    <Check className="size-3" /> Kaydet
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleCancelSectionEdit}
+                    className="h-7 text-xs gap-1"
+                  >
+                    <X className="size-3" /> İptal
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-serif text-lg font-medium tracking-tight text-foreground leading-snug">
+                    {section.title}
+                  </h3>
+                  {hasSubSections && (
+                    <span className="text-[10px] font-medium bg-muted text-muted-foreground px-2 py-1 rounded-full shrink-0">
+                      {subSections.length} alt bölüm
+                    </span>
+                  )}
+                </div>
+                {section.description && (
+                  <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                    {section.description}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Section Actions */}
+        {!isEditingSection && !isSpecialSection && (
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsEditingSection(true)}
+              className="size-7 text-muted-foreground hover:text-foreground"
+              title="Bölümü Düzenle"
+            >
+              <Pencil className="size-3.5" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleAddSubSection}
+              className="size-7 text-primary hover:bg-primary/10"
+              title="Alt Bölüm Ekle"
+            >
+              <Plus className="size-4" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onDeleteSection}
+              className="size-7 text-destructive hover:bg-destructive/10"
+              title="Bölümü Sil"
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleExpand}
+              className="size-7 text-muted-foreground hover:text-foreground"
+            >
+              {isExpanded ? (
+                <ChevronUp className="size-4" />
+              ) : (
+                <ChevronRight className="size-4" />
+              )}
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Sub-sections tree (WITHOUT LEFT BORDER) */}
+      {isExpanded && (
+        <div className="mt-3 space-y-2">
+          {subSections.length === 0 ? (
+            !isSpecialSection ? (
+              <div className="flex items-center justify-between py-2 text-xs text-muted-foreground bg-muted/20 px-3 rounded-md border border-dashed border-border/50">
+                <span>Bu bölüm için henüz alt bölüm eklenmedi.</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleAddSubSection}
+                  className="text-xs h-7 gap-1 text-primary hover:bg-primary/10 shrink-0"
+                >
+                  <Plus className="size-3" /> Alt Bölüm Ekle
+                </Button>
+              </div>
+            ) : null
+          ) : (
+            subSections.map((sub, subIdx) => {
+              const isSubEditing = editingSubIndex === subIdx;
+              const isSubDragging = draggedSubIdx === subIdx;
+              const isSubDragOver = dragOverSubIdx === subIdx;
+
+              return (
+                <div
+                  key={`${sub.title}-${subIdx}`}
+                  draggable={!isSubEditing}
+                  onDragStart={(e) => {
+                    e.stopPropagation();
+                    setDraggedSubIdx(subIdx);
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setDragOverSubIdx(subIdx);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSubDrop(subIdx);
+                  }}
+                  onDragEnd={(e) => {
+                    e.stopPropagation();
+                    setDraggedSubIdx(null);
+                    setDragOverSubIdx(null);
+                  }}
+                  className={`group/sub relative rounded-md border bg-muted/40 p-3 transition-colors ${
+                    isSubDragging
+                      ? "opacity-40 border-primary"
+                      : "border-border/40"
+                  } ${
+                    isSubDragOver
+                      ? "border-primary ring-1 ring-primary/20"
+                      : "hover:border-primary/20"
+                  }`}
+                >
+                  {isSubEditing ? (
+                    <div className="space-y-2">
+                      <Input
+                        value={subEditTitle}
+                        onChange={(e) => setSubEditTitle(e.target.value)}
+                        placeholder="Alt bölüm başlığı..."
+                        className="text-xs font-semibold"
+                      />
+                      <Textarea
+                        value={subEditDescription}
+                        onChange={(e) => setSubEditDescription(e.target.value)}
+                        placeholder="Alt bölüm açıklaması..."
+                        rows={2}
+                        className="textarea-academic text-xs"
+                      />
+                      <div className="flex items-center gap-2 pt-1">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleSaveSubEdit(subIdx)}
+                          className="text-xs h-6 px-2 gap-1"
+                        >
+                          <Check className="size-3" /> Kaydet
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingSubIndex(null)}
+                          className="text-xs h-6 px-2 gap-1"
+                        >
+                          <X className="size-3" /> İptal
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        {/* Drag Handle & Sub-section Number */}
+                        <div className="flex items-center gap-2 shrink-0 mt-1">
+                          <span
+                            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1"
+                            title="Sürükleyip Sırasını Değiştirin"
+                          >
+                            <GripVertical className="size-3.5" />
+                          </span>
+                          <span className="font-mono text-xs text-muted-foreground bg-muted px-2 py-1 rounded font-semibold shrink-0">
+                            {sectionNumber}.{subIdx + 1}
+                          </span>
+                        </div>
+
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <h4 className="font-sans text-sm font-medium text-foreground leading-snug">
+                            {sub.title}
+                          </h4>
+                          {sub.description && (
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              {sub.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 opacity-80 group-hover/sub:opacity-100 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleStartSubEdit(subIdx)}
+                          className="size-6 text-muted-foreground hover:text-foreground"
+                          title="Alt Bölümü Düzenle"
+                        >
+                          <Pencil className="size-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteSubSection(subIdx)}
+                          className="size-6 text-destructive hover:bg-destructive/10"
+                          title="Alt Bölümü Sil"
+                        >
+                          <Trash2 className="size-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </Card>
   );
 }
 </file>
@@ -40153,6 +41710,7 @@ type ServiceName =
   | "rag-search"
   | "advisor"
   | "citation-cards"
+  | "literature-matrix"
   | "outline";
 
 export interface LogParams {
