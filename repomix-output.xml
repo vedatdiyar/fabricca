@@ -17098,9 +17098,10 @@ export function buildPerThesisEvaluationPromptPayload(
       "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisi ile YÖK / Tezara veritabanından gelen TEK BİR tezi titizlikle karşılaştırarak 3 aşamalı karar zincirini uygulayıp yapılandırılmış bir değerlendirme çıktısı üretmektir.",
 
     workflowSteps: `## Aşama 1 — Alakalılık Değerlendirmesi (isRelevant)
-- Kullanıcının tezi ile bu tez arasında anlamlı bir akademik ilişki var mı? (Aynı problem, aktör, dönem, kavram, kuram veya yöntem alanına dokunuyor mu?)
-- Eğer tez, kullanıcının tez matrisiyle kayda değer bir örtüşme göstermiyorsa \`isRelevant: false\` döndürün ve diğer alanları boş bırakın.
-- Eğer alakalıysa \`isRelevant: true\` döndürün ve Aşama 2'ye geçin.
+- Kullanıcının araştırmasının AMPİRİK ODAĞI VE ARAŞTIRMA PROBLEMİ (aktörler, dönem, kurumlar, olgu ve olaylar) ile bu tez arasında doğrudan anlamlı bir akademik ilişki var mı?
+- Yalnızca soyut kuramsal veya metodolojik terimlerin ortak olması tezi ALAKALI YAPMAZ (Örn: Sırf Gramsci, nitel analiz veya söylem analizi kullanılıyor diye ampirik konusu farklı bir tez alakalı sayılamaz, \`isRelevant: false\` verilmelidir).
+- Eğer tez, kullanıcının ampirik araştırma problemiyle kayda değer bir örtüşme göstermiyorsa \`isRelevant: false\` döndürün ve diğer alanları boş bırakın.
+- Eğer ampirik araştırma problemi veya ampirik aktörler açısından alakalıysa \`isRelevant: true\` döndürün ve Aşama 2'ye geçin.
 
 ## Aşama 2 — Birebir Örtüşme / Özgünlük Değerlendirmesi (isDirectOverlap)
 - Kullanıcının tezi ile bu tez Araştırma Konusu/Soruları + Kuramsal/Metodolojik Çerçeve + Aktörler açısından BİREBİR AYNI mı?
@@ -17168,9 +17169,10 @@ Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"}
       "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisi ile YÖK / Tezara veritabanından gelen TEZ LİSTESİNDEKİ HER BİR TEZİ SADECE KULLANICININ TEZ MATRİSİ İLE TEK TEK KARŞILAŞTIRARAK 3 aşamalı karar zincirini uygulayıp yapılandırılmış bir değerlendirme dizisi (`evaluations`) üretmektir.",
 
     workflowSteps: `## Aşama 1 — Alakalılık Değerlendirmesi (isRelevant)
-- Kullanıcının tezi ile bu tez arasında anlamlı bir akademik ilişki var mı?
-- Eğer örtüşme yoksa \`isRelevant: false\` döndürün.
-- Eğer alakalıysa \`isRelevant: true\` döndürün ve Aşama 2'ye geçin.
+- Kullanıcının araştırmasının AMPİRİK ODAĞI VE ARAŞTIRMA PROBLEMİ (aktörler, dönem, kurumlar, olgu ve olaylar) ile bu tez arasında doğrudan anlamlı bir akademik ilişki var mı?
+- Yalnızca soyut kuramsal veya metodolojik terimlerin ortak olması tezi ALAKALI YAPMAZ (Örn: Sırf Gramsci, nitel analiz veya söylem analizi kullanılıyor diye ampirik konusu farklı bir tez alakalı sayılamaz, \`isRelevant: false\` verilmelidir).
+- Eğer tez, kullanıcının ampirik araştırma problemiyle kayda değer bir örtüşme göstermiyorsa \`isRelevant: false\` döndürün.
+- Eğer ampirik araştırma problemi veya ampirik aktörler açısından alakalıysa \`isRelevant: true\` döndürün ve Aşama 2'ye geçin.
 
 ## Aşama 2 — Birebir Örtüşme / Özgünlük Değerlendirmesi (isDirectOverlap)
 - Kullanıcının tezi ile bu tez BİREBİR AYNI mı?
@@ -17200,133 +17202,6 @@ ${formattedTheses}
 
 Lütfen listedeki her bir tezi SADECE kullanıcının Tez Matrisi ile 3 aşamalı karar zincirine göre tek tek değerlendir ve özet odaklı JSON \`evaluations\` dizisi olarak çıktı üret.`,
   });
-}
-</file>
-
-<file path="src/features/positioning/prompts/queries.prompt.ts">
-import {
-  buildPromptPayload,
-  type PromptPayload,
-} from "@/lib/ai/prompt-builder";
-import type { PositioningMatrixInput } from "@/features/positioning/validation";
-
-/**
- * Builds the standardized PromptPayload for positioning query generation.
- *
- * @param input - The validated positioning matrix input.
- * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
- */
-export function buildPositioningQueriesPromptPayload(
-  input: PositioningMatrixInput,
-): PromptPayload {
-  return buildPromptPayload({
-    roleAndExpertise:
-      "Akademik tez veritabanlarında (Meilisearch) arama yapmak için yüksek hassasiyetli, doğal dil arama sorguları üreten uzman bir Bilgi Erişim (Information Retrieval) Uzmanısınız.",
-
-    primaryTask:
-      "Sana sunulan Tez Konumlandırma Matrisinin Araştırma Problemi bileşeni (aktörleri, kurumları ve ampirik bağlamı kapsayan entegre alan) için Türkçe ve İngilizce olmak üzere her dil için 4 farklı alternatif içeren toplam 8 kısa arama sorgusu üretmektir.",
-
-    rulesAndConstraints: `1. **Sorgu Katmanları ve Çeşitlilik (Her dil için 4 farklı seviye):**
-   - **_alt1 (Spesifik Mekanizma):** Araştırma probleminin özüne odaklanan 2-4 kelimelik hassas akademik sorgu.
-   - **_alt2 (Aktör / Kurum / Bağlam):** Araştırmadaki ana aktörleri, kurumları veya tarihsel/coğrafi bağlamı hedefleyen 2-4 kelimelik sorgu.
-   - **_alt3 (Geniş Tematik Kapsam - Yüksek Yakalama / High-Recall):** Akademik tez veritabanlarında geniş arama başarımı sağlayan 1-3 kelimelik kapsayıcı ana konu başlığı (aşırı daraltılmamış, tez başlıklarında kesin geçecek anahtar kavramlar).
-   - **_alt4 (Kavramsal Çatı / Eşanlamlı):** Disiplinde yaygın kullanılan geniş kuramsal veya kavramsal akademik eşanlamlılar (2-4 kelime).
-2. **Sorgu Uyumı:** Sorgular Meilisearch uyumlu, yalnızca boşlukla ayrılmış düz akademik Türkçe ve İngilizce kelimelerden oluşmalı; özel karakter veya operatör içermemelidir.
-3. **Genel Geçerlilik:** Her disiplin (sosyoloji, hukuk, tıp, mühendislik, siyaset bilimi vb.) için veritabanındaki hem dar hem geniş başlıkları kapsayacak esneklikte üretilmelidir.`,
-
-    outputFormat:
-      "Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir. Her dil için `_alt1`, `_alt2`, `_alt3`, `_alt4` olmak üzere dört ayrı sorgu üretilir.",
-
-    examples: `## Girdi
-- **subjectProblem:** Kente göç eden ailelerin üçüncü kuşak bireylerinin sosyal entegrasyon sürecinde kültürel uyum ve kimlik aidiyet pratikleri
-
-### Beklenen Çıktı
-\`\`\`json
-{
-  "subjectTr_alt1": "göç kimlik aidiyet pratikleri",
-  "subjectTr_alt2": "göçmen aile üçüncü kuşak",
-  "subjectTr_alt3": "göç entegrasyon",
-  "subjectTr_alt4": "sosyal uyum kültürel aidiyet",
-  "subjectEn_alt1": "migration identity belonging practices",
-  "subjectEn_alt2": "immigrant family third generation",
-  "subjectEn_alt3": "migration integration",
-  "subjectEn_alt4": "social adaptation cultural identity"
-}
-\`\`\``,
-
-    inputContext: `Aşağıdaki matris alanı için kademeli (spesifikten geniş tematik kapsama) Türkçe ve İngilizce Meilisearch sorguları üret (her dil için 4 alternatif, toplam 8 sorgu):
-
-Araştırma Problemi ve Odağı — aktörler, kurumlar ve ampirik bağlam dahil (subjectTr_alt1/2/3/4 / subjectEn_alt1/2/3/4): ${input.subjectProblem}`,
-  });
-}
-</file>
-
-<file path="src/features/positioning/decision-engine.ts">
-import { sql } from "drizzle-orm";
-import { db } from "@/db";
-import { positioning } from "@/db/schema";
-import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
-import type {
-  PositioningMatrixInput,
-  RecommendedThesisItem,
-} from "./validation";
-import type { JuryAnalysisResult } from "./analysis";
-
-/**
- * Persists the positioning report within a transaction and invalidates the step cache.
- *
- * @param userId - The id of the user the report belongs to.
- * @param input - The validated positioning matrix input.
- * @param analysisResult - The jury analysis result to persist.
- * @returns The saved positioning report record.
- */
-export async function savePositioningReportTransaction(
-  userId: number,
-  matrixId: number,
-  analysisResult: JuryAnalysisResult,
-) {
-  const formattedRecommendedTheses: RecommendedThesisItem[] =
-    analysisResult.recommendedTheses.map((t) => ({
-      id: String(t.externalThesisId),
-      externalThesisId: String(t.externalThesisId),
-      title: t.title,
-      author: t.author,
-      year: t.year,
-      university: t.university,
-      contributionArea: t.contributionArea,
-      relevanceReason: t.relevanceReason,
-      doi: t.doi,
-      thesisType: t.thesisType,
-    }));
-
-  const savedRecord = await db.transaction(async (tx) => {
-    const [row] = await tx
-      .insert(positioning)
-      .values({
-        userId,
-        matrixId,
-        globalStatus: analysisResult.globalStatus,
-        gapAnalysisSummary: analysisResult.gapAnalysisSummary,
-        recommendedTheses: formattedRecommendedTheses,
-        updatedAt: sql`now()`,
-      })
-      .onConflictDoUpdate({
-        target: positioning.matrixId,
-        set: {
-          globalStatus: analysisResult.globalStatus,
-          gapAnalysisSummary: analysisResult.gapAnalysisSummary,
-          recommendedTheses: formattedRecommendedTheses,
-          updatedAt: sql`now()`,
-        },
-      })
-      .returning();
-
-    return row;
-  });
-
-  invalidateOnboardingStepCache("positioning");
-
-  return savedRecord;
 }
 </file>
 
@@ -22532,123 +22407,6 @@ export function useMatrixSubmit() {
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/matrix/actions.ts">
-"use server";
-
-import { eq, inArray, sql } from "drizzle-orm";
-import { z } from "zod";
-import { db } from "@/db";
-import { matrices, positioning, boxes, sources, outlines } from "@/db/schema";
-import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
-import { createFlowId, Logger } from "@/lib/logger";
-import {
-  invalidateOnboardingCache,
-  invalidateOnboardingStepCache,
-} from "@/lib/cache-tags";
-
-const MIN_LENGTH = 3;
-const MAX_LENGTH = 4000;
-
-const thesisMatrixSchema = z.object({
-  subjectProblem: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
-  theoreticalFramework: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
-  primaryMaterial: z.string().trim().max(MAX_LENGTH).optional().default(""),
-  methodology: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
-});
-
-/**
- * Persists the thesis matrix to the database and clears any downstream analysis
- * data (positioning report, thesis outline, and thesis boxes) that may now be stale.
- *
- * @param data - The thesis matrix data from the onboarding form
- * @returns Success confirmation or an error message
- */
-export async function saveThesisMatrixAction(
-  data: unknown,
-): Promise<{ success: true } | { error: string }> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  log.info("matrix_save_start");
-
-  const parsed = thesisMatrixSchema.safeParse(data);
-  if (!parsed.success) {
-    const firstIssue = parsed.error.issues[0];
-    const msg = firstIssue
-      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
-      : "Doğrulama başarısız.";
-    return { error: msg };
-  }
-
-  const validated = parsed.data;
-
-  try {
-    const session = await getSession();
-    if (!session) {
-      return { error: SESSION_ERROR_MSG };
-    }
-
-    await db.transaction(async (tx) => {
-      const [matrixRow] = await tx
-        .insert(matrices)
-        .values({
-          userId: session.userId,
-          subjectProblem: validated.subjectProblem,
-          theoreticalFramework: validated.theoreticalFramework,
-          primaryMaterial: validated.primaryMaterial,
-          methodology: validated.methodology,
-          updatedAt: sql`now()`,
-        })
-        .onConflictDoUpdate({
-          target: matrices.userId,
-          set: {
-            subjectProblem: validated.subjectProblem,
-            theoreticalFramework: validated.theoreticalFramework,
-            primaryMaterial: validated.primaryMaterial,
-            methodology: validated.methodology,
-            updatedAt: sql`now()`,
-          },
-        })
-        .returning({ id: matrices.id });
-
-      if (matrixRow) {
-        await tx
-          .delete(positioning)
-          .where(eq(positioning.matrixId, matrixRow.id));
-
-        await tx
-          .delete(sources)
-          .where(
-            inArray(
-              sources.boxId,
-              tx
-                .select({ id: boxes.id })
-                .from(boxes)
-                .where(eq(boxes.matrixId, matrixRow.id)),
-            ),
-          );
-
-        await tx.delete(outlines).where(eq(outlines.matrixId, matrixRow.id));
-
-        await tx.delete(boxes).where(eq(boxes.matrixId, matrixRow.id));
-      }
-    });
-
-    invalidateOnboardingCache();
-    invalidateOnboardingStepCache("matrix");
-
-    log.info("matrix_save_success");
-
-    return { success: true };
-  } catch (error) {
-    log.error("matrix_save_failed", {
-      error,
-    });
-    return { error: "Tez matrisi veritabanına kaydedilemedi." };
-  }
-}
-</file>
-
 <file path="src/app/(onboarding)/onboarding/outline/_components/outline-skeleton.tsx">
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
@@ -24722,227 +24480,130 @@ export async function executeBackwardExpansion(
 }
 </file>
 
-<file path="src/features/positioning/analysis.ts">
-import { ThinkingLevel } from "@google/genai";
-import { z } from "zod";
-import { FLASH_36, GEMINI_SEED } from "@/lib/constants";
-import { getGeminiKeyPool } from "@/services/ai/gemini-key-pool";
+<file path="src/features/positioning/prompts/queries.prompt.ts">
 import {
-  generateGeminiStructuredContent,
-  type JsonSchema,
-} from "@/services/ai";
-import type { Logger } from "@/lib/logger";
-import { buildPositioningJuryPromptPayload } from "./prompts/jury-analysis.prompt";
-import type { EvaluatedThesis } from "./per-thesis-evaluation";
-import {
-  gapAnalysisStructuredSchema,
-  type PositioningMatrixInput,
-} from "./validation";
-
-/** Zod schema for an individual recommended guiding thesis. */
-export const juryRecommendedThesisSchema = z.object({
-  externalThesisId: z
-    .union([z.string(), z.number()])
-    .transform((val) => String(val))
-    .describe("Süzülen tez listesindeki tez ID'si"),
-  title: z.string().describe("Tezin tam akademik başlığı"),
-  author: z.string().describe("Tezin yazarı"),
-  year: z.number().describe("Tezin hazırlanma yılı"),
-  university: z.string().describe("Tezin sunulduğu üniversite"),
-  contributionArea: z
-    .string()
-    .describe(
-      "Tezin kullanıcının çalışmasına doğrudan katkı sunduğu alan (Örn: Metodolojik Karşılaştırma / Kuramsal Çerçeve Metodolojisi)",
-    ),
-  relevanceReason: z
-    .string()
-    .describe(
-      "Kullanıcının bu tezi kendi tezinde nasıl birincil/ikincil kaynak olarak kullanacağına dair rehber not",
-    ),
-  doi: z.string().optional().describe("Tezin DOI adresi (varsa)"),
-  thesisType: z
-    .string()
-    .optional()
-    .describe("Tezin türü (Örn: Yüksek Lisans veya Doktora)"),
-});
-
-/** Zod schema for the LLM jury analysis output. */
-export const juryAnalysisResultSchema = z.object({
-  globalStatus: z.enum([
-    "DIRECT_OVERLAP",
-    "NOVEL_GAP_IDENTIFIED",
-    "NO_RELATED_LITERATURE",
-  ]),
-  gapAnalysisSummary: gapAnalysisStructuredSchema,
-  recommendedTheses: z
-    .array(juryRecommendedThesisSchema)
-    .max(6)
-    .describe(
-      "Kullanıcının tez matrisiyle doğrudan bağı olan 0-6 adet rehber tez. Yapay sayı zorlaması yapılmaz.",
-    ),
-});
-
-/** Inferred type for the LLM jury analysis result. */
-export type JuryAnalysisResult = z.infer<typeof juryAnalysisResultSchema>;
-
-/** JSON Schema for Gemini structured outputs. */
-export const juryAnalysisResultJsonSchema: JsonSchema = {
-  type: "object",
-  properties: {
-    globalStatus: {
-      type: "string",
-      enum: ["DIRECT_OVERLAP", "NOVEL_GAP_IDENTIFIED", "NO_RELATED_LITERATURE"],
-      description:
-        "Yalnızca Konu + Teori + Analiz Birimi BİREBİR aynı ise DIRECT_OVERLAP verilir. Özgün katkı varsa NOVEL_GAP_IDENTIFIED verilir.",
-    },
-    gapAnalysisSummary: {
-      type: "object",
-      properties: {
-        literatureMapping: {
-          type: "string",
-          description:
-            "Mevcut Literatürün Haritalandırılması: Sunulan tezlerin araştırmanın hangi boyutlarını ele aldığının tematik haritası ve akademik özeti. Tezleri tematik gruplara ayırarak 'Literatürdeki tezler X grupta kümelenmektedir. İlk grupta..., ikinci grupta...' şeklinde tematik özetle. Her tezden alıntı yaparken mutlaka APA formatında atıf ver: (Yazar, Yıl).",
-        },
-        academicGap: {
-          type: "string",
-          description:
-            "Literatürdeki Boşluk: İncelediğin tezlerin neleri göz ardı ettiği veya yetersiz kaldığı alanların analizi",
-        },
-        originalContribution: {
-          type: "string",
-          description:
-            "Çalışmanın Özgün Katkısı: Kullanıcının tez matrisinin bu boşluğu nasıl doldurduğu ve literatüre getirdiği yenilik",
-        },
-      },
-      required: ["literatureMapping", "academicGap", "originalContribution"],
-      additionalProperties: false,
-      description: "3 sabit akademik sentez bölümü",
-    },
-    recommendedTheses: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          externalThesisId: {
-            type: "string",
-            description: "Süzülen tez listesindeki tez ID'si",
-          },
-          title: { type: "string", description: "Tezin başlığı" },
-          author: { type: "string", description: "Tezin yazarı" },
-          year: { type: "number", description: "Tezin yılı" },
-          university: { type: "string", description: "Tezin üniversitesi" },
-          contributionArea: {
-            type: "string",
-            description:
-              "Tezin kullanıcının matrisinde AÇIKÇA TANIMLANAN odağıyla doğrudan örtüşen özel alanı",
-          },
-          relevanceReason: {
-            type: "string",
-            description:
-              "Tezin çalışmada tez matrisindeki sınırlar çerçevesinde dürüstçe nasıl kaynak olarak kullanılacağına dair rehber açıklama. Asla matriste yer almayan varsayımsal veri kaynakları uydurulmaz.",
-          },
-        },
-        required: [
-          "externalThesisId",
-          "title",
-          "author",
-          "year",
-          "university",
-          "contributionArea",
-          "relevanceReason",
-        ],
-        additionalProperties: false,
-      },
-      description:
-        "Süzülen tezler arasından seçilen ve tez matrisiyle doğrudan örtüşen 0-6 adet dürüst rehber tez",
-    },
-  },
-  required: ["globalStatus", "gapAnalysisSummary", "recommendedTheses"],
-  additionalProperties: false,
-};
+  buildPromptPayload,
+  type PromptPayload,
+} from "@/lib/ai/prompt-builder";
+import type { PositioningMatrixInput } from "@/features/positioning/validation";
 
 /**
- * Runs the final synthesis jury LLM over the relevant evaluated theses in a single Gemini call.
+ * Builds the standardized PromptPayload for positioning query generation.
  *
  * @param input - The validated positioning matrix input.
- * @param evaluatedTheses - The relevant evaluated theses to synthesize (irrelevant ones already dropped).
- * @param logger - Optional structured logger for pipeline events.
- * @returns The structured jury analysis result.
+ * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
  */
-export async function analyzePositioningJury(
+export function buildPositioningQueriesPromptPayload(
   input: PositioningMatrixInput,
-  evaluatedTheses: EvaluatedThesis[],
-  logger?: Logger,
-): Promise<JuryAnalysisResult> {
-  const overlapping = evaluatedTheses.some(
-    (ev) => ev.evaluation.isDirectOverlap,
-  );
+): PromptPayload {
+  return buildPromptPayload({
+    roleAndExpertise:
+      "Akademik tez veritabanlarında (Meilisearch) arama yapmak için yüksek hassasiyetli, doğal dil arama sorguları üreten uzman bir Bilgi Erişim (Information Retrieval) Uzmanısınız.",
 
-  if (evaluatedTheses.length === 0) {
-    logger?.info("positioning_jury_no_theses", {
-      service: "positioning",
-      filePath: "src/features/positioning/analysis.ts",
-      data: { inputSubject: input.subjectProblem },
-    });
+    primaryTask:
+      "Sana sunulan Tez Konumlandırma Matrisinin Araştırma Problemi bileşeni (aktörleri, kurumları ve ampirik bağlamı kapsayan entegre alan) için Türkçe ve İngilizce olmak üzere her dil için 4 farklı alternatif içeren toplam 8 kısa arama sorgusu üretmektir.",
 
-    return {
-      globalStatus: "NO_RELATED_LITERATURE",
-      gapAnalysisSummary: {
-        literatureMapping:
-          "Veritabanında girilen tez matrisiyle doğrudan ilişkilendirilebilecek herhangi bir akademik teze rastlanmamıştır.",
-        academicGap:
-          "Doğrudan eşleşen bir çalışma bulunmadığı için mevcut literatürde tespit edilmiş bir çakışma veya doymuşluk alanı bulunmamaktadır.",
-        originalContribution:
-          "Çalışmanız literatürde henüz işlenmemiş son derece bakir ve yüksek özgünlüğe sahip bir alanda konumlanmaktadır.",
-      },
-      recommendedTheses: [],
-    };
-  }
+    rulesAndConstraints: `1. **Sorgu Katmanları ve Çeşitlilik (Her dil için 4 farklı seviye):**
+   - **_alt1 (Spesifik Mekanizma):** Araştırma probleminin özüne odaklanan 2-4 kelimelik hassas akademik sorgu.
+   - **_alt2 (Aktör / Kurum / Bağlam):** Araştırmadaki ana aktörleri, kurumları veya tarihsel/coğrafi bağlamı hedefleyen 2-4 kelimelik sorgu.
+   - **_alt3 (Geniş Tematik Kapsam - Yüksek Yakalama / High-Recall):** Akademik tez veritabanlarında geniş arama başarımı sağlayan 1-3 kelimelik kapsayıcı ana konu başlığı (aşırı daraltılmamış, tez başlıklarında kesin geçecek anahtar kavramlar).
+   - **_alt4 (Kavramsal Çatı / Eşanlamlı):** Disiplinde yaygın kullanılan geniş kuramsal veya kavramsal akademik eşanlamlılar (2-4 kelime).
+2. **Sorgu Uyumı:** Sorgular Meilisearch uyumlu, yalnızca boşlukla ayrılmış düz akademik Türkçe ve İngilizce kelimelerden oluşmalı; özel karakter veya operatör içermemelidir.
+3. **Genel Geçerlilik:** Her disiplin (sosyoloji, hukuk, tıp, mühendislik, siyaset bilimi vb.) için veritabanındaki hem dar hem geniş başlıkları kapsayacak esneklikte üretilmelidir.`,
 
-  const thesisListText = evaluatedTheses
-    .map((ev, idx) => {
-      const t = ev.thesis;
-      const e = ev.evaluation;
-      return `[Tez #${idx + 1}] ID: ${t.id}
-Başlık: ${t.title}
-Yazar: ${t.author || "Bilinmiyor"} (${t.year || "N/A"})
-Üniversite/Bölüm: ${t.university || "N/A"} - ${t.department || "N/A"}
-Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"}
-Birebir Örtüşme: ${e.isDirectOverlap ? "EVET" : "HAYIR"}
-Katkı Alanları: ${e.contributionAreas.join(", ") || "Yok"}
-Kullanım Rehberi: ${e.relevanceReason || "Yok"}
-Literatür Konumu: ${e.literaturePosition || "Yok"}
-Özet: ${t.abstract}`;
-    })
-    .join("\n\n---\n\n");
+    outputFormat:
+      "Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir. Her dil için `_alt1`, `_alt2`, `_alt3`, `_alt4` olmak üzere dört ayrı sorgu üretilir.",
 
-  const payload = buildPositioningJuryPromptPayload({
-    input,
-    thesisListText,
-    evaluatedCount: evaluatedTheses.length,
+    examples: `## Girdi
+- **subjectProblem:** Kente göç eden ailelerin üçüncü kuşak bireylerinin sosyal entegrasyon sürecinde kültürel uyum ve kimlik aidiyet pratikleri
+
+### Beklenen Çıktı
+\`\`\`json
+{
+  "subjectTr_alt1": "göç kimlik aidiyet pratikleri",
+  "subjectTr_alt2": "göçmen aile üçüncü kuşak",
+  "subjectTr_alt3": "göç entegrasyon",
+  "subjectTr_alt4": "sosyal uyum kültürel aidiyet",
+  "subjectEn_alt1": "migration identity belonging practices",
+  "subjectEn_alt2": "immigrant family third generation",
+  "subjectEn_alt3": "migration integration",
+  "subjectEn_alt4": "social adaptation cultural identity"
+}
+\`\`\``,
+
+    inputContext: `Aşağıdaki matris alanı için kademeli (spesifikten geniş tematik kapsama) Türkçe ve İngilizce Meilisearch sorguları üret (her dil için 4 alternatif, toplam 8 sorgu):
+
+Araştırma Problemi ve Odağı — aktörler, kurumlar ve ampirik bağlam dahil (subjectTr_alt1/2/3/4 / subjectEn_alt1/2/3/4): ${input.subjectProblem}`,
+  });
+}
+</file>
+
+<file path="src/features/positioning/decision-engine.ts">
+import { sql } from "drizzle-orm";
+import { db } from "@/db";
+import { positioning } from "@/db/schema";
+import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
+import type {
+  PositioningMatrixInput,
+  RecommendedThesisItem,
+} from "./validation";
+import type { JuryAnalysisResult } from "./analysis";
+
+/**
+ * Persists the positioning report within a transaction and invalidates the step cache.
+ *
+ * @param userId - The id of the user the report belongs to.
+ * @param input - The validated positioning matrix input.
+ * @param analysisResult - The jury analysis result to persist.
+ * @returns The saved positioning report record.
+ */
+export async function savePositioningReportTransaction(
+  userId: number,
+  matrixId: number,
+  analysisResult: JuryAnalysisResult,
+) {
+  const formattedRecommendedTheses: RecommendedThesisItem[] =
+    analysisResult.recommendedTheses.map((t) => ({
+      id: String(t.externalThesisId),
+      externalThesisId: String(t.externalThesisId),
+      title: t.title,
+      author: t.author,
+      year: t.year,
+      university: t.university,
+      contributionArea: t.contributionArea,
+      relevanceReason: t.relevanceReason,
+      doi: t.doi,
+      thesisType: t.thesisType,
+    }));
+
+  const savedRecord = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .insert(positioning)
+      .values({
+        userId,
+        matrixId,
+        globalStatus: analysisResult.globalStatus,
+        gapAnalysisSummary: analysisResult.gapAnalysisSummary,
+        recommendedTheses: formattedRecommendedTheses,
+        updatedAt: sql`now()`,
+      })
+      .onConflictDoUpdate({
+        target: positioning.matrixId,
+        set: {
+          globalStatus: analysisResult.globalStatus,
+          gapAnalysisSummary: analysisResult.gapAnalysisSummary,
+          recommendedTheses: formattedRecommendedTheses,
+          updatedAt: sql`now()`,
+        },
+      })
+      .returning();
+
+    return row;
   });
 
-  const result = await generateGeminiStructuredContent<JuryAnalysisResult>(
-    FLASH_36,
-    payload.systemInstruction,
-    payload.userPrompt,
-    juryAnalysisResultJsonSchema,
-    logger,
-    {
-      zodSchema: juryAnalysisResultSchema,
-      payloadStage: "positioning_jury_analysis",
-      seed: GEMINI_SEED,
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      thesisMatrix: { input, filteredThesesCount: evaluatedTheses.length },
-      apiKey: getGeminiKeyPool().keys[2] ?? getGeminiKeyPool().keys[0],
-    },
-  );
+  invalidateOnboardingStepCache("positioning");
 
-  if (overlapping) {
-    result.globalStatus = "DIRECT_OVERLAP";
-  }
-
-  return result;
+  return savedRecord;
 }
 </file>
 
@@ -29302,6 +28963,123 @@ export function OutlineEditorView({
 }
 </file>
 
+<file path="src/app/(onboarding)/onboarding/matrix/actions.ts">
+"use server";
+
+import { eq, inArray, sql } from "drizzle-orm";
+import { z } from "zod";
+import { db } from "@/db";
+import { matrices, positioning, boxes, sources, outlines } from "@/db/schema";
+import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
+import { createFlowId, Logger } from "@/lib/logger";
+import {
+  invalidateOnboardingCache,
+  invalidateOnboardingStepCache,
+} from "@/lib/cache-tags";
+
+const MIN_LENGTH = 3;
+const MAX_LENGTH = 4000;
+
+const thesisMatrixSchema = z.object({
+  subjectProblem: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+  theoreticalFramework: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+  primaryMaterial: z.string().trim().max(MAX_LENGTH).optional().default(""),
+  methodology: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+});
+
+/**
+ * Persists the thesis matrix to the database and clears any downstream analysis
+ * data (positioning report, thesis outline, and thesis boxes) that may now be stale.
+ *
+ * @param data - The thesis matrix data from the onboarding form
+ * @returns Success confirmation or an error message
+ */
+export async function saveThesisMatrixAction(
+  data: unknown,
+): Promise<{ success: true } | { error: string }> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  log.info("matrix_save_start");
+
+  const parsed = thesisMatrixSchema.safeParse(data);
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0];
+    const msg = firstIssue
+      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
+      : "Doğrulama başarısız.";
+    return { error: msg };
+  }
+
+  const validated = parsed.data;
+
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { error: SESSION_ERROR_MSG };
+    }
+
+    await db.transaction(async (tx) => {
+      const [matrixRow] = await tx
+        .insert(matrices)
+        .values({
+          userId: session.userId,
+          subjectProblem: validated.subjectProblem,
+          theoreticalFramework: validated.theoreticalFramework,
+          primaryMaterial: validated.primaryMaterial,
+          methodology: validated.methodology,
+          updatedAt: sql`now()`,
+        })
+        .onConflictDoUpdate({
+          target: matrices.userId,
+          set: {
+            subjectProblem: validated.subjectProblem,
+            theoreticalFramework: validated.theoreticalFramework,
+            primaryMaterial: validated.primaryMaterial,
+            methodology: validated.methodology,
+            updatedAt: sql`now()`,
+          },
+        })
+        .returning({ id: matrices.id });
+
+      if (matrixRow) {
+        await tx
+          .delete(positioning)
+          .where(eq(positioning.matrixId, matrixRow.id));
+
+        await tx
+          .delete(sources)
+          .where(
+            inArray(
+              sources.boxId,
+              tx
+                .select({ id: boxes.id })
+                .from(boxes)
+                .where(eq(boxes.matrixId, matrixRow.id)),
+            ),
+          );
+
+        await tx.delete(outlines).where(eq(outlines.matrixId, matrixRow.id));
+
+        await tx.delete(boxes).where(eq(boxes.matrixId, matrixRow.id));
+      }
+    });
+
+    invalidateOnboardingCache();
+    invalidateOnboardingStepCache("matrix");
+
+    log.info("matrix_save_success");
+
+    return { success: true };
+  } catch (error) {
+    log.error("matrix_save_failed", {
+      error,
+    });
+    return { error: "Tez matrisi veritabanına kaydedilemedi." };
+  }
+}
+</file>
+
 <file path="src/app/(onboarding)/onboarding/positioning/page.tsx">
 export const instant = false;
 
@@ -30373,227 +30151,227 @@ export const outlineGenerationJsonSchema: JsonSchema = {
 };
 </file>
 
-<file path="src/features/positioning/sifting.ts">
-import { searchTezara } from "@/features/tezara";
-import type { TezaraThesisDetails } from "@/lib/types";
-import { rerankWithCohere, COHERE_RERANK_MODEL } from "@/services/ai/cohere";
+<file path="src/features/positioning/analysis.ts">
+import { ThinkingLevel } from "@google/genai";
+import { z } from "zod";
+import { FLASH_36, GEMINI_SEED } from "@/lib/constants";
+import { getGeminiKeyPool } from "@/services/ai/gemini-key-pool";
+import {
+  generateGeminiStructuredContent,
+  type JsonSchema,
+} from "@/services/ai";
 import type { Logger } from "@/lib/logger";
-import type { PositioningMatrixInput } from "./validation";
-import { sanitizeMeiliQuery, type GeneratedQueries } from "./queries";
+import { buildPositioningJuryPromptPayload } from "./prompts/jury-analysis.prompt";
+import type { EvaluatedThesis } from "./per-thesis-evaluation";
+import {
+  gapAnalysisStructuredSchema,
+  type PositioningMatrixInput,
+} from "./validation";
 
-/** Candidate thesis extended with Cohere semantic relevance score. */
-export interface SiftedThesis extends TezaraThesisDetails {
-  relevanceScore?: number;
-}
+/** Zod schema for an individual recommended guiding thesis. */
+export const juryRecommendedThesisSchema = z.object({
+  externalThesisId: z
+    .union([z.string(), z.number()])
+    .transform((val) => String(val))
+    .describe("Süzülen tez listesindeki tez ID'si"),
+  title: z.string().describe("Tezin tam akademik başlığı"),
+  author: z.string().describe("Tezin yazarı"),
+  year: z.number().describe("Tezin hazırlanma yılı"),
+  university: z.string().describe("Tezin sunulduğu üniversite"),
+  contributionArea: z
+    .string()
+    .describe(
+      "Tezin kullanıcının çalışmasına doğrudan katkı sunduğu alan (Örn: Metodolojik Karşılaştırma / Kuramsal Çerçeve Metodolojisi)",
+    ),
+  relevanceReason: z
+    .string()
+    .describe(
+      "Kullanıcının bu tezi kendi tezinde nasıl birincil/ikincil kaynak olarak kullanacağına dair rehber not",
+    ),
+  doi: z.string().optional().describe("Tezin DOI adresi (varsa)"),
+  thesisType: z
+    .string()
+    .optional()
+    .describe("Tezin türü (Örn: Yüksek Lisans veya Doktora)"),
+});
 
-const ALLOWED_LANGUAGES = new Set([
-  "tr",
-  "tur",
-  "turkish",
-  "türkçe",
-  "en",
-  "eng",
-  "english",
-  "ingilizce",
-]);
+/** Zod schema for the LLM jury analysis output. */
+export const juryAnalysisResultSchema = z.object({
+  globalStatus: z.enum([
+    "DIRECT_OVERLAP",
+    "NOVEL_GAP_IDENTIFIED",
+    "NO_RELATED_LITERATURE",
+  ]),
+  gapAnalysisSummary: gapAnalysisStructuredSchema,
+  recommendedTheses: z
+    .array(juryRecommendedThesisSchema)
+    .max(6)
+    .describe(
+      "Kullanıcının tez matrisiyle doğrudan bağı olan 0-6 adet rehber tez. Yapay sayı zorlaması yapılmaz.",
+    ),
+});
 
-/** Meilisearch filter to pre-filter results to Turkish or English only. */
-const LANG_FILTER = "language=Türkçe OR language=English";
+/** Inferred type for the LLM jury analysis result. */
+export type JuryAnalysisResult = z.infer<typeof juryAnalysisResultSchema>;
 
-/** Fields to search within for relevance (title + abstract). */
-const SEARCH_FIELDS = [
-  "title_original",
-  "title_translated",
-  "abstract_original",
-  "abstract_translated",
-];
-
-/** Minimum Meilisearch ranking score threshold to maximize candidate search recall. */
-const RANKING_SCORE_THRESHOLD = 0.1;
+/** JSON Schema for Gemini structured outputs. */
+export const juryAnalysisResultJsonSchema: JsonSchema = {
+  type: "object",
+  properties: {
+    globalStatus: {
+      type: "string",
+      enum: ["DIRECT_OVERLAP", "NOVEL_GAP_IDENTIFIED", "NO_RELATED_LITERATURE"],
+      description:
+        "Yalnızca Konu + Teori + Analiz Birimi BİREBİR aynı ise DIRECT_OVERLAP verilir. Özgün katkı varsa NOVEL_GAP_IDENTIFIED verilir.",
+    },
+    gapAnalysisSummary: {
+      type: "object",
+      properties: {
+        literatureMapping: {
+          type: "string",
+          description:
+            "Mevcut Literatürün Haritalandırılması: Sunulan tezlerin araştırmanın hangi boyutlarını ele aldığının tematik haritası ve akademik özeti. Tezleri tematik gruplara ayırarak 'Literatürdeki tezler X grupta kümelenmektedir. İlk grupta..., ikinci grupta...' şeklinde tematik özetle. Her tezden alıntı yaparken mutlaka APA formatında atıf ver: (Yazar, Yıl).",
+        },
+        academicGap: {
+          type: "string",
+          description:
+            "Literatürdeki Boşluk: İncelediğin tezlerin neleri göz ardı ettiği veya yetersiz kaldığı alanların analizi",
+        },
+        originalContribution: {
+          type: "string",
+          description:
+            "Çalışmanın Özgün Katkısı: Kullanıcının tez matrisinin bu boşluğu nasıl doldurduğu ve literatüre getirdiği yenilik",
+        },
+      },
+      required: ["literatureMapping", "academicGap", "originalContribution"],
+      additionalProperties: false,
+      description: "3 sabit akademik sentez bölümü",
+    },
+    recommendedTheses: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          externalThesisId: {
+            type: "string",
+            description: "Süzülen tez listesindeki tez ID'si",
+          },
+          title: { type: "string", description: "Tezin başlığı" },
+          author: { type: "string", description: "Tezin yazarı" },
+          year: { type: "number", description: "Tezin yılı" },
+          university: { type: "string", description: "Tezin üniversitesi" },
+          contributionArea: {
+            type: "string",
+            description:
+              "Tezin kullanıcının matrisinde AÇIKÇA TANIMLANAN odağıyla doğrudan örtüşen özel alanı",
+          },
+          relevanceReason: {
+            type: "string",
+            description:
+              "Tezin çalışmada tez matrisindeki sınırlar çerçevesinde dürüstçe nasıl kaynak olarak kullanılacağına dair rehber açıklama. Asla matriste yer almayan varsayımsal veri kaynakları uydurulmaz.",
+          },
+        },
+        required: [
+          "externalThesisId",
+          "title",
+          "author",
+          "year",
+          "university",
+          "contributionArea",
+          "relevanceReason",
+        ],
+        additionalProperties: false,
+      },
+      description:
+        "Süzülen tezler arasından seçilen ve tez matrisiyle doğrudan örtüşen 0-6 adet dürüst rehber tez",
+    },
+  },
+  required: ["globalStatus", "gapAnalysisSummary", "recommendedTheses"],
+  additionalProperties: false,
+};
 
 /**
- * Whether a thesis language tag matches Turkish or English; missing tags are kept.
- *
- * @param lang - The thesis language tag to check.
- * @returns True when the language is allowed or the tag is missing.
- */
-function isAllowedLanguage(lang?: string): boolean {
-  if (!lang || !lang.trim()) {
-    return true;
-  }
-  const normalized = lang
-    .replace(/İ/g, "i")
-    .replace(/I/g, "ı")
-    .toLowerCase()
-    .trim();
-  return ALLOWED_LANGUAGES.has(normalized);
-}
-
-/**
- * Formats a thesis's title and abstract into a YAML document for reranking.
- *
- * @param thesis - The thesis to format.
- * @returns The formatted YAML string.
- */
-function formatThesisToYaml(thesis: TezaraThesisDetails): string {
-  return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
-}
-
-/**
- * Formats the positioning matrix input into a YAML query for reranking.
+ * Runs the final synthesis jury LLM over the relevant evaluated theses in a single Gemini call.
  *
  * @param input - The validated positioning matrix input.
- * @returns The formatted YAML query string.
- */
-function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
-  return [
-    `SubjectProblem: ${input.subjectProblem}`,
-    `TheoreticalFramework: ${input.theoreticalFramework}`,
-    `Methodology: ${input.methodology}`,
-  ].join("\n");
-}
-
-/** Difference threshold under which two relevance scores are treated as a tie. */
-const SCORE_EPSILON = 1e-4;
-
-/**
- * Runs 8 sequential Meilisearch queries on Tezara, deduplicates results, applies
- * abstract length and language filters, ranks candidates via Cohere Rerank
- * v4 Pro (full score list), then deterministically selects the top-N by
- * (relevanceScore desc, ID asc) for reproducible downstream evaluation.
- *
- * @param queries - The generated TR+EN search queries to run.
- * @param matrixInput - The validated positioning matrix input.
+ * @param evaluatedTheses - The relevant evaluated theses to synthesize (irrelevant ones already dropped).
  * @param logger - Optional structured logger for pipeline events.
- * @param options - Optional settings for the sifting process.
- * @param options.topN - The maximum number of top-ranked theses to return.
- * @returns The selected theses sorted ascending by thesis ID.
+ * @returns The structured jury analysis result.
  */
-export async function searchAndSiftTheses(
-  queries: GeneratedQueries,
-  matrixInput: PositioningMatrixInput,
+export async function analyzePositioningJury(
+  input: PositioningMatrixInput,
+  evaluatedTheses: EvaluatedThesis[],
   logger?: Logger,
-  options?: { topN?: number },
-): Promise<SiftedThesis[]> {
-  const topN = options?.topN ?? 45;
-
-  const allQueries: string[] = [
-    sanitizeMeiliQuery(queries.subjectTr_alt1),
-    sanitizeMeiliQuery(queries.subjectTr_alt2),
-    sanitizeMeiliQuery(queries.subjectTr_alt3),
-    sanitizeMeiliQuery(queries.subjectTr_alt4),
-    sanitizeMeiliQuery(queries.subjectEn_alt1),
-    sanitizeMeiliQuery(queries.subjectEn_alt2),
-    sanitizeMeiliQuery(queries.subjectEn_alt3),
-    sanitizeMeiliQuery(queries.subjectEn_alt4),
-  ];
-
-  const searchStart = performance.now();
-
-  logger?.info("sifting_parallel_search_start", {
-    service: "tezara",
-    filePath: "src/features/positioning/sifting.ts",
-    data: { queries: allQueries },
-  });
-
-  const searchParams = {
-    limit: 50,
-    rankingScoreThreshold: RANKING_SCORE_THRESHOLD,
-    filter: LANG_FILTER,
-    attributesToSearchOn: SEARCH_FIELDS,
-  };
-
-  const hitArrays: TezaraThesisDetails[][] = [];
-  for (const q of allQueries) {
-    hitArrays.push(await searchTezara(q, logger, searchParams));
-  }
-
-  const candidateMap = new Map<number, TezaraThesisDetails>();
-  for (const hits of hitArrays) {
-    for (const thesis of hits) {
-      if (thesis && thesis.id && !candidateMap.has(thesis.id)) {
-        candidateMap.set(thesis.id, thesis);
-      }
-    }
-  }
-
-  const uniqueCandidates = Array.from(candidateMap.values()).sort(
-    (a, b) => a.id - b.id,
+): Promise<JuryAnalysisResult> {
+  const overlapping = evaluatedTheses.some(
+    (ev) => ev.evaluation.isDirectOverlap,
   );
 
-  const filteredCandidates = uniqueCandidates.filter((thesis) => {
-    const hasSufficientAbstract =
-      thesis.abstract && thesis.abstract.trim().length >= 100;
-    if (!hasSufficientAbstract) return false;
-
-    const isValidLang = isAllowedLanguage(thesis.language);
-    if (!isValidLang) return false;
-
-    return true;
-  });
-
-  if (filteredCandidates.length === 0) {
-    logger?.info("sifting_no_candidates_remaining", {
-      service: "tezara",
-      filePath: "src/features/positioning/sifting.ts",
-      data: { queries: allQueries },
+  if (evaluatedTheses.length === 0) {
+    logger?.info("positioning_jury_no_theses", {
+      service: "positioning",
+      filePath: "src/features/positioning/analysis.ts",
+      data: { inputSubject: input.subjectProblem },
     });
-    return [];
+
+    return {
+      globalStatus: "NO_RELATED_LITERATURE",
+      gapAnalysisSummary: {
+        literatureMapping:
+          "Veritabanında girilen tez matrisiyle doğrudan ilişkilendirilebilecek herhangi bir akademik teze rastlanmamıştır.",
+        academicGap:
+          "Doğrudan eşleşen bir çalışma bulunmadığı için mevcut literatürde tespit edilmiş bir çakışma veya doymuşluk alanı bulunmamaktadır.",
+        originalContribution:
+          "Çalışmanız literatürde henüz işlenmemiş son derece bakir ve yüksek özgünlüğe sahip bir alanda konumlanmaktadır.",
+      },
+      recommendedTheses: [],
+    };
   }
 
-  logger?.info("sifting_parallel_search_success", {
-    service: "tezara",
-    filePath: "src/features/positioning/sifting.ts",
-    durationMs: performance.now() - searchStart,
-    data: { candidateCount: filteredCandidates.length },
+  const thesisListText = evaluatedTheses
+    .map((ev, idx) => {
+      const t = ev.thesis;
+      const e = ev.evaluation;
+      return `[Tez #${idx + 1}] ID: ${t.id}
+Başlık: ${t.title}
+Yazar: ${t.author || "Bilinmiyor"} (${t.year || "N/A"})
+Üniversite/Bölüm: ${t.university || "N/A"} - ${t.department || "N/A"}
+Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"}
+Birebir Örtüşme: ${e.isDirectOverlap ? "EVET" : "HAYIR"}
+Katkı Alanları: ${e.contributionAreas.join(", ") || "Yok"}
+Kullanım Rehberi: ${e.relevanceReason || "Yok"}
+Literatür Konumu: ${e.literaturePosition || "Yok"}
+Özet: ${t.abstract}`;
+    })
+    .join("\n\n---\n\n");
+
+  const payload = buildPositioningJuryPromptPayload({
+    input,
+    thesisListText,
+    evaluatedCount: evaluatedTheses.length,
   });
 
-  const targetYamlQuery = formatMatrixToYamlQuery(matrixInput);
-  const candidateYamlDocs = filteredCandidates.map(formatThesisToYaml);
-
-  const rerankStart = performance.now();
-
-  logger?.info("cohere_rerank_start", {
-    service: "cohere",
-    filePath: "src/features/positioning/sifting.ts",
-    data: {
-      model: COHERE_RERANK_MODEL,
-      candidateCount: filteredCandidates.length,
-    },
-  });
-
-  const rerankResults = await rerankWithCohere({
-    query: targetYamlQuery,
-    documents: candidateYamlDocs,
+  const result = await generateGeminiStructuredContent<JuryAnalysisResult>(
+    FLASH_36,
+    payload.systemInstruction,
+    payload.userPrompt,
+    juryAnalysisResultJsonSchema,
     logger,
-  });
+    {
+      zodSchema: juryAnalysisResultSchema,
+      payloadStage: "positioning_jury_analysis",
+      seed: GEMINI_SEED,
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      thesisMatrix: { input, filteredThesesCount: evaluatedTheses.length },
+      apiKey: getGeminiKeyPool().keys[2] ?? getGeminiKeyPool().keys[0],
+    },
+  );
 
-  const scoredTheses: SiftedThesis[] = rerankResults.map((res) => {
-    const candidate = filteredCandidates[res.index];
-    return {
-      ...candidate,
-      relevanceScore: res.relevanceScore,
-    };
-  });
+  if (overlapping) {
+    result.globalStatus = "DIRECT_OVERLAP";
+  }
 
-  scoredTheses.sort((a, b) => {
-    const delta = (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
-    if (Math.abs(delta) > SCORE_EPSILON) return delta;
-    return a.id - b.id;
-  });
-
-  const selected = scoredTheses.slice(0, topN);
-
-  const topResults = selected.slice().sort((a, b) => a.id - b.id);
-
-  logger?.info("cohere_rerank_success", {
-    service: "cohere",
-    filePath: "src/features/positioning/sifting.ts",
-    durationMs: performance.now() - rerankStart,
-    data: { topCount: topResults.length },
-  });
-
-  return topResults;
+  return result;
 }
 </file>
 
@@ -33708,6 +33486,226 @@ async function persistOutlines(
 }
 </file>
 
+<file path="src/features/positioning/sifting.ts">
+import { searchTezara } from "@/features/tezara";
+import type { TezaraThesisDetails } from "@/lib/types";
+import { rerankWithCohere, COHERE_RERANK_MODEL } from "@/services/ai/cohere";
+import type { Logger } from "@/lib/logger";
+import type { PositioningMatrixInput } from "./validation";
+import { sanitizeMeiliQuery, type GeneratedQueries } from "./queries";
+
+/** Candidate thesis extended with Cohere semantic relevance score. */
+export interface SiftedThesis extends TezaraThesisDetails {
+  relevanceScore?: number;
+}
+
+const ALLOWED_LANGUAGES = new Set([
+  "tr",
+  "tur",
+  "turkish",
+  "türkçe",
+  "en",
+  "eng",
+  "english",
+  "ingilizce",
+]);
+
+/** Meilisearch filter to pre-filter results to Turkish or English only. */
+const LANG_FILTER = "language=Türkçe OR language=English";
+
+/** Fields to search within for relevance (title + abstract). */
+const SEARCH_FIELDS = [
+  "title_original",
+  "title_translated",
+  "abstract_original",
+  "abstract_translated",
+];
+
+/** Minimum Meilisearch ranking score threshold to maximize candidate search recall. */
+const RANKING_SCORE_THRESHOLD = 0.1;
+
+/**
+ * Whether a thesis language tag matches Turkish or English; missing tags are kept.
+ *
+ * @param lang - The thesis language tag to check.
+ * @returns True when the language is allowed or the tag is missing.
+ */
+function isAllowedLanguage(lang?: string): boolean {
+  if (!lang || !lang.trim()) {
+    return true;
+  }
+  const normalized = lang
+    .replace(/İ/g, "i")
+    .replace(/I/g, "ı")
+    .toLowerCase()
+    .trim();
+  return ALLOWED_LANGUAGES.has(normalized);
+}
+
+/**
+ * Formats a thesis's title and abstract into a YAML document for reranking.
+ *
+ * @param thesis - The thesis to format.
+ * @returns The formatted YAML string.
+ */
+function formatThesisToYaml(thesis: TezaraThesisDetails): string {
+  return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
+}
+
+/**
+ * Formats the positioning matrix input into a YAML query for reranking.
+ *
+ * @param input - The validated positioning matrix input.
+ * @returns The formatted YAML query string.
+ */
+function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
+  return `SubjectProblem: ${input.subjectProblem}`;
+}
+
+/** Difference threshold under which two relevance scores are treated as a tie. */
+const SCORE_EPSILON = 1e-4;
+
+/**
+ * Runs 8 sequential Meilisearch queries on Tezara, deduplicates results, applies
+ * abstract length and language filters, ranks candidates via Cohere Rerank
+ * v4 Pro (full score list), then deterministically selects the top-N by
+ * (relevanceScore desc, ID asc) for reproducible downstream evaluation.
+ *
+ * @param queries - The generated TR+EN search queries to run.
+ * @param matrixInput - The validated positioning matrix input.
+ * @param logger - Optional structured logger for pipeline events.
+ * @param options - Optional settings for the sifting process.
+ * @param options.topN - The maximum number of top-ranked theses to return.
+ * @returns The selected theses sorted ascending by thesis ID.
+ */
+export async function searchAndSiftTheses(
+  queries: GeneratedQueries,
+  matrixInput: PositioningMatrixInput,
+  logger?: Logger,
+  options?: { topN?: number },
+): Promise<SiftedThesis[]> {
+  const topN = options?.topN ?? 45;
+
+  const allQueries: string[] = [
+    sanitizeMeiliQuery(queries.subjectTr_alt1),
+    sanitizeMeiliQuery(queries.subjectTr_alt2),
+    sanitizeMeiliQuery(queries.subjectTr_alt3),
+    sanitizeMeiliQuery(queries.subjectTr_alt4),
+    sanitizeMeiliQuery(queries.subjectEn_alt1),
+    sanitizeMeiliQuery(queries.subjectEn_alt2),
+    sanitizeMeiliQuery(queries.subjectEn_alt3),
+    sanitizeMeiliQuery(queries.subjectEn_alt4),
+  ];
+
+  const searchStart = performance.now();
+
+  logger?.info("sifting_parallel_search_start", {
+    service: "tezara",
+    filePath: "src/features/positioning/sifting.ts",
+    data: { queries: allQueries },
+  });
+
+  const searchParams = {
+    limit: 50,
+    rankingScoreThreshold: RANKING_SCORE_THRESHOLD,
+    filter: LANG_FILTER,
+    attributesToSearchOn: SEARCH_FIELDS,
+  };
+
+  const hitArrays: TezaraThesisDetails[][] = [];
+  for (const q of allQueries) {
+    hitArrays.push(await searchTezara(q, logger, searchParams));
+  }
+
+  const candidateMap = new Map<number, TezaraThesisDetails>();
+  for (const hits of hitArrays) {
+    for (const thesis of hits) {
+      if (thesis && thesis.id && !candidateMap.has(thesis.id)) {
+        candidateMap.set(thesis.id, thesis);
+      }
+    }
+  }
+
+  const uniqueCandidates = Array.from(candidateMap.values()).sort(
+    (a, b) => a.id - b.id,
+  );
+
+  const filteredCandidates = uniqueCandidates.filter((thesis) => {
+    const hasSufficientAbstract =
+      thesis.abstract && thesis.abstract.trim().length >= 100;
+    if (!hasSufficientAbstract) return false;
+
+    const isValidLang = isAllowedLanguage(thesis.language);
+    if (!isValidLang) return false;
+
+    return true;
+  });
+
+  if (filteredCandidates.length === 0) {
+    logger?.info("sifting_no_candidates_remaining", {
+      service: "tezara",
+      filePath: "src/features/positioning/sifting.ts",
+      data: { queries: allQueries },
+    });
+    return [];
+  }
+
+  logger?.info("sifting_parallel_search_success", {
+    service: "tezara",
+    filePath: "src/features/positioning/sifting.ts",
+    durationMs: performance.now() - searchStart,
+    data: { candidateCount: filteredCandidates.length },
+  });
+
+  const targetYamlQuery = formatMatrixToYamlQuery(matrixInput);
+  const candidateYamlDocs = filteredCandidates.map(formatThesisToYaml);
+
+  const rerankStart = performance.now();
+
+  logger?.info("cohere_rerank_start", {
+    service: "cohere",
+    filePath: "src/features/positioning/sifting.ts",
+    data: {
+      model: COHERE_RERANK_MODEL,
+      candidateCount: filteredCandidates.length,
+    },
+  });
+
+  const rerankResults = await rerankWithCohere({
+    query: targetYamlQuery,
+    documents: candidateYamlDocs,
+    logger,
+  });
+
+  const scoredTheses: SiftedThesis[] = rerankResults.map((res) => {
+    const candidate = filteredCandidates[res.index];
+    return {
+      ...candidate,
+      relevanceScore: res.relevanceScore,
+    };
+  });
+
+  scoredTheses.sort((a, b) => {
+    const delta = (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
+    if (Math.abs(delta) > SCORE_EPSILON) return delta;
+    return a.id - b.id;
+  });
+
+  const selected = scoredTheses.slice(0, topN);
+
+  const topResults = selected.slice().sort((a, b) => a.id - b.id);
+
+  logger?.info("cohere_rerank_success", {
+    service: "cohere",
+    filePath: "src/features/positioning/sifting.ts",
+    durationMs: performance.now() - rerankStart,
+    data: { topCount: topResults.length },
+  });
+
+  return topResults;
+}
+</file>
+
 <file path="src/lib/session.ts">
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -35279,6 +35277,370 @@ function OutlineEditor({
       </div>
     </div>
   );
+}
+</file>
+
+<file path="src/lib/academic/utils.ts">
+import { cleanAbstractPrefix } from "./abstract-cleaner";
+
+/**
+ * Extracts a clean DOI string from a raw value.
+ *
+ * @param raw - Raw DOI value from any source.
+ * @returns The normalized DOI, or null when no DOI is present.
+ */
+export function extractCleanDoi(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  const match = trimmed.match(/10\.\d{4,}[^\s]*/i);
+  return match ? match[0].replace(/\.$/, "") : null;
+}
+
+/**
+ * Extracts the canonical short OpenAlex work ID from a URL, plain ID, or junk value.
+ *
+ * @param raw - Raw OpenAlex identifier or URL.
+ * @returns The extracted W... ID, or null when the input is invalid.
+ */
+export function extractOpenAlexId(
+  raw: string | null | undefined,
+): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim().replace(/\/+$/, "");
+  if (trimmed === "" || trimmed === "null") return null;
+  const match = trimmed.match(/(?:^|\/)(W\d+)$/i);
+  if (match) return match[1];
+  return /^W\d+$/i.test(trimmed) ? trimmed : null;
+}
+
+export interface CrossrefPerson {
+  given?: string;
+  family?: string;
+}
+
+/**
+ * Formats a person's given and family names into a single trimmed string.
+ *
+ * @param person - Crossref person record.
+ * @returns Combined full name.
+ */
+export function formatAuthorName(person: CrossrefPerson): string {
+  return `${(person.given ?? "").trim()} ${(person.family ?? "").trim()}`.trim();
+}
+
+/**
+ * Maps a list of Crossref persons to formatted full names, dropping empty entries.
+ *
+ * @param persons - Optional Crossref person records.
+ * @returns Array of formatted author names.
+ */
+export function formatAuthorList(
+  persons: CrossrefPerson[] | undefined,
+): string[] {
+  if (!persons || persons.length === 0) return [];
+  return persons.map(formatAuthorName).filter(Boolean);
+}
+
+/**
+ * Extracts the issued or published year from a Crossref record.
+ *
+ * @param obj - Crossref record object.
+ * @returns The publication year, or null when unavailable.
+ */
+export function extractCrossrefYear(
+  obj: Record<string, unknown>,
+): number | null {
+  const issuedOrPublished = (obj.issued ?? obj.published) as
+    { "date-parts"?: number[][] } | undefined;
+  const dateParts = issuedOrPublished?.["date-parts"]?.[0];
+  if (dateParts?.[0]) return dateParts[0];
+  return null;
+}
+
+/**
+ * Strips the alternate-language portion from a bilingual thesis title (TEZARA "TR / EN" format).
+ *
+ * @param title - Raw thesis title in "TR / EN" format.
+ * @returns The primary-language title.
+ */
+export function stripAltTitle(title: string | null | undefined): string {
+  if (!title) return "";
+  const idx = title.indexOf(" / ");
+  return idx === -1 ? title.trim() : title.slice(0, idx).trim();
+}
+
+interface SortableResource {
+  relevanceScore: number | null;
+  id: number;
+}
+
+/**
+ * Sorts academic resources by relevance score, then by id.
+ *
+ * @param items - Resources to sort.
+ * @returns A new array sorted by the shared academic ordering.
+ */
+export function sortLibraryResources<T extends SortableResource>(
+  items: T[],
+): T[] {
+  return [...items].sort((a, b) => {
+    const scoreA = a.relevanceScore ?? 0;
+    const scoreB = b.relevanceScore ?? 0;
+    if (scoreA !== scoreB) return scoreB - scoreA;
+
+    return a.id - b.id;
+  });
+}
+
+/**
+ * Tokenizes a title into normalized lowercase tokens for containment matching.
+ *
+ * @param title - Raw title string.
+ * @returns Set of normalized tokens.
+ */
+function tokenizeForContainment(title: string): Set<string> {
+  return new Set(
+    title
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, "")
+      .split(/\s+/)
+      .filter((t) => t.length >= 3),
+  );
+}
+
+/**
+ * Computes containment similarity as intersection divided by the shorter title's token count.
+ *
+ * @param titleA - First title.
+ * @param titleB - Second title.
+ * @returns Similarity score between 0 and 1.
+ */
+export function containmentSimilarity(titleA: string, titleB: string): number {
+  const tokensA = tokenizeForContainment(titleA);
+  const tokensB = tokenizeForContainment(titleB);
+
+  if (tokensA.size === 0 && tokensB.size === 0) return 1.0;
+  if (tokensA.size === 0 || tokensB.size === 0) return 0.0;
+
+  const smaller = tokensA.size <= tokensB.size ? tokensA : tokensB;
+  const larger = tokensA.size <= tokensB.size ? tokensB : tokensA;
+
+  let intersection = 0;
+  for (const token of smaller) {
+    if (larger.has(token)) intersection++;
+  }
+
+  return intersection / Math.min(tokensA.size, tokensB.size);
+}
+
+/**
+ * Returns whether the containment similarity between two titles meets a threshold.
+ *
+ * @param titleA - First title.
+ * @param titleB - Second title.
+ * @param threshold - Minimum similarity required (default 0.8).
+ * @returns True when similarity is at or above the threshold.
+ */
+export function areTitlesSimilar(
+  titleA: string,
+  titleB: string,
+  threshold = 0.8,
+): boolean {
+  return containmentSimilarity(titleA, titleB) >= threshold;
+}
+
+/**
+ * Reconstitutes an OpenAlex abstract inverted index into plain text.
+ *
+ * @param invertedIndex - OpenAlex abstract word-position map.
+ * @returns Reconstructed abstract text, or null when empty.
+ */
+export function resolveAbstractInvertedIndex(
+  invertedIndex: Record<string, number[]> | null | undefined,
+): string | null {
+  if (!invertedIndex) return null;
+  const entries = Object.entries(invertedIndex);
+  if (entries.length === 0) return null;
+  const maxPos = Math.max(...entries.flatMap(([, positions]) => positions));
+  const words: string[] = new Array(maxPos + 1).fill("");
+  for (const [word, positions] of entries) {
+    for (const pos of positions) {
+      if (pos >= 0 && pos <= maxPos) words[pos] = word;
+    }
+  }
+  const fullText = words.join(" ").replace(/\s+/g, " ").trim();
+  return cleanAbstractPrefix(fullText);
+}
+
+/**
+ * Normalizes a title into a lowercase, punctuation-stripped string for matching.
+ *
+ * @param title - Raw title.
+ * @param maxLength - Optional maximum length to keep.
+ * @returns Normalized title string.
+ */
+export function normalizeTitle(
+  title: string | null | undefined,
+  maxLength?: number,
+): string {
+  if (!title) return "";
+  let normalized = title
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (maxLength !== undefined && normalized.length > maxLength) {
+    normalized = normalized.slice(0, maxLength);
+  }
+  return normalized;
+}
+
+/**
+ * Strips the subtitle from a title, then normalizes the core title for duplicate matching.
+ *
+ * @param title - Raw title with optional subtitle.
+ * @param maxLength - Optional maximum length to keep.
+ * @returns Normalized core title.
+ */
+export function normalizeCleanTitle(
+  title: string | null | undefined,
+  maxLength?: number,
+): string {
+  if (!title) return "";
+  let coreTitle = title;
+  const separatorMatch = title.match(/^([^:/\-–—]+)/);
+  if (separatorMatch && separatorMatch[1].trim().length >= 3) {
+    coreTitle = separatorMatch[1].trim();
+  }
+  return normalizeTitle(coreTitle, maxLength);
+}
+
+/**
+ * Formats an academic resource into an APA-style PDF filename.
+ *
+ * @param authors - Author names.
+ * @param publicationYear - Publication year.
+ * @param title - Resource title.
+ * @returns APA-styled filename string.
+ */
+export function formatApaPdfFileName(
+  authors: string[] | null | undefined,
+  publicationYear: number | null | undefined,
+  title: string,
+): string {
+  const year =
+    publicationYear && publicationYear > 1000
+      ? publicationYear
+      : new Date().getFullYear();
+
+  const cleanAuthors = (authors || []).map((a) => a.trim()).filter(Boolean);
+  let authorPart = "Anonim";
+
+  if (cleanAuthors.length === 1) {
+    authorPart = extractSurname(cleanAuthors[0]);
+  } else if (cleanAuthors.length === 2) {
+    authorPart = `${extractSurname(cleanAuthors[0])}_and_${extractSurname(cleanAuthors[1])}`;
+  } else if (cleanAuthors.length >= 3) {
+    authorPart = `${extractSurname(cleanAuthors[0])}_et_al`;
+  }
+
+  const cleanTitle = stripAltTitle(title);
+  const words = cleanTitle
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .split(/\s+/)
+    .filter((w) => w.length > 0)
+    .slice(0, 5)
+    .map(toAsciiWord)
+    .filter(Boolean);
+
+  const titlePart = words.length > 0 ? words.join("_") : "Eser";
+
+  return `${authorPart}_${year}_${titlePart}.pdf`;
+}
+
+/**
+ * Normalizes page number display with canonical academic prefixes ("s. X" for single page, "ss. X-Y" for ranges).
+ *
+ * @param raw - Raw page number string or user input.
+ * @returns Canonical Turkish page number display string.
+ */
+export function formatPageNumber(raw: string | null | undefined): string {
+  if (!raw) return "s. 1";
+  const trimmed = raw.trim();
+  if (!trimmed) return "s. 1";
+
+  // Extract digits or digit groups
+  const digits = trimmed.match(/\d+/g);
+  if (!digits || digits.length === 0) {
+    return trimmed; // fallback if non-numeric text like "Madde 4/b"
+  }
+
+  if (digits.length === 1) {
+    return `s. ${digits[0]}`;
+  }
+
+  return `ss. ${digits[0]}-${digits[1]}`;
+}
+
+/**
+ * Extracts raw page digits or range string (e.g., "15" or "15-17") from a formatted page string for editing.
+ *
+ * @param raw - Formatted or raw page number string.
+ * @returns Clean numeric page input string.
+ */
+export function cleanPageNumberInput(raw: string | null | undefined): string {
+  if (!raw) return "";
+  const trimmed = raw.trim();
+  const digits = trimmed.match(/\d+/g);
+  if (!digits || digits.length === 0) return trimmed;
+  if (digits.length === 1) return digits[0];
+  return `${digits[0]}-${digits[1]}`;
+}
+
+/**
+ * Extracts the surname from a full name.
+ *
+ * @param fullName - Full name string.
+ * @returns Surname, or "Anonim" when none can be derived.
+ */
+function extractSurname(fullName: string): string {
+  const parts = fullName.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "Anonim";
+  const rawSurname = parts[parts.length - 1];
+  return toAsciiWord(rawSurname) || "Anonim";
+}
+
+/**
+ * Converts a word into an ASCII-safe, Turkish-normalized alphanumeric form.
+ *
+ * @param str - Input word.
+ * @returns ASCII-converted alphanumeric string.
+ */
+function toAsciiWord(str: string): string {
+  const turkishMap: Record<string, string> = {
+    ç: "c",
+    Ç: "C",
+    ğ: "g",
+    Ğ: "G",
+    ı: "i",
+    I: "I",
+    İ: "I",
+    ö: "o",
+    Ö: "O",
+    ş: "s",
+    Ş: "S",
+    ü: "u",
+    Ü: "U",
+  };
+  const converted = str
+    .split("")
+    .map((c) => turkishMap[c] || c)
+    .join("");
+
+  return converted
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]/g, "");
 }
 </file>
 
@@ -37927,370 +38289,6 @@ export function PositioningMarkdownRenderer({
       </Card>
     </div>
   );
-}
-</file>
-
-<file path="src/lib/academic/utils.ts">
-import { cleanAbstractPrefix } from "./abstract-cleaner";
-
-/**
- * Extracts a clean DOI string from a raw value.
- *
- * @param raw - Raw DOI value from any source.
- * @returns The normalized DOI, or null when no DOI is present.
- */
-export function extractCleanDoi(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  const trimmed = raw.trim();
-  const match = trimmed.match(/10\.\d{4,}[^\s]*/i);
-  return match ? match[0].replace(/\.$/, "") : null;
-}
-
-/**
- * Extracts the canonical short OpenAlex work ID from a URL, plain ID, or junk value.
- *
- * @param raw - Raw OpenAlex identifier or URL.
- * @returns The extracted W... ID, or null when the input is invalid.
- */
-export function extractOpenAlexId(
-  raw: string | null | undefined,
-): string | null {
-  if (!raw) return null;
-  const trimmed = raw.trim().replace(/\/+$/, "");
-  if (trimmed === "" || trimmed === "null") return null;
-  const match = trimmed.match(/(?:^|\/)(W\d+)$/i);
-  if (match) return match[1];
-  return /^W\d+$/i.test(trimmed) ? trimmed : null;
-}
-
-export interface CrossrefPerson {
-  given?: string;
-  family?: string;
-}
-
-/**
- * Formats a person's given and family names into a single trimmed string.
- *
- * @param person - Crossref person record.
- * @returns Combined full name.
- */
-export function formatAuthorName(person: CrossrefPerson): string {
-  return `${(person.given ?? "").trim()} ${(person.family ?? "").trim()}`.trim();
-}
-
-/**
- * Maps a list of Crossref persons to formatted full names, dropping empty entries.
- *
- * @param persons - Optional Crossref person records.
- * @returns Array of formatted author names.
- */
-export function formatAuthorList(
-  persons: CrossrefPerson[] | undefined,
-): string[] {
-  if (!persons || persons.length === 0) return [];
-  return persons.map(formatAuthorName).filter(Boolean);
-}
-
-/**
- * Extracts the issued or published year from a Crossref record.
- *
- * @param obj - Crossref record object.
- * @returns The publication year, or null when unavailable.
- */
-export function extractCrossrefYear(
-  obj: Record<string, unknown>,
-): number | null {
-  const issuedOrPublished = (obj.issued ?? obj.published) as
-    { "date-parts"?: number[][] } | undefined;
-  const dateParts = issuedOrPublished?.["date-parts"]?.[0];
-  if (dateParts?.[0]) return dateParts[0];
-  return null;
-}
-
-/**
- * Strips the alternate-language portion from a bilingual thesis title (TEZARA "TR / EN" format).
- *
- * @param title - Raw thesis title in "TR / EN" format.
- * @returns The primary-language title.
- */
-export function stripAltTitle(title: string | null | undefined): string {
-  if (!title) return "";
-  const idx = title.indexOf(" / ");
-  return idx === -1 ? title.trim() : title.slice(0, idx).trim();
-}
-
-interface SortableResource {
-  relevanceScore: number | null;
-  id: number;
-}
-
-/**
- * Sorts academic resources by relevance score, then by id.
- *
- * @param items - Resources to sort.
- * @returns A new array sorted by the shared academic ordering.
- */
-export function sortLibraryResources<T extends SortableResource>(
-  items: T[],
-): T[] {
-  return [...items].sort((a, b) => {
-    const scoreA = a.relevanceScore ?? 0;
-    const scoreB = b.relevanceScore ?? 0;
-    if (scoreA !== scoreB) return scoreB - scoreA;
-
-    return a.id - b.id;
-  });
-}
-
-/**
- * Tokenizes a title into normalized lowercase tokens for containment matching.
- *
- * @param title - Raw title string.
- * @returns Set of normalized tokens.
- */
-function tokenizeForContainment(title: string): Set<string> {
-  return new Set(
-    title
-      .toLowerCase()
-      .replace(/[^\p{L}\p{N}\s]/gu, "")
-      .split(/\s+/)
-      .filter((t) => t.length >= 3),
-  );
-}
-
-/**
- * Computes containment similarity as intersection divided by the shorter title's token count.
- *
- * @param titleA - First title.
- * @param titleB - Second title.
- * @returns Similarity score between 0 and 1.
- */
-export function containmentSimilarity(titleA: string, titleB: string): number {
-  const tokensA = tokenizeForContainment(titleA);
-  const tokensB = tokenizeForContainment(titleB);
-
-  if (tokensA.size === 0 && tokensB.size === 0) return 1.0;
-  if (tokensA.size === 0 || tokensB.size === 0) return 0.0;
-
-  const smaller = tokensA.size <= tokensB.size ? tokensA : tokensB;
-  const larger = tokensA.size <= tokensB.size ? tokensB : tokensA;
-
-  let intersection = 0;
-  for (const token of smaller) {
-    if (larger.has(token)) intersection++;
-  }
-
-  return intersection / Math.min(tokensA.size, tokensB.size);
-}
-
-/**
- * Returns whether the containment similarity between two titles meets a threshold.
- *
- * @param titleA - First title.
- * @param titleB - Second title.
- * @param threshold - Minimum similarity required (default 0.8).
- * @returns True when similarity is at or above the threshold.
- */
-export function areTitlesSimilar(
-  titleA: string,
-  titleB: string,
-  threshold = 0.8,
-): boolean {
-  return containmentSimilarity(titleA, titleB) >= threshold;
-}
-
-/**
- * Reconstitutes an OpenAlex abstract inverted index into plain text.
- *
- * @param invertedIndex - OpenAlex abstract word-position map.
- * @returns Reconstructed abstract text, or null when empty.
- */
-export function resolveAbstractInvertedIndex(
-  invertedIndex: Record<string, number[]> | null | undefined,
-): string | null {
-  if (!invertedIndex) return null;
-  const entries = Object.entries(invertedIndex);
-  if (entries.length === 0) return null;
-  const maxPos = Math.max(...entries.flatMap(([, positions]) => positions));
-  const words: string[] = new Array(maxPos + 1).fill("");
-  for (const [word, positions] of entries) {
-    for (const pos of positions) {
-      if (pos >= 0 && pos <= maxPos) words[pos] = word;
-    }
-  }
-  const fullText = words.join(" ").replace(/\s+/g, " ").trim();
-  return cleanAbstractPrefix(fullText);
-}
-
-/**
- * Normalizes a title into a lowercase, punctuation-stripped string for matching.
- *
- * @param title - Raw title.
- * @param maxLength - Optional maximum length to keep.
- * @returns Normalized title string.
- */
-export function normalizeTitle(
-  title: string | null | undefined,
-  maxLength?: number,
-): string {
-  if (!title) return "";
-  let normalized = title
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (maxLength !== undefined && normalized.length > maxLength) {
-    normalized = normalized.slice(0, maxLength);
-  }
-  return normalized;
-}
-
-/**
- * Strips the subtitle from a title, then normalizes the core title for duplicate matching.
- *
- * @param title - Raw title with optional subtitle.
- * @param maxLength - Optional maximum length to keep.
- * @returns Normalized core title.
- */
-export function normalizeCleanTitle(
-  title: string | null | undefined,
-  maxLength?: number,
-): string {
-  if (!title) return "";
-  let coreTitle = title;
-  const separatorMatch = title.match(/^([^:/\-–—]+)/);
-  if (separatorMatch && separatorMatch[1].trim().length >= 3) {
-    coreTitle = separatorMatch[1].trim();
-  }
-  return normalizeTitle(coreTitle, maxLength);
-}
-
-/**
- * Formats an academic resource into an APA-style PDF filename.
- *
- * @param authors - Author names.
- * @param publicationYear - Publication year.
- * @param title - Resource title.
- * @returns APA-styled filename string.
- */
-export function formatApaPdfFileName(
-  authors: string[] | null | undefined,
-  publicationYear: number | null | undefined,
-  title: string,
-): string {
-  const year =
-    publicationYear && publicationYear > 1000
-      ? publicationYear
-      : new Date().getFullYear();
-
-  const cleanAuthors = (authors || []).map((a) => a.trim()).filter(Boolean);
-  let authorPart = "Anonim";
-
-  if (cleanAuthors.length === 1) {
-    authorPart = extractSurname(cleanAuthors[0]);
-  } else if (cleanAuthors.length === 2) {
-    authorPart = `${extractSurname(cleanAuthors[0])}_and_${extractSurname(cleanAuthors[1])}`;
-  } else if (cleanAuthors.length >= 3) {
-    authorPart = `${extractSurname(cleanAuthors[0])}_et_al`;
-  }
-
-  const cleanTitle = stripAltTitle(title);
-  const words = cleanTitle
-    .replace(/[^\p{L}\p{N}\s]/gu, "")
-    .split(/\s+/)
-    .filter((w) => w.length > 0)
-    .slice(0, 5)
-    .map(toAsciiWord)
-    .filter(Boolean);
-
-  const titlePart = words.length > 0 ? words.join("_") : "Eser";
-
-  return `${authorPart}_${year}_${titlePart}.pdf`;
-}
-
-/**
- * Normalizes page number display with canonical academic prefixes ("s. X" for single page, "ss. X-Y" for ranges).
- *
- * @param raw - Raw page number string or user input.
- * @returns Canonical Turkish page number display string.
- */
-export function formatPageNumber(raw: string | null | undefined): string {
-  if (!raw) return "s. 1";
-  const trimmed = raw.trim();
-  if (!trimmed) return "s. 1";
-
-  // Extract digits or digit groups
-  const digits = trimmed.match(/\d+/g);
-  if (!digits || digits.length === 0) {
-    return trimmed; // fallback if non-numeric text like "Madde 4/b"
-  }
-
-  if (digits.length === 1) {
-    return `s. ${digits[0]}`;
-  }
-
-  return `ss. ${digits[0]}-${digits[1]}`;
-}
-
-/**
- * Extracts raw page digits or range string (e.g., "15" or "15-17") from a formatted page string for editing.
- *
- * @param raw - Formatted or raw page number string.
- * @returns Clean numeric page input string.
- */
-export function cleanPageNumberInput(raw: string | null | undefined): string {
-  if (!raw) return "";
-  const trimmed = raw.trim();
-  const digits = trimmed.match(/\d+/g);
-  if (!digits || digits.length === 0) return trimmed;
-  if (digits.length === 1) return digits[0];
-  return `${digits[0]}-${digits[1]}`;
-}
-
-/**
- * Extracts the surname from a full name.
- *
- * @param fullName - Full name string.
- * @returns Surname, or "Anonim" when none can be derived.
- */
-function extractSurname(fullName: string): string {
-  const parts = fullName.split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "Anonim";
-  const rawSurname = parts[parts.length - 1];
-  return toAsciiWord(rawSurname) || "Anonim";
-}
-
-/**
- * Converts a word into an ASCII-safe, Turkish-normalized alphanumeric form.
- *
- * @param str - Input word.
- * @returns ASCII-converted alphanumeric string.
- */
-function toAsciiWord(str: string): string {
-  const turkishMap: Record<string, string> = {
-    ç: "c",
-    Ç: "C",
-    ğ: "g",
-    Ğ: "G",
-    ı: "i",
-    I: "I",
-    İ: "I",
-    ö: "o",
-    Ö: "O",
-    ş: "s",
-    Ş: "S",
-    ü: "u",
-    Ü: "U",
-  };
-  const converted = str
-    .split("")
-    .map((c) => turkishMap[c] || c)
-    .join("");
-
-  return converted
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9]/g, "");
 }
 </file>
 
@@ -41349,276 +41347,6 @@ export default function CitationCardsPage() {
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/positioning/actions.ts">
-"use server";
-
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { positioning, matrices } from "@/db/schema";
-import type { Positioning } from "@/db/schema";
-import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
-import { Logger } from "@/lib/logger";
-import type { ThesisMatrix } from "@/lib/types";
-import { positioningMatrixSchema } from "@/features/positioning/validation";
-import type { SiftedThesis } from "@/features/positioning/sifting";
-import { generatePositioningQueries } from "@/features/positioning/queries";
-import { searchAndSiftTheses } from "@/features/positioning/sifting";
-import { evaluateThesesInParallel } from "@/features/positioning/per-thesis-evaluation";
-import { analyzePositioningJury } from "@/features/positioning/analysis";
-import { savePositioningReportTransaction } from "@/features/positioning/decision-engine";
-import { sanitizeAcademicDataBulk } from "@/services/academic";
-import type { JuryAnalysisResult } from "@/features/positioning/analysis";
-
-/**
- * Runs query generation, Tezara search, and Cohere rerank; jury analysis and DB writes run separately.
- *
- * @param matrixInput - The thesis matrix used to derive the search queries.
- * @param flowId - The log flow identifier for structured logging.
- * @returns The sifted thesis list on success or an error message on failure.
- */
-export async function runPositioningSearchAction(
-  matrixInput: ThesisMatrix,
-  flowId: string,
-): Promise<{ success: true; theses: SiftedThesis[] } | { error: string }> {
-  const log = new Logger(flowId);
-  const positioningInput: Record<string, string> = {
-    subjectProblem: matrixInput.subjectProblem ?? "",
-    theoreticalFramework: matrixInput.theoreticalFramework ?? "",
-    methodology: matrixInput.methodology ?? "",
-  };
-
-  const parsed = positioningMatrixSchema.safeParse(positioningInput);
-  if (!parsed.success) {
-    const firstIssue = parsed.error.issues[0];
-    const msg = firstIssue
-      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
-      : "Form doğrulaması başarısız.";
-    return { error: msg };
-  }
-
-  const validated = parsed.data;
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    log.info("generate_positioning_queries_start");
-    const queries = await generatePositioningQueries(validated, log);
-    log.info("generate_positioning_queries_success");
-
-    const theses = await searchAndSiftTheses(queries, validated, log);
-
-    return { success: true, theses };
-  } catch (error) {
-    log.error("positioning_search_failed", {
-      error,
-    });
-    return {
-      error:
-        "Akademik arama sorguları üretilirken bir hata oluştu. Lütfen tekrar deneyin.",
-    };
-  }
-}
-
-/**
- * Runs the per-thesis relevance/originality evaluations in parallel and then the
- * final synthesis jury LLM over the relevant evaluated theses.
- *
- * @param matrixInput - The thesis matrix used for the jury evaluation.
- * @param theses - The sifted thesis candidates to analyze.
- * @param flowId - The log flow identifier for structured logging.
- * @returns The jury analysis result on success or an error message on failure.
- */
-export async function runPositioningJuryAction(
-  matrixInput: ThesisMatrix,
-  theses: SiftedThesis[],
-  flowId: string,
-): Promise<
-  { success: true; juryResult: JuryAnalysisResult } | { error: string }
-> {
-  const log = new Logger(flowId);
-  const positioningInput: Record<string, string> = {
-    subjectProblem: matrixInput.subjectProblem ?? "",
-    theoreticalFramework: matrixInput.theoreticalFramework ?? "",
-    methodology: matrixInput.methodology ?? "",
-  };
-
-  const parsed = positioningMatrixSchema.safeParse(positioningInput);
-  if (!parsed.success) {
-    const firstIssue = parsed.error.issues[0];
-    const msg = firstIssue
-      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
-      : "Form doğrulaması başarısız.";
-    return { error: msg };
-  }
-
-  const validated = parsed.data;
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const evaluatedTheses = await evaluateThesesInParallel(
-      validated,
-      theses,
-      log,
-    );
-
-    const relevantTheses = evaluatedTheses.filter(
-      (ev) => ev.evaluation.isRelevant,
-    );
-
-    log.info("positioning_jury_analysis_start");
-    const juryResult = await analyzePositioningJury(
-      validated,
-      relevantTheses,
-      log,
-    );
-    log.info("positioning_jury_analysis_success");
-
-    const thesisTypeById = new Map<string, string>(
-      relevantTheses.map((ev) => [String(ev.thesis.id), ev.thesis.thesisType]),
-    );
-    juryResult.recommendedTheses = juryResult.recommendedTheses.map((rec) => ({
-      ...rec,
-      thesisType: thesisTypeById.get(String(rec.externalThesisId)) || undefined,
-    }));
-
-    return { success: true, juryResult };
-  } catch (error) {
-    log.error("positioning_jury_failed", {
-      error,
-    });
-    return {
-      error:
-        "Akademik jüri analizi sırasında bir hata oluştu. Lütfen tekrar deneyin.",
-    };
-  }
-}
-
-/**
- * Sanitizes the jury result and persists the positioning report to the database.
- *
- * @param matrixInput - The thesis matrix used for the positioning report.
- * @param juryResult - The jury analysis result to persist.
- * @param flowId - The log flow identifier for structured logging.
- * @returns A success marker or an error message on failure.
- */
-export async function persistPositioningReportAction(
-  matrixInput: ThesisMatrix,
-  juryResult: JuryAnalysisResult,
-  flowId: string,
-): Promise<{ success: true } | { error: string }> {
-  const log = new Logger(flowId);
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const positioningInput: Record<string, string> = {
-      subjectProblem: matrixInput.subjectProblem ?? "",
-      theoreticalFramework: matrixInput.theoreticalFramework ?? "",
-      methodology: matrixInput.methodology ?? "",
-    };
-
-    const parsed = positioningMatrixSchema.safeParse(positioningInput);
-    if (!parsed.success) {
-      return { error: "Form doğrulaması başarısız." };
-    }
-    const validated = parsed.data;
-
-    if (juryResult.recommendedTheses.length > 0) {
-      const itemsToSanitize = juryResult.recommendedTheses.map((t) => ({
-        title: t.title || "",
-        author: t.author || "",
-      }));
-      const sanitized = await sanitizeAcademicDataBulk(itemsToSanitize, log);
-      juryResult.recommendedTheses = juryResult.recommendedTheses.map(
-        (t, idx) => ({
-          ...t,
-          title: sanitized[idx]?.title || t.title,
-          author: sanitized[idx]?.author || t.author,
-        }),
-      );
-    }
-
-    const [matrix] = await db
-      .select({ id: matrices.id })
-      .from(matrices)
-      .where(eq(matrices.userId, session.userId));
-
-    if (!matrix) {
-      return { error: "Tez matrisi bulunamadı." };
-    }
-
-    log.info("positioning_db_transaction_start");
-    await savePositioningReportTransaction(
-      session.userId,
-      matrix.id,
-      juryResult,
-    );
-    log.info("positioning_db_transaction_success");
-
-    return { success: true };
-  } catch (error) {
-    log.error("positioning_persist_failed", {
-      error,
-    });
-    return {
-      error:
-        "Konumlandırma raporu kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.",
-    };
-  }
-}
-
-/**
- * Emits the final pipeline total-duration SUCCESS log line.
- *
- * @param flowId - The pipeline flow identifier.
- * @param durationMs - Total pipeline duration in milliseconds.
- */
-export async function logPositioningPipelineSuccessAction(
-  flowId: string,
-  durationMs: number,
-): Promise<void> {
-  const log = new Logger(flowId);
-  log.info("positioning_pipeline_success", {
-    data: { durationMs: Math.round(durationMs) },
-  });
-}
-
-/**
- * Returns the user's positioning record linked to their thesis matrix.
- *
- * @returns The matching positioning record or null.
- */
-export async function getPositioningAction(): Promise<Positioning | null> {
-  const session = await getSession();
-  if (!session) {
-    return null;
-  }
-
-  try {
-    const [matrix] = await db
-      .select({ id: matrices.id })
-      .from(matrices)
-      .where(eq(matrices.userId, session.userId));
-
-    if (!matrix) {
-      return null;
-    }
-
-    const [record] = await db
-      .select()
-      .from(positioning)
-      .where(eq(positioning.matrixId, matrix.id));
-
-    return record ?? null;
-  } catch {
-    return null;
-  }
-}
-</file>
-
 <file path="src/app/(app)/advisor/_components/use-advisor-chat.ts">
 "use client";
 
@@ -42055,6 +41783,276 @@ export function useAdvisorChat(initialSessionId?: number) {
 }
 </file>
 
+<file path="src/app/(onboarding)/onboarding/positioning/actions.ts">
+"use server";
+
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { positioning, matrices } from "@/db/schema";
+import type { Positioning } from "@/db/schema";
+import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
+import { Logger } from "@/lib/logger";
+import type { ThesisMatrix } from "@/lib/types";
+import { positioningMatrixSchema } from "@/features/positioning/validation";
+import type { SiftedThesis } from "@/features/positioning/sifting";
+import { generatePositioningQueries } from "@/features/positioning/queries";
+import { searchAndSiftTheses } from "@/features/positioning/sifting";
+import { evaluateThesesInParallel } from "@/features/positioning/per-thesis-evaluation";
+import { analyzePositioningJury } from "@/features/positioning/analysis";
+import { savePositioningReportTransaction } from "@/features/positioning/decision-engine";
+import { sanitizeAcademicDataBulk } from "@/services/academic";
+import type { JuryAnalysisResult } from "@/features/positioning/analysis";
+
+/**
+ * Runs query generation, Tezara search, and Cohere rerank; jury analysis and DB writes run separately.
+ *
+ * @param matrixInput - The thesis matrix used to derive the search queries.
+ * @param flowId - The log flow identifier for structured logging.
+ * @returns The sifted thesis list on success or an error message on failure.
+ */
+export async function runPositioningSearchAction(
+  matrixInput: ThesisMatrix,
+  flowId: string,
+): Promise<{ success: true; theses: SiftedThesis[] } | { error: string }> {
+  const log = new Logger(flowId);
+  const positioningInput: Record<string, string> = {
+    subjectProblem: matrixInput.subjectProblem ?? "",
+    theoreticalFramework: matrixInput.theoreticalFramework ?? "",
+    methodology: matrixInput.methodology ?? "",
+  };
+
+  const parsed = positioningMatrixSchema.safeParse(positioningInput);
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0];
+    const msg = firstIssue
+      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
+      : "Form doğrulaması başarısız.";
+    return { error: msg };
+  }
+
+  const validated = parsed.data;
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    log.info("generate_positioning_queries_start");
+    const queries = await generatePositioningQueries(validated, log);
+    log.info("generate_positioning_queries_success");
+
+    const theses = await searchAndSiftTheses(queries, validated, log);
+
+    return { success: true, theses };
+  } catch (error) {
+    log.error("positioning_search_failed", {
+      error,
+    });
+    return {
+      error:
+        "Akademik arama sorguları üretilirken bir hata oluştu. Lütfen tekrar deneyin.",
+    };
+  }
+}
+
+/**
+ * Runs the per-thesis relevance/originality evaluations in parallel and then the
+ * final synthesis jury LLM over the relevant evaluated theses.
+ *
+ * @param matrixInput - The thesis matrix used for the jury evaluation.
+ * @param theses - The sifted thesis candidates to analyze.
+ * @param flowId - The log flow identifier for structured logging.
+ * @returns The jury analysis result on success or an error message on failure.
+ */
+export async function runPositioningJuryAction(
+  matrixInput: ThesisMatrix,
+  theses: SiftedThesis[],
+  flowId: string,
+): Promise<
+  { success: true; juryResult: JuryAnalysisResult } | { error: string }
+> {
+  const log = new Logger(flowId);
+  const positioningInput: Record<string, string> = {
+    subjectProblem: matrixInput.subjectProblem ?? "",
+    theoreticalFramework: matrixInput.theoreticalFramework ?? "",
+    methodology: matrixInput.methodology ?? "",
+  };
+
+  const parsed = positioningMatrixSchema.safeParse(positioningInput);
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0];
+    const msg = firstIssue
+      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
+      : "Form doğrulaması başarısız.";
+    return { error: msg };
+  }
+
+  const validated = parsed.data;
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const evaluatedTheses = await evaluateThesesInParallel(
+      validated,
+      theses,
+      log,
+    );
+
+    const relevantTheses = evaluatedTheses.filter(
+      (ev) => ev.evaluation.isRelevant,
+    );
+
+    log.info("positioning_jury_analysis_start");
+    const juryResult = await analyzePositioningJury(
+      validated,
+      relevantTheses,
+      log,
+    );
+    log.info("positioning_jury_analysis_success");
+
+    const thesisTypeById = new Map<string, string>(
+      relevantTheses.map((ev) => [String(ev.thesis.id), ev.thesis.thesisType]),
+    );
+    juryResult.recommendedTheses = juryResult.recommendedTheses.map((rec) => ({
+      ...rec,
+      thesisType: thesisTypeById.get(String(rec.externalThesisId)) || undefined,
+    }));
+
+    return { success: true, juryResult };
+  } catch (error) {
+    log.error("positioning_jury_failed", {
+      error,
+    });
+    return {
+      error:
+        "Akademik jüri analizi sırasında bir hata oluştu. Lütfen tekrar deneyin.",
+    };
+  }
+}
+
+/**
+ * Sanitizes the jury result and persists the positioning report to the database.
+ *
+ * @param matrixInput - The thesis matrix used for the positioning report.
+ * @param juryResult - The jury analysis result to persist.
+ * @param flowId - The log flow identifier for structured logging.
+ * @returns A success marker or an error message on failure.
+ */
+export async function persistPositioningReportAction(
+  matrixInput: ThesisMatrix,
+  juryResult: JuryAnalysisResult,
+  flowId: string,
+): Promise<{ success: true } | { error: string }> {
+  const log = new Logger(flowId);
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const positioningInput: Record<string, string> = {
+      subjectProblem: matrixInput.subjectProblem ?? "",
+      theoreticalFramework: matrixInput.theoreticalFramework ?? "",
+      methodology: matrixInput.methodology ?? "",
+    };
+
+    const parsed = positioningMatrixSchema.safeParse(positioningInput);
+    if (!parsed.success) {
+      return { error: "Form doğrulaması başarısız." };
+    }
+    const validated = parsed.data;
+
+    if (juryResult.recommendedTheses.length > 0) {
+      const itemsToSanitize = juryResult.recommendedTheses.map((t) => ({
+        title: t.title || "",
+        author: t.author || "",
+      }));
+      const sanitized = await sanitizeAcademicDataBulk(itemsToSanitize, log);
+      juryResult.recommendedTheses = juryResult.recommendedTheses.map(
+        (t, idx) => ({
+          ...t,
+          title: sanitized[idx]?.title || t.title,
+          author: sanitized[idx]?.author || t.author,
+        }),
+      );
+    }
+
+    const [matrix] = await db
+      .select({ id: matrices.id })
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+
+    if (!matrix) {
+      return { error: "Tez matrisi bulunamadı." };
+    }
+
+    log.info("positioning_db_transaction_start");
+    await savePositioningReportTransaction(
+      session.userId,
+      matrix.id,
+      juryResult,
+    );
+    log.info("positioning_db_transaction_success");
+
+    return { success: true };
+  } catch (error) {
+    log.error("positioning_persist_failed", {
+      error,
+    });
+    return {
+      error:
+        "Konumlandırma raporu kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.",
+    };
+  }
+}
+
+/**
+ * Emits the final pipeline total-duration SUCCESS log line.
+ *
+ * @param flowId - The pipeline flow identifier.
+ * @param durationMs - Total pipeline duration in milliseconds.
+ */
+export async function logPositioningPipelineSuccessAction(
+  flowId: string,
+  durationMs: number,
+): Promise<void> {
+  const log = new Logger(flowId);
+  log.info("positioning_pipeline_success", {
+    data: { durationMs: Math.round(durationMs) },
+  });
+}
+
+/**
+ * Returns the user's positioning record linked to their thesis matrix.
+ *
+ * @returns The matching positioning record or null.
+ */
+export async function getPositioningAction(): Promise<Positioning | null> {
+  const session = await getSession();
+  if (!session) {
+    return null;
+  }
+
+  try {
+    const [matrix] = await db
+      .select({ id: matrices.id })
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+
+    if (!matrix) {
+      return null;
+    }
+
+    const [record] = await db
+      .select()
+      .from(positioning)
+      .where(eq(positioning.matrixId, matrix.id));
+
+    return record ?? null;
+  } catch {
+    return null;
+  }
+}
+</file>
+
 <file path="src/app/(onboarding)/onboarding/actions.ts">
 "use server";
 
@@ -42210,6 +42208,480 @@ export async function clearDownstreamDbAction(
       error: "Sıfırlama işlemi gerçekleştirilirken bir hata oluştu.",
     };
   }
+}
+</file>
+
+<file path="src/lib/logger.ts">
+export interface TokenUsage {
+  input?: number;
+  output?: number;
+  total?: number;
+}
+
+type ServiceName =
+  | "gemini"
+  | "cloudflare"
+  | "tezara"
+  | "db"
+  | "auth"
+  | "flow"
+  | "matrix"
+  | "complete"
+  | "boxes"
+  | "wikipedia"
+  | "literature"
+  | "library"
+  | "openalex"
+  | "crossref"
+  | "dashboard"
+  | "cohere"
+  | "positioning"
+  | "cerebras"
+  | "pdf-parser"
+  | "rag-search"
+  | "advisor"
+  | "citation-cards"
+  | "literature-matrix"
+  | "outline";
+
+export interface LogParams {
+  service?: ServiceName;
+  step?: string;
+  durationMs?: number;
+  data?: Record<string, unknown>;
+  error?: unknown;
+  tokens?: TokenUsage;
+  filePath?: string;
+  status?: "START" | "SUCCESS" | "FAILED" | "RETRY";
+  blank?: "after" | "before" | "none";
+  silentStart?: boolean;
+  hidden?: boolean;
+}
+
+export interface LoggerInstance {
+  flowId: string;
+  lastTokens?: TokenUsage;
+  lastPayloadPath?: string;
+  info(arg1: string | Record<string, unknown>, params?: LogParams): void;
+  error(arg1: string | Record<string, unknown>, params?: LogParams): void;
+  warn(arg1: string | Record<string, unknown>, params?: LogParams): void;
+  step(n: string, m?: Record<string, unknown>): void;
+  file(r: string): void;
+  data(l: string, v: unknown): void;
+  preview(l: string, v: unknown): void;
+  prompt(m: string, c: string): void;
+  saveDebugPayload(
+    s: string,
+    m: string,
+    p: string,
+    r?: string,
+  ): string | undefined;
+  groupStart(event: string): void;
+  groupEnd(event: string, durationMs: number): void;
+  total(
+    event: string,
+    durationMs: number,
+    p?: { service?: ServiceName; data?: Record<string, unknown> },
+  ): void;
+}
+
+/**
+ * Derives START, SUCCESS, or FAILED status from an event name's suffix.
+ *
+ * @param event - Event name possibly ending with a status suffix.
+ * @returns The derived status, or empty string when none matches.
+ */
+function deriveStatus(event: string): string {
+  if (event.endsWith("_start")) return "START";
+  if (event.endsWith("_success")) return "SUCCESS";
+  if (
+    event.endsWith("_failed") ||
+    event.endsWith("_filtered") ||
+    event.endsWith("_empty")
+  )
+    return "FAILED";
+  return "";
+}
+
+const isDev = () => process.env.NODE_ENV === "development";
+
+const C_RESET = "\x1b[0m";
+const C_GREEN = "\x1b[32m";
+const C_RED = "\x1b[31m";
+const C_YELLOW = "\x1b[33m";
+
+/**
+ * Returns the icon corresponding to a status.
+ *
+ * @param s - Status string (START, SUCCESS, FAILED, or RETRY).
+ * @returns The matching icon.
+ */
+function statusIcon(s: string): string {
+  return s === "START"
+    ? "⏳"
+    : s === "SUCCESS"
+      ? "✓"
+      : s === "FAILED"
+        ? "✖"
+        : s === "RETRY"
+          ? "↻"
+          : "•";
+}
+
+/**
+ * Returns the ANSI color code for a status.
+ *
+ * @param s - Status string.
+ * @returns The matching ANSI color code.
+ */
+function statusColor(s: string): string {
+  if (s === "SUCCESS") return C_GREEN;
+  if (s === "FAILED") return C_RED;
+  if (s === "START" || s === "RETRY") return C_YELLOW;
+  return "";
+}
+
+/**
+ * Formats a millisecond duration compactly ("497ms" or "1.5s").
+ *
+ * @param ms - Duration in milliseconds.
+ * @returns Compact duration string.
+ */
+function formatDuration(ms: number): string {
+  const safe = Math.max(0, ms);
+  if (safe < 1000) return `${Math.round(safe)}ms`;
+  const sec = safe / 1000;
+  if (Number.isInteger(sec)) return `${sec}s`;
+  return `${sec.toFixed(1)}s`;
+}
+
+/**
+ * Converts an unknown error value into a short readable message.
+ *
+ * @param error - Error value of any type.
+ * @returns Short readable message.
+ */
+function extractReason(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
+export class Logger implements LoggerInstance {
+  public readonly flowId: string;
+  public lastTokens?: TokenUsage;
+  public lastPayloadPath?: string;
+
+  private _starts = new Map<string, number>();
+  private readonly devMode = isDev();
+
+  /**
+   * Creates a logger whose flowId is attached to every log line.
+   *
+   * @param flowId - Identifier attached to every log line.
+   */
+  constructor(flowId: string) {
+    this.flowId = flowId;
+  }
+
+  /**
+   * Logs an info-level entry.
+   *
+   * @param arg1 - Event name or structured payload.
+   * @param p - Optional log parameters.
+   */
+  info(arg1: string | Record<string, unknown>, p?: LogParams): void {
+    this.write("info", arg1, p);
+  }
+
+  /**
+   * Logs an error-level entry.
+   *
+   * @param arg1 - Event name or structured payload.
+   * @param p - Optional log parameters.
+   */
+  error(arg1: string | Record<string, unknown>, p?: LogParams): void {
+    this.write("error", arg1, p);
+  }
+
+  /**
+   * Logs a warning-level entry for recoverable or expected failures.
+   *
+   * @param arg1 - Event name or structured payload.
+   * @param p - Optional log parameters.
+   */
+  warn(arg1: string | Record<string, unknown>, p?: LogParams): void {
+    this.write("warn", arg1, p);
+  }
+
+  /**
+   * Records a step marker in the current flow.
+   *
+   * @param n - Step name.
+   * @param m - Optional step metadata.
+   */
+  step(n: string, m?: Record<string, unknown>): void {
+    void n;
+    void m;
+  }
+
+  /**
+   * Records a file reference for the current flow.
+   *
+   * @param r - File path.
+   */
+  file(r: string): void {
+    void r;
+  }
+
+  /**
+   * Records a labeled data snapshot for the current flow.
+   *
+   * @param l - Snapshot label.
+   * @param v - Snapshot value.
+   */
+  data(l: string, v: unknown): void {
+    void l;
+    void v;
+  }
+
+  /**
+   * Records a labeled preview for the current flow.
+   *
+   * @param l - Preview label.
+   * @param v - Preview value.
+   */
+  preview(l: string, v: unknown): void {
+    void l;
+    void v;
+  }
+
+  /**
+   * Records a prompt message for the current flow.
+   *
+   * @param m - Prompt message.
+   * @param c - Contextual label.
+   */
+  prompt(m: string, c: string): void {
+    void m;
+    void c;
+  }
+
+  /**
+   * Saves a debug payload for later inspection.
+   *
+   * @param s - Payload stage.
+   * @param m - Payload message.
+   * @param p - Payload path.
+   * @param r - Optional request identifier.
+   * @returns Path of the saved payload, or undefined when not saved.
+   */
+  saveDebugPayload(
+    s: string,
+    m: string,
+    p: string,
+    r?: string,
+  ): string | undefined {
+    void s;
+    void m;
+    void p;
+    void r;
+    return undefined;
+  }
+
+  /**
+   * Marks the start of a log group.
+   *
+   * @param event - Group event name.
+   */
+  groupStart(event: string): void {
+    void event;
+  }
+
+  /**
+   * Marks the end of a log group.
+   *
+   * @param event - Group event name.
+   * @param durationMs - Duration of the group in milliseconds.
+   */
+  groupEnd(event: string, durationMs: number): void {
+    void event;
+    void durationMs;
+  }
+
+  /**
+   * Prints a total-duration summary line for a completed flow.
+   *
+   * @param event - Flow-level event name.
+   * @param durationMs - Total duration in milliseconds.
+   * @param p - Optional service and data metadata.
+   */
+  total(
+    event: string,
+    durationMs: number,
+    p?: { service?: ServiceName; data?: Record<string, unknown> },
+  ): void {
+    if (this.devMode) {
+      const timeTag = this.timestamp();
+      console.log(
+        `${timeTag} ${C_GREEN}✓${C_RESET} TOTAL ${event} (${formatDuration(durationMs)})`,
+      );
+      return;
+    }
+
+    const entry: Record<string, unknown> = {
+      timestamp: new Date().toISOString(),
+      level: "info",
+      event: `${event}_total`,
+      flowId: this.flowId,
+      service: p?.service ?? "flow",
+      status: "TOTAL",
+      durationMs: Math.round(durationMs),
+    };
+    if (p?.data) entry.data = p.data;
+    console.info(JSON.stringify(entry));
+  }
+
+  /**
+   * Returns the current time as "[HH:MM:SS]".
+   *
+   * @returns Current time string.
+   */
+  private timestamp(): string {
+    const d = new Date();
+    return `[${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}:${d.getSeconds().toString().padStart(2, "0")}]`;
+  }
+
+  /**
+   * Writes a single log line in dev or production format.
+   *
+   * @param level - Log level (info, error, or warn).
+   * @param arg1 - Event name or structured payload.
+   * @param p - Optional log parameters.
+   */
+  private write(
+    level: "info" | "error" | "warn",
+    arg1: string | Record<string, unknown>,
+    p?: LogParams,
+  ): void {
+    if (this.devMode) {
+      const event =
+        typeof arg1 === "object" && arg1 !== null
+          ? (((arg1 as Record<string, unknown>).step as string) ?? "unknown")
+          : (arg1 as string);
+
+      const status = deriveStatus(event);
+
+      if (status === "START") {
+        const baseEvent = event.replace(/_(start)$/, "");
+        this._starts.set(baseEvent, performance.now());
+        if (p?.silentStart || p?.hidden) {
+          return;
+        }
+        const timeTag = this.timestamp();
+        const icon = statusIcon("START");
+        const color = statusColor("START");
+        const annotation = p?.data?.summary ? ` ${p.data.summary}` : "";
+        console.log(
+          `${timeTag} START ${color}${icon}${C_RESET} ${baseEvent}${annotation}`,
+        );
+        return;
+      }
+
+      if (status === "SUCCESS" || status === "FAILED") {
+        const baseEvent = event.replace(
+          /_(success|failed|filtered|empty)$/,
+          "",
+        );
+        const startTime = this._starts.get(baseEvent);
+        let durStr = "";
+        if (startTime != null) {
+          durStr = ` (${formatDuration(performance.now() - startTime)})`;
+          this._starts.delete(baseEvent);
+        } else if (p?.durationMs != null) {
+          durStr = ` (${formatDuration(p.durationMs)})`;
+        } else if (
+          p?.data &&
+          typeof p.data === "object" &&
+          "durationMs" in p.data
+        ) {
+          durStr = ` (${formatDuration((p.data as Record<string, unknown>).durationMs as number)})`;
+        }
+
+        const icon = statusIcon(status);
+        const color = statusColor(status);
+        const timeTag = this.timestamp();
+
+        if (p?.hidden) {
+          return;
+        }
+
+        const blank = p?.blank ?? "after";
+
+        if (blank === "before") {
+          console.log("");
+        }
+
+        console.log(
+          `${timeTag} ${status} ${color}${icon}${C_RESET} ${baseEvent}${durStr}`,
+        );
+
+        if (p?.error != null) {
+          console.log(`  ↳ reason: ${extractReason(p.error)}`);
+        }
+        if (blank === "after") {
+          console.log("");
+        }
+        return;
+      }
+      return;
+    }
+
+    if (typeof arg1 === "object" && arg1 !== null) {
+      const entry: Record<string, unknown> = { flowId: this.flowId, ...arg1 };
+      console[level](
+        JSON.stringify({
+          timestamp: new Date().toISOString(),
+          level,
+          ...entry,
+        }),
+      );
+      return;
+    }
+
+    const event = arg1 as string;
+    const entry: Record<string, unknown> = {
+      timestamp: new Date().toISOString(),
+      level,
+      event,
+      flowId: this.flowId,
+      service: p?.service ?? "flow",
+      status: p?.status ?? deriveStatus(event),
+    };
+    if (p?.step) entry.step = p.step;
+    if (p?.durationMs !== undefined)
+      entry.durationMs = Math.round(p.durationMs);
+    if (p?.data) entry.data = p.data;
+    if (p?.tokens) {
+      entry.tokens = p.tokens;
+      this.lastTokens = p.tokens;
+    }
+    if (p?.error) entry.error = String(p.error);
+    console[level](JSON.stringify(entry));
+  }
+}
+
+/**
+ * Generates a unique flow identifier in the form fl_<timestamp36>_<random>.
+ *
+ * @returns Unique flow identifier string.
+ */
+export function createFlowId(): string {
+  return `fl_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`;
 }
 </file>
 
@@ -43168,480 +43640,6 @@ export async function POST(request: Request) {
       Connection: "keep-alive",
     },
   });
-}
-</file>
-
-<file path="src/lib/logger.ts">
-export interface TokenUsage {
-  input?: number;
-  output?: number;
-  total?: number;
-}
-
-type ServiceName =
-  | "gemini"
-  | "cloudflare"
-  | "tezara"
-  | "db"
-  | "auth"
-  | "flow"
-  | "matrix"
-  | "complete"
-  | "boxes"
-  | "wikipedia"
-  | "literature"
-  | "library"
-  | "openalex"
-  | "crossref"
-  | "dashboard"
-  | "cohere"
-  | "positioning"
-  | "cerebras"
-  | "pdf-parser"
-  | "rag-search"
-  | "advisor"
-  | "citation-cards"
-  | "literature-matrix"
-  | "outline";
-
-export interface LogParams {
-  service?: ServiceName;
-  step?: string;
-  durationMs?: number;
-  data?: Record<string, unknown>;
-  error?: unknown;
-  tokens?: TokenUsage;
-  filePath?: string;
-  status?: "START" | "SUCCESS" | "FAILED" | "RETRY";
-  blank?: "after" | "before" | "none";
-  silentStart?: boolean;
-  hidden?: boolean;
-}
-
-export interface LoggerInstance {
-  flowId: string;
-  lastTokens?: TokenUsage;
-  lastPayloadPath?: string;
-  info(arg1: string | Record<string, unknown>, params?: LogParams): void;
-  error(arg1: string | Record<string, unknown>, params?: LogParams): void;
-  warn(arg1: string | Record<string, unknown>, params?: LogParams): void;
-  step(n: string, m?: Record<string, unknown>): void;
-  file(r: string): void;
-  data(l: string, v: unknown): void;
-  preview(l: string, v: unknown): void;
-  prompt(m: string, c: string): void;
-  saveDebugPayload(
-    s: string,
-    m: string,
-    p: string,
-    r?: string,
-  ): string | undefined;
-  groupStart(event: string): void;
-  groupEnd(event: string, durationMs: number): void;
-  total(
-    event: string,
-    durationMs: number,
-    p?: { service?: ServiceName; data?: Record<string, unknown> },
-  ): void;
-}
-
-/**
- * Derives START, SUCCESS, or FAILED status from an event name's suffix.
- *
- * @param event - Event name possibly ending with a status suffix.
- * @returns The derived status, or empty string when none matches.
- */
-function deriveStatus(event: string): string {
-  if (event.endsWith("_start")) return "START";
-  if (event.endsWith("_success")) return "SUCCESS";
-  if (
-    event.endsWith("_failed") ||
-    event.endsWith("_filtered") ||
-    event.endsWith("_empty")
-  )
-    return "FAILED";
-  return "";
-}
-
-const isDev = () => process.env.NODE_ENV === "development";
-
-const C_RESET = "\x1b[0m";
-const C_GREEN = "\x1b[32m";
-const C_RED = "\x1b[31m";
-const C_YELLOW = "\x1b[33m";
-
-/**
- * Returns the icon corresponding to a status.
- *
- * @param s - Status string (START, SUCCESS, FAILED, or RETRY).
- * @returns The matching icon.
- */
-function statusIcon(s: string): string {
-  return s === "START"
-    ? "⏳"
-    : s === "SUCCESS"
-      ? "✓"
-      : s === "FAILED"
-        ? "✖"
-        : s === "RETRY"
-          ? "↻"
-          : "•";
-}
-
-/**
- * Returns the ANSI color code for a status.
- *
- * @param s - Status string.
- * @returns The matching ANSI color code.
- */
-function statusColor(s: string): string {
-  if (s === "SUCCESS") return C_GREEN;
-  if (s === "FAILED") return C_RED;
-  if (s === "START" || s === "RETRY") return C_YELLOW;
-  return "";
-}
-
-/**
- * Formats a millisecond duration compactly ("497ms" or "1.5s").
- *
- * @param ms - Duration in milliseconds.
- * @returns Compact duration string.
- */
-function formatDuration(ms: number): string {
-  const safe = Math.max(0, ms);
-  if (safe < 1000) return `${Math.round(safe)}ms`;
-  const sec = safe / 1000;
-  if (Number.isInteger(sec)) return `${sec}s`;
-  return `${sec.toFixed(1)}s`;
-}
-
-/**
- * Converts an unknown error value into a short readable message.
- *
- * @param error - Error value of any type.
- * @returns Short readable message.
- */
-function extractReason(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return String(error);
-  }
-}
-
-export class Logger implements LoggerInstance {
-  public readonly flowId: string;
-  public lastTokens?: TokenUsage;
-  public lastPayloadPath?: string;
-
-  private _starts = new Map<string, number>();
-  private readonly devMode = isDev();
-
-  /**
-   * Creates a logger whose flowId is attached to every log line.
-   *
-   * @param flowId - Identifier attached to every log line.
-   */
-  constructor(flowId: string) {
-    this.flowId = flowId;
-  }
-
-  /**
-   * Logs an info-level entry.
-   *
-   * @param arg1 - Event name or structured payload.
-   * @param p - Optional log parameters.
-   */
-  info(arg1: string | Record<string, unknown>, p?: LogParams): void {
-    this.write("info", arg1, p);
-  }
-
-  /**
-   * Logs an error-level entry.
-   *
-   * @param arg1 - Event name or structured payload.
-   * @param p - Optional log parameters.
-   */
-  error(arg1: string | Record<string, unknown>, p?: LogParams): void {
-    this.write("error", arg1, p);
-  }
-
-  /**
-   * Logs a warning-level entry for recoverable or expected failures.
-   *
-   * @param arg1 - Event name or structured payload.
-   * @param p - Optional log parameters.
-   */
-  warn(arg1: string | Record<string, unknown>, p?: LogParams): void {
-    this.write("warn", arg1, p);
-  }
-
-  /**
-   * Records a step marker in the current flow.
-   *
-   * @param n - Step name.
-   * @param m - Optional step metadata.
-   */
-  step(n: string, m?: Record<string, unknown>): void {
-    void n;
-    void m;
-  }
-
-  /**
-   * Records a file reference for the current flow.
-   *
-   * @param r - File path.
-   */
-  file(r: string): void {
-    void r;
-  }
-
-  /**
-   * Records a labeled data snapshot for the current flow.
-   *
-   * @param l - Snapshot label.
-   * @param v - Snapshot value.
-   */
-  data(l: string, v: unknown): void {
-    void l;
-    void v;
-  }
-
-  /**
-   * Records a labeled preview for the current flow.
-   *
-   * @param l - Preview label.
-   * @param v - Preview value.
-   */
-  preview(l: string, v: unknown): void {
-    void l;
-    void v;
-  }
-
-  /**
-   * Records a prompt message for the current flow.
-   *
-   * @param m - Prompt message.
-   * @param c - Contextual label.
-   */
-  prompt(m: string, c: string): void {
-    void m;
-    void c;
-  }
-
-  /**
-   * Saves a debug payload for later inspection.
-   *
-   * @param s - Payload stage.
-   * @param m - Payload message.
-   * @param p - Payload path.
-   * @param r - Optional request identifier.
-   * @returns Path of the saved payload, or undefined when not saved.
-   */
-  saveDebugPayload(
-    s: string,
-    m: string,
-    p: string,
-    r?: string,
-  ): string | undefined {
-    void s;
-    void m;
-    void p;
-    void r;
-    return undefined;
-  }
-
-  /**
-   * Marks the start of a log group.
-   *
-   * @param event - Group event name.
-   */
-  groupStart(event: string): void {
-    void event;
-  }
-
-  /**
-   * Marks the end of a log group.
-   *
-   * @param event - Group event name.
-   * @param durationMs - Duration of the group in milliseconds.
-   */
-  groupEnd(event: string, durationMs: number): void {
-    void event;
-    void durationMs;
-  }
-
-  /**
-   * Prints a total-duration summary line for a completed flow.
-   *
-   * @param event - Flow-level event name.
-   * @param durationMs - Total duration in milliseconds.
-   * @param p - Optional service and data metadata.
-   */
-  total(
-    event: string,
-    durationMs: number,
-    p?: { service?: ServiceName; data?: Record<string, unknown> },
-  ): void {
-    if (this.devMode) {
-      const timeTag = this.timestamp();
-      console.log(
-        `${timeTag} ${C_GREEN}✓${C_RESET} TOTAL ${event} (${formatDuration(durationMs)})`,
-      );
-      return;
-    }
-
-    const entry: Record<string, unknown> = {
-      timestamp: new Date().toISOString(),
-      level: "info",
-      event: `${event}_total`,
-      flowId: this.flowId,
-      service: p?.service ?? "flow",
-      status: "TOTAL",
-      durationMs: Math.round(durationMs),
-    };
-    if (p?.data) entry.data = p.data;
-    console.info(JSON.stringify(entry));
-  }
-
-  /**
-   * Returns the current time as "[HH:MM:SS]".
-   *
-   * @returns Current time string.
-   */
-  private timestamp(): string {
-    const d = new Date();
-    return `[${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}:${d.getSeconds().toString().padStart(2, "0")}]`;
-  }
-
-  /**
-   * Writes a single log line in dev or production format.
-   *
-   * @param level - Log level (info, error, or warn).
-   * @param arg1 - Event name or structured payload.
-   * @param p - Optional log parameters.
-   */
-  private write(
-    level: "info" | "error" | "warn",
-    arg1: string | Record<string, unknown>,
-    p?: LogParams,
-  ): void {
-    if (this.devMode) {
-      const event =
-        typeof arg1 === "object" && arg1 !== null
-          ? (((arg1 as Record<string, unknown>).step as string) ?? "unknown")
-          : (arg1 as string);
-
-      const status = deriveStatus(event);
-
-      if (status === "START") {
-        const baseEvent = event.replace(/_(start)$/, "");
-        this._starts.set(baseEvent, performance.now());
-        if (p?.silentStart || p?.hidden) {
-          return;
-        }
-        const timeTag = this.timestamp();
-        const icon = statusIcon("START");
-        const color = statusColor("START");
-        const annotation = p?.data?.summary ? ` ${p.data.summary}` : "";
-        console.log(
-          `${timeTag} START ${color}${icon}${C_RESET} ${baseEvent}${annotation}`,
-        );
-        return;
-      }
-
-      if (status === "SUCCESS" || status === "FAILED") {
-        const baseEvent = event.replace(
-          /_(success|failed|filtered|empty)$/,
-          "",
-        );
-        const startTime = this._starts.get(baseEvent);
-        let durStr = "";
-        if (startTime != null) {
-          durStr = ` (${formatDuration(performance.now() - startTime)})`;
-          this._starts.delete(baseEvent);
-        } else if (p?.durationMs != null) {
-          durStr = ` (${formatDuration(p.durationMs)})`;
-        } else if (
-          p?.data &&
-          typeof p.data === "object" &&
-          "durationMs" in p.data
-        ) {
-          durStr = ` (${formatDuration((p.data as Record<string, unknown>).durationMs as number)})`;
-        }
-
-        const icon = statusIcon(status);
-        const color = statusColor(status);
-        const timeTag = this.timestamp();
-
-        if (p?.hidden) {
-          return;
-        }
-
-        const blank = p?.blank ?? "after";
-
-        if (blank === "before") {
-          console.log("");
-        }
-
-        console.log(
-          `${timeTag} ${status} ${color}${icon}${C_RESET} ${baseEvent}${durStr}`,
-        );
-
-        if (p?.error != null) {
-          console.log(`  ↳ reason: ${extractReason(p.error)}`);
-        }
-        if (blank === "after") {
-          console.log("");
-        }
-        return;
-      }
-      return;
-    }
-
-    if (typeof arg1 === "object" && arg1 !== null) {
-      const entry: Record<string, unknown> = { flowId: this.flowId, ...arg1 };
-      console[level](
-        JSON.stringify({
-          timestamp: new Date().toISOString(),
-          level,
-          ...entry,
-        }),
-      );
-      return;
-    }
-
-    const event = arg1 as string;
-    const entry: Record<string, unknown> = {
-      timestamp: new Date().toISOString(),
-      level,
-      event,
-      flowId: this.flowId,
-      service: p?.service ?? "flow",
-      status: p?.status ?? deriveStatus(event),
-    };
-    if (p?.step) entry.step = p.step;
-    if (p?.durationMs !== undefined)
-      entry.durationMs = Math.round(p.durationMs);
-    if (p?.data) entry.data = p.data;
-    if (p?.tokens) {
-      entry.tokens = p.tokens;
-      this.lastTokens = p.tokens;
-    }
-    if (p?.error) entry.error = String(p.error);
-    console[level](JSON.stringify(entry));
-  }
-}
-
-/**
- * Generates a unique flow identifier in the form fl_<timestamp36>_<random>.
- *
- * @returns Unique flow identifier string.
- */
-export function createFlowId(): string {
-  return `fl_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`;
 }
 </file>
 

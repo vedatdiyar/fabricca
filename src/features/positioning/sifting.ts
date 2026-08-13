@@ -70,11 +70,7 @@ function formatThesisToYaml(thesis: TezaraThesisDetails): string {
  * @returns The formatted YAML query string.
  */
 function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
-  return [
-    `SubjectProblem: ${input.subjectProblem}`,
-    `TheoreticalFramework: ${input.theoreticalFramework}`,
-    `Methodology: ${input.methodology}`,
-  ].join("\n");
+  return `SubjectProblem: ${input.subjectProblem}`;
 }
 
 /** Difference threshold under which two relevance scores are treated as a tie. */

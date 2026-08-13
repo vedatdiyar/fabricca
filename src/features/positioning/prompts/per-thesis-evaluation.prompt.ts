@@ -24,9 +24,10 @@ export function buildPerThesisEvaluationPromptPayload(
       "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisi ile YÖK / Tezara veritabanından gelen TEK BİR tezi titizlikle karşılaştırarak 3 aşamalı karar zincirini uygulayıp yapılandırılmış bir değerlendirme çıktısı üretmektir.",
 
     workflowSteps: `## Aşama 1 — Alakalılık Değerlendirmesi (isRelevant)
-- Kullanıcının tezi ile bu tez arasında anlamlı bir akademik ilişki var mı? (Aynı problem, aktör, dönem, kavram, kuram veya yöntem alanına dokunuyor mu?)
-- Eğer tez, kullanıcının tez matrisiyle kayda değer bir örtüşme göstermiyorsa \`isRelevant: false\` döndürün ve diğer alanları boş bırakın.
-- Eğer alakalıysa \`isRelevant: true\` döndürün ve Aşama 2'ye geçin.
+- Kullanıcının araştırmasının AMPİRİK ODAĞI VE ARAŞTIRMA PROBLEMİ (aktörler, dönem, kurumlar, olgu ve olaylar) ile bu tez arasında doğrudan anlamlı bir akademik ilişki var mı?
+- Yalnızca soyut kuramsal veya metodolojik terimlerin ortak olması tezi ALAKALI YAPMAZ (Örn: Sırf Gramsci, nitel analiz veya söylem analizi kullanılıyor diye ampirik konusu farklı bir tez alakalı sayılamaz, \`isRelevant: false\` verilmelidir).
+- Eğer tez, kullanıcının ampirik araştırma problemiyle kayda değer bir örtüşme göstermiyorsa \`isRelevant: false\` döndürün ve diğer alanları boş bırakın.
+- Eğer ampirik araştırma problemi veya ampirik aktörler açısından alakalıysa \`isRelevant: true\` döndürün ve Aşama 2'ye geçin.
 
 ## Aşama 2 — Birebir Örtüşme / Özgünlük Değerlendirmesi (isDirectOverlap)
 - Kullanıcının tezi ile bu tez Araştırma Konusu/Soruları + Kuramsal/Metodolojik Çerçeve + Aktörler açısından BİREBİR AYNI mı?
@@ -94,9 +95,10 @@ Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"}
       "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisi ile YÖK / Tezara veritabanından gelen TEZ LİSTESİNDEKİ HER BİR TEZİ SADECE KULLANICININ TEZ MATRİSİ İLE TEK TEK KARŞILAŞTIRARAK 3 aşamalı karar zincirini uygulayıp yapılandırılmış bir değerlendirme dizisi (`evaluations`) üretmektir.",
 
     workflowSteps: `## Aşama 1 — Alakalılık Değerlendirmesi (isRelevant)
-- Kullanıcının tezi ile bu tez arasında anlamlı bir akademik ilişki var mı?
-- Eğer örtüşme yoksa \`isRelevant: false\` döndürün.
-- Eğer alakalıysa \`isRelevant: true\` döndürün ve Aşama 2'ye geçin.
+- Kullanıcının araştırmasının AMPİRİK ODAĞI VE ARAŞTIRMA PROBLEMİ (aktörler, dönem, kurumlar, olgu ve olaylar) ile bu tez arasında doğrudan anlamlı bir akademik ilişki var mı?
+- Yalnızca soyut kuramsal veya metodolojik terimlerin ortak olması tezi ALAKALI YAPMAZ (Örn: Sırf Gramsci, nitel analiz veya söylem analizi kullanılıyor diye ampirik konusu farklı bir tez alakalı sayılamaz, \`isRelevant: false\` verilmelidir).
+- Eğer tez, kullanıcının ampirik araştırma problemiyle kayda değer bir örtüşme göstermiyorsa \`isRelevant: false\` döndürün.
+- Eğer ampirik araştırma problemi veya ampirik aktörler açısından alakalıysa \`isRelevant: true\` döndürün ve Aşama 2'ye geçin.
 
 ## Aşama 2 — Birebir Örtüşme / Özgünlük Değerlendirmesi (isDirectOverlap)
 - Kullanıcının tezi ile bu tez BİREBİR AYNI mı?
