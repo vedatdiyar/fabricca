@@ -47,11 +47,11 @@ Sistem, her adımda kullanıcının kaldığı yerden devam edebilmesini sağlar
 
 ### 2. Akademik Konumlandırma & Özgünlük Analizi (Positioning)
 
-TEZARA (YÖK Ulusal Tez Merkezi) Meilisearch index'i üzerinden çalışan,
+Turso LibSQL Vektör Veritabanı (366.000+ tez, multilingual-e5-base 768d) üzerinden çalışan,
 kaynaklarının özgünlük boşluğunu analiz eden hat:
 
-- **Sorgu üretimi:** Gemini ile ilgili tezlere yönelik 8 Meilisearch sorgusu.
-- **Tez araması ve eleme:** TEZARA ile aday tezler çekilir.
+- **Sorgu üretimi:** Gemini ile ilgili tezlere yönelik 8 semantik arama sorgusu.
+- **Tez araması ve eleme:** Turso Vektör İndeksi (`vector_top_k` cosine similarity) ile aday tezler çekilir.
 - **Semantik sıralama:** Cohere Rerank v4.0 Pro ile benzerlik sıralaması.
 - **Rapor:** Gemini jürisi üç durumdan birini üretir:
   - `DIRECT_OVERLAP` — Doğrudan örtüşme
@@ -130,7 +130,7 @@ merkezi yönetim ekranı.
 | **İkincil LLM**        | Cerebras (`gemma-4-31b`) — metadata sanitize, HyDE, başlık üretimi           |
 | **Embedding**          | Cloudflare Workers AI (`@cf/baai/bge-m3`, **1024 dim**) — tek ve sabit motor |
 | **Rerank**             | Cohere Rerank v4.0 Pro (`rerank-v4.0-pro`)                                   |
-| **Tez Veri Kaynağı**   | TEZARA (YÖK Tez) — Meilisearch index                                         |
+| **Tez Veri Kaynağı**   | Turso LibSQL Vektör Veritabanı (366k+ Tez, E5-Base 768d)                     |
 | **Akademik Veri**      | OpenAlex API                                                                 |
 | **Object Storage**     | Cloudflare R2 (AWS S3 SDK)                                                   |
 | **PDF İşleme**         | `@firecrawl/pdf-inspector`, pdf-lib, Gemini                                  |
@@ -252,8 +252,9 @@ Gerekli tüm API anahtarları `.env.local` dosyasında tanımlanır:
 | `COHERE_API_KEY`         | Cohere Rerank API                           |
 | `OPENALEX_API_KEY`       | OpenAlex API (isteğe bağlı)                 |
 | `CROSSREF_CONTACT_EMAIL` | Polite pool e-posta (User-Agent)            |
-| `TEZARA_MEILI_URL`       | TEZARA Meilisearch URL                      |
-| `TEZARA_MEILI_KEY`       | TEZARA Meilisearch API key                  |
+| `TURSO_DATABASE_URL`     | Turso LibSQL veritabanı URL'si              |
+| `TURSO_AUTH_TOKEN`       | Turso LibSQL auth token                     |
+| `HUGGINGFACE_API_KEY`    | Hugging Face Serverless Inference API key   |
 | `R2_ACCOUNT_ID`          | Cloudflare R2 hesabı                        |
 | `R2_ACCESS_KEY_ID`       | R2 S3 access key                            |
 | `R2_SECRET_ACCESS_KEY`   | R2 S3 secret key                            |

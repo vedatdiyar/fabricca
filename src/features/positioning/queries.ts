@@ -71,42 +71,42 @@ export const generatedQueriesJsonSchema: JsonSchema = {
     subjectTr_alt1: {
       type: "string",
       description:
-        "Araştırma problemi ve odağı için 2-4 kelimelik Türkçe Meilisearch sorgusu (alternatif 1 — problem mekanizması)",
+        "Araştırma problemi ve odağı için 2-4 kelimelik Türkçe semantik tez arama sorgusu (alternatif 1 — problem mekanizması)",
     },
     subjectTr_alt2: {
       type: "string",
       description:
-        "Araştırma problemi ve odağı için 2-4 kelimelik Türkçe Meilisearch sorgusu (alternatif 2 — aktörler/kurumlar)",
+        "Araştırma problemi ve odağı için 2-4 kelimelik Türkçe semantik tez arama sorgusu (alternatif 2 — aktörler/kurumlar)",
     },
     subjectTr_alt3: {
       type: "string",
       description:
-        "Araştırma problemi ve odağı için 2-4 kelimelik Türkçe Meilisearch sorgusu (alternatif 3 — coğrafi/tarihsel bağlam)",
+        "Araştırma problemi ve odağı için 2-4 kelimelik Türkçe semantik tez arama sorgusu (alternatif 3 — coğrafi/tarihsel bağlam)",
     },
     subjectTr_alt4: {
       type: "string",
       description:
-        "Araştırma problemi ve odağı için 2-4 kelimelik Türkçe Meilisearch sorgusu (alternatif 4 — geniş akademik eşanlamlı)",
+        "Araştırma problemi ve odağı için 2-4 kelimelik Türkçe semantik tez arama sorgusu (alternatif 4 — geniş akademik eşanlamlı)",
     },
     subjectEn_alt1: {
       type: "string",
       description:
-        "Research problem and focus — 2-4 word English Meilisearch query (alternative 1 — problem mechanism)",
+        "Research problem and focus — 2-4 word English semantic thesis search query (alternative 1 — problem mechanism)",
     },
     subjectEn_alt2: {
       type: "string",
       description:
-        "Research problem and focus — 2-4 word English Meilisearch query (alternative 2 — actors/institutions)",
+        "Research problem and focus — 2-4 word English semantic thesis search query (alternative 2 — actors/institutions)",
     },
     subjectEn_alt3: {
       type: "string",
       description:
-        "Research problem and focus — 2-4 word English Meilisearch query (alternative 3 — geographic/temporal context)",
+        "Research problem and focus — 2-4 word English semantic thesis search query (alternative 3 — geographic/temporal context)",
     },
     subjectEn_alt4: {
       type: "string",
       description:
-        "Research problem and focus — 2-4 word English Meilisearch query (alternative 4 — broad academic synonym)",
+        "Research problem and focus — 2-4 word English semantic thesis search query (alternative 4 — broad academic synonym)",
     },
   },
   required: [
@@ -123,12 +123,12 @@ export const generatedQueriesJsonSchema: JsonSchema = {
 };
 
 /**
- * Removes boolean operators and punctuation syntax for strict Meilisearch compatibility.
+ * Sanitizes query text for vector search.
  *
  * @param rawQuery - The raw query string to sanitize.
- * @returns The cleaned query string safe for Meilisearch.
+ * @returns The cleaned query string.
  */
-export function sanitizeMeiliQuery(rawQuery: string): string {
+export function sanitizeSearchQuery(rawQuery: string): string {
   if (!rawQuery) return "";
   return rawQuery
     .replace(/\b(OR|AND|NOT)\b/gi, " ")
@@ -136,6 +136,9 @@ export function sanitizeMeiliQuery(rawQuery: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+/** Backward compatibility alias for sanitizeSearchQuery. */
+export const sanitizeMeiliQuery = sanitizeSearchQuery;
 
 import { buildPositioningQueriesPromptPayload } from "./prompts/queries.prompt";
 
@@ -167,13 +170,13 @@ export async function generatePositioningQueries(
   );
 
   return {
-    subjectTr_alt1: sanitizeMeiliQuery(result.subjectTr_alt1),
-    subjectTr_alt2: sanitizeMeiliQuery(result.subjectTr_alt2),
-    subjectTr_alt3: sanitizeMeiliQuery(result.subjectTr_alt3),
-    subjectTr_alt4: sanitizeMeiliQuery(result.subjectTr_alt4),
-    subjectEn_alt1: sanitizeMeiliQuery(result.subjectEn_alt1),
-    subjectEn_alt2: sanitizeMeiliQuery(result.subjectEn_alt2),
-    subjectEn_alt3: sanitizeMeiliQuery(result.subjectEn_alt3),
-    subjectEn_alt4: sanitizeMeiliQuery(result.subjectEn_alt4),
+    subjectTr_alt1: sanitizeSearchQuery(result.subjectTr_alt1),
+    subjectTr_alt2: sanitizeSearchQuery(result.subjectTr_alt2),
+    subjectTr_alt3: sanitizeSearchQuery(result.subjectTr_alt3),
+    subjectTr_alt4: sanitizeSearchQuery(result.subjectTr_alt4),
+    subjectEn_alt1: sanitizeSearchQuery(result.subjectEn_alt1),
+    subjectEn_alt2: sanitizeSearchQuery(result.subjectEn_alt2),
+    subjectEn_alt3: sanitizeSearchQuery(result.subjectEn_alt3),
+    subjectEn_alt4: sanitizeSearchQuery(result.subjectEn_alt4),
   };
 }

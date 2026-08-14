@@ -44,6 +44,10 @@ public/
   logo.svg
   web-app-manifest-192x192.png
   web-app-manifest-512x512.png
+scripts/
+  benchmark-turso-tezara.ts
+  compare-thesis-search-strategies.ts
+  test-turso-search.ts
 src/
   app/
     (app)/
@@ -481,6 +485,348 @@ This section contains the contents of the repository's files.
 <path d="M246.226 10.8441C247.312 10.7859 248.467 10.7623 249.556 10.7328C314.133 8.98486 373.707 32.4599 420.465 74.4124C471.42 120.716 501.001 184.369 502.722 251.409C504.457 316.684 478.966 379.955 431.827 427.38C388.779 470.713 327.676 499.107 264.687 500.783C203.088 502.658 143.072 482.002 96.9748 443.058C44.8021 399.584 13.1276 338.002 9.04683 272.11C4.95745 205.75 28.379 140.511 74.2776 90.4161C108.502 53.5729 153.749 26.6496 204.406 15.9524C218.852 12.9018 231.611 11.7074 246.226 10.8441ZM36.531 337.479C39.6407 329.177 42.7365 322.945 48.6058 315.931C64.4689 296.976 90.6497 286.696 115.395 295.341C125.913 299.014 135.904 306.422 140.709 316.24C147.352 329.448 144.22 348.226 128.916 354.692C123.705 356.841 117.809 356.926 112.533 354.928C104.814 352.061 99.5814 344.99 102.723 337.057C104.766 331.896 110.715 328.279 116.184 331.184C122.065 334.306 124.02 338.109 124.061 344.31C127.456 343.459 130.467 342.174 132.19 339.102C137.731 329.211 131.131 318.722 121.991 314.059C115.642 310.795 108.173 310.127 101.295 312.207C79.3864 318.647 69.8861 344.483 77.2229 363.927C84.8079 384.029 99.0439 397.133 118.974 406.349C168.744 430.225 228.655 423.426 278.634 403.749C282.576 402.199 286.547 400.677 290.512 399.187C303.254 394.404 316.036 389.725 328.861 385.147C350.175 377.576 369.063 371.772 392.042 370.66C403 370.127 411.45 368.858 422.163 372.824C400.455 379.044 379.485 387.397 359.594 397.747C353.941 400.746 347.938 404.423 342.404 407.691C328.679 415.873 314.712 423.681 300.521 431.107C267.295 448.509 241.248 458.708 202.678 458.431C189.579 458.456 176.522 457.013 163.777 454.127C159.507 453.128 155.255 452.06 151.024 450.923C159.266 455.787 167.804 459.335 176.836 462.508C203.499 471.875 227.93 474.481 255.652 468.085C282.294 461.938 303.956 451.162 326.792 436.618C338.806 428.968 349.017 420.64 360.607 412.666C382.312 397.741 409.063 382.957 435.484 377.336C442.544 375.833 449.408 375.462 456.54 375.156C482.868 330.793 493.561 279.563 487.051 228.986C485.999 220.485 483.907 208.301 481.604 199.843L353.938 172.781C332.31 168.208 309.056 163.692 287.659 158.625C287.742 154.015 287.788 149.405 287.802 144.795L386.7 128.716C404.645 125.763 426.025 122.821 443.54 119.155C439.962 113.625 432.078 104.671 427.551 99.7452C395.666 64.9998 353.293 40.4695 306.22 29.5032C288.527 25.4847 263.691 22.8497 245.409 24.0697C183.677 27.3695 125.909 54.0732 85.0104 98.214C40.8944 146.399 18.511 209.199 22.7153 272.993C24.0838 293.283 29.2654 318.256 36.531 337.479Z" fill="#E8F0FE"/>
 <path d="M230.204 92.6969C230.512 90.5431 230.777 87.6163 232.812 86.4275C238.108 83.3344 239.306 89.0228 239.905 92.0806C244.422 97.1688 253.613 101.027 259.594 105.598C263.555 108.626 271.482 117.542 275.189 118.855C276.582 119.349 277.813 119.717 278.591 121.004C279.395 122.34 279.167 126.387 278.588 127.82C278.194 128.786 277.568 129.451 276.572 129.879C274.914 130.589 272.283 130.575 270.456 130.742L270.383 168.724C276.476 169.573 275.549 171.134 275.447 176.431C287.861 176.356 286.362 178.397 286.309 189.689C286.289 194.108 277.717 199.772 274.212 202.035C274.216 204.607 274.07 210.506 274.328 212.87C275.212 220.913 275.993 228.882 276.721 236.939L282.172 297.489C282.999 306.992 284.482 320.282 284.734 329.646C277.317 328.956 274.424 328.736 266.872 329.397C265.339 321.123 267.868 310.127 256.052 312.304C253.322 312.808 252.001 313.108 250.251 315.247C249.254 318.581 249.559 326.442 249.221 330.333C248.692 336.398 248.169 343.475 247.011 349.427C255.748 340.526 266.518 333.32 279.749 332.813C286.948 332.539 294.742 334.413 300.127 339.165C303.969 342.498 306.226 347.171 306.389 352.118C306.581 358.825 302.917 364.554 298.171 369.232C297.506 369.885 296.807 370.505 296.076 371.095C301.07 369.239 306.491 366.46 311.873 368.618C314.805 369.793 319.942 373.933 319.531 377.138C318.115 378.524 307.024 381.987 304.34 381.873C302.553 381.804 301.034 379.847 299.369 379.413C292.002 377.541 284.886 376.797 279.399 371.154C274.967 366.595 274.676 359.106 279.849 355.123C286.776 349.792 291.389 356.39 294.176 361.431C304.082 355.615 296.92 346.125 287.467 344.537C282.94 343.758 278.273 344.764 274.54 347.322C262.973 355.281 264.416 368.911 272.273 378.688C276.36 383.776 280.061 386.319 285.899 389.369C266.835 398.689 247.553 403.387 226.577 407.332C187.053 414.758 119.235 410.306 95.1531 374.296C92.34 370.767 90.0686 366.148 88.3681 362.049C91.1197 365.76 94.339 368.728 97.9905 371.614C106.252 376.879 116.608 381.858 126.807 381.996C127.956 382.012 140.464 380.411 141.686 380.09C151.593 377.465 156.693 361.274 167.474 357.95C172.276 356.472 176.112 357.149 180.828 356.459C182.036 346.156 182.734 335.894 183.76 325.575C186.203 300.265 188.774 274.966 191.485 249.679C192.961 235.789 194.318 219.433 196.681 205.782C210.591 204.853 226.666 204.491 240.683 204.122C237.959 201.461 237.201 200.342 235.48 196.992C225.935 197.02 216.387 197.205 206.845 197.545C202.188 197.697 197.22 198.145 192.541 197.935C182.536 197.488 184.21 189.579 184.128 182.702C184.042 175.691 189.221 176.341 194.751 176.423C194.655 171.027 194.013 169.715 200.097 168.826L199.921 143.773C199.901 140.539 200.03 133.807 199.742 130.827C194.219 130.405 191.177 131.014 191.108 124.47C190.36 118.767 194.781 119.615 198.131 117.104C199.544 116.044 202.347 112.824 203.86 111.219C210.466 104.209 223.724 99.1567 230.204 92.6969ZM223.506 168.117C230.006 168.171 236.509 168.179 243.009 168.141L247.073 168.157C247.941 157.544 249.738 144.54 245.002 134.567C244.131 132.732 230.373 133.346 227.888 133.448C227.054 133.53 225.812 133.492 225.389 134.219C220.689 142.276 222.675 159.874 223.506 168.117ZM234.983 234.746C233.732 235.291 232.597 235.791 232.253 237.176C231.422 240.534 231.925 245.259 231.978 248.79L236.678 248.755C238.174 248.753 238.386 249.004 239.388 248.356C239.753 246.585 239.829 244.265 239.739 242.457C239.547 238.598 240.011 234.875 234.983 234.746ZM217.002 167.31C216.926 155.054 216.731 146.023 218.511 133.883C214.656 133.846 210.744 133.777 206.898 133.79C206.812 144.814 206.597 157.195 206.881 168.146C208.602 168.18 215.88 168.576 216.89 167.802L217.002 167.31ZM254.758 168.143L263.549 168.129C263.539 156.929 263.774 144.906 263.496 133.77L260.312 133.748L251.773 133.786C253.815 145.26 253.441 155.316 253.289 166.833C253.276 167.796 253.286 167.587 254 168.085L254.758 168.143Z" fill="#E8F0FE" fill-opacity="0.933333"/>
 </svg>
+</file>
+
+<file path="scripts/benchmark-turso-tezara.ts">
+import { getE5QueryEmbedding, searchTezara } from "../src/features/tezara";
+
+interface BenchmarkResult {
+  query: string;
+  category: string;
+  embeddingTimeMs: number;
+  dbSearchTimeMs: number;
+  totalTimeMs: number;
+  resultsCount: number;
+  topTitles: string[];
+  hasAbstractCount: number;
+  hasPdfCount: number;
+}
+
+const TEST_QUERIES = [
+  {
+    category: "Hukuk & Teknoloji",
+    query: "yapay zeka üretimi eserlerin telif hakkı ve fikri mülkiyet koruması",
+  },
+  {
+    category: "Sosyoloji & Göç",
+    query: "suriyeli sığınmacıların kentsel entegrasyonu ve mekansal ayrışma",
+  },
+  {
+    category: "Ekonomi & Finans",
+    query: "merkez bankası faiz kararlarının enflasyon ve döviz kuru üzerindeki dinamik etkileri",
+  },
+  {
+    category: "Tıp & Biyoteknoloji",
+    query: "meme kanseri erken teşhisinde derin öğrenme ve konvolüsyonel sinir ağları",
+  },
+  {
+    category: "Eğitim Bilimleri",
+    query: "ortaokul öğrencilerinde uzaktan eğitim sürecinde matematik kaygısı ve akademik başarı",
+  },
+  {
+    category: "İngilizce Sorgu (Multilingual Test)",
+    query: "corporate governance board gender diversity and financial performance",
+  },
+];
+
+async function runBenchmark() {
+  console.log("===============================================================");
+  console.log("   FABRICCA - TURSO VEKTÖR & HUGGING FACE KALİTE/PERFORMANS TESTİ   ");
+  console.log("===============================================================\n");
+
+  const benchmarkResults: BenchmarkResult[] = [];
+
+  for (const item of TEST_QUERIES) {
+    console.log(`[TEST BAŞLADI] Kategori: ${item.category}`);
+    console.log(`Sorgu: "${item.query}"`);
+
+    // 1. Embedding süresi
+    const embStart = performance.now();
+    const emb = await getE5QueryEmbedding(item.query);
+    const embTime = Math.round(performance.now() - embStart);
+
+    // 2. Arama ve E2E süresi
+    const totalStart = performance.now();
+    const results = await searchTezara(item.query, undefined, { limit: 10 });
+    const totalTime = Math.round(performance.now() - totalStart);
+    const dbTime = Math.max(0, totalTime - embTime);
+
+    const hasAbstract = results.filter((r) => r.abstract && r.abstract.length > 50).length;
+    const hasPdf = results.filter((r) => Boolean(r.yokPdfUrl)).length;
+
+    benchmarkResults.push({
+      query: item.query,
+      category: item.category,
+      embeddingTimeMs: embTime,
+      dbSearchTimeMs: dbTime,
+      totalTimeMs: totalTime,
+      resultsCount: results.length,
+      topTitles: results.slice(0, 3).map((r) => `[${r.year}] ${r.title} (${r.author} - ${r.university})`),
+      hasAbstractCount: hasAbstract,
+      hasPdfCount: hasPdf,
+    });
+
+    console.log(`  ⏱️ Embedding: ${embTime}ms | DB Arama: ${dbTime}ms | Toplam: ${totalTime}ms`);
+    console.log(`  📊 Dönen Tez Sayısı: ${results.length} | Özet Doluluğu: %${(hasAbstract / results.length) * 100} | PDF Oranı: %${(hasPdf / results.length) * 100}`);
+    console.log(`  🎯 İlk 2 Sonuç:`);
+    results.slice(0, 2).forEach((r, idx) => {
+      console.log(`     ${idx + 1}. [${r.year}] ${r.title.slice(0, 90)}...`);
+      console.log(`        Yazar: ${r.author} | Ünv: ${r.university} | Dil: ${r.language || "N/A"}`);
+      console.log(`        Özet: ${r.abstract.slice(0, 110)}...\n`);
+    });
+    console.log("---------------------------------------------------------------");
+  }
+
+  // 3. Paralel İstek / Çoklu Sorgu Testi (Positioning sifting simülasyonu: 8 sorgu)
+  console.log("\n[PARALEL SORGULAMA TESTİ - Sifting Simülasyonu]");
+  console.log("8 eşzamanlı/sıralı sorgu yükü testi yapılıyor...");
+  const multiStart = performance.now();
+  const multiPromises = TEST_QUERIES.map((t) => searchTezara(t.query, undefined, { limit: 20 }));
+  const multiRes = await Promise.all(multiPromises);
+  const multiDuration = Math.round(performance.now() - multiStart);
+  const totalThesesFetched = multiRes.reduce((acc, curr) => acc + curr.length, 0);
+
+  console.log(`  ⏱️ 6 Paralel Sorgu Tamamlanma Süresi: ${multiDuration}ms`);
+  console.log(`  📦 Toplam Çekilen Tez: ${totalThesesFetched}`);
+  console.log(`  ⚡ Ortalama Sorgu Başına Süre (Throughput): ${(multiDuration / 6).toFixed(1)}ms`);
+
+  // İstatistikler
+  const avgTotal = Math.round(
+    benchmarkResults.reduce((a, b) => a + b.totalTimeMs, 0) / benchmarkResults.length,
+  );
+  const avgEmb = Math.round(
+    benchmarkResults.reduce((a, b) => a + b.embeddingTimeMs, 0) / benchmarkResults.length,
+  );
+  const avgDb = Math.round(
+    benchmarkResults.reduce((a, b) => a + b.dbSearchTimeMs, 0) / benchmarkResults.length,
+  );
+
+  console.log("\n===============================================================");
+  console.log("                     GENEL PERFORMANS RAPORU                   ");
+  console.log("===============================================================");
+  console.log(` Ort. Embedding Süresi (Hugging Face) : ${avgEmb} ms`);
+  console.log(` Ort. Veritabanı Arama Süresi (Turso) : ${avgDb} ms`);
+  console.log(` Ort. Toplam İstek Süresi (E2E)        : ${avgTotal} ms`);
+  console.log(` Paralel 6 Sorgu Çekim Süresi         : ${multiDuration} ms`);
+  console.log("===============================================================\n");
+}
+
+runBenchmark().catch((err) => {
+  console.error("Benchmark testinde hata oluştu:", err);
+  process.exit(1);
+});
+</file>
+
+<file path="scripts/compare-thesis-search-strategies.ts">
+import { db } from "../src/db";
+import { matrices } from "../src/db/schema";
+import { generatePositioningQueries } from "../src/features/positioning/queries";
+import { searchTezara } from "../src/features/tezara";
+import { rerankWithCohere } from "../src/services/ai/cohere";
+import type { TezaraThesisDetails } from "../src/lib/types";
+
+function formatThesisToYaml(thesis: TezaraThesisDetails): string {
+  return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
+}
+
+async function main() {
+  console.log("==========================================================================");
+  console.log("   FABRICCA - 3 FARKLI TEZ ARAMA STRATEJİSİNİN KARŞILAŞTIRMALI TESTİ     ");
+  console.log("==========================================================================\n");
+
+  // 1. DB'den gerçek matrisi çek
+  const matrixRows = await db.select().from(matrices).limit(1);
+  if (!matrixRows || matrixRows.length === 0) {
+    throw new Error("Veritabanında matris kaydı bulunamadı.");
+  }
+
+  const matrix = matrixRows[0];
+  const matrixInput = {
+    subjectProblem: matrix.subjectProblem,
+    theoreticalFramework: matrix.theoreticalFramework,
+    methodology: matrix.methodology,
+  };
+
+  console.log("📌 KULLANICI TEZ MATRİSİ ÖZETİ:");
+  console.log(`Araştırma Problemi: "${matrix.subjectProblem.slice(0, 180)}..."\n`);
+
+  // Gemini ile 8 sorguyu üret
+  console.log("🤖 Gemini Flash ile 8 Semantik Sorgu Üretiliyor...");
+  const queriesStart = performance.now();
+  const generatedQueries = await generatePositioningQueries(matrixInput);
+  console.log(`✅ Sorgular üretildi (${Math.round(performance.now() - queriesStart)}ms):`);
+  console.log("  TR-1:", generatedQueries.subjectTr_alt1);
+  console.log("  TR-2:", generatedQueries.subjectTr_alt2);
+  console.log("  TR-3:", generatedQueries.subjectTr_alt3);
+  console.log("  TR-4:", generatedQueries.subjectTr_alt4);
+  console.log("  EN-1:", generatedQueries.subjectEn_alt1);
+  console.log("  EN-2:", generatedQueries.subjectEn_alt2);
+  console.log("  EN-3:", generatedQueries.subjectEn_alt3);
+  console.log("  EN-4:", generatedQueries.subjectEn_alt4);
+  console.log("\n--------------------------------------------------------------------------");
+
+  // =========================================================================
+  // STRATEJİ 1: Sadece Tezin Kendisi (Tek Vektör)
+  // =========================================================================
+  console.log("\n🔵 [STRATEJİ 1: SADECE TEZİN KENDİSİ VEKTÖRLEŞİNCE]");
+  const s1Start = performance.now();
+  // 512 token sınırına uygun olarak subjectProblem'in özünü veriyoruz
+  const directQuery = matrix.subjectProblem.slice(0, 450);
+  const s1Theses = await searchTezara(directQuery, undefined, { limit: 40 });
+  const s1Time = Math.round(performance.now() - s1Start);
+
+  console.log(`  ⏱️ Süre: ${s1Time}ms | Bulunan Aday Sayısı: ${s1Theses.length}`);
+
+  // =========================================================================
+  // STRATEJİ 2: Sadece 8 Üretilen Sorgu
+  // =========================================================================
+  console.log("\n🟣 [STRATEJİ 2: SADECE 8 ÜRETİLEN SORGU İLE]");
+  const s2Start = performance.now();
+  const s2Queries = [
+    generatedQueries.subjectTr_alt1,
+    generatedQueries.subjectTr_alt2,
+    generatedQueries.subjectTr_alt3,
+    generatedQueries.subjectTr_alt4,
+    generatedQueries.subjectEn_alt1,
+    generatedQueries.subjectEn_alt2,
+    generatedQueries.subjectEn_alt3,
+    generatedQueries.subjectEn_alt4,
+  ];
+
+  const s2ResultsArray = await Promise.all(
+    s2Queries.map((q) => searchTezara(q, undefined, { limit: 25 })),
+  );
+
+  const s2Map = new Map<number, TezaraThesisDetails>();
+  for (const arr of s2ResultsArray) {
+    for (const t of arr) {
+      if (t.id && !s2Map.has(t.id)) s2Map.set(t.id, t);
+    }
+  }
+  const s2Theses = Array.from(s2Map.values());
+  const s2Time = Math.round(performance.now() - s2Start);
+
+  console.log(`  ⏱️ Süre: ${s2Time}ms | Tekilleştirilmiş Aday Sayısı: ${s2Theses.length}`);
+
+  // =========================================================================
+  // STRATEJİ 3: Tezin Kendisi (0. Sorgu) + 8 Üretilen Sorgu = 9 Sorgu
+  // =========================================================================
+  console.log("\n🟢 [STRATEJİ 3: TEZİN KENDİSİ (0. SORGU) + 8 ÜRETİLEN SORGU (TOPLAM 9)]");
+  const s3Start = performance.now();
+  const s3Queries = [directQuery, ...s2Queries];
+
+  const s3ResultsArray = await Promise.all(
+    s3Queries.map((q) => searchTezara(q, undefined, { limit: 25 })),
+  );
+
+  const s3Map = new Map<number, TezaraThesisDetails>();
+  for (const arr of s3ResultsArray) {
+    for (const t of arr) {
+      if (t.id && !s3Map.has(t.id)) s3Map.set(t.id, t);
+    }
+  }
+  const s3Theses = Array.from(s3Map.values());
+  const s3Time = Math.round(performance.now() - s3Start);
+
+  console.log(`  ⏱️ Süre: ${s3Time}ms | Tekilleştirilmiş Aday Sayısı: ${s3Theses.length}`);
+
+  // =========================================================================
+  // COHERE RERANK İLE KALİTE VE ALAKA DEĞERLENDİRMESİ
+  // =========================================================================
+  console.log("\n==========================================================================");
+  console.log("            COHERE RERANK v4.0 PRO İLE EN İYİ İLK 5 TEZ ANALİZİ          ");
+  console.log("==========================================================================");
+
+  const rerankQuery = `SubjectProblem: ${matrix.subjectProblem}`;
+
+  async function rankAndDisplay(theses: TezaraThesisDetails[], strategyName: string) {
+    // Filtrele: özet uzunluğu >= 100
+    const filtered = theses.filter((t) => t.abstract && t.abstract.trim().length >= 100);
+    const docs = filtered.map(formatThesisToYaml);
+
+    if (docs.length === 0) {
+      console.log(`\n[${strategyName}] Uygun özetli aday bulunamadı.`);
+      return;
+    }
+
+    const rerankRes = await rerankWithCohere({
+      query: rerankQuery,
+      documents: docs,
+    });
+
+    console.log(`\n🏆 ${strategyName} (Toplam Değerlendirilen: ${filtered.length} Tez)`);
+    const top5 = rerankRes.slice(0, 5);
+
+    top5.forEach((item, idx) => {
+      const t = filtered[item.index];
+      const score = (item.relevanceScore * 100).toFixed(1);
+      console.log(`  ${idx + 1}. [Skor: %${score}] [${t.year}] ${t.title}`);
+      console.log(`     Yazar: ${t.author} | Ünv: ${t.university} | Tür: ${t.thesisType}`);
+      console.log(`     Özet: ${t.abstract.slice(0, 140)}...\n`);
+    });
+  }
+
+  await rankAndDisplay(s1Theses, "STRATEJİ 1: Sadece Tezin Kendisi");
+  await rankAndDisplay(s2Theses, "STRATEJİ 2: Sadece 8 Üretilen Sorgu");
+  await rankAndDisplay(s3Theses, "STRATEJİ 3: Tezin Kendisi (0. Sorgu) + 8 Sorgu (Toplam 9)");
+
+  // Küme Kesişimi Analizi
+  const s1Ids = new Set(s1Theses.map((t) => t.id));
+  const s2Ids = new Set(s2Theses.map((t) => t.id));
+  const commonIds = s1Theses.filter((t) => s2Ids.has(t.id)).map((t) => t.id);
+  const onlyS1 = s1Theses.filter((t) => !s2Ids.has(t.id)).map((t) => t.id);
+  const onlyS2 = s2Theses.filter((t) => !s1Ids.has(t.id)).map((t) => t.id);
+
+  console.log("==========================================================================");
+  console.log("                        KÜME KESİŞİM VE FARK ANALİZİ                     ");
+  console.log("==========================================================================");
+  console.log(` S1 (Tezin Kendisi) Toplam Aday       : ${s1Theses.length}`);
+  console.log(` S2 (8 Sorgu) Toplam Aday             : ${s2Theses.length}`);
+  console.log(` S3 (9 Sorgu) Toplam Aday             : ${s3Theses.length}`);
+  console.log(` Ortak Yakalanan Tez Sayısı           : ${commonIds.length}`);
+  console.log(` SADECE S1'in Yakaladığı Özel Tezler  : ${onlyS1.length}`);
+  console.log(` SADECE S2'nin Yakaladığı Özel Tezler  : ${onlyS2.length}`);
+  console.log("==========================================================================\n");
+}
+
+main().catch((err) => {
+  console.error("Test hatası:", err);
+  process.exit(1);
+});
+</file>
+
+<file path="scripts/test-turso-search.ts">
+import { searchTezara } from "../src/features/tezara";
+
+async function main() {
+  console.log("Testing Turso Vector Search via searchTezara...");
+  const query = "yapay zeka ve telif hakları";
+  const start = performance.now();
+
+  const results = await searchTezara(query, undefined, { limit: 5 });
+  const duration = Math.round(performance.now() - start);
+
+  console.log(`\nSearch finished in ${duration}ms. Results count: ${results.length}\n`);
+
+  for (let i = 0; i < results.length; i++) {
+    const t = results[i];
+    console.log(`--- Result #${i + 1} ---`);
+    console.log(`ID: ${t.id}`);
+    console.log(`Title: ${t.title}`);
+    console.log(`Author: ${t.author}`);
+    console.log(`Year: ${t.year}`);
+    console.log(`University: ${t.university}`);
+    console.log(`Type: ${t.thesisType}`);
+    console.log(`Language: ${t.language}`);
+    console.log(`Abstract: ${t.abstract.slice(0, 150)}...`);
+    console.log(`PDF URL: ${t.yokPdfUrl || "N/A"}\n`);
+  }
+}
+
+main().catch((err) => {
+  console.error("Test failed with error:", err);
+  process.exit(1);
+});
 </file>
 
 <file path="src/app/(app)/dashboard/_lib/schemas.ts">
@@ -12059,76 +12405,6 @@ export function usePositioningContinue() {
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/boxes/_components/boxes-skeleton.tsx">
-import { Card, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-
-/**
- * Skeleton mirroring the onboarding boxes step content: AI banner, the topic
- * box card grid, and the proceed button row.
- *
- * @returns The boxes step loading skeleton.
- */
-export function BoxesSkeleton() {
-  return (
-    <div className="w-full space-y-8">
-      <div className="flex w-full items-start gap-3 rounded-md border border-primary/20 bg-primary/10 px-4 py-3">
-        <Skeleton className="mt-1 h-4 w-4 shrink-0 rounded-md" />
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-64" />
-          <Skeleton className="h-3 w-full bg-border/20" />
-          <Skeleton className="h-3 w-4/5 bg-border/20" />
-        </div>
-      </div>
-
-      <div className="grid auto-rows-min grid-cols-1 gap-4">
-        {Array.from({ length: 2 }).map((_, index) => (
-          <Card key={index} className="h-full space-y-4 rounded-md p-6">
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-3 w-12 bg-border/20" />
-              <Skeleton className="ml-auto h-6 w-24 rounded-md bg-border/20" />
-            </div>
-            <div className="flex items-start gap-3">
-              <Skeleton className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-border/20" />
-              <CardTitle className="w-full space-y-2">
-                <Skeleton className="h-5 w-3/4" />
-              </CardTitle>
-            </div>
-            <Skeleton className="h-3 w-full bg-border/20" />
-            <Skeleton className="h-3 w-2/3 bg-border/20" />
-            <div className="border-y border-border py-3">
-              <div className="flex flex-wrap gap-2">
-                {Array.from({ length: 3 }).map((_, conceptIndex) => (
-                  <Skeleton
-                    key={conceptIndex}
-                    className="h-6 w-20 rounded-md bg-border/20"
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="space-y-2 pt-1">
-              <Skeleton className="h-3 w-24 bg-border/20" />
-              <div className="relative ml-3 space-y-3 border-l border-border/40 pl-4">
-                {Array.from({ length: 2 }).map((_, subIndex) => (
-                  <div key={subIndex} className="space-y-2">
-                    <Skeleton className="h-3.5 w-2/3" />
-                    <Skeleton className="h-3 w-1/2 bg-border/20" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      <div className="flex justify-end pb-8">
-        <Skeleton className="h-10 w-52 rounded-md" />
-      </div>
-    </div>
-  );
-}
-</file>
-
 <file path="src/app/(onboarding)/onboarding/literature-review/_components/literature-review-skeleton.tsx">
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22273,6 +22549,76 @@ export function useMatrixSubmit() {
 }
 </file>
 
+<file path="src/app/(onboarding)/onboarding/boxes/_components/boxes-skeleton.tsx">
+import { Card, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+
+/**
+ * Skeleton mirroring the onboarding boxes step content: AI banner, the topic
+ * box card grid, and the proceed button row.
+ *
+ * @returns The boxes step loading skeleton.
+ */
+export function BoxesSkeleton() {
+  return (
+    <div className="w-full space-y-8">
+      <div className="flex w-full items-start gap-3 rounded-md border border-primary/20 bg-primary/10 px-4 py-3">
+        <Skeleton className="mt-1 h-4 w-4 shrink-0 rounded-md" />
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-64" />
+          <Skeleton className="h-3 w-full bg-border/20" />
+          <Skeleton className="h-3 w-4/5 bg-border/20" />
+        </div>
+      </div>
+
+      <div className="grid auto-rows-min grid-cols-1 gap-4">
+        {Array.from({ length: 2 }).map((_, index) => (
+          <Card key={index} className="h-full space-y-4 rounded-md p-6">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-3 w-12 bg-border/20" />
+              <Skeleton className="ml-auto h-6 w-24 rounded-md bg-border/20" />
+            </div>
+            <div className="flex items-start gap-3">
+              <Skeleton className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-border/20" />
+              <CardTitle className="w-full space-y-2">
+                <Skeleton className="h-5 w-3/4" />
+              </CardTitle>
+            </div>
+            <Skeleton className="h-3 w-full bg-border/20" />
+            <Skeleton className="h-3 w-2/3 bg-border/20" />
+            <div className="border-y border-border py-3">
+              <div className="flex flex-wrap gap-2">
+                {Array.from({ length: 3 }).map((_, conceptIndex) => (
+                  <Skeleton
+                    key={conceptIndex}
+                    className="h-6 w-20 rounded-md bg-border/20"
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2 pt-1">
+              <Skeleton className="h-3 w-24 bg-border/20" />
+              <div className="relative ml-3 space-y-3 border-l border-border/40 pl-4">
+                {Array.from({ length: 2 }).map((_, subIndex) => (
+                  <div key={subIndex} className="space-y-2">
+                    <Skeleton className="h-3.5 w-2/3" />
+                    <Skeleton className="h-3 w-1/2 bg-border/20" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <div className="flex justify-end pb-8">
+        <Skeleton className="h-10 w-52 rounded-md" />
+      </div>
+    </div>
+  );
+}
+</file>
+
 <file path="src/app/(onboarding)/onboarding/outline/_components/outline-skeleton.tsx">
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
@@ -24498,7 +24844,7 @@ export function buildPositioningQueriesPromptPayload(
 ): PromptPayload {
   return buildPromptPayload({
     roleAndExpertise:
-      "Akademik tez veritabanlarında (Meilisearch) arama yapmak için yüksek hassasiyetli, doğal dil arama sorguları üreten uzman bir Bilgi Erişim (Information Retrieval) Uzmanısınız.",
+      "Akademik tez veritabanlarında vektör/semantik arama yapmak için yüksek hassasiyetli, doğal dil arama sorguları üreten uzman bir Bilgi Erişim (Information Retrieval) Uzmanısınız.",
 
     primaryTask:
       "Sana sunulan Tez Konumlandırma Matrisinin Araştırma Problemi bileşeni (aktörleri, kurumları ve ampirik bağlamı kapsayan entegre alan) için Türkçe ve İngilizce olmak üzere her dil için 4 farklı alternatif içeren toplam 8 kısa arama sorgusu üretmektir.",
@@ -24508,7 +24854,7 @@ export function buildPositioningQueriesPromptPayload(
    - **_alt2 (Aktör / Kurum / Bağlam):** Araştırmadaki ana aktörleri, kurumları veya tarihsel/coğrafi bağlamı hedefleyen 2-4 kelimelik sorgu.
    - **_alt3 (Geniş Tematik Kapsam - Yüksek Yakalama / High-Recall):** Akademik tez veritabanlarında geniş arama başarımı sağlayan 1-3 kelimelik kapsayıcı ana konu başlığı (aşırı daraltılmamış, tez başlıklarında kesin geçecek anahtar kavramlar).
    - **_alt4 (Kavramsal Çatı / Eşanlamlı):** Disiplinde yaygın kullanılan geniş kuramsal veya kavramsal akademik eşanlamlılar (2-4 kelime).
-2. **Sorgu Uyumı:** Sorgular Meilisearch uyumlu, yalnızca boşlukla ayrılmış düz akademik Türkçe ve İngilizce kelimelerden oluşmalı; özel karakter veya operatör içermemelidir.
+2. **Sorgu Uyumu:** Sorgular semantik vektör arama uyumlu, yalnızca boşlukla ayrılmış düz akademik Türkçe ve İngilizce kelimelerden oluşmalı; özel karakter veya mantıksal operatör içermemelidir.
 3. **Genel Geçerlilik:** Her disiplin (sosyoloji, hukuk, tıp, mühendislik, siyaset bilimi vb.) için veritabanındaki hem dar hem geniş başlıkları kapsayacak esneklikte üretilmelidir.`,
 
     outputFormat:
@@ -24531,7 +24877,7 @@ export function buildPositioningQueriesPromptPayload(
 }
 \`\`\``,
 
-    inputContext: `Aşağıdaki matris alanı için kademeli (spesifikten geniş tematik kapsama) Türkçe ve İngilizce Meilisearch sorguları üret (her dil için 4 alternatif, toplam 8 sorgu):
+    inputContext: `Aşağıdaki matris alanı için kademeli (spesifikten geniş tematik kapsama) Türkçe ve İngilizce semantik tez arama sorguları üret (her dil için 4 alternatif, toplam 8 sorgu):
 
 Araştırma Problemi ve Odağı — aktörler, kurumlar ve ampirik bağlam dahil (subjectTr_alt1/2/3/4 / subjectEn_alt1/2/3/4): ${input.subjectProblem}`,
   });
@@ -25006,42 +25352,42 @@ export const generatedQueriesJsonSchema: JsonSchema = {
     subjectTr_alt1: {
       type: "string",
       description:
-        "Araştırma problemi ve odağı için 2-4 kelimelik Türkçe Meilisearch sorgusu (alternatif 1 — problem mekanizması)",
+        "Araştırma problemi ve odağı için 2-4 kelimelik Türkçe semantik tez arama sorgusu (alternatif 1 — problem mekanizması)",
     },
     subjectTr_alt2: {
       type: "string",
       description:
-        "Araştırma problemi ve odağı için 2-4 kelimelik Türkçe Meilisearch sorgusu (alternatif 2 — aktörler/kurumlar)",
+        "Araştırma problemi ve odağı için 2-4 kelimelik Türkçe semantik tez arama sorgusu (alternatif 2 — aktörler/kurumlar)",
     },
     subjectTr_alt3: {
       type: "string",
       description:
-        "Araştırma problemi ve odağı için 2-4 kelimelik Türkçe Meilisearch sorgusu (alternatif 3 — coğrafi/tarihsel bağlam)",
+        "Araştırma problemi ve odağı için 2-4 kelimelik Türkçe semantik tez arama sorgusu (alternatif 3 — coğrafi/tarihsel bağlam)",
     },
     subjectTr_alt4: {
       type: "string",
       description:
-        "Araştırma problemi ve odağı için 2-4 kelimelik Türkçe Meilisearch sorgusu (alternatif 4 — geniş akademik eşanlamlı)",
+        "Araştırma problemi ve odağı için 2-4 kelimelik Türkçe semantik tez arama sorgusu (alternatif 4 — geniş akademik eşanlamlı)",
     },
     subjectEn_alt1: {
       type: "string",
       description:
-        "Research problem and focus — 2-4 word English Meilisearch query (alternative 1 — problem mechanism)",
+        "Research problem and focus — 2-4 word English semantic thesis search query (alternative 1 — problem mechanism)",
     },
     subjectEn_alt2: {
       type: "string",
       description:
-        "Research problem and focus — 2-4 word English Meilisearch query (alternative 2 — actors/institutions)",
+        "Research problem and focus — 2-4 word English semantic thesis search query (alternative 2 — actors/institutions)",
     },
     subjectEn_alt3: {
       type: "string",
       description:
-        "Research problem and focus — 2-4 word English Meilisearch query (alternative 3 — geographic/temporal context)",
+        "Research problem and focus — 2-4 word English semantic thesis search query (alternative 3 — geographic/temporal context)",
     },
     subjectEn_alt4: {
       type: "string",
       description:
-        "Research problem and focus — 2-4 word English Meilisearch query (alternative 4 — broad academic synonym)",
+        "Research problem and focus — 2-4 word English semantic thesis search query (alternative 4 — broad academic synonym)",
     },
   },
   required: [
@@ -25058,12 +25404,12 @@ export const generatedQueriesJsonSchema: JsonSchema = {
 };
 
 /**
- * Removes boolean operators and punctuation syntax for strict Meilisearch compatibility.
+ * Sanitizes query text for vector search.
  *
  * @param rawQuery - The raw query string to sanitize.
- * @returns The cleaned query string safe for Meilisearch.
+ * @returns The cleaned query string.
  */
-export function sanitizeMeiliQuery(rawQuery: string): string {
+export function sanitizeSearchQuery(rawQuery: string): string {
   if (!rawQuery) return "";
   return rawQuery
     .replace(/\b(OR|AND|NOT)\b/gi, " ")
@@ -25071,6 +25417,9 @@ export function sanitizeMeiliQuery(rawQuery: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+/** Backward compatibility alias for sanitizeSearchQuery. */
+export const sanitizeMeiliQuery = sanitizeSearchQuery;
 
 import { buildPositioningQueriesPromptPayload } from "./prompts/queries.prompt";
 
@@ -25102,14 +25451,14 @@ export async function generatePositioningQueries(
   );
 
   return {
-    subjectTr_alt1: sanitizeMeiliQuery(result.subjectTr_alt1),
-    subjectTr_alt2: sanitizeMeiliQuery(result.subjectTr_alt2),
-    subjectTr_alt3: sanitizeMeiliQuery(result.subjectTr_alt3),
-    subjectTr_alt4: sanitizeMeiliQuery(result.subjectTr_alt4),
-    subjectEn_alt1: sanitizeMeiliQuery(result.subjectEn_alt1),
-    subjectEn_alt2: sanitizeMeiliQuery(result.subjectEn_alt2),
-    subjectEn_alt3: sanitizeMeiliQuery(result.subjectEn_alt3),
-    subjectEn_alt4: sanitizeMeiliQuery(result.subjectEn_alt4),
+    subjectTr_alt1: sanitizeSearchQuery(result.subjectTr_alt1),
+    subjectTr_alt2: sanitizeSearchQuery(result.subjectTr_alt2),
+    subjectTr_alt3: sanitizeSearchQuery(result.subjectTr_alt3),
+    subjectTr_alt4: sanitizeSearchQuery(result.subjectTr_alt4),
+    subjectEn_alt1: sanitizeSearchQuery(result.subjectEn_alt1),
+    subjectEn_alt2: sanitizeSearchQuery(result.subjectEn_alt2),
+    subjectEn_alt3: sanitizeSearchQuery(result.subjectEn_alt3),
+    subjectEn_alt4: sanitizeSearchQuery(result.subjectEn_alt4),
   };
 }
 </file>
@@ -30376,161 +30725,129 @@ Literatür Konumu: ${e.literaturePosition || "Yok"}
 </file>
 
 <file path="src/features/tezara/index.ts">
+import { createClient, type Client } from "@libsql/client/web";
 import type { Logger } from "@/lib/logger";
 import type { TezaraThesisDetails } from "@/lib/types";
 import { DEFAULT_MAX_DELAY, HttpError, withRetry } from "@/lib/api-utils";
 
-const MEILI_URL = process.env.TEZARA_MEILI_URL ?? "";
-const MEILI_KEY = process.env.TEZARA_MEILI_KEY ?? "";
+const TURSO_URL = process.env.TURSO_DATABASE_URL ?? "";
+const TURSO_AUTH_TOKEN = process.env.TURSO_AUTH_TOKEN ?? "";
+const HF_API_KEY = process.env.HUGGINGFACE_API_KEY ?? "";
 
-/** Maximum number of search attempts for transient Meilisearch failures (429/5xx/network). */
-const MEILI_MAX_RETRIES = 3;
+const HF_EMBEDDING_ENDPOINT =
+  "https://router.huggingface.co/hf-inference/models/intfloat/multilingual-e5-base/pipeline/feature-extraction";
+
+/** Maximum number of retry attempts for transient API/network failures. */
+const MAX_RETRIES = 3;
+
+/** Global singleton LibSQL client instance. */
+let libsqlClient: Client | null = null;
 
 /**
- * Parses the `Retry-After` header from a Meilisearch response into milliseconds.
+ * Returns the singleton LibSQL client connected to the Turso thesis database.
  *
- * @param response - The HTTP response to inspect.
- * @returns The retry delay in milliseconds, or null when absent or unparseable.
+ * @throws Error when TURSO_DATABASE_URL or TURSO_AUTH_TOKEN are missing.
+ * @returns LibSQL client instance.
  */
-function parseRetryAfterHeader(response: Response): number | null {
-  const header = response.headers.get("Retry-After");
-  if (!header) return null;
-
-  const seconds = parseInt(header, 10);
-  if (!isNaN(seconds) && seconds > 0) {
-    return seconds * 1000;
+function getLibsqlClient(): Client {
+  if (libsqlClient) {
+    return libsqlClient;
   }
 
-  return null;
-}
-
-/** Additional Meilisearch search parameters for precision tuning. */
-export interface MeiliSearchParams {
-  rankingScoreThreshold?: number;
-  filter?: string;
-  attributesToSearchOn?: string[];
-}
-
-/**
- * Extracts the most reliable abstract text from a raw Meilisearch hit.
- *
- * @param hit - Raw Meilisearch hit record.
- * @returns Abstract string, preferring the original over the translated text.
- */
-function extractAbstract(hit: Record<string, unknown>): string {
-  let abstract = String(hit.abstract_original ?? "").trim();
-  if (!abstract || abstract.length < 10 || /^özet yok\.?$/i.test(abstract)) {
-    abstract = String(hit.abstract_translated ?? "").trim();
-  }
-  return abstract;
-}
-
-/**
- * Maps a raw Meilisearch hit to thesis details.
- *
- * @param hit - Raw Meilisearch hit record.
- * @returns Thesis details.
- */
-function mapHitToDetails(hit: Record<string, unknown>): TezaraThesisDetails {
-  const title = hit.title_translated
-    ? `${hit.title_original} / ${hit.title_translated}`
-    : String(hit.title_original ?? "");
-
-  return {
-    id: hit.id as number,
-    title,
-    author: String(hit.author ?? "N/A"),
-    university: String(hit.university ?? "N/A"),
-    year: parseInt(String(hit.year ?? "0"), 10) || 0,
-    thesisType: String(hit.thesis_type ?? "N/A"),
-    department: String(hit.department ?? "N/A"),
-    language: hit.language ? String(hit.language) : undefined,
-    abstract: extractAbstract(hit),
-    yokPdfUrl: hit.pdf_url ? String(hit.pdf_url) : undefined,
-  };
-}
-
-/**
- * Executes a request against the Tezara Meilisearch instance with retry on
- * transient failures (429/5xx/network), then either returns the hits or throws.
- *
- * A non-2xx response is thrown as an `HttpError` after retries are exhausted,
- * and network/parse failures are re-thrown — never swallowed — so callers can
- * stop the pipeline and surface the real cause.
- *
- * @param body - Meilisearch search request body.
- * @param logger - Optional logger for observability.
- * @param step - Optional step name for log events.
- * @throws When the request fails after all retry attempts.
- * @returns Matching hits.
- */
-async function meiliSearch(
-  body: Record<string, unknown>,
-  logger?: Logger,
-  step?: string,
-): Promise<{ hits: Record<string, unknown>[] }> {
-  if (!MEILI_URL || !MEILI_KEY) {
+  if (!TURSO_URL || !TURSO_AUTH_TOKEN) {
     throw new Error(
-      "TEZARA_MEILI_URL and TEZARA_MEILI_KEY environment variables are not defined.",
+      "TURSO_DATABASE_URL and TURSO_AUTH_TOKEN environment variables are not defined.",
     );
   }
 
+  libsqlClient = createClient({
+    url: TURSO_URL,
+    authToken: TURSO_AUTH_TOKEN,
+  });
+
+  return libsqlClient;
+}
+
+/**
+ * Generates a 768-dimensional embedding vector for a query using
+ * `intfloat/multilingual-e5-base` via Hugging Face Serverless Inference API.
+ *
+ * @param query - Raw query text.
+ * @param logger - Optional logger for observability.
+ * @returns 768-dimensional dense vector array.
+ */
+export async function getE5QueryEmbedding(
+  query: string,
+  logger?: Logger,
+): Promise<number[]> {
+  if (!HF_API_KEY) {
+    throw new Error(
+      "HUGGINGFACE_API_KEY environment variable is not defined.",
+    );
+  }
+
+  const trimmed = query.trim();
+  const inputWithPrefix = trimmed.startsWith("query: ")
+    ? trimmed
+    : `query: ${trimmed}`;
+
   const startTime = performance.now();
-  const timeoutMs = 30_000;
 
   try {
-    return await withRetry(
-      async (): Promise<{ hits: Record<string, unknown>[] }> => {
+    const vector = await withRetry(
+      async (): Promise<number[]> => {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        const timeoutId = setTimeout(() => controller.abort(), 20_000);
+
         try {
-          const res = await fetch(`${MEILI_URL}/indexes/theses/search`, {
+          const res = await fetch(HF_EMBEDDING_ENDPOINT, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${MEILI_KEY}`,
+              Authorization: `Bearer ${HF_API_KEY}`,
             },
-            body: JSON.stringify(body),
+            body: JSON.stringify({ inputs: [inputWithPrefix] }),
             signal: controller.signal,
           });
 
           if (!res.ok) {
             const errText = await res.text().catch(() => "");
-            throw new HttpError(
-              res.status,
-              errText,
-              parseRetryAfterHeader(res),
-            );
+            throw new HttpError(res.status, errText, null);
           }
 
-          return (await res.json()) as { hits: Record<string, unknown>[] };
+          const data = (await res.json()) as unknown;
+
+          if (Array.isArray(data) && Array.isArray(data[0])) {
+            return data[0] as number[];
+          }
+
+          if (Array.isArray(data) && typeof data[0] === "number") {
+            return data as number[];
+          }
+
+          throw new Error("Unexpected embedding response structure from Hugging Face.");
         } finally {
           clearTimeout(timeoutId);
         }
       },
       {
-        maxRetries: MEILI_MAX_RETRIES,
+        maxRetries: MAX_RETRIES,
         baseDelay: 500,
         maxDelay: DEFAULT_MAX_DELAY,
         isRetryable: (error) => {
           if (error instanceof HttpError) {
-            return error.status === 429 || error.status >= 500;
+            return error.status === 429 || error.status >= 500 || error.status === 503;
           }
           return true;
         },
-        getRetryAfter: (error) =>
-          error instanceof HttpError ? error.retryAfter : null,
         onRetry: (attempt, delayMs, error) => {
-          const status = error instanceof HttpError ? error.status : undefined;
-          logger?.info("search_retry", {
+          logger?.info("hf_embedding_retry", {
             service: "tezara",
             filePath: "src/features/tezara/index.ts",
-            step: step ?? "meili_search",
+            step: "get_query_embedding",
             data: {
               attempt,
-              maxRetries: MEILI_MAX_RETRIES,
               delayMs: Math.round(delayMs),
-              status,
               errorMessage:
                 error instanceof Error ? error.message : String(error),
             },
@@ -30538,14 +30855,25 @@ async function meiliSearch(
         },
       },
     );
-  } catch (err) {
+
     const durationMs = performance.now() - startTime;
-    logger?.error("search_filtered", {
+    logger?.info("hf_embedding_success", {
       service: "tezara",
       filePath: "src/features/tezara/index.ts",
-      step: step ?? "meili_search",
+      step: "get_query_embedding",
       durationMs,
-      data: { body },
+      data: { query: trimmed, dimensions: vector.length },
+    });
+
+    return vector;
+  } catch (err) {
+    const durationMs = performance.now() - startTime;
+    logger?.error("hf_embedding_failed", {
+      service: "tezara",
+      filePath: "src/features/tezara/index.ts",
+      step: "get_query_embedding",
+      durationMs,
+      data: { query: trimmed },
       error: err,
     });
     throw err;
@@ -30553,61 +30881,207 @@ async function meiliSearch(
 }
 
 /**
- * Searches Tezara via the Meilisearch JSON API in a single round-trip.
+ * Extracts the most reliable abstract text from a raw thesis record.
+ *
+ * @param row - Raw thesis database row.
+ * @returns Abstract string, preferring original over translated text.
+ */
+function extractAbstract(row: Record<string, unknown>): string {
+  let abstract = String(row.abstract_original ?? "").trim();
+  if (!abstract || abstract.length < 10 || /^özet yok\.?$/i.test(abstract)) {
+    abstract = String(row.abstract_translated ?? "").trim();
+  }
+  return abstract;
+}
+
+/**
+ * Maps a raw Turso database row to thesis details.
+ *
+ * @param row - Raw database row from `theses`.
+ * @returns Thesis details object.
+ */
+function mapRowToDetails(row: Record<string, unknown>): TezaraThesisDetails {
+  const titleOriginal = String(row.title_original ?? "").trim();
+  const titleTranslated = String(row.title_translated ?? "").trim();
+  const title =
+    titleTranslated && titleTranslated !== titleOriginal
+      ? `${titleOriginal} / ${titleTranslated}`
+      : titleOriginal;
+
+  return {
+    id: Number(row.id),
+    title,
+    author: String(row.author ?? "N/A"),
+    university: String(row.university ?? "N/A"),
+    year: parseInt(String(row.year ?? "0"), 10) || 0,
+    thesisType: String(row.thesis_type ?? "N/A"),
+    department: String(row.department ?? "N/A"),
+    language: row.language ? String(row.language) : undefined,
+    abstract: extractAbstract(row),
+    yokPdfUrl: row.pdf_url ? String(row.pdf_url) : undefined,
+  };
+}
+
+/** Search options for precision tuning. */
+export interface TezaraSearchOptions {
+  limit?: number;
+  rankingScoreThreshold?: number;
+  filter?: string;
+  attributesToSearchOn?: string[];
+}
+
+/**
+ * Extracts clean search keywords from a query string, filtering out stopwords.
+ *
+ * @param query - Input query text.
+ * @returns Array of clean keyword tokens.
+ */
+function extractSearchTokens(query: string): string[] {
+  const stopWords = new Set([
+    "ve", "veya", "ile", "için", "bir", "bu", "şu", "o", "da", "de", "ta", "te",
+    "the", "and", "or", "of", "in", "on", "at", "for", "with", "a", "an", "to",
+    "üzerine", "hakkında", "incelemesi", "analizi", "boyutu", "yaklaşımı", "dönemi"
+  ]);
+
+  return query
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .split(/\s+/)
+    .map((w) => w.trim())
+    .filter((w) => w.length >= 3 && !stopWords.has(w))
+    .slice(0, 6);
+}
+
+/**
+ * Fallback keyword search directly querying `theses` table.
+ *
+ * @param query - Search query string.
+ * @param client - LibSQL client instance.
+ * @param limit - Maximum rows to return.
+ * @returns Matching thesis details.
+ */
+async function searchThesesByKeywords(
+  query: string,
+  client: Client,
+  limit: number,
+): Promise<TezaraThesisDetails[]> {
+  const tokens = extractSearchTokens(query);
+  if (tokens.length === 0) return [];
+
+  const titleConditions = tokens.map(() => "(title_original LIKE ? OR title_translated LIKE ?)").join(" AND ");
+  const abstractConditions = tokens.slice(0, 3).map(() => "(abstract_original LIKE ? OR abstract_translated LIKE ?)").join(" AND ");
+
+  const combinedSql = `
+    SELECT id, title_original, title_translated, author, university, institute,
+           year, thesis_type, language, department, abstract_original, abstract_translated,
+           pdf_url, detail_url, subjects
+    FROM theses
+    WHERE (${titleConditions}) OR (${abstractConditions})
+    ORDER BY year DESC
+    LIMIT ?
+  `;
+
+  const args: (string | number)[] = [];
+  for (const token of tokens) {
+    args.push(`%${token}%`, `%${token}%`);
+  }
+  for (const token of tokens.slice(0, 3)) {
+    args.push(`%${token}%`, `%${token}%`);
+  }
+  args.push(limit);
+
+  const result = await client.execute({ sql: combinedSql, args });
+  const results: TezaraThesisDetails[] = [];
+  for (const row of result.rows) {
+    if (!row.id) continue;
+    results.push(mapRowToDetails(row as unknown as Record<string, unknown>));
+  }
+  return results;
+}
+
+/**
+ * Searches the thesis database via Turso Vector Index (cosine similarity)
+ * using `multilingual-e5-base` 768-dimensional embeddings with seamless keyword fallback.
  *
  * @param query - Search query string.
  * @param logger - Optional logger for observability.
- * @param options - Optional search precision settings.
- * @param options.limit - Maximum number of results to return.
- * @param options.rankingScoreThreshold - Minimum ranking score threshold.
- * @param options.filter - Meilisearch filter expression.
- * @param options.attributesToSearchOn - Attributes to restrict the search to.
+ * @param options - Optional search parameters (limit, etc.).
  * @returns Matching thesis details.
  */
 export async function searchTezara(
   query: string,
   logger?: Logger,
-  options?: {
-    limit?: number;
-    rankingScoreThreshold?: number;
-    filter?: string;
-    attributesToSearchOn?: string[];
-  },
+  options?: TezaraSearchOptions,
 ): Promise<TezaraThesisDetails[]> {
   const startTime = performance.now();
-  const limit = options?.limit ?? 100;
-  const body: Record<string, unknown> = { q: query, limit };
-  if (options?.rankingScoreThreshold !== undefined) {
-    body.rankingScoreThreshold = options.rankingScoreThreshold;
-  }
-  if (options?.filter !== undefined) {
-    body.filter = options.filter;
-  }
-  if (options?.attributesToSearchOn !== undefined) {
-    body.attributesToSearchOn = options.attributesToSearchOn;
-  }
-  const data = await meiliSearch(body, logger, "search_meili");
-  const durationMs = performance.now() - startTime;
+  const limit = options?.limit ?? 50;
+  const client = getLibsqlClient();
 
-  const hits = data.hits ?? [];
-  const results: TezaraThesisDetails[] = [];
+  try {
+    const embedding = await getE5QueryEmbedding(query, logger);
+    const vectorJson = JSON.stringify(embedding);
+    const queryStart = performance.now();
 
-  for (const hit of hits) {
-    if (!hit.id) continue;
-    results.push(mapHitToDetails(hit));
-  }
+    const sql = `
+      SELECT t.id, t.title_original, t.title_translated, t.author, t.university, t.institute,
+             t.year, t.thesis_type, t.language, t.department, t.abstract_original, t.abstract_translated,
+             t.pdf_url, t.detail_url, t.subjects
+      FROM vector_top_k('thesis_vectors_idx', vector16(?), ?) AS top
+      JOIN theses t ON t.id = top.id
+    `;
 
-  if (results.length === 0) {
-    logger?.info("search_empty", {
+    const result = await client.execute({
+      sql,
+      args: [vectorJson, limit],
+    });
+
+    const dbDurationMs = performance.now() - queryStart;
+    const totalDurationMs = performance.now() - startTime;
+
+    const results: TezaraThesisDetails[] = [];
+    for (const row of result.rows) {
+      if (!row.id) continue;
+      results.push(mapRowToDetails(row as unknown as Record<string, unknown>));
+    }
+
+    logger?.info("turso_vector_search_success", {
       service: "tezara",
       filePath: "src/features/tezara/index.ts",
-      step: "search_meili",
-      durationMs,
-      data: { query },
+      step: "search_turso_vector",
+      durationMs: totalDurationMs,
+      data: {
+        query,
+        resultCount: results.length,
+        dbDurationMs: Math.round(dbDurationMs),
+        limit,
+      },
     });
-  }
 
-  return results;
+    return results;
+  } catch (err) {
+    logger?.warn("turso_vector_fallback_to_keywords", {
+      service: "tezara",
+      filePath: "src/features/tezara/index.ts",
+      step: "search_keyword_fallback",
+      data: { query, reason: err instanceof Error ? err.message : String(err) },
+    });
+
+    try {
+      const keywordResults = await searchThesesByKeywords(query, client, limit);
+      return keywordResults;
+    } catch (keywordErr) {
+      const durationMs = performance.now() - startTime;
+      logger?.error("turso_search_all_failed", {
+        service: "tezara",
+        filePath: "src/features/tezara/index.ts",
+        step: "search_failed",
+        durationMs,
+        data: { query },
+        error: keywordErr,
+      });
+      return [];
+    }
+  }
 }
 </file>
 
@@ -35066,7 +35540,7 @@ import type { TezaraThesisDetails } from "@/lib/types";
 import { rerankWithCohere, COHERE_RERANK_MODEL } from "@/services/ai/cohere";
 import type { Logger } from "@/lib/logger";
 import type { PositioningMatrixInput } from "./validation";
-import { sanitizeMeiliQuery, type GeneratedQueries } from "./queries";
+import { sanitizeSearchQuery, type GeneratedQueries } from "./queries";
 
 /** Candidate thesis extended with Cohere semantic relevance score. */
 export interface SiftedThesis extends TezaraThesisDetails {
@@ -35083,20 +35557,6 @@ const ALLOWED_LANGUAGES = new Set([
   "english",
   "ingilizce",
 ]);
-
-/** Meilisearch filter to pre-filter results to Turkish or English only. */
-const LANG_FILTER = "language=Türkçe OR language=English";
-
-/** Fields to search within for relevance (title + abstract). */
-const SEARCH_FIELDS = [
-  "title_original",
-  "title_translated",
-  "abstract_original",
-  "abstract_translated",
-];
-
-/** Minimum Meilisearch ranking score threshold to maximize candidate search recall. */
-const RANKING_SCORE_THRESHOLD = 0.1;
 
 /**
  * Whether a thesis language tag matches Turkish or English; missing tags are kept.
@@ -35140,10 +35600,10 @@ function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
 const SCORE_EPSILON = 1e-4;
 
 /**
- * Runs 8 sequential Meilisearch queries on Tezara, deduplicates results, applies
- * abstract length and language filters, ranks candidates via Cohere Rerank
- * v4 Pro (full score list), then deterministically selects the top-N by
- * (relevanceScore desc, ID asc) for reproducible downstream evaluation.
+ * Runs 8 sequential semantic vector queries on the Turso thesis database,
+ * deduplicates results, applies abstract length and language filters,
+ * ranks candidates via Cohere Rerank v4 Pro (full score list),
+ * then deterministically selects the top-N by (relevanceScore desc, ID asc).
  *
  * @param queries - The generated TR+EN search queries to run.
  * @param matrixInput - The validated positioning matrix input.
@@ -35160,15 +35620,20 @@ export async function searchAndSiftTheses(
 ): Promise<SiftedThesis[]> {
   const topN = options?.topN ?? 45;
 
+  const rawDirectQuery = sanitizeSearchQuery(
+    matrixInput.subjectProblem.slice(0, 450),
+  );
+
   const allQueries: string[] = [
-    sanitizeMeiliQuery(queries.subjectTr_alt1),
-    sanitizeMeiliQuery(queries.subjectTr_alt2),
-    sanitizeMeiliQuery(queries.subjectTr_alt3),
-    sanitizeMeiliQuery(queries.subjectTr_alt4),
-    sanitizeMeiliQuery(queries.subjectEn_alt1),
-    sanitizeMeiliQuery(queries.subjectEn_alt2),
-    sanitizeMeiliQuery(queries.subjectEn_alt3),
-    sanitizeMeiliQuery(queries.subjectEn_alt4),
+    ...(rawDirectQuery ? [rawDirectQuery] : []),
+    sanitizeSearchQuery(queries.subjectTr_alt1),
+    sanitizeSearchQuery(queries.subjectTr_alt2),
+    sanitizeSearchQuery(queries.subjectTr_alt3),
+    sanitizeSearchQuery(queries.subjectTr_alt4),
+    sanitizeSearchQuery(queries.subjectEn_alt1),
+    sanitizeSearchQuery(queries.subjectEn_alt2),
+    sanitizeSearchQuery(queries.subjectEn_alt3),
+    sanitizeSearchQuery(queries.subjectEn_alt4),
   ];
 
   const searchStart = performance.now();
@@ -35181,15 +35646,11 @@ export async function searchAndSiftTheses(
 
   const searchParams = {
     limit: 50,
-    rankingScoreThreshold: RANKING_SCORE_THRESHOLD,
-    filter: LANG_FILTER,
-    attributesToSearchOn: SEARCH_FIELDS,
   };
 
-  const hitArrays: TezaraThesisDetails[][] = [];
-  for (const q of allQueries) {
-    hitArrays.push(await searchTezara(q, logger, searchParams));
-  }
+  const hitArrays = await Promise.all(
+    allQueries.map((q) => searchTezara(q, logger, searchParams)),
+  );
 
   const candidateMap = new Map<number, TezaraThesisDetails>();
   for (const hits of hitArrays) {
@@ -35951,11 +36412,11 @@ Sistem, her adımda kullanıcının kaldığı yerden devam edebilmesini sağlar
 
 ### 2. Akademik Konumlandırma & Özgünlük Analizi (Positioning)
 
-TEZARA (YÖK Ulusal Tez Merkezi) Meilisearch index'i üzerinden çalışan,
+Turso LibSQL Vektör Veritabanı (366.000+ tez, multilingual-e5-base 768d) üzerinden çalışan,
 kaynaklarının özgünlük boşluğunu analiz eden hat:
 
-- **Sorgu üretimi:** Gemini ile ilgili tezlere yönelik 8 Meilisearch sorgusu.
-- **Tez araması ve eleme:** TEZARA ile aday tezler çekilir.
+- **Sorgu üretimi:** Gemini ile ilgili tezlere yönelik 8 semantik arama sorgusu.
+- **Tez araması ve eleme:** Turso Vektör İndeksi (`vector_top_k` cosine similarity) ile aday tezler çekilir.
 - **Semantik sıralama:** Cohere Rerank v4.0 Pro ile benzerlik sıralaması.
 - **Rapor:** Gemini jürisi üç durumdan birini üretir:
   - `DIRECT_OVERLAP` — Doğrudan örtüşme
@@ -36034,7 +36495,7 @@ merkezi yönetim ekranı.
 | **İkincil LLM**        | Cerebras (`gemma-4-31b`) — metadata sanitize, HyDE, başlık üretimi           |
 | **Embedding**          | Cloudflare Workers AI (`@cf/baai/bge-m3`, **1024 dim**) — tek ve sabit motor |
 | **Rerank**             | Cohere Rerank v4.0 Pro (`rerank-v4.0-pro`)                                   |
-| **Tez Veri Kaynağı**   | TEZARA (YÖK Tez) — Meilisearch index                                         |
+| **Tez Veri Kaynağı**   | Turso LibSQL Vektör Veritabanı (366k+ Tez, E5-Base 768d)                     |
 | **Akademik Veri**      | OpenAlex API                                                                 |
 | **Object Storage**     | Cloudflare R2 (AWS S3 SDK)                                                   |
 | **PDF İşleme**         | `@firecrawl/pdf-inspector`, pdf-lib, Gemini                                  |
@@ -36156,8 +36617,9 @@ Gerekli tüm API anahtarları `.env.local` dosyasında tanımlanır:
 | `COHERE_API_KEY`         | Cohere Rerank API                           |
 | `OPENALEX_API_KEY`       | OpenAlex API (isteğe bağlı)                 |
 | `CROSSREF_CONTACT_EMAIL` | Polite pool e-posta (User-Agent)            |
-| `TEZARA_MEILI_URL`       | TEZARA Meilisearch URL                      |
-| `TEZARA_MEILI_KEY`       | TEZARA Meilisearch API key                  |
+| `TURSO_DATABASE_URL`     | Turso LibSQL veritabanı URL'si              |
+| `TURSO_AUTH_TOKEN`       | Turso LibSQL auth token                     |
+| `HUGGINGFACE_API_KEY`    | Hugging Face Serverless Inference API key   |
 | `R2_ACCOUNT_ID`          | Cloudflare R2 hesabı                        |
 | `R2_ACCESS_KEY_ID`       | R2 S3 access key                            |
 | `R2_SECRET_ACCESS_KEY`   | R2 S3 secret key                            |
@@ -37573,492 +38035,6 @@ export function MatrixForm({ initialMatrix }: MatrixFormProps) {
         </Button>
       </div>
     </form>
-  );
-}
-</file>
-
-<file path="src/app/(onboarding)/onboarding/outline/_components/outline-section-card.tsx">
-"use client";
-
-import { useState, useCallback, useMemo } from "react";
-import {
-  ChevronRight,
-  ChevronUp,
-  Pencil,
-  Trash2,
-  Plus,
-  Check,
-  X,
-  GripVertical,
-} from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-
-export interface OutlineSubSectionData {
-  title: string;
-  description: string;
-  sortOrder: number;
-}
-
-export interface OutlineSectionData {
-  title: string;
-  description: string;
-  sortOrder: number;
-  subSections?: OutlineSubSectionData[];
-}
-
-interface OutlineSectionCardProps {
-  section: OutlineSectionData;
-  sectionIndex: number;
-  isExpanded: boolean;
-  onToggleExpand: () => void;
-  onUpdateSection: (updated: OutlineSectionCardProps["section"]) => void;
-  onDeleteSection: () => void;
-  // Drag & drop props for main sections
-  onDragStartSection: (index: number) => void;
-  onDragOverSection: (index: number) => void;
-  onDropSection: (targetIndex: number) => void;
-  onDragEndSection: () => void;
-  isDraggingSection?: boolean;
-  isDragOverSection?: boolean;
-}
-
-/**
- * Renders an interactive main section card with inline editing, drag-and-drop reordering
- * for sections and subsections, and subsection management without left border lines.
- *
- * @param props - Component props.
- * @returns The section card markup.
- */
-export function OutlineSectionCard({
-  section,
-  sectionIndex,
-  isExpanded,
-  onToggleExpand,
-  onUpdateSection,
-  onDeleteSection,
-  onDragStartSection,
-  onDragOverSection,
-  onDropSection,
-  onDragEndSection,
-  isDraggingSection = false,
-  isDragOverSection = false,
-}: OutlineSectionCardProps) {
-  const [isEditingSection, setIsEditingSection] = useState(false);
-  const [editTitle, setEditTitle] = useState(section.title);
-  const [editDescription, setEditDescription] = useState(section.description);
-
-  const [editingSubIndex, setEditingSubIndex] = useState<number | null>(null);
-  const [subEditTitle, setSubEditTitle] = useState("");
-  const [subEditDescription, setSubEditDescription] = useState("");
-
-  // Sub-section Drag and Drop state
-  const [draggedSubIdx, setDraggedSubIdx] = useState<number | null>(null);
-  const [dragOverSubIdx, setDragOverSubIdx] = useState<number | null>(null);
-
-  const sectionNumber = sectionIndex + 1;
-  const subSections = useMemo(
-    () => section.subSections ?? [],
-    [section.subSections],
-  );
-  const hasSubSections = subSections.length > 0;
-
-  const isSpecialSection = useMemo(() => {
-    const titleUpper = section.title.toLocaleUpperCase("tr-TR");
-    return (
-      titleUpper.includes("GİRİŞ") ||
-      titleUpper.includes("GIRIS") ||
-      titleUpper.includes("SONUÇ") ||
-      titleUpper.includes("SONUC")
-    );
-  }, [section.title]);
-
-  const handleSaveSectionEdit = useCallback(() => {
-    if (!editTitle.trim()) return;
-    onUpdateSection({
-      ...section,
-      title: editTitle.trim(),
-      description: editDescription.trim(),
-    });
-    setIsEditingSection(false);
-  }, [editTitle, editDescription, section, onUpdateSection]);
-
-  const handleCancelSectionEdit = useCallback(() => {
-    setEditTitle(section.title);
-    setEditDescription(section.description);
-    setIsEditingSection(false);
-  }, [section]);
-
-  const handleAddSubSection = useCallback(() => {
-    if (isSpecialSection) return;
-    const newSub: OutlineSubSectionData = {
-      title: `Yeni Alt Bölüm ${subSections.length + 1}`,
-      description: "Alt bölüm kapsamı ve açıklaması...",
-      sortOrder: subSections.length + 1,
-    };
-    const updatedSubs = [...subSections, newSub];
-    onUpdateSection({
-      ...section,
-      subSections: updatedSubs,
-    });
-    if (!isExpanded) {
-      onToggleExpand();
-    }
-  }, [
-    isSpecialSection,
-    subSections,
-    section,
-    onUpdateSection,
-    isExpanded,
-    onToggleExpand,
-  ]);
-
-  const handleDeleteSubSection = useCallback(
-    (subIdx: number) => {
-      const updatedSubs = subSections
-        .filter((_, i) => i !== subIdx)
-        .map((sub, i) => ({ ...sub, sortOrder: i + 1 }));
-      onUpdateSection({
-        ...section,
-        subSections: updatedSubs,
-      });
-    },
-    [subSections, section, onUpdateSection],
-  );
-
-  const handleSubDrop = useCallback(
-    (targetIdx: number) => {
-      if (draggedSubIdx === null || draggedSubIdx === targetIdx) {
-        setDraggedSubIdx(null);
-        setDragOverSubIdx(null);
-        return;
-      }
-
-      const newSubs = [...subSections];
-      const [movedItem] = newSubs.splice(draggedSubIdx, 1);
-      newSubs.splice(targetIdx, 0, movedItem);
-
-      const reordered = newSubs.map((s, i) => ({ ...s, sortOrder: i + 1 }));
-      onUpdateSection({
-        ...section,
-        subSections: reordered,
-      });
-
-      setDraggedSubIdx(null);
-      setDragOverSubIdx(null);
-    },
-    [draggedSubIdx, subSections, section, onUpdateSection],
-  );
-
-  const handleStartSubEdit = (subIdx: number) => {
-    setEditingSubIndex(subIdx);
-    setSubEditTitle(subSections[subIdx].title);
-    setSubEditDescription(subSections[subIdx].description);
-  };
-
-  const handleSaveSubEdit = (subIdx: number) => {
-    if (!subEditTitle.trim()) return;
-    const updatedSubs = subSections.map((sub, i) =>
-      i === subIdx
-        ? {
-            ...sub,
-            title: subEditTitle.trim(),
-            description: subEditDescription.trim(),
-          }
-        : sub,
-    );
-    onUpdateSection({
-      ...section,
-      subSections: updatedSubs,
-    });
-    setEditingSubIndex(null);
-  };
-
-  return (
-    <Card
-      draggable={!isEditingSection && editingSubIndex === null}
-      onDragStart={() => onDragStartSection(sectionIndex)}
-      onDragOver={(e) => {
-        e.preventDefault();
-        onDragOverSection(sectionIndex);
-      }}
-      onDrop={() => onDropSection(sectionIndex)}
-      onDragEnd={onDragEndSection}
-      className={`flex flex-col w-full p-4 rounded-md border bg-card transition-all duration-200 ${
-        isDraggingSection ? "opacity-40 border-primary" : "border-border"
-      } ${isDragOverSection ? "border-primary ring-2 ring-primary/10" : "hover:border-primary/20"}`}
-    >
-      {/* Header Row */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3 flex-1 min-w-0">
-          {/* Drag Handle & Section Number */}
-          <div className="flex items-center gap-1 shrink-0 mt-1">
-            <span
-              className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground p-0.5 rounded transition-colors"
-              title="Bölümü Taşı"
-            >
-              <GripVertical className="size-4" />
-            </span>
-            <span className="flex size-7 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-xs font-bold text-primary shrink-0">
-              {sectionNumber}
-            </span>
-          </div>
-
-          {/* Section Info / Inline Edit */}
-          <div className="flex-1 min-w-0">
-            {isEditingSection ? (
-              <div className="space-y-2">
-                <Input
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  className="font-serif text-base font-semibold"
-                  placeholder="Bölüm başlığı..."
-                  autoFocus
-                />
-                <Textarea
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  className="text-xs min-h-[60px]"
-                  placeholder="Bölüm açıklaması..."
-                />
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    onClick={handleSaveSectionEdit}
-                    className="h-7 text-xs gap-1"
-                  >
-                    <Check className="size-3" /> Kaydet
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleCancelSectionEdit}
-                    className="h-7 text-xs gap-1"
-                  >
-                    <X className="size-3" /> İptal
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-serif text-base font-semibold tracking-tight text-foreground leading-snug">
-                    {section.title}
-                  </h3>
-                  {hasSubSections && (
-                    <span className="text-[10px] font-medium bg-muted text-muted-foreground px-2 py-1 rounded-full shrink-0">
-                      {subSections.length} alt bölüm
-                    </span>
-                  )}
-                </div>
-                {section.description && (
-                  <p className="text-xs text-muted-foreground leading-relaxed mt-1">
-                    {section.description}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Section Actions */}
-        {!isEditingSection && !isSpecialSection && (
-          <div className="flex items-center gap-1 shrink-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsEditingSection(true)}
-              className="size-7 text-muted-foreground hover:text-foreground"
-              title="Bölümü Düzenle"
-            >
-              <Pencil className="size-3.5" />
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleAddSubSection}
-              className="size-7 text-primary hover:bg-primary/10"
-              title="Alt Bölüm Ekle"
-            >
-              <Plus className="size-4" />
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onDeleteSection}
-              className="size-7 text-destructive hover:bg-destructive/10"
-              title="Bölümü Sil"
-            >
-              <Trash2 className="size-3.5" />
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onToggleExpand}
-              className="size-7 text-muted-foreground hover:text-foreground"
-            >
-              {isExpanded ? (
-                <ChevronUp className="size-4" />
-              ) : (
-                <ChevronRight className="size-4" />
-              )}
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* Sub-sections tree (WITHOUT LEFT BORDER) */}
-      {isExpanded && (
-        <div className="mt-3 space-y-2">
-          {subSections.length === 0 ? (
-            !isSpecialSection ? (
-              <div className="flex items-center justify-between py-2 text-xs text-muted-foreground bg-muted/20 px-3 rounded-md border border-dashed border-border/50">
-                <span>Bu bölüm için henüz alt bölüm eklenmedi.</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleAddSubSection}
-                  className="text-xs h-7 gap-1 text-primary hover:bg-primary/10 shrink-0"
-                >
-                  <Plus className="size-3" /> Alt Bölüm Ekle
-                </Button>
-              </div>
-            ) : null
-          ) : (
-            subSections.map((sub, subIdx) => {
-              const isSubEditing = editingSubIndex === subIdx;
-              const isSubDragging = draggedSubIdx === subIdx;
-              const isSubDragOver = dragOverSubIdx === subIdx;
-
-              return (
-                <div
-                  key={`${sub.title}-${subIdx}`}
-                  draggable={!isSubEditing}
-                  onDragStart={(e) => {
-                    e.stopPropagation();
-                    setDraggedSubIdx(subIdx);
-                  }}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setDragOverSubIdx(subIdx);
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleSubDrop(subIdx);
-                  }}
-                  onDragEnd={(e) => {
-                    e.stopPropagation();
-                    setDraggedSubIdx(null);
-                    setDragOverSubIdx(null);
-                  }}
-                  className={`group/sub relative rounded-md border bg-muted/40 p-3 transition-colors ${
-                    isSubDragging
-                      ? "opacity-40 border-primary"
-                      : "border-border/40"
-                  } ${
-                    isSubDragOver
-                      ? "border-primary ring-1 ring-primary/20"
-                      : "hover:border-primary/20"
-                  }`}
-                >
-                  {isSubEditing ? (
-                    <div className="space-y-2">
-                      <Input
-                        value={subEditTitle}
-                        onChange={(e) => setSubEditTitle(e.target.value)}
-                        placeholder="Alt bölüm başlığı..."
-                        className="text-xs font-semibold"
-                      />
-                      <Textarea
-                        value={subEditDescription}
-                        onChange={(e) => setSubEditDescription(e.target.value)}
-                        placeholder="Alt bölüm açıklaması..."
-                        rows={2}
-                        className="textarea-academic text-xs"
-                      />
-                      <div className="flex items-center gap-2 pt-1">
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => handleSaveSubEdit(subIdx)}
-                          className="text-xs h-6 px-2 gap-1"
-                        >
-                          <Check className="size-3" /> Kaydet
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setEditingSubIndex(null)}
-                          className="text-xs h-6 px-2 gap-1"
-                        >
-                          <X className="size-3" /> İptal
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-start gap-3 flex-1 min-w-0">
-                        {/* Drag Handle & Sub-section Number */}
-                        <div className="flex items-center gap-2 shrink-0 mt-1">
-                          <span
-                            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1"
-                            title="Sürükleyip Sırasını Değiştirin"
-                          >
-                            <GripVertical className="size-3.5" />
-                          </span>
-                          <span className="font-mono text-xs text-muted-foreground bg-muted px-2 py-1 rounded font-semibold shrink-0">
-                            {sectionNumber}.{subIdx + 1}
-                          </span>
-                        </div>
-
-                        <div className="flex-1 min-w-0 space-y-1">
-                          <h4 className="font-sans text-sm font-medium text-foreground leading-snug">
-                            {sub.title}
-                          </h4>
-                          {sub.description && (
-                            <p className="text-xs text-muted-foreground leading-relaxed">
-                              {sub.description}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1 opacity-80 group-hover/sub:opacity-100 shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleStartSubEdit(subIdx)}
-                          className="size-6 text-muted-foreground hover:text-foreground"
-                          title="Alt Bölümü Düzenle"
-                        >
-                          <Pencil className="size-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteSubSection(subIdx)}
-                          className="size-6 text-destructive hover:bg-destructive/10"
-                          title="Alt Bölümü Sil"
-                        >
-                          <Trash2 className="size-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
-      )}
-    </Card>
   );
 }
 </file>
@@ -39535,6 +39511,492 @@ export async function resetOnboardingAction() {
 }
 </file>
 
+<file path="src/app/(onboarding)/onboarding/outline/_components/outline-section-card.tsx">
+"use client";
+
+import { useState, useCallback, useMemo } from "react";
+import {
+  ChevronRight,
+  ChevronUp,
+  Pencil,
+  Trash2,
+  Plus,
+  Check,
+  X,
+  GripVertical,
+} from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+
+export interface OutlineSubSectionData {
+  title: string;
+  description: string;
+  sortOrder: number;
+}
+
+export interface OutlineSectionData {
+  title: string;
+  description: string;
+  sortOrder: number;
+  subSections?: OutlineSubSectionData[];
+}
+
+interface OutlineSectionCardProps {
+  section: OutlineSectionData;
+  sectionIndex: number;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  onUpdateSection: (updated: OutlineSectionCardProps["section"]) => void;
+  onDeleteSection: () => void;
+  // Drag & drop props for main sections
+  onDragStartSection: (index: number) => void;
+  onDragOverSection: (index: number) => void;
+  onDropSection: (targetIndex: number) => void;
+  onDragEndSection: () => void;
+  isDraggingSection?: boolean;
+  isDragOverSection?: boolean;
+}
+
+/**
+ * Renders an interactive main section card with inline editing, drag-and-drop reordering
+ * for sections and subsections, and subsection management without left border lines.
+ *
+ * @param props - Component props.
+ * @returns The section card markup.
+ */
+export function OutlineSectionCard({
+  section,
+  sectionIndex,
+  isExpanded,
+  onToggleExpand,
+  onUpdateSection,
+  onDeleteSection,
+  onDragStartSection,
+  onDragOverSection,
+  onDropSection,
+  onDragEndSection,
+  isDraggingSection = false,
+  isDragOverSection = false,
+}: OutlineSectionCardProps) {
+  const [isEditingSection, setIsEditingSection] = useState(false);
+  const [editTitle, setEditTitle] = useState(section.title);
+  const [editDescription, setEditDescription] = useState(section.description);
+
+  const [editingSubIndex, setEditingSubIndex] = useState<number | null>(null);
+  const [subEditTitle, setSubEditTitle] = useState("");
+  const [subEditDescription, setSubEditDescription] = useState("");
+
+  // Sub-section Drag and Drop state
+  const [draggedSubIdx, setDraggedSubIdx] = useState<number | null>(null);
+  const [dragOverSubIdx, setDragOverSubIdx] = useState<number | null>(null);
+
+  const sectionNumber = sectionIndex + 1;
+  const subSections = useMemo(
+    () => section.subSections ?? [],
+    [section.subSections],
+  );
+  const hasSubSections = subSections.length > 0;
+
+  const isSpecialSection = useMemo(() => {
+    const titleUpper = section.title.toLocaleUpperCase("tr-TR");
+    return (
+      titleUpper.includes("GİRİŞ") ||
+      titleUpper.includes("GIRIS") ||
+      titleUpper.includes("SONUÇ") ||
+      titleUpper.includes("SONUC")
+    );
+  }, [section.title]);
+
+  const handleSaveSectionEdit = useCallback(() => {
+    if (!editTitle.trim()) return;
+    onUpdateSection({
+      ...section,
+      title: editTitle.trim(),
+      description: editDescription.trim(),
+    });
+    setIsEditingSection(false);
+  }, [editTitle, editDescription, section, onUpdateSection]);
+
+  const handleCancelSectionEdit = useCallback(() => {
+    setEditTitle(section.title);
+    setEditDescription(section.description);
+    setIsEditingSection(false);
+  }, [section]);
+
+  const handleAddSubSection = useCallback(() => {
+    if (isSpecialSection) return;
+    const newSub: OutlineSubSectionData = {
+      title: `Yeni Alt Bölüm ${subSections.length + 1}`,
+      description: "Alt bölüm kapsamı ve açıklaması...",
+      sortOrder: subSections.length + 1,
+    };
+    const updatedSubs = [...subSections, newSub];
+    onUpdateSection({
+      ...section,
+      subSections: updatedSubs,
+    });
+    if (!isExpanded) {
+      onToggleExpand();
+    }
+  }, [
+    isSpecialSection,
+    subSections,
+    section,
+    onUpdateSection,
+    isExpanded,
+    onToggleExpand,
+  ]);
+
+  const handleDeleteSubSection = useCallback(
+    (subIdx: number) => {
+      const updatedSubs = subSections
+        .filter((_, i) => i !== subIdx)
+        .map((sub, i) => ({ ...sub, sortOrder: i + 1 }));
+      onUpdateSection({
+        ...section,
+        subSections: updatedSubs,
+      });
+    },
+    [subSections, section, onUpdateSection],
+  );
+
+  const handleSubDrop = useCallback(
+    (targetIdx: number) => {
+      if (draggedSubIdx === null || draggedSubIdx === targetIdx) {
+        setDraggedSubIdx(null);
+        setDragOverSubIdx(null);
+        return;
+      }
+
+      const newSubs = [...subSections];
+      const [movedItem] = newSubs.splice(draggedSubIdx, 1);
+      newSubs.splice(targetIdx, 0, movedItem);
+
+      const reordered = newSubs.map((s, i) => ({ ...s, sortOrder: i + 1 }));
+      onUpdateSection({
+        ...section,
+        subSections: reordered,
+      });
+
+      setDraggedSubIdx(null);
+      setDragOverSubIdx(null);
+    },
+    [draggedSubIdx, subSections, section, onUpdateSection],
+  );
+
+  const handleStartSubEdit = (subIdx: number) => {
+    setEditingSubIndex(subIdx);
+    setSubEditTitle(subSections[subIdx].title);
+    setSubEditDescription(subSections[subIdx].description);
+  };
+
+  const handleSaveSubEdit = (subIdx: number) => {
+    if (!subEditTitle.trim()) return;
+    const updatedSubs = subSections.map((sub, i) =>
+      i === subIdx
+        ? {
+            ...sub,
+            title: subEditTitle.trim(),
+            description: subEditDescription.trim(),
+          }
+        : sub,
+    );
+    onUpdateSection({
+      ...section,
+      subSections: updatedSubs,
+    });
+    setEditingSubIndex(null);
+  };
+
+  return (
+    <Card
+      draggable={!isEditingSection && editingSubIndex === null}
+      onDragStart={() => onDragStartSection(sectionIndex)}
+      onDragOver={(e) => {
+        e.preventDefault();
+        onDragOverSection(sectionIndex);
+      }}
+      onDrop={() => onDropSection(sectionIndex)}
+      onDragEnd={onDragEndSection}
+      className={`flex flex-col w-full p-4 rounded-md border bg-card transition-all duration-200 ${
+        isDraggingSection ? "opacity-40 border-primary" : "border-border"
+      } ${isDragOverSection ? "border-primary ring-2 ring-primary/10" : "hover:border-primary/20"}`}
+    >
+      {/* Header Row */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          {/* Drag Handle & Section Number */}
+          <div className="flex items-center gap-1 shrink-0 mt-1">
+            <span
+              className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground p-0.5 rounded transition-colors"
+              title="Bölümü Taşı"
+            >
+              <GripVertical className="size-4" />
+            </span>
+            <span className="flex size-7 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-xs font-bold text-primary shrink-0">
+              {sectionNumber}
+            </span>
+          </div>
+
+          {/* Section Info / Inline Edit */}
+          <div className="flex-1 min-w-0">
+            {isEditingSection ? (
+              <div className="space-y-2">
+                <Input
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="font-serif text-base font-semibold"
+                  placeholder="Bölüm başlığı..."
+                  autoFocus
+                />
+                <Textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="text-xs min-h-[60px]"
+                  placeholder="Bölüm açıklaması..."
+                />
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={handleSaveSectionEdit}
+                    className="h-7 text-xs gap-1"
+                  >
+                    <Check className="size-3" /> Kaydet
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleCancelSectionEdit}
+                    className="h-7 text-xs gap-1"
+                  >
+                    <X className="size-3" /> İptal
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-serif text-base font-semibold tracking-tight text-foreground leading-snug">
+                    {section.title}
+                  </h3>
+                  {hasSubSections && (
+                    <span className="text-[10px] font-medium bg-muted text-muted-foreground px-2 py-1 rounded-full shrink-0">
+                      {subSections.length} alt bölüm
+                    </span>
+                  )}
+                </div>
+                {section.description && (
+                  <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                    {section.description}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Section Actions */}
+        {!isEditingSection && !isSpecialSection && (
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsEditingSection(true)}
+              className="size-7 text-muted-foreground hover:text-foreground"
+              title="Bölümü Düzenle"
+            >
+              <Pencil className="size-3.5" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleAddSubSection}
+              className="size-7 text-primary hover:bg-primary/10"
+              title="Alt Bölüm Ekle"
+            >
+              <Plus className="size-4" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onDeleteSection}
+              className="size-7 text-destructive hover:bg-destructive/10"
+              title="Bölümü Sil"
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleExpand}
+              className="size-7 text-muted-foreground hover:text-foreground"
+            >
+              {isExpanded ? (
+                <ChevronUp className="size-4" />
+              ) : (
+                <ChevronRight className="size-4" />
+              )}
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Sub-sections tree (WITHOUT LEFT BORDER) */}
+      {isExpanded && (
+        <div className="mt-3 space-y-2">
+          {subSections.length === 0 ? (
+            !isSpecialSection ? (
+              <div className="flex items-center justify-between py-2 text-xs text-muted-foreground bg-muted/20 px-3 rounded-md border border-dashed border-border/50">
+                <span>Bu bölüm için henüz alt bölüm eklenmedi.</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleAddSubSection}
+                  className="text-xs h-7 gap-1 text-primary hover:bg-primary/10 shrink-0"
+                >
+                  <Plus className="size-3" /> Alt Bölüm Ekle
+                </Button>
+              </div>
+            ) : null
+          ) : (
+            subSections.map((sub, subIdx) => {
+              const isSubEditing = editingSubIndex === subIdx;
+              const isSubDragging = draggedSubIdx === subIdx;
+              const isSubDragOver = dragOverSubIdx === subIdx;
+
+              return (
+                <div
+                  key={`${sub.title}-${subIdx}`}
+                  draggable={!isSubEditing}
+                  onDragStart={(e) => {
+                    e.stopPropagation();
+                    setDraggedSubIdx(subIdx);
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setDragOverSubIdx(subIdx);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSubDrop(subIdx);
+                  }}
+                  onDragEnd={(e) => {
+                    e.stopPropagation();
+                    setDraggedSubIdx(null);
+                    setDragOverSubIdx(null);
+                  }}
+                  className={`group/sub relative rounded-md border bg-muted/40 p-3 transition-colors ${
+                    isSubDragging
+                      ? "opacity-40 border-primary"
+                      : "border-border/40"
+                  } ${
+                    isSubDragOver
+                      ? "border-primary ring-1 ring-primary/20"
+                      : "hover:border-primary/20"
+                  }`}
+                >
+                  {isSubEditing ? (
+                    <div className="space-y-2">
+                      <Input
+                        value={subEditTitle}
+                        onChange={(e) => setSubEditTitle(e.target.value)}
+                        placeholder="Alt bölüm başlığı..."
+                        className="text-xs font-semibold"
+                      />
+                      <Textarea
+                        value={subEditDescription}
+                        onChange={(e) => setSubEditDescription(e.target.value)}
+                        placeholder="Alt bölüm açıklaması..."
+                        rows={2}
+                        className="textarea-academic text-xs"
+                      />
+                      <div className="flex items-center gap-2 pt-1">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleSaveSubEdit(subIdx)}
+                          className="text-xs h-6 px-2 gap-1"
+                        >
+                          <Check className="size-3" /> Kaydet
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingSubIndex(null)}
+                          className="text-xs h-6 px-2 gap-1"
+                        >
+                          <X className="size-3" /> İptal
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        {/* Drag Handle & Sub-section Number */}
+                        <div className="flex items-center gap-2 shrink-0 mt-1">
+                          <span
+                            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1"
+                            title="Sürükleyip Sırasını Değiştirin"
+                          >
+                            <GripVertical className="size-3.5" />
+                          </span>
+                          <span className="font-mono text-xs text-muted-foreground bg-muted px-2 py-1 rounded font-semibold shrink-0">
+                            {sectionNumber}.{subIdx + 1}
+                          </span>
+                        </div>
+
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <h4 className="font-sans text-sm font-medium text-foreground leading-snug">
+                            {sub.title}
+                          </h4>
+                          {sub.description && (
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              {sub.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 opacity-80 group-hover/sub:opacity-100 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleStartSubEdit(subIdx)}
+                          className="size-6 text-muted-foreground hover:text-foreground"
+                          title="Alt Bölümü Düzenle"
+                        >
+                          <Pencil className="size-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteSubSection(subIdx)}
+                          className="size-6 text-destructive hover:bg-destructive/10"
+                          title="Alt Bölümü Sil"
+                        >
+                          <Trash2 className="size-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+</file>
+
 <file path="src/app/(app)/advisor/_components/markdown-renderer.tsx">
 "use client";
 
@@ -40481,247 +40943,6 @@ export function EditResourceModal({
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/boxes/_components/boxes-container.tsx">
-"use client";
-
-import { useCallback, useMemo, memo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import {
-  CheckCircle2,
-  ArrowRight,
-  Library,
-  PlusCircle,
-  WholeWord,
-  Archive,
-  Loader2,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardTitle } from "@/components/ui/card";
-import { AIBanner } from "@/components/shared/ai-banner";
-import { BoxesSkeleton } from "./boxes-skeleton";
-import { useBoxesContinue } from "../../_hooks/use-boxes-continue";
-import { fetchBoxesWithFullShape } from "@/features/onboarding/services/fetch-actions";
-import { BOX_ORDER_WEIGHT, BOX_TYPE_LABELS } from "@/lib/box-constants";
-import type { GeminiThesisBox } from "@/lib/types";
-
-/**
- * Renders the subject boxes overview with a proceed-to-literature action.
- *
- * @returns The boxes container markup.
- */
-export function BoxesContainer() {
-  const { proceedFromBoxes } = useBoxesContinue();
-
-  const { data: boxes, isLoading: loading } = useQuery({
-    queryKey: ["boxes"],
-    queryFn: fetchBoxesWithFullShape,
-    staleTime: 0,
-  });
-
-  const [proceeding, setProceeding] = useState(false);
-
-  const handleProceed = useCallback(async () => {
-    if (proceeding) return;
-    setProceeding(true);
-    try {
-      await proceedFromBoxes();
-    } finally {
-      setProceeding(false);
-    }
-  }, [proceedFromBoxes, proceeding]);
-
-  const sortedBoxes = useMemo(() => {
-    if (!boxes) return [];
-    return [...boxes]
-      .filter((b) => b.parentId === null && b.boxType !== "RELATED_THESES")
-      .sort((a, b) => {
-        return (
-          (BOX_ORDER_WEIGHT[a.boxType] || 99) -
-          (BOX_ORDER_WEIGHT[b.boxType] || 99)
-        );
-      });
-  }, [boxes]);
-
-  if (loading) {
-    return <BoxesSkeleton />;
-  }
-
-  return (
-    <div className="w-full space-y-8">
-      <AIBanner
-        icon={CheckCircle2}
-        title="Konu Kutuları Yapılandırıldı"
-        description="Tez matrisinizin çözümlenmesi başarıyla tamamlandı. Aşağıdaki her bir konu kutusu, literatür taraması sürecinde bağımsız olarak taranacaktır."
-      />
-
-      <div className="grid grid-cols-1 gap-4 auto-rows-min">
-        {sortedBoxes.map((box, idx) => (
-          <BoxCard key={box.title} box={box} index={idx} />
-        ))}
-      </div>
-
-      <div className="flex justify-end mt-8 pb-8">
-        <Button onClick={handleProceed} disabled={proceeding} size="lg">
-          {proceeding ? (
-            <span className="flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Kaydediliyor...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              Onayla ve Tez Planı Adımına Geç
-              <ArrowRight className="w-4 h-4" />
-            </span>
-          )}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Renders the sub-box nested section (timeline + cards).
- *
- * @param root0 - The section props object.
- * @param root0.subBoxes - The sub-boxes to render.
- * @returns The sub-box section markup.
- */
-const SubBoxSection = memo(function SubBoxSection({
-  subBoxes,
-}: {
-  subBoxes: GeminiThesisBox[];
-}) {
-  return (
-    <div className="pt-4 space-y-4 mt-5">
-      <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-        <Library className="w-3.5 h-3.5 text-primary" />
-        Alt Konu Kutuları
-      </h4>
-      <div className="relative border-l border-primary/20 pl-4 ml-3 space-y-4 mt-2">
-        {subBoxes.map((subBox, sbIdx) => (
-          <div key={`${subBox.title}-${sbIdx}`} className="relative">
-            <span className="absolute -left-[21.5px] top-[21px] h-2.5 w-2.5 rounded-full border-2 border-primary bg-background" />
-            <Card className="p-4 rounded-md border border-border hover:border-primary/20 transition-all duration-200 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <h5 className="font-sans text-sm font-semibold text-foreground leading-snug line-clamp-2 break-words hyphens-auto">
-                  {subBox.title}
-                </h5>
-              </div>
-              {subBox.description && (
-                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
-                  {subBox.description}
-                </p>
-              )}
-              {subBox.concepts && subBox.concepts.length > 0 && (
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {subBox.concepts.map((concept, cIdx) => (
-                    <span
-                      key={`${concept}-${cIdx}`}
-                      className="inline-flex items-center px-2 py-1 rounded bg-primary/10 border border-primary/20 text-[10px] text-primary font-medium"
-                    >
-                      {concept}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </Card>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-});
-
-/**
- * Renders the PRIMARY_MATERIAL box info section.
- *
- * @returns The primary material info section markup.
- */
-const PrimaryMaterialSection = memo(function PrimaryMaterialSection() {
-  return (
-    <div className="pt-4 space-y-2 mt-5">
-      <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-        <Archive className="w-3.5 h-3.5 text-muted-foreground" />
-        Arşiv / Birincil Kaynak Alanı
-      </h4>
-      <p className="text-xs text-muted-foreground leading-relaxed">
-        Bu kutu, saha çalışması verileri ve birincil kaynaklar için ayrılmıştır.
-        Kurucu literatür taraması yapılmamıştır; arşiv belgeleri bir sonraki
-        adımda el ile girilecektir.
-      </p>
-    </div>
-  );
-});
-
-/**
- * Renders a single box card with its sub-boxes and metadata.
- *
- * @param root0 - The card props object.
- * @param root0.box - The thesis box to render.
- * @param root0.index - The index of the box within the grid.
- * @returns The box card markup.
- */
-const BoxCard = memo(function BoxCard({
-  box,
-  index,
-}: {
-  box: GeminiThesisBox;
-  index: number;
-}) {
-  const parentConcepts = box.concepts ?? [];
-
-  return (
-    <Card className="group/card flex flex-col h-full p-6 rounded-md transition-all duration-300 hover:-translate-y-1 hover:border-primary/20">
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 text-muted-foreground text-xs">
-          <PlusCircle className="w-3 h-3" />
-          <span>Kutu {index + 1}</span>
-          <span className="ml-auto inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-secondary text-secondary-foreground border border-border/40">
-            {BOX_TYPE_LABELS[box.boxType]}
-          </span>
-        </div>
-        <div className="flex items-start gap-3">
-          <span className="relative mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-primary" />
-          <CardTitle className="text-lg font-semibold text-foreground leading-snug line-clamp-2 break-words hyphens-auto">
-            {box.title}
-          </CardTitle>
-        </div>
-      </div>
-
-      {box.description && (
-        <p className="text-sm text-muted-foreground leading-relaxed mt-4 line-clamp-3">
-          {box.description}
-        </p>
-      )}
-
-      {parentConcepts.length > 0 && (
-        <div className="mt-4">
-          <div className="border-y border-border py-3">
-            <div className="flex flex-wrap gap-2">
-              {parentConcepts.map((concept, i) => (
-                <span
-                  key={`${concept}-${i}`}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 text-xs text-primary font-semibold"
-                >
-                  <WholeWord className="w-3.5 h-3.5 shrink-0" />
-                  {concept}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {box.subBoxes && box.subBoxes.length > 0 ? (
-        <SubBoxSection subBoxes={box.subBoxes} />
-      ) : box.boxType === "PRIMARY_MATERIAL" ? (
-        <PrimaryMaterialSection />
-      ) : null}
-    </Card>
-  );
-});
-</file>
-
 <file path="src/app/(onboarding)/onboarding/literature-review/actions.ts">
 "use server";
 
@@ -41322,6 +41543,247 @@ export default function CitationCardsPage() {
     </div>
   );
 }
+</file>
+
+<file path="src/app/(onboarding)/onboarding/boxes/_components/boxes-container.tsx">
+"use client";
+
+import { useCallback, useMemo, memo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  CheckCircle2,
+  ArrowRight,
+  Library,
+  PlusCircle,
+  WholeWord,
+  Archive,
+  Loader2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardTitle } from "@/components/ui/card";
+import { AIBanner } from "@/components/shared/ai-banner";
+import { BoxesSkeleton } from "./boxes-skeleton";
+import { useBoxesContinue } from "../../_hooks/use-boxes-continue";
+import { fetchBoxesWithFullShape } from "@/features/onboarding/services/fetch-actions";
+import { BOX_ORDER_WEIGHT, BOX_TYPE_LABELS } from "@/lib/box-constants";
+import type { GeminiThesisBox } from "@/lib/types";
+
+/**
+ * Renders the subject boxes overview with a proceed-to-literature action.
+ *
+ * @returns The boxes container markup.
+ */
+export function BoxesContainer() {
+  const { proceedFromBoxes } = useBoxesContinue();
+
+  const { data: boxes, isLoading: loading } = useQuery({
+    queryKey: ["boxes"],
+    queryFn: fetchBoxesWithFullShape,
+    staleTime: 0,
+  });
+
+  const [proceeding, setProceeding] = useState(false);
+
+  const handleProceed = useCallback(async () => {
+    if (proceeding) return;
+    setProceeding(true);
+    try {
+      await proceedFromBoxes();
+    } finally {
+      setProceeding(false);
+    }
+  }, [proceedFromBoxes, proceeding]);
+
+  const sortedBoxes = useMemo(() => {
+    if (!boxes) return [];
+    return [...boxes]
+      .filter((b) => b.parentId === null && b.boxType !== "RELATED_THESES")
+      .sort((a, b) => {
+        return (
+          (BOX_ORDER_WEIGHT[a.boxType] || 99) -
+          (BOX_ORDER_WEIGHT[b.boxType] || 99)
+        );
+      });
+  }, [boxes]);
+
+  if (loading) {
+    return <BoxesSkeleton />;
+  }
+
+  return (
+    <div className="w-full space-y-8">
+      <AIBanner
+        icon={CheckCircle2}
+        title="Konu Kutuları Yapılandırıldı"
+        description="Tez matrisinizin çözümlenmesi başarıyla tamamlandı. Aşağıdaki her bir konu kutusu, literatür taraması sürecinde bağımsız olarak taranacaktır."
+      />
+
+      <div className="grid grid-cols-1 gap-4 auto-rows-min">
+        {sortedBoxes.map((box, idx) => (
+          <BoxCard key={box.title} box={box} index={idx} />
+        ))}
+      </div>
+
+      <div className="flex justify-end mt-8 pb-8">
+        <Button onClick={handleProceed} disabled={proceeding} size="lg">
+          {proceeding ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Kaydediliyor...
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              Onayla ve Tez Planı Adımına Geç
+              <ArrowRight className="w-4 h-4" />
+            </span>
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Renders the sub-box nested section (timeline + cards).
+ *
+ * @param root0 - The section props object.
+ * @param root0.subBoxes - The sub-boxes to render.
+ * @returns The sub-box section markup.
+ */
+const SubBoxSection = memo(function SubBoxSection({
+  subBoxes,
+}: {
+  subBoxes: GeminiThesisBox[];
+}) {
+  return (
+    <div className="pt-4 space-y-4 mt-5">
+      <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+        <Library className="w-3.5 h-3.5 text-primary" />
+        Alt Konu Kutuları
+      </h4>
+      <div className="relative border-l border-primary/20 pl-4 ml-3 space-y-4 mt-2">
+        {subBoxes.map((subBox, sbIdx) => (
+          <div key={`${subBox.title}-${sbIdx}`} className="relative">
+            <span className="absolute -left-[21.5px] top-[21px] h-2.5 w-2.5 rounded-full border-2 border-primary bg-background" />
+            <Card className="p-4 rounded-md border border-border hover:border-primary/20 transition-all duration-200 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <h5 className="font-sans text-sm font-semibold text-foreground leading-snug line-clamp-2 break-words hyphens-auto">
+                  {subBox.title}
+                </h5>
+              </div>
+              {subBox.description && (
+                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
+                  {subBox.description}
+                </p>
+              )}
+              {subBox.concepts && subBox.concepts.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {subBox.concepts.map((concept, cIdx) => (
+                    <span
+                      key={`${concept}-${cIdx}`}
+                      className="inline-flex items-center px-2 py-1 rounded bg-primary/10 border border-primary/20 text-[10px] text-primary font-medium"
+                    >
+                      {concept}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+
+/**
+ * Renders the PRIMARY_MATERIAL box info section.
+ *
+ * @returns The primary material info section markup.
+ */
+const PrimaryMaterialSection = memo(function PrimaryMaterialSection() {
+  return (
+    <div className="pt-4 space-y-2 mt-5">
+      <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+        <Archive className="w-3.5 h-3.5 text-muted-foreground" />
+        Arşiv / Birincil Kaynak Alanı
+      </h4>
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        Bu kutu, saha çalışması verileri ve birincil kaynaklar için ayrılmıştır.
+        Kurucu literatür taraması yapılmamıştır; arşiv belgeleri bir sonraki
+        adımda el ile girilecektir.
+      </p>
+    </div>
+  );
+});
+
+/**
+ * Renders a single box card with its sub-boxes and metadata.
+ *
+ * @param root0 - The card props object.
+ * @param root0.box - The thesis box to render.
+ * @param root0.index - The index of the box within the grid.
+ * @returns The box card markup.
+ */
+const BoxCard = memo(function BoxCard({
+  box,
+  index,
+}: {
+  box: GeminiThesisBox;
+  index: number;
+}) {
+  const parentConcepts = box.concepts ?? [];
+
+  return (
+    <Card className="group/card flex flex-col h-full p-6 rounded-md transition-all duration-300 hover:-translate-y-1 hover:border-primary/20">
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 text-muted-foreground text-xs">
+          <PlusCircle className="w-3 h-3" />
+          <span>Kutu {index + 1}</span>
+          <span className="ml-auto inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-secondary text-secondary-foreground border border-border/40">
+            {BOX_TYPE_LABELS[box.boxType]}
+          </span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="relative mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-primary" />
+          <CardTitle className="text-lg font-semibold text-foreground leading-snug line-clamp-2 break-words hyphens-auto">
+            {box.title}
+          </CardTitle>
+        </div>
+      </div>
+
+      {box.description && (
+        <p className="text-sm text-muted-foreground leading-relaxed mt-4 line-clamp-3">
+          {box.description}
+        </p>
+      )}
+
+      {parentConcepts.length > 0 && (
+        <div className="mt-4">
+          <div className="border-y border-border py-3">
+            <div className="flex flex-wrap gap-2">
+              {parentConcepts.map((concept, i) => (
+                <span
+                  key={`${concept}-${i}`}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 text-xs text-primary font-semibold"
+                >
+                  <WholeWord className="w-3.5 h-3.5 shrink-0" />
+                  {concept}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {box.subBoxes && box.subBoxes.length > 0 ? (
+        <SubBoxSection subBoxes={box.subBoxes} />
+      ) : box.boxType === "PRIMARY_MATERIAL" ? (
+        <PrimaryMaterialSection />
+      ) : null}
+    </Card>
+  );
+});
 </file>
 
 <file path="src/lib/logger.ts">
@@ -44832,6 +45294,7 @@ export function LiteratureReviewContent() {
     "@aws-sdk/s3-request-presigner": "^3.1097.0",
     "@firecrawl/pdf-inspector": "^1.12.0",
     "@google/genai": "^2.8.0",
+    "@libsql/client": "^0.17.4",
     "@neondatabase/serverless": "^1.0.0",
     "@radix-ui/react-alert-dialog": "^1.1.16",
     "@radix-ui/react-checkbox": "^1.3.4",

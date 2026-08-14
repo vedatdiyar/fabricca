@@ -3,7 +3,7 @@ import type { TezaraThesisDetails } from "@/lib/types";
 import { rerankWithCohere, COHERE_RERANK_MODEL } from "@/services/ai/cohere";
 import type { Logger } from "@/lib/logger";
 import type { PositioningMatrixInput } from "./validation";
-import { sanitizeMeiliQuery, type GeneratedQueries } from "./queries";
+import { sanitizeSearchQuery, type GeneratedQueries } from "./queries";
 
 /** Candidate thesis extended with Cohere semantic relevance score. */
 export interface SiftedThesis extends TezaraThesisDetails {
@@ -20,20 +20,6 @@ const ALLOWED_LANGUAGES = new Set([
   "english",
   "ingilizce",
 ]);
-
-/** Meilisearch filter to pre-filter results to Turkish or English only. */
-const LANG_FILTER = "language=Türkçe OR language=English";
-
-/** Fields to search within for relevance (title + abstract). */
-const SEARCH_FIELDS = [
-  "title_original",
-  "title_translated",
-  "abstract_original",
-  "abstract_translated",
-];
-
-/** Minimum Meilisearch ranking score threshold to maximize candidate search recall. */
-const RANKING_SCORE_THRESHOLD = 0.1;
 
 /**
  * Whether a thesis language tag matches Turkish or English; missing tags are kept.
@@ -77,10 +63,10 @@ function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
 const SCORE_EPSILON = 1e-4;
 
 /**
- * Runs 8 sequential Meilisearch queries on Tezara, deduplicates results, applies
- * abstract length and language filters, ranks candidates via Cohere Rerank
- * v4 Pro (full score list), then deterministically selects the top-N by
- * (relevanceScore desc, ID asc) for reproducible downstream evaluation.
+ * Runs 8 sequential semantic vector queries on the Turso thesis database,
+ * deduplicates results, applies abstract length and language filters,
+ * ranks candidates via Cohere Rerank v4 Pro (full score list),
+ * then deterministically selects the top-N by (relevanceScore desc, ID asc).
  *
  * @param queries - The generated TR+EN search queries to run.
  * @param matrixInput - The validated positioning matrix input.
@@ -97,15 +83,20 @@ export async function searchAndSiftTheses(
 ): Promise<SiftedThesis[]> {
   const topN = options?.topN ?? 45;
 
+  const rawDirectQuery = sanitizeSearchQuery(
+    matrixInput.subjectProblem.slice(0, 450),
+  );
+
   const allQueries: string[] = [
-    sanitizeMeiliQuery(queries.subjectTr_alt1),
-    sanitizeMeiliQuery(queries.subjectTr_alt2),
-    sanitizeMeiliQuery(queries.subjectTr_alt3),
-    sanitizeMeiliQuery(queries.subjectTr_alt4),
-    sanitizeMeiliQuery(queries.subjectEn_alt1),
-    sanitizeMeiliQuery(queries.subjectEn_alt2),
-    sanitizeMeiliQuery(queries.subjectEn_alt3),
-    sanitizeMeiliQuery(queries.subjectEn_alt4),
+    ...(rawDirectQuery ? [rawDirectQuery] : []),
+    sanitizeSearchQuery(queries.subjectTr_alt1),
+    sanitizeSearchQuery(queries.subjectTr_alt2),
+    sanitizeSearchQuery(queries.subjectTr_alt3),
+    sanitizeSearchQuery(queries.subjectTr_alt4),
+    sanitizeSearchQuery(queries.subjectEn_alt1),
+    sanitizeSearchQuery(queries.subjectEn_alt2),
+    sanitizeSearchQuery(queries.subjectEn_alt3),
+    sanitizeSearchQuery(queries.subjectEn_alt4),
   ];
 
   const searchStart = performance.now();
@@ -118,15 +109,11 @@ export async function searchAndSiftTheses(
 
   const searchParams = {
     limit: 50,
-    rankingScoreThreshold: RANKING_SCORE_THRESHOLD,
-    filter: LANG_FILTER,
-    attributesToSearchOn: SEARCH_FIELDS,
   };
 
-  const hitArrays: TezaraThesisDetails[][] = [];
-  for (const q of allQueries) {
-    hitArrays.push(await searchTezara(q, logger, searchParams));
-  }
+  const hitArrays = await Promise.all(
+    allQueries.map((q) => searchTezara(q, logger, searchParams)),
+  );
 
   const candidateMap = new Map<number, TezaraThesisDetails>();
   for (const hits of hitArrays) {
