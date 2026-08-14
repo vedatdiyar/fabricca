@@ -10,6 +10,10 @@ import {
   ExternalLink,
   Target,
   Loader2,
+  Sparkles,
+  Calendar,
+  User,
+  GraduationCap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -140,76 +144,13 @@ export function PositioningReportView({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {reportData.recommendedTheses.map((thesis, idx) => {
-                const thesisId = thesis.externalThesisId || `thesis-${idx}`;
-                return (
-                  <Card
-                    key={thesisId}
-                    className="p-6 space-y-3 hover:border-border/40 transition-colors"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                      <div className="space-y-1">
-                        <h4 className="font-sans text-sm font-medium text-foreground leading-snug">
-                          {thesis.title}
-                        </h4>
-                        <p className="text-xs text-muted-foreground">
-                          {[thesis.author, thesis.year, thesis.university]
-                            .filter(Boolean)
-                            .join(" • ")}
-                        </p>
-                      </div>
-                      {thesis.doi && (
-                        <a
-                          href={
-                            thesis.doi.startsWith("http")
-                              ? thesis.doi
-                              : `https://doi.org/${thesis.doi}`
-                          }
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0 self-start"
-                        >
-                          DOI <ExternalLink className="h-3 w-3" />
-                        </a>
-                      )}
-                    </div>
-
-                    {(thesis.contributionArea || thesis.relevanceReason) && (
-                      <div className="space-y-3 pt-3 border-t border-border/40 text-xs">
-                        <div className="space-y-1">
-                          <span className="flex items-center gap-2 font-semibold text-primary">
-                            <Target className="h-3.5 w-3.5 shrink-0" />
-                            Katkı / Odak Alanı:
-                          </span>
-                          <span className="text-foreground leading-relaxed block">
-                            {thesis.contributionArea || (
-                              <span className="text-muted-foreground italic">
-                                —
-                              </span>
-                            )}
-                          </span>
-                        </div>
-
-                        <div className="border-t border-border/40" />
-
-                        <div className="space-y-1">
-                          <span className="flex items-center gap-2 font-semibold text-foreground">
-                            <Lightbulb className="h-3.5 w-3.5 shrink-0" />
-                            İlişki ve Ayrışma Sebebi:
-                          </span>
-                          <span className="text-muted-foreground leading-relaxed block">
-                            {thesis.relevanceReason || (
-                              <span className="text-muted-foreground italic">
-                                —
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </Card>
-                );
-              })}
+              {reportData.recommendedTheses.map((thesis, idx) => (
+                <RecommendedThesisCard
+                  key={thesis.externalThesisId || `thesis-${idx}`}
+                  thesis={thesis}
+                  index={idx}
+                />
+              ))}
             </div>
           </div>
         )}
@@ -236,5 +177,138 @@ export function PositioningReportView({
         </Button>
       </div>
     </div>
+  );
+}
+
+interface RecommendedThesisCardProps {
+  thesis: NonNullable<JuryAnalysisResult["recommendedTheses"]>[number];
+  index: number;
+}
+
+/**
+ * Renders a rich academic guide thesis card with clean visual hierarchy,
+ * metadata badges, contribution highlights, and strategic relevance notes.
+ *
+ * @param root0 - The component props.
+ * @param root0.thesis - The recommended thesis data object.
+ * @param root0.index - The 0-based index of the thesis in the list.
+ * @returns The rendered thesis card.
+ */
+function RecommendedThesisCard({ thesis, index }: RecommendedThesisCardProps) {
+  const separatorIndex = thesis.title.indexOf(" / ");
+  const titleMain =
+    separatorIndex === -1
+      ? thesis.title
+      : thesis.title.slice(0, separatorIndex).trim();
+  const titleTranslation =
+    separatorIndex === -1
+      ? null
+      : thesis.title.slice(separatorIndex + 3).trim();
+
+  return (
+    <Card className="rounded-md border border-border bg-card p-5 hover:border-primary/30 transition-all flex flex-col justify-between space-y-4">
+      {/* Header & Meta Information */}
+      <div className="space-y-3">
+        {/* Top Badges Row */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary uppercase tracking-wider">
+              <Sparkles className="h-3 w-3 shrink-0" />
+              Rehber Kaynak #{index + 1}
+            </span>
+            {thesis.thesisType && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium border bg-muted text-muted-foreground border-border">
+                {thesis.thesisType}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {thesis.year && (
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground bg-muted/50 px-2 py-0.5 rounded border border-border/40">
+                <Calendar className="h-3 w-3" />
+                {thesis.year}
+              </span>
+            )}
+            {thesis.doi && (
+              <a
+                href={
+                  thesis.doi.startsWith("http")
+                    ? thesis.doi
+                    : `https://doi.org/${thesis.doi}`
+                }
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+              >
+                DOI <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </div>
+        </div>
+
+        {/* Academic Title */}
+        <div className="space-y-1">
+          <h4 className="font-sans text-sm font-semibold text-foreground leading-snug tracking-tight">
+            {titleMain}
+          </h4>
+          {titleTranslation && (
+            <p className="text-xs italic text-muted-foreground leading-relaxed">
+              {titleTranslation}
+            </p>
+          )}
+        </div>
+
+        {/* Author and Institution Info */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground pt-2 border-t border-border/40">
+          {thesis.author && (
+            <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+              <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              {thesis.author}
+            </span>
+          )}
+          {thesis.university && (
+            <span
+              className="inline-flex items-center gap-1.5 text-muted-foreground truncate"
+              title={thesis.university}
+            >
+              <GraduationCap className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="truncate">{thesis.university}</span>
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Analysis Sections (Katkı & Ayrışma) */}
+      {(thesis.contributionArea || thesis.relevanceReason) && (
+        <div className="space-y-2.5 pt-1">
+          {/* Katkı / Odak Alanı Block */}
+          {thesis.contributionArea && (
+            <div className="rounded-md bg-primary/[0.04] border border-primary/20 p-3 space-y-1">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                <Target className="h-3.5 w-3.5 shrink-0" />
+                <span>Katkı / Odak Alanı</span>
+              </div>
+              <p className="text-xs font-medium text-foreground leading-relaxed pl-5">
+                {thesis.contributionArea}
+              </p>
+            </div>
+          )}
+
+          {/* İlişki ve Ayrışma Sebebi Block */}
+          {thesis.relevanceReason && (
+            <div className="rounded-md bg-muted/30 border border-border/40 p-3 space-y-1">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                <Lightbulb className="h-3.5 w-3.5 text-warning shrink-0" />
+                <span>İlişki ve Ayrışma Sebebi</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed pl-5">
+                {thesis.relevanceReason}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
   );
 }

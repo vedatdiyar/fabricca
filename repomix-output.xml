@@ -33008,282 +33008,6 @@ async function persistOutlines(
 }
 </file>
 
-<file path="src/features/tezara/index.ts">
-import { QdrantClient } from "@qdrant/js-client-rest";
-import type { Logger } from "@/lib/logger";
-import type { TezaraThesisDetails } from "@/lib/types";
-import { DEFAULT_MAX_DELAY, HttpError, withRetry } from "@/lib/api-utils";
-
-const QDRANT_URL = process.env.QDRANT_URL ?? "";
-const QDRANT_API_KEY = process.env.QDRANT_API_KEY ?? "";
-const HF_API_KEY = process.env.HUGGINGFACE_API_KEY ?? "";
-
-const HF_EMBEDDING_ENDPOINT =
-  "https://router.huggingface.co/hf-inference/models/intfloat/multilingual-e5-base/pipeline/feature-extraction";
-
-/** Maximum number of retry attempts for transient API/network failures. */
-const MAX_RETRIES = 3;
-
-/** Global singleton Qdrant client instance. */
-let qdrantClient: QdrantClient | null = null;
-
-/**
- * Returns the singleton Qdrant client connected to the Qdrant Cloud cluster.
- *
- * @throws Error when QDRANT_URL is missing.
- * @returns Qdrant client instance.
- */
-function getQdrantClient(): QdrantClient {
-  if (qdrantClient) {
-    return qdrantClient;
-  }
-
-  if (!QDRANT_URL) {
-    throw new Error("QDRANT_URL environment variable is not defined.");
-  }
-
-  qdrantClient = new QdrantClient({
-    url: QDRANT_URL,
-    apiKey: QDRANT_API_KEY || undefined,
-  });
-
-  return qdrantClient;
-}
-
-/**
- * Generates a 768-dimensional embedding vector for a query using
- * `intfloat/multilingual-e5-base` via Hugging Face Serverless Inference API.
- *
- * @param query - Raw query text.
- * @param logger - Optional logger for observability.
- * @returns 768-dimensional dense vector array.
- */
-export async function getE5QueryEmbedding(
-  query: string,
-  logger?: Logger,
-): Promise<number[]> {
-  if (!HF_API_KEY) {
-    throw new Error(
-      "HUGGINGFACE_API_KEY environment variable is not defined.",
-    );
-  }
-
-  const trimmed = query.trim();
-  const inputWithPrefix = trimmed.startsWith("query: ")
-    ? trimmed
-    : `query: ${trimmed}`;
-
-  const startTime = performance.now();
-
-  try {
-    const vector = await withRetry(
-      async (): Promise<number[]> => {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20_000);
-
-        try {
-          const res = await fetch(HF_EMBEDDING_ENDPOINT, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${HF_API_KEY}`,
-            },
-            body: JSON.stringify({ inputs: [inputWithPrefix] }),
-            signal: controller.signal,
-          });
-
-          if (!res.ok) {
-            const errText = await res.text().catch(() => "");
-            throw new HttpError(res.status, errText, null);
-          }
-
-          const data = (await res.json()) as unknown;
-
-          if (Array.isArray(data) && Array.isArray(data[0])) {
-            return data[0] as number[];
-          }
-
-          if (Array.isArray(data) && typeof data[0] === "number") {
-            return data as number[];
-          }
-
-          throw new Error("Unexpected embedding response structure from Hugging Face.");
-        } finally {
-          clearTimeout(timeoutId);
-        }
-      },
-      {
-        maxRetries: MAX_RETRIES,
-        baseDelay: 500,
-        maxDelay: DEFAULT_MAX_DELAY,
-        isRetryable: (error) => {
-          if (error instanceof HttpError) {
-            return error.status === 429 || error.status >= 500 || error.status === 503;
-          }
-          return true;
-        },
-        onRetry: (attempt, delayMs, error) => {
-          logger?.info("hf_embedding_retry", {
-            service: "tezara",
-            filePath: "src/features/tezara/index.ts",
-            step: "get_query_embedding",
-            data: {
-              attempt,
-              delayMs: Math.round(delayMs),
-              errorMessage:
-                error instanceof Error ? error.message : String(error),
-            },
-          });
-        },
-      },
-    );
-
-    const durationMs = performance.now() - startTime;
-    logger?.info("hf_embedding_success", {
-      service: "tezara",
-      filePath: "src/features/tezara/index.ts",
-      step: "get_query_embedding",
-      durationMs,
-      data: { query: trimmed, dimensions: vector.length },
-    });
-
-    return vector;
-  } catch (err) {
-    const durationMs = performance.now() - startTime;
-    logger?.error("hf_embedding_failed", {
-      service: "tezara",
-      filePath: "src/features/tezara/index.ts",
-      step: "get_query_embedding",
-      durationMs,
-      data: { query: trimmed },
-      error: err,
-    });
-    throw err;
-  }
-}
-
-/**
- * Extracts the most reliable abstract text from a raw thesis payload.
- *
- * @param payload - Raw thesis payload dictionary.
- * @returns Abstract string, preferring original over translated text.
- */
-function extractAbstract(payload: Record<string, unknown>): string {
-  let abstract = String(payload.abstract_original ?? payload.abstract ?? "").trim();
-  if (!abstract || abstract.length < 10 || /^özet yok\.?$/i.test(abstract)) {
-    abstract = String(payload.abstract_translated ?? "").trim();
-  }
-  return abstract;
-}
-
-/**
- * Maps a Qdrant point payload to TezaraThesisDetails.
- *
- * @param id - Point ID.
- * @param payload - Raw payload from Qdrant.
- * @returns Standardized thesis details object.
- */
-function mapPayloadToDetails(
-  id: number,
-  payload: Record<string, unknown>,
-): TezaraThesisDetails {
-  const titleOriginal = String(payload.title_original ?? payload.title ?? "").trim();
-  const titleTranslated = String(payload.title_translated ?? "").trim();
-  const title =
-    titleTranslated && titleTranslated !== titleOriginal
-      ? `${titleOriginal} / ${titleTranslated}`
-      : titleOriginal;
-
-  return {
-    id,
-    title,
-    author: String(payload.author ?? "N/A"),
-    university: String(payload.university ?? "N/A"),
-    year: parseInt(String(payload.year ?? "0"), 10) || 0,
-    thesisType: String(payload.thesis_type ?? payload.thesisType ?? "N/A"),
-    department: String(payload.department ?? "N/A"),
-    language: payload.language ? String(payload.language) : undefined,
-    abstract: extractAbstract(payload),
-    yokPdfUrl: payload.pdf_url ? String(payload.pdf_url) : undefined,
-  };
-}
-
-/** Search options for precision tuning. */
-export interface TezaraSearchOptions {
-  limit?: number;
-  rankingScoreThreshold?: number;
-  filter?: string;
-  attributesToSearchOn?: string[];
-}
-
-/**
- * Searches the thesis database via Qdrant Vector Index (Cosine Similarity)
- * using `multilingual-e5-base` 768-dimensional embeddings.
- *
- * @param query - Search query string.
- * @param logger - Optional logger for observability.
- * @param options - Optional search parameters (limit, etc.).
- * @returns Matching thesis details.
- * @throws Error if embedding generation or vector search fails.
- */
-export async function searchTezara(
-  query: string,
-  logger?: Logger,
-  options?: TezaraSearchOptions,
-): Promise<TezaraThesisDetails[]> {
-  const startTime = performance.now();
-  const limit = options?.limit ?? 100;
-  const client = getQdrantClient();
-
-  try {
-    const embedding = await getE5QueryEmbedding(query, logger);
-    const queryStart = performance.now();
-
-    const searchRes = await client.query("theses", {
-      query: embedding,
-      limit,
-      with_payload: true,
-    });
-
-    const qdrantDurationMs = performance.now() - queryStart;
-    const totalDurationMs = performance.now() - startTime;
-
-    const results: TezaraThesisDetails[] = [];
-    for (const point of searchRes.points) {
-      if (!point.id) continue;
-      const payload = (point.payload ?? {}) as Record<string, unknown>;
-      results.push(mapPayloadToDetails(Number(point.id), payload));
-    }
-
-    logger?.info("qdrant_vector_search_success", {
-      service: "tezara",
-      filePath: "src/features/tezara/index.ts",
-      step: "search_qdrant_vector",
-      durationMs: totalDurationMs,
-      data: {
-        query,
-        resultCount: results.length,
-        qdrantDurationMs: Math.round(qdrantDurationMs),
-        limit,
-      },
-    });
-
-    return results;
-  } catch (err) {
-    const durationMs = performance.now() - startTime;
-    logger?.error("qdrant_vector_search_failed", {
-      service: "tezara",
-      filePath: "src/features/tezara/index.ts",
-      step: "search_failed",
-      durationMs,
-      data: { query },
-      error: err,
-    });
-    throw err;
-  }
-}
-</file>
-
 <file path="src/lib/session.ts">
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -34855,6 +34579,282 @@ function OutlineEditor({
       </div>
     </div>
   );
+}
+</file>
+
+<file path="src/features/tezara/index.ts">
+import { QdrantClient } from "@qdrant/js-client-rest";
+import type { Logger } from "@/lib/logger";
+import type { TezaraThesisDetails } from "@/lib/types";
+import { DEFAULT_MAX_DELAY, HttpError, withRetry } from "@/lib/api-utils";
+
+const QDRANT_URL = process.env.QDRANT_URL ?? "";
+const QDRANT_API_KEY = process.env.QDRANT_API_KEY ?? "";
+const HF_API_KEY = process.env.HUGGINGFACE_API_KEY ?? "";
+
+const HF_EMBEDDING_ENDPOINT =
+  "https://router.huggingface.co/hf-inference/models/intfloat/multilingual-e5-base/pipeline/feature-extraction";
+
+/** Maximum number of retry attempts for transient API/network failures. */
+const MAX_RETRIES = 3;
+
+/** Global singleton Qdrant client instance. */
+let qdrantClient: QdrantClient | null = null;
+
+/**
+ * Returns the singleton Qdrant client connected to the Qdrant Cloud cluster.
+ *
+ * @throws Error when QDRANT_URL is missing.
+ * @returns Qdrant client instance.
+ */
+function getQdrantClient(): QdrantClient {
+  if (qdrantClient) {
+    return qdrantClient;
+  }
+
+  if (!QDRANT_URL) {
+    throw new Error("QDRANT_URL environment variable is not defined.");
+  }
+
+  qdrantClient = new QdrantClient({
+    url: QDRANT_URL,
+    apiKey: QDRANT_API_KEY || undefined,
+  });
+
+  return qdrantClient;
+}
+
+/**
+ * Generates a 768-dimensional embedding vector for a query using
+ * `intfloat/multilingual-e5-base` via Hugging Face Serverless Inference API.
+ *
+ * @param query - Raw query text.
+ * @param logger - Optional logger for observability.
+ * @returns 768-dimensional dense vector array.
+ */
+export async function getE5QueryEmbedding(
+  query: string,
+  logger?: Logger,
+): Promise<number[]> {
+  if (!HF_API_KEY) {
+    throw new Error(
+      "HUGGINGFACE_API_KEY environment variable is not defined.",
+    );
+  }
+
+  const trimmed = query.trim();
+  const inputWithPrefix = trimmed.startsWith("query: ")
+    ? trimmed
+    : `query: ${trimmed}`;
+
+  const startTime = performance.now();
+
+  try {
+    const vector = await withRetry(
+      async (): Promise<number[]> => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20_000);
+
+        try {
+          const res = await fetch(HF_EMBEDDING_ENDPOINT, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${HF_API_KEY}`,
+            },
+            body: JSON.stringify({ inputs: [inputWithPrefix] }),
+            signal: controller.signal,
+          });
+
+          if (!res.ok) {
+            const errText = await res.text().catch(() => "");
+            throw new HttpError(res.status, errText, null);
+          }
+
+          const data = (await res.json()) as unknown;
+
+          if (Array.isArray(data) && Array.isArray(data[0])) {
+            return data[0] as number[];
+          }
+
+          if (Array.isArray(data) && typeof data[0] === "number") {
+            return data as number[];
+          }
+
+          throw new Error("Unexpected embedding response structure from Hugging Face.");
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      },
+      {
+        maxRetries: MAX_RETRIES,
+        baseDelay: 500,
+        maxDelay: DEFAULT_MAX_DELAY,
+        isRetryable: (error) => {
+          if (error instanceof HttpError) {
+            return error.status === 429 || error.status >= 500 || error.status === 503;
+          }
+          return true;
+        },
+        onRetry: (attempt, delayMs, error) => {
+          logger?.info("hf_embedding_retry", {
+            service: "tezara",
+            filePath: "src/features/tezara/index.ts",
+            step: "get_query_embedding",
+            data: {
+              attempt,
+              delayMs: Math.round(delayMs),
+              errorMessage:
+                error instanceof Error ? error.message : String(error),
+            },
+          });
+        },
+      },
+    );
+
+    const durationMs = performance.now() - startTime;
+    logger?.info("hf_embedding_success", {
+      service: "tezara",
+      filePath: "src/features/tezara/index.ts",
+      step: "get_query_embedding",
+      durationMs,
+      data: { query: trimmed, dimensions: vector.length },
+    });
+
+    return vector;
+  } catch (err) {
+    const durationMs = performance.now() - startTime;
+    logger?.error("hf_embedding_failed", {
+      service: "tezara",
+      filePath: "src/features/tezara/index.ts",
+      step: "get_query_embedding",
+      durationMs,
+      data: { query: trimmed },
+      error: err,
+    });
+    throw err;
+  }
+}
+
+/**
+ * Extracts the most reliable abstract text from a raw thesis payload.
+ *
+ * @param payload - Raw thesis payload dictionary.
+ * @returns Abstract string, preferring original over translated text.
+ */
+function extractAbstract(payload: Record<string, unknown>): string {
+  let abstract = String(payload.abstract_original ?? payload.abstract ?? "").trim();
+  if (!abstract || abstract.length < 10 || /^özet yok\.?$/i.test(abstract)) {
+    abstract = String(payload.abstract_translated ?? "").trim();
+  }
+  return abstract;
+}
+
+/**
+ * Maps a Qdrant point payload to TezaraThesisDetails.
+ *
+ * @param id - Point ID.
+ * @param payload - Raw payload from Qdrant.
+ * @returns Standardized thesis details object.
+ */
+function mapPayloadToDetails(
+  id: number,
+  payload: Record<string, unknown>,
+): TezaraThesisDetails {
+  const titleOriginal = String(payload.title_original ?? payload.title ?? "").trim();
+  const titleTranslated = String(payload.title_translated ?? "").trim();
+  const title =
+    titleTranslated && titleTranslated !== titleOriginal
+      ? `${titleOriginal} / ${titleTranslated}`
+      : titleOriginal;
+
+  return {
+    id,
+    title,
+    author: String(payload.author ?? "N/A"),
+    university: String(payload.university ?? "N/A"),
+    year: parseInt(String(payload.year ?? "0"), 10) || 0,
+    thesisType: String(payload.thesis_type ?? payload.thesisType ?? "N/A"),
+    department: String(payload.department ?? "N/A"),
+    language: payload.language ? String(payload.language) : undefined,
+    abstract: extractAbstract(payload),
+    yokPdfUrl: payload.pdf_url ? String(payload.pdf_url) : undefined,
+  };
+}
+
+/** Search options for precision tuning. */
+export interface TezaraSearchOptions {
+  limit?: number;
+  rankingScoreThreshold?: number;
+  filter?: string;
+  attributesToSearchOn?: string[];
+}
+
+/**
+ * Searches the thesis database via Qdrant Vector Index (Cosine Similarity)
+ * using `multilingual-e5-base` 768-dimensional embeddings.
+ *
+ * @param query - Search query string.
+ * @param logger - Optional logger for observability.
+ * @param options - Optional search parameters (limit, etc.).
+ * @returns Matching thesis details.
+ * @throws Error if embedding generation or vector search fails.
+ */
+export async function searchTezara(
+  query: string,
+  logger?: Logger,
+  options?: TezaraSearchOptions,
+): Promise<TezaraThesisDetails[]> {
+  const startTime = performance.now();
+  const limit = options?.limit ?? 100;
+  const client = getQdrantClient();
+
+  try {
+    const embedding = await getE5QueryEmbedding(query, logger);
+    const queryStart = performance.now();
+
+    const searchRes = await client.query("theses", {
+      query: embedding,
+      limit,
+      with_payload: true,
+    });
+
+    const qdrantDurationMs = performance.now() - queryStart;
+    const totalDurationMs = performance.now() - startTime;
+
+    const results: TezaraThesisDetails[] = [];
+    for (const point of searchRes.points) {
+      if (!point.id) continue;
+      const payload = (point.payload ?? {}) as Record<string, unknown>;
+      results.push(mapPayloadToDetails(Number(point.id), payload));
+    }
+
+    logger?.info("qdrant_vector_search_success", {
+      service: "tezara",
+      filePath: "src/features/tezara/index.ts",
+      step: "search_qdrant_vector",
+      durationMs: totalDurationMs,
+      data: {
+        query,
+        resultCount: results.length,
+        qdrantDurationMs: Math.round(qdrantDurationMs),
+        limit,
+      },
+    });
+
+    return results;
+  } catch (err) {
+    const durationMs = performance.now() - startTime;
+    logger?.error("qdrant_vector_search_failed", {
+      service: "tezara",
+      filePath: "src/features/tezara/index.ts",
+      step: "search_failed",
+      durationMs,
+      data: { query },
+      error: err,
+    });
+    throw err;
+  }
 }
 </file>
 
@@ -37054,197 +37054,6 @@ export function PositioningMarkdownRenderer({
 }
 </file>
 
-<file path="src/features/positioning/sifting.ts">
-import { searchTezara } from "@/features/tezara";
-import type { TezaraThesisDetails } from "@/lib/types";
-import { rerankWithCohere, COHERE_RERANK_MODEL } from "@/services/ai/cohere";
-import type { Logger } from "@/lib/logger";
-import type { PositioningMatrixInput } from "./validation";
-
-/** Candidate thesis extended with Cohere semantic relevance score. */
-export interface SiftedThesis extends TezaraThesisDetails {
-  relevanceScore?: number;
-}
-
-const ALLOWED_LANGUAGES = new Set([
-  "tr",
-  "tur",
-  "turkish",
-  "türkçe",
-  "en",
-  "eng",
-  "english",
-  "ingilizce",
-]);
-
-/**
- * Whether a thesis language tag matches Turkish or English; missing tags are kept.
- *
- * @param lang - The thesis language tag to check.
- * @returns True when the language is allowed or the tag is missing.
- */
-function isAllowedLanguage(lang?: string): boolean {
-  if (!lang || !lang.trim()) {
-    return true;
-  }
-  const normalized = lang
-    .replace(/İ/g, "i")
-    .replace(/I/g, "ı")
-    .toLowerCase()
-    .trim();
-  return ALLOWED_LANGUAGES.has(normalized);
-}
-
-/**
- * Sanitizes query text for vector search.
- *
- * @param rawQuery - The raw query string to sanitize.
- * @returns The cleaned query string.
- */
-export function sanitizeSearchQuery(rawQuery: string): string {
-  if (!rawQuery) return "";
-  return rawQuery
-    .replace(/\b(OR|AND|NOT)\b/gi, " ")
-    .replace(/[+*?:^~={}[\]()"\\]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/**
- * Formats a thesis's title and abstract into a YAML document for reranking.
- *
- * @param thesis - The thesis to format.
- * @returns The formatted YAML string.
- */
-function formatThesisToYaml(thesis: TezaraThesisDetails): string {
-  return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
-}
-
-/**
- * Formats the positioning matrix input into a YAML query for reranking.
- *
- * @param input - The validated positioning matrix input.
- * @returns The formatted YAML query string.
- */
-function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
-  return `SubjectProblem: ${input.subjectProblem}`;
-}
-
-/** Difference threshold under which two relevance scores are treated as a tie. */
-const SCORE_EPSILON = 1e-4;
-
-/**
- * Ultra-fast direct semantic thesis sifting engine:
- * Directly vectorizes the thesis research problem, fetches top candidates from Qdrant Cloud
- * in a single high-speed vector query, filters abstracts, and uses Cohere Rerank v4.0 Pro
- * (cross-encoder) to select and rank the most relevant top-N theses.
- *
- * @param matrixInput - The validated positioning matrix input.
- * @param logger - Optional structured logger for pipeline events.
- * @param options - Optional settings for topN and candidateLimit.
- * @returns The selected top theses sorted deterministically.
- */
-export async function searchAndSiftTheses(
-  matrixInput: PositioningMatrixInput,
-  logger?: Logger,
-  options?: { topN?: number; candidateLimit?: number },
-): Promise<SiftedThesis[]> {
-  const topN = options?.topN ?? 45;
-  const candidateLimit = options?.candidateLimit ?? 400;
-
-  const searchQuery = sanitizeSearchQuery(
-    matrixInput.subjectProblem.slice(0, 500),
-  );
-
-  const searchStart = performance.now();
-
-  logger?.info("sifting_direct_search_start", {
-    service: "tezara",
-    filePath: "src/features/positioning/sifting.ts",
-    data: { query: searchQuery, candidateLimit },
-  });
-
-  // 1. Single Ultra-Fast Qdrant Query with candidateLimit (default 400)
-  const rawTheses = await searchTezara(searchQuery, logger, {
-    limit: candidateLimit,
-  });
-
-  // 2. Filter valid candidates
-  const filteredCandidates = rawTheses.filter((thesis) => {
-    const hasSufficientAbstract =
-      thesis.abstract && thesis.abstract.trim().length >= 100;
-    if (!hasSufficientAbstract) return false;
-
-    const isValidLang = isAllowedLanguage(thesis.language);
-    if (!isValidLang) return false;
-
-    return true;
-  });
-
-  if (filteredCandidates.length === 0) {
-    logger?.info("sifting_no_candidates_remaining", {
-      service: "tezara",
-      filePath: "src/features/positioning/sifting.ts",
-      data: { query: searchQuery },
-    });
-    return [];
-  }
-
-  logger?.info("sifting_direct_search_success", {
-    service: "tezara",
-    filePath: "src/features/positioning/sifting.ts",
-    durationMs: performance.now() - searchStart,
-    data: { candidateCount: filteredCandidates.length },
-  });
-
-  // 3. Cohere Rerank v4.0 Pro
-  const targetYamlQuery = formatMatrixToYamlQuery(matrixInput);
-  const candidateYamlDocs = filteredCandidates.map(formatThesisToYaml);
-
-  const rerankStart = performance.now();
-
-  logger?.info("cohere_rerank_start", {
-    service: "cohere",
-    filePath: "src/features/positioning/sifting.ts",
-    data: {
-      model: COHERE_RERANK_MODEL,
-      candidateCount: filteredCandidates.length,
-    },
-  });
-
-  const rerankResults = await rerankWithCohere({
-    query: targetYamlQuery,
-    documents: candidateYamlDocs,
-    logger,
-  });
-
-  const scoredTheses: SiftedThesis[] = rerankResults.map((res) => {
-    const candidate = filteredCandidates[res.index];
-    return {
-      ...candidate,
-      relevanceScore: res.relevanceScore,
-    };
-  });
-
-  scoredTheses.sort((a, b) => {
-    const delta = (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
-    if (Math.abs(delta) > SCORE_EPSILON) return delta;
-    return a.id - b.id;
-  });
-
-  const selected = scoredTheses.slice(0, topN);
-
-  logger?.info("cohere_rerank_success", {
-    service: "cohere",
-    filePath: "src/features/positioning/sifting.ts",
-    durationMs: performance.now() - rerankStart,
-    data: { topCount: selected.length },
-  });
-
-  return selected;
-}
-</file>
-
 <file path="README.md">
 # Fabricca — Dijital Tez Asistanı
 
@@ -39305,6 +39114,195 @@ export function OutlineSectionCard({
 }
 </file>
 
+<file path="src/features/positioning/sifting.ts">
+import { searchTezara } from "@/features/tezara";
+import type { TezaraThesisDetails } from "@/lib/types";
+import { rerankWithCohere, COHERE_RERANK_MODEL } from "@/services/ai/cohere";
+import type { Logger } from "@/lib/logger";
+import type { PositioningMatrixInput } from "./validation";
+
+/** Candidate thesis extended with Cohere semantic relevance score. */
+export interface SiftedThesis extends TezaraThesisDetails {
+  relevanceScore?: number;
+}
+
+const ALLOWED_LANGUAGES = new Set([
+  "tr",
+  "tur",
+  "turkish",
+  "türkçe",
+  "en",
+  "eng",
+  "english",
+  "ingilizce",
+]);
+
+/**
+ * Whether a thesis language tag matches Turkish or English; missing tags are kept.
+ *
+ * @param lang - The thesis language tag to check.
+ * @returns True when the language is allowed or the tag is missing.
+ */
+function isAllowedLanguage(lang?: string): boolean {
+  if (!lang || !lang.trim()) {
+    return true;
+  }
+  const normalized = lang
+    .replace(/İ/g, "i")
+    .replace(/I/g, "ı")
+    .toLowerCase()
+    .trim();
+  return ALLOWED_LANGUAGES.has(normalized);
+}
+
+/**
+ * Sanitizes query text for vector search.
+ *
+ * @param rawQuery - The raw query string to sanitize.
+ * @returns The cleaned query string.
+ */
+export function sanitizeSearchQuery(rawQuery: string): string {
+  if (!rawQuery) return "";
+  return rawQuery
+    .replace(/\b(OR|AND|NOT)\b/gi, " ")
+    .replace(/[+*?:^~={}[\]()"\\]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Formats a thesis's title and abstract into a YAML document for reranking.
+ *
+ * @param thesis - The thesis to format.
+ * @returns The formatted YAML string.
+ */
+function formatThesisToYaml(thesis: TezaraThesisDetails): string {
+  return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
+}
+
+/**
+ * Formats the positioning matrix input into a YAML query for reranking.
+ *
+ * @param input - The validated positioning matrix input.
+ * @returns The formatted YAML query string.
+ */
+function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
+  return `SubjectProblem: ${input.subjectProblem}`;
+}
+
+/** Difference threshold under which two relevance scores are treated as a tie. */
+const SCORE_EPSILON = 1e-4;
+
+/**
+ * Ultra-fast direct semantic thesis sifting engine:
+ * Directly vectorizes the thesis research problem, fetches top candidates from Qdrant Cloud
+ * in a single high-speed vector query, filters abstracts, and uses Cohere Rerank v4.0 Pro
+ * (cross-encoder) to select and rank the most relevant top-N theses.
+ *
+ * @param matrixInput - The validated positioning matrix input.
+ * @param logger - Optional structured logger for pipeline events.
+ * @param options - Optional settings for topN and candidateLimit.
+ * @returns The selected top theses sorted deterministically.
+ */
+export async function searchAndSiftTheses(
+  matrixInput: PositioningMatrixInput,
+  logger?: Logger,
+  options?: { topN?: number; candidateLimit?: number },
+): Promise<SiftedThesis[]> {
+  const topN = options?.topN ?? 45;
+  const candidateLimit = options?.candidateLimit ?? 100;
+
+  const searchQuery = sanitizeSearchQuery(matrixInput.subjectProblem);
+
+  const searchStart = performance.now();
+
+  logger?.info("sifting_direct_search_start", {
+    service: "tezara",
+    filePath: "src/features/positioning/sifting.ts",
+    data: { query: searchQuery, candidateLimit },
+  });
+
+  // 1. Single Ultra-Fast Qdrant Query with candidateLimit (default 100)
+  const rawTheses = await searchTezara(searchQuery, logger, {
+    limit: candidateLimit,
+  });
+
+  // 2. Filter valid candidates
+  const filteredCandidates = rawTheses.filter((thesis) => {
+    const hasSufficientAbstract =
+      thesis.abstract && thesis.abstract.trim().length >= 100;
+    if (!hasSufficientAbstract) return false;
+
+    const isValidLang = isAllowedLanguage(thesis.language);
+    if (!isValidLang) return false;
+
+    return true;
+  });
+
+  if (filteredCandidates.length === 0) {
+    logger?.info("sifting_no_candidates_remaining", {
+      service: "tezara",
+      filePath: "src/features/positioning/sifting.ts",
+      data: { query: searchQuery },
+    });
+    return [];
+  }
+
+  logger?.info("sifting_direct_search_success", {
+    service: "tezara",
+    filePath: "src/features/positioning/sifting.ts",
+    durationMs: performance.now() - searchStart,
+    data: { candidateCount: filteredCandidates.length },
+  });
+
+  // 3. Cohere Rerank v4.0 Pro
+  const targetYamlQuery = formatMatrixToYamlQuery(matrixInput);
+  const candidateYamlDocs = filteredCandidates.map(formatThesisToYaml);
+
+  const rerankStart = performance.now();
+
+  logger?.info("cohere_rerank_start", {
+    service: "cohere",
+    filePath: "src/features/positioning/sifting.ts",
+    data: {
+      model: COHERE_RERANK_MODEL,
+      candidateCount: filteredCandidates.length,
+    },
+  });
+
+  const rerankResults = await rerankWithCohere({
+    query: targetYamlQuery,
+    documents: candidateYamlDocs,
+    logger,
+  });
+
+  const scoredTheses: SiftedThesis[] = rerankResults.map((res) => {
+    const candidate = filteredCandidates[res.index];
+    return {
+      ...candidate,
+      relevanceScore: res.relevanceScore,
+    };
+  });
+
+  scoredTheses.sort((a, b) => {
+    const delta = (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
+    if (Math.abs(delta) > SCORE_EPSILON) return delta;
+    return a.id - b.id;
+  });
+
+  const selected = scoredTheses.slice(0, topN);
+
+  logger?.info("cohere_rerank_success", {
+    service: "cohere",
+    filePath: "src/features/positioning/sifting.ts",
+    durationMs: performance.now() - rerankStart,
+    data: { topCount: selected.length },
+  });
+
+  return selected;
+}
+</file>
+
 <file path="src/app/(app)/advisor/_components/markdown-renderer.tsx">
 "use client";
 
@@ -39860,6 +39858,10 @@ import {
   ExternalLink,
   Target,
   Loader2,
+  Sparkles,
+  Calendar,
+  User,
+  GraduationCap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -39990,76 +39992,13 @@ export function PositioningReportView({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {reportData.recommendedTheses.map((thesis, idx) => {
-                const thesisId = thesis.externalThesisId || `thesis-${idx}`;
-                return (
-                  <Card
-                    key={thesisId}
-                    className="p-6 space-y-3 hover:border-border/40 transition-colors"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                      <div className="space-y-1">
-                        <h4 className="font-sans text-sm font-medium text-foreground leading-snug">
-                          {thesis.title}
-                        </h4>
-                        <p className="text-xs text-muted-foreground">
-                          {[thesis.author, thesis.year, thesis.university]
-                            .filter(Boolean)
-                            .join(" • ")}
-                        </p>
-                      </div>
-                      {thesis.doi && (
-                        <a
-                          href={
-                            thesis.doi.startsWith("http")
-                              ? thesis.doi
-                              : `https://doi.org/${thesis.doi}`
-                          }
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0 self-start"
-                        >
-                          DOI <ExternalLink className="h-3 w-3" />
-                        </a>
-                      )}
-                    </div>
-
-                    {(thesis.contributionArea || thesis.relevanceReason) && (
-                      <div className="space-y-3 pt-3 border-t border-border/40 text-xs">
-                        <div className="space-y-1">
-                          <span className="flex items-center gap-2 font-semibold text-primary">
-                            <Target className="h-3.5 w-3.5 shrink-0" />
-                            Katkı / Odak Alanı:
-                          </span>
-                          <span className="text-foreground leading-relaxed block">
-                            {thesis.contributionArea || (
-                              <span className="text-muted-foreground italic">
-                                —
-                              </span>
-                            )}
-                          </span>
-                        </div>
-
-                        <div className="border-t border-border/40" />
-
-                        <div className="space-y-1">
-                          <span className="flex items-center gap-2 font-semibold text-foreground">
-                            <Lightbulb className="h-3.5 w-3.5 shrink-0" />
-                            İlişki ve Ayrışma Sebebi:
-                          </span>
-                          <span className="text-muted-foreground leading-relaxed block">
-                            {thesis.relevanceReason || (
-                              <span className="text-muted-foreground italic">
-                                —
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </Card>
-                );
-              })}
+              {reportData.recommendedTheses.map((thesis, idx) => (
+                <RecommendedThesisCard
+                  key={thesis.externalThesisId || `thesis-${idx}`}
+                  thesis={thesis}
+                  index={idx}
+                />
+              ))}
             </div>
           </div>
         )}
@@ -40086,6 +40025,139 @@ export function PositioningReportView({
         </Button>
       </div>
     </div>
+  );
+}
+
+interface RecommendedThesisCardProps {
+  thesis: NonNullable<JuryAnalysisResult["recommendedTheses"]>[number];
+  index: number;
+}
+
+/**
+ * Renders a rich academic guide thesis card with clean visual hierarchy,
+ * metadata badges, contribution highlights, and strategic relevance notes.
+ *
+ * @param root0 - The component props.
+ * @param root0.thesis - The recommended thesis data object.
+ * @param root0.index - The 0-based index of the thesis in the list.
+ * @returns The rendered thesis card.
+ */
+function RecommendedThesisCard({ thesis, index }: RecommendedThesisCardProps) {
+  const separatorIndex = thesis.title.indexOf(" / ");
+  const titleMain =
+    separatorIndex === -1
+      ? thesis.title
+      : thesis.title.slice(0, separatorIndex).trim();
+  const titleTranslation =
+    separatorIndex === -1
+      ? null
+      : thesis.title.slice(separatorIndex + 3).trim();
+
+  return (
+    <Card className="rounded-md border border-border bg-card p-5 hover:border-primary/30 transition-all flex flex-col justify-between space-y-4">
+      {/* Header & Meta Information */}
+      <div className="space-y-3">
+        {/* Top Badges Row */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary uppercase tracking-wider">
+              <Sparkles className="h-3 w-3 shrink-0" />
+              Rehber Kaynak #{index + 1}
+            </span>
+            {thesis.thesisType && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium border bg-muted text-muted-foreground border-border">
+                {thesis.thesisType}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {thesis.year && (
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground bg-muted/50 px-2 py-0.5 rounded border border-border/40">
+                <Calendar className="h-3 w-3" />
+                {thesis.year}
+              </span>
+            )}
+            {thesis.doi && (
+              <a
+                href={
+                  thesis.doi.startsWith("http")
+                    ? thesis.doi
+                    : `https://doi.org/${thesis.doi}`
+                }
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+              >
+                DOI <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </div>
+        </div>
+
+        {/* Academic Title */}
+        <div className="space-y-1">
+          <h4 className="font-sans text-sm font-semibold text-foreground leading-snug tracking-tight">
+            {titleMain}
+          </h4>
+          {titleTranslation && (
+            <p className="text-xs italic text-muted-foreground leading-relaxed">
+              {titleTranslation}
+            </p>
+          )}
+        </div>
+
+        {/* Author and Institution Info */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground pt-2 border-t border-border/40">
+          {thesis.author && (
+            <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+              <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              {thesis.author}
+            </span>
+          )}
+          {thesis.university && (
+            <span
+              className="inline-flex items-center gap-1.5 text-muted-foreground truncate"
+              title={thesis.university}
+            >
+              <GraduationCap className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="truncate">{thesis.university}</span>
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Analysis Sections (Katkı & Ayrışma) */}
+      {(thesis.contributionArea || thesis.relevanceReason) && (
+        <div className="space-y-2.5 pt-1">
+          {/* Katkı / Odak Alanı Block */}
+          {thesis.contributionArea && (
+            <div className="rounded-md bg-primary/[0.04] border border-primary/20 p-3 space-y-1">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                <Target className="h-3.5 w-3.5 shrink-0" />
+                <span>Katkı / Odak Alanı</span>
+              </div>
+              <p className="text-xs font-medium text-foreground leading-relaxed pl-5">
+                {thesis.contributionArea}
+              </p>
+            </div>
+          )}
+
+          {/* İlişki ve Ayrışma Sebebi Block */}
+          {thesis.relevanceReason && (
+            <div className="rounded-md bg-muted/30 border border-border/40 p-3 space-y-1">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                <Lightbulb className="h-3.5 w-3.5 text-warning shrink-0" />
+                <span>İlişki ve Ayrışma Sebebi</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed pl-5">
+                {thesis.relevanceReason}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
   );
 }
 </file>
@@ -42004,272 +42076,6 @@ export function useAdvisorChat(initialSessionId?: number) {
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/positioning/actions.ts">
-"use server";
-
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { positioning, matrices } from "@/db/schema";
-import type { Positioning } from "@/db/schema";
-import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
-import { Logger } from "@/lib/logger";
-import type { ThesisMatrix } from "@/lib/types";
-import { positioningMatrixSchema } from "@/features/positioning/validation";
-import { searchAndSiftTheses, type SiftedThesis } from "@/features/positioning/sifting";
-import { evaluateThesesInParallel } from "@/features/positioning/per-thesis-evaluation";
-import { analyzePositioningJury } from "@/features/positioning/analysis";
-import { savePositioningReportTransaction } from "@/features/positioning/decision-engine";
-import { sanitizeAcademicDataBulk } from "@/services/academic";
-import type { JuryAnalysisResult } from "@/features/positioning/analysis";
-
-/**
- * Runs query generation, Tezara search, and Cohere rerank; jury analysis and DB writes run separately.
- *
- * @param matrixInput - The thesis matrix used to derive the search queries.
- * @param flowId - The log flow identifier for structured logging.
- * @returns The sifted thesis list on success or an error message on failure.
- */
-export async function runPositioningSearchAction(
-  matrixInput: ThesisMatrix,
-  flowId: string,
-): Promise<{ success: true; theses: SiftedThesis[] } | { error: string }> {
-  const log = new Logger(flowId);
-  const positioningInput: Record<string, string> = {
-    subjectProblem: matrixInput.subjectProblem ?? "",
-    theoreticalFramework: matrixInput.theoreticalFramework ?? "",
-    methodology: matrixInput.methodology ?? "",
-  };
-
-  const parsed = positioningMatrixSchema.safeParse(positioningInput);
-  if (!parsed.success) {
-    const firstIssue = parsed.error.issues[0];
-    const msg = firstIssue
-      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
-      : "Form doğrulaması başarısız.";
-    return { error: msg };
-  }
-
-  const validated = parsed.data;
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    log.info("sifting_theses_start");
-    const theses = await searchAndSiftTheses(validated, log);
-    log.info("sifting_theses_success");
-
-    return { success: true, theses };
-  } catch (error) {
-    log.error("positioning_search_failed", {
-      error,
-    });
-    return {
-      error:
-        "Akademik arama sorguları üretilirken bir hata oluştu. Lütfen tekrar deneyin.",
-    };
-  }
-}
-
-/**
- * Runs the per-thesis relevance/originality evaluations in parallel and then the
- * final synthesis jury LLM over the relevant evaluated theses.
- *
- * @param matrixInput - The thesis matrix used for the jury evaluation.
- * @param theses - The sifted thesis candidates to analyze.
- * @param flowId - The log flow identifier for structured logging.
- * @returns The jury analysis result on success or an error message on failure.
- */
-export async function runPositioningJuryAction(
-  matrixInput: ThesisMatrix,
-  theses: SiftedThesis[],
-  flowId: string,
-): Promise<
-  { success: true; juryResult: JuryAnalysisResult } | { error: string }
-> {
-  const log = new Logger(flowId);
-  const positioningInput: Record<string, string> = {
-    subjectProblem: matrixInput.subjectProblem ?? "",
-    theoreticalFramework: matrixInput.theoreticalFramework ?? "",
-    methodology: matrixInput.methodology ?? "",
-  };
-
-  const parsed = positioningMatrixSchema.safeParse(positioningInput);
-  if (!parsed.success) {
-    const firstIssue = parsed.error.issues[0];
-    const msg = firstIssue
-      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
-      : "Form doğrulaması başarısız.";
-    return { error: msg };
-  }
-
-  const validated = parsed.data;
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const evaluatedTheses = await evaluateThesesInParallel(
-      validated,
-      theses,
-      log,
-    );
-
-    const relevantTheses = evaluatedTheses.filter(
-      (ev) => ev.evaluation.isRelevant,
-    );
-
-    log.info("positioning_jury_analysis_start");
-    const juryResult = await analyzePositioningJury(
-      validated,
-      relevantTheses,
-      log,
-    );
-    log.info("positioning_jury_analysis_success");
-
-    const thesisTypeById = new Map<string, string>(
-      relevantTheses.map((ev) => [String(ev.thesis.id), ev.thesis.thesisType]),
-    );
-    juryResult.recommendedTheses = juryResult.recommendedTheses.map((rec) => ({
-      ...rec,
-      thesisType: thesisTypeById.get(String(rec.externalThesisId)) || undefined,
-    }));
-
-    return { success: true, juryResult };
-  } catch (error) {
-    log.error("positioning_jury_failed", {
-      error,
-    });
-    return {
-      error:
-        "Akademik jüri analizi sırasında bir hata oluştu. Lütfen tekrar deneyin.",
-    };
-  }
-}
-
-/**
- * Sanitizes the jury result and persists the positioning report to the database.
- *
- * @param matrixInput - The thesis matrix used for the positioning report.
- * @param juryResult - The jury analysis result to persist.
- * @param flowId - The log flow identifier for structured logging.
- * @returns A success marker or an error message on failure.
- */
-export async function persistPositioningReportAction(
-  matrixInput: ThesisMatrix,
-  juryResult: JuryAnalysisResult,
-  flowId: string,
-): Promise<{ success: true } | { error: string }> {
-  const log = new Logger(flowId);
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const positioningInput: Record<string, string> = {
-      subjectProblem: matrixInput.subjectProblem ?? "",
-      theoreticalFramework: matrixInput.theoreticalFramework ?? "",
-      methodology: matrixInput.methodology ?? "",
-    };
-
-    const parsed = positioningMatrixSchema.safeParse(positioningInput);
-    if (!parsed.success) {
-      return { error: "Form doğrulaması başarısız." };
-    }
-    const validated = parsed.data;
-
-    if (juryResult.recommendedTheses.length > 0) {
-      const itemsToSanitize = juryResult.recommendedTheses.map((t) => ({
-        title: t.title || "",
-        author: t.author || "",
-      }));
-      const sanitized = await sanitizeAcademicDataBulk(itemsToSanitize, log);
-      juryResult.recommendedTheses = juryResult.recommendedTheses.map(
-        (t, idx) => ({
-          ...t,
-          title: sanitized[idx]?.title || t.title,
-          author: sanitized[idx]?.author || t.author,
-        }),
-      );
-    }
-
-    const [matrix] = await db
-      .select({ id: matrices.id })
-      .from(matrices)
-      .where(eq(matrices.userId, session.userId));
-
-    if (!matrix) {
-      return { error: "Tez matrisi bulunamadı." };
-    }
-
-    log.info("positioning_db_transaction_start");
-    await savePositioningReportTransaction(
-      session.userId,
-      matrix.id,
-      juryResult,
-    );
-    log.info("positioning_db_transaction_success");
-
-    return { success: true };
-  } catch (error) {
-    log.error("positioning_persist_failed", {
-      error,
-    });
-    return {
-      error:
-        "Konumlandırma raporu kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.",
-    };
-  }
-}
-
-/**
- * Emits the final pipeline total-duration SUCCESS log line.
- *
- * @param flowId - The pipeline flow identifier.
- * @param durationMs - Total pipeline duration in milliseconds.
- */
-export async function logPositioningPipelineSuccessAction(
-  flowId: string,
-  durationMs: number,
-): Promise<void> {
-  const log = new Logger(flowId);
-  log.info("positioning_pipeline_success", {
-    data: { durationMs: Math.round(durationMs) },
-  });
-}
-
-/**
- * Returns the user's positioning record linked to their thesis matrix.
- *
- * @returns The matching positioning record or null.
- */
-export async function getPositioningAction(): Promise<Positioning | null> {
-  const session = await getSession();
-  if (!session) {
-    return null;
-  }
-
-  try {
-    const [matrix] = await db
-      .select({ id: matrices.id })
-      .from(matrices)
-      .where(eq(matrices.userId, session.userId));
-
-    if (!matrix) {
-      return null;
-    }
-
-    const [record] = await db
-      .select()
-      .from(positioning)
-      .where(eq(positioning.matrixId, matrix.id));
-
-    return record ?? null;
-  } catch {
-    return null;
-  }
-}
-</file>
-
 <file path="src/app/(onboarding)/onboarding/actions.ts">
 "use server";
 
@@ -43321,6 +43127,272 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
 }
 </file>
 
+<file path="src/app/(onboarding)/onboarding/positioning/actions.ts">
+"use server";
+
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { positioning, matrices } from "@/db/schema";
+import type { Positioning } from "@/db/schema";
+import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
+import { Logger } from "@/lib/logger";
+import type { ThesisMatrix } from "@/lib/types";
+import { positioningMatrixSchema } from "@/features/positioning/validation";
+import { searchAndSiftTheses, type SiftedThesis } from "@/features/positioning/sifting";
+import { evaluateThesesInParallel } from "@/features/positioning/per-thesis-evaluation";
+import { analyzePositioningJury } from "@/features/positioning/analysis";
+import { savePositioningReportTransaction } from "@/features/positioning/decision-engine";
+import { sanitizeAcademicDataBulk } from "@/services/academic";
+import type { JuryAnalysisResult } from "@/features/positioning/analysis";
+
+/**
+ * Runs query generation, Tezara search, and Cohere rerank; jury analysis and DB writes run separately.
+ *
+ * @param matrixInput - The thesis matrix used to derive the search queries.
+ * @param flowId - The log flow identifier for structured logging.
+ * @returns The sifted thesis list on success or an error message on failure.
+ */
+export async function runPositioningSearchAction(
+  matrixInput: ThesisMatrix,
+  flowId: string,
+): Promise<{ success: true; theses: SiftedThesis[] } | { error: string }> {
+  const log = new Logger(flowId);
+  const positioningInput: Record<string, string> = {
+    subjectProblem: matrixInput.subjectProblem ?? "",
+    theoreticalFramework: matrixInput.theoreticalFramework ?? "",
+    methodology: matrixInput.methodology ?? "",
+  };
+
+  const parsed = positioningMatrixSchema.safeParse(positioningInput);
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0];
+    const msg = firstIssue
+      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
+      : "Form doğrulaması başarısız.";
+    return { error: msg };
+  }
+
+  const validated = parsed.data;
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    log.info("sifting_theses_start");
+    const theses = await searchAndSiftTheses(validated, log);
+    log.info("sifting_theses_success");
+
+    return { success: true, theses };
+  } catch (error) {
+    log.error("positioning_search_failed", {
+      error,
+    });
+    return {
+      error:
+        "Akademik arama sorguları üretilirken bir hata oluştu. Lütfen tekrar deneyin.",
+    };
+  }
+}
+
+/**
+ * Runs the per-thesis relevance/originality evaluations in parallel and then the
+ * final synthesis jury LLM over the relevant evaluated theses.
+ *
+ * @param matrixInput - The thesis matrix used for the jury evaluation.
+ * @param theses - The sifted thesis candidates to analyze.
+ * @param flowId - The log flow identifier for structured logging.
+ * @returns The jury analysis result on success or an error message on failure.
+ */
+export async function runPositioningJuryAction(
+  matrixInput: ThesisMatrix,
+  theses: SiftedThesis[],
+  flowId: string,
+): Promise<
+  { success: true; juryResult: JuryAnalysisResult } | { error: string }
+> {
+  const log = new Logger(flowId);
+  const positioningInput: Record<string, string> = {
+    subjectProblem: matrixInput.subjectProblem ?? "",
+    theoreticalFramework: matrixInput.theoreticalFramework ?? "",
+    methodology: matrixInput.methodology ?? "",
+  };
+
+  const parsed = positioningMatrixSchema.safeParse(positioningInput);
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0];
+    const msg = firstIssue
+      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
+      : "Form doğrulaması başarısız.";
+    return { error: msg };
+  }
+
+  const validated = parsed.data;
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const evaluatedTheses = await evaluateThesesInParallel(
+      validated,
+      theses,
+      log,
+    );
+
+    const relevantTheses = evaluatedTheses.filter(
+      (ev) => ev.evaluation.isRelevant,
+    );
+
+    log.info("positioning_jury_analysis_start");
+    const juryResult = await analyzePositioningJury(
+      validated,
+      relevantTheses,
+      log,
+    );
+    log.info("positioning_jury_analysis_success");
+
+    const thesisTypeById = new Map<string, string>(
+      relevantTheses.map((ev) => [String(ev.thesis.id), ev.thesis.thesisType]),
+    );
+    juryResult.recommendedTheses = juryResult.recommendedTheses.map((rec) => ({
+      ...rec,
+      thesisType: thesisTypeById.get(String(rec.externalThesisId)) || undefined,
+    }));
+
+    return { success: true, juryResult };
+  } catch (error) {
+    log.error("positioning_jury_failed", {
+      error,
+    });
+    return {
+      error:
+        "Akademik jüri analizi sırasında bir hata oluştu. Lütfen tekrar deneyin.",
+    };
+  }
+}
+
+/**
+ * Sanitizes the jury result and persists the positioning report to the database.
+ *
+ * @param matrixInput - The thesis matrix used for the positioning report.
+ * @param juryResult - The jury analysis result to persist.
+ * @param flowId - The log flow identifier for structured logging.
+ * @returns A success marker or an error message on failure.
+ */
+export async function persistPositioningReportAction(
+  matrixInput: ThesisMatrix,
+  juryResult: JuryAnalysisResult,
+  flowId: string,
+): Promise<{ success: true } | { error: string }> {
+  const log = new Logger(flowId);
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const positioningInput: Record<string, string> = {
+      subjectProblem: matrixInput.subjectProblem ?? "",
+      theoreticalFramework: matrixInput.theoreticalFramework ?? "",
+      methodology: matrixInput.methodology ?? "",
+    };
+
+    const parsed = positioningMatrixSchema.safeParse(positioningInput);
+    if (!parsed.success) {
+      return { error: "Form doğrulaması başarısız." };
+    }
+    const validated = parsed.data;
+
+    if (juryResult.recommendedTheses.length > 0) {
+      const itemsToSanitize = juryResult.recommendedTheses.map((t) => ({
+        title: t.title || "",
+        author: t.author || "",
+      }));
+      const sanitized = await sanitizeAcademicDataBulk(itemsToSanitize, log);
+      juryResult.recommendedTheses = juryResult.recommendedTheses.map(
+        (t, idx) => ({
+          ...t,
+          title: sanitized[idx]?.title || t.title,
+          author: sanitized[idx]?.author || t.author,
+        }),
+      );
+    }
+
+    const [matrix] = await db
+      .select({ id: matrices.id })
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+
+    if (!matrix) {
+      return { error: "Tez matrisi bulunamadı." };
+    }
+
+    log.info("positioning_db_transaction_start");
+    await savePositioningReportTransaction(
+      session.userId,
+      matrix.id,
+      juryResult,
+    );
+    log.info("positioning_db_transaction_success");
+
+    return { success: true };
+  } catch (error) {
+    log.error("positioning_persist_failed", {
+      error,
+    });
+    return {
+      error:
+        "Konumlandırma raporu kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.",
+    };
+  }
+}
+
+/**
+ * Emits the final pipeline total-duration SUCCESS log line.
+ *
+ * @param flowId - The pipeline flow identifier.
+ * @param durationMs - Total pipeline duration in milliseconds.
+ */
+export async function logPositioningPipelineSuccessAction(
+  flowId: string,
+  durationMs: number,
+): Promise<void> {
+  const log = new Logger(flowId);
+  log.info("positioning_pipeline_success", {
+    data: { durationMs: Math.round(durationMs) },
+  });
+}
+
+/**
+ * Returns the user's positioning record linked to their thesis matrix.
+ *
+ * @returns The matching positioning record or null.
+ */
+export async function getPositioningAction(): Promise<Positioning | null> {
+  const session = await getSession();
+  if (!session) {
+    return null;
+  }
+
+  try {
+    const [matrix] = await db
+      .select({ id: matrices.id })
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+
+    if (!matrix) {
+      return null;
+    }
+
+    const [record] = await db
+      .select()
+      .from(positioning)
+      .where(eq(positioning.matrixId, matrix.id));
+
+    return record ?? null;
+  } catch {
+    return null;
+  }
+}
+</file>
+
 <file path="src/app/api/advisor/route.ts">
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -44002,234 +44074,6 @@ export async function generateBoxesStructureAction() {
 }
 </file>
 
-<file path="AGENTS.md">
-# AGENTS.md
-
-## 1. Role & System Overview
-
-You are the **Lead Software Engineer** and **Primary Auditor** for Fabricca, a private digital thesis assistant and academic research platform.
-
-- **Scope & Access:** Private application restricted strictly to two seeded users. Not open to public registration.
-- **Engineering Mindset:** Write clean, minimal, production-ready code. Avoid over-engineering. Make targeted, high-impact edits.
-- **Repository Exploration:** Use semantic exploration tools (CodeGraph/LSP) for structural codebase exploration. When CodeGraph is unavailable or when targeting known files, direct file search and reading are fully supported.
-
-## 2. Core Stack & Architectural Constraints
-
-- **Framework:** Next.js (App Router, Server Actions)
-- **Database & ORM:** Neon Serverless PostgreSQL (`pgvector`), Drizzle ORM
-- **Primary LLM:** Google Gemini Flash (`FLASH_LITE_31`, `FLASH_LITE_35`, `FLASH_36` via `@google/genai`)
-- **Embedding Motor:** Cloudflare Workers AI (`@cf/baai/bge-m3` — SINGLE source embedding model; no secondary fallbacks allowed)
-- **Semantic Reranking:** Cohere Rerank API (`rerank-v4.0-pro` — ONLY for reranking)
-- **Object Storage:** Cloudflare R2 / AWS S3 (`@aws-sdk/client-s3`)
-- **Literature & DOI:** OpenAlex API (canonical literature source), Crossref API (DOI resolution)
-- **Secondary LLM:** Cerebras API (`gemma-4-31b` — metadata extraction and sanitization)
-
-> **Constraint:** Introducing alternative frameworks, third-party libraries, or secondary model fallbacks requires explicit user approval.
-
-## 3. The Golden Boundary Rule
-
-- **Backend & Logic Layer (100% English):** All DB column names, function names, local variables, Zod schemas, API payloads, and Logger step strings MUST be written in technical English (`camelCase` or `snake_case`). No Turkish characters in code/backend logic.
-- **User Interface & Academic Outputs (100% Turkish):** All UI elements, buttons, table headers, toast notifications, and AI-generated academic recommendations MUST be written in fluent, high-level academic Turkish. Transform backend English enums to Turkish on the UI layer.
-
-## 4. Code & Verification Rules
-
-- **Type Safety:** Avoid `any`. Prefer `unknown` with explicit type guards or Zod validation. If `any` is unavoidable at an external boundary, isolate and document it explicitly.
-- **Verification Strategy:** Run the narrowest relevant check first (file-scoped test or lint). Run full verification (`npm run check:full`) ONLY when modifying shared libraries, global configs, DB schemas, or multi-module interfaces.
-- **No Incomplete Code:** Never leave `// TODO` placeholders or incomplete snippets. All edited files must be functional, complete, and compilation-ready.
-
-## 5. Task-Specific Documentation (Progressive Disclosure)
-
-Before executing domain-specific tasks, consult the corresponding domain specification file:
-
-- **UI System, Styling & Components:** [docs/UI_RULES.md](docs/UI_RULES.md)
-- **Database Schema, Migrations & Progressive Save:** [docs/DATABASE_RULES.md](docs/DATABASE_RULES.md)
-- **LLM Integration, Models & Prompting:** [docs/LLM_INTEGRATION.md](docs/LLM_INTEGRATION.md)
-- **Development Standards, JSDoc, Error Handling & Logging:** [docs/DEVELOPMENT_STANDARDS.md](docs/DEVELOPMENT_STANDARDS.md)
-- **System Architecture, External Services & Storage:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-
-## 6. Instruction Precedence & Maintenance
-
-- **User Overrides:** User prompt instructions strictly override any rules in this repository for the current task.
-- **No Temporary Edits:** Do NOT modify `AGENTS.md` for one-off task overrides.
-- **Minimalist Specification:** Keep `AGENTS.md` minimal (~120–150 lines). Update it ONLY when making permanent repository-wide architectural policy changes.
-</file>
-
-<file path="src/app/(app)/library/_components/resource-detail.tsx">
-"use client";
-
-import React, { useState } from "react";
-import { BookMarked, Sparkles } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { PdfUploadDropzone } from "./pdf-upload-dropzone";
-import { EditResourceModal } from "./edit-resource-modal";
-import { ResourceHeader } from "./resource-detail/resource-header";
-import { CritiqueSection } from "./resource-detail/critique-section";
-import { NoteForm } from "./resource-detail/note-form";
-import { NoteItem, getNoteTypeBadgeConfig } from "./resource-detail/note-item";
-import { DeleteConfirmDialog } from "./resource-detail/delete-confirm-dialog";
-import type {
-  LibraryResourceItem,
-  LibraryResourceNote,
-  LibraryResourceCritique,
-} from "../_lib/types";
-import type { CritiqueFormInput } from "../_hooks/use-resource-critique";
-
-export { getNoteTypeBadgeConfig };
-
-export interface ResourceDetailProps {
-  resource: LibraryResourceItem;
-  notes: LibraryResourceNote[];
-  critique?: LibraryResourceCritique;
-  onAddNote: (
-    note: Omit<LibraryResourceNote, "id" | "createdAt" | "sentToCitationCards">,
-  ) => void;
-  onSaveCritique: (input: CritiqueFormInput) => void | Promise<void>;
-  onDeleteNote: (noteId: number) => void;
-  onToggleReadStatus: (resourceId: number) => void;
-  onUpdateResource?: (updatedResource: LibraryResourceItem) => void;
-  onUploadPdf?: (file: File) => Promise<boolean>;
-  onDeletePdf?: (resourceId: number) => Promise<void>;
-}
-
-/**
- * Detailed view for a selected library resource with note taking and automatic citation card integration.
- *
- * @param root0 - Component props.
- * @param root0.resource - Selected library resource.
- * @param root0.notes - Notes associated with the resource.
- * @param root0.onAddNote - Callback to add a new note to the resource.
- * @param root0.onDeleteNote - Callback to delete a note by id.
- * @param root0.onToggleReadStatus - Callback to toggle the read status of a resource.
- * @param root0.onUpdateResource - Optional callback invoked after the resource metadata is updated.
- * @param root0.onUploadPdf - Optional callback that uploads a PDF for the resource.
- * @param root0.onDeletePdf - Optional callback that deletes the resource PDF.
- * @returns The resource detail markup.
- */
-export function ResourceDetail({
-  resource,
-  notes,
-  critique,
-  onAddNote,
-  onSaveCritique,
-  onDeleteNote,
-  onToggleReadStatus,
-  onUpdateResource,
-  onUploadPdf,
-  onDeletePdf,
-}: ResourceDetailProps) {
-  const [noteToDeleteId, setNoteToDeleteId] = useState<number | null>(null);
-  const [pdfToDeleteId, setPdfToDeleteId] = useState<number | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-
-  const handleConfirmDeleteNote = () => {
-    if (noteToDeleteId !== null) {
-      onDeleteNote(noteToDeleteId);
-      setNoteToDeleteId(null);
-    }
-  };
-
-  const handleConfirmDeletePdf = async () => {
-    if (pdfToDeleteId && onDeletePdf) {
-      try {
-        await onDeletePdf(pdfToDeleteId);
-      } catch {}
-    }
-    setPdfToDeleteId(null);
-  };
-
-  return (
-    <Card className="flex h-full w-full flex-col space-y-6 rounded-md p-6">
-      <ResourceHeader
-        resource={resource}
-        onOpenEditModal={() => setIsEditModalOpen(true)}
-        onToggleReadStatus={onToggleReadStatus}
-        onDeletePdfClick={
-          onDeletePdf ? () => setPdfToDeleteId(resource.id) : undefined
-        }
-      />
-
-      {resource.pdfStatus !== "READY" && onUploadPdf && (
-        <PdfUploadDropzone
-          resourceTitle={resource.title}
-          pdfStatus={resource.pdfStatus}
-          onUploadPdf={onUploadPdf}
-        />
-      )}
-
-      {resource.pdfStatus === "READY" && (
-        <>
-          <CritiqueSection
-            critique={critique}
-            onSaveCritique={onSaveCritique}
-          />
-
-          <NoteForm resourceId={resource.id} onAddNote={onAddNote} />
-
-          <div className="space-y-4 pt-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <BookMarked className="h-5 w-5 text-primary" />
-                <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
-                  Akademik Notlarım ve Alıntılarım
-                </h3>
-              </div>
-              <Badge
-                variant="outline"
-                className="text-xs font-medium border-border"
-              >
-                {notes.length} Alıntı Fişi
-              </Badge>
-            </div>
-
-            {notes.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-36 rounded-md border border-dashed border-border p-6 text-center text-muted-foreground">
-                <Sparkles className="h-6 w-6 opacity-40 mb-2" />
-                <p className="text-sm font-medium">
-                  Henüz bu eser için not veya alıntı girilmemiş.
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Yukarıdaki formu kullanarak ilk sayfa numaralı alıntınızı
-                  ekleyebilirsiniz.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {notes.map((note) => (
-                  <NoteItem
-                    key={note.id}
-                    note={note}
-                    onDeleteNoteClick={(id) => setNoteToDeleteId(id)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </>
-      )}
-
-      <DeleteConfirmDialog
-        noteToDeleteId={noteToDeleteId}
-        onCloseNoteDeleteDialog={() => setNoteToDeleteId(null)}
-        onConfirmDeleteNote={handleConfirmDeleteNote}
-        pdfToDeleteId={pdfToDeleteId}
-        onClosePdfDeleteDialog={() => setPdfToDeleteId(null)}
-        onConfirmDeletePdf={handleConfirmDeletePdf}
-      />
-
-      <EditResourceModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        resource={resource}
-        onUpdateSuccess={(updatedResource) => {
-          onUpdateResource?.(updatedResource);
-        }}
-      />
-    </Card>
-  );
-}
-</file>
-
 <file path="src/app/(onboarding)/onboarding/literature-review/_components/literature-review-content.tsx">
 "use client";
 
@@ -44572,6 +44416,234 @@ export function LiteratureReviewContent() {
         </Button>
       </div>
     </div>
+  );
+}
+</file>
+
+<file path="AGENTS.md">
+# AGENTS.md
+
+## 1. Role & System Overview
+
+You are the **Lead Software Engineer** and **Primary Auditor** for Fabricca, a private digital thesis assistant and academic research platform.
+
+- **Scope & Access:** Private application restricted strictly to two seeded users. Not open to public registration.
+- **Engineering Mindset:** Write clean, minimal, production-ready code. Avoid over-engineering. Make targeted, high-impact edits.
+- **Repository Exploration:** Use semantic exploration tools (CodeGraph/LSP) for structural codebase exploration. When CodeGraph is unavailable or when targeting known files, direct file search and reading are fully supported.
+
+## 2. Core Stack & Architectural Constraints
+
+- **Framework:** Next.js (App Router, Server Actions)
+- **Database & ORM:** Neon Serverless PostgreSQL (`pgvector`), Drizzle ORM
+- **Primary LLM:** Google Gemini Flash (`FLASH_LITE_31`, `FLASH_LITE_35`, `FLASH_36` via `@google/genai`)
+- **Embedding Motor:** Cloudflare Workers AI (`@cf/baai/bge-m3` — SINGLE source embedding model; no secondary fallbacks allowed)
+- **Semantic Reranking:** Cohere Rerank API (`rerank-v4.0-pro` — ONLY for reranking)
+- **Object Storage:** Cloudflare R2 / AWS S3 (`@aws-sdk/client-s3`)
+- **Literature & DOI:** OpenAlex API (canonical literature source), Crossref API (DOI resolution)
+- **Secondary LLM:** Cerebras API (`gemma-4-31b` — metadata extraction and sanitization)
+
+> **Constraint:** Introducing alternative frameworks, third-party libraries, or secondary model fallbacks requires explicit user approval.
+
+## 3. The Golden Boundary Rule
+
+- **Backend & Logic Layer (100% English):** All DB column names, function names, local variables, Zod schemas, API payloads, and Logger step strings MUST be written in technical English (`camelCase` or `snake_case`). No Turkish characters in code/backend logic.
+- **User Interface & Academic Outputs (100% Turkish):** All UI elements, buttons, table headers, toast notifications, and AI-generated academic recommendations MUST be written in fluent, high-level academic Turkish. Transform backend English enums to Turkish on the UI layer.
+
+## 4. Code & Verification Rules
+
+- **Type Safety:** Avoid `any`. Prefer `unknown` with explicit type guards or Zod validation. If `any` is unavoidable at an external boundary, isolate and document it explicitly.
+- **Verification Strategy:** Run the narrowest relevant check first (file-scoped test or lint). Run full verification (`npm run check:full`) ONLY when modifying shared libraries, global configs, DB schemas, or multi-module interfaces.
+- **No Incomplete Code:** Never leave `// TODO` placeholders or incomplete snippets. All edited files must be functional, complete, and compilation-ready.
+
+## 5. Task-Specific Documentation (Progressive Disclosure)
+
+Before executing domain-specific tasks, consult the corresponding domain specification file:
+
+- **UI System, Styling & Components:** [docs/UI_RULES.md](docs/UI_RULES.md)
+- **Database Schema, Migrations & Progressive Save:** [docs/DATABASE_RULES.md](docs/DATABASE_RULES.md)
+- **LLM Integration, Models & Prompting:** [docs/LLM_INTEGRATION.md](docs/LLM_INTEGRATION.md)
+- **Development Standards, JSDoc, Error Handling & Logging:** [docs/DEVELOPMENT_STANDARDS.md](docs/DEVELOPMENT_STANDARDS.md)
+- **System Architecture, External Services & Storage:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+
+## 6. Instruction Precedence & Maintenance
+
+- **User Overrides:** User prompt instructions strictly override any rules in this repository for the current task.
+- **No Temporary Edits:** Do NOT modify `AGENTS.md` for one-off task overrides.
+- **Minimalist Specification:** Keep `AGENTS.md` minimal (~120–150 lines). Update it ONLY when making permanent repository-wide architectural policy changes.
+</file>
+
+<file path="src/app/(app)/library/_components/resource-detail.tsx">
+"use client";
+
+import React, { useState } from "react";
+import { BookMarked, Sparkles } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { PdfUploadDropzone } from "./pdf-upload-dropzone";
+import { EditResourceModal } from "./edit-resource-modal";
+import { ResourceHeader } from "./resource-detail/resource-header";
+import { CritiqueSection } from "./resource-detail/critique-section";
+import { NoteForm } from "./resource-detail/note-form";
+import { NoteItem, getNoteTypeBadgeConfig } from "./resource-detail/note-item";
+import { DeleteConfirmDialog } from "./resource-detail/delete-confirm-dialog";
+import type {
+  LibraryResourceItem,
+  LibraryResourceNote,
+  LibraryResourceCritique,
+} from "../_lib/types";
+import type { CritiqueFormInput } from "../_hooks/use-resource-critique";
+
+export { getNoteTypeBadgeConfig };
+
+export interface ResourceDetailProps {
+  resource: LibraryResourceItem;
+  notes: LibraryResourceNote[];
+  critique?: LibraryResourceCritique;
+  onAddNote: (
+    note: Omit<LibraryResourceNote, "id" | "createdAt" | "sentToCitationCards">,
+  ) => void;
+  onSaveCritique: (input: CritiqueFormInput) => void | Promise<void>;
+  onDeleteNote: (noteId: number) => void;
+  onToggleReadStatus: (resourceId: number) => void;
+  onUpdateResource?: (updatedResource: LibraryResourceItem) => void;
+  onUploadPdf?: (file: File) => Promise<boolean>;
+  onDeletePdf?: (resourceId: number) => Promise<void>;
+}
+
+/**
+ * Detailed view for a selected library resource with note taking and automatic citation card integration.
+ *
+ * @param root0 - Component props.
+ * @param root0.resource - Selected library resource.
+ * @param root0.notes - Notes associated with the resource.
+ * @param root0.onAddNote - Callback to add a new note to the resource.
+ * @param root0.onDeleteNote - Callback to delete a note by id.
+ * @param root0.onToggleReadStatus - Callback to toggle the read status of a resource.
+ * @param root0.onUpdateResource - Optional callback invoked after the resource metadata is updated.
+ * @param root0.onUploadPdf - Optional callback that uploads a PDF for the resource.
+ * @param root0.onDeletePdf - Optional callback that deletes the resource PDF.
+ * @returns The resource detail markup.
+ */
+export function ResourceDetail({
+  resource,
+  notes,
+  critique,
+  onAddNote,
+  onSaveCritique,
+  onDeleteNote,
+  onToggleReadStatus,
+  onUpdateResource,
+  onUploadPdf,
+  onDeletePdf,
+}: ResourceDetailProps) {
+  const [noteToDeleteId, setNoteToDeleteId] = useState<number | null>(null);
+  const [pdfToDeleteId, setPdfToDeleteId] = useState<number | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const handleConfirmDeleteNote = () => {
+    if (noteToDeleteId !== null) {
+      onDeleteNote(noteToDeleteId);
+      setNoteToDeleteId(null);
+    }
+  };
+
+  const handleConfirmDeletePdf = async () => {
+    if (pdfToDeleteId && onDeletePdf) {
+      try {
+        await onDeletePdf(pdfToDeleteId);
+      } catch {}
+    }
+    setPdfToDeleteId(null);
+  };
+
+  return (
+    <Card className="flex h-full w-full flex-col space-y-6 rounded-md p-6">
+      <ResourceHeader
+        resource={resource}
+        onOpenEditModal={() => setIsEditModalOpen(true)}
+        onToggleReadStatus={onToggleReadStatus}
+        onDeletePdfClick={
+          onDeletePdf ? () => setPdfToDeleteId(resource.id) : undefined
+        }
+      />
+
+      {resource.pdfStatus !== "READY" && onUploadPdf && (
+        <PdfUploadDropzone
+          resourceTitle={resource.title}
+          pdfStatus={resource.pdfStatus}
+          onUploadPdf={onUploadPdf}
+        />
+      )}
+
+      {resource.pdfStatus === "READY" && (
+        <>
+          <CritiqueSection
+            critique={critique}
+            onSaveCritique={onSaveCritique}
+          />
+
+          <NoteForm resourceId={resource.id} onAddNote={onAddNote} />
+
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <BookMarked className="h-5 w-5 text-primary" />
+                <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
+                  Akademik Notlarım ve Alıntılarım
+                </h3>
+              </div>
+              <Badge
+                variant="outline"
+                className="text-xs font-medium border-border"
+              >
+                {notes.length} Alıntı Fişi
+              </Badge>
+            </div>
+
+            {notes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-36 rounded-md border border-dashed border-border p-6 text-center text-muted-foreground">
+                <Sparkles className="h-6 w-6 opacity-40 mb-2" />
+                <p className="text-sm font-medium">
+                  Henüz bu eser için not veya alıntı girilmemiş.
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Yukarıdaki formu kullanarak ilk sayfa numaralı alıntınızı
+                  ekleyebilirsiniz.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {notes.map((note) => (
+                  <NoteItem
+                    key={note.id}
+                    note={note}
+                    onDeleteNoteClick={(id) => setNoteToDeleteId(id)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      <DeleteConfirmDialog
+        noteToDeleteId={noteToDeleteId}
+        onCloseNoteDeleteDialog={() => setNoteToDeleteId(null)}
+        onConfirmDeleteNote={handleConfirmDeleteNote}
+        pdfToDeleteId={pdfToDeleteId}
+        onClosePdfDeleteDialog={() => setPdfToDeleteId(null)}
+        onConfirmDeletePdf={handleConfirmDeletePdf}
+      />
+
+      <EditResourceModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        resource={resource}
+        onUpdateSuccess={(updatedResource) => {
+          onUpdateResource?.(updatedResource);
+        }}
+      />
+    </Card>
   );
 }
 </file>

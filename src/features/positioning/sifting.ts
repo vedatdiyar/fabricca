@@ -93,11 +93,9 @@ export async function searchAndSiftTheses(
   options?: { topN?: number; candidateLimit?: number },
 ): Promise<SiftedThesis[]> {
   const topN = options?.topN ?? 45;
-  const candidateLimit = options?.candidateLimit ?? 400;
+  const candidateLimit = options?.candidateLimit ?? 100;
 
-  const searchQuery = sanitizeSearchQuery(
-    matrixInput.subjectProblem.slice(0, 500),
-  );
+  const searchQuery = sanitizeSearchQuery(matrixInput.subjectProblem);
 
   const searchStart = performance.now();
 
@@ -107,7 +105,7 @@ export async function searchAndSiftTheses(
     data: { query: searchQuery, candidateLimit },
   });
 
-  // 1. Single Ultra-Fast Qdrant Query with candidateLimit (default 400)
+  // 1. Single Ultra-Fast Qdrant Query with candidateLimit (default 100)
   const rawTheses = await searchTezara(searchQuery, logger, {
     limit: candidateLimit,
   });
