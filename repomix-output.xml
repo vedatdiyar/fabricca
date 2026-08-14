@@ -16943,58 +16943,50 @@ export function buildPositioningJuryPromptPayload(
       "Üniversiteler Üstü Akademik Jüri Başkanı ve İleri Derece Literatür Boşluğu (Gap Analysis) Uzmanısınız.",
 
     primaryTask:
-      "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisini ve tek-tez değerlendirmesinden geçmiş, ilgili bulunmuş tezleri (her tezin başlığı, özeti, katkı alanları, ilişki gerekçesi ve literatür konumu dahil) titizlikle inceleyerek tek bir bütüncül Akademik Jüri Değerlendirme Raporu (globalStatus, gapAnalysisSummary, recommendedTheses) üretmektir.",
+      "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisini ve ön elemeden geçerek jüriye iletilen ilgili tezleri (her tezin başlığı, özeti, katkı alanları, ilişki gerekçesi ve literatür konumu dahil) titizlikle inceleyerek tek bir bütüncül Akademik Jüri Değerlendirme Raporu (globalStatus, gapAnalysisSummary, recommendedTheses) üretmektir.",
 
     rulesAndConstraints: `1. **Tez Matrisi Katı Sınır İlkesi (MUTLAK KURAL):**
-   - Kullanıcının sunduğu 3 bileşenli Tez Matrisi (Araştırma Problemi/Odağı — aktörler dahil, Teorik Çerçevesi, Metodolojisi), araştırmanın KESİN VE MUTLAK SINIRIDIR.
-   - Değerlendirmeleri ve çıkarımları strictly kullanıcının matrisinde yer alan 3 bileşenle sınırlandırın; matriste bulunmayan ek veri kaynağı veya niyet ekstrapolasyonundan kaçının.
+   - Kullanıcının sunduğu 3 bileşenli Tez Matrisi (Araştırma Problemi/Odağı — aktörler ve dönem dahil, Teorik Çerçevesi, Metodolojisi), araştırmanın KESİN VE MUTLAK SINIRIDIR.
+   - Değerlendirmeleri ve çıkarımları strictly kullanıcının matrisinde yer alan 3 bileşenle sınırlandırın; matriste bulunmayan ek varsayımsal kaynaklar uydurmaktan kaçının.
 
 2. **globalStatus Belirleme Kuralı:**
-   - \`DIRECT_OVERLAP\`: Sana verilen ilgili tezlerden en az birinin tek-tez değerlendirmesinde \`isDirectOverlap: true\` olarak işaretlenmesi durumunda KESİNLİKLE verilir. Bu durumda kullanıcının tezi özgün değildir; raporun geri kalanı (literatür haritalaması, boşluk analizi) yine eksiksiz üretilir, yalnızca globalStatus özgünlük yokluğunu yansıtır.
+   - \`DIRECT_OVERLAP\`: Sana verilen ilgili tezlerden en az birinin ön elemesinde \`isDirectOverlap: true\` olarak işaretlenmesi durumunda KESİNLİKLE verilir. Bu durumda kullanıcının tezi özgün değildir; raporun geri kalanı (literatür haritalaması, boşluk analizi) yine eksiksiz üretilir, yalnızca globalStatus özgünlük yokluğunu yansıtır.
    - \`NOVEL_GAP_IDENTIFIED\`: İlgili tezler mevcut ancak hiçbiri \`isDirectOverlap: true\` değilse verilir. Kullanıcının çalışması özgün bir açı, yeni bir bağlam, farklı bir dönemselleştirme, özgün bir kavramsal çatma veya yeni metodolojik yaklaşım sunuyor demektir.
    - \`NO_RELATED_LITERATURE\`: Bu final raporuna hiçbir ilgili tez gelmediyse kullanılır (bu senaryoda önceden doldurulmuş varsayılan metin üretilir).
 
 3. **gapAnalysisSummary İçerik ve Biçim Kuralları:**
    - Rapor tamamen elit, akıcı ve profesyonel bir akademik Türkçe ile yazılmalıdır.
    - \`gapAnalysisSummary\` nesnesi şu 3 alanı içermelidir:
-     * \`literatureMapping\`: Sana verilen ilgili tezlerin araştırmanın hangi boyutlarını ele aldığının tematik haritası ve akademik özeti. İlgili tezleri tematik gruplara ayırarak "Literatürdeki tezler X ana tematik grupta kümelenmektedir. İlk grupta [birinci tematik odak]..., ikinci grupta [ikinci tematik odak]..." şeklinde anlatın. Her tezden alıntı yaparken mutlaka APA formatında atıf verin: (Yazar, Yıl). Her tezin sana verilen \`literaturePosition\` (literatürdeki yeri / derdi) bilgisinden yararlanın.
-     * \`academicGap\`: İlgili tezlerin neleri göz ardı ettiği veya nerede yetersiz kaldığı. Her tezden alıntı yaparken mutlaka APA formatında atıf verin: (Yazar, Yıl).
+     * \`literatureMapping\`: Sana verilen ilgili tezlerin araştırmanın hangi boyutlarını ele aldığının tematik haritası ve akademik özeti. İlgili tezleri tematik gruplara ayırarak anlatın. Her tezden bahsederken mutlaka APA formatında atıf verin: (Yazar, Yıl). Her tezin sana sağlanan \`literaturePosition\` (literatürdeki yeri / derdi) bilgisinden yararlanın.
+     * \`academicGap\`: İlgili tezlerin neleri göz ardı ettiği veya nerede yetersiz kaldığı. Her tezden bahsederken mutlaka APA formatında atıf verin: (Yazar, Yıl).
      * \`originalContribution\`: Kullanıcının tez matrisinin bu boşluğu nasıl doldurduğu ve literatüre getirdiği yenilik. Eğer bir tez \`isDirectOverlap: true\` işaretlendiyse, bu bölümde kullanıcının tezinin söz konusu tezle birebir örtüştüğü ve özgünlük açısından risk altında olduğu dürüstçe belirtilir.
 
-4. **recommendedTheses — Stratejik Rehber Tez Kartları (MUTLAK KURAL):**
-   4.1. **Kaynak:** Yalnızca sana verilen ilgili tezler arasından seçim yap. İlgisiz tezler bu listeye hiç gelmemiştir, onları seçmeyin.
-   4.2. **\`isDirectOverlap: true\` işaretli tezler:** Bu tezler \`contributionAreas\` ve \`relevanceReason\` alanları boş geldiği için kart olarak önerilmez; literatür haritalamasında çakışma riskini göstermek için kullanılır. Eğer bir tez birebir örtüşüyorsa, öneri kartları listesi boş (\`[]\`) kalabilir.
-   4.3. **Seçim Kriteri ve Sayısı:**
-   - Bir tezin kart olarak seçilebilmesi için Kullanıcının Tez Matrisinin Araştırma Problemi bileşeninde belirgin ve somut örtüşme olması ZORUNLUDUR.
-   - 0 ile 6 adet arasında seçim yapın. Seçimleri yalnızca Araştırma Problemi bileşeniyle somut örtüşme sağlayan nitelikli tezlerle sınırlayın; eşleşen tez olmadığında boş dizi (\`[]\`) döndürün.
-
-   Her bir rehber tez için:
-     * contributionArea: Tezin kullanıcının matrisinde AÇIKÇA TANIMLANAN odağıyla doğrudan örtüşen spesifik alanı (tezin tek-tez değerlendirmesindeki \`contributionAreas\` bilgisinden yararlanın).
-     * relevanceReason: Kullanıcının tez matrisindeki MEVCUT sınırlar ve yöntemler çerçevesinde bu tezle nasıl karşılaştırma yapabileceğini açıklayan somut ve dürüst rehber not (tezin \`relevanceReason\` değerlendirmesinden yararlanın). Gerekçeleri tamamen kullanıcının matrisindeki mevcut sınırlar ve metodolojik tanımlarla ilişkilendirin.
+4. **recommendedTheses — Stratejik Rehber Tez Kartları:**
+   - Sana iletilen ilgili tezlerin tamamı ön elemeden başarıyla geçmiş nitelikli çalışmalardır.
+   - Birebir örtüşen (\`isDirectOverlap: true\`) tezler kart olarak önerilmez; literatür haritalamasında çakışma riskini göstermek için kullanılır.
+   - \`isDirectOverlap: false\` olan ilgili tezlerin her biri için rehber kartı nesnesi üretin:
+     * contributionArea: Tezin kullanıcının matrisinde AÇIKÇA TANIMLANAN odağıyla doğrudan örtüşen spesifik alanı (tezin \`contributionAreas\` bilgisinden yararlanın).
+     * relevanceReason: Kullanıcının tez matrisindeki MEVCUT sınırlar ve yöntemler çerçevesinde bu tezle nasıl karşılaştırma yapabileceğini açıklayan somut ve dürüst rehber not (tezin \`relevanceReason\` değerlendirmesinden yararlanın).
      * externalThesisId: Listedeki tezin ID dizesi.
 
 5. **Sıfır Hallüsinasyon Kuralı (MUTLAK):**
    - gapAnalysisSummary içinde (literatureMapping ve academicGap alanlarında) yalnızca verilen ilgili tez listesindeki yazar, yıl ve eser bilgilerini kullanın. Tüm APA (Yazar, Yıl) atıflarını doğrudan listedeki mevcut kayıtlardan türetin.
-   - Bir tezi APA formatında (Yazar, Yıl) olarak kaynak gösterdiğinde, o yazar ve yılın tez listesinde mevcut olduğundan emin ol.`,
+   - Bir tezi APA formatında (Yazar, Yıl) olarak kaynak gösterdiğinizde, o yazar ve yılın tez listesinde mevcut olduğundan emin olun.`,
 
     outputFormat:
       "Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir.",
 
-    inputContext: `Aşağıda araştırmacının 3 bileşenli Tez Konumlandırma Matrisi ve tek-tez değerlendirmesinden geçen ilgili ${evaluatedCount} adet tez listelenmiştir:
+    inputContext: `Aşağıda araştırmacının 3 bileşenli Tez Konumlandırma Matrisi ve ön elemeden geçen ilgili ${evaluatedCount} adet tez listelenmiştir:
 
 === KULLANICININ TEZ MATRİSİ ===
 1. Araştırma Problemi ve Odağı (aktörler dahil): ${input.subjectProblem}
 2. Teorik ve Kavramsal Çerçeve: ${input.theoreticalFramework}
 3. Metodoloji: ${input.methodology}
 
-=== İLGİLİ LİTERATÜR TEZLERİ (${evaluatedCount} ADET) ===
+=== ÖN ELEMEDEN GEÇEN İLGİLİ TEZLER (${evaluatedCount} ADET) ===
 ${thesisListText}
 
-Lütfen yukarıdaki verileri titizlikle inceleyerek Akademik Jüri Değerlendirme Raporunu (globalStatus, gapAnalysisSummary, recommendedTheses) belirtilen JSON formatında üret.
-
-HATIRLATMA:
-- Herhangi bir tez \`isDirectOverlap: true\` olarak işaretlendiyse globalStatus KESİNLİKLE DIRECT_OVERLAP olmalıdır.
-- Öneri kartları (recommendedTheses) yalnızca ilgili tezler arasından, matrisle belirgin örtüşmesi olanlardan seçilir; eşleşen tez yoksa boş liste döndür.`,
+Lütfen yukarıdaki verileri titizlikle inceleyerek Akademik Jüri Değerlendirme Raporunu (globalStatus, gapAnalysisSummary, recommendedTheses) belirtilen JSON formatında üret.`,
   });
 }
 </file>
@@ -24344,141 +24336,6 @@ export async function executeBackwardExpansion(
 }
 </file>
 
-<file path="src/features/positioning/prompts/per-thesis-evaluation.prompt.ts">
-import {
-  buildPromptPayload,
-  type PromptPayload,
-} from "@/lib/ai/prompt-builder";
-import type { PositioningMatrixInput } from "@/features/positioning/validation";
-import type { SiftedThesis } from "@/features/positioning/sifting";
-
-/**
- * Builds the standardized PromptPayload for single-thesis evaluation.
- *
- * @param input - The validated positioning matrix input.
- * @param thesis - The candidate thesis to evaluate.
- * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
- */
-export function buildPerThesisEvaluationPromptPayload(
-  input: PositioningMatrixInput,
-  thesis: SiftedThesis,
-): PromptPayload {
-  return buildPromptPayload({
-    roleAndExpertise:
-      "Akademik tez karşılaştırma, literatür taraması ve özgünlük analizi konusunda son derece titiz bir Ön Değerlendirme Kurulu Üyesisiniz.",
-
-    primaryTask:
-      "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisi ile veritabanından gelen TEK BİR tezi karşılaştırarak kesin ve tavizsiz bir ön eleme yapmak ve yapılandırılmış değerlendirme çıktısı üretmektir.",
-
-    workflowSteps: `## Aşama 1 — Kesin ve Tavizsiz Alakalılık Değerlendirmesi (isRelevant)
-- Kullanıcının araştırmasının AMPİRİK ODAĞI VE ARAŞTIRMA PROBLEMİ (spesifik konu, temel olgu/olaylar, aktörler veya tarihsel/kavramsal odak) ile bu tez arasında DOĞRUDAN ve ANLAMLI bir akademik bağ var mı?
-- **AGRESİF ELEME KURALI (MUTLAK):** Kararsız kaldığın veya yalnızca genel kavramsal/metodolojik ortaklığı olan (örn. aynı kuramcı, aynı analiz yöntemi veya yüzeysel kelime benzerliği olan) tezleri KESİNLİKLE ELE (\`isRelevant: false\`).
-- Eğer tez kullanıcının araştırma problemiyle doğrudan örtüşmüyorsa \`isRelevant: false\` ver ve diğer alanları boş bırak.
-- Yalnızca ampirik araştırma sorunu gerçekten aynı akademik sahada kesişiyorsa \`isRelevant: true\` ver ve Aşama 2'ye geç.
-
-## Aşama 2 — Birebir Örtüşme / Özgünlük Değerlendirmesi (isDirectOverlap)
-- Kullanıcının tezi ile bu tez Konu/Sorunsal + Odak + Çerçeve açısından BİREBİR AYNI mı?
-- Eğer BİREBİR örtüşme varsa \`isDirectOverlap: true\` döndür.
-- Eğer çalışma özgün bir açı/katkı barındırıyorsa \`isDirectOverlap: false\` döndür ve Aşama 3'e geç.
-
-## Aşama 3 — Katkı Açıları + Literatür Konumu (Yalnızca İlgili Tezler İçin)
-- \`contributionAreas\`: Tez kullanıcının çalışmasına hangi spesifik boyuttan katkı/rehberlik sunuyor? En fazla 2-3 kısa etiket (Örn: ["Arşiv Karşılaştırması", "Kavramsal Ayrım"]).
-- \`relevanceReason\`: Kullanıcının bu tezi çalışmasında nasıl kaynak/karşılaştırma unsuru yapacağına dair EN FAZLA 1-2 cümlelik net rehber not.
-- \`literaturePosition\`: Tezin literatürdeki temel sorunsalı / derdi hakkında EN FAZLA 1 cümlelik özet.`,
-
-    rulesAndConstraints: `1. **Agresif Eleme:** Yüzeysel veya teğet geçen tezleri asla ilgili işaretleme. Amaç ana jüriye yalnızca yüksek kaliteli, doğrudan ilgili tezleri ulaştırmaktır.
-2. **Kısa ve Odaklı İfade:** relevanceReason ve literaturePosition açıklamalarını net, kısa ve gürültüsüz tut.
-3. **Veri Sadakati:** Yalnızca verilen başlık ve özet metnine dayan; varsayımsal ekleme yapma.`,
-
-    outputFormat:
-      "Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir.",
-
-    inputContext: `Aşağıda araştırmacının 3 bileşenli Tez Konumlandırma Matrisi ve değerlendirmen gereken TEK tez listelenmiştir:
-
-=== KULLANICININ TEZ MATRİSİ ===
-1. Araştırma Problemi ve Odağı: ${input.subjectProblem}
-2. Teorik ve Kavramsal Çerçeve: ${input.theoreticalFramework}
-3. Metodoloji: ${input.methodology}
-
-=== DEĞERLENDİRİLECEK TEZ ===
-Tez ID: ${thesis.id}
-Başlık: ${thesis.title}
-Yazar: ${thesis.author || "Bilinmiyor"} (${thesis.year || "N/A"})
-Üniversite/Bölüm: ${thesis.university || "N/A"} - ${thesis.department || "N/A"}
-Tür: ${thesis.thesisType || "N/A"} | Dil: ${thesis.language || "N/A"}
-Özet: ${thesis.abstract}
-
-Lütfen yukarıdaki tezi titizlikle değerlendir ve JSON formatında çıktı üret.`,
-  });
-}
-
-/**
- * Builds the standardized PromptPayload for multi-thesis batch evaluation.
- *
- * @param input - The validated positioning matrix input.
- * @param theses - Candidate theses in the batch.
- * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
- */
-export function buildBatchPerThesisEvaluationPromptPayload(
-  input: PositioningMatrixInput,
-  theses: SiftedThesis[],
-): PromptPayload {
-  const formattedTheses = theses
-    .map(
-      (t) => `Tez ID: ${t.id}
-Başlık: ${t.title}
-Yazar: ${t.author || "Bilinmiyor"} (${t.year || "N/A"})
-Üniversite/Bölüm: ${t.university || "N/A"} - ${t.department || "N/A"}
-Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"}
-Özet: ${t.abstract}`,
-    )
-    .join("\n\n---\n\n");
-
-  return buildPromptPayload({
-    roleAndExpertise:
-      "Akademik tez karşılaştırma, literatür taraması ve özgünlük analizi konusunda son derece titiz bir Ön Değerlendirme Kurulu Üyesisiniz.",
-
-    primaryTask:
-      "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisi ile listedeki HER BİR TEZİ TEK TEK karşılaştırarak kesin ve tavizsiz bir ön eleme yapmak ve yapılandırılmış değerlendirme dizisi (`evaluations`) üretmektir.",
-
-    workflowSteps: `## Aşama 1 — Kesin ve Tavizsiz Alakalılık Değerlendirmesi (isRelevant)
-- Kullanıcının araştırmasının AMPİRİK ODAĞI VE ARAŞTIRMA PROBLEMİ ile bu tez arasında DOĞRUDAN ve ANLAMLI bir akademik bağ var mı?
-- **AGRESİF ELEME KURALI (MUTLAK):** Kararsız kaldığın veya yalnızca genel kavramsal/metodolojik ortaklığı olan (örn. aynı kuramcı, aynı analiz yöntemi veya yüzeysel kelime benzerliği olan) tezleri KESİNLİKLE ELE (\`isRelevant: false\`).
-- Eğer tez kullanıcının araştırma problemiyle doğrudan örtüşmüyorsa \`isRelevant: false\` ver.
-- Yalnızca ampirik araştırma sorunu gerçekten aynı akademik sahada kesişiyorsa \`isRelevant: true\` ver ve Aşama 2'ye geç.
-
-## Aşama 2 — Birebir Örtüşme / Özgünlük Değerlendirmesi (isDirectOverlap)
-- Kullanıcının tezi ile bu tez Konu/Sorunsal + Odak + Çerçeve açısından BİREBİR AYNI mı?
-- Eğer BİREBİR örtüşme varsa \`isDirectOverlap: true\` döndür.
-- Eğer çalışma özgün bir açı/katkı barındırıyorsa \`isDirectOverlap: false\` döndür ve Aşama 3'e geç.
-
-## Aşama 3 — Katkı Açıları + Literatür Konumu (Yalnızca İlgili Tezler İçin)
-- \`contributionAreas\`: En fazla 2-3 kısa etiket.
-- \`relevanceReason\`: EN FAZLA 1-2 cümlelik net rehber not.
-- \`literaturePosition\`: EN FAZLA 1 cümlelik özet.`,
-
-    rulesAndConstraints: `1. **Agresif Eleme:** Yüzeysel veya teğet geçen tezleri asla ilgili işaretleme. Amaç ana jüriye yalnızca yüksek kaliteli, doğrudan ilgili tezleri ulaştırmaktır.
-2. **Kısa ve Odaklı İfade:** Açıklamaları net, kısa ve gürültüsüz tut.
-3. **Bağlam İzolasyonu:** Her tezi sadece kullanıcının tez matrisi ile karşılaştır.`,
-
-    outputFormat:
-      "Çıktı, belirtilen JSON şemasına harfiyen uyan (`evaluations` dizisi içeren) saf JSON nesnesidir.",
-
-    inputContext: `Aşağıda araştırmacının 3 bileşenli Tez Konumlandırma Matrisi ve değerlendirmen gereken tezler listelenmiştir:
-
-=== KULLANICININ TEZ MATRİSİ ===
-1. Araştırma Problemi ve Odağı: ${input.subjectProblem}
-2. Teorik ve Kavramsal Çerçeve: ${input.theoreticalFramework}
-3. Metodoloji: ${input.methodology}
-
-=== DEĞERLENDİRİLECEK TEZLER ===
-${formattedTheses}
-
-Lütfen listedeki her bir tezi 3 aşamalı karar zincirine göre tek tek değerlendir ve JSON \`evaluations\` dizisi olarak çıktı üret.`,
-  });
-}
-</file>
-
 <file path="src/features/positioning/decision-engine.ts">
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
@@ -29910,6 +29767,149 @@ export const outlineGenerationJsonSchema: JsonSchema = {
 };
 </file>
 
+<file path="src/features/positioning/prompts/per-thesis-evaluation.prompt.ts">
+import {
+  buildPromptPayload,
+  type PromptPayload,
+} from "@/lib/ai/prompt-builder";
+import type { PositioningMatrixInput } from "@/features/positioning/validation";
+import type { SiftedThesis } from "@/features/positioning/sifting";
+
+/**
+ * Builds the standardized PromptPayload for single-thesis evaluation.
+ *
+ * @param input - The validated positioning matrix input.
+ * @param thesis - The candidate thesis to evaluate.
+ * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
+ */
+export function buildPerThesisEvaluationPromptPayload(
+  input: PositioningMatrixInput,
+  thesis: SiftedThesis,
+): PromptPayload {
+  return buildPromptPayload({
+    roleAndExpertise:
+      "Akademik tez karşılaştırma, literatür taraması ve özgünlük analizi konusunda uzman, tarafsız ve son derece titiz bir Ön Değerlendirme Kurulu Üyesisiniz.",
+
+    primaryTask:
+      "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisi ile adaya ait TEK BİR tezi bağımsız ve objektif olarak karşılaştırarak tavizsiz bir ön eleme yapmak ve yapılandırılmış değerlendirme çıktısı üretmektir.",
+
+    workflowSteps: `## Aşama 1 — Bağımsız ve Objektif Alakalılık Değerlendirmesi (isRelevant)
+- Kullanıcının araştırmasının ARAŞTIRMA PROBLEMİ, TARİHSEL DÖNEMİ, BİRİNCİL MATERYALİ ve AMPİRİK ODAĞI ile bu tez arasında doğrudan, somut ve anlamlı bir akademik örtüşme var mı?
+- **TAVİZSİZ ELEME DİSİPLİNİ:**
+  * İncelenen tarihsel dönemi farklı olan (örn. kullanıcının incelediği 1990'lar dönemi yerine 2000'ler/2010'lar veya güncel olaylar/süreçler üzerine olan),
+  * Birincil materyali ve ampirik araştırma sahası uyuşmayan (örn. tarihsel arşiv/korpus söylem analizi yerine güncel elit mülakatları veya tekil bir medya olayı üzerine olan),
+  * Yalnızca genel/soyut kelime benzerliği veya genel konu ortaklığı taşıyan (örn. genel 'söylem', 'Kürt meselesi' veya 'devlet politikası' gibi geniş şemsiye kavramları paylaşan ancak ampirik odağı bambaşka olan)
+  tüm tezleri KESİNLİKLE ELE (\`isRelevant: false\`).
+- Yalnızca ampirik araştırma odağı, dönemi ve sorunsalı gerçekten aynı akademik sahada kesişen tezler için \`isRelevant: true\` ver ve Aşama 2'ye geç. İlgisiz tezlerde diğer alanları boş bırak.
+
+## Aşama 2 — Birebir Örtüşme / Özgünlük Değerlendirmesi (isDirectOverlap)
+- Kullanıcının tezi ile bu tez Konu/Sorunsal + Tarihsel Dönem + Analiz Birimi + Teorik Çerçeve açısından BİREBİR AYNI mı?
+- Eğer BİREBİR örtüşme varsa \`isDirectOverlap: true\` döndür.
+- Eğer çalışma özgün bir açı, farklı bir dönemselleştirme veya yeni bir kavramsal çatma barındırıyorsa \`isDirectOverlap: false\` döndür ve Aşama 3'e geç.
+
+## Aşama 3 — Katkı Açıları + Literatür Konumu (Yalnızca İlgili Tezler İçin)
+- \`contributionAreas\`: Tezin kullanıcının çalışmasına doğrudan sunduğu 1-3 adet kısa spesifik katkı alanı (Örn: ["1990'lar Serxwebûn Korpus Analizi", "Yasal Parti Belgeleri Mukayesesi"]).
+- \`relevanceReason\`: Kullanıcının bu tezi çalışmasında nasıl kaynak/karşılaştırma unsuru yapacağına dair EN FAZLA 1-2 cümlelik somut ve dürüst rehber not.
+- \`literaturePosition\`: Tezin literatürdeki temel sorunsalı ve amacı hakkında EN FAZLA 1 cümlelik özet.`,
+
+    rulesAndConstraints: `1. **Tamamen Bağımsız Değerlendirme:** Herhangi bir kota, sayı zorlaması veya belirli sayıda tez seçme hedefi yoktur. Eşleşmeyen her tezi çekinmeden eleyin (\`isRelevant: false\`).
+2. **Dönem ve Materyal Hassasiyeti:** Genel kavram benzerliklerine aldanmayın; tarihsel dönem, ampirik materyal ve araştırma odağı uyuşmayan tezleri elenmiş kabul edin.
+3. **Kısa ve Odaklı İfade:** relevanceReason ve literaturePosition açıklamalarını net, kısa ve gürültüsüz tutun.
+4. **Veri Sadakati:** Yalnızca verilen başlık ve özet metnine dayanın; varsayımsal eklemeler yapmayın.`,
+
+    outputFormat:
+      "Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir.",
+
+    inputContext: `Aşağıda araştırmacının 3 bileşenli Tez Konumlandırma Matrisi ve değerlendirmen gereken TEK tez listelenmiştir:
+
+=== KULLANICININ TEZ MATRİSİ ===
+1. Araştırma Problemi ve Odağı: ${input.subjectProblem}
+2. Teorik ve Kavramsal Çerçeve: ${input.theoreticalFramework}
+3. Metodoloji: ${input.methodology}
+
+=== DEĞERLENDİRİLECEK TEZ ===
+Tez ID: ${thesis.id}
+Başlık: ${thesis.title}
+Yazar: ${thesis.author || "Bilinmiyor"} (${thesis.year || "N/A"})
+Üniversite/Bölüm: ${thesis.university || "N/A"} - ${thesis.department || "N/A"}
+Tür: ${thesis.thesisType || "N/A"} | Dil: ${thesis.language || "N/A"}
+Özet: ${thesis.abstract}
+
+Lütfen yukarıdaki tezi titizlikle değerlendir ve JSON formatında çıktı üret.`,
+  });
+}
+
+/**
+ * Builds the standardized PromptPayload for multi-thesis batch evaluation.
+ *
+ * @param input - The validated positioning matrix input.
+ * @param theses - Candidate theses in the batch.
+ * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
+ */
+export function buildBatchPerThesisEvaluationPromptPayload(
+  input: PositioningMatrixInput,
+  theses: SiftedThesis[],
+): PromptPayload {
+  const formattedTheses = theses
+    .map(
+      (t) => `Tez ID: ${t.id}
+Başlık: ${t.title}
+Yazar: ${t.author || "Bilinmiyor"} (${t.year || "N/A"})
+Üniversite/Bölüm: ${t.university || "N/A"} - ${t.department || "N/A"}
+Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"}
+Özet: ${t.abstract}`,
+    )
+    .join("\n\n---\n\n");
+
+  return buildPromptPayload({
+    roleAndExpertise:
+      "Akademik tez karşılaştırma, literatür taraması ve özgünlük analizi konusunda uzman, tarafsız ve son derece titiz bir Ön Değerlendirme Kurulu Üyesisiniz.",
+
+    primaryTask:
+      "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisi ile listedeki HER BİR TEZİ TEK TEK, bağımsız ve objektif olarak karşılaştırarak tavizsiz bir ön eleme yapmak ve yapılandırılmış değerlendirme dizisi (`evaluations`) üretmektir.",
+
+    workflowSteps: `## Aşama 1 — Bağımsız ve Objektif Alakalılık Değerlendirmesi (isRelevant)
+- Kullanıcının araştırmasının ARAŞTIRMA PROBLEMİ, TARİHSEL DÖNEMİ, BİRİNCİL MATERYALİ ve AMPİRİK ODAĞI ile bu tez arasında doğrudan, somut ve anlamlı bir akademik örtüşme var mı?
+- **TAVİZSİZ ELEME DİSİPLİNİ:**
+  * İncelenen tarihsel dönemi farklı olan (örn. kullanıcının incelediği 1990'lar dönemi yerine 2000'ler/2010'lar veya güncel olaylar/süreçler üzerine olan),
+  * Birincil materyali ve ampirik araştırma sahası uyuşmayan (örn. tarihsel arşiv/korpus söylem analizi yerine güncel elit mülakatları veya tekil bir medya olayı üzerine olan),
+  * Yalnızca genel/soyut kelime benzerliği veya genel konu ortaklığı taşıyan (örn. genel 'söylem', 'Kürt meselesi' veya 'devlet politikası' gibi geniş şemsiye kavramları paylaşan ancak ampirik odağı bambaşka olan)
+  tüm tezleri KESİNLİKLE ELE (\`isRelevant: false\`).
+- Yalnızca ampirik araştırma odağı, dönemi ve sorunsalı gerçekten aynı akademik sahada kesişen tezler için \`isRelevant: true\` ver ve Aşama 2'ye geç.
+
+## Aşama 2 — Birebir Örtüşme / Özgünlük Değerlendirmesi (isDirectOverlap)
+- Kullanıcının tezi ile bu tez Konu/Sorunsal + Tarihsel Dönem + Analiz Birimi + Teorik Çerçeve açısından BİREBİR AYNI mı?
+- Eğer BİREBİR örtüşme varsa \`isDirectOverlap: true\` döndür.
+- Eğer çalışma özgün bir açı, farklı bir dönemselleştirme veya yeni bir kavramsal çatma barındırıyorsa \`isDirectOverlap: false\` döndür ve Aşama 3'e geç.
+
+## Aşama 3 — Katkı Açıları + Literatür Konumu (Yalnızca İlgili Tezler İçin)
+- \`contributionAreas\`: En fazla 2-3 kısa etiket.
+- \`relevanceReason\`: EN FAZLA 1-2 cümlelik net rehber not.
+- \`literaturePosition\`: EN FAZLA 1 cümlelik özet.`,
+
+    rulesAndConstraints: `1. **Tamamen Bağımsız Değerlendirme:** Herhangi bir kota, sayı zorlaması veya belirli sayıda tez seçme hedefi yoktur. Eşleşmeyen her tezi çekinmeden eleyin (\`isRelevant: false\`).
+2. **Dönem ve Materyal Hassasiyeti:** Genel kavram benzerliklerine aldanmayın; tarihsel dönem, ampirik materyal ve araştırma odağı uyuşmayan tezleri elenmiş kabul edin.
+3. **Kısa ve Odaklı İfade:** Açıklamaları net, kısa ve gürültüsüz tutun.
+4. **Bağlam İzolasyonu:** Her tezi sadece kullanıcının tez matrisi ile karşılaştırın.`,
+
+    outputFormat:
+      "Çıktı, belirtilen JSON şemasına harfiyen uyan (`evaluations` dizisi içeren) saf JSON nesnesidir.",
+
+    inputContext: `Aşağıda araştırmacının 3 bileşenli Tez Konumlandırma Matrisi ve değerlendirmen gereken tezler listelenmiştir:
+
+=== KULLANICININ TEZ MATRİSİ ===
+1. Araştırma Problemi ve Odağı: ${input.subjectProblem}
+2. Teorik ve Kavramsal Çerçeve: ${input.theoreticalFramework}
+3. Metodoloji: ${input.methodology}
+
+=== DEĞERLENDİRİLECEK TEZLER ===
+${formattedTheses}
+
+Lütfen listedeki her bir tezi 3 aşamalı karar zincirine göre tek tek değerlendir ve JSON \`evaluations\` dizisi olarak çıktı üret.`,
+  });
+}
+</file>
+
 <file path="src/features/positioning/analysis.ts">
 import { ThinkingLevel } from "@google/genai";
 import { z } from "zod";
@@ -29964,9 +29964,8 @@ export const juryAnalysisResultSchema = z.object({
   gapAnalysisSummary: gapAnalysisStructuredSchema,
   recommendedTheses: z
     .array(juryRecommendedThesisSchema)
-    .max(6)
     .describe(
-      "Kullanıcının tez matrisiyle doğrudan bağı olan 0-6 adet rehber tez. Yapay sayı zorlaması yapılmaz.",
+      "Ön elemeden geçerek jüriye sunulan ilgili rehber tezlerin listesi.",
     ),
 });
 
@@ -29989,7 +29988,7 @@ export const juryAnalysisResultJsonSchema: JsonSchema = {
         literatureMapping: {
           type: "string",
           description:
-            "Mevcut Literatürün Haritalandırılması: Sunulan tezlerin araştırmanın hangi boyutlarını ele aldığının tematik haritası ve akademik özeti. Tezleri tematik gruplara ayırarak 'Literatürdeki tezler X grupta kümelenmektedir. İlk grupta..., ikinci grupta...' şeklinde tematik özetle. Her tezden alıntı yaparken mutlaka APA formatında atıf ver: (Yazar, Yıl).",
+            "Mevcut Literatürün Haritalandırılması: Sunulan tezlerin araştırmanın hangi boyutlarını ele aldığının tematik haritası ve akademik özeti. Tezleri tematik gruplara ayırarak tematik özetle. Her tezden alıntı yaparken mutlaka APA formatında atıf ver: (Yazar, Yıl).",
         },
         academicGap: {
           type: "string",
@@ -30013,7 +30012,7 @@ export const juryAnalysisResultJsonSchema: JsonSchema = {
         properties: {
           externalThesisId: {
             type: "string",
-            description: "Süzülen tez listesindeki tez ID'si",
+            description: "Tezin ID'si",
           },
           title: { type: "string", description: "Tezin başlığı" },
           author: { type: "string", description: "Tezin yazarı" },
@@ -30027,7 +30026,7 @@ export const juryAnalysisResultJsonSchema: JsonSchema = {
           relevanceReason: {
             type: "string",
             description:
-              "Tezin çalışmada tez matrisindeki sınırlar çerçevesinde dürüstçe nasıl kaynak olarak kullanılacağına dair rehber açıklama. Asla matriste yer almayan varsayımsal veri kaynakları uydurulmaz.",
+              "Tezin çalışmada tez matrisindeki sınırlar çerçevesinde dürüstçe nasıl kaynak olarak kullanılacağına dair rehber açıklama.",
           },
         },
         required: [
@@ -30042,7 +30041,7 @@ export const juryAnalysisResultJsonSchema: JsonSchema = {
         additionalProperties: false,
       },
       description:
-        "Süzülen tezler arasından seçilen ve tez matrisiyle doğrudan örtüşen 0-6 adet dürüst rehber tez",
+        "Ön elemeden geçerek jüriye sunulan ilgili rehber tezlerin listesi",
     },
   },
   required: ["globalStatus", "gapAnalysisSummary", "recommendedTheses"],
@@ -33386,6 +33385,370 @@ async function persistOutlines(
 }
 </file>
 
+<file path="src/lib/academic/utils.ts">
+import { cleanAbstractPrefix } from "./abstract-cleaner";
+
+/**
+ * Extracts a clean DOI string from a raw value.
+ *
+ * @param raw - Raw DOI value from any source.
+ * @returns The normalized DOI, or null when no DOI is present.
+ */
+export function extractCleanDoi(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  const match = trimmed.match(/10\.\d{4,}[^\s]*/i);
+  return match ? match[0].replace(/\.$/, "") : null;
+}
+
+/**
+ * Extracts the canonical short OpenAlex work ID from a URL, plain ID, or junk value.
+ *
+ * @param raw - Raw OpenAlex identifier or URL.
+ * @returns The extracted W... ID, or null when the input is invalid.
+ */
+export function extractOpenAlexId(
+  raw: string | null | undefined,
+): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim().replace(/\/+$/, "");
+  if (trimmed === "" || trimmed === "null") return null;
+  const match = trimmed.match(/(?:^|\/)(W\d+)$/i);
+  if (match) return match[1];
+  return /^W\d+$/i.test(trimmed) ? trimmed : null;
+}
+
+export interface CrossrefPerson {
+  given?: string;
+  family?: string;
+}
+
+/**
+ * Formats a person's given and family names into a single trimmed string.
+ *
+ * @param person - Crossref person record.
+ * @returns Combined full name.
+ */
+export function formatAuthorName(person: CrossrefPerson): string {
+  return `${(person.given ?? "").trim()} ${(person.family ?? "").trim()}`.trim();
+}
+
+/**
+ * Maps a list of Crossref persons to formatted full names, dropping empty entries.
+ *
+ * @param persons - Optional Crossref person records.
+ * @returns Array of formatted author names.
+ */
+export function formatAuthorList(
+  persons: CrossrefPerson[] | undefined,
+): string[] {
+  if (!persons || persons.length === 0) return [];
+  return persons.map(formatAuthorName).filter(Boolean);
+}
+
+/**
+ * Extracts the issued or published year from a Crossref record.
+ *
+ * @param obj - Crossref record object.
+ * @returns The publication year, or null when unavailable.
+ */
+export function extractCrossrefYear(
+  obj: Record<string, unknown>,
+): number | null {
+  const issuedOrPublished = (obj.issued ?? obj.published) as
+    { "date-parts"?: number[][] } | undefined;
+  const dateParts = issuedOrPublished?.["date-parts"]?.[0];
+  if (dateParts?.[0]) return dateParts[0];
+  return null;
+}
+
+/**
+ * Strips the alternate-language portion from a bilingual thesis title (TEZARA "TR / EN" format).
+ *
+ * @param title - Raw thesis title in "TR / EN" format.
+ * @returns The primary-language title.
+ */
+export function stripAltTitle(title: string | null | undefined): string {
+  if (!title) return "";
+  const idx = title.indexOf(" / ");
+  return idx === -1 ? title.trim() : title.slice(0, idx).trim();
+}
+
+interface SortableResource {
+  relevanceScore: number | null;
+  id: number;
+}
+
+/**
+ * Sorts academic resources by relevance score, then by id.
+ *
+ * @param items - Resources to sort.
+ * @returns A new array sorted by the shared academic ordering.
+ */
+export function sortLibraryResources<T extends SortableResource>(
+  items: T[],
+): T[] {
+  return [...items].sort((a, b) => {
+    const scoreA = a.relevanceScore ?? 0;
+    const scoreB = b.relevanceScore ?? 0;
+    if (scoreA !== scoreB) return scoreB - scoreA;
+
+    return a.id - b.id;
+  });
+}
+
+/**
+ * Tokenizes a title into normalized lowercase tokens for containment matching.
+ *
+ * @param title - Raw title string.
+ * @returns Set of normalized tokens.
+ */
+function tokenizeForContainment(title: string): Set<string> {
+  return new Set(
+    title
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, "")
+      .split(/\s+/)
+      .filter((t) => t.length >= 3),
+  );
+}
+
+/**
+ * Computes containment similarity as intersection divided by the shorter title's token count.
+ *
+ * @param titleA - First title.
+ * @param titleB - Second title.
+ * @returns Similarity score between 0 and 1.
+ */
+export function containmentSimilarity(titleA: string, titleB: string): number {
+  const tokensA = tokenizeForContainment(titleA);
+  const tokensB = tokenizeForContainment(titleB);
+
+  if (tokensA.size === 0 && tokensB.size === 0) return 1.0;
+  if (tokensA.size === 0 || tokensB.size === 0) return 0.0;
+
+  const smaller = tokensA.size <= tokensB.size ? tokensA : tokensB;
+  const larger = tokensA.size <= tokensB.size ? tokensB : tokensA;
+
+  let intersection = 0;
+  for (const token of smaller) {
+    if (larger.has(token)) intersection++;
+  }
+
+  return intersection / Math.min(tokensA.size, tokensB.size);
+}
+
+/**
+ * Returns whether the containment similarity between two titles meets a threshold.
+ *
+ * @param titleA - First title.
+ * @param titleB - Second title.
+ * @param threshold - Minimum similarity required (default 0.8).
+ * @returns True when similarity is at or above the threshold.
+ */
+export function areTitlesSimilar(
+  titleA: string,
+  titleB: string,
+  threshold = 0.8,
+): boolean {
+  return containmentSimilarity(titleA, titleB) >= threshold;
+}
+
+/**
+ * Reconstitutes an OpenAlex abstract inverted index into plain text.
+ *
+ * @param invertedIndex - OpenAlex abstract word-position map.
+ * @returns Reconstructed abstract text, or null when empty.
+ */
+export function resolveAbstractInvertedIndex(
+  invertedIndex: Record<string, number[]> | null | undefined,
+): string | null {
+  if (!invertedIndex) return null;
+  const entries = Object.entries(invertedIndex);
+  if (entries.length === 0) return null;
+  const maxPos = Math.max(...entries.flatMap(([, positions]) => positions));
+  const words: string[] = new Array(maxPos + 1).fill("");
+  for (const [word, positions] of entries) {
+    for (const pos of positions) {
+      if (pos >= 0 && pos <= maxPos) words[pos] = word;
+    }
+  }
+  const fullText = words.join(" ").replace(/\s+/g, " ").trim();
+  return cleanAbstractPrefix(fullText);
+}
+
+/**
+ * Normalizes a title into a lowercase, punctuation-stripped string for matching.
+ *
+ * @param title - Raw title.
+ * @param maxLength - Optional maximum length to keep.
+ * @returns Normalized title string.
+ */
+export function normalizeTitle(
+  title: string | null | undefined,
+  maxLength?: number,
+): string {
+  if (!title) return "";
+  let normalized = title
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (maxLength !== undefined && normalized.length > maxLength) {
+    normalized = normalized.slice(0, maxLength);
+  }
+  return normalized;
+}
+
+/**
+ * Strips the subtitle from a title, then normalizes the core title for duplicate matching.
+ *
+ * @param title - Raw title with optional subtitle.
+ * @param maxLength - Optional maximum length to keep.
+ * @returns Normalized core title.
+ */
+export function normalizeCleanTitle(
+  title: string | null | undefined,
+  maxLength?: number,
+): string {
+  if (!title) return "";
+  let coreTitle = title;
+  const separatorMatch = title.match(/^([^:/\-–—]+)/);
+  if (separatorMatch && separatorMatch[1].trim().length >= 3) {
+    coreTitle = separatorMatch[1].trim();
+  }
+  return normalizeTitle(coreTitle, maxLength);
+}
+
+/**
+ * Formats an academic resource into an APA-style PDF filename.
+ *
+ * @param authors - Author names.
+ * @param publicationYear - Publication year.
+ * @param title - Resource title.
+ * @returns APA-styled filename string.
+ */
+export function formatApaPdfFileName(
+  authors: string[] | null | undefined,
+  publicationYear: number | null | undefined,
+  title: string,
+): string {
+  const year =
+    publicationYear && publicationYear > 1000
+      ? publicationYear
+      : new Date().getFullYear();
+
+  const cleanAuthors = (authors || []).map((a) => a.trim()).filter(Boolean);
+  let authorPart = "Anonim";
+
+  if (cleanAuthors.length === 1) {
+    authorPart = extractSurname(cleanAuthors[0]);
+  } else if (cleanAuthors.length === 2) {
+    authorPart = `${extractSurname(cleanAuthors[0])}_and_${extractSurname(cleanAuthors[1])}`;
+  } else if (cleanAuthors.length >= 3) {
+    authorPart = `${extractSurname(cleanAuthors[0])}_et_al`;
+  }
+
+  const cleanTitle = stripAltTitle(title);
+  const words = cleanTitle
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .split(/\s+/)
+    .filter((w) => w.length > 0)
+    .slice(0, 5)
+    .map(toAsciiWord)
+    .filter(Boolean);
+
+  const titlePart = words.length > 0 ? words.join("_") : "Eser";
+
+  return `${authorPart}_${year}_${titlePart}.pdf`;
+}
+
+/**
+ * Normalizes page number display with canonical academic prefixes ("s. X" for single page, "ss. X-Y" for ranges).
+ *
+ * @param raw - Raw page number string or user input.
+ * @returns Canonical Turkish page number display string.
+ */
+export function formatPageNumber(raw: string | null | undefined): string {
+  if (!raw) return "s. 1";
+  const trimmed = raw.trim();
+  if (!trimmed) return "s. 1";
+
+  // Extract digits or digit groups
+  const digits = trimmed.match(/\d+/g);
+  if (!digits || digits.length === 0) {
+    return trimmed; // fallback if non-numeric text like "Madde 4/b"
+  }
+
+  if (digits.length === 1) {
+    return `s. ${digits[0]}`;
+  }
+
+  return `ss. ${digits[0]}-${digits[1]}`;
+}
+
+/**
+ * Extracts raw page digits or range string (e.g., "15" or "15-17") from a formatted page string for editing.
+ *
+ * @param raw - Formatted or raw page number string.
+ * @returns Clean numeric page input string.
+ */
+export function cleanPageNumberInput(raw: string | null | undefined): string {
+  if (!raw) return "";
+  const trimmed = raw.trim();
+  const digits = trimmed.match(/\d+/g);
+  if (!digits || digits.length === 0) return trimmed;
+  if (digits.length === 1) return digits[0];
+  return `${digits[0]}-${digits[1]}`;
+}
+
+/**
+ * Extracts the surname from a full name.
+ *
+ * @param fullName - Full name string.
+ * @returns Surname, or "Anonim" when none can be derived.
+ */
+function extractSurname(fullName: string): string {
+  const parts = fullName.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "Anonim";
+  const rawSurname = parts[parts.length - 1];
+  return toAsciiWord(rawSurname) || "Anonim";
+}
+
+/**
+ * Converts a word into an ASCII-safe, Turkish-normalized alphanumeric form.
+ *
+ * @param str - Input word.
+ * @returns ASCII-converted alphanumeric string.
+ */
+function toAsciiWord(str: string): string {
+  const turkishMap: Record<string, string> = {
+    ç: "c",
+    Ç: "C",
+    ğ: "g",
+    Ğ: "G",
+    ı: "i",
+    I: "I",
+    İ: "I",
+    ö: "o",
+    Ö: "O",
+    ş: "s",
+    Ş: "S",
+    ü: "u",
+    Ü: "U",
+  };
+  const converted = str
+    .split("")
+    .map((c) => turkishMap[c] || c)
+    .join("");
+
+  return converted
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]/g, "");
+}
+</file>
+
 <file path="src/lib/session.ts">
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -33832,6 +34195,161 @@ export function ResourceHeader({
         )}
       </div>
     </div>
+  );
+}
+</file>
+
+<file path="src/app/(app)/library/_components/pdf-upload-dropzone.tsx">
+"use client";
+
+import React, { useState, useRef } from "react";
+import { UploadCloud, FileText, AlertCircle } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
+import { toast } from "sonner";
+
+interface PdfUploadDropzoneProps {
+  /** Resource title. */
+  resourceTitle: string;
+  /** Current PDF status. */
+  pdfStatus?: "NOT_UPLOADED" | "PROCESSING" | "READY" | "FAILED";
+  /** Callback fired when user selects and submits a PDF file. */
+  onUploadPdf: (file: File) => Promise<boolean>;
+}
+
+/**
+ * Dropzone component for uploading PDF documents and triggering RAG vectorization.
+ *
+ * @param root0 - Component props.
+ * @param root0.resourceTitle - Title of the resource the PDF belongs to.
+ * @param root0.pdfStatus - Current PDF upload status.
+ * @param root0.onUploadPdf - Callback invoked with the selected file for upload.
+ * @returns The PDF upload dropzone markup.
+ */
+export function PdfUploadDropzone({
+  resourceTitle,
+  pdfStatus = "NOT_UPLOADED",
+  onUploadPdf,
+}: PdfUploadDropzoneProps) {
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = async (file: File) => {
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      toast.error("Lütfen geçerli bir PDF dosyası yükleyiniz.");
+      return;
+    }
+
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error("PDF dosya boyutu maksimum 25MB olabilir.");
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      const isSuccess = await onUploadPdf(file);
+      if (!isSuccess) {
+        return;
+      }
+      toast.success(
+        "PDF başarıyla yüklendi, metin ayrıştırıldı ve RAG için vektörleştirildi.",
+      );
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFileSelect(e.dataTransfer.files[0]);
+    }
+  };
+
+  return (
+    <Card className="border border-dashed border-border bg-muted/20 my-4">
+      <CardContent
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragOver(true);
+        }}
+        onDragLeave={() => setIsDragOver(false)}
+        onDrop={handleDrop}
+        className={`flex flex-col items-center justify-center p-8 text-center transition-all ${
+          isDragOver ? "bg-accent/20 border-primary/20" : ""
+        }`}
+      >
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept="application/pdf"
+          className="hidden"
+          aria-label="PDF dosyası seçin"
+          onChange={(e) => {
+            if (e.target.files && e.target.files.length > 0) {
+              handleFileSelect(e.target.files[0]);
+            }
+          }}
+        />
+
+        {isUploading || pdfStatus === "PROCESSING" ? (
+          <div className="flex w-full flex-col items-center">
+            <LoadingSpinner size="sm" className="min-h-0 py-4" />
+            <div className="space-y-1">
+              <p className="font-sans text-sm font-semibold text-foreground">
+                PDF Dokümanı İşleniyor ve Yükleniyor...
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Doküman ayrıştırılıyor, Cloudflare R2 bulut depolamaya
+                aktarılıyor ve AI vektörleştirme yapılıyor.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center space-y-3">
+            <div className="p-3 rounded-full bg-primary/10 border border-primary/20 text-primary">
+              <UploadCloud className="h-8 w-8" />
+            </div>
+
+            <div className="space-y-1 max-w-md">
+              <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
+                PDF Dokümanı Yükle
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                <span className="font-medium text-foreground">
+                  &quot;{resourceTitle}&quot;
+                </span>{" "}
+                eserine ait PDF dosyasını buraya sürükleyip bırakın veya
+                cihazınızdan seçin.
+              </p>
+            </div>
+
+            {pdfStatus === "FAILED" && (
+              <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 p-2 rounded-md border border-destructive/20">
+                <AlertCircle className="h-4 w-4" />
+                <span>
+                  Son yükleme denemesi başarısız oldu. Lütfen tekrar deneyiniz.
+                </span>
+              </div>
+            )}
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              className="gap-2 text-xs font-medium mt-2"
+            >
+              <FileText className="h-4 w-4 text-primary" />
+              Cihazdan PDF Seç
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 </file>
@@ -34859,370 +35377,6 @@ export async function searchTezara(
 }
 </file>
 
-<file path="src/lib/academic/utils.ts">
-import { cleanAbstractPrefix } from "./abstract-cleaner";
-
-/**
- * Extracts a clean DOI string from a raw value.
- *
- * @param raw - Raw DOI value from any source.
- * @returns The normalized DOI, or null when no DOI is present.
- */
-export function extractCleanDoi(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  const trimmed = raw.trim();
-  const match = trimmed.match(/10\.\d{4,}[^\s]*/i);
-  return match ? match[0].replace(/\.$/, "") : null;
-}
-
-/**
- * Extracts the canonical short OpenAlex work ID from a URL, plain ID, or junk value.
- *
- * @param raw - Raw OpenAlex identifier or URL.
- * @returns The extracted W... ID, or null when the input is invalid.
- */
-export function extractOpenAlexId(
-  raw: string | null | undefined,
-): string | null {
-  if (!raw) return null;
-  const trimmed = raw.trim().replace(/\/+$/, "");
-  if (trimmed === "" || trimmed === "null") return null;
-  const match = trimmed.match(/(?:^|\/)(W\d+)$/i);
-  if (match) return match[1];
-  return /^W\d+$/i.test(trimmed) ? trimmed : null;
-}
-
-export interface CrossrefPerson {
-  given?: string;
-  family?: string;
-}
-
-/**
- * Formats a person's given and family names into a single trimmed string.
- *
- * @param person - Crossref person record.
- * @returns Combined full name.
- */
-export function formatAuthorName(person: CrossrefPerson): string {
-  return `${(person.given ?? "").trim()} ${(person.family ?? "").trim()}`.trim();
-}
-
-/**
- * Maps a list of Crossref persons to formatted full names, dropping empty entries.
- *
- * @param persons - Optional Crossref person records.
- * @returns Array of formatted author names.
- */
-export function formatAuthorList(
-  persons: CrossrefPerson[] | undefined,
-): string[] {
-  if (!persons || persons.length === 0) return [];
-  return persons.map(formatAuthorName).filter(Boolean);
-}
-
-/**
- * Extracts the issued or published year from a Crossref record.
- *
- * @param obj - Crossref record object.
- * @returns The publication year, or null when unavailable.
- */
-export function extractCrossrefYear(
-  obj: Record<string, unknown>,
-): number | null {
-  const issuedOrPublished = (obj.issued ?? obj.published) as
-    { "date-parts"?: number[][] } | undefined;
-  const dateParts = issuedOrPublished?.["date-parts"]?.[0];
-  if (dateParts?.[0]) return dateParts[0];
-  return null;
-}
-
-/**
- * Strips the alternate-language portion from a bilingual thesis title (TEZARA "TR / EN" format).
- *
- * @param title - Raw thesis title in "TR / EN" format.
- * @returns The primary-language title.
- */
-export function stripAltTitle(title: string | null | undefined): string {
-  if (!title) return "";
-  const idx = title.indexOf(" / ");
-  return idx === -1 ? title.trim() : title.slice(0, idx).trim();
-}
-
-interface SortableResource {
-  relevanceScore: number | null;
-  id: number;
-}
-
-/**
- * Sorts academic resources by relevance score, then by id.
- *
- * @param items - Resources to sort.
- * @returns A new array sorted by the shared academic ordering.
- */
-export function sortLibraryResources<T extends SortableResource>(
-  items: T[],
-): T[] {
-  return [...items].sort((a, b) => {
-    const scoreA = a.relevanceScore ?? 0;
-    const scoreB = b.relevanceScore ?? 0;
-    if (scoreA !== scoreB) return scoreB - scoreA;
-
-    return a.id - b.id;
-  });
-}
-
-/**
- * Tokenizes a title into normalized lowercase tokens for containment matching.
- *
- * @param title - Raw title string.
- * @returns Set of normalized tokens.
- */
-function tokenizeForContainment(title: string): Set<string> {
-  return new Set(
-    title
-      .toLowerCase()
-      .replace(/[^\p{L}\p{N}\s]/gu, "")
-      .split(/\s+/)
-      .filter((t) => t.length >= 3),
-  );
-}
-
-/**
- * Computes containment similarity as intersection divided by the shorter title's token count.
- *
- * @param titleA - First title.
- * @param titleB - Second title.
- * @returns Similarity score between 0 and 1.
- */
-export function containmentSimilarity(titleA: string, titleB: string): number {
-  const tokensA = tokenizeForContainment(titleA);
-  const tokensB = tokenizeForContainment(titleB);
-
-  if (tokensA.size === 0 && tokensB.size === 0) return 1.0;
-  if (tokensA.size === 0 || tokensB.size === 0) return 0.0;
-
-  const smaller = tokensA.size <= tokensB.size ? tokensA : tokensB;
-  const larger = tokensA.size <= tokensB.size ? tokensB : tokensA;
-
-  let intersection = 0;
-  for (const token of smaller) {
-    if (larger.has(token)) intersection++;
-  }
-
-  return intersection / Math.min(tokensA.size, tokensB.size);
-}
-
-/**
- * Returns whether the containment similarity between two titles meets a threshold.
- *
- * @param titleA - First title.
- * @param titleB - Second title.
- * @param threshold - Minimum similarity required (default 0.8).
- * @returns True when similarity is at or above the threshold.
- */
-export function areTitlesSimilar(
-  titleA: string,
-  titleB: string,
-  threshold = 0.8,
-): boolean {
-  return containmentSimilarity(titleA, titleB) >= threshold;
-}
-
-/**
- * Reconstitutes an OpenAlex abstract inverted index into plain text.
- *
- * @param invertedIndex - OpenAlex abstract word-position map.
- * @returns Reconstructed abstract text, or null when empty.
- */
-export function resolveAbstractInvertedIndex(
-  invertedIndex: Record<string, number[]> | null | undefined,
-): string | null {
-  if (!invertedIndex) return null;
-  const entries = Object.entries(invertedIndex);
-  if (entries.length === 0) return null;
-  const maxPos = Math.max(...entries.flatMap(([, positions]) => positions));
-  const words: string[] = new Array(maxPos + 1).fill("");
-  for (const [word, positions] of entries) {
-    for (const pos of positions) {
-      if (pos >= 0 && pos <= maxPos) words[pos] = word;
-    }
-  }
-  const fullText = words.join(" ").replace(/\s+/g, " ").trim();
-  return cleanAbstractPrefix(fullText);
-}
-
-/**
- * Normalizes a title into a lowercase, punctuation-stripped string for matching.
- *
- * @param title - Raw title.
- * @param maxLength - Optional maximum length to keep.
- * @returns Normalized title string.
- */
-export function normalizeTitle(
-  title: string | null | undefined,
-  maxLength?: number,
-): string {
-  if (!title) return "";
-  let normalized = title
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (maxLength !== undefined && normalized.length > maxLength) {
-    normalized = normalized.slice(0, maxLength);
-  }
-  return normalized;
-}
-
-/**
- * Strips the subtitle from a title, then normalizes the core title for duplicate matching.
- *
- * @param title - Raw title with optional subtitle.
- * @param maxLength - Optional maximum length to keep.
- * @returns Normalized core title.
- */
-export function normalizeCleanTitle(
-  title: string | null | undefined,
-  maxLength?: number,
-): string {
-  if (!title) return "";
-  let coreTitle = title;
-  const separatorMatch = title.match(/^([^:/\-–—]+)/);
-  if (separatorMatch && separatorMatch[1].trim().length >= 3) {
-    coreTitle = separatorMatch[1].trim();
-  }
-  return normalizeTitle(coreTitle, maxLength);
-}
-
-/**
- * Formats an academic resource into an APA-style PDF filename.
- *
- * @param authors - Author names.
- * @param publicationYear - Publication year.
- * @param title - Resource title.
- * @returns APA-styled filename string.
- */
-export function formatApaPdfFileName(
-  authors: string[] | null | undefined,
-  publicationYear: number | null | undefined,
-  title: string,
-): string {
-  const year =
-    publicationYear && publicationYear > 1000
-      ? publicationYear
-      : new Date().getFullYear();
-
-  const cleanAuthors = (authors || []).map((a) => a.trim()).filter(Boolean);
-  let authorPart = "Anonim";
-
-  if (cleanAuthors.length === 1) {
-    authorPart = extractSurname(cleanAuthors[0]);
-  } else if (cleanAuthors.length === 2) {
-    authorPart = `${extractSurname(cleanAuthors[0])}_and_${extractSurname(cleanAuthors[1])}`;
-  } else if (cleanAuthors.length >= 3) {
-    authorPart = `${extractSurname(cleanAuthors[0])}_et_al`;
-  }
-
-  const cleanTitle = stripAltTitle(title);
-  const words = cleanTitle
-    .replace(/[^\p{L}\p{N}\s]/gu, "")
-    .split(/\s+/)
-    .filter((w) => w.length > 0)
-    .slice(0, 5)
-    .map(toAsciiWord)
-    .filter(Boolean);
-
-  const titlePart = words.length > 0 ? words.join("_") : "Eser";
-
-  return `${authorPart}_${year}_${titlePart}.pdf`;
-}
-
-/**
- * Normalizes page number display with canonical academic prefixes ("s. X" for single page, "ss. X-Y" for ranges).
- *
- * @param raw - Raw page number string or user input.
- * @returns Canonical Turkish page number display string.
- */
-export function formatPageNumber(raw: string | null | undefined): string {
-  if (!raw) return "s. 1";
-  const trimmed = raw.trim();
-  if (!trimmed) return "s. 1";
-
-  // Extract digits or digit groups
-  const digits = trimmed.match(/\d+/g);
-  if (!digits || digits.length === 0) {
-    return trimmed; // fallback if non-numeric text like "Madde 4/b"
-  }
-
-  if (digits.length === 1) {
-    return `s. ${digits[0]}`;
-  }
-
-  return `ss. ${digits[0]}-${digits[1]}`;
-}
-
-/**
- * Extracts raw page digits or range string (e.g., "15" or "15-17") from a formatted page string for editing.
- *
- * @param raw - Formatted or raw page number string.
- * @returns Clean numeric page input string.
- */
-export function cleanPageNumberInput(raw: string | null | undefined): string {
-  if (!raw) return "";
-  const trimmed = raw.trim();
-  const digits = trimmed.match(/\d+/g);
-  if (!digits || digits.length === 0) return trimmed;
-  if (digits.length === 1) return digits[0];
-  return `${digits[0]}-${digits[1]}`;
-}
-
-/**
- * Extracts the surname from a full name.
- *
- * @param fullName - Full name string.
- * @returns Surname, or "Anonim" when none can be derived.
- */
-function extractSurname(fullName: string): string {
-  const parts = fullName.split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "Anonim";
-  const rawSurname = parts[parts.length - 1];
-  return toAsciiWord(rawSurname) || "Anonim";
-}
-
-/**
- * Converts a word into an ASCII-safe, Turkish-normalized alphanumeric form.
- *
- * @param str - Input word.
- * @returns ASCII-converted alphanumeric string.
- */
-function toAsciiWord(str: string): string {
-  const turkishMap: Record<string, string> = {
-    ç: "c",
-    Ç: "C",
-    ğ: "g",
-    Ğ: "G",
-    ı: "i",
-    I: "I",
-    İ: "I",
-    ö: "o",
-    Ö: "O",
-    ş: "s",
-    Ş: "S",
-    ü: "u",
-    Ü: "U",
-  };
-  const converted = str
-    .split("")
-    .map((c) => turkishMap[c] || c)
-    .join("");
-
-  return converted
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9]/g, "");
-}
-</file>
-
 <file path="src/lib/api-utils.ts">
 export const CONTACT_EMAIL =
   process.env.CROSSREF_CONTACT_EMAIL || "iletisim@fabricca.com";
@@ -35907,161 +36061,6 @@ export function CitationSidebar(props: CitationSidebarProps) {
           </div>
         </div>
       </ScrollArea>
-    </Card>
-  );
-}
-</file>
-
-<file path="src/app/(app)/library/_components/pdf-upload-dropzone.tsx">
-"use client";
-
-import React, { useState, useRef } from "react";
-import { UploadCloud, FileText, AlertCircle } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { LoadingSpinner } from "@/components/shared/loading-spinner";
-import { toast } from "sonner";
-
-interface PdfUploadDropzoneProps {
-  /** Resource title. */
-  resourceTitle: string;
-  /** Current PDF status. */
-  pdfStatus?: "NOT_UPLOADED" | "PROCESSING" | "READY" | "FAILED";
-  /** Callback fired when user selects and submits a PDF file. */
-  onUploadPdf: (file: File) => Promise<boolean>;
-}
-
-/**
- * Dropzone component for uploading PDF documents and triggering RAG vectorization.
- *
- * @param root0 - Component props.
- * @param root0.resourceTitle - Title of the resource the PDF belongs to.
- * @param root0.pdfStatus - Current PDF upload status.
- * @param root0.onUploadPdf - Callback invoked with the selected file for upload.
- * @returns The PDF upload dropzone markup.
- */
-export function PdfUploadDropzone({
-  resourceTitle,
-  pdfStatus = "NOT_UPLOADED",
-  onUploadPdf,
-}: PdfUploadDropzoneProps) {
-  const [isDragOver, setIsDragOver] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleFileSelect = async (file: File) => {
-    if (!file.name.toLowerCase().endsWith(".pdf")) {
-      toast.error("Lütfen geçerli bir PDF dosyası yükleyiniz.");
-      return;
-    }
-
-    if (file.size > 25 * 1024 * 1024) {
-      toast.error("PDF dosya boyutu maksimum 25MB olabilir.");
-      return;
-    }
-
-    try {
-      setIsUploading(true);
-      const isSuccess = await onUploadPdf(file);
-      if (!isSuccess) {
-        return;
-      }
-      toast.success(
-        "PDF başarıyla yüklendi, metin ayrıştırıldı ve RAG için vektörleştirildi.",
-      );
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFileSelect(e.dataTransfer.files[0]);
-    }
-  };
-
-  return (
-    <Card className="border border-dashed border-border bg-muted/20 my-4">
-      <CardContent
-        onDragOver={(e) => {
-          e.preventDefault();
-          setIsDragOver(true);
-        }}
-        onDragLeave={() => setIsDragOver(false)}
-        onDrop={handleDrop}
-        className={`flex flex-col items-center justify-center p-8 text-center transition-all ${
-          isDragOver ? "bg-accent/20 border-primary/20" : ""
-        }`}
-      >
-        <input
-          type="file"
-          ref={fileInputRef}
-          accept="application/pdf"
-          className="hidden"
-          aria-label="PDF dosyası seçin"
-          onChange={(e) => {
-            if (e.target.files && e.target.files.length > 0) {
-              handleFileSelect(e.target.files[0]);
-            }
-          }}
-        />
-
-        {isUploading || pdfStatus === "PROCESSING" ? (
-          <div className="flex w-full flex-col items-center">
-            <LoadingSpinner size="sm" className="min-h-0 py-4" />
-            <div className="space-y-1">
-              <p className="font-sans text-sm font-semibold text-foreground">
-                PDF Dokümanı İşleniyor ve Yükleniyor...
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Doküman ayrıştırılıyor, Cloudflare R2 bulut depolamaya
-                aktarılıyor ve AI vektörleştirme yapılıyor.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center space-y-3">
-            <div className="p-3 rounded-full bg-primary/10 border border-primary/20 text-primary">
-              <UploadCloud className="h-8 w-8" />
-            </div>
-
-            <div className="space-y-1 max-w-md">
-              <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
-                PDF Dokümanı Yükle
-              </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                <span className="font-medium text-foreground">
-                  &quot;{resourceTitle}&quot;
-                </span>{" "}
-                eserine ait PDF dosyasını buraya sürükleyip bırakın veya
-                cihazınızdan seçin.
-              </p>
-            </div>
-
-            {pdfStatus === "FAILED" && (
-              <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 p-2 rounded-md border border-destructive/20">
-                <AlertCircle className="h-4 w-4" />
-                <span>
-                  Son yükleme denemesi başarısız oldu. Lütfen tekrar deneyiniz.
-                </span>
-              </div>
-            )}
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              className="gap-2 text-xs font-medium mt-2"
-            >
-              <FileText className="h-4 w-4 text-primary" />
-              Cihazdan PDF Seç
-            </Button>
-          </div>
-        )}
-      </CardContent>
     </Card>
   );
 }
@@ -38261,6 +38260,68 @@ export async function refreshDashboardDataAction(): Promise<
 }
 </file>
 
+<file path="src/app/(app)/dashboard/page.tsx">
+export const instant = false;
+
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/session";
+import { getUsersMatrixAndBoxesWithResources } from "./_services/box-service";
+import { getTasksAction } from "./actions";
+import { DashboardContent } from "./_components/dashboard-content";
+import { Card } from "@/components/ui/card";
+
+/**
+ * Renders the dashboard overview page with topic boxes, reading lists, and the Kanban board.
+ *
+ * @returns The rendered dashboard page.
+ */
+export default async function DashboardPage() {
+  const session = await getSession();
+  if (!session) {
+    redirect("/login");
+  }
+
+  const [boxResult, tasksResult] = await Promise.all([
+    getUsersMatrixAndBoxesWithResources(session.userId),
+    getTasksAction(),
+  ]);
+
+  if ("error" in boxResult) {
+    return (
+      <Card className="flex flex-col items-center justify-center rounded-md border border-dashed border-border/40 p-8 text-center">
+        <p className="font-sans text-lg font-medium tracking-tight text-foreground">
+          Tez matrisi henüz oluşturulmadı
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Henüz bir tez matrisi oluşturulmamış. Lütfen onboarding adımlarını
+          tamamlayın.
+        </p>
+      </Card>
+    );
+  }
+
+  const {
+    parentBoxes: dbBoxes,
+    resources: dbResources,
+    childIdToParentId,
+    allBoxRows,
+  } = boxResult.data;
+  const dbTasks = tasksResult.success ? (tasksResult.data ?? []) : [];
+
+  return (
+    <div className="w-full space-y-6">
+      <DashboardContent
+        initialBoxes={dbBoxes}
+        initialResources={dbResources}
+        initialTasks={dbTasks}
+        childIdToParentId={childIdToParentId}
+        allBoxRows={allBoxRows}
+      />
+    </div>
+  );
+}
+</file>
+
 <file path="src/app/(app)/library/pdf-actions.ts">
 "use server";
 
@@ -39595,257 +39656,6 @@ export function ToolConfirmationCard({
 }
 </file>
 
-<file path="src/app/(app)/dashboard/page.tsx">
-export const instant = false;
-
-import { redirect } from "next/navigation";
-import { getSession } from "@/lib/session";
-import { getUsersMatrixAndBoxesWithResources } from "./_services/box-service";
-import { getTasksAction } from "./actions";
-import { DashboardContent } from "./_components/dashboard-content";
-import { Card } from "@/components/ui/card";
-
-/**
- * Renders the dashboard overview page with topic boxes, reading lists, and the Kanban board.
- *
- * @returns The rendered dashboard page.
- */
-export default async function DashboardPage() {
-  const session = await getSession();
-  if (!session) {
-    redirect("/login");
-  }
-
-  const [boxResult, tasksResult] = await Promise.all([
-    getUsersMatrixAndBoxesWithResources(session.userId),
-    getTasksAction(),
-  ]);
-
-  if ("error" in boxResult) {
-    return (
-      <Card className="flex flex-col items-center justify-center rounded-md border border-dashed border-border/40 p-8 text-center">
-        <p className="font-sans text-lg font-medium tracking-tight text-foreground">
-          Tez matrisi henüz oluşturulmadı
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Henüz bir tez matrisi oluşturulmamış. Lütfen onboarding adımlarını
-          tamamlayın.
-        </p>
-      </Card>
-    );
-  }
-
-  const {
-    parentBoxes: dbBoxes,
-    resources: dbResources,
-    childIdToParentId,
-    allBoxRows,
-  } = boxResult.data;
-  const dbTasks = tasksResult.success ? (tasksResult.data ?? []) : [];
-
-  return (
-    <div className="w-full space-y-6">
-      <DashboardContent
-        initialBoxes={dbBoxes}
-        initialResources={dbResources}
-        initialTasks={dbTasks}
-        childIdToParentId={childIdToParentId}
-        allBoxRows={allBoxRows}
-      />
-    </div>
-  );
-}
-</file>
-
-<file path="src/features/positioning/sifting.ts">
-import { searchTezara } from "@/features/tezara";
-import type { TezaraThesisDetails } from "@/lib/types";
-import { rerankWithCohere, COHERE_RERANK_MODEL } from "@/services/ai/cohere";
-import type { Logger } from "@/lib/logger";
-import type { PositioningMatrixInput } from "./validation";
-
-/** Candidate thesis extended with Cohere semantic relevance score. */
-export interface SiftedThesis extends TezaraThesisDetails {
-  relevanceScore?: number;
-}
-
-const ALLOWED_LANGUAGES = new Set([
-  "tr",
-  "tur",
-  "turkish",
-  "türkçe",
-  "en",
-  "eng",
-  "english",
-  "ingilizce",
-]);
-
-/**
- * Whether a thesis language tag matches Turkish or English; missing tags are kept.
- *
- * @param lang - The thesis language tag to check.
- * @returns True when the language is allowed or the tag is missing.
- */
-function isAllowedLanguage(lang?: string): boolean {
-  if (!lang || !lang.trim()) {
-    return true;
-  }
-  const normalized = lang
-    .replace(/İ/g, "i")
-    .replace(/I/g, "ı")
-    .toLowerCase()
-    .trim();
-  return ALLOWED_LANGUAGES.has(normalized);
-}
-
-/**
- * Sanitizes query text for vector search.
- *
- * @param rawQuery - The raw query string to sanitize.
- * @returns The cleaned query string.
- */
-export function sanitizeSearchQuery(rawQuery: string): string {
-  if (!rawQuery) return "";
-  return rawQuery
-    .replace(/\b(OR|AND|NOT)\b/gi, " ")
-    .replace(/[+*?:^~={}[\]()"\\]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/**
- * Formats a thesis's title and abstract into a YAML document for reranking.
- *
- * @param thesis - The thesis to format.
- * @returns The formatted YAML string.
- */
-function formatThesisToYaml(thesis: TezaraThesisDetails): string {
-  return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
-}
-
-/**
- * Formats the positioning matrix input into a YAML query for reranking.
- *
- * @param input - The validated positioning matrix input.
- * @returns The formatted YAML query string.
- */
-function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
-  return `SubjectProblem: ${input.subjectProblem}`;
-}
-
-/** Difference threshold under which two relevance scores are treated as a tie. */
-const SCORE_EPSILON = 1e-4;
-
-/**
- * Ultra-fast direct semantic thesis sifting engine:
- * Directly vectorizes the thesis research problem, fetches top candidates from Qdrant Cloud
- * in a single high-speed vector query, filters abstracts, and uses Cohere Rerank v4.0 Pro
- * (cross-encoder) to select and rank the most relevant top-N theses.
- *
- * @param matrixInput - The validated positioning matrix input.
- * @param logger - Optional structured logger for pipeline events.
- * @param options - Optional settings for topN and candidateLimit.
- * @returns The selected top theses sorted deterministically.
- */
-export async function searchAndSiftTheses(
-  matrixInput: PositioningMatrixInput,
-  logger?: Logger,
-  options?: { topN?: number; candidateLimit?: number },
-): Promise<SiftedThesis[]> {
-  const topN = options?.topN ?? 45;
-  const candidateLimit = options?.candidateLimit ?? 150;
-
-  const searchQuery = sanitizeSearchQuery(matrixInput.subjectProblem);
-
-  const searchStart = performance.now();
-
-  logger?.info("sifting_direct_search_start", {
-    service: "tezara",
-    filePath: "src/features/positioning/sifting.ts",
-    data: { query: searchQuery, candidateLimit },
-  });
-
-  // 1. Single Ultra-Fast Qdrant Query with candidateLimit (default 150)
-  const rawTheses = await searchTezara(searchQuery, logger, {
-    limit: candidateLimit,
-  });
-
-  // 2. Filter valid candidates
-  const filteredCandidates = rawTheses.filter((thesis) => {
-    const hasSufficientAbstract =
-      thesis.abstract && thesis.abstract.trim().length >= 100;
-    if (!hasSufficientAbstract) return false;
-
-    const isValidLang = isAllowedLanguage(thesis.language);
-    if (!isValidLang) return false;
-
-    return true;
-  });
-
-  if (filteredCandidates.length === 0) {
-    logger?.info("sifting_no_candidates_remaining", {
-      service: "tezara",
-      filePath: "src/features/positioning/sifting.ts",
-      data: { query: searchQuery },
-    });
-    return [];
-  }
-
-  logger?.info("sifting_direct_search_success", {
-    service: "tezara",
-    filePath: "src/features/positioning/sifting.ts",
-    durationMs: performance.now() - searchStart,
-    data: { candidateCount: filteredCandidates.length },
-  });
-
-  // 3. Cohere Rerank v4.0 Pro
-  const targetYamlQuery = formatMatrixToYamlQuery(matrixInput);
-  const candidateYamlDocs = filteredCandidates.map(formatThesisToYaml);
-
-  const rerankStart = performance.now();
-
-  logger?.info("cohere_rerank_start", {
-    service: "cohere",
-    filePath: "src/features/positioning/sifting.ts",
-    data: {
-      model: COHERE_RERANK_MODEL,
-      candidateCount: filteredCandidates.length,
-    },
-  });
-
-  const rerankResults = await rerankWithCohere({
-    query: targetYamlQuery,
-    documents: candidateYamlDocs,
-    logger,
-  });
-
-  const scoredTheses: SiftedThesis[] = rerankResults.map((res) => {
-    const candidate = filteredCandidates[res.index];
-    return {
-      ...candidate,
-      relevanceScore: res.relevanceScore,
-    };
-  });
-
-  scoredTheses.sort((a, b) => {
-    const delta = (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
-    if (Math.abs(delta) > SCORE_EPSILON) return delta;
-    return a.id - b.id;
-  });
-
-  const selected = scoredTheses.slice(0, topN);
-
-  logger?.info("cohere_rerank_success", {
-    service: "cohere",
-    filePath: "src/features/positioning/sifting.ts",
-    durationMs: performance.now() - rerankStart,
-    data: { topCount: selected.length },
-  });
-
-  return selected;
-}
-</file>
-
 <file path="src/app/(app)/library/_components/edit-resource-modal.tsx">
 "use client";
 
@@ -40692,479 +40502,193 @@ function RecommendedThesisCard({ thesis, index }: RecommendedThesisCardProps) {
 }
 </file>
 
-<file path="src/app/(app)/citation-cards/page.tsx">
-"use client";
+<file path="src/features/positioning/sifting.ts">
+import { searchTezara } from "@/features/tezara";
+import type { TezaraThesisDetails } from "@/lib/types";
+import { rerankWithCohere, COHERE_RERANK_MODEL } from "@/services/ai/cohere";
+import type { Logger } from "@/lib/logger";
+import type { PositioningMatrixInput } from "./validation";
 
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
-import { CitationCardsSkeleton } from "./_components/citation-cards-skeleton";
-import { useCitationCardsFilter } from "./_hooks/use-citation-cards-filter";
-import { CitationCard } from "./_components/citation-card";
-import { CitationCardDialog } from "./_components/citation-card-dialog";
-import { CitationSidebar } from "./_components/citation-sidebar";
-import { CitationMetricsOverview } from "./_components/citation-metrics-overview";
-import { CitationCardsToolbar } from "./_components/citation-cards-toolbar";
-import { CitationCardsEmptyState } from "./_components/citation-cards-empty-state";
-import {
-  getCitationCardsDataAction,
-  createCitationCardAction,
-  updateCitationCardAction,
-  deleteCitationCardAction,
-  moveCitationCardBoxAction,
-} from "./actions";
-import type { BoxItem, CitationCardItem, SourceItem } from "./_lib/types";
-
-/**
- * Citation Cards (Alıntı Fişleri) main page component.
- *
- * @returns The complete citation cards interactive page markup.
- */
-export default function CitationCardsPage() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [data, setData] = useState<{
-    cards: CitationCardItem[];
-    boxes: BoxItem[];
-    sources: SourceItem[];
-  }>({ cards: [], boxes: [], sources: [] });
-
-  const { filters, setFilter, clearFilters, filteredCards, counts } =
-    useCitationCardsFilter(data.cards);
-
-  // Modal State
-  const [dialog, setDialog] = useState<{
-    open: boolean;
-    mode: "view" | "edit";
-    cardToEdit: CitationCardItem | null;
-  }>({ open: false, mode: "view", cardToEdit: null });
-
-  /**
-   * Refreshes citation cards data from database.
-   */
-  const refreshData = useCallback(async () => {
-    const res = await getCitationCardsDataAction();
-    if (res.success) {
-      setData({
-        cards: res.data.cards,
-        boxes: res.data.boxes,
-        sources: res.data.sources,
-      });
-    } else {
-      toast.error(res.error);
-    }
-  }, []);
-
-  useEffect(() => {
-    let isMounted = true;
-    getCitationCardsDataAction().then((res) => {
-      if (!isMounted) return;
-      if (res.success) {
-        setData({
-          cards: res.data.cards,
-          boxes: res.data.boxes,
-          sources: res.data.sources,
-        });
-      } else {
-        toast.error(res.error);
-      }
-      setIsLoading(false);
-    });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  /**
-   * Handlers for card CRUD operations via Server Actions.
-   */
-  const handleOpenAddDialog = () => {
-    setDialog({ open: true, mode: "edit", cardToEdit: null });
-  };
-
-  const handleOpenViewDialog = (card: CitationCardItem) => {
-    setDialog({ open: true, mode: "view", cardToEdit: card });
-  };
-
-  const handleOpenEditDialog = (card: CitationCardItem) => {
-    setDialog({ open: true, mode: "edit", cardToEdit: card });
-  };
-
-  const handleSaveCard = async (
-    cardData: Omit<CitationCardItem, "id" | "createdAt" | "updatedAt"> & {
-      id?: number;
-    },
-  ) => {
-    if (cardData.id) {
-      // Update existing card
-      const res = await updateCitationCardAction({
-        id: cardData.id,
-        sourceId: cardData.sourceId,
-        boxId: cardData.boxId,
-        noteType: cardData.noteType,
-        pageNumber: cardData.pageNumber,
-        content: cardData.content,
-        comment: cardData.comment,
-      });
-
-      if (res.success) {
-        toast.success("Alıntı fişi başarıyla güncellendi.");
-        await refreshData();
-      } else {
-        toast.error(res.error);
-      }
-    } else {
-      // Add new card
-      const res = await createCitationCardAction({
-        sourceId: cardData.sourceId,
-        boxId: cardData.boxId,
-        noteType: cardData.noteType,
-        pageNumber: cardData.pageNumber,
-        content: cardData.content,
-        comment: cardData.comment,
-      });
-
-      if (res.success) {
-        toast.success("Yeni alıntı fişi başarıyla eklendi.");
-        await refreshData();
-      } else {
-        toast.error(res.error);
-      }
-    }
-  };
-
-  const handleDeleteCard = async (id: number) => {
-    const res = await deleteCitationCardAction(id);
-    if (res.success) {
-      setData((prev) => ({
-        ...prev,
-        cards: prev.cards.filter((c) => c.id !== id),
-      }));
-      toast.success("Alıntı fişi silindi.");
-    } else {
-      toast.error(res.error);
-    }
-  };
-
-  const handleMoveBox = async (cardId: number, targetBoxId: number) => {
-    const res = await moveCitationCardBoxAction({ cardId, targetBoxId });
-    if (res.success) {
-      toast.success("Fiş yeni konu kutusuna taşındı.");
-      await refreshData();
-    } else {
-      toast.error(res.error);
-    }
-  };
-
-  if (isLoading) {
-    return <CitationCardsSkeleton />;
-  }
-
-  return (
-    <div className="w-full space-y-6">
-      {/* Overview Metric Cards */}
-      <CitationMetricsOverview counts={counts} />
-
-      {/* Main Layout: Left Sidebar + Right Card List */}
-      <div className="flex flex-col lg:flex-row gap-6 items-start">
-        {/* Left Sidebar */}
-        <CitationSidebar
-          boxes={data.boxes}
-          sources={data.sources}
-          cards={data.cards}
-          selectedBoxId={filters.selectedBoxId}
-          selectedSourceId={filters.selectedSourceId}
-          onSelectBox={(id) => setFilter("selectedBoxId", id)}
-          onSelectSource={(id) => setFilter("selectedSourceId", id)}
-        />
-
-        {/* Right Main Area */}
-        <div className="flex-1 flex flex-col gap-4 w-full min-w-0">
-          {/* Main Controls: Search, Tabs, Sort & View Mode */}
-          <CitationCardsToolbar
-            filters={filters}
-            onFilterChange={setFilter}
-            resultCount={filteredCards.length}
-            onAddNew={handleOpenAddDialog}
-          />
-
-          {/* Cards Display Grid */}
-          {filteredCards.length === 0 ? (
-            <CitationCardsEmptyState
-              onClearFilters={clearFilters}
-              onAddNew={handleOpenAddDialog}
-            />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredCards.map((card) => (
-                <CitationCard
-                  key={card.id}
-                  card={card}
-                  availableBoxes={data.boxes}
-                  onView={handleOpenViewDialog}
-                  onEdit={handleOpenEditDialog}
-                  onDelete={handleDeleteCard}
-                  onMoveBox={handleMoveBox}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Add / Edit Dialog Modal */}
-      <CitationCardDialog
-        open={dialog.open}
-        onOpenChange={(open) => setDialog((prev) => ({ ...prev, open }))}
-        cardToEdit={dialog.cardToEdit}
-        mode={dialog.mode}
-        sources={data.sources}
-        boxes={data.boxes}
-        onSave={handleSaveCard}
-      />
-    </div>
-  );
+/** Candidate thesis extended with Cohere semantic relevance score. */
+export interface SiftedThesis extends TezaraThesisDetails {
+  relevanceScore?: number;
 }
-</file>
 
-<file path="src/app/(onboarding)/onboarding/boxes/_components/boxes-container.tsx">
-"use client";
-
-import { useCallback, useMemo, memo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import {
-  CheckCircle2,
-  ArrowRight,
-  Library,
-  PlusCircle,
-  WholeWord,
-  Archive,
-  Loader2,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardTitle } from "@/components/ui/card";
-import { AIBanner } from "@/components/shared/ai-banner";
-import { BoxesSkeleton } from "./boxes-skeleton";
-import { useBoxesContinue } from "../../_hooks/use-boxes-continue";
-import { fetchBoxesWithFullShape } from "@/features/onboarding/services/fetch-actions";
-import { BOX_ORDER_WEIGHT, BOX_TYPE_LABELS } from "@/lib/box-constants";
-import type { GeminiThesisBox } from "@/lib/types";
+const ALLOWED_LANGUAGES = new Set([
+  "tr",
+  "tur",
+  "turkish",
+  "türkçe",
+  "en",
+  "eng",
+  "english",
+  "ingilizce",
+]);
 
 /**
- * Renders the subject boxes overview with a proceed-to-literature action.
+ * Whether a thesis language tag matches Turkish or English; missing tags are kept.
  *
- * @returns The boxes container markup.
+ * @param lang - The thesis language tag to check.
+ * @returns True when the language is allowed or the tag is missing.
  */
-export function BoxesContainer() {
-  const { proceedFromBoxes } = useBoxesContinue();
+function isAllowedLanguage(lang?: string): boolean {
+  if (!lang || !lang.trim()) {
+    return true;
+  }
+  const normalized = lang
+    .replace(/İ/g, "i")
+    .replace(/I/g, "ı")
+    .toLowerCase()
+    .trim();
+  return ALLOWED_LANGUAGES.has(normalized);
+}
 
-  const { data: boxes, isLoading: loading } = useQuery({
-    queryKey: ["boxes"],
-    queryFn: fetchBoxesWithFullShape,
-    staleTime: 0,
+/**
+ * Sanitizes query text for vector search.
+ *
+ * @param rawQuery - The raw query string to sanitize.
+ * @returns The cleaned query string.
+ */
+export function sanitizeSearchQuery(rawQuery: string): string {
+  if (!rawQuery) return "";
+  return rawQuery
+    .replace(/\b(OR|AND|NOT)\b/gi, " ")
+    .replace(/[+*?:^~={}[\]()"\\]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Formats a thesis's title and abstract into a YAML document for reranking.
+ *
+ * @param thesis - The thesis to format.
+ * @returns The formatted YAML string.
+ */
+function formatThesisToYaml(thesis: TezaraThesisDetails): string {
+  return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
+}
+
+/**
+ * Formats the positioning matrix input into a YAML query for reranking.
+ *
+ * @param input - The validated positioning matrix input.
+ * @returns The formatted YAML query string.
+ */
+function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
+  return `SubjectProblem: ${input.subjectProblem}`;
+}
+
+/** Difference threshold under which two relevance scores are treated as a tie. */
+const SCORE_EPSILON = 1e-4;
+
+/**
+ * Ultra-fast direct semantic thesis sifting engine:
+ * Directly vectorizes the thesis research problem, fetches top candidates from Qdrant Cloud
+ * in a single high-speed vector query, filters abstracts, and uses Cohere Rerank v4.0 Pro
+ * (cross-encoder) to select and rank the most relevant top-N theses.
+ *
+ * @param matrixInput - The validated positioning matrix input.
+ * @param logger - Optional structured logger for pipeline events.
+ * @param options - Optional settings for topN and candidateLimit.
+ * @returns The selected top theses sorted deterministically.
+ */
+export async function searchAndSiftTheses(
+  matrixInput: PositioningMatrixInput,
+  logger?: Logger,
+  options?: { topN?: number; candidateLimit?: number },
+): Promise<SiftedThesis[]> {
+  const topN = options?.topN ?? 45;
+  const candidateLimit = options?.candidateLimit ?? 150;
+
+  const searchQuery = sanitizeSearchQuery(matrixInput.subjectProblem);
+
+  const searchStart = performance.now();
+
+  logger?.info("sifting_direct_search_start", {
+    service: "tezara",
+    filePath: "src/features/positioning/sifting.ts",
+    data: { query: searchQuery, candidateLimit },
   });
 
-  const [proceeding, setProceeding] = useState(false);
+  // 1. Single Ultra-Fast Qdrant Query with candidateLimit (default 150)
+  const rawTheses = await searchTezara(searchQuery, logger, {
+    limit: candidateLimit,
+  });
 
-  const handleProceed = useCallback(async () => {
-    if (proceeding) return;
-    setProceeding(true);
-    try {
-      await proceedFromBoxes();
-    } finally {
-      setProceeding(false);
-    }
-  }, [proceedFromBoxes, proceeding]);
+  // 2. Filter valid candidates
+  const filteredCandidates = rawTheses.filter((thesis) => {
+    const hasSufficientAbstract =
+      thesis.abstract && thesis.abstract.trim().length >= 100;
+    if (!hasSufficientAbstract) return false;
 
-  const sortedBoxes = useMemo(() => {
-    if (!boxes) return [];
-    return [...boxes]
-      .filter((b) => b.parentId === null && b.boxType !== "RELATED_THESES")
-      .sort((a, b) => {
-        return (
-          (BOX_ORDER_WEIGHT[a.boxType] || 99) -
-          (BOX_ORDER_WEIGHT[b.boxType] || 99)
-        );
-      });
-  }, [boxes]);
+    const isValidLang = isAllowedLanguage(thesis.language);
+    if (!isValidLang) return false;
 
-  if (loading) {
-    return <BoxesSkeleton />;
+    return true;
+  });
+
+  if (filteredCandidates.length === 0) {
+    logger?.info("sifting_no_candidates_remaining", {
+      service: "tezara",
+      filePath: "src/features/positioning/sifting.ts",
+      data: { query: searchQuery },
+    });
+    return [];
   }
 
-  return (
-    <div className="w-full space-y-8">
-      <AIBanner
-        icon={CheckCircle2}
-        title="Konu Kutuları Yapılandırıldı"
-        description="Tez matrisinizin çözümlenmesi başarıyla tamamlandı. Aşağıdaki her bir konu kutusu, literatür taraması sürecinde bağımsız olarak taranacaktır."
-      />
+  logger?.info("sifting_direct_search_success", {
+    service: "tezara",
+    filePath: "src/features/positioning/sifting.ts",
+    durationMs: performance.now() - searchStart,
+    data: { candidateCount: filteredCandidates.length },
+  });
 
-      <div className="grid grid-cols-1 gap-4 auto-rows-min">
-        {sortedBoxes.map((box, idx) => (
-          <BoxCard key={box.title} box={box} index={idx} />
-        ))}
-      </div>
+  // 3. Cohere Rerank v4.0 Pro
+  const targetYamlQuery = formatMatrixToYamlQuery(matrixInput);
+  const candidateYamlDocs = filteredCandidates.map(formatThesisToYaml);
 
-      <div className="flex justify-end mt-8 pb-8">
-        <Button onClick={handleProceed} disabled={proceeding} size="lg">
-          {proceeding ? (
-            <span className="flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Kaydediliyor...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              Onayla ve Tez Planı Adımına Geç
-              <ArrowRight className="w-4 h-4" />
-            </span>
-          )}
-        </Button>
-      </div>
-    </div>
-  );
+  const rerankStart = performance.now();
+
+  logger?.info("cohere_rerank_start", {
+    service: "cohere",
+    filePath: "src/features/positioning/sifting.ts",
+    data: {
+      model: COHERE_RERANK_MODEL,
+      candidateCount: filteredCandidates.length,
+    },
+  });
+
+  const rerankResults = await rerankWithCohere({
+    query: targetYamlQuery,
+    documents: candidateYamlDocs,
+    logger,
+  });
+
+  const scoredTheses: SiftedThesis[] = rerankResults.map((res) => {
+    const candidate = filteredCandidates[res.index];
+    return {
+      ...candidate,
+      relevanceScore: res.relevanceScore,
+    };
+  });
+
+  scoredTheses.sort((a, b) => {
+    const delta = (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
+    if (Math.abs(delta) > SCORE_EPSILON) return delta;
+    return a.id - b.id;
+  });
+
+  const selected = scoredTheses.slice(0, topN);
+
+  logger?.info("cohere_rerank_success", {
+    service: "cohere",
+    filePath: "src/features/positioning/sifting.ts",
+    durationMs: performance.now() - rerankStart,
+    data: { topCount: selected.length },
+  });
+
+  return selected;
 }
-
-/**
- * Renders the sub-box nested section (timeline + cards).
- *
- * @param root0 - The section props object.
- * @param root0.subBoxes - The sub-boxes to render.
- * @returns The sub-box section markup.
- */
-const SubBoxSection = memo(function SubBoxSection({
-  subBoxes,
-}: {
-  subBoxes: GeminiThesisBox[];
-}) {
-  return (
-    <div className="pt-4 space-y-4 mt-5">
-      <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-        <Library className="w-3.5 h-3.5 text-primary" />
-        Alt Konu Kutuları
-      </h4>
-      <div className="relative border-l border-primary/20 pl-4 ml-3 space-y-4 mt-2">
-        {subBoxes.map((subBox, sbIdx) => (
-          <div key={`${subBox.title}-${sbIdx}`} className="relative">
-            <span className="absolute -left-[21.5px] top-[21px] h-2.5 w-2.5 rounded-full border-2 border-primary bg-background" />
-            <Card className="p-4 rounded-md border border-border hover:border-primary/20 transition-all duration-200 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <h5 className="font-sans text-sm font-semibold text-foreground leading-snug line-clamp-2 break-words hyphens-auto">
-                  {subBox.title}
-                </h5>
-              </div>
-              {subBox.description && (
-                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
-                  {subBox.description}
-                </p>
-              )}
-              {subBox.concepts && subBox.concepts.length > 0 && (
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {subBox.concepts.map((concept, cIdx) => (
-                    <span
-                      key={`${concept}-${cIdx}`}
-                      className="inline-flex items-center px-2 py-1 rounded bg-primary/10 border border-primary/20 text-[10px] text-primary font-medium"
-                    >
-                      {concept}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </Card>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-});
-
-/**
- * Renders the PRIMARY_MATERIAL box info section.
- *
- * @returns The primary material info section markup.
- */
-const PrimaryMaterialSection = memo(function PrimaryMaterialSection() {
-  return (
-    <div className="pt-4 space-y-2 mt-5">
-      <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-        <Archive className="w-3.5 h-3.5 text-muted-foreground" />
-        Arşiv / Birincil Kaynak Alanı
-      </h4>
-      <p className="text-xs text-muted-foreground leading-relaxed">
-        Bu kutu, saha çalışması verileri ve birincil kaynaklar için ayrılmıştır.
-        Kurucu literatür taraması yapılmamıştır; arşiv belgeleri bir sonraki
-        adımda el ile girilecektir.
-      </p>
-    </div>
-  );
-});
-
-/**
- * Renders a single box card with its sub-boxes and metadata.
- *
- * @param root0 - The card props object.
- * @param root0.box - The thesis box to render.
- * @param root0.index - The index of the box within the grid.
- * @returns The box card markup.
- */
-const BoxCard = memo(function BoxCard({
-  box,
-  index,
-}: {
-  box: GeminiThesisBox;
-  index: number;
-}) {
-  const parentConcepts = box.concepts ?? [];
-
-  return (
-    <Card className="group/card flex flex-col h-full p-6 rounded-md transition-all duration-300 hover:-translate-y-1 hover:border-primary/20">
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 text-muted-foreground text-xs">
-          <PlusCircle className="w-3 h-3" />
-          <span>Kutu {index + 1}</span>
-          <span className="ml-auto inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-secondary text-secondary-foreground border border-border/40">
-            {BOX_TYPE_LABELS[box.boxType]}
-          </span>
-        </div>
-        <div className="flex items-start gap-3">
-          <span className="relative mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-primary" />
-          <CardTitle className="text-lg font-semibold text-foreground leading-snug line-clamp-2 break-words hyphens-auto">
-            {box.title}
-          </CardTitle>
-        </div>
-      </div>
-
-      {box.description && (
-        <p className="text-sm text-muted-foreground leading-relaxed mt-4 line-clamp-3">
-          {box.description}
-        </p>
-      )}
-
-      {parentConcepts.length > 0 && (
-        <div className="mt-4">
-          <div className="border-y border-border py-3">
-            <div className="flex flex-wrap gap-2">
-              {parentConcepts.map((concept, i) => (
-                <span
-                  key={`${concept}-${i}`}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 text-xs text-primary font-semibold"
-                >
-                  <WholeWord className="w-3.5 h-3.5 shrink-0" />
-                  {concept}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {box.subBoxes && box.subBoxes.length > 0 ? (
-        <SubBoxSection subBoxes={box.subBoxes} />
-      ) : box.boxType === "PRIMARY_MATERIAL" ? (
-        <PrimaryMaterialSection />
-      ) : null}
-    </Card>
-  );
-});
 </file>
 
 <file path="src/lib/logger.ts">
@@ -41641,6 +41165,481 @@ export function createFlowId(): string {
 }
 </file>
 
+<file path="src/app/(app)/citation-cards/page.tsx">
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { CitationCardsSkeleton } from "./_components/citation-cards-skeleton";
+import { useCitationCardsFilter } from "./_hooks/use-citation-cards-filter";
+import { CitationCard } from "./_components/citation-card";
+import { CitationCardDialog } from "./_components/citation-card-dialog";
+import { CitationSidebar } from "./_components/citation-sidebar";
+import { CitationMetricsOverview } from "./_components/citation-metrics-overview";
+import { CitationCardsToolbar } from "./_components/citation-cards-toolbar";
+import { CitationCardsEmptyState } from "./_components/citation-cards-empty-state";
+import {
+  getCitationCardsDataAction,
+  createCitationCardAction,
+  updateCitationCardAction,
+  deleteCitationCardAction,
+  moveCitationCardBoxAction,
+} from "./actions";
+import type { BoxItem, CitationCardItem, SourceItem } from "./_lib/types";
+
+/**
+ * Citation Cards (Alıntı Fişleri) main page component.
+ *
+ * @returns The complete citation cards interactive page markup.
+ */
+export default function CitationCardsPage() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [data, setData] = useState<{
+    cards: CitationCardItem[];
+    boxes: BoxItem[];
+    sources: SourceItem[];
+  }>({ cards: [], boxes: [], sources: [] });
+
+  const { filters, setFilter, clearFilters, filteredCards, counts } =
+    useCitationCardsFilter(data.cards);
+
+  // Modal State
+  const [dialog, setDialog] = useState<{
+    open: boolean;
+    mode: "view" | "edit";
+    cardToEdit: CitationCardItem | null;
+  }>({ open: false, mode: "view", cardToEdit: null });
+
+  /**
+   * Refreshes citation cards data from database.
+   */
+  const refreshData = useCallback(async () => {
+    const res = await getCitationCardsDataAction();
+    if (res.success) {
+      setData({
+        cards: res.data.cards,
+        boxes: res.data.boxes,
+        sources: res.data.sources,
+      });
+    } else {
+      toast.error(res.error);
+    }
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    getCitationCardsDataAction().then((res) => {
+      if (!isMounted) return;
+      if (res.success) {
+        setData({
+          cards: res.data.cards,
+          boxes: res.data.boxes,
+          sources: res.data.sources,
+        });
+      } else {
+        toast.error(res.error);
+      }
+      setIsLoading(false);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  /**
+   * Handlers for card CRUD operations via Server Actions.
+   */
+  const handleOpenAddDialog = () => {
+    setDialog({ open: true, mode: "edit", cardToEdit: null });
+  };
+
+  const handleOpenViewDialog = (card: CitationCardItem) => {
+    setDialog({ open: true, mode: "view", cardToEdit: card });
+  };
+
+  const handleOpenEditDialog = (card: CitationCardItem) => {
+    setDialog({ open: true, mode: "edit", cardToEdit: card });
+  };
+
+  const handleSaveCard = async (
+    cardData: Omit<CitationCardItem, "id" | "createdAt" | "updatedAt"> & {
+      id?: number;
+    },
+  ) => {
+    if (cardData.id) {
+      // Update existing card
+      const res = await updateCitationCardAction({
+        id: cardData.id,
+        sourceId: cardData.sourceId,
+        boxId: cardData.boxId,
+        noteType: cardData.noteType,
+        pageNumber: cardData.pageNumber,
+        content: cardData.content,
+        comment: cardData.comment,
+      });
+
+      if (res.success) {
+        toast.success("Alıntı fişi başarıyla güncellendi.");
+        await refreshData();
+      } else {
+        toast.error(res.error);
+      }
+    } else {
+      // Add new card
+      const res = await createCitationCardAction({
+        sourceId: cardData.sourceId,
+        boxId: cardData.boxId,
+        noteType: cardData.noteType,
+        pageNumber: cardData.pageNumber,
+        content: cardData.content,
+        comment: cardData.comment,
+      });
+
+      if (res.success) {
+        toast.success("Yeni alıntı fişi başarıyla eklendi.");
+        await refreshData();
+      } else {
+        toast.error(res.error);
+      }
+    }
+  };
+
+  const handleDeleteCard = async (id: number) => {
+    const res = await deleteCitationCardAction(id);
+    if (res.success) {
+      setData((prev) => ({
+        ...prev,
+        cards: prev.cards.filter((c) => c.id !== id),
+      }));
+      toast.success("Alıntı fişi silindi.");
+    } else {
+      toast.error(res.error);
+    }
+  };
+
+  const handleMoveBox = async (cardId: number, targetBoxId: number) => {
+    const res = await moveCitationCardBoxAction({ cardId, targetBoxId });
+    if (res.success) {
+      toast.success("Fiş yeni konu kutusuna taşındı.");
+      await refreshData();
+    } else {
+      toast.error(res.error);
+    }
+  };
+
+  if (isLoading) {
+    return <CitationCardsSkeleton />;
+  }
+
+  return (
+    <div className="w-full space-y-6">
+      {/* Overview Metric Cards */}
+      <CitationMetricsOverview counts={counts} />
+
+      {/* Main Layout: Left Sidebar + Right Card List */}
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+        {/* Left Sidebar */}
+        <CitationSidebar
+          boxes={data.boxes}
+          sources={data.sources}
+          cards={data.cards}
+          selectedBoxId={filters.selectedBoxId}
+          selectedSourceId={filters.selectedSourceId}
+          onSelectBox={(id) => setFilter("selectedBoxId", id)}
+          onSelectSource={(id) => setFilter("selectedSourceId", id)}
+        />
+
+        {/* Right Main Area */}
+        <div className="flex-1 flex flex-col gap-4 w-full min-w-0">
+          {/* Main Controls: Search, Tabs, Sort & View Mode */}
+          <CitationCardsToolbar
+            filters={filters}
+            onFilterChange={setFilter}
+            resultCount={filteredCards.length}
+            onAddNew={handleOpenAddDialog}
+          />
+
+          {/* Cards Display Grid */}
+          {filteredCards.length === 0 ? (
+            <CitationCardsEmptyState
+              onClearFilters={clearFilters}
+              onAddNew={handleOpenAddDialog}
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredCards.map((card) => (
+                <CitationCard
+                  key={card.id}
+                  card={card}
+                  availableBoxes={data.boxes}
+                  onView={handleOpenViewDialog}
+                  onEdit={handleOpenEditDialog}
+                  onDelete={handleDeleteCard}
+                  onMoveBox={handleMoveBox}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Add / Edit Dialog Modal */}
+      <CitationCardDialog
+        open={dialog.open}
+        onOpenChange={(open) => setDialog((prev) => ({ ...prev, open }))}
+        cardToEdit={dialog.cardToEdit}
+        mode={dialog.mode}
+        sources={data.sources}
+        boxes={data.boxes}
+        onSave={handleSaveCard}
+      />
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/boxes/_components/boxes-container.tsx">
+"use client";
+
+import { useCallback, useMemo, memo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  CheckCircle2,
+  ArrowRight,
+  Library,
+  PlusCircle,
+  WholeWord,
+  Archive,
+  Loader2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardTitle } from "@/components/ui/card";
+import { AIBanner } from "@/components/shared/ai-banner";
+import { BoxesSkeleton } from "./boxes-skeleton";
+import { useBoxesContinue } from "../../_hooks/use-boxes-continue";
+import { fetchBoxesWithFullShape } from "@/features/onboarding/services/fetch-actions";
+import { BOX_ORDER_WEIGHT, BOX_TYPE_LABELS } from "@/lib/box-constants";
+import type { GeminiThesisBox } from "@/lib/types";
+
+/**
+ * Renders the subject boxes overview with a proceed-to-literature action.
+ *
+ * @returns The boxes container markup.
+ */
+export function BoxesContainer() {
+  const { proceedFromBoxes } = useBoxesContinue();
+
+  const { data: boxes, isLoading: loading } = useQuery({
+    queryKey: ["boxes"],
+    queryFn: fetchBoxesWithFullShape,
+    staleTime: 0,
+  });
+
+  const [proceeding, setProceeding] = useState(false);
+
+  const handleProceed = useCallback(async () => {
+    if (proceeding) return;
+    setProceeding(true);
+    try {
+      await proceedFromBoxes();
+    } finally {
+      setProceeding(false);
+    }
+  }, [proceedFromBoxes, proceeding]);
+
+  const sortedBoxes = useMemo(() => {
+    if (!boxes) return [];
+    return [...boxes]
+      .filter((b) => b.parentId === null && b.boxType !== "RELATED_THESES")
+      .sort((a, b) => {
+        return (
+          (BOX_ORDER_WEIGHT[a.boxType] || 99) -
+          (BOX_ORDER_WEIGHT[b.boxType] || 99)
+        );
+      });
+  }, [boxes]);
+
+  if (loading) {
+    return <BoxesSkeleton />;
+  }
+
+  return (
+    <div className="w-full space-y-8">
+      <AIBanner
+        icon={CheckCircle2}
+        title="Konu Kutuları Yapılandırıldı"
+        description="Tez matrisinizin çözümlenmesi başarıyla tamamlandı. Aşağıdaki her bir konu kutusu, literatür taraması sürecinde bağımsız olarak taranacaktır."
+      />
+
+      <div className="grid grid-cols-1 gap-4 auto-rows-min">
+        {sortedBoxes.map((box, idx) => (
+          <BoxCard key={box.title} box={box} index={idx} />
+        ))}
+      </div>
+
+      <div className="flex justify-end mt-8 pb-8">
+        <Button onClick={handleProceed} disabled={proceeding} size="lg">
+          {proceeding ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Kaydediliyor...
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              Onayla ve Tez Planı Adımına Geç
+              <ArrowRight className="w-4 h-4" />
+            </span>
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Renders the sub-box nested section (timeline + cards).
+ *
+ * @param root0 - The section props object.
+ * @param root0.subBoxes - The sub-boxes to render.
+ * @returns The sub-box section markup.
+ */
+const SubBoxSection = memo(function SubBoxSection({
+  subBoxes,
+}: {
+  subBoxes: GeminiThesisBox[];
+}) {
+  return (
+    <div className="pt-4 space-y-4 mt-5">
+      <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+        <Library className="w-3.5 h-3.5 text-primary" />
+        Alt Konu Kutuları
+      </h4>
+      <div className="relative border-l border-primary/20 pl-4 ml-3 space-y-4 mt-2">
+        {subBoxes.map((subBox, sbIdx) => (
+          <div key={`${subBox.title}-${sbIdx}`} className="relative">
+            <span className="absolute -left-[21.5px] top-[21px] h-2.5 w-2.5 rounded-full border-2 border-primary bg-background" />
+            <Card className="p-4 rounded-md border border-border hover:border-primary/20 transition-all duration-200 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <h5 className="font-sans text-sm font-semibold text-foreground leading-snug line-clamp-2 break-words hyphens-auto">
+                  {subBox.title}
+                </h5>
+              </div>
+              {subBox.description && (
+                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
+                  {subBox.description}
+                </p>
+              )}
+              {subBox.concepts && subBox.concepts.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {subBox.concepts.map((concept, cIdx) => (
+                    <span
+                      key={`${concept}-${cIdx}`}
+                      className="inline-flex items-center px-2 py-1 rounded bg-primary/10 border border-primary/20 text-[10px] text-primary font-medium"
+                    >
+                      {concept}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+
+/**
+ * Renders the PRIMARY_MATERIAL box info section.
+ *
+ * @returns The primary material info section markup.
+ */
+const PrimaryMaterialSection = memo(function PrimaryMaterialSection() {
+  return (
+    <div className="pt-4 space-y-2 mt-5">
+      <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+        <Archive className="w-3.5 h-3.5 text-muted-foreground" />
+        Arşiv / Birincil Kaynak Alanı
+      </h4>
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        Bu kutu, saha çalışması verileri ve birincil kaynaklar için ayrılmıştır.
+        Kurucu literatür taraması yapılmamıştır; arşiv belgeleri bir sonraki
+        adımda el ile girilecektir.
+      </p>
+    </div>
+  );
+});
+
+/**
+ * Renders a single box card with its sub-boxes and metadata.
+ *
+ * @param root0 - The card props object.
+ * @param root0.box - The thesis box to render.
+ * @param root0.index - The index of the box within the grid.
+ * @returns The box card markup.
+ */
+const BoxCard = memo(function BoxCard({
+  box,
+  index,
+}: {
+  box: GeminiThesisBox;
+  index: number;
+}) {
+  const parentConcepts = box.concepts ?? [];
+
+  return (
+    <Card className="group/card flex flex-col h-full p-6 rounded-md transition-all duration-300 hover:-translate-y-1 hover:border-primary/20">
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 text-muted-foreground text-xs">
+          <PlusCircle className="w-3 h-3" />
+          <span>Kutu {index + 1}</span>
+          <span className="ml-auto inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-secondary text-secondary-foreground border border-border/40">
+            {BOX_TYPE_LABELS[box.boxType]}
+          </span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="relative mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-primary" />
+          <CardTitle className="text-lg font-semibold text-foreground leading-snug line-clamp-2 break-words hyphens-auto">
+            {box.title}
+          </CardTitle>
+        </div>
+      </div>
+
+      {box.description && (
+        <p className="text-sm text-muted-foreground leading-relaxed mt-4 line-clamp-3">
+          {box.description}
+        </p>
+      )}
+
+      {parentConcepts.length > 0 && (
+        <div className="mt-4">
+          <div className="border-y border-border py-3">
+            <div className="flex flex-wrap gap-2">
+              {parentConcepts.map((concept, i) => (
+                <span
+                  key={`${concept}-${i}`}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 text-xs text-primary font-semibold"
+                >
+                  <WholeWord className="w-3.5 h-3.5 shrink-0" />
+                  {concept}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {box.subBoxes && box.subBoxes.length > 0 ? (
+        <SubBoxSection subBoxes={box.subBoxes} />
+      ) : box.boxType === "PRIMARY_MATERIAL" ? (
+        <PrimaryMaterialSection />
+      ) : null}
+    </Card>
+  );
+});
+</file>
+
 <file path="src/app/(app)/advisor/_components/use-advisor-chat.ts">
 "use client";
 
@@ -42074,6 +42073,234 @@ export function useAdvisorChat(initialSessionId?: number) {
     handleSend,
     handleCitationPosition,
   };
+}
+</file>
+
+<file path="src/app/(app)/library/_components/add-resource-modal.tsx">
+"use client";
+
+import React, { useState } from "react";
+import { UploadCloud, X, Loader2, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { useBoxHierarchySelection } from "../_hooks/use-box-hierarchy-selection";
+import { AddResourceBoxSelector } from "./add-resource-box-selector";
+import { PdfDropzone } from "./pdf-dropzone";
+
+interface AddResourceModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmitPdf: (file: File, boxId: number) => Promise<boolean>;
+}
+
+/**
+ * Modal for adding a new academic literature resource by uploading a PDF, where the
+ * user selects a parent thesis box (and a sub-box when present) and metadata is
+ * extracted and content is vectorized through the RAG pipeline.
+ *
+ * @param root0 - Component props.
+ * @param root0.isOpen - Whether the modal is visible.
+ * @param root0.onClose - Callback invoked when the modal is closed.
+ * @param root0.onSubmitPdf - Callback that uploads the selected PDF into the target box.
+ * @returns The add resource modal markup, or null when closed.
+ */
+export function AddResourceModal({
+  isOpen,
+  onClose,
+  onSubmitPdf,
+}: AddResourceModalProps) {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
+
+  const {
+    hierarchy,
+    hierarchyError,
+    selectedParentId,
+    selectedSubBoxId,
+    setParentId,
+    setSubBoxId,
+    isLoading: isLoadingBoxes,
+  } = useBoxHierarchySelection();
+
+  if (!isOpen) return null;
+
+  const parentBoxes = hierarchy ?? [];
+  const selectedParent =
+    parentBoxes.find((b) => b.id === selectedParentId) ?? null;
+  const hasSubBoxes = !!selectedParent && selectedParent.children.length > 0;
+
+  const handleFileChange = (file: File) => {
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      toast.error("Lütfen yalnızca geçerli bir PDF dosyası seçiniz.");
+      return;
+    }
+
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error("PDF dosya boyutu maksimum 25MB olabilir.");
+      return;
+    }
+
+    setSelectedFile(file);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!selectedFile) {
+      toast.error("Lütfen eklenecek akademik PDF dosyasını seçiniz.");
+      return;
+    }
+
+    if (!selectedParentId) {
+      toast.error("Lütfen bir konu kutusu seçiniz.");
+      return;
+    }
+
+    if (hasSubBoxes && selectedSubBoxId === null) {
+      toast.error("Lütfen kaynağın ait olduğu alt kutuyu (sub-box) seçiniz.");
+      return;
+    }
+
+    const targetBoxId = hasSubBoxes
+      ? (selectedSubBoxId as number)
+      : selectedParentId;
+
+    try {
+      setIsSubmitting(true);
+      setStatusMessage("PDF künye bilgileri çıkarılıyor...");
+
+      const isSuccess = await onSubmitPdf(selectedFile, targetBoxId);
+      if (!isSuccess) {
+        return;
+      }
+
+      toast.success("Akademik eser başarıyla eklendi ve vektörleştirildi.");
+      setSelectedFile(null);
+      setStatusMessage("");
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+      setStatusMessage("");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 animate-in fade-in-0 duration-200">
+      <div className="relative w-full max-w-2xl rounded-lg border border-border bg-background p-6 space-y-4">
+        <div className="flex items-center justify-between border-b border-border pb-4">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-md bg-primary/10 border border-primary/20 text-primary">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
+                Yeni Akademik PDF Yükle
+              </h2>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            aria-label="Modalı kapat"
+            className="rounded-sm opacity-70 hover:opacity-100 p-1 text-muted-foreground hover:bg-muted"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <AddResourceBoxSelector
+            parentBoxes={parentBoxes}
+            isLoading={isLoadingBoxes}
+            hierarchyError={hierarchyError}
+            selectedParentId={selectedParentId}
+            selectedSubBoxId={selectedSubBoxId}
+            onParentSelect={setParentId}
+            onSubBoxSelect={setSubBoxId}
+            disabled={isSubmitting}
+          />
+
+          {hasSubBoxes && selectedParent && (
+            <div className="space-y-1">
+              <Label className="text-xs text-foreground font-medium">
+                Alt Kutu
+              </Label>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                {selectedParent.children.map((child) => (
+                  <button
+                    type="button"
+                    key={child.id}
+                    disabled={isSubmitting}
+                    onClick={() => setSubBoxId(child.id)}
+                    className={
+                      selectedSubBoxId === child.id
+                        ? "px-3 py-2 text-xs font-semibold rounded-md border border-primary/20 bg-accent/20 text-foreground text-left"
+                        : "px-3 py-2 text-xs font-medium rounded-md border border-border bg-background text-muted-foreground hover:bg-muted text-left"
+                    }
+                  >
+                    {child.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <Label className="text-xs text-foreground font-medium">
+              Akademik PDF Dokümanı *
+            </Label>
+            <PdfDropzone
+              selectedFile={selectedFile}
+              onFileSelect={handleFileChange}
+              isSubmitting={isSubmitting}
+              statusMessage={statusMessage}
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="text-xs font-medium"
+            >
+              İptal
+            </Button>
+            <Button
+              type="submit"
+              variant="default"
+              size="sm"
+              disabled={
+                isSubmitting ||
+                !selectedFile ||
+                isLoadingBoxes ||
+                !selectedParentId ||
+                (hasSubBoxes && selectedSubBoxId === null)
+              }
+              className="gap-2 text-xs font-medium"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>İşleniyor...</span>
+                </>
+              ) : (
+                <>
+                  <UploadCloud className="h-4 w-4" />
+                  <span>PDF Yükle ve Künye Çıkar</span>
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }
 </file>
 
@@ -42680,230 +42907,329 @@ export function BoxCard({
 }
 </file>
 
-<file path="src/app/(app)/library/_components/add-resource-modal.tsx">
+<file path="src/app/(app)/library/_components/sidebar-work-list.tsx">
 "use client";
 
-import React, { useState } from "react";
-import { UploadCloud, X, Loader2, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { useBoxHierarchySelection } from "../_hooks/use-box-hierarchy-selection";
-import { AddResourceBoxSelector } from "./add-resource-box-selector";
-import { PdfDropzone } from "./pdf-dropzone";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import {
+  Search,
+  BookOpen,
+  CheckCircle2,
+  Circle,
+  Layers,
+  Plus,
+  Trash2,
+  FileText,
+} from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import type { LibraryResourceItem, ThesisBoxType } from "../_lib/types";
+import {
+  getBoxTypeBadgeConfig,
+  BOX_TYPE_SHORT_LABELS,
+} from "@/lib/box-constants";
 
-interface AddResourceModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmitPdf: (file: File, boxId: number) => Promise<boolean>;
+const BOX_TABS: { id: ThesisBoxType; label: string }[] = [
+  { id: "ALL", label: "Tümü" },
+  { id: "SUBJECT_PROBLEM", label: BOX_TYPE_SHORT_LABELS.SUBJECT_PROBLEM },
+  {
+    id: "THEORETICAL_FRAMEWORK",
+    label: BOX_TYPE_SHORT_LABELS.THEORETICAL_FRAMEWORK,
+  },
+  { id: "METHODOLOGY", label: BOX_TYPE_SHORT_LABELS.METHODOLOGY },
+  { id: "PRIMARY_MATERIAL", label: BOX_TYPE_SHORT_LABELS.PRIMARY_MATERIAL },
+  { id: "RELATED_THESES", label: BOX_TYPE_SHORT_LABELS.RELATED_THESES },
+];
+
+interface SidebarWorkListProps {
+  resources: LibraryResourceItem[];
+  selectedResourceId: number | null;
+  onSelectResource: (id: number) => void;
+  activeTab: ThesisBoxType;
+  onTabChange: (tab: ThesisBoxType) => void;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
+  onOpenAddModal?: () => void;
+  onDeleteResource?: (resourceId: number) => Promise<void>;
 }
 
 /**
- * Modal for adding a new academic literature resource by uploading a PDF, where the
- * user selects a parent thesis box (and a sub-box when present) and metadata is
- * extracted and content is vectorized through the RAG pipeline.
+ * Sidebar component listing academic literature items with box tabs and search.
  *
  * @param root0 - Component props.
- * @param root0.isOpen - Whether the modal is visible.
- * @param root0.onClose - Callback invoked when the modal is closed.
- * @param root0.onSubmitPdf - Callback that uploads the selected PDF into the target box.
- * @returns The add resource modal markup, or null when closed.
+ * @param root0.resources - List of library resources to display.
+ * @param root0.selectedResourceId - Id of the currently selected resource.
+ * @param root0.onSelectResource - Callback invoked when a resource is selected.
+ * @param root0.activeTab - Currently active box tab filter.
+ * @param root0.onTabChange - Callback invoked when the active tab changes.
+ * @param root0.searchQuery - Current search query text.
+ * @param root0.onSearchChange - Callback invoked when the search query changes.
+ * @param root0.onOpenAddModal - Optional callback to open the add resource modal.
+ * @param root0.onDeleteResource - Optional callback to delete a resource by id.
+ * @returns The sidebar work list markup.
  */
-export function AddResourceModal({
-  isOpen,
-  onClose,
-  onSubmitPdf,
-}: AddResourceModalProps) {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("");
+export function SidebarWorkList({
+  resources,
+  selectedResourceId,
+  onSelectResource,
+  activeTab,
+  onTabChange,
+  searchQuery,
+  onSearchChange,
+  onOpenAddModal,
+  onDeleteResource,
+}: SidebarWorkListProps) {
+  const [resourceToDeleteId, setResourceToDeleteId] = useState<number | null>(
+    null,
+  );
 
-  const {
-    hierarchy,
-    hierarchyError,
-    selectedParentId,
-    selectedSubBoxId,
-    setParentId,
-    setSubBoxId,
-    isLoading: isLoadingBoxes,
-  } = useBoxHierarchySelection();
-
-  if (!isOpen) return null;
-
-  const parentBoxes = hierarchy ?? [];
-  const selectedParent =
-    parentBoxes.find((b) => b.id === selectedParentId) ?? null;
-  const hasSubBoxes = !!selectedParent && selectedParent.children.length > 0;
-
-  const handleFileChange = (file: File) => {
-    if (!file.name.toLowerCase().endsWith(".pdf")) {
-      toast.error("Lütfen yalnızca geçerli bir PDF dosyası seçiniz.");
-      return;
-    }
-
-    if (file.size > 25 * 1024 * 1024) {
-      toast.error("PDF dosya boyutu maksimum 25MB olabilir.");
-      return;
-    }
-
-    setSelectedFile(file);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!selectedFile) {
-      toast.error("Lütfen eklenecek akademik PDF dosyasını seçiniz.");
-      return;
-    }
-
-    if (!selectedParentId) {
-      toast.error("Lütfen bir konu kutusu seçiniz.");
-      return;
-    }
-
-    if (hasSubBoxes && selectedSubBoxId === null) {
-      toast.error("Lütfen kaynağın ait olduğu alt kutuyu (sub-box) seçiniz.");
-      return;
-    }
-
-    const targetBoxId = hasSubBoxes
-      ? (selectedSubBoxId as number)
-      : selectedParentId;
-
-    try {
-      setIsSubmitting(true);
-      setStatusMessage("PDF künye bilgileri çıkarılıyor...");
-
-      const isSuccess = await onSubmitPdf(selectedFile, targetBoxId);
-      if (!isSuccess) {
-        return;
-      }
-
-      toast.success("Akademik eser başarıyla eklendi ve vektörleştirildi.");
-      setSelectedFile(null);
-      setStatusMessage("");
-      onClose();
-    } finally {
-      setIsSubmitting(false);
-      setStatusMessage("");
+  const handleConfirmDelete = async () => {
+    if (resourceToDeleteId !== null && onDeleteResource) {
+      await onDeleteResource(resourceToDeleteId);
+      setResourceToDeleteId(null);
     }
   };
+
+  const filteredResources = useMemo(
+    () =>
+      resources.filter((item) => {
+        const matchesTab = activeTab === "ALL" || item.boxType === activeTab;
+        const matchesSearch =
+          searchQuery.trim() === "" ||
+          item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.authors.some((author) =>
+            author.toLowerCase().includes(searchQuery.toLowerCase()),
+          );
+        return matchesTab && matchesSearch;
+      }),
+    [resources, activeTab, searchQuery],
+  );
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!scrollRef.current || selectedResourceId === null) return;
+    const container = scrollRef.current;
+    const selectedEl = container.querySelector(
+      `[data-resource-id="${selectedResourceId}"]`,
+    );
+    if (selectedEl) {
+      const containerRect = container.getBoundingClientRect();
+      const targetRect = selectedEl.getBoundingClientRect();
+      const top = targetRect.top - containerRect.top + container.scrollTop;
+      container.scrollTo({ top, behavior: "smooth" });
+    }
+  }, [selectedResourceId, filteredResources]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 animate-in fade-in-0 duration-200">
-      <div className="relative w-full max-w-2xl rounded-lg border border-border bg-background p-6 space-y-4">
-        <div className="flex items-center justify-between border-b border-border pb-4">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-md bg-primary/10 border border-primary/20 text-primary">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
-                Yeni Akademik PDF Yükle
-              </h2>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            aria-label="Modalı kapat"
-            className="rounded-sm opacity-70 hover:opacity-100 p-1 text-muted-foreground hover:bg-muted"
-          >
-            <X className="h-4 w-4" />
-          </button>
+    <Card className="flex h-full w-full flex-col min-h-0 space-y-4 rounded-md p-4">
+      <div className="flex items-center justify-between pb-2 border-b border-border">
+        <div className="flex items-center gap-2">
+          <BookOpen className="h-5 w-5 text-primary" />
+          <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
+            Eserlerim
+          </h2>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <AddResourceBoxSelector
-            parentBoxes={parentBoxes}
-            isLoading={isLoadingBoxes}
-            hierarchyError={hierarchyError}
-            selectedParentId={selectedParentId}
-            selectedSubBoxId={selectedSubBoxId}
-            onParentSelect={setParentId}
-            onSubBoxSelect={setSubBoxId}
-            disabled={isSubmitting}
-          />
-
-          {hasSubBoxes && selectedParent && (
-            <div className="space-y-1">
-              <Label className="text-xs text-foreground font-medium">
-                Alt Kutu
-              </Label>
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                {selectedParent.children.map((child) => (
-                  <button
-                    type="button"
-                    key={child.id}
-                    disabled={isSubmitting}
-                    onClick={() => setSubBoxId(child.id)}
-                    className={
-                      selectedSubBoxId === child.id
-                        ? "px-3 py-2 text-xs font-semibold rounded-md border border-primary/20 bg-accent/20 text-foreground text-left"
-                        : "px-3 py-2 text-xs font-medium rounded-md border border-border bg-background text-muted-foreground hover:bg-muted text-left"
-                    }
-                  >
-                    {child.title}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-1">
-            <Label className="text-xs text-foreground font-medium">
-              Akademik PDF Dokümanı *
-            </Label>
-            <PdfDropzone
-              selectedFile={selectedFile}
-              onFileSelect={handleFileChange}
-              isSubmitting={isSubmitting}
-              statusMessage={statusMessage}
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
-            <Button
+        <div className="flex items-center gap-2">
+          {onOpenAddModal && (
+            <button
               type="button"
-              variant="outline"
-              size="sm"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="text-xs font-medium"
+              onClick={onOpenAddModal}
+              title="Yeni Kaynak Ekle"
+              className="flex items-center gap-1 text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 px-2 py-1 rounded border border-primary/20 transition-all"
             >
-              İptal
-            </Button>
-            <Button
-              type="submit"
-              variant="default"
-              size="sm"
-              disabled={
-                isSubmitting ||
-                !selectedFile ||
-                isLoadingBoxes ||
-                !selectedParentId ||
-                (hasSubBoxes && selectedSubBoxId === null)
-              }
-              className="gap-2 text-xs font-medium"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>İşleniyor...</span>
-                </>
-              ) : (
-                <>
-                  <UploadCloud className="h-4 w-4" />
-                  <span>PDF Yükle ve Künye Çıkar</span>
-                </>
-              )}
-            </Button>
-          </div>
-        </form>
+              <Plus className="h-3.5 w-3.5" />
+              <span>Yeni Ekle</span>
+            </button>
+          )}
+          <Badge
+            variant="outline"
+            className="text-xs font-medium text-muted-foreground border-border"
+          >
+            {filteredResources.length}
+          </Badge>
+        </div>
       </div>
-    </div>
+
+      <div className="relative w-full">
+        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="Eser veya yazar ara..."
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="pl-9 text-sm bg-background border-border"
+        />
+      </div>
+
+      <div className="grid grid-cols-6 gap-1 rounded-md bg-muted p-1 border border-border/40">
+        {BOX_TABS.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => onTabChange(tab.id)}
+              className={cn(
+                "w-full text-center py-1 text-[10px] font-medium rounded transition-all truncate px-1",
+                isActive
+                  ? "bg-background text-foreground font-semibold border border-border/40"
+                  : "text-muted-foreground hover:text-foreground hover:bg-background/20",
+              )}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        ref={scrollRef}
+        className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1"
+      >
+        {filteredResources.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground p-4">
+            <Layers className="h-8 w-8 mb-2 opacity-40 text-muted-foreground" />
+            <p className="text-sm font-medium">Kayıtlı eser bulunamadı</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Filtreyi temizlemeyi veya yeni literatür eklemeyi
+              deneyebilirsiniz.
+            </p>
+          </div>
+        ) : (
+          filteredResources.map((item) => {
+            const isSelected = item.id === selectedResourceId;
+            const badgeConfig = getBoxTypeBadgeConfig(item.boxType);
+            const hasPdf = item.pdfStatus === "READY" || Boolean(item.pdfUrl);
+
+            return (
+              <Card
+                key={item.id}
+                data-resource-id={item.id}
+                onClick={() => onSelectResource(item.id)}
+                className={cn(
+                  "group relative cursor-pointer transition-all border p-3 hover:border-primary/20",
+                  isSelected
+                    ? "bg-accent/20 border-primary/20"
+                    : "bg-background border-border hover:bg-accent/20",
+                )}
+              >
+                <CardContent className="p-0 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-sans text-sm font-semibold text-foreground line-clamp-2 leading-snug flex-1 min-w-0">
+                      {item.title}
+                    </h3>
+                    <div className="flex items-center gap-2 shrink-0 pt-1">
+                      {hasPdf && (
+                        <span
+                          title="Tam metin PDF mevcut"
+                          className="flex items-center gap-1 text-[10px] text-success font-semibold bg-success/10 px-2 py-1 rounded border border-success/20"
+                        >
+                          <FileText className="h-2.5 w-2.5" />
+                          <span>PDF</span>
+                        </span>
+                      )}
+                      {item.isRead ? (
+                        <span
+                          title="Okundu"
+                          className="flex items-center text-success"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                        </span>
+                      ) : (
+                        <span
+                          title="Okunacak"
+                          className="flex items-center text-warning"
+                        >
+                          <Circle className="h-3.5 w-3.5" />
+                        </span>
+                      )}
+                      {onDeleteResource && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setResourceToDeleteId(item.id);
+                          }}
+                          title="Eseri Sil"
+                          className="opacity-0 group-hover:opacity-100 flex items-center p-1 text-muted-foreground hover:text-destructive transition-all rounded hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className={cn(
+                        "h-2 w-2 rounded-full shrink-0",
+                        badgeConfig.dotClassName,
+                      )}
+                    />
+                    <span className="text-[10px] font-medium text-muted-foreground truncate">
+                      {badgeConfig.label}
+                      {item.subBoxTitle ? ` • ${item.subBoxTitle}` : ""}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/40">
+                    <span className="truncate max-w-45 font-normal text-muted-foreground">
+                      {item.authors.join(", ")}
+                    </span>
+                    <span className="font-mono text-[10px] text-muted-foreground">
+                      {item.publicationYear ?? ""}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })
+        )}
+      </div>
+
+      <AlertDialog
+        open={resourceToDeleteId !== null}
+        onOpenChange={(open) => {
+          if (!open) setResourceToDeleteId(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-serif text-lg font-semibold text-foreground">
+              Eseri Silmek İstediğinize Emin Misiniz?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-muted-foreground">
+              Bu akademik eser, PDF dosyası, vektör verileri ve tüm notlarınızla
+              birlikte kalıcı olarak silinecektir. Bu işlem geri alınamaz.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-xs font-medium">
+              Vazgeç
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-medium"
+            >
+              Evet, Sil
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Card>
   );
 }
 </file>
@@ -43459,333 +43785,6 @@ export async function POST(request: Request) {
 }
 </file>
 
-<file path="src/app/(app)/library/_components/sidebar-work-list.tsx">
-"use client";
-
-import React, { useState, useEffect, useRef, useMemo } from "react";
-import {
-  Search,
-  BookOpen,
-  CheckCircle2,
-  Circle,
-  Layers,
-  Plus,
-  Trash2,
-  FileText,
-} from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import type { LibraryResourceItem, ThesisBoxType } from "../_lib/types";
-import {
-  getBoxTypeBadgeConfig,
-  BOX_TYPE_SHORT_LABELS,
-} from "@/lib/box-constants";
-
-const BOX_TABS: { id: ThesisBoxType; label: string }[] = [
-  { id: "ALL", label: "Tümü" },
-  { id: "SUBJECT_PROBLEM", label: BOX_TYPE_SHORT_LABELS.SUBJECT_PROBLEM },
-  {
-    id: "THEORETICAL_FRAMEWORK",
-    label: BOX_TYPE_SHORT_LABELS.THEORETICAL_FRAMEWORK,
-  },
-  { id: "METHODOLOGY", label: BOX_TYPE_SHORT_LABELS.METHODOLOGY },
-  { id: "PRIMARY_MATERIAL", label: BOX_TYPE_SHORT_LABELS.PRIMARY_MATERIAL },
-  { id: "RELATED_THESES", label: BOX_TYPE_SHORT_LABELS.RELATED_THESES },
-];
-
-interface SidebarWorkListProps {
-  resources: LibraryResourceItem[];
-  selectedResourceId: number | null;
-  onSelectResource: (id: number) => void;
-  activeTab: ThesisBoxType;
-  onTabChange: (tab: ThesisBoxType) => void;
-  searchQuery: string;
-  onSearchChange: (query: string) => void;
-  onOpenAddModal?: () => void;
-  onDeleteResource?: (resourceId: number) => Promise<void>;
-}
-
-/**
- * Sidebar component listing academic literature items with box tabs and search.
- *
- * @param root0 - Component props.
- * @param root0.resources - List of library resources to display.
- * @param root0.selectedResourceId - Id of the currently selected resource.
- * @param root0.onSelectResource - Callback invoked when a resource is selected.
- * @param root0.activeTab - Currently active box tab filter.
- * @param root0.onTabChange - Callback invoked when the active tab changes.
- * @param root0.searchQuery - Current search query text.
- * @param root0.onSearchChange - Callback invoked when the search query changes.
- * @param root0.onOpenAddModal - Optional callback to open the add resource modal.
- * @param root0.onDeleteResource - Optional callback to delete a resource by id.
- * @returns The sidebar work list markup.
- */
-export function SidebarWorkList({
-  resources,
-  selectedResourceId,
-  onSelectResource,
-  activeTab,
-  onTabChange,
-  searchQuery,
-  onSearchChange,
-  onOpenAddModal,
-  onDeleteResource,
-}: SidebarWorkListProps) {
-  const [resourceToDeleteId, setResourceToDeleteId] = useState<number | null>(
-    null,
-  );
-
-  const handleConfirmDelete = async () => {
-    if (resourceToDeleteId !== null && onDeleteResource) {
-      await onDeleteResource(resourceToDeleteId);
-      setResourceToDeleteId(null);
-    }
-  };
-
-  const filteredResources = useMemo(
-    () =>
-      resources.filter((item) => {
-        const matchesTab = activeTab === "ALL" || item.boxType === activeTab;
-        const matchesSearch =
-          searchQuery.trim() === "" ||
-          item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.authors.some((author) =>
-            author.toLowerCase().includes(searchQuery.toLowerCase()),
-          );
-        return matchesTab && matchesSearch;
-      }),
-    [resources, activeTab, searchQuery],
-  );
-
-  const scrollRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!scrollRef.current || selectedResourceId === null) return;
-    const container = scrollRef.current;
-    const selectedEl = container.querySelector(
-      `[data-resource-id="${selectedResourceId}"]`,
-    );
-    if (selectedEl) {
-      const containerRect = container.getBoundingClientRect();
-      const targetRect = selectedEl.getBoundingClientRect();
-      const top = targetRect.top - containerRect.top + container.scrollTop;
-      container.scrollTo({ top, behavior: "smooth" });
-    }
-  }, [selectedResourceId, filteredResources]);
-
-  return (
-    <Card className="flex h-full w-full flex-col min-h-0 space-y-4 rounded-md p-4">
-      <div className="flex items-center justify-between pb-2 border-b border-border">
-        <div className="flex items-center gap-2">
-          <BookOpen className="h-5 w-5 text-primary" />
-          <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
-            Eserlerim
-          </h2>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {onOpenAddModal && (
-            <button
-              type="button"
-              onClick={onOpenAddModal}
-              title="Yeni Kaynak Ekle"
-              className="flex items-center gap-1 text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 px-2 py-1 rounded border border-primary/20 transition-all"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Yeni Ekle</span>
-            </button>
-          )}
-          <Badge
-            variant="outline"
-            className="text-xs font-medium text-muted-foreground border-border"
-          >
-            {filteredResources.length}
-          </Badge>
-        </div>
-      </div>
-
-      <div className="relative w-full">
-        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-        <Input
-          type="text"
-          placeholder="Eser veya yazar ara..."
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-9 text-sm bg-background border-border"
-        />
-      </div>
-
-      <div className="grid grid-cols-6 gap-1 rounded-md bg-muted p-1 border border-border/40">
-        {BOX_TABS.map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => onTabChange(tab.id)}
-              className={cn(
-                "w-full text-center py-1 text-[10px] font-medium rounded transition-all truncate px-1",
-                isActive
-                  ? "bg-background text-foreground font-semibold border border-border/40"
-                  : "text-muted-foreground hover:text-foreground hover:bg-background/20",
-              )}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
-      <div
-        ref={scrollRef}
-        className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1"
-      >
-        {filteredResources.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground p-4">
-            <Layers className="h-8 w-8 mb-2 opacity-40 text-muted-foreground" />
-            <p className="text-sm font-medium">Kayıtlı eser bulunamadı</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Filtreyi temizlemeyi veya yeni literatür eklemeyi
-              deneyebilirsiniz.
-            </p>
-          </div>
-        ) : (
-          filteredResources.map((item) => {
-            const isSelected = item.id === selectedResourceId;
-            const badgeConfig = getBoxTypeBadgeConfig(item.boxType);
-            const hasPdf = item.pdfStatus === "READY" || Boolean(item.pdfUrl);
-
-            return (
-              <Card
-                key={item.id}
-                data-resource-id={item.id}
-                onClick={() => onSelectResource(item.id)}
-                className={cn(
-                  "group relative cursor-pointer transition-all border p-3 hover:border-primary/20",
-                  isSelected
-                    ? "bg-accent/20 border-primary/20"
-                    : "bg-background border-border hover:bg-accent/20",
-                )}
-              >
-                <CardContent className="p-0 space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-sans text-sm font-semibold text-foreground line-clamp-2 leading-snug flex-1 min-w-0">
-                      {item.title}
-                    </h3>
-                    <div className="flex items-center gap-2 shrink-0 pt-1">
-                      {hasPdf && (
-                        <span
-                          title="Tam metin PDF mevcut"
-                          className="flex items-center gap-1 text-[10px] text-success font-semibold bg-success/10 px-2 py-1 rounded border border-success/20"
-                        >
-                          <FileText className="h-2.5 w-2.5" />
-                          <span>PDF</span>
-                        </span>
-                      )}
-                      {item.isRead ? (
-                        <span
-                          title="Okundu"
-                          className="flex items-center text-success"
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                        </span>
-                      ) : (
-                        <span
-                          title="Okunacak"
-                          className="flex items-center text-warning"
-                        >
-                          <Circle className="h-3.5 w-3.5" />
-                        </span>
-                      )}
-                      {onDeleteResource && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setResourceToDeleteId(item.id);
-                          }}
-                          title="Eseri Sil"
-                          className="opacity-0 group-hover:opacity-100 flex items-center p-1 text-muted-foreground hover:text-destructive transition-all rounded hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span
-                      className={cn(
-                        "h-2 w-2 rounded-full shrink-0",
-                        badgeConfig.dotClassName,
-                      )}
-                    />
-                    <span className="text-[10px] font-medium text-muted-foreground truncate">
-                      {badgeConfig.label}
-                      {item.subBoxTitle ? ` • ${item.subBoxTitle}` : ""}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/40">
-                    <span className="truncate max-w-45 font-normal text-muted-foreground">
-                      {item.authors.join(", ")}
-                    </span>
-                    <span className="font-mono text-[10px] text-muted-foreground">
-                      {item.publicationYear ?? ""}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })
-        )}
-      </div>
-
-      <AlertDialog
-        open={resourceToDeleteId !== null}
-        onOpenChange={(open) => {
-          if (!open) setResourceToDeleteId(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif text-lg font-semibold text-foreground">
-              Eseri Silmek İstediğinize Emin Misiniz?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-sm text-muted-foreground">
-              Bu akademik eser, PDF dosyası, vektör verileri ve tüm notlarınızla
-              birlikte kalıcı olarak silinecektir. Bu işlem geri alınamaz.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="text-xs font-medium">
-              Vazgeç
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-medium"
-            >
-              Evet, Sil
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </Card>
-  );
-}
-</file>
-
 <file path="src/app/(app)/library/actions.ts">
 export {
   getLibraryResourcesAction,
@@ -44072,6 +44071,234 @@ export async function runBoxesPipelineAction(): Promise<
  */
 export async function generateBoxesStructureAction() {
   return runBoxesPipelineAction();
+}
+</file>
+
+<file path="AGENTS.md">
+# AGENTS.md
+
+## 1. Role & System Overview
+
+You are the **Lead Software Engineer** and **Primary Auditor** for Fabricca, a private digital thesis assistant and academic research platform.
+
+- **Scope & Access:** Private application restricted strictly to two seeded users. Not open to public registration.
+- **Engineering Mindset:** Write clean, minimal, production-ready code. Avoid over-engineering. Make targeted, high-impact edits.
+- **Repository Exploration:** Use semantic exploration tools (CodeGraph/LSP) for structural codebase exploration. When CodeGraph is unavailable or when targeting known files, direct file search and reading are fully supported.
+
+## 2. Core Stack & Architectural Constraints
+
+- **Framework:** Next.js (App Router, Server Actions)
+- **Database & ORM:** Neon Serverless PostgreSQL (`pgvector`), Drizzle ORM
+- **Primary LLM:** Google Gemini Flash (`FLASH_LITE_31`, `FLASH_LITE_35`, `FLASH_36` via `@google/genai`)
+- **Embedding Motor:** Cloudflare Workers AI (`@cf/baai/bge-m3` — SINGLE source embedding model; no secondary fallbacks allowed)
+- **Semantic Reranking:** Cohere Rerank API (`rerank-v4.0-pro` — ONLY for reranking)
+- **Object Storage:** Cloudflare R2 / AWS S3 (`@aws-sdk/client-s3`)
+- **Literature & DOI:** OpenAlex API (canonical literature source), Crossref API (DOI resolution)
+- **Secondary LLM:** Cerebras API (`gemma-4-31b` — metadata extraction and sanitization)
+
+> **Constraint:** Introducing alternative frameworks, third-party libraries, or secondary model fallbacks requires explicit user approval.
+
+## 3. The Golden Boundary Rule
+
+- **Backend & Logic Layer (100% English):** All DB column names, function names, local variables, Zod schemas, API payloads, and Logger step strings MUST be written in technical English (`camelCase` or `snake_case`). No Turkish characters in code/backend logic.
+- **User Interface & Academic Outputs (100% Turkish):** All UI elements, buttons, table headers, toast notifications, and AI-generated academic recommendations MUST be written in fluent, high-level academic Turkish. Transform backend English enums to Turkish on the UI layer.
+
+## 4. Code & Verification Rules
+
+- **Type Safety:** Avoid `any`. Prefer `unknown` with explicit type guards or Zod validation. If `any` is unavoidable at an external boundary, isolate and document it explicitly.
+- **Verification Strategy:** Run the narrowest relevant check first (file-scoped test or lint). Run full verification (`npm run check:full`) ONLY when modifying shared libraries, global configs, DB schemas, or multi-module interfaces.
+- **No Incomplete Code:** Never leave `// TODO` placeholders or incomplete snippets. All edited files must be functional, complete, and compilation-ready.
+
+## 5. Task-Specific Documentation (Progressive Disclosure)
+
+Before executing domain-specific tasks, consult the corresponding domain specification file:
+
+- **UI System, Styling & Components:** [docs/UI_RULES.md](docs/UI_RULES.md)
+- **Database Schema, Migrations & Progressive Save:** [docs/DATABASE_RULES.md](docs/DATABASE_RULES.md)
+- **LLM Integration, Models & Prompting:** [docs/LLM_INTEGRATION.md](docs/LLM_INTEGRATION.md)
+- **Development Standards, JSDoc, Error Handling & Logging:** [docs/DEVELOPMENT_STANDARDS.md](docs/DEVELOPMENT_STANDARDS.md)
+- **System Architecture, External Services & Storage:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+
+## 6. Instruction Precedence & Maintenance
+
+- **User Overrides:** User prompt instructions strictly override any rules in this repository for the current task.
+- **No Temporary Edits:** Do NOT modify `AGENTS.md` for one-off task overrides.
+- **Minimalist Specification:** Keep `AGENTS.md` minimal (~120–150 lines). Update it ONLY when making permanent repository-wide architectural policy changes.
+</file>
+
+<file path="src/app/(app)/library/_components/resource-detail.tsx">
+"use client";
+
+import React, { useState } from "react";
+import { BookMarked, Sparkles } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { PdfUploadDropzone } from "./pdf-upload-dropzone";
+import { EditResourceModal } from "./edit-resource-modal";
+import { ResourceHeader } from "./resource-detail/resource-header";
+import { CritiqueSection } from "./resource-detail/critique-section";
+import { NoteForm } from "./resource-detail/note-form";
+import { NoteItem, getNoteTypeBadgeConfig } from "./resource-detail/note-item";
+import { DeleteConfirmDialog } from "./resource-detail/delete-confirm-dialog";
+import type {
+  LibraryResourceItem,
+  LibraryResourceNote,
+  LibraryResourceCritique,
+} from "../_lib/types";
+import type { CritiqueFormInput } from "../_hooks/use-resource-critique";
+
+export { getNoteTypeBadgeConfig };
+
+export interface ResourceDetailProps {
+  resource: LibraryResourceItem;
+  notes: LibraryResourceNote[];
+  critique?: LibraryResourceCritique;
+  onAddNote: (
+    note: Omit<LibraryResourceNote, "id" | "createdAt" | "sentToCitationCards">,
+  ) => void;
+  onSaveCritique: (input: CritiqueFormInput) => void | Promise<void>;
+  onDeleteNote: (noteId: number) => void;
+  onToggleReadStatus: (resourceId: number) => void;
+  onUpdateResource?: (updatedResource: LibraryResourceItem) => void;
+  onUploadPdf?: (file: File) => Promise<boolean>;
+  onDeletePdf?: (resourceId: number) => Promise<void>;
+}
+
+/**
+ * Detailed view for a selected library resource with note taking and automatic citation card integration.
+ *
+ * @param root0 - Component props.
+ * @param root0.resource - Selected library resource.
+ * @param root0.notes - Notes associated with the resource.
+ * @param root0.onAddNote - Callback to add a new note to the resource.
+ * @param root0.onDeleteNote - Callback to delete a note by id.
+ * @param root0.onToggleReadStatus - Callback to toggle the read status of a resource.
+ * @param root0.onUpdateResource - Optional callback invoked after the resource metadata is updated.
+ * @param root0.onUploadPdf - Optional callback that uploads a PDF for the resource.
+ * @param root0.onDeletePdf - Optional callback that deletes the resource PDF.
+ * @returns The resource detail markup.
+ */
+export function ResourceDetail({
+  resource,
+  notes,
+  critique,
+  onAddNote,
+  onSaveCritique,
+  onDeleteNote,
+  onToggleReadStatus,
+  onUpdateResource,
+  onUploadPdf,
+  onDeletePdf,
+}: ResourceDetailProps) {
+  const [noteToDeleteId, setNoteToDeleteId] = useState<number | null>(null);
+  const [pdfToDeleteId, setPdfToDeleteId] = useState<number | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const handleConfirmDeleteNote = () => {
+    if (noteToDeleteId !== null) {
+      onDeleteNote(noteToDeleteId);
+      setNoteToDeleteId(null);
+    }
+  };
+
+  const handleConfirmDeletePdf = async () => {
+    if (pdfToDeleteId && onDeletePdf) {
+      try {
+        await onDeletePdf(pdfToDeleteId);
+      } catch {}
+    }
+    setPdfToDeleteId(null);
+  };
+
+  return (
+    <Card className="flex h-full w-full flex-col space-y-6 rounded-md p-6">
+      <ResourceHeader
+        resource={resource}
+        onOpenEditModal={() => setIsEditModalOpen(true)}
+        onToggleReadStatus={onToggleReadStatus}
+        onDeletePdfClick={
+          onDeletePdf ? () => setPdfToDeleteId(resource.id) : undefined
+        }
+      />
+
+      {resource.pdfStatus !== "READY" && onUploadPdf && (
+        <PdfUploadDropzone
+          resourceTitle={resource.title}
+          pdfStatus={resource.pdfStatus}
+          onUploadPdf={onUploadPdf}
+        />
+      )}
+
+      {resource.pdfStatus === "READY" && (
+        <>
+          <CritiqueSection
+            critique={critique}
+            onSaveCritique={onSaveCritique}
+          />
+
+          <NoteForm resourceId={resource.id} onAddNote={onAddNote} />
+
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <BookMarked className="h-5 w-5 text-primary" />
+                <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
+                  Akademik Notlarım ve Alıntılarım
+                </h3>
+              </div>
+              <Badge
+                variant="outline"
+                className="text-xs font-medium border-border"
+              >
+                {notes.length} Alıntı Fişi
+              </Badge>
+            </div>
+
+            {notes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-36 rounded-md border border-dashed border-border p-6 text-center text-muted-foreground">
+                <Sparkles className="h-6 w-6 opacity-40 mb-2" />
+                <p className="text-sm font-medium">
+                  Henüz bu eser için not veya alıntı girilmemiş.
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Yukarıdaki formu kullanarak ilk sayfa numaralı alıntınızı
+                  ekleyebilirsiniz.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {notes.map((note) => (
+                  <NoteItem
+                    key={note.id}
+                    note={note}
+                    onDeleteNoteClick={(id) => setNoteToDeleteId(id)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      <DeleteConfirmDialog
+        noteToDeleteId={noteToDeleteId}
+        onCloseNoteDeleteDialog={() => setNoteToDeleteId(null)}
+        onConfirmDeleteNote={handleConfirmDeleteNote}
+        pdfToDeleteId={pdfToDeleteId}
+        onClosePdfDeleteDialog={() => setPdfToDeleteId(null)}
+        onConfirmDeletePdf={handleConfirmDeletePdf}
+      />
+
+      <EditResourceModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        resource={resource}
+        onUpdateSuccess={(updatedResource) => {
+          onUpdateResource?.(updatedResource);
+        }}
+      />
+    </Card>
+  );
 }
 </file>
 
@@ -44417,234 +44644,6 @@ export function LiteratureReviewContent() {
         </Button>
       </div>
     </div>
-  );
-}
-</file>
-
-<file path="AGENTS.md">
-# AGENTS.md
-
-## 1. Role & System Overview
-
-You are the **Lead Software Engineer** and **Primary Auditor** for Fabricca, a private digital thesis assistant and academic research platform.
-
-- **Scope & Access:** Private application restricted strictly to two seeded users. Not open to public registration.
-- **Engineering Mindset:** Write clean, minimal, production-ready code. Avoid over-engineering. Make targeted, high-impact edits.
-- **Repository Exploration:** Use semantic exploration tools (CodeGraph/LSP) for structural codebase exploration. When CodeGraph is unavailable or when targeting known files, direct file search and reading are fully supported.
-
-## 2. Core Stack & Architectural Constraints
-
-- **Framework:** Next.js (App Router, Server Actions)
-- **Database & ORM:** Neon Serverless PostgreSQL (`pgvector`), Drizzle ORM
-- **Primary LLM:** Google Gemini Flash (`FLASH_LITE_31`, `FLASH_LITE_35`, `FLASH_36` via `@google/genai`)
-- **Embedding Motor:** Cloudflare Workers AI (`@cf/baai/bge-m3` — SINGLE source embedding model; no secondary fallbacks allowed)
-- **Semantic Reranking:** Cohere Rerank API (`rerank-v4.0-pro` — ONLY for reranking)
-- **Object Storage:** Cloudflare R2 / AWS S3 (`@aws-sdk/client-s3`)
-- **Literature & DOI:** OpenAlex API (canonical literature source), Crossref API (DOI resolution)
-- **Secondary LLM:** Cerebras API (`gemma-4-31b` — metadata extraction and sanitization)
-
-> **Constraint:** Introducing alternative frameworks, third-party libraries, or secondary model fallbacks requires explicit user approval.
-
-## 3. The Golden Boundary Rule
-
-- **Backend & Logic Layer (100% English):** All DB column names, function names, local variables, Zod schemas, API payloads, and Logger step strings MUST be written in technical English (`camelCase` or `snake_case`). No Turkish characters in code/backend logic.
-- **User Interface & Academic Outputs (100% Turkish):** All UI elements, buttons, table headers, toast notifications, and AI-generated academic recommendations MUST be written in fluent, high-level academic Turkish. Transform backend English enums to Turkish on the UI layer.
-
-## 4. Code & Verification Rules
-
-- **Type Safety:** Avoid `any`. Prefer `unknown` with explicit type guards or Zod validation. If `any` is unavoidable at an external boundary, isolate and document it explicitly.
-- **Verification Strategy:** Run the narrowest relevant check first (file-scoped test or lint). Run full verification (`npm run check:full`) ONLY when modifying shared libraries, global configs, DB schemas, or multi-module interfaces.
-- **No Incomplete Code:** Never leave `// TODO` placeholders or incomplete snippets. All edited files must be functional, complete, and compilation-ready.
-
-## 5. Task-Specific Documentation (Progressive Disclosure)
-
-Before executing domain-specific tasks, consult the corresponding domain specification file:
-
-- **UI System, Styling & Components:** [docs/UI_RULES.md](docs/UI_RULES.md)
-- **Database Schema, Migrations & Progressive Save:** [docs/DATABASE_RULES.md](docs/DATABASE_RULES.md)
-- **LLM Integration, Models & Prompting:** [docs/LLM_INTEGRATION.md](docs/LLM_INTEGRATION.md)
-- **Development Standards, JSDoc, Error Handling & Logging:** [docs/DEVELOPMENT_STANDARDS.md](docs/DEVELOPMENT_STANDARDS.md)
-- **System Architecture, External Services & Storage:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-
-## 6. Instruction Precedence & Maintenance
-
-- **User Overrides:** User prompt instructions strictly override any rules in this repository for the current task.
-- **No Temporary Edits:** Do NOT modify `AGENTS.md` for one-off task overrides.
-- **Minimalist Specification:** Keep `AGENTS.md` minimal (~120–150 lines). Update it ONLY when making permanent repository-wide architectural policy changes.
-</file>
-
-<file path="src/app/(app)/library/_components/resource-detail.tsx">
-"use client";
-
-import React, { useState } from "react";
-import { BookMarked, Sparkles } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { PdfUploadDropzone } from "./pdf-upload-dropzone";
-import { EditResourceModal } from "./edit-resource-modal";
-import { ResourceHeader } from "./resource-detail/resource-header";
-import { CritiqueSection } from "./resource-detail/critique-section";
-import { NoteForm } from "./resource-detail/note-form";
-import { NoteItem, getNoteTypeBadgeConfig } from "./resource-detail/note-item";
-import { DeleteConfirmDialog } from "./resource-detail/delete-confirm-dialog";
-import type {
-  LibraryResourceItem,
-  LibraryResourceNote,
-  LibraryResourceCritique,
-} from "../_lib/types";
-import type { CritiqueFormInput } from "../_hooks/use-resource-critique";
-
-export { getNoteTypeBadgeConfig };
-
-export interface ResourceDetailProps {
-  resource: LibraryResourceItem;
-  notes: LibraryResourceNote[];
-  critique?: LibraryResourceCritique;
-  onAddNote: (
-    note: Omit<LibraryResourceNote, "id" | "createdAt" | "sentToCitationCards">,
-  ) => void;
-  onSaveCritique: (input: CritiqueFormInput) => void | Promise<void>;
-  onDeleteNote: (noteId: number) => void;
-  onToggleReadStatus: (resourceId: number) => void;
-  onUpdateResource?: (updatedResource: LibraryResourceItem) => void;
-  onUploadPdf?: (file: File) => Promise<boolean>;
-  onDeletePdf?: (resourceId: number) => Promise<void>;
-}
-
-/**
- * Detailed view for a selected library resource with note taking and automatic citation card integration.
- *
- * @param root0 - Component props.
- * @param root0.resource - Selected library resource.
- * @param root0.notes - Notes associated with the resource.
- * @param root0.onAddNote - Callback to add a new note to the resource.
- * @param root0.onDeleteNote - Callback to delete a note by id.
- * @param root0.onToggleReadStatus - Callback to toggle the read status of a resource.
- * @param root0.onUpdateResource - Optional callback invoked after the resource metadata is updated.
- * @param root0.onUploadPdf - Optional callback that uploads a PDF for the resource.
- * @param root0.onDeletePdf - Optional callback that deletes the resource PDF.
- * @returns The resource detail markup.
- */
-export function ResourceDetail({
-  resource,
-  notes,
-  critique,
-  onAddNote,
-  onSaveCritique,
-  onDeleteNote,
-  onToggleReadStatus,
-  onUpdateResource,
-  onUploadPdf,
-  onDeletePdf,
-}: ResourceDetailProps) {
-  const [noteToDeleteId, setNoteToDeleteId] = useState<number | null>(null);
-  const [pdfToDeleteId, setPdfToDeleteId] = useState<number | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-
-  const handleConfirmDeleteNote = () => {
-    if (noteToDeleteId !== null) {
-      onDeleteNote(noteToDeleteId);
-      setNoteToDeleteId(null);
-    }
-  };
-
-  const handleConfirmDeletePdf = async () => {
-    if (pdfToDeleteId && onDeletePdf) {
-      try {
-        await onDeletePdf(pdfToDeleteId);
-      } catch {}
-    }
-    setPdfToDeleteId(null);
-  };
-
-  return (
-    <Card className="flex h-full w-full flex-col space-y-6 rounded-md p-6">
-      <ResourceHeader
-        resource={resource}
-        onOpenEditModal={() => setIsEditModalOpen(true)}
-        onToggleReadStatus={onToggleReadStatus}
-        onDeletePdfClick={
-          onDeletePdf ? () => setPdfToDeleteId(resource.id) : undefined
-        }
-      />
-
-      {resource.pdfStatus !== "READY" && onUploadPdf && (
-        <PdfUploadDropzone
-          resourceTitle={resource.title}
-          pdfStatus={resource.pdfStatus}
-          onUploadPdf={onUploadPdf}
-        />
-      )}
-
-      {resource.pdfStatus === "READY" && (
-        <>
-          <CritiqueSection
-            critique={critique}
-            onSaveCritique={onSaveCritique}
-          />
-
-          <NoteForm resourceId={resource.id} onAddNote={onAddNote} />
-
-          <div className="space-y-4 pt-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <BookMarked className="h-5 w-5 text-primary" />
-                <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
-                  Akademik Notlarım ve Alıntılarım
-                </h3>
-              </div>
-              <Badge
-                variant="outline"
-                className="text-xs font-medium border-border"
-              >
-                {notes.length} Alıntı Fişi
-              </Badge>
-            </div>
-
-            {notes.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-36 rounded-md border border-dashed border-border p-6 text-center text-muted-foreground">
-                <Sparkles className="h-6 w-6 opacity-40 mb-2" />
-                <p className="text-sm font-medium">
-                  Henüz bu eser için not veya alıntı girilmemiş.
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Yukarıdaki formu kullanarak ilk sayfa numaralı alıntınızı
-                  ekleyebilirsiniz.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {notes.map((note) => (
-                  <NoteItem
-                    key={note.id}
-                    note={note}
-                    onDeleteNoteClick={(id) => setNoteToDeleteId(id)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </>
-      )}
-
-      <DeleteConfirmDialog
-        noteToDeleteId={noteToDeleteId}
-        onCloseNoteDeleteDialog={() => setNoteToDeleteId(null)}
-        onConfirmDeleteNote={handleConfirmDeleteNote}
-        pdfToDeleteId={pdfToDeleteId}
-        onClosePdfDeleteDialog={() => setPdfToDeleteId(null)}
-        onConfirmDeletePdf={handleConfirmDeletePdf}
-      />
-
-      <EditResourceModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        resource={resource}
-        onUpdateSuccess={(updatedResource) => {
-          onUpdateResource?.(updatedResource);
-        }}
-      />
-    </Card>
   );
 }
 </file>

@@ -51,9 +51,8 @@ export const juryAnalysisResultSchema = z.object({
   gapAnalysisSummary: gapAnalysisStructuredSchema,
   recommendedTheses: z
     .array(juryRecommendedThesisSchema)
-    .max(6)
     .describe(
-      "Kullanıcının tez matrisiyle doğrudan bağı olan 0-6 adet rehber tez. Yapay sayı zorlaması yapılmaz.",
+      "Ön elemeden geçerek jüriye sunulan ilgili rehber tezlerin listesi.",
     ),
 });
 
@@ -76,7 +75,7 @@ export const juryAnalysisResultJsonSchema: JsonSchema = {
         literatureMapping: {
           type: "string",
           description:
-            "Mevcut Literatürün Haritalandırılması: Sunulan tezlerin araştırmanın hangi boyutlarını ele aldığının tematik haritası ve akademik özeti. Tezleri tematik gruplara ayırarak 'Literatürdeki tezler X grupta kümelenmektedir. İlk grupta..., ikinci grupta...' şeklinde tematik özetle. Her tezden alıntı yaparken mutlaka APA formatında atıf ver: (Yazar, Yıl).",
+            "Mevcut Literatürün Haritalandırılması: Sunulan tezlerin araştırmanın hangi boyutlarını ele aldığının tematik haritası ve akademik özeti. Tezleri tematik gruplara ayırarak tematik özetle. Her tezden alıntı yaparken mutlaka APA formatında atıf ver: (Yazar, Yıl).",
         },
         academicGap: {
           type: "string",
@@ -100,7 +99,7 @@ export const juryAnalysisResultJsonSchema: JsonSchema = {
         properties: {
           externalThesisId: {
             type: "string",
-            description: "Süzülen tez listesindeki tez ID'si",
+            description: "Tezin ID'si",
           },
           title: { type: "string", description: "Tezin başlığı" },
           author: { type: "string", description: "Tezin yazarı" },
@@ -114,7 +113,7 @@ export const juryAnalysisResultJsonSchema: JsonSchema = {
           relevanceReason: {
             type: "string",
             description:
-              "Tezin çalışmada tez matrisindeki sınırlar çerçevesinde dürüstçe nasıl kaynak olarak kullanılacağına dair rehber açıklama. Asla matriste yer almayan varsayımsal veri kaynakları uydurulmaz.",
+              "Tezin çalışmada tez matrisindeki sınırlar çerçevesinde dürüstçe nasıl kaynak olarak kullanılacağına dair rehber açıklama.",
           },
         },
         required: [
@@ -129,7 +128,7 @@ export const juryAnalysisResultJsonSchema: JsonSchema = {
         additionalProperties: false,
       },
       description:
-        "Süzülen tezler arasından seçilen ve tez matrisiyle doğrudan örtüşen 0-6 adet dürüst rehber tez",
+        "Ön elemeden geçerek jüriye sunulan ilgili rehber tezlerin listesi",
     },
   },
   required: ["globalStatus", "gapAnalysisSummary", "recommendedTheses"],
