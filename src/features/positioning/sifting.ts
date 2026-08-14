@@ -3,7 +3,6 @@ import type { TezaraThesisDetails } from "@/lib/types";
 import { rerankWithCohere, COHERE_RERANK_MODEL } from "@/services/ai/cohere";
 import type { Logger } from "@/lib/logger";
 import type { PositioningMatrixInput } from "./validation";
-import { sanitizeSearchQuery, type GeneratedQueries } from "./queries";
 
 /** Candidate thesis extended with Cohere semantic relevance score. */
 export interface SiftedThesis extends TezaraThesisDetails {
@@ -40,6 +39,21 @@ function isAllowedLanguage(lang?: string): boolean {
 }
 
 /**
+ * Sanitizes query text for vector search.
+ *
+ * @param rawQuery - The raw query string to sanitize.
+ * @returns The cleaned query string.
+ */
+export function sanitizeSearchQuery(rawQuery: string): string {
+  if (!rawQuery) return "";
+  return rawQuery
+    .replace(/\b(OR|AND|NOT)\b/gi, " ")
+    .replace(/[+*?:^~={}[\]()"\\]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
  * Formats a thesis's title and abstract into a YAML document for reranking.
  *
  * @param thesis - The thesis to format.
@@ -63,72 +77,43 @@ function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
 const SCORE_EPSILON = 1e-4;
 
 /**
- * Runs 8 sequential semantic vector queries on the Turso thesis database,
- * deduplicates results, applies abstract length and language filters,
- * ranks candidates via Cohere Rerank v4 Pro (full score list),
- * then deterministically selects the top-N by (relevanceScore desc, ID asc).
+ * Ultra-fast direct semantic thesis sifting engine:
+ * Directly vectorizes the thesis research problem, fetches top candidates from Qdrant Cloud
+ * in a single high-speed vector query, filters abstracts, and uses Cohere Rerank v4.0 Pro
+ * (cross-encoder) to select and rank the most relevant top-N theses.
  *
- * @param queries - The generated TR+EN search queries to run.
  * @param matrixInput - The validated positioning matrix input.
  * @param logger - Optional structured logger for pipeline events.
- * @param options - Optional settings for the sifting process.
- * @param options.topN - The maximum number of top-ranked theses to return.
- * @returns The selected theses sorted ascending by thesis ID.
+ * @param options - Optional settings for topN and candidateLimit.
+ * @returns The selected top theses sorted deterministically.
  */
 export async function searchAndSiftTheses(
-  queries: GeneratedQueries,
   matrixInput: PositioningMatrixInput,
   logger?: Logger,
-  options?: { topN?: number },
+  options?: { topN?: number; candidateLimit?: number },
 ): Promise<SiftedThesis[]> {
   const topN = options?.topN ?? 45;
+  const candidateLimit = options?.candidateLimit ?? 400;
 
-  const rawDirectQuery = sanitizeSearchQuery(
-    matrixInput.subjectProblem.slice(0, 450),
+  const searchQuery = sanitizeSearchQuery(
+    matrixInput.subjectProblem.slice(0, 500),
   );
-
-  const allQueries: string[] = [
-    ...(rawDirectQuery ? [rawDirectQuery] : []),
-    sanitizeSearchQuery(queries.subjectTr_alt1),
-    sanitizeSearchQuery(queries.subjectTr_alt2),
-    sanitizeSearchQuery(queries.subjectTr_alt3),
-    sanitizeSearchQuery(queries.subjectTr_alt4),
-    sanitizeSearchQuery(queries.subjectEn_alt1),
-    sanitizeSearchQuery(queries.subjectEn_alt2),
-    sanitizeSearchQuery(queries.subjectEn_alt3),
-    sanitizeSearchQuery(queries.subjectEn_alt4),
-  ];
 
   const searchStart = performance.now();
 
-  logger?.info("sifting_parallel_search_start", {
+  logger?.info("sifting_direct_search_start", {
     service: "tezara",
     filePath: "src/features/positioning/sifting.ts",
-    data: { queries: allQueries },
+    data: { query: searchQuery, candidateLimit },
   });
 
-  const searchParams = {
-    limit: 50,
-  };
+  // 1. Single Ultra-Fast Qdrant Query with candidateLimit (default 400)
+  const rawTheses = await searchTezara(searchQuery, logger, {
+    limit: candidateLimit,
+  });
 
-  const hitArrays = await Promise.all(
-    allQueries.map((q) => searchTezara(q, logger, searchParams)),
-  );
-
-  const candidateMap = new Map<number, TezaraThesisDetails>();
-  for (const hits of hitArrays) {
-    for (const thesis of hits) {
-      if (thesis && thesis.id && !candidateMap.has(thesis.id)) {
-        candidateMap.set(thesis.id, thesis);
-      }
-    }
-  }
-
-  const uniqueCandidates = Array.from(candidateMap.values()).sort(
-    (a, b) => a.id - b.id,
-  );
-
-  const filteredCandidates = uniqueCandidates.filter((thesis) => {
+  // 2. Filter valid candidates
+  const filteredCandidates = rawTheses.filter((thesis) => {
     const hasSufficientAbstract =
       thesis.abstract && thesis.abstract.trim().length >= 100;
     if (!hasSufficientAbstract) return false;
@@ -143,18 +128,19 @@ export async function searchAndSiftTheses(
     logger?.info("sifting_no_candidates_remaining", {
       service: "tezara",
       filePath: "src/features/positioning/sifting.ts",
-      data: { queries: allQueries },
+      data: { query: searchQuery },
     });
     return [];
   }
 
-  logger?.info("sifting_parallel_search_success", {
+  logger?.info("sifting_direct_search_success", {
     service: "tezara",
     filePath: "src/features/positioning/sifting.ts",
     durationMs: performance.now() - searchStart,
     data: { candidateCount: filteredCandidates.length },
   });
 
+  // 3. Cohere Rerank v4.0 Pro
   const targetYamlQuery = formatMatrixToYamlQuery(matrixInput);
   const candidateYamlDocs = filteredCandidates.map(formatThesisToYaml);
 
@@ -191,14 +177,12 @@ export async function searchAndSiftTheses(
 
   const selected = scoredTheses.slice(0, topN);
 
-  const topResults = selected.slice().sort((a, b) => a.id - b.id);
-
   logger?.info("cohere_rerank_success", {
     service: "cohere",
     filePath: "src/features/positioning/sifting.ts",
     durationMs: performance.now() - rerankStart,
-    data: { topCount: topResults.length },
+    data: { topCount: selected.length },
   });
 
-  return topResults;
+  return selected;
 }

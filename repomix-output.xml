@@ -44,10 +44,6 @@ public/
   logo.svg
   web-app-manifest-192x192.png
   web-app-manifest-512x512.png
-scripts/
-  benchmark-turso-tezara.ts
-  compare-thesis-search-strategies.ts
-  test-turso-search.ts
 src/
   app/
     (app)/
@@ -387,11 +383,9 @@ src/
       prompts/
         jury-analysis.prompt.ts
         per-thesis-evaluation.prompt.ts
-        queries.prompt.ts
       analysis.ts
       decision-engine.ts
       per-thesis-evaluation.ts
-      queries.ts
       sifting.ts
       validation.ts
     tezara/
@@ -485,348 +479,6 @@ This section contains the contents of the repository's files.
 <path d="M246.226 10.8441C247.312 10.7859 248.467 10.7623 249.556 10.7328C314.133 8.98486 373.707 32.4599 420.465 74.4124C471.42 120.716 501.001 184.369 502.722 251.409C504.457 316.684 478.966 379.955 431.827 427.38C388.779 470.713 327.676 499.107 264.687 500.783C203.088 502.658 143.072 482.002 96.9748 443.058C44.8021 399.584 13.1276 338.002 9.04683 272.11C4.95745 205.75 28.379 140.511 74.2776 90.4161C108.502 53.5729 153.749 26.6496 204.406 15.9524C218.852 12.9018 231.611 11.7074 246.226 10.8441ZM36.531 337.479C39.6407 329.177 42.7365 322.945 48.6058 315.931C64.4689 296.976 90.6497 286.696 115.395 295.341C125.913 299.014 135.904 306.422 140.709 316.24C147.352 329.448 144.22 348.226 128.916 354.692C123.705 356.841 117.809 356.926 112.533 354.928C104.814 352.061 99.5814 344.99 102.723 337.057C104.766 331.896 110.715 328.279 116.184 331.184C122.065 334.306 124.02 338.109 124.061 344.31C127.456 343.459 130.467 342.174 132.19 339.102C137.731 329.211 131.131 318.722 121.991 314.059C115.642 310.795 108.173 310.127 101.295 312.207C79.3864 318.647 69.8861 344.483 77.2229 363.927C84.8079 384.029 99.0439 397.133 118.974 406.349C168.744 430.225 228.655 423.426 278.634 403.749C282.576 402.199 286.547 400.677 290.512 399.187C303.254 394.404 316.036 389.725 328.861 385.147C350.175 377.576 369.063 371.772 392.042 370.66C403 370.127 411.45 368.858 422.163 372.824C400.455 379.044 379.485 387.397 359.594 397.747C353.941 400.746 347.938 404.423 342.404 407.691C328.679 415.873 314.712 423.681 300.521 431.107C267.295 448.509 241.248 458.708 202.678 458.431C189.579 458.456 176.522 457.013 163.777 454.127C159.507 453.128 155.255 452.06 151.024 450.923C159.266 455.787 167.804 459.335 176.836 462.508C203.499 471.875 227.93 474.481 255.652 468.085C282.294 461.938 303.956 451.162 326.792 436.618C338.806 428.968 349.017 420.64 360.607 412.666C382.312 397.741 409.063 382.957 435.484 377.336C442.544 375.833 449.408 375.462 456.54 375.156C482.868 330.793 493.561 279.563 487.051 228.986C485.999 220.485 483.907 208.301 481.604 199.843L353.938 172.781C332.31 168.208 309.056 163.692 287.659 158.625C287.742 154.015 287.788 149.405 287.802 144.795L386.7 128.716C404.645 125.763 426.025 122.821 443.54 119.155C439.962 113.625 432.078 104.671 427.551 99.7452C395.666 64.9998 353.293 40.4695 306.22 29.5032C288.527 25.4847 263.691 22.8497 245.409 24.0697C183.677 27.3695 125.909 54.0732 85.0104 98.214C40.8944 146.399 18.511 209.199 22.7153 272.993C24.0838 293.283 29.2654 318.256 36.531 337.479Z" fill="#E8F0FE"/>
 <path d="M230.204 92.6969C230.512 90.5431 230.777 87.6163 232.812 86.4275C238.108 83.3344 239.306 89.0228 239.905 92.0806C244.422 97.1688 253.613 101.027 259.594 105.598C263.555 108.626 271.482 117.542 275.189 118.855C276.582 119.349 277.813 119.717 278.591 121.004C279.395 122.34 279.167 126.387 278.588 127.82C278.194 128.786 277.568 129.451 276.572 129.879C274.914 130.589 272.283 130.575 270.456 130.742L270.383 168.724C276.476 169.573 275.549 171.134 275.447 176.431C287.861 176.356 286.362 178.397 286.309 189.689C286.289 194.108 277.717 199.772 274.212 202.035C274.216 204.607 274.07 210.506 274.328 212.87C275.212 220.913 275.993 228.882 276.721 236.939L282.172 297.489C282.999 306.992 284.482 320.282 284.734 329.646C277.317 328.956 274.424 328.736 266.872 329.397C265.339 321.123 267.868 310.127 256.052 312.304C253.322 312.808 252.001 313.108 250.251 315.247C249.254 318.581 249.559 326.442 249.221 330.333C248.692 336.398 248.169 343.475 247.011 349.427C255.748 340.526 266.518 333.32 279.749 332.813C286.948 332.539 294.742 334.413 300.127 339.165C303.969 342.498 306.226 347.171 306.389 352.118C306.581 358.825 302.917 364.554 298.171 369.232C297.506 369.885 296.807 370.505 296.076 371.095C301.07 369.239 306.491 366.46 311.873 368.618C314.805 369.793 319.942 373.933 319.531 377.138C318.115 378.524 307.024 381.987 304.34 381.873C302.553 381.804 301.034 379.847 299.369 379.413C292.002 377.541 284.886 376.797 279.399 371.154C274.967 366.595 274.676 359.106 279.849 355.123C286.776 349.792 291.389 356.39 294.176 361.431C304.082 355.615 296.92 346.125 287.467 344.537C282.94 343.758 278.273 344.764 274.54 347.322C262.973 355.281 264.416 368.911 272.273 378.688C276.36 383.776 280.061 386.319 285.899 389.369C266.835 398.689 247.553 403.387 226.577 407.332C187.053 414.758 119.235 410.306 95.1531 374.296C92.34 370.767 90.0686 366.148 88.3681 362.049C91.1197 365.76 94.339 368.728 97.9905 371.614C106.252 376.879 116.608 381.858 126.807 381.996C127.956 382.012 140.464 380.411 141.686 380.09C151.593 377.465 156.693 361.274 167.474 357.95C172.276 356.472 176.112 357.149 180.828 356.459C182.036 346.156 182.734 335.894 183.76 325.575C186.203 300.265 188.774 274.966 191.485 249.679C192.961 235.789 194.318 219.433 196.681 205.782C210.591 204.853 226.666 204.491 240.683 204.122C237.959 201.461 237.201 200.342 235.48 196.992C225.935 197.02 216.387 197.205 206.845 197.545C202.188 197.697 197.22 198.145 192.541 197.935C182.536 197.488 184.21 189.579 184.128 182.702C184.042 175.691 189.221 176.341 194.751 176.423C194.655 171.027 194.013 169.715 200.097 168.826L199.921 143.773C199.901 140.539 200.03 133.807 199.742 130.827C194.219 130.405 191.177 131.014 191.108 124.47C190.36 118.767 194.781 119.615 198.131 117.104C199.544 116.044 202.347 112.824 203.86 111.219C210.466 104.209 223.724 99.1567 230.204 92.6969ZM223.506 168.117C230.006 168.171 236.509 168.179 243.009 168.141L247.073 168.157C247.941 157.544 249.738 144.54 245.002 134.567C244.131 132.732 230.373 133.346 227.888 133.448C227.054 133.53 225.812 133.492 225.389 134.219C220.689 142.276 222.675 159.874 223.506 168.117ZM234.983 234.746C233.732 235.291 232.597 235.791 232.253 237.176C231.422 240.534 231.925 245.259 231.978 248.79L236.678 248.755C238.174 248.753 238.386 249.004 239.388 248.356C239.753 246.585 239.829 244.265 239.739 242.457C239.547 238.598 240.011 234.875 234.983 234.746ZM217.002 167.31C216.926 155.054 216.731 146.023 218.511 133.883C214.656 133.846 210.744 133.777 206.898 133.79C206.812 144.814 206.597 157.195 206.881 168.146C208.602 168.18 215.88 168.576 216.89 167.802L217.002 167.31ZM254.758 168.143L263.549 168.129C263.539 156.929 263.774 144.906 263.496 133.77L260.312 133.748L251.773 133.786C253.815 145.26 253.441 155.316 253.289 166.833C253.276 167.796 253.286 167.587 254 168.085L254.758 168.143Z" fill="#E8F0FE" fill-opacity="0.933333"/>
 </svg>
-</file>
-
-<file path="scripts/benchmark-turso-tezara.ts">
-import { getE5QueryEmbedding, searchTezara } from "../src/features/tezara";
-
-interface BenchmarkResult {
-  query: string;
-  category: string;
-  embeddingTimeMs: number;
-  dbSearchTimeMs: number;
-  totalTimeMs: number;
-  resultsCount: number;
-  topTitles: string[];
-  hasAbstractCount: number;
-  hasPdfCount: number;
-}
-
-const TEST_QUERIES = [
-  {
-    category: "Hukuk & Teknoloji",
-    query: "yapay zeka üretimi eserlerin telif hakkı ve fikri mülkiyet koruması",
-  },
-  {
-    category: "Sosyoloji & Göç",
-    query: "suriyeli sığınmacıların kentsel entegrasyonu ve mekansal ayrışma",
-  },
-  {
-    category: "Ekonomi & Finans",
-    query: "merkez bankası faiz kararlarının enflasyon ve döviz kuru üzerindeki dinamik etkileri",
-  },
-  {
-    category: "Tıp & Biyoteknoloji",
-    query: "meme kanseri erken teşhisinde derin öğrenme ve konvolüsyonel sinir ağları",
-  },
-  {
-    category: "Eğitim Bilimleri",
-    query: "ortaokul öğrencilerinde uzaktan eğitim sürecinde matematik kaygısı ve akademik başarı",
-  },
-  {
-    category: "İngilizce Sorgu (Multilingual Test)",
-    query: "corporate governance board gender diversity and financial performance",
-  },
-];
-
-async function runBenchmark() {
-  console.log("===============================================================");
-  console.log("   FABRICCA - TURSO VEKTÖR & HUGGING FACE KALİTE/PERFORMANS TESTİ   ");
-  console.log("===============================================================\n");
-
-  const benchmarkResults: BenchmarkResult[] = [];
-
-  for (const item of TEST_QUERIES) {
-    console.log(`[TEST BAŞLADI] Kategori: ${item.category}`);
-    console.log(`Sorgu: "${item.query}"`);
-
-    // 1. Embedding süresi
-    const embStart = performance.now();
-    const emb = await getE5QueryEmbedding(item.query);
-    const embTime = Math.round(performance.now() - embStart);
-
-    // 2. Arama ve E2E süresi
-    const totalStart = performance.now();
-    const results = await searchTezara(item.query, undefined, { limit: 10 });
-    const totalTime = Math.round(performance.now() - totalStart);
-    const dbTime = Math.max(0, totalTime - embTime);
-
-    const hasAbstract = results.filter((r) => r.abstract && r.abstract.length > 50).length;
-    const hasPdf = results.filter((r) => Boolean(r.yokPdfUrl)).length;
-
-    benchmarkResults.push({
-      query: item.query,
-      category: item.category,
-      embeddingTimeMs: embTime,
-      dbSearchTimeMs: dbTime,
-      totalTimeMs: totalTime,
-      resultsCount: results.length,
-      topTitles: results.slice(0, 3).map((r) => `[${r.year}] ${r.title} (${r.author} - ${r.university})`),
-      hasAbstractCount: hasAbstract,
-      hasPdfCount: hasPdf,
-    });
-
-    console.log(`  ⏱️ Embedding: ${embTime}ms | DB Arama: ${dbTime}ms | Toplam: ${totalTime}ms`);
-    console.log(`  📊 Dönen Tez Sayısı: ${results.length} | Özet Doluluğu: %${(hasAbstract / results.length) * 100} | PDF Oranı: %${(hasPdf / results.length) * 100}`);
-    console.log(`  🎯 İlk 2 Sonuç:`);
-    results.slice(0, 2).forEach((r, idx) => {
-      console.log(`     ${idx + 1}. [${r.year}] ${r.title.slice(0, 90)}...`);
-      console.log(`        Yazar: ${r.author} | Ünv: ${r.university} | Dil: ${r.language || "N/A"}`);
-      console.log(`        Özet: ${r.abstract.slice(0, 110)}...\n`);
-    });
-    console.log("---------------------------------------------------------------");
-  }
-
-  // 3. Paralel İstek / Çoklu Sorgu Testi (Positioning sifting simülasyonu: 8 sorgu)
-  console.log("\n[PARALEL SORGULAMA TESTİ - Sifting Simülasyonu]");
-  console.log("8 eşzamanlı/sıralı sorgu yükü testi yapılıyor...");
-  const multiStart = performance.now();
-  const multiPromises = TEST_QUERIES.map((t) => searchTezara(t.query, undefined, { limit: 20 }));
-  const multiRes = await Promise.all(multiPromises);
-  const multiDuration = Math.round(performance.now() - multiStart);
-  const totalThesesFetched = multiRes.reduce((acc, curr) => acc + curr.length, 0);
-
-  console.log(`  ⏱️ 6 Paralel Sorgu Tamamlanma Süresi: ${multiDuration}ms`);
-  console.log(`  📦 Toplam Çekilen Tez: ${totalThesesFetched}`);
-  console.log(`  ⚡ Ortalama Sorgu Başına Süre (Throughput): ${(multiDuration / 6).toFixed(1)}ms`);
-
-  // İstatistikler
-  const avgTotal = Math.round(
-    benchmarkResults.reduce((a, b) => a + b.totalTimeMs, 0) / benchmarkResults.length,
-  );
-  const avgEmb = Math.round(
-    benchmarkResults.reduce((a, b) => a + b.embeddingTimeMs, 0) / benchmarkResults.length,
-  );
-  const avgDb = Math.round(
-    benchmarkResults.reduce((a, b) => a + b.dbSearchTimeMs, 0) / benchmarkResults.length,
-  );
-
-  console.log("\n===============================================================");
-  console.log("                     GENEL PERFORMANS RAPORU                   ");
-  console.log("===============================================================");
-  console.log(` Ort. Embedding Süresi (Hugging Face) : ${avgEmb} ms`);
-  console.log(` Ort. Veritabanı Arama Süresi (Turso) : ${avgDb} ms`);
-  console.log(` Ort. Toplam İstek Süresi (E2E)        : ${avgTotal} ms`);
-  console.log(` Paralel 6 Sorgu Çekim Süresi         : ${multiDuration} ms`);
-  console.log("===============================================================\n");
-}
-
-runBenchmark().catch((err) => {
-  console.error("Benchmark testinde hata oluştu:", err);
-  process.exit(1);
-});
-</file>
-
-<file path="scripts/compare-thesis-search-strategies.ts">
-import { db } from "../src/db";
-import { matrices } from "../src/db/schema";
-import { generatePositioningQueries } from "../src/features/positioning/queries";
-import { searchTezara } from "../src/features/tezara";
-import { rerankWithCohere } from "../src/services/ai/cohere";
-import type { TezaraThesisDetails } from "../src/lib/types";
-
-function formatThesisToYaml(thesis: TezaraThesisDetails): string {
-  return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
-}
-
-async function main() {
-  console.log("==========================================================================");
-  console.log("   FABRICCA - 3 FARKLI TEZ ARAMA STRATEJİSİNİN KARŞILAŞTIRMALI TESTİ     ");
-  console.log("==========================================================================\n");
-
-  // 1. DB'den gerçek matrisi çek
-  const matrixRows = await db.select().from(matrices).limit(1);
-  if (!matrixRows || matrixRows.length === 0) {
-    throw new Error("Veritabanında matris kaydı bulunamadı.");
-  }
-
-  const matrix = matrixRows[0];
-  const matrixInput = {
-    subjectProblem: matrix.subjectProblem,
-    theoreticalFramework: matrix.theoreticalFramework,
-    methodology: matrix.methodology,
-  };
-
-  console.log("📌 KULLANICI TEZ MATRİSİ ÖZETİ:");
-  console.log(`Araştırma Problemi: "${matrix.subjectProblem.slice(0, 180)}..."\n`);
-
-  // Gemini ile 8 sorguyu üret
-  console.log("🤖 Gemini Flash ile 8 Semantik Sorgu Üretiliyor...");
-  const queriesStart = performance.now();
-  const generatedQueries = await generatePositioningQueries(matrixInput);
-  console.log(`✅ Sorgular üretildi (${Math.round(performance.now() - queriesStart)}ms):`);
-  console.log("  TR-1:", generatedQueries.subjectTr_alt1);
-  console.log("  TR-2:", generatedQueries.subjectTr_alt2);
-  console.log("  TR-3:", generatedQueries.subjectTr_alt3);
-  console.log("  TR-4:", generatedQueries.subjectTr_alt4);
-  console.log("  EN-1:", generatedQueries.subjectEn_alt1);
-  console.log("  EN-2:", generatedQueries.subjectEn_alt2);
-  console.log("  EN-3:", generatedQueries.subjectEn_alt3);
-  console.log("  EN-4:", generatedQueries.subjectEn_alt4);
-  console.log("\n--------------------------------------------------------------------------");
-
-  // =========================================================================
-  // STRATEJİ 1: Sadece Tezin Kendisi (Tek Vektör)
-  // =========================================================================
-  console.log("\n🔵 [STRATEJİ 1: SADECE TEZİN KENDİSİ VEKTÖRLEŞİNCE]");
-  const s1Start = performance.now();
-  // 512 token sınırına uygun olarak subjectProblem'in özünü veriyoruz
-  const directQuery = matrix.subjectProblem.slice(0, 450);
-  const s1Theses = await searchTezara(directQuery, undefined, { limit: 40 });
-  const s1Time = Math.round(performance.now() - s1Start);
-
-  console.log(`  ⏱️ Süre: ${s1Time}ms | Bulunan Aday Sayısı: ${s1Theses.length}`);
-
-  // =========================================================================
-  // STRATEJİ 2: Sadece 8 Üretilen Sorgu
-  // =========================================================================
-  console.log("\n🟣 [STRATEJİ 2: SADECE 8 ÜRETİLEN SORGU İLE]");
-  const s2Start = performance.now();
-  const s2Queries = [
-    generatedQueries.subjectTr_alt1,
-    generatedQueries.subjectTr_alt2,
-    generatedQueries.subjectTr_alt3,
-    generatedQueries.subjectTr_alt4,
-    generatedQueries.subjectEn_alt1,
-    generatedQueries.subjectEn_alt2,
-    generatedQueries.subjectEn_alt3,
-    generatedQueries.subjectEn_alt4,
-  ];
-
-  const s2ResultsArray = await Promise.all(
-    s2Queries.map((q) => searchTezara(q, undefined, { limit: 25 })),
-  );
-
-  const s2Map = new Map<number, TezaraThesisDetails>();
-  for (const arr of s2ResultsArray) {
-    for (const t of arr) {
-      if (t.id && !s2Map.has(t.id)) s2Map.set(t.id, t);
-    }
-  }
-  const s2Theses = Array.from(s2Map.values());
-  const s2Time = Math.round(performance.now() - s2Start);
-
-  console.log(`  ⏱️ Süre: ${s2Time}ms | Tekilleştirilmiş Aday Sayısı: ${s2Theses.length}`);
-
-  // =========================================================================
-  // STRATEJİ 3: Tezin Kendisi (0. Sorgu) + 8 Üretilen Sorgu = 9 Sorgu
-  // =========================================================================
-  console.log("\n🟢 [STRATEJİ 3: TEZİN KENDİSİ (0. SORGU) + 8 ÜRETİLEN SORGU (TOPLAM 9)]");
-  const s3Start = performance.now();
-  const s3Queries = [directQuery, ...s2Queries];
-
-  const s3ResultsArray = await Promise.all(
-    s3Queries.map((q) => searchTezara(q, undefined, { limit: 25 })),
-  );
-
-  const s3Map = new Map<number, TezaraThesisDetails>();
-  for (const arr of s3ResultsArray) {
-    for (const t of arr) {
-      if (t.id && !s3Map.has(t.id)) s3Map.set(t.id, t);
-    }
-  }
-  const s3Theses = Array.from(s3Map.values());
-  const s3Time = Math.round(performance.now() - s3Start);
-
-  console.log(`  ⏱️ Süre: ${s3Time}ms | Tekilleştirilmiş Aday Sayısı: ${s3Theses.length}`);
-
-  // =========================================================================
-  // COHERE RERANK İLE KALİTE VE ALAKA DEĞERLENDİRMESİ
-  // =========================================================================
-  console.log("\n==========================================================================");
-  console.log("            COHERE RERANK v4.0 PRO İLE EN İYİ İLK 5 TEZ ANALİZİ          ");
-  console.log("==========================================================================");
-
-  const rerankQuery = `SubjectProblem: ${matrix.subjectProblem}`;
-
-  async function rankAndDisplay(theses: TezaraThesisDetails[], strategyName: string) {
-    // Filtrele: özet uzunluğu >= 100
-    const filtered = theses.filter((t) => t.abstract && t.abstract.trim().length >= 100);
-    const docs = filtered.map(formatThesisToYaml);
-
-    if (docs.length === 0) {
-      console.log(`\n[${strategyName}] Uygun özetli aday bulunamadı.`);
-      return;
-    }
-
-    const rerankRes = await rerankWithCohere({
-      query: rerankQuery,
-      documents: docs,
-    });
-
-    console.log(`\n🏆 ${strategyName} (Toplam Değerlendirilen: ${filtered.length} Tez)`);
-    const top5 = rerankRes.slice(0, 5);
-
-    top5.forEach((item, idx) => {
-      const t = filtered[item.index];
-      const score = (item.relevanceScore * 100).toFixed(1);
-      console.log(`  ${idx + 1}. [Skor: %${score}] [${t.year}] ${t.title}`);
-      console.log(`     Yazar: ${t.author} | Ünv: ${t.university} | Tür: ${t.thesisType}`);
-      console.log(`     Özet: ${t.abstract.slice(0, 140)}...\n`);
-    });
-  }
-
-  await rankAndDisplay(s1Theses, "STRATEJİ 1: Sadece Tezin Kendisi");
-  await rankAndDisplay(s2Theses, "STRATEJİ 2: Sadece 8 Üretilen Sorgu");
-  await rankAndDisplay(s3Theses, "STRATEJİ 3: Tezin Kendisi (0. Sorgu) + 8 Sorgu (Toplam 9)");
-
-  // Küme Kesişimi Analizi
-  const s1Ids = new Set(s1Theses.map((t) => t.id));
-  const s2Ids = new Set(s2Theses.map((t) => t.id));
-  const commonIds = s1Theses.filter((t) => s2Ids.has(t.id)).map((t) => t.id);
-  const onlyS1 = s1Theses.filter((t) => !s2Ids.has(t.id)).map((t) => t.id);
-  const onlyS2 = s2Theses.filter((t) => !s1Ids.has(t.id)).map((t) => t.id);
-
-  console.log("==========================================================================");
-  console.log("                        KÜME KESİŞİM VE FARK ANALİZİ                     ");
-  console.log("==========================================================================");
-  console.log(` S1 (Tezin Kendisi) Toplam Aday       : ${s1Theses.length}`);
-  console.log(` S2 (8 Sorgu) Toplam Aday             : ${s2Theses.length}`);
-  console.log(` S3 (9 Sorgu) Toplam Aday             : ${s3Theses.length}`);
-  console.log(` Ortak Yakalanan Tez Sayısı           : ${commonIds.length}`);
-  console.log(` SADECE S1'in Yakaladığı Özel Tezler  : ${onlyS1.length}`);
-  console.log(` SADECE S2'nin Yakaladığı Özel Tezler  : ${onlyS2.length}`);
-  console.log("==========================================================================\n");
-}
-
-main().catch((err) => {
-  console.error("Test hatası:", err);
-  process.exit(1);
-});
-</file>
-
-<file path="scripts/test-turso-search.ts">
-import { searchTezara } from "../src/features/tezara";
-
-async function main() {
-  console.log("Testing Turso Vector Search via searchTezara...");
-  const query = "yapay zeka ve telif hakları";
-  const start = performance.now();
-
-  const results = await searchTezara(query, undefined, { limit: 5 });
-  const duration = Math.round(performance.now() - start);
-
-  console.log(`\nSearch finished in ${duration}ms. Results count: ${results.length}\n`);
-
-  for (let i = 0; i < results.length; i++) {
-    const t = results[i];
-    console.log(`--- Result #${i + 1} ---`);
-    console.log(`ID: ${t.id}`);
-    console.log(`Title: ${t.title}`);
-    console.log(`Author: ${t.author}`);
-    console.log(`Year: ${t.year}`);
-    console.log(`University: ${t.university}`);
-    console.log(`Type: ${t.thesisType}`);
-    console.log(`Language: ${t.language}`);
-    console.log(`Abstract: ${t.abstract.slice(0, 150)}...`);
-    console.log(`PDF URL: ${t.yokPdfUrl || "N/A"}\n`);
-  }
-}
-
-main().catch((err) => {
-  console.error("Test failed with error:", err);
-  process.exit(1);
-});
 </file>
 
 <file path="src/app/(app)/dashboard/_lib/schemas.ts">
@@ -24826,64 +24478,6 @@ Lütfen listedeki her bir tezi SADECE kullanıcının Tez Matrisi ile 3 aşamal�
 }
 </file>
 
-<file path="src/features/positioning/prompts/queries.prompt.ts">
-import {
-  buildPromptPayload,
-  type PromptPayload,
-} from "@/lib/ai/prompt-builder";
-import type { PositioningMatrixInput } from "@/features/positioning/validation";
-
-/**
- * Builds the standardized PromptPayload for positioning query generation.
- *
- * @param input - The validated positioning matrix input.
- * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
- */
-export function buildPositioningQueriesPromptPayload(
-  input: PositioningMatrixInput,
-): PromptPayload {
-  return buildPromptPayload({
-    roleAndExpertise:
-      "Akademik tez veritabanlarında vektör/semantik arama yapmak için yüksek hassasiyetli, doğal dil arama sorguları üreten uzman bir Bilgi Erişim (Information Retrieval) Uzmanısınız.",
-
-    primaryTask:
-      "Sana sunulan Tez Konumlandırma Matrisinin Araştırma Problemi bileşeni (aktörleri, kurumları ve ampirik bağlamı kapsayan entegre alan) için Türkçe ve İngilizce olmak üzere her dil için 4 farklı alternatif içeren toplam 8 kısa arama sorgusu üretmektir.",
-
-    rulesAndConstraints: `1. **Sorgu Katmanları ve Çeşitlilik (Her dil için 4 farklı seviye):**
-   - **_alt1 (Spesifik Mekanizma):** Araştırma probleminin özüne odaklanan 2-4 kelimelik hassas akademik sorgu.
-   - **_alt2 (Aktör / Kurum / Bağlam):** Araştırmadaki ana aktörleri, kurumları veya tarihsel/coğrafi bağlamı hedefleyen 2-4 kelimelik sorgu.
-   - **_alt3 (Geniş Tematik Kapsam - Yüksek Yakalama / High-Recall):** Akademik tez veritabanlarında geniş arama başarımı sağlayan 1-3 kelimelik kapsayıcı ana konu başlığı (aşırı daraltılmamış, tez başlıklarında kesin geçecek anahtar kavramlar).
-   - **_alt4 (Kavramsal Çatı / Eşanlamlı):** Disiplinde yaygın kullanılan geniş kuramsal veya kavramsal akademik eşanlamlılar (2-4 kelime).
-2. **Sorgu Uyumu:** Sorgular semantik vektör arama uyumlu, yalnızca boşlukla ayrılmış düz akademik Türkçe ve İngilizce kelimelerden oluşmalı; özel karakter veya mantıksal operatör içermemelidir.
-3. **Genel Geçerlilik:** Her disiplin (sosyoloji, hukuk, tıp, mühendislik, siyaset bilimi vb.) için veritabanındaki hem dar hem geniş başlıkları kapsayacak esneklikte üretilmelidir.`,
-
-    outputFormat:
-      "Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir. Her dil için `_alt1`, `_alt2`, `_alt3`, `_alt4` olmak üzere dört ayrı sorgu üretilir.",
-
-    examples: `## Girdi
-- **subjectProblem:** Kente göç eden ailelerin üçüncü kuşak bireylerinin sosyal entegrasyon sürecinde kültürel uyum ve kimlik aidiyet pratikleri
-
-### Beklenen Çıktı
-\`\`\`json
-{
-  "subjectTr_alt1": "göç kimlik aidiyet pratikleri",
-  "subjectTr_alt2": "göçmen aile üçüncü kuşak",
-  "subjectTr_alt3": "göç entegrasyon",
-  "subjectTr_alt4": "sosyal uyum kültürel aidiyet",
-  "subjectEn_alt1": "migration identity belonging practices",
-  "subjectEn_alt2": "immigrant family third generation",
-  "subjectEn_alt3": "migration integration",
-  "subjectEn_alt4": "social adaptation cultural identity"
-}
-\`\`\``,
-
-    inputContext: `Aşağıdaki matris alanı için kademeli (spesifikten geniş tematik kapsama) Türkçe ve İngilizce semantik tez arama sorguları üret (her dil için 4 alternatif, toplam 8 sorgu):
-
-Araştırma Problemi ve Odağı — aktörler, kurumlar ve ampirik bağlam dahil (subjectTr_alt1/2/3/4 / subjectEn_alt1/2/3/4): ${input.subjectProblem}`,
-  });
-}
-</file>
-
 <file path="src/features/positioning/decision-engine.ts">
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
@@ -25275,191 +24869,6 @@ export async function evaluateThesesInParallel(
   });
 
   return allEvaluated;
-}
-</file>
-
-<file path="src/features/positioning/queries.ts">
-import { z } from "zod";
-import { FLASH_LITE_31, GEMINI_SEED } from "@/lib/constants";
-import {
-  generateGeminiStructuredContent,
-  type JsonSchema,
-} from "@/services/ai";
-import type { Logger } from "@/lib/logger";
-import type { PositioningMatrixInput } from "./validation";
-
-/**
- * Zod schema for TR+EN search queries (4 alternatives per language) generated by Gemini.
- */
-export const generatedQueriesSchema = z.object({
-  subjectTr_alt1: z
-    .string()
-    .min(2)
-    .describe(
-      "Araştırma problemi/odağı için 2-4 kelimelik Türkçe sorgu (alternatif 1 — problem mekanizması)",
-    ),
-  subjectTr_alt2: z
-    .string()
-    .min(2)
-    .describe(
-      "Araştırma problemi/odağı için 2-4 kelimelik Türkçe sorgu (alternatif 2 — aktörler/kurumlar)",
-    ),
-  subjectTr_alt3: z
-    .string()
-    .min(2)
-    .describe(
-      "Araştırma problemi/odağı için 2-4 kelimelik Türkçe sorgu (alternatif 3 — coğrafi/tarihsel bağlam)",
-    ),
-  subjectTr_alt4: z
-    .string()
-    .min(2)
-    .describe(
-      "Araştırma problemi/odağı için 2-4 kelimelik Türkçe sorgu (alternatif 4 — geniş akademik eşanlamlı)",
-    ),
-  subjectEn_alt1: z
-    .string()
-    .min(2)
-    .describe(
-      "Research problem/focus — 2-4 word English query (alternative 1 — problem mechanism)",
-    ),
-  subjectEn_alt2: z
-    .string()
-    .min(2)
-    .describe(
-      "Research problem/focus — 2-4 word English query (alternative 2 — actors/institutions)",
-    ),
-  subjectEn_alt3: z
-    .string()
-    .min(2)
-    .describe(
-      "Research problem/focus — 2-4 word English query (alternative 3 — geographic/temporal context)",
-    ),
-  subjectEn_alt4: z
-    .string()
-    .min(2)
-    .describe(
-      "Research problem/focus — 2-4 word English query (alternative 4 — broad academic synonym)",
-    ),
-});
-
-/** Inferred type for the generated positioning search queries. */
-export type GeneratedQueries = z.infer<typeof generatedQueriesSchema>;
-
-/** JSON Schema for Gemini structured outputs. */
-export const generatedQueriesJsonSchema: JsonSchema = {
-  type: "object",
-  properties: {
-    subjectTr_alt1: {
-      type: "string",
-      description:
-        "Araştırma problemi ve odağı için 2-4 kelimelik Türkçe semantik tez arama sorgusu (alternatif 1 — problem mekanizması)",
-    },
-    subjectTr_alt2: {
-      type: "string",
-      description:
-        "Araştırma problemi ve odağı için 2-4 kelimelik Türkçe semantik tez arama sorgusu (alternatif 2 — aktörler/kurumlar)",
-    },
-    subjectTr_alt3: {
-      type: "string",
-      description:
-        "Araştırma problemi ve odağı için 2-4 kelimelik Türkçe semantik tez arama sorgusu (alternatif 3 — coğrafi/tarihsel bağlam)",
-    },
-    subjectTr_alt4: {
-      type: "string",
-      description:
-        "Araştırma problemi ve odağı için 2-4 kelimelik Türkçe semantik tez arama sorgusu (alternatif 4 — geniş akademik eşanlamlı)",
-    },
-    subjectEn_alt1: {
-      type: "string",
-      description:
-        "Research problem and focus — 2-4 word English semantic thesis search query (alternative 1 — problem mechanism)",
-    },
-    subjectEn_alt2: {
-      type: "string",
-      description:
-        "Research problem and focus — 2-4 word English semantic thesis search query (alternative 2 — actors/institutions)",
-    },
-    subjectEn_alt3: {
-      type: "string",
-      description:
-        "Research problem and focus — 2-4 word English semantic thesis search query (alternative 3 — geographic/temporal context)",
-    },
-    subjectEn_alt4: {
-      type: "string",
-      description:
-        "Research problem and focus — 2-4 word English semantic thesis search query (alternative 4 — broad academic synonym)",
-    },
-  },
-  required: [
-    "subjectTr_alt1",
-    "subjectTr_alt2",
-    "subjectTr_alt3",
-    "subjectTr_alt4",
-    "subjectEn_alt1",
-    "subjectEn_alt2",
-    "subjectEn_alt3",
-    "subjectEn_alt4",
-  ],
-  additionalProperties: false,
-};
-
-/**
- * Sanitizes query text for vector search.
- *
- * @param rawQuery - The raw query string to sanitize.
- * @returns The cleaned query string.
- */
-export function sanitizeSearchQuery(rawQuery: string): string {
-  if (!rawQuery) return "";
-  return rawQuery
-    .replace(/\b(OR|AND|NOT)\b/gi, " ")
-    .replace(/[+*?:^~={}[\]()"\\]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/** Backward compatibility alias for sanitizeSearchQuery. */
-export const sanitizeMeiliQuery = sanitizeSearchQuery;
-
-import { buildPositioningQueriesPromptPayload } from "./prompts/queries.prompt";
-
-/**
- * Generates 8 sanitized TR+EN search queries from the positioning matrix via Gemini.
- *
- * @param input - The validated positioning matrix input.
- * @param logger - Optional structured logger for pipeline events.
- * @returns The sanitized generated queries object.
- */
-export async function generatePositioningQueries(
-  input: PositioningMatrixInput,
-  logger?: Logger,
-): Promise<GeneratedQueries> {
-  const payload = buildPositioningQueriesPromptPayload(input);
-
-  const result = await generateGeminiStructuredContent<GeneratedQueries>(
-    FLASH_LITE_31,
-    payload.systemInstruction,
-    payload.userPrompt,
-    generatedQueriesJsonSchema,
-    logger,
-    {
-      zodSchema: generatedQueriesSchema,
-      payloadStage: "generate_positioning_queries",
-      seed: GEMINI_SEED,
-      thesisMatrix: input,
-    },
-  );
-
-  return {
-    subjectTr_alt1: sanitizeSearchQuery(result.subjectTr_alt1),
-    subjectTr_alt2: sanitizeSearchQuery(result.subjectTr_alt2),
-    subjectTr_alt3: sanitizeSearchQuery(result.subjectTr_alt3),
-    subjectTr_alt4: sanitizeSearchQuery(result.subjectTr_alt4),
-    subjectEn_alt1: sanitizeSearchQuery(result.subjectEn_alt1),
-    subjectEn_alt2: sanitizeSearchQuery(result.subjectEn_alt2),
-    subjectEn_alt3: sanitizeSearchQuery(result.subjectEn_alt3),
-    subjectEn_alt4: sanitizeSearchQuery(result.subjectEn_alt4),
-  };
 }
 </file>
 
@@ -30724,367 +30133,6 @@ Literatür Konumu: ${e.literaturePosition || "Yok"}
 }
 </file>
 
-<file path="src/features/tezara/index.ts">
-import { createClient, type Client } from "@libsql/client/web";
-import type { Logger } from "@/lib/logger";
-import type { TezaraThesisDetails } from "@/lib/types";
-import { DEFAULT_MAX_DELAY, HttpError, withRetry } from "@/lib/api-utils";
-
-const TURSO_URL = process.env.TURSO_DATABASE_URL ?? "";
-const TURSO_AUTH_TOKEN = process.env.TURSO_AUTH_TOKEN ?? "";
-const HF_API_KEY = process.env.HUGGINGFACE_API_KEY ?? "";
-
-const HF_EMBEDDING_ENDPOINT =
-  "https://router.huggingface.co/hf-inference/models/intfloat/multilingual-e5-base/pipeline/feature-extraction";
-
-/** Maximum number of retry attempts for transient API/network failures. */
-const MAX_RETRIES = 3;
-
-/** Global singleton LibSQL client instance. */
-let libsqlClient: Client | null = null;
-
-/**
- * Returns the singleton LibSQL client connected to the Turso thesis database.
- *
- * @throws Error when TURSO_DATABASE_URL or TURSO_AUTH_TOKEN are missing.
- * @returns LibSQL client instance.
- */
-function getLibsqlClient(): Client {
-  if (libsqlClient) {
-    return libsqlClient;
-  }
-
-  if (!TURSO_URL || !TURSO_AUTH_TOKEN) {
-    throw new Error(
-      "TURSO_DATABASE_URL and TURSO_AUTH_TOKEN environment variables are not defined.",
-    );
-  }
-
-  libsqlClient = createClient({
-    url: TURSO_URL,
-    authToken: TURSO_AUTH_TOKEN,
-  });
-
-  return libsqlClient;
-}
-
-/**
- * Generates a 768-dimensional embedding vector for a query using
- * `intfloat/multilingual-e5-base` via Hugging Face Serverless Inference API.
- *
- * @param query - Raw query text.
- * @param logger - Optional logger for observability.
- * @returns 768-dimensional dense vector array.
- */
-export async function getE5QueryEmbedding(
-  query: string,
-  logger?: Logger,
-): Promise<number[]> {
-  if (!HF_API_KEY) {
-    throw new Error(
-      "HUGGINGFACE_API_KEY environment variable is not defined.",
-    );
-  }
-
-  const trimmed = query.trim();
-  const inputWithPrefix = trimmed.startsWith("query: ")
-    ? trimmed
-    : `query: ${trimmed}`;
-
-  const startTime = performance.now();
-
-  try {
-    const vector = await withRetry(
-      async (): Promise<number[]> => {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20_000);
-
-        try {
-          const res = await fetch(HF_EMBEDDING_ENDPOINT, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${HF_API_KEY}`,
-            },
-            body: JSON.stringify({ inputs: [inputWithPrefix] }),
-            signal: controller.signal,
-          });
-
-          if (!res.ok) {
-            const errText = await res.text().catch(() => "");
-            throw new HttpError(res.status, errText, null);
-          }
-
-          const data = (await res.json()) as unknown;
-
-          if (Array.isArray(data) && Array.isArray(data[0])) {
-            return data[0] as number[];
-          }
-
-          if (Array.isArray(data) && typeof data[0] === "number") {
-            return data as number[];
-          }
-
-          throw new Error("Unexpected embedding response structure from Hugging Face.");
-        } finally {
-          clearTimeout(timeoutId);
-        }
-      },
-      {
-        maxRetries: MAX_RETRIES,
-        baseDelay: 500,
-        maxDelay: DEFAULT_MAX_DELAY,
-        isRetryable: (error) => {
-          if (error instanceof HttpError) {
-            return error.status === 429 || error.status >= 500 || error.status === 503;
-          }
-          return true;
-        },
-        onRetry: (attempt, delayMs, error) => {
-          logger?.info("hf_embedding_retry", {
-            service: "tezara",
-            filePath: "src/features/tezara/index.ts",
-            step: "get_query_embedding",
-            data: {
-              attempt,
-              delayMs: Math.round(delayMs),
-              errorMessage:
-                error instanceof Error ? error.message : String(error),
-            },
-          });
-        },
-      },
-    );
-
-    const durationMs = performance.now() - startTime;
-    logger?.info("hf_embedding_success", {
-      service: "tezara",
-      filePath: "src/features/tezara/index.ts",
-      step: "get_query_embedding",
-      durationMs,
-      data: { query: trimmed, dimensions: vector.length },
-    });
-
-    return vector;
-  } catch (err) {
-    const durationMs = performance.now() - startTime;
-    logger?.error("hf_embedding_failed", {
-      service: "tezara",
-      filePath: "src/features/tezara/index.ts",
-      step: "get_query_embedding",
-      durationMs,
-      data: { query: trimmed },
-      error: err,
-    });
-    throw err;
-  }
-}
-
-/**
- * Extracts the most reliable abstract text from a raw thesis record.
- *
- * @param row - Raw thesis database row.
- * @returns Abstract string, preferring original over translated text.
- */
-function extractAbstract(row: Record<string, unknown>): string {
-  let abstract = String(row.abstract_original ?? "").trim();
-  if (!abstract || abstract.length < 10 || /^özet yok\.?$/i.test(abstract)) {
-    abstract = String(row.abstract_translated ?? "").trim();
-  }
-  return abstract;
-}
-
-/**
- * Maps a raw Turso database row to thesis details.
- *
- * @param row - Raw database row from `theses`.
- * @returns Thesis details object.
- */
-function mapRowToDetails(row: Record<string, unknown>): TezaraThesisDetails {
-  const titleOriginal = String(row.title_original ?? "").trim();
-  const titleTranslated = String(row.title_translated ?? "").trim();
-  const title =
-    titleTranslated && titleTranslated !== titleOriginal
-      ? `${titleOriginal} / ${titleTranslated}`
-      : titleOriginal;
-
-  return {
-    id: Number(row.id),
-    title,
-    author: String(row.author ?? "N/A"),
-    university: String(row.university ?? "N/A"),
-    year: parseInt(String(row.year ?? "0"), 10) || 0,
-    thesisType: String(row.thesis_type ?? "N/A"),
-    department: String(row.department ?? "N/A"),
-    language: row.language ? String(row.language) : undefined,
-    abstract: extractAbstract(row),
-    yokPdfUrl: row.pdf_url ? String(row.pdf_url) : undefined,
-  };
-}
-
-/** Search options for precision tuning. */
-export interface TezaraSearchOptions {
-  limit?: number;
-  rankingScoreThreshold?: number;
-  filter?: string;
-  attributesToSearchOn?: string[];
-}
-
-/**
- * Extracts clean search keywords from a query string, filtering out stopwords.
- *
- * @param query - Input query text.
- * @returns Array of clean keyword tokens.
- */
-function extractSearchTokens(query: string): string[] {
-  const stopWords = new Set([
-    "ve", "veya", "ile", "için", "bir", "bu", "şu", "o", "da", "de", "ta", "te",
-    "the", "and", "or", "of", "in", "on", "at", "for", "with", "a", "an", "to",
-    "üzerine", "hakkında", "incelemesi", "analizi", "boyutu", "yaklaşımı", "dönemi"
-  ]);
-
-  return query
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
-    .split(/\s+/)
-    .map((w) => w.trim())
-    .filter((w) => w.length >= 3 && !stopWords.has(w))
-    .slice(0, 6);
-}
-
-/**
- * Fallback keyword search directly querying `theses` table.
- *
- * @param query - Search query string.
- * @param client - LibSQL client instance.
- * @param limit - Maximum rows to return.
- * @returns Matching thesis details.
- */
-async function searchThesesByKeywords(
-  query: string,
-  client: Client,
-  limit: number,
-): Promise<TezaraThesisDetails[]> {
-  const tokens = extractSearchTokens(query);
-  if (tokens.length === 0) return [];
-
-  const titleConditions = tokens.map(() => "(title_original LIKE ? OR title_translated LIKE ?)").join(" AND ");
-  const abstractConditions = tokens.slice(0, 3).map(() => "(abstract_original LIKE ? OR abstract_translated LIKE ?)").join(" AND ");
-
-  const combinedSql = `
-    SELECT id, title_original, title_translated, author, university, institute,
-           year, thesis_type, language, department, abstract_original, abstract_translated,
-           pdf_url, detail_url, subjects
-    FROM theses
-    WHERE (${titleConditions}) OR (${abstractConditions})
-    ORDER BY year DESC
-    LIMIT ?
-  `;
-
-  const args: (string | number)[] = [];
-  for (const token of tokens) {
-    args.push(`%${token}%`, `%${token}%`);
-  }
-  for (const token of tokens.slice(0, 3)) {
-    args.push(`%${token}%`, `%${token}%`);
-  }
-  args.push(limit);
-
-  const result = await client.execute({ sql: combinedSql, args });
-  const results: TezaraThesisDetails[] = [];
-  for (const row of result.rows) {
-    if (!row.id) continue;
-    results.push(mapRowToDetails(row as unknown as Record<string, unknown>));
-  }
-  return results;
-}
-
-/**
- * Searches the thesis database via Turso Vector Index (cosine similarity)
- * using `multilingual-e5-base` 768-dimensional embeddings with seamless keyword fallback.
- *
- * @param query - Search query string.
- * @param logger - Optional logger for observability.
- * @param options - Optional search parameters (limit, etc.).
- * @returns Matching thesis details.
- */
-export async function searchTezara(
-  query: string,
-  logger?: Logger,
-  options?: TezaraSearchOptions,
-): Promise<TezaraThesisDetails[]> {
-  const startTime = performance.now();
-  const limit = options?.limit ?? 50;
-  const client = getLibsqlClient();
-
-  try {
-    const embedding = await getE5QueryEmbedding(query, logger);
-    const vectorJson = JSON.stringify(embedding);
-    const queryStart = performance.now();
-
-    const sql = `
-      SELECT t.id, t.title_original, t.title_translated, t.author, t.university, t.institute,
-             t.year, t.thesis_type, t.language, t.department, t.abstract_original, t.abstract_translated,
-             t.pdf_url, t.detail_url, t.subjects
-      FROM vector_top_k('thesis_vectors_idx', vector16(?), ?) AS top
-      JOIN theses t ON t.id = top.id
-    `;
-
-    const result = await client.execute({
-      sql,
-      args: [vectorJson, limit],
-    });
-
-    const dbDurationMs = performance.now() - queryStart;
-    const totalDurationMs = performance.now() - startTime;
-
-    const results: TezaraThesisDetails[] = [];
-    for (const row of result.rows) {
-      if (!row.id) continue;
-      results.push(mapRowToDetails(row as unknown as Record<string, unknown>));
-    }
-
-    logger?.info("turso_vector_search_success", {
-      service: "tezara",
-      filePath: "src/features/tezara/index.ts",
-      step: "search_turso_vector",
-      durationMs: totalDurationMs,
-      data: {
-        query,
-        resultCount: results.length,
-        dbDurationMs: Math.round(dbDurationMs),
-        limit,
-      },
-    });
-
-    return results;
-  } catch (err) {
-    logger?.warn("turso_vector_fallback_to_keywords", {
-      service: "tezara",
-      filePath: "src/features/tezara/index.ts",
-      step: "search_keyword_fallback",
-      data: { query, reason: err instanceof Error ? err.message : String(err) },
-    });
-
-    try {
-      const keywordResults = await searchThesesByKeywords(query, client, limit);
-      return keywordResults;
-    } catch (keywordErr) {
-      const durationMs = performance.now() - startTime;
-      logger?.error("turso_search_all_failed", {
-        service: "tezara",
-        filePath: "src/features/tezara/index.ts",
-        step: "search_failed",
-        durationMs,
-        data: { query },
-        error: keywordErr,
-      });
-      return [];
-    }
-  }
-}
-</file>
-
 <file path="src/services/ai/cloudflare-ai.ts">
 import { Logger } from "@/lib/logger";
 import { withRetry, HttpError, DEFAULT_MAX_DELAY } from "@/lib/api-utils";
@@ -33960,6 +33008,282 @@ async function persistOutlines(
 }
 </file>
 
+<file path="src/features/tezara/index.ts">
+import { QdrantClient } from "@qdrant/js-client-rest";
+import type { Logger } from "@/lib/logger";
+import type { TezaraThesisDetails } from "@/lib/types";
+import { DEFAULT_MAX_DELAY, HttpError, withRetry } from "@/lib/api-utils";
+
+const QDRANT_URL = process.env.QDRANT_URL ?? "";
+const QDRANT_API_KEY = process.env.QDRANT_API_KEY ?? "";
+const HF_API_KEY = process.env.HUGGINGFACE_API_KEY ?? "";
+
+const HF_EMBEDDING_ENDPOINT =
+  "https://router.huggingface.co/hf-inference/models/intfloat/multilingual-e5-base/pipeline/feature-extraction";
+
+/** Maximum number of retry attempts for transient API/network failures. */
+const MAX_RETRIES = 3;
+
+/** Global singleton Qdrant client instance. */
+let qdrantClient: QdrantClient | null = null;
+
+/**
+ * Returns the singleton Qdrant client connected to the Qdrant Cloud cluster.
+ *
+ * @throws Error when QDRANT_URL is missing.
+ * @returns Qdrant client instance.
+ */
+function getQdrantClient(): QdrantClient {
+  if (qdrantClient) {
+    return qdrantClient;
+  }
+
+  if (!QDRANT_URL) {
+    throw new Error("QDRANT_URL environment variable is not defined.");
+  }
+
+  qdrantClient = new QdrantClient({
+    url: QDRANT_URL,
+    apiKey: QDRANT_API_KEY || undefined,
+  });
+
+  return qdrantClient;
+}
+
+/**
+ * Generates a 768-dimensional embedding vector for a query using
+ * `intfloat/multilingual-e5-base` via Hugging Face Serverless Inference API.
+ *
+ * @param query - Raw query text.
+ * @param logger - Optional logger for observability.
+ * @returns 768-dimensional dense vector array.
+ */
+export async function getE5QueryEmbedding(
+  query: string,
+  logger?: Logger,
+): Promise<number[]> {
+  if (!HF_API_KEY) {
+    throw new Error(
+      "HUGGINGFACE_API_KEY environment variable is not defined.",
+    );
+  }
+
+  const trimmed = query.trim();
+  const inputWithPrefix = trimmed.startsWith("query: ")
+    ? trimmed
+    : `query: ${trimmed}`;
+
+  const startTime = performance.now();
+
+  try {
+    const vector = await withRetry(
+      async (): Promise<number[]> => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20_000);
+
+        try {
+          const res = await fetch(HF_EMBEDDING_ENDPOINT, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${HF_API_KEY}`,
+            },
+            body: JSON.stringify({ inputs: [inputWithPrefix] }),
+            signal: controller.signal,
+          });
+
+          if (!res.ok) {
+            const errText = await res.text().catch(() => "");
+            throw new HttpError(res.status, errText, null);
+          }
+
+          const data = (await res.json()) as unknown;
+
+          if (Array.isArray(data) && Array.isArray(data[0])) {
+            return data[0] as number[];
+          }
+
+          if (Array.isArray(data) && typeof data[0] === "number") {
+            return data as number[];
+          }
+
+          throw new Error("Unexpected embedding response structure from Hugging Face.");
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      },
+      {
+        maxRetries: MAX_RETRIES,
+        baseDelay: 500,
+        maxDelay: DEFAULT_MAX_DELAY,
+        isRetryable: (error) => {
+          if (error instanceof HttpError) {
+            return error.status === 429 || error.status >= 500 || error.status === 503;
+          }
+          return true;
+        },
+        onRetry: (attempt, delayMs, error) => {
+          logger?.info("hf_embedding_retry", {
+            service: "tezara",
+            filePath: "src/features/tezara/index.ts",
+            step: "get_query_embedding",
+            data: {
+              attempt,
+              delayMs: Math.round(delayMs),
+              errorMessage:
+                error instanceof Error ? error.message : String(error),
+            },
+          });
+        },
+      },
+    );
+
+    const durationMs = performance.now() - startTime;
+    logger?.info("hf_embedding_success", {
+      service: "tezara",
+      filePath: "src/features/tezara/index.ts",
+      step: "get_query_embedding",
+      durationMs,
+      data: { query: trimmed, dimensions: vector.length },
+    });
+
+    return vector;
+  } catch (err) {
+    const durationMs = performance.now() - startTime;
+    logger?.error("hf_embedding_failed", {
+      service: "tezara",
+      filePath: "src/features/tezara/index.ts",
+      step: "get_query_embedding",
+      durationMs,
+      data: { query: trimmed },
+      error: err,
+    });
+    throw err;
+  }
+}
+
+/**
+ * Extracts the most reliable abstract text from a raw thesis payload.
+ *
+ * @param payload - Raw thesis payload dictionary.
+ * @returns Abstract string, preferring original over translated text.
+ */
+function extractAbstract(payload: Record<string, unknown>): string {
+  let abstract = String(payload.abstract_original ?? payload.abstract ?? "").trim();
+  if (!abstract || abstract.length < 10 || /^özet yok\.?$/i.test(abstract)) {
+    abstract = String(payload.abstract_translated ?? "").trim();
+  }
+  return abstract;
+}
+
+/**
+ * Maps a Qdrant point payload to TezaraThesisDetails.
+ *
+ * @param id - Point ID.
+ * @param payload - Raw payload from Qdrant.
+ * @returns Standardized thesis details object.
+ */
+function mapPayloadToDetails(
+  id: number,
+  payload: Record<string, unknown>,
+): TezaraThesisDetails {
+  const titleOriginal = String(payload.title_original ?? payload.title ?? "").trim();
+  const titleTranslated = String(payload.title_translated ?? "").trim();
+  const title =
+    titleTranslated && titleTranslated !== titleOriginal
+      ? `${titleOriginal} / ${titleTranslated}`
+      : titleOriginal;
+
+  return {
+    id,
+    title,
+    author: String(payload.author ?? "N/A"),
+    university: String(payload.university ?? "N/A"),
+    year: parseInt(String(payload.year ?? "0"), 10) || 0,
+    thesisType: String(payload.thesis_type ?? payload.thesisType ?? "N/A"),
+    department: String(payload.department ?? "N/A"),
+    language: payload.language ? String(payload.language) : undefined,
+    abstract: extractAbstract(payload),
+    yokPdfUrl: payload.pdf_url ? String(payload.pdf_url) : undefined,
+  };
+}
+
+/** Search options for precision tuning. */
+export interface TezaraSearchOptions {
+  limit?: number;
+  rankingScoreThreshold?: number;
+  filter?: string;
+  attributesToSearchOn?: string[];
+}
+
+/**
+ * Searches the thesis database via Qdrant Vector Index (Cosine Similarity)
+ * using `multilingual-e5-base` 768-dimensional embeddings.
+ *
+ * @param query - Search query string.
+ * @param logger - Optional logger for observability.
+ * @param options - Optional search parameters (limit, etc.).
+ * @returns Matching thesis details.
+ * @throws Error if embedding generation or vector search fails.
+ */
+export async function searchTezara(
+  query: string,
+  logger?: Logger,
+  options?: TezaraSearchOptions,
+): Promise<TezaraThesisDetails[]> {
+  const startTime = performance.now();
+  const limit = options?.limit ?? 100;
+  const client = getQdrantClient();
+
+  try {
+    const embedding = await getE5QueryEmbedding(query, logger);
+    const queryStart = performance.now();
+
+    const searchRes = await client.query("theses", {
+      query: embedding,
+      limit,
+      with_payload: true,
+    });
+
+    const qdrantDurationMs = performance.now() - queryStart;
+    const totalDurationMs = performance.now() - startTime;
+
+    const results: TezaraThesisDetails[] = [];
+    for (const point of searchRes.points) {
+      if (!point.id) continue;
+      const payload = (point.payload ?? {}) as Record<string, unknown>;
+      results.push(mapPayloadToDetails(Number(point.id), payload));
+    }
+
+    logger?.info("qdrant_vector_search_success", {
+      service: "tezara",
+      filePath: "src/features/tezara/index.ts",
+      step: "search_qdrant_vector",
+      durationMs: totalDurationMs,
+      data: {
+        query,
+        resultCount: results.length,
+        qdrantDurationMs: Math.round(qdrantDurationMs),
+        limit,
+      },
+    });
+
+    return results;
+  } catch (err) {
+    const durationMs = performance.now() - startTime;
+    logger?.error("qdrant_vector_search_failed", {
+      service: "tezara",
+      filePath: "src/features/tezara/index.ts",
+      step: "search_failed",
+      durationMs,
+      data: { query },
+      error: err,
+    });
+    throw err;
+  }
+}
+</file>
+
 <file path="src/lib/session.ts">
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -35534,213 +34858,6 @@ function OutlineEditor({
 }
 </file>
 
-<file path="src/features/positioning/sifting.ts">
-import { searchTezara } from "@/features/tezara";
-import type { TezaraThesisDetails } from "@/lib/types";
-import { rerankWithCohere, COHERE_RERANK_MODEL } from "@/services/ai/cohere";
-import type { Logger } from "@/lib/logger";
-import type { PositioningMatrixInput } from "./validation";
-import { sanitizeSearchQuery, type GeneratedQueries } from "./queries";
-
-/** Candidate thesis extended with Cohere semantic relevance score. */
-export interface SiftedThesis extends TezaraThesisDetails {
-  relevanceScore?: number;
-}
-
-const ALLOWED_LANGUAGES = new Set([
-  "tr",
-  "tur",
-  "turkish",
-  "türkçe",
-  "en",
-  "eng",
-  "english",
-  "ingilizce",
-]);
-
-/**
- * Whether a thesis language tag matches Turkish or English; missing tags are kept.
- *
- * @param lang - The thesis language tag to check.
- * @returns True when the language is allowed or the tag is missing.
- */
-function isAllowedLanguage(lang?: string): boolean {
-  if (!lang || !lang.trim()) {
-    return true;
-  }
-  const normalized = lang
-    .replace(/İ/g, "i")
-    .replace(/I/g, "ı")
-    .toLowerCase()
-    .trim();
-  return ALLOWED_LANGUAGES.has(normalized);
-}
-
-/**
- * Formats a thesis's title and abstract into a YAML document for reranking.
- *
- * @param thesis - The thesis to format.
- * @returns The formatted YAML string.
- */
-function formatThesisToYaml(thesis: TezaraThesisDetails): string {
-  return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
-}
-
-/**
- * Formats the positioning matrix input into a YAML query for reranking.
- *
- * @param input - The validated positioning matrix input.
- * @returns The formatted YAML query string.
- */
-function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
-  return `SubjectProblem: ${input.subjectProblem}`;
-}
-
-/** Difference threshold under which two relevance scores are treated as a tie. */
-const SCORE_EPSILON = 1e-4;
-
-/**
- * Runs 8 sequential semantic vector queries on the Turso thesis database,
- * deduplicates results, applies abstract length and language filters,
- * ranks candidates via Cohere Rerank v4 Pro (full score list),
- * then deterministically selects the top-N by (relevanceScore desc, ID asc).
- *
- * @param queries - The generated TR+EN search queries to run.
- * @param matrixInput - The validated positioning matrix input.
- * @param logger - Optional structured logger for pipeline events.
- * @param options - Optional settings for the sifting process.
- * @param options.topN - The maximum number of top-ranked theses to return.
- * @returns The selected theses sorted ascending by thesis ID.
- */
-export async function searchAndSiftTheses(
-  queries: GeneratedQueries,
-  matrixInput: PositioningMatrixInput,
-  logger?: Logger,
-  options?: { topN?: number },
-): Promise<SiftedThesis[]> {
-  const topN = options?.topN ?? 45;
-
-  const rawDirectQuery = sanitizeSearchQuery(
-    matrixInput.subjectProblem.slice(0, 450),
-  );
-
-  const allQueries: string[] = [
-    ...(rawDirectQuery ? [rawDirectQuery] : []),
-    sanitizeSearchQuery(queries.subjectTr_alt1),
-    sanitizeSearchQuery(queries.subjectTr_alt2),
-    sanitizeSearchQuery(queries.subjectTr_alt3),
-    sanitizeSearchQuery(queries.subjectTr_alt4),
-    sanitizeSearchQuery(queries.subjectEn_alt1),
-    sanitizeSearchQuery(queries.subjectEn_alt2),
-    sanitizeSearchQuery(queries.subjectEn_alt3),
-    sanitizeSearchQuery(queries.subjectEn_alt4),
-  ];
-
-  const searchStart = performance.now();
-
-  logger?.info("sifting_parallel_search_start", {
-    service: "tezara",
-    filePath: "src/features/positioning/sifting.ts",
-    data: { queries: allQueries },
-  });
-
-  const searchParams = {
-    limit: 50,
-  };
-
-  const hitArrays = await Promise.all(
-    allQueries.map((q) => searchTezara(q, logger, searchParams)),
-  );
-
-  const candidateMap = new Map<number, TezaraThesisDetails>();
-  for (const hits of hitArrays) {
-    for (const thesis of hits) {
-      if (thesis && thesis.id && !candidateMap.has(thesis.id)) {
-        candidateMap.set(thesis.id, thesis);
-      }
-    }
-  }
-
-  const uniqueCandidates = Array.from(candidateMap.values()).sort(
-    (a, b) => a.id - b.id,
-  );
-
-  const filteredCandidates = uniqueCandidates.filter((thesis) => {
-    const hasSufficientAbstract =
-      thesis.abstract && thesis.abstract.trim().length >= 100;
-    if (!hasSufficientAbstract) return false;
-
-    const isValidLang = isAllowedLanguage(thesis.language);
-    if (!isValidLang) return false;
-
-    return true;
-  });
-
-  if (filteredCandidates.length === 0) {
-    logger?.info("sifting_no_candidates_remaining", {
-      service: "tezara",
-      filePath: "src/features/positioning/sifting.ts",
-      data: { queries: allQueries },
-    });
-    return [];
-  }
-
-  logger?.info("sifting_parallel_search_success", {
-    service: "tezara",
-    filePath: "src/features/positioning/sifting.ts",
-    durationMs: performance.now() - searchStart,
-    data: { candidateCount: filteredCandidates.length },
-  });
-
-  const targetYamlQuery = formatMatrixToYamlQuery(matrixInput);
-  const candidateYamlDocs = filteredCandidates.map(formatThesisToYaml);
-
-  const rerankStart = performance.now();
-
-  logger?.info("cohere_rerank_start", {
-    service: "cohere",
-    filePath: "src/features/positioning/sifting.ts",
-    data: {
-      model: COHERE_RERANK_MODEL,
-      candidateCount: filteredCandidates.length,
-    },
-  });
-
-  const rerankResults = await rerankWithCohere({
-    query: targetYamlQuery,
-    documents: candidateYamlDocs,
-    logger,
-  });
-
-  const scoredTheses: SiftedThesis[] = rerankResults.map((res) => {
-    const candidate = filteredCandidates[res.index];
-    return {
-      ...candidate,
-      relevanceScore: res.relevanceScore,
-    };
-  });
-
-  scoredTheses.sort((a, b) => {
-    const delta = (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
-    if (Math.abs(delta) > SCORE_EPSILON) return delta;
-    return a.id - b.id;
-  });
-
-  const selected = scoredTheses.slice(0, topN);
-
-  const topResults = selected.slice().sort((a, b) => a.id - b.id);
-
-  logger?.info("cohere_rerank_success", {
-    service: "cohere",
-    filePath: "src/features/positioning/sifting.ts",
-    durationMs: performance.now() - rerankStart,
-    data: { topCount: topResults.length },
-  });
-
-  return topResults;
-}
-</file>
-
 <file path="src/lib/academic/utils.ts">
 import { cleanAbstractPrefix } from "./abstract-cleaner";
 
@@ -36360,337 +35477,6 @@ export interface LiteraturePoolEntry {
   thesisBoxId: number;
   articles: JuryArticle[];
 }
-</file>
-
-<file path="README.md">
-# Fabricca — Dijital Tez Asistanı
-
-**Fabricca**, yüksek lisans ve doktora öğrencilerinin akademik araştırma, tez
-yazım ve literatür tarama süreçlerini yapay zeka desteğiyle uçtan uca
-yönetmelerini sağlayan gelişmiş bir **Dijital Tez Asistanı ve Akademik Çalışma
-Platformudur**.
-
-> Platform, dışarıdan serbest kayda tamamen kapalıdır. Yalnızca veri tabanında
-> seed edilmiş izinli kullanıcılar tarafından kullanılabilir.
-
----
-
-## Onboarding (Kayıt) Süreci
-
-Yeni kullanıcı ilk girişinde sırasıyla **4 adımlı** onboarding sürecini
-tamamlar:
-
-```
-1. Çalışma Matrisi (Matrix)
-        ↓
-2. Akademik Konumlandırma (Positioning)
-   └─ TEZARA (YÖK Meili) + Cohere Rerank + Gemini jüri analizi
-        ↓
-3. Konu Kutuları (Boxes)
-   └─ Gemini ile otomatik kutu üretimi + kullanıcı onayı
-        ↓
-4. Literatür Taraması (Literature Review)
-   └─ OpenAlex araması + jüri/eleme aşamaları
-        ↓
-   Dashboard (onboarding tamamlandı)
-```
-
-Sistem, her adımda kullanıcının kaldığı yerden devam edebilmesini sağlar.
-
----
-
-## Özellikler
-
-### 1. Çalışma Matrisi (Thesis Matrix)
-
-Çalışmanın temel yapı taşlarını tanımlayan ilk adım. **4 alan** içerir:
-
-- `subjectProblem` — Araştırma problemi, aktörler ve odak
-- `theoreticalFramework` — Teorik ve kavramsal çerçeve
-- `primaryMaterial` — Veri kaynağı / birincil malzeme
-- `methodology` — Metodoloji
-
-### 2. Akademik Konumlandırma & Özgünlük Analizi (Positioning)
-
-Turso LibSQL Vektör Veritabanı (366.000+ tez, multilingual-e5-base 768d) üzerinden çalışan,
-kaynaklarının özgünlük boşluğunu analiz eden hat:
-
-- **Sorgu üretimi:** Gemini ile ilgili tezlere yönelik 8 semantik arama sorgusu.
-- **Tez araması ve eleme:** Turso Vektör İndeksi (`vector_top_k` cosine similarity) ile aday tezler çekilir.
-- **Semantik sıralama:** Cohere Rerank v4.0 Pro ile benzerlik sıralaması.
-- **Rapor:** Gemini jürisi üç durumdan birini üretir:
-  - `DIRECT_OVERLAP` — Doğrudan örtüşme
-  - `NOVEL_GAP_IDENTIFIED` — Özgün boşluk tespit edildi
-  - `NO_RELATED_LITERATURE` — İlgili literatür yok
-- Raporda literatür haritası, akademik boşluk ve özgün katkı; ayrıca incelenmesi
-  önerilen ilgili tez listesi yer alır.
-
-### 3. Konu Kutuları (Thesis Boxes)
-
-Google Gemini (`FLASH_LITE_31`) tarafından matris analiz edilerek otomatik
-oluşturulan kavramsal kutulardır. **Beş tür kutu** mevcuttur:
-
-- `SUBJECT_PROBLEM` — Araştırma Problemi
-- `THEORETICAL_FRAMEWORK` — Teorik Çerçeve
-- `METHODOLOGY` — Yöntem
-- `PRIMARY_MATERIAL` — Birincil Kaynak
-- `RELATED_THESES` — İlgili Tezler
-
-Kutular iç içe alt kutular (sub-box) barındırabilir; her kutuya temel
-(foundational) sorgular bağlanabilir.
-
-### 4. Literatür Taraması
-
-Her bir konu kutusu için **OpenAlex API** üzerinden kaynak taraması yapar;
-
-- **Faz 1 — Arama:** Konu kutusu sorgularıyla OpenAlex'te aday makaleler.
-- **Faz 2 — Jüri:** Gemini ile alaka/`relevanceScore` ve Türkçe gerekçe kararı.
-- **Faz 3 — Seçim:** Jüri değerlendirmesi sonrası final kaynak havuzunun
-  belirlenmesi.
-
-### 5. Danışman Odası (RAG Chat)
-
-Makale PDF'lerinden üretilen vektör embedding'leri üzerinden **hybrid RAG**
-tabanlı yapay zeka sohbeti:
-
-- **Yoğun dallar:** pgvector HNSW (cosine) üzerinden dense retrieval.
-- **Leksel dallar:** PostgreSQL `tsvector` (Türkçe + İngilizce) FTS.
-- **Füzyon:** Reciprocal Rank Fusion (RRF) + Cohere Rerank v4.0 Pro.
-- **HyDE:** Cerebras (`gemma-4-31b`) ile çapraz-dil sorgu genişletme.
-- **Tool calling:** Gemini ile oturumlu arama, alıntı fişleme, okuma durumu
-  güncelleme ve undo desteği.
-
-### 6. Alıntı Fişleri (Citation Cards)
-
-Geleneksel akademik kartoteksin dijital versiyonu. Makalelerden not çıkarma,
-alıntı fişleme ve fişleri konu kutularına yerleştirme. Not türleri:
-`DIRECT_QUOTE`, `PARAPHRASE`, `PERSONAL_NOTE`.
-
-### 7. Kütüphane
-
-Sistemdeki tüm akademik kaynakların görüntülenmesi, yönetimi ve PDF
-işlemleri:
-
-- PDF yükleme → R2 depolama, Gemini ile sayfa analizi & kaynakça ayıklama.
-- Chunk'lama → embedding üretimi → pgvector/tsvector indexleme.
-- Kaynak bazlı notlar ve bağlı konu kutusu filtresi.
-
-### 8. Dashboard (Genel Özet)
-
-Konu kutuları, kaynaklar ve kanban görevlerinin tek bir panelde toplandığı
-merkezi yönetim ekranı.
-
----
-
-## Kullanılan Teknolojiler
-
-| Kategori               | Teknoloji                                                                    |
-| ---------------------- | ---------------------------------------------------------------------------- |
-| **Frontend & Backend** | Next.js 16 (App Router, Server Actions, Cache Components, Turbopack)         |
-| **UI Bileşenleri**     | Tailwind CSS v4, Shadcn UI, Lucide React, next-themes, Sonner                |
-| **Veri Tabanı**        | Neon Serverless PostgreSQL                                                   |
-| **ORM**                | Drizzle ORM (snake_case)                                                     |
-| **Vektör DB (RAG)**    | pgvector (HNSW) + tsvector (FTS), COSINE                                     |
-| **Birincil LLM**       | Google Gemini Flash ailesi (`FLASH_LITE_31`, `FLASH_LITE_35`, `FLASH_36`)    |
-| **İkincil LLM**        | Cerebras (`gemma-4-31b`) — metadata sanitize, HyDE, başlık üretimi           |
-| **Embedding**          | Cloudflare Workers AI (`@cf/baai/bge-m3`, **1024 dim**) — tek ve sabit motor |
-| **Rerank**             | Cohere Rerank v4.0 Pro (`rerank-v4.0-pro`)                                   |
-| **Tez Veri Kaynağı**   | Turso LibSQL Vektör Veritabanı (366k+ Tez, E5-Base 768d)                     |
-| **Akademik Veri**      | OpenAlex API                                                                 |
-| **Object Storage**     | Cloudflare R2 (AWS S3 SDK)                                                   |
-| **PDF İşleme**         | `@firecrawl/pdf-inspector`, pdf-lib, Gemini                                  |
-| **State Yönetimi**     | TanStack Query                                                               |
-| **Auth**               | bcrypt-ts + Cookie tabanlı hafif session                                     |
-| **Lint / Format**      | ESLint, Prettier, JSDoc                                                      |
-
----
-
-## Proje Yapısı
-
-Proje, Next.js App Router'ın rota gruplama (route groups) özelliğini kullanarak
-özellik/sayfa tabanlı (feature-driven) olarak organize edilmiştir.
-
-```
-src/
-├── app/
-│   ├── globals.css                  # Global stiller (Tailwind v4)
-│   ├── layout.tsx                   # Root layout (font, QueryProvider, Toaster)
-│   ├── page.tsx                   # / → /login yönlendirmesi
-│   ├── (auth)/                      # Kimlik doğrulama grubu
-│   │   ├── layout.tsx                # Oturum kontrolü + yönlendirme
-│   │   └── login/                    # /login — Giriş sayfası
-│   ├── (onboarding)/                # Onboarding koruma grubu
-│   │   └── layout.tsx                # Oturum kontrolü
-│   └── (onboarding)/onboarding/      # 4 adımlı onboarding süreci
-│       ├── layout.tsx                # Adım navigasyonu (stepper)
-│       ├── actions.ts                # Ortak onboarding server action'ları
-│       ├── _components/              # Ortak onboarding bileşenleri
-│       ├── _hooks/                  # use-onboarding-navigation
-│       ├── _lib/                     # box-mapper, loading-steps
-│       ├── _services/fetch-actions.ts
-│       ├── matrix/                   # Adım 1: Çalışma Matrisi
-│       ├── positioning/              # Adım 2: Akademik Konumlandırma
-│       │   ├── _services/            # analysis, decision-engine, queries, sifting
-│       │   ├── _lib/validation.ts    # Zod şemaları
-│       │   └── _components/          # Rapor görünümü
-│       ├── boxes/                    # Adım 3: Konu Kutuları
-│       │   ├── _services/            # Gemini kutu üretimi
-│       │   └── _components/
-│       └── literature-review/        # Adım 4: Literatür Tarama
-│           ├── _services/            # orchestrator (phase1-3), openalex, clustering
-│           └── _hooks/
-│   └── (app)/                         # Giriş sonrası ana uygulama
-│       ├── layout.tsx                # Header + oturum/yönlendirme kontrolü
-│       ├── actions.ts                # Ortak uygulama server action'ları
-│       ├── _services/box-service.ts
-│       ├── dashboard/                # /dashboard — Genel Özet + Kanban
-│       ├── library/                  # /library — Kütüphane + PDF/RAG
-│       ├── advisor/                  # /advisor — Danışman Odası (RAG Chat)
-│       ├── citation-cards/           # /citation-cards — Alıntı Fişleri
-│   └── api/advisor/route.ts          # Danışman Odası streaming endpoint
-├── components/
-│   ├── header.tsx                    # Üst/büyük navigasyon
-│   ├── ai-banner.tsx                 # Yapay zeka banner
-│   ├── error-display.tsx             # Hata görüntüleme
-│   ├── loading-spinner.tsx           # Yükleme göstergesi
-│   └── ui/                           # Shadcn UI bileşenleri
-├── providers/
-│   └── query-provider.tsx             # TanStack Query Provider
-├── db/
-│   ├── index.ts                       # Neon DB bağlantısı (WebSocket singleton)
-│   ├── schema.ts                      # 10 tablo şeması (Drizzle ORM)
-│   ├── seed.ts                        # Seed verisi (2 kullanıcı)
-│   └── reset.ts                       # DB sıfırlama
-├── lib/
-│   ├── session.ts                    # Cookie tabanlı session yönetimi
-│   ├── constants.ts                  # Model sabitleri (FLASH_*, CEREBRAS, seed 42)
-│   ├── box-constants.ts             # Kutu türü sıra/etiket (single source of truth)
-│   ├── types.ts                      # Paylaşılan tipler + Zod şemaları
-│   ├── api-utils.ts                 # Polite pool e-posta, User-Agent, retry
-│   ├── cache-tags.ts                # Next.js cache tag sabitleri
-│   ├── error-utils.ts               # Hata sınıflandırma
-│   ├── logger.ts                    # Yapılandırılmış loglama sistemi
-│   ├── rate-limiter.ts              # Concurrency / rate limit yönetimi
-│   ├── academic/                    # DOI, OpenAlex ID, author formatlama
-│   ├── tezara/                      # TEZARA Meilisearch istemcisi
-│   ├── services/                    # gemini, cerebras, cohere, cloudflare-ai,
-│   │                                # r2, pdf-parser, rag, advisor-tools, sanitizer
-│   └── prompts/                     # Prompt şablonları (6 kullanım)
-└── ...
-```
-
----
-
-## Veri Tabanı Şeması
-
-Neon PostgreSQL üzerinde **10 tablo** (Drizzle ORM, snake_case):
-
-| Tablo           | Açıklama                        | Önemli Alanlar                                                                                   |
-| --------------- | ------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `users`         | Kullanıcı hesapları             | email (unique), password (bcrypt), name, onboardingCompleted                                     |
-| `matrices`      | Çalışma matrisi                 | userId (unique), subjectProblem, theoreticalFramework, primaryMaterial, methodology              |
-| `positioning`   | Konumlandırma raporu            | userId (unique), matrixInput (jsonb), globalStatus (enum), gapAnalysisSummary, recommendedTheses |
-| `boxes`         | Konu kutuları                   | matrixId, parentId, boxType (enum), title, concepts, foundationalQueries (jsonb)                 |
-| `sources`       | Akademik kaynaklar              | boxId, title, authors, doi, openalexId, isRead, pdf* alanları                                    |
-| `notes`         | Kaynak notları (alıntı fişleri) | sourceId, pageNumber, noteType (enum), content, sentToCitationCards                              |
-| `chunks`        | PDF metin parçaları (RAG)       | sourceId, chunkIndex, embedding (vector/1024), searchVector (tsvector)                           |
-| `tasks`         | Kanban görevleri                | userId, boxId (delete → set null), status/priority (enum)                                        |
-| `chat_sessions` | Danışman sohbet oturumları      | userId, title                                                                                    |
-| `chat_messages` | Danışman mesajları              | sessionId, role, content, sources (jsonb), toolCalls (jsonb)                                     |
-
-Kutu (`boxes`) ilişkilerinde `onDelete: "cascade"`; görevlerin `boxId` alanında
-`onDelete: "set null"` uygulanır.
-
----
-
-## Çevresel Değişkenler
-
-Gerekli tüm API anahtarları `.env.local` dosyasında tanımlanır:
-
-| Değişken                 | Hizmet                                      |
-| ------------------------ | ------------------------------------------- |
-| `DATABASE_URL`           | Neon PostgreSQL bağlantı dizesi             |
-| `GEMINI_API_KEY_1..3`    | Google Gemini API (en az 1 anahtar gerekli) |
-| `CEREBRAS_API_KEY`       | Cerebras API (gemma-4-31b)                  |
-| `CLOUDFLARE_ACCOUNT_ID`  | Cloudflare Workers AI hesap ID              |
-| `CLOUDFLARE_API_TOKEN`   | Cloudflare Workers AI API token             |
-| `COHERE_API_KEY`         | Cohere Rerank API                           |
-| `OPENALEX_API_KEY`       | OpenAlex API (isteğe bağlı)                 |
-| `CROSSREF_CONTACT_EMAIL` | Polite pool e-posta (User-Agent)            |
-| `TURSO_DATABASE_URL`     | Turso LibSQL veritabanı URL'si              |
-| `TURSO_AUTH_TOKEN`       | Turso LibSQL auth token                     |
-| `HUGGINGFACE_API_KEY`    | Hugging Face Serverless Inference API key   |
-| `R2_ACCOUNT_ID`          | Cloudflare R2 hesabı                        |
-| `R2_ACCESS_KEY_ID`       | R2 S3 access key                            |
-| `R2_SECRET_ACCESS_KEY`   | R2 S3 secret key                            |
-| `R2_BUCKET_NAME`         | R2 bucket adı (varsayılan `fabricca`)       |
-| `R2_PUBLIC_DOMAIN`       | R2 public domain (zorunlu, varsayılan yok)  |
-| `SEED_USER1_PASSWORD`    | Seed kullanıcı 1 şifre                      |
-| `SEED_USER2_PASSWORD`    | Seed kullanıcı 2 şifre                      |
-
----
-
-## Geliştirme
-
-```bash
-# Bağımlılıkları yükle
-npm install
-
-# Geliştirme sunucusunu başlat (Turbopack)
-npm run dev
-
-# Veri tabanı şemasını Neon'a push et
-npm run db:push
-
-# Yerel DB'yi sıfırla
-npm run db:reset
-
-# Seed verisini yükle (2 kullanıcı)
-npm run db:seed
-
-# Production build
-npm run build
-
-# Production sunucusunu başlat
-npm run start
-
-# Kalite kontrol (lint + typecheck + prettier)
-npm run check:full
-
-# Yalnızca tip denetimi
-npm run typecheck
-
-# Yalnızca lint
-npm run lint
-```
-
----
-
-## Mimari Kararlar ve Geliştirme Prensipleri
-
-- **Feature-driven klasör yapısı:** Sayfalar özellik bazında gruplanmıştır;
-  her modül kendi bileşenlerini, servislerini ve hook'larını barındırır.
-- **Single Responsibility:** Her dosya, her bileşen ve her fonksiyon yalnızca
-  tek bir işten sorumludur.
-- **600 satır sınırı:** Dosyalar ideal olarak 600 satırı aşmaz.
-- **Golden Boundary Rule:**
-  - Backend/mantık katmanı: %100 İngilizce (camelCase/snake_case)
-  - UI/çıktı katmanı: %100 Türkçe (akademik Türkçe)
-- **Progressive Save:** Onboarding adımları veri tabanına aşamalı kaydedilir.
-- **Deterministic AI Çıktısı:** Sabit seed değeri (42) ile tutarlı model çıktıları.
-- **Kapalı sistem:** Dışarıdan kayıt yoktur; yalnızca seed edilmiş kullanıcılar.
-- **Sıkı tip güvenliği:** `any` kullanımı yasak; tüm tipler Drizzle şemalarından
-  türetilir veya açık arayüzlerle tanımlanır.
-- **Singleton DB Pool:** Neon WebSocket pool, HMR/Fast Refresh'te yeni bağlantı
-  oluşmasını engellemek için global singleton.
-- **JSDoc zorunluluğu:** Tüm fonksiyonlar, server action'lar ve custom hook'lar
-  JSDoc ile dokümante edilir.
-
----
-
-## Lisans
-
-Özel (Private) — Tüm hakları saklıdır.
 </file>
 
 <file path="src/app/(app)/citation-cards/_components/citation-card-dialog.tsx">
@@ -38266,6 +37052,528 @@ export function PositioningMarkdownRenderer({
     </div>
   );
 }
+</file>
+
+<file path="src/features/positioning/sifting.ts">
+import { searchTezara } from "@/features/tezara";
+import type { TezaraThesisDetails } from "@/lib/types";
+import { rerankWithCohere, COHERE_RERANK_MODEL } from "@/services/ai/cohere";
+import type { Logger } from "@/lib/logger";
+import type { PositioningMatrixInput } from "./validation";
+
+/** Candidate thesis extended with Cohere semantic relevance score. */
+export interface SiftedThesis extends TezaraThesisDetails {
+  relevanceScore?: number;
+}
+
+const ALLOWED_LANGUAGES = new Set([
+  "tr",
+  "tur",
+  "turkish",
+  "türkçe",
+  "en",
+  "eng",
+  "english",
+  "ingilizce",
+]);
+
+/**
+ * Whether a thesis language tag matches Turkish or English; missing tags are kept.
+ *
+ * @param lang - The thesis language tag to check.
+ * @returns True when the language is allowed or the tag is missing.
+ */
+function isAllowedLanguage(lang?: string): boolean {
+  if (!lang || !lang.trim()) {
+    return true;
+  }
+  const normalized = lang
+    .replace(/İ/g, "i")
+    .replace(/I/g, "ı")
+    .toLowerCase()
+    .trim();
+  return ALLOWED_LANGUAGES.has(normalized);
+}
+
+/**
+ * Sanitizes query text for vector search.
+ *
+ * @param rawQuery - The raw query string to sanitize.
+ * @returns The cleaned query string.
+ */
+export function sanitizeSearchQuery(rawQuery: string): string {
+  if (!rawQuery) return "";
+  return rawQuery
+    .replace(/\b(OR|AND|NOT)\b/gi, " ")
+    .replace(/[+*?:^~={}[\]()"\\]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Formats a thesis's title and abstract into a YAML document for reranking.
+ *
+ * @param thesis - The thesis to format.
+ * @returns The formatted YAML string.
+ */
+function formatThesisToYaml(thesis: TezaraThesisDetails): string {
+  return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
+}
+
+/**
+ * Formats the positioning matrix input into a YAML query for reranking.
+ *
+ * @param input - The validated positioning matrix input.
+ * @returns The formatted YAML query string.
+ */
+function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
+  return `SubjectProblem: ${input.subjectProblem}`;
+}
+
+/** Difference threshold under which two relevance scores are treated as a tie. */
+const SCORE_EPSILON = 1e-4;
+
+/**
+ * Ultra-fast direct semantic thesis sifting engine:
+ * Directly vectorizes the thesis research problem, fetches top candidates from Qdrant Cloud
+ * in a single high-speed vector query, filters abstracts, and uses Cohere Rerank v4.0 Pro
+ * (cross-encoder) to select and rank the most relevant top-N theses.
+ *
+ * @param matrixInput - The validated positioning matrix input.
+ * @param logger - Optional structured logger for pipeline events.
+ * @param options - Optional settings for topN and candidateLimit.
+ * @returns The selected top theses sorted deterministically.
+ */
+export async function searchAndSiftTheses(
+  matrixInput: PositioningMatrixInput,
+  logger?: Logger,
+  options?: { topN?: number; candidateLimit?: number },
+): Promise<SiftedThesis[]> {
+  const topN = options?.topN ?? 45;
+  const candidateLimit = options?.candidateLimit ?? 400;
+
+  const searchQuery = sanitizeSearchQuery(
+    matrixInput.subjectProblem.slice(0, 500),
+  );
+
+  const searchStart = performance.now();
+
+  logger?.info("sifting_direct_search_start", {
+    service: "tezara",
+    filePath: "src/features/positioning/sifting.ts",
+    data: { query: searchQuery, candidateLimit },
+  });
+
+  // 1. Single Ultra-Fast Qdrant Query with candidateLimit (default 400)
+  const rawTheses = await searchTezara(searchQuery, logger, {
+    limit: candidateLimit,
+  });
+
+  // 2. Filter valid candidates
+  const filteredCandidates = rawTheses.filter((thesis) => {
+    const hasSufficientAbstract =
+      thesis.abstract && thesis.abstract.trim().length >= 100;
+    if (!hasSufficientAbstract) return false;
+
+    const isValidLang = isAllowedLanguage(thesis.language);
+    if (!isValidLang) return false;
+
+    return true;
+  });
+
+  if (filteredCandidates.length === 0) {
+    logger?.info("sifting_no_candidates_remaining", {
+      service: "tezara",
+      filePath: "src/features/positioning/sifting.ts",
+      data: { query: searchQuery },
+    });
+    return [];
+  }
+
+  logger?.info("sifting_direct_search_success", {
+    service: "tezara",
+    filePath: "src/features/positioning/sifting.ts",
+    durationMs: performance.now() - searchStart,
+    data: { candidateCount: filteredCandidates.length },
+  });
+
+  // 3. Cohere Rerank v4.0 Pro
+  const targetYamlQuery = formatMatrixToYamlQuery(matrixInput);
+  const candidateYamlDocs = filteredCandidates.map(formatThesisToYaml);
+
+  const rerankStart = performance.now();
+
+  logger?.info("cohere_rerank_start", {
+    service: "cohere",
+    filePath: "src/features/positioning/sifting.ts",
+    data: {
+      model: COHERE_RERANK_MODEL,
+      candidateCount: filteredCandidates.length,
+    },
+  });
+
+  const rerankResults = await rerankWithCohere({
+    query: targetYamlQuery,
+    documents: candidateYamlDocs,
+    logger,
+  });
+
+  const scoredTheses: SiftedThesis[] = rerankResults.map((res) => {
+    const candidate = filteredCandidates[res.index];
+    return {
+      ...candidate,
+      relevanceScore: res.relevanceScore,
+    };
+  });
+
+  scoredTheses.sort((a, b) => {
+    const delta = (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
+    if (Math.abs(delta) > SCORE_EPSILON) return delta;
+    return a.id - b.id;
+  });
+
+  const selected = scoredTheses.slice(0, topN);
+
+  logger?.info("cohere_rerank_success", {
+    service: "cohere",
+    filePath: "src/features/positioning/sifting.ts",
+    durationMs: performance.now() - rerankStart,
+    data: { topCount: selected.length },
+  });
+
+  return selected;
+}
+</file>
+
+<file path="README.md">
+# Fabricca — Dijital Tez Asistanı
+
+**Fabricca**, yüksek lisans ve doktora öğrencilerinin akademik araştırma, tez
+yazım ve literatür tarama süreçlerini yapay zeka desteğiyle uçtan uca
+yönetmelerini sağlayan gelişmiş bir **Dijital Tez Asistanı ve Akademik Çalışma
+Platformudur**.
+
+> Platform, dışarıdan serbest kayda tamamen kapalıdır. Yalnızca veri tabanında
+> seed edilmiş izinli kullanıcılar tarafından kullanılabilir.
+
+---
+
+## Onboarding (Kayıt) Süreci
+
+Yeni kullanıcı ilk girişinde sırasıyla **4 adımlı** onboarding sürecini
+tamamlar:
+
+```
+1. Çalışma Matrisi (Matrix)
+        ↓
+2. Akademik Konumlandırma (Positioning)
+   └─ TEZARA (YÖK Meili) + Cohere Rerank + Gemini jüri analizi
+        ↓
+3. Konu Kutuları (Boxes)
+   └─ Gemini ile otomatik kutu üretimi + kullanıcı onayı
+        ↓
+4. Literatür Taraması (Literature Review)
+   └─ OpenAlex araması + jüri/eleme aşamaları
+        ↓
+   Dashboard (onboarding tamamlandı)
+```
+
+Sistem, her adımda kullanıcının kaldığı yerden devam edebilmesini sağlar.
+
+---
+
+## Özellikler
+
+### 1. Çalışma Matrisi (Thesis Matrix)
+
+Çalışmanın temel yapı taşlarını tanımlayan ilk adım. **4 alan** içerir:
+
+- `subjectProblem` — Araştırma problemi, aktörler ve odak
+- `theoreticalFramework` — Teorik ve kavramsal çerçeve
+- `primaryMaterial` — Veri kaynağı / birincil malzeme
+- `methodology` — Metodoloji
+
+### 2. Akademik Konumlandırma & Özgünlük Analizi (Positioning)
+
+Turso LibSQL Vektör Veritabanı (366.000+ tez, multilingual-e5-base 768d) üzerinden çalışan,
+kaynaklarının özgünlük boşluğunu analiz eden hat:
+
+- **Sorgu üretimi:** Gemini ile ilgili tezlere yönelik 8 semantik arama sorgusu.
+- **Tez araması ve eleme:** Turso Vektör İndeksi (`vector_top_k` cosine similarity) ile aday tezler çekilir.
+- **Semantik sıralama:** Cohere Rerank v4.0 Pro ile benzerlik sıralaması.
+- **Rapor:** Gemini jürisi üç durumdan birini üretir:
+  - `DIRECT_OVERLAP` — Doğrudan örtüşme
+  - `NOVEL_GAP_IDENTIFIED` — Özgün boşluk tespit edildi
+  - `NO_RELATED_LITERATURE` — İlgili literatür yok
+- Raporda literatür haritası, akademik boşluk ve özgün katkı; ayrıca incelenmesi
+  önerilen ilgili tez listesi yer alır.
+
+### 3. Konu Kutuları (Thesis Boxes)
+
+Google Gemini (`FLASH_LITE_31`) tarafından matris analiz edilerek otomatik
+oluşturulan kavramsal kutulardır. **Beş tür kutu** mevcuttur:
+
+- `SUBJECT_PROBLEM` — Araştırma Problemi
+- `THEORETICAL_FRAMEWORK` — Teorik Çerçeve
+- `METHODOLOGY` — Yöntem
+- `PRIMARY_MATERIAL` — Birincil Kaynak
+- `RELATED_THESES` — İlgili Tezler
+
+Kutular iç içe alt kutular (sub-box) barındırabilir; her kutuya temel
+(foundational) sorgular bağlanabilir.
+
+### 4. Literatür Taraması
+
+Her bir konu kutusu için **OpenAlex API** üzerinden kaynak taraması yapar;
+
+- **Faz 1 — Arama:** Konu kutusu sorgularıyla OpenAlex'te aday makaleler.
+- **Faz 2 — Jüri:** Gemini ile alaka/`relevanceScore` ve Türkçe gerekçe kararı.
+- **Faz 3 — Seçim:** Jüri değerlendirmesi sonrası final kaynak havuzunun
+  belirlenmesi.
+
+### 5. Danışman Odası (RAG Chat)
+
+Makale PDF'lerinden üretilen vektör embedding'leri üzerinden **hybrid RAG**
+tabanlı yapay zeka sohbeti:
+
+- **Yoğun dallar:** pgvector HNSW (cosine) üzerinden dense retrieval.
+- **Leksel dallar:** PostgreSQL `tsvector` (Türkçe + İngilizce) FTS.
+- **Füzyon:** Reciprocal Rank Fusion (RRF) + Cohere Rerank v4.0 Pro.
+- **HyDE:** Cerebras (`gemma-4-31b`) ile çapraz-dil sorgu genişletme.
+- **Tool calling:** Gemini ile oturumlu arama, alıntı fişleme, okuma durumu
+  güncelleme ve undo desteği.
+
+### 6. Alıntı Fişleri (Citation Cards)
+
+Geleneksel akademik kartoteksin dijital versiyonu. Makalelerden not çıkarma,
+alıntı fişleme ve fişleri konu kutularına yerleştirme. Not türleri:
+`DIRECT_QUOTE`, `PARAPHRASE`, `PERSONAL_NOTE`.
+
+### 7. Kütüphane
+
+Sistemdeki tüm akademik kaynakların görüntülenmesi, yönetimi ve PDF
+işlemleri:
+
+- PDF yükleme → R2 depolama, Gemini ile sayfa analizi & kaynakça ayıklama.
+- Chunk'lama → embedding üretimi → pgvector/tsvector indexleme.
+- Kaynak bazlı notlar ve bağlı konu kutusu filtresi.
+
+### 8. Dashboard (Genel Özet)
+
+Konu kutuları, kaynaklar ve kanban görevlerinin tek bir panelde toplandığı
+merkezi yönetim ekranı.
+
+---
+
+## Kullanılan Teknolojiler
+
+| Kategori               | Teknoloji                                                                    |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| **Frontend & Backend** | Next.js 16 (App Router, Server Actions, Cache Components, Turbopack)         |
+| **UI Bileşenleri**     | Tailwind CSS v4, Shadcn UI, Lucide React, next-themes, Sonner                |
+| **Veri Tabanı**        | Neon Serverless PostgreSQL                                                   |
+| **ORM**                | Drizzle ORM (snake_case)                                                     |
+| **Vektör DB (RAG)**    | pgvector (HNSW) + tsvector (FTS), COSINE                                     |
+| **Birincil LLM**       | Google Gemini Flash ailesi (`FLASH_LITE_31`, `FLASH_LITE_35`, `FLASH_36`)    |
+| **İkincil LLM**        | Cerebras (`gemma-4-31b`) — metadata sanitize, HyDE, başlık üretimi           |
+| **Embedding**          | Cloudflare Workers AI (`@cf/baai/bge-m3`, **1024 dim**) — tek ve sabit motor |
+| **Rerank**             | Cohere Rerank v4.0 Pro (`rerank-v4.0-pro`)                                   |
+| **Tez Veri Kaynağı**   | Turso LibSQL Vektör Veritabanı (366k+ Tez, E5-Base 768d)                     |
+| **Akademik Veri**      | OpenAlex API                                                                 |
+| **Object Storage**     | Cloudflare R2 (AWS S3 SDK)                                                   |
+| **PDF İşleme**         | `@firecrawl/pdf-inspector`, pdf-lib, Gemini                                  |
+| **State Yönetimi**     | TanStack Query                                                               |
+| **Auth**               | bcrypt-ts + Cookie tabanlı hafif session                                     |
+| **Lint / Format**      | ESLint, Prettier, JSDoc                                                      |
+
+---
+
+## Proje Yapısı
+
+Proje, Next.js App Router'ın rota gruplama (route groups) özelliğini kullanarak
+özellik/sayfa tabanlı (feature-driven) olarak organize edilmiştir.
+
+```
+src/
+├── app/
+│   ├── globals.css                  # Global stiller (Tailwind v4)
+│   ├── layout.tsx                   # Root layout (font, QueryProvider, Toaster)
+│   ├── page.tsx                   # / → /login yönlendirmesi
+│   ├── (auth)/                      # Kimlik doğrulama grubu
+│   │   ├── layout.tsx                # Oturum kontrolü + yönlendirme
+│   │   └── login/                    # /login — Giriş sayfası
+│   ├── (onboarding)/                # Onboarding koruma grubu
+│   │   └── layout.tsx                # Oturum kontrolü
+│   └── (onboarding)/onboarding/      # 4 adımlı onboarding süreci
+│       ├── layout.tsx                # Adım navigasyonu (stepper)
+│       ├── actions.ts                # Ortak onboarding server action'ları
+│       ├── _components/              # Ortak onboarding bileşenleri
+│       ├── _hooks/                  # use-onboarding-navigation
+│       ├── _lib/                     # box-mapper, loading-steps
+│       ├── _services/fetch-actions.ts
+│       ├── matrix/                   # Adım 1: Çalışma Matrisi
+│       ├── positioning/              # Adım 2: Akademik Konumlandırma
+│       │   ├── _services/            # analysis, decision-engine, queries, sifting
+│       │   ├── _lib/validation.ts    # Zod şemaları
+│       │   └── _components/          # Rapor görünümü
+│       ├── boxes/                    # Adım 3: Konu Kutuları
+│       │   ├── _services/            # Gemini kutu üretimi
+│       │   └── _components/
+│       └── literature-review/        # Adım 4: Literatür Tarama
+│           ├── _services/            # orchestrator (phase1-3), openalex, clustering
+│           └── _hooks/
+│   └── (app)/                         # Giriş sonrası ana uygulama
+│       ├── layout.tsx                # Header + oturum/yönlendirme kontrolü
+│       ├── actions.ts                # Ortak uygulama server action'ları
+│       ├── _services/box-service.ts
+│       ├── dashboard/                # /dashboard — Genel Özet + Kanban
+│       ├── library/                  # /library — Kütüphane + PDF/RAG
+│       ├── advisor/                  # /advisor — Danışman Odası (RAG Chat)
+│       ├── citation-cards/           # /citation-cards — Alıntı Fişleri
+│   └── api/advisor/route.ts          # Danışman Odası streaming endpoint
+├── components/
+│   ├── header.tsx                    # Üst/büyük navigasyon
+│   ├── ai-banner.tsx                 # Yapay zeka banner
+│   ├── error-display.tsx             # Hata görüntüleme
+│   ├── loading-spinner.tsx           # Yükleme göstergesi
+│   └── ui/                           # Shadcn UI bileşenleri
+├── providers/
+│   └── query-provider.tsx             # TanStack Query Provider
+├── db/
+│   ├── index.ts                       # Neon DB bağlantısı (WebSocket singleton)
+│   ├── schema.ts                      # 10 tablo şeması (Drizzle ORM)
+│   ├── seed.ts                        # Seed verisi (2 kullanıcı)
+│   └── reset.ts                       # DB sıfırlama
+├── lib/
+│   ├── session.ts                    # Cookie tabanlı session yönetimi
+│   ├── constants.ts                  # Model sabitleri (FLASH_*, CEREBRAS, seed 42)
+│   ├── box-constants.ts             # Kutu türü sıra/etiket (single source of truth)
+│   ├── types.ts                      # Paylaşılan tipler + Zod şemaları
+│   ├── api-utils.ts                 # Polite pool e-posta, User-Agent, retry
+│   ├── cache-tags.ts                # Next.js cache tag sabitleri
+│   ├── error-utils.ts               # Hata sınıflandırma
+│   ├── logger.ts                    # Yapılandırılmış loglama sistemi
+│   ├── rate-limiter.ts              # Concurrency / rate limit yönetimi
+│   ├── academic/                    # DOI, OpenAlex ID, author formatlama
+│   ├── tezara/                      # TEZARA Meilisearch istemcisi
+│   ├── services/                    # gemini, cerebras, cohere, cloudflare-ai,
+│   │                                # r2, pdf-parser, rag, advisor-tools, sanitizer
+│   └── prompts/                     # Prompt şablonları (6 kullanım)
+└── ...
+```
+
+---
+
+## Veri Tabanı Şeması
+
+Neon PostgreSQL üzerinde **10 tablo** (Drizzle ORM, snake_case):
+
+| Tablo           | Açıklama                        | Önemli Alanlar                                                                                   |
+| --------------- | ------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `users`         | Kullanıcı hesapları             | email (unique), password (bcrypt), name, onboardingCompleted                                     |
+| `matrices`      | Çalışma matrisi                 | userId (unique), subjectProblem, theoreticalFramework, primaryMaterial, methodology              |
+| `positioning`   | Konumlandırma raporu            | userId (unique), matrixInput (jsonb), globalStatus (enum), gapAnalysisSummary, recommendedTheses |
+| `boxes`         | Konu kutuları                   | matrixId, parentId, boxType (enum), title, concepts, foundationalQueries (jsonb)                 |
+| `sources`       | Akademik kaynaklar              | boxId, title, authors, doi, openalexId, isRead, pdf* alanları                                    |
+| `notes`         | Kaynak notları (alıntı fişleri) | sourceId, pageNumber, noteType (enum), content, sentToCitationCards                              |
+| `chunks`        | PDF metin parçaları (RAG)       | sourceId, chunkIndex, embedding (vector/1024), searchVector (tsvector)                           |
+| `tasks`         | Kanban görevleri                | userId, boxId (delete → set null), status/priority (enum)                                        |
+| `chat_sessions` | Danışman sohbet oturumları      | userId, title                                                                                    |
+| `chat_messages` | Danışman mesajları              | sessionId, role, content, sources (jsonb), toolCalls (jsonb)                                     |
+
+Kutu (`boxes`) ilişkilerinde `onDelete: "cascade"`; görevlerin `boxId` alanında
+`onDelete: "set null"` uygulanır.
+
+---
+
+## Çevresel Değişkenler
+
+Gerekli tüm API anahtarları `.env.local` dosyasında tanımlanır:
+
+| Değişken                 | Hizmet                                      |
+| ------------------------ | ------------------------------------------- |
+| `DATABASE_URL`           | Neon PostgreSQL bağlantı dizesi             |
+| `GEMINI_API_KEY_1..3`    | Google Gemini API (en az 1 anahtar gerekli) |
+| `CEREBRAS_API_KEY`       | Cerebras API (gemma-4-31b)                  |
+| `CLOUDFLARE_ACCOUNT_ID`  | Cloudflare Workers AI hesap ID              |
+| `CLOUDFLARE_API_TOKEN`   | Cloudflare Workers AI API token             |
+| `COHERE_API_KEY`         | Cohere Rerank API                           |
+| `OPENALEX_API_KEY`       | OpenAlex API (isteğe bağlı)                 |
+| `CROSSREF_CONTACT_EMAIL` | Polite pool e-posta (User-Agent)            |
+| `TURSO_DATABASE_URL`     | Turso LibSQL veritabanı URL'si              |
+| `TURSO_AUTH_TOKEN`       | Turso LibSQL auth token                     |
+| `HUGGINGFACE_API_KEY`    | Hugging Face Serverless Inference API key   |
+| `R2_ACCOUNT_ID`          | Cloudflare R2 hesabı                        |
+| `R2_ACCESS_KEY_ID`       | R2 S3 access key                            |
+| `R2_SECRET_ACCESS_KEY`   | R2 S3 secret key                            |
+| `R2_BUCKET_NAME`         | R2 bucket adı (varsayılan `fabricca`)       |
+| `R2_PUBLIC_DOMAIN`       | R2 public domain (zorunlu, varsayılan yok)  |
+| `SEED_USER1_PASSWORD`    | Seed kullanıcı 1 şifre                      |
+| `SEED_USER2_PASSWORD`    | Seed kullanıcı 2 şifre                      |
+
+---
+
+## Geliştirme
+
+```bash
+# Bağımlılıkları yükle
+npm install
+
+# Geliştirme sunucusunu başlat (Turbopack)
+npm run dev
+
+# Veri tabanı şemasını Neon'a push et
+npm run db:push
+
+# Yerel DB'yi sıfırla
+npm run db:reset
+
+# Seed verisini yükle (2 kullanıcı)
+npm run db:seed
+
+# Production build
+npm run build
+
+# Production sunucusunu başlat
+npm run start
+
+# Kalite kontrol (lint + typecheck + prettier)
+npm run check:full
+
+# Yalnızca tip denetimi
+npm run typecheck
+
+# Yalnızca lint
+npm run lint
+```
+
+---
+
+## Mimari Kararlar ve Geliştirme Prensipleri
+
+- **Feature-driven klasör yapısı:** Sayfalar özellik bazında gruplanmıştır;
+  her modül kendi bileşenlerini, servislerini ve hook'larını barındırır.
+- **Single Responsibility:** Her dosya, her bileşen ve her fonksiyon yalnızca
+  tek bir işten sorumludur.
+- **600 satır sınırı:** Dosyalar ideal olarak 600 satırı aşmaz.
+- **Golden Boundary Rule:**
+  - Backend/mantık katmanı: %100 İngilizce (camelCase/snake_case)
+  - UI/çıktı katmanı: %100 Türkçe (akademik Türkçe)
+- **Progressive Save:** Onboarding adımları veri tabanına aşamalı kaydedilir.
+- **Deterministic AI Çıktısı:** Sabit seed değeri (42) ile tutarlı model çıktıları.
+- **Kapalı sistem:** Dışarıdan kayıt yoktur; yalnızca seed edilmiş kullanıcılar.
+- **Sıkı tip güvenliği:** `any` kullanımı yasak; tüm tipler Drizzle şemalarından
+  türetilir veya açık arayüzlerle tanımlanır.
+- **Singleton DB Pool:** Neon WebSocket pool, HMR/Fast Refresh'te yeni bağlantı
+  oluşmasını engellemek için global singleton.
+- **JSDoc zorunluluğu:** Tüm fonksiyonlar, server action'lar ve custom hook'lar
+  JSDoc ile dokümante edilir.
+
+---
+
+## Lisans
+
+Özel (Private) — Tüm hakları saklıdır.
 </file>
 
 <file path="src/app/(app)/citation-cards/actions.ts">
@@ -42707,9 +42015,7 @@ import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { Logger } from "@/lib/logger";
 import type { ThesisMatrix } from "@/lib/types";
 import { positioningMatrixSchema } from "@/features/positioning/validation";
-import type { SiftedThesis } from "@/features/positioning/sifting";
-import { generatePositioningQueries } from "@/features/positioning/queries";
-import { searchAndSiftTheses } from "@/features/positioning/sifting";
+import { searchAndSiftTheses, type SiftedThesis } from "@/features/positioning/sifting";
 import { evaluateThesesInParallel } from "@/features/positioning/per-thesis-evaluation";
 import { analyzePositioningJury } from "@/features/positioning/analysis";
 import { savePositioningReportTransaction } from "@/features/positioning/decision-engine";
@@ -42749,11 +42055,9 @@ export async function runPositioningSearchAction(
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
 
-    log.info("generate_positioning_queries_start");
-    const queries = await generatePositioningQueries(validated, log);
-    log.info("generate_positioning_queries_success");
-
-    const theses = await searchAndSiftTheses(queries, validated, log);
+    log.info("sifting_theses_start");
+    const theses = await searchAndSiftTheses(validated, log);
+    log.info("sifting_theses_success");
 
     return { success: true, theses };
   } catch (error) {
@@ -45294,8 +44598,8 @@ export function LiteratureReviewContent() {
     "@aws-sdk/s3-request-presigner": "^3.1097.0",
     "@firecrawl/pdf-inspector": "^1.12.0",
     "@google/genai": "^2.8.0",
-    "@libsql/client": "^0.17.4",
     "@neondatabase/serverless": "^1.0.0",
+    "@qdrant/js-client-rest": "^1.19.0",
     "@radix-ui/react-alert-dialog": "^1.1.16",
     "@radix-ui/react-checkbox": "^1.3.4",
     "@radix-ui/react-collapsible": "^1.1.17",

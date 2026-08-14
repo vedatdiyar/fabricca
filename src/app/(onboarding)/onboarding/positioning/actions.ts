@@ -8,9 +8,7 @@ import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { Logger } from "@/lib/logger";
 import type { ThesisMatrix } from "@/lib/types";
 import { positioningMatrixSchema } from "@/features/positioning/validation";
-import type { SiftedThesis } from "@/features/positioning/sifting";
-import { generatePositioningQueries } from "@/features/positioning/queries";
-import { searchAndSiftTheses } from "@/features/positioning/sifting";
+import { searchAndSiftTheses, type SiftedThesis } from "@/features/positioning/sifting";
 import { evaluateThesesInParallel } from "@/features/positioning/per-thesis-evaluation";
 import { analyzePositioningJury } from "@/features/positioning/analysis";
 import { savePositioningReportTransaction } from "@/features/positioning/decision-engine";
@@ -50,11 +48,9 @@ export async function runPositioningSearchAction(
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
 
-    log.info("generate_positioning_queries_start");
-    const queries = await generatePositioningQueries(validated, log);
-    log.info("generate_positioning_queries_success");
-
-    const theses = await searchAndSiftTheses(queries, validated, log);
+    log.info("sifting_theses_start");
+    const theses = await searchAndSiftTheses(validated, log);
+    log.info("sifting_theses_success");
 
     return { success: true, theses };
   } catch (error) {
