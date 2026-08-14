@@ -16456,7 +16456,7 @@ function buildQuadrantSpecificInstruction(boxType: string): string {
       return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — TEORİK ÇERÇEVE KUTUSU (THEORETICAL_FRAMEWORK)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin ampirik vakasını anlamlandırmada kullanılan soyut kuramlar, teorik kavramlar ve modellemelere odaklanır.\n\n## KABUL KRİTERİ\nİlgili kuramcıların birincil kuramsal metinleri ve bu teorileri tartışan literatür yüksek puan almalıdır.`;
 
     case "METHODOLOGY":
-      return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — YÖNTEM KUTUSU (METHODOLOGY)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu metodolojik, analitik ve yöntemsel eserlere odaklanır.\n\n(A) BİRİNCİL ÖNCELİK — Metodolojik Kılavuz (PUAN: 80-100)\n(B) İKİNCİL ÖNCELİK — Emsal Uygulama (PUAN: 60-79)\n(C) DÜŞÜK ÖNCELİK — Felsefi/Genel Kuramlar (PUAN: 0-40)`;
+      return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — YÖNTEM KUTUSU (METHODOLOGY)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin benimsediği araştırma deseni, veri toplama ve analiz tekniklerine yönelik metodolojik eserlere odaklanır.\n\n## KABUL KRİTERİ\n1. **Metodolojik Uyum:** Eserin sunduğu veya uyguladığı analiz yöntemi, alt kutu açıklamasında (description) tanımlanan araştırma deseni ve yöntemsel yaklaşımla doğrudan örtüşmelidir (80-100 puan).\n2. **Emsal Uygulama:** Kutu açıklamasında belirtilen yöntemin benzer araştırma alanlarına başarıyla uygulandığı emsal çalışmalar kabul edilebilir (60-79 puan).\n\n## DEĞERLENDİRME VE ELEME KRİTERLERİ\n1. **Yöntemsel Uyuşmazlık:** Alt kutu açıklamasında tanımlanan metodolojik yaklaşımdan sapan veya zıt bir analitik tasarım benimseyen çalışmaları düşük puanla (0-40 puan).\n2. Soyut genel felsefi tartışmalar veya yöntemsel kılavuz niteliği taşımayan kuramsal metinleri Yöntem Kutusu için ayrı tut.`;
 
     case "PRIMARY_MATERIAL":
       return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — BİRİNCİL MATERYAL KUTUSU (PRIMARY_MATERIAL)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin doğrudan analiz ettiği birincil kaynaklara, belgesel arşivlere veya kanun/karar külliyatına odaklanır.`;
@@ -16504,9 +16504,10 @@ export function buildJuryPromptPayload(
     primaryTask:
       "Her bir makaleyi, sana verilen alt kutunun türü, başlığı ve açıklaması ile karşılaştırarak değerlendir. Makalenin kutu bağlamıyla doğrudan alakalı olup olmadığına karar ver, 0-100 arası alaka skoru belirle ve 1 cümlelik Türkçe gerekçe yaz.",
 
-    rulesAndConstraints: `1. **Bütünsel Örtüşme:** Soyut teorik benzerliklerin ötesine geçerek makalenin incelediği spesifik olgunun, aktörlerin ve tarihsel kesitin; Sub-Box bağlamı ve tezin kapsadığı olgusal/tarihsel çerçeve ile bütünsel olarak örtüşüp örtüşmediğini değerlendir.
-2. **Dönemsel Uygunluk:** Tezin ve kutunun kapsadığı tarihsel/olgusal dönemin dışındaki başka bir döneme veya olaya odaklanan çalışmalar düşük puanlandırılmalıdır.
-3. **Temel Monografiler:** Tezin kapsadığı tarihsel dönemi ve vaka alanını doğrudan işleyen kapsayıcı temel monografilere ve saha araştırmalarına yüksek relevans puanı (80-95+) ver.${quadrantBlock}`,
+    rulesAndConstraints: `1. **Dil Uygunluğu:** Yalnızca Türkçe veya İngilizce dilindeki akademik çalışmaları kabul et. Başlığı veya içeriği bu iki dilin dışındaki (İspanyolca, Fransızca, Almanca, İtalyanca vb.) herhangi bir dilde olan kaynakları doğrudan uygunsuz olarak ele (isRelevant: false, relevanceScore: 0, gerekçede dil uyuşmazlığını belirt).
+2. **Bütünsel Örtüşme:** Soyut teorik benzerliklerin ötesine geçerek makalenin incelediği spesifik olgunun, aktörlerin ve tarihsel kesitin; Sub-Box bağlamı ve tezin kapsadığı olgusal/tarihsel çerçeve ile bütünsel olarak örtüşüp örtüşmediğini değerlendir.
+3. **Dönemsel Uygunluk:** Tezin ve kutunun kapsadığı tarihsel/olgusal dönemin dışındaki başka bir döneme veya olaya odaklanan çalışmalar düşük puanlandırılmalıdır.
+4. **Temel Monografiler:** Tezin kapsadığı tarihsel dönemi ve vaka alanını doğrudan işleyen kapsayıcı temel monografilere ve saha araştırmalarına yüksek relevans puanı (80-95+) ver.${quadrantBlock}`,
 
     outputFormat: `Her değerlendirme için aşağıdaki alanları içeren JSON nesneleri dizisi döndürün:
 - thesisBoxId: (girdide verilen box id)
@@ -22193,6 +22194,123 @@ export function BoxesSkeleton() {
       </div>
     </div>
   );
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/matrix/actions.ts">
+"use server";
+
+import { eq, inArray, sql } from "drizzle-orm";
+import { z } from "zod";
+import { db } from "@/db";
+import { matrices, positioning, boxes, sources, outlines } from "@/db/schema";
+import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
+import { createFlowId, Logger } from "@/lib/logger";
+import {
+  invalidateOnboardingCache,
+  invalidateOnboardingStepCache,
+} from "@/lib/cache-tags";
+
+const MIN_LENGTH = 3;
+const MAX_LENGTH = 4000;
+
+const thesisMatrixSchema = z.object({
+  subjectProblem: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+  theoreticalFramework: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+  primaryMaterial: z.string().trim().max(MAX_LENGTH).optional().default(""),
+  methodology: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+});
+
+/**
+ * Persists the thesis matrix to the database and clears any downstream analysis
+ * data (positioning report, thesis outline, and thesis boxes) that may now be stale.
+ *
+ * @param data - The thesis matrix data from the onboarding form
+ * @returns Success confirmation or an error message
+ */
+export async function saveThesisMatrixAction(
+  data: unknown,
+): Promise<{ success: true } | { error: string }> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  log.info("matrix_save_start");
+
+  const parsed = thesisMatrixSchema.safeParse(data);
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0];
+    const msg = firstIssue
+      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
+      : "Doğrulama başarısız.";
+    return { error: msg };
+  }
+
+  const validated = parsed.data;
+
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { error: SESSION_ERROR_MSG };
+    }
+
+    await db.transaction(async (tx) => {
+      const [matrixRow] = await tx
+        .insert(matrices)
+        .values({
+          userId: session.userId,
+          subjectProblem: validated.subjectProblem,
+          theoreticalFramework: validated.theoreticalFramework,
+          primaryMaterial: validated.primaryMaterial,
+          methodology: validated.methodology,
+          updatedAt: sql`now()`,
+        })
+        .onConflictDoUpdate({
+          target: matrices.userId,
+          set: {
+            subjectProblem: validated.subjectProblem,
+            theoreticalFramework: validated.theoreticalFramework,
+            primaryMaterial: validated.primaryMaterial,
+            methodology: validated.methodology,
+            updatedAt: sql`now()`,
+          },
+        })
+        .returning({ id: matrices.id });
+
+      if (matrixRow) {
+        await tx
+          .delete(positioning)
+          .where(eq(positioning.matrixId, matrixRow.id));
+
+        await tx
+          .delete(sources)
+          .where(
+            inArray(
+              sources.boxId,
+              tx
+                .select({ id: boxes.id })
+                .from(boxes)
+                .where(eq(boxes.matrixId, matrixRow.id)),
+            ),
+          );
+
+        await tx.delete(outlines).where(eq(outlines.matrixId, matrixRow.id));
+
+        await tx.delete(boxes).where(eq(boxes.matrixId, matrixRow.id));
+      }
+    });
+
+    invalidateOnboardingCache();
+    invalidateOnboardingStepCache("matrix");
+
+    log.info("matrix_save_success");
+
+    return { success: true };
+  } catch (error) {
+    log.error("matrix_save_failed", {
+      error,
+    });
+    return { error: "Tez matrisi veritabanına kaydedilemedi." };
+  }
 }
 </file>
 
@@ -28579,119 +28697,187 @@ export function OutlineEditorView({
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/matrix/actions.ts">
+<file path="src/app/(auth)/login/actions.ts">
 "use server";
 
-import { eq, inArray, sql } from "drizzle-orm";
+import { cookies } from "next/headers";
+import { eq } from "drizzle-orm";
+import { compare } from "bcrypt-ts";
 import { z } from "zod";
 import { db } from "@/db";
-import { matrices, positioning, boxes, sources, outlines } from "@/db/schema";
-import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
-import { createFlowId, Logger } from "@/lib/logger";
+import { users } from "@/db/schema";
 import {
-  invalidateOnboardingCache,
-  invalidateOnboardingStepCache,
-} from "@/lib/cache-tags";
+  getSessionWithOnboarding,
+  SESSION_COOKIE_NAME,
+  SESSION_MAX_AGE_SECONDS,
+  SESSION_ERROR_MSG,
+} from "@/lib/session";
+import { createFlowId, Logger } from "@/lib/logger";
 
-const MIN_LENGTH = 3;
-const MAX_LENGTH = 4000;
-
-const thesisMatrixSchema = z.object({
-  subjectProblem: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
-  theoreticalFramework: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
-  primaryMaterial: z.string().trim().max(MAX_LENGTH).optional().default(""),
-  methodology: z.string().trim().min(MIN_LENGTH).max(MAX_LENGTH),
+const LoginSchema = z.object({
+  email: z.string().email("Geçerli bir e-posta adresi girin.").max(255),
+  password: z.string().min(1, "Şifre gereklidir.").max(128, "Şifre çok uzun."),
 });
 
-/**
- * Persists the thesis matrix to the database and clears any downstream analysis
- * data (positioning report, thesis outline, and thesis boxes) that may now be stale.
+const LOGIN_MAX_ATTEMPTS = 5;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+
+const attemptMap = new Map<string, { count: number; windowStart: number }>();
+
+/** Enforces a sliding-window brute-force rate limit for a single email address.
  *
- * @param data - The thesis matrix data from the onboarding form
- * @returns Success confirmation or an error message
+ * @param email - The email address to check against the rate limit.
+ * @returns True when the request is allowed, false when the limit was reached.
  */
-export async function saveThesisMatrixAction(
-  data: unknown,
-): Promise<{ success: true } | { error: string }> {
+function checkRateLimit(email: string): boolean {
+  const now = Date.now();
+  const record = attemptMap.get(email);
+
+  if (!record || now - record.windowStart > LOGIN_WINDOW_MS) {
+    attemptMap.set(email, { count: 1, windowStart: now });
+    return true;
+  }
+
+  if (record.count >= LOGIN_MAX_ATTEMPTS) {
+    return false;
+  }
+
+  record.count++;
+  return true;
+}
+
+export type LoginResult = { success: boolean; error?: string };
+
+export type OnboardingStatusResult =
+  | { success: true; onboardingCompleted: boolean }
+  | { success: false; error: string };
+
+/**
+ * Validates email and password; on success creates the session cookie.
+ *
+ * @param email - The user's email address.
+ * @param password - The user's plaintext password.
+ * @returns The login result, either a success marker or a user-friendly error message.
+ */
+export async function loginAction(
+  email: string,
+  password: string,
+): Promise<LoginResult> {
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
-  log.info("matrix_save_start");
-
-  const parsed = thesisMatrixSchema.safeParse(data);
+  const parsed = LoginSchema.safeParse({ email, password });
   if (!parsed.success) {
-    const firstIssue = parsed.error.issues[0];
-    const msg = firstIssue
-      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
-      : "Doğrulama başarısız.";
-    return { error: msg };
+    const msg = parsed.error.issues[0]?.message ?? "Geçersiz giriş bilgileri.";
+    log.info("login_failed", {
+      service: "auth",
+      data: { reason: "validation_failure" },
+    });
+    return { success: false, error: msg };
   }
 
-  const validated = parsed.data;
+  if (!checkRateLimit(parsed.data.email)) {
+    log.info("login_failed", {
+      service: "auth",
+      data: { reason: "rate_limit_exceeded" },
+    });
+    return {
+      success: false,
+      error:
+        "Çok fazla başarısız giriş denemesi. Lütfen 15 dakika sonra tekrar deneyin.",
+    };
+  }
 
   try {
-    const session = await getSession();
-    if (!session) {
-      return { error: SESSION_ERROR_MSG };
+    const [user] = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        password: users.password,
+        onboardingCompleted: users.onboardingCompleted,
+      })
+      .from(users)
+      .where(eq(users.email, parsed.data.email));
+
+    if (!user) {
+      log.info("login_failed", {
+        service: "auth",
+        data: { reason: "user_not_found" },
+      });
+      return { success: false, error: "E-posta veya şifre hatalı." };
     }
 
-    await db.transaction(async (tx) => {
-      const [matrixRow] = await tx
-        .insert(matrices)
-        .values({
-          userId: session.userId,
-          subjectProblem: validated.subjectProblem,
-          theoreticalFramework: validated.theoreticalFramework,
-          primaryMaterial: validated.primaryMaterial,
-          methodology: validated.methodology,
-          updatedAt: sql`now()`,
-        })
-        .onConflictDoUpdate({
-          target: matrices.userId,
-          set: {
-            subjectProblem: validated.subjectProblem,
-            theoreticalFramework: validated.theoreticalFramework,
-            primaryMaterial: validated.primaryMaterial,
-            methodology: validated.methodology,
-            updatedAt: sql`now()`,
-          },
-        })
-        .returning({ id: matrices.id });
+    const passwordMatch = await compare(parsed.data.password, user.password);
 
-      if (matrixRow) {
-        await tx
-          .delete(positioning)
-          .where(eq(positioning.matrixId, matrixRow.id));
+    if (!passwordMatch) {
+      log.info("login_failed", {
+        service: "auth",
+        data: { reason: "password_mismatch" },
+      });
+      return { success: false, error: "E-posta veya şifre hatalı." };
+    }
 
-        await tx
-          .delete(sources)
-          .where(
-            inArray(
-              sources.boxId,
-              tx
-                .select({ id: boxes.id })
-                .from(boxes)
-                .where(eq(boxes.matrixId, matrixRow.id)),
-            ),
-          );
+    const cookieStore = await cookies();
+    cookieStore.set(
+      SESSION_COOKIE_NAME,
+      JSON.stringify({
+        userId: user.id,
+        name: user.name,
+        onboardingCompleted: user.onboardingCompleted,
+      }),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: SESSION_MAX_AGE_SECONDS,
+      },
+    );
 
-        await tx.delete(outlines).where(eq(outlines.matrixId, matrixRow.id));
-
-        await tx.delete(boxes).where(eq(boxes.matrixId, matrixRow.id));
-      }
+    log.info("login_success", {
+      service: "auth",
+      data: { userId: user.id },
     });
-
-    invalidateOnboardingCache();
-    invalidateOnboardingStepCache("matrix");
-
-    log.info("matrix_save_success");
-
-    return { success: true };
-  } catch (error) {
-    log.error("matrix_save_failed", {
-      error,
+  } catch {
+    log.info("login_failed", {
+      service: "auth",
+      data: { reason: "server_error" },
     });
-    return { error: "Tez matrisi veritabanına kaydedilemedi." };
+    return { success: false, error: "Bir hata oluştu. Lütfen tekrar deneyin." };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Queries the onboarding completion status of the current session.
+ *
+ * @returns The onboarding status or a user-friendly error message.
+ */
+export async function checkOnboardingStatus(): Promise<OnboardingStatusResult> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  try {
+    const session = await getSessionWithOnboarding();
+
+    if (!session) {
+      return { success: false, error: SESSION_ERROR_MSG };
+    }
+
+    return {
+      success: true,
+      onboardingCompleted: session.onboardingCompleted,
+    };
+  } catch {
+    log.error("login_check_failed", {
+      service: "auth",
+      data: { reason: "Onboarding durumu sorgulanamadı" },
+    });
+    return {
+      success: false,
+      error: "Onboarding durumu sorgulanırken bir hata oluştu.",
+    };
   }
 }
 </file>
@@ -29534,6 +29720,7 @@ export interface OutlineMatrixInput {
 
 /**
  * Builds the standardized PromptPayload for thesis outline generation.
+ * Strictly adheres to docs/LLM_INTEGRATION.md.
  *
  * @param matrix - The thesis matrix input data.
  * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
@@ -29543,39 +29730,154 @@ export function buildOutlineGenerationPromptPayload(
 ): PromptPayload {
   return buildPromptPayload({
     roleAndExpertise:
-      "Siz, akademisyenlerin ve lisansüstü öğrencilerin tez matrislerini analiz ederek YÖK ve uluslararası akademik standartlara tam uyumlu tez planı (içindekiler) yapısı oluşturan kıdemli bir akademik yapılandırma asistanısınız.",
+      "Siz, Türkiye YÖK Lisansüstü Eğitim Enstitüleri (Sosyal Bilimler Enstitüsü, Fen Bilimleri Enstitüsü) ve uluslararası akademik standartlarda uzmanlaşmış kıdemli bir tez danışmanı ve akademik yapılandırma asistanısınız.",
 
     primaryTask:
-      "Sağlanan tez matrisindeki araştırma problemi, teorik çerçeve, birincil materyal ve metodoloji bilgilerine dayanarak tezin bilim dalını tespit edin ve metodolojik açıdan eksiksiz, disipline özgü bir bölüm/alt bölüm hiyerarşisi (outline) üretin.",
+      "Sağlanan tez matrisindeki araştırma problemi, teorik çerçeve, birincil materyal ve metodoloji bilgilerini sentezleyerek tezin bilim dalını tespit edin ve metodolojik açıdan akıcı, sade, organik bağları güçlü bir tez taslak planı (içindekiler hiyerarşisi) oluşturun.",
 
     rulesAndConstraints: `## 1. Bilim Dalı Tespiti (academicField)
-- Matris içeriğindeki kavramları, teorik çerçeveyi ve yöntemi analiz ederek tezin ait olduğu bilim dalını tespit edin.
-- Bilim dalı açık ve net olmalıdır (örn: "Siyaset Bilimi ve Kamu Yönetimi", "İşletme", "Hukuk", "Bilgisayar Mühendisliği", "Eğitim Bilimleri", "Tıp ve Sağlık Bilimleri").
+- Matris verilerini analiz ederek tezin ait olduğu temel akademik bilim dalını belirleyin (Örn: "Siyaset Bilimi ve Kamu Yönetimi", "Sosyoloji", "İktisat", "Hukuk", "Bilgisayar Mühendisliği", "Eğitim Bilimleri").
 
-## 2. Bölüm Yapısı ve Hiyerarşi Kuralları
-- **Toplam Ana Bölüm Sayısı:** Toplamda TAM OLARAK 4 veya 5 ana bölüm oluşturun. 4'ten az veya 5'ten fazla ana bölüm KESİNLİKLE OLUŞTURMAYIN.
-- **Bölüm 1 (Giriş - Sabit):** İlk ana bölüm KESİNLİKLE "Giriş" başlığını taşımalıdır. Giriş bölümünün alt başlıkları OLAMAZ. subSections dizisi KESİNLİKLE boş dizi [] olmalıdır.
-- **Gövde Bölümleri (Bölüm 2, 3 [ve varsa Bölüm 4]):** Giriş ile Sonuç arasındaki 2 veya 3 bölüm, tezin özgün konusunu, teorik çerçevesini, metodolojisini ve bulgularını inceleyen ana gövde bölümleridir. Her bir gövde bölümünün altında konusunu detaylandıran EN AZ 2 alt bölüm (subSections) yer almalıdır.
-- **Son Bölüm (Sonuç ve Değerlendirme - Sabit):** Son ana bölüm (4. veya 5. bölüm) KESİNLİKLE "Sonuç ve Değerlendirme" (veya "Sonuç") başlığını taşımalıdır. Sonuç bölümünün alt başlıkları OLAMAZ. subSections dizisi KESİNLİKLE boş dizi [] olmalıdır.
+## 2. Bölüm Mimarisi ve Hiyerarşi Standartları (Türkiye YÖK & SBE Standartları)
+- **Ana Bölüm Mimarisi:** Giriş + 3 Ana Gövde Bölümü + Sonuç ve Değerlendirme (Toplam 5 Ana Bölüm).
+- **Bölüm 1 (Giriş):** Tezin kuramsal ve yöntemsel manifestosudur. Altında araştırmanın problemini, kuramsal yaklaşımını, yöntemini/birincil kaynaklarını ve tezin planını sunan 2 ila 4 odaklanmış alt bölüm (subSections) yer almalıdır.
+- **Gövde Bölümleri (Bölüm 2, 3, 4):** Tezin ana kuramsal ve ampirik eksenlerini taşıyan 3 bağımsız ana bölümdür:
+  - *Bölüm 2 (Kuramsal Çerçeve):* Konunun teorik temellerini ve kavramsal araçlarını derinlemesine inceleyen 2-3 alt bölüm.
+  - *Bölüm 3 (Tarihsel Bağlam / Aktörler / Ampirik Süreç):* Araştırmanın birincil materyal ve aktörlerinin söylemsel/ampirik pratiklerini inceleyen 2-3 alt bölüm.
+  - *Bölüm 4 (Karşılaştırmalı Analiz / Karşı-Hegemonya / Sentez):* Farklı hatların, söylemlerin veya verilerin kuram ışığında karşılaştırmalı analizini ve tartışmasını yapan 2-3 alt bölüm.
+- **Son Bölüm (Sonuç ve Değerlendirme):** Araştırma bulgularının sentezini, hipotezlerin değerlendirilmesini ve literatüre katkıyı içeren nihai bölümdür.
 
-## 3. Disipline Özgü Gövde Bölümü Akışı
-Gövde bölümlerinin mimarisini tespit edilen bilim dalının geleneksel akademik kalıplarına uygun kurgulayın:
-- **Sosyal ve Beşeri Bilimler / İktisadi ve İdari Bilimler:** Bölüm 1: Giriş → Bölüm 2: Kavramsal ve Teorik Çerçeve → Bölüm 3: Araştırma Metodolojisi ve Analiz Çerçevesi → Bölüm 4: Ampirik Bulgular ve Tartışma (varsa) → Bölüm 4 veya 5: Sonuç ve Değerlendirme.
-- **Fen Bilimleri / Mühendislik / Sağlık Bilimleri:** Bölüm 1: Giriş → Bölüm 2: Kuramsal Arka Plan ve Literatür → Bölüm 3: Materyal ve Yöntem → Bölüm 4: Bulgular ve Tartışma → Bölüm 5: Sonuç ve Öneriler.
-- **Hukuk Bilimleri:** Bölüm 1: Giriş → Bölüm 2: Kavramsal ve Tarihsel Arka Plan → Bölüm 3: Pozitif Hukuki Düzenlemeler ve Yargı Kararları → Bölüm 4: Uygulamadaki Sorunlar ve Çözümler → Bölüm 5: Sonuç.
+## 3. Metodoloji ve Kaynak Entegrasyonu
+- Sosyal ve beşeri bilimlerde yöntem ve birincil kaynakların seçimi Giriş bölümünün alt başlıkları olarak kurgulanır; böylece tezin gövdesi yöntemle şişirilmeden doğrudan kuramsal ve ampirik içeriğe odaklanır.
 
-## 4. Konu Kutusu Eşleştirme (recommendedBoxTypes)
-- Her ana bölüm ve alt bölüm için bu bölümün hangi konu kutuları tarafından besleneceğini belirleyin.
-- Kullanılabilir kutu türleri: "SUBJECT_PROBLEM", "THEORETICAL_FRAMEWORK", "PRIMARY_MATERIAL", "METHODOLOGY".
-- Örnek: Teorik çerçeve bölümü için ["THEORETICAL_FRAMEWORK"], Metodoloji bölümü için ["METHODOLOGY", "PRIMARY_MATERIAL"].
+## 4. Başlık ve İfade Standartları
+- **Sadelik ve Hiyerarşik Netlik:** Başlıklar makale özeti veya uzun cümleler yerine kısa, analitik ve akademik kavramlara odaklı olmalıdır.
+- **Dil:** Tüm başlıklar ve açıklamalar akıcı ve yüksek düzey akademik Türkçe ile yazılmalıdır.
+- **Açıklamalar (description):** Her ana ve alt bölüm için 1-2 cümlelik öz, net akademik açıklamalar yazılmalıdır.
 
-## 5. Sıralama ve Açıklama Standartları
-- **Sıralama (sortOrder):** Ana bölümlerde ve her bölümün alt bölümlerinde 1'den başlayan ardışık sayılar kullanın.
-- **Açıklama (description):** Her ana bölüm ve alt bölüm için ne yapılacağını/anlatılacağını açıklayan kısa, net akademik Türkçe açıklamalar yazın.`,
+## 5. Konu Kutusu Eşleştirmesi (recommendedBoxTypes)
+- Her bölümün matristeki hangi temel bileşenlerle beslendiğini belirleyin.
+- Geçerli değerler: "SUBJECT_PROBLEM", "THEORETICAL_FRAMEWORK", "PRIMARY_MATERIAL", "METHODOLOGY".`,
 
-    outputFormat: `- Tüm başlıklar ve açıklamalar KESİNLİKLE yüksek düzey akademik Türkçe olmalıdır.
-- Gövde bölüm başlıkları tezin özgün konusunu doğrudan yansıtmalıdır.
-- Yanıtınızı sağlanan JSON şemasına eksiksiz uyacak şekilde döndürün.`,
+    workflowSteps: `1. Araştırma problemi ve kuramsal çerçeveden hareketle tezin bilim dalını (academicField) belirleyin.
+2. Türkiye lisansüstü tez geleneğine uygun olarak: Giriş (yöntem/materyal alt başlıkları dahil) + 3 Ana Gövde Bölümü + Sonuç ve Değerlendirme mimarisini kurun.
+3. Giriş bölümü altına Araştırmanın Problemi/Amacı, Kuramsal Yaklaşım/Hipotez, Yöntem/Birincil Kaynaklar ve Tezin Kurgusu alt başlıklarını ekleyin.
+4. 3 Gövde bölümünü (Kuram → Ampirik Süreç → Karşılaştırmalı Sentez) 2-3'er odaklı alt başlıkla yapılandırın.
+5. Başlıkları analitik ve sade bir dille formüle edin.
+6. İlgili recommendedBoxTypes eşleştirmelerini tanımlayarak JSON çıktısını üretin.`,
+
+    outputFormat: `- Yanıt yalnızca sağlanan JSON şemasına eksiksiz uyan JSON nesnesi olmalıdır.
+- Tüm başlıklar ve açıklamalar akademik Türkçe olmalıdır.`,
+
+    examples: `## Örnek 1: Siyaset Bilimi ve Kamu Yönetimi Tez Planı
+
+### Girdi
+- **Araştırma Problemi:** 1990'lar Türkiye'sinde Neoliberal Dönüşüm ve Yerel Yönetimlerin Özerkliği
+- **Teorik Çerçeve:** David Harvey'nin Neoliberalizm Kuramı ve Kentsel Mekânın Yeniden Üretimi
+- **Birincil Materyal:** Belediye Meclis Kararları, Resmî Gazete Tebliğleri ve İmar Raporları
+- **Metodoloji:** Nitel Söylem ve Politika Analizi
+
+### Çıktı
+\`\`\`json
+{
+  "academicField": "Siyaset Bilimi ve Kamu Yönetimi",
+  "sections": [
+    {
+      "title": "Giriş",
+      "description": "Araştırmanın konusu, problemi, kuramsal-yöntemsel yaklaşımı ve tezin kurgusal yapısı.",
+      "sortOrder": 1,
+      "recommendedBoxTypes": ["SUBJECT_PROBLEM", "METHODOLOGY"],
+      "subSections": [
+        {
+          "title": "Araştırmanın Konusu, Problemi ve Amacı",
+          "description": "1990'larda yerel yönetimlerin dönüşüm problemi ve araştırmanın temel soruları.",
+          "sortOrder": 1,
+          "recommendedBoxTypes": ["SUBJECT_PROBLEM"]
+        },
+        {
+          "title": "Kuramsal Çerçeve ve Temel Hipotezler",
+          "description": "David Harvey'nin mekân teorisi ekseninde kurulan hipotezlerin sunumu.",
+          "sortOrder": 2,
+          "recommendedBoxTypes": ["THEORETICAL_FRAMEWORK"]
+        },
+        {
+          "title": "Yöntem, Birincil Kaynaklar ve Sınırlılıklar",
+          "description": "Nitel söylem analizi yöntemi, belediye meclis kararları ve arşiv materyallerinin kapsamı.",
+          "sortOrder": 3,
+          "recommendedBoxTypes": ["METHODOLOGY", "PRIMARY_MATERIAL"]
+        }
+      ]
+    },
+    {
+      "title": "Kuramsal Çerçeve: Neoliberalizm, Devlet ve Kentsel Mekân",
+      "description": "Neoliberal yeniden yapılanma, yerel yönetimler ve kentsel rant dinamiklerinin teorik analizi.",
+      "sortOrder": 2,
+      "recommendedBoxTypes": ["THEORETICAL_FRAMEWORK"],
+      "subSections": [
+        {
+          "title": "Neoliberal Devlet Aklı ve Kentsel Mekânın Metalaşması",
+          "description": "Harvey'nin sermaye birikim modelleri ışığında kentsel politikalar.",
+          "sortOrder": 1,
+          "recommendedBoxTypes": ["THEORETICAL_FRAMEWORK"]
+        },
+        {
+          "title": "Yerel Özerklik ve Merkez-Yerel İlişkileri",
+          "description": "Merkezi idare ile yerel otoriteler arasındaki yetki aktarımlarının kuramsal boyutları.",
+          "sortOrder": 2,
+          "recommendedBoxTypes": ["THEORETICAL_FRAMEWORK", "SUBJECT_PROBLEM"]
+        }
+      ]
+    },
+    {
+      "title": "1990'lar Türkiye'sinde Yerel Yönetimlerin Kurumsal ve Hukuki Dönüşümü",
+      "description": "Dönemin yasal mevzuatı, belediye kararları ve yerel hizmetlerin piyasalaşma pratikleri.",
+      "sortOrder": 3,
+      "recommendedBoxTypes": ["PRIMARY_MATERIAL", "SUBJECT_PROBLEM"],
+      "subSections": [
+        {
+          "title": "Mevzuat Değişiklikleri ve Özelleştirme Uygulamaları",
+          "description": "Belediye hizmetlerinin piyasaya açılmasına dair yasal çerçevenin analizi.",
+          "sortOrder": 1,
+          "recommendedBoxTypes": ["PRIMARY_MATERIAL"]
+        },
+        {
+          "title": "Belediye Meclislerinde Kentsel Rant ve İmar Kararları",
+          "description": "Birincil arşiv belgeleri üzerinden meclis kararlarının ampirik dökümü.",
+          "sortOrder": 2,
+          "recommendedBoxTypes": ["PRIMARY_MATERIAL"]
+        }
+      ]
+    },
+    {
+      "title": "Kentsel Politikaların Söylemsel Analizi ve Özerklik Çıkmazı",
+      "description": "Siyasal aktörlerin söylemleri ile uygulama arasındaki gerilimlerin karşılaştırmalı analizi.",
+      "sortOrder": 4,
+      "recommendedBoxTypes": ["METHODOLOGY", "SUBJECT_PROBLEM"],
+      "subSections": [
+        {
+          "title": "Yerel Siyasette 'Hizmet' ve 'Piyasa' Söyleminin İnşası",
+          "description": "Nitel söylem analizi bulgularının kuramsal kavramlarla karşılaştırılması.",
+          "sortOrder": 1,
+          "recommendedBoxTypes": ["METHODOLOGY", "PRIMARY_MATERIAL"]
+        },
+        {
+          "title": "Merkezi Denetim Karşısında Yerel Özerklik Kapasitesi",
+          "description": "Yerel aktörlerin özerklik talepleri ile merkezi vesayet arasındaki güç ilişkileri.",
+          "sortOrder": 2,
+          "recommendedBoxTypes": ["SUBJECT_PROBLEM", "THEORETICAL_FRAMEWORK"]
+        }
+      ]
+    },
+    {
+      "title": "Sonuç ve Değerlendirme",
+      "description": "Araştırma bulgularının sentezi, hipotezlerin doğrulanması ve literatüre katkı.",
+      "sortOrder": 5,
+      "recommendedBoxTypes": ["SUBJECT_PROBLEM", "THEORETICAL_FRAMEWORK"],
+      "subSections": []
+    }
+  ]
+}
+\`\`\``,
 
     inputContext: `## Tez Matrisi Verileri
 
@@ -29593,13 +29895,7 @@ ${matrix.methodology}
 
 ---
 
-Yukarıdaki tez matrisi verilerini analiz ederek:
-1. Tezin bilim dalını (academicField) tespit edin.
-2. Tam olarak 4 veya 5 ana bölümden oluşan bir tez planı oluşturun.
-3. Bölüm 1 KESİNLİKLE "Giriş" olmalı ve subSections: [] (boş dizi) içermelidir.
-4. Son Bölüm KESİNLİKLE "Sonuç ve Değerlendirme" olmalı ve subSections: [] (boş dizi) içermelidir.
-5. Giriş ve Sonuç arasındaki 2 veya 3 gövde bölümünün her biri altında en az 2 alt bölüm oluşturun.
-6. Her bölüm ve alt bölüm için kısa, öz akademik Türkçe açıklamalar ve ilgili recommendedBoxTypes eşleştirmesini yapın.`,
+Yukarıdaki tez matrisi verilerini analiz ederek Türkiye lisansüstü tez standartlarına tam uyumlu, sade ve akıcı bir taslak tez planı oluşturun.`,
   });
 }
 </file>
@@ -29659,7 +29955,7 @@ const outlineSectionSchema: z.ZodType<{
         }),
       )
       .describe(
-        "Gövde bölümleri için en az 2 alt bölüm. Giriş ve Sonuç bölümleri için boş dizi ([]).",
+        "Bölümün alt başlıkları. Giriş ve gövde bölümleri alt başlıklar barındırabilir.",
       ),
   }),
 );
@@ -29676,9 +29972,9 @@ export const outlineGenerationSchema = z.object({
   sections: z
     .array(outlineSectionSchema)
     .min(4)
-    .max(5)
+    .max(6)
     .describe(
-      "Tezin ana bölüm başlıkları (Giriş [alt başlıksız], 2-3 Ana Gövde Bölümü [alt başlıklı], Sonuç ve Değerlendirme [alt başlıksız] olmak üzere toplam 4 veya 5 ana bölüm).",
+      "Tezin ana bölüm başlıkları (Giriş, 3 Ana Gövde Bölümü, Sonuç ve Değerlendirme olmak üzere toplam 4 veya 5 ana bölüm).",
     ),
 });
 
@@ -29736,7 +30032,7 @@ function buildSectionJsonSchemaProperty(): JsonSchemaProperty {
           additionalProperties: false,
         },
         description:
-          "Alt bölümler. Gövde bölümleri altında en az 2 alt bölüm yer alır. Giriş ve Sonuç bölümleri için boş dizi ([]).",
+          "Alt bölümler. Giriş ve gövde bölümleri altında konuyu yapılandıran alt bölümler yer alır.",
       },
     },
     required: ["title", "description", "sortOrder", "subSections"],
@@ -29758,9 +30054,9 @@ export const outlineGenerationJsonSchema: JsonSchema = {
       type: "array",
       items: buildSectionJsonSchemaProperty(),
       minItems: 4,
-      maxItems: 5,
+      maxItems: 6,
       description:
-        "Tezin ana bölüm başlıkları (Bölüm 1 Giriş [alt başlıksız], Bölüm 2 ve 3 [veya 4] Ana Gövde Bölümleri [en az 2 alt bölüm], Son Bölüm Sonuç ve Değerlendirme [alt başlıksız] olmak üzere toplam tam olarak 4 veya 5 ana bölüm).",
+        "Tezin ana bölüm başlıkları (Giriş, 3 Ana Gövde Bölümü, Sonuç ve Değerlendirme).",
     },
   },
   required: ["academicField", "sections"],
@@ -31587,290 +31883,157 @@ export function useDashboard(
 }
 </file>
 
-<file path="src/app/(auth)/login/actions.ts">
-"use server";
-
-import { cookies } from "next/headers";
-import { eq } from "drizzle-orm";
-import { compare } from "bcrypt-ts";
-import { z } from "zod";
-import { db } from "@/db";
-import { users } from "@/db/schema";
-import {
-  getSessionWithOnboarding,
-  SESSION_COOKIE_NAME,
-  SESSION_MAX_AGE_SECONDS,
-  SESSION_ERROR_MSG,
-} from "@/lib/session";
-import { createFlowId, Logger } from "@/lib/logger";
-
-const LoginSchema = z.object({
-  email: z.string().email("Geçerli bir e-posta adresi girin.").max(255),
-  password: z.string().min(1, "Şifre gereklidir.").max(128, "Şifre çok uzun."),
-});
-
-const LOGIN_MAX_ATTEMPTS = 5;
-const LOGIN_WINDOW_MS = 15 * 60 * 1000;
-
-const attemptMap = new Map<string, { count: number; windowStart: number }>();
-
-/** Enforces a sliding-window brute-force rate limit for a single email address.
- *
- * @param email - The email address to check against the rate limit.
- * @returns True when the request is allowed, false when the limit was reached.
- */
-function checkRateLimit(email: string): boolean {
-  const now = Date.now();
-  const record = attemptMap.get(email);
-
-  if (!record || now - record.windowStart > LOGIN_WINDOW_MS) {
-    attemptMap.set(email, { count: 1, windowStart: now });
-    return true;
-  }
-
-  if (record.count >= LOGIN_MAX_ATTEMPTS) {
-    return false;
-  }
-
-  record.count++;
-  return true;
-}
-
-export type LoginResult = { success: boolean; error?: string };
-
-export type OnboardingStatusResult =
-  | { success: true; onboardingCompleted: boolean }
-  | { success: false; error: string };
-
-/**
- * Validates email and password; on success creates the session cookie.
- *
- * @param email - The user's email address.
- * @param password - The user's plaintext password.
- * @returns The login result, either a success marker or a user-friendly error message.
- */
-export async function loginAction(
-  email: string,
-  password: string,
-): Promise<LoginResult> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  const parsed = LoginSchema.safeParse({ email, password });
-  if (!parsed.success) {
-    const msg = parsed.error.issues[0]?.message ?? "Geçersiz giriş bilgileri.";
-    log.info("login_failed", {
-      service: "auth",
-      data: { reason: "validation_failure" },
-    });
-    return { success: false, error: msg };
-  }
-
-  if (!checkRateLimit(parsed.data.email)) {
-    log.info("login_failed", {
-      service: "auth",
-      data: { reason: "rate_limit_exceeded" },
-    });
-    return {
-      success: false,
-      error:
-        "Çok fazla başarısız giriş denemesi. Lütfen 15 dakika sonra tekrar deneyin.",
-    };
-  }
-
-  try {
-    const [user] = await db
-      .select({
-        id: users.id,
-        name: users.name,
-        password: users.password,
-        onboardingCompleted: users.onboardingCompleted,
-      })
-      .from(users)
-      .where(eq(users.email, parsed.data.email));
-
-    if (!user) {
-      log.info("login_failed", {
-        service: "auth",
-        data: { reason: "user_not_found" },
-      });
-      return { success: false, error: "E-posta veya şifre hatalı." };
-    }
-
-    const passwordMatch = await compare(parsed.data.password, user.password);
-
-    if (!passwordMatch) {
-      log.info("login_failed", {
-        service: "auth",
-        data: { reason: "password_mismatch" },
-      });
-      return { success: false, error: "E-posta veya şifre hatalı." };
-    }
-
-    const cookieStore = await cookies();
-    cookieStore.set(
-      SESSION_COOKIE_NAME,
-      JSON.stringify({
-        userId: user.id,
-        name: user.name,
-        onboardingCompleted: user.onboardingCompleted,
-      }),
-      {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: SESSION_MAX_AGE_SECONDS,
-      },
-    );
-
-    log.info("login_success", {
-      service: "auth",
-      data: { userId: user.id },
-    });
-  } catch {
-    log.info("login_failed", {
-      service: "auth",
-      data: { reason: "server_error" },
-    });
-    return { success: false, error: "Bir hata oluştu. Lütfen tekrar deneyin." };
-  }
-
-  return { success: true };
-}
-
-/**
- * Queries the onboarding completion status of the current session.
- *
- * @returns The onboarding status or a user-friendly error message.
- */
-export async function checkOnboardingStatus(): Promise<OnboardingStatusResult> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  try {
-    const session = await getSessionWithOnboarding();
-
-    if (!session) {
-      return { success: false, error: SESSION_ERROR_MSG };
-    }
-
-    return {
-      success: true,
-      onboardingCompleted: session.onboardingCompleted,
-    };
-  } catch {
-    log.error("login_check_failed", {
-      service: "auth",
-      data: { reason: "Onboarding durumu sorgulanamadı" },
-    });
-    return {
-      success: false,
-      error: "Onboarding durumu sorgulanırken bir hata oluştu.",
-    };
-  }
-}
-</file>
-
-<file path="src/app/(onboarding)/onboarding/outline/_components/outline-tree-view.tsx">
+<file path="src/app/(app)/library/_components/pdf-upload-dropzone.tsx">
 "use client";
 
-import { BookOpen } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { AIBanner } from "@/components/shared/ai-banner";
+import React, { useState, useRef } from "react";
+import { UploadCloud, FileText, AlertCircle } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
+import { toast } from "sonner";
 
-interface OutlineSection {
-  title: string;
-  description: string;
-  sortOrder: number;
-  subSections?: Array<{
-    title: string;
-    description: string;
-    sortOrder: number;
-  }>;
+interface PdfUploadDropzoneProps {
+  /** Resource title. */
+  resourceTitle: string;
+  /** Current PDF status. */
+  pdfStatus?: "NOT_UPLOADED" | "PROCESSING" | "READY" | "FAILED";
+  /** Callback fired when user selects and submits a PDF file. */
+  onUploadPdf: (file: File) => Promise<boolean>;
 }
 
-interface OutlineTreeViewProps {
-  sections: OutlineSection[];
-}
+/**
+ * Dropzone component for uploading PDF documents and triggering RAG vectorization.
+ *
+ * @param root0 - Component props.
+ * @param root0.resourceTitle - Title of the resource the PDF belongs to.
+ * @param root0.pdfStatus - Current PDF upload status.
+ * @param root0.onUploadPdf - Callback invoked with the selected file for upload.
+ * @returns The PDF upload dropzone markup.
+ */
+export function PdfUploadDropzone({
+  resourceTitle,
+  pdfStatus = "NOT_UPLOADED",
+  onUploadPdf,
+}: PdfUploadDropzoneProps) {
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-function OutlineSectionNode({
-  section,
-  index,
-}: {
-  section: OutlineSection;
-  index: number;
-}) {
-  const hasSubSections = section.subSections && section.subSections.length > 0;
-  const sectionNumber = section.sortOrder || index + 1;
+  const handleFileSelect = async (file: File) => {
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      toast.error("Lütfen geçerli bir PDF dosyası yükleyiniz.");
+      return;
+    }
+
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error("PDF dosya boyutu maksimum 25MB olabilir.");
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      const isSuccess = await onUploadPdf(file);
+      if (!isSuccess) {
+        return;
+      }
+      toast.success(
+        "PDF başarıyla yüklendi, metin ayrıştırıldı ve RAG için vektörleştirildi.",
+      );
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFileSelect(e.dataTransfer.files[0]);
+    }
+  };
 
   return (
-    <Card className="rounded-md border border-border/40 p-4 mb-4">
-      <div className="flex items-center gap-3">
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-xs font-bold text-primary">
-          {sectionNumber}
-        </span>
-        <div className="flex-1 min-w-0">
-          <h3 className="text-base font-semibold text-foreground leading-snug">
-            {section.title}
-          </h3>
-          {section.description && (
-            <p className="text-xs text-muted-foreground leading-relaxed mt-1">
-              {section.description}
-            </p>
-          )}
-        </div>
-        {hasSubSections && (
-          <BookOpen className="size-4 shrink-0 text-muted-foreground" />
-        )}
-      </div>
+    <Card className="border border-dashed border-border bg-muted/20 my-4">
+      <CardContent
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragOver(true);
+        }}
+        onDragLeave={() => setIsDragOver(false)}
+        onDrop={handleDrop}
+        className={`flex flex-col items-center justify-center p-8 text-center transition-all ${
+          isDragOver ? "bg-accent/20 border-primary/20" : ""
+        }`}
+      >
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept="application/pdf"
+          className="hidden"
+          aria-label="PDF dosyası seçin"
+          onChange={(e) => {
+            if (e.target.files && e.target.files.length > 0) {
+              handleFileSelect(e.target.files[0]);
+            }
+          }}
+        />
 
-      {hasSubSections && (
-        <div className="ml-6 mt-3 pl-4 border-l-2 border-primary/20 flex flex-col gap-3">
-          {section.subSections!.map((sub, subIdx) => (
-            <div key={`${sub.title}-${subIdx}`} className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-muted-foreground bg-muted px-2 py-1 rounded shrink-0">
-                  {sectionNumber}.{sub.sortOrder || subIdx + 1}
-                </span>
-                <h4 className="font-sans text-xs font-medium text-muted-foreground leading-snug">
-                  {sub.title}
-                </h4>
-              </div>
-              {sub.description && (
-                <p className="text-xs text-muted-foreground leading-relaxed mt-1">
-                  {sub.description}
-                </p>
-              )}
+        {isUploading || pdfStatus === "PROCESSING" ? (
+          <div className="flex w-full flex-col items-center">
+            <LoadingSpinner size="sm" className="min-h-0 py-4" />
+            <div className="space-y-1">
+              <p className="font-sans text-sm font-semibold text-foreground">
+                PDF Dokümanı İşleniyor ve Yükleniyor...
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Doküman ayrıştırılıyor, Cloudflare R2 bulut depolamaya
+                aktarılıyor ve AI vektörleştirme yapılıyor.
+              </p>
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center space-y-3">
+            <div className="p-3 rounded-full bg-primary/10 border border-primary/20 text-primary">
+              <UploadCloud className="h-8 w-8" />
+            </div>
+
+            <div className="space-y-1 max-w-md">
+              <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
+                PDF Dokümanı Yükle
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                <span className="font-medium text-foreground">
+                  &quot;{resourceTitle}&quot;
+                </span>{" "}
+                eserine ait PDF dosyasını buraya sürükleyip bırakın veya
+                cihazınızdan seçin.
+              </p>
+            </div>
+
+            {pdfStatus === "FAILED" && (
+              <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 p-2 rounded-md border border-destructive/20">
+                <AlertCircle className="h-4 w-4" />
+                <span>
+                  Son yükleme denemesi başarısız oldu. Lütfen tekrar deneyiniz.
+                </span>
+              </div>
+            )}
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              className="gap-2 text-xs font-medium mt-2"
+            >
+              <FileText className="h-4 w-4 text-primary" />
+              Cihazdan PDF Seç
+            </Button>
+          </div>
+        )}
+      </CardContent>
     </Card>
-  );
-}
-
-export function OutlineTreeView({ sections }: OutlineTreeViewProps) {
-  return (
-    <div className="w-full flex flex-col gap-6">
-      <AIBanner
-        icon={BookOpen}
-        title="Tez Planı Oluşturuldu"
-        description="Tez matrisiniz analiz edilerek bölüm ve alt bölüm yapısı oluşturuldu. Aşağıdaki planı inceleyerek devam edebilirsiniz."
-      />
-
-      <div className="flex flex-col gap-1">
-        {sections
-          .sort((a, b) => a.sortOrder - b.sortOrder)
-          .map((section, idx) => (
-            <OutlineSectionNode
-              key={`${section.title}-${idx}`}
-              section={section}
-              index={idx}
-            />
-          ))}
-      </div>
-    </div>
   );
 }
 </file>
@@ -32813,7 +32976,7 @@ export async function generateOutlineAction(): Promise<
         outlineGenerationJsonSchema,
         log,
         {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+          thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
           zodSchema: outlineGenerationSchema,
           seed: GEMINI_SEED,
           thesisMatrix: matrix,
@@ -33749,6 +33912,21 @@ function toAsciiWord(str: string): string {
 }
 </file>
 
+<file path="src/lib/api-utils.ts">
+export const CONTACT_EMAIL =
+  process.env.CROSSREF_CONTACT_EMAIL || "iletisim@fabricca.com";
+
+export const CROSSREF_USER_AGENT = `FabriccaAcademicAssistant/1.0 (mailto:${CONTACT_EMAIL})`;
+
+export {
+  DEFAULT_MAX_DELAY,
+  HttpError,
+  fullJitterDelay,
+  withRetry,
+  type RetryOptions,
+} from "@/services/ai/llm-retry";
+</file>
+
 <file path="src/lib/session.ts">
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -34195,161 +34373,6 @@ export function ResourceHeader({
         )}
       </div>
     </div>
-  );
-}
-</file>
-
-<file path="src/app/(app)/library/_components/pdf-upload-dropzone.tsx">
-"use client";
-
-import React, { useState, useRef } from "react";
-import { UploadCloud, FileText, AlertCircle } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { LoadingSpinner } from "@/components/shared/loading-spinner";
-import { toast } from "sonner";
-
-interface PdfUploadDropzoneProps {
-  /** Resource title. */
-  resourceTitle: string;
-  /** Current PDF status. */
-  pdfStatus?: "NOT_UPLOADED" | "PROCESSING" | "READY" | "FAILED";
-  /** Callback fired when user selects and submits a PDF file. */
-  onUploadPdf: (file: File) => Promise<boolean>;
-}
-
-/**
- * Dropzone component for uploading PDF documents and triggering RAG vectorization.
- *
- * @param root0 - Component props.
- * @param root0.resourceTitle - Title of the resource the PDF belongs to.
- * @param root0.pdfStatus - Current PDF upload status.
- * @param root0.onUploadPdf - Callback invoked with the selected file for upload.
- * @returns The PDF upload dropzone markup.
- */
-export function PdfUploadDropzone({
-  resourceTitle,
-  pdfStatus = "NOT_UPLOADED",
-  onUploadPdf,
-}: PdfUploadDropzoneProps) {
-  const [isDragOver, setIsDragOver] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleFileSelect = async (file: File) => {
-    if (!file.name.toLowerCase().endsWith(".pdf")) {
-      toast.error("Lütfen geçerli bir PDF dosyası yükleyiniz.");
-      return;
-    }
-
-    if (file.size > 25 * 1024 * 1024) {
-      toast.error("PDF dosya boyutu maksimum 25MB olabilir.");
-      return;
-    }
-
-    try {
-      setIsUploading(true);
-      const isSuccess = await onUploadPdf(file);
-      if (!isSuccess) {
-        return;
-      }
-      toast.success(
-        "PDF başarıyla yüklendi, metin ayrıştırıldı ve RAG için vektörleştirildi.",
-      );
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFileSelect(e.dataTransfer.files[0]);
-    }
-  };
-
-  return (
-    <Card className="border border-dashed border-border bg-muted/20 my-4">
-      <CardContent
-        onDragOver={(e) => {
-          e.preventDefault();
-          setIsDragOver(true);
-        }}
-        onDragLeave={() => setIsDragOver(false)}
-        onDrop={handleDrop}
-        className={`flex flex-col items-center justify-center p-8 text-center transition-all ${
-          isDragOver ? "bg-accent/20 border-primary/20" : ""
-        }`}
-      >
-        <input
-          type="file"
-          ref={fileInputRef}
-          accept="application/pdf"
-          className="hidden"
-          aria-label="PDF dosyası seçin"
-          onChange={(e) => {
-            if (e.target.files && e.target.files.length > 0) {
-              handleFileSelect(e.target.files[0]);
-            }
-          }}
-        />
-
-        {isUploading || pdfStatus === "PROCESSING" ? (
-          <div className="flex w-full flex-col items-center">
-            <LoadingSpinner size="sm" className="min-h-0 py-4" />
-            <div className="space-y-1">
-              <p className="font-sans text-sm font-semibold text-foreground">
-                PDF Dokümanı İşleniyor ve Yükleniyor...
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Doküman ayrıştırılıyor, Cloudflare R2 bulut depolamaya
-                aktarılıyor ve AI vektörleştirme yapılıyor.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center space-y-3">
-            <div className="p-3 rounded-full bg-primary/10 border border-primary/20 text-primary">
-              <UploadCloud className="h-8 w-8" />
-            </div>
-
-            <div className="space-y-1 max-w-md">
-              <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
-                PDF Dokümanı Yükle
-              </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                <span className="font-medium text-foreground">
-                  &quot;{resourceTitle}&quot;
-                </span>{" "}
-                eserine ait PDF dosyasını buraya sürükleyip bırakın veya
-                cihazınızdan seçin.
-              </p>
-            </div>
-
-            {pdfStatus === "FAILED" && (
-              <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 p-2 rounded-md border border-destructive/20">
-                <AlertCircle className="h-4 w-4" />
-                <span>
-                  Son yükleme denemesi başarısız oldu. Lütfen tekrar deneyiniz.
-                </span>
-              </div>
-            )}
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              className="gap-2 text-xs font-medium mt-2"
-            >
-              <FileText className="h-4 w-4 text-primary" />
-              Cihazdan PDF Seç
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
   );
 }
 </file>
@@ -35101,6 +35124,109 @@ function OutlineEditor({
 }
 </file>
 
+<file path="src/app/(onboarding)/onboarding/outline/_components/outline-tree-view.tsx">
+"use client";
+
+import { BookOpen } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { AIBanner } from "@/components/shared/ai-banner";
+
+interface OutlineSection {
+  title: string;
+  description: string;
+  sortOrder: number;
+  subSections?: Array<{
+    title: string;
+    description: string;
+    sortOrder: number;
+  }>;
+}
+
+interface OutlineTreeViewProps {
+  sections: OutlineSection[];
+}
+
+function OutlineSectionNode({
+  section,
+  index,
+}: {
+  section: OutlineSection;
+  index: number;
+}) {
+  const hasSubSections = section.subSections && section.subSections.length > 0;
+  const sectionNumber = section.sortOrder || index + 1;
+
+  return (
+    <Card className="rounded-md border border-border/40 p-4 mb-4">
+      <div className="flex items-center gap-3">
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-xs font-bold text-primary">
+          {sectionNumber}
+        </span>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-base font-semibold text-foreground leading-snug">
+            {section.title}
+          </h3>
+          {section.description && (
+            <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+              {section.description}
+            </p>
+          )}
+        </div>
+        {hasSubSections && (
+          <BookOpen className="size-4 shrink-0 text-muted-foreground" />
+        )}
+      </div>
+
+      {hasSubSections && (
+        <div className="ml-6 mt-3 pl-4 border-l-2 border-primary/20 flex flex-col gap-3">
+          {section.subSections!.map((sub, subIdx) => (
+            <div key={`${sub.title}-${subIdx}`} className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs text-muted-foreground bg-muted px-2 py-1 rounded shrink-0">
+                  {sectionNumber}.{sub.sortOrder || subIdx + 1}
+                </span>
+                <h4 className="font-sans text-xs font-medium text-muted-foreground leading-snug">
+                  {sub.title}
+                </h4>
+              </div>
+              {sub.description && (
+                <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                  {sub.description}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+export function OutlineTreeView({ sections }: OutlineTreeViewProps) {
+  return (
+    <div className="w-full flex flex-col gap-6">
+      <AIBanner
+        icon={BookOpen}
+        title="Tez Planı Oluşturuldu"
+        description="Tez matrisiniz analiz edilerek bölüm ve alt bölüm yapısı oluşturuldu. Aşağıdaki planı inceleyerek devam edebilirsiniz."
+      />
+
+      <div className="flex flex-col gap-1">
+        {sections
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+          .map((section, idx) => (
+            <OutlineSectionNode
+              key={`${section.title}-${idx}`}
+              section={section}
+              index={idx}
+            />
+          ))}
+      </div>
+    </div>
+  );
+}
+</file>
+
 <file path="src/features/tezara/index.ts">
 import { QdrantClient } from "@qdrant/js-client-rest";
 import type { Logger } from "@/lib/logger";
@@ -35375,21 +35501,6 @@ export async function searchTezara(
     throw err;
   }
 }
-</file>
-
-<file path="src/lib/api-utils.ts">
-export const CONTACT_EMAIL =
-  process.env.CROSSREF_CONTACT_EMAIL || "iletisim@fabricca.com";
-
-export const CROSSREF_USER_AGENT = `FabriccaAcademicAssistant/1.0 (mailto:${CONTACT_EMAIL})`;
-
-export {
-  DEFAULT_MAX_DELAY,
-  HttpError,
-  fullJitterDelay,
-  withRetry,
-  type RetryOptions,
-} from "@/services/ai/llm-retry";
 </file>
 
 <file path="src/lib/box-constants.ts">
@@ -36063,6 +36174,362 @@ export function CitationSidebar(props: CitationSidebarProps) {
       </ScrollArea>
     </Card>
   );
+}
+</file>
+
+<file path="src/app/(app)/dashboard/actions.ts">
+"use server";
+
+import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { createFlowId, Logger } from "@/lib/logger";
+import { db } from "@/db";
+import { tasks, boxes, sources } from "@/db/schema";
+import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
+import { getUsersMatrixAndBoxesWithResources } from "./_services/box-service";
+import {
+  AddTaskSchema,
+  UpdateTaskSchema,
+  TaskStatusSchema,
+  type TaskInput,
+  type UpdateTaskInput,
+  type TaskRow,
+} from "./_lib/schemas";
+
+/**
+ * Fetches all tasks for the current user, resolving box titles via LEFT JOIN.
+ *
+ * @returns The task list or an error message
+ */
+export async function getTasksAction(): Promise<{
+  success: boolean;
+  data?: TaskRow[];
+  error?: string;
+}> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, error: SESSION_ERROR_MSG };
+
+    const rows = await db
+      .select({
+        id: tasks.id,
+        title: tasks.title,
+        description: tasks.description,
+        status: tasks.status,
+        priority: tasks.priority,
+        thesisBoxId: tasks.boxId,
+        boxTitle: boxes.title,
+        createdAt: tasks.createdAt,
+        updatedAt: tasks.updatedAt,
+      })
+      .from(tasks)
+      .leftJoin(boxes, eq(tasks.boxId, boxes.id))
+      .where(eq(tasks.userId, session.userId))
+      .orderBy(tasks.createdAt);
+
+    return { success: true, data: rows };
+  } catch (err) {
+    log.error("tasks_fetch_failed", {
+      service: "dashboard",
+      error: err,
+    });
+    return { success: false, error: "Görevler yüklenirken bir hata oluştu." };
+  }
+}
+
+/**
+ * Creates a new task.
+ *
+ * @param input - The task creation payload
+ * @returns The created task row or an error message
+ */
+export async function addTaskAction(input: TaskInput): Promise<{
+  success: boolean;
+  data?: TaskRow;
+  error?: string;
+}> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, error: SESSION_ERROR_MSG };
+
+    const parsed = AddTaskSchema.safeParse(input);
+    if (!parsed.success) {
+      const firstIssue = parsed.error.issues[0];
+      return {
+        success: false,
+        error: firstIssue?.message ?? "Geçersiz giriş.",
+      };
+    }
+
+    const valid = parsed.data;
+
+    const [inserted] = await db
+      .insert(tasks)
+      .values({
+        userId: session.userId,
+        title: valid.title.trim(),
+        description: valid.description ?? null,
+        status: valid.status ?? "TODO",
+        priority: valid.priority ?? "MEDIUM",
+        boxId: valid.thesisBoxId ?? null,
+      })
+      .returning();
+
+    let boxTitle: string | null = null;
+    if (inserted.boxId) {
+      const [box] = await db
+        .select({ title: boxes.title })
+        .from(boxes)
+        .where(eq(boxes.id, inserted.boxId));
+      boxTitle = box?.title ?? null;
+    }
+
+    revalidatePath("/dashboard");
+
+    return {
+      success: true,
+      data: {
+        ...inserted,
+        thesisBoxId: inserted.boxId,
+        boxTitle,
+      },
+    };
+  } catch (err) {
+    log.error("task_create_failed", {
+      service: "dashboard",
+      error: err,
+    });
+    return { success: false, error: "Görev oluşturulurken bir hata oluştu." };
+  }
+}
+
+/**
+ * Updates a task's title, priority, or linked box.
+ *
+ * @param taskId - The task ID to update
+ * @param input - The fields to update
+ * @returns The updated task row or an error message
+ */
+export async function updateTaskAction(
+  taskId: number,
+  input: UpdateTaskInput,
+): Promise<{
+  success: boolean;
+  data?: TaskRow;
+  error?: string;
+}> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, error: SESSION_ERROR_MSG };
+
+    const parsed = UpdateTaskSchema.safeParse(input);
+    if (!parsed.success) {
+      const firstIssue = parsed.error.issues[0];
+      return {
+        success: false,
+        error: firstIssue?.message ?? "Geçersiz giriş.",
+      };
+    }
+
+    const valid = parsed.data;
+
+    const [existing] = await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.id, taskId));
+
+    if (!existing || existing.userId !== session.userId) {
+      return { success: false, error: "Görev bulunamadı." };
+    }
+
+    const updateValues: Record<string, unknown> = {};
+    if (valid.title !== undefined) updateValues.title = valid.title.trim();
+    if (valid.description !== undefined)
+      updateValues.description = valid.description;
+    if (valid.status !== undefined) updateValues.status = valid.status;
+    if (valid.priority !== undefined) updateValues.priority = valid.priority;
+    if (valid.thesisBoxId !== undefined) updateValues.boxId = valid.thesisBoxId;
+
+    const [updated] = await db
+      .update(tasks)
+      .set(updateValues)
+      .where(eq(tasks.id, taskId))
+      .returning();
+
+    let boxTitle: string | null = null;
+    if (updated.boxId) {
+      const [box] = await db
+        .select({ title: boxes.title })
+        .from(boxes)
+        .where(eq(boxes.id, updated.boxId));
+      boxTitle = box?.title ?? null;
+    }
+
+    revalidatePath("/dashboard");
+
+    return {
+      success: true,
+      data: { ...updated, thesisBoxId: updated.boxId, boxTitle },
+    };
+  } catch (err) {
+    log.error("task_update_failed", {
+      service: "dashboard",
+      error: err,
+    });
+    return { success: false, error: "Görev güncellenirken bir hata oluştu." };
+  }
+}
+
+/**
+ * Updates a task's status (TODO / IN_PROGRESS / DONE) for the Kanban drag-and-drop flow.
+ *
+ * @param taskId - The task ID to update
+ * @param newStatus - The new status value
+ * @returns Success or error response
+ */
+export async function updateTaskStatusAction(
+  taskId: number,
+  newStatus: "TODO" | "IN_PROGRESS" | "DONE",
+): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, error: SESSION_ERROR_MSG };
+
+    const parsed = TaskStatusSchema.safeParse(newStatus);
+    if (!parsed.success) {
+      return { success: false, error: "Geçersiz görev durumu." };
+    }
+
+    const [existing] = await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.id, taskId));
+
+    if (!existing || existing.userId !== session.userId) {
+      return { success: false, error: "Görev bulunamadı." };
+    }
+
+    await db
+      .update(tasks)
+      .set({ status: parsed.data })
+      .where(eq(tasks.id, taskId));
+
+    revalidatePath("/dashboard");
+
+    return { success: true };
+  } catch (err) {
+    log.error("task_status_update_failed", {
+      service: "dashboard",
+      error: err,
+    });
+    return {
+      success: false,
+      error: "Görev durumu güncellenirken bir hata oluştu.",
+    };
+  }
+}
+
+/**
+ * Deletes a task.
+ *
+ * @param taskId - The task ID to delete
+ * @returns Success or error response
+ */
+export async function deleteTaskAction(taskId: number): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, error: SESSION_ERROR_MSG };
+
+    const [existing] = await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.id, taskId));
+
+    if (!existing || existing.userId !== session.userId) {
+      return { success: false, error: "Görev bulunamadı." };
+    }
+
+    await db.delete(tasks).where(eq(tasks.id, taskId));
+
+    revalidatePath("/dashboard");
+
+    return { success: true };
+  } catch (err) {
+    log.error("task_delete_failed", {
+      service: "dashboard",
+      error: err,
+    });
+    return { success: false, error: "Görev silinirken bir hata oluştu." };
+  }
+}
+
+/**
+ * Fetches the current user's parent boxes and library resources so the client
+ * can re-sync its local article state after literature expansion inserts new
+ * sources into the database.
+ *
+ * @returns The fresh parent boxes and resources, or an error message.
+ */
+export async function refreshDashboardDataAction(): Promise<
+  | {
+      success: true;
+      data: {
+        parentBoxes: (typeof boxes.$inferSelect)[];
+        resources: (typeof sources.$inferSelect)[];
+      };
+    }
+  | { success: false; error: string }
+> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, error: SESSION_ERROR_MSG };
+
+    const boxResult = await getUsersMatrixAndBoxesWithResources(session.userId);
+    if ("error" in boxResult) {
+      return { success: false, error: boxResult.error };
+    }
+
+    return {
+      success: true,
+      data: {
+        parentBoxes: boxResult.data.parentBoxes,
+        resources: boxResult.data.resources,
+      },
+    };
+  } catch (err) {
+    log.error("refresh_dashboard_data_failed", {
+      service: "dashboard",
+      error: err,
+    });
+    return {
+      success: false,
+      error: "Panel verileri yenilenirken bir hata oluştu.",
+    };
+  }
 }
 </file>
 
@@ -37904,362 +38371,6 @@ export function useDashboardArticles(
 }
 </file>
 
-<file path="src/app/(app)/dashboard/actions.ts">
-"use server";
-
-import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
-import { createFlowId, Logger } from "@/lib/logger";
-import { db } from "@/db";
-import { tasks, boxes, sources } from "@/db/schema";
-import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
-import { getUsersMatrixAndBoxesWithResources } from "./_services/box-service";
-import {
-  AddTaskSchema,
-  UpdateTaskSchema,
-  TaskStatusSchema,
-  type TaskInput,
-  type UpdateTaskInput,
-  type TaskRow,
-} from "./_lib/schemas";
-
-/**
- * Fetches all tasks for the current user, resolving box titles via LEFT JOIN.
- *
- * @returns The task list or an error message
- */
-export async function getTasksAction(): Promise<{
-  success: boolean;
-  data?: TaskRow[];
-  error?: string;
-}> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  try {
-    const session = await getSession();
-    if (!session) return { success: false, error: SESSION_ERROR_MSG };
-
-    const rows = await db
-      .select({
-        id: tasks.id,
-        title: tasks.title,
-        description: tasks.description,
-        status: tasks.status,
-        priority: tasks.priority,
-        thesisBoxId: tasks.boxId,
-        boxTitle: boxes.title,
-        createdAt: tasks.createdAt,
-        updatedAt: tasks.updatedAt,
-      })
-      .from(tasks)
-      .leftJoin(boxes, eq(tasks.boxId, boxes.id))
-      .where(eq(tasks.userId, session.userId))
-      .orderBy(tasks.createdAt);
-
-    return { success: true, data: rows };
-  } catch (err) {
-    log.error("tasks_fetch_failed", {
-      service: "dashboard",
-      error: err,
-    });
-    return { success: false, error: "Görevler yüklenirken bir hata oluştu." };
-  }
-}
-
-/**
- * Creates a new task.
- *
- * @param input - The task creation payload
- * @returns The created task row or an error message
- */
-export async function addTaskAction(input: TaskInput): Promise<{
-  success: boolean;
-  data?: TaskRow;
-  error?: string;
-}> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  try {
-    const session = await getSession();
-    if (!session) return { success: false, error: SESSION_ERROR_MSG };
-
-    const parsed = AddTaskSchema.safeParse(input);
-    if (!parsed.success) {
-      const firstIssue = parsed.error.issues[0];
-      return {
-        success: false,
-        error: firstIssue?.message ?? "Geçersiz giriş.",
-      };
-    }
-
-    const valid = parsed.data;
-
-    const [inserted] = await db
-      .insert(tasks)
-      .values({
-        userId: session.userId,
-        title: valid.title.trim(),
-        description: valid.description ?? null,
-        status: valid.status ?? "TODO",
-        priority: valid.priority ?? "MEDIUM",
-        boxId: valid.thesisBoxId ?? null,
-      })
-      .returning();
-
-    let boxTitle: string | null = null;
-    if (inserted.boxId) {
-      const [box] = await db
-        .select({ title: boxes.title })
-        .from(boxes)
-        .where(eq(boxes.id, inserted.boxId));
-      boxTitle = box?.title ?? null;
-    }
-
-    revalidatePath("/dashboard");
-
-    return {
-      success: true,
-      data: {
-        ...inserted,
-        thesisBoxId: inserted.boxId,
-        boxTitle,
-      },
-    };
-  } catch (err) {
-    log.error("task_create_failed", {
-      service: "dashboard",
-      error: err,
-    });
-    return { success: false, error: "Görev oluşturulurken bir hata oluştu." };
-  }
-}
-
-/**
- * Updates a task's title, priority, or linked box.
- *
- * @param taskId - The task ID to update
- * @param input - The fields to update
- * @returns The updated task row or an error message
- */
-export async function updateTaskAction(
-  taskId: number,
-  input: UpdateTaskInput,
-): Promise<{
-  success: boolean;
-  data?: TaskRow;
-  error?: string;
-}> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  try {
-    const session = await getSession();
-    if (!session) return { success: false, error: SESSION_ERROR_MSG };
-
-    const parsed = UpdateTaskSchema.safeParse(input);
-    if (!parsed.success) {
-      const firstIssue = parsed.error.issues[0];
-      return {
-        success: false,
-        error: firstIssue?.message ?? "Geçersiz giriş.",
-      };
-    }
-
-    const valid = parsed.data;
-
-    const [existing] = await db
-      .select()
-      .from(tasks)
-      .where(eq(tasks.id, taskId));
-
-    if (!existing || existing.userId !== session.userId) {
-      return { success: false, error: "Görev bulunamadı." };
-    }
-
-    const updateValues: Record<string, unknown> = {};
-    if (valid.title !== undefined) updateValues.title = valid.title.trim();
-    if (valid.description !== undefined)
-      updateValues.description = valid.description;
-    if (valid.status !== undefined) updateValues.status = valid.status;
-    if (valid.priority !== undefined) updateValues.priority = valid.priority;
-    if (valid.thesisBoxId !== undefined) updateValues.boxId = valid.thesisBoxId;
-
-    const [updated] = await db
-      .update(tasks)
-      .set(updateValues)
-      .where(eq(tasks.id, taskId))
-      .returning();
-
-    let boxTitle: string | null = null;
-    if (updated.boxId) {
-      const [box] = await db
-        .select({ title: boxes.title })
-        .from(boxes)
-        .where(eq(boxes.id, updated.boxId));
-      boxTitle = box?.title ?? null;
-    }
-
-    revalidatePath("/dashboard");
-
-    return {
-      success: true,
-      data: { ...updated, thesisBoxId: updated.boxId, boxTitle },
-    };
-  } catch (err) {
-    log.error("task_update_failed", {
-      service: "dashboard",
-      error: err,
-    });
-    return { success: false, error: "Görev güncellenirken bir hata oluştu." };
-  }
-}
-
-/**
- * Updates a task's status (TODO / IN_PROGRESS / DONE) for the Kanban drag-and-drop flow.
- *
- * @param taskId - The task ID to update
- * @param newStatus - The new status value
- * @returns Success or error response
- */
-export async function updateTaskStatusAction(
-  taskId: number,
-  newStatus: "TODO" | "IN_PROGRESS" | "DONE",
-): Promise<{
-  success: boolean;
-  error?: string;
-}> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  try {
-    const session = await getSession();
-    if (!session) return { success: false, error: SESSION_ERROR_MSG };
-
-    const parsed = TaskStatusSchema.safeParse(newStatus);
-    if (!parsed.success) {
-      return { success: false, error: "Geçersiz görev durumu." };
-    }
-
-    const [existing] = await db
-      .select()
-      .from(tasks)
-      .where(eq(tasks.id, taskId));
-
-    if (!existing || existing.userId !== session.userId) {
-      return { success: false, error: "Görev bulunamadı." };
-    }
-
-    await db
-      .update(tasks)
-      .set({ status: parsed.data })
-      .where(eq(tasks.id, taskId));
-
-    revalidatePath("/dashboard");
-
-    return { success: true };
-  } catch (err) {
-    log.error("task_status_update_failed", {
-      service: "dashboard",
-      error: err,
-    });
-    return {
-      success: false,
-      error: "Görev durumu güncellenirken bir hata oluştu.",
-    };
-  }
-}
-
-/**
- * Deletes a task.
- *
- * @param taskId - The task ID to delete
- * @returns Success or error response
- */
-export async function deleteTaskAction(taskId: number): Promise<{
-  success: boolean;
-  error?: string;
-}> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  try {
-    const session = await getSession();
-    if (!session) return { success: false, error: SESSION_ERROR_MSG };
-
-    const [existing] = await db
-      .select()
-      .from(tasks)
-      .where(eq(tasks.id, taskId));
-
-    if (!existing || existing.userId !== session.userId) {
-      return { success: false, error: "Görev bulunamadı." };
-    }
-
-    await db.delete(tasks).where(eq(tasks.id, taskId));
-
-    revalidatePath("/dashboard");
-
-    return { success: true };
-  } catch (err) {
-    log.error("task_delete_failed", {
-      service: "dashboard",
-      error: err,
-    });
-    return { success: false, error: "Görev silinirken bir hata oluştu." };
-  }
-}
-
-/**
- * Fetches the current user's parent boxes and library resources so the client
- * can re-sync its local article state after literature expansion inserts new
- * sources into the database.
- *
- * @returns The fresh parent boxes and resources, or an error message.
- */
-export async function refreshDashboardDataAction(): Promise<
-  | {
-      success: true;
-      data: {
-        parentBoxes: (typeof boxes.$inferSelect)[];
-        resources: (typeof sources.$inferSelect)[];
-      };
-    }
-  | { success: false; error: string }
-> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  try {
-    const session = await getSession();
-    if (!session) return { success: false, error: SESSION_ERROR_MSG };
-
-    const boxResult = await getUsersMatrixAndBoxesWithResources(session.userId);
-    if ("error" in boxResult) {
-      return { success: false, error: boxResult.error };
-    }
-
-    return {
-      success: true,
-      data: {
-        parentBoxes: boxResult.data.parentBoxes,
-        resources: boxResult.data.resources,
-      },
-    };
-  } catch (err) {
-    log.error("refresh_dashboard_data_failed", {
-      service: "dashboard",
-      error: err,
-    });
-    return {
-      success: false,
-      error: "Panel verileri yenilenirken bir hata oluştu.",
-    };
-  }
-}
-</file>
-
 <file path="src/app/(app)/dashboard/page.tsx">
 export const instant = false;
 
@@ -38687,6 +38798,1328 @@ export async function resetOnboardingAction() {
   }
 
   redirect("/onboarding");
+}
+</file>
+
+<file path="src/lib/logger.ts">
+export interface TokenUsage {
+  input?: number;
+  output?: number;
+  total?: number;
+}
+
+type ServiceName =
+  | "gemini"
+  | "cloudflare"
+  | "tezara"
+  | "db"
+  | "auth"
+  | "flow"
+  | "matrix"
+  | "complete"
+  | "boxes"
+  | "wikipedia"
+  | "literature"
+  | "library"
+  | "openalex"
+  | "crossref"
+  | "dashboard"
+  | "cohere"
+  | "positioning"
+  | "cerebras"
+  | "pdf-parser"
+  | "rag-search"
+  | "advisor"
+  | "citation-cards"
+  | "literature-matrix"
+  | "outline";
+
+export interface LogParams {
+  service?: ServiceName;
+  step?: string;
+  durationMs?: number;
+  data?: Record<string, unknown>;
+  error?: unknown;
+  tokens?: TokenUsage;
+  filePath?: string;
+  status?: "START" | "SUCCESS" | "FAILED" | "RETRY";
+  blank?: "after" | "before" | "none";
+  silentStart?: boolean;
+  hidden?: boolean;
+}
+
+export interface LoggerInstance {
+  flowId: string;
+  lastTokens?: TokenUsage;
+  lastPayloadPath?: string;
+  info(arg1: string | Record<string, unknown>, params?: LogParams): void;
+  error(arg1: string | Record<string, unknown>, params?: LogParams): void;
+  warn(arg1: string | Record<string, unknown>, params?: LogParams): void;
+  step(n: string, m?: Record<string, unknown>): void;
+  file(r: string): void;
+  data(l: string, v: unknown): void;
+  preview(l: string, v: unknown): void;
+  prompt(m: string, c: string): void;
+  saveDebugPayload(
+    s: string,
+    m: string,
+    p: string,
+    r?: string,
+  ): string | undefined;
+  groupStart(event: string): void;
+  groupEnd(event: string, durationMs: number): void;
+  total(
+    event: string,
+    durationMs: number,
+    p?: { service?: ServiceName; data?: Record<string, unknown> },
+  ): void;
+}
+
+/**
+ * Derives START, SUCCESS, or FAILED status from an event name's suffix.
+ *
+ * @param event - Event name possibly ending with a status suffix.
+ * @returns The derived status, or empty string when none matches.
+ */
+function deriveStatus(event: string): string {
+  if (event.endsWith("_start")) return "START";
+  if (event.endsWith("_success")) return "SUCCESS";
+  if (
+    event.endsWith("_failed") ||
+    event.endsWith("_filtered") ||
+    event.endsWith("_empty")
+  )
+    return "FAILED";
+  return "";
+}
+
+const isDev = () => process.env.NODE_ENV === "development";
+
+const C_RESET = "\x1b[0m";
+const C_GREEN = "\x1b[32m";
+const C_RED = "\x1b[31m";
+const C_YELLOW = "\x1b[33m";
+
+/**
+ * Returns the icon corresponding to a status.
+ *
+ * @param s - Status string (START, SUCCESS, FAILED, or RETRY).
+ * @returns The matching icon.
+ */
+function statusIcon(s: string): string {
+  return s === "START"
+    ? "⏳"
+    : s === "SUCCESS"
+      ? "✓"
+      : s === "FAILED"
+        ? "✖"
+        : s === "RETRY"
+          ? "↻"
+          : "•";
+}
+
+/**
+ * Returns the ANSI color code for a status.
+ *
+ * @param s - Status string.
+ * @returns The matching ANSI color code.
+ */
+function statusColor(s: string): string {
+  if (s === "SUCCESS") return C_GREEN;
+  if (s === "FAILED") return C_RED;
+  if (s === "START" || s === "RETRY") return C_YELLOW;
+  return "";
+}
+
+/**
+ * Formats a millisecond duration compactly ("497ms" or "1.5s").
+ *
+ * @param ms - Duration in milliseconds.
+ * @returns Compact duration string.
+ */
+function formatDuration(ms: number): string {
+  const safe = Math.max(0, ms);
+  if (safe < 1000) return `${Math.round(safe)}ms`;
+  const sec = safe / 1000;
+  if (Number.isInteger(sec)) return `${sec}s`;
+  return `${sec.toFixed(1)}s`;
+}
+
+/**
+ * Converts an unknown error value into a short readable message.
+ *
+ * @param error - Error value of any type.
+ * @returns Short readable message.
+ */
+function extractReason(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
+export class Logger implements LoggerInstance {
+  public readonly flowId: string;
+  public lastTokens?: TokenUsage;
+  public lastPayloadPath?: string;
+
+  private _starts = new Map<string, number>();
+  private readonly devMode = isDev();
+
+  /**
+   * Creates a logger whose flowId is attached to every log line.
+   *
+   * @param flowId - Identifier attached to every log line.
+   */
+  constructor(flowId: string) {
+    this.flowId = flowId;
+  }
+
+  /**
+   * Logs an info-level entry.
+   *
+   * @param arg1 - Event name or structured payload.
+   * @param p - Optional log parameters.
+   */
+  info(arg1: string | Record<string, unknown>, p?: LogParams): void {
+    this.write("info", arg1, p);
+  }
+
+  /**
+   * Logs an error-level entry.
+   *
+   * @param arg1 - Event name or structured payload.
+   * @param p - Optional log parameters.
+   */
+  error(arg1: string | Record<string, unknown>, p?: LogParams): void {
+    this.write("error", arg1, p);
+  }
+
+  /**
+   * Logs a warning-level entry for recoverable or expected failures.
+   *
+   * @param arg1 - Event name or structured payload.
+   * @param p - Optional log parameters.
+   */
+  warn(arg1: string | Record<string, unknown>, p?: LogParams): void {
+    this.write("warn", arg1, p);
+  }
+
+  /**
+   * Records a step marker in the current flow.
+   *
+   * @param n - Step name.
+   * @param m - Optional step metadata.
+   */
+  step(n: string, m?: Record<string, unknown>): void {
+    void n;
+    void m;
+  }
+
+  /**
+   * Records a file reference for the current flow.
+   *
+   * @param r - File path.
+   */
+  file(r: string): void {
+    void r;
+  }
+
+  /**
+   * Records a labeled data snapshot for the current flow.
+   *
+   * @param l - Snapshot label.
+   * @param v - Snapshot value.
+   */
+  data(l: string, v: unknown): void {
+    void l;
+    void v;
+  }
+
+  /**
+   * Records a labeled preview for the current flow.
+   *
+   * @param l - Preview label.
+   * @param v - Preview value.
+   */
+  preview(l: string, v: unknown): void {
+    void l;
+    void v;
+  }
+
+  /**
+   * Records a prompt message for the current flow.
+   *
+   * @param m - Prompt message.
+   * @param c - Contextual label.
+   */
+  prompt(m: string, c: string): void {
+    void m;
+    void c;
+  }
+
+  /**
+   * Saves a debug payload for later inspection.
+   *
+   * @param s - Payload stage.
+   * @param m - Payload message.
+   * @param p - Payload path.
+   * @param r - Optional request identifier.
+   * @returns Path of the saved payload, or undefined when not saved.
+   */
+  saveDebugPayload(
+    s: string,
+    m: string,
+    p: string,
+    r?: string,
+  ): string | undefined {
+    void s;
+    void m;
+    void p;
+    void r;
+    return undefined;
+  }
+
+  /**
+   * Marks the start of a log group.
+   *
+   * @param event - Group event name.
+   */
+  groupStart(event: string): void {
+    void event;
+  }
+
+  /**
+   * Marks the end of a log group.
+   *
+   * @param event - Group event name.
+   * @param durationMs - Duration of the group in milliseconds.
+   */
+  groupEnd(event: string, durationMs: number): void {
+    void event;
+    void durationMs;
+  }
+
+  /**
+   * Prints a total-duration summary line for a completed flow.
+   *
+   * @param event - Flow-level event name.
+   * @param durationMs - Total duration in milliseconds.
+   * @param p - Optional service and data metadata.
+   */
+  total(
+    event: string,
+    durationMs: number,
+    p?: { service?: ServiceName; data?: Record<string, unknown> },
+  ): void {
+    if (this.devMode) {
+      const timeTag = this.timestamp();
+      console.log(
+        `${timeTag} ${C_GREEN}✓${C_RESET} TOTAL ${event} (${formatDuration(durationMs)})`,
+      );
+      return;
+    }
+
+    const entry: Record<string, unknown> = {
+      timestamp: new Date().toISOString(),
+      level: "info",
+      event: `${event}_total`,
+      flowId: this.flowId,
+      service: p?.service ?? "flow",
+      status: "TOTAL",
+      durationMs: Math.round(durationMs),
+    };
+    if (p?.data) entry.data = p.data;
+    console.info(JSON.stringify(entry));
+  }
+
+  /**
+   * Returns the current time as "[HH:MM:SS]".
+   *
+   * @returns Current time string.
+   */
+  private timestamp(): string {
+    const d = new Date();
+    return `[${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}:${d.getSeconds().toString().padStart(2, "0")}]`;
+  }
+
+  /**
+   * Writes a single log line in dev or production format.
+   *
+   * @param level - Log level (info, error, or warn).
+   * @param arg1 - Event name or structured payload.
+   * @param p - Optional log parameters.
+   */
+  private write(
+    level: "info" | "error" | "warn",
+    arg1: string | Record<string, unknown>,
+    p?: LogParams,
+  ): void {
+    if (this.devMode) {
+      const event =
+        typeof arg1 === "object" && arg1 !== null
+          ? (((arg1 as Record<string, unknown>).step as string) ?? "unknown")
+          : (arg1 as string);
+
+      const status = deriveStatus(event);
+
+      if (status === "START") {
+        const baseEvent = event.replace(/_(start)$/, "");
+        this._starts.set(baseEvent, performance.now());
+        if (p?.silentStart || p?.hidden) {
+          return;
+        }
+        const timeTag = this.timestamp();
+        const icon = statusIcon("START");
+        const color = statusColor("START");
+        const annotation = p?.data?.summary ? ` ${p.data.summary}` : "";
+        console.log(
+          `${timeTag} START ${color}${icon}${C_RESET} ${baseEvent}${annotation}`,
+        );
+        return;
+      }
+
+      if (status === "SUCCESS" || status === "FAILED") {
+        const baseEvent = event.replace(
+          /_(success|failed|filtered|empty)$/,
+          "",
+        );
+        const startTime = this._starts.get(baseEvent);
+        let durStr = "";
+        if (startTime != null) {
+          durStr = ` (${formatDuration(performance.now() - startTime)})`;
+          this._starts.delete(baseEvent);
+        } else if (p?.durationMs != null) {
+          durStr = ` (${formatDuration(p.durationMs)})`;
+        } else if (
+          p?.data &&
+          typeof p.data === "object" &&
+          "durationMs" in p.data
+        ) {
+          durStr = ` (${formatDuration((p.data as Record<string, unknown>).durationMs as number)})`;
+        }
+
+        const icon = statusIcon(status);
+        const color = statusColor(status);
+        const timeTag = this.timestamp();
+
+        if (p?.hidden) {
+          return;
+        }
+
+        const blank = p?.blank ?? "after";
+
+        if (blank === "before") {
+          console.log("");
+        }
+
+        console.log(
+          `${timeTag} ${status} ${color}${icon}${C_RESET} ${baseEvent}${durStr}`,
+        );
+
+        if (p?.error != null) {
+          console.log(`  ↳ reason: ${extractReason(p.error)}`);
+        }
+        if (blank === "after") {
+          console.log("");
+        }
+        return;
+      }
+      return;
+    }
+
+    if (typeof arg1 === "object" && arg1 !== null) {
+      const entry: Record<string, unknown> = { flowId: this.flowId, ...arg1 };
+      console[level](
+        JSON.stringify({
+          timestamp: new Date().toISOString(),
+          level,
+          ...entry,
+        }),
+      );
+      return;
+    }
+
+    const event = arg1 as string;
+    const entry: Record<string, unknown> = {
+      timestamp: new Date().toISOString(),
+      level,
+      event,
+      flowId: this.flowId,
+      service: p?.service ?? "flow",
+      status: p?.status ?? deriveStatus(event),
+    };
+    if (p?.step) entry.step = p.step;
+    if (p?.durationMs !== undefined)
+      entry.durationMs = Math.round(p.durationMs);
+    if (p?.data) entry.data = p.data;
+    if (p?.tokens) {
+      entry.tokens = p.tokens;
+      this.lastTokens = p.tokens;
+    }
+    if (p?.error) entry.error = String(p.error);
+    console[level](JSON.stringify(entry));
+  }
+}
+
+/**
+ * Generates a unique flow identifier in the form fl_<timestamp36>_<random>.
+ *
+ * @returns Unique flow identifier string.
+ */
+export function createFlowId(): string {
+  return `fl_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`;
+}
+</file>
+
+<file path="src/app/(app)/advisor/_components/markdown-renderer.tsx">
+"use client";
+
+import { useCallback, type MouseEvent } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
+import type { Components } from "react-markdown";
+import type { RagSearchResultItem } from "@/services/search/rag-search";
+import { CITATION_ATTR, formatContent } from "../_lib/citation-matching";
+
+const components: Components = {
+  h1: ({ children, ...props }) => (
+    <h1
+      className="font-serif text-2xl font-bold tracking-tight text-foreground mt-4 mb-2"
+      {...props}
+    >
+      {children}
+    </h1>
+  ),
+  h2: ({ children, ...props }) => (
+    <h2
+      className="font-serif text-xl font-semibold tracking-tight text-foreground mt-4 mb-2"
+      {...props}
+    >
+      {children}
+    </h2>
+  ),
+  h3: ({ children, ...props }) => (
+    <h3
+      className="font-serif text-[15px] font-medium text-foreground mt-3 mb-1.5"
+      {...props}
+    >
+      {children}
+    </h3>
+  ),
+  p: ({ children, ...props }) => (
+    <p
+      className="text-[15px] leading-relaxed text-card-foreground font-light mb-3"
+      {...props}
+    >
+      {children}
+    </p>
+  ),
+  ul: ({ children, ...props }) => (
+    <ul
+      className="list-disc list-outside pl-5 space-y-2 text-[15px] text-card-foreground font-light mb-3"
+      {...props}
+    >
+      {children}
+    </ul>
+  ),
+  ol: ({ children, ...props }) => (
+    <ol
+      className="list-decimal list-outside pl-5 space-y-2 text-[15px] text-card-foreground font-light mb-3"
+      {...props}
+    >
+      {children}
+    </ol>
+  ),
+  li: ({ children, ...props }) => (
+    <li
+      className="text-[15px] leading-relaxed text-card-foreground font-light [&>p]:inline [&>p]:mb-0"
+      {...props}
+    >
+      {children}
+    </li>
+  ),
+  strong: ({ children, ...props }) => (
+    <strong className="font-medium text-foreground" {...props}>
+      {children}
+    </strong>
+  ),
+  em: ({ children, ...props }) => (
+    <em className="italic text-muted-foreground" {...props}>
+      {children}
+    </em>
+  ),
+  del: ({ children, ...props }) => (
+    <del className="line-through text-muted-foreground" {...props}>
+      {children}
+    </del>
+  ),
+  code: ({ className, children, ...props }) => {
+    const isBlock = className?.includes("language-");
+    if (isBlock) {
+      return (
+        <pre className="bg-muted/20 border border-border/40 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre my-2">
+          <code className={className} {...props}>
+            {children}
+          </code>
+        </pre>
+      );
+    }
+    return (
+      <code
+        className="bg-muted px-2 py-1 rounded text-xs font-mono text-primary"
+        {...props}
+      >
+        {children}
+      </code>
+    );
+  },
+  a: ({ href, children, ...props }) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-primary underline underline-offset-2 transition-colors"
+      {...props}
+    >
+      {children}
+    </a>
+  ),
+  blockquote: ({ children, ...props }) => (
+    <blockquote
+      className="border-l-2 border-primary/20 pl-3 italic text-muted-foreground my-3"
+      {...props}
+    >
+      {children}
+    </blockquote>
+  ),
+  table: ({ children, ...props }) => (
+    <div className="overflow-x-auto my-3">
+      <table className="w-full text-xs border-collapse" {...props}>
+        {children}
+      </table>
+    </div>
+  ),
+  thead: ({ children, ...props }) => (
+    <thead className="bg-muted/20" {...props}>
+      {children}
+    </thead>
+  ),
+  th: ({ children, ...props }) => (
+    <th className="font-medium text-left p-2 border border-border" {...props}>
+      {children}
+    </th>
+  ),
+  td: ({ children, ...props }) => (
+    <td className="p-2 border border-border" {...props}>
+      {children}
+    </td>
+  ),
+  hr: (props) => <hr className="my-3 border-border/40" {...props} />,
+  input: (props) => (
+    <input
+      type="checkbox"
+      checked={props.checked}
+      readOnly
+      aria-label="İşaretli onay kutusu"
+      className="mr-1 accent-primary"
+    />
+  ),
+};
+
+interface MarkdownRendererProps {
+  content: string;
+  sources?: RagSearchResultItem[];
+  onCitationClick?: (sourceIndex: number) => void;
+}
+
+/**
+ * Renders markdown content as styled React elements with clickable citation badges.
+ *
+ * @param root0 - Component props.
+ * @param root0.content - Markdown string to render.
+ * @param root0.sources - RAG source items for citation matching.
+ * @param root0.onCitationClick - Callback when a citation badge is clicked.
+ * @returns The rendered markdown output.
+ */
+export function MarkdownRenderer({
+  content,
+  sources = [],
+  onCitationClick,
+}: MarkdownRendererProps) {
+  const handleClick = useCallback(
+    (e: MouseEvent<HTMLDivElement>) => {
+      const target = e.target as HTMLElement;
+      const badge = target.closest(`[${CITATION_ATTR}]`);
+      if (badge) {
+        const idx = parseInt(badge.getAttribute(CITATION_ATTR) ?? "-1", 10);
+        if (idx >= 0 && onCitationClick) {
+          onCitationClick(idx);
+        }
+      }
+    },
+    [onCitationClick],
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const target = e.target as HTMLElement;
+      const badge = target.closest(`[${CITATION_ATTR}]`);
+      if (badge) {
+        e.preventDefault();
+        const idx = parseInt(badge.getAttribute(CITATION_ATTR) ?? "-1", 10);
+        if (idx >= 0 && onCitationClick) {
+          onCitationClick(idx);
+        }
+      }
+    },
+    [onCitationClick],
+  );
+
+  return (
+    <div role="presentation" onClick={handleClick} onKeyDown={handleKeyDown}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw]}
+        components={components}
+      >
+        {formatContent(content, sources)}
+      </ReactMarkdown>
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/(app)/advisor/_components/tool-confirmation-card.tsx">
+"use client";
+
+import { useState } from "react";
+import { Check, X, Database, Loader2, Sparkles, RotateCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import type { PendingToolCall } from "../_lib/types";
+import {
+  getComparisonRows,
+  getToolCategoryLabel,
+} from "../_lib/tool-comparison-helpers";
+
+export type { PendingToolCall };
+
+interface ToolConfirmationCardProps {
+  toolCall: PendingToolCall;
+  onApprove: (
+    toolCallId: string,
+    name: string,
+    args: Record<string, unknown>,
+  ) => Promise<void>;
+  onReject: (toolCallId: string) => void;
+  onUndo?: (
+    toolCallId: string,
+    name: string,
+    args: Record<string, unknown>,
+    executionResult?: unknown,
+    previousState?: Record<string, unknown>,
+  ) => Promise<void>;
+}
+
+/**
+ * Interactive full-width card component that displays an AI database mutation request
+ * with a detailed Old State vs New State comparison table, allowing explicit Approval/Rejection.
+ *
+ * @param root0 - Component props.
+ * @param root0.toolCall - The pending tool call payload to display and act on.
+ * @param root0.onApprove - Async callback invoked when the mutation is approved.
+ * @param root0.onReject - Callback invoked when the mutation is rejected.
+ * @param root0.onUndo - Optional async callback invoked to revert a previously executed mutation.
+ * @returns The rendered tool confirmation card.
+ */
+export function ToolConfirmationCard({
+  toolCall,
+  onApprove,
+  onReject,
+  onUndo,
+}: ToolConfirmationCardProps) {
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [isUndoing, setIsUndoing] = useState(false);
+
+  const handleApprove = async () => {
+    setIsExecuting(true);
+    try {
+      await onApprove(toolCall.toolCallId, toolCall.name, toolCall.args);
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
+  const handleUndo = async () => {
+    if (!onUndo) return;
+    setIsUndoing(true);
+    try {
+      await onUndo(
+        toolCall.toolCallId,
+        toolCall.name,
+        toolCall.args,
+        toolCall.executionResult,
+        toolCall.previousState,
+      );
+    } finally {
+      setIsUndoing(false);
+    }
+  };
+
+  const categoryLabel = getToolCategoryLabel(toolCall.name);
+  const comparisonRows = getComparisonRows(toolCall);
+
+  return (
+    <Card className="my-3 w-full rounded-md border border-primary/20 p-4 space-y-4 transition-all">
+      {/* Header Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-3">
+        <div className="flex items-center gap-2">
+          <div className="p-2 rounded-md bg-primary/10 text-primary shrink-0">
+            <Database className="size-4" />
+          </div>
+          <div>
+            <h4 className="text-xs font-medium tracking-wider uppercase text-muted-foreground">
+              {categoryLabel}
+            </h4>
+            <p className="text-[11px] text-muted-foreground font-medium">
+              Veritabanı Değişikliği Ön İzlemesi
+            </p>
+          </div>
+        </div>
+
+        {toolCall.status === "pending" && (
+          <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+            <Sparkles className="size-3.5" />
+            Onay Bekliyor
+          </span>
+        )}
+        {toolCall.status === "approved" && (
+          <span className="inline-flex items-center gap-2 rounded-full bg-success/10 px-3 py-1 text-xs font-semibold text-success">
+            <Check className="size-3.5" />
+            Uygulandı
+          </span>
+        )}
+        {toolCall.status === "undone" && (
+          <span className="inline-flex items-center gap-2 rounded-full bg-warning/10 px-3 py-1 text-xs font-semibold text-warning">
+            <RotateCcw className="size-3.5" />
+            Geri Alındı
+          </span>
+        )}
+        {toolCall.status === "rejected" && (
+          <span className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
+            <X className="size-3.5" />
+            İptal Edildi
+          </span>
+        )}
+      </div>
+
+      {/* Explanation Text */}
+      <p className="text-sm leading-relaxed text-foreground font-medium">
+        {toolCall.explanation}
+      </p>
+
+      {/* Full-width Old State vs New State Comparison Table */}
+      {comparisonRows.length > 0 && (
+        <div className="overflow-hidden rounded-md border border-border/40 bg-background/20">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs table-fixed">
+              <thead className="bg-muted text-muted-foreground uppercase text-[10px] tracking-wider border-b border-border/40">
+                <tr>
+                  <th className="py-3 px-4 font-semibold w-[20%]">
+                    Alan / Nesne
+                  </th>
+                  <th className="py-3 px-4 font-semibold w-[40%] text-muted-foreground/80">
+                    Eski Durum (Mevcut)
+                  </th>
+                  <th className="py-3 px-4 font-semibold w-[40%] text-primary">
+                    <div className="flex items-center gap-1">
+                      <span>Yeni Durum (Önerilen)</span>
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {comparisonRows.map((row) => (
+                  <tr
+                    key={row.fieldLabel}
+                    className="hover:bg-muted/20 transition-colors"
+                  >
+                    <td className="py-3 px-4 font-semibold text-foreground align-top break-words">
+                      {row.fieldLabel}
+                    </td>
+                    <td className="py-3 px-4 text-muted-foreground font-mono text-[11px] leading-relaxed break-words align-top bg-muted/20">
+                      {row.oldValue}
+                    </td>
+                    <td
+                      className={`py-3 px-4 font-mono text-[11px] leading-relaxed break-words align-top ${
+                        row.isWarning
+                          ? "text-destructive font-bold bg-destructive/10"
+                          : "text-foreground font-semibold bg-primary/10"
+                      }`}
+                    >
+                      {row.newValue}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Actions Footer */}
+      {toolCall.status === "pending" && (
+        <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onReject(toolCall.toolCallId)}
+            disabled={isExecuting}
+            className="h-9 px-4 gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground border-border/40"
+          >
+            <X className="size-3.5" />
+            İptal Et
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleApprove}
+            disabled={isExecuting}
+            className="h-9 px-5 gap-2 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            {isExecuting ? (
+              <>
+                <Loader2 className="size-3.5 animate-spin" />
+                İşleniyor...
+              </>
+            ) : (
+              <>
+                <Check className="size-3.5" />
+                Onayla ve Uygula
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+
+      {toolCall.status === "approved" && (
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40">
+          <div className="flex items-center gap-2 text-xs font-semibold text-success">
+            <Check className="size-4 shrink-0" />
+            <span>Veritabanı değişikliği uygulandı.</span>
+          </div>
+          {onUndo && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleUndo}
+              disabled={isUndoing}
+              className="h-8 px-3 gap-2 text-xs font-semibold border-warning/20 text-warning hover:bg-warning/10"
+            >
+              {isUndoing ? (
+                <>
+                  <Loader2 className="size-3 animate-spin" />
+                  Geri Alınıyor...
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="size-3" />
+                  İşlemi Geri Al
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      )}
+
+      {toolCall.status === "undone" && (
+        <div className="flex items-center gap-2 pt-2 text-xs font-semibold text-warning border-t border-border/40">
+          <RotateCcw className="size-4 shrink-0" />
+          <span>İşlem kullanıcı tarafından geri alındı.</span>
+        </div>
+      )}
+
+      {toolCall.status === "rejected" && (
+        <div className="flex items-center gap-2 pt-2 text-xs font-semibold text-muted-foreground border-t border-border/40">
+          <X className="size-4 shrink-0" />
+          <span>İşlem kullanıcı tarafından iptal edildi.</span>
+        </div>
+      )}
+    </Card>
+  );
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/literature-review/actions.ts">
+"use server";
+
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import {
+  revalidateOnboardingPaths,
+  invalidateOnboardingCache,
+} from "@/lib/cache-tags";
+import { matrices, users } from "@/db/schema";
+import { Logger, createFlowId } from "@/lib/logger";
+import { DatabaseError } from "@/lib/errors/app-error";
+import { handleActionError } from "@/lib/errors/handle-error";
+import {
+  getSession,
+  writeSessionCookie,
+  SESSION_ERROR_MSG,
+} from "@/lib/session";
+import type { LiteraturePoolEntry, OnboardingActionResult } from "@/lib/types";
+import type { SubBoxInput } from "@/features/literature-review/literature-review-papers";
+import { orchestrateBatchProcess } from "@/features/literature-review/batch-orchestrator";
+import {
+  persistLiteraturePool,
+  persistSubBoxEntry,
+  persistRelatedTheses,
+  fetchPreloadedPool,
+} from "@/features/literature-review/literature-persistence";
+import { loadThesisMatrixAndBoxes } from "@/features/literature-review/process-boxes-data";
+
+const _cancelFlags = new Map<number, boolean>();
+
+/** Signals the running pipeline to stop, called from the client cancel callback. */
+export async function setLiteratureCancelledAction(): Promise<void> {
+  try {
+    const session = await getSession();
+    if (session) {
+      _cancelFlags.set(session.userId, true);
+    }
+  } catch (err) {
+    throw new DatabaseError({
+      cause: err,
+      message: "Failed to set literature cancel flag.",
+    });
+  }
+}
+
+/** Resets the cancel flag before a fresh pipeline run. */
+export async function resetLiteratureCancelledAction(): Promise<void> {
+  try {
+    const session = await getSession();
+    if (session) {
+      _cancelFlags.set(session.userId, false);
+    }
+  } catch (err) {
+    throw new DatabaseError({
+      cause: err,
+      message: "Failed to reset literature cancel flag.",
+    });
+  }
+}
+
+/**
+ * Checks whether a cancellation has been requested for the given user.
+ *
+ * @param userId - The database ID of the user.
+ * @returns True when cancellation is requested, false otherwise.
+ */
+function isLiteratureCancelled(userId: number): boolean {
+  return _cancelFlags.get(userId) ?? false;
+}
+
+/**
+ * Processes all sub-boxes through the batch literature pipeline.
+ *
+ * @param boxes - The sub-box inputs to process.
+ * @returns The persisted literature pool entries or an error message.
+ */
+export async function processAllBoxesAction(
+  boxes: SubBoxInput[],
+): Promise<{ data?: LiteraturePoolEntry[]; error?: string }> {
+  const logger = new Logger(createFlowId());
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const userId = session.userId;
+    _cancelFlags.set(userId, false);
+
+    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
+
+    const { matrix } = await loadThesisMatrixAndBoxes(userId);
+    if (!matrix) return { error: "Tez matrisi bulunamadı." };
+    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
+
+    const { poolEntries } = await orchestrateBatchProcess(
+      boxes,
+      logger,
+      matrix.subjectProblem,
+      () => isLiteratureCancelled(userId),
+      async (thesisBoxId, articles) => {
+        await persistSubBoxEntry(thesisBoxId, articles);
+      },
+    );
+
+    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
+
+    return { data: poolEntries };
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
+    logger.error("literature_batch_process_failed", {
+      error: err,
+    });
+    return { error: message };
+  }
+}
+
+/**
+ * Persists the confirmed literature pool to the database.
+ *
+ * @param args - The confirmation payload.
+ * @param args.literaturePool - The literature pool entries to persist.
+ * @returns The action result indicating success or an error.
+ */
+export async function confirmLiteratureAction(args: {
+  literaturePool: LiteraturePoolEntry[];
+}): Promise<OnboardingActionResult> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+  const startTime = performance.now();
+
+  log.info("confirm_literature_start");
+
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { error: SESSION_ERROR_MSG };
+    }
+
+    const { literaturePool } = args;
+    if (!literaturePool || literaturePool.length === 0) {
+      return { error: "Onaylanacak literatür verisi bulunamadı." };
+    }
+
+    const [matrix] = await db
+      .select({ id: matrices.id })
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+
+    if (!matrix) {
+      return { error: "Tez matrisi bulunamadı." };
+    }
+
+    await persistLiteraturePool(literaturePool);
+
+    try {
+      revalidateOnboardingPaths();
+    } catch (err) {
+      log.warn("confirm_literature_revalidate_failed", {
+        service: "literature",
+        error: err,
+      });
+    }
+
+    invalidateOnboardingCache();
+
+    log.info("confirm_literature_success", {
+      durationMs: performance.now() - startTime,
+    });
+
+    return { success: true };
+  } catch (err) {
+    log.error("confirm_literature_failed", {
+      error: err,
+    });
+    return {
+      error:
+        err instanceof Error ? err.message : "An unexpected error occurred.",
+    };
+  }
+}
+
+/**
+ * Returns the preloaded literature pool for the current user.
+ *
+ * @returns The preloaded pool entries or an error message.
+ */
+export async function fetchPreloadedLiteraturePool(): Promise<{
+  data?: LiteraturePoolEntry[];
+  error?: string;
+}> {
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const [matrix] = await db
+      .select({ id: matrices.id })
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+
+    if (!matrix) return { error: "Tez matrisi bulunamadı." };
+
+    const pool = await fetchPreloadedPool(matrix.id);
+
+    return { data: pool };
+  } catch (err) {
+    return handleActionError(err);
+  }
+}
+
+/**
+ * Marks onboarding as completed for the current user and updates the session cookie.
+ *
+ * @returns The action result indicating success or an error.
+ */
+export async function finalizeOnboardingAction(): Promise<OnboardingActionResult> {
+  const log = new Logger(createFlowId());
+
+  log.info("finalize_onboarding_start");
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    await db
+      .update(users)
+      .set({ onboardingCompleted: true })
+      .where(eq(users.id, session.userId));
+
+    try {
+      await writeSessionCookie(session, true);
+    } catch (err) {
+      log.warn("finalize_onboarding_cookie_failed", {
+        service: "literature",
+        error: err,
+      });
+    }
+
+    try {
+      revalidateOnboardingPaths();
+    } catch (err) {
+      log.warn("finalize_onboarding_revalidate_failed", {
+        service: "literature",
+        error: err,
+      });
+    }
+
+    invalidateOnboardingCache();
+
+    log.info("finalize_onboarding_success");
+
+    return { success: true };
+  } catch (err) {
+    log.error("finalize_onboarding_failed", {
+      error: err,
+    });
+    return {
+      error:
+        err instanceof Error ? err.message : "An unexpected error occurred.",
+    };
+  }
+}
+
+/**
+ * Checks whether a literature pool already exists for the current user.
+ *
+ * @returns The existing pool entries and whether a pool exists, or an error.
+ */
+export async function checkLiteraturePoolAction(): Promise<{
+  data?: LiteraturePoolEntry[];
+  exists: boolean;
+  error?: string;
+}> {
+  try {
+    const session = await getSession();
+    if (!session) return { exists: false, error: SESSION_ERROR_MSG };
+
+    const [matrix] = await db
+      .select({ id: matrices.id })
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+
+    if (!matrix) return { exists: false, error: "Tez matrisi bulunamadı." };
+
+    const pool = await fetchPreloadedPool(matrix.id);
+    if (pool && pool.length > 0) {
+      return { data: pool, exists: true };
+    }
+
+    return { exists: false };
+  } catch (err) {
+    return {
+      exists: false,
+      error:
+        err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.",
+    };
+  }
+}
+
+/**
+ * Runs the full literature pipeline (search, jury, selection, persistence) and returns the pool.
+ *
+ * @param boxes - The sub-box inputs to process.
+ * @returns The persisted literature pool entries or an error message.
+ */
+export async function runLiteraturePipelineAction(
+  boxes: SubBoxInput[],
+): Promise<{ data?: LiteraturePoolEntry[]; error?: string }> {
+  const logger = new Logger(createFlowId());
+  const pipelineStart = performance.now();
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const userId = session.userId;
+    _cancelFlags.set(userId, false);
+
+    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
+
+    const { matrix } = await loadThesisMatrixAndBoxes(userId);
+    const subjectProblem = matrix?.subjectProblem ?? "";
+
+    const { poolEntries } = await orchestrateBatchProcess(
+      boxes,
+      logger,
+      subjectProblem,
+      () => isLiteratureCancelled(userId),
+      async (thesisBoxId, articles) => {
+        await persistSubBoxEntry(thesisBoxId, articles);
+      },
+    );
+
+    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
+
+    logger.info("literature_pool_persist_start");
+    await persistLiteraturePool(poolEntries);
+    logger.info("literature_pool_persist_success");
+
+    await persistRelatedTheses(userId);
+
+    try {
+      revalidateOnboardingPaths();
+    } catch (err) {
+      logger.warn("literature_pipeline_revalidate_failed", {
+        service: "literature",
+        error: err,
+      });
+    }
+    invalidateOnboardingCache();
+
+    logger.info("literature_pipeline_success", {
+      data: { durationMs: Math.round(performance.now() - pipelineStart) },
+    });
+
+    return { data: poolEntries };
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
+    logger.error("literature_pipeline_failed", {
+      error: err,
+    });
+    return { error: message };
+  }
 }
 </file>
 
@@ -39186,957 +40619,231 @@ export function OutlineSectionCard({
 }
 </file>
 
-<file path="src/app/(app)/advisor/_components/markdown-renderer.tsx">
+<file path="src/app/(app)/library/_components/add-resource-modal.tsx">
 "use client";
 
-import { useCallback, type MouseEvent } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeRaw from "rehype-raw";
-import type { Components } from "react-markdown";
-import type { RagSearchResultItem } from "@/services/search/rag-search";
-import { CITATION_ATTR, formatContent } from "../_lib/citation-matching";
-
-const components: Components = {
-  h1: ({ children, ...props }) => (
-    <h1
-      className="font-serif text-2xl font-bold tracking-tight text-foreground mt-4 mb-2"
-      {...props}
-    >
-      {children}
-    </h1>
-  ),
-  h2: ({ children, ...props }) => (
-    <h2
-      className="font-serif text-xl font-semibold tracking-tight text-foreground mt-4 mb-2"
-      {...props}
-    >
-      {children}
-    </h2>
-  ),
-  h3: ({ children, ...props }) => (
-    <h3
-      className="font-serif text-[15px] font-medium text-foreground mt-3 mb-1.5"
-      {...props}
-    >
-      {children}
-    </h3>
-  ),
-  p: ({ children, ...props }) => (
-    <p
-      className="text-[15px] leading-relaxed text-card-foreground font-light mb-3"
-      {...props}
-    >
-      {children}
-    </p>
-  ),
-  ul: ({ children, ...props }) => (
-    <ul
-      className="list-disc list-outside pl-5 space-y-2 text-[15px] text-card-foreground font-light mb-3"
-      {...props}
-    >
-      {children}
-    </ul>
-  ),
-  ol: ({ children, ...props }) => (
-    <ol
-      className="list-decimal list-outside pl-5 space-y-2 text-[15px] text-card-foreground font-light mb-3"
-      {...props}
-    >
-      {children}
-    </ol>
-  ),
-  li: ({ children, ...props }) => (
-    <li
-      className="text-[15px] leading-relaxed text-card-foreground font-light [&>p]:inline [&>p]:mb-0"
-      {...props}
-    >
-      {children}
-    </li>
-  ),
-  strong: ({ children, ...props }) => (
-    <strong className="font-medium text-foreground" {...props}>
-      {children}
-    </strong>
-  ),
-  em: ({ children, ...props }) => (
-    <em className="italic text-muted-foreground" {...props}>
-      {children}
-    </em>
-  ),
-  del: ({ children, ...props }) => (
-    <del className="line-through text-muted-foreground" {...props}>
-      {children}
-    </del>
-  ),
-  code: ({ className, children, ...props }) => {
-    const isBlock = className?.includes("language-");
-    if (isBlock) {
-      return (
-        <pre className="bg-muted/20 border border-border/40 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre my-2">
-          <code className={className} {...props}>
-            {children}
-          </code>
-        </pre>
-      );
-    }
-    return (
-      <code
-        className="bg-muted px-2 py-1 rounded text-xs font-mono text-primary"
-        {...props}
-      >
-        {children}
-      </code>
-    );
-  },
-  a: ({ href, children, ...props }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-primary underline underline-offset-2 transition-colors"
-      {...props}
-    >
-      {children}
-    </a>
-  ),
-  blockquote: ({ children, ...props }) => (
-    <blockquote
-      className="border-l-2 border-primary/20 pl-3 italic text-muted-foreground my-3"
-      {...props}
-    >
-      {children}
-    </blockquote>
-  ),
-  table: ({ children, ...props }) => (
-    <div className="overflow-x-auto my-3">
-      <table className="w-full text-xs border-collapse" {...props}>
-        {children}
-      </table>
-    </div>
-  ),
-  thead: ({ children, ...props }) => (
-    <thead className="bg-muted/20" {...props}>
-      {children}
-    </thead>
-  ),
-  th: ({ children, ...props }) => (
-    <th className="font-medium text-left p-2 border border-border" {...props}>
-      {children}
-    </th>
-  ),
-  td: ({ children, ...props }) => (
-    <td className="p-2 border border-border" {...props}>
-      {children}
-    </td>
-  ),
-  hr: (props) => <hr className="my-3 border-border/40" {...props} />,
-  input: (props) => (
-    <input
-      type="checkbox"
-      checked={props.checked}
-      readOnly
-      aria-label="İşaretli onay kutusu"
-      className="mr-1 accent-primary"
-    />
-  ),
-};
-
-interface MarkdownRendererProps {
-  content: string;
-  sources?: RagSearchResultItem[];
-  onCitationClick?: (sourceIndex: number) => void;
-}
-
-/**
- * Renders markdown content as styled React elements with clickable citation badges.
- *
- * @param root0 - Component props.
- * @param root0.content - Markdown string to render.
- * @param root0.sources - RAG source items for citation matching.
- * @param root0.onCitationClick - Callback when a citation badge is clicked.
- * @returns The rendered markdown output.
- */
-export function MarkdownRenderer({
-  content,
-  sources = [],
-  onCitationClick,
-}: MarkdownRendererProps) {
-  const handleClick = useCallback(
-    (e: MouseEvent<HTMLDivElement>) => {
-      const target = e.target as HTMLElement;
-      const badge = target.closest(`[${CITATION_ATTR}]`);
-      if (badge) {
-        const idx = parseInt(badge.getAttribute(CITATION_ATTR) ?? "-1", 10);
-        if (idx >= 0 && onCitationClick) {
-          onCitationClick(idx);
-        }
-      }
-    },
-    [onCitationClick],
-  );
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if (e.key !== "Enter" && e.key !== " ") return;
-      const target = e.target as HTMLElement;
-      const badge = target.closest(`[${CITATION_ATTR}]`);
-      if (badge) {
-        e.preventDefault();
-        const idx = parseInt(badge.getAttribute(CITATION_ATTR) ?? "-1", 10);
-        if (idx >= 0 && onCitationClick) {
-          onCitationClick(idx);
-        }
-      }
-    },
-    [onCitationClick],
-  );
-
-  return (
-    <div role="presentation" onClick={handleClick} onKeyDown={handleKeyDown}>
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw]}
-        components={components}
-      >
-        {formatContent(content, sources)}
-      </ReactMarkdown>
-    </div>
-  );
-}
-</file>
-
-<file path="src/app/(app)/advisor/_components/tool-confirmation-card.tsx">
-"use client";
-
-import { useState } from "react";
-import { Check, X, Database, Loader2, Sparkles, RotateCcw } from "lucide-react";
+import React, { useState } from "react";
+import { UploadCloud, X, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import type { PendingToolCall } from "../_lib/types";
-import {
-  getComparisonRows,
-  getToolCategoryLabel,
-} from "../_lib/tool-comparison-helpers";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { useBoxHierarchySelection } from "../_hooks/use-box-hierarchy-selection";
+import { AddResourceBoxSelector } from "./add-resource-box-selector";
+import { PdfDropzone } from "./pdf-dropzone";
 
-export type { PendingToolCall };
-
-interface ToolConfirmationCardProps {
-  toolCall: PendingToolCall;
-  onApprove: (
-    toolCallId: string,
-    name: string,
-    args: Record<string, unknown>,
-  ) => Promise<void>;
-  onReject: (toolCallId: string) => void;
-  onUndo?: (
-    toolCallId: string,
-    name: string,
-    args: Record<string, unknown>,
-    executionResult?: unknown,
-    previousState?: Record<string, unknown>,
-  ) => Promise<void>;
+interface AddResourceModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmitPdf: (file: File, boxId: number) => Promise<boolean>;
 }
 
 /**
- * Interactive full-width card component that displays an AI database mutation request
- * with a detailed Old State vs New State comparison table, allowing explicit Approval/Rejection.
+ * Modal for adding a new academic literature resource by uploading a PDF, where the
+ * user selects a parent thesis box (and a sub-box when present) and metadata is
+ * extracted and content is vectorized through the RAG pipeline.
  *
  * @param root0 - Component props.
- * @param root0.toolCall - The pending tool call payload to display and act on.
- * @param root0.onApprove - Async callback invoked when the mutation is approved.
- * @param root0.onReject - Callback invoked when the mutation is rejected.
- * @param root0.onUndo - Optional async callback invoked to revert a previously executed mutation.
- * @returns The rendered tool confirmation card.
+ * @param root0.isOpen - Whether the modal is visible.
+ * @param root0.onClose - Callback invoked when the modal is closed.
+ * @param root0.onSubmitPdf - Callback that uploads the selected PDF into the target box.
+ * @returns The add resource modal markup, or null when closed.
  */
-export function ToolConfirmationCard({
-  toolCall,
-  onApprove,
-  onReject,
-  onUndo,
-}: ToolConfirmationCardProps) {
-  const [isExecuting, setIsExecuting] = useState(false);
-  const [isUndoing, setIsUndoing] = useState(false);
+export function AddResourceModal({
+  isOpen,
+  onClose,
+  onSubmitPdf,
+}: AddResourceModalProps) {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
 
-  const handleApprove = async () => {
-    setIsExecuting(true);
-    try {
-      await onApprove(toolCall.toolCallId, toolCall.name, toolCall.args);
-    } finally {
-      setIsExecuting(false);
+  const {
+    hierarchy,
+    hierarchyError,
+    selectedParentId,
+    selectedSubBoxId,
+    setParentId,
+    setSubBoxId,
+    isLoading: isLoadingBoxes,
+  } = useBoxHierarchySelection();
+
+  if (!isOpen) return null;
+
+  const parentBoxes = hierarchy ?? [];
+  const selectedParent =
+    parentBoxes.find((b) => b.id === selectedParentId) ?? null;
+  const hasSubBoxes = !!selectedParent && selectedParent.children.length > 0;
+
+  const handleFileChange = (file: File) => {
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      toast.error("Lütfen yalnızca geçerli bir PDF dosyası seçiniz.");
+      return;
     }
+
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error("PDF dosya boyutu maksimum 25MB olabilir.");
+      return;
+    }
+
+    setSelectedFile(file);
   };
 
-  const handleUndo = async () => {
-    if (!onUndo) return;
-    setIsUndoing(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!selectedFile) {
+      toast.error("Lütfen eklenecek akademik PDF dosyasını seçiniz.");
+      return;
+    }
+
+    if (!selectedParentId) {
+      toast.error("Lütfen bir konu kutusu seçiniz.");
+      return;
+    }
+
+    if (hasSubBoxes && selectedSubBoxId === null) {
+      toast.error("Lütfen kaynağın ait olduğu alt kutuyu (sub-box) seçiniz.");
+      return;
+    }
+
+    const targetBoxId = hasSubBoxes
+      ? (selectedSubBoxId as number)
+      : selectedParentId;
+
     try {
-      await onUndo(
-        toolCall.toolCallId,
-        toolCall.name,
-        toolCall.args,
-        toolCall.executionResult,
-        toolCall.previousState,
-      );
+      setIsSubmitting(true);
+      setStatusMessage("PDF künye bilgileri çıkarılıyor...");
+
+      const isSuccess = await onSubmitPdf(selectedFile, targetBoxId);
+      if (!isSuccess) {
+        return;
+      }
+
+      toast.success("Akademik eser başarıyla eklendi ve vektörleştirildi.");
+      setSelectedFile(null);
+      setStatusMessage("");
+      onClose();
     } finally {
-      setIsUndoing(false);
+      setIsSubmitting(false);
+      setStatusMessage("");
     }
   };
-
-  const categoryLabel = getToolCategoryLabel(toolCall.name);
-  const comparisonRows = getComparisonRows(toolCall);
 
   return (
-    <Card className="my-3 w-full rounded-md border border-primary/20 p-4 space-y-4 transition-all">
-      {/* Header Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-3">
-        <div className="flex items-center gap-2">
-          <div className="p-2 rounded-md bg-primary/10 text-primary shrink-0">
-            <Database className="size-4" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 animate-in fade-in-0 duration-200">
+      <div className="relative w-full max-w-2xl rounded-lg border border-border bg-background p-6 space-y-4">
+        <div className="flex items-center justify-between border-b border-border pb-4">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-md bg-primary/10 border border-primary/20 text-primary">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
+                Yeni Akademik PDF Yükle
+              </h2>
+            </div>
           </div>
-          <div>
-            <h4 className="text-xs font-medium tracking-wider uppercase text-muted-foreground">
-              {categoryLabel}
-            </h4>
-            <p className="text-[11px] text-muted-foreground font-medium">
-              Veritabanı Değişikliği Ön İzlemesi
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            aria-label="Modalı kapat"
+            className="rounded-sm opacity-70 hover:opacity-100 p-1 text-muted-foreground hover:bg-muted"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
-        {toolCall.status === "pending" && (
-          <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-            <Sparkles className="size-3.5" />
-            Onay Bekliyor
-          </span>
-        )}
-        {toolCall.status === "approved" && (
-          <span className="inline-flex items-center gap-2 rounded-full bg-success/10 px-3 py-1 text-xs font-semibold text-success">
-            <Check className="size-3.5" />
-            Uygulandı
-          </span>
-        )}
-        {toolCall.status === "undone" && (
-          <span className="inline-flex items-center gap-2 rounded-full bg-warning/10 px-3 py-1 text-xs font-semibold text-warning">
-            <RotateCcw className="size-3.5" />
-            Geri Alındı
-          </span>
-        )}
-        {toolCall.status === "rejected" && (
-          <span className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
-            <X className="size-3.5" />
-            İptal Edildi
-          </span>
-        )}
-      </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <AddResourceBoxSelector
+            parentBoxes={parentBoxes}
+            isLoading={isLoadingBoxes}
+            hierarchyError={hierarchyError}
+            selectedParentId={selectedParentId}
+            selectedSubBoxId={selectedSubBoxId}
+            onParentSelect={setParentId}
+            onSubBoxSelect={setSubBoxId}
+            disabled={isSubmitting}
+          />
 
-      {/* Explanation Text */}
-      <p className="text-sm leading-relaxed text-foreground font-medium">
-        {toolCall.explanation}
-      </p>
-
-      {/* Full-width Old State vs New State Comparison Table */}
-      {comparisonRows.length > 0 && (
-        <div className="overflow-hidden rounded-md border border-border/40 bg-background/20">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs table-fixed">
-              <thead className="bg-muted text-muted-foreground uppercase text-[10px] tracking-wider border-b border-border/40">
-                <tr>
-                  <th className="py-3 px-4 font-semibold w-[20%]">
-                    Alan / Nesne
-                  </th>
-                  <th className="py-3 px-4 font-semibold w-[40%] text-muted-foreground/80">
-                    Eski Durum (Mevcut)
-                  </th>
-                  <th className="py-3 px-4 font-semibold w-[40%] text-primary">
-                    <div className="flex items-center gap-1">
-                      <span>Yeni Durum (Önerilen)</span>
-                    </div>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/40">
-                {comparisonRows.map((row) => (
-                  <tr
-                    key={row.fieldLabel}
-                    className="hover:bg-muted/20 transition-colors"
+          {hasSubBoxes && selectedParent && (
+            <div className="space-y-1">
+              <Label className="text-xs text-foreground font-medium">
+                Alt Kutu
+              </Label>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                {selectedParent.children.map((child) => (
+                  <button
+                    type="button"
+                    key={child.id}
+                    disabled={isSubmitting}
+                    onClick={() => setSubBoxId(child.id)}
+                    className={
+                      selectedSubBoxId === child.id
+                        ? "px-3 py-2 text-xs font-semibold rounded-md border border-primary/20 bg-accent/20 text-foreground text-left"
+                        : "px-3 py-2 text-xs font-medium rounded-md border border-border bg-background text-muted-foreground hover:bg-muted text-left"
+                    }
                   >
-                    <td className="py-3 px-4 font-semibold text-foreground align-top break-words">
-                      {row.fieldLabel}
-                    </td>
-                    <td className="py-3 px-4 text-muted-foreground font-mono text-[11px] leading-relaxed break-words align-top bg-muted/20">
-                      {row.oldValue}
-                    </td>
-                    <td
-                      className={`py-3 px-4 font-mono text-[11px] leading-relaxed break-words align-top ${
-                        row.isWarning
-                          ? "text-destructive font-bold bg-destructive/10"
-                          : "text-foreground font-semibold bg-primary/10"
-                      }`}
-                    >
-                      {row.newValue}
-                    </td>
-                  </tr>
+                    {child.title}
+                  </button>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+              </div>
+            </div>
+          )}
 
-      {/* Actions Footer */}
-      {toolCall.status === "pending" && (
-        <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => onReject(toolCall.toolCallId)}
-            disabled={isExecuting}
-            className="h-9 px-4 gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground border-border/40"
-          >
-            <X className="size-3.5" />
-            İptal Et
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleApprove}
-            disabled={isExecuting}
-            className="h-9 px-5 gap-2 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
-          >
-            {isExecuting ? (
-              <>
-                <Loader2 className="size-3.5 animate-spin" />
-                İşleniyor...
-              </>
-            ) : (
-              <>
-                <Check className="size-3.5" />
-                Onayla ve Uygula
-              </>
-            )}
-          </Button>
-        </div>
-      )}
-
-      {toolCall.status === "approved" && (
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40">
-          <div className="flex items-center gap-2 text-xs font-semibold text-success">
-            <Check className="size-4 shrink-0" />
-            <span>Veritabanı değişikliği uygulandı.</span>
+          <div className="space-y-1">
+            <Label className="text-xs text-foreground font-medium">
+              Akademik PDF Dokümanı *
+            </Label>
+            <PdfDropzone
+              selectedFile={selectedFile}
+              onFileSelect={handleFileChange}
+              isSubmitting={isSubmitting}
+              statusMessage={statusMessage}
+            />
           </div>
-          {onUndo && (
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
             <Button
-              size="sm"
+              type="button"
               variant="outline"
-              onClick={handleUndo}
-              disabled={isUndoing}
-              className="h-8 px-3 gap-2 text-xs font-semibold border-warning/20 text-warning hover:bg-warning/10"
+              size="sm"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="text-xs font-medium"
             >
-              {isUndoing ? (
+              İptal
+            </Button>
+            <Button
+              type="submit"
+              variant="default"
+              size="sm"
+              disabled={
+                isSubmitting ||
+                !selectedFile ||
+                isLoadingBoxes ||
+                !selectedParentId ||
+                (hasSubBoxes && selectedSubBoxId === null)
+              }
+              className="gap-2 text-xs font-medium"
+            >
+              {isSubmitting ? (
                 <>
-                  <Loader2 className="size-3 animate-spin" />
-                  Geri Alınıyor...
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>İşleniyor...</span>
                 </>
               ) : (
                 <>
-                  <RotateCcw className="size-3" />
-                  İşlemi Geri Al
+                  <UploadCloud className="h-4 w-4" />
+                  <span>PDF Yükle ve Künye Çıkar</span>
                 </>
               )}
             </Button>
-          )}
-        </div>
-      )}
-
-      {toolCall.status === "undone" && (
-        <div className="flex items-center gap-2 pt-2 text-xs font-semibold text-warning border-t border-border/40">
-          <RotateCcw className="size-4 shrink-0" />
-          <span>İşlem kullanıcı tarafından geri alındı.</span>
-        </div>
-      )}
-
-      {toolCall.status === "rejected" && (
-        <div className="flex items-center gap-2 pt-2 text-xs font-semibold text-muted-foreground border-t border-border/40">
-          <X className="size-4 shrink-0" />
-          <span>İşlem kullanıcı tarafından iptal edildi.</span>
-        </div>
-      )}
-    </Card>
+          </div>
+        </form>
+      </div>
+    </div>
   );
-}
-</file>
-
-<file path="src/lib/logger.ts">
-export interface TokenUsage {
-  input?: number;
-  output?: number;
-  total?: number;
-}
-
-type ServiceName =
-  | "gemini"
-  | "cloudflare"
-  | "tezara"
-  | "db"
-  | "auth"
-  | "flow"
-  | "matrix"
-  | "complete"
-  | "boxes"
-  | "wikipedia"
-  | "literature"
-  | "library"
-  | "openalex"
-  | "crossref"
-  | "dashboard"
-  | "cohere"
-  | "positioning"
-  | "cerebras"
-  | "pdf-parser"
-  | "rag-search"
-  | "advisor"
-  | "citation-cards"
-  | "literature-matrix"
-  | "outline";
-
-export interface LogParams {
-  service?: ServiceName;
-  step?: string;
-  durationMs?: number;
-  data?: Record<string, unknown>;
-  error?: unknown;
-  tokens?: TokenUsage;
-  filePath?: string;
-  status?: "START" | "SUCCESS" | "FAILED" | "RETRY";
-  blank?: "after" | "before" | "none";
-  silentStart?: boolean;
-  hidden?: boolean;
-}
-
-export interface LoggerInstance {
-  flowId: string;
-  lastTokens?: TokenUsage;
-  lastPayloadPath?: string;
-  info(arg1: string | Record<string, unknown>, params?: LogParams): void;
-  error(arg1: string | Record<string, unknown>, params?: LogParams): void;
-  warn(arg1: string | Record<string, unknown>, params?: LogParams): void;
-  step(n: string, m?: Record<string, unknown>): void;
-  file(r: string): void;
-  data(l: string, v: unknown): void;
-  preview(l: string, v: unknown): void;
-  prompt(m: string, c: string): void;
-  saveDebugPayload(
-    s: string,
-    m: string,
-    p: string,
-    r?: string,
-  ): string | undefined;
-  groupStart(event: string): void;
-  groupEnd(event: string, durationMs: number): void;
-  total(
-    event: string,
-    durationMs: number,
-    p?: { service?: ServiceName; data?: Record<string, unknown> },
-  ): void;
-}
-
-/**
- * Derives START, SUCCESS, or FAILED status from an event name's suffix.
- *
- * @param event - Event name possibly ending with a status suffix.
- * @returns The derived status, or empty string when none matches.
- */
-function deriveStatus(event: string): string {
-  if (event.endsWith("_start")) return "START";
-  if (event.endsWith("_success")) return "SUCCESS";
-  if (
-    event.endsWith("_failed") ||
-    event.endsWith("_filtered") ||
-    event.endsWith("_empty")
-  )
-    return "FAILED";
-  return "";
-}
-
-const isDev = () => process.env.NODE_ENV === "development";
-
-const C_RESET = "\x1b[0m";
-const C_GREEN = "\x1b[32m";
-const C_RED = "\x1b[31m";
-const C_YELLOW = "\x1b[33m";
-
-/**
- * Returns the icon corresponding to a status.
- *
- * @param s - Status string (START, SUCCESS, FAILED, or RETRY).
- * @returns The matching icon.
- */
-function statusIcon(s: string): string {
-  return s === "START"
-    ? "⏳"
-    : s === "SUCCESS"
-      ? "✓"
-      : s === "FAILED"
-        ? "✖"
-        : s === "RETRY"
-          ? "↻"
-          : "•";
-}
-
-/**
- * Returns the ANSI color code for a status.
- *
- * @param s - Status string.
- * @returns The matching ANSI color code.
- */
-function statusColor(s: string): string {
-  if (s === "SUCCESS") return C_GREEN;
-  if (s === "FAILED") return C_RED;
-  if (s === "START" || s === "RETRY") return C_YELLOW;
-  return "";
-}
-
-/**
- * Formats a millisecond duration compactly ("497ms" or "1.5s").
- *
- * @param ms - Duration in milliseconds.
- * @returns Compact duration string.
- */
-function formatDuration(ms: number): string {
-  const safe = Math.max(0, ms);
-  if (safe < 1000) return `${Math.round(safe)}ms`;
-  const sec = safe / 1000;
-  if (Number.isInteger(sec)) return `${sec}s`;
-  return `${sec.toFixed(1)}s`;
-}
-
-/**
- * Converts an unknown error value into a short readable message.
- *
- * @param error - Error value of any type.
- * @returns Short readable message.
- */
-function extractReason(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return String(error);
-  }
-}
-
-export class Logger implements LoggerInstance {
-  public readonly flowId: string;
-  public lastTokens?: TokenUsage;
-  public lastPayloadPath?: string;
-
-  private _starts = new Map<string, number>();
-  private readonly devMode = isDev();
-
-  /**
-   * Creates a logger whose flowId is attached to every log line.
-   *
-   * @param flowId - Identifier attached to every log line.
-   */
-  constructor(flowId: string) {
-    this.flowId = flowId;
-  }
-
-  /**
-   * Logs an info-level entry.
-   *
-   * @param arg1 - Event name or structured payload.
-   * @param p - Optional log parameters.
-   */
-  info(arg1: string | Record<string, unknown>, p?: LogParams): void {
-    this.write("info", arg1, p);
-  }
-
-  /**
-   * Logs an error-level entry.
-   *
-   * @param arg1 - Event name or structured payload.
-   * @param p - Optional log parameters.
-   */
-  error(arg1: string | Record<string, unknown>, p?: LogParams): void {
-    this.write("error", arg1, p);
-  }
-
-  /**
-   * Logs a warning-level entry for recoverable or expected failures.
-   *
-   * @param arg1 - Event name or structured payload.
-   * @param p - Optional log parameters.
-   */
-  warn(arg1: string | Record<string, unknown>, p?: LogParams): void {
-    this.write("warn", arg1, p);
-  }
-
-  /**
-   * Records a step marker in the current flow.
-   *
-   * @param n - Step name.
-   * @param m - Optional step metadata.
-   */
-  step(n: string, m?: Record<string, unknown>): void {
-    void n;
-    void m;
-  }
-
-  /**
-   * Records a file reference for the current flow.
-   *
-   * @param r - File path.
-   */
-  file(r: string): void {
-    void r;
-  }
-
-  /**
-   * Records a labeled data snapshot for the current flow.
-   *
-   * @param l - Snapshot label.
-   * @param v - Snapshot value.
-   */
-  data(l: string, v: unknown): void {
-    void l;
-    void v;
-  }
-
-  /**
-   * Records a labeled preview for the current flow.
-   *
-   * @param l - Preview label.
-   * @param v - Preview value.
-   */
-  preview(l: string, v: unknown): void {
-    void l;
-    void v;
-  }
-
-  /**
-   * Records a prompt message for the current flow.
-   *
-   * @param m - Prompt message.
-   * @param c - Contextual label.
-   */
-  prompt(m: string, c: string): void {
-    void m;
-    void c;
-  }
-
-  /**
-   * Saves a debug payload for later inspection.
-   *
-   * @param s - Payload stage.
-   * @param m - Payload message.
-   * @param p - Payload path.
-   * @param r - Optional request identifier.
-   * @returns Path of the saved payload, or undefined when not saved.
-   */
-  saveDebugPayload(
-    s: string,
-    m: string,
-    p: string,
-    r?: string,
-  ): string | undefined {
-    void s;
-    void m;
-    void p;
-    void r;
-    return undefined;
-  }
-
-  /**
-   * Marks the start of a log group.
-   *
-   * @param event - Group event name.
-   */
-  groupStart(event: string): void {
-    void event;
-  }
-
-  /**
-   * Marks the end of a log group.
-   *
-   * @param event - Group event name.
-   * @param durationMs - Duration of the group in milliseconds.
-   */
-  groupEnd(event: string, durationMs: number): void {
-    void event;
-    void durationMs;
-  }
-
-  /**
-   * Prints a total-duration summary line for a completed flow.
-   *
-   * @param event - Flow-level event name.
-   * @param durationMs - Total duration in milliseconds.
-   * @param p - Optional service and data metadata.
-   */
-  total(
-    event: string,
-    durationMs: number,
-    p?: { service?: ServiceName; data?: Record<string, unknown> },
-  ): void {
-    if (this.devMode) {
-      const timeTag = this.timestamp();
-      console.log(
-        `${timeTag} ${C_GREEN}✓${C_RESET} TOTAL ${event} (${formatDuration(durationMs)})`,
-      );
-      return;
-    }
-
-    const entry: Record<string, unknown> = {
-      timestamp: new Date().toISOString(),
-      level: "info",
-      event: `${event}_total`,
-      flowId: this.flowId,
-      service: p?.service ?? "flow",
-      status: "TOTAL",
-      durationMs: Math.round(durationMs),
-    };
-    if (p?.data) entry.data = p.data;
-    console.info(JSON.stringify(entry));
-  }
-
-  /**
-   * Returns the current time as "[HH:MM:SS]".
-   *
-   * @returns Current time string.
-   */
-  private timestamp(): string {
-    const d = new Date();
-    return `[${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}:${d.getSeconds().toString().padStart(2, "0")}]`;
-  }
-
-  /**
-   * Writes a single log line in dev or production format.
-   *
-   * @param level - Log level (info, error, or warn).
-   * @param arg1 - Event name or structured payload.
-   * @param p - Optional log parameters.
-   */
-  private write(
-    level: "info" | "error" | "warn",
-    arg1: string | Record<string, unknown>,
-    p?: LogParams,
-  ): void {
-    if (this.devMode) {
-      const event =
-        typeof arg1 === "object" && arg1 !== null
-          ? (((arg1 as Record<string, unknown>).step as string) ?? "unknown")
-          : (arg1 as string);
-
-      const status = deriveStatus(event);
-
-      if (status === "START") {
-        const baseEvent = event.replace(/_(start)$/, "");
-        this._starts.set(baseEvent, performance.now());
-        if (p?.silentStart || p?.hidden) {
-          return;
-        }
-        const timeTag = this.timestamp();
-        const icon = statusIcon("START");
-        const color = statusColor("START");
-        const annotation = p?.data?.summary ? ` ${p.data.summary}` : "";
-        console.log(
-          `${timeTag} START ${color}${icon}${C_RESET} ${baseEvent}${annotation}`,
-        );
-        return;
-      }
-
-      if (status === "SUCCESS" || status === "FAILED") {
-        const baseEvent = event.replace(
-          /_(success|failed|filtered|empty)$/,
-          "",
-        );
-        const startTime = this._starts.get(baseEvent);
-        let durStr = "";
-        if (startTime != null) {
-          durStr = ` (${formatDuration(performance.now() - startTime)})`;
-          this._starts.delete(baseEvent);
-        } else if (p?.durationMs != null) {
-          durStr = ` (${formatDuration(p.durationMs)})`;
-        } else if (
-          p?.data &&
-          typeof p.data === "object" &&
-          "durationMs" in p.data
-        ) {
-          durStr = ` (${formatDuration((p.data as Record<string, unknown>).durationMs as number)})`;
-        }
-
-        const icon = statusIcon(status);
-        const color = statusColor(status);
-        const timeTag = this.timestamp();
-
-        if (p?.hidden) {
-          return;
-        }
-
-        const blank = p?.blank ?? "after";
-
-        if (blank === "before") {
-          console.log("");
-        }
-
-        console.log(
-          `${timeTag} ${status} ${color}${icon}${C_RESET} ${baseEvent}${durStr}`,
-        );
-
-        if (p?.error != null) {
-          console.log(`  ↳ reason: ${extractReason(p.error)}`);
-        }
-        if (blank === "after") {
-          console.log("");
-        }
-        return;
-      }
-      return;
-    }
-
-    if (typeof arg1 === "object" && arg1 !== null) {
-      const entry: Record<string, unknown> = { flowId: this.flowId, ...arg1 };
-      console[level](
-        JSON.stringify({
-          timestamp: new Date().toISOString(),
-          level,
-          ...entry,
-        }),
-      );
-      return;
-    }
-
-    const event = arg1 as string;
-    const entry: Record<string, unknown> = {
-      timestamp: new Date().toISOString(),
-      level,
-      event,
-      flowId: this.flowId,
-      service: p?.service ?? "flow",
-      status: p?.status ?? deriveStatus(event),
-    };
-    if (p?.step) entry.step = p.step;
-    if (p?.durationMs !== undefined)
-      entry.durationMs = Math.round(p.durationMs);
-    if (p?.data) entry.data = p.data;
-    if (p?.tokens) {
-      entry.tokens = p.tokens;
-      this.lastTokens = p.tokens;
-    }
-    if (p?.error) entry.error = String(p.error);
-    console[level](JSON.stringify(entry));
-  }
-}
-
-/**
- * Generates a unique flow identifier in the form fl_<timestamp36>_<random>.
- *
- * @returns Unique flow identifier string.
- */
-export function createFlowId(): string {
-  return `fl_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`;
 }
 </file>
 
@@ -40298,374 +41005,6 @@ export function EditResourceModal({
       />
     </div>
   );
-}
-</file>
-
-<file path="src/app/(onboarding)/onboarding/literature-review/actions.ts">
-"use server";
-
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import {
-  revalidateOnboardingPaths,
-  invalidateOnboardingCache,
-} from "@/lib/cache-tags";
-import { matrices, users } from "@/db/schema";
-import { Logger, createFlowId } from "@/lib/logger";
-import { DatabaseError } from "@/lib/errors/app-error";
-import { handleActionError } from "@/lib/errors/handle-error";
-import {
-  getSession,
-  writeSessionCookie,
-  SESSION_ERROR_MSG,
-} from "@/lib/session";
-import type { LiteraturePoolEntry, OnboardingActionResult } from "@/lib/types";
-import type { SubBoxInput } from "@/features/literature-review/literature-review-papers";
-import { orchestrateBatchProcess } from "@/features/literature-review/batch-orchestrator";
-import {
-  persistLiteraturePool,
-  persistSubBoxEntry,
-  persistRelatedTheses,
-  fetchPreloadedPool,
-} from "@/features/literature-review/literature-persistence";
-import { loadThesisMatrixAndBoxes } from "@/features/literature-review/process-boxes-data";
-
-const _cancelFlags = new Map<number, boolean>();
-
-/** Signals the running pipeline to stop, called from the client cancel callback. */
-export async function setLiteratureCancelledAction(): Promise<void> {
-  try {
-    const session = await getSession();
-    if (session) {
-      _cancelFlags.set(session.userId, true);
-    }
-  } catch (err) {
-    throw new DatabaseError({
-      cause: err,
-      message: "Failed to set literature cancel flag.",
-    });
-  }
-}
-
-/** Resets the cancel flag before a fresh pipeline run. */
-export async function resetLiteratureCancelledAction(): Promise<void> {
-  try {
-    const session = await getSession();
-    if (session) {
-      _cancelFlags.set(session.userId, false);
-    }
-  } catch (err) {
-    throw new DatabaseError({
-      cause: err,
-      message: "Failed to reset literature cancel flag.",
-    });
-  }
-}
-
-/**
- * Checks whether a cancellation has been requested for the given user.
- *
- * @param userId - The database ID of the user.
- * @returns True when cancellation is requested, false otherwise.
- */
-function isLiteratureCancelled(userId: number): boolean {
-  return _cancelFlags.get(userId) ?? false;
-}
-
-/**
- * Processes all sub-boxes through the batch literature pipeline.
- *
- * @param boxes - The sub-box inputs to process.
- * @returns The persisted literature pool entries or an error message.
- */
-export async function processAllBoxesAction(
-  boxes: SubBoxInput[],
-): Promise<{ data?: LiteraturePoolEntry[]; error?: string }> {
-  const logger = new Logger(createFlowId());
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const userId = session.userId;
-    _cancelFlags.set(userId, false);
-
-    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
-
-    const { matrix } = await loadThesisMatrixAndBoxes(userId);
-    if (!matrix) return { error: "Tez matrisi bulunamadı." };
-    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
-
-    const { poolEntries } = await orchestrateBatchProcess(
-      boxes,
-      logger,
-      matrix.subjectProblem,
-      () => isLiteratureCancelled(userId),
-      async (thesisBoxId, articles) => {
-        await persistSubBoxEntry(thesisBoxId, articles);
-      },
-    );
-
-    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
-
-    return { data: poolEntries };
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
-    logger.error("literature_batch_process_failed", {
-      error: err,
-    });
-    return { error: message };
-  }
-}
-
-/**
- * Persists the confirmed literature pool to the database.
- *
- * @param args - The confirmation payload.
- * @param args.literaturePool - The literature pool entries to persist.
- * @returns The action result indicating success or an error.
- */
-export async function confirmLiteratureAction(args: {
-  literaturePool: LiteraturePoolEntry[];
-}): Promise<OnboardingActionResult> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-  const startTime = performance.now();
-
-  log.info("confirm_literature_start");
-
-  try {
-    const session = await getSession();
-    if (!session) {
-      return { error: SESSION_ERROR_MSG };
-    }
-
-    const { literaturePool } = args;
-    if (!literaturePool || literaturePool.length === 0) {
-      return { error: "Onaylanacak literatür verisi bulunamadı." };
-    }
-
-    const [matrix] = await db
-      .select({ id: matrices.id })
-      .from(matrices)
-      .where(eq(matrices.userId, session.userId));
-
-    if (!matrix) {
-      return { error: "Tez matrisi bulunamadı." };
-    }
-
-    await persistLiteraturePool(literaturePool);
-
-    try {
-      revalidateOnboardingPaths();
-    } catch (err) {
-      log.warn("confirm_literature_revalidate_failed", {
-        service: "literature",
-        error: err,
-      });
-    }
-
-    invalidateOnboardingCache();
-
-    log.info("confirm_literature_success", {
-      durationMs: performance.now() - startTime,
-    });
-
-    return { success: true };
-  } catch (err) {
-    log.error("confirm_literature_failed", {
-      error: err,
-    });
-    return {
-      error:
-        err instanceof Error ? err.message : "An unexpected error occurred.",
-    };
-  }
-}
-
-/**
- * Returns the preloaded literature pool for the current user.
- *
- * @returns The preloaded pool entries or an error message.
- */
-export async function fetchPreloadedLiteraturePool(): Promise<{
-  data?: LiteraturePoolEntry[];
-  error?: string;
-}> {
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const [matrix] = await db
-      .select({ id: matrices.id })
-      .from(matrices)
-      .where(eq(matrices.userId, session.userId));
-
-    if (!matrix) return { error: "Tez matrisi bulunamadı." };
-
-    const pool = await fetchPreloadedPool(matrix.id);
-
-    return { data: pool };
-  } catch (err) {
-    return handleActionError(err);
-  }
-}
-
-/**
- * Marks onboarding as completed for the current user and updates the session cookie.
- *
- * @returns The action result indicating success or an error.
- */
-export async function finalizeOnboardingAction(): Promise<OnboardingActionResult> {
-  const log = new Logger(createFlowId());
-
-  log.info("finalize_onboarding_start");
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    await db
-      .update(users)
-      .set({ onboardingCompleted: true })
-      .where(eq(users.id, session.userId));
-
-    try {
-      await writeSessionCookie(session, true);
-    } catch (err) {
-      log.warn("finalize_onboarding_cookie_failed", {
-        service: "literature",
-        error: err,
-      });
-    }
-
-    try {
-      revalidateOnboardingPaths();
-    } catch (err) {
-      log.warn("finalize_onboarding_revalidate_failed", {
-        service: "literature",
-        error: err,
-      });
-    }
-
-    invalidateOnboardingCache();
-
-    log.info("finalize_onboarding_success");
-
-    return { success: true };
-  } catch (err) {
-    log.error("finalize_onboarding_failed", {
-      error: err,
-    });
-    return {
-      error:
-        err instanceof Error ? err.message : "An unexpected error occurred.",
-    };
-  }
-}
-
-/**
- * Checks whether a literature pool already exists for the current user.
- *
- * @returns The existing pool entries and whether a pool exists, or an error.
- */
-export async function checkLiteraturePoolAction(): Promise<{
-  data?: LiteraturePoolEntry[];
-  exists: boolean;
-  error?: string;
-}> {
-  try {
-    const session = await getSession();
-    if (!session) return { exists: false, error: SESSION_ERROR_MSG };
-
-    const [matrix] = await db
-      .select({ id: matrices.id })
-      .from(matrices)
-      .where(eq(matrices.userId, session.userId));
-
-    if (!matrix) return { exists: false, error: "Tez matrisi bulunamadı." };
-
-    const pool = await fetchPreloadedPool(matrix.id);
-    if (pool && pool.length > 0) {
-      return { data: pool, exists: true };
-    }
-
-    return { exists: false };
-  } catch (err) {
-    return {
-      exists: false,
-      error:
-        err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.",
-    };
-  }
-}
-
-/**
- * Runs the full literature pipeline (search, jury, selection, persistence) and returns the pool.
- *
- * @param boxes - The sub-box inputs to process.
- * @returns The persisted literature pool entries or an error message.
- */
-export async function runLiteraturePipelineAction(
-  boxes: SubBoxInput[],
-): Promise<{ data?: LiteraturePoolEntry[]; error?: string }> {
-  const logger = new Logger(createFlowId());
-  const pipelineStart = performance.now();
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const userId = session.userId;
-    _cancelFlags.set(userId, false);
-
-    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
-
-    const { matrix } = await loadThesisMatrixAndBoxes(userId);
-    const subjectProblem = matrix?.subjectProblem ?? "";
-
-    const { poolEntries } = await orchestrateBatchProcess(
-      boxes,
-      logger,
-      subjectProblem,
-      () => isLiteratureCancelled(userId),
-      async (thesisBoxId, articles) => {
-        await persistSubBoxEntry(thesisBoxId, articles);
-      },
-    );
-
-    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
-
-    logger.info("literature_pool_persist_start");
-    await persistLiteraturePool(poolEntries);
-    logger.info("literature_pool_persist_success");
-
-    await persistRelatedTheses(userId);
-
-    try {
-      revalidateOnboardingPaths();
-    } catch (err) {
-      logger.warn("literature_pipeline_revalidate_failed", {
-        service: "literature",
-        error: err,
-      });
-    }
-    invalidateOnboardingCache();
-
-    logger.info("literature_pipeline_success", {
-      data: { durationMs: Math.round(performance.now() - pipelineStart) },
-    });
-
-    return { data: poolEntries };
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
-    logger.error("literature_pipeline_failed", {
-      error: err,
-    });
-    return { error: message };
-  }
 }
 </file>
 
@@ -41409,234 +41748,6 @@ export default function CitationCardsPage() {
 }
 </file>
 
-<file path="src/app/(app)/library/_components/add-resource-modal.tsx">
-"use client";
-
-import React, { useState } from "react";
-import { UploadCloud, X, Loader2, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { useBoxHierarchySelection } from "../_hooks/use-box-hierarchy-selection";
-import { AddResourceBoxSelector } from "./add-resource-box-selector";
-import { PdfDropzone } from "./pdf-dropzone";
-
-interface AddResourceModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmitPdf: (file: File, boxId: number) => Promise<boolean>;
-}
-
-/**
- * Modal for adding a new academic literature resource by uploading a PDF, where the
- * user selects a parent thesis box (and a sub-box when present) and metadata is
- * extracted and content is vectorized through the RAG pipeline.
- *
- * @param root0 - Component props.
- * @param root0.isOpen - Whether the modal is visible.
- * @param root0.onClose - Callback invoked when the modal is closed.
- * @param root0.onSubmitPdf - Callback that uploads the selected PDF into the target box.
- * @returns The add resource modal markup, or null when closed.
- */
-export function AddResourceModal({
-  isOpen,
-  onClose,
-  onSubmitPdf,
-}: AddResourceModalProps) {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("");
-
-  const {
-    hierarchy,
-    hierarchyError,
-    selectedParentId,
-    selectedSubBoxId,
-    setParentId,
-    setSubBoxId,
-    isLoading: isLoadingBoxes,
-  } = useBoxHierarchySelection();
-
-  if (!isOpen) return null;
-
-  const parentBoxes = hierarchy ?? [];
-  const selectedParent =
-    parentBoxes.find((b) => b.id === selectedParentId) ?? null;
-  const hasSubBoxes = !!selectedParent && selectedParent.children.length > 0;
-
-  const handleFileChange = (file: File) => {
-    if (!file.name.toLowerCase().endsWith(".pdf")) {
-      toast.error("Lütfen yalnızca geçerli bir PDF dosyası seçiniz.");
-      return;
-    }
-
-    if (file.size > 25 * 1024 * 1024) {
-      toast.error("PDF dosya boyutu maksimum 25MB olabilir.");
-      return;
-    }
-
-    setSelectedFile(file);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!selectedFile) {
-      toast.error("Lütfen eklenecek akademik PDF dosyasını seçiniz.");
-      return;
-    }
-
-    if (!selectedParentId) {
-      toast.error("Lütfen bir konu kutusu seçiniz.");
-      return;
-    }
-
-    if (hasSubBoxes && selectedSubBoxId === null) {
-      toast.error("Lütfen kaynağın ait olduğu alt kutuyu (sub-box) seçiniz.");
-      return;
-    }
-
-    const targetBoxId = hasSubBoxes
-      ? (selectedSubBoxId as number)
-      : selectedParentId;
-
-    try {
-      setIsSubmitting(true);
-      setStatusMessage("PDF künye bilgileri çıkarılıyor...");
-
-      const isSuccess = await onSubmitPdf(selectedFile, targetBoxId);
-      if (!isSuccess) {
-        return;
-      }
-
-      toast.success("Akademik eser başarıyla eklendi ve vektörleştirildi.");
-      setSelectedFile(null);
-      setStatusMessage("");
-      onClose();
-    } finally {
-      setIsSubmitting(false);
-      setStatusMessage("");
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 animate-in fade-in-0 duration-200">
-      <div className="relative w-full max-w-2xl rounded-lg border border-border bg-background p-6 space-y-4">
-        <div className="flex items-center justify-between border-b border-border pb-4">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-md bg-primary/10 border border-primary/20 text-primary">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
-                Yeni Akademik PDF Yükle
-              </h2>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            aria-label="Modalı kapat"
-            className="rounded-sm opacity-70 hover:opacity-100 p-1 text-muted-foreground hover:bg-muted"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <AddResourceBoxSelector
-            parentBoxes={parentBoxes}
-            isLoading={isLoadingBoxes}
-            hierarchyError={hierarchyError}
-            selectedParentId={selectedParentId}
-            selectedSubBoxId={selectedSubBoxId}
-            onParentSelect={setParentId}
-            onSubBoxSelect={setSubBoxId}
-            disabled={isSubmitting}
-          />
-
-          {hasSubBoxes && selectedParent && (
-            <div className="space-y-1">
-              <Label className="text-xs text-foreground font-medium">
-                Alt Kutu
-              </Label>
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                {selectedParent.children.map((child) => (
-                  <button
-                    type="button"
-                    key={child.id}
-                    disabled={isSubmitting}
-                    onClick={() => setSubBoxId(child.id)}
-                    className={
-                      selectedSubBoxId === child.id
-                        ? "px-3 py-2 text-xs font-semibold rounded-md border border-primary/20 bg-accent/20 text-foreground text-left"
-                        : "px-3 py-2 text-xs font-medium rounded-md border border-border bg-background text-muted-foreground hover:bg-muted text-left"
-                    }
-                  >
-                    {child.title}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-1">
-            <Label className="text-xs text-foreground font-medium">
-              Akademik PDF Dokümanı *
-            </Label>
-            <PdfDropzone
-              selectedFile={selectedFile}
-              onFileSelect={handleFileChange}
-              isSubmitting={isSubmitting}
-              statusMessage={statusMessage}
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="text-xs font-medium"
-            >
-              İptal
-            </Button>
-            <Button
-              type="submit"
-              variant="default"
-              size="sm"
-              disabled={
-                isSubmitting ||
-                !selectedFile ||
-                isLoadingBoxes ||
-                !selectedParentId ||
-                (hasSubBoxes && selectedSubBoxId === null)
-              }
-              className="gap-2 text-xs font-medium"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>İşleniyor...</span>
-                </>
-              ) : (
-                <>
-                  <UploadCloud className="h-4 w-4" />
-                  <span>PDF Yükle ve Künye Çıkar</span>
-                </>
-              )}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-</file>
-
 <file path="src/app/(onboarding)/onboarding/boxes/_components/boxes-container.tsx">
 "use client";
 
@@ -42311,6 +42422,437 @@ export function useAdvisorChat(initialSessionId?: number) {
     handleSend,
     handleCitationPosition,
   };
+}
+</file>
+
+<file path="src/app/(app)/library/actions.ts">
+export {
+  getLibraryResourcesAction,
+  updateLibraryResourceAction,
+  toggleResourceReadStatusAction,
+  deleteLibraryResourceAction,
+} from "./resource-actions";
+export {
+  deleteResourcePdfAction,
+  requestResourcePdfUploadAction,
+  completeResourcePdfUploadAction,
+  requestPdfCreateUploadAction,
+  completePdfCreateUploadAction,
+} from "./pdf-actions";
+export { getBoxHierarchyForLibraryAction } from "./box-actions";
+export {
+  createResourceNoteAction,
+  deleteResourceNoteAction,
+} from "./note-actions";
+export { saveResourceCritiqueAction } from "./critique-actions";
+</file>
+
+<file path="src/app/(app)/library/page.tsx">
+"use client";
+
+import React, { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { BookMarked } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { SidebarWorkList } from "./_components/sidebar-work-list";
+import { ResourceDetail } from "./_components/resource-detail";
+import { AddResourceModal } from "./_components/add-resource-modal";
+import { LibrarySkeleton } from "./_components/library-skeleton";
+import { useLibraryResources } from "./_hooks/use-library-resources";
+import { usePdfUpload } from "./_hooks/use-pdf-upload";
+import { useResourceNotes } from "./_hooks/use-resource-notes";
+import { useResourceCritique } from "./_hooks/use-resource-critique";
+
+/**
+ * Library page with a sidebar work list and a resource detail panel.
+ *
+ * @returns The library page markup.
+ */
+export default function LibraryPage() {
+  return (
+    <Suspense fallback={<LibrarySkeleton />}>
+      <LibraryPageContent />
+    </Suspense>
+  );
+}
+
+/**
+ * Library page content composing resource, PDF, and note hooks.
+ *
+ * @returns The library page content markup.
+ */
+function LibraryPageContent() {
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  const searchParams = useSearchParams();
+  const urlResourceId = searchParams.get("id");
+  const initialSelectedId = urlResourceId ? parseInt(urlResourceId, 10) : null;
+
+  const {
+    resources,
+    setResources,
+    isLoading,
+    selectedResourceId,
+    activeTab,
+    setActiveTab,
+    searchQuery,
+    setSearchQuery,
+    sortedResources,
+    handleSelectResource,
+    handleDeleteResource,
+    handleToggleReadStatus,
+    handleUpdateResource,
+  } = useLibraryResources(initialSelectedId);
+
+  const { notes, setNotes, handleAddNote, handleDeleteNote } = useResourceNotes(
+    { selectedResourceId },
+  );
+
+  const { getCritiqueFor, handleSaveCritique } = useResourceCritique({
+    selectedResourceId,
+  });
+
+  const { handleCreateResourceFromPdf, handleUploadPdf, handleDeletePdf } =
+    usePdfUpload({
+      selectedResourceId,
+      setResources,
+      setNotes,
+      handleSelectResource,
+    });
+
+  const selectedResource = resources.find(
+    (item) => item.id === selectedResourceId,
+  );
+
+  const selectedResourceNotes = notes.filter(
+    (note) => note.resourceId === selectedResourceId,
+  );
+
+  const selectedCritique = getCritiqueFor(selectedResourceId);
+
+  if (isLoading) {
+    return <LibrarySkeleton />;
+  }
+
+  return (
+    <div className="w-full space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start">
+        <div className="lg:col-span-4 lg:sticky lg:top-[calc(7rem+1px)] lg:h-[calc(100vh-8.5rem-1px)] flex flex-col min-h-0">
+          <SidebarWorkList
+            resources={sortedResources}
+            selectedResourceId={selectedResourceId}
+            onSelectResource={(id) => handleSelectResource(id)}
+            activeTab={activeTab}
+            onTabChange={(tab) => setActiveTab(tab)}
+            searchQuery={searchQuery}
+            onSearchChange={(q) => setSearchQuery(q)}
+            onOpenAddModal={() => setIsAddModalOpen(true)}
+            onDeleteResource={handleDeleteResource}
+          />
+        </div>
+
+        <div className="lg:col-span-8 h-full min-h-0">
+          {selectedResource ? (
+            <ResourceDetail
+              resource={selectedResource}
+              notes={selectedResourceNotes}
+              critique={selectedCritique}
+              onAddNote={handleAddNote}
+              onSaveCritique={handleSaveCritique}
+              onDeleteNote={handleDeleteNote}
+              onToggleReadStatus={handleToggleReadStatus}
+              onUpdateResource={handleUpdateResource}
+              onUploadPdf={handleUploadPdf}
+              onDeletePdf={handleDeletePdf}
+            />
+          ) : (
+            <Card className="flex flex-col items-center justify-center h-full rounded-md border border-border p-8 text-center text-muted-foreground">
+              <BookMarked className="h-10 w-10 opacity-30 mb-3" />
+              <h3 className="font-serif text-lg font-medium text-foreground">
+                Eser Seçilmedi
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Detayları ve akademik notları görüntülemek için sol menüden bir
+                eser seçiniz.
+              </p>
+            </Card>
+          )}
+        </div>
+      </div>
+
+      <AddResourceModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSubmitPdf={handleCreateResourceFromPdf}
+      />
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/positioning/actions.ts">
+"use server";
+
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { positioning, matrices } from "@/db/schema";
+import type { Positioning } from "@/db/schema";
+import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
+import { Logger } from "@/lib/logger";
+import type { ThesisMatrix } from "@/lib/types";
+import { positioningMatrixSchema } from "@/features/positioning/validation";
+import { searchAndSiftTheses, type SiftedThesis } from "@/features/positioning/sifting";
+import { evaluateThesesInParallel } from "@/features/positioning/per-thesis-evaluation";
+import { analyzePositioningJury } from "@/features/positioning/analysis";
+import { savePositioningReportTransaction } from "@/features/positioning/decision-engine";
+import { sanitizeAcademicDataBulk } from "@/services/academic";
+import type { JuryAnalysisResult } from "@/features/positioning/analysis";
+
+/**
+ * Runs query generation, Tezara search, and Cohere rerank; jury analysis and DB writes run separately.
+ *
+ * @param matrixInput - The thesis matrix used to derive the search queries.
+ * @param flowId - The log flow identifier for structured logging.
+ * @returns The sifted thesis list on success or an error message on failure.
+ */
+export async function runPositioningSearchAction(
+  matrixInput: ThesisMatrix,
+  flowId: string,
+): Promise<{ success: true; theses: SiftedThesis[] } | { error: string }> {
+  const log = new Logger(flowId);
+  const positioningInput: Record<string, string> = {
+    subjectProblem: matrixInput.subjectProblem ?? "",
+    theoreticalFramework: matrixInput.theoreticalFramework ?? "",
+    methodology: matrixInput.methodology ?? "",
+  };
+
+  const parsed = positioningMatrixSchema.safeParse(positioningInput);
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0];
+    const msg = firstIssue
+      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
+      : "Form doğrulaması başarısız.";
+    return { error: msg };
+  }
+
+  const validated = parsed.data;
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    log.info("sifting_theses_start");
+    const theses = await searchAndSiftTheses(validated, log);
+    log.info("sifting_theses_success");
+
+    return { success: true, theses };
+  } catch (error) {
+    log.error("positioning_search_failed", {
+      error,
+    });
+    return {
+      error:
+        "Akademik arama sorguları üretilirken bir hata oluştu. Lütfen tekrar deneyin.",
+    };
+  }
+}
+
+/**
+ * Runs the per-thesis relevance/originality evaluations in parallel and then the
+ * final synthesis jury LLM over the relevant evaluated theses.
+ *
+ * @param matrixInput - The thesis matrix used for the jury evaluation.
+ * @param theses - The sifted thesis candidates to analyze.
+ * @param flowId - The log flow identifier for structured logging.
+ * @returns The jury analysis result on success or an error message on failure.
+ */
+export async function runPositioningJuryAction(
+  matrixInput: ThesisMatrix,
+  theses: SiftedThesis[],
+  flowId: string,
+): Promise<
+  { success: true; juryResult: JuryAnalysisResult } | { error: string }
+> {
+  const log = new Logger(flowId);
+  const positioningInput: Record<string, string> = {
+    subjectProblem: matrixInput.subjectProblem ?? "",
+    theoreticalFramework: matrixInput.theoreticalFramework ?? "",
+    methodology: matrixInput.methodology ?? "",
+  };
+
+  const parsed = positioningMatrixSchema.safeParse(positioningInput);
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0];
+    const msg = firstIssue
+      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
+      : "Form doğrulaması başarısız.";
+    return { error: msg };
+  }
+
+  const validated = parsed.data;
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const evaluatedTheses = await evaluateThesesInParallel(
+      validated,
+      theses,
+      log,
+    );
+
+    const relevantTheses = evaluatedTheses.filter(
+      (ev) => ev.evaluation.isRelevant,
+    );
+
+    log.info("positioning_jury_analysis_start");
+    const juryResult = await analyzePositioningJury(
+      validated,
+      relevantTheses,
+      log,
+    );
+    log.info("positioning_jury_analysis_success");
+
+    const thesisTypeById = new Map<string, string>(
+      relevantTheses.map((ev) => [String(ev.thesis.id), ev.thesis.thesisType]),
+    );
+    juryResult.recommendedTheses = juryResult.recommendedTheses.map((rec) => ({
+      ...rec,
+      thesisType: thesisTypeById.get(String(rec.externalThesisId)) || undefined,
+    }));
+
+    return { success: true, juryResult };
+  } catch (error) {
+    log.error("positioning_jury_failed", {
+      error,
+    });
+    return {
+      error:
+        "Akademik jüri analizi sırasında bir hata oluştu. Lütfen tekrar deneyin.",
+    };
+  }
+}
+
+/**
+ * Sanitizes the jury result and persists the positioning report to the database.
+ *
+ * @param matrixInput - The thesis matrix used for the positioning report.
+ * @param juryResult - The jury analysis result to persist.
+ * @param flowId - The log flow identifier for structured logging.
+ * @returns A success marker or an error message on failure.
+ */
+export async function persistPositioningReportAction(
+  matrixInput: ThesisMatrix,
+  juryResult: JuryAnalysisResult,
+  flowId: string,
+): Promise<{ success: true } | { error: string }> {
+  const log = new Logger(flowId);
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const positioningInput: Record<string, string> = {
+      subjectProblem: matrixInput.subjectProblem ?? "",
+      theoreticalFramework: matrixInput.theoreticalFramework ?? "",
+      methodology: matrixInput.methodology ?? "",
+    };
+
+    const parsed = positioningMatrixSchema.safeParse(positioningInput);
+    if (!parsed.success) {
+      return { error: "Form doğrulaması başarısız." };
+    }
+    const validated = parsed.data;
+
+    if (juryResult.recommendedTheses.length > 0) {
+      const itemsToSanitize = juryResult.recommendedTheses.map((t) => ({
+        title: t.title || "",
+        author: t.author || "",
+      }));
+      const sanitized = await sanitizeAcademicDataBulk(itemsToSanitize, log);
+      juryResult.recommendedTheses = juryResult.recommendedTheses.map(
+        (t, idx) => ({
+          ...t,
+          title: sanitized[idx]?.title || t.title,
+          author: sanitized[idx]?.author || t.author,
+        }),
+      );
+    }
+
+    const [matrix] = await db
+      .select({ id: matrices.id })
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+
+    if (!matrix) {
+      return { error: "Tez matrisi bulunamadı." };
+    }
+
+    log.info("positioning_db_transaction_start");
+    await savePositioningReportTransaction(
+      session.userId,
+      matrix.id,
+      juryResult,
+    );
+    log.info("positioning_db_transaction_success");
+
+    return { success: true };
+  } catch (error) {
+    log.error("positioning_persist_failed", {
+      error,
+    });
+    return {
+      error:
+        "Konumlandırma raporu kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.",
+    };
+  }
+}
+
+/**
+ * Emits the final pipeline total-duration SUCCESS log line.
+ *
+ * @param flowId - The pipeline flow identifier.
+ * @param durationMs - Total pipeline duration in milliseconds.
+ */
+export async function logPositioningPipelineSuccessAction(
+  flowId: string,
+  durationMs: number,
+): Promise<void> {
+  const log = new Logger(flowId);
+  log.info("positioning_pipeline_success", {
+    data: { durationMs: Math.round(durationMs) },
+  });
+}
+
+/**
+ * Returns the user's positioning record linked to their thesis matrix.
+ *
+ * @returns The matching positioning record or null.
+ */
+export async function getPositioningAction(): Promise<Positioning | null> {
+  const session = await getSession();
+  if (!session) {
+    return null;
+  }
+
+  try {
+    const [matrix] = await db
+      .select({ id: matrices.id })
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+
+    if (!matrix) {
+      return null;
+    }
+
+    const [record] = await db
+      .select()
+      .from(positioning)
+      .where(eq(positioning.matrixId, matrix.id));
+
+    return record ?? null;
+  } catch {
+    return null;
+  }
 }
 </file>
 
@@ -43244,171 +43786,6 @@ export function SidebarWorkList({
 }
 </file>
 
-<file path="src/app/(app)/library/actions.ts">
-export {
-  getLibraryResourcesAction,
-  updateLibraryResourceAction,
-  toggleResourceReadStatusAction,
-  deleteLibraryResourceAction,
-} from "./resource-actions";
-export {
-  deleteResourcePdfAction,
-  requestResourcePdfUploadAction,
-  completeResourcePdfUploadAction,
-  requestPdfCreateUploadAction,
-  completePdfCreateUploadAction,
-} from "./pdf-actions";
-export { getBoxHierarchyForLibraryAction } from "./box-actions";
-export {
-  createResourceNoteAction,
-  deleteResourceNoteAction,
-} from "./note-actions";
-export { saveResourceCritiqueAction } from "./critique-actions";
-</file>
-
-<file path="src/app/(app)/library/page.tsx">
-"use client";
-
-import React, { useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import { BookMarked } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { SidebarWorkList } from "./_components/sidebar-work-list";
-import { ResourceDetail } from "./_components/resource-detail";
-import { AddResourceModal } from "./_components/add-resource-modal";
-import { LibrarySkeleton } from "./_components/library-skeleton";
-import { useLibraryResources } from "./_hooks/use-library-resources";
-import { usePdfUpload } from "./_hooks/use-pdf-upload";
-import { useResourceNotes } from "./_hooks/use-resource-notes";
-import { useResourceCritique } from "./_hooks/use-resource-critique";
-
-/**
- * Library page with a sidebar work list and a resource detail panel.
- *
- * @returns The library page markup.
- */
-export default function LibraryPage() {
-  return (
-    <Suspense fallback={<LibrarySkeleton />}>
-      <LibraryPageContent />
-    </Suspense>
-  );
-}
-
-/**
- * Library page content composing resource, PDF, and note hooks.
- *
- * @returns The library page content markup.
- */
-function LibraryPageContent() {
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-
-  const searchParams = useSearchParams();
-  const urlResourceId = searchParams.get("id");
-  const initialSelectedId = urlResourceId ? parseInt(urlResourceId, 10) : null;
-
-  const {
-    resources,
-    setResources,
-    isLoading,
-    selectedResourceId,
-    activeTab,
-    setActiveTab,
-    searchQuery,
-    setSearchQuery,
-    sortedResources,
-    handleSelectResource,
-    handleDeleteResource,
-    handleToggleReadStatus,
-    handleUpdateResource,
-  } = useLibraryResources(initialSelectedId);
-
-  const { notes, setNotes, handleAddNote, handleDeleteNote } = useResourceNotes(
-    { selectedResourceId },
-  );
-
-  const { getCritiqueFor, handleSaveCritique } = useResourceCritique({
-    selectedResourceId,
-  });
-
-  const { handleCreateResourceFromPdf, handleUploadPdf, handleDeletePdf } =
-    usePdfUpload({
-      selectedResourceId,
-      setResources,
-      setNotes,
-      handleSelectResource,
-    });
-
-  const selectedResource = resources.find(
-    (item) => item.id === selectedResourceId,
-  );
-
-  const selectedResourceNotes = notes.filter(
-    (note) => note.resourceId === selectedResourceId,
-  );
-
-  const selectedCritique = getCritiqueFor(selectedResourceId);
-
-  if (isLoading) {
-    return <LibrarySkeleton />;
-  }
-
-  return (
-    <div className="w-full space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start">
-        <div className="lg:col-span-4 lg:sticky lg:top-[calc(7rem+1px)] lg:h-[calc(100vh-8.5rem-1px)] flex flex-col min-h-0">
-          <SidebarWorkList
-            resources={sortedResources}
-            selectedResourceId={selectedResourceId}
-            onSelectResource={(id) => handleSelectResource(id)}
-            activeTab={activeTab}
-            onTabChange={(tab) => setActiveTab(tab)}
-            searchQuery={searchQuery}
-            onSearchChange={(q) => setSearchQuery(q)}
-            onOpenAddModal={() => setIsAddModalOpen(true)}
-            onDeleteResource={handleDeleteResource}
-          />
-        </div>
-
-        <div className="lg:col-span-8 h-full min-h-0">
-          {selectedResource ? (
-            <ResourceDetail
-              resource={selectedResource}
-              notes={selectedResourceNotes}
-              critique={selectedCritique}
-              onAddNote={handleAddNote}
-              onSaveCritique={handleSaveCritique}
-              onDeleteNote={handleDeleteNote}
-              onToggleReadStatus={handleToggleReadStatus}
-              onUpdateResource={handleUpdateResource}
-              onUploadPdf={handleUploadPdf}
-              onDeletePdf={handleDeletePdf}
-            />
-          ) : (
-            <Card className="flex flex-col items-center justify-center h-full rounded-md border border-border p-8 text-center text-muted-foreground">
-              <BookMarked className="h-10 w-10 opacity-30 mb-3" />
-              <h3 className="font-serif text-lg font-medium text-foreground">
-                Eser Seçilmedi
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Detayları ve akademik notları görüntülemek için sol menüden bir
-                eser seçiniz.
-              </p>
-            </Card>
-          )}
-        </div>
-      </div>
-
-      <AddResourceModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onSubmitPdf={handleCreateResourceFromPdf}
-      />
-    </div>
-  );
-}
-</file>
-
 <file path="src/app/(onboarding)/onboarding/literature-review/_hooks/use-literature-review.ts">
 "use client";
 
@@ -43626,272 +44003,6 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     setProcessing,
     setBoxErrors,
   };
-}
-</file>
-
-<file path="src/app/(onboarding)/onboarding/positioning/actions.ts">
-"use server";
-
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { positioning, matrices } from "@/db/schema";
-import type { Positioning } from "@/db/schema";
-import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
-import { Logger } from "@/lib/logger";
-import type { ThesisMatrix } from "@/lib/types";
-import { positioningMatrixSchema } from "@/features/positioning/validation";
-import { searchAndSiftTheses, type SiftedThesis } from "@/features/positioning/sifting";
-import { evaluateThesesInParallel } from "@/features/positioning/per-thesis-evaluation";
-import { analyzePositioningJury } from "@/features/positioning/analysis";
-import { savePositioningReportTransaction } from "@/features/positioning/decision-engine";
-import { sanitizeAcademicDataBulk } from "@/services/academic";
-import type { JuryAnalysisResult } from "@/features/positioning/analysis";
-
-/**
- * Runs query generation, Tezara search, and Cohere rerank; jury analysis and DB writes run separately.
- *
- * @param matrixInput - The thesis matrix used to derive the search queries.
- * @param flowId - The log flow identifier for structured logging.
- * @returns The sifted thesis list on success or an error message on failure.
- */
-export async function runPositioningSearchAction(
-  matrixInput: ThesisMatrix,
-  flowId: string,
-): Promise<{ success: true; theses: SiftedThesis[] } | { error: string }> {
-  const log = new Logger(flowId);
-  const positioningInput: Record<string, string> = {
-    subjectProblem: matrixInput.subjectProblem ?? "",
-    theoreticalFramework: matrixInput.theoreticalFramework ?? "",
-    methodology: matrixInput.methodology ?? "",
-  };
-
-  const parsed = positioningMatrixSchema.safeParse(positioningInput);
-  if (!parsed.success) {
-    const firstIssue = parsed.error.issues[0];
-    const msg = firstIssue
-      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
-      : "Form doğrulaması başarısız.";
-    return { error: msg };
-  }
-
-  const validated = parsed.data;
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    log.info("sifting_theses_start");
-    const theses = await searchAndSiftTheses(validated, log);
-    log.info("sifting_theses_success");
-
-    return { success: true, theses };
-  } catch (error) {
-    log.error("positioning_search_failed", {
-      error,
-    });
-    return {
-      error:
-        "Akademik arama sorguları üretilirken bir hata oluştu. Lütfen tekrar deneyin.",
-    };
-  }
-}
-
-/**
- * Runs the per-thesis relevance/originality evaluations in parallel and then the
- * final synthesis jury LLM over the relevant evaluated theses.
- *
- * @param matrixInput - The thesis matrix used for the jury evaluation.
- * @param theses - The sifted thesis candidates to analyze.
- * @param flowId - The log flow identifier for structured logging.
- * @returns The jury analysis result on success or an error message on failure.
- */
-export async function runPositioningJuryAction(
-  matrixInput: ThesisMatrix,
-  theses: SiftedThesis[],
-  flowId: string,
-): Promise<
-  { success: true; juryResult: JuryAnalysisResult } | { error: string }
-> {
-  const log = new Logger(flowId);
-  const positioningInput: Record<string, string> = {
-    subjectProblem: matrixInput.subjectProblem ?? "",
-    theoreticalFramework: matrixInput.theoreticalFramework ?? "",
-    methodology: matrixInput.methodology ?? "",
-  };
-
-  const parsed = positioningMatrixSchema.safeParse(positioningInput);
-  if (!parsed.success) {
-    const firstIssue = parsed.error.issues[0];
-    const msg = firstIssue
-      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
-      : "Form doğrulaması başarısız.";
-    return { error: msg };
-  }
-
-  const validated = parsed.data;
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const evaluatedTheses = await evaluateThesesInParallel(
-      validated,
-      theses,
-      log,
-    );
-
-    const relevantTheses = evaluatedTheses.filter(
-      (ev) => ev.evaluation.isRelevant,
-    );
-
-    log.info("positioning_jury_analysis_start");
-    const juryResult = await analyzePositioningJury(
-      validated,
-      relevantTheses,
-      log,
-    );
-    log.info("positioning_jury_analysis_success");
-
-    const thesisTypeById = new Map<string, string>(
-      relevantTheses.map((ev) => [String(ev.thesis.id), ev.thesis.thesisType]),
-    );
-    juryResult.recommendedTheses = juryResult.recommendedTheses.map((rec) => ({
-      ...rec,
-      thesisType: thesisTypeById.get(String(rec.externalThesisId)) || undefined,
-    }));
-
-    return { success: true, juryResult };
-  } catch (error) {
-    log.error("positioning_jury_failed", {
-      error,
-    });
-    return {
-      error:
-        "Akademik jüri analizi sırasında bir hata oluştu. Lütfen tekrar deneyin.",
-    };
-  }
-}
-
-/**
- * Sanitizes the jury result and persists the positioning report to the database.
- *
- * @param matrixInput - The thesis matrix used for the positioning report.
- * @param juryResult - The jury analysis result to persist.
- * @param flowId - The log flow identifier for structured logging.
- * @returns A success marker or an error message on failure.
- */
-export async function persistPositioningReportAction(
-  matrixInput: ThesisMatrix,
-  juryResult: JuryAnalysisResult,
-  flowId: string,
-): Promise<{ success: true } | { error: string }> {
-  const log = new Logger(flowId);
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const positioningInput: Record<string, string> = {
-      subjectProblem: matrixInput.subjectProblem ?? "",
-      theoreticalFramework: matrixInput.theoreticalFramework ?? "",
-      methodology: matrixInput.methodology ?? "",
-    };
-
-    const parsed = positioningMatrixSchema.safeParse(positioningInput);
-    if (!parsed.success) {
-      return { error: "Form doğrulaması başarısız." };
-    }
-    const validated = parsed.data;
-
-    if (juryResult.recommendedTheses.length > 0) {
-      const itemsToSanitize = juryResult.recommendedTheses.map((t) => ({
-        title: t.title || "",
-        author: t.author || "",
-      }));
-      const sanitized = await sanitizeAcademicDataBulk(itemsToSanitize, log);
-      juryResult.recommendedTheses = juryResult.recommendedTheses.map(
-        (t, idx) => ({
-          ...t,
-          title: sanitized[idx]?.title || t.title,
-          author: sanitized[idx]?.author || t.author,
-        }),
-      );
-    }
-
-    const [matrix] = await db
-      .select({ id: matrices.id })
-      .from(matrices)
-      .where(eq(matrices.userId, session.userId));
-
-    if (!matrix) {
-      return { error: "Tez matrisi bulunamadı." };
-    }
-
-    log.info("positioning_db_transaction_start");
-    await savePositioningReportTransaction(
-      session.userId,
-      matrix.id,
-      juryResult,
-    );
-    log.info("positioning_db_transaction_success");
-
-    return { success: true };
-  } catch (error) {
-    log.error("positioning_persist_failed", {
-      error,
-    });
-    return {
-      error:
-        "Konumlandırma raporu kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.",
-    };
-  }
-}
-
-/**
- * Emits the final pipeline total-duration SUCCESS log line.
- *
- * @param flowId - The pipeline flow identifier.
- * @param durationMs - Total pipeline duration in milliseconds.
- */
-export async function logPositioningPipelineSuccessAction(
-  flowId: string,
-  durationMs: number,
-): Promise<void> {
-  const log = new Logger(flowId);
-  log.info("positioning_pipeline_success", {
-    data: { durationMs: Math.round(durationMs) },
-  });
-}
-
-/**
- * Returns the user's positioning record linked to their thesis matrix.
- *
- * @returns The matching positioning record or null.
- */
-export async function getPositioningAction(): Promise<Positioning | null> {
-  const session = await getSession();
-  if (!session) {
-    return null;
-  }
-
-  try {
-    const [matrix] = await db
-      .select({ id: matrices.id })
-      .from(matrices)
-      .where(eq(matrices.userId, session.userId));
-
-    if (!matrix) {
-      return null;
-    }
-
-    const [record] = await db
-      .select()
-      .from(positioning)
-      .where(eq(positioning.matrixId, matrix.id));
-
-    return record ?? null;
-  } catch {
-    return null;
-  }
 }
 </file>
 

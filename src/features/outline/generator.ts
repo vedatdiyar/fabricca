@@ -59,7 +59,7 @@ export async function generateOutlineAction(): Promise<
         outlineGenerationJsonSchema,
         log,
         {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+          thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
           zodSchema: outlineGenerationSchema,
           seed: GEMINI_SEED,
           thesisMatrix: matrix,

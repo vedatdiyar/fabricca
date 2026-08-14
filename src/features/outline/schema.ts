@@ -52,7 +52,7 @@ const outlineSectionSchema: z.ZodType<{
         }),
       )
       .describe(
-        "Gövde bölümleri için en az 2 alt bölüm. Giriş ve Sonuç bölümleri için boş dizi ([]).",
+        "Bölümün alt başlıkları. Giriş ve gövde bölümleri alt başlıklar barındırabilir.",
       ),
   }),
 );
@@ -69,9 +69,9 @@ export const outlineGenerationSchema = z.object({
   sections: z
     .array(outlineSectionSchema)
     .min(4)
-    .max(5)
+    .max(6)
     .describe(
-      "Tezin ana bölüm başlıkları (Giriş [alt başlıksız], 2-3 Ana Gövde Bölümü [alt başlıklı], Sonuç ve Değerlendirme [alt başlıksız] olmak üzere toplam 4 veya 5 ana bölüm).",
+      "Tezin ana bölüm başlıkları (Giriş, 3 Ana Gövde Bölümü, Sonuç ve Değerlendirme olmak üzere toplam 4 veya 5 ana bölüm).",
     ),
 });
 
@@ -129,7 +129,7 @@ function buildSectionJsonSchemaProperty(): JsonSchemaProperty {
           additionalProperties: false,
         },
         description:
-          "Alt bölümler. Gövde bölümleri altında en az 2 alt bölüm yer alır. Giriş ve Sonuç bölümleri için boş dizi ([]).",
+          "Alt bölümler. Giriş ve gövde bölümleri altında konuyu yapılandıran alt bölümler yer alır.",
       },
     },
     required: ["title", "description", "sortOrder", "subSections"],
@@ -151,9 +151,9 @@ export const outlineGenerationJsonSchema: JsonSchema = {
       type: "array",
       items: buildSectionJsonSchemaProperty(),
       minItems: 4,
-      maxItems: 5,
+      maxItems: 6,
       description:
-        "Tezin ana bölüm başlıkları (Bölüm 1 Giriş [alt başlıksız], Bölüm 2 ve 3 [veya 4] Ana Gövde Bölümleri [en az 2 alt bölüm], Son Bölüm Sonuç ve Değerlendirme [alt başlıksız] olmak üzere toplam tam olarak 4 veya 5 ana bölüm).",
+        "Tezin ana bölüm başlıkları (Giriş, 3 Ana Gövde Bölümü, Sonuç ve Değerlendirme).",
     },
   },
   required: ["academicField", "sections"],

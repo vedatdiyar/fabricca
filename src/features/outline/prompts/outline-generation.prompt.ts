@@ -12,6 +12,7 @@ export interface OutlineMatrixInput {
 
 /**
  * Builds the standardized PromptPayload for thesis outline generation.
+ * Strictly adheres to docs/LLM_INTEGRATION.md.
  *
  * @param matrix - The thesis matrix input data.
  * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
@@ -21,39 +22,154 @@ export function buildOutlineGenerationPromptPayload(
 ): PromptPayload {
   return buildPromptPayload({
     roleAndExpertise:
-      "Siz, akademisyenlerin ve lisansüstü öğrencilerin tez matrislerini analiz ederek YÖK ve uluslararası akademik standartlara tam uyumlu tez planı (içindekiler) yapısı oluşturan kıdemli bir akademik yapılandırma asistanısınız.",
+      "Siz, Türkiye YÖK Lisansüstü Eğitim Enstitüleri (Sosyal Bilimler Enstitüsü, Fen Bilimleri Enstitüsü) ve uluslararası akademik standartlarda uzmanlaşmış kıdemli bir tez danışmanı ve akademik yapılandırma asistanısınız.",
 
     primaryTask:
-      "Sağlanan tez matrisindeki araştırma problemi, teorik çerçeve, birincil materyal ve metodoloji bilgilerine dayanarak tezin bilim dalını tespit edin ve metodolojik açıdan eksiksiz, disipline özgü bir bölüm/alt bölüm hiyerarşisi (outline) üretin.",
+      "Sağlanan tez matrisindeki araştırma problemi, teorik çerçeve, birincil materyal ve metodoloji bilgilerini sentezleyerek tezin bilim dalını tespit edin ve metodolojik açıdan akıcı, sade, organik bağları güçlü bir tez taslak planı (içindekiler hiyerarşisi) oluşturun.",
 
     rulesAndConstraints: `## 1. Bilim Dalı Tespiti (academicField)
-- Matris içeriğindeki kavramları, teorik çerçeveyi ve yöntemi analiz ederek tezin ait olduğu bilim dalını tespit edin.
-- Bilim dalı açık ve net olmalıdır (örn: "Siyaset Bilimi ve Kamu Yönetimi", "İşletme", "Hukuk", "Bilgisayar Mühendisliği", "Eğitim Bilimleri", "Tıp ve Sağlık Bilimleri").
+- Matris verilerini analiz ederek tezin ait olduğu temel akademik bilim dalını belirleyin (Örn: "Siyaset Bilimi ve Kamu Yönetimi", "Sosyoloji", "İktisat", "Hukuk", "Bilgisayar Mühendisliği", "Eğitim Bilimleri").
 
-## 2. Bölüm Yapısı ve Hiyerarşi Kuralları
-- **Toplam Ana Bölüm Sayısı:** Toplamda TAM OLARAK 4 veya 5 ana bölüm oluşturun. 4'ten az veya 5'ten fazla ana bölüm KESİNLİKLE OLUŞTURMAYIN.
-- **Bölüm 1 (Giriş - Sabit):** İlk ana bölüm KESİNLİKLE "Giriş" başlığını taşımalıdır. Giriş bölümünün alt başlıkları OLAMAZ. subSections dizisi KESİNLİKLE boş dizi [] olmalıdır.
-- **Gövde Bölümleri (Bölüm 2, 3 [ve varsa Bölüm 4]):** Giriş ile Sonuç arasındaki 2 veya 3 bölüm, tezin özgün konusunu, teorik çerçevesini, metodolojisini ve bulgularını inceleyen ana gövde bölümleridir. Her bir gövde bölümünün altında konusunu detaylandıran EN AZ 2 alt bölüm (subSections) yer almalıdır.
-- **Son Bölüm (Sonuç ve Değerlendirme - Sabit):** Son ana bölüm (4. veya 5. bölüm) KESİNLİKLE "Sonuç ve Değerlendirme" (veya "Sonuç") başlığını taşımalıdır. Sonuç bölümünün alt başlıkları OLAMAZ. subSections dizisi KESİNLİKLE boş dizi [] olmalıdır.
+## 2. Bölüm Mimarisi ve Hiyerarşi Standartları (Türkiye YÖK & SBE Standartları)
+- **Ana Bölüm Mimarisi:** Giriş + 3 Ana Gövde Bölümü + Sonuç ve Değerlendirme (Toplam 5 Ana Bölüm).
+- **Bölüm 1 (Giriş):** Tezin kuramsal ve yöntemsel manifestosudur. Altında araştırmanın problemini, kuramsal yaklaşımını, yöntemini/birincil kaynaklarını ve tezin planını sunan 2 ila 4 odaklanmış alt bölüm (subSections) yer almalıdır.
+- **Gövde Bölümleri (Bölüm 2, 3, 4):** Tezin ana kuramsal ve ampirik eksenlerini taşıyan 3 bağımsız ana bölümdür:
+  - *Bölüm 2 (Kuramsal Çerçeve):* Konunun teorik temellerini ve kavramsal araçlarını derinlemesine inceleyen 2-3 alt bölüm.
+  - *Bölüm 3 (Tarihsel Bağlam / Aktörler / Ampirik Süreç):* Araştırmanın birincil materyal ve aktörlerinin söylemsel/ampirik pratiklerini inceleyen 2-3 alt bölüm.
+  - *Bölüm 4 (Karşılaştırmalı Analiz / Karşı-Hegemonya / Sentez):* Farklı hatların, söylemlerin veya verilerin kuram ışığında karşılaştırmalı analizini ve tartışmasını yapan 2-3 alt bölüm.
+- **Son Bölüm (Sonuç ve Değerlendirme):** Araştırma bulgularının sentezini, hipotezlerin değerlendirilmesini ve literatüre katkıyı içeren nihai bölümdür.
 
-## 3. Disipline Özgü Gövde Bölümü Akışı
-Gövde bölümlerinin mimarisini tespit edilen bilim dalının geleneksel akademik kalıplarına uygun kurgulayın:
-- **Sosyal ve Beşeri Bilimler / İktisadi ve İdari Bilimler:** Bölüm 1: Giriş → Bölüm 2: Kavramsal ve Teorik Çerçeve → Bölüm 3: Araştırma Metodolojisi ve Analiz Çerçevesi → Bölüm 4: Ampirik Bulgular ve Tartışma (varsa) → Bölüm 4 veya 5: Sonuç ve Değerlendirme.
-- **Fen Bilimleri / Mühendislik / Sağlık Bilimleri:** Bölüm 1: Giriş → Bölüm 2: Kuramsal Arka Plan ve Literatür → Bölüm 3: Materyal ve Yöntem → Bölüm 4: Bulgular ve Tartışma → Bölüm 5: Sonuç ve Öneriler.
-- **Hukuk Bilimleri:** Bölüm 1: Giriş → Bölüm 2: Kavramsal ve Tarihsel Arka Plan → Bölüm 3: Pozitif Hukuki Düzenlemeler ve Yargı Kararları → Bölüm 4: Uygulamadaki Sorunlar ve Çözümler → Bölüm 5: Sonuç.
+## 3. Metodoloji ve Kaynak Entegrasyonu
+- Sosyal ve beşeri bilimlerde yöntem ve birincil kaynakların seçimi Giriş bölümünün alt başlıkları olarak kurgulanır; böylece tezin gövdesi yöntemle şişirilmeden doğrudan kuramsal ve ampirik içeriğe odaklanır.
 
-## 4. Konu Kutusu Eşleştirme (recommendedBoxTypes)
-- Her ana bölüm ve alt bölüm için bu bölümün hangi konu kutuları tarafından besleneceğini belirleyin.
-- Kullanılabilir kutu türleri: "SUBJECT_PROBLEM", "THEORETICAL_FRAMEWORK", "PRIMARY_MATERIAL", "METHODOLOGY".
-- Örnek: Teorik çerçeve bölümü için ["THEORETICAL_FRAMEWORK"], Metodoloji bölümü için ["METHODOLOGY", "PRIMARY_MATERIAL"].
+## 4. Başlık ve İfade Standartları
+- **Sadelik ve Hiyerarşik Netlik:** Başlıklar makale özeti veya uzun cümleler yerine kısa, analitik ve akademik kavramlara odaklı olmalıdır.
+- **Dil:** Tüm başlıklar ve açıklamalar akıcı ve yüksek düzey akademik Türkçe ile yazılmalıdır.
+- **Açıklamalar (description):** Her ana ve alt bölüm için 1-2 cümlelik öz, net akademik açıklamalar yazılmalıdır.
 
-## 5. Sıralama ve Açıklama Standartları
-- **Sıralama (sortOrder):** Ana bölümlerde ve her bölümün alt bölümlerinde 1'den başlayan ardışık sayılar kullanın.
-- **Açıklama (description):** Her ana bölüm ve alt bölüm için ne yapılacağını/anlatılacağını açıklayan kısa, net akademik Türkçe açıklamalar yazın.`,
+## 5. Konu Kutusu Eşleştirmesi (recommendedBoxTypes)
+- Her bölümün matristeki hangi temel bileşenlerle beslendiğini belirleyin.
+- Geçerli değerler: "SUBJECT_PROBLEM", "THEORETICAL_FRAMEWORK", "PRIMARY_MATERIAL", "METHODOLOGY".`,
 
-    outputFormat: `- Tüm başlıklar ve açıklamalar KESİNLİKLE yüksek düzey akademik Türkçe olmalıdır.
-- Gövde bölüm başlıkları tezin özgün konusunu doğrudan yansıtmalıdır.
-- Yanıtınızı sağlanan JSON şemasına eksiksiz uyacak şekilde döndürün.`,
+    workflowSteps: `1. Araştırma problemi ve kuramsal çerçeveden hareketle tezin bilim dalını (academicField) belirleyin.
+2. Türkiye lisansüstü tez geleneğine uygun olarak: Giriş (yöntem/materyal alt başlıkları dahil) + 3 Ana Gövde Bölümü + Sonuç ve Değerlendirme mimarisini kurun.
+3. Giriş bölümü altına Araştırmanın Problemi/Amacı, Kuramsal Yaklaşım/Hipotez, Yöntem/Birincil Kaynaklar ve Tezin Kurgusu alt başlıklarını ekleyin.
+4. 3 Gövde bölümünü (Kuram → Ampirik Süreç → Karşılaştırmalı Sentez) 2-3'er odaklı alt başlıkla yapılandırın.
+5. Başlıkları analitik ve sade bir dille formüle edin.
+6. İlgili recommendedBoxTypes eşleştirmelerini tanımlayarak JSON çıktısını üretin.`,
+
+    outputFormat: `- Yanıt yalnızca sağlanan JSON şemasına eksiksiz uyan JSON nesnesi olmalıdır.
+- Tüm başlıklar ve açıklamalar akademik Türkçe olmalıdır.`,
+
+    examples: `## Örnek 1: Siyaset Bilimi ve Kamu Yönetimi Tez Planı
+
+### Girdi
+- **Araştırma Problemi:** 1990'lar Türkiye'sinde Neoliberal Dönüşüm ve Yerel Yönetimlerin Özerkliği
+- **Teorik Çerçeve:** David Harvey'nin Neoliberalizm Kuramı ve Kentsel Mekânın Yeniden Üretimi
+- **Birincil Materyal:** Belediye Meclis Kararları, Resmî Gazete Tebliğleri ve İmar Raporları
+- **Metodoloji:** Nitel Söylem ve Politika Analizi
+
+### Çıktı
+\`\`\`json
+{
+  "academicField": "Siyaset Bilimi ve Kamu Yönetimi",
+  "sections": [
+    {
+      "title": "Giriş",
+      "description": "Araştırmanın konusu, problemi, kuramsal-yöntemsel yaklaşımı ve tezin kurgusal yapısı.",
+      "sortOrder": 1,
+      "recommendedBoxTypes": ["SUBJECT_PROBLEM", "METHODOLOGY"],
+      "subSections": [
+        {
+          "title": "Araştırmanın Konusu, Problemi ve Amacı",
+          "description": "1990'larda yerel yönetimlerin dönüşüm problemi ve araştırmanın temel soruları.",
+          "sortOrder": 1,
+          "recommendedBoxTypes": ["SUBJECT_PROBLEM"]
+        },
+        {
+          "title": "Kuramsal Çerçeve ve Temel Hipotezler",
+          "description": "David Harvey'nin mekân teorisi ekseninde kurulan hipotezlerin sunumu.",
+          "sortOrder": 2,
+          "recommendedBoxTypes": ["THEORETICAL_FRAMEWORK"]
+        },
+        {
+          "title": "Yöntem, Birincil Kaynaklar ve Sınırlılıklar",
+          "description": "Nitel söylem analizi yöntemi, belediye meclis kararları ve arşiv materyallerinin kapsamı.",
+          "sortOrder": 3,
+          "recommendedBoxTypes": ["METHODOLOGY", "PRIMARY_MATERIAL"]
+        }
+      ]
+    },
+    {
+      "title": "Kuramsal Çerçeve: Neoliberalizm, Devlet ve Kentsel Mekân",
+      "description": "Neoliberal yeniden yapılanma, yerel yönetimler ve kentsel rant dinamiklerinin teorik analizi.",
+      "sortOrder": 2,
+      "recommendedBoxTypes": ["THEORETICAL_FRAMEWORK"],
+      "subSections": [
+        {
+          "title": "Neoliberal Devlet Aklı ve Kentsel Mekânın Metalaşması",
+          "description": "Harvey'nin sermaye birikim modelleri ışığında kentsel politikalar.",
+          "sortOrder": 1,
+          "recommendedBoxTypes": ["THEORETICAL_FRAMEWORK"]
+        },
+        {
+          "title": "Yerel Özerklik ve Merkez-Yerel İlişkileri",
+          "description": "Merkezi idare ile yerel otoriteler arasındaki yetki aktarımlarının kuramsal boyutları.",
+          "sortOrder": 2,
+          "recommendedBoxTypes": ["THEORETICAL_FRAMEWORK", "SUBJECT_PROBLEM"]
+        }
+      ]
+    },
+    {
+      "title": "1990'lar Türkiye'sinde Yerel Yönetimlerin Kurumsal ve Hukuki Dönüşümü",
+      "description": "Dönemin yasal mevzuatı, belediye kararları ve yerel hizmetlerin piyasalaşma pratikleri.",
+      "sortOrder": 3,
+      "recommendedBoxTypes": ["PRIMARY_MATERIAL", "SUBJECT_PROBLEM"],
+      "subSections": [
+        {
+          "title": "Mevzuat Değişiklikleri ve Özelleştirme Uygulamaları",
+          "description": "Belediye hizmetlerinin piyasaya açılmasına dair yasal çerçevenin analizi.",
+          "sortOrder": 1,
+          "recommendedBoxTypes": ["PRIMARY_MATERIAL"]
+        },
+        {
+          "title": "Belediye Meclislerinde Kentsel Rant ve İmar Kararları",
+          "description": "Birincil arşiv belgeleri üzerinden meclis kararlarının ampirik dökümü.",
+          "sortOrder": 2,
+          "recommendedBoxTypes": ["PRIMARY_MATERIAL"]
+        }
+      ]
+    },
+    {
+      "title": "Kentsel Politikaların Söylemsel Analizi ve Özerklik Çıkmazı",
+      "description": "Siyasal aktörlerin söylemleri ile uygulama arasındaki gerilimlerin karşılaştırmalı analizi.",
+      "sortOrder": 4,
+      "recommendedBoxTypes": ["METHODOLOGY", "SUBJECT_PROBLEM"],
+      "subSections": [
+        {
+          "title": "Yerel Siyasette 'Hizmet' ve 'Piyasa' Söyleminin İnşası",
+          "description": "Nitel söylem analizi bulgularının kuramsal kavramlarla karşılaştırılması.",
+          "sortOrder": 1,
+          "recommendedBoxTypes": ["METHODOLOGY", "PRIMARY_MATERIAL"]
+        },
+        {
+          "title": "Merkezi Denetim Karşısında Yerel Özerklik Kapasitesi",
+          "description": "Yerel aktörlerin özerklik talepleri ile merkezi vesayet arasındaki güç ilişkileri.",
+          "sortOrder": 2,
+          "recommendedBoxTypes": ["SUBJECT_PROBLEM", "THEORETICAL_FRAMEWORK"]
+        }
+      ]
+    },
+    {
+      "title": "Sonuç ve Değerlendirme",
+      "description": "Araştırma bulgularının sentezi, hipotezlerin doğrulanması ve literatüre katkı.",
+      "sortOrder": 5,
+      "recommendedBoxTypes": ["SUBJECT_PROBLEM", "THEORETICAL_FRAMEWORK"],
+      "subSections": []
+    }
+  ]
+}
+\`\`\``,
 
     inputContext: `## Tez Matrisi Verileri
 
@@ -71,12 +187,7 @@ ${matrix.methodology}
 
 ---
 
-Yukarıdaki tez matrisi verilerini analiz ederek:
-1. Tezin bilim dalını (academicField) tespit edin.
-2. Tam olarak 4 veya 5 ana bölümden oluşan bir tez planı oluşturun.
-3. Bölüm 1 KESİNLİKLE "Giriş" olmalı ve subSections: [] (boş dizi) içermelidir.
-4. Son Bölüm KESİNLİKLE "Sonuç ve Değerlendirme" olmalı ve subSections: [] (boş dizi) içermelidir.
-5. Giriş ve Sonuç arasındaki 2 veya 3 gövde bölümünün her biri altında en az 2 alt bölüm oluşturun.
-6. Her bölüm ve alt bölüm için kısa, öz akademik Türkçe açıklamalar ve ilgili recommendedBoxTypes eşleştirmesini yapın.`,
+Yukarıdaki tez matrisi verilerini analiz ederek Türkiye lisansüstü tez standartlarına tam uyumlu, sade ve akıcı bir taslak tez planı oluşturun.`,
   });
 }
+
