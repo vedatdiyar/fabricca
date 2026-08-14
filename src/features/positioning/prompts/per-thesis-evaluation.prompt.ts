@@ -18,30 +18,30 @@ export function buildPerThesisEvaluationPromptPayload(
 ): PromptPayload {
   return buildPromptPayload({
     roleAndExpertise:
-      "Akademik tez karşılaştırma ve özgünlük analizi konusunda uzmanlaşmış bir Değerlendirme Kurulu Üyesisiniz.",
+      "Akademik tez karşılaştırma, literatür taraması ve özgünlük analizi konusunda son derece titiz bir Ön Değerlendirme Kurulu Üyesisiniz.",
 
     primaryTask:
-      "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisi ile YÖK / Tezara veritabanından gelen TEK BİR tezi titizlikle karşılaştırarak 3 aşamalı karar zincirini uygulayıp yapılandırılmış bir değerlendirme çıktısı üretmektir.",
+      "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisi ile veritabanından gelen TEK BİR tezi karşılaştırarak kesin ve tavizsiz bir ön eleme yapmak ve yapılandırılmış değerlendirme çıktısı üretmektir.",
 
-    workflowSteps: `## Aşama 1 — Alakalılık Değerlendirmesi (isRelevant)
-- Kullanıcının araştırmasının AMPİRİK ODAĞI VE ARAŞTIRMA PROBLEMİ (aktörler, dönem, kurumlar, olgu ve olaylar) ile bu tez arasında doğrudan anlamlı bir akademik ilişki var mı?
-- Yalnızca soyut kuramsal veya metodolojik terimlerin ortak olması tezi ALAKALI YAPMAZ (Örn: Sırf Gramsci, nitel analiz veya söylem analizi kullanılıyor diye ampirik konusu farklı bir tez alakalı sayılamaz, \`isRelevant: false\` verilmelidir).
-- Eğer tez, kullanıcının ampirik araştırma problemiyle kayda değer bir örtüşme göstermiyorsa \`isRelevant: false\` döndürün ve diğer alanları boş bırakın.
-- Eğer ampirik araştırma problemi veya ampirik aktörler açısından alakalıysa \`isRelevant: true\` döndürün ve Aşama 2'ye geçin.
+    workflowSteps: `## Aşama 1 — Kesin ve Tavizsiz Alakalılık Değerlendirmesi (isRelevant)
+- Kullanıcının araştırmasının AMPİRİK ODAĞI VE ARAŞTIRMA PROBLEMİ (spesifik konu, temel olgu/olaylar, aktörler veya tarihsel/kavramsal odak) ile bu tez arasında DOĞRUDAN ve ANLAMLI bir akademik bağ var mı?
+- **AGRESİF ELEME KURALI (MUTLAK):** Kararsız kaldığın veya yalnızca genel kavramsal/metodolojik ortaklığı olan (örn. aynı kuramcı, aynı analiz yöntemi veya yüzeysel kelime benzerliği olan) tezleri KESİNLİKLE ELE (\`isRelevant: false\`).
+- Eğer tez kullanıcının araştırma problemiyle doğrudan örtüşmüyorsa \`isRelevant: false\` ver ve diğer alanları boş bırak.
+- Yalnızca ampirik araştırma sorunu gerçekten aynı akademik sahada kesişiyorsa \`isRelevant: true\` ver ve Aşama 2'ye geç.
 
 ## Aşama 2 — Birebir Örtüşme / Özgünlük Değerlendirmesi (isDirectOverlap)
-- Kullanıcının tezi ile bu tez Araştırma Konusu/Soruları + Kuramsal/Metodolojik Çerçeve + Aktörler açısından BİREBİR AYNI mı?
-- Eğer BİREBİR örtüşme varsa \`isDirectOverlap: true\` döndürün.
-- Eğer benzerlik var ama birebir örtüşme yoksa \`isDirectOverlap: false\` döndürün ve Aşama 3'e geçin.
+- Kullanıcının tezi ile bu tez Konu/Sorunsal + Odak + Çerçeve açısından BİREBİR AYNI mı?
+- Eğer BİREBİR örtüşme varsa \`isDirectOverlap: true\` döndür.
+- Eğer çalışma özgün bir açı/katkı barındırıyorsa \`isDirectOverlap: false\` döndür ve Aşama 3'e geç.
 
-## Aşama 3 — Katkı ve Benzerlik Açıları + Literatür Konumu
-- \`contributionAreas\`: Tez, kullanıcının tezine TAM OLARAK hangi açılardan benziyor / katkı sağlıyor? En fazla 2-3 nokta atışı etiket.
-- \`relevanceReason\`: EN FAZLA 1-2 cümlelik rehber not.
-- \`literaturePosition\`: EN FAZLA 1 cümlelik özet literatür notu.`,
+## Aşama 3 — Katkı Açıları + Literatür Konumu (Yalnızca İlgili Tezler İçin)
+- \`contributionAreas\`: Tez kullanıcının çalışmasına hangi spesifik boyuttan katkı/rehberlik sunuyor? En fazla 2-3 kısa etiket (Örn: ["Arşiv Karşılaştırması", "Kavramsal Ayrım"]).
+- \`relevanceReason\`: Kullanıcının bu tezi çalışmasında nasıl kaynak/karşılaştırma unsuru yapacağına dair EN FAZLA 1-2 cümlelik net rehber not.
+- \`literaturePosition\`: Tezin literatürdeki temel sorunsalı / derdi hakkında EN FAZLA 1 cümlelik özet.`,
 
-    rulesAndConstraints: `- Yalnızca Tez Matrisinde ve ilgili tez metninde açıkça belirtilen somut ampirik verilere, yöntemlere ve kavramsal kurgulara temellenin.
-- Tez hakkında yalnızca sana verilen başlık ve özet bilgilerini kullanın.
-- İlgisiz tezlerde \`contributionAreas\` ve \`relevanceReason\` alanlarını boş tutun.`,
+    rulesAndConstraints: `1. **Agresif Eleme:** Yüzeysel veya teğet geçen tezleri asla ilgili işaretleme. Amaç ana jüriye yalnızca yüksek kaliteli, doğrudan ilgili tezleri ulaştırmaktır.
+2. **Kısa ve Odaklı İfade:** relevanceReason ve literaturePosition açıklamalarını net, kısa ve gürültüsüz tut.
+3. **Veri Sadakati:** Yalnızca verilen başlık ve özet metnine dayan; varsayımsal ekleme yapma.`,
 
     outputFormat:
       "Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir.",
@@ -49,7 +49,7 @@ export function buildPerThesisEvaluationPromptPayload(
     inputContext: `Aşağıda araştırmacının 3 bileşenli Tez Konumlandırma Matrisi ve değerlendirmen gereken TEK tez listelenmiştir:
 
 === KULLANICININ TEZ MATRİSİ ===
-1. Araştırma Problemi ve Odağı (aktörler dahil): ${input.subjectProblem}
+1. Araştırma Problemi ve Odağı: ${input.subjectProblem}
 2. Teorik ve Kavramsal Çerçeve: ${input.theoreticalFramework}
 3. Metodoloji: ${input.methodology}
 
@@ -61,7 +61,7 @@ Yazar: ${thesis.author || "Bilinmiyor"} (${thesis.year || "N/A"})
 Tür: ${thesis.thesisType || "N/A"} | Dil: ${thesis.language || "N/A"}
 Özet: ${thesis.abstract}
 
-Lütfen yukarıdaki tek tezi 3 aşamalı karar zincirine göre değerlendir ve özet odaklı JSON formatında çıktı üret.`,
+Lütfen yukarıdaki tezi titizlikle değerlendir ve JSON formatında çıktı üret.`,
   });
 }
 
@@ -89,29 +89,30 @@ Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"}
 
   return buildPromptPayload({
     roleAndExpertise:
-      "Akademik tez karşılaştırma ve özgünlük analizi konusunda uzmanlaşmış bir Değerlendirme Kurulu Üyesisiniz.",
+      "Akademik tez karşılaştırma, literatür taraması ve özgünlük analizi konusunda son derece titiz bir Ön Değerlendirme Kurulu Üyesisiniz.",
 
     primaryTask:
-      "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisi ile YÖK / Tezara veritabanından gelen TEZ LİSTESİNDEKİ HER BİR TEZİ SADECE KULLANICININ TEZ MATRİSİ İLE TEK TEK KARŞILAŞTIRARAK 3 aşamalı karar zincirini uygulayıp yapılandırılmış bir değerlendirme dizisi (`evaluations`) üretmektir.",
+      "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisi ile listedeki HER BİR TEZİ TEK TEK karşılaştırarak kesin ve tavizsiz bir ön eleme yapmak ve yapılandırılmış değerlendirme dizisi (`evaluations`) üretmektir.",
 
-    workflowSteps: `## Aşama 1 — Alakalılık Değerlendirmesi (isRelevant)
-- Kullanıcının araştırmasının AMPİRİK ODAĞI VE ARAŞTIRMA PROBLEMİ (aktörler, dönem, kurumlar, olgu ve olaylar) ile bu tez arasında doğrudan anlamlı bir akademik ilişki var mı?
-- Yalnızca soyut kuramsal veya metodolojik terimlerin ortak olması tezi ALAKALI YAPMAZ (Örn: Sırf Gramsci, nitel analiz veya söylem analizi kullanılıyor diye ampirik konusu farklı bir tez alakalı sayılamaz, \`isRelevant: false\` verilmelidir).
-- Eğer tez, kullanıcının ampirik araştırma problemiyle kayda değer bir örtüşme göstermiyorsa \`isRelevant: false\` döndürün.
-- Eğer ampirik araştırma problemi veya ampirik aktörler açısından alakalıysa \`isRelevant: true\` döndürün ve Aşama 2'ye geçin.
+    workflowSteps: `## Aşama 1 — Kesin ve Tavizsiz Alakalılık Değerlendirmesi (isRelevant)
+- Kullanıcının araştırmasının AMPİRİK ODAĞI VE ARAŞTIRMA PROBLEMİ ile bu tez arasında DOĞRUDAN ve ANLAMLI bir akademik bağ var mı?
+- **AGRESİF ELEME KURALI (MUTLAK):** Kararsız kaldığın veya yalnızca genel kavramsal/metodolojik ortaklığı olan (örn. aynı kuramcı, aynı analiz yöntemi veya yüzeysel kelime benzerliği olan) tezleri KESİNLİKLE ELE (\`isRelevant: false\`).
+- Eğer tez kullanıcının araştırma problemiyle doğrudan örtüşmüyorsa \`isRelevant: false\` ver.
+- Yalnızca ampirik araştırma sorunu gerçekten aynı akademik sahada kesişiyorsa \`isRelevant: true\` ver ve Aşama 2'ye geç.
 
 ## Aşama 2 — Birebir Örtüşme / Özgünlük Değerlendirmesi (isDirectOverlap)
-- Kullanıcının tezi ile bu tez BİREBİR AYNI mı?
-- Eğer BİREBİR örtüşme varsa \`isDirectOverlap: true\` döndürün.
-- Eğer özgünse \`isDirectOverlap: false\` döndürün ve Aşama 3'e geçin.
+- Kullanıcının tezi ile bu tez Konu/Sorunsal + Odak + Çerçeve açısından BİREBİR AYNI mı?
+- Eğer BİREBİR örtüşme varsa \`isDirectOverlap: true\` döndür.
+- Eğer çalışma özgün bir açı/katkı barındırıyorsa \`isDirectOverlap: false\` döndür ve Aşama 3'e geç.
 
-## Aşama 3 — Katkı ve Benzerlik Açıları + Literatür Konumu
-- \`contributionAreas\`: En fazla 2-3 etiket.
-- \`relevanceReason\`: EN FAZLA 1-2 cümlelik rehber not.
-- \`literaturePosition\`: EN FAZLA 1 cümlelik özet literatür notu.`,
+## Aşama 3 — Katkı Açıları + Literatür Konumu (Yalnızca İlgili Tezler İçin)
+- \`contributionAreas\`: En fazla 2-3 kısa etiket.
+- \`relevanceReason\`: EN FAZLA 1-2 cümlelik net rehber not.
+- \`literaturePosition\`: EN FAZLA 1 cümlelik özet.`,
 
-    rulesAndConstraints: `1. **Bağlam İzolasyon İlkesi:** Her tezi bağımsız bir çalışma olarak ele alıp SADECE kullanıcının Tez Matrisi parametreleri ile doğrudan karşılaştırın.
-2. **Veri Sadakati:** Yalnızca Tez Matrisinde ve ilgili tez metninde açıkça belirtilen somut ampirik verilere temellenin.`,
+    rulesAndConstraints: `1. **Agresif Eleme:** Yüzeysel veya teğet geçen tezleri asla ilgili işaretleme. Amaç ana jüriye yalnızca yüksek kaliteli, doğrudan ilgili tezleri ulaştırmaktır.
+2. **Kısa ve Odaklı İfade:** Açıklamaları net, kısa ve gürültüsüz tut.
+3. **Bağlam İzolasyonu:** Her tezi sadece kullanıcının tez matrisi ile karşılaştır.`,
 
     outputFormat:
       "Çıktı, belirtilen JSON şemasına harfiyen uyan (`evaluations` dizisi içeren) saf JSON nesnesidir.",
@@ -119,13 +120,13 @@ Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"}
     inputContext: `Aşağıda araştırmacının 3 bileşenli Tez Konumlandırma Matrisi ve değerlendirmen gereken tezler listelenmiştir:
 
 === KULLANICININ TEZ MATRİSİ ===
-1. Araştırma Problemi ve Odağı (aktörler dahil): ${input.subjectProblem}
+1. Araştırma Problemi ve Odağı: ${input.subjectProblem}
 2. Teorik ve Kavramsal Çerçeve: ${input.theoreticalFramework}
 3. Metodoloji: ${input.methodology}
 
 === DEĞERLENDİRİLECEK TEZLER ===
 ${formattedTheses}
 
-Lütfen listedeki her bir tezi SADECE kullanıcının Tez Matrisi ile 3 aşamalı karar zincirine göre tek tek değerlendir ve özet odaklı JSON \`evaluations\` dizisi olarak çıktı üret.`,
+Lütfen listedeki her bir tezi 3 aşamalı karar zincirine göre tek tek değerlendir ve JSON \`evaluations\` dizisi olarak çıktı üret.`,
   });
 }

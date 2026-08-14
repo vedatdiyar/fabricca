@@ -24365,30 +24365,30 @@ export function buildPerThesisEvaluationPromptPayload(
 ): PromptPayload {
   return buildPromptPayload({
     roleAndExpertise:
-      "Akademik tez karşılaştırma ve özgünlük analizi konusunda uzmanlaşmış bir Değerlendirme Kurulu Üyesisiniz.",
+      "Akademik tez karşılaştırma, literatür taraması ve özgünlük analizi konusunda son derece titiz bir Ön Değerlendirme Kurulu Üyesisiniz.",
 
     primaryTask:
-      "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisi ile YÖK / Tezara veritabanından gelen TEK BİR tezi titizlikle karşılaştırarak 3 aşamalı karar zincirini uygulayıp yapılandırılmış bir değerlendirme çıktısı üretmektir.",
+      "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisi ile veritabanından gelen TEK BİR tezi karşılaştırarak kesin ve tavizsiz bir ön eleme yapmak ve yapılandırılmış değerlendirme çıktısı üretmektir.",
 
-    workflowSteps: `## Aşama 1 — Alakalılık Değerlendirmesi (isRelevant)
-- Kullanıcının araştırmasının AMPİRİK ODAĞI VE ARAŞTIRMA PROBLEMİ (aktörler, dönem, kurumlar, olgu ve olaylar) ile bu tez arasında doğrudan anlamlı bir akademik ilişki var mı?
-- Yalnızca soyut kuramsal veya metodolojik terimlerin ortak olması tezi ALAKALI YAPMAZ (Örn: Sırf Gramsci, nitel analiz veya söylem analizi kullanılıyor diye ampirik konusu farklı bir tez alakalı sayılamaz, \`isRelevant: false\` verilmelidir).
-- Eğer tez, kullanıcının ampirik araştırma problemiyle kayda değer bir örtüşme göstermiyorsa \`isRelevant: false\` döndürün ve diğer alanları boş bırakın.
-- Eğer ampirik araştırma problemi veya ampirik aktörler açısından alakalıysa \`isRelevant: true\` döndürün ve Aşama 2'ye geçin.
+    workflowSteps: `## Aşama 1 — Kesin ve Tavizsiz Alakalılık Değerlendirmesi (isRelevant)
+- Kullanıcının araştırmasının AMPİRİK ODAĞI VE ARAŞTIRMA PROBLEMİ (spesifik konu, temel olgu/olaylar, aktörler veya tarihsel/kavramsal odak) ile bu tez arasında DOĞRUDAN ve ANLAMLI bir akademik bağ var mı?
+- **AGRESİF ELEME KURALI (MUTLAK):** Kararsız kaldığın veya yalnızca genel kavramsal/metodolojik ortaklığı olan (örn. aynı kuramcı, aynı analiz yöntemi veya yüzeysel kelime benzerliği olan) tezleri KESİNLİKLE ELE (\`isRelevant: false\`).
+- Eğer tez kullanıcının araştırma problemiyle doğrudan örtüşmüyorsa \`isRelevant: false\` ver ve diğer alanları boş bırak.
+- Yalnızca ampirik araştırma sorunu gerçekten aynı akademik sahada kesişiyorsa \`isRelevant: true\` ver ve Aşama 2'ye geç.
 
 ## Aşama 2 — Birebir Örtüşme / Özgünlük Değerlendirmesi (isDirectOverlap)
-- Kullanıcının tezi ile bu tez Araştırma Konusu/Soruları + Kuramsal/Metodolojik Çerçeve + Aktörler açısından BİREBİR AYNI mı?
-- Eğer BİREBİR örtüşme varsa \`isDirectOverlap: true\` döndürün.
-- Eğer benzerlik var ama birebir örtüşme yoksa \`isDirectOverlap: false\` döndürün ve Aşama 3'e geçin.
+- Kullanıcının tezi ile bu tez Konu/Sorunsal + Odak + Çerçeve açısından BİREBİR AYNI mı?
+- Eğer BİREBİR örtüşme varsa \`isDirectOverlap: true\` döndür.
+- Eğer çalışma özgün bir açı/katkı barındırıyorsa \`isDirectOverlap: false\` döndür ve Aşama 3'e geç.
 
-## Aşama 3 — Katkı ve Benzerlik Açıları + Literatür Konumu
-- \`contributionAreas\`: Tez, kullanıcının tezine TAM OLARAK hangi açılardan benziyor / katkı sağlıyor? En fazla 2-3 nokta atışı etiket.
-- \`relevanceReason\`: EN FAZLA 1-2 cümlelik rehber not.
-- \`literaturePosition\`: EN FAZLA 1 cümlelik özet literatür notu.`,
+## Aşama 3 — Katkı Açıları + Literatür Konumu (Yalnızca İlgili Tezler İçin)
+- \`contributionAreas\`: Tez kullanıcının çalışmasına hangi spesifik boyuttan katkı/rehberlik sunuyor? En fazla 2-3 kısa etiket (Örn: ["Arşiv Karşılaştırması", "Kavramsal Ayrım"]).
+- \`relevanceReason\`: Kullanıcının bu tezi çalışmasında nasıl kaynak/karşılaştırma unsuru yapacağına dair EN FAZLA 1-2 cümlelik net rehber not.
+- \`literaturePosition\`: Tezin literatürdeki temel sorunsalı / derdi hakkında EN FAZLA 1 cümlelik özet.`,
 
-    rulesAndConstraints: `- Yalnızca Tez Matrisinde ve ilgili tez metninde açıkça belirtilen somut ampirik verilere, yöntemlere ve kavramsal kurgulara temellenin.
-- Tez hakkında yalnızca sana verilen başlık ve özet bilgilerini kullanın.
-- İlgisiz tezlerde \`contributionAreas\` ve \`relevanceReason\` alanlarını boş tutun.`,
+    rulesAndConstraints: `1. **Agresif Eleme:** Yüzeysel veya teğet geçen tezleri asla ilgili işaretleme. Amaç ana jüriye yalnızca yüksek kaliteli, doğrudan ilgili tezleri ulaştırmaktır.
+2. **Kısa ve Odaklı İfade:** relevanceReason ve literaturePosition açıklamalarını net, kısa ve gürültüsüz tut.
+3. **Veri Sadakati:** Yalnızca verilen başlık ve özet metnine dayan; varsayımsal ekleme yapma.`,
 
     outputFormat:
       "Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir.",
@@ -24396,7 +24396,7 @@ export function buildPerThesisEvaluationPromptPayload(
     inputContext: `Aşağıda araştırmacının 3 bileşenli Tez Konumlandırma Matrisi ve değerlendirmen gereken TEK tez listelenmiştir:
 
 === KULLANICININ TEZ MATRİSİ ===
-1. Araştırma Problemi ve Odağı (aktörler dahil): ${input.subjectProblem}
+1. Araştırma Problemi ve Odağı: ${input.subjectProblem}
 2. Teorik ve Kavramsal Çerçeve: ${input.theoreticalFramework}
 3. Metodoloji: ${input.methodology}
 
@@ -24408,7 +24408,7 @@ Yazar: ${thesis.author || "Bilinmiyor"} (${thesis.year || "N/A"})
 Tür: ${thesis.thesisType || "N/A"} | Dil: ${thesis.language || "N/A"}
 Özet: ${thesis.abstract}
 
-Lütfen yukarıdaki tek tezi 3 aşamalı karar zincirine göre değerlendir ve özet odaklı JSON formatında çıktı üret.`,
+Lütfen yukarıdaki tezi titizlikle değerlendir ve JSON formatında çıktı üret.`,
   });
 }
 
@@ -24436,29 +24436,30 @@ Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"}
 
   return buildPromptPayload({
     roleAndExpertise:
-      "Akademik tez karşılaştırma ve özgünlük analizi konusunda uzmanlaşmış bir Değerlendirme Kurulu Üyesisiniz.",
+      "Akademik tez karşılaştırma, literatür taraması ve özgünlük analizi konusunda son derece titiz bir Ön Değerlendirme Kurulu Üyesisiniz.",
 
     primaryTask:
-      "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisi ile YÖK / Tezara veritabanından gelen TEZ LİSTESİNDEKİ HER BİR TEZİ SADECE KULLANICININ TEZ MATRİSİ İLE TEK TEK KARŞILAŞTIRARAK 3 aşamalı karar zincirini uygulayıp yapılandırılmış bir değerlendirme dizisi (`evaluations`) üretmektir.",
+      "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisi ile listedeki HER BİR TEZİ TEK TEK karşılaştırarak kesin ve tavizsiz bir ön eleme yapmak ve yapılandırılmış değerlendirme dizisi (`evaluations`) üretmektir.",
 
-    workflowSteps: `## Aşama 1 — Alakalılık Değerlendirmesi (isRelevant)
-- Kullanıcının araştırmasının AMPİRİK ODAĞI VE ARAŞTIRMA PROBLEMİ (aktörler, dönem, kurumlar, olgu ve olaylar) ile bu tez arasında doğrudan anlamlı bir akademik ilişki var mı?
-- Yalnızca soyut kuramsal veya metodolojik terimlerin ortak olması tezi ALAKALI YAPMAZ (Örn: Sırf Gramsci, nitel analiz veya söylem analizi kullanılıyor diye ampirik konusu farklı bir tez alakalı sayılamaz, \`isRelevant: false\` verilmelidir).
-- Eğer tez, kullanıcının ampirik araştırma problemiyle kayda değer bir örtüşme göstermiyorsa \`isRelevant: false\` döndürün.
-- Eğer ampirik araştırma problemi veya ampirik aktörler açısından alakalıysa \`isRelevant: true\` döndürün ve Aşama 2'ye geçin.
+    workflowSteps: `## Aşama 1 — Kesin ve Tavizsiz Alakalılık Değerlendirmesi (isRelevant)
+- Kullanıcının araştırmasının AMPİRİK ODAĞI VE ARAŞTIRMA PROBLEMİ ile bu tez arasında DOĞRUDAN ve ANLAMLI bir akademik bağ var mı?
+- **AGRESİF ELEME KURALI (MUTLAK):** Kararsız kaldığın veya yalnızca genel kavramsal/metodolojik ortaklığı olan (örn. aynı kuramcı, aynı analiz yöntemi veya yüzeysel kelime benzerliği olan) tezleri KESİNLİKLE ELE (\`isRelevant: false\`).
+- Eğer tez kullanıcının araştırma problemiyle doğrudan örtüşmüyorsa \`isRelevant: false\` ver.
+- Yalnızca ampirik araştırma sorunu gerçekten aynı akademik sahada kesişiyorsa \`isRelevant: true\` ver ve Aşama 2'ye geç.
 
 ## Aşama 2 — Birebir Örtüşme / Özgünlük Değerlendirmesi (isDirectOverlap)
-- Kullanıcının tezi ile bu tez BİREBİR AYNI mı?
-- Eğer BİREBİR örtüşme varsa \`isDirectOverlap: true\` döndürün.
-- Eğer özgünse \`isDirectOverlap: false\` döndürün ve Aşama 3'e geçin.
+- Kullanıcının tezi ile bu tez Konu/Sorunsal + Odak + Çerçeve açısından BİREBİR AYNI mı?
+- Eğer BİREBİR örtüşme varsa \`isDirectOverlap: true\` döndür.
+- Eğer çalışma özgün bir açı/katkı barındırıyorsa \`isDirectOverlap: false\` döndür ve Aşama 3'e geç.
 
-## Aşama 3 — Katkı ve Benzerlik Açıları + Literatür Konumu
-- \`contributionAreas\`: En fazla 2-3 etiket.
-- \`relevanceReason\`: EN FAZLA 1-2 cümlelik rehber not.
-- \`literaturePosition\`: EN FAZLA 1 cümlelik özet literatür notu.`,
+## Aşama 3 — Katkı Açıları + Literatür Konumu (Yalnızca İlgili Tezler İçin)
+- \`contributionAreas\`: En fazla 2-3 kısa etiket.
+- \`relevanceReason\`: EN FAZLA 1-2 cümlelik net rehber not.
+- \`literaturePosition\`: EN FAZLA 1 cümlelik özet.`,
 
-    rulesAndConstraints: `1. **Bağlam İzolasyon İlkesi:** Her tezi bağımsız bir çalışma olarak ele alıp SADECE kullanıcının Tez Matrisi parametreleri ile doğrudan karşılaştırın.
-2. **Veri Sadakati:** Yalnızca Tez Matrisinde ve ilgili tez metninde açıkça belirtilen somut ampirik verilere temellenin.`,
+    rulesAndConstraints: `1. **Agresif Eleme:** Yüzeysel veya teğet geçen tezleri asla ilgili işaretleme. Amaç ana jüriye yalnızca yüksek kaliteli, doğrudan ilgili tezleri ulaştırmaktır.
+2. **Kısa ve Odaklı İfade:** Açıklamaları net, kısa ve gürültüsüz tut.
+3. **Bağlam İzolasyonu:** Her tezi sadece kullanıcının tez matrisi ile karşılaştır.`,
 
     outputFormat:
       "Çıktı, belirtilen JSON şemasına harfiyen uyan (`evaluations` dizisi içeren) saf JSON nesnesidir.",
@@ -24466,14 +24467,14 @@ Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"}
     inputContext: `Aşağıda araştırmacının 3 bileşenli Tez Konumlandırma Matrisi ve değerlendirmen gereken tezler listelenmiştir:
 
 === KULLANICININ TEZ MATRİSİ ===
-1. Araştırma Problemi ve Odağı (aktörler dahil): ${input.subjectProblem}
+1. Araştırma Problemi ve Odağı: ${input.subjectProblem}
 2. Teorik ve Kavramsal Çerçeve: ${input.theoreticalFramework}
 3. Metodoloji: ${input.methodology}
 
 === DEĞERLENDİRİLECEK TEZLER ===
 ${formattedTheses}
 
-Lütfen listedeki her bir tezi SADECE kullanıcının Tez Matrisi ile 3 aşamalı karar zincirine göre tek tek değerlendir ve özet odaklı JSON \`evaluations\` dizisi olarak çıktı üret.`,
+Lütfen listedeki her bir tezi 3 aşamalı karar zincirine göre tek tek değerlendir ve JSON \`evaluations\` dizisi olarak çıktı üret.`,
   });
 }
 </file>
@@ -31396,6 +31397,383 @@ function MoveBoxDropdown(props: MoveBoxDropdownProps) {
 }
 </file>
 
+<file path="src/app/(app)/dashboard/_components/kanban-board.tsx">
+"use client";
+
+import { useState, useMemo, memo } from "react";
+import {
+  Activity,
+  Clock,
+  CheckCircle2,
+  BookOpen,
+  Sparkles,
+  Plus,
+  ChevronDown,
+  ChevronUp,
+  Pencil,
+  Trash2,
+} from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import type { Box } from "@/db/schema";
+import type { KanbanTask } from "../_lib/types";
+import { AddTaskModal } from "./add-task-modal";
+import { EditTaskModal } from "./edit-task-modal";
+
+interface KanbanBoardProps {
+  tasks: KanbanTask[];
+  onTaskStatusChange: (
+    taskId: string,
+    newStatus: "TODO" | "IN_PROGRESS" | "DONE",
+  ) => void;
+  onAddTask: (task: Omit<KanbanTask, "id">) => void;
+  onEditTask: (
+    taskId: string,
+    input: {
+      title: string;
+      priority: "HIGH" | "MEDIUM" | "LOW";
+      thesisBoxId?: number | null;
+    },
+  ) => Promise<boolean>;
+  onDeleteTask: (taskId: string) => Promise<void>;
+  boxes: Box[];
+}
+
+const COLUMNS = [
+  { id: "TODO", label: "Yapılacaklar", icon: Clock, iconColor: "text-info" },
+  {
+    id: "IN_PROGRESS",
+    label: "Yapılıyor",
+    icon: Activity,
+    iconColor: "text-warning",
+  },
+  { id: "DONE", label: "Bitti", icon: CheckCircle2, iconColor: "text-success" },
+] as const;
+
+interface KanbanCardProps {
+  task: KanbanTask;
+  onDragStart: (e: React.DragEvent, taskId: string) => void;
+  onDragEnd: () => void;
+  onEdit: (task: KanbanTask) => void;
+  onDelete: (taskId: string) => void;
+}
+
+const KanbanCard = memo(function KanbanCard({
+  task,
+  onDragStart,
+  onDragEnd,
+  onEdit,
+  onDelete,
+}: KanbanCardProps) {
+  const isReading = task.isReadingTask;
+
+  return (
+    <Card
+      draggable="true"
+      onDragStart={(e) => onDragStart(e, task.id)}
+      onDragEnd={onDragEnd}
+      className="group rounded-md p-4 transition-all duration-200 hover:-translate-y-1 hover:border-primary/20 hover:relative hover:z-50 cursor-grab active:cursor-grabbing"
+    >
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-2">
+          {!isReading && (
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(task);
+                }}
+                className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                title="Düzenle"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (
+                    window.confirm(
+                      `"${task.title}" görevini silmek istediğinize emin misiniz?`,
+                    )
+                  ) {
+                    onDelete(task.id);
+                  }
+                }}
+                className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                title="Sil"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-start gap-3">
+          {isReading ? (
+            <BookOpen className="h-4 w-4 text-primary mt-1 shrink-0" />
+          ) : (
+            <Sparkles className="h-4 w-4 text-accent-foreground mt-1 shrink-0" />
+          )}
+          <div className="space-y-1 min-w-0 flex-1">
+            <h4 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
+              {task.title}
+            </h4>
+            {task.description && (
+              <p className="font-sans text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                {task.description}
+              </p>
+            )}
+            {task.boxTitle && (
+              <div className="pt-2">
+                <Badge
+                  variant="outline"
+                  className="text-[10px] font-medium px-2 py-1 border-primary/20 bg-primary/10 text-primary rounded-md"
+                >
+                  {task.boxTitle}
+                </Badge>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+});
+
+/**
+ * Renders the Kanban board with task columns, drag-and-drop, and add/edit modals.
+ *
+ * @param root0 - Component props.
+ * @param root0.tasks - All tasks to display on the board.
+ * @param root0.onTaskStatusChange - Callback invoked when a task is moved to a new status.
+ * @param root0.onAddTask - Callback invoked when a new task is added.
+ * @param root0.onEditTask - Async callback invoked when a task is edited.
+ * @param root0.onDeleteTask - Async callback invoked when a task is deleted.
+ * @param root0.boxes - Topic boxes available for task assignment.
+ * @returns The rendered Kanban board.
+ */
+export function KanbanBoard({
+  tasks,
+  onTaskStatusChange,
+  onAddTask,
+  onEditTask,
+  onDeleteTask,
+  boxes,
+}: KanbanBoardProps) {
+  const [activeDragCol, setActiveDragCol] = useState<string | null>(null);
+  const [showAllDone, setShowAllDone] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<KanbanTask | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, taskId: string) => {
+    e.dataTransfer.setData("text/plain", taskId);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDragEnter = (e: React.DragEvent, colId: string) => {
+    e.preventDefault();
+    setActiveDragCol(colId);
+  };
+
+  const handleDrop = (
+    e: React.DragEvent,
+    targetStatus: "TODO" | "IN_PROGRESS" | "DONE",
+  ) => {
+    e.preventDefault();
+    const taskId = e.dataTransfer.getData("text/plain");
+    if (!taskId) return;
+
+    onTaskStatusChange(taskId, targetStatus);
+    setActiveDragCol(null);
+  };
+
+  const openEditModal = (task: KanbanTask) => {
+    setEditingTask(task);
+  };
+
+  const todoTasks = useMemo(
+    () => tasks.filter((t) => t.status === "TODO"),
+    [tasks],
+  );
+  const inProgressTasks = useMemo(
+    () => tasks.filter((t) => t.status === "IN_PROGRESS"),
+    [tasks],
+  );
+  const doneTasks = useMemo(
+    () => tasks.filter((t) => t.status === "DONE"),
+    [tasks],
+  );
+
+  const getColumnTasks = useMemo(
+    () => ({
+      TODO: todoTasks,
+      IN_PROGRESS: inProgressTasks,
+      DONE: doneTasks,
+    }),
+    [todoTasks, inProgressTasks, doneTasks],
+  );
+
+  return (
+    <div className="w-full space-y-6">
+      {/* Board Header */}
+      <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
+        <div>
+          <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
+            Akademik Kanban Panosu
+          </h2>
+          <p className="font-sans text-sm text-muted-foreground mt-1">
+            Tez adımlarınızı ve makale okuma döngülerinizi buradan takip edin.
+            Sürükleyip bırakarak durumları anlık güncelleyebilirsiniz.
+          </p>
+        </div>
+        <Button
+          variant="default"
+          onClick={() => setIsAddModalOpen(true)}
+          className="flex items-center gap-2 text-sm font-sans shrink-0 rounded-md"
+        >
+          <Plus className="h-4 w-4" />
+          <span>Yeni Görev Ekle</span>
+        </Button>
+      </div>
+
+      {/* Columns Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {COLUMNS.map((col) => {
+          const colTasks = getColumnTasks[col.id];
+          const ColIcon = col.icon;
+          const isDragActive = activeDragCol === col.id;
+
+          return (
+            <div
+              key={col.id}
+              onDragOver={handleDragOver}
+              onDragEnter={(e) => handleDragEnter(e, col.id)}
+              onDrop={(e) => handleDrop(e, col.id)}
+              className={cn(
+                "flex flex-col gap-4 rounded-md border p-4 min-h-125 transition-all duration-200",
+                isDragActive
+                  ? "border-primary/20 bg-secondary/20 scale-[1.01]"
+                  : "border-border/40 bg-background/20",
+              )}
+            >
+              {/* Column Header */}
+              <div className="flex items-center justify-between pb-2 border-b border-border/40">
+                <div className="flex items-center gap-2">
+                  <ColIcon className={`h-4 w-4 shrink-0 ${col.iconColor}`} />
+                  <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
+                    {col.label}
+                  </h3>
+                </div>
+                <Badge
+                  variant="secondary"
+                  className="bg-secondary text-secondary-foreground font-sans text-xs px-2 py-1 rounded-md"
+                >
+                  {colTasks.length}
+                </Badge>
+              </div>
+
+              {/* Task Cards List */}
+              <div className="flex flex-col gap-3 p-1 -m-1 overflow-visible">
+                {colTasks.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 px-4 rounded-md border border-dashed border-border/40 bg-secondary/10 text-center">
+                    <p className="text-xs text-muted-foreground">
+                      Bu sütunda görev bulunmuyor.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {(col.id === "DONE" ? colTasks.slice(0, 5) : colTasks).map(
+                      (task) => (
+                        <KanbanCard
+                          key={task.id}
+                          task={task}
+                          onDragStart={handleDragStart}
+                          onDragEnd={() => setActiveDragCol(null)}
+                          onEdit={openEditModal}
+                          onDelete={onDeleteTask}
+                        />
+                      ),
+                    )}
+
+                    {col.id === "DONE" && colTasks.length > 5 && (
+                      <>
+                        <div
+                          className={cn(
+                            "flex flex-col gap-3 transition-all duration-300 ease-in-out overflow-hidden",
+                            showAllDone
+                              ? "max-h-max opacity-100 mt-1"
+                              : "max-h-0 opacity-0 pointer-events-none",
+                          )}
+                        >
+                          {colTasks.slice(5).map((task) => (
+                            <KanbanCard
+                              key={task.id}
+                              task={task}
+                              onDragStart={handleDragStart}
+                              onDragEnd={() => setActiveDragCol(null)}
+                              onEdit={openEditModal}
+                              onDelete={onDeleteTask}
+                            />
+                          ))}
+                        </div>
+
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowAllDone(!showAllDone)}
+                          className="w-full mt-2 border-dashed border-border/40 text-muted-foreground hover:text-foreground text-xs font-sans rounded-md py-2 flex items-center justify-center gap-2"
+                        >
+                          {showAllDone ? (
+                            <>
+                              <span>Daha Az Göster</span>
+                              <ChevronUp className="h-3 w-3" />
+                            </>
+                          ) : (
+                            <>
+                              <span>
+                                Tüm Tamamlananları Gör (+
+                                {colTasks.length - 5})
+                              </span>
+                              <ChevronDown className="h-3 w-3" />
+                            </>
+                          )}
+                        </Button>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <AddTaskModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onAdd={onAddTask}
+        boxes={boxes}
+      />
+
+      <EditTaskModal
+        key={editingTask?.id ?? "none"}
+        task={editingTask}
+        onClose={() => setEditingTask(null)}
+        onEdit={onEditTask}
+        boxes={boxes}
+      />
+    </div>
+  );
+}
+</file>
+
 <file path="src/app/(app)/dashboard/_hooks/use-dashboard.ts">
 "use client";
 
@@ -33288,383 +33666,6 @@ export function CitationPopoverContent({
           return <p key={pKey}>{paragraph}</p>;
         })}
       </div>
-    </div>
-  );
-}
-</file>
-
-<file path="src/app/(app)/dashboard/_components/kanban-board.tsx">
-"use client";
-
-import { useState, useMemo, memo } from "react";
-import {
-  Activity,
-  Clock,
-  CheckCircle2,
-  BookOpen,
-  Sparkles,
-  Plus,
-  ChevronDown,
-  ChevronUp,
-  Pencil,
-  Trash2,
-} from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import type { Box } from "@/db/schema";
-import type { KanbanTask } from "../_lib/types";
-import { AddTaskModal } from "./add-task-modal";
-import { EditTaskModal } from "./edit-task-modal";
-
-interface KanbanBoardProps {
-  tasks: KanbanTask[];
-  onTaskStatusChange: (
-    taskId: string,
-    newStatus: "TODO" | "IN_PROGRESS" | "DONE",
-  ) => void;
-  onAddTask: (task: Omit<KanbanTask, "id">) => void;
-  onEditTask: (
-    taskId: string,
-    input: {
-      title: string;
-      priority: "HIGH" | "MEDIUM" | "LOW";
-      thesisBoxId?: number | null;
-    },
-  ) => Promise<boolean>;
-  onDeleteTask: (taskId: string) => Promise<void>;
-  boxes: Box[];
-}
-
-const COLUMNS = [
-  { id: "TODO", label: "Yapılacaklar", icon: Clock, iconColor: "text-info" },
-  {
-    id: "IN_PROGRESS",
-    label: "Yapılıyor",
-    icon: Activity,
-    iconColor: "text-warning",
-  },
-  { id: "DONE", label: "Bitti", icon: CheckCircle2, iconColor: "text-success" },
-] as const;
-
-interface KanbanCardProps {
-  task: KanbanTask;
-  onDragStart: (e: React.DragEvent, taskId: string) => void;
-  onDragEnd: () => void;
-  onEdit: (task: KanbanTask) => void;
-  onDelete: (taskId: string) => void;
-}
-
-const KanbanCard = memo(function KanbanCard({
-  task,
-  onDragStart,
-  onDragEnd,
-  onEdit,
-  onDelete,
-}: KanbanCardProps) {
-  const isReading = task.isReadingTask;
-
-  return (
-    <Card
-      draggable="true"
-      onDragStart={(e) => onDragStart(e, task.id)}
-      onDragEnd={onDragEnd}
-      className="group rounded-md p-4 transition-all duration-200 hover:-translate-y-1 hover:border-primary/20 hover:relative hover:z-50 cursor-grab active:cursor-grabbing"
-    >
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-2">
-          {!isReading && (
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit(task);
-                }}
-                className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                title="Düzenle"
-              >
-                <Pencil className="h-3 w-3" />
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (
-                    window.confirm(
-                      `"${task.title}" görevini silmek istediğinize emin misiniz?`,
-                    )
-                  ) {
-                    onDelete(task.id);
-                  }
-                }}
-                className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                title="Sil"
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-start gap-3">
-          {isReading ? (
-            <BookOpen className="h-4 w-4 text-primary mt-1 shrink-0" />
-          ) : (
-            <Sparkles className="h-4 w-4 text-accent-foreground mt-1 shrink-0" />
-          )}
-          <div className="space-y-1 min-w-0 flex-1">
-            <h4 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
-              {task.title}
-            </h4>
-            {task.description && (
-              <p className="font-sans text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                {task.description}
-              </p>
-            )}
-            {task.boxTitle && (
-              <div className="pt-2">
-                <Badge
-                  variant="outline"
-                  className="text-[10px] font-medium px-2 py-1 border-primary/20 bg-primary/10 text-primary rounded-md"
-                >
-                  {task.boxTitle}
-                </Badge>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </Card>
-  );
-});
-
-/**
- * Renders the Kanban board with task columns, drag-and-drop, and add/edit modals.
- *
- * @param root0 - Component props.
- * @param root0.tasks - All tasks to display on the board.
- * @param root0.onTaskStatusChange - Callback invoked when a task is moved to a new status.
- * @param root0.onAddTask - Callback invoked when a new task is added.
- * @param root0.onEditTask - Async callback invoked when a task is edited.
- * @param root0.onDeleteTask - Async callback invoked when a task is deleted.
- * @param root0.boxes - Topic boxes available for task assignment.
- * @returns The rendered Kanban board.
- */
-export function KanbanBoard({
-  tasks,
-  onTaskStatusChange,
-  onAddTask,
-  onEditTask,
-  onDeleteTask,
-  boxes,
-}: KanbanBoardProps) {
-  const [activeDragCol, setActiveDragCol] = useState<string | null>(null);
-  const [showAllDone, setShowAllDone] = useState(false);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<KanbanTask | null>(null);
-
-  const handleDragStart = (e: React.DragEvent, taskId: string) => {
-    e.dataTransfer.setData("text/plain", taskId);
-    e.dataTransfer.effectAllowed = "move";
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
-  const handleDragEnter = (e: React.DragEvent, colId: string) => {
-    e.preventDefault();
-    setActiveDragCol(colId);
-  };
-
-  const handleDrop = (
-    e: React.DragEvent,
-    targetStatus: "TODO" | "IN_PROGRESS" | "DONE",
-  ) => {
-    e.preventDefault();
-    const taskId = e.dataTransfer.getData("text/plain");
-    if (!taskId) return;
-
-    onTaskStatusChange(taskId, targetStatus);
-    setActiveDragCol(null);
-  };
-
-  const openEditModal = (task: KanbanTask) => {
-    setEditingTask(task);
-  };
-
-  const todoTasks = useMemo(
-    () => tasks.filter((t) => t.status === "TODO"),
-    [tasks],
-  );
-  const inProgressTasks = useMemo(
-    () => tasks.filter((t) => t.status === "IN_PROGRESS"),
-    [tasks],
-  );
-  const doneTasks = useMemo(
-    () => tasks.filter((t) => t.status === "DONE"),
-    [tasks],
-  );
-
-  const getColumnTasks = useMemo(
-    () => ({
-      TODO: todoTasks,
-      IN_PROGRESS: inProgressTasks,
-      DONE: doneTasks,
-    }),
-    [todoTasks, inProgressTasks, doneTasks],
-  );
-
-  return (
-    <div className="w-full space-y-6">
-      {/* Board Header */}
-      <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
-        <div>
-          <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
-            Akademik Kanban Panosu
-          </h2>
-          <p className="font-sans text-sm text-muted-foreground mt-1">
-            Tez adımlarınızı ve makale okuma döngülerinizi buradan takip edin.
-            Sürükleyip bırakarak durumları anlık güncelleyebilirsiniz.
-          </p>
-        </div>
-        <Button
-          variant="default"
-          onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center gap-2 text-sm font-sans shrink-0 rounded-md"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Yeni Görev Ekle</span>
-        </Button>
-      </div>
-
-      {/* Columns Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {COLUMNS.map((col) => {
-          const colTasks = getColumnTasks[col.id];
-          const ColIcon = col.icon;
-          const isDragActive = activeDragCol === col.id;
-
-          return (
-            <div
-              key={col.id}
-              onDragOver={handleDragOver}
-              onDragEnter={(e) => handleDragEnter(e, col.id)}
-              onDrop={(e) => handleDrop(e, col.id)}
-              className={cn(
-                "flex flex-col gap-4 rounded-md border p-4 min-h-125 transition-all duration-200",
-                isDragActive
-                  ? "border-primary/20 bg-secondary/20 scale-[1.01]"
-                  : "border-border/40 bg-background/20",
-              )}
-            >
-              {/* Column Header */}
-              <div className="flex items-center justify-between pb-2 border-b border-border/40">
-                <div className="flex items-center gap-2">
-                  <ColIcon className={`h-4 w-4 shrink-0 ${col.iconColor}`} />
-                  <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
-                    {col.label}
-                  </h3>
-                </div>
-                <Badge
-                  variant="secondary"
-                  className="bg-secondary text-secondary-foreground font-sans text-xs px-2 py-1 rounded-md"
-                >
-                  {colTasks.length}
-                </Badge>
-              </div>
-
-              {/* Task Cards List */}
-              <div className="flex flex-col gap-3 p-1 -m-1 overflow-visible">
-                {colTasks.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-10 px-4 rounded-md border border-dashed border-border/40 bg-secondary/10 text-center">
-                    <p className="text-xs text-muted-foreground">
-                      Bu sütunda görev bulunmuyor.
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    {(col.id === "DONE" ? colTasks.slice(0, 5) : colTasks).map(
-                      (task) => (
-                        <KanbanCard
-                          key={task.id}
-                          task={task}
-                          onDragStart={handleDragStart}
-                          onDragEnd={() => setActiveDragCol(null)}
-                          onEdit={openEditModal}
-                          onDelete={onDeleteTask}
-                        />
-                      ),
-                    )}
-
-                    {col.id === "DONE" && colTasks.length > 5 && (
-                      <>
-                        <div
-                          className={cn(
-                            "flex flex-col gap-3 transition-all duration-300 ease-in-out overflow-hidden",
-                            showAllDone
-                              ? "max-h-max opacity-100 mt-1"
-                              : "max-h-0 opacity-0 pointer-events-none",
-                          )}
-                        >
-                          {colTasks.slice(5).map((task) => (
-                            <KanbanCard
-                              key={task.id}
-                              task={task}
-                              onDragStart={handleDragStart}
-                              onDragEnd={() => setActiveDragCol(null)}
-                              onEdit={openEditModal}
-                              onDelete={onDeleteTask}
-                            />
-                          ))}
-                        </div>
-
-                        <Button
-                          variant="outline"
-                          onClick={() => setShowAllDone(!showAllDone)}
-                          className="w-full mt-2 border-dashed border-border/40 text-muted-foreground hover:text-foreground text-xs font-sans rounded-md py-2 flex items-center justify-center gap-2"
-                        >
-                          {showAllDone ? (
-                            <>
-                              <span>Daha Az Göster</span>
-                              <ChevronUp className="h-3 w-3" />
-                            </>
-                          ) : (
-                            <>
-                              <span>
-                                Tüm Tamamlananları Gör (+
-                                {colTasks.length - 5})
-                              </span>
-                              <ChevronDown className="h-3 w-3" />
-                            </>
-                          )}
-                        </Button>
-                      </>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <AddTaskModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onAdd={onAddTask}
-        boxes={boxes}
-      />
-
-      <EditTaskModal
-        key={editingTask?.id ?? "none"}
-        task={editingTask}
-        onClose={() => setEditingTask(null)}
-        onEdit={onEditTask}
-        boxes={boxes}
-      />
     </div>
   );
 }
@@ -39114,195 +39115,6 @@ export function OutlineSectionCard({
 }
 </file>
 
-<file path="src/features/positioning/sifting.ts">
-import { searchTezara } from "@/features/tezara";
-import type { TezaraThesisDetails } from "@/lib/types";
-import { rerankWithCohere, COHERE_RERANK_MODEL } from "@/services/ai/cohere";
-import type { Logger } from "@/lib/logger";
-import type { PositioningMatrixInput } from "./validation";
-
-/** Candidate thesis extended with Cohere semantic relevance score. */
-export interface SiftedThesis extends TezaraThesisDetails {
-  relevanceScore?: number;
-}
-
-const ALLOWED_LANGUAGES = new Set([
-  "tr",
-  "tur",
-  "turkish",
-  "türkçe",
-  "en",
-  "eng",
-  "english",
-  "ingilizce",
-]);
-
-/**
- * Whether a thesis language tag matches Turkish or English; missing tags are kept.
- *
- * @param lang - The thesis language tag to check.
- * @returns True when the language is allowed or the tag is missing.
- */
-function isAllowedLanguage(lang?: string): boolean {
-  if (!lang || !lang.trim()) {
-    return true;
-  }
-  const normalized = lang
-    .replace(/İ/g, "i")
-    .replace(/I/g, "ı")
-    .toLowerCase()
-    .trim();
-  return ALLOWED_LANGUAGES.has(normalized);
-}
-
-/**
- * Sanitizes query text for vector search.
- *
- * @param rawQuery - The raw query string to sanitize.
- * @returns The cleaned query string.
- */
-export function sanitizeSearchQuery(rawQuery: string): string {
-  if (!rawQuery) return "";
-  return rawQuery
-    .replace(/\b(OR|AND|NOT)\b/gi, " ")
-    .replace(/[+*?:^~={}[\]()"\\]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/**
- * Formats a thesis's title and abstract into a YAML document for reranking.
- *
- * @param thesis - The thesis to format.
- * @returns The formatted YAML string.
- */
-function formatThesisToYaml(thesis: TezaraThesisDetails): string {
-  return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
-}
-
-/**
- * Formats the positioning matrix input into a YAML query for reranking.
- *
- * @param input - The validated positioning matrix input.
- * @returns The formatted YAML query string.
- */
-function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
-  return `SubjectProblem: ${input.subjectProblem}`;
-}
-
-/** Difference threshold under which two relevance scores are treated as a tie. */
-const SCORE_EPSILON = 1e-4;
-
-/**
- * Ultra-fast direct semantic thesis sifting engine:
- * Directly vectorizes the thesis research problem, fetches top candidates from Qdrant Cloud
- * in a single high-speed vector query, filters abstracts, and uses Cohere Rerank v4.0 Pro
- * (cross-encoder) to select and rank the most relevant top-N theses.
- *
- * @param matrixInput - The validated positioning matrix input.
- * @param logger - Optional structured logger for pipeline events.
- * @param options - Optional settings for topN and candidateLimit.
- * @returns The selected top theses sorted deterministically.
- */
-export async function searchAndSiftTheses(
-  matrixInput: PositioningMatrixInput,
-  logger?: Logger,
-  options?: { topN?: number; candidateLimit?: number },
-): Promise<SiftedThesis[]> {
-  const topN = options?.topN ?? 45;
-  const candidateLimit = options?.candidateLimit ?? 100;
-
-  const searchQuery = sanitizeSearchQuery(matrixInput.subjectProblem);
-
-  const searchStart = performance.now();
-
-  logger?.info("sifting_direct_search_start", {
-    service: "tezara",
-    filePath: "src/features/positioning/sifting.ts",
-    data: { query: searchQuery, candidateLimit },
-  });
-
-  // 1. Single Ultra-Fast Qdrant Query with candidateLimit (default 100)
-  const rawTheses = await searchTezara(searchQuery, logger, {
-    limit: candidateLimit,
-  });
-
-  // 2. Filter valid candidates
-  const filteredCandidates = rawTheses.filter((thesis) => {
-    const hasSufficientAbstract =
-      thesis.abstract && thesis.abstract.trim().length >= 100;
-    if (!hasSufficientAbstract) return false;
-
-    const isValidLang = isAllowedLanguage(thesis.language);
-    if (!isValidLang) return false;
-
-    return true;
-  });
-
-  if (filteredCandidates.length === 0) {
-    logger?.info("sifting_no_candidates_remaining", {
-      service: "tezara",
-      filePath: "src/features/positioning/sifting.ts",
-      data: { query: searchQuery },
-    });
-    return [];
-  }
-
-  logger?.info("sifting_direct_search_success", {
-    service: "tezara",
-    filePath: "src/features/positioning/sifting.ts",
-    durationMs: performance.now() - searchStart,
-    data: { candidateCount: filteredCandidates.length },
-  });
-
-  // 3. Cohere Rerank v4.0 Pro
-  const targetYamlQuery = formatMatrixToYamlQuery(matrixInput);
-  const candidateYamlDocs = filteredCandidates.map(formatThesisToYaml);
-
-  const rerankStart = performance.now();
-
-  logger?.info("cohere_rerank_start", {
-    service: "cohere",
-    filePath: "src/features/positioning/sifting.ts",
-    data: {
-      model: COHERE_RERANK_MODEL,
-      candidateCount: filteredCandidates.length,
-    },
-  });
-
-  const rerankResults = await rerankWithCohere({
-    query: targetYamlQuery,
-    documents: candidateYamlDocs,
-    logger,
-  });
-
-  const scoredTheses: SiftedThesis[] = rerankResults.map((res) => {
-    const candidate = filteredCandidates[res.index];
-    return {
-      ...candidate,
-      relevanceScore: res.relevanceScore,
-    };
-  });
-
-  scoredTheses.sort((a, b) => {
-    const delta = (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
-    if (Math.abs(delta) > SCORE_EPSILON) return delta;
-    return a.id - b.id;
-  });
-
-  const selected = scoredTheses.slice(0, topN);
-
-  logger?.info("cohere_rerank_success", {
-    service: "cohere",
-    filePath: "src/features/positioning/sifting.ts",
-    durationMs: performance.now() - rerankStart,
-    data: { topCount: selected.length },
-  });
-
-  return selected;
-}
-</file>
-
 <file path="src/app/(app)/advisor/_components/markdown-renderer.tsx">
 "use client";
 
@@ -39845,320 +39657,192 @@ export default async function DashboardPage() {
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/positioning/_components/positioning-report-view.tsx">
-"use client";
+<file path="src/features/positioning/sifting.ts">
+import { searchTezara } from "@/features/tezara";
+import type { TezaraThesisDetails } from "@/lib/types";
+import { rerankWithCohere, COHERE_RERANK_MODEL } from "@/services/ai/cohere";
+import type { Logger } from "@/lib/logger";
+import type { PositioningMatrixInput } from "./validation";
 
-import { useState } from "react";
-import {
-  CheckCircle2,
-  AlertTriangle,
-  HelpCircle,
-  Lightbulb,
-  ArrowRight,
-  ExternalLink,
-  Target,
-  Loader2,
-  Sparkles,
-  Calendar,
-  User,
-  GraduationCap,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import type { JuryAnalysisResult } from "@/features/positioning/analysis";
-import { PositioningMarkdownRenderer } from "./positioning-markdown-renderer";
+/** Candidate thesis extended with Cohere semantic relevance score. */
+export interface SiftedThesis extends TezaraThesisDetails {
+  relevanceScore?: number;
+}
 
-interface PositioningReportViewProps {
-  reportData: JuryAnalysisResult;
-  onConfirm: () => void;
+const ALLOWED_LANGUAGES = new Set([
+  "tr",
+  "tur",
+  "turkish",
+  "türkçe",
+  "en",
+  "eng",
+  "english",
+  "ingilizce",
+]);
+
+/**
+ * Whether a thesis language tag matches Turkish or English; missing tags are kept.
+ *
+ * @param lang - The thesis language tag to check.
+ * @returns True when the language is allowed or the tag is missing.
+ */
+function isAllowedLanguage(lang?: string): boolean {
+  if (!lang || !lang.trim()) {
+    return true;
+  }
+  const normalized = lang
+    .replace(/İ/g, "i")
+    .replace(/I/g, "ı")
+    .toLowerCase()
+    .trim();
+  return ALLOWED_LANGUAGES.has(normalized);
 }
 
 /**
- * Renders the full positioning gap analysis report including global status badge,
- * structured jury synthesis sections, and recommended thesis cards.
+ * Sanitizes query text for vector search.
  *
- * @param root0 - The component props.
- * @param root0.reportData - The jury analysis result to display.
- * @param root0.onConfirm - Callback invoked when the user confirms the positioning.
- * @returns The rendered positioning report view.
+ * @param rawQuery - The raw query string to sanitize.
+ * @returns The cleaned query string.
  */
-export function PositioningReportView({
-  reportData,
-  onConfirm,
-}: PositioningReportViewProps) {
-  const [confirming, setConfirming] = useState(false);
-  const isNovelGap = reportData.globalStatus === "NOVEL_GAP_IDENTIFIED";
-  const isDirectOverlap = reportData.globalStatus === "DIRECT_OVERLAP";
-
-  const handleConfirm = async () => {
-    if (confirming) return;
-    setConfirming(true);
-    try {
-      await onConfirm();
-    } finally {
-      setConfirming(false);
-    }
-  };
-
-  return (
-    <div className="w-full space-y-8">
-      <Card
-        className={`p-4 transition-colors ${
-          isNovelGap
-            ? "bg-success/5 border-success/20"
-            : isDirectOverlap
-              ? "bg-destructive/5 border-destructive/20"
-              : "bg-warning/5 border-warning/20"
-        }`}
-      >
-        <div className="flex items-start gap-3.5">
-          <div
-            className={`p-2 rounded-md shrink-0 ${
-              isNovelGap
-                ? "bg-success/10 text-success"
-                : isDirectOverlap
-                  ? "bg-destructive/10 text-destructive"
-                  : "bg-warning/10 text-warning"
-            }`}
-          >
-            {isNovelGap && <CheckCircle2 className="h-4 w-4" />}
-            {isDirectOverlap && <AlertTriangle className="h-4 w-4" />}
-            {!isNovelGap && !isDirectOverlap && (
-              <HelpCircle className="h-4 w-4" />
-            )}
-          </div>
-
-          <div className="space-y-1 flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Jüri Değerlendirme Sonucu
-              </span>
-              {isNovelGap && (
-                <Badge className="bg-success/10 text-success border-success/20 px-2.5 py-0.5 text-xs font-semibold">
-                  Özgün Katkı Bulundu
-                </Badge>
-              )}
-              {isDirectOverlap && (
-                <Badge
-                  variant="destructive"
-                  className="bg-destructive/10 text-destructive border-destructive/20 px-2.5 py-0.5 text-xs font-semibold"
-                >
-                  Doğrudan Çakışma Riski
-                </Badge>
-              )}
-              {!isNovelGap && !isDirectOverlap && (
-                <Badge className="bg-warning/10 text-warning border-warning/20 px-2.5 py-0.5 text-xs font-semibold">
-                  Sınırlı Literatür
-                </Badge>
-              )}
-            </div>
-
-            <p className="text-sm leading-relaxed text-foreground">
-              {isNovelGap &&
-                "Çalışmanızın odağı, yöntemi ve kapsamı literatürdeki mevcut tezlerden belirgin biçimde ayrışmakta ve özgün bir akademik boşluk doldurmaktadır."}
-              {isDirectOverlap &&
-                "Çalışmanızın odağı literatürdeki mevcut tezlerle yüksek oranda çakışmaktadır. Jüri önerileri doğrultusunda teorik çerçeve veya yönteminizi güncellemeniz tavsiye edilir."}
-              {!isNovelGap &&
-                !isDirectOverlap &&
-                "Doğrudan eşleşen tez sayısı sınırlıdır. Kavramsal çerçevenizi veya arama sınırlarınızı genişleterek tekrar değerlendirebilirsiniz."}
-            </p>
-          </div>
-        </div>
-      </Card>
-
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="h-px flex-1 bg-border" />
-          <span className="px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-            Akademik Jüri Sentezi
-          </span>
-          <div className="h-px flex-1 bg-border" />
-        </div>
-
-        <PositioningMarkdownRenderer content={reportData.gapAnalysisSummary} />
-      </div>
-
-      {reportData.recommendedTheses &&
-        reportData.recommendedTheses.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="h-px flex-1 bg-border" />
-              <span className="px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                Stratejik Rehber Tez Kartları (
-                {reportData.recommendedTheses.length})
-              </span>
-              <div className="h-px flex-1 bg-border" />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {reportData.recommendedTheses.map((thesis, idx) => (
-                <RecommendedThesisCard
-                  key={thesis.externalThesisId || `thesis-${idx}`}
-                  thesis={thesis}
-                  index={idx}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-      <div className="flex justify-end mt-8 pb-8">
-        <Button
-          type="button"
-          size="lg"
-          onClick={handleConfirm}
-          disabled={confirming}
-          className="w-full sm:w-auto font-semibold"
-        >
-          {confirming ? (
-            <span className="flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Kaydediliyor...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              Onayla ve Konu Kutuları Adımına Geç
-              <ArrowRight className="w-4 h-4" />
-            </span>
-          )}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-interface RecommendedThesisCardProps {
-  thesis: NonNullable<JuryAnalysisResult["recommendedTheses"]>[number];
-  index: number;
+export function sanitizeSearchQuery(rawQuery: string): string {
+  if (!rawQuery) return "";
+  return rawQuery
+    .replace(/\b(OR|AND|NOT)\b/gi, " ")
+    .replace(/[+*?:^~={}[\]()"\\]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /**
- * Renders a rich academic guide thesis card with clean visual hierarchy,
- * metadata badges, contribution highlights, and strategic relevance notes.
+ * Formats a thesis's title and abstract into a YAML document for reranking.
  *
- * @param root0 - The component props.
- * @param root0.thesis - The recommended thesis data object.
- * @param root0.index - The 0-based index of the thesis in the list.
- * @returns The rendered thesis card.
+ * @param thesis - The thesis to format.
+ * @returns The formatted YAML string.
  */
-function RecommendedThesisCard({ thesis, index }: RecommendedThesisCardProps) {
-  const separatorIndex = thesis.title.indexOf(" / ");
-  const titleMain =
-    separatorIndex === -1
-      ? thesis.title
-      : thesis.title.slice(0, separatorIndex).trim();
-  const titleTranslation =
-    separatorIndex === -1
-      ? null
-      : thesis.title.slice(separatorIndex + 3).trim();
+function formatThesisToYaml(thesis: TezaraThesisDetails): string {
+  return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
+}
 
-  return (
-    <Card className="rounded-md border border-border bg-card p-5 hover:border-primary/30 transition-all flex flex-col justify-between space-y-4">
-      {/* Header & Meta Information */}
-      <div className="space-y-3">
-        {/* Top Badges Row */}
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary uppercase tracking-wider">
-              <Sparkles className="h-3 w-3 shrink-0" />
-              Rehber Kaynak #{index + 1}
-            </span>
-            {thesis.thesisType && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium border bg-muted text-muted-foreground border-border">
-                {thesis.thesisType}
-              </span>
-            )}
-          </div>
+/**
+ * Formats the positioning matrix input into a YAML query for reranking.
+ *
+ * @param input - The validated positioning matrix input.
+ * @returns The formatted YAML query string.
+ */
+function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
+  return `SubjectProblem: ${input.subjectProblem}`;
+}
 
-          <div className="flex items-center gap-2">
-            {thesis.year && (
-              <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground bg-muted/50 px-2 py-0.5 rounded border border-border/40">
-                <Calendar className="h-3 w-3" />
-                {thesis.year}
-              </span>
-            )}
-            {thesis.doi && (
-              <a
-                href={
-                  thesis.doi.startsWith("http")
-                    ? thesis.doi
-                    : `https://doi.org/${thesis.doi}`
-                }
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-              >
-                DOI <ExternalLink className="h-3 w-3" />
-              </a>
-            )}
-          </div>
-        </div>
+/** Difference threshold under which two relevance scores are treated as a tie. */
+const SCORE_EPSILON = 1e-4;
 
-        {/* Academic Title */}
-        <div className="space-y-1">
-          <h4 className="font-sans text-sm font-semibold text-foreground leading-snug tracking-tight">
-            {titleMain}
-          </h4>
-          {titleTranslation && (
-            <p className="text-xs italic text-muted-foreground leading-relaxed">
-              {titleTranslation}
-            </p>
-          )}
-        </div>
+/**
+ * Ultra-fast direct semantic thesis sifting engine:
+ * Directly vectorizes the thesis research problem, fetches top candidates from Qdrant Cloud
+ * in a single high-speed vector query, filters abstracts, and uses Cohere Rerank v4.0 Pro
+ * (cross-encoder) to select and rank the most relevant top-N theses.
+ *
+ * @param matrixInput - The validated positioning matrix input.
+ * @param logger - Optional structured logger for pipeline events.
+ * @param options - Optional settings for topN and candidateLimit.
+ * @returns The selected top theses sorted deterministically.
+ */
+export async function searchAndSiftTheses(
+  matrixInput: PositioningMatrixInput,
+  logger?: Logger,
+  options?: { topN?: number; candidateLimit?: number },
+): Promise<SiftedThesis[]> {
+  const topN = options?.topN ?? 45;
+  const candidateLimit = options?.candidateLimit ?? 150;
 
-        {/* Author and Institution Info */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground pt-2 border-t border-border/40">
-          {thesis.author && (
-            <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
-              <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              {thesis.author}
-            </span>
-          )}
-          {thesis.university && (
-            <span
-              className="inline-flex items-center gap-1.5 text-muted-foreground truncate"
-              title={thesis.university}
-            >
-              <GraduationCap className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <span className="truncate">{thesis.university}</span>
-            </span>
-          )}
-        </div>
-      </div>
+  const searchQuery = sanitizeSearchQuery(matrixInput.subjectProblem);
 
-      {/* Analysis Sections (Katkı & Ayrışma) */}
-      {(thesis.contributionArea || thesis.relevanceReason) && (
-        <div className="space-y-2.5 pt-1">
-          {/* Katkı / Odak Alanı Block */}
-          {thesis.contributionArea && (
-            <div className="rounded-md bg-primary/[0.04] border border-primary/20 p-3 space-y-1">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-                <Target className="h-3.5 w-3.5 shrink-0" />
-                <span>Katkı / Odak Alanı</span>
-              </div>
-              <p className="text-xs font-medium text-foreground leading-relaxed pl-5">
-                {thesis.contributionArea}
-              </p>
-            </div>
-          )}
+  const searchStart = performance.now();
 
-          {/* İlişki ve Ayrışma Sebebi Block */}
-          {thesis.relevanceReason && (
-            <div className="rounded-md bg-muted/30 border border-border/40 p-3 space-y-1">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                <Lightbulb className="h-3.5 w-3.5 text-warning shrink-0" />
-                <span>İlişki ve Ayrışma Sebebi</span>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed pl-5">
-                {thesis.relevanceReason}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-    </Card>
-  );
+  logger?.info("sifting_direct_search_start", {
+    service: "tezara",
+    filePath: "src/features/positioning/sifting.ts",
+    data: { query: searchQuery, candidateLimit },
+  });
+
+  // 1. Single Ultra-Fast Qdrant Query with candidateLimit (default 150)
+  const rawTheses = await searchTezara(searchQuery, logger, {
+    limit: candidateLimit,
+  });
+
+  // 2. Filter valid candidates
+  const filteredCandidates = rawTheses.filter((thesis) => {
+    const hasSufficientAbstract =
+      thesis.abstract && thesis.abstract.trim().length >= 100;
+    if (!hasSufficientAbstract) return false;
+
+    const isValidLang = isAllowedLanguage(thesis.language);
+    if (!isValidLang) return false;
+
+    return true;
+  });
+
+  if (filteredCandidates.length === 0) {
+    logger?.info("sifting_no_candidates_remaining", {
+      service: "tezara",
+      filePath: "src/features/positioning/sifting.ts",
+      data: { query: searchQuery },
+    });
+    return [];
+  }
+
+  logger?.info("sifting_direct_search_success", {
+    service: "tezara",
+    filePath: "src/features/positioning/sifting.ts",
+    durationMs: performance.now() - searchStart,
+    data: { candidateCount: filteredCandidates.length },
+  });
+
+  // 3. Cohere Rerank v4.0 Pro
+  const targetYamlQuery = formatMatrixToYamlQuery(matrixInput);
+  const candidateYamlDocs = filteredCandidates.map(formatThesisToYaml);
+
+  const rerankStart = performance.now();
+
+  logger?.info("cohere_rerank_start", {
+    service: "cohere",
+    filePath: "src/features/positioning/sifting.ts",
+    data: {
+      model: COHERE_RERANK_MODEL,
+      candidateCount: filteredCandidates.length,
+    },
+  });
+
+  const rerankResults = await rerankWithCohere({
+    query: targetYamlQuery,
+    documents: candidateYamlDocs,
+    logger,
+  });
+
+  const scoredTheses: SiftedThesis[] = rerankResults.map((res) => {
+    const candidate = filteredCandidates[res.index];
+    return {
+      ...candidate,
+      relevanceScore: res.relevanceScore,
+    };
+  });
+
+  scoredTheses.sort((a, b) => {
+    const delta = (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
+    if (Math.abs(delta) > SCORE_EPSILON) return delta;
+    return a.id - b.id;
+  });
+
+  const selected = scoredTheses.slice(0, topN);
+
+  logger?.info("cohere_rerank_success", {
+    service: "cohere",
+    filePath: "src/features/positioning/sifting.ts",
+    durationMs: performance.now() - rerankStart,
+    data: { topCount: selected.length },
+  });
+
+  return selected;
 }
 </file>
 
@@ -40688,6 +40372,323 @@ export async function runLiteraturePipelineAction(
     });
     return { error: message };
   }
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/positioning/_components/positioning-report-view.tsx">
+"use client";
+
+import { useState } from "react";
+import {
+  CheckCircle2,
+  AlertTriangle,
+  HelpCircle,
+  Lightbulb,
+  ArrowRight,
+  ExternalLink,
+  Target,
+  Loader2,
+  Sparkles,
+  Calendar,
+  User,
+  GraduationCap,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import type { JuryAnalysisResult } from "@/features/positioning/analysis";
+import { PositioningMarkdownRenderer } from "./positioning-markdown-renderer";
+
+interface PositioningReportViewProps {
+  reportData: JuryAnalysisResult;
+  onConfirm: () => void;
+}
+
+/**
+ * Renders the full positioning gap analysis report including global status badge,
+ * structured jury synthesis sections, and recommended thesis cards.
+ *
+ * @param root0 - The component props.
+ * @param root0.reportData - The jury analysis result to display.
+ * @param root0.onConfirm - Callback invoked when the user confirms the positioning.
+ * @returns The rendered positioning report view.
+ */
+export function PositioningReportView({
+  reportData,
+  onConfirm,
+}: PositioningReportViewProps) {
+  const [confirming, setConfirming] = useState(false);
+  const isNovelGap = reportData.globalStatus === "NOVEL_GAP_IDENTIFIED";
+  const isDirectOverlap = reportData.globalStatus === "DIRECT_OVERLAP";
+
+  const handleConfirm = async () => {
+    if (confirming) return;
+    setConfirming(true);
+    try {
+      await onConfirm();
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  return (
+    <div className="w-full space-y-8">
+      <Card
+        className={`p-4 transition-colors ${
+          isNovelGap
+            ? "bg-success/5 border-success/20"
+            : isDirectOverlap
+              ? "bg-destructive/5 border-destructive/20"
+              : "bg-warning/5 border-warning/20"
+        }`}
+      >
+        <div className="flex items-start gap-3.5">
+          <div
+            className={`p-2 rounded-md shrink-0 ${
+              isNovelGap
+                ? "bg-success/10 text-success"
+                : isDirectOverlap
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-warning/10 text-warning"
+            }`}
+          >
+            {isNovelGap && <CheckCircle2 className="h-4 w-4" />}
+            {isDirectOverlap && <AlertTriangle className="h-4 w-4" />}
+            {!isNovelGap && !isDirectOverlap && (
+              <HelpCircle className="h-4 w-4" />
+            )}
+          </div>
+
+          <div className="space-y-1 flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Jüri Değerlendirme Sonucu
+              </span>
+              {isNovelGap && (
+                <Badge className="bg-success/10 text-success border-success/20 px-2.5 py-0.5 text-xs font-semibold">
+                  Özgün Katkı Bulundu
+                </Badge>
+              )}
+              {isDirectOverlap && (
+                <Badge
+                  variant="destructive"
+                  className="bg-destructive/10 text-destructive border-destructive/20 px-2.5 py-0.5 text-xs font-semibold"
+                >
+                  Doğrudan Çakışma Riski
+                </Badge>
+              )}
+              {!isNovelGap && !isDirectOverlap && (
+                <Badge className="bg-warning/10 text-warning border-warning/20 px-2.5 py-0.5 text-xs font-semibold">
+                  Sınırlı Literatür
+                </Badge>
+              )}
+            </div>
+
+            <p className="text-sm leading-relaxed text-foreground">
+              {isNovelGap &&
+                "Çalışmanızın odağı, yöntemi ve kapsamı literatürdeki mevcut tezlerden belirgin biçimde ayrışmakta ve özgün bir akademik boşluk doldurmaktadır."}
+              {isDirectOverlap &&
+                "Çalışmanızın odağı literatürdeki mevcut tezlerle yüksek oranda çakışmaktadır. Jüri önerileri doğrultusunda teorik çerçeve veya yönteminizi güncellemeniz tavsiye edilir."}
+              {!isNovelGap &&
+                !isDirectOverlap &&
+                "Doğrudan eşleşen tez sayısı sınırlıdır. Kavramsal çerçevenizi veya arama sınırlarınızı genişleterek tekrar değerlendirebilirsiniz."}
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+            Akademik Jüri Sentezi
+          </span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+
+        <PositioningMarkdownRenderer content={reportData.gapAnalysisSummary} />
+      </div>
+
+      {reportData.recommendedTheses &&
+        reportData.recommendedTheses.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Stratejik Rehber Tez Kartları (
+                {reportData.recommendedTheses.length})
+              </span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {reportData.recommendedTheses.map((thesis, idx) => (
+                <RecommendedThesisCard
+                  key={thesis.externalThesisId || `thesis-${idx}`}
+                  thesis={thesis}
+                  index={idx}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+      <div className="flex justify-end mt-8 pb-8">
+        <Button
+          type="button"
+          size="lg"
+          onClick={handleConfirm}
+          disabled={confirming}
+          className="w-full sm:w-auto font-semibold"
+        >
+          {confirming ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Kaydediliyor...
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              Onayla ve Konu Kutuları Adımına Geç
+              <ArrowRight className="w-4 h-4" />
+            </span>
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+interface RecommendedThesisCardProps {
+  thesis: NonNullable<JuryAnalysisResult["recommendedTheses"]>[number];
+  index: number;
+}
+
+/**
+ * Renders a rich academic guide thesis card with clean visual hierarchy,
+ * metadata badges, contribution highlights, and strategic relevance notes.
+ *
+ * @param root0 - The component props.
+ * @param root0.thesis - The recommended thesis data object.
+ * @param root0.index - The 0-based index of the thesis in the list.
+ * @returns The rendered thesis card.
+ */
+function RecommendedThesisCard({ thesis, index }: RecommendedThesisCardProps) {
+  const separatorIndex = thesis.title.indexOf(" / ");
+  const titleMain =
+    separatorIndex === -1
+      ? thesis.title
+      : thesis.title.slice(0, separatorIndex).trim();
+  const titleTranslation =
+    separatorIndex === -1
+      ? null
+      : thesis.title.slice(separatorIndex + 3).trim();
+
+  return (
+    <Card className="rounded-md border border-border bg-card p-5 hover:border-primary/30 transition-all flex flex-col justify-between space-y-4">
+      {/* Header & Meta Information */}
+      <div className="space-y-3">
+        {/* Top Badges Row */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary uppercase tracking-wider">
+              <Sparkles className="h-3 w-3 shrink-0" />
+              Rehber Kaynak #{index + 1}
+            </span>
+            {thesis.thesisType && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium border bg-muted text-muted-foreground border-border">
+                {thesis.thesisType}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {thesis.year && (
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground bg-muted/50 px-2 py-0.5 rounded border border-border/40">
+                <Calendar className="h-3 w-3" />
+                {thesis.year}
+              </span>
+            )}
+            {thesis.doi && (
+              <a
+                href={
+                  thesis.doi.startsWith("http")
+                    ? thesis.doi
+                    : `https://doi.org/${thesis.doi}`
+                }
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+              >
+                DOI <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </div>
+        </div>
+
+        {/* Academic Title */}
+        <div className="space-y-1">
+          <h4 className="font-sans text-sm font-semibold text-foreground leading-snug tracking-tight">
+            {titleMain}
+          </h4>
+          {titleTranslation && (
+            <p className="text-xs italic text-muted-foreground leading-relaxed">
+              {titleTranslation}
+            </p>
+          )}
+        </div>
+
+        {/* Author and Institution Info */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground pt-2 border-t border-border/40">
+          {thesis.author && (
+            <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+              <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              {thesis.author}
+            </span>
+          )}
+          {thesis.university && (
+            <span
+              className="inline-flex items-center gap-1.5 text-muted-foreground truncate"
+              title={thesis.university}
+            >
+              <GraduationCap className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="truncate">{thesis.university}</span>
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Analysis Sections (Katkı & Ayrışma) */}
+      {(thesis.contributionArea || thesis.relevanceReason) && (
+        <div className="space-y-2.5 pt-1">
+          {/* Katkı / Odak Alanı Block */}
+          {thesis.contributionArea && (
+            <div className="rounded-md bg-primary/[0.04] border border-primary/20 p-3 space-y-1">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                <Target className="h-3.5 w-3.5 shrink-0" />
+                <span>Katkı / Odak Alanı</span>
+              </div>
+              <p className="text-xs font-medium text-foreground leading-relaxed pl-5">
+                {thesis.contributionArea}
+              </p>
+            </div>
+          )}
+
+          {/* İlişki ve Ayrışma Sebebi Block */}
+          {thesis.relevanceReason && (
+            <div className="rounded-md bg-muted/30 border border-border/40 p-3 space-y-1">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                <Lightbulb className="h-3.5 w-3.5 text-warning shrink-0" />
+                <span>İlişki ve Ayrışma Sebebi</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed pl-5">
+                {thesis.relevanceReason}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  );
 }
 </file>
 
