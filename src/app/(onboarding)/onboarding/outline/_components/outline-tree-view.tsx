@@ -31,7 +31,7 @@ function OutlineSectionNode({
 
   return (
     <Card className="rounded-md border border-border/40 p-4 mb-4">
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-xs font-bold text-primary">
           {sectionNumber}
         </span>
@@ -46,7 +46,7 @@ function OutlineSectionNode({
           )}
         </div>
         {hasSubSections && (
-          <BookOpen className="size-4 mt-1 shrink-0 text-muted-foreground" />
+          <BookOpen className="size-4 shrink-0 text-muted-foreground" />
         )}
       </div>
 

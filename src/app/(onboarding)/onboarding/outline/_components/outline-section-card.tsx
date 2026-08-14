@@ -211,10 +211,22 @@ export function OutlineSectionCard({
       } ${isDragOverSection ? "border-primary ring-2 ring-primary/10" : "hover:border-primary/20"}`}
     >
       {/* Header Row */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3 flex-1 min-w-0">
+      <div
+        className={`flex ${
+          isEditingSection ? "items-start" : "items-center"
+        } justify-between gap-3`}
+      >
+        <div
+          className={`flex ${
+            isEditingSection ? "items-start" : "items-center"
+          } gap-3 flex-1 min-w-0`}
+        >
           {/* Drag Handle & Section Number */}
-          <div className="flex items-center gap-1 shrink-0 mt-1">
+          <div
+            className={`flex items-center gap-1 shrink-0 ${
+              isEditingSection ? "mt-1" : ""
+            }`}
+          >
             <span
               className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground p-0.5 rounded transition-colors"
               title="Bölümü Taşı"
@@ -333,22 +345,20 @@ export function OutlineSectionCard({
       </div>
 
       {/* Sub-sections tree (WITHOUT LEFT BORDER) */}
-      {isExpanded && (
+      {isExpanded && (!isSpecialSection || hasSubSections) && (
         <div className="mt-3 space-y-2">
           {subSections.length === 0 ? (
-            !isSpecialSection ? (
-              <div className="flex items-center justify-between py-2 text-xs text-muted-foreground bg-muted/20 px-3 rounded-md border border-dashed border-border/50">
-                <span>Bu bölüm için henüz alt bölüm eklenmedi.</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleAddSubSection}
-                  className="text-xs h-7 gap-1 text-primary hover:bg-primary/10 shrink-0"
-                >
-                  <Plus className="size-3" /> Alt Bölüm Ekle
-                </Button>
-              </div>
-            ) : null
+            <div className="flex items-center justify-between py-2 text-xs text-muted-foreground bg-muted/20 px-3 rounded-md border border-dashed border-border/50">
+              <span>Bu bölüm için henüz alt bölüm eklenmedi.</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleAddSubSection}
+                className="text-xs h-7 gap-1 text-primary hover:bg-primary/10 shrink-0"
+              >
+                <Plus className="size-3" /> Alt Bölüm Ekle
+              </Button>
+            </div>
           ) : (
             subSections.map((sub, subIdx) => {
               const isSubEditing = editingSubIndex === subIdx;
@@ -423,10 +433,10 @@ export function OutlineSectionCard({
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
                         {/* Drag Handle & Sub-section Number */}
-                        <div className="flex items-center gap-2 shrink-0 mt-1">
+                        <div className="flex items-center gap-2 shrink-0">
                           <span
                             className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1"
                             title="Sürükleyip Sırasını Değiştirin"
