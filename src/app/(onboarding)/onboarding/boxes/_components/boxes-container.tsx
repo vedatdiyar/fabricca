@@ -21,19 +21,6 @@ import { BOX_ORDER_WEIGHT, BOX_TYPE_LABELS } from "@/lib/box-constants";
 import type { GeminiThesisBox } from "@/lib/types";
 
 /**
- * Determines whether a box card should span the full grid width, with cards beyond
- * index 4 taking the full width (third row in a 2-col grid where items 5+ render
- * as stacked full-width cards).
- *
- * @param idx - The index of the box within the grid.
- * @param totalBoxes - The total number of top-level boxes.
- * @returns True when the box card should span the full grid width.
- */
-function isFullWidthBox(idx: number, totalBoxes: number): boolean {
-  return (totalBoxes % 2 !== 0 && idx === totalBoxes - 1) || idx >= 4;
-}
-
-/**
  * Renders the subject boxes overview with a proceed-to-literature action.
  *
  * @returns The boxes container markup.
@@ -83,14 +70,9 @@ export function BoxesContainer() {
         description="Tez matrisinizin çözümlenmesi başarıyla tamamlandı. Aşağıdaki her bir konu kutusu, literatür taraması sürecinde bağımsız olarak taranacaktır."
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-min">
+      <div className="grid grid-cols-1 gap-4 auto-rows-min">
         {sortedBoxes.map((box, idx) => (
-          <BoxCard
-            key={box.title}
-            box={box}
-            index={idx}
-            isFullWidth={isFullWidthBox(idx, sortedBoxes.length)}
-          />
+          <BoxCard key={box.title} box={box} index={idx} />
         ))}
       </div>
 
@@ -193,24 +175,19 @@ const PrimaryMaterialSection = memo(function PrimaryMaterialSection() {
  * @param root0 - The card props object.
  * @param root0.box - The thesis box to render.
  * @param root0.index - The index of the box within the grid.
- * @param root0.isFullWidth - Whether the card spans the full grid width.
  * @returns The box card markup.
  */
 const BoxCard = memo(function BoxCard({
   box,
   index,
-  isFullWidth = false,
 }: {
   box: GeminiThesisBox;
   index: number;
-  isFullWidth?: boolean;
 }) {
   const parentConcepts = box.concepts ?? [];
 
   return (
-    <Card
-      className={`group/card flex flex-col h-full p-6 rounded-md transition-all duration-300 hover:-translate-y-1 hover:border-primary/20${isFullWidth ? " md:col-span-2" : ""}`}
-    >
+    <Card className="group/card flex flex-col h-full p-6 rounded-md transition-all duration-300 hover:-translate-y-1 hover:border-primary/20">
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-muted-foreground text-xs">
           <PlusCircle className="w-3 h-3" />

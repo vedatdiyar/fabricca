@@ -439,7 +439,7 @@ export function OutlineSectionCard({
                         </div>
 
                         <div className="flex-1 min-w-0 space-y-1">
-                          <h4 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground leading-snug">
+                          <h4 className="font-sans text-sm font-medium text-foreground leading-snug">
                             {sub.title}
                           </h4>
                           {sub.description && (

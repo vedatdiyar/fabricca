@@ -12081,7 +12081,7 @@ export function BoxesSkeleton() {
         </div>
       </div>
 
-      <div className="grid auto-rows-min grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid auto-rows-min grid-cols-1 gap-4">
         {Array.from({ length: 2 }).map((_, index) => (
           <Card key={index} className="h-full space-y-4 rounded-md p-6">
             <div className="flex items-center gap-2">
@@ -17067,140 +17067,6 @@ Lütfen yukarıdaki verileri titizlikle inceleyerek Akademik Jüri Değerlendirm
 HATIRLATMA:
 - Herhangi bir tez \`isDirectOverlap: true\` olarak işaretlendiyse globalStatus KESİNLİKLE DIRECT_OVERLAP olmalıdır.
 - Öneri kartları (recommendedTheses) yalnızca ilgili tezler arasından, matrisle belirgin örtüşmesi olanlardan seçilir; eşleşen tez yoksa boş liste döndür.`,
-  });
-}
-</file>
-
-<file path="src/features/positioning/prompts/per-thesis-evaluation.prompt.ts">
-import {
-  buildPromptPayload,
-  type PromptPayload,
-} from "@/lib/ai/prompt-builder";
-import type { PositioningMatrixInput } from "@/features/positioning/validation";
-import type { SiftedThesis } from "@/features/positioning/sifting";
-
-/**
- * Builds the standardized PromptPayload for single-thesis evaluation.
- *
- * @param input - The validated positioning matrix input.
- * @param thesis - The candidate thesis to evaluate.
- * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
- */
-export function buildPerThesisEvaluationPromptPayload(
-  input: PositioningMatrixInput,
-  thesis: SiftedThesis,
-): PromptPayload {
-  return buildPromptPayload({
-    roleAndExpertise:
-      "Akademik tez karşılaştırma ve özgünlük analizi konusunda uzmanlaşmış bir Değerlendirme Kurulu Üyesisiniz.",
-
-    primaryTask:
-      "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisi ile YÖK / Tezara veritabanından gelen TEK BİR tezi titizlikle karşılaştırarak 3 aşamalı karar zincirini uygulayıp yapılandırılmış bir değerlendirme çıktısı üretmektir.",
-
-    workflowSteps: `## Aşama 1 — Alakalılık Değerlendirmesi (isRelevant)
-- Kullanıcının araştırmasının AMPİRİK ODAĞI VE ARAŞTIRMA PROBLEMİ (aktörler, dönem, kurumlar, olgu ve olaylar) ile bu tez arasında doğrudan anlamlı bir akademik ilişki var mı?
-- Yalnızca soyut kuramsal veya metodolojik terimlerin ortak olması tezi ALAKALI YAPMAZ (Örn: Sırf Gramsci, nitel analiz veya söylem analizi kullanılıyor diye ampirik konusu farklı bir tez alakalı sayılamaz, \`isRelevant: false\` verilmelidir).
-- Eğer tez, kullanıcının ampirik araştırma problemiyle kayda değer bir örtüşme göstermiyorsa \`isRelevant: false\` döndürün ve diğer alanları boş bırakın.
-- Eğer ampirik araştırma problemi veya ampirik aktörler açısından alakalıysa \`isRelevant: true\` döndürün ve Aşama 2'ye geçin.
-
-## Aşama 2 — Birebir Örtüşme / Özgünlük Değerlendirmesi (isDirectOverlap)
-- Kullanıcının tezi ile bu tez Araştırma Konusu/Soruları + Kuramsal/Metodolojik Çerçeve + Aktörler açısından BİREBİR AYNI mı?
-- Eğer BİREBİR örtüşme varsa \`isDirectOverlap: true\` döndürün.
-- Eğer benzerlik var ama birebir örtüşme yoksa \`isDirectOverlap: false\` döndürün ve Aşama 3'e geçin.
-
-## Aşama 3 — Katkı ve Benzerlik Açıları + Literatür Konumu
-- \`contributionAreas\`: Tez, kullanıcının tezine TAM OLARAK hangi açılardan benziyor / katkı sağlıyor? En fazla 2-3 nokta atışı etiket.
-- \`relevanceReason\`: EN FAZLA 1-2 cümlelik rehber not.
-- \`literaturePosition\`: EN FAZLA 1 cümlelik özet literatür notu.`,
-
-    rulesAndConstraints: `- Yalnızca Tez Matrisinde ve ilgili tez metninde açıkça belirtilen somut ampirik verilere, yöntemlere ve kavramsal kurgulara temellenin.
-- Tez hakkında yalnızca sana verilen başlık ve özet bilgilerini kullanın.
-- İlgisiz tezlerde \`contributionAreas\` ve \`relevanceReason\` alanlarını boş tutun.`,
-
-    outputFormat:
-      "Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir.",
-
-    inputContext: `Aşağıda araştırmacının 3 bileşenli Tez Konumlandırma Matrisi ve değerlendirmen gereken TEK tez listelenmiştir:
-
-=== KULLANICININ TEZ MATRİSİ ===
-1. Araştırma Problemi ve Odağı (aktörler dahil): ${input.subjectProblem}
-2. Teorik ve Kavramsal Çerçeve: ${input.theoreticalFramework}
-3. Metodoloji: ${input.methodology}
-
-=== DEĞERLENDİRİLECEK TEZ ===
-Tez ID: ${thesis.id}
-Başlık: ${thesis.title}
-Yazar: ${thesis.author || "Bilinmiyor"} (${thesis.year || "N/A"})
-Üniversite/Bölüm: ${thesis.university || "N/A"} - ${thesis.department || "N/A"}
-Tür: ${thesis.thesisType || "N/A"} | Dil: ${thesis.language || "N/A"}
-Özet: ${thesis.abstract}
-
-Lütfen yukarıdaki tek tezi 3 aşamalı karar zincirine göre değerlendir ve özet odaklı JSON formatında çıktı üret.`,
-  });
-}
-
-/**
- * Builds the standardized PromptPayload for multi-thesis batch evaluation.
- *
- * @param input - The validated positioning matrix input.
- * @param theses - Candidate theses in the batch.
- * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
- */
-export function buildBatchPerThesisEvaluationPromptPayload(
-  input: PositioningMatrixInput,
-  theses: SiftedThesis[],
-): PromptPayload {
-  const formattedTheses = theses
-    .map(
-      (t) => `Tez ID: ${t.id}
-Başlık: ${t.title}
-Yazar: ${t.author || "Bilinmiyor"} (${t.year || "N/A"})
-Üniversite/Bölüm: ${t.university || "N/A"} - ${t.department || "N/A"}
-Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"}
-Özet: ${t.abstract}`,
-    )
-    .join("\n\n---\n\n");
-
-  return buildPromptPayload({
-    roleAndExpertise:
-      "Akademik tez karşılaştırma ve özgünlük analizi konusunda uzmanlaşmış bir Değerlendirme Kurulu Üyesisiniz.",
-
-    primaryTask:
-      "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisi ile YÖK / Tezara veritabanından gelen TEZ LİSTESİNDEKİ HER BİR TEZİ SADECE KULLANICININ TEZ MATRİSİ İLE TEK TEK KARŞILAŞTIRARAK 3 aşamalı karar zincirini uygulayıp yapılandırılmış bir değerlendirme dizisi (`evaluations`) üretmektir.",
-
-    workflowSteps: `## Aşama 1 — Alakalılık Değerlendirmesi (isRelevant)
-- Kullanıcının araştırmasının AMPİRİK ODAĞI VE ARAŞTIRMA PROBLEMİ (aktörler, dönem, kurumlar, olgu ve olaylar) ile bu tez arasında doğrudan anlamlı bir akademik ilişki var mı?
-- Yalnızca soyut kuramsal veya metodolojik terimlerin ortak olması tezi ALAKALI YAPMAZ (Örn: Sırf Gramsci, nitel analiz veya söylem analizi kullanılıyor diye ampirik konusu farklı bir tez alakalı sayılamaz, \`isRelevant: false\` verilmelidir).
-- Eğer tez, kullanıcının ampirik araştırma problemiyle kayda değer bir örtüşme göstermiyorsa \`isRelevant: false\` döndürün.
-- Eğer ampirik araştırma problemi veya ampirik aktörler açısından alakalıysa \`isRelevant: true\` döndürün ve Aşama 2'ye geçin.
-
-## Aşama 2 — Birebir Örtüşme / Özgünlük Değerlendirmesi (isDirectOverlap)
-- Kullanıcının tezi ile bu tez BİREBİR AYNI mı?
-- Eğer BİREBİR örtüşme varsa \`isDirectOverlap: true\` döndürün.
-- Eğer özgünse \`isDirectOverlap: false\` döndürün ve Aşama 3'e geçin.
-
-## Aşama 3 — Katkı ve Benzerlik Açıları + Literatür Konumu
-- \`contributionAreas\`: En fazla 2-3 etiket.
-- \`relevanceReason\`: EN FAZLA 1-2 cümlelik rehber not.
-- \`literaturePosition\`: EN FAZLA 1 cümlelik özet literatür notu.`,
-
-    rulesAndConstraints: `1. **Bağlam İzolasyon İlkesi:** Her tezi bağımsız bir çalışma olarak ele alıp SADECE kullanıcının Tez Matrisi parametreleri ile doğrudan karşılaştırın.
-2. **Veri Sadakati:** Yalnızca Tez Matrisinde ve ilgili tez metninde açıkça belirtilen somut ampirik verilere temellenin.`,
-
-    outputFormat:
-      "Çıktı, belirtilen JSON şemasına harfiyen uyan (`evaluations` dizisi içeren) saf JSON nesnesidir.",
-
-    inputContext: `Aşağıda araştırmacının 3 bileşenli Tez Konumlandırma Matrisi ve değerlendirmen gereken tezler listelenmiştir:
-
-=== KULLANICININ TEZ MATRİSİ ===
-1. Araştırma Problemi ve Odağı (aktörler dahil): ${input.subjectProblem}
-2. Teorik ve Kavramsal Çerçeve: ${input.theoreticalFramework}
-3. Metodoloji: ${input.methodology}
-
-=== DEĞERLENDİRİLECEK TEZLER ===
-${formattedTheses}
-
-Lütfen listedeki her bir tezi SADECE kullanıcının Tez Matrisi ile 3 aşamalı karar zincirine göre tek tek değerlendir ve özet odaklı JSON \`evaluations\` dizisi olarak çıktı üret.`,
   });
 }
 </file>
@@ -24477,6 +24343,140 @@ export async function executeBackwardExpansion(
   });
 
   return { selectedCandidates, shortfall };
+}
+</file>
+
+<file path="src/features/positioning/prompts/per-thesis-evaluation.prompt.ts">
+import {
+  buildPromptPayload,
+  type PromptPayload,
+} from "@/lib/ai/prompt-builder";
+import type { PositioningMatrixInput } from "@/features/positioning/validation";
+import type { SiftedThesis } from "@/features/positioning/sifting";
+
+/**
+ * Builds the standardized PromptPayload for single-thesis evaluation.
+ *
+ * @param input - The validated positioning matrix input.
+ * @param thesis - The candidate thesis to evaluate.
+ * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
+ */
+export function buildPerThesisEvaluationPromptPayload(
+  input: PositioningMatrixInput,
+  thesis: SiftedThesis,
+): PromptPayload {
+  return buildPromptPayload({
+    roleAndExpertise:
+      "Akademik tez karşılaştırma ve özgünlük analizi konusunda uzmanlaşmış bir Değerlendirme Kurulu Üyesisiniz.",
+
+    primaryTask:
+      "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisi ile YÖK / Tezara veritabanından gelen TEK BİR tezi titizlikle karşılaştırarak 3 aşamalı karar zincirini uygulayıp yapılandırılmış bir değerlendirme çıktısı üretmektir.",
+
+    workflowSteps: `## Aşama 1 — Alakalılık Değerlendirmesi (isRelevant)
+- Kullanıcının araştırmasının AMPİRİK ODAĞI VE ARAŞTIRMA PROBLEMİ (aktörler, dönem, kurumlar, olgu ve olaylar) ile bu tez arasında doğrudan anlamlı bir akademik ilişki var mı?
+- Yalnızca soyut kuramsal veya metodolojik terimlerin ortak olması tezi ALAKALI YAPMAZ (Örn: Sırf Gramsci, nitel analiz veya söylem analizi kullanılıyor diye ampirik konusu farklı bir tez alakalı sayılamaz, \`isRelevant: false\` verilmelidir).
+- Eğer tez, kullanıcının ampirik araştırma problemiyle kayda değer bir örtüşme göstermiyorsa \`isRelevant: false\` döndürün ve diğer alanları boş bırakın.
+- Eğer ampirik araştırma problemi veya ampirik aktörler açısından alakalıysa \`isRelevant: true\` döndürün ve Aşama 2'ye geçin.
+
+## Aşama 2 — Birebir Örtüşme / Özgünlük Değerlendirmesi (isDirectOverlap)
+- Kullanıcının tezi ile bu tez Araştırma Konusu/Soruları + Kuramsal/Metodolojik Çerçeve + Aktörler açısından BİREBİR AYNI mı?
+- Eğer BİREBİR örtüşme varsa \`isDirectOverlap: true\` döndürün.
+- Eğer benzerlik var ama birebir örtüşme yoksa \`isDirectOverlap: false\` döndürün ve Aşama 3'e geçin.
+
+## Aşama 3 — Katkı ve Benzerlik Açıları + Literatür Konumu
+- \`contributionAreas\`: Tez, kullanıcının tezine TAM OLARAK hangi açılardan benziyor / katkı sağlıyor? En fazla 2-3 nokta atışı etiket.
+- \`relevanceReason\`: EN FAZLA 1-2 cümlelik rehber not.
+- \`literaturePosition\`: EN FAZLA 1 cümlelik özet literatür notu.`,
+
+    rulesAndConstraints: `- Yalnızca Tez Matrisinde ve ilgili tez metninde açıkça belirtilen somut ampirik verilere, yöntemlere ve kavramsal kurgulara temellenin.
+- Tez hakkında yalnızca sana verilen başlık ve özet bilgilerini kullanın.
+- İlgisiz tezlerde \`contributionAreas\` ve \`relevanceReason\` alanlarını boş tutun.`,
+
+    outputFormat:
+      "Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir.",
+
+    inputContext: `Aşağıda araştırmacının 3 bileşenli Tez Konumlandırma Matrisi ve değerlendirmen gereken TEK tez listelenmiştir:
+
+=== KULLANICININ TEZ MATRİSİ ===
+1. Araştırma Problemi ve Odağı (aktörler dahil): ${input.subjectProblem}
+2. Teorik ve Kavramsal Çerçeve: ${input.theoreticalFramework}
+3. Metodoloji: ${input.methodology}
+
+=== DEĞERLENDİRİLECEK TEZ ===
+Tez ID: ${thesis.id}
+Başlık: ${thesis.title}
+Yazar: ${thesis.author || "Bilinmiyor"} (${thesis.year || "N/A"})
+Üniversite/Bölüm: ${thesis.university || "N/A"} - ${thesis.department || "N/A"}
+Tür: ${thesis.thesisType || "N/A"} | Dil: ${thesis.language || "N/A"}
+Özet: ${thesis.abstract}
+
+Lütfen yukarıdaki tek tezi 3 aşamalı karar zincirine göre değerlendir ve özet odaklı JSON formatında çıktı üret.`,
+  });
+}
+
+/**
+ * Builds the standardized PromptPayload for multi-thesis batch evaluation.
+ *
+ * @param input - The validated positioning matrix input.
+ * @param theses - Candidate theses in the batch.
+ * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
+ */
+export function buildBatchPerThesisEvaluationPromptPayload(
+  input: PositioningMatrixInput,
+  theses: SiftedThesis[],
+): PromptPayload {
+  const formattedTheses = theses
+    .map(
+      (t) => `Tez ID: ${t.id}
+Başlık: ${t.title}
+Yazar: ${t.author || "Bilinmiyor"} (${t.year || "N/A"})
+Üniversite/Bölüm: ${t.university || "N/A"} - ${t.department || "N/A"}
+Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"}
+Özet: ${t.abstract}`,
+    )
+    .join("\n\n---\n\n");
+
+  return buildPromptPayload({
+    roleAndExpertise:
+      "Akademik tez karşılaştırma ve özgünlük analizi konusunda uzmanlaşmış bir Değerlendirme Kurulu Üyesisiniz.",
+
+    primaryTask:
+      "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisi ile YÖK / Tezara veritabanından gelen TEZ LİSTESİNDEKİ HER BİR TEZİ SADECE KULLANICININ TEZ MATRİSİ İLE TEK TEK KARŞILAŞTIRARAK 3 aşamalı karar zincirini uygulayıp yapılandırılmış bir değerlendirme dizisi (`evaluations`) üretmektir.",
+
+    workflowSteps: `## Aşama 1 — Alakalılık Değerlendirmesi (isRelevant)
+- Kullanıcının araştırmasının AMPİRİK ODAĞI VE ARAŞTIRMA PROBLEMİ (aktörler, dönem, kurumlar, olgu ve olaylar) ile bu tez arasında doğrudan anlamlı bir akademik ilişki var mı?
+- Yalnızca soyut kuramsal veya metodolojik terimlerin ortak olması tezi ALAKALI YAPMAZ (Örn: Sırf Gramsci, nitel analiz veya söylem analizi kullanılıyor diye ampirik konusu farklı bir tez alakalı sayılamaz, \`isRelevant: false\` verilmelidir).
+- Eğer tez, kullanıcının ampirik araştırma problemiyle kayda değer bir örtüşme göstermiyorsa \`isRelevant: false\` döndürün.
+- Eğer ampirik araştırma problemi veya ampirik aktörler açısından alakalıysa \`isRelevant: true\` döndürün ve Aşama 2'ye geçin.
+
+## Aşama 2 — Birebir Örtüşme / Özgünlük Değerlendirmesi (isDirectOverlap)
+- Kullanıcının tezi ile bu tez BİREBİR AYNI mı?
+- Eğer BİREBİR örtüşme varsa \`isDirectOverlap: true\` döndürün.
+- Eğer özgünse \`isDirectOverlap: false\` döndürün ve Aşama 3'e geçin.
+
+## Aşama 3 — Katkı ve Benzerlik Açıları + Literatür Konumu
+- \`contributionAreas\`: En fazla 2-3 etiket.
+- \`relevanceReason\`: EN FAZLA 1-2 cümlelik rehber not.
+- \`literaturePosition\`: EN FAZLA 1 cümlelik özet literatür notu.`,
+
+    rulesAndConstraints: `1. **Bağlam İzolasyon İlkesi:** Her tezi bağımsız bir çalışma olarak ele alıp SADECE kullanıcının Tez Matrisi parametreleri ile doğrudan karşılaştırın.
+2. **Veri Sadakati:** Yalnızca Tez Matrisinde ve ilgili tez metninde açıkça belirtilen somut ampirik verilere temellenin.`,
+
+    outputFormat:
+      "Çıktı, belirtilen JSON şemasına harfiyen uyan (`evaluations` dizisi içeren) saf JSON nesnesidir.",
+
+    inputContext: `Aşağıda araştırmacının 3 bileşenli Tez Konumlandırma Matrisi ve değerlendirmen gereken tezler listelenmiştir:
+
+=== KULLANICININ TEZ MATRİSİ ===
+1. Araştırma Problemi ve Odağı (aktörler dahil): ${input.subjectProblem}
+2. Teorik ve Kavramsal Çerçeve: ${input.theoreticalFramework}
+3. Metodoloji: ${input.methodology}
+
+=== DEĞERLENDİRİLECEK TEZLER ===
+${formattedTheses}
+
+Lütfen listedeki her bir tezi SADECE kullanıcının Tez Matrisi ile 3 aşamalı karar zincirine göre tek tek değerlendir ve özet odaklı JSON \`evaluations\` dizisi olarak çıktı üret.`,
+  });
 }
 </file>
 
@@ -33486,226 +33486,6 @@ async function persistOutlines(
 }
 </file>
 
-<file path="src/features/positioning/sifting.ts">
-import { searchTezara } from "@/features/tezara";
-import type { TezaraThesisDetails } from "@/lib/types";
-import { rerankWithCohere, COHERE_RERANK_MODEL } from "@/services/ai/cohere";
-import type { Logger } from "@/lib/logger";
-import type { PositioningMatrixInput } from "./validation";
-import { sanitizeMeiliQuery, type GeneratedQueries } from "./queries";
-
-/** Candidate thesis extended with Cohere semantic relevance score. */
-export interface SiftedThesis extends TezaraThesisDetails {
-  relevanceScore?: number;
-}
-
-const ALLOWED_LANGUAGES = new Set([
-  "tr",
-  "tur",
-  "turkish",
-  "türkçe",
-  "en",
-  "eng",
-  "english",
-  "ingilizce",
-]);
-
-/** Meilisearch filter to pre-filter results to Turkish or English only. */
-const LANG_FILTER = "language=Türkçe OR language=English";
-
-/** Fields to search within for relevance (title + abstract). */
-const SEARCH_FIELDS = [
-  "title_original",
-  "title_translated",
-  "abstract_original",
-  "abstract_translated",
-];
-
-/** Minimum Meilisearch ranking score threshold to maximize candidate search recall. */
-const RANKING_SCORE_THRESHOLD = 0.1;
-
-/**
- * Whether a thesis language tag matches Turkish or English; missing tags are kept.
- *
- * @param lang - The thesis language tag to check.
- * @returns True when the language is allowed or the tag is missing.
- */
-function isAllowedLanguage(lang?: string): boolean {
-  if (!lang || !lang.trim()) {
-    return true;
-  }
-  const normalized = lang
-    .replace(/İ/g, "i")
-    .replace(/I/g, "ı")
-    .toLowerCase()
-    .trim();
-  return ALLOWED_LANGUAGES.has(normalized);
-}
-
-/**
- * Formats a thesis's title and abstract into a YAML document for reranking.
- *
- * @param thesis - The thesis to format.
- * @returns The formatted YAML string.
- */
-function formatThesisToYaml(thesis: TezaraThesisDetails): string {
-  return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
-}
-
-/**
- * Formats the positioning matrix input into a YAML query for reranking.
- *
- * @param input - The validated positioning matrix input.
- * @returns The formatted YAML query string.
- */
-function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
-  return `SubjectProblem: ${input.subjectProblem}`;
-}
-
-/** Difference threshold under which two relevance scores are treated as a tie. */
-const SCORE_EPSILON = 1e-4;
-
-/**
- * Runs 8 sequential Meilisearch queries on Tezara, deduplicates results, applies
- * abstract length and language filters, ranks candidates via Cohere Rerank
- * v4 Pro (full score list), then deterministically selects the top-N by
- * (relevanceScore desc, ID asc) for reproducible downstream evaluation.
- *
- * @param queries - The generated TR+EN search queries to run.
- * @param matrixInput - The validated positioning matrix input.
- * @param logger - Optional structured logger for pipeline events.
- * @param options - Optional settings for the sifting process.
- * @param options.topN - The maximum number of top-ranked theses to return.
- * @returns The selected theses sorted ascending by thesis ID.
- */
-export async function searchAndSiftTheses(
-  queries: GeneratedQueries,
-  matrixInput: PositioningMatrixInput,
-  logger?: Logger,
-  options?: { topN?: number },
-): Promise<SiftedThesis[]> {
-  const topN = options?.topN ?? 45;
-
-  const allQueries: string[] = [
-    sanitizeMeiliQuery(queries.subjectTr_alt1),
-    sanitizeMeiliQuery(queries.subjectTr_alt2),
-    sanitizeMeiliQuery(queries.subjectTr_alt3),
-    sanitizeMeiliQuery(queries.subjectTr_alt4),
-    sanitizeMeiliQuery(queries.subjectEn_alt1),
-    sanitizeMeiliQuery(queries.subjectEn_alt2),
-    sanitizeMeiliQuery(queries.subjectEn_alt3),
-    sanitizeMeiliQuery(queries.subjectEn_alt4),
-  ];
-
-  const searchStart = performance.now();
-
-  logger?.info("sifting_parallel_search_start", {
-    service: "tezara",
-    filePath: "src/features/positioning/sifting.ts",
-    data: { queries: allQueries },
-  });
-
-  const searchParams = {
-    limit: 50,
-    rankingScoreThreshold: RANKING_SCORE_THRESHOLD,
-    filter: LANG_FILTER,
-    attributesToSearchOn: SEARCH_FIELDS,
-  };
-
-  const hitArrays: TezaraThesisDetails[][] = [];
-  for (const q of allQueries) {
-    hitArrays.push(await searchTezara(q, logger, searchParams));
-  }
-
-  const candidateMap = new Map<number, TezaraThesisDetails>();
-  for (const hits of hitArrays) {
-    for (const thesis of hits) {
-      if (thesis && thesis.id && !candidateMap.has(thesis.id)) {
-        candidateMap.set(thesis.id, thesis);
-      }
-    }
-  }
-
-  const uniqueCandidates = Array.from(candidateMap.values()).sort(
-    (a, b) => a.id - b.id,
-  );
-
-  const filteredCandidates = uniqueCandidates.filter((thesis) => {
-    const hasSufficientAbstract =
-      thesis.abstract && thesis.abstract.trim().length >= 100;
-    if (!hasSufficientAbstract) return false;
-
-    const isValidLang = isAllowedLanguage(thesis.language);
-    if (!isValidLang) return false;
-
-    return true;
-  });
-
-  if (filteredCandidates.length === 0) {
-    logger?.info("sifting_no_candidates_remaining", {
-      service: "tezara",
-      filePath: "src/features/positioning/sifting.ts",
-      data: { queries: allQueries },
-    });
-    return [];
-  }
-
-  logger?.info("sifting_parallel_search_success", {
-    service: "tezara",
-    filePath: "src/features/positioning/sifting.ts",
-    durationMs: performance.now() - searchStart,
-    data: { candidateCount: filteredCandidates.length },
-  });
-
-  const targetYamlQuery = formatMatrixToYamlQuery(matrixInput);
-  const candidateYamlDocs = filteredCandidates.map(formatThesisToYaml);
-
-  const rerankStart = performance.now();
-
-  logger?.info("cohere_rerank_start", {
-    service: "cohere",
-    filePath: "src/features/positioning/sifting.ts",
-    data: {
-      model: COHERE_RERANK_MODEL,
-      candidateCount: filteredCandidates.length,
-    },
-  });
-
-  const rerankResults = await rerankWithCohere({
-    query: targetYamlQuery,
-    documents: candidateYamlDocs,
-    logger,
-  });
-
-  const scoredTheses: SiftedThesis[] = rerankResults.map((res) => {
-    const candidate = filteredCandidates[res.index];
-    return {
-      ...candidate,
-      relevanceScore: res.relevanceScore,
-    };
-  });
-
-  scoredTheses.sort((a, b) => {
-    const delta = (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
-    if (Math.abs(delta) > SCORE_EPSILON) return delta;
-    return a.id - b.id;
-  });
-
-  const selected = scoredTheses.slice(0, topN);
-
-  const topResults = selected.slice().sort((a, b) => a.id - b.id);
-
-  logger?.info("cohere_rerank_success", {
-    service: "cohere",
-    filePath: "src/features/positioning/sifting.ts",
-    durationMs: performance.now() - rerankStart,
-    data: { topCount: topResults.length },
-  });
-
-  return topResults;
-}
-</file>
-
 <file path="src/lib/session.ts">
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -35277,6 +35057,226 @@ function OutlineEditor({
       </div>
     </div>
   );
+}
+</file>
+
+<file path="src/features/positioning/sifting.ts">
+import { searchTezara } from "@/features/tezara";
+import type { TezaraThesisDetails } from "@/lib/types";
+import { rerankWithCohere, COHERE_RERANK_MODEL } from "@/services/ai/cohere";
+import type { Logger } from "@/lib/logger";
+import type { PositioningMatrixInput } from "./validation";
+import { sanitizeMeiliQuery, type GeneratedQueries } from "./queries";
+
+/** Candidate thesis extended with Cohere semantic relevance score. */
+export interface SiftedThesis extends TezaraThesisDetails {
+  relevanceScore?: number;
+}
+
+const ALLOWED_LANGUAGES = new Set([
+  "tr",
+  "tur",
+  "turkish",
+  "türkçe",
+  "en",
+  "eng",
+  "english",
+  "ingilizce",
+]);
+
+/** Meilisearch filter to pre-filter results to Turkish or English only. */
+const LANG_FILTER = "language=Türkçe OR language=English";
+
+/** Fields to search within for relevance (title + abstract). */
+const SEARCH_FIELDS = [
+  "title_original",
+  "title_translated",
+  "abstract_original",
+  "abstract_translated",
+];
+
+/** Minimum Meilisearch ranking score threshold to maximize candidate search recall. */
+const RANKING_SCORE_THRESHOLD = 0.1;
+
+/**
+ * Whether a thesis language tag matches Turkish or English; missing tags are kept.
+ *
+ * @param lang - The thesis language tag to check.
+ * @returns True when the language is allowed or the tag is missing.
+ */
+function isAllowedLanguage(lang?: string): boolean {
+  if (!lang || !lang.trim()) {
+    return true;
+  }
+  const normalized = lang
+    .replace(/İ/g, "i")
+    .replace(/I/g, "ı")
+    .toLowerCase()
+    .trim();
+  return ALLOWED_LANGUAGES.has(normalized);
+}
+
+/**
+ * Formats a thesis's title and abstract into a YAML document for reranking.
+ *
+ * @param thesis - The thesis to format.
+ * @returns The formatted YAML string.
+ */
+function formatThesisToYaml(thesis: TezaraThesisDetails): string {
+  return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
+}
+
+/**
+ * Formats the positioning matrix input into a YAML query for reranking.
+ *
+ * @param input - The validated positioning matrix input.
+ * @returns The formatted YAML query string.
+ */
+function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
+  return `SubjectProblem: ${input.subjectProblem}`;
+}
+
+/** Difference threshold under which two relevance scores are treated as a tie. */
+const SCORE_EPSILON = 1e-4;
+
+/**
+ * Runs 8 sequential Meilisearch queries on Tezara, deduplicates results, applies
+ * abstract length and language filters, ranks candidates via Cohere Rerank
+ * v4 Pro (full score list), then deterministically selects the top-N by
+ * (relevanceScore desc, ID asc) for reproducible downstream evaluation.
+ *
+ * @param queries - The generated TR+EN search queries to run.
+ * @param matrixInput - The validated positioning matrix input.
+ * @param logger - Optional structured logger for pipeline events.
+ * @param options - Optional settings for the sifting process.
+ * @param options.topN - The maximum number of top-ranked theses to return.
+ * @returns The selected theses sorted ascending by thesis ID.
+ */
+export async function searchAndSiftTheses(
+  queries: GeneratedQueries,
+  matrixInput: PositioningMatrixInput,
+  logger?: Logger,
+  options?: { topN?: number },
+): Promise<SiftedThesis[]> {
+  const topN = options?.topN ?? 45;
+
+  const allQueries: string[] = [
+    sanitizeMeiliQuery(queries.subjectTr_alt1),
+    sanitizeMeiliQuery(queries.subjectTr_alt2),
+    sanitizeMeiliQuery(queries.subjectTr_alt3),
+    sanitizeMeiliQuery(queries.subjectTr_alt4),
+    sanitizeMeiliQuery(queries.subjectEn_alt1),
+    sanitizeMeiliQuery(queries.subjectEn_alt2),
+    sanitizeMeiliQuery(queries.subjectEn_alt3),
+    sanitizeMeiliQuery(queries.subjectEn_alt4),
+  ];
+
+  const searchStart = performance.now();
+
+  logger?.info("sifting_parallel_search_start", {
+    service: "tezara",
+    filePath: "src/features/positioning/sifting.ts",
+    data: { queries: allQueries },
+  });
+
+  const searchParams = {
+    limit: 50,
+    rankingScoreThreshold: RANKING_SCORE_THRESHOLD,
+    filter: LANG_FILTER,
+    attributesToSearchOn: SEARCH_FIELDS,
+  };
+
+  const hitArrays: TezaraThesisDetails[][] = [];
+  for (const q of allQueries) {
+    hitArrays.push(await searchTezara(q, logger, searchParams));
+  }
+
+  const candidateMap = new Map<number, TezaraThesisDetails>();
+  for (const hits of hitArrays) {
+    for (const thesis of hits) {
+      if (thesis && thesis.id && !candidateMap.has(thesis.id)) {
+        candidateMap.set(thesis.id, thesis);
+      }
+    }
+  }
+
+  const uniqueCandidates = Array.from(candidateMap.values()).sort(
+    (a, b) => a.id - b.id,
+  );
+
+  const filteredCandidates = uniqueCandidates.filter((thesis) => {
+    const hasSufficientAbstract =
+      thesis.abstract && thesis.abstract.trim().length >= 100;
+    if (!hasSufficientAbstract) return false;
+
+    const isValidLang = isAllowedLanguage(thesis.language);
+    if (!isValidLang) return false;
+
+    return true;
+  });
+
+  if (filteredCandidates.length === 0) {
+    logger?.info("sifting_no_candidates_remaining", {
+      service: "tezara",
+      filePath: "src/features/positioning/sifting.ts",
+      data: { queries: allQueries },
+    });
+    return [];
+  }
+
+  logger?.info("sifting_parallel_search_success", {
+    service: "tezara",
+    filePath: "src/features/positioning/sifting.ts",
+    durationMs: performance.now() - searchStart,
+    data: { candidateCount: filteredCandidates.length },
+  });
+
+  const targetYamlQuery = formatMatrixToYamlQuery(matrixInput);
+  const candidateYamlDocs = filteredCandidates.map(formatThesisToYaml);
+
+  const rerankStart = performance.now();
+
+  logger?.info("cohere_rerank_start", {
+    service: "cohere",
+    filePath: "src/features/positioning/sifting.ts",
+    data: {
+      model: COHERE_RERANK_MODEL,
+      candidateCount: filteredCandidates.length,
+    },
+  });
+
+  const rerankResults = await rerankWithCohere({
+    query: targetYamlQuery,
+    documents: candidateYamlDocs,
+    logger,
+  });
+
+  const scoredTheses: SiftedThesis[] = rerankResults.map((res) => {
+    const candidate = filteredCandidates[res.index];
+    return {
+      ...candidate,
+      relevanceScore: res.relevanceScore,
+    };
+  });
+
+  scoredTheses.sort((a, b) => {
+    const delta = (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
+    if (Math.abs(delta) > SCORE_EPSILON) return delta;
+    return a.id - b.id;
+  });
+
+  const selected = scoredTheses.slice(0, topN);
+
+  const topResults = selected.slice().sort((a, b) => a.id - b.id);
+
+  logger?.info("cohere_rerank_success", {
+    service: "cohere",
+    filePath: "src/features/positioning/sifting.ts",
+    durationMs: performance.now() - rerankStart,
+    data: { topCount: topResults.length },
+  });
+
+  return topResults;
 }
 </file>
 
@@ -38019,7 +38019,7 @@ export function OutlineSectionCard({
                         </div>
 
                         <div className="flex-1 min-w-0 space-y-1">
-                          <h4 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground leading-snug">
+                          <h4 className="font-sans text-sm font-medium text-foreground leading-snug">
                             {sub.title}
                           </h4>
                           {sub.description && (
@@ -40505,19 +40505,6 @@ import { BOX_ORDER_WEIGHT, BOX_TYPE_LABELS } from "@/lib/box-constants";
 import type { GeminiThesisBox } from "@/lib/types";
 
 /**
- * Determines whether a box card should span the full grid width, with cards beyond
- * index 4 taking the full width (third row in a 2-col grid where items 5+ render
- * as stacked full-width cards).
- *
- * @param idx - The index of the box within the grid.
- * @param totalBoxes - The total number of top-level boxes.
- * @returns True when the box card should span the full grid width.
- */
-function isFullWidthBox(idx: number, totalBoxes: number): boolean {
-  return (totalBoxes % 2 !== 0 && idx === totalBoxes - 1) || idx >= 4;
-}
-
-/**
  * Renders the subject boxes overview with a proceed-to-literature action.
  *
  * @returns The boxes container markup.
@@ -40567,14 +40554,9 @@ export function BoxesContainer() {
         description="Tez matrisinizin çözümlenmesi başarıyla tamamlandı. Aşağıdaki her bir konu kutusu, literatür taraması sürecinde bağımsız olarak taranacaktır."
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-min">
+      <div className="grid grid-cols-1 gap-4 auto-rows-min">
         {sortedBoxes.map((box, idx) => (
-          <BoxCard
-            key={box.title}
-            box={box}
-            index={idx}
-            isFullWidth={isFullWidthBox(idx, sortedBoxes.length)}
-          />
+          <BoxCard key={box.title} box={box} index={idx} />
         ))}
       </div>
 
@@ -40677,24 +40659,19 @@ const PrimaryMaterialSection = memo(function PrimaryMaterialSection() {
  * @param root0 - The card props object.
  * @param root0.box - The thesis box to render.
  * @param root0.index - The index of the box within the grid.
- * @param root0.isFullWidth - Whether the card spans the full grid width.
  * @returns The box card markup.
  */
 const BoxCard = memo(function BoxCard({
   box,
   index,
-  isFullWidth = false,
 }: {
   box: GeminiThesisBox;
   index: number;
-  isFullWidth?: boolean;
 }) {
   const parentConcepts = box.concepts ?? [];
 
   return (
-    <Card
-      className={`group/card flex flex-col h-full p-6 rounded-md transition-all duration-300 hover:-translate-y-1 hover:border-primary/20${isFullWidth ? " md:col-span-2" : ""}`}
-    >
+    <Card className="group/card flex flex-col h-full p-6 rounded-md transition-all duration-300 hover:-translate-y-1 hover:border-primary/20">
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-muted-foreground text-xs">
           <PlusCircle className="w-3 h-3" />
@@ -41344,6 +41321,480 @@ export default function CitationCardsPage() {
       />
     </div>
   );
+}
+</file>
+
+<file path="src/lib/logger.ts">
+export interface TokenUsage {
+  input?: number;
+  output?: number;
+  total?: number;
+}
+
+type ServiceName =
+  | "gemini"
+  | "cloudflare"
+  | "tezara"
+  | "db"
+  | "auth"
+  | "flow"
+  | "matrix"
+  | "complete"
+  | "boxes"
+  | "wikipedia"
+  | "literature"
+  | "library"
+  | "openalex"
+  | "crossref"
+  | "dashboard"
+  | "cohere"
+  | "positioning"
+  | "cerebras"
+  | "pdf-parser"
+  | "rag-search"
+  | "advisor"
+  | "citation-cards"
+  | "literature-matrix"
+  | "outline";
+
+export interface LogParams {
+  service?: ServiceName;
+  step?: string;
+  durationMs?: number;
+  data?: Record<string, unknown>;
+  error?: unknown;
+  tokens?: TokenUsage;
+  filePath?: string;
+  status?: "START" | "SUCCESS" | "FAILED" | "RETRY";
+  blank?: "after" | "before" | "none";
+  silentStart?: boolean;
+  hidden?: boolean;
+}
+
+export interface LoggerInstance {
+  flowId: string;
+  lastTokens?: TokenUsage;
+  lastPayloadPath?: string;
+  info(arg1: string | Record<string, unknown>, params?: LogParams): void;
+  error(arg1: string | Record<string, unknown>, params?: LogParams): void;
+  warn(arg1: string | Record<string, unknown>, params?: LogParams): void;
+  step(n: string, m?: Record<string, unknown>): void;
+  file(r: string): void;
+  data(l: string, v: unknown): void;
+  preview(l: string, v: unknown): void;
+  prompt(m: string, c: string): void;
+  saveDebugPayload(
+    s: string,
+    m: string,
+    p: string,
+    r?: string,
+  ): string | undefined;
+  groupStart(event: string): void;
+  groupEnd(event: string, durationMs: number): void;
+  total(
+    event: string,
+    durationMs: number,
+    p?: { service?: ServiceName; data?: Record<string, unknown> },
+  ): void;
+}
+
+/**
+ * Derives START, SUCCESS, or FAILED status from an event name's suffix.
+ *
+ * @param event - Event name possibly ending with a status suffix.
+ * @returns The derived status, or empty string when none matches.
+ */
+function deriveStatus(event: string): string {
+  if (event.endsWith("_start")) return "START";
+  if (event.endsWith("_success")) return "SUCCESS";
+  if (
+    event.endsWith("_failed") ||
+    event.endsWith("_filtered") ||
+    event.endsWith("_empty")
+  )
+    return "FAILED";
+  return "";
+}
+
+const isDev = () => process.env.NODE_ENV === "development";
+
+const C_RESET = "\x1b[0m";
+const C_GREEN = "\x1b[32m";
+const C_RED = "\x1b[31m";
+const C_YELLOW = "\x1b[33m";
+
+/**
+ * Returns the icon corresponding to a status.
+ *
+ * @param s - Status string (START, SUCCESS, FAILED, or RETRY).
+ * @returns The matching icon.
+ */
+function statusIcon(s: string): string {
+  return s === "START"
+    ? "⏳"
+    : s === "SUCCESS"
+      ? "✓"
+      : s === "FAILED"
+        ? "✖"
+        : s === "RETRY"
+          ? "↻"
+          : "•";
+}
+
+/**
+ * Returns the ANSI color code for a status.
+ *
+ * @param s - Status string.
+ * @returns The matching ANSI color code.
+ */
+function statusColor(s: string): string {
+  if (s === "SUCCESS") return C_GREEN;
+  if (s === "FAILED") return C_RED;
+  if (s === "START" || s === "RETRY") return C_YELLOW;
+  return "";
+}
+
+/**
+ * Formats a millisecond duration compactly ("497ms" or "1.5s").
+ *
+ * @param ms - Duration in milliseconds.
+ * @returns Compact duration string.
+ */
+function formatDuration(ms: number): string {
+  const safe = Math.max(0, ms);
+  if (safe < 1000) return `${Math.round(safe)}ms`;
+  const sec = safe / 1000;
+  if (Number.isInteger(sec)) return `${sec}s`;
+  return `${sec.toFixed(1)}s`;
+}
+
+/**
+ * Converts an unknown error value into a short readable message.
+ *
+ * @param error - Error value of any type.
+ * @returns Short readable message.
+ */
+function extractReason(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
+export class Logger implements LoggerInstance {
+  public readonly flowId: string;
+  public lastTokens?: TokenUsage;
+  public lastPayloadPath?: string;
+
+  private _starts = new Map<string, number>();
+  private readonly devMode = isDev();
+
+  /**
+   * Creates a logger whose flowId is attached to every log line.
+   *
+   * @param flowId - Identifier attached to every log line.
+   */
+  constructor(flowId: string) {
+    this.flowId = flowId;
+  }
+
+  /**
+   * Logs an info-level entry.
+   *
+   * @param arg1 - Event name or structured payload.
+   * @param p - Optional log parameters.
+   */
+  info(arg1: string | Record<string, unknown>, p?: LogParams): void {
+    this.write("info", arg1, p);
+  }
+
+  /**
+   * Logs an error-level entry.
+   *
+   * @param arg1 - Event name or structured payload.
+   * @param p - Optional log parameters.
+   */
+  error(arg1: string | Record<string, unknown>, p?: LogParams): void {
+    this.write("error", arg1, p);
+  }
+
+  /**
+   * Logs a warning-level entry for recoverable or expected failures.
+   *
+   * @param arg1 - Event name or structured payload.
+   * @param p - Optional log parameters.
+   */
+  warn(arg1: string | Record<string, unknown>, p?: LogParams): void {
+    this.write("warn", arg1, p);
+  }
+
+  /**
+   * Records a step marker in the current flow.
+   *
+   * @param n - Step name.
+   * @param m - Optional step metadata.
+   */
+  step(n: string, m?: Record<string, unknown>): void {
+    void n;
+    void m;
+  }
+
+  /**
+   * Records a file reference for the current flow.
+   *
+   * @param r - File path.
+   */
+  file(r: string): void {
+    void r;
+  }
+
+  /**
+   * Records a labeled data snapshot for the current flow.
+   *
+   * @param l - Snapshot label.
+   * @param v - Snapshot value.
+   */
+  data(l: string, v: unknown): void {
+    void l;
+    void v;
+  }
+
+  /**
+   * Records a labeled preview for the current flow.
+   *
+   * @param l - Preview label.
+   * @param v - Preview value.
+   */
+  preview(l: string, v: unknown): void {
+    void l;
+    void v;
+  }
+
+  /**
+   * Records a prompt message for the current flow.
+   *
+   * @param m - Prompt message.
+   * @param c - Contextual label.
+   */
+  prompt(m: string, c: string): void {
+    void m;
+    void c;
+  }
+
+  /**
+   * Saves a debug payload for later inspection.
+   *
+   * @param s - Payload stage.
+   * @param m - Payload message.
+   * @param p - Payload path.
+   * @param r - Optional request identifier.
+   * @returns Path of the saved payload, or undefined when not saved.
+   */
+  saveDebugPayload(
+    s: string,
+    m: string,
+    p: string,
+    r?: string,
+  ): string | undefined {
+    void s;
+    void m;
+    void p;
+    void r;
+    return undefined;
+  }
+
+  /**
+   * Marks the start of a log group.
+   *
+   * @param event - Group event name.
+   */
+  groupStart(event: string): void {
+    void event;
+  }
+
+  /**
+   * Marks the end of a log group.
+   *
+   * @param event - Group event name.
+   * @param durationMs - Duration of the group in milliseconds.
+   */
+  groupEnd(event: string, durationMs: number): void {
+    void event;
+    void durationMs;
+  }
+
+  /**
+   * Prints a total-duration summary line for a completed flow.
+   *
+   * @param event - Flow-level event name.
+   * @param durationMs - Total duration in milliseconds.
+   * @param p - Optional service and data metadata.
+   */
+  total(
+    event: string,
+    durationMs: number,
+    p?: { service?: ServiceName; data?: Record<string, unknown> },
+  ): void {
+    if (this.devMode) {
+      const timeTag = this.timestamp();
+      console.log(
+        `${timeTag} ${C_GREEN}✓${C_RESET} TOTAL ${event} (${formatDuration(durationMs)})`,
+      );
+      return;
+    }
+
+    const entry: Record<string, unknown> = {
+      timestamp: new Date().toISOString(),
+      level: "info",
+      event: `${event}_total`,
+      flowId: this.flowId,
+      service: p?.service ?? "flow",
+      status: "TOTAL",
+      durationMs: Math.round(durationMs),
+    };
+    if (p?.data) entry.data = p.data;
+    console.info(JSON.stringify(entry));
+  }
+
+  /**
+   * Returns the current time as "[HH:MM:SS]".
+   *
+   * @returns Current time string.
+   */
+  private timestamp(): string {
+    const d = new Date();
+    return `[${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}:${d.getSeconds().toString().padStart(2, "0")}]`;
+  }
+
+  /**
+   * Writes a single log line in dev or production format.
+   *
+   * @param level - Log level (info, error, or warn).
+   * @param arg1 - Event name or structured payload.
+   * @param p - Optional log parameters.
+   */
+  private write(
+    level: "info" | "error" | "warn",
+    arg1: string | Record<string, unknown>,
+    p?: LogParams,
+  ): void {
+    if (this.devMode) {
+      const event =
+        typeof arg1 === "object" && arg1 !== null
+          ? (((arg1 as Record<string, unknown>).step as string) ?? "unknown")
+          : (arg1 as string);
+
+      const status = deriveStatus(event);
+
+      if (status === "START") {
+        const baseEvent = event.replace(/_(start)$/, "");
+        this._starts.set(baseEvent, performance.now());
+        if (p?.silentStart || p?.hidden) {
+          return;
+        }
+        const timeTag = this.timestamp();
+        const icon = statusIcon("START");
+        const color = statusColor("START");
+        const annotation = p?.data?.summary ? ` ${p.data.summary}` : "";
+        console.log(
+          `${timeTag} START ${color}${icon}${C_RESET} ${baseEvent}${annotation}`,
+        );
+        return;
+      }
+
+      if (status === "SUCCESS" || status === "FAILED") {
+        const baseEvent = event.replace(
+          /_(success|failed|filtered|empty)$/,
+          "",
+        );
+        const startTime = this._starts.get(baseEvent);
+        let durStr = "";
+        if (startTime != null) {
+          durStr = ` (${formatDuration(performance.now() - startTime)})`;
+          this._starts.delete(baseEvent);
+        } else if (p?.durationMs != null) {
+          durStr = ` (${formatDuration(p.durationMs)})`;
+        } else if (
+          p?.data &&
+          typeof p.data === "object" &&
+          "durationMs" in p.data
+        ) {
+          durStr = ` (${formatDuration((p.data as Record<string, unknown>).durationMs as number)})`;
+        }
+
+        const icon = statusIcon(status);
+        const color = statusColor(status);
+        const timeTag = this.timestamp();
+
+        if (p?.hidden) {
+          return;
+        }
+
+        const blank = p?.blank ?? "after";
+
+        if (blank === "before") {
+          console.log("");
+        }
+
+        console.log(
+          `${timeTag} ${status} ${color}${icon}${C_RESET} ${baseEvent}${durStr}`,
+        );
+
+        if (p?.error != null) {
+          console.log(`  ↳ reason: ${extractReason(p.error)}`);
+        }
+        if (blank === "after") {
+          console.log("");
+        }
+        return;
+      }
+      return;
+    }
+
+    if (typeof arg1 === "object" && arg1 !== null) {
+      const entry: Record<string, unknown> = { flowId: this.flowId, ...arg1 };
+      console[level](
+        JSON.stringify({
+          timestamp: new Date().toISOString(),
+          level,
+          ...entry,
+        }),
+      );
+      return;
+    }
+
+    const event = arg1 as string;
+    const entry: Record<string, unknown> = {
+      timestamp: new Date().toISOString(),
+      level,
+      event,
+      flowId: this.flowId,
+      service: p?.service ?? "flow",
+      status: p?.status ?? deriveStatus(event),
+    };
+    if (p?.step) entry.step = p.step;
+    if (p?.durationMs !== undefined)
+      entry.durationMs = Math.round(p.durationMs);
+    if (p?.data) entry.data = p.data;
+    if (p?.tokens) {
+      entry.tokens = p.tokens;
+      this.lastTokens = p.tokens;
+    }
+    if (p?.error) entry.error = String(p.error);
+    console[level](JSON.stringify(entry));
+  }
+}
+
+/**
+ * Generates a unique flow identifier in the form fl_<timestamp36>_<random>.
+ *
+ * @returns Unique flow identifier string.
+ */
+export function createFlowId(): string {
+  return `fl_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`;
 }
 </file>
 
@@ -42208,480 +42659,6 @@ export async function clearDownstreamDbAction(
       error: "Sıfırlama işlemi gerçekleştirilirken bir hata oluştu.",
     };
   }
-}
-</file>
-
-<file path="src/lib/logger.ts">
-export interface TokenUsage {
-  input?: number;
-  output?: number;
-  total?: number;
-}
-
-type ServiceName =
-  | "gemini"
-  | "cloudflare"
-  | "tezara"
-  | "db"
-  | "auth"
-  | "flow"
-  | "matrix"
-  | "complete"
-  | "boxes"
-  | "wikipedia"
-  | "literature"
-  | "library"
-  | "openalex"
-  | "crossref"
-  | "dashboard"
-  | "cohere"
-  | "positioning"
-  | "cerebras"
-  | "pdf-parser"
-  | "rag-search"
-  | "advisor"
-  | "citation-cards"
-  | "literature-matrix"
-  | "outline";
-
-export interface LogParams {
-  service?: ServiceName;
-  step?: string;
-  durationMs?: number;
-  data?: Record<string, unknown>;
-  error?: unknown;
-  tokens?: TokenUsage;
-  filePath?: string;
-  status?: "START" | "SUCCESS" | "FAILED" | "RETRY";
-  blank?: "after" | "before" | "none";
-  silentStart?: boolean;
-  hidden?: boolean;
-}
-
-export interface LoggerInstance {
-  flowId: string;
-  lastTokens?: TokenUsage;
-  lastPayloadPath?: string;
-  info(arg1: string | Record<string, unknown>, params?: LogParams): void;
-  error(arg1: string | Record<string, unknown>, params?: LogParams): void;
-  warn(arg1: string | Record<string, unknown>, params?: LogParams): void;
-  step(n: string, m?: Record<string, unknown>): void;
-  file(r: string): void;
-  data(l: string, v: unknown): void;
-  preview(l: string, v: unknown): void;
-  prompt(m: string, c: string): void;
-  saveDebugPayload(
-    s: string,
-    m: string,
-    p: string,
-    r?: string,
-  ): string | undefined;
-  groupStart(event: string): void;
-  groupEnd(event: string, durationMs: number): void;
-  total(
-    event: string,
-    durationMs: number,
-    p?: { service?: ServiceName; data?: Record<string, unknown> },
-  ): void;
-}
-
-/**
- * Derives START, SUCCESS, or FAILED status from an event name's suffix.
- *
- * @param event - Event name possibly ending with a status suffix.
- * @returns The derived status, or empty string when none matches.
- */
-function deriveStatus(event: string): string {
-  if (event.endsWith("_start")) return "START";
-  if (event.endsWith("_success")) return "SUCCESS";
-  if (
-    event.endsWith("_failed") ||
-    event.endsWith("_filtered") ||
-    event.endsWith("_empty")
-  )
-    return "FAILED";
-  return "";
-}
-
-const isDev = () => process.env.NODE_ENV === "development";
-
-const C_RESET = "\x1b[0m";
-const C_GREEN = "\x1b[32m";
-const C_RED = "\x1b[31m";
-const C_YELLOW = "\x1b[33m";
-
-/**
- * Returns the icon corresponding to a status.
- *
- * @param s - Status string (START, SUCCESS, FAILED, or RETRY).
- * @returns The matching icon.
- */
-function statusIcon(s: string): string {
-  return s === "START"
-    ? "⏳"
-    : s === "SUCCESS"
-      ? "✓"
-      : s === "FAILED"
-        ? "✖"
-        : s === "RETRY"
-          ? "↻"
-          : "•";
-}
-
-/**
- * Returns the ANSI color code for a status.
- *
- * @param s - Status string.
- * @returns The matching ANSI color code.
- */
-function statusColor(s: string): string {
-  if (s === "SUCCESS") return C_GREEN;
-  if (s === "FAILED") return C_RED;
-  if (s === "START" || s === "RETRY") return C_YELLOW;
-  return "";
-}
-
-/**
- * Formats a millisecond duration compactly ("497ms" or "1.5s").
- *
- * @param ms - Duration in milliseconds.
- * @returns Compact duration string.
- */
-function formatDuration(ms: number): string {
-  const safe = Math.max(0, ms);
-  if (safe < 1000) return `${Math.round(safe)}ms`;
-  const sec = safe / 1000;
-  if (Number.isInteger(sec)) return `${sec}s`;
-  return `${sec.toFixed(1)}s`;
-}
-
-/**
- * Converts an unknown error value into a short readable message.
- *
- * @param error - Error value of any type.
- * @returns Short readable message.
- */
-function extractReason(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return String(error);
-  }
-}
-
-export class Logger implements LoggerInstance {
-  public readonly flowId: string;
-  public lastTokens?: TokenUsage;
-  public lastPayloadPath?: string;
-
-  private _starts = new Map<string, number>();
-  private readonly devMode = isDev();
-
-  /**
-   * Creates a logger whose flowId is attached to every log line.
-   *
-   * @param flowId - Identifier attached to every log line.
-   */
-  constructor(flowId: string) {
-    this.flowId = flowId;
-  }
-
-  /**
-   * Logs an info-level entry.
-   *
-   * @param arg1 - Event name or structured payload.
-   * @param p - Optional log parameters.
-   */
-  info(arg1: string | Record<string, unknown>, p?: LogParams): void {
-    this.write("info", arg1, p);
-  }
-
-  /**
-   * Logs an error-level entry.
-   *
-   * @param arg1 - Event name or structured payload.
-   * @param p - Optional log parameters.
-   */
-  error(arg1: string | Record<string, unknown>, p?: LogParams): void {
-    this.write("error", arg1, p);
-  }
-
-  /**
-   * Logs a warning-level entry for recoverable or expected failures.
-   *
-   * @param arg1 - Event name or structured payload.
-   * @param p - Optional log parameters.
-   */
-  warn(arg1: string | Record<string, unknown>, p?: LogParams): void {
-    this.write("warn", arg1, p);
-  }
-
-  /**
-   * Records a step marker in the current flow.
-   *
-   * @param n - Step name.
-   * @param m - Optional step metadata.
-   */
-  step(n: string, m?: Record<string, unknown>): void {
-    void n;
-    void m;
-  }
-
-  /**
-   * Records a file reference for the current flow.
-   *
-   * @param r - File path.
-   */
-  file(r: string): void {
-    void r;
-  }
-
-  /**
-   * Records a labeled data snapshot for the current flow.
-   *
-   * @param l - Snapshot label.
-   * @param v - Snapshot value.
-   */
-  data(l: string, v: unknown): void {
-    void l;
-    void v;
-  }
-
-  /**
-   * Records a labeled preview for the current flow.
-   *
-   * @param l - Preview label.
-   * @param v - Preview value.
-   */
-  preview(l: string, v: unknown): void {
-    void l;
-    void v;
-  }
-
-  /**
-   * Records a prompt message for the current flow.
-   *
-   * @param m - Prompt message.
-   * @param c - Contextual label.
-   */
-  prompt(m: string, c: string): void {
-    void m;
-    void c;
-  }
-
-  /**
-   * Saves a debug payload for later inspection.
-   *
-   * @param s - Payload stage.
-   * @param m - Payload message.
-   * @param p - Payload path.
-   * @param r - Optional request identifier.
-   * @returns Path of the saved payload, or undefined when not saved.
-   */
-  saveDebugPayload(
-    s: string,
-    m: string,
-    p: string,
-    r?: string,
-  ): string | undefined {
-    void s;
-    void m;
-    void p;
-    void r;
-    return undefined;
-  }
-
-  /**
-   * Marks the start of a log group.
-   *
-   * @param event - Group event name.
-   */
-  groupStart(event: string): void {
-    void event;
-  }
-
-  /**
-   * Marks the end of a log group.
-   *
-   * @param event - Group event name.
-   * @param durationMs - Duration of the group in milliseconds.
-   */
-  groupEnd(event: string, durationMs: number): void {
-    void event;
-    void durationMs;
-  }
-
-  /**
-   * Prints a total-duration summary line for a completed flow.
-   *
-   * @param event - Flow-level event name.
-   * @param durationMs - Total duration in milliseconds.
-   * @param p - Optional service and data metadata.
-   */
-  total(
-    event: string,
-    durationMs: number,
-    p?: { service?: ServiceName; data?: Record<string, unknown> },
-  ): void {
-    if (this.devMode) {
-      const timeTag = this.timestamp();
-      console.log(
-        `${timeTag} ${C_GREEN}✓${C_RESET} TOTAL ${event} (${formatDuration(durationMs)})`,
-      );
-      return;
-    }
-
-    const entry: Record<string, unknown> = {
-      timestamp: new Date().toISOString(),
-      level: "info",
-      event: `${event}_total`,
-      flowId: this.flowId,
-      service: p?.service ?? "flow",
-      status: "TOTAL",
-      durationMs: Math.round(durationMs),
-    };
-    if (p?.data) entry.data = p.data;
-    console.info(JSON.stringify(entry));
-  }
-
-  /**
-   * Returns the current time as "[HH:MM:SS]".
-   *
-   * @returns Current time string.
-   */
-  private timestamp(): string {
-    const d = new Date();
-    return `[${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}:${d.getSeconds().toString().padStart(2, "0")}]`;
-  }
-
-  /**
-   * Writes a single log line in dev or production format.
-   *
-   * @param level - Log level (info, error, or warn).
-   * @param arg1 - Event name or structured payload.
-   * @param p - Optional log parameters.
-   */
-  private write(
-    level: "info" | "error" | "warn",
-    arg1: string | Record<string, unknown>,
-    p?: LogParams,
-  ): void {
-    if (this.devMode) {
-      const event =
-        typeof arg1 === "object" && arg1 !== null
-          ? (((arg1 as Record<string, unknown>).step as string) ?? "unknown")
-          : (arg1 as string);
-
-      const status = deriveStatus(event);
-
-      if (status === "START") {
-        const baseEvent = event.replace(/_(start)$/, "");
-        this._starts.set(baseEvent, performance.now());
-        if (p?.silentStart || p?.hidden) {
-          return;
-        }
-        const timeTag = this.timestamp();
-        const icon = statusIcon("START");
-        const color = statusColor("START");
-        const annotation = p?.data?.summary ? ` ${p.data.summary}` : "";
-        console.log(
-          `${timeTag} START ${color}${icon}${C_RESET} ${baseEvent}${annotation}`,
-        );
-        return;
-      }
-
-      if (status === "SUCCESS" || status === "FAILED") {
-        const baseEvent = event.replace(
-          /_(success|failed|filtered|empty)$/,
-          "",
-        );
-        const startTime = this._starts.get(baseEvent);
-        let durStr = "";
-        if (startTime != null) {
-          durStr = ` (${formatDuration(performance.now() - startTime)})`;
-          this._starts.delete(baseEvent);
-        } else if (p?.durationMs != null) {
-          durStr = ` (${formatDuration(p.durationMs)})`;
-        } else if (
-          p?.data &&
-          typeof p.data === "object" &&
-          "durationMs" in p.data
-        ) {
-          durStr = ` (${formatDuration((p.data as Record<string, unknown>).durationMs as number)})`;
-        }
-
-        const icon = statusIcon(status);
-        const color = statusColor(status);
-        const timeTag = this.timestamp();
-
-        if (p?.hidden) {
-          return;
-        }
-
-        const blank = p?.blank ?? "after";
-
-        if (blank === "before") {
-          console.log("");
-        }
-
-        console.log(
-          `${timeTag} ${status} ${color}${icon}${C_RESET} ${baseEvent}${durStr}`,
-        );
-
-        if (p?.error != null) {
-          console.log(`  ↳ reason: ${extractReason(p.error)}`);
-        }
-        if (blank === "after") {
-          console.log("");
-        }
-        return;
-      }
-      return;
-    }
-
-    if (typeof arg1 === "object" && arg1 !== null) {
-      const entry: Record<string, unknown> = { flowId: this.flowId, ...arg1 };
-      console[level](
-        JSON.stringify({
-          timestamp: new Date().toISOString(),
-          level,
-          ...entry,
-        }),
-      );
-      return;
-    }
-
-    const event = arg1 as string;
-    const entry: Record<string, unknown> = {
-      timestamp: new Date().toISOString(),
-      level,
-      event,
-      flowId: this.flowId,
-      service: p?.service ?? "flow",
-      status: p?.status ?? deriveStatus(event),
-    };
-    if (p?.step) entry.step = p.step;
-    if (p?.durationMs !== undefined)
-      entry.durationMs = Math.round(p.durationMs);
-    if (p?.data) entry.data = p.data;
-    if (p?.tokens) {
-      entry.tokens = p.tokens;
-      this.lastTokens = p.tokens;
-    }
-    if (p?.error) entry.error = String(p.error);
-    console[level](JSON.stringify(entry));
-  }
-}
-
-/**
- * Generates a unique flow identifier in the form fl_<timestamp36>_<random>.
- *
- * @returns Unique flow identifier string.
- */
-export function createFlowId(): string {
-  return `fl_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`;
 }
 </file>
 
