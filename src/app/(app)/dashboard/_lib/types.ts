@@ -15,6 +15,7 @@ export interface DashboardJuryArticle {
 export interface TopicBox {
   id: string;
   title: string;
+  boxType?: string | null;
   description: string;
   expansionCycle: number;
   isReadyToExpand: boolean;

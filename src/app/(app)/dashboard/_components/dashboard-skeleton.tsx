@@ -31,18 +31,24 @@ export function DashboardSkeleton() {
               </CardHeader>
               <CardContent className="flex-1 p-4 pt-0">
                 <div className="my-3 border-t border-border/40" />
-                <Skeleton className="mb-3 h-3 w-24 bg-border/20" />
+                <div className="flex items-center justify-between mb-3">
+                  <Skeleton className="h-3 w-24 bg-border/20" />
+                  <Skeleton className="h-4 w-12 rounded-full bg-border/20" />
+                </div>
                 <div className="space-y-3">
                   {Array.from({ length: 3 }).map((_, itemIndex) => (
                     <div
                       key={itemIndex}
-                      className="flex items-center justify-between gap-3 rounded-md p-2"
+                      className="flex flex-col justify-between rounded-md border border-border/40 bg-card/60 p-3 space-y-2"
                     >
-                      <div className="min-w-0 flex-1 space-y-2">
-                        <Skeleton className="h-3.5 w-4/5" />
-                        <Skeleton className="h-3 w-1/3 bg-border/20" />
+                      <div className="flex items-start gap-2">
+                        <Skeleton className="h-4 w-4 shrink-0 rounded-sm bg-border/20 mt-0.5" />
+                        <div className="min-w-0 flex-1 space-y-1.5">
+                          <Skeleton className="h-3.5 w-full" />
+                          <Skeleton className="h-3.5 w-2/3" />
+                        </div>
                       </div>
-                      <Skeleton className="h-6 w-6 rounded-md bg-border/20" />
+                      <Skeleton className="h-3 w-1/2 ml-6 bg-border/20" />
                     </div>
                   ))}
                 </div>

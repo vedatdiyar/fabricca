@@ -152,6 +152,7 @@ export async function confirmLiteratureAction(args: {
     }
 
     await persistLiteraturePool(literaturePool);
+    await persistRelatedTheses(session.userId);
 
     try {
       revalidateOnboardingPaths();

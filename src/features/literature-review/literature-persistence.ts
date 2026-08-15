@@ -56,46 +56,41 @@ export async function persistRelatedTheses(userId: number): Promise<void> {
   }
 
   await db.transaction(async (tx) => {
-    // Delete old RELATED_THESES dummy boxes if any exist
-    const oldRelatedBoxes = await tx
-      .select({ id: boxes.id })
-      .from(boxes)
-      .where(
-        and(eq(boxes.matrixId, matrix.id), eq(boxes.boxType, "RELATED_THESES")),
-      );
-
-    if (oldRelatedBoxes.length > 0) {
-      for (const oldBox of oldRelatedBoxes) {
-        await tx.delete(boxes).where(eq(boxes.id, oldBox.id));
-      }
-    }
-
-    // Find the primary SUBJECT_PROBLEM box or first root box for matrix
-    let [primaryBox] = await tx
+    let [relatedBox] = await tx
       .select({ id: boxes.id })
       .from(boxes)
       .where(
         and(
           eq(boxes.matrixId, matrix.id),
-          eq(boxes.boxType, "SUBJECT_PROBLEM"),
+          eq(boxes.boxType, "RELATED_THESES"),
         ),
       )
       .limit(1);
 
-    if (!primaryBox) {
-      [primaryBox] = await tx
-        .select({ id: boxes.id })
-        .from(boxes)
-        .where(eq(boxes.matrixId, matrix.id))
-        .limit(1);
+    if (!relatedBox) {
+      const [inserted] = await tx
+        .insert(boxes)
+        .values({
+          matrixId: matrix.id,
+          title: RELATED_THESES_TITLE,
+          boxType: "RELATED_THESES",
+          description:
+            BOX_TYPE_DESCRIPTIONS.RELATED_THESES ??
+            "Tez konunuz ve konumlandırmanız ile doğrudan ilişkili, incelenmesi önerilen YÖK ve akademik tez çalışmaları.",
+          parentId: null,
+          concepts: [],
+        })
+        .returning({ id: boxes.id });
+      relatedBox = inserted;
     }
 
-    if (!primaryBox) return;
+    if (!relatedBox) return;
 
-    const targetBoxId = primaryBox.id;
+    // Delete existing sources for this RELATED_THESES box to prevent duplicates
+    await tx.delete(sources).where(eq(sources.boxId, relatedBox.id));
 
     const toInsert = theses.map((t) => ({
-      boxId: targetBoxId,
+      boxId: relatedBox.id,
       title: cleanThesisTitle(t.title),
       authors: [t.author].filter((a) => a.length > 0),
       publisher: t.university || null,

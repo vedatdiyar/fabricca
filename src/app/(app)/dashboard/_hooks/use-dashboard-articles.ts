@@ -187,6 +187,7 @@ export function useDashboardArticles(
         return {
           id: String(box.id),
           title: box.title,
+          boxType: box.boxType,
           description:
             box.description && box.description.trim().length > 0
               ? box.description

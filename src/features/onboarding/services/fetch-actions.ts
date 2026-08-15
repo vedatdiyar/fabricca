@@ -83,7 +83,8 @@ async function getCachedBoxes(thesisMatrixId: number) {
           WHEN 'SUBJECT_PROBLEM' THEN 1
           WHEN 'THEORETICAL_FRAMEWORK' THEN 2
           WHEN 'METHODOLOGY' THEN 3
-          WHEN 'PRIMARY_MATERIAL' THEN 4
+          WHEN 'RELATED_THESES' THEN 4
+          WHEN 'PRIMARY_MATERIAL' THEN 5
           ELSE 99
         END`,
       );
@@ -206,7 +207,8 @@ export async function fetchUncachedBoxesWithFullShape(): Promise<
           WHEN 'SUBJECT_PROBLEM' THEN 1
           WHEN 'THEORETICAL_FRAMEWORK' THEN 2
           WHEN 'METHODOLOGY' THEN 3
-          WHEN 'PRIMARY_MATERIAL' THEN 4
+          WHEN 'RELATED_THESES' THEN 4
+          WHEN 'PRIMARY_MATERIAL' THEN 5
           ELSE 99
         END`,
       );

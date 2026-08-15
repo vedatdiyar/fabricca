@@ -238,7 +238,8 @@ export function LiteratureReviewContent() {
   } = useLiteratureReview();
 
   const regularBoxes = subBoxes.filter(
-    (box) => box.title !== RELATED_THESES_TITLE,
+    (box) =>
+      box.boxType !== "RELATED_THESES" && box.title !== RELATED_THESES_TITLE,
   );
   const relatedBox = subBoxes.find(
     (box) =>
@@ -310,7 +311,7 @@ export function LiteratureReviewContent() {
             </h2>
             {relatedBox.boxType && (
               <span className="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary ml-auto">
-                Literatür
+                {getBoxTypeLabel(relatedBox.boxType)}
               </span>
             )}
           </div>

@@ -119,7 +119,9 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     setProcessing(true);
     try {
       const freshBoxes = await fetchUncachedBoxesWithFullShape();
-      const targetBoxes = freshBoxes.length > 0 ? freshBoxes : subBoxes;
+      const targetBoxes = (
+        freshBoxes.length > 0 ? freshBoxes : subBoxes
+      ).filter((box) => box.boxType !== "RELATED_THESES");
       const subBoxInputs: SubBoxInput[] = targetBoxes.map((box) => ({
         id: box.id ?? 0,
         title: box.title,

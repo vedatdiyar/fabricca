@@ -1637,6 +1637,7 @@ export interface DashboardJuryArticle {
 export interface TopicBox {
   id: string;
   title: string;
+  boxType?: string | null;
   description: string;
   expansionCycle: number;
   isReadyToExpand: boolean;
@@ -1988,8 +1989,20 @@ export default function LibraryLoading() {
 <file path="src/app/(app)/thesis-architecture/_components/tab-actions.tsx">
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
+
+function subscribe() {
+  return () => {};
+}
+
+function getSnapshot() {
+  return document.getElementById("thesis-tab-actions");
+}
+
+function getServerSnapshot() {
+  return null;
+}
 
 /**
  * Portal component that mounts children into the thesis architecture main tab header bar (#thesis-tab-actions).
@@ -1999,11 +2012,11 @@ import { createPortal } from "react-dom";
  * @returns The rendered portal or null if not mounted.
  */
 export function TabActions({ children }: { children: React.ReactNode }) {
-  const [container, setContainer] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    setContainer(document.getElementById("thesis-tab-actions"));
-  }, []);
+  const container = useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    getServerSnapshot,
+  );
 
   if (!container) return null;
   return createPortal(children, container);
@@ -5872,7 +5885,7 @@ export async function orchestrateBatchProcess(
   const activeJobs: { box: SubBoxInput; subBox: SubBoxItem }[] = [];
   for (const box of boxes) {
     if (!box.subBoxes || box.subBoxes.length === 0) continue;
-    if (box.boxType === "PRIMARY_MATERIAL") continue;
+    if (box.boxType === "PRIMARY_MATERIAL" || box.boxType === "RELATED_THESES") continue;
 
     for (const subBox of box.subBoxes) {
       activeJobs.push({ box, subBox });
@@ -8377,18 +8390,24 @@ export function DashboardSkeleton() {
               </CardHeader>
               <CardContent className="flex-1 p-4 pt-0">
                 <div className="my-3 border-t border-border/40" />
-                <Skeleton className="mb-3 h-3 w-24 bg-border/20" />
+                <div className="flex items-center justify-between mb-3">
+                  <Skeleton className="h-3 w-24 bg-border/20" />
+                  <Skeleton className="h-4 w-12 rounded-full bg-border/20" />
+                </div>
                 <div className="space-y-3">
                   {Array.from({ length: 3 }).map((_, itemIndex) => (
                     <div
                       key={itemIndex}
-                      className="flex items-center justify-between gap-3 rounded-md p-2"
+                      className="flex flex-col justify-between rounded-md border border-border/40 bg-card/60 p-3 space-y-2"
                     >
-                      <div className="min-w-0 flex-1 space-y-2">
-                        <Skeleton className="h-3.5 w-4/5" />
-                        <Skeleton className="h-3 w-1/3 bg-border/20" />
+                      <div className="flex items-start gap-2">
+                        <Skeleton className="h-4 w-4 shrink-0 rounded-sm bg-border/20 mt-0.5" />
+                        <div className="min-w-0 flex-1 space-y-1.5">
+                          <Skeleton className="h-3.5 w-full" />
+                          <Skeleton className="h-3.5 w-2/3" />
+                        </div>
                       </div>
-                      <Skeleton className="h-6 w-6 rounded-md bg-border/20" />
+                      <Skeleton className="h-3 w-1/2 ml-6 bg-border/20" />
                     </div>
                   ))}
                 </div>
@@ -14741,7 +14760,12 @@ export async function persistBoxesAction(
     await db.transaction(async (tx) => {
       await tx
         .delete(boxRows)
-        .where(eq(boxRows.matrixId, thesisMatrixId));
+        .where(
+          and(
+            eq(boxRows.matrixId, thesisMatrixId),
+            ne(boxRows.boxType, "RELATED_THESES"),
+          ),
+        );
 
       const parentFlatIndices: number[] = [];
       for (let i = 0; i < validBoxes.length; i++) {
@@ -16441,99 +16465,6 @@ export async function executePhase3Selection(
 }
 </file>
 
-<file path="src/features/literature-review/prompts/batch-jury.prompt.ts">
-import {
-  buildPromptPayload,
-  type PromptPayload,
-} from "@/lib/ai/prompt-builder";
-
-function buildQuadrantSpecificInstruction(boxType: string): string {
-  switch (boxType) {
-    case "SUBJECT_PROBLEM":
-      return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — VAKA / KONU KUTUSU (SUBJECT_PROBLEM)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin doğrudan incelediği ampirik vakaya, spesifik tarihsel döneme ve aktörlere odaklanır.\n\n## KABUL KRİTERİ\nTezin kapsadığı tarihsel dönemi ve vaka alanını doğrudan işleyen ampirik monografiler, saha araştırmaları ve vaka analizleri yüksek puan (80-95+) almalıdır.\n\n## DEĞERLENDİRME VE ELEME KRİTERLERİ\n1. Tezin kapsadığı olgusal/tarihsel dönemin DIŞINDAKİ başka bir döneme veya olaya odaklanan çalışmalar düşük puanlandırılmalıdır.\n2. Soyut, genel ve zamansız teorik/kuramsal eserler ve metodoloji el kitapları Vaka/Konu Kutusu için ayrı tutulmalıdır.`;
-
-    case "THEORETICAL_FRAMEWORK":
-      return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — TEORİK ÇERÇEVE KUTUSU (THEORETICAL_FRAMEWORK)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin ampirik vakasını anlamlandırmada kullanılan soyut kuramlar, teorik kavramlar ve modellemelere odaklanır.\n\n## KABUL KRİTERİ\nİlgili kuramcıların birincil kuramsal metinleri ve bu teorileri tartışan literatür yüksek puan almalıdır.`;
-
-    case "METHODOLOGY":
-      return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — YÖNTEM KUTUSU (METHODOLOGY)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin benimsediği araştırma deseni, veri toplama ve analiz tekniklerine yönelik metodolojik eserlere odaklanır.\n\n## KABUL KRİTERİ\n1. **Metodolojik Uyum:** Eserin sunduğu veya uyguladığı analiz yöntemi, alt kutu açıklamasında (description) tanımlanan araştırma deseni ve yöntemsel yaklaşımla doğrudan örtüşmelidir (80-100 puan).\n2. **Emsal Uygulama:** Kutu açıklamasında belirtilen yöntemin benzer araştırma alanlarına başarıyla uygulandığı emsal çalışmalar kabul edilebilir (60-79 puan).\n\n## DEĞERLENDİRME VE ELEME KRİTERLERİ\n1. **Yöntemsel Uyuşmazlık:** Alt kutu açıklamasında tanımlanan metodolojik yaklaşımdan sapan veya zıt bir analitik tasarım benimseyen çalışmaları düşük puanla (0-40 puan).\n2. Soyut genel felsefi tartışmalar veya yöntemsel kılavuz niteliği taşımayan kuramsal metinleri Yöntem Kutusu için ayrı tut.`;
-
-    case "PRIMARY_MATERIAL":
-      return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — BİRİNCİL MATERYAL KUTUSU (PRIMARY_MATERIAL)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin doğrudan analiz ettiği birincil kaynaklara, belgesel arşivlere veya kanun/karar külliyatına odaklanır.`;
-
-    default:
-      return "";
-  }
-}
-
-export interface JuryBatchPromptInput {
-  thesisSubject: string;
-  thesisBoxId: number;
-  subBoxTitle: string;
-  boxType: string;
-  description: string;
-  articlesText: string;
-  articleCount: number;
-}
-
-/**
- * Builds the standardized PromptPayload for literature review batch jury evaluation.
- *
- * @param params - Jury prompt inputs.
- * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
- */
-export function buildJuryPromptPayload(
-  params: JuryBatchPromptInput,
-): PromptPayload {
-  const {
-    thesisSubject,
-    thesisBoxId,
-    subBoxTitle,
-    boxType,
-    description,
-    articlesText,
-    articleCount,
-  } = params;
-
-  const quadrantBlock = buildQuadrantSpecificInstruction(boxType);
-
-  return buildPromptPayload({
-    roleAndExpertise:
-      "Sen, akademik makaleleri belirli bir tez alt kutusu bağlamında değerlendiren uzman bir akademik jüri üyesisin.",
-
-    primaryTask:
-      "Her bir makaleyi, sana verilen alt kutunun türü, başlığı ve açıklaması ile karşılaştırarak değerlendir. Makalenin kutu bağlamıyla doğrudan alakalı olup olmadığına karar ver, 0-100 arası alaka skoru belirle ve 1 cümlelik Türkçe gerekçe yaz.",
-
-    rulesAndConstraints: `1. **Dil Uygunluğu:** Yalnızca Türkçe veya İngilizce dilindeki akademik çalışmaları kabul et. Başlığı veya içeriği bu iki dilin dışındaki (İspanyolca, Fransızca, Almanca, İtalyanca vb.) herhangi bir dilde olan kaynakları doğrudan uygunsuz olarak ele (isRelevant: false, relevanceScore: 0, gerekçede dil uyuşmazlığını belirt).
-2. **Bütünsel Örtüşme:** Soyut teorik benzerliklerin ötesine geçerek makalenin incelediği spesifik olgunun, aktörlerin ve tarihsel kesitin; Sub-Box bağlamı ve tezin kapsadığı olgusal/tarihsel çerçeve ile bütünsel olarak örtüşüp örtüşmediğini değerlendir.
-3. **Dönemsel Uygunluk:** Tezin ve kutunun kapsadığı tarihsel/olgusal dönemin dışındaki başka bir döneme veya olaya odaklanan çalışmalar düşük puanlandırılmalıdır.
-4. **Temel Monografiler:** Tezin kapsadığı tarihsel dönemi ve vaka alanını doğrudan işleyen kapsayıcı temel monografilere ve saha araştırmalarına yüksek relevans puanı (80-95+) ver.${quadrantBlock}`,
-
-    outputFormat: `Her değerlendirme için aşağıdaki alanları içeren JSON nesneleri dizisi döndürün:
-- thesisBoxId: (girdide verilen box id)
-- subBoxTitle: (girdide verilen sub box başlığı)
-- articleTitle: makale başlığı (aynen)
-- isRelevant: boolean
-- relevanceScore: 0-100 arası tam sayı
-- reasoning: Türkçe 1 cümlelik gerekçe`,
-
-    inputContext: `Tez Konusu (Subject Problem): ${thesisSubject}
-
-Kutu Bağlamı:
-- Kutu ID: [Box ${thesisBoxId}]
-- Kutu Türü: ${boxType}
-- Kutu Başlığı: "${subBoxTitle}"
-- Kutu Açıklaması: ${description}
-
-Makaleler:
-${articlesText}
-
-# İşlem
-Yukarıdaki ${articleCount} makaleyi değerlendir ve her biri için thesisBoxId (${thesisBoxId}), subBoxTitle ("${subBoxTitle}"), articleTitle, isRelevant, relevanceScore (0-100), reasoning (Türkçe) alanlarını içeren JSON dizisi döndür.`,
-  });
-}
-</file>
-
 <file path="src/features/literature-review/prompts/sanitize.prompt.ts">
 import {
   buildPromptPayload,
@@ -16686,7 +16617,8 @@ async function getCachedBoxes(thesisMatrixId: number) {
           WHEN 'SUBJECT_PROBLEM' THEN 1
           WHEN 'THEORETICAL_FRAMEWORK' THEN 2
           WHEN 'METHODOLOGY' THEN 3
-          WHEN 'PRIMARY_MATERIAL' THEN 4
+          WHEN 'RELATED_THESES' THEN 4
+          WHEN 'PRIMARY_MATERIAL' THEN 5
           ELSE 99
         END`,
       );
@@ -16809,7 +16741,8 @@ export async function fetchUncachedBoxesWithFullShape(): Promise<
           WHEN 'SUBJECT_PROBLEM' THEN 1
           WHEN 'THEORETICAL_FRAMEWORK' THEN 2
           WHEN 'METHODOLOGY' THEN 3
-          WHEN 'PRIMARY_MATERIAL' THEN 4
+          WHEN 'RELATED_THESES' THEN 4
+          WHEN 'PRIMARY_MATERIAL' THEN 5
           ELSE 99
         END`,
       );
@@ -24387,6 +24320,99 @@ export async function executeBackwardExpansion(
 }
 </file>
 
+<file path="src/features/literature-review/prompts/batch-jury.prompt.ts">
+import {
+  buildPromptPayload,
+  type PromptPayload,
+} from "@/lib/ai/prompt-builder";
+
+function buildQuadrantSpecificInstruction(boxType: string): string {
+  switch (boxType) {
+    case "SUBJECT_PROBLEM":
+      return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — VAKA / KONU KUTUSU (SUBJECT_PROBLEM)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin doğrudan incelediği ampirik vakaya, spesifik tarihsel döneme ve aktörlere odaklanır.\n\n## KABUL KRİTERİ\nTezin kapsadığı tarihsel dönemi ve vaka alanını doğrudan işleyen ampirik monografiler, saha araştırmaları ve vaka analizleri yüksek puan (80-95+) almalıdır.\n\n## DEĞERLENDİRME VE ELEME KRİTERLERİ\n1. Tezin kapsadığı olgusal/tarihsel dönemin DIŞINDAKİ başka bir döneme veya olaya odaklanan çalışmalar düşük puanlandırılmalıdır.\n2. Soyut, genel ve zamansız teorik/kuramsal eserler ve metodoloji el kitapları Vaka/Konu Kutusu için ayrı tutulmalıdır.`;
+
+    case "THEORETICAL_FRAMEWORK":
+      return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — TEORİK ÇERÇEVE KUTUSU (THEORETICAL_FRAMEWORK)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin ampirik vakasını anlamlandırmada kullanılan soyut kuramlar, teorik kavramlar ve modellemelere odaklanır.\n\n## KABUL KRİTERİ\nİlgili kuramcıların birincil kuramsal metinleri ve bu teorileri tartışan literatür yüksek puan almalıdır.`;
+
+    case "METHODOLOGY":
+      return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — YÖNTEM KUTUSU (METHODOLOGY)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin benimsediği araştırma deseni, veri toplama ve analiz tekniklerine yönelik metodolojik eserlere odaklanır.\n\n## KABUL KRİTERİ\n1. **Metodolojik Uyum:** Eserin sunduğu veya uyguladığı analiz yöntemi, alt kutu açıklamasında (description) tanımlanan araştırma deseni ve yöntemsel yaklaşımla doğrudan örtüşmelidir (80-100 puan).\n2. **Emsal Uygulama:** Kutu açıklamasında belirtilen yöntemin benzer araştırma alanlarına başarıyla uygulandığı emsal çalışmalar kabul edilebilir (60-79 puan).\n\n## DEĞERLENDİRME VE ELEME KRİTERLERİ\n1. **Yöntemsel Uyuşmazlık:** Alt kutu açıklamasında tanımlanan metodolojik yaklaşımdan sapan veya zıt bir analitik tasarım benimseyen çalışmaları düşük puanla (0-40 puan).\n2. Soyut genel felsefi tartışmalar veya yöntemsel kılavuz niteliği taşımayan kuramsal metinleri Yöntem Kutusu için ayrı tut.`;
+
+    case "PRIMARY_MATERIAL":
+      return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — BİRİNCİL MATERYAL KUTUSU (PRIMARY_MATERIAL)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin doğrudan analiz ettiği birincil kaynaklara, belgesel arşivlere veya kanun/karar külliyatına odaklanır.`;
+
+    default:
+      return "";
+  }
+}
+
+export interface JuryBatchPromptInput {
+  thesisSubject: string;
+  thesisBoxId: number;
+  subBoxTitle: string;
+  boxType: string;
+  description: string;
+  articlesText: string;
+  articleCount: number;
+}
+
+/**
+ * Builds the standardized PromptPayload for literature review batch jury evaluation.
+ *
+ * @param params - Jury prompt inputs.
+ * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
+ */
+export function buildJuryPromptPayload(
+  params: JuryBatchPromptInput,
+): PromptPayload {
+  const {
+    thesisSubject,
+    thesisBoxId,
+    subBoxTitle,
+    boxType,
+    description,
+    articlesText,
+    articleCount,
+  } = params;
+
+  const quadrantBlock = buildQuadrantSpecificInstruction(boxType);
+
+  return buildPromptPayload({
+    roleAndExpertise:
+      "Sen, akademik makaleleri belirli bir tez alt kutusu bağlamında değerlendiren uzman bir akademik jüri üyesisin.",
+
+    primaryTask:
+      "Her bir makaleyi, sana verilen alt kutunun türü, başlığı ve açıklaması ile karşılaştırarak değerlendir. Makalenin kutu bağlamıyla doğrudan alakalı olup olmadığına karar ver, 0-100 arası alaka skoru belirle ve 1 cümlelik Türkçe gerekçe yaz.",
+
+    rulesAndConstraints: `1. **Dil Uygunluğu:** Yalnızca Türkçe veya İngilizce dilindeki akademik çalışmaları kabul et. Başlığı veya içeriği bu iki dilin dışındaki (İspanyolca, Fransızca, Almanca, İtalyanca vb.) herhangi bir dilde olan kaynakları doğrudan uygunsuz olarak ele (isRelevant: false, relevanceScore: 0, gerekçede dil uyuşmazlığını belirt).
+2. **Bütünsel Örtüşme:** Soyut teorik benzerliklerin ötesine geçerek makalenin incelediği spesifik olgunun, aktörlerin ve tarihsel kesitin; Sub-Box bağlamı ve tezin kapsadığı olgusal/tarihsel çerçeve ile bütünsel olarak örtüşüp örtüşmediğini değerlendir.
+3. **Dönemsel Uygunluk:** Tezin ve kutunun kapsadığı tarihsel/olgusal dönemin dışındaki başka bir döneme veya olaya odaklanan çalışmalar düşük puanlandırılmalıdır.
+4. **Temel Monografiler:** Tezin kapsadığı tarihsel dönemi ve vaka alanını doğrudan işleyen kapsayıcı temel monografilere ve saha araştırmalarına yüksek relevans puanı (80-95+) ver.${quadrantBlock}`,
+
+    outputFormat: `Her değerlendirme için aşağıdaki alanları içeren JSON nesneleri dizisi döndürün:
+- thesisBoxId: (girdide verilen box id)
+- subBoxTitle: (girdide verilen sub box başlığı)
+- articleTitle: makale başlığı (aynen)
+- isRelevant: boolean
+- relevanceScore: 0-100 arası tam sayı
+- reasoning: Türkçe 1 cümlelik gerekçe`,
+
+    inputContext: `Tez Konusu (Subject Problem): ${thesisSubject}
+
+Kutu Bağlamı:
+- Kutu ID: [Box ${thesisBoxId}]
+- Kutu Türü: ${boxType}
+- Kutu Başlığı: "${subBoxTitle}"
+- Kutu Açıklaması: ${description}
+
+Makaleler:
+${articlesText}
+
+# İşlem
+Yukarıdaki ${articleCount} makaleyi değerlendir ve her biri için thesisBoxId (${thesisBoxId}), subBoxTitle ("${subBoxTitle}"), articleTitle, isRelevant, relevanceScore (0-100), reasoning (Türkçe) alanlarını içeren JSON dizisi döndür.`,
+  });
+}
+</file>
+
 <file path="src/features/positioning/prompts/jury-analysis.prompt.ts">
 import {
   buildPromptPayload,
@@ -29438,46 +29464,41 @@ export async function persistRelatedTheses(userId: number): Promise<void> {
   }
 
   await db.transaction(async (tx) => {
-    // Delete old RELATED_THESES dummy boxes if any exist
-    const oldRelatedBoxes = await tx
-      .select({ id: boxes.id })
-      .from(boxes)
-      .where(
-        and(eq(boxes.matrixId, matrix.id), eq(boxes.boxType, "RELATED_THESES")),
-      );
-
-    if (oldRelatedBoxes.length > 0) {
-      for (const oldBox of oldRelatedBoxes) {
-        await tx.delete(boxes).where(eq(boxes.id, oldBox.id));
-      }
-    }
-
-    // Find the primary SUBJECT_PROBLEM box or first root box for matrix
-    let [primaryBox] = await tx
+    let [relatedBox] = await tx
       .select({ id: boxes.id })
       .from(boxes)
       .where(
         and(
           eq(boxes.matrixId, matrix.id),
-          eq(boxes.boxType, "SUBJECT_PROBLEM"),
+          eq(boxes.boxType, "RELATED_THESES"),
         ),
       )
       .limit(1);
 
-    if (!primaryBox) {
-      [primaryBox] = await tx
-        .select({ id: boxes.id })
-        .from(boxes)
-        .where(eq(boxes.matrixId, matrix.id))
-        .limit(1);
+    if (!relatedBox) {
+      const [inserted] = await tx
+        .insert(boxes)
+        .values({
+          matrixId: matrix.id,
+          title: RELATED_THESES_TITLE,
+          boxType: "RELATED_THESES",
+          description:
+            BOX_TYPE_DESCRIPTIONS.RELATED_THESES ??
+            "Tez konunuz ve konumlandırmanız ile doğrudan ilişkili, incelenmesi önerilen YÖK ve akademik tez çalışmaları.",
+          parentId: null,
+          concepts: [],
+        })
+        .returning({ id: boxes.id });
+      relatedBox = inserted;
     }
 
-    if (!primaryBox) return;
+    if (!relatedBox) return;
 
-    const targetBoxId = primaryBox.id;
+    // Delete existing sources for this RELATED_THESES box to prevent duplicates
+    await tx.delete(sources).where(eq(sources.boxId, relatedBox.id));
 
     const toInsert = theses.map((t) => ({
-      boxId: targetBoxId,
+      boxId: relatedBox.id,
       title: cleanThesisTitle(t.title),
       authors: [t.author].filter((a) => a.length > 0),
       publisher: t.university || null,
@@ -29703,364 +29724,6 @@ export async function fetchPreloadedPool(
 
   return pool;
 }
-</file>
-
-<file path="src/features/outline/prompts/outline-generation.prompt.ts">
-import {
-  buildPromptPayload,
-  type PromptPayload,
-} from "@/lib/ai/prompt-builder";
-
-export interface OutlineMatrixInput {
-  subjectProblem: string;
-  theoreticalFramework: string;
-  primaryMaterial: string | null;
-  methodology: string;
-}
-
-/**
- * Builds the standardized PromptPayload for thesis outline generation.
- * Strictly adheres to docs/LLM_INTEGRATION.md.
- *
- * @param matrix - The thesis matrix input data.
- * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
- */
-export function buildOutlineGenerationPromptPayload(
-  matrix: OutlineMatrixInput,
-): PromptPayload {
-  return buildPromptPayload({
-    roleAndExpertise:
-      "Siz, Türkiye YÖK Lisansüstü Eğitim Enstitüleri (Sosyal Bilimler Enstitüsü, Fen Bilimleri Enstitüsü) ve uluslararası akademik standartlarda uzmanlaşmış kıdemli bir tez danışmanı ve akademik yapılandırma asistanısınız.",
-
-    primaryTask:
-      "Sağlanan tez matrisindeki araştırma problemi, teorik çerçeve, birincil materyal ve metodoloji bilgilerini sentezleyerek tezin bilim dalını tespit edin ve metodolojik açıdan akıcı, sade, organik bağları güçlü bir tez taslak planı (içindekiler hiyerarşisi) oluşturun.",
-
-    rulesAndConstraints: `## 1. Bilim Dalı Tespiti (academicField)
-- Matris verilerini analiz ederek tezin ait olduğu temel akademik bilim dalını belirleyin (Örn: "Siyaset Bilimi ve Kamu Yönetimi", "Sosyoloji", "İktisat", "Hukuk", "Bilgisayar Mühendisliği", "Eğitim Bilimleri").
-
-## 2. Bölüm Mimarisi ve Hiyerarşi Standartları (Türkiye YÖK & SBE Standartları)
-- **Ana Bölüm Mimarisi:** Giriş + 3 Ana Gövde Bölümü + Sonuç ve Değerlendirme (Toplam 5 Ana Bölüm).
-- **Bölüm 1 (Giriş):** Tezin kuramsal ve yöntemsel manifestosudur. Altında araştırmanın problemini, kuramsal yaklaşımını, yöntemini/birincil kaynaklarını ve tezin planını sunan 2 ila 4 odaklanmış alt bölüm (subSections) yer almalıdır.
-- **Gövde Bölümleri (Bölüm 2, 3, 4):** Tezin ana kuramsal ve ampirik eksenlerini taşıyan 3 bağımsız ana bölümdür:
-  - *Bölüm 2 (Kuramsal Çerçeve):* Konunun teorik temellerini ve kavramsal araçlarını derinlemesine inceleyen 2-3 alt bölüm.
-  - *Bölüm 3 (Tarihsel Bağlam / Aktörler / Ampirik Süreç):* Araştırmanın birincil materyal ve aktörlerinin söylemsel/ampirik pratiklerini inceleyen 2-3 alt bölüm.
-  - *Bölüm 4 (Karşılaştırmalı Analiz / Karşı-Hegemonya / Sentez):* Farklı hatların, söylemlerin veya verilerin kuram ışığında karşılaştırmalı analizini ve tartışmasını yapan 2-3 alt bölüm.
-- **Son Bölüm (Sonuç ve Değerlendirme):** Araştırma bulgularının sentezini, hipotezlerin değerlendirilmesini ve literatüre katkıyı içeren nihai bölümdür.
-
-## 3. Metodoloji ve Kaynak Entegrasyonu
-- Sosyal ve beşeri bilimlerde yöntem ve birincil kaynakların seçimi Giriş bölümünün alt başlıkları olarak kurgulanır; böylece tezin gövdesi yöntemle şişirilmeden doğrudan kuramsal ve ampirik içeriğe odaklanır.
-
-## 4. Başlık ve İfade Standartları
-- **Sadelik ve Hiyerarşik Netlik:** Başlıklar makale özeti veya uzun cümleler yerine kısa, analitik ve akademik kavramlara odaklı olmalıdır.
-- **Dil:** Tüm başlıklar ve açıklamalar akıcı ve yüksek düzey akademik Türkçe ile yazılmalıdır.
-- **Açıklamalar (description):** Her ana ve alt bölüm için 1-2 cümlelik öz, net akademik açıklamalar yazılmalıdır.
-
-## 5. Konu Kutusu Eşleştirmesi (recommendedBoxTypes)
-- Her bölümün matristeki hangi temel bileşenlerle beslendiğini belirleyin.
-- Geçerli değerler: "SUBJECT_PROBLEM", "THEORETICAL_FRAMEWORK", "PRIMARY_MATERIAL", "METHODOLOGY".`,
-
-    workflowSteps: `1. Araştırma problemi ve kuramsal çerçeveden hareketle tezin bilim dalını (academicField) belirleyin.
-2. Türkiye lisansüstü tez geleneğine uygun olarak: Giriş (yöntem/materyal alt başlıkları dahil) + 3 Ana Gövde Bölümü + Sonuç ve Değerlendirme mimarisini kurun.
-3. Giriş bölümü altına Araştırmanın Problemi/Amacı, Kuramsal Yaklaşım/Hipotez, Yöntem/Birincil Kaynaklar ve Tezin Kurgusu alt başlıklarını ekleyin.
-4. 3 Gövde bölümünü (Kuram → Ampirik Süreç → Karşılaştırmalı Sentez) 2-3'er odaklı alt başlıkla yapılandırın.
-5. Başlıkları analitik ve sade bir dille formüle edin.
-6. İlgili recommendedBoxTypes eşleştirmelerini tanımlayarak JSON çıktısını üretin.`,
-
-    outputFormat: `- Yanıt yalnızca sağlanan JSON şemasına eksiksiz uyan JSON nesnesi olmalıdır.
-- Tüm başlıklar ve açıklamalar akademik Türkçe olmalıdır.`,
-
-    examples: `## Örnek 1: Siyaset Bilimi ve Kamu Yönetimi Tez Planı
-
-### Girdi
-- **Araştırma Problemi:** 1990'lar Türkiye'sinde Neoliberal Dönüşüm ve Yerel Yönetimlerin Özerkliği
-- **Teorik Çerçeve:** David Harvey'nin Neoliberalizm Kuramı ve Kentsel Mekânın Yeniden Üretimi
-- **Birincil Materyal:** Belediye Meclis Kararları, Resmî Gazete Tebliğleri ve İmar Raporları
-- **Metodoloji:** Nitel Söylem ve Politika Analizi
-
-### Çıktı
-\`\`\`json
-{
-  "academicField": "Siyaset Bilimi ve Kamu Yönetimi",
-  "sections": [
-    {
-      "title": "Giriş",
-      "description": "Araştırmanın konusu, problemi, kuramsal-yöntemsel yaklaşımı ve tezin kurgusal yapısı.",
-      "sortOrder": 1,
-      "recommendedBoxTypes": ["SUBJECT_PROBLEM", "METHODOLOGY"],
-      "subSections": [
-        {
-          "title": "Araştırmanın Konusu, Problemi ve Amacı",
-          "description": "1990'larda yerel yönetimlerin dönüşüm problemi ve araştırmanın temel soruları.",
-          "sortOrder": 1,
-          "recommendedBoxTypes": ["SUBJECT_PROBLEM"]
-        },
-        {
-          "title": "Kuramsal Çerçeve ve Temel Hipotezler",
-          "description": "David Harvey'nin mekân teorisi ekseninde kurulan hipotezlerin sunumu.",
-          "sortOrder": 2,
-          "recommendedBoxTypes": ["THEORETICAL_FRAMEWORK"]
-        },
-        {
-          "title": "Yöntem, Birincil Kaynaklar ve Sınırlılıklar",
-          "description": "Nitel söylem analizi yöntemi, belediye meclis kararları ve arşiv materyallerinin kapsamı.",
-          "sortOrder": 3,
-          "recommendedBoxTypes": ["METHODOLOGY", "PRIMARY_MATERIAL"]
-        }
-      ]
-    },
-    {
-      "title": "Kuramsal Çerçeve: Neoliberalizm, Devlet ve Kentsel Mekân",
-      "description": "Neoliberal yeniden yapılanma, yerel yönetimler ve kentsel rant dinamiklerinin teorik analizi.",
-      "sortOrder": 2,
-      "recommendedBoxTypes": ["THEORETICAL_FRAMEWORK"],
-      "subSections": [
-        {
-          "title": "Neoliberal Devlet Aklı ve Kentsel Mekânın Metalaşması",
-          "description": "Harvey'nin sermaye birikim modelleri ışığında kentsel politikalar.",
-          "sortOrder": 1,
-          "recommendedBoxTypes": ["THEORETICAL_FRAMEWORK"]
-        },
-        {
-          "title": "Yerel Özerklik ve Merkez-Yerel İlişkileri",
-          "description": "Merkezi idare ile yerel otoriteler arasındaki yetki aktarımlarının kuramsal boyutları.",
-          "sortOrder": 2,
-          "recommendedBoxTypes": ["THEORETICAL_FRAMEWORK", "SUBJECT_PROBLEM"]
-        }
-      ]
-    },
-    {
-      "title": "1990'lar Türkiye'sinde Yerel Yönetimlerin Kurumsal ve Hukuki Dönüşümü",
-      "description": "Dönemin yasal mevzuatı, belediye kararları ve yerel hizmetlerin piyasalaşma pratikleri.",
-      "sortOrder": 3,
-      "recommendedBoxTypes": ["PRIMARY_MATERIAL", "SUBJECT_PROBLEM"],
-      "subSections": [
-        {
-          "title": "Mevzuat Değişiklikleri ve Özelleştirme Uygulamaları",
-          "description": "Belediye hizmetlerinin piyasaya açılmasına dair yasal çerçevenin analizi.",
-          "sortOrder": 1,
-          "recommendedBoxTypes": ["PRIMARY_MATERIAL"]
-        },
-        {
-          "title": "Belediye Meclislerinde Kentsel Rant ve İmar Kararları",
-          "description": "Birincil arşiv belgeleri üzerinden meclis kararlarının ampirik dökümü.",
-          "sortOrder": 2,
-          "recommendedBoxTypes": ["PRIMARY_MATERIAL"]
-        }
-      ]
-    },
-    {
-      "title": "Kentsel Politikaların Söylemsel Analizi ve Özerklik Çıkmazı",
-      "description": "Siyasal aktörlerin söylemleri ile uygulama arasındaki gerilimlerin karşılaştırmalı analizi.",
-      "sortOrder": 4,
-      "recommendedBoxTypes": ["METHODOLOGY", "SUBJECT_PROBLEM"],
-      "subSections": [
-        {
-          "title": "Yerel Siyasette 'Hizmet' ve 'Piyasa' Söyleminin İnşası",
-          "description": "Nitel söylem analizi bulgularının kuramsal kavramlarla karşılaştırılması.",
-          "sortOrder": 1,
-          "recommendedBoxTypes": ["METHODOLOGY", "PRIMARY_MATERIAL"]
-        },
-        {
-          "title": "Merkezi Denetim Karşısında Yerel Özerklik Kapasitesi",
-          "description": "Yerel aktörlerin özerklik talepleri ile merkezi vesayet arasındaki güç ilişkileri.",
-          "sortOrder": 2,
-          "recommendedBoxTypes": ["SUBJECT_PROBLEM", "THEORETICAL_FRAMEWORK"]
-        }
-      ]
-    },
-    {
-      "title": "Sonuç ve Değerlendirme",
-      "description": "Araştırma bulgularının sentezi, hipotezlerin doğrulanması ve literatüre katkı.",
-      "sortOrder": 5,
-      "recommendedBoxTypes": ["SUBJECT_PROBLEM", "THEORETICAL_FRAMEWORK"],
-      "subSections": []
-    }
-  ]
-}
-\`\`\``,
-
-    inputContext: `## Tez Matrisi Verileri
-
-### Araştırma Problemi
-${matrix.subjectProblem}
-
-### Teorik Çerçeve
-${matrix.theoreticalFramework}
-
-### Birincil Materyal
-${matrix.primaryMaterial || "Belirtilmemiş"}
-
-### Metodoloji
-${matrix.methodology}
-
----
-
-Yukarıdaki tez matrisi verilerini analiz ederek Türkiye lisansüstü tez standartlarına tam uyumlu, sade ve akıcı bir taslak tez planı oluşturun.`,
-  });
-}
-</file>
-
-<file path="src/features/outline/schema.ts">
-import { z } from "zod";
-import type { JsonSchema, JsonSchemaProperty } from "@/services/ai";
-
-/**
- * Recursive Zod schema for a single outline section (can contain subSections).
- */
-const outlineSectionSchema: z.ZodType<{
-  title: string;
-  description: string;
-  sortOrder: number;
-  recommendedBoxTypes?: string[];
-  subSections: Array<{
-    title: string;
-    description: string;
-    sortOrder: number;
-    recommendedBoxTypes?: string[];
-  }>;
-}> = z.lazy(() =>
-  z.object({
-    title: z
-      .string()
-      .describe("Bölüm başlığı. Kesinlikle akademik Türkçe olmalıdır."),
-    description: z
-      .string()
-      .describe(
-        "Bölüm açıklaması. Kısa ve öz bir akademik Türkçe açıklama olmalıdır.",
-      ),
-    sortOrder: z
-      .number()
-      .int()
-      .describe("Bölümün gösterim sırası (1'den başlar)."),
-    recommendedBoxTypes: z
-      .array(z.string())
-      .optional()
-      .describe(
-        "Bu bölümün besleneceği ilgili Konu Kutusu türleri (ör. ['THEORETICAL_FRAMEWORK', 'SUBJECT_PROBLEM']).",
-      ),
-    subSections: z
-      .array(
-        z.object({
-          title: z
-            .string()
-            .describe("Alt bölüm başlığı. Akademik Türkçe olmalıdır."),
-          description: z.string().describe("Alt bölüm açıklaması."),
-          sortOrder: z.number().int().describe("Alt bölümün gösterim sırası."),
-          recommendedBoxTypes: z
-            .array(z.string())
-            .optional()
-            .describe(
-              "Bu alt bölümün besleneceği ilgili Konu Kutusu türleri (ör. ['METHODOLOGY']).",
-            ),
-        }),
-      )
-      .describe(
-        "Bölümün alt başlıkları. Giriş ve gövde bölümleri alt başlıklar barındırabilir.",
-      ),
-  }),
-);
-
-/**
- * Zod schema for the full Gemini outline generation response.
- */
-export const outlineGenerationSchema = z.object({
-  academicField: z
-    .string()
-    .describe(
-      "Tez çalışmasının bilim dalı (örn: İşletme, Bilgisayar Mühendisliği, Hukuk, Siyaset Bilimi). Matris içeriğinden otomatik tespit edilmelidir.",
-    ),
-  sections: z
-    .array(outlineSectionSchema)
-    .min(4)
-    .max(6)
-    .describe(
-      "Tezin ana bölüm başlıkları (Giriş, 3 Ana Gövde Bölümü, Sonuç ve Değerlendirme olmak üzere toplam 4 veya 5 ana bölüm).",
-    ),
-});
-
-export type OutlineGenerationResponse = z.infer<typeof outlineGenerationSchema>;
-
-/**
- * Builds the JSON schema property for a single outline section (recursive).
- */
-function buildSectionJsonSchemaProperty(): JsonSchemaProperty {
-  return {
-    type: "object",
-    properties: {
-      title: {
-        type: "string",
-        description: "Bölüm başlığı (Kesinlikle akademik Türkçe olmalıdır)",
-      },
-      description: {
-        type: "string",
-        description: "Bölüm açıklaması (Kısa ve öz akademik Türkçe)",
-      },
-      sortOrder: {
-        type: "number",
-        description: "Bölümün gösterim sırası (1'den başlar)",
-      },
-      recommendedBoxTypes: {
-        type: "array",
-        items: { type: "string" },
-        description:
-          "İlgili konu kutusu türleri: 'SUBJECT_PROBLEM', 'THEORETICAL_FRAMEWORK', 'PRIMARY_MATERIAL', 'METHODOLOGY'",
-      },
-      subSections: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            title: {
-              type: "string",
-              description: "Alt bölüm başlığı (Akademik Türkçe)",
-            },
-            description: {
-              type: "string",
-              description: "Alt bölüm açıklaması",
-            },
-            sortOrder: {
-              type: "number",
-              description: "Alt bölümün gösterim sırası",
-            },
-            recommendedBoxTypes: {
-              type: "array",
-              items: { type: "string" },
-              description: "İlgili alt konu kutusu türleri",
-            },
-          },
-          required: ["title", "description", "sortOrder"],
-          additionalProperties: false,
-        },
-        description:
-          "Alt bölümler. Giriş ve gövde bölümleri altında konuyu yapılandıran alt bölümler yer alır.",
-      },
-    },
-    required: ["title", "description", "sortOrder", "subSections"],
-  };
-}
-
-/**
- * Raw JSON Schema for Gemini's responseJsonSchema constraint.
- */
-export const outlineGenerationJsonSchema: JsonSchema = {
-  type: "object",
-  properties: {
-    academicField: {
-      type: "string",
-      description:
-        "Tezin bilim dalı (matris içeriğinden otomatik tespit, ör: İşletme, Bilgisayar Mühendisliği, Hukuk, Siyaset Bilimi)",
-    },
-    sections: {
-      type: "array",
-      items: buildSectionJsonSchemaProperty(),
-      minItems: 4,
-      maxItems: 6,
-      description:
-        "Tezin ana bölüm başlıkları (Giriş, 3 Ana Gövde Bölümü, Sonuç ve Değerlendirme).",
-    },
-  },
-  required: ["academicField", "sections"],
-};
 </file>
 
 <file path="src/services/ai/cloudflare-ai.ts">
@@ -32914,272 +32577,362 @@ export async function evaluateSingleBoxJury(
 }
 </file>
 
-<file path="src/features/outline/generator.ts">
-"use server";
-
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { matrices, outlines, boxes, outlineBoxes } from "@/db/schema";
-import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
-import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
-import { generateGeminiStructuredContent } from "@/services/ai";
-import { FLASH_36, GEMINI_SEED } from "@/lib/constants";
-import { ThinkingLevel } from "@google/genai";
-import { createFlowId, Logger } from "@/lib/logger";
+<file path="src/features/outline/prompts/outline-generation.prompt.ts">
 import {
-  outlineGenerationSchema,
-  outlineGenerationJsonSchema,
-  type OutlineGenerationResponse,
-} from "./schema";
+  buildPromptPayload,
+  type PromptPayload,
+} from "@/lib/ai/prompt-builder";
 
-import { buildOutlineGenerationPromptPayload } from "./prompts/outline-generation.prompt";
+export interface OutlineMatrixInput {
+  subjectProblem: string;
+  theoreticalFramework: string;
+  primaryMaterial: string | null;
+  methodology: string;
+}
 
 /**
- * Generates the thesis outline via Gemini without persisting it.
+ * Builds the standardized PromptPayload for thesis outline generation.
+ * Strictly adheres to docs/LLM_INTEGRATION.md.
  *
- * @returns The generated outline or an error message.
+ * @param matrix - The thesis matrix input data.
+ * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
  */
-export async function generateOutlineAction(): Promise<
-  { success: true; outline: OutlineGenerationResponse } | { error: string }
-> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-  const startTime = performance.now();
+export function buildOutlineGenerationPromptPayload(
+  matrix: OutlineMatrixInput,
+): PromptPayload {
+  return buildPromptPayload({
+    roleAndExpertise:
+      "Siz, Türkiye YÖK Lisansüstü Eğitim Enstitüleri (Sosyal Bilimler Enstitüsü, Fen Bilimleri Enstitüsü) ve uluslararası akademik standartlarda uzmanlaşmış kıdemli bir tez danışmanı ve akademik yapılandırma asistanısınız.",
 
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
+    primaryTask:
+      "Sağlanan tez matrisindeki araştırma problemi, teorik çerçeve, birincil materyal ve metodoloji bilgilerini sentezleyerek tezin bilim dalını tespit edin ve metodolojik açıdan akıcı, sade, organik bağları güçlü bir tez taslak planı (içindekiler hiyerarşisi) oluşturun.",
 
-    const [matrix] = await db
-      .select()
-      .from(matrices)
-      .where(eq(matrices.userId, session.userId));
+    rulesAndConstraints: `## 1. Bilim Dalı Tespiti (academicField)
+- Matris verilerini analiz ederek tezin ait olduğu temel akademik bilim dalını belirleyin (Örn: "Siyaset Bilimi ve Kamu Yönetimi", "Sosyoloji", "İktisat", "Hukuk", "Bilgisayar Mühendisliği", "Eğitim Bilimleri").
 
-    if (!matrix) return { error: "Thesis matrix not found." };
+## 2. Bölüm Mimarisi ve Hiyerarşi Standartları (Türkiye YÖK & SBE Standartları)
+- **Ana Bölüm Mimarisi:** Giriş + 3 Ana Gövde Bölümü + Sonuç ve Değerlendirme (Toplam 5 Ana Bölüm).
+- **Bölüm 1 (Giriş):** Tezin kuramsal ve yöntemsel manifestosudur. Altında araştırmanın problemini, kuramsal yaklaşımını, yöntemini/birincil kaynaklarını ve tezin planını sunan 2 ila 4 odaklanmış alt bölüm (subSections) yer almalıdır.
+- **Gövde Bölümleri (Bölüm 2, 3, 4):** Tezin ana kuramsal ve ampirik eksenlerini taşıyan 3 bağımsız ana bölümdür:
+  - *Bölüm 2 (Kuramsal Çerçeve):* Konunun teorik temellerini ve kavramsal araçlarını derinlemesine inceleyen 2-3 alt bölüm.
+  - *Bölüm 3 (Tarihsel Bağlam / Aktörler / Ampirik Süreç):* Araştırmanın birincil materyal ve aktörlerinin söylemsel/ampirik pratiklerini inceleyen 2-3 alt bölüm.
+  - *Bölüm 4 (Karşılaştırmalı Analiz / Karşı-Hegemonya / Sentez):* Farklı hatların, söylemlerin veya verilerin kuram ışığında karşılaştırmalı analizini ve tartışmasını yapan 2-3 alt bölüm.
+- **Son Bölüm (Sonuç ve Değerlendirme):** Araştırma bulgularının sentezini, hipotezlerin değerlendirilmesini ve literatüre katkıyı içeren nihai bölümdür.
 
-    log.info("outline_generation_start", {
-      service: "outline",
-    });
+## 3. Metodoloji ve Kaynak Entegrasyonu
+- Sosyal ve beşeri bilimlerde yöntem ve birincil kaynakların seçimi Giriş bölümünün alt başlıkları olarak kurgulanır; böylece tezin gövdesi yöntemle şişirilmeden doğrudan kuramsal ve ampirik içeriğe odaklanır.
 
-    const payload = buildOutlineGenerationPromptPayload({
-      subjectProblem: matrix.subjectProblem,
-      theoreticalFramework: matrix.theoreticalFramework,
-      primaryMaterial: matrix.primaryMaterial,
-      methodology: matrix.methodology,
-    });
+## 4. Başlık ve İfade Standartları
+- **Sadelik ve Hiyerarşik Netlik:** Başlıklar makale özeti veya uzun cümleler yerine kısa, analitik ve akademik kavramlara odaklı olmalıdır.
+- **Dil:** Tüm başlıklar ve açıklamalar akıcı ve yüksek düzey akademik Türkçe ile yazılmalıdır.
+- **Açıklamalar (description):** Her ana ve alt bölüm için 1-2 cümlelik öz, net akademik açıklamalar yazılmalıdır.
 
-    const result =
-      await generateGeminiStructuredContent<OutlineGenerationResponse>(
-        FLASH_36,
-        payload.systemInstruction,
-        payload.userPrompt,
-        outlineGenerationJsonSchema,
-        log,
+## 5. Konu Kutusu Eşleştirmesi (recommendedBoxTypes)
+- Her bölümün matristeki hangi temel bileşenlerle beslendiğini belirleyin.
+- Geçerli değerler: "SUBJECT_PROBLEM", "THEORETICAL_FRAMEWORK", "PRIMARY_MATERIAL", "METHODOLOGY".`,
+
+    workflowSteps: `1. Araştırma problemi ve kuramsal çerçeveden hareketle tezin bilim dalını (academicField) belirleyin.
+2. Türkiye lisansüstü tez geleneğine uygun olarak: Giriş (yöntem/materyal alt başlıkları dahil) + 3 Ana Gövde Bölümü + Sonuç ve Değerlendirme mimarisini kurun.
+3. Giriş bölümü altına Araştırmanın Problemi/Amacı, Kuramsal Yaklaşım/Hipotez, Yöntem/Birincil Kaynaklar ve Tezin Kurgusu alt başlıklarını ekleyin.
+4. 3 Gövde bölümünü (Kuram → Ampirik Süreç → Karşılaştırmalı Sentez) 2-3'er odaklı alt başlıkla yapılandırın.
+5. Başlıkları analitik ve sade bir dille formüle edin.
+6. İlgili recommendedBoxTypes eşleştirmelerini tanımlayarak JSON çıktısını üretin.`,
+
+    outputFormat: `- Yanıt yalnızca sağlanan JSON şemasına eksiksiz uyan JSON nesnesi olmalıdır.
+- Tüm başlıklar ve açıklamalar akademik Türkçe olmalıdır.`,
+
+    examples: `## Örnek 1: Siyaset Bilimi ve Kamu Yönetimi Tez Planı
+
+### Girdi
+- **Araştırma Problemi:** 1990'lar Türkiye'sinde Neoliberal Dönüşüm ve Yerel Yönetimlerin Özerkliği
+- **Teorik Çerçeve:** David Harvey'nin Neoliberalizm Kuramı ve Kentsel Mekânın Yeniden Üretimi
+- **Birincil Materyal:** Belediye Meclis Kararları, Resmî Gazete Tebliğleri ve İmar Raporları
+- **Metodoloji:** Nitel Söylem ve Politika Analizi
+
+### Çıktı
+\`\`\`json
+{
+  "academicField": "Siyaset Bilimi ve Kamu Yönetimi",
+  "sections": [
+    {
+      "title": "Giriş",
+      "description": "Araştırmanın konusu, problemi, kuramsal-yöntemsel yaklaşımı ve tezin kurgusal yapısı.",
+      "sortOrder": 1,
+      "recommendedBoxTypes": ["SUBJECT_PROBLEM", "METHODOLOGY"],
+      "subSections": [
         {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
-          zodSchema: outlineGenerationSchema,
-          seed: GEMINI_SEED,
-          thesisMatrix: matrix,
-          payloadStage: "outline_generation",
-          quiet: true,
+          "title": "Araştırmanın Konusu, Problemi ve Amacı",
+          "description": "1990'larda yerel yönetimlerin dönüşüm problemi ve araştırmanın temel soruları.",
+          "sortOrder": 1,
+          "recommendedBoxTypes": ["SUBJECT_PROBLEM"]
         },
-      );
+        {
+          "title": "Kuramsal Çerçeve ve Temel Hipotezler",
+          "description": "David Harvey'nin mekân teorisi ekseninde kurulan hipotezlerin sunumu.",
+          "sortOrder": 2,
+          "recommendedBoxTypes": ["THEORETICAL_FRAMEWORK"]
+        },
+        {
+          "title": "Yöntem, Birincil Kaynaklar ve Sınırlılıklar",
+          "description": "Nitel söylem analizi yöntemi, belediye meclis kararları ve arşiv materyallerinin kapsamı.",
+          "sortOrder": 3,
+          "recommendedBoxTypes": ["METHODOLOGY", "PRIMARY_MATERIAL"]
+        }
+      ]
+    },
+    {
+      "title": "Kuramsal Çerçeve: Neoliberalizm, Devlet ve Kentsel Mekân",
+      "description": "Neoliberal yeniden yapılanma, yerel yönetimler ve kentsel rant dinamiklerinin teorik analizi.",
+      "sortOrder": 2,
+      "recommendedBoxTypes": ["THEORETICAL_FRAMEWORK"],
+      "subSections": [
+        {
+          "title": "Neoliberal Devlet Aklı ve Kentsel Mekânın Metalaşması",
+          "description": "Harvey'nin sermaye birikim modelleri ışığında kentsel politikalar.",
+          "sortOrder": 1,
+          "recommendedBoxTypes": ["THEORETICAL_FRAMEWORK"]
+        },
+        {
+          "title": "Yerel Özerklik ve Merkez-Yerel İlişkileri",
+          "description": "Merkezi idare ile yerel otoriteler arasındaki yetki aktarımlarının kuramsal boyutları.",
+          "sortOrder": 2,
+          "recommendedBoxTypes": ["THEORETICAL_FRAMEWORK", "SUBJECT_PROBLEM"]
+        }
+      ]
+    },
+    {
+      "title": "1990'lar Türkiye'sinde Yerel Yönetimlerin Kurumsal ve Hukuki Dönüşümü",
+      "description": "Dönemin yasal mevzuatı, belediye kararları ve yerel hizmetlerin piyasalaşma pratikleri.",
+      "sortOrder": 3,
+      "recommendedBoxTypes": ["PRIMARY_MATERIAL", "SUBJECT_PROBLEM"],
+      "subSections": [
+        {
+          "title": "Mevzuat Değişiklikleri ve Özelleştirme Uygulamaları",
+          "description": "Belediye hizmetlerinin piyasaya açılmasına dair yasal çerçevenin analizi.",
+          "sortOrder": 1,
+          "recommendedBoxTypes": ["PRIMARY_MATERIAL"]
+        },
+        {
+          "title": "Belediye Meclislerinde Kentsel Rant ve İmar Kararları",
+          "description": "Birincil arşiv belgeleri üzerinden meclis kararlarının ampirik dökümü.",
+          "sortOrder": 2,
+          "recommendedBoxTypes": ["PRIMARY_MATERIAL"]
+        }
+      ]
+    },
+    {
+      "title": "Kentsel Politikaların Söylemsel Analizi ve Özerklik Çıkmazı",
+      "description": "Siyasal aktörlerin söylemleri ile uygulama arasındaki gerilimlerin karşılaştırmalı analizi.",
+      "sortOrder": 4,
+      "recommendedBoxTypes": ["METHODOLOGY", "SUBJECT_PROBLEM"],
+      "subSections": [
+        {
+          "title": "Yerel Siyasette 'Hizmet' ve 'Piyasa' Söyleminin İnşası",
+          "description": "Nitel söylem analizi bulgularının kuramsal kavramlarla karşılaştırılması.",
+          "sortOrder": 1,
+          "recommendedBoxTypes": ["METHODOLOGY", "PRIMARY_MATERIAL"]
+        },
+        {
+          "title": "Merkezi Denetim Karşısında Yerel Özerklik Kapasitesi",
+          "description": "Yerel aktörlerin özerklik talepleri ile merkezi vesayet arasındaki güç ilişkileri.",
+          "sortOrder": 2,
+          "recommendedBoxTypes": ["SUBJECT_PROBLEM", "THEORETICAL_FRAMEWORK"]
+        }
+      ]
+    },
+    {
+      "title": "Sonuç ve Değerlendirme",
+      "description": "Araştırma bulgularının sentezi, hipotezlerin doğrulanması ve literatüre katkı.",
+      "sortOrder": 5,
+      "recommendedBoxTypes": ["SUBJECT_PROBLEM", "THEORETICAL_FRAMEWORK"],
+      "subSections": []
+    }
+  ]
+}
+\`\`\``,
 
-    log.info("outline_generation_success", {
-      service: "outline",
-      durationMs: Math.round(performance.now() - startTime),
-    });
+    inputContext: `## Tez Matrisi Verileri
 
-    return { success: true, outline: result };
-  } catch (err) {
-    log.error("outline_generation_failed", {
-      service: "outline",
-      error: err instanceof Error ? err : new Error(String(err)),
-    });
-    return {
-      error: "Tez planı oluşturulurken beklenmeyen bir hata oluştu.",
-    };
-  }
+### Araştırma Problemi
+${matrix.subjectProblem}
+
+### Teorik Çerçeve
+${matrix.theoreticalFramework}
+
+### Birincil Materyal
+${matrix.primaryMaterial || "Belirtilmemiş"}
+
+### Metodoloji
+${matrix.methodology}
+
+---
+
+Yukarıdaki tez matrisi verilerini analiz ederek Türkiye lisansüstü tez standartlarına tam uyumlu, sade ve akıcı bir taslak tez planı oluşturun.`,
+  });
+}
+</file>
+
+<file path="src/features/outline/schema.ts">
+import { z } from "zod";
+import type { JsonSchema, JsonSchemaProperty } from "@/services/ai";
+
+/**
+ * Recursive Zod schema for a single outline section (can contain subSections).
+ */
+const outlineSectionSchema: z.ZodType<{
+  title: string;
+  description: string;
+  sortOrder: number;
+  recommendedBoxTypes?: string[];
+  subSections: Array<{
+    title: string;
+    description: string;
+    sortOrder: number;
+    recommendedBoxTypes?: string[];
+  }>;
+}> = z.lazy(() =>
+  z.object({
+    title: z
+      .string()
+      .describe("Bölüm başlığı. Kesinlikle akademik Türkçe olmalıdır."),
+    description: z
+      .string()
+      .describe(
+        "Bölüm açıklaması. Kısa ve öz bir akademik Türkçe açıklama olmalıdır.",
+      ),
+    sortOrder: z
+      .number()
+      .int()
+      .describe("Bölümün gösterim sırası (1'den başlar)."),
+    recommendedBoxTypes: z
+      .array(z.string())
+      .optional()
+      .describe(
+        "Bu bölümün besleneceği ilgili Konu Kutusu türleri (ör. ['THEORETICAL_FRAMEWORK', 'SUBJECT_PROBLEM']).",
+      ),
+    subSections: z
+      .array(
+        z.object({
+          title: z
+            .string()
+            .describe("Alt bölüm başlığı. Akademik Türkçe olmalıdır."),
+          description: z.string().describe("Alt bölüm açıklaması."),
+          sortOrder: z.number().int().describe("Alt bölümün gösterim sırası."),
+          recommendedBoxTypes: z
+            .array(z.string())
+            .optional()
+            .describe(
+              "Bu alt bölümün besleneceği ilgili Konu Kutusu türleri (ör. ['METHODOLOGY']).",
+            ),
+        }),
+      )
+      .describe(
+        "Bölümün alt başlıkları. Giriş ve gövde bölümleri alt başlıklar barındırabilir.",
+      ),
+  }),
+);
+
+/**
+ * Zod schema for the full Gemini outline generation response.
+ */
+export const outlineGenerationSchema = z.object({
+  academicField: z
+    .string()
+    .describe(
+      "Tez çalışmasının bilim dalı (örn: İşletme, Bilgisayar Mühendisliği, Hukuk, Siyaset Bilimi). Matris içeriğinden otomatik tespit edilmelidir.",
+    ),
+  sections: z
+    .array(outlineSectionSchema)
+    .min(4)
+    .max(6)
+    .describe(
+      "Tezin ana bölüm başlıkları (Giriş, 3 Ana Gövde Bölümü, Sonuç ve Değerlendirme olmak üzere toplam 4 veya 5 ana bölüm).",
+    ),
+});
+
+export type OutlineGenerationResponse = z.infer<typeof outlineGenerationSchema>;
+
+/**
+ * Builds the JSON schema property for a single outline section (recursive).
+ */
+function buildSectionJsonSchemaProperty(): JsonSchemaProperty {
+  return {
+    type: "object",
+    properties: {
+      title: {
+        type: "string",
+        description: "Bölüm başlığı (Kesinlikle akademik Türkçe olmalıdır)",
+      },
+      description: {
+        type: "string",
+        description: "Bölüm açıklaması (Kısa ve öz akademik Türkçe)",
+      },
+      sortOrder: {
+        type: "number",
+        description: "Bölümün gösterim sırası (1'den başlar)",
+      },
+      recommendedBoxTypes: {
+        type: "array",
+        items: { type: "string" },
+        description:
+          "İlgili konu kutusu türleri: 'SUBJECT_PROBLEM', 'THEORETICAL_FRAMEWORK', 'PRIMARY_MATERIAL', 'METHODOLOGY'",
+      },
+      subSections: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            title: {
+              type: "string",
+              description: "Alt bölüm başlığı (Akademik Türkçe)",
+            },
+            description: {
+              type: "string",
+              description: "Alt bölüm açıklaması",
+            },
+            sortOrder: {
+              type: "number",
+              description: "Alt bölümün gösterim sırası",
+            },
+            recommendedBoxTypes: {
+              type: "array",
+              items: { type: "string" },
+              description: "İlgili alt konu kutusu türleri",
+            },
+          },
+          required: ["title", "description", "sortOrder"],
+          additionalProperties: false,
+        },
+        description:
+          "Alt bölümler. Giriş ve gövde bölümleri altında konuyu yapılandıran alt bölümler yer alır.",
+      },
+    },
+    required: ["title", "description", "sortOrder", "subSections"],
+  };
 }
 
 /**
- * Persists a generated thesis outline to the database.
- *
- * @param outline - The generated outline data from Gemini.
- * @returns A success flag or an error message.
+ * Raw JSON Schema for Gemini's responseJsonSchema constraint.
  */
-export async function persistOutlineAction(
-  outline: OutlineGenerationResponse,
-): Promise<{ success: true } | { error: string }> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const [matrix] = await db
-      .select()
-      .from(matrices)
-      .where(eq(matrices.userId, session.userId));
-
-    if (!matrix) return { error: "Thesis matrix not found." };
-
-    await persistOutlines(session.userId, matrix.id, outline);
-
-    invalidateOnboardingStepCache("outline");
-
-    return { success: true };
-  } catch (err) {
-    log.error("outline_persist_failed", {
-      service: "outline",
-      error: err instanceof Error ? err : new Error(String(err)),
-    });
-    return {
-      error:
-        "Tez planı veritabanına kaydedilirken beklenmeyen bir hata oluştu.",
-    };
-  }
-}
-
-/**
- * Persists the outline hierarchy to the database in a single transaction.
- *
- * @param userId - The current user id.
- * @param matrixId - The thesis matrix id.
- * @param outline - The generated outline data from Gemini.
- */
-async function persistOutlines(
-  userId: number,
-  matrixId: number,
-  outline: OutlineGenerationResponse,
-): Promise<void> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  await db.transaction(async (tx) => {
-    // 1. Fetch user's existing topic boxes for this matrix
-    const userBoxes = await tx
-      .select()
-      .from(boxes)
-      .where(eq(boxes.matrixId, matrixId));
-
-    // Delete existing outlines for this matrix (cascade deletes outline_boxes)
-    await tx.delete(outlines).where(eq(outlines.matrixId, matrixId));
-
-    const parentValues: (typeof outlines.$inferInsert)[] = [];
-    for (const section of outline.sections) {
-      parentValues.push({
-        matrixId,
-        parentId: null,
-        title: section.title,
-        description: section.description,
-        sortOrder: section.sortOrder,
-        academicField: outline.academicField,
-      });
-    }
-
-    if (parentValues.length === 0) return;
-
-    const insertedParents = await tx
-      .insert(outlines)
-      .values(parentValues)
-      .returning({ id: outlines.id });
-
-    const dbParentIdMap = new Map<number, number>();
-    for (let i = 0; i < outline.sections.length; i++) {
-      const dbId = insertedParents[i]?.id;
-      if (dbId !== undefined) {
-        dbParentIdMap.set(i, dbId);
-      }
-    }
-
-    // Prepare child subsections
-    const childIndexMap: { parentIdx: number; subIdx: number }[] = [];
-    const childValues: (typeof outlines.$inferInsert)[] = [];
-    for (let i = 0; i < outline.sections.length; i++) {
-      const section = outline.sections[i];
-      if (!section.subSections || section.subSections.length === 0) continue;
-
-      const mappedParentId = dbParentIdMap.get(i) ?? null;
-      if (mappedParentId === null) continue;
-
-      for (let j = 0; j < section.subSections.length; j++) {
-        const sub = section.subSections[j];
-        childValues.push({
-          matrixId,
-          parentId: mappedParentId,
-          title: sub.title,
-          description: sub.description,
-          sortOrder: sub.sortOrder,
-          academicField: null,
-        });
-        childIndexMap.push({ parentIdx: i, subIdx: j });
-      }
-    }
-
-    let insertedChildren: { id: number }[] = [];
-    if (childValues.length > 0) {
-      insertedChildren = await tx
-        .insert(outlines)
-        .values(childValues)
-        .returning({ id: outlines.id });
-    }
-
-    // 2. Auto-link boxes to outline sections (outline_boxes)
-    if (userBoxes.length > 0) {
-      const outlineBoxLinks: { outlineId: number; boxId: number }[] = [];
-      const addedSet = new Set<string>();
-
-      const addLink = (outlineId: number, boxId: number) => {
-        const key = `${outlineId}-${boxId}`;
-        if (!addedSet.has(key)) {
-          addedSet.add(key);
-          outlineBoxLinks.push({ outlineId, boxId });
-        }
-      };
-
-      // Auto-link parent sections
-      for (let i = 0; i < outline.sections.length; i++) {
-        const section = outline.sections[i];
-        const outlineId = dbParentIdMap.get(i);
-        if (!outlineId) continue;
-
-        const recTypes = section.recommendedBoxTypes || [];
-        for (const box of userBoxes) {
-          if (box.boxType && recTypes.includes(box.boxType)) {
-            addLink(outlineId, box.id);
-          }
-        }
-      }
-
-      // Auto-link child subsections
-      for (let k = 0; k < childIndexMap.length; k++) {
-        const { parentIdx, subIdx } = childIndexMap[k];
-        const childOutlineId = insertedChildren[k]?.id;
-        if (!childOutlineId) continue;
-
-        const sub = outline.sections[parentIdx]?.subSections?.[subIdx];
-        if (!sub) continue;
-
-        const recTypes = sub.recommendedBoxTypes || [];
-        for (const box of userBoxes) {
-          if (box.boxType && recTypes.includes(box.boxType)) {
-            addLink(childOutlineId, box.id);
-          }
-        }
-      }
-
-      if (outlineBoxLinks.length > 0) {
-        await tx.insert(outlineBoxes).values(outlineBoxLinks);
-      }
-    }
-  });
-
-  log.info("outline_persist_transaction_complete", {
-    service: "outline",
-  });
-}
+export const outlineGenerationJsonSchema: JsonSchema = {
+  type: "object",
+  properties: {
+    academicField: {
+      type: "string",
+      description:
+        "Tezin bilim dalı (matris içeriğinden otomatik tespit, ör: İşletme, Bilgisayar Mühendisliği, Hukuk, Siyaset Bilimi)",
+    },
+    sections: {
+      type: "array",
+      items: buildSectionJsonSchemaProperty(),
+      minItems: 4,
+      maxItems: 6,
+      description:
+        "Tezin ana bölüm başlıkları (Giriş, 3 Ana Gövde Bölümü, Sonuç ve Değerlendirme).",
+    },
+  },
+  required: ["academicField", "sections"],
+};
 </file>
 
 <file path="src/features/positioning/prompts/per-thesis-evaluation.prompt.ts">
@@ -35227,6 +34980,274 @@ export function OutlineTreeView({ sections }: OutlineTreeViewProps) {
 }
 </file>
 
+<file path="src/features/outline/generator.ts">
+"use server";
+
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { matrices, outlines, boxes, outlineBoxes } from "@/db/schema";
+import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
+import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
+import { generateGeminiStructuredContent } from "@/services/ai";
+import { FLASH_36, GEMINI_SEED } from "@/lib/constants";
+import { ThinkingLevel } from "@google/genai";
+import { createFlowId, Logger } from "@/lib/logger";
+import {
+  outlineGenerationSchema,
+  outlineGenerationJsonSchema,
+  type OutlineGenerationResponse,
+} from "./schema";
+
+import { buildOutlineGenerationPromptPayload } from "./prompts/outline-generation.prompt";
+
+/**
+ * Generates the thesis outline via Gemini without persisting it.
+ *
+ * @returns The generated outline or an error message.
+ */
+export async function generateOutlineAction(): Promise<
+  { success: true; outline: OutlineGenerationResponse } | { error: string }
+> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+  const startTime = performance.now();
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const [matrix] = await db
+      .select()
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+
+    if (!matrix) return { error: "Thesis matrix not found." };
+
+    log.info("outline_generation_start", {
+      service: "outline",
+    });
+
+    const payload = buildOutlineGenerationPromptPayload({
+      subjectProblem: matrix.subjectProblem,
+      theoreticalFramework: matrix.theoreticalFramework,
+      primaryMaterial: matrix.primaryMaterial,
+      methodology: matrix.methodology,
+    });
+
+    const result =
+      await generateGeminiStructuredContent<OutlineGenerationResponse>(
+        FLASH_36,
+        payload.systemInstruction,
+        payload.userPrompt,
+        outlineGenerationJsonSchema,
+        log,
+        {
+          thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
+          zodSchema: outlineGenerationSchema,
+          seed: GEMINI_SEED,
+          thesisMatrix: matrix,
+          payloadStage: "outline_generation",
+          quiet: true,
+        },
+      );
+
+    log.info("outline_generation_success", {
+      service: "outline",
+      durationMs: Math.round(performance.now() - startTime),
+    });
+
+    return { success: true, outline: result };
+  } catch (err) {
+    log.error("outline_generation_failed", {
+      service: "outline",
+      error: err instanceof Error ? err : new Error(String(err)),
+    });
+    return {
+      error: "Tez planı oluşturulurken beklenmeyen bir hata oluştu.",
+    };
+  }
+}
+
+/**
+ * Persists a generated thesis outline to the database.
+ *
+ * @param outline - The generated outline data from Gemini.
+ * @returns A success flag or an error message.
+ */
+export async function persistOutlineAction(
+  outline: OutlineGenerationResponse,
+): Promise<{ success: true } | { error: string }> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const [matrix] = await db
+      .select()
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+
+    if (!matrix) return { error: "Thesis matrix not found." };
+
+    await persistOutlines(session.userId, matrix.id, outline);
+
+    invalidateOnboardingStepCache("outline");
+
+    return { success: true };
+  } catch (err) {
+    log.error("outline_persist_failed", {
+      service: "outline",
+      error: err instanceof Error ? err : new Error(String(err)),
+    });
+    return {
+      error:
+        "Tez planı veritabanına kaydedilirken beklenmeyen bir hata oluştu.",
+    };
+  }
+}
+
+/**
+ * Persists the outline hierarchy to the database in a single transaction.
+ *
+ * @param userId - The current user id.
+ * @param matrixId - The thesis matrix id.
+ * @param outline - The generated outline data from Gemini.
+ */
+async function persistOutlines(
+  userId: number,
+  matrixId: number,
+  outline: OutlineGenerationResponse,
+): Promise<void> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  await db.transaction(async (tx) => {
+    // 1. Fetch user's existing topic boxes for this matrix
+    const userBoxes = await tx
+      .select()
+      .from(boxes)
+      .where(eq(boxes.matrixId, matrixId));
+
+    // Delete existing outlines for this matrix (cascade deletes outline_boxes)
+    await tx.delete(outlines).where(eq(outlines.matrixId, matrixId));
+
+    const parentValues: (typeof outlines.$inferInsert)[] = [];
+    for (const section of outline.sections) {
+      parentValues.push({
+        matrixId,
+        parentId: null,
+        title: section.title,
+        description: section.description,
+        sortOrder: section.sortOrder,
+        academicField: outline.academicField,
+      });
+    }
+
+    if (parentValues.length === 0) return;
+
+    const insertedParents = await tx
+      .insert(outlines)
+      .values(parentValues)
+      .returning({ id: outlines.id });
+
+    const dbParentIdMap = new Map<number, number>();
+    for (let i = 0; i < outline.sections.length; i++) {
+      const dbId = insertedParents[i]?.id;
+      if (dbId !== undefined) {
+        dbParentIdMap.set(i, dbId);
+      }
+    }
+
+    // Prepare child subsections
+    const childIndexMap: { parentIdx: number; subIdx: number }[] = [];
+    const childValues: (typeof outlines.$inferInsert)[] = [];
+    for (let i = 0; i < outline.sections.length; i++) {
+      const section = outline.sections[i];
+      if (!section.subSections || section.subSections.length === 0) continue;
+
+      const mappedParentId = dbParentIdMap.get(i) ?? null;
+      if (mappedParentId === null) continue;
+
+      for (let j = 0; j < section.subSections.length; j++) {
+        const sub = section.subSections[j];
+        childValues.push({
+          matrixId,
+          parentId: mappedParentId,
+          title: sub.title,
+          description: sub.description,
+          sortOrder: sub.sortOrder,
+          academicField: null,
+        });
+        childIndexMap.push({ parentIdx: i, subIdx: j });
+      }
+    }
+
+    let insertedChildren: { id: number }[] = [];
+    if (childValues.length > 0) {
+      insertedChildren = await tx
+        .insert(outlines)
+        .values(childValues)
+        .returning({ id: outlines.id });
+    }
+
+    // 2. Auto-link boxes to outline sections (outline_boxes)
+    if (userBoxes.length > 0) {
+      const outlineBoxLinks: { outlineId: number; boxId: number }[] = [];
+      const addedSet = new Set<string>();
+
+      const addLink = (outlineId: number, boxId: number) => {
+        const key = `${outlineId}-${boxId}`;
+        if (!addedSet.has(key)) {
+          addedSet.add(key);
+          outlineBoxLinks.push({ outlineId, boxId });
+        }
+      };
+
+      // Auto-link parent sections
+      for (let i = 0; i < outline.sections.length; i++) {
+        const section = outline.sections[i];
+        const outlineId = dbParentIdMap.get(i);
+        if (!outlineId) continue;
+
+        const recTypes = section.recommendedBoxTypes || [];
+        for (const box of userBoxes) {
+          if (box.boxType && recTypes.includes(box.boxType)) {
+            addLink(outlineId, box.id);
+          }
+        }
+      }
+
+      // Auto-link child subsections
+      for (let k = 0; k < childIndexMap.length; k++) {
+        const { parentIdx, subIdx } = childIndexMap[k];
+        const childOutlineId = insertedChildren[k]?.id;
+        if (!childOutlineId) continue;
+
+        const sub = outline.sections[parentIdx]?.subSections?.[subIdx];
+        if (!sub) continue;
+
+        const recTypes = sub.recommendedBoxTypes || [];
+        for (const box of userBoxes) {
+          if (box.boxType && recTypes.includes(box.boxType)) {
+            addLink(childOutlineId, box.id);
+          }
+        }
+      }
+
+      if (outlineBoxLinks.length > 0) {
+        await tx.insert(outlineBoxes).values(outlineBoxLinks);
+      }
+    }
+  });
+
+  log.info("outline_persist_transaction_complete", {
+    service: "outline",
+  });
+}
+</file>
+
 <file path="src/features/tezara/index.ts">
 import { QdrantClient } from "@qdrant/js-client-rest";
 import type { Logger } from "@/lib/logger";
@@ -35526,8 +35547,8 @@ export const BOX_ORDER_WEIGHT: Record<ThesisBoxType, number> = {
   SUBJECT_PROBLEM: 1,
   THEORETICAL_FRAMEWORK: 2,
   METHODOLOGY: 3,
-  PRIMARY_MATERIAL: 4,
-  RELATED_THESES: 5,
+  RELATED_THESES: 4,
+  PRIMARY_MATERIAL: 5,
 };
 
 /** Canonical full (long) Turkish labels. */
@@ -35573,6 +35594,7 @@ export const DEFAULT_PARENT_BOXES: {
     title: BOX_TYPE_LABELS.THEORETICAL_FRAMEWORK,
   },
   { boxType: "METHODOLOGY", title: BOX_TYPE_LABELS.METHODOLOGY },
+  { boxType: "RELATED_THESES", title: BOX_TYPE_LABELS.RELATED_THESES },
   { boxType: "PRIMARY_MATERIAL", title: BOX_TYPE_LABELS.PRIMARY_MATERIAL },
 ];
 
@@ -38326,6 +38348,7 @@ export function useDashboardArticles(
         return {
           id: String(box.id),
           title: box.title,
+          boxType: box.boxType,
           description:
             box.description && box.description.trim().length > 0
               ? box.description
@@ -38372,8 +38395,6 @@ export function useDashboardArticles(
 </file>
 
 <file path="src/app/(app)/dashboard/page.tsx">
-export const instant = false;
-
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getUsersMatrixAndBoxesWithResources } from "./_services/box-service";
@@ -39910,6 +39931,7 @@ export async function confirmLiteratureAction(args: {
     }
 
     await persistLiteraturePool(literaturePool);
+    await persistRelatedTheses(session.userId);
 
     try {
       revalidateOnboardingPaths();
@@ -43289,7 +43311,7 @@ export async function generateChatTitleAction(
 
 import { useState } from "react";
 import Link from "next/link";
-import { Trash2 } from "lucide-react";
+import { BookOpen, CheckCircle2, Trash2 } from "lucide-react";
 import { LiteratureExpansionButton } from "@/features/literature-expansion/_components/literature-expansion-button";
 import {
   Card,
@@ -43298,7 +43320,6 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43342,80 +43363,108 @@ export function BoxCard({
     }
   };
 
+  const isThesesBox = box.boxType === "RELATED_THESES";
+
   return (
     <>
       <Card className="flex flex-col h-full rounded-md text-card-foreground">
-        <CardHeader className="p-4 pb-3">
+        <CardHeader className="p-4 pb-0">
           <div className="flex items-start justify-between gap-3">
-            <div className="space-y-1">
-              <CardTitle className="font-sans text-lg font-medium tracking-tight text-foreground">
+            <div className="space-y-1.5 min-w-0 flex-1">
+              <CardTitle
+                className="font-sans text-base sm:text-lg font-semibold tracking-tight text-foreground line-clamp-2 min-h-[3.25rem] flex items-start"
+                title={box.title}
+              >
                 {box.title}
               </CardTitle>
-              <CardDescription className="text-xs text-muted-foreground line-clamp-2">
+              <CardDescription
+                className="text-xs text-muted-foreground leading-relaxed min-h-[4.25rem] flex items-start"
+                title={box.description}
+              >
                 {box.description}
               </CardDescription>
             </div>
-            <div className="flex shrink-0 items-start">
-              <LiteratureExpansionButton
-                boxId={Number(box.id)}
-                expansionCycle={box.expansionCycle}
-                isReadyToExpand={box.isReadyToExpand}
-                onSuccess={onExpansionSuccess}
-              />
-            </div>
+            {!isThesesBox && (
+              <div className="flex shrink-0 items-start pt-0.5">
+                <LiteratureExpansionButton
+                  boxId={Number(box.id)}
+                  expansionCycle={box.expansionCycle}
+                  isReadyToExpand={box.isReadyToExpand}
+                  onSuccess={onExpansionSuccess}
+                />
+              </div>
+            )}
           </div>
         </CardHeader>
-        <CardContent className="flex-1 p-4 pt-0">
+        <CardContent className="flex flex-col flex-1 p-4 pt-0">
           <div className="border-t border-border/40 my-3" />
-          <h4 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">
-            Okuma Listesi
-          </h4>
+          <div className="flex items-center justify-between mb-3 h-5">
+            <h4 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Okuma Listesi
+            </h4>
+            {box.articles.length > 0 && (
+              <span className="font-sans text-[10px] font-medium text-muted-foreground px-2 py-0.5 rounded-full border border-border/40 bg-secondary/10">
+                {box.articles.length} Eser
+              </span>
+            )}
+          </div>
           {box.articles.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-6 px-3 rounded-md border border-dashed border-border/40 bg-secondary/10 text-center">
+            <div className="flex flex-1 flex-col items-center justify-center py-6 px-3 rounded-md border border-dashed border-border/40 bg-secondary/10 text-center min-h-[268px]">
               <p className="text-xs text-muted-foreground font-medium">
                 İlgili kutuda okunacak materyal şu aşamada bulunmamaktadır.
               </p>
             </div>
           ) : (
-            <ul className="space-y-3">
+            <ul className="space-y-2.5 flex-1 flex flex-col justify-start">
               {box.articles.map((article) => (
                 <li
                   key={article.id}
-                  className="flex items-start justify-between gap-3 group rounded-md p-2 hover:bg-secondary/20 transition-colors"
+                  className="group relative flex flex-col justify-center cursor-pointer rounded-md border border-border/40 bg-card/60 px-3 py-2 hover:border-primary/20 hover:bg-accent/10 transition-all min-h-[60px]"
                 >
                   <Link
                     href={`/library?id=${article.id}`}
-                    className="min-w-0 flex-1"
-                    title="Kütüphanede Aç"
-                  >
-                    <p className="font-sans text-sm font-medium leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
-                      {article.title}
-                    </p>
-                    <p className="font-sans text-xs text-muted-foreground mt-1 truncate">
-                      {article.author}
-                      {article.year && article.year > 0
-                        ? ` (${article.year})`
-                        : ""}
-                    </p>
-                    {article.subBoxTitle && (
-                      <Badge
-                        variant="outline"
-                        className="mt-2 max-w-full border-primary/20 bg-primary/10 px-2 py-1 font-sans text-[10px] font-semibold text-primary"
+                    aria-label={article.title}
+                    className="absolute inset-0 z-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                  />
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          {article.isRead ? (
+                            <CheckCircle2
+                              className="h-4 w-4 shrink-0 text-success"
+                              aria-label="Okundu"
+                            />
+                          ) : (
+                            <BookOpen className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
+                          )}
+                          <p className="font-sans text-sm font-medium leading-snug text-foreground group-hover:text-primary transition-colors">
+                            {article.title}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setArticleToDeleteId(article.id)}
+                        title="Eseri Sil"
+                        aria-label="Eseri Sil"
+                        className="opacity-0 group-hover:opacity-100 relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-destructive hover:border-destructive/20 hover:bg-destructive/10 transition-all"
                       >
-                        <span className="truncate">{article.subBoxTitle}</span>
-                      </Badge>
-                    )}
-                  </Link>
-                  <div className="flex items-center gap-2 pt-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setArticleToDeleteId(article.id)}
-                      title="Eseri Sil"
-                      aria-label="Eseri Sil"
-                      className="flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-destructive hover:border-destructive/20 hover:bg-destructive/10 transition-colors"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground pl-6">
+                      <span className="truncate max-w-[240px]">
+                        {article.author}
+                      </span>
+                      {article.year && article.year > 0 ? (
+                        <>
+                          <span className="text-border">•</span>
+                          <span className="shrink-0">{article.year}</span>
+                        </>
+                      ) : null}
+                    </div>
                   </div>
                 </li>
               ))}
@@ -43908,7 +43957,9 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     setProcessing(true);
     try {
       const freshBoxes = await fetchUncachedBoxesWithFullShape();
-      const targetBoxes = freshBoxes.length > 0 ? freshBoxes : subBoxes;
+      const targetBoxes = (
+        freshBoxes.length > 0 ? freshBoxes : subBoxes
+      ).filter((box) => box.boxType !== "RELATED_THESES");
       const subBoxInputs: SubBoxInput[] = targetBoxes.map((box) => ({
         id: box.id ?? 0,
         title: box.title,
@@ -44071,6 +44122,58 @@ export async function POST(request: Request) {
 }
 </file>
 
+<file path="AGENTS.md">
+# AGENTS.md
+
+## 1. Role & System Overview
+
+You are the **Lead Software Engineer** and **Primary Auditor** for Fabricca, a private digital thesis assistant and academic research platform.
+
+- **Scope & Access:** Private application restricted strictly to two seeded users. Not open to public registration.
+- **Engineering Mindset:** Write clean, minimal, production-ready code. Avoid over-engineering. Make targeted, high-impact edits.
+- **Repository Exploration:** Use semantic exploration tools (CodeGraph/LSP) for structural codebase exploration. When CodeGraph is unavailable or when targeting known files, direct file search and reading are fully supported.
+
+## 2. Core Stack & Architectural Constraints
+
+- **Framework:** Next.js (App Router, Server Actions)
+- **Database & ORM:** Neon Serverless PostgreSQL (`pgvector`), Drizzle ORM
+- **Primary LLM:** Google Gemini Flash (`FLASH_LITE_31`, `FLASH_LITE_35`, `FLASH_36` via `@google/genai`)
+- **Embedding Motor:** Cloudflare Workers AI (`@cf/baai/bge-m3` — SINGLE source embedding model; no secondary fallbacks allowed)
+- **Semantic Reranking:** Cohere Rerank API (`rerank-v4.0-pro` — ONLY for reranking)
+- **Object Storage:** Cloudflare R2 / AWS S3 (`@aws-sdk/client-s3`)
+- **Literature & DOI:** OpenAlex API (canonical literature source), Crossref API (DOI resolution)
+- **Secondary LLM:** Cerebras API (`gemma-4-31b` — metadata extraction and sanitization)
+
+> **Constraint:** Introducing alternative frameworks, third-party libraries, or secondary model fallbacks requires explicit user approval.
+
+## 3. The Golden Boundary Rule
+
+- **Backend & Logic Layer (100% English):** All DB column names, function names, local variables, Zod schemas, API payloads, and Logger step strings MUST be written in technical English (`camelCase` or `snake_case`). No Turkish characters in code/backend logic.
+- **User Interface & Academic Outputs (100% Turkish):** All UI elements, buttons, table headers, toast notifications, and AI-generated academic recommendations MUST be written in fluent, high-level academic Turkish. Transform backend English enums to Turkish on the UI layer.
+
+## 4. Code & Verification Rules
+
+- **Type Safety:** Avoid `any`. Prefer `unknown` with explicit type guards or Zod validation. If `any` is unavoidable at an external boundary, isolate and document it explicitly.
+- **Verification Strategy:** Run the narrowest relevant check first (file-scoped test or lint). Run full verification (`npm run check:full`) ONLY when modifying shared libraries, global configs, DB schemas, or multi-module interfaces.
+- **No Incomplete Code:** Never leave `// TODO` placeholders or incomplete snippets. All edited files must be functional, complete, and compilation-ready.
+
+## 5. Task-Specific Documentation (Progressive Disclosure)
+
+Before executing domain-specific tasks, consult the corresponding domain specification file:
+
+- **UI System, Styling & Components:** [docs/UI_RULES.md](docs/UI_RULES.md)
+- **Database Schema, Migrations & Progressive Save:** [docs/DATABASE_RULES.md](docs/DATABASE_RULES.md)
+- **LLM Integration, Models & Prompting:** [docs/LLM_INTEGRATION.md](docs/LLM_INTEGRATION.md)
+- **Development Standards, JSDoc, Error Handling & Logging:** [docs/DEVELOPMENT_STANDARDS.md](docs/DEVELOPMENT_STANDARDS.md)
+- **System Architecture, External Services & Storage:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+
+## 6. Instruction Precedence & Maintenance
+
+- **User Overrides:** User prompt instructions strictly override any rules in this repository for the current task.
+- **No Temporary Edits:** Do NOT modify `AGENTS.md` for one-off task overrides.
+- **Minimalist Specification:** Keep `AGENTS.md` minimal (~120–150 lines). Update it ONLY when making permanent repository-wide architectural policy changes.
+</file>
+
 <file path="src/app/(onboarding)/onboarding/boxes/actions.ts">
 "use server";
 
@@ -44193,58 +44296,6 @@ export async function runBoxesPipelineAction(): Promise<
 export async function generateBoxesStructureAction() {
   return runBoxesPipelineAction();
 }
-</file>
-
-<file path="AGENTS.md">
-# AGENTS.md
-
-## 1. Role & System Overview
-
-You are the **Lead Software Engineer** and **Primary Auditor** for Fabricca, a private digital thesis assistant and academic research platform.
-
-- **Scope & Access:** Private application restricted strictly to two seeded users. Not open to public registration.
-- **Engineering Mindset:** Write clean, minimal, production-ready code. Avoid over-engineering. Make targeted, high-impact edits.
-- **Repository Exploration:** Use semantic exploration tools (CodeGraph/LSP) for structural codebase exploration. When CodeGraph is unavailable or when targeting known files, direct file search and reading are fully supported.
-
-## 2. Core Stack & Architectural Constraints
-
-- **Framework:** Next.js (App Router, Server Actions)
-- **Database & ORM:** Neon Serverless PostgreSQL (`pgvector`), Drizzle ORM
-- **Primary LLM:** Google Gemini Flash (`FLASH_LITE_31`, `FLASH_LITE_35`, `FLASH_36` via `@google/genai`)
-- **Embedding Motor:** Cloudflare Workers AI (`@cf/baai/bge-m3` — SINGLE source embedding model; no secondary fallbacks allowed)
-- **Semantic Reranking:** Cohere Rerank API (`rerank-v4.0-pro` — ONLY for reranking)
-- **Object Storage:** Cloudflare R2 / AWS S3 (`@aws-sdk/client-s3`)
-- **Literature & DOI:** OpenAlex API (canonical literature source), Crossref API (DOI resolution)
-- **Secondary LLM:** Cerebras API (`gemma-4-31b` — metadata extraction and sanitization)
-
-> **Constraint:** Introducing alternative frameworks, third-party libraries, or secondary model fallbacks requires explicit user approval.
-
-## 3. The Golden Boundary Rule
-
-- **Backend & Logic Layer (100% English):** All DB column names, function names, local variables, Zod schemas, API payloads, and Logger step strings MUST be written in technical English (`camelCase` or `snake_case`). No Turkish characters in code/backend logic.
-- **User Interface & Academic Outputs (100% Turkish):** All UI elements, buttons, table headers, toast notifications, and AI-generated academic recommendations MUST be written in fluent, high-level academic Turkish. Transform backend English enums to Turkish on the UI layer.
-
-## 4. Code & Verification Rules
-
-- **Type Safety:** Avoid `any`. Prefer `unknown` with explicit type guards or Zod validation. If `any` is unavoidable at an external boundary, isolate and document it explicitly.
-- **Verification Strategy:** Run the narrowest relevant check first (file-scoped test or lint). Run full verification (`npm run check:full`) ONLY when modifying shared libraries, global configs, DB schemas, or multi-module interfaces.
-- **No Incomplete Code:** Never leave `// TODO` placeholders or incomplete snippets. All edited files must be functional, complete, and compilation-ready.
-
-## 5. Task-Specific Documentation (Progressive Disclosure)
-
-Before executing domain-specific tasks, consult the corresponding domain specification file:
-
-- **UI System, Styling & Components:** [docs/UI_RULES.md](docs/UI_RULES.md)
-- **Database Schema, Migrations & Progressive Save:** [docs/DATABASE_RULES.md](docs/DATABASE_RULES.md)
-- **LLM Integration, Models & Prompting:** [docs/LLM_INTEGRATION.md](docs/LLM_INTEGRATION.md)
-- **Development Standards, JSDoc, Error Handling & Logging:** [docs/DEVELOPMENT_STANDARDS.md](docs/DEVELOPMENT_STANDARDS.md)
-- **System Architecture, External Services & Storage:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-
-## 6. Instruction Precedence & Maintenance
-
-- **User Overrides:** User prompt instructions strictly override any rules in this repository for the current task.
-- **No Temporary Edits:** Do NOT modify `AGENTS.md` for one-off task overrides.
-- **Minimalist Specification:** Keep `AGENTS.md` minimal (~120–150 lines). Update it ONLY when making permanent repository-wide architectural policy changes.
 </file>
 
 <file path="src/app/(app)/library/_components/resource-detail.tsx">
@@ -44664,7 +44715,8 @@ export function LiteratureReviewContent() {
   } = useLiteratureReview();
 
   const regularBoxes = subBoxes.filter(
-    (box) => box.title !== RELATED_THESES_TITLE,
+    (box) =>
+      box.boxType !== "RELATED_THESES" && box.title !== RELATED_THESES_TITLE,
   );
   const relatedBox = subBoxes.find(
     (box) =>
@@ -44736,7 +44788,7 @@ export function LiteratureReviewContent() {
             </h2>
             {relatedBox.boxType && (
               <span className="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary ml-auto">
-                Literatür
+                {getBoxTypeLabel(relatedBox.boxType)}
               </span>
             )}
           </div>

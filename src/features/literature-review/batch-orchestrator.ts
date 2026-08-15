@@ -53,7 +53,7 @@ export async function orchestrateBatchProcess(
   const activeJobs: { box: SubBoxInput; subBox: SubBoxItem }[] = [];
   for (const box of boxes) {
     if (!box.subBoxes || box.subBoxes.length === 0) continue;
-    if (box.boxType === "PRIMARY_MATERIAL") continue;
+    if (box.boxType === "PRIMARY_MATERIAL" || box.boxType === "RELATED_THESES") continue;
 
     for (const subBox of box.subBoxes) {
       activeJobs.push({ box, subBox });

@@ -20,8 +20,8 @@ export const BOX_ORDER_WEIGHT: Record<ThesisBoxType, number> = {
   SUBJECT_PROBLEM: 1,
   THEORETICAL_FRAMEWORK: 2,
   METHODOLOGY: 3,
-  PRIMARY_MATERIAL: 4,
-  RELATED_THESES: 5,
+  RELATED_THESES: 4,
+  PRIMARY_MATERIAL: 5,
 };
 
 /** Canonical full (long) Turkish labels. */
@@ -67,6 +67,7 @@ export const DEFAULT_PARENT_BOXES: {
     title: BOX_TYPE_LABELS.THEORETICAL_FRAMEWORK,
   },
   { boxType: "METHODOLOGY", title: BOX_TYPE_LABELS.METHODOLOGY },
+  { boxType: "RELATED_THESES", title: BOX_TYPE_LABELS.RELATED_THESES },
   { boxType: "PRIMARY_MATERIAL", title: BOX_TYPE_LABELS.PRIMARY_MATERIAL },
 ];
 
