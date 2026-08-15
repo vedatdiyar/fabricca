@@ -2,51 +2,76 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
- * Skeleton mirroring the dashboard page layout: topic box cards grid, divider,
- * and the Kanban board with its three task columns.
+ * Skeleton mirroring the redesigned dashboard page layout: page header,
+ * 4 metric cards, topic boxes grid, divider, and the 3-column Kanban board.
  *
  * @returns The dashboard loading skeleton.
  */
 export function DashboardSkeleton() {
   return (
     <div className="w-full space-y-8">
-      <section className="space-y-4">
+      {/* Page Header Skeleton */}
+      <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
         <div className="space-y-2">
           <Skeleton className="h-7 w-72" />
           <Skeleton className="h-4 w-96 max-w-full bg-border/20" />
         </div>
+      </div>
+
+      {/* 4 Metric Cards Skeleton */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Card key={index} className="border border-border bg-card">
+            <CardContent className="flex items-center justify-between p-4.5">
+              <div className="space-y-2 flex-1">
+                <Skeleton className="h-3.5 w-24 bg-border/20" />
+                <Skeleton className="h-6 w-16" />
+                <Skeleton className="h-3 w-32 bg-border/20" />
+              </div>
+              <Skeleton className="h-11 w-11 shrink-0 rounded-md bg-border/20" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Topic Boxes Section Skeleton */}
+      <section className="space-y-6">
+        <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-border/60">
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-64" />
+            <Skeleton className="h-3.5 w-96 max-w-full bg-border/20" />
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {Array.from({ length: 2 }).map((_, index) => (
-            <Card key={index} className="flex h-full flex-col rounded-md">
-              <CardHeader className="p-4 pb-3">
+            <Card key={index} className="flex h-full flex-col rounded-md border border-border bg-card">
+              <CardHeader className="p-5 pb-3 space-y-3">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <Skeleton className="h-5 w-2/3" />
-                    <Skeleton className="h-3 w-full bg-border/20" />
-                    <Skeleton className="h-3 w-1/2 bg-border/20" />
-                  </div>
-                  <Skeleton className="h-8 w-8 shrink-0 rounded-md bg-border/20" />
+                  <Skeleton className="h-5 w-24 rounded bg-border/20" />
+                  <Skeleton className="h-7 w-20 rounded-md bg-border/20" />
                 </div>
+                <div className="space-y-1.5">
+                  <Skeleton className="h-5 w-2/3" />
+                  <Skeleton className="h-3.5 w-full bg-border/20" />
+                </div>
+                <Skeleton className="h-2 w-full rounded-full bg-border/20 mt-2" />
               </CardHeader>
-              <CardContent className="flex-1 p-4 pt-0">
+              <CardContent className="flex-1 p-5 pt-0">
                 <div className="my-3 border-t border-border/40" />
                 <div className="flex items-center justify-between mb-3">
-                  <Skeleton className="h-3 w-24 bg-border/20" />
+                  <Skeleton className="h-3.5 w-24 bg-border/20" />
                   <Skeleton className="h-4 w-12 rounded-full bg-border/20" />
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   {Array.from({ length: 3 }).map((_, itemIndex) => (
                     <div
                       key={itemIndex}
-                      className="flex flex-col justify-between rounded-md border border-border/40 bg-card/60 p-3 space-y-2"
+                      className="flex flex-col justify-between rounded-md border border-border/40 bg-background/40 p-3 space-y-2"
                     >
                       <div className="flex items-start gap-2">
                         <Skeleton className="h-4 w-4 shrink-0 rounded-sm bg-border/20 mt-0.5" />
-                        <div className="min-w-0 flex-1 space-y-1.5">
-                          <Skeleton className="h-3.5 w-full" />
-                          <Skeleton className="h-3.5 w-2/3" />
-                        </div>
+                        <Skeleton className="h-3.5 w-3/4" />
                       </div>
                       <Skeleton className="h-3 w-1/2 ml-6 bg-border/20" />
                     </div>
@@ -58,33 +83,42 @@ export function DashboardSkeleton() {
         </div>
       </section>
 
+      {/* Section Divider */}
       <div className="my-8 border-t border-border/40" />
 
-      <section className="space-y-4">
-        <div className="flex w-full flex-col items-start justify-between gap-4 border-b border-border pb-6 sm:flex-row sm:items-center">
+      {/* Kanban Board Section Skeleton */}
+      <section className="space-y-6">
+        <div className="flex w-full flex-col items-start justify-between gap-4 border-b border-border/60 pb-4 sm:flex-row sm:items-center">
           <div className="space-y-2">
-            <Skeleton className="h-7 w-64" />
-            <Skeleton className="h-4 w-80 max-w-full bg-border/20" />
+            <Skeleton className="h-6 w-56" />
+            <Skeleton className="h-3.5 w-80 max-w-full bg-border/20" />
           </div>
-          <Skeleton className="h-9 w-36 rounded-md bg-border/20" />
+          <Skeleton className="h-8.5 w-36 rounded-md bg-border/20" />
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, columnIndex) => (
             <div
               key={columnIndex}
-              className="flex min-h-80 flex-col gap-4 rounded-md border border-border/40 bg-background/20 p-4"
+              className="flex min-h-[360px] flex-col gap-4 rounded-md border border-border/60 bg-muted/15 p-4"
             >
-              <div className="flex items-center justify-between border-b border-border/40 pb-2">
+              <div className="flex items-center justify-between border-b border-border/40 pb-3">
                 <div className="flex items-center gap-2">
-                  <Skeleton className="h-4 w-4 rounded-full bg-border/20" />
-                  <Skeleton className="h-5 w-28" />
+                  <Skeleton className="h-7 w-7 rounded-md bg-border/20" />
+                  <Skeleton className="h-5 w-24" />
                 </div>
-                <Skeleton className="h-5 w-6 rounded-md bg-border/20" />
+                <Skeleton className="h-5 w-8 rounded-md bg-border/20" />
               </div>
-              <div className="flex flex-1 flex-col gap-3 rounded-md border border-dashed border-border/40 bg-secondary/10 px-4 py-6">
-                <Skeleton className="h-3 w-2/3 bg-border/20" />
-                <Skeleton className="h-3 w-1/2 bg-border/20" />
+              <div className="flex flex-1 flex-col gap-3">
+                {Array.from({ length: 2 }).map((_, taskIndex) => (
+                  <div
+                    key={taskIndex}
+                    className="rounded-md border border-border/60 bg-card p-3.5 space-y-2.5"
+                  >
+                    <Skeleton className="h-4 w-1/3 bg-border/20 rounded" />
+                    <Skeleton className="h-3.5 w-4/5" />
+                  </div>
+                ))}
               </div>
             </div>
           ))}

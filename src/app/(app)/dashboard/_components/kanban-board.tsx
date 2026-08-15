@@ -12,6 +12,8 @@ import {
   ChevronUp,
   Pencil,
   Trash2,
+  GripVertical,
+  FolderKanban,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -42,15 +44,46 @@ interface KanbanBoardProps {
 }
 
 const COLUMNS = [
-  { id: "TODO", label: "Yapılacaklar", icon: Clock, iconColor: "text-info" },
+  {
+    id: "TODO",
+    label: "Yapılacaklar",
+    icon: Clock,
+    iconColor: "text-info",
+    badgeColor: "bg-info/10 text-info border-info/20",
+  },
   {
     id: "IN_PROGRESS",
     label: "Yapılıyor",
     icon: Activity,
     iconColor: "text-warning",
+    badgeColor: "bg-warning/10 text-warning border-warning/20",
   },
-  { id: "DONE", label: "Bitti", icon: CheckCircle2, iconColor: "text-success" },
+  {
+    id: "DONE",
+    label: "Bitti",
+    icon: CheckCircle2,
+    iconColor: "text-success",
+    badgeColor: "bg-success/10 text-success border-success/20",
+  },
 ] as const;
+
+const PRIORITY_CONFIG: Record<
+  "HIGH" | "MEDIUM" | "LOW",
+  { label: string; className: string }
+> = {
+  HIGH: {
+    label: "Yüksek",
+    className: "bg-destructive/10 text-destructive border-destructive/20",
+  },
+  MEDIUM: {
+    label: "Orta",
+    className: "bg-warning/10 text-warning border-warning/20",
+  },
+  LOW: {
+    label: "Düşük",
+    className: "bg-info/10 text-info border-info/20",
+  },
+};
 
 interface KanbanCardProps {
   task: KanbanTask;
@@ -68,58 +101,85 @@ const KanbanCard = memo(function KanbanCard({
   onDelete,
 }: KanbanCardProps) {
   const isReading = task.isReadingTask;
+  const priorityInfo = PRIORITY_CONFIG[task.priority] ?? PRIORITY_CONFIG.MEDIUM;
 
   return (
     <Card
       draggable="true"
       onDragStart={(e) => onDragStart(e, task.id)}
       onDragEnd={onDragEnd}
-      className="group rounded-md p-4 transition-all duration-200 hover:-translate-y-1 hover:border-primary/20 hover:relative hover:z-50 cursor-grab active:cursor-grabbing"
+      className="group relative rounded-md border border-border/60 bg-card p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-xs cursor-grab active:cursor-grabbing select-none"
     >
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2.5">
+        {/* Card Header: Type / Priority Badge + Hover Actions + Drag Handle */}
         <div className="flex items-center justify-between gap-2">
-          {!isReading && (
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit(task);
-                }}
-                className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                title="Düzenle"
+          <div>
+            {isReading ? (
+              <Badge
+                variant="outline"
+                className="text-[10px] font-medium px-2 py-0.5 border-emerald-500/20 bg-emerald-500/10 text-emerald-400 rounded"
               >
-                <Pencil className="h-3 w-3" />
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (
-                    window.confirm(
-                      `"${task.title}" görevini silmek istediğinize emin misiniz?`,
-                    )
-                  ) {
-                    onDelete(task.id);
-                  }
-                }}
-                className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                title="Sil"
+                Okuma Görevi
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-[10px] font-medium px-2 py-0.5 border rounded",
+                  priorityInfo.className,
+                )}
               >
-                <Trash2 className="h-3 w-3" />
-              </button>
-            </div>
-          )}
+                {priorityInfo.label}
+              </Badge>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1">
+            {!isReading && (
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(task);
+                  }}
+                  className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors"
+                  title="Görevi Düzenle"
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (
+                      window.confirm(
+                        `"${task.title}" görevini silmek istediğinize emin misiniz?`,
+                      )
+                    ) {
+                      onDelete(task.id);
+                    }
+                  }}
+                  className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                  title="Görevi Sil"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+            <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0" />
+          </div>
         </div>
 
-        <div className="flex items-start gap-3">
+        {/* Card Body: Icon + Title + Description */}
+        <div className="flex items-start gap-2.5">
           {isReading ? (
-            <BookOpen className="h-4 w-4 text-primary mt-1 shrink-0" />
+            <BookOpen className="h-4 w-4 text-emerald-400 mt-0.5 shrink-0" />
           ) : (
-            <Sparkles className="h-4 w-4 text-accent-foreground mt-1 shrink-0" />
+            <Sparkles className="h-4 w-4 text-primary mt-0.5 shrink-0" />
           )}
           <div className="space-y-1 min-w-0 flex-1">
-            <h4 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
+            <h4 className="font-sans text-xs sm:text-sm font-medium text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
               {task.title}
             </h4>
             {task.description && (
@@ -127,18 +187,21 @@ const KanbanCard = memo(function KanbanCard({
                 {task.description}
               </p>
             )}
-            {task.boxTitle && (
-              <div className="pt-2">
-                <Badge
-                  variant="outline"
-                  className="text-[10px] font-medium px-2 py-1 border-primary/20 bg-primary/10 text-primary rounded-md"
-                >
-                  {task.boxTitle}
-                </Badge>
-              </div>
-            )}
           </div>
         </div>
+
+        {/* Card Footer: Topic Box Title with full available width without clipping */}
+        {task.boxTitle && (
+          <div className="pt-2 border-t border-border/40 flex items-center gap-1.5 text-muted-foreground">
+            <FolderKanban className="h-3 w-3 text-primary shrink-0" />
+            <span
+              className="font-sans text-[11px] font-medium text-primary/90 leading-normal break-words"
+              title={task.boxTitle}
+            >
+              {task.boxTitle}
+            </span>
+          </div>
+        )}
       </div>
     </Card>
   );
@@ -224,7 +287,7 @@ export function KanbanBoard({
   return (
     <div className="w-full space-y-6">
       {/* Board Header */}
-      <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
+      <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-border/60">
         <div>
           <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
             Akademik Kanban Panosu
@@ -237,7 +300,7 @@ export function KanbanBoard({
         <Button
           variant="default"
           onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center gap-2 text-sm font-sans shrink-0 rounded-md"
+          className="flex items-center gap-2 text-xs sm:text-sm font-sans shrink-0 rounded-md shadow-xs"
         >
           <Plus className="h-4 w-4" />
           <span>Yeni Görev Ekle</span>
@@ -258,34 +321,49 @@ export function KanbanBoard({
               onDragEnter={(e) => handleDragEnter(e, col.id)}
               onDrop={(e) => handleDrop(e, col.id)}
               className={cn(
-                "flex flex-col gap-4 rounded-md border p-4 min-h-125 transition-all duration-200",
+                "flex flex-col gap-4 rounded-md border p-4 min-h-[360px] transition-all duration-200",
                 isDragActive
-                  ? "border-primary/20 bg-secondary/20 scale-[1.01]"
-                  : "border-border/40 bg-background/20",
+                  ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20 scale-[1.01]"
+                  : "border-border/60 bg-muted/15",
               )}
             >
               {/* Column Header */}
-              <div className="flex items-center justify-between pb-2 border-b border-border/40">
+              <div className="flex items-center justify-between pb-3 border-b border-border/40">
                 <div className="flex items-center gap-2">
-                  <ColIcon className={`h-4 w-4 shrink-0 ${col.iconColor}`} />
-                  <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
+                  <div
+                    className={cn(
+                      "flex h-7 w-7 items-center justify-center rounded-md border",
+                      col.badgeColor,
+                    )}
+                  >
+                    <ColIcon className="h-4 w-4" />
+                  </div>
+                  <h3 className="font-serif text-base font-semibold tracking-tight text-foreground">
                     {col.label}
                   </h3>
                 </div>
                 <Badge
-                  variant="secondary"
-                  className="bg-secondary text-secondary-foreground font-sans text-xs px-2 py-1 rounded-md"
+                  variant="outline"
+                  className={cn(
+                    "font-sans text-xs font-semibold px-2 py-0.5 rounded-md border",
+                    col.badgeColor,
+                  )}
                 >
                   {colTasks.length}
                 </Badge>
               </div>
 
               {/* Task Cards List */}
-              <div className="flex flex-col gap-3 p-1 -m-1 overflow-visible">
+              <div className="flex flex-col gap-3 p-0.5 overflow-visible flex-1">
                 {colTasks.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-10 px-4 rounded-md border border-dashed border-border/40 bg-secondary/10 text-center">
-                    <p className="text-xs text-muted-foreground">
-                      Bu sütunda görev bulunmuyor.
+                  <div className="flex flex-1 flex-col items-center justify-center py-12 px-4 rounded-md border border-dashed border-border/40 bg-secondary/10 text-center">
+                    <p className="text-xs text-muted-foreground font-medium">
+                      Bu aşamada görev bulunmuyor.
+                    </p>
+                    <p className="text-[10px] text-muted-foreground/70 mt-1">
+                      {col.id === "TODO"
+                        ? "Yukarıdaki butondan yeni bir araştırma adımı ekleyebilirsiniz."
+                        : "Görevleri buraya sürükleyip bırakabilirsiniz."}
                     </p>
                   </div>
                 ) : (
@@ -333,7 +411,7 @@ export function KanbanBoard({
                           {showAllDone ? (
                             <>
                               <span>Daha Az Göster</span>
-                              <ChevronUp className="h-3 w-3" />
+                              <ChevronUp className="h-3.5 w-3.5" />
                             </>
                           ) : (
                             <>
@@ -341,7 +419,7 @@ export function KanbanBoard({
                                 Tüm Tamamlananları Gör (+
                                 {colTasks.length - 5})
                               </span>
-                              <ChevronDown className="h-3 w-3" />
+                              <ChevronDown className="h-3.5 w-3.5" />
                             </>
                           )}
                         </Button>

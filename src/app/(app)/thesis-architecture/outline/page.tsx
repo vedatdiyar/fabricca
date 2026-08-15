@@ -13,7 +13,7 @@ import {
   outlineBoxes,
 } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
-import { OutlineEditorView } from "../_components/outline-editor-view";
+import { OutlineEditorView } from "../_components/outline-editor";
 import { Card } from "@/components/ui/card";
 
 export default async function ThesisOutlinePage() {
@@ -28,14 +28,27 @@ export default async function ThesisOutlinePage() {
 
   if (!userMatrix) {
     return (
-      <Card className="flex flex-col items-center justify-center rounded-md border border-dashed border-border/40 p-8 text-center">
-        <p className="font-sans text-lg font-medium tracking-tight text-foreground">
-          Tez matrisi henüz oluşturulmadı
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Lütfen onboarding adımlarını tamamlayın.
-        </p>
-      </Card>
+      <div className="w-full space-y-6">
+        <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
+          <div>
+            <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
+              Tez Bölüm Planı ve İskelet
+            </h1>
+            <p className="font-sans text-sm text-muted-foreground mt-1">
+              Tezinizin ana bölümleri, alt başlıkları ve bölümlere bağlı kaynak/alıntı haritası.
+            </p>
+          </div>
+        </div>
+
+        <Card className="flex flex-col items-center justify-center rounded-md border border-dashed border-border/40 p-8 text-center bg-card">
+          <p className="font-sans text-lg font-medium tracking-tight text-foreground">
+            Tez matrisi henüz oluşturulmadı
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Lütfen onboarding adımlarını tamamlayın.
+          </p>
+        </Card>
+      </div>
     );
   }
 
@@ -62,6 +75,20 @@ export default async function ThesisOutlinePage() {
   const userAnnotationsRaw = await db.query.annotations.findMany({
     where: eq(annotations.userId, session.userId),
   });
+
+  // If any annotations reference sources outside userBoxes, fetch them too
+  const missingSourceIds = userAnnotationsRaw
+    .map((a) => a.sourceId)
+    .filter((id): id is number => Boolean(id) && !sourceMap.has(id));
+
+  if (missingSourceIds.length > 0) {
+    const additionalSources = await db.query.sources.findMany({
+      where: inArray(sources.id, missingSourceIds),
+    });
+    for (const s of additionalSources) {
+      sourceMap.set(s.id, s);
+    }
+  }
 
   const annotationsWithSources = userAnnotationsRaw.map((anno) => ({
     ...anno,
@@ -98,13 +125,28 @@ export default async function ThesisOutlinePage() {
   }
 
   return (
-    <OutlineEditorView
-      outlinesList={userOutlines}
-      boxesList={userBoxes}
-      sourcesList={userSources}
-      annotationsList={annotationsWithSources}
-      pinnedMap={pinnedMap}
-      linkedBoxMap={linkedBoxMap}
-    />
+    <div className="w-full space-y-6">
+      {/* Page Header */}
+      <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
+        <div>
+          <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
+            Tez Bölüm Planı ve İskelet
+          </h1>
+          <p className="font-sans text-sm text-muted-foreground mt-1">
+            Tezinizin ana bölümleri, alt başlıkları ve bölümlere bağlı kaynak/alıntı haritası.
+          </p>
+        </div>
+      </div>
+
+      {/* Main Outline Editor View */}
+      <OutlineEditorView
+        outlinesList={userOutlines}
+        boxesList={userBoxes}
+        sourcesList={Array.from(sourceMap.values())}
+        annotationsList={annotationsWithSources}
+        pinnedMap={pinnedMap}
+        linkedBoxMap={linkedBoxMap}
+      />
+    </div>
   );
 }

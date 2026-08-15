@@ -27,16 +27,25 @@ export interface MatrixSourceRow {
   critique: MatrixCritiqueData | null;
 }
 
-/** Keys corresponding to editable critique fields in the DB. */
-export type CritiqueFieldKey =
-  | "researchQuestion"
-  | "theoreticalFramework"
-  | "methodology"
-  | "mainArgument"
-  | "literatureGap";
-
-/** Keys corresponding to direct source field updates. */
-export type EditableSourceFieldKey = "comparisonNote" | "isRead";
+/**
+ * Checks whether a critique carries any analyzable content across the 5 matrix dimensions.
+ * Sources without any filled dimension are considered data-less and excluded from the matrix.
+ *
+ * @param critique - Critique record for a source, or null when none exists.
+ * @returns True when at least one dimension has a non-empty value.
+ */
+export function hasMatrixCritiqueData(
+  critique: MatrixCritiqueData | null | undefined,
+): boolean {
+  return (
+    !!critique &&
+    (!!critique.researchQuestion ||
+      !!critique.theoreticalFramework ||
+      !!critique.methodology ||
+      !!critique.mainArgument ||
+      !!critique.literatureGap)
+  );
+}
 
 /** Column visibility state map for the matrix grid. */
 export type MatrixColumnVisibility = Record<string, boolean>;

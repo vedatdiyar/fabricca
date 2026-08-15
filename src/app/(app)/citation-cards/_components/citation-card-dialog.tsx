@@ -43,7 +43,7 @@ export function CitationCardDialog(props: CitationCardDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-2xl sm:max-w-3xl p-6"
+        className="max-w-2xl sm:max-w-3xl p-6 rounded-md border-border bg-background"
         onOpenAutoFocus={
           preventViewAutofocus ? (e) => e.preventDefault() : undefined
         }
@@ -94,15 +94,18 @@ function DialogBody(props: DialogBodyProps) {
     ? "Yeni Alıntı Fişi Oluştur"
     : isEditing
       ? "Alıntı Fişini Düzenle"
-      : "Alıntı Fişi";
+      : "Alıntı Fişi Detayı";
 
   return (
-    <>
-      <DialogHeader>
-        <DialogTitle className="font-serif text-xl">{title}</DialogTitle>
-        <DialogDescription className="text-xs">
-          Kaynaklardan derlediğiniz doğrudan alıntı, açımlama veya kişisel
-          değerlendirme notlarınızı fişleyin.
+    <div className="space-y-4">
+      <DialogHeader className="space-y-1 text-left pb-2 border-b border-border">
+        <DialogTitle className="font-serif text-xl font-bold tracking-tight text-foreground">
+          {title}
+        </DialogTitle>
+        <DialogDescription className="text-xs text-muted-foreground">
+          {isNewCard || isEditing
+            ? "Kaynaklardan derlediğiniz doğrudan alıntı, açımlama veya kişisel değerlendirme notlarınızı düzenleyin."
+            : "Akademik kaynak ve tez konu kutusu ile ilişkilendirilmiş araştırma fişi detayları."}
         </DialogDescription>
       </DialogHeader>
 
@@ -121,6 +124,6 @@ function DialogBody(props: DialogBodyProps) {
           onClose={onClose}
         />
       )}
-    </>
+    </div>
   );
 }

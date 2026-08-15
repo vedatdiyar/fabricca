@@ -21,7 +21,7 @@ export function LiteratureMatrixStats({ stats }: LiteratureMatrixStatsProps) {
     {
       label: "Toplam Kaynak",
       value: stats.totalSources,
-      subtext: "Kütüphanedeki tüm eserler",
+      subtext: "Analiz edilen eserler",
       icon: BookOpen,
       colorClass: "text-primary bg-primary/10 border-primary/20",
     },

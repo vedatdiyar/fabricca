@@ -1,60 +1,97 @@
 "use client";
 
-import { FileSpreadsheet, Quote, Sparkles, Bookmark } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { Quote, Sparkles, Bookmark, Layers } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { CitationCardCounts } from "../_hooks/use-citation-cards-filter";
 
 interface CitationMetricsOverviewProps {
   counts: CitationCardCounts;
+  activeTab: string;
+  onSelectTab: (tab: string) => void;
 }
 
 /**
- * Summary metric cards showing total and per-note-type citation card counts.
+ * Interactive filter pills with live counters for citation cards.
+ * Replaces bulky static metric cards with unified, clickable filter buttons.
  *
- * @param root0 - Component props.
- * @param root0.counts - The aggregated card counts.
- * @returns The metrics overview markup.
+ * @param props - Component props.
+ * @returns Filter pills markup.
  */
 export function CitationMetricsOverview({
   counts,
+  activeTab,
+  onSelectTab,
 }: CitationMetricsOverviewProps) {
   const { totalCount, quoteCount, paraphraseCount, noteCount } = counts;
 
+  const filters = [
+    {
+      id: "ALL",
+      label: "Tüm Fişler",
+      count: totalCount,
+      icon: Layers,
+      activeClass: "bg-primary text-primary-foreground border-primary",
+      badgeClass: "bg-primary-foreground/20 text-primary-foreground",
+    },
+    {
+      id: "DIRECT_QUOTE",
+      label: "Doğrudan Alıntı",
+      count: quoteCount,
+      icon: Quote,
+      activeClass: "bg-emerald-600 text-white border-emerald-600 dark:bg-emerald-600",
+      badgeClass: "bg-white/20 text-white",
+    },
+    {
+      id: "PARAPHRASE",
+      label: "Dolaylı Alıntı",
+      count: paraphraseCount,
+      icon: Sparkles,
+      activeClass: "bg-blue-600 text-white border-blue-600 dark:bg-blue-600",
+      badgeClass: "bg-white/20 text-white",
+    },
+    {
+      id: "PERSONAL_NOTE",
+      label: "Kişisel Not",
+      count: noteCount,
+      icon: Bookmark,
+      activeClass: "bg-amber-600 text-white border-amber-600 dark:bg-amber-600",
+      badgeClass: "bg-white/20 text-white",
+    },
+  ];
+
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      <Card className="p-4 rounded-md backdrop-blur-sm">
-        <div className="flex items-center justify-between text-muted-foreground mb-1">
-          <span className="text-xs font-medium">Toplam Fiş</span>
-          <FileSpreadsheet className="h-4 w-4 text-primary" />
-        </div>
-        <div className="text-2xl font-bold text-foreground">{totalCount}</div>
-      </Card>
+    <div className="flex flex-wrap items-center gap-2">
+      {filters.map((filter) => {
+        const Icon = filter.icon;
+        const isActive = activeTab === filter.id;
 
-      <div className="p-4 rounded-md border border-warning/20 bg-warning/10 backdrop-blur-sm">
-        <div className="flex items-center justify-between text-warning mb-1">
-          <span className="text-xs font-medium">Doğrudan Alıntı</span>
-          <Quote className="h-4 w-4" />
-        </div>
-        <div className="text-2xl font-bold text-warning">{quoteCount}</div>
-      </div>
-
-      <div className="p-4 rounded-md border border-info/20 bg-info/10 backdrop-blur-sm">
-        <div className="flex items-center justify-between text-info mb-1">
-          <span className="text-xs font-medium">Dolaylı Alıntı</span>
-          <Sparkles className="h-4 w-4" />
-        </div>
-        <div className="text-2xl font-bold text-info">{paraphraseCount}</div>
-      </div>
-
-      <div className="p-4 rounded-md border border-accent/20 bg-accent/10 backdrop-blur-sm">
-        <div className="flex items-center justify-between text-accent-foreground mb-1">
-          <span className="text-xs font-medium">Kişisel Not</span>
-          <Bookmark className="h-4 w-4" />
-        </div>
-        <div className="text-2xl font-bold text-accent-foreground">
-          {noteCount}
-        </div>
-      </div>
+        return (
+          <button
+            key={filter.id}
+            type="button"
+            onClick={() => onSelectTab(filter.id)}
+            className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium border transition-all duration-150 cursor-pointer select-none",
+              isActive
+                ? filter.activeClass
+                : "bg-card border-border text-muted-foreground hover:text-foreground hover:bg-accent/20",
+            )}
+          >
+            <Icon className="h-3.5 w-3.5 shrink-0" />
+            <span>{filter.label}</span>
+            <span
+              className={cn(
+                "px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold transition-colors",
+                isActive
+                  ? filter.badgeClass
+                  : "bg-muted text-foreground border border-border/40",
+              )}
+            >
+              {filter.count}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }

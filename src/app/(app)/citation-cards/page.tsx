@@ -7,7 +7,6 @@ import { useCitationCardsFilter } from "./_hooks/use-citation-cards-filter";
 import { CitationCard } from "./_components/citation-card";
 import { CitationCardDialog } from "./_components/citation-card-dialog";
 import { CitationSidebar } from "./_components/citation-sidebar";
-import { CitationMetricsOverview } from "./_components/citation-metrics-overview";
 import { CitationCardsToolbar } from "./_components/citation-cards-toolbar";
 import { CitationCardsEmptyState } from "./_components/citation-cards-empty-state";
 import {
@@ -21,6 +20,8 @@ import type { BoxItem, CitationCardItem, SourceItem } from "./_lib/types";
 
 /**
  * Citation Cards (Alıntı Fişleri) main page component.
+ * Features an elevated academic design with grid layout,
+ * interactive live metric filters, and topic-box/source filtering.
  *
  * @returns The complete citation cards interactive page markup.
  */
@@ -79,9 +80,7 @@ export default function CitationCardsPage() {
     };
   }, []);
 
-  /**
-   * Handlers for card CRUD operations via Server Actions.
-   */
+  /** Handlers for card dialogs & actions */
   const handleOpenAddDialog = () => {
     setDialog({ open: true, mode: "edit", cardToEdit: null });
   };
@@ -160,16 +159,38 @@ export default function CitationCardsPage() {
     }
   };
 
+  // Resolve active titles for filter badge pills
+  const activeBox = data.boxes.find((b) => b.id === filters.selectedBoxId);
+  const activeSource = data.sources.find(
+    (s) => s.id === filters.selectedSourceId,
+  );
+
   if (isLoading) {
     return <CitationCardsSkeleton />;
   }
 
+  const hasAnyCard = data.cards.length > 0;
+  const isFiltering =
+    filters.selectedBoxId !== null ||
+    filters.selectedSourceId !== null ||
+    filters.activeNoteTypeTab !== "ALL" ||
+    filters.searchQuery.trim() !== "";
+
   return (
     <div className="w-full space-y-6">
-      {/* Overview Metric Cards */}
-      <CitationMetricsOverview counts={counts} />
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
+        <div>
+          <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
+            Alıntı Fişleri
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Tez konu kutuları ve akademik kaynaklara göre dizinlenmiş alıntılar, açımlamalar ve araştırma notları.
+          </p>
+        </div>
+      </div>
 
-      {/* Main Layout: Left Sidebar + Right Card List */}
+      {/* Main Content Layout: Sidebar + Main Area */}
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         {/* Left Sidebar */}
         <CitationSidebar
@@ -184,19 +205,24 @@ export default function CitationCardsPage() {
 
         {/* Right Main Area */}
         <div className="flex-1 flex flex-col gap-4 w-full min-w-0">
-          {/* Main Controls: Search, Tabs, Sort & View Mode */}
+          {/* Main Toolbar */}
           <CitationCardsToolbar
             filters={filters}
+            counts={counts}
             onFilterChange={setFilter}
             resultCount={filteredCards.length}
             onAddNew={handleOpenAddDialog}
+            selectedBoxTitle={activeBox?.title}
+            selectedSourceTitle={activeSource?.title}
+            onClearAllFilters={clearFilters}
           />
 
-          {/* Cards Display Grid */}
+          {/* Cards Display Section (Pure Grid) */}
           {filteredCards.length === 0 ? (
             <CitationCardsEmptyState
               onClearFilters={clearFilters}
               onAddNew={handleOpenAddDialog}
+              hasFilters={isFiltering || hasAnyCard}
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

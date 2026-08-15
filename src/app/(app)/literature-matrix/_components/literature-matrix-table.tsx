@@ -11,10 +11,8 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { InlineEditableCell } from "./inline-editable-cell";
 import type {
   MatrixSourceRow,
-  CritiqueFieldKey,
   MatrixColumnVisibility,
   MatrixSortField,
   MatrixSortDirection,
@@ -36,21 +34,35 @@ export const MATRIX_COLUMNS: ColumnDef[] = [
   { key: "literatureGap", label: "Literatür Boşluğu" },
 ];
 
+/**
+ * Read-only matrix cell rendering a critique dimension without any edit affordance.
+ *
+ * @param props - Cell props.
+ * @param props.value - Dimension content, or null when empty.
+ * @returns The read-only cell markup.
+ */
+function ReadOnlyCell({ value }: { value: string | null }) {
+  return (
+    <div className="min-h-[48px] rounded-md p-2 text-sm leading-relaxed text-foreground/90 line-clamp-3 whitespace-pre-line">
+      {value && value.trim().length > 0 ? (
+        value
+      ) : (
+        <span className="text-xs text-muted-foreground">–</span>
+      )}
+    </div>
+  );
+}
+
 interface LiteratureMatrixTableProps {
   rows: MatrixSourceRow[];
   columnVisibility: MatrixColumnVisibility;
   sortField: MatrixSortField;
   sortDirection: MatrixSortDirection;
   onSortChange: (field: MatrixSortField) => void;
-  onSaveCritiqueField: (
-    sourceId: number,
-    field: CritiqueFieldKey,
-    newValue: string,
-  ) => Promise<void>;
 }
 
 /**
- * Renders the Notion-style interactive literature matrix data grid with inline editable cells.
+ * Renders the Notion-style read-only literature matrix data grid.
  *
  * @param root0 - Component props.
  * @param root0.rows - Filtered and sorted source rows to display.
@@ -58,9 +70,6 @@ interface LiteratureMatrixTableProps {
  * @param root0.sortField - Currently active sort field.
  * @param root0.sortDirection - Current sort direction (asc/desc).
  * @param root0.onSortChange - Callback invoked when a header is clicked to sort.
- * @param root0.onSaveCritiqueField - Callback to persist critique cell edits.
- * @param root0.onToggleReadStatus - Callback to toggle source read state.
- * @param root0.onSaveComparisonNote - Callback to persist custom comparison notes.
  * @returns The matrix table markup.
  */
 export function LiteratureMatrixTable({
@@ -69,7 +78,6 @@ export function LiteratureMatrixTable({
   sortField,
   sortDirection,
   onSortChange,
-  onSaveCritiqueField,
 }: LiteratureMatrixTableProps) {
   if (rows.length === 0) {
     return (
@@ -79,8 +87,9 @@ export function LiteratureMatrixTable({
           Eşleşen Kaynak Bulunamadı
         </h3>
         <p className="mt-1 text-xs text-muted-foreground max-w-sm">
-          Arama terimlerinizi veya filtreleri değiştirerek veya kütüphanenize
-          yeni kaynaklar ekleyerek matrisi genişletebilirsiniz.
+          Arama terimlerinizi veya filtreleri değiştirerek matriste arama
+          yapabilirsiniz. Matriste yalnızca eser analizi yapılan kaynaklar yer
+          alır.
         </p>
       </div>
     );
@@ -220,74 +229,36 @@ export function LiteratureMatrixTable({
                 </td>
               )}
 
-              {/* 5 Critique Fields (Modal Editable) */}
+              {/* 5 Critique Fields (Read-Only) */}
               {isColVisible("researchQuestion") && (
                 <td className="p-2 align-middle">
-                  <InlineEditableCell
-                    title="Araştırma Sorusu"
-                    sourceTitle={row.title}
-                    value={row.critique?.researchQuestion ?? null}
-                    placeholder="Araştırma sorusu ekleyin..."
-                    onSave={(val) =>
-                      onSaveCritiqueField(row.id, "researchQuestion", val)
-                    }
-                  />
+                  <ReadOnlyCell value={row.critique?.researchQuestion ?? null} />
                 </td>
               )}
 
               {isColVisible("theoreticalFramework") && (
                 <td className="p-2 align-middle">
-                  <InlineEditableCell
-                    title="Teorik Çerçeve"
-                    sourceTitle={row.title}
+                  <ReadOnlyCell
                     value={row.critique?.theoreticalFramework ?? null}
-                    placeholder="Teorik çerçeve ekleyin..."
-                    onSave={(val) =>
-                      onSaveCritiqueField(row.id, "theoreticalFramework", val)
-                    }
                   />
                 </td>
               )}
 
               {isColVisible("methodology") && (
                 <td className="p-2 align-middle">
-                  <InlineEditableCell
-                    title="Metodoloji"
-                    sourceTitle={row.title}
-                    value={row.critique?.methodology ?? null}
-                    placeholder="Metodoloji ekleyin..."
-                    onSave={(val) =>
-                      onSaveCritiqueField(row.id, "methodology", val)
-                    }
-                  />
+                  <ReadOnlyCell value={row.critique?.methodology ?? null} />
                 </td>
               )}
 
               {isColVisible("mainArgument") && (
                 <td className="p-2 align-middle">
-                  <InlineEditableCell
-                    title="Temel Argüman"
-                    sourceTitle={row.title}
-                    value={row.critique?.mainArgument ?? null}
-                    placeholder="Temel argüman ekleyin..."
-                    onSave={(val) =>
-                      onSaveCritiqueField(row.id, "mainArgument", val)
-                    }
-                  />
+                  <ReadOnlyCell value={row.critique?.mainArgument ?? null} />
                 </td>
               )}
 
               {isColVisible("literatureGap") && (
                 <td className="p-2 align-middle">
-                  <InlineEditableCell
-                    title="Literatür Boşluğu"
-                    sourceTitle={row.title}
-                    value={row.critique?.literatureGap ?? null}
-                    placeholder="Literatür boşluğu ekleyin..."
-                    onSave={(val) =>
-                      onSaveCritiqueField(row.id, "literatureGap", val)
-                    }
-                  />
+                  <ReadOnlyCell value={row.critique?.literatureGap ?? null} />
                 </td>
               )}
             </tr>

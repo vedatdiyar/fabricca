@@ -1,12 +1,20 @@
 "use client";
 
-import { MessageSquareQuote, Pencil } from "lucide-react";
+import {
+  MessageSquareQuote,
+  Pencil,
+  Copy,
+  Check,
+  BookOpen,
+  FolderOpen,
+} from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { DialogFooter } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { getBoxTypeBadgeConfig } from "@/lib/box-constants";
+import { cn } from "@/lib/utils";
 import { getNoteTypeBadgeConfig } from "./citation-card";
 import type { CitationCardItem } from "../_lib/types";
 
@@ -18,13 +26,14 @@ export interface CitationCardViewProps {
 }
 
 /**
- * Read-only display of an existing citation card with an edit entry point.
+ * High-legibility, academic read-only modal view for an individual citation card.
  *
  * @param props - Card data and action callbacks.
  * @returns Read-only card view markup.
  */
 export function CitationCardView(props: CitationCardViewProps) {
   const { card, onEdit, onClose } = props;
+  const [copied, setCopied] = useState(false);
 
   const noteConfig = getNoteTypeBadgeConfig(card.noteType);
   const NoteIcon = noteConfig.icon;
@@ -32,98 +41,148 @@ export function CitationCardView(props: CitationCardViewProps) {
 
   const authorsDisplay =
     card.sourceAuthors.length > 2
-      ? `${card.sourceAuthors[0]} ve diğerleri`
+      ? `${card.sourceAuthors[0]} vd.`
       : card.sourceAuthors.join(" & ");
 
+  const apaCitation = `"${card.content}" (${authorsDisplay}, ${card.sourceYear}, ${card.pageNumber})`;
+
+  const handleCopyCitation = () => {
+    navigator.clipboard.writeText(apaCitation);
+    setCopied(true);
+    toast.success("Alıntı ve akademik atıf panoya kopyalandı.");
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
-    <div className="space-y-4 py-2">
-      {/* Kaynak & Konu Kutusu */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label className="text-xs">Akademik Kaynak</Label>
-          <p className="text-sm font-medium text-foreground leading-relaxed">
-            {card.sourceTitle}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {authorsDisplay} ({card.sourceYear})
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <Label className="text-xs">Bağlı Konu Kutusu</Label>
-          <Badge
-            variant="outline"
-            className={`flex items-center gap-1 text-xs font-medium w-fit ${boxConfig.className}`}
-          >
+    <div className="space-y-4 py-1">
+      {/* Top Metadata Card: Source & Box Info */}
+      <div className="rounded-md border border-border bg-muted/30 p-3.5 space-y-2.5">
+        {/* Row 1: Badges */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {/* Note Type Badge */}
             <span
-              className={`h-1.5 w-1.5 rounded-full shrink-0 ${boxConfig.dotClassName}`}
-            />
-            {card.boxTitle}
-          </Badge>
-        </div>
-      </div>
+              className={cn(
+                "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-semibold border",
+                noteConfig.className,
+              )}
+            >
+              <NoteIcon className="h-3.5 w-3.5 shrink-0" />
+              {noteConfig.label}
+            </span>
 
-      {/* Not Türü & Sayfa Numarası */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label className="text-xs">Not Türü</Label>
-          <Badge
-            variant="outline"
-            className={`flex items-center gap-1 text-xs font-medium w-fit ${noteConfig.className}`}
-          >
-            <NoteIcon className="h-3 w-3 shrink-0" />
-            {noteConfig.label}
-          </Badge>
-        </div>
-
-        <div className="space-y-2">
-          <Label className="text-xs">Sayfa Numarası</Label>
-          <p className="font-mono text-sm font-semibold text-foreground">
-            {card.pageNumber}
-          </p>
-        </div>
-      </div>
-
-      {/* Fiş İçeriği */}
-      <div className="space-y-2">
-        <Label className="text-xs">Fiş İçeriği (Metin)</Label>
-        <blockquote className="rounded-md border-l-2 border-primary/20 bg-muted/20 p-3 font-sans text-sm leading-relaxed text-foreground whitespace-pre-wrap">
-          {card.content}
-        </blockquote>
-      </div>
-
-      {/* Kişisel Yorum / Şerh (Opsiyonel) */}
-      {card.comment && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <MessageSquareQuote className="h-3.5 w-3.5 text-primary" />
-            <Label className="text-sm font-medium">Düşünce / Şerh</Label>
+            {/* Topic Box Badge */}
+            <Badge
+              variant="outline"
+              className={cn(
+                "flex items-center gap-1.5 text-xs font-medium border-border/60 bg-background text-foreground",
+              )}
+            >
+              <FolderOpen className="h-3 w-3 text-muted-foreground shrink-0" />
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full shrink-0",
+                  boxConfig.dotClassName,
+                )}
+              />
+              <span className="truncate max-w-[240px]">{card.boxTitle}</span>
+            </Badge>
           </div>
-          <Card className="rounded-md p-3 text-sm leading-relaxed text-foreground whitespace-pre-wrap">
+
+          {/* Page Number Badge */}
+          <span className="font-mono text-xs font-semibold text-foreground bg-background border border-border px-2.5 py-0.5 rounded">
+            {card.pageNumber}
+          </span>
+        </div>
+
+        {/* Row 2: Source Details */}
+        <div className="flex items-start gap-2.5 pt-2 border-t border-border/40">
+          <BookOpen className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+          <div className="space-y-0.5 min-w-0">
+            <h4 className="text-sm font-semibold text-foreground leading-snug">
+              {card.sourceTitle}
+            </h4>
+            <p className="text-xs text-muted-foreground">
+              {card.sourceAuthors.join(", ")} ({card.sourceYear})
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Citation Text Content */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Fiş İçeriği (Alıntı / Metin)
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCopyCitation}
+            className="h-6 px-2 text-[10px] text-muted-foreground hover:text-foreground gap-1"
+          >
+            {copied ? (
+              <>
+                <Check className="h-3 w-3 text-emerald-500" />
+                <span>Kopyalandı</span>
+              </>
+            ) : (
+              <>
+                <Copy className="h-3 w-3" />
+                <span>Metni Kopyala</span>
+              </>
+            )}
+          </Button>
+        </div>
+
+        <div className="rounded-md border border-border bg-card p-4">
+          <blockquote className="text-sm leading-relaxed text-foreground whitespace-pre-wrap select-text font-sans">
+            {card.noteType === "DIRECT_QUOTE"
+              ? `“${card.content}”`
+              : card.content}
+          </blockquote>
+        </div>
+      </div>
+
+      {/* Researcher's Commentary / Şerh (If exists) */}
+      {card.comment && (
+        <div className="rounded-md border border-primary/20 bg-primary/5 p-3.5 space-y-1.5">
+          <div className="flex items-center gap-1.5 text-primary text-xs font-medium">
+            <MessageSquareQuote className="h-3.5 w-3.5 shrink-0" />
+            <span>Araştırmacı Düşüncesi / Şerh</span>
+          </div>
+          <p className="text-xs leading-relaxed text-foreground whitespace-pre-wrap select-text pl-5">
             {card.comment}
-          </Card>
+          </p>
         </div>
       )}
 
-      <DialogFooter className="pt-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onClose}
-          className="h-8 w-24"
-        >
-          Kapat
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          onClick={onEdit}
-          className="h-8 w-24 gap-2"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-          Düzenle
-        </Button>
+      {/* Footer Controls */}
+      <DialogFooter className="pt-3 border-t border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="text-[10px] text-muted-foreground font-mono truncate max-w-sm">
+          Atıf: ({authorsDisplay}, {card.sourceYear}, {card.pageNumber})
+        </div>
+
+        <div className="flex items-center gap-2 justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onClose}
+            className="h-8 px-4 text-xs"
+          >
+            Kapat
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={onEdit}
+            className="h-8 px-4 text-xs gap-1.5"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Düzenle
+          </Button>
+        </div>
       </DialogFooter>
     </div>
   );

@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { Matrix, Box, Outline, Annotation, Source } from "@/db/schema";
-import { MatrixEditorView } from "./matrix-editor-view";
-import { BoxManagerView } from "./box-manager-view";
-import { OutlineEditorView } from "./outline-editor-view";
+import { MatrixEditorView } from "./matrix-editor";
+import { BoxManagerView } from "./box-manager";
+import { OutlineEditorView } from "./outline-editor";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Target, FolderKanban, BookOpen } from "lucide-react";
 

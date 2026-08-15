@@ -7,19 +7,15 @@ import {
   LiteratureMatrixTable,
   MATRIX_COLUMNS,
 } from "./literature-matrix-table";
-import {
-  updateMatrixCritiqueAction,
-  updateMatrixSourceAction,
-} from "../actions";
 import type {
   MatrixSourceRow,
-  CritiqueFieldKey,
   MatrixColumnVisibility,
   MatrixSortField,
   MatrixSortDirection,
   MatrixFilterConfig,
   MatrixStats,
 } from "../types";
+import { hasMatrixCritiqueData } from "../types";
 
 interface LiteratureMatrixContainerProps {
   initialRows: MatrixSourceRow[];
@@ -27,7 +23,8 @@ interface LiteratureMatrixContainerProps {
 }
 
 /**
- * Main client container managing interactive state, filtering, sorting, inline cell edits, and CSV exports.
+ * Main client container managing interactive state, filtering, sorting, and CSV exports.
+ * The matrix is strictly read-only; source analysis data is edited elsewhere.
  *
  * @param root0 - Component props.
  * @param root0.initialRows - Initial matrix source rows fetched from server.
@@ -38,8 +35,8 @@ export function LiteratureMatrixContainer({
   initialRows,
   initialBoxes,
 }: LiteratureMatrixContainerProps) {
-  const [rows, setRows] = useState<MatrixSourceRow[]>(initialRows);
-  const [boxes] = useState(initialBoxes);
+  const rows = initialRows;
+  const boxes = initialBoxes;
 
   const [filters, setFilters] = useState<MatrixFilterConfig>({
     searchTerm: "",
@@ -70,14 +67,8 @@ export function LiteratureMatrixContainer({
   const stats = useMemo<MatrixStats>(() => {
     const totalSources = rows.length;
     const readSources = rows.filter((r) => r.isRead).length;
-    const completedCritiques = rows.filter(
-      (r) =>
-        r.critique &&
-        (r.critique.researchQuestion ||
-          r.critique.theoreticalFramework ||
-          r.critique.methodology ||
-          r.critique.mainArgument ||
-          r.critique.literatureGap),
+    const completedCritiques = rows.filter((r) =>
+      hasMatrixCritiqueData(r.critique),
     ).length;
     const uniqueBoxes = new Set(rows.map((r) => r.boxId)).size;
 
@@ -155,76 +146,6 @@ export function LiteratureMatrixContainer({
       });
   }, [rows, filters, sortConfig]);
 
-  // Cell edit handler for critique fields
-  const handleSaveCritiqueField = async (
-    sourceId: number,
-    field: CritiqueFieldKey,
-    newValue: string,
-  ) => {
-    const res = await updateMatrixCritiqueAction(sourceId, field, newValue);
-    if (res.success && res.data) {
-      setRows((prev) =>
-        prev.map((row) =>
-          row.id === sourceId
-            ? {
-                ...row,
-                critique: {
-                  ...row.critique,
-                  id: res.data.id,
-                  researchQuestion: res.data.researchQuestion,
-                  theoreticalFramework: res.data.theoreticalFramework,
-                  methodology: res.data.methodology,
-                  mainArgument: res.data.mainArgument,
-                  literatureGap: res.data.literatureGap,
-                },
-              }
-            : row,
-        ),
-      );
-    }
-  };
-
-  // Toggle source read status
-  const _handleToggleReadStatus = async (
-    sourceId: number,
-    currentStatus: boolean,
-  ) => {
-    const nextStatus = !currentStatus;
-    // Optimistic UI update
-    setRows((prev) =>
-      prev.map((r) => (r.id === sourceId ? { ...r, isRead: nextStatus } : r)),
-    );
-
-    const res = await updateMatrixSourceAction(sourceId, {
-      isRead: nextStatus,
-    });
-    if (!res.success) {
-      // Revert on failure
-      setRows((prev) =>
-        prev.map((r) =>
-          r.id === sourceId ? { ...r, isRead: currentStatus } : r,
-        ),
-      );
-    }
-  };
-
-  // Cell edit handler for comparison note
-  const _handleSaveComparisonNote = async (
-    sourceId: number,
-    newValue: string,
-  ) => {
-    const res = await updateMatrixSourceAction(sourceId, {
-      comparisonNote: newValue,
-    });
-    if (res.success) {
-      setRows((prev) =>
-        prev.map((r) =>
-          r.id === sourceId ? { ...r, comparisonNote: newValue } : r,
-        ),
-      );
-    }
-  };
-
   // CSV Export with UTF-8 BOM
   const handleExportCSV = () => {
     const headers = [
@@ -300,7 +221,6 @@ export function LiteratureMatrixContainer({
         sortField={sortConfig.field}
         sortDirection={sortConfig.direction}
         onSortChange={handleSortChange}
-        onSaveCritiqueField={handleSaveCritiqueField}
       />
     </div>
   );
