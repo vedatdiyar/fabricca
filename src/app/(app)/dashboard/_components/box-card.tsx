@@ -22,10 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  getBoxTypeBadgeConfig,
-  type ThesisBoxType,
-} from "@/lib/box-constants";
+import { getBoxTypeBadgeConfig, type ThesisBoxType } from "@/lib/box-constants";
 import type { TopicBox } from "../_lib/types";
 
 interface BoxCardProps {
@@ -152,7 +149,8 @@ export function BoxCard({
                 İlgili kutuda henüz okunacak materyal bulunmamaktadır.
               </p>
               <p className="text-[10px] text-muted-foreground/70 mt-1">
-                Kütüphane üzerinden yeni eserler ekleyebilir veya literatür genişletmeyi başlatabilirsiniz.
+                Kütüphane üzerinden yeni eserler ekleyebilir veya literatür
+                genişletmeyi başlatabilirsiniz.
               </p>
             </div>
           ) : (
@@ -198,9 +196,7 @@ export function BoxCard({
                     </div>
 
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground pl-6">
-                      <span className="truncate">
-                        {article.author}
-                      </span>
+                      <span className="truncate">{article.author}</span>
                       {article.year && article.year > 0 ? (
                         <>
                           <span className="text-border">•</span>

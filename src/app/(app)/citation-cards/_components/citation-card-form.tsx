@@ -166,7 +166,10 @@ export function CitationCardForm(props: CitationCardFormProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Akademik Kaynak */}
         <div className="space-y-1.5">
-          <Label htmlFor="source-select" className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+          <Label
+            htmlFor="source-select"
+            className="text-xs font-semibold text-foreground flex items-center gap-1.5"
+          >
             <BookOpen className="h-3.5 w-3.5 text-primary" />
             Akademik Kaynak
           </Label>
@@ -174,7 +177,10 @@ export function CitationCardForm(props: CitationCardFormProps) {
             value={formFields.selectedSourceId}
             onValueChange={(v) => setField("selectedSourceId", v)}
           >
-            <SelectTrigger id="source-select" className="h-9 text-xs bg-background border-border">
+            <SelectTrigger
+              id="source-select"
+              className="h-9 text-xs bg-background border-border"
+            >
               <SelectValue placeholder="Kaynak Seçin">
                 {selectedSourceObj
                   ? `${selectedSourceObj.title} (${selectedSourceObj.authors[0] ?? "Yazar"}, ${selectedSourceObj.publicationYear})`
@@ -183,7 +189,11 @@ export function CitationCardForm(props: CitationCardFormProps) {
             </SelectTrigger>
             <SelectContent className="max-h-60">
               {sources.map((src) => (
-                <SelectItem key={src.id} value={String(src.id)} className="text-xs py-2">
+                <SelectItem
+                  key={src.id}
+                  value={String(src.id)}
+                  className="text-xs py-2"
+                >
                   <span className="font-medium">{src.title}</span> (
                   {src.authors[0] ?? "Yazar"}, {src.publicationYear})
                 </SelectItem>
@@ -194,7 +204,10 @@ export function CitationCardForm(props: CitationCardFormProps) {
 
         {/* Bağlı Konu Kutusu */}
         <div className="space-y-1.5">
-          <Label htmlFor="box-select" className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+          <Label
+            htmlFor="box-select"
+            className="text-xs font-semibold text-foreground flex items-center gap-1.5"
+          >
             <FolderOpen className="h-3.5 w-3.5 text-primary" />
             Bağlı Konu Kutusu
           </Label>
@@ -202,7 +215,10 @@ export function CitationCardForm(props: CitationCardFormProps) {
             value={formFields.selectedBoxId}
             onValueChange={(v) => setField("selectedBoxId", v)}
           >
-            <SelectTrigger id="box-select" className="h-9 text-xs bg-background border-border">
+            <SelectTrigger
+              id="box-select"
+              className="h-9 text-xs bg-background border-border"
+            >
               <SelectValue placeholder="Kutu Seçin">
                 {selectedBoxObj
                   ? `[${BOX_TYPE_LABELS[selectedBoxObj.boxType]}] ${selectedBoxObj.title}`
@@ -213,10 +229,21 @@ export function CitationCardForm(props: CitationCardFormProps) {
               {boxes.map((box) => {
                 const boxConfig = getBoxTypeBadgeConfig(box.boxType);
                 return (
-                  <SelectItem key={box.id} value={String(box.id)} className="text-xs py-2">
+                  <SelectItem
+                    key={box.id}
+                    value={String(box.id)}
+                    className="text-xs py-2"
+                  >
                     <div className="flex items-center gap-2">
-                      <span className={cn("h-2 w-2 rounded-full shrink-0", boxConfig.dotClassName)} />
-                      <span>[{BOX_TYPE_LABELS[box.boxType]}] {box.title}</span>
+                      <span
+                        className={cn(
+                          "h-2 w-2 rounded-full shrink-0",
+                          boxConfig.dotClassName,
+                        )}
+                      />
+                      <span>
+                        [{BOX_TYPE_LABELS[box.boxType]}] {box.title}
+                      </span>
                     </div>
                   </SelectItem>
                 );
@@ -229,7 +256,10 @@ export function CitationCardForm(props: CitationCardFormProps) {
       {/* Not Türü & Sayfa Numarası */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <Label htmlFor="note-type-select" className="text-xs font-semibold text-foreground">
+          <Label
+            htmlFor="note-type-select"
+            className="text-xs font-semibold text-foreground"
+          >
             Not Türü
           </Label>
           <Select
@@ -238,21 +268,33 @@ export function CitationCardForm(props: CitationCardFormProps) {
               setField("noteType", val as CitationNoteType)
             }
           >
-            <SelectTrigger id="note-type-select" className="h-9 text-xs bg-background border-border">
+            <SelectTrigger
+              id="note-type-select"
+              className="h-9 text-xs bg-background border-border"
+            >
               <SelectValue>
                 {NOTE_TYPE_DISPLAY_LABELS[formFields.noteType]}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="DIRECT_QUOTE" className="text-xs">Doğrudan Alıntı</SelectItem>
-              <SelectItem value="PARAPHRASE" className="text-xs">Dolaylı Alıntı</SelectItem>
-              <SelectItem value="PERSONAL_NOTE" className="text-xs">Kişisel Not</SelectItem>
+              <SelectItem value="DIRECT_QUOTE" className="text-xs">
+                Doğrudan Alıntı
+              </SelectItem>
+              <SelectItem value="PARAPHRASE" className="text-xs">
+                Dolaylı Alıntı
+              </SelectItem>
+              <SelectItem value="PERSONAL_NOTE" className="text-xs">
+                Kişisel Not
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="page-number-input" className="text-xs font-semibold text-foreground">
+          <Label
+            htmlFor="page-number-input"
+            className="text-xs font-semibold text-foreground"
+          >
             Sayfa Numarası
           </Label>
           <Input
@@ -267,7 +309,10 @@ export function CitationCardForm(props: CitationCardFormProps) {
 
       {/* Fiş İçeriği (Metin) */}
       <div className="space-y-1.5">
-        <Label htmlFor="content-textarea" className="text-xs font-semibold text-foreground">
+        <Label
+          htmlFor="content-textarea"
+          className="text-xs font-semibold text-foreground"
+        >
           Fiş İçeriği (Metin)
         </Label>
         <Textarea
@@ -285,7 +330,10 @@ export function CitationCardForm(props: CitationCardFormProps) {
       <div className="space-y-1.5">
         <div className="flex items-center gap-1.5">
           <MessageSquareQuote className="h-3.5 w-3.5 text-primary" />
-          <Label htmlFor="comment-textarea" className="text-xs font-semibold text-foreground">
+          <Label
+            htmlFor="comment-textarea"
+            className="text-xs font-semibold text-foreground"
+          >
             Düşünce / Şerh
           </Label>
           <span className="text-[10px] text-muted-foreground font-normal">
@@ -303,7 +351,13 @@ export function CitationCardForm(props: CitationCardFormProps) {
       </div>
 
       <DialogFooter className="pt-3 border-t border-border flex items-center justify-end gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={onClose} className="h-8 px-4 text-xs">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onClose}
+          className="h-8 px-4 text-xs"
+        >
           İptal
         </Button>
         <Button type="submit" size="sm" className="h-8 px-4 text-xs">

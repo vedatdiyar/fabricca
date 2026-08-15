@@ -12,6 +12,8 @@ import {
 } from "./schemas";
 import type { RawQuadrants } from "./box-mapper";
 
+import { fetchThesisMatrix } from "@/features/onboarding/services/fetch-actions";
+
 /**
  * Phase 2: generates English semantic queries for every sub-box in a single Gemini call.
  *
@@ -35,6 +37,8 @@ export async function generateSemanticQueriesAction(
       service: "boxes",
       filePath: "src/features/boxes/semantic-queries.ts",
     });
+
+    const dbMatrix = await fetchThesisMatrix();
 
     const subBoxEntries: {
       title: string;
@@ -68,9 +72,12 @@ export async function generateSemanticQueriesAction(
     }
 
     const matrixContext = {
-      subjectProblem: structure.subjectProblem?.description,
-      theoreticalFramework: structure.theoreticalFramework?.description,
-      methodology: structure.methodology?.description,
+      subjectProblem:
+        dbMatrix?.subjectProblem ?? structure.subjectProblem?.description,
+      theoreticalFramework:
+        dbMatrix?.theoreticalFramework ??
+        structure.theoreticalFramework?.description,
+      methodology: dbMatrix?.methodology ?? structure.methodology?.description,
     };
 
     const payload = buildSemanticQueryPromptPayload({

@@ -2,10 +2,7 @@ import { Target, Compass, BookOpen, Microscope } from "lucide-react";
 import type { ComponentType } from "react";
 
 export type MatrixKey =
-  | "subjectProblem"
-  | "theoreticalFramework"
-  | "primaryMaterial"
-  | "methodology";
+  "subjectProblem" | "theoreticalFramework" | "primaryMaterial" | "methodology";
 
 export interface MatrixCardDef {
   key: MatrixKey;

@@ -185,7 +185,8 @@ export default function CitationCardsPage() {
             Alıntı Fişleri
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Tez konu kutuları ve akademik kaynaklara göre dizinlenmiş alıntılar, açımlamalar ve araştırma notları.
+            Tez konu kutuları ve akademik kaynaklara göre dizinlenmiş alıntılar,
+            açımlamalar ve araştırma notları.
           </p>
         </div>
       </div>

@@ -27,7 +27,8 @@ export default async function ThesisBoxesPage() {
               Konu Kutuları ve Araştırma Temaları
             </h1>
             <p className="font-sans text-sm text-muted-foreground mt-1">
-              Tezinizin araştırma eksenlerini gruplandıran tematik bilgi ve kaynak havuzları.
+              Tezinizin araştırma eksenlerini gruplandıran tematik bilgi ve
+              kaynak havuzları.
             </p>
           </div>
         </div>
@@ -80,7 +81,8 @@ export default async function ThesisBoxesPage() {
             Konu Kutuları ve Araştırma Temaları
           </h1>
           <p className="font-sans text-sm text-muted-foreground mt-1">
-            Tezinizin araştırma eksenlerini gruplandıran tematik bilgi, kavram ve literatür havuzları.
+            Tezinizin araştırma eksenlerini gruplandıran tematik bilgi, kavram
+            ve literatür havuzları.
           </p>
         </div>
       </div>
@@ -90,4 +92,3 @@ export default async function ThesisBoxesPage() {
     </div>
   );
 }
-

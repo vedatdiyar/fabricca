@@ -1,14 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  Layers,
-  BookOpen,
-  Search,
-  X,
-  Check,
-  FolderOpen,
-} from "lucide-react";
+import { Layers, BookOpen, Search, X, Check, FolderOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -262,7 +255,9 @@ export function CitationSidebar(props: CitationSidebarProps) {
                       <div
                         className={cn(
                           "text-xs font-medium truncate min-w-0",
-                          isSelected ? "text-primary font-semibold" : "text-foreground",
+                          isSelected
+                            ? "text-primary font-semibold"
+                            : "text-foreground",
                         )}
                         title={box.title}
                       >
@@ -334,7 +329,8 @@ export function CitationSidebar(props: CitationSidebarProps) {
                           {source.title}
                         </span>
                         <span className="text-[10px] text-muted-foreground truncate">
-                          {source.authors[0] ?? "Bilinmeyen Yazar"} ({source.publicationYear})
+                          {source.authors[0] ?? "Bilinmeyen Yazar"} (
+                          {source.publicationYear})
                         </span>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">

@@ -27,7 +27,8 @@ export default async function ThesisMatrixPage() {
               Tez Matrisi ve Kuramsal Omurga
             </h1>
             <p className="font-sans text-sm text-muted-foreground mt-1">
-              Tezinizin araştırma problemini, kuramsal çerçevesini, ampirik kaynaklarını ve metodolojisini yapılandıran 4 temel sütun.
+              Tezinizin araştırma problemini, kuramsal çerçevesini, ampirik
+              kaynaklarını ve metodolojisini yapılandıran 4 temel sütun.
             </p>
           </div>
         </div>
@@ -53,7 +54,8 @@ export default async function ThesisMatrixPage() {
             Tez Matrisi ve Kuramsal Omurga
           </h1>
           <p className="font-sans text-sm text-muted-foreground mt-1">
-            Tezinizin araştırma problemini, kuramsal çerçevesini, ampirik kaynaklarını ve metodolojisini yapılandıran 4 temel sütun.
+            Tezinizin araştırma problemini, kuramsal çerçevesini, ampirik
+            kaynaklarını ve metodolojisini yapılandıran 4 temel sütun.
           </p>
         </div>
       </div>

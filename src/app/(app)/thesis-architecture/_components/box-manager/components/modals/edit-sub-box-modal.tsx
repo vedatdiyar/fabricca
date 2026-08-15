@@ -47,7 +47,8 @@ export function EditSubBoxModal({
     handleInputKeyDown,
   } = useConceptTags(Array.isArray(box.concepts) ? [...box.concepts] : []);
 
-  const badgeColor = QUADRANTS[box.boxType ?? ""]?.badgeColor ?? "border-border";
+  const badgeColor =
+    QUADRANTS[box.boxType ?? ""]?.badgeColor ?? "border-border";
   const shortLabel = QUADRANTS[box.boxType ?? ""]?.shortLabel ?? "Alt Konu";
 
   const handleSave = () => {
@@ -78,7 +79,8 @@ export function EditSubBoxModal({
             {box.title}
           </DialogTitle>
           <DialogDescription className="font-sans text-xs text-muted-foreground">
-            Tezinizin bu tematik alt havuzuna ait başlık, açıklama ve kavram etiketlerini güncelleyin.
+            Tezinizin bu tematik alt havuzuna ait başlık, açıklama ve kavram
+            etiketlerini güncelleyin.
           </DialogDescription>
         </DialogHeader>
 
@@ -185,7 +187,8 @@ export function EditSubBoxModal({
               className="font-sans text-xs bg-background border-border rounded-md"
             />
             <p className="text-[10px] font-sans text-muted-foreground">
-              Bu sorgu, Fabricca&apos;nın otomatik literatür genişletme ve RAG motoru tarafından akademik makale taramalarında kullanılır.
+              Bu sorgu, Fabricca&apos;nın otomatik literatür genişletme ve RAG
+              motoru tarafından akademik makale taramalarında kullanılır.
             </p>
           </div>
         </div>

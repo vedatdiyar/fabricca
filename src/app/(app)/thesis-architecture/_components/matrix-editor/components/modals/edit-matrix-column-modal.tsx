@@ -50,7 +50,12 @@ export function EditMatrixColumnModal({
   if (!card) return null;
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
+    >
       <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-6 gap-4 bg-card border-border">
         <DialogHeader className="space-y-1.5 pb-3 border-b border-border/40">
           <div className="flex items-center gap-2">

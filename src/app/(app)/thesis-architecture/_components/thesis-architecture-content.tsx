@@ -31,7 +31,6 @@ export function ThesisArchitectureContent({
 
   return (
     <div className="w-full space-y-6">
-
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full">
           <TabsList className="grid w-full sm:w-auto grid-cols-3 max-w-md bg-muted/60 p-1">
@@ -49,7 +48,10 @@ export function ThesisArchitectureContent({
             </TabsTrigger>
           </TabsList>
 
-          <div id="thesis-tab-actions" className="flex items-center gap-2 justify-end shrink-0" />
+          <div
+            id="thesis-tab-actions"
+            className="flex items-center gap-2 justify-end shrink-0"
+          />
         </div>
 
         <TabsContent value="matrix" className="mt-6 space-y-4">

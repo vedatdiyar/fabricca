@@ -52,9 +52,7 @@ export async function getE5QueryEmbedding(
   logger?: Logger,
 ): Promise<number[]> {
   if (!HF_API_KEY) {
-    throw new Error(
-      "HUGGINGFACE_API_KEY environment variable is not defined.",
-    );
+    throw new Error("HUGGINGFACE_API_KEY environment variable is not defined.");
   }
 
   const trimmed = query.trim();
@@ -96,7 +94,9 @@ export async function getE5QueryEmbedding(
             return data as number[];
           }
 
-          throw new Error("Unexpected embedding response structure from Hugging Face.");
+          throw new Error(
+            "Unexpected embedding response structure from Hugging Face.",
+          );
         } finally {
           clearTimeout(timeoutId);
         }
@@ -107,7 +107,11 @@ export async function getE5QueryEmbedding(
         maxDelay: DEFAULT_MAX_DELAY,
         isRetryable: (error) => {
           if (error instanceof HttpError) {
-            return error.status === 429 || error.status >= 500 || error.status === 503;
+            return (
+              error.status === 429 ||
+              error.status >= 500 ||
+              error.status === 503
+            );
           }
           return true;
         },
@@ -158,7 +162,9 @@ export async function getE5QueryEmbedding(
  * @returns Abstract string, preferring original over translated text.
  */
 function extractAbstract(payload: Record<string, unknown>): string {
-  let abstract = String(payload.abstract_original ?? payload.abstract ?? "").trim();
+  let abstract = String(
+    payload.abstract_original ?? payload.abstract ?? "",
+  ).trim();
   if (!abstract || abstract.length < 10 || /^özet yok\.?$/i.test(abstract)) {
     abstract = String(payload.abstract_translated ?? "").trim();
   }
@@ -176,7 +182,9 @@ function mapPayloadToDetails(
   id: number,
   payload: Record<string, unknown>,
 ): TezaraThesisDetails {
-  const titleOriginal = String(payload.title_original ?? payload.title ?? "").trim();
+  const titleOriginal = String(
+    payload.title_original ?? payload.title ?? "",
+  ).trim();
   const titleTranslated = String(payload.title_translated ?? "").trim();
   const title =
     titleTranslated && titleTranslated !== titleOriginal

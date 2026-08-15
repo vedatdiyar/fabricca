@@ -60,10 +60,7 @@ export async function persistRelatedTheses(userId: number): Promise<void> {
       .select({ id: boxes.id })
       .from(boxes)
       .where(
-        and(
-          eq(boxes.matrixId, matrix.id),
-          eq(boxes.boxType, "RELATED_THESES"),
-        ),
+        and(eq(boxes.matrixId, matrix.id), eq(boxes.boxType, "RELATED_THESES")),
       )
       .limit(1);
 

@@ -45,7 +45,10 @@ export function DashboardSkeleton() {
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {Array.from({ length: 2 }).map((_, index) => (
-            <Card key={index} className="flex h-full flex-col rounded-md border border-border bg-card">
+            <Card
+              key={index}
+              className="flex h-full flex-col rounded-md border border-border bg-card"
+            >
               <CardHeader className="p-5 pb-3 space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <Skeleton className="h-5 w-24 rounded bg-border/20" />

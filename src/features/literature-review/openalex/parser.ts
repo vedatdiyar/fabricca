@@ -99,6 +99,7 @@ export function parseOpenAlexMetadataResults(
       authors: authorships
         .map((a) => a.author?.display_name ?? "")
         .filter(Boolean),
+
       year: null,
       workType: (work.type as string) ?? null,
       doi: (work.doi as string) ?? null,

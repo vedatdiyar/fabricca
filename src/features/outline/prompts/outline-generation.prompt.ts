@@ -190,4 +190,3 @@ ${matrix.methodology}
 Yukarıdaki tez matrisi verilerini analiz ederek Türkiye lisansüstü tez standartlarına tam uyumlu, sade ve akıcı bir taslak tez planı oluşturun.`,
   });
 }
-

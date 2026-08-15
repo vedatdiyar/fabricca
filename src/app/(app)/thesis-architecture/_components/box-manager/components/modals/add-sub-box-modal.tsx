@@ -79,7 +79,8 @@ export function AddSubBoxModal({
             Yeni Alt Konu Tanımla
           </DialogTitle>
           <DialogDescription className="font-sans text-xs text-muted-foreground">
-            Tezinizin araştırma mimarisine yeni bir tematik alt konu ve kavram havuzu ekleyin.
+            Tezinizin araştırma mimarisine yeni bir tematik alt konu ve kavram
+            havuzu ekleyin.
           </DialogDescription>
         </DialogHeader>
 

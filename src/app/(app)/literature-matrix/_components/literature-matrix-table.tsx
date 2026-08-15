@@ -232,7 +232,9 @@ export function LiteratureMatrixTable({
               {/* 5 Critique Fields (Read-Only) */}
               {isColVisible("researchQuestion") && (
                 <td className="p-2 align-middle">
-                  <ReadOnlyCell value={row.critique?.researchQuestion ?? null} />
+                  <ReadOnlyCell
+                    value={row.critique?.researchQuestion ?? null}
+                  />
                 </td>
               )}
 

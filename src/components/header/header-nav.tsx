@@ -27,8 +27,16 @@ import {
 
 export const THESIS_ITEMS = [
   { href: "/thesis-architecture/matrix", label: "Tez Matrisi", icon: Target },
-  { href: "/thesis-architecture/boxes", label: "Konu Kutuları", icon: FolderKanban },
-  { href: "/thesis-architecture/outline", label: "Bölüm Planı", icon: BookOpen },
+  {
+    href: "/thesis-architecture/boxes",
+    label: "Konu Kutuları",
+    icon: FolderKanban,
+  },
+  {
+    href: "/thesis-architecture/outline",
+    label: "Bölüm Planı",
+    icon: BookOpen,
+  },
 ] as const;
 
 export const LITERATURE_ITEMS = [

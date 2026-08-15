@@ -77,7 +77,10 @@ export async function updateBoxAction(data: {
     });
 
     if (!targetBox || targetBox.matrix.userId !== session.userId) {
-      return { success: false, error: "Kutu bulunamadı veya erişim yetkiniz yok." };
+      return {
+        success: false,
+        error: "Kutu bulunamadı veya erişim yetkiniz yok.",
+      };
     }
 
     const updateData: Partial<typeof boxes.$inferInsert> = {

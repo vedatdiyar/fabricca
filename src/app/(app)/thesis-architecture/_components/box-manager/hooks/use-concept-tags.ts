@@ -1,10 +1,5 @@
 import { useCallback, useState } from "react";
-import type {
-  Dispatch,
-  FormEvent,
-  KeyboardEvent,
-  SetStateAction,
-} from "react";
+import type { Dispatch, FormEvent, KeyboardEvent, SetStateAction } from "react";
 
 export interface ConceptTagsController {
   concepts: string[];
@@ -32,9 +27,7 @@ export function useConceptTags(
       if (e) e.preventDefault();
       const tag = inputValue.trim().replace(/^#/, "");
       if (!tag) return;
-      setConcepts((prev) =>
-        prev.includes(tag) ? prev : [...prev, tag],
-      );
+      setConcepts((prev) => (prev.includes(tag) ? prev : [...prev, tag]));
       setInputValue("");
     },
     [inputValue],

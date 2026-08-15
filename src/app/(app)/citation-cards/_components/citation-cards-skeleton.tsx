@@ -35,12 +35,18 @@ export function CitationCardsSkeleton() {
           <Skeleton className="h-8 w-full rounded-md bg-border/40 my-1" />
           <div className="flex gap-1 mb-2">
             {Array.from({ length: 6 }).map((_, index) => (
-              <Skeleton key={index} className="h-6 w-full rounded bg-border/40" />
+              <Skeleton
+                key={index}
+                className="h-6 w-full rounded bg-border/40"
+              />
             ))}
           </div>
           <div className="space-y-2">
             {Array.from({ length: 4 }).map((_, index) => (
-              <Skeleton key={index} className="h-12 w-full rounded-md bg-border/40" />
+              <Skeleton
+                key={index}
+                className="h-12 w-full rounded-md bg-border/40"
+              />
             ))}
           </div>
         </Card>
@@ -59,14 +65,20 @@ export function CitationCardsSkeleton() {
             {/* Pills Row */}
             <div className="flex flex-wrap gap-2 pt-2 border-t border-border/40">
               {Array.from({ length: 4 }).map((_, index) => (
-                <Skeleton key={index} className="h-7 w-28 rounded-md bg-border/40" />
+                <Skeleton
+                  key={index}
+                  className="h-7 w-28 rounded-md bg-border/40"
+                />
               ))}
             </div>
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {Array.from({ length: 4 }).map((_, index) => (
-              <Card key={index} className="space-y-3 rounded-md p-4 border-border">
+              <Card
+                key={index}
+                className="space-y-3 rounded-md p-4 border-border"
+              >
                 <div className="flex items-center justify-between gap-2 pb-2 border-b border-border/40">
                   <Skeleton className="h-5 w-24 rounded bg-border/40" />
                   <Skeleton className="h-5 w-16 rounded bg-border/40" />

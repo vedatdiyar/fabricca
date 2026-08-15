@@ -35,7 +35,8 @@ export default async function ThesisOutlinePage() {
               Tez Bölüm Planı ve İskelet
             </h1>
             <p className="font-sans text-sm text-muted-foreground mt-1">
-              Tezinizin ana bölümleri, alt başlıkları ve bölümlere bağlı kaynak/alıntı haritası.
+              Tezinizin ana bölümleri, alt başlıkları ve bölümlere bağlı
+              kaynak/alıntı haritası.
             </p>
           </div>
         </div>
@@ -133,7 +134,8 @@ export default async function ThesisOutlinePage() {
             Tez Bölüm Planı ve İskelet
           </h1>
           <p className="font-sans text-sm text-muted-foreground mt-1">
-            Tezinizin ana bölümleri, alt başlıkları ve bölümlere bağlı kaynak/alıntı haritası.
+            Tezinizin ana bölümleri, alt başlıkları ve bölümlere bağlı
+            kaynak/alıntı haritası.
           </p>
         </div>
       </div>

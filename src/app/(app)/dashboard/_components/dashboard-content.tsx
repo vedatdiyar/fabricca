@@ -99,7 +99,8 @@ export function DashboardContent({
             Genel Özet ve Araştırma Paneli
           </h1>
           <p className="font-sans text-sm text-muted-foreground mt-1">
-            Tez odak alanlarınız, dinamik okuma listeleriniz ve anlık akademik çalışma akışınız.
+            Tez odak alanlarınız, dinamik okuma listeleriniz ve anlık akademik
+            çalışma akışınız.
           </p>
         </div>
       </div>
@@ -199,8 +200,8 @@ export function DashboardContent({
               Konu Kutuları ve Okuma Listeleri
             </h2>
             <p className="font-sans text-sm text-muted-foreground mt-1">
-              Araştırma alanlarınıza önerilen akademik kaynaklar. Okundukça yerini
-              yedek kaynaklara bırakır.
+              Araştırma alanlarınıza önerilen akademik kaynaklar. Okundukça
+              yerini yedek kaynaklara bırakır.
             </p>
           </div>
         </div>

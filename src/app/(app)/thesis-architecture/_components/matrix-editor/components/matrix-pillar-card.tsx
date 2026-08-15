@@ -12,7 +12,11 @@ import {
 } from "@/components/ui/card";
 import { Copy, Pencil, FileText } from "lucide-react";
 import type { MatrixCardDef, MatrixKey } from "../constants/matrix-cards";
-import { countWords, splitParagraphs, copyToClipboard } from "../utils/text-metrics";
+import {
+  countWords,
+  splitParagraphs,
+  copyToClipboard,
+} from "../utils/text-metrics";
 import { MatrixGuidingAccordion } from "./matrix-guiding-accordion";
 
 interface MatrixPillarCardProps {
@@ -30,7 +34,11 @@ interface MatrixPillarCardProps {
  * @param root0.value - The current pillar text.
  * @param root0.onEdit - Opens the edit modal for the given pillar key.
  */
-export function MatrixPillarCard({ card, value, onEdit }: MatrixPillarCardProps) {
+export function MatrixPillarCard({
+  card,
+  value,
+  onEdit,
+}: MatrixPillarCardProps) {
   const wordCount = countWords(value);
   const charCount = value.length;
   const paragraphs = splitParagraphs(value);
@@ -114,8 +122,8 @@ export function MatrixPillarCard({ card, value, onEdit }: MatrixPillarCardProps)
               Bu sütun henüz doldurulmadı
             </p>
             <p className="font-sans text-xs text-muted-foreground max-w-sm">
-              Tezinizin bu ayağını yapılandırmak için buraya veya sağ
-              üstteki &quot;Düzenle&quot; butonuna tıklayın.
+              Tezinizin bu ayağını yapılandırmak için buraya veya sağ üstteki
+              &quot;Düzenle&quot; butonuna tıklayın.
             </p>
           </div>
         )}

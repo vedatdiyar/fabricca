@@ -36,7 +36,8 @@ export function EditRootBoxModal({
   const [title, setTitle] = useState(box.title);
   const [description, setDescription] = useState(box.description ?? "");
 
-  const badgeColor = QUADRANTS[box.boxType ?? ""]?.badgeColor ?? "border-border";
+  const badgeColor =
+    QUADRANTS[box.boxType ?? ""]?.badgeColor ?? "border-border";
   const shortLabel = QUADRANTS[box.boxType ?? ""]?.shortLabel ?? "Ana Eksen";
 
   const handleSave = () => {

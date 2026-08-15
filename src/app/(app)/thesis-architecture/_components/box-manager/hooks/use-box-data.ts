@@ -21,9 +21,7 @@ export interface BoxData {
  * the aggregate quadrant metrics (sub-box, concept, source counts) from the
  * flat boxes list.
  */
-export function useBoxData(
-  boxesList: BoxWithRelations[] | Box[],
-): BoxData {
+export function useBoxData(boxesList: BoxWithRelations[] | Box[]): BoxData {
   const rootBoxes = useMemo(() => {
     return boxesList
       .filter((b) => !b.parentId && b.boxType !== "RELATED_THESES")

@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  Search,
-  SlidersHorizontal,
-  Plus,
-  X,
-  Filter,
-} from "lucide-react";
+import { Search, SlidersHorizontal, Plus, X, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -132,7 +126,8 @@ export function CitationCardsToolbar({
         />
 
         <span className="text-xs text-muted-foreground font-mono hidden sm:inline">
-          <span className="font-semibold text-foreground">{resultCount}</span> fiş gösteriliyor
+          <span className="font-semibold text-foreground">{resultCount}</span>{" "}
+          fiş gösteriliyor
         </span>
       </div>
 
@@ -151,7 +146,9 @@ export function CitationCardsToolbar({
                 variant="outline"
                 className="gap-1 bg-primary/10 text-primary border-primary/20 text-[10px] pl-2 pr-1 py-0.5"
               >
-                <span className="truncate max-w-[140px]">Kutu: {selectedBoxTitle}</span>
+                <span className="truncate max-w-[140px]">
+                  Kutu: {selectedBoxTitle}
+                </span>
                 <button
                   type="button"
                   onClick={() => onFilterChange("selectedBoxId", null)}
@@ -168,7 +165,9 @@ export function CitationCardsToolbar({
                 variant="outline"
                 className="gap-1 bg-info/10 text-info border-info/20 text-[10px] pl-2 pr-1 py-0.5"
               >
-                <span className="truncate max-w-[140px]">Kaynak: {selectedSourceTitle}</span>
+                <span className="truncate max-w-[140px]">
+                  Kaynak: {selectedSourceTitle}
+                </span>
                 <button
                   type="button"
                   onClick={() => onFilterChange("selectedSourceId", null)}

@@ -38,7 +38,8 @@ export function CitationMetricsOverview({
       label: "Doğrudan Alıntı",
       count: quoteCount,
       icon: Quote,
-      activeClass: "bg-emerald-600 text-white border-emerald-600 dark:bg-emerald-600",
+      activeClass:
+        "bg-emerald-600 text-white border-emerald-600 dark:bg-emerald-600",
       badgeClass: "bg-white/20 text-white",
     },
     {

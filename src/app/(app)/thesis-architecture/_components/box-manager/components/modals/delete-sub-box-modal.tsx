@@ -37,7 +37,8 @@ export function DeleteSubBoxModal({
             <span>Alt Konuyu Sil</span>
           </DialogTitle>
           <DialogDescription className="font-sans text-xs text-muted-foreground">
-            Bu alt konuyu ve ilişkili kavram havuzunu silmek istediğinizden emin misiniz?
+            Bu alt konuyu ve ilişkili kavram havuzunu silmek istediğinizden emin
+            misiniz?
           </DialogDescription>
         </DialogHeader>
 
@@ -46,7 +47,8 @@ export function DeleteSubBoxModal({
             &quot;{box.title}&quot;
           </p>
           <p className="text-muted-foreground text-[11px]">
-            Bu işlem geri alınamaz. Ancak kutuya bağlı kaynaklar ve görevler veri güvenliği için kütüphanede korunacaktır.
+            Bu işlem geri alınamaz. Ancak kutuya bağlı kaynaklar ve görevler
+            veri güvenliği için kütüphanede korunacaktır.
           </p>
         </div>
 
